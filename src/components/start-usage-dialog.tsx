@@ -34,9 +34,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { useAuth } from "@/contexts/auth-context"
+import { useSession } from "next-auth/react"
 import { useStartUsageSession } from "@/hooks/use-usage-logs"
-import { type Equipment } from "@/types/database"
+import type { Equipment as DbEquipment } from "@/types/database"
 
 const equipmentStatusOptions = [
   "Hoạt động",
@@ -54,10 +54,12 @@ const startUsageSchema = z.object({
 
 type StartUsageFormData = z.infer<typeof startUsageSchema>
 
+type EquipmentForStart = Pick<DbEquipment, 'id' | 'ten_thiet_bi' | 'ma_thiet_bi'> & { tinh_trang_hien_tai?: string | null }
+
 interface StartUsageDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  equipment: Equipment | null
+  equipment: EquipmentForStart | null
 }
 
 export function StartUsageDialog({
@@ -65,7 +67,8 @@ export function StartUsageDialog({
   onOpenChange,
   equipment,
 }: StartUsageDialogProps) {
-  const { user } = useAuth()
+  const { data: session } = useSession()
+  const user = session?.user as any
   const startUsageMutation = useStartUsageSession()
 
   const form = useForm<StartUsageFormData>({

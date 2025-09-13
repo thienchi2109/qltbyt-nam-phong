@@ -3,7 +3,7 @@
 import * as React from "react"
 import { Filter } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
-import { useAuth } from "@/contexts/auth-context"
+import { useSession } from "next-auth/react"
 import { cn } from "@/lib/utils"
 
 interface DepartmentFilterStatusProps {
@@ -58,7 +58,8 @@ export function DepartmentFilterStatus({
   variant = "blue",
   className
 }: DepartmentFilterStatusProps) {
-  const { user } = useAuth()
+  const { data: session } = useSession()
+  const user = session?.user as any
   
   // Only show for non-admin users with department
   const shouldShow = user && 

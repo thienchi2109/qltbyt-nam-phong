@@ -9,6 +9,40 @@ CREATE EXTENSION IF NOT EXISTS pgcrypto;
 -- Add hashed password column if it doesn't exist
 ALTER TABLE nhan_vien ADD COLUMN IF NOT EXISTS hashed_password TEXT;
 
+-- Enforce hashing at the table layer via trigger (defense in depth)
+CREATE OR REPLACE FUNCTION enforce_hashed_password()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+BEGIN
+  -- If NEW.password provided and not the placeholder, hash it into hashed_password
+  IF NEW.password IS NOT NULL AND NEW.password <> 'hashed password' THEN
+    NEW.hashed_password := crypt(NEW.password, gen_salt('bf', 12));
+    NEW.password := 'hashed password';
+  END IF;
+
+  -- If hashed_password is being set without password, keep placeholder in password
+  IF NEW.hashed_password IS NOT NULL AND (NEW.password IS NULL OR NEW.password <> 'hashed password') THEN
+    NEW.password := 'hashed password';
+  END IF;
+
+  RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS trg_enforce_hashed_password_ins ON nhan_vien;
+CREATE TRIGGER trg_enforce_hashed_password_ins
+BEFORE INSERT ON nhan_vien
+FOR EACH ROW
+EXECUTE FUNCTION enforce_hashed_password();
+
+DROP TRIGGER IF EXISTS trg_enforce_hashed_password_upd ON nhan_vien;
+CREATE TRIGGER trg_enforce_hashed_password_upd
+BEFORE UPDATE OF password, hashed_password ON nhan_vien
+FOR EACH ROW
+EXECUTE FUNCTION enforce_hashed_password();
+
 -- Simple username validation function (no restrictions)
 CREATE OR REPLACE FUNCTION validate_username(username TEXT)
 RETURNS BOOLEAN
@@ -70,6 +104,7 @@ AS $$
 DECLARE
   admin_role TEXT;
   current_username TEXT;
+  admin_username TEXT;
 BEGIN
   -- Verify admin permissions
   SELECT role INTO admin_role
@@ -94,6 +129,11 @@ BEGIN
     RAISE EXCEPTION 'User not found with ID: %', p_target_user_id;
   END IF;
   
+  -- Get admin username for audit logs
+  SELECT username INTO admin_username
+  FROM nhan_vien
+  WHERE id = p_admin_user_id;
+  
   -- Update user information with hashed password
   UPDATE nhan_vien
   SET username = p_username,
@@ -104,25 +144,36 @@ BEGIN
       khoa_phong = p_khoa_phong
   WHERE id = p_target_user_id;
   
-  -- Invalidate all existing sessions for this user if password changed
-  UPDATE user_sessions
-  SET is_active = FALSE
-  WHERE user_id = p_target_user_id;
+  -- Session invalidation: if using a custom session store, invalidate here.
+  -- Currently no user_sessions table exists; NextAuth uses JWT by default.
+  -- To enforce sign-outs on password change, consider tracking a password_changed_at
+  -- timestamp and comparing it in your auth callback to force re-authentication.
   
-  -- Log the action
-  INSERT INTO audit_log (
-    user_id, action, resource_type, resource_id, 
-    new_values, ip_address
+  -- Log the action into audit_logs (plural) table
+  INSERT INTO public.audit_logs (
+    admin_user_id,
+    admin_username,
+    action_type,
+    target_user_id,
+    target_username,
+    action_details,
+    ip_address,
+    user_agent
   ) VALUES (
-    p_admin_user_id, 'USER_UPDATE', 'nhan_vien', p_target_user_id,
+    p_admin_user_id,
+    admin_username,
+    'USER_UPDATE',
+    p_target_user_id,
+    current_username,
     jsonb_build_object(
-      'username', p_username, 
-      'full_name', p_full_name, 
-      'role', p_role, 
+      'username', p_username,
+      'full_name', p_full_name,
+      'role', p_role,
       'khoa_phong', p_khoa_phong,
       'password_updated', true
     ),
-    inet_client_addr()
+    inet_client_addr(),
+    NULL
   );
   
   RETURN TRUE;
@@ -177,7 +228,7 @@ CREATE OR REPLACE FUNCTION authenticate_user_dual_mode(
   p_password TEXT
 )
 RETURNS TABLE(
-  user_id INTEGER,
+  user_id BIGINT,
   username TEXT,
   full_name TEXT,
   role TEXT,
@@ -202,7 +253,7 @@ BEGIN
   -- Check if user exists
   IF user_record.id IS NULL THEN
     RETURN QUERY SELECT
-      NULL::INTEGER,
+      NULL::BIGINT,
       p_username::TEXT,
       NULL::TEXT,
       NULL::TEXT,

@@ -2,6 +2,7 @@ import type {Metadata, Viewport} from 'next';
 import './globals.css';
 import { Toaster } from "@/components/ui/toaster"
 import { AuthProvider } from '@/contexts/auth-context';
+import { NextAuthSessionProvider } from '@/providers/session-provider';
 import { LanguageProvider } from '@/contexts/language-context';
 import { QueryProvider } from '@/providers/query-provider';
 import { RealtimeProvider } from '@/contexts/realtime-context';
@@ -30,13 +31,16 @@ export default function RootLayout({
         <QueryProvider>
           <RealtimeProvider>
             <LanguageProvider>
-            <AuthProvider>
-              {children}
-              <Toaster />
-              <PWAInstallPrompt />
-              {process.env.NODE_ENV === 'development' && <PWAStatus />}
-              <ThemeColorManager />
-            </AuthProvider>
+            <NextAuthSessionProvider>
+              {/* Keep legacy AuthProvider for now to avoid breaking components not yet migrated */}
+              <AuthProvider>
+                {children}
+                <Toaster />
+                <PWAInstallPrompt />
+                {process.env.NODE_ENV === 'development' && <PWAStatus />}
+                <ThemeColorManager />
+              </AuthProvider>
+            </NextAuthSessionProvider>
             </LanguageProvider>
           </RealtimeProvider>
         </QueryProvider>

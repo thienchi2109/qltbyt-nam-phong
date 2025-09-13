@@ -20,7 +20,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { useAuth } from "@/contexts/auth-context"
+import { useSession } from "next-auth/react"
 import { MobileUsageActions } from "./mobile-usage-actions"
 import { ActiveUsageIndicator } from "./active-usage-indicator"
 
@@ -53,7 +53,8 @@ export function MobileEquipmentListItem({
   onEdit,
 }: MobileEquipmentListItemProps) {
   const router = useRouter()
-  const { user } = useAuth()
+  const { data: session } = useSession()
+  const user = session?.user as any
 
   const canEdit = user && (
     user.role === 'admin' ||
