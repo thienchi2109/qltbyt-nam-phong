@@ -37,7 +37,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Logo } from "@/components/icons"
 import { cn } from "@/lib/utils"
-import { useAuth } from "@/contexts/auth-context"
+import { useSession, signOut } from "next-auth/react"
 import { Skeleton } from "@/components/ui/skeleton"
 import { ChangePasswordDialog } from "@/components/change-password-dialog"
 import { NotificationBellDialog } from "@/components/notification-bell-dialog"
@@ -52,7 +52,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const [isSidebarOpen, setSidebarOpen] = React.useState(true)
   const [isMobileSheetOpen, setIsMobileSheetOpen] = React.useState(false)
   const [isChangePasswordOpen, setIsChangePasswordOpen] = React.useState(false)
-  const { user, logout, isInitialized } = useAuth()
+  const { data: session, status } = useSession()
+  const user = session?.user as any
 
   // Simple data fetching for notifications
   const [repairRequests, setRepairRequests] = React.useState<any[]>([])
@@ -128,12 +129,12 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   }, [user?.role])
 
   React.useEffect(() => {
-    if (isInitialized && !user) {
+    if (status === 'unauthenticated') {
       router.push('/')
     }
-  }, [user, isInitialized, router])
+  }, [status, router])
 
-  if (!isInitialized || !user) {
+  if (status === 'loading' || !user) {
     return (
       <div className="flex items-center justify-center min-h-screen">
           <div className="flex flex-col items-center gap-4">
@@ -263,7 +264,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                     <p className="text-sm font-medium leading-none">{user.full_name || user.username}</p>
                     <div className="flex items-center gap-2">
                       <Badge variant="outline" className="text-xs">
-                        {USER_ROLES[user.role]}
+                        {USER_ROLES[user.role as keyof typeof USER_ROLES]}
                       </Badge>
                     </div>
                     {user.khoa_phong && (
@@ -277,7 +278,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                   Thay đổi mật khẩu
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={logout}>
+                <DropdownMenuItem onClick={() => signOut({ callbackUrl: '/' })}>
                   <LogOut className="mr-2 h-4 w-4" />
                   Đăng xuất
                 </DropdownMenuItem>

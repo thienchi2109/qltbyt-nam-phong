@@ -23,12 +23,13 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { useAuth } from "@/contexts/auth-context"
+import { useSession } from "next-auth/react"
 import { cn } from "@/lib/utils"
 
 export function MobileFooterNav() {
   const pathname = usePathname()
-  const { user } = useAuth()
+  const { data: session } = useSession()
+  const user = session?.user as any
 
   // Primary navigation items for footer tabs
   const mainNavItems = [

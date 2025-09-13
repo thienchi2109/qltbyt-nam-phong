@@ -16,18 +16,26 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet"
 import { useActiveUsageLogs } from "@/hooks/use-usage-logs"
-import { useAuth } from "@/contexts/auth-context"
-import { type Equipment } from "@/types/database"
+import { useSession } from "next-auth/react"
 import { StartUsageDialog } from "./start-usage-dialog"
 import { EndUsageDialog } from "./end-usage-dialog"
 
+interface EquipmentSlim {
+  id: number
+  ten_thiet_bi: string
+  ma_thiet_bi: string
+  tinh_trang_hien_tai?: string | null
+  khoa_phong_quan_ly?: string | null
+}
+
 interface MobileUsageActionsProps {
-  equipment: Equipment
+  equipment: EquipmentSlim
   className?: string
 }
 
 export function MobileUsageActions({ equipment, className = "" }: MobileUsageActionsProps) {
-  const { user } = useAuth()
+  const { data: session } = useSession()
+  const user = session?.user as any
   const { data: activeUsageLogs } = useActiveUsageLogs()
   const [isStartDialogOpen, setIsStartDialogOpen] = React.useState(false)
   const [isEndDialogOpen, setIsEndDialogOpen] = React.useState(false)
@@ -197,13 +205,18 @@ export function MobileUsageActions({ equipment, className = "" }: MobileUsageAct
       <StartUsageDialog
         open={isStartDialogOpen}
         onOpenChange={setIsStartDialogOpen}
-        equipment={equipment}
+        equipment={{
+          id: equipment.id,
+          ten_thiet_bi: equipment.ten_thiet_bi,
+          ma_thiet_bi: equipment.ma_thiet_bi,
+          tinh_trang_hien_tai: equipment.tinh_trang_hien_tai ?? undefined,
+        }}
       />
       
       <EndUsageDialog
         open={isEndDialogOpen}
         onOpenChange={setIsEndDialogOpen}
-        usageLog={activeSession}
+        usageLog={activeSession ?? null}
       />
     </>
   )

@@ -30,7 +30,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Skeleton } from "@/components/ui/skeleton"
 import { useEquipmentUsageLogs, useDeleteUsageLog } from "@/hooks/use-usage-logs"
-import { useAuth } from "@/contexts/auth-context"
+import { useSession } from "next-auth/react"
 import { useIsMobile } from "@/hooks/use-mobile"
 import { type Equipment, type UsageLog, USAGE_STATUS } from "@/types/database"
 import { StartUsageDialog } from "./start-usage-dialog"
@@ -42,7 +42,8 @@ interface UsageHistoryTabProps {
 }
 
 export function UsageHistoryTab({ equipment }: UsageHistoryTabProps) {
-  const { user } = useAuth()
+  const { data: session } = useSession()
+  const user = session?.user as any
   const isMobile = useIsMobile()
   const [isStartDialogOpen, setIsStartDialogOpen] = React.useState(false)
   const [isEndDialogOpen, setIsEndDialogOpen] = React.useState(false)

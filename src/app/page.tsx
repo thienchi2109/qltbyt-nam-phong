@@ -1,26 +1,66 @@
 "use client"
 
 import { useState } from "react"
+import { signIn, getSession } from "next-auth/react"
 import { User, Lock, Globe, BarChart3, Wrench, Calendar, FileText, QrCode, Settings } from "lucide-react"
 import { Logo } from "@/components/icons"
-import { useAuth } from "@/contexts/auth-context"
+// Temporarily keep AuthContext for other parts but use NextAuth for login
 import { useLanguage } from "@/contexts/language-context"
 
 export default function LoginPage() {
-  const { login } = useAuth()
   const { currentLanguage, setLanguage, t } = useLanguage()
   const [username, setUsername] = useState("")
   const [password, setPassword] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState("")
 
+  // Safe Base64 encode for Unicode characters
+  const safeBase64Encode = (str: string): string => {
+    try {
+      return btoa(unescape(encodeURIComponent(str)))
+    } catch (error) {
+      return btoa(str)
+    }
+  }
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
     setError("")
     setIsLoading(true)
-
-    const success = await login(username, password)
-    if (!success) {
+    try {
+      const result = await signIn("credentials", {
+        username,
+        password,
+        redirect: false,
+      })
+      if (!result || result.error) {
+        setError(t("login.error") || "Tên đăng nhập hoặc mật khẩu không đúng")
+        setIsLoading(false)
+        return
+      }
+      // Success: NextAuth session established
+      // Bridge: also set legacy localStorage session for existing context
+  const session = await getSession()
+  const legacyBridge = process.env.NEXT_PUBLIC_AUTH_LEGACY_BRIDGE !== 'false'
+  if (legacyBridge && session && session.user) {
+        const anyUser: any = session.user
+        const sessionData = {
+          user_id: anyUser.id,
+          username: anyUser.username,
+          role: anyUser.role,
+          khoa_phong: anyUser.khoa_phong,
+          full_name: anyUser.full_name || anyUser.name,
+          created_at: Date.now(),
+          expires_at: Date.now() + 3 * 60 * 60 * 1000,
+        }
+        const token = safeBase64Encode(JSON.stringify(sessionData))
+        try {
+          localStorage.setItem('auth_session_token', token)
+        } catch {}
+      }
+      // Redirect to dashboard
+      window.location.href = "/dashboard"
+    } catch (err) {
       setError(t("login.error") || "Tên đăng nhập hoặc mật khẩu không đúng")
       setIsLoading(false)
     }

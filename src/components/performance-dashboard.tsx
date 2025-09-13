@@ -20,11 +20,12 @@ import {
   Filter
 } from "lucide-react"
 import { useDepartmentPerformance } from "@/hooks/use-department-performance"
-import { useAuth } from "@/contexts/auth-context"
+import { useSession } from "next-auth/react"
 import { cn } from "@/lib/utils"
 
 export function PerformanceDashboard() {
-  const { user } = useAuth()
+  const { data: session } = useSession()
+  const user = session?.user as any
   const {
     metrics,
     alerts,

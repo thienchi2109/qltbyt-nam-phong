@@ -46,7 +46,7 @@ import {
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { useAuth } from "@/contexts/auth-context"
+import { useSession } from "next-auth/react"
 import { AddUserDialog } from "@/components/add-user-dialog"
 import { EditUserDialog } from "@/components/edit-user-dialog"
 import { USER_ROLES, type User } from "@/types/database"
@@ -55,7 +55,8 @@ import { useSearchDebounce } from "@/hooks/use-debounce"
 
 export default function UsersPage() {
   const { toast } = useToast()
-  const { user: currentUser } = useAuth()
+  const { data: session, status } = useSession()
+  const currentUser = session?.user as any
   
   // State for users
   const [users, setUsers] = React.useState<User[]>([])
@@ -82,7 +83,7 @@ export default function UsersPage() {
 
   // Redirect if not admin
   React.useEffect(() => {
-    if (currentUser && !isAdmin) {
+    if (status === 'authenticated' && currentUser && !isAdmin) {
       // toast({ // Commented out to prevent potential issues with toast during initial load/redirect
       //   variant: "destructive",
       //   title: "Không có quyền truy cập",
@@ -92,7 +93,7 @@ export default function UsersPage() {
         window.location.href = '/dashboard'
       }
     }
-  }, [currentUser, isAdmin /*, toast*/])
+  }, [currentUser, isAdmin, status /*, toast*/])
 
   const fetchUsers = React.useCallback(async () => {
     if (!isAdmin) return
