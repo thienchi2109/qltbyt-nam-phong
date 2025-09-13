@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Demo - Biên Bản Bàn Giao Thiết Bị</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f5f5f5;
+        }
+        .demo-container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .demo-button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px 0;
+        }
+        .demo-button:hover {
+            background: #0056b3;
+        }
+        .demo-info {
+            background: #e3f2fd;
+            padding: 15px;
+            border-radius: 6px;
+            margin: 15px 0;
+            border-left: 4px solid #2196f3;
+        }
+        .features-list {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 6px;
+            margin: 15px 0;
+        }
+        .features-list h3 {
+            margin-top: 0;
+            color: #28a745;
+        }
+        .features-list ul {
+            margin: 10px 0;
+        }
+        .features-list li {
+            margin: 5px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="demo-container">
+        <h1>🚀 Demo Phiếu Bàn Giao Thiết Bị - Phase 3 Hoàn Thành!</h1>
+        
+        <div class="demo-info">
+            <strong>📋 Dữ liệu mẫu:</strong> Thiết bị máy đo huyết áp Omron HEM-7120 với đầy đủ thông tin luân chuyển nội bộ từ Khoa Tim mạch đến Tổ QLTB.
+        </div>
+
+        <div class="features-list">
+            <h3>✨ Tính năng Phase 3 - UX Enhancements:</h3>
+            <ul>
+                <li>🎨 <strong>Preview Dialog</strong> - Giao diện đẹp với chế độ xem và sửa</li>
+                <li>🔄 <strong>Auto-fill data</strong> - Tự động điền thông tin từ database</li>
+                <li>⌨️ <strong>Keyboard shortcuts</strong> - Ctrl+E (sửa), Ctrl+P (in), Ctrl+Shift+P (xem trước)</li>
+                <li>🎯 <strong>Smart validation</strong> - Kiểm tra thông tin bắt buộc trước khi in</li>
+                <li>💡 <strong>Tooltips & hints</strong> - Hướng dẫn rõ ràng cho từng tính năng</li>
+                <li>🔄 <strong>Loading states</strong> - Phản hồi trực quan khi xử lý</li>
+                <li>🎉 <strong>Better notifications</strong> - Thông báo thân thiện với emoji</li>
+                <li>🎛️ <strong>Auto-close</strong> - Dialog tự động đóng sau khi in</li>
+            </ul>
+        </div>
+
+        <button class="demo-button" onclick="openHandoverTemplate()">
+            📄 Mở Phiếu Bàn Giao Mẫu
+        </button>
+
+        <div class="demo-info">
+            <strong>💡 Cách test:</strong>
+            <br>1. Nhấn nút trên để mở phiếu mẫu
+            <br>2. Thử các keyboard shortcuts: Ctrl+E, Ctrl+P, Ctrl+Shift+P
+            <br>3. Hoặc vào ứng dụng chính → Transfers → chọn yêu cầu đang luân chuyển → nhấn nút 📄
+        </div>
+
+        <div class="features-list">
+            <h3>🎯 Roadmap tương lai (nếu cần):</h3>
+            <ul>
+                <li>📊 Export PDF trực tiếp</li>
+                <li>📧 Email phiếu bàn giao</li>
+                <li>🗂️ Template library cho các loại thiết bị khác nhau</li>
+                <li>📱 Mobile optimization</li>
+                <li>🔄 Batch processing cho nhiều thiết bị</li>
+                <li>📈 Analytics và reporting</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        function openHandoverTemplate() {
+            // Sample data for demo
+            const sampleData = {
+                department: "Khoa Tim mạch", 
+                handoverDate: new Date().toLocaleDateString('vi-VN'),
+                reason: "Luân chuyển thiết bị y tế theo quy định bảo trì định kỳ",
+                requestCode: "LC-2024-0156",
+                giverName: "Đại diện Khoa Tim mạch",
+                receiverName: "Đại diện Tổ QLTB",
+                devices: [{
+                    code: "TM-BP-001",
+                    name: "Máy đo huyết áp điện tử",
+                    model: "Omron HEM-7120",
+                    serial: "HEM7120-2024001",
+                    condition: "Hoạt động tốt",
+                    accessories: "Bộ măng sét size M, L; Hướng dẫn sử dụng; Thẻ bảo hành",
+                    note: "Đã hiệu chuẩn vào tháng 11/2024"
+                }]
+            };
+
+            // Open handover template with sample data
+            const encodedData = encodeURIComponent(JSON.stringify(sampleData));
+            const templateUrl = `handover_template.html?data=${encodedData}`;
+            
+            const newWindow = window.open(templateUrl, '_blank');
+            
+            if (!newWindow) {
+                alert('❌ Popup bị chặn! Vui lòng cho phép popup để sử dụng tính năng này.\n\n' +
+                      '🔧 Cách sửa:\n' +
+                      '1. Nhấn vào biểu tượng popup bị chặn trên thanh địa chỉ\n' +
+                      '2. Chọn "Luôn cho phép popup"\n' +
+                      '3. Thử lại');
+            } else {
+                console.log('✅ Demo template opened successfully!');
+            }
+        }
+
+        // Show welcome message
+        console.log('🎉 Phase 3 Demo loaded! Click the button to test the new handover preview features.');
+    </script>
+</body>
+</html> 
