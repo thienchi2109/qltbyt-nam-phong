@@ -1,0 +1,519 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Biên Bản Bàn Giao Thiết Bị</title>
+    <!-- Import Tailwind CSS for styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Inline critical CSS for performance - Updated 2025-07-04 for A4 landscape optimization */
+        body {
+            font-family: 'Times New Roman', Times, serif;
+            font-size: 13px; /* UPDATED: Changed from 12px to 13px */
+            color: #000;
+            background-color: #e5e7eb;
+            line-height: 1.4;
+            margin: 0;
+            padding: 0;
+        }
+        
+        .a4-landscape-page {
+            width: 29.7cm;
+            min-height: 21cm;
+            padding: 1cm;
+            margin: 1cm auto;
+            background: white;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            position: relative;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .content-body {
+            flex-grow: 1;
+        }
+        
+        .form-input-line {
+            font-family: inherit;
+            font-size: inherit;
+            border: none;
+            border-bottom: 1px dotted #000;
+            background-color: transparent;
+            padding: 2px 1px;
+            outline: none;
+            width: 100%;
+            min-height: 1.1em;
+        }
+        
+        .form-input-readonly {
+            border-bottom: 1px solid #000;
+            font-weight: 500;
+        }
+        
+        .editable-cell {
+            border-bottom: 1px solid #ccc !important;
+            background-color: #f9f9f9;
+            cursor: text;
+            min-height: 18px;
+            padding: 3px 4px !important;
+        }
+        
+        .editable-cell:focus {
+            background-color: #fff;
+            border-bottom: 1px solid #007bff !important;
+            outline: none;
+        }
+        
+        .editable-cell:empty:before {
+            content: attr(data-placeholder);
+            color: #999;
+            font-style: italic;
+        }
+        
+        .font-bold { font-weight: 700; }
+        .title-main { font-size: 18px; }
+        .title-sub { font-size: 14px; }
+        .text-center { text-align: center; }
+        .uppercase { text-transform: uppercase; }
+        .italic { font-style: italic; }
+        .whitespace-nowrap { white-space: nowrap; }
+        
+        /* Flexbox utilities */
+        .flex { display: flex; }
+        .items-center { align-items: center; }
+        .items-baseline { align-items: baseline; }
+        .items-start { align-items: flex-start; }
+        .justify-between { justify-content: space-between; }
+        .justify-around { justify-content: space-around; }
+        .flex-grow { flex-grow: 1; }
+        
+        /* Spacing utilities - optimized for compact layout */
+        .mt-3 { margin-top: 0.4rem; } /* UPDATED: Reduced margin */
+        .mt-4 { margin-top: 0.5rem; } /* UPDATED: Reduced margin */
+        .mt-8 { margin-top: 1rem; }   /* UPDATED: Reduced margin */
+        .ml-2 { margin-left: 0.5rem; }
+        .mb-1 { margin-bottom: 0.25rem; }
+        .space-y-2 > * + * { margin-top: 0.3rem; }
+        
+        /* Width utilities */
+        .w-14 { width: 3.5rem; }
+        .w-full { width: 100%; }
+        
+        /* Table styles - following maintainance-html-form.html approach */
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px; /* UPDATED: Changed from 12px to 13px */
+        }
+
+        .data-table th, .data-table td {
+            border: 1px solid #000;
+            padding: 3px; /* UPDATED: Reduced padding from 4px */
+            text-align: center;
+            vertical-align: middle;
+        }
+
+        .data-table th {
+            background-color: #f8f9fa;
+            font-weight: bold;
+        }
+
+        /* UPDATED: Removed fixed height to allow rows to shrink naturally */
+
+        /* Text alignment for specific columns */
+        .data-table td:nth-child(3),
+        .data-table td:nth-child(6) {
+            text-align: left;
+        }
+        
+        /* Signature styles */
+        .signature-area {
+            text-align: center;
+            min-width: 180px;
+        }
+        
+        .signature-space {
+            height: 50px;
+            border-bottom: 1px solid #ddd;
+            margin: 8px 0;
+        }
+        
+        /* Loading state */
+        .loading {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 200px;
+            font-size: 16px;
+            color: #666;
+        }
+        
+        .loading.hidden { display: none; }
+        
+        /* Error state */
+        .error {
+            color: #dc2626;
+            text-align: center;
+            padding: 20px;
+        }
+        
+        /* Edit instruction */
+        .edit-instruction {
+            font-size: 10px;
+            color: #666;
+            font-style: italic;
+            margin-top: 6px;
+            text-align: center;
+        }
+        
+        /* Print optimizations - following maintainance-html-form.html approach */
+        @media print {
+            body {
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+                background-color: #fff !important;
+            }
+
+            .a4-landscape-page {
+                width: 100%;
+                height: 100%;
+                margin: 0 !important;
+                padding: 1cm !important;
+                box-shadow: none !important;
+                border: none !important;
+            }
+
+            body > *:not(.a4-landscape-page) {
+                display: none;
+            }
+
+            /* Repeat table headers on each page */
+            .data-table thead {
+                display: table-header-group;
+            }
+
+            /* Prevent items from breaking across pages */
+            .data-table tr, .signature-area {
+                page-break-inside: avoid;
+            }
+
+            /* Fixed footer at bottom of each printed page */
+            .print-footer {
+                position: fixed;
+                bottom: 1cm;
+                left: 1cm;
+                right: 1cm;
+                width: calc(100% - 2cm);
+            }
+
+            .content-body {
+                padding-bottom: 30px;
+            }
+
+            .loading, .error {
+                display: none !important;
+            }
+
+            .edit-instruction {
+                display: none !important;
+            }
+
+            .editable-cell {
+                background-color: transparent !important;
+                border-bottom: 1px solid #000 !important;
+            }
+        }
+        
+        /* Mobile responsive */
+        @media (max-width: 768px) {
+            .a4-landscape-page {
+                width: 100%;
+                margin: 0;
+                padding: 0.4cm;
+                box-shadow: none;
+            }
+            
+            .title-main { font-size: 16px; }
+            .title-sub { font-size: 12px; }
+            .data-table { font-size: 10px; }
+            .data-table th, .data-table td { padding: 3px 2px; }
+        }
+    </style>
+</head>
+<body>
+    <!-- Loading state -->
+    <div id="loading" class="loading">
+        Đang tải dữ liệu...
+    </div>
+    
+    <!-- Error state -->
+    <div id="error" class="error hidden">
+        Có lỗi xảy ra khi tải dữ liệu. Vui lòng thử lại.
+    </div>
+
+    <div id="content" class="a4-landscape-page hidden">
+        <div class="content-body">
+            <!-- Header -->
+            <header class="text-center">
+                <div class="flex justify-between items-start">
+                    <div class="text-center">
+                        <img src="https://i.postimg.cc/W1ym4T74/cdc-logo-150.png" 
+                             alt="Logo CDC" 
+                             class="w-14 mx-auto mb-1" 
+                             onerror="this.style.display='none';">
+                    </div>
+                    <div class="flex-grow">
+                        <h2 class="title-sub uppercase font-bold">TRUNG TÂM KIỂM SOÁT BỆNH TẬT THÀNH PHỐ CẦN THƠ</h2>
+                        <h1 class="title-main uppercase mt-3 font-bold">BIÊN BẢN BÀN GIAO THIẾT BỊ</h1>
+                    </div>
+                    <div class="w-14"></div>
+                </div>
+            </header>
+
+            <!-- Info Section -->
+            <section class="mt-4 space-y-2">
+                <div class="flex items-baseline">
+                    <label class="whitespace-nowrap">Khoa/Phòng lập:</label>
+                    <div id="department" class="form-input-line form-input-readonly ml-2"></div>
+                </div>
+                <div class="flex items-baseline">
+                    <label class="whitespace-nowrap">Ngày nhận/giao:</label>
+                    <div id="handover-date" class="form-input-line form-input-readonly ml-2"></div>
+                </div>
+                <div class="flex items-baseline">
+                    <label class="whitespace-nowrap">Lý do nhận bàn giao:</label>
+                    <div id="reason" class="form-input-line form-input-readonly ml-2"></div>
+                </div>
+                <div class="flex items-baseline">
+                    <label class="whitespace-nowrap">Mã yêu cầu:</label>
+                    <div id="request-code" class="form-input-line form-input-readonly ml-2"></div>
+                </div>
+            </section>
+
+            <!-- Main Table -->
+            <section class="mt-4">
+                <table class="w-full data-table">
+                    <thead class="font-bold">
+                        <tr>
+                            <!-- UPDATED: Column widths adjusted for better fit -->
+                            <th class="w-[2%]">STT</th>
+                            <th class="w-[7%]">Mã thiết bị</th>
+                            <th class="w-[18%]">Tên thiết bị</th>
+                            <th class="w-[7%]">Model</th>
+                            <th class="w-[7%]">Serial</th>
+                            <th class="w-[20%]">Tài liệu/phụ kiện kèm theo (nếu có)</th>
+                            <th class="w-[18%]">Tình trạng khi nhận/giao</th>
+                            <th class="w-[21%]">Ghi chú</th>
+                        </tr>
+                    </thead>
+                    <tbody id="device-table-body">
+                        <!-- Dynamic content will be inserted here -->
+                    </tbody>
+                </table>
+                <div class="edit-instruction">
+                    * Các ô có nền xám có thể nhập liệu trực tiếp bằng cách nhấp chuột vào
+                </div>
+            </section>
+
+            <!-- Signature section -->
+            <section class="mt-8">
+                <div class="flex justify-around">
+                    <div class="signature-area">
+                        <p class="font-bold">Đại diện bên giao</p>
+                        <p class="italic">(Ký, ghi rõ họ tên)</p>
+                        <div class="signature-space"></div>
+                        <div id="giver-name" class="font-bold"></div>
+                    </div>
+                    <div class="signature-area">
+                        <p class="font-bold">Ban Giám đốc</p>
+                        <p class="italic">(Ký, ghi rõ họ tên)</p>
+                        <div class="signature-space"></div>
+                        <div id="director-name" class="font-bold"></div>
+                    </div>
+                    <div class="signature-area">
+                        <p class="font-bold">Đại diện bên nhận</p>
+                        <p class="italic">(Ký, ghi rõ họ tên)</p>
+                        <div class="signature-space"></div>
+                        <div id="receiver-name" class="font-bold"></div>
+                    </div>
+                </div>
+            </section>
+        </div>
+        
+        <!-- Footer -->
+        <footer class="print-footer flex justify-between items-center text-xs">
+            <span>QLTB-BM.14</span>
+            <span>BH.01 (05/2024)</span>
+            <span>Trang: <span id="page-number">1</span>/<span id="total-pages">1</span></span>
+        </footer>
+    </div>
+
+    <script>
+        // Utility functions
+        const formatValue = (value) => {
+            if (value === null || value === undefined || value === '') {
+                return '';
+            }
+            return String(value).trim();
+        };
+
+        const formatDate = (dateString) => {
+            if (!dateString) return '';
+            try {
+                const date = new Date(dateString);
+                return date.toLocaleDateString('vi-VN', {
+                    day: '2-digit',
+                    month: '2-digit', 
+                    year: 'numeric'
+                });
+            } catch (error) {
+                return dateString;
+            }
+        };
+
+        const showError = (message = 'Có lỗi xảy ra khi tải dữ liệu') => {
+            document.getElementById('loading').classList.add('hidden');
+            document.getElementById('error').classList.remove('hidden');
+            document.getElementById('error').textContent = message;
+            document.getElementById('content').classList.add('hidden');
+        };
+
+        const hideLoading = () => {
+            document.getElementById('loading').classList.add('hidden');
+            document.getElementById('content').classList.remove('hidden');
+        };
+
+        // Main data population function
+        const populateHandoverSheet = (data) => {
+            try {
+                if (!data) {
+                    throw new Error('Dữ liệu không hợp lệ');
+                }
+
+                // Populate basic info
+                document.getElementById('department').textContent = formatValue(data.department || 'Tổ QLTB');
+                document.getElementById('handover-date').textContent = formatDate(data.handoverDate || new Date());
+                document.getElementById('reason').textContent = formatValue(data.reason);
+                document.getElementById('request-code').textContent = formatValue(data.requestCode);
+
+                // Populate signature names
+                document.getElementById('giver-name').textContent = formatValue(data.giverName);
+                document.getElementById('director-name').textContent = formatValue(data.directorName);
+                document.getElementById('receiver-name').textContent = formatValue(data.receiverName);
+
+                // Populate devices table
+                const tableBody = document.getElementById('device-table-body');
+                tableBody.innerHTML = ''; // Clear existing content
+
+                if (!data.devices || data.devices.length === 0) {
+                    // Add empty row for manual entry
+                    const emptyRow = createDeviceRow({}, 1);
+                    tableBody.appendChild(emptyRow);
+                } else {
+                    data.devices.forEach((device, index) => {
+                        const row = createDeviceRow(device, index + 1);
+                        tableBody.appendChild(row);
+                    });
+                }
+
+                // Update pagination if multiple pages needed
+                updatePagination(data.devices?.length || 1);
+
+                hideLoading();
+                
+                // Auto print if requested
+                if (data.autoPrint) {
+                    setTimeout(() => window.print(), 500);
+                }
+
+            } catch (error) {
+                console.error('Error populating handover sheet:', error);
+                showError(error.message);
+            }
+        };
+
+        const createDeviceRow = (device, index) => {
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td>${index}</td>
+                <td>${formatValue(device.code)}</td>
+                <td style="text-align: left;">${formatValue(device.name)}</td>
+                <td>${formatValue(device.model)}</td>
+                <td>${formatValue(device.serial)}</td>
+                <td class="editable-cell" contenteditable="true" data-placeholder="Nhập tài liệu/phụ kiện kèm theo..." style="text-align: left;">${formatValue(device.accessories || '')}</td>
+                <td class="editable-cell" contenteditable="true" data-placeholder="Nhập tình trạng thiết bị...">${formatValue(device.condition)}</td>
+                <td class="editable-cell" contenteditable="true" data-placeholder="Nhập ghi chú...">${formatValue(device.note || '')}</td>
+            `;
+            return row;
+        };
+
+        const updatePagination = (deviceCount) => {
+            // UPDATED: Adjusted for 13px font and compact layout
+            const devicesPerPage = 13;
+            const totalPages = Math.ceil(deviceCount / devicesPerPage);
+            document.getElementById('total-pages').textContent = totalPages;
+        };
+
+        // Listen for data from parent window
+        window.addEventListener('message', (event) => {
+            if (event.data.type === 'HANDOVER_DATA') {
+                populateHandoverSheet(event.data.payload);
+            }
+        });
+
+        // Check if data was passed via URL parameters (fallback)
+        const urlParams = new URLSearchParams(window.location.search);
+        const dataParam = urlParams.get('data');
+        if (dataParam) {
+            try {
+                const data = JSON.parse(decodeURIComponent(dataParam));
+                populateHandoverSheet(data);
+            } catch (error) {
+                console.error('Error parsing URL data:', error);
+                showError('Dữ liệu URL không hợp lệ');
+            }
+        }
+
+        // Global function for direct calls (compatibility)
+        window.populateHandoverSheet = populateHandoverSheet;
+
+        // Ready state
+        document.addEventListener('DOMContentLoaded', () => {
+            // Signal that template is ready
+            if (window.parent !== window) {
+                window.parent.postMessage({ type: 'TEMPLATE_READY' }, '*');
+            }
+
+            // --- NEW: MOCK DATA FOR PREVIEW ---
+            // Fallback to mock data for preview purposes if no real data is received after a short delay.
+            setTimeout(() => {
+                // Check if the content is still hidden (meaning no data was loaded)
+                const contentIsHidden = document.getElementById('content').classList.contains('hidden');
+                const errorIsHidden = document.getElementById('error').classList.contains('hidden');
+
+                if (contentIsHidden && errorIsHidden) {
+                    console.log("No real data received. Loading mock data for preview.");
+                    const mockData = {
+                        department: "Khoa Xét nghiệm - Cận lâm sàng",
+                        handoverDate: "2025-07-04T10:00:00Z",
+                        reason: "Bàn giao thiết bị mới được cấp theo quyết định số 123/QĐ-CDC",
+                        requestCode: "YCM-2025-07-456",
+                        giverName: "Nguyễn Văn An",
+                        receiverName: "Trần Thị Bình",
+                        devices: [
+                            { code: "CDC-MIC-001", name: "Kính hiển vi 2 mắt", model: "CX-23", serial: "SN-A123", accessories: "01 Dây nguồn, 01 Hộp đựng", condition: "Mới, hoạt động tốt", note: "Đã kiểm tra" },
+                            { code: "CDC-CEN-005", name: "Máy ly tâm", model: "Hettich EBA 200", serial: "SN-B456", accessories: "01 Dây nguồn, 01 Rotor", condition: "Mới, hoạt động tốt", note: "" },
+                            { code: "CDC-AUT-002", name: "Nồi hấp tiệt trùng", model: "Sturdy SA-232X", serial: "SN-C789", accessories: "01 Khay đựng", condition: "Mới, hoạt động tốt", note: "Kiểm tra áp suất" },
+                            { code: "CDC-PIP-015", name: "Pipet điện tử", model: "Eppendorf Xplorer", serial: "SN-D101", accessories: "01 Sạc, 01 giá đỡ", condition: "Mới, hoạt động tốt", note: "" },
+                            { code: "CDC-REF-009", name: "Tủ lạnh âm sâu", model: "Panasonic MDF-U55V", serial: "SN-E212", accessories: "Chìa khóa, sách HDSD", condition: "Mới, hoạt động tốt", note: "Đạt nhiệt độ -80°C" },
+                        ]
+                    };
+                    populateHandoverSheet(mockData);
+                }
+            }, 500); // Wait 500ms for real data before showing mock data
+            // --- END OF MOCK DATA CODE ---
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nhật Ký Sử Dụng Thiết Bị</title>
+    <!-- Import Tailwind CSS for styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: 'Times New Roman', Times, serif;
+            font-size: 14px;
+            color: #000;
+            background-color: #e5e7eb;
+            line-height: 1.5;
+        }
+        .a4-page {
+            width: 21cm;
+            min-height: 29.7cm;
+            padding: 1cm 2cm; /* Lề trên/dưới 1cm, trái/phải 2cm */
+            margin: 1cm auto;
+            background: white;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            position: relative;
+            display: flex;
+            flex-direction: column;
+        }
+        .content-body {
+            flex-grow: 1; /* Cho phép khối nội dung chính giãn ra */
+        }
+        .form-input-line {
+            font-family: inherit;
+            font-size: inherit;
+            border: none;
+            border-bottom: 1px dotted #000;
+            background-color: transparent;
+            padding: 1px;
+            outline: none;
+            width: 100%;
+        }
+        h1, h2, .font-bold {
+            font-weight: 700;
+        }
+        .title-main { font-size: 20px; }
+        .title-sub { font-size: 16px; }
+
+        /* Table styles */
+        .data-table, .data-table th, .data-table td {
+            border: 1px solid #000;
+            border-collapse: collapse;
+        }
+        .data-table th, .data-table td {
+            padding: 6px;
+            text-align: center;
+            vertical-align: middle;
+        }
+        .data-table tbody tr {
+             height: 38px; /* Chiều cao cho các dòng dữ liệu */
+        }
+
+        /* CSS for printing */
+        @media print {
+            body {
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+                background-color: #fff !important;
+            }
+            .a4-page {
+                width: 100%;
+                height: 100%;
+                margin: 0 !important;
+                padding: 1cm 2cm !important;
+                box-shadow: none !important;
+                border: none !important;
+            }
+             body > *:not(.a4-page) {
+                display: none;
+            }
+            /* Lặp lại tiêu đề bảng trên mỗi trang */
+            .data-table thead {
+                display: table-header-group;
+            }
+            /* Ngăn các mục bị vỡ qua trang */
+            .data-table tr {
+                page-break-inside: avoid;
+            }
+            /* Cố định footer ở cuối mỗi trang in */
+            .print-footer {
+                position: fixed;
+                bottom: 1cm;
+                left: 2cm;
+                right: 2cm;
+                width: calc(100% - 4cm);
+            }
+             .content-body {
+                padding-bottom: 30px; /* Khoảng đệm cho footer */
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="a4-page">
+        <div class="content-body">
+            <!-- Header -->
+            <header class="text-center">
+                <div class="flex justify-between items-center">
+                    <img src="https://i.postimg.cc/W1ym4T74/cdc-logo-150.png" alt="Logo CDC" class="w-20 h-20" onerror="this.onerror=null;this.src='https://i.postimg.cc/W1ym4T74/cdc-logo-150.png';">
+                    <div class="flex-grow">
+                        <h2 class="title-sub uppercase font-bold">TRUNG TÂM KIỂM SOÁT BỆNH TẬT THÀNH PHỐ CẦN THƠ</h2>
+                        <div class="flex items-baseline justify-center mt-1">
+                            <label class="font-bold whitespace-nowrap">KHOA/PHÒNG:</label>
+                            <div class="w-1/2 ml-2"><input type="text" class="form-input-line"></div>
+                        </div>
+                    </div>
+                </div>
+                 <h1 class="title-main uppercase font-bold text-center my-4">NHẬT KÝ SỬ DỤNG THIẾT BỊ</h1>
+            </header>
+
+            <!-- Info Section -->
+            <section class="space-y-2 mb-4">
+                 <div class="flex items-baseline">
+                    <label class="whitespace-nowrap w-40">Người quản lý thiết bị:</label>
+                    <input type="text" class="form-input-line ml-2">
+                </div>
+                 <div class="flex items-baseline">
+                    <label class="whitespace-nowrap w-40">Tên thiết bị:</label>
+                    <input type="text" class="form-input-line ml-2">
+                </div>
+                <div class="grid grid-cols-3 gap-x-8">
+                    <div class="flex items-baseline">
+                        <label class="whitespace-nowrap">Mã thiết bị:</label>
+                        <input type="text" class="form-input-line ml-2">
+                    </div>
+                    <div class="flex items-baseline">
+                        <label class="whitespace-nowrap">Model:</label>
+                        <input type="text" class="form-input-line ml-2">
+                    </div>
+                    <div class="flex items-baseline">
+                        <label class="whitespace-nowrap">Serial N⁰:</label>
+                        <input type="text" class="form-input-line ml-2">
+                    </div>
+                </div>
+            </section>
+
+            <!-- Main Table -->
+            <section>
+                <table class="w-full data-table">
+                    <thead class="font-bold">
+                        <tr>
+                            <th class="w-1/4">Ngày, giờ sử dụng</th>
+                            <th class="w-1/4">Người sử dụng</th>
+                            <th class="w-1/4">Tình trạng thiết bị</th>
+                            <th class="w-1/4">Ghi chú</th>
+                        </tr>
+                    </thead>
+                    <tbody id="usage-log-body">
+                        <!-- Dữ liệu sẽ được render động vào đây. Ví dụ 10 hàng trống. -->
+                        <tr><td>&nbsp;</td><td></td><td></td><td></td></tr>
+                        <tr><td>&nbsp;</td><td></td><td></td><td></td></tr>
+                        <tr><td>&nbsp;</td><td></td><td></td><td></td></tr>
+                        <tr><td>&nbsp;</td><td></td><td></td><td></td></tr>
+                        <tr><td>&nbsp;</td><td></td><td></td><td></td></tr>
+                        <tr><td>&nbsp;</td><td></td><td></td><td></td></tr>
+                        <tr><td>&nbsp;</td><td></td><td></td><td></td></tr>
+                        <tr><td>&nbsp;</td><td></td><td></td><td></td></tr>
+                        <tr><td>&nbsp;</td><td></td><td></td><td></td></tr>
+                        <tr><td>&nbsp;</td><td></td><td></td><td></td></tr>
+                    </tbody>
+                </table>
+            </section>
+        </div>
+
+        <!-- Footer -->
+        <footer class="print-footer flex justify-between items-center text-xs">
+            <span>QLTB-BM.06</span>
+            <span>BH.01 (05/2024)</span>
+            <span>Trang: 1/1</span>
+        </footer>
+    </div>
+
+</body>
+</html>
