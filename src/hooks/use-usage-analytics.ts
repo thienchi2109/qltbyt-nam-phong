@@ -58,6 +58,18 @@ export interface UserUsageStats {
   lastActivity?: string
 }
 
+// Internal accumulator with Set for equipment uniqueness
+interface UserUsageStatsInternal {
+  id: number
+  full_name: string
+  khoa_phong?: string
+  sessionCount: number
+  totalUsageTime: number
+  averageSessionTime: number
+  equipmentUsed: Set<number>
+  lastActivity?: string
+}
+
 export interface DailyUsageData {
   date: string
   sessionCount: number
@@ -219,7 +231,7 @@ export function useEquipmentUsageStats(dateRange?: { from: Date; to: Date }) {
       usageLogs.forEach(log => {
         if (!log.thiet_bi) return
 
-        const existing = equipmentStats.get(log.thiet_bi.id) || {
+        const existing: EquipmentUsageStats = equipmentStats.get(log.thiet_bi.id) || {
           id: log.thiet_bi.id,
           ten_thiet_bi: log.thiet_bi.ten_thiet_bi,
           ma_thiet_bi: log.thiet_bi.ma_thiet_bi,
@@ -293,12 +305,12 @@ export function useUserUsageStats(dateRange?: { from: Date; to: Date }) {
       if (error) throw error
 
       // Group by user
-      const userStats = new Map<number, UserUsageStats>()
+  const userStats = new Map<number, UserUsageStatsInternal>()
 
       usageLogs.forEach(log => {
         if (!log.nguoi_su_dung) return
 
-        const existing = userStats.get(log.nguoi_su_dung.id) || {
+        const existing: UserUsageStatsInternal = userStats.get(log.nguoi_su_dung.id) || {
           id: log.nguoi_su_dung.id,
           full_name: log.nguoi_su_dung.full_name,
           khoa_phong: log.nguoi_su_dung.khoa_phong,
@@ -318,23 +330,28 @@ export function useUserUsageStats(dateRange?: { from: Date; to: Date }) {
         }
 
         if (log.thiet_bi?.id) {
-          (existing.equipmentUsed as Set<number>).add(log.thiet_bi.id)
+          existing.equipmentUsed.add(log.thiet_bi.id)
         }
 
         if (!existing.lastActivity || new Date(log.thoi_gian_bat_dau) > new Date(existing.lastActivity)) {
           existing.lastActivity = log.thoi_gian_bat_dau
         }
 
-        userStats.set(log.nguoi_su_dung.id, existing)
+  userStats.set(log.nguoi_su_dung.id, existing)
       })
 
       // Convert Set to number and calculate averages
-      const result = Array.from(userStats.values()).map(stats => ({
-        ...stats,
-        equipmentUsed: (stats.equipmentUsed as Set<number>).size,
+      const result: UserUsageStats[] = Array.from(userStats.values()).map(stats => ({
+        id: stats.id,
+        full_name: stats.full_name,
+        khoa_phong: stats.khoa_phong,
+        sessionCount: stats.sessionCount,
+        totalUsageTime: stats.totalUsageTime,
         averageSessionTime: stats.sessionCount > 0 
           ? Math.round(stats.totalUsageTime / stats.sessionCount) 
-          : 0
+          : 0,
+        equipmentUsed: stats.equipmentUsed.size,
+        lastActivity: stats.lastActivity
       }))
 
       return result.sort((a, b) => b.sessionCount - a.sessionCount)
@@ -378,8 +395,9 @@ export function useDailyUsageData(days: number = 30) {
           date: dateKey,
           sessionCount: 0,
           totalUsageTime: 0,
-          uniqueUsers: new Set<number>(),
-          uniqueEquipment: new Set<number>()
+          // store as any internally then convert later
+          uniqueUsers: 0 as unknown as any,
+          uniqueEquipment: 0 as unknown as any
         })
       }
 
@@ -398,23 +416,24 @@ export function useDailyUsageData(days: number = 30) {
             )
           }
 
-          if (log.nguoi_su_dung?.id) {
-            (existing.uniqueUsers as Set<number>).add(log.nguoi_su_dung.id)
-          }
-
-          if (log.thiet_bi?.id) {
-            (existing.uniqueEquipment as Set<number>).add(log.thiet_bi.id)
-          }
+          // Track uniques temporarily via Symbols on object
+          const uuKey = '__uu' as const
+          const ueKey = '__ue' as const
+          ;(existing as any)[uuKey] = (existing as any)[uuKey] || new Set<number>()
+          ;(existing as any)[ueKey] = (existing as any)[ueKey] || new Set<number>()
+          if (log.nguoi_su_dung?.id) (existing as any)[uuKey].add(log.nguoi_su_dung.id)
+          if (log.thiet_bi?.id) (existing as any)[ueKey].add(log.thiet_bi.id)
         }
       })
 
       // Convert Sets to numbers and sort by date
-      return Array.from(dailyData.values())
-        .map(data => ({
-          ...data,
-          uniqueUsers: (data.uniqueUsers as Set<number>).size,
-          uniqueEquipment: (data.uniqueEquipment as Set<number>).size
-        }))
+      return Array.from(dailyData.values()).map((data: any) => ({
+        date: data.date,
+        sessionCount: data.sessionCount,
+        totalUsageTime: data.totalUsageTime,
+        uniqueUsers: (data.__uu as Set<number> | undefined)?.size ?? 0,
+        uniqueEquipment: (data.__ue as Set<number> | undefined)?.size ?? 0,
+      }))
         .sort((a, b) => a.date.localeCompare(b.date))
     },
     staleTime: 5 * 60 * 1000, // 5 minutes

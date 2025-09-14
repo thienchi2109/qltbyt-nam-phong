@@ -29,7 +29,7 @@ export function useSimpleRealtime({
     // Cleanup existing subscription
     if (channelRef.current) {
       console.log(`🧹 [SimpleRealtime] Cleaning up ${table}`)
-      supabase.removeChannel(channelRef.current)
+  supabase?.removeChannel(channelRef.current)
       channelRef.current = null
     }
 
@@ -84,7 +84,7 @@ export function useSimpleRealtime({
     return () => {
       if (channelRef.current) {
         console.log(`🧹 [SimpleRealtime] Cleanup ${table}`)
-        supabase.removeChannel(channelRef.current)
+  supabase?.removeChannel(channelRef.current)
         channelRef.current = null
       }
     }

@@ -2,9 +2,6 @@ import type { NextAuthOptions } from "next-auth"
 import Credentials from "next-auth/providers/credentials"
 import { createClient } from "@supabase/supabase-js"
 
-// Phase 1: Minimal NextAuth config to bootstrap the system.
-// - Session strategy: JWT
-// - Single Credentials provider placeholder (we'll wire Supabase in Phase 2)
 
 export const authOptions: NextAuthOptions = {
   session: {
@@ -115,7 +112,39 @@ export const authOptions: NextAuthOptions = {
         token.khoa_phong = u.khoa_phong
         token.full_name = u.full_name || u.name
         token.auth_mode = u.auth_mode
+        token.loginTime = Date.now() // Track when user logged in
       }
+
+      // Forced re-login: Check if user's password was changed after this token was issued
+      if (token.id && token.loginTime) {
+        try {
+          const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+          const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+          if (supabaseUrl && supabaseAnonKey) {
+            const supabase = createClient(supabaseUrl, supabaseAnonKey)
+            const { data, error } = await supabase
+              .from('nhan_vien')
+              .select('password_changed_at')
+              .eq('id', token.id)
+              .single()
+
+            if (!error && data?.password_changed_at) {
+              const passwordChangedAt = new Date(data.password_changed_at).getTime()
+              const tokenLoginTime = token.loginTime as number
+
+              // If password was changed after login, invalidate token
+              if (passwordChangedAt > tokenLoginTime) {
+                console.log('Password changed after login - invalidating token')
+                return {} // Return empty token to force re-login
+              }
+            }
+          }
+        } catch (e) {
+          // Log but don't break auth flow for database errors
+          console.error('Password change check failed:', e)
+        }
+      }
+
       return token
     },
   async session({ session, token }) {

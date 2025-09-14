@@ -56,7 +56,7 @@ export function useRealtimeSync(options?: {
     // Cleanup
     return () => {
       console.log('[useRealtimeSync] Cleaning up realtime sync')
-      supabase.removeChannel(channel)
+  supabase?.removeChannel(channel)
     }
   }, [enabled, tables.join(','), JSON.stringify(queryKeys)])
 }
@@ -135,7 +135,7 @@ export function useEquipmentRealtimeSync() {
 
     return () => {
       console.log('[useEquipmentRealtimeSync] Cleaning up subscription')
-      supabase.removeChannel(channel)
+  supabase?.removeChannel(channel)
     }
   }, [queryClient])
 }

@@ -28,7 +28,7 @@ import { useEquipmentUsageLogs } from "@/hooks/use-usage-logs"
 import { type Equipment, type UsageLog } from "@/types/database"
 
 interface UsageLogPrintProps {
-  equipment: Equipment
+  equipment: Pick<Equipment, 'id' | 'ten_thiet_bi' | 'ma_thiet_bi'> & Partial<Equipment>
 }
 
 // Status filter options configuration

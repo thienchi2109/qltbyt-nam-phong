@@ -48,7 +48,7 @@ export function RealtimeProvider({ children }: RealtimeProviderProps) {
   // Debounce cache invalidation to prevent excessive re-renders
   const invalidationTimeouts = useRef<Map<string, NodeJS.Timeout>>(new Map())
 
-  const debouncedInvalidate = (queryKey: string[], delay = 100) => {
+  const debouncedInvalidate = (queryKey: readonly string[], delay = 100) => {
     const key = queryKey.join('-')
     
     // Clear existing timeout for this query key

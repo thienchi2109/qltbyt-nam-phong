@@ -26,7 +26,7 @@ import {
 import { Input } from "@/components/ui/input"
 import { useToast } from "@/hooks/use-toast"
 import { supabase } from "@/lib/supabase"
-import { useAuth } from "@/contexts/auth-context"
+import { useSession } from "next-auth/react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { taskTypes } from "@/lib/data"
 
@@ -47,7 +47,8 @@ interface AddMaintenancePlanDialogProps {
 
 export function AddMaintenancePlanDialog({ open, onOpenChange, onSuccess }: AddMaintenancePlanDialogProps) {
   const { toast } = useToast()
-  const { user } = useAuth()
+  const { data: session } = useSession()
+  const user = session?.user as any // Cast NextAuth user to our User type
   const [isSubmitting, setIsSubmitting] = React.useState(false)
 
   const form = useForm<PlanFormValues>({
@@ -62,6 +63,10 @@ export function AddMaintenancePlanDialog({ open, onOpenChange, onSuccess }: AddM
   async function onSubmit(values: PlanFormValues) {
     if (!user) {
         toast({ variant: "destructive", title: "Lỗi", description: "Không tìm thấy thông tin người dùng." })
+        return;
+    }
+    if (!supabase) {
+        toast({ variant: "destructive", title: "Lỗi", description: "Không thể kết nối cơ sở dữ liệu." })
         return;
     }
     setIsSubmitting(true)

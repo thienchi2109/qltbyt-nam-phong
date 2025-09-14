@@ -19,7 +19,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { useToast } from "@/hooks/use-toast"
 import { supabase } from "@/lib/supabase"
-import { useAuth } from "@/contexts/auth-context"
+import { useSession } from "next-auth/react"
 import {
   TRANSFER_TYPES,
   TRANSFER_PURPOSES,
@@ -48,9 +48,9 @@ interface EquipmentWithDept {
   id: number;
   ma_thiet_bi: string;
   ten_thiet_bi: string;
-  model?: string;
-  serial?: string;
-  khoa_phong_quan_ly?: string;
+  model?: string | null;
+  serial?: string | null;
+  khoa_phong_quan_ly?: string | null;
   tinh_trang?: string;
   ngay_nhap?: string;
   created_at?: string;
@@ -66,7 +66,8 @@ interface EditTransferDialogProps {
 
 export function EditTransferDialog({ open, onOpenChange, onSuccess, transfer }: EditTransferDialogProps) {
   const { toast } = useToast()
-  const { user } = useAuth()
+  const { data: session } = useSession()
+  const user = session?.user as any // Cast NextAuth user to our User type
   const [isLoading, setIsLoading] = React.useState(false)
   const [allEquipment, setAllEquipment] = React.useState<EquipmentWithDept[]>([])
   const [searchTerm, setSearchTerm] = React.useState("")
@@ -131,13 +132,13 @@ export function EditTransferDialog({ open, onOpenChange, onSuccess, transfer }: 
       
       // Set selected equipment
       if (transfer.thiet_bi) {
-        const equipment = {
+        const equipment: EquipmentWithDept = {
           id: transfer.thiet_bi.id,
           ma_thiet_bi: transfer.thiet_bi.ma_thiet_bi,
           ten_thiet_bi: transfer.thiet_bi.ten_thiet_bi,
-          model: transfer.thiet_bi.model,
-          serial: transfer.thiet_bi.serial_number,
-          khoa_phong_quan_ly: ""
+          model: transfer.thiet_bi.model ?? null,
+          serial: (transfer.thiet_bi.serial ?? transfer.thiet_bi.serial_number) ?? null,
+          khoa_phong_quan_ly: transfer.thiet_bi.khoa_phong_quan_ly ?? null
         }
         setSelectedEquipment(equipment)
         setSearchTerm(`${equipment.ten_thiet_bi} (${equipment.ma_thiet_bi})`)

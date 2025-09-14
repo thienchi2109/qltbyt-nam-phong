@@ -38,7 +38,7 @@ import { EndUsageDialog } from "./end-usage-dialog"
 import { UsageLogPrint } from "./usage-log-print"
 
 interface UsageHistoryTabProps {
-  equipment: Equipment
+  equipment: Pick<Equipment, 'id' | 'ten_thiet_bi' | 'ma_thiet_bi'> & Partial<Equipment>
 }
 
 export function UsageHistoryTab({ equipment }: UsageHistoryTabProps) {

@@ -8,7 +8,7 @@ import {
 } from "lucide-react"
 import { useRouter } from "next/navigation"
 
-import { type Equipment } from "@/lib/data"
+import { type Equipment } from "@/types/database"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"

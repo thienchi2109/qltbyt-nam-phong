@@ -2,22 +2,41 @@ export interface Equipment {
   id: number;
   ma_thiet_bi: string;
   ten_thiet_bi: string;
-  model?: string;
-  serial_number?: string;
-  hang_san_xuat?: string;
-  nam_san_xuat?: number;
-  noi_san_xuat?: string;
-  khoa_phong_id?: number;
-  khoa_phong_quan_ly?: string;
-  vi_tri_lap_dat?: string;
-  nguoi_dang_truc_tiep_quan_ly?: string;
-  tinh_trang_hien_tai?: string;
-  tinh_trang: string;
-  ngay_nhap: string;
-  gia_tri?: number;
-  ghi_chu?: string;
-  created_at: string;
-  updated_at: string;
+  model?: string | null;
+  serial?: string | null;
+  // keep for backward compat if present in some places
+  serial_number?: string | null;
+  cau_hinh_thiet_bi?: string | null;
+  phu_kien_kem_theo?: string | null;
+  hang_san_xuat?: string | null;
+  noi_san_xuat?: string | null;
+  nam_san_xuat?: number | null;
+  ngay_nhap?: string | null;
+  ngay_dua_vao_su_dung?: string | null;
+  nguon_kinh_phi?: string | null;
+  gia_goc?: number | null;
+  nam_tinh_hao_mon?: number | null;
+  ty_le_hao_mon?: string | null;
+  han_bao_hanh?: string | null;
+  vi_tri_lap_dat?: string | null;
+  nguoi_dang_truc_tiep_quan_ly?: string | null;
+  khoa_phong_id?: number | null;
+  khoa_phong_quan_ly?: string | null;
+  tinh_trang_hien_tai?: string | null;
+  tinh_trang?: string | null;
+  ghi_chu?: string | null;
+  // maintenance cycles
+  chu_ky_bt_dinh_ky?: number | null;
+  ngay_bt_tiep_theo?: string | null;
+  chu_ky_hc_dinh_ky?: number | null;
+  ngay_hc_tiep_theo?: string | null;
+  chu_ky_kd_dinh_ky?: number | null;
+  ngay_kd_tiep_theo?: string | null;
+  // classification
+  phan_loai_theo_nd98?: 'A' | 'B' | 'C' | 'D' | string | null;
+  // metadata
+  created_at?: string;
+  updated_at?: string;
 }
 
 export interface User {

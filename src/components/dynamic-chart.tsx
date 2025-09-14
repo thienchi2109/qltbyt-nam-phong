@@ -227,7 +227,7 @@ export function DynamicPieChart({
               cx="50%"
               cy="50%"
               outerRadius={outerRadius}
-              label={showLabels ? ({ name, value, percent }) => 
+              label={showLabels ? ({ name, value, percent }: { name: string; value: number; percent: number }) => 
                 `${name}: ${value} (${(percent * 100).toFixed(0)}%)` : false
               }
             >

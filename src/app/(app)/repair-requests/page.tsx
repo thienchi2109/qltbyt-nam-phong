@@ -23,6 +23,7 @@ import {
   CardTitle,
   CardFooter,
 } from "@/components/ui/card"
+import { Skeleton } from "@/components/ui/skeleton"
 import {
   Table,
   TableBody,
@@ -49,7 +50,9 @@ import { format, parseISO } from "date-fns"
 import { vi } from 'date-fns/locale'
 import { cn } from "@/lib/utils"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { useAuth } from "@/contexts/auth-context"
+// Legacy auth-context removed; NextAuth is used throughout
+import { useSession } from "next-auth/react"
+import { useRouter } from "next/navigation"
 import { useIsMobile } from "@/hooks/use-mobile"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger, DropdownMenuCheckboxItem } from "@/components/ui/dropdown-menu"
 import { useSearchParams } from "next/navigation"
@@ -68,6 +71,7 @@ type EquipmentSelectItem = {
   id: number;
   ma_thiet_bi: string;
   ten_thiet_bi: string;
+  khoa_phong_quan_ly?: string | null;
 }
 
 // Export type để RepairRequestAlert có thể sử dụng nếu cần
@@ -231,8 +235,25 @@ const calculateDaysRemaining = (desiredDate: string | null) => {
 
 export default function RepairRequestsPage() {
   const { toast } = useToast()
-  const { user } = useAuth()
+  const { data: session, status } = useSession()
+  const user = session?.user as any // Cast NextAuth user to our User type
+  const router = useRouter()
   const isMobile = useIsMobile()
+
+  // Redirect if not authenticated
+  if (status === "loading") {
+    return <div className="flex items-center justify-center min-h-[50vh]">
+      <div className="text-center space-y-2">
+        <Skeleton className="h-8 w-32 mx-auto" />
+        <Skeleton className="h-4 w-48 mx-auto" />
+      </div>
+    </div>
+  }
+
+  if (status === "unauthenticated") {
+    router.push("/")
+    return null
+  }
 
   // Temporarily disable useRealtimeSync to avoid conflict with RealtimeProvider
   // useRepairRealtimeSync()
@@ -369,7 +390,7 @@ export default function RepairRequestsPage() {
       query = query.eq('thiet_bi.khoa_phong_quan_ly', user.khoa_phong);
     }
 
-    const { data, error } = await query.order('ngay_yeu_cau', { ascending: false });
+  const { data, error } = await query.order('ngay_yeu_cau', { ascending: false });
 
     if (error) {
       toast({
@@ -381,7 +402,32 @@ export default function RepairRequestsPage() {
         setRequests([]);
       }
     } else {
-      setRequests(data as RepairRequestWithEquipment[]);
+      const normalized: RepairRequestWithEquipment[] = (data || []).map((row: any) => ({
+        id: row.id,
+        thiet_bi_id: row.thiet_bi_id,
+        ngay_yeu_cau: row.ngay_yeu_cau,
+        trang_thai: row.trang_thai,
+        mo_ta_su_co: row.mo_ta_su_co,
+        hang_muc_sua_chua: row.hang_muc_sua_chua,
+        ngay_mong_muon_hoan_thanh: row.ngay_mong_muon_hoan_thanh,
+        nguoi_yeu_cau: row.nguoi_yeu_cau,
+        ngay_duyet: row.ngay_duyet,
+        ngay_hoan_thanh: row.ngay_hoan_thanh,
+        nguoi_duyet: row.nguoi_duyet,
+        nguoi_xac_nhan: row.nguoi_xac_nhan,
+        don_vi_thuc_hien: row.don_vi_thuc_hien,
+        ten_don_vi_thue: row.ten_don_vi_thue,
+        ket_qua_sua_chua: row.ket_qua_sua_chua,
+        ly_do_khong_hoan_thanh: row.ly_do_khong_hoan_thanh,
+        thiet_bi: row.thiet_bi ? {
+          ten_thiet_bi: row.thiet_bi.ten_thiet_bi,
+          ma_thiet_bi: row.thiet_bi.ma_thiet_bi,
+          model: row.thiet_bi.model ?? null,
+          serial: (row.thiet_bi.serial ?? row.thiet_bi.serial_number) ?? null,
+          khoa_phong_quan_ly: row.thiet_bi.khoa_phong_quan_ly ?? null,
+        } : null,
+      }))
+      setRequests(normalized);
       try {
         localStorage.setItem(cacheKey, JSON.stringify({ data }));
       } catch (e) {
@@ -411,7 +457,7 @@ export default function RepairRequestsPage() {
 
   React.useEffect(() => {
     const fetchInitialData = async () => {
-      if (supabaseError) {
+  if (supabaseError) {
         toast({
           variant: "destructive",
           title: "Lỗi cấu hình Supabase",
@@ -428,7 +474,7 @@ export default function RepairRequestsPage() {
 
       // Fetch equipment with department-based filtering
       try {
-        let query = supabase.from('thiet_bi').select('id, ma_thiet_bi, ten_thiet_bi, khoa_phong_quan_ly');
+  let query = supabase.from('thiet_bi').select('id, ma_thiet_bi, ten_thiet_bi, khoa_phong_quan_ly');
 
         // Apply department filter for non-admin users
         const shouldFilterByDepartment = user &&
@@ -548,6 +594,7 @@ export default function RepairRequestsPage() {
           return;
         }
 
+        if (!supabase) return
         const { data: equipmentData, error: equipmentError } = await supabase
           .from('thiet_bi')
           .select('khoa_phong_quan_ly')
@@ -576,6 +623,11 @@ export default function RepairRequestsPage() {
       }
 
       // Create repair request
+      if (!supabase) {
+        toast({ variant: 'destructive', title: 'Lỗi', description: 'Supabase chưa sẵn sàng.' })
+        setIsSubmitting(false)
+        return
+      }
       const { error } = await supabase
         .from('yeu_cau_sua_chua')
         .insert({
@@ -791,6 +843,7 @@ export default function RepairRequestsPage() {
     }
 
     setIsEditSubmitting(true);
+    if (!supabase) return
     const { error } = await supabase
       .from('yeu_cau_sua_chua')
       .update({
@@ -816,6 +869,7 @@ export default function RepairRequestsPage() {
     if (!requestToDelete || !supabase) return;
     setIsDeleting(true);
 
+    if (!supabase) return
     const { error } = await supabase
       .from('yeu_cau_sua_chua')
       .delete()

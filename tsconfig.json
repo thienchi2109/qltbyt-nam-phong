@@ -23,5 +23,15 @@
     }
   },
   "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
-  "exclude": ["node_modules"]
+  "exclude": [
+    "node_modules",
+    "supabase/**",
+    "**/__tests__/**",
+    "**/*.test.ts",
+    "**/*.test.tsx",
+    "src/ai/**",
+    "src/lib/ai-utils.tsx",
+    "src/lib/firebase.ts",
+    "src/lib/firebase-utils.tsx"
+  ]
 }

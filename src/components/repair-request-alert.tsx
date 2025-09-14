@@ -97,7 +97,7 @@ export function RepairRequestAlert({ requests }: RepairRequestAlertProps) {
                       {req.thiet_bi?.ten_thiet_bi || 'Không rõ thiết bị'}
                       {req.thiet_bi?.ma_thiet_bi && ` (${req.thiet_bi.ma_thiet_bi})`}
                     </h4>
-                    <Badge variant={dueDateStatus.text.includes("Quá hạn") || dueDateStatus.text.includes("hôm nay") ? "destructive" : "warning"} className="whitespace-nowrap">
+                    <Badge variant={dueDateStatus.text.includes("Quá hạn") || dueDateStatus.text.includes("hôm nay") ? "destructive" : "secondary"} className="whitespace-nowrap">
                         {dueDateStatus.text}
                     </Badge>
                   </div>

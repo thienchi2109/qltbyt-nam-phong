@@ -31,7 +31,8 @@ export function QRActionSheet({ qrCode, onClose, onAction }: QRActionSheetProps)
 
         console.log("Searching for equipment with ma_thiet_bi:", qrCode)
 
-        const { data, error: supabaseError } = await supabase
+  if (!supabase) throw new Error('Supabase client not initialized')
+  const { data, error: supabaseError } = await supabase
           .from('thiet_bi')
           .select('*')
           .eq('ma_thiet_bi', qrCode.trim())

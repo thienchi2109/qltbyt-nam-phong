@@ -52,7 +52,8 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { AddMaintenancePlanDialog } from "@/components/add-maintenance-plan-dialog"
 import { EditMaintenancePlanDialog } from "@/components/edit-maintenance-plan-dialog"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
-import { useAuth } from "@/contexts/auth-context"
+import { useSession } from "next-auth/react"
+import { useRouter } from "next/navigation"
 import { AddTasksDialog } from "@/components/add-tasks-dialog"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Input } from "@/components/ui/input"
@@ -80,10 +81,27 @@ import { useSearchDebounce } from "@/hooks/use-debounce"
 
 export default function MaintenancePage() {
   const { toast } = useToast()
-  const { user } = useAuth()
+  const { data: session, status } = useSession()
+  const user = session?.user as any // Cast NextAuth user to our User type
+  const router = useRouter()
   const searchParams = useSearchParams()
   const isMobile = useIsMobile()
   const queryClient = useQueryClient()
+
+  // Redirect if not authenticated
+  if (status === "loading") {
+    return <div className="flex items-center justify-center min-h-[50vh]">
+      <div className="text-center space-y-2">
+        <Skeleton className="h-8 w-32 mx-auto" />
+        <Skeleton className="h-4 w-48 mx-auto" />
+      </div>
+    </div>
+  }
+
+  if (status === "unauthenticated") {
+    router.push("/")
+    return null
+  }
 
   // Temporarily disable useRealtimeSync to avoid conflict with RealtimeProvider
   // useMaintenanceRealtimeSync()

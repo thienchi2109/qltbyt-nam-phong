@@ -20,10 +20,10 @@ export interface ExcelUtils {
     book_append_sheet(workbook: WorkBook, worksheet: WorkSheet, name: string): void
     aoa_to_sheet(data: any[][]): WorkSheet
     json_to_sheet(data: any[]): WorkSheet
+    sheet_to_json(worksheet: WorkSheet): any[]
   }
   writeFile(workbook: WorkBook, filename: string): void
   read(data: ArrayBuffer, options?: any): WorkBook
-  utils: any
 }
 
 /**

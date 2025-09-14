@@ -20,7 +20,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { USER_ROLES, type User } from "@/types/database" // Đảm bảo đường dẫn đúng
-import { useAuth } from "@/contexts/auth-context" // Để kiểm tra không cho xóa chính mình
+import { useSession } from "next-auth/react" // Để kiểm tra không cho xóa chính mình
 
 interface UserCardProps {
   user: User
@@ -44,7 +44,8 @@ const getRoleVariant = (role: User["role"]) => {
 }
 
 export function UserCard({ user, onEdit, onDelete }: UserCardProps) {
-  const { user: currentUser } = useAuth()
+  const { data: session } = useSession()
+  const currentUser = session?.user as any // Cast NextAuth user to our User type
   const isCurrentUserTheUserInCard = currentUser?.id === user.id
 
   return (
