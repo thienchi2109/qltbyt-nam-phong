@@ -1,6 +1,6 @@
 -- Add password_changed_at column to track password changes for forced re-login
 -- This column will be used to invalidate JWT tokens that are older than the last password change
-DROP FUNCTION change_password(integer,text,text);
+DROP FUNCTION IF EXISTS change_password(integer, text, text);
 -- Add column to nhan_vien table
 ALTER TABLE nhan_vien 
 ADD COLUMN IF NOT EXISTS password_changed_at timestamp with time zone DEFAULT NOW();
@@ -30,7 +30,7 @@ BEGIN
     -- Verify current password (dual mode support)
     IF user_record.hashed_password IS NOT NULL AND user_record.hashed_password != '' THEN
         -- User has hashed password - use secure verification
-        IF NOT crypt(p_old_password, user_record.hashed_password) = user_record.hashed_password THEN
+        IF NOT extensions.crypt(p_old_password, user_record.hashed_password) = user_record.hashed_password THEN
             RETURN jsonb_build_object('success', false, 'message', 'Current password is incorrect');
         END IF;
     ELSE
@@ -42,7 +42,7 @@ BEGIN
 
     -- Update password with hash and set password_changed_at
     UPDATE nhan_vien 
-    SET hashed_password = crypt(p_new_password, gen_salt('bf')),
+    SET hashed_password = extensions.crypt(p_new_password, extensions.gen_salt('bf')),
         password = 'hashed password',  -- Clear plaintext
         password_changed_at = NOW()    -- Track when password was changed
     WHERE id = p_user_id;
@@ -66,7 +66,8 @@ BEGIN
 EXCEPTION WHEN others THEN
     RETURN jsonb_build_object('success', false, 'message', 'Error updating password: ' || SQLERRM);
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY DEFINER
+SET search_path = public, extensions;
 
 -- Grant execute permission
 GRANT EXECUTE ON FUNCTION change_password(INTEGER, TEXT, TEXT) TO anon, authenticated;

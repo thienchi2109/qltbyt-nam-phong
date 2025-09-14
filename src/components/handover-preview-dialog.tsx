@@ -479,7 +479,7 @@ export function HandoverPreviewDialog({ open, onOpenChange, transfer }: Handover
             <header class="text-center">
                 <div class="flex justify-between items-start">
                     <div class="text-center">
-                        <img src="https://i.postimg.cc/W1ym4T74/cdc-logo-150.png" 
+                        <img src="https://i.postimg.cc/26dHxmnV/89307731ad9526cb7f84-1-Photoroom.png" 
                              alt="Logo CDC" 
                              class="w-14 mx-auto mb-1" 
                              onerror="this.style.display='none';">

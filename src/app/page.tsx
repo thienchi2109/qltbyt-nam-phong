@@ -97,9 +97,11 @@ export default function LoginPage() {
           <div className="bg-card rounded-2xl shadow-xl border border-border overflow-hidden">
             {/* Header */}
             <div className="bg-gradient-to-r from-primary to-accent px-8 py-6 text-center">
-              <div className="bg-white/20 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
-                <Logo />
-              </div>
+              <div className="flex justify-center mb-4">
+  <div className="inline-flex items-center justify-center rounded-xl bg-white/90 backdrop-blur-sm shadow-sm ring-1 ring-black/5 p-2">
+    <Logo className="w-16 h-16" />
+  </div>
+</div>
               <h1 className="text-2xl font-bold text-primary-foreground">QUẢN LÝ THIẾT BỊ Y TẾ</h1>
               <p className="text-primary-foreground/80 mt-2">{t("login.subtitle") || "Đăng nhập vào hệ thống"}</p>
             </div>
@@ -168,7 +170,7 @@ export default function LoginPage() {
               {/* Footer Content */}
               <div className="mt-6 text-center text-xs text-muted-foreground space-y-1">
                 <p>{t("footer.developedBy") || "Phát triển bởi Nguyễn Thiện Chí"}</p>
-                <p>{t("footer.contact") || "Mọi chi tiết xin LH: thienchi2109@gmail.com"}</p>
+                <p>{t("footer.contact") || "Mọi chi tiết xin liên hệ: thienchi2109@gmail.com"}</p>
               </div>
             </div>
           </div>
@@ -216,7 +218,7 @@ export default function LoginPage() {
             <div className="mt-6 lg:mt-12 text-center lg:text-left">
               <div className="bg-accent/10 border border-accent/20 rounded-lg p-4 lg:p-6">
                 <h4 className="font-semibold text-accent mb-2">
-                  🏥 Dành cho Trung tâm Kiểm soát bệnh tật TP. Cần Thơ
+                  🏥 Tài khoản này thuộc Hệ thống quản lý thiết bị y tế Nam Phong Technical Hi-Tech
                 </h4>
                 <p className="text-sm text-muted-foreground">
                   Được thiết kế đặc biệt để đáp ứng nhu cầu quản lý thiết bị y tế chuyên nghiệp,
@@ -233,9 +235,11 @@ export default function LoginPage() {
             <div className="bg-card rounded-2xl shadow-xl border border-border overflow-hidden">
               {/* Header */}
               <div className="bg-gradient-to-r from-primary to-accent px-8 py-6 text-center">
-                <div className="bg-white/20 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <Logo />
-                </div>
+                <div className="flex justify-center mb-4">
+  <div className="inline-flex items-center justify-center rounded-xl bg-white/90 backdrop-blur-sm shadow-sm ring-1 ring-black/5 p-2">
+    <Logo className="w-16 h-16" />
+  </div>
+</div>
                 <h1 className="text-2xl font-bold text-primary-foreground">QUẢN LÝ THIẾT BỊ Y TẾ</h1>
                 <p className="text-primary-foreground/80 mt-2">{t("login.subtitle") || "Đăng nhập vào hệ thống"}</p>
               </div>
@@ -304,7 +308,7 @@ export default function LoginPage() {
                 {/* Footer Content */}
                 <div className="mt-6 text-center text-xs text-muted-foreground space-y-1">
                   <p>{t("footer.developedBy") || "Phát triển bởi Nguyễn Thiện Chí"}</p>
-                  <p>{t("footer.contact") || "Mọi chi tiết xin LH: thienchi2109@gmail.com"}</p>
+                  <p>{t("footer.contact") || "Mọi chi tiết xin liên hệ: thienchi2109@gmail.com"}</p>
                 </div>
               </div>
             </div>
