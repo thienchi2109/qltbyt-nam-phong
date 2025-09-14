@@ -1,7 +1,6 @@
 -- Backfill don_vi and link existing records based on legacy khoa_phong fields
 BEGIN;
 
--- 1) Upsert don_vi from distinct khoa_phong/khoa_phong_quan_ly
 WITH src AS (
   SELECT DISTINCT kp AS name
   FROM (
@@ -16,8 +15,13 @@ WITH src AS (
     name
   FROM src
 )
+-- Insert only when neither the name nor the code already exists
 INSERT INTO public.don_vi(code, name)
-SELECT code, name FROM to_insert
+SELECT ti.code, ti.name
+FROM to_insert ti
+WHERE NOT EXISTS (
+  SELECT 1 FROM public.don_vi dv WHERE dv.name = ti.name OR dv.code = ti.code
+)
 ON CONFLICT (code) DO NOTHING;
 
 -- 2) Ensure a fallback tenant for unmapped/null departments
@@ -29,7 +33,7 @@ ON CONFLICT (code) DO NOTHING;
 UPDATE public.nhan_vien nv
 SET don_vi = dv.id
 FROM public.don_vi dv
-WHERE nv.don_vi IS NULL AND nv.khoa_phong IS NOT NULL AND dv.name = nv.khoa_phong;
+WHERE nv.don_vi IS NULL AND nv.khoa_phong IS NOT NULL AND dv.name = TRIM(nv.khoa_phong);
 
 UPDATE public.nhan_vien nv
 SET don_vi = dv.id
@@ -44,7 +48,7 @@ WHERE nv.current_don_vi IS NULL AND nv.don_vi IS NOT NULL;
 UPDATE public.thiet_bi tb
 SET don_vi = dv.id
 FROM public.don_vi dv
-WHERE tb.don_vi IS NULL AND tb.khoa_phong_quan_ly IS NOT NULL AND dv.name = tb.khoa_phong_quan_ly;
+WHERE tb.don_vi IS NULL AND tb.khoa_phong_quan_ly IS NOT NULL AND dv.name = TRIM(tb.khoa_phong_quan_ly);
 
 UPDATE public.thiet_bi tb
 SET don_vi = dv.id
