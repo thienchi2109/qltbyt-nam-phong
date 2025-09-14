@@ -19,7 +19,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { useToast } from "@/hooks/use-toast"
 import { supabase } from "@/lib/supabase"
-import { useAuth } from "@/contexts/auth-context"
+import { useSession } from "next-auth/react"
 import {
   TRANSFER_TYPES,
   TRANSFER_PURPOSES,
@@ -48,7 +48,8 @@ interface AddTransferDialogProps {
 
 export function AddTransferDialog({ open, onOpenChange, onSuccess }: AddTransferDialogProps) {
   const { toast } = useToast()
-  const { user } = useAuth()
+  const { data: session } = useSession()
+  const user = session?.user as any // Cast NextAuth user to our User type
   const [isLoading, setIsLoading] = React.useState(false)
   const [allEquipment, setAllEquipment] = React.useState<EquipmentWithDept[]>([])
   const [searchTerm, setSearchTerm] = React.useState("")

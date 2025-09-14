@@ -208,7 +208,8 @@ export function ImportEquipmentDialog({ open, onOpenChange, onSuccess }: ImportE
         return cleanItem;
       });
 
-      const { error } = await supabase.from("thiet_bi").insert(dataToInsert);
+  if (!supabase) throw new Error('Supabase client not initialized')
+  const { error } = await supabase.from("thiet_bi").insert(dataToInsert);
 
       if (error) {
         throw error

@@ -96,7 +96,7 @@ export function ExportReportDialog({
       const statsData = generateStatistics(data)
 
       // Create multi-sheet Excel file using dynamic import
-      await createMultiSheetExcel([
+  await createMultiSheetExcel([
         {
           name: "Tổng quan",
           data: summaryData,
@@ -115,11 +115,11 @@ export function ExportReportDialog({
           type: "json",
           columnWidths: [25, 15, 15, 15]
         }
-      ], fileName)
+  ], fileName)
 
       toast({
         title: "Xuất báo cáo thành công",
-        description: `Đã tạo file ${finalFileName}`,
+        description: `Đã tạo file ${fileName.endsWith('.xlsx') ? fileName : `${fileName}.xlsx`}`,
       })
 
       onOpenChange(false)

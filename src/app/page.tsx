@@ -38,26 +38,7 @@ export default function LoginPage() {
         setIsLoading(false)
         return
       }
-      // Success: NextAuth session established
-      // Bridge: also set legacy localStorage session for existing context
-  const session = await getSession()
-  const legacyBridge = process.env.NEXT_PUBLIC_AUTH_LEGACY_BRIDGE !== 'false'
-  if (legacyBridge && session && session.user) {
-        const anyUser: any = session.user
-        const sessionData = {
-          user_id: anyUser.id,
-          username: anyUser.username,
-          role: anyUser.role,
-          khoa_phong: anyUser.khoa_phong,
-          full_name: anyUser.full_name || anyUser.name,
-          created_at: Date.now(),
-          expires_at: Date.now() + 3 * 60 * 60 * 1000,
-        }
-        const token = safeBase64Encode(JSON.stringify(sessionData))
-        try {
-          localStorage.setItem('auth_session_token', token)
-        } catch {}
-      }
+      // Success: NextAuth session established; no legacy bridge writes
       // Redirect to dashboard
       window.location.href = "/dashboard"
     } catch (err) {

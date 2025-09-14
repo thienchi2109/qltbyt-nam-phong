@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { toast } from '@/hooks/use-toast'
-import { useAuth } from '@/contexts/auth-context'
+import { useSession } from 'next-auth/react'
 import { CacheKeys, CACHE_CONFIG, DepartmentCacheUtils } from '@/lib/advanced-cache-manager'
 
 // Phase 3: Use advanced cache keys from cache manager
@@ -14,10 +14,11 @@ export function useEquipment(filters?: {
   trang_thai?: string
   loai_thiet_bi?: string
 }) {
-  const { user } = useAuth()
+  const { data: session } = useSession()
+  const user = session?.user
 
-  // Get user's cache scope using advanced cache manager
-  const cacheScope = DepartmentCacheUtils.getUserCacheScope(user)
+  // Get user's cache scope using advanced cache manager (cast NextAuth user to our User type)
+  const cacheScope = DepartmentCacheUtils.getUserCacheScope(user as any)
   const userDepartment = cacheScope.scope === 'department' ? cacheScope.department : undefined
 
   // Performance monitoring

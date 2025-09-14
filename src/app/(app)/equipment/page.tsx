@@ -87,7 +87,7 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { type Equipment } from "@/lib/data"
+import { type Equipment } from "@/types/database"
 import { supabase, supabaseError } from "@/lib/supabase"
 import { useEquipmentRealtimeSync } from "@/hooks/use-realtime-sync"
 import { useToast } from "@/hooks/use-toast"
@@ -96,7 +96,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { AddEquipmentDialog } from "@/components/add-equipment-dialog"
 import { ImportEquipmentDialog } from "@/components/import-equipment-dialog"
-import { useAuth } from "@/contexts/auth-context"
+import { useSession } from "next-auth/react"
 import { EditEquipmentDialog } from "@/components/edit-equipment-dialog"
 import { MobileFiltersDropdown } from "@/components/mobile-filters-dropdown"
 import { ResponsivePaginationInfo } from "@/components/responsive-pagination-info"
@@ -168,7 +168,7 @@ const getClassificationVariant = (classification: Equipment["phan_loai_theo_nd98
   return "outline"
 }
 
-const columnLabels: Record<keyof Equipment, string> = {
+const columnLabels: Record<string, string> = {
   id: 'ID',
   ma_thiet_bi: 'Mã thiết bị',
   ten_thiet_bi: 'Tên thiết bị',
@@ -311,8 +311,24 @@ function DataTableFacetedFilter<TData, TValue>({
 export default function EquipmentPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const { user } = useAuth();
+  const { data: session, status } = useSession()
+  const user = session?.user as any // Cast NextAuth user to our User type
   const { toast } = useToast()
+
+  // Redirect if not authenticated
+  if (status === "loading") {
+    return <div className="flex items-center justify-center min-h-[50vh]">
+      <div className="text-center space-y-2">
+        <Skeleton className="h-8 w-32 mx-auto" />
+        <Skeleton className="h-4 w-48 mx-auto" />
+      </div>
+    </div>
+  }
+
+  if (status === "unauthenticated") {
+    router.push("/")
+    return null
+  }
 
   // Enable realtime sync to invalidate cache on external changes
   useEquipmentRealtimeSync()
@@ -1187,11 +1203,19 @@ export default function EquipmentPage() {
     }
   };
 
-  const departments = React.useMemo(() => Array.from(new Set(data.map((item) => item.khoa_phong_quan_ly?.trim()).filter(Boolean))), [data])
+  const departments = React.useMemo(() => (
+    Array.from(new Set(data.map((item) => item.khoa_phong_quan_ly?.trim()).filter(Boolean))) as string[]
+  ), [data])
   const locations = React.useMemo(() => Array.from(new Set(data.map((item) => item.vi_tri_lap_dat?.trim()).filter(Boolean))), [data])
-  const users = React.useMemo(() => Array.from(new Set(data.map((item) => item.nguoi_dang_truc_tiep_quan_ly?.trim()).filter(Boolean))), [data])
-  const classifications = React.useMemo(() => Array.from(new Set(data.map((item) => item.phan_loai_theo_nd98?.trim()).filter(Boolean))), [data])
-  const statuses = React.useMemo(() => Array.from(new Set(data.map((item) => item.tinh_trang_hien_tai?.trim()).filter(Boolean))), [data])
+  const users = React.useMemo(() => (
+    Array.from(new Set(data.map((item) => item.nguoi_dang_truc_tiep_quan_ly?.trim()).filter(Boolean))) as string[]
+  ), [data])
+  const classifications = React.useMemo(() => (
+    Array.from(new Set(data.map((item) => item.phan_loai_theo_nd98?.trim()).filter(Boolean))) as string[]
+  ), [data])
+  const statuses = React.useMemo(() => (
+    Array.from(new Set(data.map((item) => item.tinh_trang_hien_tai?.trim()).filter(Boolean))) as string[]
+  ), [data])
   
   const isFiltered = table.getState().columnFilters.length > 0;
 
@@ -1583,7 +1607,7 @@ export default function EquipmentPage() {
               <DataTableFacetedFilter
                 column={table.getColumn("khoa_phong_quan_ly")}
                 title="Khoa/Phòng"
-                options={departments.map(d => ({label: d, value: d}))}
+                options={departments.filter((d): d is string => !!d).map(d => ({label: d, value: d}))}
               />
               
               {/* Desktop: Show all filters inline */}
@@ -1592,12 +1616,12 @@ export default function EquipmentPage() {
                   <DataTableFacetedFilter
                     column={table.getColumn("nguoi_dang_truc_tiep_quan_ly")}
                     title="Người sử dụng"
-                    options={users.map(d => ({label: d, value: d}))}
+                    options={users.filter((d): d is string => !!d).map(d => ({label: d, value: d}))}
                   />
                   <DataTableFacetedFilter
                     column={table.getColumn("phan_loai_theo_nd98")}
                     title="Phân loại"
-                    options={classifications.map(c => ({label: c, value: c}))}
+                    options={classifications.filter((c): c is string => !!c).map(c => ({label: c, value: c}))}
                   />
                 </>
               )}
@@ -1617,12 +1641,12 @@ export default function EquipmentPage() {
                   <DataTableFacetedFilter
                     column={table.getColumn("nguoi_dang_truc_tiep_quan_ly")}
                     title="Người sử dụng"
-                    options={users.map(d => ({label: d, value: d}))}
+                    options={users.filter((d): d is string => !!d).map(d => ({label: d, value: d}))}
                   />
                   <DataTableFacetedFilter
                     column={table.getColumn("phan_loai_theo_nd98")}
                     title="Phân loại"
-                    options={classifications.map(c => ({label: c, value: c}))}
+                    options={classifications.filter((c): c is string => !!c).map(c => ({label: c, value: c}))}
                   />
                 </MobileFiltersDropdown>
               )}

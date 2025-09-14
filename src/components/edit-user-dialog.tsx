@@ -18,7 +18,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/hooks/use-toast"
 import { supabase } from "@/lib/supabase"
 import { USER_ROLES, type User, type UserRole } from "@/types/database"
-import { useAuth } from "@/contexts/auth-context"
+import { useSession } from "next-auth/react"
 
 interface EditUserDialogProps {
   open: boolean
@@ -29,7 +29,8 @@ interface EditUserDialogProps {
 
 export function EditUserDialog({ open, onOpenChange, onSuccess, user }: EditUserDialogProps) {
   const { toast } = useToast()
-  const { user: currentUser } = useAuth()
+  const { data: session } = useSession()
+  const currentUser = session?.user as any // Cast NextAuth user to our User type
   const [isLoading, setIsLoading] = React.useState(false)
   
   const [formData, setFormData] = React.useState({

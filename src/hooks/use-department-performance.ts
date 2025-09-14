@@ -7,7 +7,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
-import { useAuth } from '@/contexts/auth-context'
+import { useSession } from 'next-auth/react'
 import { DepartmentCacheUtils, CachePerformanceMonitor } from '@/lib/advanced-cache-manager'
 
 interface PerformanceMetrics {
@@ -38,7 +38,8 @@ interface PerformanceAlert {
 }
 
 export function useDepartmentPerformance() {
-  const { user } = useAuth()
+  const { data: session } = useSession()
+  const user = session?.user
   const queryClient = useQueryClient()
   const [metrics, setMetrics] = useState<PerformanceMetrics>({
     avgQueryTime: 0,
@@ -58,15 +59,15 @@ export function useDepartmentPerformance() {
   const queryTimes = useRef<number[]>([])
   const pageLoadStart = useRef(performance.now())
   
-  // Get user's cache scope
-  const cacheScope = DepartmentCacheUtils.getUserCacheScope(user)
+  // Get user's cache scope (cast NextAuth user to our User type)
+  const cacheScope = DepartmentCacheUtils.getUserCacheScope(user as any)
   
   // Monitor query performance
   useEffect(() => {
     const unsubscribe = queryClient.getQueryCache().subscribe((event) => {
       if (event?.type === 'updated' && event.query.state.status === 'success') {
         const queryKey = event.query.queryKey
-        const fetchTime = event.query.state.dataUpdatedAt - (event.query.state.fetchFailureTime || 0)
+        const fetchTime = event.query.state.dataUpdatedAt - (event.query.state.errorUpdatedAt || 0)
         
         // Only monitor department-related queries
         if (Array.isArray(queryKey) && (

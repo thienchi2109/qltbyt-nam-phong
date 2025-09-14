@@ -15,7 +15,8 @@ import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
 import { useToast } from "@/hooks/use-toast"
 import { supabase } from "@/lib/supabase"
-import { useAuth } from "@/contexts/auth-context"
+import { useSession } from "next-auth/react"
+import { useRouter } from "next/navigation"
 import { useTransferRequests, useCreateTransferRequest, useUpdateTransferRequest, useApproveTransferRequest, transferKeys } from "@/hooks/use-cached-transfers"
 import { useQueryClient } from "@tanstack/react-query"
 import { AddTransferDialog } from "@/components/add-transfer-dialog"
@@ -65,8 +66,25 @@ const KANBAN_COLUMNS: { status: TransferStatus; title: string; description: stri
 
 export default function TransfersPage() {
   const { toast } = useToast()
-  const { user } = useAuth()
+  const { data: session, status } = useSession()
+  const user = session?.user as any // Cast NextAuth user to our User type
+  const router = useRouter()
   const queryClient = useQueryClient()
+
+  // Redirect if not authenticated
+  if (status === "loading") {
+    return <div className="flex items-center justify-center min-h-[50vh]">
+      <div className="text-center space-y-2">
+        <Skeleton className="h-8 w-32 mx-auto" />
+        <Skeleton className="h-4 w-48 mx-auto" />
+      </div>
+    </div>
+  }
+
+  if (status === "unauthenticated") {
+    router.push("/")
+    return null
+  }
 
   // ✅ Use cached hooks instead of manual state
   const { data: transfers = [], isLoading, refetch: refetchTransfers } = useTransferRequests()

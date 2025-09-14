@@ -9,7 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { useToast } from '@/hooks/use-toast'
 import { supabase } from '@/lib/supabase'
-import { useSecureAuth } from '@/contexts/secure-auth-context'
+import { useSession } from 'next-auth/react'
 
 interface UserStatus {
   username: string;
@@ -26,7 +26,8 @@ interface UserStatus {
 }
 
 export function UserManagement() {
-  const { user } = useSecureAuth();
+  const { data: session } = useSession();
+  const user = (session?.user as any) || null;
   const { toast } = useToast();
   const [users, setUsers] = React.useState<UserStatus[]>([]);
   const [selectedUser, setSelectedUser] = React.useState<string>('');
@@ -40,7 +41,8 @@ export function UserManagement() {
 
     try {
       // Direct query (after rollback - admin_get_user_status function removed)
-      const { data, error } = await supabase
+  if (!supabase) throw new Error('Supabase client not initialized')
+  const { data, error } = await supabase
         .from('nhan_vien')
         .select('*')
         .order('created_at', { ascending: false });
@@ -73,8 +75,9 @@ export function UserManagement() {
 
     setIsLoading(true);
     try {
-      const { data, error } = await supabase.rpc('admin_reset_password', {
-        p_admin_user_id: user!.id,
+  if (!supabase) throw new Error('Supabase client not initialized')
+  const { data, error } = await supabase.rpc('admin_reset_password', {
+        p_admin_user_id: Number(user!.id),
         p_target_username: selectedUser,
         p_new_password: newPassword
       });
@@ -112,8 +115,9 @@ export function UserManagement() {
 
     setIsLoading(true);
     try {
-      const { data, error } = await supabase.rpc('admin_generate_temp_password', {
-        p_admin_user_id: user!.id,
+  if (!supabase) throw new Error('Supabase client not initialized')
+  const { data, error } = await supabase.rpc('admin_generate_temp_password', {
+        p_admin_user_id: Number(user!.id),
         p_target_username: selectedUser
       });
 
@@ -143,8 +147,9 @@ export function UserManagement() {
   const toggleUserStatus = async (username: string, newStatus: boolean) => {
     setIsLoading(true);
     try {
-      const { error } = await supabase.rpc('admin_toggle_user_status', {
-        p_admin_user_id: user!.id,
+  if (!supabase) throw new Error('Supabase client not initialized')
+  const { error } = await supabase.rpc('admin_toggle_user_status', {
+        p_admin_user_id: Number(user!.id),
         p_target_username: username,
         p_is_active: newStatus,
         p_reason: newStatus ? null : disableReason

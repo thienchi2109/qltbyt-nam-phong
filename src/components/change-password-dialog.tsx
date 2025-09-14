@@ -16,7 +16,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { useToast } from "@/hooks/use-toast"
 import { supabase } from "@/lib/supabase"
-import { useAuth } from "@/contexts/auth-context"
+import { useSession } from "next-auth/react"
 
 interface ChangePasswordDialogProps {
   open: boolean
@@ -25,7 +25,8 @@ interface ChangePasswordDialogProps {
 
 export function ChangePasswordDialog({ open, onOpenChange }: ChangePasswordDialogProps) {
   const { toast } = useToast()
-  const { user } = useAuth()
+  const { data: session } = useSession()
+  const user = session?.user as any // Cast NextAuth user to our User type
   const [isLoading, setIsLoading] = React.useState(false)
   const [showPasswords, setShowPasswords] = React.useState({
     current: false,
@@ -164,12 +165,12 @@ export function ChangePasswordDialog({ open, onOpenChange }: ChangePasswordDialo
         console.error('Error from change_password function:', error)
         throw error
       } else {
-        // Check if password change was successful
-        if (!data) {
+        // Check if password change was successful (new JSON response format)
+        if (!data || !data.success) {
           toast({
             variant: "destructive",
             title: "Lỗi",
-            description: "Mật khẩu hiện tại không đúng."
+            description: data?.message || "Mật khẩu hiện tại không đúng."
           })
           setIsLoading(false)
           return
@@ -177,7 +178,7 @@ export function ChangePasswordDialog({ open, onOpenChange }: ChangePasswordDialo
 
         toast({
           title: "Thành công",
-          description: "Đã thay đổi mật khẩu thành công với mã hóa bảo mật."
+          description: data.message || "Đã thay đổi mật khẩu thành công với mã hóa bảo mật."
         })
       }
 

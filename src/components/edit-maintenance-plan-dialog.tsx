@@ -75,7 +75,8 @@ export function EditMaintenancePlanDialog({ open, onOpenChange, onSuccess, plan 
     
     setIsSubmitting(true)
     try {
-      const { error } = await supabase
+  if (!supabase) throw new Error('Supabase client not initialized')
+  const { error } = await supabase
         .from("ke_hoach_bao_tri")
         .update({
             ...values,

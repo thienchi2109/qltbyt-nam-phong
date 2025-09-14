@@ -29,7 +29,7 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import { Textarea } from "@/components/ui/textarea"
 import { useToast } from "@/hooks/use-toast"
 import { supabase } from "@/lib/supabase"
-import { type Equipment } from "@/lib/data"
+import { type Equipment } from "@/types/database"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
 const equipmentStatusOptions = [
@@ -87,6 +87,15 @@ export function EditEquipmentDialog({ open, onOpenChange, onSuccess, equipment }
     if (equipment) {
       form.reset({
         ...equipment,
+        vi_tri_lap_dat: equipment.vi_tri_lap_dat ?? "",
+        khoa_phong_quan_ly: equipment.khoa_phong_quan_ly ?? "",
+        nguoi_dang_truc_tiep_quan_ly: equipment.nguoi_dang_truc_tiep_quan_ly ?? "",
+        tinh_trang_hien_tai: (equipment.tinh_trang_hien_tai as any) ?? "",
+        phan_loai_theo_nd98: (
+          equipment.phan_loai_theo_nd98 && ['A','B','C','D'].includes(String(equipment.phan_loai_theo_nd98).toUpperCase())
+            ? (String(equipment.phan_loai_theo_nd98).toUpperCase() as 'A'|'B'|'C'|'D')
+            : null
+        ),
         nam_san_xuat: equipment.nam_san_xuat ?? undefined,
         gia_goc: equipment.gia_goc ?? undefined,
       });
@@ -98,7 +107,8 @@ export function EditEquipmentDialog({ open, onOpenChange, onSuccess, equipment }
 
     setIsSubmitting(true)
     try {
-      const { error } = await supabase
+  if (!supabase) throw new Error('Supabase client not initialized')
+  const { error } = await supabase
         .from("thiet_bi")
         .update(values)
         .eq('id', equipment.id);
