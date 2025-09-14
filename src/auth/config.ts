@@ -115,8 +115,8 @@ export const authOptions: NextAuthOptions = {
         token.loginTime = Date.now() // Track when user logged in
       }
 
-      // Forced re-login: Check if user's password was changed after this token was issued
-      if (token.id && token.loginTime) {
+      // Refresh user-derived fields on every JWT callback
+      if (token.id) {
         try {
           const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
           const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
@@ -124,19 +124,24 @@ export const authOptions: NextAuthOptions = {
             const supabase = createClient(supabaseUrl, supabaseAnonKey)
             const { data, error } = await supabase
               .from('nhan_vien')
-              .select('password_changed_at')
+              .select('password_changed_at, current_don_vi, don_vi, khoa_phong, full_name')
               .eq('id', token.id)
               .single()
 
-            if (!error && data?.password_changed_at) {
-              const passwordChangedAt = new Date(data.password_changed_at).getTime()
-              const tokenLoginTime = token.loginTime as number
-
-              // If password was changed after login, invalidate token
-              if (passwordChangedAt > tokenLoginTime) {
-                console.log('Password changed after login - invalidating token')
-                return {} // Return empty token to force re-login
+            if (!error && data) {
+              // Password change invalidates session if changed after login
+              if (token.loginTime && data.password_changed_at) {
+                const passwordChangedAt = new Date(data.password_changed_at).getTime()
+                const tokenLoginTime = token.loginTime as number
+                if (passwordChangedAt > tokenLoginTime) {
+                  console.log('Password changed after login - invalidating token')
+                  return {}
+                }
               }
+              // Keep JWT in sync with user profile for tenant-aware UI
+              ;(token as any).don_vi = data.current_don_vi || data.don_vi || null
+              ;(token as any).khoa_phong = data.khoa_phong || (token as any).khoa_phong
+              token.full_name = (data as any).full_name || token.full_name
             }
           }
         } catch (e) {
@@ -155,6 +160,7 @@ export const authOptions: NextAuthOptions = {
       s.user.username = token.username
       s.user.role = token.role
       s.user.khoa_phong = token.khoa_phong
+      s.user.don_vi = (token as any).don_vi || null
       s.user.full_name = token.full_name || s.user.name
       return s
     },

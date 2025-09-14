@@ -45,6 +45,7 @@ import { RealtimeStatus } from "@/components/realtime-status"
 import { MobileFooterNav } from "@/components/mobile-footer-nav"
 import { USER_ROLES } from "@/types/database"
 import { supabase } from "@/lib/supabase"
+import { TenantSwitcher } from "@/components/tenant-switcher"
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
@@ -245,6 +246,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             {/* Realtime Status */}
             <RealtimeStatus variant="icon" />
 
+            {/* Tenant Switcher */}
+            <div className="mx-2">
+              <TenantSwitcher />
+            </div>
+
             {/* Notification Bell */}
             <NotificationBellDialog
               allRepairRequests={repairRequests}
@@ -253,7 +259,12 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="secondary" size="icon" className="rounded-full touch-target">
+                <Button
+                  variant="secondary"
+                  size="icon"
+                  className="rounded-full touch-target"
+                  onClick={(e) => e.stopPropagation()}
+                >
                   <User className="h-5 w-5" />
                   <span className="sr-only">Toggle user menu</span>
                 </Button>
