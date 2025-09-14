@@ -492,7 +492,7 @@ export default function EquipmentPage() {
               <div class="content-body">
                   <header class="text-center">
                       <div class="flex justify-between items-center">
-                          <img src="https://i.postimg.cc/W1ym4T74/cdc-logo-150.png" alt="Logo CDC" class="w-20 h-20" onerror="this.onerror=null;this.src='https://placehold.co/100x100/e2e8f0/e2e8f0?text=Logo';">
+                          <img src="https://i.postimg.cc/26dHxmnV/89307731ad9526cb7f84-1-Photoroom.png" alt="Logo CDC" class="w-20 h-20" onerror="this.onerror=null;this.src='https://placehold.co/100x100/e2e8f0/e2e8f0?text=Logo';">
                           <div class="flex-grow">
                               <h2 class="title-sub uppercase font-bold">TRUNG TÂM KIỂM SOÁT BỆNH TẬT THÀNH PHỐ CẦN THƠ</h2>
                               <div class="flex items-baseline justify-center mt-2">
@@ -652,7 +652,7 @@ export default function EquipmentPage() {
           <div class="w-full max-w-md bg-white p-4 shadow-lg label-container" style="border: 3px double #000;">
               <header class="flex items-start justify-between gap-3 border-b-2 border-black pb-3">
                   <div class="flex-shrink-0">
-                      <img src="https://i.postimg.cc/W1ym4T74/cdc-logo-150.png" alt="Logo CDC" class="w-16 h-auto" onerror="this.onerror=null;this.src='https://placehold.co/100x100/e2e8f0/e2e8f0?text=Logo';">
+                      <img src="https://i.postimg.cc/26dHxmnV/89307731ad9526cb7f84-1-Photoroom.png" alt="Logo CDC" class="w-16 h-auto" onerror="this.onerror=null;this.src='https://placehold.co/100x100/e2e8f0/e2e8f0?text=Logo';">
                   </div>
                   <div class="text-center flex-grow">
                       <h1 class="text-2xl font-bold tracking-wider">NHÃN THIẾT BỊ</h1>
@@ -734,7 +734,11 @@ export default function EquipmentPage() {
     return (
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="ghost" className="h-8 w-8 p-0 touch-target-sm md:h-8 md:w-8">
+          <Button
+            variant="ghost"
+            className="h-8 w-8 p-0 touch-target-sm md:h-8 md:w-8"
+            onClick={(e: React.MouseEvent) => e.stopPropagation()}
+          >
             <span className="sr-only">Open menu</span>
             <MoreHorizontal className="h-4 w-4" />
           </Button>
@@ -1310,6 +1314,8 @@ export default function EquipmentPage() {
                 key={row.id}
                 data-state={row.getIsSelected() && "selected"}
                 data-equipment-id={row.original.id}
+                className="hover:bg-muted cursor-pointer"
+                onClick={() => handleShowDetails(row.original)}
               >
                 {row.getVisibleCells().map((cell) => (
                   <TableCell key={cell.id}>

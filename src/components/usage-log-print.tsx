@@ -284,7 +284,7 @@ export function UsageLogPrint({ equipment }: UsageLogPrintProps) {
       <body>
         <div class="content-body">
         <div class="header">
-          <img src="https://i.postimg.cc/W1ym4T74/cdc-logo-150.png" alt="Logo CDC" class="header-logo" onerror="this.onerror=null;this.src='https://i.postimg.cc/W1ym4T74/cdc-logo-150.png';">
+          <img src="https://i.postimg.cc/26dHxmnV/89307731ad9526cb7f84-1-Photoroom.png" alt="Logo CDC" class="header-logo" onerror="this.onerror=null;this.src='https://i.postimg.cc/26dHxmnV/89307731ad9526cb7f84-1-Photoroom.png';">
           <div class="header-content">
             <h2 style="font-size: 14px; font-weight: bold; margin: 0 0 5px 0; text-transform: uppercase;">TRUNG TÂM KIỂM SOÁT BỆNH TẬT THÀNH PHỐ CẦN THƠ</h2>
             <h1>NHẬT KÝ SỬ DỤNG THIẾT BỊ</h1>

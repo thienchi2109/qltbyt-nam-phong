@@ -173,9 +173,11 @@ export default function UsersPage() {
         description: error?.message || "Không thể đặt lại mật khẩu cho người dùng này.",
       })
     } else {
+      // RPC returns jsonb, e.g., { success: true, message, username, new_password }
+      const message = (data as any).message || `Đã đặt lại mật khẩu cho ${userToReset.username}.`
       toast({
         title: "Thành công",
-        description: `Đã đặt lại mật khẩu cho ${userToReset.username} thành "userqltb".`,
+        description: message,
       })
     }
     

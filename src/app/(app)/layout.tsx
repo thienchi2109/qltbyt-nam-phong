@@ -138,7 +138,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     return (
       <div className="flex items-center justify-center min-h-screen">
           <div className="flex flex-col items-center gap-4">
-              <Logo />
+              <Logo size={96} className="w-24 h-24" />
               <Skeleton className="h-8 w-48" />
           </div>
       </div>
@@ -157,7 +157,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             <div className="flex h-auto flex-col items-center gap-4 border-b p-4">
               <Link href="/" className="flex flex-col items-center gap-3 font-semibold text-primary">
                 <Logo />
-                {isSidebarOpen && <span className="text-center text-base font-semibold">QUẢN LÝ TBYT - CDC</span>}
+                {isSidebarOpen && <span className="text-center text-base font-semibold">NAM PHONG TECHNICAL HI-TECH</span>}
               </Link>
             </div>
             <div className="flex-1 overflow-auto py-4">
