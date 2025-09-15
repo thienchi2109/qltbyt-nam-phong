@@ -1,0 +1,4 @@
+- Symptom: Equipment tenant filter appears ineffective at runtime; UI passes p_don_vi; proxy forwards args; SQL updated to use app_role and optional p_don_vi.
+- Likely cause: Database still has older equipment_list signature (without p_don_vi) or stale definition reading 'role' instead of 'app_role'.
+- Verification: In DB, check `SELECT oid::regprocedure FROM pg_proc WHERE proname='equipment_list';` expect `public.equipment_list(text,text,integer,integer,bigint)`. Inspect def via `pg_get_functiondef`.
+- Fix: Apply forward migration `20250915_fix_equipment_app_role.sql` or `supabase db push`. Retest Equipment page with a selected tenant and 'all' for global users.

@@ -1,0 +1,42 @@
+-- Reference copy for review only; do not apply directly from here
+-- Source: ../20250914_multi_tenant_phase1.sql
+
+BEGIN;
+-- Content abridged: see source file for full context. Key function signatures included for quick review.
+
+CREATE OR REPLACE FUNCTION public._get_jwt_claim(claim TEXT)
+RETURNS TEXT
+LANGUAGE sql
+STABLE
+AS $$
+	SELECT COALESCE(current_setting('request.jwt.claims', true)::jsonb ->> claim, NULL);
+$$;
+
+CREATE OR REPLACE FUNCTION public.equipment_list(
+	p_q TEXT DEFAULT NULL,
+	p_sort TEXT DEFAULT 'id.asc',
+	p_page INT DEFAULT 1,
+	p_page_size INT DEFAULT 50,
+	p_don_vi BIGINT DEFAULT NULL
+)
+RETURNS SETOF public.thiet_bi
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+	v_role TEXT := COALESCE(public._get_jwt_claim('app_role'), '');
+	v_donvi BIGINT := NULL;
+	v_sort_col TEXT;
+	v_sort_dir TEXT;
+	v_offset INT;
+BEGIN
+	v_donvi := NULLIF(public._get_jwt_claim('don_vi'), '')::BIGINT;
+	-- Sorting whitelist & tenant logic omitted here; see source.
+	RETURN;
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION public.equipment_list(TEXT, TEXT, INT, INT, BIGINT) TO authenticated;
+
+COMMIT;
+

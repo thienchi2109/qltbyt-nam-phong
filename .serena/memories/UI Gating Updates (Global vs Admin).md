@@ -1,0 +1,3 @@
+- Replaced admin-only checks to include global in: equipment/page.tsx (actions + isGlobal), repair-requests/page.tsx (canManage), transfers/page.tsx (status actions), maintenance/page.tsx (manage/complete), usage-history-tab.tsx (delete controls), mobile-equipment-list-item.tsx (canEdit), layout.tsx (Users nav), users/page.tsx (access), admin/user-management.tsx (role badge).
+- Types: `src/types/database.ts` maps 'global' to 'Quản trị hệ thống'; 'admin' retained as alias; 'technician' included.
+- Outcome: Global users have consistent admin-equivalent privileges in UI; legacy admin still supported for compatibility.

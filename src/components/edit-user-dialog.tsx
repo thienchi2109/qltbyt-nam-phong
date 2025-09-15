@@ -255,11 +255,13 @@ export function EditUserDialog({ open, onOpenChange, onSuccess, user }: EditUser
                   <SelectValue placeholder="Chọn vai trò" />
                 </SelectTrigger>
                 <SelectContent>
-                  {Object.entries(USER_ROLES).map(([key, label]) => (
-                    <SelectItem key={key} value={key}>
-                      {label}
-                    </SelectItem>
-                  ))}
+                  {Object.entries(USER_ROLES)
+                    .filter(([key]) => key !== 'admin')
+                    .map(([key, label]) => (
+                      <SelectItem key={key} value={key}>
+                        {label}
+                      </SelectItem>
+                    ))}
                 </SelectContent>
               </Select>
             </div>

@@ -57,7 +57,7 @@ export function MobileEquipmentListItem({
   const user = session?.user as any
 
   const canEdit = user && (
-    user.role === 'admin' ||
+    user.role === 'global' || user.role === 'admin' ||
     user.role === 'to_qltb' ||
     (user.role === 'qltb_khoa' && user.khoa_phong === equipment.khoa_phong_quan_ly)
   )

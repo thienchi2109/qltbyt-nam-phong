@@ -37,6 +37,7 @@ export function TenantSwitcher() {
       })
       if (res.ok) {
         await update()
+        try { window.dispatchEvent(new CustomEvent('tenant-switched')) } catch {}
       }
     } finally {
       setLoading(false)
@@ -44,12 +45,21 @@ export function TenantSwitcher() {
   }
 
   const current = user?.don_vi
+  const currentTenant = React.useMemo(() => {
+    if (!current) return undefined
+    return memberships.find((m) => m.don_vi === Number(current))
+  }, [memberships, current])
+  const buttonLabel = currentTenant
+    ? `${currentTenant.name}${currentTenant.code ? ` (${currentTenant.code})` : ''}`
+    : current
+    ? `Đơn vị #${current}`
+    : 'Chọn đơn vị'
 
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button variant="outline" className="touch-target-sm md:h-8 md:px-2">
-          {current ? `Đơn vị #${current}` : "Chọn đơn vị"}
+          {buttonLabel}
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-60">

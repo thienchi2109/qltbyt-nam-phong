@@ -480,7 +480,7 @@ export default function MaintenancePage() {
       <div className="space-y-4">
         {planTable.getRowModel().rows.map((row) => {
           const plan = row.original;
-          const canManage = user && (user.role === 'admin' || user.role === 'to_qltb');
+          const canManage = user && ((user.role === 'global' || user.role === 'admin') || user.role === 'to_qltb');
 
           return (
             <Card
@@ -707,7 +707,7 @@ export default function MaintenancePage() {
       id: "actions",
       cell: ({ row }) => {
         const plan = row.original
-        const canManage = user && (user.role === 'admin' || user.role === 'to_qltb');
+  const canManage = user && ((user.role === 'global' || user.role === 'admin') || user.role === 'to_qltb');
 
         return (
           <DropdownMenu>
@@ -775,7 +775,7 @@ export default function MaintenancePage() {
   })
 
   const isPlanApproved = selectedPlan?.trang_thai === 'Đã duyệt';
-  const canCompleteTask = user && (user.role === 'admin' || user.role === 'to_qltb');
+  const canCompleteTask = user && ((user.role === 'global' || user.role === 'admin') || user.role === 'to_qltb');
 
   const handleMarkAsCompleted = React.useCallback(async (task: MaintenanceTask, month: number) => {
     console.log('handleMarkAsCompleted called:', { taskId: task.id, month, canCompleteTask, user: user?.role });

@@ -185,7 +185,7 @@ export function UsageHistoryTab({ equipment }: UsageHistoryTabProps) {
                         </Badge>
                       </div>
                       
-                      {user?.role === 'admin' && log.trang_thai === 'hoan_thanh' && (
+                      {(user?.role === 'global' || user?.role === 'admin') && log.trang_thai === 'hoan_thanh' && (
                         <AlertDialog>
                           <AlertDialogTrigger asChild>
                             <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
@@ -263,7 +263,7 @@ export function UsageHistoryTab({ equipment }: UsageHistoryTabProps) {
                   <TableHead>Tình trạng TB</TableHead>
                   <TableHead>Trạng thái</TableHead>
                   <TableHead>Ghi chú</TableHead>
-                  {user?.role === 'admin' && <TableHead className="w-[50px]"></TableHead>}
+                  {(user?.role === 'global' || user?.role === 'admin') && <TableHead className="w-[50px]"></TableHead>}
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -293,7 +293,7 @@ export function UsageHistoryTab({ equipment }: UsageHistoryTabProps) {
                     <TableCell className="max-w-[200px] truncate">
                       {log.ghi_chu || '-'}
                     </TableCell>
-                    {user?.role === 'admin' && (
+                    {(user?.role === 'global' || user?.role === 'admin') && (
                       <TableCell>
                         {log.trang_thai === 'hoan_thanh' && (
                           <AlertDialog>

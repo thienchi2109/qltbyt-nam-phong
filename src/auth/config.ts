@@ -26,13 +26,13 @@ export const authOptions: NextAuthOptions = {
         if (!username || !password) return null
 
         const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-        const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-        if (!supabaseUrl || !supabaseAnonKey) {
+        const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+        if (!supabaseUrl || !serviceKey) {
           console.error("Supabase env not configured")
           return null
         }
 
-        const supabase = createClient(supabaseUrl, supabaseAnonKey)
+        const supabase = createClient(supabaseUrl, serviceKey)
 
         try {
           const { data, error } = await supabase.rpc("authenticate_user_dual_mode", {
@@ -119,9 +119,9 @@ export const authOptions: NextAuthOptions = {
       if (token.id) {
         try {
           const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-          const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-          if (supabaseUrl && supabaseAnonKey) {
-            const supabase = createClient(supabaseUrl, supabaseAnonKey)
+          const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+          if (supabaseUrl && serviceKey) {
+            const supabase = createClient(supabaseUrl, serviceKey)
             const { data, error } = await supabase
               .from('nhan_vien')
               .select('password_changed_at, current_don_vi, don_vi, khoa_phong, full_name')

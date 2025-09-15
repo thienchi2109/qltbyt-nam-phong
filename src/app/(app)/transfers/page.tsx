@@ -294,7 +294,7 @@ export default function TransfersPage() {
     switch (transfer.trang_thai) {
       case 'cho_duyet':
         // Only admin and to_qltb can approve
-        if (user && (user.role === 'admin' || user.role === 'to_qltb')) {
+  if (user && ((user.role === 'global' || user.role === 'admin') || user.role === 'to_qltb')) {
           actions.push(
             <Button
               key="approve"
@@ -312,7 +312,7 @@ export default function TransfersPage() {
       case 'da_duyet':
         // Admin, to_qltb, and department managers can start transfer
         if (user && (
-          user.role === 'admin' || 
+          (user.role === 'global' || user.role === 'admin') || 
           user.role === 'to_qltb' ||
           (user.role === 'qltb_khoa' && user.khoa_phong === transfer.khoa_phong_hien_tai)
         )) {
@@ -333,7 +333,7 @@ export default function TransfersPage() {
       case 'dang_luan_chuyen':
         // Different actions for internal vs external transfers
         if (user && (
-          user.role === 'admin' || 
+          (user.role === 'global' || user.role === 'admin') || 
           user.role === 'to_qltb' ||
           (user.role === 'qltb_khoa' && (
             user.khoa_phong === transfer.khoa_phong_hien_tai ||
@@ -385,7 +385,7 @@ export default function TransfersPage() {
       case 'da_ban_giao':
         // Only for external transfers - mark as returned
         if (user && (
-          user.role === 'admin' || 
+          (user.role === 'global' || user.role === 'admin') || 
           user.role === 'to_qltb'
         )) {
           actions.push(

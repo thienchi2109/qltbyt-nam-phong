@@ -1,9 +1,10 @@
--- Make SQL functions read application role from 'app_role' claim, fallback to 'role'
--- so we can set DB role via 'role'='authenticated' safely.
+-- Patch: use app_role claim for equipment RPCs to recognize global users
+-- Safe to re-run; functions are CREATE OR REPLACE
 
 BEGIN;
 
--- equipment_list
+-- Helper reference (no change): public._get_jwt_claim(claim)
+
 CREATE OR REPLACE FUNCTION public.equipment_list(
   p_q TEXT DEFAULT NULL,
   p_sort TEXT DEFAULT 'id.asc',
@@ -16,7 +17,7 @@ LANGUAGE plpgsql
 SECURITY DEFINER
 AS $$
 DECLARE
-  v_role TEXT := COALESCE(public._get_jwt_claim('app_role'), public._get_jwt_claim('role'), '');
+  v_role TEXT := COALESCE(public._get_jwt_claim('app_role'), '');
   v_donvi BIGINT := NULL;
   v_sort_col TEXT;
   v_sort_dir TEXT;
@@ -32,7 +33,6 @@ BEGIN
   v_offset := GREATEST((p_page - 1), 0) * GREATEST(p_page_size, 1);
 
   IF v_role = 'global' THEN
-    -- Allow cross-tenant filter when provided
     IF p_don_vi IS NOT NULL THEN
       RETURN QUERY EXECUTE format(
         'SELECT * FROM public.thiet_bi
@@ -60,14 +60,13 @@ $$;
 
 GRANT EXECUTE ON FUNCTION public.equipment_list(TEXT, TEXT, INT, INT, BIGINT) TO authenticated;
 
--- equipment_get
 CREATE OR REPLACE FUNCTION public.equipment_get(p_id BIGINT)
 RETURNS public.thiet_bi
 LANGUAGE plpgsql
 SECURITY DEFINER
 AS $$
 DECLARE
-  v_role TEXT := COALESCE(public._get_jwt_claim('app_role'), public._get_jwt_claim('role'), '');
+  v_role TEXT := COALESCE(public._get_jwt_claim('app_role'), '');
   v_donvi BIGINT := NULLIF(public._get_jwt_claim('don_vi'), '')::BIGINT;
   rec public.thiet_bi;
 BEGIN
@@ -84,16 +83,17 @@ BEGIN
 END;
 $$;
 
--- equipment_create
+GRANT EXECUTE ON FUNCTION public.equipment_get(BIGINT) TO authenticated;
+
 CREATE OR REPLACE FUNCTION public.equipment_create(p_payload JSONB)
 RETURNS public.thiet_bi
 LANGUAGE plpgsql
 SECURITY DEFINER
 AS $$
 DECLARE
-  v_role TEXT := COALESCE(public._get_jwt_claim('app_role'), public._get_jwt_claim('role'), '');
+  v_role TEXT := COALESCE(public._get_jwt_claim('app_role'), '');
   v_donvi BIGINT := NULLIF(public._get_jwt_claim('don_vi'), '')::BIGINT;
-  v_khoa_phong TEXT := NULL; -- from payload
+  v_khoa_phong TEXT := NULL;
   rec public.thiet_bi;
 BEGIN
   IF v_role NOT IN ('global','to_qltb','technician') THEN
@@ -124,14 +124,15 @@ BEGIN
 END;
 $$;
 
--- equipment_update
+GRANT EXECUTE ON FUNCTION public.equipment_create(JSONB) TO authenticated;
+
 CREATE OR REPLACE FUNCTION public.equipment_update(p_id BIGINT, p_patch JSONB)
 RETURNS public.thiet_bi
 LANGUAGE plpgsql
 SECURITY DEFINER
 AS $$
 DECLARE
-  v_role TEXT := COALESCE(public._get_jwt_claim('app_role'), public._get_jwt_claim('role'), '');
+  v_role TEXT := COALESCE(public._get_jwt_claim('app_role'), '');
   v_donvi BIGINT := NULLIF(public._get_jwt_claim('don_vi'), '')::BIGINT;
   v_khoa_phong_new TEXT := COALESCE(p_patch->>'khoa_phong_quan_ly', NULL);
   rec public.thiet_bi;
@@ -161,14 +162,15 @@ BEGIN
 END;
 $$;
 
--- equipment_delete
+GRANT EXECUTE ON FUNCTION public.equipment_update(BIGINT, JSONB) TO authenticated;
+
 CREATE OR REPLACE FUNCTION public.equipment_delete(p_id BIGINT)
 RETURNS JSONB
 LANGUAGE plpgsql
 SECURITY DEFINER
 AS $$
 DECLARE
-  v_role TEXT := COALESCE(public._get_jwt_claim('app_role'), public._get_jwt_claim('role'), '');
+  v_role TEXT := COALESCE(public._get_jwt_claim('app_role'), '');
   v_donvi BIGINT := NULLIF(public._get_jwt_claim('don_vi'), '')::BIGINT;
   cnt INT;
 BEGIN
@@ -188,65 +190,6 @@ BEGIN
 END;
 $$;
 
--- equipment_count
-CREATE OR REPLACE FUNCTION public.equipment_count(
-  p_statuses TEXT[] DEFAULT NULL,
-  p_q TEXT DEFAULT NULL
-)
-RETURNS BIGINT
-LANGUAGE plpgsql
-SECURITY DEFINER
-AS $$
-DECLARE
-  v_role TEXT := COALESCE(public._get_jwt_claim('app_role'), public._get_jwt_claim('role'), '');
-  v_donvi BIGINT := NULLIF(public._get_jwt_claim('don_vi'), '')::BIGINT;
-  v_cnt BIGINT;
-BEGIN
-  IF v_role = 'global' THEN
-    SELECT COUNT(*) INTO v_cnt
-    FROM public.thiet_bi tb
-    WHERE (p_q IS NULL OR tb.ten_thiet_bi ILIKE ('%' || p_q || '%') OR tb.ma_thiet_bi ILIKE ('%' || p_q || '%'))
-      AND (p_statuses IS NULL OR tb.tinh_trang_hien_tai = ANY(p_statuses));
-  ELSE
-    SELECT COUNT(*) INTO v_cnt
-    FROM public.thiet_bi tb
-    WHERE tb.don_vi = v_donvi
-      AND (p_q IS NULL OR tb.ten_thiet_bi ILIKE ('%' || p_q || '%') OR tb.ma_thiet_bi ILIKE ('%' || p_q || '%'))
-      AND (p_statuses IS NULL OR tb.tinh_trang_hien_tai = ANY(p_statuses));
-  END IF;
-  RETURN COALESCE(v_cnt, 0);
-END;
-$$;
-
--- equipment_attention_list
-CREATE OR REPLACE FUNCTION public.equipment_attention_list(
-  p_limit INT DEFAULT 5
-)
-RETURNS SETOF public.thiet_bi
-LANGUAGE plpgsql
-SECURITY DEFINER
-AS $$
-DECLARE
-  v_role TEXT := COALESCE(public._get_jwt_claim('app_role'), public._get_jwt_claim('role'), '');
-  v_donvi BIGINT := NULLIF(public._get_jwt_claim('don_vi'), '')::BIGINT;
-BEGIN
-  IF v_role = 'global' THEN
-    RETURN QUERY
-    SELECT *
-    FROM public.thiet_bi tb
-    WHERE tb.tinh_trang_hien_tai IN ('Chờ sửa chữa', 'Chờ bảo trì', 'Chờ hiệu chuẩn/kiểm định')
-    ORDER BY tb.ngay_bt_tiep_theo ASC NULLS LAST
-    LIMIT GREATEST(p_limit, 1);
-  ELSE
-    RETURN QUERY
-    SELECT *
-    FROM public.thiet_bi tb
-    WHERE tb.don_vi = v_donvi
-      AND tb.tinh_trang_hien_tai IN ('Chờ sửa chữa', 'Chờ bảo trì', 'Chờ hiệu chuẩn/kiểm định')
-    ORDER BY tb.ngay_bt_tiep_theo ASC NULLS LAST
-    LIMIT GREATEST(p_limit, 1);
-  END IF;
-END;
-$$;
+GRANT EXECUTE ON FUNCTION public.equipment_delete(BIGINT) TO authenticated;
 
 COMMIT;

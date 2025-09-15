@@ -1018,7 +1018,7 @@ export default function RepairRequestsPage() {
 
   const renderActions = (request: RepairRequestWithEquipment) => {
     if (!user) return null;
-    const canManage = user.role === 'admin' || user.role === 'to_qltb';
+  const canManage = user.role === 'global' || user.role === 'admin' || user.role === 'to_qltb';
 
     return (
       <DropdownMenu>

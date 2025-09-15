@@ -5,6 +5,11 @@
 			"label": "typecheck",
 			"type": "shell",
 			"command": "npm run typecheck"
+		},
+		{
+			"label": "typecheck",
+			"type": "shell",
+			"command": "npm run typecheck"
 		}
 	]
 }
