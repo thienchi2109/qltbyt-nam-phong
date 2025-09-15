@@ -45,6 +45,7 @@ import { RealtimeStatus } from "@/components/realtime-status"
 import { MobileFooterNav } from "@/components/mobile-footer-nav"
 import { USER_ROLES } from "@/types/database"
 import { supabase } from "@/lib/supabase"
+// Tenant switcher removed in favor of per-page tenant filters
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
@@ -120,8 +121,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       { href: "/qr-scanner", icon: QrCode, label: "Quét QR" },
     ]
 
-    // Add admin-only pages
-    if (user?.role === 'admin') {
+    // Add admin/global-only pages
+    if (user?.role === 'global' || user?.role === 'admin') {
       baseItems.push({ href: "/users", icon: Users, label: "Người dùng" })
     }
 
@@ -245,6 +246,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             {/* Realtime Status */}
             <RealtimeStatus variant="icon" />
 
+            {/* Tenant switcher removed */}
+
             {/* Notification Bell */}
             <NotificationBellDialog
               allRepairRequests={repairRequests}
@@ -253,7 +256,12 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="secondary" size="icon" className="rounded-full touch-target">
+                <Button
+                  variant="secondary"
+                  size="icon"
+                  className="rounded-full touch-target"
+                  onClick={(e) => e.stopPropagation()}
+                >
                   <User className="h-5 w-5" />
                   <span className="sr-only">Toggle user menu</span>
                 </Button>
@@ -297,11 +305,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           {/* Desktop Footer - hidden on mobile when footer nav is active */}
           <footer className="hidden md:flex flex-col items-center gap-1 p-4 text-center caption-responsive border-t bg-muted/40">
             <div className="flex items-center gap-1">
-              <span>Hệ thống quản lý thiết bị y tế</span>
+              <span>Hệ thống quản lý thiết bị y tế NPMems</span>
               <Copyright className="h-3 w-3" />
             </div>
-            <span>Phát triển bởi Nguyễn Thiện Chí</span>
-            <span>2025</span>
           </footer>
         </div>
       </div>

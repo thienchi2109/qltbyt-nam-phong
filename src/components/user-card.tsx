@@ -58,7 +58,12 @@ export function UserCard({ user, onEdit, onDelete }: UserCardProps) {
           </div>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="sm" className="ml-auto h-8 w-8 p-0">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="ml-auto h-8 w-8 p-0"
+                onClick={(e) => e.stopPropagation()}
+              >
                 <MoreHorizontal className="h-4 w-4" />
                 <span className="sr-only">Mở menu</span>
               </Button>

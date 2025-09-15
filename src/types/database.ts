@@ -44,16 +44,20 @@ export interface User {
   username: string;
   password: string;
   full_name: string;
-  role: 'admin' | 'to_qltb' | 'qltb_khoa' | 'user';
+  role: 'global' | 'admin' | 'to_qltb' | 'technician' | 'qltb_khoa' | 'user';
   khoa_phong?: string;
   created_at: string;
 }
 
 export const USER_ROLES = {
+  // Canonical roles
+  global: 'Quản trị hệ thống',
+  to_qltb: 'Tổ/Phòng VT-TBYT', 
+  technician: 'Kỹ thuật viên',
+  qltb_khoa: 'QLTB của Khoa/Phòng',
+  user: 'Nhân viên',
+  // Aliases (legacy)
   admin: 'Quản trị hệ thống',
-  to_qltb: 'Tổ QLTB CDC', 
-  qltb_khoa: 'QLTB Khoa/Phòng',
-  user: 'Nhân viên'
 } as const;
 
 export type UserRole = keyof typeof USER_ROLES;

@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { supabase } from '@/lib/supabase'
+import { callRpc } from '@/lib/rpc-client'
 import { toast } from '@/hooks/use-toast'
+import type { TransferRequest } from '@/types/database'
 
 // Query keys for caching
 export const transferKeys = {
@@ -20,79 +21,37 @@ export function useTransferRequests(filters?: {
   dateFrom?: string
   dateTo?: string
 }) {
-  return useQuery({
+  return useQuery<TransferRequest[]>({
     queryKey: transferKeys.list(filters || {}),
     queryFn: async () => {
-      if (!supabase) {
-        throw new Error('Supabase client not initialized')
-      }
-
-      let query = supabase
-        .from('yeu_cau_luan_chuyen')
-        .select(`
-          *,
-          thiet_bi(ma_thiet_bi, ten_thiet_bi)
-        `)
-        .order('created_at', { ascending: false })
-
-      // Apply filters
-      if (filters?.search) {
-        query = query.or(`ly_do.ilike.%${filters.search}%,ghi_chu.ilike.%${filters.search}%`)
-      }
-      if (filters?.trang_thai) {
-        query = query.eq('trang_thai', filters.trang_thai)
-      }
-      if (filters?.phong_ban_gui) {
-        query = query.eq('phong_ban_gui', filters.phong_ban_gui)
-      }
-      if (filters?.phong_ban_nhan) {
-        query = query.eq('phong_ban_nhan', filters.phong_ban_nhan)
-      }
-      if (filters?.dateFrom) {
-        query = query.gte('created_at', filters.dateFrom)
-      }
-      if (filters?.dateTo) {
-        query = query.lte('created_at', filters.dateTo)
-      }
-
-      const { data, error } = await query.order('created_at', { ascending: false })
-
-      if (error) throw error
-      return data
+      const data = await callRpc<any[]>({
+        fn: 'transfer_request_list',
+        args: {
+          p_q: filters?.search ?? null,
+          p_status: filters?.trang_thai ?? null,
+          p_page: 1,
+          p_page_size: 5000,
+        },
+      })
+      return (data || []) as TransferRequest[]
     },
-    staleTime: 2 * 60 * 1000, // 2 minutes
-    gcTime: 8 * 60 * 1000, // 8 minutes
+    staleTime: 2 * 60 * 1000,
+    gcTime: 8 * 60 * 1000,
   })
 }
 
 // Fetch single transfer request details
 export function useTransferRequestDetail(id: string | null) {
-  return useQuery({
+  return useQuery<TransferRequest | null>({
     queryKey: transferKeys.detail(id || ''),
     queryFn: async () => {
       if (!id) return null
-      if (!supabase) {
-        throw new Error('Supabase client not initialized')
-      }
-      
-      const { data, error } = await supabase
-        .from('yeu_cau_luan_chuyen')
-        .select(`
-          *,
-          thiet_bi:thiet_bi(*),
-          phong_ban_gui:phong_ban!yeu_cau_luan_chuyen_phong_ban_gui_fkey(*),
-          phong_ban_nhan:phong_ban!yeu_cau_luan_chuyen_phong_ban_nhan_fkey(*),
-          nguoi_yeu_cau:profiles!yeu_cau_luan_chuyen_nguoi_yeu_cau_fkey(*),
-          nguoi_duyet:profiles!yeu_cau_luan_chuyen_nguoi_duyet_fkey(*)
-        `)
-        .eq('id', id)
-        .single()
-
-      if (error) throw error
-      return data
+      const data = await callRpc<any[]>({ fn: 'transfer_request_list', args: { p_q: null, p_status: null, p_page: 1, p_page_size: 5000 } })
+      const item = (data || []).find((x: any) => String(x.id) === String(id))
+      return (item as TransferRequest) ?? null
     },
     enabled: !!id,
-    staleTime: 1 * 60 * 1000, // 1 minute
+    staleTime: 1 * 60 * 1000,
   })
 }
 
@@ -102,18 +61,8 @@ export function useCreateTransferRequest() {
 
   return useMutation({
     mutationFn: async (data: any) => {
-      if (!supabase) {
-        throw new Error('Supabase client not initialized')
-      }
-
-      const { data: newTransfer, error } = await supabase
-        .from('yeu_cau_luan_chuyen')
-        .insert(data)
-        .select()
-        .single()
-
-      if (error) throw error
-      return newTransfer
+      await callRpc({ fn: 'transfer_request_create', args: { p_data: data } })
+      return true
     },
     onSuccess: () => {
       // Invalidate all transfer queries to refetch data
@@ -140,25 +89,14 @@ export function useUpdateTransferRequest() {
 
   return useMutation({
     mutationFn: async (params: { id: string; data: any }) => {
-      if (!supabase) {
-        throw new Error('Supabase client not initialized')
-      }
-
-      const { data, error } = await supabase
-        .from('yeu_cau_luan_chuyen')
-        .update(params.data)
-        .eq('id', params.id)
-        .select()
-        .single()
-
-      if (error) throw error
-      return data
+      await callRpc({ fn: 'transfer_request_update', args: { p_id: Number(params.id), p_data: params.data } })
+      return { id: Number(params.id) }
     },
     onSuccess: (data) => {
       // Invalidate and refetch transfer lists
       queryClient.invalidateQueries({ queryKey: transferKeys.lists() })
       // Update specific transfer detail cache
-      queryClient.setQueryData(transferKeys.detail(data.id), data)
+      queryClient.invalidateQueries({ queryKey: transferKeys.detail(String((data as any).id)) })
       
       toast({
         title: "Thành công",
@@ -181,24 +119,8 @@ export function useApproveTransferRequest() {
 
   return useMutation({
     mutationFn: async (params: { id: string; nguoi_duyet: string; ghi_chu?: string }) => {
-      if (!supabase) {
-        throw new Error('Supabase client not initialized')
-      }
-
-      const { data, error } = await supabase
-        .from('yeu_cau_luan_chuyen')
-        .update({
-          trang_thai: 'da_duyet',
-          nguoi_duyet: params.nguoi_duyet,
-          ngay_duyet: new Date().toISOString(),
-          ghi_chu: params.ghi_chu || null
-        })
-        .eq('id', params.id)
-        .select()
-        .single()
-
-      if (error) throw error
-      return data
+      await callRpc({ fn: 'transfer_request_update_status', args: { p_id: Number(params.id), p_status: 'da_duyet', p_payload: { nguoi_duyet_id: params.nguoi_duyet } } })
+      return true
     },
     onSuccess: (data) => {
       // Invalidate transfer queries
@@ -225,23 +147,8 @@ export function useCompleteTransferRequest() {
 
   return useMutation({
     mutationFn: async (params: { id: string; nguoi_ban_giao: string }) => {
-      if (!supabase) {
-        throw new Error('Supabase client not initialized')
-      }
-
-      const { data, error } = await supabase
-        .from('yeu_cau_luan_chuyen')
-        .update({
-          trang_thai: 'hoan_thanh',
-          nguoi_ban_giao: params.nguoi_ban_giao,
-          ngay_ban_giao: new Date().toISOString()
-        })
-        .eq('id', params.id)
-        .select()
-        .single()
-
-      if (error) throw error
-      return data
+      await callRpc({ fn: 'transfer_request_complete', args: { p_id: Number(params.id) } })
+      return true
     },
     onSuccess: (data) => {
       // Invalidate transfer and equipment queries

@@ -78,12 +78,12 @@ export default function UsersPage() {
   const [isResettingPassword, setIsResettingPassword] = React.useState(false)
   const isMobile = useMediaQuery("(max-width: 768px)")
 
-  // Check if current user is admin
-  const isAdmin = currentUser?.role === 'admin'
+  // Check if current user is admin/global
+  const isAdmin = currentUser?.role === 'global' || currentUser?.role === 'admin'
 
   // Redirect if not admin
   React.useEffect(() => {
-    if (status === 'authenticated' && currentUser && !isAdmin) {
+  if (status === 'authenticated' && currentUser && !isAdmin) {
       // toast({ // Commented out to prevent potential issues with toast during initial load/redirect
       //   variant: "destructive",
       //   title: "Không có quyền truy cập",
@@ -246,7 +246,11 @@ export default function UsersPage() {
         return (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="h-8 w-8 p-0">
+              <Button
+                variant="ghost"
+                className="h-8 w-8 p-0"
+                onClick={(e) => e.stopPropagation()}
+              >
                 <span className="sr-only">Mở menu</span>
                 <MoreHorizontal className="h-4 w-4" />
               </Button>

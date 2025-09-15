@@ -89,6 +89,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { type Equipment } from "@/types/database"
 import { supabase, supabaseError } from "@/lib/supabase"
+import { callRpc } from "@/lib/rpc-client"
 import { useEquipmentRealtimeSync } from "@/hooks/use-realtime-sync"
 import { useToast } from "@/hooks/use-toast"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -107,8 +108,9 @@ import { UsageHistoryTab } from "@/components/usage-history-tab"
 import { ActiveUsageIndicator } from "@/components/active-usage-indicator"
 import { MobileUsageActions } from "@/components/mobile-usage-actions"
 import { useSearchDebounce } from "@/hooks/use-debounce"
-import { EquipmentFilterStatus } from "@/components/department-filter-status"
+// Auto department filter removed
 import { MobileEquipmentListItem } from "@/components/mobile-equipment-list-item"
+import { callRpc as rpc } from "@/lib/rpc-client"
 
 type Attachment = {
   id: string;
@@ -726,7 +728,7 @@ export default function EquipmentPage() {
 
   const renderActions = (equipment: Equipment) => {
     const canEdit = user && (
-      user.role === 'admin' ||
+  user.role === 'global' || user.role === 'admin' ||
       user.role === 'to_qltb' ||
       (user.role === 'qltb_khoa' && user.khoa_phong === equipment.khoa_phong_quan_ly)
     );
@@ -835,15 +837,17 @@ export default function EquipmentPage() {
     },
   ]
 
-  const CACHE_KEY = 'equipment_data';
+  const tenantKey = (user as any)?.don_vi ? String((user as any).don_vi) : 'none'
+  const [tenantFilter, setTenantFilter] = React.useState<string>('all') // 'all' = all tenants for global
+  const isGlobal = (user as any)?.role === 'global' || (user as any)?.role === 'admin'
+  const effectiveTenantKey = isGlobal ? tenantFilter : tenantKey
+  const CACHE_KEY = `equipment_data_${effectiveTenantKey}`
 
   const fetchEquipment = React.useCallback(async () => {
       setIsLoading(true);
 
-      // Phase 1: Department-based filtering - check cache key includes user department
-      const cacheKey = user?.khoa_phong && !['admin', 'to_qltb'].includes(user.role)
-        ? `${CACHE_KEY}_${user.khoa_phong}`
-        : CACHE_KEY;
+  // Tenant-scoped cache key to avoid cross-tenant bleed-through
+  const cacheKey = CACHE_KEY;
 
       try {
         const cachedItemJSON = localStorage.getItem(cacheKey);
@@ -869,67 +873,52 @@ export default function EquipmentPage() {
           setIsLoading(false);
           return;
       }
-      if (!supabase) {
-          setIsLoading(false);
-          return;
-      }
-
-      // Phase 1: Apply department-based filtering for non-admin users
-      let query = supabase.from('thiet_bi').select('*');
-
-      // Apply department filter for non-admin users
-      const shouldFilterByDepartment = user &&
-        !['admin', 'to_qltb'].includes(user.role) &&
-        user.khoa_phong;
-
-      if (shouldFilterByDepartment) {
-        console.log(`[Equipment] Applying department filter: ${user.khoa_phong}`);
-        query = query.eq('khoa_phong_quan_ly', user.khoa_phong);
-      }
-
-      const { data, error } = await query.order('id', { ascending: true });
-
-      if (error) {
-        toast({
-          variant: "destructive",
-          title: "Lỗi",
-          description: "Không thể tải dữ liệu thiết bị. " + error.message,
+      try {
+        const data = await callRpc<Equipment[]>({
+          fn: 'equipment_list',
+          args: { p_q: null, p_sort: 'id.asc', p_page: 1, p_page_size: 10000, p_don_vi: isGlobal && tenantFilter !== 'all' ? Number(tenantFilter) : null },
         })
-        const cacheKey = shouldFilterByDepartment ? `${CACHE_KEY}_${user.khoa_phong}` : CACHE_KEY;
-        if (!localStorage.getItem(cacheKey)) {
-            setData([]);
-        }
-      } else {
-        setData(data as Equipment[]);
+        setData(data || [])
         try {
-            const itemToCache = {
-                data: data,
-            };
-            const cacheKey = shouldFilterByDepartment ? `${CACHE_KEY}_${user.khoa_phong}` : CACHE_KEY;
-            localStorage.setItem(cacheKey, JSON.stringify(itemToCache));
+          const itemToCache = { data }
+          localStorage.setItem(CACHE_KEY, JSON.stringify(itemToCache))
         } catch (e) {
-            console.error("Error writing to localStorage", e);
+          console.error("Error writing to localStorage", e)
+        }
+      } catch (error: any) {
+        toast({
+          variant: 'destructive',
+          title: 'Lỗi',
+          description: 'Không thể tải dữ liệu thiết bị. ' + (error?.message || ''),
+        })
+        if (!localStorage.getItem(CACHE_KEY)) {
+          setData([])
         }
       }
       setIsLoading(false);
-    }, [toast, user]);
+  }, [toast, tenantKey, tenantFilter, isGlobal]);
+
 
   const onDataMutationSuccess = React.useCallback(() => {
     try {
-      // Clear both general and department-specific cache
-      localStorage.removeItem(CACHE_KEY);
-      if (user?.khoa_phong) {
-        localStorage.removeItem(`${CACHE_KEY}_${user.khoa_phong}`);
-      }
+      // Clear tenant-scoped cache
+      localStorage.removeItem(CACHE_KEY)
     } catch (error) {
       console.error("Failed to invalidate cache", error);
     }
     fetchEquipment();
-  }, [fetchEquipment, user?.khoa_phong]);
+  }, [fetchEquipment, CACHE_KEY]);
 
   React.useEffect(() => {
     fetchEquipment();
   }, [fetchEquipment]);
+
+  // Refetch when tenant changes (session) or filter changes (global)
+  React.useEffect(() => {
+    // Invalidate previous cache and refetch on tenant change
+    try { localStorage.removeItem(CACHE_KEY) } catch {}
+    fetchEquipment()
+  }, [tenantKey, tenantFilter, CACHE_KEY, fetchEquipment])
 
   // Listen for realtime cache invalidation events
   React.useEffect(() => {
@@ -939,11 +928,33 @@ export default function EquipmentPage() {
     };
 
     window.addEventListener('equipment-cache-invalidated', handleCacheInvalidation);
+    const handleTenantSwitched = () => {
+      console.log('[EquipmentPage] Tenant switched, clearing cache and refetching...')
+      try { localStorage.removeItem(CACHE_KEY) } catch {}
+      fetchEquipment()
+    }
+    window.addEventListener('tenant-switched', handleTenantSwitched as EventListener)
 
     return () => {
       window.removeEventListener('equipment-cache-invalidated', handleCacheInvalidation);
+      window.removeEventListener('tenant-switched', handleTenantSwitched as EventListener)
     };
-  }, [fetchEquipment]);
+  }, [fetchEquipment, CACHE_KEY]);
+
+  // Load tenant options for global select
+  const [tenantOptions, setTenantOptions] = React.useState<{ id: number; name: string; code: string }[]>([])
+  React.useEffect(() => {
+    const loadTenants = async () => {
+      if (!isGlobal) return
+      try {
+        const list = await rpc<any[]>({ fn: 'tenant_list', args: {} })
+        setTenantOptions((list || []).map((t: any) => ({ id: t.id, name: t.name, code: t.code })))
+      } catch (e) {
+        // ignore silently
+      }
+    }
+    loadTenants()
+  }, [isGlobal])
 
   // Handle URL parameters for quick actions
   React.useEffect(() => {
@@ -1133,6 +1144,8 @@ export default function EquipmentPage() {
       globalFilter: debouncedSearch,
     },
   })
+  
+  // Auto department filter removed; no role-based table filter adjustments
   
   // Restore table state after data reload
   React.useEffect(() => {
@@ -1583,11 +1596,7 @@ export default function EquipmentPage() {
             Quản lý danh sách các trang thiết bị y tế.
           </CardDescription>
 
-          {/* Phase 2: Enhanced department filter notification */}
-          <EquipmentFilterStatus
-            itemCount={table.getFilteredRowModel().rows.length}
-            className="mt-3"
-          />
+          {/* Department auto-filter removed */}
         </CardHeader>
         <CardContent className="space-y-4">
           {/* Mobile-optimized filters layout */}
@@ -1674,6 +1683,27 @@ export default function EquipmentPage() {
           {/* Action buttons - responsive layout */}
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div className="flex items-center gap-2 order-2 sm:order-1">
+              {isGlobal && (
+                <div className="flex items-center gap-2">
+                  <Label className="text-xs text-muted-foreground">Đơn vị</Label>
+                  <Select
+                    value={tenantFilter}
+                    onValueChange={(v) => setTenantFilter(v)}
+                  >
+                    <SelectTrigger className="h-8 w-[220px]">
+                      <SelectValue placeholder="Tất cả đơn vị" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Tất cả đơn vị</SelectItem>
+                      {tenantOptions.map(t => (
+                        <SelectItem key={t.id} value={String(t.id)}>
+                          {t.name} {t.code ? `(${t.code})` : ''}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
               {!isMobile && (
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
