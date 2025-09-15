@@ -45,7 +45,7 @@ import { RealtimeStatus } from "@/components/realtime-status"
 import { MobileFooterNav } from "@/components/mobile-footer-nav"
 import { USER_ROLES } from "@/types/database"
 import { supabase } from "@/lib/supabase"
-import { TenantSwitcher } from "@/components/tenant-switcher"
+// Tenant switcher removed in favor of per-page tenant filters
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
@@ -121,8 +121,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       { href: "/qr-scanner", icon: QrCode, label: "Quét QR" },
     ]
 
-    // Add admin-only pages
-    if (user?.role === 'admin') {
+    // Add admin/global-only pages
+    if (user?.role === 'global' || user?.role === 'admin') {
       baseItems.push({ href: "/users", icon: Users, label: "Người dùng" })
     }
 
@@ -246,10 +246,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             {/* Realtime Status */}
             <RealtimeStatus variant="icon" />
 
-            {/* Tenant Switcher */}
-            <div className="mx-2">
-              <TenantSwitcher />
-            </div>
+            {/* Tenant switcher removed */}
 
             {/* Notification Bell */}
             <NotificationBellDialog

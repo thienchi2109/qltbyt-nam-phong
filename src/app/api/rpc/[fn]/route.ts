@@ -35,6 +35,12 @@ const ALLOWED_FUNCTIONS = new Set<string>([
   'maintenance_tasks_bulk_insert',
   'maintenance_task_update',
   'maintenance_tasks_delete',
+  // Tenants + Users
+  'tenant_list',
+  'user_create',
+  'user_membership_add',
+  'user_membership_remove',
+  'user_set_current_don_vi',
 ])
 
 function getEnv(name: string) {
@@ -57,7 +63,8 @@ export async function POST(req: NextRequest, context: { params: Promise<{ fn: st
   const role = (session as any)?.user?.role || ''
   const donVi = (session as any)?.user?.don_vi ? String((session as any).user.don_vi) : ''
   const userId = (session as any)?.user?.id ? String((session as any).user.id) : ''
-  const appRole = role
+  // Normalize to expected app roles used by SQL. Treat 'admin' as 'global'.
+  const appRole = role === 'admin' ? 'global' : role
 
     // Build JWT claims for PostgREST. We keep db role = authenticated; app role in app_role.
     const claims: Record<string, any> = {

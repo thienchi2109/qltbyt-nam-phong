@@ -279,7 +279,7 @@ export function UserManagement() {
                       <td className="border border-gray-300 p-2">{u.username}</td>
                       <td className="border border-gray-300 p-2">{u.full_name}</td>
                       <td className="border border-gray-300 p-2">
-                        <Badge variant={u.role === 'admin' ? 'destructive' : 'secondary'}>
+                        <Badge variant={(u.role === 'global' || u.role === 'admin') ? 'destructive' : 'secondary'}>
                           {u.role}
                         </Badge>
                       </td>

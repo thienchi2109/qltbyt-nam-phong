@@ -1,0 +1,5 @@
+- Backend: RPC-only via SQL SECURITY DEFINER; PostgREST JWT signed by Next.js proxy with claims: app_role (admin normalized to global), don_vi, user_id; DB role fixed to authenticated.
+- Tenant checks: All access via public._get_jwt_claim('app_role'|'don_vi'); equipment/user/transfer/repair RPCs enforce tenant scope; no RLS.
+- Equipment_list signature: (TEXT p_q, TEXT p_sort, INT p_page, INT p_page_size, BIGINT p_don_vi). Global may filter by p_don_vi; others restricted to claim don_vi.
+- Frontend: Next.js App Router, NextAuth; per-page tenant filter on Equipment; cache keyed by tenant; Radix Select fixed with 'all' sentinel.
+- Roles: canonical roles include global, to_qltb, technician, qltb_khoa, user; legacy admin retained as alias for display. UI gating updated to treat global same as admin.

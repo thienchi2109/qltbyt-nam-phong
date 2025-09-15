@@ -48,7 +48,7 @@ export function MobileFooterNav() {
     ]
 
     // Add admin-only items with role-based permissions
-    if (user?.role === 'admin') {
+  if (user?.role === 'global' || user?.role === 'admin') {
       baseItems.push({ href: "/users", icon: Users, label: "Người dùng" })
     }
 

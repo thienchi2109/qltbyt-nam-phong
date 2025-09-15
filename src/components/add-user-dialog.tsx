@@ -16,7 +16,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useToast } from "@/hooks/use-toast"
-import { supabase } from "@/lib/supabase"
+import { callRpc } from "@/lib/rpc-client"
 import { USER_ROLES, type UserRole } from "@/types/database"
 import { Badge } from "@/components/ui/badge"
 import { ScrollArea } from "@/components/ui/scroll-area"
@@ -30,24 +30,20 @@ interface AddUserDialogProps {
 export function AddUserDialog({ open, onOpenChange, onSuccess }: AddUserDialogProps) {
   const { toast } = useToast()
   const [isLoading, setIsLoading] = React.useState(false)
-  const [departments, setDepartments] = React.useState<{ label: string; value: string }[]>([])
+  const [tenants, setTenants] = React.useState<{ id: number; code: string; name: string }[]>([])
+  const [memberships, setMemberships] = React.useState<number[]>([])
   
   const [formData, setFormData] = React.useState({
     username: "",
     password: "",
     full_name: "",
     role: "" as UserRole | "",
-    khoa_phong: ""
+    current_don_vi: undefined as number | undefined
   })
 
   const resetForm = React.useCallback(() => {
-    setFormData({
-      username: "",
-      password: "",
-      full_name: "",
-      role: "",
-      khoa_phong: ""
-    })
+    setFormData({ username: "", password: "", full_name: "", role: "", current_don_vi: undefined })
+    setMemberships([])
   }, [])
 
   React.useEffect(() => {
@@ -57,51 +53,26 @@ export function AddUserDialog({ open, onOpenChange, onSuccess }: AddUserDialogPr
   }, [open, resetForm])
 
   React.useEffect(() => {
-    if (open) {
-      fetchDepartments();
+    const run = async () => {
+      if (!open) return
+      try {
+        const list = await callRpc<any[]>({ fn: 'tenant_list', args: {} })
+        setTenants((list || []).map(t => ({ id: t.id, code: t.code, name: t.name })))
+      } catch (e: any) {
+        toast({ variant: 'destructive', title: 'Lỗi tải danh sách đơn vị', description: e?.message || '' })
+      }
     }
-  }, [open]);
-
-  const fetchDepartments = async () => {
-    if (!supabase) return;
-    try {
-      const { data, error } = await supabase
-        .from('thiet_bi')
-        .select('khoa_phong_quan_ly')
-        .not('khoa_phong_quan_ly', 'is', null);
-
-      if (error) throw error;
-      
-      const uniqueDepartments = Array.from(new Set(data.map(item => item.khoa_phong_quan_ly).filter(Boolean)));
-      setDepartments(
-        uniqueDepartments.sort().map(dep => ({ value: dep, label: dep }))
-      );
-    } catch (error: any) {
-      toast({
-        variant: "destructive",
-        title: "Lỗi tải danh sách khoa phòng",
-        description: error.message,
-      });
-    }
-  };
+    run()
+  }, [open, toast])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     
-    if (!formData.username || !formData.password || !formData.full_name || !formData.role) {
+    if (!formData.username || !formData.password || !formData.full_name || !formData.role || !formData.current_don_vi) {
       toast({
         variant: "destructive",
         title: "Lỗi",
-        description: "Vui lòng điền đầy đủ thông tin bắt buộc."
-      })
-      return
-    }
-
-    if (!supabase) {
-      toast({
-        variant: "destructive",
-        title: "Lỗi",
-        description: "Không thể kết nối đến cơ sở dữ liệu."
+        description: "Vui lòng điền đầy đủ thông tin bắt buộc (bao gồm Đơn vị hiện tại)."
       })
       return
     }
@@ -109,87 +80,24 @@ export function AddUserDialog({ open, onOpenChange, onSuccess }: AddUserDialogPr
     setIsLoading(true)
 
     try {
-      // Try to use the secure create_user function first
-      const { data, error } = await supabase.rpc('create_user', {
-        p_username: formData.username.trim(),
-        p_password: formData.password,
-        p_full_name: formData.full_name.trim(),
-        p_role: formData.role,
-        p_khoa_phong: formData.khoa_phong.trim() || null
+      // Create user via RPC with current don_vi + memberships
+      const id = await callRpc<number>({
+        fn: 'user_create',
+        args: {
+          p_username: formData.username.trim(),
+          p_password: formData.password,
+          p_full_name: formData.full_name.trim(),
+          p_role: formData.role,
+          p_current_don_vi: formData.current_don_vi,
+          p_memberships: memberships.length ? memberships : null,
+        },
       })
 
-      // If function doesn't exist, fall back to direct insert (temporary)
-      if (error && (
-        error.message?.includes('Could not find the function') ||
-        error.message?.includes('function create_user') ||
-        error.code === '42883' // Function does not exist error code
-      )) {
-        console.log('create_user function not found, using temporary fallback method')
-        console.log('Error details:', error)
-
-        // Validate username format manually since we don't have the function
-        const username = formData.username.trim()
-        if (!username || username.includes(' ')) {
-          toast({
-            variant: "destructive",
-            title: "Lỗi",
-            description: "Tên đăng nhập không được chứa khoảng trắng và không được để trống."
-          })
-          return
-        }
-
-        const { error: insertError } = await supabase
-          .from('nhan_vien')
-          .insert({
-            username: username,
-            password: formData.password,
-            full_name: formData.full_name.trim(),
-            role: formData.role,
-            khoa_phong: formData.khoa_phong.trim() || null
-          })
-
-        if (insertError) {
-          if (insertError.code === '23505') {
-            toast({
-              variant: "destructive",
-              title: "Lỗi",
-              description: "Tên đăng nhập đã tồn tại. Vui lòng chọn tên khác."
-            })
-          } else {
-            throw insertError
-          }
-          return
-        }
-
-        toast({
-          title: "Thành công",
-          description: "Đã tạo tài khoản người dùng mới. (Chế độ tạm thời - vui lòng chạy script SQL để kích hoạt mã hóa mật khẩu)"
-        })
-      } else if (error) {
-        console.error('Error from create_user function:', error)
-        if (error.message?.includes('Invalid username format')) {
-          toast({
-            variant: "destructive",
-            title: "Lỗi",
-            description: "Định dạng tên đăng nhập không hợp lệ. Tên đăng nhập không được chứa khoảng trắng."
-          })
-        } else if (error.message?.includes('duplicate key value') || error.code === '23505') {
-          toast({
-            variant: "destructive",
-            title: "Lỗi",
-            description: "Tên đăng nhập đã tồn tại. Vui lòng chọn tên khác."
-          })
-        } else {
-          throw error
-        }
-        return
-      } else {
-        // Success with create_user function
-        toast({
-          title: "Thành công",
-          description: "Đã tạo tài khoản người dùng mới với mật khẩu được mã hóa."
-        })
+      if (!id) {
+        throw new Error('Không nhận được ID người dùng sau khi tạo')
       }
+
+      toast({ title: 'Thành công', description: 'Đã tạo tài khoản người dùng mới.' })
 
       onSuccess()
       onOpenChange(false)
@@ -262,41 +170,65 @@ export function AddUserDialog({ open, onOpenChange, onSuccess }: AddUserDialogPr
                   <SelectValue placeholder="Chọn vai trò" />
                 </SelectTrigger>
                 <SelectContent>
-                  {Object.entries(USER_ROLES).map(([key, label]) => (
-                    <SelectItem key={key} value={key}>
-                      {label}
+                  {Object.entries(USER_ROLES)
+                    .filter(([key]) => key !== 'admin')
+                    .map(([key, label]) => (
+                      <SelectItem key={key} value={key}>
+                        {label}
+                      </SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid gap-2">
+              <Label>Đơn vị hiện tại *</Label>
+              <Select
+                value={formData.current_don_vi ? String(formData.current_don_vi) : ''}
+                onValueChange={(value) => setFormData(prev => ({ ...prev, current_don_vi: Number(value) }))}
+                disabled={isLoading}
+                required
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Chọn đơn vị" />
+                </SelectTrigger>
+                <SelectContent>
+                  {tenants.map(t => (
+                    <SelectItem key={t.id} value={String(t.id)}>
+                      {t.name} ({t.code})
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="khoa_phong">Khoa/Phòng</Label>
-              <Input
-                id="khoa_phong"
-                value={formData.khoa_phong}
-                onChange={(e) => setFormData(prev => ({ ...prev, khoa_phong: e.target.value }))}
-                placeholder="Nhập hoặc chọn khoa/phòng bên dưới"
-                disabled={isLoading}
-              />
-              <ScrollArea className="h-24 w-full rounded-md border p-2">
+              <Label>Thành viên đơn vị (tùy chọn)</Label>
+              <ScrollArea className="h-28 w-full rounded-md border p-2">
                 <div className="flex flex-wrap gap-2">
-                  {departments.length > 0 ? (
-                    departments.map((dep) => (
-                      <Badge
-                        key={dep.value}
-                        variant="secondary"
-                        className="cursor-pointer hover:bg-primary hover:text-primary-foreground"
-                        onClick={() => setFormData(prev => ({ ...prev, khoa_phong: dep.value }))}
-                      >
-                        {dep.label}
-                      </Badge>
-                    ))
+                  {tenants.length > 0 ? (
+                    tenants.map(t => {
+                      const selected = memberships.includes(t.id) || t.id === formData.current_don_vi
+                      return (
+                        <Badge
+                          key={t.id}
+                          variant={selected ? 'default' : 'secondary'}
+                          className="cursor-pointer select-none"
+                          onClick={() => {
+                            setMemberships(prev => {
+                              if (prev.includes(t.id)) return prev.filter(x => x !== t.id)
+                              return [...prev, t.id]
+                            })
+                          }}
+                        >
+                          {t.name}
+                        </Badge>
+                      )
+                    })
                   ) : (
-                    <p className="text-sm text-muted-foreground">Không có gợi ý khoa/phòng.</p>
+                    <p className="text-sm text-muted-foreground">Không có danh sách đơn vị.</p>
                   )}
                 </div>
               </ScrollArea>
+              <p className="text-xs text-muted-foreground">Mặc định hệ thống sẽ thêm đơn vị hiện tại vào danh sách thành viên.</p>
             </div>
           </div>
           <DialogFooter>
