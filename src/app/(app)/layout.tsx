@@ -308,11 +308,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           {/* Desktop Footer - hidden on mobile when footer nav is active */}
           <footer className="hidden md:flex flex-col items-center gap-1 p-4 text-center caption-responsive border-t bg-muted/40">
             <div className="flex items-center gap-1">
-              <span>Hệ thống quản lý thiết bị y tế</span>
+              <span>Hệ thống quản lý thiết bị y tế NPMems</span>
               <Copyright className="h-3 w-3" />
             </div>
-            <span>Phát triển bởi Nguyễn Thiện Chí</span>
-            <span>2025</span>
           </footer>
         </div>
       </div>
