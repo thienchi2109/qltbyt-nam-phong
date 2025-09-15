@@ -169,8 +169,7 @@ export default function LoginPage() {
 
               {/* Footer Content */}
               <div className="mt-6 text-center text-xs text-muted-foreground space-y-1">
-                <p>{t("footer.developedBy") || "Phát triển bởi Nguyễn Thiện Chí"}</p>
-                <p>{t("footer.contact") || "Mọi chi tiết xin liên hệ: thienchi2109@gmail.com"}</p>
+                <p>Copyright © NPMems</p>
               </div>
             </div>
           </div>
@@ -218,7 +217,7 @@ export default function LoginPage() {
             <div className="mt-6 lg:mt-12 text-center lg:text-left">
               <div className="bg-accent/10 border border-accent/20 rounded-lg p-4 lg:p-6">
                 <h4 className="font-semibold text-accent mb-2">
-                  🏥 Tài khoản này thuộc Hệ thống quản lý thiết bị y tế Nam Phong Technical Hi-Tech
+                  🏥 Tài khoản này thuộc Hệ thống quản lý thiết bị y tế NPMems
                 </h4>
                 <p className="text-sm text-muted-foreground">
                   Được thiết kế đặc biệt để đáp ứng nhu cầu quản lý thiết bị y tế chuyên nghiệp,
@@ -307,8 +306,7 @@ export default function LoginPage() {
 
                 {/* Footer Content */}
                 <div className="mt-6 text-center text-xs text-muted-foreground space-y-1">
-                  <p>{t("footer.developedBy") || "Phát triển bởi Nguyễn Thiện Chí"}</p>
-                  <p>{t("footer.contact") || "Mọi chi tiết xin liên hệ: thienchi2109@gmail.com"}</p>
+                  <p>Copyright © NPMems</p>
                 </div>
               </div>
             </div>
