@@ -1,7 +1,7 @@
 "use client"
 
 import { useQuery } from '@tanstack/react-query'
-import { supabase } from '@/lib/supabase'
+import { callRpc } from '@/lib/rpc-client'
 
 export interface EquipmentDistributionItem {
   name: string
@@ -43,23 +43,10 @@ export function useEquipmentDistribution(filterDepartment?: string, filterLocati
   return useQuery({
     queryKey: equipmentDistributionKeys.data(filterDepartment, filterLocation),
     queryFn: async (): Promise<EquipmentDistributionData> => {
-      if (!supabase) {
-        throw new Error('Supabase client not initialized')
-      }
-
-      // Fetch all equipment with status information
-      const { data: equipment, error } = await supabase
-        .from('thiet_bi')
-        .select(`
-          id,
-          ma_thiet_bi,
-          ten_thiet_bi,
-          khoa_phong_quan_ly,
-          vi_tri_lap_dat,
-          tinh_trang_hien_tai
-        `)
-
-      if (error) throw error
+      const equipment = await callRpc<RawEquipmentItem[]>({
+        fn: 'equipment_list',
+        args: { p_q: null, p_sort: 'id.asc', p_page: 1, p_page_size: 10000 },
+      })
 
       if (!equipment || equipment.length === 0) {
         return {
@@ -73,7 +60,7 @@ export function useEquipmentDistribution(filterDepartment?: string, filterLocati
       }
 
       // Apply filters if provided
-      let filteredEquipment = equipment
+  let filteredEquipment: RawEquipmentItem[] = equipment
       
       if (filterDepartment && filterDepartment !== 'all') {
         filteredEquipment = filteredEquipment.filter(item => 
@@ -192,16 +179,16 @@ export function useEquipmentDistribution(filterDepartment?: string, filterLocati
         .sort((a, b) => b.total - a.total)
 
       // Get unique departments and locations for filters (from original unfiltered data)
-      const departments = Array.from(new Set(
+      const departments: string[] = Array.from(new Set(
         equipment
-          .map(item => item.khoa_phong_quan_ly)
-          .filter(dept => dept && dept !== 'Chưa phân loại')
+          .map((item: RawEquipmentItem) => item.khoa_phong_quan_ly)
+          .filter((dept): dept is string => !!dept && dept !== 'Chưa phân loại')
       )).sort()
       
-      const locations = Array.from(new Set(
+      const locations: string[] = Array.from(new Set(
         equipment
-          .map(item => item.vi_tri_lap_dat)
-          .filter(loc => loc && loc !== 'Chưa xác định')
+          .map((item: RawEquipmentItem) => item.vi_tri_lap_dat)
+          .filter((loc): loc is string => !!loc && loc !== 'Chưa xác định')
       )).sort()
 
       return {

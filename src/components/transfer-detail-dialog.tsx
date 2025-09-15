@@ -15,6 +15,7 @@ import { Separator } from "@/components/ui/separator"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { useToast } from "@/hooks/use-toast"
 import { supabase } from "@/lib/supabase"
+import { callRpc } from "@/lib/rpc-client"
 import { 
   TRANSFER_TYPES, 
   TRANSFER_STATUSES,
@@ -45,21 +46,8 @@ export function TransferDetailDialog({ open, onOpenChange, transfer }: TransferD
 
     setIsLoadingHistory(true)
     try {
-      const { data, error } = await supabase
-        .from('lich_su_luan_chuyen')
-        .select(`
-          *,
-          nguoi_thuc_hien:nguoi_thuc_hien_id (
-            id,
-            full_name,
-            username
-          )
-        `)
-        .eq('yeu_cau_id', transfer.id)
-        .order('thoi_gian', { ascending: false })
-
-      if (error) throw error
-      setHistory(data as TransferHistory[])
+      const data = await callRpc<TransferHistory[]>({ fn: 'transfer_history_list', args: { p_yeu_cau_id: transfer.id } })
+      setHistory(data || [])
     } catch (error: any) {
       toast({
         variant: "destructive",

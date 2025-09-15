@@ -15,6 +15,7 @@ import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
 import { useToast } from "@/hooks/use-toast"
 import { supabase } from "@/lib/supabase"
+import { callRpc } from "@/lib/rpc-client"
 import { useSession } from "next-auth/react"
 import { useRouter } from "next/navigation"
 import { useTransferRequests, useCreateTransferRequest, useUpdateTransferRequest, useApproveTransferRequest, transferKeys } from "@/hooks/use-cached-transfers"
@@ -143,28 +144,13 @@ export default function TransfersPage() {
   }
 
   const handleDeleteTransfer = async (transferId: number) => {
-    if (!supabase) {
-      toast({
-        variant: "destructive",
-        title: "Lỗi",
-        description: "Không thể kết nối đến cơ sở dữ liệu."
-      })
-      return
-    }
 
     if (!confirm("Bạn có chắc chắn muốn xóa yêu cầu luân chuyển này?")) {
       return
     }
 
     try {
-      const { error } = await supabase
-        .from('yeu_cau_luan_chuyen')
-        .delete()
-        .eq('id', transferId)
-
-      if (error) {
-        throw error
-      }
+      await callRpc({ fn: 'transfer_request_delete', args: { p_id: transferId } })
 
       toast({
         title: "Thành công",
@@ -182,29 +168,9 @@ export default function TransfersPage() {
   }
 
   const handleApproveTransfer = async (transferId: number) => {
-    if (!supabase) {
-      toast({
-        variant: "destructive",
-        title: "Lỗi",
-        description: "Không thể kết nối đến cơ sở dữ liệu."
-      })
-      return
-    }
 
     try {
-      const { error } = await supabase
-        .from('yeu_cau_luan_chuyen')
-        .update({
-          trang_thai: 'da_duyet',
-          nguoi_duyet_id: user?.id,
-          ngay_duyet: new Date().toISOString(),
-          updated_by: user?.id
-        })
-        .eq('id', transferId)
-
-      if (error) {
-        throw error
-      }
+      await callRpc({ fn: 'transfer_request_update_status', args: { p_id: transferId, p_status: 'da_duyet', p_payload: { nguoi_duyet_id: user?.id } } })
 
       toast({
         title: "Thành công",
@@ -222,28 +188,9 @@ export default function TransfersPage() {
   }
 
   const handleStartTransfer = async (transferId: number) => {
-    if (!supabase) {
-      toast({
-        variant: "destructive",
-        title: "Lỗi",
-        description: "Không thể kết nối đến cơ sở dữ liệu."
-      })
-      return
-    }
 
     try {
-      const { error } = await supabase
-        .from('yeu_cau_luan_chuyen')
-        .update({
-          trang_thai: 'dang_luan_chuyen',
-          ngay_ban_giao: new Date().toISOString(),
-          updated_by: user?.id
-        })
-        .eq('id', transferId)
-
-      if (error) {
-        throw error
-      }
+      await callRpc({ fn: 'transfer_request_update_status', args: { p_id: transferId, p_status: 'dang_luan_chuyen', p_payload: { ngay_ban_giao: new Date().toISOString() } } })
 
       toast({
         title: "Thành công",
@@ -262,28 +209,9 @@ export default function TransfersPage() {
 
   // New function for external handover
   const handleHandoverToExternal = async (transferId: number) => {
-    if (!supabase) {
-      toast({
-        variant: "destructive",
-        title: "Lỗi",
-        description: "Không thể kết nối đến cơ sở dữ liệu."
-      })
-      return
-    }
 
     try {
-      const { error } = await supabase
-        .from('yeu_cau_luan_chuyen')
-        .update({
-          trang_thai: 'da_ban_giao',
-          ngay_ban_giao: new Date().toISOString(),
-          updated_by: user?.id
-        })
-        .eq('id', transferId)
-
-      if (error) {
-        throw error
-      }
+      await callRpc({ fn: 'transfer_request_update_status', args: { p_id: transferId, p_status: 'da_ban_giao', p_payload: { ngay_ban_giao: new Date().toISOString() } } })
 
       toast({
         title: "Thành công",
@@ -302,29 +230,9 @@ export default function TransfersPage() {
 
   // New function for returning equipment from external
   const handleReturnFromExternal = async (transferId: number) => {
-    if (!supabase) {
-      toast({
-        variant: "destructive",
-        title: "Lỗi",
-        description: "Không thể kết nối đến cơ sở dữ liệu."
-      })
-      return
-    }
 
     try {
-      const { error } = await supabase
-        .from('yeu_cau_luan_chuyen')
-        .update({
-          trang_thai: 'hoan_thanh',
-          ngay_hoan_tra: new Date().toISOString(),
-          ngay_hoan_thanh: new Date().toISOString(),
-          updated_by: user?.id
-        })
-        .eq('id', transferId)
-
-      if (error) {
-        throw error
-      }
+      await callRpc({ fn: 'transfer_request_complete', args: { p_id: transferId, p_payload: { ngay_hoan_tra: new Date().toISOString() } } })
 
       toast({
         title: "Thành công",
@@ -342,98 +250,9 @@ export default function TransfersPage() {
   }
 
   const handleCompleteTransfer = async (transfer: TransferRequest) => {
-    if (!supabase) {
-      toast({
-        variant: "destructive",
-        title: "Lỗi",
-        description: "Không thể kết nối đến cơ sở dữ liệu."
-      })
-      return
-    }
 
     try {
-      // Step 1: Update transfer request status
-      const { error: updateError } = await supabase
-        .from('yeu_cau_luan_chuyen')
-        .update({
-          trang_thai: 'hoan_thanh',
-          ngay_hoan_thanh: new Date().toISOString(),
-          updated_by: user?.id
-        })
-        .eq('id', transfer.id)
-
-      if (updateError) throw updateError;
-
-      // Step 2: Update equipment based on transfer type
-      if (transfer.loai_hinh === 'noi_bo' && transfer.khoa_phong_nhan) {
-        const { error: equipmentUpdateError } = await supabase
-          .from('thiet_bi')
-          .update({ khoa_phong_quan_ly: transfer.khoa_phong_nhan })
-          .eq('id', transfer.thiet_bi_id)
-        
-        if (equipmentUpdateError) {
-          toast({
-            variant: "destructive",
-            title: "Lỗi cập nhật thiết bị",
-            description: `Đã hoàn thành yêu cầu, nhưng không thể cập nhật khoa/phòng mới cho thiết bị. ${equipmentUpdateError.message}`,
-          });
-        }
-      } else if (transfer.loai_hinh === 'thanh_ly') {
-        const { error: equipmentUpdateError } = await supabase
-          .from('thiet_bi')
-          .update({ 
-            tinh_trang: 'Ngưng sử dụng',
-            khoa_phong_quan_ly: 'Tổ QLTB'
-          })
-          .eq('id', transfer.thiet_bi_id)
-
-        if (equipmentUpdateError) {
-          toast({
-            variant: "destructive",
-            title: "Lỗi cập nhật thiết bị",
-            description: `Đã hoàn thành yêu cầu thanh lý, nhưng không thể cập nhật trạng thái thiết bị. ${equipmentUpdateError.message}`,
-          });
-        }
-      }
-
-      // Step 3: Log the event to the general equipment history
-      let mo_ta = '';
-      let loai_su_kien = 'Luân chuyển';
-
-      if (transfer.loai_hinh === 'noi_bo') {
-        mo_ta = `Thiết bị được luân chuyển từ "${transfer.khoa_phong_hien_tai}" đến "${transfer.khoa_phong_nhan}".`;
-      } else if (transfer.loai_hinh === 'thanh_ly') {
-        mo_ta = `Thiết bị được thanh lý. Lý do: ${transfer.ly_do_luan_chuyen}`;
-        loai_su_kien = 'Thanh lý';
-      } else { // ben_ngoai
-        mo_ta = `Thiết bị được hoàn trả từ đơn vị bên ngoài "${transfer.don_vi_nhan}".`;
-      }
-
-      const { error: historyError } = await supabase
-        .from('lich_su_thiet_bi')
-        .insert({
-          thiet_bi_id: transfer.thiet_bi_id,
-          loai_su_kien: loai_su_kien,
-          mo_ta: mo_ta,
-          chi_tiet: {
-            ma_yeu_cau: transfer.ma_yeu_cau,
-            loai_hinh: transfer.loai_hinh,
-            khoa_phong_hien_tai: transfer.khoa_phong_hien_tai,
-            khoa_phong_nhan: transfer.khoa_phong_nhan,
-            don_vi_nhan: transfer.don_vi_nhan,
-          },
-          yeu_cau_id: transfer.id,
-          nguoi_thuc_hien_id: user?.id,
-          ngay_thuc_hien: new Date().toISOString()
-        });
-
-      if (historyError) {
-        toast({
-          variant: "destructive",
-          title: "Lỗi ghi lịch sử",
-          description: `Yêu cầu đã hoàn thành nhưng không thể ghi lại lịch sử thiết bị. ${historyError.message}`,
-        });
-      }
+      await callRpc({ fn: 'transfer_request_complete', args: { p_id: transfer.id } })
 
       toast({
         title: "Thành công",

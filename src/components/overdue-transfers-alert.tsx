@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 import { supabase } from "@/lib/supabase"
+import { callRpc } from "@/lib/rpc-client"
 import { TransferRequest } from "@/types/database"
 
 interface OverdueTransfersAlertProps {
@@ -33,23 +34,7 @@ export function OverdueTransfersAlert({ onViewTransfer }: OverdueTransfersAlertP
       const nextWeek = new Date()
       nextWeek.setDate(today.getDate() + 7)
 
-      const { data, error } = await supabase
-        .from('yeu_cau_luan_chuyen')
-        .select(`
-          *,
-          thiet_bi:thiet_bi_id (
-            id,
-            ma_thiet_bi,
-            ten_thiet_bi
-          )
-        `)
-        .eq('loai_hinh', 'ben_ngoai')
-        .in('trang_thai', ['da_ban_giao', 'dang_luan_chuyen'])
-        .not('ngay_du_kien_tra', 'is', null)
-
-      if (error) throw error
-
-      const transfers = data as TransferRequest[]
+      const transfers = await callRpc<TransferRequest[]>({ fn: 'transfer_request_external_pending_returns' })
       
       const overdue = transfers.filter(t => 
         new Date(t.ngay_du_kien_tra!) < today

@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { supabase } from '@/lib/supabase'
+import { callRpc } from '@/lib/rpc-client'
 import { toast } from '@/hooks/use-toast'
 import { useSession } from 'next-auth/react'
 import { CacheKeys, CACHE_CONFIG, DepartmentCacheUtils } from '@/lib/advanced-cache-manager'
@@ -31,40 +31,12 @@ export function useEquipment(filters?: {
       console.log('[useEquipment] Cache scope:', cacheScope)
       console.log('[useEquipment] Department filter:', userDepartment)
 
-      if (!supabase) {
-        throw new Error('Supabase client not initialized')
-      }
-
-      let query = supabase
-        .from('thiet_bi')
-        .select(`
-          *,
-          phong_ban:phong_ban(ten_phong_ban),
-          loai_thiet_bi:loai_thiet_bi(ten_loai)
-        `)
-
-      // Phase 3: Apply department filter based on cache scope
-      if (cacheScope.scope === 'department' && userDepartment) {
-        query = query.eq('khoa_phong_quan_ly', userDepartment)
-      }
-
-      // Apply other filters with optimized order (most selective first)
-      if (filters?.trang_thai) {
-        query = query.eq('trang_thai', filters.trang_thai)
-      }
-      if (filters?.loai_thiet_bi) {
-        query = query.eq('loai_thiet_bi_id', filters.loai_thiet_bi)
-      }
-      if (filters?.phong_ban) {
-        query = query.eq('phong_ban_id', filters.phong_ban)
-      }
-      if (filters?.search) {
-        query = query.or(`ten_thiet_bi.ilike.%${filters.search}%,ma_thiet_bi.ilike.%${filters.search}%`)
-      }
-
-      const { data, error } = await query.order('created_at', { ascending: false })
-
-      if (error) throw error
+      // Map filters to search query; advanced filtering to be implemented in SQL as needed
+      const search = filters?.search ?? null
+      const data = await callRpc<any[]>({
+        fn: 'equipment_list',
+        args: { p_q: search, p_sort: 'id.desc', p_page: 1, p_page_size: 200 },
+      })
 
       // Log performance metrics
       const endTime = performance.now()
@@ -88,26 +60,7 @@ export function useEquipmentDetail(id: string | null) {
     queryKey: equipmentKeys.detail(id || ''),
     queryFn: async () => {
       if (!id) return null
-      if (!supabase) {
-        throw new Error('Supabase client not initialized')
-      }
-      
-      const { data, error } = await supabase
-        .from('thiet_bi')
-        .select(`
-          *,
-          phong_ban:phong_ban(ten_phong_ban),
-          loai_thiet_bi:loai_thiet_bi(ten_loai),
-          yeu_cau_luan_chuyen(
-            *,
-            phong_ban_gui:phong_ban!yeu_cau_luan_chuyen_phong_ban_gui_fkey(ten_phong_ban),
-            phong_ban_nhan:phong_ban!yeu_cau_luan_chuyen_phong_ban_nhan_fkey(ten_phong_ban)
-          )
-        `)
-        .eq('id', id)
-        .single()
-
-      if (error) throw error
+      const data = await callRpc<any>({ fn: 'equipment_get', args: { p_id: Number(id) } })
       return data
     },
     enabled: !!id,
@@ -121,18 +74,7 @@ export function useUpdateEquipment() {
 
   return useMutation({
     mutationFn: async (params: { id: string; data: any }) => {
-      if (!supabase) {
-        throw new Error('Supabase client not initialized')
-      }
-
-      const { data, error } = await supabase
-        .from('thiet_bi')
-        .update(params.data)
-        .eq('id', params.id)
-        .select()
-        .single()
-
-      if (error) throw error
+      const data = await callRpc<any>({ fn: 'equipment_update', args: { p_id: Number(params.id), p_patch: params.data } })
       return data
     },
     onSuccess: (data) => {
@@ -164,17 +106,7 @@ export function useCreateEquipment() {
 
   return useMutation({
     mutationFn: async (data: any) => {
-      if (!supabase) {
-        throw new Error('Supabase client not initialized')
-      }
-
-      const { data: newEquipment, error } = await supabase
-        .from('thiet_bi')
-        .insert(data)
-        .select()
-        .single()
-
-      if (error) throw error
+      const newEquipment = await callRpc<any>({ fn: 'equipment_create', args: { p_payload: data } })
       return newEquipment
     },
     onSuccess: () => {
@@ -204,16 +136,7 @@ export function useDeleteEquipment() {
 
   return useMutation({
     mutationFn: async (id: string) => {
-      if (!supabase) {
-        throw new Error('Supabase client not initialized')
-      }
-
-      const { error } = await supabase
-        .from('thiet_bi')
-        .delete()
-        .eq('id', id)
-
-      if (error) throw error
+      await callRpc({ fn: 'equipment_delete', args: { p_id: Number(id) } })
     },
     onSuccess: () => {
       // Invalidate all equipment queries

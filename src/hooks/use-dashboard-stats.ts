@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
+import { callRpc } from '@/lib/rpc-client'
 
 // Query keys for dashboard statistics
 export const dashboardStatsKeys = {
@@ -16,16 +17,8 @@ export function useTotalEquipment() {
   return useQuery({
     queryKey: dashboardStatsKeys.totalEquipment(),
     queryFn: async (): Promise<number> => {
-      if (!supabase) {
-        throw new Error('Supabase client not initialized')
-      }
-
-      const { count, error } = await supabase
-        .from('thiet_bi')
-        .select('*', { count: 'exact', head: true })
-
-      if (error) throw error
-      return count ?? 0
+      const data = await callRpc<number>({ fn: 'equipment_count' })
+      return data ?? 0
     },
     staleTime: 2 * 60 * 1000, // 2 minutes - equipment count changes less frequently
     gcTime: 10 * 60 * 1000, // 10 minutes
@@ -39,17 +32,8 @@ export function useMaintenanceCount() {
   return useQuery({
     queryKey: dashboardStatsKeys.maintenanceCount(),
     queryFn: async (): Promise<number> => {
-      if (!supabase) {
-        throw new Error('Supabase client not initialized')
-      }
-
-      const { count, error } = await supabase
-        .from('thiet_bi')
-        .select('*', { count: 'exact', head: true })
-        .in('tinh_trang_hien_tai', ['Chờ bảo trì', 'Chờ hiệu chuẩn/kiểm định'])
-
-      if (error) throw error
-      return count ?? 0
+      const data = await callRpc<number>({ fn: 'equipment_count', args: { p_statuses: ['Chờ bảo trì', 'Chờ hiệu chuẩn/kiểm định'] } })
+      return data ?? 0
     },
     staleTime: 2 * 60 * 1000, // 2 minutes
     gcTime: 10 * 60 * 1000, // 10 minutes
@@ -182,19 +166,16 @@ export function useEquipmentAttention() {
   return useQuery({
     queryKey: dashboardStatsKeys.equipmentAttention(),
     queryFn: async (): Promise<EquipmentAttention[]> => {
-      if (!supabase) {
-        throw new Error('Supabase client not initialized')
-      }
-
-      const { data, error } = await supabase
-        .from('thiet_bi')
-        .select('id, ten_thiet_bi, ma_thiet_bi, model, tinh_trang_hien_tai, vi_tri_lap_dat, ngay_bt_tiep_theo')
-        .in('tinh_trang_hien_tai', ['Chờ sửa chữa', 'Chờ bảo trì', 'Chờ hiệu chuẩn/kiểm định'])
-        .limit(5)
-        .order('ngay_bt_tiep_theo', { ascending: true, nullsFirst: false })
-
-      if (error) throw error
-      return data || []
+      const data = await callRpc<any[]>({ fn: 'equipment_attention_list', args: { p_limit: 5 } })
+      return (data as any[] || []).map((row: any) => ({
+        id: row.id,
+        ten_thiet_bi: row.ten_thiet_bi,
+        ma_thiet_bi: row.ma_thiet_bi,
+        model: row.model ?? null,
+        tinh_trang_hien_tai: row.tinh_trang_hien_tai,
+        vi_tri_lap_dat: row.vi_tri_lap_dat ?? null,
+        ngay_bt_tiep_theo: row.ngay_bt_tiep_theo ?? null,
+      }))
     },
     staleTime: 2 * 60 * 1000, // 2 minutes
     gcTime: 10 * 60 * 1000, // 10 minutes

@@ -42,7 +42,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { supabase, supabaseError } from "@/lib/supabase"
+// Supabase client is not used directly; use RPC proxy instead
+import { callRpc } from "@/lib/rpc-client"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Calendar } from "@/components/ui/calendar"
 import { ArrowUpDown, Calendar as CalendarIcon, Check, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, ChevronUp, Edit, FilterX, History, Loader2, MoreHorizontal, PlusCircle, Trash2 } from "lucide-react"
@@ -64,7 +65,7 @@ import type { Column } from "@tanstack/react-table"
 import { RepairRequestAlert } from "@/components/repair-request-alert"
 import { useRepairRealtimeSync } from "@/hooks/use-realtime-sync"
 import { MobileFiltersDropdown } from "@/components/mobile-filters-dropdown"
-import { RepairRequestFilterStatus } from "@/components/department-filter-status"
+// Auto department filter removed
 
 
 type EquipmentSelectItem = {
@@ -312,7 +313,8 @@ export default function RepairRequestsPage() {
   const [searchTerm, setSearchTerm] = React.useState("");
   const debouncedSearch = useSearchDebounce(searchTerm);
 
-  const canSetRepairUnit = user && ['admin', 'to_qltb'].includes(user.role);
+  // Align with repo roles: use 'global' instead of legacy 'admin'
+  const canSetRepairUnit = !!user && ['global', 'to_qltb'].includes(user.role);
 
   React.useEffect(() => {
     if (editingRequest) {
@@ -331,17 +333,10 @@ export default function RepairRequestsPage() {
   const CACHE_KEY = 'repair_requests_data';
 
   const fetchRequests = React.useCallback(async () => {
-    if (!supabase) return;
     setIsLoading(true);
 
-    // Phase 2: Department-based filtering for repair requests
-    const shouldFilterByDepartment = user &&
-      !['admin', 'to_qltb'].includes(user.role) &&
-      user.khoa_phong;
-
-    const cacheKey = shouldFilterByDepartment
-      ? `${CACHE_KEY}_${user.khoa_phong}`
-      : CACHE_KEY;
+    // Unified cache key (tenant scoping enforced server-side)
+    const cacheKey = CACHE_KEY;
 
     try {
       const cachedItemJSON = localStorage.getItem(cacheKey);
@@ -356,187 +351,150 @@ export default function RepairRequestsPage() {
       localStorage.removeItem(cacheKey);
     }
 
-    let query = supabase
-      .from('yeu_cau_sua_chua')
-      .select(`
-            id,
-            thiet_bi_id,
-            ngay_yeu_cau,
-            trang_thai,
-            mo_ta_su_co,
-            hang_muc_sua_chua,
-            ngay_mong_muon_hoan_thanh,
-            nguoi_yeu_cau,
-            ngay_duyet,
-            ngay_hoan_thanh,
-            nguoi_duyet,
-            nguoi_xac_nhan,
-            don_vi_thuc_hien,
-            ten_don_vi_thue,
-            ket_qua_sua_chua,
-            ly_do_khong_hoan_thanh,
-            thiet_bi (
-                ten_thiet_bi,
-                ma_thiet_bi,
-                model,
-                serial,
-                khoa_phong_quan_ly
-            )
-        `);
+    try {
+      // Fetch via RPC gateway
+      const data = await callRpc<any[]>({
+        fn: 'repair_request_list',
+        args: { p_q: null, p_status: null, p_page: 1, p_page_size: 5000 }
+      })
 
-    // Phase 2: Apply department filter for repair requests
-    if (shouldFilterByDepartment) {
-      console.log(`[RepairRequests] Applying department filter: ${user.khoa_phong}`);
-      query = query.eq('thiet_bi.khoa_phong_quan_ly', user.khoa_phong);
-    }
-
-  const { data, error } = await query.order('ngay_yeu_cau', { ascending: false });
-
-    if (error) {
+      if (!data) {
+        toast({
+          variant: "destructive",
+          title: "Lỗi tải danh sách yêu cầu",
+          description: "Không thể tải danh sách yêu cầu.",
+        });
+        if (!localStorage.getItem(cacheKey)) {
+          setRequests([]);
+        }
+      } else {
+        const normalized: RepairRequestWithEquipment[] = (data || []).map((row: any) => ({
+          id: row.id,
+          thiet_bi_id: row.thiet_bi_id,
+          ngay_yeu_cau: row.ngay_yeu_cau,
+          trang_thai: row.trang_thai,
+          mo_ta_su_co: row.mo_ta_su_co,
+          hang_muc_sua_chua: row.hang_muc_sua_chua,
+          ngay_mong_muon_hoan_thanh: row.ngay_mong_muon_hoan_thanh,
+          nguoi_yeu_cau: row.nguoi_yeu_cau,
+          ngay_duyet: row.ngay_duyet,
+          ngay_hoan_thanh: row.ngay_hoan_thanh,
+          nguoi_duyet: row.nguoi_duyet,
+          nguoi_xac_nhan: row.nguoi_xac_nhan,
+          don_vi_thuc_hien: row.don_vi_thuc_hien,
+          ten_don_vi_thue: row.ten_don_vi_thue,
+          ket_qua_sua_chua: row.ket_qua_sua_chua,
+          ly_do_khong_hoan_thanh: row.ly_do_khong_hoan_thanh,
+          thiet_bi: row.thiet_bi ? {
+            ten_thiet_bi: row.thiet_bi.ten_thiet_bi,
+            ma_thiet_bi: row.thiet_bi.ma_thiet_bi,
+            model: row.thiet_bi.model ?? null,
+            serial: row.thiet_bi.serial ?? null,
+            khoa_phong_quan_ly: row.thiet_bi.khoa_phong_quan_ly ?? null,
+          } : null,
+        }))
+        setRequests(normalized);
+        try {
+          localStorage.setItem(cacheKey, JSON.stringify({ data }));
+        } catch (e) {
+          console.error("Error writing repair requests to localStorage", e);
+        }
+      }
+    } catch (err: any) {
+      console.error('Failed to load repair requests', err);
       toast({
-        variant: "destructive",
-        title: "Lỗi tải danh sách yêu cầu",
-        description: error.message,
-      });
+        variant: 'destructive',
+        title: 'Lỗi tải danh sách yêu cầu',
+        description: err?.message || 'Không thể tải danh sách yêu cầu.',
+      })
       if (!localStorage.getItem(cacheKey)) {
-        setRequests([]);
+        setRequests([])
       }
-    } else {
-      const normalized: RepairRequestWithEquipment[] = (data || []).map((row: any) => ({
-        id: row.id,
-        thiet_bi_id: row.thiet_bi_id,
-        ngay_yeu_cau: row.ngay_yeu_cau,
-        trang_thai: row.trang_thai,
-        mo_ta_su_co: row.mo_ta_su_co,
-        hang_muc_sua_chua: row.hang_muc_sua_chua,
-        ngay_mong_muon_hoan_thanh: row.ngay_mong_muon_hoan_thanh,
-        nguoi_yeu_cau: row.nguoi_yeu_cau,
-        ngay_duyet: row.ngay_duyet,
-        ngay_hoan_thanh: row.ngay_hoan_thanh,
-        nguoi_duyet: row.nguoi_duyet,
-        nguoi_xac_nhan: row.nguoi_xac_nhan,
-        don_vi_thuc_hien: row.don_vi_thuc_hien,
-        ten_don_vi_thue: row.ten_don_vi_thue,
-        ket_qua_sua_chua: row.ket_qua_sua_chua,
-        ly_do_khong_hoan_thanh: row.ly_do_khong_hoan_thanh,
-        thiet_bi: row.thiet_bi ? {
-          ten_thiet_bi: row.thiet_bi.ten_thiet_bi,
-          ma_thiet_bi: row.thiet_bi.ma_thiet_bi,
-          model: row.thiet_bi.model ?? null,
-          serial: (row.thiet_bi.serial ?? row.thiet_bi.serial_number) ?? null,
-          khoa_phong_quan_ly: row.thiet_bi.khoa_phong_quan_ly ?? null,
-        } : null,
-      }))
-      setRequests(normalized);
-      try {
-        localStorage.setItem(cacheKey, JSON.stringify({ data }));
-      } catch (e) {
-        console.error("Error writing repair requests to localStorage", e);
-      }
+    } finally {
+      setIsLoading(false);
     }
-    setIsLoading(false);
   }, [toast, user]);
 
   const invalidateCacheAndRefetch = React.useCallback(() => {
     try {
       // Clear both general and department-specific cache
       localStorage.removeItem(CACHE_KEY);
-      if (user?.khoa_phong) {
-        localStorage.removeItem(`${CACHE_KEY}_${user.khoa_phong}`);
-      }
     } catch (error) {
       console.error("Failed to invalidate repair requests cache", error);
     }
     fetchRequests();
-  }, [fetchRequests, user?.khoa_phong]);
+  }, [fetchRequests]);
 
   const handleSelectEquipment = React.useCallback((equipment: EquipmentSelectItem) => {
     setSelectedEquipment(equipment);
     setSearchQuery(`${equipment.ten_thiet_bi} (${equipment.ma_thiet_bi})`);
   }, []);
 
+  // Initial load: fetch a small equipment list via RPC, then load repair requests
   React.useEffect(() => {
     const fetchInitialData = async () => {
-  if (supabaseError) {
-        toast({
-          variant: "destructive",
-          title: "Lỗi cấu hình Supabase",
-          description: supabaseError,
-          duration: 10000,
-        })
-        setIsLoading(false)
-        return;
-      }
-      if (!supabase || !user) {
-        setIsLoading(false)
-        return;
-      }
-
-      // Fetch equipment with department-based filtering
       try {
-  let query = supabase.from('thiet_bi').select('id, ma_thiet_bi, ten_thiet_bi, khoa_phong_quan_ly');
-
-        // Apply department filter for non-admin users
-        const shouldFilterByDepartment = user &&
-          !['admin', 'to_qltb'].includes(user.role) &&
-          user.khoa_phong;
-
-        if (shouldFilterByDepartment) {
-          query = query.eq('khoa_phong_quan_ly', user.khoa_phong);
-        }
-
-        const { data: equipmentData, error: equipmentError } = await query;
-
-        if (equipmentError) {
-          toast({
-            variant: "destructive",
-            title: "Lỗi",
-            description: "Không thể tải danh sách thiết bị. " + equipmentError.message,
-          })
-        } else {
-          setAllEquipment(equipmentData || [])
-        }
-      } catch (error) {
+        const eq = await callRpc<any[]>({
+          fn: 'equipment_list',
+          args: { p_q: null, p_sort: 'ten_thiet_bi.asc', p_page: 1, p_page_size: 50 },
+        })
+        setAllEquipment((eq || []).map((row: any) => ({
+          id: row.id,
+          ma_thiet_bi: row.ma_thiet_bi,
+          ten_thiet_bi: row.ten_thiet_bi,
+          khoa_phong_quan_ly: row.khoa_phong_quan_ly,
+        })))
+      } catch (error: any) {
         toast({
-          variant: "destructive",
-          title: "Lỗi",
-          description: "Không thể tải danh sách thiết bị. Vui lòng thử lại.",
+          variant: 'destructive',
+          title: 'Lỗi',
+          description: 'Không thể tải danh sách thiết bị. ' + (error?.message || ''),
         })
       }
-
-      // Fetch repair requests (will use cache if available)
-      fetchRequests();
+      fetchRequests()
     }
-    fetchInitialData();
-  }, [toast, fetchRequests, user])
+    fetchInitialData()
+  }, [toast, fetchRequests])
 
+  // Support preselect by equipmentId query param using equipment_get RPC if needed
   React.useEffect(() => {
     const equipmentId = searchParams.get('equipmentId');
-    if (equipmentId && allEquipment.length > 0) {
-      if (selectedEquipment && selectedEquipment.id === Number(equipmentId)) {
+    const run = async () => {
+      if (!equipmentId) return;
+      const idNum = Number(equipmentId);
+      if (selectedEquipment && selectedEquipment.id === idNum) return;
+      const existing = allEquipment.find(eq => eq.id === idNum);
+      if (existing) {
+        handleSelectEquipment(existing);
         return;
       }
-      const equipmentToSelect = allEquipment.find(eq => eq.id === Number(equipmentId));
-      if (equipmentToSelect) {
-        handleSelectEquipment(equipmentToSelect);
+      try {
+        const row: any = await callRpc({ fn: 'equipment_get', args: { p_id: idNum } })
+        if (row) {
+          const item: EquipmentSelectItem = {
+            id: row.id,
+            ma_thiet_bi: row.ma_thiet_bi,
+            ten_thiet_bi: row.ten_thiet_bi,
+            khoa_phong_quan_ly: row.khoa_phong_quan_ly,
+          }
+          setAllEquipment(prev => [item, ...prev.filter(x => x.id !== item.id)])
+          handleSelectEquipment(item)
+        }
+      } catch (e) {
+        // ignore; toast not necessary for deep link preselect
       }
     }
+    run();
   }, [searchParams, allEquipment, handleSelectEquipment, selectedEquipment]);
 
 
   const filteredEquipment = React.useMemo(() => {
-    if (!searchQuery) return [];
-
+    if (!searchQuery) return []
     if (selectedEquipment && searchQuery === `${selectedEquipment.ten_thiet_bi} (${selectedEquipment.ma_thiet_bi})`) {
-      return [];
+      return []
     }
-
-    return allEquipment.filter(
-      (eq) =>
-        eq.ten_thiet_bi.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        eq.ma_thiet_bi.toLowerCase().includes(searchQuery.toLowerCase())
-    );
-  }, [searchQuery, allEquipment, selectedEquipment]);
+    return allEquipment
+  }, [searchQuery, allEquipment, selectedEquipment])
 
   const shouldShowNoResults = React.useMemo(() => {
     if (!searchQuery) return false;
@@ -552,6 +510,33 @@ export default function RepairRequestsPage() {
       setSelectedEquipment(null);
     }
   }
+
+  // Fetch equipment options via RPC when searchQuery changes
+  React.useEffect(() => {
+    const label = selectedEquipment ? `${selectedEquipment.ten_thiet_bi} (${selectedEquipment.ma_thiet_bi})` : ''
+    const q = searchQuery?.trim()
+    if (!q || (label && q === label)) return
+    const ctrl = new AbortController()
+    const run = async () => {
+      try {
+        const eq = await callRpc<any[]>({
+          fn: 'equipment_list',
+          args: { p_q: q, p_sort: 'ten_thiet_bi.asc', p_page: 1, p_page_size: 20 },
+        })
+        if (ctrl.signal.aborted) return
+        setAllEquipment((eq || []).map((row: any) => ({
+          id: row.id,
+          ma_thiet_bi: row.ma_thiet_bi,
+          ten_thiet_bi: row.ten_thiet_bi,
+          khoa_phong_quan_ly: row.khoa_phong_quan_ly,
+        })))
+      } catch (e) {
+        // Silent fail for suggestions
+      }
+    }
+    run()
+    return () => ctrl.abort()
+  }, [searchQuery, selectedEquipment])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -582,72 +567,28 @@ export default function RepairRequestsPage() {
     setIsSubmitting(true)
 
     try {
-      // Check department authorization for non-admin users
-      if (!['admin', 'to_qltb'].includes(user.role)) {
-        if (!user.khoa_phong) {
-          toast({
-            variant: "destructive",
-            title: "Không có quyền",
-            description: "Tài khoản chưa được phân công khoa/phòng.",
-          });
-          setIsSubmitting(false);
-          return;
-        }
-
-        if (!supabase) return
-        const { data: equipmentData, error: equipmentError } = await supabase
-          .from('thiet_bi')
-          .select('khoa_phong_quan_ly')
-          .eq('id', selectedEquipment.id)
-          .single();
-
-        if (equipmentError || !equipmentData) {
-          toast({
-            variant: "destructive",
-            title: "Lỗi",
-            description: "Không thể xác thực thiết bị.",
-          });
-          setIsSubmitting(false);
-          return;
-        }
-
-        if (equipmentData.khoa_phong_quan_ly !== user.khoa_phong) {
-          toast({
-            variant: "destructive",
-            title: "Không có quyền",
-            description: "Bạn chỉ có thể tạo yêu cầu sửa chữa cho thiết bị thuộc khoa/phòng của mình.",
-          });
-          setIsSubmitting(false);
-          return;
-        }
-      }
-
-      // Create repair request
-      if (!supabase) {
-        toast({ variant: 'destructive', title: 'Lỗi', description: 'Supabase chưa sẵn sàng.' })
-        setIsSubmitting(false)
-        return
-      }
-      const { error } = await supabase
-        .from('yeu_cau_sua_chua')
-        .insert({
-          thiet_bi_id: selectedEquipment.id,
-          mo_ta_su_co: issueDescription,
-          hang_muc_sua_chua: repairItems,
-          ngay_mong_muon_hoan_thanh: desiredDate ? format(desiredDate, "yyyy-MM-dd") : null,
-          nguoi_yeu_cau: user.full_name || user.username,
-          trang_thai: 'Chờ xử lý',
-          don_vi_thuc_hien: canSetRepairUnit ? repairUnit : null,
-          ten_don_vi_thue: canSetRepairUnit && repairUnit === 'thue_ngoai' ? externalCompanyName.trim() : null,
-        });
-
-      if (error) {
+      // Create repair request via RPC; server-side enforces tenant/role
+      try {
+        await callRpc({
+          fn: 'repair_request_create',
+          args: {
+            p_thiet_bi_id: selectedEquipment.id,
+            p_mo_ta_su_co: issueDescription,
+            p_hang_muc_sua_chua: repairItems,
+            p_ngay_mong_muon_hoan_thanh: desiredDate ? format(desiredDate, "yyyy-MM-dd") : null,
+            p_nguoi_yeu_cau: user.full_name || user.username,
+            p_don_vi_thuc_hien: canSetRepairUnit ? repairUnit : null,
+            p_ten_don_vi_thue: canSetRepairUnit && repairUnit === 'thue_ngoai' ? externalCompanyName.trim() : null,
+          }
+        })
+      } catch (error: any) {
         toast({
           variant: "destructive",
           title: "Gửi yêu cầu thất bại",
-          description: error.message,
+          description: error?.message || 'Không thể tạo yêu cầu',
         });
-      } else {
+      }
+      if (true) {
         toast({
           title: "Thành công",
           description: "Yêu cầu sửa chữa của bạn đã được gửi đi.",
@@ -682,7 +623,7 @@ export default function RepairRequestsPage() {
   }
 
   const handleConfirmApproval = async () => {
-    if (!supabase || !requestToApprove) return;
+    if (!requestToApprove) return;
 
     // Validate external company name when repair unit is external
     if (approvalRepairUnit === 'thue_ngoai' && !approvalExternalCompanyName.trim()) {
@@ -696,44 +637,27 @@ export default function RepairRequestsPage() {
 
     setIsApproving(true);
 
-    const { error: requestError } = await supabase
-      .from('yeu_cau_sua_chua')
-      .update({
-        trang_thai: 'Đã duyệt',
-        ngay_duyet: new Date().toISOString(),
-        nguoi_duyet: user?.full_name || user?.username || '',
-        don_vi_thuc_hien: approvalRepairUnit,
-        ten_don_vi_thue: approvalRepairUnit === 'thue_ngoai' ? approvalExternalCompanyName.trim() : null
+    try {
+      await callRpc({
+        fn: 'repair_request_approve',
+        args: {
+          p_id: requestToApprove.id,
+          p_nguoi_duyet: user?.full_name || user?.username || '',
+          p_don_vi_thuc_hien: approvalRepairUnit,
+          p_ten_don_vi_thue: approvalRepairUnit === 'thue_ngoai' ? approvalExternalCompanyName.trim() : null
+        }
       })
-      .eq('id', requestToApprove.id);
-
-    if (requestError) {
+    } catch (requestError: any) {
       toast({
         variant: "destructive",
         title: "Lỗi duyệt yêu cầu",
-        description: "Không thể duyệt yêu cầu. " + requestError.message,
+        description: "Không thể duyệt yêu cầu. " + (requestError?.message || ''),
       });
       setIsApproving(false);
       return;
     }
 
-    const { error: equipmentError } = await supabase
-      .from('thiet_bi')
-      .update({ tinh_trang_hien_tai: 'Chờ sửa chữa' })
-      .eq('id', requestToApprove.thiet_bi_id);
-
-    if (equipmentError) {
-      toast({
-        variant: "destructive",
-        title: "Lỗi cập nhật thiết bị",
-        description: `Đã duyệt yêu cầu, nhưng không thể cập nhật trạng thái thiết bị. ${equipmentError.message}`,
-      });
-    } else {
-      toast({
-        title: "Thành công",
-        description: "Đã duyệt yêu cầu và cập nhật trạng thái thiết bị.",
-      });
-    }
+    toast({ title: "Thành công", description: "Đã duyệt yêu cầu." });
 
     setRequestToApprove(null);
     setApprovalRepairUnit('noi_bo');
@@ -750,7 +674,7 @@ export default function RepairRequestsPage() {
   }
 
   const handleConfirmCompletion = async () => {
-    if (!supabase || !requestToComplete || !completionType) return;
+    if (!requestToComplete || !completionType) return;
 
     // Validate input based on completion type
     if (completionType === 'Hoàn thành' && !completionResult.trim()) {
@@ -773,54 +697,21 @@ export default function RepairRequestsPage() {
 
     setIsCompleting(true);
 
-    const newEquipmentStatus = completionType === 'Hoàn thành' ? 'Hoạt động' : 'Chờ sửa chữa';
-
-    const { error: requestError } = await supabase
-      .from('yeu_cau_sua_chua')
-      .update({
-        trang_thai: completionType,
-        ngay_hoan_thanh: new Date().toISOString(),
-        nguoi_xac_nhan: user?.full_name || user?.username || '',
-        ket_qua_sua_chua: completionType === 'Hoàn thành' ? completionResult.trim() : null,
-        ly_do_khong_hoan_thanh: completionType === 'Không HT' ? nonCompletionReason.trim() : null,
+    try {
+      await callRpc({
+        fn: 'repair_request_complete',
+        args: {
+          p_id: requestToComplete.id,
+          p_completion: completionType === 'Hoàn thành' ? completionResult.trim() : null,
+          p_reason: completionType === 'Không HT' ? nonCompletionReason.trim() : null,
+        }
       })
-      .eq('id', requestToComplete.id);
-
-    if (requestError) {
-      toast({ variant: "destructive", title: "Lỗi cập nhật yêu cầu", description: requestError.message });
+    } catch (requestError: any) {
+      toast({ variant: "destructive", title: "Lỗi cập nhật yêu cầu", description: requestError?.message || '' });
       setIsCompleting(false);
       return;
     }
-
-    const { error: equipmentError } = await supabase
-      .from('thiet_bi')
-      .update({ tinh_trang_hien_tai: newEquipmentStatus })
-      .eq('id', requestToComplete.thiet_bi_id);
-
-    if (equipmentError) {
-      toast({ variant: "destructive", title: "Lỗi cập nhật thiết bị", description: `Đã cập nhật yêu cầu, nhưng lỗi khi cập nhật trạng thái thiết bị. ${equipmentError.message}` });
-    } else {
-      toast({ title: "Thành công", description: `Đã cập nhật trạng thái yêu cầu thành "${completionType}".` });
-    }
-
-    const { error: historyError } = await supabase
-      .from('lich_su_thiet_bi')
-      .insert({
-        thiet_bi_id: requestToComplete.thiet_bi_id,
-        loai_su_kien: 'Sửa chữa',
-        mo_ta: `Yêu cầu sửa chữa được cập nhật thành "${completionType}"`,
-        chi_tiet: {
-          mo_ta_su_co: requestToComplete.mo_ta_su_co,
-          hang_muc_sua_chua: requestToComplete.hang_muc_sua_chua,
-          nguoi_yeu_cau: requestToComplete.nguoi_yeu_cau,
-          ket_qua: completionType === 'Hoàn thành' ? completionResult.trim() : nonCompletionReason.trim()
-        },
-        yeu_cau_id: requestToComplete.id,
-      });
-
-    if (historyError) {
-      toast({ variant: "destructive", title: "Lỗi ghi nhận lịch sử", description: `Đã cập nhật yêu cầu nhưng không thể ghi lại lịch sử. ${historyError.message}` });
-    }
+    toast({ title: "Thành công", description: `Đã cập nhật trạng thái yêu cầu thành "${completionType}".` });
 
     setRequestToComplete(null);
     setCompletionType(null);
@@ -843,44 +734,44 @@ export default function RepairRequestsPage() {
     }
 
     setIsEditSubmitting(true);
-    if (!supabase) return
-    const { error } = await supabase
-      .from('yeu_cau_sua_chua')
-      .update({
-        mo_ta_su_co: editIssueDescription,
-        hang_muc_sua_chua: editRepairItems,
-        ngay_mong_muon_hoan_thanh: editDesiredDate ? format(editDesiredDate, "yyyy-MM-dd") : null,
-        don_vi_thuc_hien: canSetRepairUnit ? editRepairUnit : editingRequest.don_vi_thuc_hien,
-        ten_don_vi_thue: canSetRepairUnit && editRepairUnit === 'thue_ngoai' ? editExternalCompanyName.trim() : (canSetRepairUnit ? null : editingRequest.ten_don_vi_thue),
+    // Update via RPC
+    try {
+      await callRpc({
+        fn: 'repair_request_update',
+        args: {
+          p_id: editingRequest.id,
+          p_mo_ta_su_co: editIssueDescription,
+          p_hang_muc_sua_chua: editRepairItems,
+          p_ngay_mong_muon_hoan_thanh: editDesiredDate ? format(editDesiredDate, "yyyy-MM-dd") : null,
+          p_don_vi_thuc_hien: canSetRepairUnit ? editRepairUnit : editingRequest.don_vi_thuc_hien,
+          p_ten_don_vi_thue: canSetRepairUnit && editRepairUnit === 'thue_ngoai' ? editExternalCompanyName.trim() : (canSetRepairUnit ? null : editingRequest.ten_don_vi_thue),
+        }
       })
-      .eq('id', editingRequest.id);
-
-    if (error) {
-      toast({ variant: "destructive", title: "Lỗi cập nhật", description: error.message });
-    } else {
-      toast({ title: "Thành công", description: "Đã cập nhật yêu cầu." });
-      setEditingRequest(null);
-      invalidateCacheAndRefetch();
+    } catch (error: any) {
+      toast({ variant: "destructive", title: "Lỗi cập nhật", description: error?.message || 'Không thể cập nhật yêu cầu' });
+      setIsEditSubmitting(false);
+      return;
     }
+    toast({ title: "Thành công", description: "Đã cập nhật yêu cầu." });
+    setEditingRequest(null);
+    invalidateCacheAndRefetch();
     setIsEditSubmitting(false);
   }
 
   const handleDeleteRequest = async () => {
-    if (!requestToDelete || !supabase) return;
+    if (!requestToDelete) return;
     setIsDeleting(true);
-
-    if (!supabase) return
-    const { error } = await supabase
-      .from('yeu_cau_sua_chua')
-      .delete()
-      .eq('id', requestToDelete.id);
-
-    if (error) {
-      toast({ variant: "destructive", title: "Lỗi xóa yêu cầu", description: error.message });
-    } else {
-      toast({ title: "Đã xóa", description: "Yêu cầu đã được xóa thành công." });
-      invalidateCacheAndRefetch();
+    try {
+      await callRpc({ fn: 'repair_request_delete', args: { p_id: requestToDelete.id } })
+    } catch (error: any) {
+      toast({ variant: "destructive", title: "Lỗi xóa yêu cầu", description: error?.message || 'Không thể xóa yêu cầu' });
+      setIsDeleting(false);
+      setRequestToDelete(null);
+      return;
     }
+
+    toast({ title: "Đã xóa", description: "Yêu cầu đã được xóa thành công." });
+    invalidateCacheAndRefetch();
 
     setIsDeleting(false);
     setRequestToDelete(null);
@@ -1833,11 +1724,7 @@ export default function RepairRequestsPage() {
                   <div className="relative">
                     <Input
                       id="search-equipment"
-                      placeholder={
-                        user && !['admin', 'to_qltb'].includes(user.role) && user.khoa_phong
-                          ? `Tìm thiết bị thuộc ${user.khoa_phong}...`
-                          : "Nhập tên hoặc mã để tìm kiếm..."
-                      }
+                      placeholder={"Nhập tên hoặc mã để tìm kiếm..."}
                       value={searchQuery}
                       onChange={handleSearchChange}
                       autoComplete="off"
@@ -1867,10 +1754,7 @@ export default function RepairRequestsPage() {
                     {shouldShowNoResults && (
                       <div className="absolute z-10 w-full mt-1 bg-popover border rounded-md shadow-lg p-3">
                         <div className="text-sm text-muted-foreground text-center">
-                          {user && !['admin', 'to_qltb'].includes(user.role) && user.khoa_phong
-                            ? `Không tìm thấy thiết bị thuộc ${user.khoa_phong} phù hợp với từ khóa "${searchQuery}"`
-                            : `Không tìm thấy thiết bị phù hợp với từ khóa "${searchQuery}"`
-                          }
+                          {`Không tìm thấy thiết bị phù hợp với từ khóa "${searchQuery}"`}
                         </div>
                       </div>
                     )}
@@ -1881,16 +1765,7 @@ export default function RepairRequestsPage() {
                       <span>Đã chọn: {selectedEquipment.ten_thiet_bi} ({selectedEquipment.ma_thiet_bi})</span>
                     </p>
                   )}
-                  {user && !['admin', 'to_qltb'].includes(user.role) && user.khoa_phong && (
-                    <div className="text-xs text-muted-foreground">
-                      💡 Bạn chỉ có thể tạo yêu cầu sửa chữa cho thiết bị thuộc khoa/phòng: <span className="font-medium text-blue-600">{user.khoa_phong}</span>
-                    </div>
-                  )}
-                  {user && (!user.khoa_phong || user.khoa_phong === '') && !['admin', 'to_qltb'].includes(user.role) && (
-                    <div className="text-xs text-amber-600 bg-amber-50 p-2 rounded border">
-                      ⚠️ Tài khoản của bạn chưa được phân công khoa/phòng. Vui lòng liên hệ quản trị viên để được cấp quyền tạo yêu cầu sửa chữa.
-                    </div>
-                  )}
+                  
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="issue">Mô tả sự cố</Label>
@@ -2026,11 +1901,7 @@ export default function RepairRequestsPage() {
                   Tất cả các yêu cầu sửa chữa đã được ghi nhận.
                 </CardDescription>
 
-                {/* Phase 2: Department filter notification for repair requests */}
-                <RepairRequestFilterStatus
-                  itemCount={requests.length}
-                  className="mt-3"
-                />
+                {/* Department auto-filter removed */}
               </CardHeader>
               <CardContent className="p-3 md:p-6 gap-3 md:gap-4">
                 <div className="flex items-center justify-between gap-2 flex-wrap mb-3 md:mb-4">

@@ -1,0 +1,8 @@
+- Implemented server-side RPC gateway signing short-lived JWTs with `app_role`, `don_vi`, `user_id` claims; whitelist validated.
+- SQL RPCs enforce tenant scoping (no RLS) using `_get_jwt_claim` with `COALESCE(app_role, role)`.
+- Auto department filter removed from Equipment and Repairs pages; global users now see all data by design.
+- Equipment: continues to use `equipment_list` via gateway; KPIs validated earlier.
+- Repairs: switched to `repair_request_*` RPCs for list/create/update/approve/complete/delete; fixed compile errors by using `callRpc({ fn, args })` and correcting try/catch blocks.
+- New migration `supabase/migrations/20250915_ops_rpcs.sql` adds repairs/transfers/maintenance RPCs and grants; gateway whitelist updated.
+- Pending: refactor Transfers and Maintenance pages to gateway RPCs; move equipment status/history writes for repairs into SQL RPCs; apply migrations and smoke test tenant scoping for `global` vs tenant roles.
+- Env: requires `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_JWT_SECRET`; NextAuth session supplies `role` + `don_vi`.
