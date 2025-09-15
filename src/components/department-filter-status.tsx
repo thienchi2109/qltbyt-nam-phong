@@ -63,7 +63,7 @@ export function DepartmentFilterStatus({
   
   // Only show for non-admin users with department
   const shouldShow = user && 
-    !['admin', 'to_qltb'].includes(user.role) && 
+    !['global', 'to_qltb', 'admin'].includes(user.role) && 
     user.khoa_phong
 
   if (!shouldShow) {

@@ -209,7 +209,13 @@ export function ImportEquipmentDialog({ open, onOpenChange, onSuccess }: ImportE
       });
 
   if (!supabase) throw new Error('Supabase client not initialized')
-  const { error } = await supabase.from("thiet_bi").insert(dataToInsert);
+  // Insert via RPC per record to ensure tenant/role checks
+  for (const rec of dataToInsert) {
+    const { error } = await supabase.rpc('equipment_create', { p_payload: rec as any });
+    if (error) {
+      throw error;
+    }
+  }
 
       if (error) {
         throw error

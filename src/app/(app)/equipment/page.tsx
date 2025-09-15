@@ -89,6 +89,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { type Equipment } from "@/types/database"
 import { supabase, supabaseError } from "@/lib/supabase"
+import { callRpc } from "@/lib/rpc-client"
 import { useEquipmentRealtimeSync } from "@/hooks/use-realtime-sync"
 import { useToast } from "@/hooks/use-toast"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -107,7 +108,7 @@ import { UsageHistoryTab } from "@/components/usage-history-tab"
 import { ActiveUsageIndicator } from "@/components/active-usage-indicator"
 import { MobileUsageActions } from "@/components/mobile-usage-actions"
 import { useSearchDebounce } from "@/hooks/use-debounce"
-import { EquipmentFilterStatus } from "@/components/department-filter-status"
+// Auto department filter removed
 import { MobileEquipmentListItem } from "@/components/mobile-equipment-list-item"
 
 type Attachment = {
@@ -840,10 +841,8 @@ export default function EquipmentPage() {
   const fetchEquipment = React.useCallback(async () => {
       setIsLoading(true);
 
-      // Phase 1: Department-based filtering - check cache key includes user department
-      const cacheKey = user?.khoa_phong && !['admin', 'to_qltb'].includes(user.role)
-        ? `${CACHE_KEY}_${user.khoa_phong}`
-        : CACHE_KEY;
+      // Unified cache key (tenant scoping enforced server-side)
+      const cacheKey = CACHE_KEY;
 
       try {
         const cachedItemJSON = localStorage.getItem(cacheKey);
@@ -869,50 +868,31 @@ export default function EquipmentPage() {
           setIsLoading(false);
           return;
       }
-      if (!supabase) {
-          setIsLoading(false);
-          return;
-      }
-
-      // Phase 1: Apply department-based filtering for non-admin users
-      let query = supabase.from('thiet_bi').select('*');
-
-      // Apply department filter for non-admin users
-      const shouldFilterByDepartment = user &&
-        !['admin', 'to_qltb'].includes(user.role) &&
-        user.khoa_phong;
-
-      if (shouldFilterByDepartment) {
-        console.log(`[Equipment] Applying department filter: ${user.khoa_phong}`);
-        query = query.eq('khoa_phong_quan_ly', user.khoa_phong);
-      }
-
-      const { data, error } = await query.order('id', { ascending: true });
-
-      if (error) {
-        toast({
-          variant: "destructive",
-          title: "Lỗi",
-          description: "Không thể tải dữ liệu thiết bị. " + error.message,
+      try {
+        const data = await callRpc<Equipment[]>({
+          fn: 'equipment_list',
+          args: { p_q: null, p_sort: 'id.asc', p_page: 1, p_page_size: 10000 },
         })
-        const cacheKey = shouldFilterByDepartment ? `${CACHE_KEY}_${user.khoa_phong}` : CACHE_KEY;
-        if (!localStorage.getItem(cacheKey)) {
-            setData([]);
-        }
-      } else {
-        setData(data as Equipment[]);
+        setData(data || [])
         try {
-            const itemToCache = {
-                data: data,
-            };
-            const cacheKey = shouldFilterByDepartment ? `${CACHE_KEY}_${user.khoa_phong}` : CACHE_KEY;
-            localStorage.setItem(cacheKey, JSON.stringify(itemToCache));
+          const itemToCache = { data }
+          localStorage.setItem(CACHE_KEY, JSON.stringify(itemToCache))
         } catch (e) {
-            console.error("Error writing to localStorage", e);
+          console.error("Error writing to localStorage", e)
+        }
+      } catch (error: any) {
+        toast({
+          variant: 'destructive',
+          title: 'Lỗi',
+          description: 'Không thể tải dữ liệu thiết bị. ' + (error?.message || ''),
+        })
+        if (!localStorage.getItem(CACHE_KEY)) {
+          setData([])
         }
       }
       setIsLoading(false);
     }, [toast, user]);
+
 
   const onDataMutationSuccess = React.useCallback(() => {
     try {
@@ -1133,6 +1113,8 @@ export default function EquipmentPage() {
       globalFilter: debouncedSearch,
     },
   })
+  
+  // Auto department filter removed; no role-based table filter adjustments
   
   // Restore table state after data reload
   React.useEffect(() => {
@@ -1583,11 +1565,7 @@ export default function EquipmentPage() {
             Quản lý danh sách các trang thiết bị y tế.
           </CardDescription>
 
-          {/* Phase 2: Enhanced department filter notification */}
-          <EquipmentFilterStatus
-            itemCount={table.getFilteredRowModel().rows.length}
-            className="mt-3"
-          />
+          {/* Department auto-filter removed */}
         </CardHeader>
         <CardContent className="space-y-4">
           {/* Mobile-optimized filters layout */}

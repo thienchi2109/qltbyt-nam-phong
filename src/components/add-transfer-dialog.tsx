@@ -19,6 +19,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { useToast } from "@/hooks/use-toast"
 import { supabase } from "@/lib/supabase"
+import { callRpc } from "@/lib/rpc-client"
 import { useSession } from "next-auth/react"
 import {
   TRANSFER_TYPES,
@@ -104,20 +105,32 @@ export function AddTransferDialog({ open, onOpenChange, onSuccess }: AddTransfer
 
   const fetchEquipment = async () => {
     if (!supabase) return
-    
     try {
-      const { data, error } = await supabase
-        .from('thiet_bi')
-        .select('id, ma_thiet_bi, ten_thiet_bi, model, serial, khoa_phong_quan_ly')
-        .order('ma_thiet_bi')
-
-      if (error) throw error
-      setAllEquipment(data as EquipmentWithDept[])
+      // Reuse existing equipment_list RPC if available; fallback to simple select
+      try {
+        const equipments = await callRpc<any[]>({ fn: 'equipment_list', args: { p_q: null, p_sort: 'ma_thiet_bi', p_page: 1, p_page_size: 1000 } })
+        const mapped: EquipmentWithDept[] = (equipments || []).map((e: any) => ({
+          id: e.id,
+          ma_thiet_bi: e.ma_thiet_bi,
+          ten_thiet_bi: e.ten_thiet_bi,
+          model: e.model ?? e.model_number ?? null,
+          serial: e.serial ?? e.serial_number ?? null,
+          khoa_phong_quan_ly: e.khoa_phong_quan_ly ?? null,
+        }))
+        setAllEquipment(mapped)
+      } catch (rpcErr) {
+        const { data, error } = await supabase
+          .from('thiet_bi')
+          .select('id, ma_thiet_bi, ten_thiet_bi, model, serial, khoa_phong_quan_ly')
+          .order('ma_thiet_bi')
+        if (error) throw error
+        setAllEquipment(data as EquipmentWithDept[])
+      }
     } catch (error: any) {
       toast({
         variant: "destructive",
         title: "Lỗi tải danh sách thiết bị",
-        description: error.message
+        description: error.message,
       })
     }
   }
@@ -230,40 +243,33 @@ export function AddTransferDialog({ open, onOpenChange, onSuccess }: AddTransfer
     setIsLoading(true)
 
     try {
-      const insertData: any = {
+      const payload: any = {
         thiet_bi_id: formData.thiet_bi_id,
         loai_hinh: formData.loai_hinh,
         ly_do_luan_chuyen: formData.ly_do_luan_chuyen.trim(),
         nguoi_yeu_cau_id: user?.id,
         created_by: user?.id,
-        updated_by: user?.id
+        updated_by: user?.id,
       }
 
       if (formData.loai_hinh === 'noi_bo') {
-        insertData.khoa_phong_hien_tai = formData.khoa_phong_hien_tai.trim()
-        insertData.khoa_phong_nhan = formData.khoa_phong_nhan.trim()
+        payload.khoa_phong_hien_tai = formData.khoa_phong_hien_tai.trim()
+        payload.khoa_phong_nhan = formData.khoa_phong_nhan.trim()
       } else if (formData.loai_hinh === 'ben_ngoai') {
-        insertData.muc_dich = formData.muc_dich
-        insertData.don_vi_nhan = formData.don_vi_nhan.trim()
-        insertData.dia_chi_don_vi = formData.dia_chi_don_vi.trim() || null
-        insertData.nguoi_lien_he = formData.nguoi_lien_he.trim() || null
-        insertData.so_dien_thoai = formData.so_dien_thoai.trim() || null
-        insertData.ngay_du_kien_tra = formData.ngay_du_kien_tra || null
+        payload.muc_dich = formData.muc_dich
+        payload.don_vi_nhan = formData.don_vi_nhan.trim()
+        payload.dia_chi_don_vi = formData.dia_chi_don_vi.trim() || null
+        payload.nguoi_lien_he = formData.nguoi_lien_he.trim() || null
+        payload.so_dien_thoai = formData.so_dien_thoai.trim() || null
+        payload.ngay_du_kien_tra = formData.ngay_du_kien_tra || null
       } else if (formData.loai_hinh === 'thanh_ly') {
-        // Thanh lý: mặc định đơn vị nhận là Tổ QLTB
-        insertData.muc_dich = 'thanh_ly'
-        insertData.don_vi_nhan = 'Tổ QLTB'
-        insertData.khoa_phong_hien_tai = formData.khoa_phong_hien_tai.trim()
-        insertData.khoa_phong_nhan = 'Tổ QLTB'
+        payload.muc_dich = 'thanh_ly'
+        payload.don_vi_nhan = 'Tổ QLTB'
+        payload.khoa_phong_hien_tai = formData.khoa_phong_hien_tai.trim()
+        payload.khoa_phong_nhan = 'Tổ QLTB'
       }
 
-      const { error } = await supabase
-        .from('yeu_cau_luan_chuyen')
-        .insert(insertData)
-
-      if (error) {
-        throw error
-      }
+      await callRpc({ fn: 'transfer_request_create', args: { p_data: payload } })
 
       toast({
         title: "Thành công",

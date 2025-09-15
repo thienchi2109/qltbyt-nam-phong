@@ -108,10 +108,7 @@ export function EditEquipmentDialog({ open, onOpenChange, onSuccess, equipment }
     setIsSubmitting(true)
     try {
   if (!supabase) throw new Error('Supabase client not initialized')
-  const { error } = await supabase
-        .from("thiet_bi")
-        .update(values)
-        .eq('id', equipment.id);
+  const { data, error } = await supabase.rpc('equipment_update', { p_id: equipment.id, p_patch: values as any });
 
       if (error) {
         throw error

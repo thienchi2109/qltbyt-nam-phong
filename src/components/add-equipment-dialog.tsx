@@ -144,7 +144,7 @@ export function AddEquipmentDialog({ open, onOpenChange, onSuccess }: AddEquipme
       return;
     }
     try {
-      const { error } = await supabase.from("thiet_bi").insert([values])
+  const { data, error } = await supabase.rpc('equipment_create', { p_payload: values as any })
 
       if (error) {
         throw error
