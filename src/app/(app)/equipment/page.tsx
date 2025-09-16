@@ -982,15 +982,21 @@ export default function EquipmentPage() {
     console.log('[EquipmentPage] tenantFilter changed ->', tenantFilter)
   }, [tenantFilter, isGlobal])
 
-  // Show a light toast assertion when applying specific tenant filter
+  // Show a user-friendly toast when applying specific tenant filter
   React.useEffect(() => {
     if (!isGlobal) return
     if (selectedDonViUI !== null) {
       try {
-        toast({ variant: 'outline', title: 'Đang lọc theo đơn vị', description: `ID: ${selectedDonViUI}` })
+        const selectedTenant = tenantOptions.find(t => t.id === selectedDonViUI)
+        const tenantName = selectedTenant ? selectedTenant.name : `Đơn vị ${selectedDonViUI}`
+        toast({ 
+          variant: 'default', 
+          title: '✅ Đã áp dụng bộ lọc đơn vị', 
+          description: `Hiển thị thiết bị thuộc ${tenantName}` 
+        })
       } catch {}
     }
-  }, [selectedDonViUI, isGlobal, toast])
+  }, [selectedDonViUI, isGlobal, toast, tenantOptions])
 
   // Log when refetch effect triggers due to tenant changes
   React.useEffect(() => {

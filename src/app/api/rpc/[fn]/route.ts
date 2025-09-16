@@ -4,7 +4,7 @@ import jwt from 'jsonwebtoken'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '../../../../auth/config'
 
-// Whitelist RPCs we allow through this proxy
+  // Whitelist RPCs we allow through this proxy
 const ALLOWED_FUNCTIONS = new Set<string>([
   'equipment_list',
   'equipment_get',
@@ -41,6 +41,8 @@ const ALLOWED_FUNCTIONS = new Set<string>([
   'user_membership_add',
   'user_membership_remove',
   'user_set_current_don_vi',
+  // Debug
+  'debug_claims',
 ])
 
 function getEnv(name: string) {
