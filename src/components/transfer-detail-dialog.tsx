@@ -14,7 +14,6 @@ import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { useToast } from "@/hooks/use-toast"
-import { supabase } from "@/lib/supabase"
 import { callRpc } from "@/lib/rpc-client"
 import { 
   TRANSFER_TYPES, 
@@ -42,7 +41,7 @@ export function TransferDetailDialog({ open, onOpenChange, transfer }: TransferD
   }, [open, transfer])
 
   const fetchHistory = async () => {
-    if (!supabase || !transfer) return
+    if (!transfer) return
 
     setIsLoadingHistory(true)
     try {

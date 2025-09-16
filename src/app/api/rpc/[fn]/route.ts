@@ -18,6 +18,7 @@ const ALLOWED_FUNCTIONS = new Set<string>([
   'equipment_attachment_delete',
   'equipment_history_list',
   'departments_list',
+  'equipment_bulk_import',
   // Repairs
   'repair_request_list',
   'repair_request_get',
@@ -36,9 +37,17 @@ const ALLOWED_FUNCTIONS = new Set<string>([
   'transfer_history_list',
   'transfer_request_external_pending_returns',
   // Maintenance
+  'maintenance_plan_list',
+  'maintenance_plan_create',
+  'maintenance_plan_update',
+  'maintenance_plan_delete',
+  'maintenance_plan_approve',
+  'maintenance_plan_reject',
   'maintenance_tasks_list',
+  'maintenance_tasks_list_with_equipment',
   'maintenance_tasks_bulk_insert',
   'maintenance_task_update',
+  'maintenance_task_complete',
   'maintenance_tasks_delete',
   // Tenants + Users
   'tenant_list',
