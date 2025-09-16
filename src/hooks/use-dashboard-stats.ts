@@ -119,19 +119,10 @@ export function useMaintenancePlanStats() {
   return useQuery({
     queryKey: dashboardStatsKeys.maintenancePlans(),
     queryFn: async (): Promise<MaintenancePlanStats> => {
-      if (!supabase) {
-        throw new Error('Supabase client not initialized')
-      }
-
-      const { data: plans, error } = await supabase
-        .from('ke_hoach_bao_tri')
-        .select('id, ten_ke_hoach, nam, khoa_phong, loai_cong_viec, trang_thai, created_at')
-        .order('created_at', { ascending: false })
-        .limit(10)
-
-      if (error) throw error
-
-      const plansList = plans || []
+      const allPlans = await callRpc<any[]>({ fn: 'maintenance_plan_list' })
+      
+      // Take first 10 plans (they're ordered by created_at desc in the RPC)
+      const plansList = (allPlans || []).slice(0, 10)
       const total = plansList.length
       const draft = plansList.filter(p => p.trang_thai === 'Bản nháp').length
       const approved = plansList.filter(p => p.trang_thai === 'Đã duyệt').length

@@ -16,7 +16,7 @@ import {
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { useToast } from "@/hooks/use-toast"
-import { supabase } from "@/lib/supabase"
+import { callRpc } from "@/lib/rpc-client"
 import type { Equipment } from "@/lib/data"
 
 // Required fields for equipment validation
@@ -197,7 +197,7 @@ export function ImportEquipmentDialog({ open, onOpenChange, onSuccess }: ImportE
 
     setIsSubmitting(true)
     try {
-      // Supabase insert expects objects without undefined keys.
+      // Clean undefined keys for RPC payloads.
       const dataToInsert = parsedData.map(item => {
         const cleanItem: Record<string, any> = {};
         Object.entries(item).forEach(([key, value]) => {
@@ -208,22 +208,20 @@ export function ImportEquipmentDialog({ open, onOpenChange, onSuccess }: ImportE
         return cleanItem;
       });
 
-  if (!supabase) throw new Error('Supabase client not initialized')
-  // Insert via RPC per record to ensure tenant/role checks
-  for (const rec of dataToInsert) {
-    const { error } = await supabase.rpc('equipment_create', { p_payload: rec as any });
-    if (error) {
-      throw error;
-    }
-  }
+      // Bulk insert via RPC proxy for performance; DB sets don_vi via JWT
+      const result = await callRpc<{ success: boolean; inserted: number; failed: number; total: number; details: any[] }>({
+        fn: 'equipment_bulk_import',
+        args: { p_items: dataToInsert as any }
+      })
 
-      if (error) {
-        throw error
-      }
+      const inserted = result?.inserted ?? parsedData.length
+      const failed = result?.failed ?? 0
 
       toast({
-        title: "Thành công",
-        description: `Đã nhập thành công ${parsedData.length} thiết bị.`,
+        title: failed > 0 ? "Nhập hoàn tất với một số lỗi" : "Thành công",
+        description: failed > 0
+          ? `Đã nhập ${inserted}/${result?.total ?? parsedData.length} thiết bị. ${failed} bản ghi lỗi.`
+          : `Đã nhập thành công ${inserted} thiết bị.`,
       })
       onSuccess()
       handleClose()
@@ -231,7 +229,7 @@ export function ImportEquipmentDialog({ open, onOpenChange, onSuccess }: ImportE
       toast({
         variant: "destructive",
         title: "Lỗi",
-        description: "Không thể nhập dữ liệu. " + error.message,
+        description: "Không thể nhập dữ liệu. " + (error?.message || ''),
       })
     } finally {
       setIsSubmitting(false)

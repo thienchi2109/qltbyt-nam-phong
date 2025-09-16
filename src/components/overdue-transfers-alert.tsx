@@ -8,7 +8,6 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
-import { supabase } from "@/lib/supabase"
 import { callRpc } from "@/lib/rpc-client"
 import { TransferRequest } from "@/types/database"
 
@@ -27,8 +26,6 @@ export function OverdueTransfersAlert({ onViewTransfer }: OverdueTransfersAlertP
   }, [])
 
   const fetchOverdueTransfers = async () => {
-    if (!supabase) return
-
     try {
       const today = new Date()
       const nextWeek = new Date()

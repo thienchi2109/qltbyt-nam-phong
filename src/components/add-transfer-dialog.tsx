@@ -125,7 +125,7 @@ export function AddTransferDialog({ open, onOpenChange, onSuccess }: AddTransfer
 
   const fetchDepartments = async () => {
     try {
-      const deps = await callRpc<string[]>({ fn: 'equipment_departments_list', args: {} as any })
+      const deps = await callRpc<string[]>({ fn: 'departments_list', args: {} })
       setDepartments((deps || []).filter(Boolean).map(String))
     } catch (error: any) {
       toast({
