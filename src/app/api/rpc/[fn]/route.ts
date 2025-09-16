@@ -13,6 +13,10 @@ const ALLOWED_FUNCTIONS = new Set<string>([
   'equipment_delete',
   'equipment_count',
   'equipment_attention_list',
+  'equipment_attachments_list',
+  'equipment_attachment_create', 
+  'equipment_attachment_delete',
+  'equipment_history_list',
   // Repairs
   'repair_request_list',
   'repair_request_get',

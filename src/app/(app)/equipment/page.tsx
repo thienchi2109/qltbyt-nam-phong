@@ -333,7 +333,8 @@ export default function EquipmentPage() {
   }
 
   // Enable realtime sync to invalidate cache on external changes
-  useEquipmentRealtimeSync()
+  // TODO: Temporarily disabled - uncomment to re-enable
+  // useEquipmentRealtimeSync()
   const [data, setData] = React.useState<Equipment[]>([])
   const [isLoading, setIsLoading] = React.useState(true)
   const [sorting, setSorting] = React.useState<SortingState>([])
@@ -370,6 +371,9 @@ export default function EquipmentPage() {
   // Target tablet and small laptop screens (768px - 1800px) where column space is limited
   // This covers most 12-15 inch laptops and tablets in landscape mode
   const isMediumScreen = useMediaQuery("(min-width: 768px) and (max-width: 1800px)");
+
+  // Load tenant options for global select
+  const [tenantOptions, setTenantOptions] = React.useState<{ id: number; name: string; code: string }[]>([])
 
   const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({
     id: false,
@@ -745,7 +749,7 @@ export default function EquipmentPage() {
             <MoreHorizontal className="h-4 w-4" />
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end">
+        <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
           <DropdownMenuLabel>Hành động</DropdownMenuLabel>
            <DropdownMenuItem onSelect={() => handleShowDetails(equipment)}>
             Xem chi tiết
@@ -848,6 +852,20 @@ export default function EquipmentPage() {
   }, [isGlobal, tenantFilter])
   const effectiveTenantKey = isGlobal ? tenantFilter : tenantKey
   const CACHE_KEY = `equipment_data_${effectiveTenantKey}`
+
+  // Load tenant options for global select
+  React.useEffect(() => {
+    const loadTenants = async () => {
+      if (!isGlobal) return
+      try {
+        const list = await rpc<any[]>({ fn: 'tenant_list', args: {} })
+        setTenantOptions((list || []).map((t: any) => ({ id: t.id, name: t.name, code: t.code })))
+      } catch (e) {
+        // ignore silently
+      }
+    }
+    loadTenants()
+  }, [isGlobal])
 
   const fetchEquipment = React.useCallback(async () => {
       setIsLoading(true);
@@ -979,20 +997,6 @@ export default function EquipmentPage() {
     };
   }, [fetchEquipment, CACHE_KEY]);
 
-  // Load tenant options for global select
-  const [tenantOptions, setTenantOptions] = React.useState<{ id: number; name: string; code: string }[]>([])
-  React.useEffect(() => {
-    const loadTenants = async () => {
-      if (!isGlobal) return
-      try {
-        const list = await rpc<any[]>({ fn: 'tenant_list', args: {} })
-        setTenantOptions((list || []).map((t: any) => ({ id: t.id, name: t.name, code: t.code })))
-      } catch (e) {
-        // ignore silently
-      }
-    }
-    loadTenants()
-  }, [isGlobal])
 
   // Debug: log when tenant filter changes
   React.useEffect(() => {
@@ -1737,7 +1741,7 @@ export default function EquipmentPage() {
                       setTenantFilter(v)
                     }}
                   >
-                    <SelectTrigger className="h-8 w-[220px]">
+                    <SelectTrigger className="h-8 w-[280px]">
                       <SelectValue placeholder="Tất cả đơn vị" />
                     </SelectTrigger>
                     <SelectContent>
@@ -1749,11 +1753,6 @@ export default function EquipmentPage() {
                       ))}
                     </SelectContent>
                   </Select>
-                  {selectedDonViUI !== null && (
-                    <span className="text-xs text-muted-foreground ml-1">
-                      Đang lọc theo đơn vị ID: {selectedDonViUI}
-                    </span>
-                  )}
                 </div>
               )}
               {!isMobile && (
