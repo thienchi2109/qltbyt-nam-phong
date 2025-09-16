@@ -17,6 +17,7 @@ const ALLOWED_FUNCTIONS = new Set<string>([
   'equipment_attachment_create', 
   'equipment_attachment_delete',
   'equipment_history_list',
+  'departments_list',
   // Repairs
   'repair_request_list',
   'repair_request_get',

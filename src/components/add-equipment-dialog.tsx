@@ -29,10 +29,11 @@ import { Label } from "@/components/ui/label"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Textarea } from "@/components/ui/textarea"
 import { useToast } from "@/hooks/use-toast"
-import { supabase } from "@/lib/supabase"
 import { type Equipment } from "@/types/database"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
+import { useMutation, useQueryClient } from "@tanstack/react-query"
+import { callRpc } from "@/lib/rpc-client"
 
 const equipmentStatusOptions = [
     "Hoạt động", 
@@ -76,7 +77,7 @@ interface AddEquipmentDialogProps {
 
 export function AddEquipmentDialog({ open, onOpenChange, onSuccess }: AddEquipmentDialogProps) {
   const { toast } = useToast()
-  const [isSubmitting, setIsSubmitting] = React.useState(false)
+  const queryClient = useQueryClient()
   const [departments, setDepartments] = React.useState<string[]>([])
   const form = useForm<EquipmentFormValues>({
     resolver: zodResolver(equipmentFormSchema),
@@ -112,60 +113,33 @@ export function AddEquipmentDialog({ open, onOpenChange, onSuccess }: AddEquipme
   }, [open, form])
 
   const fetchDepartments = async () => {
-    if (!supabase) return;
     try {
-      const { data, error } = await supabase
-        .from('thiet_bi')
-        .select('khoa_phong_quan_ly')
-        .not('khoa_phong_quan_ly', 'is', null);
-
-      if (error) throw error;
-      
-      const uniqueDepartments = Array.from(new Set(data.map(item => item.khoa_phong_quan_ly).filter(Boolean)));
-      setDepartments(uniqueDepartments.sort());
+      const list = await callRpc<{ name: string }[]>({ fn: 'departments_list', args: {} })
+      setDepartments((list || []).map(x => x.name).filter(Boolean))
     } catch (error: any) {
-      toast({
-        variant: "destructive",
-        title: "Lỗi tải danh sách khoa phòng",
-        description: error.message,
-      });
+      toast({ variant: "destructive", title: "Lỗi tải danh sách khoa phòng", description: error?.message || '' })
     }
   };
 
-  async function onSubmit(values: EquipmentFormValues) {
-    setIsSubmitting(true)
-    if (!supabase) {
-      toast({
-        variant: "destructive",
-        title: "Lỗi",
-        description: "Lỗi kết nối cơ sở dữ liệu."
-      })
-      setIsSubmitting(false);
-      return;
-    }
-    try {
-  const { data, error } = await supabase.rpc('equipment_create', { p_payload: values as any })
-
-      if (error) {
-        throw error
-      }
-
-      toast({
-        title: "Thành công",
-        description: "Đã thêm thiết bị mới vào danh mục.",
-      })
+  const createMutation = useMutation({
+    mutationFn: async (payload: EquipmentFormValues) => {
+      await callRpc<any>({ fn: 'equipment_create', args: { p_payload: payload as any } })
+    },
+    onSuccess: () => {
+      toast({ title: 'Thành công', description: 'Đã thêm thiết bị mới vào danh mục.' })
+      // Invalidate equipment list so the page refreshes
+      queryClient.invalidateQueries({ queryKey: ['equipment_list'] })
       onSuccess()
       onOpenChange(false)
       form.reset()
-    } catch (error: any) {
-      toast({
-        variant: "destructive",
-        title: "Lỗi",
-        description: "Không thể thêm thiết bị. " + error.message,
-      })
-    } finally {
-      setIsSubmitting(false)
-    }
+    },
+    onError: (error: any) => {
+      toast({ variant: 'destructive', title: 'Lỗi', description: 'Không thể thêm thiết bị. ' + (error?.message || '') })
+    },
+  })
+
+  async function onSubmit(values: EquipmentFormValues) {
+    await createMutation.mutateAsync(values)
   }
 
   return (
@@ -339,12 +313,12 @@ export function AddEquipmentDialog({ open, onOpenChange, onSuccess }: AddEquipme
               </div>
             </ScrollArea>
             <DialogFooter className="pt-6">
-              <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={isSubmitting}>
+              <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={createMutation.isPending}>
                 Hủy
               </Button>
-              <Button type="submit" disabled={isSubmitting}>
-                {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Lưu thiết bị
+              <Button type="submit" disabled={createMutation.isPending}>
+                {createMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Lưu
               </Button>
             </DialogFooter>
           </form>
