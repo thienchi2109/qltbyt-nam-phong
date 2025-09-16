@@ -60,11 +60,18 @@ export async function POST(req: NextRequest, context: { params: Promise<{ fn: st
 
   // Pull claims from NextAuth session securely (no client headers trusted)
   const session = await getServerSession(authOptions as any)
-  const role = (session as any)?.user?.role || ''
+  const rawRole = (session as any)?.user?.role ?? ''
+  const role = typeof rawRole === 'string' ? rawRole : String(rawRole)
+  const roleLower = role.toLowerCase()
   const donVi = (session as any)?.user?.don_vi ? String((session as any).user.don_vi) : ''
   const userId = (session as any)?.user?.id ? String((session as any).user.id) : ''
-  // Normalize to expected app roles used by SQL. Treat 'admin' as 'global'.
-  const appRole = role === 'admin' ? 'global' : role
+  // Normalize to expected app roles used by SQL. Always lowercase; treat 'admin' as 'global'.
+  const appRole = roleLower === 'admin' ? 'global' : roleLower
+  try {
+    if (fn === 'equipment_list') {
+      console.log('[RPC] claims used:', { appRole, donVi, userId, originalRole: role })
+    }
+  } catch {}
 
     // Build JWT claims for PostgREST. We keep db role = authenticated; app role in app_role.
     const claims: Record<string, any> = {
@@ -79,6 +86,13 @@ export async function POST(req: NextRequest, context: { params: Promise<{ fn: st
 
     const urlBase = getEnv('NEXT_PUBLIC_SUPABASE_URL')
     const url = `${urlBase}/rest/v1/rpc/${encodeURIComponent(fn)}`
+
+    // Debug: log equipment_list calls with args and derived claims (safe info only)
+    if (fn === 'equipment_list') {
+      try {
+        console.log('[RPC] equipment_list call body:', body)
+      } catch {}
+    }
 
     const res = await fetch(url, {
       method: 'POST',
