@@ -884,7 +884,13 @@ export default function EquipmentPage() {
         console.log('[EquipmentPage] equipment_list returned items:', data?.length ?? 0)
         setData(data || [])
         try {
-          toast({ title: 'Đã tải danh sách thiết bị', description: `Số bản ghi: ${data?.length ?? 0} (p_don_vi=${rpcArgs.p_don_vi ?? 'all'})` })
+          const tenantInfo = rpcArgs.p_don_vi 
+            ? (() => {
+                const tenant = tenantOptions.find(t => t.id === rpcArgs.p_don_vi)
+                return tenant ? ` của ${tenant.name}` : ` của đơn vị ${rpcArgs.p_don_vi}`
+              })()
+            : ''
+          toast({ title: 'Đã tải danh sách thiết bị', description: `Tìm thấy ${data?.length ?? 0} thiết bị${tenantInfo}` })
         } catch {}
 
         // Inspect unique don_vi values returned to validate server-side filter
@@ -894,7 +900,19 @@ export default function EquipmentPage() {
           const matches = uniqueDonVi.length === 1 && String(uniqueDonVi[0]) === String(rpcArgs.p_don_vi)
           if (!matches) {
             try {
-              toast({ variant: 'destructive', title: 'Cảnh báo lọc đơn vị', description: `Yêu cầu lọc p_don_vi=${rpcArgs.p_don_vi} nhưng phản hồi có don_vi=${uniqueDonVi.join(',') || 'none'}` })
+              const expectedTenant = tenantOptions.find(t => t.id === rpcArgs.p_don_vi)
+              const expectedName = expectedTenant ? expectedTenant.name : `đơn vị ${rpcArgs.p_don_vi}`
+              const actualNames = uniqueDonVi.length > 0 
+                ? uniqueDonVi.map(id => {
+                    const tenant = tenantOptions.find(t => t.id === id)
+                    return tenant ? tenant.name : `đơn vị ${id}`
+                  }).join(', ')
+                : 'không có dữ liệu'
+              toast({ 
+                variant: 'default', 
+                title: '⚠️ Dữ liệu không khớp bộ lọc', 
+                description: `Yêu cầu hiển thị thiết bị ${expectedName} nhưng nhận được dữ liệu từ ${actualNames}` 
+              })
             } catch {}
           }
         }
@@ -916,7 +934,7 @@ export default function EquipmentPage() {
         }
       }
       setIsLoading(false);
-  }, [toast, tenantKey, tenantFilter, isGlobal]);
+  }, [toast, tenantKey, tenantFilter, isGlobal, tenantOptions]);
 
 
   const onDataMutationSuccess = React.useCallback(() => {
