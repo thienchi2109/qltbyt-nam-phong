@@ -25,7 +25,7 @@ import {
 } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
 import { useToast } from "@/hooks/use-toast"
-import { supabase } from "@/lib/supabase"
+import { callRpc } from "@/lib/rpc-client"
 import { useSession } from "next-auth/react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { taskTypes } from "@/lib/data"
@@ -65,20 +65,21 @@ export function AddMaintenancePlanDialog({ open, onOpenChange, onSuccess }: AddM
         toast({ variant: "destructive", title: "Lỗi", description: "Không tìm thấy thông tin người dùng." })
         return;
     }
-    if (!supabase) {
-        toast({ variant: "destructive", title: "Lỗi", description: "Không thể kết nối cơ sở dữ liệu." })
-        return;
-    }
     setIsSubmitting(true)
     try {
-      const { error } = await supabase.from("ke_hoach_bao_tri").insert([{ 
-        ...values,
-        nguoi_lap_ke_hoach: user.full_name || user.username,
-        trang_thai: "Bản nháp",
-      }])
+      const planId = await callRpc<number>({
+        fn: 'maintenance_plan_create',
+        args: {
+          p_ten_ke_hoach: values.ten_ke_hoach,
+          p_nam: values.nam,
+          p_loai_cong_viec: values.loai_cong_viec,
+          p_khoa_phong: values.khoa_phong || null,
+          p_nguoi_lap_ke_hoach: user.full_name || user.username,
+        }
+      })
 
-      if (error) {
-        throw error
+      if (!planId && planId !== 0) {
+        throw new Error('Không nhận được ID kế hoạch mới')
       }
 
       toast({

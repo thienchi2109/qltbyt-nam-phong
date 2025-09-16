@@ -35,7 +35,7 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { useToast } from "@/hooks/use-toast"
-import { supabase } from "@/lib/supabase"
+import { callRpc } from "@/lib/rpc-client"
 import type { Equipment, MaintenancePlan } from "@/lib/data"
 import { ScrollArea } from "./ui/scroll-area"
 import { Badge } from "@/components/ui/badge"
@@ -185,17 +185,12 @@ export function AddTasksDialog({
     if (open) {
       const fetchEquipment = async () => {
         setIsLoading(true)
-        if (!supabase) {
-          toast({ variant: "destructive", title: "Lỗi", description: "Không thể kết nối đến CSDL." })
-          setIsLoading(false)
-          return
-        }
-        const { data, error } = await supabase.from("thiet_bi").select("*").order('id', { ascending: true })
-        if (error) {
+        try {
+          const eq = await callRpc<any[]>({ fn: 'equipment_list', args: { p_q: null, p_sort: 'id.asc', p_page: 1, p_page_size: 5000 } })
+          setEquipment((eq || []) as Equipment[])
+        } catch (error: any) {
           toast({ variant: "destructive", title: "Lỗi tải thiết bị", description: error.message })
           setEquipment([])
-        } else {
-          setEquipment(data as Equipment[])
         }
         setIsLoading(false)
       }
