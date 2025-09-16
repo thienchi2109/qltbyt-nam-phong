@@ -19,7 +19,7 @@ import { ArrowUpDown, Check, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRi
 import { useToast } from "@/hooks/use-toast"
 import { useIsMobile } from "@/hooks/use-mobile"
 import { MaintenancePlan, MaintenanceTask, taskTypes, type Equipment } from "@/lib/data"
-import { supabase } from "@/lib/supabase"
+import { callRpc } from "@/lib/rpc-client"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
@@ -176,35 +176,16 @@ export default function MaintenancePage() {
   // ✅ Remove manual fetchPlans - now handled by cached hook
 
   const fetchPlanDetails = React.useCallback(async (plan: MaintenancePlan) => {
-    if (!supabase) return;
     setIsLoadingTasks(true);
     setCompletionStatus({}); // Reset on new plan select
 
-    // 1. Fetch tasks
+    // 1. Fetch tasks via RPC
     const cacheKey = getDraftCacheKey(plan.id);
     const cachedDraft = localStorage.getItem(cacheKey);
 
-    const { data, error } = await supabase
-      .from('cong_viec_bao_tri')
-      .select(`
-        *, 
-        thiet_bi(*),
-        thang_1_hoan_thanh, thang_2_hoan_thanh, thang_3_hoan_thanh, thang_4_hoan_thanh,
-        thang_5_hoan_thanh, thang_6_hoan_thanh, thang_7_hoan_thanh, thang_8_hoan_thanh,
-        thang_9_hoan_thanh, thang_10_hoan_thanh, thang_11_hoan_thanh, thang_12_hoan_thanh,
-        ngay_hoan_thanh_1, ngay_hoan_thanh_2, ngay_hoan_thanh_3, ngay_hoan_thanh_4,
-        ngay_hoan_thanh_5, ngay_hoan_thanh_6, ngay_hoan_thanh_7, ngay_hoan_thanh_8,
-        ngay_hoan_thanh_9, ngay_hoan_thanh_10, ngay_hoan_thanh_11, ngay_hoan_thanh_12
-      `)
-      .eq('ke_hoach_id', plan.id)
-      .order('id', { ascending: true });
-
-    if (error) {
-      toast({ variant: "destructive", title: "Lỗi tải công việc", description: error.message });
-      setTasks([]);
-      setDraftTasks([]);
-    } else {
-      const dbTasks = data as MaintenanceTask[];
+    try {
+      const data = await callRpc<any[]>({ fn: 'maintenance_tasks_list_with_equipment', args: { p_ke_hoach_id: plan.id, p_thiet_bi_id: null, p_loai_cong_viec: plan.loai_cong_viec, p_don_vi_thuc_hien: null } })
+      const dbTasks = (data || []) as MaintenanceTask[];
       setTasks(dbTasks);
       if (cachedDraft) {
         try {
@@ -216,34 +197,28 @@ export default function MaintenancePage() {
       } else {
         setDraftTasks(dbTasks);
       }
+    } catch (error: any) {
+      toast({ variant: "destructive", title: "Lỗi tải công việc", description: error.message });
+      setTasks([]);
+      setDraftTasks([]);
     }
     setIsLoadingTasks(false);
 
-    // 2. If plan is approved, fetch completion status
+    // 2. If plan is approved, compute completion status from tasks themselves
     if (plan.trang_thai === 'Đã duyệt') {
       setIsLoadingCompletion(true);
-      const taskIds = data?.map(t => t.id) ?? [];
-
-      if (taskIds.length > 0) {
-        const { data: historyData, error: historyError } = await supabase
-          .from('lich_su_thiet_bi')
-          .select('id, chi_tiet')
-          .eq('loai_su_kien', plan.loai_cong_viec)
-          .in('chi_tiet->>cong_viec_id', taskIds);
-
-        if (historyError) {
-          toast({ variant: "destructive", title: "Lỗi tải trạng thái hoàn thành", description: historyError.message });
-        } else if (historyData) {
-          const statusMap: Record<string, { historyId: number }> = {};
-          historyData.forEach((item: any) => {
-            if (item.chi_tiet && item.chi_tiet.cong_viec_id && item.chi_tiet.thang) {
-              const key = `${item.chi_tiet.cong_viec_id}-${item.chi_tiet.thang}`;
-              statusMap[key] = { historyId: item.id };
-            }
-          });
-          setCompletionStatus(statusMap);
+      const statusMap: Record<string, { historyId: number }> = {};
+      (tasks || []).forEach((t: any) => {
+        for (let m = 1; m <= 12; m++) {
+          const completed = t[`thang_${m}_hoan_thanh`];
+          const dateVal = t[`ngay_hoan_thanh_${m}`];
+          if (completed && dateVal) {
+            const key = `${t.id}-${m}`;
+            statusMap[key] = { historyId: 0 };
+          }
         }
-      }
+      });
+      setCompletionStatus(statusMap);
       setIsLoadingCompletion(false);
     }
   }, [toast, getDraftCacheKey]);
@@ -326,74 +301,51 @@ export default function MaintenancePage() {
   }, [editingTaskId, editingTaskData, handleCancelEdit]);
 
   const handleApprovePlan = React.useCallback(async (planToApprove: MaintenancePlan) => {
-    if (!supabase || !planToApprove) return;
+    if (!planToApprove) return;
     setIsApprovingPlan(true);
 
-    const { error } = await supabase
-      .from('ke_hoach_bao_tri')
-      .update({
-        trang_thai: 'Đã duyệt',
-        ngay_phe_duyet: new Date().toISOString(),
-        nguoi_duyet: user?.full_name || user?.username || ''
-      })
-      .eq('id', planToApprove.id);
-
-    if (error) {
-      toast({ variant: "destructive", title: "Lỗi duyệt kế hoạch", description: error.message, });
-    } else {
+    try {
+      await callRpc<void>({ fn: 'maintenance_plan_approve', args: { p_id: planToApprove.id, p_nguoi_duyet: user?.full_name || user?.username || '' } })
       toast({ title: "Thành công", description: "Kế hoạch đã được duyệt." });
       refetchPlans(); // ✅ Use cached hook refetch
       if (selectedPlan && selectedPlan.id === planToApprove.id) {
         const updatedPlan = { ...selectedPlan, trang_thai: 'Đã duyệt' as const, ngay_phe_duyet: new Date().toISOString() };
         setSelectedPlan(updatedPlan);
       }
+    } catch (error: any) {
+      toast({ variant: "destructive", title: "Lỗi duyệt kế hoạch", description: error.message, });
     }
     setPlanToApprove(null);
     setIsApprovingPlan(false);
   }, [toast, refetchPlans, selectedPlan]); // ✅ Use refetchPlans
 
   const handleRejectPlan = React.useCallback(async () => {
-    if (!supabase || !planToReject || !rejectionReason.trim()) return;
+    if (!planToReject || !rejectionReason.trim()) return;
     setIsRejectingPlan(true);
 
-    const { error } = await supabase
-      .from('ke_hoach_bao_tri')
-      .update({
-        trang_thai: 'Không duyệt',
-        ngay_phe_duyet: new Date().toISOString(),
-        nguoi_duyet: user?.full_name || user?.username || '',
-        ly_do_khong_duyet: rejectionReason.trim()
-      })
-      .eq('id', planToReject.id);
-
-    if (error) {
-      toast({ variant: "destructive", title: "Lỗi từ chối kế hoạch", description: error.message });
-    } else {
+    try {
+      await callRpc<void>({ fn: 'maintenance_plan_reject', args: { p_id: planToReject.id, p_nguoi_duyet: user?.full_name || user?.username || '', p_ly_do: rejectionReason.trim() } })
       toast({ title: "Đã từ chối", description: "Kế hoạch đã được từ chối." });
       refetchPlans();
       if (selectedPlan && selectedPlan.id === planToReject.id) {
         const updatedPlan = { ...selectedPlan, trang_thai: 'Không duyệt' as const, ngay_phe_duyet: new Date().toISOString() };
         setSelectedPlan(updatedPlan);
       }
+    } catch (error: any) {
+      toast({ variant: "destructive", title: "Lỗi từ chối kế hoạch", description: error.message });
     }
     setPlanToReject(null);
     setRejectionReason("");
     setIsRejectingPlan(false);
-  }, [supabase, planToReject, rejectionReason, toast, refetchPlans, selectedPlan]);
+  }, [planToReject, rejectionReason, toast, refetchPlans, selectedPlan]);
 
 
   const handleDeletePlan = React.useCallback(async () => {
-    if (!planToDelete || !supabase) return;
+    if (!planToDelete) return;
     setIsDeletingPlan(true);
 
-    const { error } = await supabase
-      .from('ke_hoach_bao_tri')
-      .delete()
-      .eq('id', planToDelete.id);
-
-    if (error) {
-      toast({ variant: "destructive", title: "Lỗi xóa kế hoạch", description: error.message });
-    } else {
+    try {
+      await callRpc<void>({ fn: 'maintenance_plan_delete', args: { p_id: planToDelete.id } })
       toast({ title: "Đã xóa", description: "Kế hoạch đã được xóa thành công." });
       localStorage.removeItem(getDraftCacheKey(planToDelete.id));
       refetchPlans(); // ✅ Use cached hook refetch
@@ -401,6 +353,8 @@ export default function MaintenancePage() {
         setSelectedPlan(null);
         setActiveTab("plans");
       }
+    } catch (error: any) {
+      toast({ variant: "destructive", title: "Lỗi xóa kế hoạch", description: error.message });
     }
 
     setIsDeletingPlan(false);
@@ -780,8 +734,8 @@ export default function MaintenancePage() {
   const handleMarkAsCompleted = React.useCallback(async (task: MaintenanceTask, month: number) => {
     console.log('handleMarkAsCompleted called:', { taskId: task.id, month, canCompleteTask, user: user?.role });
 
-    if (!supabase || !selectedPlan || !user || !canCompleteTask) {
-      console.log('Permission denied:', { supabase: !!supabase, selectedPlan: !!selectedPlan, user: !!user, canCompleteTask });
+    if (!selectedPlan || !user || !canCompleteTask) {
+      console.log('Permission denied:', { selectedPlan: !!selectedPlan, user: !!user, canCompleteTask });
       toast({
         variant: "destructive",
         title: "Không có quyền",
@@ -802,37 +756,9 @@ export default function MaintenancePage() {
       const completionFieldName = `thang_${month}_hoan_thanh`;
       const completionDateFieldName = `ngay_hoan_thanh_${month}`;
 
-      const { error: taskUpdateError } = await supabase
-        .from('cong_viec_bao_tri')
-        .update({
-          [completionFieldName]: true,
-          [completionDateFieldName]: completionDate,
-          updated_at: completionDate
-        })
-        .eq('id', task.id);
+      await callRpc<void>({ fn: 'maintenance_task_complete', args: { p_task_id: task.id, p_month: month } })
 
-      if (taskUpdateError) throw taskUpdateError;
-
-      // 2. Ghi vào lịch sử thiết bị
-      const { data: historyData, error: historyError } = await supabase
-        .from('lich_su_thiet_bi')
-        .insert({
-          thiet_bi_id: task.thiet_bi_id,
-          loai_su_kien: selectedPlan.loai_cong_viec,
-          mo_ta: `Hoàn thành ${selectedPlan.loai_cong_viec} tháng ${month}/${selectedPlan.nam} theo kế hoạch "${selectedPlan.ten_ke_hoach}"`,
-          chi_tiet: {
-            cong_viec_id: task.id,
-            thang: month,
-            ten_ke_hoach: selectedPlan.ten_ke_hoach,
-            khoa_phong: selectedPlan.khoa_phong,
-            nam: selectedPlan.nam,
-          },
-          ngay_thuc_hien: completionDate,
-        })
-        .select('id')
-        .single();
-
-      if (historyError) throw historyError;
+      const historyData = { id: 0 } as any;
 
       toast({
         title: "Ghi nhận thành công",
@@ -1092,7 +1018,7 @@ export default function MaintenancePage() {
   ], [isPlanApproved, canCompleteTask, editingTaskId, handleCancelEdit, handleSaveTask, handleStartEdit, handleMarkAsCompleted, completionStatus, isLoadingCompletion, isCompletingTask]);
 
   const handleSaveAllChanges = React.useCallback(async () => {
-    if (!supabase || !selectedPlan || !hasChanges) return;
+    if (!selectedPlan || !hasChanges) return;
     setIsSavingAll(true);
 
     // 1. Find tasks to insert (new tasks with negative IDs)
@@ -1119,20 +1045,22 @@ export default function MaintenancePage() {
 
     let hasError = false;
 
-    // Perform operations
+    // Perform operations via RPCs
     if (tasksToInsert.length > 0) {
-      const { error: insertError } = await supabase.from('cong_viec_bao_tri').insert(tasksToInsert);
-      if (insertError) {
-        toast({ variant: "destructive", title: "Lỗi thêm công việc mới", description: insertError.message, duration: 10000 });
+      try {
+        await callRpc<void>({ fn: 'maintenance_tasks_bulk_insert', args: { p_tasks: tasksToInsert } as any })
+      } catch (e: any) {
+        toast({ variant: "destructive", title: "Lỗi thêm công việc mới", description: e.message, duration: 10000 });
         hasError = true;
       }
     }
 
     if (tasksToUpdate.length > 0 && !hasError) {
       for (const taskToUpdate of tasksToUpdate) {
-        const { error: updateError } = await supabase.from('cong_viec_bao_tri').update(taskToUpdate).eq('id', taskToUpdate.id);
-        if (updateError) {
-          toast({ variant: "destructive", title: `Lỗi cập nhật công việc ID ${taskToUpdate.id}`, description: updateError.message, duration: 10000 });
+        try {
+          await callRpc<void>({ fn: 'maintenance_task_update', args: { p_id: taskToUpdate.id, p_task: taskToUpdate } as any })
+        } catch (e: any) {
+          toast({ variant: "destructive", title: `Lỗi cập nhật công việc ID ${taskToUpdate.id}`, description: e.message, duration: 10000 });
           hasError = true;
           break;
         }
@@ -1140,9 +1068,10 @@ export default function MaintenancePage() {
     }
 
     if (idsToDelete.length > 0 && !hasError) {
-      const { error: deleteError } = await supabase.from('cong_viec_bao_tri').delete().in('id', idsToDelete);
-      if (deleteError) {
-        toast({ variant: "destructive", title: "Lỗi xóa công việc cũ", description: deleteError.message, duration: 10000 });
+      try {
+        await callRpc<void>({ fn: 'maintenance_tasks_delete', args: { p_ids: idsToDelete } as any })
+      } catch (e: any) {
+        toast({ variant: "destructive", title: "Lỗi xóa công việc cũ", description: e.message, duration: 10000 });
         hasError = true;
       }
     }
@@ -1154,7 +1083,7 @@ export default function MaintenancePage() {
     }
 
     setIsSavingAll(false);
-  }, [supabase, selectedPlan, hasChanges, draftTasks, tasks, toast, getDraftCacheKey, fetchPlanDetails]);
+  }, [selectedPlan, hasChanges, draftTasks, tasks, toast, getDraftCacheKey, fetchPlanDetails]);
 
   const handleGeneratePlanForm = React.useCallback(() => {
     if (!selectedPlan || tasks.length === 0) {

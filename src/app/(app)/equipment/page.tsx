@@ -88,7 +88,7 @@ import {
 } from "@/components/ui/table"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { type Equipment } from "@/types/database"
-import { supabase, supabaseError } from "@/lib/supabase"
+// supabase removed from this module for attachments/history flows (RPC-only)
 import { callRpc } from "@/lib/rpc-client"
 import { useEquipmentRealtimeSync } from "@/hooks/use-realtime-sync"
 import { useToast } from "@/hooks/use-toast"
@@ -862,17 +862,6 @@ export default function EquipmentPage() {
         localStorage.removeItem(cacheKey);
       }
 
-      if (supabaseError) {
-          toast({
-              variant: "destructive",
-              title: "Lỗi cấu hình Supabase",
-              description: supabaseError,
-              duration: 10000,
-          })
-          setData([]);
-          setIsLoading(false);
-          return;
-      }
       try {
         const data = await callRpc<Equipment[]>({
           fn: 'equipment_list',
@@ -997,17 +986,10 @@ export default function EquipmentPage() {
   }, [searchParams, router, data])
 
   const fetchAttachments = React.useCallback(async (equipmentId: number) => {
-    if (!supabase) return;
     setIsLoadingAttachments(true);
     try {
-      const { data, error } = await supabase
-        .from('file_dinh_kem')
-        .select('*')
-        .eq('thiet_bi_id', equipmentId)
-        .order('ngay_tai_len', { ascending: false });
-
-      if (error) throw error;
-      setAttachments(data || []);
+      const data = await callRpc<any[]>({ fn: 'equipment_attachments_list', args: { p_thiet_bi_id: equipmentId } })
+      setAttachments(data || [])
     } catch (error: any) {
       toast({
         variant: "destructive",
@@ -1020,25 +1002,18 @@ export default function EquipmentPage() {
   }, [toast]);
 
   const fetchHistory = React.useCallback(async (equipmentId: number) => {
-    if (!supabase) return;
     setIsLoadingHistory(true);
     try {
-        const { data, error } = await supabase
-            .from('lich_su_thiet_bi')
-            .select('*')
-            .eq('thiet_bi_id', equipmentId)
-            .order('ngay_thuc_hien', { ascending: false });
-
-        if (error) throw error;
-        setHistory(data as HistoryItem[] || []);
+      const data = await callRpc<any[]>({ fn: 'equipment_history_list', args: { p_thiet_bi_id: equipmentId } })
+      setHistory((data || []) as HistoryItem[])
     } catch (error: any) {
-        toast({
-            variant: "destructive",
-            title: "Lỗi tải lịch sử thiết bị",
-            description: error.message,
-        });
+      toast({
+        variant: "destructive",
+        title: "Lỗi tải lịch sử thiết bị",
+        description: error.message,
+      });
     } finally {
-        setIsLoadingHistory(false);
+      setIsLoadingHistory(false);
     }
   }, [toast]);
 
@@ -1069,13 +1044,7 @@ export default function EquipmentPage() {
 
     setIsSubmittingAttachment(true);
     try {
-      if (!supabase) throw new Error("Supabase client is not available");
-      const { error } = await supabase.from('file_dinh_kem').insert({
-        thiet_bi_id: selectedEquipment.id,
-        ten_file: newFileName,
-        duong_dan_luu_tru: newFileUrl,
-      });
-      if (error) throw error;
+      await callRpc<string>({ fn: 'equipment_attachment_create', args: { p_thiet_bi_id: selectedEquipment.id, p_ten_file: newFileName, p_duong_dan: newFileUrl } })
 
       toast({
         title: "Thành công",
@@ -1104,9 +1073,7 @@ export default function EquipmentPage() {
     
     setDeletingAttachmentId(attachmentId);
     try {
-        if (!supabase) throw new Error("Supabase client is not available");
-        const { error } = await supabase.from('file_dinh_kem').delete().eq('id', attachmentId);
-        if (error) throw error;
+        await callRpc<void>({ fn: 'equipment_attachment_delete', args: { p_id: String(attachmentId) } })
 
         toast({
             title: "Đã xóa",
