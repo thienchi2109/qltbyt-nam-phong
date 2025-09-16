@@ -28,9 +28,10 @@ import { Input } from "@/components/ui/input"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Textarea } from "@/components/ui/textarea"
 import { useToast } from "@/hooks/use-toast"
-import { supabase } from "@/lib/supabase"
 import { type Equipment } from "@/types/database"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { useMutation, useQueryClient } from "@tanstack/react-query"
+import { callRpc } from "@/lib/rpc-client"
 
 const equipmentStatusOptions = [
     "Hoạt động",
@@ -76,8 +77,8 @@ interface EditEquipmentDialogProps {
 
 export function EditEquipmentDialog({ open, onOpenChange, onSuccess, equipment }: EditEquipmentDialogProps) {
   const { toast } = useToast()
-  const [isSubmitting, setIsSubmitting] = React.useState(false)
-  
+  const queryClient = useQueryClient()
+
   const form = useForm<EquipmentFormValues>({
     resolver: zodResolver(equipmentFormSchema),
     defaultValues: {},
@@ -102,33 +103,25 @@ export function EditEquipmentDialog({ open, onOpenChange, onSuccess, equipment }
     }
   }, [equipment, form]);
 
-  async function onSubmit(values: EquipmentFormValues) {
-    if (!equipment) return;
-
-    setIsSubmitting(true)
-    try {
-  if (!supabase) throw new Error('Supabase client not initialized')
-  const { data, error } = await supabase.rpc('equipment_update', { p_id: equipment.id, p_patch: values as any });
-
-      if (error) {
-        throw error
-      }
-
-      toast({
-        title: "Thành công",
-        description: "Đã cập nhật thông tin thiết bị.",
-      })
+  const updateMutation = useMutation({
+    mutationFn: async (vars: { id: number; patch: EquipmentFormValues }) => {
+      await callRpc<any>({ fn: 'equipment_update', args: { p_id: vars.id, p_patch: vars.patch as any } })
+    },
+    onSuccess: () => {
+      toast({ title: 'Thành công', description: 'Đã cập nhật thông tin thiết bị.' })
+      // Invalidate the equipment list so the page refreshes with fresh data
+      queryClient.invalidateQueries({ queryKey: ['equipment_list'] })
       onSuccess()
       onOpenChange(false)
-    } catch (error: any) {
-      toast({
-        variant: "destructive",
-        title: "Lỗi",
-        description: "Không thể cập nhật thiết bị. " + error.message,
-      })
-    } finally {
-      setIsSubmitting(false)
-    }
+    },
+    onError: (error: any) => {
+      toast({ variant: 'destructive', title: 'Lỗi', description: 'Không thể cập nhật thiết bị. ' + (error?.message || '') })
+    },
+  })
+
+  async function onSubmit(values: EquipmentFormValues) {
+    if (!equipment) return;
+    await updateMutation.mutateAsync({ id: equipment.id, patch: values })
   }
 
   return (
@@ -285,11 +278,11 @@ export function EditEquipmentDialog({ open, onOpenChange, onSuccess, equipment }
               </div>
             </ScrollArea>
             <DialogFooter className="pt-6">
-              <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={isSubmitting}>
+              <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={updateMutation.isPending}>
                 Hủy
               </Button>
-              <Button type="submit" disabled={isSubmitting}>
-                {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              <Button type="submit" disabled={updateMutation.isPending}>
+                {updateMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 Lưu thay đổi
               </Button>
             </DialogFooter>

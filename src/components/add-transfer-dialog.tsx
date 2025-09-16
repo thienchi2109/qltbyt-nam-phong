@@ -18,7 +18,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { useToast } from "@/hooks/use-toast"
-import { supabase } from "@/lib/supabase"
 import { callRpc } from "@/lib/rpc-client"
 import { useSession } from "next-auth/react"
 import {
@@ -104,28 +103,17 @@ export function AddTransferDialog({ open, onOpenChange, onSuccess }: AddTransfer
   }, [open, resetForm])
 
   const fetchEquipment = async () => {
-    if (!supabase) return
     try {
-      // Reuse existing equipment_list RPC if available; fallback to simple select
-      try {
-        const equipments = await callRpc<any[]>({ fn: 'equipment_list', args: { p_q: null, p_sort: 'ma_thiet_bi', p_page: 1, p_page_size: 1000 } })
-        const mapped: EquipmentWithDept[] = (equipments || []).map((e: any) => ({
-          id: e.id,
-          ma_thiet_bi: e.ma_thiet_bi,
-          ten_thiet_bi: e.ten_thiet_bi,
-          model: e.model ?? e.model_number ?? null,
-          serial: e.serial ?? e.serial_number ?? null,
-          khoa_phong_quan_ly: e.khoa_phong_quan_ly ?? null,
-        }))
-        setAllEquipment(mapped)
-      } catch (rpcErr) {
-        const { data, error } = await supabase
-          .from('thiet_bi')
-          .select('id, ma_thiet_bi, ten_thiet_bi, model, serial, khoa_phong_quan_ly')
-          .order('ma_thiet_bi')
-        if (error) throw error
-        setAllEquipment(data as EquipmentWithDept[])
-      }
+      const equipments = await callRpc<any[]>({ fn: 'equipment_list', args: { p_q: null, p_sort: 'ma_thiet_bi', p_page: 1, p_page_size: 1000 } })
+      const mapped: EquipmentWithDept[] = (equipments || []).map((e: any) => ({
+        id: e.id,
+        ma_thiet_bi: e.ma_thiet_bi,
+        ten_thiet_bi: e.ten_thiet_bi,
+        model: e.model ?? e.model_number ?? null,
+        serial: e.serial ?? e.serial_number ?? null,
+        khoa_phong_quan_ly: e.khoa_phong_quan_ly ?? null,
+      }))
+      setAllEquipment(mapped)
     } catch (error: any) {
       toast({
         variant: "destructive",
@@ -136,17 +124,9 @@ export function AddTransferDialog({ open, onOpenChange, onSuccess }: AddTransfer
   }
 
   const fetchDepartments = async () => {
-    if (!supabase) return
     try {
-      const { data, error } = await supabase
-        .from('thiet_bi')
-        .select('khoa_phong_quan_ly')
-        .not('khoa_phong_quan_ly', 'is', null)
-
-      if (error) throw error
-      
-      const uniqueDepartments = Array.from(new Set(data.map(item => item.khoa_phong_quan_ly).filter(Boolean)))
-      setDepartments(uniqueDepartments.sort())
+      const deps = await callRpc<string[]>({ fn: 'equipment_departments_list', args: {} as any })
+      setDepartments((deps || []).filter(Boolean).map(String))
     } catch (error: any) {
       toast({
         variant: "destructive",
@@ -231,14 +211,6 @@ export function AddTransferDialog({ open, onOpenChange, onSuccess }: AddTransfer
 
     // Thanh lý không cần validate thêm vì đã có default values
 
-    if (!supabase) {
-      toast({
-        variant: "destructive",
-        title: "Lỗi",
-        description: "Không thể kết nối đến cơ sở dữ liệu."
-      })
-      return
-    }
 
     setIsLoading(true)
 

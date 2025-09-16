@@ -88,7 +88,7 @@ import {
 } from "@/components/ui/table"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { type Equipment } from "@/types/database"
-import { supabase, supabaseError } from "@/lib/supabase"
+// supabase removed from this module for attachments/history flows (RPC-only)
 import { callRpc } from "@/lib/rpc-client"
 import { useEquipmentRealtimeSync } from "@/hooks/use-realtime-sync"
 import { useToast } from "@/hooks/use-toast"
@@ -111,6 +111,7 @@ import { useSearchDebounce } from "@/hooks/use-debounce"
 // Auto department filter removed
 import { MobileEquipmentListItem } from "@/components/mobile-equipment-list-item"
 import { callRpc as rpc } from "@/lib/rpc-client"
+import { useQuery, useMutation, useQueryClient, keepPreviousData } from "@tanstack/react-query"
 
 type Attachment = {
   id: string;
@@ -333,9 +334,9 @@ export default function EquipmentPage() {
   }
 
   // Enable realtime sync to invalidate cache on external changes
-  useEquipmentRealtimeSync()
-  const [data, setData] = React.useState<Equipment[]>([])
-  const [isLoading, setIsLoading] = React.useState(true)
+  // TODO: Temporarily disabled - uncomment to re-enable
+  // useEquipmentRealtimeSync()
+  const queryClient = useQueryClient()
   const [sorting, setSorting] = React.useState<SortingState>([])
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([])
   const [searchTerm, setSearchTerm] = React.useState("")
@@ -348,17 +349,10 @@ export default function EquipmentPage() {
   const [currentTab, setCurrentTab] = React.useState<string>("details")
   const isMobile = useIsMobile();
 
-  // State for attachments
-  const [attachments, setAttachments] = React.useState<Attachment[]>([]);
-  const [isLoadingAttachments, setIsLoadingAttachments] = React.useState(false);
+  // Attachment form state
   const [newFileName, setNewFileName] = React.useState("");
   const [newFileUrl, setNewFileUrl] = React.useState("");
-  const [isSubmittingAttachment, setIsSubmittingAttachment] = React.useState(false);
   const [deletingAttachmentId, setDeletingAttachmentId] = React.useState<string | null>(null);
-
-  // State for history
-  const [history, setHistory] = React.useState<HistoryItem[]>([]);
-  const [isLoadingHistory, setIsLoadingHistory] = React.useState(false);
 
   // State to preserve pagination during data reload
   const [preservePageState, setPreservePageState] = React.useState<{
@@ -370,6 +364,9 @@ export default function EquipmentPage() {
   // Target tablet and small laptop screens (768px - 1800px) where column space is limited
   // This covers most 12-15 inch laptops and tablets in landscape mode
   const isMediumScreen = useMediaQuery("(min-width: 768px) and (max-width: 1800px)");
+
+  // Load tenant options for global select
+  const [tenantOptions, setTenantOptions] = React.useState<{ id: number; name: string; code: string }[]>([])
 
   const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({
     id: false,
@@ -745,7 +742,7 @@ export default function EquipmentPage() {
             <MoreHorizontal className="h-4 w-4" />
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end">
+        <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
           <DropdownMenuLabel>Hành động</DropdownMenuLabel>
            <DropdownMenuItem onSelect={() => handleShowDetails(equipment)}>
             Xem chi tiết
@@ -840,109 +837,15 @@ export default function EquipmentPage() {
   const tenantKey = (user as any)?.don_vi ? String((user as any).don_vi) : 'none'
   const [tenantFilter, setTenantFilter] = React.useState<string>('all') // 'all' = all tenants for global
   const isGlobal = (user as any)?.role === 'global' || (user as any)?.role === 'admin'
+  const selectedDonViUI = React.useMemo(() => {
+    if (!isGlobal) return null
+    if (tenantFilter === 'all') return null
+    const v = parseInt(tenantFilter, 10)
+    return Number.isFinite(v) ? v : null
+  }, [isGlobal, tenantFilter])
   const effectiveTenantKey = isGlobal ? tenantFilter : tenantKey
-  const CACHE_KEY = `equipment_data_${effectiveTenantKey}`
-
-  const fetchEquipment = React.useCallback(async () => {
-      setIsLoading(true);
-
-  // Tenant-scoped cache key to avoid cross-tenant bleed-through
-  const cacheKey = CACHE_KEY;
-
-      try {
-        const cachedItemJSON = localStorage.getItem(cacheKey);
-        if (cachedItemJSON) {
-          const cachedItem = JSON.parse(cachedItemJSON);
-          setData(cachedItem.data as Equipment[]);
-          setIsLoading(false);
-          // Do not return here to allow background refresh if needed later.
-        }
-      } catch (e) {
-        console.error("Error reading from localStorage, fetching from network.", e);
-        localStorage.removeItem(cacheKey);
-      }
-
-      if (supabaseError) {
-          toast({
-              variant: "destructive",
-              title: "Lỗi cấu hình Supabase",
-              description: supabaseError,
-              duration: 10000,
-          })
-          setData([]);
-          setIsLoading(false);
-          return;
-      }
-      try {
-        const data = await callRpc<Equipment[]>({
-          fn: 'equipment_list',
-          args: { p_q: null, p_sort: 'id.asc', p_page: 1, p_page_size: 10000, p_don_vi: isGlobal && tenantFilter !== 'all' ? Number(tenantFilter) : null },
-        })
-        setData(data || [])
-        try {
-          const itemToCache = { data }
-          localStorage.setItem(CACHE_KEY, JSON.stringify(itemToCache))
-        } catch (e) {
-          console.error("Error writing to localStorage", e)
-        }
-      } catch (error: any) {
-        toast({
-          variant: 'destructive',
-          title: 'Lỗi',
-          description: 'Không thể tải dữ liệu thiết bị. ' + (error?.message || ''),
-        })
-        if (!localStorage.getItem(CACHE_KEY)) {
-          setData([])
-        }
-      }
-      setIsLoading(false);
-  }, [toast, tenantKey, tenantFilter, isGlobal]);
-
-
-  const onDataMutationSuccess = React.useCallback(() => {
-    try {
-      // Clear tenant-scoped cache
-      localStorage.removeItem(CACHE_KEY)
-    } catch (error) {
-      console.error("Failed to invalidate cache", error);
-    }
-    fetchEquipment();
-  }, [fetchEquipment, CACHE_KEY]);
-
-  React.useEffect(() => {
-    fetchEquipment();
-  }, [fetchEquipment]);
-
-  // Refetch when tenant changes (session) or filter changes (global)
-  React.useEffect(() => {
-    // Invalidate previous cache and refetch on tenant change
-    try { localStorage.removeItem(CACHE_KEY) } catch {}
-    fetchEquipment()
-  }, [tenantKey, tenantFilter, CACHE_KEY, fetchEquipment])
-
-  // Listen for realtime cache invalidation events
-  React.useEffect(() => {
-    const handleCacheInvalidation = () => {
-      console.log('[EquipmentPage] Cache invalidated by realtime, refetching...')
-      fetchEquipment();
-    };
-
-    window.addEventListener('equipment-cache-invalidated', handleCacheInvalidation);
-    const handleTenantSwitched = () => {
-      console.log('[EquipmentPage] Tenant switched, clearing cache and refetching...')
-      try { localStorage.removeItem(CACHE_KEY) } catch {}
-      fetchEquipment()
-    }
-    window.addEventListener('tenant-switched', handleTenantSwitched as EventListener)
-
-    return () => {
-      window.removeEventListener('equipment-cache-invalidated', handleCacheInvalidation);
-      window.removeEventListener('tenant-switched', handleTenantSwitched as EventListener)
-    };
-  }, [fetchEquipment, CACHE_KEY]);
 
   // Load tenant options for global select
-  const [tenantOptions, setTenantOptions] = React.useState<{ id: number; name: string; code: string }[]>([])
   React.useEffect(() => {
     const loadTenants = async () => {
       if (!isGlobal) return
@@ -955,6 +858,81 @@ export default function EquipmentPage() {
     }
     loadTenants()
   }, [isGlobal])
+
+  // Equipment list query (TanStack Query)
+  const { data: equipmentData = [], isLoading: isEqLoading } = useQuery({
+    queryKey: ['equipment_list', { tenant: effectiveTenantKey }],
+    queryFn: async () => {
+      const selectedDonVi = isGlobal && tenantFilter !== 'all' ? parseInt(tenantFilter, 10) : null
+      const rpcArgs = { p_q: null, p_sort: 'id.asc', p_page: 1, p_page_size: 10000, p_don_vi: Number.isFinite(selectedDonVi as any) ? selectedDonVi : null }
+      const result = await callRpc<Equipment[]>({ fn: 'equipment_list', args: rpcArgs })
+      return result || []
+    },
+    placeholderData: keepPreviousData,
+    staleTime: 60_000,
+    gcTime: 5 * 60_000,
+    refetchOnWindowFocus: false,
+  })
+
+  const data = (equipmentData as Equipment[])
+  const isLoading = isEqLoading
+
+
+  const onDataMutationSuccess = React.useCallback(() => {
+    // Invalidate equipment list for all tenants (safe + simple)
+    queryClient.invalidateQueries({ queryKey: ['equipment_list'] })
+  }, [queryClient]);
+
+  // Listen for realtime cache invalidation events (invalidate queries)
+  React.useEffect(() => {
+    const handleCacheInvalidation = () => {
+      console.log('[EquipmentPage] Cache invalidated by realtime, invalidating equipment_list...')
+      queryClient.invalidateQueries({ queryKey: ['equipment_list'] })
+    };
+
+    window.addEventListener('equipment-cache-invalidated', handleCacheInvalidation);
+    const handleTenantSwitched = () => {
+      console.log('[EquipmentPage] Tenant switched, invalidating equipment_list...')
+      queryClient.invalidateQueries({ queryKey: ['equipment_list'] })
+    }
+    window.addEventListener('tenant-switched', handleTenantSwitched as EventListener)
+
+    return () => {
+      window.removeEventListener('equipment-cache-invalidated', handleCacheInvalidation);
+      window.removeEventListener('tenant-switched', handleTenantSwitched as EventListener)
+    };
+  }, [queryClient]);
+
+
+  // Debug: log when tenant filter changes
+  React.useEffect(() => {
+    if (!isGlobal) return
+    console.log('[EquipmentPage] tenantFilter changed ->', tenantFilter)
+    // Refetch equipment list when filter changes by invalidating the query for the current tenant key
+    queryClient.invalidateQueries({ queryKey: ['equipment_list', { tenant: effectiveTenantKey }] })
+  }, [tenantFilter, isGlobal, queryClient, effectiveTenantKey])
+
+  // Show a user-friendly toast when applying specific tenant filter
+  React.useEffect(() => {
+    if (!isGlobal) return
+    if (selectedDonViUI !== null) {
+      try {
+        const selectedTenant = tenantOptions.find(t => t.id === selectedDonViUI)
+        const tenantName = selectedTenant ? selectedTenant.name : `Đơn vị ${selectedDonViUI}`
+        toast({ 
+          variant: 'default', 
+          title: '✅ Đã áp dụng bộ lọc đơn vị', 
+          description: `Hiển thị thiết bị thuộc ${tenantName}` 
+        })
+      } catch {}
+    }
+  }, [selectedDonViUI, isGlobal, toast, tenantOptions])
+
+  // Log when refetch effect triggers due to tenant changes
+  React.useEffect(() => {
+    if (!isGlobal) return
+    console.log('[EquipmentPage] Refetch effect triggered for tenantFilter:', tenantFilter)
+  }, [tenantFilter, isGlobal])
 
   // Handle URL parameters for quick actions
   React.useEffect(() => {
@@ -996,59 +974,51 @@ export default function EquipmentPage() {
     }
   }, [searchParams, router, data])
 
-  const fetchAttachments = React.useCallback(async (equipmentId: number) => {
-    if (!supabase) return;
-    setIsLoadingAttachments(true);
-    try {
-      const { data, error } = await supabase
-        .from('file_dinh_kem')
-        .select('*')
-        .eq('thiet_bi_id', equipmentId)
-        .order('ngay_tai_len', { ascending: false });
+  // Attachments & history queries (fetch only when detail modal open)
+  const attachmentsQuery = useQuery({
+    queryKey: ['attachments', selectedEquipment?.id],
+    queryFn: async () => {
+      const data = await callRpc<any[]>({ fn: 'equipment_attachments_list', args: { p_thiet_bi_id: selectedEquipment!.id } })
+      return data || []
+    },
+    enabled: !!selectedEquipment && isDetailModalOpen,
+    staleTime: 300_000,
+    refetchOnWindowFocus: false,
+    placeholderData: keepPreviousData,
+  })
+  const historyQuery = useQuery({
+    queryKey: ['history', selectedEquipment?.id],
+    queryFn: async () => {
+      const data = await callRpc<any[]>({ fn: 'equipment_history_list', args: { p_thiet_bi_id: selectedEquipment!.id } })
+      return (data || []) as HistoryItem[]
+    },
+    enabled: !!selectedEquipment && isDetailModalOpen,
+    staleTime: 300_000,
+    refetchOnWindowFocus: false,
+    placeholderData: keepPreviousData,
+  })
 
-      if (error) throw error;
-      setAttachments(data || []);
-    } catch (error: any) {
-      toast({
-        variant: "destructive",
-        title: "Lỗi tải file đính kèm",
-        description: error.message,
-      });
-    } finally {
-      setIsLoadingAttachments(false);
-    }
-  }, [toast]);
+  const attachments = (attachmentsQuery.data ?? []) as Attachment[]
+  const isLoadingAttachments = attachmentsQuery.isLoading
+  const history = (historyQuery.data ?? []) as HistoryItem[]
+  const isLoadingHistory = historyQuery.isLoading
 
-  const fetchHistory = React.useCallback(async (equipmentId: number) => {
-    if (!supabase) return;
-    setIsLoadingHistory(true);
-    try {
-        const { data, error } = await supabase
-            .from('lich_su_thiet_bi')
-            .select('*')
-            .eq('thiet_bi_id', equipmentId)
-            .order('ngay_thuc_hien', { ascending: false });
 
-        if (error) throw error;
-        setHistory(data as HistoryItem[] || []);
-    } catch (error: any) {
-        toast({
-            variant: "destructive",
-            title: "Lỗi tải lịch sử thiết bị",
-            description: error.message,
-        });
-    } finally {
-        setIsLoadingHistory(false);
-    }
-  }, [toast]);
-
-  React.useEffect(() => {
-    if (isDetailModalOpen && selectedEquipment) {
-      fetchAttachments(selectedEquipment.id);
-      fetchHistory(selectedEquipment.id);
-    }
-  }, [isDetailModalOpen, selectedEquipment, fetchAttachments, fetchHistory]);
-
+  // Mutations for attachments
+  const addAttachmentMutation = useMutation({
+    mutationFn: async (vars: { id: number; name: string; url: string }) => {
+      await callRpc<string>({ fn: 'equipment_attachment_create', args: { p_thiet_bi_id: vars.id, p_ten_file: vars.name, p_duong_dan: vars.url } })
+    },
+    onSuccess: (_res, vars) => {
+      toast({ title: 'Thành công', description: 'Đã thêm liên kết mới.' })
+      setNewFileName('')
+      setNewFileUrl('')
+      queryClient.invalidateQueries({ queryKey: ['attachments', vars.id] })
+    },
+    onError: (error: any) => {
+      toast({ variant: 'destructive', title: 'Lỗi thêm liên kết', description: error?.message })
+    },
+  })
 
   const handleAddAttachment = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -1056,71 +1026,38 @@ export default function EquipmentPage() {
 
     // Basic URL validation
     try {
-        new URL(newFileUrl);
+      new URL(newFileUrl);
     } catch (_) {
-        toast({
-            variant: "destructive",
-            title: "URL không hợp lệ",
-            description: "Vui lòng nhập một đường dẫn URL hợp lệ.",
-        });
-        return;
+      toast({ variant: 'destructive', title: 'URL không hợp lệ', description: 'Vui lòng nhập một đường dẫn URL hợp lệ.' });
+      return;
     }
 
-
-    setIsSubmittingAttachment(true);
-    try {
-      if (!supabase) throw new Error("Supabase client is not available");
-      const { error } = await supabase.from('file_dinh_kem').insert({
-        thiet_bi_id: selectedEquipment.id,
-        ten_file: newFileName,
-        duong_dan_luu_tru: newFileUrl,
-      });
-      if (error) throw error;
-
-      toast({
-        title: "Thành công",
-        description: "Đã thêm liên kết mới.",
-      });
-      setNewFileName("");
-      setNewFileUrl("");
-      fetchAttachments(selectedEquipment.id);
-    } catch (error: any) {
-      toast({
-        variant: "destructive",
-        title: "Lỗi thêm liên kết",
-        description: error.message,
-      });
-    } finally {
-      setIsSubmittingAttachment(false);
-    }
+    await addAttachmentMutation.mutateAsync({ id: selectedEquipment.id, name: newFileName, url: newFileUrl })
   };
+
+  const deleteAttachmentMutation = useMutation({
+    mutationFn: async (vars: { attachmentId: string }) => {
+      await callRpc<void>({ fn: 'equipment_attachment_delete', args: { p_id: String(vars.attachmentId) } })
+    },
+    onSuccess: async (_res, _vars) => {
+      toast({ title: 'Đã xóa', description: 'Đã xóa liên kết thành công.' })
+      if (selectedEquipment) {
+        await queryClient.invalidateQueries({ queryKey: ['attachments', selectedEquipment.id] })
+      }
+    },
+    onError: (error: any) => {
+      toast({ variant: 'destructive', title: 'Lỗi xóa liên kết', description: error?.message })
+    },
+  })
 
   const handleDeleteAttachment = async (attachmentId: string) => {
     if (!selectedEquipment || deletingAttachmentId) return;
-
-    if (!confirm('Bạn có chắc chắn muốn xóa file đính kèm này không?')) {
-        return;
-    }
-    
+    if (!confirm('Bạn có chắc chắn muốn xóa file đính kèm này không?')) return;
     setDeletingAttachmentId(attachmentId);
     try {
-        if (!supabase) throw new Error("Supabase client is not available");
-        const { error } = await supabase.from('file_dinh_kem').delete().eq('id', attachmentId);
-        if (error) throw error;
-
-        toast({
-            title: "Đã xóa",
-            description: "Đã xóa liên kết thành công.",
-        });
-        fetchAttachments(selectedEquipment.id);
-    } catch (error: any) {
-        toast({
-            variant: "destructive",
-            title: "Lỗi xóa liên kết",
-            description: error.message,
-        });
+      await deleteAttachmentMutation.mutateAsync({ attachmentId })
     } finally {
-        setDeletingAttachmentId(null);
+      setDeletingAttachmentId(null)
     }
   };
 
@@ -1147,30 +1084,24 @@ export default function EquipmentPage() {
   
   // Auto department filter removed; no role-based table filter adjustments
   
-  // Restore table state after data reload
+  // Restore table state after data changes
   React.useEffect(() => {
     if (preservePageState && !isLoading && data.length > 0) {
-      // Add small delay to ensure table is fully rendered
       setTimeout(() => {
         table.setPageIndex(preservePageState.pageIndex);
         table.setPageSize(preservePageState.pageSize);
-        setPreservePageState(null); // Clear after restore
+        setPreservePageState(null);
       }, 150);
     }
   }, [preservePageState, isLoading, data.length, table]);
   
-  // Enhanced onDataMutationSuccess that preserves table state
   const onDataMutationSuccessWithStatePreservation = React.useCallback(() => {
-    // Save current table state before reload
     const currentState = table.getState();
     const stateToSave = {
       pageIndex: currentState.pagination.pageIndex,
       pageSize: currentState.pagination.pageSize,
     };
-    
     setPreservePageState(stateToSave);
-    
-    // Call original function
     onDataMutationSuccess();
   }, [table, onDataMutationSuccess]);
   
@@ -1451,11 +1382,11 @@ export default function EquipmentPage() {
                                     <form onSubmit={handleAddAttachment} className="space-y-4">
                                         <div className="space-y-1">
                                             <Label htmlFor="file-name">Tên file</Label>
-                                            <Input id="file-name" placeholder="VD: Giấy chứng nhận hiệu chuẩn" value={newFileName} onChange={e => setNewFileName(e.target.value)} required disabled={isSubmittingAttachment}/>
+<Input id="file-name" placeholder="VD: Giấy chứng nhận hiệu chuẩn" value={newFileName} onChange={e => setNewFileName(e.target.value)} required disabled={addAttachmentMutation.isPending}/>
                                         </div>
                                         <div className="space-y-1">
                                             <Label htmlFor="file-url">Đường dẫn (URL)</Label>
-                                            <Input id="file-url" type="url" placeholder="https://..." value={newFileUrl} onChange={e => setNewFileUrl(e.target.value)} required disabled={isSubmittingAttachment}/>
+<Input id="file-url" type="url" placeholder="https://..." value={newFileUrl} onChange={e => setNewFileUrl(e.target.value)} required disabled={addAttachmentMutation.isPending}/>
                                         </div>
                                         <Alert>
                                             <AlertCircle className="h-4 w-4" />
@@ -1468,15 +1399,15 @@ export default function EquipmentPage() {
                                                 , sau đó lấy link chia sẻ công khai và dán vào đây.
                                             </AlertDescription>
                                         </Alert>
-                                        <Button type="submit" disabled={isSubmittingAttachment || !newFileName || !newFileUrl}>
-                                            {isSubmittingAttachment && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                        <Button type="submit" disabled={addAttachmentMutation.isPending || !newFileName || !newFileUrl}>
+                                            {addAttachmentMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                                             Lưu liên kết
                                         </Button>
                                     </form>
                                 </CardContent>
                             </Card>
                              <div className="flex-grow overflow-hidden">
-                                <p className="font-medium mb-2">Danh sách file đã đính kèm</p>
+                        <p className="font-medium mb-2">Danh sách file đã đính kèm</p>
                                 <ScrollArea className="h-full pr-4">
                                     {isLoadingAttachments ? (
                                         <div className="space-y-2">
@@ -1499,9 +1430,9 @@ export default function EquipmentPage() {
                                                         size="icon" 
                                                         className="h-8 w-8 text-destructive hover:bg-destructive/10" 
                                                         onClick={() => handleDeleteAttachment(file.id)}
-                                                        disabled={!!deletingAttachmentId}
+                                                        disabled={!!deletingAttachmentId || deleteAttachmentMutation.isPending}
                                                     >
-                                                        {deletingAttachmentId === file.id ? <Loader2 className="h-4 w-4 animate-spin"/> : <Trash2 className="h-4 w-4"/>}
+                                                        {deletingAttachmentId === file.id || deleteAttachmentMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin"/> : <Trash2 className="h-4 w-4"/>}
                                                     </Button>
                                                 </div>
                                             ))}
@@ -1688,9 +1619,12 @@ export default function EquipmentPage() {
                   <Label className="text-xs text-muted-foreground">Đơn vị</Label>
                   <Select
                     value={tenantFilter}
-                    onValueChange={(v) => setTenantFilter(v)}
+                    onValueChange={(v) => {
+                      console.log('[EquipmentPage] tenant select onValueChange ->', v)
+                      setTenantFilter(v)
+                    }}
                   >
-                    <SelectTrigger className="h-8 w-[220px]">
+                    <SelectTrigger className="h-8 w-[280px]">
                       <SelectValue placeholder="Tất cả đơn vị" />
                     </SelectTrigger>
                     <SelectContent>
