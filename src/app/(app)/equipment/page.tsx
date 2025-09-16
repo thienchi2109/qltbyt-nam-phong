@@ -840,6 +840,12 @@ export default function EquipmentPage() {
   const tenantKey = (user as any)?.don_vi ? String((user as any).don_vi) : 'none'
   const [tenantFilter, setTenantFilter] = React.useState<string>('all') // 'all' = all tenants for global
   const isGlobal = (user as any)?.role === 'global' || (user as any)?.role === 'admin'
+  const selectedDonViUI = React.useMemo(() => {
+    if (!isGlobal) return null
+    if (tenantFilter === 'all') return null
+    const v = parseInt(tenantFilter, 10)
+    return Number.isFinite(v) ? v : null
+  }, [isGlobal, tenantFilter])
   const effectiveTenantKey = isGlobal ? tenantFilter : tenantKey
   const CACHE_KEY = `equipment_data_${effectiveTenantKey}`
 
@@ -863,11 +869,36 @@ export default function EquipmentPage() {
       }
 
       try {
+        const selectedDonVi = isGlobal && tenantFilter !== 'all' ? parseInt(tenantFilter, 10) : null
+        const rpcArgs = { p_q: null, p_sort: 'id.asc', p_page: 1, p_page_size: 10000, p_don_vi: Number.isFinite(selectedDonVi as any) ? selectedDonVi : null }
+        console.log('[EquipmentPage] Calling equipment_list with args:', rpcArgs, {
+          isGlobal,
+          tenantFilter,
+          selectedDonVi,
+          userDonVi: tenantKey,
+        })
         const data = await callRpc<Equipment[]>({
           fn: 'equipment_list',
-          args: { p_q: null, p_sort: 'id.asc', p_page: 1, p_page_size: 10000, p_don_vi: isGlobal && tenantFilter !== 'all' ? Number(tenantFilter) : null },
+          args: rpcArgs,
         })
+        console.log('[EquipmentPage] equipment_list returned items:', data?.length ?? 0)
         setData(data || [])
+        try {
+          toast({ title: 'Đã tải danh sách thiết bị', description: `Số bản ghi: ${data?.length ?? 0} (p_don_vi=${rpcArgs.p_don_vi ?? 'all'})` })
+        } catch {}
+
+        // Inspect unique don_vi values returned to validate server-side filter
+        const uniqueDonVi = Array.from(new Set((data || []).map((x: any) => x?.don_vi))).filter(v => v !== undefined && v !== null).sort()
+        console.log('[EquipmentPage] unique don_vi in response:', uniqueDonVi)
+        if (rpcArgs.p_don_vi != null) {
+          const matches = uniqueDonVi.length === 1 && String(uniqueDonVi[0]) === String(rpcArgs.p_don_vi)
+          if (!matches) {
+            try {
+              toast({ variant: 'destructive', title: 'Cảnh báo lọc đơn vị', description: `Yêu cầu lọc p_don_vi=${rpcArgs.p_don_vi} nhưng phản hồi có don_vi=${uniqueDonVi.join(',') || 'none'}` })
+            } catch {}
+          }
+        }
+
         try {
           const itemToCache = { data }
           localStorage.setItem(CACHE_KEY, JSON.stringify(itemToCache))
@@ -944,6 +975,28 @@ export default function EquipmentPage() {
     }
     loadTenants()
   }, [isGlobal])
+
+  // Debug: log when tenant filter changes
+  React.useEffect(() => {
+    if (!isGlobal) return
+    console.log('[EquipmentPage] tenantFilter changed ->', tenantFilter)
+  }, [tenantFilter, isGlobal])
+
+  // Show a light toast assertion when applying specific tenant filter
+  React.useEffect(() => {
+    if (!isGlobal) return
+    if (selectedDonViUI !== null) {
+      try {
+        toast({ variant: 'outline', title: 'Đang lọc theo đơn vị', description: `ID: ${selectedDonViUI}` })
+      } catch {}
+    }
+  }, [selectedDonViUI, isGlobal, toast])
+
+  // Log when refetch effect triggers due to tenant changes
+  React.useEffect(() => {
+    if (!isGlobal) return
+    console.log('[EquipmentPage] Refetch effect triggered for tenantFilter:', tenantFilter)
+  }, [tenantFilter, isGlobal])
 
   // Handle URL parameters for quick actions
   React.useEffect(() => {
@@ -1655,7 +1708,10 @@ export default function EquipmentPage() {
                   <Label className="text-xs text-muted-foreground">Đơn vị</Label>
                   <Select
                     value={tenantFilter}
-                    onValueChange={(v) => setTenantFilter(v)}
+                    onValueChange={(v) => {
+                      console.log('[EquipmentPage] tenant select onValueChange ->', v)
+                      setTenantFilter(v)
+                    }}
                   >
                     <SelectTrigger className="h-8 w-[220px]">
                       <SelectValue placeholder="Tất cả đơn vị" />
@@ -1669,6 +1725,11 @@ export default function EquipmentPage() {
                       ))}
                     </SelectContent>
                   </Select>
+                  {selectedDonViUI !== null && (
+                    <span className="text-xs text-muted-foreground ml-1">
+                      Đang lọc theo đơn vị ID: {selectedDonViUI}
+                    </span>
+                  )}
                 </div>
               )}
               {!isMobile && (
