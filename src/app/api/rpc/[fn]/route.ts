@@ -72,7 +72,7 @@ export async function POST(req: NextRequest, context: { params: Promise<{ fn: st
       return NextResponse.json({ error: 'Function not allowed' }, { status: 403 })
     }
 
-    const body = await req.json().catch(() => ({}))
+    const rawBody = await req.json().catch(() => ({}))
 
   // Pull claims from NextAuth session securely (no client headers trusted)
   const session = await getServerSession(authOptions as any)
@@ -95,6 +95,17 @@ export async function POST(req: NextRequest, context: { params: Promise<{ fn: st
       app_role: appRole,
       don_vi: donVi,
       user_id: userId,
+    }
+
+    // Sanitize tenant parameter for non-global users to enforce isolation
+    let body: any = (rawBody && typeof rawBody === 'object') ? { ...rawBody } : {}
+    if (appRole !== 'global') {
+      try {
+        if (Object.prototype.hasOwnProperty.call(body, 'p_don_vi')) {
+          const dv = donVi && donVi !== '' ? (Number.isFinite(Number(donVi)) ? Number(donVi) : donVi) : null
+          ;(body as any).p_don_vi = dv
+        }
+      } catch {}
     }
 
     const secret = getEnv('SUPABASE_JWT_SECRET')
