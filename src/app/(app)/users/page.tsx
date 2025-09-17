@@ -52,6 +52,8 @@ import { EditUserDialog } from "@/components/edit-user-dialog"
 import { USER_ROLES, type User } from "@/types/database"
 import { Input } from "@/components/ui/input"
 import { useSearchDebounce } from "@/hooks/use-debounce"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { TenantsManagement } from "@/components/tenants-management"
 
 export default function UsersPage() {
   const { toast } = useToast()
@@ -365,176 +367,190 @@ export default function UsersPage() {
         </AlertDialogContent>
       </AlertDialog>
 
-      <Card>
-        <CardHeader>
-          <div className="flex flex-col gap-2 md:flex-row md:items-center">
-            <div className="grid gap-2">
-              <CardTitle>Quản lý Người dùng</CardTitle>
-              <CardDescription>
-                Tạo, chỉnh sửa và xóa tài khoản người dùng. Chỉ quản trị viên mới có quyền truy cập.
-              </CardDescription>
-            </div>
-            <div className="flex items-center gap-2 md:ml-auto">
-              <Input
-                placeholder="Tìm kiếm người dùng..."
-                value={globalFilter}
-                onChange={(e) => setGlobalFilter(e.target.value)}
-                className="h-8 w-full md:w-64"
-              />
-              <Button size="sm" className="h-8 gap-1" onClick={() => setIsAddDialogOpen(true)}>
-                <PlusCircle className="h-3.5 w-3.5" />
-                <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
-                  Thêm người dùng
-                </span>
-              </Button>
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent>
-          {isMobile ? (
-            <div className="space-y-4">
-              {isLoading ? (
-                Array.from({ length: 3 }).map((_, i) => (
-                  <Skeleton key={i} className="h-32 w-full rounded-lg" />
-                ))
-              ) : table.getRowModel().rows?.length ? (
-                table.getRowModel().rows.map((row) => (
-                  <UserCard
-                    key={row.original.id}
-                    user={row.original}
-                    onEdit={() => setEditingUser(row.original)}
-                    onDelete={() => setUserToDelete(row.original)}
-                  />
-                ))
-              ) : (
-                <div className="text-center text-muted-foreground py-8">
-                  Không tìm thấy người dùng nào.
+      {/* Tabs layout: default to Tenants */}
+      <Tabs defaultValue="tenants" className="space-y-4">
+        <TabsList>
+          <TabsTrigger value="tenants">Đơn vị</TabsTrigger>
+          <TabsTrigger value="users">Người dùng</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="tenants">
+          <TenantsManagement />
+        </TabsContent>
+
+        <TabsContent value="users">
+          <Card>
+            <CardHeader>
+              <div className="flex flex-col gap-2 md:flex-row md:items-center">
+                <div className="grid gap-2">
+                  <CardTitle>Quản lý Người dùng</CardTitle>
+                  <CardDescription>
+                    Tạo, chỉnh sửa và xóa tài khoản người dùng. Chỉ quản trị viên mới có quyền truy cập.
+                  </CardDescription>
                 </div>
-              )}
-            </div>
-          ) : (
-            <div className="rounded-md border">
-              <Table>
-                <TableHeader>
-                  {table.getHeaderGroups().map((headerGroup) => (
-                    <TableRow key={headerGroup.id}>
-                      {headerGroup.headers.map((header) => (
-                        <TableHead key={header.id}>
-                          {header.isPlaceholder
-                            ? null
-                            : flexRender(
-                                header.column.columnDef.header,
-                                header.getContext()
-                              )}
-                        </TableHead>
-                      ))}
-                    </TableRow>
-                  ))}
-                </TableHeader>
-                <TableBody>
+                <div className="flex items-center gap-2 md:ml-auto">
+                  <Input
+                    placeholder="Tìm kiếm người dùng..."
+                    value={globalFilter}
+                    onChange={(e) => setGlobalFilter(e.target.value)}
+                    className="h-8 w-full md:w-64"
+                  />
+                  <Button size="sm" className="h-8 gap-1" onClick={() => setIsAddDialogOpen(true)}>
+                    <PlusCircle className="h-3.5 w-3.5" />
+                    <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
+                      Thêm người dùng
+                    </span>
+                  </Button>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {isMobile ? (
+                <div className="space-y-4">
                   {isLoading ? (
-                    Array.from({ length: pagination.pageSize }).map((_, i) => (
-                      <TableRow key={i}>
-                        <TableCell colSpan={columns.length}>
-                          <Skeleton className="h-8 w-full" />
-                        </TableCell>
-                      </TableRow>
+                    Array.from({ length: 3 }).map((_, i) => (
+                      <Skeleton key={i} className="h-32 w-full rounded-lg" />
                     ))
                   ) : table.getRowModel().rows?.length ? (
                     table.getRowModel().rows.map((row) => (
-                      <TableRow key={row.id} data-state={row.getIsSelected() && "selected"}>
-                        {row.getVisibleCells().map((cell) => (
-                          <TableCell key={cell.id}>
-                            {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                          </TableCell>
-                        ))}
-                      </TableRow>
+                      <UserCard
+                        key={row.original.id}
+                        user={row.original}
+                        onEdit={() => setEditingUser(row.original)}
+                        onDelete={() => setUserToDelete(row.original)}
+                      />
                     ))
                   ) : (
-                    <TableRow>
-                      <TableCell colSpan={columns.length} className="h-24 text-center">
-                        Không tìm thấy người dùng nào.
-                      </TableCell>
-                    </TableRow>
+                    <div className="text-center text-muted-foreground py-8">
+                      Không tìm thấy người dùng nào.
+                    </div>
                   )}
-                </TableBody>
-              </Table>
-            </div>
-          )}
-          {/* Pagination - common for both views */}
-          {users.length > 0 && (
-            <div className="flex items-center justify-between space-x-2 py-4">
-              <div className="flex-1 text-sm text-muted-foreground">
-                Hiển thị {table.getRowModel().rows.length} trên {users.length} người dùng.
-              </div>
-              <div className="flex items-center gap-x-2 sm:gap-x-4 md:gap-x-6 lg:gap-x-8">
-                <div className="flex items-center space-x-2">
-                  <p className="text-sm font-medium hidden sm:block">Số dòng</p>
-                  <Select
-                    value={`${table.getState().pagination.pageSize}`}
-                    onValueChange={(value) => {
-                      table.setPageSize(Number(value))
-                    }}
-                  >
-                    <SelectTrigger className="h-8 w-[60px] sm:w-[70px]">
-                      <SelectValue placeholder={table.getState().pagination.pageSize} />
-                    </SelectTrigger>
-                    <SelectContent side="top">
-                      {[10, 20, 50, 100].map((pageSize) => (
-                        <SelectItem key={pageSize} value={`${pageSize}`}>
-                          {pageSize}
-                        </SelectItem>
+                </div>
+              ) : (
+                <div className="rounded-md border">
+                  <Table>
+                    <TableHeader>
+                      {table.getHeaderGroups().map((headerGroup) => (
+                        <TableRow key={headerGroup.id}>
+                          {headerGroup.headers.map((header) => (
+                            <TableHead key={header.id}>
+                              {header.isPlaceholder
+                                ? null
+                                : flexRender(
+                                    header.column.columnDef.header,
+                                    header.getContext()
+                                  )}
+                            </TableHead>
+                          ))}
+                        </TableRow>
                       ))}
-                    </SelectContent>
-                  </Select>
+                    </TableHeader>
+                    <TableBody>
+                      {isLoading ? (
+                        Array.from({ length: pagination.pageSize }).map((_, i) => (
+                          <TableRow key={i}>
+                            <TableCell colSpan={columns.length}>
+                              <Skeleton className="h-8 w-full" />
+                            </TableCell>
+                          </TableRow>
+                        ))
+                      ) : table.getRowModel().rows?.length ? (
+                        table.getRowModel().rows.map((row) => (
+                          <TableRow key={row.id} data-state={row.getIsSelected() && "selected"}>
+                            {row.getVisibleCells().map((cell) => (
+                              <TableCell key={cell.id}>
+                                {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                              </TableCell>
+                            ))}
+                          </TableRow>
+                        ))
+                      ) : (
+                        <TableRow>
+                          <TableCell colSpan={columns.length} className="h-24 text-center">
+                            Không tìm thấy người dùng nào.
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
                 </div>
-                <div className="flex w-[80px] sm:w-[100px] items-center justify-center text-sm font-medium">
-                  Trang {table.getState().pagination.pageIndex + 1} /{" "}
-                  {table.getPageCount()}
+              )}
+              {/* Pagination - common for both views */}
+              {users.length > 0 && (
+                <div className="flex items-center justify-between space-x-2 py-4">
+                  <div className="flex-1 text-sm text-muted-foreground">
+                    Hiển thị {table.getRowModel().rows.length} trên {users.length} người dùng.
+                  </div>
+                  <div className="flex items-center gap-x-2 sm:gap-x-4 md:gap-x-6 lg:gap-x-8">
+                    <div className="flex items-center space-x-2">
+                      <p className="text-sm font-medium hidden sm:block">Số dòng</p>
+                      <Select
+                        value={`${table.getState().pagination.pageSize}`}
+                        onValueChange={(value) => {
+                          table.setPageSize(Number(value))
+                        }}
+                      >
+                        <SelectTrigger className="h-8 w-[60px] sm:w-[70px]">
+                          <SelectValue placeholder={table.getState().pagination.pageSize} />
+                        </SelectTrigger>
+                        <SelectContent side="top">
+                          {[10, 20, 50, 100].map((pageSize) => (
+                            <SelectItem key={pageSize} value={`${pageSize}`}>
+                              {pageSize}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="flex w-[80px] sm:w-[100px] items-center justify-center text-sm font-medium">
+                      Trang {table.getState().pagination.pageIndex + 1} /{" "}
+                      {table.getPageCount()}
+                    </div>
+                    <div className="flex items-center space-x-1 sm:space-x-2">
+                      <Button
+                        variant="outline"
+                        className="hidden h-8 w-8 p-0 lg:flex"
+                        onClick={() => table.setPageIndex(0)}
+                        disabled={!table.getCanPreviousPage()}
+                      >
+                        <span className="sr-only">Về trang đầu</span>
+                        <ChevronsLeft className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="outline"
+                        className="h-8 w-8 p-0"
+                        onClick={() => table.previousPage()}
+                        disabled={!table.getCanPreviousPage()}
+                      >
+                        <span className="sr-only">Trang trước</span>
+                        <ChevronLeft className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="outline"
+                        className="h-8 w-8 p-0"
+                        onClick={() => table.nextPage()}
+                        disabled={!table.getCanNextPage()}
+                      >
+                        <span className="sr-only">Trang sau</span>
+                        <ChevronRight className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="outline"
+                        className="hidden h-8 w-8 p-0 lg:flex"
+                        onClick={() => table.setPageIndex(table.getPageCount() - 1)}
+                        disabled={!table.getCanNextPage()}
+                      >
+                        <span className="sr-only">Đến trang cuối</span>
+                        <ChevronsRight className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
                 </div>
-                <div className="flex items-center space-x-1 sm:space-x-2">
-                  <Button
-                    variant="outline"
-                    className="hidden h-8 w-8 p-0 lg:flex"
-                    onClick={() => table.setPageIndex(0)}
-                    disabled={!table.getCanPreviousPage()}
-                  >
-                    <span className="sr-only">Về trang đầu</span>
-                    <ChevronsLeft className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    variant="outline"
-                    className="h-8 w-8 p-0"
-                    onClick={() => table.previousPage()}
-                    disabled={!table.getCanPreviousPage()}
-                  >
-                    <span className="sr-only">Trang trước</span>
-                    <ChevronLeft className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    variant="outline"
-                    className="h-8 w-8 p-0"
-                    onClick={() => table.nextPage()}
-                    disabled={!table.getCanNextPage()}
-                  >
-                    <span className="sr-only">Trang sau</span>
-                    <ChevronRight className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    variant="outline"
-                    className="hidden h-8 w-8 p-0 lg:flex"
-                    onClick={() => table.setPageIndex(table.getPageCount() - 1)}
-                    disabled={!table.getCanNextPage()}
-                  >
-                    <span className="sr-only">Đến trang cuối</span>
-                    <ChevronsRight className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
     </>
   )
 }

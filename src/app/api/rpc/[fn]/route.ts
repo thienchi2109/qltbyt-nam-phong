@@ -55,6 +55,12 @@ const ALLOWED_FUNCTIONS = new Set<string>([
   'user_membership_add',
   'user_membership_remove',
   'user_set_current_don_vi',
+  // Don vi (global-only management)
+  'don_vi_list',
+  'don_vi_get',
+  'don_vi_create',
+  'don_vi_update',
+  'don_vi_set_active',
   // Debug
   'debug_claims',
 ])
