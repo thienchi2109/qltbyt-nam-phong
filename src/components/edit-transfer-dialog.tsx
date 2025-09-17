@@ -352,6 +352,13 @@ export function EditTransferDialog({ open, onOpenChange, onSuccess, transfer }: 
                     </div>
                   </div>
                 )}
+                {debouncedSearch && filteredEquipment.length === 0 && (
+                  <div className="absolute z-10 w-full mt-1 bg-popover border rounded-md shadow-lg p-3">
+                    <div className="text-sm text-muted-foreground text-center">
+                      Không tìm thấy kết quả phù hợp
+                    </div>
+                  </div>
+                )}
               </div>
               {selectedEquipment && (
                 <p className="text-xs text-muted-foreground flex items-center gap-1.5 pt-1">
