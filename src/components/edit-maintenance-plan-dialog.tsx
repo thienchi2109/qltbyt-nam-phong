@@ -25,7 +25,7 @@ import {
 } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
 import { useToast } from "@/hooks/use-toast"
-import { supabase } from "@/lib/supabase"
+import { callRpc } from "@/lib/rpc-client"
 import { type MaintenancePlan, taskTypes } from "@/lib/data"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select"
 
@@ -75,18 +75,16 @@ export function EditMaintenancePlanDialog({ open, onOpenChange, onSuccess, plan 
     
     setIsSubmitting(true)
     try {
-  if (!supabase) throw new Error('Supabase client not initialized')
-  const { error } = await supabase
-        .from("ke_hoach_bao_tri")
-        .update({
-            ...values,
-            khoa_phong: values.khoa_phong || null,
-        })
-        .eq('id', plan.id)
-
-      if (error) {
-        throw error
-      }
+      await callRpc<void>({
+        fn: 'maintenance_plan_update',
+        args: {
+          p_id: plan.id,
+          p_ten_ke_hoach: values.ten_ke_hoach,
+          p_nam: values.nam,
+          p_loai_cong_viec: values.loai_cong_viec,
+          p_khoa_phong: values.khoa_phong || null,
+        }
+      })
 
       toast({
         title: "Thành công",

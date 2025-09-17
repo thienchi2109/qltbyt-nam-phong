@@ -5,6 +5,7 @@ import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
 import { z } from "zod"
 import { Loader2 } from "lucide-react"
+import { useSession } from "next-auth/react"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -78,7 +79,10 @@ interface AddEquipmentDialogProps {
 export function AddEquipmentDialog({ open, onOpenChange, onSuccess }: AddEquipmentDialogProps) {
   const { toast } = useToast()
   const queryClient = useQueryClient()
+  const { data: session } = useSession()
   const [departments, setDepartments] = React.useState<string[]>([])
+  const [tenants, setTenants] = React.useState<{ id: number; code: string; name: string }[]>([])
+  const [currentTenant, setCurrentTenant] = React.useState<{ id: number; code: string; name: string } | null>(null)
   const form = useForm<EquipmentFormValues>({
     resolver: zodResolver(equipmentFormSchema),
     defaultValues: {
@@ -107,10 +111,12 @@ export function AddEquipmentDialog({ open, onOpenChange, onSuccess }: AddEquipme
   React.useEffect(() => {
     if (open) {
       fetchDepartments();
+      fetchCurrentTenant();
     } else {
       form.reset();
+      setCurrentTenant(null);
     }
-  }, [open, form])
+  }, [open, form, session])
 
   const fetchDepartments = async () => {
     try {
@@ -118,6 +124,25 @@ export function AddEquipmentDialog({ open, onOpenChange, onSuccess }: AddEquipme
       setDepartments((list || []).map(x => x.name).filter(Boolean))
     } catch (error: any) {
       toast({ variant: "destructive", title: "Lỗi tải danh sách khoa phòng", description: error?.message || '' })
+    }
+  };
+
+  const fetchCurrentTenant = async () => {
+    try {
+      const list = await callRpc<any[]>({ fn: 'tenant_list', args: {} })
+      const tenantList = (list || []).map(t => ({ id: t.id, code: t.code, name: t.name }))
+      setTenants(tenantList)
+      
+      // Find current user's tenant based on session
+      const userDonVi = (session as any)?.user?.don_vi
+      if (userDonVi) {
+        const current = tenantList.find(t => t.id === Number(userDonVi))
+        if (current) {
+          setCurrentTenant(current)
+        }
+      }
+    } catch (error: any) {
+      toast({ variant: "destructive", title: "Lỗi tải thông tin đơn vị", description: error?.message || '' })
     }
   };
 
@@ -183,6 +208,21 @@ export function AddEquipmentDialog({ open, onOpenChange, onSuccess }: AddEquipme
                     )}
                     />
                 </div>
+                
+                {/* Read-only Đơn vị field */}
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">Đơn vị</Label>
+                  <Input 
+                    value={currentTenant ? `${currentTenant.name}${currentTenant.code ? ` (${currentTenant.code})` : ''}` : 'Đang tải...'}
+                    disabled
+                    className="bg-muted text-muted-foreground cursor-not-allowed"
+                    placeholder="Thông tin đơn vị sẽ được tự động điền"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Thiết bị sẽ thuộc về đơn vị hiện tại của bạn (không thể thay đổi)
+                  </p>
+                </div>
+                
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <FormField control={form.control} name="model" render={({ field }) => (
                         <FormItem><FormLabel>Model</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
