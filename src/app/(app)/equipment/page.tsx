@@ -859,41 +859,97 @@ export default function EquipmentPage() {
     loadTenants()
   }, [isGlobal])
 
-  // Equipment list query (TanStack Query)
-  const { data: equipmentData = [], isLoading: isEqLoading } = useQuery({
-    queryKey: ['equipment_list', { tenant: effectiveTenantKey }],
-    queryFn: async () => {
-      const selectedDonVi = isGlobal && tenantFilter !== 'all' ? parseInt(tenantFilter, 10) : null
-      const rpcArgs = { p_q: null, p_sort: 'id.asc', p_page: 1, p_page_size: 10000, p_don_vi: Number.isFinite(selectedDonVi as any) ? selectedDonVi : null }
-      const result = await callRpc<Equipment[]>({ fn: 'equipment_list', args: rpcArgs })
-      return result || []
+  // Equipment list query (TanStack Query) - server-side pagination via equipment_list_enhanced
+  type EquipmentListRes = { data: Equipment[]; total: number; page: number; pageSize: number }
+
+  // Server-side pagination state
+  const [pagination, setPagination] = React.useState({ pageIndex: 0, pageSize: 20 })
+
+  // Extract server-filterable values from columnFilters (single-select when multiple chosen)
+  const getSingleFilter = React.useCallback((id: string): string | null => {
+    const entry = (columnFilters || []).find((f) => f.id === id)
+    const vals = (entry?.value as string[] | undefined) || []
+    return vals.length === 1 ? vals[0] : null
+  }, [columnFilters])
+
+  const selectedDonVi = React.useMemo(() => {
+    if (!isGlobal) return null
+    if (tenantFilter === 'all') return null
+    const v = parseInt(tenantFilter, 10)
+    return Number.isFinite(v) ? v : null
+  }, [isGlobal, tenantFilter])
+
+  const sortParam = React.useMemo(() => {
+    if (!sorting || sorting.length === 0) return 'id.asc'
+    const s = sorting[0]
+    return `${s.id}.${s.desc ? 'desc' : 'asc'}`
+  }, [sorting])
+
+  const { data: equipmentRes, isLoading: isEqLoading, isFetching } = useQuery<EquipmentListRes>({
+    queryKey: ['equipment_list_enhanced', {
+      tenant: effectiveTenantKey,
+      page: pagination.pageIndex,
+      size: pagination.pageSize,
+      q: debouncedSearch || null,
+      khoa_phong: getSingleFilter('khoa_phong_quan_ly'),
+      tinh_trang: getSingleFilter('tinh_trang_hien_tai'),
+      phan_loai: getSingleFilter('phan_loai_theo_nd98'),
+      sort: sortParam,
+    }],
+    queryFn: async ({ signal }) => {
+      const result = await callRpc<EquipmentListRes>({ fn: 'equipment_list_enhanced', args: {
+        p_q: debouncedSearch || null,
+        p_sort: sortParam,
+        p_page: pagination.pageIndex + 1,
+        p_page_size: pagination.pageSize,
+        p_don_vi: selectedDonVi,
+        p_khoa_phong: getSingleFilter('khoa_phong_quan_ly'),
+        p_tinh_trang: getSingleFilter('tinh_trang_hien_tai'),
+        p_phan_loai: getSingleFilter('phan_loai_theo_nd98'),
+      }, signal })
+      return result
     },
     placeholderData: keepPreviousData,
-    staleTime: 60_000,
-    gcTime: 5 * 60_000,
+    staleTime: 120_000,
+    gcTime: 10 * 60_000,
     refetchOnWindowFocus: false,
   })
 
-  const data = (equipmentData as Equipment[])
+  const data = (equipmentRes?.data ?? []) as Equipment[]
+  const total = equipmentRes?.total ?? 0
   const isLoading = isEqLoading
+
+  // Granular cache invalidation for current tenant
+  const invalidateEquipmentForCurrentTenant = React.useCallback(() => {
+    queryClient.invalidateQueries({
+      predicate: (q) => {
+        const key = (q as any)?.queryKey
+        if (!Array.isArray(key)) return false
+        if (key[0] !== 'equipment_list_enhanced') return false
+        const params = key[1] as any
+        return params?.tenant === effectiveTenantKey
+      },
+      refetchType: 'active',
+    })
+  }, [queryClient, effectiveTenantKey])
 
 
   const onDataMutationSuccess = React.useCallback(() => {
-    // Invalidate equipment list for all tenants (safe + simple)
-    queryClient.invalidateQueries({ queryKey: ['equipment_list'] })
-  }, [queryClient]);
+    // Invalidate only current-tenant queries
+    invalidateEquipmentForCurrentTenant()
+  }, [invalidateEquipmentForCurrentTenant]);
 
   // Listen for realtime cache invalidation events (invalidate queries)
   React.useEffect(() => {
     const handleCacheInvalidation = () => {
-      console.log('[EquipmentPage] Cache invalidated by realtime, invalidating equipment_list...')
-      queryClient.invalidateQueries({ queryKey: ['equipment_list'] })
+      console.log('[EquipmentPage] Cache invalidated by realtime, invalidating equipment_list_enhanced...')
+      invalidateEquipmentForCurrentTenant()
     };
 
     window.addEventListener('equipment-cache-invalidated', handleCacheInvalidation);
     const handleTenantSwitched = () => {
-      console.log('[EquipmentPage] Tenant switched, invalidating equipment_list...')
-      queryClient.invalidateQueries({ queryKey: ['equipment_list'] })
+      console.log('[EquipmentPage] Tenant switched, invalidating equipment_list_enhanced...')
+      invalidateEquipmentForCurrentTenant()
     }
     window.addEventListener('tenant-switched', handleTenantSwitched as EventListener)
 
@@ -908,8 +964,8 @@ export default function EquipmentPage() {
   React.useEffect(() => {
     if (!isGlobal) return
     console.log('[EquipmentPage] tenantFilter changed ->', tenantFilter)
-    // Refetch equipment list when filter changes by invalidating the query for the current tenant key
-    queryClient.invalidateQueries({ queryKey: ['equipment_list', { tenant: effectiveTenantKey }] })
+    // Refetch equipment list when filter changes by invalidating queries for current tenant
+    invalidateEquipmentForCurrentTenant()
   }, [tenantFilter, isGlobal, queryClient, effectiveTenantKey])
 
   // Show a user-friendly toast when applying specific tenant filter
@@ -1061,11 +1117,14 @@ export default function EquipmentPage() {
     }
   };
 
+  const pageCount = Math.max(1, Math.ceil((total || 0) / Math.max(pagination.pageSize, 1)))
+
   const table = useReactTable({
     data,
     columns,
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
+    onPaginationChange: setPagination,
     getCoreRowModel: getCoreRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
     getSortedRowModel: getSortedRowModel(),
@@ -1079,7 +1138,10 @@ export default function EquipmentPage() {
       columnFilters,
       columnVisibility,
       globalFilter: debouncedSearch,
+      pagination,
     },
+    manualPagination: true,
+    pageCount,
   })
   
   // Auto department filter removed; no role-based table filter adjustments
@@ -1223,7 +1285,12 @@ export default function EquipmentPage() {
     }
 
     return isMobile ? (
-      <div className="space-y-2">
+      <div className="relative space-y-2">
+        {isFetching && (
+          <div className="absolute inset-0 bg-background/40 backdrop-blur-[1px] flex items-center justify-center z-10">
+            <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+          </div>
+        )}
         {table.getRowModel().rows.map((row) => (
           <MobileEquipmentListItem
             key={row.original.id}
@@ -1234,7 +1301,12 @@ export default function EquipmentPage() {
         ))}
       </div>
     ) : (
-      <div className="overflow-x-auto rounded-md border">
+      <div className="relative overflow-x-auto rounded-md border">
+        {isFetching && (
+          <div className="absolute inset-0 bg-background/40 backdrop-blur-[1px] flex items-center justify-center z-10">
+            <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+          </div>
+        )}
         <Table>
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (
@@ -1621,7 +1693,7 @@ export default function EquipmentPage() {
                     value={tenantFilter}
                     onValueChange={(v) => {
                       console.log('[EquipmentPage] tenant select onValueChange ->', v)
-                      setTenantFilter(v)
+                      React.startTransition(() => setTenantFilter(v))
                     }}
                   >
                     <SelectTrigger className="h-8 w-[280px]">
@@ -1708,10 +1780,10 @@ export default function EquipmentPage() {
           {/* Records count - responsive position */}
           <div className="order-2 sm:order-1">
             <ResponsivePaginationInfo
-              currentCount={table.getFilteredRowModel().rows.length}
-              totalCount={data.length}
-              currentPage={table.getState().pagination.pageIndex + 1}
-              totalPages={table.getPageCount()}
+              currentCount={data.length}
+              totalCount={total}
+              currentPage={pagination.pageIndex + 1}
+              totalPages={pageCount}
             />
           </div>
           
@@ -1720,7 +1792,7 @@ export default function EquipmentPage() {
             <button
               onClick={handleExportData}
               className="text-sm font-medium text-primary underline-offset-4 hover:underline disabled:text-muted-foreground disabled:no-underline disabled:cursor-not-allowed"
-              disabled={table.getFilteredRowModel().rows.length === 0}
+              disabled={table.getFilteredRowModel().rows.length === 0 || isEqLoading}
             >
               Tải về file Excel
             </button>
@@ -1731,13 +1803,13 @@ export default function EquipmentPage() {
               <div className="flex items-center space-x-2">
                 <p className="text-sm font-medium">Số dòng</p>
                 <Select
-                  value={`${table.getState().pagination.pageSize}`}
+                  value={`${pagination.pageSize}`}
                   onValueChange={(value) => {
-                    table.setPageSize(Number(value))
+                    setPagination((p) => ({ ...p, pageSize: Number(value), pageIndex: 0 }))
                   }}
                 >
                   <SelectTrigger className="h-8 w-[70px]">
-                    <SelectValue placeholder={table.getState().pagination.pageSize} />
+                    <SelectValue placeholder={pagination.pageSize} />
                   </SelectTrigger>
                   <SelectContent side="top">
                     {[10, 20, 50, 100].map((pageSize) => (
@@ -1752,7 +1824,7 @@ export default function EquipmentPage() {
               {/* Page info and navigation */}
               <div className="flex flex-col items-center gap-2 sm:flex-row sm:gap-3">
                 <div className="text-sm font-medium hidden sm:block">
-                  Trang {table.getState().pagination.pageIndex + 1} / {table.getPageCount()}
+                  Trang {pagination.pageIndex + 1} / {pageCount}
                 </div>
                 <div className="flex items-center space-x-1">
                   <Button
