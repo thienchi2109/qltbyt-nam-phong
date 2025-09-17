@@ -1754,7 +1754,7 @@ export default function RepairRequestsPage() {
                     {shouldShowNoResults && (
                       <div className="absolute z-10 w-full mt-1 bg-popover border rounded-md shadow-lg p-3">
                         <div className="text-sm text-muted-foreground text-center">
-                          {`Không tìm thấy thiết bị phù hợp với từ khóa "${searchQuery}"`}
+                          Không tìm thấy kết quả phù hợp
                         </div>
                       </div>
                     )}

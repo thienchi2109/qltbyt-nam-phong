@@ -4,7 +4,6 @@ import { useState } from "react"
 import { signIn, getSession } from "next-auth/react"
 import { User, Lock, Globe, BarChart3, Wrench, Calendar, FileText, QrCode, Settings } from "lucide-react"
 import { Logo } from "@/components/icons"
-// Temporarily keep AuthContext for other parts but use NextAuth for login
 import { useLanguage } from "@/contexts/language-context"
 
 export default function LoginPage() {

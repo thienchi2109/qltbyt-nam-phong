@@ -92,6 +92,76 @@ const headerToDbKeyMap: Record<string, string> = {
     'Phân loại theo NĐ98': 'phan_loai_theo_nd98',
 };
 
+// Helper: convert Excel date (serial or string) to ISO 'YYYY-MM-DD'
+function normalizeDate(val: any): string | null {
+  if (val === undefined || val === null || val === '') return null;
+  // If already ISO-like
+  if (typeof val === 'string') {
+    const s = val.trim();
+    // Try DD/MM/YYYY
+    const ddmmyyyy = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/;
+    const yyyymmdd = /^(\d{4})-(\d{2})-(\d{2})$/;
+    if (yyyymmdd.test(s)) return s;
+    const m = s.match(ddmmyyyy);
+    if (m) {
+      const d = m[1].padStart(2,'0');
+      const mo = m[2].padStart(2,'0');
+      const y = m[3];
+      return `${y}-${mo}-${d}`;
+    }
+    // Fallback: try Date parse
+    const parsed = new Date(s);
+    if (!isNaN(parsed.getTime())) {
+      const y = parsed.getFullYear();
+      const mo = String(parsed.getMonth()+1).padStart(2,'0');
+      const d = String(parsed.getDate()).padStart(2,'0');
+      return `${y}-${mo}-${d}`;
+    }
+    return null;
+  }
+  if (typeof val === 'number') {
+    // Excel serial date (1900 system): epoch 1899-12-30
+    const epoch = new Date(Date.UTC(1899, 11, 30));
+    const ms = val * 24 * 60 * 60 * 1000;
+    const dt = new Date(epoch.getTime() + ms);
+    const y = dt.getUTCFullYear();
+    const mo = String(dt.getUTCMonth()+1).padStart(2,'0');
+    const d = String(dt.getUTCDate()).padStart(2,'0');
+    return `${y}-${mo}-${d}`;
+  }
+  return null;
+}
+
+function normalizeInt(val: any): number | null {
+  if (val === undefined || val === null || val === '') return null;
+  if (typeof val === 'number') return Number.isFinite(val) ? Math.trunc(val) : null;
+  const cleaned = String(val).replace(/\D+/g, '');
+  if (!cleaned) return null;
+  const num = parseInt(cleaned, 10);
+  return Number.isFinite(num) ? num : null;
+}
+
+function normalizeNumber(val: any): number | null {
+  if (val === undefined || val === null || val === '') return null;
+  if (typeof val === 'number') return Number.isFinite(val) ? val : null;
+  const cleaned = String(val).replace(/[,\s]/g, '');
+  const num = parseFloat(cleaned);
+  return Number.isFinite(num) ? num : null;
+}
+
+function normalizeClassification(val: any): string | null {
+  if (val === undefined || val === null || val === '') return null;
+  const s = String(val).trim().toUpperCase();
+  if (['A','B','C','D'].includes(s)) return s;
+  return s || null;
+}
+
+const dateFields = new Set<string>([
+  'ngay_nhap','ngay_dua_vao_su_dung','han_bao_hanh','ngay_bt_tiep_theo','ngay_hc_tiep_theo','ngay_kd_tiep_theo'
+]);
+const intFields = new Set<string>(['nam_san_xuat','chu_ky_bt_dinh_ky','chu_ky_hc_dinh_ky','chu_ky_kd_dinh_ky','nam_tinh_hao_mon']);
+const numberFields = new Set<string>(['gia_goc']);
+
 
 interface ImportEquipmentDialogProps {
   open: boolean
@@ -153,8 +223,21 @@ export function ImportEquipmentDialog({ open, onOpenChange, onSuccess }: ImportE
             for (const header in row) {
                 if (Object.prototype.hasOwnProperty.call(headerToDbKeyMap, header)) {
                     const dbKey = headerToDbKeyMap[header];
+                    const rawVal = row[header]
+                    let v: any = (rawVal === "" || rawVal === undefined) ? null : rawVal
+                    if (dateFields.has(dbKey)) {
+                      v = normalizeDate(rawVal)
+                    } else if (intFields.has(dbKey)) {
+                      v = normalizeInt(rawVal)
+                    } else if (numberFields.has(dbKey)) {
+                      v = normalizeNumber(rawVal)
+                    } else if (dbKey === 'phan_loai_theo_nd98') {
+                      v = normalizeClassification(rawVal)
+                    } else if (typeof rawVal === 'string') {
+                      v = rawVal.trim() === '' ? null : String(rawVal).trim()
+                    }
                     // @ts-ignore
-                    newRow[dbKey] = row[header] === "" ? null : row[header]
+                    newRow[dbKey] = v
                 }
             }
             return newRow

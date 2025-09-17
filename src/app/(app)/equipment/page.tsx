@@ -1217,7 +1217,7 @@ export default function EquipmentPage() {
     if (table.getRowModel().rows.length === 0) {
       return (
         <div className="flex items-center justify-center h-96 text-muted-foreground">
-          Không có kết quả.
+          Không tìm thấy kết quả phù hợp
         </div>
       );
     }
