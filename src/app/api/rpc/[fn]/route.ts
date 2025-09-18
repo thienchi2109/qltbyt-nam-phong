@@ -17,6 +17,7 @@ const ALLOWED_FUNCTIONS = new Set<string>([
   'equipment_attachment_create', 
   'equipment_attachment_delete',
   'equipment_history_list',
+  'equipment_list_enhanced',
   'departments_list',
   'equipment_bulk_import',
   // Repairs
@@ -63,6 +64,7 @@ const ALLOWED_FUNCTIONS = new Set<string>([
   'don_vi_set_active',
   // Debug
   'debug_claims',
+  'don_vi_branding_get',
 ])
 
 function getEnv(name: string) {
@@ -121,9 +123,9 @@ export async function POST(req: NextRequest, context: { params: Promise<{ fn: st
     const url = `${urlBase}/rest/v1/rpc/${encodeURIComponent(fn)}`
 
     // Debug: log equipment_list calls with args and derived claims (safe info only)
-    if (fn === 'equipment_list') {
+    if (fn === 'equipment_list' || fn === 'equipment_list_enhanced') {
       try {
-        console.log('[RPC] equipment_list call body:', body)
+        console.log(`[RPC] ${fn} call body:`, body, 'claims:', { appRole, donVi, userId })
       } catch {}
     }
 

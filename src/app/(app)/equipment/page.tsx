@@ -348,6 +348,12 @@ export default function EquipmentPage() {
   const [editingEquipment, setEditingEquipment] = React.useState<Equipment | null>(null)
   const [currentTab, setCurrentTab] = React.useState<string>("details")
   const isMobile = useIsMobile();
+  const useTabletFilters = useMediaQuery("(min-width: 768px) and (max-width: 1024px)");
+  // Card view breakpoint (switch to cards below 1280px)
+  const isCardView = useMediaQuery("(max-width: 1279px)");
+
+  // Columns dialog state for unified toolbar "Tùy chọn"
+  const [isColumnsDialogOpen, setIsColumnsDialogOpen] = React.useState(false);
 
   // Attachment form state
   const [newFileName, setNewFileName] = React.useState("");
@@ -859,41 +865,97 @@ export default function EquipmentPage() {
     loadTenants()
   }, [isGlobal])
 
-  // Equipment list query (TanStack Query)
-  const { data: equipmentData = [], isLoading: isEqLoading } = useQuery({
-    queryKey: ['equipment_list', { tenant: effectiveTenantKey }],
-    queryFn: async () => {
-      const selectedDonVi = isGlobal && tenantFilter !== 'all' ? parseInt(tenantFilter, 10) : null
-      const rpcArgs = { p_q: null, p_sort: 'id.asc', p_page: 1, p_page_size: 10000, p_don_vi: Number.isFinite(selectedDonVi as any) ? selectedDonVi : null }
-      const result = await callRpc<Equipment[]>({ fn: 'equipment_list', args: rpcArgs })
-      return result || []
+  // Equipment list query (TanStack Query) - server-side pagination via equipment_list_enhanced
+  type EquipmentListRes = { data: Equipment[]; total: number; page: number; pageSize: number }
+
+  // Server-side pagination state
+  const [pagination, setPagination] = React.useState({ pageIndex: 0, pageSize: 20 })
+
+  // Extract server-filterable values from columnFilters (single-select when multiple chosen)
+  const getSingleFilter = React.useCallback((id: string): string | null => {
+    const entry = (columnFilters || []).find((f) => f.id === id)
+    const vals = (entry?.value as string[] | undefined) || []
+    return vals.length === 1 ? vals[0] : null
+  }, [columnFilters])
+
+  const selectedDonVi = React.useMemo(() => {
+    if (!isGlobal) return null
+    if (tenantFilter === 'all') return null
+    const v = parseInt(tenantFilter, 10)
+    return Number.isFinite(v) ? v : null
+  }, [isGlobal, tenantFilter])
+
+  const sortParam = React.useMemo(() => {
+    if (!sorting || sorting.length === 0) return 'id.asc'
+    const s = sorting[0]
+    return `${s.id}.${s.desc ? 'desc' : 'asc'}`
+  }, [sorting])
+
+  const { data: equipmentRes, isLoading: isEqLoading, isFetching } = useQuery<EquipmentListRes>({
+    queryKey: ['equipment_list_enhanced', {
+      tenant: effectiveTenantKey,
+      page: pagination.pageIndex,
+      size: pagination.pageSize,
+      q: debouncedSearch || null,
+      khoa_phong: getSingleFilter('khoa_phong_quan_ly'),
+      tinh_trang: getSingleFilter('tinh_trang_hien_tai'),
+      phan_loai: getSingleFilter('phan_loai_theo_nd98'),
+      sort: sortParam,
+    }],
+    queryFn: async ({ signal }) => {
+      const result = await callRpc<EquipmentListRes>({ fn: 'equipment_list_enhanced', args: {
+        p_q: debouncedSearch || null,
+        p_sort: sortParam,
+        p_page: pagination.pageIndex + 1,
+        p_page_size: pagination.pageSize,
+        p_don_vi: selectedDonVi,
+        p_khoa_phong: getSingleFilter('khoa_phong_quan_ly'),
+        p_tinh_trang: getSingleFilter('tinh_trang_hien_tai'),
+        p_phan_loai: getSingleFilter('phan_loai_theo_nd98'),
+      }, signal })
+      return result
     },
     placeholderData: keepPreviousData,
-    staleTime: 60_000,
-    gcTime: 5 * 60_000,
+    staleTime: 120_000,
+    gcTime: 10 * 60_000,
     refetchOnWindowFocus: false,
   })
 
-  const data = (equipmentData as Equipment[])
+  const data = (equipmentRes?.data ?? []) as Equipment[]
+  const total = equipmentRes?.total ?? 0
   const isLoading = isEqLoading
+
+  // Granular cache invalidation for current tenant
+  const invalidateEquipmentForCurrentTenant = React.useCallback(() => {
+    queryClient.invalidateQueries({
+      predicate: (q) => {
+        const key = (q as any)?.queryKey
+        if (!Array.isArray(key)) return false
+        if (key[0] !== 'equipment_list_enhanced') return false
+        const params = key[1] as any
+        return params?.tenant === effectiveTenantKey
+      },
+      refetchType: 'active',
+    })
+  }, [queryClient, effectiveTenantKey])
 
 
   const onDataMutationSuccess = React.useCallback(() => {
-    // Invalidate equipment list for all tenants (safe + simple)
-    queryClient.invalidateQueries({ queryKey: ['equipment_list'] })
-  }, [queryClient]);
+    // Invalidate only current-tenant queries
+    invalidateEquipmentForCurrentTenant()
+  }, [invalidateEquipmentForCurrentTenant]);
 
   // Listen for realtime cache invalidation events (invalidate queries)
   React.useEffect(() => {
     const handleCacheInvalidation = () => {
-      console.log('[EquipmentPage] Cache invalidated by realtime, invalidating equipment_list...')
-      queryClient.invalidateQueries({ queryKey: ['equipment_list'] })
+      console.log('[EquipmentPage] Cache invalidated by realtime, invalidating equipment_list_enhanced...')
+      invalidateEquipmentForCurrentTenant()
     };
 
     window.addEventListener('equipment-cache-invalidated', handleCacheInvalidation);
     const handleTenantSwitched = () => {
-      console.log('[EquipmentPage] Tenant switched, invalidating equipment_list...')
-      queryClient.invalidateQueries({ queryKey: ['equipment_list'] })
+      console.log('[EquipmentPage] Tenant switched, invalidating equipment_list_enhanced...')
+      invalidateEquipmentForCurrentTenant()
     }
     window.addEventListener('tenant-switched', handleTenantSwitched as EventListener)
 
@@ -908,8 +970,8 @@ export default function EquipmentPage() {
   React.useEffect(() => {
     if (!isGlobal) return
     console.log('[EquipmentPage] tenantFilter changed ->', tenantFilter)
-    // Refetch equipment list when filter changes by invalidating the query for the current tenant key
-    queryClient.invalidateQueries({ queryKey: ['equipment_list', { tenant: effectiveTenantKey }] })
+    // Refetch equipment list when filter changes by invalidating queries for current tenant
+    invalidateEquipmentForCurrentTenant()
   }, [tenantFilter, isGlobal, queryClient, effectiveTenantKey])
 
   // Show a user-friendly toast when applying specific tenant filter
@@ -1061,11 +1123,14 @@ export default function EquipmentPage() {
     }
   };
 
+  const pageCount = Math.max(1, Math.ceil((total || 0) / Math.max(pagination.pageSize, 1)))
+
   const table = useReactTable({
     data,
     columns,
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
+    onPaginationChange: setPagination,
     getCoreRowModel: getCoreRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
     getSortedRowModel: getSortedRowModel(),
@@ -1079,7 +1144,10 @@ export default function EquipmentPage() {
       columnFilters,
       columnVisibility,
       globalFilter: debouncedSearch,
+      pagination,
     },
+    manualPagination: true,
+    pageCount,
   })
   
   // Auto department filter removed; no role-based table filter adjustments
@@ -1169,7 +1237,7 @@ export default function EquipmentPage() {
 
   const renderContent = () => {
     if (isLoading) {
-      return isMobile ? (
+      return isCardView ? (
         <div className="space-y-4">
           {Array.from({ length: 5 }).map((_, i) => (
             <Card key={i}>
@@ -1222,8 +1290,13 @@ export default function EquipmentPage() {
       );
     }
 
-    return isMobile ? (
-      <div className="space-y-2">
+    return isCardView ? (
+      <div className="relative space-y-2">
+        {isFetching && (
+          <div className="absolute inset-0 bg-background/40 backdrop-blur-[1px] flex items-center justify-center z-10">
+            <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+          </div>
+        )}
         {table.getRowModel().rows.map((row) => (
           <MobileEquipmentListItem
             key={row.original.id}
@@ -1234,7 +1307,12 @@ export default function EquipmentPage() {
         ))}
       </div>
     ) : (
-      <div className="overflow-x-auto rounded-md border">
+      <div className="relative overflow-x-auto rounded-md border">
+        {isFetching && (
+          <div className="absolute inset-0 bg-background/40 backdrop-blur-[1px] flex items-center justify-center z-10">
+            <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+          </div>
+        )}
         <Table>
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (
@@ -1530,176 +1608,197 @@ export default function EquipmentPage() {
           {/* Department auto-filter removed */}
         </CardHeader>
         <CardContent className="space-y-4">
-          {/* Mobile-optimized filters layout */}
-          <div className="space-y-3">
-            {/* Search bar - full width on mobile */}
-            <div className="w-full">
-              <Input
-                placeholder="Tìm kiếm chung..."
-                value={searchTerm}
-                onChange={(event) => setSearchTerm(event.target.value)}
-                className="h-8 w-full"
-              />
-            </div>
-            
-            {/* Responsive filters layout */}
-            <div className="flex flex-wrap items-center gap-2">
-              {/* Always show main filters */}
-              <DataTableFacetedFilter
-                column={table.getColumn("tinh_trang_hien_tai")}
-                title="Tình trạng"
-                options={statuses.map(s => ({label: s!, value: s!}))}
-              />
-              <DataTableFacetedFilter
-                column={table.getColumn("khoa_phong_quan_ly")}
-                title="Khoa/Phòng"
-                options={departments.filter((d): d is string => !!d).map(d => ({label: d, value: d}))}
-              />
-              
-              {/* Desktop: Show all filters inline */}
-              {!isMobile && (
-                <>
-                  <DataTableFacetedFilter
-                    column={table.getColumn("nguoi_dang_truc_tiep_quan_ly")}
-                    title="Người sử dụng"
-                    options={users.filter((d): d is string => !!d).map(d => ({label: d, value: d}))}
+          {/* Unified toolbar */}
+          <div className="flex flex-col gap-2">
+            <div className="flex flex-col gap-2 md:flex-row md:flex-wrap md:items-center md:justify-between">
+              {/* Left: search + filters */}
+              <div className="order-1 w-full flex flex-col gap-2 md:flex-row md:flex-1 md:flex-wrap md:items-center md:gap-2 md:min-w-0">
+                <div className="w-full md:w-auto md:min-w-[260px]">
+                  <Input
+                    placeholder="Tìm kiếm chung..."
+                    value={searchTerm}
+                    onChange={(event) => setSearchTerm(event.target.value)}
+                    className="h-8 w-full"
                   />
-                  <DataTableFacetedFilter
-                    column={table.getColumn("phan_loai_theo_nd98")}
-                    title="Phân loại"
-                    options={classifications.filter((c): c is string => !!c).map(c => ({label: c, value: c}))}
-                  />
-                </>
-              )}
-              
-              {/* Mobile: Show additional filters in dropdown */}
-              {isMobile && (
-                <MobileFiltersDropdown
-                  activeFiltersCount={
-                    ((table.getColumn("nguoi_dang_truc_tiep_quan_ly")?.getFilterValue() as string[])?.length || 0) +
-                    ((table.getColumn("phan_loai_theo_nd98")?.getFilterValue() as string[])?.length || 0)
-                  }
-                  onClearFilters={() => {
-                    table.getColumn("nguoi_dang_truc_tiep_quan_ly")?.setFilterValue([])
-                    table.getColumn("phan_loai_theo_nd98")?.setFilterValue([])
-                  }}
-                >
-                  <DataTableFacetedFilter
-                    column={table.getColumn("nguoi_dang_truc_tiep_quan_ly")}
-                    title="Người sử dụng"
-                    options={users.filter((d): d is string => !!d).map(d => ({label: d, value: d}))}
-                  />
-                  <DataTableFacetedFilter
-                    column={table.getColumn("phan_loai_theo_nd98")}
-                    title="Phân loại"
-                    options={classifications.filter((c): c is string => !!c).map(c => ({label: c, value: c}))}
-                  />
-                </MobileFiltersDropdown>
-              )}
-              
-              {/* Clear all filters button */}
-              {isFiltered && (
-                <Button
-                  variant="ghost"
-                  onClick={() => table.resetColumnFilters()}
-                  className="h-8 px-2 lg:px-3"
-                >
-                  <span className="hidden sm:inline">Xóa tất cả</span>
-                  <FilterX className="h-4 w-4 sm:ml-2" />
-                </Button>
-              )}
-            </div>
-          </div>
-
-          {/* Action buttons - responsive layout */}
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <div className="flex items-center gap-2 order-2 sm:order-1">
-              {isGlobal && (
-                <div className="flex items-center gap-2">
-                  <Label className="text-xs text-muted-foreground">Đơn vị</Label>
-                  <Select
-                    value={tenantFilter}
-                    onValueChange={(v) => {
-                      console.log('[EquipmentPage] tenant select onValueChange ->', v)
-                      setTenantFilter(v)
-                    }}
-                  >
-                    <SelectTrigger className="h-8 w-[280px]">
-                      <SelectValue placeholder="Tất cả đơn vị" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">Tất cả đơn vị</SelectItem>
-                      {tenantOptions.map(t => (
-                        <SelectItem key={t.id} value={String(t.id)}>
-                          {t.name} {t.code ? `(${t.code})` : ''}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
                 </div>
-              )}
-              {!isMobile && (
+                <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
+                  {(isMobile || useTabletFilters) ? (
+                    <MobileFiltersDropdown
+                      activeFiltersCount={
+                        ((table.getColumn("tinh_trang_hien_tai")?.getFilterValue() as string[])?.length || 0) +
+                        ((table.getColumn("khoa_phong_quan_ly")?.getFilterValue() as string[])?.length || 0) +
+                        ((table.getColumn("nguoi_dang_truc_tiep_quan_ly")?.getFilterValue() as string[])?.length || 0) +
+                        ((table.getColumn("phan_loai_theo_nd98")?.getFilterValue() as string[])?.length || 0)
+                      }
+                      onClearFilters={() => {
+                        table.getColumn("tinh_trang_hien_tai")?.setFilterValue([])
+                        table.getColumn("khoa_phong_quan_ly")?.setFilterValue([])
+                        table.getColumn("nguoi_dang_truc_tiep_quan_ly")?.setFilterValue([])
+                        table.getColumn("phan_loai_theo_nd98")?.setFilterValue([])
+                      }}
+                    >
+                      <DataTableFacetedFilter
+                        column={table.getColumn("tinh_trang_hien_tai")}
+                        title="Tình trạng"
+                        options={statuses.map(s => ({label: s!, value: s!}))}
+                      />
+                      <DataTableFacetedFilter
+                        column={table.getColumn("khoa_phong_quan_ly")}
+                        title="Khoa/Phòng"
+                        options={departments.filter((d): d is string => !!d).map(d => ({label: d, value: d}))}
+                      />
+                      <DataTableFacetedFilter
+                        column={table.getColumn("nguoi_dang_truc_tiep_quan_ly")}
+                        title="Người sử dụng"
+                        options={users.filter((d): d is string => !!d).map(d => ({label: d, value: d}))}
+                      />
+                      <DataTableFacetedFilter
+                        column={table.getColumn("phan_loai_theo_nd98")}
+                        title="Phân loại"
+                        options={classifications.filter((c): c is string => !!c).map(c => ({label: c, value: c}))}
+                      />
+                    </MobileFiltersDropdown>
+                  ) : (
+                    <>
+                      <DataTableFacetedFilter
+                        column={table.getColumn("tinh_trang_hien_tai")}
+                        title="Tình trạng"
+                        options={statuses.map(s => ({label: s!, value: s!}))}
+                      />
+                      <DataTableFacetedFilter
+                        column={table.getColumn("khoa_phong_quan_ly")}
+                        title="Khoa/Phòng"
+                        options={departments.filter((d): d is string => !!d).map(d => ({label: d, value: d}))}
+                      />
+                      <DataTableFacetedFilter
+                        column={table.getColumn("nguoi_dang_truc_tiep_quan_ly")}
+                        title="Người sử dụng"
+                        options={users.filter((d): d is string => !!d).map(d => ({label: d, value: d}))}
+                      />
+                      <DataTableFacetedFilter
+                        column={table.getColumn("phan_loai_theo_nd98")}
+                        title="Phân loại"
+                        options={classifications.filter((c): c is string => !!c).map(c => ({label: c, value: c}))}
+                      />
+                      {isFiltered && (
+                        <Button
+                          variant="ghost"
+                          onClick={() => table.resetColumnFilters()}
+                          className="h-8 px-2 lg:px-3"
+                        >
+                          <span className="hidden sm:inline">Xóa tất cả</span>
+                          <FilterX className="h-4 w-4 sm:ml-2" />
+                        </Button>
+                      )}
+                    </>
+                  )}
+                </div>
+              </div>
+
+              {/* Right: tenant select + actions */}
+              <div className="order-3 w-full md:order-2 md:w-auto flex items-center gap-2 justify-between md:justify-end">
+                {isGlobal && (
+                  <div className="flex items-center gap-2">
+                    <Label className="text-xs text-muted-foreground">Đơn vị</Label>
+                    <Select
+                      value={tenantFilter}
+                      onValueChange={(v) => {
+                        console.log('[EquipmentPage] tenant select onValueChange ->', v)
+                        React.startTransition(() => setTenantFilter(v))
+                      }}
+                    >
+                      <SelectTrigger className="h-8 w-full md:w-[220px]">
+                        <SelectValue placeholder="Tất cả đơn vị" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Tất cả đơn vị</SelectItem>
+                        {tenantOptions.map(t => (
+                          <SelectItem key={t.id} value={String(t.id)}>
+                            {t.name} {t.code ? `(${t.code})` : ''}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+
+                {/* Add button */}
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button size="sm" className="h-8 gap-1 touch-target-sm md:h-8">
+                      <PlusCircle className="h-3.5 w-3.5" />
+                      <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
+                        Thêm thiết bị
+                      </span>
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem onSelect={() => setIsAddDialogOpen(true)}>
+                      Thêm thủ công
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onSelect={() => setIsImportDialogOpen(true)}>
+                      Nhập từ Excel
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+
+                {/* Options menu */}
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="outline" className="h-8 gap-1 touch-target-sm md:h-8">
-                      Hiện/ẩn cột
-                      <ChevronDown className="h-3.5 w-3.5" />
+                      <Settings className="h-3.5 w-3.5" />
+                      Tùy chọn
                     </Button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="max-h-[50vh] overflow-y-auto">
-                    <DropdownMenuLabel>Hiện/Ẩn cột</DropdownMenuLabel>
-                    <DropdownMenuSeparator />
-                    {table
-                      .getAllColumns()
-                      .filter((column) => column.getCanHide())
-                      .map((column) => {
-                        return (
-                          <DropdownMenuCheckboxItem
-                            key={column.id}
-                            className="capitalize"
-                            checked={column.getIsVisible()}
-                            onCheckedChange={(value) =>
-                              column.toggleVisibility(!!value)
-                            }
-                            onSelect={(e) => e.preventDefault()}
-                          >
-                            {columnLabels[column.id as keyof Equipment] || column.id}
-                          </DropdownMenuCheckboxItem>
-                        )
-                      })}
+                  <DropdownMenuContent align="end" className="w-56">
+                    <DropdownMenuItem onSelect={() => setIsColumnsDialogOpen(true)}>
+                      Hiện/ẩn cột
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onSelect={() => handleDownloadTemplate()}>
+                      Tải Excel mẫu
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onSelect={() => handleExportData()}>
+                      Tải về dữ liệu
+                    </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
-              )}
-              <Button size="sm" variant="outline" className="h-8 gap-1 touch-target-sm md:h-8" onClick={handleDownloadTemplate}>
-                <File className="h-3.5 w-3.5" />
-                <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
-                  Excel mẫu
-                </span>
-              </Button>
-            </div>
-            
-            <div className="flex items-center gap-2 order-1 sm:order-2">
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button size="sm" className="h-8 gap-1 touch-target-sm md:h-8">
-                    <PlusCircle className="h-3.5 w-3.5" />
-                    <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
-                      Thêm thiết bị
-                    </span>
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem onSelect={() => setIsAddDialogOpen(true)}>
-                    Thêm thủ công
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onSelect={() => setIsImportDialogOpen(true)}>
-                    Nhập từ Excel
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+              </div>
             </div>
           </div>
-        
+
+          {/* Columns dialog */}
+          <Dialog open={isColumnsDialogOpen} onOpenChange={setIsColumnsDialogOpen}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Hiện/Ẩn cột</DialogTitle>
+                <DialogDescription>Chọn các cột muốn hiển thị trong bảng.</DialogDescription>
+              </DialogHeader>
+              <div className="max-h-[50vh] overflow-y-auto space-y-1">
+                {table
+                  .getAllColumns()
+                  .filter((column) => column.getCanHide())
+                  .map((column) => (
+                    <div key={column.id} className="flex items-center justify-between py-1">
+                      <span className="text-sm text-muted-foreground">
+                        {columnLabels[column.id as keyof Equipment] || column.id}
+                      </span>
+                      <Button
+                        variant={column.getIsVisible() ? 'secondary' : 'outline'}
+                        size="sm"
+                        className="h-7"
+                        onClick={() => column.toggleVisibility(!column.getIsVisible())}
+                      >
+                        {column.getIsVisible() ? 'Ẩn' : 'Hiện'}
+                      </Button>
+                    </div>
+                  ))}
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setIsColumnsDialogOpen(false)}>Đóng</Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+
           <div className="mt-4">
             {renderContent()}
           </div>
@@ -1708,10 +1807,10 @@ export default function EquipmentPage() {
           {/* Records count - responsive position */}
           <div className="order-2 sm:order-1">
             <ResponsivePaginationInfo
-              currentCount={table.getFilteredRowModel().rows.length}
-              totalCount={data.length}
-              currentPage={table.getState().pagination.pageIndex + 1}
-              totalPages={table.getPageCount()}
+              currentCount={data.length}
+              totalCount={total}
+              currentPage={pagination.pageIndex + 1}
+              totalPages={pageCount}
             />
           </div>
           
@@ -1720,7 +1819,7 @@ export default function EquipmentPage() {
             <button
               onClick={handleExportData}
               className="text-sm font-medium text-primary underline-offset-4 hover:underline disabled:text-muted-foreground disabled:no-underline disabled:cursor-not-allowed"
-              disabled={table.getFilteredRowModel().rows.length === 0}
+              disabled={table.getFilteredRowModel().rows.length === 0 || isEqLoading}
             >
               Tải về file Excel
             </button>
@@ -1731,13 +1830,13 @@ export default function EquipmentPage() {
               <div className="flex items-center space-x-2">
                 <p className="text-sm font-medium">Số dòng</p>
                 <Select
-                  value={`${table.getState().pagination.pageSize}`}
+                  value={`${pagination.pageSize}`}
                   onValueChange={(value) => {
-                    table.setPageSize(Number(value))
+                    setPagination((p) => ({ ...p, pageSize: Number(value), pageIndex: 0 }))
                   }}
                 >
                   <SelectTrigger className="h-8 w-[70px]">
-                    <SelectValue placeholder={table.getState().pagination.pageSize} />
+                    <SelectValue placeholder={pagination.pageSize} />
                   </SelectTrigger>
                   <SelectContent side="top">
                     {[10, 20, 50, 100].map((pageSize) => (
@@ -1752,7 +1851,7 @@ export default function EquipmentPage() {
               {/* Page info and navigation */}
               <div className="flex flex-col items-center gap-2 sm:flex-row sm:gap-3">
                 <div className="text-sm font-medium hidden sm:block">
-                  Trang {table.getState().pagination.pageIndex + 1} / {table.getPageCount()}
+                  Trang {pagination.pageIndex + 1} / {pageCount}
                 </div>
                 <div className="flex items-center space-x-1">
                   <Button
