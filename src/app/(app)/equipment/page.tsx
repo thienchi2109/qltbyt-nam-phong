@@ -348,6 +348,9 @@ export default function EquipmentPage() {
   const [editingEquipment, setEditingEquipment] = React.useState<Equipment | null>(null)
   const [currentTab, setCurrentTab] = React.useState<string>("details")
   const isMobile = useIsMobile();
+  const useTabletFilters = useMediaQuery("(min-width: 768px) and (max-width: 1024px)");
+  // Card view breakpoint (switch to cards below 1280px)
+  const isCardView = useMediaQuery("(max-width: 1279px)");
 
   // Columns dialog state for unified toolbar "Tùy chọn"
   const [isColumnsDialogOpen, setIsColumnsDialogOpen] = React.useState(false);
@@ -1234,7 +1237,7 @@ export default function EquipmentPage() {
 
   const renderContent = () => {
     if (isLoading) {
-      return isMobile ? (
+      return isCardView ? (
         <div className="space-y-4">
           {Array.from({ length: 5 }).map((_, i) => (
             <Card key={i}>
@@ -1287,7 +1290,7 @@ export default function EquipmentPage() {
       );
     }
 
-    return isMobile ? (
+    return isCardView ? (
       <div className="relative space-y-2">
         {isFetching && (
           <div className="absolute inset-0 bg-background/40 backdrop-blur-[1px] flex items-center justify-center z-10">
@@ -1607,9 +1610,9 @@ export default function EquipmentPage() {
         <CardContent className="space-y-4">
           {/* Unified toolbar */}
           <div className="flex flex-col gap-2">
-            <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="flex flex-col gap-2 md:flex-row md:flex-wrap md:items-center md:justify-between">
               {/* Left: search + filters */}
-              <div className="flex flex-1 flex-wrap items-center gap-2 min-w-0">
+              <div className="order-1 w-full flex flex-col gap-2 md:flex-row md:flex-1 md:flex-wrap md:items-center md:gap-2 md:min-w-0">
                 <div className="w-full md:w-auto md:min-w-[260px]">
                   <Input
                     placeholder="Tìm kiếm chung..."
@@ -1618,42 +1621,32 @@ export default function EquipmentPage() {
                     className="h-8 w-full"
                   />
                 </div>
-                <div className="flex flex-wrap items-center gap-2">
-                  <DataTableFacetedFilter
-                    column={table.getColumn("tinh_trang_hien_tai")}
-                    title="Tình trạng"
-                    options={statuses.map(s => ({label: s!, value: s!}))}
-                  />
-                  <DataTableFacetedFilter
-                    column={table.getColumn("khoa_phong_quan_ly")}
-                    title="Khoa/Phòng"
-                    options={departments.filter((d): d is string => !!d).map(d => ({label: d, value: d}))}
-                  />
-                  {!isMobile && (
-                    <>
-                      <DataTableFacetedFilter
-                        column={table.getColumn("nguoi_dang_truc_tiep_quan_ly")}
-                        title="Người sử dụng"
-                        options={users.filter((d): d is string => !!d).map(d => ({label: d, value: d}))}
-                      />
-                      <DataTableFacetedFilter
-                        column={table.getColumn("phan_loai_theo_nd98")}
-                        title="Phân loại"
-                        options={classifications.filter((c): c is string => !!c).map(c => ({label: c, value: c}))}
-                      />
-                    </>
-                  )}
-                  {isMobile && (
+                <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
+                  {(isMobile || useTabletFilters) ? (
                     <MobileFiltersDropdown
                       activeFiltersCount={
+                        ((table.getColumn("tinh_trang_hien_tai")?.getFilterValue() as string[])?.length || 0) +
+                        ((table.getColumn("khoa_phong_quan_ly")?.getFilterValue() as string[])?.length || 0) +
                         ((table.getColumn("nguoi_dang_truc_tiep_quan_ly")?.getFilterValue() as string[])?.length || 0) +
                         ((table.getColumn("phan_loai_theo_nd98")?.getFilterValue() as string[])?.length || 0)
                       }
                       onClearFilters={() => {
+                        table.getColumn("tinh_trang_hien_tai")?.setFilterValue([])
+                        table.getColumn("khoa_phong_quan_ly")?.setFilterValue([])
                         table.getColumn("nguoi_dang_truc_tiep_quan_ly")?.setFilterValue([])
                         table.getColumn("phan_loai_theo_nd98")?.setFilterValue([])
                       }}
                     >
+                      <DataTableFacetedFilter
+                        column={table.getColumn("tinh_trang_hien_tai")}
+                        title="Tình trạng"
+                        options={statuses.map(s => ({label: s!, value: s!}))}
+                      />
+                      <DataTableFacetedFilter
+                        column={table.getColumn("khoa_phong_quan_ly")}
+                        title="Khoa/Phòng"
+                        options={departments.filter((d): d is string => !!d).map(d => ({label: d, value: d}))}
+                      />
                       <DataTableFacetedFilter
                         column={table.getColumn("nguoi_dang_truc_tiep_quan_ly")}
                         title="Người sử dụng"
@@ -1665,22 +1658,45 @@ export default function EquipmentPage() {
                         options={classifications.filter((c): c is string => !!c).map(c => ({label: c, value: c}))}
                       />
                     </MobileFiltersDropdown>
-                  )}
-                  {isFiltered && (
-                    <Button
-                      variant="ghost"
-                      onClick={() => table.resetColumnFilters()}
-                      className="h-8 px-2 lg:px-3"
-                    >
-                      <span className="hidden sm:inline">Xóa tất cả</span>
-                      <FilterX className="h-4 w-4 sm:ml-2" />
-                    </Button>
+                  ) : (
+                    <>
+                      <DataTableFacetedFilter
+                        column={table.getColumn("tinh_trang_hien_tai")}
+                        title="Tình trạng"
+                        options={statuses.map(s => ({label: s!, value: s!}))}
+                      />
+                      <DataTableFacetedFilter
+                        column={table.getColumn("khoa_phong_quan_ly")}
+                        title="Khoa/Phòng"
+                        options={departments.filter((d): d is string => !!d).map(d => ({label: d, value: d}))}
+                      />
+                      <DataTableFacetedFilter
+                        column={table.getColumn("nguoi_dang_truc_tiep_quan_ly")}
+                        title="Người sử dụng"
+                        options={users.filter((d): d is string => !!d).map(d => ({label: d, value: d}))}
+                      />
+                      <DataTableFacetedFilter
+                        column={table.getColumn("phan_loai_theo_nd98")}
+                        title="Phân loại"
+                        options={classifications.filter((c): c is string => !!c).map(c => ({label: c, value: c}))}
+                      />
+                      {isFiltered && (
+                        <Button
+                          variant="ghost"
+                          onClick={() => table.resetColumnFilters()}
+                          className="h-8 px-2 lg:px-3"
+                        >
+                          <span className="hidden sm:inline">Xóa tất cả</span>
+                          <FilterX className="h-4 w-4 sm:ml-2" />
+                        </Button>
+                      )}
+                    </>
                   )}
                 </div>
               </div>
 
               {/* Right: tenant select + actions */}
-              <div className="flex items-center gap-2 shrink-0">
+              <div className="order-3 w-full md:order-2 md:w-auto flex items-center gap-2 justify-between md:justify-end">
                 {isGlobal && (
                   <div className="flex items-center gap-2">
                     <Label className="text-xs text-muted-foreground">Đơn vị</Label>
@@ -1691,7 +1707,7 @@ export default function EquipmentPage() {
                         React.startTransition(() => setTenantFilter(v))
                       }}
                     >
-                      <SelectTrigger className="h-8 w-[220px]">
+                      <SelectTrigger className="h-8 w-full md:w-[220px]">
                         <SelectValue placeholder="Tất cả đơn vị" />
                       </SelectTrigger>
                       <SelectContent>
