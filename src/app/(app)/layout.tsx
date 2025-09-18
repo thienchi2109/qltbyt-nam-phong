@@ -58,6 +58,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const [isChangePasswordOpen, setIsChangePasswordOpen] = React.useState(false)
   const { data: session, status } = useSession()
   const user = session?.user as any
+  const branding = useTenantBranding()
 
   // Simple data fetching for notifications
   const [repairRequests, setRepairRequests] = React.useState<any[]>([])
@@ -161,7 +162,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             <div className="flex h-auto flex-col items-center gap-4 border-b p-4">
               <Link href="/" className="flex flex-col items-center gap-3 font-semibold text-primary">
                 {/* Tenant-only logo in sidebar */}
-                <TenantLogo src={(useTenantBranding().data?.logo_url) ?? null} name={(useTenantBranding().data?.name) ?? null} size={isSidebarOpen ? 64 : 32} className={isSidebarOpen ? "" : "mt-2"} />
+                <TenantLogo src={(branding.data?.logo_url) ?? null} name={(branding.data?.name) ?? null} size={isSidebarOpen ? 64 : 32} className={isSidebarOpen ? "" : "mt-2"} />
               </Link>
             </div>
             <div className="flex-1 overflow-auto py-4">
@@ -245,8 +246,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             <div className="w-full flex-1 flex items-center">
               {/* Header highlights tenant name prominently */}
               <div className="flex items-center gap-3">
-                <TenantLogo src={(useTenantBranding().data?.logo_url) ?? null} name={(useTenantBranding().data?.name) ?? null} size={28} />
-                <TenantName name={(useTenantBranding().data?.name) ?? null} className="text-base lg:text-lg" />
+                <TenantLogo src={(branding.data?.logo_url) ?? null} name={(branding.data?.name) ?? null} size={28} />
+                <TenantName name={(branding.data?.name) ?? null} className="text-base lg:text-lg" />
               </div>
             </div>
             
