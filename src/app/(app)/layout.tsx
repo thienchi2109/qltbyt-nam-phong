@@ -36,6 +36,9 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/co
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Logo } from "@/components/icons"
+import { useTenantBranding } from "@/hooks/use-tenant-branding"
+import { TenantLogo } from "@/components/tenant-logo"
+import { TenantName } from "@/components/tenant-name"
 import { cn } from "@/lib/utils"
 import { useSession, signOut } from "next-auth/react"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -157,8 +160,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           <div className="flex h-full max-h-screen flex-col">
             <div className="flex h-auto flex-col items-center gap-4 border-b p-4">
               <Link href="/" className="flex flex-col items-center gap-3 font-semibold text-primary">
-                <Logo />
-                {isSidebarOpen && <span className="text-center text-base font-semibold">NAM PHONG TECHNICAL HI-TECH</span>}
+                {/* Tenant-only logo in sidebar */}
+                <TenantLogo src={(useTenantBranding().data?.logo_url) ?? null} name={(useTenantBranding().data?.name) ?? null} size={isSidebarOpen ? 64 : 32} className={isSidebarOpen ? "" : "mt-2"} />
               </Link>
             </div>
             <div className="flex-1 overflow-auto py-4">
@@ -239,8 +242,12 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               <Menu className="h-5 w-5" />
               <span className="sr-only">Toggle sidebar</span>
             </Button>
-            <div className="w-full flex-1">
-              {/* Can add a search bar here if needed */}
+            <div className="w-full flex-1 flex items-center">
+              {/* Header highlights tenant name prominently */}
+              <div className="flex items-center gap-3">
+                <TenantLogo src={(useTenantBranding().data?.logo_url) ?? null} name={(useTenantBranding().data?.name) ?? null} size={28} />
+                <TenantName name={(useTenantBranding().data?.name) ?? null} className="text-base lg:text-lg" />
+              </div>
             </div>
             
             {/* Realtime Status */}
