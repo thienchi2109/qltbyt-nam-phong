@@ -349,6 +349,9 @@ export default function EquipmentPage() {
   const [currentTab, setCurrentTab] = React.useState<string>("details")
   const isMobile = useIsMobile();
 
+  // Columns dialog state for unified toolbar "Tùy chọn"
+  const [isColumnsDialogOpen, setIsColumnsDialogOpen] = React.useState(false);
+
   // Attachment form state
   const [newFileName, setNewFileName] = React.useState("");
   const [newFileUrl, setNewFileUrl] = React.useState("");
@@ -1602,176 +1605,184 @@ export default function EquipmentPage() {
           {/* Department auto-filter removed */}
         </CardHeader>
         <CardContent className="space-y-4">
-          {/* Mobile-optimized filters layout */}
-          <div className="space-y-3">
-            {/* Search bar - full width on mobile */}
-            <div className="w-full">
-              <Input
-                placeholder="Tìm kiếm chung..."
-                value={searchTerm}
-                onChange={(event) => setSearchTerm(event.target.value)}
-                className="h-8 w-full"
-              />
-            </div>
-            
-            {/* Responsive filters layout */}
-            <div className="flex flex-wrap items-center gap-2">
-              {/* Always show main filters */}
-              <DataTableFacetedFilter
-                column={table.getColumn("tinh_trang_hien_tai")}
-                title="Tình trạng"
-                options={statuses.map(s => ({label: s!, value: s!}))}
-              />
-              <DataTableFacetedFilter
-                column={table.getColumn("khoa_phong_quan_ly")}
-                title="Khoa/Phòng"
-                options={departments.filter((d): d is string => !!d).map(d => ({label: d, value: d}))}
-              />
-              
-              {/* Desktop: Show all filters inline */}
-              {!isMobile && (
-                <>
-                  <DataTableFacetedFilter
-                    column={table.getColumn("nguoi_dang_truc_tiep_quan_ly")}
-                    title="Người sử dụng"
-                    options={users.filter((d): d is string => !!d).map(d => ({label: d, value: d}))}
+          {/* Unified toolbar */}
+          <div className="flex flex-col gap-2">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              {/* Left: search + filters */}
+              <div className="flex flex-1 flex-wrap items-center gap-2 min-w-0">
+                <div className="w-full md:w-auto md:min-w-[260px]">
+                  <Input
+                    placeholder="Tìm kiếm chung..."
+                    value={searchTerm}
+                    onChange={(event) => setSearchTerm(event.target.value)}
+                    className="h-8 w-full"
                   />
-                  <DataTableFacetedFilter
-                    column={table.getColumn("phan_loai_theo_nd98")}
-                    title="Phân loại"
-                    options={classifications.filter((c): c is string => !!c).map(c => ({label: c, value: c}))}
-                  />
-                </>
-              )}
-              
-              {/* Mobile: Show additional filters in dropdown */}
-              {isMobile && (
-                <MobileFiltersDropdown
-                  activeFiltersCount={
-                    ((table.getColumn("nguoi_dang_truc_tiep_quan_ly")?.getFilterValue() as string[])?.length || 0) +
-                    ((table.getColumn("phan_loai_theo_nd98")?.getFilterValue() as string[])?.length || 0)
-                  }
-                  onClearFilters={() => {
-                    table.getColumn("nguoi_dang_truc_tiep_quan_ly")?.setFilterValue([])
-                    table.getColumn("phan_loai_theo_nd98")?.setFilterValue([])
-                  }}
-                >
-                  <DataTableFacetedFilter
-                    column={table.getColumn("nguoi_dang_truc_tiep_quan_ly")}
-                    title="Người sử dụng"
-                    options={users.filter((d): d is string => !!d).map(d => ({label: d, value: d}))}
-                  />
-                  <DataTableFacetedFilter
-                    column={table.getColumn("phan_loai_theo_nd98")}
-                    title="Phân loại"
-                    options={classifications.filter((c): c is string => !!c).map(c => ({label: c, value: c}))}
-                  />
-                </MobileFiltersDropdown>
-              )}
-              
-              {/* Clear all filters button */}
-              {isFiltered && (
-                <Button
-                  variant="ghost"
-                  onClick={() => table.resetColumnFilters()}
-                  className="h-8 px-2 lg:px-3"
-                >
-                  <span className="hidden sm:inline">Xóa tất cả</span>
-                  <FilterX className="h-4 w-4 sm:ml-2" />
-                </Button>
-              )}
-            </div>
-          </div>
-
-          {/* Action buttons - responsive layout */}
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <div className="flex items-center gap-2 order-2 sm:order-1">
-              {isGlobal && (
-                <div className="flex items-center gap-2">
-                  <Label className="text-xs text-muted-foreground">Đơn vị</Label>
-                  <Select
-                    value={tenantFilter}
-                    onValueChange={(v) => {
-                      console.log('[EquipmentPage] tenant select onValueChange ->', v)
-                      React.startTransition(() => setTenantFilter(v))
-                    }}
-                  >
-                    <SelectTrigger className="h-8 w-[280px]">
-                      <SelectValue placeholder="Tất cả đơn vị" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">Tất cả đơn vị</SelectItem>
-                      {tenantOptions.map(t => (
-                        <SelectItem key={t.id} value={String(t.id)}>
-                          {t.name} {t.code ? `(${t.code})` : ''}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
                 </div>
-              )}
-              {!isMobile && (
+                <div className="flex flex-wrap items-center gap-2">
+                  <DataTableFacetedFilter
+                    column={table.getColumn("tinh_trang_hien_tai")}
+                    title="Tình trạng"
+                    options={statuses.map(s => ({label: s!, value: s!}))}
+                  />
+                  <DataTableFacetedFilter
+                    column={table.getColumn("khoa_phong_quan_ly")}
+                    title="Khoa/Phòng"
+                    options={departments.filter((d): d is string => !!d).map(d => ({label: d, value: d}))}
+                  />
+                  {!isMobile && (
+                    <>
+                      <DataTableFacetedFilter
+                        column={table.getColumn("nguoi_dang_truc_tiep_quan_ly")}
+                        title="Người sử dụng"
+                        options={users.filter((d): d is string => !!d).map(d => ({label: d, value: d}))}
+                      />
+                      <DataTableFacetedFilter
+                        column={table.getColumn("phan_loai_theo_nd98")}
+                        title="Phân loại"
+                        options={classifications.filter((c): c is string => !!c).map(c => ({label: c, value: c}))}
+                      />
+                    </>
+                  )}
+                  {isMobile && (
+                    <MobileFiltersDropdown
+                      activeFiltersCount={
+                        ((table.getColumn("nguoi_dang_truc_tiep_quan_ly")?.getFilterValue() as string[])?.length || 0) +
+                        ((table.getColumn("phan_loai_theo_nd98")?.getFilterValue() as string[])?.length || 0)
+                      }
+                      onClearFilters={() => {
+                        table.getColumn("nguoi_dang_truc_tiep_quan_ly")?.setFilterValue([])
+                        table.getColumn("phan_loai_theo_nd98")?.setFilterValue([])
+                      }}
+                    >
+                      <DataTableFacetedFilter
+                        column={table.getColumn("nguoi_dang_truc_tiep_quan_ly")}
+                        title="Người sử dụng"
+                        options={users.filter((d): d is string => !!d).map(d => ({label: d, value: d}))}
+                      />
+                      <DataTableFacetedFilter
+                        column={table.getColumn("phan_loai_theo_nd98")}
+                        title="Phân loại"
+                        options={classifications.filter((c): c is string => !!c).map(c => ({label: c, value: c}))}
+                      />
+                    </MobileFiltersDropdown>
+                  )}
+                  {isFiltered && (
+                    <Button
+                      variant="ghost"
+                      onClick={() => table.resetColumnFilters()}
+                      className="h-8 px-2 lg:px-3"
+                    >
+                      <span className="hidden sm:inline">Xóa tất cả</span>
+                      <FilterX className="h-4 w-4 sm:ml-2" />
+                    </Button>
+                  )}
+                </div>
+              </div>
+
+              {/* Right: tenant select + actions */}
+              <div className="flex items-center gap-2 shrink-0">
+                {isGlobal && (
+                  <div className="flex items-center gap-2">
+                    <Label className="text-xs text-muted-foreground">Đơn vị</Label>
+                    <Select
+                      value={tenantFilter}
+                      onValueChange={(v) => {
+                        console.log('[EquipmentPage] tenant select onValueChange ->', v)
+                        React.startTransition(() => setTenantFilter(v))
+                      }}
+                    >
+                      <SelectTrigger className="h-8 w-[220px]">
+                        <SelectValue placeholder="Tất cả đơn vị" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Tất cả đơn vị</SelectItem>
+                        {tenantOptions.map(t => (
+                          <SelectItem key={t.id} value={String(t.id)}>
+                            {t.name} {t.code ? `(${t.code})` : ''}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+
+                {/* Add button */}
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button size="sm" className="h-8 gap-1 touch-target-sm md:h-8">
+                      <PlusCircle className="h-3.5 w-3.5" />
+                      <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
+                        Thêm thiết bị
+                      </span>
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem onSelect={() => setIsAddDialogOpen(true)}>
+                      Thêm thủ công
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onSelect={() => setIsImportDialogOpen(true)}>
+                      Nhập từ Excel
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+
+                {/* Options menu */}
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="outline" className="h-8 gap-1 touch-target-sm md:h-8">
-                      Hiện/ẩn cột
-                      <ChevronDown className="h-3.5 w-3.5" />
+                      <Settings className="h-3.5 w-3.5" />
+                      Tùy chọn
                     </Button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="max-h-[50vh] overflow-y-auto">
-                    <DropdownMenuLabel>Hiện/Ẩn cột</DropdownMenuLabel>
-                    <DropdownMenuSeparator />
-                    {table
-                      .getAllColumns()
-                      .filter((column) => column.getCanHide())
-                      .map((column) => {
-                        return (
-                          <DropdownMenuCheckboxItem
-                            key={column.id}
-                            className="capitalize"
-                            checked={column.getIsVisible()}
-                            onCheckedChange={(value) =>
-                              column.toggleVisibility(!!value)
-                            }
-                            onSelect={(e) => e.preventDefault()}
-                          >
-                            {columnLabels[column.id as keyof Equipment] || column.id}
-                          </DropdownMenuCheckboxItem>
-                        )
-                      })}
+                  <DropdownMenuContent align="end" className="w-56">
+                    <DropdownMenuItem onSelect={() => setIsColumnsDialogOpen(true)}>
+                      Hiện/ẩn cột
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onSelect={() => handleDownloadTemplate()}>
+                      Tải Excel mẫu
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onSelect={() => handleExportData()}>
+                      Tải về dữ liệu
+                    </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
-              )}
-              <Button size="sm" variant="outline" className="h-8 gap-1 touch-target-sm md:h-8" onClick={handleDownloadTemplate}>
-                <File className="h-3.5 w-3.5" />
-                <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
-                  Excel mẫu
-                </span>
-              </Button>
-            </div>
-            
-            <div className="flex items-center gap-2 order-1 sm:order-2">
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button size="sm" className="h-8 gap-1 touch-target-sm md:h-8">
-                    <PlusCircle className="h-3.5 w-3.5" />
-                    <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
-                      Thêm thiết bị
-                    </span>
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem onSelect={() => setIsAddDialogOpen(true)}>
-                    Thêm thủ công
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onSelect={() => setIsImportDialogOpen(true)}>
-                    Nhập từ Excel
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+              </div>
             </div>
           </div>
-        
+
+          {/* Columns dialog */}
+          <Dialog open={isColumnsDialogOpen} onOpenChange={setIsColumnsDialogOpen}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Hiện/Ẩn cột</DialogTitle>
+                <DialogDescription>Chọn các cột muốn hiển thị trong bảng.</DialogDescription>
+              </DialogHeader>
+              <div className="max-h-[50vh] overflow-y-auto space-y-1">
+                {table
+                  .getAllColumns()
+                  .filter((column) => column.getCanHide())
+                  .map((column) => (
+                    <div key={column.id} className="flex items-center justify-between py-1">
+                      <span className="text-sm text-muted-foreground">
+                        {columnLabels[column.id as keyof Equipment] || column.id}
+                      </span>
+                      <Button
+                        variant={column.getIsVisible() ? 'secondary' : 'outline'}
+                        size="sm"
+                        className="h-7"
+                        onClick={() => column.toggleVisibility(!column.getIsVisible())}
+                      >
+                        {column.getIsVisible() ? 'Ẩn' : 'Hiện'}
+                      </Button>
+                    </div>
+                  ))}
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setIsColumnsDialogOpen(false)}>Đóng</Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+
           <div className="mt-4">
             {renderContent()}
           </div>
