@@ -64,6 +64,7 @@ const ALLOWED_FUNCTIONS = new Set<string>([
   'don_vi_set_active',
   // Debug
   'debug_claims',
+  'don_vi_branding_get',
 ])
 
 function getEnv(name: string) {
