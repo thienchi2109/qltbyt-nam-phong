@@ -162,7 +162,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             <div className="flex h-auto flex-col items-center gap-4 border-b p-4">
               <Link href="/" className="flex flex-col items-center gap-3 font-semibold text-primary">
                 {/* Tenant-only logo in sidebar */}
-                <TenantLogo src={(branding.data?.logo_url) ?? null} name={(branding.data?.name) ?? null} size={isSidebarOpen ? 64 : 32} className={isSidebarOpen ? "" : "mt-2"} />
+                {branding.isLoading ? (
+                  <Skeleton className={isSidebarOpen ? "h-16 w-16" : "h-8 w-8"} />
+                ) : (
+                  <TenantLogo src={branding.data?.logo_url ?? null} name={branding.data?.name ?? null} size={isSidebarOpen ? 64 : 32} className={isSidebarOpen ? "" : "mt-2"} />
+                )}
               </Link>
             </div>
             <div className="flex-1 overflow-auto py-4">
@@ -246,8 +250,16 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             <div className="w-full flex-1 flex items-center">
               {/* Header highlights tenant name prominently */}
               <div className="flex items-center gap-3">
-                <TenantLogo src={(branding.data?.logo_url) ?? null} name={(branding.data?.name) ?? null} size={28} />
-                <TenantName name={(branding.data?.name) ?? null} className="text-base lg:text-lg" />
+                {branding.isLoading ? (
+                  <Skeleton className="h-7 w-7 rounded-full" />
+                ) : (
+                  <TenantLogo src={branding.data?.logo_url ?? null} name={branding.data?.name ?? null} size={28} />
+                )}
+                {branding.isLoading ? (
+                  <Skeleton className="h-5 w-48" />
+                ) : (
+                  <TenantName name={branding.data?.name ?? null} className="text-base lg:text-lg" />
+                )}
               </div>
             </div>
             
