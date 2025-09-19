@@ -82,6 +82,150 @@ export default function HandoverFormPage() {
           <span>Trang: <span id="page-number">1</span>/<span id="total-pages">1</span></span>
         </footer>
       </div>
+      
+      {/* Inline styles */}
+      <style jsx>{`
+        .a4-landscape-page {
+          width: 29.7cm;
+          min-height: 21cm;
+          padding: 1cm;
+          margin: 1cm auto;
+          background: white;
+          box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+          position: relative;
+          display: flex;
+          flex-direction: column;
+        }
+        
+        .content-body {
+          flex-grow: 1;
+        }
+        
+        .form-input-line {
+          font-family: inherit;
+          font-size: inherit;
+          border: none;
+          border-bottom: 1px dotted #000;
+          background-color: transparent;
+          padding: 2px 1px;
+          outline: none;
+          width: 100%;
+          min-height: 1.1em;
+        }
+        
+        .editable-cell {
+          border-bottom: 1px solid #ccc !important;
+          background-color: #f9f9f9;
+          cursor: text;
+          min-height: 18px;
+          padding: 3px 4px !important;
+        }
+        
+        .editable-cell:focus {
+          background-color: #fff;
+          border-bottom: 1px solid #007bff !important;
+          outline: none;
+        }
+        
+        .editable-cell:empty:before {
+          content: attr(data-placeholder);
+          color: #999;
+          font-style: italic;
+        }
+        
+        .font-bold { font-weight: 700; }
+        .title-main { font-size: 18px; }
+        .text-center { text-align: center; }
+        .uppercase { text-transform: uppercase; }
+        .italic { font-style: italic; }
+        
+        /* Spacing utilities */
+        .mt-2 { margin-top: 0.5rem; }
+        .mt-3 { margin-top: 0.75rem; }
+        .mt-8 { margin-top: 2rem; }
+        .mb-6 { margin-bottom: 1.5rem; }
+        
+        /* Table styles */
+        .data-table {
+          width: 100%;
+          border-collapse: collapse;
+          font-size: 13px;
+        }
+
+        .data-table th, .data-table td {
+          border: 1px solid #000;
+          padding: 3px;
+          text-align: center;
+          vertical-align: middle;
+        }
+
+        .data-table th {
+          background-color: #f8f9fa;
+          font-weight: bold;
+        }
+        
+        /* Signature styles */
+        .signature-area {
+          text-align: center;
+          min-width: 180px;
+        }
+        
+        .signature-space {
+          height: 50px;
+          border-bottom: 1px solid #ddd;
+          margin: 8px 0;
+        }
+        
+        /* Print optimizations */
+        @media print {
+          body {
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+            background-color: #fff !important;
+          }
+
+          .a4-landscape-page {
+            width: 100%;
+            height: 100%;
+            margin: 0 !important;
+            padding: 1cm !important;
+            box-shadow: none !important;
+            border: none !important;
+          }
+
+          body > *:not(.a4-landscape-page) {
+            display: none;
+          }
+
+          /* Repeat table headers on each page */
+          .data-table thead {
+            display: table-header-group;
+          }
+
+          /* Prevent items from breaking across pages */
+          .data-table tr, .signature-area {
+            page-break-inside: avoid;
+          }
+
+          /* Fixed footer at bottom of each printed page */
+          .print-footer {
+            position: fixed;
+            bottom: 1cm;
+            left: 1cm;
+            right: 1cm;
+            width: calc(100% - 2cm);
+          }
+
+          .content-body {
+            padding-bottom: 30px;
+          }
+
+          .editable-cell {
+            background-color: transparent !important;
+            border-bottom: 1px solid #000 !important;
+          }
+        }
+      `}</style>
     </div>
   )
 }
