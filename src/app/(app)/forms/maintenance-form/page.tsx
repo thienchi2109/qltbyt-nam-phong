@@ -3,7 +3,7 @@
 import * as React from "react"
 import { FormBrandingHeader } from "@/components/form-branding-header"
 
-export default function MaintenanceFormPage() {
+export default function MaintenanceFormTemplatePage() {
   return (
     <div className="min-h-screen bg-gray-100 p-4">
       <div className="a4-landscape-page">
@@ -18,7 +18,7 @@ export default function MaintenanceFormPage() {
           <header>
             <div className="flex justify-between items-start">
               <div className="text-center w-1/4">
-                {/* Logo will be handled by FormBrandingHeader */}
+                {/* Logo handled by FormBrandingHeader */}
               </div>
               <div className="text-center w-1/2">
                 <h2 className="title-sub uppercase font-bold">TRUNG TÂM KIỂM SOÁT BỆNH TẬT THÀNH PHỐ CẦN THƠ</h2>
@@ -93,13 +93,33 @@ export default function MaintenanceFormPage() {
               </tbody>
             </table>
           </section>
+
+          {/* Signature section */}
+          <section className="mt-4">
+            <div className="flex justify-between">
+              <div className="signature-area w-1/3">
+                <p className="font-bold">Lãnh đạo Khoa/Phòng</p>
+                <div className="signature-space"></div>
+              </div>
+              <div className="w-1/3"></div> {/* Spacer */}
+              <div className="signature-area w-1/3">
+                <p className="italic mb-2">
+                  Cần Thơ, ngày <input type="text" className="form-input-line w-12" />
+                  tháng <input type="text" className="form-input-line w-12" />
+                  năm <input type="text" className="form-input-line w-20" />
+                </p>
+                <p className="font-bold">Người lập</p>
+                <div className="signature-space"></div>
+              </div>
+            </div>
+          </section>
         </div>
         
         {/* Footer */}
-        <footer className="print-footer flex justify-between items-center text-xs mt-4 pt-2 border-t border-gray-300">
-          <span>QLTB-BM.15</span>
+        <footer className="print-footer flex justify-between items-center text-xs">
+          <span>QLTB-BM.09</span>
           <span>BH.01 (05/2024)</span>
-          <span>Trang: <span id="page-number">1</span>/<span id="total-pages">1</span></span>
+          <span>Trang: 1/1</span>
         </footer>
       </div>
       
@@ -164,6 +184,15 @@ export default function MaintenanceFormPage() {
           text-align: center;
         }
 
+        /* Signature styles */
+        .signature-area {
+          text-align: center;
+        }
+        
+        .signature-space {
+          height: 60px;
+        }
+
         /* CSS for printing */
         @media print {
           body {
@@ -191,7 +220,7 @@ export default function MaintenanceFormPage() {
           }
           
           /* Prevent items from breaking across pages */
-          .data-table tr {
+          .data-table tr, .signature-area {
             page-break-inside: avoid;
           }
           
