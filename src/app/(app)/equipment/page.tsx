@@ -963,7 +963,7 @@ export default function EquipmentPage() {
       window.removeEventListener('equipment-cache-invalidated', handleCacheInvalidation);
       window.removeEventListener('tenant-switched', handleTenantSwitched as EventListener)
     };
-  }, [queryClient]);
+  }, [queryClient, invalidateEquipmentForCurrentTenant]);
 
 
   // Debug: log when tenant filter changes
@@ -972,7 +972,7 @@ export default function EquipmentPage() {
     console.log('[EquipmentPage] tenantFilter changed ->', tenantFilter)
     // Refetch equipment list when filter changes by invalidating queries for current tenant
     invalidateEquipmentForCurrentTenant()
-  }, [tenantFilter, isGlobal, queryClient, effectiveTenantKey])
+  }, [tenantFilter, isGlobal, queryClient, effectiveTenantKey, invalidateEquipmentForCurrentTenant])
 
   // Show a user-friendly toast when applying specific tenant filter
   React.useEffect(() => {
