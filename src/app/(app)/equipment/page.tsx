@@ -654,7 +654,7 @@ export default function EquipmentPage() {
           <div class="w-full max-w-md bg-white p-4 shadow-lg label-container" style="border: 3px double #000;">
               <header class="flex items-start justify-between gap-3 border-b-2 border-black pb-3">
                   <div class="flex-shrink-0">
-                      <img src="${tenantBranding?.logo_url || 'https://placehold.co/100x100/e2e8f0/e2e8f0?text=Logo'}" alt="Logo ${tenantBranding?.name || 'Organization'}" class="w-16 h-auto" onerror="this.onerror=null;this.src='https://placehold.co/100x100/e2e8f0/e2e8f0?text=Logo';"
+                      <img src="${tenantBranding?.logo_url || 'https://placehold.co/100x100/e2e8f0/e2e8f0?text=Logo'}" alt="Logo ${tenantBranding?.name || 'Organization'}" class="w-16 h-auto" onerror="this.onerror=null;this.src='https://placehold.co/100x100/e2e8f0/e2e8f0?text=Logo';">
                   </div>
                   <div class="text-center flex-grow">
                       <h1 class="text-2xl font-bold tracking-wider">NHÃN THIẾT BỊ</h1>

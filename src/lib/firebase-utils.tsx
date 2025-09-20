@@ -192,7 +192,7 @@ export function FirebaseLoadingFallback() {
   return (
     <div className="flex items-center justify-center p-4">
       <div className="text-center space-y-2">
-        <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto"></div>
+        <img src="/Logo master.png" alt="Loading" className="w-10 h-10 object-contain mx-auto animate-pulse" />
         <p className="text-xs text-muted-foreground">Đang tải thông báo...</p>
       </div>
     </div>
