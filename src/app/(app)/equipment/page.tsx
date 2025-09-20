@@ -34,6 +34,7 @@ import {
   Link as LinkIcon,
   Trash2,
   Loader2,
+  Edit,
   Wrench,
   Settings,
   ArrowRightLeft,
@@ -77,6 +78,12 @@ import {
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import { z } from "zod"
+import { zodResolver } from "@hookform/resolvers/zod"
+import { useForm } from "react-hook-form"
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
+import { RequiredFormLabel } from "@/components/ui/required-form-label"
+import { Textarea } from "@/components/ui/textarea"
 import { Separator } from "@/components/ui/separator"
 import {
   Table,
@@ -203,6 +210,62 @@ const columnLabels: Record<string, string> = {
   ngay_kd_tiep_theo: 'Ngày KĐ tiếp theo',
   phan_loai_theo_nd98: 'Phân loại theo NĐ98',
 }
+
+// Inline edit support: schema and helpers shared with edit dialog (duplicated here for inline mode)
+const equipmentStatusOptions = [
+  "Hoạt động",
+  "Chờ sửa chữa",
+  "Chờ bảo trì",
+  "Chờ hiệu chuẩn/kiểm định",
+  "Ngưng sử dụng",
+  "Chưa có nhu cầu sử dụng"
+] as const;
+
+const normalizeDate = (v: string | null | undefined) => {
+  if (!v) return null
+  const s = String(v).trim()
+  if (s === '') return null
+  const m = s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/)
+  if (m) {
+    const d = m[1].padStart(2, '0')
+    const mo = m[2].padStart(2, '0')
+    const y = m[3]
+    return `${y}-${mo}-${d}`
+  }
+  return s
+}
+
+const equipmentFormSchema = z.object({
+  ma_thiet_bi: z.string().min(1, "Mã thiết bị là bắt buộc"),
+  ten_thiet_bi: z.string().min(1, "Tên thiết bị là bắt buộc"),
+  model: z.string().optional().nullable(),
+  serial: z.string().optional().nullable(),
+  hang_san_xuat: z.string().optional().nullable(),
+  noi_san_xuat: z.string().optional().nullable(),
+  nam_san_xuat: z.coerce.number().optional().nullable(),
+  ngay_nhap: z.string().optional().nullable().transform(normalizeDate),
+  ngay_dua_vao_su_dung: z.string().optional().nullable().transform(normalizeDate),
+  nguon_kinh_phi: z.string().optional().nullable(),
+  gia_goc: z.coerce.number().optional().nullable(),
+  han_bao_hanh: z.string().optional().nullable().transform(normalizeDate),
+  vi_tri_lap_dat: z.string().min(1, "Vị trí lắp đặt là bắt buộc").nullable().transform(val => val || ""),
+  khoa_phong_quan_ly: z.string().min(1, "Khoa/Phòng quản lý là bắt buộc").nullable().transform(val => val || ""),
+  nguoi_dang_truc_tiep_quan_ly: z.string().min(1, "Người trực tiếp quản lý (sử dụng) là bắt buộc").nullable().transform(val => val || ""),
+  tinh_trang_hien_tai: z.enum(equipmentStatusOptions, { required_error: "Tình trạng hiện tại là bắt buộc" }).nullable().transform(val => val || "" as any),
+  cau_hinh_thiet_bi: z.string().optional().nullable(),
+  phu_kien_kem_theo: z.string().optional().nullable(),
+  ghi_chu: z.string().optional().nullable(),
+  // Maintenance cycles and next dates
+  chu_ky_bt_dinh_ky: z.coerce.number().optional().nullable(),
+  ngay_bt_tiep_theo: z.string().optional().nullable().transform(normalizeDate),
+  chu_ky_hc_dinh_ky: z.coerce.number().optional().nullable(),
+  ngay_hc_tiep_theo: z.string().optional().nullable().transform(normalizeDate),
+  chu_ky_kd_dinh_ky: z.coerce.number().optional().nullable(),
+  ngay_kd_tiep_theo: z.string().optional().nullable().transform(normalizeDate),
+  phan_loai_theo_nd98: z.enum(['A', 'B', 'C', 'D']).optional().nullable(),
+});
+
+type EquipmentFormValues = z.infer<typeof equipmentFormSchema>
 
 const filterableColumns: (keyof Equipment)[] = [
     'khoa_phong_quan_ly',
@@ -349,6 +412,74 @@ export default function EquipmentPage() {
   const [isDetailModalOpen, setIsDetailModalOpen] = React.useState(false);
   const [editingEquipment, setEditingEquipment] = React.useState<Equipment | null>(null)
   const [currentTab, setCurrentTab] = React.useState<string>("details")
+  const [isEditingDetails, setIsEditingDetails] = React.useState(false)
+  const editForm = useForm<EquipmentFormValues>({
+    resolver: zodResolver(equipmentFormSchema),
+    defaultValues: {},
+  })
+
+  React.useEffect(() => {
+    if (selectedEquipment && isEditingDetails) {
+      editForm.reset({
+        ...(selectedEquipment as any),
+        vi_tri_lap_dat: selectedEquipment.vi_tri_lap_dat ?? "",
+        khoa_phong_quan_ly: selectedEquipment.khoa_phong_quan_ly ?? "",
+        nguoi_dang_truc_tiep_quan_ly: selectedEquipment.nguoi_dang_truc_tiep_quan_ly ?? "",
+        tinh_trang_hien_tai: (selectedEquipment.tinh_trang_hien_tai as any) ?? "",
+        phan_loai_theo_nd98: (
+          selectedEquipment.phan_loai_theo_nd98 && ['A','B','C','D'].includes(String(selectedEquipment.phan_loai_theo_nd98).toUpperCase())
+            ? (String(selectedEquipment.phan_loai_theo_nd98).toUpperCase() as 'A'|'B'|'C'|'D')
+            : null
+        ),
+        nam_san_xuat: selectedEquipment.nam_san_xuat ?? undefined,
+        gia_goc: selectedEquipment.gia_goc ?? undefined,
+        chu_ky_bt_dinh_ky: (selectedEquipment as any).chu_ky_bt_dinh_ky ?? undefined,
+        chu_ky_hc_dinh_ky: (selectedEquipment as any).chu_ky_hc_dinh_ky ?? undefined,
+        chu_ky_kd_dinh_ky: (selectedEquipment as any).chu_ky_kd_dinh_ky ?? undefined,
+      })
+    }
+  }, [selectedEquipment, isEditingDetails, editForm])
+
+  const updateEquipmentMutation = useMutation({
+    mutationFn: async (vars: { id: number; patch: EquipmentFormValues }) => {
+      await callRpc<any>({ fn: 'equipment_update', args: { p_id: vars.id, p_patch: vars.patch as any } })
+    },
+    onSuccess: (_res, vars) => {
+      toast({ title: 'Thành công', description: 'Đã cập nhật thông tin thiết bị.' })
+      setIsEditingDetails(false)
+      // Update current selected equipment optimistically
+      setSelectedEquipment(prev => prev ? ({ ...prev, ...(vars?.patch || {}) } as any) : prev)
+      // Invalidate current-tenant equipment queries
+      onDataMutationSuccess()
+    },
+    onError: (error: any) => {
+      toast({ variant: 'destructive', title: 'Lỗi', description: 'Không thể cập nhật thiết bị. ' + (error?.message || '') })
+    },
+  })
+
+  const onSubmitInlineEdit = async (values: EquipmentFormValues) => {
+    if (!selectedEquipment) return
+    await updateEquipmentMutation.mutateAsync({ id: selectedEquipment.id, patch: values })
+  }
+
+  const handleDetailDialogOpenChange = React.useCallback((open: boolean) => {
+    if (open) {
+      setIsDetailModalOpen(true)
+      return
+    }
+    if (isEditingDetails && (editForm.formState.isDirty)) {
+      const ok = confirm('Bạn có chắc muốn đóng? Các thay đổi chưa lưu sẽ bị mất.')
+      if (!ok) {
+        // Keep dialog open
+        return
+      }
+    }
+    setIsEditingDetails(false)
+    setIsDetailModalOpen(false)
+  }, [isEditingDetails, editForm.formState.isDirty])
+
+  const requestCloseDetailDialog = React.useCallback(() => handleDetailDialogOpenChange(false), [handleDetailDialogOpenChange])
+
   const isMobile = useIsMobile();
   const useTabletFilters = useMediaQuery("(min-width: 768px) and (max-width: 1024px)");
   // Card view breakpoint (switch to cards below 1280px)
@@ -747,11 +878,6 @@ export default function EquipmentPage() {
            <DropdownMenuItem onSelect={() => handleShowDetails(equipment)}>
             Xem chi tiết
           </DropdownMenuItem>
-          {canEdit && (
-            <DropdownMenuItem onSelect={() => setEditingEquipment(equipment)}>
-              Sửa thông tin
-            </DropdownMenuItem>
-          )}
           <DropdownMenuItem onSelect={() => router.push(`/repair-requests?equipmentId=${equipment.id}`)}>
             Tạo yêu cầu sửa chữa
           </DropdownMenuItem>
@@ -1394,8 +1520,8 @@ export default function EquipmentPage() {
         equipment={editingEquipment}
       />
       {selectedEquipment && (
-        <Dialog open={isDetailModalOpen} onOpenChange={setIsDetailModalOpen}>
-            <DialogContent className="max-w-4xl h-[90vh] flex flex-col">
+        <Dialog open={isDetailModalOpen} onOpenChange={handleDetailDialogOpenChange}>
+            <DialogContent className="max-w-4xl h-[90vh] flex flex-col overflow-hidden">
                 <DialogHeader>
                     <DialogTitle>Chi tiết thiết bị: {selectedEquipment.ten_thiet_bi}</DialogTitle>
                     <DialogDescription>
@@ -1410,39 +1536,275 @@ export default function EquipmentPage() {
                         <TabsTrigger value="usage">Nhật ký sử dụng</TabsTrigger>
                     </TabsList>
                     <TabsContent value="details" className="flex-grow overflow-hidden">
-                       <ScrollArea className="h-full pr-4">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4 py-4">
-                                {(Object.keys(columnLabels) as Array<keyof Equipment>).map(key => {
-                                    if (key === 'id') return null;
+                      {isEditingDetails ? (
+                        <Form {...editForm}>
+<form id="equipment-inline-edit-form" className="h-full flex flex-col overflow-hidden" onSubmit={editForm.handleSubmit(onSubmitInlineEdit)}>
+                            <ScrollArea className="flex-1 pr-4">
+                              <div className="space-y-4 py-4">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                  <FormField control={editForm.control} name="ma_thiet_bi" render={({ field }) => (
+                                    <FormItem>
+                                      <FormLabel>Mã thiết bị</FormLabel>
+                                      <FormControl>
+                                        <Input placeholder="VD: EQP-001" {...field} value={field.value ?? ''} />
+                                      </FormControl>
+                                      <FormMessage />
+                                    </FormItem>
+                                  )} />
+                                  <FormField control={editForm.control} name="ten_thiet_bi" render={({ field }) => (
+                                    <FormItem>
+                                      <FormLabel>Tên thiết bị</FormLabel>
+                                      <FormControl>
+                                        <Input placeholder="VD: Máy siêu âm" {...field} value={field.value ?? ''} />
+                                      </FormControl>
+                                      <FormMessage />
+                                    </FormItem>
+                                  )} />
+                                </div>
 
-                                    const renderValue = () => {
-                                        const value = selectedEquipment[key];
-                                        if (key === 'tinh_trang_hien_tai') {
-                                            const statusValue = value as Equipment["tinh_trang_hien_tai"];
-                                            return statusValue ? <Badge variant={getStatusVariant(statusValue)}>{statusValue}</Badge> : <div className="italic text-muted-foreground">Chưa có dữ liệu</div>;
-                                        }
-                                        if (key === 'phan_loai_theo_nd98') {
-                                            const classification = value as Equipment["phan_loai_theo_nd98"];
-                                            return classification ? <Badge variant={getClassificationVariant(classification)}>{classification.trim()}</Badge> : <div className="italic text-muted-foreground">Chưa có dữ liệu</div>;
-                                        }
-                                        if (key === 'gia_goc') {
-                                            return value ? `${Number(value).toLocaleString()} đ` : <div className="italic text-muted-foreground">Chưa có dữ liệu</div>;
-                                        }
-                                        if (value === null || value === undefined || value === "") {
-                                            return <div className="italic text-muted-foreground">Chưa có dữ liệu</div>;
-                                        }
-                                        return String(value);
-                                    };
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                  <FormField control={editForm.control} name="model" render={({ field }) => (
+                                    <FormItem>
+                                      <FormLabel>Model</FormLabel>
+                                      <FormControl>
+                                        <Input {...field} value={field.value ?? ''} />
+                                      </FormControl>
+                                      <FormMessage />
+                                    </FormItem>
+                                  )} />
+                                  <FormField control={editForm.control} name="serial" render={({ field }) => (
+                                    <FormItem>
+                                      <FormLabel>Serial</FormLabel>
+                                      <FormControl>
+                                        <Input {...field} value={field.value ?? ''} />
+                                      </FormControl>
+                                      <FormMessage />
+                                    </FormItem>
+                                  )} />
+                                </div>
 
-                                    return (
-                                        <div key={key} className="border-b pb-2">
-                                            <p className="text-xs font-medium text-muted-foreground">{columnLabels[key]}</p>
-                                            <div className="font-semibold break-words">{renderValue()}</div>
-                                        </div>
-                                    )
-                                })}
-                            </div>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                  <FormField control={editForm.control} name="hang_san_xuat" render={({ field }) => (
+                                    <FormItem>
+                                      <FormLabel>Hãng sản xuất</FormLabel>
+                                      <FormControl>
+                                        <Input {...field} value={field.value ?? ''} />
+                                      </FormControl>
+                                      <FormMessage />
+                                    </FormItem>
+                                  )} />
+                                  <FormField control={editForm.control} name="noi_san_xuat" render={({ field }) => (
+                                    <FormItem>
+                                      <FormLabel>Nơi sản xuất</FormLabel>
+                                      <FormControl>
+                                        <Input {...field} value={field.value ?? ''} />
+                                      </FormControl>
+                                      <FormMessage />
+                                    </FormItem>
+                                  )} />
+                                </div>
+
+                                <FormField control={editForm.control} name="nam_san_xuat" render={({ field }) => (
+                                  <FormItem>
+                                    <FormLabel>Năm sản xuất</FormLabel>
+                                    <FormControl>
+                                      <Input type="number" {...field} value={field.value ?? ''} onChange={event => field.onChange(event.target.value === '' ? null : +event.target.value)} />
+                                    </FormControl>
+                                    <FormMessage />
+                                  </FormItem>
+                                )} />
+
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                  <FormField control={editForm.control} name="ngay_nhap" render={({ field }) => (
+                                    <FormItem>
+                                      <FormLabel>Ngày nhập</FormLabel>
+                                      <FormControl>
+                                        <Input placeholder="DD/MM/YYYY" {...field} value={field.value ?? ''} />
+                                      </FormControl>
+                                      <FormMessage />
+                                    </FormItem>
+                                  )} />
+                                  <FormField control={editForm.control} name="ngay_dua_vao_su_dung" render={({ field }) => (
+                                    <FormItem>
+                                      <FormLabel>Ngày đưa vào sử dụng</FormLabel>
+                                      <FormControl>
+                                        <Input placeholder="DD/MM/YYYY" {...field} value={field.value ?? ''} />
+                                      </FormControl>
+                                      <FormMessage />
+                                    </FormItem>
+                                  )} />
+                                </div>
+
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                  <FormField control={editForm.control} name="nguon_kinh_phi" render={({ field }) => (
+                                    <FormItem>
+                                      <FormLabel>Nguồn kinh phí</FormLabel>
+                                      <FormControl>
+                                        <Input {...field} value={field.value ?? ''} />
+                                      </FormControl>
+                                      <FormMessage />
+                                    </FormItem>
+                                  )} />
+                                  <FormField control={editForm.control} name="gia_goc" render={({ field }) => (
+                                    <FormItem>
+                                      <FormLabel>Giá gốc (VNĐ)</FormLabel>
+                                      <FormControl>
+                                        <Input type="number" {...field} value={field.value ?? ''} onChange={event => field.onChange(event.target.value === '' ? null : +event.target.value)} />
+                                      </FormControl>
+                                      <FormMessage />
+                                    </FormItem>
+                                  )} />
+                                </div>
+
+                                <FormField control={editForm.control} name="han_bao_hanh" render={({ field }) => (
+                                  <FormItem>
+                                    <FormLabel>Hạn bảo hành</FormLabel>
+                                    <FormControl>
+                                      <Input placeholder="DD/MM/YYYY" {...field} value={field.value ?? ''} />
+                                    </FormControl>
+                                    <FormMessage />
+                                  </FormItem>
+                                )} />
+
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                  <FormField control={editForm.control} name="khoa_phong_quan_ly" render={({ field }) => (
+                                    <FormItem>
+                                      <RequiredFormLabel required>Khoa/Phòng quản lý</RequiredFormLabel>
+                                      <FormControl>
+                                        <Input {...field} value={field.value ?? ''} />
+                                      </FormControl>
+                                      <FormMessage />
+                                    </FormItem>
+                                  )} />
+                                  <FormField control={editForm.control} name="vi_tri_lap_dat" render={({ field }) => (
+                                    <FormItem>
+                                      <RequiredFormLabel required>Vị trí lắp đặt</RequiredFormLabel>
+                                      <FormControl>
+                                        <Input {...field} value={field.value ?? ''} />
+                                      </FormControl>
+                                      <FormMessage />
+                                    </FormItem>
+                                  )} />
+                                </div>
+
+                                <FormField control={editForm.control} name="nguoi_dang_truc_tiep_quan_ly" render={({ field }) => (
+                                  <FormItem>
+                                    <RequiredFormLabel required>Người trực tiếp quản lý (sử dụng)</RequiredFormLabel>
+                                    <FormControl>
+                                      <Input {...field} value={field.value ?? ''} />
+                                    </FormControl>
+                                    <FormMessage />
+                                  </FormItem>
+                                )} />
+
+                                <FormField control={editForm.control} name="tinh_trang_hien_tai" render={({ field }) => (
+                                  <FormItem>
+                                    <RequiredFormLabel required>Tình trạng hiện tại</RequiredFormLabel>
+                                    <Select onValueChange={field.onChange} value={field.value ?? undefined}>
+                                      <FormControl>
+                                        <SelectTrigger>
+                                          <SelectValue placeholder="Chọn tình trạng" />
+                                        </SelectTrigger>
+                                      </FormControl>
+                                      <SelectContent>
+                                        {equipmentStatusOptions.map(status => (
+                                          <SelectItem key={status!} value={status!}>
+                                            {status}
+                                          </SelectItem>
+                                        ))}
+                                      </SelectContent>
+                                    </Select>
+                                    <FormMessage />
+                                  </FormItem>
+                                )} />
+
+                                <FormField control={editForm.control} name="cau_hinh_thiet_bi" render={({ field }) => (
+                                  <FormItem>
+                                    <FormLabel>Cấu hình thiết bị</FormLabel>
+                                    <FormControl>
+                                      <Textarea rows={4} {...field} value={field.value ?? ''} />
+                                    </FormControl>
+                                    <FormMessage />
+                                  </FormItem>
+                                )} />
+                                <FormField control={editForm.control} name="phu_kien_kem_theo" render={({ field }) => (
+                                  <FormItem>
+                                    <FormLabel>Phụ kiện kèm theo</FormLabel>
+                                    <FormControl>
+                                      <Textarea rows={3} {...field} value={field.value ?? ''} />
+                                    </FormControl>
+                                    <FormMessage />
+                                  </FormItem>
+                                )} />
+                                <FormField control={editForm.control} name="ghi_chu" render={({ field }) => (
+                                  <FormItem>
+                                    <FormLabel>Ghi chú</FormLabel>
+                                    <FormControl>
+                                      <Textarea rows={3} {...field} value={field.value ?? ''} />
+                                    </FormControl>
+                                    <FormMessage />
+                                  </FormItem>
+                                )} />
+
+                                <FormField control={editForm.control} name="phan_loai_theo_nd98" render={({ field }) => (
+                                  <FormItem>
+                                    <FormLabel>Phân loại TB theo NĐ 98</FormLabel>
+                                    <Select onValueChange={field.onChange} value={field.value ?? undefined}>
+                                      <FormControl>
+                                        <SelectTrigger>
+                                          <SelectValue placeholder="Chọn phân loại" />
+                                        </SelectTrigger>
+                                      </FormControl>
+                                      <SelectContent>
+                                        {['A', 'B', 'C', 'D'].map(type => (
+                                          <SelectItem key={type} value={type}>
+                                            {`Loại ${type}`}
+                                          </SelectItem>
+                                        ))}
+                                      </SelectContent>
+                                    </Select>
+                                    <FormMessage />
+                                  </FormItem>
+                                )} />
+                              </div>
+                            </ScrollArea>
+                          </form>
+                        </Form>
+                      ) : (
+                        <ScrollArea className="h-full pr-4">
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4 py-4">
+                            {(Object.keys(columnLabels) as Array<keyof Equipment>).map(key => {
+                              if (key === 'id') return null;
+
+                              const renderValue = () => {
+                                const value = selectedEquipment[key];
+                                if (key === 'tinh_trang_hien_tai') {
+                                  const statusValue = value as Equipment["tinh_trang_hien_tai"];
+                                  return statusValue ? <Badge variant={getStatusVariant(statusValue)}>{statusValue}</Badge> : <div className="italic text-muted-foreground">Chưa có dữ liệu</div>;
+                                }
+                                if (key === 'phan_loai_theo_nd98') {
+                                  const classification = value as Equipment["phan_loai_theo_nd98"];
+                                  return classification ? <Badge variant={getClassificationVariant(classification)}>{classification.trim()}</Badge> : <div className="italic text-muted-foreground">Chưa có dữ liệu</div>;
+                                }
+                                if (key === 'gia_goc') {
+                                  return value ? `${Number(value).toLocaleString()} đ` : <div className="italic text-muted-foreground">Chưa có dữ liệu</div>;
+                                }
+                                if (value === null || value === undefined || value === "") {
+                                  return <div className="italic text-muted-foreground">Chưa có dữ liệu</div>;
+                                }
+                                return String(value);
+                              };
+
+                              return (
+                                <div key={key} className="border-b pb-2">
+                                  <p className="text-xs font-medium text-muted-foreground">{columnLabels[key]}</p>
+                                  <div className="font-semibold break-words">{renderValue()}</div>
+                                </div>
+                              )
+                            })}
+                          </div>
                         </ScrollArea>
+                      )}
                     </TabsContent>
                     <TabsContent value="files" className="flex-grow overflow-hidden">
                         <div className="h-full flex flex-col gap-4 py-4">
@@ -1579,15 +1941,54 @@ export default function EquipmentPage() {
                     </TabsContent>
                 </Tabs>
                 <DialogFooter className="shrink-0 pt-4 border-t">
-                     <Button variant="secondary" onClick={() => handleGenerateDeviceLabel(selectedEquipment)}>
+                  <div className="w-full flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="flex items-center gap-2">
+                      {user && (user.role === 'global' || user.role === 'admin' || user.role === 'to_qltb' || (user.role === 'qltb_khoa' && user.khoa_phong === selectedEquipment.khoa_phong_quan_ly)) && (
+                        !isEditingDetails ? (
+                          <Button
+                            variant="outline"
+                            onClick={() => {
+                              setCurrentTab('details')
+                              setIsEditingDetails(true)
+                            }}
+                          >
+                            <Edit className="mr-2 h-4 w-4" />
+                            Sửa thông tin
+                          </Button>
+                        ) : (
+                          <>
+                            <Button
+                              variant="outline"
+                              type="button"
+                              onClick={() => setIsEditingDetails(false)}
+                              disabled={updateEquipmentMutation.isPending}
+                            >
+                              Hủy
+                            </Button>
+                            <Button
+                              type="submit"
+                              form="equipment-inline-edit-form"
+                              disabled={updateEquipmentMutation.isPending}
+                            >
+                              {updateEquipmentMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                              Lưu thay đổi
+                            </Button>
+                          </>
+                        )
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Button variant="secondary" onClick={() => handleGenerateDeviceLabel(selectedEquipment)}>
                         <QrCode className="mr-2 h-4 w-4" />
                         Tạo nhãn thiết bị
-                    </Button>
-                    <Button onClick={() => handleGenerateProfileSheet(selectedEquipment)}>
+                      </Button>
+                      <Button onClick={() => handleGenerateProfileSheet(selectedEquipment)}>
                         <Printer className="mr-2 h-4 w-4" />
                         In lý lịch
-                    </Button>
-                    <Button variant="outline" onClick={() => setIsDetailModalOpen(false)}>Đóng</Button>
+                      </Button>
+                      <Button variant="outline" onClick={requestCloseDetailDialog}>Đóng</Button>
+                    </div>
+                  </div>
                 </DialogFooter>
             </DialogContent>
         </Dialog>

@@ -169,7 +169,7 @@ export function EditEquipmentDialog({ open, onOpenChange, onSuccess, equipment }
                         <FormItem>
                         <FormLabel>Mã thiết bị</FormLabel>
                         <FormControl>
-                            <Input placeholder="VD: EQP-001" {...field} />
+                            <Input placeholder="VD: EQP-001" {...field} value={field.value ?? ''} />
                         </FormControl>
                         <FormMessage />
                         </FormItem>
@@ -182,7 +182,7 @@ export function EditEquipmentDialog({ open, onOpenChange, onSuccess, equipment }
                         <FormItem>
                         <FormLabel>Tên thiết bị</FormLabel>
                         <FormControl>
-                            <Input placeholder="VD: Máy siêu âm" {...field} />
+                            <Input placeholder="VD: Máy siêu âm" {...field} value={field.value ?? ''} />
                         </FormControl>
                         <FormMessage />
                         </FormItem>
