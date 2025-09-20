@@ -43,6 +43,20 @@ const equipmentStatusOptions = [
 ] as const;
 
 
+const normalizeDate = (v: string | null | undefined) => {
+  if (!v) return null
+  const s = String(v).trim()
+  if (s === '') return null
+  const m = s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/)
+  if (m) {
+    const d = m[1].padStart(2, '0')
+    const mo = m[2].padStart(2, '0')
+    const y = m[3]
+    return `${y}-${mo}-${d}`
+  }
+  return s
+}
+
 const equipmentFormSchema = z.object({
   ma_thiet_bi: z.string().min(1, "Mã thiết bị là bắt buộc"),
   ten_thiet_bi: z.string().min(1, "Tên thiết bị là bắt buộc"),
@@ -51,11 +65,11 @@ const equipmentFormSchema = z.object({
   hang_san_xuat: z.string().optional().nullable(),
   noi_san_xuat: z.string().optional().nullable(),
   nam_san_xuat: z.coerce.number().optional().nullable(),
-  ngay_nhap: z.string().optional().nullable(),
-  ngay_dua_vao_su_dung: z.string().optional().nullable(),
+  ngay_nhap: z.string().optional().nullable().transform(normalizeDate),
+  ngay_dua_vao_su_dung: z.string().optional().nullable().transform(normalizeDate),
   nguon_kinh_phi: z.string().optional().nullable(),
   gia_goc: z.coerce.number().optional().nullable(),
-  han_bao_hanh: z.string().optional().nullable(),
+  han_bao_hanh: z.string().optional().nullable().transform(normalizeDate),
   vi_tri_lap_dat: z.string().min(1, "Vị trí lắp đặt là bắt buộc").nullable().transform(val => val || ""),
   khoa_phong_quan_ly: z.string().min(1, "Khoa/Phòng quản lý là bắt buộc").nullable().transform(val => val || ""),
   nguoi_dang_truc_tiep_quan_ly: z.string().min(1, "Người trực tiếp quản lý (sử dụng) là bắt buộc").nullable().transform(val => val || ""),
@@ -63,6 +77,13 @@ const equipmentFormSchema = z.object({
   cau_hinh_thiet_bi: z.string().optional().nullable(),
   phu_kien_kem_theo: z.string().optional().nullable(),
   ghi_chu: z.string().optional().nullable(),
+  // Maintenance cycles and next dates
+  chu_ky_bt_dinh_ky: z.coerce.number().optional().nullable(),
+  ngay_bt_tiep_theo: z.string().optional().nullable().transform(normalizeDate),
+  chu_ky_hc_dinh_ky: z.coerce.number().optional().nullable(),
+  ngay_hc_tiep_theo: z.string().optional().nullable().transform(normalizeDate),
+  chu_ky_kd_dinh_ky: z.coerce.number().optional().nullable(),
+  ngay_kd_tiep_theo: z.string().optional().nullable().transform(normalizeDate),
   phan_loai_theo_nd98: z.enum(['A', 'B', 'C', 'D']).optional().nullable(),
 });
 
@@ -99,6 +120,9 @@ export function EditEquipmentDialog({ open, onOpenChange, onSuccess, equipment }
         ),
         nam_san_xuat: equipment.nam_san_xuat ?? undefined,
         gia_goc: equipment.gia_goc ?? undefined,
+        chu_ky_bt_dinh_ky: equipment.chu_ky_bt_dinh_ky ?? undefined,
+        chu_ky_hc_dinh_ky: equipment.chu_ky_hc_dinh_ky ?? undefined,
+        chu_ky_kd_dinh_ky: equipment.chu_ky_kd_dinh_ky ?? undefined,
       });
     }
   }, [equipment, form]);

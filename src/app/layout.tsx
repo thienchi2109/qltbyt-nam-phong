@@ -9,7 +9,7 @@ import { PWAInstallPrompt, PWAStatus } from '@/components/pwa-install-prompt';
 import { ThemeColorManager } from '@/components/theme-color-manager';
 
 export const metadata: Metadata = {
-  title: 'Hệ thống quản lý thiết bị y tế CVmems',
+  title: 'Hệ thống quản lý thiết bị y tế CVMEMS',
   description: 'Hệ thống quản lý thiết bị y tế',
   manifest: '/manifest.json', // Added manifest link
 };
