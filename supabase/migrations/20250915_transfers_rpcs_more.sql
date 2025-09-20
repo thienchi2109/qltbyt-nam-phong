@@ -17,12 +17,13 @@ as $$
 declare
   v_claims jsonb;
   v_role text;
-  v_don_vi text;
+  v_don_vi bigint;
   v_offset int;
 begin
   v_claims := coalesce(current_setting('request.jwt.claims', true), '{}')::jsonb;
   v_role := coalesce(nullif(v_claims->>'app_role',''), nullif(v_claims->>'role',''));
-  v_don_vi := nullif(v_claims->>'don_vi','');
+  -- Cast don_vi claim to BIGINT to match thiet_bi.don_vi column type
+  v_don_vi := nullif(v_claims->>'don_vi','')::bigint;
   v_offset := greatest((coalesce(p_page,1)-1) * coalesce(p_page_size,100), 0);
 
   if v_role is distinct from 'global' then
@@ -183,14 +184,24 @@ grant execute on function public.transfer_request_update(int, jsonb) to authenti
 -- List transfer history with user details
 create or replace function public.transfer_history_list(p_yeu_cau_id int)
 returns setof jsonb
-language sql
+language plpgsql
 security definer
 as $$
-  select to_jsonb(h) || jsonb_build_object('nguoi_thuc_hien', to_jsonb(u))
-  from lich_su_luan_chuyen h
-  left join nhan_vien u on u.id = h.nguoi_thuc_hien_id
-  where h.yeu_cau_id = p_yeu_cau_id
-  order by h.thoi_gian desc;
+begin
+  -- If history table is absent in this environment, return empty set gracefully
+  if to_regclass('public.lich_su_luan_chuyen') is null then
+    return;
+  end if;
+
+  return query
+  execute $q$
+    select to_jsonb(h) || jsonb_build_object('nguoi_thuc_hien', to_jsonb(u))
+    from public.lich_su_luan_chuyen h
+    left join public.nhan_vien u on u.id = h.nguoi_thuc_hien_id
+    where h.yeu_cau_id = $1
+    order by h.thoi_gian desc
+  $q$ using p_yeu_cau_id;
+end;
 $$;
 
 grant execute on function public.transfer_history_list(int) to authenticated;
