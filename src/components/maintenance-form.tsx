@@ -162,13 +162,6 @@ export function MaintenanceForm({
             </div>
           </section>
         </div>
-
-        {/* Footer */}
-        <footer className="print-footer flex justify-between items-center text-xs">
-          <span>QLTB-BM.09</span>
-          <span>BH.01 (05/2024)</span>
-          <span>Trang: 1/1</span>
-        </footer>
       </div>
 
       <style jsx>{`
@@ -266,13 +259,7 @@ export function MaintenanceForm({
             page-break-inside: avoid;
           }
 
-          .print-footer {
-            position: fixed;
-            bottom: 1cm;
-            left: 1cm;
-            right: 1cm;
-            width: calc(100% - 2cm);
-          }
+
 
           .content-body {
             padding-bottom: 30px;

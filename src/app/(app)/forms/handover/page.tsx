@@ -74,13 +74,6 @@ export default function HandoverFormPage() {
             <p className="italic">Ghi chú: Biên bản được lập thành 02 bản, bên giao và bên nhận mỗi bên 01 bản.</p>
           </div>
         </div>
-        
-        {/* Footer */}
-        <footer className="print-footer flex justify-between items-center text-xs mt-4 pt-2 border-t border-gray-300">
-          <span>QLTB-BM.14</span>
-          <span>BH.01 (05/2024)</span>
-          <span>Trang: <span id="page-number">1</span>/<span id="total-pages">1</span></span>
-        </footer>
       </div>
     </div>
   )

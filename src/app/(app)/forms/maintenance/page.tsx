@@ -94,13 +94,6 @@ export default function MaintenanceFormPage() {
             </table>
           </section>
         </div>
-        
-        {/* Footer */}
-        <footer className="print-footer flex justify-between items-center text-xs mt-4 pt-2 border-t border-gray-300">
-          <span>QLTB-BM.15</span>
-          <span>BH.01 (05/2024)</span>
-          <span>Trang: <span id="page-number">1</span>/<span id="total-pages">1</span></span>
-        </footer>
       </div>
     </div>
   )

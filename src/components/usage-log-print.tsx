@@ -369,13 +369,6 @@ export function UsageLogPrint({ equipment }: UsageLogPrintProps) {
           In ngày: ${currentDate} | Tổng số bản ghi: ${filteredLogs.length}
         </div>
         </div>
-
-        <!-- Footer -->
-        <footer class="print-footer">
-          <span>QLTB-BM.06</span>
-          <span>BH.01 (05/2024)</span>
-          <span>Trang: 1/1</span>
-        </footer>
       </body>
       </html>
     `

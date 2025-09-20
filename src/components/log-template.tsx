@@ -145,13 +145,6 @@ export function LogTemplate({
             </table>
           </section>
         </div>
-
-        {/* Footer */}
-        <footer className="print-footer flex justify-between items-center text-xs">
-          <span>QLTB-BM.06</span>
-          <span>BH.01 (05/2024)</span>
-          <span>Trang: 1/1</span>
-        </footer>
       </div>
 
       <style jsx>{`
@@ -229,13 +222,7 @@ export function LogTemplate({
             page-break-inside: avoid;
           }
 
-          .print-footer {
-            position: fixed;
-            bottom: 1cm;
-            left: 2cm;
-            right: 2cm;
-            width: calc(100% - 4cm);
-          }
+
 
           .content-body {
             padding-bottom: 30px;
