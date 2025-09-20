@@ -9,8 +9,8 @@ import { PWAInstallPrompt, PWAStatus } from '@/components/pwa-install-prompt';
 import { ThemeColorManager } from '@/components/theme-color-manager';
 
 export const metadata: Metadata = {
-  title: 'NAM PHONG TECHNICAL HI-TECH',
-  description: 'Hệ thống quản lý trang thiết bị y tế',
+  title: 'Hệ thống quản lý thiết bị y tế CVmems',
+  description: 'Hệ thống quản lý thiết bị y tế',
   manifest: '/manifest.json', // Added manifest link
 };
 

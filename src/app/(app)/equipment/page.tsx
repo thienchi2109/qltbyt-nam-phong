@@ -98,6 +98,7 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import { AddEquipmentDialog } from "@/components/add-equipment-dialog"
 import { ImportEquipmentDialog } from "@/components/import-equipment-dialog"
 import { useSession } from "next-auth/react"
+import { useTenantBranding } from "@/hooks/use-tenant-branding"
 import { EditEquipmentDialog } from "@/components/edit-equipment-dialog"
 import { MobileFiltersDropdown } from "@/components/mobile-filters-dropdown"
 import { ResponsivePaginationInfo } from "@/components/responsive-pagination-info"
@@ -317,6 +318,7 @@ export default function EquipmentPage() {
   const { data: session, status } = useSession()
   const user = session?.user as any // Cast NextAuth user to our User type
   const { toast } = useToast()
+  const { data: tenantBranding } = useTenantBranding()
 
   // Redirect if not authenticated
   if (status === "loading") {
@@ -497,9 +499,9 @@ export default function EquipmentPage() {
               <div class="content-body">
                   <header class="text-center">
                       <div class="flex justify-between items-center">
-                          <img src="https://i.postimg.cc/26dHxmnV/89307731ad9526cb7f84-1-Photoroom.png" alt="Logo CDC" class="w-20 h-20" onerror="this.onerror=null;this.src='https://placehold.co/100x100/e2e8f0/e2e8f0?text=Logo';">
+                          <img src="${tenantBranding?.logo_url || 'https://placehold.co/100x100/e2e8f0/e2e8f0?text=Logo'}" alt="Logo ${tenantBranding?.name || 'Organization'}" class="w-20 h-20" onerror="this.onerror=null;this.src='https://placehold.co/100x100/e2e8f0/e2e8f0?text=Logo';">
                           <div class="flex-grow">
-                              <h2 class="title-sub uppercase font-bold">TRUNG TÂM KIỂM SOÁT BỆNH TẬT THÀNH PHỐ CẦN THƠ</h2>
+                              <h2 class="title-sub uppercase font-bold text-xl">${tenantBranding?.name || 'ĐƠN VỊ'}</h2>
                               <div class="flex items-baseline justify-center mt-2">
                                   <label class="font-bold whitespace-nowrap">KHOA/PHÒNG:</label>
                                   <div class="w-1/2 ml-2"><input type="text" class="form-input-line" value="${formatValue(equipment.khoa_phong_quan_ly)}"></div>
@@ -602,11 +604,6 @@ export default function EquipmentPage() {
                       </div>
                   </main>
               </div>
-              <footer class="print-footer flex justify-between items-center text-xs">
-                  <span>QLTB-BM.03</span>
-                  <span>BH.01 (05/2024)</span>
-                  <span>Trang: 1/1</span>
-              </footer>
           </div>
       </body>
       </html>
@@ -657,7 +654,7 @@ export default function EquipmentPage() {
           <div class="w-full max-w-md bg-white p-4 shadow-lg label-container" style="border: 3px double #000;">
               <header class="flex items-start justify-between gap-3 border-b-2 border-black pb-3">
                   <div class="flex-shrink-0">
-                      <img src="https://i.postimg.cc/26dHxmnV/89307731ad9526cb7f84-1-Photoroom.png" alt="Logo CDC" class="w-16 h-auto" onerror="this.onerror=null;this.src='https://placehold.co/100x100/e2e8f0/e2e8f0?text=Logo';">
+                      <img src="${tenantBranding?.logo_url || 'https://placehold.co/100x100/e2e8f0/e2e8f0?text=Logo'}" alt="Logo ${tenantBranding?.name || 'Organization'}" class="w-16 h-auto" onerror="this.onerror=null;this.src='https://placehold.co/100x100/e2e8f0/e2e8f0?text=Logo';"
                   </div>
                   <div class="text-center flex-grow">
                       <h1 class="text-2xl font-bold tracking-wider">NHÃN THIẾT BỊ</h1>
@@ -707,9 +704,6 @@ export default function EquipmentPage() {
                            onerror="this.onerror=null;this.src='https://placehold.co/112x112/ffffff/cccccc?text=QR+Code';"
                        >
                   </div>
-                  <footer class="text-right self-end">
-                      <p class="font-bold text-sm">QLTB-BM.04</p>
-                  </footer>
               </div>
           </div>
       </body>

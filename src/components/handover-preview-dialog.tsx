@@ -563,12 +563,6 @@ export function HandoverPreviewDialog({ open, onOpenChange, transfer }: Handover
                 </div>
             </section>
         </div>
-        
-        <footer class="print-footer flex justify-between items-center text-xs">
-            <span>QLTB-BM.14</span>
-            <span>BH.01 (05/2024)</span>
-            <span>Trang: 1/1</span>
-        </footer>
     </div>
 </body>
 </html>`
