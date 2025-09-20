@@ -940,11 +940,6 @@ export default function RepairRequestsPage() {
                       <input type="text" id="repairer-name" class="signature-name-input">
                   </div>
               </div>
-              <footer class="mt-12 flex justify-between items-center text-xs text-gray-500">
-                  <span>QLTB-BM.07</span>
-                  <span>BH.01 (05/2024)</span>
-                  <span>Trang: 1/2</span>
-              </footer>
           </div>
 
           <!-- Page 2: Repair Result Form -->
@@ -997,12 +992,6 @@ export default function RepairRequestsPage() {
                   </section>
               </div>
 
-              <!-- Footer -->
-              <footer class="print-footer flex justify-between items-center text-xs">
-                  <span>QLTB-BM.07</span>
-                  <span>BH.01 (05/2024)</span>
-                  <span>Trang: 2/2</span>
-              </footer>
           </div>
       </body>
       </html>

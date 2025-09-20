@@ -168,7 +168,7 @@ export default function LoginPage() {
 
               {/* Footer Content */}
               <div className="mt-6 text-center text-xs text-muted-foreground space-y-1">
-                <p>Copyright © NPMems</p>
+                <p>Copyright © CVmems</p>
               </div>
             </div>
           </div>
@@ -216,7 +216,7 @@ export default function LoginPage() {
             <div className="mt-6 lg:mt-12 text-center lg:text-left">
               <div className="bg-accent/10 border border-accent/20 rounded-lg p-4 lg:p-6">
                 <h4 className="font-semibold text-accent mb-2">
-                  🏥 Tài khoản này thuộc Hệ thống quản lý thiết bị y tế NPMems
+                  🏥 Tài khoản này thuộc Hệ thống quản lý thiết bị y tế CVmems
                 </h4>
                 <p className="text-sm text-muted-foreground">
                   Được thiết kế đặc biệt để đáp ứng nhu cầu quản lý thiết bị y tế chuyên nghiệp,
@@ -305,7 +305,7 @@ export default function LoginPage() {
 
                 {/* Footer Content */}
                 <div className="mt-6 text-center text-xs text-muted-foreground space-y-1">
-                  <p>Copyright © NPMems</p>
+                  <p>Copyright © CVmems</p>
                 </div>
               </div>
             </div>

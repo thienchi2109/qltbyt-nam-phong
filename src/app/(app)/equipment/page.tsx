@@ -604,11 +604,6 @@ export default function EquipmentPage() {
                       </div>
                   </main>
               </div>
-              <footer class="print-footer flex justify-between items-center text-xs">
-                  <span>QLTB-BM.03</span>
-                  <span>BH.01 (05/2024)</span>
-                  <span>Trang: 1/1</span>
-              </footer>
           </div>
       </body>
       </html>
@@ -709,9 +704,6 @@ export default function EquipmentPage() {
                            onerror="this.onerror=null;this.src='https://placehold.co/112x112/ffffff/cccccc?text=QR+Code';"
                        >
                   </div>
-                  <footer class="text-right self-end">
-                      <p class="font-bold text-sm">QLTB-BM.04</p>
-                  </footer>
               </div>
           </div>
       </body>
