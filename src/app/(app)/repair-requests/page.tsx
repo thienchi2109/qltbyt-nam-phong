@@ -1492,7 +1492,7 @@ export default function RepairRequestsPage() {
       {/* Request Detail Dialog */}
       {requestToView && (
         <Dialog open={!!requestToView} onOpenChange={(open) => !open && setRequestToView(null)}>
-          <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
+          <DialogContent className="max-w-4xl h-[90vh] flex flex-col overflow-hidden">
             <DialogHeader className="flex-shrink-0">
               <DialogTitle className="text-lg font-semibold">
                 Chi tiết yêu cầu sửa chữa
@@ -1502,7 +1502,8 @@ export default function RepairRequestsPage() {
               </DialogDescription>
             </DialogHeader>
 
-            <ScrollArea className="flex-1 pr-4">
+            <div className="flex-1 overflow-hidden pr-4">
+              <ScrollArea className="h-full">
               <div className="space-y-6 py-4">
                 {/* Equipment Information */}
                 <div className="space-y-3">
@@ -1567,7 +1568,7 @@ export default function RepairRequestsPage() {
 
                   <div className="space-y-2">
                     <Label className="text-sm font-medium text-muted-foreground">Mô tả sự cố</Label>
-                    <div className="text-sm bg-muted/50 p-3 rounded-md whitespace-pre-wrap">
+                    <div className="text-sm bg-muted/50 p-3 rounded-md whitespace-pre-wrap break-words">
                       {requestToView.mo_ta_su_co}
                     </div>
                   </div>
@@ -1575,7 +1576,7 @@ export default function RepairRequestsPage() {
                   {requestToView.hang_muc_sua_chua && (
                     <div className="space-y-2">
                       <Label className="text-sm font-medium text-muted-foreground">Hạng mục sửa chữa</Label>
-                      <div className="text-sm bg-muted/50 p-3 rounded-md whitespace-pre-wrap">
+                      <div className="text-sm bg-muted/50 p-3 rounded-md whitespace-pre-wrap break-words">
                         {requestToView.hang_muc_sua_chua}
                       </div>
                     </div>
@@ -1600,7 +1601,7 @@ export default function RepairRequestsPage() {
                       {requestToView.ten_don_vi_thue && (
                         <div className="space-y-2">
                           <Label className="text-sm font-medium text-muted-foreground">Tên đơn vị thuê</Label>
-                          <div className="text-sm">{requestToView.ten_don_vi_thue}</div>
+                          <div className="text-sm break-words">{requestToView.ten_don_vi_thue}</div>
                         </div>
                       )}
                     </div>
@@ -1617,7 +1618,7 @@ export default function RepairRequestsPage() {
                       {requestToView.nguoi_duyet && (
                         <div className="space-y-2">
                           <Label className="text-sm font-medium text-muted-foreground">Người duyệt</Label>
-                          <div className="text-sm">{requestToView.nguoi_duyet}</div>
+                          <div className="text-sm break-words">{requestToView.nguoi_duyet}</div>
                         </div>
                       )}
                       {requestToView.ngay_duyet && (
@@ -1642,7 +1643,7 @@ export default function RepairRequestsPage() {
                       {requestToView.nguoi_xac_nhan && (
                         <div className="space-y-2">
                           <Label className="text-sm font-medium text-muted-foreground">Người xác nhận</Label>
-                          <div className="text-sm">{requestToView.nguoi_xac_nhan}</div>
+                          <div className="text-sm break-words">{requestToView.nguoi_xac_nhan}</div>
                         </div>
                       )}
                       {requestToView.ngay_hoan_thanh && (
@@ -1658,7 +1659,7 @@ export default function RepairRequestsPage() {
                     {requestToView.ket_qua_sua_chua && (
                       <div className="space-y-2">
                         <Label className="text-sm font-medium text-muted-foreground">Kết quả sửa chữa</Label>
-                        <div className="text-sm bg-green-50 border border-green-200 p-3 rounded-md whitespace-pre-wrap">
+                        <div className="text-sm bg-green-50 border border-green-200 p-3 rounded-md whitespace-pre-wrap break-words">
                           {requestToView.ket_qua_sua_chua}
                         </div>
                       </div>
@@ -1667,7 +1668,7 @@ export default function RepairRequestsPage() {
                     {requestToView.ly_do_khong_hoan_thanh && (
                       <div className="space-y-2">
                         <Label className="text-sm font-medium text-muted-foreground">Lý do không hoàn thành</Label>
-                        <div className="text-sm bg-red-50 border border-red-200 p-3 rounded-md whitespace-pre-wrap">
+                        <div className="text-sm bg-red-50 border border-red-200 p-3 rounded-md whitespace-pre-wrap break-words">
                           {requestToView.ly_do_khong_hoan_thanh}
                         </div>
                       </div>
@@ -1675,9 +1676,10 @@ export default function RepairRequestsPage() {
                   </div>
                 )}
               </div>
-            </ScrollArea>
+              </ScrollArea>
+            </div>
 
-            <DialogFooter className="flex-shrink-0">
+            <DialogFooter className="flex-shrink-0 mt-4 border-t pt-4">
               <Button variant="outline" onClick={() => setRequestToView(null)}>
                 Đóng
               </Button>
