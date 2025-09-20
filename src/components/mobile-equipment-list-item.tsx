@@ -102,12 +102,6 @@ export function MobileEquipmentListItem({
                   <Eye className="mr-2 h-4 w-4" />
                   Xem chi tiết
                 </DropdownMenuItem>
-                {canEdit && (
-                  <DropdownMenuItem onSelect={() => onEdit(equipment)}>
-                    <Edit className="mr-2 h-4 w-4" />
-                    Sửa thông tin
-                  </DropdownMenuItem>
-                )}
                 <DropdownMenuItem onSelect={() => router.push(`/repair-requests?equipmentId=${equipment.id}`)}>
                   <Wrench className="mr-2 h-4 w-4" />
                   Báo sửa chữa

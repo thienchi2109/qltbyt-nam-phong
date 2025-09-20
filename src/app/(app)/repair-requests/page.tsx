@@ -53,6 +53,7 @@ import { cn } from "@/lib/utils"
 import { ScrollArea } from "@/components/ui/scroll-area"
 // Legacy auth-context removed; NextAuth is used throughout
 import { useSession } from "next-auth/react"
+import { useTenantBranding } from "@/hooks/use-tenant-branding"
 import { useRouter } from "next/navigation"
 import { useIsMobile } from "@/hooks/use-mobile"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger, DropdownMenuCheckboxItem } from "@/components/ui/dropdown-menu"
@@ -237,6 +238,7 @@ const calculateDaysRemaining = (desiredDate: string | null) => {
 export default function RepairRequestsPage() {
   const { toast } = useToast()
   const { data: session, status } = useSession()
+  const { data: branding } = useTenantBranding()
   const user = session?.user as any // Cast NextAuth user to our User type
   const router = useRouter()
   const isMobile = useIsMobile()
@@ -788,6 +790,9 @@ export default function RepairRequestsPage() {
   }
 
   const handleGenerateRequestSheet = (request: RepairRequestWithEquipment) => {
+    // Use tenant branding if available, otherwise fall back to defaults
+    const organizationName = branding?.name || "TRUNG TÂM KIỂM SOÁT BỆNH TẬT THÀNH PHỐ CẦN THƠ";
+    const logoUrl = branding?.logo_url || "https://i.postimg.cc/26dHxmnV/89307731ad9526cb7f84-1-Photoroom.png";
     if (!request || !request.thiet_bi) {
       toast({
         variant: "destructive",
@@ -844,10 +849,10 @@ export default function RepairRequestsPage() {
               <header class="text-center mb-8">
                   <div class="flex justify-between items-start">
                       <div class="text-center">
-                          <img src="https://i.postimg.cc/26dHxmnV/89307731ad9526cb7f84-1-Photoroom.png" alt="Logo CDC" class="w-[70px] mx-auto mb-1" onerror="this.onerror=null;this.src='https://placehold.co/100x100/e2e8f0/e2e8f0?text=Logo';">
+                          <img src="${logoUrl}" alt="Logo" class="w-[70px] mx-auto mb-1" onerror="this.onerror=null;this.src='https://placehold.co/100x100/e2e8f0/e2e8f0?text=Logo';">
                       </div>
                       <div class="flex-grow">
-                          <h2 class="title-sub uppercase font-bold">TRUNG TÂM KIỂM SOÁT BỆNH TẬT THÀNH PHỐ CẦN THƠ</h2>
+                          <h2 class="title-sub uppercase font-bold">${organizationName}</h2>
                           <h1 class="title-main uppercase mt-4 font-bold">PHIẾU ĐỀ NGHỊ SỬA CHỮA THIẾT BỊ</h1>
                       </div>
                       <div class="w-16"></div> <!-- Spacer -->
@@ -949,10 +954,10 @@ export default function RepairRequestsPage() {
                   <header class="text-center mb-8">
                       <div class="flex items-center">
                           <div class="text-center">
-                              <img src="https://i.postimg.cc/26dHxmnV/89307731ad9526cb7f84-1-Photoroom.png" alt="Logo CDC" class="w-[70px] mx-auto mb-1" onerror="this.onerror=null;this.src='https://placehold.co/100x100/e2e8f0/e2e8f0?text=Logo';">
+                              <img src="${logoUrl}" alt="Logo" class="w-[70px] mx-auto mb-1" onerror="this.onerror=null;this.src='https://placehold.co/100x100/e2e8f0/e2e8f0?text=Logo';">
                           </div>
                           <div class="flex-grow">
-                              <h2 class="title-sub uppercase font-bold">TRUNG TÂM KIỂM SOÁT BỆNH TẬT THÀNH PHỐ CẦN THƠ</h2>
+                              <h2 class="title-sub uppercase font-bold">${organizationName}</h2>
                           </div>
                           <div class="w-16"></div> <!-- Spacer -->
                       </div>
