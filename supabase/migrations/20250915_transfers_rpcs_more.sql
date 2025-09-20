@@ -17,13 +17,29 @@ as $$
 declare
   v_claims jsonb;
   v_role text;
+  v_don_vi_text text;
   v_don_vi bigint;
   v_offset int;
 begin
   v_claims := coalesce(current_setting('request.jwt.claims', true), '{}')::jsonb;
   v_role := coalesce(nullif(v_claims->>'app_role',''), nullif(v_claims->>'role',''));
-  -- Cast don_vi claim to BIGINT to match thiet_bi.don_vi column type
-  v_don_vi := nullif(v_claims->>'don_vi','')::bigint;
+  -- Safely parse don_vi claim; ensure numeric before casting to BIGINT
+  v_don_vi_text := nullif(v_claims->>'don_vi','');
+  if v_role is distinct from 'global' then
+    if v_don_vi_text is null then
+      raise exception 'Thiếu claim don_vi trong token';
+    end if;
+    if v_don_vi_text !~ '^[0-9]+$' then
+      raise exception 'Claim don_vi không hợp lệ: %', v_don_vi_text;
+    end if;
+    v_don_vi := v_don_vi_text::bigint;
+  else
+    if v_don_vi_text ~ '^[0-9]+$' then
+      v_don_vi := v_don_vi_text::bigint;
+    else
+      v_don_vi := null;
+    end if;
+  end if;
   v_offset := greatest((coalesce(p_page,1)-1) * coalesce(p_page_size,100), 0);
 
   if v_role is distinct from 'global' then
