@@ -53,6 +53,7 @@ import { cn } from "@/lib/utils"
 import { ScrollArea } from "@/components/ui/scroll-area"
 // Legacy auth-context removed; NextAuth is used throughout
 import { useSession } from "next-auth/react"
+import { useTenantBranding } from "@/hooks/use-tenant-branding"
 import { useRouter } from "next/navigation"
 import { useIsMobile } from "@/hooks/use-mobile"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger, DropdownMenuCheckboxItem } from "@/components/ui/dropdown-menu"
@@ -237,6 +238,7 @@ const calculateDaysRemaining = (desiredDate: string | null) => {
 export default function RepairRequestsPage() {
   const { toast } = useToast()
   const { data: session, status } = useSession()
+  const { data: branding } = useTenantBranding()
   const user = session?.user as any // Cast NextAuth user to our User type
   const router = useRouter()
   const isMobile = useIsMobile()
@@ -788,6 +790,9 @@ export default function RepairRequestsPage() {
   }
 
   const handleGenerateRequestSheet = (request: RepairRequestWithEquipment) => {
+    // Use tenant branding if available, otherwise fall back to defaults
+    const organizationName = branding?.name || "TRUNG TÂM KIỂM SOÁT BỆNH TẬT THÀNH PHỐ CẦN THƠ";
+    const logoUrl = branding?.logo_url || "https://i.postimg.cc/26dHxmnV/89307731ad9526cb7f84-1-Photoroom.png";
     if (!request || !request.thiet_bi) {
       toast({
         variant: "destructive",
@@ -844,10 +849,10 @@ export default function RepairRequestsPage() {
               <header class="text-center mb-8">
                   <div class="flex justify-between items-start">
                       <div class="text-center">
-                          <img src="https://i.postimg.cc/26dHxmnV/89307731ad9526cb7f84-1-Photoroom.png" alt="Logo CDC" class="w-[70px] mx-auto mb-1" onerror="this.onerror=null;this.src='https://placehold.co/100x100/e2e8f0/e2e8f0?text=Logo';">
+                          <img src="${logoUrl}" alt="Logo" class="w-[70px] mx-auto mb-1" onerror="this.onerror=null;this.src='https://placehold.co/100x100/e2e8f0/e2e8f0?text=Logo';">
                       </div>
                       <div class="flex-grow">
-                          <h2 class="title-sub uppercase font-bold">TRUNG TÂM KIỂM SOÁT BỆNH TẬT THÀNH PHỐ CẦN THƠ</h2>
+                          <h2 class="title-sub uppercase font-bold">${organizationName}</h2>
                           <h1 class="title-main uppercase mt-4 font-bold">PHIẾU ĐỀ NGHỊ SỬA CHỮA THIẾT BỊ</h1>
                       </div>
                       <div class="w-16"></div> <!-- Spacer -->
@@ -949,10 +954,10 @@ export default function RepairRequestsPage() {
                   <header class="text-center mb-8">
                       <div class="flex items-center">
                           <div class="text-center">
-                              <img src="https://i.postimg.cc/26dHxmnV/89307731ad9526cb7f84-1-Photoroom.png" alt="Logo CDC" class="w-[70px] mx-auto mb-1" onerror="this.onerror=null;this.src='https://placehold.co/100x100/e2e8f0/e2e8f0?text=Logo';">
+                              <img src="${logoUrl}" alt="Logo" class="w-[70px] mx-auto mb-1" onerror="this.onerror=null;this.src='https://placehold.co/100x100/e2e8f0/e2e8f0?text=Logo';">
                           </div>
                           <div class="flex-grow">
-                              <h2 class="title-sub uppercase font-bold">TRUNG TÂM KIỂM SOÁT BỆNH TẬT THÀNH PHỐ CẦN THƠ</h2>
+                              <h2 class="title-sub uppercase font-bold">${organizationName}</h2>
                           </div>
                           <div class="w-16"></div> <!-- Spacer -->
                       </div>
@@ -1492,7 +1497,7 @@ export default function RepairRequestsPage() {
       {/* Request Detail Dialog */}
       {requestToView && (
         <Dialog open={!!requestToView} onOpenChange={(open) => !open && setRequestToView(null)}>
-          <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
+          <DialogContent className="max-w-4xl h-[90vh] flex flex-col overflow-hidden">
             <DialogHeader className="flex-shrink-0">
               <DialogTitle className="text-lg font-semibold">
                 Chi tiết yêu cầu sửa chữa
@@ -1502,7 +1507,8 @@ export default function RepairRequestsPage() {
               </DialogDescription>
             </DialogHeader>
 
-            <ScrollArea className="flex-1 pr-4">
+            <div className="flex-1 overflow-hidden pr-4">
+              <ScrollArea className="h-full">
               <div className="space-y-6 py-4">
                 {/* Equipment Information */}
                 <div className="space-y-3">
@@ -1567,7 +1573,7 @@ export default function RepairRequestsPage() {
 
                   <div className="space-y-2">
                     <Label className="text-sm font-medium text-muted-foreground">Mô tả sự cố</Label>
-                    <div className="text-sm bg-muted/50 p-3 rounded-md whitespace-pre-wrap">
+                    <div className="text-sm bg-muted/50 p-3 rounded-md whitespace-pre-wrap break-words">
                       {requestToView.mo_ta_su_co}
                     </div>
                   </div>
@@ -1575,7 +1581,7 @@ export default function RepairRequestsPage() {
                   {requestToView.hang_muc_sua_chua && (
                     <div className="space-y-2">
                       <Label className="text-sm font-medium text-muted-foreground">Hạng mục sửa chữa</Label>
-                      <div className="text-sm bg-muted/50 p-3 rounded-md whitespace-pre-wrap">
+                      <div className="text-sm bg-muted/50 p-3 rounded-md whitespace-pre-wrap break-words">
                         {requestToView.hang_muc_sua_chua}
                       </div>
                     </div>
@@ -1600,7 +1606,7 @@ export default function RepairRequestsPage() {
                       {requestToView.ten_don_vi_thue && (
                         <div className="space-y-2">
                           <Label className="text-sm font-medium text-muted-foreground">Tên đơn vị thuê</Label>
-                          <div className="text-sm">{requestToView.ten_don_vi_thue}</div>
+                          <div className="text-sm break-words">{requestToView.ten_don_vi_thue}</div>
                         </div>
                       )}
                     </div>
@@ -1617,7 +1623,7 @@ export default function RepairRequestsPage() {
                       {requestToView.nguoi_duyet && (
                         <div className="space-y-2">
                           <Label className="text-sm font-medium text-muted-foreground">Người duyệt</Label>
-                          <div className="text-sm">{requestToView.nguoi_duyet}</div>
+                          <div className="text-sm break-words">{requestToView.nguoi_duyet}</div>
                         </div>
                       )}
                       {requestToView.ngay_duyet && (
@@ -1642,7 +1648,7 @@ export default function RepairRequestsPage() {
                       {requestToView.nguoi_xac_nhan && (
                         <div className="space-y-2">
                           <Label className="text-sm font-medium text-muted-foreground">Người xác nhận</Label>
-                          <div className="text-sm">{requestToView.nguoi_xac_nhan}</div>
+                          <div className="text-sm break-words">{requestToView.nguoi_xac_nhan}</div>
                         </div>
                       )}
                       {requestToView.ngay_hoan_thanh && (
@@ -1658,7 +1664,7 @@ export default function RepairRequestsPage() {
                     {requestToView.ket_qua_sua_chua && (
                       <div className="space-y-2">
                         <Label className="text-sm font-medium text-muted-foreground">Kết quả sửa chữa</Label>
-                        <div className="text-sm bg-green-50 border border-green-200 p-3 rounded-md whitespace-pre-wrap">
+                        <div className="text-sm bg-green-50 border border-green-200 p-3 rounded-md whitespace-pre-wrap break-words">
                           {requestToView.ket_qua_sua_chua}
                         </div>
                       </div>
@@ -1667,7 +1673,7 @@ export default function RepairRequestsPage() {
                     {requestToView.ly_do_khong_hoan_thanh && (
                       <div className="space-y-2">
                         <Label className="text-sm font-medium text-muted-foreground">Lý do không hoàn thành</Label>
-                        <div className="text-sm bg-red-50 border border-red-200 p-3 rounded-md whitespace-pre-wrap">
+                        <div className="text-sm bg-red-50 border border-red-200 p-3 rounded-md whitespace-pre-wrap break-words">
                           {requestToView.ly_do_khong_hoan_thanh}
                         </div>
                       </div>
@@ -1675,9 +1681,10 @@ export default function RepairRequestsPage() {
                   </div>
                 )}
               </div>
-            </ScrollArea>
+              </ScrollArea>
+            </div>
 
-            <DialogFooter className="flex-shrink-0">
+            <DialogFooter className="flex-shrink-0 mt-4 border-t pt-4">
               <Button variant="outline" onClick={() => setRequestToView(null)}>
                 Đóng
               </Button>

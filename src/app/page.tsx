@@ -97,10 +97,8 @@ export default function LoginPage() {
             {/* Header */}
             <div className="bg-gradient-to-r from-primary to-accent px-8 py-6 text-center">
               <div className="flex justify-center mb-4">
-  <div className="inline-flex items-center justify-center rounded-xl bg-white/90 backdrop-blur-sm shadow-sm ring-1 ring-black/5 p-2">
-    <Logo className="w-16 h-16" />
-  </div>
-</div>
+                <Logo className="w-32 h-32" size={128} />
+              </div>
               <h1 className="text-2xl font-bold text-primary-foreground">QUẢN LÝ THIẾT BỊ Y TẾ</h1>
               <p className="text-primary-foreground/80 mt-2">{t("login.subtitle") || "Đăng nhập vào hệ thống"}</p>
             </div>
@@ -168,7 +166,7 @@ export default function LoginPage() {
 
               {/* Footer Content */}
               <div className="mt-6 text-center text-xs text-muted-foreground space-y-1">
-                <p>Copyright © CVmems</p>
+                <p>Copyright © CVMEMS</p>
               </div>
             </div>
           </div>
@@ -216,7 +214,7 @@ export default function LoginPage() {
             <div className="mt-6 lg:mt-12 text-center lg:text-left">
               <div className="bg-accent/10 border border-accent/20 rounded-lg p-4 lg:p-6">
                 <h4 className="font-semibold text-accent mb-2">
-                  🏥 Tài khoản này thuộc Hệ thống quản lý thiết bị y tế CVmems
+                  🏥 Tài khoản này thuộc Hệ thống quản lý thiết bị y tế CVMEMS
                 </h4>
                 <p className="text-sm text-muted-foreground">
                   Được thiết kế đặc biệt để đáp ứng nhu cầu quản lý thiết bị y tế chuyên nghiệp,
@@ -234,10 +232,8 @@ export default function LoginPage() {
               {/* Header */}
               <div className="bg-gradient-to-r from-primary to-accent px-8 py-6 text-center">
                 <div className="flex justify-center mb-4">
-  <div className="inline-flex items-center justify-center rounded-xl bg-white/90 backdrop-blur-sm shadow-sm ring-1 ring-black/5 p-2">
-    <Logo className="w-16 h-16" />
-  </div>
-</div>
+                  <Logo className="w-24 h-24" size={256} />
+                </div>
                 <h1 className="text-2xl font-bold text-primary-foreground">QUẢN LÝ THIẾT BỊ Y TẾ</h1>
                 <p className="text-primary-foreground/80 mt-2">{t("login.subtitle") || "Đăng nhập vào hệ thống"}</p>
               </div>
@@ -305,7 +301,7 @@ export default function LoginPage() {
 
                 {/* Footer Content */}
                 <div className="mt-6 text-center text-xs text-muted-foreground space-y-1">
-                  <p>Copyright © CVmems</p>
+                  <p>Copyright © CVMEMS</p>
                 </div>
               </div>
             </div>
