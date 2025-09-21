@@ -161,6 +161,14 @@ SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key
 
 ## Development Notes
 
+### Equipment page (global/admin) – Reduced initial DB queries
+- Initial equipment list fetch is gated for global/admin until a tenant is selected.
+- Users see a tip: "Vui lòng chọn đơn vị cụ thể ở bộ lọc để xem dữ liệu thiết bị".
+- Tenant selection is persisted in localStorage (key: `equipment_tenant_filter`).
+  - Values: `unset` (no fetch), `all` (all tenants), or a numeric tenant id.
+  - To reset, pick "— Chọn đơn vị —" or clear the localStorage key.
+- TanStack Query is used with `enabled` gating and cache partitioning by `{ tenant: 'unset'|'all'|id }`.
+
 ### TypeScript Configuration
 - Strict mode enabled
 - Excludes test files, AI utilities, and Firebase files
