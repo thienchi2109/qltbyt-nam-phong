@@ -36,16 +36,28 @@ export interface EquipmentDistributionData {
 // Query keys for caching
 export const equipmentDistributionKeys = {
   all: ['equipment-distribution'] as const,
-  data: (filterDept?: string, filterLoc?: string) => [...equipmentDistributionKeys.all, 'data', filterDept, filterLoc] as const,
+  data: (params: { filterDept?: string; filterLoc?: string; tenant?: string }) => (
+    [...equipmentDistributionKeys.all, 'data', params.filterDept, params.filterLoc, params.tenant] as const
+  ),
 }
 
-export function useEquipmentDistribution(filterDepartment?: string, filterLocation?: string) {
+export function useEquipmentDistribution(
+  filterDepartment?: string,
+  filterLocation?: string,
+  tenantFilter?: string,
+  selectedDonVi?: number | null,
+  effectiveTenantKey?: string
+) {
   return useQuery({
-    queryKey: equipmentDistributionKeys.data(filterDepartment, filterLocation),
+    queryKey: equipmentDistributionKeys.data({
+      filterDept: filterDepartment,
+      filterLoc: filterLocation,
+      tenant: effectiveTenantKey || 'auto',
+    }),
     queryFn: async (): Promise<EquipmentDistributionData> => {
       const equipment = await callRpc<RawEquipmentItem[]>({
         fn: 'equipment_list',
-        args: { p_q: null, p_sort: 'id.asc', p_page: 1, p_page_size: 10000 },
+        args: { p_q: null, p_sort: 'id.asc', p_page: 1, p_page_size: 10000, p_don_vi: selectedDonVi || null },
       })
 
       if (!equipment || equipment.length === 0) {
@@ -200,6 +212,7 @@ export function useEquipmentDistribution(filterDepartment?: string, filterLocati
         rawEquipment: filteredEquipment
       }
     },
+    enabled: (effectiveTenantKey ?? 'auto') !== 'unset',
     staleTime: 5 * 60 * 1000, // 5 minutes
     gcTime: 15 * 60 * 1000, // 15 minutes
     retry: 2,

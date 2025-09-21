@@ -21,31 +21,50 @@ import { ExportReportDialog } from "./export-report-dialog"
 import { useInventoryData } from "../hooks/use-inventory-data"
 import { InteractiveEquipmentChart } from "@/components/interactive-equipment-chart"
 import { EquipmentDistributionSummary } from "@/components/equipment-distribution-summary"
+import { useReportInventoryFilters } from "../hooks/use-report-filters"
 
 interface DateRange {
   from: Date
   to: Date
 }
 
-export function InventoryReportTab() {
+interface InventoryReportTabProps {
+  tenantFilter?: string
+  selectedDonVi?: number | null
+  effectiveTenantKey?: string
+}
+
+export function InventoryReportTab({ 
+  tenantFilter, 
+  selectedDonVi, 
+  effectiveTenantKey 
+}: InventoryReportTabProps) {
   const { toast } = useToast()
   
-  // State for filters
-  const [dateRange, setDateRange] = React.useState<DateRange>({
-    from: startOfMonth(subMonths(new Date(), 2)), // 3 months ago
-    to: endOfMonth(new Date())
-  })
-  const [selectedDepartment, setSelectedDepartment] = React.useState<string>("all")
-  const [searchTerm, setSearchTerm] = React.useState("")
+  // Persisted filters per tenant via TanStack Query cache
+  const tenantCacheKey = effectiveTenantKey || 'auto'
+  const { filters, setDateRange, setSelectedDepartment, setSearchTerm } = useReportInventoryFilters(tenantCacheKey)
+  const dateRange = filters.dateRange
+  const selectedDepartment = filters.selectedDepartment
+  const searchTerm = filters.searchTerm
   const [showExportDialog, setShowExportDialog] = React.useState(false)
+
+  // (debug removed)
   
-  // Fetch data using React Query hook
+  // Fetch data using React Query hook with tenant parameters
   const { 
     data: inventoryResult, 
     isLoading, 
     error,
     refetch 
-  } = useInventoryData(dateRange, selectedDepartment, searchTerm)
+  } = useInventoryData(
+    dateRange, 
+    selectedDepartment, 
+    searchTerm,
+    tenantFilter,
+    selectedDonVi,
+    effectiveTenantKey
+  )
 
   // Extract data from query result
   const data = inventoryResult?.data || []
@@ -117,7 +136,7 @@ export function InventoryReportTab() {
                       <Calendar
                         mode="single"
                         selected={dateRange.from}
-                        onSelect={(date) => date && setDateRange(prev => ({ ...prev, from: date }))}
+                        onSelect={(date) => date && setDateRange({ ...dateRange, from: date })}
                         disabled={(date) => date > new Date() || date < new Date("1900-01-01")}
                         initialFocus
                         locale={vi}
@@ -146,7 +165,7 @@ export function InventoryReportTab() {
                       <Calendar
                         mode="single"
                         selected={dateRange.to}
-                        onSelect={(date) => date && setDateRange(prev => ({ ...prev, to: date }))}
+                        onSelect={(date) => date && setDateRange({ ...dateRange, to: date })}
                         disabled={(date) => date > new Date() || date < dateRange.from}
                         initialFocus
                         locale={vi}
@@ -268,10 +287,10 @@ export function InventoryReportTab() {
         </div>
 
         {/* Equipment Distribution Overview */}
-        <EquipmentDistributionSummary />
+        <EquipmentDistributionSummary tenantFilter={tenantFilter} selectedDonVi={selectedDonVi} effectiveTenantKey={effectiveTenantKey} />
 
         {/* Interactive Equipment Distribution Chart */}
-        <InteractiveEquipmentChart />
+        <InteractiveEquipmentChart tenantFilter={tenantFilter} selectedDonVi={selectedDonVi} effectiveTenantKey={effectiveTenantKey} />
 
         {/* Charts Section */}
         <InventoryCharts data={data} isLoading={isLoading} />

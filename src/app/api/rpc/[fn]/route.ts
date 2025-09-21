@@ -12,13 +12,16 @@ const ALLOWED_FUNCTIONS = new Set<string>([
   'equipment_update',
   'equipment_delete',
   'equipment_count',
+  'equipment_count_enhanced',
   'equipment_attention_list',
   'equipment_attachments_list',
   'equipment_attachment_create', 
   'equipment_attachment_delete',
   'equipment_history_list',
   'equipment_list_enhanced',
+  'equipment_list_for_reports',
   'departments_list',
+  'departments_list_for_tenant',
   'equipment_bulk_import',
   // Repairs
   'repair_request_list',
@@ -30,6 +33,7 @@ const ALLOWED_FUNCTIONS = new Set<string>([
   'repair_request_delete',
   // Transfers
   'transfer_request_list',
+  'transfer_request_list_enhanced',
   'transfer_request_create',
   'transfer_request_update',
   'transfer_request_update_status',
@@ -50,6 +54,7 @@ const ALLOWED_FUNCTIONS = new Set<string>([
   'maintenance_task_update',
   'maintenance_task_complete',
   'maintenance_tasks_delete',
+  'maintenance_stats_enhanced',
   // Tenants + Users
   'tenant_list',
   'user_create',
@@ -62,6 +67,9 @@ const ALLOWED_FUNCTIONS = new Set<string>([
   'don_vi_create',
   'don_vi_update',
   'don_vi_set_active',
+  // Usage Analytics (Reports)
+  'usage_analytics_overview',
+  'usage_analytics_daily',
   // Debug
   'debug_claims',
   'don_vi_branding_get',
@@ -91,11 +99,7 @@ export async function POST(req: NextRequest, context: { params: Promise<{ fn: st
   const userId = (session as any)?.user?.id ? String((session as any).user.id) : ''
   // Normalize to expected app roles used by SQL. Always lowercase; treat 'admin' as 'global'.
   const appRole = roleLower === 'admin' ? 'global' : roleLower
-  try {
-    if (fn === 'equipment_list') {
-      console.log('[RPC] claims used:', { appRole, donVi, userId, originalRole: role })
-    }
-  } catch {}
+  // (debug removed)
 
     // Build JWT claims for PostgREST. We keep db role = authenticated; app role in app_role.
     const claims: Record<string, any> = {
@@ -122,12 +126,7 @@ export async function POST(req: NextRequest, context: { params: Promise<{ fn: st
     const urlBase = getEnv('NEXT_PUBLIC_SUPABASE_URL')
     const url = `${urlBase}/rest/v1/rpc/${encodeURIComponent(fn)}`
 
-    // Debug: log equipment_list calls with args and derived claims (safe info only)
-    if (fn === 'equipment_list' || fn === 'equipment_list_enhanced') {
-      try {
-        console.log(`[RPC] ${fn} call body:`, body, 'claims:', { appRole, donVi, userId })
-      } catch {}
-    }
+    // (debug removed)
 
     const res = await fetch(url, {
       method: 'POST',

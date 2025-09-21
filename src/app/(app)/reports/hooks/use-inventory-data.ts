@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { callRpc } from '@/lib/rpc-client'
 import { format } from 'date-fns'
+import * as React from 'react'
 
 export interface InventoryItem {
   id: number
@@ -41,26 +42,45 @@ export const reportsKeys = {
 export function useInventoryData(
   dateRange: DateRange,
   selectedDepartment: string,
-  searchTerm: string
+  searchTerm: string,
+  tenantFilter?: string,
+  selectedDonVi?: number | null,
+  effectiveTenantKey?: string
 ) {
+  const queryKey = reportsKeys.inventoryData({
+    dateRange: {
+      from: format(dateRange.from, 'yyyy-MM-dd'),
+      to: format(dateRange.to, 'yyyy-MM-dd')
+    },
+    selectedDepartment,
+    searchTerm,
+    tenant: effectiveTenantKey || 'auto' // Cache partitioning
+  })
+  
+  // (debug removed)
+  
   return useQuery({
-    queryKey: reportsKeys.inventoryData({
-      dateRange: {
-        from: format(dateRange.from, 'yyyy-MM-dd'),
-        to: format(dateRange.to, 'yyyy-MM-dd')
-      },
-      selectedDepartment,
-      searchTerm
-    }),
+    queryKey,
     queryFn: async () => {
       const fromDate = format(dateRange.from, 'yyyy-MM-dd')
       const toDate = format(dateRange.to, 'yyyy-MM-dd')
 
-      // Fetch equipment via RPC (tenant/role enforced). We'll filter by date locally.
+      // (debug removed)
+
+      // Fetch equipment via enhanced Reports RPC with explicit tenant + department parameter
       const equipment = await callRpc<any[]>({
-        fn: 'equipment_list',
-        args: { p_q: searchTerm || null, p_sort: 'id.asc', p_page: 1, p_page_size: 10000 },
+        fn: 'equipment_list_for_reports',
+        args: { 
+          p_q: searchTerm || null, 
+          p_sort: 'id.asc', 
+          p_page: 1, 
+          p_page_size: 10000,
+          p_don_vi: selectedDonVi,  // Explicit tenant parameter for global users
+          p_khoa_phong: selectedDepartment !== 'all' ? selectedDepartment : null
+        },
       })
+
+      // (debug removed)
 
       const importedEquipment = (equipment || []).filter((item: any) => {
         const created = (item.created_at || '').split('T')[0]
@@ -83,12 +103,21 @@ export function useInventoryData(
         value: item.gia_goc,
       }))
 
-      // Fetch transfers via RPC then split into exports and liquidations
+      // Fetch transfers via enhanced RPC with explicit tenant parameter
       let transfers: any[] = []
       try {
         transfers = await callRpc<any[]>({
-          fn: 'transfer_request_list',
-          args: { p_q: null, p_status: null, p_page: 1, p_page_size: 10000 },
+          fn: 'transfer_request_list_enhanced',
+          args: { 
+            p_q: null, 
+            p_status: null, 
+            p_page: 1, 
+            p_page_size: 10000,
+            p_don_vi: selectedDonVi,  // Explicit tenant parameter
+            p_date_from: fromDate,
+            p_date_to: toDate,
+            p_khoa_phong: selectedDepartment !== 'all' ? selectedDepartment : null
+          },
         })
       } catch (e: any) {
         // If the RPC is not available (404) or temporarily failing, continue without transfers
@@ -153,10 +182,7 @@ export function useInventoryData(
       // Combine and filter data
       let allItems = [...importedItems, ...exportedItems]
 
-      // Apply department filter
-      if (selectedDepartment !== 'all') {
-        allItems = allItems.filter((item) => item.khoa_phong_quan_ly === selectedDepartment)
-      }
+      // Department filtering now handled server-side via p_khoa_phong
 
       // Apply search filter (if not already fully covered by p_q for imports, this also filters exports)
       if (searchTerm) {
@@ -174,8 +200,16 @@ export function useInventoryData(
       const totalExported = exportedItems.length
       const netChange = totalImported - totalExported
 
-      // Current stock via RPC
-      const currentStock = await callRpc<number>({ fn: 'equipment_count', args: { p_statuses: null, p_q: null } })
+      // Current stock via enhanced RPC with explicit tenant and department parameter
+      const currentStock = await callRpc<number>({ 
+        fn: 'equipment_count_enhanced', 
+        args: { 
+          p_statuses: null, 
+          p_q: null,
+          p_don_vi: selectedDonVi,  // Explicit tenant parameter
+          p_khoa_phong: selectedDepartment !== 'all' ? selectedDepartment : null
+        } 
+      })
 
       const summary: InventorySummary = {
         totalImported,
@@ -184,8 +218,11 @@ export function useInventoryData(
         netChange,
       }
 
-      // Departments via RPC
-      const deptRows = await callRpc<{ name: string }[]>({ fn: 'departments_list' })
+      // Departments via enhanced RPC with explicit tenant parameter
+      const deptRows = await callRpc<{ name: string; count: number }[]>({ 
+        fn: 'departments_list_for_tenant',
+        args: { p_don_vi: selectedDonVi }  // Explicit tenant parameter
+      })
       const uniqueDepts = (deptRows || []).map((r) => r.name).filter(Boolean)
 
       return {
@@ -194,8 +231,9 @@ export function useInventoryData(
         departments: uniqueDepts as string[],
       }
     },
-    staleTime: 3 * 60 * 1000, // 3 minutes - reports data can be cached for a while
-    gcTime: 10 * 60 * 1000, // 10 minutes
+    enabled: effectiveTenantKey !== 'unset', // Gate query for global users (same as Equipment page)
+    staleTime: 0, // Always refetch when query key changes (filters change)
+    gcTime: 5 * 60 * 1000, // 5 minutes
     retry: 1,
   })
 } 
