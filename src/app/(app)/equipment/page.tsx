@@ -382,6 +382,8 @@ export default function EquipmentPage() {
   const user = session?.user as any // Cast NextAuth user to our User type
   const { toast } = useToast()
   const { data: tenantBranding } = useTenantBranding()
+  // Global/admin role check computed early so hooks below can depend on it safely
+  const isGlobal = (user as any)?.role === 'global' || (user as any)?.role === 'admin'
 
   // Redirect if not authenticated
   if (status === "loading") {
@@ -504,8 +506,19 @@ export default function EquipmentPage() {
   // This covers most 12-15 inch laptops and tablets in landscape mode
   const isMediumScreen = useMediaQuery("(min-width: 768px) and (max-width: 1800px)");
 
-  // Load tenant options for global select
-  const [tenantOptions, setTenantOptions] = React.useState<{ id: number; name: string; code: string }[]>([])
+  // Load tenant options for global select using TanStack Query
+  const { data: tenantList, isLoading: isTenantsLoading } = useQuery<{ id: number; name: string; code: string }[]>({
+    queryKey: ['tenant_list'],
+    queryFn: async () => {
+      const list = await rpc<any[]>({ fn: 'tenant_list', args: {} })
+      return (list || []).map((t: any) => ({ id: t.id, name: t.name, code: t.code }))
+    },
+    enabled: isGlobal,
+    staleTime: 300_000,
+    gcTime: 10 * 60_000,
+    refetchOnWindowFocus: false,
+  })
+  const tenantOptions = (tenantList ?? []) as { id: number; name: string; code: string }[]
 
   const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({
     id: false,
@@ -961,29 +974,20 @@ export default function EquipmentPage() {
   ]
 
   const tenantKey = (user as any)?.don_vi ? String((user as any).don_vi) : 'none'
-  const [tenantFilter, setTenantFilter] = React.useState<string>('all') // 'all' = all tenants for global
-  const isGlobal = (user as any)?.role === 'global' || (user as any)?.role === 'admin'
+  const [tenantFilter, setTenantFilter] = React.useState<string>(() => (isGlobal ? 'unset' : tenantKey)) // 'unset' for global/admin; non-global uses own tenant
+  const shouldFetchEquipment = React.useMemo(() => {
+    if (!isGlobal) return true
+    if (tenantFilter === 'all') return true
+    return /^\d+$/.test(tenantFilter)
+  }, [isGlobal, tenantFilter])
   const selectedDonViUI = React.useMemo(() => {
     if (!isGlobal) return null
     if (tenantFilter === 'all') return null
     const v = parseInt(tenantFilter, 10)
     return Number.isFinite(v) ? v : null
   }, [isGlobal, tenantFilter])
-  const effectiveTenantKey = isGlobal ? tenantFilter : tenantKey
+  const effectiveTenantKey = isGlobal ? (shouldFetchEquipment ? tenantFilter : 'unset') : tenantKey
 
-  // Load tenant options for global select
-  React.useEffect(() => {
-    const loadTenants = async () => {
-      if (!isGlobal) return
-      try {
-        const list = await rpc<any[]>({ fn: 'tenant_list', args: {} })
-        setTenantOptions((list || []).map((t: any) => ({ id: t.id, name: t.name, code: t.code })))
-      } catch (e) {
-        // ignore silently
-      }
-    }
-    loadTenants()
-  }, [isGlobal])
 
   // Equipment list query (TanStack Query) - server-side pagination via equipment_list_enhanced
   type EquipmentListRes = { data: Equipment[]; total: number; page: number; pageSize: number }
@@ -1022,6 +1026,7 @@ export default function EquipmentPage() {
       phan_loai: getSingleFilter('phan_loai_theo_nd98'),
       sort: sortParam,
     }],
+    enabled: shouldFetchEquipment,
     queryFn: async ({ signal }) => {
       const result = await callRpc<EquipmentListRes>({ fn: 'equipment_list_enhanced', args: {
         p_q: debouncedSearch || null,
@@ -1047,6 +1052,7 @@ export default function EquipmentPage() {
 
   // Granular cache invalidation for current tenant
   const invalidateEquipmentForCurrentTenant = React.useCallback(() => {
+    if (isGlobal && !shouldFetchEquipment) return
     queryClient.invalidateQueries({
       predicate: (q) => {
         const key = (q as any)?.queryKey
@@ -1057,7 +1063,7 @@ export default function EquipmentPage() {
       },
       refetchType: 'active',
     })
-  }, [queryClient, effectiveTenantKey])
+  }, [queryClient, effectiveTenantKey, isGlobal, shouldFetchEquipment])
 
 
   const onDataMutationSuccess = React.useCallback(() => {
@@ -1114,6 +1120,36 @@ export default function EquipmentPage() {
   React.useEffect(() => {
     if (!isGlobal) return
     console.log('[EquipmentPage] Refetch effect triggered for tenantFilter:', tenantFilter)
+  }, [tenantFilter, isGlobal])
+
+  // Persist tenant selection for global/admin users
+  React.useEffect(() => {
+    if (typeof window === 'undefined') return
+    if (isGlobal) {
+      try { localStorage.setItem('equipment_tenant_filter', tenantFilter) } catch {}
+    } else {
+      try { localStorage.removeItem('equipment_tenant_filter') } catch {}
+    }
+  }, [isGlobal, tenantFilter])
+
+  // Restore tenant selection on first load for global/admin
+  React.useEffect(() => {
+    if (typeof window === 'undefined') return
+    if (!isGlobal) return
+    try {
+      const saved = localStorage.getItem('equipment_tenant_filter')
+      if (saved && (saved === 'unset' || saved === 'all' || /^\d+$/.test(saved))) {
+        setTenantFilter(saved)
+      }
+    } catch {}
+  }, [isGlobal])
+
+  // When tenant filter changes for global users, clear column filters to avoid cross-tenant stale filters causing empty results
+  React.useEffect(() => {
+    if (!isGlobal) return
+    try {
+      table.resetColumnFilters()
+    } catch {}
   }, [tenantFilter, isGlobal])
 
   // Handle URL parameters for quick actions
@@ -1356,6 +1392,13 @@ export default function EquipmentPage() {
   const isFiltered = table.getState().columnFilters.length > 0;
 
   const renderContent = () => {
+    if (isGlobal && !shouldFetchEquipment) {
+      return (
+        <div className="p-4 border rounded-md bg-muted/30 text-sm text-muted-foreground">
+          Vui lòng chọn đơn vị cụ thể ở bộ lọc để xem dữ liệu thiết bị
+        </div>
+      )
+    }
     if (isLoading) {
       return isCardView ? (
         <div className="space-y-4">
@@ -2102,16 +2145,21 @@ export default function EquipmentPage() {
                         React.startTransition(() => setTenantFilter(v))
                       }}
                     >
-                      <SelectTrigger className="h-8 w-full md:w-[220px]">
-                        <SelectValue placeholder="Tất cả đơn vị" />
+                      <SelectTrigger className="h-8 w-full md:w-[220px]" disabled={isTenantsLoading}>
+                        <SelectValue placeholder="— Chọn đơn vị —" />
                       </SelectTrigger>
                       <SelectContent>
+                        <SelectItem value="unset">— Chọn đơn vị —</SelectItem>
                         <SelectItem value="all">Tất cả đơn vị</SelectItem>
-                        {tenantOptions.map(t => (
-                          <SelectItem key={t.id} value={String(t.id)}>
-                            {t.name} {t.code ? `(${t.code})` : ''}
-                          </SelectItem>
-                        ))}
+                        {isTenantsLoading ? (
+                          <SelectItem value="__loading" disabled>Đang tải danh sách đơn vị...</SelectItem>
+                        ) : (
+                          tenantOptions.map(t => (
+                            <SelectItem key={t.id} value={String(t.id)}>
+                              {t.name} {t.code ? `(${t.code})` : ''}
+                            </SelectItem>
+                          ))
+                        )}
                       </SelectContent>
                     </Select>
                   </div>
@@ -2199,96 +2247,100 @@ export default function EquipmentPage() {
           </div>
         </CardContent>
         <CardFooter className="flex flex-col gap-4 py-4 sm:flex-row sm:items-center sm:justify-between">
-          {/* Records count - responsive position */}
-          <div className="order-2 sm:order-1">
-            <ResponsivePaginationInfo
-              currentCount={data.length}
-              totalCount={total}
-              currentPage={pagination.pageIndex + 1}
-              totalPages={pageCount}
-            />
-          </div>
-          
-          {/* Export and pagination controls */}
-          <div className="flex flex-col gap-3 items-center order-1 sm:order-2 sm:items-end">
-            <button
-              onClick={handleExportData}
-              className="text-sm font-medium text-primary underline-offset-4 hover:underline disabled:text-muted-foreground disabled:no-underline disabled:cursor-not-allowed"
-              disabled={table.getFilteredRowModel().rows.length === 0 || isEqLoading}
-            >
-              Tải về file Excel
-            </button>
-            
-            {/* Mobile-optimized pagination */}
-            <div className="flex flex-col gap-3 items-center sm:flex-row sm:gap-6">
-              {/* Page size selector */}
-              <div className="flex items-center space-x-2">
-                <p className="text-sm font-medium">Số dòng</p>
-                <Select
-                  value={`${pagination.pageSize}`}
-                  onValueChange={(value) => {
-                    setPagination((p) => ({ ...p, pageSize: Number(value), pageIndex: 0 }))
-                  }}
-                >
-                  <SelectTrigger className="h-8 w-[70px]">
-                    <SelectValue placeholder={pagination.pageSize} />
-                  </SelectTrigger>
-                  <SelectContent side="top">
-                    {[10, 20, 50, 100].map((pageSize) => (
-                      <SelectItem key={pageSize} value={`${pageSize}`}>
-                        {pageSize}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+          {shouldFetchEquipment ? (
+            <>
+              {/* Records count - responsive position */}
+              <div className="order-2 sm:order-1">
+                <ResponsivePaginationInfo
+                  currentCount={data.length}
+                  totalCount={total}
+                  currentPage={pagination.pageIndex + 1}
+                  totalPages={pageCount}
+                />
               </div>
               
-              {/* Page info and navigation */}
-              <div className="flex flex-col items-center gap-2 sm:flex-row sm:gap-3">
-                <div className="text-sm font-medium hidden sm:block">
-                  Trang {pagination.pageIndex + 1} / {pageCount}
-                </div>
-                <div className="flex items-center space-x-1">
-                  <Button
-                    variant="outline"
-                    className="hidden h-8 w-8 p-0 sm:flex"
-                    onClick={() => table.setPageIndex(0)}
-                    disabled={!table.getCanPreviousPage()}
-                  >
-                    <span className="sr-only">Go to first page</span>
-                    <ChevronsLeft className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    variant="outline"
-                    className="h-8 w-8 p-0"
-                    onClick={() => table.previousPage()}
-                    disabled={!table.getCanPreviousPage()}
-                  >
-                    <span className="sr-only">Go to previous page</span>
-                    <ChevronLeft className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    variant="outline"
-                    className="h-8 w-8 p-0"
-                    onClick={() => table.nextPage()}
-                    disabled={!table.getCanNextPage()}
-                  >
-                    <span className="sr-only">Go to next page</span>
-                    <ChevronRight className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    variant="outline"
-                    className="hidden h-8 w-8 p-0 sm:flex"
-                    onClick={() => table.setPageIndex(table.getPageCount() - 1)}
-                    disabled={!table.getCanNextPage()}
-                  >
-                    <span className="sr-only">Go to last page</span>
-                    <ChevronsRight className="h-4 w-4" />
-                  </Button>
+              {/* Export and pagination controls */}
+              <div className="flex flex-col gap-3 items-center order-1 sm:order-2 sm:items-end">
+                <button
+                  onClick={handleExportData}
+                  className="text-sm font-medium text-primary underline-offset-4 hover:underline disabled:text-muted-foreground disabled:no-underline disabled:cursor-not-allowed"
+                  disabled={table.getFilteredRowModel().rows.length === 0 || isEqLoading}
+                >
+                  Tải về file Excel
+                </button>
+                
+                {/* Mobile-optimized pagination */}
+                <div className="flex flex-col gap-3 items-center sm:flex-row sm:gap-6">
+                  {/* Page size selector */}
+                  <div className="flex items-center space-x-2">
+                    <p className="text-sm font-medium">Số dòng</p>
+                    <Select
+                      value={`${pagination.pageSize}`}
+                      onValueChange={(value) => {
+                        setPagination((p) => ({ ...p, pageSize: Number(value), pageIndex: 0 }))
+                      }}
+                    >
+                      <SelectTrigger className="h-8 w-[70px]">
+                        <SelectValue placeholder={pagination.pageSize} />
+                      </SelectTrigger>
+                      <SelectContent side="top">
+                        {[10, 20, 50, 100].map((pageSize) => (
+                          <SelectItem key={pageSize} value={`${pageSize}`}>
+                            {pageSize}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  {/* Page info and navigation */}
+                  <div className="flex flex-col items-center gap-2 sm:flex-row sm:gap-3">
+                    <div className="text-sm font-medium hidden sm:block">
+                      Trang {pagination.pageIndex + 1} / {pageCount}
+                    </div>
+                    <div className="flex items-center space-x-1">
+                      <Button
+                        variant="outline"
+                        className="hidden h-8 w-8 p-0 sm:flex"
+                        onClick={() => table.setPageIndex(0)}
+                        disabled={!table.getCanPreviousPage()}
+                      >
+                        <span className="sr-only">Go to first page</span>
+                        <ChevronsLeft className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="outline"
+                        className="h-8 w-8 p-0"
+                        onClick={() => table.previousPage()}
+                        disabled={!table.getCanPreviousPage()}
+                      >
+                        <span className="sr-only">Go to previous page</span>
+                        <ChevronLeft className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="outline"
+                        className="h-8 w-8 p-0"
+                        onClick={() => table.nextPage()}
+                        disabled={!table.getCanNextPage()}
+                      >
+                        <span className="sr-only">Go to next page</span>
+                        <ChevronRight className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="outline"
+                        className="hidden h-8 w-8 p-0 sm:flex"
+                        onClick={() => table.setPageIndex(table.getPageCount() - 1)}
+                        disabled={!table.getCanNextPage()}
+                      >
+                        <span className="sr-only">Go to last page</span>
+                        <ChevronsRight className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
                 </div>
               </div>
-            </div>
-          </div>
+            </>
+          ) : null}
         </CardFooter>
       </Card>
     </>

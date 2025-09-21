@@ -61,6 +61,13 @@ A comprehensive web application for managing medical equipment, built with moder
 
 ## 🛠️ Development Setup
 
+### Equipment Page Behavior (Global/Admin)
+- To reduce initial DB load and avoid confusion, the equipment list does not fetch until you select a tenant filter.
+- A tip appears: "Vui lòng chọn đơn vị cụ thể ở bộ lọc để xem dữ liệu thiết bị".
+- Your last tenant selection is remembered via localStorage (key: `equipment_tenant_filter`).
+  - Use "— Chọn đơn vị —" to reset, or clear the localStorage key manually.
+- Fetching is powered by TanStack Query with `enabled` gating and scoped caching.
+
 ### Prerequisites
 - Node.js 18+ 
 - npm (preferred package manager)
