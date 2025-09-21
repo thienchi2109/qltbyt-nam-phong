@@ -19,6 +19,9 @@ import {
 
 interface InteractiveEquipmentChartProps {
   className?: string
+  tenantFilter?: string
+  selectedDonVi?: number | null
+  effectiveTenantKey?: string
 }
 
 // Custom tooltip component
@@ -98,7 +101,7 @@ function DataFilters({
   )
 }
 
-export function InteractiveEquipmentChart({ className }: InteractiveEquipmentChartProps) {
+export function InteractiveEquipmentChart({ className, tenantFilter, selectedDonVi, effectiveTenantKey }: InteractiveEquipmentChartProps) {
   const [viewType, setViewType] = React.useState<'department' | 'location'>('department')
   const [selectedDepartment, setSelectedDepartment] = React.useState<string>('all')
   const [selectedLocation, setSelectedLocation] = React.useState<string>('all')
@@ -107,7 +110,13 @@ export function InteractiveEquipmentChart({ className }: InteractiveEquipmentCha
   const crossFilterDept = viewType === 'location' ? selectedDepartment : undefined
   const crossFilterLoc = viewType === 'department' ? selectedLocation : undefined
   
-  const { data, isLoading, error } = useEquipmentDistribution(crossFilterDept, crossFilterLoc)
+  const { data, isLoading, error } = useEquipmentDistribution(
+    crossFilterDept,
+    crossFilterLoc,
+    tenantFilter,
+    selectedDonVi,
+    effectiveTenantKey
+  )
 
   // Reset filters function
   const resetFilters = () => {

@@ -14,10 +14,13 @@ import {
 
 interface EquipmentDistributionSummaryProps {
   className?: string
+  tenantFilter?: string
+  selectedDonVi?: number | null
+  effectiveTenantKey?: string
 }
 
-export function EquipmentDistributionSummary({ className }: EquipmentDistributionSummaryProps) {
-  const { data, isLoading, error } = useEquipmentDistribution()
+export function EquipmentDistributionSummary({ className, tenantFilter, selectedDonVi, effectiveTenantKey }: EquipmentDistributionSummaryProps) {
+  const { data, isLoading, error } = useEquipmentDistribution(undefined, undefined, tenantFilter, selectedDonVi, effectiveTenantKey)
 
   // Calculate overall statistics
   const overallStats = React.useMemo(() => {

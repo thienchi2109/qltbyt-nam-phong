@@ -1,18 +1,19 @@
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
+import { callRpc } from '@/lib/rpc-client'
 import { differenceInMinutes, startOfDay, endOfDay, subDays, format } from 'date-fns'
 import { vi } from 'date-fns/locale'
 
 // Query keys for analytics
 export const usageAnalyticsKeys = {
   all: ['usage-analytics'] as const,
-  overview: () => [...usageAnalyticsKeys.all, 'overview'] as const,
-  equipmentStats: (dateRange?: { from: Date; to: Date }) => 
-    [...usageAnalyticsKeys.all, 'equipment-stats', { dateRange }] as const,
-  userStats: (dateRange?: { from: Date; to: Date }) => 
-    [...usageAnalyticsKeys.all, 'user-stats', { dateRange }] as const,
-  dailyUsage: (days: number) => 
-    [...usageAnalyticsKeys.all, 'daily-usage', { days }] as const,
+  overview: (params?: Record<string, any>) => [...usageAnalyticsKeys.all, 'overview', params || {}] as const,
+  equipmentStats: (params?: Record<string, any>) => 
+    [...usageAnalyticsKeys.all, 'equipment-stats', params || {}] as const,
+  userStats: (params?: Record<string, any>) => 
+    [...usageAnalyticsKeys.all, 'user-stats', params || {}] as const,
+  dailyUsage: (params?: Record<string, any>) => 
+    [...usageAnalyticsKeys.all, 'daily-usage', params || {}] as const,
 }
 
 export interface UsageOverview {
@@ -79,9 +80,13 @@ export interface DailyUsageData {
 }
 
 // Get usage overview statistics
-export function useUsageOverview() {
+export function useUsageOverview(
+  tenantFilter?: string,
+  selectedDonVi?: number | null,
+  effectiveTenantKey?: string
+) {
   return useQuery({
-    queryKey: usageAnalyticsKeys.overview(),
+    queryKey: usageAnalyticsKeys.overview({ tenant: effectiveTenantKey || 'auto' }),
     queryFn: async (): Promise<UsageOverview> => {
       if (!supabase) {
         throw new Error('Supabase client not initialized')
@@ -194,14 +199,20 @@ export function useUsageOverview() {
         } : null
       }
     },
+    enabled: effectiveTenantKey !== 'unset', // Gate query for global users
     staleTime: 5 * 60 * 1000, // 5 minutes
   })
 }
 
 // Get equipment usage statistics
-export function useEquipmentUsageStats(dateRange?: { from: Date; to: Date }) {
+export function useEquipmentUsageStats(
+  dateRange?: { from: Date; to: Date },
+  tenantFilter?: string,
+  selectedDonVi?: number | null,
+  effectiveTenantKey?: string
+) {
   return useQuery({
-    queryKey: usageAnalyticsKeys.equipmentStats(dateRange),
+    queryKey: usageAnalyticsKeys.equipmentStats({ dateRange, tenant: effectiveTenantKey || 'auto' }),
     queryFn: async (): Promise<EquipmentUsageStats[]> => {
       if (!supabase) {
         throw new Error('Supabase client not initialized')
@@ -272,14 +283,20 @@ export function useEquipmentUsageStats(dateRange?: { from: Date; to: Date }) {
       return Array.from(equipmentStats.values())
         .sort((a, b) => b.sessionCount - a.sessionCount)
     },
+    enabled: effectiveTenantKey !== 'unset', // Gate query for global users
     staleTime: 2 * 60 * 1000, // 2 minutes
   })
 }
 
 // Get user usage statistics
-export function useUserUsageStats(dateRange?: { from: Date; to: Date }) {
+export function useUserUsageStats(
+  dateRange?: { from: Date; to: Date },
+  tenantFilter?: string,
+  selectedDonVi?: number | null,
+  effectiveTenantKey?: string
+) {
   return useQuery({
-    queryKey: usageAnalyticsKeys.userStats(dateRange),
+    queryKey: usageAnalyticsKeys.userStats({ dateRange, tenant: effectiveTenantKey || 'auto' }),
     queryFn: async (): Promise<UserUsageStats[]> => {
       if (!supabase) {
         throw new Error('Supabase client not initialized')
@@ -356,14 +373,20 @@ export function useUserUsageStats(dateRange?: { from: Date; to: Date }) {
 
       return result.sort((a, b) => b.sessionCount - a.sessionCount)
     },
+    enabled: effectiveTenantKey !== 'unset', // Gate query for global users
     staleTime: 2 * 60 * 1000, // 2 minutes
   })
 }
 
 // Get daily usage data for charts
-export function useDailyUsageData(days: number = 30) {
+export function useDailyUsageData(
+  days: number = 30,
+  tenantFilter?: string,
+  selectedDonVi?: number | null,
+  effectiveTenantKey?: string
+) {
   return useQuery({
-    queryKey: usageAnalyticsKeys.dailyUsage(days),
+    queryKey: usageAnalyticsKeys.dailyUsage({ days, tenant: effectiveTenantKey || 'auto' }),
     queryFn: async (): Promise<DailyUsageData[]> => {
       if (!supabase) {
         throw new Error('Supabase client not initialized')
@@ -436,6 +459,7 @@ export function useDailyUsageData(days: number = 30) {
       }))
         .sort((a, b) => a.date.localeCompare(b.date))
     },
+    enabled: effectiveTenantKey !== 'unset', // Gate query for global users
     staleTime: 5 * 60 * 1000, // 5 minutes
   })
 }
