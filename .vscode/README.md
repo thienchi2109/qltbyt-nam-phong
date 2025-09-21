@@ -16,11 +16,27 @@ This directory contains MCP (Model Context Protocol) configuration files for VS 
 
 3. The `mcp.json` file is configured to prompt for the access token when needed, so you don't need to hardcode it in the file.
 
+4. To prevent accidentally committing your `mcp.json` file with sensitive tokens:
+   ```bash
+   git ignore-mcp    # Ignore the file from Git tracking
+   git unignore-mcp  # Re-enable tracking if needed
+   ```
+
 ## Important Notes
 
 - **Security**: The `mcp.json` file is ignored by Git (in `.gitignore`) to prevent accidental exposure of access tokens
+- **Local Tracking**: The file is also configured with `git update-index --assume-unchanged` to prevent `git add .` from staging it
 - **Template**: Always use `mcp.json.example` as the template for new setups
 - **Tokens**: Never commit actual access tokens to version control
+
+## Git Aliases
+
+The following Git aliases are available for managing the MCP configuration:
+
+```bash
+git ignore-mcp    # Make Git ignore changes to .vscode/mcp.json
+git unignore-mcp  # Re-enable tracking of .vscode/mcp.json if needed
+```
 
 ## Available Servers
 
