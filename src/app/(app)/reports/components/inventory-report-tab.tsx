@@ -22,6 +22,9 @@ import { useInventoryData } from "../hooks/use-inventory-data"
 import { InteractiveEquipmentChart } from "@/components/interactive-equipment-chart"
 import { EquipmentDistributionSummary } from "@/components/equipment-distribution-summary"
 import { useReportInventoryFilters } from "../hooks/use-report-filters"
+import { useEquipmentDistribution } from "@/hooks/use-equipment-distribution"
+import { useMaintenanceStats } from "../hooks/use-maintenance-stats"
+import { useUsageAnalytics } from "../hooks/use-usage-analytics"
 
 interface DateRange {
   from: Date
@@ -75,6 +78,29 @@ export function InventoryReportTab({
     netChange: 0
   }
   const departments = inventoryResult?.departments || []
+
+  // Status distribution data for export (same tenant gating)
+  const { data: distributionData } = useEquipmentDistribution(
+    selectedDepartment,
+    undefined,
+    tenantFilter,
+    selectedDonVi,
+    effectiveTenantKey
+  )
+
+  // Maintenance/Repairs summary (tenant + department + date range)
+  const { data: maintenanceStats } = useMaintenanceStats(
+    dateRange,
+    selectedDepartment,
+    selectedDonVi,
+    effectiveTenantKey
+  )
+
+  // Usage analytics (tenant only). Derive days from date range (cap at 365)
+  const msPerDay = 24 * 60 * 60 * 1000
+  const rawDays = Math.ceil((dateRange.to.getTime() - dateRange.from.getTime()) / msPerDay)
+  const days = Math.min(Math.max(rawDays, 1), 365)
+  const { data: usageAnalytics } = useUsageAnalytics(days, selectedDonVi, effectiveTenantKey)
 
   const handleRefresh = () => {
     refetch()
@@ -307,6 +333,9 @@ export function InventoryReportTab({
         summary={summary}
         dateRange={dateRange}
         department={selectedDepartment}
+        distribution={distributionData}
+        maintenanceStats={maintenanceStats}
+        usageAnalytics={usageAnalytics}
       />
     </>
   )
