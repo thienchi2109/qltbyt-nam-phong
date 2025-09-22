@@ -146,17 +146,18 @@ export default function ReportsPage() {
 
   return (
     <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
-      <div className="flex items-center justify-between space-y-2">
-        <h2 className="text-3xl font-bold tracking-tight">Báo cáo</h2>
-        
-        {/* Tenant selector for global users */}
-        {isGlobal && (
-          <TenantFilterDropdown 
-            value={tenantFilter}
-            onChange={setTenantFilter}
-          />
-        )}
-      </div>
+    <div className="flex flex-wrap items-center gap-4">
+      <h2 className="text-3xl font-bold tracking-tight">Báo cáo</h2>
+
+      {/* Tenant selector for global users */}
+      {isGlobal && (
+        <TenantFilterDropdown 
+          value={tenantFilter}
+          onChange={setTenantFilter}
+          className="min-w-[260px] sm:min-w-[340px]"
+        />
+      )}
+    </div>
       
       {/* Show tip when no tenant selected (same pattern as Equipment page) */}
       {isGlobal && !shouldFetchReports && (
