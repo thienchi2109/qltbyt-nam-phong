@@ -3,7 +3,7 @@
 import React from "react"
 import { format, differenceInMinutes } from "date-fns"
 import { vi } from "date-fns/locale"
-import { Clock, User, FileText, Trash2, Play, Square } from "lucide-react"
+import { Clock, User, FileText, Trash2, Square } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -33,7 +33,6 @@ import { useEquipmentUsageLogs, useDeleteUsageLog } from "@/hooks/use-usage-logs
 import { useSession } from "next-auth/react"
 import { useIsMobile } from "@/hooks/use-mobile"
 import { type Equipment, type UsageLog, USAGE_STATUS } from "@/types/database"
-import { StartUsageDialog } from "./start-usage-dialog"
 import { EndUsageDialog } from "./end-usage-dialog"
 import { UsageLogPrint } from "./usage-log-print"
 
@@ -45,7 +44,6 @@ export function UsageHistoryTab({ equipment }: UsageHistoryTabProps) {
   const { data: session } = useSession()
   const user = session?.user as any
   const isMobile = useIsMobile()
-  const [isStartDialogOpen, setIsStartDialogOpen] = React.useState(false)
   const [isEndDialogOpen, setIsEndDialogOpen] = React.useState(false)
   const [selectedUsageLog, setSelectedUsageLog] = React.useState<UsageLog | null>(null)
 
@@ -89,7 +87,6 @@ export function UsageHistoryTab({ equipment }: UsageHistoryTabProps) {
     }
   }
 
-  const canStartUsage = !activeSession && !isInUseByOther
   const canEndUsage = !!activeSession
 
   if (isLoading) {
@@ -112,16 +109,6 @@ export function UsageHistoryTab({ equipment }: UsageHistoryTabProps) {
     <div className="space-y-4">
       {/* Action Buttons */}
       <div className="flex flex-col sm:flex-row flex-wrap gap-2">
-        <Button
-          onClick={() => setIsStartDialogOpen(true)}
-          disabled={!canStartUsage}
-          size="sm"
-          className="gap-2"
-        >
-          <Play className="h-4 w-4" />
-          Bắt đầu sử dụng
-        </Button>
-
         {activeSession && (
           <Button
             onClick={() => handleEndUsage(activeSession)}
@@ -332,11 +319,6 @@ export function UsageHistoryTab({ equipment }: UsageHistoryTabProps) {
       </div>
 
       {/* Dialogs */}
-      <StartUsageDialog
-        open={isStartDialogOpen}
-        onOpenChange={setIsStartDialogOpen}
-        equipment={equipment}
-      />
       
       <EndUsageDialog
         open={isEndDialogOpen}
