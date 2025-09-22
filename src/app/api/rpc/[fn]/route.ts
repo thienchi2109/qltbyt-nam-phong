@@ -55,6 +55,7 @@ const ALLOWED_FUNCTIONS = new Set<string>([
   'maintenance_task_complete',
   'maintenance_tasks_delete',
   'maintenance_stats_enhanced',
+  'maintenance_stats_for_reports',
   // Tenants + Users
   'tenant_list',
   'user_create',
@@ -70,6 +71,8 @@ const ALLOWED_FUNCTIONS = new Set<string>([
   // Usage Analytics (Reports)
   'usage_analytics_overview',
   'usage_analytics_daily',
+  // Reports: status distribution
+  'equipment_status_distribution',
   // Debug
   'debug_claims',
   'don_vi_branding_get',
