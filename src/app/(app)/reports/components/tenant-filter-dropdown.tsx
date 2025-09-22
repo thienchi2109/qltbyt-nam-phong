@@ -31,11 +31,19 @@ export function TenantFilterDropdown({
 
   const tenantOptions = (tenantList ?? []) as { id: number; name: string; code: string }[]
 
+  const triggerId = React.useId()
+
   return (
-    <div className={`flex flex-col gap-2 ${className}`}>
-      <Label className="text-sm font-medium">Đơn vị</Label>
+    <div className={`flex flex-wrap items-center gap-2 ${className}`}>
+      <Label htmlFor={triggerId} className="text-xs text-muted-foreground whitespace-nowrap leading-none">
+        Đơn vị
+      </Label>
       <Select value={value} onValueChange={(v) => React.startTransition(() => onChange(v))}>
-        <SelectTrigger className="h-8 w-full md:w-[220px]" disabled={isTenantsLoading}>
+        <SelectTrigger
+          id={triggerId}
+          className="h-8 w-full sm:w-[320px]"
+          disabled={isTenantsLoading}
+        >
           <SelectValue placeholder="— Chọn đơn vị —" />
         </SelectTrigger>
         <SelectContent>

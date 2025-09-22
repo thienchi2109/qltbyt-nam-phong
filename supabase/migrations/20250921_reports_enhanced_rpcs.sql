@@ -15,11 +15,12 @@ AS $$
   SELECT COALESCE(current_setting('request.jwt.claims', true)::jsonb ->> claim, NULL);
 $$;
 
--- Enhanced equipment_count with explicit tenant parameter
+-- Enhanced equipment_count with explicit tenant & department parameters
 CREATE OR REPLACE FUNCTION public.equipment_count_enhanced(
   p_statuses TEXT[] DEFAULT NULL,
   p_q TEXT DEFAULT NULL,
-  p_don_vi BIGINT DEFAULT NULL
+  p_don_vi BIGINT DEFAULT NULL,
+  p_khoa_phong TEXT DEFAULT NULL
 )
 RETURNS BIGINT
 LANGUAGE plpgsql
@@ -42,6 +43,7 @@ BEGIN
   SELECT COUNT(*) INTO v_cnt
   FROM public.thiet_bi tb
   WHERE (v_effective_donvi IS NULL OR tb.don_vi = v_effective_donvi)
+    AND (p_khoa_phong IS NULL OR tb.khoa_phong_quan_ly = p_khoa_phong)
     AND (p_q IS NULL OR tb.ten_thiet_bi ILIKE ('%' || p_q || '%') OR tb.ma_thiet_bi ILIKE ('%' || p_q || '%'))
     AND (p_statuses IS NULL OR tb.tinh_trang_hien_tai = ANY(p_statuses));
 
@@ -49,7 +51,7 @@ BEGIN
 END;
 $$;
 
-GRANT EXECUTE ON FUNCTION public.equipment_count_enhanced(TEXT[], TEXT, BIGINT) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.equipment_count_enhanced(TEXT[], TEXT, BIGINT, TEXT) TO authenticated;
 
 -- Enhanced departments list with explicit tenant parameter
 CREATE OR REPLACE FUNCTION public.departments_list_for_tenant(
