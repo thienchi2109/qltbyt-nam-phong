@@ -38,16 +38,24 @@ import {
 
 interface UsageAnalyticsDashboardProps {
   className?: string
+  tenantFilter?: string
+  selectedDonVi?: number | null
+  effectiveTenantKey?: string
 }
 
-export function UsageAnalyticsDashboard({ className = "" }: UsageAnalyticsDashboardProps) {
+export function UsageAnalyticsDashboard({ 
+  className = "",
+  tenantFilter,
+  selectedDonVi,
+  effectiveTenantKey
+}: UsageAnalyticsDashboardProps) {
   const isMobile = useIsMobile()
   const [dateRange, setDateRange] = React.useState<{ from: Date; to: Date } | undefined>()
 
-  const { data: overview, isLoading: overviewLoading } = useUsageOverview()
-  const { data: equipmentStats, isLoading: equipmentLoading } = useEquipmentUsageStats(dateRange)
-  const { data: userStats, isLoading: userLoading } = useUserUsageStats(dateRange)
-  const { data: dailyData, isLoading: dailyLoading } = useDailyUsageData(30)
+  const { data: overview, isLoading: overviewLoading } = useUsageOverview(tenantFilter, selectedDonVi, effectiveTenantKey)
+  const { data: equipmentStats, isLoading: equipmentLoading } = useEquipmentUsageStats(dateRange, tenantFilter, selectedDonVi, effectiveTenantKey)
+  const { data: userStats, isLoading: userLoading } = useUserUsageStats(dateRange, tenantFilter, selectedDonVi, effectiveTenantKey)
+  const { data: dailyData, isLoading: dailyLoading } = useDailyUsageData(30, tenantFilter, selectedDonVi, effectiveTenantKey)
 
   const formatDuration = (minutes: number) => {
     const hours = Math.floor(minutes / 60)

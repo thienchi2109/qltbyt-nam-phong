@@ -46,3 +46,6 @@ firestore-debug.log
 
 # html backups from form migration
 *.html.backup
+
+# MCP configuration with sensitive tokens
+.vscode/mcp.json

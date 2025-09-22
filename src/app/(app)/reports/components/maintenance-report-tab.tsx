@@ -19,7 +19,17 @@ interface DateRange {
   to: Date
 }
 
-export function MaintenanceReportTab() {
+interface MaintenanceReportTabProps {
+  tenantFilter?: string
+  selectedDonVi?: number | null
+  effectiveTenantKey?: string
+}
+
+export function MaintenanceReportTab({ 
+  tenantFilter, 
+  selectedDonVi, 
+  effectiveTenantKey 
+}: MaintenanceReportTabProps) {
   const [dateRange, setDateRange] = React.useState<DateRange>({
     from: startOfYear(new Date()),
     to: endOfYear(new Date()),

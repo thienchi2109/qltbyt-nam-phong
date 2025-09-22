@@ -24,26 +24,6 @@ export function NotificationBellDialog({
   allTransferRequests,
 }: NotificationBellDialogProps) {
   const [isOpen, setIsOpen] = React.useState(false);
-  
-  // Log incoming data to debug
-  React.useEffect(() => {
-    console.log("Notification data:", {
-      allRepairRequests,
-      allTransferRequests,
-      repairRequestsType: typeof allRepairRequests,
-      transferRequestsType: typeof allTransferRequests,
-      repairRequestsLength: allRepairRequests?.length,
-      transferRequestsLength: allTransferRequests?.length,
-    });
-    
-    if (allRepairRequests && allRepairRequests.length > 0) {
-      console.log("First repair request:", allRepairRequests[0]);
-    }
-    
-    if (allTransferRequests && allTransferRequests.length > 0) {
-      console.log("First transfer request:", allTransferRequests[0]);
-    }
-  }, [allRepairRequests, allTransferRequests]);
 
   // Temporary placeholder - count of pending requests
   const repairCount = allRepairRequests?.filter((req: any) => 
@@ -56,23 +36,7 @@ export function NotificationBellDialog({
   
   const totalAlertsCount = repairCount + transferCount;
 
-  console.log("Calculated counts:", { repairCount, transferCount, totalAlertsCount });
-
-  // Log detailed filtering for repair requests
-  if (Array.isArray(allRepairRequests)) {
-    console.log('Repair requests detailed analysis:');
-    allRepairRequests.forEach((req, index) => {
-      console.log(`Repair ${index + 1}:`, {
-        id: req.id,
-        trang_thai: req.trang_thai,
-        mo_ta_su_co: req.mo_ta_su_co?.substring(0, 50),
-        ngay_yeu_cau: req.ngay_yeu_cau,
-        allKeys: Object.keys(req)
-      });
-    });
-  } else {
-    console.log('allRepairRequests is not an array:', allRepairRequests);
-  }
+  
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>

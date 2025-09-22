@@ -1,9 +1,14 @@
 "use client"
 
 import * as React from "react"
+import { useSession } from "next-auth/react"
+import { useRouter } from "next/navigation"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Skeleton } from "@/components/ui/skeleton"
+import { TenantFilterDropdown } from "./components/tenant-filter-dropdown"
+import { TenantSelectionTip } from "./components/tenant-selection-tip"
+import { useToast } from "@/hooks/use-toast"
 
 // Lazy load components to improve initial load time
 const InventoryReportTab = React.lazy(() => import("./components/inventory-report-tab").then(module => ({ default: module.InventoryReportTab })))
@@ -66,14 +71,99 @@ function TabSkeleton() {
 }
 
 export default function ReportsPage() {
+  const router = useRouter()
+  const { data: session, status } = useSession()
+  const user = session?.user as any
+  const { toast } = useToast()
+  
+  // Global/admin role check computed early so hooks below can depend on it safely
+  const isGlobal = user?.role === 'global' || user?.role === 'admin'
+
+  // Redirect if not authenticated (same pattern as Equipment page)
+  if (status === "loading") {
+    return (
+      <div className="flex items-center justify-center min-h-[50vh]">
+        <div className="text-center space-y-2">
+          <Skeleton className="h-8 w-32 mx-auto" />
+          <Skeleton className="h-4 w-48 mx-auto" />
+        </div>
+      </div>
+    )
+  }
+
+  if (status === "unauthenticated") {
+    router.push("/")
+    return null
+  }
+
+  // State
   const [activeTab, setActiveTab] = React.useState("inventory")
+  
+  // Tenant filtering logic (EXACT same pattern as Equipment page)
+  const tenantKey = user?.don_vi ? String(user.don_vi) : 'none'
+  const [tenantFilter, setTenantFilter] = React.useState<string>(() => {
+    if (!isGlobal) return tenantKey
+    
+    // For global users, try to restore from localStorage first
+    if (typeof window !== 'undefined') {
+      try {
+        const saved = localStorage.getItem('reports_tenant_filter')
+        if (saved && (saved === 'unset' || saved === 'all' || /^\d+$/.test(saved))) {
+          return saved
+        }
+      } catch {}
+    }
+    return 'unset'
+  })
+  
+  // Compute gating logic (EXACT Equipment page pattern)
+  const shouldFetchReports = React.useMemo(() => {
+    if (!isGlobal) return true
+    if (tenantFilter === 'all') return true
+    return /^\d+$/.test(tenantFilter)
+  }, [isGlobal, tenantFilter])
+
+  const selectedDonVi = React.useMemo(() => {
+    if (!isGlobal) return null
+    if (tenantFilter === 'all') return null
+    const v = parseInt(tenantFilter, 10)
+    return Number.isFinite(v) ? v : null
+  }, [isGlobal, tenantFilter])
+
+  const effectiveTenantKey = isGlobal ? (shouldFetchReports ? tenantFilter : 'unset') : tenantKey
+
+  // Persist tenant selection for global/admin users (same as Equipment page)
+  React.useEffect(() => {
+    if (typeof window === 'undefined') return
+    if (isGlobal) {
+      try { localStorage.setItem('reports_tenant_filter', tenantFilter) } catch {}
+    } else {
+      try { localStorage.removeItem('reports_tenant_filter') } catch {}
+    }
+  }, [isGlobal, tenantFilter])
+
+  // No separate restoration effect needed - handled in useState initializer above
 
   return (
     <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
       <div className="flex items-center justify-between space-y-2">
         <h2 className="text-3xl font-bold tracking-tight">Báo cáo</h2>
+        
+        {/* Tenant selector for global users */}
+        {isGlobal && (
+          <TenantFilterDropdown 
+            value={tenantFilter}
+            onChange={setTenantFilter}
+          />
+        )}
       </div>
       
+      {/* Show tip when no tenant selected (same pattern as Equipment page) */}
+      {isGlobal && !shouldFetchReports && (
+        <TenantSelectionTip />
+      )}
+      
+      {/* Report tabs - only render when should fetch */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
         <TabsList>
           <TabsTrigger value="inventory">Xuất-Nhập-Tồn</TabsTrigger>
@@ -85,23 +175,42 @@ export default function ReportsPage() {
           </TabsTrigger>
         </TabsList>
         
-        <TabsContent value="inventory" className="space-y-4">
-          <React.Suspense fallback={<TabSkeleton />}>
-            <InventoryReportTab />
-          </React.Suspense>
-        </TabsContent>
-        
-        <TabsContent value="maintenance" className="space-y-4">
-          <React.Suspense fallback={<TabSkeleton />}>
-            <MaintenanceReportTab />
-          </React.Suspense>
-        </TabsContent>
-        
-        <TabsContent value="utilization" className="space-y-4">
-          <React.Suspense fallback={<TabSkeleton />}>
-            <UsageAnalyticsDashboard />
-          </React.Suspense>
-        </TabsContent>
+        {/* Only show content when shouldFetchReports is true */}
+        {shouldFetchReports ? (
+          <>
+            <TabsContent value="inventory" className="space-y-4">
+              <React.Suspense fallback={<TabSkeleton />}>
+                <InventoryReportTab 
+                  tenantFilter={tenantFilter}
+                  selectedDonVi={selectedDonVi}
+                  effectiveTenantKey={effectiveTenantKey}
+                />
+              </React.Suspense>
+            </TabsContent>
+            
+            <TabsContent value="maintenance" className="space-y-4">
+              <React.Suspense fallback={<TabSkeleton />}>
+                <MaintenanceReportTab 
+                  tenantFilter={tenantFilter}
+                  selectedDonVi={selectedDonVi}
+                  effectiveTenantKey={effectiveTenantKey}
+                />
+              </React.Suspense>
+            </TabsContent>
+            
+            <TabsContent value="utilization" className="space-y-4">
+              <React.Suspense fallback={<TabSkeleton />}>
+                <UsageAnalyticsDashboard 
+                  tenantFilter={tenantFilter}
+                  selectedDonVi={selectedDonVi}
+                  effectiveTenantKey={effectiveTenantKey}
+                />
+              </React.Suspense>
+            </TabsContent>
+          </>
+        ) : (
+          <div></div>
+        )}
       </Tabs>
     </div>
   )

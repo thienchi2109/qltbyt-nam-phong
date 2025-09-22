@@ -12,7 +12,8 @@ export interface EquipmentDistributionItem {
   cho_hieu_chuan: number
   ngung_su_dung: number
   chua_co_nhu_cau: number
-  [key: string]: string | number
+  khac?: number
+  [key: string]: string | number | undefined
 }
 
 export interface RawEquipmentItem {
@@ -33,173 +34,69 @@ export interface EquipmentDistributionData {
   rawEquipment: RawEquipmentItem[]
 }
 
+interface EquipmentStatusDistributionRpc {
+  total_equipment: number
+  status_counts: Record<string, number>
+  by_department: EquipmentDistributionItem[]
+  by_location: EquipmentDistributionItem[]
+  departments: string[]
+  locations: string[]
+}
+
 // Query keys for caching
 export const equipmentDistributionKeys = {
   all: ['equipment-distribution'] as const,
-  data: (filterDept?: string, filterLoc?: string) => [...equipmentDistributionKeys.all, 'data', filterDept, filterLoc] as const,
+  data: (params: { filterDept?: string; filterLoc?: string; tenant?: string }) => (
+    [...equipmentDistributionKeys.all, 'data', params.filterDept, params.filterLoc, params.tenant] as const
+  ),
 }
 
-export function useEquipmentDistribution(filterDepartment?: string, filterLocation?: string) {
+export function useEquipmentDistribution(
+  filterDepartment?: string,
+  filterLocation?: string,
+  tenantFilter?: string,
+  selectedDonVi?: number | null,
+  effectiveTenantKey?: string
+) {
   return useQuery({
-    queryKey: equipmentDistributionKeys.data(filterDepartment, filterLocation),
+    queryKey: equipmentDistributionKeys.data({
+      filterDept: filterDepartment,
+      filterLoc: filterLocation,
+      tenant: effectiveTenantKey || 'auto',
+    }),
     queryFn: async (): Promise<EquipmentDistributionData> => {
-      const equipment = await callRpc<RawEquipmentItem[]>({
-        fn: 'equipment_list',
-        args: { p_q: null, p_sort: 'id.asc', p_page: 1, p_page_size: 10000 },
+      const res = await callRpc<EquipmentStatusDistributionRpc>({
+        fn: 'equipment_status_distribution',
+        args: {
+          p_q: null,
+          p_don_vi: selectedDonVi || null,
+          p_khoa_phong: filterDepartment && filterDepartment !== 'all' ? filterDepartment : null,
+          p_vi_tri: filterLocation && filterLocation !== 'all' ? filterLocation : null,
+        },
       })
 
-      if (!equipment || equipment.length === 0) {
+      if (!res) {
         return {
           byDepartment: [],
           byLocation: [],
           departments: [],
           locations: [],
           totalEquipment: 0,
-          rawEquipment: []
+          rawEquipment: [],
         }
       }
 
-      // Apply filters if provided
-  let filteredEquipment: RawEquipmentItem[] = equipment
-      
-      if (filterDepartment && filterDepartment !== 'all') {
-        filteredEquipment = filteredEquipment.filter(item => 
-          item.khoa_phong_quan_ly === filterDepartment
-        )
+      const data: EquipmentDistributionData = {
+        byDepartment: (res.by_department || []).map((d) => ({ ...d })),
+        byLocation: (res.by_location || []).map((l) => ({ ...l })),
+        departments: res.departments || [],
+        locations: res.locations || [],
+        totalEquipment: res.total_equipment || 0,
+        rawEquipment: [],
       }
-      
-      if (filterLocation && filterLocation !== 'all') {
-        filteredEquipment = filteredEquipment.filter(item => 
-          item.vi_tri_lap_dat === filterLocation
-        )
-      }
-
-      // Process data by department
-      const deptMap = new Map<string, EquipmentDistributionItem>()
-      
-      filteredEquipment.forEach(item => {
-        const dept = item.khoa_phong_quan_ly || 'Chưa phân loại'
-        
-        if (!deptMap.has(dept)) {
-          deptMap.set(dept, {
-            name: dept,
-            total: 0,
-            hoat_dong: 0,
-            cho_sua_chua: 0,
-            cho_bao_tri: 0,
-            cho_hieu_chuan: 0,
-            ngung_su_dung: 0,
-            chua_co_nhu_cau: 0
-          })
-        }
-
-        const deptData = deptMap.get(dept)!
-        deptData.total += 1
-
-        // Count by status
-        switch (item.tinh_trang_hien_tai) {
-          case 'Hoạt động':
-            deptData.hoat_dong += 1
-            break
-          case 'Chờ sửa chữa':
-            deptData.cho_sua_chua += 1
-            break
-          case 'Chờ bảo trì':
-            deptData.cho_bao_tri += 1
-            break
-          case 'Chờ hiệu chuẩn/kiểm định':
-            deptData.cho_hieu_chuan += 1
-            break
-          case 'Ngưng sử dụng':
-            deptData.ngung_su_dung += 1
-            break
-          case 'Chưa có nhu cầu sử dụng':
-            deptData.chua_co_nhu_cau += 1
-            break
-          default:
-            // Handle null or unknown status as "active"
-            deptData.hoat_dong += 1
-            break
-        }
-      })
-
-      // Process data by location
-      const locationMap = new Map<string, EquipmentDistributionItem>()
-      
-      filteredEquipment.forEach(item => {
-        const location = item.vi_tri_lap_dat || 'Chưa xác định'
-        
-        if (!locationMap.has(location)) {
-          locationMap.set(location, {
-            name: location,
-            total: 0,
-            hoat_dong: 0,
-            cho_sua_chua: 0,
-            cho_bao_tri: 0,
-            cho_hieu_chuan: 0,
-            ngung_su_dung: 0,
-            chua_co_nhu_cau: 0
-          })
-        }
-
-        const locationData = locationMap.get(location)!
-        locationData.total += 1
-
-        // Count by status
-        switch (item.tinh_trang_hien_tai) {
-          case 'Hoạt động':
-            locationData.hoat_dong += 1
-            break
-          case 'Chờ sửa chữa':
-            locationData.cho_sua_chua += 1
-            break
-          case 'Chờ bảo trì':
-            locationData.cho_bao_tri += 1
-            break
-          case 'Chờ hiệu chuẩn/kiểm định':
-            locationData.cho_hieu_chuan += 1
-            break
-          case 'Ngưng sử dụng':
-            locationData.ngung_su_dung += 1
-            break
-          case 'Chưa có nhu cầu sử dụng':
-            locationData.chua_co_nhu_cau += 1
-            break
-          default:
-            locationData.hoat_dong += 1
-            break
-        }
-      })
-
-      // Convert maps to arrays and sort by total
-      const byDepartment = Array.from(deptMap.values())
-        .sort((a, b) => b.total - a.total)
-      
-      const byLocation = Array.from(locationMap.values())
-        .sort((a, b) => b.total - a.total)
-
-      // Get unique departments and locations for filters (from original unfiltered data)
-      const departments: string[] = Array.from(new Set(
-        equipment
-          .map((item: RawEquipmentItem) => item.khoa_phong_quan_ly)
-          .filter((dept): dept is string => !!dept && dept !== 'Chưa phân loại')
-      )).sort()
-      
-      const locations: string[] = Array.from(new Set(
-        equipment
-          .map((item: RawEquipmentItem) => item.vi_tri_lap_dat)
-          .filter((loc): loc is string => !!loc && loc !== 'Chưa xác định')
-      )).sort()
-
-      return {
-        byDepartment,
-        byLocation,
-        departments,
-        locations,
-        totalEquipment: filteredEquipment.length,
-        rawEquipment: filteredEquipment
-      }
+      return data
     },
+    enabled: (effectiveTenantKey ?? 'auto') !== 'unset',
     staleTime: 5 * 60 * 1000, // 5 minutes
     gcTime: 15 * 60 * 1000, // 15 minutes
     retry: 2,
@@ -221,6 +118,7 @@ export const STATUS_LABELS = {
   cho_sua_chua: 'Chờ sửa chữa',
   cho_bao_tri: 'Chờ bảo trì',
   cho_hieu_chuan: 'Chờ HC/KĐ',
-  ngung_su_dung: 'Ngưng sử dụng',
+  ngung_su_dung: 'Ngừng sử dụng',
   chua_co_nhu_cau: 'Chưa có nhu cầu'
 } as const 
+
