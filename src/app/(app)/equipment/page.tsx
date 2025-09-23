@@ -98,6 +98,7 @@ import { type Equipment } from "@/types/database"
 // supabase removed from this module for attachments/history flows (RPC-only)
 import { callRpc } from "@/lib/rpc-client"
 import { useEquipmentRealtimeSync } from "@/hooks/use-realtime-sync"
+import { useActiveUsageLogs } from "@/hooks/use-usage-logs"
 import { useToast } from "@/hooks/use-toast"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -113,6 +114,7 @@ import { useIsMobile } from "@/hooks/use-mobile"
 import { useMediaQuery } from "@/hooks/use-media-query"
 import { exportArrayToExcel, exportToExcel } from "@/lib/excel-utils"
 import { UsageHistoryTab } from "@/components/usage-history-tab"
+import { StartUsageDialog } from "@/components/start-usage-dialog"
 import { ActiveUsageIndicator } from "@/components/active-usage-indicator"
 import { MobileUsageActions } from "@/components/mobile-usage-actions"
 import { useSearchDebounce } from "@/hooks/use-debounce"
@@ -412,6 +414,8 @@ export default function EquipmentPage() {
   const [isImportDialogOpen, setIsImportDialogOpen] = React.useState(false)
   const [selectedEquipment, setSelectedEquipment] = React.useState<Equipment | null>(null);
   const [isDetailModalOpen, setIsDetailModalOpen] = React.useState(false);
+  const [isStartUsageDialogOpen, setIsStartUsageDialogOpen] = React.useState(false);
+  const [startUsageEquipment, setStartUsageEquipment] = React.useState<Equipment | null>(null);
   const [editingEquipment, setEditingEquipment] = React.useState<Equipment | null>(null)
   const [currentTab, setCurrentTab] = React.useState<string>("details")
   const [isEditingDetails, setIsEditingDetails] = React.useState(false)
@@ -419,6 +423,8 @@ export default function EquipmentPage() {
     resolver: zodResolver(equipmentFormSchema),
     defaultValues: {},
   })
+
+  const { data: activeUsageLogs, isLoading: isLoadingActiveUsage } = useActiveUsageLogs()
 
   React.useEffect(() => {
     if (selectedEquipment && isEditingDetails) {
@@ -867,12 +873,22 @@ export default function EquipmentPage() {
     setIsDetailModalOpen(true);
   };
 
+  const handleStartUsage = (equipment: Equipment) => {
+    setStartUsageEquipment(equipment);
+    setIsStartUsageDialogOpen(true);
+  };
+
   const renderActions = (equipment: Equipment) => {
     const canEdit = user && (
   user.role === 'global' || user.role === 'admin' ||
       user.role === 'to_qltb' ||
       (user.role === 'qltb_khoa' && user.khoa_phong === equipment.khoa_phong_quan_ly)
     );
+
+    const activeUsageLog = activeUsageLogs?.find(
+      (log) => log.thiet_bi_id === equipment.id && log.trang_thai === 'dang_su_dung'
+    );
+    const startUsageDisabled = isLoadingActiveUsage || !user || !!activeUsageLog;
 
     return (
       <DropdownMenu>
@@ -890,6 +906,16 @@ export default function EquipmentPage() {
           <DropdownMenuLabel>Hành động</DropdownMenuLabel>
            <DropdownMenuItem onSelect={() => handleShowDetails(equipment)}>
             Xem chi tiết
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            disabled={startUsageDisabled}
+            onSelect={() => {
+              if (startUsageDisabled) return;
+              handleStartUsage(equipment);
+            }}
+            title={activeUsageLog ? "Thiết bị đang được sử dụng" : undefined}
+          >
+            Viết nhật ký SD
           </DropdownMenuItem>
           <DropdownMenuItem onSelect={() => router.push(`/repair-requests?equipmentId=${equipment.id}`)}>
             Tạo yêu cầu sửa chữa
@@ -2343,6 +2369,17 @@ export default function EquipmentPage() {
           ) : null}
         </CardFooter>
       </Card>
+      <StartUsageDialog
+        open={isStartUsageDialogOpen}
+        onOpenChange={(open) => {
+          setIsStartUsageDialogOpen(open);
+          if (!open) {
+            setStartUsageEquipment(null);
+          }
+        }}
+        equipment={startUsageEquipment}
+      />
+
     </>
   )
 }
