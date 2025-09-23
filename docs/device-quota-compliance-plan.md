@@ -1,4 +1,118 @@
-﻿# Kế hoạch triển khai chức năng theo dõi định mức thiết bị
+﻿# Tri thức cần nắm vững
+Để cô đọng tất cả tri thức từ các nguồn liên quan đến việc xây dựng tiêu chuẩn, định mức trang thiết bị trong các cơ sở y tế và tuân thủ các văn bản quy phạm pháp luật của Việt Nam, tôi xin cung cấp cấu trúc JSON dưới đây:
+
+{
+  "TieuChuan_DinhMuc_TrangThietBiYTe": {
+    "KhungPhapLyChung": {
+      "LuatQuanLySuDungTaiSanCong2017": {
+        "SoHieu": "15/2017/QH14",
+        "HieuLuc": "01/01/2018",
+        "NguyentacApDung": "Mọi tài sản công phục vụ hoạt động quản lý, cung cấp dịch vụ công, bảo đảm quốc phòng, an ninh phải được sử dụng tiết kiệm, hiệu quả, đúng mục đích, công năng, đối tượng, tiêu chuẩn, định mức, chế độ theo quy định của pháp luật.",
+        "DinhNghiaTieuChuanDinhMuc": "Quy định về chủng loại, số lượng, mức giá, đối tượng được sử dụng do cơ quan, người có thẩm quyền ban hành. Mức giá đã bao gồm các loại thuế phải nộp.",
+        "MucDichDinhMuc": "Làm căn cứ để lập kế hoạch và dự toán ngân sách; giao, đầu tư xây dựng, mua sắm, thuê, khoán kinh phí sử dụng tài sản công; quản lý, sử dụng và xử lý tài sản công.",
+        "ThamQuyenBanHanhDinhMuc": {
+          "ChinhPhu": "Quy định tiêu chuẩn, định mức sử dụng đối với Trụ sở làm việc, cơ sở hoạt động sự nghiệp; Xe ô tô; Tài sản công của cơ quan Việt Nam ở nước ngoài.",
+          "ThuTuongChinhPhu": "Quy định tiêu chuẩn, định mức đối với Tài sản đặc biệt tại đơn vị lực lượng vũ trang nhân dân; Nhà ở công vụ; Máy móc, thiết bị và các loại tài sản công được sử dụng phổ biến tại cơ quan, tổ chức, đơn vị."
+        },
+        "TaiSanCongTaiCoQuanDonVi": "Bao gồm nhà làm việc, công trình sự nghiệp, quyền sử dụng đất, xe ô tô, phương tiện vận tải, máy móc, thiết bị, quyền sở hữu trí tuệ, phần mềm ứng dụng, cơ sở dữ liệu và tài sản khác."
+      },
+      "QuanLyTrangThietBiYTe": {
+        "NghiDinh98_2021_NDCP": {
+          "SoHieu": "98/2021/NĐ-CP",
+          "NgayBanHanh": "08-11-2021",
+          "HieuLuc": "01-01-2022",
+          "PhanLoaiRuiRo": "Phân TBYT thành 4 loại (A, B, C, D) dựa trên mức độ rủi ro tiềm ẩn liên quan đến thiết kế kỹ thuật và sản xuất.",
+          "CacLoai": [
+            {"Loai": "A", "MucDoRuiRo": "Thấp"},
+            {"Loai": "B", "MucDoRuiRo": "Trung bình thấp"},
+            {"Loai": "C", "MucDoRuiRo": "Trung bình cao"},
+            {"Loai": "D", "MucDoRuiRo": "Cao"}
+          ],
+          "NguyentacPhanLoai": "Dựa trên cơ sở quy tắc phân loại về mức độ rủi ro; áp dụng mức rủi ro cao nhất nếu có nhiều mức độ rủi ro hoặc mục đích sử dụng khác nhau. Mỗi TBYT sử dụng kết hợp với TBYT khác phải được phân loại rủi ro riêng biệt."
+        }
+      }
+    },
+    "DinhMucSuDungTaiSanYTeChuyenDung": {
+      "ThongTu08_2019_TTBYT": {
+        "SoHieu": "08/2019/TT-BYT",
+        "NgayBanHanh": "31/05/2019",
+        "HieuLuc": "01/08/2019",
+        "PhanLoaiTBYTChuyenDung": [
+          "Trang thiết bị y tế chuyên dùng đặc thù",
+          "Trang thiết bị y tế chuyên dùng khác"
+        ],
+        "DieuKienDinhMucSuDungTBYTChuyenDungKhac": [
+          "Chức năng, nhiệm vụ, quyền hạn được cấp có thẩm quyền phê duyệt.",
+          "Cơ cấu tổ chức, quy mô hoạt động (đối với cơ sở KCB: phạm vi hoạt động chuyên môn, số lượng giường bệnh thực tế).",
+          "Điều kiện cơ sở vật chất và nhân lực để lắp đặt và sử dụng.",
+          "Số lượng, tần suất sử dụng hiện có và dự kiến nhu cầu sử dụng trong 03 năm tiếp theo."
+        ],
+        "QuyTrinhPheDuyetDinhMuc": "Người đứng đầu đơn vị sự nghiệp y tế xây dựng hồ sơ và trình cấp có thẩm quyền phê duyệt; trường hợp yêu cầu sử dụng TBYT đặc thù vượt định mức phải có ý kiến thống nhất bằng văn bản của Bộ Y tế.",
+        "XuLyVuotDinhMuc": "Trường hợp TBYT chuyên dùng đã trang bị trước ngày Thông tư 08/2019/TT-BYT có hiệu lực mà vượt định mức, đơn vị phải báo cáo cơ quan có thẩm quyền để xem xét quyết định hình thức xử lý theo quy định tại Nghị định 151/2017/NĐ-CP.",
+        "ViDuDinhMucTBYTChuyenDungDacThu": [
+          {"ChungLoai": "Máy X quang kỹ thuật số chụp tổng quát", "DinhMuc": "Tối đa 01 máy/cơ sở (nhu cầu < 300 ca/tháng); tối đa 02 máy/cơ sở (nhu cầu 300 - 2600 ca/tháng). Bổ sung máy nếu công suất TB > 1300 ca/tháng/máy."},
+          {"ChungLoai": "Máy siêu âm chuyên tim mạch", "DinhMuc": "Tối đa 01 máy/đơn vị (nhu cầu ≤ 300 ca/tháng). Bổ sung nếu công suất TB > 300 ca/tháng/máy; 01 máy/Phòng DSA/Đơn vị hồi sức tim mạch."},
+          {"ChungLoai": "Máy thở", "DinhMuc": "Tối đa 01 máy/giường hồi sức sau phẫu thuật/hồi sức tích cực/cấp cứu. Dự phòng 01 máy/ 06 máy."},
+          {"ChungLoai": "Máy gây mê", "DinhMuc": "01 máy/ bàn mổ. Dự phòng 01 máy/ 06 máy."},
+          {"ChungLoai": "Bơm tiêm điện", "DinhMuc": "Tối thiểu 01 cái/ bàn mổ/ giường Hồi tỉnh. Tối đa 05 cái/ giường Hồi sức/ Cấp cứu."}
+        ]
+      },
+      "DinhMucThucTeTheoDiaPhuong": {
+        "QuyetDinh60_2023_QDUBND_KonTum": "Ban hành tiêu chuẩn, định mức sử dụng máy móc, thiết bị chuyên dùng thuộc lĩnh vực y tế cho các cơ sở y tế tại Tỉnh Kon Tum, bao gồm: Bệnh viện Đa khoa Tỉnh, Bệnh viện Đa khoa Khu vực Ngọc Hồi, Trung tâm Kiểm soát Bệnh tật, Trung tâm Giám định Y khoa, Trung tâm Pháp Y, Trung tâm Kiểm nghiệm Thuốc/Mỹ phẩm/Thực phẩm, và các Trung tâm Y tế huyện/thành phố."
+      }
+    },
+    "QuyTrinhMuaSamVaDauThau": {
+      "LuatDauThauLinhVucYTe": {
+        "LuatDauThau2023": "Đấu thầu vật tư y tế là một mảng trong công tác đấu thầu mua sắm công, phải tuân theo Luật Đấu thầu. Luật Đấu thầu 2023 (số 22/2023/QH15) bổ sung quy định mới nhằm giải quyết khó khăn, vướng mắc trong đấu thầu mua thuốc, hóa chất, vật tư xét nghiệm và thiết bị y tế.",
+        "QuyDinhMoiDauThauYTe": [
+          "Cơ sở y tế công lập tự quyết định mua thuốc ngoài danh mục thuốc BHYT chi trả, mua vắc xin tiêm chủng dịch vụ.",
+          "Cho phép chỉ định thầu để mua thuốc, thiết bị y tế trong trường hợp cấp cứu người bệnh hoặc duy trì hoạt động cấp bách.",
+          "Hồ sơ mời thầu được nêu xuất xứ thiết bị y tế từ một nhóm quốc gia cụ thể.",
+          "Cho phép áp dụng đàm phán đối với gói thầu mua biệt dược gốc, sinh phẩm tham chiếu; gói thầu mua thuốc, thiết bị y tế, vật tư xét nghiệm chỉ có 01 hoặc 02 hãng sản xuất."
+        ],
+        "QuyTrinhMuaSamTapTrung": [
+          "Xác định khối lượng mua sắm.",
+          "Lập, thẩm định và phê duyệt kế hoạch lựa chọn nhà thầu.",
+          "Tổ chức lựa chọn nhà thầu (theo trình tự Luật đấu thầu).",
+          "Đánh giá hồ sơ dự thầu.",
+          "Trình thẩm định, phê duyệt, công khai kết quả lựa chọn nhà thầu và giải thích lý do.",
+          "Hoàn thiện, ký kết thỏa thuận khung.",
+          "Hoàn thiện, ký kết và thực hiện hợp đồng với nhà thầu trúng thầu.",
+          "Quyết toán, thanh lý hợp đồng."
+        ]
+      },
+      "ThanhToanBHYTKyThuatChuanDoanHinhAnh": {
+        "ThongTu22_2023_TTBYT": "Quy định định mức thanh toán cho các kỹ thuật chẩn đoán hình ảnh giữa cơ quan BHYT và cơ sở KCB.",
+        "DinhMucTinhGiaToiDaTheoCa": "Xác định số ca tối đa được thanh toán dựa trên Định mức tính giá (số ca/máy/ngày làm việc 8 giờ) nhân với các yếu tố thực tế (giờ làm việc, ngày làm việc, số máy hoạt động) và nhân với 120%.",
+        "DinhMucChiTiet8GioLamViec": [
+          {"DichVu": "Siêu âm", "DinhMuc": "48 ca/máy/ngày"},
+          {"DichVu": "Chụp X-quang thường/số hóa", "DinhMuc": "58 ca/máy/ngày"},
+          {"DichVu": "Chụp CT Scanner đến 32 dãy", "DinhMuc": "29 ca/máy/ngày"},
+          {"DichVu": "Chụp cộng hưởng từ (MRI)", "DinhMuc": "19 ca/máy/ngày"}
+        ],
+        "XuLyVuotCaToiDa": "Số ca vượt quá mức tối đa sẽ được thanh toán theo mức giá không bao gồm chi phí tiền lương. Ví dụ: Siêu âm 55%, X-quang 85%, CT Scanner 95%, MRI 97% mức giá quy định."
+      }
+    },
+    "TieuChuanQuanLyChatLuong": {
+      "ISO13485_2016": {
+        "TenTieuChuan": "Hệ thống quản lý Trang thiết bị y tế (ISO 13485:2016)",
+        "YeuCauChinh": "Quy định các yêu cầu đối với hệ thống quản lý chất lượng áp dụng tại các cơ sở cung cấp dụng cụ y tế và dịch vụ liên quan, nhằm đảm bảo khả năng cung cấp sản phẩm đáp ứng yêu cầu của khách hàng và các quy định của pháp luật.",
+        "BatBuocTheoPhapLuat": "Là yêu cầu bắt buộc theo Nghị định 98/2021/NĐ-CP quản lý trang thiết bị y tế mới nhất tại Việt Nam.",
+        "MucDichQuanLy": "Đảm bảo thiết kế nhất quán, phát triển, sản xuất, lắp đặt và phân phối các thiết bị y tế an toàn cho mục đích dự kiến.",
+        "CoCau": "Dựa trên mô hình quy trình ISO 9001 (Kế hoạch, Thực hiện, Kiểm tra, Hành động) nhưng mang tính chất quy định và đòi hỏi hệ thống quản lý chất lượng được lập thành văn bản kỹ lưỡng hơn cho môi trường sản xuất TBYT."
+      },
+      "TieuChuanThuNghiemLamSangQuocTe": {
+        "SoSanhQuocGia": "Các tiêu chuẩn thử nghiệm lâm sàng thiết bị y tế có sự khác biệt giữa các khu vực:",
+        "HoaKy": "Quy định bởi FDA, yêu cầu nghiên cứu lâm sàng để chứng minh tính an toàn và hiệu quả, nhấn mạnh tính minh bạch trong báo cáo.",
+        "LienMinhChauAu": "Quy định bởi Quy chế về thiết bị y tế (MDR), yêu cầu nghiêm ngặt tương tự, nhấn mạnh sự tham gia của các bên thứ ba độc lập trong việc đánh giá và xác nhận kết quả thử nghiệm.",
+        "NhatBan": "Quản lý bởi PMDA, tập trung vào việc xây dựng dữ liệu lâm sàng trước khi thị trường hóa, tối ưu hóa quy trình thử nghiệm để rút ngắn thời gian đưa sản phẩm ra thị trường."
+      }
+    }
+  }
+}
+
+
+# Kế hoạch triển khai chức năng theo dõi định mức thiết bị cho ứng dụng hiện tại
 
 ## 1. Bối cảnh & mục tiêu
 - Hệ thống hiện quản lý vận hành thiết bị y tế đa đơn vị (multi-tenant) nhưng chưa có cơ chế chuẩn để so sánh số lượng thiết bị với định mức được cơ quan có thẩm quyền phê duyệt.
@@ -163,6 +277,44 @@ Các RPC phải áp dụng mẫu bảo mật hiện có (`_get_jwt_claim`, đả
 - Luật 15/2017/QH14 về quản lý, sử dụng tài sản công.
 - Nghị định 151/2017/NĐ-CP, Nghị định 69/2021/NĐ-CP (nếu áp dụng).
 - Thông tư 08/2019/TT-BYT – tiêu chuẩn, định mức trang thiết bị y tế.
+
+## 15. Bổ sung tuân thủ pháp lý & best practices
+
+### 15.1 Checklist tuân thủ văn bản quy phạm pháp luật (áp dụng cho định mức thiết bị)
+- Nguồn căn cứ: lưu đầy đủ trường meta cho văn bản làm căn cứ định mức/điều chỉnh: `so_ky_hieu`, `trich_yeu`, `co_quan_ban_hanh`, `ngay_ban_hanh`, `ngay_hieu_luc`, `tep_dinh_kem` (file ký số nếu có), `duong_dan_tra_cuu`.
+- Phạm vi áp dụng: xác định rõ `don_vi_id`, `pham_vi` (toàn đơn vị/khoa phòng/dự án), thời hạn áp dụng (`effective_from`, `effective_to` hoặc `is_current`).
+- Phiên bản hóa: mỗi lần điều chỉnh định mức tạo phiên bản mới, không ghi đè; khóa khoảng thời gian hiệu lực không chồng lấn (constraint EXCLUDE OVERLAPS).
+- Lịch sử & kiểm toán: bắt buộc ghi vào `thiet_bi_dinh_muc_lich_su` với `thao_tac`, `thuc_hien_boi`, `ly_do`, `snapshot` trước/sau; không cho phép xóa cứng (soft-delete hoặc vô hiệu bằng `effective_to`).
+- Quy trình vượt định mức: hồ sơ đề nghị phải có `so_van_ban_de_nghi`, `ngay_de_nghi`, `file_dinh_kem`; quyết định phê duyệt có `so_quyet_dinh`, `ngay_duyet`, `co_quan_phe_duyet`, `tep_quyet_dinh`.
+- Lọc theo tenant/role: tất cả RPC cưỡng chế `don_vi` từ JWT trừ `global`; ghi nhận `user_id` thao tác vào bảng lịch sử.
+- Xuất trình/kiểm tra: cung cấp export PDF/XLSX kèm phụ lục trích lược căn cứ pháp lý, dấu thời gian sinh báo cáo.
+
+Tham chiếu chính: Luật 15/2017/QH14; Nghị định 151/2017/NĐ-CP; Thông tư 08/2019/TT-BYT. Khuyến nghị bổ sung hỗ trợ chữ ký số theo Nghị định 130/2018/NĐ-CP (tùy khả năng).
+
+### 15.2 Điều chỉnh dữ liệu & migrations để đáp ứng tuân thủ
+- Bảng `thiet_bi_dinh_muc_chi_tiet`:
+  - Thêm cột: `effective_from DATE NOT NULL DEFAULT CURRENT_DATE`, `effective_to DATE NULL`, `so_quyet_dinh TEXT NULL`, `co_quan_phe_duyet TEXT NULL`, `tai_lieu_can_cu JSONB NULL` (danh sách {type, so_ky_hieu, url, file_id}).
+  - Unique phiên bản: `UNIQUE (don_vi_id, nhom_id, chuan_loai_id, pham_vi, coalesce(khoa_phong,'$ALL$'), effective_from)`.
+  - Ràng buộc không chồng lấn: `EXCLUDE USING gist (don_vi_id WITH =, nhom_id WITH =, chuan_loai_id WITH =, pham_vi WITH =, (coalesce(khoa_phong,'$ALL$')) WITH =, daterange(effective_from, coalesce(effective_to,'infinity')) WITH &&)` (cần extension `btree_gist`).
+  - Chỉ mục: `(don_vi_id, nhom_id)`, `(don_vi_id, effective_from DESC)`.
+- Bảng `thiet_bi_dinh_muc_lich_su`:
+  - Bổ sung `before JSONB`, `after JSONB`, `request_id BIGINT NULL` (liên kết đề nghị vượt), `performed_by BIGINT NOT NULL`.
+- Bảng `de_nghi_vuot_dinh_muc`:
+  - Thêm `so_van_ban_de_nghi TEXT`, `ngay_de_nghi DATE`, `tep_quyet_dinh JSONB`, `so_quyet_dinh TEXT`, `co_quan_phe_duyet TEXT`, `ngay_quyet_dinh DATE`.
+- Storage/Files: chuẩn hóa tham chiếu tệp qua `file_id` (bucket Supabase Storage) thay vì chỉ URL; lưu checksum để chống sửa đổi.
+- Idempotency: migrations dùng `IF NOT EXISTS`, `ALTER TABLE ... ADD COLUMN IF NOT EXISTS`, `CREATE EXTENSION IF NOT EXISTS btree_gist`.
+
+### 15.3 RPC theo best practices bảo mật/kiểm toán
+- Chữ ký hàm: tất cả RPC nhận `p_don_vi BIGINT` nhưng nội bộ thay thế bằng `_get_jwt_claim('don_vi')` nếu người dùng không phải `global`.
+- Bổ sung tham số thời gian: `p_as_of DATE DEFAULT CURRENT_DATE` cho `equipment_quota_status` để tính trạng thái tại một ngày bất kỳ (phục vụ kiểm toán).
+- `SECURITY DEFINER` + `SET search_path` tường minh; whitelist sort/pagination; `GRANT EXECUTE ON FUNCTION ... TO authenticated`.
+- Ghi log: trong `equipment_quota_upsert` và `equipment_quota_group_upsert` ghi `performed_by := _get_jwt_claim('user_id')` vào lịch sử.
+- Trả về metadata pháp lý tối thiểu: trong `equipment_quota_tree` và `equipment_quota_status` trả thêm `legal_refs` (rút gọn) để UI hiển thị tooltip căn cứ pháp lý.
+
+### 15.4 Kiểm thử tuân thủ
+- Unit test SQL: kiểm tra ràng buộc không chồng lấn hiệu lực, quyền tenant, tính trạng thái `thieu/dat/vuot` theo `p_as_of`.
+- Integration test API proxy: xác minh JWT claims không thể override từ client, và RPC chỉ trả dữ liệu trong tenant.
+- Kiểm thử xuất báo cáo: so khớp số liệu giữa PDF/XLSX và view SQL tại cùng thời điểm `as_of`.
 - Hướng dẫn nội bộ multi-tenant (`docs/multi-tenant-plan.md`).
 - Bảng định mức mẫu của Bệnh viện đa khoa (ảnh tham chiếu) – dùng làm template import.
 
