@@ -1,4 +1,4 @@
-@tailwind base;
+﻿@tailwind base;
 @tailwind components;
 @tailwind utilities;
 
@@ -181,23 +181,23 @@
 
   /* Mobile quick actions optimization */
   .mobile-quick-action {
-    @apply h-auto flex-col gap-2 p-3 md:p-6;
+    @apply flex h-full min-h-[96px] flex-col items-center justify-center gap-2 rounded-2xl p-3 text-center transition-all hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 md:min-h-[112px] md:rounded-xl md:p-4;
   }
 
   .mobile-quick-action-icon {
-    @apply h-4 w-4 md:h-6 md:w-6;
+    @apply h-6 w-6 md:h-7 md:w-7;
   }
 
   .mobile-quick-action-text {
-    @apply text-center;
+    @apply flex flex-col items-center gap-1 text-center;
   }
 
   .mobile-quick-action-title {
-    @apply font-medium text-xs md:text-sm;
+    @apply font-semibold text-sm leading-tight md:text-base md:leading-tight;
   }
 
   .mobile-quick-action-desc {
-    @apply text-xs text-muted-foreground hidden md:block;
+    @apply sr-only;
   }
 
   /* Mobile repair request cards optimization */
@@ -493,3 +493,4 @@
 
 
 }
+
