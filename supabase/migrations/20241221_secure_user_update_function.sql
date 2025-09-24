@@ -1,4 +1,4 @@
--- =====================================================
+﻿-- =====================================================
 -- SECURE USER FUNCTIONS WITH PASSWORD HASHING
 -- =====================================================
 -- Functions to securely create and update users with password hashing
@@ -223,11 +223,14 @@ $$;
 -- =====================================================
 -- Enhanced authentication function supporting both hashed and legacy passwords
 
-CREATE OR REPLACE FUNCTION authenticate_user_dual_mode(
+-- đảm bảo pgcrypto đã tồn tại ở schema extensions (mặc định Supabase)
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
+
+CREATE OR REPLACE FUNCTION public.authenticate_user_dual_mode(
   p_username TEXT,
   p_password TEXT
 )
-RETURNS TABLE(
+RETURNS TABLE (
   user_id BIGINT,
   username TEXT,
   full_name TEXT,
@@ -238,23 +241,36 @@ RETURNS TABLE(
 )
 LANGUAGE plpgsql
 SECURITY DEFINER
-AS $$
+SET search_path = public, extensions, pg_temp
+AS $func$
 DECLARE
+  v_username TEXT;
   user_record RECORD;
   password_valid BOOLEAN := FALSE;
   auth_mode TEXT := 'unknown';
 BEGIN
-  -- Find user by username
-  SELECT id, nv.username, nv.full_name, nv.role, nv.khoa_phong, nv.password, nv.hashed_password
+  v_username := lower(trim(p_username));
+
+  SELECT
+    nv.id,
+    nv.username,
+    nv.full_name,
+    nv.role,
+    nv.khoa_phong,
+    nv.password,
+    nv.hashed_password,
+    nv.current_don_vi,
+    COALESCE(dv.active, TRUE) AS tenant_active
   INTO user_record
   FROM nhan_vien nv
-  WHERE nv.username = p_username;
+  LEFT JOIN don_vi dv ON dv.id = nv.current_don_vi
+  WHERE lower(nv.username) = v_username
+  LIMIT 1;
 
-  -- Check if user exists
   IF user_record.id IS NULL THEN
     RETURN QUERY SELECT
       NULL::BIGINT,
-      p_username::TEXT,
+      v_username,
       NULL::TEXT,
       NULL::TEXT,
       NULL::TEXT,
@@ -263,60 +279,64 @@ BEGIN
     RETURN;
   END IF;
 
-  -- 🚨 SECURITY: Block suspicious password attempts
-  IF p_password = 'hashed password' OR
-     p_password ILIKE '%hash%' OR
-     p_password ILIKE '%crypt%' OR
-     LENGTH(p_password) > 200 THEN
+  IF p_password = 'hashed password'
+     OR p_password ILIKE '%hash%'
+     OR p_password ILIKE '%crypt%'
+     OR LENGTH(p_password) > 200 THEN
     RETURN QUERY SELECT
       user_record.id,
-      user_record.username::TEXT,
-      user_record.full_name::TEXT,
-      user_record.role::TEXT,
-      user_record.khoa_phong::TEXT,
+      user_record.username,
+      user_record.full_name,
+      user_record.role,
+      user_record.khoa_phong,
       FALSE,
       'blocked_suspicious'::TEXT;
     RETURN;
   END IF;
 
-  -- Try hashed password authentication first (preferred method)
-  IF user_record.hashed_password IS NOT NULL AND user_record.hashed_password != '' THEN
-    password_valid := (user_record.hashed_password = crypt(p_password, user_record.hashed_password));
+  IF user_record.hashed_password IS NOT NULL AND user_record.hashed_password <> '' THEN
+    password_valid := (extensions.crypt(p_password, user_record.hashed_password) = user_record.hashed_password);
     IF password_valid THEN
       auth_mode := 'hashed';
     END IF;
   END IF;
 
-  -- Fallback to plain text password (legacy compatibility)
-  IF NOT password_valid AND user_record.password IS NOT NULL AND user_record.password != 'hashed password' THEN
+  IF NOT password_valid
+     AND user_record.password IS NOT NULL
+     AND user_record.password <> 'hashed password' THEN
     password_valid := (user_record.password = p_password);
     IF password_valid THEN
       auth_mode := 'plain';
     END IF;
   END IF;
 
-  -- Return authentication result
+  IF password_valid THEN
+    IF LOWER(COALESCE(user_record.role, '')) NOT IN ('global', 'admin') THEN
+      IF user_record.current_don_vi IS NOT NULL
+         AND user_record.tenant_active IS DISTINCT FROM TRUE THEN
+        RETURN QUERY SELECT
+          user_record.id,
+          user_record.username,
+          user_record.full_name,
+          user_record.role,
+          user_record.khoa_phong,
+          FALSE,
+          'tenant_inactive'::TEXT;
+        RETURN;
+      END IF;
+    END IF;
+  END IF;
+
   RETURN QUERY SELECT
     user_record.id,
-    user_record.username::TEXT,
-    user_record.full_name::TEXT,
-    user_record.role::TEXT,
-    user_record.khoa_phong::TEXT,
+    user_record.username,
+    user_record.full_name,
+    user_record.role,
+    user_record.khoa_phong,
     password_valid,
-    auth_mode::TEXT;
+    auth_mode;
 END;
-$$;
+$func$;
 
--- Grant permissions for the new functions
-GRANT EXECUTE ON FUNCTION validate_username(TEXT) TO authenticated;
-GRANT EXECUTE ON FUNCTION create_user(TEXT, TEXT, TEXT, TEXT, TEXT) TO authenticated;
-GRANT EXECUTE ON FUNCTION update_user_info(INTEGER, INTEGER, TEXT, TEXT, TEXT, TEXT, TEXT) TO authenticated;
-GRANT EXECUTE ON FUNCTION change_password(INTEGER, TEXT, TEXT) TO authenticated;
-GRANT EXECUTE ON FUNCTION authenticate_user_dual_mode(TEXT, TEXT) TO anon;
+GRANT EXECUTE ON FUNCTION public.authenticate_user_dual_mode(TEXT, TEXT) TO anon;
 
--- Add comments
-COMMENT ON FUNCTION validate_username(TEXT) IS 'Simple username validation (no spaces, not empty)';
-COMMENT ON FUNCTION create_user(TEXT, TEXT, TEXT, TEXT, TEXT) IS 'Create new user with bcrypt hashed password';
-COMMENT ON FUNCTION update_user_info(INTEGER, INTEGER, TEXT, TEXT, TEXT, TEXT, TEXT) IS 'Securely update user information with password hashing (admin only)';
-COMMENT ON FUNCTION change_password(INTEGER, TEXT, TEXT) IS 'Change user password with verification and hashing';
-COMMENT ON FUNCTION authenticate_user_dual_mode(TEXT, TEXT) IS 'Dual mode authentication supporting both hashed and legacy passwords with security checks';
