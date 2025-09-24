@@ -15,7 +15,8 @@ AS $$
   SELECT COALESCE(current_setting('request.jwt.claims', true)::jsonb ->> claim, NULL);
 $$;
 
--- Enhanced equipment_count with explicit tenant & department parameters
+-- Drop legacy 3-arg overload so deployments remain idempotent when adding p_khoa_phong
+DROP FUNCTION IF EXISTS public.equipment_count_enhanced(TEXT[], TEXT, BIGINT);
 CREATE OR REPLACE FUNCTION public.equipment_count_enhanced(
   p_statuses TEXT[] DEFAULT NULL,
   p_q TEXT DEFAULT NULL,

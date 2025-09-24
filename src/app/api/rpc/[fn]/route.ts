@@ -68,6 +68,7 @@ const ALLOWED_FUNCTIONS = new Set<string>([
   'don_vi_create',
   'don_vi_update',
   'don_vi_set_active',
+  'don_vi_user_hierarchy',
   // Usage Analytics (Reports)
   'usage_analytics_overview',
   'usage_analytics_daily',
@@ -154,3 +155,4 @@ export async function POST(req: NextRequest, context: { params: Promise<{ fn: st
     return NextResponse.json({ error: err?.message || 'Unexpected error' }, { status: 500 })
   }
 }
+
