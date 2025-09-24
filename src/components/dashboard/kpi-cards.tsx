@@ -1,106 +1,146 @@
-"use client"
+﻿"use client"
 
-import Link from "next/link"
 import { Package, HardHat, Wrench, Calendar } from "lucide-react"
-import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 import {
   useTotalEquipment,
   useMaintenanceCount,
   useRepairRequestStats,
-  useMaintenancePlanStats
+  useMaintenancePlanStats,
 } from "@/hooks/use-dashboard-stats"
 
-// Total Equipment Card
+const metricSkeletonClass = "h-9 md:h-8 w-16 md:w-16"
+const descriptionSkeletonClass = "h-4 w-28 md:w-32"
+const plansSkeletonClass = "h-4 w-24 md:w-24"
+
+const cardClass =
+  "mobile-kpi-card rounded-2xl shadow-sm shadow-black/5 ring-1 ring-black/5 bg-white mb-4 md:rounded-xl md:shadow-none md:ring-0 md:bg-card md:mb-0"
+const headerClass =
+  "flex flex-row items-center justify-between space-y-0 p-4 pb-2 md:p-6 md:pb-2 gap-3 md:gap-2"
+const titleClass = "text-sm font-semibold truncate md:text-sm md:font-medium"
+const iconClass = "h-5 w-5 text-primary/80 md:h-4 md:w-4 md:text-muted-foreground flex-shrink-0"
+const contentClass = "p-4 pt-0 space-y-2 md:p-6 md:pt-0"
+const metricClass =
+  "text-3xl font-bold leading-tight tracking-tight md:text-2xl md:leading-snug md:tracking-normal"
+const descriptionClass =
+  "text-sm text-neutral-600 leading-snug md:text-xs md:text-muted-foreground md:leading-tight"
+
 export function TotalEquipmentCard() {
   const { data: totalDevices, isLoading, error } = useTotalEquipment()
 
   return (
-    <Card className="mobile-kpi-card">
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 p-3 md:p-6 md:pb-2">
-        <CardTitle className="text-xs md:text-sm font-medium truncate">
-          Tổng số thiết bị
-        </CardTitle>
-        <Package className="h-3 w-3 md:h-4 md:w-4 text-muted-foreground flex-shrink-0" />
+    <Card className={cardClass}>
+      <CardHeader className={headerClass}>
+        <CardTitle className={titleClass}>Tổng số thiết bị</CardTitle>
+        <Package className={iconClass} aria-hidden="true" />
       </CardHeader>
-      <CardContent className="p-3 pt-0 md:p-6 md:pt-0">
+      <CardContent className={contentClass}>
         {isLoading ? (
-          <Skeleton className="h-6 md:h-8 w-12 md:w-16" />
+          <Skeleton className={metricSkeletonClass} />
         ) : error ? (
-          <div className="text-lg md:text-2xl font-bold text-destructive">--</div>
+          <div className={`${metricClass} text-destructive`}>--</div>
         ) : (
-          <div className="text-lg md:text-2xl font-bold">{totalDevices}</div>
+          <div className={metricClass} aria-label={`${totalDevices ?? 0} thiết bị`}>
+            {totalDevices ?? 0}
+          </div>
         )}
-        <p className="text-xs text-muted-foreground mt-1 leading-tight">
-          Thiết bị đang được quản lý
-        </p>
+        <p className={descriptionClass}>Thiết bị đang được quản lý</p>
       </CardContent>
     </Card>
   )
 }
 
-// Maintenance Count Card
 export function MaintenanceCountCard() {
   const { data: maintenanceCount, isLoading, error } = useMaintenanceCount()
 
   return (
-    <Card className="mobile-kpi-card">
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 p-3 md:p-6 md:pb-2">
-        <CardTitle className="text-xs md:text-sm font-medium truncate">
-          Cần bảo trì/hiệu chuẩn
-        </CardTitle>
-        <HardHat className="h-3 w-3 md:h-4 md:w-4 text-muted-foreground flex-shrink-0" />
+    <Card className={cardClass}>
+      <CardHeader className={headerClass}>
+        <CardTitle className={titleClass}>Cần bảo trì/hiệu chuẩn</CardTitle>
+        <HardHat className={iconClass} aria-hidden="true" />
       </CardHeader>
-      <CardContent className="p-3 pt-0 md:p-6 md:pt-0">
+      <CardContent className={contentClass}>
         {isLoading ? (
-          <Skeleton className="h-6 md:h-8 w-12 md:w-16" />
+          <Skeleton className={metricSkeletonClass} />
         ) : error ? (
-          <div className="text-lg md:text-2xl font-bold text-destructive">--</div>
+          <div className={`${metricClass} text-destructive`}>--</div>
         ) : (
-          <div className="text-lg md:text-2xl font-bold">{maintenanceCount}</div>
+          <div className={metricClass} aria-label={`${maintenanceCount ?? 0} thiết bị cần bảo trì`}>
+            {maintenanceCount ?? 0}
+          </div>
         )}
-        <p className="text-xs text-muted-foreground mt-1 leading-tight">
-          Thiết bị có lịch bảo trì hoặc hiệu chuẩn
-        </p>
+        <p className={descriptionClass}>Thiết bị có lịch bảo trì hoặc hiệu chuẩn</p>
       </CardContent>
     </Card>
   )
 }
 
-// Repair Requests Card
 export function RepairRequestsCard() {
   const { data: repairStats, isLoading, error } = useRepairRequestStats()
 
+  const pending = repairStats?.pending ?? 0
+  const approved = repairStats?.approved ?? 0
+  const completed = repairStats?.completed ?? 0
+  const total = repairStats?.total ?? 0
+
   return (
-    <Card className="mobile-kpi-card">
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 p-3 md:p-6 md:pb-2">
-        <CardTitle className="text-xs md:text-sm font-medium truncate">Yêu cầu sửa chữa</CardTitle>
-        <Wrench className="h-3 w-3 md:h-4 md:w-4 text-muted-foreground flex-shrink-0" />
+    <Card className={cardClass}>
+      <CardHeader className={headerClass}>
+        <CardTitle className={titleClass}>Yêu cầu sửa chữa</CardTitle>
+        <Wrench className={iconClass} aria-hidden="true" />
       </CardHeader>
-      <CardContent className="p-3 pt-0 md:p-6 md:pt-0">
+      <CardContent className={contentClass}>
         {isLoading ? (
-          <Skeleton className="h-6 md:h-8 w-12 md:w-16" />
+          <Skeleton className={metricSkeletonClass} />
         ) : error ? (
-          <div className="text-lg md:text-2xl font-bold text-destructive">--</div>
+          <div className={`${metricClass} text-destructive`}>--</div>
         ) : (
-          <div className="text-lg md:text-2xl font-bold">{repairStats?.total || 0}</div>
+          <div className={metricClass} aria-label={`${total} yêu cầu sửa chữa`}>
+            {total}
+          </div>
         )}
         {isLoading ? (
-          <Skeleton className="h-3 w-24 md:w-32" />
+          <Skeleton className={descriptionSkeletonClass} />
         ) : (
-          <p className="text-xs text-muted-foreground mt-1 leading-tight">
+          <p className={descriptionClass}>
             {error ? (
               "Lỗi tải dữ liệu"
             ) : (
-              <span className="hidden md:inline">
-                {`${repairStats?.pending || 0} chờ xử lý • ${repairStats?.approved || 0} đã duyệt • ${repairStats?.completed || 0} hoàn thành`}
-              </span>
-            )}
-            {!error && (
-              <span className="md:hidden">
-                {`${repairStats?.pending || 0} chờ • ${repairStats?.approved || 0} duyệt • ${repairStats?.completed || 0} xong`}
-              </span>
+              <>
+                <span className="hidden md:inline-flex flex-wrap items-center gap-x-3 gap-y-1 text-neutral-600">
+                  <span className="inline-flex items-center gap-1">
+                    <span className="font-semibold text-red-600">{pending}</span>
+                    <span>chờ xử lý</span>
+                  </span>
+                  <span className="text-neutral-400">•</span>
+                  <span className="inline-flex items-center gap-1">
+                    <span className="font-semibold text-amber-600">{approved}</span>
+                    <span>đã duyệt</span>
+                  </span>
+                  <span className="text-neutral-400">•</span>
+                  <span className="inline-flex items-center gap-1">
+                    <span className="font-semibold text-green-600">{completed}</span>
+                    <span>hoàn thành</span>
+                  </span>
+                </span>
+                <span className="md:hidden inline-flex flex-wrap items-center gap-x-3 gap-y-1 text-neutral-600">
+                  <span className="inline-flex items-center gap-1">
+                    <span className="font-semibold text-red-600">{pending}</span>
+                    <span>chờ</span>
+                  </span>
+                  <span className="text-neutral-400">•</span>
+                  <span className="inline-flex items-center gap-1">
+                    <span className="font-semibold text-amber-600">{approved}</span>
+                    <span>duyệt</span>
+                  </span>
+                  <span className="text-neutral-400">•</span>
+                  <span className="inline-flex items-center gap-1">
+                    <span className="font-semibold text-green-600">{completed}</span>
+                    <span>xong</span>
+                  </span>
+                </span>
+              </>
             )}
           </p>
         )}
@@ -109,33 +149,33 @@ export function RepairRequestsCard() {
   )
 }
 
-// Maintenance Plans Card
 export function MaintenancePlansCard() {
   const { data: planStats, isLoading, error } = useMaintenancePlanStats()
+  const total = planStats?.total ?? 0
+  const draft = planStats?.draft ?? 0
+  const approved = planStats?.approved ?? 0
 
   return (
-    <Card className="mobile-kpi-card">
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 p-3 md:p-6 md:pb-2">
-        <CardTitle className="text-xs md:text-sm font-medium truncate">Kế hoạch BT/HC/KĐ</CardTitle>
-        <Calendar className="h-3 w-3 md:h-4 md:w-4 text-muted-foreground flex-shrink-0" />
+    <Card className={cardClass}>
+      <CardHeader className={headerClass}>
+        <CardTitle className={titleClass}>Kế hoạch BT/HC/KĐ</CardTitle>
+        <Calendar className={iconClass} aria-hidden="true" />
       </CardHeader>
-      <CardContent className="p-3 pt-0 md:p-6 md:pt-0">
+      <CardContent className={contentClass}>
         {isLoading ? (
-          <Skeleton className="h-6 md:h-8 w-12 md:w-16" />
+          <Skeleton className={metricSkeletonClass} />
         ) : error ? (
-          <div className="text-lg md:text-2xl font-bold text-destructive">--</div>
+          <div className={`${metricClass} text-destructive`}>--</div>
         ) : (
-          <div className="text-lg md:text-2xl font-bold">{planStats?.total || 0}</div>
+          <div className={metricClass} aria-label={`${total} kế hoạch bảo trì, hiệu chuẩn, kiểm định`}>
+            {total}
+          </div>
         )}
         {isLoading ? (
-          <Skeleton className="h-3 w-20 md:w-24" />
+          <Skeleton className={plansSkeletonClass} />
         ) : (
-          <p className="text-xs text-muted-foreground mt-1 leading-tight">
-            {error ? (
-              "Lỗi tải dữ liệu"
-            ) : (
-              `${planStats?.draft || 0} nháp • ${planStats?.approved || 0} đã duyệt`
-            )}
+          <p className={descriptionClass}>
+            {error ? "Lỗi tải dữ liệu" : `${draft} nháp • ${approved} đã duyệt`}
           </p>
         )}
       </CardContent>
@@ -143,7 +183,6 @@ export function MaintenancePlansCard() {
   )
 }
 
-// Combined KPI Cards Component
 export function KPICards() {
   return (
     <div className="grid gap-3 grid-cols-2 md:grid-cols-2 md:gap-8 lg:grid-cols-4">
