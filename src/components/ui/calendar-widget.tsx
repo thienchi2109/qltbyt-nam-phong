@@ -54,13 +54,13 @@ const getEventTypeIcon = (type: TaskType) => {
 function CalendarSkeleton({ className }: { className?: string }) {
   return (
     <Card className={className}>
-      <CardHeader className="pb-4">
+      <CardHeader className="pb-4 md:p-8 md:pb-6">
         <CardTitle className="flex items-center gap-2 text-responsive-lg md:text-2xl font-semibold leading-none tracking-tight">
           <CalendarIcon className="h-4 w-4 md:h-5 md:w-5" />
           <span className="line-clamp-2 md:line-clamp-1">Lịch Bảo trì/Hiệu chuẩn/Kiểm định</span>
         </CardTitle>
       </CardHeader>
-      <CardContent>
+      <CardContent className="md:p-8 md:pt-0">
         <div className="space-y-2">
           {[...Array(6)].map((_, i) => (
             <div key={i} className="grid grid-cols-7 gap-1">
@@ -148,7 +148,7 @@ function CalendarWidgetImpl({
 
   return (
     <Card className={className}>
-      <CardHeader className="pb-4">
+      <CardHeader className="pb-4 md:p-8 md:pb-6">
         <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <CardTitle className="flex items-center gap-2 text-responsive-lg md:text-2xl font-semibold leading-none tracking-tight">
             <CalendarIcon className="h-4 w-4 md:h-5 md:w-5" />
@@ -199,7 +199,7 @@ function CalendarWidgetImpl({
         </div>
       </CardHeader>
 
-      <CardContent>
+      <CardContent className="md:p-8 md:pt-0">
         {/* Calendar Header */}
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">

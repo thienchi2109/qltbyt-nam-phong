@@ -27,9 +27,10 @@ export default function Dashboard() {
       <KPICards />
 
       {/* Quick Actions Section */}
-      <div className="grid gap-4 md:gap-8">
+      <div className="md:mt-6 md:space-y-5">
+        <div className="grid gap-4 md:gap-8">
         <Card>
-          <CardHeader className="p-4 md:p-6">
+          <CardHeader className="p-4 md:p-8">
             <CardTitle className="text-base font-semibold leading-tight md:text-lg md:font-bold">
               Thao tác nhanh
             </CardTitle>
@@ -37,8 +38,8 @@ export default function Dashboard() {
               Truy cập nhanh các chức năng chính của hệ thống.
             </CardDescription>
           </CardHeader>
-          <CardContent className="p-4 pt-0 md:p-6 md:pt-0">
-            <div className="grid grid-cols-3 gap-3 md:grid-cols-3 md:gap-4 lg:gap-6">
+          <CardContent className="p-4 pt-0 md:p-8 md:pt-0">
+            <div className="grid grid-cols-3 gap-3 md:grid-cols-3 md:gap-6">
               <Button
                 asChild
                 size="lg"
@@ -83,15 +84,16 @@ export default function Dashboard() {
             </div>
           </CardContent>
         </Card>
+        </div>
       </div>
 
       {/* Calendar Widget */}
-      <div className="grid gap-4 md:gap-8">
+      <div className="grid gap-4 md:gap-8 md:mt-8">
         <CalendarWidget />
       </div>
 
       {/* Monthly Summary and Main Content */}
-      <div className="grid gap-4 md:gap-8 lg:grid-cols-3">
+      <div className="grid gap-4 md:gap-8 md:mt-8 lg:grid-cols-3">
         <div className="lg:col-span-2 space-y-4">
           <div className="grid gap-4 md:gap-8 lg:grid-cols-2">
             <EquipmentAttentionTable />

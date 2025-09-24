@@ -38,7 +38,7 @@ export function MaintenancePlansTable() {
 
   return (
     <Card>
-      <CardHeader className="flex flex-row items-center">
+      <CardHeader className="flex flex-row items-center md:p-8">
         <div className="grid gap-2">
           <CardTitle className="text-responsive-lg md:text-2xl font-semibold leading-none tracking-tight">
             Kế hoạch BT/HC/KĐ gần đây
@@ -54,7 +54,7 @@ export function MaintenancePlansTable() {
           </Link>
         </Button>
       </CardHeader>
-      <CardContent>
+      <CardContent className="md:p-8 md:pt-0">
         {error ? (
           <div className="text-center py-8 text-muted-foreground">
             <p>Lỗi tải dữ liệu kế hoạch</p>
