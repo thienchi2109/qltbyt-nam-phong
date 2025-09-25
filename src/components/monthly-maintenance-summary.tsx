@@ -65,13 +65,13 @@ export function MonthlyMaintenanceSummary({ className }: MonthlyMaintenanceSumma
   if (error) {
     return (
       <Card className={className}>
-        <CardHeader>
+        <CardHeader className="md:p-8">
           <CardTitle className="flex items-center gap-2 text-red-600">
             <AlertTriangle className="h-5 w-5" />
             Lỗi tải dữ liệu
           </CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="md:p-8 md:pt-0">
           <p className="text-sm text-muted-foreground">
             Không thể tải thông tin lịch bảo trì.
           </p>
@@ -82,7 +82,7 @@ export function MonthlyMaintenanceSummary({ className }: MonthlyMaintenanceSumma
 
   return (
     <Card className={className}>
-      <CardHeader>
+      <CardHeader className="md:p-8">
         <div className="flex items-center justify-between">
           <CardTitle className="flex items-center gap-2 text-responsive-lg md:text-2xl font-semibold leading-none tracking-tight">
             <Calendar className="h-4 w-4 md:h-5 md:w-5" />
@@ -96,7 +96,7 @@ export function MonthlyMaintenanceSummary({ className }: MonthlyMaintenanceSumma
         </div>
       </CardHeader>
       
-      <CardContent>
+      <CardContent className="md:p-8 md:pt-0">
         {isLoading ? (
           <div className="space-y-3">
             {[...Array(3)].map((_, i) => (
