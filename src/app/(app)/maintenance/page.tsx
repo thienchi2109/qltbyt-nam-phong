@@ -85,6 +85,7 @@ export default function MaintenancePage() {
   const user = session?.user as any // Cast NextAuth user to our User type
   const router = useRouter()
   const searchParams = useSearchParams()
+  const searchParamsString = searchParams.toString()
   const isMobile = useIsMobile()
   const queryClient = useQueryClient()
 
@@ -248,15 +249,17 @@ export default function MaintenancePage() {
 
   // Handle URL parameters for navigation from Dashboard
   React.useEffect(() => {
-    const planIdParam = searchParams.get('planId')
-    const tabParam = searchParams.get('tab')
-    const actionParam = searchParams.get('action')
+    const params = new URLSearchParams(searchParamsString)
+    const planIdParam = params.get('planId')
+    const tabParam = params.get('tab')
+    const actionParam = params.get('action')
 
     // Handle quick action to create new plan
     if (actionParam === 'create') {
-      setIsAddPlanDialogOpen(true)
-      // Clear URL params after opening dialog
-      window.history.replaceState({}, '', '/maintenance')
+      if (!isAddPlanDialogOpen) {
+        setIsAddPlanDialogOpen(true)
+      }
+      router.replace('/maintenance', { scroll: false })
       return
     }
 
@@ -270,10 +273,10 @@ export default function MaintenancePage() {
           setActiveTab('tasks')
         }
         // Clear URL params after processing
-        window.history.replaceState({}, '', '/maintenance')
+        router.replace('/maintenance', { scroll: false })
       }
     }
-  }, [searchParams, plans])
+  }, [searchParamsString, plans, router, isAddPlanDialogOpen])
 
   const handleStartEdit = React.useCallback((task: MaintenanceTask) => {
     setEditingTaskId(task.id);
