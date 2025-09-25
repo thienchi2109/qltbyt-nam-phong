@@ -218,17 +218,41 @@ export function ActivityLogsViewer({ className }: ActivityLogsViewerProps) {
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
             {/* Search Input */}
             <div className="relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
               <Input
                 placeholder="Tìm kiếm người dùng, hoạt động..."
                 value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                onChange={(e) => {
+                  const v = e.target.value
+                  setSearchTerm(v)
+                  updateFilters({ text_search: v || null })
+                }}
                 className="pl-10"
               />
             </div>
+
+            {/* Entity Type Filter */}
+            <Select
+              value={filters.entity_type || 'all'}
+              onValueChange={(value) => updateFilters({ 
+                entity_type: (value === 'all' ? null : (value as any)) 
+              })}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Đối tượng" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Tất cả đối tượng</SelectItem>
+                <SelectItem value="device">Thiết bị</SelectItem>
+                <SelectItem value="repair_request">Yêu cầu sửa chữa</SelectItem>
+                <SelectItem value="transfer_request">Yêu cầu luân chuyển</SelectItem>
+                <SelectItem value="maintenance_plan">Kế hoạch bảo trì</SelectItem>
+                <SelectItem value="user">Người dùng</SelectItem>
+              </SelectContent>
+            </Select>
 
             {/* Action Type Filter */}
             <Select
@@ -407,6 +431,14 @@ function ActivityLogEntry({ log }: ActivityLogEntryProps) {
               <p className="text-sm text-gray-600 mb-1">
                 <span className="text-gray-500">Đối tượng:</span>{' '}
                 {log.target_full_name || log.target_username}
+              </p>
+            )}
+
+            {/* Entity Label */}
+            {log.entity_label && (
+              <p className="text-sm text-gray-600 mb-1">
+                <span className="text-gray-500">Đối tượng:</span>{' '}
+                {log.entity_label}
               </p>
             )}
 
