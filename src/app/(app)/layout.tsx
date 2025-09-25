@@ -22,6 +22,7 @@ import {
   KeyRound,
   ArrowLeftRight,
   BarChart3,
+  Activity,
 } from "lucide-react"
 
 import {
@@ -128,6 +129,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     // Add admin/global-only pages
     if (user?.role === 'global' || user?.role === 'admin') {
       baseItems.push({ href: "/users", icon: Users, label: "Người dùng" })
+      baseItems.push({ href: "/activity-logs", icon: Activity, label: "Nhật ký hoạt động" })
     }
 
     return baseItems

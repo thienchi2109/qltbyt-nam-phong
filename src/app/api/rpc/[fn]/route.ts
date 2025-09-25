@@ -74,6 +74,10 @@ const ALLOWED_FUNCTIONS = new Set<string>([
   'usage_analytics_daily',
   // Reports: status distribution
   'equipment_status_distribution',
+  // Audit logs (global users only)
+  'audit_logs_list',
+  'audit_logs_stats', 
+  'audit_logs_recent_summary',
   // Debug
   'debug_claims',
   'don_vi_branding_get',
