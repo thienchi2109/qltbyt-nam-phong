@@ -76,6 +76,7 @@ const ALLOWED_FUNCTIONS = new Set<string>([
   'equipment_status_distribution',
   // Audit logs (global users only)
   'audit_logs_list',
+  'audit_logs_list_v2',
   'audit_logs_stats', 
   'audit_logs_recent_summary',
   // Debug

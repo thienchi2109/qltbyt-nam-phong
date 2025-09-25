@@ -15,6 +15,10 @@ export interface AuditLogEntry {
   ip_address: string | null
   user_agent: string | null
   created_at: string
+  // New entity fields
+  entity_type?: 'device' | 'repair_request' | 'transfer_request' | 'maintenance_plan' | 'user' | null
+  entity_id?: number | null
+  entity_label?: string | null
   total_count: number
 }
 
@@ -37,7 +41,10 @@ export interface AuditLogFilters {
   limit?: number
   offset?: number
   user_id?: number | null
-  target_user_id?: number | null
+  // entity filters (v2)
+  entity_type?: 'device' | 'repair_request' | 'transfer_request' | 'maintenance_plan' | 'user' | null
+  entity_id?: number | null
+  text_search?: string | null
   action_type?: string | null
   date_from?: string | null
   date_to?: string | null
@@ -76,15 +83,16 @@ export function useAuditLogs(
   return useQuery<AuditLogEntry[], Error>({
     queryKey: ['audit-logs', filters],
     queryFn: async () => {
-      const result = await callAuditLogsRPC<any>('audit_logs_list', {
+      const result = await callAuditLogsRPC<any>('audit_logs_list_v2', {
         p_limit: filters.limit || 50,
         p_offset: filters.offset || 0,
         p_user_id: filters.user_id,
-        p_target_user_id: filters.target_user_id,
+        p_entity_type: filters.entity_type || null,
+        p_entity_id: filters.entity_id || null,
         p_action_type: filters.action_type,
+        p_text_search: filters.text_search || null,
         p_date_from: filters.date_from,
         p_date_to: filters.date_to,
-        p_don_vi: filters.don_vi,
       })
       
       // Handle different response formats
