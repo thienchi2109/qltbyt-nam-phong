@@ -57,8 +57,10 @@ export function AddMaintenancePlanDialog({ open, onOpenChange, onSuccess }: AddM
       ten_ke_hoach: "",
       nam: new Date().getFullYear(),
       khoa_phong: "",
+      loai_cong_viec: "Bảo trì", // Default to first option to prevent mobile crashes
     },
   })
+
 
   async function onSubmit(values: PlanFormValues) {
     if (!user) {
@@ -88,7 +90,12 @@ export function AddMaintenancePlanDialog({ open, onOpenChange, onSuccess }: AddM
       })
       onSuccess()
       onOpenChange(false)
-      form.reset({ ten_ke_hoach: "", nam: new Date().getFullYear(), khoa_phong: "" })
+      form.reset({
+        ten_ke_hoach: "",
+        nam: new Date().getFullYear(),
+        khoa_phong: "",
+        loai_cong_viec: "Bảo trì",
+      })
     } catch (error: any) {
       toast({
         variant: "destructive",
@@ -143,7 +150,7 @@ export function AddMaintenancePlanDialog({ open, onOpenChange, onSuccess }: AddM
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Loại công việc</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                  <Select onValueChange={field.onChange} value={field.value}>
                     <FormControl>
                       <SelectTrigger>
                         <SelectValue placeholder="Chọn loại công việc" />

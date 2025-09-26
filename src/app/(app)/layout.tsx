@@ -22,6 +22,7 @@ import {
   KeyRound,
   ArrowLeftRight,
   BarChart3,
+  Activity,
 } from "lucide-react"
 
 import {
@@ -70,15 +71,13 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     // Fetch repair requests with simple query - use ngay_yeu_cau for ordering
     const fetchRepairRequests = async () => {
       try {
-        console.log('Fetching repair requests...');
+        // Fetching repair requests
         const { data, error } = await supabase!
           .from('yeu_cau_sua_chua')
           .select('*')
           .order('ngay_yeu_cau', { ascending: false });
         
-        console.log('Repair requests result:', { data, error });
         if (!error && data) {
-          console.log('Setting repair requests:', data);
           setRepairRequests(data);
         } else if (error) {
           console.error('Repair requests error:', error);
@@ -91,15 +90,13 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     // Fetch transfer requests with simple query - use created_at for ordering
     const fetchTransferRequests = async () => {
       try {
-        console.log('Fetching transfer requests...');
+        // Fetching transfer requests
         const { data, error } = await supabase!
           .from('yeu_cau_luan_chuyen')
           .select('*')
           .order('created_at', { ascending: false });
         
-        console.log('Transfer requests result:', { data, error });
         if (!error && data) {
-          console.log('Setting transfer requests:', data);
           setTransferRequests(data);
         } else if (error) {
           console.error('Transfer requests error:', error);
@@ -128,6 +125,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     // Add admin/global-only pages
     if (user?.role === 'global' || user?.role === 'admin') {
       baseItems.push({ href: "/users", icon: Users, label: "Người dùng" })
+      baseItems.push({ href: "/activity-logs", icon: Activity, label: "Nhật ký hoạt động" })
     }
 
     return baseItems
