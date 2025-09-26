@@ -60,19 +60,6 @@ export function AddMaintenancePlanDialog({ open, onOpenChange, onSuccess }: AddM
     },
   })
 
-  // Mobile-safe dialog close handler
-  const handleDialogClose = React.useCallback(() => {
-    if (isSubmitting) return
-    
-    // Reset form state to prevent stale values on mobile
-    form.reset({
-      ten_ke_hoach: "",
-      nam: new Date().getFullYear(),
-      khoa_phong: "",
-    })
-    
-    onOpenChange(false)
-  }, [form, onOpenChange, isSubmitting])
 
   async function onSubmit(values: PlanFormValues) {
     if (!user) {
@@ -101,7 +88,8 @@ export function AddMaintenancePlanDialog({ open, onOpenChange, onSuccess }: AddM
         description: "Đã tạo kế hoạch mới.",
       })
       onSuccess()
-      handleDialogClose()
+      onOpenChange(false)
+      form.reset()
     } catch (error: any) {
       toast({
         variant: "destructive",
@@ -114,13 +102,7 @@ export function AddMaintenancePlanDialog({ open, onOpenChange, onSuccess }: AddM
   }
 
   return (
-    <Dialog open={open} onOpenChange={(isOpen) => {
-      if (isOpen) {
-        onOpenChange(true)
-      } else {
-        handleDialogClose()
-      }
-    }}>
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle>Tạo kế hoạch mới</DialogTitle>
@@ -162,7 +144,7 @@ export function AddMaintenancePlanDialog({ open, onOpenChange, onSuccess }: AddM
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Loại công việc</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value || ""}>
+                  <Select onValueChange={field.onChange} value={field.value}>
                     <FormControl>
                       <SelectTrigger>
                         <SelectValue placeholder="Chọn loại công việc" />
@@ -192,7 +174,7 @@ export function AddMaintenancePlanDialog({ open, onOpenChange, onSuccess }: AddM
               )}
             />
             <DialogFooter>
-              <Button type="button" variant="outline" onClick={handleDialogClose} disabled={isSubmitting}>
+              <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={isSubmitting}>
                 Hủy
               </Button>
               <Button type="submit" disabled={isSubmitting}>
