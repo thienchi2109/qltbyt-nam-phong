@@ -119,16 +119,6 @@ export default function MaintenancePage() {
   // const updateMaintenancePlan = useUpdateMaintenancePlan()
   // const deleteMaintenancePlan = useDeleteMaintenancePlan()
   const [isAddPlanDialogOpen, setIsAddPlanDialogOpen] = React.useState(false)
-  const isAddPlanDialogOpenRef = React.useRef(false)
-  
-  // Safe dialog close handler to prevent mobile crashes
-  const handleAddPlanDialogOpenChange = React.useCallback((open: boolean) => {
-    // Prevent duplicate close calls that can cause mobile crashes
-    if (isAddPlanDialogOpenRef.current === open) return
-    
-    isAddPlanDialogOpenRef.current = open
-    setIsAddPlanDialogOpen(open)
-  }, [])
   
   const [planSorting, setPlanSorting] = React.useState<SortingState>([])
   const [editingPlan, setEditingPlan] = React.useState<MaintenancePlan | null>(null)
@@ -265,8 +255,7 @@ export default function MaintenancePage() {
 
     // Handle quick action to create new plan
     if (actionParam === 'create') {
-      // Use safe handler to prevent mobile crashes
-      handleAddPlanDialogOpenChange(true)
+      setIsAddPlanDialogOpen(true)
       // Clear URL params with small delay to prevent mobile viewport conflicts
       const timer = setTimeout(() => {
         try {
@@ -298,7 +287,7 @@ export default function MaintenancePage() {
         return () => clearTimeout(timer)
       }
     }
-  }, [searchParams, plans, handleAddPlanDialogOpenChange])
+  }, [searchParams, plans])
 
   const handleStartEdit = React.useCallback((task: MaintenanceTask) => {
     setEditingTaskId(task.id);
@@ -1652,7 +1641,7 @@ export default function MaintenancePage() {
     <>
       <AddMaintenancePlanDialog
         open={isAddPlanDialogOpen}
-        onOpenChange={handleAddPlanDialogOpenChange}
+        onOpenChange={setIsAddPlanDialogOpen}
         onSuccess={refetchPlans} // ✅ Use cached hook refetch
       />
       <EditMaintenancePlanDialog
@@ -1828,7 +1817,7 @@ export default function MaintenancePage() {
                   Quản lý các kế hoạch bảo trì, hiệu chuẩn, kiểm định. Nhấp vào một hàng để xem chi tiết.
                 </CardDescription>
               </div>
-              <Button size="sm" className="h-8 gap-1 ml-auto" onClick={() => handleAddPlanDialogOpenChange(true)}>
+              <Button size="sm" className="h-8 gap-1 ml-auto" onClick={() => setIsAddPlanDialogOpen(true)}>
                 <PlusCircle className="h-3.5 w-3.5" />
                 <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
                   Tạo kế hoạch mới
