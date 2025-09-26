@@ -32,6 +32,8 @@
     "src/ai/**",
     "src/lib/ai-utils.tsx",
     "src/lib/firebase.ts",
-    "src/lib/firebase-utils.tsx"
+    "src/lib/firebase-utils.tsx",
+    "mainenance_page_reference.tsx",
+    "page_reference.tsx"
   ]
 }
