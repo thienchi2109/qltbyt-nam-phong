@@ -50,6 +50,24 @@ export function AddMaintenancePlanDialog({ open, onOpenChange, onSuccess }: AddM
   const { data: session } = useSession()
   const user = session?.user as any // Cast NextAuth user to our User type
   const [isSubmitting, setIsSubmitting] = React.useState(false)
+  const closingRef = React.useRef(false)
+  
+  // Reset closing ref when dialog opens
+  React.useEffect(() => {
+    if (open) {
+      closingRef.current = false
+    }
+  }, [open])
+  
+  // Mobile-safe close handler to prevent double-close crashes
+  const handleClose = React.useCallback(() => {
+    if (closingRef.current || isSubmitting) return
+    closingRef.current = true
+    onOpenChange(false)
+    setTimeout(() => {
+      closingRef.current = false
+    }, 300) // Match dialog animation duration
+  }, [onOpenChange, isSubmitting])
 
   const form = useForm<PlanFormValues>({
     resolver: zodResolver(planFormSchema),
@@ -88,7 +106,15 @@ export function AddMaintenancePlanDialog({ open, onOpenChange, onSuccess }: AddM
       })
       onSuccess()
       onOpenChange(false)
-      form.reset({ ten_ke_hoach: "", nam: new Date().getFullYear(), khoa_phong: "" })
+      // Mobile-safe form reset with delay to prevent crashes
+      setTimeout(() => {
+        try {
+          form.reset({ ten_ke_hoach: "", nam: new Date().getFullYear(), khoa_phong: "" })
+        } catch (e) {
+          // Silently handle form reset errors on mobile
+          console.warn('Form reset error (mobile):', e)
+        }
+      }, 100)
     } catch (error: any) {
       toast({
         variant: "destructive",
@@ -101,7 +127,7 @@ export function AddMaintenancePlanDialog({ open, onOpenChange, onSuccess }: AddM
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={(open) => open ? onOpenChange(true) : handleClose()}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle>Tạo kế hoạch mới</DialogTitle>
@@ -173,7 +199,7 @@ export function AddMaintenancePlanDialog({ open, onOpenChange, onSuccess }: AddM
               )}
             />
             <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={isSubmitting}>
+              <Button type="button" variant="outline" onClick={handleClose} disabled={isSubmitting}>
                 Hủy
               </Button>
               <Button type="submit" disabled={isSubmitting}>

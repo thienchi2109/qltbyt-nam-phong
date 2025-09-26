@@ -119,6 +119,17 @@ export default function MaintenancePage() {
   // const updateMaintenancePlan = useUpdateMaintenancePlan()
   // const deleteMaintenancePlan = useDeleteMaintenancePlan()
   const [isAddPlanDialogOpen, setIsAddPlanDialogOpen] = React.useState(false)
+  const isAddPlanDialogOpenRef = React.useRef(false)
+  
+  // Safe dialog close handler to prevent mobile crashes
+  const handleAddPlanDialogOpenChange = React.useCallback((open: boolean) => {
+    // Prevent duplicate close calls that can cause mobile crashes
+    if (isAddPlanDialogOpenRef.current === open) return
+    
+    isAddPlanDialogOpenRef.current = open
+    setIsAddPlanDialogOpen(open)
+  }, [])
+  
   const [planSorting, setPlanSorting] = React.useState<SortingState>([])
   const [editingPlan, setEditingPlan] = React.useState<MaintenancePlan | null>(null)
   const [planToDelete, setPlanToDelete] = React.useState<MaintenancePlan | null>(null)
@@ -254,10 +265,18 @@ export default function MaintenancePage() {
 
     // Handle quick action to create new plan
     if (actionParam === 'create') {
-      setIsAddPlanDialogOpen(true)
-      // Clear URL params after opening dialog
-      window.history.replaceState({}, '', '/maintenance')
-      return
+      // Use safe handler to prevent mobile crashes
+      handleAddPlanDialogOpenChange(true)
+      // Clear URL params with small delay to prevent mobile viewport conflicts
+      const timer = setTimeout(() => {
+        try {
+          window.history.replaceState({}, '', '/maintenance')
+        } catch (e) {
+          // Silently handle any history API errors on mobile
+          console.warn('History API error (mobile viewport):', e)
+        }
+      }, 50)
+      return () => clearTimeout(timer)
     }
 
     if (planIdParam && plans.length > 0) {
@@ -269,11 +288,18 @@ export default function MaintenancePage() {
         if (tabParam === 'tasks') {
           setActiveTab('tasks')
         }
-        // Clear URL params after processing
-        window.history.replaceState({}, '', '/maintenance')
+        // Clear URL params with mobile-safe handling
+        const timer = setTimeout(() => {
+          try {
+            window.history.replaceState({}, '', '/maintenance')
+          } catch (e) {
+            console.warn('History API error (mobile viewport):', e)
+          }
+        }, 50)
+        return () => clearTimeout(timer)
       }
     }
-  }, [searchParams, plans])
+  }, [searchParams, plans, handleAddPlanDialogOpenChange])
 
   const handleStartEdit = React.useCallback((task: MaintenanceTask) => {
     setEditingTaskId(task.id);
@@ -1641,7 +1667,7 @@ export default function MaintenancePage() {
     <>
       <AddMaintenancePlanDialog
         open={isAddPlanDialogOpen}
-        onOpenChange={setIsAddPlanDialogOpen}
+        onOpenChange={handleAddPlanDialogOpenChange}
         onSuccess={refetchPlans} // ✅ Use cached hook refetch
       />
       <EditMaintenancePlanDialog
@@ -1817,7 +1843,7 @@ export default function MaintenancePage() {
                   Quản lý các kế hoạch bảo trì, hiệu chuẩn, kiểm định. Nhấp vào một hàng để xem chi tiết.
                 </CardDescription>
               </div>
-              <Button size="sm" className="h-8 gap-1 ml-auto" onClick={() => setIsAddPlanDialogOpen(true)}>
+              <Button size="sm" className="h-8 gap-1 ml-auto" onClick={() => handleAddPlanDialogOpenChange(true)}>
                 <PlusCircle className="h-3.5 w-3.5" />
                 <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
                   Tạo kế hoạch mới
