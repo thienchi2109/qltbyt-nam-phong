@@ -57,6 +57,7 @@ export function AddMaintenancePlanDialog({ open, onOpenChange, onSuccess }: AddM
       ten_ke_hoach: "",
       nam: new Date().getFullYear(),
       khoa_phong: "",
+      loai_cong_viec: "Bảo trì", // Default to first option to prevent mobile crashes
     },
   })
 
@@ -89,7 +90,12 @@ export function AddMaintenancePlanDialog({ open, onOpenChange, onSuccess }: AddM
       })
       onSuccess()
       onOpenChange(false)
-      form.reset()
+      form.reset({
+        ten_ke_hoach: "",
+        nam: new Date().getFullYear(),
+        khoa_phong: "",
+        loai_cong_viec: "Bảo trì",
+      })
     } catch (error: any) {
       toast({
         variant: "destructive",
