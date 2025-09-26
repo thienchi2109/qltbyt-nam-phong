@@ -273,7 +273,6 @@ export default function MaintenancePage() {
           window.history.replaceState({}, '', '/maintenance')
         } catch (e) {
           // Silently handle any history API errors on mobile
-          console.warn('History API error (mobile viewport):', e)
         }
       }, 50)
       return () => clearTimeout(timer)
@@ -293,7 +292,7 @@ export default function MaintenancePage() {
           try {
             window.history.replaceState({}, '', '/maintenance')
           } catch (e) {
-            console.warn('History API error (mobile viewport):', e)
+            // Silently handle any history API errors on mobile
           }
         }, 50)
         return () => clearTimeout(timer)
@@ -758,10 +757,7 @@ export default function MaintenancePage() {
   const canCompleteTask = user && ((user.role === 'global' || user.role === 'admin') || user.role === 'to_qltb');
 
   const handleMarkAsCompleted = React.useCallback(async (task: MaintenanceTask, month: number) => {
-    console.log('handleMarkAsCompleted called:', { taskId: task.id, month, canCompleteTask, user: user?.role });
-
     if (!selectedPlan || !user || !canCompleteTask) {
-      console.log('Permission denied:', { selectedPlan: !!selectedPlan, user: !!user, canCompleteTask });
       toast({
         variant: "destructive",
         title: "Không có quyền",
@@ -885,18 +881,7 @@ export default function MaintenancePage() {
           const completionFieldName = `thang_${month}_hoan_thanh` as keyof MaintenanceTask;
           const isCompletedFromDB = !!row.original[completionFieldName];
 
-          // Debug logging
-          if (month === 5 || month === 12) { // Only log for specific months to avoid spam
-            console.log(`Row ${row.index + 1}, Month ${month}:`, {
-              taskId: row.original.id,
-              isScheduled,
-              completionFieldName,
-              isCompletedFromDB,
-              rawValue: row.original[completionFieldName],
-              canCompleteTask,
-              rowData: row.original
-            });
-          }
+          // Debug logging removed in production
 
           const completionKey = `${row.original.id}-${month}`;
           const isUpdating = isCompletingTask === completionKey;
