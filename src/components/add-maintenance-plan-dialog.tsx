@@ -62,11 +62,34 @@ export function AddMaintenancePlanDialog({ open, onOpenChange, onSuccess }: AddM
   // Mobile-safe close handler to prevent double-close crashes
   const handleClose = React.useCallback(() => {
     if (closingRef.current || isSubmitting) return
-    closingRef.current = true
-    onOpenChange(false)
-    setTimeout(() => {
+    
+    try {
+      closingRef.current = true
+      
+      // Mobile-specific safety: Use requestAnimationFrame to prevent crashes
+      if (typeof window !== 'undefined' && window.matchMedia('(max-width: 767px)').matches) {
+        requestAnimationFrame(() => {
+          try {
+            onOpenChange(false)
+          } catch (error) {
+            console.warn('Mobile dialog close error:', error)
+            // Force close as fallback
+            setTimeout(() => onOpenChange(false), 50)
+          }
+        })
+      } else {
+        onOpenChange(false)
+      }
+      
+      setTimeout(() => {
+        closingRef.current = false
+      }, 500) // Longer timeout for mobile safety
+    } catch (error) {
+      console.warn('Dialog close error:', error)
       closingRef.current = false
-    }, 300) // Match dialog animation duration
+      // Emergency fallback
+      setTimeout(() => onOpenChange(false), 100)
+    }
   }, [onOpenChange, isSubmitting])
 
   const form = useForm<PlanFormValues>({
