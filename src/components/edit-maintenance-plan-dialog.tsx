@@ -146,7 +146,7 @@ export function EditMaintenancePlanDialog({ open, onOpenChange, onSuccess, plan 
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Loại công việc</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value}>
+                  <Select onValueChange={field.onChange} value={field.value || ""}>
                     <FormControl>
                       <SelectTrigger>
                         <SelectValue placeholder="Chọn loại công việc" />

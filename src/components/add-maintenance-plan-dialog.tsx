@@ -60,6 +60,20 @@ export function AddMaintenancePlanDialog({ open, onOpenChange, onSuccess }: AddM
     },
   })
 
+  // Mobile-safe dialog close handler
+  const handleDialogClose = React.useCallback(() => {
+    if (isSubmitting) return
+    
+    // Reset form state to prevent stale values on mobile
+    form.reset({
+      ten_ke_hoach: "",
+      nam: new Date().getFullYear(),
+      khoa_phong: "",
+    })
+    
+    onOpenChange(false)
+  }, [form, onOpenChange, isSubmitting])
+
   async function onSubmit(values: PlanFormValues) {
     if (!user) {
         toast({ variant: "destructive", title: "Lỗi", description: "Không tìm thấy thông tin người dùng." })
@@ -87,15 +101,7 @@ export function AddMaintenancePlanDialog({ open, onOpenChange, onSuccess }: AddM
         description: "Đã tạo kế hoạch mới.",
       })
       onSuccess()
-      onOpenChange(false)
-      // Mobile-safe form reset with delay to prevent crashes
-      setTimeout(() => {
-        try {
-          form.reset({ ten_ke_hoach: "", nam: new Date().getFullYear(), khoa_phong: "" })
-        } catch (e) {
-          // Silently handle form reset errors on mobile
-        }
-      }, 100)
+      handleDialogClose()
     } catch (error: any) {
       toast({
         variant: "destructive",
@@ -108,7 +114,13 @@ export function AddMaintenancePlanDialog({ open, onOpenChange, onSuccess }: AddM
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={(isOpen) => {
+      if (isOpen) {
+        onOpenChange(true)
+      } else {
+        handleDialogClose()
+      }
+    }}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle>Tạo kế hoạch mới</DialogTitle>
@@ -150,7 +162,7 @@ export function AddMaintenancePlanDialog({ open, onOpenChange, onSuccess }: AddM
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Loại công việc</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value}>
+                  <Select onValueChange={field.onChange} value={field.value || ""}>
                     <FormControl>
                       <SelectTrigger>
                         <SelectValue placeholder="Chọn loại công việc" />
@@ -180,7 +192,7 @@ export function AddMaintenancePlanDialog({ open, onOpenChange, onSuccess }: AddM
               )}
             />
             <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={isSubmitting}>
+              <Button type="button" variant="outline" onClick={handleDialogClose} disabled={isSubmitting}>
                 Hủy
               </Button>
               <Button type="submit" disabled={isSubmitting}>
