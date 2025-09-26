@@ -55,6 +55,7 @@ export function EditMaintenancePlanDialog({ open, onOpenChange, onSuccess, plan 
       ten_ke_hoach: "",
       nam: new Date().getFullYear(),
       khoa_phong: "",
+      loai_cong_viec: "Bảo trì",
     },
   })
 
