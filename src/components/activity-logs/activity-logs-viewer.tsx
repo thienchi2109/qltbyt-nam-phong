@@ -95,14 +95,22 @@ export function ActivityLogsViewer({ className }: ActivityLogsViewerProps) {
   const filteredLogs = useMemo(() => {
     if (!searchTerm) return auditLogs
     
-    const term = searchTerm.toLowerCase()
-    return auditLogs.filter(log => 
-      log.admin_username.toLowerCase().includes(term) ||
-      log.admin_full_name.toLowerCase().includes(term) ||
-      getActionTypeLabel(log.action_type).toLowerCase().includes(term) ||
-      (log.target_username && log.target_username.toLowerCase().includes(term)) ||
-      (log.target_full_name && log.target_full_name.toLowerCase().includes(term))
-    )
+    const term = searchTerm.trim().toLowerCase()
+    return auditLogs.filter((log) => {
+      const adminUsername = (log.admin_username ?? '').toLowerCase()
+      const adminFullName = (log.admin_full_name ?? '').toLowerCase()
+      const actionType = getActionTypeLabel(log.action_type).toLowerCase()
+      const targetUsername = (log.target_username ?? '').toLowerCase()
+      const targetFullName = (log.target_full_name ?? '').toLowerCase()
+      
+      return (
+        adminUsername.includes(term) ||
+        adminFullName.includes(term) ||
+        actionType.includes(term) ||
+        targetUsername.includes(term) ||
+        targetFullName.includes(term)
+      )
+    })
   }, [auditLogs, searchTerm])
 
   // Get summary data
