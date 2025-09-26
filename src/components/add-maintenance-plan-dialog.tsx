@@ -72,7 +72,6 @@ export function AddMaintenancePlanDialog({ open, onOpenChange, onSuccess }: AddM
           try {
             onOpenChange(false)
           } catch (error) {
-            console.warn('Mobile dialog close error:', error)
             // Force close as fallback
             setTimeout(() => onOpenChange(false), 50)
           }
@@ -85,7 +84,6 @@ export function AddMaintenancePlanDialog({ open, onOpenChange, onSuccess }: AddM
         closingRef.current = false
       }, 500) // Longer timeout for mobile safety
     } catch (error) {
-      console.warn('Dialog close error:', error)
       closingRef.current = false
       // Emergency fallback
       setTimeout(() => onOpenChange(false), 100)
@@ -135,7 +133,6 @@ export function AddMaintenancePlanDialog({ open, onOpenChange, onSuccess }: AddM
           form.reset({ ten_ke_hoach: "", nam: new Date().getFullYear(), khoa_phong: "" })
         } catch (e) {
           // Silently handle form reset errors on mobile
-          console.warn('Form reset error (mobile):', e)
         }
       }, 100)
     } catch (error: any) {
@@ -192,7 +189,7 @@ export function AddMaintenancePlanDialog({ open, onOpenChange, onSuccess }: AddM
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Loại công việc</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                  <Select onValueChange={field.onChange} value={field.value}>
                     <FormControl>
                       <SelectTrigger>
                         <SelectValue placeholder="Chọn loại công việc" />
