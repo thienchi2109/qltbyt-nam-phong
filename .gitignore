@@ -49,3 +49,25 @@ firestore-debug.log
 
 # MCP configuration with sensitive tokens
 .vscode/mcp.json
+
+# DevOps and Local Development
+# Include templates but exclude actual env files
+.env.local
+.env.production.local
+.env.development.local
+.env.test.local
+
+# Supabase local development
+supabase/.temp/
+supabase/docker/
+supabase/logs/
+*.log
+
+# Keep templates for team setup
+!.env.local.development
+!.env.example
+
+# Development tooling - commit these
+# scripts/
+# docs/
+# DEVOPS_WORKFLOW_SUMMARY.md
