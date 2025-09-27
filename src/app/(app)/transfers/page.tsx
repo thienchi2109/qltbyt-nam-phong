@@ -19,7 +19,6 @@ import { callRpc } from "@/lib/rpc-client"
 import { useSession } from "next-auth/react"
 import { useRouter } from "next/navigation"
 import { useTransferRequests, useCreateTransferRequest, useUpdateTransferRequest, useApproveTransferRequest, transferKeys } from "@/hooks/use-cached-transfers"
-import { useQueryClient } from "@tanstack/react-query"
 import { AddTransferDialog } from "@/components/add-transfer-dialog"
 import { EditTransferDialog } from "@/components/edit-transfer-dialog"
 import { TransferDetailDialog } from "@/components/transfer-detail-dialog"
@@ -69,8 +68,16 @@ export default function TransfersPage() {
   const { toast } = useToast()
   const { data: session, status } = useSession()
   const user = session?.user as any // Cast NextAuth user to our User type
+  const isRegionalLeader = user?.role === 'regional_leader'
+  const isTransferCoreRole = user?.role === 'global' || user?.role === 'admin' || user?.role === 'to_qltb'
   const router = useRouter()
-  const queryClient = useQueryClient()
+  const notifyRegionalLeaderRestricted = React.useCallback(() => {
+    toast({
+      variant: "destructive",
+      title: "Không thể thực hiện",
+      description: "Vai trò Trưởng vùng chỉ được xem yêu cầu luân chuyển."
+    })
+  }, [toast])
 
   // Redirect if not authenticated
   if (status === "loading") {
@@ -85,6 +92,26 @@ export default function TransfersPage() {
   if (status === "unauthenticated") {
     router.push("/")
     return null
+  }
+
+  if (isRegionalLeader) {
+    return (
+      <div className="flex min-h-[60vh] items-center justify-center px-4">
+        <Card className="mx-auto max-w-lg text-center">
+          <CardHeader>
+            <CardTitle>Không có quyền truy cập</CardTitle>
+            <CardDescription>
+              Vai trò Trưởng vùng không được sử dụng tính năng luân chuyển thiết bị.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="flex justify-center">
+            <Button onClick={() => router.push("/dashboard")} variant="default">
+              Về trang tổng quan
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    )
   }
 
   // ✅ Use cached hooks instead of manual state
@@ -128,22 +155,36 @@ export default function TransfersPage() {
   }
 
   const canEdit = (transfer: TransferRequest) => {
-    // Allow edit in "cho_duyet" status for everyone
-    // Allow edit in "da_duyet" status but with restrictions
-    return transfer.trang_thai === 'cho_duyet' || transfer.trang_thai === 'da_duyet'
+    if (!user || isRegionalLeader) return false
+    const deptMatch = user.role === 'qltb_khoa' && (
+      user.khoa_phong === transfer.khoa_phong_hien_tai ||
+      user.khoa_phong === transfer.khoa_phong_nhan
+    )
+  const allowedRole = isTransferCoreRole || deptMatch
+    return allowedRole && (transfer.trang_thai === 'cho_duyet' || transfer.trang_thai === 'da_duyet')
   }
 
   const canDelete = (transfer: TransferRequest) => {
-    // Only allow delete in "cho_duyet" status
-    return transfer.trang_thai === 'cho_duyet'
+    if (!user || isRegionalLeader) return false
+    const deptMatch = user.role === 'qltb_khoa' && user.khoa_phong === transfer.khoa_phong_hien_tai
+  const allowedRole = isTransferCoreRole || deptMatch
+    return allowedRole && transfer.trang_thai === 'cho_duyet'
   }
 
   const handleEditTransfer = (transfer: TransferRequest) => {
+    if (isRegionalLeader) {
+      notifyRegionalLeaderRestricted()
+      return
+    }
     setEditingTransfer(transfer)
     setIsEditDialogOpen(true)
   }
 
   const handleDeleteTransfer = async (transferId: number) => {
+    if (isRegionalLeader) {
+      notifyRegionalLeaderRestricted()
+      return
+    }
 
     if (!confirm("Bạn có chắc chắn muốn xóa yêu cầu luân chuyển này?")) {
       return
@@ -168,6 +209,10 @@ export default function TransfersPage() {
   }
 
   const handleApproveTransfer = async (transferId: number) => {
+    if (isRegionalLeader) {
+      notifyRegionalLeaderRestricted()
+      return
+    }
 
     try {
       await callRpc({ fn: 'transfer_request_update_status', args: { p_id: transferId, p_status: 'da_duyet', p_payload: { nguoi_duyet_id: user?.id } } })
@@ -188,6 +233,10 @@ export default function TransfersPage() {
   }
 
   const handleStartTransfer = async (transferId: number) => {
+    if (isRegionalLeader) {
+      notifyRegionalLeaderRestricted()
+      return
+    }
 
     try {
       await callRpc({ fn: 'transfer_request_update_status', args: { p_id: transferId, p_status: 'dang_luan_chuyen', p_payload: { ngay_ban_giao: new Date().toISOString() } } })
@@ -209,6 +258,10 @@ export default function TransfersPage() {
 
   // New function for external handover
   const handleHandoverToExternal = async (transferId: number) => {
+    if (isRegionalLeader) {
+      notifyRegionalLeaderRestricted()
+      return
+    }
 
     try {
       await callRpc({ fn: 'transfer_request_update_status', args: { p_id: transferId, p_status: 'da_ban_giao', p_payload: { ngay_ban_giao: new Date().toISOString() } } })
@@ -230,6 +283,10 @@ export default function TransfersPage() {
 
   // New function for returning equipment from external
   const handleReturnFromExternal = async (transferId: number) => {
+    if (isRegionalLeader) {
+      notifyRegionalLeaderRestricted()
+      return
+    }
 
     try {
       await callRpc({ fn: 'transfer_request_complete', args: { p_id: transferId, p_payload: { ngay_hoan_tra: new Date().toISOString() } } })
@@ -250,6 +307,10 @@ export default function TransfersPage() {
   }
 
   const handleCompleteTransfer = async (transfer: TransferRequest) => {
+    if (isRegionalLeader) {
+      notifyRegionalLeaderRestricted()
+      return
+    }
 
     try {
       await callRpc({ fn: 'transfer_request_complete', args: { p_id: transfer.id } })
@@ -275,6 +336,11 @@ export default function TransfersPage() {
 
   // New function for generating handover sheet
   const handleGenerateHandoverSheet = (transfer: TransferRequest) => {
+    if (isRegionalLeader) {
+      notifyRegionalLeaderRestricted()
+      return
+    }
+
     if (!transfer.thiet_bi) {
       toast({
         variant: "destructive",
@@ -289,15 +355,19 @@ export default function TransfersPage() {
   }
 
   const getStatusActions = (transfer: TransferRequest) => {
+    if (isRegionalLeader) {
+      return []
+    }
+
     const actions = []
     
     switch (transfer.trang_thai) {
       case 'cho_duyet':
-        // Only admin and to_qltb can approve
-  if (user && ((user.role === 'global' || user.role === 'admin') || user.role === 'to_qltb')) {
+        // Only transfer core roles can approve
+        if (user && isTransferCoreRole) {
           actions.push(
             <Button
-              key="approve"
+              key={`approve-${transfer.id}`}
               size="sm"
               variant="default"
               className="h-6 px-2 text-xs bg-blue-600 hover:bg-blue-700"
@@ -310,15 +380,14 @@ export default function TransfersPage() {
         break
         
       case 'da_duyet':
-        // Admin, to_qltb, and department managers can start transfer
+        // Core roles or origin department managers can start transfer
         if (user && (
-          (user.role === 'global' || user.role === 'admin') || 
-          user.role === 'to_qltb' ||
+          isTransferCoreRole ||
           (user.role === 'qltb_khoa' && user.khoa_phong === transfer.khoa_phong_hien_tai)
         )) {
           actions.push(
             <Button
-              key="start"
+              key={`start-${transfer.id}`}
               size="sm"
               variant="default"
               className="h-6 px-2 text-xs bg-orange-600 hover:bg-orange-700"
@@ -333,8 +402,7 @@ export default function TransfersPage() {
       case 'dang_luan_chuyen':
         // Different actions for internal vs external transfers
         if (user && (
-          (user.role === 'global' || user.role === 'admin') || 
-          user.role === 'to_qltb' ||
+          isTransferCoreRole ||
           (user.role === 'qltb_khoa' && (
             user.khoa_phong === transfer.khoa_phong_hien_tai ||
             user.khoa_phong === transfer.khoa_phong_nhan
@@ -344,7 +412,7 @@ export default function TransfersPage() {
             // For internal transfers - icon only handover sheet button and complete button
             actions.push(
               <Button
-                key="handover-sheet"
+                key={`handover-sheet-${transfer.id}`}
                 size="sm"
                 variant="outline"
                 className="h-6 w-6 p-0 border-blue-600 text-blue-600 hover:bg-blue-50"
@@ -356,7 +424,7 @@ export default function TransfersPage() {
             )
             actions.push(
               <Button
-                key="complete"
+                key={`complete-${transfer.id}`}
                 size="sm"
                 variant="default"
                 className="h-6 px-2 text-xs bg-green-600 hover:bg-green-700"
@@ -369,7 +437,7 @@ export default function TransfersPage() {
             // For external transfers - handover first
             actions.push(
               <Button
-                key="handover"
+                key={`handover-${transfer.id}`}
                 size="sm"
                 variant="default"
                 className="h-6 px-2 text-xs bg-purple-600 hover:bg-purple-700"
@@ -384,13 +452,10 @@ export default function TransfersPage() {
         
       case 'da_ban_giao':
         // Only for external transfers - mark as returned
-        if (user && (
-          (user.role === 'global' || user.role === 'admin') || 
-          user.role === 'to_qltb'
-        )) {
+        if (user && isTransferCoreRole) {
           actions.push(
             <Button
-              key="return"
+              key={`return-${transfer.id}`}
               size="sm"
               variant="default"
               className="h-6 px-2 text-xs bg-green-600 hover:bg-green-700"
@@ -458,7 +523,17 @@ export default function TransfersPage() {
               <RefreshCw className={`h-4 w-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
               Làm mới
             </Button>
-            <Button size="sm" onClick={() => setIsAddDialogOpen(true)}>
+            <Button
+              size="sm"
+              onClick={() => {
+                if (isRegionalLeader) {
+                  notifyRegionalLeaderRestricted()
+                  return
+                }
+                setIsAddDialogOpen(true)
+              }}
+              disabled={isRegionalLeader}
+            >
               <PlusCircle className="h-4 w-4 mr-2" />
               Tạo yêu cầu mới
             </Button>
@@ -571,12 +646,12 @@ export default function TransfersPage() {
                                   
                                   {/* Edit/Delete Buttons */}
                                   {canEdit(transfer) && (
-                                    <Button size="sm" variant="ghost" className="h-6 px-2 text-xs" onClick={() => handleEditTransfer(transfer)}>
+                                    <Button key={`edit-${transfer.id}`} size="sm" variant="ghost" className="h-6 px-2 text-xs" onClick={() => handleEditTransfer(transfer)}>
                                       Sửa
                                     </Button>
                                   )}
                                   {canDelete(transfer) && (
-                                    <Button size="sm" variant="ghost" className="h-6 px-2 text-xs text-destructive" onClick={() => handleDeleteTransfer(transfer.id)}>
+                                    <Button key={`delete-${transfer.id}`} size="sm" variant="ghost" className="h-6 px-2 text-xs text-destructive" onClick={() => handleDeleteTransfer(transfer.id)}>
                                       Xóa
                                     </Button>
                                   )}

@@ -34,6 +34,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { useEndUsageSession } from "@/hooks/use-usage-logs"
+import { useSession } from "next-auth/react"
 import { type UsageLog } from "@/types/database"
 
 const equipmentStatusOptions = [
@@ -63,6 +64,8 @@ export function EndUsageDialog({
   onOpenChange,
   usageLog,
 }: EndUsageDialogProps) {
+  const { data: session } = useSession()
+  const isRegionalLeader = ((session?.user as any)?.role ?? '') === 'regional_leader'
   const endUsageMutation = useEndUsageSession()
 
   const form = useForm<EndUsageFormData>({
@@ -83,6 +86,9 @@ export function EndUsageDialog({
   }, [usageLog, open, form])
 
   const onSubmit = async (data: EndUsageFormData) => {
+    if (isRegionalLeader) {
+      return
+    }
     if (!usageLog) return
 
     try {
@@ -210,7 +216,7 @@ export function EndUsageDialog({
               >
                 Hủy
               </Button>
-              <Button type="submit" disabled={isLoading}>
+              <Button type="submit" disabled={isLoading || isRegionalLeader}>
                 {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 Kết thúc sử dụng
               </Button>

@@ -382,6 +382,7 @@ export default function EquipmentPage() {
   const searchParams = useSearchParams()
   const { data: session, status } = useSession()
   const user = session?.user as any // Cast NextAuth user to our User type
+  const isRegionalLeader = (user as any)?.role === 'regional_leader'
   const { toast } = useToast()
   const { data: tenantBranding } = useTenantBranding()
   // Global/admin role check computed early so hooks below can depend on it safely
@@ -421,29 +422,105 @@ export default function EquipmentPage() {
   const [isEditingDetails, setIsEditingDetails] = React.useState(false)
   const editForm = useForm<EquipmentFormValues>({
     resolver: zodResolver(equipmentFormSchema),
-    defaultValues: {},
+    defaultValues: {
+      // Required fields with empty string defaults
+      ma_thiet_bi: "",
+      ten_thiet_bi: "",
+      vi_tri_lap_dat: "",
+      khoa_phong_quan_ly: "",
+      nguoi_dang_truc_tiep_quan_ly: "",
+      tinh_trang_hien_tai: "" as any,
+      
+      // Optional fields with null defaults (consistent with schema)
+      model: null,
+      serial: null,
+      hang_san_xuat: null,
+      noi_san_xuat: null,
+      nguon_kinh_phi: null,
+      cau_hinh_thiet_bi: null,
+      phu_kien_kem_theo: null,
+      ghi_chu: null,
+      ngay_nhap: null,
+      ngay_dua_vao_su_dung: null,
+      han_bao_hanh: null,
+      ngay_bt_tiep_theo: null,
+      ngay_hc_tiep_theo: null,
+      ngay_kd_tiep_theo: null,
+      nam_san_xuat: null,
+      gia_goc: null,
+      chu_ky_bt_dinh_ky: null,
+      chu_ky_hc_dinh_ky: null,
+      chu_ky_kd_dinh_ky: null,
+      phan_loai_theo_nd98: null,
+    },
   })
 
-  const { data: activeUsageLogs, isLoading: isLoadingActiveUsage } = useActiveUsageLogs()
+  // Moved from below to fix variable declaration order
+  const tenantKey = (user as any)?.don_vi ? String((user as any).don_vi) : 'none'
+  const [tenantFilter, setTenantFilter] = React.useState<string>(() => (isGlobal ? 'unset' : tenantKey))
+  const selectedDonViUI = React.useMemo(() => {
+    if (!isGlobal) return null
+    if (tenantFilter === 'all') return null
+    const v = parseInt(tenantFilter, 10)
+    return Number.isFinite(v) ? v : null
+  }, [isGlobal, tenantFilter])
+
+  // Optimized active usage logs with tenant filtering and reduced polling
+  const currentTenantId = React.useMemo(() => {
+    if (!isGlobal) return user?.don_vi ? Number(user.don_vi) : null
+    // For global users, use the selected tenant filter if available
+    if (selectedDonViUI !== null) return selectedDonViUI
+    return null // Global users see all by default
+  }, [isGlobal, user?.don_vi, selectedDonViUI])
+  
+  const { data: activeUsageLogs, isLoading: isLoadingActiveUsage } = useActiveUsageLogs({
+    tenantId: currentTenantId,
+    enabled: true,
+    refetchInterval: 5 * 60 * 1000, // Poll every 5 minutes instead of 10 seconds
+  })
 
   React.useEffect(() => {
     if (selectedEquipment && isEditingDetails) {
       editForm.reset({
-        ...(selectedEquipment as any),
-        vi_tri_lap_dat: selectedEquipment.vi_tri_lap_dat ?? "",
-        khoa_phong_quan_ly: selectedEquipment.khoa_phong_quan_ly ?? "",
-        nguoi_dang_truc_tiep_quan_ly: selectedEquipment.nguoi_dang_truc_tiep_quan_ly ?? "",
-        tinh_trang_hien_tai: (selectedEquipment.tinh_trang_hien_tai as any) ?? "",
+        // Required string fields - use empty string as fallback
+        ma_thiet_bi: selectedEquipment.ma_thiet_bi || "",
+        ten_thiet_bi: selectedEquipment.ten_thiet_bi || "",
+        vi_tri_lap_dat: selectedEquipment.vi_tri_lap_dat || "",
+        khoa_phong_quan_ly: selectedEquipment.khoa_phong_quan_ly || "",
+        nguoi_dang_truc_tiep_quan_ly: selectedEquipment.nguoi_dang_truc_tiep_quan_ly || "",
+        tinh_trang_hien_tai: selectedEquipment.tinh_trang_hien_tai || "" as any,
+        
+        // Optional string fields - use null for consistency with schema
+        model: selectedEquipment.model || null,
+        serial: selectedEquipment.serial || null,
+        hang_san_xuat: selectedEquipment.hang_san_xuat || null,
+        noi_san_xuat: selectedEquipment.noi_san_xuat || null,
+        nguon_kinh_phi: selectedEquipment.nguon_kinh_phi || null,
+        cau_hinh_thiet_bi: selectedEquipment.cau_hinh_thiet_bi || null,
+        phu_kien_kem_theo: selectedEquipment.phu_kien_kem_theo || null,
+        ghi_chu: selectedEquipment.ghi_chu || null,
+        
+        // Date fields - use null for consistency
+        ngay_nhap: selectedEquipment.ngay_nhap || null,
+        ngay_dua_vao_su_dung: selectedEquipment.ngay_dua_vao_su_dung || null,
+        han_bao_hanh: selectedEquipment.han_bao_hanh || null,
+        ngay_bt_tiep_theo: (selectedEquipment as any).ngay_bt_tiep_theo || null,
+        ngay_hc_tiep_theo: (selectedEquipment as any).ngay_hc_tiep_theo || null,
+        ngay_kd_tiep_theo: (selectedEquipment as any).ngay_kd_tiep_theo || null,
+        
+        // Numeric fields - use null for consistency
+        nam_san_xuat: selectedEquipment.nam_san_xuat || null,
+        gia_goc: selectedEquipment.gia_goc || null,
+        chu_ky_bt_dinh_ky: (selectedEquipment as any).chu_ky_bt_dinh_ky || null,
+        chu_ky_hc_dinh_ky: (selectedEquipment as any).chu_ky_hc_dinh_ky || null,
+        chu_ky_kd_dinh_ky: (selectedEquipment as any).chu_ky_kd_dinh_ky || null,
+        
+        // Enum field - validate and use null if invalid
         phan_loai_theo_nd98: (
           selectedEquipment.phan_loai_theo_nd98 && ['A','B','C','D'].includes(String(selectedEquipment.phan_loai_theo_nd98).toUpperCase())
             ? (String(selectedEquipment.phan_loai_theo_nd98).toUpperCase() as 'A'|'B'|'C'|'D')
             : null
         ),
-        nam_san_xuat: selectedEquipment.nam_san_xuat ?? undefined,
-        gia_goc: selectedEquipment.gia_goc ?? undefined,
-        chu_ky_bt_dinh_ky: (selectedEquipment as any).chu_ky_bt_dinh_ky ?? undefined,
-        chu_ky_hc_dinh_ky: (selectedEquipment as any).chu_ky_hc_dinh_ky ?? undefined,
-        chu_ky_kd_dinh_ky: (selectedEquipment as any).chu_ky_kd_dinh_ky ?? undefined,
       })
     }
   }, [selectedEquipment, isEditingDetails, editForm])
@@ -888,7 +965,7 @@ export default function EquipmentPage() {
     const activeUsageLog = activeUsageLogs?.find(
       (log) => log.thiet_bi_id === equipment.id && log.trang_thai === 'dang_su_dung'
     );
-    const startUsageDisabled = isLoadingActiveUsage || !user || !!activeUsageLog;
+  const startUsageDisabled = isLoadingActiveUsage || !user || !!activeUsageLog || isRegionalLeader;
 
     return (
       <DropdownMenu>
@@ -917,7 +994,13 @@ export default function EquipmentPage() {
           >
             Viết nhật ký SD
           </DropdownMenuItem>
-          <DropdownMenuItem onSelect={() => router.push(`/repair-requests?equipmentId=${equipment.id}`)}>
+          <DropdownMenuItem
+            disabled={isRegionalLeader}
+            onSelect={() => {
+              if (isRegionalLeader) return
+              router.push(`/repair-requests?equipmentId=${equipment.id}`)
+            }}
+          >
             Tạo yêu cầu sửa chữa
           </DropdownMenuItem>
         </DropdownMenuContent>
@@ -982,13 +1065,8 @@ export default function EquipmentPage() {
         },
       }
   
-      if (filterableColumns.includes(key)) {
-          columnDef.filterFn = (row, id, value) => {
-              const rowValue = row.getValue(id) as string;
-              if (!rowValue) return false;
-              return value.includes(rowValue.trim());
-          }
-      }
+      // Server-side filtering is handled by equipment_list_enhanced RPC
+      // No client-side filterFn needed since we use manualPagination
   
       return columnDef;
     }),
@@ -999,18 +1077,11 @@ export default function EquipmentPage() {
     },
   ]
 
-  const tenantKey = (user as any)?.don_vi ? String((user as any).don_vi) : 'none'
-  const [tenantFilter, setTenantFilter] = React.useState<string>(() => (isGlobal ? 'unset' : tenantKey)) // 'unset' for global/admin; non-global uses own tenant
+  // Moved above to fix variable declaration order - these are now declared earlier
   const shouldFetchEquipment = React.useMemo(() => {
     if (!isGlobal) return true
     if (tenantFilter === 'all') return true
     return /^\d+$/.test(tenantFilter)
-  }, [isGlobal, tenantFilter])
-  const selectedDonViUI = React.useMemo(() => {
-    if (!isGlobal) return null
-    if (tenantFilter === 'all') return null
-    const v = parseInt(tenantFilter, 10)
-    return Number.isFinite(v) ? v : null
   }, [isGlobal, tenantFilter])
   const effectiveTenantKey = isGlobal ? (shouldFetchEquipment ? tenantFilter : 'unset') : tenantKey
 
@@ -1021,11 +1092,17 @@ export default function EquipmentPage() {
   // Server-side pagination state
   const [pagination, setPagination] = React.useState({ pageIndex: 0, pageSize: 20 })
 
-  // Extract server-filterable values from columnFilters (single-select when multiple chosen)
+  // Extract server-filterable values from columnFilters
   const getSingleFilter = React.useCallback((id: string): string | null => {
     const entry = (columnFilters || []).find((f) => f.id === id)
     const vals = (entry?.value as string[] | undefined) || []
     return vals.length === 1 ? vals[0] : null
+  }, [columnFilters])
+
+  // Get array of selected values for multi-select filters
+  const getArrayFilter = React.useCallback((id: string): string[] => {
+    const entry = (columnFilters || []).find((f) => f.id === id)
+    return (entry?.value as string[] | undefined) || []
   }, [columnFilters])
 
   const selectedDonVi = React.useMemo(() => {
@@ -1041,15 +1118,23 @@ export default function EquipmentPage() {
     return `${s.id}.${s.desc ? 'desc' : 'asc'}`
   }, [sorting])
 
+  const selectedDepartments = getArrayFilter('khoa_phong_quan_ly')
+  const selectedUsers = getArrayFilter('nguoi_dang_truc_tiep_quan_ly')
+  const selectedLocations = getArrayFilter('vi_tri_lap_dat')
+  const selectedStatuses = getArrayFilter('tinh_trang_hien_tai')
+  const selectedClassifications = getArrayFilter('phan_loai_theo_nd98')
+  
   const { data: equipmentRes, isLoading: isEqLoading, isFetching } = useQuery<EquipmentListRes>({
     queryKey: ['equipment_list_enhanced', {
       tenant: effectiveTenantKey,
       page: pagination.pageIndex,
       size: pagination.pageSize,
       q: debouncedSearch || null,
-      khoa_phong: getSingleFilter('khoa_phong_quan_ly'),
-      tinh_trang: getSingleFilter('tinh_trang_hien_tai'),
-      phan_loai: getSingleFilter('phan_loai_theo_nd98'),
+      khoa_phong_array: selectedDepartments,
+      nguoi_su_dung_array: selectedUsers,
+      vi_tri_lap_dat_array: selectedLocations,
+      tinh_trang_array: selectedStatuses,
+      phan_loai_array: selectedClassifications,
       sort: sortParam,
     }],
     enabled: shouldFetchEquipment,
@@ -1060,9 +1145,11 @@ export default function EquipmentPage() {
         p_page: pagination.pageIndex + 1,
         p_page_size: pagination.pageSize,
         p_don_vi: selectedDonVi,
-        p_khoa_phong: getSingleFilter('khoa_phong_quan_ly'),
-        p_tinh_trang: getSingleFilter('tinh_trang_hien_tai'),
-        p_phan_loai: getSingleFilter('phan_loai_theo_nd98'),
+        p_khoa_phong_array: selectedDepartments.length > 0 ? selectedDepartments : null,
+        p_nguoi_su_dung_array: selectedUsers.length > 0 ? selectedUsers : null,
+        p_vi_tri_lap_dat_array: selectedLocations.length > 0 ? selectedLocations : null,
+        p_tinh_trang_array: selectedStatuses.length > 0 ? selectedStatuses : null,
+        p_phan_loai_array: selectedClassifications.length > 0 ? selectedClassifications : null,
       }, signal })
       return result
     },
@@ -1316,11 +1403,13 @@ export default function EquipmentPage() {
     getCoreRowModel: getCoreRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
     getSortedRowModel: getSortedRowModel(),
-    getFilteredRowModel: getFilteredRowModel(),
+    // Remove client-side filtering since we use server-side filtering
+    // getFilteredRowModel: getFilteredRowModel(),
     onColumnVisibilityChange: setColumnVisibility,
     onGlobalFilterChange: (value: string) => setSearchTerm(value),
-    getFacetedRowModel: getFacetedRowModel(),
-    getFacetedUniqueValues: getFacetedUniqueValues(),
+    // Remove faceted models since they're for client-side filtering
+    // getFacetedRowModel: getFacetedRowModel(),
+    // getFacetedUniqueValues: getFacetedUniqueValues(),
     state: {
       sorting,
       columnFilters,
@@ -1329,8 +1418,25 @@ export default function EquipmentPage() {
       pagination,
     },
     manualPagination: true,
+    manualFiltering: true, // Enable server-side filtering
     pageCount,
   })
+  
+  // Reset pagination to page 1 when filters change
+  const filterKey = React.useMemo(() => 
+    JSON.stringify({ filters: columnFilters, search: debouncedSearch }),
+    [columnFilters, debouncedSearch]
+  )
+  const [lastFilterKey, setLastFilterKey] = React.useState(filterKey)
+  
+  React.useEffect(() => {
+    if (filterKey !== lastFilterKey && pagination.pageIndex > 0) {
+      setPagination(prev => ({ ...prev, pageIndex: 0 }))
+      setLastFilterKey(filterKey)
+    } else if (filterKey !== lastFilterKey) {
+      setLastFilterKey(filterKey)
+    }
+  }, [filterKey, lastFilterKey, pagination.pageIndex])
   
   // Auto department filter removed; no role-based table filter adjustments
   
@@ -1356,8 +1462,9 @@ export default function EquipmentPage() {
   }, [table, onDataMutationSuccess]);
   
   const handleExportData = async () => {
-    const rowsToExport = table.getFilteredRowModel().rows;
-    if (rowsToExport.length === 0) {
+    // Use server-filtered data instead of client-side filtered model
+    const dataToExport = data; // This is already server-filtered
+    if (dataToExport.length === 0) {
       toast({
         variant: "destructive",
         title: "Không có dữ liệu",
@@ -1367,7 +1474,6 @@ export default function EquipmentPage() {
     }
 
     try {
-      const dataToExport = rowsToExport.map(row => row.original);
 
       const dbKeysInOrder = (Object.keys(columnLabels) as Array<keyof Equipment>).filter(key => key !== 'id');
       const headers = dbKeysInOrder.map(key => columnLabels[key]);
@@ -1401,19 +1507,102 @@ export default function EquipmentPage() {
     }
   };
 
-  const departments = React.useMemo(() => (
-    Array.from(new Set(data.map((item) => item.khoa_phong_quan_ly?.trim()).filter(Boolean))) as string[]
-  ), [data])
-  const locations = React.useMemo(() => Array.from(new Set(data.map((item) => item.vi_tri_lap_dat?.trim()).filter(Boolean))), [data])
-  const users = React.useMemo(() => (
-    Array.from(new Set(data.map((item) => item.nguoi_dang_truc_tiep_quan_ly?.trim()).filter(Boolean))) as string[]
-  ), [data])
-  const classifications = React.useMemo(() => (
-    Array.from(new Set(data.map((item) => item.phan_loai_theo_nd98?.trim()).filter(Boolean))) as string[]
-  ), [data])
-  const statuses = React.useMemo(() => (
-    Array.from(new Set(data.map((item) => item.tinh_trang_hien_tai?.trim()).filter(Boolean))) as string[]
-  ), [data])
+  // Load departments for current tenant via RPC (tenant-aware filtering)
+  const { data: departmentsData } = useQuery<{ name: string; count: number }[]>({
+    queryKey: ['departments_list_for_tenant', selectedDonVi],
+    queryFn: async () => {
+      const result = await callRpc<{ name: string; count: number }[]>({
+        fn: 'departments_list_for_tenant',
+        args: { p_don_vi: selectedDonVi }
+      })
+      return result || []
+    },
+    enabled: shouldFetchEquipment, // Same gating as equipment query
+    staleTime: 300_000,
+    gcTime: 10 * 60_000,
+    refetchOnWindowFocus: false,
+  })
+  const departments = React.useMemo(() => 
+    (departmentsData || []).map(x => x.name).filter(Boolean),
+    [departmentsData]
+  )
+
+  // Load all filter options via tenant-aware RPCs
+  const { data: usersData } = useQuery<{ name: string; count: number }[]>({
+    queryKey: ['equipment_users_list_for_tenant', selectedDonVi],
+    queryFn: async () => {
+      const result = await callRpc<{ name: string; count: number }[]>({
+        fn: 'equipment_users_list_for_tenant',
+        args: { p_don_vi: selectedDonVi }
+      })
+      return result || []
+    },
+    enabled: shouldFetchEquipment,
+    staleTime: 300_000,
+    gcTime: 10 * 60_000,
+    refetchOnWindowFocus: false,
+  })
+  const users = React.useMemo(() => 
+    (usersData || []).map(x => x.name).filter(Boolean),
+    [usersData]
+  )
+
+  const { data: locationsData } = useQuery<{ name: string; count: number }[]>({
+    queryKey: ['equipment_locations_list_for_tenant', selectedDonVi],
+    queryFn: async () => {
+      const result = await callRpc<{ name: string; count: number }[]>({
+        fn: 'equipment_locations_list_for_tenant',
+        args: { p_don_vi: selectedDonVi }
+      })
+      return result || []
+    },
+    enabled: shouldFetchEquipment,
+    staleTime: 300_000,
+    gcTime: 10 * 60_000,
+    refetchOnWindowFocus: false,
+  })
+  const locations = React.useMemo(() => 
+    (locationsData || []).map(x => x.name).filter(Boolean),
+    [locationsData]
+  )
+
+  const { data: classificationsData } = useQuery<{ name: string; count: number }[]>({
+    queryKey: ['equipment_classifications_list_for_tenant', selectedDonVi],
+    queryFn: async () => {
+      const result = await callRpc<{ name: string; count: number }[]>({
+        fn: 'equipment_classifications_list_for_tenant',
+        args: { p_don_vi: selectedDonVi }
+      })
+      return result || []
+    },
+    enabled: shouldFetchEquipment,
+    staleTime: 300_000,
+    gcTime: 10 * 60_000,
+    refetchOnWindowFocus: false,
+  })
+  const classifications = React.useMemo(() => 
+    (classificationsData || []).map(x => x.name).filter(Boolean),
+    [classificationsData]
+  )
+
+  const { data: statusesData } = useQuery<{ name: string; count: number }[]>({
+    queryKey: ['equipment_statuses_list_for_tenant', selectedDonVi],
+    queryFn: async () => {
+      const result = await callRpc<{ name: string; count: number }[]>({
+        fn: 'equipment_statuses_list_for_tenant',
+        args: { p_don_vi: selectedDonVi }
+      })
+      return result || []
+    },
+    enabled: shouldFetchEquipment,
+    staleTime: 300_000,
+    gcTime: 10 * 60_000,
+    refetchOnWindowFocus: false,
+  })
+  const statuses = React.useMemo(() => 
+    (statusesData || []).map(x => x.name).filter(Boolean),
+    [statusesData]
+  )
   
   const isFiltered = table.getState().columnFilters.length > 0;
 
@@ -2192,24 +2381,26 @@ export default function EquipmentPage() {
                 )}
 
                 {/* Add button */}
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button size="sm" className="h-8 gap-1 touch-target-sm md:h-8">
-                      <PlusCircle className="h-3.5 w-3.5" />
-                      <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
-                        Thêm thiết bị
-                      </span>
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem onSelect={() => setIsAddDialogOpen(true)}>
-                      Thêm thủ công
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onSelect={() => setIsImportDialogOpen(true)}>
-                      Nhập từ Excel
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
+                {!isRegionalLeader && (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button size="sm" className="h-8 gap-1 touch-target-sm md:h-8">
+                        <PlusCircle className="h-3.5 w-3.5" />
+                        <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
+                          Thêm thiết bị
+                        </span>
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem onSelect={() => setIsAddDialogOpen(true)}>
+                        Thêm thủ công
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onSelect={() => setIsImportDialogOpen(true)}>
+                        Nhập từ Excel
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                )}
 
                 {/* Options menu */}
                 <DropdownMenu>

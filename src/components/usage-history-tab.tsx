@@ -29,7 +29,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Skeleton } from "@/components/ui/skeleton"
-import { useEquipmentUsageLogs, useDeleteUsageLog } from "@/hooks/use-usage-logs"
+import { useEquipmentUsageLogs, useEquipmentUsageLogsMore, useDeleteUsageLog } from "@/hooks/use-usage-logs"
 import { useSession } from "next-auth/react"
 import { useIsMobile } from "@/hooks/use-mobile"
 import { type Equipment, type UsageLog, USAGE_STATUS } from "@/types/database"
@@ -46,8 +46,38 @@ export function UsageHistoryTab({ equipment }: UsageHistoryTabProps) {
   const isMobile = useIsMobile()
   const [isEndDialogOpen, setIsEndDialogOpen] = React.useState(false)
   const [selectedUsageLog, setSelectedUsageLog] = React.useState<UsageLog | null>(null)
+  const [loadMoreOffset, setLoadMoreOffset] = React.useState(0)
+  const [allUsageLogs, setAllUsageLogs] = React.useState<UsageLog[]>([])
 
-  const { data: usageLogs, isLoading } = useEquipmentUsageLogs(equipment.id.toString())
+  // Initial load - recent usage logs (last 3 months, 50 records)
+  const { data: recentUsageLogs, isLoading } = useEquipmentUsageLogs(equipment.id.toString(), {
+    limit: 50,
+    daysBack: 90, // Last 3 months
+  })
+  
+  // Load more historical data
+  const { data: moreUsageLogs, isLoading: isLoadingMore, isFetching: isFetchingMore } = useEquipmentUsageLogsMore(
+    equipment.id.toString(),
+    loadMoreOffset,
+    {
+      limit: 50,
+      daysBack: 365, // Full year for load more
+    }
+  )
+
+  // Combine recent and additional usage logs
+  React.useEffect(() => {
+    const combined = [...(recentUsageLogs || [])]
+    if (moreUsageLogs && moreUsageLogs.length > 0) {
+      // Add more logs, avoiding duplicates based on ID
+      const existingIds = new Set(combined.map(log => log.id))
+      const newLogs = moreUsageLogs.filter(log => !existingIds.has(log.id))
+      combined.push(...newLogs)
+    }
+    setAllUsageLogs(combined)
+  }, [recentUsageLogs, moreUsageLogs])
+
+  const usageLogs = allUsageLogs
   const deleteUsageLogMutation = useDeleteUsageLog()
 
   // Find active usage session for current user
@@ -88,6 +118,14 @@ export function UsageHistoryTab({ equipment }: UsageHistoryTabProps) {
   }
 
   const canEndUsage = !!activeSession
+  
+  const handleLoadMore = () => {
+    const currentOffset = loadMoreOffset || (recentUsageLogs?.length || 0)
+    setLoadMoreOffset(currentOffset + 50)
+  }
+  
+  const hasMoreData = (moreUsageLogs?.length || 0) === 50 // If we got a full page, there might be more
+  const showLoadMore = !isLoading && !isLoadingMore && usageLogs.length >= 50 && (loadMoreOffset === 0 || hasMoreData)
 
   if (isLoading) {
     return (
@@ -152,7 +190,9 @@ export function UsageHistoryTab({ equipment }: UsageHistoryTabProps) {
             <Clock className="h-12 w-12 mx-auto mb-2 opacity-50" />
             <p>Chưa có lịch sử sử dụng</p>
           </div>
-        ) : isMobile ? (
+        ) : (
+          <>
+            {isMobile ? (
           // Mobile Card Layout
           <ScrollArea className="h-[400px]">
             <div className="space-y-3">
@@ -315,6 +355,29 @@ export function UsageHistoryTab({ equipment }: UsageHistoryTabProps) {
               </TableBody>
             </Table>
           </ScrollArea>
+            )}
+            
+            {/* Load More Button */}
+            {showLoadMore && (
+              <div className="text-center mt-4">
+                <Button
+                  variant="outline"
+                  onClick={handleLoadMore}
+                  disabled={isFetchingMore}
+                  className="gap-2"
+                >
+                  {isFetchingMore ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current" />
+                      Đang tải...
+                    </>
+                  ) : (
+                    'Tải thêm lịch sử'
+                  )}
+                </Button>
+              </div>
+            )}
+          </>
         )}
       </div>
 

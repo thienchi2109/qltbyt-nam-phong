@@ -1,0 +1,3 @@
+- Completed AUTH-1 follow-up by fixing `authenticate_user_dual_mode` (migration `20250927164500_fix_authenticate_user_dia_ban.sql`) and documenting it.
+- Addressed RPC 400 errors by redefining `allowed_don_vi_for_session()` to read JWT `app_role`/`dia_ban` (migration `20250927170500_allowed_don_vi_claim_fix.sql`).
+- `equipment_list_enhanced` and related read RPCs now function for regional leaders; Phase RPC-1 core deliverables are in place, with remaining follow-ups limited to export RPC audits, UI guardrails, and automated smoke tests.

@@ -56,6 +56,9 @@ export const authOptions: NextAuthOptions = {
                 khoa_phong: authResult.khoa_phong || "",
                 full_name: authResult.full_name || "",
                 auth_mode: authResult.authentication_mode || "",
+                don_vi: authResult.don_vi ?? null,
+                dia_ban_id: authResult.dia_ban_id ?? null,
+                dia_ban_ma: authResult.dia_ban_ma ?? null,
               } as any
             }
 
@@ -88,6 +91,9 @@ export const authOptions: NextAuthOptions = {
         token.full_name = u.full_name || u.name
         token.auth_mode = u.auth_mode
         token.loginTime = Date.now() // Track when user logged in
+        ;(token as any).don_vi = u.don_vi ?? null
+        ;(token as any).dia_ban_id = u.dia_ban_id ?? null
+        ;(token as any).dia_ban_ma = u.dia_ban_ma ?? null
       }
 
       // Refresh user-derived fields on every JWT callback
@@ -99,7 +105,7 @@ export const authOptions: NextAuthOptions = {
             const supabase = createClient(supabaseUrl, serviceKey)
             const { data, error } = await supabase
               .from('nhan_vien')
-              .select('password_changed_at, current_don_vi, don_vi, khoa_phong, full_name')
+              .select('password_changed_at, current_don_vi, don_vi, khoa_phong, full_name, dia_ban_id')
               .eq('id', token.id)
               .single()
 
@@ -114,9 +120,47 @@ export const authOptions: NextAuthOptions = {
                 }
               }
               // Keep JWT in sync with user profile for tenant-aware UI
-              ;(token as any).don_vi = data.current_don_vi || data.don_vi || null
+              const resolvedDonVi = data.current_don_vi || data.don_vi || null
+              ;(token as any).don_vi = resolvedDonVi
               ;(token as any).khoa_phong = data.khoa_phong || (token as any).khoa_phong
               token.full_name = (data as any).full_name || token.full_name
+
+              let resolvedDiaBan: number | null = (data as any).dia_ban_id ?? null
+              if (!resolvedDiaBan && resolvedDonVi) {
+                try {
+                  const { data: donViRows, error: donViError } = await supabase
+                    .from('don_vi')
+                    .select('dia_ban_id')
+                    .eq('id', resolvedDonVi)
+                    .limit(1)
+
+                  if (!donViError && donViRows && donViRows.length > 0) {
+                    resolvedDiaBan = donViRows[0]?.dia_ban_id ?? null
+                  }
+                } catch (donViLookupError) {
+                  console.error('Failed to resolve dia_ban from don_vi', donViLookupError)
+                }
+              }
+
+              let resolvedDiaBanMa: string | null = (token as any).dia_ban_ma ?? null
+              if (resolvedDiaBan && !resolvedDiaBanMa) {
+                try {
+                  const { data: diaBanRows, error: diaBanError } = await supabase
+                    .from('dia_ban')
+                    .select('ma_dia_ban')
+                    .eq('id', resolvedDiaBan)
+                    .limit(1)
+
+                  if (!diaBanError && diaBanRows && diaBanRows.length > 0) {
+                    resolvedDiaBanMa = diaBanRows[0]?.ma_dia_ban ?? null
+                  }
+                } catch (diaBanLookupError) {
+                  console.error('Failed to resolve dia_ban metadata', diaBanLookupError)
+                }
+              }
+
+              ;(token as any).dia_ban_id = resolvedDiaBan ?? (token as any).dia_ban_id ?? null
+              ;(token as any).dia_ban_ma = resolvedDiaBanMa
             }
           }
         } catch (e) {
@@ -136,6 +180,8 @@ export const authOptions: NextAuthOptions = {
       s.user.role = token.role
       s.user.khoa_phong = token.khoa_phong
       s.user.don_vi = (token as any).don_vi || null
+      s.user.dia_ban_id = (token as any).dia_ban_id || null
+      s.user.dia_ban_ma = (token as any).dia_ban_ma || null
       s.user.full_name = token.full_name || s.user.name
       return s
     },
