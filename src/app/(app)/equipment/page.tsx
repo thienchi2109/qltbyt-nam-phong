@@ -422,7 +422,37 @@ export default function EquipmentPage() {
   const [isEditingDetails, setIsEditingDetails] = React.useState(false)
   const editForm = useForm<EquipmentFormValues>({
     resolver: zodResolver(equipmentFormSchema),
-    defaultValues: {},
+    defaultValues: {
+      // Required fields with empty string defaults
+      ma_thiet_bi: "",
+      ten_thiet_bi: "",
+      vi_tri_lap_dat: "",
+      khoa_phong_quan_ly: "",
+      nguoi_dang_truc_tiep_quan_ly: "",
+      tinh_trang_hien_tai: "" as any,
+      
+      // Optional fields with null defaults (consistent with schema)
+      model: null,
+      serial: null,
+      hang_san_xuat: null,
+      noi_san_xuat: null,
+      nguon_kinh_phi: null,
+      cau_hinh_thiet_bi: null,
+      phu_kien_kem_theo: null,
+      ghi_chu: null,
+      ngay_nhap: null,
+      ngay_dua_vao_su_dung: null,
+      han_bao_hanh: null,
+      ngay_bt_tiep_theo: null,
+      ngay_hc_tiep_theo: null,
+      ngay_kd_tiep_theo: null,
+      nam_san_xuat: null,
+      gia_goc: null,
+      chu_ky_bt_dinh_ky: null,
+      chu_ky_hc_dinh_ky: null,
+      chu_ky_kd_dinh_ky: null,
+      phan_loai_theo_nd98: null,
+    },
   })
 
   // Moved from below to fix variable declaration order
@@ -452,21 +482,45 @@ export default function EquipmentPage() {
   React.useEffect(() => {
     if (selectedEquipment && isEditingDetails) {
       editForm.reset({
-        ...(selectedEquipment as any),
-        vi_tri_lap_dat: selectedEquipment.vi_tri_lap_dat ?? "",
-        khoa_phong_quan_ly: selectedEquipment.khoa_phong_quan_ly ?? "",
-        nguoi_dang_truc_tiep_quan_ly: selectedEquipment.nguoi_dang_truc_tiep_quan_ly ?? "",
-        tinh_trang_hien_tai: (selectedEquipment.tinh_trang_hien_tai as any) ?? "",
+        // Required string fields - use empty string as fallback
+        ma_thiet_bi: selectedEquipment.ma_thiet_bi || "",
+        ten_thiet_bi: selectedEquipment.ten_thiet_bi || "",
+        vi_tri_lap_dat: selectedEquipment.vi_tri_lap_dat || "",
+        khoa_phong_quan_ly: selectedEquipment.khoa_phong_quan_ly || "",
+        nguoi_dang_truc_tiep_quan_ly: selectedEquipment.nguoi_dang_truc_tiep_quan_ly || "",
+        tinh_trang_hien_tai: selectedEquipment.tinh_trang_hien_tai || "" as any,
+        
+        // Optional string fields - use null for consistency with schema
+        model: selectedEquipment.model || null,
+        serial: selectedEquipment.serial || null,
+        hang_san_xuat: selectedEquipment.hang_san_xuat || null,
+        noi_san_xuat: selectedEquipment.noi_san_xuat || null,
+        nguon_kinh_phi: selectedEquipment.nguon_kinh_phi || null,
+        cau_hinh_thiet_bi: selectedEquipment.cau_hinh_thiet_bi || null,
+        phu_kien_kem_theo: selectedEquipment.phu_kien_kem_theo || null,
+        ghi_chu: selectedEquipment.ghi_chu || null,
+        
+        // Date fields - use null for consistency
+        ngay_nhap: selectedEquipment.ngay_nhap || null,
+        ngay_dua_vao_su_dung: selectedEquipment.ngay_dua_vao_su_dung || null,
+        han_bao_hanh: selectedEquipment.han_bao_hanh || null,
+        ngay_bt_tiep_theo: (selectedEquipment as any).ngay_bt_tiep_theo || null,
+        ngay_hc_tiep_theo: (selectedEquipment as any).ngay_hc_tiep_theo || null,
+        ngay_kd_tiep_theo: (selectedEquipment as any).ngay_kd_tiep_theo || null,
+        
+        // Numeric fields - use null for consistency
+        nam_san_xuat: selectedEquipment.nam_san_xuat || null,
+        gia_goc: selectedEquipment.gia_goc || null,
+        chu_ky_bt_dinh_ky: (selectedEquipment as any).chu_ky_bt_dinh_ky || null,
+        chu_ky_hc_dinh_ky: (selectedEquipment as any).chu_ky_hc_dinh_ky || null,
+        chu_ky_kd_dinh_ky: (selectedEquipment as any).chu_ky_kd_dinh_ky || null,
+        
+        // Enum field - validate and use null if invalid
         phan_loai_theo_nd98: (
           selectedEquipment.phan_loai_theo_nd98 && ['A','B','C','D'].includes(String(selectedEquipment.phan_loai_theo_nd98).toUpperCase())
             ? (String(selectedEquipment.phan_loai_theo_nd98).toUpperCase() as 'A'|'B'|'C'|'D')
             : null
         ),
-        nam_san_xuat: selectedEquipment.nam_san_xuat ?? undefined,
-        gia_goc: selectedEquipment.gia_goc ?? undefined,
-        chu_ky_bt_dinh_ky: (selectedEquipment as any).chu_ky_bt_dinh_ky ?? undefined,
-        chu_ky_hc_dinh_ky: (selectedEquipment as any).chu_ky_hc_dinh_ky ?? undefined,
-        chu_ky_kd_dinh_ky: (selectedEquipment as any).chu_ky_kd_dinh_ky ?? undefined,
       })
     }
   }, [selectedEquipment, isEditingDetails, editForm])
