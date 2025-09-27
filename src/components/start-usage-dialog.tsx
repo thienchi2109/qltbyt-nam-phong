@@ -69,6 +69,7 @@ export function StartUsageDialog({
 }: StartUsageDialogProps) {
   const { data: session } = useSession()
   const user = session?.user as any
+  const isRegionalLeader = user?.role === 'regional_leader'
   const startUsageMutation = useStartUsageSession()
 
   const form = useForm<StartUsageFormData>({
@@ -89,6 +90,9 @@ export function StartUsageDialog({
   }, [equipment, open, form])
 
   const onSubmit = async (data: StartUsageFormData) => {
+    if (isRegionalLeader) {
+      return
+    }
     if (!equipment || !user) return
 
     try {
@@ -190,7 +194,7 @@ export function StartUsageDialog({
               >
                 Hủy
               </Button>
-              <Button type="submit" disabled={isLoading}>
+              <Button type="submit" disabled={isLoading || isRegionalLeader}>
                 {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 Bắt đầu sử dụng
               </Button>

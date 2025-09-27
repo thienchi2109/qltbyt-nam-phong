@@ -1,0 +1,4 @@
+-- Deprecated: superseded by 20250927133000_global_admin_user_management.sql
+-- Consolidated migration owns update_user_info definition.
+-- Deprecated: superseded by 20250927133000_global_admin_user_management.sql
+-- Consolidated migration owns update_user_info definition.

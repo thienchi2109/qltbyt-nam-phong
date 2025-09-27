@@ -72,6 +72,11 @@ const ALLOWED_FUNCTIONS = new Set<string>([
   // Usage Analytics (Reports)
   'usage_analytics_overview',
   'usage_analytics_daily',
+  // Usage log management
+  'usage_log_list',
+  'usage_session_start',
+  'usage_session_end',
+  'usage_log_delete',
   // Reports: status distribution
   'equipment_status_distribution',
   // Audit logs (global users only)
@@ -105,6 +110,7 @@ export async function POST(req: NextRequest, context: { params: Promise<{ fn: st
   const role = typeof rawRole === 'string' ? rawRole : String(rawRole)
   const roleLower = role.toLowerCase()
   const donVi = (session as any)?.user?.don_vi ? String((session as any).user.don_vi) : ''
+  const diaBan = (session as any)?.user?.dia_ban_id ? String((session as any).user.dia_ban_id) : ''
   const userId = (session as any)?.user?.id ? String((session as any).user.id) : ''
   // Normalize to expected app roles used by SQL. Always lowercase; treat 'admin' as 'global'.
   const appRole = roleLower === 'admin' ? 'global' : roleLower
@@ -116,6 +122,7 @@ export async function POST(req: NextRequest, context: { params: Promise<{ fn: st
       app_role: appRole,
       don_vi: donVi,
       user_id: userId,
+      dia_ban: diaBan,
     }
 
     // Sanitize tenant parameter for non-global users to enforce isolation
@@ -125,6 +132,10 @@ export async function POST(req: NextRequest, context: { params: Promise<{ fn: st
         if (Object.prototype.hasOwnProperty.call(body, 'p_don_vi')) {
           const dv = donVi && donVi !== '' ? (Number.isFinite(Number(donVi)) ? Number(donVi) : donVi) : null
           ;(body as any).p_don_vi = dv
+        }
+        if (Object.prototype.hasOwnProperty.call(body, 'p_dia_ban')) {
+          const db = diaBan && diaBan !== '' ? (Number.isFinite(Number(diaBan)) ? Number(diaBan) : diaBan) : null
+          ;(body as any).p_dia_ban = db
         }
       } catch {}
     }
