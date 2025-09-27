@@ -22,6 +22,10 @@ const ALLOWED_FUNCTIONS = new Set<string>([
   'equipment_list_for_reports',
   'departments_list',
   'departments_list_for_tenant',
+  'equipment_users_list_for_tenant',
+  'equipment_locations_list_for_tenant', 
+  'equipment_classifications_list_for_tenant',
+  'equipment_statuses_list_for_tenant',
   'equipment_bulk_import',
   // Repairs
   'repair_request_list',
