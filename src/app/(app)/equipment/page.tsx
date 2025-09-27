@@ -425,7 +425,29 @@ export default function EquipmentPage() {
     defaultValues: {},
   })
 
-  const { data: activeUsageLogs, isLoading: isLoadingActiveUsage } = useActiveUsageLogs()
+  // Moved from below to fix variable declaration order
+  const tenantKey = (user as any)?.don_vi ? String((user as any).don_vi) : 'none'
+  const [tenantFilter, setTenantFilter] = React.useState<string>(() => (isGlobal ? 'unset' : tenantKey))
+  const selectedDonViUI = React.useMemo(() => {
+    if (!isGlobal) return null
+    if (tenantFilter === 'all') return null
+    const v = parseInt(tenantFilter, 10)
+    return Number.isFinite(v) ? v : null
+  }, [isGlobal, tenantFilter])
+
+  // Optimized active usage logs with tenant filtering and reduced polling
+  const currentTenantId = React.useMemo(() => {
+    if (!isGlobal) return user?.don_vi ? Number(user.don_vi) : null
+    // For global users, use the selected tenant filter if available
+    if (selectedDonViUI !== null) return selectedDonViUI
+    return null // Global users see all by default
+  }, [isGlobal, user?.don_vi, selectedDonViUI])
+  
+  const { data: activeUsageLogs, isLoading: isLoadingActiveUsage } = useActiveUsageLogs({
+    tenantId: currentTenantId,
+    enabled: true,
+    refetchInterval: 5 * 60 * 1000, // Poll every 5 minutes instead of 10 seconds
+  })
 
   React.useEffect(() => {
     if (selectedEquipment && isEditingDetails) {
@@ -1001,18 +1023,11 @@ export default function EquipmentPage() {
     },
   ]
 
-  const tenantKey = (user as any)?.don_vi ? String((user as any).don_vi) : 'none'
-  const [tenantFilter, setTenantFilter] = React.useState<string>(() => (isGlobal ? 'unset' : tenantKey)) // 'unset' for global/admin; non-global uses own tenant
+  // Moved above to fix variable declaration order - these are now declared earlier
   const shouldFetchEquipment = React.useMemo(() => {
     if (!isGlobal) return true
     if (tenantFilter === 'all') return true
     return /^\d+$/.test(tenantFilter)
-  }, [isGlobal, tenantFilter])
-  const selectedDonViUI = React.useMemo(() => {
-    if (!isGlobal) return null
-    if (tenantFilter === 'all') return null
-    const v = parseInt(tenantFilter, 10)
-    return Number.isFinite(v) ? v : null
   }, [isGlobal, tenantFilter])
   const effectiveTenantKey = isGlobal ? (shouldFetchEquipment ? tenantFilter : 'unset') : tenantKey
 
