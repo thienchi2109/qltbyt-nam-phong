@@ -80,6 +80,7 @@ export function AddEquipmentDialog({ open, onOpenChange, onSuccess }: AddEquipme
   const { toast } = useToast()
   const queryClient = useQueryClient()
   const { data: session } = useSession()
+  const isRegionalLeader = ((session as any)?.user?.role ?? '') === 'regional_leader'
   const [departments, setDepartments] = React.useState<string[]>([])
   const [tenants, setTenants] = React.useState<{ id: number; code: string; name: string }[]>([])
   const [currentTenant, setCurrentTenant] = React.useState<{ id: number; code: string; name: string } | null>(null)
@@ -164,6 +165,14 @@ export function AddEquipmentDialog({ open, onOpenChange, onSuccess }: AddEquipme
   })
 
   async function onSubmit(values: EquipmentFormValues) {
+    if (isRegionalLeader) {
+      toast({
+        variant: "destructive",
+        title: "Không có quyền",
+        description: "Tài khoản khu vực chỉ được phép xem dữ liệu thiết bị.",
+      })
+      return
+    }
     await createMutation.mutateAsync(values)
   }
 
@@ -356,7 +365,7 @@ export function AddEquipmentDialog({ open, onOpenChange, onSuccess }: AddEquipme
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={createMutation.isPending}>
                 Hủy
               </Button>
-              <Button type="submit" disabled={createMutation.isPending}>
+              <Button type="submit" disabled={createMutation.isPending || isRegionalLeader}>
                 {createMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 Lưu
               </Button>

@@ -28,6 +28,7 @@ import { useToast } from "@/hooks/use-toast"
 import { callRpc } from "@/lib/rpc-client"
 import { type MaintenancePlan, taskTypes } from "@/lib/data"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select"
+import { useSession } from "next-auth/react"
 
 const planFormSchema = z.object({
   ten_ke_hoach: z.string().min(1, "Tên kế hoạch là bắt buộc."),
@@ -47,6 +48,8 @@ interface EditMaintenancePlanDialogProps {
 
 export function EditMaintenancePlanDialog({ open, onOpenChange, onSuccess, plan }: EditMaintenancePlanDialogProps) {
   const { toast } = useToast()
+  const { data: session } = useSession()
+  const isRegionalLeader = ((session?.user as any)?.role ?? '') === 'regional_leader'
   const [isSubmitting, setIsSubmitting] = React.useState(false)
 
   const form = useForm<PlanFormValues>({
@@ -73,6 +76,14 @@ export function EditMaintenancePlanDialog({ open, onOpenChange, onSuccess, plan 
 
   async function onSubmit(values: PlanFormValues) {
     if (!plan) return;
+    if (isRegionalLeader) {
+      toast({
+        variant: "destructive",
+        title: "Không có quyền",
+        description: "Tài khoản khu vực không thể chỉnh sửa kế hoạch.",
+      })
+      return
+    }
     
     setIsSubmitting(true)
     try {
@@ -180,7 +191,7 @@ export function EditMaintenancePlanDialog({ open, onOpenChange, onSuccess, plan 
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={isSubmitting}>
                 Hủy
               </Button>
-              <Button type="submit" disabled={isSubmitting}>
+              <Button type="submit" disabled={isSubmitting || isRegionalLeader}>
                 {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 Lưu thay đổi
               </Button>

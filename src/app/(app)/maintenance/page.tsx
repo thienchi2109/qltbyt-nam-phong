@@ -83,6 +83,8 @@ export default function MaintenancePage() {
   const { toast } = useToast()
   const { data: session, status } = useSession()
   const user = session?.user as any // Cast NextAuth user to our User type
+  const isRegionalLeader = user?.role === 'regional_leader'
+  const canManagePlans = !!user && !isRegionalLeader && ((user.role === 'global' || user.role === 'admin') || user.role === 'to_qltb')
   const router = useRouter()
   const searchParams = useSearchParams()
   const isMobile = useIsMobile()
@@ -101,6 +103,26 @@ export default function MaintenancePage() {
   if (status === "unauthenticated") {
     router.push("/")
     return null
+  }
+
+  if (isRegionalLeader) {
+    return (
+      <div className="flex min-h-[60vh] items-center justify-center px-4">
+        <Card className="mx-auto max-w-lg text-center">
+          <CardHeader>
+            <CardTitle>Không có quyền truy cập</CardTitle>
+            <CardDescription>
+              Vai trò Trưởng vùng không được sử dụng chức năng bảo trì thiết bị.
+            </CardDescription>
+          </CardHeader>
+          <CardFooter className="flex justify-center">
+            <Button onClick={() => router.push("/dashboard")} variant="default">
+              Về trang tổng quan
+            </Button>
+          </CardFooter>
+        </Card>
+      </div>
+    )
   }
 
   // Temporarily disable useRealtimeSync to avoid conflict with RealtimeProvider
@@ -435,7 +457,7 @@ export default function MaintenancePage() {
       <div className="space-y-4">
         {planTable.getRowModel().rows.map((row) => {
           const plan = row.original;
-          const canManage = user && ((user.role === 'global' || user.role === 'admin') || user.role === 'to_qltb');
+          const canManage = canManagePlans;
 
           return (
             <Card
@@ -479,18 +501,22 @@ export default function MaintenancePage() {
                             </DropdownMenuItem>
                           </>
                         )}
-                        <DropdownMenuItem onSelect={() => setEditingPlan(plan)}>
-                          <Edit className="mr-2 h-4 w-4" />
-                          Sửa
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem
-                          onSelect={() => setPlanToDelete(plan)}
-                          className="text-destructive"
-                        >
-                          <Trash2 className="mr-2 h-4 w-4" />
-                          Xóa
-                        </DropdownMenuItem>
+                        {canManage && (
+                          <>
+                            <DropdownMenuItem onSelect={() => setEditingPlan(plan)}>
+                              <Edit className="mr-2 h-4 w-4" />
+                              Sửa
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem
+                              onSelect={() => setPlanToDelete(plan)}
+                              className="text-destructive"
+                            >
+                              <Trash2 className="mr-2 h-4 w-4" />
+                              Xóa
+                            </DropdownMenuItem>
+                          </>
+                        )}
                       </>
                     )}
                   </DropdownMenuContent>
@@ -662,7 +688,7 @@ export default function MaintenancePage() {
       id: "actions",
       cell: ({ row }) => {
         const plan = row.original
-  const canManage = user && ((user.role === 'global' || user.role === 'admin') || user.role === 'to_qltb');
+          const canManage = canManagePlans;
 
         return (
           <DropdownMenu>
@@ -696,15 +722,19 @@ export default function MaintenancePage() {
                       </DropdownMenuItem>
                     </>
                   )}
-                  <DropdownMenuItem onSelect={() => setEditingPlan(plan)}>
-                    <Edit className="mr-2 h-4 w-4" />
-                    Sửa
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem onSelect={() => setPlanToDelete(plan)} className="text-destructive focus:text-destructive">
-                    <Trash2 className="mr-2 h-4 w-4" />
-                    Xoá
-                  </DropdownMenuItem>
+                  {canManage && (
+                    <>
+                      <DropdownMenuItem onSelect={() => setEditingPlan(plan)}>
+                        <Edit className="mr-2 h-4 w-4" />
+                        Sửa
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem onSelect={() => setPlanToDelete(plan)} className="text-destructive focus:text-destructive">
+                        <Trash2 className="mr-2 h-4 w-4" />
+                        Xoá
+                      </DropdownMenuItem>
+                    </>
+                  )}
                 </>
               )}
             </DropdownMenuContent>
@@ -730,7 +760,7 @@ export default function MaintenancePage() {
   })
 
   const isPlanApproved = selectedPlan?.trang_thai === 'Đã duyệt';
-  const canCompleteTask = user && ((user.role === 'global' || user.role === 'admin') || user.role === 'to_qltb');
+  const canCompleteTask = !isRegionalLeader && user && ((user.role === 'global' || user.role === 'admin') || user.role === 'to_qltb');
 
   const handleMarkAsCompleted = React.useCallback(async (task: MaintenanceTask, month: number) => {
     if (!selectedPlan || !user || !canCompleteTask) {
@@ -1804,12 +1834,14 @@ export default function MaintenancePage() {
                   Quản lý các kế hoạch bảo trì, hiệu chuẩn, kiểm định. Nhấp vào một hàng để xem chi tiết.
                 </CardDescription>
               </div>
-              <Button size="sm" className="h-8 gap-1 ml-auto" onClick={() => setIsAddPlanDialogOpen(true)}>
-                <PlusCircle className="h-3.5 w-3.5" />
-                <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
-                  Tạo kế hoạch mới
-                </span>
-              </Button>
+              {canManagePlans && (
+                <Button size="sm" className="h-8 gap-1 ml-auto" onClick={() => setIsAddPlanDialogOpen(true)}>
+                  <PlusCircle className="h-3.5 w-3.5" />
+                  <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
+                    Tạo kế hoạch mới
+                  </span>
+                </Button>
+              )}
             </CardHeader>
             <CardContent>
               {/* Search Section */}
@@ -1978,13 +2010,13 @@ export default function MaintenancePage() {
                   </CardDescription>
                 </div>
                 <div className="flex items-center gap-2">
-                  {hasChanges && !isPlanApproved && (
+                  {hasChanges && !isPlanApproved && canManagePlans && (
                     <>
                       <Button variant="outline" onClick={() => setIsConfirmingCancel(true)} disabled={isSavingAll}>
                         <Undo2 className="mr-2 h-4 w-4" />
                         Hủy bỏ
                       </Button>
-                      <Button onClick={handleSaveAllChanges} disabled={isSavingAll}>
+                      <Button onClick={handleSaveAllChanges} disabled={isSavingAll || !canManagePlans}>
                         {isSavingAll ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
                         Lưu thay đổi
                       </Button>
@@ -2000,7 +2032,7 @@ export default function MaintenancePage() {
                       Xuất phiếu KH
                     </Button>
                   )}
-                  {!isPlanApproved && (
+                  {!isPlanApproved && canManagePlans && (
                     <Button
                       onClick={() => setIsAddTasksDialogOpen(true)}
                       disabled={!!editingTaskId || isSavingAll}
@@ -2019,7 +2051,7 @@ export default function MaintenancePage() {
                 </div>
               ) : (
                 <>
-                  {selectedTaskRowsCount > 0 && !isPlanApproved && (
+                  {selectedTaskRowsCount > 0 && !isPlanApproved && canManagePlans && (
                     <div className="flex items-center gap-2 mb-4 p-3 bg-muted rounded-md border">
                       <span className="text-sm font-medium">
                         Đã chọn {selectedTaskRowsCount} mục:

@@ -382,6 +382,7 @@ export default function EquipmentPage() {
   const searchParams = useSearchParams()
   const { data: session, status } = useSession()
   const user = session?.user as any // Cast NextAuth user to our User type
+  const isRegionalLeader = (user as any)?.role === 'regional_leader'
   const { toast } = useToast()
   const { data: tenantBranding } = useTenantBranding()
   // Global/admin role check computed early so hooks below can depend on it safely
@@ -888,7 +889,7 @@ export default function EquipmentPage() {
     const activeUsageLog = activeUsageLogs?.find(
       (log) => log.thiet_bi_id === equipment.id && log.trang_thai === 'dang_su_dung'
     );
-    const startUsageDisabled = isLoadingActiveUsage || !user || !!activeUsageLog;
+  const startUsageDisabled = isLoadingActiveUsage || !user || !!activeUsageLog || isRegionalLeader;
 
     return (
       <DropdownMenu>
@@ -917,7 +918,13 @@ export default function EquipmentPage() {
           >
             Viết nhật ký SD
           </DropdownMenuItem>
-          <DropdownMenuItem onSelect={() => router.push(`/repair-requests?equipmentId=${equipment.id}`)}>
+          <DropdownMenuItem
+            disabled={isRegionalLeader}
+            onSelect={() => {
+              if (isRegionalLeader) return
+              router.push(`/repair-requests?equipmentId=${equipment.id}`)
+            }}
+          >
             Tạo yêu cầu sửa chữa
           </DropdownMenuItem>
         </DropdownMenuContent>
@@ -2192,24 +2199,26 @@ export default function EquipmentPage() {
                 )}
 
                 {/* Add button */}
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button size="sm" className="h-8 gap-1 touch-target-sm md:h-8">
-                      <PlusCircle className="h-3.5 w-3.5" />
-                      <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
-                        Thêm thiết bị
-                      </span>
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem onSelect={() => setIsAddDialogOpen(true)}>
-                      Thêm thủ công
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onSelect={() => setIsImportDialogOpen(true)}>
-                      Nhập từ Excel
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
+                {!isRegionalLeader && (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button size="sm" className="h-8 gap-1 touch-target-sm md:h-8">
+                        <PlusCircle className="h-3.5 w-3.5" />
+                        <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
+                          Thêm thiết bị
+                        </span>
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem onSelect={() => setIsAddDialogOpen(true)}>
+                        Thêm thủ công
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onSelect={() => setIsImportDialogOpen(true)}>
+                        Nhập từ Excel
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                )}
 
                 {/* Options menu */}
                 <DropdownMenu>
