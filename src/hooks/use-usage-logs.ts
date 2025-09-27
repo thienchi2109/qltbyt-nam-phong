@@ -10,14 +10,31 @@ export const usageLogKeys = {
   list: (filters: Record<string, any>) => [...usageLogKeys.lists(), { filters }] as const,
   details: () => [...usageLogKeys.all, 'detail'] as const,
   detail: (id: string) => [...usageLogKeys.details(), id] as const,
-  equipment: (equipmentId: string) => [...usageLogKeys.all, 'equipment', equipmentId] as const,
-  active: () => [...usageLogKeys.all, 'active'] as const,
+  equipment: (equipmentId: string, options?: Record<string, any>) => 
+    [...usageLogKeys.all, 'equipment', equipmentId, options] as const,
+  active: (tenantKey?: string | number) => [...usageLogKeys.all, 'active', tenantKey] as const,
 }
 
-// Fetch usage logs for specific equipment
-export function useEquipmentUsageLogs(equipmentId: string | null) {
+// Fetch usage logs for specific equipment with optimized parameters
+export function useEquipmentUsageLogs(
+  equipmentId: string | null,
+  options: {
+    limit?: number
+    daysBack?: number
+    includeActive?: boolean
+  } = {}
+) {
+  const {
+    limit = 50, // Reduced from 500 to 50
+    daysBack = 90, // Default to last 3 months
+    includeActive = true
+  } = options
+
+  // Calculate date range
+  const dateFrom = new Date(Date.now() - daysBack * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+
   return useQuery({
-    queryKey: usageLogKeys.equipment(equipmentId || ''),
+    queryKey: usageLogKeys.equipment(equipmentId || '', { limit, daysBack, includeActive }),
     queryFn: async () => {
       if (!equipmentId) return []
       const numericId = Number(equipmentId)
@@ -29,33 +46,94 @@ export function useEquipmentUsageLogs(equipmentId: string | null) {
         fn: 'usage_log_list',
         args: {
           p_thiet_bi_id: numericId,
-          p_limit: 500,
+          p_limit: limit,
+          p_started_from: dateFrom + 'T00:00:00Z', // Only fetch recent usage
         },
       })
 
       return data ?? []
     },
     enabled: !!equipmentId,
-    staleTime: 30 * 1000, // 30 seconds
+    staleTime: 5 * 60 * 1000, // 5 minutes for historical data (changes infrequently)
+    gcTime: 30 * 60 * 1000, // Keep in cache longer
   })
 }
 
-// Fetch active usage sessions
-export function useActiveUsageLogs() {
+// Separate hook for loading more historical data
+export function useEquipmentUsageLogsMore(
+  equipmentId: string | null,
+  offset: number,
+  options: {
+    limit?: number
+    daysBack?: number
+  } = {}
+) {
+  const {
+    limit = 50,
+    daysBack = 365, // Full year for "load more"
+  } = options
+
+  const dateFrom = new Date(Date.now() - daysBack * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+
   return useQuery({
-    queryKey: usageLogKeys.active(),
+    queryKey: usageLogKeys.equipment(equipmentId || '', { limit, offset, daysBack }),
+    queryFn: async () => {
+      if (!equipmentId || offset === 0) return [] // Don't fetch if offset is 0 (handled by main hook)
+      const numericId = Number(equipmentId)
+      if (!Number.isFinite(numericId)) {
+        throw new Error('Invalid equipment identifier')
+      }
+
+      const data = await callRpc<UsageLog[]>({
+        fn: 'usage_log_list',
+        args: {
+          p_thiet_bi_id: numericId,
+          p_limit: limit,
+          p_offset: offset,
+          p_started_from: dateFrom + 'T00:00:00Z',
+        },
+      })
+
+      return data ?? []
+    },
+    enabled: !!equipmentId && offset > 0,
+    staleTime: 10 * 60 * 1000, // 10 minutes for older data
+    gcTime: 60 * 60 * 1000, // Keep in cache for 1 hour
+  })
+}
+
+// Fetch active usage sessions with optional tenant filtering
+export function useActiveUsageLogs(options: {
+  tenantId?: number | null
+  enabled?: boolean
+  refetchInterval?: number
+} = {}) {
+  const {
+    tenantId,
+    enabled = true,
+    refetchInterval, // Allow caller to specify polling interval
+  } = options
+
+  const tenantKey = tenantId ?? 'all'
+  
+  return useQuery({
+    queryKey: usageLogKeys.active(tenantKey),
     queryFn: async () => {
       const data = await callRpc<UsageLog[]>({
         fn: 'usage_log_list',
         args: {
           p_active_only: true,
           p_limit: 200,
+          p_don_vi: tenantId ?? null, // Filter by tenant if specified
         },
       })
 
       return data ?? []
     },
-    staleTime: 10 * 1000, // 10 seconds for active sessions
+    enabled,
+    staleTime: 30 * 1000, // Increased to 30 seconds (active sessions don't change that frequently)
+    refetchInterval: refetchInterval || 2 * 60 * 1000, // Default to 2 minutes instead of 10 seconds
+    refetchIntervalInBackground: false, // Don't poll when tab is not active
   })
 }
 
