@@ -60,6 +60,8 @@ const ALLOWED_FUNCTIONS = new Set<string>([
   'maintenance_tasks_delete',
   'maintenance_stats_enhanced',
   'maintenance_stats_for_reports',
+  'dashboard_repair_request_stats',
+  'dashboard_maintenance_plan_snapshot',
   // Tenants + Users
   'tenant_list',
   'user_create',

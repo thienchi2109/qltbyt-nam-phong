@@ -1,5 +1,4 @@
 import { useQuery } from '@tanstack/react-query'
-import { supabase } from '@/lib/supabase'
 import { callRpc } from '@/lib/rpc-client'
 
 // Query keys for dashboard statistics
@@ -55,40 +54,15 @@ export function useRepairRequestStats() {
   return useQuery({
     queryKey: dashboardStatsKeys.repairRequests(),
     queryFn: async (): Promise<RepairRequestStats> => {
-      if (!supabase) {
-        throw new Error('Supabase client not initialized')
-      }
-
-      // Get counts for different statuses in parallel
-      const [pendingResult, approvedResult, completedResult] = await Promise.all([
-        supabase
-          .from('yeu_cau_sua_chua')
-          .select('*', { count: 'exact', head: true })
-          .eq('trang_thai', 'Chờ xử lý'),
-        supabase
-          .from('yeu_cau_sua_chua')
-          .select('*', { count: 'exact', head: true })
-          .eq('trang_thai', 'Đã duyệt'),
-        supabase
-          .from('yeu_cau_sua_chua')
-          .select('*', { count: 'exact', head: true })
-          .in('trang_thai', ['Hoàn thành', 'Không HT'])
-      ])
-
-      if (pendingResult.error) throw pendingResult.error
-      if (approvedResult.error) throw approvedResult.error
-      if (completedResult.error) throw completedResult.error
-
-      const pending = pendingResult.count ?? 0
-      const approved = approvedResult.count ?? 0
-      const completed = completedResult.count ?? 0
-      const total = pending + approved
+      const data = await callRpc<Partial<RepairRequestStats>>({
+        fn: 'dashboard_repair_request_stats',
+      })
 
       return {
-        total,
-        pending,
-        approved,
-        completed
+        total: data?.total ?? 0,
+        pending: data?.pending ?? 0,
+        approved: data?.approved ?? 0,
+        completed: data?.completed ?? 0,
       }
     },
     staleTime: 1 * 60 * 1000, // 1 minute - repair requests change more frequently
@@ -119,19 +93,26 @@ export function useMaintenancePlanStats() {
   return useQuery({
     queryKey: dashboardStatsKeys.maintenancePlans(),
     queryFn: async (): Promise<MaintenancePlanStats> => {
-      const allPlans = await callRpc<any[]>({ fn: 'maintenance_plan_list' })
-      
-      // Take first 10 plans (they're ordered by created_at desc in the RPC)
-      const plansList = (allPlans || []).slice(0, 10)
-      const total = plansList.length
-      const draft = plansList.filter(p => p.trang_thai === 'Bản nháp').length
-      const approved = plansList.filter(p => p.trang_thai === 'Đã duyệt').length
+      const payload = await callRpc<{ total?: number; draft?: number; approved?: number; plans?: any[] }>({
+        fn: 'dashboard_maintenance_plan_snapshot',
+        args: { p_limit: 10 },
+      })
+
+      const rawPlans = Array.isArray(payload?.plans) ? (payload?.plans as any[]) : []
 
       return {
-        total,
-        draft,
-        approved,
-        plans: plansList
+        total: payload?.total ?? 0,
+        draft: payload?.draft ?? 0,
+        approved: payload?.approved ?? 0,
+        plans: rawPlans.map((plan) => ({
+          id: Number(plan.id),
+          ten_ke_hoach: String(plan.ten_ke_hoach ?? ''),
+          nam: Number(plan.nam ?? 0),
+          khoa_phong: plan.khoa_phong ?? null,
+          loai_cong_viec: String(plan.loai_cong_viec ?? ''),
+          trang_thai: String(plan.trang_thai ?? ''),
+          created_at: String(plan.created_at ?? ''),
+        })),
       }
     },
     staleTime: 3 * 60 * 1000, // 3 minutes - maintenance plans change less frequently
