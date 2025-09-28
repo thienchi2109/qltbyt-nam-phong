@@ -162,8 +162,8 @@ export function useStartUsageSession() {
     },
     onSuccess: (data) => {
       // Invalidate relevant queries
-      queryClient.invalidateQueries({ queryKey: usageLogKeys.active() })
-      queryClient.invalidateQueries({ queryKey: usageLogKeys.equipment(data.thiet_bi_id.toString()) })
+      queryClient.invalidateQueries({ queryKey: ['usage-logs','active'] }) // invalidate all tenants
+      queryClient.invalidateQueries({ queryKey: ['usage-logs','equipment', data.thiet_bi_id.toString()] }) // invalidate all option variants for this equipment
       
       toast({
         title: "Thành công",
@@ -203,8 +203,8 @@ export function useEndUsageSession() {
     },
     onSuccess: (data) => {
       // Invalidate relevant queries
-      queryClient.invalidateQueries({ queryKey: usageLogKeys.active() })
-      queryClient.invalidateQueries({ queryKey: usageLogKeys.equipment(data.thiet_bi_id.toString()) })
+      queryClient.invalidateQueries({ queryKey: ['usage-logs','active'] }) // invalidate all tenants
+      queryClient.invalidateQueries({ queryKey: ['usage-logs','equipment', data.thiet_bi_id.toString()] }) // invalidate all option variants for this equipment
       
       toast({
         title: "Thành công",

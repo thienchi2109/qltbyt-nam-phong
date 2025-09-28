@@ -96,6 +96,8 @@ const ALLOWED_FUNCTIONS = new Set<string>([
   // Debug
   'debug_claims',
   'don_vi_branding_get',
+  // Header notifications
+  'header_notifications_summary',
 ])
 
 function getEnv(name: string) {
