@@ -1,8 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
-import { supabase } from '@/lib/supabase'
 import { callRpc } from '@/lib/rpc-client'
 import { differenceInMinutes, startOfDay, endOfDay, subDays, format } from 'date-fns'
-import { vi } from 'date-fns/locale'
+import { type UsageLog } from '@/types/database'
 
 // Query keys for analytics
 export const usageAnalyticsKeys = {
@@ -79,6 +78,49 @@ export interface DailyUsageData {
   uniqueEquipment: number
 }
 
+type UsageLogWithRelations = UsageLog & {
+  thiet_bi?: {
+    id: number
+    ma_thiet_bi: string
+    ten_thiet_bi: string
+    khoa_phong_quan_ly?: string | null
+    don_vi?: number | null
+  } | null
+  nguoi_su_dung?: {
+    id: number
+    full_name: string
+    khoa_phong?: string | null
+  } | null
+}
+
+interface UsageLogQueryOptions {
+  equipmentId?: number | null
+  status?: 'dang_su_dung' | 'hoan_thanh'
+  activeOnly?: boolean
+  startedFrom?: Date
+  startedTo?: Date
+  limit?: number
+  donVi?: number | null
+}
+
+async function fetchUsageLogs(options: UsageLogQueryOptions = {}): Promise<UsageLogWithRelations[]> {
+  const payload = await callRpc<UsageLogWithRelations[]>({
+    fn: 'usage_log_list',
+    args: {
+      p_thiet_bi_id: options.equipmentId ?? null,
+      p_trang_thai: options.status ?? null,
+      p_active_only: options.activeOnly ?? false,
+      p_started_from: options.startedFrom ? options.startedFrom.toISOString() : null,
+      p_started_to: options.startedTo ? options.startedTo.toISOString() : null,
+      p_limit: options.limit ?? 2000,
+      p_offset: 0,
+      p_don_vi: options.donVi ?? null,
+    },
+  })
+
+  return payload ?? []
+}
+
 // Get usage overview statistics
 export function useUsageOverview(
   tenantFilter?: string,
@@ -88,30 +130,22 @@ export function useUsageOverview(
   return useQuery({
     queryKey: usageAnalyticsKeys.overview({ tenant: effectiveTenantKey || 'auto' }),
     queryFn: async (): Promise<UsageOverview> => {
-      if (!supabase) {
-        throw new Error('Supabase client not initialized')
-      }
-
-      // Get all usage logs with related data
-      const { data: usageLogs, error } = await supabase
-        .from('nhat_ky_su_dung')
-        .select(`
-          *,
-          thiet_bi:thiet_bi(id, ten_thiet_bi, ma_thiet_bi),
-          nguoi_su_dung:nhan_vien(id, full_name)
-        `)
-
-      if (error) throw error
+      const usageLogs = await fetchUsageLogs({
+        donVi: selectedDonVi ?? null,
+        limit: 3000,
+      })
 
       const totalSessions = usageLogs.length
-      const activeSessions = usageLogs.filter(log => log.trang_thai === 'dang_su_dung').length
+      const activeSessions = usageLogs.filter((log) => log.trang_thai === 'dang_su_dung').length
 
-      // Calculate total usage time
       const totalUsageTime = usageLogs.reduce((total, log) => {
         if (log.thoi_gian_ket_thuc) {
-          return total + differenceInMinutes(
-            new Date(log.thoi_gian_ket_thuc),
-            new Date(log.thoi_gian_bat_dau)
+          return (
+            total +
+            differenceInMinutes(
+              new Date(log.thoi_gian_ket_thuc),
+              new Date(log.thoi_gian_bat_dau)
+            )
           )
         }
         return total
@@ -119,23 +153,25 @@ export function useUsageOverview(
 
       const averageSessionTime = totalSessions > 0 ? Math.round(totalUsageTime / totalSessions) : 0
 
-      // Find most used equipment
-      const equipmentUsage = new Map<number, { 
-        equipment: any, 
-        sessionCount: number, 
-        totalTime: number 
-      }>()
+      const equipmentUsage = new Map<
+        number,
+        {
+          equipment: NonNullable<UsageLogWithRelations['thiet_bi']>
+          sessionCount: number
+          totalTime: number
+        }
+      >()
 
-      usageLogs.forEach(log => {
+      usageLogs.forEach((log) => {
         if (!log.thiet_bi) return
-        
-        const existing = equipmentUsage.get(log.thiet_bi.id) || {
+
+        const existing = equipmentUsage.get(log.thiet_bi.id) ?? {
           equipment: log.thiet_bi,
           sessionCount: 0,
-          totalTime: 0
+          totalTime: 0,
         }
 
-        existing.sessionCount++
+        existing.sessionCount += 1
         if (log.thoi_gian_ket_thuc) {
           existing.totalTime += differenceInMinutes(
             new Date(log.thoi_gian_ket_thuc),
@@ -146,26 +182,28 @@ export function useUsageOverview(
         equipmentUsage.set(log.thiet_bi.id, existing)
       })
 
-      const mostUsedEquipment = Array.from(equipmentUsage.values())
-        .sort((a, b) => b.sessionCount - a.sessionCount)[0] || null
+      const mostUsedEquipment =
+        Array.from(equipmentUsage.values()).sort((a, b) => b.sessionCount - a.sessionCount)[0] || null
 
-      // Find top user
-      const userUsage = new Map<number, { 
-        user: any, 
-        sessionCount: number, 
-        totalTime: number 
-      }>()
+      const userUsage = new Map<
+        number,
+        {
+          user: NonNullable<UsageLogWithRelations['nguoi_su_dung']>
+          sessionCount: number
+          totalTime: number
+        }
+      >()
 
-      usageLogs.forEach(log => {
+      usageLogs.forEach((log) => {
         if (!log.nguoi_su_dung) return
-        
-        const existing = userUsage.get(log.nguoi_su_dung.id) || {
+
+        const existing = userUsage.get(log.nguoi_su_dung.id) ?? {
           user: log.nguoi_su_dung,
           sessionCount: 0,
-          totalTime: 0
+          totalTime: 0,
         }
 
-        existing.sessionCount++
+        existing.sessionCount += 1
         if (log.thoi_gian_ket_thuc) {
           existing.totalTime += differenceInMinutes(
             new Date(log.thoi_gian_ket_thuc),
@@ -176,27 +214,33 @@ export function useUsageOverview(
         userUsage.set(log.nguoi_su_dung.id, existing)
       })
 
-      const topUser = Array.from(userUsage.values())
-        .sort((a, b) => b.sessionCount - a.sessionCount)[0] || null
+      const topUser =
+        Array.from(userUsage.values()).sort((a, b) => b.sessionCount - a.sessionCount)[0] || null
 
       return {
         totalSessions,
         activeSessions,
         totalUsageTime,
         averageSessionTime,
-        mostUsedEquipment: mostUsedEquipment ? {
-          id: mostUsedEquipment.equipment.id,
-          ten_thiet_bi: mostUsedEquipment.equipment.ten_thiet_bi,
-          ma_thiet_bi: mostUsedEquipment.equipment.ma_thiet_bi,
-          sessionCount: mostUsedEquipment.sessionCount,
-          totalTime: mostUsedEquipment.totalTime
-        } : null,
-        topUser: topUser ? {
-          id: topUser.user.id,
-          full_name: topUser.user.full_name,
-          sessionCount: topUser.sessionCount,
-          totalTime: topUser.totalTime
-        } : null
+        mostUsedEquipment:
+          mostUsedEquipment && mostUsedEquipment.equipment
+            ? {
+                id: mostUsedEquipment.equipment.id,
+                ten_thiet_bi: mostUsedEquipment.equipment.ten_thiet_bi,
+                ma_thiet_bi: mostUsedEquipment.equipment.ma_thiet_bi,
+                sessionCount: mostUsedEquipment.sessionCount,
+                totalTime: mostUsedEquipment.totalTime,
+              }
+            : null,
+        topUser:
+          topUser && topUser.user
+            ? {
+                id: topUser.user.id,
+                full_name: topUser.user.full_name,
+                sessionCount: topUser.sessionCount,
+                totalTime: topUser.totalTime,
+              }
+            : null,
       }
     },
     enabled: effectiveTenantKey !== 'unset', // Gate query for global users
@@ -214,47 +258,32 @@ export function useEquipmentUsageStats(
   return useQuery({
     queryKey: usageAnalyticsKeys.equipmentStats({ dateRange, tenant: effectiveTenantKey || 'auto' }),
     queryFn: async (): Promise<EquipmentUsageStats[]> => {
-      if (!supabase) {
-        throw new Error('Supabase client not initialized')
-      }
+      const usageLogs = await fetchUsageLogs({
+        startedFrom: dateRange ? startOfDay(dateRange.from) : undefined,
+        startedTo: dateRange ? endOfDay(dateRange.to) : undefined,
+        donVi: selectedDonVi ?? null,
+        limit: 5000,
+      })
 
-      let query = supabase
-        .from('nhat_ky_su_dung')
-        .select(`
-          *,
-          thiet_bi:thiet_bi(id, ten_thiet_bi, ma_thiet_bi, khoa_phong_quan_ly)
-        `)
-
-      // Apply date range filter
-      if (dateRange) {
-        query = query
-          .gte('thoi_gian_bat_dau', startOfDay(dateRange.from).toISOString())
-          .lte('thoi_gian_bat_dau', endOfDay(dateRange.to).toISOString())
-      }
-
-      const { data: usageLogs, error } = await query
-
-      if (error) throw error
-
-      // Group by equipment
       const equipmentStats = new Map<number, EquipmentUsageStats>()
 
-      usageLogs.forEach(log => {
+      usageLogs.forEach((log) => {
         if (!log.thiet_bi) return
 
-        const existing: EquipmentUsageStats = equipmentStats.get(log.thiet_bi.id) || {
+        const existing = equipmentStats.get(log.thiet_bi.id) ?? {
           id: log.thiet_bi.id,
           ten_thiet_bi: log.thiet_bi.ten_thiet_bi,
           ma_thiet_bi: log.thiet_bi.ma_thiet_bi,
-          khoa_phong_quan_ly: log.thiet_bi.khoa_phong_quan_ly,
+          khoa_phong_quan_ly: log.thiet_bi.khoa_phong_quan_ly ?? undefined,
           sessionCount: 0,
           totalUsageTime: 0,
           averageSessionTime: 0,
-          currentlyInUse: false
+          currentlyInUse: false,
+          lastUsed: undefined,
         }
 
-        existing.sessionCount++
-        
+        existing.sessionCount += 1
+
         if (log.thoi_gian_ket_thuc) {
           existing.totalUsageTime += differenceInMinutes(
             new Date(log.thoi_gian_ket_thuc),
@@ -273,15 +302,13 @@ export function useEquipmentUsageStats(
         equipmentStats.set(log.thiet_bi.id, existing)
       })
 
-      // Calculate average session time
-      equipmentStats.forEach(stats => {
-        stats.averageSessionTime = stats.sessionCount > 0 
-          ? Math.round(stats.totalUsageTime / stats.sessionCount) 
+      equipmentStats.forEach((stats) => {
+        stats.averageSessionTime = stats.sessionCount > 0
+          ? Math.round(stats.totalUsageTime / stats.sessionCount)
           : 0
       })
 
-      return Array.from(equipmentStats.values())
-        .sort((a, b) => b.sessionCount - a.sessionCount)
+      return Array.from(equipmentStats.values()).sort((a, b) => b.sessionCount - a.sessionCount)
     },
     enabled: effectiveTenantKey !== 'unset', // Gate query for global users
     staleTime: 2 * 60 * 1000, // 2 minutes
@@ -298,47 +325,31 @@ export function useUserUsageStats(
   return useQuery({
     queryKey: usageAnalyticsKeys.userStats({ dateRange, tenant: effectiveTenantKey || 'auto' }),
     queryFn: async (): Promise<UserUsageStats[]> => {
-      if (!supabase) {
-        throw new Error('Supabase client not initialized')
-      }
+      const usageLogs = await fetchUsageLogs({
+        startedFrom: dateRange ? startOfDay(dateRange.from) : undefined,
+        startedTo: dateRange ? endOfDay(dateRange.to) : undefined,
+        donVi: selectedDonVi ?? null,
+        limit: 5000,
+      })
 
-      let query = supabase
-        .from('nhat_ky_su_dung')
-        .select(`
-          *,
-          nguoi_su_dung:nhan_vien(id, full_name, khoa_phong),
-          thiet_bi:thiet_bi(id)
-        `)
+      const userStats = new Map<number, UserUsageStatsInternal>()
 
-      // Apply date range filter
-      if (dateRange) {
-        query = query
-          .gte('thoi_gian_bat_dau', startOfDay(dateRange.from).toISOString())
-          .lte('thoi_gian_bat_dau', endOfDay(dateRange.to).toISOString())
-      }
-
-      const { data: usageLogs, error } = await query
-
-      if (error) throw error
-
-      // Group by user
-  const userStats = new Map<number, UserUsageStatsInternal>()
-
-      usageLogs.forEach(log => {
+      usageLogs.forEach((log) => {
         if (!log.nguoi_su_dung) return
 
-        const existing: UserUsageStatsInternal = userStats.get(log.nguoi_su_dung.id) || {
+        const existing = userStats.get(log.nguoi_su_dung.id) ?? {
           id: log.nguoi_su_dung.id,
           full_name: log.nguoi_su_dung.full_name,
-          khoa_phong: log.nguoi_su_dung.khoa_phong,
+          khoa_phong: log.nguoi_su_dung.khoa_phong ?? undefined,
           sessionCount: 0,
           totalUsageTime: 0,
           averageSessionTime: 0,
-          equipmentUsed: new Set<number>()
+          equipmentUsed: new Set<number>(),
+          lastActivity: undefined,
         }
 
-        existing.sessionCount++
-        
+        existing.sessionCount += 1
+
         if (log.thoi_gian_ket_thuc) {
           existing.totalUsageTime += differenceInMinutes(
             new Date(log.thoi_gian_ket_thuc),
@@ -354,21 +365,19 @@ export function useUserUsageStats(
           existing.lastActivity = log.thoi_gian_bat_dau
         }
 
-  userStats.set(log.nguoi_su_dung.id, existing)
+        userStats.set(log.nguoi_su_dung.id, existing)
       })
 
-      // Convert Set to number and calculate averages
-      const result: UserUsageStats[] = Array.from(userStats.values()).map(stats => ({
+      const result: UserUsageStats[] = Array.from(userStats.values()).map((stats) => ({
         id: stats.id,
         full_name: stats.full_name,
         khoa_phong: stats.khoa_phong,
         sessionCount: stats.sessionCount,
         totalUsageTime: stats.totalUsageTime,
-        averageSessionTime: stats.sessionCount > 0 
-          ? Math.round(stats.totalUsageTime / stats.sessionCount) 
-          : 0,
+        averageSessionTime:
+          stats.sessionCount > 0 ? Math.round(stats.totalUsageTime / stats.sessionCount) : 0,
         equipmentUsed: stats.equipmentUsed.size,
-        lastActivity: stats.lastActivity
+        lastActivity: stats.lastActivity,
       }))
 
       return result.sort((a, b) => b.sessionCount - a.sessionCount)
@@ -388,29 +397,18 @@ export function useDailyUsageData(
   return useQuery({
     queryKey: usageAnalyticsKeys.dailyUsage({ days, tenant: effectiveTenantKey || 'auto' }),
     queryFn: async (): Promise<DailyUsageData[]> => {
-      if (!supabase) {
-        throw new Error('Supabase client not initialized')
-      }
-
       const endDate = new Date()
       const startDate = subDays(endDate, days - 1)
 
-      const { data: usageLogs, error } = await supabase
-        .from('nhat_ky_su_dung')
-        .select(`
-          *,
-          nguoi_su_dung:nhan_vien(id),
-          thiet_bi:thiet_bi(id)
-        `)
-        .gte('thoi_gian_bat_dau', startOfDay(startDate).toISOString())
-        .lte('thoi_gian_bat_dau', endOfDay(endDate).toISOString())
+      const usageLogs = await fetchUsageLogs({
+        startedFrom: startOfDay(startDate),
+        startedTo: endOfDay(endDate),
+        donVi: selectedDonVi ?? null,
+        limit: Math.max(days * 200, 2000),
+      })
 
-      if (error) throw error
+      const dailyData = new Map<string, DailyUsageData & { __uu?: Set<number>; __ue?: Set<number> }>()
 
-      // Group by date
-      const dailyData = new Map<string, DailyUsageData>()
-
-      // Initialize all dates
       for (let i = 0; i < days; i++) {
         const date = subDays(endDate, i)
         const dateKey = format(date, 'yyyy-MM-dd')
@@ -418,45 +416,44 @@ export function useDailyUsageData(
           date: dateKey,
           sessionCount: 0,
           totalUsageTime: 0,
-          // store as any internally then convert later
-          uniqueUsers: 0 as unknown as any,
-          uniqueEquipment: 0 as unknown as any
+          uniqueUsers: 0,
+          uniqueEquipment: 0,
+          __uu: new Set<number>(),
+          __ue: new Set<number>(),
         })
       }
 
-      // Populate with actual data
-      usageLogs.forEach(log => {
+      usageLogs.forEach((log) => {
         const dateKey = format(new Date(log.thoi_gian_bat_dau), 'yyyy-MM-dd')
         const existing = dailyData.get(dateKey)
-        
-        if (existing) {
-          existing.sessionCount++
-          
-          if (log.thoi_gian_ket_thuc) {
-            existing.totalUsageTime += differenceInMinutes(
-              new Date(log.thoi_gian_ket_thuc),
-              new Date(log.thoi_gian_bat_dau)
-            )
-          }
 
-          // Track uniques temporarily via Symbols on object
-          const uuKey = '__uu' as const
-          const ueKey = '__ue' as const
-          ;(existing as any)[uuKey] = (existing as any)[uuKey] || new Set<number>()
-          ;(existing as any)[ueKey] = (existing as any)[ueKey] || new Set<number>()
-          if (log.nguoi_su_dung?.id) (existing as any)[uuKey].add(log.nguoi_su_dung.id)
-          if (log.thiet_bi?.id) (existing as any)[ueKey].add(log.thiet_bi.id)
+        if (!existing) {
+          return
+        }
+
+        existing.sessionCount += 1
+
+        if (log.thoi_gian_ket_thuc) {
+          existing.totalUsageTime += differenceInMinutes(
+            new Date(log.thoi_gian_ket_thuc),
+            new Date(log.thoi_gian_bat_dau)
+          )
+        }
+
+        if (log.nguoi_su_dung?.id) {
+          existing.__uu?.add(log.nguoi_su_dung.id)
+        }
+        if (log.thiet_bi?.id) {
+          existing.__ue?.add(log.thiet_bi.id)
         }
       })
 
-      // Convert Sets to numbers and sort by date
-      return Array.from(dailyData.values()).map((data: any) => ({
-        date: data.date,
-        sessionCount: data.sessionCount,
-        totalUsageTime: data.totalUsageTime,
-        uniqueUsers: (data.__uu as Set<number> | undefined)?.size ?? 0,
-        uniqueEquipment: (data.__ue as Set<number> | undefined)?.size ?? 0,
-      }))
+      return Array.from(dailyData.values())
+        .map(({ __uu, __ue, ...rest }) => ({
+          ...rest,
+          uniqueUsers: __uu?.size ?? 0,
+          uniqueEquipment: __ue?.size ?? 0,
+        }))
         .sort((a, b) => a.date.localeCompare(b.date))
     },
     enabled: effectiveTenantKey !== 'unset', // Gate query for global users
