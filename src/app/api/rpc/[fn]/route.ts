@@ -88,6 +88,11 @@ const ALLOWED_FUNCTIONS = new Set<string>([
   'audit_logs_list_v2',
   'audit_logs_stats', 
   'audit_logs_recent_summary',
+  // Dashboard KPIs (tenant-filtered)
+  'dashboard_repair_request_stats',
+  'dashboard_maintenance_plan_stats', 
+  'dashboard_maintenance_count',
+  'dashboard_equipment_total',
   // Debug
   'debug_claims',
   'don_vi_branding_get',
