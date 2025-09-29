@@ -13,6 +13,7 @@ import {
   BarChart3,
   QrCode,
   Users,
+  Activity,
 } from "lucide-react"
 
 import {
@@ -50,6 +51,7 @@ export function MobileFooterNav() {
     // Add admin-only items with role-based permissions
   if (user?.role === 'global' || user?.role === 'admin') {
       baseItems.push({ href: "/users", icon: Users, label: "Người dùng" })
+      baseItems.push({ href: "/activity-logs", icon: Activity, label: "Nhật ký hoạt động" })
     }
 
     return baseItems

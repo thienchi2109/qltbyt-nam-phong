@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { supabase } from '@/lib/supabase'
+import { callRpc } from '@/lib/rpc-client'
 import { toast } from '@/hooks/use-toast'
 import { type UsageLog } from '@/types/database'
 
@@ -10,60 +10,130 @@ export const usageLogKeys = {
   list: (filters: Record<string, any>) => [...usageLogKeys.lists(), { filters }] as const,
   details: () => [...usageLogKeys.all, 'detail'] as const,
   detail: (id: string) => [...usageLogKeys.details(), id] as const,
-  equipment: (equipmentId: string) => [...usageLogKeys.all, 'equipment', equipmentId] as const,
-  active: () => [...usageLogKeys.all, 'active'] as const,
+  equipment: (equipmentId: string, options?: Record<string, any>) => 
+    [...usageLogKeys.all, 'equipment', equipmentId, options] as const,
+  active: (tenantKey?: string | number) => [...usageLogKeys.all, 'active', tenantKey] as const,
 }
 
-// Fetch usage logs for specific equipment
-export function useEquipmentUsageLogs(equipmentId: string | null) {
+// Fetch usage logs for specific equipment with optimized parameters
+export function useEquipmentUsageLogs(
+  equipmentId: string | null,
+  options: {
+    limit?: number
+    daysBack?: number
+    includeActive?: boolean
+  } = {}
+) {
+  const {
+    limit = 50, // Reduced from 500 to 50
+    daysBack = 90, // Default to last 3 months
+    includeActive = true
+  } = options
+
+  // Calculate date range
+  const dateFrom = new Date(Date.now() - daysBack * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+
   return useQuery({
-    queryKey: usageLogKeys.equipment(equipmentId || ''),
+    queryKey: usageLogKeys.equipment(equipmentId || '', { limit, daysBack, includeActive }),
     queryFn: async () => {
       if (!equipmentId) return []
-      if (!supabase) {
-        throw new Error('Supabase client not initialized')
+      const numericId = Number(equipmentId)
+      if (!Number.isFinite(numericId)) {
+        throw new Error('Invalid equipment identifier')
       }
 
-      const { data, error } = await supabase
-        .from('nhat_ky_su_dung')
-        .select(`
-          *,
-          nguoi_su_dung:nhan_vien(id, full_name, khoa_phong)
-        `)
-        .eq('thiet_bi_id', equipmentId)
-        .order('thoi_gian_bat_dau', { ascending: false })
+      const data = await callRpc<UsageLog[]>({
+        fn: 'usage_log_list',
+        args: {
+          p_thiet_bi_id: numericId,
+          p_limit: limit,
+          p_started_from: dateFrom + 'T00:00:00Z', // Only fetch recent usage
+        },
+      })
 
-      if (error) throw error
-      return data as UsageLog[]
+      return data ?? []
     },
     enabled: !!equipmentId,
-    staleTime: 30 * 1000, // 30 seconds
+    staleTime: 5 * 60 * 1000, // 5 minutes for historical data (changes infrequently)
+    gcTime: 30 * 60 * 1000, // Keep in cache longer
   })
 }
 
-// Fetch active usage sessions
-export function useActiveUsageLogs() {
+// Separate hook for loading more historical data
+export function useEquipmentUsageLogsMore(
+  equipmentId: string | null,
+  offset: number,
+  options: {
+    limit?: number
+    daysBack?: number
+  } = {}
+) {
+  const {
+    limit = 50,
+    daysBack = 365, // Full year for "load more"
+  } = options
+
+  const dateFrom = new Date(Date.now() - daysBack * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+
   return useQuery({
-    queryKey: usageLogKeys.active(),
+    queryKey: usageLogKeys.equipment(equipmentId || '', { limit, offset, daysBack }),
     queryFn: async () => {
-      if (!supabase) {
-        throw new Error('Supabase client not initialized')
+      if (!equipmentId || offset === 0) return [] // Don't fetch if offset is 0 (handled by main hook)
+      const numericId = Number(equipmentId)
+      if (!Number.isFinite(numericId)) {
+        throw new Error('Invalid equipment identifier')
       }
 
-      const { data, error } = await supabase
-        .from('nhat_ky_su_dung')
-        .select(`
-          *,
-          thiet_bi:thiet_bi(id, ma_thiet_bi, ten_thiet_bi),
-          nguoi_su_dung:nhan_vien(id, full_name, khoa_phong)
-        `)
-        .eq('trang_thai', 'dang_su_dung')
-        .order('thoi_gian_bat_dau', { ascending: false })
+      const data = await callRpc<UsageLog[]>({
+        fn: 'usage_log_list',
+        args: {
+          p_thiet_bi_id: numericId,
+          p_limit: limit,
+          p_offset: offset,
+          p_started_from: dateFrom + 'T00:00:00Z',
+        },
+      })
 
-      if (error) throw error
-      return data as UsageLog[]
+      return data ?? []
     },
-    staleTime: 10 * 1000, // 10 seconds for active sessions
+    enabled: !!equipmentId && offset > 0,
+    staleTime: 10 * 60 * 1000, // 10 minutes for older data
+    gcTime: 60 * 60 * 1000, // Keep in cache for 1 hour
+  })
+}
+
+// Fetch active usage sessions with optional tenant filtering
+export function useActiveUsageLogs(options: {
+  tenantId?: number | null
+  enabled?: boolean
+  refetchInterval?: number
+} = {}) {
+  const {
+    tenantId,
+    enabled = true,
+    refetchInterval, // Allow caller to specify polling interval
+  } = options
+
+  const tenantKey = tenantId ?? 'all'
+  
+  return useQuery({
+    queryKey: usageLogKeys.active(tenantKey),
+    queryFn: async () => {
+      const data = await callRpc<UsageLog[]>({
+        fn: 'usage_log_list',
+        args: {
+          p_active_only: true,
+          p_limit: 200,
+          p_don_vi: tenantId ?? null, // Filter by tenant if specified
+        },
+      })
+
+      return data ?? []
+    },
+    enabled,
+    staleTime: 30 * 1000, // Increased to 30 seconds (active sessions don't change that frequently)
+    refetchInterval: refetchInterval || 2 * 60 * 1000, // Default to 2 minutes instead of 10 seconds
+    refetchIntervalInBackground: false, // Don't poll when tab is not active
   })
 }
 
@@ -78,44 +148,22 @@ export function useStartUsageSession() {
       tinh_trang_thiet_bi?: string
       ghi_chu?: string
     }) => {
-      if (!supabase) {
-        throw new Error('Supabase client not initialized')
-      }
+      const result = await callRpc<UsageLog>({
+        fn: 'usage_session_start',
+        args: {
+          p_thiet_bi_id: data.thiet_bi_id,
+          p_nguoi_su_dung_id: data.nguoi_su_dung_id,
+          p_tinh_trang_thiet_bi: data.tinh_trang_thiet_bi ?? null,
+          p_ghi_chu: data.ghi_chu ?? null,
+        },
+      })
 
-      // Check if there's already an active session for this equipment
-      const { data: existingSession, error: checkError } = await supabase
-        .from('nhat_ky_su_dung')
-        .select('id')
-        .eq('thiet_bi_id', data.thiet_bi_id)
-        .eq('trang_thai', 'dang_su_dung')
-        .maybeSingle()
-
-      if (checkError) throw checkError
-
-      if (existingSession) {
-        throw new Error('Thiết bị này đang được sử dụng bởi người khác')
-      }
-
-      const { data: result, error } = await supabase
-        .from('nhat_ky_su_dung')
-        .insert({
-          thiet_bi_id: data.thiet_bi_id,
-          nguoi_su_dung_id: data.nguoi_su_dung_id,
-          thoi_gian_bat_dau: new Date().toISOString(),
-          tinh_trang_thiet_bi: data.tinh_trang_thiet_bi,
-          ghi_chu: data.ghi_chu,
-          trang_thai: 'dang_su_dung'
-        })
-        .select()
-        .single()
-
-      if (error) throw error
       return result
     },
     onSuccess: (data) => {
       // Invalidate relevant queries
-      queryClient.invalidateQueries({ queryKey: usageLogKeys.active() })
-      queryClient.invalidateQueries({ queryKey: usageLogKeys.equipment(data.thiet_bi_id.toString()) })
+      queryClient.invalidateQueries({ queryKey: ['usage-logs','active'] }) // invalidate all tenants
+      queryClient.invalidateQueries({ queryKey: ['usage-logs','equipment', data.thiet_bi_id.toString()] }) // invalidate all option variants for this equipment
       
       toast({
         title: "Thành công",
@@ -142,30 +190,21 @@ export function useEndUsageSession() {
       tinh_trang_thiet_bi?: string
       ghi_chu?: string
     }) => {
-      if (!supabase) {
-        throw new Error('Supabase client not initialized')
-      }
+      const result = await callRpc<UsageLog>({
+        fn: 'usage_session_end',
+        args: {
+          p_usage_log_id: data.id,
+          p_tinh_trang_thiet_bi: data.tinh_trang_thiet_bi ?? null,
+          p_ghi_chu: data.ghi_chu ?? null,
+        },
+      })
 
-      const { data: result, error } = await supabase
-        .from('nhat_ky_su_dung')
-        .update({
-          thoi_gian_ket_thuc: new Date().toISOString(),
-          tinh_trang_thiet_bi: data.tinh_trang_thiet_bi,
-          ghi_chu: data.ghi_chu,
-          trang_thai: 'hoan_thanh',
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', data.id)
-        .select()
-        .single()
-
-      if (error) throw error
       return result
     },
     onSuccess: (data) => {
       // Invalidate relevant queries
-      queryClient.invalidateQueries({ queryKey: usageLogKeys.active() })
-      queryClient.invalidateQueries({ queryKey: usageLogKeys.equipment(data.thiet_bi_id.toString()) })
+      queryClient.invalidateQueries({ queryKey: ['usage-logs','active'] }) // invalidate all tenants
+      queryClient.invalidateQueries({ queryKey: ['usage-logs','equipment', data.thiet_bi_id.toString()] }) // invalidate all option variants for this equipment
       
       toast({
         title: "Thành công",
@@ -188,16 +227,12 @@ export function useDeleteUsageLog() {
 
   return useMutation({
     mutationFn: async (id: number) => {
-      if (!supabase) {
-        throw new Error('Supabase client not initialized')
-      }
-
-      const { error } = await supabase
-        .from('nhat_ky_su_dung')
-        .delete()
-        .eq('id', id)
-
-      if (error) throw error
+      await callRpc<{ success: boolean }>({
+        fn: 'usage_log_delete',
+        args: {
+          p_usage_log_id: id,
+        },
+      })
     },
     onSuccess: () => {
       // Invalidate all usage log queries

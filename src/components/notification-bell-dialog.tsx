@@ -17,22 +17,33 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 interface NotificationBellDialogProps {
   allRepairRequests?: any;
   allTransferRequests?: any;
+  // Optional direct counts (preferred). When provided, component won't re-count from arrays
+  repairCount?: number;
+  transferCount?: number;
 }
 
 export function NotificationBellDialog({
   allRepairRequests,
   allTransferRequests,
+  repairCount: repairCountProp,
+  transferCount: transferCountProp,
 }: NotificationBellDialogProps) {
   const [isOpen, setIsOpen] = React.useState(false);
 
-  // Temporary placeholder - count of pending requests
-  const repairCount = allRepairRequests?.filter((req: any) => 
-    req.trang_thai === 'Chờ xử lý' || req.trang_thai === 'Đã duyệt'
-  )?.length || 0;
+  // Support either direct counts or fallback to array-based counting for backward compatibility
+  const repairCount =
+    typeof repairCountProp === 'number'
+      ? repairCountProp
+      : (allRepairRequests?.filter((req: any) =>
+          req.trang_thai === 'Chờ xử lý' || req.trang_thai === 'Đã duyệt'
+        )?.length || 0);
   
-  const transferCount = allTransferRequests?.filter((req: any) => 
-    req.trang_thai === 'cho_duyet' || req.trang_thai === 'da_duyet'
-  )?.length || 0;
+  const transferCount =
+    typeof transferCountProp === 'number'
+      ? transferCountProp
+      : (allTransferRequests?.filter((req: any) =>
+          req.trang_thai === 'cho_duyet' || req.trang_thai === 'da_duyet'
+        )?.length || 0);
   
   const totalAlertsCount = repairCount + transferCount;
 

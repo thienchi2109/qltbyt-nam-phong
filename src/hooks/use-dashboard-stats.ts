@@ -1,5 +1,4 @@
 import { useQuery } from '@tanstack/react-query'
-import { supabase } from '@/lib/supabase'
 import { callRpc } from '@/lib/rpc-client'
 
 // Query keys for dashboard statistics
@@ -12,12 +11,12 @@ export const dashboardStatsKeys = {
   equipmentAttention: () => [...dashboardStatsKeys.all, 'equipment-attention'] as const,
 }
 
-// Hook to get total equipment count
+// Hook to get total equipment count (tenant-filtered)
 export function useTotalEquipment() {
   return useQuery({
     queryKey: dashboardStatsKeys.totalEquipment(),
     queryFn: async (): Promise<number> => {
-      const data = await callRpc<number>({ fn: 'equipment_count' })
+      const data = await callRpc<number>({ fn: 'dashboard_equipment_total' })
       return data ?? 0
     },
     staleTime: 2 * 60 * 1000, // 2 minutes - equipment count changes less frequently
@@ -27,12 +26,12 @@ export function useTotalEquipment() {
   })
 }
 
-// Hook to get equipment needing maintenance/calibration count
+// Hook to get equipment needing maintenance/calibration count (tenant-filtered)
 export function useMaintenanceCount() {
   return useQuery({
     queryKey: dashboardStatsKeys.maintenanceCount(),
     queryFn: async (): Promise<number> => {
-      const data = await callRpc<number>({ fn: 'equipment_count', args: { p_statuses: ['Chờ bảo trì', 'Chờ hiệu chuẩn/kiểm định'] } })
+      const data = await callRpc<number>({ fn: 'dashboard_maintenance_count' })
       return data ?? 0
     },
     staleTime: 2 * 60 * 1000, // 2 minutes
@@ -50,45 +49,17 @@ export interface RepairRequestStats {
   completed: number
 }
 
-// Hook to get repair request statistics
+// Hook to get repair request statistics (tenant-filtered)
 export function useRepairRequestStats() {
   return useQuery({
     queryKey: dashboardStatsKeys.repairRequests(),
     queryFn: async (): Promise<RepairRequestStats> => {
-      if (!supabase) {
-        throw new Error('Supabase client not initialized')
-      }
-
-      // Get counts for different statuses in parallel
-      const [pendingResult, approvedResult, completedResult] = await Promise.all([
-        supabase
-          .from('yeu_cau_sua_chua')
-          .select('*', { count: 'exact', head: true })
-          .eq('trang_thai', 'Chờ xử lý'),
-        supabase
-          .from('yeu_cau_sua_chua')
-          .select('*', { count: 'exact', head: true })
-          .eq('trang_thai', 'Đã duyệt'),
-        supabase
-          .from('yeu_cau_sua_chua')
-          .select('*', { count: 'exact', head: true })
-          .in('trang_thai', ['Hoàn thành', 'Không HT'])
-      ])
-
-      if (pendingResult.error) throw pendingResult.error
-      if (approvedResult.error) throw approvedResult.error
-      if (completedResult.error) throw completedResult.error
-
-      const pending = pendingResult.count ?? 0
-      const approved = approvedResult.count ?? 0
-      const completed = completedResult.count ?? 0
-      const total = pending + approved
-
-      return {
-        total,
-        pending,
-        approved,
-        completed
+      const data = await callRpc<RepairRequestStats>({ fn: 'dashboard_repair_request_stats' })
+      return data ?? {
+        total: 0,
+        pending: 0,
+        approved: 0,
+        completed: 0
       }
     },
     staleTime: 1 * 60 * 1000, // 1 minute - repair requests change more frequently
@@ -114,24 +85,17 @@ export interface MaintenancePlanStats {
   }>
 }
 
-// Hook to get maintenance plan statistics
+// Hook to get maintenance plan statistics (tenant-filtered)
 export function useMaintenancePlanStats() {
   return useQuery({
     queryKey: dashboardStatsKeys.maintenancePlans(),
     queryFn: async (): Promise<MaintenancePlanStats> => {
-      const allPlans = await callRpc<any[]>({ fn: 'maintenance_plan_list' })
-      
-      // Take first 10 plans (they're ordered by created_at desc in the RPC)
-      const plansList = (allPlans || []).slice(0, 10)
-      const total = plansList.length
-      const draft = plansList.filter(p => p.trang_thai === 'Bản nháp').length
-      const approved = plansList.filter(p => p.trang_thai === 'Đã duyệt').length
-
-      return {
-        total,
-        draft,
-        approved,
-        plans: plansList
+      const data = await callRpc<MaintenancePlanStats>({ fn: 'dashboard_maintenance_plan_stats' })
+      return data ?? {
+        total: 0,
+        draft: 0,
+        approved: 0,
+        plans: []
       }
     },
     staleTime: 3 * 60 * 1000, // 3 minutes - maintenance plans change less frequently

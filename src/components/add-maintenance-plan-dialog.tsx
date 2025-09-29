@@ -50,45 +50,6 @@ export function AddMaintenancePlanDialog({ open, onOpenChange, onSuccess }: AddM
   const { data: session } = useSession()
   const user = session?.user as any // Cast NextAuth user to our User type
   const [isSubmitting, setIsSubmitting] = React.useState(false)
-  const closingRef = React.useRef(false)
-  
-  // Reset closing ref when dialog opens
-  React.useEffect(() => {
-    if (open) {
-      closingRef.current = false
-    }
-  }, [open])
-  
-  // Mobile-safe close handler to prevent double-close crashes
-  const handleClose = React.useCallback(() => {
-    if (closingRef.current || isSubmitting) return
-    
-    try {
-      closingRef.current = true
-      
-      // Mobile-specific safety: Use requestAnimationFrame to prevent crashes
-      if (typeof window !== 'undefined' && window.matchMedia('(max-width: 767px)').matches) {
-        requestAnimationFrame(() => {
-          try {
-            onOpenChange(false)
-          } catch (error) {
-            // Force close as fallback
-            setTimeout(() => onOpenChange(false), 50)
-          }
-        })
-      } else {
-        onOpenChange(false)
-      }
-      
-      setTimeout(() => {
-        closingRef.current = false
-      }, 500) // Longer timeout for mobile safety
-    } catch (error) {
-      closingRef.current = false
-      // Emergency fallback
-      setTimeout(() => onOpenChange(false), 100)
-    }
-  }, [onOpenChange, isSubmitting])
 
   const form = useForm<PlanFormValues>({
     resolver: zodResolver(planFormSchema),
@@ -96,8 +57,10 @@ export function AddMaintenancePlanDialog({ open, onOpenChange, onSuccess }: AddM
       ten_ke_hoach: "",
       nam: new Date().getFullYear(),
       khoa_phong: "",
+      loai_cong_viec: "Bảo trì", // Default to first option to prevent mobile crashes
     },
   })
+
 
   async function onSubmit(values: PlanFormValues) {
     if (!user) {
@@ -127,14 +90,12 @@ export function AddMaintenancePlanDialog({ open, onOpenChange, onSuccess }: AddM
       })
       onSuccess()
       onOpenChange(false)
-      // Mobile-safe form reset with delay to prevent crashes
-      setTimeout(() => {
-        try {
-          form.reset({ ten_ke_hoach: "", nam: new Date().getFullYear(), khoa_phong: "" })
-        } catch (e) {
-          // Silently handle form reset errors on mobile
-        }
-      }, 100)
+      form.reset({
+        ten_ke_hoach: "",
+        nam: new Date().getFullYear(),
+        khoa_phong: "",
+        loai_cong_viec: "Bảo trì",
+      })
     } catch (error: any) {
       toast({
         variant: "destructive",
@@ -147,7 +108,7 @@ export function AddMaintenancePlanDialog({ open, onOpenChange, onSuccess }: AddM
   }
 
   return (
-    <Dialog open={open} onOpenChange={(open) => open ? onOpenChange(true) : handleClose()}>
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle>Tạo kế hoạch mới</DialogTitle>
@@ -219,7 +180,7 @@ export function AddMaintenancePlanDialog({ open, onOpenChange, onSuccess }: AddM
               )}
             />
             <DialogFooter>
-              <Button type="button" variant="outline" onClick={handleClose} disabled={isSubmitting}>
+              <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={isSubmitting}>
                 Hủy
               </Button>
               <Button type="submit" disabled={isSubmitting}>

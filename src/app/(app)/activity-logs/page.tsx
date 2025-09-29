@@ -2,7 +2,7 @@
 
 import React from 'react'
 import { useSession } from 'next-auth/react'
-import { redirect } from 'next/navigation'
+import { useRouter } from 'next/navigation'
 import { Activity, Shield, AlertTriangle } from 'lucide-react'
 
 import { ActivityLogsViewer } from '@/components/activity-logs/activity-logs-viewer'
@@ -10,6 +10,14 @@ import { Card, CardContent } from '@/components/ui/card'
 
 export default function ActivityLogsPage() {
   const { data: session, status } = useSession()
+
+  const router = useRouter()
+
+  React.useEffect(() => {
+    if (status !== 'loading' && !session) {
+      router.replace('/auth/signin')
+    }
+  }, [status, session, router])
 
   // Redirect if not authenticated
   if (status === 'loading') {
@@ -24,7 +32,7 @@ export default function ActivityLogsPage() {
   }
 
   if (!session) {
-    redirect('/auth/signin')
+    return null
   }
 
   // Check if user is global admin
