@@ -86,6 +86,12 @@
    - Script E2E scenarios for area access, `/users` blocking, and tenant create/update flows with `dia_ban` selection.
    - Document release checklist (monitoring, rollback steps, reporting performance review).
 
+## Status Update – 2025-09-27
+- Phase **RPC-1 Read scope enforcement (Phase 4)** is **complete**. Migration `20250927190000_regional_leader_phase4.sql` now applies `public.allowed_don_vi_for_session()` across repairs, transfers, and maintenance RPCs while hard-denying write attempts from `regional_leader`.
+- UI guardrails for transfer workflows continue to block `regional_leader` from creating, editing, approving, or otherwise mutating transfer requests, aligning with Phase 5 (API/UI) goals.
+- Dialog submit handlers (`AddTransferDialog`, `EditTransferDialog`) explicitly reject `regional_leader` actions, matching the read-only requirement.
+- Automated tests were not executed for this tranche of work per request; schedule a focused QA sweep covering the new migration once TypeScript checks pass.
+
 ## Open Questions
 - **Area catalog governance**: designate an owner for the `dia_ban` lookup table, store the primary mapping under version control, and define a change-control process (review + rollout window) before new regions are added.
 - **Backfill sequencing**: stage migrations so schema changes land first, then run batched idempotent backfills with verification queries and a rollback plan; document expected cutover downtime (ideally zero) and monitoring checkpoints.

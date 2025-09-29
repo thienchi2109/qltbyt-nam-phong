@@ -33,7 +33,7 @@ import { useToast } from "@/hooks/use-toast"
 import { type Equipment } from "@/types/database"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
-import { useMutation, useQueryClient } from "@tanstack/react-query"
+import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query"
 import { callRpc } from "@/lib/rpc-client"
 
 const equipmentStatusOptions = [
@@ -80,9 +80,41 @@ export function AddEquipmentDialog({ open, onOpenChange, onSuccess }: AddEquipme
   const { toast } = useToast()
   const queryClient = useQueryClient()
   const { data: session } = useSession()
-  const [departments, setDepartments] = React.useState<string[]>([])
-  const [tenants, setTenants] = React.useState<{ id: number; code: string; name: string }[]>([])
-  const [currentTenant, setCurrentTenant] = React.useState<{ id: number; code: string; name: string } | null>(null)
+  const user = session?.user as any
+  const isRegionalLeader = (user?.role ?? '') === 'regional_leader'
+  const isGlobal = user?.role === 'global' || user?.role === 'admin'
+  
+  // Use TanStack Query for departments with proper caching
+  const { data: departments = [] } = useQuery({
+    queryKey: ['departments_list'],
+    queryFn: async () => {
+      const list = await callRpc<{ name: string }[]>({ fn: 'departments_list', args: {} })
+      return (list || []).map(x => x.name).filter(Boolean)
+    },
+    enabled: open, // Only fetch when dialog is open
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    gcTime: 10 * 60 * 1000, // 10 minutes
+  })
+  
+  // Use TanStack Query for tenants with proper caching
+  const { data: tenantList = [] } = useQuery({
+    queryKey: ['tenant_list'],
+    queryFn: async () => {
+      const list = await callRpc<any[]>({ fn: 'tenant_list', args: {} })
+      return (list || []).map(t => ({ id: t.id, code: t.code, name: t.name }))
+    },
+    enabled: open, // Fetch for all users when dialog is open (needed to display current tenant)
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    gcTime: 10 * 60 * 1000, // 10 minutes
+  })
+  
+  // Find current user's tenant
+  const currentTenant = React.useMemo(() => {
+    const userDonVi = user?.don_vi
+    if (!userDonVi) return null
+    if (!tenantList.length) return null
+    return tenantList.find(t => t.id === Number(userDonVi)) || null
+  }, [user?.don_vi, tenantList])
   const form = useForm<EquipmentFormValues>({
     resolver: zodResolver(equipmentFormSchema),
     defaultValues: {
@@ -109,42 +141,10 @@ export function AddEquipmentDialog({ open, onOpenChange, onSuccess }: AddEquipme
   })
 
   React.useEffect(() => {
-    if (open) {
-      fetchDepartments();
-      fetchCurrentTenant();
-    } else {
+    if (!open) {
       form.reset();
-      setCurrentTenant(null);
     }
-  }, [open, form, session])
-
-  const fetchDepartments = async () => {
-    try {
-      const list = await callRpc<{ name: string }[]>({ fn: 'departments_list', args: {} })
-      setDepartments((list || []).map(x => x.name).filter(Boolean))
-    } catch (error: any) {
-      toast({ variant: "destructive", title: "Lỗi tải danh sách khoa phòng", description: error?.message || '' })
-    }
-  };
-
-  const fetchCurrentTenant = async () => {
-    try {
-      const list = await callRpc<any[]>({ fn: 'tenant_list', args: {} })
-      const tenantList = (list || []).map(t => ({ id: t.id, code: t.code, name: t.name }))
-      setTenants(tenantList)
-      
-      // Find current user's tenant based on session
-      const userDonVi = (session as any)?.user?.don_vi
-      if (userDonVi) {
-        const current = tenantList.find(t => t.id === Number(userDonVi))
-        if (current) {
-          setCurrentTenant(current)
-        }
-      }
-    } catch (error: any) {
-      toast({ variant: "destructive", title: "Lỗi tải thông tin đơn vị", description: error?.message || '' })
-    }
-  };
+  }, [open, form])
 
   const createMutation = useMutation({
     mutationFn: async (payload: EquipmentFormValues) => {
@@ -152,8 +152,12 @@ export function AddEquipmentDialog({ open, onOpenChange, onSuccess }: AddEquipme
     },
     onSuccess: () => {
       toast({ title: 'Thành công', description: 'Đã thêm thiết bị mới vào danh mục.' })
-      // Invalidate equipment list so the page refreshes
+      // Invalidate all equipment-related queries to ensure cache consistency
       queryClient.invalidateQueries({ queryKey: ['equipment_list'] })
+      queryClient.invalidateQueries({ queryKey: ['equipment_list_enhanced'] })
+      // Also invalidate equipment count and stats if they exist
+      queryClient.invalidateQueries({ queryKey: ['equipment_count'] })
+      queryClient.invalidateQueries({ queryKey: ['equipment_count_enhanced'] })
       onSuccess()
       onOpenChange(false)
       form.reset()
@@ -164,6 +168,14 @@ export function AddEquipmentDialog({ open, onOpenChange, onSuccess }: AddEquipme
   })
 
   async function onSubmit(values: EquipmentFormValues) {
+    if (isRegionalLeader) {
+      toast({
+        variant: "destructive",
+        title: "Không có quyền",
+        description: "Tài khoản khu vực chỉ được phép xem dữ liệu thiết bị.",
+      })
+      return
+    }
     await createMutation.mutateAsync(values)
   }
 
@@ -356,7 +368,7 @@ export function AddEquipmentDialog({ open, onOpenChange, onSuccess }: AddEquipme
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={createMutation.isPending}>
                 Hủy
               </Button>
-              <Button type="submit" disabled={createMutation.isPending}>
+              <Button type="submit" disabled={createMutation.isPending || isRegionalLeader}>
                 {createMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 Lưu
               </Button>

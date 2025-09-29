@@ -36,6 +36,7 @@ interface MobileUsageActionsProps {
 export function MobileUsageActions({ equipment, className = "" }: MobileUsageActionsProps) {
   const { data: session } = useSession()
   const user = session?.user as any
+  const isRegionalLeader = user?.role === 'regional_leader'
   const { data: activeUsageLogs } = useActiveUsageLogs()
   const [isStartDialogOpen, setIsStartDialogOpen] = React.useState(false)
   const [isEndDialogOpen, setIsEndDialogOpen] = React.useState(false)
@@ -66,11 +67,13 @@ export function MobileUsageActions({ equipment, className = "" }: MobileUsageAct
     : 0
 
   const handleStartUsage = () => {
+    if (isRegionalLeader) return
     setIsSheetOpen(false)
     setIsStartDialogOpen(true)
   }
 
   const handleEndUsage = () => {
+    if (isRegionalLeader) return
     setIsSheetOpen(false)
     setIsEndDialogOpen(true)
   }
@@ -154,6 +157,7 @@ export function MobileUsageActions({ equipment, className = "" }: MobileUsageAct
                       onClick={handleEndUsage}
                       className="w-full gap-2"
                       size="lg"
+                      disabled={isRegionalLeader}
                     >
                       <Square className="h-5 w-5" />
                       Kết thúc sử dụng
@@ -191,6 +195,7 @@ export function MobileUsageActions({ equipment, className = "" }: MobileUsageAct
                   onClick={handleStartUsage}
                   className="w-full gap-2"
                   size="lg"
+                  disabled={isRegionalLeader}
                 >
                   <Play className="h-5 w-5" />
                   Bắt đầu sử dụng thiết bị

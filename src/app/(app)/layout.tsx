@@ -48,7 +48,7 @@ import { NotificationBellDialog } from "@/components/notification-bell-dialog"
 import { RealtimeStatus } from "@/components/realtime-status"
 import { MobileFooterNav } from "@/components/mobile-footer-nav"
 import { USER_ROLES } from "@/types/database"
-import { supabase } from "@/lib/supabase"
+import { callRpc } from "@/lib/rpc-client"
 // Tenant switcher removed in favor of per-page tenant filters
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
@@ -61,54 +61,30 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const user = session?.user as any
   const branding = useTenantBranding()
 
-  // Simple data fetching for notifications
-  const [repairRequests, setRepairRequests] = React.useState<any[]>([])
-  const [transferRequests, setTransferRequests] = React.useState<any[]>([])
+  // Header notification counts (tenant-scoped via RPC)
+  const [repairCount, setRepairCount] = React.useState<number>(0)
+  const [transferCount, setTransferCount] = React.useState<number>(0)
 
   React.useEffect(() => {
-    if (!supabase || !user) return;
-    
-    // Fetch repair requests with simple query - use ngay_yeu_cau for ordering
-    const fetchRepairRequests = async () => {
+    let cancelled = false
+    const fetchSummary = async () => {
       try {
-        // Fetching repair requests
-        const { data, error } = await supabase!
-          .from('yeu_cau_sua_chua')
-          .select('*')
-          .order('ngay_yeu_cau', { ascending: false });
-        
-        if (!error && data) {
-          setRepairRequests(data);
-        } else if (error) {
-          console.error('Repair requests error:', error);
+        if (!user) return
+        const summary = await callRpc<{ pending_repairs: number; pending_transfers: number }, { p_don_vi?: number | null }>({
+          fn: 'header_notifications_summary',
+          args: { p_don_vi: null },
+        })
+        if (!cancelled) {
+          setRepairCount(summary?.pending_repairs || 0)
+          setTransferCount(summary?.pending_transfers || 0)
         }
       } catch (err) {
-        console.error('Error fetching repair requests:', err);
+        console.error('Header notifications error:', err)
       }
-    };
-
-    // Fetch transfer requests with simple query - use created_at for ordering
-    const fetchTransferRequests = async () => {
-      try {
-        // Fetching transfer requests
-        const { data, error } = await supabase!
-          .from('yeu_cau_luan_chuyen')
-          .select('*')
-          .order('created_at', { ascending: false });
-        
-        if (!error && data) {
-          setTransferRequests(data);
-        } else if (error) {
-          console.error('Transfer requests error:', error);
-        }
-      } catch (err) {
-        console.error('Error fetching transfer requests:', err);
-      }
-    };
-
-    fetchRepairRequests();
-    fetchTransferRequests();
-  }, [user]);
+    }
+    fetchSummary()
+    return () => { cancelled = true }
+  }, [user])
 
   // Dynamic nav items based on user role
   const navItems = React.useMemo(() => {
@@ -268,8 +244,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
             {/* Notification Bell */}
             <NotificationBellDialog
-              allRepairRequests={repairRequests}
-              allTransferRequests={transferRequests}
+              repairCount={repairCount}
+              transferCount={transferCount}
             />
 
             <DropdownMenu>

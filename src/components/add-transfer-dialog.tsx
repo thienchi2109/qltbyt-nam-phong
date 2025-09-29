@@ -16,7 +16,6 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
-import { ScrollArea } from "@/components/ui/scroll-area"
 import { useToast } from "@/hooks/use-toast"
 import { callRpc } from "@/lib/rpc-client"
 import { useSession } from "next-auth/react"
@@ -40,6 +39,13 @@ interface EquipmentWithDept {
   khoa_phong_quan_ly?: string;
 }
 
+type EquipmentListEnhancedResponse = {
+  data?: any[] | null
+  total?: number
+  page?: number
+  pageSize?: number
+}
+
 interface AddTransferDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
@@ -50,8 +56,10 @@ export function AddTransferDialog({ open, onOpenChange, onSuccess }: AddTransfer
   const { toast } = useToast()
   const { data: session } = useSession()
   const user = session?.user as any // Cast NextAuth user to our User type
+  const isRegionalLeader = user?.role === 'regional_leader'
   const [isLoading, setIsLoading] = React.useState(false)
-  const [allEquipment, setAllEquipment] = React.useState<EquipmentWithDept[]>([])
+  const [equipmentResults, setEquipmentResults] = React.useState<EquipmentWithDept[]>([])
+  const [isEquipmentLoading, setIsEquipmentLoading] = React.useState(false)
   const [searchTerm, setSearchTerm] = React.useState("")
   const debouncedSearch = useSearchDebounce(searchTerm)
   const [selectedEquipment, setSelectedEquipment] = React.useState<EquipmentWithDept | null>(null)
@@ -94,62 +102,156 @@ export function AddTransferDialog({ open, onOpenChange, onSuccess }: AddTransfer
   }, [])
 
   React.useEffect(() => {
-    if (open) {
-      if (allEquipment.length === 0) fetchEquipment();
-      if (departments.length === 0) fetchDepartments();
-    } else {
+    if (!open) {
       resetForm()
+      setEquipmentResults([])
+      return
     }
-  }, [open, resetForm])
 
-  const fetchEquipment = async () => {
-    try {
-      const equipments = await callRpc<any[]>({ fn: 'equipment_list', args: { p_q: null, p_sort: 'ma_thiet_bi', p_page: 1, p_page_size: 1000 } })
-      const mapped: EquipmentWithDept[] = (equipments || []).map((e: any) => ({
-        id: e.id,
-        ma_thiet_bi: e.ma_thiet_bi,
-        ten_thiet_bi: e.ten_thiet_bi,
-        model: e.model ?? e.model_number ?? null,
-        serial: e.serial ?? e.serial_number ?? null,
-        khoa_phong_quan_ly: e.khoa_phong_quan_ly ?? null,
-      }))
-      setAllEquipment(mapped)
-    } catch (error: any) {
-      toast({
-        variant: "destructive",
-        title: "Lỗi tải danh sách thiết bị",
-        description: error.message,
-      })
+    if (departments.length === 0) {
+      (async () => {
+        try {
+          const deps = await callRpc<{ name: string }[]>({ fn: 'departments_list', args: {} })
+          setDepartments((deps || []).map(x => x.name).filter(Boolean))
+        } catch (error: any) {
+          toast({
+            variant: "destructive",
+            title: "Lỗi tải danh sách khoa phòng",
+            description: error.message,
+          })
+        }
+      })()
     }
-  }
+  }, [open, departments.length, resetForm, toast])
 
-  const fetchDepartments = async () => {
-    try {
-      const deps = await callRpc<string[]>({ fn: 'departments_list', args: {} })
-      setDepartments((deps || []).filter(Boolean).map(String))
-    } catch (error: any) {
-      toast({
-        variant: "destructive",
-        title: "Lỗi tải danh sách khoa phòng",
-        description: error.message,
-      });
+  const trimmedDebouncedSearch = React.useMemo(
+    () => (debouncedSearch ?? '').trim(),
+    [debouncedSearch]
+  )
+
+  const selectedValueLabel = React.useMemo(
+    () => (selectedEquipment ? `${selectedEquipment.ten_thiet_bi} (${selectedEquipment.ma_thiet_bi})` : ''),
+    [selectedEquipment]
+  )
+
+  React.useEffect(() => {
+    if (!open) {
+      return
     }
-  }
 
-  // Filter equipment based on search query
+    if (trimmedDebouncedSearch.length < 2) {
+      setEquipmentResults([])
+      setIsEquipmentLoading(false)
+      return
+    }
+
+    let isMounted = true
+    const controller = new AbortController()
+
+    setIsEquipmentLoading(true)
+    setEquipmentResults([])
+
+    ;(async () => {
+      try {
+        const result = await callRpc<EquipmentListEnhancedResponse>({
+          fn: 'equipment_list_enhanced',
+          args: {
+            p_q: trimmedDebouncedSearch,
+            p_sort: 'ten_thiet_bi.asc',
+            p_page: 1,
+            p_page_size: 20,
+            p_fields: 'id,ma_thiet_bi,ten_thiet_bi,model,serial,khoa_phong_quan_ly',
+          },
+          signal: controller.signal,
+        })
+
+        if (!isMounted) {
+          return
+        }
+
+        const rows = Array.isArray(result?.data) ? result.data : []
+        const mapped = rows.reduce<EquipmentWithDept[]>((acc, item: any) => {
+          const idRaw = item?.id ?? item?.equipment_id
+          const id = typeof idRaw === 'number' ? idRaw : Number(idRaw)
+          const maRaw = item?.ma_thiet_bi ?? item?.ma_tb
+          const tenRaw = item?.ten_thiet_bi ?? item?.ten_tb
+
+          if (!Number.isFinite(id) || id <= 0 || !maRaw || !tenRaw) {
+            return acc
+          }
+
+          const modelRaw = item?.model ?? item?.model_number ?? undefined
+          const serialRaw = item?.serial ?? item?.serial_number ?? undefined
+          const deptRaw = item?.khoa_phong_quan_ly ?? item?.khoa_phong ?? item?.department_name ?? undefined
+
+          const equipment: EquipmentWithDept = {
+            id,
+            ma_thiet_bi: String(maRaw),
+            ten_thiet_bi: String(tenRaw),
+          }
+
+          if (modelRaw) {
+            equipment.model = String(modelRaw)
+          }
+
+          if (serialRaw) {
+            equipment.serial = String(serialRaw)
+          }
+
+          if (deptRaw) {
+            equipment.khoa_phong_quan_ly = String(deptRaw)
+          }
+
+          acc.push(equipment)
+          return acc
+        }, [])
+
+        setEquipmentResults(mapped)
+      } catch (error: any) {
+        if (!isMounted) {
+          return
+        }
+        if (error?.name === 'AbortError') {
+          return
+        }
+
+        toast({
+          variant: 'destructive',
+          title: 'Lỗi tìm kiếm thiết bị',
+          description: error?.message || 'Không thể tải danh sách thiết bị.',
+        })
+      } finally {
+        if (isMounted) {
+          setIsEquipmentLoading(false)
+        }
+      }
+    })()
+
+    return () => {
+      isMounted = false
+      controller.abort()
+    }
+  }, [open, trimmedDebouncedSearch, toast])
+
   const filteredEquipment = React.useMemo(() => {
-    if (!debouncedSearch) return [];
-
-    if (selectedEquipment && searchTerm === `${selectedEquipment.ten_thiet_bi} (${selectedEquipment.ma_thiet_bi})`) {
-      return [];
+    if (trimmedDebouncedSearch.length < 2) {
+      return [] as EquipmentWithDept[]
     }
 
-    return allEquipment.filter(
-      (eq) =>
-        eq.ten_thiet_bi.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
-        eq.ma_thiet_bi.toLowerCase().includes(debouncedSearch.toLowerCase())
-    );
-  }, [debouncedSearch, allEquipment, selectedEquipment, searchTerm]);
+    if (selectedEquipment && searchTerm === selectedValueLabel) {
+      return [] as EquipmentWithDept[]
+    }
+
+    return equipmentResults
+  }, [equipmentResults, trimmedDebouncedSearch, searchTerm, selectedEquipment, selectedValueLabel])
+
+  const isSelectedValueActive = Boolean(selectedEquipment && searchTerm === selectedValueLabel)
+  const showResultsDropdown =
+    trimmedDebouncedSearch.length >= 2 && !isEquipmentLoading && filteredEquipment.length > 0
+  const showNoResults =
+    trimmedDebouncedSearch.length >= 2 && !isEquipmentLoading && filteredEquipment.length === 0 && !isSelectedValueActive
+  const showMinCharsHint =
+    trimmedDebouncedSearch.length > 0 && trimmedDebouncedSearch.length < 2
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchTerm(e.target.value);
@@ -179,6 +281,15 @@ export function AddTransferDialog({ open, onOpenChange, onSuccess }: AddTransfer
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+
+    if (isRegionalLeader) {
+      toast({
+        variant: "destructive",
+        title: "Không thể thực hiện",
+        description: "Vai trò Trưởng vùng chỉ được xem yêu cầu luân chuyển."
+      })
+      return
+    }
     
     if (!formData.thiet_bi_id || !formData.loai_hinh || !formData.ly_do_luan_chuyen) {
       toast({
@@ -286,31 +397,50 @@ export function AddTransferDialog({ open, onOpenChange, onSuccess }: AddTransfer
                   disabled={isLoading}
                   required
                 />
-                {filteredEquipment.length > 0 && (
-                  <div className="absolute z-10 w-full mt-1 bg-popover border rounded-md shadow-lg max-h-60 overflow-y-auto">
-                    <div className="p-1">
-                      {filteredEquipment.map((equipment) => (
-                        <div
-                          key={equipment.id}
-                          className="text-sm p-2 hover:bg-accent rounded-sm cursor-pointer"
-                          onClick={() => handleSelectEquipment(equipment)}
-                        >
-                          <div className="font-medium">{equipment.ten_thiet_bi} ({equipment.ma_thiet_bi})</div>
-                          <div className="text-xs text-muted-foreground">
-                            {equipment.model && `Model: ${equipment.model}`}
-                            {equipment.khoa_phong_quan_ly && ` • ${equipment.khoa_phong_quan_ly}`}
-                          </div>
-                        </div>
-                      ))}
+                {showMinCharsHint && (
+                  <div className="absolute z-10 w-full mt-1 bg-popover border rounded-md shadow-lg p-3">
+                    <div className="text-sm text-muted-foreground text-center">
+                      Nhập tối thiểu 2 ký tự để tìm kiếm
                     </div>
                   </div>
                 )}
-                {debouncedSearch && filteredEquipment.length === 0 && (
-                  <div className="absolute z-10 w-full mt-1 bg-popover border rounded-md shadow-lg p-3">
-                    <div className="text-sm text-muted-foreground text-center">
-                      Không tìm thấy kết quả phù hợp
-                    </div>
-                  </div>
+                {trimmedDebouncedSearch.length >= 2 && (
+                  <>
+                    {isEquipmentLoading && (
+                      <div className="absolute z-20 w-full mt-1 bg-popover border rounded-md shadow-lg p-3">
+                        <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                          <span>Đang tìm kiếm thiết bị...</span>
+                        </div>
+                      </div>
+                    )}
+                    {showResultsDropdown && (
+                      <div className="absolute z-10 w-full mt-1 bg-popover border rounded-md shadow-lg max-h-60 overflow-y-auto">
+                        <div className="p-1">
+                          {filteredEquipment.map((equipment: EquipmentWithDept) => (
+                            <div
+                              key={equipment.id}
+                              className="text-sm p-2 hover:bg-accent rounded-sm cursor-pointer"
+                              onClick={() => handleSelectEquipment(equipment)}
+                            >
+                              <div className="font-medium">{equipment.ten_thiet_bi} ({equipment.ma_thiet_bi})</div>
+                              <div className="text-xs text-muted-foreground">
+                                {equipment.model && `Model: ${equipment.model}`}
+                                {equipment.khoa_phong_quan_ly && ` • ${equipment.khoa_phong_quan_ly}`}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {showNoResults && (
+                      <div className="absolute z-10 w-full mt-1 bg-popover border rounded-md shadow-lg p-3">
+                        <div className="text-sm text-muted-foreground text-center">
+                          Không tìm thấy kết quả phù hợp
+                        </div>
+                      </div>
+                    )}
+                  </>
                 )}
               </div>
               {selectedEquipment && (
@@ -514,7 +644,7 @@ export function AddTransferDialog({ open, onOpenChange, onSuccess }: AddTransfer
             >
               Hủy
             </Button>
-            <Button type="submit" disabled={isLoading}>
+            <Button type="submit" disabled={isLoading || isRegionalLeader}>
               {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Tạo yêu cầu
             </Button>
