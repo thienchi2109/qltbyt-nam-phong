@@ -1114,7 +1114,31 @@ export default function MaintenancePage() {
 
     const formatValue = (value: any) => value ?? "";
 
-    // Fetch tenant branding for dynamic header
+    // Open window immediately to preserve user gesture
+    const newWindow = window.open("", "_blank");
+    if (!newWindow) {
+      toast({
+        variant: "destructive",
+        title: "Không thể mở cửa sổ in",
+        description: "Trình duyệt đã chặn popup. Vui lòng bật popup cho trang này và thử lại."
+      });
+      return;
+    }
+
+    // Show loading content immediately
+    newWindow.document.write(`
+      <!DOCTYPE html>
+      <html><head><title>Đang tải...</title></head>
+      <body style="font-family: Arial, sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; background: #f8f9fa;">
+        <div style="text-align: center;">
+          <div style="width: 32px; height: 32px; border: 4px solid #e2e8f0; border-top: 4px solid #3b82f6; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 16px;"></div>
+          <p style="color: #6b7280; margin: 0;">Đang tải kế hoạch...</p>
+        </div>
+        <style>@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }</style>
+      </body></html>
+    `);
+
+    // Fetch tenant branding asynchronously
     let tenantBranding = null;
     try {
       const brandingResult = await callRpc<any[]>({ fn: 'don_vi_branding_get', args: { p_id: null } });
@@ -1580,12 +1604,20 @@ export default function MaintenancePage() {
 </html>
     `;
 
-    const newWindow = window.open("", "_blank");
-    if (newWindow) {
-      newWindow.document.open();
-      newWindow.document.write(htmlContent);
-      newWindow.document.close();
+    // Check if window is still open before writing content
+    if (newWindow.closed) {
+      toast({
+        variant: "destructive",
+        title: "Cửa sổ in đã bị đóng",
+        description: "Vui lòng thử lại và không đóng cửa sổ trong quá trình tải."
+      });
+      return;
     }
+
+    // Replace the loading content with actual form content
+    newWindow.document.open();
+    newWindow.document.write(htmlContent);
+    newWindow.document.close();
   }, [selectedPlan, tasks, toast, user]);
 
   const tableMeta = React.useMemo(() => ({
