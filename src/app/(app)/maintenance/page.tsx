@@ -1102,7 +1102,7 @@ export default function MaintenancePage() {
     setIsSavingAll(false);
   }, [selectedPlan, hasChanges, draftTasks, tasks, toast, getDraftCacheKey, fetchPlanDetails]);
 
-  const handleGeneratePlanForm = React.useCallback(() => {
+  const handleGeneratePlanForm = React.useCallback(async () => {
     if (!selectedPlan || tasks.length === 0) {
       toast({
         variant: "destructive",
@@ -1113,6 +1113,20 @@ export default function MaintenancePage() {
     }
 
     const formatValue = (value: any) => value ?? "";
+
+    // Fetch tenant branding for dynamic header
+    let tenantBranding = null;
+    try {
+      const brandingResult = await callRpc<any[]>({ fn: 'don_vi_branding_get', args: { p_id: null } });
+      tenantBranding = Array.isArray(brandingResult) ? brandingResult[0] : null;
+    } catch (error) {
+      console.error('Failed to fetch tenant branding:', error);
+      // Continue with default branding if fetch fails
+    }
+
+    // Use tenant branding or fallback to default
+    const logoUrl = tenantBranding?.logo_url || "https://placehold.co/100x100/e2e8f0/e2e8f0?text=Logo";
+    const organizationName = tenantBranding?.name || "Nền tảng QLTBYT";
 
     // Generate table rows from saved tasks
     const generateTableRows = () => {
@@ -1483,10 +1497,10 @@ export default function MaintenancePage() {
             <header>
                  <div class="flex justify-between items-start">
                     <div class="text-center w-1/4">
-                        <img src="https://i.postimg.cc/26dHxmnV/89307731ad9526cb7f84-1-Photoroom.png" alt="Logo CDC" class="w-16" onerror="this.onerror=null;this.src='https://placehold.co/100x100/e2e8f0/e2e8f0?text=Logo';">
+                        <img src="${logoUrl}" alt="Logo" class="w-16" onerror="this.onerror=null;this.src='https://placehold.co/100x100/e2e8f0/e2e8f0?text=Logo';">
                     </div>
                     <div class="text-center w-1/2">
-                         <h2 class="title-sub uppercase font-bold">TRUNG TÂM KIỂM SOÁT BỆNH TẬT THÀNH PHỐ CẦN THƠ</h2>
+                         <h2 class="title-sub uppercase font-bold">${organizationName}</h2>
                          <div class="flex items-baseline justify-center font-bold text-base">
                             <label for="department-name">KHOA/PHÒNG:</label>
                             <input type="text" id="department-name" class="form-input-line flex-grow ml-2" value="${formatValue(selectedPlan.khoa_phong)}">
