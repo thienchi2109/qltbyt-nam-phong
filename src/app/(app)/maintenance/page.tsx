@@ -1102,7 +1102,7 @@ export default function MaintenancePage() {
     setIsSavingAll(false);
   }, [selectedPlan, hasChanges, draftTasks, tasks, toast, getDraftCacheKey, fetchPlanDetails]);
 
-  const handleGeneratePlanForm = React.useCallback(() => {
+  const handleGeneratePlanForm = React.useCallback(async () => {
     if (!selectedPlan || tasks.length === 0) {
       toast({
         variant: "destructive",
@@ -1113,6 +1113,44 @@ export default function MaintenancePage() {
     }
 
     const formatValue = (value: any) => value ?? "";
+
+    // Open window immediately to preserve user gesture
+    const newWindow = window.open("", "_blank");
+    if (!newWindow) {
+      toast({
+        variant: "destructive",
+        title: "Không thể mở cửa sổ in",
+        description: "Trình duyệt đã chặn popup. Vui lòng bật popup cho trang này và thử lại."
+      });
+      return;
+    }
+
+    // Show loading content immediately
+    newWindow.document.write(`
+      <!DOCTYPE html>
+      <html><head><title>Đang tải...</title></head>
+      <body style="font-family: Arial, sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; background: #f8f9fa;">
+        <div style="text-align: center;">
+          <div style="width: 32px; height: 32px; border: 4px solid #e2e8f0; border-top: 4px solid #3b82f6; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 16px;"></div>
+          <p style="color: #6b7280; margin: 0;">Đang tải kế hoạch...</p>
+        </div>
+        <style>@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }</style>
+      </body></html>
+    `);
+
+    // Fetch tenant branding asynchronously
+    let tenantBranding = null;
+    try {
+      const brandingResult = await callRpc<any[]>({ fn: 'don_vi_branding_get', args: { p_id: null } });
+      tenantBranding = Array.isArray(brandingResult) ? brandingResult[0] : null;
+    } catch (error) {
+      console.error('Failed to fetch tenant branding:', error);
+      // Continue with default branding if fetch fails
+    }
+
+    // Use tenant branding or fallback to default
+    const logoUrl = tenantBranding?.logo_url || "https://placehold.co/100x100/e2e8f0/e2e8f0?text=Logo";
+    const organizationName = tenantBranding?.name || "Nền tảng QLTBYT";
 
     // Generate table rows from saved tasks
     const generateTableRows = () => {
@@ -1483,10 +1521,10 @@ export default function MaintenancePage() {
             <header>
                  <div class="flex justify-between items-start">
                     <div class="text-center w-1/4">
-                        <img src="https://i.postimg.cc/26dHxmnV/89307731ad9526cb7f84-1-Photoroom.png" alt="Logo CDC" class="w-16" onerror="this.onerror=null;this.src='https://placehold.co/100x100/e2e8f0/e2e8f0?text=Logo';">
+                        <img src="${logoUrl}" alt="Logo" class="w-16" onerror="this.onerror=null;this.src='https://placehold.co/100x100/e2e8f0/e2e8f0?text=Logo';">
                     </div>
                     <div class="text-center w-1/2">
-                         <h2 class="title-sub uppercase font-bold">TRUNG TÂM KIỂM SOÁT BỆNH TẬT THÀNH PHỐ CẦN THƠ</h2>
+                         <h2 class="title-sub uppercase font-bold">${organizationName}</h2>
                          <div class="flex items-baseline justify-center font-bold text-base">
                             <label for="department-name">KHOA/PHÒNG:</label>
                             <input type="text" id="department-name" class="form-input-line flex-grow ml-2" value="${formatValue(selectedPlan.khoa_phong)}">
@@ -1566,12 +1604,20 @@ export default function MaintenancePage() {
 </html>
     `;
 
-    const newWindow = window.open("", "_blank");
-    if (newWindow) {
-      newWindow.document.open();
-      newWindow.document.write(htmlContent);
-      newWindow.document.close();
+    // Check if window is still open before writing content
+    if (newWindow.closed) {
+      toast({
+        variant: "destructive",
+        title: "Cửa sổ in đã bị đóng",
+        description: "Vui lòng thử lại và không đóng cửa sổ trong quá trình tải."
+      });
+      return;
     }
+
+    // Replace the loading content with actual form content
+    newWindow.document.open();
+    newWindow.document.write(htmlContent);
+    newWindow.document.close();
   }, [selectedPlan, tasks, toast, user]);
 
   const tableMeta = React.useMemo(() => ({
