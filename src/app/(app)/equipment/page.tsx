@@ -122,6 +122,7 @@ import { useSearchDebounce } from "@/hooks/use-debounce"
 import { MobileEquipmentListItem } from "@/components/mobile-equipment-list-item"
 import { callRpc as rpc } from "@/lib/rpc-client"
 import { useQuery, useMutation, useQueryClient, keepPreviousData } from "@tanstack/react-query"
+import { ExternalLink } from "lucide-react"
 
 type Attachment = {
   id: string;
@@ -1305,6 +1306,20 @@ export default function EquipmentPage() {
     }
   }, [searchParams, router, data])
 
+  // Fetch tenant data for selected equipment (to get google_drive_folder_url)
+  const tenantDataQuery = useQuery({
+    queryKey: ['don_vi', selectedEquipment?.don_vi],
+    queryFn: async () => {
+      if (!selectedEquipment?.don_vi) return null
+      const data = await callRpc<any[]>({ fn: 'don_vi_get', args: { p_id: selectedEquipment.don_vi } })
+      return Array.isArray(data) ? data[0] : data
+    },
+    enabled: !!selectedEquipment?.don_vi && isDetailModalOpen,
+    staleTime: 300_000,
+    refetchOnWindowFocus: false,
+    placeholderData: keepPreviousData,
+  })
+
   // Attachments & history queries (fetch only when detail modal open)
   const attachmentsQuery = useQuery({
     queryKey: ['attachments', selectedEquipment?.id],
@@ -2083,12 +2098,29 @@ export default function EquipmentPage() {
                                         <Alert>
                                             <AlertCircle className="h-4 w-4" />
                                             <AlertTitle>Làm thế nào để lấy URL?</AlertTitle>
-                                            <AlertDescription>
-                                                Tải file của bạn lên{" "}
-                                                <a href="https://drive.google.com/open?id=1-lgEygGCIfxCbIIdgaCmh3GFJgAMr63e&usp=drive_fs" target="_blank" rel="noopener noreferrer" className="font-medium text-primary hover:underline">
-                                                    thư mục Drive chung
-                                                </a>
-                                                , sau đó lấy link chia sẻ công khai và dán vào đây.
+                                            <AlertDescription className="space-y-2">
+                                                <div>
+                                                  Tải file của bạn lên thư mục Drive chia sẻ của đơn vị, sau đó lấy link chia sẻ công khai và dán vào đây.
+                                                </div>
+                                                {tenantDataQuery.data?.google_drive_folder_url && (
+                                                  <Button
+                                                    type="button"
+                                                    variant="outline"
+                                                    size="sm"
+                                                    asChild
+                                                    className="mt-2"
+                                                  >
+                                                    <a
+                                                      href={tenantDataQuery.data.google_drive_folder_url}
+                                                      target="_blank"
+                                                      rel="noopener noreferrer"
+                                                      className="inline-flex items-center gap-2"
+                                                    >
+                                                      <ExternalLink className="h-4 w-4" />
+                                                      Mở thư mục chung
+                                                    </a>
+                                                  </Button>
+                                                )}
                                             </AlertDescription>
                                         </Alert>
                                         <Button type="submit" disabled={addAttachmentMutation.isPending || !newFileName || !newFileUrl}>

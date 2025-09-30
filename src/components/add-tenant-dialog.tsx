@@ -28,11 +28,12 @@ export function AddTenantDialog({ open, onOpenChange, onSuccess }: AddTenantDial
     active: true,
     membership_quota: "" as string,
     logo_url: "",
+    google_drive_folder_url: "",
   })
 
   React.useEffect(() => {
     if (!open) {
-      setForm({ code: "", name: "", active: true, membership_quota: "", logo_url: "" })
+      setForm({ code: "", name: "", active: true, membership_quota: "", logo_url: "", google_drive_folder_url: "" })
     }
   }, [open])
 
@@ -50,6 +51,7 @@ export function AddTenantDialog({ open, onOpenChange, onSuccess }: AddTenantDial
           p_active: !!form.active,
           p_membership_quota: quotaVal,
           p_logo_url: form.logo_url.trim() || null,
+          p_google_drive_folder_url: form.google_drive_folder_url.trim() || null,
         }
       })
       const row = Array.isArray(res) ? res[0] as TenantRow : res as TenantRow
@@ -106,6 +108,11 @@ export function AddTenantDialog({ open, onOpenChange, onSuccess }: AddTenantDial
             <div className="grid gap-2">
               <Label htmlFor="quota">Hạn mức tài khoản thành viên</Label>
               <Input id="quota" inputMode="numeric" pattern="[0-9]*" value={form.membership_quota} onChange={(e) => setForm(s => ({ ...s, membership_quota: e.target.value }))} placeholder="Để trống nếu không giới hạn" disabled={isLoading} />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="google_drive_url">URL thư mục Google Drive chia sẻ</Label>
+              <Input id="google_drive_url" type="url" value={form.google_drive_folder_url} onChange={(e) => setForm(s => ({ ...s, google_drive_folder_url: e.target.value }))} placeholder="https://drive.google.com/drive/folders/..." disabled={isLoading} />
+              <p className="text-xs text-muted-foreground">Thư mục Google Drive chia sẻ cho file đính kèm thiết bị của đơn vị này.</p>
             </div>
             <div className="flex items-center gap-2">
               <Checkbox id="active" checked={form.active} onCheckedChange={(v) => setForm(s => ({ ...s, active: !!v }))} disabled={isLoading} />

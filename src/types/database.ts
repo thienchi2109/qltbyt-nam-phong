@@ -34,6 +34,8 @@ export interface Equipment {
   ngay_kd_tiep_theo?: string | null;
   // classification
   phan_loai_theo_nd98?: 'A' | 'B' | 'C' | 'D' | string | null;
+  // tenant/organization
+  don_vi?: number | null;
   // metadata
   created_at?: string;
   updated_at?: string;
