@@ -357,8 +357,7 @@ export function ActivityLogsViewer({ className }: ActivityLogsViewerProps) {
           {filteredLogs.length > 0 && (
             <div className="flex items-center justify-between mt-6 pt-4 border-t">
               <p className="text-sm text-gray-600">
-                Hiển thị {(filters.offset || 0) + 1} - {Math.min((filters.offset || 0) + filteredLogs.length, filteredLogs[0]?.total_count || 0)} 
-                trong tổng số {filteredLogs[0]?.total_count || 0} mục
+                Hiển thị {(filters.offset || 0) + 1} - {Math.min((filters.offset || 0) + filteredLogs.length, filteredLogs[0]?.total_count || 0)} trong tổng số {filteredLogs[0]?.total_count || 0} mục
               </p>
               <div className="flex space-x-2">
                 <Button

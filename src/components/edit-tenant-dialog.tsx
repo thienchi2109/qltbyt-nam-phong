@@ -18,6 +18,7 @@ export interface TenantRow {
   active: boolean
   membership_quota: number | null
   logo_url: string | null
+  google_drive_folder_url?: string | null
   used_count: number
 }
 
@@ -38,6 +39,7 @@ export function EditTenantDialog({ open, onOpenChange, onSuccess, tenant }: Edit
     active: true,
     membership_quota: "" as string,
     logo_url: "",
+    google_drive_folder_url: "",
   })
 
   React.useEffect(() => {
@@ -48,10 +50,11 @@ export function EditTenantDialog({ open, onOpenChange, onSuccess, tenant }: Edit
         active: !!tenant.active,
         membership_quota: tenant.membership_quota === null ? "" : String(tenant.membership_quota),
         logo_url: tenant.logo_url || "",
+        google_drive_folder_url: tenant.google_drive_folder_url || "",
       })
     }
     if (!open) {
-      setForm({ code: "", name: "", active: true, membership_quota: "", logo_url: "" })
+      setForm({ code: "", name: "", active: true, membership_quota: "", logo_url: "", google_drive_folder_url: "" })
     }
   }, [open, tenant])
 
@@ -65,6 +68,7 @@ export function EditTenantDialog({ open, onOpenChange, onSuccess, tenant }: Edit
       }
       const setQuotaFlag = true
       const setLogoFlag = true
+      const setGoogleDriveFlag = true
       const res = await callRpc<TenantRow[] | TenantRow>({
         fn: 'don_vi_update',
         args: {
@@ -74,8 +78,10 @@ export function EditTenantDialog({ open, onOpenChange, onSuccess, tenant }: Edit
           p_active: !!form.active,
           p_membership_quota: quotaVal,
           p_logo_url: form.logo_url.trim() || null,
+          p_google_drive_folder_url: form.google_drive_folder_url.trim() || null,
           p_set_membership_quota: setQuotaFlag,
           p_set_logo_url: setLogoFlag,
+          p_set_google_drive_folder_url: setGoogleDriveFlag,
         }
       })
       const row = Array.isArray(res) ? res[0] as TenantRow : res as TenantRow
@@ -134,6 +140,11 @@ export function EditTenantDialog({ open, onOpenChange, onSuccess, tenant }: Edit
               <Label htmlFor="quota">Hạn mức tài khoản thành viên</Label>
               <Input id="quota" inputMode="numeric" pattern="[0-9]*" value={form.membership_quota} onChange={(e) => setForm(s => ({ ...s, membership_quota: e.target.value }))} placeholder="Để trống nếu không giới hạn" disabled={isLoading} />
               <p className="text-xs text-muted-foreground">Để trống để bỏ giới hạn.</p>
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="google_drive_url">URL thư mục Google Drive chia sẻ</Label>
+              <Input id="google_drive_url" type="url" value={form.google_drive_folder_url} onChange={(e) => setForm(s => ({ ...s, google_drive_folder_url: e.target.value }))} placeholder="https://drive.google.com/drive/folders/..." disabled={isLoading} />
+              <p className="text-xs text-muted-foreground">Thư mục Google Drive chia sẻ cho file đính kèm thiết bị của đơn vị này.</p>
             </div>
             <div className="flex items-center gap-2">
               <Checkbox id="active" checked={form.active} onCheckedChange={(v) => setForm(s => ({ ...s, active: !!v }))} disabled={isLoading} />

@@ -6,9 +6,9 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { Eye, History, Wrench, Settings, X, Search, ClipboardList } from "lucide-react"
-import { supabase } from "@/lib/supabase"
-import type { Equipment } from "@/lib/data"
+import { callRpc } from "@/lib/rpc-client"
 import { useToast } from "@/hooks/use-toast"
+import type { Equipment } from "@/lib/data"
 
 interface QRActionSheetProps {
   qrCode: string // Mã thiết bị từ QR code
@@ -31,40 +31,28 @@ export function QRActionSheet({ qrCode, onClose, onAction }: QRActionSheetProps)
 
         console.log("Searching for equipment with ma_thiet_bi:", qrCode)
 
-  if (!supabase) throw new Error('Supabase client not initialized')
-  const { data, error: supabaseError } = await supabase
-          .from('thiet_bi')
-          .select('*')
-          .eq('ma_thiet_bi', qrCode.trim())
-          .single()
+        // Use dedicated RPC for exact ma_thiet_bi lookup with tenant security
+        const normalizedCode = qrCode.trim()
+        const result = await callRpc<any>({
+          fn: 'equipment_get_by_code',
+          args: { p_ma_thiet_bi: normalizedCode }
+        })
 
-        console.log("Supabase response:", { data, error: supabaseError })
+        console.log("Equipment search result:", result)
 
-        if (supabaseError) {
-          console.error("Supabase error details:", {
-            code: supabaseError.code,
-            message: supabaseError.message,
-            details: supabaseError.details,
-            hint: supabaseError.hint
-          })
-          
-          if (supabaseError.code === 'PGRST116') {
-            // No rows returned
-            setError(`Không tìm thấy thiết bị với mã: ${qrCode}`)
-          } else if (supabaseError.code === '42P01') {
-            // Table does not exist
-            setError("Lỗi cấu hình database: Bảng thiet_bi không tồn tại")
-          } else {
-            setError(`Lỗi database: ${supabaseError.message || 'Không thể kết nối'}`)
-          }
+        if (!result) {
+          setError(`Kh?ng t?m th?y thi?t b? v?i m?: ${qrCode}`)
           setEquipment(null)
         } else {
-          console.log("Found equipment:", data)
-          setEquipment(data)
+          console.log("Found equipment:", result)
+          setEquipment(result)
         }
-      } catch (err) {
+      } catch (err: any) {
         console.error("Search error:", err)
-        setError("Đã có lỗi xảy ra khi tìm kiếm")
+        
+        // Parse RPC error response
+        const errorMsg = err?.message || 'Đã có lỗi xảy ra khi tìm kiếm'
+        setError(`Lỗi tìm kiếm: ${errorMsg}`)
         setEquipment(null)
       } finally {
         setLoading(false)
@@ -174,7 +162,7 @@ export function QRActionSheet({ qrCode, onClose, onAction }: QRActionSheetProps)
                 <div className="flex items-center gap-2">
                   <Badge 
                     variant="outline" 
-                    className={getStatusColor(equipment.tinh_trang_hien_tai)}
+                    className={getStatusColor(equipment.tinh_trang_hien_tai || null)}
                   >
                     {equipment.tinh_trang_hien_tai || "Chưa xác định"}
                   </Badge>
@@ -206,7 +194,7 @@ export function QRActionSheet({ qrCode, onClose, onAction }: QRActionSheetProps)
                   </div>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Giá gốc:</span>
-                    <span className="font-semibold">{formatCurrency(equipment.gia_goc)}</span>
+                    <span className="font-semibold">{equipment.gia_goc ? formatCurrency(equipment.gia_goc) : 'N/A'}</span>
                   </div>
                 </div>
               </div>

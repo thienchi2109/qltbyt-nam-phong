@@ -122,6 +122,7 @@ import { useSearchDebounce } from "@/hooks/use-debounce"
 import { MobileEquipmentListItem } from "@/components/mobile-equipment-list-item"
 import { callRpc as rpc } from "@/lib/rpc-client"
 import { useQuery, useMutation, useQueryClient, keepPreviousData } from "@tanstack/react-query"
+import { ExternalLink } from "lucide-react"
 
 type Attachment = {
   id: string;
@@ -2083,12 +2084,29 @@ export default function EquipmentPage() {
                                         <Alert>
                                             <AlertCircle className="h-4 w-4" />
                                             <AlertTitle>Làm thế nào để lấy URL?</AlertTitle>
-                                            <AlertDescription>
-                                                Tải file của bạn lên{" "}
-                                                <a href="https://drive.google.com/open?id=1-lgEygGCIfxCbIIdgaCmh3GFJgAMr63e&usp=drive_fs" target="_blank" rel="noopener noreferrer" className="font-medium text-primary hover:underline">
-                                                    thư mục Drive chung
-                                                </a>
-                                                , sau đó lấy link chia sẻ công khai và dán vào đây.
+                                            <AlertDescription className="space-y-2">
+                                                <div>
+                                                  Tải file của bạn lên thư mục Drive chia sẻ của đơn vị, sau đó lấy link chia sẻ công khai và dán vào đây.
+                                                </div>
+                                                {selectedEquipment?.google_drive_folder_url && (
+                                                  <Button
+                                                    type="button"
+                                                    variant="outline"
+                                                    size="sm"
+                                                    asChild
+                                                    className="mt-2"
+                                                  >
+                                                    <a
+                                                      href={selectedEquipment.google_drive_folder_url}
+                                                      target="_blank"
+                                                      rel="noopener noreferrer"
+                                                      className="inline-flex items-center gap-2"
+                                                    >
+                                                      <ExternalLink className="h-4 w-4" />
+                                                      Mở thư mục chung
+                                                    </a>
+                                                  </Button>
+                                                )}
                                             </AlertDescription>
                                         </Alert>
                                         <Button type="submit" disabled={addAttachmentMutation.isPending || !newFileName || !newFileUrl}>

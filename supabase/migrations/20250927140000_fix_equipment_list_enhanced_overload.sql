@@ -122,7 +122,9 @@ BEGIN
   -- Get data page
   EXECUTE format(
     'SELECT COALESCE(jsonb_agg(t), ''[]''::jsonb) FROM (
-       SELECT to_jsonb(tb.*) as t FROM public.thiet_bi tb
+       SELECT (to_jsonb(tb.*) || jsonb_build_object(''google_drive_folder_url'', dv.google_drive_folder_url)) AS t
+       FROM public.thiet_bi tb
+       LEFT JOIN public.don_vi dv ON dv.id = tb.don_vi
        WHERE %s
        ORDER BY %I %s
        OFFSET %s LIMIT %s
