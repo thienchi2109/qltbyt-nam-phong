@@ -21,6 +21,7 @@ import {
   MoreHorizontal,
   File,
   PlusCircle,
+  Plus,
   FilterX,
   Filter,
   Check,
@@ -2398,11 +2399,11 @@ export default function EquipmentPage() {
                   </div>
                 )}
 
-                {/* Add button */}
+                {/* Add button - Desktop only */}
                 {!isRegionalLeader && (
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <Button size="sm" className="h-8 gap-1 touch-target-sm md:h-8">
+                      <Button size="sm" className="hidden md:flex h-8 gap-1 touch-target-sm md:h-8">
                         <PlusCircle className="h-3.5 w-3.5" />
                         <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
                           Thêm thiết bị
@@ -2578,6 +2579,32 @@ export default function EquipmentPage() {
           ) : null}
         </CardFooter>
       </Card>
+
+      {/* Floating Add Button - Mobile only */}
+      {!isRegionalLeader && (
+        <div className="fixed bottom-20 right-6 md:hidden z-[100]">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button 
+                size="lg" 
+                className="h-14 w-14 rounded-full shadow-lg hover:shadow-xl transition-shadow"
+              >
+                <Plus className="h-6 w-6" />
+                <span className="sr-only">Thêm thiết bị</span>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" side="top" className="mb-2">
+              <DropdownMenuItem onSelect={() => setIsAddDialogOpen(true)}>
+                Thêm thủ công
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => setIsImportDialogOpen(true)}>
+                Nhập từ Excel
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      )}
+
       <StartUsageDialog
         open={isStartUsageDialogOpen}
         onOpenChange={(open) => {
