@@ -31,29 +31,21 @@ export function QRActionSheet({ qrCode, onClose, onAction }: QRActionSheetProps)
 
         console.log("Searching for equipment with ma_thiet_bi:", qrCode)
 
-        // Use RPC proxy for equipment search with tenant security
+        // Use dedicated RPC for exact ma_thiet_bi lookup with tenant security
+        const normalizedCode = qrCode.trim()
         const result = await callRpc<any>({
-          fn: 'equipment_list_enhanced',
-          args: {
-            p_q: qrCode.trim(),
-            p_page: 1,
-            p_page_size: 1,
-            p_fields: 'id,ma_thiet_bi,ten_thiet_bi,model,serial,khoa_phong_quan_ly,tinh_trang_hien_tai,vi_tri_lap_dat,nguoi_dang_truc_tiep_quan_ly,phan_loai_theo_nd98,gia_goc,hang_san_xuat,nam_san_xuat'
-          }
+          fn: 'equipment_get_by_code',
+          args: { p_ma_thiet_bi: normalizedCode }
         })
 
         console.log("Equipment search result:", result)
 
-        // Parse the response from equipment_list_enhanced
-        const data = result?.data || []
-        const matchingEquipment = data.find((eq: any) => eq.ma_thiet_bi === qrCode.trim())
-        
-        if (!matchingEquipment) {
-          setError(`Không tìm thấy thiết bị với mã: ${qrCode}`)
+        if (!result) {
+          setError(`Kh?ng t?m th?y thi?t b? v?i m?: ${qrCode}`)
           setEquipment(null)
         } else {
-          console.log("Found equipment:", matchingEquipment)
-          setEquipment(matchingEquipment)
+          console.log("Found equipment:", result)
+          setEquipment(result)
         }
       } catch (err: any) {
         console.error("Search error:", err)

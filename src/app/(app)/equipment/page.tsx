@@ -1306,20 +1306,6 @@ export default function EquipmentPage() {
     }
   }, [searchParams, router, data])
 
-  // Fetch tenant data for selected equipment (to get google_drive_folder_url)
-  const tenantDataQuery = useQuery({
-    queryKey: ['don_vi', selectedEquipment?.don_vi],
-    queryFn: async () => {
-      if (!selectedEquipment?.don_vi) return null
-      const data = await callRpc<any[]>({ fn: 'don_vi_get', args: { p_id: selectedEquipment.don_vi } })
-      return Array.isArray(data) ? data[0] : data
-    },
-    enabled: !!selectedEquipment?.don_vi && isDetailModalOpen,
-    staleTime: 300_000,
-    refetchOnWindowFocus: false,
-    placeholderData: keepPreviousData,
-  })
-
   // Attachments & history queries (fetch only when detail modal open)
   const attachmentsQuery = useQuery({
     queryKey: ['attachments', selectedEquipment?.id],
@@ -2102,7 +2088,7 @@ export default function EquipmentPage() {
                                                 <div>
                                                   Tải file của bạn lên thư mục Drive chia sẻ của đơn vị, sau đó lấy link chia sẻ công khai và dán vào đây.
                                                 </div>
-                                                {tenantDataQuery.data?.google_drive_folder_url && (
+                                                {selectedEquipment?.google_drive_folder_url && (
                                                   <Button
                                                     type="button"
                                                     variant="outline"
@@ -2111,7 +2097,7 @@ export default function EquipmentPage() {
                                                     className="mt-2"
                                                   >
                                                     <a
-                                                      href={tenantDataQuery.data.google_drive_folder_url}
+                                                      href={selectedEquipment.google_drive_folder_url}
                                                       target="_blank"
                                                       rel="noopener noreferrer"
                                                       className="inline-flex items-center gap-2"

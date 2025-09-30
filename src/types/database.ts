@@ -36,6 +36,7 @@ export interface Equipment {
   phan_loai_theo_nd98?: 'A' | 'B' | 'C' | 'D' | string | null;
   // tenant/organization
   don_vi?: number | null;
+  google_drive_folder_url?: string | null;
   // metadata
   created_at?: string;
   updated_at?: string;

@@ -8,6 +8,7 @@ import { authOptions } from '../../../../auth/config'
 const ALLOWED_FUNCTIONS = new Set<string>([
   'equipment_list',
   'equipment_get',
+  'equipment_get_by_code',
   'equipment_create',
   'equipment_update',
   'equipment_delete',
