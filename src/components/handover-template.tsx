@@ -23,6 +23,7 @@ interface HandoverTemplateProps {
   receiverName?: string
   devices?: HandoverDevice[]
   autoPrint?: boolean
+  tenantId?: number | null  // New: Tenant ID for form branding context
 }
 
 export function HandoverTemplate({
@@ -34,7 +35,8 @@ export function HandoverTemplate({
   directorName = "",
   receiverName = "",
   devices = [],
-  autoPrint = false
+  autoPrint = false,
+  tenantId = null
 }: HandoverTemplateProps) {
   React.useEffect(() => {
     if (autoPrint) {
@@ -81,6 +83,7 @@ export function HandoverTemplate({
                   size="md" 
                   showDivider={false}
                   className="mb-4"
+                  tenantId={tenantId}
                 />
                 <h1 className="title-main uppercase font-bold">
                   BIÊN BẢN BÀN GIAO THIẾT BỊ
