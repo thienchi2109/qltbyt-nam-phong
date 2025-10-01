@@ -10,19 +10,50 @@ export type TenantBranding = {
   logo_url: string | null
 }
 
-export function useTenantBranding(overrideDonViId?: number | null) {
+export function useTenantBranding(options?: {
+  formTenantId?: number | null,
+  useFormContext?: boolean
+}) {
   const { data: session } = useSession()
   const user = session?.user as any
-  const isGlobal = (user?.role === 'global' || user?.role === 'admin')
-  const tenantKey = user?.don_vi ? String(user.don_vi) : 'none'
-  const effectiveTenantKey = isGlobal && overrideDonViId ? String(overrideDonViId) : tenantKey
+  const isPrivileged = (user?.role === 'global' || user?.role === 'admin')
+  
+  // Determine effective tenant ID based on user privilege and options
+  const sessionTenantKey = user?.don_vi ? String(user.don_vi) : 'none'
+  const formTenantKey = options?.formTenantId ? String(options.formTenantId) : null
+  
+  // Smart tenant selection logic
+  let effectiveTenantKey: string
+  let rpcTenantId: number | null
+  
+  if (options?.useFormContext && options?.formTenantId && isPrivileged) {
+    // Static branding: privileged user viewing specific tenant's form
+    effectiveTenantKey = formTenantKey!
+    rpcTenantId = options.formTenantId
+  } else if (options?.formTenantId && !isPrivileged) {
+    // Security: non-privileged users can only see their own tenant
+    effectiveTenantKey = sessionTenantKey
+    rpcTenantId = user?.don_vi || null
+  } else {
+    // Dynamic branding: session-based (current behavior)
+    effectiveTenantKey = sessionTenantKey
+    rpcTenantId = user?.don_vi || null
+  }
 
   const query = useQuery<TenantBranding | null>({
     queryKey: ['tenant_branding', { tenant: effectiveTenantKey }],
     queryFn: async ({ signal }) => {
-      const res = await callRpc<TenantBranding[] | null>({ fn: 'don_vi_branding_get', args: { p_id: overrideDonViId ?? null }, signal })
+      const res = await callRpc<TenantBranding[] | null>({ 
+        fn: 'don_vi_branding_get', 
+        args: { p_id: rpcTenantId }, 
+        signal 
+      })
       const row = Array.isArray(res) ? res[0] : null
-      return row ? { id: Number(row.id), name: row.name ?? null, logo_url: row.logo_url ?? null } : null
+      return row ? { 
+        id: Number(row.id), 
+        name: row.name ?? null, 
+        logo_url: row.logo_url ?? null 
+      } : null
     },
     placeholderData: keepPreviousData,
     staleTime: 5 * 60_000,
