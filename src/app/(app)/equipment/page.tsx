@@ -2272,10 +2272,45 @@ export default function EquipmentPage() {
       )}
       <Card>
         <CardHeader>
-          <CardTitle className="heading-responsive-h2">Danh mục thiết bị</CardTitle>
-          <CardDescription className="body-responsive-sm">
-            Quản lý danh sách các trang thiết bị y tế.
-          </CardDescription>
+          <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+            <div>
+              <CardTitle className="heading-responsive-h2">Danh mục thiết bị</CardTitle>
+              <CardDescription className="body-responsive-sm">
+                Quản lý danh sách các trang thiết bị y tế.
+              </CardDescription>
+            </div>
+            
+            {/* Tenant Filter - moved from toolbar */}
+            {isGlobal && (
+              <div className="flex items-center gap-2 min-w-0">
+                <Label className="text-xs text-muted-foreground whitespace-nowrap">Đơn vị</Label>
+                <Select
+                  value={tenantFilter}
+                  onValueChange={(v) => {
+                    console.log('[EquipmentPage] tenant select onValueChange ->', v)
+                    React.startTransition(() => setTenantFilter(v))
+                  }}
+                >
+                  <SelectTrigger className="h-8 w-full md:w-[280px]" disabled={isTenantsLoading}>
+                    <SelectValue placeholder="— Chọn đơn vị —" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="unset">— Chọn đơn vị —</SelectItem>
+                    <SelectItem value="all">Tất cả đơn vị</SelectItem>
+                    {isTenantsLoading ? (
+                      <SelectItem value="__loading" disabled>Đang tải danh sách đơn vị...</SelectItem>
+                    ) : (
+                      tenantOptions.map(t => (
+                        <SelectItem key={t.id} value={String(t.id)}>
+                          {t.name} {t.code ? `(${t.code})` : ''}
+                        </SelectItem>
+                      ))
+                    )}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+          </div>
 
           {/* Department auto-filter removed */}
         </CardHeader>
@@ -2367,38 +2402,8 @@ export default function EquipmentPage() {
                 </div>
               </div>
 
-              {/* Right: tenant select + actions */}
+              {/* Right: actions only (tenant filter moved to header) */}
               <div className="order-3 w-full md:order-2 md:w-auto flex items-center gap-2 justify-between md:justify-end">
-                {isGlobal && (
-                  <div className="flex items-center gap-2">
-                    <Label className="text-xs text-muted-foreground">Đơn vị</Label>
-                    <Select
-                      value={tenantFilter}
-                      onValueChange={(v) => {
-                        console.log('[EquipmentPage] tenant select onValueChange ->', v)
-                        React.startTransition(() => setTenantFilter(v))
-                      }}
-                    >
-                      <SelectTrigger className="h-8 w-full md:w-[220px]" disabled={isTenantsLoading}>
-                        <SelectValue placeholder="— Chọn đơn vị —" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="unset">— Chọn đơn vị —</SelectItem>
-                        <SelectItem value="all">Tất cả đơn vị</SelectItem>
-                        {isTenantsLoading ? (
-                          <SelectItem value="__loading" disabled>Đang tải danh sách đơn vị...</SelectItem>
-                        ) : (
-                          tenantOptions.map(t => (
-                            <SelectItem key={t.id} value={String(t.id)}>
-                              {t.name} {t.code ? `(${t.code})` : ''}
-                            </SelectItem>
-                          ))
-                        )}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                )}
-
                 {/* Add button - Desktop only */}
                 {!isRegionalLeader && (
                   <DropdownMenu>
