@@ -27,6 +27,7 @@
 
 ## Tiêu chí chấp nhận
 - Non‑global user luôn thấy đúng tên/logo đơn vị của họ; không leakage giữa tenants.
+- Global/admin khi mở biểu mẫu của tenant khác phải nhìn thấy tên/logo gốc của tenant đó (không áp dụng dynamic branding theo session).
 - Dùng Query cache (prefetch, context) để giảm call RPC; UX mượt (skeleton, no flash).
 - Không tác động RPC gateway, NextAuth, server‑side filtering, hoặc các trang khác.
 
@@ -34,6 +35,11 @@
 - Hook: `useTenantBranding(overrideDonViId?)` – queryKey `['tenant_branding', {tenant}]`, invalidate trên `tenant-switched`.
 - UI: `TenantLogo`, `TenantName` (đã có); mới: `FormBrandingHeader`.
 - Optional: `TenantBrandingProvider` (Context) ở AppLayout để feed branding cho form pages.
+
+## Điều chỉnh cho global/admin
+- Bổ sung prop/luồng dữ liệu để `FormBrandingHeader` nhận brand gốc từ biểu mẫu và render trực tiếp khi `session.user.role` là `global` hoặc `admin`.
+- Cập nhật API/loader của các biểu mẫu để trả về kèm thông tin brand (ví dụ `don_vi_id`, `name`, `logo_url`) nhằm phục vụ trường hợp global/admin mở biểu mẫu của tenant khác.
+- Viết tài liệu kiểm thử cho 3 kịch bản: user tenant (dynamic), global xem tenant A (brand A), global xem tenant B (brand B).
 
 ## Kế hoạch thực thi theo pha
 - P0 (Core):
@@ -64,7 +70,7 @@
 ## Kiểm thử
 - Matrix:
   - Non‑global user A/B: mở từng form → đúng logo/tên đơn vị tương ứng.
-  - Global user: không override → platform branding (tài liệu hóa hành vi); (future) có override → đúng đơn vị.
+  - Global user: mở biểu mẫu tenant A/B → hiển thị đúng brand gốc của từng tenant, không dùng brand session.
   - Event `tenant-switched` → invalidate và cập nhật branding ngay.
 - Regression:
   - Đăng nhập/out NextAuth OK; RPC gateway allow‑list không đổi.
