@@ -1,6 +1,7 @@
-"use client"
+﻿"use client"
 
 import * as React from "react"
+import { useSession } from "next-auth/react"
 import { TenantLogo, TenantLogoProps } from "@/components/tenant-logo"
 import { TenantName, TenantNameProps } from "@/components/tenant-name"
 import { useTenantBranding } from "@/hooks/use-tenant-branding"
@@ -11,15 +12,30 @@ export interface FormBrandingHeaderProps {
   size?: "sm" | "md" | "lg"
   showDivider?: boolean
   className?: string
+  tenantId?: number | null  // New: Form owner's tenant ID for static branding
+  mode?: 'auto' | 'static' | 'dynamic'  // New: Override branding mode
 }
 
 export function FormBrandingHeader({
   align = "left",
   size = "md",
   showDivider = false,
-  className = ""
+  className = "",
+  tenantId = null,
+  mode = 'auto'
 }: FormBrandingHeaderProps) {
-  const branding = useTenantBranding()
+  const { data: session } = useSession()
+  const user = session?.user as any
+  const isPrivileged = (user?.role === 'global' || user?.role === 'admin')
+  
+  // Determine branding mode
+  const shouldUseFormContext = mode === 'static' || 
+    (mode === 'auto' && isPrivileged && tenantId !== null)
+  
+  const branding = useTenantBranding({
+    formTenantId: tenantId,
+    useFormContext: shouldUseFormContext
+  })
   
   // Size configuration
   const sizeConfig = {
@@ -56,7 +72,7 @@ export function FormBrandingHeader({
       </div>
     )
   }
-  
+
   return (
     <div className={`flex items-center ${alignmentClass[align]} ${className}`}>
       <TenantLogo 

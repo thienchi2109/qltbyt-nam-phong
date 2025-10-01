@@ -681,13 +681,49 @@ export default function EquipmentPage() {
     }
   };
 
-  const handleGenerateProfileSheet = (equipment: Equipment) => {
+  const handleGenerateProfileSheet = async (equipment: Equipment) => {
     if (!equipment) return;
 
     const formatValue = (value: any) => value ?? "";
     const formatCurrency = (value: any) => {
         if (value === null || value === undefined || value === "") return "";
         return Number(value).toLocaleString('vi-VN') + ' VNĐ';
+    }
+
+    // Get appropriate tenant branding based on user role and equipment owner
+    let brandingToUse = tenantBranding;
+    
+    // For global/admin users, ALWAYS use equipment's tenant branding
+    if ((user?.role === 'global' || user?.role === 'admin') && equipment.don_vi) {
+      try {
+        const equipmentTenantBrandingRes = await callRpc<any[]>({
+          fn: 'don_vi_branding_get',
+          args: { p_id: equipment.don_vi }
+        });
+        // RPC returns an array, get the first element
+        const equipmentTenantBranding = equipmentTenantBrandingRes?.[0];
+        if (equipmentTenantBranding && equipmentTenantBranding.name) {
+          brandingToUse = equipmentTenantBranding;
+        }
+      } catch (error) {
+        console.error('Failed to fetch equipment tenant branding:', error);
+      }
+    }
+    // For regular users without tenant branding, try equipment tenant
+    else if (!brandingToUse && equipment.don_vi) {
+      try {
+        const equipmentTenantBrandingRes = await callRpc<any[]>({
+          fn: 'don_vi_branding_get',
+          args: { p_id: equipment.don_vi }
+        });
+        // RPC returns an array, get the first element
+        const equipmentTenantBranding = equipmentTenantBrandingRes?.[0];
+        if (equipmentTenantBranding && equipmentTenantBranding.name) {
+          brandingToUse = equipmentTenantBranding;
+        }
+      } catch (error) {
+        console.error('Failed to fetch equipment tenant branding:', error);
+      }
     }
 
     const htmlContent = `
@@ -728,9 +764,9 @@ export default function EquipmentPage() {
               <div class="content-body">
                   <header class="text-center">
                       <div class="flex justify-between items-center">
-                          <img src="${tenantBranding?.logo_url || 'https://placehold.co/100x100/e2e8f0/e2e8f0?text=Logo'}" alt="Logo ${tenantBranding?.name || 'Organization'}" class="w-20 h-20" onerror="this.onerror=null;this.src='https://placehold.co/100x100/e2e8f0/e2e8f0?text=Logo';">
+                          <img src="${brandingToUse?.logo_url || 'https://placehold.co/100x100/e2e8f0/e2e8f0?text=Logo'}" alt="Logo ${brandingToUse?.name || 'Organization'}" class="w-20 h-20" onerror="this.onerror=null;this.src='https://placehold.co/100x100/e2e8f0/e2e8f0?text=Logo';">
                           <div class="flex-grow">
-                              <h2 class="title-sub uppercase font-bold text-xl">${tenantBranding?.name || 'ĐƠN VỊ'}</h2>
+                              <h2 class="title-sub uppercase font-bold text-xl">${brandingToUse?.name || 'ĐƠN VỊ'}</h2>
                               <div class="flex items-baseline justify-center mt-2">
                                   <label class="font-bold whitespace-nowrap">KHOA/PHÒNG:</label>
                                   <div class="w-1/2 ml-2"><input type="text" class="form-input-line" value="${formatValue(equipment.khoa_phong_quan_ly)}"></div>
@@ -846,7 +882,7 @@ export default function EquipmentPage() {
     }
   }
 
-  const handleGenerateDeviceLabel = (equipment: Equipment) => {
+  const handleGenerateDeviceLabel = async (equipment: Equipment) => {
     if (!equipment) return;
 
     const formatValue = (value: any) => value ?? "";
@@ -856,6 +892,42 @@ export default function EquipmentPage() {
     const qrUrl = qrText 
         ? `https://quickchart.io/qr?text=${encodeURIComponent(qrText)}&caption=${encodeURIComponent(qrText)}&captionFontFamily=mono&captionFontSize=12&size=${qrSize}&ecLevel=H&margin=2` 
         : `https://placehold.co/${qrSize}x${qrSize}/ffffff/cccccc?text=QR+Code`;
+
+    // Get appropriate tenant branding based on user role and equipment owner
+    let brandingToUse = tenantBranding;
+    
+    // For global/admin users, ALWAYS use equipment's tenant branding
+    if ((user?.role === 'global' || user?.role === 'admin') && equipment.don_vi) {
+      try {
+        const equipmentTenantBrandingRes = await callRpc<any[]>({
+          fn: 'don_vi_branding_get',
+          args: { p_id: equipment.don_vi }
+        });
+        // RPC returns an array, get the first element
+        const equipmentTenantBranding = equipmentTenantBrandingRes?.[0];
+        if (equipmentTenantBranding && equipmentTenantBranding.name) {
+          brandingToUse = equipmentTenantBranding;
+        }
+      } catch (error) {
+        console.error('Failed to fetch equipment tenant branding:', error);
+      }
+    }
+    // For regular users without tenant branding, try equipment tenant
+    else if (!brandingToUse && equipment.don_vi) {
+      try {
+        const equipmentTenantBrandingRes = await callRpc<any[]>({
+          fn: 'don_vi_branding_get',
+          args: { p_id: equipment.don_vi }
+        });
+        // RPC returns an array, get the first element
+        const equipmentTenantBranding = equipmentTenantBrandingRes?.[0];
+        if (equipmentTenantBranding && equipmentTenantBranding.name) {
+          brandingToUse = equipmentTenantBranding;
+        }
+      } catch (error) {
+        console.error('Failed to fetch equipment tenant branding:', error);
+      }
+    }
 
     const htmlContent = `
       <!DOCTYPE html>
@@ -883,7 +955,7 @@ export default function EquipmentPage() {
           <div class="w-full max-w-md bg-white p-4 shadow-lg label-container" style="border: 3px double #000;">
               <header class="flex items-start justify-between gap-3 border-b-2 border-black pb-3">
                   <div class="flex-shrink-0">
-                      <img src="${tenantBranding?.logo_url || 'https://placehold.co/100x100/e2e8f0/e2e8f0?text=Logo'}" alt="Logo ${tenantBranding?.name || 'Organization'}" class="w-16 h-auto" onerror="this.onerror=null;this.src='https://placehold.co/100x100/e2e8f0/e2e8f0?text=Logo';">
+                      <img src="${brandingToUse?.logo_url || 'https://placehold.co/100x100/e2e8f0/e2e8f0?text=Logo'}" alt="Logo ${brandingToUse?.name || 'Organization'}" class="w-16 h-auto" onerror="this.onerror=null;this.src='https://placehold.co/100x100/e2e8f0/e2e8f0?text=Logo';">'
                   </div>
                   <div class="text-center flex-grow">
                       <h1 class="text-2xl font-bold tracking-wider">NHÃN THIẾT BỊ</h1>

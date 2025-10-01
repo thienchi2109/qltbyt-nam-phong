@@ -17,12 +17,14 @@ interface MaintenanceFormProps {
   department?: string
   year?: number
   devices?: MaintenanceDevice[]
+  tenantId?: number | null  // New: Tenant ID for form branding context
 }
 
 export function MaintenanceForm({
   department = "",
   year = new Date().getFullYear(),
-  devices = []
+  devices = [],
+  tenantId = null
 }: MaintenanceFormProps) {
   // Create empty rows if no devices provided
   const displayDevices = devices.length > 0 ? devices : [{}]
@@ -48,6 +50,7 @@ export function MaintenanceForm({
                   size="md" 
                   showDivider={false}
                   className="mb-2"
+                  tenantId={tenantId}
                 />
                 <div className="flex items-baseline justify-center font-bold">
                   <label htmlFor="department-name">KHOA/PHÒNG:</label>

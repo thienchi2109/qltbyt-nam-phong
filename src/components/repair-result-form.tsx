@@ -31,7 +31,11 @@ interface RepairResultFormData {
   nextMaintenanceDate: string
 }
 
-export function RepairResultForm() {
+interface RepairResultFormProps {
+  tenantId?: number | null  // New: Tenant ID for form branding context
+}
+
+export function RepairResultForm({ tenantId = null }: RepairResultFormProps = {}) {
   const [formData, setFormData] = React.useState<RepairResultFormData>({
     equipmentCode: "TM-BP-001",
     equipmentName: "Máy đo huyết áp điện tử Omron HEM-7120",
@@ -84,7 +88,8 @@ export function RepairResultForm() {
             align="center" 
             size="lg" 
             showDivider 
-            className="mb-4 print:mb-2" 
+            className="mb-4 print:mb-2"
+            tenantId={tenantId}
           />
           <CardTitle className="text-2xl font-bold text-blue-600 print:text-black">
             <div className="flex items-center justify-center gap-2">
