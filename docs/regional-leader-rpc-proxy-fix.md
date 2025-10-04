@@ -152,6 +152,7 @@ v_where := v_where || ' AND don_vi = ANY(ARRAY[' || array_to_string(v_allowed_do
 ### Database (Migrations)
 - `supabase/migrations/20251004090000_fix_equipment_list_array_literal_error.sql`: Fixed array literal syntax
 - `supabase/migrations/20251004100000_fix_filter_functions_return_format.sql`: Fixed all filter functions to return `{name, count}` format
+- `supabase/migrations/20251004110000_cleanup_debug_functions.sql`: Removed debug functions from production
 
 ## Testing Validation
 

@@ -59,9 +59,10 @@ Fixed SQL generation in `equipment_list_enhanced`:
 1. `20251004090000_fix_equipment_list_array_literal_error.sql` - Array syntax
 2. `20251004100000_fix_filter_functions_return_format.sql` - Filter returns
 
-### Debug Migrations (Can be rolled back if needed)
-1. `20251004095000_add_comprehensive_debug_logging.sql` - debug_jwt_and_access()
-2. `20251004101000_fix_equipment_list_enhanced_array_length_check.sql` - debug test function
+### Debug Migrations (CLEANED UP)
+1. `20251004095000_add_comprehensive_debug_logging.sql` - debug_jwt_and_access() [REMOVED]
+2. `20251004101000_fix_equipment_list_enhanced_array_length_check.sql` - debug test function [REMOVED]
+3. `20251004110000_cleanup_debug_functions.sql` - Cleanup migration that removed debug functions
 
 ## Testing Verification
 
