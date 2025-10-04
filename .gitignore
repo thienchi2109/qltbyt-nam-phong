@@ -24,6 +24,9 @@
 .DS_Store
 *.pem
 
+# local MCP config (contains secrets)
+.kilocode/mcp.json
+
 # debug
 npm-debug.log*
 yarn-debug.log*
