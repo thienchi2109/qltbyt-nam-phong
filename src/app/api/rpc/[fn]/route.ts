@@ -96,6 +96,7 @@ const ALLOWED_FUNCTIONS = new Set<string>([
   'dashboard_equipment_total',
   // Debug
   'debug_claims',
+  'test_jwt_claims',
   'don_vi_branding_get',
   // Header notifications
   'header_notifications_summary',
@@ -138,8 +139,9 @@ export async function POST(req: NextRequest, context: { params: Promise<{ fn: st
     }
 
     // Sanitize tenant parameter for non-global users to enforce isolation
+    // EXCEPTION: regional_leader users can see multiple tenants, don't override p_don_vi
     let body: any = (rawBody && typeof rawBody === 'object') ? { ...rawBody } : {}
-    if (appRole !== 'global') {
+    if (appRole !== 'global' && appRole !== 'regional_leader') {
       try {
         if (Object.prototype.hasOwnProperty.call(body, 'p_don_vi')) {
           const dv = donVi && donVi !== '' ? (Number.isFinite(Number(donVi)) ? Number(donVi) : donVi) : null
