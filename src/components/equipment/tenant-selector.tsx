@@ -26,11 +26,6 @@ export function TenantSelector({
   const [isOpen, setIsOpen] = React.useState(false);
   const containerRef = React.useRef<HTMLDivElement>(null);
 
-  // Don't show selector if user only has access to one facility
-  if (facilities.length <= 1) {
-    return null;
-  }
-
   // Get selected facility for display
   const selectedFacility = React.useMemo(() => {
     if (value === null) return null;
@@ -89,6 +84,11 @@ export function TenantSelector({
     if (searchQuery) return searchQuery;
     return "";
   }, [selectedFacility, searchQuery]);
+
+  // Don't show selector if user only has access to one facility
+  if (facilities.length <= 1) {
+    return null;
+  }
 
   return (
     <div ref={containerRef} className="relative w-full max-w-md">
