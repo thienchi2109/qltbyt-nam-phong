@@ -124,6 +124,7 @@ import { MobileEquipmentListItem } from "@/components/mobile-equipment-list-item
 import { callRpc as rpc } from "@/lib/rpc-client"
 import { useQuery, useMutation, useQueryClient, keepPreviousData } from "@tanstack/react-query"
 import { ExternalLink } from "lucide-react"
+import { TenantSelector } from "@/components/equipment/tenant-selector"
 
 type Attachment = {
   id: string;
@@ -466,6 +467,9 @@ export default function EquipmentPage() {
     const v = parseInt(tenantFilter, 10)
     return Number.isFinite(v) ? v : null
   }, [isGlobal, tenantFilter])
+
+  // Regional leader tenant filtering state
+  const [selectedFacilityId, setSelectedFacilityId] = React.useState<number | null>(null)
 
   // Optimized active usage logs with tenant filtering and reduced polling
   const currentTenantId = React.useMemo(() => {
@@ -1163,8 +1167,13 @@ export default function EquipmentPage() {
   // Equipment list query (TanStack Query) - server-side pagination via equipment_list_enhanced
   type EquipmentListRes = { data: Equipment[]; total: number; page: number; pageSize: number }
 
-  // Server-side pagination state
+  // Server-side pagination state for all users (global, regional leader, etc.)
+  // Regional leaders will filter by facility via p_don_vi parameter
   const [pagination, setPagination] = React.useState({ pageIndex: 0, pageSize: 20 })
+
+  // Always use server-side pagination for all users
+  const effectivePageSize = pagination.pageSize
+  const effectivePage = pagination.pageIndex + 1
 
   // Extract server-filterable values from columnFilters
   const getSingleFilter = React.useCallback((id: string): string | null => {
@@ -1180,11 +1189,14 @@ export default function EquipmentPage() {
   }, [columnFilters])
 
   const selectedDonVi = React.useMemo(() => {
+    // Regional leaders: use selected facility ID for server-side filtering
+    if (isRegionalLeader) return selectedFacilityId
+    // Global users: use tenant filter dropdown
     if (!isGlobal) return null
     if (tenantFilter === 'all') return null
     const v = parseInt(tenantFilter, 10)
     return Number.isFinite(v) ? v : null
-  }, [isGlobal, tenantFilter])
+  }, [isRegionalLeader, selectedFacilityId, isGlobal, tenantFilter])
 
   const sortParam = React.useMemo(() => {
     if (!sorting || sorting.length === 0) return 'id.asc'
@@ -1198,10 +1210,11 @@ export default function EquipmentPage() {
   const selectedStatuses = getArrayFilter('tinh_trang_hien_tai')
   const selectedClassifications = getArrayFilter('phan_loai_theo_nd98')
   
-  const { data: equipmentRes, isLoading: isEqLoading, isFetching } = useQuery<EquipmentListRes>({
+  const { data: equipmentRes, isLoading: isEqLoading, isFetching: isEqFetching } = useQuery<EquipmentListRes>({
     queryKey: ['equipment_list_enhanced', {
       tenant: effectiveTenantKey,
-      page: pagination.pageIndex,
+      donVi: selectedDonVi, // ← Include facility filter in cache key for regional leaders
+      page: pagination.pageIndex, // Always cache by page (server-side pagination for all users)
       size: pagination.pageSize,
       q: debouncedSearch || null,
       khoa_phong_array: selectedDepartments,
@@ -1216,8 +1229,8 @@ export default function EquipmentPage() {
       const result = await callRpc<EquipmentListRes>({ fn: 'equipment_list_enhanced', args: {
         p_q: debouncedSearch || null,
         p_sort: sortParam,
-        p_page: pagination.pageIndex + 1,
-        p_page_size: pagination.pageSize,
+        p_page: effectivePage,
+        p_page_size: effectivePageSize,
         p_don_vi: selectedDonVi,
         p_khoa_phong_array: selectedDepartments.length > 0 ? selectedDepartments : null,
         p_nguoi_su_dung_array: selectedUsers.length > 0 ? selectedUsers : null,
@@ -1233,9 +1246,35 @@ export default function EquipmentPage() {
     refetchOnWindowFocus: false,
   })
 
+  // Data is already server-filtered by facility for regional leaders via p_don_vi parameter
   const data = (equipmentRes?.data ?? []) as Equipment[]
   const total = equipmentRes?.total ?? 0
   const isLoading = isEqLoading
+
+  // Load facilities for regional leader filtering using dedicated RPC
+  const { data: facilitiesData, isLoading: isFacilitiesLoading } = useQuery<Array<{id: number; name: string; code: string; equipment_count: number}>>({
+    queryKey: ['facilities_with_equipment_count'],
+    queryFn: async () => {
+      const result = await rpc<any>({ fn: 'get_facilities_with_equipment_count', args: {} })
+      return result || []
+    },
+    enabled: isRegionalLeader,
+    staleTime: 300_000, // 5 minutes
+    gcTime: 10 * 60_000,
+    refetchOnWindowFocus: false,
+  })
+
+  const facilities = React.useMemo(() => {
+    if (!isRegionalLeader || !facilitiesData) return []
+    // Convert to the format expected by TenantSelector
+    return facilitiesData.map(f => ({
+      id: f.id,
+      name: f.name,
+      count: f.equipment_count
+    }))
+  }, [isRegionalLeader, facilitiesData])
+
+  const isFetching = isEqFetching || isFacilitiesLoading
 
   // Granular cache invalidation for current tenant
   const invalidateEquipmentForCurrentTenant = React.useCallback(() => {
@@ -1491,15 +1530,21 @@ export default function EquipmentPage() {
       globalFilter: debouncedSearch,
       pagination,
     },
+    // All users use server-side pagination and filtering
     manualPagination: true,
     manualFiltering: true, // Enable server-side filtering
-    pageCount,
+    pageCount: pageCount,
   })
   
-  // Reset pagination to page 1 when filters change
+  // Reset pagination to page 1 when filters change (including facility filter for regional leaders)
   const filterKey = React.useMemo(() => 
-    JSON.stringify({ filters: columnFilters, search: debouncedSearch }),
-    [columnFilters, debouncedSearch]
+    JSON.stringify({ 
+      filters: columnFilters, 
+      search: debouncedSearch,
+      facility: selectedFacilityId, // Include facility in filter key for regional leaders
+      tenant: selectedDonVi // Include tenant for global users
+    }),
+    [columnFilters, debouncedSearch, selectedFacilityId, selectedDonVi]
   )
   const [lastFilterKey, setLastFilterKey] = React.useState(filterKey)
   
@@ -1679,6 +1724,7 @@ export default function EquipmentPage() {
   )
   
   const isFiltered = table.getState().columnFilters.length > 0;
+  const hasFacilityFilter = isRegionalLeader && selectedFacilityId !== null;
 
   const renderContent = () => {
     if (isGlobal && !shouldFetchEquipment) {
@@ -2327,14 +2373,18 @@ export default function EquipmentPage() {
                       )}
                     </div>
                     <div className="flex items-center gap-2">
-                      <Button variant="secondary" onClick={() => handleGenerateDeviceLabel(selectedEquipment)}>
-                        <QrCode className="mr-2 h-4 w-4" />
-                        Tạo nhãn thiết bị
-                      </Button>
-                      <Button onClick={() => handleGenerateProfileSheet(selectedEquipment)}>
-                        <Printer className="mr-2 h-4 w-4" />
-                        In lý lịch
-                      </Button>
+                      {!isRegionalLeader && (
+                        <>
+                          <Button variant="secondary" onClick={() => handleGenerateDeviceLabel(selectedEquipment)}>
+                            <QrCode className="mr-2 h-4 w-4" />
+                            Tạo nhãn thiết bị
+                          </Button>
+                          <Button onClick={() => handleGenerateProfileSheet(selectedEquipment)}>
+                            <Printer className="mr-2 h-4 w-4" />
+                            In lý lịch
+                          </Button>
+                        </>
+                      )}
                       <Button variant="outline" onClick={requestCloseDetailDialog}>Đóng</Button>
                     </div>
                   </div>
@@ -2381,6 +2431,17 @@ export default function EquipmentPage() {
                   </SelectContent>
                 </Select>
               </div>
+            )}
+
+            {/* Regional Leader Facility Filter */}
+            {isRegionalLeader && (
+              <TenantSelector
+                facilities={facilities}
+                value={selectedFacilityId}
+                onChange={setSelectedFacilityId}
+                disabled={isLoading}
+                totalCount={total}
+              />
             )}
           </div>
 
@@ -2466,6 +2527,16 @@ export default function EquipmentPage() {
                           className="h-8 px-2 lg:px-3"
                         >
                           <span className="hidden sm:inline">Xóa tất cả</span>
+                          <FilterX className="h-4 w-4 sm:ml-2" />
+                        </Button>
+                      )}
+                      {hasFacilityFilter && (
+                        <Button
+                          variant="ghost"
+                          onClick={() => setSelectedFacilityId(null)}
+                          className="h-8 px-2 lg:px-3"
+                        >
+                          <span className="hidden sm:inline">Xóa lọc cơ sở</span>
                           <FilterX className="h-4 w-4 sm:ml-2" />
                         </Button>
                       )}

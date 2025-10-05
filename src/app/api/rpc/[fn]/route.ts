@@ -63,6 +63,7 @@ const ALLOWED_FUNCTIONS = new Set<string>([
   'maintenance_stats_for_reports',
   // Tenants + Users
   'tenant_list',
+  'get_facilities_with_equipment_count',
   'user_create',
   'user_membership_add',
   'user_membership_remove',
