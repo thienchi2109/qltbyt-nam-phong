@@ -1,20 +1,24 @@
 import { useQuery } from '@tanstack/react-query'
 import { callRpc } from '@/lib/rpc-client'
+import { useSession } from 'next-auth/react'
 
 // Query keys for dashboard statistics
 export const dashboardStatsKeys = {
   all: ['dashboard-stats'] as const,
-  totalEquipment: () => [...dashboardStatsKeys.all, 'total-equipment'] as const,
-  maintenanceCount: () => [...dashboardStatsKeys.all, 'maintenance-count'] as const,
-  repairRequests: () => [...dashboardStatsKeys.all, 'repair-requests'] as const,
-  maintenancePlans: () => [...dashboardStatsKeys.all, 'maintenance-plans'] as const,
-  equipmentAttention: () => [...dashboardStatsKeys.all, 'equipment-attention'] as const,
+  totalEquipment: (userRole?: string, diaBanId?: string | null) => [...dashboardStatsKeys.all, 'total-equipment', userRole, diaBanId] as const,
+  maintenanceCount: (userRole?: string, diaBanId?: string | null) => [...dashboardStatsKeys.all, 'maintenance-count', userRole, diaBanId] as const,
+  repairRequests: (userRole?: string, diaBanId?: string | null) => [...dashboardStatsKeys.all, 'repair-requests', userRole, diaBanId] as const,
+  maintenancePlans: (userRole?: string, diaBanId?: string | null) => [...dashboardStatsKeys.all, 'maintenance-plans', userRole, diaBanId] as const,
+  equipmentAttention: (userRole?: string, diaBanId?: string | null) => [...dashboardStatsKeys.all, 'equipment-attention', userRole, diaBanId] as const,
 }
 
 // Hook to get total equipment count (tenant-filtered)
 export function useTotalEquipment() {
+  const { data: session } = useSession()
+  const user = session?.user as any
+  
   return useQuery({
-    queryKey: dashboardStatsKeys.totalEquipment(),
+    queryKey: dashboardStatsKeys.totalEquipment(user?.role, user?.dia_ban_id),
     queryFn: async (): Promise<number> => {
       const data = await callRpc<number>({ fn: 'dashboard_equipment_total' })
       return data ?? 0
@@ -28,8 +32,11 @@ export function useTotalEquipment() {
 
 // Hook to get equipment needing maintenance/calibration count (tenant-filtered)
 export function useMaintenanceCount() {
+  const { data: session } = useSession()
+  const user = session?.user as any
+  
   return useQuery({
-    queryKey: dashboardStatsKeys.maintenanceCount(),
+    queryKey: dashboardStatsKeys.maintenanceCount(user?.role, user?.dia_ban_id),
     queryFn: async (): Promise<number> => {
       const data = await callRpc<number>({ fn: 'dashboard_maintenance_count' })
       return data ?? 0
@@ -51,8 +58,11 @@ export interface RepairRequestStats {
 
 // Hook to get repair request statistics (tenant-filtered)
 export function useRepairRequestStats() {
+  const { data: session } = useSession()
+  const user = session?.user as any
+  
   return useQuery({
-    queryKey: dashboardStatsKeys.repairRequests(),
+    queryKey: dashboardStatsKeys.repairRequests(user?.role, user?.dia_ban_id),
     queryFn: async (): Promise<RepairRequestStats> => {
       const data = await callRpc<RepairRequestStats>({ fn: 'dashboard_repair_request_stats' })
       return data ?? {
@@ -87,8 +97,11 @@ export interface MaintenancePlanStats {
 
 // Hook to get maintenance plan statistics (tenant-filtered)
 export function useMaintenancePlanStats() {
+  const { data: session } = useSession()
+  const user = session?.user as any
+  
   return useQuery({
-    queryKey: dashboardStatsKeys.maintenancePlans(),
+    queryKey: dashboardStatsKeys.maintenancePlans(user?.role, user?.dia_ban_id),
     queryFn: async (): Promise<MaintenancePlanStats> => {
       const data = await callRpc<MaintenancePlanStats>({ fn: 'dashboard_maintenance_plan_stats' })
       return data ?? {
@@ -118,8 +131,11 @@ export interface EquipmentAttention {
 
 // Hook to get equipment needing attention
 export function useEquipmentAttention() {
+  const { data: session } = useSession()
+  const user = session?.user as any
+  
   return useQuery({
-    queryKey: dashboardStatsKeys.equipmentAttention(),
+    queryKey: dashboardStatsKeys.equipmentAttention(user?.role, user?.dia_ban_id),
     queryFn: async (): Promise<EquipmentAttention[]> => {
       const data = await callRpc<any[]>({ fn: 'equipment_attention_list', args: { p_limit: 5 } })
       return (data as any[] || []).map((row: any) => ({
