@@ -46,7 +46,7 @@ import {
 import { callRpc } from "@/lib/rpc-client"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Calendar } from "@/components/ui/calendar"
-import { ArrowUpDown, Calendar as CalendarIcon, Check, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, ChevronUp, Edit, FilterX, History, Loader2, MoreHorizontal, PlusCircle, Trash2 } from "lucide-react"
+import { ArrowUpDown, Building2, Calendar as CalendarIcon, Check, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, ChevronUp, Edit, FilterX, History, Loader2, MoreHorizontal, PlusCircle, Trash2 } from "lucide-react"
 import { format, parseISO } from "date-fns"
 import { vi } from 'date-fns/locale'
 import { cn } from "@/lib/utils"
@@ -100,6 +100,8 @@ export type RepairRequestWithEquipment = {
     model: string | null;
     serial: string | null;
     khoa_phong_quan_ly: string | null;
+    facility_name: string | null;
+    facility_id: number | null;
   } | null;
 };
 
@@ -315,8 +317,13 @@ export default function RepairRequestsPage() {
   const [searchTerm, setSearchTerm] = React.useState("");
   const debouncedSearch = useSearchDebounce(searchTerm);
 
+  // Facility filter for regional leaders (client-side filtering)
+  const [selectedFacility, setSelectedFacility] = React.useState<string | null>(null);
+
   // Align with repo roles: use 'global' instead of legacy 'admin'
   const canSetRepairUnit = !!user && ['global', 'to_qltb'].includes(user.role);
+  // Regional leaders are read-only on this page (no create)
+  const isRegionalLeader = !!user && user.role === 'regional_leader';
 
   React.useEffect(() => {
     if (editingRequest) {
@@ -331,6 +338,13 @@ export default function RepairRequestsPage() {
       setEditExternalCompanyName(editingRequest.ten_don_vi_thue || "");
     }
   }, [editingRequest]);
+
+  // Force list view for regional leaders (no form creation allowed)
+  React.useEffect(() => {
+    if (isRegionalLeader) {
+      setShowRequestsList(true)
+    }
+  }, [isRegionalLeader])
 
   const CACHE_KEY = 'repair_requests_data';
 
@@ -393,6 +407,8 @@ export default function RepairRequestsPage() {
             model: row.thiet_bi.model ?? null,
             serial: row.thiet_bi.serial ?? null,
             khoa_phong_quan_ly: row.thiet_bi.khoa_phong_quan_ly ?? null,
+            facility_name: row.thiet_bi.facility_name ?? null,
+            facility_id: row.thiet_bi.facility_id ?? null,
           } : null,
         }))
         setRequests(normalized);
@@ -1012,7 +1028,9 @@ export default function RepairRequestsPage() {
 
   const renderActions = (request: RepairRequestWithEquipment) => {
     if (!user) return null;
-  const canManage = user.role === 'global' || user.role === 'admin' || user.role === 'to_qltb';
+    // Regional leaders are read-only, hide all actions
+    if (isRegionalLeader) return null;
+    const canManage = user.role === 'global' || user.role === 'admin' || user.role === 'to_qltb';
 
     return (
       <DropdownMenu>
@@ -1221,8 +1239,42 @@ export default function RepairRequestsPage() {
     },
   ];
 
+  // Extract unique facilities from repair requests for regional leader filter
+  const availableFacilities = React.useMemo(() => {
+    if (!isRegionalLeader) return [];
+    const facilities = new Set<string>();
+    requests.forEach(req => {
+      const facility = req.thiet_bi?.facility_name;
+      if (facility) facilities.add(facility);
+    });
+    return Array.from(facilities).sort();
+  }, [requests, isRegionalLeader]);
+
+  // Apply client-side facility filter for regional leaders
+  const displayedRequests = React.useMemo(() => {
+    if (!isRegionalLeader || !selectedFacility) return requests;
+    return requests.filter(req => req.thiet_bi?.facility_name === selectedFacility);
+  }, [requests, isRegionalLeader, selectedFacility]);
+
+  // Use filtered data for regional leaders, original data for others
+  const tableData = isRegionalLeader ? displayedRequests : requests;
+
+  // Debug logging for regional leader feature
+  React.useEffect(() => {
+    if (isRegionalLeader) {
+      console.log('[Regional Leader Debug]', {
+        role: user?.role,
+        isRegionalLeader,
+        requestsCount: requests.length,
+        availableFacilitiesCount: availableFacilities.length,
+        availableFacilities,
+        sampleRequest: requests[0]
+      });
+    }
+  }, [isRegionalLeader, requests.length, availableFacilities.length, user?.role]);
+
   const table = useReactTable({
-    data: requests,
+    data: tableData,
     columns,
     state: {
       sorting,
@@ -1697,8 +1749,9 @@ export default function RepairRequestsPage() {
       <RepairRequestAlert requests={requests} />
 
       <div className="space-y-6">
-        {/* Primary Action: Create Repair Request Form */}
-        <div className="w-full max-w-2xl mx-auto">
+  {/* Primary Action: Create Repair Request Form */}
+  {!isRegionalLeader && (
+  <div className="w-full max-w-2xl mx-auto">
           <Card className="border-2 border-primary/20 shadow-lg">
             <CardHeader>
               <div className="flex items-center gap-3">
@@ -1885,10 +1938,11 @@ export default function RepairRequestsPage() {
               </div>
             </div>
           )}
-        </div>
+  </div>
+  )}
 
         {/* Secondary Action: View Existing Requests */}
-        {showRequestsList && (
+        {(showRequestsList || isRegionalLeader) && (
           <div className="w-full collapsible-enter">
             <Card className="overflow-hidden">
               <CardHeader>
@@ -1897,7 +1951,58 @@ export default function RepairRequestsPage() {
                   Tất cả các yêu cầu sửa chữa đã được ghi nhận.
                 </CardDescription>
 
-                {/* Department auto-filter removed */}
+                {/* Facility filter for regional leaders */}
+                {isRegionalLeader && (
+                  <div className="flex items-center gap-2 mt-4 flex-wrap">
+                    <div className="flex items-center gap-2 flex-1 min-w-0">
+                      <Building2 className="h-4 w-4 text-muted-foreground shrink-0" />
+                      <Select
+                        value={selectedFacility || "all"}
+                        onValueChange={(value) => setSelectedFacility(value === "all" ? null : value)}
+                        disabled={availableFacilities.length === 0}
+                      >
+                        <SelectTrigger className="h-9 border-dashed">
+                          <SelectValue placeholder="Chọn cơ sở..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">
+                            <div className="flex items-center gap-2">
+                              <Building2 className="h-4 w-4 text-muted-foreground" />
+                              <span>Tất cả cơ sở</span>
+                            </div>
+                          </SelectItem>
+                          {availableFacilities.length === 0 ? (
+                            <SelectItem value="empty" disabled>
+                              <span className="text-muted-foreground italic">Chưa có yêu cầu</span>
+                            </SelectItem>
+                          ) : (
+                            availableFacilities.map((facility) => {
+                              const count = requests.filter(r => r.thiet_bi?.facility_name === facility).length;
+                              return (
+                                <SelectItem key={facility} value={facility}>
+                                  <div className="flex items-center justify-between w-full gap-4">
+                                    <span className="truncate">{facility}</span>
+                                    <span className="text-xs text-muted-foreground shrink-0">{count}</span>
+                                  </div>
+                                </SelectItem>
+                              );
+                            })
+                          )}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    {selectedFacility && (
+                      <Badge variant="secondary" className="shrink-0">
+                        {requests.filter(r => r.thiet_bi?.facility_name === selectedFacility).length} yêu cầu
+                      </Badge>
+                    )}
+                    {!selectedFacility && availableFacilities.length > 0 && (
+                      <Badge variant="outline" className="shrink-0">
+                        {availableFacilities.length} cơ sở • {requests.length} yêu cầu
+                      </Badge>
+                    )}
+                  </div>
+                )}
               </CardHeader>
               <CardContent className="p-3 md:p-6 gap-3 md:gap-4">
                 <div className="flex items-center justify-between gap-2 flex-wrap mb-3 md:mb-4">

@@ -29,27 +29,31 @@ export function useRealtimeDebug() {
         dashboardStatsKeys.equipmentAttention(),
       ]
 
-      const states = dashboardQueries.map(queryKey => {
+  const states = dashboardQueries.map<QueryState>(queryKey => {
+        // Ensure we store a strict string[] for our local debug state
+        const safeKey: string[] = ([...queryKey] as unknown[])
+          .filter((k): k is string => typeof k === 'string' && k != null)
+
         const query = queryClient.getQueryState(queryKey)
         const queryCache = queryClient.getQueryCache().find({ queryKey })
-        
+
         // Debug logging
-        if (queryKey.join('-').includes('equipment-attention')) {
-          console.log(`[RealtimeDebug] Query state for ${queryKey.join(' → ')}:`, {
+        if (safeKey.join('-').includes('equipment-attention')) {
+          console.log(`[RealtimeDebug] Query state for ${safeKey.join(' → ')}:`, {
             query,
             queryCache,
             queryExists: !!query,
             cacheExists: !!queryCache
           })
         }
-        
+
         return {
-          queryKey: [...queryKey],
+          queryKey: safeKey,
           status: query?.status || (queryCache?.state?.status) || 'not-found',
           dataUpdatedAt: query?.dataUpdatedAt || queryCache?.state?.dataUpdatedAt || 0,
           isStale: query ? (Date.now() - query.dataUpdatedAt) > 5 * 60 * 1000 : false,
           isFetching: queryCache?.state.fetchStatus === 'fetching' || false,
-        }
+        } as QueryState
       })
 
       setQueryStates(states)
