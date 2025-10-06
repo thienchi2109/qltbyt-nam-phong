@@ -2,6 +2,7 @@
 
 import Link from "next/link"
 import { Plus, QrCode, ClipboardList } from "lucide-react"
+import { useSession } from "next-auth/react"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -20,6 +21,11 @@ import { MaintenancePlansTable } from "@/components/dashboard/maintenance-plans-
 
 export default function Dashboard() {
   // useDashboardRealtimeSync()
+  const { data: session } = useSession()
+  const user = session?.user as any
+  
+  // Check if user is regional leader
+  const isRegionalLeader = user?.role === 'regional_leader'
 
   return (
     <>
@@ -40,39 +46,45 @@ export default function Dashboard() {
           </CardHeader>
           <CardContent className="p-4 pt-0 md:p-8 md:pt-0">
             <div className="grid grid-cols-3 gap-3 md:grid-cols-3 md:gap-6">
-              <Button
-                asChild
-                size="lg"
-                variant="ghost"
-                className="mobile-quick-action bg-gradient-to-br from-primary/20 via-primary/10 to-white text-primary-700 hover:shadow-md focus-visible:ring-primary/40"
-              >
-                <Link href="/equipment?action=add" aria-label="Thêm thiết bị">
-                  <Plus className="mobile-quick-action-icon" aria-hidden="true" />
-                  <div className="mobile-quick-action-text">
-                    <div className="mobile-quick-action-title">Thêm thiết bị</div>
-                  </div>
-                </Link>
-              </Button>
+              {/* Quick Actions: Restricted for regional leaders */}
+              {!isRegionalLeader && (
+                <>
+                  <Button
+                    asChild
+                    size="lg"
+                    variant="ghost"
+                    className="mobile-quick-action bg-gradient-to-br from-primary/20 via-primary/10 to-white text-primary-700 hover:shadow-md focus-visible:ring-primary/40"
+                  >
+                    <Link href="/equipment?action=add" aria-label="Thêm thiết bị">
+                      <Plus className="mobile-quick-action-icon" aria-hidden="true" />
+                      <div className="mobile-quick-action-text">
+                        <div className="mobile-quick-action-title">Thêm thiết bị</div>
+                      </div>
+                    </Link>
+                  </Button>
 
+                  <Button
+                    asChild
+                    size="lg"
+                    variant="ghost"
+                    className="mobile-quick-action bg-gradient-to-br from-emerald-200/80 via-emerald-100 to-white text-emerald-700 hover:shadow-md focus-visible:ring-emerald-400/60"
+                  >
+                    <Link href="/maintenance?action=create" aria-label="Lập kế hoạch bảo trì">
+                      <ClipboardList className="mobile-quick-action-icon" aria-hidden="true" />
+                      <div className="mobile-quick-action-text">
+                        <div className="mobile-quick-action-title">Lập kế hoạch</div>
+                      </div>
+                    </Link>
+                  </Button>
+                </>
+              )}
+              
+              {/* QR Scanner: Always available for all users including regional leaders */}
               <Button
                 asChild
                 size="lg"
                 variant="ghost"
-                className="mobile-quick-action bg-gradient-to-br from-emerald-200/80 via-emerald-100 to-white text-emerald-700 hover:shadow-md focus-visible:ring-emerald-400/60"
-              >
-                <Link href="/maintenance?action=create" aria-label="Lập kế hoạch bảo trì">
-                  <ClipboardList className="mobile-quick-action-icon" aria-hidden="true" />
-                  <div className="mobile-quick-action-text">
-                    <div className="mobile-quick-action-title">Lập kế hoạch</div>
-                  </div>
-                </Link>
-              </Button>
-
-              <Button
-                asChild
-                size="lg"
-                variant="ghost"
-                className="mobile-quick-action bg-gradient-to-br from-sky-200/80 via-sky-100 to-white text-sky-700 hover:shadow-md focus-visible:ring-sky-400/60"
+                className={`mobile-quick-action bg-gradient-to-br from-sky-200/80 via-sky-100 to-white text-sky-700 hover:shadow-md focus-visible:ring-sky-400/60 ${isRegionalLeader ? 'md:col-start-2' : ''}`}
               >
                 <Link href="/qr-scanner" aria-label="Quét mã QR thiết bị">
                   <QrCode className="mobile-quick-action-icon" aria-hidden="true" />
