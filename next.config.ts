@@ -20,6 +20,11 @@ const nextConfig: NextConfig = {
   experimental: {
     // Enable experimental features for better Cloudflare Workers support
   },
+  // Turbopack configuration (stable in Next.js 15)
+  turbopack: {
+    // Reduce memory usage for Turbopack
+    memoryLimit: 4096, // 4GB limit
+  },
   // Fix for app-build-manifest.json 404 error
   async headers() {
     return [
