@@ -1946,7 +1946,7 @@ export default function RepairRequestsPage() {
           <div className="w-full collapsible-enter">
             <Card className="overflow-hidden">
               <CardHeader>
-                <CardTitle className="heading-responsive-h2">Danh sách yêu cầu</CardTitle>
+                <CardTitle className="heading-responsive-h2">Tổng hợp các yêu cầu sửa chữa thiết bị</CardTitle>
                 <CardDescription className="body-responsive-sm">
                   Tất cả các yêu cầu sửa chữa đã được ghi nhận.
                 </CardDescription>

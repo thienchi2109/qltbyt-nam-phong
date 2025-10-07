@@ -14,7 +14,7 @@ import {
 } from "@tanstack/react-table"
 import { format, parseISO } from 'date-fns'
 import { vi } from 'date-fns/locale'
-import { ArrowUpDown, Check, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Edit, Loader2, MoreHorizontal, PlusCircle, Trash2, Save, X, AlertTriangle, Undo2, CalendarDays, Users, FileText, CheckCircle2 } from "lucide-react"
+import { ArrowUpDown, Building2, Check, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Edit, Loader2, MoreHorizontal, PlusCircle, Trash2, Save, X, AlertTriangle, Undo2, CalendarDays, Users, FileText, CheckCircle2 } from "lucide-react"
 
 import { useToast } from "@/hooks/use-toast"
 import { useIsMobile } from "@/hooks/use-mobile"
@@ -84,6 +84,7 @@ export default function MaintenancePage() {
   const { data: session, status } = useSession()
   const user = session?.user as any // Cast NextAuth user to our User type
   const isRegionalLeader = user?.role === 'regional_leader'
+  // Regional leaders can VIEW maintenance plans but cannot manage them
   const canManagePlans = !!user && !isRegionalLeader && ((user.role === 'global' || user.role === 'admin') || user.role === 'to_qltb')
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -105,32 +106,16 @@ export default function MaintenancePage() {
     return null
   }
 
-  if (isRegionalLeader) {
-    return (
-      <div className="flex min-h-[60vh] items-center justify-center px-4">
-        <Card className="mx-auto max-w-lg text-center">
-          <CardHeader>
-            <CardTitle>Không có quyền truy cập</CardTitle>
-            <CardDescription>
-              Vai trò Trưởng vùng không được sử dụng chức năng bảo trì thiết bị.
-            </CardDescription>
-          </CardHeader>
-          <CardFooter className="flex justify-center">
-            <Button onClick={() => router.push("/dashboard")} variant="default">
-              Về trang tổng quan
-            </Button>
-          </CardFooter>
-        </Card>
-      </div>
-    )
-  }
-
   // Temporarily disable useRealtimeSync to avoid conflict with RealtimeProvider
   // useMaintenanceRealtimeSync()
 
   // Search state for plans
   const [planSearchTerm, setPlanSearchTerm] = React.useState("");
   const debouncedPlanSearch = useSearchDebounce(planSearchTerm);
+
+  // Facility filter for regional leaders and global users (client-side filtering)
+  const [selectedFacility, setSelectedFacility] = React.useState<number | null>(null);
+  const [facilities, setFacilities] = React.useState<Array<{ id: number; name: string }>>([]);
 
   // ✅ Use cached hooks for data fetching, keep manual mutations for now
   const { data: plans = [], isLoading: isLoadingPlans, refetch: refetchPlans } = useMaintenancePlans(
@@ -297,6 +282,63 @@ export default function MaintenancePage() {
       }
     }
   }, [searchParams, plans])
+
+  // Fetch facilities and enrich plans with facility names
+  React.useEffect(() => {
+    const fetchFacilities = async () => {
+      try {
+        const data = await callRpc<any[]>({
+          fn: 'don_vi_list',
+          args: {}
+        });
+        if (data) {
+          setFacilities(data.map((f: any) => ({ id: f.id, name: f.name })));
+        }
+      } catch (error: any) {
+        console.error('Failed to fetch facilities:', error);
+      }
+    };
+
+    // Only fetch facilities for regional leaders and global users
+    if (isRegionalLeader || user?.role === 'global') {
+      fetchFacilities();
+    }
+  }, [isRegionalLeader, user?.role]);
+
+  // Enrich plans with facility names (client-side join)
+  const enrichedPlans = React.useMemo(() => {
+    if (facilities.length === 0) return plans;
+    return plans.map(plan => ({
+      ...plan,
+      facility_name: facilities.find(f => f.id === plan.don_vi)?.name || null
+    }));
+  }, [plans, facilities]);
+
+  // Determine if facility filter should be shown
+  const showFacilityFilter = (isRegionalLeader || user?.role === 'global') && facilities.length > 0;
+
+  // Extract unique facilities from plans for the filter dropdown
+  const availableFacilities = React.useMemo(() => {
+    if (!showFacilityFilter) return [];
+    const facilityMap = new Map<number, string>();
+    enrichedPlans.forEach(plan => {
+      if (plan.don_vi && plan.facility_name) {
+        facilityMap.set(plan.don_vi, plan.facility_name);
+      }
+    });
+    return Array.from(facilityMap.entries())
+      .map(([id, name]) => ({ id, name }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }, [enrichedPlans, showFacilityFilter]);
+
+  // Apply client-side facility filter
+  const displayedPlans = React.useMemo(() => {
+    if (!showFacilityFilter || !selectedFacility) return enrichedPlans;
+    return enrichedPlans.filter(plan => plan.don_vi === selectedFacility);
+  }, [enrichedPlans, showFacilityFilter, selectedFacility]);
+
+  // Use filtered plans for the table
+  const tablePlans = displayedPlans;
 
   const handleStartEdit = React.useCallback((task: MaintenanceTask) => {
     setEditingTaskId(task.id);
@@ -745,7 +787,7 @@ export default function MaintenancePage() {
   ], [user, handleSelectPlan, setEditingPlan, setPlanToDelete, setPlanToApprove]);
 
   const planTable = useReactTable({
-    data: plans as MaintenancePlan[],
+    data: tablePlans as MaintenancePlan[],
     columns: planColumns,
     getCoreRowModel: getCoreRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
@@ -1890,6 +1932,75 @@ export default function MaintenancePage() {
               )}
             </CardHeader>
             <CardContent>
+              {/* Regional Leader Info Banner */}
+              {isRegionalLeader && (
+                <div className="mb-4 rounded-lg border border-blue-200 bg-blue-50 p-4">
+                  <div className="flex items-start gap-3">
+                    <AlertTriangle className="h-5 w-5 text-blue-600 mt-0.5" />
+                    <div className="flex-1">
+                      <h4 className="text-sm font-medium text-blue-900">Chế độ xem của Sở Y tế</h4>
+                      <p className="text-sm text-blue-700 mt-1">
+                        Đang xem kế hoạch bảo trì thiết bị của tất cả cơ sở y tế trực thuộc trên địa bàn. 
+                        Sở Y tế có thể xem chi tiết nhưng không được phép tạo, sửa, hoặc duyệt kế hoạch.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Facility filter for regional leaders and global users */}
+              {showFacilityFilter && (
+                <div className="flex items-center gap-2 mb-4 flex-wrap">
+                  <div className="flex items-center gap-2 flex-1 min-w-0">
+                    <Building2 className="h-4 w-4 text-muted-foreground shrink-0" />
+                    <Select
+                      value={selectedFacility?.toString() || "all"}
+                      onValueChange={(value) => setSelectedFacility(value === "all" ? null : parseInt(value, 10))}
+                      disabled={availableFacilities.length === 0}
+                    >
+                      <SelectTrigger className="h-9 border-dashed">
+                        <SelectValue placeholder="Chọn cơ sở..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">
+                          <div className="flex items-center gap-2">
+                            <Building2 className="h-4 w-4 text-muted-foreground" />
+                            <span>Tất cả cơ sở</span>
+                          </div>
+                        </SelectItem>
+                        {availableFacilities.length === 0 ? (
+                          <SelectItem value="empty" disabled>
+                            <span className="text-muted-foreground italic">Chưa có kế hoạch</span>
+                          </SelectItem>
+                        ) : (
+                          availableFacilities.map((facility) => {
+                            const count = enrichedPlans.filter(p => p.don_vi === facility.id).length;
+                            return (
+                              <SelectItem key={facility.id} value={facility.id.toString()}>
+                                <div className="flex items-center justify-between w-full gap-4">
+                                  <span className="truncate">{facility.name}</span>
+                                  <span className="text-xs text-muted-foreground shrink-0">{count}</span>
+                                </div>
+                              </SelectItem>
+                            );
+                          })
+                        )}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  {selectedFacility && (
+                    <Badge variant="secondary" className="shrink-0">
+                      {tablePlans.length} kế hoạch
+                    </Badge>
+                  )}
+                  {!selectedFacility && availableFacilities.length > 0 && (
+                    <Badge variant="outline" className="shrink-0">
+                      {availableFacilities.length} cơ sở • {enrichedPlans.length} kế hoạch
+                    </Badge>
+                  )}
+                </div>
+              )}
+
               {/* Search Section */}
               <div className="flex flex-col sm:flex-row gap-4 mb-4">
                 <div className="flex-1">
@@ -1972,7 +2083,7 @@ export default function MaintenancePage() {
             <CardFooter>
               <div className="flex items-center justify-between w-full">
                 <div className="flex-1 text-sm text-muted-foreground">
-                  {planTable.getFilteredRowModel().rows.length} trên {plans.length} kế hoạch.
+                  {planTable.getFilteredRowModel().rows.length} trên {tablePlans.length} kế hoạch.
                 </div>
                 <div className="flex items-center gap-x-6 lg:gap-x-8">
                   <div className="flex items-center space-x-2">

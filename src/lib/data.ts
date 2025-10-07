@@ -46,6 +46,8 @@ export type MaintenancePlan = {
   nguoi_lap_ke_hoach: string | null;
   loai_cong_viec: TaskType;
   ly_do_khong_duyet?: string | null;
+  don_vi: number | null; // Facility ID
+  facility_name?: string; // Facility name (joined client-side)
 };
 
 export type MaintenanceTask = {
