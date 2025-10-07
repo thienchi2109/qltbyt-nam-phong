@@ -287,15 +287,19 @@ export default function MaintenancePage() {
   React.useEffect(() => {
     const fetchFacilities = async () => {
       try {
+        // Use region-aware RPC for both regional leaders and global users
+        // This function respects allowed_don_vi_for_session_safe() for proper filtering
         const data = await callRpc<any[]>({
-          fn: 'don_vi_list',
+          fn: 'get_facilities_with_equipment_count',
           args: {}
         });
-        if (data) {
+        if (data && Array.isArray(data)) {
           setFacilities(data.map((f: any) => ({ id: f.id, name: f.name })));
         }
       } catch (error: any) {
         console.error('Failed to fetch facilities:', error);
+        // Fallback to empty array on error
+        setFacilities([]);
       }
     };
 
@@ -318,27 +322,50 @@ export default function MaintenancePage() {
   const showFacilityFilter = (isRegionalLeader || user?.role === 'global') && facilities.length > 0;
 
   // Extract unique facilities from plans for the filter dropdown
+  // ✅ Client-side validation: Only show facilities that are in the allowed list
   const availableFacilities = React.useMemo(() => {
     if (!showFacilityFilter) return [];
+    
+    // Get allowed facility IDs from the fetched facilities list
+    const allowedFacilityIds = new Set(facilities.map(f => f.id));
+    
+    // Build facility map from plans, but only include allowed facilities
     const facilityMap = new Map<number, string>();
     enrichedPlans.forEach(plan => {
-      if (plan.don_vi && plan.facility_name) {
+      if (plan.don_vi && plan.facility_name && allowedFacilityIds.has(plan.don_vi)) {
         facilityMap.set(plan.don_vi, plan.facility_name);
       }
     });
+    
     return Array.from(facilityMap.entries())
       .map(([id, name]) => ({ id, name }))
       .sort((a, b) => a.name.localeCompare(b.name));
-  }, [enrichedPlans, showFacilityFilter]);
+  }, [enrichedPlans, showFacilityFilter, facilities]);
 
-  // Apply client-side facility filter
+  // Apply client-side facility filter with security validation
   const displayedPlans = React.useMemo(() => {
     if (!showFacilityFilter || !selectedFacility) return enrichedPlans;
+    
+    // ✅ Security check: Verify selected facility is in allowed list
+    const allowedFacilityIds = new Set(facilities.map(f => f.id));
+    if (!allowedFacilityIds.has(selectedFacility)) {
+      console.warn(`Facility ${selectedFacility} is not in allowed list. Filtering aborted.`);
+      return enrichedPlans; // Return all if selected facility is not allowed
+    }
+    
     return enrichedPlans.filter(plan => plan.don_vi === selectedFacility);
-  }, [enrichedPlans, showFacilityFilter, selectedFacility]);
+  }, [enrichedPlans, showFacilityFilter, selectedFacility, facilities]);
 
   // Use filtered plans for the table
   const tablePlans = displayedPlans;
+
+  // Reset pagination to page 1 when facility filter changes
+  React.useEffect(() => {
+    setPlanPagination(prev => ({
+      ...prev,
+      pageIndex: 0 // Reset to first page
+    }));
+  }, [selectedFacility]);
 
   const handleStartEdit = React.useCallback((task: MaintenanceTask) => {
     setEditingTaskId(task.id);
@@ -2179,7 +2206,7 @@ export default function MaintenancePage() {
                       </Button>
                     </>
                   )}
-                  {tasks.length > 0 && (
+                  {tasks.length > 0 && !isRegionalLeader && (
                     <Button
                       variant="secondary"
                       onClick={handleGeneratePlanForm}
