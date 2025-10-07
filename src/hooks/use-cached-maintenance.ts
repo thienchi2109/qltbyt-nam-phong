@@ -27,7 +27,11 @@ export function useMaintenancePlans(filters?: {
         fn: 'maintenance_plan_list',
         args: { p_q: filters?.search ?? null }
       })
-      return data ?? []
+      // Normalize don_vi from string to number for consistent comparison
+      return (data ?? []).map(plan => ({
+        ...plan,
+        don_vi: plan.don_vi ? Number(plan.don_vi) : plan.don_vi
+      }))
     },
     staleTime: 3 * 60 * 1000, // 3 minutes - maintenance plans don't change frequently
     gcTime: 15 * 60 * 1000, // 15 minutes

@@ -13,10 +13,8 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import { CalendarWidget } from "@/components/ui/calendar-widget"
-import { MonthlyMaintenanceSummary } from "@/components/monthly-maintenance-summary"
 import { KPICards } from "@/components/dashboard/kpi-cards"
-import { EquipmentAttentionTable } from "@/components/dashboard/equipment-attention-table"
-import { MaintenancePlansTable } from "@/components/dashboard/maintenance-plans-table"
+import { DashboardTabs } from "@/components/dashboard/dashboard-tabs"
 // import { useDashboardRealtimeSync } from "@/hooks/use-realtime-sync"
 
 export default function Dashboard() {
@@ -104,17 +102,9 @@ export default function Dashboard() {
         <CalendarWidget />
       </div>
 
-      {/* Monthly Summary and Main Content */}
-      <div className="grid gap-4 md:gap-8 md:mt-8 lg:grid-cols-3">
-        <div className="lg:col-span-2 space-y-4">
-          <div className="grid gap-4 md:gap-8 lg:grid-cols-2">
-            <EquipmentAttentionTable />
-            <MaintenancePlansTable />
-          </div>
-        </div>
-
-        {/* Monthly Maintenance Summary */}
-        <MonthlyMaintenanceSummary />
+      {/* Unified Tabbed Dashboard Cards */}
+      <div className="grid gap-4 md:gap-8 md:mt-8">
+        <DashboardTabs />
       </div>
     </>
   )

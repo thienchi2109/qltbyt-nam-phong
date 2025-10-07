@@ -1,4 +1,0 @@
--- Deprecated: replaced by 20250927133000_global_admin_user_management.sql
--- This migration content has been consolidated and intentionally left blank.
--- Deprecated: replaced by 20250927133000_global_admin_user_management.sql
--- This migration content has been consolidated and intentionally left blank.
