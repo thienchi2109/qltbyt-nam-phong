@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { callRpc } from '@/lib/rpc-client'
 import { toast } from '@/hooks/use-toast'
+import { useSession } from 'next-auth/react'
 import type { TransferRequest } from '@/types/database'
 
 // Query keys for caching
@@ -12,7 +13,7 @@ export const transferKeys = {
   detail: (id: string) => [...transferKeys.details(), id] as const,
 }
 
-// Fetch all transfer requests with filters
+// Fetch all transfer requests with filters using enhanced RPC
 export function useTransferRequests(filters?: {
   search?: string
   trang_thai?: string
@@ -20,17 +21,30 @@ export function useTransferRequests(filters?: {
   phong_ban_nhan?: string
   dateFrom?: string
   dateTo?: string
+  don_vi?: number | null
+  dia_ban?: number | null
+  khoa_phong?: string | null
 }) {
+  const { data: session } = useSession()
+  const userRole = (session?.user as any)?.role?.toLowerCase() ?? ''
+  
   return useQuery<TransferRequest[]>({
     queryKey: transferKeys.list(filters || {}),
     queryFn: async () => {
+      // SECURITY: Only global users can specify don_vi/dia_ban filters
+      // For other roles (including regional_leader), server enforces via allowed_don_vi_for_session()
+      // NOTE: Must pass all 8 params to resolve function overload (p_khoa_phong is the 8th param)
       const data = await callRpc<any[]>({
-        fn: 'transfer_request_list',
+        fn: 'transfer_request_list_enhanced',
         args: {
           p_q: filters?.search ?? null,
           p_status: filters?.trang_thai ?? null,
           p_page: 1,
           p_page_size: 5000,
+          p_don_vi: userRole === 'global' ? (filters?.don_vi ?? null) : null,
+          p_date_from: filters?.dateFrom ?? null,
+          p_date_to: filters?.dateTo ?? null,
+          p_khoa_phong: filters?.khoa_phong ?? null,  // 8th param to resolve overload
         },
       })
       return (data || []) as TransferRequest[]

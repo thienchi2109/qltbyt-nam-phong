@@ -853,21 +853,28 @@ export default function EquipmentPage() {
                           <div class="flex items-baseline"><label class="whitespace-nowrap">17. Tình trạng thiết bị hiện tại:</label><input type="text" class="form-input-line ml-2" value="${formatValue(equipment.tinh_trang_hien_tai)}"></div>
                       </div>
                       <div class="signature-box">
-                          <div class="flex justify-end pt-2 pr-2">
-                              <p class="italic">Cần Thơ, ngày <span class="inline-block w-8"><input type="text" class="form-input-line text-center"></span> tháng <span class="inline-block w-8"><input type="text" class="form-input-line text-center"></span> năm <span class="inline-block w-16"><input type="text" class="form-input-line text-center"></span></p>
-                          </div>
                           <div class="flex">
                               <div class="w-1/2 signature-area border-r border-gray-400">
-                                   <p class="font-bold">Lãnh đạo khoa/ phòng</p>
-                                   <p class="italic">(Ký, ghi rõ họ và tên)</p>
-                                   <div class="signature-space"></div>
-                                   <input type="text" class="signature-name-input" placeholder="(Họ và tên)">
+                                  <!-- Thêm khoảng trống để căn chỉnh với dòng ngày tháng bên phải -->
+                                  <div class="h-12">&nbsp;</div>
+                                  <p class="font-bold">Lãnh đạo khoa/ phòng</p>
+                                  <p class="italic">(Ký, ghi rõ họ và tên)</p>
+                                  <div class="signature-space"></div>
+                                  <input type="text" class="signature-name-input" placeholder="(Họ và tên)">
                               </div>
-                               <div class="w-1/2 signature-area">
-                                   <p class="font-bold">Người trực tiếp quản lý</p>
-                                   <p class="italic">(Ký, ghi rõ họ và tên)</p>
-                                   <div class="signature-space"></div>
-                                   <input type="text" class="signature-name-input" value="${formatValue(equipment.nguoi_dang_truc_tiep_quan_ly)}">
+                              <div class="w-1/2 signature-area">
+                                  <div class="text-center pt-2 h-12">
+                                      <p class="italic whitespace-nowrap">
+                                          <span class="inline-block w-24"><input type="text" class="form-input-line text-center italic" value="Cần Thơ"></span>, ngày
+                                          <span class="inline-block w-8"><input type="text" class="form-input-line text-center"></span> tháng
+                                          <span class="inline-block w-8"><input type="text" class="form-input-line text-center"></span> năm
+                                          <span class="inline-block w-8"><input type="text" class="form-input-line text-center"></span>
+                                      </p>
+                                  </div>
+                                  <p class="font-bold">Người trực tiếp quản lý</p>
+                                  <p class="italic">(Ký, ghi rõ họ và tên)</p>
+                                  <div class="signature-space"></div>
+                                  <input type="text" class="signature-name-input" value="${formatValue(equipment.nguoi_dang_truc_tiep_quan_ly)}">
                               </div>
                           </div>
                       </div>
