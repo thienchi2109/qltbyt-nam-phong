@@ -94,25 +94,7 @@ export default function TransfersPage() {
     return null
   }
 
-  if (isRegionalLeader) {
-    return (
-      <div className="flex min-h-[60vh] items-center justify-center px-4">
-        <Card className="mx-auto max-w-lg text-center">
-          <CardHeader>
-            <CardTitle>Không có quyền truy cập</CardTitle>
-            <CardDescription>
-              Vai trò Trưởng vùng không được sử dụng tính năng luân chuyển thiết bị.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="flex justify-center">
-            <Button onClick={() => router.push("/dashboard")} variant="default">
-              Về trang tổng quan
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
-    )
-  }
+  // REMOVED: regional_leader page block - they now have read-only access
 
   // ✅ Use cached hooks instead of manual state
   const { data: transfers = [], isLoading, refetch: refetchTransfers } = useTransferRequests()
@@ -523,20 +505,16 @@ export default function TransfersPage() {
               <RefreshCw className={`h-4 w-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
               Làm mới
             </Button>
-            <Button
-              size="sm"
-              onClick={() => {
-                if (isRegionalLeader) {
-                  notifyRegionalLeaderRestricted()
-                  return
-                }
-                setIsAddDialogOpen(true)
-              }}
-              disabled={isRegionalLeader}
-            >
-              <PlusCircle className="h-4 w-4 mr-2" />
-              Tạo yêu cầu mới
-            </Button>
+            {/* Hide Create button for regional_leader - read-only access */}
+            {!isRegionalLeader && (
+              <Button
+                size="sm"
+                onClick={() => setIsAddDialogOpen(true)}
+              >
+                <PlusCircle className="h-4 w-4 mr-2" />
+                Tạo yêu cầu mới
+              </Button>
+            )}
           </div>
         </CardHeader>
         <CardContent>

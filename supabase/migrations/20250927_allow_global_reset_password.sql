@@ -1,4 +1,0 @@
--- Deprecated: superseded by 20250927133000_global_admin_user_management.sql
--- Consolidated migration owns reset_password_by_admin definition.
--- Deprecated: superseded by 20250927133000_global_admin_user_management.sql
--- Consolidated migration owns reset_password_by_admin definition.
