@@ -25,9 +25,12 @@ The transfer request system had two critical issues affecting `regional_leader` 
 - ✅ Converted simple SQL functions to `plpgsql` for better security control
 - ✅ Added comprehensive error handling with proper error codes
 - ⚠️ **CRITICAL FIX APPLIED:** Fixed data corruption bug in `transfer_request_update`
-  * Bug: Partial updates wiped department/external fields when `loai_hinh` not in payload
-  * Fix: Changed CASE conditions from `COALESCE(p_data->>'loai_hinh','')` to `COALESCE(p_data->>'loai_hinh', loai_hinh)`
-  * Impact: Prevents data loss on partial updates (e.g., changing only reason field)
+  * Bug 1: Partial updates wiped department/external fields when `loai_hinh` not in payload
+  * Bug 2: Type changes left stale fields (e.g., internal fields remain when changed to external)
+  * Fix: Use JSONB `?` operator to detect if `loai_hinh` is in payload, then:
+    - If present: NULL opposite type's fields (clean type change)
+    - If absent: Preserve all fields (safe partial update)
+  * Impact: Both partial updates AND type changes work correctly
 
 **Migration 2:** `081020251440_fix_transfer_list_regional_leader.sql`
 - ✅ Replaced single `don_vi` filtering with `allowed_don_vi_for_session()` array

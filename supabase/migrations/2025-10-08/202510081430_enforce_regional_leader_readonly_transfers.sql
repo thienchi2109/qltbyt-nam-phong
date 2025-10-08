@@ -164,21 +164,71 @@ BEGIN
   END IF;
 
   -- Update transfer request
-  -- CRITICAL FIX: Use COALESCE(p_data->>'loai_hinh', loai_hinh) to preserve current type when not in payload
-  -- This prevents partial updates from wiping department/external fields
+  -- CRITICAL FIX: Handle two scenarios correctly:
+  --   1. Partial update (loai_hinh not in payload): Preserve all fields
+  --   2. Type change (loai_hinh in payload): NULL opposite type's fields
   UPDATE public.yeu_cau_luan_chuyen SET
     thiet_bi_id = COALESCE(NULLIF(p_data->>'thiet_bi_id','')::INT, thiet_bi_id),
     loai_hinh = COALESCE(NULLIF(p_data->>'loai_hinh',''), loai_hinh),
     ly_do_luan_chuyen = COALESCE(NULLIF(p_data->>'ly_do_luan_chuyen',''), ly_do_luan_chuyen),
-    -- Use current loai_hinh if not provided in payload to avoid data loss
-    khoa_phong_hien_tai = CASE WHEN COALESCE(p_data->>'loai_hinh', loai_hinh) = 'noi_bo' THEN NULLIF(p_data->>'khoa_phong_hien_tai','') ELSE khoa_phong_hien_tai END,
-    khoa_phong_nhan = CASE WHEN COALESCE(p_data->>'loai_hinh', loai_hinh) = 'noi_bo' THEN NULLIF(p_data->>'khoa_phong_nhan','') ELSE khoa_phong_nhan END,
-    muc_dich = CASE WHEN COALESCE(p_data->>'loai_hinh', loai_hinh) <> 'noi_bo' THEN NULLIF(p_data->>'muc_dich','') ELSE muc_dich END,
-    don_vi_nhan = CASE WHEN COALESCE(p_data->>'loai_hinh', loai_hinh) <> 'noi_bo' THEN NULLIF(p_data->>'don_vi_nhan','') ELSE don_vi_nhan END,
-    dia_chi_don_vi = CASE WHEN COALESCE(p_data->>'loai_hinh', loai_hinh) <> 'noi_bo' THEN NULLIF(p_data->>'dia_chi_don_vi','') ELSE dia_chi_don_vi END,
-    nguoi_lien_he = CASE WHEN COALESCE(p_data->>'loai_hinh', loai_hinh) <> 'noi_bo' THEN NULLIF(p_data->>'nguoi_lien_he','') ELSE nguoi_lien_he END,
-    so_dien_thoai = CASE WHEN COALESCE(p_data->>'loai_hinh', loai_hinh) <> 'noi_bo' THEN NULLIF(p_data->>'so_dien_thoai','') ELSE so_dien_thoai END,
-    ngay_du_kien_tra = CASE WHEN COALESCE(p_data->>'loai_hinh', loai_hinh) <> 'noi_bo' AND COALESCE(p_data->>'ngay_du_kien_tra','') <> '' THEN (p_data->>'ngay_du_kien_tra')::DATE ELSE ngay_du_kien_tra END,
+    -- Internal fields: Update if noi_bo, NULL if type changed to external, preserve if partial update
+    khoa_phong_hien_tai = CASE 
+      WHEN p_data ? 'loai_hinh' THEN  -- Type explicitly provided
+        CASE WHEN COALESCE(p_data->>'loai_hinh','') = 'noi_bo' 
+             THEN NULLIF(p_data->>'khoa_phong_hien_tai','') 
+             ELSE NULL END
+      ELSE khoa_phong_hien_tai  -- Partial update: preserve
+    END,
+    khoa_phong_nhan = CASE 
+      WHEN p_data ? 'loai_hinh' THEN
+        CASE WHEN COALESCE(p_data->>'loai_hinh','') = 'noi_bo' 
+             THEN NULLIF(p_data->>'khoa_phong_nhan','') 
+             ELSE NULL END
+      ELSE khoa_phong_nhan
+    END,
+    -- External fields: Update if external, NULL if type changed to internal, preserve if partial update
+    muc_dich = CASE 
+      WHEN p_data ? 'loai_hinh' THEN
+        CASE WHEN COALESCE(p_data->>'loai_hinh','') <> 'noi_bo' 
+             THEN NULLIF(p_data->>'muc_dich','') 
+             ELSE NULL END
+      ELSE muc_dich
+    END,
+    don_vi_nhan = CASE 
+      WHEN p_data ? 'loai_hinh' THEN
+        CASE WHEN COALESCE(p_data->>'loai_hinh','') <> 'noi_bo' 
+             THEN NULLIF(p_data->>'don_vi_nhan','') 
+             ELSE NULL END
+      ELSE don_vi_nhan
+    END,
+    dia_chi_don_vi = CASE 
+      WHEN p_data ? 'loai_hinh' THEN
+        CASE WHEN COALESCE(p_data->>'loai_hinh','') <> 'noi_bo' 
+             THEN NULLIF(p_data->>'dia_chi_don_vi','') 
+             ELSE NULL END
+      ELSE dia_chi_don_vi
+    END,
+    nguoi_lien_he = CASE 
+      WHEN p_data ? 'loai_hinh' THEN
+        CASE WHEN COALESCE(p_data->>'loai_hinh','') <> 'noi_bo' 
+             THEN NULLIF(p_data->>'nguoi_lien_he','') 
+             ELSE NULL END
+      ELSE nguoi_lien_he
+    END,
+    so_dien_thoai = CASE 
+      WHEN p_data ? 'loai_hinh' THEN
+        CASE WHEN COALESCE(p_data->>'loai_hinh','') <> 'noi_bo' 
+             THEN NULLIF(p_data->>'so_dien_thoai','') 
+             ELSE NULL END
+      ELSE so_dien_thoai
+    END,
+    ngay_du_kien_tra = CASE 
+      WHEN p_data ? 'loai_hinh' THEN
+        CASE WHEN COALESCE(p_data->>'loai_hinh','') <> 'noi_bo' AND COALESCE(p_data->>'ngay_du_kien_tra','') <> '' 
+             THEN (p_data->>'ngay_du_kien_tra')::DATE 
+             ELSE NULL END
+      ELSE ngay_du_kien_tra
+    END,
     updated_by = COALESCE(NULLIF(p_data->>'updated_by','')::INT, v_user_id),
     updated_at = NOW()
   WHERE id = p_id;
