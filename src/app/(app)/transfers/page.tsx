@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { PlusCircle, ArrowLeftRight, Filter, RefreshCw, FileText } from "lucide-react"
+import { PlusCircle, ArrowLeftRight, Filter, RefreshCw, FileText, Building2 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -13,6 +13,13 @@ import {
 } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { useToast } from "@/hooks/use-toast"
 import { supabase } from "@/lib/supabase"
 import { callRpc } from "@/lib/rpc-client"
@@ -111,17 +118,56 @@ export default function TransfersPage() {
   const [handoverDialogOpen, setHandoverDialogOpen] = React.useState(false)
   const [handoverTransfer, setHandoverTransfer] = React.useState<TransferRequest | null>(null)
 
+  // Facility filter state for regional leaders (client-side filtering)
+  const [selectedFacility, setSelectedFacility] = React.useState<number | null>(null)
+  const [facilities, setFacilities] = React.useState<Array<{ id: number; name: string; equipment_count: number }>>([])
+  const showFacilityFilter = isRegionalLeader || user?.role === 'global'
+
   // ✅ Remove manual fetchTransfers - now handled by cached hook
 
   // ✅ Remove useEffect for fetchTransfers - data loaded automatically by cached hook
+
+  // Fetch facilities for regional leaders and global users
+  React.useEffect(() => {
+    const fetchFacilities = async () => {
+      try {
+        const data = await callRpc<any[]>({
+          fn: 'get_facilities_with_equipment_count',
+          args: {}
+        })
+        if (data && Array.isArray(data)) {
+          setFacilities(data.map((f: any) => ({ 
+            id: f.id, 
+            name: f.name,
+            equipment_count: f.equipment_count || 0
+          })))
+        }
+      } catch (error: any) {
+        console.error('Failed to fetch facilities:', error)
+        setFacilities([])
+      }
+    }
+
+    if (showFacilityFilter) {
+      fetchFacilities()
+    }
+  }, [showFacilityFilter])
 
   const handleRefresh = () => {
     setIsRefreshing(true)
     refetchTransfers().finally(() => setIsRefreshing(false)) // ✅ Use cached hook refetch
   }
 
+  // Client-side filtering by facility for regional leaders
+  const displayedTransfers = React.useMemo(() => {
+    if (!showFacilityFilter || !selectedFacility) {
+      return transfers
+    }
+    return transfers.filter(t => t.thiet_bi?.facility_id === selectedFacility)
+  }, [transfers, showFacilityFilter, selectedFacility])
+
   const getTransfersByStatus = (status: TransferStatus) => {
-    return transfers.filter(transfer => transfer.trang_thai === status)
+    return displayedTransfers.filter(transfer => transfer.trang_thai === status)
   }
 
   const getTypeVariant = (type: TransferRequest['loai_hinh']) => {
@@ -496,6 +542,31 @@ export default function TransfersPage() {
             </CardDescription>
           </div>
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+            {/* Facility filter for regional leaders and global users */}
+            {showFacilityFilter && facilities.length > 0 && (
+              <Select
+                value={selectedFacility?.toString() || "all"}
+                onValueChange={(value) => setSelectedFacility(value === "all" ? null : Number(value))}
+              >
+                <SelectTrigger className="w-[200px]">
+                  <Building2 className="h-4 w-4 mr-2" />
+                  <SelectValue placeholder="Tất cả cơ sở" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Tất cả cơ sở</SelectItem>
+                  {facilities.map((facility) => (
+                    <SelectItem key={facility.id} value={facility.id.toString()}>
+                      {facility.name}
+                      {facility.equipment_count > 0 && (
+                        <Badge variant="secondary" className="ml-2">
+                          {facility.equipment_count}
+                        </Badge>
+                      )}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
             <Button 
               variant="outline" 
               size="sm" 

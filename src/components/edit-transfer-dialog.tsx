@@ -128,7 +128,7 @@ export function EditTransferDialog({ open, onOpenChange, onSuccess, transfer }: 
       })
       
       // Set selected equipment
-      if (transfer.thiet_bi) {
+      if (transfer.thiet_bi && transfer.thiet_bi.id) {
         const equipment: EquipmentWithDept = {
           id: transfer.thiet_bi.id,
           ma_thiet_bi: transfer.thiet_bi.ma_thiet_bi,

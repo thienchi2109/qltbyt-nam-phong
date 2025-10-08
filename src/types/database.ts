@@ -131,7 +131,19 @@ export interface TransferRequest {
   updated_by?: number;
   
   // Relations
-  thiet_bi?: Equipment;
+  thiet_bi?: {
+    id?: number;
+    ten_thiet_bi: string;
+    ma_thiet_bi: string;
+    model?: string | null;
+    serial?: string | null;
+    serial_number?: string | null;
+    khoa_phong_quan_ly?: string | null;
+    don_vi?: number | null;
+    tinh_trang?: string | null;
+    facility_name?: string | null;
+    facility_id?: number | null;
+  } | null;
   nguoi_yeu_cau?: User;
   nguoi_duyet?: User;
   created_by_user?: User;
