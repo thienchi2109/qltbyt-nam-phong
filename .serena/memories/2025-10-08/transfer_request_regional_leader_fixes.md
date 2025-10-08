@@ -24,6 +24,10 @@ The transfer request system had two critical issues affecting `regional_leader` 
 - ✅ Enhanced security with proper `search_path`, role claim validation, tenant isolation
 - ✅ Converted simple SQL functions to `plpgsql` for better security control
 - ✅ Added comprehensive error handling with proper error codes
+- ⚠️ **CRITICAL FIX APPLIED:** Fixed data corruption bug in `transfer_request_update`
+  * Bug: Partial updates wiped department/external fields when `loai_hinh` not in payload
+  * Fix: Changed CASE conditions from `COALESCE(p_data->>'loai_hinh','')` to `COALESCE(p_data->>'loai_hinh', loai_hinh)`
+  * Impact: Prevents data loss on partial updates (e.g., changing only reason field)
 
 **Migration 2:** `081020251440_fix_transfer_list_regional_leader.sql`
 - ✅ Replaced single `don_vi` filtering with `allowed_don_vi_for_session()` array
