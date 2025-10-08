@@ -35,6 +35,13 @@ The transfer request system had two critical issues affecting `regional_leader` 
 - ✅ Maintained proper tenant isolation for all other roles
 - ✅ Used array filtering (`tb.don_vi = ANY(v_effective)`)
 
+**Migration 3:** `202510081445_restore_transfer_user_info.sql`
+- ✅ Restored user joins that were missing in enhanced list query
+- ✅ Added `nguoi_yeu_cau` (requester) and `nguoi_duyet` (approver) objects
+- ✅ Fixed TransferDetailDialog showing empty "Người yêu cầu"/"Người duyệt" sections
+- ✅ Included LEFT JOINs with `nhan_vien` table for user details
+- ✅ Returns NULL safely when user records don't exist
+
 **Functions Updated:**
 - `transfer_request_list_enhanced()` - Now supports multi-facility regional access
 - `transfer_request_create()` - Blocks regional_leader writes
@@ -125,8 +132,9 @@ Before applying migrations in production:
 ## Files Modified
 
 ### Database Migrations (Manual Review Required)
-1. `supabase/migrations/081020251430_enforce_regional_leader_readonly_transfers.sql`
-2. `supabase/migrations/081020251440_fix_transfer_list_regional_leader.sql`
+1. `supabase/migrations/202510081430_enforce_regional_leader_readonly_transfers.sql`
+2. `supabase/migrations/202510081440_fix_transfer_list_regional_leader.sql`
+3. `supabase/migrations/202510081445_restore_transfer_user_info.sql`
 
 ### API Routes
 1. `src/app/api/transfers/[id]/approve/route.ts`
