@@ -80,26 +80,9 @@ BEGIN
         'don_vi', tb.don_vi
       ) as thiet_bi,
       -- Restore user information for TransferDetailDialog
-      CASE 
-        WHEN nyc.id IS NOT NULL THEN jsonb_build_object(
-          'id', nyc.id,
-          'full_name', nyc.full_name,
-          'email', nyc.email,
-          'khoa_phong', nyc.khoa_phong,
-          'chuc_vu', nyc.chuc_vu
-        )
-        ELSE NULL
-      END as nguoi_yeu_cau,
-      CASE 
-        WHEN nd.id IS NOT NULL THEN jsonb_build_object(
-          'id', nd.id,
-          'full_name', nd.full_name,
-          'email', nd.email,
-          'khoa_phong', nd.khoa_phong,
-          'chuc_vu', nd.chuc_vu
-        )
-        ELSE NULL
-      END as nguoi_duyet
+      -- Use to_jsonb() to include all nhan_vien columns automatically
+      to_jsonb(nyc.*) as nguoi_yeu_cau,
+      to_jsonb(nd.*) as nguoi_duyet
     FROM public.yeu_cau_luan_chuyen yc
     LEFT JOIN public.thiet_bi tb ON yc.thiet_bi_id = tb.id
     LEFT JOIN public.nhan_vien nyc ON yc.nguoi_yeu_cau_id = nyc.id
@@ -135,11 +118,12 @@ COMMIT;
 -- - LEFT JOIN nhan_vien nd ON yc.nguoi_duyet_id = nd.id
 --
 -- Added fields to result:
--- - nguoi_yeu_cau: {id, full_name, email, khoa_phong, chuc_vu}
--- - nguoi_duyet: {id, full_name, email, khoa_phong, chuc_vu}
+-- - nguoi_yeu_cau: Complete nhan_vien record (id, full_name, username, khoa_phong, role, etc.)
+-- - nguoi_duyet: Complete nhan_vien record (id, full_name, username, khoa_phong, role, etc.)
 --
 -- Impact:
 -- - TransferDetailDialog now displays requester and approver names ✅
 -- - No breaking changes to existing data structure ✅
 -- - Performance: Two additional LEFT JOINs per query (minimal impact) ✅
--- - Uses CASE to return NULL when user doesn't exist (safe) ✅
+-- - Uses to_jsonb() like original implementation for compatibility ✅
+-- - Returns NULL for users that don't exist (LEFT JOIN behavior) ✅
