@@ -125,6 +125,7 @@ import { callRpc as rpc } from "@/lib/rpc-client"
 import { useQuery, useMutation, useQueryClient, keepPreviousData } from "@tanstack/react-query"
 import { ExternalLink } from "lucide-react"
 import { TenantSelector } from "@/components/equipment/tenant-selector"
+import { useFacilityFilter } from "@/hooks/useFacilityFilter"
 
 type Attachment = {
   id: string;
@@ -468,8 +469,11 @@ export default function EquipmentPage() {
     return Number.isFinite(v) ? v : null
   }, [isGlobal, tenantFilter])
 
-  // Regional leader tenant filtering state
-  const [selectedFacilityId, setSelectedFacilityId] = React.useState<number | null>(null)
+  // Regional leader tenant filtering state (server mode via shared hook)
+  const { selectedFacilityId, setSelectedFacilityId } = useFacilityFilter({
+    mode: 'server',
+    userRole: (user?.role as string) || 'user',
+  })
 
   // Optimized active usage logs with tenant filtering and reduced polling
   const currentTenantId = React.useMemo(() => {

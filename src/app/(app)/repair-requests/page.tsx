@@ -64,8 +64,8 @@ import { useSearchDebounce } from "@/hooks/use-debounce"
 import { Separator } from "@/components/ui/separator"
 import type { Column } from "@tanstack/react-table"
 import { RepairRequestAlert } from "@/components/repair-request-alert"
-import { useRepairRealtimeSync } from "@/hooks/use-realtime-sync"
 import { MobileFiltersDropdown } from "@/components/mobile-filters-dropdown"
+import { useFacilityFilter } from "@/hooks/useFacilityFilter"
 // Auto department filter removed
 
 
@@ -317,8 +317,26 @@ export default function RepairRequestsPage() {
   const [searchTerm, setSearchTerm] = React.useState("");
   const debouncedSearch = useSearchDebounce(searchTerm);
 
-  // Facility filter for regional leaders (client-side filtering)
-  const [selectedFacility, setSelectedFacility] = React.useState<string | null>(null);
+  // Consolidated facility filter (client mode) using shared hook
+  const {
+    selectedFacilityName,
+    setSelectedFacilityName,
+    facilities: facilityOptions,
+    showFacilityFilter,
+    filteredItems,
+  } = useFacilityFilter<RepairRequestWithEquipment>({
+    mode: 'client',
+    selectBy: 'name',
+    items: requests,
+    userRole: (user?.role as string) || 'user',
+    getFacilityName: (item) => item.thiet_bi?.facility_name ?? null,
+  })
+  // Backward-compat aliases for existing UI code
+  const selectedFacility = selectedFacilityName;
+  const availableFacilities = React.useMemo(
+    () => facilityOptions.map(f => f.name).filter(Boolean) as string[],
+    [facilityOptions]
+  );
 
   // Align with repo roles: use 'global' instead of legacy 'admin'
   const canSetRepairUnit = !!user && ['global', 'to_qltb'].includes(user.role);
@@ -1239,25 +1257,8 @@ export default function RepairRequestsPage() {
     },
   ];
 
-  // Extract unique facilities from repair requests for regional leader filter
-  const availableFacilities = React.useMemo(() => {
-    if (!isRegionalLeader) return [];
-    const facilities = new Set<string>();
-    requests.forEach(req => {
-      const facility = req.thiet_bi?.facility_name;
-      if (facility) facilities.add(facility);
-    });
-    return Array.from(facilities).sort();
-  }, [requests, isRegionalLeader]);
-
-  // Apply client-side facility filter for regional leaders
-  const displayedRequests = React.useMemo(() => {
-    if (!isRegionalLeader || !selectedFacility) return requests;
-    return requests.filter(req => req.thiet_bi?.facility_name === selectedFacility);
-  }, [requests, isRegionalLeader, selectedFacility]);
-
-  // Use filtered data for regional leaders, original data for others
-  const tableData = isRegionalLeader ? displayedRequests : requests;
+  // Use filtered data from shared hook when facility filter is shown
+  const tableData = showFacilityFilter ? filteredItems : requests;
 
   // Debug logging for regional leader feature
   React.useEffect(() => {
@@ -1958,7 +1959,7 @@ export default function RepairRequestsPage() {
                       <Building2 className="h-4 w-4 text-muted-foreground shrink-0" />
                       <Select
                         value={selectedFacility || "all"}
-                        onValueChange={(value) => setSelectedFacility(value === "all" ? null : value)}
+onValueChange={(value) => setSelectedFacilityName(value === "all" ? null : value)}
                         disabled={availableFacilities.length === 0}
                       >
                         <SelectTrigger className="h-9 border-dashed">

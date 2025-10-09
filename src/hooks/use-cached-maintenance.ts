@@ -189,16 +189,20 @@ export function useUpdateMaintenancePlan() {
   })
 }
 
-// Delete maintenance plan mutation
-export function useDeleteMaintenancePlan() {
+// Approve maintenance plan mutation
+export function useApproveMaintenancePlan() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: async (id: string) => {
+    mutationFn: async (params: { id: number; nguoi_duyet: string }) => {
       await callRpc<void>({
-        fn: 'maintenance_plan_delete',
-        args: { p_id: Number(id) }
+        fn: 'maintenance_plan_approve',
+        args: {
+          p_id: params.id,
+          p_nguoi_duyet: params.nguoi_duyet
+        }
       })
+      return params.id
     },
     onSuccess: () => {
       // Invalidate all maintenance plan queries
@@ -208,12 +212,82 @@ export function useDeleteMaintenancePlan() {
 
       toast({
         title: "Thành công",
-        description: "Xóa kế hoạch bảo trì thành công",
+        description: "Kế hoạch đã được duyệt.",
       })
     },
     onError: (error: any) => {
       toast({
-        title: "Lỗi",
+        title: "Lỗi duyệt kế hoạch",
+        description: error.message || "Không thể duyệt kế hoạch",
+        variant: "destructive",
+      })
+    },
+  })
+}
+
+// Reject maintenance plan mutation
+export function useRejectMaintenancePlan() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async (params: { id: number; nguoi_duyet: string; ly_do: string }) => {
+      await callRpc<void>({
+        fn: 'maintenance_plan_reject',
+        args: {
+          p_id: params.id,
+          p_nguoi_duyet: params.nguoi_duyet,
+          p_ly_do: params.ly_do
+        }
+      })
+      return params.id
+    },
+    onSuccess: () => {
+      // Invalidate all maintenance plan queries
+      queryClient.invalidateQueries({ queryKey: maintenanceKeys.plans() })
+      // Invalidate dashboard stats to update KPI cards
+      queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] })
+
+      toast({
+        title: "Đã từ chối",
+        description: "Kế hoạch đã được từ chối.",
+      })
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Lỗi từ chối kế hoạch",
+        description: error.message || "Không thể từ chối kế hoạch",
+        variant: "destructive",
+      })
+    },
+  })
+}
+
+// Delete maintenance plan mutation
+export function useDeleteMaintenancePlan() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async (id: string | number) => {
+      await callRpc<void>({
+        fn: 'maintenance_plan_delete',
+        args: { p_id: Number(id) }
+      })
+      return Number(id)
+    },
+    onSuccess: () => {
+      // Invalidate all maintenance plan queries
+      queryClient.invalidateQueries({ queryKey: maintenanceKeys.plans() })
+      // Invalidate dashboard stats to update KPI cards
+      queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] })
+
+      toast({
+        title: "Đã xóa",
+        description: "Kế hoạch đã được xóa thành công.",
+      })
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Lỗi xóa kế hoạch",
         description: error.message || "Không thể xóa kế hoạch bảo trì",
         variant: "destructive",
       })

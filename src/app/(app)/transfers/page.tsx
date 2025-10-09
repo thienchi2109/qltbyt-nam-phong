@@ -21,7 +21,6 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { useToast } from "@/hooks/use-toast"
-import { supabase } from "@/lib/supabase"
 import { callRpc } from "@/lib/rpc-client"
 import { useSession } from "next-auth/react"
 import { useRouter } from "next/navigation"
@@ -37,6 +36,7 @@ import {
   TRANSFER_TYPES,
   type TransferStatus
 } from "@/types/database"
+import { useFacilityFilter } from "@/hooks/useFacilityFilter"
 
 const KANBAN_COLUMNS: { status: TransferStatus; title: string; description: string; color: string }[] = [
   {
@@ -118,53 +118,55 @@ export default function TransfersPage() {
   const [handoverDialogOpen, setHandoverDialogOpen] = React.useState(false)
   const [handoverTransfer, setHandoverTransfer] = React.useState<TransferRequest | null>(null)
 
-  // Facility filter state for regional leaders (client-side filtering)
-  const [selectedFacility, setSelectedFacility] = React.useState<number | null>(null)
-  const [facilities, setFacilities] = React.useState<Array<{ id: number; name: string; equipment_count: number }>>([])
-  const showFacilityFilter = isRegionalLeader || user?.role === 'global'
+  // Consolidated facility filter (client mode via items)
+  const {
+    selectedFacilityId,
+    setSelectedFacilityId,
+    facilities: facilitiesFromItems,
+    showFacilityFilter,
+    filteredItems,
+  } = useFacilityFilter<TransferRequest>({
+    mode: 'client',
+    selectBy: 'id',
+    items: transfers,
+    userRole: (user?.role as string) || 'user',
+    getFacilityId: (t) => t.thiet_bi?.facility_id ?? null,
+    getFacilityName: (t) => t.thiet_bi?.facility_name ?? null,
+  })
+
+  // Fallback facilities via RPC when items don't include facility metadata
+  const [facilitiesRpc, setFacilitiesRpc] = React.useState<Array<{ id: number; name: string; count?: number }>>([])
+  React.useEffect(() => {
+    const needFallback = (facilitiesFromItems?.length || 0) === 0
+    const canShow = isRegionalLeader || user?.role === 'global'
+    if (!needFallback || !canShow) return
+    const run = async () => {
+      try {
+        const data = await callRpc<any[]>({ fn: 'get_facilities_with_equipment_count', args: {} })
+        setFacilitiesRpc((data || []).map((f: any) => ({ id: f.id, name: f.name, count: f.equipment_count || 0 })))
+      } catch {
+        setFacilitiesRpc([])
+      }
+    }
+    run()
+  }, [facilitiesFromItems?.length, isRegionalLeader, user?.role])
+
+  const dropdownFacilities = (facilitiesFromItems?.length || 0) > 0 ? facilitiesFromItems : facilitiesRpc
+  const showFacilityFilterUI = (isRegionalLeader || user?.role === 'global') && dropdownFacilities.length > 0
 
   // ✅ Remove manual fetchTransfers - now handled by cached hook
 
   // ✅ Remove useEffect for fetchTransfers - data loaded automatically by cached hook
 
-  // Fetch facilities for regional leaders and global users
-  React.useEffect(() => {
-    const fetchFacilities = async () => {
-      try {
-        const data = await callRpc<any[]>({
-          fn: 'get_facilities_with_equipment_count',
-          args: {}
-        })
-        if (data && Array.isArray(data)) {
-          setFacilities(data.map((f: any) => ({ 
-            id: f.id, 
-            name: f.name,
-            equipment_count: f.equipment_count || 0
-          })))
-        }
-      } catch (error: any) {
-        console.error('Failed to fetch facilities:', error)
-        setFacilities([])
-      }
-    }
-
-    if (showFacilityFilter) {
-      fetchFacilities()
-    }
-  }, [showFacilityFilter])
+  // Facilities shown in UI come from items when available, otherwise from RPC fallback
 
   const handleRefresh = () => {
     setIsRefreshing(true)
     refetchTransfers().finally(() => setIsRefreshing(false)) // ✅ Use cached hook refetch
   }
 
-  // Client-side filtering by facility for regional leaders
-  const displayedTransfers = React.useMemo(() => {
-    if (!showFacilityFilter || !selectedFacility) {
-      return transfers
-    }
-    return transfers.filter(t => t.thiet_bi?.facility_id === selectedFacility)
-  }, [transfers, showFacilityFilter, selectedFacility])
+  // Use filtered items from shared hook
+  const displayedTransfers = filteredItems
 
   const getTransfersByStatus = (status: TransferStatus) => {
     return displayedTransfers.filter(transfer => transfer.trang_thai === status)
@@ -543,10 +545,10 @@ export default function TransfersPage() {
           </div>
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
             {/* Facility filter for regional leaders and global users */}
-            {showFacilityFilter && facilities.length > 0 && (
+            {showFacilityFilterUI && (
               <Select
-                value={selectedFacility?.toString() || "all"}
-                onValueChange={(value) => setSelectedFacility(value === "all" ? null : Number(value))}
+                value={selectedFacilityId?.toString() || "all"}
+                onValueChange={(value) => setSelectedFacilityId(value === "all" ? null : Number(value))}
               >
                 <SelectTrigger className="w-[200px]">
                   <Building2 className="h-4 w-4 mr-2" />
@@ -554,12 +556,12 @@ export default function TransfersPage() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Tất cả cơ sở</SelectItem>
-                  {facilities.map((facility) => (
+                  {dropdownFacilities.map((facility) => (
                     <SelectItem key={facility.id} value={facility.id.toString()}>
                       {facility.name}
-                      {facility.equipment_count > 0 && (
+                      {typeof facility.count === 'number' && facility.count > 0 && (
                         <Badge variant="secondary" className="ml-2">
-                          {facility.equipment_count}
+                          {facility.count}
                         </Badge>
                       )}
                     </SelectItem>
