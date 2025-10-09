@@ -165,8 +165,31 @@ export default function TransfersPage() {
     refetchTransfers().finally(() => setIsRefreshing(false)) // ✅ Use cached hook refetch
   }
 
-  // Use filtered items from shared hook
-  const displayedTransfers = filteredItems
+  // ✅ Defensive filtering: Handle edge case where transfers lack facility metadata
+  const displayedTransfers = React.useMemo(() => {
+    // If no facility filter is active, return filtered items as-is
+    if (!showFacilityFilter || !selectedFacilityId) {
+      return filteredItems
+    }
+
+    // ✅ Security check: Verify selected facility is in allowed list
+    const allowedFacilityIds = new Set(dropdownFacilities.map(f => f.id))
+    if (!allowedFacilityIds.has(selectedFacilityId)) {
+      console.warn(`[Transfers] Selected facility ${selectedFacilityId} not in allowed list. Showing all transfers.`)
+      return transfers
+    }
+
+    // ✅ Data quality check: Skip filtering if transfers lack facility metadata
+    const transfersWithFacilityData = transfers.filter((t) => t.thiet_bi?.facility_id != null)
+
+    if (transfersWithFacilityData.length === 0 && transfers.length > 0) {
+      console.warn('[Transfers] Transfers missing facility metadata. Cannot filter by facility. This indicates legacy equipment data.')
+      return transfers // Show all transfers instead of empty Kanban board
+    }
+
+    // ✅ Use filtered items from useFacilityFilter hook (normal case)
+    return filteredItems
+  }, [filteredItems, showFacilityFilter, selectedFacilityId, dropdownFacilities, transfers])
 
   const getTransfersByStatus = (status: TransferStatus) => {
     return displayedTransfers.filter(transfer => transfer.trang_thai === status)

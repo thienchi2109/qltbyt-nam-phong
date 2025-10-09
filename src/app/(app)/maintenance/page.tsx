@@ -368,8 +368,25 @@ export default function MaintenancePage() {
   const displayedPlans = React.useMemo(() => {
     if (!showFacilityFilter) return enrichedPlans
     if (!selectedFacilityId) return enrichedPlans
+    
+    // ✅ Security check: Verify selected facility is in allowed list
+    const allowedFacilityIds = new Set(effectiveFacilities.map(f => f.id))
+    if (!allowedFacilityIds.has(selectedFacilityId)) {
+      console.warn(`[Maintenance] Selected facility ${selectedFacilityId} not in allowed list. Showing all plans.`)
+      return enrichedPlans
+    }
+    
+    // ✅ Data quality check: Skip filtering if plans lack facility metadata
+    const plansWithFacilityData = enrichedPlans.filter((plan: any) => plan?.don_vi != null)
+    
+    if (plansWithFacilityData.length === 0 && enrichedPlans.length > 0) {
+      console.warn('[Maintenance] Plans missing don_vi data. Cannot filter by facility. This indicates legacy data that needs migration.')
+      return enrichedPlans // Show all plans instead of empty table
+    }
+    
+    // ✅ Apply filter only to plans with valid don_vi
     return enrichedPlans.filter((plan: any) => Number(plan?.don_vi) === selectedFacilityId)
-  }, [enrichedPlans, showFacilityFilter, selectedFacilityId])
+  }, [enrichedPlans, showFacilityFilter, selectedFacilityId, effectiveFacilities])
 
   // Use filtered plans for the table
   const tablePlans = displayedPlans;
