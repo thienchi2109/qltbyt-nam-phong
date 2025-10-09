@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { PlusCircle, ArrowLeftRight, Filter, RefreshCw, FileText } from "lucide-react"
+import { PlusCircle, ArrowLeftRight, Filter, RefreshCw, FileText, Building2 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -13,8 +13,14 @@ import {
 } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { useToast } from "@/hooks/use-toast"
-import { supabase } from "@/lib/supabase"
 import { callRpc } from "@/lib/rpc-client"
 import { useSession } from "next-auth/react"
 import { useRouter } from "next/navigation"
@@ -30,6 +36,7 @@ import {
   TRANSFER_TYPES,
   type TransferStatus
 } from "@/types/database"
+import { useFacilityFilter } from "@/hooks/useFacilityFilter"
 
 const KANBAN_COLUMNS: { status: TransferStatus; title: string; description: string; color: string }[] = [
   {
@@ -111,17 +118,81 @@ export default function TransfersPage() {
   const [handoverDialogOpen, setHandoverDialogOpen] = React.useState(false)
   const [handoverTransfer, setHandoverTransfer] = React.useState<TransferRequest | null>(null)
 
+  // Consolidated facility filter (client mode via items)
+  const {
+    selectedFacilityId,
+    setSelectedFacilityId,
+    facilities: facilitiesFromItems,
+    showFacilityFilter,
+    filteredItems,
+  } = useFacilityFilter<TransferRequest>({
+    mode: 'client',
+    selectBy: 'id',
+    items: transfers,
+    userRole: (user?.role as string) || 'user',
+    getFacilityId: (t) => t.thiet_bi?.facility_id ?? null,
+    getFacilityName: (t) => t.thiet_bi?.facility_name ?? null,
+  })
+
+  // Fallback facilities via RPC when items don't include facility metadata
+  const [facilitiesRpc, setFacilitiesRpc] = React.useState<Array<{ id: number; name: string; count?: number }>>([])
+  React.useEffect(() => {
+    const needFallback = (facilitiesFromItems?.length || 0) === 0
+    const canShow = isRegionalLeader || user?.role === 'global'
+    if (!needFallback || !canShow) return
+    const run = async () => {
+      try {
+        const data = await callRpc<any[]>({ fn: 'get_facilities_with_equipment_count', args: {} })
+        setFacilitiesRpc((data || []).map((f: any) => ({ id: f.id, name: f.name, count: f.equipment_count || 0 })))
+      } catch {
+        setFacilitiesRpc([])
+      }
+    }
+    run()
+  }, [facilitiesFromItems?.length, isRegionalLeader, user?.role])
+
+  const dropdownFacilities = (facilitiesFromItems?.length || 0) > 0 ? facilitiesFromItems : facilitiesRpc
+  const showFacilityFilterUI = (isRegionalLeader || user?.role === 'global') && dropdownFacilities.length > 0
+
   // ✅ Remove manual fetchTransfers - now handled by cached hook
 
   // ✅ Remove useEffect for fetchTransfers - data loaded automatically by cached hook
+
+  // Facilities shown in UI come from items when available, otherwise from RPC fallback
 
   const handleRefresh = () => {
     setIsRefreshing(true)
     refetchTransfers().finally(() => setIsRefreshing(false)) // ✅ Use cached hook refetch
   }
 
+  // ✅ Defensive filtering: Handle edge case where transfers lack facility metadata
+  const displayedTransfers = React.useMemo(() => {
+    // If no facility filter is active, return filtered items as-is
+    if (!showFacilityFilter || !selectedFacilityId) {
+      return filteredItems
+    }
+
+    // ✅ Security check: Verify selected facility is in allowed list
+    const allowedFacilityIds = new Set(dropdownFacilities.map(f => f.id))
+    if (!allowedFacilityIds.has(selectedFacilityId)) {
+      console.warn(`[Transfers] Selected facility ${selectedFacilityId} not in allowed list. Showing all transfers.`)
+      return transfers
+    }
+
+    // ✅ Data quality check: Skip filtering if transfers lack facility metadata
+    const transfersWithFacilityData = transfers.filter((t) => t.thiet_bi?.facility_id != null)
+
+    if (transfersWithFacilityData.length === 0 && transfers.length > 0) {
+      console.warn('[Transfers] Transfers missing facility metadata. Cannot filter by facility. This indicates legacy equipment data.')
+      return transfers // Show all transfers instead of empty Kanban board
+    }
+
+    // ✅ Use filtered items from useFacilityFilter hook (normal case)
+    return filteredItems
+  }, [filteredItems, showFacilityFilter, selectedFacilityId, dropdownFacilities, transfers])
+
   const getTransfersByStatus = (status: TransferStatus) => {
-    return transfers.filter(transfer => transfer.trang_thai === status)
+    return displayedTransfers.filter(transfer => transfer.trang_thai === status)
   }
 
   const getTypeVariant = (type: TransferRequest['loai_hinh']) => {
@@ -496,6 +567,31 @@ export default function TransfersPage() {
             </CardDescription>
           </div>
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+            {/* Facility filter for regional leaders and global users */}
+            {showFacilityFilterUI && (
+              <Select
+                value={selectedFacilityId?.toString() || "all"}
+                onValueChange={(value) => setSelectedFacilityId(value === "all" ? null : Number(value))}
+              >
+                <SelectTrigger className="w-[200px]">
+                  <Building2 className="h-4 w-4 mr-2" />
+                  <SelectValue placeholder="Tất cả cơ sở" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Tất cả cơ sở</SelectItem>
+                  {dropdownFacilities.map((facility) => (
+                    <SelectItem key={facility.id} value={facility.id.toString()}>
+                      {facility.name}
+                      {typeof facility.count === 'number' && facility.count > 0 && (
+                        <Badge variant="secondary" className="ml-2">
+                          {facility.count}
+                        </Badge>
+                      )}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
             <Button 
               variant="outline" 
               size="sm" 

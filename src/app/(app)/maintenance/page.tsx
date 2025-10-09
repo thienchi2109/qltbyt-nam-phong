@@ -57,6 +57,7 @@ import { useRouter } from "next/navigation"
 import { AddTasksDialog } from "@/components/add-tasks-dialog"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Input } from "@/components/ui/input"
+import { useFacilityFilter } from "@/hooks/useFacilityFilter"
 
 // Memoized component để tránh re-render khi typing
 const NotesInput = React.memo(({ taskId, value, onChange }: {
@@ -74,9 +75,16 @@ const NotesInput = React.memo(({ taskId, value, onChange }: {
   );
 });
 import { BulkScheduleDialog } from "@/components/bulk-schedule-dialog"
-import { useMaintenancePlans, useCreateMaintenancePlan, useUpdateMaintenancePlan, useDeleteMaintenancePlan, maintenanceKeys } from "@/hooks/use-cached-maintenance"
+import { 
+  useMaintenancePlans, 
+  useCreateMaintenancePlan, 
+  useUpdateMaintenancePlan, 
+  useDeleteMaintenancePlan,
+  useApproveMaintenancePlan,
+  useRejectMaintenancePlan,
+  maintenanceKeys 
+} from "@/hooks/use-cached-maintenance"
 import { useQueryClient } from "@tanstack/react-query"
-import { useMaintenanceRealtimeSync } from "@/hooks/use-realtime-sync"
 import { useSearchDebounce } from "@/hooks/use-debounce"
 
 export default function MaintenancePage() {
@@ -113,28 +121,79 @@ export default function MaintenancePage() {
   const [planSearchTerm, setPlanSearchTerm] = React.useState("");
   const debouncedPlanSearch = useSearchDebounce(planSearchTerm);
 
-  // Facility filter for regional leaders and global users (client-side filtering)
-  const [selectedFacility, setSelectedFacility] = React.useState<number | null>(null);
-  const [facilities, setFacilities] = React.useState<Array<{ id: number; name: string }>>([]);
 
   // ✅ Use cached hooks for data fetching, keep manual mutations for now
   const { data: plans = [], isLoading: isLoadingPlans, refetch: refetchPlans } = useMaintenancePlans(
     debouncedPlanSearch ? { search: debouncedPlanSearch } : undefined
   )
-  // TODO: Migrate to cached mutations later
-  // const createMaintenancePlan = useCreateMaintenancePlan()
-  // const updateMaintenancePlan = useUpdateMaintenancePlan()
-  // const deleteMaintenancePlan = useDeleteMaintenancePlan()
+
+  // Consolidated facility filter (client mode via items)
+  const {
+    selectedFacilityId,
+    setSelectedFacilityId,
+    facilities: facilityOptions,
+    showFacilityFilter: showFacilityFilterBase,
+  } = useFacilityFilter<any>({
+    mode: 'client',
+    selectBy: 'id',
+    items: plans as any[], // plans enriched below
+    userRole: (user?.role as string) || 'user',
+    getFacilityId: (plan: any) => plan?.don_vi != null ? Number(plan.don_vi) : null,
+    getFacilityName: (plan: any) => plan?.facility_name ?? null,
+  })
+
+  // Fallback: Fetch facilities via RPC if plans don't have don_vi populated
+  // Use role-aware RPC that works for both global and regional_leader
+  const [fallbackFacilities, setFallbackFacilities] = React.useState<Array<{ id: number; name: string; count?: number }>>([])
+  const [hasFetchedFallback, setHasFetchedFallback] = React.useState(false)
+
+  // Reset fetch flag if plans now have facility data (user switched context or data loaded)
+  React.useEffect(() => {
+    if (facilityOptions.length > 0 && hasFetchedFallback) {
+      setHasFetchedFallback(false)
+      setFallbackFacilities([])
+    }
+  }, [facilityOptions.length, hasFetchedFallback])
+
+  React.useEffect(() => {
+    // Only fetch once if user can see filter but no facilities derived from plans
+    const needFallback = facilityOptions.length === 0
+    const canShow = showFacilityFilterBase
+    
+    // Prevent infinite loop: only fetch if we haven't fetched before
+    if (!needFallback || !canShow || hasFetchedFallback) return
+
+    setHasFetchedFallback(true)
+    callRpc<any[]>({ fn: 'get_facilities_with_equipment_count', args: {} })
+      .then((facilities) => {
+        const mapped = (facilities || []).map((f: any) => ({
+          id: Number(f.id),
+          name: String(f.name || `Cơ sở ${f.id}`),
+          count: f.equipment_count || 0,
+        }))
+        setFallbackFacilities(mapped)
+      })
+      .catch((err) => {
+        console.error('Failed to fetch facilities:', err)
+        setFallbackFacilities([])
+      })
+  }, [showFacilityFilterBase, facilityOptions.length, hasFetchedFallback])
+
+  // Use fallback facilities if plan-derived facilities are empty
+  const effectiveFacilities = facilityOptions.length > 0 ? facilityOptions : fallbackFacilities
+  
+  // ✅ TanStack Query mutations for plan management
+  const approvePlanMutation = useApproveMaintenancePlan()
+  const rejectPlanMutation = useRejectMaintenancePlan()
+  const deletePlanMutation = useDeleteMaintenancePlan()
+  
   const [isAddPlanDialogOpen, setIsAddPlanDialogOpen] = React.useState(false)
   
   const [planSorting, setPlanSorting] = React.useState<SortingState>([])
   const [editingPlan, setEditingPlan] = React.useState<MaintenancePlan | null>(null)
   const [planToDelete, setPlanToDelete] = React.useState<MaintenancePlan | null>(null)
-  const [isDeletingPlan, setIsDeletingPlan] = React.useState(false)
   const [planToApprove, setPlanToApprove] = React.useState<MaintenancePlan | null>(null)
-  const [isApprovingPlan, setIsApprovingPlan] = React.useState(false);
   const [planToReject, setPlanToReject] = React.useState<MaintenancePlan | null>(null)
-  const [isRejectingPlan, setIsRejectingPlan] = React.useState(false);
   const [rejectionReason, setRejectionReason] = React.useState("");
   const [planPagination, setPlanPagination] = React.useState<PaginationState>({
     pageIndex: 0,
@@ -283,78 +342,51 @@ export default function MaintenancePage() {
     }
   }, [searchParams, plans])
 
-  // Fetch facilities and enrich plans with facility names
-  React.useEffect(() => {
-    const fetchFacilities = async () => {
-      try {
-        // Use region-aware RPC for both regional leaders and global users
-        // This function respects allowed_don_vi_for_session_safe() for proper filtering
-        const data = await callRpc<any[]>({
-          fn: 'get_facilities_with_equipment_count',
-          args: {}
-        });
-        if (data && Array.isArray(data)) {
-          setFacilities(data.map((f: any) => ({ id: f.id, name: f.name })));
-        }
-      } catch (error: any) {
-        console.error('Failed to fetch facilities:', error);
-        // Fallback to empty array on error
-        setFacilities([]);
-      }
-    };
-
-    // Only fetch facilities for regional leaders and global users
-    if (isRegionalLeader || user?.role === 'global') {
-      fetchFacilities();
-    }
-  }, [isRegionalLeader, user?.role]);
+  // Facility names are derived from facilityOptions when available; keep enrichment logic for name resolution
+  // (facilityOptions is derived from plans themselves; if empty, enrichedPlans will fallback to original)
 
   // Enrich plans with facility names (client-side join)
   const enrichedPlans = React.useMemo(() => {
-    if (facilities.length === 0) return plans;
-    return plans.map(plan => ({
+    if (effectiveFacilities.length === 0) return plans;
+    return plans.map((plan: any) => ({
       ...plan,
-      facility_name: facilities.find(f => f.id === plan.don_vi)?.name || null
+      facility_name: (effectiveFacilities.find((f) => f.id === plan?.don_vi)?.name) || plan?.facility_name || null,
     }));
-  }, [plans, facilities]);
+  }, [plans, effectiveFacilities]);
 
   // Determine if facility filter should be shown
-  const showFacilityFilter = (isRegionalLeader || user?.role === 'global') && facilities.length > 0;
+  const showFacilityFilter = (effectiveFacilities.length > 0) && showFacilityFilterBase;
 
   // Extract unique facilities from plans for the filter dropdown
   // ✅ Client-side validation: Only show facilities that are in the allowed list
   const availableFacilities = React.useMemo(() => {
-    if (!showFacilityFilter) return [];
-    
-    // Get allowed facility IDs from the fetched facilities list
-    const allowedFacilityIds = new Set(facilities.map(f => f.id));
-    
-    // Build facility map from plans, but only include allowed facilities
-    const facilityMap = new Map<number, string>();
-    enrichedPlans.forEach(plan => {
-      if (plan.don_vi && plan.facility_name && allowedFacilityIds.has(plan.don_vi)) {
-        facilityMap.set(plan.don_vi, plan.facility_name);
-      }
-    });
-    
-    return Array.from(facilityMap.entries())
-      .map(([id, name]) => ({ id, name }))
-      .sort((a, b) => a.name.localeCompare(b.name));
-  }, [enrichedPlans, showFacilityFilter, facilities]);
+    if (!showFacilityFilter) return []
+    return effectiveFacilities.map(f => ({ id: f.id, name: f.name }))
+  }, [showFacilityFilter, effectiveFacilities])
 
   // Apply client-side facility filter with security validation
   const displayedPlans = React.useMemo(() => {
-    if (!showFacilityFilter || !selectedFacility) return enrichedPlans;
+    if (!showFacilityFilter) return enrichedPlans
+    if (!selectedFacilityId) return enrichedPlans
     
     // ✅ Security check: Verify selected facility is in allowed list
-    const allowedFacilityIds = new Set(facilities.map(f => f.id));
-    if (!allowedFacilityIds.has(selectedFacility)) {
-      console.warn(`Facility ${selectedFacility} is not in allowed list. Filtering aborted.`);
-      return enrichedPlans; // Return all if selected facility is not allowed
+    const allowedFacilityIds = new Set(effectiveFacilities.map(f => f.id))
+    if (!allowedFacilityIds.has(selectedFacilityId)) {
+      console.warn(`[Maintenance] Selected facility ${selectedFacilityId} not in allowed list. Showing all plans.`)
+      return enrichedPlans
     }
     
-    return enrichedPlans.filter(plan => plan.don_vi === selectedFacility);
-  }, [enrichedPlans, showFacilityFilter, selectedFacility, facilities]);
+    // ✅ Data quality check: Skip filtering if plans lack facility metadata
+    const plansWithFacilityData = enrichedPlans.filter((plan: any) => plan?.don_vi != null)
+    
+    if (plansWithFacilityData.length === 0 && enrichedPlans.length > 0) {
+      console.warn('[Maintenance] Plans missing don_vi data. Cannot filter by facility. This indicates legacy data that needs migration.')
+      return enrichedPlans // Show all plans instead of empty table
+    }
+    
+    // ✅ Apply filter only to plans with valid don_vi
+    return enrichedPlans.filter((plan: any) => Number(plan?.don_vi) === selectedFacilityId)
+  }, [enrichedPlans, showFacilityFilter, selectedFacilityId, effectiveFacilities])
 
   // Use filtered plans for the table
   const tablePlans = displayedPlans;
@@ -365,7 +397,7 @@ export default function MaintenancePage() {
       ...prev,
       pageIndex: 0 // Reset to first page
     }));
-  }, [selectedFacility]);
+  }, [selectedFacilityId]);
 
   const handleStartEdit = React.useCallback((task: MaintenanceTask) => {
     setEditingTaskId(task.id);
@@ -392,66 +424,93 @@ export default function MaintenancePage() {
     handleCancelEdit();
   }, [editingTaskId, editingTaskData, handleCancelEdit]);
 
-  const handleApprovePlan = React.useCallback(async (planToApprove: MaintenancePlan) => {
+  const handleApprovePlan = React.useCallback((planToApprove: MaintenancePlan) => {
     if (!planToApprove) return;
-    setIsApprovingPlan(true);
-
-    try {
-      await callRpc<void>({ fn: 'maintenance_plan_approve', args: { p_id: planToApprove.id, p_nguoi_duyet: user?.full_name || user?.username || '' } })
-      toast({ title: "Thành công", description: "Kế hoạch đã được duyệt." });
-      refetchPlans(); // ✅ Use cached hook refetch
-      if (selectedPlan && selectedPlan.id === planToApprove.id) {
-        const updatedPlan = { ...selectedPlan, trang_thai: 'Đã duyệt' as const, ngay_phe_duyet: new Date().toISOString() };
-        setSelectedPlan(updatedPlan);
+    
+    approvePlanMutation.mutate(
+      {
+        id: planToApprove.id,
+        nguoi_duyet: user?.full_name || user?.username || ''
+      },
+      {
+        onSuccess: () => {
+          // Update local state if currently viewing this plan
+          if (selectedPlan && selectedPlan.id === planToApprove.id) {
+            const updatedPlan = { 
+              ...selectedPlan, 
+              trang_thai: 'Đã duyệt' as const, 
+              ngay_phe_duyet: new Date().toISOString() 
+            };
+            setSelectedPlan(updatedPlan);
+          }
+          setPlanToApprove(null);
+        },
+        onError: () => {
+          // Error toast handled by mutation hook
+          setPlanToApprove(null);
+        }
       }
-    } catch (error: any) {
-      toast({ variant: "destructive", title: "Lỗi duyệt kế hoạch", description: error.message, });
-    }
-    setPlanToApprove(null);
-    setIsApprovingPlan(false);
-  }, [toast, refetchPlans, selectedPlan]); // ✅ Use refetchPlans
+    );
+  }, [approvePlanMutation, selectedPlan, user]);
 
-  const handleRejectPlan = React.useCallback(async () => {
+  const handleRejectPlan = React.useCallback(() => {
     if (!planToReject || !rejectionReason.trim()) return;
-    setIsRejectingPlan(true);
-
-    try {
-      await callRpc<void>({ fn: 'maintenance_plan_reject', args: { p_id: planToReject.id, p_nguoi_duyet: user?.full_name || user?.username || '', p_ly_do: rejectionReason.trim() } })
-      toast({ title: "Đã từ chối", description: "Kế hoạch đã được từ chối." });
-      refetchPlans();
-      if (selectedPlan && selectedPlan.id === planToReject.id) {
-        const updatedPlan = { ...selectedPlan, trang_thai: 'Không duyệt' as const, ngay_phe_duyet: new Date().toISOString() };
-        setSelectedPlan(updatedPlan);
+    
+    rejectPlanMutation.mutate(
+      {
+        id: planToReject.id,
+        nguoi_duyet: user?.full_name || user?.username || '',
+        ly_do: rejectionReason.trim()
+      },
+      {
+        onSuccess: () => {
+          // Update local state if currently viewing this plan
+          if (selectedPlan && selectedPlan.id === planToReject.id) {
+            const updatedPlan = { 
+              ...selectedPlan, 
+              trang_thai: 'Không duyệt' as const, 
+              ngay_phe_duyet: new Date().toISOString() 
+            };
+            setSelectedPlan(updatedPlan);
+          }
+          setPlanToReject(null);
+          setRejectionReason("");
+        },
+        onError: () => {
+          // Error toast handled by mutation hook
+          setPlanToReject(null);
+          setRejectionReason("");
+        }
       }
-    } catch (error: any) {
-      toast({ variant: "destructive", title: "Lỗi từ chối kế hoạch", description: error.message });
-    }
-    setPlanToReject(null);
-    setRejectionReason("");
-    setIsRejectingPlan(false);
-  }, [planToReject, rejectionReason, toast, refetchPlans, selectedPlan]);
+    );
+  }, [planToReject, rejectionReason, rejectPlanMutation, selectedPlan, user]);
 
 
-  const handleDeletePlan = React.useCallback(async () => {
+  const handleDeletePlan = React.useCallback(() => {
     if (!planToDelete) return;
-    setIsDeletingPlan(true);
-
-    try {
-      await callRpc<void>({ fn: 'maintenance_plan_delete', args: { p_id: planToDelete.id } })
-      toast({ title: "Đã xóa", description: "Kế hoạch đã được xóa thành công." });
-      localStorage.removeItem(getDraftCacheKey(planToDelete.id));
-      refetchPlans(); // ✅ Use cached hook refetch
-      if (selectedPlan && selectedPlan.id === planToDelete.id) {
-        setSelectedPlan(null);
-        setActiveTab("plans");
+    
+    deletePlanMutation.mutate(
+      planToDelete.id,
+      {
+        onSuccess: () => {
+          // Clean up localStorage draft
+          localStorage.removeItem(getDraftCacheKey(planToDelete.id));
+          
+          // Clear selected plan if it was deleted
+          if (selectedPlan && selectedPlan.id === planToDelete.id) {
+            setSelectedPlan(null);
+            setActiveTab("plans");
+          }
+          
+          setPlanToDelete(null);
+        },
+        onError: () => {
+          // Error toast handled by mutation hook
+          setPlanToDelete(null);
+        }
       }
-    } catch (error: any) {
-      toast({ variant: "destructive", title: "Lỗi xóa kế hoạch", description: error.message });
-    }
-
-    setIsDeletingPlan(false);
-    setPlanToDelete(null);
-  }, [planToDelete, toast, refetchPlans, selectedPlan, getDraftCacheKey]); // ✅ Use refetchPlans
+    );
+  }, [planToDelete, deletePlanMutation, selectedPlan, getDraftCacheKey]);
 
   const handleCancelAllChanges = React.useCallback(() => {
     setDraftTasks(tasks);
@@ -1803,9 +1862,9 @@ export default function MaintenancePage() {
               </div>
             )}
             <AlertDialogFooter>
-              <AlertDialogCancel disabled={isApprovingPlan}>Hủy</AlertDialogCancel>
-              <AlertDialogAction onClick={() => handleApprovePlan(planToApprove)} disabled={isApprovingPlan}>
-                {isApprovingPlan && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              <AlertDialogCancel disabled={approvePlanMutation.isPending}>Hủy</AlertDialogCancel>
+              <AlertDialogAction onClick={() => handleApprovePlan(planToApprove)} disabled={approvePlanMutation.isPending}>
+                {approvePlanMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 Xác nhận duyệt
               </AlertDialogAction>
             </AlertDialogFooter>
@@ -1838,17 +1897,17 @@ export default function MaintenancePage() {
                 placeholder="Nhập lý do không duyệt kế hoạch này..."
                 value={rejectionReason}
                 onChange={(e) => setRejectionReason(e.target.value)}
-                disabled={isRejectingPlan}
+                disabled={rejectPlanMutation.isPending}
               />
             </div>
             <AlertDialogFooter>
-              <AlertDialogCancel disabled={isRejectingPlan}>Hủy</AlertDialogCancel>
+              <AlertDialogCancel disabled={rejectPlanMutation.isPending}>Hủy</AlertDialogCancel>
               <AlertDialogAction
                 onClick={handleRejectPlan}
-                disabled={isRejectingPlan || !rejectionReason.trim()}
+                disabled={rejectPlanMutation.isPending || !rejectionReason.trim()}
                 className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               >
-                {isRejectingPlan && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                {rejectPlanMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 Xác nhận không duyệt
               </AlertDialogAction>
             </AlertDialogFooter>
@@ -1872,9 +1931,9 @@ export default function MaintenancePage() {
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-              <AlertDialogCancel disabled={isDeletingPlan}>Hủy</AlertDialogCancel>
-              <AlertDialogAction onClick={handleDeletePlan} disabled={isDeletingPlan} className="bg-destructive hover:bg-destructive/90">
-                {isDeletingPlan && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              <AlertDialogCancel disabled={deletePlanMutation.isPending}>Hủy</AlertDialogCancel>
+              <AlertDialogAction onClick={handleDeletePlan} disabled={deletePlanMutation.isPending} className="bg-destructive hover:bg-destructive/90">
+                {deletePlanMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 Xóa
               </AlertDialogAction>
             </AlertDialogFooter>
@@ -1981,8 +2040,8 @@ export default function MaintenancePage() {
                   <div className="flex items-center gap-2 flex-1 min-w-0">
                     <Building2 className="h-4 w-4 text-muted-foreground shrink-0" />
                     <Select
-                      value={selectedFacility?.toString() || "all"}
-                      onValueChange={(value) => setSelectedFacility(value === "all" ? null : parseInt(value, 10))}
+value={selectedFacilityId?.toString() || "all"}
+onValueChange={(value) => setSelectedFacilityId(value === "all" ? null : parseInt(value, 10))}
                       disabled={availableFacilities.length === 0}
                     >
                       <SelectTrigger className="h-9 border-dashed">
@@ -2001,7 +2060,7 @@ export default function MaintenancePage() {
                           </SelectItem>
                         ) : (
                           availableFacilities.map((facility) => {
-                            const count = enrichedPlans.filter(p => p.don_vi === facility.id).length;
+                            const count = enrichedPlans.filter((p: any) => Number(p?.don_vi) === facility.id).length;
                             return (
                               <SelectItem key={facility.id} value={facility.id.toString()}>
                                 <div className="flex items-center justify-between w-full gap-4">
@@ -2015,12 +2074,12 @@ export default function MaintenancePage() {
                       </SelectContent>
                     </Select>
                   </div>
-                  {selectedFacility && (
+{selectedFacilityId && (
                     <Badge variant="secondary" className="shrink-0">
                       {tablePlans.length} kế hoạch
                     </Badge>
                   )}
-                  {!selectedFacility && availableFacilities.length > 0 && (
+{!selectedFacilityId && availableFacilities.length > 0 && (
                     <Badge variant="outline" className="shrink-0">
                       {availableFacilities.length} cơ sở • {enrichedPlans.length} kế hoạch
                     </Badge>

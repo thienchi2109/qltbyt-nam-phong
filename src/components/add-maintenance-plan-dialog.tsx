@@ -22,13 +22,16 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
+  FormDescription,
 } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
 import { useToast } from "@/hooks/use-toast"
 import { callRpc } from "@/lib/rpc-client"
 import { useSession } from "next-auth/react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { taskTypes } from "@/lib/data"
+import { useQuery } from "@tanstack/react-query"
 
 const planFormSchema = z.object({
   ten_ke_hoach: z.string().min(1, "Tên kế hoạch là bắt buộc."),
@@ -50,6 +53,26 @@ export function AddMaintenancePlanDialog({ open, onOpenChange, onSuccess }: AddM
   const { data: session } = useSession()
   const user = session?.user as any // Cast NextAuth user to our User type
   const [isSubmitting, setIsSubmitting] = React.useState(false)
+  
+  // Use TanStack Query for tenants with proper caching (same pattern as equipment dialog)
+  const { data: tenantList = [], isLoading: tenantsLoading } = useQuery({
+    queryKey: ['tenant_list'],
+    queryFn: async () => {
+      const list = await callRpc<any[]>({ fn: 'tenant_list', args: {} })
+      return (list || []).map(t => ({ id: t.id, code: t.code, name: t.name }))
+    },
+    enabled: open, // Only fetch when dialog is open
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    gcTime: 10 * 60 * 1000, // 10 minutes
+  })
+  
+  // Find current user's tenant (same pattern as equipment dialog)
+  const currentTenant = React.useMemo(() => {
+    const userDonVi = user?.don_vi
+    if (!userDonVi) return null
+    if (!tenantList.length) return null
+    return tenantList.find(t => t.id === Number(userDonVi)) || null
+  }, [user?.don_vi, tenantList])
 
   const form = useForm<PlanFormValues>({
     resolver: zodResolver(planFormSchema),
@@ -144,6 +167,25 @@ export function AddMaintenancePlanDialog({ open, onOpenChange, onSuccess }: AddM
                 </FormItem>
               )}
             />
+            
+            {/* Read-only Đơn vị field (same pattern as equipment dialog) */}
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">Đơn vị</Label>
+              <Input 
+                value={currentTenant ? `${currentTenant.name}${currentTenant.code ? ` (${currentTenant.code})` : ''}` : 'Đang tải...'}
+                disabled
+                readOnly
+                aria-readonly="true"
+                tabIndex={-1}
+                className="bg-muted text-muted-foreground cursor-not-allowed"
+                placeholder="Thông tin đơn vị sẽ được tự động điền"
+                data-testid="facility-display"
+              />
+              <p className="text-xs text-muted-foreground">
+                Trường này được lấy từ tài khoản của bạn và không thể thay đổi.
+              </p>
+            </div>
+            
             <FormField
               control={form.control}
               name="loai_cong_viec"
