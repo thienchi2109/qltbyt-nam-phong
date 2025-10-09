@@ -54,6 +54,9 @@ export function AddMaintenancePlanDialog({ open, onOpenChange, onSuccess }: AddM
   const user = session?.user as any // Cast NextAuth user to our User type
   const [isSubmitting, setIsSubmitting] = React.useState(false)
   
+  // Detect global user (no facility restriction)
+  const isGlobalUser = user?.role === 'global'
+  
   // Use TanStack Query for tenants with proper caching (same pattern as equipment dialog)
   const { data: tenantList = [], isLoading: tenantsLoading } = useQuery({
     queryKey: ['tenant_list'],
@@ -61,18 +64,30 @@ export function AddMaintenancePlanDialog({ open, onOpenChange, onSuccess }: AddM
       const list = await callRpc<any[]>({ fn: 'tenant_list', args: {} })
       return (list || []).map(t => ({ id: t.id, code: t.code, name: t.name }))
     },
-    enabled: open, // Only fetch when dialog is open
+    enabled: open && !isGlobalUser, // Only fetch when dialog is open and user is not global
     staleTime: 5 * 60 * 1000, // 5 minutes
     gcTime: 10 * 60 * 1000, // 10 minutes
+    retry: 1, // Avoid hanging on transient failures
   })
   
   // Find current user's tenant (same pattern as equipment dialog)
   const currentTenant = React.useMemo(() => {
+    if (isGlobalUser) return null
     const userDonVi = user?.don_vi
     if (!userDonVi) return null
     if (!tenantList.length) return null
     return tenantList.find(t => t.id === Number(userDonVi)) || null
-  }, [user?.don_vi, tenantList])
+  }, [isGlobalUser, user?.don_vi, tenantList])
+  
+  // Robust display value for facility field
+  const facilityDisplay = React.useMemo(() => {
+    if (isGlobalUser) return '' // Should never render for global users
+    if (tenantsLoading) return 'Đang tải...'
+    if (currentTenant) {
+      return `${currentTenant.name}${currentTenant.code ? ` (${currentTenant.code})` : ''}`
+    }
+    return 'Không tìm thấy thông tin đơn vị'
+  }, [isGlobalUser, tenantsLoading, currentTenant])
 
   const form = useForm<PlanFormValues>({
     resolver: zodResolver(planFormSchema),
@@ -168,23 +183,25 @@ export function AddMaintenancePlanDialog({ open, onOpenChange, onSuccess }: AddM
               )}
             />
             
-            {/* Read-only Đơn vị field (same pattern as equipment dialog) */}
-            <div className="space-y-2">
-              <Label className="text-sm font-medium">Đơn vị</Label>
-              <Input 
-                value={currentTenant ? `${currentTenant.name}${currentTenant.code ? ` (${currentTenant.code})` : ''}` : 'Đang tải...'}
-                disabled
-                readOnly
-                aria-readonly="true"
-                tabIndex={-1}
-                className="bg-muted text-muted-foreground cursor-not-allowed"
-                placeholder="Thông tin đơn vị sẽ được tự động điền"
-                data-testid="facility-display"
-              />
-              <p className="text-xs text-muted-foreground">
-                Trường này được lấy từ tài khoản của bạn và không thể thay đổi.
-              </p>
-            </div>
+            {/* Read-only Đơn vị field - hidden for global users */}
+            {!isGlobalUser && (
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">Đơn vị</Label>
+                <Input 
+                  value={facilityDisplay}
+                  disabled
+                  readOnly
+                  aria-readonly="true"
+                  tabIndex={-1}
+                  className="bg-muted text-muted-foreground cursor-not-allowed"
+                  placeholder="Thông tin đơn vị sẽ được tự động điền"
+                  data-testid="facility-display"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Trường này được lấy từ tài khoản của bạn và không thể thay đổi.
+                </p>
+              </div>
+            )}
             
             <FormField
               control={form.control}

@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { Plus, QrCode, ClipboardList } from "lucide-react"
+import { Plus, QrCode, ClipboardList, Sparkles } from "lucide-react"
 import { useSession } from "next-auth/react"
 
 import { Button } from "@/components/ui/button"
@@ -15,6 +15,7 @@ import {
 import { CalendarWidget } from "@/components/ui/calendar-widget"
 import { KPICards } from "@/components/dashboard/kpi-cards"
 import { DashboardTabs } from "@/components/dashboard/dashboard-tabs"
+import { cn } from "@/lib/utils"
 // import { useDashboardRealtimeSync } from "@/hooks/use-realtime-sync"
 
 export default function Dashboard() {
@@ -24,76 +25,111 @@ export default function Dashboard() {
   
   // Check if user is regional leader
   const isRegionalLeader = user?.role === 'regional_leader'
+  
+  // Get greeting based on time of day
+  const getGreeting = () => {
+    const hour = new Date().getHours()
+    if (hour < 12) return "Chào buổi sáng"
+    if (hour < 18) return "Chào buổi chiều"
+    return "Chào buổi tối"
+  }
 
   return (
     <>
-      {/* KPI Cards */}
-      <KPICards />
-
-      {/* Quick Actions Section */}
-      <div className="md:mt-6 md:space-y-5">
-        <div className="grid gap-4 md:gap-8">
-        <Card>
-          <CardHeader className="p-4 md:p-8">
-            <CardTitle className="text-base font-semibold leading-tight md:text-lg md:font-bold">
-              Thao tác nhanh
-            </CardTitle>
-            <CardDescription className="text-sm text-muted-foreground">
-              Truy cập nhanh các chức năng chính của hệ thống.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="p-4 pt-0 md:p-8 md:pt-0">
-            <div className="grid grid-cols-3 gap-3 md:grid-cols-3 md:gap-6">
-              {/* Quick Actions: Restricted for regional leaders */}
-              {!isRegionalLeader && (
-                <>
-                  <Button
-                    asChild
-                    size="lg"
-                    variant="ghost"
-                    className="mobile-quick-action bg-gradient-to-br from-primary/20 via-primary/10 to-white text-primary-700 hover:shadow-md focus-visible:ring-primary/40"
-                  >
-                    <Link href="/equipment?action=add" aria-label="Thêm thiết bị">
-                      <Plus className="mobile-quick-action-icon" aria-hidden="true" />
-                      <div className="mobile-quick-action-text">
-                        <div className="mobile-quick-action-title">Thêm thiết bị</div>
-                      </div>
-                    </Link>
-                  </Button>
-
-                  <Button
-                    asChild
-                    size="lg"
-                    variant="ghost"
-                    className="mobile-quick-action bg-gradient-to-br from-emerald-200/80 via-emerald-100 to-white text-emerald-700 hover:shadow-md focus-visible:ring-emerald-400/60"
-                  >
-                    <Link href="/maintenance?action=create" aria-label="Lập kế hoạch bảo trì">
-                      <ClipboardList className="mobile-quick-action-icon" aria-hidden="true" />
-                      <div className="mobile-quick-action-text">
-                        <div className="mobile-quick-action-title">Lập kế hoạch</div>
-                      </div>
-                    </Link>
-                  </Button>
-                </>
-              )}
-              
-              {/* QR Scanner: Always available for all users including regional leaders */}
-              <Button
-                asChild
-                size="lg"
-                variant="ghost"
-                className={`mobile-quick-action bg-gradient-to-br from-sky-200/80 via-sky-100 to-white text-sky-700 hover:shadow-md focus-visible:ring-sky-400/60 ${isRegionalLeader ? 'md:col-start-2' : ''}`}
-              >
-                <Link href="/qr-scanner" aria-label="Quét mã QR thiết bị">
-                  <QrCode className="mobile-quick-action-icon" aria-hidden="true" />
-                  <div className="mobile-quick-action-text">
-                    <div className="mobile-quick-action-title">Quét mã QR</div>
-                  </div>
-                </Link>
-              </Button>
+      {/* Welcome Banner */}
+      <Card className="overflow-hidden border-none shadow-md bg-gradient-to-br from-blue-500 to-purple-600">
+        <CardContent className="p-6 md:p-8">
+          <div className="flex items-center justify-between">
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <Sparkles className="h-5 w-5 text-yellow-300" />
+                <h1 className="text-xl md:text-2xl font-bold text-white">
+                  {getGreeting()}, {user?.full_name || user?.username}!
+                </h1>
+              </div>
+              <p className="text-blue-50/90 text-sm md:text-base">
+                Chào mừng bạn đến với Hệ thống Quản lý Thiết bị Y tế
+              </p>
             </div>
-          </CardContent>
-        </Card>
+            <div className="hidden md:block">
+              <div className="h-20 w-20 rounded-full bg-white/10 backdrop-blur-sm flex items-center justify-center">
+                <Sparkles className="h-10 w-10 text-yellow-200" />
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+      
+      {/* KPI Cards */}
+      <div className="mt-6 md:mt-8">
+        <KPICards />
+      </div>
+
+      {/* Quick Actions Section - Elegant Cards */}
+      <div className="md:mt-6 md:space-y-5">
+        <div className="mb-4">
+          <h2 className="text-lg font-semibold text-slate-900 mb-1">Thao tác nhanh</h2>
+          <p className="text-sm text-muted-foreground">Truy cập nhanh các chức năng chính của hệ thống</p>
+        </div>
+        <div className={cn(
+          "grid gap-4 md:gap-6",
+          isRegionalLeader ? "grid-cols-1 md:grid-cols-3" : "grid-cols-1 sm:grid-cols-3"
+        )}>
+          {/* Quick Actions: Restricted for regional leaders */}
+          {!isRegionalLeader && (
+            <>
+              {/* Add Equipment Card */}
+              <Link href="/equipment?action=add" className="group">
+                <Card className="h-full transition-all duration-300 hover:shadow-lg hover:-translate-y-1 border-none bg-gradient-to-br from-blue-100 via-blue-50 to-white overflow-hidden">
+                  <CardContent className="p-5 sm:p-6">
+                    <div className="flex sm:flex-col items-center sm:text-center gap-4 sm:gap-3">
+                      <div className="h-14 w-14 flex-shrink-0 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform">
+                        <Plus className="h-7 w-7 text-white" />
+                      </div>
+                      <div className="flex-1 sm:flex-none text-left sm:text-center">
+                        <h3 className="font-semibold text-blue-900 mb-1">Thêm thiết bị</h3>
+                        <p className="text-xs text-blue-600/70">Đăng ký thiết bị mới</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </Link>
+
+              {/* Create Maintenance Plan Card */}
+              <Link href="/maintenance?action=create" className="group">
+                <Card className="h-full transition-all duration-300 hover:shadow-lg hover:-translate-y-1 border-none bg-gradient-to-br from-emerald-100 via-emerald-50 to-white overflow-hidden">
+                  <CardContent className="p-5 sm:p-6">
+                    <div className="flex sm:flex-col items-center sm:text-center gap-4 sm:gap-3">
+                      <div className="h-14 w-14 flex-shrink-0 rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-600 flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform">
+                        <ClipboardList className="h-7 w-7 text-white" />
+                      </div>
+                      <div className="flex-1 sm:flex-none text-left sm:text-center">
+                        <h3 className="font-semibold text-emerald-900 mb-1">Lập kế hoạch</h3>
+                        <p className="text-xs text-emerald-600/70">Kế hoạch bảo trì mới</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </Link>
+            </>
+          )}
+          
+          {/* QR Scanner Card: Always available */}
+          <Link href="/qr-scanner" className={cn("group", isRegionalLeader && "sm:col-start-2")}>
+            <Card className="h-full transition-all duration-300 hover:shadow-lg hover:-translate-y-1 border-none bg-gradient-to-br from-sky-100 via-sky-50 to-white overflow-hidden">
+              <CardContent className="p-5 sm:p-6">
+                <div className="flex sm:flex-col items-center sm:text-center gap-4 sm:gap-3">
+                  <div className="h-14 w-14 flex-shrink-0 rounded-xl bg-gradient-to-br from-sky-500 to-sky-600 flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform">
+                    <QrCode className="h-7 w-7 text-white" />
+                  </div>
+                  <div className="flex-1 sm:flex-none text-left sm:text-center">
+                    <h3 className="font-semibold text-sky-900 mb-1">Quét mã QR</h3>
+                    <p className="text-xs text-sky-600/70">Tra cứu thiết bị nhanh</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </Link>
         </div>
       </div>
 

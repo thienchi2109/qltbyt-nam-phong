@@ -14,12 +14,23 @@ const metricSkeletonClass = "h-9 md:h-8 w-16 md:w-16"
 const descriptionSkeletonClass = "h-4 w-28 md:w-32"
 const plansSkeletonClass = "h-4 w-24 md:w-24"
 
-const cardClass =
-  "mobile-kpi-card rounded-2xl shadow-sm shadow-black/5 ring-1 ring-black/5 bg-white mb-4 md:rounded-xl md:shadow-none md:ring-0 md:bg-card md:mb-0"
+// Base card styles - will be extended per card with custom gradients
+const cardBaseClass =
+  "mobile-kpi-card rounded-2xl shadow-sm shadow-black/5 ring-1 ring-black/5 mb-4 md:rounded-xl md:shadow-none md:ring-0 md:mb-0"
+
+// Elegant vibrant gradient backgrounds for each KPI card
+const equipmentCardClass = `${cardBaseClass} bg-gradient-to-br from-blue-100 via-blue-50 to-white`
+const maintenanceCardClass = `${cardBaseClass} bg-gradient-to-br from-emerald-100 via-emerald-50 to-white`
+const repairCardClass = `${cardBaseClass} bg-gradient-to-br from-sky-100 via-sky-50 to-white`
+const planCardClass = `${cardBaseClass} bg-gradient-to-br from-purple-100 via-purple-50 to-white`
 const headerClass =
   "flex flex-row items-center justify-between space-y-0 p-4 pb-2 md:p-6 md:pb-2 gap-3 md:gap-2"
 const titleClass = "text-sm font-semibold truncate md:text-sm md:font-medium"
-const iconClass = "h-5 w-5 text-primary/80 md:h-4 md:w-4 md:text-muted-foreground flex-shrink-0"
+// Icon colors matching card gradients - more vibrant
+const equipmentIconClass = "h-5 w-5 text-blue-600 md:h-4 md:w-4 flex-shrink-0"
+const maintenanceIconClass = "h-5 w-5 text-emerald-600 md:h-4 md:w-4 flex-shrink-0"
+const repairIconClass = "h-5 w-5 text-sky-600 md:h-4 md:w-4 flex-shrink-0"
+const planIconClass = "h-5 w-5 text-purple-600 md:h-4 md:w-4 flex-shrink-0"
 const contentClass = "p-4 pt-0 space-y-2 md:p-6 md:pt-0"
 const metricClass =
   "text-3xl font-bold leading-tight tracking-tight md:text-2xl md:leading-snug md:tracking-normal"
@@ -30,10 +41,10 @@ export function TotalEquipmentCard() {
   const { data: totalDevices, isLoading, error } = useTotalEquipment()
 
   return (
-    <Card className={cardClass}>
+    <Card className={equipmentCardClass}>
       <CardHeader className={headerClass}>
         <CardTitle className={titleClass}>Tổng số thiết bị</CardTitle>
-        <Package className={iconClass} aria-hidden="true" />
+        <Package className={equipmentIconClass} aria-hidden="true" />
       </CardHeader>
       <CardContent className={contentClass}>
         {isLoading ? (
@@ -55,10 +66,10 @@ export function MaintenanceCountCard() {
   const { data: maintenanceCount, isLoading, error } = useMaintenanceCount()
 
   return (
-    <Card className={cardClass}>
+    <Card className={maintenanceCardClass}>
       <CardHeader className={headerClass}>
         <CardTitle className={titleClass}>Cần bảo trì/hiệu chuẩn</CardTitle>
-        <HardHat className={iconClass} aria-hidden="true" />
+        <HardHat className={maintenanceIconClass} aria-hidden="true" />
       </CardHeader>
       <CardContent className={contentClass}>
         {isLoading ? (
@@ -85,10 +96,10 @@ export function RepairRequestsCard() {
   const total = repairStats?.total ?? 0
 
   return (
-    <Card className={cardClass}>
+    <Card className={repairCardClass}>
       <CardHeader className={headerClass}>
         <CardTitle className={titleClass}>Yêu cầu sửa chữa</CardTitle>
-        <Wrench className={iconClass} aria-hidden="true" />
+        <Wrench className={repairIconClass} aria-hidden="true" />
       </CardHeader>
       <CardContent className={contentClass}>
         {isLoading ? (
@@ -156,10 +167,10 @@ export function MaintenancePlansCard() {
   const approved = planStats?.approved ?? 0
 
   return (
-    <Card className={cardClass}>
+    <Card className={planCardClass}>
       <CardHeader className={headerClass}>
         <CardTitle className={titleClass}>Kế hoạch BT/HC/KĐ</CardTitle>
-        <Calendar className={iconClass} aria-hidden="true" />
+        <Calendar className={planIconClass} aria-hidden="true" />
       </CardHeader>
       <CardContent className={contentClass}>
         {isLoading ? (
