@@ -305,58 +305,58 @@ function CalendarWidgetImpl({
           </div>
         </div>
 
-        {/* Desktop: Enhanced statistics cards with glassmorphism */}
-        <div className="hidden xl:grid grid-cols-4 gap-4">
-          <div className="bg-gradient-to-br from-blue-50 to-blue-100/50 backdrop-blur-sm rounded-xl p-4 border border-blue-200/50 hover:shadow-md transition-shadow">
+        {/* Desktop: Enhanced statistics cards with glassmorphism - Smaller size */}
+        <div className="hidden xl:grid grid-cols-4 gap-3">
+          <div className="bg-gradient-to-br from-blue-50 to-blue-100/50 backdrop-blur-sm rounded-lg p-3 border border-blue-200/50 hover:shadow-md transition-shadow">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-3xl font-bold text-blue-600">{filteredStats.total}</p>
-                <p className="text-sm text-blue-600/80 mt-1">Tổng công việc</p>
+                <p className="text-xl font-bold text-blue-600">{filteredStats.total}</p>
+                <p className="text-xs text-blue-600/80 mt-0.5">Tổng công việc</p>
               </div>
-              <div className="p-3 bg-blue-500/20 rounded-xl">
-                <CalendarIcon className="h-6 w-6 text-blue-600" />
+              <div className="p-2 bg-blue-500/20 rounded-lg">
+                <CalendarIcon className="h-4 w-4 text-blue-600" />
               </div>
             </div>
           </div>
           
-          <div className="bg-gradient-to-br from-green-50 to-green-100/50 backdrop-blur-sm rounded-xl p-4 border border-green-200/50 hover:shadow-md transition-shadow">
+          <div className="bg-gradient-to-br from-green-50 to-green-100/50 backdrop-blur-sm rounded-lg p-3 border border-green-200/50 hover:shadow-md transition-shadow">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-3xl font-bold text-green-600">{filteredStats.completed}</p>
-                <p className="text-sm text-green-600/80 mt-1">Đã hoàn thành</p>
+                <p className="text-xl font-bold text-green-600">{filteredStats.completed}</p>
+                <p className="text-xs text-green-600/80 mt-0.5">Đã hoàn thành</p>
               </div>
-              <div className="p-3 bg-green-500/20 rounded-xl">
-                <Check className="h-6 w-6 text-green-600" />
+              <div className="p-2 bg-green-500/20 rounded-lg">
+                <Check className="h-4 w-4 text-green-600" />
               </div>
             </div>
           </div>
 
-          <div className="bg-gradient-to-br from-orange-50 to-orange-100/50 backdrop-blur-sm rounded-xl p-4 border border-orange-200/50 hover:shadow-md transition-shadow">
+          <div className="bg-gradient-to-br from-orange-50 to-orange-100/50 backdrop-blur-sm rounded-lg p-3 border border-orange-200/50 hover:shadow-md transition-shadow">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-3xl font-bold text-orange-600">{filteredStats.pending}</p>
-                <p className="text-sm text-orange-600/80 mt-1">Chưa hoàn thành</p>
+                <p className="text-xl font-bold text-orange-600">{filteredStats.pending}</p>
+                <p className="text-xs text-orange-600/80 mt-0.5">Chưa hoàn thành</p>
               </div>
-              <div className="p-3 bg-orange-500/20 rounded-xl">
-                <CalendarIcon className="h-6 w-6 text-orange-600" />
+              <div className="p-2 bg-orange-500/20 rounded-lg">
+                <CalendarIcon className="h-4 w-4 text-orange-600" />
               </div>
             </div>
           </div>
 
-          <div className="bg-gradient-to-br from-purple-50 to-purple-100/50 backdrop-blur-sm rounded-xl p-4 border border-purple-200/50 hover:shadow-md transition-shadow">
+          <div className="bg-gradient-to-br from-purple-50 to-purple-100/50 backdrop-blur-sm rounded-lg p-3 border border-purple-200/50 hover:shadow-md transition-shadow">
             <div>
-              <p className="text-sm text-purple-600/80 mb-2">Loại công việc</p>
+              <p className="text-xs text-purple-600/80 mb-1">Loại công việc</p>
               {Object.keys(filteredStats.byType).length > 0 ? (
-                <div className="space-y-1">
+                <div className="space-y-0.5">
                   {Object.entries(filteredStats.byType).map(([type, count]) => (
                     <div key={type} className="flex items-center justify-between">
-                      <span className="text-sm font-medium text-purple-600">{type}</span>
-                      <span className="text-sm font-bold text-purple-600">{count}</span>
+                      <span className="text-xs font-medium text-purple-600">{type}</span>
+                      <span className="text-xs font-bold text-purple-600">{count}</span>
                     </div>
                   ))}
                 </div>
               ) : (
-                <p className="text-3xl font-bold text-purple-600">0</p>
+                <p className="text-xl font-bold text-purple-600">0</p>
               )}
             </div>
           </div>

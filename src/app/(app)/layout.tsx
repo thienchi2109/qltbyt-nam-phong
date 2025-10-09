@@ -130,43 +130,91 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         open={isChangePasswordOpen}
         onOpenChange={setIsChangePasswordOpen}
       />
-      <div className={cn("grid min-h-screen w-full transition-all pt-14 pb-20 md:pt-0 md:pb-0", isSidebarOpen ? "md:grid-cols-[220px_1fr]" : "md:grid-cols-[72px_1fr]")}>
-        <div className="hidden border-r bg-muted/40 md:block">
-          <div className="flex h-full max-h-screen flex-col">
-            <div className="flex h-auto flex-col items-center gap-4 border-b p-4">
-              <Link href="/" className="flex flex-col items-center gap-3 font-semibold text-primary">
+      <div className={cn('grid min-h-screen w-full transition-all pt-14 pb-20 md:pt-0 md:pb-0', isSidebarOpen ? 'md:grid-cols-[240px_1fr]' : 'md:grid-cols-[72px_1fr]')}>
+        <div className="hidden md:flex flex-col h-screen bg-gradient-to-b from-blue-100 via-purple-100 to-pink-100 shadow-xl">
+            {/* Header section */}
+            <div className="flex h-auto flex-col items-center gap-4 bg-gradient-to-br from-blue-600 via-purple-600 to-pink-500 p-5 shadow-lg">
+              <Link href="/" className="flex flex-col items-center gap-3 font-semibold text-white">
                 {/* Tenant-only logo in sidebar */}
                 {branding.isLoading ? (
                   <Skeleton className={isSidebarOpen ? "h-16 w-16" : "h-8 w-8"} />
                 ) : (
-                  <TenantLogo src={branding.data?.logo_url ?? null} name={branding.data?.name ?? null} size={isSidebarOpen ? 64 : 32} className={isSidebarOpen ? "" : "mt-2"} />
+                  <div className="p-3 bg-white/20 backdrop-blur-md rounded-xl">
+                    <TenantLogo src={branding.data?.logo_url ?? null} name={branding.data?.name ?? null} size={isSidebarOpen ? 64 : 32} className={isSidebarOpen ? "" : "mt-2"} />
+                  </div>
+                )}
+                {isSidebarOpen && (
+                  <span className="text-sm font-bold text-white/90">
+                    Nền tảng QLTBYT
+                  </span>
                 )}
               </Link>
             </div>
-            <div className="flex-1 overflow-auto py-4">
-              <nav className={cn("grid items-start text-sm font-medium", isSidebarOpen ? "px-4" : "justify-items-center")}>
-                {navItems.map(({ href, icon: Icon, label }) => (
-                  <Link
-                    key={label}
-                    href={href}
-                    className={cn(
-                      "flex items-center rounded-lg py-3 transition-all hover:text-primary",
-                      pathname === href || pathname.startsWith(href) ? "bg-muted text-primary" : "text-muted-foreground",
-                      isSidebarOpen ? "px-3 gap-3" : "h-12 w-12 justify-center"
-                    )}
-                    title={!isSidebarOpen ? label : ""}
-                    aria-label={label}
-                  >
-                    <Icon className="h-5 w-5" />
-                    {isSidebarOpen && <span>{label}</span>}
-                  </Link>
-                ))}
+            {/* Navigation section */}
+            <div className="flex-1 overflow-y-auto">
+              <nav className={cn("grid items-start text-sm font-medium py-4", isSidebarOpen ? "px-3 gap-2" : "justify-items-center gap-2")}>
+                {navItems.map(({ href, icon: Icon, label }) => {
+                  const isActive = pathname === href || pathname.startsWith(href);
+                  return (
+                    <Link
+                      key={label}
+                      href={href}
+                      className={cn(
+                        "group relative flex items-center rounded-xl transition-all duration-200",
+                        isActive 
+                          ? "bg-gradient-to-r from-blue-500 via-blue-600 to-purple-600 text-white shadow-lg scale-105" 
+                          : "hover:bg-white/70 backdrop-blur-sm hover:shadow-md",
+                        isSidebarOpen ? "px-4 py-3 gap-3 mx-1" : "h-12 w-12 justify-center mx-auto"
+                      )}
+                      title={!isSidebarOpen ? label : ""}
+                      aria-label={label}
+                    >
+                      {isActive && (
+                        <div className="absolute inset-0 bg-gradient-to-r from-blue-400/20 to-purple-400/20 rounded-xl blur-sm" />
+                      )}
+                      <div className={cn(
+                        "relative flex items-center justify-center",
+                        isActive ? "" : "p-2 rounded-lg bg-white/50 group-hover:bg-white/80"
+                      )}>
+                        <Icon className={cn(
+                          "h-5 w-5 transition-all",
+                          isActive 
+                            ? "text-white drop-shadow-sm" 
+                            : "text-gray-700 group-hover:text-blue-600"
+                        )} />
+                      </div>
+                      {isSidebarOpen && (
+                        <span className={cn(
+                          "relative font-medium transition-all",
+                          isActive 
+                            ? "text-white drop-shadow-sm" 
+                            : "text-gray-700 group-hover:text-gray-900"
+                        )}>
+                          {label}
+                        </span>
+                      )}
+                    </Link>
+                  );
+                })}
               </nav>
             </div>
-          </div>
+            {/* Sidebar Footer - Always visible */}
+            <div className="border-t border-purple-200/50 p-4 bg-gradient-to-t from-white/80 to-purple-50/60 backdrop-blur-sm">
+              {isSidebarOpen ? (
+                <div className="text-center space-y-1">
+                  <p className="text-xs font-semibold text-purple-700">Phiên bản</p>
+                  <p className="text-sm font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">v2.0.1</p>
+                  <p className="text-xs text-purple-600 font-medium">© 2024 CVMEMS</p>
+                </div>
+              ) : (
+                <div className="text-center">
+                  <p className="text-xs font-bold text-purple-600">v2.0.1</p>
+                </div>
+              )}
+            </div>
         </div>
-        <div className="flex flex-col">
-          <header className="flex h-14 items-center gap-4 border-b bg-muted/40 px-4 lg:h-[60px] lg:px-6 md:relative md:z-auto fixed top-0 left-0 right-0 z-40 backdrop-blur-sm bg-muted/90 md:bg-muted/40 md:backdrop-blur-none">
+        <div className="flex flex-col h-screen overflow-hidden">
+          <header className="flex h-14 items-center gap-4 border-b bg-white/95 backdrop-blur-lg shadow-sm px-4 lg:h-[60px] lg:px-6 md:relative md:z-auto fixed top-0 left-0 right-0 z-40">
             {/* Hide mobile sheet trigger since we're using footer navigation on mobile */}
             <Sheet open={isMobileSheetOpen} onOpenChange={setIsMobileSheetOpen}>
               <SheetTrigger asChild>
@@ -287,10 +335,12 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               </DropdownMenuContent>
             </DropdownMenu>
           </header>
-          <main className="flex flex-1 flex-col gap-4 p-4 pb-24 md:pb-4 lg:gap-8 lg:p-8 bg-background">
-            <MainContentTransition>
-              {children}
-            </MainContentTransition>
+          <main className="flex-1 overflow-y-auto bg-background">
+            <div className="flex flex-col gap-4 p-4 pb-24 md:pb-4 lg:gap-8 lg:p-8">
+              <MainContentTransition>
+                {children}
+              </MainContentTransition>
+            </div>
           </main>
 
           {/* Mobile Footer Navigation - replaces offcanvas sidebar on mobile */}
