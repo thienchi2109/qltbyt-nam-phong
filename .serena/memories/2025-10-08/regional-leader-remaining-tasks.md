@@ -93,16 +93,35 @@
 
 ### High Priority - UX Improvements
 
-#### 2. **Kanban vs DataTable Toggle** (User requested, deferred)
+#### 2. **Kanban vs DataTable Toggle** → **Kanban Scalability Plan** (Deferred)
 **Priority:** Medium (UX improvement)  
-**Estimated Effort:** 2-3 hours
+**Estimated Effort:** 2-3 hours (Phase 0), 10-15 hours (all phases)  
+**Status:** Planning complete, implementation deferred
 
+**Context:**
 - User requested: Add view toggle between Kanban and DataTable for transfers page
 - Reason: Kanban board doesn't scale well with many transfer requests (100+ items)
-- Impact: Better scalability for large-scale deployments
-- Files: `src/app/(app)/transfers/page.tsx`
-- Pattern: Similar to equipment page list/card toggle
-- Implementation: Add state toggle, conditional rendering, localStorage persistence
+- **Decision:** Optimize existing Kanban instead of adding DataTable toggle
+
+**Better Approach:**
+- Preserve Kanban's "at-a-glance" workflow visualization
+- Add collapsible lanes (Done/Archive)
+- Implement per-column windowing (50 items + "Show more")
+- Add density toggle (compact vs rich)
+- Create saved views with filters
+- See: **[docs/transfers-kanban-scalability-plan.md](../../docs/transfers-kanban-scalability-plan.md)**
+
+**Phase 0 Quick Wins (2-3 hours):**
+- Collapsible Done/Archive columns
+- Per-column windowing (50 initial)
+- Density toggle
+- LocalStorage persistence
+
+**Why Not DataTable:**
+- Loses workflow context
+- Duplicates effort
+- Users prefer visual workflow
+- Kanban can scale to 1000+ items with proper optimizations
 
 ---
 
