@@ -62,6 +62,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
 import { useSearchDebounce } from "@/hooks/use-debounce"
 import { Separator } from "@/components/ui/separator"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import type { Column } from "@tanstack/react-table"
 import { RepairRequestAlert } from "@/components/repair-request-alert"
 import { MobileFiltersDropdown } from "@/components/mobile-filters-dropdown"
@@ -317,31 +318,70 @@ export default function RepairRequestsPage() {
   const [searchTerm, setSearchTerm] = React.useState("");
   const debouncedSearch = useSearchDebounce(searchTerm);
 
-  // Consolidated facility filter (client mode) using shared hook
-  const {
-    selectedFacilityName,
-    setSelectedFacilityName,
-    facilities: facilityOptions,
-    showFacilityFilter,
-    filteredItems,
-  } = useFacilityFilter<RepairRequestWithEquipment>({
-    mode: 'client',
-    selectBy: 'name',
-    items: requests,
+  // Regional leader facility filtering (server mode - matches Equipment page pattern)
+  const { selectedFacilityId, setSelectedFacilityId } = useFacilityFilter({
+    mode: 'server',
     userRole: (user?.role as string) || 'user',
-    getFacilityName: (item) => item.thiet_bi?.facility_name ?? null,
   })
+
+  // Backward compatibility: derive facility name and options from actual data
+  const availableFacilities = React.useMemo(
+    () => {
+      const uniqueFacilities = new Map<number, string>();
+      requests.forEach(r => {
+        const facilityId = r.thiet_bi?.facility_id;
+        const facilityName = r.thiet_bi?.facility_name;
+        if (facilityId && facilityName) {
+          uniqueFacilities.set(facilityId, facilityName);
+        }
+      });
+      return Array.from(uniqueFacilities.values());
+    },
+    [requests]
+  );
+
+  const facilityOptions = React.useMemo(
+    () => {
+      const uniqueFacilities = new Map<number, string>();
+      requests.forEach(r => {
+        const facilityId = r.thiet_bi?.facility_id;
+        const facilityName = r.thiet_bi?.facility_name;
+        if (facilityId && facilityName) {
+          uniqueFacilities.set(facilityId, facilityName);
+        }
+      });
+      return Array.from(uniqueFacilities.entries()).map(([id, name]) => ({ id, name }));
+    },
+    [requests]
+  );
+
+  const selectedFacilityName = React.useMemo(() => {
+    if (!selectedFacilityId) return null;
+    const facility = facilityOptions.find(f => f.id === selectedFacilityId);
+    return facility?.name ?? null;
+  }, [selectedFacilityId, facilityOptions]);
+
   // Backward-compat aliases for existing UI code
   const selectedFacility = selectedFacilityName;
-  const availableFacilities = React.useMemo(
-    () => facilityOptions.map(f => f.name).filter(Boolean) as string[],
-    [facilityOptions]
-  );
+
+  // Memoize facility counts to prevent infinite re-renders
+  const facilityCounts = React.useMemo(() => {
+    const counts = new Map<number, number>();
+    requests.forEach(r => {
+      const facilityId = r.thiet_bi?.facility_id;
+      if (facilityId) {
+        counts.set(facilityId, (counts.get(facilityId) || 0) + 1);
+      }
+    });
+    return counts;
+  }, [requests]);
 
   // Align with repo roles: use 'global' instead of legacy 'admin'
   const canSetRepairUnit = !!user && ['global', 'to_qltb'].includes(user.role);
   // Regional leaders are read-only on this page (no create)
   const isRegionalLeader = !!user && user.role === 'regional_leader';
+  // Show facility filter for regional leaders
+  const showFacilityFilter = isRegionalLeader;
 
   React.useEffect(() => {
     if (editingRequest) {
@@ -386,10 +426,16 @@ export default function RepairRequestsPage() {
     }
 
     try {
-      // Fetch via RPC gateway
+      // Fetch via RPC gateway with server-side facility filtering
       const data = await callRpc<any[]>({
         fn: 'repair_request_list',
-        args: { p_q: null, p_status: null, p_page: 1, p_page_size: 5000 }
+        args: { 
+          p_q: null, 
+          p_status: null, 
+          p_page: 1, 
+          p_page_size: 5000,
+          p_don_vi: selectedFacilityId // Server-side facility filter for regional leaders
+        }
       })
 
       if (!data) {
@@ -449,7 +495,7 @@ export default function RepairRequestsPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [toast, user]);
+  }, [toast, user, selectedFacilityId]);
 
   const invalidateCacheAndRefetch = React.useCallback(() => {
     try {
@@ -1106,7 +1152,17 @@ export default function RepairRequestsPage() {
   const columns: ColumnDef<RepairRequestWithEquipment>[] = [
     // 1. Thiết bị (với mô tả sự cố)
     {
-      accessorFn: row => `${row.thiet_bi?.ten_thiet_bi} ${row.mo_ta_su_co}`,
+      accessorFn: (row) => {
+        // Safe null-checking to prevent "undefined undefined" in sorting/filtering
+        const parts: string[] = [];
+        if (row.thiet_bi?.ten_thiet_bi) {
+          parts.push(String(row.thiet_bi.ten_thiet_bi));
+        }
+        if (row.mo_ta_su_co) {
+          parts.push(String(row.mo_ta_su_co));
+        }
+        return parts.join(' ').trim() || 'N/A';
+      },
       id: 'thiet_bi_va_mo_ta',
       header: ({ column }) => (
         <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}>
@@ -1257,8 +1313,13 @@ export default function RepairRequestsPage() {
     },
   ];
 
-  // Use filtered data from shared hook when facility filter is shown
-  const tableData = showFacilityFilter ? filteredItems : requests;
+  // Use data from server (already filtered by facility if selected)
+  const tableData = requests;
+
+  // Create stable key for table to force remount when filter changes (prevents state corruption)
+  const tableKey = React.useMemo(() => {
+    return `${selectedFacilityId || 'all'}_${tableData.length}`;
+  }, [selectedFacilityId, tableData.length]);
 
   // Debug logging for regional leader feature
   React.useEffect(() => {
@@ -1958,9 +2019,9 @@ export default function RepairRequestsPage() {
                     <div className="flex items-center gap-2 flex-1 min-w-0">
                       <Building2 className="h-4 w-4 text-muted-foreground shrink-0" />
                       <Select
-                        value={selectedFacility || "all"}
-onValueChange={(value) => setSelectedFacilityName(value === "all" ? null : value)}
-                        disabled={availableFacilities.length === 0}
+                        value={selectedFacilityId?.toString() || "all"}
+                        onValueChange={(value) => setSelectedFacilityId(value === "all" ? null : Number(value))}
+                        disabled={facilityOptions.length === 0}
                       >
                         <SelectTrigger className="h-9 border-dashed">
                           <SelectValue placeholder="Chọn cơ sở..." />
@@ -1972,17 +2033,17 @@ onValueChange={(value) => setSelectedFacilityName(value === "all" ? null : value
                               <span>Tất cả cơ sở</span>
                             </div>
                           </SelectItem>
-                          {availableFacilities.length === 0 ? (
+                          {facilityOptions.length === 0 ? (
                             <SelectItem value="empty" disabled>
                               <span className="text-muted-foreground italic">Chưa có yêu cầu</span>
                             </SelectItem>
                           ) : (
-                            availableFacilities.map((facility) => {
-                              const count = requests.filter(r => r.thiet_bi?.facility_name === facility).length;
+                            facilityOptions.map((facility) => {
+                              const count = facilityCounts.get(facility.id) || 0;
                               return (
-                                <SelectItem key={facility} value={facility}>
+                                <SelectItem key={facility.id} value={facility.id.toString()}>
                                   <div className="flex items-center justify-between w-full gap-4">
-                                    <span className="truncate">{facility}</span>
+                                    <span className="truncate">{facility.name}</span>
                                     <span className="text-xs text-muted-foreground shrink-0">{count}</span>
                                   </div>
                                 </SelectItem>
@@ -1992,15 +2053,33 @@ onValueChange={(value) => setSelectedFacilityName(value === "all" ? null : value
                         </SelectContent>
                       </Select>
                     </div>
-                    {selectedFacility && (
-                      <Badge variant="secondary" className="shrink-0">
-                        {requests.filter(r => r.thiet_bi?.facility_name === selectedFacility).length} yêu cầu
-                      </Badge>
+                    {selectedFacilityName && selectedFacilityId && (
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Badge variant="secondary" className="shrink-0 cursor-help">
+                              {facilityCounts.get(selectedFacilityId) || 0} yêu cầu
+                            </Badge>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>Số yêu cầu hiển thị ở cơ sở này</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
                     )}
                     {!selectedFacility && availableFacilities.length > 0 && (
-                      <Badge variant="outline" className="shrink-0">
-                        {availableFacilities.length} cơ sở • {requests.length} yêu cầu
-                      </Badge>
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Badge variant="outline" className="shrink-0 cursor-help">
+                              {availableFacilities.length} cơ sở • {requests.length} yêu cầu
+                            </Badge>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>Tổng số cơ sở và yêu cầu hiển thị</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
                     )}
                   </div>
                 )}
@@ -2177,7 +2256,7 @@ onValueChange={(value) => setSelectedFacilityName(value === "all" ? null : value
                   </div>
                 ) : (
                   /* Desktop Table View */
-                  <div className="rounded-md border">
+                  <div key={tableKey} className="rounded-md border">
                     <Table>
                       <TableHeader>
                         {table.getHeaderGroups().map((headerGroup) => (

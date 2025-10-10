@@ -25,7 +25,7 @@
         "npx -y @supabase/mcp-server-supabase@latest --read-only --project-ref=cdthersvldpnlbvpufrr"
       ],
       "env": {
-        "SUPABASE_ACCESS_TOKEN": ""
+        "SUPABASE_ACCESS_TOKEN": "${input:supabase-access-token}"
       }
     },
     "supabase-write-mode (USE WITH CAUTION)": {

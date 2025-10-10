@@ -3,8 +3,25 @@
 **Severity**: Critical / P0  
 **Affected Page**: `src/app/(app)/repair-requests/page.tsx`  
 **User Role**: `regional_leader` (primarily), affects all users  
-**Status**: Identified, awaiting implementation  
-**Created**: 2025-10-10
+**Status**: ✅ RESOLVED  
+**Created**: 2025-10-10  
+**Resolved**: 2025-10-10  
+
+---
+
+## ✅ RESOLUTION
+
+**Fixed by**: Migration `20251010213621_add_facility_filter_to_repair_request_list.sql` + Phase 1 safety fixes  
+**Implementation**: See `docs/session-notes/2025-10-10-repair-requests-IMPLEMENTATION_COMPLETE.md`  
+**Verified**: User confirmed "crash issue with facilities filter has gone!"  
+
+### What Was Fixed
+1. ✅ Server-side filtering implemented (Phase 0 - core fix)
+2. ✅ Safe accessor function (Phase 1)
+3. ✅ Tooltip for count badges (Phase 1)
+4. ✅ Hook null safety (Phase 1)
+
+**Crash is now resolved**. Regional leaders can use facility filter without issues.
 
 ---
 
