@@ -240,6 +240,26 @@ export default function MaintenancePage() {
     return JSON.stringify(tasks) !== JSON.stringify(draftTasks);
   }, [tasks, draftTasks]);
 
+  // ✅ State preservation for dialog operations (defensive pattern similar to Equipment page)
+  const [preserveUIState, setPreserveUIState] = React.useState<{
+    selectedPlanId: number | null
+    activeTab: string
+  } | null>(null)
+
+  // ✅ Defensive callback pattern: Save UI state before triggering refetch
+  // This prevents crashes by operating on stable UI state instead of async callbacks
+  const onPlanMutationSuccessWithStatePreservation = React.useCallback(() => {
+    // Save current UI state to preserve across refetch
+    const stateToSave = {
+      selectedPlanId: selectedPlan?.id || null,
+      activeTab: activeTab,
+    }
+    setPreserveUIState(stateToSave)
+    
+    // Trigger refetch - safe because it's called after state preservation
+    refetchPlans()
+  }, [selectedPlan, activeTab, refetchPlans])
+
   // ✅ Remove manual fetchPlans - now handled by cached hook
 
   const fetchPlanDetails = React.useCallback(async (plan: MaintenancePlan) => {
@@ -313,13 +333,33 @@ export default function MaintenancePage() {
     }
   }, [selectedPlan, fetchPlanDetails]);
 
+  // Restore UI state after refetch completes
+  React.useEffect(() => {
+    if (preserveUIState && !isLoadingPlans && plans.length > 0) {
+      // Restore selected plan if it was preserved
+      if (preserveUIState.selectedPlanId) {
+        const planToRestore = plans.find(p => p.id === preserveUIState.selectedPlanId)
+        if (planToRestore) {
+          setSelectedPlan(planToRestore)
+        }
+      }
+      // Restore active tab
+      if (preserveUIState.activeTab) {
+        setActiveTab(preserveUIState.activeTab)
+      }
+      // Clear preserved state
+      setPreserveUIState(null)
+    }
+  }, [preserveUIState, isLoadingPlans, plans])
+
   // Handle URL parameters for navigation from Dashboard
+  // ✅ No loading guards needed - defensive callback pattern handles early calls gracefully
   React.useEffect(() => {
     const planIdParam = searchParams.get('planId')
     const tabParam = searchParams.get('tab')
     const actionParam = searchParams.get('action')
 
-    // Handle quick action to create new plan
+    // Handle quick action to create new plan - can open immediately
     if (actionParam === 'create') {
       setIsAddPlanDialogOpen(true)
       // Clear URL params after opening dialog
@@ -327,6 +367,7 @@ export default function MaintenancePage() {
       return
     }
 
+    // Handle plan selection from URL - waits for data naturally
     if (planIdParam && plans.length > 0) {
       const planId = parseInt(planIdParam, 10)
       const targetPlan = plans.find(p => p.id === planId)
@@ -1833,12 +1874,12 @@ export default function MaintenancePage() {
       <AddMaintenancePlanDialog
         open={isAddPlanDialogOpen}
         onOpenChange={setIsAddPlanDialogOpen}
-        onSuccess={refetchPlans} // ✅ Use cached hook refetch
+        onSuccess={onPlanMutationSuccessWithStatePreservation}
       />
       <EditMaintenancePlanDialog
         open={!!editingPlan}
         onOpenChange={(open) => !open && setEditingPlan(null)}
-        onSuccess={refetchPlans} // ✅ Use cached hook refetch
+        onSuccess={onPlanMutationSuccessWithStatePreservation}
         plan={editingPlan}
       />
       {planToApprove && (
