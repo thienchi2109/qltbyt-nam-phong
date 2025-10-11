@@ -38,6 +38,19 @@ import {
   type TransferStatus
 } from "@/types/database"
 import { useFacilityFilter } from "@/hooks/useFacilityFilter"
+import { CollapsibleLane, type TransferStatus as LaneTransferStatus } from "@/components/transfers/CollapsibleLane"
+import { DensityToggle, type DensityMode } from "@/components/transfers/DensityToggle"
+import { TransferCard } from "@/components/transfers/TransferCard"
+import {
+  getDensityMode,
+  setDensityMode,
+  getLaneCollapsedState,
+  setLaneCollapsedState,
+  getVisibleCounts,
+  setVisibleCounts,
+  type LaneCollapsedState,
+  type VisibleCountsState,
+} from "@/lib/kanban-preferences"
 
 
 const KANBAN_COLUMNS: { status: TransferStatus; title: string; description: string; color: string }[] = [
@@ -147,6 +160,35 @@ export default function TransfersPage() {
   const createTransferRequest = useCreateTransferRequest()
   const updateTransferRequest = useUpdateTransferRequest()
   const approveTransferRequest = useApproveTransferRequest()
+
+  // Phase 0: Kanban scalability state management
+  const [densityMode, setDensityModeState] = React.useState<DensityMode>(() => getDensityMode())
+  const [laneCollapsed, setLaneCollapsedState] = React.useState<LaneCollapsedState>(() => getLaneCollapsedState())
+  const [visibleCounts, setVisibleCountsState] = React.useState<VisibleCountsState>(() => getVisibleCounts())
+
+  // Persist density mode changes
+  const handleDensityChange = React.useCallback((mode: DensityMode) => {
+    setDensityModeState(mode)
+    setDensityMode(mode)
+  }, [])
+
+  // Persist lane collapsed state changes
+  const handleToggleCollapse = React.useCallback((status: TransferStatus) => {
+    setLaneCollapsedState((prev) => {
+      const next = { ...prev, [status]: !prev[status] }
+      setLaneCollapsedState(next)
+      return next
+    })
+  }, [])
+
+  // Handle "Show more" for individual columns
+  const handleShowMore = React.useCallback((status: TransferStatus) => {
+    setVisibleCountsState((prev) => {
+      const next = { ...prev, [status]: prev[status] + 50 }
+      setVisibleCounts(next)
+      return next
+    })
+  }, [])
 
   const [isRefreshing, setIsRefreshing] = React.useState(false)
   const [isAddDialogOpen, setIsAddDialogOpen] = React.useState(false)
@@ -541,6 +583,9 @@ export default function TransfersPage() {
             </CardDescription>
           </div>
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+            {/* Density toggle for card display mode */}
+            <DensityToggle mode={densityMode} onChange={handleDensityChange} />
+            
             {/* Facility filter for regional leaders and global users */}
             {showFacilityFilter && (
               <Select
@@ -587,126 +632,44 @@ export default function TransfersPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">
             {KANBAN_COLUMNS.map((column) => {
               const columnTransfers = getTransfersByStatus(column.status)
+              const totalCount = columnTransfers.length
+              const visibleCount = Math.min(visibleCounts[column.status], totalCount)
+              const visibleTransfers = columnTransfers.slice(0, visibleCount)
               
               return (
-                <Card key={column.status} className={`${column.color} min-h-[600px]`}>
-                  <CardHeader className="pb-3">
-                    <div className="flex items-center justify-between">
-                      <CardTitle className="text-sm font-medium">
-                        {column.title}
-                      </CardTitle>
-                      <Badge variant="secondary" className="ml-2">
-                        {columnTransfers.length}
-                      </Badge>
-                    </div>
-                    <CardDescription className="text-xs">
-                      {column.description}
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-3">
-                    {isLoading ? (
-                      Array.from({ length: 3 }).map((_, i) => (
-                        <Skeleton key={i} className="h-32 w-full" />
-                      ))
-                    ) : columnTransfers.length === 0 ? (
-                      <div className="text-center text-muted-foreground text-sm py-8">
-                        Không có yêu cầu nào
-                      </div>
-                    ) : (
-                      columnTransfers.map((transfer) => (
-                        <Card 
-                          key={transfer.id} 
-                          className="mb-3 shadow-sm hover:shadow-md transition-shadow cursor-pointer"
-                          onClick={() => handleViewDetail(transfer)}
-                        >
-                          <CardContent className="p-4">
-                            <div className="space-y-3">
-                              <div className="flex items-start justify-between">
-                                <div className="space-y-1">
-                                  <p className="text-sm font-medium leading-none">
-                                    {transfer.ma_yeu_cau}
-                                  </p>
-                                  <Badge variant={getTypeVariant(transfer.loai_hinh)}>
-                                    {TRANSFER_TYPES[transfer.loai_hinh as keyof typeof TRANSFER_TYPES]}
-                                  </Badge>
-                                </div>
-                              </div>
-                              
-                              <div className="space-y-2">
-                                <div>
-                                  <p className="text-xs text-muted-foreground">Thiết bị</p>
-                                  <p className="text-sm font-medium">
-                                    {transfer.thiet_bi?.ma_thiet_bi} - {transfer.thiet_bi?.ten_thiet_bi}
-                                  </p>
-                                </div>
-                                
-                                {transfer.loai_hinh === 'noi_bo' ? (
-                                  <div>
-                                    <p className="text-xs text-muted-foreground">Từ → Đến</p>
-                                    <p className="text-sm">
-                                      {transfer.khoa_phong_hien_tai} → {transfer.khoa_phong_nhan}
-                                    </p>
-                                  </div>
-                                ) : (
-                                  <div className="space-y-1">
-                                    <div>
-                                      <p className="text-xs text-muted-foreground">Đơn vị nhận</p>
-                                      <p className="text-sm">{transfer.don_vi_nhan}</p>
-                                    </div>
-                                    {transfer.ngay_du_kien_tra && (
-                                      <div>
-                                        <p className="text-xs text-muted-foreground">Dự kiến hoàn trả</p>
-                                        <div className="flex items-center gap-1">
-                                          <p className="text-sm">
-                                            {new Date(transfer.ngay_du_kien_tra).toLocaleDateString('vi-VN')}
-                                          </p>
-                                          {/* Overdue indicator for external transfers */}
-                                          {(transfer.trang_thai === 'da_ban_giao' || transfer.trang_thai === 'dang_luan_chuyen') && 
-                                           new Date(transfer.ngay_du_kien_tra) < new Date() && (
-                                            <Badge variant="destructive" className="text-xs px-1 py-0">
-                                              Quá hạn
-                                            </Badge>
-                                          )}
-                                        </div>
-                                      </div>
-                                    )}
-                                  </div>
-                                )}
-                                
-                                <div>
-                                  <p className="text-xs text-muted-foreground">Lý do</p>
-                                  <p className="text-sm line-clamp-2">{transfer.ly_do_luan_chuyen}</p>
-                                </div>
-                              </div>
-                              
-                              <div className="flex items-center justify-between pt-2 border-t">
-                                <p className="text-xs text-muted-foreground">
-                                  {new Date(transfer.created_at).toLocaleDateString('vi-VN')}
-                                </p>
-                                <div className="flex items-center gap-1 flex-wrap" onClick={(e) => e.stopPropagation()}>
-                                  {/* Status Action Buttons */}
-                                  {getStatusActions(transfer)}
-                                  
-                                  {/* Edit/Delete Buttons */}
-                                  {canEdit(transfer) && (
-                                    <Button key={`edit-${transfer.id}`} size="sm" variant="ghost" className="h-6 px-2 text-xs" onClick={() => handleEditTransfer(transfer)}>
-                                      Sửa
-                                    </Button>
-                                  )}
-                                  {canDelete(transfer) && (
-                                    <Button key={`delete-${transfer.id}`} size="sm" variant="ghost" className="h-6 px-2 text-xs text-destructive" onClick={() => handleDeleteTransfer(transfer.id)}>
-                                      Xóa
-                                    </Button>
-                                  )}
-                                </div>
-                              </div>
-                            </div>
-                          </CardContent>
-                        </Card>
-                      ))
-                    )}
-                  </CardContent>
-                </Card>
+                <CollapsibleLane
+                  key={column.status}
+                  status={column.status as LaneTransferStatus}
+                  title={column.title}
+                  description={column.description}
+                  color={column.color}
+                  totalCount={totalCount}
+                  visibleCount={visibleCount}
+                  isCollapsed={laneCollapsed[column.status]}
+                  onToggleCollapse={() => handleToggleCollapse(column.status)}
+                  onShowMore={() => handleShowMore(column.status)}
+                  isLoading={isLoading}
+                >
+                  {isLoading ? (
+                    Array.from({ length: 3 }).map((_, i) => (
+                      <Skeleton key={i} className="h-32 w-full" />
+                    ))
+                  ) : (
+                    visibleTransfers.map((transfer) => (
+                      <TransferCard
+                        key={transfer.id}
+                        transfer={transfer}
+                        density={densityMode}
+                        onClick={() => handleViewDetail(transfer)}
+                        statusActions={getStatusActions(transfer)}
+                        onEdit={() => handleEditTransfer(transfer)}
+                        onDelete={() => handleDeleteTransfer(transfer.id)}
+                        canEdit={canEdit(transfer)}
+                        canDelete={canDelete(transfer)}
+                      />
+                    ))
+                  )}
+                </CollapsibleLane>
               )
             })}
           </div>
