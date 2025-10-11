@@ -1934,7 +1934,7 @@ export default function RepairRequestsPage() {
                   <span className="button-text-responsive">
                     <span className="hidden sm:inline">Xem danh sách yêu cầu</span>
                     <span className="sm:hidden">Xem yêu cầu</span>
-                    {requests.length > 0 && ` (${requests.length})`}
+                    {totalRequests > 0 && ` (${totalRequests})`}
                   </span>
                 </>
               )}
@@ -1942,12 +1942,12 @@ export default function RepairRequestsPage() {
           </div>
 
           {/* Visual indicator when requests list is hidden */}
-          {!showRequestsList && requests.length > 0 && (
+          {!showRequestsList && totalRequests > 0 && (
             <div className="text-center mt-4">
               <div className="inline-flex items-center gap-2 text-sm text-muted-foreground">
                 <div className="w-2 h-2 bg-primary rounded-full animate-pulse"></div>
                 <span className="caption-responsive">
-                  {requests.length} yêu cầu sửa chữa đã ghi nhận
+                  {totalRequests} yêu cầu sửa chữa đã ghi nhận
                 </span>
               </div>
             </div>
@@ -2024,7 +2024,7 @@ export default function RepairRequestsPage() {
                         <Tooltip>
                           <TooltipTrigger asChild>
                             <Badge variant="outline" className="shrink-0 cursor-help">
-                              {facilityOptions.length} cơ sở • {requests.length} yêu cầu
+                              {facilityOptions.length} cơ sở • {totalRequests} yêu cầu
                             </Badge>
                           </TooltipTrigger>
                           <TooltipContent>
