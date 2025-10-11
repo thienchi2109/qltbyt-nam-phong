@@ -12,7 +12,7 @@ import {
   getSortedRowModel,
   useReactTable,
 } from "@tanstack/react-table"
-import { useQuery } from "@tanstack/react-query"
+import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { useToast } from "@/hooks/use-toast"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -246,6 +246,7 @@ export default function RepairRequestsPage() {
   const user = session?.user as any // Cast NextAuth user to our User type
   const router = useRouter()
   const isMobile = useIsMobile()
+  const queryClient = useQueryClient()
 
   // Redirect if not authenticated
   if (status === "loading") {
@@ -464,10 +465,13 @@ export default function RepairRequestsPage() {
   }, [isRegionalLeader])
   const totalRequests = repairRequestsRes?.total ?? 0;
 
-  // Legacy function for backward compatibility (now uses refetch)
+  // Legacy function for backward compatibility (now uses refetch + cache invalidation)
   const invalidateCacheAndRefetch = React.useCallback(() => {
+    // Refetch main repair requests query
     refetchRequests();
-  }, [refetchRequests]);
+    // Invalidate facility options cache so new facilities appear in dropdown
+    queryClient.invalidateQueries({ queryKey: ['repair_request_facilities'] });
+  }, [refetchRequests, queryClient]);
 
   const handleSelectEquipment = React.useCallback((equipment: EquipmentSelectItem) => {
     setSelectedEquipment(equipment);
