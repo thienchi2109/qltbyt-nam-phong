@@ -317,40 +317,23 @@ export default function RepairRequestsPage() {
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);
   const [searchTerm, setSearchTerm] = React.useState("");
   const debouncedSearch = useSearchDebounce(searchTerm);
+  const [pagination, setPagination] = React.useState({ pageIndex: 0, pageSize: 20 });
 
   // Regional leader facility filtering (server mode - matches Equipment page pattern)
   const effectiveTenantKey = user?.don_vi ?? user?.current_don_vi ?? 'none';
 
-  // Separate query for facility options (unfiltered list)
+  // Separate query for facility options (unfiltered list) - uses dedicated lightweight RPC
   const { data: facilityOptionsData } = useQuery<FacilityOption[]>({
     queryKey: ['repair_request_facilities', { tenant: effectiveTenantKey }],
     queryFn: async () => {
       try {
-        // Fetch unfiltered list to get all available facilities for dropdown
-        const result = await callRpc<{ data: RepairRequestWithEquipment[], total: number, page: number, pageSize: number }>({
-          fn: 'repair_request_list',
-          args: {
-            p_q: null,
-            p_status: null,
-            p_page: 1,
-            p_page_size: 5000,
-            p_don_vi: null, // NULL = all facilities user has access to
-          },
+        // Call dedicated RPC that returns only facility IDs and names (lightweight ~1-2KB vs ~500KB)
+        const result = await callRpc<FacilityOption[]>({
+          fn: 'get_repair_request_facilities',
+          args: {},
         });
         
-        // Extract unique facilities from unfiltered results (result.data is the array)
-        const uniqueFacilities = new Map<number, string>();
-        (result.data || []).forEach((r: RepairRequestWithEquipment) => {
-          const facilityId = r.thiet_bi?.facility_id;
-          const facilityName = r.thiet_bi?.facility_name;
-          if (facilityId && facilityName) {
-            uniqueFacilities.set(facilityId, facilityName);
-          }
-        });
-        
-        return Array.from(uniqueFacilities.entries())
-          .map(([id, name]) => ({ id, name }))
-          .sort((a, b) => a.name.localeCompare(b.name));
+        return result || [];
       } catch (error) {
         console.error('[repair-requests] Failed to fetch facility options:', error);
         return [];
@@ -385,21 +368,21 @@ export default function RepairRequestsPage() {
       donVi: selectedFacilityId, // Facility filter for regional leaders
       status: null, // Can be extended for status filtering
       q: debouncedSearch || null,
+      page: pagination.pageIndex + 1,
+      pageSize: pagination.pageSize,
     }],
     queryFn: async ({ signal }: { signal: AbortSignal }) => {
-      console.log('[repair-requests] Fetching with facilityId:', selectedFacilityId);
       const result = await callRpc<{ data: RepairRequestWithEquipment[], total: number, page: number, pageSize: number }>({
         fn: 'repair_request_list',
         args: {
           p_q: debouncedSearch || null,
           p_status: null,
-          p_page: 1,
-          p_page_size: 5000, // TODO: Add pagination support in future
+          p_page: pagination.pageIndex + 1,
+          p_page_size: pagination.pageSize,
           p_don_vi: selectedFacilityId,
         },
         signal, // Pass signal in options object
       });
-      console.log('[repair-requests] Fetched', result.data?.length, 'requests');
       return result;
     },
     enabled: !!user,
@@ -1289,19 +1272,16 @@ export default function RepairRequestsPage() {
     return `${selectedFacilityId || 'all'}_${tableData.length}`;
   }, [selectedFacilityId, tableData.length]);
 
-  // Debug logging for regional leader feature
+  // Calculate page count from server total
+  const pageCount = React.useMemo(() => {
+    const total = repairRequestsRes?.total ?? 0;
+    return Math.max(1, Math.ceil(total / Math.max(pagination.pageSize, 1)));
+  }, [repairRequestsRes?.total, pagination.pageSize]);
+
+  // Reset pagination to first page when search or facility filter changes
   React.useEffect(() => {
-    if (isRegionalLeader) {
-      console.log('[Regional Leader Debug]', {
-        role: user?.role,
-        isRegionalLeader,
-        requestsCount: requests.length,
-        availableFacilitiesCount: facilityOptions.length,
-        facilityOptions,
-        sampleRequest: requests[0]
-      });
-    }
-  }, [isRegionalLeader, requests.length, facilityOptions.length, user?.role]);
+    setPagination(prev => ({ ...prev, pageIndex: 0 }));
+  }, [debouncedSearch, selectedFacilityId]);
 
   const table = useReactTable({
     data: tableData,
@@ -1310,10 +1290,14 @@ export default function RepairRequestsPage() {
       sorting,
       columnFilters,
       globalFilter: debouncedSearch,
+      pagination,
     },
+    pageCount,
+    manualPagination: true,
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
     onGlobalFilterChange: (value: string) => setSearchTerm(value),
+    onPaginationChange: setPagination,
     getCoreRowModel: getCoreRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
     getSortedRowModel: getSortedRowModel(),
@@ -1981,8 +1965,8 @@ export default function RepairRequestsPage() {
                   Tất cả các yêu cầu sửa chữa đã được ghi nhận.
                 </CardDescription>
 
-                {/* Facility filter for regional leaders */}
-                {isRegionalLeader && (
+                {/* Facility filter for global, admin, and regional leaders */}
+                {showFacilityFilter && (
                   <div className="flex items-center gap-2 mt-4 flex-wrap">
                     <div className="flex items-center gap-2 flex-1 min-w-0">
                       <Building2 className="h-4 w-4 text-muted-foreground shrink-0" />
@@ -2285,7 +2269,14 @@ export default function RepairRequestsPage() {
               <CardFooter>
                 <div className="flex items-center justify-between w-full">
                   <div className="flex-1 text-sm text-muted-foreground">
-                    {table.getFilteredRowModel().rows.length} trên {requests.length} yêu cầu.
+                    {(() => {
+                      const total = totalRequests;
+                      const currentPage = pagination.pageIndex + 1;
+                      const pageSize = pagination.pageSize;
+                      const startItem = total > 0 ? (currentPage - 1) * pageSize + 1 : 0;
+                      const endItem = Math.min(currentPage * pageSize, total);
+                      return `Hiển thị ${startItem}-${endItem} trên tổng ${total} yêu cầu`;
+                    })()}
                   </div>
                   <div className="flex items-center space-x-6 lg:space-x-8">
                     <div className="flex items-center space-x-2">

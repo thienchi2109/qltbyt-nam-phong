@@ -36,6 +36,7 @@ const ALLOWED_FUNCTIONS = new Set<string>([
   'repair_request_approve',
   'repair_request_complete',
   'repair_request_delete',
+  'get_repair_request_facilities',
   // Transfers
   'transfer_request_list',
   'transfer_request_list_enhanced',

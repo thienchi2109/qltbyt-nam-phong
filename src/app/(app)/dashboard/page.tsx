@@ -37,17 +37,17 @@ export default function Dashboard() {
   return (
     <>
       {/* Welcome Banner */}
-      <Card className="overflow-hidden border-none shadow-md bg-gradient-to-br from-blue-500 to-purple-600">
+      <Card className="overflow-hidden border-none shadow-md bg-gradient-to-br from-cyan-50 via-teal-50/80 to-blue-50">
         <CardContent className="p-6 md:p-8">
           <div className="flex items-center justify-between">
             <div className="space-y-2">
               <div className="flex items-center gap-2">
-                <Sparkles className="h-5 w-5 text-yellow-300" />
-                <h1 className="text-xl md:text-2xl font-bold text-white">
+                <Sparkles className="h-5 w-5 text-primary" />
+                <h1 className="text-xl md:text-2xl font-bold text-slate-800">
                   {getGreeting()}, {user?.full_name || user?.username}!
                 </h1>
               </div>
-              <p className="text-blue-50/90 text-sm md:text-base">
+              <p className="text-slate-600 text-sm md:text-base">
                 Chào mừng bạn đến với Hệ thống Quản lý Thiết bị Y tế
               </p>
             </div>
