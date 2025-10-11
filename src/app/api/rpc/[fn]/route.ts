@@ -96,6 +96,7 @@ const ALLOWED_FUNCTIONS = new Set<string>([
   'dashboard_maintenance_plan_stats', 
   'dashboard_maintenance_count',
   'dashboard_equipment_total',
+  'maintenance_calendar_events',
   // Debug
   'debug_claims',
   'test_jwt_claims',
