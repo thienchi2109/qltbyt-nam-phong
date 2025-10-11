@@ -2,6 +2,7 @@
 
 import * as React from "react"
 import { PlusCircle, ArrowLeftRight, Filter, RefreshCw, FileText, Building2 } from "lucide-react"
+import { useQuery } from "@tanstack/react-query"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -37,6 +38,7 @@ import {
   type TransferStatus
 } from "@/types/database"
 import { useFacilityFilter } from "@/hooks/useFacilityFilter"
+
 
 const KANBAN_COLUMNS: { status: TransferStatus; title: string; description: string; color: string }[] = [
   {
@@ -103,8 +105,45 @@ export default function TransfersPage() {
 
   // REMOVED: regional_leader page block - they now have read-only access
 
-  // ✅ Use cached hooks instead of manual state
-  const { data: transfers = [], isLoading, refetch: refetchTransfers } = useTransferRequests()
+  // Fetch facilities for dropdown (lightweight RPC - only facilities with transfer requests)
+  const { data: facilityOptionsData } = useQuery<Array<{ id: number; name: string }>>({
+    queryKey: ['transfer_request_facilities'],
+    queryFn: async () => {
+      try {
+        if (!user) return [];
+        // Call dedicated RPC that returns only facility IDs and names (lightweight ~1-2KB)
+        const result = await callRpc<Array<{ id: number; name: string }>>({ 
+          fn: 'get_transfer_request_facilities', 
+          args: {} 
+        });
+        return result || [];
+      } catch (error) {
+        console.error('[transfers] Failed to fetch facility options:', error);
+        return [];
+      }
+    },
+    enabled: !!user,
+    staleTime: 5 * 60_000, // 5 minutes (facilities change rarely)
+    gcTime: 10 * 60_000,
+  });
+
+  // Server-side facility filter (like Repair Requests page)
+  const { selectedFacilityId, setSelectedFacilityId: setFacilityId, showFacilityFilter } = useFacilityFilter({
+    mode: 'server',
+    userRole: (user?.role as string) || 'user',
+    facilities: facilityOptionsData || [],
+  })
+
+  // Wrapper to trigger refetch when facility changes
+  const setSelectedFacilityId = React.useCallback((id: number | null) => {
+    setFacilityId(id);
+    // TanStack Query will auto-refetch when queryKey changes
+  }, [setFacilityId]);
+
+  // ✅ Server-side filtering via p_don_vi parameter
+  const { data: transfers = [], isLoading, refetch: refetchTransfers } = useTransferRequests({
+    don_vi: selectedFacilityId, // ✅ Server filters here
+  })
   const createTransferRequest = useCreateTransferRequest()
   const updateTransferRequest = useUpdateTransferRequest()
   const approveTransferRequest = useApproveTransferRequest()
@@ -118,78 +157,13 @@ export default function TransfersPage() {
   const [handoverDialogOpen, setHandoverDialogOpen] = React.useState(false)
   const [handoverTransfer, setHandoverTransfer] = React.useState<TransferRequest | null>(null)
 
-  // Consolidated facility filter (client mode via items)
-  const {
-    selectedFacilityId,
-    setSelectedFacilityId,
-    facilities: facilitiesFromItems,
-    showFacilityFilter,
-    filteredItems,
-  } = useFacilityFilter<TransferRequest>({
-    mode: 'client',
-    selectBy: 'id',
-    items: transfers,
-    userRole: (user?.role as string) || 'user',
-    getFacilityId: (t) => t.thiet_bi?.facility_id ?? null,
-    getFacilityName: (t) => t.thiet_bi?.facility_name ?? null,
-  })
-
-  // Fallback facilities via RPC when items don't include facility metadata
-  const [facilitiesRpc, setFacilitiesRpc] = React.useState<Array<{ id: number; name: string; count?: number }>>([])
-  React.useEffect(() => {
-    const needFallback = (facilitiesFromItems?.length || 0) === 0
-    const canShow = isRegionalLeader || user?.role === 'global'
-    if (!needFallback || !canShow) return
-    const run = async () => {
-      try {
-        const data = await callRpc<any[]>({ fn: 'get_facilities_with_equipment_count', args: {} })
-        setFacilitiesRpc((data || []).map((f: any) => ({ id: f.id, name: f.name, count: f.equipment_count || 0 })))
-      } catch {
-        setFacilitiesRpc([])
-      }
-    }
-    run()
-  }, [facilitiesFromItems?.length, isRegionalLeader, user?.role])
-
-  const dropdownFacilities = (facilitiesFromItems?.length || 0) > 0 ? facilitiesFromItems : facilitiesRpc
-  const showFacilityFilterUI = (isRegionalLeader || user?.role === 'global') && dropdownFacilities.length > 0
-
-  // ✅ Remove manual fetchTransfers - now handled by cached hook
-
-  // ✅ Remove useEffect for fetchTransfers - data loaded automatically by cached hook
-
-  // Facilities shown in UI come from items when available, otherwise from RPC fallback
-
   const handleRefresh = () => {
     setIsRefreshing(true)
-    refetchTransfers().finally(() => setIsRefreshing(false)) // ✅ Use cached hook refetch
+    refetchTransfers().finally(() => setIsRefreshing(false))
   }
 
-  // ✅ Defensive filtering: Handle edge case where transfers lack facility metadata
-  const displayedTransfers = React.useMemo(() => {
-    // If no facility filter is active, return filtered items as-is
-    if (!showFacilityFilter || !selectedFacilityId) {
-      return filteredItems
-    }
-
-    // ✅ Security check: Verify selected facility is in allowed list
-    const allowedFacilityIds = new Set(dropdownFacilities.map(f => f.id))
-    if (!allowedFacilityIds.has(selectedFacilityId)) {
-      console.warn(`[Transfers] Selected facility ${selectedFacilityId} not in allowed list. Showing all transfers.`)
-      return transfers
-    }
-
-    // ✅ Data quality check: Skip filtering if transfers lack facility metadata
-    const transfersWithFacilityData = transfers.filter((t) => t.thiet_bi?.facility_id != null)
-
-    if (transfersWithFacilityData.length === 0 && transfers.length > 0) {
-      console.warn('[Transfers] Transfers missing facility metadata. Cannot filter by facility. This indicates legacy equipment data.')
-      return transfers // Show all transfers instead of empty Kanban board
-    }
-
-    // ✅ Use filtered items from useFacilityFilter hook (normal case)
-    return filteredItems
-  }, [filteredItems, showFacilityFilter, selectedFacilityId, dropdownFacilities, transfers])
+  // Server-side filtering means displayedTransfers = transfers (already filtered by RPC)
+  const displayedTransfers = transfers
 
   const getTransfersByStatus = (status: TransferStatus) => {
     return displayedTransfers.filter(transfer => transfer.trang_thai === status)
@@ -568,7 +542,7 @@ export default function TransfersPage() {
           </div>
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
             {/* Facility filter for regional leaders and global users */}
-            {showFacilityFilterUI && (
+            {showFacilityFilter && (
               <Select
                 value={selectedFacilityId?.toString() || "all"}
                 onValueChange={(value) => setSelectedFacilityId(value === "all" ? null : Number(value))}
@@ -579,14 +553,9 @@ export default function TransfersPage() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Tất cả cơ sở</SelectItem>
-                  {dropdownFacilities.map((facility) => (
+                  {(facilityOptionsData || []).map((facility) => (
                     <SelectItem key={facility.id} value={facility.id.toString()}>
                       {facility.name}
-                      {typeof facility.count === 'number' && facility.count > 0 && (
-                        <Badge variant="secondary" className="ml-2">
-                          {facility.count}
-                        </Badge>
-                      )}
                     </SelectItem>
                   ))}
                 </SelectContent>

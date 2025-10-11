@@ -47,6 +47,7 @@ const ALLOWED_FUNCTIONS = new Set<string>([
   'transfer_request_complete',
   'transfer_history_list',
   'transfer_request_external_pending_returns',
+  'get_transfer_request_facilities',
   // Maintenance
   'maintenance_plan_list',
   'maintenance_plan_create',
