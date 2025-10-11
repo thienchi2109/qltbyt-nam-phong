@@ -139,7 +139,13 @@ export function useFacilityFilter<T>(
     } else {
       const getName = (clientOpts as ClientOptionsName<T>).getFacilityName
       if (!selectedFacilityName) return items
-      return items.filter((it) => (getName(it) || null) === selectedFacilityName)
+      // SAFETY FIX: Explicitly handle null/undefined to prevent comparison errors
+      return items.filter((it) => {
+        const name = getName(it)
+        // Exclude items with missing facility info when filtering
+        if (name === undefined || name === null) return false
+        return name === selectedFacilityName
+      })
     }
   }, [items, clientOpts, showFacilityFilter, selectedFacilityId, selectedFacilityName])
 

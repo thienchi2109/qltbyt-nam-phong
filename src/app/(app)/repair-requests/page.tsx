@@ -12,6 +12,7 @@ import {
   getSortedRowModel,
   useReactTable,
 } from "@tanstack/react-table"
+import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { useToast } from "@/hooks/use-toast"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -62,10 +63,11 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
 import { useSearchDebounce } from "@/hooks/use-debounce"
 import { Separator } from "@/components/ui/separator"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import type { Column } from "@tanstack/react-table"
 import { RepairRequestAlert } from "@/components/repair-request-alert"
 import { MobileFiltersDropdown } from "@/components/mobile-filters-dropdown"
-import { useFacilityFilter } from "@/hooks/useFacilityFilter"
+import { useFacilityFilter, type FacilityOption } from "@/hooks/useFacilityFilter"
 // Auto department filter removed
 
 
@@ -244,6 +246,7 @@ export default function RepairRequestsPage() {
   const user = session?.user as any // Cast NextAuth user to our User type
   const router = useRouter()
   const isMobile = useIsMobile()
+  const queryClient = useQueryClient()
 
   // Redirect if not authenticated
   if (status === "loading") {
@@ -263,8 +266,6 @@ export default function RepairRequestsPage() {
   // Temporarily disable useRealtimeSync to avoid conflict with RealtimeProvider
   // useRepairRealtimeSync()
   const searchParams = useSearchParams()
-  const [requests, setRequests] = React.useState<RepairRequestWithEquipment[]>([])
-  const [isLoading, setIsLoading] = React.useState(true)
   const [allEquipment, setAllEquipment] = React.useState<EquipmentSelectItem[]>([])
 
   // Form state
@@ -317,31 +318,130 @@ export default function RepairRequestsPage() {
   const [searchTerm, setSearchTerm] = React.useState("");
   const debouncedSearch = useSearchDebounce(searchTerm);
 
-  // Consolidated facility filter (client mode) using shared hook
-  const {
-    selectedFacilityName,
-    setSelectedFacilityName,
-    facilities: facilityOptions,
-    showFacilityFilter,
-    filteredItems,
-  } = useFacilityFilter<RepairRequestWithEquipment>({
-    mode: 'client',
-    selectBy: 'name',
-    items: requests,
+  // Regional leader facility filtering (server mode - matches Equipment page pattern)
+  const effectiveTenantKey = user?.don_vi ?? user?.current_don_vi ?? 'none';
+
+  // Separate query for facility options (unfiltered list)
+  const { data: facilityOptionsData } = useQuery<FacilityOption[]>({
+    queryKey: ['repair_request_facilities', { tenant: effectiveTenantKey }],
+    queryFn: async () => {
+      try {
+        // Fetch unfiltered list to get all available facilities for dropdown
+        const result = await callRpc<{ data: RepairRequestWithEquipment[], total: number, page: number, pageSize: number }>({
+          fn: 'repair_request_list',
+          args: {
+            p_q: null,
+            p_status: null,
+            p_page: 1,
+            p_page_size: 5000,
+            p_don_vi: null, // NULL = all facilities user has access to
+          },
+        });
+        
+        // Extract unique facilities from unfiltered results (result.data is the array)
+        const uniqueFacilities = new Map<number, string>();
+        (result.data || []).forEach((r: RepairRequestWithEquipment) => {
+          const facilityId = r.thiet_bi?.facility_id;
+          const facilityName = r.thiet_bi?.facility_name;
+          if (facilityId && facilityName) {
+            uniqueFacilities.set(facilityId, facilityName);
+          }
+        });
+        
+        return Array.from(uniqueFacilities.entries())
+          .map(([id, name]) => ({ id, name }))
+          .sort((a, b) => a.name.localeCompare(b.name));
+      } catch (error) {
+        console.error('[repair-requests] Failed to fetch facility options:', error);
+        return [];
+      }
+    },
+    enabled: !!user,
+    staleTime: 5 * 60_000, // 5 minutes (facilities change rarely)
+    gcTime: 10 * 60_000,
+  });
+
+  const { selectedFacilityId, setSelectedFacilityId: setFacilityId, showFacilityFilter } = useFacilityFilter({
+    mode: 'server',
     userRole: (user?.role as string) || 'user',
-    getFacilityName: (item) => item.thiet_bi?.facility_name ?? null,
+    facilities: facilityOptionsData || [],
   })
+
+  // Wrapper to trigger refetch when facility changes
+  const setSelectedFacilityId = React.useCallback((id: number | null) => {
+    setFacilityId(id);
+    // Don't manually refetch - let queryKey change trigger it
+  }, [setFacilityId]);
+  
+  // TanStack Query for repair requests (server-side pagination + facility filtering)
+  const { 
+    data: repairRequestsRes, 
+    isLoading, 
+    isFetching,
+    refetch: refetchRequests 
+  } = useQuery<{ data: RepairRequestWithEquipment[], total: number, page: number, pageSize: number }>({
+    queryKey: ['repair_request_list', {
+      tenant: effectiveTenantKey,
+      donVi: selectedFacilityId, // Facility filter for regional leaders
+      status: null, // Can be extended for status filtering
+      q: debouncedSearch || null,
+    }],
+    queryFn: async ({ signal }: { signal: AbortSignal }) => {
+      console.log('[repair-requests] Fetching with facilityId:', selectedFacilityId);
+      const result = await callRpc<{ data: RepairRequestWithEquipment[], total: number, page: number, pageSize: number }>({
+        fn: 'repair_request_list',
+        args: {
+          p_q: debouncedSearch || null,
+          p_status: null,
+          p_page: 1,
+          p_page_size: 5000, // TODO: Add pagination support in future
+          p_don_vi: selectedFacilityId,
+        },
+        signal, // Pass signal in options object
+      });
+      console.log('[repair-requests] Fetched', result.data?.length, 'requests');
+      return result;
+    },
+    enabled: !!user,
+    placeholderData: (previousData) => previousData, // Keep previous data during refetch (prevents flash)
+    staleTime: 30_000, // 30 seconds (repair requests change frequently)
+    gcTime: 5 * 60_000, // 5 minutes
+    refetchOnWindowFocus: false,
+  });
+
+  // Extract data from query response
+  const requests = repairRequestsRes?.data ?? [];
+
+  // Use facilities from separate query (prevents circular dependency)
+  const facilityOptions = facilityOptionsData || [];
+
+  const selectedFacilityName = React.useMemo(() => {
+    if (!selectedFacilityId) return null;
+    const facility = facilityOptions.find((f: FacilityOption) => f.id === selectedFacilityId);
+    return facility?.name ?? null;
+  }, [selectedFacilityId, facilityOptions]);
+
   // Backward-compat aliases for existing UI code
   const selectedFacility = selectedFacilityName;
-  const availableFacilities = React.useMemo(
-    () => facilityOptions.map(f => f.name).filter(Boolean) as string[],
-    [facilityOptions]
-  );
+
+  // Memoize facility counts for display (from current filtered data only)
+  const facilityCounts = React.useMemo(() => {
+    const counts = new Map<number, number>();
+    requests.forEach((r: RepairRequestWithEquipment) => {
+      const facilityId = r.thiet_bi?.facility_id;
+      if (facilityId) {
+        counts.set(facilityId, (counts.get(facilityId) || 0) + 1);
+      }
+    });
+    return counts;
+  }, [requests]);
 
   // Align with repo roles: use 'global' instead of legacy 'admin'
   const canSetRepairUnit = !!user && ['global', 'to_qltb'].includes(user.role);
   // Regional leaders are read-only on this page (no create)
   const isRegionalLeader = !!user && user.role === 'regional_leader';
+  // Note: showFacilityFilter comes from useFacilityFilter hook above
+  // It returns true for global, admin, and regional_leader roles
 
   React.useEffect(() => {
     if (editingRequest) {
@@ -363,110 +463,22 @@ export default function RepairRequestsPage() {
       setShowRequestsList(true)
     }
   }, [isRegionalLeader])
+  const totalRequests = repairRequestsRes?.total ?? 0;
 
-  const CACHE_KEY = 'repair_requests_data';
-
-  const fetchRequests = React.useCallback(async () => {
-    setIsLoading(true);
-
-    // Unified cache key (tenant scoping enforced server-side)
-    const cacheKey = CACHE_KEY;
-
-    try {
-      const cachedItemJSON = localStorage.getItem(cacheKey);
-      if (cachedItemJSON) {
-        const cachedItem = JSON.parse(cachedItemJSON);
-        setRequests(cachedItem.data as RepairRequestWithEquipment[]);
-        setIsLoading(false);
-        // No return here, will still fetch in background to update
-      }
-    } catch (e) {
-      console.error("Error reading cache for repair requests, fetching from network.", e);
-      localStorage.removeItem(cacheKey);
-    }
-
-    try {
-      // Fetch via RPC gateway
-      const data = await callRpc<any[]>({
-        fn: 'repair_request_list',
-        args: { p_q: null, p_status: null, p_page: 1, p_page_size: 5000 }
-      })
-
-      if (!data) {
-        toast({
-          variant: "destructive",
-          title: "Lỗi tải danh sách yêu cầu",
-          description: "Không thể tải danh sách yêu cầu.",
-        });
-        if (!localStorage.getItem(cacheKey)) {
-          setRequests([]);
-        }
-      } else {
-        const normalized: RepairRequestWithEquipment[] = (data || []).map((row: any) => ({
-          id: row.id,
-          thiet_bi_id: row.thiet_bi_id,
-          ngay_yeu_cau: row.ngay_yeu_cau,
-          trang_thai: row.trang_thai,
-          mo_ta_su_co: row.mo_ta_su_co,
-          hang_muc_sua_chua: row.hang_muc_sua_chua,
-          ngay_mong_muon_hoan_thanh: row.ngay_mong_muon_hoan_thanh,
-          nguoi_yeu_cau: row.nguoi_yeu_cau,
-          ngay_duyet: row.ngay_duyet,
-          ngay_hoan_thanh: row.ngay_hoan_thanh,
-          nguoi_duyet: row.nguoi_duyet,
-          nguoi_xac_nhan: row.nguoi_xac_nhan,
-          don_vi_thuc_hien: row.don_vi_thuc_hien,
-          ten_don_vi_thue: row.ten_don_vi_thue,
-          ket_qua_sua_chua: row.ket_qua_sua_chua,
-          ly_do_khong_hoan_thanh: row.ly_do_khong_hoan_thanh,
-          thiet_bi: row.thiet_bi ? {
-            ten_thiet_bi: row.thiet_bi.ten_thiet_bi,
-            ma_thiet_bi: row.thiet_bi.ma_thiet_bi,
-            model: row.thiet_bi.model ?? null,
-            serial: row.thiet_bi.serial ?? null,
-            khoa_phong_quan_ly: row.thiet_bi.khoa_phong_quan_ly ?? null,
-            facility_name: row.thiet_bi.facility_name ?? null,
-            facility_id: row.thiet_bi.facility_id ?? null,
-          } : null,
-        }))
-        setRequests(normalized);
-        try {
-          localStorage.setItem(cacheKey, JSON.stringify({ data }));
-        } catch (e) {
-          console.error("Error writing repair requests to localStorage", e);
-        }
-      }
-    } catch (err: any) {
-      console.error('Failed to load repair requests', err);
-      toast({
-        variant: 'destructive',
-        title: 'Lỗi tải danh sách yêu cầu',
-        description: err?.message || 'Không thể tải danh sách yêu cầu.',
-      })
-      if (!localStorage.getItem(cacheKey)) {
-        setRequests([])
-      }
-    } finally {
-      setIsLoading(false);
-    }
-  }, [toast, user]);
-
+  // Legacy function for backward compatibility (now uses refetch + cache invalidation)
   const invalidateCacheAndRefetch = React.useCallback(() => {
-    try {
-      // Clear both general and department-specific cache
-      localStorage.removeItem(CACHE_KEY);
-    } catch (error) {
-      console.error("Failed to invalidate repair requests cache", error);
-    }
-    fetchRequests();
-  }, [fetchRequests]);
+    // Refetch main repair requests query
+    refetchRequests();
+    // Invalidate facility options cache so new facilities appear in dropdown
+    queryClient.invalidateQueries({ queryKey: ['repair_request_facilities'] });
+  }, [refetchRequests, queryClient]);
 
   const handleSelectEquipment = React.useCallback((equipment: EquipmentSelectItem) => {
     setSelectedEquipment(equipment);
     setSearchQuery(`${equipment.ten_thiet_bi} (${equipment.ma_thiet_bi})`);
   }, []);
 
-  // Initial load: fetch a small equipment list via RPC, then load repair requests
+  // Initial load: fetch a small equipment list via RPC
   React.useEffect(() => {
     const fetchInitialData = async () => {
       try {
@@ -487,10 +499,12 @@ export default function RepairRequestsPage() {
           description: 'Không thể tải danh sách thiết bị. ' + (error?.message || ''),
         })
       }
-      fetchRequests()
     }
     fetchInitialData()
-  }, [toast, fetchRequests])
+  }, [toast])
+
+  // Note: Removed manual fetchRequests useEffect - TanStack Query handles fetching automatically
+  // Query will refetch when selectedFacilityId or debouncedSearch changes (via queryKey)
 
   // Support preselect by equipmentId query param using equipment_get RPC if needed
   React.useEffect(() => {
@@ -1106,7 +1120,17 @@ export default function RepairRequestsPage() {
   const columns: ColumnDef<RepairRequestWithEquipment>[] = [
     // 1. Thiết bị (với mô tả sự cố)
     {
-      accessorFn: row => `${row.thiet_bi?.ten_thiet_bi} ${row.mo_ta_su_co}`,
+      accessorFn: (row) => {
+        // Safe null-checking to prevent "undefined undefined" in sorting/filtering
+        const parts: string[] = [];
+        if (row.thiet_bi?.ten_thiet_bi) {
+          parts.push(String(row.thiet_bi.ten_thiet_bi));
+        }
+        if (row.mo_ta_su_co) {
+          parts.push(String(row.mo_ta_su_co));
+        }
+        return parts.join(' ').trim() || 'N/A';
+      },
       id: 'thiet_bi_va_mo_ta',
       header: ({ column }) => (
         <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}>
@@ -1257,8 +1281,13 @@ export default function RepairRequestsPage() {
     },
   ];
 
-  // Use filtered data from shared hook when facility filter is shown
-  const tableData = showFacilityFilter ? filteredItems : requests;
+  // Use data from server (already filtered by facility if selected)
+  const tableData = requests;
+
+  // Create stable key for table to force remount when filter changes (prevents state corruption)
+  const tableKey = React.useMemo(() => {
+    return `${selectedFacilityId || 'all'}_${tableData.length}`;
+  }, [selectedFacilityId, tableData.length]);
 
   // Debug logging for regional leader feature
   React.useEffect(() => {
@@ -1267,12 +1296,12 @@ export default function RepairRequestsPage() {
         role: user?.role,
         isRegionalLeader,
         requestsCount: requests.length,
-        availableFacilitiesCount: availableFacilities.length,
-        availableFacilities,
+        availableFacilitiesCount: facilityOptions.length,
+        facilityOptions,
         sampleRequest: requests[0]
       });
     }
-  }, [isRegionalLeader, requests.length, availableFacilities.length, user?.role]);
+  }, [isRegionalLeader, requests.length, facilityOptions.length, user?.role]);
 
   const table = useReactTable({
     data: tableData,
@@ -1958,9 +1987,9 @@ export default function RepairRequestsPage() {
                     <div className="flex items-center gap-2 flex-1 min-w-0">
                       <Building2 className="h-4 w-4 text-muted-foreground shrink-0" />
                       <Select
-                        value={selectedFacility || "all"}
-onValueChange={(value) => setSelectedFacilityName(value === "all" ? null : value)}
-                        disabled={availableFacilities.length === 0}
+                        value={selectedFacilityId?.toString() || "all"}
+                        onValueChange={(value) => setSelectedFacilityId(value === "all" ? null : Number(value))}
+                        disabled={facilityOptions.length === 0}
                       >
                         <SelectTrigger className="h-9 border-dashed">
                           <SelectValue placeholder="Chọn cơ sở..." />
@@ -1972,17 +2001,17 @@ onValueChange={(value) => setSelectedFacilityName(value === "all" ? null : value
                               <span>Tất cả cơ sở</span>
                             </div>
                           </SelectItem>
-                          {availableFacilities.length === 0 ? (
+                          {facilityOptions.length === 0 ? (
                             <SelectItem value="empty" disabled>
                               <span className="text-muted-foreground italic">Chưa có yêu cầu</span>
                             </SelectItem>
                           ) : (
-                            availableFacilities.map((facility) => {
-                              const count = requests.filter(r => r.thiet_bi?.facility_name === facility).length;
+                            facilityOptions.map((facility) => {
+                              const count = facilityCounts.get(facility.id) || 0;
                               return (
-                                <SelectItem key={facility} value={facility}>
+                                <SelectItem key={facility.id} value={facility.id.toString()}>
                                   <div className="flex items-center justify-between w-full gap-4">
-                                    <span className="truncate">{facility}</span>
+                                    <span className="truncate">{facility.name}</span>
                                     <span className="text-xs text-muted-foreground shrink-0">{count}</span>
                                   </div>
                                 </SelectItem>
@@ -1992,15 +2021,33 @@ onValueChange={(value) => setSelectedFacilityName(value === "all" ? null : value
                         </SelectContent>
                       </Select>
                     </div>
-                    {selectedFacility && (
-                      <Badge variant="secondary" className="shrink-0">
-                        {requests.filter(r => r.thiet_bi?.facility_name === selectedFacility).length} yêu cầu
-                      </Badge>
+                    {selectedFacilityName && selectedFacilityId && (
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Badge variant="secondary" className="shrink-0 cursor-help">
+                              {facilityCounts.get(selectedFacilityId) || 0} yêu cầu
+                            </Badge>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>Số yêu cầu hiển thị ở cơ sở này</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
                     )}
-                    {!selectedFacility && availableFacilities.length > 0 && (
-                      <Badge variant="outline" className="shrink-0">
-                        {availableFacilities.length} cơ sở • {requests.length} yêu cầu
-                      </Badge>
+                    {!selectedFacility && facilityOptions.length > 0 && (
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Badge variant="outline" className="shrink-0 cursor-help">
+                              {facilityOptions.length} cơ sở • {requests.length} yêu cầu
+                            </Badge>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>Tổng số cơ sở và yêu cầu hiển thị</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
                     )}
                   </div>
                 )}
@@ -2177,7 +2224,7 @@ onValueChange={(value) => setSelectedFacilityName(value === "all" ? null : value
                   </div>
                 ) : (
                   /* Desktop Table View */
-                  <div className="rounded-md border">
+                  <div key={tableKey} className="rounded-md border">
                     <Table>
                       <TableHeader>
                         {table.getHeaderGroups().map((headerGroup) => (
