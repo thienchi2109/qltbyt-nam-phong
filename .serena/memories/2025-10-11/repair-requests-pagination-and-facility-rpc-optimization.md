@@ -1,9 +1,9 @@
 # Repair Requests Pagination and Facility RPC Optimization
 
 **Date**: October 11, 2025  
-**Session Duration**: ~2 hours  
+**Session Duration**: ~2.5 hours  
 **Branch**: feat/rpc-enhancement  
-**Commit**: 7337957  
+**Commits**: 7337957 (initial), 34383ee (P1 bug fix)  
 
 ---
 
@@ -331,10 +331,53 @@ Populate dropdown (cached 5 minutes)
 
 ---
 
+## P1 Critical Bug Fix (Caught by QA)
+
+### 🐛 Bug: Double Pagination Breaking Pages 2+
+
+**Issue**: Pagination unusable beyond page 1 - all pages after first showed no data
+
+**Root Cause**:
+```typescript
+// ❌ BROKEN: Both server AND client pagination enabled
+const table = useReactTable({
+  manualPagination: true,           // Server handles pagination
+  getPaginationRowModel: getPaginationRowModel(),  // Client also paginates!
+});
+```
+
+**What Happened**:
+1. User clicks "Page 2"
+2. Server returns records 21-40 (20 items, array indices 0-19)
+3. Client's `getPaginationRowModel()` tries to slice for page 2:
+   - Calculates: `start = pageIndex * pageSize = 1 * 20 = 20`
+   - Tries: `data.slice(20, 40)` on a 20-item array
+   - Result: Empty array (no items at indices 20-39)
+
+**Fix** (Commit 34383ee):
+```typescript
+// ✅ FIXED: Server handles pagination, client displays all returned data
+const table = useReactTable({
+  manualPagination: true,
+  // getPaginationRowModel() removed - server handles pagination
+});
+```
+
+**Key Insight**:
+- `manualPagination: true` = server-side pagination
+- `getPaginationRowModel()` = client-side pagination
+- **These are mutually exclusive** - using both causes double pagination
+
+**Files Changed**: `src/app/(app)/repair-requests/page.tsx` (-1 line)
+
+**Credit**: QA Team for catching this critical issue before production deployment
+
+---
+
 ## Commit Information
 
-**Commit Hash**: 7337957  
-**Commit Message**: feat(repair-requests): Add pagination, optimize facility RPC, and fix global user filter  
+**Initial Implementation**: 7337957  
+**P1 Bug Fix**: 34383ee  
 **Branch**: feat/rpc-enhancement  
 **Co-authored-by**: factory-droid[bot] <138933559+factory-droid[bot]@users.noreply.github.com>
 
