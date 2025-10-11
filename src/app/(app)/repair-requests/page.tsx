@@ -319,7 +319,7 @@ export default function RepairRequestsPage() {
   const debouncedSearch = useSearchDebounce(searchTerm);
 
   // Regional leader facility filtering (server mode - matches Equipment page pattern)
-  const { selectedFacilityId, setSelectedFacilityId } = useFacilityFilter({
+  const { selectedFacilityId, setSelectedFacilityId, showFacilityFilter } = useFacilityFilter({
     mode: 'server',
     userRole: (user?.role as string) || 'user',
   })
@@ -380,8 +380,8 @@ export default function RepairRequestsPage() {
   const canSetRepairUnit = !!user && ['global', 'to_qltb'].includes(user.role);
   // Regional leaders are read-only on this page (no create)
   const isRegionalLeader = !!user && user.role === 'regional_leader';
-  // Show facility filter for regional leaders
-  const showFacilityFilter = isRegionalLeader;
+  // Note: showFacilityFilter comes from useFacilityFilter hook above
+  // It returns true for global, admin, and regional_leader roles
 
   React.useEffect(() => {
     if (editingRequest) {
