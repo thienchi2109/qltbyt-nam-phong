@@ -68,8 +68,8 @@ BEGIN
     RAISE EXCEPTION 'Unauthorized: Authentication required';
   END IF;
   
-  -- Get user context from JWT claims
-  v_user_role := current_setting('request.jwt.claims', true)::json->>'role';
+  -- Get user context from JWT claims (use app_role, not role)
+  v_user_role := current_setting('request.jwt.claims', true)::json->>'app_role';
   v_user_don_vi := (current_setting('request.jwt.claims', true)::json->>'don_vi')::BIGINT;
   
   -- Validate role exists and is allowed
@@ -77,9 +77,10 @@ BEGIN
     RAISE EXCEPTION 'Unauthorized: Invalid or missing role';
   END IF;
   
-  -- Tenant isolation robustness for non-global users
-  IF v_user_role != 'global' THEN
-    -- Require tenant context for non-global users
+  -- Tenant isolation robustness for non-global, non-regional_leader users
+  -- EXCEPTION: regional_leader can view multiple facilities (read-only multi-tenant)
+  IF v_user_role NOT IN ('global', 'regional_leader') THEN
+    -- Require tenant context for restricted users
     IF v_user_don_vi IS NULL THEN
       RAISE EXCEPTION 'Forbidden: Tenant context required for non-global users';
     END IF;
@@ -191,8 +192,8 @@ BEGIN
     RAISE EXCEPTION 'Unauthorized: Authentication required';
   END IF;
   
-  -- Get user context from JWT claims
-  v_user_role := current_setting('request.jwt.claims', true)::json->>'role';
+  -- Get user context from JWT claims (use app_role, not role)
+  v_user_role := current_setting('request.jwt.claims', true)::json->>'app_role';
   v_user_don_vi := (current_setting('request.jwt.claims', true)::json->>'don_vi')::BIGINT;
   
   -- Validate role exists and is allowed
@@ -200,9 +201,10 @@ BEGIN
     RAISE EXCEPTION 'Unauthorized: Invalid or missing role';
   END IF;
   
-  -- Tenant isolation robustness for non-global users
-  IF v_user_role != 'global' THEN
-    -- Require tenant context for non-global users
+  -- Tenant isolation robustness for non-global, non-regional_leader users
+  -- EXCEPTION: regional_leader can view multiple facilities (read-only multi-tenant)
+  IF v_user_role NOT IN ('global', 'regional_leader') THEN
+    -- Require tenant context for restricted users
     IF v_user_don_vi IS NULL THEN
       RAISE EXCEPTION 'Forbidden: Tenant context required for non-global users';
     END IF;
