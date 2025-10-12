@@ -4,7 +4,8 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import type { DensityMode } from "./DensityToggle"
-import type { TransferRequest } from "@/types/database"
+import type { TransferData } from "@/lib/transfer-normalizer"
+import { normalizeTransferData } from "@/lib/transfer-normalizer"
 
 const TRANSFER_TYPES = {
   noi_bo: 'Nội bộ',
@@ -13,7 +14,7 @@ const TRANSFER_TYPES = {
 }
 
 interface TransferCardProps {
-  transfer: TransferRequest
+  transfer: TransferData
   density: DensityMode
   onClick: () => void
   statusActions?: React.ReactNode[]
@@ -37,7 +38,7 @@ function getTypeVariant(type: string): "default" | "secondary" | "destructive" |
 }
 
 export function TransferCard({
-  transfer,
+  transfer: rawTransfer,
   density,
   onClick,
   statusActions = [],
@@ -46,6 +47,9 @@ export function TransferCard({
   canEdit = false,
   canDelete = false
 }: TransferCardProps) {
+  // Normalize data to consistent shape (handles both old and new API)
+  const transfer = normalizeTransferData(rawTransfer)
+  
   const isOverdue = 
     transfer.ngay_du_kien_tra && 
     (transfer.trang_thai === 'da_ban_giao' || transfer.trang_thai === 'dang_luan_chuyen') &&
