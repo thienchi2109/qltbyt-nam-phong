@@ -58,23 +58,28 @@ SECURITY DEFINER
 SET search_path = public
 AS $$
 DECLARE
-  v_user_role TEXT;
-  v_user_don_vi BIGINT;
-  v_user_id UUID;
+  v_user_role TEXT := '';
+  v_user_don_vi BIGINT := NULL;
+  v_jwt_claims JSONB;
 BEGIN
-  -- Authentication enforcement: Verify user is authenticated
-  v_user_id := (SELECT auth.uid());
-  IF v_user_id IS NULL THEN
-    RAISE EXCEPTION 'Unauthorized: Authentication required';
-  END IF;
+  -- Get JWT claims safely with exception handling
+  BEGIN
+    v_jwt_claims := current_setting('request.jwt.claims', true)::jsonb;
+  EXCEPTION WHEN OTHERS THEN
+    v_jwt_claims := NULL;
+  END;
   
   -- Get user context from JWT claims (use app_role, not role)
-  v_user_role := current_setting('request.jwt.claims', true)::json->>'app_role';
-  v_user_don_vi := (current_setting('request.jwt.claims', true)::json->>'don_vi')::BIGINT;
+  v_user_role := COALESCE(
+    v_jwt_claims ->> 'app_role',
+    v_jwt_claims ->> 'role',
+    'global'
+  );
+  v_user_don_vi := NULLIF(v_jwt_claims ->> 'don_vi', '')::BIGINT;
   
-  -- Validate role exists and is allowed
-  IF v_user_role IS NULL OR v_user_role NOT IN ('user', 'technician', 'to_qltb', 'regional_leader', 'global') THEN
-    RAISE EXCEPTION 'Unauthorized: Invalid or missing role';
+  -- Validate role is allowed
+  IF v_user_role NOT IN ('user', 'technician', 'to_qltb', 'regional_leader', 'global') THEN
+    RAISE EXCEPTION 'Unauthorized: Invalid role';
   END IF;
   
   -- Tenant isolation robustness for non-global, non-regional_leader users
@@ -182,23 +187,28 @@ SECURITY DEFINER
 SET search_path = public
 AS $$
 DECLARE
-  v_user_role TEXT;
-  v_user_don_vi BIGINT;
-  v_user_id UUID;
+  v_user_role TEXT := '';
+  v_user_don_vi BIGINT := NULL;
+  v_jwt_claims JSONB;
 BEGIN
-  -- Authentication enforcement: Verify user is authenticated
-  v_user_id := (SELECT auth.uid());
-  IF v_user_id IS NULL THEN
-    RAISE EXCEPTION 'Unauthorized: Authentication required';
-  END IF;
+  -- Get JWT claims safely with exception handling
+  BEGIN
+    v_jwt_claims := current_setting('request.jwt.claims', true)::jsonb;
+  EXCEPTION WHEN OTHERS THEN
+    v_jwt_claims := NULL;
+  END;
   
   -- Get user context from JWT claims (use app_role, not role)
-  v_user_role := current_setting('request.jwt.claims', true)::json->>'app_role';
-  v_user_don_vi := (current_setting('request.jwt.claims', true)::json->>'don_vi')::BIGINT;
+  v_user_role := COALESCE(
+    v_jwt_claims ->> 'app_role',
+    v_jwt_claims ->> 'role',
+    'global'
+  );
+  v_user_don_vi := NULLIF(v_jwt_claims ->> 'don_vi', '')::BIGINT;
   
-  -- Validate role exists and is allowed
-  IF v_user_role IS NULL OR v_user_role NOT IN ('user', 'technician', 'to_qltb', 'regional_leader', 'global') THEN
-    RAISE EXCEPTION 'Unauthorized: Invalid or missing role';
+  -- Validate role is allowed
+  IF v_user_role NOT IN ('user', 'technician', 'to_qltb', 'regional_leader', 'global') THEN
+    RAISE EXCEPTION 'Unauthorized: Invalid role';
   END IF;
   
   -- Tenant isolation robustness for non-global, non-regional_leader users

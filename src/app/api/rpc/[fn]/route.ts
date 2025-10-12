@@ -185,6 +185,12 @@ export async function POST(req: NextRequest, context: { params: Promise<{ fn: st
     const isJson = res.headers.get('content-type')?.includes('application/json')
     const payload = isJson ? JSON.parse(text || 'null') : text
     if (!res.ok) {
+      console.error(`Supabase RPC error for ${fn}:`, {
+        status: res.status,
+        payload,
+        body: JSON.stringify(body, null, 2),
+        claims: {app_role: appRole, don_vi: donVi, user_id: userId}
+      })
       return NextResponse.json({ error: payload || 'RPC error' }, { status: res.status })
     }
     return NextResponse.json(payload)
