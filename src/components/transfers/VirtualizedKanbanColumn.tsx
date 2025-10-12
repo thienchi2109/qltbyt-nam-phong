@@ -46,11 +46,10 @@ export function VirtualizedKanbanColumn({
           listRef={listRef}
           rowCount={transfers.length}
           rowHeight={density === "compact" ? 88 : 168}
-          defaultHeight={height}
-          overscanCount={5}
           rowComponent={RowComponent}
           rowProps={{}}
-          style={{ width }}
+          style={{ height, width }}
+          overscanCount={5}
         />
       )}
     </AutoSizer>
