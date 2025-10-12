@@ -70,14 +70,18 @@ BEGIN
   END;
   
   -- Get user context from JWT claims (use app_role, not role)
+  -- SECURITY: Do NOT default to 'global' - fail secure when claims missing
   v_user_role := COALESCE(
     v_jwt_claims ->> 'app_role',
-    v_jwt_claims ->> 'role',
-    'global'
+    v_jwt_claims ->> 'role'
   );
   v_user_don_vi := NULLIF(v_jwt_claims ->> 'don_vi', '')::BIGINT;
   
-  -- Validate role is allowed
+  -- Validate role exists and is allowed (fail-secure: deny access if claim missing)
+  IF v_user_role IS NULL THEN
+    RAISE EXCEPTION 'Unauthorized: Missing role claim in JWT';
+  END IF;
+  
   IF v_user_role NOT IN ('user', 'technician', 'to_qltb', 'regional_leader', 'global') THEN
     RAISE EXCEPTION 'Unauthorized: Invalid role';
   END IF;
@@ -199,14 +203,18 @@ BEGIN
   END;
   
   -- Get user context from JWT claims (use app_role, not role)
+  -- SECURITY: Do NOT default to 'global' - fail secure when claims missing
   v_user_role := COALESCE(
     v_jwt_claims ->> 'app_role',
-    v_jwt_claims ->> 'role',
-    'global'
+    v_jwt_claims ->> 'role'
   );
   v_user_don_vi := NULLIF(v_jwt_claims ->> 'don_vi', '')::BIGINT;
   
-  -- Validate role is allowed
+  -- Validate role exists and is allowed (fail-secure: deny access if claim missing)
+  IF v_user_role IS NULL THEN
+    RAISE EXCEPTION 'Unauthorized: Missing role claim in JWT';
+  END IF;
+  
   IF v_user_role NOT IN ('user', 'technician', 'to_qltb', 'regional_leader', 'global') THEN
     RAISE EXCEPTION 'Unauthorized: Invalid role';
   END IF;
