@@ -21,7 +21,7 @@ export function VirtualizedKanbanColumn({
 }: VirtualizedKanbanColumnProps) {
   const listRef = React.useRef<ListImperativeAPI | null>(null)
 
-  // Row component for virtualized list
+  // Row component for virtualized list (react-window v2 API)
   const RowComponent = React.useCallback(
     ({ index, style }: RowComponentProps) => (
       <div style={style}>
