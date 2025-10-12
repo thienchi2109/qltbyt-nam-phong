@@ -98,10 +98,20 @@ export function FilterBar({ filters, onFiltersChange, facilityId }: FilterBarPro
     return count
   }, [filters])
 
-  // Clear all filters
+  // Clear user-applied filters but preserve smart defaults (30-day window + safety limit)
   const handleClearFilters = () => {
     setSearchInput('')
-    onFiltersChange({})
+    
+    // Reset to smart defaults instead of clearing everything
+    // This prevents global/regional_leader users from accidentally loading unbounded historical data
+    const thirtyDaysAgo = new Date()
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
+    
+    onFiltersChange({
+      dateFrom: thirtyDaysAgo.toISOString().split('T')[0], // Preserve 30-day smart default
+      limit: 500, // Preserve safety net
+      // Clear user-applied filters: assigneeIds, types, statuses, searchText, dateTo, facilityIds
+    })
   }
 
   // Toggle type filter
@@ -142,9 +152,25 @@ export function FilterBar({ filters, onFiltersChange, facilityId }: FilterBarPro
     onFiltersChange({ ...filters, dateTo: date || undefined })
   }
 
+  // Check if we're at the default 30-day window (within 1 day tolerance for date comparisons)
+  const isAtDefaultDateWindow = React.useMemo(() => {
+    if (!filters.dateFrom || filters.dateTo) return false
+    
+    const thirtyDaysAgo = new Date()
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
+    const defaultDateStr = thirtyDaysAgo.toISOString().split('T')[0]
+    
+    // Allow 1 day tolerance (user might have cleared filters at different times)
+    const filterDate = new Date(filters.dateFrom)
+    const defaultDate = new Date(defaultDateStr)
+    const diffDays = Math.abs((filterDate.getTime() - defaultDate.getTime()) / (1000 * 60 * 60 * 24))
+    
+    return diffDays <= 1
+  }, [filters.dateFrom, filters.dateTo])
+
   return (
     <div className="space-y-3">
-      {/* Search Bar */}
+      {/* Search Bar with Date Range Hint */}
       <div className="flex gap-2">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -163,6 +189,14 @@ export function FilterBar({ filters, onFiltersChange, facilityId }: FilterBarPro
             </button>
           )}
         </div>
+
+        {/* Date Range Info Badge - shows when at default 30-day window */}
+        {isAtDefaultDateWindow && (
+          <Badge variant="outline" className="gap-1.5 px-3 py-1.5 text-xs font-normal text-muted-foreground border-dashed">
+            <Calendar className="h-3.5 w-3.5" />
+            <span>Hiển thị: 30 ngày gần đây</span>
+          </Badge>
+        )}
 
         {/* Advanced Filters Popover */}
         <Popover open={isAdvancedOpen} onOpenChange={setIsAdvancedOpen}>
