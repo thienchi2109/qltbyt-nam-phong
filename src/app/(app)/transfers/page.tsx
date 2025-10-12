@@ -54,6 +54,7 @@ import {
   type LaneCollapsedState,
   type VisibleCountsState,
 } from "@/lib/kanban-preferences"
+import { normalizeTransferData } from "@/lib/transfer-normalizer"
 
 export default function TransfersPage() {
   const { toast } = useToast()
@@ -143,7 +144,7 @@ export default function TransfersPage() {
 
   // Phase 0: Kanban scalability state management
   const [densityMode, setDensityModeState] = React.useState<DensityMode>(() => getDensityMode())
-  const [laneCollapsed, setLaneCollapsedState] = React.useState<LaneCollapsedState>(() => getLaneCollapsedState())
+  const [laneCollapsed, setLaneCollapsedStateLocal] = React.useState<LaneCollapsedState>(() => getLaneCollapsedState())
   const [visibleCounts, setVisibleCountsState] = React.useState<VisibleCountsState>(() => getVisibleCounts())
 
   // Persist density mode changes
@@ -154,7 +155,7 @@ export default function TransfersPage() {
 
   // Persist lane collapsed state changes
   const handleToggleCollapse = React.useCallback((status: TransferStatus) => {
-    setLaneCollapsedState((prev) => {
+    setLaneCollapsedStateLocal((prev) => {
       const next = { ...prev, [status]: !prev[status] }
       setLaneCollapsedState(next)
       return next
@@ -647,19 +648,23 @@ export default function TransfersPage() {
                           <VirtualizedKanbanColumn
                             transfers={columnTransfers}
                             density={densityMode}
-                            renderCard={(transfer, index) => (
-                              <TransferCard
-                                key={transfer.id}
-                                transfer={transfer as any}
-                                density={densityMode}
-                                onClick={() => handleViewDetail(transfer as any)}
-                                statusActions={getStatusActions(transfer as any)}
-                                onEdit={() => handleEditTransfer(transfer as any)}
-                                onDelete={() => handleDeleteTransfer(transfer.id)}
-                                canEdit={canEdit(transfer as any)}
-                                canDelete={canDelete(transfer as any)}
-                              />
-                            )}
+                            renderCard={(transfer, index) => {
+                              // Normalize TransferKanbanItem to TransferRequest for handlers
+                              const normalizedTransfer = normalizeTransferData(transfer)
+                              return (
+                                <TransferCard
+                                  key={transfer.id}
+                                  transfer={transfer as any}
+                                  density={densityMode}
+                                  onClick={() => handleViewDetail(normalizedTransfer)}
+                                  statusActions={getStatusActions(normalizedTransfer)}
+                                  onEdit={() => handleEditTransfer(normalizedTransfer)}
+                                  onDelete={() => handleDeleteTransfer(transfer.id)}
+                                  canEdit={canEdit(normalizedTransfer)}
+                                  canDelete={canDelete(normalizedTransfer)}
+                                />
+                              )
+                            }}
                           />
                         )}
                       </div>
