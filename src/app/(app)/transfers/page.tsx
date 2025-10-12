@@ -25,7 +25,7 @@ import { useToast } from "@/hooks/use-toast"
 import { callRpc } from "@/lib/rpc-client"
 import { useSession } from "next-auth/react"
 import { useRouter } from "next/navigation"
-import { useTransferRequests, useCreateTransferRequest, useUpdateTransferRequest, useApproveTransferRequest, transferKeys } from "@/hooks/use-cached-transfers"
+import { useTransfersKanban, useTransferCounts } from "@/hooks/useTransfersKanban"
 import { AddTransferDialog } from "@/components/add-transfer-dialog"
 import { EditTransferDialog } from "@/components/edit-transfer-dialog"
 import { TransferDetailDialog } from "@/components/transfer-detail-dialog"
@@ -37,10 +37,13 @@ import {
   TRANSFER_TYPES,
   type TransferStatus
 } from "@/types/database"
+import { TransferKanbanFilters, KANBAN_COLUMNS } from "@/types/transfer-kanban"
 import { useFacilityFilter } from "@/hooks/useFacilityFilter"
 import { CollapsibleLane, type TransferStatus as LaneTransferStatus } from "@/components/transfers/CollapsibleLane"
 import { DensityToggle, type DensityMode } from "@/components/transfers/DensityToggle"
 import { TransferCard } from "@/components/transfers/TransferCard"
+import { FilterBar } from "@/components/transfers/FilterBar"
+import { VirtualizedKanbanColumn } from "@/components/transfers/VirtualizedKanbanColumn"
 import {
   getDensityMode,
   setDensityMode,
@@ -51,40 +54,6 @@ import {
   type LaneCollapsedState,
   type VisibleCountsState,
 } from "@/lib/kanban-preferences"
-
-
-const KANBAN_COLUMNS: { status: TransferStatus; title: string; description: string; color: string }[] = [
-  {
-    status: 'cho_duyet',
-    title: 'Chờ duyệt',
-    description: 'Yêu cầu mới, chờ phê duyệt',
-    color: 'bg-slate-50 border-slate-200'
-  },
-  {
-    status: 'da_duyet', 
-    title: 'Đã duyệt',
-    description: 'Đã được phê duyệt, chờ bàn giao',
-    color: 'bg-blue-50 border-blue-200'
-  },
-  {
-    status: 'dang_luan_chuyen',
-    title: 'Đang luân chuyển', 
-    description: 'Thiết bị đang được luân chuyển',
-    color: 'bg-orange-50 border-orange-200'
-  },
-  {
-    status: 'da_ban_giao',
-    title: 'Đã bàn giao',
-    description: 'Đã bàn giao cho bên ngoài, chờ hoàn trả',
-    color: 'bg-purple-50 border-purple-200'
-  },
-  {
-    status: 'hoan_thanh',
-    title: 'Hoàn thành',
-    description: 'Đã hoàn thành luân chuyển',
-    color: 'bg-green-50 border-green-200'
-  }
-]
 
 export default function TransfersPage() {
   const { toast } = useToast()
@@ -147,19 +116,30 @@ export default function TransfersPage() {
     facilities: facilityOptionsData || [],
   })
 
+  // ✅ SERVER-SIDE FILTERS STATE
+  const [filters, setFilters] = React.useState<TransferKanbanFilters>(() => ({
+    facilityIds: selectedFacilityId ? [selectedFacilityId] : undefined,
+  }))
+
+  // Update facility filter when it changes
+  React.useEffect(() => {
+    setFilters(prev => ({
+      ...prev,
+      facilityIds: selectedFacilityId ? [selectedFacilityId] : undefined,
+    }))
+  }, [selectedFacilityId])
+
   // Wrapper to trigger refetch when facility changes
   const setSelectedFacilityId = React.useCallback((id: number | null) => {
     setFacilityId(id);
     // TanStack Query will auto-refetch when queryKey changes
   }, [setFacilityId]);
 
-  // ✅ Server-side filtering via p_don_vi parameter
-  const { data: transfers = [], isLoading, refetch: refetchTransfers } = useTransferRequests({
-    don_vi: selectedFacilityId, // ✅ Server filters here
-  })
-  const createTransferRequest = useCreateTransferRequest()
-  const updateTransferRequest = useUpdateTransferRequest()
-  const approveTransferRequest = useApproveTransferRequest()
+  // ✅ SERVER-SIDE DATA FETCHING
+  const { data, isLoading, refetch: refetchTransfers } = useTransfersKanban(filters)
+  const { data: counts } = useTransferCounts(
+    selectedFacilityId ? [selectedFacilityId] : undefined
+  )
 
   // Phase 0: Kanban scalability state management
   const [densityMode, setDensityModeState] = React.useState<DensityMode>(() => getDensityMode())
@@ -204,11 +184,9 @@ export default function TransfersPage() {
     refetchTransfers().finally(() => setIsRefreshing(false))
   }
 
-  // Server-side filtering means displayedTransfers = transfers (already filtered by RPC)
-  const displayedTransfers = transfers
-
+  // Server-side filtering means no local filtering needed
   const getTransfersByStatus = (status: TransferStatus) => {
-    return displayedTransfers.filter(transfer => transfer.trang_thai === status)
+    return data?.transfers[status] || []
   }
 
   const getTypeVariant = (type: TransferRequest['loai_hinh']) => {
@@ -627,52 +605,77 @@ export default function TransfersPage() {
             )}
           </div>
         </CardHeader>
-        <CardContent>
-          {/* Kanban Board */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">
-            {KANBAN_COLUMNS.map((column) => {
-              const columnTransfers = getTransfersByStatus(column.status)
-              const totalCount = columnTransfers.length
-              const visibleCount = Math.min(visibleCounts[column.status], totalCount)
-              const visibleTransfers = columnTransfers.slice(0, visibleCount)
-              
-              return (
-                <CollapsibleLane
-                  key={column.status}
-                  status={column.status as LaneTransferStatus}
-                  title={column.title}
-                  description={column.description}
-                  color={column.color}
-                  totalCount={totalCount}
-                  visibleCount={visibleCount}
-                  isCollapsed={laneCollapsed[column.status]}
-                  onToggleCollapse={() => handleToggleCollapse(column.status)}
-                  onShowMore={() => handleShowMore(column.status)}
-                  isLoading={isLoading}
-                >
-                  {isLoading ? (
-                    Array.from({ length: 3 }).map((_, i) => (
-                      <Skeleton key={i} className="h-32 w-full" />
-                    ))
-                  ) : (
-                    visibleTransfers.map((transfer) => (
-                      <TransferCard
-                        key={transfer.id}
-                        transfer={transfer}
-                        density={densityMode}
-                        onClick={() => handleViewDetail(transfer)}
-                        statusActions={getStatusActions(transfer)}
-                        onEdit={() => handleEditTransfer(transfer)}
-                        onDelete={() => handleDeleteTransfer(transfer.id)}
-                        canEdit={canEdit(transfer)}
-                        canDelete={canDelete(transfer)}
-                      />
-                    ))
-                  )}
-                </CollapsibleLane>
-              )
-            })}
-          </div>
+        <CardContent className="space-y-4">
+          {/* ✅ FILTER BAR (NEW) */}
+          <FilterBar 
+            filters={filters}
+            onFiltersChange={setFilters}
+            facilityId={selectedFacilityId || undefined}
+          />
+
+          {/* Loading State */}
+          {isLoading ? (
+            <div className="text-center py-8">
+              <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full mx-auto" />
+              <p className="text-sm text-muted-foreground mt-2">Đang tải...</p>
+            </div>
+          ) : (
+            <>
+              {/* ✅ KANBAN BOARD (Always visible) */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">
+                {KANBAN_COLUMNS.map((column) => {
+                  const columnTransfers = data?.transfers[column.status] || []
+                  const totalCount = counts?.columnCounts[column.status] || columnTransfers.length
+                  
+                  return (
+                    <div key={column.status} className="flex flex-col gap-2">
+                      {/* Column Header with Elegant Pastel Color */}
+                      <div className={`p-4 rounded-t-lg border-2 ${column.bgColor} ${column.borderColor}`}>
+                        <div className="flex items-center justify-between">
+                          <h3 className={`font-semibold ${column.textColor}`}>{column.title}</h3>
+                          <Badge variant="secondary">{totalCount}</Badge>
+                        </div>
+                      </div>
+                      
+                      {/* Column Content with Virtualization */}
+                      <div className={`flex-1 min-h-[400px] border-2 border-t-0 rounded-b-lg p-2 ${column.bgColor} ${column.borderColor}`}>
+                        {columnTransfers.length === 0 ? (
+                          <div className="flex items-center justify-center h-32 text-sm text-muted-foreground">
+                            Không có yêu cầu nào
+                          </div>
+                        ) : (
+                          <VirtualizedKanbanColumn
+                            transfers={columnTransfers}
+                            density={densityMode}
+                            renderCard={(transfer, index) => (
+                              <TransferCard
+                                key={transfer.id}
+                                transfer={transfer as any}
+                                density={densityMode}
+                                onClick={() => handleViewDetail(transfer as any)}
+                                statusActions={getStatusActions(transfer as any)}
+                                onEdit={() => handleEditTransfer(transfer as any)}
+                                onDelete={() => handleDeleteTransfer(transfer.id)}
+                                canEdit={canEdit(transfer as any)}
+                                canDelete={canDelete(transfer as any)}
+                              />
+                            )}
+                          />
+                        )}
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+
+              {/* Total Count */}
+              {data && data.totalCount > 0 && (
+                <div className="text-sm text-muted-foreground text-center pt-4">
+                  Tổng số: {data.totalCount} yêu cầu
+                </div>
+              )}
+            </>
+          )}
         </CardContent>
       </Card>
     </>
