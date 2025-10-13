@@ -16,23 +16,75 @@ export const maintenanceKeys = {
   plan: (filters: Record<string, any>) => [...maintenanceKeys.plans(), { filters }] as const,
 }
 
-// Fetch maintenance plans (ke_hoach_bao_tri)
+// TypeScript interface for paginated maintenance plan response
+export interface MaintenancePlanListResponse {
+  data: MaintenancePlan[]
+  total: number
+  page: number
+  pageSize: number
+}
+
+// TypeScript interface for individual maintenance plan (with facility_name from server-side JOIN)
+export interface MaintenancePlan {
+  id: number
+  ten_ke_hoach: string
+  nam: number
+  loai_cong_viec: string
+  khoa_phong: string | null
+  nguoi_lap_ke_hoach: string | null
+  trang_thai: 'Bản nháp' | 'Đã duyệt' | 'Không duyệt'
+  ngay_phe_duyet: string | null
+  nguoi_duyet: string | null
+  ly_do_khong_duyet: string | null
+  created_at: string
+  don_vi: number | null
+  facility_name: string | null  // ✅ NEW: From server-side JOIN (dv.name)
+}
+
+// Fetch maintenance plans (ke_hoach_bao_tri) with server-side pagination and facility filtering
 export function useMaintenancePlans(filters?: {
   search?: string
+  facilityId?: number | null
+  page?: number
+  pageSize?: number
 }) {
-  return useQuery({
-    queryKey: maintenanceKeys.plan(filters || {}),
+  const { search, facilityId, page = 1, pageSize = 50 } = filters || {}
+
+  return useQuery<MaintenancePlanListResponse>({
+    // ✅ Query key includes ALL filter params for proper cache invalidation
+    queryKey: maintenanceKeys.plan({
+      search: search ?? null,
+      facilityId: facilityId ?? null,
+      page,
+      pageSize
+    }),
     queryFn: async () => {
-      const data = await callRpc<any[]>({
+      // ✅ Call new RPC with pagination and facility filter parameters
+      const result = await callRpc<MaintenancePlanListResponse>({
         fn: 'maintenance_plan_list',
-        args: { p_q: filters?.search ?? null }
+        args: {
+          p_q: search ?? null,
+          p_don_vi: facilityId ?? null,
+          p_page: page,
+          p_page_size: pageSize,
+        }
       })
-      // Normalize don_vi from string to number for consistent comparison
-      return (data ?? []).map(plan => ({
+
+      // ✅ Normalize don_vi to number (keep existing logic for consistency)
+      const normalizedData = (result.data ?? []).map(plan => ({
         ...plan,
         don_vi: plan.don_vi ? Number(plan.don_vi) : plan.don_vi
       }))
+
+      return {
+        data: normalizedData,
+        total: result.total,
+        page: result.page,
+        pageSize: result.pageSize,
+      }
     },
+    // ✅ Prevent UI flash during pagination/filter changes
+    placeholderData: (previousData) => previousData,
     staleTime: 3 * 60 * 1000, // 3 minutes - maintenance plans don't change frequently
     gcTime: 15 * 60 * 1000, // 15 minutes
   })
