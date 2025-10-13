@@ -109,7 +109,7 @@ import { ImportEquipmentDialog } from "@/components/import-equipment-dialog"
 import { useSession } from "next-auth/react"
 import { useTenantBranding } from "@/hooks/use-tenant-branding"
 import { EditEquipmentDialog } from "@/components/edit-equipment-dialog"
-import { MobileFiltersDropdown } from "@/components/mobile-filters-dropdown"
+import { FilterBottomSheet } from "@/components/equipment/filter-bottom-sheet"
 import { ResponsivePaginationInfo } from "@/components/responsive-pagination-info"
 import { useIsMobile } from "@/hooks/use-mobile"
 import { useMediaQuery } from "@/hooks/use-media-query"
@@ -431,6 +431,7 @@ export default function EquipmentPage() {
   const [sorting, setSorting] = React.useState<SortingState>([])
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([])
   const [searchTerm, setSearchTerm] = React.useState("")
+  const [isFilterSheetOpen, setIsFilterSheetOpen] = React.useState(false)
   const debouncedSearch = useSearchDebounce(searchTerm)
   const [isAddDialogOpen, setIsAddDialogOpen] = React.useState(false)
   const [isImportDialogOpen, setIsImportDialogOpen] = React.useState(false)
@@ -1817,7 +1818,7 @@ export default function EquipmentPage() {
     }
 
     return isCardView ? (
-      <div className="relative space-y-2">
+      <div className="relative space-y-3">
         {isFetching && (
           <div className="absolute inset-0 bg-background/40 backdrop-blur-[1px] flex items-center justify-center z-10">
             <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
@@ -2475,7 +2476,7 @@ export default function EquipmentPage() {
 
           {/* Department auto-filter removed */}
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-4 px-4 md:px-6">
           {/* Unified toolbar */}
           <div className="flex flex-col gap-2">
             <div className="flex flex-col gap-2 md:flex-row md:flex-wrap md:items-center md:justify-between">
@@ -2491,41 +2492,31 @@ export default function EquipmentPage() {
                 </div>
                 <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
                   {(isMobile || useTabletFilters) ? (
-                    <MobileFiltersDropdown
-                      activeFiltersCount={
-                        ((table.getColumn("tinh_trang_hien_tai")?.getFilterValue() as string[])?.length || 0) +
-                        ((table.getColumn("khoa_phong_quan_ly")?.getFilterValue() as string[])?.length || 0) +
-                        ((table.getColumn("nguoi_dang_truc_tiep_quan_ly")?.getFilterValue() as string[])?.length || 0) +
-                        ((table.getColumn("phan_loai_theo_nd98")?.getFilterValue() as string[])?.length || 0)
-                      }
-                      onClearFilters={() => {
-                        table.getColumn("tinh_trang_hien_tai")?.setFilterValue([])
-                        table.getColumn("khoa_phong_quan_ly")?.setFilterValue([])
-                        table.getColumn("nguoi_dang_truc_tiep_quan_ly")?.setFilterValue([])
-                        table.getColumn("phan_loai_theo_nd98")?.setFilterValue([])
-                      }}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setIsFilterSheetOpen(true)}
+                      className={cn(
+                        "h-9 border-slate-200 shadow-sm transition-all",
+                        isFiltered
+                          ? "border-primary/50 bg-primary/5 hover:bg-primary/10"
+                          : "hover:border-primary/30"
+                      )}
                     >
-                      <DataTableFacetedFilter
-                        column={table.getColumn("tinh_trang_hien_tai")}
-                        title="Tình trạng"
-                        options={statuses.map(s => ({label: s!, value: s!}))}
-                      />
-                      <DataTableFacetedFilter
-                        column={table.getColumn("khoa_phong_quan_ly")}
-                        title="Khoa/Phòng"
-                        options={departments.filter((d): d is string => !!d).map(d => ({label: d, value: d}))}
-                      />
-                      <DataTableFacetedFilter
-                        column={table.getColumn("nguoi_dang_truc_tiep_quan_ly")}
-                        title="Người sử dụng"
-                        options={users.filter((d): d is string => !!d).map(d => ({label: d, value: d}))}
-                      />
-                      <DataTableFacetedFilter
-                        column={table.getColumn("phan_loai_theo_nd98")}
-                        title="Phân loại"
-                        options={classifications.filter((c): c is string => !!c).map(c => ({label: c, value: c}))}
-                      />
-                    </MobileFiltersDropdown>
+                      <Filter className="h-4 w-4 mr-2" />
+                      <span className="font-medium">Lọc</span>
+                      {isFiltered && (
+                        <Badge
+                          variant="secondary"
+                          className="ml-2 h-5 min-w-[20px] rounded-full bg-primary text-white px-1.5 text-xs font-semibold"
+                        >
+                          {columnFilters.reduce((acc, filter) => {
+                            const vals = filter.value as string[] | undefined
+                            return acc + (vals?.length || 0)
+                          }, 0)}
+                        </Badge>
+                      )}
+                    </Button>
                   ) : (
                     <>
                       <DataTableFacetedFilter
@@ -2597,10 +2588,10 @@ export default function EquipmentPage() {
                   </DropdownMenu>
                 )}
 
-                {/* Options menu */}
+                {/* Options menu - Hidden on mobile */}
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="outline" className="h-8 gap-1 touch-target-sm md:h-8">
+                    <Button variant="outline" className="hidden sm:flex h-8 gap-1 touch-target-sm md:h-8">
                       <Settings className="h-3.5 w-3.5" />
                       Tùy chọn
                     </Button>
@@ -2658,7 +2649,7 @@ export default function EquipmentPage() {
             {renderContent()}
           </div>
         </CardContent>
-        <CardFooter className="flex flex-col gap-4 py-4 sm:flex-row sm:items-center sm:justify-between">
+        <CardFooter className="flex flex-col gap-4 py-4 px-4 md:px-6 sm:flex-row sm:items-center sm:justify-between">
           {shouldFetchEquipment ? (
             <>
               {/* Records count - responsive position */}
@@ -2683,8 +2674,8 @@ export default function EquipmentPage() {
                 
                 {/* Mobile-optimized pagination */}
                 <div className="flex flex-col gap-3 items-center sm:flex-row sm:gap-6">
-                  {/* Page size selector */}
-                  <div className="flex items-center space-x-2">
+                  {/* Page size selector - Hidden on mobile */}
+                  <div className="hidden sm:flex items-center space-x-2">
                     <p className="text-sm font-medium">Số dòng</p>
                     <Select
                       value={`${pagination.pageSize}`}
@@ -2707,10 +2698,10 @@ export default function EquipmentPage() {
                   
                   {/* Page info and navigation */}
                   <div className="flex flex-col items-center gap-2 sm:flex-row sm:gap-3">
-                    <div className="text-sm font-medium hidden sm:block">
+                    <div className="text-sm font-medium">
                       Trang {pagination.pageIndex + 1} / {pageCount}
                     </div>
-                    <div className="flex items-center space-x-1">
+                    <div className="flex items-center space-x-2">
                       <Button
                         variant="outline"
                         className="hidden h-8 w-8 p-0 sm:flex"
@@ -2722,21 +2713,21 @@ export default function EquipmentPage() {
                       </Button>
                       <Button
                         variant="outline"
-                        className="h-8 w-8 p-0"
+                        className="h-10 w-10 p-0 rounded-xl sm:h-8 sm:w-8"
                         onClick={() => table.previousPage()}
                         disabled={!table.getCanPreviousPage()}
                       >
                         <span className="sr-only">Go to previous page</span>
-                        <ChevronLeft className="h-4 w-4" />
+                        <ChevronLeft className="h-5 w-5 sm:h-4 sm:w-4" />
                       </Button>
                       <Button
                         variant="outline"
-                        className="h-8 w-8 p-0"
+                        className="h-10 w-10 p-0 rounded-xl sm:h-8 sm:w-8"
                         onClick={() => table.nextPage()}
                         disabled={!table.getCanNextPage()}
                       >
                         <span className="sr-only">Go to next page</span>
-                        <ChevronRight className="h-4 w-4" />
+                        <ChevronRight className="h-5 w-5 sm:h-4 sm:w-4" />
                       </Button>
                       <Button
                         variant="outline"
@@ -2790,6 +2781,21 @@ export default function EquipmentPage() {
           }
         }}
         equipment={startUsageEquipment}
+      />
+
+      <FilterBottomSheet
+        open={isFilterSheetOpen}
+        onOpenChange={setIsFilterSheetOpen}
+        data={{
+          status: (statusesData || []).map(x => ({ id: x.name, label: x.name, count: x.count })),
+          department: (departmentsData || []).map(x => ({ id: x.name, label: x.name, count: x.count })),
+          location: (locationsData || []).map(x => ({ id: x.name, label: x.name, count: x.count })),
+          user: (usersData || []).map(x => ({ id: x.name, label: x.name, count: x.count })),
+          classification: (classificationsData || []).map(x => ({ id: x.name, label: x.name, count: x.count })),
+        }}
+        columnFilters={columnFilters}
+        onApply={setColumnFilters}
+        onClearAll={() => setColumnFilters([])}
       />
 
     </>

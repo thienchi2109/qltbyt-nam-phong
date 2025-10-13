@@ -1,0 +1,163 @@
+1. Prep: confirm theme tokens, utilities, and patterns
+- Use existing theme tokens from globals.css (HSL vars): primary, secondary, muted, foregrounds.
+- Prefer utility classes that reference CSS vars:
+  - bg-[hsl(var(--primary))], text-[hsl(var(--primary-foreground))], border-[hsl(var(--primary))]
+  - bg-[hsl(var(--muted))], text-[hsl(var(--muted-foreground))]
+- Reuse existing primitives: Card, Button, Badge, ActiveUsageIndicator, MobileUsageActions, and any Radix-based Sheet/Dialog in src/components.
+- Mobile utilities: touch-target, mobile-card-spacing; rounded-xl for cards, rounded-2xl for top-level containers.
+- Import with @/* alias and follow import grouping rules.
+2. Create enhanced mobile equipment card component
+File: src/components/equipment/mobile-equipment-list-item.tsx
+
+- Replace basic layout with native-style card using Card and rounded-xl. Add mobile-card-spacing.
+- Structure:
+  1) Top row: status badge with dot indicator, classification badge (Loại A/B/C/D) color-coded via theme; chevron icon for affordance.
+  2) Title/meta: name, code, ActiveUsageIndicator.
+  3) Info grid: 2-column key details (Khoa/Phòng ban, Vị trí, Người phụ trách/đang sử dụng, Model/Serial as available).
+  4) Footer: primary action Button "Viết nhật ký sử dụng" and MobileUsageActions; ensure touch-target and stopPropagation on action buttons.
+- Keep existing props and handlers (onShowDetails, onEdit) and preserve integration with ActiveUsageIndicator and MobileUsageActions.
+- Status badge: use Badge with a dot (before: inline-block h-2 w-2 rounded-full bg-current) and variant computed by status. Map status → color via theme (success-like uses primary).
+- Classification badge: A/B/C/D → Badge variants using theme:
+  - A: bg-[hsl(var(--primary))]/10 text-[hsl(var(--primary))] border-[hsl(var(--primary))]
+  - B: variant="secondary"
+  - C: use warning-like color if available or bg-[hsl(var(--muted))]/40 text-[hsl(var(--muted-foreground))]
+  - D: variant="destructive" if present; else muted with clear contrast
+- Accessibility: entire card clickable (onShowDetails) with role="button" and aria-label; inner action buttons stopPropagation.
+
+Example snippet (class intent only):
+```tsx
+<Card className="rounded-xl mobile-card-spacing">
+  <div className="flex items-start justify-between">
+    <div className="flex items-center gap-2">
+      <Badge className="relative pl-6 before:absolute before:left-2 before:top-1/2 before:-translate-y-1/2 before:h-2 before:w-2 before:rounded-full before:bg-current">
+        Đang sử dụng
+      </Badge>
+      <Badge className="border text-[hsl(var(--primary))] border-[hsl(var(--primary))] bg-[hsl(var(--primary))]/10">
+        Loại A
+      </Badge>
+    </div>
+    <ChevronRight className="text-muted-foreground" />
+  </div>
+  {/* Title, ActiveUsageIndicator, info grid, footer with Button and MobileUsageActions */}
+</Card>
+```
+3. Create bottom sheet filter component
+File: src/components/equipment/filter-bottom-sheet.tsx
+
+- Bottom sheet with backdrop blur, fixed bottom, rounded-t-3xl, slide-in animation.
+- Close on backdrop click and X button. Focus trap via existing Radix primitives if available; otherwise implement accessible roles/aria.
+- Sections: Trạng thái, Khoa/Phòng ban, Vị trí, Người dùng, Phân loại. Each uses checkbox-style chips with counts.
+- Footer: "Xóa tất cả" (Clear All) and "Áp dụng (n)" buttons. Use theme colors for selected states.
+- Props (no any, strict types):
+```ts
+import type { ColumnFiltersState } from '@tanstack/react-table';
+
+type FilterOption = { id: string; label: string; count: number };
+export type EquipmentFilterData = {
+  status: FilterOption[];
+  department: FilterOption[];
+  location: FilterOption[];
+  user: FilterOption[];
+  classification: FilterOption[];
+};
+
+type Props = {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  data: EquipmentFilterData;
+  columnFilters: ColumnFiltersState;
+  onApply: (next: ColumnFiltersState) => void;
+  onClearAll: () => void;
+};
+```
+- Behavior:
+  - Initialize local selection from columnFilters on open.
+  - Toggle options update local selection immediately.
+  - Apply: compute next ColumnFiltersState, call onApply, close sheet.
+  - Clear All: call onClearAll (parent resets filters), close sheet.
+- Styles:
+  - Overlay: fixed inset-0 bg-black/40 backdrop-blur-sm data-[state=open]:animate-in data-[state=closed]:animate-out
+  - Content: fixed bottom-0 left-0 right-0 rounded-t-3xl bg-background shadow-xl translate-y-full data-[state=open]:translate-y-0 transition-transform
+  - Selected chip: bg-[hsl(var(--primary))]/12 text-[hsl(var(--primary))] border-[hsl(var(--primary))]
+4. Enhance tenant selector for mobile
+File: src/components/equipment/tenant-selector.tsx
+
+- Add mobile-optimized search input: rounded-xl, px-4 py-3, leading-6, integrated search icon, debounced change handler (existing debounce utilities).
+- Improve dropdown: rounded-xl, shadow-lg, larger spacing (py-2 px-2), touch-target for each option (min-h-[44px] px-3).
+- Keep existing API/behavior intact. Maintain icons/badges for hierarchy (tenant/facility) with better visual hierarchy.
+- Accessibility: sr-only label for search, aria-activedescendant for keyboard navigation if applicable.
+5. Update Equipment page: search bar section (mobile)
+File: src/app/(app)/equipment/page.tsx
+
+- For isCardView/mobile (&lt;1280px):
+  - Wrap search tools into Card with rounded-xl and mobile-card-spacing; gap-3 between controls.
+  - Enhance search input: rounded-xl, px-4 py-3, embedded icon sized for 44px min height.
+  - Preserve debounce and state wiring; no RPC changes.
+- Import new components with @/* alias and group imports properly.
+6. Update Equipment page: filter/action buttons (mobile)
+- Replace MobileFiltersDropdown with Bottom Sheet trigger button.
+- Buttons:
+  - "Bộ lọc" opens filter-bottom-sheet.tsx; show active filter count badge if any.
+  - "Tùy chọn" styling improved: rounded-xl px-4 py-3 touch-target.
+- Use theme colors: primary for active filter state, muted for default.
+- Integrate with existing columnFilters (TanStack Table):
+  - Pass current columnFilters to FilterBottomSheet.
+  - onApply updates table.setColumnFilters(next).
+  - onClearAll resets table.setColumnFilters([]).
+7. Update Equipment page: equipment list and spacing (mobile)
+- Use enhanced MobileEquipmentListItem component.
+- Add space-y-3 between cards (was space-y-2).
+- Ensure each card onClick opens details dialog; inner actions stopPropagation.
+- Keep loading skeletons and empty states unchanged.
+8. Update Equipment page: simplified pagination (mobile)
+- Pagination UI for mobile:
+  - Show only "Trang X/Y" with previous/next arrow buttons.
+  - Remove page size selector on mobile.
+  - Buttons meet 44x44 min; use touch-target utility and rounded-xl.
+- Wire to existing server-side pagination handlers; no API changes.
+9. General mobile container and consistency
+- Add px-4 to main container on mobile; maintain existing container on desktop.
+- Ensure all cards/containers use rounded-xl and larger padding on mobile consistently.
+- Maintain Regional Leader facility filter integration and global tenant selector behavior.
+10. Theming and variants mapping (no hardcoded blues)
+- Replace any blue-600 or similar with theme tokens:
+  - Primary: bg-[hsl(var(--primary))], text-[hsl(var(--primary-foreground))]
+  - Secondary/Muted: use existing component variants or bg-[hsl(var(--muted))]
+- Status → variant mapping (example, adapt to existing status enums):
+  - Đang sử dụng: primary
+  - Sẵn sàng: secondary
+  - Bảo trì: muted/warning-like if available
+  - Hỏng: destructive
+- Classification badge mapping:
+  - A → primary, B → secondary, C → muted/warning-like, D → destructive
+11. Accessibility and events
+- Cards: role="button", aria-label with equipment name; keyboard activation support (Enter/Space).
+- Bottom sheet: aria-modal, focus trap, close via ESC and backdrop; X button has aria-label.
+- Ensure all interactive elements meet 44x44 touch target (touch-target utility).
+- Stop event propagation on inner action buttons to avoid triggering card onClick.
+12. Type safety and imports
+- No any usage. Export explicit types for new component props.
+- Reuse existing Equipment types from @/types if available.
+- Use @/* alias for all internal imports and group: React/Next → third-party → @/components → @/lib → @/types.
+13. Testing and QA
+- Breakpoints: test &lt;640px, 640–768px, 768–1024px, and verify desktop untouched (≥1280px).
+- Verify:
+  - Bottom sheet animations smooth; backdrop closes on tap.
+  - Touch targets ≥44x44px.
+  - Regional Leader facility filter still filters results.
+  - Tenant selector works and search is debounced.
+  - Loading states, error states, pagination controls.
+  - ActiveUsageIndicator and MobileUsageActions still functional.
+  - Accessibility checks (keyboard, screen reader labels).
+- Performance: no new heavy dependencies; maintain React Query usage and existing caches.
+14. Dev workflow and commits
+- Implement in order: components → integrations in page.tsx.
+- Run npm run typecheck before each commit; avoid console.log in production code.
+- Commit messages (imperative): "feat(equipment): add mobile filter bottom sheet", etc.
+- No changes to RPC, DB, auth, or server APIs.
+15. Acceptance criteria
+- Mobile cards show status + classification badges, info grid, and primary action button with theme colors.
+- Filter bottom sheet opens/closes with animation, mirrors current columnFilters, and applies/clears correctly.
+- Tenant selector has mobile-optimized search and dropdown with improved spacing and touch targets.
+- Equipment page mobile has padded container, refined search card, styled filter/action buttons, space-y-3 list, and simplified pagination.
+- Desktop/table view unchanged; all data fetching and server behaviors unchanged.
