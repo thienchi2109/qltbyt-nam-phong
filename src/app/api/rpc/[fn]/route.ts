@@ -66,6 +66,7 @@ const ALLOWED_FUNCTIONS = new Set<string>([
   'maintenance_tasks_delete',
   'maintenance_stats_enhanced',
   'maintenance_stats_for_reports',
+  'get_maintenance_report_data',
   // Tenants + Users
   'tenant_list',
   'get_facilities_with_equipment_count',

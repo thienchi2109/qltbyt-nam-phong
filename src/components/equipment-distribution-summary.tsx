@@ -168,7 +168,9 @@ export function EquipmentDistributionSummary({ className, tenantFilter, selected
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-purple-600">
-              {Math.round(overallStats.totalEquipment / overallStats.departmentCount)}
+              {overallStats.departmentCount > 0 
+                ? Math.round(overallStats.totalEquipment / overallStats.departmentCount)
+                : 0}
             </div>
             <p className="text-xs text-muted-foreground">
               TB trung bình/khoa
@@ -184,7 +186,9 @@ export function EquipmentDistributionSummary({ className, tenantFilter, selected
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-orange-600">
-              {Math.round(overallStats.totalEquipment / overallStats.locationCount)}
+              {overallStats.locationCount > 0 
+                ? Math.round(overallStats.totalEquipment / overallStats.locationCount)
+                : 0}
             </div>
             <p className="text-xs text-muted-foreground">
               TB trung bình/vị trí
