@@ -18,8 +18,9 @@ import { ArrowUpDown, Building2, Check, ChevronLeft, ChevronRight, ChevronsLeft,
 
 import { useToast } from "@/hooks/use-toast"
 import { useIsMobile } from "@/hooks/use-mobile"
-import { MaintenancePlan, MaintenanceTask, taskTypes, type Equipment } from "@/lib/data"
+import { MaintenanceTask, taskTypes, type Equipment } from "@/lib/data"
 import { callRpc } from "@/lib/rpc-client"
+import type { MaintenancePlan } from "@/hooks/use-cached-maintenance" // ✅ Use hook's type for paginated data
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
@@ -57,7 +58,6 @@ import { useRouter } from "next/navigation"
 import { AddTasksDialog } from "@/components/add-tasks-dialog"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Input } from "@/components/ui/input"
-import { useFacilityFilter } from "@/hooks/useFacilityFilter"
 
 // Memoized component để tránh re-render khi typing
 const NotesInput = React.memo(({ taskId, value, onChange }: {
@@ -82,7 +82,8 @@ import {
   useDeleteMaintenancePlan,
   useApproveMaintenancePlan,
   useRejectMaintenancePlan,
-  maintenanceKeys 
+  maintenanceKeys,
+  // MaintenancePlan type imported separately above to avoid duplication
 } from "@/hooks/use-cached-maintenance"
 import { useQueryClient } from "@tanstack/react-query"
 import { useSearchDebounce } from "@/hooks/use-debounce"
@@ -117,70 +118,52 @@ export default function MaintenancePage() {
   // Temporarily disable useRealtimeSync to avoid conflict with RealtimeProvider
   // useMaintenanceRealtimeSync()
 
-  // Search state for plans
+  // 🔄 SERVER-SIDE PAGINATION & FILTERING STATE
   const [planSearchTerm, setPlanSearchTerm] = React.useState("");
   const debouncedPlanSearch = useSearchDebounce(planSearchTerm);
+  const [selectedFacilityId, setSelectedFacilityId] = React.useState<number | null>(null);
+  const [currentPage, setCurrentPage] = React.useState(1);
+  const [pageSize, setPageSize] = React.useState(50);
 
+  // 🚀 NEW: Server-side paginated hook with facility filtering
+  const { data: paginatedResponse, isLoading: isLoadingPlans, refetch: refetchPlans } = useMaintenancePlans({
+    search: debouncedPlanSearch || undefined,
+    facilityId: selectedFacilityId,
+    page: currentPage,
+    pageSize,
+  });
 
-  // ✅ Use cached hooks for data fetching, keep manual mutations for now
-  const { data: plans = [], isLoading: isLoadingPlans, refetch: refetchPlans } = useMaintenancePlans(
-    debouncedPlanSearch ? { search: debouncedPlanSearch } : undefined
-  )
+  // Extract data and pagination metadata from server response
+  const plans = paginatedResponse?.data ?? [];
+  const totalCount = paginatedResponse?.total ?? 0;
+  const totalPages = Math.ceil(totalCount / pageSize);
 
-  // Consolidated facility filter (client mode via items)
-  const {
-    selectedFacilityId,
-    setSelectedFacilityId,
-    facilities: facilityOptions,
-    showFacilityFilter: showFacilityFilterBase,
-  } = useFacilityFilter<any>({
-    mode: 'client',
-    selectBy: 'id',
-    items: plans as any[], // plans enriched below
-    userRole: (user?.role as string) || 'user',
-    getFacilityId: (plan: any) => plan?.don_vi != null ? Number(plan.don_vi) : null,
-    getFacilityName: (plan: any) => plan?.facility_name ?? null,
-  })
-
-  // Fallback: Fetch facilities via RPC if plans don't have don_vi populated
-  // Use role-aware RPC that works for both global and regional_leader
-  const [fallbackFacilities, setFallbackFacilities] = React.useState<Array<{ id: number; name: string; count?: number }>>([])
-  const [hasFetchedFallback, setHasFetchedFallback] = React.useState(false)
-
-  // Reset fetch flag if plans now have facility data (user switched context or data loaded)
-  React.useEffect(() => {
-    if (facilityOptions.length > 0 && hasFetchedFallback) {
-      setHasFetchedFallback(false)
-      setFallbackFacilities([])
-    }
-  }, [facilityOptions.length, hasFetchedFallback])
+  // 🔄 Fetch facilities for dropdown (role-aware, includes regional_leader support)
+  const [facilities, setFacilities] = React.useState<Array<{ id: number; name: string }>>([]);
+  const [isLoadingFacilities, setIsLoadingFacilities] = React.useState(false);
 
   React.useEffect(() => {
-    // Only fetch once if user can see filter but no facilities derived from plans
-    const needFallback = facilityOptions.length === 0
-    const canShow = showFacilityFilterBase
-    
-    // Prevent infinite loop: only fetch if we haven't fetched before
-    if (!needFallback || !canShow || hasFetchedFallback) return
+    // Only global and regional_leader users need the facility dropdown
+    const canSeeFacilityFilter = user?.role === 'global' || user?.role === 'regional_leader';
+    if (!canSeeFacilityFilter) return;
 
-    setHasFetchedFallback(true)
+    setIsLoadingFacilities(true);
     callRpc<any[]>({ fn: 'get_facilities_with_equipment_count', args: {} })
-      .then((facilities) => {
-        const mapped = (facilities || []).map((f: any) => ({
+      .then((result) => {
+        const mapped = (result || []).map((f: any) => ({
           id: Number(f.id),
           name: String(f.name || `Cơ sở ${f.id}`),
-          count: f.equipment_count || 0,
-        }))
-        setFallbackFacilities(mapped)
+        }));
+        setFacilities(mapped);
       })
       .catch((err) => {
-        console.error('Failed to fetch facilities:', err)
-        setFallbackFacilities([])
+        console.error('[Maintenance] Failed to fetch facilities:', err);
+        setFacilities([]);
       })
-  }, [showFacilityFilterBase, facilityOptions.length, hasFetchedFallback])
+      .finally(() => setIsLoadingFacilities(false));
+  }, [user?.role]);
 
-  // Use fallback facilities if plan-derived facilities are empty
-  const effectiveFacilities = facilityOptions.length > 0 ? facilityOptions : fallbackFacilities
+  const showFacilityFilter = user?.role === 'global' || user?.role === 'regional_leader';
   
   // ✅ TanStack Query mutations for plan management
   const approvePlanMutation = useApproveMaintenancePlan()
@@ -195,10 +178,8 @@ export default function MaintenancePage() {
   const [planToApprove, setPlanToApprove] = React.useState<MaintenancePlan | null>(null)
   const [planToReject, setPlanToReject] = React.useState<MaintenancePlan | null>(null)
   const [rejectionReason, setRejectionReason] = React.useState("");
-  const [planPagination, setPlanPagination] = React.useState<PaginationState>({
-    pageIndex: 0,
-    pageSize: 10,
-  })
+  
+  // ⚠️ REMOVED: Client-side pagination state (now server-controlled via currentPage/pageSize)
 
   // State for tasks
   const [activeTab, setActiveTab] = React.useState("plans");
@@ -383,62 +364,14 @@ export default function MaintenancePage() {
     }
   }, [searchParams, plans])
 
-  // Facility names are derived from facilityOptions when available; keep enrichment logic for name resolution
-  // (facilityOptions is derived from plans themselves; if empty, enrichedPlans will fallback to original)
+  // 🚀 SERVER-SIDE FILTERING: Plans already filtered by server via RPC
+  // facility_name is included in response from server-side JOIN
+  const tablePlans = plans;
 
-  // Enrich plans with facility names (client-side join)
-  const enrichedPlans = React.useMemo(() => {
-    if (effectiveFacilities.length === 0) return plans;
-    return plans.map((plan: any) => ({
-      ...plan,
-      facility_name: (effectiveFacilities.find((f) => f.id === plan?.don_vi)?.name) || plan?.facility_name || null,
-    }));
-  }, [plans, effectiveFacilities]);
-
-  // Determine if facility filter should be shown
-  const showFacilityFilter = (effectiveFacilities.length > 0) && showFacilityFilterBase;
-
-  // Extract unique facilities from plans for the filter dropdown
-  // ✅ Client-side validation: Only show facilities that are in the allowed list
-  const availableFacilities = React.useMemo(() => {
-    if (!showFacilityFilter) return []
-    return effectiveFacilities.map(f => ({ id: f.id, name: f.name }))
-  }, [showFacilityFilter, effectiveFacilities])
-
-  // Apply client-side facility filter with security validation
-  const displayedPlans = React.useMemo(() => {
-    if (!showFacilityFilter) return enrichedPlans
-    if (!selectedFacilityId) return enrichedPlans
-    
-    // ✅ Security check: Verify selected facility is in allowed list
-    const allowedFacilityIds = new Set(effectiveFacilities.map(f => f.id))
-    if (!allowedFacilityIds.has(selectedFacilityId)) {
-      console.warn(`[Maintenance] Selected facility ${selectedFacilityId} not in allowed list. Showing all plans.`)
-      return enrichedPlans
-    }
-    
-    // ✅ Data quality check: Skip filtering if plans lack facility metadata
-    const plansWithFacilityData = enrichedPlans.filter((plan: any) => plan?.don_vi != null)
-    
-    if (plansWithFacilityData.length === 0 && enrichedPlans.length > 0) {
-      console.warn('[Maintenance] Plans missing don_vi data. Cannot filter by facility. This indicates legacy data that needs migration.')
-      return enrichedPlans // Show all plans instead of empty table
-    }
-    
-    // ✅ Apply filter only to plans with valid don_vi
-    return enrichedPlans.filter((plan: any) => Number(plan?.don_vi) === selectedFacilityId)
-  }, [enrichedPlans, showFacilityFilter, selectedFacilityId, effectiveFacilities])
-
-  // Use filtered plans for the table
-  const tablePlans = displayedPlans;
-
-  // Reset pagination to page 1 when facility filter changes
+  // 🔄 Reset to page 1 when filters change (triggers new server query)
   React.useEffect(() => {
-    setPlanPagination(prev => ({
-      ...prev,
-      pageIndex: 0 // Reset to first page
-    }));
-  }, [selectedFacilityId]);
+    setCurrentPage(1);
+  }, [selectedFacilityId, debouncedPlanSearch]);
 
   const handleStartEdit = React.useCallback((task: MaintenanceTask) => {
     setEditingTaskId(task.id);
@@ -744,7 +677,7 @@ export default function MaintenancePage() {
         id: tempIdCounter--,
         ke_hoach_id: selectedPlan.id,
         thiet_bi_id: equipment.id,
-        loai_cong_viec: selectedPlan.loai_cong_viec,
+        loai_cong_viec: selectedPlan.loai_cong_viec as any, // ⚠️ Type assertion: string -> TaskType literal
         diem_hieu_chuan: null,
         don_vi_thuc_hien: null,
         thang_1: false, thang_2: false, thang_3: false, thang_4: false,
@@ -913,20 +846,21 @@ export default function MaintenancePage() {
     },
   ], [user, handleSelectPlan, setEditingPlan, setPlanToDelete, setPlanToApprove]);
 
+  // 🔄 TanStack Table for DISPLAY ONLY (no client-side pagination)
+  // Server handles pagination via currentPage/pageSize state
   const planTable = useReactTable({
     data: tablePlans as MaintenancePlan[],
     columns: planColumns,
     getCoreRowModel: getCoreRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
     getSortedRowModel: getSortedRowModel(),
-    getFilteredRowModel: getFilteredRowModel(),
     onSortingChange: setPlanSorting,
-    onPaginationChange: setPlanPagination,
     state: {
       sorting: planSorting,
-      pagination: planPagination,
     },
-  })
+    // ⚠️ manualPagination = true tells TanStack Table we handle pagination externally
+    manualPagination: true,
+    pageCount: totalPages, // Server provides total page count
+  });
 
   const isPlanApproved = selectedPlan?.trang_thai === 'Đã duyệt';
   const canCompleteTask = !isRegionalLeader && user && ((user.role === 'global' || user.role === 'admin') || user.role === 'to_qltb');
@@ -1880,7 +1814,7 @@ export default function MaintenancePage() {
         open={!!editingPlan}
         onOpenChange={(open) => !open && setEditingPlan(null)}
         onSuccess={onPlanMutationSuccessWithStatePreservation}
-        plan={editingPlan}
+        plan={editingPlan as any}
       />
       {planToApprove && (
         <AlertDialog open={!!planToApprove} onOpenChange={(open) => !open && setPlanToApprove(null)}>
@@ -2028,7 +1962,7 @@ export default function MaintenancePage() {
       <AddTasksDialog
         open={isAddTasksDialogOpen}
         onOpenChange={setIsAddTasksDialogOpen}
-        plan={selectedPlan}
+        plan={selectedPlan as any}
         existingEquipmentIds={existingEquipmentIdsInDraft}
         onSuccess={handleAddTasksFromDialog}
       />
@@ -2075,18 +2009,18 @@ export default function MaintenancePage() {
                 </div>
               )}
 
-              {/* Facility filter for regional leaders and global users */}
+              {/* 🏛️ Facility Filter (Global & Regional Leaders) - Server-Side Filtering */}
               {showFacilityFilter && (
                 <div className="flex items-center gap-2 mb-4 flex-wrap">
                   <div className="flex items-center gap-2 flex-1 min-w-0">
                     <Building2 className="h-4 w-4 text-muted-foreground shrink-0" />
                     <Select
-value={selectedFacilityId?.toString() || "all"}
-onValueChange={(value) => setSelectedFacilityId(value === "all" ? null : parseInt(value, 10))}
-                      disabled={availableFacilities.length === 0}
+                      value={selectedFacilityId?.toString() || "all"}
+                      onValueChange={(value) => setSelectedFacilityId(value === "all" ? null : parseInt(value, 10))}
+                      disabled={isLoadingFacilities || facilities.length === 0}
                     >
                       <SelectTrigger className="h-9 border-dashed">
-                        <SelectValue placeholder="Chọn cơ sở..." />
+                        <SelectValue placeholder={isLoadingFacilities ? "Đang tải..." : "Chọn cơ sở..."} />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="all">
@@ -2095,34 +2029,29 @@ onValueChange={(value) => setSelectedFacilityId(value === "all" ? null : parseIn
                             <span>Tất cả cơ sở</span>
                           </div>
                         </SelectItem>
-                        {availableFacilities.length === 0 ? (
+                        {facilities.length === 0 ? (
                           <SelectItem value="empty" disabled>
-                            <span className="text-muted-foreground italic">Chưa có kế hoạch</span>
+                            <span className="text-muted-foreground italic">Không có cơ sở</span>
                           </SelectItem>
                         ) : (
-                          availableFacilities.map((facility) => {
-                            const count = enrichedPlans.filter((p: any) => Number(p?.don_vi) === facility.id).length;
-                            return (
-                              <SelectItem key={facility.id} value={facility.id.toString()}>
-                                <div className="flex items-center justify-between w-full gap-4">
-                                  <span className="truncate">{facility.name}</span>
-                                  <span className="text-xs text-muted-foreground shrink-0">{count}</span>
-                                </div>
-                              </SelectItem>
-                            );
-                          })
+                          facilities.map((facility) => (
+                            <SelectItem key={facility.id} value={facility.id.toString()}>
+                              <span className="truncate">{facility.name}</span>
+                            </SelectItem>
+                          ))
                         )}
                       </SelectContent>
                     </Select>
                   </div>
-{selectedFacilityId && (
+                  {/* 📊 Display counts from SERVER (not client-filtered) */}
+                  {selectedFacilityId && (
                     <Badge variant="secondary" className="shrink-0">
-                      {tablePlans.length} kế hoạch
+                      {totalCount} kế hoạch
                     </Badge>
                   )}
-{!selectedFacilityId && availableFacilities.length > 0 && (
+                  {!selectedFacilityId && (
                     <Badge variant="outline" className="shrink-0">
-                      {availableFacilities.length} cơ sở • {enrichedPlans.length} kế hoạch
+                      {facilities.length} cơ sở • {totalCount} kế hoạch
                     </Badge>
                   )}
                 </div>
@@ -2207,71 +2136,78 @@ onValueChange={(value) => setSelectedFacilityId(value === "all" ? null : parseIn
                 </div>
               )}
             </CardContent>
+            {/* 🚀 SERVER-SIDE PAGINATION CONTROLS */}
             <CardFooter>
               <div className="flex items-center justify-between w-full">
                 <div className="flex-1 text-sm text-muted-foreground">
-                  {planTable.getFilteredRowModel().rows.length} trên {tablePlans.length} kế hoạch.
+                  Hiển thị <strong>{plans.length}</strong> trên <strong>{totalCount}</strong> kế hoạch
+                  {(debouncedPlanSearch || selectedFacilityId) && " (đã lọc)"}
                 </div>
                 <div className="flex items-center gap-x-6 lg:gap-x-8">
+                  {/* Page size selector */}
                   <div className="flex items-center space-x-2">
                     <p className="text-sm font-medium">Số dòng</p>
                     <Select
-                      value={`${planTable.getState().pagination.pageSize}`}
+                      value={`${pageSize}`}
                       onValueChange={(value) => {
-                        planTable.setPageSize(Number(value))
+                        setPageSize(Number(value));
+                        setCurrentPage(1); // Reset to page 1 when changing page size
                       }}
                     >
                       <SelectTrigger className="h-8 w-[70px]">
-                        <SelectValue placeholder={planTable.getState().pagination.pageSize} />
+                        <SelectValue placeholder={pageSize} />
                       </SelectTrigger>
                       <SelectContent side="top">
-                        {[10, 20, 50, 100].map((pageSize) => (
-                          <SelectItem key={pageSize} value={`${pageSize}`}>
-                            {pageSize}
+                        {[10, 20, 50, 100, 200].map((size) => (
+                          <SelectItem key={size} value={`${size}`}>
+                            {size}
                           </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
                   </div>
+
+                  {/* Page indicator */}
                   <div className="flex w-[100px] items-center justify-center text-sm font-medium">
-                    Trang {planTable.getState().pagination.pageIndex + 1} /{" "}
-                    {planTable.getPageCount()}
+                    Trang {currentPage} / {totalPages || 1}
                   </div>
+
+                  {/* Navigation buttons */}
                   <div className="flex items-center space-x-2">
                     <Button
                       variant="outline"
                       className="hidden h-8 w-8 p-0 lg:flex"
-                      onClick={() => planTable.setPageIndex(0)}
-                      disabled={!planTable.getCanPreviousPage()}
+                      onClick={() => setCurrentPage(1)}
+                      disabled={currentPage === 1 || isLoadingPlans}
                     >
-                      <span className="sr-only">Go to first page</span>
+                      <span className="sr-only">Đến trang đầu</span>
                       <ChevronsLeft className="h-4 w-4" />
                     </Button>
                     <Button
                       variant="outline"
                       className="h-8 w-8 p-0"
-                      onClick={() => planTable.previousPage()}
-                      disabled={!planTable.getCanPreviousPage()}
+                      onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                      disabled={currentPage === 1 || isLoadingPlans}
                     >
-                      <span className="sr-only">Go to previous page</span>
+                      <span className="sr-only">Trang trước</span>
                       <ChevronLeft className="h-4 w-4" />
                     </Button>
                     <Button
                       variant="outline"
                       className="h-8 w-8 p-0"
-                      onClick={() => planTable.nextPage()}
-                      disabled={!planTable.getCanNextPage()}
+                      onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                      disabled={currentPage === totalPages || isLoadingPlans}
                     >
-                      <span className="sr-only">Go to next page</span>
+                      <span className="sr-only">Trang tiếp</span>
                       <ChevronRight className="h-4 w-4" />
                     </Button>
                     <Button
                       variant="outline"
                       className="hidden h-8 w-8 p-0 lg:flex"
-                      onClick={() => planTable.setPageIndex(planTable.getPageCount() - 1)}
-                      disabled={!planTable.getCanNextPage()}
+                      onClick={() => setCurrentPage(totalPages)}
+                      disabled={currentPage === totalPages || isLoadingPlans}
                     >
-                      <span className="sr-only">Go to last page</span>
+                      <span className="sr-only">Đến trang cuối</span>
                       <ChevronsRight className="h-4 w-4" />
                     </Button>
                   </div>

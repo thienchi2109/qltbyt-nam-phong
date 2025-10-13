@@ -35,7 +35,12 @@ export function MaintenanceReportTab({
     to: endOfYear(new Date()),
   })
 
-  const { data: reportData, isLoading, error } = useMaintenanceReportData(dateRange)
+  // ✅ Pass tenant parameters for proper scoping
+  const { data: reportData, isLoading, error } = useMaintenanceReportData(
+    dateRange,
+    selectedDonVi,
+    effectiveTenantKey
+  )
 
   const summary = reportData?.summary
   const charts = reportData?.charts

@@ -76,8 +76,8 @@ export default function ReportsPage() {
   const user = session?.user as any
   const { toast } = useToast()
   
-  // Global/admin role check computed early so hooks below can depend on it safely
-  const isGlobal = user?.role === 'global' || user?.role === 'admin'
+  // Global/admin/regional_leader role check computed early so hooks below can depend on it safely
+  const isGlobalOrRegionalLeader = user?.role === 'global' || user?.role === 'admin' || user?.role === 'regional_leader'
 
   // Redirect if not authenticated (same pattern as Equipment page)
   if (status === "loading") {
@@ -102,7 +102,7 @@ export default function ReportsPage() {
   // Tenant filtering logic (EXACT same pattern as Equipment page)
   const tenantKey = user?.don_vi ? String(user.don_vi) : 'none'
   const [tenantFilter, setTenantFilter] = React.useState<string>(() => {
-    if (!isGlobal) return tenantKey
+    if (!isGlobalOrRegionalLeader) return tenantKey
     
     // For global users, try to restore from localStorage first
     if (typeof window !== 'undefined') {
@@ -118,29 +118,29 @@ export default function ReportsPage() {
   
   // Compute gating logic (EXACT Equipment page pattern)
   const shouldFetchReports = React.useMemo(() => {
-    if (!isGlobal) return true
+    if (!isGlobalOrRegionalLeader) return true
     if (tenantFilter === 'all') return true
     return /^\d+$/.test(tenantFilter)
-  }, [isGlobal, tenantFilter])
+  }, [isGlobalOrRegionalLeader, tenantFilter])
 
   const selectedDonVi = React.useMemo(() => {
-    if (!isGlobal) return null
+    if (!isGlobalOrRegionalLeader) return null
     if (tenantFilter === 'all') return null
     const v = parseInt(tenantFilter, 10)
     return Number.isFinite(v) ? v : null
-  }, [isGlobal, tenantFilter])
+  }, [isGlobalOrRegionalLeader, tenantFilter])
 
-  const effectiveTenantKey = isGlobal ? (shouldFetchReports ? tenantFilter : 'unset') : tenantKey
+  const effectiveTenantKey = isGlobalOrRegionalLeader ? (shouldFetchReports ? tenantFilter : 'unset') : tenantKey
 
-  // Persist tenant selection for global/admin users (same as Equipment page)
+  // Persist tenant selection for global/admin/regional_leader users (same as Equipment page)
   React.useEffect(() => {
     if (typeof window === 'undefined') return
-    if (isGlobal) {
+    if (isGlobalOrRegionalLeader) {
       try { localStorage.setItem('reports_tenant_filter', tenantFilter) } catch {}
     } else {
       try { localStorage.removeItem('reports_tenant_filter') } catch {}
     }
-  }, [isGlobal, tenantFilter])
+  }, [isGlobalOrRegionalLeader, tenantFilter])
 
   // No separate restoration effect needed - handled in useState initializer above
 
@@ -149,8 +149,8 @@ export default function ReportsPage() {
     <div className="flex flex-wrap items-center gap-4">
       <h2 className="text-3xl font-bold tracking-tight">Báo cáo</h2>
 
-      {/* Tenant selector for global users */}
-      {isGlobal && (
+      {/* Tenant selector for global/regional_leader users */}
+      {isGlobalOrRegionalLeader && (
         <TenantFilterDropdown 
           value={tenantFilter}
           onChange={setTenantFilter}
@@ -160,7 +160,7 @@ export default function ReportsPage() {
     </div>
       
       {/* Show tip when no tenant selected (same pattern as Equipment page) */}
-      {isGlobal && !shouldFetchReports && (
+      {isGlobalOrRegionalLeader && !shouldFetchReports && (
         <TenantSelectionTip />
       )}
       
