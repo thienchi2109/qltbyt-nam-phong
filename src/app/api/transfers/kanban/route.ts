@@ -72,9 +72,8 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    // Call RPC function via internal proxy with absolute URL
-    const baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000'
-    const rpcUrl = new URL('/api/rpc/get_transfers_kanban', baseUrl)
+    // Call RPC function via internal proxy using request origin
+    const rpcUrl = new URL('/api/rpc/get_transfers_kanban', request.nextUrl.origin)
     
     const rpcPayload = {
       p_facility_ids: facilityIds,

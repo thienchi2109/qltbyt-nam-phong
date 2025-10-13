@@ -32,9 +32,8 @@ export async function GET(request: NextRequest) {
       .map(id => parseInt(id.trim()))
       .filter(id => !isNaN(id)) || null
 
-    // Call RPC function via internal proxy with absolute URL
-    const baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000'
-    const rpcUrl = new URL('/api/rpc/get_transfer_counts', baseUrl)
+    // Call RPC function via internal proxy using request origin
+    const rpcUrl = new URL('/api/rpc/get_transfer_counts', request.nextUrl.origin)
     
     const rpcPayload = {
       p_facility_ids: facilityIds,
