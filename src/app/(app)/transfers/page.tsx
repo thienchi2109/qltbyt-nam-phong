@@ -2,6 +2,7 @@
 
 import * as React from "react"
 import { PlusCircle, ArrowLeftRight, Filter, RefreshCw, FileText, Building2 } from "lucide-react"
+import { useQuery } from "@tanstack/react-query"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -24,7 +25,7 @@ import { useToast } from "@/hooks/use-toast"
 import { callRpc } from "@/lib/rpc-client"
 import { useSession } from "next-auth/react"
 import { useRouter } from "next/navigation"
-import { useTransferRequests, useCreateTransferRequest, useUpdateTransferRequest, useApproveTransferRequest, transferKeys } from "@/hooks/use-cached-transfers"
+import { useTransfersKanban, useTransferCounts } from "@/hooks/useTransfersKanban"
 import { AddTransferDialog } from "@/components/add-transfer-dialog"
 import { EditTransferDialog } from "@/components/edit-transfer-dialog"
 import { TransferDetailDialog } from "@/components/transfer-detail-dialog"
@@ -36,40 +37,24 @@ import {
   TRANSFER_TYPES,
   type TransferStatus
 } from "@/types/database"
+import { TransferKanbanFilters, KANBAN_COLUMNS } from "@/types/transfer-kanban"
 import { useFacilityFilter } from "@/hooks/useFacilityFilter"
-
-const KANBAN_COLUMNS: { status: TransferStatus; title: string; description: string; color: string }[] = [
-  {
-    status: 'cho_duyet',
-    title: 'Chờ duyệt',
-    description: 'Yêu cầu mới, chờ phê duyệt',
-    color: 'bg-slate-50 border-slate-200'
-  },
-  {
-    status: 'da_duyet', 
-    title: 'Đã duyệt',
-    description: 'Đã được phê duyệt, chờ bàn giao',
-    color: 'bg-blue-50 border-blue-200'
-  },
-  {
-    status: 'dang_luan_chuyen',
-    title: 'Đang luân chuyển', 
-    description: 'Thiết bị đang được luân chuyển',
-    color: 'bg-orange-50 border-orange-200'
-  },
-  {
-    status: 'da_ban_giao',
-    title: 'Đã bàn giao',
-    description: 'Đã bàn giao cho bên ngoài, chờ hoàn trả',
-    color: 'bg-purple-50 border-purple-200'
-  },
-  {
-    status: 'hoan_thanh',
-    title: 'Hoàn thành',
-    description: 'Đã hoàn thành luân chuyển',
-    color: 'bg-green-50 border-green-200'
-  }
-]
+import { CollapsibleLane, type TransferStatus as LaneTransferStatus } from "@/components/transfers/CollapsibleLane"
+import { DensityToggle, type DensityMode } from "@/components/transfers/DensityToggle"
+import { TransferCard } from "@/components/transfers/TransferCard"
+import { FilterBar } from "@/components/transfers/FilterBar"
+import { VirtualizedKanbanColumn } from "@/components/transfers/VirtualizedKanbanColumn"
+import {
+  getDensityMode,
+  setDensityMode,
+  getLaneCollapsedState,
+  setLaneCollapsedState,
+  getVisibleCounts,
+  setVisibleCounts,
+  type LaneCollapsedState,
+  type VisibleCountsState,
+} from "@/lib/kanban-preferences"
+import { normalizeTransferData } from "@/lib/transfer-normalizer"
 
 export default function TransfersPage() {
   const { toast } = useToast()
@@ -103,11 +88,95 @@ export default function TransfersPage() {
 
   // REMOVED: regional_leader page block - they now have read-only access
 
-  // ✅ Use cached hooks instead of manual state
-  const { data: transfers = [], isLoading, refetch: refetchTransfers } = useTransferRequests()
-  const createTransferRequest = useCreateTransferRequest()
-  const updateTransferRequest = useUpdateTransferRequest()
-  const approveTransferRequest = useApproveTransferRequest()
+  // Fetch facilities for dropdown (lightweight RPC - only facilities with transfer requests)
+  const { data: facilityOptionsData } = useQuery<Array<{ id: number; name: string }>>({
+    queryKey: ['transfer_request_facilities'],
+    queryFn: async () => {
+      try {
+        if (!user) return [];
+        // Call dedicated RPC that returns only facility IDs and names (lightweight ~1-2KB)
+        const result = await callRpc<Array<{ id: number; name: string }>>({ 
+          fn: 'get_transfer_request_facilities', 
+          args: {} 
+        });
+        return result || [];
+      } catch (error) {
+        console.error('[transfers] Failed to fetch facility options:', error);
+        return [];
+      }
+    },
+    enabled: !!user,
+    staleTime: 5 * 60_000, // 5 minutes (facilities change rarely)
+    gcTime: 10 * 60_000,
+  });
+
+  // Server-side facility filter (like Repair Requests page)
+  const { selectedFacilityId, setSelectedFacilityId: setFacilityId, showFacilityFilter } = useFacilityFilter({
+    mode: 'server',
+    userRole: (user?.role as string) || 'user',
+    facilities: facilityOptionsData || [],
+  })
+
+  // ✅ SERVER-SIDE FILTERS STATE
+  // Default to last 30 days of data (active transfers + recent history)
+  const thirtyDaysAgo = new Date()
+  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
+  
+  const [filters, setFilters] = React.useState<TransferKanbanFilters>(() => ({
+    facilityIds: selectedFacilityId ? [selectedFacilityId] : undefined,
+    dateFrom: thirtyDaysAgo.toISOString(), // 🎯 SMART DEFAULT: Only load last 30 days
+    dateTo: undefined, // No upper limit (includes today)
+    limit: 500, // Keep high limit as safety net (rarely hit with date filter)
+  }))
+
+  // Update facility filter when it changes
+  React.useEffect(() => {
+    setFilters(prev => ({
+      ...prev,
+      facilityIds: selectedFacilityId ? [selectedFacilityId] : undefined,
+    }))
+  }, [selectedFacilityId])
+
+  // Wrapper to trigger refetch when facility changes
+  const setSelectedFacilityId = React.useCallback((id: number | null) => {
+    setFacilityId(id);
+    // TanStack Query will auto-refetch when queryKey changes
+  }, [setFacilityId]);
+
+  // ✅ SERVER-SIDE DATA FETCHING
+  const { data, isLoading, refetch: refetchTransfers } = useTransfersKanban(filters)
+  const { data: counts } = useTransferCounts(
+    selectedFacilityId ? [selectedFacilityId] : undefined
+  )
+
+  // Phase 0: Kanban scalability state management
+  const [densityMode, setDensityModeState] = React.useState<DensityMode>(() => getDensityMode())
+  const [laneCollapsed, setLaneCollapsedStateLocal] = React.useState<LaneCollapsedState>(() => getLaneCollapsedState())
+  const [visibleCounts, setVisibleCountsState] = React.useState<VisibleCountsState>(() => getVisibleCounts())
+
+  // Persist density mode changes
+  const handleDensityChange = React.useCallback((mode: DensityMode) => {
+    setDensityModeState(mode)
+    setDensityMode(mode)
+  }, [])
+
+  // Persist lane collapsed state changes
+  const handleToggleCollapse = React.useCallback((status: TransferStatus) => {
+    setLaneCollapsedStateLocal((prev) => {
+      const next = { ...prev, [status]: !prev[status] }
+      setLaneCollapsedState(next)
+      return next
+    })
+  }, [])
+
+  // Handle "Show more" for individual columns
+  const handleShowMore = React.useCallback((status: TransferStatus) => {
+    setVisibleCountsState((prev) => {
+      const next = { ...prev, [status]: prev[status] + 50 }
+      setVisibleCounts(next)
+      return next
+    })
+  }, [])
 
   const [isRefreshing, setIsRefreshing] = React.useState(false)
   const [isAddDialogOpen, setIsAddDialogOpen] = React.useState(false)
@@ -118,81 +187,14 @@ export default function TransfersPage() {
   const [handoverDialogOpen, setHandoverDialogOpen] = React.useState(false)
   const [handoverTransfer, setHandoverTransfer] = React.useState<TransferRequest | null>(null)
 
-  // Consolidated facility filter (client mode via items)
-  const {
-    selectedFacilityId,
-    setSelectedFacilityId,
-    facilities: facilitiesFromItems,
-    showFacilityFilter,
-    filteredItems,
-  } = useFacilityFilter<TransferRequest>({
-    mode: 'client',
-    selectBy: 'id',
-    items: transfers,
-    userRole: (user?.role as string) || 'user',
-    getFacilityId: (t) => t.thiet_bi?.facility_id ?? null,
-    getFacilityName: (t) => t.thiet_bi?.facility_name ?? null,
-  })
-
-  // Fallback facilities via RPC when items don't include facility metadata
-  const [facilitiesRpc, setFacilitiesRpc] = React.useState<Array<{ id: number; name: string; count?: number }>>([])
-  React.useEffect(() => {
-    const needFallback = (facilitiesFromItems?.length || 0) === 0
-    const canShow = isRegionalLeader || user?.role === 'global'
-    if (!needFallback || !canShow) return
-    const run = async () => {
-      try {
-        const data = await callRpc<any[]>({ fn: 'get_facilities_with_equipment_count', args: {} })
-        setFacilitiesRpc((data || []).map((f: any) => ({ id: f.id, name: f.name, count: f.equipment_count || 0 })))
-      } catch {
-        setFacilitiesRpc([])
-      }
-    }
-    run()
-  }, [facilitiesFromItems?.length, isRegionalLeader, user?.role])
-
-  const dropdownFacilities = (facilitiesFromItems?.length || 0) > 0 ? facilitiesFromItems : facilitiesRpc
-  const showFacilityFilterUI = (isRegionalLeader || user?.role === 'global') && dropdownFacilities.length > 0
-
-  // ✅ Remove manual fetchTransfers - now handled by cached hook
-
-  // ✅ Remove useEffect for fetchTransfers - data loaded automatically by cached hook
-
-  // Facilities shown in UI come from items when available, otherwise from RPC fallback
-
   const handleRefresh = () => {
     setIsRefreshing(true)
-    refetchTransfers().finally(() => setIsRefreshing(false)) // ✅ Use cached hook refetch
+    refetchTransfers().finally(() => setIsRefreshing(false))
   }
 
-  // ✅ Defensive filtering: Handle edge case where transfers lack facility metadata
-  const displayedTransfers = React.useMemo(() => {
-    // If no facility filter is active, return filtered items as-is
-    if (!showFacilityFilter || !selectedFacilityId) {
-      return filteredItems
-    }
-
-    // ✅ Security check: Verify selected facility is in allowed list
-    const allowedFacilityIds = new Set(dropdownFacilities.map(f => f.id))
-    if (!allowedFacilityIds.has(selectedFacilityId)) {
-      console.warn(`[Transfers] Selected facility ${selectedFacilityId} not in allowed list. Showing all transfers.`)
-      return transfers
-    }
-
-    // ✅ Data quality check: Skip filtering if transfers lack facility metadata
-    const transfersWithFacilityData = transfers.filter((t) => t.thiet_bi?.facility_id != null)
-
-    if (transfersWithFacilityData.length === 0 && transfers.length > 0) {
-      console.warn('[Transfers] Transfers missing facility metadata. Cannot filter by facility. This indicates legacy equipment data.')
-      return transfers // Show all transfers instead of empty Kanban board
-    }
-
-    // ✅ Use filtered items from useFacilityFilter hook (normal case)
-    return filteredItems
-  }, [filteredItems, showFacilityFilter, selectedFacilityId, dropdownFacilities, transfers])
-
+  // Server-side filtering means no local filtering needed
   const getTransfersByStatus = (status: TransferStatus) => {
-    return displayedTransfers.filter(transfer => transfer.trang_thai === status)
+    return data?.transfers[status] || []
   }
 
   const getTypeVariant = (type: TransferRequest['loai_hinh']) => {
@@ -567,8 +569,11 @@ export default function TransfersPage() {
             </CardDescription>
           </div>
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+            {/* Density toggle for card display mode */}
+            <DensityToggle mode={densityMode} onChange={handleDensityChange} />
+            
             {/* Facility filter for regional leaders and global users */}
-            {showFacilityFilterUI && (
+            {showFacilityFilter && (
               <Select
                 value={selectedFacilityId?.toString() || "all"}
                 onValueChange={(value) => setSelectedFacilityId(value === "all" ? null : Number(value))}
@@ -579,14 +584,9 @@ export default function TransfersPage() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Tất cả cơ sở</SelectItem>
-                  {dropdownFacilities.map((facility) => (
+                  {(facilityOptionsData || []).map((facility) => (
                     <SelectItem key={facility.id} value={facility.id.toString()}>
                       {facility.name}
-                      {typeof facility.count === 'number' && facility.count > 0 && (
-                        <Badge variant="secondary" className="ml-2">
-                          {facility.count}
-                        </Badge>
-                      )}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -613,134 +613,81 @@ export default function TransfersPage() {
             )}
           </div>
         </CardHeader>
-        <CardContent>
-          {/* Kanban Board */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">
-            {KANBAN_COLUMNS.map((column) => {
-              const columnTransfers = getTransfersByStatus(column.status)
-              
-              return (
-                <Card key={column.status} className={`${column.color} min-h-[600px]`}>
-                  <CardHeader className="pb-3">
-                    <div className="flex items-center justify-between">
-                      <CardTitle className="text-sm font-medium">
-                        {column.title}
-                      </CardTitle>
-                      <Badge variant="secondary" className="ml-2">
-                        {columnTransfers.length}
-                      </Badge>
-                    </div>
-                    <CardDescription className="text-xs">
-                      {column.description}
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-3">
-                    {isLoading ? (
-                      Array.from({ length: 3 }).map((_, i) => (
-                        <Skeleton key={i} className="h-32 w-full" />
-                      ))
-                    ) : columnTransfers.length === 0 ? (
-                      <div className="text-center text-muted-foreground text-sm py-8">
-                        Không có yêu cầu nào
+        <CardContent className="space-y-4">
+          {/* ✅ FILTER BAR (NEW) */}
+          <FilterBar 
+            filters={filters}
+            onFiltersChange={setFilters}
+            facilityId={selectedFacilityId || undefined}
+          />
+
+          {/* Loading State */}
+          {isLoading ? (
+            <div className="text-center py-8">
+              <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full mx-auto" />
+              <p className="text-sm text-muted-foreground mt-2">Đang tải...</p>
+            </div>
+          ) : (
+            <>
+              {/* ✅ KANBAN BOARD (Always visible) */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">
+                {KANBAN_COLUMNS.map((column) => {
+                  const columnTransfers = data?.transfers[column.status] || []
+                  const totalCount = counts?.columnCounts[column.status] || columnTransfers.length
+                  
+                  return (
+                    <div key={column.status} className="flex flex-col gap-2">
+                      {/* Column Header with Elegant Pastel Color */}
+                      <div className={`p-4 rounded-t-lg border-2 ${column.bgColor} ${column.borderColor}`}>
+                        <div className="flex items-center justify-between">
+                          <h3 className={`font-semibold ${column.textColor}`}>{column.title}</h3>
+                          <Badge variant="secondary">{totalCount}</Badge>
+                        </div>
                       </div>
-                    ) : (
-                      columnTransfers.map((transfer) => (
-                        <Card 
-                          key={transfer.id} 
-                          className="mb-3 shadow-sm hover:shadow-md transition-shadow cursor-pointer"
-                          onClick={() => handleViewDetail(transfer)}
-                        >
-                          <CardContent className="p-4">
-                            <div className="space-y-3">
-                              <div className="flex items-start justify-between">
-                                <div className="space-y-1">
-                                  <p className="text-sm font-medium leading-none">
-                                    {transfer.ma_yeu_cau}
-                                  </p>
-                                  <Badge variant={getTypeVariant(transfer.loai_hinh)}>
-                                    {TRANSFER_TYPES[transfer.loai_hinh as keyof typeof TRANSFER_TYPES]}
-                                  </Badge>
-                                </div>
-                              </div>
-                              
-                              <div className="space-y-2">
-                                <div>
-                                  <p className="text-xs text-muted-foreground">Thiết bị</p>
-                                  <p className="text-sm font-medium">
-                                    {transfer.thiet_bi?.ma_thiet_bi} - {transfer.thiet_bi?.ten_thiet_bi}
-                                  </p>
-                                </div>
-                                
-                                {transfer.loai_hinh === 'noi_bo' ? (
-                                  <div>
-                                    <p className="text-xs text-muted-foreground">Từ → Đến</p>
-                                    <p className="text-sm">
-                                      {transfer.khoa_phong_hien_tai} → {transfer.khoa_phong_nhan}
-                                    </p>
-                                  </div>
-                                ) : (
-                                  <div className="space-y-1">
-                                    <div>
-                                      <p className="text-xs text-muted-foreground">Đơn vị nhận</p>
-                                      <p className="text-sm">{transfer.don_vi_nhan}</p>
-                                    </div>
-                                    {transfer.ngay_du_kien_tra && (
-                                      <div>
-                                        <p className="text-xs text-muted-foreground">Dự kiến hoàn trả</p>
-                                        <div className="flex items-center gap-1">
-                                          <p className="text-sm">
-                                            {new Date(transfer.ngay_du_kien_tra).toLocaleDateString('vi-VN')}
-                                          </p>
-                                          {/* Overdue indicator for external transfers */}
-                                          {(transfer.trang_thai === 'da_ban_giao' || transfer.trang_thai === 'dang_luan_chuyen') && 
-                                           new Date(transfer.ngay_du_kien_tra) < new Date() && (
-                                            <Badge variant="destructive" className="text-xs px-1 py-0">
-                                              Quá hạn
-                                            </Badge>
-                                          )}
-                                        </div>
-                                      </div>
-                                    )}
-                                  </div>
-                                )}
-                                
-                                <div>
-                                  <p className="text-xs text-muted-foreground">Lý do</p>
-                                  <p className="text-sm line-clamp-2">{transfer.ly_do_luan_chuyen}</p>
-                                </div>
-                              </div>
-                              
-                              <div className="flex items-center justify-between pt-2 border-t">
-                                <p className="text-xs text-muted-foreground">
-                                  {new Date(transfer.created_at).toLocaleDateString('vi-VN')}
-                                </p>
-                                <div className="flex items-center gap-1 flex-wrap" onClick={(e) => e.stopPropagation()}>
-                                  {/* Status Action Buttons */}
-                                  {getStatusActions(transfer)}
-                                  
-                                  {/* Edit/Delete Buttons */}
-                                  {canEdit(transfer) && (
-                                    <Button key={`edit-${transfer.id}`} size="sm" variant="ghost" className="h-6 px-2 text-xs" onClick={() => handleEditTransfer(transfer)}>
-                                      Sửa
-                                    </Button>
-                                  )}
-                                  {canDelete(transfer) && (
-                                    <Button key={`delete-${transfer.id}`} size="sm" variant="ghost" className="h-6 px-2 text-xs text-destructive" onClick={() => handleDeleteTransfer(transfer.id)}>
-                                      Xóa
-                                    </Button>
-                                  )}
-                                </div>
-                              </div>
-                            </div>
-                          </CardContent>
-                        </Card>
-                      ))
-                    )}
-                  </CardContent>
-                </Card>
-              )
-            })}
-          </div>
+                      
+                      {/* Column Content with Virtualization */}
+                      <div className={`flex-1 min-h-[400px] border-2 border-t-0 rounded-b-lg p-2 ${column.bgColor} ${column.borderColor}`}>
+                        {columnTransfers.length === 0 ? (
+                          <div className="flex items-center justify-center h-32 text-sm text-muted-foreground">
+                            Không có yêu cầu nào
+                          </div>
+                        ) : (
+                          <VirtualizedKanbanColumn
+                            transfers={columnTransfers}
+                            density={densityMode}
+                            renderCard={(transfer, index) => {
+                              // Normalize TransferKanbanItem to TransferRequest for handlers
+                              const normalizedTransfer = normalizeTransferData(transfer)
+                              return (
+                                <TransferCard
+                                  key={transfer.id}
+                                  transfer={transfer as any}
+                                  density={densityMode}
+                                  onClick={() => handleViewDetail(normalizedTransfer)}
+                                  statusActions={getStatusActions(normalizedTransfer)}
+                                  onEdit={() => handleEditTransfer(normalizedTransfer)}
+                                  onDelete={() => handleDeleteTransfer(transfer.id)}
+                                  canEdit={canEdit(normalizedTransfer)}
+                                  canDelete={canDelete(normalizedTransfer)}
+                                />
+                              )
+                            }}
+                          />
+                        )}
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+
+              {/* Total Count */}
+              {data && data.totalCount > 0 && (
+                <div className="text-sm text-muted-foreground text-center pt-4">
+                  Tổng số: {data.totalCount} yêu cầu
+                </div>
+              )}
+            </>
+          )}
         </CardContent>
       </Card>
     </>

@@ -68,6 +68,7 @@ import type { Column } from "@tanstack/react-table"
 import { RepairRequestAlert } from "@/components/repair-request-alert"
 import { MobileFiltersDropdown } from "@/components/mobile-filters-dropdown"
 import { useFacilityFilter, type FacilityOption } from "@/hooks/useFacilityFilter"
+import { ErrorBoundary } from "@/components/error-boundary"
 // Auto department filter removed
 
 
@@ -1309,8 +1310,9 @@ export default function RepairRequestsPage() {
   const isFiltered = table.getState().columnFilters.length > 0 || debouncedSearch.length > 0;
 
   return (
-    <>
-      {editingRequest && (
+    <ErrorBoundary>
+      <>
+        {editingRequest && (
         <Dialog open={!!editingRequest} onOpenChange={(open) => !open && setEditingRequest(null)}>
           <DialogContent>
             <DialogHeader>
@@ -2349,5 +2351,6 @@ export default function RepairRequestsPage() {
         )}
       </div>
     </>
+    </ErrorBoundary>
   )
 }

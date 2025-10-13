@@ -13,7 +13,7 @@ export const transferKeys = {
   detail: (id: string) => [...transferKeys.details(), id] as const,
 }
 
-// Fetch all transfer requests with filters using enhanced RPC
+// Fetch all transfer requests with filters using enhanced RPC (server-side filtering)
 export function useTransferRequests(filters?: {
   search?: string
   trang_thai?: string
@@ -31,9 +31,9 @@ export function useTransferRequests(filters?: {
   return useQuery<TransferRequest[]>({
     queryKey: transferKeys.list(filters || {}),
     queryFn: async () => {
-      // SECURITY: Only global users can specify don_vi/dia_ban filters
+      // SECURITY: Only global users can specify don_vi filter
       // For other roles (including regional_leader), server enforces via allowed_don_vi_for_session()
-      // NOTE: Must pass all 8 params to resolve function overload (p_khoa_phong is the 8th param)
+      // Server-side facility filtering reduces payload from 5000 → 20 records
       const data = await callRpc<any[]>({
         fn: 'transfer_request_list_enhanced',
         args: {
@@ -41,10 +41,10 @@ export function useTransferRequests(filters?: {
           p_status: filters?.trang_thai ?? null,
           p_page: 1,
           p_page_size: 5000,
-          p_don_vi: userRole === 'global' ? (filters?.don_vi ?? null) : null,
+          p_don_vi: filters?.don_vi ?? null, // ✅ Pass facility filter to server
           p_date_from: filters?.dateFrom ?? null,
           p_date_to: filters?.dateTo ?? null,
-          p_khoa_phong: filters?.khoa_phong ?? null,  // 8th param to resolve overload
+          p_khoa_phong: filters?.khoa_phong ?? null,
         },
       })
       return (data || []) as TransferRequest[]

@@ -47,6 +47,10 @@ const ALLOWED_FUNCTIONS = new Set<string>([
   'transfer_request_complete',
   'transfer_history_list',
   'transfer_request_external_pending_returns',
+  'get_transfer_request_facilities',
+  // Transfers - Kanban Server-Side
+  'get_transfers_kanban',
+  'get_transfer_counts',
   // Maintenance
   'maintenance_plan_list',
   'maintenance_plan_create',
@@ -135,6 +139,7 @@ export async function POST(req: NextRequest, context: { params: Promise<{ fn: st
     // Build JWT claims for PostgREST. We keep db role = authenticated; app role in app_role.
     const claims: Record<string, any> = {
       role: 'authenticated',
+      sub: userId, // CRITICAL: 'sub' is required for auth.uid() in PostgreSQL
       app_role: appRole,
       don_vi: donVi,
       user_id: userId,
@@ -180,6 +185,12 @@ export async function POST(req: NextRequest, context: { params: Promise<{ fn: st
     const isJson = res.headers.get('content-type')?.includes('application/json')
     const payload = isJson ? JSON.parse(text || 'null') : text
     if (!res.ok) {
+      console.error(`Supabase RPC error for ${fn}:`, {
+        status: res.status,
+        payload,
+        body: JSON.stringify(body, null, 2),
+        claims: {app_role: appRole, don_vi: donVi, user_id: userId}
+      })
       return NextResponse.json({ error: payload || 'RPC error' }, { status: res.status })
     }
     return NextResponse.json(payload)
