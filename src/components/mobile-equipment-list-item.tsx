@@ -86,6 +86,9 @@ export function MobileEquipmentListItem({
   }
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
+    // Ignore keyboard events from child elements (buttons, dropdowns, etc.)
+    if (e.currentTarget !== e.target) return
+    
     if (e.key === 'Enter' || e.key === ' ') {
       e.preventDefault()
       onShowDetails(equipment)
