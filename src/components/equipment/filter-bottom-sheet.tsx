@@ -37,6 +37,10 @@ export function FilterBottomSheet({
 }: FilterBottomSheetProps) {
   // Local state for filter selections
   const [localFilters, setLocalFilters] = React.useState<Record<string, string[]>>({})
+  
+  // Refs for focus management
+  const dialogRef = React.useRef<HTMLDivElement>(null)
+  const previousActiveElement = React.useRef<HTMLElement | null>(null)
 
   // Initialize local filters from columnFilters when sheet opens
   React.useEffect(() => {
@@ -50,6 +54,34 @@ export function FilterBottomSheet({
       setLocalFilters(initial)
     }
   }, [open, columnFilters])
+
+  // Focus management: move focus into dialog when opened, restore on close
+  React.useEffect(() => {
+    if (open) {
+      // Store current focus to restore later
+      previousActiveElement.current = document.activeElement as HTMLElement
+      
+      // Focus the dialog after render
+      setTimeout(() => {
+        if (dialogRef.current) {
+          const firstFocusable = dialogRef.current.querySelector<HTMLElement>(
+            'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+          )
+          if (firstFocusable) {
+            firstFocusable.focus()
+          } else {
+            dialogRef.current.focus()
+          }
+        }
+      }, 100)
+    } else {
+      // Restore focus when dialog closes
+      if (previousActiveElement.current) {
+        previousActiveElement.current.focus()
+        previousActiveElement.current = null
+      }
+    }
+  }, [open])
 
   const toggleFilter = (category: string, value: string) => {
     setLocalFilters((prev) => {
@@ -89,6 +121,31 @@ export function FilterBottomSheet({
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Escape") {
       onOpenChange(false)
+      return
+    }
+
+    // Focus trap: keep Tab navigation inside the dialog
+    if (e.key === "Tab" && dialogRef.current) {
+      const focusableElements = dialogRef.current.querySelectorAll<HTMLElement>(
+        'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+      )
+      const focusableArray = Array.from(focusableElements)
+      const firstFocusable = focusableArray[0]
+      const lastFocusable = focusableArray[focusableArray.length - 1]
+
+      if (e.shiftKey) {
+        // Shift+Tab: if on first element, wrap to last
+        if (document.activeElement === firstFocusable) {
+          e.preventDefault()
+          lastFocusable?.focus()
+        }
+      } else {
+        // Tab: if on last element, wrap to first
+        if (document.activeElement === lastFocusable) {
+          e.preventDefault()
+          firstFocusable?.focus()
+        }
+      }
     }
   }
 
@@ -104,11 +161,13 @@ export function FilterBottomSheet({
 
   return (
     <div
+      ref={dialogRef}
       className="fixed inset-0 z-50 flex items-end"
       onKeyDown={handleKeyDown}
       role="dialog"
       aria-modal="true"
       aria-labelledby="filter-sheet-title"
+      tabIndex={-1}
     >
       {/* Backdrop */}
       <div
