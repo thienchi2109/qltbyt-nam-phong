@@ -15,11 +15,11 @@ interface DynamicChartProps {
  * Dynamic Chart Component
  * Loads Recharts library only when needed and provides loading/error states
  */
-export function DynamicChart({ 
-  children, 
-  height = 300, 
+export function DynamicChart({
+  children,
+  height = 300,
   fallbackHeight,
-  onError 
+  onError,
 }: DynamicChartProps) {
   const [components, setComponents] = React.useState<RechartsComponents | null>(null)
   const [isLoading, setIsLoading] = React.useState(true)
@@ -81,6 +81,12 @@ interface LineChartProps {
   showGrid?: boolean
   showTooltip?: boolean
   showLegend?: boolean
+  margin?: {
+    top?: number
+    right?: number
+    bottom?: number
+    left?: number
+  }
 }
 
 export function DynamicLineChart({
@@ -91,12 +97,23 @@ export function DynamicLineChart({
   showGrid = true,
   showTooltip = true,
   showLegend = true,
+  margin,
 }: LineChartProps) {
   return (
     <DynamicChart height={height}>
       {({ LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer }) => (
         <ResponsiveContainer width="100%" height={height}>
-          <LineChart data={data} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+          <LineChart
+            data={data}
+            margin={
+              margin || {
+                top: 20,
+                right: 30,
+                left: 20,
+                bottom: 5,
+              }
+            }
+          >
             {showGrid && <CartesianGrid strokeDasharray="3 3" />}
             <XAxis dataKey={xAxisKey} />
             <YAxis />
@@ -203,6 +220,7 @@ interface PieChartProps {
   showTooltip?: boolean
   showLabels?: boolean
   outerRadius?: number
+  innerRadius?: number
 }
 
 export function DynamicPieChart({
@@ -214,6 +232,7 @@ export function DynamicPieChart({
   showTooltip = true,
   showLabels = true,
   outerRadius = 80,
+  innerRadius,
 }: PieChartProps) {
   return (
     <DynamicChart height={height}>
@@ -226,6 +245,7 @@ export function DynamicPieChart({
               nameKey={nameKey}
               cx="50%"
               cy="50%"
+              innerRadius={innerRadius}
               outerRadius={outerRadius}
               label={showLabels ? ({ name, value, percent }: { name: string; value: number; percent: number }) => 
                 `${name}: ${value} (${(percent * 100).toFixed(0)}%)` : false
