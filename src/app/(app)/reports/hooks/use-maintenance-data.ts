@@ -7,6 +7,29 @@ interface DateRange {
   to: Date
 }
 
+interface RepairFrequencyPoint {
+  period: string
+  total: number
+  completed: number
+}
+
+interface TopEquipmentRepairEntry {
+  equipmentId: number
+  equipmentName: string
+  totalRequests: number
+  latestStatus: string
+  latestCompletedDate?: string | null
+}
+
+interface RecentRepairHistoryEntry {
+  id: number
+  equipmentName: string
+  issue: string
+  status: string
+  requestedDate: string
+  completedDate?: string | null
+}
+
 interface MaintenanceReportData {
   summary: {
     totalRepairs: number
@@ -25,7 +48,10 @@ interface MaintenanceReportData {
       planned: number
       actual: number
     }>
+    repairFrequencyByMonth?: RepairFrequencyPoint[]
   }
+  topEquipmentRepairs?: TopEquipmentRepairEntry[]
+  recentRepairHistory?: RecentRepairHistoryEntry[]
 }
 
 // Query keys for maintenance reports caching
@@ -61,7 +87,7 @@ export function useMaintenanceReportData(
         args: {
           p_date_from: fromDate,
           p_date_to: toDate,
-          p_don_vi: selectedDonVi || null
+          p_don_vi: selectedDonVi ?? null
         }
       })
 
@@ -74,8 +100,11 @@ export function useMaintenanceReportData(
         },
         charts: {
           repairStatusDistribution: [],
-          maintenancePlanVsActual: []
-        }
+          maintenancePlanVsActual: [],
+          repairFrequencyByMonth: []
+        },
+        topEquipmentRepairs: [],
+        recentRepairHistory: []
       }
     },
     enabled: (effectiveTenantKey ?? 'auto') !== 'unset',  // ✅ Gate for global users

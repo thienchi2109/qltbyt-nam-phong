@@ -16,22 +16,12 @@ export interface EquipmentDistributionItem {
   [key: string]: string | number | undefined
 }
 
-export interface RawEquipmentItem {
-  id: number
-  ma_thiet_bi: string
-  ten_thiet_bi: string
-  khoa_phong_quan_ly: string | null
-  vi_tri_lap_dat: string | null
-  tinh_trang_hien_tai: string | null
-}
-
 export interface EquipmentDistributionData {
   byDepartment: EquipmentDistributionItem[]
   byLocation: EquipmentDistributionItem[]
   departments: string[]
   locations: string[]
   totalEquipment: number
-  rawEquipment: RawEquipmentItem[]
 }
 
 interface EquipmentStatusDistributionRpc {
@@ -82,7 +72,6 @@ export function useEquipmentDistribution(
           departments: [],
           locations: [],
           totalEquipment: 0,
-          rawEquipment: [],
         }
       }
 
@@ -92,7 +81,6 @@ export function useEquipmentDistribution(
         departments: res.departments || [],
         locations: res.locations || [],
         totalEquipment: res.total_equipment || 0,
-        rawEquipment: [],
       }
       return data
     },
