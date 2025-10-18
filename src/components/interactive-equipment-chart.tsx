@@ -128,23 +128,22 @@ export function InteractiveEquipmentChart({ className, tenantFilter, selectedDon
   const hasActiveFilters = selectedDepartment !== 'all' || selectedLocation !== 'all'
 
   // Filtered data based on current selection with cross-filtering
-  const filteredData = React.useMemo(() => {
+  const chartData = React.useMemo(() => {
     if (!data) return []
-    
-    let sourceData = viewType === 'department' ? data.byDepartment : data.byLocation
-    
-    return sourceData.slice(0, 10) // Show top 10 for better visualization
+
+    return viewType === 'department' ? data.byDepartment : data.byLocation
   }, [data, viewType])
 
   // Statistics
   const stats = React.useMemo(() => {
     if (!data) return null
-    
-    const currentData = filteredData
-    const totalCategories = currentData.length
-    const totalEquipment = currentData.reduce((sum, item) => sum + item.total, 0)
-    const avgEquipmentPerCategory = currentData.length > 0 
-      ? Math.round(totalEquipment / currentData.length) 
+
+    const totalCategories = chartData.length
+    const totalEquipment = (typeof data.totalEquipment === 'number' && !Number.isNaN(data.totalEquipment))
+      ? data.totalEquipment
+      : chartData.reduce((sum, item) => sum + item.total, 0)
+    const avgEquipmentPerCategory = totalCategories > 0 
+      ? Math.round(totalEquipment / totalCategories) 
       : 0
     
     return {
@@ -152,7 +151,7 @@ export function InteractiveEquipmentChart({ className, tenantFilter, selectedDon
       totalEquipment,
       avgEquipmentPerCategory
     }
-  }, [filteredData])
+  }, [chartData])
 
   if (error) {
     return (
@@ -275,7 +274,7 @@ export function InteractiveEquipmentChart({ className, tenantFilter, selectedDon
           <TabsContent value="department" className="space-y-4">
             {isLoading ? (
               <Skeleton className="h-[400px] w-full" />
-            ) : filteredData.length === 0 ? (
+            ) : chartData.length === 0 ? (
               <div className="h-[400px] flex items-center justify-center">
                 <Alert>
                   <AlertDescription>
@@ -296,7 +295,7 @@ export function InteractiveEquipmentChart({ className, tenantFilter, selectedDon
               <div className="space-y-4">
                 {/* Chart */}
                 <DynamicBarChart
-                  data={filteredData}
+                  data={chartData}
                   height={400}
                   xAxisKey="name"
                   bars={Object.entries(STATUS_COLORS).map(([key, color]) => ({
@@ -332,7 +331,7 @@ export function InteractiveEquipmentChart({ className, tenantFilter, selectedDon
           <TabsContent value="location" className="space-y-4">
             {isLoading ? (
               <Skeleton className="h-[400px] w-full" />
-            ) : filteredData.length === 0 ? (
+            ) : chartData.length === 0 ? (
               <div className="h-[400px] flex items-center justify-center">
                 <Alert>
                   <AlertDescription>
@@ -353,7 +352,7 @@ export function InteractiveEquipmentChart({ className, tenantFilter, selectedDon
               <div className="space-y-4">
                 {/* Chart */}
                 <DynamicBarChart
-                  data={filteredData}
+                  data={chartData}
                   height={400}
                   xAxisKey="name"
                   bars={Object.entries(STATUS_COLORS).map(([key, color]) => ({
