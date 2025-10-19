@@ -70,6 +70,13 @@ supabase/logs/
 !.env.local.development
 !.env.example
 
+# Local IDE/Agent directories
+.claude/
+.factory/
+.github/
+.cursor/
+.idx/
+
 # Development tooling - commit these
 # scripts/
 # docs/
