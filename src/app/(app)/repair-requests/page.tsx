@@ -69,6 +69,9 @@ import { RepairRequestAlert } from "@/components/repair-request-alert"
 import { MobileFiltersDropdown } from "@/components/mobile-filters-dropdown"
 import { useFacilityFilter, type FacilityOption } from "@/hooks/useFacilityFilter"
 import { ErrorBoundary } from "@/components/error-boundary"
+import { Sheet, SheetContent, SheetHeader as SheetHeaderUI, SheetTitle, SheetDescription } from "@/components/ui/sheet"
+import { SummaryBar, type SummaryItem } from "@/components/summary/summary-bar"
+import { ResizableAside, ExpandAsideButton } from "./_components/ResizableAside"
 // Auto department filter removed
 
 
@@ -308,8 +311,35 @@ export default function RepairRequestsPage() {
   const [completionResult, setCompletionResult] = React.useState("");
   const [nonCompletionReason, setNonCompletionReason] = React.useState("");
 
-  // UI state
-  const [showRequestsList, setShowRequestsList] = React.useState(false);
+// UI state (list always visible)
+  const [isCreateOpen, setIsCreateOpen] = React.useState(false);
+  const [viewMode, setViewMode] = React.useState<'split' | 'full' | 'auto'>(() => {
+    if (typeof window === 'undefined') return 'auto'
+    return (localStorage.getItem('rr_view_mode') as any) || 'split'
+  })
+  const [asideWidth, setAsideWidth] = React.useState<number>(() => {
+    if (typeof window === 'undefined') return 400
+    const saved = Number(localStorage.getItem('rr_aside_w'))
+    return Number.isFinite(saved) && saved >= 320 ? saved : 400
+  })
+  const [asideCollapsed, setAsideCollapsed] = React.useState<boolean>(() => {
+    if (typeof window === 'undefined') return false
+    return localStorage.getItem('rr_aside_collapsed') === '1'
+  })
+  const containerRef = React.useRef<HTMLDivElement | null>(null)
+
+  React.useEffect(() => {
+    if (typeof window === 'undefined') return
+    localStorage.setItem('rr_aside_w', String(asideWidth))
+  }, [asideWidth])
+  React.useEffect(() => {
+    if (typeof window === 'undefined') return
+    localStorage.setItem('rr_aside_collapsed', asideCollapsed ? '1' : '0')
+  }, [asideCollapsed])
+  React.useEffect(() => {
+    if (typeof window === 'undefined') return
+    localStorage.setItem('rr_view_mode', viewMode)
+  }, [viewMode])
 
   // Table state
   const [sorting, setSorting] = React.useState<SortingState>([
@@ -420,8 +450,30 @@ export default function RepairRequestsPage() {
     return counts;
   }, [requests]);
 
-  // Align with repo roles: use 'global' instead of legacy 'admin'
+// Align with repo roles: use 'global' instead of legacy 'admin'
   const canSetRepairUnit = !!user && ['global', 'to_qltb'].includes(user.role);
+
+  // Status counts for summary (server-side via RPC per status)
+  const STATUSES = ['Chờ xử lý','Đã duyệt','Hoàn thành','Không HT'] as const
+  type Status = typeof STATUSES[number]
+  const { data: statusCounts, isLoading: statusCountsLoading } = useQuery<Record<Status, number>>({
+    queryKey: ['repair_request_status_counts', { facilityId: selectedFacilityId, search: debouncedSearch }],
+    queryFn: async () => {
+      const entries = await Promise.all(
+        STATUSES.map(async (s) => {
+          const res = await callRpc<{ data: any[]; total: number; page: number; pageSize: number }>({
+            fn: 'repair_request_list',
+            args: { p_q: debouncedSearch || null, p_status: s, p_page: 1, p_page_size: 1, p_don_vi: selectedFacilityId },
+          })
+          return [s, res?.total ?? 0] as const
+        })
+      )
+      return Object.fromEntries(entries) as Record<Status, number>
+    },
+    staleTime: 30_000,
+    enabled: !!user,
+  })
+
   // Regional leaders are read-only on this page (no create)
   const isRegionalLeader = !!user && user.role === 'regional_leader';
   // Note: showFacilityFilter comes from useFacilityFilter hook above
@@ -441,12 +493,6 @@ export default function RepairRequestsPage() {
     }
   }, [editingRequest]);
 
-  // Force list view for regional leaders (no form creation allowed)
-  React.useEffect(() => {
-    if (isRegionalLeader) {
-      setShowRequestsList(true)
-    }
-  }, [isRegionalLeader])
   const totalRequests = repairRequestsRes?.total ?? 0;
 
   // Legacy function for backward compatibility (now uses refetch + cache invalidation)
@@ -1309,6 +1355,26 @@ export default function RepairRequestsPage() {
 
   const isFiltered = table.getState().columnFilters.length > 0 || debouncedSearch.length > 0;
 
+  const summaryItems: SummaryItem[] = React.useMemo(() => {
+    const toneMap: Record<Status, SummaryItem["tone"]> = {
+      'Chờ xử lý': 'warning',
+      'Đã duyệt': 'muted',
+      'Hoàn thành': 'success',
+      'Không HT': 'danger',
+    }
+    const base: SummaryItem[] = [
+      { key: 'total', label: 'Tổng', value: totalRequests, tone: 'default', onClick: () => table.getColumn('trang_thai')?.setFilterValue([]) },
+    ]
+    const statusItems: SummaryItem[] = STATUSES.map((s) => ({
+      key: s,
+      label: s,
+      value: statusCounts?.[s] ?? 0,
+      tone: toneMap[s],
+      onClick: () => table.getColumn('trang_thai')?.setFilterValue([s]),
+    }))
+    return [...base, ...statusItems]
+  }, [totalRequests, statusCounts, table])
+
   return (
     <ErrorBoundary>
       <>
@@ -1765,201 +1831,187 @@ export default function RepairRequestsPage() {
       <RepairRequestAlert requests={requests} />
 
       <div className="space-y-6">
-  {/* Primary Action: Create Repair Request Form */}
-  {!isRegionalLeader && (
-  <div className="w-full max-w-2xl mx-auto">
-          <Card className="border-2 border-primary/20 shadow-lg">
-            <CardHeader>
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-primary/10 rounded-lg">
-                  <PlusCircle className="h-6 w-6 text-primary" />
-                </div>
-                <div>
-                  <CardTitle className="heading-responsive-h2">Tạo yêu cầu sửa chữa</CardTitle>
-                  <CardDescription className="body-responsive-sm">
-                    Điền thông tin bên dưới để gửi yêu cầu mới.
-                  </CardDescription>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent className="mobile-card-spacing">
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="search-equipment">Thiết bị</Label>
-                  <div className="relative">
-                    <Input
-                      id="search-equipment"
-                      placeholder={"Nhập tên hoặc mã để tìm kiếm..."}
-                      value={searchQuery}
-                      onChange={handleSearchChange}
-                      autoComplete="off"
-                      required
-                    />
-                    {filteredEquipment.length > 0 && (
-                      <div className="absolute z-10 w-full mt-1 bg-popover border rounded-md shadow-lg max-h-60 overflow-y-auto">
-                        <div className="p-1">
-                          {filteredEquipment.map((equipment) => (
-                            <div
-                              key={equipment.id}
-                              className="text-sm mobile-interactive hover:bg-accent rounded-sm cursor-pointer touch-target-sm"
-                              onClick={() => handleSelectEquipment(equipment)}
-                            >
-                              <div className="font-medium">{equipment.ten_thiet_bi}</div>
-                              <div className="text-xs text-muted-foreground">
-                                {equipment.ma_thiet_bi}
-                                {equipment.khoa_phong_quan_ly && (
-                                  <span className="ml-2 text-blue-600">• {equipment.khoa_phong_quan_ly}</span>
-                                )}
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                    {shouldShowNoResults && (
-                      <div className="absolute z-10 w-full mt-1 bg-popover border rounded-md shadow-lg p-3">
-                        <div className="text-sm text-muted-foreground text-center">
-                          Không tìm thấy kết quả phù hợp
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                  {selectedEquipment && (
-                    <p className="text-xs text-muted-foreground flex items-center gap-1.5 pt-1">
-                      <Check className="h-3.5 w-3.5 text-green-600" />
-                      <span>Đã chọn: {selectedEquipment.ten_thiet_bi} ({selectedEquipment.ma_thiet_bi})</span>
-                    </p>
-                  )}
-                  
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="issue">Mô tả sự cố</Label>
-                  <Textarea
-                    id="issue"
-                    placeholder="Mô tả chi tiết vấn đề gặp phải..."
-                    rows={4}
-                    value={issueDescription}
-                    onChange={(e) => setIssueDescription(e.target.value)}
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="repair-items">Các hạng mục yêu cầu sửa chữa</Label>
-                  <Textarea
-                    id="repair-items"
-                    placeholder="VD: Thay màn hình, sửa nguồn..."
-                    rows={3}
-                    value={repairItems}
-                    onChange={(e) => setRepairItems(e.target.value)}
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Ngày mong muốn hoàn thành (nếu có)</Label>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button
-                        variant={"outline"}
-                        className={cn(
-                          "w-full justify-start text-left font-normal touch-target",
-                          !desiredDate && "text-muted-foreground"
-                        )}
-                      >
-                        <CalendarIcon className="mr-2 h-4 w-4" />
-                        {desiredDate ? format(desiredDate, "dd/MM/yyyy") : <span>Chọn ngày</span>}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0">
-                      <Calendar
-                        mode="single"
-                        selected={desiredDate}
-                        onSelect={setDesiredDate}
-                        initialFocus
-                        disabled={(date) => date < new Date(new Date().setHours(0, 0, 0, 0))}
-                      />
-                    </PopoverContent>
-                  </Popover>
-                </div>
-
-                {canSetRepairUnit && (
-                  <div className="space-y-2">
-                    <Label htmlFor="repair-unit">Đơn vị thực hiện</Label>
-                    <Select value={repairUnit} onValueChange={(value: 'noi_bo' | 'thue_ngoai') => setRepairUnit(value)}>
-                      <SelectTrigger className="touch-target">
-                        <SelectValue placeholder="Chọn đơn vị thực hiện" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="noi_bo">Nội bộ</SelectItem>
-                        <SelectItem value="thue_ngoai">Thuê ngoài</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                )}
-
-                {canSetRepairUnit && repairUnit === 'thue_ngoai' && (
-                  <div className="space-y-2">
-                    <Label htmlFor="external-company">Tên đơn vị được thuê</Label>
-                    <Input
-                      id="external-company"
-                      placeholder="Nhập tên đơn vị được thuê sửa chữa..."
-                      value={externalCompanyName}
-                      onChange={(e) => setExternalCompanyName(e.target.value)}
-                      required
-                      className="touch-target"
-                    />
-                  </div>
-                )}
-
-                <Button type="submit" className="w-full touch-target" disabled={isSubmitting}>
-                  {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  {isSubmitting ? "Đang gửi..." : "Gửi yêu cầu"}
-                </Button>
-              </form>
-            </CardContent>
-          </Card>
-
-          {/* Toggle Button for Requests List */}
-          <div className="flex justify-center mt-6">
-            <Button
-              variant="outline"
-              onClick={() => setShowRequestsList(!showRequestsList)}
-              className="touch-target gap-2 toggle-button w-full max-w-sm md:w-auto"
-            >
-              {showRequestsList ? (
-                <>
-                  <ChevronUp className="h-4 w-4" />
-                  <span className="button-text-responsive">Ẩn danh sách yêu cầu</span>
-                </>
-              ) : (
-                <>
-                  <History className="h-4 w-4" />
-                  <span className="button-text-responsive">
-                    <span className="hidden sm:inline">Xem danh sách yêu cầu</span>
-                    <span className="sm:hidden">Xem yêu cầu</span>
-                    {totalRequests > 0 && ` (${totalRequests})`}
-                  </span>
-                </>
-              )}
-            </Button>
+        {/* Header + Create Button */}
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <h1 className="text-xl md:text-2xl font-semibold">Yêu cầu sửa chữa</h1>
+            {selectedFacilityName && (
+              <p className="text-sm text-muted-foreground">{selectedFacilityName}</p>
+            )}
           </div>
-
-          {/* Visual indicator when requests list is hidden */}
-          {!showRequestsList && totalRequests > 0 && (
-            <div className="text-center mt-4">
-              <div className="inline-flex items-center gap-2 text-sm text-muted-foreground">
-                <div className="w-2 h-2 bg-primary rounded-full animate-pulse"></div>
-                <span className="caption-responsive">
-                  {totalRequests} yêu cầu sửa chữa đã ghi nhận
-                </span>
-              </div>
-            </div>
+          {!isRegionalLeader && (
+            <Button onClick={() => setIsCreateOpen(true)} className="touch-target">
+              <PlusCircle className="mr-2 h-4 w-4" /> Tạo yêu cầu
+            </Button>
           )}
-  </div>
-  )}
+        </div>
 
-        {/* Secondary Action: View Existing Requests */}
-        {(showRequestsList || isRegionalLeader) && (
-          <div className="w-full collapsible-enter">
+        {/* Summary */}
+        <SummaryBar items={summaryItems} loading={statusCountsLoading} />
+
+        {/* Create Sheet */}
+        {!isRegionalLeader && (
+          <Sheet open={isCreateOpen} onOpenChange={setIsCreateOpen}>
+            <SheetContent side="right" className="sm:max-w-lg">
+              <SheetHeaderUI>
+                <SheetTitle>Tạo yêu cầu sửa chữa</SheetTitle>
+                <SheetDescription>Điền thông tin bên dưới để gửi yêu cầu mới.</SheetDescription>
+              </SheetHeaderUI>
+              <div className="mt-4">
+                <form onSubmit={handleSubmit} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="search-equipment">Thiết bị</Label>
+                    <div className="relative">
+                      <Input
+                        id="search-equipment"
+                        placeholder={"Nhập tên hoặc mã để tìm kiếm..."}
+                        value={searchQuery}
+                        onChange={handleSearchChange}
+                        autoComplete="off"
+                        required
+                      />
+                      {filteredEquipment.length > 0 && (
+                        <div className="absolute z-10 w-full mt-1 bg-popover border rounded-md shadow-lg max-h-60 overflow-y-auto">
+                          <div className="p-1">
+                            {filteredEquipment.map((equipment) => (
+                              <div
+                                key={equipment.id}
+                                className="text-sm mobile-interactive hover:bg-accent rounded-sm cursor-pointer touch-target-sm"
+                                onClick={() => handleSelectEquipment(equipment)}
+                              >
+                                <div className="font-medium">{equipment.ten_thiet_bi}</div>
+                                <div className="text-xs text-muted-foreground">
+                                  {equipment.ma_thiet_bi}
+                                  {equipment.khoa_phong_quan_ly && (
+                                    <span className="ml-2 text-blue-600">• {equipment.khoa_phong_quan_ly}</span>
+                                  )}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      {shouldShowNoResults && (
+                        <div className="absolute z-10 w-full mt-1 bg-popover border rounded-md shadow-lg p-3">
+                          <div className="text-sm text-muted-foreground text-center">
+                            Không tìm thấy kết quả phù hợp
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                    {selectedEquipment && (
+                      <p className="text-xs text-muted-foreground flex items-center gap-1.5 pt-1">
+                        <Check className="h-3.5 w-3.5 text-green-600" />
+                        <span>Đã chọn: {selectedEquipment.ten_thiet_bi} ({selectedEquipment.ma_thiet_bi})</span>
+                      </p>
+                    )}
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="issue">Mô tả sự cố</Label>
+                    <Textarea
+                      id="issue"
+                      placeholder="Mô tả chi tiết vấn đề gặp phải..."
+                      rows={4}
+                      value={issueDescription}
+                      onChange={(e) => setIssueDescription(e.target.value)}
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="repair-items">Các hạng mục yêu cầu sửa chữa</Label>
+                    <Textarea
+                      id="repair-items"
+                      placeholder="VD: Thay màn hình, sửa nguồn..."
+                      rows={3}
+                      value={repairItems}
+                      onChange={(e) => setRepairItems(e.target.value)}
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Ngày mong muốn hoàn thành (nếu có)</Label>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant={"outline"}
+                          className={cn(
+                            "w-full justify-start text-left font-normal touch-target",
+                            !desiredDate && "text-muted-foreground"
+                          )}
+                        >
+                          <CalendarIcon className="mr-2 h-4 w-4" />
+                          {desiredDate ? format(desiredDate, "dd/MM/yyyy") : <span>Chọn ngày</span>}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0">
+                        <Calendar
+                          mode="single"
+                          selected={desiredDate}
+                          onSelect={setDesiredDate}
+                          initialFocus
+                          disabled={(date) => date < new Date(new Date().setHours(0, 0, 0, 0))}
+                        />
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+
+                  {canSetRepairUnit && (
+                    <div className="space-y-2">
+                      <Label htmlFor="repair-unit">Đơn vị thực hiện</Label>
+                      <Select value={repairUnit} onValueChange={(value: 'noi_bo' | 'thue_ngoai') => setRepairUnit(value)}>
+                        <SelectTrigger className="touch-target">
+                          <SelectValue placeholder="Chọn đơn vị thực hiện" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="noi_bo">Nội bộ</SelectItem>
+                          <SelectItem value="thue_ngoai">Thuê ngoài</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+
+                  {canSetRepairUnit && repairUnit === 'thue_ngoai' && (
+                    <div className="space-y-2">
+                      <Label htmlFor="external-company">Tên đơn vị được thuê</Label>
+                      <Input
+                        id="external-company"
+                        placeholder="Nhập tên đơn vị được thuê sửa chữa..."
+                        value={externalCompanyName}
+                        onChange={(e) => setExternalCompanyName(e.target.value)}
+                        required
+                        className="touch-target"
+                      />
+                    </div>
+                  )}
+
+                  <Button type="submit" className="w-full touch-target" disabled={isSubmitting}>
+                    {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    {isSubmitting ? "Đang gửi..." : "Gửi yêu cầu"}
+                  </Button>
+                </form>
+              </div>
+            </SheetContent>
+          </Sheet>
+        )}
+
+        {/* Mobile FAB for quick create */}
+        {!isRegionalLeader && isMobile && (
+          <Button
+            className="fixed bottom-6 right-6 rounded-full h-14 w-14 shadow-lg"
+            onClick={() => setIsCreateOpen(true)}
+          >
+            <PlusCircle className="h-6 w-6" />
+          </Button>
+        )}
+
+        {/* Content area: Split on desktop, full on mobile or when aside collapsed/full mode */}
+        <div
+          ref={containerRef}
+          className={cn("hidden lg:grid gap-4", (viewMode === 'full' || asideCollapsed) && "grid-cols-1", viewMode !== 'full' && !asideCollapsed && "")}
+          style={viewMode !== 'full' && !asideCollapsed ? { gridTemplateColumns: `minmax(0,1fr) ${asideWidth}px` } : undefined}
+        >
+          {/* Left: Requests List */}
+          <div className="w-full">
             <Card className="overflow-hidden">
               <CardHeader>
                 <CardTitle className="heading-responsive-h2">Tổng hợp các yêu cầu sửa chữa thiết bị</CardTitle>
@@ -2348,7 +2400,154 @@ export default function RepairRequestsPage() {
               </CardFooter>
             </Card>
           </div>
-        )}
+
+          {/* Right: Action Hub (desktop split) */}
+          {!isRegionalLeader && viewMode !== 'full' && !asideCollapsed && (
+            <ResizableAside
+              width={asideWidth}
+              setWidth={setAsideWidth}
+              collapsed={asideCollapsed}
+              setCollapsed={setAsideCollapsed}
+            >
+              <div className="p-4 space-y-4">
+                <form onSubmit={handleSubmit} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="split-search-equipment">Thiết bị</Label>
+                    <div className="relative">
+                      <Input
+                        id="split-search-equipment"
+                        placeholder={"Nhập tên hoặc mã để tìm kiếm..."}
+                        value={searchQuery}
+                        onChange={handleSearchChange}
+                        autoComplete="off"
+                        required
+                      />
+                      {filteredEquipment.length > 0 && (
+                        <div className="absolute z-10 w-full mt-1 bg-popover border rounded-md shadow-lg max-h-60 overflow-y-auto">
+                          <div className="p-1">
+                            {filteredEquipment.map((equipment) => (
+                              <div
+                                key={equipment.id}
+                                className="text-sm mobile-interactive hover:bg-accent rounded-sm cursor-pointer touch-target-sm"
+                                onClick={() => handleSelectEquipment(equipment)}
+                              >
+                                <div className="font-medium">{equipment.ten_thiet_bi}</div>
+                                <div className="text-xs text-muted-foreground">
+                                  {equipment.ma_thiet_bi}
+                                  {equipment.khoa_phong_quan_ly && (
+                                    <span className="ml-2 text-blue-600">• {equipment.khoa_phong_quan_ly}</span>
+                                  )}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      {shouldShowNoResults && (
+                        <div className="absolute z-10 w-full mt-1 bg-popover border rounded-md shadow-lg p-3">
+                          <div className="text-sm text-muted-foreground text-center">
+                            Không tìm thấy kết quả phù hợp
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                    {selectedEquipment && (
+                      <p className="text-xs text-muted-foreground flex items-center gap-1.5 pt-1">
+                        <Check className="h-3.5 w-3.5 text-green-600" />
+                        <span>Đã chọn: {selectedEquipment.ten_thiet_bi} ({selectedEquipment.ma_thiet_bi})</span>
+                      </p>
+                    )}
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="split-issue">Mô tả sự cố</Label>
+                    <Textarea
+                      id="split-issue"
+                      placeholder="Mô tả chi tiết vấn đề gặp phải..."
+                      rows={4}
+                      value={issueDescription}
+                      onChange={(e) => setIssueDescription(e.target.value)}
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="split-repair-items">Các hạng mục yêu cầu sửa chữa</Label>
+                    <Textarea
+                      id="split-repair-items"
+                      placeholder="VD: Thay màn hình, sửa nguồn..."
+                      rows={3}
+                      value={repairItems}
+                      onChange={(e) => setRepairItems(e.target.value)}
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Ngày mong muốn hoàn thành (nếu có)</Label>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant={"outline"}
+                          className={cn(
+                            "w-full justify-start text-left font-normal touch-target",
+                            !desiredDate && "text-muted-foreground"
+                          )}
+                        >
+                          <CalendarIcon className="mr-2 h-4 w-4" />
+                          {desiredDate ? format(desiredDate, "dd/MM/yyyy") : <span>Chọn ngày</span>}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0">
+                        <Calendar
+                          mode="single"
+                          selected={desiredDate}
+                          onSelect={setDesiredDate}
+                          initialFocus
+                          disabled={(date) => date < new Date(new Date().setHours(0, 0, 0, 0))}
+                        />
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+
+                  {canSetRepairUnit && (
+                    <div className="space-y-2">
+                      <Label htmlFor="split-repair-unit">Đơn vị thực hiện</Label>
+                      <Select value={repairUnit} onValueChange={(value: 'noi_bo' | 'thue_ngoai') => setRepairUnit(value)}>
+                        <SelectTrigger className="touch-target">
+                          <SelectValue placeholder="Chọn đơn vị thực hiện" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="noi_bo">Nội bộ</SelectItem>
+                          <SelectItem value="thue_ngoai">Thuê ngoài</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+
+                  {canSetRepairUnit && repairUnit === 'thue_ngoai' && (
+                    <div className="space-y-2">
+                      <Label htmlFor="split-external-company">Tên đơn vị được thuê</Label>
+                      <Input
+                        id="split-external-company"
+                        placeholder="Nhập tên đơn vị được thuê sửa chữa..."
+                        value={externalCompanyName}
+                        onChange={(e) => setExternalCompanyName(e.target.value)}
+                        required
+                        className="touch-target"
+                      />
+                    </div>
+                  )}
+
+                  <Button type="submit" className="w-full touch-target" disabled={isSubmitting}>
+                    {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    {isSubmitting ? "Đang gửi..." : "Gửi yêu cầu"}
+                  </Button>
+                </form>
+              </div>
+            </ResizableAside>
+          )}
+        </div>
+
+        {/* Fall-back (mobile/tablet): keep FAB + Sheet for create */}
+        
       </div>
     </>
     </ErrorBoundary>
