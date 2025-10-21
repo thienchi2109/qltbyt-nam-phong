@@ -102,3 +102,35 @@ This sidebar will be dedicated to creating new repair requests.
 *   **Enhanced Clarity:** The redesigned data table and prominent status indicators will make it easier for users to find and understand the information they need.
 *   **Modern Aesthetics:** The clean, minimalist design will give the application a more professional and up-to-date look and feel.
 *   **Streamlined Workflow:** The inline actions and expandable rows will allow users to perform common tasks more efficiently.
+
+## Next steps
+
+- Desktop split view polish
+  - Add view-mode toggle (Split / Full / Auto), persisted per user.
+  - Auto-collapse Action Hub if table viewport < ~920px; show a toast hint when auto-hidden.
+  - Acceptance: toggle visible in header; width persistence works; auto-collapse triggers and is reversible.
+
+- Action Bar enhancements (UI-only)
+  - Filter chips under search; advanced FilterModal (status, department/facility, date range); export to CSV/XLSX.
+  - Column visibility presets: Compact / Standard / Full; density and text-wrap toggles saved in localStorage.
+  - Acceptance: chips accurately reflect filters; presets switch visible columns; settings persist across reloads.
+
+- Table readability and interactions
+  - Sticky first columns (Mã, Thiết bị) on wide tables; keyboard shortcuts: / (focus search), n (new), Enter (open details).
+  - SLA highlights: subtle colored sidebars for nearing/overdue desired date on non-completed rows.
+  - Acceptance: sticky behavior on horizontal scroll; shortcuts work without interfering with inputs; SLA colors match states.
+
+- Details experience
+  - Convert current modal details to a right slide-over drawer on desktop (keep modal on mobile).
+  - Acceptance: drawer opens from row click, supports scroll, and closes with Esc/backdrop.
+
+- Saved filter sets (optional)
+  - Allow saving/loading named filter combos (e.g., “Chờ duyệt • Khoa HSCC”).
+  - Acceptance: create, apply, delete sets; persisted per user.
+
+- KPI reuse
+  - Reuse SummaryBar in Dashboard KPIs; wire to existing server-side functions.
+  - Acceptance: identical visual style; clicking KPIs navigates/filters appropriately.
+
+Notes
+- No backend/schema changes required; continue using existing RPCs. If statistics need better performance, consider batching counts in a server function later (non-blocking).

@@ -37,7 +37,7 @@ export function StatCard({ label, value, icon, tone = "default", loading, onClic
         }
       }}
       className={cn(
-        "p-4 transition-colors",
+        "p-3 md:p-4 transition-colors",
         clickable && "cursor-pointer hover:bg-muted/50",
         className,
       )}
