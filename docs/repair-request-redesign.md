@@ -1,4 +1,3 @@
-
 # Repair Request Page Redesign Proposal
 
 This document outlines a proposal for a redesigned repair request page, focusing on a more modern, elegant, and professional user interface. The goal is to improve the user experience by enhancing clarity, streamlining workflows, and providing better data visualization.
@@ -134,3 +133,69 @@ This sidebar will be dedicated to creating new repair requests.
 
 Notes
 - No backend/schema changes required; continue using existing RPCs. If statistics need better performance, consider batching counts in a server function later (non-blocking).
+
+---
+
+## Implementation plan (deferred)
+
+Status: Deferred until next working session. This section documents the concrete, UI-only plan so we can resume quickly without re-discovery.
+
+### Scope and guardrails
+- UI-only refinements for the Repair Requests page and Dashboard KPIs; no database schema or backend changes.
+- RPC-only data access via `callRpc` and TanStack Query; do not access Supabase tables directly.
+- Multi-tenant safety: never trust client `p_don_vi` for non-global/regional roles; keep facility filtering through the existing `selectedFacilityId` flow.
+- TypeScript strict: avoid `any`; use `@/*` imports; ensure row action buttons use `stopPropagation`.
+- Quality gates: keep `npm run typecheck` and `npm run lint` green.
+
+### Milestones and acceptance
+1) Desktop split view polish
+- View-mode toggle (Split/Full/Auto), persisted per user.
+- Auto-collapse Action Hub when table viewport < ~920px; one-time session toast with quick “Mở lại” action; ExpandAsideButton to restore.
+- Acceptance: toggle visible and persisted; auto-collapse triggers and is reversible; widths persist.
+
+2) Action Bar enhancements (UI-only)
+- Filter chips under search; FilterModal with status, facility (conditional), date range.
+- Export menu: CSV and optional XLSX of current page and visible columns.
+- Column visibility presets: Compact/Standard/Full; density and text-wrap toggles; all persisted.
+- Acceptance: chips mirror filters; presets apply; settings persist across reloads.
+
+3) Table readability and interactions
+- Sticky leading columns (Mã, Thiết bị) with horizontal scroll polish.
+- Keyboard shortcuts: `/` focus search, `n` open create (if permitted), `Enter` open details.
+- SLA highlights: subtle left-border stripe for nearing/overdue desired date on non-completed rows.
+- Acceptance: sticky behavior aligned; shortcuts do not interfere with inputs; SLA colors correct.
+
+4) Details experience
+- Desktop uses a right slide-over Sheet; mobile keeps Dialog.
+- Acceptance: opens from row click, scrolls independently, closes with Esc/backdrop.
+
+5) Saved filter sets (optional)
+- Save/apply/delete named filter combos, persisted per user.
+- Acceptance: flows work and persist across reloads.
+
+6) KPI reuse
+- Reuse `SummaryBar` for Repair KPI on Dashboard; wire to existing RPC-backed stats.
+- KPIs clickable to navigate and apply status filters on the Repair Requests page.
+- Acceptance: numbers match page; navigation applies filter.
+
+### Persistence keys (local-only)
+- `rr_view_mode`, `rr_aside_w`, `rr_aside_collapsed`
+- `rr_col_vis`, `rr_table_density`, `rr_text_wrap`
+- `rr_filter_state`, `rr_saved_filters_{userId}`
+- `rr_toast_seen_auto_collapse` (session-only)
+
+### Commit plan
+- feat(rr): view-mode toggle with auto aside collapse and persistence
+- feat(rr): filter chips and filter modal scaffold (UI-only, persists locally)
+- feat(rr): export current page to CSV/XLSX with visible columns
+- feat(rr): column presets, density, and text-wrap preferences
+- feat(rr): sticky leading columns and SLA left-border highlight
+- feat(rr): keyboard shortcuts and interaction guardrails
+- feat(rr): desktop sheet details; mobile dialog retained
+- feat(rr): saved filter sets (optional)
+- feat(dashboard): SummaryBar repair KPIs with navigation
+
+### Start here next time
+- Implement local persistence helpers and view-mode toggle first.
+- Add FilterChips and FilterModal scaffolding to validate UI state flows.
+- Follow with Export and column presets to complete header actions.
