@@ -19,7 +19,7 @@ export function FilterChips({
 }: {
   value: FilterChipsValue
   onRemove: (key: keyof FilterChipsValue, subkey?: string) => void
-  onClearAll: () => void
+  onClearAll?: () => void
   showFacility?: boolean
 }) {
   const hasAny = (value.status?.length ?? 0) > 0 || (!!value.facilityName && showFacility) || !!value.dateRange
@@ -57,9 +57,11 @@ export function FilterChips({
         </Badge>
       )}
 
-      <Button variant="ghost" size="sm" className="h-7" onClick={onClearAll}>
-        Xóa tất cả
-      </Button>
+      {onClearAll && (
+        <Button variant="ghost" size="sm" className="h-7" onClick={onClearAll}>
+          Xóa tất cả
+        </Button>
+      )}
     </div>
   )
 }

@@ -2229,9 +2229,11 @@ export default function RepairRequestsPage() {
                           table.resetColumnFilters();
                           setUiFiltersState({ status: [], dateRange: null });
                           setUiFilters({ status: [], dateRange: null });
+                          if (showFacilityFilter) setSelectedFacilityId(null);
                           setSearchTerm("");
                         }}
                         className="h-8 px-2 lg:px-3 touch-target-sm md:h-8"
+                        aria-label="Xóa bộ lọc"
                       >
                         <span className="hidden sm:inline">Xóa</span>
                         <FilterX className="h-4 w-4 sm:ml-2" />
@@ -2301,12 +2303,6 @@ export default function RepairRequestsPage() {
                           const updated = { ...uiFilters, dateRange: null }
                           setUiFiltersState(updated); setUiFilters(updated)
                         }
-                      }}
-                      onClearAll={() => {
-                        table.getColumn('trang_thai')?.setFilterValue([])
-                        const updated = { status: [], dateRange: null } as UiFiltersPrefs
-                        setUiFiltersState(updated); setUiFilters(updated)
-                        // facility not auto-cleared to avoid surprising server refetch unless user chooses
                       }}
                     />
                   </div>

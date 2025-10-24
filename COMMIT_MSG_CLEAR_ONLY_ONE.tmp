@@ -1,0 +1,14 @@
+refactor(rr/filters): single clear control resets status/date/search and facility to show all results (OpenSpec)
+
+Summary
+- Hide duplicate "Xóa tất cả" in chips; keep a single "Xóa" button near filters
+- Clear now resets: column filters, uiFilters (status/date), search term, and facility (to all) for roles that can switch facility
+- Ensures server query shows all results scoped by tenant/role (regional leader/global see all facilities; others remain tenant-scoped by proxy)
+
+Files
+- src/app/(app)/repair-requests/_components/FilterChips.tsx
+- src/app/(app)/repair-requests/page.tsx
+
+QA Notes
+- Click "Xóa" shows full list immediately; chips disappear; facility dropdown resets to "Tất cả" when visible
+- Typecheck passes
