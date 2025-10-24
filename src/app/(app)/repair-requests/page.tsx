@@ -2216,8 +2216,9 @@ export default function RepairRequestsPage() {
         {/* Mobile FAB for quick create */}
         {!isRegionalLeader && isMobile && (
           <Button
-            className="fixed bottom-6 right-6 rounded-full h-14 w-14 shadow-lg"
+            className="fixed right-6 fab-above-footer rounded-full h-14 w-14 shadow-lg"
             onClick={() => setIsCreateOpen(true)}
+            aria-label="Tạo yêu cầu"
           >
             <PlusCircle className="h-6 w-6" />
           </Button>
