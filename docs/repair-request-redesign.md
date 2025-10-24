@@ -72,7 +72,6 @@ This will be the primary focus of the page.
 *   **Action Bar:** A clean action bar above the table will include:
     *   A prominent **search bar**.
     *   A **filter button** that opens a modal with advanced filtering options (by status, department, date range, etc.).
-    *   An **export button** to export the data to CSV or Excel.
 *   **Redesigned Data Table:**
     *   **Improved Readability:** Increased padding, clearer typography, and alternating row colors.
     *   **Prominent Status Indicators:** The status of each request will be displayed as a colored badge (e.g., red for "Pending," yellow for "In Progress," green for "Completed").
@@ -105,12 +104,11 @@ This sidebar will be dedicated to creating new repair requests.
 ## Next steps
 
 - Desktop split view polish
-  - Add view-mode toggle (Split / Full / Auto), persisted per user.
-  - Auto-collapse Action Hub if table viewport < ~920px; show a toast hint when auto-hidden.
-  - Acceptance: toggle visible in header; width persistence works; auto-collapse triggers and is reversible.
+  - Keep current split view; maintain manual collapse/resize only.
+  - Acceptance: width persistence works; manual collapse is reversible.
 
 - Action Bar enhancements (UI-only)
-  - Filter chips under search; advanced FilterModal (status, department/facility, date range); export to CSV/XLSX.
+  - Filter chips under search; advanced FilterModal (status, department/facility, date range).
   - Column visibility presets: Compact / Standard / Full; density and text-wrap toggles saved in localStorage.
   - Acceptance: chips accurately reflect filters; presets switch visible columns; settings persist across reloads.
 
@@ -149,13 +147,11 @@ Status: Deferred until next working session. This section documents the concrete
 
 ### Milestones and acceptance
 1) Desktop split view polish
-- View-mode toggle (Split/Full/Auto), persisted per user.
-- Auto-collapse Action Hub when table viewport < ~920px; one-time session toast with quick “Mở lại” action; ExpandAsideButton to restore.
-- Acceptance: toggle visible and persisted; auto-collapse triggers and is reversible; widths persist.
+- Keep current split view; maintain manual collapse/resize only (no toggle, no auto-collapse).
+- Acceptance: widths persist; manual collapse is reversible.
 
 2) Action Bar enhancements (UI-only)
 - Filter chips under search; FilterModal with status, facility (conditional), date range.
-- Export menu: CSV and optional XLSX of current page and visible columns.
 - Column visibility presets: Compact/Standard/Full; density and text-wrap toggles; all persisted.
 - Acceptance: chips mirror filters; presets apply; settings persist across reloads.
 
@@ -179,15 +175,11 @@ Status: Deferred until next working session. This section documents the concrete
 - Acceptance: numbers match page; navigation applies filter.
 
 ### Persistence keys (local-only)
-- `rr_view_mode`, `rr_aside_w`, `rr_aside_collapsed`
 - `rr_col_vis`, `rr_table_density`, `rr_text_wrap`
 - `rr_filter_state`, `rr_saved_filters_{userId}`
-- `rr_toast_seen_auto_collapse` (session-only)
 
 ### Commit plan
-- feat(rr): view-mode toggle with auto aside collapse and persistence
 - feat(rr): filter chips and filter modal scaffold (UI-only, persists locally)
-- feat(rr): export current page to CSV/XLSX with visible columns
 - feat(rr): column presets, density, and text-wrap preferences
 - feat(rr): sticky leading columns and SLA left-border highlight
 - feat(rr): keyboard shortcuts and interaction guardrails
@@ -196,6 +188,6 @@ Status: Deferred until next working session. This section documents the concrete
 - feat(dashboard): SummaryBar repair KPIs with navigation
 
 ### Start here next time
-- Implement local persistence helpers and view-mode toggle first.
+- Implement local persistence helpers for filters and column settings.
 - Add FilterChips and FilterModal scaffolding to validate UI state flows.
-- Follow with Export and column presets to complete header actions.
+- Follow with column presets to complete header actions.

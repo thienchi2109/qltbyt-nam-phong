@@ -71,7 +71,22 @@ import { useFacilityFilter, type FacilityOption } from "@/hooks/useFacilityFilte
 import { ErrorBoundary } from "@/components/error-boundary"
 import { Sheet, SheetContent, SheetHeader as SheetHeaderUI, SheetTitle, SheetDescription } from "@/components/ui/sheet"
 import { SummaryBar, type SummaryItem } from "@/components/summary/summary-bar"
-import { ResizableAside, ExpandAsideButton } from "./_components/ResizableAside"
+import { FilterChips } from "./_components/FilterChips"
+import { FilterModal } from "./_components/FilterModal"
+import {
+  getUiFilters,
+  setUiFilters,
+  getColumnVisibility,
+  setColumnVisibility,
+  getTableDensity,
+  setTableDensity,
+  getTextWrap,
+  setTextWrap,
+  type UiFilters as UiFiltersPrefs,
+  type ColumnVisibility as ColumnVisibilityPrefs,
+  type ViewDensity,
+  type TextWrap as TextWrapPref,
+} from "@/lib/rr-prefs"
 // Auto department filter removed
 
 
@@ -313,33 +328,6 @@ export default function RepairRequestsPage() {
 
 // UI state (list always visible)
   const [isCreateOpen, setIsCreateOpen] = React.useState(false);
-  const [viewMode, setViewMode] = React.useState<'split' | 'full' | 'auto'>(() => {
-    if (typeof window === 'undefined') return 'auto'
-    return (localStorage.getItem('rr_view_mode') as any) || 'split'
-  })
-  const [asideWidth, setAsideWidth] = React.useState<number>(() => {
-    if (typeof window === 'undefined') return 400
-    const saved = Number(localStorage.getItem('rr_aside_w'))
-    return Number.isFinite(saved) && saved >= 320 ? saved : 400
-  })
-  const [asideCollapsed, setAsideCollapsed] = React.useState<boolean>(() => {
-    if (typeof window === 'undefined') return false
-    return localStorage.getItem('rr_aside_collapsed') === '1'
-  })
-  const containerRef = React.useRef<HTMLDivElement | null>(null)
-
-  React.useEffect(() => {
-    if (typeof window === 'undefined') return
-    localStorage.setItem('rr_aside_w', String(asideWidth))
-  }, [asideWidth])
-  React.useEffect(() => {
-    if (typeof window === 'undefined') return
-    localStorage.setItem('rr_aside_collapsed', asideCollapsed ? '1' : '0')
-  }, [asideCollapsed])
-  React.useEffect(() => {
-    if (typeof window === 'undefined') return
-    localStorage.setItem('rr_view_mode', viewMode)
-  }, [viewMode])
 
   // Table state
   const [sorting, setSorting] = React.useState<SortingState>([
@@ -349,6 +337,17 @@ export default function RepairRequestsPage() {
   const [searchTerm, setSearchTerm] = React.useState("");
   const debouncedSearch = useSearchDebounce(searchTerm);
   const [pagination, setPagination] = React.useState({ pageIndex: 0, pageSize: 20 });
+
+  // UI filters (status/date) persisted
+  const [uiFilters, setUiFiltersState] = React.useState<UiFiltersPrefs>(() => getUiFilters());
+  const [isFilterModalOpen, setIsFilterModalOpen] = React.useState(false);
+
+  // Table presentation preferences
+  const [columnVisibility, setColumnVisibilityState] = React.useState<ColumnVisibilityPrefs>(() => getColumnVisibility() || {});
+  const [density, setDensity] = React.useState<ViewDensity>(() => getTableDensity());
+  const [textWrap, setTextWrapState] = React.useState<TextWrapPref>(() => getTextWrap());
+
+  const searchInputRef = React.useRef<HTMLInputElement | null>(null)
 
   // Regional leader facility filtering (server mode - matches Equipment page pattern)
   const effectiveTenantKey = user?.don_vi ?? user?.current_don_vi ?? 'none';
@@ -539,6 +538,13 @@ export default function RepairRequestsPage() {
   // Support preselect by equipmentId query param using equipment_get RPC if needed
   React.useEffect(() => {
     const equipmentId = searchParams.get('equipmentId');
+    const statusParam = searchParams.get('status');
+    if (statusParam) {
+      const decoded = decodeURIComponent(statusParam)
+      table.getColumn('trang_thai')?.setFilterValue([decoded])
+      const updated = { ...uiFilters, status: [decoded] }
+      setUiFiltersState(updated); setUiFilters(updated)
+    }
     const run = async () => {
       if (!equipmentId) return;
       const idNum = Number(equipmentId);
@@ -1338,13 +1344,31 @@ export default function RepairRequestsPage() {
       columnFilters,
       globalFilter: debouncedSearch,
       pagination,
+      columnVisibility,
     },
     pageCount,
     manualPagination: true,
     onSortingChange: setSorting,
-    onColumnFiltersChange: setColumnFilters,
+    onColumnFiltersChange: (updater) => {
+      const next = typeof updater === 'function' ? (updater as any)(columnFilters) : updater
+      setColumnFilters(next)
+      // sync status to uiFilters
+      const statusVals = (next.find((f: any) => f.id === 'trang_thai')?.value as string[]) || []
+      setUiFiltersState((prev) => {
+        const changed = JSON.stringify(prev.status) !== JSON.stringify(statusVals)
+        if (!changed) return prev
+        const updated = { ...prev, status: statusVals }
+        setUiFilters(updated)
+        return updated
+      })
+    },
     onGlobalFilterChange: (value: string) => setSearchTerm(value),
     onPaginationChange: setPagination,
+    onColumnVisibilityChange: (updater) => {
+      const next = typeof updater === 'function' ? (updater as any)(columnVisibility) : updater
+      setColumnVisibilityState(next)
+      setColumnVisibility(next)
+    },
     getCoreRowModel: getCoreRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
     getSortedRowModel: getSortedRowModel(),
@@ -1353,7 +1377,37 @@ export default function RepairRequestsPage() {
     getFacetedUniqueValues: getFacetedUniqueValues(),
   });
 
-  const isFiltered = table.getState().columnFilters.length > 0 || debouncedSearch.length > 0;
+  const isFiltered = table.getState().columnFilters.length > 0 || debouncedSearch.length > 0 || (uiFilters.dateRange?.from || uiFilters.dateRange?.to);
+
+  // Apply persisted status filter on mount
+  React.useEffect(() => {
+    if (uiFilters.status?.length) {
+      table.getColumn('trang_thai')?.setFilterValue(uiFilters.status)
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  // Persist density and text wrap changes
+  React.useEffect(() => { setTableDensity(density) }, [density])
+  React.useEffect(() => { setTextWrap(textWrap) }, [textWrap])
+
+  // Keyboard shortcuts: '/', 'n'
+  React.useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement | null
+      const isTyping = !!target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)
+      if (!isTyping && e.key === '/') {
+        e.preventDefault()
+        searchInputRef.current?.focus()
+      }
+      if (!isTyping && e.key.toLowerCase() === 'n' && !isRegionalLeader) {
+        e.preventDefault()
+        setIsCreateOpen(true)
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [isRegionalLeader])
 
   const summaryItems: SummaryItem[] = React.useMemo(() => {
     const toneMap: Record<Status, SummaryItem["tone"]> = {
@@ -1628,8 +1682,8 @@ export default function RepairRequestsPage() {
         </Dialog>
       )}
 
-      {/* Request Detail Dialog */}
-      {requestToView && (
+      {/* Request Detail */}
+      {requestToView && isMobile && (
         <Dialog open={!!requestToView} onOpenChange={(open) => !open && setRequestToView(null)}>
           <DialogContent className="max-w-4xl h-[90vh] flex flex-col overflow-hidden">
             <DialogHeader className="flex-shrink-0">
@@ -1827,12 +1881,175 @@ export default function RepairRequestsPage() {
         </Dialog>
       )}
 
+      {requestToView && !isMobile && (
+        <Sheet open={!!requestToView} onOpenChange={(open) => !open && setRequestToView(null)}>
+          <SheetContent side="right" className="w-full sm:max-w-xl md:max-w-2xl lg:max-w-3xl p-0">
+            <div className="h-full flex flex-col">
+              <div className="p-4 border-b">
+                <SheetTitle>Chi tiết yêu cầu sửa chữa</SheetTitle>
+                <SheetDescription>Thông tin chi tiết về yêu cầu sửa chữa thiết bị</SheetDescription>
+              </div>
+              <div className="flex-1 overflow-hidden px-4">
+                <ScrollArea className="h-full">
+                  {/* reuse the same inner content from dialog by rendering the same blocks */}
+                  <div className="space-y-6 py-4">
+                    {/* Equipment Information */}
+                    <div className="space-y-3">
+                      <h3 className="text-base font-semibold text-foreground border-b pb-2">Thông tin thiết bị</h3>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label className="text-sm font-medium text-muted-foreground">Tên thiết bị</Label>
+                          <div className="text-sm font-medium">{requestToView.thiet_bi?.ten_thiet_bi || 'N/A'}</div>
+                        </div>
+                        <div className="space-y-2">
+                          <Label className="text-sm font-medium text-muted-foreground">Mã thiết bị</Label>
+                          <div className="text-sm">{requestToView.thiet_bi?.ma_thiet_bi || 'N/A'}</div>
+                        </div>
+                        <div className="space-y-2">
+                          <Label className="text-sm font-medium text-muted-foreground">Model</Label>
+                          <div className="text-sm">{requestToView.thiet_bi?.model || 'N/A'}</div>
+                        </div>
+                        <div className="space-y-2">
+                          <Label className="text-sm font-medium text-muted-foreground">Serial</Label>
+                          <div className="text-sm">{requestToView.thiet_bi?.serial || 'N/A'}</div>
+                        </div>
+                        <div className="space-y-2 md:col-span-2">
+                          <Label className="text-sm font-medium text-muted-foreground">Khoa/Phòng quản lý</Label>
+                          <div className="text-sm">{requestToView.thiet_bi?.khoa_phong_quan_ly || 'N/A'}</div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Request Information */}
+                    <div className="space-y-3">
+                      <h3 className="text-base font-semibold text-foreground border-b pb-2">Thông tin yêu cầu</h3>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label className="text-sm font-medium text-muted-foreground">Trạng thái</Label>
+                          <Badge variant={getStatusVariant(requestToView.trang_thai)} className="w-fit">{requestToView.trang_thai}</Badge>
+                        </div>
+                        <div className="space-y-2">
+                          <Label className="text-sm font-medium text-muted-foreground">Ngày yêu cầu</Label>
+                          <div className="text-sm">{format(parseISO(requestToView.ngay_yeu_cau), 'dd/MM/yyyy HH:mm', { locale: vi })}</div>
+                        </div>
+                        <div className="space-y-2">
+                          <Label className="text-sm font-medium text-muted-foreground">Người yêu cầu</Label>
+                          <div className="text-sm">{requestToView.nguoi_yeu_cau || 'N/A'}</div>
+                        </div>
+                        {requestToView.ngay_mong_muon_hoan_thanh && (
+                          <div className="space-y-2">
+                            <Label className="text-sm font-medium text-muted-foreground">Ngày mong muốn hoàn thành</Label>
+                            <div className="text-sm">{format(parseISO(requestToView.ngay_mong_muon_hoan_thanh), 'dd/MM/yyyy', { locale: vi })}</div>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label className="text-sm font-medium text-muted-foreground">Mô tả sự cố</Label>
+                        <div className="text-sm bg-muted/50 p-3 rounded-md whitespace-pre-wrap break-words">{requestToView.mo_ta_su_co}</div>
+                      </div>
+
+                      {requestToView.hang_muc_sua_chua && (
+                        <div className="space-y-2">
+                          <Label className="text-sm font-medium text-muted-foreground">Hạng mục sửa chữa</Label>
+                          <div className="text-sm bg-muted/50 p-3 rounded-md whitespace-pre-wrap break-words">{requestToView.hang_muc_sua_chua}</div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Execution Information */}
+                    {(requestToView.don_vi_thuc_hien || requestToView.ten_don_vi_thue) && (
+                      <div className="space-y-3">
+                        <h3 className="text-base font-semibold text-foreground border-b pb-2">Thông tin thực hiện</h3>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          {requestToView.don_vi_thuc_hien && (
+                            <div className="space-y-2">
+                              <Label className="text-sm font-medium text-muted-foreground">Đơn vị thực hiện</Label>
+                              <Badge variant="outline" className="w-fit">{requestToView.don_vi_thuc_hien === 'noi_bo' ? 'Nội bộ' : 'Thuê ngoài'}</Badge>
+                            </div>
+                          )}
+                          {requestToView.ten_don_vi_thue && (
+                            <div className="space-y-2">
+                              <Label className="text-sm font-medium text-muted-foreground">Tên đơn vị thuê</Label>
+                              <div className="text-sm break-words">{requestToView.ten_don_vi_thue}</div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Approval Information */}
+                    {(requestToView.ngay_duyet || requestToView.nguoi_duyet) && (
+                      <div className="space-y-3">
+                        <h3 className="text-base font-semibold text-foreground border-b pb-2">Thông tin phê duyệt</h3>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          {requestToView.nguoi_duyet && (
+                            <div className="space-y-2">
+                              <Label className="text-sm font-medium text-muted-foreground">Người duyệt</Label>
+                              <div className="text-sm break-words">{requestToView.nguoi_duyet}</div>
+                            </div>
+                          )}
+                          {requestToView.ngay_duyet && (
+                            <div className="space-y-2">
+                              <Label className="text-sm font-medium text-muted-foreground">Ngày duyệt</Label>
+                              <div className="text-sm">{format(parseISO(requestToView.ngay_duyet), 'dd/MM/yyyy HH:mm', { locale: vi })}</div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Completion Information */}
+                    {(requestToView.ngay_hoan_thanh || requestToView.ket_qua_sua_chua || requestToView.ly_do_khong_hoan_thanh || requestToView.nguoi_xac_nhan) && (
+                      <div className="space-y-3">
+                        <h3 className="text-base font-semibold text-foreground border-b pb-2">Thông tin hoàn thành</h3>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          {requestToView.nguoi_xac_nhan && (
+                            <div className="space-y-2">
+                              <Label className="text-sm font-medium text-muted-foreground">Người xác nhận</Label>
+                              <div className="text-sm break-words">{requestToView.nguoi_xac_nhan}</div>
+                            </div>
+                          )}
+                          {requestToView.ngay_hoan_thanh && (
+                            <div className="space-y-2">
+                              <Label className="text-sm font-medium text-muted-foreground">Ngày hoàn thành</Label>
+                              <div className="text-sm">{format(parseISO(requestToView.ngay_hoan_thanh), 'dd/MM/yyyy HH:mm', { locale: vi })}</div>
+                            </div>
+                          )}
+                        </div>
+
+                        {requestToView.ket_qua_sua_chua && (
+                          <div className="space-y-2">
+                            <Label className="text-sm font-medium text-muted-foreground">Kết quả sửa chữa</Label>
+                            <div className="text-sm bg-green-50 border border-green-200 p-3 rounded-md whitespace-pre-wrap break-words">{requestToView.ket_qua_sua_chua}</div>
+                          </div>
+                        )}
+
+                        {requestToView.ly_do_khong_hoan_thanh && (
+                          <div className="space-y-2">
+                            <Label className="text-sm font-medium text-muted-foreground">Lý do không hoàn thành</Label>
+                            <div className="text-sm bg-red-50 border border-red-200 p-3 rounded-md whitespace-pre-wrap break-words">{requestToView.ly_do_khong_hoan_thanh}</div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </ScrollArea>
+              </div>
+              <div className="p-4 border-t flex justify-end">
+                <Button variant="outline" onClick={() => setRequestToView(null)}>Đóng</Button>
+              </div>
+            </div>
+          </SheetContent>
+        </Sheet>
+      )}
+
       {/* Repair Request Alert */}
       <RepairRequestAlert requests={requests} />
 
       <div className="space-y-6">
         {/* Header + Create Button */}
-        <div className="flex items-center justify-between gap-3">
+      <div className="flex items-center justify-between gap-3">
           <div>
             <h1 className="text-xl md:text-2xl font-semibold">Yêu cầu sửa chữa</h1>
             {selectedFacilityName && (
@@ -1840,9 +2057,11 @@ export default function RepairRequestsPage() {
             )}
           </div>
           {!isRegionalLeader && (
-            <Button onClick={() => setIsCreateOpen(true)} className="touch-target">
-              <PlusCircle className="mr-2 h-4 w-4" /> Tạo yêu cầu
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button onClick={() => setIsCreateOpen(true)} className="touch-target">
+                <PlusCircle className="mr-2 h-4 w-4" /> Tạo yêu cầu
+              </Button>
+            </div>
           )}
         </div>
 
@@ -2005,11 +2224,7 @@ export default function RepairRequestsPage() {
         )}
 
         {/* Content area: Split on desktop, full on mobile or when aside collapsed/full mode */}
-        <div
-          ref={containerRef}
-          className={cn("hidden lg:grid gap-4", (viewMode === 'full' || asideCollapsed) && "grid-cols-1", viewMode !== 'full' && !asideCollapsed && "")}
-          style={viewMode !== 'full' && !asideCollapsed ? { gridTemplateColumns: `minmax(0,1fr) ${asideWidth}px` } : undefined}
-        >
+        <div className="grid grid-cols-1 gap-4">
           {/* Left: Requests List */}
           <div className="w-full">
             <Card className="overflow-hidden">
@@ -2091,14 +2306,17 @@ export default function RepairRequestsPage() {
                 )}
               </CardHeader>
               <CardContent className="p-3 md:p-6 gap-3 md:gap-4">
-                <div className="flex items-center justify-between gap-2 flex-wrap mb-3 md:mb-4">
+                <div className="flex items-center justify-between gap-2 flex-wrap mb-2 md:mb-3">
                   <div className="flex flex-1 items-center gap-2">
                     <Input
+                      ref={searchInputRef}
                       placeholder="Tìm thiết bị, mô tả..."
                       value={searchTerm}
                       onChange={(event) => setSearchTerm(event.target.value)}
                       className="h-8 w-[120px] md:w-[200px] lg:w-[250px] touch-target-sm md:h-8"
                     />
+
+                    <Button variant="outline" size="sm" className="h-8 touch-target-sm" onClick={() => setIsFilterModalOpen(true)}>Bộ lọc</Button>
 
                     {/* Desktop: Show filters inline */}
                     {!isMobile && (
@@ -2135,6 +2353,8 @@ export default function RepairRequestsPage() {
                         variant="ghost"
                         onClick={() => {
                           table.resetColumnFilters();
+                          setUiFiltersState({ status: [], dateRange: null });
+                          setUiFilters({ status: [], dateRange: null });
                           setSearchTerm("");
                         }}
                         className="h-8 px-2 lg:px-3 touch-target-sm md:h-8"
@@ -2143,8 +2363,111 @@ export default function RepairRequestsPage() {
                         <FilterX className="h-4 w-4 sm:ml-2" />
                       </Button>
                     )}
+
+                    {/* Display menu: presets, density, wrap */}
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="outline" size="sm" className="h-8 touch-target-sm">Hiển thị</Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuLabel>Preset cột</DropdownMenuLabel>
+                        <DropdownMenuItem onSelect={() => {
+                          const next: any = { thiet_bi_va_mo_ta: true, ngay_yeu_cau: true, trang_thai: true, nguoi_yeu_cau: false, ngay_mong_muon_hoan_thanh: false, actions: true }
+                          setColumnVisibilityState(next); setColumnVisibility(next)
+                        }}>Compact</DropdownMenuItem>
+                        <DropdownMenuItem onSelect={() => {
+                          const next: any = { thiet_bi_va_mo_ta: true, nguoi_yeu_cau: true, ngay_yeu_cau: true, ngay_mong_muon_hoan_thanh: true, trang_thai: true, actions: true }
+                          setColumnVisibilityState(next); setColumnVisibility(next)
+                        }}>Standard</DropdownMenuItem>
+                        <DropdownMenuItem onSelect={() => {
+                          const next: any = { thiet_bi_va_mo_ta: true, nguoi_yeu_cau: true, ngay_yeu_cau: true, ngay_mong_muon_hoan_thanh: true, trang_thai: true, actions: true }
+                          setColumnVisibilityState(next); setColumnVisibility(next)
+                        }}>Full</DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuLabel>Mật độ</DropdownMenuLabel>
+                        <DropdownMenuItem onSelect={() => setDensity('compact')}>
+                          {density === 'compact' ? '✓ ' : ''}Compact
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onSelect={() => setDensity('standard')}>
+                          {density === 'standard' ? '✓ ' : ''}Standard
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onSelect={() => setDensity('spacious')}>
+                          {density === 'spacious' ? '✓ ' : ''}Spacious
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuLabel>Văn bản</DropdownMenuLabel>
+                        <DropdownMenuItem onSelect={() => setTextWrapState('truncate')}>
+                          {textWrap === 'truncate' ? '✓ ' : ''}Thu gọn
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onSelect={() => setTextWrapState('wrap')}>
+                          {textWrap === 'wrap' ? '✓ ' : ''}Xuống dòng
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+
+                  {/* Chips under search */}
+                  <div className="w-full pt-2">
+                    <FilterChips
+                      value={{
+                        status: uiFilters.status,
+                        facilityName: selectedFacilityName,
+                        dateRange: uiFilters.dateRange ? { from: uiFilters.dateRange.from ?? null, to: uiFilters.dateRange.to ?? null } : null,
+                      }}
+                      showFacility={showFacilityFilter}
+                      onRemove={(key, sub) => {
+                        if (key === 'status' && sub) {
+                          const next = uiFilters.status.filter(s => s !== sub)
+                          table.getColumn('trang_thai')?.setFilterValue(next)
+                          const updated = { ...uiFilters, status: next }
+                          setUiFiltersState(updated); setUiFilters(updated)
+                        } else if (key === 'facilityName') {
+                          setSelectedFacilityId(null)
+                        } else if (key === 'dateRange') {
+                          const updated = { ...uiFilters, dateRange: null }
+                          setUiFiltersState(updated); setUiFilters(updated)
+                        }
+                      }}
+                      onClearAll={() => {
+                        table.getColumn('trang_thai')?.setFilterValue([])
+                        const updated = { status: [], dateRange: null } as UiFiltersPrefs
+                        setUiFiltersState(updated); setUiFilters(updated)
+                        // facility not auto-cleared to avoid surprising server refetch unless user chooses
+                      }}
+                    />
                   </div>
                 </div>
+
+                {/* Filter Modal */}
+                <FilterModal
+                  open={isFilterModalOpen}
+                  onOpenChange={setIsFilterModalOpen}
+                  value={{
+                    status: uiFilters.status,
+                    facilityId: selectedFacilityId ?? null,
+                    dateRange: uiFilters.dateRange ? {
+                      from: uiFilters.dateRange.from ? new Date(uiFilters.dateRange.from) : null,
+                      to: uiFilters.dateRange.to ? new Date(uiFilters.dateRange.to) : null,
+                    } : { from: null, to: null },
+                  }}
+                  onChange={(v) => {
+                    // sync status
+                    table.getColumn('trang_thai')?.setFilterValue(v.status)
+                    // sync facility
+                    if (showFacilityFilter) setSelectedFacilityId(v.facilityId ?? null)
+                    // persist date range and status
+                    const updated: UiFiltersPrefs = {
+                      status: v.status,
+                      dateRange: v.dateRange ? {
+                        from: v.dateRange.from ? v.dateRange.from.toISOString().slice(0,10) : null,
+                        to: v.dateRange.to ? v.dateRange.to.toISOString().slice(0,10) : null,
+                      } : null,
+                    }
+                    setUiFiltersState(updated); setUiFilters(updated)
+                  }}
+                  showFacility={showFacilityFilter}
+                  facilities={facilityOptions.map(f => ({ id: f.id, name: f.name }))}
+                />
                 {/* Mobile Card View */}
                 {isMobile ? (
                   <div className="space-y-3">
@@ -2262,61 +2585,85 @@ export default function RepairRequestsPage() {
                   </div>
                 ) : (
                   /* Desktop Table View */
-                  <div key={tableKey} className="rounded-md border">
-                    <Table>
-                      <TableHeader>
-                        {table.getHeaderGroups().map((headerGroup) => (
-                          <TableRow key={headerGroup.id}>
-                            {headerGroup.headers.map((header) => (
-                              <TableHead key={header.id}>
-                                {header.isPlaceholder
-                                  ? null
-                                  : flexRender(
+                  <div key={tableKey} className="rounded-md border overflow-x-auto">
+                    <div className="min-w-[1100px]">
+                      <Table>
+                        <TableHeader>
+                          {table.getHeaderGroups().map((headerGroup) => (
+                            <TableRow key={headerGroup.id}>
+                              {headerGroup.headers.map((header, colIdx) => (
+                                <TableHead
+                                  key={header.id}
+                                  className={cn(
+                                    density === 'compact' ? 'py-1' : density === 'spacious' ? 'py-3' : 'py-2',
+                                    colIdx === 0 && 'sticky left-0 z-20 bg-background w-[20rem] min-w-[20rem] max-w-[20rem] border-r',
+                                    colIdx === 1 && 'sticky left-[20rem] z-20 bg-background w-[14rem] min-w-[14rem] max-w-[14rem] border-r'
+                                  )}
+                                  style={undefined}
+                                >
+                                  {header.isPlaceholder ? null : flexRender(
                                     header.column.columnDef.header,
                                     header.getContext()
                                   )}
-                              </TableHead>
-                            ))}
-                          </TableRow>
-                        ))}
-                      </TableHeader>
-                      <TableBody>
-                        {isLoading ? (
-                          <TableRow>
-                            <TableCell colSpan={columns.length} className="h-24 text-center">
-                              <div className="flex justify-center items-center gap-2">
-                                <Loader2 className="h-4 w-4 animate-spin" />
-                                <span>Đang tải...</span>
-                              </div>
-                            </TableCell>
-                          </TableRow>
-                        ) : table.getRowModel().rows?.length ? (
-                          table.getRowModel().rows.map((row) => (
-                            <TableRow
-                              key={row.id}
-                              data-state={row.getIsSelected() && "selected"}
-                              className="cursor-pointer hover:bg-muted/50"
-                              onClick={() => setRequestToView(row.original)}
-                            >
-                              {row.getVisibleCells().map((cell) => (
-                                <TableCell key={cell.id}>
-                                  {flexRender(
-                                    cell.column.columnDef.cell,
-                                    cell.getContext()
-                                  )}
-                                </TableCell>
+                                </TableHead>
                               ))}
                             </TableRow>
-                          ))
-                        ) : (
-                          <TableRow>
-                            <TableCell colSpan={columns.length} className="h-24 text-center">
-                              Không có kết quả.
-                            </TableCell>
-                          </TableRow>
-                        )}
-                      </TableBody>
-                    </Table>
+                          ))}
+                        </TableHeader>
+                        <TableBody>
+                          {isLoading ? (
+                            <TableRow>
+                              <TableCell colSpan={columns.length} className={cn("h-24 text-center", density === 'compact' ? 'py-1' : density === 'spacious' ? 'py-3' : 'py-2')}>
+                                <div className="flex justify-center items-center gap-2">
+                                  <Loader2 className="h-4 w-4 animate-spin" />
+                                  <span>Đang tải...</span>
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          ) : table.getRowModel().rows?.length ? (
+                            table.getRowModel().rows.map((row) => {
+                              const req = row.original
+                              const isCompleted = req.trang_thai === 'Hoàn thành' || req.trang_thai === 'Không HT'
+                              const daysInfo = !isCompleted && req.ngay_mong_muon_hoan_thanh ? calculateDaysRemaining(req.ngay_mong_muon_hoan_thanh) : null
+                              const stripeClass = daysInfo ? (daysInfo.status === 'success' ? 'border-l-4 border-green-500' : daysInfo.status === 'warning' ? 'border-l-4 border-orange-500' : 'border-l-4 border-red-500') : ''
+                              return (
+                                <TableRow
+                                  key={row.id}
+                                  data-state={row.getIsSelected() && "selected"}
+                                  tabIndex={0}
+                                  className={cn("cursor-pointer hover:bg-muted/50 focus:outline-none", stripeClass)}
+                                  onClick={() => setRequestToView(row.original)}
+                                  onKeyDown={(e) => { if (e.key === 'Enter') setRequestToView(row.original) }}
+                                >
+                                  {row.getVisibleCells().map((cell, colIdx) => (
+                                    <TableCell
+                                      key={cell.id}
+                                      className={cn(
+                                        density === 'compact' ? 'py-1' : density === 'spacious' ? 'py-3' : 'py-2',
+                                        colIdx === 0 && 'sticky left-0 z-10 bg-background w-[20rem] min-w-[20rem] max-w-[20rem] border-r',
+                                        colIdx === 1 && 'sticky left-[20rem] z-10 bg-background w-[14rem] min-w-[14rem] max-w-[14rem] border-r',
+                                        textWrap === 'truncate' ? 'truncate' : 'whitespace-normal break-words'
+                                      )}
+                                    >
+                                      {flexRender(
+                                        cell.column.columnDef.cell,
+                                        cell.getContext()
+                                      )}
+                                    </TableCell>
+                                  ))}
+                                </TableRow>
+                              )
+                            })
+                          ) : (
+                            <TableRow>
+                              <TableCell colSpan={columns.length} className="h-24 text-center">
+                                Không có kết quả.
+                              </TableCell>
+                            </TableRow>
+                          )}
+                        </TableBody>
+                      </Table>
+                    </div>
                   </div>
                 )}
               </CardContent>
@@ -2401,154 +2748,12 @@ export default function RepairRequestsPage() {
             </Card>
           </div>
 
-          {/* Right: Action Hub (desktop split) */}
-          {!isRegionalLeader && viewMode !== 'full' && !asideCollapsed && (
-            <ResizableAside
-              width={asideWidth}
-              setWidth={setAsideWidth}
-              collapsed={asideCollapsed}
-              setCollapsed={setAsideCollapsed}
-            >
-              <div className="p-4 space-y-4">
-                <form onSubmit={handleSubmit} className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="split-search-equipment">Thiết bị</Label>
-                    <div className="relative">
-                      <Input
-                        id="split-search-equipment"
-                        placeholder={"Nhập tên hoặc mã để tìm kiếm..."}
-                        value={searchQuery}
-                        onChange={handleSearchChange}
-                        autoComplete="off"
-                        required
-                      />
-                      {filteredEquipment.length > 0 && (
-                        <div className="absolute z-10 w-full mt-1 bg-popover border rounded-md shadow-lg max-h-60 overflow-y-auto">
-                          <div className="p-1">
-                            {filteredEquipment.map((equipment) => (
-                              <div
-                                key={equipment.id}
-                                className="text-sm mobile-interactive hover:bg-accent rounded-sm cursor-pointer touch-target-sm"
-                                onClick={() => handleSelectEquipment(equipment)}
-                              >
-                                <div className="font-medium">{equipment.ten_thiet_bi}</div>
-                                <div className="text-xs text-muted-foreground">
-                                  {equipment.ma_thiet_bi}
-                                  {equipment.khoa_phong_quan_ly && (
-                                    <span className="ml-2 text-blue-600">• {equipment.khoa_phong_quan_ly}</span>
-                                  )}
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                      {shouldShowNoResults && (
-                        <div className="absolute z-10 w-full mt-1 bg-popover border rounded-md shadow-lg p-3">
-                          <div className="text-sm text-muted-foreground text-center">
-                            Không tìm thấy kết quả phù hợp
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                    {selectedEquipment && (
-                      <p className="text-xs text-muted-foreground flex items-center gap-1.5 pt-1">
-                        <Check className="h-3.5 w-3.5 text-green-600" />
-                        <span>Đã chọn: {selectedEquipment.ten_thiet_bi} ({selectedEquipment.ma_thiet_bi})</span>
-                      </p>
-                    )}
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="split-issue">Mô tả sự cố</Label>
-                    <Textarea
-                      id="split-issue"
-                      placeholder="Mô tả chi tiết vấn đề gặp phải..."
-                      rows={4}
-                      value={issueDescription}
-                      onChange={(e) => setIssueDescription(e.target.value)}
-                      required
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="split-repair-items">Các hạng mục yêu cầu sửa chữa</Label>
-                    <Textarea
-                      id="split-repair-items"
-                      placeholder="VD: Thay màn hình, sửa nguồn..."
-                      rows={3}
-                      value={repairItems}
-                      onChange={(e) => setRepairItems(e.target.value)}
-                      required
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Ngày mong muốn hoàn thành (nếu có)</Label>
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <Button
-                          variant={"outline"}
-                          className={cn(
-                            "w-full justify-start text-left font-normal touch-target",
-                            !desiredDate && "text-muted-foreground"
-                          )}
-                        >
-                          <CalendarIcon className="mr-2 h-4 w-4" />
-                          {desiredDate ? format(desiredDate, "dd/MM/yyyy") : <span>Chọn ngày</span>}
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0">
-                        <Calendar
-                          mode="single"
-                          selected={desiredDate}
-                          onSelect={setDesiredDate}
-                          initialFocus
-                          disabled={(date) => date < new Date(new Date().setHours(0, 0, 0, 0))}
-                        />
-                      </PopoverContent>
-                    </Popover>
-                  </div>
-
-                  {canSetRepairUnit && (
-                    <div className="space-y-2">
-                      <Label htmlFor="split-repair-unit">Đơn vị thực hiện</Label>
-                      <Select value={repairUnit} onValueChange={(value: 'noi_bo' | 'thue_ngoai') => setRepairUnit(value)}>
-                        <SelectTrigger className="touch-target">
-                          <SelectValue placeholder="Chọn đơn vị thực hiện" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="noi_bo">Nội bộ</SelectItem>
-                          <SelectItem value="thue_ngoai">Thuê ngoài</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  )}
-
-                  {canSetRepairUnit && repairUnit === 'thue_ngoai' && (
-                    <div className="space-y-2">
-                      <Label htmlFor="split-external-company">Tên đơn vị được thuê</Label>
-                      <Input
-                        id="split-external-company"
-                        placeholder="Nhập tên đơn vị được thuê sửa chữa..."
-                        value={externalCompanyName}
-                        onChange={(e) => setExternalCompanyName(e.target.value)}
-                        required
-                        className="touch-target"
-                      />
-                    </div>
-                  )}
-
-                  <Button type="submit" className="w-full touch-target" disabled={isSubmitting}>
-                    {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                    {isSubmitting ? "Đang gửi..." : "Gửi yêu cầu"}
-                  </Button>
-                </form>
-              </div>
-            </ResizableAside>
-          )}
         </div>
 
         {/* Fall-back (mobile/tablet): keep FAB + Sheet for create */}
         
       </div>
+
     </>
     </ErrorBoundary>
   )
