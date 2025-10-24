@@ -16,7 +16,24 @@ import { CalendarWidget } from "@/components/ui/calendar-widget"
 import { KPICards } from "@/components/dashboard/kpi-cards"
 import { DashboardTabs } from "@/components/dashboard/dashboard-tabs"
 import { cn } from "@/lib/utils"
+import { SummaryBar, type SummaryItem } from "@/components/summary/summary-bar"
+import { useRepairRequestStats } from "@/hooks/use-dashboard-stats"
 // import { useDashboardRealtimeSync } from "@/hooks/use-realtime-sync"
+
+function RepairSummary() {
+  const { data: repairStats, isLoading } = useRepairRequestStats()
+  const items: SummaryItem[] = [
+    { key: 'total', label: 'Tổng', value: repairStats?.total ?? 0, tone: 'default', onClick: () => window.location.assign('/repair-requests') },
+    { key: 'Chờ xử lý', label: 'Chờ xử lý', value: repairStats?.pending ?? 0, tone: 'warning', onClick: () => window.location.assign('/repair-requests?status=Ch%E1%BB%9D%20x%E1%BB%AD%20l%C3%BD') },
+    { key: 'Đã duyệt', label: 'Đã duyệt', value: repairStats?.approved ?? 0, tone: 'muted', onClick: () => window.location.assign('/repair-requests?status=%C4%90%C3%A3%20duy%E1%BB%87t') },
+    { key: 'Hoàn thành', label: 'Hoàn thành', value: repairStats?.completed ?? 0, tone: 'success', onClick: () => window.location.assign('/repair-requests?status=Ho%C3%A0n%20th%C3%A0nh') },
+  ]
+  return (
+    <div className="mt-4">
+      <SummaryBar items={items} loading={isLoading} />
+    </div>
+  )
+}
 
 export default function Dashboard() {
   // useDashboardRealtimeSync()
@@ -64,6 +81,9 @@ export default function Dashboard() {
       <div className="mt-6 md:mt-8">
         <KPICards />
       </div>
+
+      {/* Repair Requests SummaryBar */}
+      <RepairSummary />
 
       {/* Quick Actions Section - Elegant Cards */}
       <div className="md:mt-6 md:space-y-5">
