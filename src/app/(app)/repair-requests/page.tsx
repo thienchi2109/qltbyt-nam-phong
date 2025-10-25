@@ -295,8 +295,8 @@ export default function RepairRequestsPage() {
   } = useQuery<{ data: RepairRequestWithEquipment[], total: number, page: number, pageSize: number }>({
     queryKey: ['repair_request_list', {
       tenant: effectiveTenantKey,
-      donVi: selectedFacilityId, // Facility filter for regional leaders
-      status: null, // Can be extended for status filtering
+      donVi: selectedFacilityId,
+      statuses: uiFilters.status || [],
       q: debouncedSearch || null,
       page: pagination.pageIndex + 1,
       pageSize: pagination.pageSize,
@@ -314,6 +314,7 @@ export default function RepairRequestsPage() {
           p_don_vi: selectedFacilityId,
           p_date_from: uiFilters.dateRange?.from || null,
           p_date_to: uiFilters.dateRange?.to || null,
+          p_statuses: uiFilters.status && uiFilters.status.length ? uiFilters.status : null,
         },
         signal, // Pass signal in options object
       });
@@ -360,18 +361,18 @@ export default function RepairRequestsPage() {
   const STATUSES = ['Chờ xử lý','Đã duyệt','Hoàn thành','Không HT'] as const
   type Status = typeof STATUSES[number]
   const { data: statusCounts, isLoading: statusCountsLoading } = useQuery<Record<Status, number>>({
-    queryKey: ['repair_request_status_counts', { facilityId: selectedFacilityId, search: debouncedSearch }],
+    queryKey: ['repair_request_status_counts', { facilityId: selectedFacilityId, search: debouncedSearch, dateFrom: uiFilters.dateRange?.from || null, dateTo: uiFilters.dateRange?.to || null }],
     queryFn: async () => {
-      const entries = await Promise.all(
-        STATUSES.map(async (s) => {
-          const res = await callRpc<{ data: any[]; total: number; page: number; pageSize: number }>({
-            fn: 'repair_request_list',
-            args: { p_q: debouncedSearch || null, p_status: s, p_page: 1, p_page_size: 1, p_don_vi: selectedFacilityId },
-          })
-          return [s, res?.total ?? 0] as const
-        })
-      )
-      return Object.fromEntries(entries) as Record<Status, number>
+      const res = await callRpc<Record<Status, number>>({
+        fn: 'repair_request_status_counts',
+        args: {
+          p_q: debouncedSearch || null,
+          p_don_vi: selectedFacilityId,
+          p_date_from: uiFilters.dateRange?.from || null,
+          p_date_to: uiFilters.dateRange?.to || null,
+        },
+      })
+      return res as Record<Status, number>
     },
     staleTime: 30_000,
     enabled: !!user,
@@ -445,7 +446,6 @@ export default function RepairRequestsPage() {
     const statusParam = searchParams.get('status');
     if (statusParam) {
       const decoded = decodeURIComponent(statusParam)
-      table.getColumn('trang_thai')?.setFilterValue([decoded])
       const updated = { ...uiFilters, status: [decoded] }
       setUiFiltersState(updated); setUiFilters(updated)
     }
@@ -1238,7 +1238,7 @@ export default function RepairRequestsPage() {
   // Reset pagination to first page when search, facility filter, or date range changes
   React.useEffect(() => {
     setPagination(prev => ({ ...prev, pageIndex: 0 }));
-  }, [debouncedSearch, selectedFacilityId, uiFilters.dateRange]);
+  }, [debouncedSearch, selectedFacilityId, uiFilters.dateRange, uiFilters.status]);
 
   const table = useReactTable({
     data: tableData,
@@ -1256,15 +1256,7 @@ export default function RepairRequestsPage() {
     onColumnFiltersChange: (updater) => {
       const next = typeof updater === 'function' ? (updater as any)(columnFilters) : updater
       setColumnFilters(next)
-      // sync status to uiFilters
-      const statusVals = (next.find((f: any) => f.id === 'trang_thai')?.value as string[]) || []
-      setUiFiltersState((prev) => {
-        const changed = JSON.stringify(prev.status) !== JSON.stringify(statusVals)
-        if (!changed) return prev
-        const updated = { ...prev, status: statusVals }
-        setUiFilters(updated)
-        return updated
-      })
+      // Do not sync status via column filters; status is server-side now.
     },
     onGlobalFilterChange: (value: string) => setSearchTerm(value),
     onPaginationChange: setPagination,
@@ -1283,13 +1275,7 @@ export default function RepairRequestsPage() {
 
   const isFiltered = table.getState().columnFilters.length > 0 || debouncedSearch.length > 0 || (uiFilters.dateRange?.from || uiFilters.dateRange?.to);
 
-  // Apply persisted status filter on mount
-  React.useEffect(() => {
-    if (uiFilters.status?.length) {
-      table.getColumn('trang_thai')?.setFilterValue(uiFilters.status)
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  // Server-side status filtering; no column filter syncing needed.
 
   // Persist density and text wrap changes
   React.useEffect(() => { setTableDensity(density) }, [density])
@@ -2298,7 +2284,6 @@ export default function RepairRequestsPage() {
                       onRemove={(key, sub) => {
                         if (key === 'status' && sub) {
                           const next = uiFilters.status.filter(s => s !== sub)
-                          table.getColumn('trang_thai')?.setFilterValue(next)
                           const updated = { ...uiFilters, status: next }
                           setUiFiltersState(updated); setUiFilters(updated)
                         } else if (key === 'facilityName') {
@@ -2325,8 +2310,6 @@ export default function RepairRequestsPage() {
                     } : { from: null, to: null },
                   }}
                   onChange={(v) => {
-                    // sync status
-                    table.getColumn('trang_thai')?.setFilterValue(v.status)
                     // sync facility
                     if (showFacilityFilter) setSelectedFacilityId(v.facilityId ?? null)
                     // persist date range and status
