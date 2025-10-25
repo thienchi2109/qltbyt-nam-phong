@@ -286,7 +286,7 @@ export default function RepairRequestsPage() {
     // Don't manually refetch - let queryKey change trigger it
   }, [setFacilityId]);
   
-  // TanStack Query for repair requests (server-side pagination + facility filtering)
+  // TanStack Query for repair requests (server-side pagination + facility filtering + date range)
   const { 
     data: repairRequestsRes, 
     isLoading, 
@@ -300,6 +300,8 @@ export default function RepairRequestsPage() {
       q: debouncedSearch || null,
       page: pagination.pageIndex + 1,
       pageSize: pagination.pageSize,
+      dateFrom: uiFilters.dateRange?.from || null,
+      dateTo: uiFilters.dateRange?.to || null,
     }],
     queryFn: async ({ signal }: { signal: AbortSignal }) => {
       const result = await callRpc<{ data: RepairRequestWithEquipment[], total: number, page: number, pageSize: number }>({
@@ -310,6 +312,8 @@ export default function RepairRequestsPage() {
           p_page: pagination.pageIndex + 1,
           p_page_size: pagination.pageSize,
           p_don_vi: selectedFacilityId,
+          p_date_from: uiFilters.dateRange?.from || null,
+          p_date_to: uiFilters.dateRange?.to || null,
         },
         signal, // Pass signal in options object
       });
@@ -1231,10 +1235,10 @@ export default function RepairRequestsPage() {
     return Math.max(1, Math.ceil(total / Math.max(pagination.pageSize, 1)));
   }, [repairRequestsRes?.total, pagination.pageSize]);
 
-  // Reset pagination to first page when search or facility filter changes
+  // Reset pagination to first page when search, facility filter, or date range changes
   React.useEffect(() => {
     setPagination(prev => ({ ...prev, pageIndex: 0 }));
-  }, [debouncedSearch, selectedFacilityId]);
+  }, [debouncedSearch, selectedFacilityId, uiFilters.dateRange]);
 
   const table = useReactTable({
     data: tableData,
@@ -2329,8 +2333,8 @@ export default function RepairRequestsPage() {
                     const updated: UiFiltersPrefs = {
                       status: v.status,
                       dateRange: v.dateRange ? {
-                        from: v.dateRange.from ? v.dateRange.from.toISOString().slice(0,10) : null,
-                        to: v.dateRange.to ? v.dateRange.to.toISOString().slice(0,10) : null,
+                        from: v.dateRange.from ? format(v.dateRange.from, 'yyyy-MM-dd') : null,
+                        to: v.dateRange.to ? format(v.dateRange.to, 'yyyy-MM-dd') : null,
                       } : null,
                     }
                     setUiFiltersState(updated); setUiFilters(updated)
