@@ -20,6 +20,11 @@
 4. **Document**: Include clear comments and rollback procedures in all migrations
 
 ### Security & Compliance
+- When adding DATE range filters against TIMESTAMPTZ columns:
+  - Use VN-local boundaries via `(p_date::timestamp AT TIME ZONE 'Asia/Ho_Chi_Minh')`
+  - Use half-open range: `>= from` and `< next_day(to)`
+  - Avoid functions on columns to keep index usage
+  - Coordinate client to send `yyyy-MM-dd` strings (no toISOString)
 - **FOLLOW** existing RPC-only security model (no direct table access)
 - **MAINTAIN** tenant isolation and role-based access patterns
 - **VALIDATE** all new functions follow SECURITY DEFINER with proper role checks

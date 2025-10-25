@@ -78,3 +78,39 @@ END;
 4. Check existing functions for patterns
 
 This is NON-NEGOTIABLE for future work.
+
+## Date Range Filtering & Timezone Rules (2025-10-25)
+
+DB TimeZone: UTC. Business timezone: Asia/Ho_Chi_Minh (+07).
+
+### Goals
+- Make date range filters index-friendly
+- Compare using VN-local day boundaries
+- Preserve tenant isolation & role logic
+
+### REQUIRED Pattern (Half-open range)
+```sql
+-- Params are DATE (YYYY-MM-DD)
+AND (
+  p_date_from IS NULL OR
+  r.ngay_yeu_cau >= (p_date_from::timestamp AT TIME ZONE 'Asia/Ho_Chi_Minh')
+)
+AND (
+  p_date_to IS NULL OR
+  r.ngay_yeu_cau <  ((p_date_to + interval '1 day')::timestamp AT TIME ZONE 'Asia/Ho_Chi_Minh')
+)
+```
+
+### DO NOT
+- ❌ Do NOT apply functions to the indexed column (e.g., `(r.ngay_yeu_cau AT TIME ZONE 'Asia/Ho_Chi_Minh')::date`) — breaks index usage
+- ❌ Do NOT cast DATE to timestamptz then `AT TIME ZONE` (wrong direction)
+- ❌ Do NOT build timestamps via string concat ("2025-10-08 00:00:00 00:00:00+07")
+
+### DO
+- ✅ Convert PARAMS to timestamptz at VN boundaries (move functions to the right-hand side only)
+- ✅ Use half-open range `>= start` and `< next_day`
+- ✅ Ensure btree index on `yeu_cau_sua_chua(ngay_yeu_cau)` exists
+- ✅ Optionally composite with status for common sort/filter
+
+### Client Coordination
+- Persist dates as local strings `yyyy-MM-dd` (not `toISOString().slice(0,10)`) to avoid UTC off-by-one shifts.

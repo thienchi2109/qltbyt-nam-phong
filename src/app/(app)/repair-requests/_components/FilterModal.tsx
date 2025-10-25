@@ -101,7 +101,7 @@ export function FilterModal({
                 {value.dateRange?.from ? value.dateRange.from.toLocaleDateString("vi-VN") : "Từ ngày"}
               </Button>
             </PopoverTrigger>
-            <PopoverContent className="w-auto p-0" align="start">
+            <PopoverContent className="w-auto p-0 z-[1100]" align="start">
               <Calendar
                 mode="single"
                 selected={value.dateRange?.from || undefined}
@@ -120,7 +120,7 @@ export function FilterModal({
                 {value.dateRange?.to ? value.dateRange.to.toLocaleDateString("vi-VN") : "Đến ngày"}
               </Button>
             </PopoverTrigger>
-            <PopoverContent className="w-auto p-0" align="start">
+            <PopoverContent className="w-auto p-0 z-[1100]" align="start">
               <Calendar
                 mode="single"
                 selected={value.dateRange?.to || undefined}
