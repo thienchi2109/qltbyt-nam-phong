@@ -37,6 +37,11 @@ export function MobileUsageActions({ equipment, className = "" }: MobileUsageAct
   const { data: session } = useSession()
   const user = session?.user as any
   const isRegionalLeader = user?.role === 'regional_leader'
+  const userId = React.useMemo(() => {
+    const uid = (user?.id as any)
+    const n = typeof uid === 'string' ? Number(uid) : uid
+    return Number.isFinite(n) ? (n as number) : null
+  }, [user?.id])
   const { data: activeUsageLogs } = useActiveUsageLogs()
   const [isStartDialogOpen, setIsStartDialogOpen] = React.useState(false)
   const [isEndDialogOpen, setIsEndDialogOpen] = React.useState(false)
@@ -48,7 +53,7 @@ export function MobileUsageActions({ equipment, className = "" }: MobileUsageAct
   )
 
   // Check if current user is using this equipment
-  const isCurrentUserUsing = activeSession?.nguoi_su_dung_id === user?.id
+  const isCurrentUserUsing = !!activeSession && (userId != null && activeSession.nguoi_su_dung_id === userId)
   
   // Check if equipment is in use by someone else
   const isInUseByOther = activeSession && !isCurrentUserUsing

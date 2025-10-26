@@ -43,6 +43,11 @@ interface UsageHistoryTabProps {
 export function UsageHistoryTab({ equipment }: UsageHistoryTabProps) {
   const { data: session } = useSession()
   const user = session?.user as any
+  const userId = React.useMemo(() => {
+    const uid = (user?.id as any)
+    const n = typeof uid === 'string' ? Number(uid) : uid
+    return Number.isFinite(n) ? (n as number) : null
+  }, [user?.id])
   const isMobile = useIsMobile()
   const [isEndDialogOpen, setIsEndDialogOpen] = React.useState(false)
   const [selectedUsageLog, setSelectedUsageLog] = React.useState<UsageLog | null>(null)
@@ -82,12 +87,12 @@ export function UsageHistoryTab({ equipment }: UsageHistoryTabProps) {
 
   // Find active usage session for current user
   const activeSession = usageLogs?.find(
-    log => log.trang_thai === 'dang_su_dung' && log.nguoi_su_dung_id === user?.id
+    log => log.trang_thai === 'dang_su_dung' && (userId != null && log.nguoi_su_dung_id === userId)
   )
 
   // Check if equipment is currently in use by someone else
   const isInUseByOther = usageLogs?.some(
-    log => log.trang_thai === 'dang_su_dung' && log.nguoi_su_dung_id !== user?.id
+    log => log.trang_thai === 'dang_su_dung' && (userId == null || log.nguoi_su_dung_id !== userId)
   )
 
   const formatDuration = (startTime: string, endTime?: string) => {
