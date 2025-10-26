@@ -34,19 +34,33 @@ export function PWAInstallPrompt() {
 
     checkIfInstalled();
 
-    // Register service worker
-    const registerSW = async () => {
-      if ('serviceWorker' in navigator) {
+    // Register service worker (production only); in dev, ensure no stale SW remains
+    const manageSW = async () => {
+      if (!('serviceWorker' in navigator)) return;
+
+      if (process.env.NODE_ENV === 'production') {
         try {
           const registration = await navigator.serviceWorker.register('/sw.js');
           console.log('Service Worker registered:', registration);
         } catch (error) {
           console.error('Service Worker registration failed:', error);
         }
+      } else {
+        // In development, unregister any existing SW to avoid precache 404s with Next dev assets
+        try {
+          const regs = await navigator.serviceWorker.getRegistrations();
+          await Promise.all(regs.map(r => r.unregister()));
+          // Also clear outdated caches that may have been created by a prod SW
+          const cacheNames = await caches.keys();
+          await Promise.all(cacheNames.map(name => caches.delete(name)));
+          console.log('Service Worker unregistered and caches cleared for development');
+        } catch (err) {
+          console.warn('SW cleanup in development failed:', err);
+        }
       }
     };
 
-    registerSW();
+    manageSW();
 
     // Listen for beforeinstallprompt event
     const handleBeforeInstallPrompt = (e: Event) => {
