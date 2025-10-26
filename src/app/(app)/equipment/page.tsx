@@ -116,6 +116,7 @@ import { useMediaQuery } from "@/hooks/use-media-query"
 import { exportArrayToExcel, exportToExcel } from "@/lib/excel-utils"
 import { UsageHistoryTab } from "@/components/usage-history-tab"
 import { StartUsageDialog } from "@/components/start-usage-dialog"
+import { EndUsageDialog } from "@/components/end-usage-dialog"
 import { ActiveUsageIndicator } from "@/components/active-usage-indicator"
 import { MobileUsageActions } from "@/components/mobile-usage-actions"
 import { useSearchDebounce } from "@/hooks/use-debounce"
@@ -126,6 +127,7 @@ import { useQuery, useMutation, useQueryClient, keepPreviousData } from "@tansta
 import { ExternalLink } from "lucide-react"
 import { TenantSelector } from "@/components/equipment/tenant-selector"
 import { useFacilityFilter } from "@/hooks/useFacilityFilter"
+import type { UsageLog } from "@/types/database"
 
 type Attachment = {
   id: string;
@@ -437,8 +439,10 @@ export default function EquipmentPage() {
   const [isImportDialogOpen, setIsImportDialogOpen] = React.useState(false)
   const [selectedEquipment, setSelectedEquipment] = React.useState<Equipment | null>(null);
   const [isDetailModalOpen, setIsDetailModalOpen] = React.useState(false);
-  const [isStartUsageDialogOpen, setIsStartUsageDialogOpen] = React.useState(false);
+  const [isStartUsageDialogOpen, setIsStartUsageDialogOpen] = React.useState(false)
   const [startUsageEquipment, setStartUsageEquipment] = React.useState<Equipment | null>(null);
+  const [isEndUsageDialogOpen, setIsEndUsageDialogOpen] = React.useState(false)
+  const [endUsageLog, setEndUsageLog] = React.useState<UsageLog | null>(null)
   const [editingEquipment, setEditingEquipment] = React.useState<Equipment | null>(null)
   const [currentTab, setCurrentTab] = React.useState<string>("details")
   const [isEditingDetails, setIsEditingDetails] = React.useState(false)
@@ -1062,6 +1066,11 @@ export default function EquipmentPage() {
     setIsStartUsageDialogOpen(true);
   };
 
+  const handleEndUsage = (usage: UsageLog) => {
+    setEndUsageLog(usage);
+    setIsEndUsageDialogOpen(true);
+  };
+
   const renderActions = (equipment: Equipment) => {
     const canEdit = user && (
   user.role === 'global' || user.role === 'admin' ||
@@ -1069,10 +1078,17 @@ export default function EquipmentPage() {
       (user.role === 'qltb_khoa' && user.khoa_phong === equipment.khoa_phong_quan_ly)
     );
 
+    const userId = (() => {
+      const uid: any = user?.id
+      const n = typeof uid === 'string' ? Number(uid) : uid
+      return Number.isFinite(n) ? (n as number) : null
+    })()
+
     const activeUsageLog = activeUsageLogs?.find(
       (log) => log.thiet_bi_id === equipment.id && log.trang_thai === 'dang_su_dung'
     );
-  const startUsageDisabled = isLoadingActiveUsage || !user || !!activeUsageLog || isRegionalLeader;
+    const isCurrentUserUsing = !!activeUsageLog && userId != null && activeUsageLog.nguoi_su_dung_id === userId
+    const startUsageDisabled = isLoadingActiveUsage || !user || !!activeUsageLog || isRegionalLeader;
 
     return (
       <DropdownMenu>
@@ -1091,16 +1107,25 @@ export default function EquipmentPage() {
            <DropdownMenuItem onSelect={() => handleShowDetails(equipment)}>
             Xem chi tiết
           </DropdownMenuItem>
-          <DropdownMenuItem
-            disabled={startUsageDisabled}
-            onSelect={() => {
-              if (startUsageDisabled) return;
-              handleStartUsage(equipment);
-            }}
-            title={activeUsageLog ? "Thiết bị đang được sử dụng" : undefined}
-          >
-            Viết nhật ký SD
-          </DropdownMenuItem>
+          {!isCurrentUserUsing && (
+            <DropdownMenuItem
+              disabled={startUsageDisabled}
+              onSelect={() => {
+                if (startUsageDisabled) return;
+                handleStartUsage(equipment);
+              }}
+              title={activeUsageLog ? "Thiết bị đang được sử dụng" : undefined}
+            >
+              Viết nhật ký SD
+            </DropdownMenuItem>
+          )}
+          {isCurrentUserUsing && (
+            <DropdownMenuItem
+              onSelect={() => handleEndUsage(activeUsageLog as UsageLog)}
+            >
+              Kết thúc sử dụng
+            </DropdownMenuItem>
+          )}
           <DropdownMenuItem
             disabled={isRegionalLeader}
             onSelect={() => {
@@ -2781,6 +2806,15 @@ export default function EquipmentPage() {
           }
         }}
         equipment={startUsageEquipment}
+      />
+
+      <EndUsageDialog
+        open={isEndUsageDialogOpen}
+        onOpenChange={(open) => {
+          setIsEndUsageDialogOpen(open)
+          if (!open) setEndUsageLog(null)
+        }}
+        usageLog={endUsageLog}
       />
 
       <FilterBottomSheet
