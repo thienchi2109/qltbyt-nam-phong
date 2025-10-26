@@ -2,8 +2,6 @@
 
 import {
   ChevronRight,
-  MoreHorizontal,
-  Eye,
   Wrench,
 } from "lucide-react"
 import { useRouter } from "next/navigation"
@@ -12,14 +10,6 @@ import { type Equipment } from "@/types/database"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
 import { useSession } from "next-auth/react"
 import { MobileUsageActions } from "./mobile-usage-actions"
 import { ActiveUsageIndicator } from "./active-usage-indicator"
@@ -184,7 +174,6 @@ export function MobileEquipmentListItem({
 
         {/* Actions Footer */}
         <div className="space-y-2" onClick={(e) => e.stopPropagation()}>
-          <MobileUsageActions equipment={equipment} />
           <div className="grid grid-cols-2 gap-2">
             <Button
               variant="outline"
@@ -198,27 +187,7 @@ export function MobileEquipmentListItem({
               <Wrench className="mr-2 h-4 w-4" />
               Báo sửa chữa
             </Button>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="w-full h-10 text-sm"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  <MoreHorizontal className="mr-2 h-4 w-4" />
-                  Thêm
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
-                <DropdownMenuLabel>Hành động khác</DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onSelect={() => onShowDetails(equipment)}>
-                  <Eye className="mr-2 h-4 w-4" />
-                  Xem chi tiết
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+            <MobileUsageActions equipment={equipment} className="w-full h-10 text-sm" />
           </div>
         </div>
       </div>
