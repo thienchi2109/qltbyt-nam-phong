@@ -2517,31 +2517,54 @@ export default function EquipmentPage() {
                 </div>
                 <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
                   {(isMobile || useTabletFilters) ? (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setIsFilterSheetOpen(true)}
-                      className={cn(
-                        "h-9 border-slate-200 shadow-sm transition-all",
-                        isFiltered
-                          ? "border-primary/50 bg-primary/5 hover:bg-primary/10"
-                          : "hover:border-primary/30"
-                      )}
-                    >
-                      <Filter className="h-4 w-4 mr-2" />
-                      <span className="font-medium">Lọc</span>
-                      {isFiltered && (
-                        <Badge
-                          variant="secondary"
-                          className="ml-2 h-5 min-w-[20px] rounded-full bg-primary text-white px-1.5 text-xs font-semibold"
-                        >
-                          {columnFilters.reduce((acc, filter) => {
-                            const vals = filter.value as string[] | undefined
-                            return acc + (vals?.length || 0)
-                          }, 0)}
-                        </Badge>
-                      )}
-                    </Button>
+                    <>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setIsFilterSheetOpen(true)}
+                        className={cn(
+                          "h-9 border-slate-200 shadow-sm transition-all",
+                          isFiltered
+                            ? "border-primary/50 bg-primary/5 hover:bg-primary/10"
+                            : "hover:border-primary/30"
+                        )}
+                      >
+                        <Filter className="h-4 w-4 mr-2" />
+                        <span className="font-medium">Lọc</span>
+                        {isFiltered && (
+                          <Badge
+                            variant="secondary"
+                            className="ml-2 h-5 min-w-[20px] rounded-full bg-primary text-white px-1.5 text-xs font-semibold"
+                          >
+                            {columnFilters.reduce((acc, filter) => {
+                              const vals = filter.value as string[] | undefined
+                              return acc + (vals?.length || 0)
+                            }, 0)}
+                          </Badge>
+                        )}
+                      </Button>
+
+                      {/* Mobile/Tablet Options button placed next to Filter */}
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="outline" size="sm" className="h-9">
+                            <Settings className="h-4 w-4 mr-2" />
+                            Tùy chọn
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="start" className="w-56">
+                          <DropdownMenuItem onSelect={() => setIsColumnsDialogOpen(true)}>
+                            Hiện/ẩn cột
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onSelect={() => handleDownloadTemplate()}>
+                            Tải Excel mẫu
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onSelect={() => handleExportData()}>
+                            Tải về dữ liệu
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </>
                   ) : (
                     <>
                       <DataTableFacetedFilter
@@ -2616,7 +2639,7 @@ export default function EquipmentPage() {
                 {/* Options menu - Hidden on mobile */}
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="outline" className="hidden sm:flex h-8 gap-1 touch-target-sm md:h-8">
+                    <Button variant="outline" className="hidden lg:flex h-8 gap-1 touch-target-sm md:h-8">
                       <Settings className="h-3.5 w-3.5" />
                       Tùy chọn
                     </Button>

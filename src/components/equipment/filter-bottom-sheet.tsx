@@ -162,7 +162,7 @@ export function FilterBottomSheet({
   return (
     <div
       ref={dialogRef}
-      className="fixed inset-0 z-50 flex items-end"
+      className="fixed inset-0 z-[1002] flex items-end"
       onKeyDown={handleKeyDown}
       role="dialog"
       aria-modal="true"

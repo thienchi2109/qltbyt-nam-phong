@@ -167,7 +167,7 @@
 
   /* Mobile-specific z-index management */
   .mobile-footer-z {
-    z-index: 60;
+    z-index: 40;
   }
 
   /* Floating action button positioning above footer with safe-area support */
