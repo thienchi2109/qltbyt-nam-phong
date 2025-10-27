@@ -312,17 +312,44 @@ export function InventoryReportTab({
           </Card>
         </div>
 
-        {/* Equipment Distribution Overview */}
-        <EquipmentDistributionSummary tenantFilter={tenantFilter} selectedDonVi={selectedDonVi} effectiveTenantKey={effectiveTenantKey} />
+        {/* Equipment Distribution Overview - Only show for single facility */}
+        {tenantFilter !== 'all' && (
+          <EquipmentDistributionSummary tenantFilter={tenantFilter} selectedDonVi={selectedDonVi} effectiveTenantKey={effectiveTenantKey} />
+        )}
 
-        {/* Interactive Equipment Distribution Chart */}
-        <InteractiveEquipmentChart tenantFilter={tenantFilter} selectedDonVi={selectedDonVi} effectiveTenantKey={effectiveTenantKey} />
+        {/* Interactive Equipment Distribution Chart - Only show for single facility */}
+        {tenantFilter !== 'all' && (
+          <InteractiveEquipmentChart tenantFilter={tenantFilter} selectedDonVi={selectedDonVi} effectiveTenantKey={effectiveTenantKey} />
+        )}
 
         {/* Charts Section */}
-        <InventoryCharts data={data} isLoading={isLoading} />
+        {tenantFilter !== 'all' && (
+          <InventoryCharts data={data} isLoading={isLoading} />
+        )}
 
-        {/* Detailed Table */}
-        <InventoryTable data={data} isLoading={isLoading} />
+        {/* Detailed Table - Only show for single facility */}
+        {tenantFilter === 'all' ? (
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex items-center justify-center p-8 text-center">
+                <div className="space-y-2">
+                  <div className="flex items-center justify-center text-4xl mb-4">
+                    📊
+                  </div>
+                  <h3 className="text-lg font-semibold">
+                    Đang hiển thị dữ liệu tổng hợp
+                  </h3>
+                  <p className="text-sm text-muted-foreground max-w-md">
+                    Bảng chi tiết giao dịch và biểu đồ không khả dụng khi xem tất cả cơ sở. 
+                    Vui lòng chọn một cơ sở cụ thể để xem chi tiết giao dịch.
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        ) : (
+          <InventoryTable data={data} isLoading={isLoading} />
+        )}
       </div>
 
       {/* Export Dialog */}

@@ -47,6 +47,23 @@ export function useInventoryData(
   selectedDonVi?: number | null,
   effectiveTenantKey?: string
 ) {
+  // Detect if this is a multi-facility query ("all facilities" mode)
+  const isAllFacilities = tenantFilter === 'all'
+  
+  // Fetch list of allowed facilities for multi-facility aggregation
+  const { data: facilitiesData } = useQuery({
+    queryKey: ['reports-facilities-list'],
+    queryFn: async () => {
+      const result = await callRpc<any>({ 
+        fn: 'get_facilities_with_equipment_count', 
+        args: {} 
+      })
+      return Array.isArray(result) ? result.map((f: any) => f.id) : []
+    },
+    enabled: isAllFacilities,
+    staleTime: 5 * 60_000, // Cache for 5 minutes
+  })
+  
   const queryKey = reportsKeys.inventoryData({
     dateRange: {
       from: format(dateRange.from, 'yyyy-MM-dd'),
@@ -54,7 +71,8 @@ export function useInventoryData(
     },
     selectedDepartment,
     searchTerm,
-    tenant: effectiveTenantKey || 'auto' // Cache partitioning
+    tenant: effectiveTenantKey || 'auto', // Cache partitioning
+    isMultiFacility: isAllFacilities, // NEW: separate cache for multi-facility
   })
   
   // (debug removed)
@@ -65,8 +83,44 @@ export function useInventoryData(
       const fromDate = format(dateRange.from, 'yyyy-MM-dd')
       const toDate = format(dateRange.to, 'yyyy-MM-dd')
 
-      // (debug removed)
+      // Multi-facility aggregation path (when "all facilities" selected)
+      if (isAllFacilities) {
+        const facilitiesToQuery = facilitiesData || []
+        
+        // Call aggregate RPC for equipment stats
+        const aggregates = await callRpc<any>({
+          fn: 'equipment_aggregates_for_reports',
+          args: {
+            p_don_vi_array: facilitiesToQuery.length > 0 ? facilitiesToQuery : null,
+            p_khoa_phong: selectedDepartment !== 'all' ? selectedDepartment : null,
+            p_date_from: fromDate,
+            p_date_to: toDate,
+          },
+        })
+        
+        // Get departments across all facilities
+        const deptRows = await callRpc<{ name: string; count: number }[]>({ 
+          fn: 'departments_list_for_facilities',
+          args: { 
+            p_don_vi_array: facilitiesToQuery.length > 0 ? facilitiesToQuery : null 
+          }
+        })
+        
+        const summary: InventorySummary = {
+          totalImported: aggregates.totalImported || 0,
+          totalExported: aggregates.totalExported || 0,
+          currentStock: aggregates.currentStock || 0,
+          netChange: aggregates.netChange || 0,
+        }
+        
+        return {
+          data: [], // No detailed transactions in "all facilities" mode
+          summary,
+          departments: (deptRows || []).map((r: any) => r.name).filter(Boolean),
+        }
+      }
 
+      // Single-facility detailed query (existing logic)
       // Fetch equipment via enhanced Reports RPC with explicit tenant + department parameter
       const equipment = await callRpc<any[]>({
         fn: 'equipment_list_for_reports',
@@ -231,9 +285,10 @@ export function useInventoryData(
         departments: uniqueDepts as string[],
       }
     },
-    enabled: effectiveTenantKey !== 'unset', // Gate query for global users (same as Equipment page)
+    enabled: effectiveTenantKey !== 'unset' && 
+             (!isAllFacilities || (facilitiesData !== undefined)), // Wait for facilities in multi-facility mode
     staleTime: 0, // Always refetch when query key changes (filters change)
     gcTime: 5 * 60 * 1000, // 5 minutes
     retry: 1,
   })
-} 
+}
