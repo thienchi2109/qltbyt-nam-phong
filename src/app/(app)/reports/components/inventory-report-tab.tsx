@@ -21,6 +21,7 @@ import { ExportReportDialog } from "./export-report-dialog"
 import { useInventoryData } from "../hooks/use-inventory-data"
 import { InteractiveEquipmentChart } from "@/components/interactive-equipment-chart"
 import { EquipmentDistributionSummary } from "@/components/equipment-distribution-summary"
+import { UnifiedInventoryChart } from "@/components/unified-inventory-chart"
 import { useReportInventoryFilters } from "../hooks/use-report-filters"
 import { useEquipmentDistribution } from "@/hooks/use-equipment-distribution"
 import { useMaintenanceStats } from "../hooks/use-maintenance-stats"
@@ -35,12 +36,14 @@ interface InventoryReportTabProps {
   tenantFilter?: string
   selectedDonVi?: number | null
   effectiveTenantKey?: string
+  isGlobalOrRegionalLeader?: boolean
 }
 
 export function InventoryReportTab({ 
   tenantFilter, 
   selectedDonVi, 
-  effectiveTenantKey 
+  effectiveTenantKey,
+  isGlobalOrRegionalLeader,
 }: InventoryReportTabProps) {
   const { toast } = useToast()
   
@@ -51,6 +54,13 @@ export function InventoryReportTab({
   const selectedDepartment = filters.selectedDepartment
   const searchTerm = filters.searchTerm
   const [showExportDialog, setShowExportDialog] = React.useState(false)
+
+  // Hide Department filter for RL/global and ensure it's reset to 'all'
+  React.useEffect(() => {
+    if (isGlobalOrRegionalLeader && selectedDepartment !== 'all') {
+      setSelectedDepartment('all')
+    }
+  }, [isGlobalOrRegionalLeader, selectedDepartment, setSelectedDepartment])
 
   // (debug removed)
   
@@ -201,23 +211,25 @@ export function InventoryReportTab({
                 </div>
               </div>
 
-              {/* Department Filter */}
-              <div className="flex flex-col gap-2">
-                <label className="text-sm font-medium">Khoa/Phòng</label>
-                <Select value={selectedDepartment} onValueChange={setSelectedDepartment}>
-                  <SelectTrigger className="w-[200px]">
-                    <SelectValue placeholder="Chọn khoa/phòng" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Tất cả</SelectItem>
-                    {departments.map((dept: string) => (
-                      <SelectItem key={dept} value={dept}>
-                        {dept || "Chưa phân loại"}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+              {/* Department Filter (hidden for RL/global users) */}
+              {!isGlobalOrRegionalLeader && (
+                <div className="flex flex-col gap-2">
+                  <label className="text-sm font-medium">Khoa/Phòng</label>
+                  <Select value={selectedDepartment} onValueChange={setSelectedDepartment}>
+                    <SelectTrigger className="w-[200px]">
+                      <SelectValue placeholder="Chọn khoa/phòng" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Tất cả</SelectItem>
+                      {departments.map((dept: string) => (
+                        <SelectItem key={dept} value={dept}>
+                          {dept || "Chưa phân loại"}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
 
               {/* Search */}
               <div className="flex flex-col gap-2">
@@ -317,8 +329,16 @@ export function InventoryReportTab({
           <EquipmentDistributionSummary tenantFilter={tenantFilter} selectedDonVi={selectedDonVi} effectiveTenantKey={effectiveTenantKey} />
         )}
 
-        {/* Interactive Equipment Distribution Chart - Only show for single facility */}
-        {tenantFilter !== 'all' && (
+        {/* Unified Inventory Chart (RL/Global only) - all mode shows facilities distribution; single mode renders interactive */}
+        <UnifiedInventoryChart 
+          tenantFilter={tenantFilter}
+          selectedDonVi={selectedDonVi}
+          effectiveTenantKey={effectiveTenantKey}
+          isGlobalOrRegionalLeader={isGlobalOrRegionalLeader}
+        />
+
+        {/* Interactive Equipment Distribution Chart (non-RL/Global users) - Only show for single facility */}
+        {tenantFilter !== 'all' && !isGlobalOrRegionalLeader && (
           <InteractiveEquipmentChart tenantFilter={tenantFilter} selectedDonVi={selectedDonVi} effectiveTenantKey={effectiveTenantKey} />
         )}
 
@@ -340,7 +360,7 @@ export function InventoryReportTab({
                     Đang hiển thị dữ liệu tổng hợp
                   </h3>
                   <p className="text-sm text-muted-foreground max-w-md">
-                    Bảng chi tiết giao dịch và biểu đồ không khả dụng khi xem tất cả cơ sở. 
+                    Bảng chi tiết giao dịch không khả dụng khi xem tất cả cơ sở. Ở trên, bạn có thể xem biểu đồ phân bố theo cơ sở. 
                     Vui lòng chọn một cơ sở cụ thể để xem chi tiết giao dịch.
                   </p>
                 </div>
