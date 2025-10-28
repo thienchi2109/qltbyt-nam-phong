@@ -1,6 +1,6 @@
 # Implementation Plan — Reports Inventory Unified Dynamic Chart
 
-Status: Proposed
+Status: Implemented
 
 ## Overview
 Frontend-only refactor to introduce a single chart component that adapts to facility selection for regional_leader/global users.
