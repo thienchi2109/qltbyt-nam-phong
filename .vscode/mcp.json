@@ -8,21 +8,24 @@
     }
   ],
   "servers": {
-    "supabase-macos-linux": {
-      "command": "bash",
+    "supabase-windows": {
+      "command": "npx",
       "args": [
-        "-lc",
-        "npx -y @supabase/mcp-server-supabase@latest --read-only --project-ref=cdthersvldpnlbvpufrr"
+        "-y",
+        "@supabase/mcp-server-supabase@latest",
+        "--read-only",
+        "--project-ref=cdthersvldpnlbvpufrr"
       ],
       "env": {
         "SUPABASE_ACCESS_TOKEN": "${input:supabase-access-token}"
       }
     },
     "supabase-write-mode (USE WITH CAUTION)": {
-      "command": "bash",
+      "command": "npx",
       "args": [
-        "-lc",
-        "npx -y @supabase/mcp-server-supabase@latest --project-ref=cdthersvldpnlbvpufrr"
+        "-y",
+        "@supabase/mcp-server-supabase@latest",
+        "--project-ref=cdthersvldpnlbvpufrr"
       ],
       "env": {
         "SUPABASE_ACCESS_TOKEN": "${input:supabase-access-token}"

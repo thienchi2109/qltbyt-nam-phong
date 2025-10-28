@@ -9,6 +9,8 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { TenantFilterDropdown } from "./components/tenant-filter-dropdown"
 import { TenantSelectionTip } from "./components/tenant-selection-tip"
 import { useToast } from "@/hooks/use-toast"
+import { useQuery } from "@tanstack/react-query"
+import { callRpc } from "@/lib/rpc-client"
 
 // Lazy load components to improve initial load time
 const InventoryReportTab = React.lazy(() => import("./components/inventory-report-tab").then(module => ({ default: module.InventoryReportTab })))
@@ -104,7 +106,7 @@ export default function ReportsPage() {
   const [tenantFilter, setTenantFilter] = React.useState<string>(() => {
     if (!isGlobalOrRegionalLeader) return tenantKey
     
-    // For global users, try to restore from localStorage first
+    // For global/regional_leader users, try to restore from localStorage first
     if (typeof window !== 'undefined') {
       try {
         const saved = localStorage.getItem('reports_tenant_filter')
@@ -115,13 +117,57 @@ export default function ReportsPage() {
     }
     return 'unset'
   })
+
+  // Load allowed facilities for validation (prevents stale saved IDs causing 403)
+  const { data: allowedFacilities } = useQuery<{ id: number; name: string }[]>({
+    queryKey: ['reports-facilities-validate', user?.role, user?.don_vi],
+    queryFn: async () => {
+      if (isGlobalOrRegionalLeader) {
+        const result = await callRpc<any>({ fn: 'get_facilities_with_equipment_count', args: {} })
+        const list = Array.isArray(result) ? result : []
+        return list.map((t: any) => ({ id: Number(t.id), name: t.name }))
+      }
+      return []
+    },
+    enabled: isGlobalOrRegionalLeader,
+    staleTime: 5 * 60_000,
+  })
+
+  // Validate persisted selection against allowed list
+  const [tenantValidated, setTenantValidated] = React.useState<boolean>(!isGlobalOrRegionalLeader)
+  React.useEffect(() => {
+    if (!isGlobalOrRegionalLeader) {
+      setTenantValidated(true)
+      return
+    }
+    if (!allowedFacilities) return
+
+    if (tenantFilter === 'unset' || tenantFilter === 'all') {
+      setTenantValidated(tenantFilter === 'all')
+      return
+    }
+
+    if (/^\d+$/.test(tenantFilter)) {
+      const n = parseInt(tenantFilter, 10)
+      const valid = allowedFacilities.some((f) => f.id === n)
+      if (!valid) {
+        // Reset to unset to force user selection; prevents unauthorized RPC calls
+        setTenantFilter('unset')
+        setTenantValidated(false)
+      } else {
+        setTenantValidated(true)
+      }
+    } else {
+      setTenantValidated(false)
+    }
+  }, [isGlobalOrRegionalLeader, allowedFacilities, tenantFilter])
   
-  // Compute gating logic (EXACT Equipment page pattern)
+  // Compute gating logic with validation to avoid 403 on first load
   const shouldFetchReports = React.useMemo(() => {
     if (!isGlobalOrRegionalLeader) return true
     if (tenantFilter === 'all') return true
-    return /^\d+$/.test(tenantFilter)
-  }, [isGlobalOrRegionalLeader, tenantFilter])
+    return tenantValidated && /^\d+$/.test(tenantFilter)
+  }, [isGlobalOrRegionalLeader, tenantFilter, tenantValidated])
 
   const selectedDonVi = React.useMemo(() => {
     if (!isGlobalOrRegionalLeader) return null
@@ -185,6 +231,7 @@ export default function ReportsPage() {
                   tenantFilter={tenantFilter}
                   selectedDonVi={selectedDonVi}
                   effectiveTenantKey={effectiveTenantKey}
+                  isGlobalOrRegionalLeader={isGlobalOrRegionalLeader}
                 />
               </React.Suspense>
             </TabsContent>
