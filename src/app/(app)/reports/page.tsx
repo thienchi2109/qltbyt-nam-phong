@@ -200,7 +200,7 @@ export default function ReportsPage() {
         <TenantFilterDropdown 
           value={tenantFilter}
           onChange={setTenantFilter}
-          className="min-w-[260px] sm:min-w-[340px]"
+          className="min-w-[360px] sm:min-w-[480px] lg:min-w-[600px]"
         />
       )}
     </div>

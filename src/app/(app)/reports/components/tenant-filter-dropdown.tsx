@@ -58,7 +58,7 @@ export function TenantFilterDropdown({
         <Label htmlFor={triggerId} className="text-xs text-muted-foreground whitespace-nowrap leading-none">
           {isRegionalLeader ? 'Cơ sở' : 'Đơn vị'}
         </Label>
-        <Skeleton className="h-8 w-full sm:w-[320px]" />
+        <Skeleton className="h-8 w-full" />
       </div>
     )
   }
@@ -76,7 +76,7 @@ export function TenantFilterDropdown({
       <Select value={value} onValueChange={(v) => React.startTransition(() => onChange(v))}>
         <SelectTrigger
           id={triggerId}
-          className="h-8 w-full sm:w-[320px]"
+          className="h-8 w-full"
         >
           <SelectValue placeholder={unsetText} />
         </SelectTrigger>
