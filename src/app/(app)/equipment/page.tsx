@@ -41,6 +41,9 @@ import {
   ArrowRightLeft,
   CheckCircle,
   Calendar,
+  Building2,
+  Search,
+  X,
 } from "lucide-react"
 import Link from 'next/link'
 import { useRouter, useSearchParams } from "next/navigation"
@@ -125,9 +128,9 @@ import { MobileEquipmentListItem } from "@/components/mobile-equipment-list-item
 import { callRpc as rpc } from "@/lib/rpc-client"
 import { useQuery, useMutation, useQueryClient, keepPreviousData } from "@tanstack/react-query"
 import { ExternalLink } from "lucide-react"
-import { TenantSelector } from "@/components/equipment/tenant-selector"
 import { useFacilityFilter } from "@/hooks/useFacilityFilter"
 import type { UsageLog } from "@/types/database"
+import { Sheet, SheetClose, SheetContent, SheetFooter, SheetHeader, SheetTitle } from "@/components/ui/sheet"
 
 type Attachment = {
   id: string;
@@ -434,6 +437,9 @@ export default function EquipmentPage() {
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([])
   const [searchTerm, setSearchTerm] = React.useState("")
   const [isFilterSheetOpen, setIsFilterSheetOpen] = React.useState(false)
+  const [isFacilitySheetOpen, setIsFacilitySheetOpen] = React.useState(false)
+  const [pendingFacilityId, setPendingFacilityId] = React.useState<number | null>(null)
+  const [facilitySearchTerm, setFacilitySearchTerm] = React.useState("")
   const debouncedSearch = useSearchDebounce(searchTerm)
   const [isAddDialogOpen, setIsAddDialogOpen] = React.useState(false)
   const [isImportDialogOpen, setIsImportDialogOpen] = React.useState(false)
@@ -492,7 +498,7 @@ export default function EquipmentPage() {
   }, [isGlobal, tenantFilter])
 
   // Regional leader tenant filtering state (server mode via shared hook)
-  const { selectedFacilityId, setSelectedFacilityId } = useFacilityFilter({
+const { showFacilityFilter, selectedFacilityId, setSelectedFacilityId } = useFacilityFilter({
     mode: 'server',
     userRole: (user?.role as string) || 'user',
   })
@@ -1306,27 +1312,73 @@ export default function EquipmentPage() {
   const isLoading = isEqLoading
 
   // Load facilities for regional leader filtering using dedicated RPC
-  const { data: facilitiesData, isLoading: isFacilitiesLoading } = useQuery<Array<{id: number; name: string; code: string; equipment_count: number}>>({
-    queryKey: ['facilities_with_equipment_count'],
-    queryFn: async () => {
-      const result = await rpc<any>({ fn: 'get_facilities_with_equipment_count', args: {} })
-      return result || []
-    },
-    enabled: isRegionalLeader,
-    staleTime: 300_000, // 5 minutes
-    gcTime: 10 * 60_000,
-    refetchOnWindowFocus: false,
-  })
+const { data: facilitiesData, isLoading: isFacilitiesLoading } = useQuery<Array<{id: number; name: string; code: string; equipment_count: number}>>({
+  queryKey: ['facilities_with_equipment_count'],
+  queryFn: async () => {
+    const result = await rpc<any>({ fn: 'get_facilities_with_equipment_count', args: {} })
+    return result || []
+  },
+  enabled: showFacilityFilter,
+  staleTime: 300_000, // 5 minutes
+  gcTime: 10 * 60_000,
+  refetchOnWindowFocus: false,
+})
 
-  const facilities = React.useMemo(() => {
-    if (!isRegionalLeader || !facilitiesData) return []
-    // Convert to the format expected by TenantSelector
-    return facilitiesData.map(f => ({
-      id: f.id,
-      name: f.name,
-      count: f.equipment_count
-    }))
-  }, [isRegionalLeader, facilitiesData])
+const facilities = React.useMemo(() => {
+  if (!showFacilityFilter || !facilitiesData) return []
+  return facilitiesData.map(f => ({
+    id: f.id,
+    name: f.name,
+    count: f.equipment_count,
+  }))
+}, [showFacilityFilter, facilitiesData])
+
+  const activeFacility = React.useMemo(() => {
+    if (selectedFacilityId == null) return null
+    return facilities.find((facility) => facility.id === selectedFacilityId) ?? null
+  }, [facilities, selectedFacilityId])
+
+  const filteredFacilityOptions = React.useMemo(() => {
+    if (!facilitySearchTerm.trim()) return facilities
+    const query = facilitySearchTerm.trim().toLowerCase()
+    return facilities.filter((facility) => facility.name.toLowerCase().includes(query))
+  }, [facilitySearchTerm, facilities])
+
+  React.useEffect(() => {
+    if (isFacilitySheetOpen) {
+      setPendingFacilityId(selectedFacilityId ?? null)
+      setFacilitySearchTerm("")
+    }
+  }, [isFacilitySheetOpen, selectedFacilityId])
+
+  const handleFacilityApply = React.useCallback(() => {
+    setSelectedFacilityId(pendingFacilityId ?? null)
+    if (isGlobal) {
+      React.startTransition(() => {
+        setTenantFilter(pendingFacilityId ? String(pendingFacilityId) : 'all')
+      })
+    }
+  setFacilitySearchTerm("")
+    setIsFacilitySheetOpen(false)
+  }, [pendingFacilityId, setSelectedFacilityId, isGlobal])
+
+  const handleFacilityClear = React.useCallback(() => {
+    setPendingFacilityId(null)
+    setSelectedFacilityId(null)
+    if (isGlobal) {
+      React.startTransition(() => {
+        setTenantFilter('all')
+      })
+    }
+  setFacilitySearchTerm("")
+    setIsFacilitySheetOpen(false)
+  }, [setSelectedFacilityId, isGlobal])
+
+  const handleFacilityCancel = React.useCallback(() => {
+  setPendingFacilityId(selectedFacilityId ?? null)
+  setFacilitySearchTerm("")
+    setIsFacilitySheetOpen(false)
+}, [selectedFacilityId])
 
   const isFetching = isEqFetching || isFacilitiesLoading
 
@@ -1778,7 +1830,7 @@ export default function EquipmentPage() {
   )
   
   const isFiltered = table.getState().columnFilters.length > 0;
-  const hasFacilityFilter = isRegionalLeader && selectedFacilityId !== null;
+const hasFacilityFilter = showFacilityFilter && selectedFacilityId !== null;
 
   const renderContent = () => {
     if (isGlobal && !shouldFetchEquipment) {
@@ -2456,46 +2508,25 @@ export default function EquipmentPage() {
               </CardDescription>
             </div>
             
-            {/* Tenant Filter - moved from toolbar */}
-            {isGlobal && (
-              <div className="flex items-center gap-2 min-w-0">
-                <Label className="text-xs text-muted-foreground whitespace-nowrap">Đơn vị</Label>
-                <Select
-                  value={tenantFilter}
-                  onValueChange={(v) => {
-                    console.log('[EquipmentPage] tenant select onValueChange ->', v)
-                    React.startTransition(() => setTenantFilter(v))
-                  }}
+            {/* Facility filter (global + regional leader) */}
+            {showFacilityFilter && (
+              <div className="flex w-full max-w-md items-center gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="flex h-10 flex-1 items-center justify-start gap-2 rounded-xl border border-dashed px-3"
+                  onClick={() => setIsFacilitySheetOpen(true)}
+                  disabled={isFacilitiesLoading}
                 >
-                  <SelectTrigger className="h-8 w-full md:w-[280px]" disabled={isTenantsLoading}>
-                    <SelectValue placeholder="— Chọn đơn vị —" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="unset">— Chọn đơn vị —</SelectItem>
-                    <SelectItem value="all">Tất cả đơn vị</SelectItem>
-                    {isTenantsLoading ? (
-                      <SelectItem value="__loading" disabled>Đang tải danh sách đơn vị...</SelectItem>
-                    ) : (
-                      tenantOptions.map(t => (
-                        <SelectItem key={t.id} value={String(t.id)}>
-                          {t.name} {t.code ? `(${t.code})` : ''}
-                        </SelectItem>
-                      ))
-                    )}
-                  </SelectContent>
-                </Select>
+                  <Building2 className="h-4 w-4 text-muted-foreground" />
+                  <span className="flex-1 truncate text-left text-sm font-medium">
+                    {activeFacility ? activeFacility.name : "Tất cả cơ sở"}
+                  </span>
+                  <Badge variant="secondary" className="shrink-0">
+                    {activeFacility ? `${activeFacility.count ?? 0} TB` : `${facilities.length || 0} cơ sở`}
+                  </Badge>
+                </Button>
               </div>
-            )}
-
-            {/* Regional Leader Facility Filter */}
-            {isRegionalLeader && (
-              <TenantSelector
-                facilities={facilities}
-                value={selectedFacilityId}
-                onChange={setSelectedFacilityId}
-                disabled={isLoading}
-                totalCount={total}
-              />
             )}
           </div>
 
@@ -2854,6 +2885,116 @@ export default function EquipmentPage() {
         onApply={setColumnFilters}
         onClearAll={() => setColumnFilters([])}
       />
+
+      <Sheet open={isFacilitySheetOpen} onOpenChange={setIsFacilitySheetOpen}>
+        <SheetContent side="bottom" className="flex h-[70vh] flex-col rounded-t-3xl border-border/60 bg-background px-6 pb-6 pt-4">
+          <SheetHeader>
+            <SheetTitle>Chọn cơ sở quản lý</SheetTitle>
+            <p className="text-sm text-muted-foreground">
+              Lọc danh sách thiết bị theo cơ sở thuộc địa bàn của bạn.
+            </p>
+          </SheetHeader>
+          <div className="mt-4">
+            <div className="relative">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                value={facilitySearchTerm}
+                onChange={(event) => setFacilitySearchTerm(event.target.value)}
+                placeholder="Tìm kiếm cơ sở..."
+                className="h-11 rounded-xl border-border/70 pl-9 pr-9"
+              />
+              {facilitySearchTerm && (
+                <button
+                  type="button"
+                  onClick={() => setFacilitySearchTerm("")}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground transition hover:text-foreground"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              )}
+            </div>
+          </div>
+
+          <div className="mt-4 flex-1 overflow-y-auto space-y-2">
+            <button
+              type="button"
+              onClick={() => setPendingFacilityId(null)}
+              className={cn(
+                "flex w-full items-center justify-between rounded-2xl border px-4 py-3 text-left text-sm transition",
+                pendingFacilityId === null ? "border-primary bg-primary/10 text-primary" : "border-border/60 hover:border-primary/60 hover:bg-primary/5"
+              )}
+            >
+              <div className="flex items-center gap-2">
+                <Building2 className="h-4 w-4" />
+                <span className="font-medium">Tất cả cơ sở</span>
+              </div>
+              <span className="text-xs text-muted-foreground">
+                {facilities.length} cơ sở • {total} TB
+              </span>
+            </button>
+
+            {isFacilitiesLoading ? (
+              <div className="space-y-2">
+                {Array.from({ length: 6 }).map((_, index) => (
+                  <Skeleton key={index} className="h-11 w-full rounded-2xl" />
+                ))}
+              </div>
+            ) : filteredFacilityOptions.length > 0 ? (
+              filteredFacilityOptions.map((facility) => {
+                const isSelected = pendingFacilityId === facility.id
+                return (
+                  <button
+                    key={facility.id}
+                    type="button"
+                    onClick={() => setPendingFacilityId(facility.id)}
+                    className={cn(
+                      "flex w-full items-center justify-between rounded-2xl border px-4 py-3 text-left text-sm transition",
+                      isSelected ? "border-primary bg-primary/10 text-primary" : "border-border/60 hover:border-primary/60 hover:bg-primary/5"
+                    )}
+                  >
+                    <span className="flex items-center gap-2 truncate">
+                      <span className="truncate">{facility.name}</span>
+                      {isSelected && <Check className="h-4 w-4 text-primary" />}
+                    </span>
+                    <span className="text-xs text-muted-foreground">
+                      {facility.count} TB
+                    </span>
+                  </button>
+                )
+              })
+            ) : (
+              <div className="rounded-2xl border border-dashed border-border/60 px-4 py-6 text-center text-sm text-muted-foreground">
+                Không tìm thấy cơ sở phù hợp.
+              </div>
+            )}
+          </div>
+
+          <SheetFooter className="mt-4 flex-col sm:flex-col">
+            <div className="grid w-full grid-cols-1 gap-2 sm:grid-cols-3">
+              <Button
+                variant="outline"
+                onClick={handleFacilityCancel}
+                className="w-full"
+              >
+                Hủy
+              </Button>
+              <Button
+                variant="ghost"
+                className="w-full border border-border/60"
+                onClick={handleFacilityClear}
+                disabled={pendingFacilityId === null && selectedFacilityId === null}
+              >
+                Xóa
+              </Button>
+              <SheetClose asChild>
+                <Button onClick={handleFacilityApply} className="w-full">
+                  Áp dụng
+                </Button>
+              </SheetClose>
+            </div>
+          </SheetFooter>
+        </SheetContent>
+      </Sheet>
 
     </>
   )
