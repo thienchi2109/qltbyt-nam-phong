@@ -2969,21 +2969,25 @@ const hasFacilityFilter = showFacilityFilter && selectedFacilityId !== null;
             )}
           </div>
 
-          <SheetFooter className="mt-4 grid gap-3">
-            <Button variant="outline" onClick={handleFacilityCancel}>
-              Hủy
-            </Button>
-            <div className="grid grid-cols-2 gap-2">
+          <SheetFooter className="mt-4 flex-col sm:flex-col">
+            <div className="grid w-full grid-cols-1 gap-2 sm:grid-cols-3">
+              <Button
+                variant="outline"
+                onClick={handleFacilityCancel}
+                className="w-full"
+              >
+                Hủy
+              </Button>
               <Button
                 variant="ghost"
-                className="border border-border/60"
+                className="w-full border border-border/60"
                 onClick={handleFacilityClear}
                 disabled={pendingFacilityId === null && selectedFacilityId === null}
               >
                 Xóa
               </Button>
               <SheetClose asChild>
-                <Button onClick={handleFacilityApply}>
+                <Button onClick={handleFacilityApply} className="w-full">
                   Áp dụng
                 </Button>
               </SheetClose>
