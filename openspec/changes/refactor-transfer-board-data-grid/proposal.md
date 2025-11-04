@@ -3,9 +3,10 @@ Date: 2025-11-04
 Owner: Codex Agent
 
 ## Problem
-- Transfer kanban UI is failing to render cards reliably (virtualized row API mismatch) and is difficult to maintain.
-- Transfer workflows now rely on server-side filtering (facility, status, date, search) similar to repair and maintenance pages, but kanban keeps client-only logic.
-- Counts, pagination, and tenant isolation are inconsistent with newer data grid patterns already rolled out elsewhere.
+- Transfer kanban UI is failing to render cards reliably (virtualized row API mismatch, recent debugging required TypeScript workarounds with `as any` casts).
+- Transfer kanban architecture is overly complex for typical dataset sizes (<500 items) and is difficult to maintain (custom virtualization, dual data fetching for counts/data).
+- Transfer workflows now rely on server-side filtering (facility, status, date, search) similar to repair and maintenance pages, but kanban keeps custom client logic.
+- Counts, pagination, and tenant isolation patterns are inconsistent with data grid architecture already proven in repair requests and maintenance pages.
 
 ## Goals
 1. Replace the kanban columns with a paginated TanStack data grid using the same server-side filtering conventions as repair requests.
@@ -26,13 +27,14 @@ Owner: Codex Agent
 
 ### Next.js API Routes
 - Add `/api/transfers/list` and `/api/transfers/counts` wrappers that call the new RPC functions through the existing proxy and enforce role claims.
-- Remove `/api/transfers/kanban` after migration.
+- **Remove** `/api/transfers/kanban` route entirely (no deprecation period).
 
 ### Client (App Router)
 - Replace the kanban board in `src/app/(app)/transfers/page.tsx` with the shared data grid shell (toolbar, filters, TanStack table, pagination footer).
 - Move filters to the standard server-driven pattern (facility select, multi-status, date range, type, search) with debounced query invalidation.
-- Update badge counts to use the new counts endpoint.
+- Update badge counts to use the new counts endpoint (or integrate into list response metadata).
 - Ensure action buttons (detail dialog, approve/reject, edit, delete) still appear in a rightmost column with `stopPropagation`.
+- **Delete** kanban-specific components: `VirtualizedKanbanColumn`, `TransferCard` (create new table-optimized variant if needed), `DensityToggle`, kanban preferences utilities.
 
 ### UX/Visual
 - Adopt the existing data grid styling (striped rows, sticky header, responsive card fallback on mobile if needed).
@@ -40,9 +42,9 @@ Owner: Codex Agent
 
 ## Risks & Mitigations
 - Risk: New RPC may miss tenant isolation edge cases → reuse helper functions from repair requests and add regression SQL tests.
-- Risk: Users accustomed to kanban lose quick drag context → ensure filters + status chips remain visible; evaluate adding saved filters if feedback demands.
-- Risk: Feature freeze overlap → gate release behind feature flag for coordination.
+- Risk: Users accustomed to kanban lose quick visual grouping → ensure filters + status badges remain prominent; status multi-select provides equivalent filtering.
 
-## Open Questions
-- Should we keep the old kanban route hidden behind a toggle during rollout?
-- Any printing/export needs tied to the kanban layout that must be replicated?
+## Decisions
+- **No feature flag**: Direct replacement of kanban with data grid (clean cut).
+- **No export/print functions**: Transfer workflows do not require dedicated export beyond existing handover sheet generation (handled via detail dialog).
+- **Full removal**: Delete kanban-specific components (`VirtualizedKanbanColumn`, kanban API routes) in same PR to avoid dead code.
