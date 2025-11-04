@@ -2,13 +2,19 @@
 
 ## Issue Summary
 
-**Bug**: When a global user creates an external transfer request, the kanban board's 'Chờ duyệt' (Pending Approval) column shows an increased count badge, but the actual transfer card is not rendered in the column.
+**Two Related Bugs**:
 
-**Severity**: Medium (Data inconsistency, confusing UX)
+1. **Filter Mismatch**: When a global user creates an external transfer request, the kanban board's 'Chờ duyệt' (Pending Approval) column shows an increased count badge, but the actual transfer card is not rendered in the column.
+
+2. **Missing Cache Invalidation**: After status changes (approve, start, handover, complete), the count badges show stale data for up to 60 seconds because the counts query is never refetched/invalidated.
+
+**Severity**: High (Data inconsistency throughout entire transfer lifecycle, confusing UX)
 
 **Affected Component**: Transfer Kanban Board (`/src/app/(app)/transfers/`)
 
-## Root Cause
+## Root Causes
+
+### Root Cause #1: Filter Mismatch
 
 The counts API (`/api/transfers/counts`) and kanban data API (`/api/transfers/kanban`) apply **different filters**, causing count/data mismatch:
 
@@ -16,6 +22,37 @@ The counts API (`/api/transfers/counts`) and kanban data API (`/api/transfers/ka
 - **Counts Query**: Applies ONLY facility filter, ignoring all other active filters
 
 This causes the badge count to include transfers that are filtered out of the actual rendered data.
+
+### Root Cause #2: Missing Cache Invalidation
+
+After mutations (create, approve, start, handover, complete), only the kanban data query refetches. The counts query is never refetched or invalidated:
+
+**Location**: `/src/app/(app)/transfers/page.tsx:147-150`
+
+```typescript
+const { data, isLoading, refetch: refetchTransfers } = useTransfersKanban(filters)
+const { data: counts } = useTransferCounts(
+  selectedFacilityId ? [selectedFacilityId] : undefined
+)
+// ❌ counts.refetch is never destructured or called
+```
+
+**All mutation handlers** only call `refetchTransfers()`:
+- `handleApproveTransfer` (line 280)
+- `handleStartTransfer` (line 304)
+- `handleHandoverToExternal` (line 329)
+- `handleReturnFromExternal` (line 354)
+- `handleCompleteTransfer` (line 382)
+- `handleDeleteTransfer` (line 256)
+- `AddTransferDialog.onSuccess` (line 539)
+- `EditTransferDialog.onSuccess` (line 545)
+
+The counts query only refetches when:
+- Page mounts (`refetchOnMount: true`)
+- Window gets focus (`refetchOnWindowFocus: true`)
+- Cache becomes stale after 60 seconds (`staleTime: 60_000`)
+
+**Impact**: Badge counts are stale for up to 60 seconds after every status change, creating confusion about actual transfer counts in each column.
 
 ## Technical Analysis
 
@@ -66,6 +103,29 @@ CREATE OR REPLACE FUNCTION get_transfer_counts(
   p_search_text TEXT DEFAULT NULL         -- ✅ Supported but not passed
 )
 ```
+
+## Status Transition Workflow Analysis
+
+### External Transfer Lifecycle
+
+| Step | Action | Status Change | Handler | Refetch Behavior | Issue |
+|------|--------|---------------|---------|------------------|-------|
+| 1 | Create transfer | → `cho_duyet` | AddTransferDialog | `refetchTransfers()` | ❌ Counts not refetched |
+| 2 | Approve | `cho_duyet` → `da_duyet` | handleApproveTransfer | `refetchTransfers()` | ❌ Counts not refetched |
+| 3 | Start | `da_duyet` → `dang_luan_chuyen` | handleStartTransfer | `refetchTransfers()` | ❌ Counts not refetched |
+| 4 | Handover | `dang_luan_chuyen` → `da_ban_giao` | handleHandoverToExternal | `refetchTransfers()` | ❌ Counts not refetched |
+| 5 | Return | `da_ban_giao` → `hoan_thanh` | handleReturnFromExternal | `refetchTransfers()` | ❌ Counts not refetched |
+
+**Result**: At EVERY step in the lifecycle, badge counts become stale immediately after the action, showing incorrect counts until cache expires (60s) or page regains focus.
+
+### Internal Transfer Lifecycle
+
+| Step | Action | Status Change | Handler | Refetch Behavior | Issue |
+|------|--------|---------------|---------|------------------|-------|
+| 1 | Create transfer | → `cho_duyet` | AddTransferDialog | `refetchTransfers()` | ❌ Counts not refetched |
+| 2 | Approve | `cho_duyet` → `da_duyet` | handleApproveTransfer | `refetchTransfers()` | ❌ Counts not refetched |
+| 3 | Start | `da_duyet` → `dang_luan_chuyen` | handleStartTransfer | `refetchTransfers()` | ❌ Counts not refetched |
+| 4 | Complete | `dang_luan_chuyen` → `hoan_thanh` | handleCompleteTransfer | `refetchTransfers()` | ❌ Counts not refetched |
 
 ## Proposed Solution
 
@@ -369,6 +429,119 @@ END;
 $$;
 ```
 
+### Change 7: Add Cache Invalidation for Counts Query
+
+**File**: `/src/app/(app)/transfers/page.tsx`
+
+**Action**: Use `queryClient.invalidateQueries()` to invalidate counts cache after mutations
+
+```typescript
+// Add import at top of file
+import { useQueryClient } from "@tanstack/react-query"
+
+// In component body, add queryClient hook (after line 62)
+const queryClient = useQueryClient()
+
+// Extract refetch from counts query (line 148-150)
+// BEFORE:
+const { data: counts } = useTransferCounts(
+  selectedFacilityId ? [selectedFacilityId] : undefined
+)
+
+// ✅ AFTER: Extract refetch function
+const { data: counts, refetch: refetchCounts } = useTransferCounts(
+  selectedFacilityId ? [selectedFacilityId] : undefined
+)
+
+// Create unified refetch helper (after line 193)
+const refetchAll = React.useCallback(() => {
+  refetchTransfers()
+  refetchCounts()
+  // Alternative: invalidate all transfer-related queries
+  // queryClient.invalidateQueries({ queryKey: ['transfers', 'kanban'] })
+}, [refetchTransfers, refetchCounts])
+
+// Update all mutation handlers to use refetchAll instead of refetchTransfers:
+// 1. handleApproveTransfer (line 280) → refetchAll()
+// 2. handleStartTransfer (line 304) → refetchAll()
+// 3. handleHandoverToExternal (line 329) → refetchAll()
+// 4. handleReturnFromExternal (line 354) → refetchAll()
+// 5. handleCompleteTransfer (line 382) → refetchAll()
+// 6. handleDeleteTransfer (line 256) → refetchAll()
+// 7. AddTransferDialog.onSuccess (line 539) → refetchAll
+// 8. EditTransferDialog.onSuccess (line 545) → refetchAll
+```
+
+**Example for one handler**:
+
+```typescript
+// BEFORE (line 266-288)
+const handleApproveTransfer = async (transferId: number) => {
+  if (isRegionalLeader) {
+    notifyRegionalLeaderRestricted()
+    return
+  }
+
+  try {
+    await callRpc({
+      fn: 'transfer_request_update_status',
+      args: {
+        p_id: transferId,
+        p_status: 'da_duyet',
+        p_payload: { nguoi_duyet_id: user?.id }
+      }
+    })
+
+    toast({
+      title: "Thành công",
+      description: "Đã duyệt yêu cầu luân chuyển."
+    })
+
+    refetchTransfers() // ❌ Only refetches kanban data
+  } catch (error: any) {
+    toast({
+      variant: "destructive",
+      title: "Lỗi",
+      description: error.message || "Có lỗi xảy ra khi duyệt yêu cầu."
+    })
+  }
+}
+
+// ✅ AFTER: Refetch both queries
+const handleApproveTransfer = async (transferId: number) => {
+  if (isRegionalLeader) {
+    notifyRegionalLeaderRestricted()
+    return
+  }
+
+  try {
+    await callRpc({
+      fn: 'transfer_request_update_status',
+      args: {
+        p_id: transferId,
+        p_status: 'da_duyet',
+        p_payload: { nguoi_duyet_id: user?.id }
+      }
+    })
+
+    toast({
+      title: "Thành công",
+      description: "Đã duyệt yêu cầu luân chuyển."
+    })
+
+    refetchAll() // ✅ Refetches both kanban data and counts
+  } catch (error: any) {
+    toast({
+      variant: "destructive",
+      title: "Lỗi",
+      description: error.message || "Có lỗi xảy ra khi duyệt yêu cầu."
+    })
+  }
+}
+```
+
+**Apply same pattern** to all 8 mutation handlers listed above.
+
 ## Testing Plan
 
 ### Unit Tests
@@ -394,35 +567,67 @@ $$;
    - Select facility filter
    - Create external transfer
    - Verify card renders in correct column
-   - Verify badge count matches card count
+   - Verify badge count matches card count IMMEDIATELY
 
 2. **Multi-filter scenario**:
    - Apply multiple filters (type + status + date)
    - Create transfer matching filters
-   - Verify immediate visibility
+   - Verify immediate visibility in both data and counts
 
-3. **Refetch behavior**:
-   - Create transfer
-   - Verify both queries refetch
-   - Verify cache invalidation
+3. **Status transition workflow** (CRITICAL):
+   - Create transfer → verify badge increments immediately
+   - Approve transfer → verify badges update immediately (cho_duyet -1, da_duyet +1)
+   - Start transfer → verify badges update immediately (da_duyet -1, dang_luan_chuyen +1)
+   - Handover transfer → verify badges update immediately (dang_luan_chuyen -1, da_ban_giao +1)
+   - Complete transfer → verify badges update immediately (da_ban_giao -1, hoan_thanh +1)
+   - **No stale counts at any step**
+
+4. **Cache invalidation verification**:
+   - Monitor React Query DevTools during status changes
+   - Verify both 'list' and 'counts' queries refetch
+   - Verify no 60-second delay before badge updates
+
+5. **Edit/Delete operations**:
+   - Edit transfer details → verify both queries refetch
+   - Delete transfer → verify counts decrement immediately
 
 ## Migration Path
 
+### Phase 1: Backend (Database)
 1. **Create new migration file**: `supabase/migrations/YYYYMMDDHHMMSS_add_status_filter_to_counts.sql`
-2. **Apply database changes**: Update `get_transfer_counts` function
-3. **Update API route**: `/src/app/api/transfers/counts/route.ts`
-4. **Update hook**: `/src/hooks/useTransfersKanban.ts`
-5. **Update page**: `/src/app/(app)/transfers/page.tsx`
-6. **Test thoroughly**: All filter combinations
-7. **Deploy**: Stage → Production
+2. **Apply database changes**: Update `get_transfer_counts` function to add missing status filter
+3. **Test RPC in SQL Editor**: Verify function accepts all parameters
+
+### Phase 2: Backend (API Routes)
+4. **Update counts API route**: `/src/app/api/transfers/counts/route.ts` - add filter parsing
+5. **Test API endpoint**: Call with various filter combinations via Postman/curl
+
+### Phase 3: Frontend (Hooks)
+6. **Update query key factory**: `/src/hooks/useTransfersKanban.ts` - change counts key
+7. **Update fetch function**: `/src/hooks/useTransfersKanban.ts` - build params from filters
+8. **Update counts hook**: `/src/hooks/useTransfersKanban.ts` - accept full filters object
+
+### Phase 4: Frontend (Page)
+9. **Update page imports**: Add `useQueryClient` import
+10. **Extract refetch functions**: Destructure `refetch` from counts query
+11. **Create refetchAll helper**: Unified function to refetch both queries
+12. **Update all 8 handlers**: Replace `refetchTransfers()` with `refetchAll()`
+
+### Phase 5: Testing & Deployment
+13. **Test locally**: All status transitions with React Query DevTools
+14. **Test filter combinations**: Verify counts match data
+15. **Deploy to staging**: Monitor for issues
+16. **Deploy to production**: Stage → Production
 
 ## Benefits
 
 ✅ **Accuracy**: Badge counts will always match visible data
-✅ **Consistency**: Same filters applied to both queries
-✅ **Performance**: No performance impact (RPC already supports filters)
+✅ **Real-time**: Counts update IMMEDIATELY after status changes (no 60s delay)
+✅ **Consistency**: Same filters applied to both queries throughout entire lifecycle
+✅ **Performance**: No performance impact (RPC already supports filters, just utilizing them)
 ✅ **Maintainability**: Single source of truth for filter logic
-✅ **User Experience**: No more confusing count/data mismatches
+✅ **User Experience**: No more confusing count/data mismatches at any stage
+✅ **Developer Experience**: Proper React Query patterns with cache invalidation
 
 ## Risks & Mitigation
 
@@ -435,12 +640,25 @@ $$;
 
 ## Estimated Effort
 
-- **Backend (RPC)**: 15 minutes (update function signature)
-- **API Routes**: 30 minutes (add filter parsing)
-- **Hooks**: 30 minutes (update signature and fetch logic)
-- **Page Updates**: 15 minutes (pass filters to hook)
-- **Testing**: 2 hours (comprehensive filter testing)
-- **Total**: ~3.5 hours
+- **Backend (RPC)**: 15 minutes (update function signature to add status filter)
+- **API Routes**: 30 minutes (add all filter parameter parsing)
+- **Hooks**: 45 minutes (update signature, fetch logic, query keys)
+- **Page Updates**: 45 minutes (add queryClient, refetchAll helper, update 8 handlers)
+- **Testing**: 3 hours (comprehensive filter testing + status transition testing)
+- **Documentation**: 30 minutes (update comments, add migration notes)
+- **Total**: ~5.5 hours
+
+### Breakdown by Change
+| Change | Component | Time | Complexity |
+|--------|-----------|------|------------|
+| Change 1 | Counts API Route | 30 min | Low |
+| Change 2 | Counts Hook Usage | 5 min | Low |
+| Change 3 | Counts Hook Implementation | 15 min | Medium |
+| Change 4 | Counts Fetch Function | 15 min | Low |
+| Change 5 | Query Key Factory | 5 min | Low |
+| Change 6 | RPC Function | 15 min | Low |
+| Change 7 | Cache Invalidation | 45 min | Medium |
+| Testing | All Status Transitions | 3 hours | High |
 
 ## Related Issues
 
@@ -458,6 +676,33 @@ $$;
 
 ---
 
-**Prepared by**: Claude Code Audit
+## Summary
+
+This proposal fixes **two critical bugs** in the Transfer Kanban board:
+
+### Bug #1: Filter Mismatch
+- **Problem**: Counts query uses only facility filter, kanban data uses all filters
+- **Impact**: Badge counts don't match visible cards when filters active
+- **Fix**: Synchronize all filter parameters between both queries
+
+### Bug #2: Missing Cache Invalidation
+- **Problem**: After status changes, counts query never refetches
+- **Impact**: Badge counts stale for up to 60 seconds after every action
+- **Fix**: Add proper React Query cache invalidation using `refetchAll()` helper
+
+### Critical Impact Points
+- **8 mutation handlers** affected (create, edit, delete, approve, start, handover, return, complete)
+- **5 status transitions** in external transfer lifecycle
+- **4 status transitions** in internal transfer lifecycle
+- **Every user action** on transfers shows stale counts
+
+### Solution Approach
+1. Expand counts query to use same filters as kanban data
+2. Add cache invalidation to all mutation handlers
+3. Use React Query best practices (`useQueryClient`, `invalidateQueries`)
+4. Ensure immediate updates with no stale data
+
+**Prepared by**: Claude Code Audit (Extended Investigation)
 **Date**: 2025-11-04
+**Last Updated**: 2025-11-04 (Added Cache Invalidation Analysis)
 **Status**: Ready for Implementation
