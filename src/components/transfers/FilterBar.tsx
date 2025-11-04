@@ -73,11 +73,19 @@ export function FilterBar({ filters, onFiltersChange, facilityId }: FilterBarPro
     queryFn: async () => {
       if (!facilityId) return []
       try {
-        const result = await callRpc<Assignee[]>({
+        const result = await callRpc<Array<Partial<Assignee> & { id?: number | string }>>({
           fn: 'equipment_users_list_for_tenant',
           args: { p_don_vi: facilityId },
         })
-        return result || []
+        if (!result) return []
+        return result
+          .filter((item): item is Assignee => item != null && item.id != null)
+          .map((item) => ({
+            id: typeof item.id === 'string' ? parseInt(item.id, 10) : Number(item.id),
+            ho_ten: item.ho_ten ?? '',
+            email: item.email ?? null,
+          }))
+          .filter((item) => Number.isFinite(item.id))
       } catch (error) {
         console.error('Failed to fetch assignees:', error)
         return []
@@ -242,7 +250,7 @@ export function FilterBar({ filters, onFiltersChange, facilityId }: FilterBarPro
                 <SelectContent>
                   <SelectItem value="all">Tất cả</SelectItem>
                   {assignees.map((assignee) => (
-                    <SelectItem key={assignee.id} value={assignee.id.toString()}>
+                    <SelectItem key={assignee.id} value={String(assignee.id)}>
                       {assignee.ho_ten}
                     </SelectItem>
                   ))}
