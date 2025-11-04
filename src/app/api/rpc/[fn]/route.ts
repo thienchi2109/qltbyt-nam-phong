@@ -143,13 +143,14 @@ export async function POST(req: NextRequest, context: { params: Promise<{ fn: st
   // (debug removed)
 
     // Build JWT claims for PostgREST. We keep db role = authenticated; app role in app_role.
+    // IMPORTANT: Convert empty strings to null to prevent BIGINT conversion errors
     const claims: Record<string, any> = {
       role: 'authenticated',
       sub: userId, // CRITICAL: 'sub' is required for auth.uid() in PostgreSQL
       app_role: appRole,
-      don_vi: donVi,
+      don_vi: donVi || null,  // Convert empty string to null for global users
       user_id: userId,
-      dia_ban: diaBan,
+      dia_ban: diaBan || null,  // Convert empty string to null
     }
 
     // Sanitize tenant parameter for non-global users to enforce isolation
