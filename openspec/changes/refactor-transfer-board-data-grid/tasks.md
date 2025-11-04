@@ -17,16 +17,18 @@
 ## 4. Frontend Refactor
 - [ ] 4.1 Replace board layout with data grid, wiring TanStack Query to new endpoints.
 - [ ] 4.2 Implement filter toolbar (facility, status multi-select, type, date range, search).
-- [ ] 4.3 Render status counts as badges in filter toolbar or table header.
+- [ ] 4.3 **Implement prominent status badges** above table (clickable, with counts, status-specific colors).
 - [ ] 4.4 Ensure transfer actions (view, approve, edit, delete) work in table Actions column with role-based permissions.
-- [ ] 4.5 Delete kanban-specific files:
+- [ ] 4.5 **Implement mobile card view** with responsive breakpoint at `md` (768px).
+- [ ] 4.6 Refactor `TransferCard.tsx` for mobile card view (remove kanban-specific logic).
+- [ ] 4.7 Delete kanban-specific files:
   - [ ] `src/components/transfers/VirtualizedKanbanColumn.tsx`
-  - [ ] `src/components/transfers/TransferCard.tsx` (or refactor for mobile card view)
   - [ ] `src/components/transfers/DensityToggle.tsx`
+  - [ ] `src/components/transfers/CollapsibleLane.tsx`
   - [ ] `src/lib/kanban-preferences.ts`
   - [ ] `src/hooks/useTransfersKanban.ts` (replace with new hooks for list/counts)
   - [ ] `src/types/transfer-kanban.ts` (replace with data grid types)
-- [ ] 4.6 Update imports across codebase (detail dialog, edit dialog, etc.).
+- [ ] 4.8 Update imports across codebase (detail dialog, edit dialog, etc.).
 
 ## 5. QA & Rollout
 - [ ] 5.1 Run `npm run typecheck` and `npm run lint` (ensure no broken imports).
