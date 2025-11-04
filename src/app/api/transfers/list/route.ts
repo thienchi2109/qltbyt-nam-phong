@@ -1,21 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/auth/config'
-import { TransferCountsResponse } from '@/types/transfer-kanban'
 
 export const runtime = 'nodejs'
 
 /**
- * GET /api/transfers/counts
+ * GET /api/transfers/list
  *
- * Get transfer counts by status for data grid status badges
+ * Get paginated transfer requests with server-side filtering
  *
  * Query Parameters:
  * - q: search text (equipment name, transfer code, reason)
+ * - statuses: comma-separated status values
+ * - types: comma-separated types (noi_bo, ben_ngoai)
+ * - page: page number (1-indexed)
+ * - pageSize: items per page
  * - facilityId: facility filter (global users only)
  * - dateFrom: date range start (YYYY-MM-DD)
  * - dateTo: date range end (YYYY-MM-DD)
- * - types: comma-separated types (noi_bo, ben_ngoai)
  * - assigneeIds: comma-separated assignee IDs
  */
 export async function GET(request: NextRequest) {
@@ -34,6 +36,19 @@ export async function GET(request: NextRequest) {
 
     const q = searchParams.get('q') || null
 
+    const statuses = searchParams.get('statuses')
+      ?.split(',')
+      .map((s: string) => s.trim())
+      .filter((s: string) => ['cho_duyet', 'da_duyet', 'dang_luan_chuyen', 'da_ban_giao', 'hoan_thanh'].includes(s)) || null
+
+    const types = searchParams.get('types')
+      ?.split(',')
+      .map((t: string) => t.trim())
+      .filter((t: string) => ['noi_bo', 'ben_ngoai'].includes(t)) || null
+
+    const page = parseInt(searchParams.get('page') || '1')
+    const pageSize = parseInt(searchParams.get('pageSize') || '50')
+
     const facilityId = searchParams.get('facilityId')
       ? parseInt(searchParams.get('facilityId')!)
       : null
@@ -41,25 +56,23 @@ export async function GET(request: NextRequest) {
     const dateFrom = searchParams.get('dateFrom') || null
     const dateTo = searchParams.get('dateTo') || null
 
-    const types = searchParams.get('types')
-      ?.split(',')
-      .map((t: string) => t.trim())
-      .filter((t: string) => ['noi_bo', 'ben_ngoai'].includes(t)) || null
-
     const assigneeIds = searchParams.get('assigneeIds')
       ?.split(',')
       .map((id: string) => parseInt(id.trim()))
       .filter((id: number) => !isNaN(id)) || null
 
     // Call RPC function via internal proxy using request origin
-    const rpcUrl = new URL('/api/rpc/transfer_request_counts', request.nextUrl.origin)
+    const rpcUrl = new URL('/api/rpc/transfer_request_list', request.nextUrl.origin)
 
     const rpcPayload = {
       p_q: q,
+      p_statuses: statuses,
+      p_types: types,
+      p_page: page,
+      p_page_size: pageSize,
       p_don_vi: facilityId,
       p_date_from: dateFrom,
       p_date_to: dateTo,
-      p_types: types,
       p_assignee_ids: assigneeIds,
     }
 
@@ -76,38 +89,20 @@ export async function GET(request: NextRequest) {
     if (!rpcResponse.ok) {
       const error = await rpcResponse.json()
       return NextResponse.json(
-        { error: error.error || 'Failed to fetch counts' },
+        { error: error.error || 'Failed to fetch transfer list' },
         { status: rpcResponse.status }
       )
     }
 
-    // RPC returns JSONB format: { cho_duyet: 12, da_duyet: 8, ... }
-    const data = await rpcResponse.json() as {
-      cho_duyet: number
-      da_duyet: number
-      dang_luan_chuyen: number
-      da_ban_giao: number
-      hoan_thanh: number
-    }
+    // RPC returns JSONB format: { data: [...], total: 123, page: 1, pageSize: 50 }
+    const data = await rpcResponse.json()
 
-    // Build response for compatibility with existing client code
-    const response: TransferCountsResponse = {
-      totalCount: (data.cho_duyet || 0) + (data.da_duyet || 0) + (data.dang_luan_chuyen || 0) + (data.da_ban_giao || 0) + (data.hoan_thanh || 0),
-      columnCounts: {
-        cho_duyet: data.cho_duyet || 0,
-        da_duyet: data.da_duyet || 0,
-        dang_luan_chuyen: data.dang_luan_chuyen || 0,
-        da_ban_giao: data.da_ban_giao || 0,
-        hoan_thanh: data.hoan_thanh || 0,
-      },
-    }
-
-    return NextResponse.json(response)
+    return NextResponse.json(data)
 
   } catch (error) {
-    console.error('Counts API error:', error)
+    console.error('Transfer list API error:', error)
     return NextResponse.json(
-      { 
+      {
         error: 'Internal server error',
         details: error instanceof Error ? error.message : 'Unknown error'
       },
