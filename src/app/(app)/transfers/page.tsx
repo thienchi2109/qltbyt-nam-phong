@@ -32,6 +32,7 @@ import { HandoverPreviewDialog } from "@/components/handover-preview-dialog"
 import { OverdueTransfersAlert } from "@/components/overdue-transfers-alert"
 import { ResponsivePaginationInfo } from "@/components/responsive-pagination-info"
 import { TransferDetailDialog } from "@/components/transfer-detail-dialog"
+import { TransferCard } from "@/components/transfers/TransferCard"
 import { TransferStatusBadges } from "@/components/transfers/TransferStatusBadges"
 import { TransferTypeTabs, useTransferTypeTab } from "@/components/transfers/TransferTypeTabs"
 import { getColumnsForType } from "@/components/transfers/columnDefinitions"
@@ -875,55 +876,82 @@ export default function TransfersPage() {
                 )}
               </div>
 
-              <div className="overflow-hidden rounded-lg border">
-                <Table>
-                  <TableHeader>
-                    {table.getHeaderGroups().map((headerGroup) => (
-                      <TableRow key={headerGroup.id}>
-                        {headerGroup.headers.map((header) => (
-                          <TableHead key={header.id}>
-                            {header.isPlaceholder
-                              ? null
-                              : flexRender(header.column.columnDef.header, header.getContext())}
-                          </TableHead>
-                        ))}
-                      </TableRow>
-                    ))}
-                  </TableHeader>
-                  <TableBody>
-                    {isListLoading ? (
-                      <TableRow>
-                        <TableCell colSpan={columns.length} className="h-40 text-center">
-                          <Loader2 className="mx-auto h-6 w-6 animate-spin text-muted-foreground" />
-                          <p className="mt-2 text-sm text-muted-foreground">Đang tải dữ liệu...</p>
-                        </TableCell>
-                      </TableRow>
-                    ) : table.getRowModel().rows.length > 0 ? (
-                      table.getRowModel().rows.map((row) => (
-                        <TableRow
-                          key={row.id}
-                          className="cursor-pointer hover:bg-muted/60"
-                          onClick={() => handleViewDetail(row.original)}
-                        >
-                          {row.getVisibleCells().map((cell) => (
-                            <TableCell key={cell.id}>
-                              {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                            </TableCell>
+              <div className="space-y-3 lg:hidden">
+                {isListLoading ? (
+                  <div className="flex min-h-[200px] items-center justify-center rounded-lg border border-dashed">
+                    <div className="flex flex-col items-center gap-2 text-sm text-muted-foreground">
+                      <Loader2 className="h-6 w-6 animate-spin" />
+                      Đang tải dữ liệu...
+                    </div>
+                  </div>
+                ) : tableData.length > 0 ? (
+                  tableData.map((item) => (
+                    <TransferCard
+                      key={item.id}
+                      transfer={item}
+                      referenceDate={referenceDate}
+                      onClick={() => handleViewDetail(item)}
+                      actions={rowActions(item)}
+                    />
+                  ))
+                ) : (
+                  <div className="rounded-lg border border-dashed py-12 text-center text-sm text-muted-foreground">
+                    Không có dữ liệu phù hợp.
+                  </div>
+                )}
+              </div>
+
+              <div className="hidden lg:block">
+                <div className="overflow-hidden rounded-lg border">
+                  <Table>
+                    <TableHeader>
+                      {table.getHeaderGroups().map((headerGroup) => (
+                        <TableRow key={headerGroup.id}>
+                          {headerGroup.headers.map((header) => (
+                            <TableHead key={header.id}>
+                              {header.isPlaceholder
+                                ? null
+                                : flexRender(header.column.columnDef.header, header.getContext())}
+                            </TableHead>
                           ))}
                         </TableRow>
-                      ))
-                    ) : (
-                      <TableRow>
-                        <TableCell
-                          colSpan={columns.length}
-                          className="h-40 text-center text-sm text-muted-foreground"
-                        >
-                          Không có dữ liệu phù hợp.
-                        </TableCell>
-                      </TableRow>
-                    )}
-                  </TableBody>
-                </Table>
+                      ))}
+                    </TableHeader>
+                    <TableBody>
+                      {isListLoading ? (
+                        <TableRow>
+                          <TableCell colSpan={columns.length} className="h-40 text-center">
+                            <Loader2 className="mx-auto h-6 w-6 animate-spin text-muted-foreground" />
+                            <p className="mt-2 text-sm text-muted-foreground">Đang tải dữ liệu...</p>
+                          </TableCell>
+                        </TableRow>
+                      ) : table.getRowModel().rows.length > 0 ? (
+                        table.getRowModel().rows.map((row) => (
+                          <TableRow
+                            key={row.id}
+                            className="cursor-pointer hover:bg-muted/60"
+                            onClick={() => handleViewDetail(row.original)}
+                          >
+                            {row.getVisibleCells().map((cell) => (
+                              <TableCell key={cell.id}>
+                                {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                              </TableCell>
+                            ))}
+                          </TableRow>
+                        ))
+                      ) : (
+                        <TableRow>
+                          <TableCell
+                            colSpan={columns.length}
+                            className="h-40 text-center text-sm text-muted-foreground"
+                          >
+                            Không có dữ liệu phù hợp.
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
               </div>
 
               {isListFetching && !isListLoading && (
