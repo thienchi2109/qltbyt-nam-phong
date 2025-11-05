@@ -11,7 +11,7 @@ export interface TransferKanbanItem {
   id: number
   ma_yeu_cau: string
   thiet_bi_id: number
-  loai_hinh: 'noi_bo' | 'ben_ngoai'
+  loai_hinh: 'noi_bo' | 'ben_ngoai' | 'thanh_ly'
   trang_thai: 'cho_duyet' | 'da_duyet' | 'dang_luan_chuyen' | 'da_ban_giao' | 'hoan_thanh'
   nguoi_yeu_cau_id: number | null
   ly_do_luan_chuyen: string
@@ -49,7 +49,7 @@ export interface TransferKanbanItem {
 export interface TransferKanbanFilters {
   facilityIds?: number[]
   assigneeIds?: number[]
-  types?: Array<'noi_bo' | 'ben_ngoai'>
+  types?: Array<'noi_bo' | 'ben_ngoai' | 'thanh_ly'>
   statuses?: Array<'cho_duyet' | 'da_duyet' | 'dang_luan_chuyen' | 'da_ban_giao' | 'hoan_thanh'>
   dateFrom?: string // ISO date string
   dateTo?: string   // ISO date string

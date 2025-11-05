@@ -128,7 +128,7 @@ export default function TransfersPage() {
 
   const [filters, setFilters] = React.useState<TransferKanbanFilters>(() => ({
     facilityIds: selectedFacilityId ? [selectedFacilityId] : undefined,
-    types: ['noi_bo'], // 🎯 SMART DEFAULT: Start with internal transfers
+    types: [activeTab], // Use activeTab from URL (ensures first fetch matches selected tab)
     dateFrom: thirtyDaysAgo.toISOString(), // 🎯 SMART DEFAULT: Only load last 30 days
     dateTo: undefined, // No upper limit (includes today)
     limit: 500, // Keep high limit as safety net (rarely hit with date filter)
