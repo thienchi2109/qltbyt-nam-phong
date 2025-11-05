@@ -1,7 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/auth/config'
-import { TransferCountsResponse } from '@/types/transfer-kanban'
+import { TransferCountsResponse } from '@/types/transfers-data-grid'
+import {
+  applyLegacyFilters,
+  buildCountsFromItems,
+  isMissingFunctionError,
+  sanitizeTypes,
+  transformLegacyItem,
+  type LegacyTransferItem,
+} from '@/app/api/transfers/legacy-adapter'
 
 export const runtime = 'nodejs'
 
@@ -41,10 +49,11 @@ export async function GET(request: NextRequest) {
     const dateFrom = searchParams.get('dateFrom') || null
     const dateTo = searchParams.get('dateTo') || null
 
-    const types = searchParams.get('types')
+    const typesRaw = searchParams.get('types')
       ?.split(',')
-      .map((t: string) => t.trim())
-      .filter((t: string) => ['noi_bo', 'ben_ngoai', 'thanh_ly'].includes(t)) || null
+      .map((t: string) => t.trim()) || null
+
+    const types = sanitizeTypes(typesRaw)
 
     const assigneeIds = searchParams.get('assigneeIds')
       ?.split(',')
@@ -73,33 +82,81 @@ export async function GET(request: NextRequest) {
       body: JSON.stringify(rpcPayload),
     })
 
-    if (!rpcResponse.ok) {
-      const error = await rpcResponse.json()
+    if (rpcResponse.ok) {
+      const data = await rpcResponse.json() as {
+        cho_duyet: number
+        da_duyet: number
+        dang_luan_chuyen: number
+        da_ban_giao: number
+        hoan_thanh: number
+      }
+
+      const response: TransferCountsResponse = {
+        totalCount:
+          (data.cho_duyet || 0) +
+          (data.da_duyet || 0) +
+          (data.dang_luan_chuyen || 0) +
+          (data.da_ban_giao || 0) +
+          (data.hoan_thanh || 0),
+        columnCounts: {
+          cho_duyet: data.cho_duyet || 0,
+          da_duyet: data.da_duyet || 0,
+          dang_luan_chuyen: data.dang_luan_chuyen || 0,
+          da_ban_giao: data.da_ban_giao || 0,
+          hoan_thanh: data.hoan_thanh || 0,
+        },
+      }
+
+      return NextResponse.json(response)
+    }
+
+    const fallbackPayload = await rpcResponse.json().catch(() => undefined)
+    if (!isMissingFunctionError(rpcResponse.status, fallbackPayload)) {
       return NextResponse.json(
-        { error: error.error || 'Failed to fetch counts' },
+        { error: (fallbackPayload as any)?.error || 'Failed to fetch counts' },
         { status: rpcResponse.status }
       )
     }
 
-    // RPC returns JSONB format: { cho_duyet: 12, da_duyet: 8, ... }
-    const data = await rpcResponse.json() as {
-      cho_duyet: number
-      da_duyet: number
-      dang_luan_chuyen: number
-      da_ban_giao: number
-      hoan_thanh: number
+    const listRpcUrl = new URL('/api/rpc/transfer_request_list', request.nextUrl.origin)
+    const listResponse = await fetch(listRpcUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Cookie': request.headers.get('cookie') || '',
+      },
+      body: JSON.stringify({
+        p_q: q,
+        p_status: null,
+        p_page: 1,
+        p_page_size: 5000,
+      }),
+    })
+
+    if (!listResponse.ok) {
+      const legacyError = await listResponse.json().catch(() => undefined)
+      return NextResponse.json(
+        { error: (legacyError as any)?.error || 'Failed to fetch counts' },
+        { status: listResponse.status }
+      )
     }
 
-    // Build response for compatibility with existing client code
+    const legacyItems = ((await listResponse.json()) || []) as LegacyTransferItem[]
+    const filtered = applyLegacyFilters(legacyItems.map(transformLegacyItem), {
+      q,
+      statuses: null,
+      types,
+      facilityId,
+      dateFrom,
+      dateTo,
+      assigneeIds,
+    })
+
+    const aggregates = buildCountsFromItems(filtered)
+
     const response: TransferCountsResponse = {
-      totalCount: (data.cho_duyet || 0) + (data.da_duyet || 0) + (data.dang_luan_chuyen || 0) + (data.da_ban_giao || 0) + (data.hoan_thanh || 0),
-      columnCounts: {
-        cho_duyet: data.cho_duyet || 0,
-        da_duyet: data.da_duyet || 0,
-        dang_luan_chuyen: data.dang_luan_chuyen || 0,
-        da_ban_giao: data.da_ban_giao || 0,
-        hoan_thanh: data.hoan_thanh || 0,
-      },
+      totalCount: aggregates.totalCount,
+      columnCounts: aggregates.counts,
     }
 
     return NextResponse.json(response)

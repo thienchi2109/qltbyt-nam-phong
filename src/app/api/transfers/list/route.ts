@@ -1,6 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/auth/config'
+import {
+  applyLegacyFilters,
+  isMissingFunctionError,
+  paginate,
+  sanitizeStatuses,
+  sanitizeTypes,
+  transformLegacyItem,
+  type LegacyTransferItem,
+} from '@/app/api/transfers/legacy-adapter'
 
 export const runtime = 'nodejs'
 
@@ -20,6 +29,7 @@ export const runtime = 'nodejs'
  * - dateTo: date range end (YYYY-MM-DD)
  * - assigneeIds: comma-separated assignee IDs
  */
+
 export async function GET(request: NextRequest) {
   try {
     // Authentication check
@@ -36,15 +46,16 @@ export async function GET(request: NextRequest) {
 
     const q = searchParams.get('q') || null
 
-    const statuses = searchParams.get('statuses')
+    const statusesRaw = searchParams.get('statuses')
       ?.split(',')
-      .map((s: string) => s.trim())
-      .filter((s: string) => ['cho_duyet', 'da_duyet', 'dang_luan_chuyen', 'da_ban_giao', 'hoan_thanh'].includes(s)) || null
+      .map((s: string) => s.trim()) || null
 
-    const types = searchParams.get('types')
+    const typesRaw = searchParams.get('types')
       ?.split(',')
-      .map((t: string) => t.trim())
-      .filter((t: string) => ['noi_bo', 'ben_ngoai', 'thanh_ly'].includes(t)) || null
+      .map((t: string) => t.trim()) || null
+
+    const statuses = sanitizeStatuses(statusesRaw)
+    const types = sanitizeTypes(typesRaw)
 
     const page = parseInt(searchParams.get('page') || '1')
     const pageSize = parseInt(searchParams.get('pageSize') || '50')
@@ -86,18 +97,60 @@ export async function GET(request: NextRequest) {
       body: JSON.stringify(rpcPayload),
     })
 
-    if (!rpcResponse.ok) {
-      const error = await rpcResponse.json()
+    if (rpcResponse.ok) {
+      const data = await rpcResponse.json()
+      return NextResponse.json(data)
+    }
+
+    const fallbackPayload = await rpcResponse.json().catch(() => undefined)
+    if (!isMissingFunctionError(rpcResponse.status, fallbackPayload)) {
       return NextResponse.json(
-        { error: error.error || 'Failed to fetch transfer list' },
+        { error: (fallbackPayload as any)?.error || 'Failed to fetch transfer list' },
         { status: rpcResponse.status }
       )
     }
 
-    // RPC returns JSONB format: { data: [...], total: 123, page: 1, pageSize: 50 }
-    const data = await rpcResponse.json()
+    const legacyResponse = await fetch(rpcUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Cookie': request.headers.get('cookie') || '',
+      },
+      body: JSON.stringify({
+        p_q: q,
+        p_status: statuses && statuses.length === 1 ? statuses[0] : null,
+        p_page: 1,
+        p_page_size: 5000,
+      }),
+    })
 
-    return NextResponse.json(data)
+    if (!legacyResponse.ok) {
+      const legacyError = await legacyResponse.json().catch(() => undefined)
+      return NextResponse.json(
+        { error: (legacyError as any)?.error || 'Failed to fetch transfer list' },
+        { status: legacyResponse.status }
+      )
+    }
+
+    const legacyData = ((await legacyResponse.json()) || []) as LegacyTransferItem[]
+    const filtered = applyLegacyFilters(legacyData.map(transformLegacyItem), {
+      q,
+      statuses,
+      types,
+      facilityId,
+      dateFrom,
+      dateTo,
+      assigneeIds,
+    })
+
+    const paginated = paginate(filtered, page, pageSize)
+
+    return NextResponse.json({
+      data: paginated.data,
+      total: paginated.total,
+      page: paginated.page,
+      pageSize: paginated.pageSize,
+    })
 
   } catch (error) {
     console.error('Transfer list API error:', error)
