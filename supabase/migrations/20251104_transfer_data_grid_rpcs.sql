@@ -10,6 +10,9 @@
 
 DROP FUNCTION IF EXISTS public.get_transfers_kanban(BIGINT[], BIGINT[], TEXT[], TEXT[], TIMESTAMPTZ, TIMESTAMPTZ, TEXT, INT, BIGINT);
 DROP FUNCTION IF EXISTS public.get_transfer_counts(BIGINT[]);
+DROP FUNCTION IF EXISTS public.transfer_request_list(TEXT, TEXT, INT, INT);
+DROP FUNCTION IF EXISTS public.transfer_request_list(TEXT, TEXT[], INT, INT, BIGINT);
+DROP FUNCTION IF EXISTS public.transfer_request_list(TEXT, TEXT[], TEXT[], INT, INT, BIGINT);
 
 COMMENT ON SCHEMA public IS 'Dropped get_transfers_kanban and get_transfer_counts - replaced with transfer_request_list and transfer_request_counts';
 
@@ -156,7 +159,7 @@ $$;
 
 GRANT EXECUTE ON FUNCTION public.transfer_request_list(TEXT, TEXT[], TEXT[], INT, INT, BIGINT, DATE, DATE, BIGINT[]) TO authenticated;
 
-COMMENT ON FUNCTION public.transfer_request_list IS 
+COMMENT ON FUNCTION public.transfer_request_list(TEXT, TEXT[], TEXT[], INT, INT, BIGINT, DATE, DATE, BIGINT[]) IS 
 'Lists transfer requests with server-side filtering, pagination, and tenant isolation. 
 Returns JSONB with {data, total, page, pageSize} structure matching repair_request_list pattern.';
 
@@ -246,7 +249,7 @@ $$;
 
 GRANT EXECUTE ON FUNCTION public.transfer_request_counts(TEXT, BIGINT, DATE, DATE, TEXT[], BIGINT[]) TO authenticated;
 
-COMMENT ON FUNCTION public.transfer_request_counts IS 
+COMMENT ON FUNCTION public.transfer_request_counts(TEXT, BIGINT, DATE, DATE, TEXT[], BIGINT[]) IS 
 'Returns counts per status for current filters (excludes status filter itself). 
 Respects tenant isolation and matches transfer_request_list filter logic.';
 
