@@ -17,10 +17,10 @@
 ## 4. Frontend Refactor
 
 ### 4.A Tab Implementation
-- [ ] 4.A.1 Create tab navigation component with 3 tabs: "Nội bộ", "Bên ngoài", "Thanh lý".
-- [ ] 4.A.2 Implement URL-based tab state management (`?tab=noi_bo`).
-- [ ] 4.A.3 Add tab badge counts (total count per type from counts API).
-- [ ] 4.A.4 Wire tab selection to filter transfers by `loai_hinh` parameter.
+- [x] 4.A.1 Create tab navigation component with 3 tabs: "Nội bộ", "Bên ngoài", "Thanh lý".
+- [x] 4.A.2 Implement URL-based tab state management (`?tab=noi_bo`).
+- [-] 4.A.3 Add tab badge counts (total count per type from counts API). (placeholder)
+- [x] 4.A.4 Wire tab selection to filter transfers by `loai_hinh` parameter.
 
 ### 4.B Hooks & Data Fetching
 - [x] 4.B.1 Create `useTransferList` hook (calls `/api/transfers/list` with type filter).
@@ -29,11 +29,11 @@
 - [x] 4.B.4 Integrate TanStack Query with proper cache keys per tab.
 
 ### 4.C Column Definitions
-- [ ] 4.C.1 Define common columns (transfer code, equipment, reason, created date, status, actions).
-- [ ] 4.C.2 Define internal transfer columns (from/to department, receiving facility).
-- [ ] 4.C.3 Define external transfer columns (receiving entity, contact, phone, return dates, overdue indicator).
-- [ ] 4.C.4 Define liquidation columns (purpose, receiving entity, contact, completion date).
-- [ ] 4.C.5 Centralize column configs in `src/components/transfers/columnDefinitions.ts`.
+- [x] 4.C.1 Define common columns (transfer code, equipment, reason, created date, status, actions).
+- [x] 4.C.2 Define internal transfer columns (from/to department, receiving facility).
+- [x] 4.C.3 Define external transfer columns (receiving entity, contact, phone, return dates, overdue indicator).
+- [x] 4.C.4 Define liquidation columns (purpose, receiving entity, contact, completion date).
+- [x] 4.C.5 Centralize column configs in `src/components/transfers/columnDefinitions.ts`.
 
 ### 4.D Data Grid Implementation
 - [ ] 4.D.1 Integrate TanStack Table with dynamic column rendering based on active tab.
