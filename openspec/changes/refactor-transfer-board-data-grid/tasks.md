@@ -12,7 +12,7 @@
 ## 3. Next.js API Routes
 - [x] 3.1 Scaffold `/api/transfers/list` and `/api/transfers/counts`.
 - [x] 3.2 Update `/api/rpc/[fn]/route.ts` allowlist (add `transfer_request_list`, `transfer_request_counts`).
-- [ ] 3.3 Delete `/api/transfers/kanban` route file (deferred to end of Task 4).
+- [x] 3.3 Delete `/api/transfers/kanban` route file (deferred to end of Task 4).
 
 ## 4. Frontend Refactor
 
@@ -49,55 +49,55 @@
 - [x] 4.E.4 Style badges with status-specific colors.
 
 ### 4.F Filter Toolbar
-- [ ] 4.F.1 Implement facility filter (dropdown, global/regional users only).
-- [ ] 4.F.2 Implement status multi-select filter.
-- [ ] 4.F.3 Implement date range filter (from/to with Calendar).
-- [ ] 4.F.4 Implement search filter with debounce.
-- [ ] 4.F.5 **Remove type filter** (replaced by tabs).
-- [ ] 4.F.6 Add "Clear filters" button.
+- [x] 4.F.1 Implement facility filter (dropdown, global/regional users only).
+- [x] 4.F.2 Implement status multi-select filter.
+- [x] 4.F.3 Implement date range filter (from/to with Calendar).
+- [x] 4.F.4 Implement search filter with debounce.
+- [x] 4.F.5 **Remove type filter** (replaced by tabs).
+- [x] 4.F.6 Add "Clear filters" button.
 
 ### 4.G Mobile Card View (Type-Specific)
-- [ ] 4.G.1 Refactor `TransferCard.tsx` to remove kanban-specific logic (DensityMode).
-- [ ] 4.G.2 Implement responsive breakpoint at `md` (768px) - table on desktop, cards on mobile.
-- [ ] 4.G.3 Ensure internal tab cards show from/to departments.
-- [ ] 4.G.4 Ensure external tab cards show receiving entity, return date, overdue indicator.
-- [ ] 4.G.5 Ensure liquidation tab cards show purpose, completion date.
+- [x] 4.G.1 Refactor `TransferCard.tsx` to remove kanban-specific logic (DensityMode).
+- [x] 4.G.2 Implement responsive breakpoint at `md` (768px) - table on desktop, cards on mobile.
+- [x] 4.G.3 Ensure internal tab cards show from/to departments.
+- [x] 4.G.4 Ensure external tab cards show receiving entity, return date, overdue indicator.
+- [x] 4.G.5 Ensure liquidation tab cards show purpose, completion date.
 
 ### 4.H Cleanup
-- [ ] 4.H.1 Delete `src/components/transfers/VirtualizedKanbanColumn.tsx`.
-- [ ] 4.H.2 Delete `src/components/transfers/DensityToggle.tsx`.
-- [ ] 4.H.3 Delete `src/components/transfers/CollapsibleLane.tsx`.
-- [ ] 4.H.4 Delete `src/lib/kanban-preferences.ts`.
-- [ ] 4.H.5 Delete `src/hooks/useTransfersKanban.ts` (replaced with `useTransferList`, `useTransferCounts`).
-- [ ] 4.H.6 Delete `src/types/transfer-kanban.ts` (replaced with data grid types).
-- [ ] 4.H.7 Delete `/api/transfers/kanban` route file.
-- [ ] 4.H.8 Update imports across codebase (detail dialog, edit dialog, add/edit dialogs).
-- [ ] 4.H.9 Confirm no clients use legacy `transfer_request_list` RPC and remove it along with the whitelist entry when safe.
+- [x] 4.H.1 Delete `src/components/transfers/VirtualizedKanbanColumn.tsx`.
+- [x] 4.H.2 Delete `src/components/transfers/DensityToggle.tsx`.
+- [x] 4.H.3 Delete `src/components/transfers/CollapsibleLane.tsx`.
+- [x] 4.H.4 Delete `src/lib/kanban-preferences.ts`.
+- [x] 4.H.5 Delete `src/hooks/useTransfersKanban.ts` (replaced with `useTransferList`, `useTransferCounts`).
+- [x] 4.H.6 Delete `src/types/transfer-kanban.ts` (replaced with data grid types).
+- [x] 4.H.7 Delete `/api/transfers/kanban` route file.
+- [x] 4.H.8 Update imports across codebase (detail dialog, edit dialog, add/edit dialogs).
+- [x] 4.H.9 Confirm no clients use legacy `transfer_request_list` RPC and remove it along with the whitelist entry when safe.
 
 ## 5. QA & Rollout
-- [ ] 5.1 Run `npm run typecheck` and `npm run lint` (ensure no broken imports).
-- [ ] 5.2 Smoke-test roles: global, regional_leader, to_qltb, technician, user.
-- [ ] 5.3 Validate performance with large datasets (500+ rows per type).
-- [ ] 5.4 Test tab functionality:
-  - [ ] Tab switching updates URL (`?tab=noi_bo`, `?tab=ben_ngoai`, `?tab=thanh_ly`)
-  - [ ] Tab badge counts accurate per type
-  - [ ] Status badges update per active tab
-  - [ ] Columns change dynamically per tab
-  - [ ] Mobile card view shows correct fields per tab
-  - [ ] Browser back/forward navigation works with tabs
-- [ ] 5.5 Test all transfer workflows end-to-end (per type):
-  - [ ] **Internal transfers**: Create → Approve → Start → Complete
-  - [ ] **External transfers**: Create → Approve → Start → Handover → Return → Complete
-  - [ ] **Liquidation**: Create → Approve → Complete (verify liquidation-specific workflow)
-  - [ ] Generate handover sheet (via detail dialog)
-- [ ] 5.6 Test filters within each tab:
-  - [ ] Facility filter (global/regional users)
-  - [ ] Status multi-select
-  - [ ] Date range
-  - [ ] Search text
-  - [ ] Clear filters resets all except tab
-- [ ] 5.7 Mobile responsiveness:
-  - [ ] Test at breakpoint 768px (md)
-  - [ ] Verify table → card transition
-  - [ ] Test on actual mobile devices (iOS, Android)
-- [ ] 5.8 Prepare release notes highlighting UI change (kanban → tabbed data grid).
+- [x] 5.1 Run `npm run typecheck` and `npm run lint` (ensure no broken imports).
+- [x] 5.2 Smoke-test roles: global, regional_leader, to_qltb, technician, user.
+- [x] 5.3 Validate performance with large datasets (500+ rows per type).
+- [x] 5.4 Test tab functionality:
+  - [x] Tab switching updates URL (`?tab=noi_bo`, `?tab=ben_ngoai`, `?tab=thanh_ly`)
+  - [x] Tab badge counts accurate per type
+  - [x] Status badges update per active tab
+  - [x] Columns change dynamically per tab
+  - [x] Mobile card view shows correct fields per tab
+  - [x] Browser back/forward navigation works with tabs
+- [x] 5.5 Test all transfer workflows end-to-end (per type):
+  - [x] **Internal transfers**: Create → Approve → Start → Complete
+  - [x] **External transfers**: Create → Approve → Start → Handover → Return → Complete
+  - [x] **Liquidation**: Create → Approve → Complete (verify liquidation-specific workflow)
+  - [x] Generate handover sheet (via detail dialog)
+- [x] 5.6 Test filters within each tab:
+  - [x] Facility filter (global/regional users)
+  - [x] Status multi-select
+  - [x] Date range
+  - [x] Search text
+  - [x] Clear filters resets all except tab
+- [x] 5.7 Mobile responsiveness:
+  - [x] Test at breakpoint 768px (md)
+  - [x] Verify table → card transition
+  - [x] Test on actual mobile devices (iOS, Android)
+- [x] 5.8 Prepare release notes highlighting UI change (kanban → tabbed data grid).

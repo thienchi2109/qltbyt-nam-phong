@@ -834,13 +834,15 @@ export default function TransfersPage() {
             }}
           >
             <div className="flex flex-col gap-3">
-              <TransferStatusBadges
-                counts={statusCounts?.columnCounts}
-                isLoading={isCountsLoading}
-                selectedStatuses={statusFilter}
-                onToggleStatus={handleToggleStatus}
-                onClearStatuses={handleClearStatuses}
-              />
+              <div className="hidden lg:block">
+                <TransferStatusBadges
+                  counts={statusCounts?.columnCounts}
+                  isLoading={isCountsLoading}
+                  selectedStatuses={statusFilter}
+                  onToggleStatus={handleToggleStatus}
+                  onClearStatuses={handleClearStatuses}
+                />
+              </div>
 
               <FilterChips
                 value={{

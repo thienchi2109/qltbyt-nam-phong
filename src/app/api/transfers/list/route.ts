@@ -2,13 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/auth/config'
 import {
-  applyLegacyFilters,
-  isMissingFunctionError,
-  paginate,
   sanitizeStatuses,
   sanitizeTypes,
-  transformLegacyItem,
-  type LegacyTransferItem,
 } from '@/app/api/transfers/legacy-adapter'
 
 export const runtime = 'nodejs'
@@ -97,60 +92,16 @@ export async function GET(request: NextRequest) {
       body: JSON.stringify(rpcPayload),
     })
 
-    if (rpcResponse.ok) {
-      const data = await rpcResponse.json()
-      return NextResponse.json(data)
-    }
-
-    const fallbackPayload = await rpcResponse.json().catch(() => undefined)
-    if (!isMissingFunctionError(rpcResponse.status, fallbackPayload)) {
+    if (!rpcResponse.ok) {
+      const errorPayload = await rpcResponse.json().catch(() => undefined)
       return NextResponse.json(
-        { error: (fallbackPayload as any)?.error || 'Failed to fetch transfer list' },
+        { error: (errorPayload as any)?.error || 'Failed to fetch transfer list' },
         { status: rpcResponse.status }
       )
     }
 
-    const legacyResponse = await fetch(rpcUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Cookie': request.headers.get('cookie') || '',
-      },
-      body: JSON.stringify({
-        p_q: q,
-        p_status: statuses && statuses.length === 1 ? statuses[0] : null,
-        p_page: 1,
-        p_page_size: 5000,
-      }),
-    })
-
-    if (!legacyResponse.ok) {
-      const legacyError = await legacyResponse.json().catch(() => undefined)
-      return NextResponse.json(
-        { error: (legacyError as any)?.error || 'Failed to fetch transfer list' },
-        { status: legacyResponse.status }
-      )
-    }
-
-    const legacyData = ((await legacyResponse.json()) || []) as LegacyTransferItem[]
-    const filtered = applyLegacyFilters(legacyData.map(transformLegacyItem), {
-      q,
-      statuses,
-      types,
-      facilityId,
-      dateFrom,
-      dateTo,
-      assigneeIds,
-    })
-
-    const paginated = paginate(filtered, page, pageSize)
-
-    return NextResponse.json({
-      data: paginated.data,
-      total: paginated.total,
-      page: paginated.page,
-      pageSize: paginated.pageSize,
-    })
+    const data = await rpcResponse.json()
+    return NextResponse.json(data)
 
   } catch (error) {
     console.error('Transfer list API error:', error)

@@ -51,9 +51,6 @@ const ALLOWED_FUNCTIONS = new Set<string>([
   'transfer_history_list',
   'transfer_request_external_pending_returns',
   'get_transfer_request_facilities',
-  // Transfers - Kanban Server-Side (deprecated, kept for migration)
-  'get_transfers_kanban',
-  'get_transfer_counts',
   // Transfers - Data Grid
   'transfer_request_counts',
   // Maintenance
