@@ -19,7 +19,7 @@
 ### 4.A Tab Implementation
 - [x] 4.A.1 Create tab navigation component with 3 tabs: "Nội bộ", "Bên ngoài", "Thanh lý".
 - [x] 4.A.2 Implement URL-based tab state management (`?tab=noi_bo`).
-- [-] 4.A.3 Add tab badge counts (total count per type from counts API). (placeholder)
+- [x] 4.A.3 Add tab badge counts (total count per type from counts API).
 - [x] 4.A.4 Wire tab selection to filter transfers by `loai_hinh` parameter.
 
 ### 4.B Hooks & Data Fetching
