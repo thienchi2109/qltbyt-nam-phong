@@ -72,6 +72,7 @@
 - [ ] 4.H.6 Delete `src/types/transfer-kanban.ts` (replaced with data grid types).
 - [ ] 4.H.7 Delete `/api/transfers/kanban` route file.
 - [ ] 4.H.8 Update imports across codebase (detail dialog, edit dialog, add/edit dialogs).
+- [ ] 4.H.9 Confirm no clients use legacy `transfer_request_list` RPC and remove it along with the whitelist entry when safe.
 
 ## 5. QA & Rollout
 - [ ] 5.1 Run `npm run typecheck` and `npm run lint` (ensure no broken imports).
