@@ -36,11 +36,11 @@
 - [x] 4.C.5 Centralize column configs in `src/components/transfers/columnDefinitions.ts`.
 
 ### 4.D Data Grid Implementation
-- [ ] 4.D.1 Integrate TanStack Table with dynamic column rendering based on active tab.
-- [ ] 4.D.2 Implement sortable columns (equipment, created date, status).
-- [ ] 4.D.3 Implement Actions column with role-based buttons (view, approve, edit, delete).
-- [ ] 4.D.4 Add `stopPropagation` to action buttons.
-- [ ] 4.D.5 Implement pagination footer (page navigation, page size selector).
+- [x] 4.D.1 Integrate TanStack Table with dynamic column rendering based on active tab.
+- [x] 4.D.2 Implement sortable columns (equipment, created date, status).
+- [x] 4.D.3 Implement Actions column with role-based buttons (view, approve, edit, delete).
+- [x] 4.D.4 Add `stopPropagation` to action buttons.
+- [x] 4.D.5 Implement pagination footer (page navigation, page size selector).
 
 ### 4.E Status Badges (Type-Specific)
 - [ ] 4.E.1 Create `TransferStatusBadges` component.
