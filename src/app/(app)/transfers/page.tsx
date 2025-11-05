@@ -59,6 +59,7 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { useFacilityFilter } from "@/hooks/useFacilityFilter"
+import { useIsMobile } from "@/hooks/use-mobile"
 import { useToast } from "@/hooks/use-toast"
 import { useTransferList, useTransferCounts } from "@/hooks/useTransferDataGrid"
 import { useTransferSearch } from "@/hooks/useTransferSearch"
@@ -75,6 +76,7 @@ export default function TransfersPage() {
   const { data: session, status } = useSession()
   const user = session?.user as any
   const router = useRouter()
+  const isMobile = useIsMobile()
 
   const isRegionalLeader = user?.role === "regional_leader"
   const isTransferCoreRole =
@@ -755,6 +757,7 @@ export default function TransfersPage() {
           setStatusFilter(newValue.statuses)
           setDateRange(newValue.dateRange ?? null)
         }}
+        variant={isMobile ? "sheet" : "dialog"}
       />
 
       <Card>
