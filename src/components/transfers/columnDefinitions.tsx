@@ -158,21 +158,23 @@ const createCommonColumns = (options: TransferColumnOptions): ColumnDef<Transfer
       </span>
     ),
   },
-  {
-    accessorKey: "trang_thai",
-    header: "Trạng thái",
-    enableSorting: true,
-    cell: ({ row }) => renderStatusBadge(row.original.trang_thai),
-  },
-  {
-    id: "actions",
-    header: "Thao tác",
-    enableSorting: false,
-    enableHiding: false,
-    size: 120,
-    cell: ({ row }) => options.renderActions?.(row.original) ?? null,
-  },
 ]
+
+const createStatusColumn = (): ColumnDef<TransferListItem> => ({
+  accessorKey: "trang_thai",
+  header: "Trạng thái",
+  enableSorting: true,
+  cell: ({ row }) => renderStatusBadge(row.original.trang_thai),
+})
+
+const createActionsColumn = (options: TransferColumnOptions): ColumnDef<TransferListItem> => ({
+  id: "actions",
+  header: "Thao tác",
+  enableSorting: false,
+  enableHiding: false,
+  size: 120,
+  cell: ({ row }) => options.renderActions?.(row.original) ?? null,
+})
 
 const createInternalColumns = (): ColumnDef<TransferListItem>[] => [
   {
@@ -298,5 +300,5 @@ export const getColumnsForType = (
         ? groups.benNgoai
         : groups.thanhLy
 
-  return [...groups.common, ...specific]
+  return [...groups.common, ...specific, createStatusColumn(), createActionsColumn(options)]
 }
