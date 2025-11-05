@@ -30,3 +30,4 @@
 ### Docs / OpenSpec
 - [x] Update OpenSpec archive after implementation.
 - [x] Note migration signature change and status counts RPC in changelog.
+- [ ] Confirm no clients use legacy `transfer_request_list` RPC and remove it along with the whitelist entry when safe.
