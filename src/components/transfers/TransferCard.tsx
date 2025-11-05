@@ -1,201 +1,255 @@
 "use client"
 
-import { Card, CardContent } from "@/components/ui/card"
+import * as React from "react"
+import {
+  differenceInCalendarDays,
+  format,
+  isValid,
+  parseISO,
+  startOfDay,
+} from "date-fns"
+import { vi } from "date-fns/locale"
+
 import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import type { DensityMode } from "./DensityToggle"
-import type { TransferData } from "@/lib/transfer-normalizer"
-import { normalizeTransferData } from "@/lib/transfer-normalizer"
+import { Card, CardContent } from "@/components/ui/card"
+import {
+  TRANSFER_PURPOSES,
+  TRANSFER_STATUSES,
+  TRANSFER_TYPES,
+} from "@/types/database"
+import type {
+  TransferListItem,
+  TransferStatus,
+  TransferType,
+} from "@/types/transfers-data-grid"
 
-const TRANSFER_TYPES = {
-  noi_bo: 'Nội bộ',
-  thanh_ly: 'Thanh lý',
-  ben_ngoai: 'Bên ngoài'
+const EMPTY_PLACEHOLDER = "—"
+
+const TYPE_VARIANTS: Record<TransferType, "default" | "secondary" | "destructive"> = {
+  noi_bo: "default",
+  ben_ngoai: "secondary",
+  thanh_ly: "destructive",
 }
 
-interface TransferCardProps {
-  transfer: TransferData
-  density: DensityMode
-  onClick: () => void
-  statusActions?: React.ReactNode[]
-  onEdit?: () => void
-  onDelete?: () => void
-  canEdit?: boolean
-  canDelete?: boolean
+const STATUS_VARIANTS: Record<
+  TransferStatus,
+  "default" | "secondary" | "outline" | "destructive"
+> = {
+  cho_duyet: "secondary",
+  da_duyet: "default",
+  dang_luan_chuyen: "destructive",
+  da_ban_giao: "secondary",
+  hoan_thanh: "default",
 }
 
-function getTypeVariant(type: string): "default" | "secondary" | "destructive" | "outline" {
-  switch (type) {
-    case 'noi_bo':
-      return 'default'
-    case 'thanh_ly':
-      return 'destructive'
-    case 'ben_ngoai':
-      return 'secondary'
-    default:
-      return 'outline'
+const formatDate = (value: string | null, withTime = false) => {
+  if (!value) return EMPTY_PLACEHOLDER
+  const parsedIso = parseISO(value)
+  if (isValid(parsedIso)) {
+    return format(parsedIso, withTime ? "dd/MM/yyyy HH:mm" : "dd/MM/yyyy", { locale: vi })
   }
+  const fallback = new Date(value)
+  if (!isValid(fallback)) return EMPTY_PLACEHOLDER
+  return format(fallback, withTime ? "dd/MM/yyyy HH:mm" : "dd/MM/yyyy", { locale: vi })
 }
 
-export function TransferCard({
-  transfer: rawTransfer,
-  density,
-  onClick,
-  statusActions = [],
-  onEdit,
-  onDelete,
-  canEdit = false,
-  canDelete = false
-}: TransferCardProps) {
-  // Normalize data to consistent shape (handles both old and new API)
-  const transfer = normalizeTransferData(rawTransfer)
-  
-  const isOverdue = 
-    transfer.ngay_du_kien_tra && 
-    (transfer.trang_thai === 'da_ban_giao' || transfer.trang_thai === 'dang_luan_chuyen') &&
-    new Date(transfer.ngay_du_kien_tra) < new Date()
+const getOverdueBadge = (transfer: TransferListItem, referenceDate: Date) => {
+  if (transfer.loai_hinh !== "ben_ngoai") return null
 
-  if (density === 'compact') {
+  const dueRaw = transfer.ngay_du_kien_tra
+  if (!dueRaw) return null
+
+  const dueParsed = parseISO(dueRaw)
+  if (!isValid(dueParsed)) return null
+
+  const referenceDay = startOfDay(referenceDate)
+  const dueDay = startOfDay(dueParsed)
+
+  if (transfer.ngay_hoan_tra) {
+    const returned = parseISO(transfer.ngay_hoan_tra)
+    if (isValid(returned)) {
+      const returnDay = startOfDay(returned)
+      const delayDays = differenceInCalendarDays(returnDay, dueDay)
+      if (delayDays > 0) {
+        return (
+          <Badge variant="secondary" className="mt-1 w-fit">
+            Trả trễ {delayDays} ngày
+          </Badge>
+        )
+      }
+    }
+    return null
+  }
+
+  const daysLate = differenceInCalendarDays(referenceDay, dueDay)
+  if (daysLate > 0) {
     return (
-      <Card 
-        className="mb-3 shadow-sm hover:shadow-md transition-shadow cursor-pointer"
-        onClick={onClick}
-      >
-        <CardContent className="p-3">
-          <div className="space-y-2">
-            {/* Header Row */}
-            <div className="flex items-start justify-between gap-2">
-              <div className="flex items-center gap-2 flex-1 min-w-0">
-                <p className="text-sm font-medium leading-none truncate">
-                  {transfer.ma_yeu_cau}
-                </p>
-                <Badge variant={getTypeVariant(transfer.loai_hinh)} className="text-xs shrink-0">
-                  {TRANSFER_TYPES[transfer.loai_hinh as keyof typeof TRANSFER_TYPES]}
-                </Badge>
-                {isOverdue && (
-                  <Badge variant="destructive" className="text-xs px-1 py-0 shrink-0">
-                    Quá hạn
-                  </Badge>
-                )}
-              </div>
-            </div>
-
-            {/* Equipment Info */}
-            <div className="truncate">
-              <p className="text-sm font-medium truncate">
-                {transfer.thiet_bi?.ma_thiet_bi} - {transfer.thiet_bi?.ten_thiet_bi}
-              </p>
-            </div>
-
-            {/* Footer Row */}
-            <div className="flex items-center justify-between pt-1 border-t">
-              <p className="text-xs text-muted-foreground">
-                {new Date(transfer.created_at).toLocaleDateString('vi-VN')}
-              </p>
-              <div className="flex items-center gap-1 flex-wrap" onClick={(e) => e.stopPropagation()}>
-                {statusActions}
-                {canEdit && onEdit && (
-                  <Button size="sm" variant="ghost" className="h-6 px-2 text-xs" onClick={onEdit}>
-                    Sửa
-                  </Button>
-                )}
-                {canDelete && onDelete && (
-                  <Button size="sm" variant="ghost" className="h-6 px-2 text-xs text-destructive" onClick={onDelete}>
-                    Xóa
-                  </Button>
-                )}
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+      <Badge variant="destructive" className="mt-1 w-fit">
+        Quá hạn {daysLate} ngày
+      </Badge>
     )
   }
 
-  // Rich mode - full details
+  return null
+}
+
+interface TransferCardProps {
+  transfer: TransferListItem
+  onClick?: (transfer: TransferListItem) => void
+  actions?: React.ReactNode
+  referenceDate?: Date
+}
+
+export function TransferCard({
+  transfer,
+  onClick,
+  actions,
+  referenceDate = new Date(),
+}: TransferCardProps) {
+  const handleClick = React.useCallback(() => {
+    onClick?.(transfer)
+  }, [onClick, transfer])
+
+  const overdueBadge = React.useMemo(
+    () => getOverdueBadge(transfer, referenceDate),
+    [referenceDate, transfer],
+  )
+
   return (
-    <Card 
-      className="mb-3 shadow-sm hover:shadow-md transition-shadow cursor-pointer"
-      onClick={onClick}
+    <Card
+      className="cursor-pointer shadow-sm transition-shadow hover:shadow-md"
+      onClick={handleClick}
     >
-      <CardContent className="p-4">
-        <div className="space-y-3">
-          <div className="flex items-start justify-between">
-            <div className="space-y-1">
-              <p className="text-sm font-medium leading-none">
-                {transfer.ma_yeu_cau}
-              </p>
-              <Badge variant={getTypeVariant(transfer.loai_hinh)}>
-                {TRANSFER_TYPES[transfer.loai_hinh as keyof typeof TRANSFER_TYPES]}
-              </Badge>
-            </div>
-          </div>
-          
+      <CardContent className="space-y-4 p-4">
+        <div className="flex items-start justify-between gap-3">
           <div className="space-y-2">
-            <div>
-              <p className="text-xs text-muted-foreground">Thiết bị</p>
-              <p className="text-sm font-medium">
-                {transfer.thiet_bi?.ma_thiet_bi} - {transfer.thiet_bi?.ten_thiet_bi}
-              </p>
-            </div>
-            
-            {transfer.loai_hinh === 'noi_bo' ? (
-              <div>
-                <p className="text-xs text-muted-foreground">Từ → Đến</p>
-                <p className="text-sm">
-                  {transfer.khoa_phong_hien_tai} → {transfer.khoa_phong_nhan}
-                </p>
-              </div>
-            ) : (
-              <div className="space-y-1">
-                <div>
-                  <p className="text-xs text-muted-foreground">Đơn vị nhận</p>
-                  <p className="text-sm">{transfer.don_vi_nhan}</p>
-                </div>
-                {transfer.ngay_du_kien_tra && (
-                  <div>
-                    <p className="text-xs text-muted-foreground">Dự kiến hoàn trả</p>
-                    <div className="flex items-center gap-1">
-                      <p className="text-sm">
-                        {new Date(transfer.ngay_du_kien_tra).toLocaleDateString('vi-VN')}
-                      </p>
-                      {isOverdue && (
-                        <Badge variant="destructive" className="text-xs px-1 py-0">
-                          Quá hạn
-                        </Badge>
-                      )}
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-            
-            <div>
-              <p className="text-xs text-muted-foreground">Lý do</p>
-              <p className="text-sm line-clamp-2">{transfer.ly_do_luan_chuyen}</p>
-            </div>
+            <p className="text-sm font-semibold leading-none">{transfer.ma_yeu_cau}</p>
+            <Badge variant={TYPE_VARIANTS[transfer.loai_hinh]}>
+              {TRANSFER_TYPES[transfer.loai_hinh]}
+            </Badge>
           </div>
-          
-          <div className="flex items-center justify-between pt-2 border-t">
-            <p className="text-xs text-muted-foreground">
-              {new Date(transfer.created_at).toLocaleDateString('vi-VN')}
+          <Badge
+            variant={STATUS_VARIANTS[transfer.trang_thai]}
+            className="self-start text-[11px] uppercase tracking-wide"
+          >
+            {TRANSFER_STATUSES[transfer.trang_thai]}
+          </Badge>
+        </div>
+
+        <div className="space-y-3">
+          <div className="space-y-1">
+            <p className="text-xs text-muted-foreground">Thiết bị</p>
+            <p className="text-sm font-medium leading-5">
+              {transfer.thiet_bi?.ma_thiet_bi
+                ? `${transfer.thiet_bi.ma_thiet_bi} – ${transfer.thiet_bi.ten_thiet_bi ?? EMPTY_PLACEHOLDER}`
+                : transfer.thiet_bi?.ten_thiet_bi ?? EMPTY_PLACEHOLDER}
             </p>
-            <div className="flex items-center gap-1 flex-wrap" onClick={(e) => e.stopPropagation()}>
-              {statusActions}
-              {canEdit && onEdit && (
-                <Button size="sm" variant="ghost" className="h-6 px-2 text-xs" onClick={onEdit}>
-                  Sửa
-                </Button>
-              )}
-              {canDelete && onDelete && (
-                <Button size="sm" variant="ghost" className="h-6 px-2 text-xs text-destructive" onClick={onDelete}>
-                  Xóa
-                </Button>
-              )}
-            </div>
+            {transfer.thiet_bi?.model ? (
+              <p className="text-xs text-muted-foreground">Model: {transfer.thiet_bi.model}</p>
+            ) : null}
+            {transfer.thiet_bi?.khoa_phong_quan_ly ? (
+              <p className="text-xs text-muted-foreground">
+                Quản lý: {transfer.thiet_bi.khoa_phong_quan_ly}
+              </p>
+            ) : null}
+            {transfer.thiet_bi?.facility_name ? (
+              <p className="text-xs text-muted-foreground">
+                Cơ sở: {transfer.thiet_bi.facility_name}
+              </p>
+            ) : null}
           </div>
+
+          <TypeSpecificDetails transfer={transfer} overdueBadge={overdueBadge} />
+
+          <div>
+            <p className="text-xs text-muted-foreground">Lý do</p>
+            <p className="text-sm leading-5 text-muted-foreground">
+              {transfer.ly_do_luan_chuyen || EMPTY_PLACEHOLDER}
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center justify-between border-t pt-3">
+          <p className="text-xs text-muted-foreground">
+            Tạo lúc {formatDate(transfer.created_at, true)}
+          </p>
+          {actions ? (
+            <div
+              className="flex flex-wrap items-center gap-2"
+              onClick={(event) => event.stopPropagation()}
+            >
+              {actions}
+            </div>
+          ) : null}
         </div>
       </CardContent>
     </Card>
+  )
+}
+
+interface TypeSpecificDetailsProps {
+  transfer: TransferListItem
+  overdueBadge: React.ReactNode
+}
+
+function TypeSpecificDetails({ transfer, overdueBadge }: TypeSpecificDetailsProps) {
+  if (transfer.loai_hinh === "noi_bo") {
+    return (
+      <div className="space-y-1">
+        <p className="text-xs text-muted-foreground">Từ → Đến</p>
+        <p className="text-sm">
+          {(transfer.khoa_phong_hien_tai || EMPTY_PLACEHOLDER) +
+            " → " +
+            (transfer.khoa_phong_nhan || EMPTY_PLACEHOLDER)}
+        </p>
+      </div>
+    )
+  }
+
+  if (transfer.loai_hinh === "ben_ngoai") {
+    return (
+      <div className="space-y-2">
+        <div>
+          <p className="text-xs text-muted-foreground">Đơn vị nhận</p>
+          <p className="text-sm">{transfer.don_vi_nhan || EMPTY_PLACEHOLDER}</p>
+        </div>
+        <div>
+          <p className="text-xs text-muted-foreground">Dự kiến hoàn trả</p>
+          <p className="text-sm">
+            {transfer.ngay_du_kien_tra ? formatDate(transfer.ngay_du_kien_tra) : EMPTY_PLACEHOLDER}
+          </p>
+          {overdueBadge}
+        </div>
+        {transfer.nguoi_lien_he || transfer.so_dien_thoai ? (
+          <div>
+            <p className="text-xs text-muted-foreground">Liên hệ</p>
+            <p className="text-sm">
+              {[transfer.nguoi_lien_he, transfer.so_dien_thoai]
+                .filter(Boolean)
+                .join(" • ") || EMPTY_PLACEHOLDER}
+            </p>
+          </div>
+        ) : null}
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-2">
+      <div>
+        <p className="text-xs text-muted-foreground">Mục đích</p>
+        <p className="text-sm">
+          {transfer.muc_dich
+            ? TRANSFER_PURPOSES[transfer.muc_dich] ?? transfer.muc_dich
+            : EMPTY_PLACEHOLDER}
+        </p>
+      </div>
+      <div>
+        <p className="text-xs text-muted-foreground">Ngày hoàn tất</p>
+        <p className="text-sm">
+          {transfer.ngay_hoan_thanh ? formatDate(transfer.ngay_hoan_thanh) : EMPTY_PLACEHOLDER}
+        </p>
+      </div>
+    </div>
   )
 }

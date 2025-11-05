@@ -30,3 +30,4 @@
 ### Docs / OpenSpec
 - [x] Update OpenSpec archive after implementation.
 - [x] Note migration signature change and status counts RPC in changelog.
+
