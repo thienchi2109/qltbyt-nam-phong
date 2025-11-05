@@ -17,6 +17,7 @@ import {
   ChevronsLeft,
   ChevronsRight,
   FileText,
+  Filter,
   Loader2,
   PlusCircle,
   RefreshCw,
@@ -34,6 +35,9 @@ import { TransferDetailDialog } from "@/components/transfer-detail-dialog"
 import { TransferStatusBadges } from "@/components/transfers/TransferStatusBadges"
 import { TransferTypeTabs, useTransferTypeTab } from "@/components/transfers/TransferTypeTabs"
 import { getColumnsForType } from "@/components/transfers/columnDefinitions"
+import { FilterModal } from "@/components/transfers/FilterModal"
+import { FilterChips } from "@/components/transfers/FilterChips"
+import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
   Card,
@@ -130,6 +134,10 @@ export default function TransfersPage() {
   ])
   const [pagination, setPagination] = React.useState({ pageIndex: 0, pageSize: 20 })
   const [statusFilter, setStatusFilter] = React.useState<TransferStatus[]>([])
+  const [dateRange, setDateRange] = React.useState<{ from: Date | null; to: Date | null } | null>(
+    null,
+  )
+  const [isFilterModalOpen, setIsFilterModalOpen] = React.useState(false)
 
   const filters = React.useMemo<TransferListFilters>(() => {
     return {
@@ -139,8 +147,10 @@ export default function TransfersPage() {
       pageSize: pagination.pageSize,
       q: debouncedSearch || undefined,
       facilityId: selectedFacilityId ?? null,
+      dateFrom: dateRange?.from?.toISOString().split("T")[0] || undefined,
+      dateTo: dateRange?.to?.toISOString().split("T")[0] || undefined,
     }
-  }, [activeTab, pagination, debouncedSearch, selectedFacilityId, statusFilter])
+  }, [activeTab, pagination, debouncedSearch, selectedFacilityId, statusFilter, dateRange])
 
   const countsFilters = React.useMemo<TransferListFilters>(() => {
     const { statuses: _statuses, page: _page, pageSize: _pageSize, ...rest } = filters
@@ -264,7 +274,7 @@ export default function TransfersPage() {
 
   React.useEffect(() => {
     setPagination((prev) => ({ ...prev, pageIndex: 0 }))
-  }, [activeTab, selectedFacilityId, debouncedSearch, statusFilter])
+  }, [activeTab, selectedFacilityId, debouncedSearch, statusFilter, dateRange])
 
   const handleToggleStatus = React.useCallback((status: TransferStatus) => {
     setStatusFilter((previous) =>
@@ -277,6 +287,30 @@ export default function TransfersPage() {
   const handleClearStatuses = React.useCallback(() => {
     setStatusFilter([])
   }, [])
+
+  const handleClearAllFilters = React.useCallback(() => {
+    setStatusFilter([])
+    setDateRange(null)
+    clearSearch()
+  }, [clearSearch])
+
+  const handleRemoveFilter = React.useCallback(
+    (key: "statuses" | "dateRange" | "searchText", subkey?: string) => {
+      if (key === "statuses" && subkey) {
+        setStatusFilter((prev) => prev.filter((s) => s !== subkey))
+      } else if (key === "dateRange") {
+        setDateRange(null)
+      }
+    },
+    [],
+  )
+
+  const activeFilterCount = React.useMemo(() => {
+    let count = 0
+    if (statusFilter.length > 0) count++
+    if (dateRange?.from || dateRange?.to) count++
+    return count
+  }, [statusFilter.length, dateRange])
 
   const handleRefresh = React.useCallback(async () => {
     await Promise.all([refetchList(), refetchCounts()])
@@ -709,6 +743,19 @@ export default function TransfersPage() {
         }}
       />
 
+      <FilterModal
+        open={isFilterModalOpen}
+        onOpenChange={setIsFilterModalOpen}
+        value={{
+          statuses: statusFilter,
+          dateRange,
+        }}
+        onChange={(newValue) => {
+          setStatusFilter(newValue.statuses)
+          setDateRange(newValue.dateRange ?? null)
+        }}
+      />
+
       <Card>
         <CardHeader className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div>
@@ -739,6 +786,20 @@ export default function TransfersPage() {
                 </SelectContent>
               </Select>
             )}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setIsFilterModalOpen(true)}
+              className="gap-2"
+            >
+              <Filter className="h-4 w-4" />
+              Bộ lọc
+              {activeFilterCount > 0 && (
+                <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs">
+                  {activeFilterCount}
+                </Badge>
+              )}
+            </Button>
             <Button variant="outline" size="sm" onClick={() => void handleRefresh()}>
               <RefreshCw className="mr-2 h-4 w-4" />
               Làm mới
@@ -778,6 +839,20 @@ export default function TransfersPage() {
                 selectedStatuses={statusFilter}
                 onToggleStatus={handleToggleStatus}
                 onClearStatuses={handleClearStatuses}
+              />
+
+              <FilterChips
+                value={{
+                  statuses: statusFilter,
+                  dateRange: dateRange
+                    ? {
+                        from: dateRange.from?.toLocaleDateString("vi-VN") ?? null,
+                        to: dateRange.to?.toLocaleDateString("vi-VN") ?? null,
+                      }
+                    : null,
+                }}
+                onRemove={handleRemoveFilter}
+                onClearAll={handleClearAllFilters}
               />
 
               <div className="relative w-full max-w-sm">
