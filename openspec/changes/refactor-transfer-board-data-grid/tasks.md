@@ -43,10 +43,10 @@
 - [x] 4.D.5 Implement pagination footer (page navigation, page size selector).
 
 ### 4.E Status Badges (Type-Specific)
-- [ ] 4.E.1 Create `TransferStatusBadges` component.
-- [ ] 4.E.2 Display badges above table (below tabs) showing counts for ONLY current tab's type.
-- [ ] 4.E.3 Implement click-to-filter functionality (badge click filters by status).
-- [ ] 4.E.4 Style badges with status-specific colors.
+- [x] 4.E.1 Create `TransferStatusBadges` component.
+- [x] 4.E.2 Display badges above table (below tabs) showing counts for ONLY current tab's type.
+- [x] 4.E.3 Implement click-to-filter functionality (badge click filters by status).
+- [x] 4.E.4 Style badges with status-specific colors.
 
 ### 4.F Filter Toolbar
 - [ ] 4.F.1 Implement facility filter (dropdown, global/regional users only).

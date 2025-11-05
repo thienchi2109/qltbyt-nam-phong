@@ -31,6 +31,7 @@ import { HandoverPreviewDialog } from "@/components/handover-preview-dialog"
 import { OverdueTransfersAlert } from "@/components/overdue-transfers-alert"
 import { ResponsivePaginationInfo } from "@/components/responsive-pagination-info"
 import { TransferDetailDialog } from "@/components/transfer-detail-dialog"
+import { TransferStatusBadges } from "@/components/transfers/TransferStatusBadges"
 import { TransferTypeTabs, useTransferTypeTab } from "@/components/transfers/TransferTypeTabs"
 import { getColumnsForType } from "@/components/transfers/columnDefinitions"
 import { Button } from "@/components/ui/button"
@@ -57,7 +58,11 @@ import { useToast } from "@/hooks/use-toast"
 import { useTransferList, useTransferCounts } from "@/hooks/useTransferDataGrid"
 import { useTransferSearch } from "@/hooks/useTransferSearch"
 import { callRpc } from "@/lib/rpc-client"
-import type { TransferListFilters, TransferListItem } from "@/types/transfers-data-grid"
+import type {
+  TransferListFilters,
+  TransferListItem,
+  TransferStatus,
+} from "@/types/transfers-data-grid"
 import { type TransferRequest } from "@/types/database"
 
 export default function TransfersPage() {
@@ -124,16 +129,23 @@ export default function TransfersPage() {
     { id: "created_at", desc: true },
   ])
   const [pagination, setPagination] = React.useState({ pageIndex: 0, pageSize: 20 })
+  const [statusFilter, setStatusFilter] = React.useState<TransferStatus[]>([])
 
   const filters = React.useMemo<TransferListFilters>(() => {
     return {
+      statuses: statusFilter,
       types: [activeTab],
       page: pagination.pageIndex + 1,
       pageSize: pagination.pageSize,
       q: debouncedSearch || undefined,
       facilityId: selectedFacilityId ?? null,
     }
-  }, [activeTab, pagination, debouncedSearch, selectedFacilityId])
+  }, [activeTab, pagination, debouncedSearch, selectedFacilityId, statusFilter])
+
+  const countsFilters = React.useMemo<TransferListFilters>(() => {
+    const { statuses: _statuses, page: _page, pageSize: _pageSize, ...rest } = filters
+    return { ...rest }
+  }, [filters])
 
   const {
     data: transferList,
@@ -144,7 +156,11 @@ export default function TransfersPage() {
     placeholderData: (previous) => previous,
   })
 
-  const { refetch: refetchCounts } = useTransferCounts(filters)
+  const {
+    data: statusCounts,
+    isLoading: isCountsLoading,
+    refetch: refetchCounts,
+  } = useTransferCounts(countsFilters)
 
   const tableData = transferList?.data ?? []
   const totalCount = transferList?.total ?? 0
@@ -243,8 +259,24 @@ export default function TransfersPage() {
   )
 
   React.useEffect(() => {
+    setStatusFilter([])
+  }, [activeTab])
+
+  React.useEffect(() => {
     setPagination((prev) => ({ ...prev, pageIndex: 0 }))
-  }, [activeTab, selectedFacilityId, debouncedSearch])
+  }, [activeTab, selectedFacilityId, debouncedSearch, statusFilter])
+
+  const handleToggleStatus = React.useCallback((status: TransferStatus) => {
+    setStatusFilter((previous) =>
+      previous.includes(status)
+        ? previous.filter((item) => item !== status)
+        : [...previous, status],
+    )
+  }, [])
+
+  const handleClearStatuses = React.useCallback(() => {
+    setStatusFilter([])
+  }, [])
 
   const handleRefresh = React.useCallback(async () => {
     await Promise.all([refetchList(), refetchCounts()])
@@ -725,12 +757,29 @@ export default function TransfersPage() {
             activeTab={activeTab}
             onTabChange={setActiveTab}
             counts={{
-              noi_bo: activeTab === "noi_bo" ? totalCount : undefined,
-              ben_ngoai: activeTab === "ben_ngoai" ? totalCount : undefined,
-              thanh_ly: activeTab === "thanh_ly" ? totalCount : undefined,
+              noi_bo:
+                activeTab === "noi_bo"
+                  ? statusCounts?.totalCount ?? totalCount
+                  : undefined,
+              ben_ngoai:
+                activeTab === "ben_ngoai"
+                  ? statusCounts?.totalCount ?? totalCount
+                  : undefined,
+              thanh_ly:
+                activeTab === "thanh_ly"
+                  ? statusCounts?.totalCount ?? totalCount
+                  : undefined,
             }}
           >
             <div className="flex flex-col gap-3">
+              <TransferStatusBadges
+                counts={statusCounts?.columnCounts}
+                isLoading={isCountsLoading}
+                selectedStatuses={statusFilter}
+                onToggleStatus={handleToggleStatus}
+                onClearStatuses={handleClearStatuses}
+              />
+
               <div className="relative w-full max-w-sm">
                 <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
