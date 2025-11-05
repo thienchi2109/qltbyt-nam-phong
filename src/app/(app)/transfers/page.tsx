@@ -31,9 +31,9 @@ import { EditTransferDialog } from "@/components/edit-transfer-dialog"
 import { TransferDetailDialog } from "@/components/transfer-detail-dialog"
 import { HandoverPreviewDialog } from "@/components/handover-preview-dialog"
 import { OverdueTransfersAlert } from "@/components/overdue-transfers-alert"
-import { 
-  TransferRequest, 
-  TRANSFER_STATUSES, 
+import {
+  TransferRequest,
+  TRANSFER_STATUSES,
   TRANSFER_TYPES,
   type TransferStatus
 } from "@/types/database"
@@ -55,6 +55,7 @@ import {
   type VisibleCountsState,
 } from "@/lib/kanban-preferences"
 import { normalizeTransferData } from "@/lib/transfer-normalizer"
+import { TransferTypeTabs, useTransferTypeTab, type TransferType } from "@/components/transfers/TransferTypeTabs"
 
 export default function TransfersPage() {
   const { toast } = useToast()
@@ -117,13 +118,17 @@ export default function TransfersPage() {
     facilities: facilityOptionsData || [],
   })
 
+  // ✅ TAB STATE (Task 4.A.2: URL-based tab state management)
+  const [activeTab, setActiveTab] = useTransferTypeTab('noi_bo')
+
   // ✅ SERVER-SIDE FILTERS STATE
   // Default to last 30 days of data (active transfers + recent history)
   const thirtyDaysAgo = new Date()
   thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
-  
+
   const [filters, setFilters] = React.useState<TransferKanbanFilters>(() => ({
     facilityIds: selectedFacilityId ? [selectedFacilityId] : undefined,
+    types: ['noi_bo'], // 🎯 SMART DEFAULT: Start with internal transfers
     dateFrom: thirtyDaysAgo.toISOString(), // 🎯 SMART DEFAULT: Only load last 30 days
     dateTo: undefined, // No upper limit (includes today)
     limit: 500, // Keep high limit as safety net (rarely hit with date filter)
@@ -136,6 +141,14 @@ export default function TransfersPage() {
       facilityIds: selectedFacilityId ? [selectedFacilityId] : undefined,
     }))
   }, [selectedFacilityId])
+
+  // ✅ Task 4.A.4: Wire tab selection to filter transfers by loai_hinh
+  React.useEffect(() => {
+    setFilters(prev => ({
+      ...prev,
+      types: [activeTab], // Filter by selected transfer type
+    }))
+  }, [activeTab])
 
   // Wrapper to trigger refetch when facility changes
   const setSelectedFacilityId = React.useCallback((id: number | null) => {
@@ -614,15 +627,25 @@ export default function TransfersPage() {
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
-          {/* ✅ FILTER BAR (NEW) */}
-          <FilterBar 
-            filters={filters}
-            onFiltersChange={setFilters}
-            facilityId={selectedFacilityId || undefined}
-          />
+          {/* ✅ Task 4.A: TAB NAVIGATION */}
+          <TransferTypeTabs
+            activeTab={activeTab}
+            onTabChange={setActiveTab}
+            counts={{
+              noi_bo: data?.totalCount || 0, // TODO: Replace with actual type-specific counts in Task 4.E
+              ben_ngoai: 0,
+              thanh_ly: 0,
+            }}
+          >
+            {/* ✅ FILTER BAR (NEW) */}
+            <FilterBar
+              filters={filters}
+              onFiltersChange={setFilters}
+              facilityId={selectedFacilityId || undefined}
+            />
 
-          {/* Loading State */}
-          {isLoading ? (
+            {/* Loading State */}
+            {isLoading ? (
             <div className="text-center py-8">
               <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full mx-auto" />
               <p className="text-sm text-muted-foreground mt-2">Đang tải...</p>
@@ -687,7 +710,8 @@ export default function TransfersPage() {
                 </div>
               )}
             </>
-          )}
+            )}
+          </TransferTypeTabs>
         </CardContent>
       </Card>
     </>
