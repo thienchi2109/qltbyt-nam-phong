@@ -4,8 +4,7 @@ import * as React from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
-
-export type TransferType = 'noi_bo' | 'ben_ngoai' | 'thanh_ly'
+import type { TransferType } from "@/types/transfers-data-grid"
 
 export interface TransferTypeTabsProps {
   /** Active tab value */

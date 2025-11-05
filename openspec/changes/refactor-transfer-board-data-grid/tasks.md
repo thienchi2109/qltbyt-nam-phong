@@ -23,10 +23,10 @@
 - [ ] 4.A.4 Wire tab selection to filter transfers by `loai_hinh` parameter.
 
 ### 4.B Hooks & Data Fetching
-- [ ] 4.B.1 Create `useTransferList` hook (calls `/api/transfers/list` with type filter).
-- [ ] 4.B.2 Create `useTransferCounts` hook (calls `/api/transfers/counts` with type filter).
-- [ ] 4.B.3 Implement debounced search hook.
-- [ ] 4.B.4 Integrate TanStack Query with proper cache keys per tab.
+- [x] 4.B.1 Create `useTransferList` hook (calls `/api/transfers/list` with type filter).
+- [x] 4.B.2 Create `useTransferCounts` hook (calls `/api/transfers/counts` with type filter).
+- [x] 4.B.3 Implement debounced search hook.
+- [x] 4.B.4 Integrate TanStack Query with proper cache keys per tab.
 
 ### 4.C Column Definitions
 - [ ] 4.C.1 Define common columns (transfer code, equipment, reason, created date, status, actions).

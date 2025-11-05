@@ -55,7 +55,8 @@ import {
   type VisibleCountsState,
 } from "@/lib/kanban-preferences"
 import { normalizeTransferData } from "@/lib/transfer-normalizer"
-import { TransferTypeTabs, useTransferTypeTab, type TransferType } from "@/components/transfers/TransferTypeTabs"
+import { TransferTypeTabs, useTransferTypeTab } from "@/components/transfers/TransferTypeTabs"
+import type { TransferType } from "@/types/transfers-data-grid"
 
 export default function TransfersPage() {
   const { toast } = useToast()
