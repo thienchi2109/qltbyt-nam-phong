@@ -15,7 +15,7 @@ export const runtime = 'nodejs'
  * - facilityId: facility filter (global users only)
  * - dateFrom: date range start (YYYY-MM-DD)
  * - dateTo: date range end (YYYY-MM-DD)
- * - types: comma-separated types (noi_bo, ben_ngoai)
+ * - types: comma-separated types (noi_bo, ben_ngoai, thanh_ly)
  * - assigneeIds: comma-separated assignee IDs
  */
 export async function GET(request: NextRequest) {
@@ -44,7 +44,7 @@ export async function GET(request: NextRequest) {
     const types = searchParams.get('types')
       ?.split(',')
       .map((t: string) => t.trim())
-      .filter((t: string) => ['noi_bo', 'ben_ngoai'].includes(t)) || null
+      .filter((t: string) => ['noi_bo', 'ben_ngoai', 'thanh_ly'].includes(t)) || null
 
     const assigneeIds = searchParams.get('assigneeIds')
       ?.split(',')
