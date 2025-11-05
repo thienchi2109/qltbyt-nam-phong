@@ -12,7 +12,7 @@ export const runtime = 'nodejs'
  * Query Parameters:
  * - q: search text (equipment name, transfer code, reason)
  * - statuses: comma-separated status values
- * - types: comma-separated types (noi_bo, ben_ngoai)
+ * - types: comma-separated types (noi_bo, ben_ngoai, thanh_ly)
  * - page: page number (1-indexed)
  * - pageSize: items per page
  * - facilityId: facility filter (global users only)
@@ -44,7 +44,7 @@ export async function GET(request: NextRequest) {
     const types = searchParams.get('types')
       ?.split(',')
       .map((t: string) => t.trim())
-      .filter((t: string) => ['noi_bo', 'ben_ngoai'].includes(t)) || null
+      .filter((t: string) => ['noi_bo', 'ben_ngoai', 'thanh_ly'].includes(t)) || null
 
     const page = parseInt(searchParams.get('page') || '1')
     const pageSize = parseInt(searchParams.get('pageSize') || '50')
