@@ -31,6 +31,16 @@ export function EditUserDialog({ open, onOpenChange, onSuccess, user }: EditUser
   const { toast } = useToast()
   const { data: session } = useSession()
   const currentUser = session?.user as any // Cast NextAuth user to our User type
+  const adminUserId = React.useMemo(() => {
+    const rawId = currentUser?.id
+    if (typeof rawId === "number" && Number.isFinite(rawId)) {
+      return rawId
+    }
+    if (typeof rawId === "string" && /^\d+$/.test(rawId)) {
+      return parseInt(rawId, 10)
+    }
+    return null
+  }, [currentUser?.id])
   const [isLoading, setIsLoading] = React.useState(false)
   
   const [formData, setFormData] = React.useState({
@@ -95,8 +105,18 @@ export function EditUserDialog({ open, onOpenChange, onSuccess, user }: EditUser
 
     try {
       // Try to use the secure update_user_info function first
+      if (adminUserId == null) {
+        toast({
+          variant: "destructive",
+          title: "Lỗi",
+          description: "Không xác định được người dùng hiện tại."
+        })
+        setIsLoading(false)
+        return
+      }
+
       const { data, error } = await supabase.rpc('update_user_info', {
-        p_admin_user_id: currentUser.id,
+        p_admin_user_id: adminUserId,
         p_target_user_id: user.id,
         p_username: formData.username.trim(),
         p_password: formData.password,

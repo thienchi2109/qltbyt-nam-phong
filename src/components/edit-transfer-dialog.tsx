@@ -61,6 +61,16 @@ export function EditTransferDialog({ open, onOpenChange, onSuccess, transfer }: 
   const { toast } = useToast()
   const { data: session } = useSession()
   const user = session?.user as any // Cast NextAuth user to our User type
+  const currentUserId = React.useMemo(() => {
+    const rawId = user?.id
+    if (typeof rawId === "number" && Number.isFinite(rawId)) {
+      return rawId
+    }
+    if (typeof rawId === "string" && /^\d+$/.test(rawId)) {
+      return parseInt(rawId, 10)
+    }
+    return null
+  }, [user?.id])
   const isRegionalLeader = user?.role === 'regional_leader'
   const [isLoading, setIsLoading] = React.useState(false)
   const [equipmentResults, setEquipmentResults] = React.useState<EquipmentWithDept[]>([])
@@ -388,7 +398,7 @@ export function EditTransferDialog({ open, onOpenChange, onSuccess, transfer }: 
         thiet_bi_id: formData.thiet_bi_id,
         loai_hinh: formData.loai_hinh,
         ly_do_luan_chuyen: formData.ly_do_luan_chuyen.trim(),
-        updated_by: user?.id
+        updated_by: currentUserId ?? undefined
       }
 
       if (formData.loai_hinh === 'noi_bo') {

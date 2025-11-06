@@ -36,6 +36,7 @@ import {
 } from "@/components/ui/select"
 import { useSession } from "next-auth/react"
 import { useStartUsageSession } from "@/hooks/use-usage-logs"
+import { useToast } from "@/hooks/use-toast"
 import type { Equipment as DbEquipment } from "@/types/database"
 
 const equipmentStatusOptions = [
@@ -70,6 +71,17 @@ export function StartUsageDialog({
   const { data: session } = useSession()
   const user = session?.user as any
   const isRegionalLeader = user?.role === 'regional_leader'
+  const { toast } = useToast()
+  const currentUserId = React.useMemo(() => {
+    const rawId = user?.id
+    if (typeof rawId === "number" && Number.isFinite(rawId)) {
+      return rawId
+    }
+    if (typeof rawId === "string" && /^\d+$/.test(rawId)) {
+      return parseInt(rawId, 10)
+    }
+    return null
+  }, [user?.id])
   const startUsageMutation = useStartUsageSession()
 
   const form = useForm<StartUsageFormData>({
@@ -95,10 +107,20 @@ export function StartUsageDialog({
     }
     if (!equipment || !user) return
 
+    const requesterId = currentUserId
+    if (requesterId == null) {
+      toast({
+        variant: "destructive",
+        title: "Lỗi",
+        description: "Không xác định được người dùng hiện tại."
+      })
+      return
+    }
+
     try {
       await startUsageMutation.mutateAsync({
         thiet_bi_id: equipment.id,
-        nguoi_su_dung_id: user.id,
+        nguoi_su_dung_id: requesterId,
         tinh_trang_thiet_bi: data.tinh_trang_thiet_bi,
         ghi_chu: data.ghi_chu,
       })
