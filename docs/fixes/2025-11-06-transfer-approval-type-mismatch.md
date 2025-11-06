@@ -3,26 +3,38 @@
 **Date**: 2025-11-06
 **Issue**: Global user clicking "Duyệt" (Approve) button on transfers shows error: "operator does not exist: bigint = text"
 **Status**: Fixed ✅
-**Related Files**: `src/app/(app)/transfers/page.tsx`, `src/types/next-auth.d.ts`
+**Related Files**: `supabase/migrations/20251106_fix_transfer_update_status_type_cast.sql`, `src/app/(app)/transfers/page.tsx`
 
 ---
 
 ## Problem Summary
 
-When global users click the "Duyệt" (Approve) button on transfer requests, the operation fails with PostgreSQL type mismatch error.
+When users click the "Duyệt" (Approve) button on transfer requests, the operation fails with PostgreSQL type mismatch error.
 
 ### Error Message
 ```
 Lỗi: operator does not exist: bigint = text
+HTTP 404 with PostgreSQL error code 42883
 ```
 
-### Root Cause
+### Root Cause (UPDATED)
 
-**Type Mismatch Chain**:
-1. NextAuth session stores `user.id` as **STRING** (`src/types/next-auth.d.ts:7`)
-2. Client sends string to RPC: `{ nguoi_duyet_id: user?.id }` (STRING)
-3. Database column `nguoi_duyet_id` is **INTEGER** (`yeu_cau_luan_chuyen.nguoi_duyet_id INTEGER`)
-4. RPC function attempts `::INT` cast on string, causing PostgreSQL operator error
+**The REAL issue was in the RPC function's tenant isolation check, NOT the user ID field:**
+
+The `transfer_request_update_status` RPC function has a tenant isolation check that compares:
+```sql
+-- Line 341 of 2025-10-08/202510081430_enforce_regional_leader_readonly_transfers.sql
+IF v_role IS DISTINCT FROM 'global' AND v_don_vi IS NOT NULL AND v_req.tb_don_vi IS DISTINCT FROM v_don_vi THEN
+```
+
+**Type Mismatch**:
+1. `v_don_vi` is extracted from JWT as **TEXT**: `v_claims->>'don_vi'` (->>' returns TEXT)
+2. `v_req.tb_don_vi` comes from `thiet_bi.don_vi` which is **BIGINT**
+3. PostgreSQL comparison `BIGINT IS DISTINCT FROM TEXT` fails with "operator does not exist: bigint = text"
+
+**Secondary Issue** (also fixed):
+- Client was passing `user.id` as STRING to `nguoi_duyet_id` field (expecting INTEGER)
+- This would have caused issues after fixing the primary problem
 
 ### Code Location
 
@@ -66,7 +78,39 @@ UPDATE public.yeu_cau_luan_chuyen
 
 ## Solution
 
-### Immediate Fix (Applied)
+### Primary Fix (Database Migration - REQUIRED)
+
+**File**: `supabase/migrations/20251106_fix_transfer_update_status_type_cast.sql`
+
+**Problem**: RPC function compares BIGINT (tb.don_vi) with TEXT (v_don_vi from JWT)
+
+**Solution**: Cast `v_don_vi` from TEXT to BIGINT before comparison
+
+**Before**:
+```sql
+v_don_vi := NULLIF(v_claims->>'don_vi','');  -- TEXT type
+-- Later: v_req.tb_don_vi IS DISTINCT FROM v_don_vi  -- BIGINT vs TEXT ❌
+```
+
+**After**:
+```sql
+v_don_vi_text := NULLIF(v_claims->>'don_vi','');
+v_don_vi := CASE
+  WHEN v_don_vi_text IS NOT NULL AND v_don_vi_text ~ '^\d+$'
+  THEN v_don_vi_text::BIGINT
+  ELSE NULL
+END;
+-- Later: v_req.tb_don_vi IS DISTINCT FROM v_don_vi  -- BIGINT vs BIGINT ✅
+```
+
+**Rationale**:
+- Safely casts TEXT to BIGINT with regex validation
+- Handles NULL and non-numeric values gracefully
+- Maintains tenant isolation security checks
+
+**CRITICAL**: This migration must be run in Supabase SQL Editor before the fix will work.
+
+### Secondary Fix (Client-Side - Applied)
 
 **File**: `src/app/(app)/transfers/page.tsx:367`
 
@@ -82,9 +126,8 @@ p_payload: { nguoi_duyet_id: user?.id ? parseInt(user.id, 10) : undefined }
 
 **Rationale**:
 - Converts string ID to integer before sending to RPC
-- Uses `parseInt(user.id, 10)` for explicit base-10 conversion
-- Passes `undefined` if `user?.id` is missing (allows RPC to use fallback logic)
-- Minimal change, lowest risk
+- Prevents future type issues with nguoi_duyet_id field
+- Defensive coding practice
 
 ### Long-Term Fix (Recommended)
 
@@ -174,14 +217,25 @@ ke_hoach_bao_tri.nguoi_tao_id INTEGER REFERENCES nhan_vien(id)
 
 ## Testing Checklist
 
+### Pre-Testing (Database Migration)
+- [ ] **CRITICAL**: Run SQL migration in Supabase SQL Editor: `supabase/migrations/20251106_fix_transfer_update_status_type_cast.sql`
+- [ ] Verify function created: `SELECT proname FROM pg_proc WHERE proname = 'transfer_request_update_status';`
+- [ ] Check function has updated code: `\df+ transfer_request_update_status`
+
+### Application Testing
 - [x] TypeScript compilation passes (`npm run typecheck`)
-- [x] Transfers page loads without errors
+- [x] Client-side fix applied (parseInt conversion)
+- [ ] Rebuild and redeploy application
+- [ ] Clear browser cache / hard refresh (Ctrl+Shift+R)
+- [ ] Transfers page loads without errors
 - [ ] Global user can approve transfer request successfully
+- [ ] Non-global user (to_qltb role) can approve transfers in their facility
+- [ ] Non-global user CANNOT approve transfers in other facilities (permission error)
 - [ ] Toast shows success message after approval
 - [ ] Database updates `nguoi_duyet_id` and `ngay_duyet` correctly
 - [ ] Transfer status changes to "Đã duyệt"
 - [ ] No console errors in browser
-- [ ] Non-global users cannot approve (role check still works)
+- [ ] No PostgreSQL type mismatch errors in server logs
 
 ---
 
