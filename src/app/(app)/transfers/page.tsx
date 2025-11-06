@@ -364,7 +364,7 @@ export default function TransfersPage() {
       try {
         await callRpc({
           fn: "transfer_request_update_status",
-          args: { p_id: item.id, p_status: "da_duyet", p_payload: { nguoi_duyet_id: user?.id } },
+          args: { p_id: item.id, p_status: "da_duyet", p_payload: { nguoi_duyet_id: user?.id ? parseInt(user.id, 10) : undefined } },
         })
         toast({ title: "Thành công", description: "Đã duyệt yêu cầu luân chuyển." })
         await Promise.all([refetchList(), refetchCounts()])

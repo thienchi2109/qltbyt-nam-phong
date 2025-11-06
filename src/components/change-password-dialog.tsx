@@ -27,6 +27,16 @@ export function ChangePasswordDialog({ open, onOpenChange }: ChangePasswordDialo
   const { toast } = useToast()
   const { data: session } = useSession()
   const user = session?.user as any // Cast NextAuth user to our User type
+  const currentUserId = React.useMemo(() => {
+    const rawId = user?.id
+    if (typeof rawId === "number" && Number.isFinite(rawId)) {
+      return rawId
+    }
+    if (typeof rawId === "string" && /^\d+$/.test(rawId)) {
+      return parseInt(rawId, 10)
+    }
+    return null
+  }, [user?.id])
   const [isLoading, setIsLoading] = React.useState(false)
   const [showPasswords, setShowPasswords] = React.useState({
     current: false,
@@ -101,9 +111,19 @@ export function ChangePasswordDialog({ open, onOpenChange }: ChangePasswordDialo
     setIsLoading(true)
 
     try {
+      if (currentUserId == null) {
+        toast({
+          variant: "destructive",
+          title: "Lỗi",
+          description: "Không xác định được người dùng hiện tại."
+        })
+        setIsLoading(false)
+        return
+      }
+
       // Try to use the secure change_password function first
       const { data, error } = await supabase.rpc('change_password', {
-        p_user_id: user.id,
+        p_user_id: currentUserId,
         p_old_password: formData.currentPassword,
         p_new_password: formData.newPassword
       })
@@ -121,7 +141,7 @@ export function ChangePasswordDialog({ open, onOpenChange }: ChangePasswordDialo
         const { data: currentUser, error: fetchError } = await supabase
           .from('nhan_vien')
           .select('password, hashed_password')
-          .eq('id', user.id)
+          .eq('id', currentUserId)
           .single()
 
         if (fetchError) {
@@ -151,7 +171,7 @@ export function ChangePasswordDialog({ open, onOpenChange }: ChangePasswordDialo
         const { error: updateError } = await supabase
           .from('nhan_vien')
           .update({ password: formData.newPassword })
-          .eq('id', user.id)
+          .eq('id', currentUserId)
 
         if (updateError) {
           throw updateError
