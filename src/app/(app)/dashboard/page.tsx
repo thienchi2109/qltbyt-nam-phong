@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { Plus, QrCode, ClipboardList, Sparkles } from "lucide-react"
+import { Plus, QrCode, ClipboardList, Sparkles, Wrench } from "lucide-react"
 import { useSession } from "next-auth/react"
 
 import { Button } from "@/components/ui/button"
@@ -23,10 +23,10 @@ export default function Dashboard() {
   // useDashboardRealtimeSync()
   const { data: session } = useSession()
   const user = session?.user as any
-  
+
   // Check if user is regional leader
   const isRegionalLeader = user?.role === 'regional_leader'
-  
+
   // Get greeting based on time of day
   const getGreeting = () => {
     const hour = new Date().getHours()
@@ -38,7 +38,7 @@ export default function Dashboard() {
   return (
     <>
       {/* Welcome Banner */}
-      <Card className="overflow-hidden border-none shadow-md bg-gradient-to-br from-cyan-50 via-teal-50/80 to-blue-50">
+      <Card className="overflow-hidden border-none shadow-[0_4px_20px_-4px_rgba(0,0,0,0.1)] bg-white rounded-3xl">
         <CardContent className="p-6 md:p-8">
           <div className="flex items-center justify-between">
             <div className="space-y-2">
@@ -48,89 +48,85 @@ export default function Dashboard() {
                   {getGreeting()}, {user?.full_name || user?.username}!
                 </h1>
               </div>
-              <p className="text-slate-600 text-sm md:text-base">
+              <p className="text-slate-500 text-sm md:text-base">
                 Chào mừng bạn đến với Hệ thống Quản lý Thiết bị Y tế
               </p>
             </div>
             <div className="hidden md:block">
-              <div className="h-20 w-20 rounded-full bg-white/10 backdrop-blur-sm flex items-center justify-center">
-                <Sparkles className="h-10 w-10 text-yellow-200" />
+              <div className="h-20 w-20 rounded-full bg-primary/5 flex items-center justify-center">
+                <Sparkles className="h-10 w-10 text-primary/40" />
               </div>
             </div>
           </div>
         </CardContent>
       </Card>
-      
+
       {/* KPI Cards */}
       <div className="mt-6 md:mt-8">
         <KPICards />
       </div>
 
 
-      {/* Quick Actions Section - Elegant Cards */}
+      {/* Quick Actions Section - Native App Style */}
       <div className="md:mt-6 md:space-y-5">
-        <div className="mb-4">
-          <h2 className="text-lg font-semibold text-slate-900 mb-1">Thao tác nhanh</h2>
-          <p className="text-sm text-muted-foreground">Truy cập nhanh các chức năng chính của hệ thống</p>
+        <div className="mb-4 px-1">
+          <h2 className="text-lg font-bold text-slate-900 mb-1">Thao tác nhanh</h2>
         </div>
         <div className={cn(
           "grid gap-4 md:gap-6",
-          isRegionalLeader ? "grid-cols-1 md:grid-cols-3" : "grid-cols-1 sm:grid-cols-3"
+          isRegionalLeader ? "grid-cols-2 md:grid-cols-4" : "grid-cols-2 sm:grid-cols-4"
         )}>
           {/* Quick Actions: Restricted for regional leaders */}
           {!isRegionalLeader && (
             <>
+              {/* Báo sửa chữa (New) */}
+              <Link href="/repair-requests?action=create" className="group">
+                <div className="flex flex-col items-center gap-3">
+                  <div className="h-[72px] w-[72px] md:h-[88px] md:w-[88px] rounded-2xl bg-white shadow-[0_8px_30px_rgba(0,0,0,0.12)] flex items-center justify-center transition-transform group-active:scale-95">
+                    <div className="h-11 w-11 md:h-14 md:w-14 rounded-xl bg-red-50 flex items-center justify-center">
+                      <Wrench className="h-[26px] w-[26px] md:h-8 md:w-8 text-red-600" />
+                    </div>
+                  </div>
+                  <span className="text-xs md:text-sm font-medium text-slate-700 text-center">Báo sửa chữa</span>
+                </div>
+              </Link>
+
               {/* Add Equipment Card */}
               <Link href="/equipment?action=add" className="group">
-                <Card className="h-full transition-all duration-300 hover:shadow-lg hover:-translate-y-1 border-none bg-gradient-to-br from-blue-100 via-blue-50 to-white overflow-hidden">
-                  <CardContent className="p-5 sm:p-6">
-                    <div className="flex sm:flex-col items-center sm:text-center gap-4 sm:gap-3">
-                      <div className="h-14 w-14 flex-shrink-0 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform">
-                        <Plus className="h-7 w-7 text-white" />
-                      </div>
-                      <div className="flex-1 sm:flex-none text-left sm:text-center">
-                        <h3 className="font-semibold text-blue-900 mb-1">Thêm thiết bị</h3>
-                        <p className="text-xs text-blue-600/70">Đăng ký thiết bị mới</p>
-                      </div>
+                <div className="flex flex-col items-center gap-3">
+                  <div className="h-[72px] w-[72px] md:h-[88px] md:w-[88px] rounded-2xl bg-white shadow-[0_8px_30px_rgba(0,0,0,0.12)] flex items-center justify-center transition-transform group-active:scale-95">
+                    <div className="h-11 w-11 md:h-14 md:w-14 rounded-xl bg-blue-50 flex items-center justify-center">
+                      <Plus className="h-[26px] w-[26px] md:h-8 md:w-8 text-blue-600" />
                     </div>
-                  </CardContent>
-                </Card>
+                  </div>
+                  <span className="text-xs md:text-sm font-medium text-slate-700 text-center">Thêm thiết bị</span>
+                </div>
               </Link>
 
               {/* Create Maintenance Plan Card */}
               <Link href="/maintenance?action=create" className="group">
-                <Card className="h-full transition-all duration-300 hover:shadow-lg hover:-translate-y-1 border-none bg-gradient-to-br from-emerald-100 via-emerald-50 to-white overflow-hidden">
-                  <CardContent className="p-5 sm:p-6">
-                    <div className="flex sm:flex-col items-center sm:text-center gap-4 sm:gap-3">
-                      <div className="h-14 w-14 flex-shrink-0 rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-600 flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform">
-                        <ClipboardList className="h-7 w-7 text-white" />
-                      </div>
-                      <div className="flex-1 sm:flex-none text-left sm:text-center">
-                        <h3 className="font-semibold text-emerald-900 mb-1">Lập kế hoạch</h3>
-                        <p className="text-xs text-emerald-600/70">Kế hoạch bảo trì mới</p>
-                      </div>
+                <div className="flex flex-col items-center gap-3">
+                  <div className="h-[72px] w-[72px] md:h-[88px] md:w-[88px] rounded-2xl bg-white shadow-[0_8px_30px_rgba(0,0,0,0.12)] flex items-center justify-center transition-transform group-active:scale-95">
+                    <div className="h-11 w-11 md:h-14 md:w-14 rounded-xl bg-emerald-50 flex items-center justify-center">
+                      <ClipboardList className="h-[26px] w-[26px] md:h-8 md:w-8 text-emerald-600" />
                     </div>
-                  </CardContent>
-                </Card>
+                  </div>
+                  <span className="text-xs md:text-sm font-medium text-slate-700 text-center">Lập kế hoạch</span>
+                </div>
               </Link>
             </>
           )}
-          
+
           {/* QR Scanner Card: Always available */}
-          <Link href="/qr-scanner" className={cn("group", isRegionalLeader && "sm:col-start-2")}>
-            <Card className="h-full transition-all duration-300 hover:shadow-lg hover:-translate-y-1 border-none bg-gradient-to-br from-sky-100 via-sky-50 to-white overflow-hidden">
-              <CardContent className="p-5 sm:p-6">
-                <div className="flex sm:flex-col items-center sm:text-center gap-4 sm:gap-3">
-                  <div className="h-14 w-14 flex-shrink-0 rounded-xl bg-gradient-to-br from-sky-500 to-sky-600 flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform">
-                    <QrCode className="h-7 w-7 text-white" />
-                  </div>
-                  <div className="flex-1 sm:flex-none text-left sm:text-center">
-                    <h3 className="font-semibold text-sky-900 mb-1">Quét mã QR</h3>
-                    <p className="text-xs text-sky-600/70">Tra cứu thiết bị nhanh</p>
-                  </div>
+          <Link href="/qr-scanner" className="group">
+            <div className="flex flex-col items-center gap-3">
+              <div className="h-[72px] w-[72px] md:h-[88px] md:w-[88px] rounded-2xl bg-white shadow-[0_8px_30px_rgba(0,0,0,0.12)] flex items-center justify-center transition-transform group-active:scale-95">
+                <div className="h-11 w-11 md:h-14 md:w-14 rounded-xl bg-sky-50 flex items-center justify-center">
+                  <QrCode className="h-[26px] w-[26px] md:h-8 md:w-8 text-sky-600" />
                 </div>
-              </CardContent>
-            </Card>
+              </div>
+              <span className="text-xs md:text-sm font-medium text-slate-700 text-center">Quét mã QR</span>
+            </div>
           </Link>
         </div>
       </div>

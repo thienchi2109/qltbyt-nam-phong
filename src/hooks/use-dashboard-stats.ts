@@ -10,6 +10,7 @@ export const dashboardStatsKeys = {
   repairRequests: (userRole?: string, diaBanId?: string | null) => [...dashboardStatsKeys.all, 'repair-requests', userRole, diaBanId] as const,
   maintenancePlans: (userRole?: string, diaBanId?: string | null) => [...dashboardStatsKeys.all, 'maintenance-plans', userRole, diaBanId] as const,
   equipmentAttention: (userRole?: string, diaBanId?: string | null) => [...dashboardStatsKeys.all, 'equipment-attention', userRole, diaBanId] as const,
+  equipmentAttentionPaginated: (userRole?: string, diaBanId?: string | null, page?: number, pageSize?: number) => [...dashboardStatsKeys.all, 'equipment-attention', userRole, diaBanId, page, pageSize] as const,
 }
 
 // Hook to get total equipment count (tenant-filtered)
@@ -129,6 +130,14 @@ export interface EquipmentAttention {
   ngay_bt_tiep_theo: string | null
 }
 
+export interface EquipmentAttentionPage {
+  data: EquipmentAttention[]
+  total: number
+  page: number
+  pageSize: number
+  hasMore: boolean
+}
+
 // Hook to get equipment needing attention
 export function useEquipmentAttention() {
   const { data: session } = useSession()
@@ -152,5 +161,55 @@ export function useEquipmentAttention() {
     gcTime: 10 * 60 * 1000, // 10 minutes
     refetchOnWindowFocus: true,
     refetchInterval: 5 * 60 * 1000, // Refetch every 5 minutes
+  })
+}
+
+// Hook to get equipment needing attention with pagination (default 10 per page)
+export function useEquipmentAttentionPaginated(options?: { page?: number; pageSize?: number; enabled?: boolean }) {
+  const { data: session } = useSession()
+  const user = session?.user as any
+
+  const page = Math.max(1, options?.page ?? 1)
+  const pageSize = Math.max(1, options?.pageSize ?? 10)
+  const enabled = options?.enabled ?? true
+
+  return useQuery({
+    queryKey: dashboardStatsKeys.equipmentAttentionPaginated(user?.role, user?.dia_ban_id, page, pageSize),
+    queryFn: async (): Promise<EquipmentAttentionPage> => {
+      const response = await callRpc<Partial<EquipmentAttentionPage>>({
+        fn: 'equipment_attention_list_paginated',
+        args: { p_page: page, p_page_size: pageSize }
+      })
+
+      const normalizedPage = response?.page ?? page
+      const normalizedPageSize = response?.pageSize ?? pageSize
+      const total = response?.total ?? 0
+
+      const normalizedData = (response?.data ?? []).map((row) => ({
+        id: row.id,
+        ten_thiet_bi: row.ten_thiet_bi,
+        ma_thiet_bi: row.ma_thiet_bi,
+        model: row.model ?? null,
+        tinh_trang_hien_tai: row.tinh_trang_hien_tai,
+        vi_tri_lap_dat: row.vi_tri_lap_dat ?? null,
+        ngay_bt_tiep_theo: row.ngay_bt_tiep_theo ?? null,
+      }))
+
+      return {
+        data: normalizedData,
+        total,
+        page: normalizedPage,
+        pageSize: normalizedPageSize,
+        hasMore: typeof response?.hasMore === 'boolean'
+          ? response.hasMore
+          : (normalizedPage * normalizedPageSize) < total,
+      }
+    },
+    placeholderData: (previousData) => previousData,
+    staleTime: 2 * 60 * 1000, // 2 minutes
+    gcTime: 10 * 60 * 1000, // 10 minutes
+    refetchOnWindowFocus: true,
+    refetchInterval: 5 * 60 * 1000, // Refetch every 5 minutes
+    enabled: enabled && Boolean(user),
   })
 }

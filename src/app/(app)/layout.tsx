@@ -116,10 +116,10 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   if (status === 'loading' || !user) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-          <div className="flex flex-col items-center gap-4">
-              <Logo size={96} className="w-24 h-24" />
-              <Skeleton className="h-8 w-48" />
-          </div>
+        <div className="flex flex-col items-center gap-4">
+          <Logo size={96} className="w-24 h-24" />
+          <Skeleton className="h-8 w-48" />
+        </div>
       </div>
     )
   }
@@ -171,7 +171,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           </div>
         </div>
         <div className="flex flex-col">
-          <header className="flex h-14 items-center gap-4 border-b border-slate-200 bg-white px-4 lg:h-[60px] lg:px-6 md:relative md:z-auto fixed top-0 left-0 right-0 z-40 shadow-sm">
+          <header className="flex h-14 items-center gap-4 bg-white px-4 lg:h-[60px] lg:px-6 md:relative md:z-auto fixed top-0 left-0 right-0 z-40 shadow-md">
             {/* Hide mobile sheet trigger since we're using footer navigation on mobile */}
             <Sheet open={isMobileSheetOpen} onOpenChange={setIsMobileSheetOpen}>
               <SheetTrigger asChild>
@@ -186,10 +186,10 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 </Button>
               </SheetTrigger>
               <SheetContent side="left" className="flex flex-col p-0 bg-white">
-                 <SheetHeader className="sr-only">
-                   <SheetTitle>Menu Điều Hướng</SheetTitle>
-                 </SheetHeader>
-                 <div className="flex h-auto flex-col items-center gap-4 border-b border-slate-200 p-4">
+                <SheetHeader className="sr-only">
+                  <SheetTitle>Menu Điều Hướng</SheetTitle>
+                </SheetHeader>
+                <div className="flex h-auto flex-col items-center gap-4 border-b border-slate-200 p-4">
                   <Link
                     href="/"
                     className="flex flex-col items-center gap-3 font-semibold text-primary"
@@ -200,24 +200,24 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                   </Link>
                 </div>
                 <nav className="grid gap-1 body-responsive font-medium p-3">
-                     {navItems.map(({ href, icon: Icon, label }) => (
-                      <Link
-                        key={label}
-                        href={href}
-                        className={cn(
-                          "flex items-center gap-3 rounded-xl mobile-interactive transition-all duration-200 touch-target px-3 py-2.5",
-                          pathname === href || pathname.startsWith(href)
-                            ? "bg-gradient-to-r from-primary to-primary/90 text-white font-semibold shadow-lg shadow-primary/25"
-                            : "text-slate-600 hover:bg-slate-50 hover:text-primary"
-                        )}
-                        onClick={() => setIsMobileSheetOpen(false)}
-                      >
-                        <Icon className={cn(
-                          "h-5 w-5",
-                          pathname === href || pathname.startsWith(href) ? "text-white" : "text-slate-500"
-                        )} />
-                        {label}
-                      </Link>
+                  {navItems.map(({ href, icon: Icon, label }) => (
+                    <Link
+                      key={label}
+                      href={href}
+                      className={cn(
+                        "flex items-center gap-3 rounded-xl mobile-interactive transition-all duration-200 touch-target px-3 py-2.5",
+                        pathname === href || pathname.startsWith(href)
+                          ? "bg-gradient-to-r from-primary to-primary/90 text-white font-semibold shadow-lg shadow-primary/25"
+                          : "text-slate-600 hover:bg-slate-50 hover:text-primary"
+                      )}
+                      onClick={() => setIsMobileSheetOpen(false)}
+                    >
+                      <Icon className={cn(
+                        "h-5 w-5",
+                        pathname === href || pathname.startsWith(href) ? "text-white" : "text-slate-500"
+                      )} />
+                      {label}
+                    </Link>
                   ))}
                 </nav>
               </SheetContent>
@@ -246,7 +246,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 )}
               </div>
             </div>
-            
+
             {/* Realtime Status */}
             <RealtimeStatus variant="icon" />
 

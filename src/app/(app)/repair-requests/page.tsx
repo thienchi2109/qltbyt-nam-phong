@@ -55,7 +55,7 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 // Legacy auth-context removed; NextAuth is used throughout
 import { useSession } from "next-auth/react"
 import { useTenantBranding } from "@/hooks/use-tenant-branding"
-import { useRouter } from "next/navigation"
+import { usePathname, useRouter } from "next/navigation"
 import { useIsMobile } from "@/hooks/use-mobile"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger, DropdownMenuCheckboxItem } from "@/components/ui/dropdown-menu"
 import { useSearchParams } from "next/navigation"
@@ -66,6 +66,7 @@ import { Separator } from "@/components/ui/separator"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { RepairRequestAlert } from "@/components/repair-request-alert"
 import { useFacilityFilter, type FacilityOption } from "@/hooks/useFacilityFilter"
+import { useMediaQuery } from "@/hooks/use-media-query"
 import { ErrorBoundary } from "@/components/error-boundary"
 import { Sheet, SheetContent, SheetHeader as SheetHeaderUI, SheetTitle, SheetDescription } from "@/components/ui/sheet"
 import { SummaryBar, type SummaryItem } from "@/components/summary/summary-bar"
@@ -164,7 +165,9 @@ export default function RepairRequestsPage() {
   const { data: branding } = useTenantBranding()
   const user = session?.user as any // Cast NextAuth user to our User type
   const router = useRouter()
+  const pathname = usePathname()
   const isMobile = useIsMobile()
+  const isSheetMobile = useMediaQuery("(max-width: 1279px)")
   const queryClient = useQueryClient()
 
   // Redirect if not authenticated
@@ -226,7 +229,7 @@ export default function RepairRequestsPage() {
   const [completionResult, setCompletionResult] = React.useState("");
   const [nonCompletionReason, setNonCompletionReason] = React.useState("");
 
-// UI state (list always visible)
+  // UI state (list always visible)
   const [isCreateOpen, setIsCreateOpen] = React.useState(false);
 
   // Table state
@@ -262,7 +265,7 @@ export default function RepairRequestsPage() {
           fn: 'get_repair_request_facilities',
           args: {},
         });
-        
+
         return result || [];
       } catch (error) {
         console.error('[repair-requests] Failed to fetch facility options:', error);
@@ -285,13 +288,13 @@ export default function RepairRequestsPage() {
     setFacilityId(id);
     // Don't manually refetch - let queryKey change trigger it
   }, [setFacilityId]);
-  
+
   // TanStack Query for repair requests (server-side pagination + facility filtering + date range)
-  const { 
-    data: repairRequestsRes, 
-    isLoading, 
+  const {
+    data: repairRequestsRes,
+    isLoading,
     isFetching,
-    refetch: refetchRequests 
+    refetch: refetchRequests
   } = useQuery<{ data: RepairRequestWithEquipment[], total: number, page: number, pageSize: number }>({
     queryKey: ['repair_request_list', {
       tenant: effectiveTenantKey,
@@ -354,11 +357,11 @@ export default function RepairRequestsPage() {
     return counts;
   }, [requests]);
 
-// Align with repo roles: use 'global' instead of legacy 'admin'
+  // Align with repo roles: use 'global' instead of legacy 'admin'
   const canSetRepairUnit = !!user && ['global', 'to_qltb'].includes(user.role);
 
   // Status counts for summary (server-side via RPC per status)
-  const STATUSES = ['Chờ xử lý','Đã duyệt','Hoàn thành','Không HT'] as const
+  const STATUSES = ['Chờ xử lý', 'Đã duyệt', 'Hoàn thành', 'Không HT'] as const
   type Status = typeof STATUSES[number]
   const { data: statusCounts, isLoading: statusCountsLoading } = useQuery<Record<Status, number>>({
     queryKey: ['repair_request_status_counts', { facilityId: selectedFacilityId, search: debouncedSearch, dateFrom: uiFilters.dateRange?.from || null, dateTo: uiFilters.dateRange?.to || null }],
@@ -476,6 +479,17 @@ export default function RepairRequestsPage() {
     }
     run();
   }, [searchParams, allEquipment, handleSelectEquipment, selectedEquipment]);
+
+  // Handle action=create param
+  React.useEffect(() => {
+    if (searchParams.get('action') === 'create') {
+      setIsCreateOpen(true)
+      const params = new URLSearchParams(searchParams.toString())
+      params.delete('action')
+      const nextPath = params.size ? `${pathname}?${params.toString()}` : pathname
+      router.replace(nextPath, { scroll: false })
+    }
+  }, [searchParams, router, pathname])
 
 
   const filteredEquipment = React.useMemo(() => {
@@ -1164,10 +1178,9 @@ export default function RepairRequestsPage() {
                     }}
                   />
                 </div>
-                <span className={`text-xs font-medium ${
-                  daysInfo.status === 'success' ? 'text-green-600' :
+                <span className={`text-xs font-medium ${daysInfo.status === 'success' ? 'text-green-600' :
                   daysInfo.status === 'warning' ? 'text-orange-600' : 'text-red-600'
-                }`}>
+                  }`}>
                   {daysInfo.text}
                 </span>
               </div>
@@ -1323,75 +1336,157 @@ export default function RepairRequestsPage() {
     <ErrorBoundary>
       <>
         {editingRequest && (
-        <Dialog open={!!editingRequest} onOpenChange={(open) => !open && setEditingRequest(null)}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Sửa yêu cầu sửa chữa</DialogTitle>
-              <DialogDescription>
-                Cập nhật thông tin cho yêu cầu của thiết bị: {editingRequest.thiet_bi?.ten_thiet_bi}
-              </DialogDescription>
-            </DialogHeader>
-            <div className="space-y-4 py-4 mobile-card-spacing">
-              <div className="space-y-2">
-                <Label htmlFor="edit-issue">Mô tả sự cố</Label>
-                <Textarea
-                  id="edit-issue"
-                  placeholder="Mô tả chi tiết vấn đề gặp phải..."
-                  rows={4}
-                  value={editIssueDescription}
-                  onChange={(e) => setEditIssueDescription(e.target.value)}
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="edit-repair-items">Các hạng mục yêu cầu sửa chữa</Label>
-                <Textarea
-                  id="edit-repair-items"
-                  placeholder="VD: Thay màn hình, sửa nguồn..."
-                  rows={3}
-                  value={editRepairItems}
-                  onChange={(e) => setEditRepairItems(e.target.value)}
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Ngày mong muốn hoàn thành (nếu có)</Label>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant={"outline"}
-                      className={cn(
-                        "w-full justify-start text-left font-normal touch-target",
-                        !editDesiredDate && "text-muted-foreground"
-                      )}
-                    >
-                      <CalendarIcon className="mr-2 h-4 w-4" />
-                      {editDesiredDate ? format(editDesiredDate, "dd/MM/yyyy") : <span>Chọn ngày</span>}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0">
-                    <Calendar
-                      mode="single"
-                      selected={editDesiredDate}
-                      onSelect={setEditDesiredDate}
-                      initialFocus
-                      disabled={(date) => {
-                        const requestDate = editingRequest?.ngay_yeu_cau
-                          ? new Date(editingRequest.ngay_yeu_cau)
-                          : new Date();
-                        return date < new Date(requestDate.setHours(0, 0, 0, 0));
-                      }}
-                    />
-                  </PopoverContent>
-                </Popover>
-              </div>
-
-              {canSetRepairUnit && (
+          <Dialog open={!!editingRequest} onOpenChange={(open) => !open && setEditingRequest(null)}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Sửa yêu cầu sửa chữa</DialogTitle>
+                <DialogDescription>
+                  Cập nhật thông tin cho yêu cầu của thiết bị: {editingRequest.thiet_bi?.ten_thiet_bi}
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4 py-4 mobile-card-spacing">
                 <div className="space-y-2">
-                  <Label htmlFor="edit-repair-unit">Đơn vị thực hiện</Label>
-                  <Select value={editRepairUnit} onValueChange={(value: 'noi_bo' | 'thue_ngoai') => setEditRepairUnit(value)}>
-                    <SelectTrigger className="touch-target">
-                      <SelectValue placeholder="Chọn đơn vị thực hiện" />
+                  <Label htmlFor="edit-issue">Mô tả sự cố</Label>
+                  <Textarea
+                    id="edit-issue"
+                    placeholder="Mô tả chi tiết vấn đề gặp phải..."
+                    rows={4}
+                    value={editIssueDescription}
+                    onChange={(e) => setEditIssueDescription(e.target.value)}
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="edit-repair-items">Các hạng mục yêu cầu sửa chữa</Label>
+                  <Textarea
+                    id="edit-repair-items"
+                    placeholder="VD: Thay màn hình, sửa nguồn..."
+                    rows={3}
+                    value={editRepairItems}
+                    onChange={(e) => setEditRepairItems(e.target.value)}
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Ngày mong muốn hoàn thành (nếu có)</Label>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant={"outline"}
+                        className={cn(
+                          "w-full justify-start text-left font-normal touch-target",
+                          !editDesiredDate && "text-muted-foreground"
+                        )}
+                      >
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {editDesiredDate ? format(editDesiredDate, "dd/MM/yyyy") : <span>Chọn ngày</span>}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0">
+                      <Calendar
+                        mode="single"
+                        selected={editDesiredDate}
+                        onSelect={setEditDesiredDate}
+                        initialFocus
+                        disabled={(date) => {
+                          const requestDate = editingRequest?.ngay_yeu_cau
+                            ? new Date(editingRequest.ngay_yeu_cau)
+                            : new Date();
+                          return date < new Date(requestDate.setHours(0, 0, 0, 0));
+                        }}
+                      />
+                    </PopoverContent>
+                  </Popover>
+                </div>
+
+                {canSetRepairUnit && (
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-repair-unit">Đơn vị thực hiện</Label>
+                    <Select value={editRepairUnit} onValueChange={(value: 'noi_bo' | 'thue_ngoai') => setEditRepairUnit(value)}>
+                      <SelectTrigger className="touch-target">
+                        <SelectValue placeholder="Chọn đơn vị thực hiện" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="noi_bo">Nội bộ</SelectItem>
+                        <SelectItem value="thue_ngoai">Thuê ngoài</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+
+                {canSetRepairUnit && editRepairUnit === 'thue_ngoai' && (
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-external-company">Tên đơn vị được thuê</Label>
+                    <Input
+                      id="edit-external-company"
+                      placeholder="Nhập tên đơn vị được thuê sửa chữa..."
+                      value={editExternalCompanyName}
+                      onChange={(e) => setEditExternalCompanyName(e.target.value)}
+                      required
+                      className="touch-target"
+                    />
+                  </div>
+                )}
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setEditingRequest(null)} disabled={isEditSubmitting} className="touch-target">Hủy</Button>
+                <Button onClick={handleUpdateRequest} disabled={isEditSubmitting} className="touch-target">
+                  {isEditSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  Lưu thay đổi
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        )}
+
+        {requestToDelete && (
+          <AlertDialog open={!!requestToDelete} onOpenChange={(open) => !open && setRequestToDelete(null)}>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Bạn có chắc chắn muốn xóa?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Hành động này không thể hoàn tác. Yêu cầu sửa chữa cho thiết bị
+                  <strong> {requestToDelete.thiet_bi?.ten_thiet_bi} </strong>
+                  sẽ bị xóa vĩnh viễn.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel disabled={isDeleting}>Hủy</AlertDialogCancel>
+                <AlertDialogAction onClick={handleDeleteRequest} disabled={isDeleting} className="bg-destructive hover:bg-destructive/90">
+                  {isDeleting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  Xóa
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        )}
+
+        {requestToApprove && (
+          <Dialog open={!!requestToApprove} onOpenChange={(open) => !open && setRequestToApprove(null)}>
+            <DialogContent className="sm:max-w-md">
+              <DialogHeader>
+                <DialogTitle>Duyệt yêu cầu sửa chữa</DialogTitle>
+                <DialogDescription>
+                  Duyệt yêu cầu sửa chữa cho thiết bị <strong>{requestToApprove.thiet_bi?.ten_thiet_bi}</strong>
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4">
+                {requestToApprove.nguoi_duyet && (
+                  <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
+                    <div className="text-sm font-medium text-blue-800">Đã được duyệt bởi:</div>
+                    <div className="text-sm text-blue-600">{requestToApprove.nguoi_duyet}</div>
+                    {requestToApprove.ngay_duyet && (
+                      <div className="text-xs text-blue-500">
+                        {format(parseISO(requestToApprove.ngay_duyet), 'dd/MM/yyyy HH:mm', { locale: vi })}
+                      </div>
+                    )}
+                  </div>
+                )}
+                <div>
+                  <Label htmlFor="approval-repair-unit">Đơn vị thực hiện</Label>
+                  <Select value={approvalRepairUnit} onValueChange={(value: 'noi_bo' | 'thue_ngoai') => setApprovalRepairUnit(value)}>
+                    <SelectTrigger>
+                      <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="noi_bo">Nội bộ</SelectItem>
@@ -1399,393 +1494,118 @@ export default function RepairRequestsPage() {
                     </SelectContent>
                   </Select>
                 </div>
-              )}
-
-              {canSetRepairUnit && editRepairUnit === 'thue_ngoai' && (
-                <div className="space-y-2">
-                  <Label htmlFor="edit-external-company">Tên đơn vị được thuê</Label>
-                  <Input
-                    id="edit-external-company"
-                    placeholder="Nhập tên đơn vị được thuê sửa chữa..."
-                    value={editExternalCompanyName}
-                    onChange={(e) => setEditExternalCompanyName(e.target.value)}
-                    required
-                    className="touch-target"
-                  />
-                </div>
-              )}
-            </div>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setEditingRequest(null)} disabled={isEditSubmitting} className="touch-target">Hủy</Button>
-              <Button onClick={handleUpdateRequest} disabled={isEditSubmitting} className="touch-target">
-                {isEditSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Lưu thay đổi
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-      )}
-
-      {requestToDelete && (
-        <AlertDialog open={!!requestToDelete} onOpenChange={(open) => !open && setRequestToDelete(null)}>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Bạn có chắc chắn muốn xóa?</AlertDialogTitle>
-              <AlertDialogDescription>
-                Hành động này không thể hoàn tác. Yêu cầu sửa chữa cho thiết bị
-                <strong> {requestToDelete.thiet_bi?.ten_thiet_bi} </strong>
-                sẽ bị xóa vĩnh viễn.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel disabled={isDeleting}>Hủy</AlertDialogCancel>
-              <AlertDialogAction onClick={handleDeleteRequest} disabled={isDeleting} className="bg-destructive hover:bg-destructive/90">
-                {isDeleting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Xóa
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
-      )}
-
-      {requestToApprove && (
-        <Dialog open={!!requestToApprove} onOpenChange={(open) => !open && setRequestToApprove(null)}>
-          <DialogContent className="sm:max-w-md">
-            <DialogHeader>
-              <DialogTitle>Duyệt yêu cầu sửa chữa</DialogTitle>
-              <DialogDescription>
-                Duyệt yêu cầu sửa chữa cho thiết bị <strong>{requestToApprove.thiet_bi?.ten_thiet_bi}</strong>
-              </DialogDescription>
-            </DialogHeader>
-            <div className="space-y-4">
-              {requestToApprove.nguoi_duyet && (
-                <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
-                  <div className="text-sm font-medium text-blue-800">Đã được duyệt bởi:</div>
-                  <div className="text-sm text-blue-600">{requestToApprove.nguoi_duyet}</div>
-                  {requestToApprove.ngay_duyet && (
-                    <div className="text-xs text-blue-500">
-                      {format(parseISO(requestToApprove.ngay_duyet), 'dd/MM/yyyy HH:mm', { locale: vi })}
-                    </div>
-                  )}
-                </div>
-              )}
-              <div>
-                <Label htmlFor="approval-repair-unit">Đơn vị thực hiện</Label>
-                <Select value={approvalRepairUnit} onValueChange={(value: 'noi_bo' | 'thue_ngoai') => setApprovalRepairUnit(value)}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="noi_bo">Nội bộ</SelectItem>
-                    <SelectItem value="thue_ngoai">Thuê ngoài</SelectItem>
-                  </SelectContent>
-                </Select>
+                {approvalRepairUnit === 'thue_ngoai' && (
+                  <div>
+                    <Label htmlFor="approval-external-company">Tên đơn vị thực hiện sửa chữa</Label>
+                    <Input
+                      id="approval-external-company"
+                      value={approvalExternalCompanyName}
+                      onChange={(e) => setApprovalExternalCompanyName(e.target.value)}
+                      placeholder="Nhập tên đơn vị được thuê sửa chữa"
+                      disabled={isApproving}
+                    />
+                  </div>
+                )}
               </div>
-              {approvalRepairUnit === 'thue_ngoai' && (
-                <div>
-                  <Label htmlFor="approval-external-company">Tên đơn vị thực hiện sửa chữa</Label>
-                  <Input
-                    id="approval-external-company"
-                    value={approvalExternalCompanyName}
-                    onChange={(e) => setApprovalExternalCompanyName(e.target.value)}
-                    placeholder="Nhập tên đơn vị được thuê sửa chữa"
-                    disabled={isApproving}
-                  />
-                </div>
-              )}
-            </div>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setRequestToApprove(null)} disabled={isApproving}>
-                Hủy
-              </Button>
-              <Button onClick={handleConfirmApproval} disabled={isApproving}>
-                {isApproving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Xác nhận duyệt
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-      )}
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setRequestToApprove(null)} disabled={isApproving}>
+                  Hủy
+                </Button>
+                <Button onClick={handleConfirmApproval} disabled={isApproving}>
+                  {isApproving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  Xác nhận duyệt
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        )}
 
-      {requestToComplete && (
-        <Dialog open={!!requestToComplete} onOpenChange={(open) => !open && setRequestToComplete(null)}>
-          <DialogContent className="sm:max-w-lg">
-            <DialogHeader>
-              <DialogTitle>
-                {completionType === 'Hoàn thành' ? 'Ghi nhận hoàn thành sửa chữa' : 'Ghi nhận không hoàn thành'}
-              </DialogTitle>
-              <DialogDescription>
-                {completionType === 'Hoàn thành'
-                  ? `Ghi nhận kết quả sửa chữa cho thiết bị ${requestToComplete.thiet_bi?.ten_thiet_bi}`
-                  : `Ghi nhận lý do không hoàn thành sửa chữa cho thiết bị ${requestToComplete.thiet_bi?.ten_thiet_bi}`
-                }
-              </DialogDescription>
-            </DialogHeader>
-            <div className="space-y-4">
-              {requestToComplete.nguoi_xac_nhan && (
-                <div className="p-3 bg-green-50 rounded-lg border border-green-200">
-                  <div className="text-sm font-medium text-green-800">Đã được xác nhận bởi:</div>
-                  <div className="text-sm text-green-600">{requestToComplete.nguoi_xac_nhan}</div>
-                  {requestToComplete.ngay_hoan_thanh && (
-                    <div className="text-xs text-green-500">
-                      {format(parseISO(requestToComplete.ngay_hoan_thanh), 'dd/MM/yyyy HH:mm', { locale: vi })}
-                    </div>
-                  )}
-                </div>
-              )}
-              {completionType === 'Hoàn thành' ? (
-                <div>
-                  <Label htmlFor="completion-result">Kết quả sửa chữa</Label>
-                  <Textarea
-                    id="completion-result"
-                    value={completionResult}
-                    onChange={(e) => setCompletionResult(e.target.value)}
-                    placeholder="Nhập kết quả và tình trạng thiết bị sau khi sửa chữa..."
-                    rows={4}
-                    disabled={isCompleting}
-                  />
-                </div>
-              ) : (
-                <div>
-                  <Label htmlFor="non-completion-reason">Lý do không hoàn thành</Label>
-                  <Textarea
-                    id="non-completion-reason"
-                    value={nonCompletionReason}
-                    onChange={(e) => setNonCompletionReason(e.target.value)}
-                    placeholder="Nhập lý do không thể hoàn thành sửa chữa..."
-                    rows={4}
-                    disabled={isCompleting}
-                  />
-                </div>
-              )}
-            </div>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setRequestToComplete(null)} disabled={isCompleting}>
-                Hủy
-              </Button>
-              <Button onClick={handleConfirmCompletion} disabled={isCompleting}>
-                {isCompleting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                {completionType === 'Hoàn thành' ? 'Xác nhận hoàn thành' : 'Xác nhận không hoàn thành'}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-      )}
-
-      {/* Request Detail */}
-      {requestToView && isMobile && (
-        <Dialog open={!!requestToView} onOpenChange={(open) => !open && setRequestToView(null)}>
-          <DialogContent className="max-w-4xl h-[90vh] flex flex-col overflow-hidden">
-            <DialogHeader className="flex-shrink-0">
-              <DialogTitle className="text-lg font-semibold">
-                Chi tiết yêu cầu sửa chữa
-              </DialogTitle>
-              <DialogDescription>
-                Thông tin chi tiết về yêu cầu sửa chữa thiết bị
-              </DialogDescription>
-            </DialogHeader>
-
-            <div className="flex-1 overflow-hidden pr-4">
-              <ScrollArea className="h-full">
-              <div className="space-y-6 py-4">
-                {/* Equipment Information */}
-                <div className="space-y-3">
-                  <h3 className="text-base font-semibold text-foreground border-b pb-2">
-                    Thông tin thiết bị
-                  </h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label className="text-sm font-medium text-muted-foreground">Tên thiết bị</Label>
-                      <div className="text-sm font-medium">{requestToView.thiet_bi?.ten_thiet_bi || 'N/A'}</div>
-                    </div>
-                    <div className="space-y-2">
-                      <Label className="text-sm font-medium text-muted-foreground">Mã thiết bị</Label>
-                      <div className="text-sm">{requestToView.thiet_bi?.ma_thiet_bi || 'N/A'}</div>
-                    </div>
-                    <div className="space-y-2">
-                      <Label className="text-sm font-medium text-muted-foreground">Model</Label>
-                      <div className="text-sm">{requestToView.thiet_bi?.model || 'N/A'}</div>
-                    </div>
-                    <div className="space-y-2">
-                      <Label className="text-sm font-medium text-muted-foreground">Serial</Label>
-                      <div className="text-sm">{requestToView.thiet_bi?.serial || 'N/A'}</div>
-                    </div>
-                    <div className="space-y-2 md:col-span-2">
-                      <Label className="text-sm font-medium text-muted-foreground">Khoa/Phòng quản lý</Label>
-                      <div className="text-sm">{requestToView.thiet_bi?.khoa_phong_quan_ly || 'N/A'}</div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Request Information */}
-                <div className="space-y-3">
-                  <h3 className="text-base font-semibold text-foreground border-b pb-2">
-                    Thông tin yêu cầu
-                  </h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label className="text-sm font-medium text-muted-foreground">Trạng thái</Label>
-                      <Badge variant={getStatusVariant(requestToView.trang_thai)} className="w-fit">
-                        {requestToView.trang_thai}
-                      </Badge>
-                    </div>
-                    <div className="space-y-2">
-                      <Label className="text-sm font-medium text-muted-foreground">Ngày yêu cầu</Label>
-                      <div className="text-sm">
-                        {format(parseISO(requestToView.ngay_yeu_cau), 'dd/MM/yyyy HH:mm', { locale: vi })}
-                      </div>
-                    </div>
-                    <div className="space-y-2">
-                      <Label className="text-sm font-medium text-muted-foreground">Người yêu cầu</Label>
-                      <div className="text-sm">{requestToView.nguoi_yeu_cau || 'N/A'}</div>
-                    </div>
-                    {requestToView.ngay_mong_muon_hoan_thanh && (
-                      <div className="space-y-2">
-                        <Label className="text-sm font-medium text-muted-foreground">Ngày mong muốn hoàn thành</Label>
-                        <div className="text-sm">
-                          {format(parseISO(requestToView.ngay_mong_muon_hoan_thanh), 'dd/MM/yyyy', { locale: vi })}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label className="text-sm font-medium text-muted-foreground">Mô tả sự cố</Label>
-                    <div className="text-sm bg-muted/50 p-3 rounded-md whitespace-pre-wrap break-words">
-                      {requestToView.mo_ta_su_co}
-                    </div>
-                  </div>
-
-                  {requestToView.hang_muc_sua_chua && (
-                    <div className="space-y-2">
-                      <Label className="text-sm font-medium text-muted-foreground">Hạng mục sửa chữa</Label>
-                      <div className="text-sm bg-muted/50 p-3 rounded-md whitespace-pre-wrap break-words">
-                        {requestToView.hang_muc_sua_chua}
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                {/* Execution Information */}
-                {(requestToView.don_vi_thuc_hien || requestToView.ten_don_vi_thue) && (
-                  <div className="space-y-3">
-                    <h3 className="text-base font-semibold text-foreground border-b pb-2">
-                      Thông tin thực hiện
-                    </h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {requestToView.don_vi_thuc_hien && (
-                        <div className="space-y-2">
-                          <Label className="text-sm font-medium text-muted-foreground">Đơn vị thực hiện</Label>
-                          <Badge variant="outline" className="w-fit">
-                            {requestToView.don_vi_thuc_hien === 'noi_bo' ? 'Nội bộ' : 'Thuê ngoài'}
-                          </Badge>
-                        </div>
-                      )}
-                      {requestToView.ten_don_vi_thue && (
-                        <div className="space-y-2">
-                          <Label className="text-sm font-medium text-muted-foreground">Tên đơn vị thuê</Label>
-                          <div className="text-sm break-words">{requestToView.ten_don_vi_thue}</div>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
-
-                {/* Approval Information */}
-                {(requestToView.ngay_duyet || requestToView.nguoi_duyet) && (
-                  <div className="space-y-3">
-                    <h3 className="text-base font-semibold text-foreground border-b pb-2">
-                      Thông tin phê duyệt
-                    </h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {requestToView.nguoi_duyet && (
-                        <div className="space-y-2">
-                          <Label className="text-sm font-medium text-muted-foreground">Người duyệt</Label>
-                          <div className="text-sm break-words">{requestToView.nguoi_duyet}</div>
-                        </div>
-                      )}
-                      {requestToView.ngay_duyet && (
-                        <div className="space-y-2">
-                          <Label className="text-sm font-medium text-muted-foreground">Ngày duyệt</Label>
-                          <div className="text-sm">
-                            {format(parseISO(requestToView.ngay_duyet), 'dd/MM/yyyy HH:mm', { locale: vi })}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
-
-                {/* Completion Information */}
-                {(requestToView.ngay_hoan_thanh || requestToView.ket_qua_sua_chua || requestToView.ly_do_khong_hoan_thanh || requestToView.nguoi_xac_nhan) && (
-                  <div className="space-y-3">
-                    <h3 className="text-base font-semibold text-foreground border-b pb-2">
-                      Thông tin hoàn thành
-                    </h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {requestToView.nguoi_xac_nhan && (
-                        <div className="space-y-2">
-                          <Label className="text-sm font-medium text-muted-foreground">Người xác nhận</Label>
-                          <div className="text-sm break-words">{requestToView.nguoi_xac_nhan}</div>
-                        </div>
-                      )}
-                      {requestToView.ngay_hoan_thanh && (
-                        <div className="space-y-2">
-                          <Label className="text-sm font-medium text-muted-foreground">Ngày hoàn thành</Label>
-                          <div className="text-sm">
-                            {format(parseISO(requestToView.ngay_hoan_thanh), 'dd/MM/yyyy HH:mm', { locale: vi })}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-
-                    {requestToView.ket_qua_sua_chua && (
-                      <div className="space-y-2">
-                        <Label className="text-sm font-medium text-muted-foreground">Kết quả sửa chữa</Label>
-                        <div className="text-sm bg-green-50 border border-green-200 p-3 rounded-md whitespace-pre-wrap break-words">
-                          {requestToView.ket_qua_sua_chua}
-                        </div>
-                      </div>
-                    )}
-
-                    {requestToView.ly_do_khong_hoan_thanh && (
-                      <div className="space-y-2">
-                        <Label className="text-sm font-medium text-muted-foreground">Lý do không hoàn thành</Label>
-                        <div className="text-sm bg-red-50 border border-red-200 p-3 rounded-md whitespace-pre-wrap break-words">
-                          {requestToView.ly_do_khong_hoan_thanh}
-                        </div>
+        {requestToComplete && (
+          <Dialog open={!!requestToComplete} onOpenChange={(open) => !open && setRequestToComplete(null)}>
+            <DialogContent className="sm:max-w-lg">
+              <DialogHeader>
+                <DialogTitle>
+                  {completionType === 'Hoàn thành' ? 'Ghi nhận hoàn thành sửa chữa' : 'Ghi nhận không hoàn thành'}
+                </DialogTitle>
+                <DialogDescription>
+                  {completionType === 'Hoàn thành'
+                    ? `Ghi nhận kết quả sửa chữa cho thiết bị ${requestToComplete.thiet_bi?.ten_thiet_bi}`
+                    : `Ghi nhận lý do không hoàn thành sửa chữa cho thiết bị ${requestToComplete.thiet_bi?.ten_thiet_bi}`
+                  }
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4">
+                {requestToComplete.nguoi_xac_nhan && (
+                  <div className="p-3 bg-green-50 rounded-lg border border-green-200">
+                    <div className="text-sm font-medium text-green-800">Đã được xác nhận bởi:</div>
+                    <div className="text-sm text-green-600">{requestToComplete.nguoi_xac_nhan}</div>
+                    {requestToComplete.ngay_hoan_thanh && (
+                      <div className="text-xs text-green-500">
+                        {format(parseISO(requestToComplete.ngay_hoan_thanh), 'dd/MM/yyyy HH:mm', { locale: vi })}
                       </div>
                     )}
                   </div>
                 )}
+                {completionType === 'Hoàn thành' ? (
+                  <div>
+                    <Label htmlFor="completion-result">Kết quả sửa chữa</Label>
+                    <Textarea
+                      id="completion-result"
+                      value={completionResult}
+                      onChange={(e) => setCompletionResult(e.target.value)}
+                      placeholder="Nhập kết quả và tình trạng thiết bị sau khi sửa chữa..."
+                      rows={4}
+                      disabled={isCompleting}
+                    />
+                  </div>
+                ) : (
+                  <div>
+                    <Label htmlFor="non-completion-reason">Lý do không hoàn thành</Label>
+                    <Textarea
+                      id="non-completion-reason"
+                      value={nonCompletionReason}
+                      onChange={(e) => setNonCompletionReason(e.target.value)}
+                      placeholder="Nhập lý do không thể hoàn thành sửa chữa..."
+                      rows={4}
+                      disabled={isCompleting}
+                    />
+                  </div>
+                )}
               </div>
-              </ScrollArea>
-            </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setRequestToComplete(null)} disabled={isCompleting}>
+                  Hủy
+                </Button>
+                <Button onClick={handleConfirmCompletion} disabled={isCompleting}>
+                  {isCompleting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  {completionType === 'Hoàn thành' ? 'Xác nhận hoàn thành' : 'Xác nhận không hoàn thành'}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        )}
 
-            <DialogFooter className="flex-shrink-0 mt-4 border-t pt-4">
-              <Button variant="outline" onClick={() => setRequestToView(null)}>
-                Đóng
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-      )}
+        {/* Request Detail */}
+        {requestToView && isMobile && (
+          <Dialog open={!!requestToView} onOpenChange={(open) => !open && setRequestToView(null)}>
+            <DialogContent className="max-w-4xl h-[90vh] flex flex-col overflow-hidden">
+              <DialogHeader className="flex-shrink-0">
+                <DialogTitle className="text-lg font-semibold">
+                  Chi tiết yêu cầu sửa chữa
+                </DialogTitle>
+                <DialogDescription>
+                  Thông tin chi tiết về yêu cầu sửa chữa thiết bị
+                </DialogDescription>
+              </DialogHeader>
 
-      {requestToView && !isMobile && (
-        <Sheet open={!!requestToView} onOpenChange={(open) => !open && setRequestToView(null)}>
-          <SheetContent side="right" className="w-full sm:max-w-xl md:max-w-2xl lg:max-w-3xl p-0">
-            <div className="h-full flex flex-col">
-              <div className="p-4 border-b">
-                <SheetTitle>Chi tiết yêu cầu sửa chữa</SheetTitle>
-                <SheetDescription>Thông tin chi tiết về yêu cầu sửa chữa thiết bị</SheetDescription>
-              </div>
-              <div className="flex-1 overflow-hidden px-4">
+              <div className="flex-1 overflow-hidden pr-4">
                 <ScrollArea className="h-full">
-                  {/* reuse the same inner content from dialog by rendering the same blocks */}
                   <div className="space-y-6 py-4">
                     {/* Equipment Information */}
                     <div className="space-y-3">
-                      <h3 className="text-base font-semibold text-foreground border-b pb-2">Thông tin thiết bị</h3>
+                      <h3 className="text-base font-semibold text-foreground border-b pb-2">
+                        Thông tin thiết bị
+                      </h3>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="space-y-2">
                           <Label className="text-sm font-medium text-muted-foreground">Tên thiết bị</Label>
@@ -1812,15 +1632,21 @@ export default function RepairRequestsPage() {
 
                     {/* Request Information */}
                     <div className="space-y-3">
-                      <h3 className="text-base font-semibold text-foreground border-b pb-2">Thông tin yêu cầu</h3>
+                      <h3 className="text-base font-semibold text-foreground border-b pb-2">
+                        Thông tin yêu cầu
+                      </h3>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="space-y-2">
                           <Label className="text-sm font-medium text-muted-foreground">Trạng thái</Label>
-                          <Badge variant={getStatusVariant(requestToView.trang_thai)} className="w-fit">{requestToView.trang_thai}</Badge>
+                          <Badge variant={getStatusVariant(requestToView.trang_thai)} className="w-fit">
+                            {requestToView.trang_thai}
+                          </Badge>
                         </div>
                         <div className="space-y-2">
                           <Label className="text-sm font-medium text-muted-foreground">Ngày yêu cầu</Label>
-                          <div className="text-sm">{format(parseISO(requestToView.ngay_yeu_cau), 'dd/MM/yyyy HH:mm', { locale: vi })}</div>
+                          <div className="text-sm">
+                            {format(parseISO(requestToView.ngay_yeu_cau), 'dd/MM/yyyy HH:mm', { locale: vi })}
+                          </div>
                         </div>
                         <div className="space-y-2">
                           <Label className="text-sm font-medium text-muted-foreground">Người yêu cầu</Label>
@@ -1829,20 +1655,26 @@ export default function RepairRequestsPage() {
                         {requestToView.ngay_mong_muon_hoan_thanh && (
                           <div className="space-y-2">
                             <Label className="text-sm font-medium text-muted-foreground">Ngày mong muốn hoàn thành</Label>
-                            <div className="text-sm">{format(parseISO(requestToView.ngay_mong_muon_hoan_thanh), 'dd/MM/yyyy', { locale: vi })}</div>
+                            <div className="text-sm">
+                              {format(parseISO(requestToView.ngay_mong_muon_hoan_thanh), 'dd/MM/yyyy', { locale: vi })}
+                            </div>
                           </div>
                         )}
                       </div>
 
                       <div className="space-y-2">
                         <Label className="text-sm font-medium text-muted-foreground">Mô tả sự cố</Label>
-                        <div className="text-sm bg-muted/50 p-3 rounded-md whitespace-pre-wrap break-words">{requestToView.mo_ta_su_co}</div>
+                        <div className="text-sm bg-muted/50 p-3 rounded-md whitespace-pre-wrap break-words">
+                          {requestToView.mo_ta_su_co}
+                        </div>
                       </div>
 
                       {requestToView.hang_muc_sua_chua && (
                         <div className="space-y-2">
                           <Label className="text-sm font-medium text-muted-foreground">Hạng mục sửa chữa</Label>
-                          <div className="text-sm bg-muted/50 p-3 rounded-md whitespace-pre-wrap break-words">{requestToView.hang_muc_sua_chua}</div>
+                          <div className="text-sm bg-muted/50 p-3 rounded-md whitespace-pre-wrap break-words">
+                            {requestToView.hang_muc_sua_chua}
+                          </div>
                         </div>
                       )}
                     </div>
@@ -1850,12 +1682,16 @@ export default function RepairRequestsPage() {
                     {/* Execution Information */}
                     {(requestToView.don_vi_thuc_hien || requestToView.ten_don_vi_thue) && (
                       <div className="space-y-3">
-                        <h3 className="text-base font-semibold text-foreground border-b pb-2">Thông tin thực hiện</h3>
+                        <h3 className="text-base font-semibold text-foreground border-b pb-2">
+                          Thông tin thực hiện
+                        </h3>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           {requestToView.don_vi_thuc_hien && (
                             <div className="space-y-2">
                               <Label className="text-sm font-medium text-muted-foreground">Đơn vị thực hiện</Label>
-                              <Badge variant="outline" className="w-fit">{requestToView.don_vi_thuc_hien === 'noi_bo' ? 'Nội bộ' : 'Thuê ngoài'}</Badge>
+                              <Badge variant="outline" className="w-fit">
+                                {requestToView.don_vi_thuc_hien === 'noi_bo' ? 'Nội bộ' : 'Thuê ngoài'}
+                              </Badge>
                             </div>
                           )}
                           {requestToView.ten_don_vi_thue && (
@@ -1871,7 +1707,9 @@ export default function RepairRequestsPage() {
                     {/* Approval Information */}
                     {(requestToView.ngay_duyet || requestToView.nguoi_duyet) && (
                       <div className="space-y-3">
-                        <h3 className="text-base font-semibold text-foreground border-b pb-2">Thông tin phê duyệt</h3>
+                        <h3 className="text-base font-semibold text-foreground border-b pb-2">
+                          Thông tin phê duyệt
+                        </h3>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           {requestToView.nguoi_duyet && (
                             <div className="space-y-2">
@@ -1882,7 +1720,9 @@ export default function RepairRequestsPage() {
                           {requestToView.ngay_duyet && (
                             <div className="space-y-2">
                               <Label className="text-sm font-medium text-muted-foreground">Ngày duyệt</Label>
-                              <div className="text-sm">{format(parseISO(requestToView.ngay_duyet), 'dd/MM/yyyy HH:mm', { locale: vi })}</div>
+                              <div className="text-sm">
+                                {format(parseISO(requestToView.ngay_duyet), 'dd/MM/yyyy HH:mm', { locale: vi })}
+                              </div>
                             </div>
                           )}
                         </div>
@@ -1892,7 +1732,9 @@ export default function RepairRequestsPage() {
                     {/* Completion Information */}
                     {(requestToView.ngay_hoan_thanh || requestToView.ket_qua_sua_chua || requestToView.ly_do_khong_hoan_thanh || requestToView.nguoi_xac_nhan) && (
                       <div className="space-y-3">
-                        <h3 className="text-base font-semibold text-foreground border-b pb-2">Thông tin hoàn thành</h3>
+                        <h3 className="text-base font-semibold text-foreground border-b pb-2">
+                          Thông tin hoàn thành
+                        </h3>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           {requestToView.nguoi_xac_nhan && (
                             <div className="space-y-2">
@@ -1903,7 +1745,9 @@ export default function RepairRequestsPage() {
                           {requestToView.ngay_hoan_thanh && (
                             <div className="space-y-2">
                               <Label className="text-sm font-medium text-muted-foreground">Ngày hoàn thành</Label>
-                              <div className="text-sm">{format(parseISO(requestToView.ngay_hoan_thanh), 'dd/MM/yyyy HH:mm', { locale: vi })}</div>
+                              <div className="text-sm">
+                                {format(parseISO(requestToView.ngay_hoan_thanh), 'dd/MM/yyyy HH:mm', { locale: vi })}
+                              </div>
                             </div>
                           )}
                         </div>
@@ -1911,14 +1755,18 @@ export default function RepairRequestsPage() {
                         {requestToView.ket_qua_sua_chua && (
                           <div className="space-y-2">
                             <Label className="text-sm font-medium text-muted-foreground">Kết quả sửa chữa</Label>
-                            <div className="text-sm bg-green-50 border border-green-200 p-3 rounded-md whitespace-pre-wrap break-words">{requestToView.ket_qua_sua_chua}</div>
+                            <div className="text-sm bg-green-50 border border-green-200 p-3 rounded-md whitespace-pre-wrap break-words">
+                              {requestToView.ket_qua_sua_chua}
+                            </div>
                           </div>
                         )}
 
                         {requestToView.ly_do_khong_hoan_thanh && (
                           <div className="space-y-2">
                             <Label className="text-sm font-medium text-muted-foreground">Lý do không hoàn thành</Label>
-                            <div className="text-sm bg-red-50 border border-red-200 p-3 rounded-md whitespace-pre-wrap break-words">{requestToView.ly_do_khong_hoan_thanh}</div>
+                            <div className="text-sm bg-red-50 border border-red-200 p-3 rounded-md whitespace-pre-wrap break-words">
+                              {requestToView.ly_do_khong_hoan_thanh}
+                            </div>
                           </div>
                         )}
                       </div>
@@ -1926,693 +1774,865 @@ export default function RepairRequestsPage() {
                   </div>
                 </ScrollArea>
               </div>
-              <div className="p-4 border-t flex justify-end">
-                <Button variant="outline" onClick={() => setRequestToView(null)}>Đóng</Button>
-              </div>
-            </div>
-          </SheetContent>
-        </Sheet>
-      )}
 
-      {/* Repair Request Alert */}
-      <RepairRequestAlert requests={requests} />
+              <DialogFooter className="flex-shrink-0 mt-4 border-t pt-4">
+                <Button variant="outline" onClick={() => setRequestToView(null)}>
+                  Đóng
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        )}
 
-      <div className="space-y-6">
-        {/* Header + Create Button */}
-      <div className="flex items-center justify-between gap-3">
-          <div>
-            <h1 className="text-xl md:text-2xl font-semibold">Yêu cầu sửa chữa</h1>
-            {selectedFacilityName && (
-              <p className="text-sm text-muted-foreground">{selectedFacilityName}</p>
-            )}
-          </div>
-          {!isRegionalLeader && (
-            <div className="flex items-center gap-2">
-              <Button onClick={() => setIsCreateOpen(true)} className="touch-target">
-                <PlusCircle className="mr-2 h-4 w-4" /> Tạo yêu cầu
-              </Button>
-            </div>
-          )}
-        </div>
-
-        {/* Summary */}
-        <SummaryBar items={summaryItems} loading={statusCountsLoading} />
-
-        {/* Create Sheet */}
-        {!isRegionalLeader && (
-          <Sheet open={isCreateOpen} onOpenChange={setIsCreateOpen}>
-            <SheetContent side="right" className="sm:max-w-lg">
-              <SheetHeaderUI>
-                <SheetTitle>Tạo yêu cầu sửa chữa</SheetTitle>
-                <SheetDescription>Điền thông tin bên dưới để gửi yêu cầu mới.</SheetDescription>
-              </SheetHeaderUI>
-              <div className="mt-4">
-                <form onSubmit={handleSubmit} className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="search-equipment">Thiết bị</Label>
-                    <div className="relative">
-                      <Input
-                        id="search-equipment"
-                        placeholder={"Nhập tên hoặc mã để tìm kiếm..."}
-                        value={searchQuery}
-                        onChange={handleSearchChange}
-                        autoComplete="off"
-                        required
-                      />
-                      {filteredEquipment.length > 0 && (
-                        <div className="absolute z-10 w-full mt-1 bg-popover border rounded-md shadow-lg max-h-60 overflow-y-auto">
-                          <div className="p-1">
-                            {filteredEquipment.map((equipment) => (
-                              <div
-                                key={equipment.id}
-                                className="text-sm mobile-interactive hover:bg-accent rounded-sm cursor-pointer touch-target-sm"
-                                onClick={() => handleSelectEquipment(equipment)}
-                              >
-                                <div className="font-medium">{equipment.ten_thiet_bi}</div>
-                                <div className="text-xs text-muted-foreground">
-                                  {equipment.ma_thiet_bi}
-                                  {equipment.khoa_phong_quan_ly && (
-                                    <span className="ml-2 text-blue-600">• {equipment.khoa_phong_quan_ly}</span>
-                                  )}
-                                </div>
-                              </div>
-                            ))}
+        {requestToView && !isMobile && (
+          <Sheet open={!!requestToView} onOpenChange={(open) => !open && setRequestToView(null)}>
+            <SheetContent side="right" className="w-full sm:max-w-xl md:max-w-2xl lg:max-w-3xl p-0">
+              <div className="h-full flex flex-col">
+                <div className="p-4 border-b">
+                  <SheetTitle>Chi tiết yêu cầu sửa chữa</SheetTitle>
+                  <SheetDescription>Thông tin chi tiết về yêu cầu sửa chữa thiết bị</SheetDescription>
+                </div>
+                <div className="flex-1 overflow-hidden px-4">
+                  <ScrollArea className="h-full">
+                    {/* reuse the same inner content from dialog by rendering the same blocks */}
+                    <div className="space-y-6 py-4">
+                      {/* Equipment Information */}
+                      <div className="space-y-3">
+                        <h3 className="text-base font-semibold text-foreground border-b pb-2">Thông tin thiết bị</h3>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                            <Label className="text-sm font-medium text-muted-foreground">Tên thiết bị</Label>
+                            <div className="text-sm font-medium">{requestToView.thiet_bi?.ten_thiet_bi || 'N/A'}</div>
+                          </div>
+                          <div className="space-y-2">
+                            <Label className="text-sm font-medium text-muted-foreground">Mã thiết bị</Label>
+                            <div className="text-sm">{requestToView.thiet_bi?.ma_thiet_bi || 'N/A'}</div>
+                          </div>
+                          <div className="space-y-2">
+                            <Label className="text-sm font-medium text-muted-foreground">Model</Label>
+                            <div className="text-sm">{requestToView.thiet_bi?.model || 'N/A'}</div>
+                          </div>
+                          <div className="space-y-2">
+                            <Label className="text-sm font-medium text-muted-foreground">Serial</Label>
+                            <div className="text-sm">{requestToView.thiet_bi?.serial || 'N/A'}</div>
+                          </div>
+                          <div className="space-y-2 md:col-span-2">
+                            <Label className="text-sm font-medium text-muted-foreground">Khoa/Phòng quản lý</Label>
+                            <div className="text-sm">{requestToView.thiet_bi?.khoa_phong_quan_ly || 'N/A'}</div>
                           </div>
                         </div>
-                      )}
-                      {shouldShowNoResults && (
-                        <div className="absolute z-10 w-full mt-1 bg-popover border rounded-md shadow-lg p-3">
-                          <div className="text-sm text-muted-foreground text-center">
-                            Không tìm thấy kết quả phù hợp
+                      </div>
+
+                      {/* Request Information */}
+                      <div className="space-y-3">
+                        <h3 className="text-base font-semibold text-foreground border-b pb-2">Thông tin yêu cầu</h3>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                            <Label className="text-sm font-medium text-muted-foreground">Trạng thái</Label>
+                            <Badge variant={getStatusVariant(requestToView.trang_thai)} className="w-fit">{requestToView.trang_thai}</Badge>
                           </div>
-                        </div>
-                      )}
-                    </div>
-                    {selectedEquipment && (
-                      <p className="text-xs text-muted-foreground flex items-center gap-1.5 pt-1">
-                        <Check className="h-3.5 w-3.5 text-green-600" />
-                        <span>Đã chọn: {selectedEquipment.ten_thiet_bi} ({selectedEquipment.ma_thiet_bi})</span>
-                      </p>
-                    )}
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="issue">Mô tả sự cố</Label>
-                    <Textarea
-                      id="issue"
-                      placeholder="Mô tả chi tiết vấn đề gặp phải..."
-                      rows={4}
-                      value={issueDescription}
-                      onChange={(e) => setIssueDescription(e.target.value)}
-                      required
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="repair-items">Các hạng mục yêu cầu sửa chữa</Label>
-                    <Textarea
-                      id="repair-items"
-                      placeholder="VD: Thay màn hình, sửa nguồn..."
-                      rows={3}
-                      value={repairItems}
-                      onChange={(e) => setRepairItems(e.target.value)}
-                      required
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Ngày mong muốn hoàn thành (nếu có)</Label>
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <Button
-                          variant={"outline"}
-                          className={cn(
-                            "w-full justify-start text-left font-normal touch-target",
-                            !desiredDate && "text-muted-foreground"
+                          <div className="space-y-2">
+                            <Label className="text-sm font-medium text-muted-foreground">Ngày yêu cầu</Label>
+                            <div className="text-sm">{format(parseISO(requestToView.ngay_yeu_cau), 'dd/MM/yyyy HH:mm', { locale: vi })}</div>
+                          </div>
+                          <div className="space-y-2">
+                            <Label className="text-sm font-medium text-muted-foreground">Người yêu cầu</Label>
+                            <div className="text-sm">{requestToView.nguoi_yeu_cau || 'N/A'}</div>
+                          </div>
+                          {requestToView.ngay_mong_muon_hoan_thanh && (
+                            <div className="space-y-2">
+                              <Label className="text-sm font-medium text-muted-foreground">Ngày mong muốn hoàn thành</Label>
+                              <div className="text-sm">{format(parseISO(requestToView.ngay_mong_muon_hoan_thanh), 'dd/MM/yyyy', { locale: vi })}</div>
+                            </div>
                           )}
-                        >
-                          <CalendarIcon className="mr-2 h-4 w-4" />
-                          {desiredDate ? format(desiredDate, "dd/MM/yyyy") : <span>Chọn ngày</span>}
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0">
-                        <Calendar
-                          mode="single"
-                          selected={desiredDate}
-                          onSelect={setDesiredDate}
-                          initialFocus
-                          disabled={(date) => date < new Date(new Date().setHours(0, 0, 0, 0))}
-                        />
-                      </PopoverContent>
-                    </Popover>
-                  </div>
+                        </div>
 
-                  {canSetRepairUnit && (
-                    <div className="space-y-2">
-                      <Label htmlFor="repair-unit">Đơn vị thực hiện</Label>
-                      <Select value={repairUnit} onValueChange={(value: 'noi_bo' | 'thue_ngoai') => setRepairUnit(value)}>
-                        <SelectTrigger className="touch-target">
-                          <SelectValue placeholder="Chọn đơn vị thực hiện" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="noi_bo">Nội bộ</SelectItem>
-                          <SelectItem value="thue_ngoai">Thuê ngoài</SelectItem>
-                        </SelectContent>
-                      </Select>
+                        <div className="space-y-2">
+                          <Label className="text-sm font-medium text-muted-foreground">Mô tả sự cố</Label>
+                          <div className="text-sm bg-muted/50 p-3 rounded-md whitespace-pre-wrap break-words">{requestToView.mo_ta_su_co}</div>
+                        </div>
+
+                        {requestToView.hang_muc_sua_chua && (
+                          <div className="space-y-2">
+                            <Label className="text-sm font-medium text-muted-foreground">Hạng mục sửa chữa</Label>
+                            <div className="text-sm bg-muted/50 p-3 rounded-md whitespace-pre-wrap break-words">{requestToView.hang_muc_sua_chua}</div>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Execution Information */}
+                      {(requestToView.don_vi_thuc_hien || requestToView.ten_don_vi_thue) && (
+                        <div className="space-y-3">
+                          <h3 className="text-base font-semibold text-foreground border-b pb-2">Thông tin thực hiện</h3>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {requestToView.don_vi_thuc_hien && (
+                              <div className="space-y-2">
+                                <Label className="text-sm font-medium text-muted-foreground">Đơn vị thực hiện</Label>
+                                <Badge variant="outline" className="w-fit">{requestToView.don_vi_thuc_hien === 'noi_bo' ? 'Nội bộ' : 'Thuê ngoài'}</Badge>
+                              </div>
+                            )}
+                            {requestToView.ten_don_vi_thue && (
+                              <div className="space-y-2">
+                                <Label className="text-sm font-medium text-muted-foreground">Tên đơn vị thuê</Label>
+                                <div className="text-sm break-words">{requestToView.ten_don_vi_thue}</div>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Approval Information */}
+                      {(requestToView.ngay_duyet || requestToView.nguoi_duyet) && (
+                        <div className="space-y-3">
+                          <h3 className="text-base font-semibold text-foreground border-b pb-2">Thông tin phê duyệt</h3>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {requestToView.nguoi_duyet && (
+                              <div className="space-y-2">
+                                <Label className="text-sm font-medium text-muted-foreground">Người duyệt</Label>
+                                <div className="text-sm break-words">{requestToView.nguoi_duyet}</div>
+                              </div>
+                            )}
+                            {requestToView.ngay_duyet && (
+                              <div className="space-y-2">
+                                <Label className="text-sm font-medium text-muted-foreground">Ngày duyệt</Label>
+                                <div className="text-sm">{format(parseISO(requestToView.ngay_duyet), 'dd/MM/yyyy HH:mm', { locale: vi })}</div>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Completion Information */}
+                      {(requestToView.ngay_hoan_thanh || requestToView.ket_qua_sua_chua || requestToView.ly_do_khong_hoan_thanh || requestToView.nguoi_xac_nhan) && (
+                        <div className="space-y-3">
+                          <h3 className="text-base font-semibold text-foreground border-b pb-2">Thông tin hoàn thành</h3>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {requestToView.nguoi_xac_nhan && (
+                              <div className="space-y-2">
+                                <Label className="text-sm font-medium text-muted-foreground">Người xác nhận</Label>
+                                <div className="text-sm break-words">{requestToView.nguoi_xac_nhan}</div>
+                              </div>
+                            )}
+                            {requestToView.ngay_hoan_thanh && (
+                              <div className="space-y-2">
+                                <Label className="text-sm font-medium text-muted-foreground">Ngày hoàn thành</Label>
+                                <div className="text-sm">{format(parseISO(requestToView.ngay_hoan_thanh), 'dd/MM/yyyy HH:mm', { locale: vi })}</div>
+                              </div>
+                            )}
+                          </div>
+
+                          {requestToView.ket_qua_sua_chua && (
+                            <div className="space-y-2">
+                              <Label className="text-sm font-medium text-muted-foreground">Kết quả sửa chữa</Label>
+                              <div className="text-sm bg-green-50 border border-green-200 p-3 rounded-md whitespace-pre-wrap break-words">{requestToView.ket_qua_sua_chua}</div>
+                            </div>
+                          )}
+
+                          {requestToView.ly_do_khong_hoan_thanh && (
+                            <div className="space-y-2">
+                              <Label className="text-sm font-medium text-muted-foreground">Lý do không hoàn thành</Label>
+                              <div className="text-sm bg-red-50 border border-red-200 p-3 rounded-md whitespace-pre-wrap break-words">{requestToView.ly_do_khong_hoan_thanh}</div>
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
-                  )}
-
-                  {canSetRepairUnit && repairUnit === 'thue_ngoai' && (
-                    <div className="space-y-2">
-                      <Label htmlFor="external-company">Tên đơn vị được thuê</Label>
-                      <Input
-                        id="external-company"
-                        placeholder="Nhập tên đơn vị được thuê sửa chữa..."
-                        value={externalCompanyName}
-                        onChange={(e) => setExternalCompanyName(e.target.value)}
-                        required
-                        className="touch-target"
-                      />
-                    </div>
-                  )}
-
-                  <Button type="submit" className="w-full touch-target" disabled={isSubmitting}>
-                    {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                    {isSubmitting ? "Đang gửi..." : "Gửi yêu cầu"}
-                  </Button>
-                </form>
+                  </ScrollArea>
+                </div>
+                <div className="p-4 border-t flex justify-end">
+                  <Button variant="outline" onClick={() => setRequestToView(null)}>Đóng</Button>
+                </div>
               </div>
             </SheetContent>
           </Sheet>
         )}
 
-        {/* Mobile FAB for quick create */}
-        {!isRegionalLeader && isMobile && (
-          <Button
-            className="fixed right-6 fab-above-footer rounded-full h-14 w-14 shadow-lg"
-            onClick={() => setIsCreateOpen(true)}
-            aria-label="Tạo yêu cầu"
-          >
-            <PlusCircle className="h-6 w-6" />
-          </Button>
-        )}
+        {/* Repair Request Alert */}
+        <RepairRequestAlert requests={requests} />
 
-        {/* Content area: Split on desktop, full on mobile or when aside collapsed/full mode */}
-        <div className="grid grid-cols-1 gap-4">
-          {/* Left: Requests List */}
-          <div className="w-full">
-            <Card className="overflow-hidden">
-              <CardHeader>
-                <CardTitle className="heading-responsive-h2">Tổng hợp các yêu cầu sửa chữa thiết bị</CardTitle>
-                <CardDescription className="body-responsive-sm">
-                  Tất cả các yêu cầu sửa chữa đã được ghi nhận.
-                </CardDescription>
-
-                {/* Facility filter for global, admin, and regional leaders */}
-                {showFacilityFilter && (
-                  <div className="flex items-center gap-2 mt-4 flex-wrap">
-                    <div className="flex items-center gap-2 flex-1 min-w-0">
-                      <Building2 className="h-4 w-4 text-muted-foreground shrink-0" />
-                      <Select
-                        value={selectedFacilityId?.toString() || "all"}
-                        onValueChange={(value) => setSelectedFacilityId(value === "all" ? null : Number(value))}
-                        disabled={facilityOptions.length === 0}
-                      >
-                        <SelectTrigger className="h-9 border-dashed">
-                          <SelectValue placeholder="Chọn cơ sở..." />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="all">
-                            <div className="flex items-center gap-2">
-                              <Building2 className="h-4 w-4 text-muted-foreground" />
-                              <span>Tất cả cơ sở</span>
-                            </div>
-                          </SelectItem>
-                          {facilityOptions.length === 0 ? (
-                            <SelectItem value="empty" disabled>
-                              <span className="text-muted-foreground italic">Chưa có yêu cầu</span>
-                            </SelectItem>
-                          ) : (
-                            facilityOptions.map((facility) => {
-                              const count = facilityCounts.get(facility.id) || 0;
-                              return (
-                                <SelectItem key={facility.id} value={facility.id.toString()}>
-                                  <div className="flex items-center justify-between w-full gap-4">
-                                    <span className="truncate">{facility.name}</span>
-                                    <span className="text-xs text-muted-foreground shrink-0">{count}</span>
-                                  </div>
-                                </SelectItem>
-                              );
-                            })
-                          )}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    {selectedFacilityName && selectedFacilityId && (
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Badge variant="secondary" className="shrink-0 cursor-help">
-                              {facilityCounts.get(selectedFacilityId) || 0} yêu cầu
-                            </Badge>
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            <p>Số yêu cầu hiển thị ở cơ sở này</p>
-                          </TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
-                    )}
-                    {!selectedFacility && facilityOptions.length > 0 && (
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Badge variant="outline" className="shrink-0 cursor-help">
-                              {facilityOptions.length} cơ sở • {totalRequests} yêu cầu
-                            </Badge>
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            <p>Tổng số cơ sở và yêu cầu hiển thị</p>
-                          </TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
-                    )}
-                  </div>
-                )}
-              </CardHeader>
-              <CardContent className="p-3 md:p-6 gap-3 md:gap-4">
-                <div className="flex items-center justify-between gap-2 flex-wrap mb-2 md:mb-3">
-                  <div className="flex flex-1 items-center gap-2">
-                    <Input
-                      ref={searchInputRef}
-                      placeholder="Tìm thiết bị, mô tả..."
-                      value={searchTerm}
-                      onChange={(event) => setSearchTerm(event.target.value)}
-                      className="h-8 w-[120px] md:w-[200px] lg:w-[250px] touch-target-sm md:h-8"
-                    />
-
-                    <Button variant="outline" size="sm" className="h-8 touch-target-sm" onClick={() => setIsFilterModalOpen(true)}>Bộ lọc</Button>
-
-                    {/* Advanced filters only: open modal/sheet */}
-
-                    {/* Clear all filters button */}
-                    {isFiltered && (
-                      <Button
-                        variant="ghost"
-                        onClick={() => {
-                          table.resetColumnFilters();
-                          setUiFiltersState({ status: [], dateRange: null });
-                          setUiFilters({ status: [], dateRange: null });
-                          if (showFacilityFilter) setSelectedFacilityId(null);
-                          setSearchTerm("");
-                        }}
-                        className="h-8 px-2 lg:px-3 touch-target-sm md:h-8"
-                        aria-label="Xóa bộ lọc"
-                      >
-                        <span className="hidden sm:inline">Xóa</span>
-                        <FilterX className="h-4 w-4 sm:ml-2" />
-                      </Button>
-                    )}
-
-                    {/* Display menu: presets, density, wrap */}
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="outline" size="sm" className="h-8 touch-target-sm">Hiển thị</Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuLabel>Preset cột</DropdownMenuLabel>
-                        <DropdownMenuItem onSelect={() => {
-                          const next: any = { thiet_bi_va_mo_ta: true, ngay_yeu_cau: true, trang_thai: true, nguoi_yeu_cau: false, ngay_mong_muon_hoan_thanh: false, actions: true }
-                          setColumnVisibilityState(next); setColumnVisibility(next)
-                        }}>Compact</DropdownMenuItem>
-                        <DropdownMenuItem onSelect={() => {
-                          const next: any = { thiet_bi_va_mo_ta: true, nguoi_yeu_cau: true, ngay_yeu_cau: true, ngay_mong_muon_hoan_thanh: true, trang_thai: true, actions: true }
-                          setColumnVisibilityState(next); setColumnVisibility(next)
-                        }}>Standard</DropdownMenuItem>
-                        <DropdownMenuItem onSelect={() => {
-                          const next: any = { thiet_bi_va_mo_ta: true, nguoi_yeu_cau: true, ngay_yeu_cau: true, ngay_mong_muon_hoan_thanh: true, trang_thai: true, actions: true }
-                          setColumnVisibilityState(next); setColumnVisibility(next)
-                        }}>Full</DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuLabel>Mật độ</DropdownMenuLabel>
-                        <DropdownMenuItem onSelect={() => setDensity('compact')}>
-                          {density === 'compact' ? '✓ ' : ''}Compact
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onSelect={() => setDensity('standard')}>
-                          {density === 'standard' ? '✓ ' : ''}Standard
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onSelect={() => setDensity('spacious')}>
-                          {density === 'spacious' ? '✓ ' : ''}Spacious
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuLabel>Văn bản</DropdownMenuLabel>
-                        <DropdownMenuItem onSelect={() => setTextWrapState('truncate')}>
-                          {textWrap === 'truncate' ? '✓ ' : ''}Thu gọn
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onSelect={() => setTextWrapState('wrap')}>
-                          {textWrap === 'wrap' ? '✓ ' : ''}Xuống dòng
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </div>
-
-                  {/* Chips under search */}
-                  <div className="w-full pt-2">
-                    <FilterChips
-                      value={{
-                        status: uiFilters.status,
-                        facilityName: selectedFacilityName,
-                        dateRange: uiFilters.dateRange ? { from: uiFilters.dateRange.from ?? null, to: uiFilters.dateRange.to ?? null } : null,
-                      }}
-                      showFacility={showFacilityFilter}
-                      onRemove={(key, sub) => {
-                        if (key === 'status' && sub) {
-                          const next = uiFilters.status.filter(s => s !== sub)
-                          const updated = { ...uiFilters, status: next }
-                          setUiFiltersState(updated); setUiFilters(updated)
-                        } else if (key === 'facilityName') {
-                          setSelectedFacilityId(null)
-                        } else if (key === 'dateRange') {
-                          const updated = { ...uiFilters, dateRange: null }
-                          setUiFiltersState(updated); setUiFilters(updated)
-                        }
-                      }}
-                    />
-                  </div>
-                </div>
-
-                {/* Filter Modal */}
-                <FilterModal
-                  open={isFilterModalOpen}
-                  onOpenChange={setIsFilterModalOpen}
-                  value={{
-                    status: uiFilters.status,
-                    facilityId: selectedFacilityId ?? null,
-                    dateRange: uiFilters.dateRange ? {
-                      from: uiFilters.dateRange.from ? new Date(uiFilters.dateRange.from) : null,
-                      to: uiFilters.dateRange.to ? new Date(uiFilters.dateRange.to) : null,
-                    } : { from: null, to: null },
-                  }}
-                  onChange={(v) => {
-                    // sync facility
-                    if (showFacilityFilter) setSelectedFacilityId(v.facilityId ?? null)
-                    // persist date range and status
-                    const updated: UiFiltersPrefs = {
-                      status: v.status,
-                      dateRange: v.dateRange ? {
-                        from: v.dateRange.from ? format(v.dateRange.from, 'yyyy-MM-dd') : null,
-                        to: v.dateRange.to ? format(v.dateRange.to, 'yyyy-MM-dd') : null,
-                      } : null,
-                    }
-                    setUiFiltersState(updated); setUiFilters(updated)
-                  }}
-                  showFacility={showFacilityFilter}
-                  facilities={facilityOptions.map(f => ({ id: f.id, name: f.name }))}
-                  variant={isMobile ? 'sheet' : 'dialog'}
-                />
-                {/* Mobile Card View */}
-                {isMobile ? (
-                  <div className="space-y-3">
-                    {isLoading ? (
-                      <div className="flex justify-center items-center gap-2 py-6">
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                        <span className="text-sm">Đang tải...</span>
-                      </div>
-                    ) : table.getRowModel().rows?.length ? (
-                      table.getRowModel().rows.map((row) => {
-                        const request = row.original;
-                        return (
-                          <Card
-                            key={request.id}
-                            className="mobile-repair-card cursor-pointer hover:bg-muted/50"
-                            onClick={() => setRequestToView(request)}
-                          >
-                            <CardHeader className="mobile-repair-card-header flex flex-row items-start justify-between">
-                              <div className="flex-1 min-w-0 pr-2">
-                                <CardTitle className="mobile-repair-card-title truncate line-clamp-1">
-                                  {request.thiet_bi?.ten_thiet_bi || 'N/A'}
-                                </CardTitle>
-                                <CardDescription className="mobile-repair-card-description truncate">
-                                  {request.thiet_bi?.ma_thiet_bi || 'N/A'}
-                                </CardDescription>
-                              </div>
-                              <div className="flex-shrink-0" onClick={(e) => e.stopPropagation()}>
-                                {renderActions(request)}
-                              </div>
-                            </CardHeader>
-                            <CardContent className="mobile-repair-card-content">
-                              {/* Người yêu cầu */}
-                              {request.nguoi_yeu_cau && (
-                                <div className="mobile-repair-card-field">
-                                  <span className="mobile-repair-card-label">Người yêu cầu</span>
-                                  <span className="mobile-repair-card-value">{request.nguoi_yeu_cau}</span>
-                                </div>
-                              )}
-
-                              {/* Ngày yêu cầu */}
-                              <div className="mobile-repair-card-field">
-                                <span className="mobile-repair-card-label">Ngày yêu cầu</span>
-                                <span className="mobile-repair-card-value">
-                                  {format(parseISO(request.ngay_yeu_cau), 'dd/MM/yyyy', { locale: vi })}
-                                </span>
-                              </div>
-
-                              {/* Ngày mong muốn hoàn thành */}
-                              {request.ngay_mong_muon_hoan_thanh && (
-                                <div className="space-y-2">
-                                  <div className="mobile-repair-card-field">
-                                    <span className="mobile-repair-card-label">Ngày mong muốn HT</span>
-                                    <span className="mobile-repair-card-value">
-                                      {format(parseISO(request.ngay_mong_muon_hoan_thanh), 'dd/MM/yyyy', { locale: vi })}
-                                    </span>
-                                  </div>
-                                  {(() => {
-                                    // Chỉ hiển thị progress bar cho yêu cầu chưa hoàn thành
-                                    const isCompleted = request.trang_thai === 'Hoàn thành' || request.trang_thai === 'Không HT';
-                                    const daysInfo = !isCompleted ? calculateDaysRemaining(request.ngay_mong_muon_hoan_thanh) : null;
-                                    return daysInfo && (
-                                      <div className="flex items-center gap-2">
-                                        <div className="flex-1 bg-gray-200 rounded-full h-2">
-                                          <div
-                                            className={`h-2 rounded-full ${daysInfo.color} transition-all duration-300`}
-                                            style={{
-                                              width: daysInfo.days > 0
-                                                ? `${Math.min(100, Math.max(10, (daysInfo.days / 14) * 100))}%`
-                                                : '100%'
-                                            }}
-                                          />
-                                        </div>
-                                        <span className={`text-xs font-medium ${
-                                          daysInfo.status === 'success' ? 'text-green-600' :
-                                          daysInfo.status === 'warning' ? 'text-orange-600' : 'text-red-600'
-                                        }`}>
-                                          {daysInfo.text}
-                                        </span>
-                                      </div>
-                                    );
-                                  })()}
-                                </div>
-                              )}
-
-                              {/* Trạng thái */}
-                              <div className="mobile-repair-card-field">
-                                <span className="mobile-repair-card-label">Trạng thái</span>
-                                <Badge variant={getStatusVariant(request.trang_thai)} className="text-xs">
-                                  {request.trang_thai}
-                                </Badge>
-                              </div>
-
-                              {/* Mô tả sự cố */}
-                              <div className="space-y-1">
-                                <span className="mobile-repair-card-label">Mô tả sự cố:</span>
-                                <p className="mobile-repair-card-value text-left text-xs leading-relaxed line-clamp-2">{request.mo_ta_su_co}</p>
-                              </div>
-
-                              {/* Hạng mục sửa chữa (optional) */}
-                              {request.hang_muc_sua_chua && (
-                                <div className="space-y-1">
-                                  <span className="mobile-repair-card-label">Hạng mục sửa chữa:</span>
-                                  <p className="mobile-repair-card-value text-left text-xs leading-relaxed line-clamp-2">{request.hang_muc_sua_chua}</p>
-                                </div>
-                              )}
-                            </CardContent>
-                          </Card>
-                        );
-                      })
-                    ) : (
-                      <div className="text-center py-6 text-muted-foreground text-sm">
-                        Không có kết quả.
-                      </div>
-                    )}
-                  </div>
-                ) : (
-                  /* Desktop Table View */
-                  <div key={tableKey} className="rounded-md border overflow-x-auto">
-                    <div className="min-w-[1100px]">
-                      <Table>
-                        <TableHeader>
-                          {table.getHeaderGroups().map((headerGroup) => (
-                            <TableRow key={headerGroup.id}>
-                              {headerGroup.headers.map((header, colIdx) => (
-                                <TableHead
-                                  key={header.id}
-                                  className={cn(
-                                    density === 'compact' ? 'py-1' : density === 'spacious' ? 'py-3' : 'py-2',
-                                    colIdx === 0 && 'sticky left-0 z-20 bg-background w-[20rem] min-w-[20rem] max-w-[20rem] border-r',
-                                    colIdx === 1 && 'sticky left-[20rem] z-20 bg-background w-[14rem] min-w-[14rem] max-w-[14rem] border-r'
-                                  )}
-                                  style={undefined}
-                                >
-                                  {header.isPlaceholder ? null : flexRender(
-                                    header.column.columnDef.header,
-                                    header.getContext()
-                                  )}
-                                </TableHead>
-                              ))}
-                            </TableRow>
-                          ))}
-                        </TableHeader>
-                        <TableBody>
-                          {isLoading ? (
-                            <TableRow>
-                              <TableCell colSpan={columns.length} className={cn("h-24 text-center", density === 'compact' ? 'py-1' : density === 'spacious' ? 'py-3' : 'py-2')}>
-                                <div className="flex justify-center items-center gap-2">
-                                  <Loader2 className="h-4 w-4 animate-spin" />
-                                  <span>Đang tải...</span>
-                                </div>
-                              </TableCell>
-                            </TableRow>
-                          ) : table.getRowModel().rows?.length ? (
-                            table.getRowModel().rows.map((row) => {
-                              const req = row.original
-                              const isCompleted = req.trang_thai === 'Hoàn thành' || req.trang_thai === 'Không HT'
-                              const daysInfo = !isCompleted && req.ngay_mong_muon_hoan_thanh ? calculateDaysRemaining(req.ngay_mong_muon_hoan_thanh) : null
-                              const stripeClass = daysInfo ? (daysInfo.status === 'success' ? 'border-l-4 border-green-500' : daysInfo.status === 'warning' ? 'border-l-4 border-orange-500' : 'border-l-4 border-red-500') : ''
-                              return (
-                                <TableRow
-                                  key={row.id}
-                                  data-state={row.getIsSelected() && "selected"}
-                                  tabIndex={0}
-                                  className={cn("cursor-pointer hover:bg-muted/50 focus:outline-none", stripeClass)}
-                                  onClick={() => setRequestToView(row.original)}
-                                  onKeyDown={(e) => { if (e.key === 'Enter') setRequestToView(row.original) }}
-                                >
-                                  {row.getVisibleCells().map((cell, colIdx) => (
-                                    <TableCell
-                                      key={cell.id}
-                                      className={cn(
-                                        density === 'compact' ? 'py-1' : density === 'spacious' ? 'py-3' : 'py-2',
-                                        colIdx === 0 && 'sticky left-0 z-10 bg-background w-[20rem] min-w-[20rem] max-w-[20rem] border-r',
-                                        colIdx === 1 && 'sticky left-[20rem] z-10 bg-background w-[14rem] min-w-[14rem] max-w-[14rem] border-r',
-                                        textWrap === 'truncate' ? 'truncate' : 'whitespace-normal break-words'
-                                      )}
-                                    >
-                                      {flexRender(
-                                        cell.column.columnDef.cell,
-                                        cell.getContext()
-                                      )}
-                                    </TableCell>
-                                  ))}
-                                </TableRow>
-                              )
-                            })
-                          ) : (
-                            <TableRow>
-                              <TableCell colSpan={columns.length} className="h-24 text-center">
-                                Không có kết quả.
-                              </TableCell>
-                            </TableRow>
-                          )}
-                        </TableBody>
-                      </Table>
-                    </div>
-                  </div>
-                )}
-              </CardContent>
-              <CardFooter>
-                <div className="flex items-center justify-between w-full">
-                  <div className="flex-1 text-sm text-muted-foreground">
-                    {(() => {
-                      const total = totalRequests;
-                      const currentPage = pagination.pageIndex + 1;
-                      const pageSize = pagination.pageSize;
-                      const startItem = total > 0 ? (currentPage - 1) * pageSize + 1 : 0;
-                      const endItem = Math.min(currentPage * pageSize, total);
-                      return `Hiển thị ${startItem}-${endItem} trên tổng ${total} yêu cầu`;
-                    })()}
-                  </div>
-                  <div className="flex items-center space-x-6 lg:space-x-8">
-                    <div className="flex items-center space-x-2">
-                      <p className="text-sm font-medium">Số dòng</p>
-                      <Select
-                        value={`${table.getState().pagination.pageSize}`}
-                        onValueChange={(value) => {
-                          table.setPageSize(Number(value))
-                        }}
-                      >
-                        <SelectTrigger className="h-8 w-[70px] touch-target-sm md:h-8">
-                          <SelectValue placeholder={table.getState().pagination.pageSize} />
-                        </SelectTrigger>
-                        <SelectContent side="top">
-                          {[10, 20, 50, 100].map((pageSize) => (
-                            <SelectItem key={pageSize} value={`${pageSize}`}>
-                              {pageSize}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="flex w-[100px] items-center justify-center text-sm font-medium">
-                      Trang {table.getState().pagination.pageIndex + 1} /{" "}
-                      {table.getPageCount()}
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <Button
-                        variant="outline"
-                        className="hidden h-8 w-8 p-0 lg:flex touch-target-sm md:h-8 md:w-8"
-                        onClick={() => table.setPageIndex(0)}
-                        disabled={!table.getCanPreviousPage()}
-                      >
-                        <span className="sr-only">Go to first page</span>
-                        <ChevronsLeft className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="outline"
-                        className="h-8 w-8 p-0 touch-target-sm md:h-8 md:w-8"
-                        onClick={() => table.previousPage()}
-                        disabled={!table.getCanPreviousPage()}
-                      >
-                        <span className="sr-only">Go to previous page</span>
-                        <ChevronLeft className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="outline"
-                        className="h-8 w-8 p-0 touch-target-sm md:h-8 md:w-8"
-                        onClick={() => table.nextPage()}
-                        disabled={!table.getCanNextPage()}
-                      >
-                        <span className="sr-only">Go to next page</span>
-                        <ChevronRight className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="outline"
-                        className="hidden h-8 w-8 p-0 lg:flex touch-target-sm md:h-8 md:w-8"
-                        onClick={() => table.setPageIndex(table.getPageCount() - 1)}
-                        disabled={!table.getCanNextPage()}
-                      >
-                        <span className="sr-only">Go to last page</span>
-                        <ChevronsRight className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-              </CardFooter>
-            </Card>
+        <div className="space-y-6">
+          {/* Header + Create Button */}
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <h1 className="text-xl md:text-2xl font-semibold">Yêu cầu sửa chữa</h1>
+              {selectedFacilityName && (
+                <p className="text-sm text-muted-foreground">{selectedFacilityName}</p>
+              )}
+            </div>
+            {!isRegionalLeader && (
+              <div className="hidden md:flex items-center gap-2">
+                <Button onClick={() => setIsCreateOpen(true)} className="touch-target">
+                  <PlusCircle className="mr-2 h-4 w-4" /> Tạo yêu cầu
+                </Button>
+              </div>
+            )}
           </div>
+
+          {/* Summary */}
+          <SummaryBar items={summaryItems} loading={statusCountsLoading} />
+
+          {/* Create Sheet */}
+          {!isRegionalLeader && (
+            <Sheet open={isCreateOpen} onOpenChange={setIsCreateOpen}>
+              <SheetContent
+                side={isSheetMobile ? "bottom" : "right"}
+                className={cn(isSheetMobile ? "h-[90vh] p-0" : "sm:max-w-lg")}
+              >
+                <SheetHeaderUI className={cn(isSheetMobile ? "p-4 border-b" : "")}>
+                  <SheetTitle>Tạo yêu cầu sửa chữa</SheetTitle>
+                  <SheetDescription>Điền thông tin bên dưới để gửi yêu cầu mới.</SheetDescription>
+                </SheetHeaderUI>
+                <div className={cn("mt-4", isSheetMobile ? "px-4 overflow-y-auto h-[calc(90vh-80px)]" : "")}>
+                  <form onSubmit={handleSubmit} className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="search-equipment">Thiết bị</Label>
+                      <div className="relative">
+                        <Input
+                          id="search-equipment"
+                          placeholder={"Nhập tên hoặc mã để tìm kiếm..."}
+                          value={searchQuery}
+                          onChange={handleSearchChange}
+                          autoComplete="off"
+                          required
+                        />
+                        {filteredEquipment.length > 0 && (
+                          <div className="absolute z-10 w-full mt-1 bg-popover border rounded-md shadow-lg max-h-60 overflow-y-auto">
+                            <div className="p-1">
+                              {filteredEquipment.map((equipment) => (
+                                <div
+                                  key={equipment.id}
+                                  className="text-sm mobile-interactive hover:bg-accent rounded-sm cursor-pointer touch-target-sm"
+                                  onClick={() => handleSelectEquipment(equipment)}
+                                >
+                                  <div className="font-medium">{equipment.ten_thiet_bi}</div>
+                                  <div className="text-xs text-muted-foreground">
+                                    {equipment.ma_thiet_bi}
+                                    {equipment.khoa_phong_quan_ly && (
+                                      <span className="ml-2 text-blue-600">• {equipment.khoa_phong_quan_ly}</span>
+                                    )}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                        {shouldShowNoResults && (
+                          <div className="absolute z-10 w-full mt-1 bg-popover border rounded-md shadow-lg p-3">
+                            <div className="text-sm text-muted-foreground text-center">
+                              Không tìm thấy kết quả phù hợp
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                      {selectedEquipment && (
+                        <p className="text-xs text-muted-foreground flex items-center gap-1.5 pt-1">
+                          <Check className="h-3.5 w-3.5 text-green-600" />
+                          <span>Đã chọn: {selectedEquipment.ten_thiet_bi} ({selectedEquipment.ma_thiet_bi})</span>
+                        </p>
+                      )}
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="issue">Mô tả sự cố</Label>
+                      <Textarea
+                        id="issue"
+                        placeholder="Mô tả chi tiết vấn đề gặp phải..."
+                        rows={4}
+                        value={issueDescription}
+                        onChange={(e) => setIssueDescription(e.target.value)}
+                        required
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="repair-items">Các hạng mục yêu cầu sửa chữa</Label>
+                      <Textarea
+                        id="repair-items"
+                        placeholder="VD: Thay màn hình, sửa nguồn..."
+                        rows={3}
+                        value={repairItems}
+                        onChange={(e) => setRepairItems(e.target.value)}
+                        required
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Ngày mong muốn hoàn thành (nếu có)</Label>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button
+                            variant={"outline"}
+                            className={cn(
+                              "w-full justify-start text-left font-normal touch-target",
+                              !desiredDate && "text-muted-foreground"
+                            )}
+                          >
+                            <CalendarIcon className="mr-2 h-4 w-4" />
+                            {desiredDate ? format(desiredDate, "dd/MM/yyyy") : <span>Chọn ngày</span>}
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0">
+                          <Calendar
+                            mode="single"
+                            selected={desiredDate}
+                            onSelect={setDesiredDate}
+                            initialFocus
+                            disabled={(date) => date < new Date(new Date().setHours(0, 0, 0, 0))}
+                          />
+                        </PopoverContent>
+                      </Popover>
+                    </div>
+
+                    {canSetRepairUnit && (
+                      <div className="space-y-2">
+                        <Label htmlFor="repair-unit">Đơn vị thực hiện</Label>
+                        <Select value={repairUnit} onValueChange={(value: 'noi_bo' | 'thue_ngoai') => setRepairUnit(value)}>
+                          <SelectTrigger className="touch-target">
+                            <SelectValue placeholder="Chọn đơn vị thực hiện" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="noi_bo">Nội bộ</SelectItem>
+                            <SelectItem value="thue_ngoai">Thuê ngoài</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    )}
+
+                    {canSetRepairUnit && repairUnit === 'thue_ngoai' && (
+                      <div className="space-y-2">
+                        <Label htmlFor="external-company">Tên đơn vị được thuê</Label>
+                        <Input
+                          id="external-company"
+                          placeholder="Nhập tên đơn vị được thuê sửa chữa..."
+                          value={externalCompanyName}
+                          onChange={(e) => setExternalCompanyName(e.target.value)}
+                          required
+                          className="touch-target"
+                        />
+                      </div>
+                    )}
+
+                    <div className="flex gap-3 pt-2">
+                      <Button type="button" variant="outline" className="flex-1 touch-target" onClick={() => setIsCreateOpen(false)}>
+                        Hủy
+                      </Button>
+                      <Button type="submit" className="flex-1 touch-target" disabled={isSubmitting}>
+                        {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                        {isSubmitting ? "Đang gửi..." : "Gửi yêu cầu"}
+                      </Button>
+                    </div>
+                  </form>
+                </div>
+              </SheetContent>
+            </Sheet>
+          )}
+
+          {/* Mobile FAB for quick create */}
+          {!isRegionalLeader && isMobile && (
+            <Button
+              className="fixed right-6 fab-above-footer rounded-full h-14 w-14 shadow-lg"
+              onClick={() => setIsCreateOpen(true)}
+              aria-label="Tạo yêu cầu"
+            >
+              <PlusCircle className="h-6 w-6" />
+            </Button>
+          )}
+
+          {/* Content area: Split on desktop, full on mobile or when aside collapsed/full mode */}
+          <div className="grid grid-cols-1 gap-4">
+            {/* Left: Requests List */}
+            <div className="w-full">
+              <Card className="overflow-hidden">
+                <CardHeader>
+                  <CardTitle className="heading-responsive-h2">Tổng hợp các yêu cầu sửa chữa thiết bị</CardTitle>
+                  <CardDescription className="body-responsive-sm">
+                    Tất cả các yêu cầu sửa chữa đã được ghi nhận.
+                  </CardDescription>
+
+                  {/* Facility filter for global, admin, and regional leaders */}
+                  {showFacilityFilter && (
+                    <div className="flex items-center gap-2 mt-4 flex-wrap">
+                      <div className="flex items-center gap-2 flex-1 min-w-0">
+                        <Building2 className="h-4 w-4 text-muted-foreground shrink-0" />
+                        <Select
+                          value={selectedFacilityId?.toString() || "all"}
+                          onValueChange={(value) => setSelectedFacilityId(value === "all" ? null : Number(value))}
+                          disabled={facilityOptions.length === 0}
+                        >
+                          <SelectTrigger className="h-9 border-dashed">
+                            <SelectValue placeholder="Chọn cơ sở..." />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="all">
+                              <div className="flex items-center gap-2">
+                                <Building2 className="h-4 w-4 text-muted-foreground" />
+                                <span>Tất cả cơ sở</span>
+                              </div>
+                            </SelectItem>
+                            {facilityOptions.length === 0 ? (
+                              <SelectItem value="empty" disabled>
+                                <span className="text-muted-foreground italic">Chưa có yêu cầu</span>
+                              </SelectItem>
+                            ) : (
+                              facilityOptions.map((facility) => {
+                                const count = facilityCounts.get(facility.id) || 0;
+                                return (
+                                  <SelectItem key={facility.id} value={facility.id.toString()}>
+                                    <div className="flex items-center justify-between w-full gap-4">
+                                      <span className="truncate">{facility.name}</span>
+                                      <span className="text-xs text-muted-foreground shrink-0">{count}</span>
+                                    </div>
+                                  </SelectItem>
+                                );
+                              })
+                            )}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      {selectedFacilityName && selectedFacilityId && (
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Badge variant="secondary" className="shrink-0 cursor-help">
+                                {facilityCounts.get(selectedFacilityId) || 0} yêu cầu
+                              </Badge>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p>Số yêu cầu hiển thị ở cơ sở này</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      )}
+                      {!selectedFacility && facilityOptions.length > 0 && (
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Badge variant="outline" className="shrink-0 cursor-help">
+                                {facilityOptions.length} cơ sở • {totalRequests} yêu cầu
+                              </Badge>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p>Tổng số cơ sở và yêu cầu hiển thị</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      )}
+                    </div>
+                  )}
+                </CardHeader>
+                <CardContent className="p-3 md:p-6 gap-3 md:gap-4">
+                  <div className="flex items-center justify-between gap-2 flex-wrap mb-2 md:mb-3">
+                    <div className="flex flex-1 items-center gap-2">
+                      <Input
+                        ref={searchInputRef}
+                        placeholder="Tìm thiết bị, mô tả..."
+                        value={searchTerm}
+                        onChange={(event) => setSearchTerm(event.target.value)}
+                        className="h-8 w-[120px] md:w-[200px] lg:w-[250px] touch-target-sm md:h-8"
+                      />
+
+                      <Button variant="outline" size="sm" className="h-8 touch-target-sm" onClick={() => setIsFilterModalOpen(true)}>Bộ lọc</Button>
+
+                      {/* Advanced filters only: open modal/sheet */}
+
+                      {/* Clear all filters button */}
+                      {isFiltered && (
+                        <Button
+                          variant="ghost"
+                          onClick={() => {
+                            table.resetColumnFilters();
+                            setUiFiltersState({ status: [], dateRange: null });
+                            setUiFilters({ status: [], dateRange: null });
+                            if (showFacilityFilter) setSelectedFacilityId(null);
+                            setSearchTerm("");
+                          }}
+                          className="h-8 px-2 lg:px-3 touch-target-sm md:h-8"
+                          aria-label="Xóa bộ lọc"
+                        >
+                          <span className="hidden sm:inline">Xóa</span>
+                          <FilterX className="h-4 w-4 sm:ml-2" />
+                        </Button>
+                      )}
+
+                      {/* Display menu: presets, density, wrap */}
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="outline" size="sm" className="h-8 touch-target-sm">Hiển thị</Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuLabel>Preset cột</DropdownMenuLabel>
+                          <DropdownMenuItem onSelect={() => {
+                            const next: any = { thiet_bi_va_mo_ta: true, ngay_yeu_cau: true, trang_thai: true, nguoi_yeu_cau: false, ngay_mong_muon_hoan_thanh: false, actions: true }
+                            setColumnVisibilityState(next); setColumnVisibility(next)
+                          }}>Compact</DropdownMenuItem>
+                          <DropdownMenuItem onSelect={() => {
+                            const next: any = { thiet_bi_va_mo_ta: true, nguoi_yeu_cau: true, ngay_yeu_cau: true, ngay_mong_muon_hoan_thanh: true, trang_thai: true, actions: true }
+                            setColumnVisibilityState(next); setColumnVisibility(next)
+                          }}>Standard</DropdownMenuItem>
+                          <DropdownMenuItem onSelect={() => {
+                            const next: any = { thiet_bi_va_mo_ta: true, nguoi_yeu_cau: true, ngay_yeu_cau: true, ngay_mong_muon_hoan_thanh: true, trang_thai: true, actions: true }
+                            setColumnVisibilityState(next); setColumnVisibility(next)
+                          }}>Full</DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuLabel>Mật độ</DropdownMenuLabel>
+                          <DropdownMenuItem onSelect={() => setDensity('compact')}>
+                            {density === 'compact' ? '✓ ' : ''}Compact
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onSelect={() => setDensity('standard')}>
+                            {density === 'standard' ? '✓ ' : ''}Standard
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onSelect={() => setDensity('spacious')}>
+                            {density === 'spacious' ? '✓ ' : ''}Spacious
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuLabel>Văn bản</DropdownMenuLabel>
+                          <DropdownMenuItem onSelect={() => setTextWrapState('truncate')}>
+                            {textWrap === 'truncate' ? '✓ ' : ''}Thu gọn
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onSelect={() => setTextWrapState('wrap')}>
+                            {textWrap === 'wrap' ? '✓ ' : ''}Xuống dòng
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+
+                    {/* Chips under search */}
+                    <div className="w-full pt-2">
+                      <FilterChips
+                        value={{
+                          status: uiFilters.status,
+                          facilityName: selectedFacilityName,
+                          dateRange: uiFilters.dateRange ? { from: uiFilters.dateRange.from ?? null, to: uiFilters.dateRange.to ?? null } : null,
+                        }}
+                        showFacility={showFacilityFilter}
+                        onRemove={(key, sub) => {
+                          if (key === 'status' && sub) {
+                            const next = uiFilters.status.filter(s => s !== sub)
+                            const updated = { ...uiFilters, status: next }
+                            setUiFiltersState(updated); setUiFilters(updated)
+                          } else if (key === 'facilityName') {
+                            setSelectedFacilityId(null)
+                          } else if (key === 'dateRange') {
+                            const updated = { ...uiFilters, dateRange: null }
+                            setUiFiltersState(updated); setUiFilters(updated)
+                          }
+                        }}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Filter Modal */}
+                  <FilterModal
+                    open={isFilterModalOpen}
+                    onOpenChange={setIsFilterModalOpen}
+                    value={{
+                      status: uiFilters.status,
+                      facilityId: selectedFacilityId ?? null,
+                      dateRange: uiFilters.dateRange ? {
+                        from: uiFilters.dateRange.from ? new Date(uiFilters.dateRange.from) : null,
+                        to: uiFilters.dateRange.to ? new Date(uiFilters.dateRange.to) : null,
+                      } : { from: null, to: null },
+                    }}
+                    onChange={(v) => {
+                      // sync facility
+                      if (showFacilityFilter) setSelectedFacilityId(v.facilityId ?? null)
+                      // persist date range and status
+                      const updated: UiFiltersPrefs = {
+                        status: v.status,
+                        dateRange: v.dateRange ? {
+                          from: v.dateRange.from ? format(v.dateRange.from, 'yyyy-MM-dd') : null,
+                          to: v.dateRange.to ? format(v.dateRange.to, 'yyyy-MM-dd') : null,
+                        } : null,
+                      }
+                      setUiFiltersState(updated); setUiFilters(updated)
+                    }}
+                    showFacility={showFacilityFilter}
+                    facilities={facilityOptions.map(f => ({ id: f.id, name: f.name }))}
+                    variant={isMobile ? 'sheet' : 'dialog'}
+                  />
+                  {/* Mobile Card View */}
+                  {isMobile ? (
+                    <div className="space-y-3">
+                      {isLoading ? (
+                        <div className="flex justify-center items-center gap-2 py-6">
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                          <span className="text-sm">Đang tải...</span>
+                        </div>
+                      ) : table.getRowModel().rows?.length ? (
+                        table.getRowModel().rows.map((row) => {
+                          const request = row.original;
+                          return (
+                            <Card
+                              key={request.id}
+                              className="mobile-repair-card cursor-pointer hover:bg-muted/50"
+                              onClick={() => setRequestToView(request)}
+                            >
+                              <CardHeader className="mobile-repair-card-header flex flex-row items-start justify-between">
+                                <div className="flex-1 min-w-0 pr-2">
+                                  <CardTitle className="mobile-repair-card-title truncate line-clamp-1">
+                                    {request.thiet_bi?.ten_thiet_bi || 'N/A'}
+                                  </CardTitle>
+                                  <CardDescription className="mobile-repair-card-description truncate">
+                                    {request.thiet_bi?.ma_thiet_bi || 'N/A'}
+                                  </CardDescription>
+                                </div>
+                                <div className="flex-shrink-0" onClick={(e) => e.stopPropagation()}>
+                                  {renderActions(request)}
+                                </div>
+                              </CardHeader>
+                              <CardContent className="mobile-repair-card-content">
+                                {/* Người yêu cầu */}
+                                {request.nguoi_yeu_cau && (
+                                  <div className="mobile-repair-card-field">
+                                    <span className="mobile-repair-card-label">Người yêu cầu</span>
+                                    <span className="mobile-repair-card-value">{request.nguoi_yeu_cau}</span>
+                                  </div>
+                                )}
+
+                                {/* Ngày yêu cầu */}
+                                <div className="mobile-repair-card-field">
+                                  <span className="mobile-repair-card-label">Ngày yêu cầu</span>
+                                  <span className="mobile-repair-card-value">
+                                    {format(parseISO(request.ngay_yeu_cau), 'dd/MM/yyyy', { locale: vi })}
+                                  </span>
+                                </div>
+
+                                {/* Ngày mong muốn hoàn thành */}
+                                {request.ngay_mong_muon_hoan_thanh && (
+                                  <div className="space-y-2">
+                                    <div className="mobile-repair-card-field">
+                                      <span className="mobile-repair-card-label">Ngày mong muốn HT</span>
+                                      <span className="mobile-repair-card-value">
+                                        {format(parseISO(request.ngay_mong_muon_hoan_thanh), 'dd/MM/yyyy', { locale: vi })}
+                                      </span>
+                                    </div>
+                                    {(() => {
+                                      // Chỉ hiển thị progress bar cho yêu cầu chưa hoàn thành
+                                      const isCompleted = request.trang_thai === 'Hoàn thành' || request.trang_thai === 'Không HT';
+                                      const daysInfo = !isCompleted ? calculateDaysRemaining(request.ngay_mong_muon_hoan_thanh) : null;
+                                      return daysInfo && (
+                                        <div className="flex items-center gap-2">
+                                          <div className="flex-1 bg-gray-200 rounded-full h-2">
+                                            <div
+                                              className={`h-2 rounded-full ${daysInfo.color} transition-all duration-300`}
+                                              style={{
+                                                width: daysInfo.days > 0
+                                                  ? `${Math.min(100, Math.max(10, (daysInfo.days / 14) * 100))}%`
+                                                  : '100%'
+                                              }}
+                                            />
+                                          </div>
+                                          <span className={`text-xs font-medium ${daysInfo.status === 'success' ? 'text-green-600' :
+                                            daysInfo.status === 'warning' ? 'text-orange-600' : 'text-red-600'
+                                            }`}>
+                                            {daysInfo.text}
+                                          </span>
+                                        </div>
+                                      );
+                                    })()}
+                                  </div>
+                                )}
+
+                                {/* Trạng thái */}
+                                <div className="mobile-repair-card-field">
+                                  <span className="mobile-repair-card-label">Trạng thái</span>
+                                  <Badge variant={getStatusVariant(request.trang_thai)} className="text-xs">
+                                    {request.trang_thai}
+                                  </Badge>
+                                </div>
+
+                                {/* Mô tả sự cố */}
+                                <div className="space-y-1">
+                                  <span className="mobile-repair-card-label">Mô tả sự cố:</span>
+                                  <p className="mobile-repair-card-value text-left text-xs leading-relaxed line-clamp-2">{request.mo_ta_su_co}</p>
+                                </div>
+
+                                {/* Hạng mục sửa chữa (optional) */}
+                                {request.hang_muc_sua_chua && (
+                                  <div className="space-y-1">
+                                    <span className="mobile-repair-card-label">Hạng mục sửa chữa:</span>
+                                    <p className="mobile-repair-card-value text-left text-xs leading-relaxed line-clamp-2">{request.hang_muc_sua_chua}</p>
+                                  </div>
+                                )}
+                              </CardContent>
+                            </Card>
+                          );
+                        })
+                      ) : (
+                        <div className="text-center py-6 text-muted-foreground text-sm">
+                          Không có kết quả.
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    /* Desktop Table View */
+                    <div key={tableKey} className="rounded-md border overflow-x-auto">
+                      <div className="min-w-[1100px]">
+                        <Table>
+                          <TableHeader>
+                            {table.getHeaderGroups().map((headerGroup) => (
+                              <TableRow key={headerGroup.id}>
+                                {headerGroup.headers.map((header, colIdx) => (
+                                  <TableHead
+                                    key={header.id}
+                                    className={cn(
+                                      density === 'compact' ? 'py-1' : density === 'spacious' ? 'py-3' : 'py-2',
+                                      colIdx === 0 && 'sticky left-0 z-20 bg-background w-[20rem] min-w-[20rem] max-w-[20rem] border-r',
+                                      colIdx === 1 && 'sticky left-[20rem] z-20 bg-background w-[14rem] min-w-[14rem] max-w-[14rem] border-r'
+                                    )}
+                                    style={undefined}
+                                  >
+                                    {header.isPlaceholder ? null : flexRender(
+                                      header.column.columnDef.header,
+                                      header.getContext()
+                                    )}
+                                  </TableHead>
+                                ))}
+                              </TableRow>
+                            ))}
+                          </TableHeader>
+                          <TableBody>
+                            {isLoading ? (
+                              <TableRow>
+                                <TableCell colSpan={columns.length} className={cn("h-24 text-center", density === 'compact' ? 'py-1' : density === 'spacious' ? 'py-3' : 'py-2')}>
+                                  <div className="flex justify-center items-center gap-2">
+                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                    <span>Đang tải...</span>
+                                  </div>
+                                </TableCell>
+                              </TableRow>
+                            ) : table.getRowModel().rows?.length ? (
+                              table.getRowModel().rows.map((row) => {
+                                const req = row.original
+                                const isCompleted = req.trang_thai === 'Hoàn thành' || req.trang_thai === 'Không HT'
+                                const daysInfo = !isCompleted && req.ngay_mong_muon_hoan_thanh ? calculateDaysRemaining(req.ngay_mong_muon_hoan_thanh) : null
+                                const stripeClass = daysInfo ? (daysInfo.status === 'success' ? 'border-l-4 border-green-500' : daysInfo.status === 'warning' ? 'border-l-4 border-orange-500' : 'border-l-4 border-red-500') : ''
+                                return (
+                                  <TableRow
+                                    key={row.id}
+                                    data-state={row.getIsSelected() && "selected"}
+                                    tabIndex={0}
+                                    className={cn("cursor-pointer hover:bg-muted/50 focus:outline-none", stripeClass)}
+                                    onClick={() => setRequestToView(row.original)}
+                                    onKeyDown={(e) => { if (e.key === 'Enter') setRequestToView(row.original) }}
+                                  >
+                                    {row.getVisibleCells().map((cell, colIdx) => (
+                                      <TableCell
+                                        key={cell.id}
+                                        className={cn(
+                                          density === 'compact' ? 'py-1' : density === 'spacious' ? 'py-3' : 'py-2',
+                                          colIdx === 0 && 'sticky left-0 z-10 bg-background w-[20rem] min-w-[20rem] max-w-[20rem] border-r',
+                                          colIdx === 1 && 'sticky left-[20rem] z-10 bg-background w-[14rem] min-w-[14rem] max-w-[14rem] border-r',
+                                          textWrap === 'truncate' ? 'truncate' : 'whitespace-normal break-words'
+                                        )}
+                                      >
+                                        {flexRender(
+                                          cell.column.columnDef.cell,
+                                          cell.getContext()
+                                        )}
+                                      </TableCell>
+                                    ))}
+                                  </TableRow>
+                                )
+                              })
+                            ) : (
+                              <TableRow>
+                                <TableCell colSpan={columns.length} className="h-24 text-center">
+                                  Không có kết quả.
+                                </TableCell>
+                              </TableRow>
+                            )}
+                          </TableBody>
+                        </Table>
+                      </div>
+                    </div>
+                  )}
+                </CardContent>
+                <CardFooter className="py-4">
+                  <div className="flex flex-col md:flex-row items-center justify-between w-full gap-4 md:gap-0">
+                    <div className="flex-1 text-sm text-muted-foreground text-center md:text-left w-full md:w-auto order-2 md:order-1">
+                      {(() => {
+                        const total = totalRequests;
+                        const currentPage = pagination.pageIndex + 1;
+                        const pageSize = pagination.pageSize;
+                        const startItem = total > 0 ? (currentPage - 1) * pageSize + 1 : 0;
+                        const endItem = Math.min(currentPage * pageSize, total);
+                        return `Hiển thị ${startItem}-${endItem} trên tổng ${total} yêu cầu`;
+                      })()}
+                    </div>
+                    <div className="flex flex-col sm:flex-row items-center gap-4 md:space-x-6 lg:space-x-8 w-full md:w-auto justify-center md:justify-end order-1 md:order-2">
+                      <div className="flex items-center space-x-2">
+                        <p className="text-sm font-medium">Số dòng</p>
+                        <Select
+                          value={`${table.getState().pagination.pageSize}`}
+                          onValueChange={(value) => {
+                            table.setPageSize(Number(value))
+                          }}
+                        >
+                          <SelectTrigger className="h-8 w-[70px] touch-target-sm md:h-8">
+                            <SelectValue placeholder={table.getState().pagination.pageSize} />
+                          </SelectTrigger>
+                          <SelectContent side="top">
+                            {[10, 20, 50, 100].map((pageSize) => (
+                              <SelectItem key={pageSize} value={`${pageSize}`}>
+                                {pageSize}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="flex w-[100px] items-center justify-center text-sm font-medium">
+                        Trang {table.getState().pagination.pageIndex + 1} /{" "}
+                        {table.getPageCount()}
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <Button
+                          variant="outline"
+                          className="hidden h-8 w-8 p-0 lg:flex touch-target-sm md:h-8 md:w-8"
+                          onClick={() => table.setPageIndex(0)}
+                          disabled={!table.getCanPreviousPage()}
+                        >
+                          <span className="sr-only">Go to first page</span>
+                          <ChevronsLeft className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="outline"
+                          className="h-8 w-8 p-0 touch-target-sm md:h-8 md:w-8"
+                          onClick={() => table.previousPage()}
+                          disabled={!table.getCanPreviousPage()}
+                        >
+                          <span className="sr-only">Go to previous page</span>
+                          <ChevronLeft className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="outline"
+                          className="h-8 w-8 p-0 touch-target-sm md:h-8 md:w-8"
+                          onClick={() => table.nextPage()}
+                          disabled={!table.getCanNextPage()}
+                        >
+                          <span className="sr-only">Go to next page</span>
+                          <ChevronRight className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="outline"
+                          className="hidden h-8 w-8 p-0 lg:flex touch-target-sm md:h-8 md:w-8"
+                          onClick={() => table.setPageIndex(table.getPageCount() - 1)}
+                          disabled={!table.getCanNextPage()}
+                        >
+                          <span className="sr-only">Go to last page</span>
+                          <ChevronsRight className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                </CardFooter>
+              </Card>
+            </div>
+
+          </div>
+
+          {/* Fall-back (mobile/tablet): keep FAB + Sheet for create */}
 
         </div>
 
-        {/* Fall-back (mobile/tablet): keep FAB + Sheet for create */}
-        
-      </div>
-
-    </>
+      </>
     </ErrorBoundary>
   )
 }

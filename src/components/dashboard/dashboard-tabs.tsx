@@ -9,7 +9,8 @@ import { Card, CardContent, CardDescription, CardHeader } from "@/components/ui/
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Skeleton } from "@/components/ui/skeleton"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { useEquipmentAttention, useMaintenancePlanStats } from "@/hooks/use-dashboard-stats"
+import { useEquipmentAttentionPaginated } from "@/hooks/use-dashboard-stats"
+import { useMaintenancePlans } from "@/hooks/use-cached-maintenance"
 import { useCalendarData } from "@/hooks/use-calendar-data"
 import { TaskType } from "@/lib/data"
 
@@ -17,16 +18,73 @@ export function DashboardTabs() {
   const currentDate = new Date()
   const year = currentDate.getFullYear()
   const month = currentDate.getMonth() + 1
+  const pageSize = 10
 
-  const { data: equipmentNeedingAttention, isLoading: isLoadingEquipment, error: equipmentError } = useEquipmentAttention()
-  const { data: planStats, isLoading: isLoadingPlans, error: plansError } = useMaintenancePlanStats()
-  const { data: calendarData, isLoading: isLoadingCalendar, error: calendarError } = useCalendarData(year, month)
+  const [activeTab, setActiveTab] = React.useState<'equipment' | 'plans' | 'monthly'>('equipment')
+  const [equipmentPage, setEquipmentPage] = React.useState(1)
+  const [planPage, setPlanPage] = React.useState(1)
+
+  const {
+    data: equipmentPageData,
+    isLoading: isLoadingEquipment,
+    isFetching: isFetchingEquipment,
+    error: equipmentError
+  } = useEquipmentAttentionPaginated({
+    page: equipmentPage,
+    pageSize,
+    enabled: activeTab === 'equipment',
+  })
+
+  const {
+    data: planListData,
+    isLoading: isLoadingPlans,
+    isFetching: isFetchingPlans,
+    error: plansError,
+  } = useMaintenancePlans(
+    { page: planPage, pageSize },
+    { enabled: activeTab === 'plans' }
+  )
+
+  const {
+    data: calendarData,
+    isLoading: isLoadingCalendar,
+    isFetching: isFetchingCalendar,
+    error: calendarError
+  } = useCalendarData(year, month, { enabled: activeTab === 'monthly' })
+
+  const equipmentNeedingAttention = equipmentPageData?.data ?? []
+  const equipmentTotal = equipmentPageData?.total ?? 0
+  const equipmentTotalPages = equipmentTotal > 0 ? Math.ceil(equipmentTotal / pageSize) : 1
+  const equipmentHasMore = equipmentPageData?.hasMore ?? (equipmentPage < equipmentTotalPages)
+
+  const planItems = planListData?.data ?? []
+  const planTotal = planListData?.total ?? 0
+  const planTotalPages = planTotal > 0 ? Math.ceil(planTotal / pageSize) : 1
+  const planHasMore = planPage < planTotalPages
+
+  React.useEffect(() => {
+    if (!equipmentPageData) return
+    if (equipmentPage > equipmentTotalPages) {
+      setEquipmentPage(equipmentTotalPages)
+    }
+  }, [equipmentPage, equipmentPageData, equipmentTotalPages])
+
+  React.useEffect(() => {
+    if (!planListData) return
+    if (planPage > planTotalPages) {
+      setPlanPage(planTotalPages)
+    }
+  }, [planPage, planListData, planTotalPages])
 
   const events = calendarData?.events || []
   const calendarStats = calendarData?.stats || { total: 0, completed: 0, pending: 0, byType: {} }
   const pendingTasks = events.filter(event => !event.isCompleted)
   const completedTasks = events.filter(event => event.isCompleted)
   const priorityTasks = pendingTasks.filter(task => currentDate.getDate() > 15)
+
+  const showEquipmentSkeleton = isLoadingEquipment || (isFetchingEquipment && !equipmentPageData)
+  const showPlanSkeleton = isLoadingPlans || (isFetchingPlans && !planListData)
+  const showCalendarSkeleton = isLoadingCalendar || (isFetchingCalendar && !calendarData)
 
   const getEquipmentStatusColor = (status: string) => {
     switch (status) {
@@ -65,22 +123,13 @@ export function DashboardTabs() {
     }
   }
 
-  const getTaskColor = (type: TaskType) => {
-    switch (type) {
-      case "Bảo trì":
-        return "bg-blue-50 text-blue-700 border-blue-200"
-      case "Hiệu chuẩn":
-        return "bg-orange-50 text-orange-700 border-orange-200"
-      case "Kiểm định":
-        return "bg-purple-50 text-purple-700 border-purple-200"
-      default:
-        return "bg-gray-50 text-gray-700 border-gray-200"
-    }
-  }
-
   return (
     <Card className="xl:col-span-3">
-      <Tabs defaultValue="equipment" className="w-full">
+      <Tabs 
+        value={activeTab} 
+        onValueChange={(value) => setActiveTab(value as 'equipment' | 'plans' | 'monthly')} 
+        className="w-full"
+      >
         {/* Modern Tabbed Header */}
         <CardHeader className="pb-3 md:p-8 md:pb-4">
           <div className="flex flex-col gap-4">
@@ -142,7 +191,7 @@ export function DashboardTabs() {
               </div>
             ) : (
               <div className="space-y-3">
-                {isLoadingEquipment ? (
+                {showEquipmentSkeleton ? (
                   // Loading skeleton
                   Array.from({ length: 3 }).map((_, index) => (
                     <div key={index} className="p-4 rounded-xl border border-gray-200/50 bg-white/60 backdrop-blur-sm">
@@ -156,7 +205,7 @@ export function DashboardTabs() {
                       </div>
                     </div>
                   ))
-                ) : equipmentNeedingAttention && equipmentNeedingAttention.length > 0 ? (
+                ) : equipmentNeedingAttention.length > 0 ? (
                   equipmentNeedingAttention.map((item) => (
                     <div
                       key={item.id}
@@ -203,6 +252,32 @@ export function DashboardTabs() {
                     <p>Không có thiết bị nào cần chú ý</p>
                   </div>
                 )}
+
+                {equipmentPageData && (
+                  <div className="flex items-center justify-between pt-1">
+                    <p className="text-xs text-gray-500">
+                      Trang {equipmentPage} / {equipmentTotalPages} • Tổng {equipmentTotal}
+                    </p>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={equipmentPage === 1 || isFetchingEquipment}
+                        onClick={() => setEquipmentPage((prev) => Math.max(1, prev - 1))}
+                      >
+                        Trước
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={!equipmentHasMore || isFetchingEquipment}
+                        onClick={() => setEquipmentPage((prev) => prev + 1)}
+                      >
+                        Sau
+                      </Button>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </TabsContent>
@@ -227,7 +302,7 @@ export function DashboardTabs() {
               </div>
             ) : (
               <div className="space-y-3">
-                {isLoadingPlans ? (
+                {showPlanSkeleton ? (
                   // Loading skeleton
                   Array.from({ length: 5 }).map((_, index) => (
                     <div key={index} className="p-4 rounded-xl border border-gray-200/50 bg-white/60 backdrop-blur-sm">
@@ -243,8 +318,8 @@ export function DashboardTabs() {
                       </div>
                     </div>
                   ))
-                ) : planStats?.plans && planStats.plans.length > 0 ? (
-                  planStats.plans.map((plan) => (
+                ) : planItems.length > 0 ? (
+                  planItems.map((plan) => (
                     <Link
                       key={plan.id}
                       href={`/maintenance?planId=${plan.id}&tab=tasks`}
@@ -284,6 +359,32 @@ export function DashboardTabs() {
                     <p>Chưa có kế hoạch nào</p>
                   </div>
                 )}
+
+                {planListData && (
+                  <div className="flex items-center justify-between pt-1">
+                    <p className="text-xs text-gray-500">
+                      Trang {planPage} / {planTotalPages} • Tổng {planTotal}
+                    </p>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={planPage === 1 || isFetchingPlans}
+                        onClick={() => setPlanPage((prev) => Math.max(1, prev - 1))}
+                      >
+                        Trước
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={!planHasMore || isFetchingPlans}
+                        onClick={() => setPlanPage((prev) => prev + 1)}
+                      >
+                        Sau
+                      </Button>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </TabsContent>
@@ -308,7 +409,7 @@ export function DashboardTabs() {
               </div>
             ) : (
               <div className="space-y-4">
-                {isLoadingCalendar ? (
+                {showCalendarSkeleton ? (
                   // Loading skeleton
                   <div className="space-y-3">
                     {Array.from({ length: 3 }).map((_, index) => (

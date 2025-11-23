@@ -16,3 +16,12 @@ Use `@/openspec/AGENTS.md` to learn:
 Keep this managed block so 'openspec update' can refresh the instructions.
 
 <!-- OPENSPEC:END -->
+
+## Superpowers System
+
+<EXTREMELY_IMPORTANT>
+You have superpowers. Superpowers teach you new skills and capabilities. RIGHT NOW run (before any other command):
+- WSL: `node ~/.codex/superpowers/.codex/superpowers-codex bootstrap`
+- Git Bash / PowerShell / CMD: `~/.codex/superpowers/.codex/superpowers-codex bootstrap`
+Then follow the instructions it returns.
+</EXTREMELY_IMPORTANT>

@@ -15,6 +15,7 @@ const ALLOWED_FUNCTIONS = new Set<string>([
   'equipment_count',
   'equipment_count_enhanced',
   'equipment_attention_list',
+  'equipment_attention_list_paginated',
   'equipment_attachments_list',
   'equipment_attachment_create', 
   'equipment_attachment_delete',
