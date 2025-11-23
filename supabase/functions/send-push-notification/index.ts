@@ -59,9 +59,23 @@ serve(async (req) => {
   }
 
   try {
-    // Secure this function: only allow calls from within Supabase (e.g., DB triggers) or trusted roles.
-    // For direct invocation, you might check a secret header or use service_role key.
-    // For this example, we assume it's called internally or security is handled by API Gateway policies.
+    // Shared-secret check for internal callers (e.g., DB trigger via pg_net)
+    const internalSecret = Deno.env.get('INTERNAL_FUNCTION_SECRET');
+    if (!internalSecret) {
+      console.error('INTERNAL_FUNCTION_SECRET is not set');
+      return new Response(JSON.stringify({ error: 'Server misconfigured' }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 500,
+      });
+    }
+
+    const providedSecret = req.headers.get('x-internal-secret');
+    if (providedSecret !== internalSecret) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 403,
+      });
+    }
 
     const { userIds, notificationPayload } = await req.json();
 

@@ -76,6 +76,9 @@ supabase/logs/
 .github/
 .cursor/
 .idx/
+qltbyt-nam-phong-firebase-adminsdk-fbsvc-56766361a6.json
+VAPID_key.md
+firebase_config.md
 
 # Development tooling - commit these
 # scripts/

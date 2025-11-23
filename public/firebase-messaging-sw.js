@@ -4,13 +4,12 @@ importScripts('https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-com
 
 // IMPORTANT: Replace with your project's Firebase actual configuration
 const firebaseConfig = {
-  apiKey: "YOUR_API_KEY", // TODO: Replace with actual config
-  authDomain: "YOUR_PROJECT_ID.firebaseapp.com", // TODO: Replace with actual config
-  projectId: "YOUR_PROJECT_ID", // TODO: Replace with actual config
-  storageBucket: "YOUR_PROJECT_ID.appspot.com", // TODO: Replace with actual config
-  messagingSenderId: "YOUR_MESSAGING_SENDER_ID", // TODO: Replace with actual config
-  appId: "YOUR_APP_ID", // TODO: Replace with actual config
-  // measurementId: "G-YOUR_MEASUREMENT_ID" // Optional
+  apiKey: "AIzaSyB2TmeaNGl6IPmb82AUpyvglVk5e6bGdNc",
+  authDomain: "qltbyt-nam-phong.firebaseapp.com",
+  projectId: "qltbyt-nam-phong",
+  storageBucket: "qltbyt-nam-phong.firebasestorage.app",
+  messagingSenderId: "362851817132",
+  appId: "1:362851817132:web:48bc8b55d25160c023b109"
 };
 
 // Initialize Firebase

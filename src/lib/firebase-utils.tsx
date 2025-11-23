@@ -48,7 +48,7 @@ export async function loadFirebaseLibraries(): Promise<FirebaseComponents> {
       import('firebase/app'),
       import('firebase/messaging')
     ])
-    
+
     return {
       initializeApp: firebaseApp.initializeApp,
       getApp: firebaseApp.getApp,
@@ -69,15 +69,15 @@ export async function loadFirebaseLibraries(): Promise<FirebaseComponents> {
  */
 export async function initializeFirebase(config: FirebaseConfig): Promise<any> {
   const { initializeApp, getApp, getApps } = await loadFirebaseLibraries()
-  
+
   let firebaseApp: any
-  
+
   if (!getApps().length) {
     firebaseApp = initializeApp(config)
   } else {
     firebaseApp = getApp()
   }
-  
+
   return firebaseApp
 }
 
@@ -86,12 +86,12 @@ export async function initializeFirebase(config: FirebaseConfig): Promise<any> {
  */
 export async function initializeFirebaseMessaging(config: FirebaseConfig): Promise<any> {
   const { getMessaging, isSupported } = await loadFirebaseLibraries()
-  
+
   if (await isSupported()) {
     const firebaseApp = await initializeFirebase(config)
     return getMessaging(firebaseApp)
   }
-  
+
   console.warn('Firebase Messaging is not supported in this browser.')
   return null
 }
@@ -106,16 +106,16 @@ export async function requestNotificationPermissionAndGetToken(
   try {
     const { getToken } = await loadFirebaseLibraries()
     const messaging = await initializeFirebaseMessaging(config)
-    
+
     if (!messaging) return null
 
     const permission = await Notification.requestPermission()
-    
+
     if (permission === 'granted') {
       console.log('Notification permission granted.')
-      
+
       const currentToken = await getToken(messaging, { vapidKey })
-      
+
       if (currentToken) {
         console.log('FCM Token:', currentToken)
         return currentToken
@@ -143,7 +143,7 @@ export async function onForegroundMessage(
   try {
     const { onMessage } = await loadFirebaseLibraries()
     const messaging = await initializeFirebaseMessaging(config)
-    
+
     if (messaging) {
       onMessage(messaging, (payload) => {
         console.log('Message received in foreground. ', payload)
@@ -171,7 +171,7 @@ export async function sendTokenToServer(
       },
       body: JSON.stringify({ token, userId }),
     })
-    
+
     if (response.ok) {
       console.log('Token sent to server successfully.')
       return true
@@ -202,10 +202,10 @@ export function FirebaseLoadingFallback() {
 /**
  * Error fallback component for Firebase loading failures
  */
-export function FirebaseErrorFallback({ 
-  error, 
-  onRetry 
-}: { 
+export function FirebaseErrorFallback({
+  error,
+  onRetry
+}: {
   error: Error
   onRetry?: () => void
 }) {
@@ -259,22 +259,23 @@ export function areNotificationsEnabled(): boolean {
  * Replace with actual configuration when implementing push notifications
  */
 export const DEFAULT_FIREBASE_CONFIG: FirebaseConfig = {
-  apiKey: "YOUR_API_KEY",
-  authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
-  projectId: "YOUR_PROJECT_ID",
-  storageBucket: "YOUR_PROJECT_ID.appspot.com",
-  messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
-  appId: "YOUR_APP_ID",
-  measurementId: "G-YOUR_MEASUREMENT_ID"
+  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY ?? '',
+  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN ?? '',
+  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID ?? '',
+  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET ?? '',
+  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID ?? '',
+  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID ?? ''
 }
+
+export const DEFAULT_FIREBASE_VAPID_KEY = process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY ?? ''
 
 /**
  * Check if Firebase configuration is valid
  */
 export function isFirebaseConfigValid(config: FirebaseConfig): boolean {
   return (
-    config.apiKey !== "YOUR_API_KEY" &&
-    config.projectId !== "YOUR_PROJECT_ID" &&
-    config.appId !== "YOUR_APP_ID"
+    Boolean(config.apiKey) &&
+    Boolean(config.projectId) &&
+    Boolean(config.appId)
   )
 }

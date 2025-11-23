@@ -15,10 +15,11 @@ The system SHALL allow authenticated users to register their devices for push no
 - **AND** no data is sent to the server
 
 ### Requirement: Send Push Notification (MVP)
-The system SHALL be able to send push notifications specifically for high-priority repair requests.
+The system SHALL send push notifications for all new repair requests via FCM (Supabase Edge Functions path), with Cloudflare delivery deferred.
 
 #### Scenario: New Repair Request
 - **WHEN** a new repair request is created
+- **AND** the request can be any priority level
 - **THEN** the system retrieves all active FCM tokens for the assigned technician and management
 - **AND** sends a push notification with title "Yêu cầu sửa chữa mới" and the equipment name
 - **AND** clicking the notification opens the specific repair request details page
