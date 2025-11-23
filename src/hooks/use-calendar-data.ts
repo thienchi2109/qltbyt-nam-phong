@@ -43,7 +43,7 @@ interface CalendarDataResponse {
   stats: CalendarStats
 }
 
-export function useCalendarData(year: number, month: number) {
+export function useCalendarData(year: number, month: number, options?: { enabled?: boolean }) {
   return useQuery({
     queryKey: ['calendar-events', year, month],
     queryFn: async (): Promise<{ events: CalendarEvent[], departments: string[], stats: CalendarStats }> => {
@@ -75,5 +75,6 @@ export function useCalendarData(year: number, month: number) {
     },
     staleTime: 5 * 60 * 1000, // 5 minutes
     gcTime: 15 * 60 * 1000, // 15 minutes
+    enabled: options?.enabled ?? true,
   })
-}
+}

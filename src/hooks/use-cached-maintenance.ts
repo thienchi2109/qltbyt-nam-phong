@@ -42,12 +42,17 @@ export interface MaintenancePlan {
 }
 
 // Fetch maintenance plans (ke_hoach_bao_tri) with server-side pagination and facility filtering
-export function useMaintenancePlans(filters?: {
-  search?: string
-  facilityId?: number | null
-  page?: number
-  pageSize?: number
-}) {
+export function useMaintenancePlans(
+  filters?: {
+    search?: string
+    facilityId?: number | null
+    page?: number
+    pageSize?: number
+  },
+  options?: {
+    enabled?: boolean
+  }
+) {
   const { search, facilityId, page = 1, pageSize = 50 } = filters || {}
 
   return useQuery<MaintenancePlanListResponse>({
@@ -87,6 +92,7 @@ export function useMaintenancePlans(filters?: {
     placeholderData: (previousData) => previousData,
     staleTime: 3 * 60 * 1000, // 3 minutes - maintenance plans don't change frequently
     gcTime: 15 * 60 * 1000, // 15 minutes
+    enabled: options?.enabled ?? true,
   })
 }
 
