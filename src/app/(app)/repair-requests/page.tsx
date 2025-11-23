@@ -55,7 +55,7 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 // Legacy auth-context removed; NextAuth is used throughout
 import { useSession } from "next-auth/react"
 import { useTenantBranding } from "@/hooks/use-tenant-branding"
-import { useRouter } from "next/navigation"
+import { usePathname, useRouter } from "next/navigation"
 import { useIsMobile } from "@/hooks/use-mobile"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger, DropdownMenuCheckboxItem } from "@/components/ui/dropdown-menu"
 import { useSearchParams } from "next/navigation"
@@ -165,6 +165,7 @@ export default function RepairRequestsPage() {
   const { data: branding } = useTenantBranding()
   const user = session?.user as any // Cast NextAuth user to our User type
   const router = useRouter()
+  const pathname = usePathname()
   const isMobile = useIsMobile()
   const isSheetMobile = useMediaQuery("(max-width: 1279px)")
   const queryClient = useQueryClient()
@@ -483,8 +484,12 @@ export default function RepairRequestsPage() {
   React.useEffect(() => {
     if (searchParams.get('action') === 'create') {
       setIsCreateOpen(true)
+      const params = new URLSearchParams(searchParams.toString())
+      params.delete('action')
+      const nextPath = params.size ? `${pathname}?${params.toString()}` : pathname
+      router.replace(nextPath, { scroll: false })
     }
-  }, [searchParams])
+  }, [searchParams, router, pathname])
 
 
   const filteredEquipment = React.useMemo(() => {
