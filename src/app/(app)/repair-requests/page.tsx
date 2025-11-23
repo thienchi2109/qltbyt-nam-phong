@@ -66,6 +66,7 @@ import { Separator } from "@/components/ui/separator"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { RepairRequestAlert } from "@/components/repair-request-alert"
 import { useFacilityFilter, type FacilityOption } from "@/hooks/useFacilityFilter"
+import { useMediaQuery } from "@/hooks/use-media-query"
 import { ErrorBoundary } from "@/components/error-boundary"
 import { Sheet, SheetContent, SheetHeader as SheetHeaderUI, SheetTitle, SheetDescription } from "@/components/ui/sheet"
 import { SummaryBar, type SummaryItem } from "@/components/summary/summary-bar"
@@ -1172,7 +1173,7 @@ export default function RepairRequestsPage() {
                   />
                 </div>
                 <span className={`text-xs font-medium ${daysInfo.status === 'success' ? 'text-green-600' :
-                    daysInfo.status === 'warning' ? 'text-orange-600' : 'text-red-600'
+                  daysInfo.status === 'warning' ? 'text-orange-600' : 'text-red-600'
                   }`}>
                   {daysInfo.text}
                 </span>
@@ -1953,7 +1954,7 @@ export default function RepairRequestsPage() {
               )}
             </div>
             {!isRegionalLeader && (
-              <div className="flex items-center gap-2">
+              <div className="hidden md:flex items-center gap-2">
                 <Button onClick={() => setIsCreateOpen(true)} className="touch-target">
                   <PlusCircle className="mr-2 h-4 w-4" /> Tạo yêu cầu
                 </Button>
@@ -1967,12 +1968,17 @@ export default function RepairRequestsPage() {
           {/* Create Sheet */}
           {!isRegionalLeader && (
             <Sheet open={isCreateOpen} onOpenChange={setIsCreateOpen}>
-              <SheetContent side="right" className="sm:max-w-lg">
-                <SheetHeaderUI>
+              <SheetContent
+                side={useMediaQuery("(max-width: 1279px)") ? "bottom" : "right"}
+                className={cn(
+                  useMediaQuery("(max-width: 1279px)") ? "h-[90vh] p-0" : "sm:max-w-lg"
+                )}
+              >
+                <SheetHeaderUI className={cn(useMediaQuery("(max-width: 1279px)") ? "p-4 border-b" : "")}>
                   <SheetTitle>Tạo yêu cầu sửa chữa</SheetTitle>
                   <SheetDescription>Điền thông tin bên dưới để gửi yêu cầu mới.</SheetDescription>
                 </SheetHeaderUI>
-                <div className="mt-4">
+                <div className={cn("mt-4", useMediaQuery("(max-width: 1279px)") ? "px-4 overflow-y-auto h-[calc(90vh-80px)]" : "")}>
                   <form onSubmit={handleSubmit} className="space-y-4">
                     <div className="space-y-2">
                       <Label htmlFor="search-equipment">Thiết bị</Label>
@@ -2099,10 +2105,15 @@ export default function RepairRequestsPage() {
                       </div>
                     )}
 
-                    <Button type="submit" className="w-full touch-target" disabled={isSubmitting}>
-                      {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                      {isSubmitting ? "Đang gửi..." : "Gửi yêu cầu"}
-                    </Button>
+                    <div className="flex gap-3 pt-2">
+                      <Button type="button" variant="outline" className="flex-1 touch-target" onClick={() => setIsCreateOpen(false)}>
+                        Hủy
+                      </Button>
+                      <Button type="submit" className="flex-1 touch-target" disabled={isSubmitting}>
+                        {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                        {isSubmitting ? "Đang gửi..." : "Gửi yêu cầu"}
+                      </Button>
+                    </div>
                   </form>
                 </div>
               </SheetContent>
@@ -2405,7 +2416,7 @@ export default function RepairRequestsPage() {
                                             />
                                           </div>
                                           <span className={`text-xs font-medium ${daysInfo.status === 'success' ? 'text-green-600' :
-                                              daysInfo.status === 'warning' ? 'text-orange-600' : 'text-red-600'
+                                            daysInfo.status === 'warning' ? 'text-orange-600' : 'text-red-600'
                                             }`}>
                                             {daysInfo.text}
                                           </span>
@@ -2530,9 +2541,9 @@ export default function RepairRequestsPage() {
                     </div>
                   )}
                 </CardContent>
-                <CardFooter>
-                  <div className="flex items-center justify-between w-full">
-                    <div className="flex-1 text-sm text-muted-foreground">
+                <CardFooter className="py-4">
+                  <div className="flex flex-col md:flex-row items-center justify-between w-full gap-4 md:gap-0">
+                    <div className="flex-1 text-sm text-muted-foreground text-center md:text-left w-full md:w-auto order-2 md:order-1">
                       {(() => {
                         const total = totalRequests;
                         const currentPage = pagination.pageIndex + 1;
@@ -2542,7 +2553,7 @@ export default function RepairRequestsPage() {
                         return `Hiển thị ${startItem}-${endItem} trên tổng ${total} yêu cầu`;
                       })()}
                     </div>
-                    <div className="flex items-center space-x-6 lg:space-x-8">
+                    <div className="flex flex-col sm:flex-row items-center gap-4 md:space-x-6 lg:space-x-8 w-full md:w-auto justify-center md:justify-end order-1 md:order-2">
                       <div className="flex items-center space-x-2">
                         <p className="text-sm font-medium">Số dòng</p>
                         <Select
