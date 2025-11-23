@@ -166,6 +166,7 @@ export default function RepairRequestsPage() {
   const user = session?.user as any // Cast NextAuth user to our User type
   const router = useRouter()
   const isMobile = useIsMobile()
+  const isSheetMobile = useMediaQuery("(max-width: 1279px)")
   const queryClient = useQueryClient()
 
   // Redirect if not authenticated
@@ -1969,16 +1970,14 @@ export default function RepairRequestsPage() {
           {!isRegionalLeader && (
             <Sheet open={isCreateOpen} onOpenChange={setIsCreateOpen}>
               <SheetContent
-                side={useMediaQuery("(max-width: 1279px)") ? "bottom" : "right"}
-                className={cn(
-                  useMediaQuery("(max-width: 1279px)") ? "h-[90vh] p-0" : "sm:max-w-lg"
-                )}
+                side={isSheetMobile ? "bottom" : "right"}
+                className={cn(isSheetMobile ? "h-[90vh] p-0" : "sm:max-w-lg")}
               >
-                <SheetHeaderUI className={cn(useMediaQuery("(max-width: 1279px)") ? "p-4 border-b" : "")}>
+                <SheetHeaderUI className={cn(isSheetMobile ? "p-4 border-b" : "")}>
                   <SheetTitle>Tạo yêu cầu sửa chữa</SheetTitle>
                   <SheetDescription>Điền thông tin bên dưới để gửi yêu cầu mới.</SheetDescription>
                 </SheetHeaderUI>
-                <div className={cn("mt-4", useMediaQuery("(max-width: 1279px)") ? "px-4 overflow-y-auto h-[calc(90vh-80px)]" : "")}>
+                <div className={cn("mt-4", isSheetMobile ? "px-4 overflow-y-auto h-[calc(90vh-80px)]" : "")}>
                   <form onSubmit={handleSubmit} className="space-y-4">
                     <div className="space-y-2">
                       <Label htmlFor="search-equipment">Thiết bị</Label>
