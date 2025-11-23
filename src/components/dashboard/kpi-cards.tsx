@@ -16,16 +16,16 @@ const plansSkeletonClass = "h-4 w-24 md:w-24"
 
 // Base card styles - will be extended per card with custom gradients
 const cardBaseClass =
-  "mobile-kpi-card rounded-2xl shadow-sm shadow-black/5 ring-1 ring-black/5 mb-4 md:rounded-xl md:shadow-none md:ring-0 md:mb-0"
+  "mobile-kpi-card bg-white rounded-2xl shadow-[0_4px_20px_-4px_rgba(0,0,0,0.1)] ring-1 ring-black/5 mb-4 md:rounded-xl md:shadow-none md:ring-0 md:mb-0"
 
 // Elegant vibrant gradient backgrounds for each KPI card
-const equipmentCardClass = `${cardBaseClass} bg-gradient-to-br from-blue-100 via-blue-50 to-white`
-const maintenanceCardClass = `${cardBaseClass} bg-gradient-to-br from-emerald-100 via-emerald-50 to-white`
-const repairCardClass = `${cardBaseClass} bg-gradient-to-br from-sky-100 via-sky-50 to-white`
-const planCardClass = `${cardBaseClass} bg-gradient-to-br from-purple-100 via-purple-50 to-white`
+const equipmentCardClass = `${cardBaseClass}`
+const maintenanceCardClass = `${cardBaseClass}`
+const repairCardClass = `${cardBaseClass}`
+const planCardClass = `${cardBaseClass}`
 const headerClass =
   "flex flex-row items-center justify-between space-y-0 p-4 pb-2 md:p-6 md:pb-2 gap-3 md:gap-2"
-const titleClass = "text-sm font-semibold truncate md:text-sm md:font-medium"
+const titleClass = "text-sm font-semibold truncate md:text-sm md:font-medium text-slate-600"
 // Icon colors matching card gradients - more vibrant
 const equipmentIconClass = "h-5 w-5 text-blue-600 md:h-4 md:w-4 flex-shrink-0"
 const maintenanceIconClass = "h-5 w-5 text-emerald-600 md:h-4 md:w-4 flex-shrink-0"
@@ -33,9 +33,9 @@ const repairIconClass = "h-5 w-5 text-sky-600 md:h-4 md:w-4 flex-shrink-0"
 const planIconClass = "h-5 w-5 text-purple-600 md:h-4 md:w-4 flex-shrink-0"
 const contentClass = "p-4 pt-0 space-y-2 md:p-6 md:pt-0"
 const metricClass =
-  "text-3xl font-bold leading-tight tracking-tight md:text-2xl md:leading-snug md:tracking-normal"
+  "text-4xl font-bold leading-tight tracking-tight md:text-2xl md:leading-snug md:tracking-normal text-slate-900"
 const descriptionClass =
-  "text-sm text-neutral-600 leading-snug md:text-xs md:text-muted-foreground md:leading-tight"
+  "text-sm text-neutral-500 leading-snug md:text-xs md:text-muted-foreground md:leading-tight"
 
 export function TotalEquipmentCard() {
   const { data: totalDevices, isLoading, error } = useTotalEquipment()
