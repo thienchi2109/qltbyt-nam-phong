@@ -17,7 +17,7 @@ Keep this managed block so 'openspec update' can refresh the instructions.
 
 <!-- OPENSPEC:END -->
 
-## Superpowers System
+# Superpowers System
 
 <EXTREMELY_IMPORTANT>
 You have superpowers. Superpowers teach you new skills and capabilities. RIGHT NOW run (before any other command):
