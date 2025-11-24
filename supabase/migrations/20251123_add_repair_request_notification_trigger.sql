@@ -10,8 +10,8 @@ SET search_path = public, extensions -- Secure search path
 AS $$
 DECLARE
   v_user_ids uuid[];
-  v_project_ref text := 'cdthersvldpnlbvpufrr'; -- Project Ref
-  v_function_url text := 'https://' || v_project_ref || '.supabase.co/functions/v1/send-push-notification';
+  v_supabase_url text;
+  v_function_url text;
   v_thiet_bi_name text;
   v_request_id int;
   v_internal_secret text; -- Shared secret for Edge Function auth
@@ -28,6 +28,30 @@ BEGIN
     WHEN undefined_table OR undefined_column THEN
       v_internal_secret := NULL;
   END;
+
+  -- Resolve Supabase base URL from settings table first, then fallback to GUC
+  BEGIN
+    EXECUTE $SQL$
+      SELECT value::text FROM public.internal_settings WHERE key = 'supabase_url' LIMIT 1
+    $SQL$
+    INTO v_supabase_url;
+  EXCEPTION
+    WHEN undefined_table OR undefined_column THEN
+      v_supabase_url := NULL;
+  END;
+
+  IF v_supabase_url IS NULL OR v_supabase_url = '' THEN
+    v_supabase_url := current_setting('app.settings.supabase_url', true);
+  END IF;
+
+  IF v_supabase_url IS NULL OR v_supabase_url = '' THEN
+    RAISE WARNING 'handle_new_repair_request_notification: supabase_url is not configured';
+    RETURN NEW;
+  END IF;
+
+  -- Normalize URL and construct function endpoint
+  v_supabase_url := regexp_replace(v_supabase_url, '/+$', ''); -- strip trailing slash
+  v_function_url := v_supabase_url || '/functions/v1/send-push-notification';
 
   -- Fallback to GUC if table lookup did not return a secret
   IF v_internal_secret IS NULL OR v_internal_secret = '' THEN
