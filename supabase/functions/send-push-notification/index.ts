@@ -59,17 +59,39 @@ serve(async (req) => {
   }
 
   try {
+    const providedSecret = req.headers.get('x-internal-secret') ?? '';
+
+    const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';
+    const supabaseServiceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
+    const supabaseAdminClient = createClient(
+      supabaseUrl,
+      supabaseServiceRoleKey
+    );
+
     // Shared-secret check for internal callers (e.g., DB trigger via pg_net)
-    const internalSecret = Deno.env.get('INTERNAL_FUNCTION_SECRET');
+    let internalSecret = Deno.env.get('INTERNAL_FUNCTION_SECRET') ?? '';
+
+    if (!internalSecret && supabaseUrl && supabaseServiceRoleKey) {
+      const { data: secretRow, error: secretError } = await supabaseAdminClient
+        .from('internal_settings')
+        .select('value')
+        .eq('key', 'internal_function_secret')
+        .single();
+
+      if (secretRow?.value) {
+        internalSecret = secretRow.value as string;
+      } else {
+        console.error('INTERNAL_FUNCTION_SECRET not set and internal_settings lookup failed', secretError?.message);
+      }
+    }
+
     if (!internalSecret) {
-      console.error('INTERNAL_FUNCTION_SECRET is not set');
       return new Response(JSON.stringify({ error: 'Server misconfigured' }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 500,
       });
     }
 
-    const providedSecret = req.headers.get('x-internal-secret');
     if (providedSecret !== internalSecret) {
       return new Response(JSON.stringify({ error: 'Unauthorized' }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -91,11 +113,6 @@ serve(async (req) => {
         status: 400,
       });
     }
-
-    const supabaseAdminClient = createClient( // Use admin client to fetch tokens for any user
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-    );
 
     // Fetch FCM tokens for the given userIds
     const { data: tokensData, error: tokensError } = await supabaseAdminClient
