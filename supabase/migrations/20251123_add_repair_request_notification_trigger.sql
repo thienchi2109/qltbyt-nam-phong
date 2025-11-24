@@ -21,7 +21,7 @@ BEGIN
   -- Prefer reading the secret from public.internal_settings to avoid GUC dependency
   BEGIN
     EXECUTE $SQL$
-      SELECT value::text FROM public.internal_settings WHERE key = 'internal_function_secret' LIMIT 1
+      SELECT value::text FROM public.internal_settings WHERE lower(key) = 'internal_function_secret' LIMIT 1
     $SQL$
     INTO v_internal_secret;
   EXCEPTION
@@ -32,7 +32,7 @@ BEGIN
   -- Resolve Supabase base URL from settings table first, then fallback to GUC
   BEGIN
     EXECUTE $SQL$
-      SELECT value::text FROM public.internal_settings WHERE key = 'supabase_url' LIMIT 1
+      SELECT value::text FROM public.internal_settings WHERE lower(key) = 'supabase_url' LIMIT 1
     $SQL$
     INTO v_supabase_url;
   EXCEPTION

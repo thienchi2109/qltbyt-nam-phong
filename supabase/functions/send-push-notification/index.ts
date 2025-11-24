@@ -75,7 +75,7 @@ serve(async (req) => {
       const { data: secretRow, error: secretError } = await supabaseAdminClient
         .from('internal_settings')
         .select('value')
-        .eq('key', 'internal_function_secret')
+        .ilike('key', 'internal_function_secret') // handle uppercase/lowercase keys
         .single();
 
       if (secretRow?.value) {
