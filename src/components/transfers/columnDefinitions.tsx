@@ -124,12 +124,6 @@ export interface TransferColumnGroups {
 
 const createCommonColumns = (options: TransferColumnOptions): ColumnDef<TransferListItem>[] => [
   {
-    accessorKey: "ma_yeu_cau",
-    header: "Mã phiếu",
-    enableSorting: true,
-    cell: ({ row }) => <span className="font-medium">{row.original.ma_yeu_cau}</span>,
-  },
-  {
     id: "equipment",
     accessorFn: (row) => row.thiet_bi?.ten_thiet_bi ?? "",
     header: "Thiết bị",
