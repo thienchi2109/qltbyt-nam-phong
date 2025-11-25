@@ -169,13 +169,15 @@ export function TransferCard({
           </div>
         </div>
 
-        <div className="flex items-center justify-between border-t pt-3">
-          <p className="text-xs text-muted-foreground">
-            Tạo lúc {formatDate(transfer.created_at, true)}
-          </p>
+        <div className="mt-4 flex items-center justify-between gap-3 border-t pt-4">
+          <div className="flex-1">
+            <p className="text-xs font-medium text-muted-foreground">
+              {formatDate(transfer.created_at, true)}
+            </p>
+          </div>
           {actions ? (
             <div
-              className="flex flex-wrap items-center gap-2"
+              className="flex shrink-0 items-center gap-2"
               onClick={(event) => event.stopPropagation()}
             >
               {actions}

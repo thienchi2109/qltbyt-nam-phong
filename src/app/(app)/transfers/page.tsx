@@ -83,6 +83,7 @@ import {
 } from "@/components/ui/tooltip"
 import { useFacilityFilter } from "@/hooks/useFacilityFilter"
 import { useIsMobile } from "@/hooks/use-mobile"
+import { Sheet, SheetClose, SheetContent, SheetFooter, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
 import { useToast } from "@/hooks/use-toast"
 import { useTransferList, useTransferCounts } from "@/hooks/useTransferDataGrid"
 import { useTransferSearch } from "@/hooks/useTransferSearch"
@@ -164,6 +165,8 @@ export default function TransfersPage() {
     null,
   )
   const [isFilterModalOpen, setIsFilterModalOpen] = React.useState(false)
+  const [tempFacilityId, setTempFacilityId] = React.useState<number | null>(null)
+  const [isFacilitySheetOpen, setIsFacilitySheetOpen] = React.useState(false)
 
   const filters = React.useMemo<TransferListFilters>(() => {
     return {
@@ -562,13 +565,13 @@ export default function TransfersPage() {
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-8 w-8"
+                className="h-10 w-10 sm:h-8 sm:w-8"
                 onClick={(event) => {
                   event.stopPropagation()
                   handleEditTransfer(item)
                 }}
               >
-                <Edit className="h-4 w-4" />
+                <Edit className="h-5 w-5 sm:h-4 sm:w-4" />
               </Button>
             </TooltipTrigger>
             <TooltipContent>
@@ -586,13 +589,13 @@ export default function TransfersPage() {
                 <TooltipTrigger asChild>
                   <Button
                     size="icon"
-                    className="h-8 w-8"
+                    className="h-10 w-10 sm:h-8 sm:w-8"
                     onClick={(event) => {
                       event.stopPropagation()
                       void handleApproveTransfer(item)
                     }}
                   >
-                    <Check className="h-4 w-4" />
+                    <Check className="h-5 w-5 sm:h-4 sm:w-4" />
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent>
@@ -612,14 +615,14 @@ export default function TransfersPage() {
                 <TooltipTrigger asChild>
                   <Button
                     size="icon"
-                    className="h-8 w-8"
+                    className="h-10 w-10 sm:h-8 sm:w-8"
                     variant="secondary"
                     onClick={(event) => {
                       event.stopPropagation()
                       void handleStartTransfer(item)
                     }}
                   >
-                    <Play className="h-4 w-4" />
+                    <Play className="h-5 w-5 sm:h-4 sm:w-4" />
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent>
@@ -642,13 +645,13 @@ export default function TransfersPage() {
                     <Button
                       size="icon"
                       variant="outline"
-                      className="h-8 w-8"
+                      className="h-10 w-10 sm:h-8 sm:w-8"
                       onClick={(event) => {
                         event.stopPropagation()
                         handleGenerateHandoverSheet(item)
                       }}
                     >
-                      <FileText className="h-4 w-4" />
+                      <FileText className="h-5 w-5 sm:h-4 sm:w-4" />
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent>
@@ -661,13 +664,13 @@ export default function TransfersPage() {
                   <TooltipTrigger asChild>
                     <Button
                       size="icon"
-                      className="h-8 w-8"
+                      className="h-10 w-10 sm:h-8 sm:w-8"
                       onClick={(event) => {
                         event.stopPropagation()
                         void handleCompleteTransfer(item)
                       }}
                     >
-                      <CheckCircle className="h-4 w-4" />
+                      <CheckCircle className="h-5 w-5 sm:h-4 sm:w-4" />
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent>
@@ -681,14 +684,14 @@ export default function TransfersPage() {
                   <TooltipTrigger asChild>
                     <Button
                       size="icon"
-                      className="h-8 w-8"
+                      className="h-10 w-10 sm:h-8 sm:w-8"
                       variant="secondary"
                       onClick={(event) => {
                         event.stopPropagation()
                         void handleHandoverToExternal(item)
                       }}
                     >
-                      <Send className="h-4 w-4" />
+                      <Send className="h-5 w-5 sm:h-4 sm:w-4" />
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent>
@@ -706,13 +709,13 @@ export default function TransfersPage() {
                 <TooltipTrigger asChild>
                   <Button
                     size="icon"
-                    className="h-8 w-8"
+                    className="h-10 w-10 sm:h-8 sm:w-8"
                     onClick={(event) => {
                       event.stopPropagation()
                       void handleReturnFromExternal(item)
                     }}
                   >
-                    <Undo2 className="h-4 w-4" />
+                    <Undo2 className="h-5 w-5 sm:h-4 sm:w-4" />
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent>
@@ -733,13 +736,13 @@ export default function TransfersPage() {
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-8 w-8 text-destructive hover:text-destructive"
+                className="h-10 w-10 text-destructive hover:text-destructive sm:h-8 sm:w-8"
                 onClick={(event) => {
                   event.stopPropagation()
                   handleOpenDeleteDialog(item)
                 }}
               >
-                <Trash2 className="h-4 w-4" />
+                <Trash2 className="h-5 w-5 sm:h-4 sm:w-4" />
               </Button>
             </TooltipTrigger>
             <TooltipContent>
@@ -753,7 +756,7 @@ export default function TransfersPage() {
 
       return (
         <TooltipProvider>
-          <div className="flex flex-wrap items-center gap-1">{actions}</div>
+          <div className="flex items-center gap-2 sm:gap-1">{actions}</div>
         </TooltipProvider>
       )
     },
@@ -872,49 +875,129 @@ export default function TransfersPage() {
               Theo dõi và xử lý yêu cầu luân chuyển theo từng loại hình
             </CardDescription>
           </div>
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+          <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-row sm:items-center sm:gap-2">
             {showFacilityFilter && (
-              <Select
-                value={selectedFacilityId?.toString() || "all"}
-                onValueChange={(value) =>
-                  setSelectedFacilityId(value === "all" ? null : Number(value))
-                }
-              >
-                <SelectTrigger className="w-[200px]">
-                  <Building2 className="mr-2 h-4 w-4" />
-                  <SelectValue placeholder="Tất cả cơ sở" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Tất cả cơ sở</SelectItem>
-                  {(facilityOptionsData || []).map((facility) => (
-                    <SelectItem key={facility.id} value={facility.id.toString()}>
-                      {facility.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <>
+                {/* Desktop: Select dropdown */}
+                <div className="hidden sm:block">
+                  <Select
+                    value={selectedFacilityId?.toString() || "all"}
+                    onValueChange={(value) =>
+                      setSelectedFacilityId(value === "all" ? null : Number(value))
+                    }
+                  >
+                    <SelectTrigger className="w-[200px]">
+                      <Building2 className="mr-2 h-4 w-4" />
+                      <SelectValue placeholder="Tất cả cơ sở" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Tất cả cơ sở</SelectItem>
+                      {(facilityOptionsData || []).map((facility) => (
+                        <SelectItem key={facility.id} value={facility.id.toString()}>
+                          {facility.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Mobile: Bottom sheet with larger button */}
+                <div className="sm:hidden">
+                  <Sheet open={isFacilitySheetOpen} onOpenChange={setIsFacilitySheetOpen}>
+                    <SheetTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className="h-11 w-full justify-start font-medium"
+                        onClick={() => {
+                          setTempFacilityId(selectedFacilityId)
+                          setIsFacilitySheetOpen(true)
+                        }}
+                      >
+                        <Building2 className="mr-2 h-5 w-5" />
+                        <span className="truncate">
+                          {selectedFacilityId
+                            ? facilityOptionsData?.find((f) => f.id === selectedFacilityId)?.name ||
+                            "Tất cả cơ sở"
+                            : "Tất cả cơ sở"}
+                        </span>
+                      </Button>
+                    </SheetTrigger>
+                    <SheetContent side="bottom" className="h-[80vh]">
+                      <SheetHeader>
+                        <SheetTitle>Chọn cơ sở</SheetTitle>
+                      </SheetHeader>
+                      <div className="mt-4 flex flex-1 flex-col">
+                        <div className="flex-1 space-y-2 overflow-y-auto pb-4">
+                          <Button
+                            variant={tempFacilityId === null ? "default" : "outline"}
+                            className="h-12 w-full justify-start text-base"
+                            onClick={() => setTempFacilityId(null)}
+                          >
+                            <Building2 className="mr-3 h-5 w-5" />
+                            Tất cả cơ sở
+                          </Button>
+                          {(facilityOptionsData || []).map((facility) => (
+                            <Button
+                              key={facility.id}
+                              variant={tempFacilityId === facility.id ? "default" : "outline"}
+                              className="h-12 w-full justify-start text-base"
+                              onClick={() => setTempFacilityId(facility.id)}
+                            >
+                              <Building2 className="mr-3 h-5 w-5" />
+                              {facility.name}
+                            </Button>
+                          ))}
+                        </div>
+                        <SheetFooter className="flex flex-row gap-2 border-t pt-4">
+                          <Button
+                            variant="outline"
+                            className="h-12 flex-1 text-base font-medium"
+                            onClick={() => {
+                              setTempFacilityId(selectedFacilityId)
+                              setIsFacilitySheetOpen(false)
+                            }}
+                          >
+                            Hủy
+                          </Button>
+                          <Button
+                            className="h-12 flex-1 text-base font-medium"
+                            onClick={() => {
+                              setSelectedFacilityId(tempFacilityId)
+                              setIsFacilitySheetOpen(false)
+                            }}
+                          >
+                            Áp dụng
+                          </Button>
+                        </SheetFooter>
+                      </div>
+                    </SheetContent>
+                  </Sheet>
+                </div>
+              </>
             )}
+
+            {/* Filter button - mobile optimized */}
             <Button
               variant="outline"
-              size="sm"
               onClick={() => setIsFilterModalOpen(true)}
-              className="gap-2"
+              className="h-11 gap-2 font-medium sm:h-9"
             >
-              <Filter className="h-4 w-4" />
-              Bộ lọc
+              <Filter className="h-5 w-5 sm:h-4 sm:w-4" />
+              <span className="hidden sm:inline">Bộ lọc</span>
               {activeFilterCount > 0 && (
-                <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs">
+                <Badge variant="secondary" className="h-5 px-1.5 text-xs sm:ml-1">
                   {activeFilterCount}
                 </Badge>
               )}
             </Button>
-            <Button variant="outline" size="sm" onClick={() => void handleRefresh()}>
-              <RefreshCw className="mr-2 h-4 w-4" />
-              Làm mới
-            </Button>
+
+            {/* Create button - spans full width on mobile */}
             {!isRegionalLeader && (
-              <Button size="sm" onClick={() => setIsAddDialogOpen(true)}>
-                <PlusCircle className="mr-2 h-4 w-4" />
+              <Button
+                onClick={() => setIsAddDialogOpen(true)}
+                className="col-span-2 h-11 gap-2 font-medium sm:col-span-1 sm:h-9"
+              >
+                <PlusCircle className="h-5 w-5 sm:h-4 sm:w-4" />
                 Tạo yêu cầu mới
               </Button>
             )}
