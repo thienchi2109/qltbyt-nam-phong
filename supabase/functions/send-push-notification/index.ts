@@ -59,9 +59,45 @@ serve(async (req) => {
   }
 
   try {
-    // Secure this function: only allow calls from within Supabase (e.g., DB triggers) or trusted roles.
-    // For direct invocation, you might check a secret header or use service_role key.
-    // For this example, we assume it's called internally or security is handled by API Gateway policies.
+    const providedSecret = req.headers.get('x-internal-secret') ?? '';
+
+    const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';
+    const supabaseServiceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
+    const supabaseAdminClient = createClient(
+      supabaseUrl,
+      supabaseServiceRoleKey
+    );
+
+    // Shared-secret check for internal callers (e.g., DB trigger via pg_net)
+    let internalSecret = Deno.env.get('INTERNAL_FUNCTION_SECRET') ?? '';
+
+    if (!internalSecret && supabaseUrl && supabaseServiceRoleKey) {
+      const { data: secretRow, error: secretError } = await supabaseAdminClient
+        .from('internal_settings')
+        .select('value')
+        .ilike('key', 'internal_function_secret') // handle uppercase/lowercase keys
+        .single();
+
+      if (secretRow?.value) {
+        internalSecret = secretRow.value as string;
+      } else {
+        console.error('INTERNAL_FUNCTION_SECRET not set and internal_settings lookup failed', secretError?.message);
+      }
+    }
+
+    if (!internalSecret) {
+      return new Response(JSON.stringify({ error: 'Server misconfigured' }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 500,
+      });
+    }
+
+    if (providedSecret !== internalSecret) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 403,
+      });
+    }
 
     const { userIds, notificationPayload } = await req.json();
 
@@ -77,11 +113,6 @@ serve(async (req) => {
         status: 400,
       });
     }
-
-    const supabaseAdminClient = createClient( // Use admin client to fetch tokens for any user
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-    );
 
     // Fetch FCM tokens for the given userIds
     const { data: tokensData, error: tokensError } = await supabaseAdminClient

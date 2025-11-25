@@ -1,16 +1,17 @@
 import { initializeApp, getApp, getApps, type FirebaseApp } from 'firebase/app';
 import { getMessaging, getToken, onMessage, isSupported } from 'firebase/messaging';
 
-// IMPORTANT: Replace with your project's Firebase actual configuration
+// Public Firebase config pulled from env (never include private keys here)
 const firebaseConfig = {
-  apiKey: "YOUR_API_KEY", // TODO: Replace with actual config
-  authDomain: "YOUR_PROJECT_ID.firebaseapp.com", // TODO: Replace with actual config
-  projectId: "YOUR_PROJECT_ID", // TODO: Replace with actual config
-  storageBucket: "YOUR_PROJECT_ID.appspot.com", // TODO: Replace with actual config
-  messagingSenderId: "YOUR_MESSAGING_SENDER_ID", // TODO: Replace with actual config
-  appId: "YOUR_APP_ID", // TODO: Replace with actual config
-  // measurementId: "G-YOUR_MEASUREMENT_ID" // Optional
+  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY ?? '',
+  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN ?? '',
+  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID ?? '',
+  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET ?? '',
+  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID ?? '',
+  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID ?? ''
 };
+
+const vapidKey = process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY;
 
 let firebaseApp: FirebaseApp;
 
@@ -38,11 +39,15 @@ export const requestNotificationPermissionAndGetToken = async () => {
     const permission = await Notification.requestPermission();
     if (permission === 'granted') {
       console.log('Notification permission granted.');
+      if (!vapidKey) {
+        console.error('Missing NEXT_PUBLIC_FIREBASE_VAPID_KEY.');
+        return null;
+      }
       // Get token. You need to pass your VAPID key to getToken()
       // The VAPID key is generated in your Firebase project settings -> Cloud Messaging -> Web configuration
       // It should be a long string of random characters
       const currentToken = await getToken(messaging, {
-        vapidKey: 'YOUR_VAPID_KEY_FROM_FIREBASE_CONSOLE' // TODO: Replace with your actual VAPID key
+        vapidKey
       });
       if (currentToken) {
         console.log('FCM Token:', currentToken);

@@ -8,6 +8,7 @@ import {
   startOfDay,
 } from "date-fns"
 import { vi } from "date-fns/locale"
+import { ArrowRight } from "lucide-react"
 
 import { Badge } from "@/components/ui/badge"
 import { TRANSFER_PURPOSES, TRANSFER_STATUSES } from "@/types/database"
@@ -124,12 +125,6 @@ export interface TransferColumnGroups {
 
 const createCommonColumns = (options: TransferColumnOptions): ColumnDef<TransferListItem>[] => [
   {
-    accessorKey: "ma_yeu_cau",
-    header: "Mã phiếu",
-    enableSorting: true,
-    cell: ({ row }) => <span className="font-medium">{row.original.ma_yeu_cau}</span>,
-  },
-  {
     id: "equipment",
     accessorFn: (row) => row.thiet_bi?.ten_thiet_bi ?? "",
     header: "Thiết bị",
@@ -178,61 +173,102 @@ const createActionsColumn = (options: TransferColumnOptions): ColumnDef<Transfer
 
 const createInternalColumns = (): ColumnDef<TransferListItem>[] => [
   {
-    accessorKey: "khoa_phong_hien_tai",
-    header: "Từ khoa/phòng",
-    cell: ({ row }) => row.original.khoa_phong_hien_tai || EMPTY_PLACEHOLDER,
-  },
-  {
-    accessorKey: "khoa_phong_nhan",
-    header: "Đến khoa/phòng",
-    cell: ({ row }) => row.original.khoa_phong_nhan || EMPTY_PLACEHOLDER,
-  },
-  {
-    id: "receivingFacility",
-    accessorFn: (row) => row.thiet_bi?.facility_name ?? "",
-    header: "Đơn vị nhận",
-    cell: ({ row }) => renderFacility(row.original),
-    enableSorting: true,
+    id: "transferFlow",
+    header: "Luân chuyển",
+    cell: ({ row }) => {
+      const from = row.original.khoa_phong_hien_tai || EMPTY_PLACEHOLDER
+      const to = row.original.khoa_phong_nhan || EMPTY_PLACEHOLDER
+      return (
+        <div className="flex items-center gap-2 text-sm">
+          <span className="font-medium text-foreground">{from}</span>
+          <ArrowRight className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
+          <span className="font-medium text-foreground">{to}</span>
+        </div>
+      )
+    },
+    enableSorting: false,
+    size: 300,
   },
 ]
 
 const createExternalColumns = (referenceDate: Date): ColumnDef<TransferListItem>[] => [
   {
-    accessorKey: "don_vi_nhan",
-    header: "Đơn vị nhận",
-    cell: ({ row }) => row.original.don_vi_nhan || EMPTY_PLACEHOLDER,
+    id: "transferFlow",
+    header: "Luân chuyển",
+    cell: ({ row }) => {
+      const from = row.original.thiet_bi?.facility_name || "Cơ sở"
+      const to = row.original.don_vi_nhan || EMPTY_PLACEHOLDER
+      return (
+        <div className="flex items-center gap-1.5 text-sm">
+          <span className="truncate font-medium text-foreground">{from}</span>
+          <ArrowRight className="h-3.5 w-3.5 flex-shrink-0 text-muted-foreground" />
+          <span className="truncate font-medium text-foreground">{to}</span>
+        </div>
+      )
+    },
+    enableSorting: false,
+    size: 240,
   },
   {
-    accessorKey: "nguoi_lien_he",
-    header: "Người liên hệ",
-    cell: ({ row }) => row.original.nguoi_lien_he || EMPTY_PLACEHOLDER,
-  },
-  {
-    accessorKey: "so_dien_thoai",
-    header: "Số điện thoại",
-    cell: ({ row }) => row.original.so_dien_thoai || EMPTY_PLACEHOLDER,
+    id: "contact",
+    header: "Liên hệ",
+    cell: ({ row }) => {
+      const contact = row.original.nguoi_lien_he
+      const phone = row.original.so_dien_thoai
+      if (!contact && !phone) return EMPTY_PLACEHOLDER
+      return (
+        <div className="text-sm">
+          {contact && <p className="truncate font-medium">{contact}</p>}
+          {phone && <p className="text-xs text-muted-foreground">{phone}</p>}
+        </div>
+      )
+    },
+    size: 160,
   },
   {
     id: "returnTimeline",
     header: "Hoàn trả",
     cell: ({ row }) => {
+      const returned = row.original.ngay_hoan_tra
+      const expected = row.original.ngay_du_kien_tra
       const indicator = buildOverdueIndicator(row.original, referenceDate)
+
       return (
-        <div className="flex flex-col text-sm text-muted-foreground">
+        <div className="flex flex-col gap-0.5 text-sm">
           <span className="font-medium text-foreground">
-            {formatDate(row.original.ngay_hoan_tra, false)}
+            {formatDate(returned, false)}
           </span>
-          <span className="text-xs">
-            Dự kiến: {formatDate(row.original.ngay_du_kien_tra, false)}
-          </span>
+          {expected && (
+            <span className="text-xs text-muted-foreground">
+              DK: {formatDate(expected, false)}
+            </span>
+          )}
           {indicator}
         </div>
       )
     },
+    size: 120,
   },
 ]
 
 const createLiquidationColumns = (): ColumnDef<TransferListItem>[] => [
+  {
+    id: "transferFlow",
+    header: "Luân chuyển",
+    cell: ({ row }) => {
+      const from = row.original.thiet_bi?.facility_name || "Cơ sở"
+      const to = row.original.don_vi_nhan || EMPTY_PLACEHOLDER
+      return (
+        <div className="flex items-center gap-2 text-sm">
+          <span className="font-medium text-foreground">{from}</span>
+          <ArrowRight className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
+          <span className="font-medium text-foreground">{to}</span>
+        </div>
+      )
+    },
+    enableSorting: false,
+    size: 300,
+  },
   {
     accessorKey: "muc_dich",
     header: "Mục đích",
@@ -240,11 +276,6 @@ const createLiquidationColumns = (): ColumnDef<TransferListItem>[] => [
       const key = row.original.muc_dich ?? null
       return key ? TRANSFER_PURPOSES[key] ?? key : EMPTY_PLACEHOLDER
     },
-  },
-  {
-    accessorKey: "don_vi_nhan",
-    header: "Đơn vị tiếp nhận",
-    cell: ({ row }) => row.original.don_vi_nhan || EMPTY_PLACEHOLDER,
   },
   {
     id: "contact",
