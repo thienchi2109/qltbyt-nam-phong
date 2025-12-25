@@ -14,9 +14,7 @@ import { Badge } from "@/components/ui/badge"
 import { differenceInDays, parseISO, startOfDay, format } from "date-fns"
 import { vi } from 'date-fns/locale'
 
-// Import kiểu dữ liệu từ trang Yêu cầu sửa chữa
-// Đảm bảo đường dẫn này chính xác và `RepairRequestWithEquipment` được export từ file đó
-import type { RepairRequestWithEquipment } from "@/app/(app)/repair-requests/page"
+import type { RepairRequestWithEquipment } from "@/app/(app)/repair-requests/types"
 
 
 interface RepairRequestAlertProps {
