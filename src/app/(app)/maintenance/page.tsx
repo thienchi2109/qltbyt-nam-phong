@@ -77,18 +77,17 @@ const NotesInput = React.memo(({ taskId, value, onChange }: {
   );
 });
 import { BulkScheduleDialog } from "@/components/bulk-schedule-dialog"
-import { 
-  useMaintenancePlans, 
-  useCreateMaintenancePlan, 
-  useUpdateMaintenancePlan, 
-  useDeleteMaintenancePlan,
-  useApproveMaintenancePlan,
-  useRejectMaintenancePlan,
+import {
+  useMaintenancePlans,
+  useCreateMaintenancePlan,
+  useUpdateMaintenancePlan,
   maintenanceKeys,
   // MaintenancePlan type imported separately above to avoid duplication
+  // useDeleteMaintenancePlan, useApproveMaintenancePlan, useRejectMaintenancePlan moved to useMaintenanceOperations hook
 } from "@/hooks/use-cached-maintenance"
 import { useQueryClient } from "@tanstack/react-query"
 import { useSearchDebounce } from "@/hooks/use-debounce"
+import { useMaintenanceOperations } from "./_hooks/use-maintenance-operations"
 
 export default function MaintenancePage() {
   const { toast } = useToast()
@@ -176,21 +175,14 @@ export default function MaintenancePage() {
     if (selectedFacilityId) count += 1
     return count
   }, [selectedFacilityId])
-  
-  // ✅ TanStack Query mutations for plan management
-  const approvePlanMutation = useApproveMaintenancePlan()
-  const rejectPlanMutation = useRejectMaintenancePlan()
-  const deletePlanMutation = useDeleteMaintenancePlan()
-  
+
+  // ✅ Plan operations moved to useMaintenanceOperations hook
+
   const [isAddPlanDialogOpen, setIsAddPlanDialogOpen] = React.useState(false)
-  
+
   const [planSorting, setPlanSorting] = React.useState<SortingState>([])
   const [editingPlan, setEditingPlan] = React.useState<MaintenancePlan | null>(null)
-  const [planToDelete, setPlanToDelete] = React.useState<MaintenancePlan | null>(null)
-  const [planToApprove, setPlanToApprove] = React.useState<MaintenancePlan | null>(null)
-  const [planToReject, setPlanToReject] = React.useState<MaintenancePlan | null>(null)
-  const [rejectionReason, setRejectionReason] = React.useState("");
-  
+
   // ⚠️ REMOVED: Client-side pagination state (now server-controlled via currentPage/pageSize)
 
   // State for tasks
@@ -228,6 +220,15 @@ export default function MaintenancePage() {
   const [isCompletingTask, setIsCompletingTask] = React.useState<string | null>(null);
 
   const getDraftCacheKey = React.useCallback((planId: number) => `maintenance_draft_${planId}`, []);
+
+  // ✅ Extracted hook for plan operations (approve, reject, delete)
+  const operations = useMaintenanceOperations({
+    selectedPlan,
+    setSelectedPlan,
+    setActiveTab,
+    getDraftCacheKey,
+    user,
+  })
 
   const hasChanges = React.useMemo(() => {
     return JSON.stringify(tasks) !== JSON.stringify(draftTasks);
@@ -422,93 +423,7 @@ export default function MaintenancePage() {
     handleCancelEdit();
   }, [editingTaskId, editingTaskData, handleCancelEdit]);
 
-  const handleApprovePlan = React.useCallback((planToApprove: MaintenancePlan) => {
-    if (!planToApprove) return;
-    
-    approvePlanMutation.mutate(
-      {
-        id: planToApprove.id,
-        nguoi_duyet: user?.full_name || user?.username || ''
-      },
-      {
-        onSuccess: () => {
-          // Update local state if currently viewing this plan
-          if (selectedPlan && selectedPlan.id === planToApprove.id) {
-            const updatedPlan = { 
-              ...selectedPlan, 
-              trang_thai: 'Đã duyệt' as const, 
-              ngay_phe_duyet: new Date().toISOString() 
-            };
-            setSelectedPlan(updatedPlan);
-          }
-          setPlanToApprove(null);
-        },
-        onError: () => {
-          // Error toast handled by mutation hook
-          setPlanToApprove(null);
-        }
-      }
-    );
-  }, [approvePlanMutation, selectedPlan, user]);
-
-  const handleRejectPlan = React.useCallback(() => {
-    if (!planToReject || !rejectionReason.trim()) return;
-    
-    rejectPlanMutation.mutate(
-      {
-        id: planToReject.id,
-        nguoi_duyet: user?.full_name || user?.username || '',
-        ly_do: rejectionReason.trim()
-      },
-      {
-        onSuccess: () => {
-          // Update local state if currently viewing this plan
-          if (selectedPlan && selectedPlan.id === planToReject.id) {
-            const updatedPlan = { 
-              ...selectedPlan, 
-              trang_thai: 'Không duyệt' as const, 
-              ngay_phe_duyet: new Date().toISOString() 
-            };
-            setSelectedPlan(updatedPlan);
-          }
-          setPlanToReject(null);
-          setRejectionReason("");
-        },
-        onError: () => {
-          // Error toast handled by mutation hook
-          setPlanToReject(null);
-          setRejectionReason("");
-        }
-      }
-    );
-  }, [planToReject, rejectionReason, rejectPlanMutation, selectedPlan, user]);
-
-
-  const handleDeletePlan = React.useCallback(() => {
-    if (!planToDelete) return;
-    
-    deletePlanMutation.mutate(
-      planToDelete.id,
-      {
-        onSuccess: () => {
-          // Clean up localStorage draft
-          localStorage.removeItem(getDraftCacheKey(planToDelete.id));
-          
-          // Clear selected plan if it was deleted
-          if (selectedPlan && selectedPlan.id === planToDelete.id) {
-            setSelectedPlan(null);
-            setActiveTab("plans");
-          }
-          
-          setPlanToDelete(null);
-        },
-        onError: () => {
-          // Error toast handled by mutation hook
-          setPlanToDelete(null);
-        }
-      }
-    );
-  }, [planToDelete, deletePlanMutation, selectedPlan, getDraftCacheKey]);
+  // ✅ handleApprovePlan, handleRejectPlan, handleDeletePlan moved to useMaintenanceOperations hook
 
   const handleCancelAllChanges = React.useCallback(() => {
     setDraftTasks(tasks);
@@ -617,11 +532,11 @@ export default function MaintenancePage() {
                         <DropdownMenuSeparator />
                         {canManage && (
                           <>
-                            <DropdownMenuItem onSelect={() => setPlanToApprove(plan)}>
+                            <DropdownMenuItem onSelect={() => operations.openApproveDialog(plan)}>
                               <Check className="mr-2 h-4 w-4" />
                               Duyệt
                             </DropdownMenuItem>
-                            <DropdownMenuItem onSelect={() => setPlanToReject(plan)}>
+                            <DropdownMenuItem onSelect={() => operations.openRejectDialog(plan)}>
                               <X className="mr-2 h-4 w-4" />
                               Không duyệt
                             </DropdownMenuItem>
@@ -635,7 +550,7 @@ export default function MaintenancePage() {
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
                             <DropdownMenuItem
-                              onSelect={() => setPlanToDelete(plan)}
+                              onSelect={() => operations.openDeleteDialog(plan)}
                               className="text-destructive"
                             >
                               <Trash2 className="mr-2 h-4 w-4" />
@@ -858,11 +773,11 @@ export default function MaintenancePage() {
                   <DropdownMenuSeparator />
                   {canManage && (
                     <>
-                      <DropdownMenuItem onSelect={() => setPlanToApprove(plan)}>
+                      <DropdownMenuItem onSelect={() => operations.openApproveDialog(plan)}>
                         <Check className="mr-2 h-4 w-4" />
                         Duyệt
                       </DropdownMenuItem>
-                      <DropdownMenuItem onSelect={() => setPlanToReject(plan)}>
+                      <DropdownMenuItem onSelect={() => operations.openRejectDialog(plan)}>
                         <X className="mr-2 h-4 w-4" />
                         Không duyệt
                       </DropdownMenuItem>
@@ -875,7 +790,7 @@ export default function MaintenancePage() {
                         Sửa
                       </DropdownMenuItem>
                       <DropdownMenuSeparator />
-                      <DropdownMenuItem onSelect={() => setPlanToDelete(plan)} className="text-destructive focus:text-destructive">
+                      <DropdownMenuItem onSelect={() => operations.openDeleteDialog(plan)} className="text-destructive focus:text-destructive">
                         <Trash2 className="mr-2 h-4 w-4" />
                         Xoá
                       </DropdownMenuItem>
@@ -888,7 +803,7 @@ export default function MaintenancePage() {
         )
       },
     },
-  ], [user, handleSelectPlan, setEditingPlan, setPlanToDelete, setPlanToApprove]);
+  ], [user, handleSelectPlan, setEditingPlan, operations]);
 
   // 🔄 TanStack Table for DISPLAY ONLY (no client-side pagination)
   // Server handles pagination via currentPage/pageSize state
@@ -1860,105 +1775,102 @@ export default function MaintenancePage() {
         onSuccess={onPlanMutationSuccessWithStatePreservation}
         plan={editingPlan as any}
       />
-      {planToApprove && (
-        <AlertDialog open={!!planToApprove} onOpenChange={(open) => !open && setPlanToApprove(null)}>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Bạn có chắc chắn muốn duyệt kế hoạch này?</AlertDialogTitle>
-              <AlertDialogDescription>
-                Sau khi duyệt, kế hoạch <strong>{planToApprove.ten_ke_hoach}</strong> sẽ bị khóa. Bạn sẽ không thể thêm, sửa, hoặc xóa công việc khỏi kế hoạch này nữa. Hành động này không thể hoàn tác.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            {planToApprove.nguoi_duyet && (
-              <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
-                <div className="text-sm font-medium text-blue-800">Đã được duyệt bởi:</div>
-                <div className="text-sm text-blue-600">{planToApprove.nguoi_duyet}</div>
-                {planToApprove.ngay_phe_duyet && (
-                  <div className="text-xs text-blue-500">
-                    {format(parseISO(planToApprove.ngay_phe_duyet), 'dd/MM/yyyy HH:mm', { locale: vi })}
-                  </div>
-                )}
-              </div>
-            )}
-            <AlertDialogFooter>
-              <AlertDialogCancel disabled={approvePlanMutation.isPending}>Hủy</AlertDialogCancel>
-              <AlertDialogAction onClick={() => handleApprovePlan(planToApprove)} disabled={approvePlanMutation.isPending}>
-                {approvePlanMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Xác nhận duyệt
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
-      )}
-      {planToReject && (
-        <AlertDialog open={!!planToReject} onOpenChange={(open) => !open && setPlanToReject(null)}>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Không duyệt kế hoạch</AlertDialogTitle>
-              <AlertDialogDescription>
-                Bạn đang từ chối kế hoạch <strong>{planToReject.ten_ke_hoach}</strong>. Vui lòng nhập lý do không duyệt:
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            {planToReject.nguoi_duyet && (
-              <div className="p-3 bg-red-50 rounded-lg border border-red-200">
-                <div className="text-sm font-medium text-red-800">Đã được từ chối bởi:</div>
-                <div className="text-sm text-red-600">{planToReject.nguoi_duyet}</div>
-                {planToReject.ngay_phe_duyet && (
-                  <div className="text-xs text-red-500">
-                    {format(parseISO(planToReject.ngay_phe_duyet), 'dd/MM/yyyy HH:mm', { locale: vi })}
-                  </div>
-                )}
-              </div>
-            )}
-            <div className="py-4">
-              <textarea
-                className="w-full min-h-[100px] p-3 border border-input rounded-md resize-none focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent"
-                placeholder="Nhập lý do không duyệt kế hoạch này..."
-                value={rejectionReason}
-                onChange={(e) => setRejectionReason(e.target.value)}
-                disabled={rejectPlanMutation.isPending}
-              />
+      {/* Approve Dialog */}
+      <AlertDialog open={operations.confirmDialog.type === 'approve'} onOpenChange={(open) => !open && operations.closeDialog()}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Bạn có chắc chắn muốn duyệt kế hoạch này?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Sau khi duyệt, kế hoạch <strong>{operations.confirmDialog.plan?.ten_ke_hoach}</strong> sẽ bị khóa. Bạn sẽ không thể thêm, sửa, hoặc xóa công việc khỏi kế hoạch này nữa. Hành động này không thể hoàn tác.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          {operations.confirmDialog.plan?.nguoi_duyet && (
+            <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
+              <div className="text-sm font-medium text-blue-800">Đã được duyệt bởi:</div>
+              <div className="text-sm text-blue-600">{operations.confirmDialog.plan.nguoi_duyet}</div>
+              {operations.confirmDialog.plan.ngay_phe_duyet && (
+                <div className="text-xs text-blue-500">
+                  {format(parseISO(operations.confirmDialog.plan.ngay_phe_duyet), 'dd/MM/yyyy HH:mm', { locale: vi })}
+                </div>
+              )}
             </div>
-            <AlertDialogFooter>
-              <AlertDialogCancel disabled={rejectPlanMutation.isPending}>Hủy</AlertDialogCancel>
-              <AlertDialogAction
-                onClick={handleRejectPlan}
-                disabled={rejectPlanMutation.isPending || !rejectionReason.trim()}
-                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              >
-                {rejectPlanMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Xác nhận không duyệt
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
-      )}
+          )}
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={operations.isApproving}>Hủy</AlertDialogCancel>
+            <AlertDialogAction onClick={operations.handleApprovePlan} disabled={operations.isApproving}>
+              {operations.isApproving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Xác nhận duyệt
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+      {/* Reject Dialog */}
+      <AlertDialog open={operations.confirmDialog.type === 'reject'} onOpenChange={(open) => !open && operations.closeDialog()}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Không duyệt kế hoạch</AlertDialogTitle>
+            <AlertDialogDescription>
+              Bạn đang từ chối kế hoạch <strong>{operations.confirmDialog.plan?.ten_ke_hoach}</strong>. Vui lòng nhập lý do không duyệt:
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          {operations.confirmDialog.plan?.nguoi_duyet && (
+            <div className="p-3 bg-red-50 rounded-lg border border-red-200">
+              <div className="text-sm font-medium text-red-800">Đã được từ chối bởi:</div>
+              <div className="text-sm text-red-600">{operations.confirmDialog.plan.nguoi_duyet}</div>
+              {operations.confirmDialog.plan.ngay_phe_duyet && (
+                <div className="text-xs text-red-500">
+                  {format(parseISO(operations.confirmDialog.plan.ngay_phe_duyet), 'dd/MM/yyyy HH:mm', { locale: vi })}
+                </div>
+              )}
+            </div>
+          )}
+          <div className="py-4">
+            <textarea
+              className="w-full min-h-[100px] p-3 border border-input rounded-md resize-none focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent"
+              placeholder="Nhập lý do không duyệt kế hoạch này..."
+              value={operations.confirmDialog.rejectionReason}
+              onChange={(e) => operations.setRejectionReason(e.target.value)}
+              disabled={operations.isRejecting}
+            />
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={operations.isRejecting}>Hủy</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={operations.handleRejectPlan}
+              disabled={operations.isRejecting || !operations.confirmDialog.rejectionReason.trim()}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {operations.isRejecting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Xác nhận không duyệt
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
       <BulkScheduleDialog
         open={isBulkScheduleOpen}
         onOpenChange={setIsBulkScheduleOpen}
         onApply={handleBulkScheduleApply}
       />
-      {planToDelete && (
-        <AlertDialog open={!!planToDelete} onOpenChange={(open) => !open && setPlanToDelete(null)}>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Bạn có chắc chắn muốn xóa?</AlertDialogTitle>
-              <AlertDialogDescription>
-                Hành động này không thể hoàn tác. Kế hoạch
-                <strong> {planToDelete.ten_ke_hoach} </strong>
-                sẽ bị xóa vĩnh viễn, bao gồm tất cả công việc liên quan. Mọi bản nháp chưa lưu cũng sẽ bị xóa.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel disabled={deletePlanMutation.isPending}>Hủy</AlertDialogCancel>
-              <AlertDialogAction onClick={handleDeletePlan} disabled={deletePlanMutation.isPending} className="bg-destructive hover:bg-destructive/90">
-                {deletePlanMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Xóa
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
-      )}
+      {/* Delete Dialog */}
+      <AlertDialog open={operations.confirmDialog.type === 'delete'} onOpenChange={(open) => !open && operations.closeDialog()}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Bạn có chắc chắn muốn xóa?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Hành động này không thể hoàn tác. Kế hoạch
+              <strong> {operations.confirmDialog.plan?.ten_ke_hoach} </strong>
+              sẽ bị xóa vĩnh viễn, bao gồm tất cả công việc liên quan. Mọi bản nháp chưa lưu cũng sẽ bị xóa.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={operations.isDeleting}>Hủy</AlertDialogCancel>
+            <AlertDialogAction onClick={operations.handleDeletePlan} disabled={operations.isDeleting} className="bg-destructive hover:bg-destructive/90">
+              {operations.isDeleting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Xóa
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
       {(taskToDelete || isConfirmingBulkDelete) && (
         <AlertDialog open={!!taskToDelete || isConfirmingBulkDelete} onOpenChange={(open) => {
           if (!open) {
@@ -2046,9 +1958,9 @@ export default function MaintenancePage() {
           handleMobileFilterClear={handleMobileFilterClear}
           activeMobileFilterCount={activeMobileFilterCount}
           setIsAddPlanDialogOpen={setIsAddPlanDialogOpen}
-          setPlanToApprove={setPlanToApprove}
-          setPlanToReject={setPlanToReject}
-          setPlanToDelete={setPlanToDelete}
+          openApproveDialog={operations.openApproveDialog}
+          openRejectDialog={operations.openRejectDialog}
+          openDeleteDialog={operations.openDeleteDialog}
           setEditingPlan={setEditingPlan}
           setIsAddTasksDialogOpen={setIsAddTasksDialogOpen}
           handleGeneratePlanForm={handleGeneratePlanForm}
@@ -2568,9 +2480,9 @@ type MobileMaintenanceLayoutProps = {
   handleMobileFilterClear: () => void
   activeMobileFilterCount: number
   setIsAddPlanDialogOpen: (open: boolean) => void
-  setPlanToApprove: (plan: MaintenancePlan | null) => void
-  setPlanToReject: (plan: MaintenancePlan | null) => void
-  setPlanToDelete: (plan: MaintenancePlan | null) => void
+  openApproveDialog: (plan: MaintenancePlan) => void
+  openRejectDialog: (plan: MaintenancePlan) => void
+  openDeleteDialog: (plan: MaintenancePlan) => void
   setEditingPlan: (plan: MaintenancePlan | null) => void
   setIsAddTasksDialogOpen: (open: boolean) => void
   handleGeneratePlanForm: () => void | Promise<void>
@@ -2626,9 +2538,9 @@ function MobileMaintenanceLayout({
   handleMobileFilterClear,
   activeMobileFilterCount,
   setIsAddPlanDialogOpen,
-  setPlanToApprove,
-  setPlanToReject,
-  setPlanToDelete,
+  openApproveDialog,
+  openRejectDialog,
+  openDeleteDialog,
   setEditingPlan,
   setIsAddTasksDialogOpen,
   handleGeneratePlanForm,
@@ -2813,14 +2725,14 @@ function MobileMaintenanceLayout({
                           <DropdownMenuItem onSelect={() => setEditingPlan(plan)}>
                             Sửa kế hoạch
                           </DropdownMenuItem>
-                          <DropdownMenuItem onSelect={() => setPlanToApprove(plan)}>
+                          <DropdownMenuItem onSelect={() => openApproveDialog(plan)}>
                             Duyệt kế hoạch
                           </DropdownMenuItem>
-                          <DropdownMenuItem onSelect={() => setPlanToReject(plan)}>
+                          <DropdownMenuItem onSelect={() => openRejectDialog(plan)}>
                             Không duyệt
                           </DropdownMenuItem>
                           <DropdownMenuSeparator />
-                          <DropdownMenuItem onSelect={() => setPlanToDelete(plan)} className="text-destructive">
+                          <DropdownMenuItem onSelect={() => openDeleteDialog(plan)} className="text-destructive">
                             Xóa kế hoạch
                           </DropdownMenuItem>
                         </>
