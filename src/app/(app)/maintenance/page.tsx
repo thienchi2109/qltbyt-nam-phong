@@ -1607,153 +1607,19 @@ export default function MaintenancePage() {
                   <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
                 </div>
               ) : (
-                <>
-                  {selectedTaskRowsCount > 0 && !isPlanApproved && canManagePlans && (
-                    <div className="flex items-center gap-2 mb-4 p-3 bg-muted rounded-md border">
-                      <span className="text-sm font-medium">
-                        Đã chọn {selectedTaskRowsCount} mục:
-                      </span>
-                      <Button size="sm" variant="outline" onClick={() => setIsBulkScheduleOpen(true)}>
-                        <CalendarDays className="mr-2 h-4 w-4" />
-                        Lên lịch hàng loạt
-                      </Button>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button size="sm" variant="outline">
-                            <Users className="mr-2 h-4 w-4" />
-                            Gán ĐVTH
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent>
-                          <DropdownMenuItem onSelect={() => handleBulkAssignUnit('Nội bộ')}>Nội bộ</DropdownMenuItem>
-                          <DropdownMenuItem onSelect={() => handleBulkAssignUnit('Thuê ngoài')}>Thuê ngoài</DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem onSelect={() => handleBulkAssignUnit(null)}>Xóa đơn vị</DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                      <Button size="sm" variant="destructive" className="ml-auto" onClick={() => setIsConfirmingBulkDelete(true)}>
-                        <Trash2 className="mr-2 h-4 w-4" />
-                        Xóa ({selectedTaskRowsCount})
-                      </Button>
-                    </div>
-                  )}
-                  <div className="rounded-md border overflow-x-auto">
-                    <Table>
-                      <TableHeader>
-                        {taskTable.getHeaderGroups().map((headerGroup) => (
-                          <TableRow key={headerGroup.id}>
-                            {headerGroup.headers.map((header) => (
-                              <TableHead key={header.id} style={{ minWidth: `${header.getSize()}px`, width: `${header.getSize()}px` }}>
-                                {header.isPlaceholder
-                                  ? null
-                                  : flexRender(
-                                    header.column.columnDef.header,
-                                    header.getContext()
-                                  )}
-                              </TableHead>
-                            ))}
-                          </TableRow>
-                        ))}
-                      </TableHeader>
-                      <TableBody>
-                        {taskTable.getRowModel().rows?.length ? (
-                          taskTable.getRowModel().rows.map((row) => (
-                            <TableRow
-                              key={row.original.id}
-                              data-state={row.getIsSelected() && "selected"}
-                              className={editingTaskId === row.original.id ? "bg-muted/50" : ""}
-                            >
-                              {row.getVisibleCells().map((cell) => (
-                                <TableCell key={cell.id}>
-                                  {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                                </TableCell>
-                              ))}
-                            </TableRow>
-                          ))
-                        ) : (
-                          <TableRow>
-                            <TableCell colSpan={taskColumns.length} className="h-24 text-center">
-                              Chưa có công việc nào trong kế hoạch này.
-                            </TableCell>
-                          </TableRow>
-                        )}
-                      </TableBody>
-                    </Table>
-                  </div>
-                </>
+                <TasksTable
+                  table={taskTable}
+                  columns={taskColumns}
+                  editingTaskId={editingTaskId}
+                  totalCount={draftTasks.length}
+                  selectedCount={selectedTaskRowsCount}
+                  showBulkActions={!isPlanApproved && canManagePlans}
+                  onBulkSchedule={() => setIsBulkScheduleOpen(true)}
+                  onBulkAssignUnit={handleBulkAssignUnit}
+                  onBulkDelete={() => setIsConfirmingBulkDelete(true)}
+                />
               )}
             </CardContent>
-            <CardFooter>
-              <div className="flex items-center justify-between w-full">
-                <div className="flex-1 text-sm text-muted-foreground">
-                  Đã chọn {taskTable.getFilteredSelectedRowModel().rows.length} trên {draftTasks.length} công việc.
-                </div>
-                <div className="flex items-center gap-x-6 lg:gap-x-8">
-                  <div className="flex items-center space-x-2">
-                    <p className="text-sm font-medium">Số dòng</p>
-                    <Select
-                      value={`${taskTable.getState().pagination.pageSize}`}
-                      onValueChange={(value) => {
-                        taskTable.setPageSize(Number(value))
-                      }}
-                    >
-                      <SelectTrigger className="h-8 w-[70px]">
-                        <SelectValue placeholder={taskTable.getState().pagination.pageSize} />
-                      </SelectTrigger>
-                      <SelectContent side="top">
-                        {[10, 20, 50, 100].map((pageSize) => (
-                          <SelectItem key={pageSize} value={`${pageSize}`}>
-                            {pageSize}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="flex w-[100px] items-center justify-center text-sm font-medium">
-                    Trang {taskTable.getState().pagination.pageIndex + 1} /{" "}
-                    {taskTable.getPageCount()}
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <Button
-                      variant="outline"
-                      className="hidden h-8 w-8 p-0 lg:flex"
-                      onClick={() => taskTable.setPageIndex(0)}
-                      disabled={!taskTable.getCanPreviousPage()}
-                    >
-                      <span className="sr-only">Go to first page</span>
-                      <ChevronsLeft className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="outline"
-                      className="h-8 w-8 p-0"
-                      onClick={() => taskTable.previousPage()}
-                      disabled={!taskTable.getCanPreviousPage()}
-                    >
-                      <span className="sr-only">Go to previous page</span>
-                      <ChevronLeft className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="outline"
-                      className="h-8 w-8 p-0"
-                      onClick={() => taskTable.nextPage()}
-                      disabled={!taskTable.getCanNextPage()}
-                    >
-                      <span className="sr-only">Go to next page</span>
-                      <ChevronRight className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="outline"
-                      className="hidden h-8 w-8 p-0 lg:flex"
-                      onClick={() => taskTable.setPageIndex(taskTable.getPageCount() - 1)}
-                      disabled={!taskTable.getCanNextPage()}
-                    >
-                      <span className="sr-only">Go to last page</span>
-                      <ChevronsRight className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            </CardFooter>
           </Card>
         </TabsContent>
       </Tabs>
