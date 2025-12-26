@@ -90,6 +90,9 @@ import { useSearchDebounce } from "@/hooks/use-debounce"
 import { useMaintenanceOperations } from "./_hooks/use-maintenance-operations"
 import { useMaintenancePrint } from "./_hooks/use-maintenance-print"
 import { MobileMaintenanceLayout } from "./_components/mobile-maintenance-layout"
+import { PlanFiltersBar } from "./_components/plan-filters-bar"
+import { PlansTable } from "./_components/plans-table"
+import { TasksTable } from "./_components/tasks-table"
 
 export default function MaintenancePage() {
   const { toast } = useToast()
