@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/alert-dialog"
 import type { MaintenancePlan } from "@/hooks/use-cached-maintenance"
 import type { MaintenanceTask } from "@/lib/data"
+import type { Equipment } from "@/lib/data"
 
 export interface MaintenanceDialogsProps {
   // Dialog triggers (controlled by parent)
@@ -44,7 +45,7 @@ export interface MaintenanceDialogsProps {
   // Handlers (from hooks or parent)
   onAddPlanSuccess: () => void
   onEditPlanSuccess: () => void
-  onAddTasksSuccess: () => void
+  onAddTasksSuccess: (newlySelectedEquipment: Equipment[]) => void
   onBulkScheduleApply: (months: Record<string, boolean>) => void
   onCancelConfirm: () => void
   confirmDeleteSingleTask: () => void
@@ -56,7 +57,7 @@ export interface MaintenanceDialogsProps {
   operations: {
     confirmDialog: {
       type: 'approve' | 'reject' | 'delete' | null
-      plan?: MaintenancePlan
+      plan: MaintenancePlan | null
       rejectionReason?: string
     }
     isApproving: boolean
