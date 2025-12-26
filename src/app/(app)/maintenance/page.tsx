@@ -1517,227 +1517,40 @@ export default function MaintenancePage() {
               )}
             </CardHeader>
             <CardContent>
-              {/* Regional Leader Info Banner */}
-              {isRegionalLeader && (
-                <div className="mb-4 rounded-lg border border-blue-200 bg-blue-50 p-4">
-                  <div className="flex items-start gap-3">
-                    <AlertTriangle className="h-5 w-5 text-blue-600 mt-0.5" />
-                    <div className="flex-1">
-                      <h4 className="text-sm font-medium text-blue-900">Chế độ xem của Sở Y tế</h4>
-                      <p className="text-sm text-blue-700 mt-1">
-                        Đang xem kế hoạch bảo trì thiết bị của tất cả cơ sở y tế trực thuộc trên địa bàn. 
-                        Sở Y tế có thể xem chi tiết nhưng không được phép tạo, sửa, hoặc duyệt kế hoạch.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* 🏛️ Facility Filter (Global & Regional Leaders) - Server-Side Filtering */}
-              {showFacilityFilter && (
-                <div className="flex items-center gap-2 mb-4 flex-wrap">
-                  <div className="flex items-center gap-2 flex-1 min-w-0">
-                    <Building2 className="h-4 w-4 text-muted-foreground shrink-0" />
-                    <Select
-                      value={selectedFacilityId?.toString() || "all"}
-                      onValueChange={(value) => setSelectedFacilityId(value === "all" ? null : parseInt(value, 10))}
-                      disabled={isLoadingFacilities || facilities.length === 0}
-                    >
-                      <SelectTrigger className="h-9 border-dashed">
-                        <SelectValue placeholder={isLoadingFacilities ? "Đang tải..." : "Chọn cơ sở..."} />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">
-                          <div className="flex items-center gap-2">
-                            <Building2 className="h-4 w-4 text-muted-foreground" />
-                            <span>Tất cả cơ sở</span>
-                          </div>
-                        </SelectItem>
-                        {facilities.length === 0 ? (
-                          <SelectItem value="empty" disabled>
-                            <span className="text-muted-foreground italic">Không có cơ sở</span>
-                          </SelectItem>
-                        ) : (
-                          facilities.map((facility) => (
-                            <SelectItem key={facility.id} value={facility.id.toString()}>
-                              <span className="truncate">{facility.name}</span>
-                            </SelectItem>
-                          ))
-                        )}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  {/* 📊 Display counts from SERVER (not client-filtered) */}
-                  {selectedFacilityId && (
-                    <Badge variant="secondary" className="shrink-0">
-                      {totalCount} kế hoạch
-                    </Badge>
-                  )}
-                  {!selectedFacilityId && (
-                    <Badge variant="outline" className="shrink-0">
-                      {facilities.length} cơ sở • {totalCount} kế hoạch
-                    </Badge>
-                  )}
-                </div>
-              )}
-
-              {/* Search Section */}
-              <div className="flex flex-col sm:flex-row gap-4 mb-4">
-                <div className="flex-1">
-                  <Input
-                    placeholder="Tìm kiếm theo tên kế hoạch, khoa/phòng, người lập..."
-                    value={planSearchTerm}
-                    onChange={(e) => setPlanSearchTerm(e.target.value)}
-                    className="max-w-sm"
-                  />
-                </div>
-                {planSearchTerm && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setPlanSearchTerm("")}
-                  >
-                    <X className="h-4 w-4 mr-1" />
-                    Xóa tìm kiếm
-                  </Button>
-                )}
-              </div>
+              <PlanFiltersBar
+                showFacilityFilter={showFacilityFilter}
+                facilities={facilities}
+                selectedFacilityId={selectedFacilityId}
+                onFacilityChange={setSelectedFacilityId}
+                isLoadingFacilities={isLoadingFacilities}
+                totalCount={totalCount}
+                searchTerm={planSearchTerm}
+                onSearchChange={setPlanSearchTerm}
+                isRegionalLeader={isRegionalLeader}
+              />
 
               {isMobile ? (
                 renderMobileCards()
               ) : (
-                <div className="rounded-md border">
-                  <Table>
-                    <TableHeader>
-                      {planTable.getHeaderGroups().map((headerGroup) => (
-                        <TableRow key={headerGroup.id}>
-                          {headerGroup.headers.map((header) => (
-                            <TableHead key={header.id}>
-                              {header.isPlaceholder
-                                ? null
-                                : flexRender(
-                                  header.column.columnDef.header,
-                                  header.getContext()
-                                )}
-                            </TableHead>
-                          ))}
-                        </TableRow>
-                      ))}
-                    </TableHeader>
-                    <TableBody>
-                      {isLoadingPlans ? (
-                        Array.from({ length: 5 }).map((_, i) => (
-                          <TableRow key={i}>
-                            <TableCell colSpan={planColumns.length}>
-                              <Skeleton className="h-8 w-full" />
-                            </TableCell>
-                          </TableRow>
-                        ))
-                      ) : planTable.getRowModel().rows?.length ? (
-                        planTable.getRowModel().rows.map((row) => (
-                          <TableRow
-                            key={row.id}
-                            data-state={row.getIsSelected() && "selected"}
-                            onClick={() => handleSelectPlan(row.original)}
-                            className="cursor-pointer"
-                          >
-                            {row.getVisibleCells().map((cell) => (
-                              <TableCell key={cell.id}>
-                                {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                              </TableCell>
-                            ))}
-                          </TableRow>
-                        ))
-                      ) : (
-                        <TableRow>
-                          <TableCell colSpan={planColumns.length} className="h-24 text-center">
-                            Chưa có kế hoạch nào.
-                          </TableCell>
-                        </TableRow>
-                      )}
-                    </TableBody>
-                  </Table>
-                </div>
+                <PlansTable
+                  table={planTable}
+                  columns={planColumns}
+                  isLoading={isLoadingPlans}
+                  onRowClick={handleSelectPlan}
+                  currentPage={currentPage}
+                  totalPages={totalPages}
+                  totalCount={totalCount}
+                  pageSize={pageSize}
+                  onPageChange={setCurrentPage}
+                  onPageSizeChange={(size) => {
+                    setPageSize(size)
+                    setCurrentPage(1)
+                  }}
+                  displayCount={plans.length}
+                  isFiltered={!!(debouncedPlanSearch || selectedFacilityId)}
+                />
               )}
             </CardContent>
-            {/* 🚀 SERVER-SIDE PAGINATION CONTROLS */}
-            <CardFooter>
-              <div className="flex items-center justify-between w-full">
-                <div className="flex-1 text-sm text-muted-foreground">
-                  Hiển thị <strong>{plans.length}</strong> trên <strong>{totalCount}</strong> kế hoạch
-                  {(debouncedPlanSearch || selectedFacilityId) && " (đã lọc)"}
-                </div>
-                <div className="flex items-center gap-x-6 lg:gap-x-8">
-                  {/* Page size selector */}
-                  <div className="flex items-center space-x-2">
-                    <p className="text-sm font-medium">Số dòng</p>
-                    <Select
-                      value={`${pageSize}`}
-                      onValueChange={(value) => {
-                        setPageSize(Number(value));
-                        setCurrentPage(1); // Reset to page 1 when changing page size
-                      }}
-                    >
-                      <SelectTrigger className="h-8 w-[70px]">
-                        <SelectValue placeholder={pageSize} />
-                      </SelectTrigger>
-                      <SelectContent side="top">
-                        {[10, 20, 50, 100, 200].map((size) => (
-                          <SelectItem key={size} value={`${size}`}>
-                            {size}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  {/* Page indicator */}
-                  <div className="flex w-[100px] items-center justify-center text-sm font-medium">
-                    Trang {currentPage} / {totalPages || 1}
-                  </div>
-
-                  {/* Navigation buttons */}
-                  <div className="flex items-center space-x-2">
-                    <Button
-                      variant="outline"
-                      className="hidden h-8 w-8 p-0 lg:flex"
-                      onClick={() => setCurrentPage(1)}
-                      disabled={currentPage === 1 || isLoadingPlans}
-                    >
-                      <span className="sr-only">Đến trang đầu</span>
-                      <ChevronsLeft className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="outline"
-                      className="h-8 w-8 p-0"
-                      onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                      disabled={currentPage === 1 || isLoadingPlans}
-                    >
-                      <span className="sr-only">Trang trước</span>
-                      <ChevronLeft className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="outline"
-                      className="h-8 w-8 p-0"
-                      onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-                      disabled={currentPage === totalPages || isLoadingPlans}
-                    >
-                      <span className="sr-only">Trang tiếp</span>
-                      <ChevronRight className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="outline"
-                      className="hidden h-8 w-8 p-0 lg:flex"
-                      onClick={() => setCurrentPage(totalPages)}
-                      disabled={currentPage === totalPages || isLoadingPlans}
-                    >
-                      <span className="sr-only">Đến trang cuối</span>
-                      <ChevronsRight className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            </CardFooter>
           </Card>
         </TabsContent>
         <TabsContent value="tasks" className="mt-4">
