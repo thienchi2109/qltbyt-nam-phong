@@ -58,24 +58,7 @@ import { useSession } from "next-auth/react"
 import { useRouter } from "next/navigation"
 import { AddTasksDialog } from "@/components/add-tasks-dialog"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Input } from "@/components/ui/input"
 import { Sheet, SheetClose, SheetContent, SheetFooter, SheetHeader, SheetTitle } from "@/components/ui/sheet"
-
-// Memoized component để tránh re-render khi typing
-const NotesInput = React.memo(({ taskId, value, onChange }: {
-  taskId: number;
-  value: string;
-  onChange: (value: string) => void;
-}) => {
-  return (
-    <Input
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-      className="h-8"
-      autoFocus
-    />
-  );
-});
 import { BulkScheduleDialog } from "@/components/bulk-schedule-dialog"
 import {
   useMaintenancePlans,
@@ -94,6 +77,7 @@ import { PlanFiltersBar } from "./_components/plan-filters-bar"
 import { PlansTable } from "./_components/plans-table"
 import { TasksTable } from "./_components/tasks-table"
 import { usePlanColumns, useTaskColumns } from "./_components/maintenance-columns"
+import { useTaskEditing } from "./_components/task-editing"
 
 export default function MaintenancePage() {
   const { toast } = useToast()
@@ -204,13 +188,8 @@ export default function MaintenancePage() {
   })
   const [taskRowSelection, setTaskRowSelection] = React.useState<RowSelectionState>({});
 
-  // State for inline editing
-  const [editingTaskId, setEditingTaskId] = React.useState<number | null>(null);
-  const [editingTaskData, setEditingTaskData] = React.useState<Partial<MaintenanceTask> | null>(null);
-
-  // State for task deletion
-  const [taskToDelete, setTaskToDelete] = React.useState<MaintenanceTask | null>(null);
-  const [isDeletingTasks, setIsDeletingTasks] = React.useState(false); // Used for single/bulk deletion from DRAFT
+  // State for task deletion (isDeletingTasks used for single/bulk deletion from DRAFT)
+  const [isDeletingTasks, setIsDeletingTasks] = React.useState(false);
   const [isConfirmingBulkDelete, setIsConfirmingBulkDelete] = React.useState(false);
 
   // State for bulk editing
@@ -410,31 +389,6 @@ export default function MaintenancePage() {
       setExpandedTaskIds({})
     }
   }, [selectedPlan?.id])
-
-  const handleStartEdit = React.useCallback((task: MaintenanceTask) => {
-    setEditingTaskId(task.id);
-    setEditingTaskData({ ...task });
-  }, []);
-
-  const handleCancelEdit = React.useCallback(() => {
-    setEditingTaskId(null);
-    setEditingTaskData(null);
-  }, []);
-
-  const handleTaskDataChange = React.useCallback((field: keyof MaintenanceTask, value: any) => {
-    setEditingTaskData(prev => prev ? { ...prev, [field]: value } : null);
-  }, []);
-
-  const handleSaveTask = React.useCallback(() => {
-    if (!editingTaskId || !editingTaskData) return;
-
-    setDraftTasks(currentDrafts =>
-      currentDrafts.map(task =>
-        task.id === editingTaskId ? { ...task, ...editingTaskData } : task
-      )
-    );
-    handleCancelEdit();
-  }, [editingTaskId, editingTaskData, handleCancelEdit]);
 
   // ✅ handleApprovePlan, handleRejectPlan, handleDeletePlan moved to useMaintenanceOperations hook
 
@@ -653,15 +607,6 @@ export default function MaintenancePage() {
     });
   }, [selectedPlan, draftTasks, toast]);
 
-  const confirmDeleteSingleTask = React.useCallback(() => {
-    if (!taskToDelete) return;
-    setIsDeletingTasks(true);
-    setDraftTasks(currentDrafts => currentDrafts.filter(task => task.id !== taskToDelete.id));
-    setTaskToDelete(null);
-    setIsDeletingTasks(false);
-    toast({ title: "Đã xóa khỏi bản nháp" });
-  }, [taskToDelete, toast]);
-
   const handleMobileFilterApply = React.useCallback(() => {
     setSelectedFacilityId(pendingFacilityFilter ?? null)
     setCurrentPage(1)
@@ -711,6 +656,24 @@ export default function MaintenancePage() {
 
   const isPlanApproved = selectedPlan?.trang_thai === 'Đã duyệt';
   const canCompleteTask = !isRegionalLeader && user && ((user.role === 'global' || user.role === 'admin') || user.role === 'to_qltb');
+
+  // ✅ Extracted hook for task inline editing (must be after isPlanApproved is declared)
+  const taskEditing = useTaskEditing({
+    draftTasks,
+    setDraftTasks,
+    canManagePlans,
+    isPlanApproved,
+  })
+
+  const confirmDeleteSingleTask = React.useCallback(() => {
+    const toDelete = taskEditing.taskToDelete;
+    if (!toDelete) return;
+    setIsDeletingTasks(true);
+    setDraftTasks(currentDrafts => currentDrafts.filter(task => task.id !== toDelete.id));
+    taskEditing.setTaskToDelete(null);
+    setIsDeletingTasks(false);
+    toast({ title: "Đã xóa khỏi bản nháp" });
+  }, [taskEditing.taskToDelete, taskEditing.setTaskToDelete, toast]);
 
   const handleMarkAsCompleted = React.useCallback(async (task: MaintenanceTask, month: number) => {
     if (!selectedPlan || !user || !canCompleteTask) {
@@ -766,12 +729,12 @@ export default function MaintenancePage() {
 
 
   const taskColumns = useTaskColumns({
-    editingTaskId,
-    handleStartEdit,
-    handleCancelEdit,
-    handleTaskDataChange,
-    handleSaveTask,
-    setTaskToDelete,
+    editingTaskId: taskEditing.editingTaskId,
+    handleStartEdit: taskEditing.handleStartEdit,
+    handleCancelEdit: taskEditing.handleCancelEdit,
+    handleTaskDataChange: taskEditing.handleTaskDataChange,
+    handleSaveTask: taskEditing.handleSaveTask,
+    setTaskToDelete: taskEditing.setTaskToDelete,
     canManagePlans,
     isPlanApproved,
     canCompleteTask,
@@ -853,28 +816,28 @@ export default function MaintenancePage() {
   // ✅ handleGeneratePlanForm moved to useMaintenancePrint hook
 
   const tableMeta = React.useMemo(() => ({
-    editingTaskId,
-    editingTaskData,
+    editingTaskId: taskEditing.editingTaskId,
+    editingTaskData: taskEditing.editingTaskData,
     isPlanApproved,
-    setTaskToDelete,
-    handleTaskDataChange,
-    handleSaveTask,
-    handleCancelEdit,
-    handleStartEdit,
+    setTaskToDelete: taskEditing.setTaskToDelete,
+    handleTaskDataChange: taskEditing.handleTaskDataChange,
+    handleSaveTask: taskEditing.handleSaveTask,
+    handleCancelEdit: taskEditing.handleCancelEdit,
+    handleStartEdit: taskEditing.handleStartEdit,
     completionStatus,
     isLoadingCompletion,
     handleMarkAsCompleted,
     isCompletingTask,
     canCompleteTask,
   }), [
-    editingTaskId,
-    editingTaskData,
+    taskEditing.editingTaskId,
+    taskEditing.editingTaskData,
     isPlanApproved,
-    setTaskToDelete,
-    handleTaskDataChange,
-    handleSaveTask,
-    handleCancelEdit,
-    handleStartEdit,
+    taskEditing.setTaskToDelete,
+    taskEditing.handleTaskDataChange,
+    taskEditing.handleSaveTask,
+    taskEditing.handleCancelEdit,
+    taskEditing.handleStartEdit,
     completionStatus,
     isLoadingCompletion,
     handleMarkAsCompleted,
@@ -1041,10 +1004,10 @@ export default function MaintenancePage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-      {(taskToDelete || isConfirmingBulkDelete) && (
-        <AlertDialog open={!!taskToDelete || isConfirmingBulkDelete} onOpenChange={(open) => {
+      {(taskEditing.taskToDelete || isConfirmingBulkDelete) && (
+        <AlertDialog open={!!taskEditing.taskToDelete || isConfirmingBulkDelete} onOpenChange={(open) => {
           if (!open) {
-            setTaskToDelete(null)
+            taskEditing.setTaskToDelete(null)
             setIsConfirmingBulkDelete(false)
           }
         }}>
@@ -1052,13 +1015,13 @@ export default function MaintenancePage() {
             <AlertDialogHeader>
               <AlertDialogTitle>Bạn có chắc chắn muốn xóa?</AlertDialogTitle>
               <AlertDialogDescription>
-                {taskToDelete ? `Hành động này sẽ xóa công việc của thiết bị "${taskToDelete.thiet_bi?.ten_thiet_bi}" khỏi bản nháp.` : `Hành động này sẽ xóa ${Object.keys(taskRowSelection).length} công việc đã chọn khỏi bản nháp.`}
+                {taskEditing.taskToDelete ? `Hành động này sẽ xóa công việc của thiết bị "${taskEditing.taskToDelete.thiet_bi?.ten_thiet_bi}" khỏi bản nháp.` : `Hành động này sẽ xóa ${Object.keys(taskRowSelection).length} công việc đã chọn khỏi bản nháp.`}
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
               <AlertDialogCancel disabled={isDeletingTasks}>Hủy</AlertDialogCancel>
               <AlertDialogAction
-                onClick={taskToDelete ? confirmDeleteSingleTask : confirmDeleteSelectedTasks}
+                onClick={taskEditing.taskToDelete ? confirmDeleteSingleTask : confirmDeleteSelectedTasks}
                 disabled={isDeletingTasks}
                 className="bg-destructive hover:bg-destructive/90"
               >
@@ -1144,13 +1107,13 @@ export default function MaintenancePage() {
           handleCancelAllChanges={handleCancelAllChanges}
           isSavingAll={isSavingAll}
           setIsConfirmingCancel={setIsConfirmingCancel}
-          handleStartEdit={handleStartEdit}
-          handleCancelEdit={handleCancelEdit}
-          handleTaskDataChange={handleTaskDataChange}
-          handleSaveTask={handleSaveTask}
-          editingTaskId={editingTaskId}
-          editingTaskData={editingTaskData}
-          setTaskToDelete={setTaskToDelete}
+          handleStartEdit={taskEditing.handleStartEdit}
+          handleCancelEdit={taskEditing.handleCancelEdit}
+          handleTaskDataChange={taskEditing.handleTaskDataChange}
+          handleSaveTask={taskEditing.handleSaveTask}
+          editingTaskId={taskEditing.editingTaskId}
+          editingTaskData={taskEditing.editingTaskData}
+          setTaskToDelete={taskEditing.setTaskToDelete}
           canCompleteTask={canCompleteTask}
           completionStatus={completionStatus}
           handleMarkAsCompleted={handleMarkAsCompleted}
@@ -1257,7 +1220,7 @@ export default function MaintenancePage() {
                     <Button
                       variant="secondary"
                       onClick={generatePlanForm}
-                      disabled={!!editingTaskId || isSavingAll}
+                      disabled={!!taskEditing.editingTaskId || isSavingAll}
                     >
                       <FileText className="mr-2 h-4 w-4" />
                       Xuất phiếu KH
@@ -1266,7 +1229,7 @@ export default function MaintenancePage() {
                   {!isPlanApproved && canManagePlans && (
                     <Button
                       onClick={() => setIsAddTasksDialogOpen(true)}
-                      disabled={!!editingTaskId || isSavingAll}
+                      disabled={!!taskEditing.editingTaskId || isSavingAll}
                     >
                       <PlusCircle className="mr-2 h-4 w-4" />
                       Thêm thiết bị
@@ -1284,7 +1247,7 @@ export default function MaintenancePage() {
                 <TasksTable
                   table={taskTable}
                   columns={taskColumns}
-                  editingTaskId={editingTaskId}
+                  editingTaskId={taskEditing.editingTaskId}
                   totalCount={draftTasks.length}
                   selectedCount={selectedTaskRowsCount}
                   showBulkActions={!isPlanApproved && canManagePlans}
