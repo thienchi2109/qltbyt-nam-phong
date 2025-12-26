@@ -64,6 +64,7 @@ import {
 import { Skeleton } from "@/components/ui/skeleton"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Textarea } from "@/components/ui/textarea"
+import { NotesInput } from "./notes-input"
 
 export type MobileMaintenanceLayoutProps = {
   activeTab: string
@@ -122,22 +123,6 @@ export type MobileMaintenanceLayoutProps = {
   isCompletingTask: string | null
   isPlanApprovedForTasks: boolean
 }
-
-// Memoized component để tránh re-render khi typing
-const NotesInput = React.memo(({ taskId, value, onChange }: {
-  taskId: number;
-  value: string;
-  onChange: (value: string) => void;
-}) => {
-  return (
-    <Input
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-      className="h-8"
-      autoFocus
-    />
-  );
-});
 
 function getPlanStatusTone(status: MaintenancePlan["trang_thai"]) {
   switch (status) {

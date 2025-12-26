@@ -2,6 +2,7 @@ import * as React from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { callRpc } from '@/lib/rpc-client'
 import { toast } from '@/hooks/use-toast'
+import type { TaskType } from '@/lib/data'
 
 // Query keys for caching
 export const maintenanceKeys = {
@@ -29,7 +30,7 @@ export interface MaintenancePlan {
   id: number
   ten_ke_hoach: string
   nam: number
-  loai_cong_viec: string
+  loai_cong_viec: TaskType
   khoa_phong: string | null
   nguoi_lap_ke_hoach: string | null
   trang_thai: 'Bản nháp' | 'Đã duyệt' | 'Không duyệt'

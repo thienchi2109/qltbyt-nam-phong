@@ -21,22 +21,23 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import type { MaintenancePlan } from "@/hooks/use-cached-maintenance"
 import type { MaintenanceTask } from "@/lib/data"
+import { NotesInput } from "./notes-input"
 
-// Memoized NotesInput component
-export const NotesInput = React.memo(({ taskId, value, onChange }: {
-  taskId: number;
-  value: string;
-  onChange: (value: string) => void;
-}) => {
-  return (
-    <Input
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-      className="h-8"
-      autoFocus
-    />
-  );
-});
+export interface TableMeta {
+  editingTaskId: number | null
+  editingTaskData: Partial<MaintenanceTask> | null
+  handleTaskDataChange: (field: keyof MaintenanceTask, value: unknown) => void
+  handleSaveTask: () => void
+  handleCancelEdit: () => void
+  handleStartEdit: (task: MaintenanceTask) => void
+  isPlanApproved: boolean
+  setTaskToDelete: (task: MaintenanceTask | null) => void
+  completionStatus: Record<string, { historyId: number }>
+  isLoadingCompletion: boolean
+  handleMarkAsCompleted: (task: MaintenanceTask, month: number) => void
+  isCompletingTask: string | null
+  canCompleteTask: boolean
+}
 
 export interface PlanColumnOptions {
   sorting: SortingState
@@ -299,7 +300,7 @@ export function useTaskColumns(options: TaskColumnOptions): ColumnDef<Maintenanc
       id: `thang_${month}`,
       header: () => <div className="text-center">{month}</div>,
       cell: ({ row, table }: { row: Row<MaintenanceTask>, table: any }) => {
-        const meta = table.options.meta as any;
+        const meta = table.options.meta as TableMeta;
         const {
           editingTaskId, editingTaskData, handleTaskDataChange,
           isPlanApproved, completionStatus, isLoadingCompletion,
@@ -378,7 +379,7 @@ export function useTaskColumns(options: TaskColumnOptions): ColumnDef<Maintenanc
       accessorKey: 'don_vi_thuc_hien',
       header: 'Đơn vị TH',
       cell: ({ row, table }) => {
-        const meta = table.options.meta as any;
+        const meta = table.options.meta as TableMeta;
         const { editingTaskId, editingTaskData, handleTaskDataChange } = meta;
         const isEditing = editingTaskId === row.original.id;
         return isEditing ? (
@@ -406,7 +407,7 @@ export function useTaskColumns(options: TaskColumnOptions): ColumnDef<Maintenanc
       accessorKey: 'ghi_chu',
       header: 'Ghi chú',
       cell: ({ row, table }) => {
-        const meta = table.options.meta as any;
+        const meta = table.options.meta as TableMeta;
         const { editingTaskId, editingTaskData, handleTaskDataChange } = meta;
         const isEditing = editingTaskId === row.original.id;
 
@@ -427,7 +428,7 @@ export function useTaskColumns(options: TaskColumnOptions): ColumnDef<Maintenanc
     {
       id: "actions",
       cell: ({ row, table }) => {
-        const meta = table.options.meta as any;
+        const meta = table.options.meta as TableMeta;
         const { editingTaskId, handleSaveTask, handleCancelEdit, handleStartEdit, isPlanApproved, setTaskToDelete } = meta;
         const task = row.original;
         const isEditing = editingTaskId === task.id;
