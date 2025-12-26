@@ -34,8 +34,23 @@ export function useTaskEditing(options: UseTaskEditingOptions) {
   }, [])
 
   const handleSaveTask = React.useCallback(() => {
-    // Implementation will be added in next task
-  }, [])
+    if (!editingTaskId || !editingTaskData) return
+
+    options.setDraftTasks(currentDrafts =>
+      currentDrafts.map(task =>
+        task.id === editingTaskId ? { ...task, ...editingTaskData } : task
+      )
+    )
+
+    // Reset editing state
+    setEditingTaskId(null)
+    setEditingTaskData(null)
+
+    toast({
+      title: "Thành công",
+      description: "Đã cập nhật công việc"
+    })
+  }, [editingTaskId, editingTaskData, options.setDraftTasks, toast])
 
   return {
     editingTaskId,
