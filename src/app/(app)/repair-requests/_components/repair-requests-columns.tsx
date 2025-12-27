@@ -8,6 +8,7 @@ import { format, parseISO } from "date-fns"
 import { vi } from 'date-fns/locale'
 import type { RepairRequestWithEquipment } from "../types"
 import { calculateDaysRemaining, getStatusVariant } from "../utils"
+import { cn } from "@/lib/utils"
 
 /**
  * Authenticated user type from NextAuth session (matches module augmentation in src/types/next-auth.d.ts)
@@ -260,7 +261,18 @@ export function useRepairRequestColumns(options: RepairRequestColumnOptions): Co
         const request = row.original
         return (
           <div className="flex flex-col gap-1">
-            <Badge variant={getStatusVariant(request.trang_thai)} className="self-start">{request.trang_thai}</Badge>
+            <Badge
+              variant="outline"
+              className={cn(
+                "self-start whitespace-nowrap font-normal",
+                request.trang_thai === 'Chờ xử lý' && "bg-orange-100 text-orange-700 border-orange-200 dark:bg-orange-900/30 dark:text-orange-400 dark:border-orange-800",
+                request.trang_thai === 'Đã duyệt' && "bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-800",
+                request.trang_thai === 'Hoàn thành' && "bg-green-100 text-green-700 border-green-200 dark:bg-green-900/30 dark:text-green-400 dark:border-green-800",
+                request.trang_thai === 'Không HT' && "bg-red-100 text-red-700 border-red-200 dark:bg-red-900/30 dark:text-red-400 dark:border-red-800",
+              )}
+            >
+              {request.trang_thai}
+            </Badge>
             {request.trang_thai === 'Đã duyệt' && request.ngay_duyet && (
               <div className="text-xs text-muted-foreground">
                 {format(parseISO(request.ngay_duyet), 'dd/MM/yyyy HH:mm', { locale: vi })}

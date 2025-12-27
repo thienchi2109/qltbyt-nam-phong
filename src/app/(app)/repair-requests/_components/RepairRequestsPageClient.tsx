@@ -46,7 +46,7 @@ import {
 import { callRpc } from "@/lib/rpc-client"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Calendar } from "@/components/ui/calendar"
-import { Building2, Calendar as CalendarIcon, Check, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, ChevronUp, FilterX, History, Loader2, PlusCircle } from "lucide-react"
+import { Building2, Calendar as CalendarIcon, Check, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, ChevronUp, FilterX, History, Loader2, PlusCircle, Layers, Clock, CheckCircle, CheckCheck, XCircle } from "lucide-react"
 import { format, parseISO } from "date-fns"
 import { vi } from 'date-fns/locale'
 import { cn } from "@/lib/utils"
@@ -677,14 +677,23 @@ export default function RepairRequestsPageClient() {
       'Hoàn thành': 'success',
       'Không HT': 'danger',
     }
+    const iconMap: Record<string, React.ReactNode> = {
+      'total': <Layers className="h-5 w-5" />,
+      'Chờ xử lý': <Clock className="h-5 w-5" />,
+      'Đã duyệt': <CheckCheck className="h-5 w-5" />,
+      'Hoàn thành': <CheckCircle className="h-5 w-5" />,
+      'Không HT': <XCircle className="h-5 w-5" />,
+    }
+
     const base: SummaryItem[] = [
-      { key: 'total', label: 'Tổng', value: totalRequests, tone: 'default', onClick: () => table.getColumn('trang_thai')?.setFilterValue([]) },
+      { key: 'total', label: 'Tổng', value: totalRequests, tone: 'default', icon: iconMap['total'], onClick: () => table.getColumn('trang_thai')?.setFilterValue([]) },
     ]
     const statusItems: SummaryItem[] = STATUSES.map((s) => ({
       key: s,
       label: s,
       value: statusCounts?.[s] ?? 0,
       tone: toneMap[s],
+      icon: iconMap[s],
       onClick: () => table.getColumn('trang_thai')?.setFilterValue([s]),
     }))
     return [...base, ...statusItems]
