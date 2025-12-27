@@ -269,6 +269,43 @@ $$;
 
 GRANT EXECUTE ON FUNCTION function_name TO authenticated;
 ```
+## File Structure Expectations
+
+- Files: 350-450 lines maximum, single responsibility
+- Filenames: Descriptive, match content exactly
+- Headers: First 5-15 lines explain purpose (multi-item files only)
+
+## Code Quality Standards
+
+- Self-documenting: names explain intent
+- Clear variables: `userAuthenticatedAt` not `uat`
+- Action-based functions: `calculateTaxForOrder()` not `calcTax()`
+- Semantic directories: group by feature/domain, max 3-4 levels
+
+## Working Approach
+
+- Navigate first: Understand structure before reading code
+- Read purposefully: Only open relevant files
+- Trust the structure: Filename and location tell you what's inside
+- Small focused changes: Maintain 350-450 line limit
+- Keep it clean: Don't break existing conventions
+
+## Quality Check
+
+Before completing tasks:
+1. Files under 450 lines
+2. Filenames accurately describe content
+3. Code is self-documenting
+4. Directory structure stays logical
+5. Changes follow existing patterns
+
+## Token Optimization
+
+- Don't read entire files unnecessarily
+- Use grep to find specific patterns
+- Check file headers before reading full content
+- Navigate using directory structure, not memory
+
 
 ## Security Rules
 
