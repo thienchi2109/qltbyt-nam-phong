@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import type { ColumnDef, ColumnFiltersState, SortingState } from "@tanstack/react-table"
+import type { ColumnFiltersState, SortingState } from "@tanstack/react-table"
 import {
   flexRender,
   getCoreRowModel,
@@ -46,7 +46,7 @@ import {
 import { callRpc } from "@/lib/rpc-client"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Calendar } from "@/components/ui/calendar"
-import { ArrowUpDown, Building2, Calendar as CalendarIcon, Check, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, ChevronUp, Edit, FilterX, History, Loader2, MoreHorizontal, PlusCircle, Trash2 } from "lucide-react"
+import { Building2, Calendar as CalendarIcon, Check, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, ChevronUp, FilterX, History, Loader2, PlusCircle } from "lucide-react"
 import { format, parseISO } from "date-fns"
 import { vi } from 'date-fns/locale'
 import { cn } from "@/lib/utils"
@@ -56,7 +56,6 @@ import { useSession } from "next-auth/react"
 import { useTenantBranding } from "@/hooks/use-tenant-branding"
 import { usePathname, useRouter } from "next/navigation"
 import { useIsMobile } from "@/hooks/use-mobile"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger, DropdownMenuCheckboxItem } from "@/components/ui/dropdown-menu"
 import { useSearchParams } from "next/navigation"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
@@ -80,6 +79,12 @@ import { CreateRequestSheet } from "./CreateRequestSheet"
 import { buildRepairRequestSheetHtml } from "../request-sheet"
 import type { EquipmentSelectItem, RepairRequestWithEquipment, RepairUnit } from "../types"
 import { calculateDaysRemaining, getStatusVariant } from "../utils"
+import { useRepairRequestShortcuts } from "../_hooks/useRepairRequestShortcuts"
+import { useRepairRequestDialogs } from "../_hooks/useRepairRequestDialogs"
+import { useRepairRequestColumns, renderActions } from "./repair-requests-columns"
+import { RepairRequestsPagination } from "./RepairRequestsPagination"
+import { MobileRequestList } from "./MobileRequestList"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import {
   getUiFilters,
   setUiFilters,
@@ -139,37 +144,15 @@ export default function RepairRequestsPageClient() {
   const [repairUnit, setRepairUnit] = React.useState<RepairUnit>('noi_bo')
   const [externalCompanyName, setExternalCompanyName] = React.useState("")
 
-  // Edit/Delete state
-  const [editingRequest, setEditingRequest] = React.useState<RepairRequestWithEquipment | null>(null);
+  // Edit/Delete loading state (kept in parent for handlers)
   const [isEditSubmitting, setIsEditSubmitting] = React.useState(false);
-  const [requestToDelete, setRequestToDelete] = React.useState<RepairRequestWithEquipment | null>(null);
   const [isDeleting, setIsDeleting] = React.useState(false);
 
-  // Detail dialog state
-  const [requestToView, setRequestToView] = React.useState<RepairRequestWithEquipment | null>(null);
-
-  // Edit form state
-  const [editIssueDescription, setEditIssueDescription] = React.useState("");
-  const [editRepairItems, setEditRepairItems] = React.useState("");
-  const [editDesiredDate, setEditDesiredDate] = React.useState<Date | undefined>();
-  const [editRepairUnit, setEditRepairUnit] = React.useState<RepairUnit>('noi_bo');
-  const [editExternalCompanyName, setEditExternalCompanyName] = React.useState("");
-
-  // Approval dialog state
-  const [requestToApprove, setRequestToApprove] = React.useState<RepairRequestWithEquipment | null>(null);
+  // Approval loading state (kept in parent for handlers)
   const [isApproving, setIsApproving] = React.useState(false);
-  const [approvalRepairUnit, setApprovalRepairUnit] = React.useState<RepairUnit>('noi_bo');
-  const [approvalExternalCompanyName, setApprovalExternalCompanyName] = React.useState("");
 
-  // Completion dialog state
-  const [requestToComplete, setRequestToComplete] = React.useState<RepairRequestWithEquipment | null>(null);
-  const [completionType, setCompletionType] = React.useState<'Hoàn thành' | 'Không HT' | null>(null);
+  // Completion loading state (kept in parent for handlers)
   const [isCompleting, setIsCompleting] = React.useState(false);
-  const [completionResult, setCompletionResult] = React.useState("");
-  const [nonCompletionReason, setNonCompletionReason] = React.useState("");
-
-  // UI state (list always visible)
-  const [isCreateOpen, setIsCreateOpen] = React.useState(false);
 
   // Table state
   const [sorting, setSorting] = React.useState<SortingState>([
@@ -190,6 +173,27 @@ export default function RepairRequestsPageClient() {
   const [textWrap, setTextWrapState] = React.useState<TextWrapPref>(() => getTextWrap());
 
   const searchInputRef = React.useRef<HTMLInputElement | null>(null)
+
+  // Dialog state (consolidated in hook)
+  const dialogs = useRepairRequestDialogs()
+  const {
+    isCreateOpen, setIsCreateOpen,
+    editingRequest, setEditingRequest,
+    editIssueDescription, setEditIssueDescription,
+    editRepairItems, setEditRepairItems,
+    editDesiredDate, setEditDesiredDate,
+    editRepairUnit, setEditRepairUnit,
+    editExternalCompanyName, setEditExternalCompanyName,
+    requestToDelete, setRequestToDelete,
+    requestToApprove, setRequestToApprove,
+    approvalRepairUnit, setApprovalRepairUnit,
+    approvalExternalCompanyName, setApprovalExternalCompanyName,
+    requestToComplete, setRequestToComplete,
+    completionType, setCompletionType,
+    completionResult, setCompletionResult,
+    nonCompletionReason, setNonCompletionReason,
+    requestToView, setRequestToView,
+  } = dialogs
 
   // Regional leader facility filtering (server mode - matches Equipment page pattern)
   const effectiveTenantKey = user?.don_vi ?? user?.current_don_vi ?? 'none';
@@ -738,227 +742,28 @@ export default function RepairRequestsPageClient() {
     }
   }
 
-  const renderActions = (request: RepairRequestWithEquipment) => {
-    if (!user) return null;
-    // Regional leaders are read-only, hide all actions
-    if (isRegionalLeader) return null;
-    const canManage = user.role === 'global' || user.role === 'admin' || user.role === 'to_qltb';
+  // Table columns (extracted to separate file)
+  const columnOptions = React.useMemo(() => ({
+    onGenerateSheet: handleGenerateRequestSheet,
+    setEditingRequest,
+    setRequestToDelete,
+    handleApproveRequest,
+    handleCompletion,
+    setRequestToView,
+    user,
+    isRegionalLeader
+  }), [
+    handleGenerateRequestSheet,
+    setEditingRequest,
+    setRequestToDelete,
+    handleApproveRequest,
+    handleCompletion,
+    setRequestToView,
+    user,
+    isRegionalLeader
+  ])
 
-    return (
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button variant="ghost" className="h-8 w-8 p-0 touch-target-sm md:h-8 md:w-8">
-            <span className="sr-only">Mở menu</span>
-            <MoreHorizontal className="h-4 w-4" />
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end">
-          <DropdownMenuLabel>Hành động</DropdownMenuLabel>
-          <DropdownMenuItem onClick={() => handleGenerateRequestSheet(request)}>
-            Xem phiếu yêu cầu
-          </DropdownMenuItem>
-
-          {request.trang_thai === 'Chờ xử lý' && (
-            <>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onSelect={() => setEditingRequest(request)}>
-                <Edit className="mr-2 h-4 w-4" />
-                Sửa
-              </DropdownMenuItem>
-              <DropdownMenuItem onSelect={() => setRequestToDelete(request)} className="text-destructive focus:text-destructive">
-                <Trash2 className="mr-2 h-4 w-4" />
-                Xoá
-              </DropdownMenuItem>
-            </>
-          )}
-
-          {canManage && (
-            <>
-              <DropdownMenuSeparator />
-              {request.trang_thai === 'Chờ xử lý' && (
-                <DropdownMenuItem onClick={() => handleApproveRequest(request)}>
-                  Duyệt
-                </DropdownMenuItem>
-              )}
-              {request.trang_thai === 'Đã duyệt' && (
-                <>
-                  <DropdownMenuItem onClick={() => handleCompletion(request, 'Hoàn thành')}>
-                    Hoàn thành
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => handleCompletion(request, 'Không HT')}>
-                    Không hoàn thành
-                  </DropdownMenuItem>
-                </>
-              )}
-            </>
-          )}
-        </DropdownMenuContent>
-      </DropdownMenu>
-    );
-  };
-
-  const columns: ColumnDef<RepairRequestWithEquipment>[] = [
-    // 1. Thiết bị (với mô tả sự cố)
-    {
-      accessorFn: (row) => {
-        // Safe null-checking to prevent "undefined undefined" in sorting/filtering
-        const parts: string[] = [];
-        if (row.thiet_bi?.ten_thiet_bi) {
-          parts.push(String(row.thiet_bi.ten_thiet_bi));
-        }
-        if (row.mo_ta_su_co) {
-          parts.push(String(row.mo_ta_su_co));
-        }
-        return parts.join(' ').trim() || 'N/A';
-      },
-      id: 'thiet_bi_va_mo_ta',
-      header: ({ column }) => (
-        <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}>
-          Thiết bị
-          <ArrowUpDown className="ml-2 h-4 w-4" />
-        </Button>
-      ),
-      cell: ({ row }) => {
-        const request = row.original
-        return (
-          <div>
-            <div className="font-medium">{request.thiet_bi?.ten_thiet_bi || 'N/A'}</div>
-            <div className="text-sm text-muted-foreground truncate max-w-xs">{request.mo_ta_su_co}</div>
-          </div>
-        )
-      },
-      sortingFn: (rowA, rowB) => {
-        const nameA = rowA.original.thiet_bi?.ten_thiet_bi || '';
-        const nameB = rowB.original.thiet_bi?.ten_thiet_bi || '';
-        return nameA.localeCompare(nameB);
-      }
-    },
-    // 2. Người yêu cầu
-    {
-      accessorKey: "nguoi_yeu_cau",
-      header: ({ column }) => (
-        <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}>
-          Người yêu cầu
-          <ArrowUpDown className="ml-2 h-4 w-4" />
-        </Button>
-      ),
-      cell: ({ row }) => {
-        const nguoiYeuCau = row.getValue("nguoi_yeu_cau") as string | null;
-        return (
-          <div className="text-sm">
-            {nguoiYeuCau || <span className="text-muted-foreground italic">N/A</span>}
-          </div>
-        );
-      },
-    },
-    // 3. Ngày yêu cầu
-    {
-      accessorKey: "ngay_yeu_cau",
-      header: ({ column }) => (
-        <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}>
-          Ngày yêu cầu
-          <ArrowUpDown className="ml-2 h-4 w-4" />
-        </Button>
-      ),
-      cell: ({ row }) => <div className="text-sm">{format(parseISO(row.getValue("ngay_yeu_cau")), 'dd/MM/yyyy HH:mm', { locale: vi })}</div>,
-    },
-    // 4. Ngày mong muốn hoàn thành
-    {
-      accessorKey: "ngay_mong_muon_hoan_thanh",
-      header: ({ column }) => (
-        <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}>
-          Ngày mong muốn HT
-          <ArrowUpDown className="ml-2 h-4 w-4" />
-        </Button>
-      ),
-      cell: ({ row }) => {
-        const ngayMongMuon = row.getValue("ngay_mong_muon_hoan_thanh") as string | null;
-        const request = row.original;
-
-        if (!ngayMongMuon) {
-          return (
-            <div className="text-sm">
-              <span className="text-muted-foreground italic">Không có</span>
-            </div>
-          );
-        }
-
-        // Chỉ hiển thị progress bar cho yêu cầu chưa hoàn thành
-        const isCompleted = request.trang_thai === 'Hoàn thành' || request.trang_thai === 'Không HT';
-        const daysInfo = !isCompleted ? calculateDaysRemaining(ngayMongMuon) : null;
-
-        return (
-          <div className="space-y-1">
-            <div className="text-sm font-medium">
-              {format(parseISO(ngayMongMuon), 'dd/MM/yyyy', { locale: vi })}
-            </div>
-            {daysInfo && (
-              <div className="flex items-center gap-2">
-                <div className="flex-1 bg-gray-200 rounded-full h-2">
-                  <div
-                    className={`h-2 rounded-full ${daysInfo.color} transition-all duration-300`}
-                    style={{
-                      width: daysInfo.days > 0
-                        ? `${Math.min(100, Math.max(10, (daysInfo.days / 14) * 100))}%`
-                        : '100%'
-                    }}
-                  />
-                </div>
-                <span className={`text-xs font-medium ${daysInfo.status === 'success' ? 'text-green-600' :
-                  daysInfo.status === 'warning' ? 'text-orange-600' : 'text-red-600'
-                  }`}>
-                  {daysInfo.text}
-                </span>
-              </div>
-            )}
-          </div>
-        );
-      },
-    },
-    // 5. Trạng thái
-    {
-      accessorKey: "trang_thai",
-      header: ({ column }) => (
-        <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}>
-          Trạng thái
-          <ArrowUpDown className="ml-2 h-4 w-4" />
-        </Button>
-      ),
-      cell: ({ row }) => {
-        const request = row.original
-        return (
-          <div className="flex flex-col gap-1">
-            <Badge variant={getStatusVariant(request.trang_thai)} className="self-start">{request.trang_thai}</Badge>
-            {request.trang_thai === 'Đã duyệt' && request.ngay_duyet && (
-              <div className="text-xs text-muted-foreground">
-                {format(parseISO(request.ngay_duyet), 'dd/MM/yyyy HH:mm', { locale: vi })}
-                {request.nguoi_duyet && (
-                  <div className="text-blue-600 font-medium">Duyệt bởi: {request.nguoi_duyet}</div>
-                )}
-              </div>
-            )}
-            {(request.trang_thai === 'Hoàn thành' || request.trang_thai === 'Không HT') && request.ngay_hoan_thanh && (
-              <div className="text-xs text-muted-foreground">
-                {format(parseISO(request.ngay_hoan_thanh), 'dd/MM/yyyy HH:mm', { locale: vi })}
-                {request.nguoi_xac_nhan && (
-                  <div className="text-green-600 font-medium">Xác nhận bởi: {request.nguoi_xac_nhan}</div>
-                )}
-              </div>
-            )}
-          </div>
-        )
-      },
-      filterFn: (row, id, value) => value.includes(row.getValue(id)),
-    },
-    {
-      id: "actions",
-      cell: ({ row }) => (
-        <div onClick={(e) => e.stopPropagation()}>
-          {renderActions(row.original)}
-        </div>
-      ),
-    },
-  ];
+  const columns = useRepairRequestColumns(columnOptions)
 
   // Use data from server (already filtered by facility if selected)
   const tableData = requests;
@@ -1021,22 +826,11 @@ export default function RepairRequestsPageClient() {
   React.useEffect(() => { setTextWrap(textWrap) }, [textWrap])
 
   // Keyboard shortcuts: '/', 'n'
-  React.useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      const target = e.target as HTMLElement | null
-      const isTyping = !!target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)
-      if (!isTyping && e.key === '/') {
-        e.preventDefault()
-        searchInputRef.current?.focus()
-      }
-      if (!isTyping && e.key.toLowerCase() === 'n' && !isRegionalLeader) {
-        e.preventDefault()
-        setIsCreateOpen(true)
-      }
-    }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [isRegionalLeader])
+  useRepairRequestShortcuts({
+    searchInputRef,
+    onCreate: () => setIsCreateOpen(true),
+    isRegionalLeader
+  })
 
   const summaryItems: SummaryItem[] = React.useMemo(() => {
     const toneMap: Record<Status, SummaryItem["tone"]> = {
@@ -1436,118 +1230,12 @@ export default function RepairRequestsPageClient() {
                   />
                   {/* Mobile Card View */}
                   {isMobile ? (
-                    <div className="space-y-3">
-                      {isLoading ? (
-                        <div className="flex justify-center items-center gap-2 py-6">
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                          <span className="text-sm">Đang tải...</span>
-                        </div>
-                      ) : table.getRowModel().rows?.length ? (
-                        table.getRowModel().rows.map((row) => {
-                          const request = row.original;
-                          return (
-                            <Card
-                              key={request.id}
-                              className="mobile-repair-card cursor-pointer hover:bg-muted/50"
-                              onClick={() => setRequestToView(request)}
-                            >
-                              <CardHeader className="mobile-repair-card-header flex flex-row items-start justify-between">
-                                <div className="flex-1 min-w-0 pr-2">
-                                  <CardTitle className="mobile-repair-card-title truncate line-clamp-1">
-                                    {request.thiet_bi?.ten_thiet_bi || 'N/A'}
-                                  </CardTitle>
-                                  <CardDescription className="mobile-repair-card-description truncate">
-                                    {request.thiet_bi?.ma_thiet_bi || 'N/A'}
-                                  </CardDescription>
-                                </div>
-                                <div className="flex-shrink-0" onClick={(e) => e.stopPropagation()}>
-                                  {renderActions(request)}
-                                </div>
-                              </CardHeader>
-                              <CardContent className="mobile-repair-card-content">
-                                {/* Người yêu cầu */}
-                                {request.nguoi_yeu_cau && (
-                                  <div className="mobile-repair-card-field">
-                                    <span className="mobile-repair-card-label">Người yêu cầu</span>
-                                    <span className="mobile-repair-card-value">{request.nguoi_yeu_cau}</span>
-                                  </div>
-                                )}
-
-                                {/* Ngày yêu cầu */}
-                                <div className="mobile-repair-card-field">
-                                  <span className="mobile-repair-card-label">Ngày yêu cầu</span>
-                                  <span className="mobile-repair-card-value">
-                                    {format(parseISO(request.ngay_yeu_cau), 'dd/MM/yyyy', { locale: vi })}
-                                  </span>
-                                </div>
-
-                                {/* Ngày mong muốn hoàn thành */}
-                                {request.ngay_mong_muon_hoan_thanh && (
-                                  <div className="space-y-2">
-                                    <div className="mobile-repair-card-field">
-                                      <span className="mobile-repair-card-label">Ngày mong muốn HT</span>
-                                      <span className="mobile-repair-card-value">
-                                        {format(parseISO(request.ngay_mong_muon_hoan_thanh), 'dd/MM/yyyy', { locale: vi })}
-                                      </span>
-                                    </div>
-                                    {(() => {
-                                      // Chỉ hiển thị progress bar cho yêu cầu chưa hoàn thành
-                                      const isCompleted = request.trang_thai === 'Hoàn thành' || request.trang_thai === 'Không HT';
-                                      const daysInfo = !isCompleted ? calculateDaysRemaining(request.ngay_mong_muon_hoan_thanh) : null;
-                                      return daysInfo && (
-                                        <div className="flex items-center gap-2">
-                                          <div className="flex-1 bg-gray-200 rounded-full h-2">
-                                            <div
-                                              className={`h-2 rounded-full ${daysInfo.color} transition-all duration-300`}
-                                              style={{
-                                                width: daysInfo.days > 0
-                                                  ? `${Math.min(100, Math.max(10, (daysInfo.days / 14) * 100))}%`
-                                                  : '100%'
-                                              }}
-                                            />
-                                          </div>
-                                          <span className={`text-xs font-medium ${daysInfo.status === 'success' ? 'text-green-600' :
-                                            daysInfo.status === 'warning' ? 'text-orange-600' : 'text-red-600'
-                                            }`}>
-                                            {daysInfo.text}
-                                          </span>
-                                        </div>
-                                      );
-                                    })()}
-                                  </div>
-                                )}
-
-                                {/* Trạng thái */}
-                                <div className="mobile-repair-card-field">
-                                  <span className="mobile-repair-card-label">Trạng thái</span>
-                                  <Badge variant={getStatusVariant(request.trang_thai)} className="text-xs">
-                                    {request.trang_thai}
-                                  </Badge>
-                                </div>
-
-                                {/* Mô tả sự cố */}
-                                <div className="space-y-1">
-                                  <span className="mobile-repair-card-label">Mô tả sự cố:</span>
-                                  <p className="mobile-repair-card-value text-left text-xs leading-relaxed line-clamp-2">{request.mo_ta_su_co}</p>
-                                </div>
-
-                                {/* Hạng mục sửa chữa (optional) */}
-                                {request.hang_muc_sua_chua && (
-                                  <div className="space-y-1">
-                                    <span className="mobile-repair-card-label">Hạng mục sửa chữa:</span>
-                                    <p className="mobile-repair-card-value text-left text-xs leading-relaxed line-clamp-2">{request.hang_muc_sua_chua}</p>
-                                  </div>
-                                )}
-                              </CardContent>
-                            </Card>
-                          );
-                        })
-                      ) : (
-                        <div className="text-center py-6 text-muted-foreground text-sm">
-                          Không có kết quả.
-                        </div>
-                      )}
-                    </div>
+                    <MobileRequestList
+                      requests={table.getRowModel().rows.map(row => row.original)}
+                      isLoading={isLoading}
+                      setRequestToView={setRequestToView}
+                      renderActions={(req) => renderActions(req, columnOptions)}
+                    />
                   ) : (
                     /* Desktop Table View */
                     <div key={tableKey} className="rounded-md border overflow-x-auto">
@@ -1633,82 +1321,11 @@ export default function RepairRequestsPageClient() {
                   )}
                 </CardContent>
                 <CardFooter className="py-4">
-                  <div className="flex flex-col md:flex-row items-center justify-between w-full gap-4 md:gap-0">
-                    <div className="flex-1 text-sm text-muted-foreground text-center md:text-left w-full md:w-auto order-2 md:order-1">
-                      {(() => {
-                        const total = totalRequests;
-                        const currentPage = pagination.pageIndex + 1;
-                        const pageSize = pagination.pageSize;
-                        const startItem = total > 0 ? (currentPage - 1) * pageSize + 1 : 0;
-                        const endItem = Math.min(currentPage * pageSize, total);
-                        return `Hiển thị ${startItem}-${endItem} trên tổng ${total} yêu cầu`;
-                      })()}
-                    </div>
-                    <div className="flex flex-col sm:flex-row items-center gap-4 md:space-x-6 lg:space-x-8 w-full md:w-auto justify-center md:justify-end order-1 md:order-2">
-                      <div className="flex items-center space-x-2">
-                        <p className="text-sm font-medium">Số dòng</p>
-                        <Select
-                          value={`${table.getState().pagination.pageSize}`}
-                          onValueChange={(value) => {
-                            table.setPageSize(Number(value))
-                          }}
-                        >
-                          <SelectTrigger className="h-8 w-[70px] touch-target-sm md:h-8">
-                            <SelectValue placeholder={table.getState().pagination.pageSize} />
-                          </SelectTrigger>
-                          <SelectContent side="top">
-                            {[10, 20, 50, 100].map((pageSize) => (
-                              <SelectItem key={pageSize} value={`${pageSize}`}>
-                                {pageSize}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="flex w-[100px] items-center justify-center text-sm font-medium">
-                        Trang {table.getState().pagination.pageIndex + 1} /{" "}
-                        {table.getPageCount()}
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <Button
-                          variant="outline"
-                          className="hidden h-8 w-8 p-0 lg:flex touch-target-sm md:h-8 md:w-8"
-                          onClick={() => table.setPageIndex(0)}
-                          disabled={!table.getCanPreviousPage()}
-                        >
-                          <span className="sr-only">Go to first page</span>
-                          <ChevronsLeft className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="outline"
-                          className="h-8 w-8 p-0 touch-target-sm md:h-8 md:w-8"
-                          onClick={() => table.previousPage()}
-                          disabled={!table.getCanPreviousPage()}
-                        >
-                          <span className="sr-only">Go to previous page</span>
-                          <ChevronLeft className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="outline"
-                          className="h-8 w-8 p-0 touch-target-sm md:h-8 md:w-8"
-                          onClick={() => table.nextPage()}
-                          disabled={!table.getCanNextPage()}
-                        >
-                          <span className="sr-only">Go to next page</span>
-                          <ChevronRight className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="outline"
-                          className="hidden h-8 w-8 p-0 lg:flex touch-target-sm md:h-8 md:w-8"
-                          onClick={() => table.setPageIndex(table.getPageCount() - 1)}
-                          disabled={!table.getCanNextPage()}
-                        >
-                          <span className="sr-only">Go to last page</span>
-                          <ChevronsRight className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </div>
-                  </div>
+                  <RepairRequestsPagination
+                    table={table}
+                    totalRequests={totalRequests}
+                    pagination={pagination}
+                  />
                 </CardFooter>
               </Card>
             </div>
