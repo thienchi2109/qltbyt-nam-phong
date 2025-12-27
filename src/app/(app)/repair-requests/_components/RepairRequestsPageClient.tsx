@@ -351,6 +351,8 @@ export default function RepairRequestsPageClient() {
     refetchRequests();
     // Invalidate facility options cache so new facilities appear in dropdown
     queryClient.invalidateQueries({ queryKey: ['repair_request_facilities'] });
+    // Invalidate status counts so SummaryBar reflects latest changes immediately
+    queryClient.invalidateQueries({ queryKey: ['repair_request_status_counts'] });
   }, [refetchRequests, queryClient]);
 
   const handleSelectEquipment = React.useCallback((equipment: EquipmentSelectItem) => {
