@@ -12,6 +12,7 @@ export type StatCardProps = {
   loading?: boolean
   onClick?: () => void
   className?: string
+  active?: boolean
 }
 
 const toneStyles: Record<NonNullable<StatCardProps["tone"]>, { bg: string, text: string, iconBg: string, iconText: string, border: string }> = {
@@ -52,7 +53,7 @@ const toneStyles: Record<NonNullable<StatCardProps["tone"]>, { bg: string, text:
   },
 }
 
-export function StatCard({ label, value, icon, tone = "default", loading, onClick, className }: StatCardProps) {
+export function StatCard({ label, value, icon, tone = "default", loading, onClick, className, active = false }: StatCardProps) {
   const clickable = Boolean(onClick)
   const styles = toneStyles[tone]
 
@@ -72,6 +73,7 @@ export function StatCard({ label, value, icon, tone = "default", loading, onClic
         "relative overflow-hidden transition-all duration-200",
         "border shadow-sm hover:shadow-md",
         clickable && "cursor-pointer hover:-translate-y-0.5",
+        active && "ring-2 ring-ring ring-offset-2",
         styles.bg,
         className,
       )}

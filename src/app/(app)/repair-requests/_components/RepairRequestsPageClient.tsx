@@ -685,8 +685,25 @@ export default function RepairRequestsPageClient() {
       'Không HT': <XCircle className="h-5 w-5" />,
     }
 
+    // Determine active state: true if no filter (shows all) or if this status is the active filter
+    const isTotalActive = uiFilters.status.length === 0
+
+    // Handler to clear status filter (show all requests)
+    const handleShowAll = () => {
+      const updated = { ...uiFilters, status: [] }
+      setUiFiltersState(updated)
+      setUiFilters(updated)
+    }
+
+    // Handler to filter by specific status
+    const handleFilterByStatus = (status: Status) => {
+      const updated = { ...uiFilters, status: [status] }
+      setUiFiltersState(updated)
+      setUiFilters(updated)
+    }
+
     const base: SummaryItem[] = [
-      { key: 'total', label: 'Tổng', value: totalRequests, tone: 'default', icon: iconMap['total'], onClick: () => table.getColumn('trang_thai')?.setFilterValue([]) },
+      { key: 'total', label: 'Tổng', value: totalRequests, tone: 'default', icon: iconMap['total'], onClick: handleShowAll, active: isTotalActive },
     ]
     const statusItems: SummaryItem[] = STATUSES.map((s) => ({
       key: s,
@@ -694,10 +711,11 @@ export default function RepairRequestsPageClient() {
       value: statusCounts?.[s] ?? 0,
       tone: toneMap[s],
       icon: iconMap[s],
-      onClick: () => table.getColumn('trang_thai')?.setFilterValue([s]),
+      onClick: () => handleFilterByStatus(s),
+      active: uiFilters.status.length === 1 && uiFilters.status[0] === s,
     }))
     return [...base, ...statusItems]
-  }, [totalRequests, statusCounts, table])
+  }, [totalRequests, statusCounts, uiFilters, setUiFiltersState, setUiFilters])
 
   return (
     <ErrorBoundary>
