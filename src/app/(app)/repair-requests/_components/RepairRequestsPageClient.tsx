@@ -76,11 +76,13 @@ import { DeleteRequestDialog } from "./DeleteRequestDialog"
 import { ApproveRequestDialog } from "./ApproveRequestDialog"
 import { CompleteRequestDialog } from "./CompleteRequestDialog"
 import { CreateRequestSheet } from "./CreateRequestSheet"
-import { buildRepairRequestSheetHtml } from "../request-sheet"
 import type { EquipmentSelectItem, RepairRequestWithEquipment, RepairUnit } from "../types"
 import { calculateDaysRemaining, getStatusVariant } from "../utils"
 import { useRepairRequestShortcuts } from "../_hooks/useRepairRequestShortcuts"
 import { useRepairRequestDialogs } from "../_hooks/useRepairRequestDialogs"
+import { useRepairRequestUIHandlers } from "../_hooks/useRepairRequestUIHandlers"
+import { useRepairRequestMutations } from "../_hooks/useRepairRequestMutations"
+import { useRepairRequestWorkflows } from "../_hooks/useRepairRequestWorkflows"
 import { useRepairRequestColumns, renderActions } from "./repair-requests-columns"
 import { RepairRequestsPagination } from "./RepairRequestsPagination"
 import { MobileRequestList } from "./MobileRequestList"
@@ -194,6 +196,12 @@ export default function RepairRequestsPageClient() {
     nonCompletionReason, setNonCompletionReason,
     requestToView, setRequestToView,
   } = dialogs
+
+  // UI handlers (sheet generation, etc.)
+  const { handleGenerateRequestSheet } = useRepairRequestUIHandlers({
+    branding,
+    toast,
+  })
 
   // Regional leader facility filtering (server mode - matches Equipment page pattern)
   const effectiveTenantKey = user?.don_vi ?? user?.current_don_vi ?? 'none';
@@ -355,6 +363,91 @@ export default function RepairRequestsPageClient() {
     queryClient.invalidateQueries({ queryKey: ['repair_request_status_counts'] });
   }, [refetchRequests, queryClient]);
 
+  // Mutations (create, update, delete) - must be after invalidateCacheAndRefetch is defined
+  const { handleSubmit, handleUpdateRequest, handleDeleteRequest } = useRepairRequestMutations(
+    {
+      selectedEquipment,
+      issueDescription,
+      repairItems,
+      desiredDate,
+      repairUnit,
+      externalCompanyName,
+    },
+    {
+      editingRequest,
+      editIssueDescription,
+      editRepairItems,
+      editDesiredDate,
+      editRepairUnit,
+      editExternalCompanyName,
+      requestToDelete,
+    },
+    {
+      user,
+      canSetRepairUnit,
+      invalidateCacheAndRefetch,
+      toast,
+    },
+    {
+      setIsSubmitting,
+      setIsEditSubmitting,
+      setIsDeleting,
+    },
+    {
+      setSelectedEquipment,
+      setSearchQuery,
+      setIssueDescription,
+      setRepairItems,
+      setDesiredDate,
+      setRepairUnit,
+      setExternalCompanyName,
+    },
+    {
+      setEditingRequest,
+      setRequestToDelete,
+    }
+  )
+
+  // Workflows (approve, complete) - must be after invalidateCacheAndRefetch is defined
+  const {
+    handleApproveRequest,
+    handleConfirmApproval,
+    handleCompletion,
+    handleConfirmCompletion,
+  } = useRepairRequestWorkflows(
+    {
+      requestToApprove,
+      approvalRepairUnit,
+      approvalExternalCompanyName,
+    },
+    {
+      requestToComplete,
+      completionType,
+      completionResult,
+      nonCompletionReason,
+    },
+    {
+      user,
+      invalidateCacheAndRefetch,
+      toast,
+    },
+    {
+      setIsApproving,
+      setIsCompleting,
+    },
+    {
+      setRequestToApprove,
+      setApprovalRepairUnit,
+      setApprovalExternalCompanyName,
+    },
+    {
+      setRequestToComplete,
+      setCompletionType,
+      setCompletionResult,
+      setNonCompletionReason,
+    }
+  )
+
   const handleSelectEquipment = React.useCallback((equipment: EquipmentSelectItem) => {
     setSelectedEquipment(equipment);
     setSearchQuery(`${equipment.ten_thiet_bi} (${equipment.ma_thiet_bi})`);
@@ -486,263 +579,6 @@ export default function RepairRequestsPageClient() {
     run()
     return () => ctrl.abort()
   }, [searchQuery, selectedEquipment])
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!selectedEquipment || !issueDescription || !repairItems) {
-      toast({
-        variant: "destructive",
-        title: "Thiếu thông tin",
-        description: "Vui lòng điền đầy đủ các trường bắt buộc.",
-      })
-      return
-    }
-
-    // Validate external company name when repair unit is external
-    if (repairUnit === 'thue_ngoai' && !externalCompanyName.trim()) {
-      toast({
-        variant: "destructive",
-        title: "Thiếu thông tin",
-        description: "Vui lòng nhập tên đơn vị được thuê sửa chữa.",
-      })
-      return
-    }
-
-    if (!user) {
-      toast({ variant: "destructive", title: "Lỗi", description: "Không tìm thấy thông tin người dùng. Vui lòng đăng nhập lại." });
-      return;
-    }
-
-    setIsSubmitting(true)
-
-    try {
-      // Create repair request via RPC; server-side enforces tenant/role
-      await callRpc({
-        fn: 'repair_request_create',
-        args: {
-          p_thiet_bi_id: selectedEquipment.id,
-          p_mo_ta_su_co: issueDescription,
-          p_hang_muc_sua_chua: repairItems,
-          p_ngay_mong_muon_hoan_thanh: desiredDate ? format(desiredDate, "yyyy-MM-dd") : null,
-          p_nguoi_yeu_cau: user.full_name || user.username,
-          p_don_vi_thuc_hien: canSetRepairUnit ? repairUnit : null,
-          p_ten_don_vi_thue: canSetRepairUnit && repairUnit === 'thue_ngoai' ? externalCompanyName.trim() : null,
-        }
-      })
-
-      toast({
-        title: "Thành công",
-        description: "Yêu cầu sửa chữa của bạn đã được gửi đi.",
-      })
-      // Reset form
-      setSelectedEquipment(null)
-      setSearchQuery("")
-      setIssueDescription("")
-      setRepairItems("")
-      setDesiredDate(undefined)
-      setRepairUnit('noi_bo')
-      setExternalCompanyName("")
-      // Invalidate cache and refetch requests
-      invalidateCacheAndRefetch()
-    } catch (error: any) {
-      console.error("Repair request creation failed:", error);
-      toast({
-        variant: "destructive",
-        title: "Gửi yêu cầu thất bại",
-        description: error?.message || 'Không thể tạo yêu cầu sửa chữa. Vui lòng thử lại.',
-      });
-    }
-
-    setIsSubmitting(false)
-  }
-
-  const handleApproveRequest = (request: RepairRequestWithEquipment) => {
-    setRequestToApprove(request);
-    setApprovalRepairUnit('noi_bo');
-    setApprovalExternalCompanyName('');
-  }
-
-  const handleConfirmApproval = async () => {
-    if (!requestToApprove) return;
-
-    // Validate external company name when repair unit is external
-    if (approvalRepairUnit === 'thue_ngoai' && !approvalExternalCompanyName.trim()) {
-      toast({
-        variant: "destructive",
-        title: "Thiếu thông tin",
-        description: "Vui lòng nhập tên đơn vị được thuê sửa chữa.",
-      });
-      return;
-    }
-
-    setIsApproving(true);
-
-    try {
-      await callRpc({
-        fn: 'repair_request_approve',
-        args: {
-          p_id: requestToApprove.id,
-          p_nguoi_duyet: user?.full_name || user?.username || '',
-          p_don_vi_thuc_hien: approvalRepairUnit,
-          p_ten_don_vi_thue: approvalRepairUnit === 'thue_ngoai' ? approvalExternalCompanyName.trim() : null
-        }
-      })
-    } catch (requestError: any) {
-      toast({
-        variant: "destructive",
-        title: "Lỗi duyệt yêu cầu",
-        description: "Không thể duyệt yêu cầu. " + (requestError?.message || ''),
-      });
-      setIsApproving(false);
-      return;
-    }
-
-    toast({ title: "Thành công", description: "Đã duyệt yêu cầu." });
-
-    setRequestToApprove(null);
-    setApprovalRepairUnit('noi_bo');
-    setApprovalExternalCompanyName('');
-    setIsApproving(false);
-    invalidateCacheAndRefetch();
-  }
-
-  const handleCompletion = (request: RepairRequestWithEquipment, newStatus: 'Hoàn thành' | 'Không HT') => {
-    setRequestToComplete(request);
-    setCompletionType(newStatus);
-    setCompletionResult('');
-    setNonCompletionReason('');
-  }
-
-  const handleConfirmCompletion = async () => {
-    if (!requestToComplete || !completionType) return;
-
-    // Validate input based on completion type
-    if (completionType === 'Hoàn thành' && !completionResult.trim()) {
-      toast({
-        variant: "destructive",
-        title: "Thiếu thông tin",
-        description: "Vui lòng nhập kết quả sửa chữa.",
-      });
-      return;
-    }
-
-    if (completionType === 'Không HT' && !nonCompletionReason.trim()) {
-      toast({
-        variant: "destructive",
-        title: "Thiếu thông tin",
-        description: "Vui lòng nhập lý do không hoàn thành.",
-      });
-      return;
-    }
-
-    setIsCompleting(true);
-
-    try {
-      await callRpc({
-        fn: 'repair_request_complete',
-        args: {
-          p_id: requestToComplete.id,
-          p_completion: completionType === 'Hoàn thành' ? completionResult.trim() : null,
-          p_reason: completionType === 'Không HT' ? nonCompletionReason.trim() : null,
-        }
-      })
-    } catch (requestError: any) {
-      toast({ variant: "destructive", title: "Lỗi cập nhật yêu cầu", description: requestError?.message || '' });
-      setIsCompleting(false);
-      return;
-    }
-    toast({ title: "Thành công", description: `Đã cập nhật trạng thái yêu cầu thành "${completionType}".` });
-
-    setRequestToComplete(null);
-    setCompletionType(null);
-    setCompletionResult('');
-    setNonCompletionReason('');
-    setIsCompleting(false);
-    invalidateCacheAndRefetch();
-  }
-
-  const handleUpdateRequest = async () => {
-    if (!editingRequest || !editIssueDescription || !editRepairItems) {
-      toast({ variant: "destructive", title: "Thiếu thông tin", description: "Mô tả sự cố và hạng mục không được để trống." });
-      return;
-    }
-
-    // Validate external company name when repair unit is external
-    if (editRepairUnit === 'thue_ngoai' && !editExternalCompanyName.trim()) {
-      toast({ variant: "destructive", title: "Thiếu thông tin", description: "Vui lòng nhập tên đơn vị được thuê sửa chữa." });
-      return;
-    }
-
-    setIsEditSubmitting(true);
-    // Update via RPC
-    try {
-      await callRpc({
-        fn: 'repair_request_update',
-        args: {
-          p_id: editingRequest.id,
-          p_mo_ta_su_co: editIssueDescription,
-          p_hang_muc_sua_chua: editRepairItems,
-          p_ngay_mong_muon_hoan_thanh: editDesiredDate ? format(editDesiredDate, "yyyy-MM-dd") : null,
-          p_don_vi_thuc_hien: canSetRepairUnit ? editRepairUnit : editingRequest.don_vi_thuc_hien,
-          p_ten_don_vi_thue: canSetRepairUnit && editRepairUnit === 'thue_ngoai' ? editExternalCompanyName.trim() : (canSetRepairUnit ? null : editingRequest.ten_don_vi_thue),
-        }
-      })
-    } catch (error: any) {
-      toast({ variant: "destructive", title: "Lỗi cập nhật", description: error?.message || 'Không thể cập nhật yêu cầu' });
-      setIsEditSubmitting(false);
-      return;
-    }
-    toast({ title: "Thành công", description: "Đã cập nhật yêu cầu." });
-    setEditingRequest(null);
-    invalidateCacheAndRefetch();
-    setIsEditSubmitting(false);
-  }
-
-  const handleDeleteRequest = async () => {
-    if (!requestToDelete) return;
-    setIsDeleting(true);
-    try {
-      await callRpc({ fn: 'repair_request_delete', args: { p_id: requestToDelete.id } })
-    } catch (error: any) {
-      toast({ variant: "destructive", title: "Lỗi xóa yêu cầu", description: error?.message || 'Không thể xóa yêu cầu' });
-      setIsDeleting(false);
-      setRequestToDelete(null);
-      return;
-    }
-
-    toast({ title: "Đã xóa", description: "Yêu cầu đã được xóa thành công." });
-    invalidateCacheAndRefetch();
-
-    setIsDeleting(false);
-    setRequestToDelete(null);
-  }
-
-  const handleGenerateRequestSheet = (request: RepairRequestWithEquipment) => {
-    const organizationName = branding?.name || "TRUNG TÂM KIỂM SOÁT BỆNH TẬT THÀNH PHỐ CẦN THƠ"
-    const logoUrl =
-      branding?.logo_url ||
-      "https://i.postimg.cc/26dHxmnV/89307731ad9526cb7f84-1-Photoroom.png"
-
-    try {
-      const htmlContent = buildRepairRequestSheetHtml(request, {
-        organizationName,
-        logoUrl,
-      })
-
-      const newWindow = window.open("", "_blank")
-      if (newWindow) {
-        newWindow.document.open()
-        newWindow.document.write(htmlContent)
-        newWindow.document.close()
-      }
-    } catch (error) {
-      toast({
-        variant: "destructive",
-        title: "Lỗi",
-        description: error instanceof Error ? error.message : "Không thể tạo phiếu yêu cầu.",
-      })
-    }
-  }
 
   // Table columns (extracted to separate file)
   const columnOptions = React.useMemo(() => ({
