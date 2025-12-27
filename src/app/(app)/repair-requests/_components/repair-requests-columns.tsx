@@ -10,6 +10,21 @@ import type { RepairRequestWithEquipment } from "../types"
 import { calculateDaysRemaining, getStatusVariant } from "../utils"
 
 /**
+ * Authenticated user type from NextAuth session (matches module augmentation in src/types/next-auth.d.ts)
+ */
+export type AuthUser = {
+  id: string
+  username: string
+  role: string
+  khoa_phong?: string | null
+  don_vi?: string | number | null
+  current_don_vi?: number | null
+  dia_ban_id?: string | number | null
+  dia_ban_ma?: string | null
+  full_name?: string | null
+}
+
+/**
  * Options for repair request table columns.
  * All action callbacks are passed from parent component.
  */
@@ -26,8 +41,8 @@ export interface RepairRequestColumnOptions {
   handleCompletion: (req: RepairRequestWithEquipment, type: 'Hoàn thành' | 'Không HT') => void
   /** Set request for detail view */
   setRequestToView: (req: RepairRequestWithEquipment | null) => void
-  /** Current user from session */
-  user: any
+  /** Current user from session (typed, not 'any') */
+  user: AuthUser | null | undefined
   /** Whether current user is a regional leader (read-only) */
   isRegionalLeader: boolean
 }

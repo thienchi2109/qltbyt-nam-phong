@@ -9,6 +9,7 @@ declare module "next-auth" {
       role: string
       khoa_phong?: string | null
       don_vi?: string | number | null
+      current_don_vi?: number | null  // Currently selected tenant for multi-tenant users
       dia_ban_id?: string | number | null
       dia_ban_ma?: string | null
       full_name?: string | null
@@ -23,6 +24,7 @@ declare module "next-auth/jwt" {
     role?: string
     khoa_phong?: string | null
     don_vi?: string | number | null
+    current_don_vi?: number | null  // Currently selected tenant for multi-tenant users
     dia_ban_id?: string | number | null
     dia_ban_ma?: string | null
     full_name?: string | null

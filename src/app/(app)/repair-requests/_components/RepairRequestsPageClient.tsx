@@ -107,7 +107,7 @@ export default function RepairRequestsPageClient() {
   const { toast } = useToast()
   const { data: session, status } = useSession()
   const { data: branding } = useTenantBranding()
-  const user = session?.user as any // Cast NextAuth user to our User type
+  const user = session?.user // Properly typed via NextAuth module augmentation
   const router = useRouter()
   const pathname = usePathname()
   const isMobile = useIsMobile()
