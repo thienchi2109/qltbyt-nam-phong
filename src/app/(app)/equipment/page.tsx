@@ -16,8 +16,6 @@ import {
   useReactTable,
 } from "@tanstack/react-table"
 import {
-  ArrowUpDown,
-  ChevronDown,
   Building2,
   Loader2,
   Plus,
@@ -45,14 +43,10 @@ import {
 } from "@/components/ui/dialog"
 import {
   DropdownMenu,
-  DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuLabel,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
 import {
   Table,
   TableBody,
@@ -87,11 +81,9 @@ import { EquipmentPagination } from "@/components/equipment/equipment-pagination
 import { FacilityFilterSheet } from "@/components/equipment/facility-filter-sheet"
 import { EquipmentToolbar } from "@/components/equipment/equipment-toolbar"
 import { EquipmentDetailDialog } from "@/components/equipment/equipment-detail-dialog"
-import { ResponsivePaginationInfo } from "@/components/responsive-pagination-info"
 import { useIsMobile } from "@/hooks/use-mobile"
 import { useMediaQuery } from "@/hooks/use-media-query"
 import { exportArrayToExcel, exportToExcel } from "@/lib/excel-utils"
-import { UsageHistoryTab } from "@/components/usage-history-tab"
 import { StartUsageDialog } from "@/components/start-usage-dialog"
 import { EndUsageDialog } from "@/components/end-usage-dialog"
 import { ActiveUsageIndicator } from "@/components/active-usage-indicator"
