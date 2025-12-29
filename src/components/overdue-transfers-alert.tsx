@@ -20,9 +20,15 @@ export function OverdueTransfersAlert({ onViewTransfer }: OverdueTransfersAlertP
   const [upcomingTransfers, setUpcomingTransfers] = React.useState<TransferRequest[]>([])
   const [isOpen, setIsOpen] = React.useState(false)
   const [isLoading, setIsLoading] = React.useState(true)
+  const isMountedRef = React.useRef(true)
 
   React.useEffect(() => {
+    isMountedRef.current = true
     fetchOverdueTransfers()
+    
+    return () => {
+      isMountedRef.current = false
+    }
   }, [])
 
   const fetchOverdueTransfers = async () => {
@@ -32,6 +38,9 @@ export function OverdueTransfersAlert({ onViewTransfer }: OverdueTransfersAlertP
       nextWeek.setDate(today.getDate() + 7)
 
       const transfers = await callRpc<TransferRequest[]>({ fn: 'transfer_request_external_pending_returns' })
+      
+      // Prevent setState on unmounted component
+      if (!isMountedRef.current) return
       
       const overdue = transfers.filter(t => 
         new Date(t.ngay_du_kien_tra!) < today
@@ -52,7 +61,9 @@ export function OverdueTransfersAlert({ onViewTransfer }: OverdueTransfersAlertP
     } catch (error) {
       console.error('Error fetching overdue transfers:', error)
     } finally {
-      setIsLoading(false)
+      if (isMountedRef.current) {
+        setIsLoading(false)
+      }
     }
   }
 
@@ -196,4 +207,4 @@ export function OverdueTransfersAlert({ onViewTransfer }: OverdueTransfersAlertP
       </Collapsible>
     </Card>
   )
-} 
+}

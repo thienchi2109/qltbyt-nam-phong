@@ -67,19 +67,12 @@ export function TransferTypeTabs({
   counts,
   children,
 }: TransferTypeTabsProps) {
-  const router = useRouter()
-  const searchParams = useSearchParams()
-
-  // Sync URL with tab state
+  // Note: URL synchronization is handled by the useTransferTypeTab hook
+  // The onTabChange callback (from the hook) already handles router.push
   const handleTabChange = React.useCallback((value: string) => {
     const newTab = value as TransferType
     onTabChange(newTab)
-
-    // Update URL query parameter
-    const params = new URLSearchParams(searchParams?.toString())
-    params.set('tab', newTab)
-    router.push(`?${params.toString()}`, { scroll: false })
-  }, [onTabChange, router, searchParams])
+  }, [onTabChange])
 
   return (
     <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">

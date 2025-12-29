@@ -100,7 +100,7 @@ interface TransferCardProps {
   referenceDate?: Date
 }
 
-export function TransferCard({
+export const TransferCard = React.memo(function TransferCard({
   transfer,
   onClick,
   actions,
@@ -187,7 +187,7 @@ export function TransferCard({
       </CardContent>
     </Card>
   )
-}
+})
 
 interface TypeSpecificDetailsProps {
   transfer: TransferListItem

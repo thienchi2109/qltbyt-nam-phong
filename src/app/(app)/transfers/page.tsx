@@ -127,25 +127,29 @@ export default function TransfersPage() {
     return null
   }
 
-  const { data: facilityOptionsData } = useQuery<Array<{ id: number; name: string }>>({
-    queryKey: ["transfer_request_facilities"],
-    queryFn: async () => {
-      try {
-        if (!user) return []
-        const result = await callRpc<Array<{ id: number; name: string }>>({
-          fn: "get_transfer_request_facilities",
-          args: {},
-        })
-        return result || []
-      } catch (error) {
-        console.error("[transfers] Failed to fetch facility options:", error)
-        return []
-      }
-    },
-    enabled: !!user,
-    staleTime: 5 * 60_000,
-    gcTime: 10 * 60_000,
-  })
+  const { data: facilityOptionsData } = useQuery<Array<{ id: number; name: string }>>(
+    {
+      queryKey: ["transfer_request_facilities"],
+      queryFn: async () => {
+        try {
+          if (!user) return []
+          const result = await callRpc<Array<{ id: number; name: string }>>(
+            {
+              fn: "get_transfer_request_facilities",
+              args: {},
+            }
+          )
+          return result || []
+        } catch (error) {
+          console.error("[transfers] Failed to fetch facility options:", error)
+          return []
+        }
+      },
+      enabled: !!user,
+      staleTime: 5 * 60_000,
+      gcTime: 10 * 60_000,
+    }
+  )
 
   const { selectedFacilityId, setSelectedFacilityId: setFacilityId, showFacilityFilter } =
     useFacilityFilter({
@@ -797,34 +801,43 @@ export default function TransfersPage() {
 
   return (
     <>
-      <AddTransferDialog
-        open={isAddDialogOpen}
-        onOpenChange={setIsAddDialogOpen}
-        onSuccess={async () => {
-          await Promise.all([refetchList(), refetchCounts()])
-        }}
-      />
+      {/* Lazy mount dialogs - only render when open to prevent unnecessary initialization */}
+      {isAddDialogOpen && (
+        <AddTransferDialog
+          open={isAddDialogOpen}
+          onOpenChange={setIsAddDialogOpen}
+          onSuccess={async () => {
+            await Promise.all([refetchList(), refetchCounts()])
+          }}
+        />
+      )}
 
-      <EditTransferDialog
-        open={isEditDialogOpen}
-        onOpenChange={setIsEditDialogOpen}
-        onSuccess={async () => {
-          await Promise.all([refetchList(), refetchCounts()])
-        }}
-        transfer={editingTransfer}
-      />
+      {isEditDialogOpen && (
+        <EditTransferDialog
+          open={isEditDialogOpen}
+          onOpenChange={setIsEditDialogOpen}
+          onSuccess={async () => {
+            await Promise.all([refetchList(), refetchCounts()])
+          }}
+          transfer={editingTransfer}
+        />
+      )}
 
-      <TransferDetailDialog
-        open={detailDialogOpen}
-        onOpenChange={setDetailDialogOpen}
-        transfer={detailTransfer}
-      />
+      {detailDialogOpen && (
+        <TransferDetailDialog
+          open={detailDialogOpen}
+          onOpenChange={setDetailDialogOpen}
+          transfer={detailTransfer}
+        />
+      )}
 
-      <HandoverPreviewDialog
-        open={handoverDialogOpen}
-        onOpenChange={setHandoverDialogOpen}
-        transfer={handoverTransfer}
-      />
+      {handoverDialogOpen && (
+        <HandoverPreviewDialog
+          open={handoverDialogOpen}
+          onOpenChange={setHandoverDialogOpen}
+          transfer={handoverTransfer}
+        />
+      )}
 
       <OverdueTransfersAlert
         onViewTransfer={(transfer) => {
@@ -833,19 +846,21 @@ export default function TransfersPage() {
         }}
       />
 
-      <FilterModal
-        open={isFilterModalOpen}
-        onOpenChange={setIsFilterModalOpen}
-        value={{
-          statuses: statusFilter,
-          dateRange,
-        }}
-        onChange={(newValue) => {
-          setStatusFilter(newValue.statuses)
-          setDateRange(newValue.dateRange ?? null)
-        }}
-        variant={isMobile ? "sheet" : "dialog"}
-      />
+      {isFilterModalOpen && (
+        <FilterModal
+          open={isFilterModalOpen}
+          onOpenChange={setIsFilterModalOpen}
+          value={{
+            statuses: statusFilter,
+            dateRange,
+          }}
+          onChange={(newValue) => {
+            setStatusFilter(newValue.statuses)
+            setDateRange(newValue.dateRange ?? null)
+          }}
+          variant={isMobile ? "sheet" : "dialog"}
+        />
+      )}
 
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
