@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import type { Column, ColumnDef } from "@tanstack/react-table"
+import type { ColumnDef } from "@tanstack/react-table"
 import {
   ColumnFiltersState,
   SortingState,
@@ -18,37 +18,11 @@ import {
 import {
   ArrowUpDown,
   ChevronDown,
-  MoreHorizontal,
-  File,
-  PlusCircle,
-  Plus,
-  FilterX,
-  Filter,
-  Check,
-  ChevronLeft,
-  ChevronRight,
-  ChevronsLeft,
-  ChevronsRight,
-  Printer,
-  QrCode,
-  AlertCircle,
-  Link as LinkIcon,
-  Trash2,
-  Loader2,
-  Edit,
-  Wrench,
-  Settings,
-  ArrowRightLeft,
-  CheckCircle,
-  Calendar,
   Building2,
-  Search,
-  X,
+  Loader2,
+  Plus,
 } from "lucide-react"
-import Link from 'next/link'
 import { useRouter, useSearchParams } from "next/navigation"
-import { format, parseISO } from 'date-fns'
-import { vi } from 'date-fns/locale'
 
 import { cn } from "@/lib/utils"
 import { Badge } from "@/components/ui/badge"
@@ -68,7 +42,6 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog"
 import {
   DropdownMenu,
@@ -76,19 +49,10 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
-import { z } from "zod"
-import { zodResolver } from "@hookform/resolvers/zod"
-import { useForm } from "react-hook-form"
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
-import { RequiredFormLabel } from "@/components/ui/required-form-label"
-import { Textarea } from "@/components/ui/textarea"
-import { Separator } from "@/components/ui/separator"
 import {
   Table,
   TableBody,
@@ -97,16 +61,12 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { type Equipment } from "@/types/database"
-// supabase removed from this module for attachments/history flows (RPC-only)
 import { callRpc } from "@/lib/rpc-client"
 import { useEquipmentRealtimeSync } from "@/hooks/use-realtime-sync"
 import { useActiveUsageLogs } from "@/hooks/use-usage-logs"
 import { useToast } from "@/hooks/use-toast"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Skeleton } from "@/components/ui/skeleton"
-import { ScrollArea } from "@/components/ui/scroll-area"
 import { AddEquipmentDialog } from "@/components/add-equipment-dialog"
 import { ImportEquipmentDialog } from "@/components/import-equipment-dialog"
 import { useSession } from "next-auth/react"
@@ -126,6 +86,7 @@ import { EquipmentActionsMenu } from "@/components/equipment/equipment-actions-m
 import { EquipmentPagination } from "@/components/equipment/equipment-pagination"
 import { FacilityFilterSheet } from "@/components/equipment/facility-filter-sheet"
 import { EquipmentToolbar } from "@/components/equipment/equipment-toolbar"
+import { EquipmentDetailDialog } from "@/components/equipment/equipment-detail-dialog"
 import { ResponsivePaginationInfo } from "@/components/responsive-pagination-info"
 import { useIsMobile } from "@/hooks/use-mobile"
 import { useMediaQuery } from "@/hooks/use-media-query"
@@ -144,86 +105,6 @@ import { ExternalLink } from "lucide-react"
 import { useFacilityFilter } from "@/hooks/useFacilityFilter"
 import type { UsageLog } from "@/types/database"
 import { Sheet, SheetClose, SheetContent, SheetFooter, SheetHeader, SheetTitle } from "@/components/ui/sheet"
-
-type Attachment = {
-  id: string;
-  ten_file: string;
-  duong_dan_luu_tru: string;
-  thiet_bi_id: number;
-};
-
-type HistoryItem = {
-    id: number;
-    ngay_thuc_hien: string;
-    loai_su_kien: string;
-    mo_ta: string;
-    chi_tiet: {
-      // Repair request fields
-      mo_ta_su_co?: string;
-      hang_muc_sua_chua?: string;
-      nguoi_yeu_cau?: string;
-      // Maintenance fields
-      cong_viec_id?: number;
-      thang?: number;
-      ten_ke_hoach?: string;
-      khoa_phong?: string;
-      nam?: number;
-      // Transfer fields
-      ma_yeu_cau?: string;
-      loai_hinh?: string;
-      khoa_phong_hien_tai?: string;
-      khoa_phong_nhan?: string;
-      don_vi_nhan?: string;
-    } | null;
-  };
-
-// Inline edit support: schema and helpers shared with edit dialog (duplicated here for inline mode)
-
-const normalizeDate = (v: string | null | undefined) => {
-  if (!v) return null
-  const s = String(v).trim()
-  if (s === '') return null
-  const m = s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/)
-  if (m) {
-    const d = m[1].padStart(2, '0')
-    const mo = m[2].padStart(2, '0')
-    const y = m[3]
-    return `${y}-${mo}-${d}`
-  }
-  return s
-}
-
-const equipmentFormSchema = z.object({
-  ma_thiet_bi: z.string().min(1, "Mã thiết bị là bắt buộc"),
-  ten_thiet_bi: z.string().min(1, "Tên thiết bị là bắt buộc"),
-  model: z.string().optional().nullable(),
-  serial: z.string().optional().nullable(),
-  hang_san_xuat: z.string().optional().nullable(),
-  noi_san_xuat: z.string().optional().nullable(),
-  nam_san_xuat: z.coerce.number().optional().nullable(),
-  ngay_nhap: z.string().optional().nullable().transform(normalizeDate),
-  ngay_dua_vao_su_dung: z.string().optional().nullable().transform(normalizeDate),
-  nguon_kinh_phi: z.string().optional().nullable(),
-  gia_goc: z.coerce.number().optional().nullable(),
-  han_bao_hanh: z.string().optional().nullable().transform(normalizeDate),
-  vi_tri_lap_dat: z.string().min(1, "Vị trí lắp đặt là bắt buộc").nullable().transform(val => val || ""),
-  khoa_phong_quan_ly: z.string().min(1, "Khoa/Phòng quản lý là bắt buộc").nullable().transform(val => val || ""),
-  nguoi_dang_truc_tiep_quan_ly: z.string().min(1, "Người trực tiếp quản lý (sử dụng) là bắt buộc").nullable().transform(val => val || ""),
-  tinh_trang_hien_tai: z.enum(equipmentStatusOptions, { required_error: "Tình trạng hiện tại là bắt buộc" }).nullable().transform(val => val || "" as any),
-  cau_hinh_thiet_bi: z.string().optional().nullable(),
-  phu_kien_kem_theo: z.string().optional().nullable(),
-  ghi_chu: z.string().optional().nullable(),
-  // Maintenance cycles and next dates
-  chu_ky_bt_dinh_ky: z.coerce.number().optional().nullable(),
-  ngay_bt_tiep_theo: z.string().optional().nullable().transform(normalizeDate),
-  chu_ky_hc_dinh_ky: z.coerce.number().optional().nullable(),
-  ngay_hc_tiep_theo: z.string().optional().nullable().transform(normalizeDate),
-  chu_ky_kd_dinh_ky: z.coerce.number().optional().nullable(),
-  ngay_kd_tiep_theo: z.string().optional().nullable().transform(normalizeDate),
-  phan_loai_theo_nd98: z.enum(['A', 'B', 'C', 'D']).optional().nullable(),
-});
-
-type EquipmentFormValues = z.infer<typeof equipmentFormSchema>
 
 
 export default function EquipmentPage() {
@@ -272,42 +153,6 @@ export default function EquipmentPage() {
   const [isEndUsageDialogOpen, setIsEndUsageDialogOpen] = React.useState(false)
   const [endUsageLog, setEndUsageLog] = React.useState<UsageLog | null>(null)
   const [editingEquipment, setEditingEquipment] = React.useState<Equipment | null>(null)
-  const [currentTab, setCurrentTab] = React.useState<string>("details")
-  const [isEditingDetails, setIsEditingDetails] = React.useState(false)
-  const editForm = useForm<EquipmentFormValues>({
-    resolver: zodResolver(equipmentFormSchema),
-    defaultValues: {
-      // Required fields with empty string defaults
-      ma_thiet_bi: "",
-      ten_thiet_bi: "",
-      vi_tri_lap_dat: "",
-      khoa_phong_quan_ly: "",
-      nguoi_dang_truc_tiep_quan_ly: "",
-      tinh_trang_hien_tai: "" as any,
-      
-      // Optional fields with null defaults (consistent with schema)
-      model: null,
-      serial: null,
-      hang_san_xuat: null,
-      noi_san_xuat: null,
-      nguon_kinh_phi: null,
-      cau_hinh_thiet_bi: null,
-      phu_kien_kem_theo: null,
-      ghi_chu: null,
-      ngay_nhap: null,
-      ngay_dua_vao_su_dung: null,
-      han_bao_hanh: null,
-      ngay_bt_tiep_theo: null,
-      ngay_hc_tiep_theo: null,
-      ngay_kd_tiep_theo: null,
-      nam_san_xuat: null,
-      gia_goc: null,
-      chu_ky_bt_dinh_ky: null,
-      chu_ky_hc_dinh_ky: null,
-      chu_ky_kd_dinh_ky: null,
-      phan_loai_theo_nd98: null,
-    },
-  })
 
   // Moved from below to fix variable declaration order
   const tenantKey = (user as any)?.don_vi ? String((user as any).don_vi) : 'none'
@@ -339,92 +184,6 @@ const { showFacilityFilter, selectedFacilityId, setSelectedFacilityId } = useFac
     refetchInterval: 5 * 60 * 1000, // Poll every 5 minutes instead of 10 seconds
   })
 
-  React.useEffect(() => {
-    if (selectedEquipment && isEditingDetails) {
-      editForm.reset({
-        // Required string fields - use empty string as fallback
-        ma_thiet_bi: selectedEquipment.ma_thiet_bi || "",
-        ten_thiet_bi: selectedEquipment.ten_thiet_bi || "",
-        vi_tri_lap_dat: selectedEquipment.vi_tri_lap_dat || "",
-        khoa_phong_quan_ly: selectedEquipment.khoa_phong_quan_ly || "",
-        nguoi_dang_truc_tiep_quan_ly: selectedEquipment.nguoi_dang_truc_tiep_quan_ly || "",
-        tinh_trang_hien_tai: selectedEquipment.tinh_trang_hien_tai || "" as any,
-        
-        // Optional string fields - use null for consistency with schema
-        model: selectedEquipment.model || null,
-        serial: selectedEquipment.serial || null,
-        hang_san_xuat: selectedEquipment.hang_san_xuat || null,
-        noi_san_xuat: selectedEquipment.noi_san_xuat || null,
-        nguon_kinh_phi: selectedEquipment.nguon_kinh_phi || null,
-        cau_hinh_thiet_bi: selectedEquipment.cau_hinh_thiet_bi || null,
-        phu_kien_kem_theo: selectedEquipment.phu_kien_kem_theo || null,
-        ghi_chu: selectedEquipment.ghi_chu || null,
-        
-        // Date fields - use null for consistency
-        ngay_nhap: selectedEquipment.ngay_nhap || null,
-        ngay_dua_vao_su_dung: selectedEquipment.ngay_dua_vao_su_dung || null,
-        han_bao_hanh: selectedEquipment.han_bao_hanh || null,
-        ngay_bt_tiep_theo: (selectedEquipment as any).ngay_bt_tiep_theo || null,
-        ngay_hc_tiep_theo: (selectedEquipment as any).ngay_hc_tiep_theo || null,
-        ngay_kd_tiep_theo: (selectedEquipment as any).ngay_kd_tiep_theo || null,
-        
-        // Numeric fields - use null for consistency
-        nam_san_xuat: selectedEquipment.nam_san_xuat || null,
-        gia_goc: selectedEquipment.gia_goc || null,
-        chu_ky_bt_dinh_ky: (selectedEquipment as any).chu_ky_bt_dinh_ky || null,
-        chu_ky_hc_dinh_ky: (selectedEquipment as any).chu_ky_hc_dinh_ky || null,
-        chu_ky_kd_dinh_ky: (selectedEquipment as any).chu_ky_kd_dinh_ky || null,
-        
-        // Enum field - validate and use null if invalid
-        phan_loai_theo_nd98: (
-          selectedEquipment.phan_loai_theo_nd98 && ['A','B','C','D'].includes(String(selectedEquipment.phan_loai_theo_nd98).toUpperCase())
-            ? (String(selectedEquipment.phan_loai_theo_nd98).toUpperCase() as 'A'|'B'|'C'|'D')
-            : null
-        ),
-      })
-    }
-  }, [selectedEquipment, isEditingDetails, editForm])
-
-  const updateEquipmentMutation = useMutation({
-    mutationFn: async (vars: { id: number; patch: EquipmentFormValues }) => {
-      await callRpc<any>({ fn: 'equipment_update', args: { p_id: vars.id, p_patch: vars.patch as any } })
-    },
-    onSuccess: (_res, vars) => {
-      toast({ title: 'Thành công', description: 'Đã cập nhật thông tin thiết bị.' })
-      setIsEditingDetails(false)
-      // Update current selected equipment optimistically
-      setSelectedEquipment(prev => prev ? ({ ...prev, ...(vars?.patch || {}) } as any) : prev)
-      // Invalidate current-tenant equipment queries
-      onDataMutationSuccess()
-    },
-    onError: (error: any) => {
-      toast({ variant: 'destructive', title: 'Lỗi', description: 'Không thể cập nhật thiết bị. ' + (error?.message || '') })
-    },
-  })
-
-  const onSubmitInlineEdit = async (values: EquipmentFormValues) => {
-    if (!selectedEquipment) return
-    await updateEquipmentMutation.mutateAsync({ id: selectedEquipment.id, patch: values })
-  }
-
-  const handleDetailDialogOpenChange = React.useCallback((open: boolean) => {
-    if (open) {
-      setIsDetailModalOpen(true)
-      return
-    }
-    if (isEditingDetails && (editForm.formState.isDirty)) {
-      const ok = confirm('Bạn có chắc muốn đóng? Các thay đổi chưa lưu sẽ bị mất.')
-      if (!ok) {
-        // Keep dialog open
-        return
-      }
-    }
-    setIsEditingDetails(false)
-    setIsDetailModalOpen(false)
-  }, [isEditingDetails, editForm.formState.isDirty])
-
-  const requestCloseDetailDialog = React.useCallback(() => handleDetailDialogOpenChange(false), [handleDetailDialogOpenChange])
-
   const isMobile = useIsMobile();
   const useTabletFilters = useMediaQuery("(min-width: 768px) and (max-width: 1024px)");
   // Card view breakpoint (switch to cards below 1280px)
@@ -432,11 +191,6 @@ const { showFacilityFilter, selectedFacilityId, setSelectedFacilityId } = useFac
 
   // Columns dialog state for unified toolbar "Tùy chọn"
   const [isColumnsDialogOpen, setIsColumnsDialogOpen] = React.useState(false);
-
-  // Attachment form state
-  const [newFileName, setNewFileName] = React.useState("");
-  const [newFileUrl, setNewFileUrl] = React.useState("");
-  const [deletingAttachmentId, setDeletingAttachmentId] = React.useState<string | null>(null);
 
   // State to preserve pagination during data reload
   const [preservePageState, setPreservePageState] = React.useState<{
@@ -865,14 +619,7 @@ const facilities = React.useMemo(() => {
       if (equipmentToHighlight) {
         setSelectedEquipment(equipmentToHighlight)
         setIsDetailModalOpen(true)
-        
-        // Set tab from URL parameter
-        if (tabParam && ['details', 'files', 'history', 'usage'].includes(tabParam)) {
-          setCurrentTab(tabParam)
-        } else {
-          setCurrentTab('details')
-        }
-        
+
         // Clear URL params after opening modal
         router.replace('/equipment', { scroll: false })
         
@@ -886,93 +633,6 @@ const facilities = React.useMemo(() => {
       }
     }
   }, [searchParams, router, data])
-
-  // Attachments & history queries (fetch only when detail modal open)
-  const attachmentsQuery = useQuery({
-    queryKey: ['attachments', selectedEquipment?.id],
-    queryFn: async () => {
-      const data = await callRpc<any[]>({ fn: 'equipment_attachments_list', args: { p_thiet_bi_id: selectedEquipment!.id } })
-      return data || []
-    },
-    enabled: !!selectedEquipment && isDetailModalOpen,
-    staleTime: 300_000,
-    refetchOnWindowFocus: false,
-    placeholderData: keepPreviousData,
-  })
-  const historyQuery = useQuery({
-    queryKey: ['history', selectedEquipment?.id],
-    queryFn: async () => {
-      const data = await callRpc<any[]>({ fn: 'equipment_history_list', args: { p_thiet_bi_id: selectedEquipment!.id } })
-      return (data || []) as HistoryItem[]
-    },
-    enabled: !!selectedEquipment && isDetailModalOpen,
-    staleTime: 300_000,
-    refetchOnWindowFocus: false,
-    placeholderData: keepPreviousData,
-  })
-
-  const attachments = (attachmentsQuery.data ?? []) as Attachment[]
-  const isLoadingAttachments = attachmentsQuery.isLoading
-  const history = (historyQuery.data ?? []) as HistoryItem[]
-  const isLoadingHistory = historyQuery.isLoading
-
-
-  // Mutations for attachments
-  const addAttachmentMutation = useMutation({
-    mutationFn: async (vars: { id: number; name: string; url: string }) => {
-      await callRpc<string>({ fn: 'equipment_attachment_create', args: { p_thiet_bi_id: vars.id, p_ten_file: vars.name, p_duong_dan: vars.url } })
-    },
-    onSuccess: (_res, vars) => {
-      toast({ title: 'Thành công', description: 'Đã thêm liên kết mới.' })
-      setNewFileName('')
-      setNewFileUrl('')
-      queryClient.invalidateQueries({ queryKey: ['attachments', vars.id] })
-    },
-    onError: (error: any) => {
-      toast({ variant: 'destructive', title: 'Lỗi thêm liên kết', description: error?.message })
-    },
-  })
-
-  const handleAddAttachment = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newFileName || !newFileUrl || !selectedEquipment) return;
-
-    // Basic URL validation
-    try {
-      new URL(newFileUrl);
-    } catch (_) {
-      toast({ variant: 'destructive', title: 'URL không hợp lệ', description: 'Vui lòng nhập một đường dẫn URL hợp lệ.' });
-      return;
-    }
-
-    await addAttachmentMutation.mutateAsync({ id: selectedEquipment.id, name: newFileName, url: newFileUrl })
-  };
-
-  const deleteAttachmentMutation = useMutation({
-    mutationFn: async (vars: { attachmentId: string }) => {
-      await callRpc<void>({ fn: 'equipment_attachment_delete', args: { p_id: String(vars.attachmentId) } })
-    },
-    onSuccess: async (_res, _vars) => {
-      toast({ title: 'Đã xóa', description: 'Đã xóa liên kết thành công.' })
-      if (selectedEquipment) {
-        await queryClient.invalidateQueries({ queryKey: ['attachments', selectedEquipment.id] })
-      }
-    },
-    onError: (error: any) => {
-      toast({ variant: 'destructive', title: 'Lỗi xóa liên kết', description: error?.message })
-    },
-  })
-
-  const handleDeleteAttachment = async (attachmentId: string) => {
-    if (!selectedEquipment || deletingAttachmentId) return;
-    if (!confirm('Bạn có chắc chắn muốn xóa file đính kèm này không?')) return;
-    setDeletingAttachmentId(attachmentId);
-    try {
-      await deleteAttachmentMutation.mutateAsync({ attachmentId })
-    } finally {
-      setDeletingAttachmentId(null)
-    }
-  };
 
   const pageCount = Math.max(1, Math.ceil((total || 0) / Math.max(pagination.pageSize, 1)))
 
@@ -1319,28 +979,6 @@ const hasFacilityFilter = showFacilityFilter && selectedFacilityId !== null;
     );
   };
 
-  const getHistoryIcon = (eventType: string) => {
-    switch (eventType) {
-        case 'Sửa chữa':
-            return <Wrench className="h-4 w-4 text-muted-foreground" />;
-        case 'Bảo trì':
-        case 'Bảo trì định kỳ':
-        case 'Bảo trì dự phòng':
-            return <Settings className="h-4 w-4 text-muted-foreground" />;
-        case 'Luân chuyển':
-        case 'Luân chuyển nội bộ':
-        case 'Luân chuyển bên ngoài':
-            return <ArrowRightLeft className="h-4 w-4 text-muted-foreground" />;
-        case 'Hiệu chuẩn':
-        case 'Kiểm định':
-            return <CheckCircle className="h-4 w-4 text-muted-foreground" />;
-        case 'Thanh lý':
-            return <Trash2 className="h-4 w-4 text-muted-foreground" />;
-        default:
-            return <Calendar className="h-4 w-4 text-muted-foreground" />;
-    }
-  };
-
   return (
     <>
        <AddEquipmentDialog
@@ -1366,501 +1004,16 @@ const hasFacilityFilter = showFacilityFilter && selectedFacilityId !== null;
         }}
         equipment={editingEquipment}
       />
-      {selectedEquipment && (
-        <Dialog open={isDetailModalOpen} onOpenChange={handleDetailDialogOpenChange}>
-            <DialogContent className="max-w-4xl h-[90vh] flex flex-col overflow-hidden">
-                <DialogHeader>
-                    <DialogTitle>Chi tiết thiết bị: {selectedEquipment.ten_thiet_bi}</DialogTitle>
-                    <DialogDescription>
-                        Mã thiết bị: {selectedEquipment.ma_thiet_bi}
-                    </DialogDescription>
-                </DialogHeader>
-                <Tabs value={currentTab} onValueChange={setCurrentTab} className="flex-grow flex flex-col overflow-hidden">
-                    <TabsList className="shrink-0">
-                        <TabsTrigger value="details">Thông tin chi tiết</TabsTrigger>
-                        <TabsTrigger value="files">File đính kèm</TabsTrigger>
-                        <TabsTrigger value="history">Lịch sử</TabsTrigger>
-                        <TabsTrigger value="usage">Nhật ký sử dụng</TabsTrigger>
-                    </TabsList>
-                    <TabsContent value="details" className="flex-grow overflow-hidden">
-                      {isEditingDetails ? (
-                        <Form {...editForm}>
-<form id="equipment-inline-edit-form" className="h-full flex flex-col overflow-hidden" onSubmit={editForm.handleSubmit(onSubmitInlineEdit)}>
-                            <ScrollArea className="flex-1 pr-4">
-                              <div className="space-y-4 py-4">
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                  <FormField control={editForm.control} name="ma_thiet_bi" render={({ field }) => (
-                                    <FormItem>
-                                      <FormLabel>Mã thiết bị</FormLabel>
-                                      <FormControl>
-                                        <Input placeholder="VD: EQP-001" {...field} value={field.value ?? ''} />
-                                      </FormControl>
-                                      <FormMessage />
-                                    </FormItem>
-                                  )} />
-                                  <FormField control={editForm.control} name="ten_thiet_bi" render={({ field }) => (
-                                    <FormItem>
-                                      <FormLabel>Tên thiết bị</FormLabel>
-                                      <FormControl>
-                                        <Input placeholder="VD: Máy siêu âm" {...field} value={field.value ?? ''} />
-                                      </FormControl>
-                                      <FormMessage />
-                                    </FormItem>
-                                  )} />
-                                </div>
-
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                  <FormField control={editForm.control} name="model" render={({ field }) => (
-                                    <FormItem>
-                                      <FormLabel>Model</FormLabel>
-                                      <FormControl>
-                                        <Input {...field} value={field.value ?? ''} />
-                                      </FormControl>
-                                      <FormMessage />
-                                    </FormItem>
-                                  )} />
-                                  <FormField control={editForm.control} name="serial" render={({ field }) => (
-                                    <FormItem>
-                                      <FormLabel>Serial</FormLabel>
-                                      <FormControl>
-                                        <Input {...field} value={field.value ?? ''} />
-                                      </FormControl>
-                                      <FormMessage />
-                                    </FormItem>
-                                  )} />
-                                </div>
-
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                  <FormField control={editForm.control} name="hang_san_xuat" render={({ field }) => (
-                                    <FormItem>
-                                      <FormLabel>Hãng sản xuất</FormLabel>
-                                      <FormControl>
-                                        <Input {...field} value={field.value ?? ''} />
-                                      </FormControl>
-                                      <FormMessage />
-                                    </FormItem>
-                                  )} />
-                                  <FormField control={editForm.control} name="noi_san_xuat" render={({ field }) => (
-                                    <FormItem>
-                                      <FormLabel>Nơi sản xuất</FormLabel>
-                                      <FormControl>
-                                        <Input {...field} value={field.value ?? ''} />
-                                      </FormControl>
-                                      <FormMessage />
-                                    </FormItem>
-                                  )} />
-                                </div>
-
-                                <FormField control={editForm.control} name="nam_san_xuat" render={({ field }) => (
-                                  <FormItem>
-                                    <FormLabel>Năm sản xuất</FormLabel>
-                                    <FormControl>
-                                      <Input type="number" {...field} value={field.value ?? ''} onChange={event => field.onChange(event.target.value === '' ? null : +event.target.value)} />
-                                    </FormControl>
-                                    <FormMessage />
-                                  </FormItem>
-                                )} />
-
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                  <FormField control={editForm.control} name="ngay_nhap" render={({ field }) => (
-                                    <FormItem>
-                                      <FormLabel>Ngày nhập</FormLabel>
-                                      <FormControl>
-                                        <Input placeholder="DD/MM/YYYY" {...field} value={field.value ?? ''} />
-                                      </FormControl>
-                                      <FormMessage />
-                                    </FormItem>
-                                  )} />
-                                  <FormField control={editForm.control} name="ngay_dua_vao_su_dung" render={({ field }) => (
-                                    <FormItem>
-                                      <FormLabel>Ngày đưa vào sử dụng</FormLabel>
-                                      <FormControl>
-                                        <Input placeholder="DD/MM/YYYY" {...field} value={field.value ?? ''} />
-                                      </FormControl>
-                                      <FormMessage />
-                                    </FormItem>
-                                  )} />
-                                </div>
-
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                  <FormField control={editForm.control} name="nguon_kinh_phi" render={({ field }) => (
-                                    <FormItem>
-                                      <FormLabel>Nguồn kinh phí</FormLabel>
-                                      <FormControl>
-                                        <Input {...field} value={field.value ?? ''} />
-                                      </FormControl>
-                                      <FormMessage />
-                                    </FormItem>
-                                  )} />
-                                  <FormField control={editForm.control} name="gia_goc" render={({ field }) => (
-                                    <FormItem>
-                                      <FormLabel>Giá gốc (VNĐ)</FormLabel>
-                                      <FormControl>
-                                        <Input type="number" {...field} value={field.value ?? ''} onChange={event => field.onChange(event.target.value === '' ? null : +event.target.value)} />
-                                      </FormControl>
-                                      <FormMessage />
-                                    </FormItem>
-                                  )} />
-                                </div>
-
-                                <FormField control={editForm.control} name="han_bao_hanh" render={({ field }) => (
-                                  <FormItem>
-                                    <FormLabel>Hạn bảo hành</FormLabel>
-                                    <FormControl>
-                                      <Input placeholder="DD/MM/YYYY" {...field} value={field.value ?? ''} />
-                                    </FormControl>
-                                    <FormMessage />
-                                  </FormItem>
-                                )} />
-
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                  <FormField control={editForm.control} name="khoa_phong_quan_ly" render={({ field }) => (
-                                    <FormItem>
-                                      <RequiredFormLabel required>Khoa/Phòng quản lý</RequiredFormLabel>
-                                      <FormControl>
-                                        <Input {...field} value={field.value ?? ''} />
-                                      </FormControl>
-                                      <FormMessage />
-                                    </FormItem>
-                                  )} />
-                                  <FormField control={editForm.control} name="vi_tri_lap_dat" render={({ field }) => (
-                                    <FormItem>
-                                      <RequiredFormLabel required>Vị trí lắp đặt</RequiredFormLabel>
-                                      <FormControl>
-                                        <Input {...field} value={field.value ?? ''} />
-                                      </FormControl>
-                                      <FormMessage />
-                                    </FormItem>
-                                  )} />
-                                </div>
-
-                                <FormField control={editForm.control} name="nguoi_dang_truc_tiep_quan_ly" render={({ field }) => (
-                                  <FormItem>
-                                    <RequiredFormLabel required>Người trực tiếp quản lý (sử dụng)</RequiredFormLabel>
-                                    <FormControl>
-                                      <Input {...field} value={field.value ?? ''} />
-                                    </FormControl>
-                                    <FormMessage />
-                                  </FormItem>
-                                )} />
-
-                                <FormField control={editForm.control} name="tinh_trang_hien_tai" render={({ field }) => (
-                                  <FormItem>
-                                    <RequiredFormLabel required>Tình trạng hiện tại</RequiredFormLabel>
-                                    <Select onValueChange={field.onChange} value={field.value ?? undefined}>
-                                      <FormControl>
-                                        <SelectTrigger>
-                                          <SelectValue placeholder="Chọn tình trạng" />
-                                        </SelectTrigger>
-                                      </FormControl>
-                                      <SelectContent>
-                                        {equipmentStatusOptions.map(status => (
-                                          <SelectItem key={status!} value={status!}>
-                                            {status}
-                                          </SelectItem>
-                                        ))}
-                                      </SelectContent>
-                                    </Select>
-                                    <FormMessage />
-                                  </FormItem>
-                                )} />
-
-                                <FormField control={editForm.control} name="cau_hinh_thiet_bi" render={({ field }) => (
-                                  <FormItem>
-                                    <FormLabel>Cấu hình thiết bị</FormLabel>
-                                    <FormControl>
-                                      <Textarea rows={4} {...field} value={field.value ?? ''} />
-                                    </FormControl>
-                                    <FormMessage />
-                                  </FormItem>
-                                )} />
-                                <FormField control={editForm.control} name="phu_kien_kem_theo" render={({ field }) => (
-                                  <FormItem>
-                                    <FormLabel>Phụ kiện kèm theo</FormLabel>
-                                    <FormControl>
-                                      <Textarea rows={3} {...field} value={field.value ?? ''} />
-                                    </FormControl>
-                                    <FormMessage />
-                                  </FormItem>
-                                )} />
-                                <FormField control={editForm.control} name="ghi_chu" render={({ field }) => (
-                                  <FormItem>
-                                    <FormLabel>Ghi chú</FormLabel>
-                                    <FormControl>
-                                      <Textarea rows={3} {...field} value={field.value ?? ''} />
-                                    </FormControl>
-                                    <FormMessage />
-                                  </FormItem>
-                                )} />
-
-                                <FormField control={editForm.control} name="phan_loai_theo_nd98" render={({ field }) => (
-                                  <FormItem>
-                                    <FormLabel>Phân loại TB theo NĐ 98</FormLabel>
-                                    <Select onValueChange={field.onChange} value={field.value ?? undefined}>
-                                      <FormControl>
-                                        <SelectTrigger>
-                                          <SelectValue placeholder="Chọn phân loại" />
-                                        </SelectTrigger>
-                                      </FormControl>
-                                      <SelectContent>
-                                        {['A', 'B', 'C', 'D'].map(type => (
-                                          <SelectItem key={type} value={type}>
-                                            {`Loại ${type}`}
-                                          </SelectItem>
-                                        ))}
-                                      </SelectContent>
-                                    </Select>
-                                    <FormMessage />
-                                  </FormItem>
-                                )} />
-                              </div>
-                            </ScrollArea>
-                          </form>
-                        </Form>
-                      ) : (
-                        <ScrollArea className="h-full pr-4">
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4 py-4">
-                            {(Object.keys(columnLabels) as Array<keyof Equipment>).map(key => {
-                              if (key === 'id') return null;
-
-                              const renderValue = () => {
-                                const value = selectedEquipment[key];
-                                if (key === 'tinh_trang_hien_tai') {
-                                  const statusValue = value as Equipment["tinh_trang_hien_tai"];
-                                  return statusValue ? <Badge variant={getStatusVariant(statusValue)}>{statusValue}</Badge> : <div className="italic text-muted-foreground">Chưa có dữ liệu</div>;
-                                }
-                                if (key === 'phan_loai_theo_nd98') {
-                                  const classification = value as Equipment["phan_loai_theo_nd98"];
-                                  return classification ? <Badge variant={getClassificationVariant(classification)}>{classification.trim()}</Badge> : <div className="italic text-muted-foreground">Chưa có dữ liệu</div>;
-                                }
-                                if (key === 'gia_goc') {
-                                  return value ? `${Number(value).toLocaleString()} đ` : <div className="italic text-muted-foreground">Chưa có dữ liệu</div>;
-                                }
-                                if (value === null || value === undefined || value === "") {
-                                  return <div className="italic text-muted-foreground">Chưa có dữ liệu</div>;
-                                }
-                                return String(value);
-                              };
-
-                              return (
-                                <div key={key} className="border-b pb-2">
-                                  <p className="text-xs font-medium text-muted-foreground">{columnLabels[key]}</p>
-                                  <div className="font-semibold break-words">{renderValue()}</div>
-                                </div>
-                              )
-                            })}
-                          </div>
-                        </ScrollArea>
-                      )}
-                    </TabsContent>
-                    <TabsContent value="files" className="flex-grow overflow-hidden">
-                        <div className="h-full flex flex-col gap-4 py-4">
-                            <Card>
-                                <CardHeader>
-                                    <CardTitle className="text-lg">Thêm file đính kèm mới</CardTitle>
-                                </CardHeader>
-                                <CardContent>
-                                    <form onSubmit={handleAddAttachment} className="space-y-4">
-                                        <div className="space-y-1">
-                                            <Label htmlFor="file-name">Tên file</Label>
-<Input id="file-name" placeholder="VD: Giấy chứng nhận hiệu chuẩn" value={newFileName} onChange={e => setNewFileName(e.target.value)} required disabled={addAttachmentMutation.isPending}/>
-                                        </div>
-                                        <div className="space-y-1">
-                                            <Label htmlFor="file-url">Đường dẫn (URL)</Label>
-<Input id="file-url" type="url" placeholder="https://..." value={newFileUrl} onChange={e => setNewFileUrl(e.target.value)} required disabled={addAttachmentMutation.isPending}/>
-                                        </div>
-                                        <Alert>
-                                            <AlertCircle className="h-4 w-4" />
-                                            <AlertTitle>Làm thế nào để lấy URL?</AlertTitle>
-                                            <AlertDescription className="space-y-2">
-                                                <div>
-                                                  Tải file của bạn lên thư mục Drive chia sẻ của đơn vị, sau đó lấy link chia sẻ công khai và dán vào đây.
-                                                </div>
-                                                {selectedEquipment?.google_drive_folder_url && (
-                                                  <Button
-                                                    type="button"
-                                                    variant="outline"
-                                                    size="sm"
-                                                    asChild
-                                                    className="mt-2"
-                                                  >
-                                                    <a
-                                                      href={selectedEquipment.google_drive_folder_url}
-                                                      target="_blank"
-                                                      rel="noopener noreferrer"
-                                                      className="inline-flex items-center gap-2"
-                                                    >
-                                                      <ExternalLink className="h-4 w-4" />
-                                                      Mở thư mục chung
-                                                    </a>
-                                                  </Button>
-                                                )}
-                                            </AlertDescription>
-                                        </Alert>
-                                        <Button type="submit" disabled={addAttachmentMutation.isPending || !newFileName || !newFileUrl}>
-                                            {addAttachmentMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                            Lưu liên kết
-                                        </Button>
-                                    </form>
-                                </CardContent>
-                            </Card>
-                             <div className="flex-grow overflow-hidden">
-                        <p className="font-medium mb-2">Danh sách file đã đính kèm</p>
-                                <ScrollArea className="h-full pr-4">
-                                    {isLoadingAttachments ? (
-                                        <div className="space-y-2">
-                                            <Skeleton className="h-10 w-full" />
-                                            <Skeleton className="h-10 w-full" />
-                                            <Skeleton className="h-10 w-full" />
-                                        </div>
-                                    ) : attachments.length === 0 ? (
-                                        <p className="text-sm text-muted-foreground italic text-center py-4">Chưa có file nào được đính kèm.</p>
-                                    ) : (
-                                        <div className="space-y-2">
-                                            {attachments.map(file => (
-                                                <div key={file.id} className="flex items-center justify-between p-2 border rounded-md bg-muted/50">
-                                                     <Link href={file.duong_dan_luu_tru} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-primary hover:underline truncate">
-                                                        <LinkIcon className="h-4 w-4 shrink-0"/>
-                                                        <span className="truncate">{file.ten_file}</span>
-                                                    </Link>
-                                                    <Button 
-                                                        variant="ghost" 
-                                                        size="icon" 
-                                                        className="h-8 w-8 text-destructive hover:bg-destructive/10" 
-                                                        onClick={() => handleDeleteAttachment(file.id)}
-                                                        disabled={!!deletingAttachmentId || deleteAttachmentMutation.isPending}
-                                                    >
-                                                        {deletingAttachmentId === file.id || deleteAttachmentMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin"/> : <Trash2 className="h-4 w-4"/>}
-                                                    </Button>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    )}
-                                </ScrollArea>
-                            </div>
-                        </div>
-                    </TabsContent>
-                    <TabsContent value="history" className="flex-grow overflow-hidden">
-                       <ScrollArea className="h-full pr-4 py-4">
-                            {isLoadingHistory ? (
-                                <div className="space-y-4">
-                                    <Skeleton className="h-20 w-full" />
-                                    <Skeleton className="h-20 w-full" />
-                                    <Skeleton className="h-20 w-full" />
-                                </div>
-                            ) : history.length === 0 ? (
-                                <div className="flex flex-col items-center justify-center h-full text-center text-muted-foreground">
-                                    <p className="font-semibold">Chưa có lịch sử</p>
-                                    <p className="text-sm">Mọi hoạt động sửa chữa, bảo trì sẽ được ghi lại tại đây.</p>
-                                </div>
-                            ) : (
-                                <div className="relative pl-6">
-                                    <div className="absolute left-0 top-0 h-full w-0.5 bg-border -translate-x-1/2 ml-3"></div>
-                                    {history.map((item) => (
-                                        <div key={item.id} className="relative mb-8 last:mb-0">
-                                            <div className="absolute left-0 top-1 w-3 h-3 rounded-full bg-primary ring-4 ring-background -translate-x-1/2 ml-3"></div>
-                                            <div className="pl-2">
-                                                <div className="flex items-center gap-4">
-                                                    <div className="flex items-center justify-center h-8 w-8 rounded-full bg-muted">
-                                                        {getHistoryIcon(item.loai_su_kien)}
-                                                    </div>
-                                                    <div>
-                                                        <p className="font-semibold">{item.loai_su_kien}</p>
-                                                        <p className="text-xs text-muted-foreground">
-                                                            {format(parseISO(item.ngay_thuc_hien), 'dd/MM/yyyy HH:mm', { locale: vi })}
-                                                        </p>
-                                                    </div>
-                                                </div>
-                                                <div className="mt-2 ml-10 p-3 rounded-md bg-muted/50 border">
-                                                    <p className="text-sm font-medium">{item.mo_ta}</p>
-
-                                                    {/* Repair request details */}
-                                                    {item.chi_tiet?.mo_ta_su_co && <p className="text-sm text-muted-foreground mt-1">Sự cố: {item.chi_tiet.mo_ta_su_co}</p>}
-                                                    {item.chi_tiet?.hang_muc_sua_chua && <p className="text-sm text-muted-foreground">Hạng mục: {item.chi_tiet.hang_muc_sua_chua}</p>}
-                                                    {item.chi_tiet?.nguoi_yeu_cau && <p className="text-sm text-muted-foreground">Người yêu cầu: {item.chi_tiet.nguoi_yeu_cau}</p>}
-
-                                                    {/* Maintenance details */}
-                                                    {item.chi_tiet?.ten_ke_hoach && <p className="text-sm text-muted-foreground mt-1">Kế hoạch: {item.chi_tiet.ten_ke_hoach}</p>}
-                                                    {item.chi_tiet?.thang && <p className="text-sm text-muted-foreground">Tháng: {item.chi_tiet.thang}/{item.chi_tiet.nam}</p>}
-
-                                                    {/* Transfer details */}
-                                                    {item.chi_tiet?.ma_yeu_cau && <p className="text-sm text-muted-foreground mt-1">Mã yêu cầu: {item.chi_tiet.ma_yeu_cau}</p>}
-                                                    {item.chi_tiet?.loai_hinh && <p className="text-sm text-muted-foreground">Loại hình: {item.chi_tiet.loai_hinh === 'noi_bo' ? 'Nội bộ' : item.chi_tiet.loai_hinh === 'ben_ngoai' ? 'Bên ngoài' : 'Thanh lý'}</p>}
-                                                    {item.chi_tiet?.khoa_phong_hien_tai && item.chi_tiet?.khoa_phong_nhan && (
-                                                        <p className="text-sm text-muted-foreground">Từ: {item.chi_tiet.khoa_phong_hien_tai} → {item.chi_tiet.khoa_phong_nhan}</p>
-                                                    )}
-                                                    {item.chi_tiet?.don_vi_nhan && <p className="text-sm text-muted-foreground">Đơn vị nhận: {item.chi_tiet.don_vi_nhan}</p>}
-                                                </div>
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
-                        </ScrollArea>
-                    </TabsContent>
-                    <TabsContent value="usage" className="flex-grow overflow-hidden">
-                        <div className="h-full py-4">
-                            <UsageHistoryTab equipment={selectedEquipment} />
-                        </div>
-                    </TabsContent>
-                </Tabs>
-                <DialogFooter className="shrink-0 pt-4 border-t">
-                  <div className="w-full flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                    <div className="flex items-center gap-2">
-                      {user && (user.role === 'global' || user.role === 'admin' || user.role === 'to_qltb' || (user.role === 'qltb_khoa' && user.khoa_phong === selectedEquipment.khoa_phong_quan_ly)) && (
-                        !isEditingDetails ? (
-                          <Button
-                            variant="outline"
-                            onClick={() => {
-                              setCurrentTab('details')
-                              setIsEditingDetails(true)
-                            }}
-                          >
-                            <Edit className="mr-2 h-4 w-4" />
-                            Sửa thông tin
-                          </Button>
-                        ) : (
-                          <>
-                            <Button
-                              variant="outline"
-                              type="button"
-                              onClick={() => setIsEditingDetails(false)}
-                              disabled={updateEquipmentMutation.isPending}
-                            >
-                              Hủy
-                            </Button>
-                            <Button
-                              type="submit"
-                              form="equipment-inline-edit-form"
-                              disabled={updateEquipmentMutation.isPending}
-                            >
-                              {updateEquipmentMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                              Lưu thay đổi
-                            </Button>
-                          </>
-                        )
-                      )}
-                    </div>
-                    <div className="flex items-center gap-2">
-                      {!isRegionalLeader && (
-                        <>
-                          <Button variant="secondary" onClick={() => handleGenerateDeviceLabel(selectedEquipment)}>
-                            <QrCode className="mr-2 h-4 w-4" />
-                            Tạo nhãn thiết bị
-                          </Button>
-                          <Button onClick={() => handleGenerateProfileSheet(selectedEquipment)}>
-                            <Printer className="mr-2 h-4 w-4" />
-                            In lý lịch
-                          </Button>
-                        </>
-                      )}
-                      <Button variant="outline" onClick={requestCloseDetailDialog}>Đóng</Button>
-                    </div>
-                  </div>
-                </DialogFooter>
-            </DialogContent>
-        </Dialog>
-      )}
+      <EquipmentDetailDialog
+        equipment={selectedEquipment}
+        open={isDetailModalOpen}
+        onOpenChange={setIsDetailModalOpen}
+        user={user}
+        isRegionalLeader={isRegionalLeader}
+        onGenerateProfileSheet={handleGenerateProfileSheet}
+        onGenerateDeviceLabel={handleGenerateDeviceLabel}
+        onEquipmentUpdated={onDataMutationSuccessWithStatePreservation}
+      />
       <Card>
         <CardHeader>
           <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
