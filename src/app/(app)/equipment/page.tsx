@@ -123,6 +123,9 @@ import {
   createEquipmentColumns
 } from "@/components/equipment/equipment-table-columns"
 import { EquipmentActionsMenu } from "@/components/equipment/equipment-actions-menu"
+import { EquipmentPagination } from "@/components/equipment/equipment-pagination"
+import { FacilityFilterSheet } from "@/components/equipment/facility-filter-sheet"
+import { EquipmentToolbar } from "@/components/equipment/equipment-toolbar"
 import { ResponsivePaginationInfo } from "@/components/responsive-pagination-info"
 import { useIsMobile } from "@/hooks/use-mobile"
 import { useMediaQuery } from "@/hooks/use-media-query"
@@ -222,122 +225,6 @@ const equipmentFormSchema = z.object({
 
 type EquipmentFormValues = z.infer<typeof equipmentFormSchema>
 
-interface DataTableFacetedFilterProps<TData, TValue> {
-  column?: Column<TData, TValue>
-  title?: string
-  options: {
-    label: string
-    value: string
-  }[]
-}
-
-function DataTableFacetedFilter<TData, TValue>({
-  column,
-  title,
-  options,
-}: DataTableFacetedFilterProps<TData, TValue>) {
-  const selectedValues = new Set((column?.getFilterValue() as string[]) || [])
-
-  return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button 
-          variant="outline" 
-          size="sm" 
-          className={cn(
-            "h-9 border-slate-200 shadow-sm transition-all",
-            selectedValues?.size > 0 
-              ? "border-primary/50 bg-primary/5 hover:bg-primary/10" 
-              : "hover:border-primary/30"
-          )}
-        >
-          <div className="flex items-center gap-2">
-            <span className="font-medium">{title}</span>
-            {selectedValues?.size > 0 && (
-              <Badge 
-                variant="secondary" 
-                className="h-5 min-w-[20px] rounded-full bg-primary text-white px-1.5 text-xs font-semibold"
-              >
-                {selectedValues.size}
-              </Badge>
-            )}
-          </div>
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent 
-        className="w-[240px] max-h-[400px] overflow-hidden rounded-xl border border-slate-200 shadow-lg p-0" 
-        align="start"
-      >
-        {/* Header */}
-        <div className="px-3 py-2.5 border-b border-slate-100 bg-slate-50/50">
-          <div className="flex items-center gap-2">
-            <Filter className="h-4 w-4 text-primary" />
-            <span className="font-semibold text-sm text-slate-900">{title}</span>
-          </div>
-        </div>
-        
-        {/* Options List */}
-        <div className="max-h-[300px] overflow-y-auto py-1">
-          {options.map((option) => {
-            const isSelected = selectedValues.has(option.value)
-            return (
-              <button
-                key={option.value}
-                onClick={(e) => {
-                  e.preventDefault()
-                  if (isSelected) {
-                    selectedValues.delete(option.value)
-                  } else {
-                    selectedValues.add(option.value)
-                  }
-                  const filterValues = Array.from(selectedValues)
-                  column?.setFilterValue(
-                    filterValues.length ? filterValues : undefined
-                  )
-                }}
-                className={cn(
-                  "w-full flex items-center gap-3 px-3 py-2.5 text-sm transition-colors",
-                  "hover:bg-slate-50 active:bg-slate-100",
-                  isSelected && "bg-primary/5 hover:bg-primary/10"
-                )}
-              >
-                <div className={cn(
-                  "flex items-center justify-center h-5 w-5 rounded border-2 transition-all shrink-0",
-                  isSelected 
-                    ? "bg-primary border-primary" 
-                    : "border-slate-300 hover:border-primary/50"
-                )}>
-                  {isSelected && <Check className="h-3.5 w-3.5 text-white" strokeWidth={3} />}
-                </div>
-                <span className={cn(
-                  "truncate text-left flex-1",
-                  isSelected ? "font-medium text-slate-900" : "text-slate-600"
-                )}>
-                  {option.label}
-                </span>
-              </button>
-            )
-          })}
-        </div>
-        
-        {/* Footer - Clear button */}
-        {selectedValues.size > 0 && (
-          <div className="border-t border-slate-100 p-2">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => column?.setFilterValue(undefined)}
-              className="w-full h-8 text-xs font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100"
-            >
-              Xóa bộ lọc
-            </Button>
-          </div>
-        )}
-      </DropdownMenuContent>
-    </DropdownMenu>
-  )
-}
-
 
 export default function EquipmentPage() {
   const router = useRouter()
@@ -375,7 +262,6 @@ export default function EquipmentPage() {
   const [isFilterSheetOpen, setIsFilterSheetOpen] = React.useState(false)
   const [isFacilitySheetOpen, setIsFacilitySheetOpen] = React.useState(false)
   const [pendingFacilityId, setPendingFacilityId] = React.useState<number | null>(null)
-  const [facilitySearchTerm, setFacilitySearchTerm] = React.useState("")
   const debouncedSearch = useSearchDebounce(searchTerm)
   const [isAddDialogOpen, setIsAddDialogOpen] = React.useState(false)
   const [isImportDialogOpen, setIsImportDialogOpen] = React.useState(false)
@@ -825,16 +711,9 @@ const facilities = React.useMemo(() => {
     return facilities.find((facility) => facility.id === selectedFacilityId) ?? null
   }, [facilities, selectedFacilityId])
 
-  const filteredFacilityOptions = React.useMemo(() => {
-    if (!facilitySearchTerm.trim()) return facilities
-    const query = facilitySearchTerm.trim().toLowerCase()
-    return facilities.filter((facility) => facility.name.toLowerCase().includes(query))
-  }, [facilitySearchTerm, facilities])
-
   React.useEffect(() => {
     if (isFacilitySheetOpen) {
       setPendingFacilityId(selectedFacilityId ?? null)
-      setFacilitySearchTerm("")
     }
   }, [isFacilitySheetOpen, selectedFacilityId])
 
@@ -845,7 +724,6 @@ const facilities = React.useMemo(() => {
         setTenantFilter(pendingFacilityId ? String(pendingFacilityId) : 'all')
       })
     }
-  setFacilitySearchTerm("")
     setIsFacilitySheetOpen(false)
   }, [pendingFacilityId, setSelectedFacilityId, isGlobal])
 
@@ -857,13 +735,11 @@ const facilities = React.useMemo(() => {
         setTenantFilter('all')
       })
     }
-  setFacilitySearchTerm("")
     setIsFacilitySheetOpen(false)
   }, [setSelectedFacilityId, isGlobal])
 
   const handleFacilityCancel = React.useCallback(() => {
   setPendingFacilityId(selectedFacilityId ?? null)
-  setFacilitySearchTerm("")
     setIsFacilitySheetOpen(false)
 }, [selectedFacilityId])
 
@@ -2021,162 +1897,28 @@ const hasFacilityFilter = showFacilityFilter && selectedFacilityId !== null;
         </CardHeader>
         <CardContent className="space-y-4 px-4 md:px-6">
           {/* Unified toolbar */}
-          <div className="flex flex-col gap-2">
-            <div className="flex flex-col gap-2 md:flex-row md:flex-wrap md:items-center md:justify-between">
-              {/* Left: search + filters */}
-              <div className="order-1 w-full flex flex-col gap-2 md:flex-row md:flex-1 md:flex-wrap md:items-center md:gap-2 md:min-w-0">
-                <div className="w-full md:w-auto md:min-w-[260px]">
-                  <Input
-                    placeholder="Tìm kiếm chung..."
-                    value={searchTerm}
-                    onChange={(event) => setSearchTerm(event.target.value)}
-                    className="h-8 w-full"
-                  />
-                </div>
-                <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
-                  {(isMobile || useTabletFilters) ? (
-                    <>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setIsFilterSheetOpen(true)}
-                        className={cn(
-                          "h-9 border-slate-200 shadow-sm transition-all",
-                          isFiltered
-                            ? "border-primary/50 bg-primary/5 hover:bg-primary/10"
-                            : "hover:border-primary/30"
-                        )}
-                      >
-                        <Filter className="h-4 w-4 mr-2" />
-                        <span className="font-medium">Lọc</span>
-                        {isFiltered && (
-                          <Badge
-                            variant="secondary"
-                            className="ml-2 h-5 min-w-[20px] rounded-full bg-primary text-white px-1.5 text-xs font-semibold"
-                          >
-                            {columnFilters.reduce((acc, filter) => {
-                              const vals = filter.value as string[] | undefined
-                              return acc + (vals?.length || 0)
-                            }, 0)}
-                          </Badge>
-                        )}
-                      </Button>
-
-                      {/* Mobile/Tablet Options button placed next to Filter */}
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="outline" size="sm" className="h-9">
-                            <Settings className="h-4 w-4 mr-2" />
-                            Tùy chọn
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="start" className="w-56">
-                          <DropdownMenuItem onSelect={() => setIsColumnsDialogOpen(true)}>
-                            Hiện/ẩn cột
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onSelect={() => handleDownloadTemplate()}>
-                            Tải Excel mẫu
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onSelect={() => handleExportData()}>
-                            Tải về dữ liệu
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </>
-                  ) : (
-                    <>
-                      <DataTableFacetedFilter
-                        column={table.getColumn("tinh_trang_hien_tai")}
-                        title="Tình trạng"
-                        options={statuses.map(s => ({label: s!, value: s!}))}
-                      />
-                      <DataTableFacetedFilter
-                        column={table.getColumn("khoa_phong_quan_ly")}
-                        title="Khoa/Phòng"
-                        options={departments.filter((d): d is string => !!d).map(d => ({label: d, value: d}))}
-                      />
-                      <DataTableFacetedFilter
-                        column={table.getColumn("nguoi_dang_truc_tiep_quan_ly")}
-                        title="Người sử dụng"
-                        options={users.filter((d): d is string => !!d).map(d => ({label: d, value: d}))}
-                      />
-                      <DataTableFacetedFilter
-                        column={table.getColumn("phan_loai_theo_nd98")}
-                        title="Phân loại"
-                        options={classifications.filter((c): c is string => !!c).map(c => ({label: c, value: c}))}
-                      />
-                      {isFiltered && (
-                        <Button
-                          variant="ghost"
-                          onClick={() => table.resetColumnFilters()}
-                          className="h-8 px-2 lg:px-3"
-                        >
-                          <span className="hidden sm:inline">Xóa tất cả</span>
-                          <FilterX className="h-4 w-4 sm:ml-2" />
-                        </Button>
-                      )}
-                      {hasFacilityFilter && (
-                        <Button
-                          variant="ghost"
-                          onClick={() => setSelectedFacilityId(null)}
-                          className="h-8 px-2 lg:px-3"
-                        >
-                          <span className="hidden sm:inline">Xóa lọc cơ sở</span>
-                          <FilterX className="h-4 w-4 sm:ml-2" />
-                        </Button>
-                      )}
-                    </>
-                  )}
-                </div>
-              </div>
-
-              {/* Right: actions only (tenant filter moved to header) */}
-              <div className="order-3 w-full md:order-2 md:w-auto flex items-center gap-2 justify-between md:justify-end">
-                {/* Add button - Desktop only */}
-                {!isRegionalLeader && (
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button size="sm" className="hidden md:flex h-8 gap-1 touch-target-sm md:h-8">
-                        <PlusCircle className="h-3.5 w-3.5" />
-                        <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
-                          Thêm thiết bị
-                        </span>
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem onSelect={() => setIsAddDialogOpen(true)}>
-                        Thêm thủ công
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onSelect={() => setIsImportDialogOpen(true)}>
-                        Nhập từ Excel
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                )}
-
-                {/* Options menu - Hidden on mobile */}
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="outline" className="hidden lg:flex h-8 gap-1 touch-target-sm md:h-8">
-                      <Settings className="h-3.5 w-3.5" />
-                      Tùy chọn
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-56">
-                    <DropdownMenuItem onSelect={() => setIsColumnsDialogOpen(true)}>
-                      Hiện/ẩn cột
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onSelect={() => handleDownloadTemplate()}>
-                      Tải Excel mẫu
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onSelect={() => handleExportData()}>
-                      Tải về dữ liệu
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </div>
-            </div>
-          </div>
+          <EquipmentToolbar
+            table={table}
+            searchTerm={searchTerm}
+            onSearchChange={setSearchTerm}
+            columnFilters={columnFilters}
+            isFiltered={isFiltered}
+            statuses={statuses}
+            departments={departments}
+            users={users}
+            classifications={classifications}
+            isMobile={isMobile}
+            useTabletFilters={useTabletFilters}
+            isRegionalLeader={isRegionalLeader}
+            hasFacilityFilter={hasFacilityFilter}
+            onOpenFilterSheet={() => setIsFilterSheetOpen(true)}
+            onOpenColumnsDialog={() => setIsColumnsDialogOpen(true)}
+            onDownloadTemplate={handleDownloadTemplate}
+            onExportData={handleExportData}
+            onAddEquipment={() => setIsAddDialogOpen(true)}
+            onImportEquipment={() => setIsImportDialogOpen(true)}
+            onClearFacilityFilter={() => setSelectedFacilityId(null)}
+          />
 
           {/* Columns dialog */}
           <Dialog open={isColumnsDialogOpen} onOpenChange={setIsColumnsDialogOpen}>
@@ -2216,100 +1958,17 @@ const hasFacilityFilter = showFacilityFilter && selectedFacilityId !== null;
           </div>
         </CardContent>
         <CardFooter className="flex flex-col gap-4 py-4 px-4 md:px-6 sm:flex-row sm:items-center sm:justify-between">
-          {shouldFetchEquipment ? (
-            <>
-              {/* Records count - responsive position */}
-              <div className="order-2 sm:order-1">
-                <ResponsivePaginationInfo
-                  currentCount={data.length}
-                  totalCount={total}
-                  currentPage={pagination.pageIndex + 1}
-                  totalPages={pageCount}
-                />
-              </div>
-              
-              {/* Export and pagination controls */}
-              <div className="flex flex-col gap-3 items-center order-1 sm:order-2 sm:items-end">
-                <button
-                  onClick={handleExportData}
-                  className="text-sm font-medium text-primary underline-offset-4 hover:underline disabled:text-muted-foreground disabled:no-underline disabled:cursor-not-allowed"
-                  disabled={table.getFilteredRowModel().rows.length === 0 || isEqLoading}
-                >
-                  Tải về file Excel
-                </button>
-                
-                {/* Mobile-optimized pagination */}
-                <div className="flex flex-col gap-3 items-center sm:flex-row sm:gap-6">
-                  {/* Page size selector - Hidden on mobile */}
-                  <div className="hidden sm:flex items-center space-x-2">
-                    <p className="text-sm font-medium">Số dòng</p>
-                    <Select
-                      value={`${pagination.pageSize}`}
-                      onValueChange={(value) => {
-                        setPagination((p) => ({ ...p, pageSize: Number(value), pageIndex: 0 }))
-                      }}
-                    >
-                      <SelectTrigger className="h-8 w-[70px]">
-                        <SelectValue placeholder={pagination.pageSize} />
-                      </SelectTrigger>
-                      <SelectContent side="top">
-                        {[10, 20, 50, 100].map((pageSize) => (
-                          <SelectItem key={pageSize} value={`${pageSize}`}>
-                            {pageSize}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  
-                  {/* Page info and navigation */}
-                  <div className="flex flex-col items-center gap-2 sm:flex-row sm:gap-3">
-                    <div className="text-sm font-medium">
-                      Trang {pagination.pageIndex + 1} / {pageCount}
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <Button
-                        variant="outline"
-                        className="hidden h-8 w-8 p-0 sm:flex"
-                        onClick={() => table.setPageIndex(0)}
-                        disabled={!table.getCanPreviousPage()}
-                      >
-                        <span className="sr-only">Go to first page</span>
-                        <ChevronsLeft className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="outline"
-                        className="h-10 w-10 p-0 rounded-xl sm:h-8 sm:w-8"
-                        onClick={() => table.previousPage()}
-                        disabled={!table.getCanPreviousPage()}
-                      >
-                        <span className="sr-only">Go to previous page</span>
-                        <ChevronLeft className="h-5 w-5 sm:h-4 sm:w-4" />
-                      </Button>
-                      <Button
-                        variant="outline"
-                        className="h-10 w-10 p-0 rounded-xl sm:h-8 sm:w-8"
-                        onClick={() => table.nextPage()}
-                        disabled={!table.getCanNextPage()}
-                      >
-                        <span className="sr-only">Go to next page</span>
-                        <ChevronRight className="h-5 w-5 sm:h-4 sm:w-4" />
-                      </Button>
-                      <Button
-                        variant="outline"
-                        className="hidden h-8 w-8 p-0 sm:flex"
-                        onClick={() => table.setPageIndex(table.getPageCount() - 1)}
-                        disabled={!table.getCanNextPage()}
-                      >
-                        <span className="sr-only">Go to last page</span>
-                        <ChevronsRight className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </>
-          ) : null}
+          <EquipmentPagination
+            table={table}
+            pagination={pagination}
+            onPaginationChange={setPagination}
+            pageCount={pageCount}
+            currentCount={data.length}
+            totalCount={total}
+            onExportData={handleExportData}
+            isLoading={isEqLoading}
+            shouldFetchEquipment={shouldFetchEquipment}
+          />
         </CardFooter>
       </Card>
 
@@ -2373,115 +2032,19 @@ const hasFacilityFilter = showFacilityFilter && selectedFacilityId !== null;
         onClearAll={() => setColumnFilters([])}
       />
 
-      <Sheet open={isFacilitySheetOpen} onOpenChange={setIsFacilitySheetOpen}>
-        <SheetContent side="bottom" className="flex h-[70vh] flex-col rounded-t-3xl border-border/60 bg-background px-6 pb-6 pt-4">
-          <SheetHeader>
-            <SheetTitle>Chọn cơ sở quản lý</SheetTitle>
-            <p className="text-sm text-muted-foreground">
-              Lọc danh sách thiết bị theo cơ sở thuộc địa bàn của bạn.
-            </p>
-          </SheetHeader>
-          <div className="mt-4">
-            <div className="relative">
-              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                value={facilitySearchTerm}
-                onChange={(event) => setFacilitySearchTerm(event.target.value)}
-                placeholder="Tìm kiếm cơ sở..."
-                className="h-11 rounded-xl border-border/70 pl-9 pr-9"
-              />
-              {facilitySearchTerm && (
-                <button
-                  type="button"
-                  onClick={() => setFacilitySearchTerm("")}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground transition hover:text-foreground"
-                >
-                  <X className="h-4 w-4" />
-                </button>
-              )}
-            </div>
-          </div>
-
-          <div className="mt-4 flex-1 overflow-y-auto space-y-2">
-            <button
-              type="button"
-              onClick={() => setPendingFacilityId(null)}
-              className={cn(
-                "flex w-full items-center justify-between rounded-2xl border px-4 py-3 text-left text-sm transition",
-                pendingFacilityId === null ? "border-primary bg-primary/10 text-primary" : "border-border/60 hover:border-primary/60 hover:bg-primary/5"
-              )}
-            >
-              <div className="flex items-center gap-2">
-                <Building2 className="h-4 w-4" />
-                <span className="font-medium">Tất cả cơ sở</span>
-              </div>
-              <span className="text-xs text-muted-foreground">
-                {facilities.length} cơ sở • {total} TB
-              </span>
-            </button>
-
-            {isFacilitiesLoading ? (
-              <div className="space-y-2">
-                {Array.from({ length: 6 }).map((_, index) => (
-                  <Skeleton key={index} className="h-11 w-full rounded-2xl" />
-                ))}
-              </div>
-            ) : filteredFacilityOptions.length > 0 ? (
-              filteredFacilityOptions.map((facility) => {
-                const isSelected = pendingFacilityId === facility.id
-                return (
-                  <button
-                    key={facility.id}
-                    type="button"
-                    onClick={() => setPendingFacilityId(facility.id)}
-                    className={cn(
-                      "flex w-full items-center justify-between rounded-2xl border px-4 py-3 text-left text-sm transition",
-                      isSelected ? "border-primary bg-primary/10 text-primary" : "border-border/60 hover:border-primary/60 hover:bg-primary/5"
-                    )}
-                  >
-                    <span className="flex items-center gap-2 truncate">
-                      <span className="truncate">{facility.name}</span>
-                      {isSelected && <Check className="h-4 w-4 text-primary" />}
-                    </span>
-                    <span className="text-xs text-muted-foreground">
-                      {facility.count} TB
-                    </span>
-                  </button>
-                )
-              })
-            ) : (
-              <div className="rounded-2xl border border-dashed border-border/60 px-4 py-6 text-center text-sm text-muted-foreground">
-                Không tìm thấy cơ sở phù hợp.
-              </div>
-            )}
-          </div>
-
-          <SheetFooter className="mt-4 flex-col sm:flex-col">
-            <div className="grid w-full grid-cols-1 gap-2 sm:grid-cols-3">
-              <Button
-                variant="outline"
-                onClick={handleFacilityCancel}
-                className="w-full"
-              >
-                Hủy
-              </Button>
-              <Button
-                variant="ghost"
-                className="w-full border border-border/60"
-                onClick={handleFacilityClear}
-                disabled={pendingFacilityId === null && selectedFacilityId === null}
-              >
-                Xóa
-              </Button>
-              <SheetClose asChild>
-                <Button onClick={handleFacilityApply} className="w-full">
-                  Áp dụng
-                </Button>
-              </SheetClose>
-            </div>
-          </SheetFooter>
-        </SheetContent>
-      </Sheet>
+      <FacilityFilterSheet
+        open={isFacilitySheetOpen}
+        onOpenChange={setIsFacilitySheetOpen}
+        facilities={facilities}
+        isLoading={isFacilitiesLoading}
+        selectedFacilityId={selectedFacilityId}
+        pendingFacilityId={pendingFacilityId}
+        onPendingChange={setPendingFacilityId}
+        onApply={handleFacilityApply}
+        onClear={handleFacilityClear}
+        onCancel={handleFacilityCancel}
+        totalEquipmentCount={total}
+      />
 
     </>
   )
