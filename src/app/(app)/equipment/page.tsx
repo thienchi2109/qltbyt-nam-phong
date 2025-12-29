@@ -113,6 +113,16 @@ import { useSession } from "next-auth/react"
 import { useTenantBranding } from "@/hooks/use-tenant-branding"
 import { EditEquipmentDialog } from "@/components/edit-equipment-dialog"
 import { FilterBottomSheet } from "@/components/equipment/filter-bottom-sheet"
+import { generateProfileSheet, generateDeviceLabel, type PrintContext } from "@/components/equipment/equipment-print-utils"
+import {
+  columnLabels,
+  equipmentStatusOptions,
+  filterableColumns,
+  getStatusVariant,
+  getClassificationVariant,
+  createEquipmentColumns
+} from "@/components/equipment/equipment-table-columns"
+import { EquipmentActionsMenu } from "@/components/equipment/equipment-actions-menu"
 import { ResponsivePaginationInfo } from "@/components/responsive-pagination-info"
 import { useIsMobile } from "@/hooks/use-mobile"
 import { useMediaQuery } from "@/hooks/use-media-query"
@@ -164,73 +174,7 @@ type HistoryItem = {
     } | null;
   };
 
-const getStatusVariant = (status: Equipment["tinh_trang_hien_tai"]) => {
-  switch (status) {
-    case "Hoạt động":
-      return "default"
-    case "Chờ bảo trì":
-    case "Chờ hiệu chuẩn/kiểm định":
-      return "secondary"
-    case "Chờ sửa chữa":
-      return "destructive"
-    case "Ngưng sử dụng":
-    case "Chưa có nhu cầu sử dụng":
-      return "outline"
-    default:
-      return "outline"
-  }
-}
-
-const getClassificationVariant = (classification: Equipment["phan_loai_theo_nd98"]) => {
-  if (!classification) return "outline"
-  const trimmed = classification.trim().toUpperCase();
-  if (trimmed === 'A' || trimmed === 'LOẠI A') return "default"
-  if (trimmed === 'B' || trimmed === 'LOẠI B' || trimmed === 'C' || trimmed === 'LOẠI C') return "secondary"
-  if (trimmed === 'D' || trimmed === 'LOẠI D') return "destructive"
-  return "outline"
-}
-
-const columnLabels: Record<string, string> = {
-  id: 'ID',
-  ma_thiet_bi: 'Mã thiết bị',
-  ten_thiet_bi: 'Tên thiết bị',
-  model: 'Model',
-  serial: 'Serial',
-  cau_hinh_thiet_bi: 'Cấu hình',
-  phu_kien_kem_theo: 'Phụ kiện kèm theo',
-  hang_san_xuat: 'Hãng sản xuất',
-  noi_san_xuat: 'Nơi sản xuất',
-  nam_san_xuat: 'Năm sản xuất',
-  ngay_nhap: 'Ngày nhập',
-  ngay_dua_vao_su_dung: 'Ngày đưa vào sử dụng',
-  nguon_kinh_phi: 'Nguồn kinh phí',
-  gia_goc: 'Giá gốc',
-  nam_tinh_hao_mon: 'Năm tính hao mòn',
-  ty_le_hao_mon: 'Tỷ lệ hao mòn theo TT23',
-  han_bao_hanh: 'Hạn bảo hành',
-  vi_tri_lap_dat: 'Vị trí lắp đặt',
-  nguoi_dang_truc_tiep_quan_ly: 'Người sử dụng',
-  khoa_phong_quan_ly: 'Khoa/phòng quản lý',
-  tinh_trang_hien_tai: 'Tình trạng',
-  ghi_chu: 'Ghi chú',
-  chu_ky_bt_dinh_ky: 'Chu kỳ BT định kỳ (ngày)',
-  ngay_bt_tiep_theo: 'Ngày BT tiếp theo',
-  chu_ky_hc_dinh_ky: 'Chu kỳ HC định kỳ (ngày)',
-  ngay_hc_tiep_theo: 'Ngày HC tiếp theo',
-  chu_ky_kd_dinh_ky: 'Chu kỳ KĐ định kỳ (ngày)',
-  ngay_kd_tiep_theo: 'Ngày KĐ tiếp theo',
-  phan_loai_theo_nd98: 'Phân loại theo NĐ98',
-}
-
 // Inline edit support: schema and helpers shared with edit dialog (duplicated here for inline mode)
-const equipmentStatusOptions = [
-  "Hoạt động",
-  "Chờ sửa chữa",
-  "Chờ bảo trì",
-  "Chờ hiệu chuẩn/kiểm định",
-  "Ngưng sử dụng",
-  "Chưa có nhu cầu sử dụng"
-] as const;
 
 const normalizeDate = (v: string | null | undefined) => {
   if (!v) return null
@@ -277,14 +221,6 @@ const equipmentFormSchema = z.object({
 });
 
 type EquipmentFormValues = z.infer<typeof equipmentFormSchema>
-
-const filterableColumns: (keyof Equipment)[] = [
-    'khoa_phong_quan_ly',
-    'vi_tri_lap_dat',
-    'nguoi_dang_truc_tiep_quan_ly',
-    'phan_loai_theo_nd98',
-    'tinh_trang_hien_tai'
-];
 
 interface DataTableFacetedFilterProps<TData, TValue> {
   column?: Column<TData, TValue>
@@ -718,348 +654,21 @@ const { showFacilityFilter, selectedFacilityId, setSelectedFacilityId } = useFac
   };
 
   const handleGenerateProfileSheet = async (equipment: Equipment) => {
-    if (!equipment) return;
-
-    const formatValue = (value: any) => value ?? "";
-    const formatCurrency = (value: any) => {
-        if (value === null || value === undefined || value === "") return "";
-        return Number(value).toLocaleString('vi-VN') + ' VNĐ';
+    const printContext: PrintContext = {
+      tenantBranding,
+      userRole: user?.role,
+      equipmentTenantId: equipment.don_vi ?? undefined
     }
-
-    // Get appropriate tenant branding based on user role and equipment owner
-    let brandingToUse = tenantBranding;
-    
-    // For global/admin users, ALWAYS use equipment's tenant branding
-    if ((user?.role === 'global' || user?.role === 'admin') && equipment.don_vi) {
-      try {
-        const equipmentTenantBrandingRes = await callRpc<any[]>({
-          fn: 'don_vi_branding_get',
-          args: { p_id: equipment.don_vi }
-        });
-        // RPC returns an array, get the first element
-        const equipmentTenantBranding = equipmentTenantBrandingRes?.[0];
-        if (equipmentTenantBranding && equipmentTenantBranding.name) {
-          brandingToUse = equipmentTenantBranding;
-        }
-      } catch (error) {
-        console.error('Failed to fetch equipment tenant branding:', error);
-      }
-    }
-    // For regular users without tenant branding, try equipment tenant
-    else if (!brandingToUse && equipment.don_vi) {
-      try {
-        const equipmentTenantBrandingRes = await callRpc<any[]>({
-          fn: 'don_vi_branding_get',
-          args: { p_id: equipment.don_vi }
-        });
-        // RPC returns an array, get the first element
-        const equipmentTenantBranding = equipmentTenantBrandingRes?.[0];
-        if (equipmentTenantBranding && equipmentTenantBranding.name) {
-          brandingToUse = equipmentTenantBranding;
-        }
-      } catch (error) {
-        console.error('Failed to fetch equipment tenant branding:', error);
-      }
-    }
-
-    const htmlContent = `
-      <!DOCTYPE html>
-      <html lang="vi">
-      <head>
-          <meta charset="UTF-8">
-          <meta name="viewport" content="width=device-width, initial-scale=1.0">
-          <title>Phiếu Lý Lịch Thiết Bị - ${formatValue(equipment.ma_thiet_bi)}</title>
-          <script src="https://cdn.tailwindcss.com"></script>
-          <style>
-              body { font-family: 'Times New Roman', Times, serif; font-size: 14px; color: #000; background-color: #e5e7eb; line-height: 1.5; }
-              .a4-page { width: 21cm; min-height: 29.7cm; padding: 1cm 2cm; margin: 1cm auto; background: white; box-shadow: 0 0 10px rgba(0, 0, 0, 0.1); position: relative; display: flex; flex-direction: column; }
-              .content-body { flex-grow: 1; }
-              .form-input-line { font-family: inherit; font-size: inherit; border: none; border-bottom: 1px dotted #000; background-color: transparent; padding: 1px; outline: none; width: 100%; }
-              h1, h2, .font-bold { font-weight: 700; }
-              .title-main { font-size: 20px; }
-              .title-sub { font-size: 16px; }
-              .form-section { border: 1px solid #000; padding: 8px; }
-              .long-text { white-space: pre-wrap; word-break: break-word; min-height: 22px; }
-              .signature-box { border: 1px solid #000; border-top: none; }
-              .signature-area { text-align: center; padding: 12px; }
-              .signature-space { height: 80px; }
-              .signature-name-input { border: none; background-color: transparent; text-align: center; font-weight: 700; width: 100%; margin-top: 8px; }
-              .signature-name-input:focus { outline: none; }
-              @media print {
-                  body { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; background-color: #fff !important; }
-                  .a4-page { display: block !important; width: auto; height: auto; min-height: 0; margin: 0 !important; padding: 1cm 2cm !important; box-shadow: none !important; border: none !important; }
-                  body > *:not(.a4-page) { display: none; }
-                  .print-footer { position: fixed; bottom: 1cm; left: 2cm; right: 2cm; width: calc(100% - 4cm); }
-                  .content-body { padding-bottom: 3cm; }
-                  .form-section, .signature-box, header { page-break-inside: avoid; }
-              }
-          </style>
-      </head>
-      <body>
-          <div class="a4-page">
-              <div class="content-body">
-                  <header class="text-center">
-                      <div class="flex justify-between items-center">
-                          <img src="${brandingToUse?.logo_url || 'https://placehold.co/100x100/e2e8f0/e2e8f0?text=Logo'}" alt="Logo ${brandingToUse?.name || 'Organization'}" class="w-20 h-20" onerror="this.onerror=null;this.src='https://placehold.co/100x100/e2e8f0/e2e8f0?text=Logo';">
-                          <div class="flex-grow">
-                              <h2 class="title-sub uppercase font-bold text-xl">${brandingToUse?.name || 'ĐƠN VỊ'}</h2>
-                              <div class="flex items-baseline justify-center mt-2">
-                                  <label class="font-bold whitespace-nowrap">KHOA/PHÒNG:</label>
-                                  <div class="w-1/2 ml-2"><input type="text" class="form-input-line" value="${formatValue(equipment.khoa_phong_quan_ly)}"></div>
-                              </div>
-                          </div>
-                      </div>
-                  </header>
-                  <main class="mt-4">
-                      <div class="form-section">
-                          <h1 class="title-main uppercase font-bold text-center">PHIẾU LÝ LỊCH THIẾT BỊ</h1>
-                      </div>
-                      <div class="form-section border-t-0">
-                          <div class="flex items-baseline">
-                              <label class="whitespace-nowrap w-28">1. Tên thiết bị:</label>
-                              <input type="text" class="form-input-line ml-2" value="${formatValue(equipment.ten_thiet_bi)}">
-                          </div>
-                           <div class="grid grid-cols-2 gap-x-8 mt-2">
-                              <div class="flex items-baseline">
-                                 <label class="whitespace-nowrap w-28">Mã số TB:</label>
-                                 <input type="text" class="form-input-line ml-2" value="${formatValue(equipment.ma_thiet_bi)}">
-                              </div>
-                               <div class="flex items-baseline">
-                                 <label class="whitespace-nowrap">Mã số TB ban đầu:</label>
-                                 <input type="text" class="form-input-line ml-2" value="">
-                              </div>
-                          </div>
-                      </div>
-                      <div class="form-section border-t-0">
-                          <div class="grid grid-cols-2 gap-x-8">
-                              <div class="flex items-baseline"><label class="w-28">2. Model:</label><input type="text" class="form-input-line ml-2" value="${formatValue(equipment.model)}"></div>
-                              <div class="flex items-baseline"><label class="w-36">7. Ngày nhập:</label><input type="text" class="form-input-line ml-2" value="${formatValue(equipment.ngay_nhap)}"></div>
-                              <div class="flex items-baseline mt-2"><label class="w-28">3. Serial N⁰:</label><input type="text" class="form-input-line ml-2" value="${formatValue(equipment.serial)}"></div>
-                              <div class="flex items-baseline mt-2"><label class="w-36">8. Ngày đưa vào sử dụng:</label><input type="text" class="form-input-line ml-2" value="${formatValue(equipment.ngay_dua_vao_su_dung)}"></div>
-                              <div class="flex items-baseline mt-2"><label class="w-28">4. Hãng SX:</label><input type="text" class="form-input-line ml-2" value="${formatValue(equipment.hang_san_xuat)}"></div>
-                              <div class="flex items-baseline mt-2"><label class="w-36">9. Vị trí lắp đặt:</label><input type="text" class="form-input-line ml-2" value="${formatValue(equipment.vi_tri_lap_dat)}"></div>
-                              <div class="flex items-baseline mt-2"><label class="w-28">5. Nơi SX:</label><input type="text" class="form-input-line ml-2" value="${formatValue(equipment.noi_san_xuat)}"></div>
-                              <div class="flex items-baseline mt-2"><label class="w-36">10. Giá gốc:</label><input type="text" class="form-input-line ml-2" value="${formatCurrency(equipment.gia_goc)}"></div>
-                              <div class="flex items-baseline mt-2"><label class="w-28">6. Năm SX:</label><input type="text" class="form-input-line ml-2" value="${formatValue(equipment.nam_san_xuat)}"></div>
-                              <div class="flex items-baseline mt-2"><label class="w-36">11. Nguồn kinh phí:</label><input type="text" class="form-input-line ml-2" value="${formatValue(equipment.nguon_kinh_phi)}"></div>
-                          </div>
-                      </div>
-                      <div class="form-section border-t-0">
-                          <div class="flex items-center">
-                              <label class="whitespace-nowrap">12. Bảo hành:</label>
-                              <div class="ml-10 flex items-center gap-x-10">
-                                   <label class="flex items-center"><input type="checkbox" class="h-4 w-4 mr-2" ${!equipment.han_bao_hanh ? 'checked' : ''}>Không</label>
-                                   <label class="flex items-center"><input type="checkbox" class="h-4 w-4 mr-2" ${equipment.han_bao_hanh ? 'checked' : ''}>Có ( Ngày BH cuối cùng: <span class="inline-block w-48 ml-2"><input type="text" class="form-input-line" value="${formatValue(equipment.han_bao_hanh)}"></span>)</label>
-                              </div>
-                          </div>
-                      </div>
-                       <div class="form-section border-t-0">
-                          <div class="flex items-center">
-                              <label class="whitespace-nowrap">13. Hiệu chuẩn thiết bị:</label>
-                              <div class="ml-10 flex items-center gap-x-10">
-                                   <label class="flex items-center"><input type="checkbox" class="h-4 w-4 mr-2">Không cần</label>
-                                   <label class="flex items-center"><input type="checkbox" class="h-4 w-4 mr-2">Cần hiệu chuẩn</label>
-                              </div>
-                          </div>
-                      </div>
-                      <div class="form-section border-t-0">
-                          <div class="flex items-baseline"><label class="whitespace-nowrap">14. Cấu hình thiết bị:</label>
-                              <div class="form-input-line long-text ml-2">${formatValue(equipment.cau_hinh_thiet_bi)}</div>
-                          </div>
-                      </div>
-                       <div class="form-section border-t-0">
-                           <div class="flex items-baseline"><label class="whitespace-nowrap">15. Phụ kiện kèm theo:</label>
-                              <div class="form-input-line long-text ml-2">${formatValue(equipment.phu_kien_kem_theo)}</div>
-                          </div>
-                      </div>
-                      <div class="form-section border-t-0">
-                           <div class="flex items-center">
-                              <label class="whitespace-nowrap">16. Tình trạng khi nhận:</label>
-                              <div class="ml-10 flex items-center gap-x-10">
-                                   <label class="flex items-center"><input type="checkbox" class="h-4 w-4 mr-2">Mới 100%</label>
-                                   <label class="flex items-center"><input type="checkbox" class="h-4 w-4 mr-2">Thiết bị cũ ( phần trăm còn lại: <span class="inline-block w-24 ml-2"><input type="text" class="form-input-line"></span>%)</label>
-                              </div>
-                          </div>
-                      </div>
-                       <div class="form-section border-t-0">
-                          <div class="flex items-baseline"><label class="whitespace-nowrap">17. Tình trạng thiết bị hiện tại:</label><input type="text" class="form-input-line ml-2" value="${formatValue(equipment.tinh_trang_hien_tai)}"></div>
-                      </div>
-                      <div class="signature-box">
-                          <div class="flex">
-                              <div class="w-1/2 signature-area border-r border-gray-400">
-                                  <!-- Thêm khoảng trống để căn chỉnh với dòng ngày tháng bên phải -->
-                                  <div class="h-12">&nbsp;</div>
-                                  <p class="font-bold">Lãnh đạo khoa/ phòng</p>
-                                  <p class="italic">(Ký, ghi rõ họ và tên)</p>
-                                  <div class="signature-space"></div>
-                                  <input type="text" class="signature-name-input" placeholder="(Họ và tên)">
-                              </div>
-                              <div class="w-1/2 signature-area">
-                                  <div class="text-center pt-2 h-12">
-                                      <p class="italic whitespace-nowrap">
-                                          <span class="inline-block w-24"><input type="text" class="form-input-line text-center italic" value="Cần Thơ"></span>, ngày
-                                          <span class="inline-block w-8"><input type="text" class="form-input-line text-center"></span> tháng
-                                          <span class="inline-block w-8"><input type="text" class="form-input-line text-center"></span> năm
-                                          <span class="inline-block w-8"><input type="text" class="form-input-line text-center"></span>
-                                      </p>
-                                  </div>
-                                  <p class="font-bold">Người trực tiếp quản lý</p>
-                                  <p class="italic">(Ký, ghi rõ họ và tên)</p>
-                                  <div class="signature-space"></div>
-                                  <input type="text" class="signature-name-input" value="${formatValue(equipment.nguoi_dang_truc_tiep_quan_ly)}">
-                              </div>
-                          </div>
-                      </div>
-                  </main>
-              </div>
-          </div>
-      </body>
-      </html>
-    `;
-    
-    const newWindow = window.open("", "_blank");
-    if (newWindow) {
-        newWindow.document.open();
-        newWindow.document.write(htmlContent);
-        newWindow.document.close();
-    }
+    await generateProfileSheet(equipment, printContext)
   }
 
   const handleGenerateDeviceLabel = async (equipment: Equipment) => {
-    if (!equipment) return;
-
-    const formatValue = (value: any) => value ?? "";
-    
-    const qrText = formatValue(equipment.ma_thiet_bi);
-    const qrSize = 112;
-    const qrUrl = qrText 
-        ? `https://quickchart.io/qr?text=${encodeURIComponent(qrText)}&caption=${encodeURIComponent(qrText)}&captionFontFamily=mono&captionFontSize=12&size=${qrSize}&ecLevel=H&margin=2` 
-        : `https://placehold.co/${qrSize}x${qrSize}/ffffff/cccccc?text=QR+Code`;
-
-    // Get appropriate tenant branding based on user role and equipment owner
-    let brandingToUse = tenantBranding;
-    
-    // For global/admin users, ALWAYS use equipment's tenant branding
-    if ((user?.role === 'global' || user?.role === 'admin') && equipment.don_vi) {
-      try {
-        const equipmentTenantBrandingRes = await callRpc<any[]>({
-          fn: 'don_vi_branding_get',
-          args: { p_id: equipment.don_vi }
-        });
-        // RPC returns an array, get the first element
-        const equipmentTenantBranding = equipmentTenantBrandingRes?.[0];
-        if (equipmentTenantBranding && equipmentTenantBranding.name) {
-          brandingToUse = equipmentTenantBranding;
-        }
-      } catch (error) {
-        console.error('Failed to fetch equipment tenant branding:', error);
-      }
+    const printContext: PrintContext = {
+      tenantBranding,
+      userRole: user?.role,
+      equipmentTenantId: equipment.don_vi ?? undefined
     }
-    // For regular users without tenant branding, try equipment tenant
-    else if (!brandingToUse && equipment.don_vi) {
-      try {
-        const equipmentTenantBrandingRes = await callRpc<any[]>({
-          fn: 'don_vi_branding_get',
-          args: { p_id: equipment.don_vi }
-        });
-        // RPC returns an array, get the first element
-        const equipmentTenantBranding = equipmentTenantBrandingRes?.[0];
-        if (equipmentTenantBranding && equipmentTenantBranding.name) {
-          brandingToUse = equipmentTenantBranding;
-        }
-      } catch (error) {
-        console.error('Failed to fetch equipment tenant branding:', error);
-      }
-    }
-
-    const htmlContent = `
-      <!DOCTYPE html>
-      <html lang="vi">
-      <head>
-          <meta charset="UTF-8">
-          <meta name="viewport" content="width=device-width, initial-scale=1.0">
-          <title>Nhãn Thiết Bị - ${formatValue(equipment.ma_thiet_bi)}</title>
-          <script src="https://cdn.tailwindcss.com"></script>
-          <link rel="preconnect" href="https://fonts.googleapis.com">
-          <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-          <link href="https://fonts.googleapis.com/css2?family=Roboto+Slab:wght@400;700&display=swap" rel="stylesheet">
-          <style>
-              body { font-family: 'Roboto Slab', serif; }
-              .form-input-line { border-bottom: 1px dotted #333; width: 100%; min-height: 24px; padding: 1px 0.25rem; }
-              .long-text-label { white-space: pre-wrap; word-break: break-word; line-height: 1.4; }
-              @media print {
-                  body { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; background-color: #fff !important; margin: 0; }
-                  .label-container { box-shadow: none !important; border: 3px double #000 !important; margin: 0; page-break-inside: avoid; }
-                  body > *:not(.label-container) { display: none; }
-              }
-          </style>
-      </head>
-      <body class="bg-gray-200 flex items-center justify-center min-h-screen p-4">
-          <div class="w-full max-w-md bg-white p-4 shadow-lg label-container" style="border: 3px double #000;">
-              <header class="flex items-start justify-between gap-3 border-b-2 border-black pb-3">
-                  <div class="flex-shrink-0">
-                      <img src="${brandingToUse?.logo_url || 'https://placehold.co/100x100/e2e8f0/e2e8f0?text=Logo'}" alt="Logo ${brandingToUse?.name || 'Organization'}" class="w-16 h-auto" onerror="this.onerror=null;this.src='https://placehold.co/100x100/e2e8f0/e2e8f0?text=Logo';">'
-                  </div>
-                  <div class="text-center flex-grow">
-                      <h1 class="text-2xl font-bold tracking-wider">NHÃN THIẾT BỊ</h1>
-                      <div class="flex items-baseline mt-2">
-                          <label class="text-base font-semibold whitespace-nowrap">Khoa:</label>
-                          <div class="form-input-line ml-2 text-center uppercase">${formatValue(equipment.khoa_phong_quan_ly)}</div>
-                      </div>
-                  </div>
-              </header>
-              <main class="mt-4 space-y-3">
-                  <div class="flex items-baseline">
-                      <label class="text-base font-semibold w-40 shrink-0">Tên thiết bị:</label>
-                      <div class="form-input-line long-text-label flex-grow">${formatValue(equipment.ten_thiet_bi)}</div>
-                  </div>
-                  <div class="flex items-baseline">
-                      <label class="text-base font-semibold w-40 shrink-0">Mã số TB:</label>
-                      <div class="form-input-line">${formatValue(equipment.ma_thiet_bi)}</div>
-                  </div>
-                  <div class="flex items-baseline">
-                      <label class="text-base font-semibold w-40 shrink-0">Model:</label>
-                      <div class="form-input-line">${formatValue(equipment.model)}</div>
-                  </div>
-                  <div class="flex items-baseline">
-                      <label class="text-base font-semibold w-40 shrink-0">Serial N⁰:</label>
-                      <div class="form-input-line">${formatValue(equipment.serial)}</div>
-                  </div>
-                  <div class="flex items-baseline">
-                      <label class="text-base font-semibold w-40 shrink-0">Ngày hiệu chuẩn:</label>
-                      <div class="form-input-line">${formatValue(equipment.ngay_hc_tiep_theo)}</div>
-                  </div>
-                  <div class="flex items-baseline">
-                      <label class="text-base font-semibold w-40 shrink-0">Ngày hết hạn:</label>
-                      <div class="form-input-line"></div>
-                  </div>
-                  <div class="flex items-baseline">
-                      <label class="text-base font-semibold w-40 shrink-0">Tình trạng hiện tại:</label>
-                      <div class="form-input-line font-medium">${formatValue(equipment.tinh_trang_hien_tai)}</div>
-                  </div>
-              </main>
-              <div class="mt-4 flex items-center justify-between gap-4 border-t-2 border-gray-300 pt-3">
-                  <div class="flex flex-col items-center">
-                       <label class="text-sm font-semibold">Mã QR của TB</label>
-                       <img id="qr-image" 
-                           src="${qrUrl}"
-                           alt="Mã QR của ${qrText}" 
-                           class="w-28 h-28 border rounded-md p-1 bg-white mt-1"
-                           onerror="this.onerror=null;this.src='https://placehold.co/112x112/ffffff/cccccc?text=QR+Code';"
-                       >
-                  </div>
-              </div>
-          </div>
-      </body>
-      </html>
-    `;
-    
-    const newWindow = window.open("", "_blank");
-    if (newWindow) {
-        newWindow.document.open();
-        newWindow.document.write(htmlContent);
-        newWindow.document.close();
-    }
+    await generateDeviceLabel(equipment, printContext)
   }
 
   const handleShowDetails = (equipment: Equipment) => {
@@ -1077,143 +686,21 @@ const { showFacilityFilter, selectedFacilityId, setSelectedFacilityId } = useFac
     setIsEndUsageDialogOpen(true);
   };
 
-  const renderActions = (equipment: Equipment) => {
-    const canEdit = user && (
-  user.role === 'global' || user.role === 'admin' ||
-      user.role === 'to_qltb' ||
-      (user.role === 'qltb_khoa' && user.khoa_phong === equipment.khoa_phong_quan_ly)
-    );
+  const renderActions = (equipment: Equipment) => (
+    <EquipmentActionsMenu
+      equipment={equipment}
+      user={user}
+      isRegionalLeader={isRegionalLeader}
+      activeUsageLogs={activeUsageLogs}
+      isLoadingActiveUsage={isLoadingActiveUsage}
+      onShowDetails={handleShowDetails}
+      onStartUsage={handleStartUsage}
+      onEndUsage={handleEndUsage}
+      onCreateRepairRequest={(eq) => router.push(`/repair-requests?equipmentId=${eq.id}`)}
+    />
+  );
 
-    const userId = (() => {
-      const uid: any = user?.id
-      const n = typeof uid === 'string' ? Number(uid) : uid
-      return Number.isFinite(n) ? (n as number) : null
-    })()
-
-    const activeUsageLog = activeUsageLogs?.find(
-      (log) => log.thiet_bi_id === equipment.id && log.trang_thai === 'dang_su_dung'
-    );
-    const isCurrentUserUsing = !!activeUsageLog && userId != null && activeUsageLog.nguoi_su_dung_id === userId
-    const startUsageDisabled = isLoadingActiveUsage || !user || !!activeUsageLog || isRegionalLeader;
-
-    return (
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button
-            variant="ghost"
-            className="h-8 w-8 p-0 touch-target-sm md:h-8 md:w-8"
-            onClick={(e: React.MouseEvent) => e.stopPropagation()}
-          >
-            <span className="sr-only">Open menu</span>
-            <MoreHorizontal className="h-4 w-4" />
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
-          <DropdownMenuLabel>Hành động</DropdownMenuLabel>
-           <DropdownMenuItem onSelect={() => handleShowDetails(equipment)}>
-            Xem chi tiết
-          </DropdownMenuItem>
-          {!isCurrentUserUsing && (
-            <DropdownMenuItem
-              disabled={startUsageDisabled}
-              onSelect={() => {
-                if (startUsageDisabled) return;
-                handleStartUsage(equipment);
-              }}
-              title={activeUsageLog ? "Thiết bị đang được sử dụng" : undefined}
-            >
-              Viết nhật ký SD
-            </DropdownMenuItem>
-          )}
-          {isCurrentUserUsing && (
-            <DropdownMenuItem
-              onSelect={() => handleEndUsage(activeUsageLog as UsageLog)}
-            >
-              Kết thúc sử dụng
-            </DropdownMenuItem>
-          )}
-          <DropdownMenuItem
-            disabled={isRegionalLeader}
-            onSelect={() => {
-              if (isRegionalLeader) return
-              router.push(`/repair-requests?equipmentId=${equipment.id}`)
-            }}
-          >
-            Tạo yêu cầu sửa chữa
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
-    );
-  };
-  
-  const columns: ColumnDef<Equipment>[] = [
-    ...(Object.keys(columnLabels) as Array<keyof Equipment>).map((key) => {
-      const columnDef: ColumnDef<Equipment> = {
-        accessorKey: key,
-        header: ({ column }) => {
-          return (
-            <Button
-              variant="ghost"
-              onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-            >
-              {columnLabels[key]}
-              <ArrowUpDown className="ml-2 h-4 w-4" />
-            </Button>
-          )
-        },
-        cell: ({ row }) => {
-          const value = row.getValue(key)
-  
-          if (key === 'tinh_trang_hien_tai') {
-            const statusValue = value as Equipment["tinh_trang_hien_tai"];
-            if (!statusValue) {
-              return <div className="italic text-muted-foreground">Chưa có dữ liệu</div>
-            }
-            return (
-              <Badge variant={getStatusVariant(statusValue)}>
-                {statusValue}
-              </Badge>
-            )
-          }
-          
-          if (key === 'phan_loai_theo_nd98') {
-            const classification = value as Equipment["phan_loai_theo_nd98"];
-            if (!classification) {
-              return <div className="italic text-muted-foreground">Chưa có dữ liệu</div>;
-            }
-            return (
-              <Badge variant={getClassificationVariant(classification)}>
-                {classification.trim()}
-              </Badge>
-            );
-          }
-  
-          if (key === 'gia_goc') {
-            if (value === null || value === undefined) {
-               return <div className="text-right italic text-muted-foreground">Chưa có dữ liệu</div>
-            }
-            return <div className="text-right">{Number(value).toLocaleString()}đ</div>
-          }
-          
-          if (value === null || value === undefined || value === "") {
-              return <div className="italic text-muted-foreground">Chưa có dữ liệu</div>
-          }
-  
-          return <div className="truncate max-w-xs">{String(value)}</div>
-        },
-      }
-  
-      // Server-side filtering is handled by equipment_list_enhanced RPC
-      // No client-side filterFn needed since we use manualPagination
-  
-      return columnDef;
-    }),
-    {
-      id: "actions",
-      enableHiding: false,
-      cell: ({ row }) => renderActions(row.original),
-    },
-  ]
+  const columns = createEquipmentColumns({ renderActions })
 
   // Moved above to fix variable declaration order - these are now declared earlier
   const shouldFetchEquipment = React.useMemo(() => {
