@@ -24,7 +24,7 @@ import { exportArrayToExcel, exportToExcel } from "@/lib/excel-utils"
 import { generateProfileSheet, generateDeviceLabel, type PrintContext } from "@/components/equipment/equipment-print-utils"
 import { columnLabels, createEquipmentColumns } from "@/components/equipment/equipment-table-columns"
 import { EquipmentActionsMenu } from "@/components/equipment/equipment-actions-menu"
-import type { Equipment, UsageLog } from "@/types/database"
+import type { Equipment, UsageLog, SessionUser } from "@/types/database"
 import type { TenantBranding } from "@/hooks/use-tenant-branding"
 
 // Filter bottom sheet data type
@@ -43,16 +43,8 @@ export interface FacilityOption {
   count: number
 }
 
-// User type from session - must match UserSession in equipment-actions-menu.tsx
-export interface SessionUser {
-  id: string | number
-  role: string
-  khoa_phong: string | null
-  username?: string
-  don_vi?: number | string
-  dia_ban_id?: number
-  full_name?: string
-}
+// Re-export SessionUser for convenience
+export type { SessionUser }
 
 // Interface for hook return value
 export interface UseEquipmentPageReturn {
@@ -91,7 +83,6 @@ export interface UseEquipmentPageReturn {
   // Filter options (from server)
   departments: string[]
   users: string[]
-  locations: string[]
   statuses: string[]
   classifications: string[]
   filterData: FilterBottomSheetData
@@ -152,10 +143,6 @@ export interface UseEquipmentPageReturn {
   handleGenerateDeviceLabel: (equipment: Equipment) => Promise<void>
   onDataMutationSuccess: () => void
   onDataMutationSuccessWithStatePreservation: () => void
-
-  // Usage tracking
-  activeUsageLogs: UsageLog[] | undefined
-  isLoadingActiveUsage: boolean
 
   // UI state
   isMobile: boolean
@@ -730,13 +717,11 @@ export function useEquipmentPage(): UseEquipmentPageReturn {
   // Cache invalidation listeners
   React.useEffect(() => {
     const handleCacheInvalidation = () => {
-      console.log('[EquipmentPage] Cache invalidated by realtime, invalidating equipment_list_enhanced...')
       invalidateEquipmentForCurrentTenant()
     }
 
     window.addEventListener('equipment-cache-invalidated', handleCacheInvalidation)
     const handleTenantSwitched = () => {
-      console.log('[EquipmentPage] Tenant switched, invalidating equipment_list_enhanced...')
       invalidateEquipmentForCurrentTenant()
     }
     window.addEventListener('tenant-switched', handleTenantSwitched as EventListener)
@@ -750,7 +735,6 @@ export function useEquipmentPage(): UseEquipmentPageReturn {
   // Tenant filter change effect
   React.useEffect(() => {
     if (!isGlobal) return
-    console.log('[EquipmentPage] tenantFilter changed ->', tenantFilter)
     invalidateEquipmentForCurrentTenant()
   }, [tenantFilter, isGlobal, queryClient, effectiveTenantKey, invalidateEquipmentForCurrentTenant])
 
@@ -898,7 +882,6 @@ export function useEquipmentPage(): UseEquipmentPageReturn {
     // Filter options
     departments,
     users,
-    locations,
     statuses,
     classifications,
     filterData,
@@ -959,10 +942,6 @@ export function useEquipmentPage(): UseEquipmentPageReturn {
     handleGenerateDeviceLabel,
     onDataMutationSuccess,
     onDataMutationSuccessWithStatePreservation,
-
-    // Usage tracking
-    activeUsageLogs,
-    isLoadingActiveUsage,
 
     // UI state
     isMobile,

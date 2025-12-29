@@ -18,17 +18,11 @@ import {
   DropdownMenuLabel,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import type { Equipment, UsageLog } from "@/types/database"
-
-interface UserSession {
-  id: string | number
-  role: string
-  khoa_phong: string | null
-}
+import type { Equipment, UsageLog, SessionUser } from "@/types/database"
 
 export interface EquipmentActionsMenuProps {
   equipment: Equipment
-  user: UserSession | null
+  user: SessionUser | null
   isRegionalLeader: boolean
   activeUsageLogs: UsageLog[] | undefined
   isLoadingActiveUsage: boolean

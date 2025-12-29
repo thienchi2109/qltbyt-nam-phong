@@ -65,6 +65,20 @@ export const USER_ROLES = {
 
 export type UserRole = keyof typeof USER_ROLES;
 
+/**
+ * User session data from NextAuth.
+ * Subset of User used in client components for RBAC checks.
+ */
+export interface SessionUser {
+  id: string | number
+  role: string
+  khoa_phong: string | null
+  username?: string
+  don_vi?: number | string
+  dia_ban_id?: number
+  full_name?: string
+}
+
 // Usage Log interfaces
 export interface UsageLog {
   id: number;
@@ -237,4 +251,4 @@ export interface MaintenanceTask {
   created_at: string;
   updated_at: string;
   thiet_bi?: Equipment;
-} 
+}
