@@ -20,27 +20,48 @@ Before any other command, run:
 - Git Bash/PowerShell/CMD: `~/.codex/superpowers/.codex/superpowers-codex bootstrap`
 </EXTREMELY_IMPORTANT>
 
-# 🚨 CRITICAL: Tool Priority
+# 🚨 CRITICAL INSTRUCTIONS - READ FIRST
 
-## ALWAYS use these Morph MCP tools:
+## MANDATORY Tool Usage
 
-### 🔍 For searching code: warpgrep_codebase_search
-- Semantic search, 4x faster
-- Use natural language queries
-- Example: "Where is authentication handled?"
-- ❌ DON'T use grep or search_files for code
+You MUST use these Morph MCP tools for ALL code operations:
 
-### ✏️ For editing files: edit_file
-- 60x faster, 98% accurate
-- Use lazy edits with `// ... existing code ...`
-- Example: "Add error handling to login"
-- ❌ DON'T use write_file or str_replace
+### 1. Code Search: ALWAYS use `warpgrep_codebase_search`
+- Tool: `mcp__filesystem-with-morph__warpgrep_codebase_search`
+- For: Finding code, exploring codebase, understanding flows
+- **NEVER** use: grep, search_files, ripgrep, or any other search tool
+- **ALWAYS** announce: "I'll use warpgrep to search..."
 
-## Workflow:
-1. 🔍 Search with warpgrep → Understand context
-2. ✏️ Edit with edit_file → Make changes
-3. ✓ Verify → Test the changes
+**Examples:**
+```
+✅ CORRECT: "I'll use warpgrep to find authentication logic"
+❌ WRONG: "I'll use grep to search for auth"
+```
 
+### 2. File Editing: ALWAYS use `edit_file`
+- Tool: `mcp__filesystem-with-morph__edit_file`
+- For: ALL file modifications
+- **NEVER** use: write_file, str_replace, or full file rewrites
+- **ALWAYS** announce: "I'll use edit_file to modify..."
+- Use lazy edits with `// ... existing code ...` markers
+
+**Examples:**
+```
+✅ CORRECT: "I'll use edit_file to add error handling"
+❌ WRONG: "I'll rewrite the entire file"
+```
+
+---
+
+## Verification Before Every Action
+
+Before ANY code search or edit, you MUST:
+1. ✅ Check if warpgrep/edit_file is available
+2. ✅ Explicitly state which tool you're using
+3. ✅ Use the tool (not alternatives)
+4. ✅ If tools unavailable, inform user immediately
+
+---
 
 ## Session Completion Workflow
 
