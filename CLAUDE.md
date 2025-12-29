@@ -20,6 +20,28 @@ Before any other command, run:
 - Git Bash/PowerShell/CMD: `~/.codex/superpowers/.codex/superpowers-codex bootstrap`
 </EXTREMELY_IMPORTANT>
 
+# 🚨 CRITICAL: Tool Priority
+
+## ALWAYS use these Morph MCP tools:
+
+### 🔍 For searching code: warpgrep_codebase_search
+- Semantic search, 4x faster
+- Use natural language queries
+- Example: "Where is authentication handled?"
+- ❌ DON'T use grep or search_files for code
+
+### ✏️ For editing files: edit_file
+- 60x faster, 98% accurate
+- Use lazy edits with `// ... existing code ...`
+- Example: "Add error handling to login"
+- ❌ DON'T use write_file or str_replace
+
+## Workflow:
+1. 🔍 Search with warpgrep → Understand context
+2. ✏️ Edit with edit_file → Make changes
+3. ✓ Verify → Test the changes
+
+
 ## Session Completion Workflow
 
 **MANDATORY when ending work session:**
