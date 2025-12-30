@@ -30,7 +30,6 @@ import { OverdueTransfersAlert } from "@/components/overdue-transfers-alert"
 import { ResponsivePaginationInfo } from "@/components/responsive-pagination-info"
 import { TransferDetailDialog } from "@/components/transfer-detail-dialog"
 import { TransferCard } from "@/components/transfers/TransferCard"
-import { TransferStatusBadges } from "@/components/transfers/TransferStatusBadges"
 import { TransferTypeTabs, useTransferTypeTab } from "@/components/transfers/TransferTypeTabs"
 import { getColumnsForType } from "@/components/transfers/columnDefinitions"
 import { FilterModal } from "@/components/transfers/FilterModal"
@@ -169,7 +168,6 @@ function TransfersPageContent({ user }: TransfersPageContentProps) {
 
   const {
     data: statusCounts,
-    isLoading: isCountsLoading,
   } = useTransferCounts(countsFilters)
 
   const {
@@ -210,18 +208,6 @@ function TransfersPageContent({ user }: TransfersPageContentProps) {
   React.useEffect(() => {
     setPagination((prev) => ({ ...prev, pageIndex: 0 }))
   }, [activeTab, selectedFacilityId, debouncedSearch, statusFilter, dateRange])
-
-  const handleToggleStatus = React.useCallback((status: TransferStatus) => {
-    setStatusFilter((previous) =>
-      previous.includes(status)
-        ? previous.filter((item) => item !== status)
-        : [...previous, status],
-    )
-  }, [])
-
-  const handleClearStatuses = React.useCallback(() => {
-    setStatusFilter([])
-  }, [])
 
   const handleClearAllFilters = React.useCallback(() => {
     setStatusFilter([])
@@ -492,16 +478,6 @@ function TransfersPageContent({ user }: TransfersPageContentProps) {
             }}
           >
             <div className="flex flex-col gap-3">
-              <div className="hidden lg:block">
-                <TransferStatusBadges
-                  counts={statusCounts?.columnCounts}
-                  isLoading={isCountsLoading}
-                  selectedStatuses={statusFilter}
-                  onToggleStatus={handleToggleStatus}
-                  onClearStatuses={handleClearStatuses}
-                />
-              </div>
-
               <FilterChips
                 value={{
                   statuses: statusFilter,
