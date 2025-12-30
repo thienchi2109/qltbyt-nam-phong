@@ -239,6 +239,7 @@ export default function EquipmentPage() {
             onAddEquipment={() => setIsAddDialogOpen(true)}
             onImportEquipment={() => setIsImportDialogOpen(true)}
             onClearFacilityFilter={() => setSelectedFacilityId(null)}
+            onShowEquipmentDetails={handleShowDetails}
           />
 
           {/* Columns dialog */}
