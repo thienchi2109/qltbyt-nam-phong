@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button"
 import { QrCode, ArrowLeft, Camera, Smartphone } from "lucide-react"
 import Link from "next/link"
 import { useToast } from "@/hooks/use-toast"
+import { QRScannerErrorBoundary } from "@/components/qr-scanner-error-boundary"
 import type { Equipment } from "@/lib/data"
 
 // Dynamic imports to avoid SSR issues with camera components
@@ -139,13 +140,15 @@ export default function QRScannerPage() {
 
   return (
     <>
-      {/* Camera Scanner */}
+      {/* Camera Scanner with Error Boundary */}
       {isCameraActive && (
-        <QRScannerCamera
-          onScanSuccess={handleScanSuccess}
-          onClose={handleCloseCamera}
-          isActive={isCameraActive}
-        />
+        <QRScannerErrorBoundary onReset={() => setIsCameraActive(false)}>
+          <QRScannerCamera
+            onScanSuccess={handleScanSuccess}
+            onClose={handleCloseCamera}
+            isActive={isCameraActive}
+          />
+        </QRScannerErrorBoundary>
       )}
 
       {/* Action Sheet */}

@@ -22,7 +22,7 @@ import { cn } from "@/lib/utils"
 export default function Dashboard() {
   // useDashboardRealtimeSync()
   const { data: session } = useSession()
-  const user = session?.user as any
+  const user = session?.user
 
   // Check if user is regional leader
   const isRegionalLeader = user?.role === 'regional_leader'

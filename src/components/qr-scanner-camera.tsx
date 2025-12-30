@@ -18,13 +18,29 @@ export function QRScannerCamera({ onScanSuccess, onClose, isActive }: QRScannerC
   const { toast } = useToast()
   const videoRef = React.useRef<HTMLVideoElement>(null)
   const streamRef = React.useRef<MediaStream | null>(null)
+  const scanIntervalRef = React.useRef<NodeJS.Timeout | null>(null)
   const [isScanning, setIsScanning] = React.useState(false)
   const [hasFlash, setHasFlash] = React.useState(false)
   const [isFlashOn, setIsFlashOn] = React.useState(false)
   const [cameras, setCameras] = React.useState<MediaDeviceInfo[]>([])
   const [selectedCameraId, setSelectedCameraId] = React.useState<string>("")
   const [error, setError] = React.useState<string | null>(null)
-  const [scanInterval, setScanInterval] = React.useState<NodeJS.Timeout | null>(null)
+
+  // Cleanup on unmount - separate effect to ensure cleanup always runs
+  React.useEffect(() => {
+    return () => {
+      // Ensure interval is cleared even on unexpected unmount
+      if (scanIntervalRef.current) {
+        clearInterval(scanIntervalRef.current)
+        scanIntervalRef.current = null
+      }
+      // Ensure stream is stopped
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(track => track.stop())
+        streamRef.current = null
+      }
+    }
+  }, [])
 
   // Initialize camera
   React.useEffect(() => {
@@ -40,11 +56,6 @@ export function QRScannerCamera({ onScanSuccess, onClose, isActive }: QRScannerC
   const initializeCamera = async () => {
     try {
       setError(null)
-      
-      console.log("🔍 Checking camera initialization...")
-      console.log("Current URL:", typeof window !== 'undefined' ? window.location.href : 'N/A')
-      console.log("Protocol:", typeof window !== 'undefined' ? window.location.protocol : 'N/A')
-      console.log("Hostname:", typeof window !== 'undefined' ? window.location.hostname : 'N/A')
       
       // Check browser support
       if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
@@ -64,15 +75,9 @@ Hiện tại bạn đang truy cập qua: ${location.origin}
         return
       }
 
-      console.log("✅ Security check passed, enumerating devices...")
-
       // Get available cameras
       const devices = await navigator.mediaDevices.enumerateDevices()
-      console.log("📱 Available devices:", devices)
-      
       const videoDevices = devices.filter(device => device.kind === 'videoinput')
-      console.log("📹 Video devices:", videoDevices)
-      
       setCameras(videoDevices)
 
       if (videoDevices.length === 0) {
@@ -80,17 +85,13 @@ Hiện tại bạn đang truy cập qua: ${location.origin}
         return
       }
 
-      console.log("🎯 Requesting camera access...")
-
       // Use selected camera or default to first available
       const deviceId = selectedCameraId || videoDevices[0].deviceId
-      console.log("🎥 Using camera device:", deviceId)
 
       // Try with flexible constraints first
       let stream: MediaStream;
       
       try {
-        console.log("🔄 Trying with flexible constraints...")
         stream = await navigator.mediaDevices.getUserMedia({
           video: {
             deviceId: deviceId ? { ideal: deviceId } : undefined,
@@ -100,10 +101,7 @@ Hiện tại bạn đang truy cập qua: ${location.origin}
           },
           audio: false
         })
-        console.log("✅ Flexible constraints successful")
       } catch (constraintError) {
-        console.log("⚠️ Flexible constraints failed, trying basic constraints...")
-        console.error("Constraint error:", constraintError)
         try {
           stream = await navigator.mediaDevices.getUserMedia({
             video: {
@@ -113,19 +111,14 @@ Hiện tại bạn đang truy cập qua: ${location.origin}
             },
             audio: false
           })
-          console.log("✅ Basic constraints successful")
         } catch (basicError) {
-          console.log("⚠️ Basic constraints failed, trying minimal constraints...")
-          console.error("Basic error:", basicError)
           stream = await navigator.mediaDevices.getUserMedia({
             video: true,
             audio: false
           })
-          console.log("✅ Minimal constraints successful")
         }
       }
 
-      console.log("✅ Camera stream obtained:", stream)
       streamRef.current = stream
 
       if (videoRef.current) {
@@ -138,12 +131,10 @@ Hiện tại bạn đang truy cập qua: ${location.origin}
             await playPromise
           }
           setIsScanning(true)
-          console.log("🎬 Video element started")
           
           // Start QR detection
           startQRDetection()
         } catch (playError) {
-          console.warn("Video play error (non-critical):", playError)
           // Continue anyway, video might still work
           setIsScanning(true)
           startQRDetection()
@@ -154,13 +145,8 @@ Hiện tại bạn đang truy cập qua: ${location.origin}
       const track = stream.getVideoTracks()[0]
       const capabilities = track.getCapabilities()
       setHasFlash('torch' in capabilities)
-      console.log("💡 Flash support:", 'torch' in capabilities)
 
     } catch (error: any) {
-      console.error("❌ Camera initialization error:", error)
-      console.error("Error name:", error.name)
-      console.error("Error message:", error.message)
-      
       let errorMessage = "Không thể truy cập camera"
       
       if (error.name === 'NotAllowedError') {
@@ -242,11 +228,9 @@ Hiện tại bạn đang truy cập qua: ${location.origin}
     if (!videoRef.current || !isActive) return
 
     // Clear existing interval
-    if (scanInterval) {
-      clearInterval(scanInterval)
+    if (scanIntervalRef.current) {
+      clearInterval(scanIntervalRef.current)
     }
-
-    console.log("🔍 Starting QR detection...")
 
     const detectQR = () => {
       const video = videoRef.current
@@ -275,29 +259,26 @@ Hiện tại bạn đang truy cập qua: ${location.origin}
         })
         
         if (qrCode) {
-          console.log("🎯 QR Code detected:", qrCode.data)
-          
           // Stop detection and trigger success
           stopQRDetection()
           setIsScanning(false)
           onScanSuccess(qrCode.data)
         }
-        
-      } catch (err) {
-        console.warn("QR detection error:", err)
+
+      } catch {
+        // Silently ignore QR detection errors
       }
     }
 
     // Start detection interval - faster for better UX
     const interval = setInterval(detectQR, 250) // Check every 250ms for smoother detection
-    setScanInterval(interval)
+    scanIntervalRef.current = interval
   }
 
   const stopQRDetection = () => {
-    if (scanInterval) {
-      clearInterval(scanInterval)
-      setScanInterval(null)
-      console.log("🛑 QR detection stopped")
+    if (scanIntervalRef.current) {
+      clearInterval(scanIntervalRef.current)
+      scanIntervalRef.current = null
     }
   }
 
@@ -432,4 +413,4 @@ Hiện tại bạn đang truy cập qua: ${location.origin}
       `}</style>
     </div>
   )
-} 
+}

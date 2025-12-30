@@ -29,8 +29,6 @@ export function QRActionSheet({ qrCode, onClose, onAction }: QRActionSheetProps)
         setLoading(true)
         setError(null)
 
-        console.log("Searching for equipment with ma_thiet_bi:", qrCode)
-
         // Use dedicated RPC for exact ma_thiet_bi lookup with tenant security
         const normalizedCode = qrCode.trim()
         const result = await callRpc<any>({
@@ -38,18 +36,13 @@ export function QRActionSheet({ qrCode, onClose, onAction }: QRActionSheetProps)
           args: { p_ma_thiet_bi: normalizedCode }
         })
 
-        console.log("Equipment search result:", result)
-
         if (!result) {
-          setError(`Kh?ng t?m th?y thi?t b? v?i m?: ${qrCode}`)
+          setError(`Không tìm thấy thiết bị với mã: ${qrCode}`)
           setEquipment(null)
         } else {
-          console.log("Found equipment:", result)
           setEquipment(result)
         }
       } catch (err: any) {
-        console.error("Search error:", err)
-        
         // Parse RPC error response
         const errorMsg = err?.message || 'Đã có lỗi xảy ra khi tìm kiếm'
         setError(`Lỗi tìm kiếm: ${errorMsg}`)
