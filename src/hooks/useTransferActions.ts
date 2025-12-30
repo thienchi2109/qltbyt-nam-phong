@@ -1,25 +1,23 @@
 // src/hooks/useTransferActions.ts
 import * as React from "react"
+import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { useSession } from "next-auth/react"
 import { useToast } from "@/hooks/use-toast"
 import { callRpc } from "@/lib/rpc-client"
+import { transferDataGridKeys } from "@/hooks/useTransferDataGrid"
 import type { TransferListItem } from "@/types/transfers-data-grid"
 import type { TransferRequest } from "@/types/database"
 
-interface UseTransferActionsOptions {
-  onSuccess: () => Promise<void>
-}
-
 interface UseTransferActionsReturn {
   // Status transition actions
-  approveTransfer: (item: TransferListItem) => Promise<void>
-  startTransfer: (item: TransferListItem) => Promise<void>
-  handoverToExternal: (item: TransferListItem) => Promise<void>
-  returnFromExternal: (item: TransferListItem) => Promise<void>
-  completeTransfer: (item: TransferListItem) => Promise<void>
+  approveTransfer: (item: TransferListItem) => void
+  startTransfer: (item: TransferListItem) => void
+  handoverToExternal: (item: TransferListItem) => void
+  returnFromExternal: (item: TransferListItem) => void
+  completeTransfer: (item: TransferListItem) => void
 
   // CRUD actions
-  confirmDelete: (item: TransferListItem) => Promise<void>
+  confirmDelete: (item: TransferListItem) => void
 
   // Permission checks
   canEditTransfer: (item: TransferListItem) => boolean
@@ -29,14 +27,21 @@ interface UseTransferActionsReturn {
   mapToTransferRequest: (item: TransferListItem) => TransferRequest
   isRegionalLeader: boolean
   isTransferCoreRole: boolean
+
+  // Loading states for individual actions
+  isApproving: boolean
+  isStarting: boolean
+  isHandingOver: boolean
+  isReturning: boolean
+  isCompleting: boolean
+  isDeleting: boolean
 }
 
-export function useTransferActions(
-  options: UseTransferActionsOptions
-): UseTransferActionsReturn {
+export function useTransferActions(): UseTransferActionsReturn {
   const { toast } = useToast()
   const { data: session } = useSession()
   const user = session?.user
+  const queryClient = useQueryClient()
 
   const isRegionalLeader = user?.role === "regional_leader"
   const isTransferCoreRole =
@@ -49,6 +54,10 @@ export function useTransferActions(
       description: "Vai trò Trưởng vùng chỉ được xem yêu cầu luân chuyển.",
     })
   }, [toast])
+
+  const invalidateTransferQueries = React.useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: transferDataGridKeys.all })
+  }, [queryClient])
 
   // mapToTransferRequest - converts TransferListItem to TransferRequest
   const mapToTransferRequest = React.useCallback(
@@ -126,159 +135,208 @@ export function useTransferActions(
     [isRegionalLeader, isTransferCoreRole, user]
   )
 
-  // Action handlers
+  // Approve mutation
+  const approveMutation = useMutation({
+    mutationFn: async (item: TransferListItem) => {
+      await callRpc({
+        fn: "transfer_request_update_status",
+        args: {
+          p_id: item.id,
+          p_status: "da_duyet",
+          p_payload: { nguoi_duyet_id: user?.id ? parseInt(user.id, 10) : undefined },
+        },
+      })
+    },
+    onSuccess: () => {
+      toast({ title: "Thành công", description: "Đã duyệt yêu cầu luân chuyển." })
+      invalidateTransferQueries()
+    },
+    onError: (error: Error) => {
+      toast({
+        variant: "destructive",
+        title: "Lỗi",
+        description: error.message || "Có lỗi xảy ra khi duyệt yêu cầu.",
+      })
+    },
+  })
+
+  // Start transfer mutation
+  const startMutation = useMutation({
+    mutationFn: async (item: TransferListItem) => {
+      await callRpc({
+        fn: "transfer_request_update_status",
+        args: {
+          p_id: item.id,
+          p_status: "dang_luan_chuyen",
+          p_payload: { ngay_ban_giao: new Date().toISOString() },
+        },
+      })
+    },
+    onSuccess: () => {
+      toast({ title: "Thành công", description: "Đã bắt đầu luân chuyển thiết bị." })
+      invalidateTransferQueries()
+    },
+    onError: (error: Error) => {
+      toast({
+        variant: "destructive",
+        title: "Lỗi",
+        description: error.message || "Có lỗi xảy ra khi bắt đầu luân chuyển.",
+      })
+    },
+  })
+
+  // Handover to external mutation
+  const handoverMutation = useMutation({
+    mutationFn: async (item: TransferListItem) => {
+      await callRpc({
+        fn: "transfer_request_update_status",
+        args: {
+          p_id: item.id,
+          p_status: "da_ban_giao",
+          p_payload: { ngay_ban_giao: new Date().toISOString() },
+        },
+      })
+    },
+    onSuccess: () => {
+      toast({ title: "Thành công", description: "Đã bàn giao thiết bị cho đơn vị bên ngoài." })
+      invalidateTransferQueries()
+    },
+    onError: (error: Error) => {
+      toast({
+        variant: "destructive",
+        title: "Lỗi",
+        description: error.message || "Có lỗi xảy ra khi bàn giao thiết bị.",
+      })
+    },
+  })
+
+  // Return from external mutation
+  const returnMutation = useMutation({
+    mutationFn: async (item: TransferListItem) => {
+      await callRpc({
+        fn: "transfer_request_complete",
+        args: { p_id: item.id, p_payload: { ngay_hoan_tra: new Date().toISOString() } },
+      })
+    },
+    onSuccess: () => {
+      toast({ title: "Thành công", description: "Đã xác nhận hoàn trả thiết bị từ đơn vị bên ngoài." })
+      invalidateTransferQueries()
+    },
+    onError: (error: Error) => {
+      toast({
+        variant: "destructive",
+        title: "Lỗi",
+        description: error.message || "Có lỗi xảy ra khi xác nhận hoàn trả.",
+      })
+    },
+  })
+
+  // Complete transfer mutation
+  const completeMutation = useMutation({
+    mutationFn: async (item: TransferListItem) => {
+      await callRpc({ fn: "transfer_request_complete", args: { p_id: item.id } })
+      return item
+    },
+    onSuccess: (_data, item) => {
+      toast({
+        title: "Thành công",
+        description:
+          item.loai_hinh === "thanh_ly"
+            ? "Đã hoàn tất yêu cầu thanh lý thiết bị."
+            : item.loai_hinh === "noi_bo"
+              ? "Đã hoàn thành luân chuyển nội bộ thiết bị."
+              : "Đã xác nhận hoàn trả thiết bị.",
+      })
+      invalidateTransferQueries()
+    },
+    onError: (error: Error) => {
+      toast({
+        variant: "destructive",
+        title: "Lỗi",
+        description: error.message || "Có lỗi xảy ra khi hoàn thành luân chuyển.",
+      })
+    },
+  })
+
+  // Delete mutation
+  const deleteMutation = useMutation({
+    mutationFn: async (item: TransferListItem) => {
+      await callRpc({ fn: "transfer_request_delete", args: { p_id: item.id } })
+    },
+    onSuccess: () => {
+      toast({ title: "Thành công", description: "Đã xóa yêu cầu luân chuyển." })
+      invalidateTransferQueries()
+    },
+    onError: (error: Error) => {
+      toast({
+        variant: "destructive",
+        title: "Lỗi",
+        description: error.message || "Có lỗi xảy ra khi xóa yêu cầu.",
+      })
+    },
+  })
+
+  // Wrapped action handlers with regional leader check
   const approveTransfer = React.useCallback(
-    async (item: TransferListItem) => {
+    (item: TransferListItem) => {
       if (isRegionalLeader) {
         notifyRegionalLeaderRestricted()
         return
       }
-      try {
-        await callRpc({
-          fn: "transfer_request_update_status",
-          args: {
-            p_id: item.id,
-            p_status: "da_duyet",
-            p_payload: { nguoi_duyet_id: user?.id ? parseInt(user.id, 10) : undefined },
-          },
-        })
-        toast({ title: "Thành công", description: "Đã duyệt yêu cầu luân chuyển." })
-        await options.onSuccess()
-      } catch (error: any) {
-        toast({
-          variant: "destructive",
-          title: "Lỗi",
-          description: error.message || "Có lỗi xảy ra khi duyệt yêu cầu.",
-        })
-      }
+      approveMutation.mutate(item)
     },
-    [isRegionalLeader, notifyRegionalLeaderRestricted, options, toast, user?.id]
+    [approveMutation, isRegionalLeader, notifyRegionalLeaderRestricted]
   )
 
   const startTransfer = React.useCallback(
-    async (item: TransferListItem) => {
+    (item: TransferListItem) => {
       if (isRegionalLeader) {
         notifyRegionalLeaderRestricted()
         return
       }
-      try {
-        await callRpc({
-          fn: "transfer_request_update_status",
-          args: {
-            p_id: item.id,
-            p_status: "dang_luan_chuyen",
-            p_payload: { ngay_ban_giao: new Date().toISOString() },
-          },
-        })
-        toast({ title: "Thành công", description: "Đã bắt đầu luân chuyển thiết bị." })
-        await options.onSuccess()
-      } catch (error: any) {
-        toast({
-          variant: "destructive",
-          title: "Lỗi",
-          description: error.message || "Có lỗi xảy ra khi bắt đầu luân chuyển.",
-        })
-      }
+      startMutation.mutate(item)
     },
-    [isRegionalLeader, notifyRegionalLeaderRestricted, options, toast]
+    [isRegionalLeader, notifyRegionalLeaderRestricted, startMutation]
   )
 
   const handoverToExternal = React.useCallback(
-    async (item: TransferListItem) => {
+    (item: TransferListItem) => {
       if (isRegionalLeader) {
         notifyRegionalLeaderRestricted()
         return
       }
-      try {
-        await callRpc({
-          fn: "transfer_request_update_status",
-          args: {
-            p_id: item.id,
-            p_status: "da_ban_giao",
-            p_payload: { ngay_ban_giao: new Date().toISOString() },
-          },
-        })
-        toast({ title: "Thành công", description: "Đã bàn giao thiết bị cho đơn vị bên ngoài." })
-        await options.onSuccess()
-      } catch (error: any) {
-        toast({
-          variant: "destructive",
-          title: "Lỗi",
-          description: error.message || "Có lỗi xảy ra khi bàn giao thiết bị.",
-        })
-      }
+      handoverMutation.mutate(item)
     },
-    [isRegionalLeader, notifyRegionalLeaderRestricted, options, toast]
+    [handoverMutation, isRegionalLeader, notifyRegionalLeaderRestricted]
   )
 
   const returnFromExternal = React.useCallback(
-    async (item: TransferListItem) => {
+    (item: TransferListItem) => {
       if (isRegionalLeader) {
         notifyRegionalLeaderRestricted()
         return
       }
-      try {
-        await callRpc({
-          fn: "transfer_request_complete",
-          args: { p_id: item.id, p_payload: { ngay_hoan_tra: new Date().toISOString() } },
-        })
-        toast({ title: "Thành công", description: "Đã xác nhận hoàn trả thiết bị từ đơn vị bên ngoài." })
-        await options.onSuccess()
-      } catch (error: any) {
-        toast({
-          variant: "destructive",
-          title: "Lỗi",
-          description: error.message || "Có lỗi xảy ra khi xác nhận hoàn trả.",
-        })
-      }
+      returnMutation.mutate(item)
     },
-    [isRegionalLeader, notifyRegionalLeaderRestricted, options, toast]
+    [isRegionalLeader, notifyRegionalLeaderRestricted, returnMutation]
   )
 
   const completeTransfer = React.useCallback(
-    async (item: TransferListItem) => {
+    (item: TransferListItem) => {
       if (isRegionalLeader) {
         notifyRegionalLeaderRestricted()
         return
       }
-      try {
-        await callRpc({ fn: "transfer_request_complete", args: { p_id: item.id } })
-        toast({
-          title: "Thành công",
-          description:
-            item.loai_hinh === "thanh_ly"
-              ? "Đã hoàn tất yêu cầu thanh lý thiết bị."
-              : item.loai_hinh === "noi_bo"
-                ? "Đã hoàn thành luân chuyển nội bộ thiết bị."
-                : "Đã xác nhận hoàn trả thiết bị.",
-        })
-        await options.onSuccess()
-      } catch (error: any) {
-        toast({
-          variant: "destructive",
-          title: "Lỗi",
-          description: error.message || "Có lỗi xảy ra khi hoàn thành luân chuyển.",
-        })
-      }
+      completeMutation.mutate(item)
     },
-    [isRegionalLeader, notifyRegionalLeaderRestricted, options, toast]
+    [completeMutation, isRegionalLeader, notifyRegionalLeaderRestricted]
   )
 
   const confirmDelete = React.useCallback(
-    async (item: TransferListItem) => {
-      try {
-        await callRpc({ fn: "transfer_request_delete", args: { p_id: item.id } })
-        toast({ title: "Thành công", description: "Đã xóa yêu cầu luân chuyển." })
-        await options.onSuccess()
-      } catch (error: any) {
-        toast({
-          variant: "destructive",
-          title: "Lỗi",
-          description: error.message || "Có lỗi xảy ra khi xóa yêu cầu.",
-        })
-      }
+    (item: TransferListItem) => {
+      deleteMutation.mutate(item)
     },
-    [options, toast]
+    [deleteMutation]
   )
 
   return {
@@ -293,5 +351,11 @@ export function useTransferActions(
     mapToTransferRequest,
     isRegionalLeader,
     isTransferCoreRole,
+    isApproving: approveMutation.isPending,
+    isStarting: startMutation.isPending,
+    isHandingOver: handoverMutation.isPending,
+    isReturning: returnMutation.isPending,
+    isCompleting: completeMutation.isPending,
+    isDeleting: deleteMutation.isPending,
   }
 }

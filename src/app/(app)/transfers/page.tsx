@@ -9,7 +9,7 @@ import {
   useReactTable,
   type SortingState,
 } from "@tanstack/react-table"
-import { useQuery } from "@tanstack/react-query"
+import { useQueryClient } from "@tanstack/react-query"
 import {
   ChevronLeft,
   ChevronRight,
@@ -71,9 +71,9 @@ import { useFacilityFilter } from "@/hooks/useFacilityFilter"
 import { useIsMobile } from "@/hooks/use-mobile"
 import { useToast } from "@/hooks/use-toast"
 import { useTransferActions } from "@/hooks/useTransferActions"
-import { useTransferList, useTransferCounts } from "@/hooks/useTransferDataGrid"
+import { useTransferList, useTransferCounts, transferDataGridKeys } from "@/hooks/useTransferDataGrid"
+import { useTransferFacilities } from "@/hooks/useTransferFacilities"
 import { useTransferSearch } from "@/hooks/useTransferSearch"
-import { callRpc } from "@/lib/rpc-client"
 import type {
   TransferListFilters,
   TransferListItem,
@@ -82,11 +82,15 @@ import type {
 import { type TransferRequest } from "@/types/database"
 
 export default function TransfersPage() {
-  const { toast } = useToast()
   const { data: session, status } = useSession()
-  const user = session?.user
   const router = useRouter()
-  const isMobile = useIsMobile()
+
+  // Handle unauthenticated state
+  React.useEffect(() => {
+    if (status === "unauthenticated") {
+      router.push("/")
+    }
+  }, [status, router])
 
   if (status === "loading") {
     return (
@@ -96,34 +100,27 @@ export default function TransfersPage() {
     )
   }
 
-  if (status === "unauthenticated") {
-    router.push("/")
+  if (status === "unauthenticated" || !session?.user) {
     return null
   }
 
-  const { data: facilityOptionsData } = useQuery<Array<{ id: number; name: string }>>(
-    {
-      queryKey: ["transfer_request_facilities"],
-      queryFn: async () => {
-        try {
-          if (!user) return []
-          const result = await callRpc<Array<{ id: number; name: string }>>(
-            {
-              fn: "get_transfer_request_facilities",
-              args: {},
-            }
-          )
-          return result || []
-        } catch (error) {
-          console.error("[transfers] Failed to fetch facility options:", error)
-          return []
-        }
-      },
-      enabled: !!user,
-      staleTime: 5 * 60_000,
-      gcTime: 10 * 60_000,
-    }
-  )
+  return <TransfersPageContent user={session.user} />
+}
+
+interface TransfersPageContentProps {
+  user: NonNullable<ReturnType<typeof useSession>["data"]>["user"]
+}
+
+function TransfersPageContent({ user }: TransfersPageContentProps) {
+  const { toast } = useToast()
+  const isMobile = useIsMobile()
+  const queryClient = useQueryClient()
+
+  const invalidateTransferQueries = React.useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: transferDataGridKeys.all })
+  }, [queryClient])
+
+  const { data: facilityOptionsData } = useTransferFacilities()
 
   const { selectedFacilityId, setSelectedFacilityId: setFacilityId, showFacilityFilter } =
     useFacilityFilter({
@@ -166,7 +163,6 @@ export default function TransfersPage() {
     data: transferList,
     isLoading: isListLoading,
     isFetching: isListFetching,
-    refetch: refetchList,
   } = useTransferList(filters, {
     placeholderData: (previous) => previous,
   })
@@ -174,12 +170,7 @@ export default function TransfersPage() {
   const {
     data: statusCounts,
     isLoading: isCountsLoading,
-    refetch: refetchCounts,
   } = useTransferCounts(countsFilters)
-
-  const handleActionSuccess = React.useCallback(async () => {
-    await Promise.all([refetchList(), refetchCounts()])
-  }, [refetchList, refetchCounts])
 
   const {
     approveTransfer,
@@ -193,9 +184,7 @@ export default function TransfersPage() {
     mapToTransferRequest,
     isRegionalLeader,
     isTransferCoreRole,
-  } = useTransferActions({
-    onSuccess: handleActionSuccess,
-  })
+  } = useTransferActions()
 
   const tableData = transferList?.data ?? []
   const totalCount = transferList?.total ?? 0
@@ -257,10 +246,6 @@ export default function TransfersPage() {
     if (dateRange?.from || dateRange?.to) count++
     return count
   }, [statusFilter.length, dateRange])
-
-  const handleRefresh = React.useCallback(async () => {
-    await Promise.all([refetchList(), refetchCounts()])
-  }, [refetchCounts, refetchList])
 
   const handleEditTransfer = React.useCallback(
     (item: TransferListItem) => {
@@ -371,9 +356,7 @@ export default function TransfersPage() {
         <AddTransferDialog
           open={isAddDialogOpen}
           onOpenChange={setIsAddDialogOpen}
-          onSuccess={async () => {
-            await Promise.all([refetchList(), refetchCounts()])
-          }}
+          onSuccess={invalidateTransferQueries}
         />
       )}
 
@@ -381,9 +364,7 @@ export default function TransfersPage() {
         <EditTransferDialog
           open={isEditDialogOpen}
           onOpenChange={setIsEditDialogOpen}
-          onSuccess={async () => {
-            await Promise.all([refetchList(), refetchCounts()])
-          }}
+          onSuccess={invalidateTransferQueries}
           transfer={editingTransfer}
         />
       )}
