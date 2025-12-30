@@ -1,10 +1,17 @@
 "use client"
 
 import * as React from "react"
-import { X, Camera, Flashlight, FlashlightOff, RotateCcw } from "lucide-react"
+import { X, Camera, Flashlight, FlashlightOff, RotateCcw, HelpCircle, ArrowLeft } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 import { useToast } from "@/hooks/use-toast"
 import jsQR from "jsqr"
 
@@ -25,6 +32,7 @@ export function QRScannerCamera({ onScanSuccess, onClose, isActive }: QRScannerC
   const [cameras, setCameras] = React.useState<MediaDeviceInfo[]>([])
   const [selectedCameraId, setSelectedCameraId] = React.useState<string>("")
   const [error, setError] = React.useState<string | null>(null)
+  const [showInstructions, setShowInstructions] = React.useState(false)
 
   // Cleanup on unmount - separate effect to ensure cleanup always runs
   React.useEffect(() => {
@@ -288,7 +296,14 @@ Hiện tại bạn đang truy cập qua: ${location.origin}
       <div className="absolute top-0 left-0 right-0 z-10 bg-black/50 backdrop-blur-sm">
         <div className="flex items-center justify-between p-4">
           <div className="flex items-center gap-3">
-            <Camera className="h-6 w-6 text-white" />
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={onClose}
+              className="text-white hover:bg-white/20"
+            >
+              <ArrowLeft className="h-6 w-6" />
+            </Button>
             <div>
               <h2 className="text-lg font-semibold text-white">Quét mã QR</h2>
               <p className="text-sm text-white/80">Đưa mã QR vào khung để quét</p>
@@ -297,10 +312,10 @@ Hiện tại bạn đang truy cập qua: ${location.origin}
           <Button
             variant="ghost"
             size="icon"
-            onClick={onClose}
+            onClick={() => setShowInstructions(true)}
             className="text-white hover:bg-white/20"
           >
-            <X className="h-6 w-6" />
+            <HelpCircle className="h-6 w-6" />
           </Button>
         </div>
       </div>
@@ -402,6 +417,61 @@ Hiện tại bạn đang truy cập qua: ${location.origin}
           )}
         </div>
       </div>
+
+      {/* Instructions Dialog */}
+      <Dialog open={showInstructions} onOpenChange={setShowInstructions}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Camera className="h-5 w-5" />
+              Hướng dẫn quét mã QR
+            </DialogTitle>
+            <DialogDescription>
+              Làm theo các bước sau để quét mã QR thiết bị
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-3">
+              <div className="flex items-start gap-3">
+                <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-medium text-primary-foreground">
+                  1
+                </div>
+                <p className="text-sm">Đưa mã QR vào khung quét trên màn hình</p>
+              </div>
+              <div className="flex items-start gap-3">
+                <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-medium text-primary-foreground">
+                  2
+                </div>
+                <p className="text-sm">Giữ camera ổn định, cách mã QR khoảng 15-20cm</p>
+              </div>
+              <div className="flex items-start gap-3">
+                <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-medium text-primary-foreground">
+                  3
+                </div>
+                <p className="text-sm">Chờ hệ thống tự động nhận diện mã</p>
+              </div>
+              <div className="flex items-start gap-3">
+                <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-medium text-primary-foreground">
+                  4
+                </div>
+                <p className="text-sm">Chọn hành động muốn thực hiện với thiết bị</p>
+              </div>
+            </div>
+            <div className="rounded-lg bg-muted p-3">
+              <p className="text-xs text-muted-foreground">
+                <strong>Mẹo:</strong> Đảm bảo mã QR không bị nhăn, mờ hoặc che khuất.
+                Nếu quét không thành công, thử điều chỉnh khoảng cách hoặc góc quét.
+              </p>
+            </div>
+            <Button
+              onClick={() => setShowInstructions(false)}
+              className="w-full"
+            >
+              Đã hiểu
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* CSS for scanning animation */}
       <style jsx>{`
