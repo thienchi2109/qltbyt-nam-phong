@@ -11,24 +11,14 @@ import {
 } from "@tanstack/react-table"
 import { useQuery } from "@tanstack/react-query"
 import {
-  Building2,
-  Check,
-  CheckCircle,
   ChevronLeft,
   ChevronRight,
   ChevronsLeft,
   ChevronsRight,
-  Edit,
-  FileText,
   Filter,
   Loader2,
-  Play,
   PlusCircle,
-  RefreshCw,
   Search,
-  Send,
-  Trash2,
-  Undo2,
 } from "lucide-react"
 import { useSession } from "next-auth/react"
 import { useRouter } from "next/navigation"
@@ -45,6 +35,8 @@ import { TransferTypeTabs, useTransferTypeTab } from "@/components/transfers/Tra
 import { getColumnsForType } from "@/components/transfers/columnDefinitions"
 import { FilterModal } from "@/components/transfers/FilterModal"
 import { FilterChips } from "@/components/transfers/FilterChips"
+import { TransferRowActions } from "@/components/transfers/TransferRowActions"
+import { FacilityFilter } from "@/components/transfers/FacilityFilter"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -75,16 +67,10 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip"
 import { useFacilityFilter } from "@/hooks/useFacilityFilter"
 import { useIsMobile } from "@/hooks/use-mobile"
-import { Sheet, SheetClose, SheetContent, SheetFooter, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
 import { useToast } from "@/hooks/use-toast"
+import { useTransferActions } from "@/hooks/useTransferActions"
 import { useTransferList, useTransferCounts } from "@/hooks/useTransferDataGrid"
 import { useTransferSearch } from "@/hooks/useTransferSearch"
 import { callRpc } from "@/lib/rpc-client"
@@ -101,18 +87,6 @@ export default function TransfersPage() {
   const user = session?.user as any
   const router = useRouter()
   const isMobile = useIsMobile()
-
-  const isRegionalLeader = user?.role === "regional_leader"
-  const isTransferCoreRole =
-    user?.role === "global" || user?.role === "admin" || user?.role === "to_qltb"
-
-  const notifyRegionalLeaderRestricted = React.useCallback(() => {
-    toast({
-      variant: "destructive",
-      title: "Không thể thực hiện",
-      description: "Vai trò Trưởng vùng chỉ được xem yêu cầu luân chuyển.",
-    })
-  }, [toast])
 
   if (status === "loading") {
     return (
@@ -169,8 +143,6 @@ export default function TransfersPage() {
     null,
   )
   const [isFilterModalOpen, setIsFilterModalOpen] = React.useState(false)
-  const [tempFacilityId, setTempFacilityId] = React.useState<number | null>(null)
-  const [isFacilitySheetOpen, setIsFacilitySheetOpen] = React.useState(false)
 
   const filters = React.useMemo<TransferListFilters>(() => {
     return {
@@ -205,6 +177,24 @@ export default function TransfersPage() {
     refetch: refetchCounts,
   } = useTransferCounts(countsFilters)
 
+  const {
+    approveTransfer,
+    startTransfer,
+    handoverToExternal,
+    returnFromExternal,
+    completeTransfer,
+    confirmDelete,
+    canEditTransfer,
+    canDeleteTransfer,
+    mapToTransferRequest,
+    isRegionalLeader,
+    isTransferCoreRole,
+  } = useTransferActions({
+    onSuccess: async () => {
+      await Promise.all([refetchList(), refetchCounts()])
+    },
+  })
+
   const tableData = transferList?.data ?? []
   const totalCount = transferList?.total ?? 0
   const pageSize = transferList?.pageSize ?? pagination.pageSize
@@ -221,87 +211,6 @@ export default function TransfersPage() {
   const [handoverTransfer, setHandoverTransfer] = React.useState<TransferRequest | null>(null)
   const [deleteDialogOpen, setDeleteDialogOpen] = React.useState(false)
   const [deletingTransfer, setDeletingTransfer] = React.useState<TransferListItem | null>(null)
-
-  const mapToTransferRequest = React.useCallback(
-    (item: TransferListItem): TransferRequest => ({
-      id: item.id,
-      ma_yeu_cau: item.ma_yeu_cau,
-      thiet_bi_id: item.thiet_bi_id,
-      loai_hinh: item.loai_hinh,
-      trang_thai: item.trang_thai,
-      nguoi_yeu_cau_id: item.nguoi_yeu_cau_id ?? undefined,
-      ly_do_luan_chuyen: item.ly_do_luan_chuyen,
-      khoa_phong_hien_tai: item.khoa_phong_hien_tai ?? undefined,
-      khoa_phong_nhan: item.khoa_phong_nhan ?? undefined,
-      muc_dich: item.muc_dich ?? undefined,
-      don_vi_nhan: item.don_vi_nhan ?? undefined,
-      dia_chi_don_vi: item.dia_chi_don_vi ?? undefined,
-      nguoi_lien_he: item.nguoi_lien_he ?? undefined,
-      so_dien_thoai: item.so_dien_thoai ?? undefined,
-      ngay_du_kien_tra: item.ngay_du_kien_tra ?? undefined,
-      ngay_ban_giao: item.ngay_ban_giao ?? undefined,
-      ngay_hoan_tra: item.ngay_hoan_tra ?? undefined,
-      ngay_hoan_thanh: item.ngay_hoan_thanh ?? undefined,
-      nguoi_duyet_id: item.nguoi_duyet_id ?? undefined,
-      ngay_duyet: item.ngay_duyet ?? undefined,
-      ghi_chu_duyet: item.ghi_chu_duyet ?? undefined,
-      created_at: item.created_at,
-      updated_at: item.updated_at ?? item.created_at,
-      created_by: item.created_by ?? undefined,
-      updated_by: item.updated_by ?? undefined,
-      thiet_bi: item.thiet_bi
-        ? {
-          id: item.thiet_bi_id,
-          ten_thiet_bi: item.thiet_bi.ten_thiet_bi ?? "",
-          ma_thiet_bi: item.thiet_bi.ma_thiet_bi ?? "",
-          model: item.thiet_bi.model ?? undefined,
-          serial: item.thiet_bi.serial ?? undefined,
-          serial_number: item.thiet_bi.serial ?? undefined,
-          khoa_phong_quan_ly: item.thiet_bi.khoa_phong_quan_ly ?? undefined,
-          don_vi: item.thiet_bi.facility_id ?? undefined,
-          facility_name: item.thiet_bi.facility_name ?? undefined,
-          facility_id: item.thiet_bi.facility_id ?? undefined,
-          tinh_trang: null,
-        }
-        : null,
-      nguoi_yeu_cau: undefined,
-      nguoi_duyet: undefined,
-      created_by_user: undefined,
-      updated_by_user: undefined,
-    }),
-    [],
-  )
-
-  const canEditTransfer = React.useCallback(
-    (item: TransferListItem) => {
-      if (!user || isRegionalLeader) return false
-      const deptMatch =
-        user.role === "qltb_khoa" &&
-        (user.khoa_phong === item.khoa_phong_hien_tai || user.khoa_phong === item.khoa_phong_nhan)
-      const allowedRole = isTransferCoreRole || deptMatch
-      return (
-        allowedRole && (item.trang_thai === "cho_duyet" || item.trang_thai === "da_duyet")
-      )
-    },
-    [isRegionalLeader, isTransferCoreRole, user],
-  )
-
-  const canDeleteTransfer = React.useCallback(
-    (item: TransferListItem) => {
-      if (!user || isRegionalLeader) return false
-      const deptMatch = user.role === "qltb_khoa" && user.khoa_phong === item.khoa_phong_hien_tai
-      const allowedRole = isTransferCoreRole || deptMatch
-      return allowedRole && item.trang_thai === "cho_duyet"
-    },
-    [isRegionalLeader, isTransferCoreRole, user],
-  )
-
-  const setSelectedFacilityId = React.useCallback(
-    (id: number | null) => {
-      setFacilityId(id)
-    },
-    [setFacilityId],
-  )
 
   React.useEffect(() => {
     setStatusFilter([])
@@ -353,186 +262,29 @@ export default function TransfersPage() {
 
   const handleEditTransfer = React.useCallback(
     (item: TransferListItem) => {
-      if (isRegionalLeader) {
-        notifyRegionalLeaderRestricted()
-        return
-      }
       setEditingTransfer(mapToTransferRequest(item))
       setIsEditDialogOpen(true)
     },
-    [isRegionalLeader, mapToTransferRequest, notifyRegionalLeaderRestricted],
+    [mapToTransferRequest],
   )
 
   const handleOpenDeleteDialog = React.useCallback(
     (item: TransferListItem) => {
-      if (isRegionalLeader) {
-        notifyRegionalLeaderRestricted()
-        return
-      }
       setDeletingTransfer(item)
       setDeleteDialogOpen(true)
     },
-    [isRegionalLeader, notifyRegionalLeaderRestricted],
+    [],
   )
 
   const handleConfirmDelete = React.useCallback(async () => {
     if (!deletingTransfer) return
-
-    try {
-      await callRpc({ fn: "transfer_request_delete", args: { p_id: deletingTransfer.id } })
-      toast({ title: "Thành công", description: "Đã xóa yêu cầu luân chuyển." })
-      await Promise.all([refetchList(), refetchCounts()])
-    } catch (error: any) {
-      toast({
-        variant: "destructive",
-        title: "Lỗi",
-        description: error.message || "Có lỗi xảy ra khi xóa yêu cầu.",
-      })
-    } finally {
-      setDeleteDialogOpen(false)
-      setDeletingTransfer(null)
-    }
-  }, [deletingTransfer, refetchCounts, refetchList, toast])
-
-  const handleApproveTransfer = React.useCallback(
-    async (item: TransferListItem) => {
-      if (isRegionalLeader) {
-        notifyRegionalLeaderRestricted()
-        return
-      }
-      try {
-        await callRpc({
-          fn: "transfer_request_update_status",
-          args: { p_id: item.id, p_status: "da_duyet", p_payload: { nguoi_duyet_id: user?.id ? parseInt(user.id, 10) : undefined } },
-        })
-        toast({ title: "Thành công", description: "Đã duyệt yêu cầu luân chuyển." })
-        await Promise.all([refetchList(), refetchCounts()])
-      } catch (error: any) {
-        toast({
-          variant: "destructive",
-          title: "Lỗi",
-          description: error.message || "Có lỗi xảy ra khi duyệt yêu cầu.",
-        })
-      }
-    },
-    [isRegionalLeader, notifyRegionalLeaderRestricted, refetchCounts, refetchList, toast, user?.id],
-  )
-
-  const handleStartTransfer = React.useCallback(
-    async (item: TransferListItem) => {
-      if (isRegionalLeader) {
-        notifyRegionalLeaderRestricted()
-        return
-      }
-      try {
-        await callRpc({
-          fn: "transfer_request_update_status",
-          args: {
-            p_id: item.id,
-            p_status: "dang_luan_chuyen",
-            p_payload: { ngay_ban_giao: new Date().toISOString() },
-          },
-        })
-        toast({ title: "Thành công", description: "Đã bắt đầu luân chuyển thiết bị." })
-        await Promise.all([refetchList(), refetchCounts()])
-      } catch (error: any) {
-        toast({
-          variant: "destructive",
-          title: "Lỗi",
-          description: error.message || "Có lỗi xảy ra khi bắt đầu luân chuyển.",
-        })
-      }
-    },
-    [isRegionalLeader, notifyRegionalLeaderRestricted, refetchCounts, refetchList, toast],
-  )
-
-  const handleHandoverToExternal = React.useCallback(
-    async (item: TransferListItem) => {
-      if (isRegionalLeader) {
-        notifyRegionalLeaderRestricted()
-        return
-      }
-      try {
-        await callRpc({
-          fn: "transfer_request_update_status",
-          args: {
-            p_id: item.id,
-            p_status: "da_ban_giao",
-            p_payload: { ngay_ban_giao: new Date().toISOString() },
-          },
-        })
-        toast({ title: "Thành công", description: "Đã bàn giao thiết bị cho đơn vị bên ngoài." })
-        await Promise.all([refetchList(), refetchCounts()])
-      } catch (error: any) {
-        toast({
-          variant: "destructive",
-          title: "Lỗi",
-          description: error.message || "Có lỗi xảy ra khi bàn giao thiết bị.",
-        })
-      }
-    },
-    [isRegionalLeader, notifyRegionalLeaderRestricted, refetchCounts, refetchList, toast],
-  )
-
-  const handleReturnFromExternal = React.useCallback(
-    async (item: TransferListItem) => {
-      if (isRegionalLeader) {
-        notifyRegionalLeaderRestricted()
-        return
-      }
-      try {
-        await callRpc({
-          fn: "transfer_request_complete",
-          args: { p_id: item.id, p_payload: { ngay_hoan_tra: new Date().toISOString() } },
-        })
-        toast({ title: "Thành công", description: "Đã xác nhận hoàn trả thiết bị từ đơn vị bên ngoài." })
-        await Promise.all([refetchList(), refetchCounts()])
-      } catch (error: any) {
-        toast({
-          variant: "destructive",
-          title: "Lỗi",
-          description: error.message || "Có lỗi xảy ra khi xác nhận hoàn trả.",
-        })
-      }
-    },
-    [isRegionalLeader, notifyRegionalLeaderRestricted, refetchCounts, refetchList, toast],
-  )
-
-  const handleCompleteTransfer = React.useCallback(
-    async (item: TransferListItem) => {
-      if (isRegionalLeader) {
-        notifyRegionalLeaderRestricted()
-        return
-      }
-      try {
-        await callRpc({ fn: "transfer_request_complete", args: { p_id: item.id } })
-        toast({
-          title: "Thành công",
-          description:
-            item.loai_hinh === "thanh_ly"
-              ? "Đã hoàn tất yêu cầu thanh lý thiết bị."
-              : item.loai_hinh === "noi_bo"
-                ? "Đã hoàn thành luân chuyển nội bộ thiết bị."
-                : "Đã xác nhận hoàn trả thiết bị.",
-        })
-        await Promise.all([refetchList(), refetchCounts()])
-      } catch (error: any) {
-        toast({
-          variant: "destructive",
-          title: "Lỗi",
-          description: error.message || "Có lỗi xảy ra khi hoàn thành luân chuyển.",
-        })
-      }
-    },
-    [isRegionalLeader, notifyRegionalLeaderRestricted, refetchCounts, refetchList, toast],
-  )
+    await confirmDelete(deletingTransfer)
+    setDeleteDialogOpen(false)
+    setDeletingTransfer(null)
+  }, [confirmDelete, deletingTransfer])
 
   const handleGenerateHandoverSheet = React.useCallback(
     (item: TransferListItem) => {
-      if (isRegionalLeader) {
-        notifyRegionalLeaderRestricted()
-        return
-      }
       const mapped = mapToTransferRequest(item)
       if (!mapped.thiet_bi) {
         toast({
@@ -545,7 +297,7 @@ export default function TransfersPage() {
       setHandoverTransfer(mapped)
       setHandoverDialogOpen(true)
     },
-    [isRegionalLeader, mapToTransferRequest, notifyRegionalLeaderRestricted, toast],
+    [mapToTransferRequest, toast],
   )
 
   const handleViewDetail = React.useCallback(
@@ -556,234 +308,45 @@ export default function TransfersPage() {
     [mapToTransferRequest],
   )
 
-  const rowActions = React.useCallback(
-    (item: TransferListItem) => {
-      const actions: React.ReactNode[] = []
-      const isEditable = canEditTransfer(item)
-      const isDeletable = canDeleteTransfer(item)
-
-      if (isEditable) {
-        actions.push(
-          <Tooltip key={`edit-${item.id}`}>
-            <TooltipTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-10 w-10 sm:h-8 sm:w-8"
-                onClick={(event) => {
-                  event.stopPropagation()
-                  handleEditTransfer(item)
-                }}
-              >
-                <Edit className="h-5 w-5 sm:h-4 sm:w-4" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>
-              <p>Sửa</p>
-            </TooltipContent>
-          </Tooltip>,
-        )
-      }
-
-      switch (item.trang_thai) {
-        case "cho_duyet":
-          if (isTransferCoreRole) {
-            actions.push(
-              <Tooltip key={`approve-${item.id}`}>
-                <TooltipTrigger asChild>
-                  <Button
-                    size="icon"
-                    className="h-10 w-10 sm:h-8 sm:w-8"
-                    onClick={(event) => {
-                      event.stopPropagation()
-                      void handleApproveTransfer(item)
-                    }}
-                  >
-                    <Check className="h-5 w-5 sm:h-4 sm:w-4" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>Duyệt</p>
-                </TooltipContent>
-              </Tooltip>,
-            )
-          }
-          break
-        case "da_duyet":
-          if (
-            isTransferCoreRole ||
-            (user?.role === "qltb_khoa" && user.khoa_phong === item.khoa_phong_hien_tai)
-          ) {
-            actions.push(
-              <Tooltip key={`start-${item.id}`}>
-                <TooltipTrigger asChild>
-                  <Button
-                    size="icon"
-                    className="h-10 w-10 sm:h-8 sm:w-8"
-                    variant="secondary"
-                    onClick={(event) => {
-                      event.stopPropagation()
-                      void handleStartTransfer(item)
-                    }}
-                  >
-                    <Play className="h-5 w-5 sm:h-4 sm:w-4" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>Bắt đầu</p>
-                </TooltipContent>
-              </Tooltip>,
-            )
-          }
-          break
-        case "dang_luan_chuyen":
-          if (
-            isTransferCoreRole ||
-            (user?.role === "qltb_khoa" &&
-              (user.khoa_phong === item.khoa_phong_hien_tai || user.khoa_phong === item.khoa_phong_nhan))
-          ) {
-            if (item.loai_hinh === "noi_bo") {
-              actions.push(
-                <Tooltip key={`handover-sheet-${item.id}`}>
-                  <TooltipTrigger asChild>
-                    <Button
-                      size="icon"
-                      variant="outline"
-                      className="h-10 w-10 sm:h-8 sm:w-8"
-                      onClick={(event) => {
-                        event.stopPropagation()
-                        handleGenerateHandoverSheet(item)
-                      }}
-                    >
-                      <FileText className="h-5 w-5 sm:h-4 sm:w-4" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>Biên bản bàn giao</p>
-                  </TooltipContent>
-                </Tooltip>,
-              )
-              actions.push(
-                <Tooltip key={`complete-${item.id}`}>
-                  <TooltipTrigger asChild>
-                    <Button
-                      size="icon"
-                      className="h-10 w-10 sm:h-8 sm:w-8"
-                      onClick={(event) => {
-                        event.stopPropagation()
-                        void handleCompleteTransfer(item)
-                      }}
-                    >
-                      <CheckCircle className="h-5 w-5 sm:h-4 sm:w-4" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>Hoàn thành</p>
-                  </TooltipContent>
-                </Tooltip>,
-              )
-            } else {
-              actions.push(
-                <Tooltip key={`handover-${item.id}`}>
-                  <TooltipTrigger asChild>
-                    <Button
-                      size="icon"
-                      className="h-10 w-10 sm:h-8 sm:w-8"
-                      variant="secondary"
-                      onClick={(event) => {
-                        event.stopPropagation()
-                        void handleHandoverToExternal(item)
-                      }}
-                    >
-                      <Send className="h-5 w-5 sm:h-4 sm:w-4" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>Bàn giao</p>
-                  </TooltipContent>
-                </Tooltip>,
-              )
-            }
-          }
-          break
-        case "da_ban_giao":
-          if (isTransferCoreRole) {
-            actions.push(
-              <Tooltip key={`return-${item.id}`}>
-                <TooltipTrigger asChild>
-                  <Button
-                    size="icon"
-                    className="h-10 w-10 sm:h-8 sm:w-8"
-                    onClick={(event) => {
-                      event.stopPropagation()
-                      void handleReturnFromExternal(item)
-                    }}
-                  >
-                    <Undo2 className="h-5 w-5 sm:h-4 sm:w-4" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>Hoàn trả</p>
-                </TooltipContent>
-              </Tooltip>,
-            )
-          }
-          break
-        default:
-          break
-      }
-
-      if (isDeletable) {
-        actions.push(
-          <Tooltip key={`delete-${item.id}`}>
-            <TooltipTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-10 w-10 text-destructive hover:text-destructive sm:h-8 sm:w-8"
-                onClick={(event) => {
-                  event.stopPropagation()
-                  handleOpenDeleteDialog(item)
-                }}
-              >
-                <Trash2 className="h-5 w-5 sm:h-4 sm:w-4" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>
-              <p>Xóa</p>
-            </TooltipContent>
-          </Tooltip>,
-        )
-      }
-
-      if (actions.length === 0) return null
-
-      return (
-        <TooltipProvider>
-          <div className="flex items-center gap-2 sm:gap-1">{actions}</div>
-        </TooltipProvider>
-      )
-    },
+  const renderRowActions = React.useCallback(
+    (item: TransferListItem) => (
+      <TransferRowActions
+        item={item}
+        canEdit={canEditTransfer(item)}
+        canDelete={canDeleteTransfer(item)}
+        isTransferCoreRole={isTransferCoreRole}
+        userRole={user?.role || ""}
+        userKhoaPhong={user?.khoa_phong}
+        onEdit={() => handleEditTransfer(item)}
+        onDelete={() => handleOpenDeleteDialog(item)}
+        onApprove={() => approveTransfer(item)}
+        onStart={() => startTransfer(item)}
+        onHandover={() => handoverToExternal(item)}
+        onReturn={() => returnFromExternal(item)}
+        onComplete={() => completeTransfer(item)}
+        onGenerateHandoverSheet={() => handleGenerateHandoverSheet(item)}
+      />
+    ),
     [
+      approveTransfer,
       canDeleteTransfer,
       canEditTransfer,
-      handleApproveTransfer,
-      handleCompleteTransfer,
-      handleOpenDeleteDialog,
+      completeTransfer,
       handleEditTransfer,
       handleGenerateHandoverSheet,
-      handleHandoverToExternal,
-      handleReturnFromExternal,
-      handleStartTransfer,
+      handleOpenDeleteDialog,
+      handoverToExternal,
       isTransferCoreRole,
+      returnFromExternal,
+      startTransfer,
       user?.khoa_phong,
       user?.role,
     ],
   )
 
   const columns = React.useMemo(
-    () => getColumnsForType(activeTab, { renderActions: rowActions, referenceDate }),
-    [activeTab, referenceDate, rowActions],
+    () => getColumnsForType(activeTab, { renderActions: renderRowActions, referenceDate }),
+    [activeTab, referenceDate, renderRowActions],
   )
 
   const table = useReactTable({
@@ -891,105 +454,12 @@ export default function TransfersPage() {
             </CardDescription>
           </div>
           <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-row sm:items-center sm:gap-2">
-            {showFacilityFilter && (
-              <>
-                {/* Desktop: Select dropdown */}
-                <div className="hidden sm:block">
-                  <Select
-                    value={selectedFacilityId?.toString() || "all"}
-                    onValueChange={(value) =>
-                      setSelectedFacilityId(value === "all" ? null : Number(value))
-                    }
-                  >
-                    <SelectTrigger className="w-[200px]">
-                      <Building2 className="mr-2 h-4 w-4" />
-                      <SelectValue placeholder="Tất cả cơ sở" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">Tất cả cơ sở</SelectItem>
-                      {(facilityOptionsData || []).map((facility) => (
-                        <SelectItem key={facility.id} value={facility.id.toString()}>
-                          {facility.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {/* Mobile: Bottom sheet with larger button */}
-                <div className="sm:hidden">
-                  <Sheet open={isFacilitySheetOpen} onOpenChange={setIsFacilitySheetOpen}>
-                    <SheetTrigger asChild>
-                      <Button
-                        variant="outline"
-                        className="h-11 w-full justify-start font-medium"
-                        onClick={() => {
-                          setTempFacilityId(selectedFacilityId)
-                          setIsFacilitySheetOpen(true)
-                        }}
-                      >
-                        <Building2 className="mr-2 h-5 w-5" />
-                        <span className="truncate">
-                          {selectedFacilityId
-                            ? facilityOptionsData?.find((f) => f.id === selectedFacilityId)?.name ||
-                            "Tất cả cơ sở"
-                            : "Tất cả cơ sở"}
-                        </span>
-                      </Button>
-                    </SheetTrigger>
-                    <SheetContent side="bottom" className="h-[80vh]">
-                      <SheetHeader>
-                        <SheetTitle>Chọn cơ sở</SheetTitle>
-                      </SheetHeader>
-                      <div className="mt-4 flex flex-1 flex-col">
-                        <div className="flex-1 space-y-2 overflow-y-auto pb-4">
-                          <Button
-                            variant={tempFacilityId === null ? "default" : "outline"}
-                            className="h-12 w-full justify-start text-base"
-                            onClick={() => setTempFacilityId(null)}
-                          >
-                            <Building2 className="mr-3 h-5 w-5" />
-                            Tất cả cơ sở
-                          </Button>
-                          {(facilityOptionsData || []).map((facility) => (
-                            <Button
-                              key={facility.id}
-                              variant={tempFacilityId === facility.id ? "default" : "outline"}
-                              className="h-12 w-full justify-start text-base"
-                              onClick={() => setTempFacilityId(facility.id)}
-                            >
-                              <Building2 className="mr-3 h-5 w-5" />
-                              {facility.name}
-                            </Button>
-                          ))}
-                        </div>
-                        <SheetFooter className="flex flex-row gap-2 border-t pt-4">
-                          <Button
-                            variant="outline"
-                            className="h-12 flex-1 text-base font-medium"
-                            onClick={() => {
-                              setTempFacilityId(selectedFacilityId)
-                              setIsFacilitySheetOpen(false)
-                            }}
-                          >
-                            Hủy
-                          </Button>
-                          <Button
-                            className="h-12 flex-1 text-base font-medium"
-                            onClick={() => {
-                              setSelectedFacilityId(tempFacilityId)
-                              setIsFacilitySheetOpen(false)
-                            }}
-                          >
-                            Áp dụng
-                          </Button>
-                        </SheetFooter>
-                      </div>
-                    </SheetContent>
-                  </Sheet>
-                </div>
-              </>
-            )}
+            <FacilityFilter
+              facilities={facilityOptionsData || []}
+              selectedId={selectedFacilityId}
+              onSelect={setFacilityId}
+              show={showFacilityFilter}
+            />
 
             {/* Filter button - mobile optimized */}
             <Button
@@ -1098,7 +568,7 @@ export default function TransfersPage() {
                       transfer={item}
                       referenceDate={referenceDate}
                       onClick={() => handleViewDetail(item)}
-                      actions={rowActions(item)}
+                      actions={renderRowActions(item)}
                     />
                   ))
                 ) : (
