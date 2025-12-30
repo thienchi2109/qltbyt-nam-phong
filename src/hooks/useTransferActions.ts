@@ -36,7 +36,7 @@ export function useTransferActions(
 ): UseTransferActionsReturn {
   const { toast } = useToast()
   const { data: session } = useSession()
-  const user = session?.user as any
+  const user = session?.user
 
   const isRegionalLeader = user?.role === "regional_leader"
   const isTransferCoreRole =

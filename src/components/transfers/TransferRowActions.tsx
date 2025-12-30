@@ -26,14 +26,14 @@ interface TransferRowActionsProps {
   isTransferCoreRole: boolean
   userRole: string
   userKhoaPhong?: string | null
-  onEdit: () => void
-  onDelete: () => void
-  onApprove: () => void
-  onStart: () => void
-  onHandover: () => void
-  onReturn: () => void
-  onComplete: () => void
-  onGenerateHandoverSheet: () => void
+  onEdit: (item: TransferListItem) => void
+  onDelete: (item: TransferListItem) => void
+  onApprove: (item: TransferListItem) => void
+  onStart: (item: TransferListItem) => void
+  onHandover: (item: TransferListItem) => void
+  onReturn: (item: TransferListItem) => void
+  onComplete: (item: TransferListItem) => void
+  onGenerateHandoverSheet: (item: TransferListItem) => void
 }
 
 export const TransferRowActions = React.memo(function TransferRowActions({
@@ -64,7 +64,7 @@ export const TransferRowActions = React.memo(function TransferRowActions({
             className="h-10 w-10 sm:h-8 sm:w-8"
             onClick={(event) => {
               event.stopPropagation()
-              onEdit()
+              onEdit(item)
             }}
           >
             <Edit className="h-5 w-5 sm:h-4 sm:w-4" />
@@ -88,7 +88,7 @@ export const TransferRowActions = React.memo(function TransferRowActions({
                 className="h-10 w-10 sm:h-8 sm:w-8"
                 onClick={(event) => {
                   event.stopPropagation()
-                  onApprove()
+                  onApprove(item)
                 }}
               >
                 <Check className="h-5 w-5 sm:h-4 sm:w-4" />
@@ -115,7 +115,7 @@ export const TransferRowActions = React.memo(function TransferRowActions({
                 variant="secondary"
                 onClick={(event) => {
                   event.stopPropagation()
-                  onStart()
+                  onStart(item)
                 }}
               >
                 <Play className="h-5 w-5 sm:h-4 sm:w-4" />
@@ -144,7 +144,7 @@ export const TransferRowActions = React.memo(function TransferRowActions({
                   className="h-10 w-10 sm:h-8 sm:w-8"
                   onClick={(event) => {
                     event.stopPropagation()
-                    onGenerateHandoverSheet()
+                    onGenerateHandoverSheet(item)
                   }}
                 >
                   <FileText className="h-5 w-5 sm:h-4 sm:w-4" />
@@ -163,7 +163,7 @@ export const TransferRowActions = React.memo(function TransferRowActions({
                   className="h-10 w-10 sm:h-8 sm:w-8"
                   onClick={(event) => {
                     event.stopPropagation()
-                    onComplete()
+                    onComplete(item)
                   }}
                 >
                   <CheckCircle className="h-5 w-5 sm:h-4 sm:w-4" />
@@ -184,7 +184,7 @@ export const TransferRowActions = React.memo(function TransferRowActions({
                   variant="secondary"
                   onClick={(event) => {
                     event.stopPropagation()
-                    onHandover()
+                    onHandover(item)
                   }}
                 >
                   <Send className="h-5 w-5 sm:h-4 sm:w-4" />
@@ -208,7 +208,7 @@ export const TransferRowActions = React.memo(function TransferRowActions({
                 className="h-10 w-10 sm:h-8 sm:w-8"
                 onClick={(event) => {
                   event.stopPropagation()
-                  onReturn()
+                  onReturn(item)
                 }}
               >
                 <Undo2 className="h-5 w-5 sm:h-4 sm:w-4" />
@@ -235,7 +235,7 @@ export const TransferRowActions = React.memo(function TransferRowActions({
             className="h-10 w-10 text-destructive hover:text-destructive sm:h-8 sm:w-8"
             onClick={(event) => {
               event.stopPropagation()
-              onDelete()
+              onDelete(item)
             }}
           >
             <Trash2 className="h-5 w-5 sm:h-4 sm:w-4" />

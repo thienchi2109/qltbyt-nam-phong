@@ -84,7 +84,7 @@ import { type TransferRequest } from "@/types/database"
 export default function TransfersPage() {
   const { toast } = useToast()
   const { data: session, status } = useSession()
-  const user = session?.user as any
+  const user = session?.user
   const router = useRouter()
   const isMobile = useIsMobile()
 
@@ -177,6 +177,10 @@ export default function TransfersPage() {
     refetch: refetchCounts,
   } = useTransferCounts(countsFilters)
 
+  const handleActionSuccess = React.useCallback(async () => {
+    await Promise.all([refetchList(), refetchCounts()])
+  }, [refetchList, refetchCounts])
+
   const {
     approveTransfer,
     startTransfer,
@@ -190,9 +194,7 @@ export default function TransfersPage() {
     isRegionalLeader,
     isTransferCoreRole,
   } = useTransferActions({
-    onSuccess: async () => {
-      await Promise.all([refetchList(), refetchCounts()])
-    },
+    onSuccess: handleActionSuccess,
   })
 
   const tableData = transferList?.data ?? []
@@ -317,14 +319,14 @@ export default function TransfersPage() {
         isTransferCoreRole={isTransferCoreRole}
         userRole={user?.role || ""}
         userKhoaPhong={user?.khoa_phong}
-        onEdit={() => handleEditTransfer(item)}
-        onDelete={() => handleOpenDeleteDialog(item)}
-        onApprove={() => approveTransfer(item)}
-        onStart={() => startTransfer(item)}
-        onHandover={() => handoverToExternal(item)}
-        onReturn={() => returnFromExternal(item)}
-        onComplete={() => completeTransfer(item)}
-        onGenerateHandoverSheet={() => handleGenerateHandoverSheet(item)}
+        onEdit={handleEditTransfer}
+        onDelete={handleOpenDeleteDialog}
+        onApprove={approveTransfer}
+        onStart={startTransfer}
+        onHandover={handoverToExternal}
+        onReturn={returnFromExternal}
+        onComplete={completeTransfer}
+        onGenerateHandoverSheet={handleGenerateHandoverSheet}
       />
     ),
     [
