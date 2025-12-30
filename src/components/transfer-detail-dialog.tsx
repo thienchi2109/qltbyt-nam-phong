@@ -13,6 +13,7 @@ import {
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { ScrollArea } from "@/components/ui/scroll-area"
+import { TransferStatusProgress } from "@/components/transfers/TransferStatusProgress"
 import { useToast } from "@/hooks/use-toast"
 import { callRpc } from "@/lib/rpc-client"
 import { 
@@ -326,10 +327,21 @@ export function TransferDetailDialog({ open, onOpenChange, transfer }: TransferD
                 </div>
               )}
             </div>
+
+            <Separator />
+
+            {/* Status Progress */}
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold">Tiến trình xử lý</h3>
+              <TransferStatusProgress
+                type={transfer.loai_hinh}
+                currentStatus={transfer.trang_thai}
+                className="py-2"
+              />
+            </div>
           </div>
         </ScrollArea>
       </DialogContent>
     </Dialog>
   )
 }
- 
