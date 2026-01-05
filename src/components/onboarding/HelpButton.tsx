@@ -3,7 +3,7 @@
 import * as React from "react"
 import { driver } from "driver.js"
 import "driver.js/dist/driver.css"
-import { CircleHelp, Sparkles, RotateCcw } from "lucide-react"
+import { CircleHelp, Sparkles, RotateCcw, PanelLeft } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -35,6 +35,8 @@ interface HelpButtonProps {
 export function HelpButton({ className }: HelpButtonProps) {
   const { isTourCompleted, completeTour, resetTour } = useTour()
   const dashboardCompleted = isTourCompleted(TOUR_IDS.DASHBOARD_WELCOME)
+  const sidebarCompleted = isTourCompleted(TOUR_IDS.SIDEBAR_NAVIGATION)
+  const hasUncompletedTours = !dashboardCompleted || !sidebarCompleted
 
   const startTour = React.useCallback(
     (tourId: TourId) => {
@@ -72,6 +74,17 @@ export function HelpButton({ className }: HelpButtonProps) {
     }, 100)
   }
 
+  const handleStartSidebarTour = () => {
+    startTour(TOUR_IDS.SIDEBAR_NAVIGATION)
+  }
+
+  const handleResetSidebarTour = () => {
+    resetTour(TOUR_IDS.SIDEBAR_NAVIGATION)
+    setTimeout(() => {
+      startTour(TOUR_IDS.SIDEBAR_NAVIGATION)
+    }, 100)
+  }
+
   return (
     <TooltipProvider>
       <DropdownMenu>
@@ -85,16 +98,16 @@ export function HelpButton({ className }: HelpButtonProps) {
                   "relative rounded-full transition-all duration-200",
                   "hover:bg-primary/10 hover:text-primary",
                   "focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
-                  !dashboardCompleted && "animate-pulse",
+                  hasUncompletedTours && "animate-pulse",
                   className
                 )}
                 aria-label="Trợ giúp và hướng dẫn"
               >
                 <CircleHelp className={cn(
                   "h-5 w-5 transition-colors",
-                  !dashboardCompleted && "text-primary"
+                  hasUncompletedTours && "text-primary"
                 )} />
-                {!dashboardCompleted && (
+                {hasUncompletedTours && (
                   <span className="absolute -top-0.5 -right-0.5 flex h-3 w-3">
                     <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-75" />
                     <span className="relative inline-flex h-3 w-3 rounded-full bg-primary" />
@@ -116,23 +129,47 @@ export function HelpButton({ className }: HelpButtonProps) {
         {dashboardCompleted ? (
           <DropdownMenuItem
             onClick={handleResetAndStartTour}
-            className="flex items-center gap-2 cursor-pointer"
+            className="flex items-center gap-2 cursor-pointer group"
           >
             <RotateCcw className="h-4 w-4 text-muted-foreground" />
             <div className="flex flex-col">
-              <span>Xem lại hướng dẫn</span>
-              <span className="text-xs text-muted-foreground">Khám phá lại tính năng Dashboard</span>
+              <span>Xem lại hướng dẫn Dashboard</span>
+              <span className="text-xs text-muted-foreground group-hover:text-accent-foreground">Khám phá lại tính năng Dashboard</span>
             </div>
           </DropdownMenuItem>
         ) : (
           <DropdownMenuItem
             onClick={handleStartDashboardTour}
-            className="flex items-center gap-2 cursor-pointer bg-primary/5 hover:bg-primary/10"
+            className="flex items-center gap-2 cursor-pointer bg-primary/5 hover:bg-primary hover:text-primary-foreground group"
           >
-            <Sparkles className="h-4 w-4 text-primary" />
+            <Sparkles className="h-4 w-4 text-primary group-hover:text-primary-foreground" />
             <div className="flex flex-col">
-              <span className="font-medium text-primary">Bắt đầu tour hướng dẫn</span>
-              <span className="text-xs text-muted-foreground">Khám phá các tính năng chính</span>
+              <span className="font-medium text-primary group-hover:text-primary-foreground">Bắt đầu tour Dashboard</span>
+              <span className="text-xs text-muted-foreground group-hover:text-primary-foreground/80">Khám phá các tính năng chính</span>
+            </div>
+          </DropdownMenuItem>
+        )}
+        <DropdownMenuSeparator />
+        {sidebarCompleted ? (
+          <DropdownMenuItem
+            onClick={handleResetSidebarTour}
+            className="flex items-center gap-2 cursor-pointer group"
+          >
+            <RotateCcw className="h-4 w-4 text-muted-foreground" />
+            <div className="flex flex-col">
+              <span>Xem lại thanh điều hướng</span>
+              <span className="text-xs text-muted-foreground group-hover:text-accent-foreground">Hướng dẫn sử dụng sidebar</span>
+            </div>
+          </DropdownMenuItem>
+        ) : (
+          <DropdownMenuItem
+            onClick={handleStartSidebarTour}
+            className="flex items-center gap-2 cursor-pointer bg-primary/5 hover:bg-primary hover:text-primary-foreground group"
+          >
+            <PanelLeft className="h-4 w-4 text-primary group-hover:text-primary-foreground" />
+            <div className="flex flex-col">
+              <span className="font-medium text-primary group-hover:text-primary-foreground">Hướng dẫn thanh điều hướng</span>
+              <span className="text-xs text-muted-foreground group-hover:text-primary-foreground/80">Khám phá menu bên trái</span>
             </div>
           </DropdownMenuItem>
         )}
