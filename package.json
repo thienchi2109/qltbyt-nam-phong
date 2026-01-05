@@ -39,6 +39,7 @@
     "clsx": "^2.1.1",
     "cmdk": "^1.0.0",
     "date-fns": "^3.6.0",
+    "driver.js": "^1.4.0",
     "firebase": "^12.6.0",
     "jsonwebtoken": "^9.0.2",
     "jsqr": "^1.4.0",

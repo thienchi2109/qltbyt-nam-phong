@@ -47,6 +47,7 @@ import { ChangePasswordDialog } from "@/components/change-password-dialog"
 import { NotificationBellDialog } from "@/components/notification-bell-dialog"
 import { RealtimeStatus } from "@/components/realtime-status"
 import { MobileFooterNav } from "@/components/mobile-footer-nav"
+import { HelpButton } from "@/components/onboarding/HelpButton"
 import { USER_ROLES } from "@/types/database"
 import { callRpc } from "@/lib/rpc-client"
 // Tenant switcher removed in favor of per-page tenant filters
@@ -249,6 +250,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
             {/* Realtime Status */}
             <RealtimeStatus variant="icon" />
+
+            {/* Help Button for Onboarding Tours */}
+            <HelpButton />
 
             {/* Tenant switcher removed */}
 

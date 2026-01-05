@@ -197,7 +197,7 @@ export default function Dashboard() {
       )}
 
       {/* Welcome Banner */}
-      <Card className="overflow-hidden border-none shadow-[0_4px_20px_-4px_rgba(0,0,0,0.1)] bg-white rounded-3xl">
+      <Card data-tour="welcome-banner" className="overflow-hidden border-none shadow-[0_4px_20px_-4px_rgba(0,0,0,0.1)] bg-white rounded-3xl">
         <CardContent className="p-6 md:p-8">
           <div className="flex items-center justify-between">
             <div className="space-y-2">
@@ -221,13 +221,13 @@ export default function Dashboard() {
       </Card>
 
       {/* KPI Cards */}
-      <div className="mt-6 md:mt-8">
+      <div data-tour="kpi-cards" className="mt-6 md:mt-8">
         <KPICards />
       </div>
 
 
       {/* Quick Actions Section - Native App Style */}
-      <div className="md:mt-6 md:space-y-5">
+      <div data-tour="quick-actions" className="md:mt-6 md:space-y-5">
         <div className="mb-4 px-1">
           <h2 className="text-lg font-bold text-slate-900 mb-1">Thao tác nhanh</h2>
         </div>
@@ -277,7 +277,7 @@ export default function Dashboard() {
           )}
 
           {/* QR Scanner Card: Always available - opens scanner directly */}
-          <button onClick={handleStartScanning} className="group">
+          <button data-tour="qr-scanner" onClick={handleStartScanning} className="group">
             <div className="flex flex-col items-center gap-3">
               <div className="h-[72px] w-[72px] md:h-[88px] md:w-[88px] rounded-2xl bg-white shadow-[0_8px_30px_rgba(0,0,0,0.12)] flex items-center justify-center transition-transform group-active:scale-95">
                 <div className="h-11 w-11 md:h-14 md:w-14 rounded-xl bg-sky-50 flex items-center justify-center">
@@ -291,12 +291,12 @@ export default function Dashboard() {
       </div>
 
       {/* Calendar Widget */}
-      <div className="grid gap-4 md:gap-8 md:mt-8">
+      <div data-tour="calendar-widget" className="grid gap-4 md:gap-8 md:mt-8">
         <CalendarWidget />
       </div>
 
       {/* Unified Tabbed Dashboard Cards */}
-      <div className="grid gap-4 md:gap-8 md:mt-8">
+      <div data-tour="dashboard-tabs" className="grid gap-4 md:gap-8 md:mt-8">
         <DashboardTabs />
       </div>
     </>
