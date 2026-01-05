@@ -84,3 +84,6 @@ firebase_config.md
 # scripts/
 # docs/
 # DEVOPS_WORKFLOW_SUMMARY.md
+
+# bv (beads viewer) local config and caches
+.bv/
