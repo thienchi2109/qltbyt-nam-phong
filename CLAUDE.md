@@ -101,6 +101,13 @@ After creating any design/plan/spec document:
    - Testing agent performance
    - Implementing LLM-as-Judge evaluation
    - Measuring context quality metrics
+
+6. **Subagent-Driven Development**
+   - Using subagent-driven-development skill with >5 tasks
+   - Token utilization >70% during multi-agent workflows
+   - Review loops exceeding 2 iterations (context degradation)
+   - Need to optimize prompt templates for subagent dispatch
+   - Subagents asking excessive clarifying questions (poor context curation)
 </CRITICAL_AUTO_INVOKE>
 
 ### Core Principles
