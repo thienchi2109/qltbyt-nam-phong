@@ -14,6 +14,12 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
 import { cn } from "@/lib/utils"
 import { useTour } from "@/hooks/use-tour"
 import { TOUR_CONFIGS, TOUR_IDS, type TourId } from "./tour-configs"
@@ -67,32 +73,40 @@ export function HelpButton({ className }: HelpButtonProps) {
   }
 
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button
-          variant="ghost"
-          size="icon"
-          className={cn(
-            "relative rounded-full transition-all duration-200",
-            "hover:bg-primary/10 hover:text-primary",
-            "focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
-            !dashboardCompleted && "animate-pulse",
-            className
-          )}
-          aria-label="Trợ giúp và hướng dẫn"
-        >
-          <CircleHelp className={cn(
-            "h-5 w-5 transition-colors",
-            !dashboardCompleted && "text-primary"
-          )} />
-          {!dashboardCompleted && (
-            <span className="absolute -top-0.5 -right-0.5 flex h-3 w-3">
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-75" />
-              <span className="relative inline-flex h-3 w-3 rounded-full bg-primary" />
-            </span>
-          )}
-        </Button>
-      </DropdownMenuTrigger>
+    <TooltipProvider>
+      <DropdownMenu>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className={cn(
+                  "relative rounded-full transition-all duration-200",
+                  "hover:bg-primary/10 hover:text-primary",
+                  "focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
+                  !dashboardCompleted && "animate-pulse",
+                  className
+                )}
+                aria-label="Trợ giúp và hướng dẫn"
+              >
+                <CircleHelp className={cn(
+                  "h-5 w-5 transition-colors",
+                  !dashboardCompleted && "text-primary"
+                )} />
+                {!dashboardCompleted && (
+                  <span className="absolute -top-0.5 -right-0.5 flex h-3 w-3">
+                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-75" />
+                    <span className="relative inline-flex h-3 w-3 rounded-full bg-primary" />
+                  </span>
+                )}
+              </Button>
+            </DropdownMenuTrigger>
+          </TooltipTrigger>
+          <TooltipContent>
+            <p>Nhấn vào để xem hướng dẫn sử dụng cơ bản</p>
+          </TooltipContent>
+        </Tooltip>
       <DropdownMenuContent align="end" className="w-64">
         <DropdownMenuLabel className="flex items-center gap-2">
           <Sparkles className="h-4 w-4 text-primary" />
@@ -123,6 +137,7 @@ export function HelpButton({ className }: HelpButtonProps) {
           </DropdownMenuItem>
         )}
       </DropdownMenuContent>
-    </DropdownMenu>
+      </DropdownMenu>
+    </TooltipProvider>
   )
 }
