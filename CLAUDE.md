@@ -69,6 +69,68 @@ After creating any design/plan/spec document:
 **Skill location**: `~/.claude/skills/beads-tracker/SKILL.md`
 <!-- BEADS-TRACKER:END -->
 
+<!-- CONTEXT-ENGINEERING:START -->
+## Context Engineering (MANDATORY)
+
+<CRITICAL_AUTO_INVOKE>
+**You MUST invoke the `context-engineering` skill when:**
+
+1. **Agent/Multi-Agent Systems**
+   - Designing agent architectures or workflows
+   - Debugging agent failures or context degradation
+   - Implementing multi-agent coordination patterns
+   - Building LLM-powered pipelines or batch processing
+
+2. **Context Optimization**
+   - Approaching 70-80% token utilization (warning threshold)
+   - Performance degradation in long conversations
+   - Need to optimize cost/latency for LLM operations
+   - Implementing context compaction or caching strategies
+
+3. **Memory Systems**
+   - Building cross-session persistence
+   - Implementing knowledge graphs or retrieval systems
+   - Designing context selection/filtering mechanisms
+
+4. **Tool Design**
+   - Creating new MCP tools or skills
+   - Optimizing tool descriptions for better LLM understanding
+   - Consolidating multiple tools into unified interfaces
+
+5. **Evaluation & Testing**
+   - Testing agent performance
+   - Implementing LLM-as-Judge evaluation
+   - Measuring context quality metrics
+</CRITICAL_AUTO_INVOKE>
+
+### Core Principles
+
+- **Context quality > quantity** - High-signal tokens beat exhaustive content
+- **Attention is finite** - U-shaped curve favors beginning/end positions
+- **Progressive disclosure** - Load information just-in-time
+- **Isolation prevents degradation** - Partition work across sub-agents
+- **Measure before optimizing** - Know your baseline
+
+### Quick Reference
+
+| Metric | Threshold | Action |
+|--------|-----------|--------|
+| Token utilization | 70% | Warning - consider optimization |
+| Token utilization | 80% | Trigger compaction/compression |
+| Compaction target | 50-70% | Reduction with <5% quality loss |
+| Cache hit rate | 70%+ | For stable workloads |
+| Multi-agent cost | ~15x | Single agent baseline |
+
+### Four-Bucket Strategy
+
+1. **Write**: Save context externally (files, scratchpads)
+2. **Select**: Pull only relevant context (retrieval, filtering)
+3. **Compress**: Reduce tokens while preserving info (summarization)
+4. **Isolate**: Split across sub-agents (partitioning)
+
+**Skill location**: `~/.claude/plugins/marketplaces/claudekit-skills/.claude/skills/context-engineering/SKILL.md`
+<!-- CONTEXT-ENGINEERING:END -->
+
 ## Superpowers System
 
 <EXTREMELY_IMPORTANT>
