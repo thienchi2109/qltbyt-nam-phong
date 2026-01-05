@@ -12,6 +12,63 @@ Always open `@/openspec/AGENTS.md` when the request:
 
 <!-- OPENSPEC:END -->
 
+<!-- BEADS-TRACKER:START -->
+## Issue Tracking with Beads (MANDATORY)
+
+<CRITICAL_AUTO_INVOKE>
+**You MUST invoke the `beads-tracker` skill IMMEDIATELY after:**
+
+1. **Creating/Updating Design Documents**
+   - Files: `**/design/*.md`, `**/docs/design-*.md`, `**/*-design.md`
+   - After writing implementation plans or architecture decisions
+
+2. **OpenSpec Change Proposals**
+   - Files in: `openspec/changes/**/*.md`, `openspec/proposals/**/*.md`
+   - After creating or modifying spec proposals
+
+3. **Implementation Plans**
+   - Files: `**/PLAN.md`, `**/plan.md`, `**/*-plan.md`
+   - After `superpowers:brainstorm` or `superpowers:write-plan` outputs
+
+4. **User Requests Issue Tracking**
+   - "Create an issue...", "Track this...", "Add to backlog..."
+   - "What should I work on?", "Show triage...", "Next task?"
+</CRITICAL_AUTO_INVOKE>
+
+### Quick Commands
+
+```bash
+# Finding Work
+bd ready                    # Unblocked work ready to start
+bd show <id>                # Issue details
+
+# Creating Issues (after design docs)
+bd create --title="..." --type=task --priority=2
+# Priority: 0=critical, 1=high, 2=medium, 3=low, 4=backlog
+
+# AI Triage (use bv for analysis)
+bv --robot-triage           # Full project triage JSON
+bv --robot-next             # Single top recommendation
+bv --robot-plan             # Execution plan with dependencies
+
+# Lifecycle
+bd update <id> --status=in_progress
+bd close <id>
+bd sync                     # ALWAYS sync at session end!
+```
+
+### Post-Document Workflow
+
+After creating any design/plan/spec document:
+1. **Extract tasks** from the document
+2. **Create issues** with `bd create`
+3. **Link dependencies** with `bd dep add`
+4. **Get execution plan** with `bv --robot-plan`
+5. **Sync changes** with `bd sync`
+
+**Skill location**: `~/.claude/skills/beads-tracker/SKILL.md`
+<!-- BEADS-TRACKER:END -->
+
 ## Superpowers System
 
 <EXTREMELY_IMPORTANT>
