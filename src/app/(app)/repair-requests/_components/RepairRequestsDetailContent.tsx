@@ -6,6 +6,8 @@ import { format, parseISO } from "date-fns"
 import { vi } from 'date-fns/locale'
 import type { RepairRequestWithEquipment } from "../types"
 import { getStatusVariant } from "../utils"
+import { RepairRequestsProcessStepper } from "./RepairRequestsProcessStepper"
+import { cn } from "@/lib/utils"
 
 interface RepairRequestsDetailContentProps {
   request: RepairRequestWithEquipment
@@ -51,7 +53,16 @@ export function RepairRequestsDetailContent({ request }: RepairRequestsDetailCon
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="space-y-2">
             <Label className="text-sm font-medium text-muted-foreground">Trạng thái</Label>
-            <Badge variant={getStatusVariant(request.trang_thai)} className="w-fit">
+            <Badge
+              variant="secondary"
+              className={cn(
+                "w-fit px-2.5 py-0.5 text-xs font-semibold rounded-md border-0 ring-0 shadow-none",
+                request.trang_thai === 'Chờ xử lý' && "bg-orange-50 text-orange-700 hover:bg-orange-100",
+                request.trang_thai === 'Đã duyệt' && "bg-blue-50 text-blue-700 hover:bg-blue-100",
+                request.trang_thai === 'Hoàn thành' && "bg-emerald-50 text-emerald-700 hover:bg-emerald-100",
+                request.trang_thai === 'Không HT' && "bg-rose-50 text-rose-700 hover:bg-rose-100",
+              )}
+            >
               {request.trang_thai}
             </Badge>
           </div>
@@ -184,6 +195,13 @@ export function RepairRequestsDetailContent({ request }: RepairRequestsDetailCon
           )}
         </div>
       )}
+      {/* Progress Information */}
+      <div className="pt-6 mt-8 border-t">
+        <h3 className="text-base font-semibold text-foreground mb-4">
+          Tiến trình xử lý
+        </h3>
+        <RepairRequestsProcessStepper status={request.trang_thai} />
+      </div>
     </div>
   )
 }
