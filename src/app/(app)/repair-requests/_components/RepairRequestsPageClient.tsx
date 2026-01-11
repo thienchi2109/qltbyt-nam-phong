@@ -3,7 +3,6 @@
 import * as React from "react"
 import type { ColumnFiltersState, SortingState } from "@tanstack/react-table"
 import {
-  flexRender,
   getCoreRowModel,
   getFacetedRowModel,
   getFacetedUniqueValues,
@@ -25,15 +24,6 @@ import {
 } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table"
-import { Input } from "@/components/ui/input"
-import {
   Select,
   SelectContent,
   SelectItem,
@@ -42,9 +32,8 @@ import {
 } from "@/components/ui/select"
 // Supabase client is not used directly; use RPC proxy instead
 import { callRpc } from "@/lib/rpc-client"
-import { Building2, FilterX, Loader2, PlusCircle, Layers, Clock, CheckCircle, CheckCheck, XCircle } from "lucide-react"
-import { format, parseISO } from "date-fns"
-import { vi } from 'date-fns/locale'
+import { Building2, Loader2, PlusCircle, Layers, Clock, CheckCircle, CheckCheck, XCircle } from "lucide-react"
+import { format } from "date-fns"
 import { cn } from "@/lib/utils"
 import { ScrollArea } from "@/components/ui/scroll-area"
 // Legacy auth-context removed; NextAuth is used throughout
@@ -62,7 +51,6 @@ import { useMediaQuery } from "@/hooks/use-media-query"
 import { ErrorBoundary } from "@/components/error-boundary"
 import { Sheet, SheetContent, SheetHeader as SheetHeaderUI, SheetTitle, SheetDescription } from "@/components/ui/sheet"
 import { SummaryBar, type SummaryItem } from "@/components/summary/summary-bar"
-import { RepairRequestsFilterChips } from "./RepairRequestsFilterChips"
 import { RepairRequestsFilterModal } from "./RepairRequestsFilterModal"
 import { RepairRequestsDetailContent } from "./RepairRequestsDetailContent"
 import { RepairRequestsEditDialog } from "./RepairRequestsEditDialog"
@@ -81,7 +69,6 @@ import { useRepairRequestUIHandlers } from "../_hooks/useRepairRequestUIHandlers
 import { useRepairRequestColumns, renderActions } from "./RepairRequestsColumns"
 import { RepairRequestsPagination } from "./RepairRequestsPagination"
 import { RepairRequestsMobileList } from "./RepairRequestsMobileList"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import {
   getUiFilters,
   setUiFilters,

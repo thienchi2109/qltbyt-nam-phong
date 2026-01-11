@@ -398,6 +398,64 @@ openspec/                   # 60+ files (specs, changes)
 public/                     # PWA assets (icons, manifest, sw, workbox)
 ```
 
+### Component Architecture Pattern (RepairRequests Reference)
+
+The RepairRequests module demonstrates the preferred architecture for complex page modules with multiple dialogs and state management.
+
+**Pattern: Context + Extracted Components**
+
+```
+repair-requests/
+├── _components/
+│   ├── RepairRequestsContext.tsx      # Context provider (state, mutations, dialog actions)
+│   ├── RepairRequestsPageClient.tsx   # Smart container (data fetching, orchestration)
+│   ├── RepairRequestsTable.tsx        # Presentational (table rendering)
+│   ├── RepairRequestsToolbar.tsx      # Presentational (search, filters, display settings)
+│   ├── RepairRequestsEditDialog.tsx   # Self-contained dialog (consumes context)
+│   ├── RepairRequestsDeleteDialog.tsx # Self-contained dialog
+│   ├── RepairRequestsApproveDialog.tsx
+│   ├── RepairRequestsCompleteDialog.tsx
+│   ├── RepairRequestsCreateSheet.tsx
+│   └── RepairRequests*.tsx            # Other components with prefix
+├── _hooks/
+│   └── useRepairRequestsContext.ts    # Custom hook with error checking
+└── types.ts                           # Shared types (AuthUser, etc.)
+```
+
+**Key Principles:**
+- **Context for shared state**: Dialog open/close, selected items, user permissions
+- **Local state for forms**: Each dialog manages its own form state
+- **TanStack Query mutations**: Centralized in context, consumed via hooks
+- **Memoization**: Context value wrapped in `useMemo`, actions in `useCallback`
+- **Prop elimination**: Dialogs get everything from context (0 props)
+- **File naming**: All components prefixed with module name for grep-ability
+
+**Context Structure:**
+```typescript
+interface RepairRequestsContextValue {
+  // User/permissions
+  user: AuthUser | null
+  canSetRepairUnit: boolean
+  isRegionalLeader: boolean
+
+  // Dialog state
+  dialogState: DialogState
+  openEditDialog: (request: RepairRequest) => void
+  closeAllDialogs: () => void
+
+  // Mutations (from TanStack Query)
+  createMutation: UseMutationResult<...>
+  updateMutation: UseMutationResult<...>
+  // ... other mutations
+}
+```
+
+**Benefits achieved:**
+- Prop drilling: ~60 props → ~5 props
+- Main file: 1207 lines → 837 lines
+- Dialog components: 15-22 props → 0 props
+- Clear separation: Smart container vs presentational components
+
 ### Database Schema
 
 **Core**: `nhan_vien` (users) • `don_vi` (tenants) • `dia_ban` (regions) • `thiet_bi` (equipment) • `khoa_phong` (departments) • `loai_thiet_bi` (categories) • `nha_cung_cap` (suppliers)
@@ -559,21 +617,6 @@ Primary UI: Vietnamese • Medical terminology • Vietnam timezone (Asia/Ho_Chi
 
 1. Security (auth, isolation) 2. Data Integrity 3. Type Safety 4. Performance 5. Maintainability 6. Features
 
-
-## Key Files
-
-**Critical**: `src/app/api/rpc/[fn]/route.ts` (RPC proxy) • `src/lib/rpc-client.ts` • `src/auth/config.ts` • `src/middleware.ts`
-**Config**: `next.config.ts` • `tailwind.config.ts` • `.env.local`
-**DB**: `supabase/migrations/**` • `src/types/database.ts`
-**Scripts**: `build-cloudflare.js` • `deploy-dual.js`
-**AI Rules**: `.github/copilot-instructions.md` • `.cursor/rules/cursor-rules.mdc` • `CLAUDE.md` (this)
-
-## IDE & Tooling
-
-**AI Configs**: Copilot (`.github/copilot-instructions.md`) • Cursor (`.cursor/rules/cursor-rules.mdc`) • Claude (`CLAUDE.md`)
-
-**VSCode** (`.vscode/`): settings.json, tasks.json, extensions.json, mcp.json
-**Extensions**: ESLint • Tailwind IntelliSense • TypeScript • Prisma • GitLens
 
 **Dev Setup**: npm (NOT pnpm/yarn) • Node 18.17+ • Supabase cloud (no CLI) • Ports: 3000 (HTTP), 9002 (HTTPS)
 
