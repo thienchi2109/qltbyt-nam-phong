@@ -3,17 +3,8 @@
 import * as React from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
 import { FilterX } from "lucide-react"
 import { RepairRequestsFilterChips, type FilterChipsValue } from "./RepairRequestsFilterChips"
-import type { ViewDensity, TextWrap as TextWrapPref } from "@/lib/rr-prefs"
 import type { UiFilters as UiFiltersPrefs } from "@/lib/rr-prefs"
 
 interface RepairRequestsToolbarProps {
@@ -23,12 +14,6 @@ interface RepairRequestsToolbarProps {
   isFiltered: boolean
   onClearFilters: () => void
   onOpenFilterModal: () => void
-  // Display settings
-  density: ViewDensity
-  setDensity: (d: ViewDensity) => void
-  textWrap: TextWrapPref
-  setTextWrap: (t: TextWrapPref) => void
-  onColumnPreset: (preset: "compact" | "standard" | "full") => void
   // Filter chips
   uiFilters: UiFiltersPrefs
   selectedFacilityName: string | null
@@ -43,11 +28,6 @@ export function RepairRequestsToolbar({
   isFiltered,
   onClearFilters,
   onOpenFilterModal,
-  density,
-  setDensity,
-  textWrap,
-  setTextWrap,
-  onColumnPreset,
   uiFilters,
   selectedFacilityName,
   showFacilityFilter,
@@ -85,45 +65,6 @@ export function RepairRequestsToolbar({
               <FilterX className="h-4 w-4 sm:ml-2" />
             </Button>
           )}
-
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm" className="h-8 touch-target-sm">
-                Hiển thị
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuLabel>Preset cột</DropdownMenuLabel>
-              <DropdownMenuItem onSelect={() => onColumnPreset("compact")}>
-                Compact
-              </DropdownMenuItem>
-              <DropdownMenuItem onSelect={() => onColumnPreset("standard")}>
-                Standard
-              </DropdownMenuItem>
-              <DropdownMenuItem onSelect={() => onColumnPreset("full")}>
-                Full
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuLabel>Mật độ</DropdownMenuLabel>
-              <DropdownMenuItem onSelect={() => setDensity("compact")}>
-                {density === "compact" ? "✓ " : ""}Compact
-              </DropdownMenuItem>
-              <DropdownMenuItem onSelect={() => setDensity("standard")}>
-                {density === "standard" ? "✓ " : ""}Standard
-              </DropdownMenuItem>
-              <DropdownMenuItem onSelect={() => setDensity("spacious")}>
-                {density === "spacious" ? "✓ " : ""}Spacious
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuLabel>Văn bản</DropdownMenuLabel>
-              <DropdownMenuItem onSelect={() => setTextWrap("truncate")}>
-                {textWrap === "truncate" ? "✓ " : ""}Thu gọn
-              </DropdownMenuItem>
-              <DropdownMenuItem onSelect={() => setTextWrap("wrap")}>
-                {textWrap === "wrap" ? "✓ " : ""}Xuống dòng
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
         </div>
 
         <div className="w-full pt-2">

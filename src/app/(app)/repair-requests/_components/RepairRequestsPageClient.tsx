@@ -74,14 +74,8 @@ import {
   setUiFilters,
   getColumnVisibility,
   setColumnVisibility,
-  getTableDensity,
-  setTableDensity,
-  getTextWrap,
-  setTextWrap,
   type UiFilters as UiFiltersPrefs,
   type ColumnVisibility as ColumnVisibilityPrefs,
-  type ViewDensity,
-  type TextWrap as TextWrapPref,
 } from "@/lib/rr-prefs"
 // Auto department filter removed
 
@@ -149,8 +143,6 @@ function RepairRequestsPageClientInner() {
 
   // Table presentation preferences
   const [columnVisibility, setColumnVisibilityState] = React.useState<ColumnVisibilityPrefs>(() => getColumnVisibility() || {});
-  const [density, setDensity] = React.useState<ViewDensity>(() => getTableDensity());
-  const [textWrap, setTextWrapState] = React.useState<TextWrapPref>(() => getTextWrap());
 
   const searchInputRef = React.useRef<HTMLInputElement | null>(null)
 
@@ -456,10 +448,6 @@ function RepairRequestsPageClientInner() {
 
   // Server-side status filtering; no column filter syncing needed.
 
-  // Persist density and text wrap changes
-  React.useEffect(() => { setTableDensity(density) }, [density])
-  React.useEffect(() => { setTextWrap(textWrap) }, [textWrap])
-
   // Keyboard shortcuts: '/', 'n'
   useRepairRequestShortcuts({
     searchInputRef,
@@ -525,19 +513,6 @@ function RepairRequestsPageClientInner() {
     if (showFacilityFilter) setSelectedFacilityId(null);
     setSearchTerm("");
   }, [table, setUiFiltersState, showFacilityFilter, setSelectedFacilityId]);
-
-  const handleColumnPreset = React.useCallback((preset: "compact" | "standard" | "full") => {
-    let next: any;
-    if (preset === "compact") {
-      next = { thiet_bi_va_mo_ta: true, ngay_yeu_cau: true, trang_thai: true, nguoi_yeu_cau: false, ngay_mong_muon_hoan_thanh: false, actions: true };
-    } else if (preset === "standard") {
-      next = { thiet_bi_va_mo_ta: true, nguoi_yeu_cau: true, ngay_yeu_cau: true, ngay_mong_muon_hoan_thanh: true, trang_thai: true, actions: true };
-    } else {
-      next = { thiet_bi_va_mo_ta: true, nguoi_yeu_cau: true, ngay_yeu_cau: true, ngay_mong_muon_hoan_thanh: true, trang_thai: true, actions: true };
-    }
-    setColumnVisibilityState(next);
-    setColumnVisibility(next);
-  }, [setColumnVisibilityState]);
 
   const handleRemoveFilter = React.useCallback((key: "status" | "facilityName" | "dateRange", sub?: string) => {
     if (key === 'status' && sub) {
@@ -745,11 +720,7 @@ function RepairRequestsPageClientInner() {
                     isFiltered={isFiltered as boolean}
                     onClearFilters={handleClearFilters}
                     onOpenFilterModal={() => setIsFilterModalOpen(true)}
-                    density={density}
-                    setDensity={setDensity}
-                    textWrap={textWrap}
-                    setTextWrap={setTextWrapState}
-                    onColumnPreset={handleColumnPreset}
+
                     uiFilters={uiFilters}
                     selectedFacilityName={selectedFacilityName}
                     showFacilityFilter={showFacilityFilter}
@@ -799,9 +770,7 @@ function RepairRequestsPageClientInner() {
                       <div className="min-w-[1100px]">
                         <RepairRequestsTable
                           table={table}
-                          isLoading={isLoading}
-                          density={density}
-                          textWrap={textWrap}
+                          isLoading={isLoading || isFetching}
                         />
                       </div>
                     </div>

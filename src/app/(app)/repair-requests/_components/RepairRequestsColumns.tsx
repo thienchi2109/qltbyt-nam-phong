@@ -142,9 +142,9 @@ export function useRepairRequestColumns(options: RepairRequestColumnOptions): Co
       cell: ({ row }) => {
         const request = row.original
         return (
-          <div>
-            <div className="font-medium">{request.thiet_bi?.ten_thiet_bi || 'N/A'}</div>
-            <div className="text-sm text-muted-foreground truncate max-w-xs">{request.mo_ta_su_co}</div>
+          <div className="space-y-0.5">
+            <div className="font-medium text-base text-foreground/90">{request.thiet_bi?.ten_thiet_bi || 'N/A'}</div>
+            <div className="text-sm text-muted-foreground truncate max-w-[16rem]">{request.mo_ta_su_co}</div>
           </div>
         )
       },
@@ -158,16 +158,16 @@ export function useRepairRequestColumns(options: RepairRequestColumnOptions): Co
     {
       accessorKey: "nguoi_yeu_cau",
       header: ({ column }) => (
-        <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}>
+        <Button variant="ghost" className="hover:bg-transparent px-0 font-semibold text-muted-foreground" onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}>
           Người yêu cầu
-          <ArrowUpDown className="ml-2 h-4 w-4" />
+          <ArrowUpDown className="ml-2 h-3.5 w-3.5" />
         </Button>
       ),
       cell: ({ row }) => {
         const nguoiYeuCau = row.getValue("nguoi_yeu_cau") as string | null;
         return (
-          <div className="text-sm">
-            {nguoiYeuCau || <span className="text-muted-foreground italic">N/A</span>}
+          <div className="text-sm font-medium text-foreground/80">
+            {nguoiYeuCau || <span className="text-muted-foreground italic font-normal">N/A</span>}
           </div>
         );
       },
@@ -176,20 +176,20 @@ export function useRepairRequestColumns(options: RepairRequestColumnOptions): Co
     {
       accessorKey: "ngay_yeu_cau",
       header: ({ column }) => (
-        <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}>
+        <Button variant="ghost" className="hover:bg-transparent px-0 font-semibold text-muted-foreground" onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}>
           Ngày yêu cầu
-          <ArrowUpDown className="ml-2 h-4 w-4" />
+          <ArrowUpDown className="ml-2 h-3.5 w-3.5" />
         </Button>
       ),
-      cell: ({ row }) => <div className="text-sm">{format(parseISO(row.getValue("ngay_yeu_cau")), 'dd/MM/yyyy HH:mm', { locale: vi })}</div>,
+      cell: ({ row }) => <div className="text-sm text-foreground/80">{format(parseISO(row.getValue("ngay_yeu_cau")), 'dd/MM/yyyy HH:mm', { locale: vi })}</div>,
     },
     // 4. Ngày mong muốn hoàn thành
     {
       accessorKey: "ngay_mong_muon_hoan_thanh",
       header: ({ column }) => (
-        <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}>
-          Ngày mong muốn HT
-          <ArrowUpDown className="ml-2 h-4 w-4" />
+        <Button variant="ghost" className="hover:bg-transparent px-0 font-semibold text-muted-foreground" onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}>
+          Hạn hoàn thành
+          <ArrowUpDown className="ml-2 h-3.5 w-3.5" />
         </Button>
       ),
       cell: ({ row }) => {
@@ -209,27 +209,30 @@ export function useRepairRequestColumns(options: RepairRequestColumnOptions): Co
         const daysInfo = !isCompleted ? calculateDaysRemaining(ngayMongMuon) : null;
 
         return (
-          <div className="space-y-1">
-            <div className="text-sm font-medium">
-              {format(parseISO(ngayMongMuon), 'dd/MM/yyyy', { locale: vi })}
-            </div>
-            {daysInfo && (
-              <div className="flex items-center gap-2">
-                <div className="flex-1 bg-gray-200 rounded-full h-2">
-                  <div
-                    className={`h-2 rounded-full ${daysInfo.color} transition-all duration-300`}
-                    style={{
-                      width: daysInfo.days > 0
-                        ? `${Math.min(100, Math.max(10, (daysInfo.days / 14) * 100))}%`
-                        : '100%'
-                    }}
-                  />
-                </div>
-                <span className={`text-xs font-medium ${daysInfo.status === 'success' ? 'text-green-600' :
-                  daysInfo.status === 'warning' ? 'text-orange-600' : 'text-red-600'
+          <div className="space-y-1.5 w-[180px]">
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-sm font-medium text-foreground/90 whitespace-nowrap">
+                {format(parseISO(ngayMongMuon), 'dd/MM/yyyy', { locale: vi })}
+              </span>
+              {daysInfo && (
+                <span className={`text-[10px] uppercase font-bold tracking-tight whitespace-nowrap ${daysInfo.status === 'success' ? 'text-emerald-600' :
+                  daysInfo.status === 'warning' ? 'text-amber-600' : 'text-rose-600'
                   }`}>
                   {daysInfo.text}
                 </span>
+              )}
+            </div>
+
+            {daysInfo && (
+              <div className="h-1.5 w-full bg-muted/50 rounded-full overflow-hidden">
+                <div
+                  className={`h-full rounded-full ${daysInfo.color} transition-all duration-500 ease-out`}
+                  style={{
+                    width: daysInfo.days > 0
+                      ? `${Math.min(100, Math.max(5, (daysInfo.days / 14) * 100))}%`
+                      : '100%'
+                  }}
+                />
               </div>
             )}
           </div>
@@ -240,40 +243,40 @@ export function useRepairRequestColumns(options: RepairRequestColumnOptions): Co
     {
       accessorKey: "trang_thai",
       header: ({ column }) => (
-        <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}>
+        <Button variant="ghost" className="hover:bg-transparent px-0 font-semibold text-muted-foreground" onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}>
           Trạng thái
-          <ArrowUpDown className="ml-2 h-4 w-4" />
+          <ArrowUpDown className="ml-2 h-3.5 w-3.5" />
         </Button>
       ),
       cell: ({ row }) => {
         const request = row.original
         return (
-          <div className="flex flex-col gap-1">
+          <div className="flex flex-col gap-1.5 item-start">
             <Badge
-              variant="outline"
+              variant="secondary"
               className={cn(
-                "self-start whitespace-nowrap font-normal",
-                request.trang_thai === 'Chờ xử lý' && "bg-orange-100 text-orange-700 border-orange-200 dark:bg-orange-900/30 dark:text-orange-400 dark:border-orange-800",
-                request.trang_thai === 'Đã duyệt' && "bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-800",
-                request.trang_thai === 'Hoàn thành' && "bg-green-100 text-green-700 border-green-200 dark:bg-green-900/30 dark:text-green-400 dark:border-green-800",
-                request.trang_thai === 'Không HT' && "bg-red-100 text-red-700 border-red-200 dark:bg-red-900/30 dark:text-red-400 dark:border-red-800",
+                "w-fit whitespace-nowrap px-2.5 py-0.5 text-xs font-semibold rounded-md border-0 ring-0 shadow-none",
+                request.trang_thai === 'Chờ xử lý' && "bg-orange-50 text-orange-700 hover:bg-orange-100",
+                request.trang_thai === 'Đã duyệt' && "bg-blue-50 text-blue-700 hover:bg-blue-100",
+                request.trang_thai === 'Hoàn thành' && "bg-emerald-50 text-emerald-700 hover:bg-emerald-100",
+                request.trang_thai === 'Không HT' && "bg-rose-50 text-rose-700 hover:bg-rose-100",
               )}
             >
               {request.trang_thai}
             </Badge>
             {request.trang_thai === 'Đã duyệt' && request.ngay_duyet && (
-              <div className="text-xs text-muted-foreground">
-                {format(parseISO(request.ngay_duyet), 'dd/MM/yyyy HH:mm', { locale: vi })}
+              <div className="flex flex-col gap-0.5 text-xs text-muted-foreground/80">
+                <span>{format(parseISO(request.ngay_duyet), 'dd/MM/yyyy HH:mm', { locale: vi })}</span>
                 {request.nguoi_duyet && (
-                  <div className="text-blue-600 font-medium">Duyệt bởi: {request.nguoi_duyet}</div>
+                  <span className="text-blue-600/90 font-medium">Bởi: {request.nguoi_duyet}</span>
                 )}
               </div>
             )}
             {(request.trang_thai === 'Hoàn thành' || request.trang_thai === 'Không HT') && request.ngay_hoan_thanh && (
-              <div className="text-xs text-muted-foreground">
-                {format(parseISO(request.ngay_hoan_thanh), 'dd/MM/yyyy HH:mm', { locale: vi })}
+              <div className="flex flex-col gap-0.5 text-xs text-muted-foreground/80">
+                <span>{format(parseISO(request.ngay_hoan_thanh), 'dd/MM/yyyy HH:mm', { locale: vi })}</span>
                 {request.nguoi_xac_nhan && (
-                  <div className="text-green-600 font-medium">Xác nhận bởi: {request.nguoi_xac_nhan}</div>
+                  <span className="text-emerald-600/90 font-medium">Bởi: {request.nguoi_xac_nhan}</span>
                 )}
               </div>
             )}
