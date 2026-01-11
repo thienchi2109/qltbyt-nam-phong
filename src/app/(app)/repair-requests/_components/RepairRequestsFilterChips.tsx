@@ -19,7 +19,7 @@ const statusColorMap: Record<string, string> = {
   'Không HT': "bg-red-100 text-red-700 border-red-200 hover:bg-red-200 dark:bg-red-900/30 dark:text-red-400 dark:border-red-800",
 }
 
-export function FilterChips({
+export function RepairRequestsFilterChips({
   value,
   onRemove,
   onClearAll,

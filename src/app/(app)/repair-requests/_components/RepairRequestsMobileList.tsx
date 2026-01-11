@@ -24,7 +24,7 @@ export interface MobileRequestListProps {
  * Mobile card view for repair requests.
  * Displays requests in a card layout optimized for mobile screens.
  */
-export function MobileRequestList({
+export function RepairRequestsMobileList({
   requests,
   isLoading,
   setRequestToView,

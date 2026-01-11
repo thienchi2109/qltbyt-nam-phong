@@ -62,23 +62,23 @@ import { useMediaQuery } from "@/hooks/use-media-query"
 import { ErrorBoundary } from "@/components/error-boundary"
 import { Sheet, SheetContent, SheetHeader as SheetHeaderUI, SheetTitle, SheetDescription } from "@/components/ui/sheet"
 import { SummaryBar, type SummaryItem } from "@/components/summary/summary-bar"
-import { FilterChips } from "./FilterChips"
-import { FilterModal } from "./FilterModal"
-import { RequestDetailContent } from "./RequestDetailContent"
-import { RepairRequestsEditDialog } from "./EditRequestDialog"
-import { RepairRequestsDeleteDialog } from "./DeleteRequestDialog"
-import { RepairRequestsApproveDialog } from "./ApproveRequestDialog"
-import { RepairRequestsCompleteDialog } from "./CompleteRequestDialog"
-import { RepairRequestsCreateSheet } from "./CreateRequestSheet"
+import { RepairRequestsFilterChips } from "./RepairRequestsFilterChips"
+import { RepairRequestsFilterModal } from "./RepairRequestsFilterModal"
+import { RepairRequestsDetailContent } from "./RepairRequestsDetailContent"
+import { RepairRequestsEditDialog } from "./RepairRequestsEditDialog"
+import { RepairRequestsDeleteDialog } from "./RepairRequestsDeleteDialog"
+import { RepairRequestsApproveDialog } from "./RepairRequestsApproveDialog"
+import { RepairRequestsCompleteDialog } from "./RepairRequestsCompleteDialog"
+import { RepairRequestsCreateSheet } from "./RepairRequestsCreateSheet"
 import { RepairRequestsProvider } from "./RepairRequestsContext"
 import type { EquipmentSelectItem, RepairRequestWithEquipment } from "../types"
 import { calculateDaysRemaining } from "../utils"
 import { useRepairRequestShortcuts } from "../_hooks/useRepairRequestShortcuts"
 import { useRepairRequestsContext } from "../_hooks/useRepairRequestsContext"
 import { useRepairRequestUIHandlers } from "../_hooks/useRepairRequestUIHandlers"
-import { useRepairRequestColumns, renderActions } from "./repair-requests-columns"
+import { useRepairRequestColumns, renderActions } from "./RepairRequestsColumns"
 import { RepairRequestsPagination } from "./RepairRequestsPagination"
-import { MobileRequestList } from "./MobileRequestList"
+import { RepairRequestsMobileList } from "./RepairRequestsMobileList"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import {
   getUiFilters,
@@ -554,7 +554,7 @@ function RepairRequestsPageClientInner() {
 
               <div className="flex-1 overflow-hidden pr-4">
                 <ScrollArea className="h-full">
-                  <RequestDetailContent request={requestToView} />
+                  <RepairRequestsDetailContent request={requestToView} />
                 </ScrollArea>
               </div>
 
@@ -578,7 +578,7 @@ function RepairRequestsPageClientInner() {
                 </div>
                 <div className="flex-1 overflow-hidden px-4">
                   <ScrollArea className="h-full">
-                    <RequestDetailContent request={requestToView} />
+                    <RepairRequestsDetailContent request={requestToView} />
                   </ScrollArea>
                 </div>
                 <div className="p-4 border-t flex justify-end">
@@ -789,7 +789,7 @@ function RepairRequestsPageClientInner() {
 
                     {/* Chips under search */}
                     <div className="w-full pt-2">
-                      <FilterChips
+                      <RepairRequestsFilterChips
                         value={{
                           status: uiFilters.status,
                           facilityName: selectedFacilityName,
@@ -813,7 +813,7 @@ function RepairRequestsPageClientInner() {
                   </div>
 
                   {/* Filter Modal */}
-                  <FilterModal
+                  <RepairRequestsFilterModal
                     open={isFilterModalOpen}
                     onOpenChange={setIsFilterModalOpen}
                     value={{
@@ -843,7 +843,7 @@ function RepairRequestsPageClientInner() {
                   />
                   {/* Mobile Card View */}
                   {isMobile ? (
-                    <MobileRequestList
+                    <RepairRequestsMobileList
                       requests={table.getRowModel().rows.map(row => row.original)}
                       isLoading={isLoading}
                       setRequestToView={setRequestToViewAdapter}

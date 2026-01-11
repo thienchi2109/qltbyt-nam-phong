@@ -7,11 +7,11 @@ import { vi } from 'date-fns/locale'
 import type { RepairRequestWithEquipment } from "../types"
 import { getStatusVariant } from "../utils"
 
-interface RequestDetailContentProps {
+interface RepairRequestsDetailContentProps {
   request: RepairRequestWithEquipment
 }
 
-export function RequestDetailContent({ request }: RequestDetailContentProps) {
+export function RepairRequestsDetailContent({ request }: RepairRequestsDetailContentProps) {
   return (
     <div className="space-y-6 py-4">
       {/* Equipment Information */}

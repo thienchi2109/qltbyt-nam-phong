@@ -21,7 +21,7 @@ const STATUS_OPTIONS = ['Chờ xử lý', 'Đã duyệt', 'Hoàn thành', 'Khôn
 
 type Variant = "dialog" | "sheet"
 
-export function FilterModal({
+export function RepairRequestsFilterModal({
   open,
   onOpenChange,
   value,

@@ -12,7 +12,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { FilterX } from "lucide-react"
-import { FilterChips, type FilterChipsValue } from "./FilterChips"
+import { RepairRequestsFilterChips, type FilterChipsValue } from "./RepairRequestsFilterChips"
 import type { ViewDensity, TextWrap as TextWrapPref } from "@/lib/rr-prefs"
 import type { UiFilters as UiFiltersPrefs } from "@/lib/rr-prefs"
 
@@ -127,7 +127,7 @@ export function RepairRequestsToolbar({
         </div>
 
         <div className="w-full pt-2">
-          <FilterChips
+          <RepairRequestsFilterChips
             value={{
               status: uiFilters.status,
               facilityName: selectedFacilityName,
