@@ -1,5 +1,7 @@
 "use client"
 
+import * as React from "react"
+import { parseISO, format } from "date-fns"
 import { Button } from "@/components/ui/button"
 import { Calendar } from "@/components/ui/calendar"
 import {
@@ -22,56 +24,69 @@ import {
 } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { cn } from "@/lib/utils"
-import { format } from "date-fns"
 import { Calendar as CalendarIcon, Loader2 } from "lucide-react"
-import type { RepairRequestWithEquipment, RepairUnit } from "../types"
+import { useRepairRequestsContext } from "../_hooks/useRepairRequestsContext"
+import type { RepairUnit } from "../types"
 
-interface EditRequestDialogProps {
-  request: RepairRequestWithEquipment | null
-  onClose: () => void
-  // Form state
-  issueDescription: string
-  setIssueDescription: (v: string) => void
-  repairItems: string
-  setRepairItems: (v: string) => void
-  desiredDate: Date | undefined
-  setDesiredDate: (v: Date | undefined) => void
-  repairUnit: RepairUnit
-  setRepairUnit: (v: RepairUnit) => void
-  externalCompanyName: string
-  setExternalCompanyName: (v: string) => void
-  // Submission
-  isSubmitting: boolean
-  onSubmit: () => void
-  canSetRepairUnit: boolean
-}
+export function RepairRequestsEditDialog() {
+  const {
+    dialogState: { requestToEdit },
+    closeAllDialogs,
+    updateMutation,
+    canSetRepairUnit,
+  } = useRepairRequestsContext()
 
-export function EditRequestDialog({
-  request,
-  onClose,
-  issueDescription,
-  setIssueDescription,
-  repairItems,
-  setRepairItems,
-  desiredDate,
-  setDesiredDate,
-  repairUnit,
-  setRepairUnit,
-  externalCompanyName,
-  setExternalCompanyName,
-  isSubmitting,
-  onSubmit,
-  canSetRepairUnit,
-}: EditRequestDialogProps) {
-  if (!request) return null
+  // Local form state
+  const [issueDescription, setIssueDescription] = React.useState("")
+  const [repairItems, setRepairItems] = React.useState("")
+  const [desiredDate, setDesiredDate] = React.useState<Date | undefined>()
+  const [repairUnit, setRepairUnit] = React.useState<RepairUnit>("noi_bo")
+  const [externalCompanyName, setExternalCompanyName] = React.useState("")
+
+  // Populate form when dialog opens
+  React.useEffect(() => {
+    if (requestToEdit) {
+      setIssueDescription(requestToEdit.mo_ta_su_co)
+      setRepairItems(requestToEdit.hang_muc_sua_chua || "")
+      setDesiredDate(
+        requestToEdit.ngay_mong_muon_hoan_thanh
+          ? parseISO(requestToEdit.ngay_mong_muon_hoan_thanh)
+          : undefined
+      )
+      setRepairUnit(requestToEdit.don_vi_thuc_hien || "noi_bo")
+      setExternalCompanyName(requestToEdit.ten_don_vi_thue || "")
+    }
+  }, [requestToEdit])
+
+  const handleSubmit = () => {
+    if (!requestToEdit) return
+
+    updateMutation.mutate(
+      {
+        id: requestToEdit.id,
+        mo_ta_su_co: issueDescription,
+        hang_muc_sua_chua: repairItems,
+        ngay_mong_muon_hoan_thanh: desiredDate
+          ? format(desiredDate, "yyyy-MM-dd")
+          : null,
+        don_vi_thuc_hien: canSetRepairUnit ? repairUnit : undefined,
+        ten_don_vi_thue: canSetRepairUnit && repairUnit === "thue_ngoai"
+          ? externalCompanyName.trim()
+          : null,
+      },
+      { onSuccess: closeAllDialogs }
+    )
+  }
+
+  if (!requestToEdit) return null
 
   return (
-    <Dialog open={!!request} onOpenChange={(open) => !open && onClose()}>
+    <Dialog open={!!requestToEdit} onOpenChange={(open) => !open && closeAllDialogs()}>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Sửa yêu cầu sửa chữa</DialogTitle>
           <DialogDescription>
-            Cập nhật thông tin cho yêu cầu của thiết bị: {request.thiet_bi?.ten_thiet_bi}
+            Cập nhật thông tin cho yêu cầu của thiết bị: {requestToEdit.thiet_bi?.ten_thiet_bi}
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4 py-4 mobile-card-spacing">
@@ -102,7 +117,7 @@ export function EditRequestDialog({
             <Popover>
               <PopoverTrigger asChild>
                 <Button
-                  variant={"outline"}
+                  variant="outline"
                   className={cn(
                     "w-full justify-start text-left font-normal touch-target",
                     !desiredDate && "text-muted-foreground"
@@ -119,10 +134,10 @@ export function EditRequestDialog({
                   onSelect={setDesiredDate}
                   initialFocus
                   disabled={(date) => {
-                    const requestDate = request?.ngay_yeu_cau
-                      ? new Date(request.ngay_yeu_cau)
-                      : new Date();
-                    return date < new Date(requestDate.setHours(0, 0, 0, 0));
+                    const requestDate = requestToEdit?.ngay_yeu_cau
+                      ? new Date(requestToEdit.ngay_yeu_cau)
+                      : new Date()
+                    return date < new Date(requestDate.setHours(0, 0, 0, 0))
                   }}
                 />
               </PopoverContent>
@@ -132,7 +147,10 @@ export function EditRequestDialog({
           {canSetRepairUnit && (
             <div className="space-y-2">
               <Label htmlFor="edit-repair-unit">Đơn vị thực hiện</Label>
-              <Select value={repairUnit} onValueChange={(value) => setRepairUnit(value as RepairUnit)}>
+              <Select
+                value={repairUnit}
+                onValueChange={(value) => setRepairUnit(value as RepairUnit)}
+              >
                 <SelectTrigger className="touch-target">
                   <SelectValue placeholder="Chọn đơn vị thực hiện" />
                 </SelectTrigger>
@@ -144,7 +162,7 @@ export function EditRequestDialog({
             </div>
           )}
 
-          {canSetRepairUnit && repairUnit === 'thue_ngoai' && (
+          {canSetRepairUnit && repairUnit === "thue_ngoai" && (
             <div className="space-y-2">
               <Label htmlFor="edit-external-company">Tên đơn vị được thuê</Label>
               <Input
@@ -159,9 +177,20 @@ export function EditRequestDialog({
           )}
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={onClose} disabled={isSubmitting} className="touch-target">Hủy</Button>
-          <Button onClick={onSubmit} disabled={isSubmitting} className="touch-target">
-            {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+          <Button
+            variant="outline"
+            onClick={closeAllDialogs}
+            disabled={updateMutation.isPending}
+            className="touch-target"
+          >
+            Hủy
+          </Button>
+          <Button
+            onClick={handleSubmit}
+            disabled={updateMutation.isPending}
+            className="touch-target"
+          >
+            {updateMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             Lưu thay đổi
           </Button>
         </DialogFooter>

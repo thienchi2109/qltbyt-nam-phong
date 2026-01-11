@@ -1,5 +1,6 @@
 "use client"
 
+import * as React from "react"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -19,50 +20,64 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { format, parseISO } from "date-fns"
-import { vi } from 'date-fns/locale'
+import { vi } from "date-fns/locale"
 import { Loader2 } from "lucide-react"
-import type { RepairRequestWithEquipment, RepairUnit } from "../types"
+import { useRepairRequestsContext } from "../_hooks/useRepairRequestsContext"
+import type { RepairUnit } from "../types"
 
-interface ApproveRequestDialogProps {
-  request: RepairRequestWithEquipment | null
-  onClose: () => void
-  repairUnit: RepairUnit
-  setRepairUnit: (v: RepairUnit) => void
-  externalCompanyName: string
-  setExternalCompanyName: (v: string) => void
-  isApproving: boolean
-  onConfirm: () => void
-}
+export function RepairRequestsApproveDialog() {
+  const {
+    dialogState: { requestToApprove },
+    closeAllDialogs,
+    approveMutation,
+  } = useRepairRequestsContext()
 
-export function ApproveRequestDialog({
-  request,
-  onClose,
-  repairUnit,
-  setRepairUnit,
-  externalCompanyName,
-  setExternalCompanyName,
-  isApproving,
-  onConfirm,
-}: ApproveRequestDialogProps) {
-  if (!request) return null
+  // Local form state
+  const [repairUnit, setRepairUnit] = React.useState<RepairUnit>("noi_bo")
+  const [externalCompanyName, setExternalCompanyName] = React.useState("")
+
+  // Reset form when dialog opens
+  React.useEffect(() => {
+    if (requestToApprove) {
+      setRepairUnit("noi_bo")
+      setExternalCompanyName("")
+    }
+  }, [requestToApprove])
+
+  const handleConfirm = () => {
+    if (!requestToApprove) return
+
+    approveMutation.mutate(
+      {
+        id: requestToApprove.id,
+        don_vi_thuc_hien: repairUnit,
+        ten_don_vi_thue: repairUnit === "thue_ngoai"
+          ? externalCompanyName.trim()
+          : null,
+      },
+      { onSuccess: closeAllDialogs }
+    )
+  }
+
+  if (!requestToApprove) return null
 
   return (
-    <Dialog open={!!request} onOpenChange={(open) => !open && onClose()}>
+    <Dialog open={!!requestToApprove} onOpenChange={(open) => !open && closeAllDialogs()}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Duyệt yêu cầu sửa chữa</DialogTitle>
           <DialogDescription>
-            Duyệt yêu cầu sửa chữa cho thiết bị <strong>{request.thiet_bi?.ten_thiet_bi}</strong>
+            Duyệt yêu cầu sửa chữa cho thiết bị <strong>{requestToApprove.thiet_bi?.ten_thiet_bi}</strong>
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4">
-          {request.nguoi_duyet && (
+          {requestToApprove.nguoi_duyet && (
             <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
               <div className="text-sm font-medium text-blue-800">Đã được duyệt bởi:</div>
-              <div className="text-sm text-blue-600">{request.nguoi_duyet}</div>
-              {request.ngay_duyet && (
+              <div className="text-sm text-blue-600">{requestToApprove.nguoi_duyet}</div>
+              {requestToApprove.ngay_duyet && (
                 <div className="text-xs text-blue-500">
-                  {format(parseISO(request.ngay_duyet), 'dd/MM/yyyy HH:mm', { locale: vi })}
+                  {format(parseISO(requestToApprove.ngay_duyet), "dd/MM/yyyy HH:mm", { locale: vi })}
                 </div>
               )}
             </div>
@@ -79,7 +94,7 @@ export function ApproveRequestDialog({
               </SelectContent>
             </Select>
           </div>
-          {repairUnit === 'thue_ngoai' && (
+          {repairUnit === "thue_ngoai" && (
             <div>
               <Label htmlFor="approval-external-company">Tên đơn vị thực hiện sửa chữa</Label>
               <Input
@@ -87,17 +102,17 @@ export function ApproveRequestDialog({
                 value={externalCompanyName}
                 onChange={(e) => setExternalCompanyName(e.target.value)}
                 placeholder="Nhập tên đơn vị được thuê sửa chữa"
-                disabled={isApproving}
+                disabled={approveMutation.isPending}
               />
             </div>
           )}
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={onClose} disabled={isApproving}>
+          <Button variant="outline" onClick={closeAllDialogs} disabled={approveMutation.isPending}>
             Hủy
           </Button>
-          <Button onClick={onConfirm} disabled={isApproving}>
-            {isApproving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+          <Button onClick={handleConfirm} disabled={approveMutation.isPending}>
+            {approveMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             Xác nhận duyệt
           </Button>
         </DialogFooter>
@@ -105,3 +120,6 @@ export function ApproveRequestDialog({
     </Dialog>
   )
 }
+
+// Export alias for backwards compatibility
+export const ApproveRequestDialog = RepairRequestsApproveDialog
