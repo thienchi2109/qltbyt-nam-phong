@@ -71,6 +71,8 @@ import { RepairRequestsApproveDialog } from "./RepairRequestsApproveDialog"
 import { RepairRequestsCompleteDialog } from "./RepairRequestsCompleteDialog"
 import { RepairRequestsCreateSheet } from "./RepairRequestsCreateSheet"
 import { RepairRequestsProvider } from "./RepairRequestsContext"
+import { RepairRequestsTable } from "./RepairRequestsTable"
+import { RepairRequestsToolbar } from "./RepairRequestsToolbar"
 import type { EquipmentSelectItem, RepairRequestWithEquipment } from "../types"
 import { calculateDaysRemaining } from "../utils"
 import { useRepairRequestShortcuts } from "../_hooks/useRepairRequestShortcuts"
@@ -528,6 +530,43 @@ function RepairRequestsPageClientInner() {
   // Get requestToView from context for detail dialogs
   const requestToView = dialogState.requestToView
 
+  // Toolbar handlers
+  const handleClearFilters = React.useCallback(() => {
+    table.resetColumnFilters();
+    setUiFiltersState({ status: [], dateRange: null });
+    setUiFilters({ status: [], dateRange: null });
+    if (showFacilityFilter) setSelectedFacilityId(null);
+    setSearchTerm("");
+  }, [table, setUiFiltersState, showFacilityFilter, setSelectedFacilityId]);
+
+  const handleColumnPreset = React.useCallback((preset: "compact" | "standard" | "full") => {
+    let next: any;
+    if (preset === "compact") {
+      next = { thiet_bi_va_mo_ta: true, ngay_yeu_cau: true, trang_thai: true, nguoi_yeu_cau: false, ngay_mong_muon_hoan_thanh: false, actions: true };
+    } else if (preset === "standard") {
+      next = { thiet_bi_va_mo_ta: true, nguoi_yeu_cau: true, ngay_yeu_cau: true, ngay_mong_muon_hoan_thanh: true, trang_thai: true, actions: true };
+    } else {
+      next = { thiet_bi_va_mo_ta: true, nguoi_yeu_cau: true, ngay_yeu_cau: true, ngay_mong_muon_hoan_thanh: true, trang_thai: true, actions: true };
+    }
+    setColumnVisibilityState(next);
+    setColumnVisibility(next);
+  }, [setColumnVisibilityState]);
+
+  const handleRemoveFilter = React.useCallback((key: "status" | "facilityName" | "dateRange", sub?: string) => {
+    if (key === 'status' && sub) {
+      const next = uiFilters.status.filter(s => s !== sub);
+      const updated = { ...uiFilters, status: next };
+      setUiFiltersState(updated);
+      setUiFilters(updated);
+    } else if (key === 'facilityName') {
+      setSelectedFacilityId(null);
+    } else if (key === 'dateRange') {
+      const updated = { ...uiFilters, dateRange: null };
+      setUiFiltersState(updated);
+      setUiFilters(updated);
+    }
+  }, [uiFilters, setUiFiltersState, setSelectedFacilityId]);
+
   return (
     <ErrorBoundary>
       <>
@@ -712,105 +751,23 @@ function RepairRequestsPageClientInner() {
                   )}
                 </CardHeader>
                 <CardContent className="p-3 md:p-6 gap-3 md:gap-4">
-                  <div className="flex items-center justify-between gap-2 flex-wrap mb-2 md:mb-3">
-                    <div className="flex flex-1 items-center gap-2">
-                      <Input
-                        ref={searchInputRef}
-                        placeholder="Tìm thiết bị, mô tả..."
-                        value={searchTerm}
-                        onChange={(event) => setSearchTerm(event.target.value)}
-                        className="h-8 w-[120px] md:w-[200px] lg:w-[250px] touch-target-sm md:h-8"
-                      />
-
-                      <Button variant="outline" size="sm" className="h-8 touch-target-sm" onClick={() => setIsFilterModalOpen(true)}>Bộ lọc</Button>
-
-                      {/* Advanced filters only: open modal/sheet */}
-
-                      {/* Clear all filters button */}
-                      {isFiltered && (
-                        <Button
-                          variant="ghost"
-                          onClick={() => {
-                            table.resetColumnFilters();
-                            setUiFiltersState({ status: [], dateRange: null });
-                            setUiFilters({ status: [], dateRange: null });
-                            if (showFacilityFilter) setSelectedFacilityId(null);
-                            setSearchTerm("");
-                          }}
-                          className="h-8 px-2 lg:px-3 touch-target-sm md:h-8"
-                          aria-label="Xóa bộ lọc"
-                        >
-                          <span className="hidden sm:inline">Xóa</span>
-                          <FilterX className="h-4 w-4 sm:ml-2" />
-                        </Button>
-                      )}
-
-                      {/* Display menu: presets, density, wrap */}
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="outline" size="sm" className="h-8 touch-target-sm">Hiển thị</Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuLabel>Preset cột</DropdownMenuLabel>
-                          <DropdownMenuItem onSelect={() => {
-                            const next: any = { thiet_bi_va_mo_ta: true, ngay_yeu_cau: true, trang_thai: true, nguoi_yeu_cau: false, ngay_mong_muon_hoan_thanh: false, actions: true }
-                            setColumnVisibilityState(next); setColumnVisibility(next)
-                          }}>Compact</DropdownMenuItem>
-                          <DropdownMenuItem onSelect={() => {
-                            const next: any = { thiet_bi_va_mo_ta: true, nguoi_yeu_cau: true, ngay_yeu_cau: true, ngay_mong_muon_hoan_thanh: true, trang_thai: true, actions: true }
-                            setColumnVisibilityState(next); setColumnVisibility(next)
-                          }}>Standard</DropdownMenuItem>
-                          <DropdownMenuItem onSelect={() => {
-                            const next: any = { thiet_bi_va_mo_ta: true, nguoi_yeu_cau: true, ngay_yeu_cau: true, ngay_mong_muon_hoan_thanh: true, trang_thai: true, actions: true }
-                            setColumnVisibilityState(next); setColumnVisibility(next)
-                          }}>Full</DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuLabel>Mật độ</DropdownMenuLabel>
-                          <DropdownMenuItem onSelect={() => setDensity('compact')}>
-                            {density === 'compact' ? '✓ ' : ''}Compact
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onSelect={() => setDensity('standard')}>
-                            {density === 'standard' ? '✓ ' : ''}Standard
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onSelect={() => setDensity('spacious')}>
-                            {density === 'spacious' ? '✓ ' : ''}Spacious
-                          </DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuLabel>Văn bản</DropdownMenuLabel>
-                          <DropdownMenuItem onSelect={() => setTextWrapState('truncate')}>
-                            {textWrap === 'truncate' ? '✓ ' : ''}Thu gọn
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onSelect={() => setTextWrapState('wrap')}>
-                            {textWrap === 'wrap' ? '✓ ' : ''}Xuống dòng
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </div>
-
-                    {/* Chips under search */}
-                    <div className="w-full pt-2">
-                      <RepairRequestsFilterChips
-                        value={{
-                          status: uiFilters.status,
-                          facilityName: selectedFacilityName,
-                          dateRange: uiFilters.dateRange ? { from: uiFilters.dateRange.from ?? null, to: uiFilters.dateRange.to ?? null } : null,
-                        }}
-                        showFacility={showFacilityFilter}
-                        onRemove={(key, sub) => {
-                          if (key === 'status' && sub) {
-                            const next = uiFilters.status.filter(s => s !== sub)
-                            const updated = { ...uiFilters, status: next }
-                            setUiFiltersState(updated); setUiFilters(updated)
-                          } else if (key === 'facilityName') {
-                            setSelectedFacilityId(null)
-                          } else if (key === 'dateRange') {
-                            const updated = { ...uiFilters, dateRange: null }
-                            setUiFiltersState(updated); setUiFilters(updated)
-                          }
-                        }}
-                      />
-                    </div>
-                  </div>
+                  <RepairRequestsToolbar
+                    searchTerm={searchTerm}
+                    onSearchChange={setSearchTerm}
+                    searchInputRef={searchInputRef}
+                    isFiltered={isFiltered as boolean}
+                    onClearFilters={handleClearFilters}
+                    onOpenFilterModal={() => setIsFilterModalOpen(true)}
+                    density={density}
+                    setDensity={setDensity}
+                    textWrap={textWrap}
+                    setTextWrap={setTextWrapState}
+                    onColumnPreset={handleColumnPreset}
+                    uiFilters={uiFilters}
+                    selectedFacilityName={selectedFacilityName}
+                    showFacilityFilter={showFacilityFilter}
+                    onRemoveFilter={handleRemoveFilter}
+                  />
 
                   {/* Filter Modal */}
                   <RepairRequestsFilterModal
@@ -853,82 +810,12 @@ function RepairRequestsPageClientInner() {
                     /* Desktop Table View */
                     <div key={tableKey} className="rounded-md border overflow-x-auto">
                       <div className="min-w-[1100px]">
-                        <Table>
-                          <TableHeader>
-                            {table.getHeaderGroups().map((headerGroup) => (
-                              <TableRow key={headerGroup.id}>
-                                {headerGroup.headers.map((header, colIdx) => (
-                                  <TableHead
-                                    key={header.id}
-                                    className={cn(
-                                      density === 'compact' ? 'py-1' : density === 'spacious' ? 'py-3' : 'py-2',
-                                      colIdx === 0 && 'sticky left-0 z-20 bg-background w-[20rem] min-w-[20rem] max-w-[20rem] border-r',
-                                      colIdx === 1 && 'sticky left-[20rem] z-20 bg-background w-[14rem] min-w-[14rem] max-w-[14rem] border-r'
-                                    )}
-                                    style={undefined}
-                                  >
-                                    {header.isPlaceholder ? null : flexRender(
-                                      header.column.columnDef.header,
-                                      header.getContext()
-                                    )}
-                                  </TableHead>
-                                ))}
-                              </TableRow>
-                            ))}
-                          </TableHeader>
-                          <TableBody>
-                            {isLoading ? (
-                              <TableRow>
-                                <TableCell colSpan={columns.length} className={cn("h-24 text-center", density === 'compact' ? 'py-1' : density === 'spacious' ? 'py-3' : 'py-2')}>
-                                  <div className="flex justify-center items-center gap-2">
-                                    <Loader2 className="h-4 w-4 animate-spin" />
-                                    <span>Đang tải...</span>
-                                  </div>
-                                </TableCell>
-                              </TableRow>
-                            ) : table.getRowModel().rows?.length ? (
-                              table.getRowModel().rows.map((row) => {
-                                const req = row.original
-                                const isCompleted = req.trang_thai === 'Hoàn thành' || req.trang_thai === 'Không HT'
-                                const daysInfo = !isCompleted && req.ngay_mong_muon_hoan_thanh ? calculateDaysRemaining(req.ngay_mong_muon_hoan_thanh) : null
-                                const stripeClass = daysInfo ? (daysInfo.status === 'success' ? 'border-l-4 border-green-500' : daysInfo.status === 'warning' ? 'border-l-4 border-orange-500' : 'border-l-4 border-red-500') : ''
-                                return (
-                                  <TableRow
-                                    key={row.id}
-                                    data-state={row.getIsSelected() && "selected"}
-                                    tabIndex={0}
-                                    className={cn("cursor-pointer hover:bg-muted/50 focus:outline-none", stripeClass)}
-                                    onClick={() => openViewDialog(row.original)}
-                                    onKeyDown={(e) => { if (e.key === 'Enter') openViewDialog(row.original) }}
-                                  >
-                                    {row.getVisibleCells().map((cell, colIdx) => (
-                                      <TableCell
-                                        key={cell.id}
-                                        className={cn(
-                                          density === 'compact' ? 'py-1' : density === 'spacious' ? 'py-3' : 'py-2',
-                                          colIdx === 0 && 'sticky left-0 z-10 bg-background w-[20rem] min-w-[20rem] max-w-[20rem] border-r',
-                                          colIdx === 1 && 'sticky left-[20rem] z-10 bg-background w-[14rem] min-w-[14rem] max-w-[14rem] border-r',
-                                          textWrap === 'truncate' ? 'truncate' : 'whitespace-normal break-words'
-                                        )}
-                                      >
-                                        {flexRender(
-                                          cell.column.columnDef.cell,
-                                          cell.getContext()
-                                        )}
-                                      </TableCell>
-                                    ))}
-                                  </TableRow>
-                                )
-                              })
-                            ) : (
-                              <TableRow>
-                                <TableCell colSpan={columns.length} className="h-24 text-center">
-                                  Không có kết quả.
-                                </TableCell>
-                              </TableRow>
-                            )}
-                          </TableBody>
-                        </Table>
+                        <RepairRequestsTable
+                          table={table}
+                          isLoading={isLoading}
+                          density={density}
+                          textWrap={textWrap}
+                        />
                       </div>
                     </div>
                   )}
