@@ -26,6 +26,7 @@
 
 # local MCP config (contains secrets)
 .kilocode/mcp.json
+.mcp.json
 
 # debug
 npm-debug.log*
