@@ -1,7 +1,6 @@
 import { format } from "date-fns"
 import { callRpc } from "@/lib/rpc-client"
-import type { RepairRequestWithEquipment, RepairUnit, EquipmentSelectItem } from "../types"
-import type { AuthUser } from "../_components/repair-requests-columns"
+import type { RepairRequestWithEquipment, RepairUnit, EquipmentSelectItem, AuthUser } from "../types"
 
 /** Form state for creating new repair requests */
 export interface MutationFormState {

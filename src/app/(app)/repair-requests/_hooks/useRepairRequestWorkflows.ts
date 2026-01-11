@@ -1,6 +1,5 @@
 import { callRpc } from "@/lib/rpc-client"
-import type { RepairRequestWithEquipment, RepairUnit } from "../types"
-import type { AuthUser } from "../_components/repair-requests-columns"
+import type { RepairRequestWithEquipment, RepairUnit, AuthUser } from "../types"
 
 /** Workflow dialog state for approval */
 export interface WorkflowApprovalState {

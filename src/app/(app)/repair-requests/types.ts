@@ -34,3 +34,19 @@ export type RepairRequestWithEquipment = {
     facility_id: number | null
   } | null
 }
+
+/**
+ * Authenticated user type from NextAuth session
+ * (matches module augmentation in src/types/next-auth.d.ts)
+ */
+export type AuthUser = {
+  id: string
+  username: string
+  role: string
+  khoa_phong?: string | null
+  don_vi?: string | number | null
+  current_don_vi?: number | null
+  dia_ban_id?: string | number | null
+  dia_ban_ma?: string | null
+  full_name?: string | null
+}

@@ -6,24 +6,12 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
 import { ArrowUpDown, MoreHorizontal, Edit, Trash2 } from "lucide-react"
 import { format, parseISO } from "date-fns"
 import { vi } from 'date-fns/locale'
-import type { RepairRequestWithEquipment } from "../types"
+import type { RepairRequestWithEquipment, AuthUser } from "../types"
 import { calculateDaysRemaining, getStatusVariant } from "../utils"
 import { cn } from "@/lib/utils"
 
-/**
- * Authenticated user type from NextAuth session (matches module augmentation in src/types/next-auth.d.ts)
- */
-export type AuthUser = {
-  id: string
-  username: string
-  role: string
-  khoa_phong?: string | null
-  don_vi?: string | number | null
-  current_don_vi?: number | null
-  dia_ban_id?: string | number | null
-  dia_ban_ma?: string | null
-  full_name?: string | null
-}
+// Re-export for backward compatibility
+export type { AuthUser } from "../types"
 
 /**
  * Options for repair request table columns.
