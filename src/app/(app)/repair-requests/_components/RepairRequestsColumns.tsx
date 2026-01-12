@@ -144,6 +144,9 @@ export function useRepairRequestColumns(options: RepairRequestColumnOptions): Co
         return (
           <div className="space-y-0.5">
             <div className="font-medium text-base text-foreground/90">{request.thiet_bi?.ten_thiet_bi || 'N/A'}</div>
+            {request.thiet_bi?.ma_thiet_bi && (
+              <div className="text-xs text-muted-foreground/70 font-mono">{request.thiet_bi.ma_thiet_bi}</div>
+            )}
             <div className="text-sm text-muted-foreground truncate max-w-[16rem]">{request.mo_ta_su_co}</div>
           </div>
         )
