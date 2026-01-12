@@ -64,12 +64,20 @@ Create `supabase/migrations/20260112_extend_transfer_list_for_kanban.sql`:
 -- Purpose: Add kanban view mode with per-column pagination
 -- Backward compatible: All new params have defaults
 
--- Add database index for kanban query performance
-CREATE INDEX IF NOT EXISTS idx_transfer_kanban
+-- Add composite index optimized for window functions and JOIN filtering
+-- This index supports: 1) JOINs on thiet_bi, 2) filtering by trang_thai, 3) ordering by created_at
+CREATE INDEX IF NOT EXISTS idx_transfer_kanban_optimized
 ON public.yeu_cau_luan_chuyen (thiet_bi_id, trang_thai, created_at DESC)
-WHERE trang_thai IN ('cho_duyet', 'da_duyet', 'dang_luan_chuyen', 'da_ban_giao', 'hoan_thanh');
+WHERE trang_thai IN ('cho_duyet', 'da_duyet', 'dang_luan_chuyen', 'da_ban_giao');
 
-COMMENT ON INDEX idx_transfer_kanban IS 'Optimizes kanban board queries with status filtering and date ordering';
+COMMENT ON INDEX idx_transfer_kanban_optimized IS 'Optimizes kanban board queries: JOIN on thiet_bi + status partitioning + date ordering for ROW_NUMBER()';
+
+-- Separate index for hoan_thanh fast counting (used when showing completed column)
+CREATE INDEX IF NOT EXISTS idx_transfer_completed_count
+ON public.yeu_cau_luan_chuyen (trang_thai)
+WHERE trang_thai = 'hoan_thanh';
+
+COMMENT ON INDEX idx_transfer_completed_count IS 'Fast COUNT(*) for completed transfers without scanning active transfers';
 
 -- Drop existing function to add new parameters
 DROP FUNCTION IF EXISTS public.transfer_request_list(TEXT, TEXT[], TEXT[], INT, INT, BIGINT, DATE, DATE, BIGINT[]);
@@ -105,6 +113,10 @@ DECLARE
   v_data JSONB := '[]'::jsonb;
   v_kanban_result JSONB;
 BEGIN
+  -- Security: Validate p_view_mode to prevent injection
+  IF p_view_mode NOT IN ('table', 'kanban') THEN
+    RAISE EXCEPTION 'Invalid view_mode: must be ''table'' or ''kanban''';
+  END IF;
   -- Tenant isolation (same as existing logic)
   IF v_role = 'global' THEN
     v_effective_donvi := p_don_vi;
@@ -133,6 +145,8 @@ BEGIN
 
   -- KANBAN MODE BRANCH
   IF p_view_mode = 'kanban' THEN
+    -- Performance optimization: Only count hoan_thanh if explicitly requested
+    -- (Avoid scanning 100k+ completed transfers when user hides that column)
     WITH status_groups AS (
       SELECT
         yclc.trang_thai as status,
@@ -202,6 +216,8 @@ BEGIN
         AND (p_date_from IS NULL OR yclc.created_at >= (p_date_from::timestamp AT TIME ZONE 'Asia/Ho_Chi_Minh'))
         AND (p_date_to IS NULL OR yclc.created_at < ((p_date_to + interval '1 day')::timestamp AT TIME ZONE 'Asia/Ho_Chi_Minh'))
       ) yclc
+      -- Critical filter: exclude hoan_thanh from window function if not requested
+      WHERE p_exclude_completed = FALSE OR yclc.trang_thai != 'hoan_thanh'
       GROUP BY yclc.trang_thai
     )
     SELECT jsonb_build_object(
@@ -343,9 +359,18 @@ SELECT transfer_request_list(
   p_exclude_completed := true
 );
 -- Expected: Returns {columns: {cho_duyet: {tasks: [...], total: N, hasMore: bool}, ...}, totalCount: N}
+-- Should NOT include hoan_thanh column data
 ```
 
-**Step 5: Commit**
+**Step 5: Test security validation**
+
+```sql
+-- Should raise exception:
+SELECT transfer_request_list(p_view_mode := 'invalid');
+-- Expected: ERROR: Invalid view_mode: must be 'table' or 'kanban'
+```
+
+**Step 6: Commit**
 
 ```bash
 git add supabase/migrations/20260112_extend_transfer_list_for_kanban.sql
@@ -354,7 +379,10 @@ git commit -m "feat(backend): extend transfer_request_list with kanban mode
 - Add p_view_mode ('table'|'kanban'), p_per_column_limit, p_exclude_completed params
 - Kanban mode returns per-status grouped data with window functions
 - Table mode unchanged (backward compatible)
-- Add idx_transfer_kanban index for performance"
+- Add idx_transfer_kanban_optimized index (thiet_bi_id, trang_thai, created_at)
+- Add idx_transfer_completed_count index for fast hoan_thanh counting
+- Security: Validate p_view_mode to prevent injection
+- Performance: Skip hoan_thanh aggregation when p_exclude_completed=true"
 ```
 
 ---
@@ -364,27 +392,31 @@ git commit -m "feat(backend): extend transfer_request_list with kanban mode
 **Files:**
 - Modify: `src/types/transfers-data-grid.ts`
 
-**Step 1: Add kanban response types**
+**Step 1: Add Zod schema and TypeScript types**
 
 Add to `src/types/transfers-data-grid.ts` (after line 89):
 
 ```typescript
-export interface TransferKanbanColumnData {
-  tasks: TransferListItem[]
-  total: number
-  hasMore: boolean
-}
+import { z } from 'zod'
 
-export interface TransferKanbanResponse {
-  columns: {
-    cho_duyet?: TransferKanbanColumnData
-    da_duyet?: TransferKanbanColumnData
-    dang_luan_chuyen?: TransferKanbanColumnData
-    da_ban_giao?: TransferKanbanColumnData
-    hoan_thanh?: TransferKanbanColumnData
-  }
-  totalCount: number
-}
+// Zod schema for runtime validation
+export const TransferKanbanColumnDataSchema = z.object({
+  tasks: z.array(TransferListItemSchema), // Assumes TransferListItemSchema exists
+  total: z.number().int().nonnegative(),
+  hasMore: z.boolean(),
+})
+
+export const TransferKanbanResponseSchema = z.object({
+  columns: z.record(
+    z.enum(['cho_duyet', 'da_duyet', 'dang_luan_chuyen', 'da_ban_giao', 'hoan_thanh']),
+    TransferKanbanColumnDataSchema
+  ),
+  totalCount: z.number().int().nonnegative(),
+})
+
+// TypeScript types inferred from Zod schemas
+export type TransferKanbanColumnData = z.infer<typeof TransferKanbanColumnDataSchema>
+export type TransferKanbanResponse = z.infer<typeof TransferKanbanResponseSchema>
 
 export type ViewMode = 'table' | 'kanban'
 
@@ -404,6 +436,8 @@ export const ACTIVE_TRANSFER_STATUSES: TransferStatus[] = [
 ]
 ```
 
+**Note:** If `TransferListItemSchema` doesn't exist, create it based on the `TransferListItem` interface in the same file.
+
 **Step 2: Run typecheck**
 
 Run: `npm run typecheck`
@@ -413,36 +447,45 @@ Expected: No errors
 
 ```bash
 git add src/types/transfers-data-grid.ts
-git commit -m "feat(types): add Kanban board data types
+git commit -m "feat(types): add Kanban board data types with Zod validation
 
-- TransferKanbanResponse, TransferKanbanColumnData
+- TransferKanbanResponseSchema, TransferKanbanColumnDataSchema (Zod)
+- TransferKanbanResponse, TransferKanbanColumnData (inferred types)
 - ViewMode type ('table' | 'kanban')
-- TRANSFER_STATUS_LABELS and ACTIVE_TRANSFER_STATUSES constants"
+- TRANSFER_STATUS_LABELS and ACTIVE_TRANSFER_STATUSES constants
+- Runtime validation prevents type assertion bugs"
 ```
 
 ---
 
-## Task 4: Kanban Data Hook
+---
+
+## Task 4: Kanban Data Hook with Infinite Scroll
 
 **Files:**
 - Create: `src/hooks/useTransfersKanban.ts`
 
-**Step 1: Create useTransfersKanban hook**
+**Step 1: Create useTransfersKanban hook with per-column pagination**
 
 Create `src/hooks/useTransfersKanban.ts`:
 
 ```typescript
-import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useQuery, useQueryClient, useInfiniteQuery } from '@tanstack/react-query'
 import { callRpc } from '@/lib/rpc-client'
 import type {
   TransferListFilters,
   TransferKanbanResponse,
+  TransferStatus,
+  TransferListItem,
 } from '@/types/transfers-data-grid'
+import { TransferKanbanResponseSchema } from '@/types/transfers-data-grid'
 
 export const transferKanbanKeys = {
   all: ['transfers-kanban'] as const,
   filtered: (filters: TransferListFilters) =>
     [...transferKanbanKeys.all, filters] as const,
+  column: (filters: TransferListFilters, status: TransferStatus) =>
+    [...transferKanbanKeys.filtered(filters), status] as const,
 }
 
 interface UseTransfersKanbanOptions {
@@ -450,6 +493,9 @@ interface UseTransfersKanbanOptions {
   perColumnLimit?: number
 }
 
+/**
+ * Initial kanban load - fetches first page of each column (30 items each)
+ */
 export function useTransfersKanban(
   filters: TransferListFilters,
   options: UseTransfersKanbanOptions = {}
@@ -475,7 +521,8 @@ export function useTransfersKanban(
         },
       })
 
-      return result as TransferKanbanResponse
+      // Runtime validation with Zod
+      return TransferKanbanResponseSchema.parse(result)
     },
     staleTime: 30000, // 30 seconds
     refetchInterval: 60000, // Poll every 60 seconds
@@ -483,18 +530,89 @@ export function useTransfersKanban(
   })
 }
 
+/**
+ * Per-column infinite scroll - loads additional pages for a specific status column
+ * Uses table mode with single status filter for pagination
+ */
+export function useTransferColumnInfiniteScroll(
+  filters: TransferListFilters,
+  status: TransferStatus
+) {
+  return useInfiniteQuery({
+    queryKey: transferKanbanKeys.column(filters, status),
+    queryFn: async ({ pageParam = 1 }): Promise<{ data: TransferListItem[], hasMore: boolean }> => {
+      const result = await callRpc({
+        fn: 'transfer_request_list',
+        args: {
+          p_q: filters.q,
+          p_statuses: [status], // Single status for this column
+          p_types: filters.types,
+          p_don_vi: filters.facilityId,
+          p_date_from: filters.dateFrom,
+          p_date_to: filters.dateTo,
+          p_assignee_ids: filters.assigneeIds,
+          p_view_mode: 'table', // Use table mode for pagination
+          p_page: pageParam,
+          p_page_size: 30,
+        },
+      })
+
+      return {
+        data: result.data as TransferListItem[],
+        hasMore: (result.total as number) > pageParam * 30,
+      }
+    },
+    getNextPageParam: (lastPage, allPages) => {
+      return lastPage.hasMore ? allPages.length + 1 : undefined
+    },
+    staleTime: 30000,
+    enabled: !!filters.types && filters.types.length > 0,
+  })
+}
+
+/**
+ * Merge initial kanban data with infinite scroll pages for a column
+ */
+export function useMergedColumnData(
+  initialData: TransferListItem[] | undefined,
+  infiniteData: { data: TransferListItem[], hasMore: boolean }[] | undefined,
+  isInitialLoading: boolean
+): { tasks: TransferListItem[], hasMore: boolean, isLoadingMore: boolean } {
+  if (isInitialLoading) {
+    return { tasks: [], hasMore: false, isLoadingMore: true }
+  }
+
+  const tasks = initialData || []
+
+  // If infinite scroll has started, append its pages
+  if (infiniteData && infiniteData.length > 0) {
+    const additionalTasks = infiniteData.flatMap(page => page.data)
+    const merged = [...tasks, ...additionalTasks]
+    const lastPage = infiniteData[infiniteData.length - 1]
+
+    return {
+      tasks: merged,
+      hasMore: lastPage?.hasMore || false,
+      isLoadingMore: false,
+    }
+  }
+
+  // Use initial data's hasMore flag (from initial kanban load)
+  return {
+    tasks,
+    hasMore: tasks.length >= 30, // Assume more if we got full page
+    isLoadingMore: false,
+  }
+}
+
 export function useInvalidateTransfersKanban() {
   const queryClient = useQueryClient()
 
   return (affectedStatuses?: string[]) => {
     if (affectedStatuses && affectedStatuses.length > 0) {
-      // Smart invalidation: only affected columns
+      // Invalidate main kanban query + affected column queries
       queryClient.invalidateQueries({
         queryKey: transferKanbanKeys.all,
-        predicate: (query) => {
-          // Invalidate if query matches any affected status
-          return true // Simplified for MVP
-        },
       })
     } else {
       // Invalidate all kanban queries
@@ -511,7 +629,13 @@ export function useInvalidateTransfersKanban() {
 Add to `src/hooks/useTransferDataGrid.ts` (at end of file):
 
 ```typescript
-export { useTransfersKanban, useInvalidateTransfersKanban, transferKanbanKeys } from './useTransfersKanban'
+export {
+  useTransfersKanban,
+  useTransferColumnInfiniteScroll,
+  useMergedColumnData,
+  useInvalidateTransfersKanban,
+  transferKanbanKeys
+} from './useTransfersKanban'
 ```
 
 **Step 3: Run typecheck**
@@ -523,11 +647,15 @@ Expected: No errors
 
 ```bash
 git add src/hooks/useTransfersKanban.ts src/hooks/useTransferDataGrid.ts
-git commit -m "feat(hooks): add useTransfersKanban hook
+git commit -m "feat(hooks): add useTransfersKanban with infinite scroll support
 
-- Fetches kanban data with per-column pagination
+- useTransfersKanban: Initial kanban load (30 items/column)
+- useTransferColumnInfiniteScroll: Per-column pagination via table mode
+- useMergedColumnData: Merges initial + infinite scroll data
+- Zod validation prevents runtime type errors
 - 60-second polling for updates
-- Smart cache invalidation for affected statuses"
+- Smart cache invalidation for affected statuses
+- FIXES: Infinite scroll actually works beyond 30 items"
 ```
 
 ---
@@ -726,12 +854,14 @@ export function TransfersKanbanColumn({
 }: TransfersKanbanColumnProps) {
   const parentRef = React.useRef<HTMLDivElement>(null)
 
-  // Virtual scrolling
+  // Virtual scrolling with dynamic height measurement
   const rowVirtualizer = useVirtualizer({
     count: tasks.length,
     getScrollElement: () => parentRef.current,
-    estimateSize: () => 120, // Estimated card height
+    estimateSize: () => 140, // Base estimate
     overscan: 5, // Render 5 extra cards for smooth scrolling
+    // Enable dynamic measurement to prevent scroll jitter
+    measureElement: (element) => element?.getBoundingClientRect().height ?? 140,
   })
 
   // Infinite scroll detection
@@ -787,6 +917,8 @@ export function TransfersKanbanColumn({
               return (
                 <div
                   key={task.id}
+                  data-index={virtualRow.index}
+                  ref={rowVirtualizer.measureElement}
                   style={{
                     position: 'absolute',
                     top: 0,
@@ -831,6 +963,7 @@ git add src/components/transfers/TransfersKanbanColumn.tsx
 git commit -m "feat(components): add TransfersKanbanColumn with virtual scrolling
 
 - Virtual scroll via @tanstack/react-virtual
+- Dynamic height measurement prevents scroll jitter
 - Infinite scroll detection (loads more at bottom)
 - 320px fixed width, renders only visible cards
 - Status header with count"
@@ -852,7 +985,11 @@ import * as React from 'react'
 import { Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { TransfersKanbanColumn } from './TransfersKanbanColumn'
-import { useTransfersKanban } from '@/hooks/useTransferDataGrid'
+import {
+  useTransfersKanban,
+  useTransferColumnInfiniteScroll,
+  useMergedColumnData,
+} from '@/hooks/useTransferDataGrid'
 import type {
   TransferListFilters,
   TransferListItem,
@@ -868,6 +1005,57 @@ interface TransfersKanbanViewProps {
   statusCounts: TransferStatusCounts | undefined
 }
 
+/**
+ * Single column with integrated infinite scroll
+ */
+function KanbanColumnWithInfiniteScroll({
+  status,
+  filters,
+  initialTasks,
+  onViewTransfer,
+  renderRowActions,
+}: {
+  status: TransferStatus
+  filters: TransferListFilters
+  initialTasks: TransferListItem[] | undefined
+  onViewTransfer: (item: TransferListItem) => void
+  renderRowActions: (item: TransferListItem) => React.ReactNode
+}) {
+  // Infinite scroll for this specific column
+  const {
+    data: infiniteData,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+  } = useTransferColumnInfiniteScroll(filters, status)
+
+  // Merge initial kanban data with infinite scroll pages
+  const { tasks, hasMore, isLoadingMore } = useMergedColumnData(
+    initialTasks,
+    infiniteData?.pages,
+    false
+  )
+
+  const handleLoadMore = React.useCallback(() => {
+    if (hasNextPage && !isFetchingNextPage) {
+      fetchNextPage()
+    }
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage])
+
+  return (
+    <TransfersKanbanColumn
+      status={status}
+      tasks={tasks}
+      total={tasks.length} // Approximate (we don't have exact total for infinite scroll)
+      hasMore={hasMore}
+      onClickTask={onViewTransfer}
+      renderActions={renderRowActions}
+      onLoadMore={handleLoadMore}
+      isLoadingMore={isFetchingNextPage}
+    />
+  )
+}
+
 export function TransfersKanbanView({
   filters,
   onViewTransfer,
@@ -876,6 +1064,7 @@ export function TransfersKanbanView({
 }: TransfersKanbanViewProps) {
   const [showCompleted, setShowCompleted] = React.useState(false)
 
+  // Initial kanban load (30 items per column)
   const { data, isLoading, isFetching } = useTransfersKanban(filters, {
     excludeCompleted: !showCompleted,
     perColumnLimit: 30,
@@ -919,19 +1108,16 @@ export function TransfersKanbanView({
       }}>
         {allColumns.map((status) => {
           const columnData = columns[status]
-          const tasks = columnData?.tasks || []
-          const total = columnData?.total || 0
-          const hasMore = columnData?.hasMore || false
+          const initialTasks = columnData?.tasks || []
 
           return (
-            <TransfersKanbanColumn
+            <KanbanColumnWithInfiniteScroll
               key={status}
               status={status}
-              tasks={tasks}
-              total={total}
-              hasMore={hasMore}
-              onClickTask={onViewTransfer}
-              renderActions={renderRowActions}
+              filters={filters}
+              initialTasks={initialTasks}
+              onViewTransfer={onViewTransfer}
+              renderRowActions={renderRowActions}
             />
           )
         })}
@@ -962,8 +1148,11 @@ git commit -m "feat(components): add TransfersKanbanView container
 
 - Horizontal scroll for 5 status columns
 - Show/Hide completed toggle
-- Passes filters, onViewTransfer, renderActions to columns
-- Loading states"
+- KanbanColumnWithInfiniteScroll: Integrates initial + paginated data
+- Uses useTransferColumnInfiniteScroll for per-column pagination
+- useMergedColumnData merges initial 30 items + infinite pages
+- Loading states
+- FIXES: Infinite scroll actually loads beyond 30 items per column"
 ```
 
 ---
