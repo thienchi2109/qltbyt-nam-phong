@@ -40,19 +40,19 @@ export function TransfersKanbanColumn({
 
   // Infinite scroll detection
   const virtualItems = rowVirtualizer.getVirtualItems()
-  const lastItem = virtualItems[virtualItems.length - 1]
+  const lastItemIndex = virtualItems[virtualItems.length - 1]?.index
 
   React.useEffect(() => {
     if (
-      lastItem &&
-      lastItem.index >= tasks.length - 3 &&
+      lastItemIndex !== undefined &&
+      lastItemIndex >= tasks.length - 3 &&
       hasMore &&
       onLoadMore &&
       !isLoadingMore
     ) {
       onLoadMore()
     }
-  }, [lastItem, tasks.length, hasMore, onLoadMore, isLoadingMore])
+  }, [lastItemIndex, tasks.length, hasMore, onLoadMore, isLoadingMore])
 
   return (
     <div className="flex flex-col w-80 min-w-[320px] bg-sidebar rounded-lg border shrink-0">

@@ -132,7 +132,7 @@ function TransfersPageContent({ user }: TransfersPageContentProps) {
       facilities: facilityOptionsData || [],
     })
 
-  const [viewMode, setViewMode] = useTransfersViewMode()
+  const [viewMode] = useTransfersViewMode()
 
   // Get user role from session context
   const userRole = user?.role as 'global' | 'regional_leader' | 'to_qltb' | 'technician' | 'user' | undefined

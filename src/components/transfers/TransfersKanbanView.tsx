@@ -35,12 +35,14 @@ function KanbanColumnWithInfiniteScroll({
   status,
   filters,
   initialTasks,
+  initialTotal,
   onViewTransfer,
   renderRowActions,
 }: {
   status: TransferStatus
   filters: TransferListFilters
   initialTasks: TransferListItem[] | undefined
+  initialTotal: number
   onViewTransfer: (item: TransferListItem) => void
   renderRowActions: (item: TransferListItem) => React.ReactNode
 }) {
@@ -76,7 +78,7 @@ function KanbanColumnWithInfiniteScroll({
     <TransfersKanbanColumn
       status={status}
       tasks={tasks}
-      total={tasks.length} // Approximate (we don't have exact total for infinite scroll)
+      total={initialTotal}
       hasMore={hasMore}
       onClickTask={onViewTransfer}
       renderActions={renderRowActions}
@@ -167,6 +169,7 @@ export function TransfersKanbanView({
           // Provide defaults to ensure all columns render correctly
           const columnData = columns[status] ?? { tasks: [], total: 0, hasMore: false }
           const initialTasks = columnData.tasks || []
+          const initialTotal = columnData.total || 0
 
           return (
             <KanbanColumnWithInfiniteScroll
@@ -174,6 +177,7 @@ export function TransfersKanbanView({
               status={status}
               filters={filters}
               initialTasks={initialTasks}
+              initialTotal={initialTotal}
               onViewTransfer={onViewTransfer}
               renderRowActions={renderRowActions}
             />

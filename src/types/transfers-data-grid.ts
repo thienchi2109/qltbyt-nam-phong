@@ -92,6 +92,14 @@ export interface TransferCountsResponse {
 // Zod schema for runtime validation
 export const TransferListItemSchema = z.custom<TransferListItem>()
 
+// Zod schema for table mode response validation (infinite scroll uses table mode)
+export const TransferTableModeResponseSchema = z.object({
+  data: z.array(TransferListItemSchema),
+  total: z.number().int().nonnegative(),
+  page: z.number().int().positive(),
+  pageSize: z.number().int().positive(),
+})
+
 export const TransferKanbanColumnDataSchema = z.object({
   tasks: z.array(TransferListItemSchema),
   total: z.number().int().nonnegative(),

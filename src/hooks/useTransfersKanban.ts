@@ -6,7 +6,7 @@ import type {
   TransferStatus,
   TransferListItem,
 } from '@/types/transfers-data-grid'
-import { TransferKanbanResponseSchema } from '@/types/transfers-data-grid'
+import { TransferKanbanResponseSchema, TransferTableModeResponseSchema } from '@/types/transfers-data-grid'
 
 export const transferKanbanKeys = {
   all: ['transfers-kanban'] as const,
@@ -108,11 +108,14 @@ export function useTransferColumnInfiniteScroll(
           p_page: pageParam,
           p_page_size: 30,
         },
-      }) as { data: TransferListItem[]; total: number }
+      })
+
+      // Runtime validation with Zod
+      const validated = TransferTableModeResponseSchema.parse(result)
 
       return {
-        data: result.data,
-        hasMore: result.total > pageParam * 30,
+        data: validated.data,
+        hasMore: validated.total > pageParam * 30,
       }
     },
     // TanStack Query v5: initialPageParam is required
