@@ -268,6 +268,8 @@ export function RepairRequestsProvider({ children }: RepairRequestsProviderProps
     queryClient.invalidateQueries({ queryKey: ['repair_request_list'] })
     queryClient.invalidateQueries({ queryKey: ['repair_request_facilities'] })
     queryClient.invalidateQueries({ queryKey: ['repair_request_status_counts'] })
+    // Invalidate dashboard stats so Equipment tab updates immediately
+    queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] })
   }, [queryClient])
 
   // Mutations
