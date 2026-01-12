@@ -67,21 +67,15 @@ Create `supabase/migrations/20260112_extend_transfer_list_for_kanban.sql`:
 -- Strategy: Use LATERAL JOIN for "Top N per Group" (O(Groups * Limit) vs ROW_NUMBER O(N log N))
 -- This avoids sorting ALL 10k+ rows just to get 30 items per status
 
--- Index 1: Optimize LATERAL JOIN subqueries (partition by status, order by date)
-CREATE INDEX IF NOT EXISTS idx_transfer_kanban_by_status
-ON public.yeu_cau_luan_chuyen (trang_thai, created_at DESC)
-WHERE trang_thai IN ('cho_duyet', 'da_duyet', 'dang_luan_chuyen', 'da_ban_giao');
+-- NOTE: Existing indexes are sufficient for kanban queries:
+--   - idx_transfers_kanban_facility_status_date (trang_thai, created_at DESC, id DESC)
+--   - idx_yclc_thiet_bi_id (thiet_bi_id)
+-- REMOVED per backend architect + Gemini review (2026-01-12):
+--   - idx_transfer_kanban_by_status (redundant - covered by existing index)
+--   - idx_transfer_thiet_bi_lookup (redundant - covered by idx_yclc_thiet_bi_id)
 
-COMMENT ON INDEX idx_transfer_kanban_by_status IS 'Optimizes LATERAL JOIN Top-N-per-Group queries: partition by status + date ordering';
-
--- Index 2: Optimize JOIN to thiet_bi table
-CREATE INDEX IF NOT EXISTS idx_transfer_thiet_bi_lookup
-ON public.yeu_cau_luan_chuyen (thiet_bi_id)
-INCLUDE (trang_thai, created_at);
-
-COMMENT ON INDEX idx_transfer_thiet_bi_lookup IS 'Optimizes JOIN to thiet_bi table with covering index for status filtering';
-
--- Index 3: Fast counting for hoan_thanh column (when shown)
+-- Index: Fast counting for hoan_thanh column (when shown)
+-- Partial index only scans completed transfers, useful when hoan_thanh grows large
 CREATE INDEX IF NOT EXISTS idx_transfer_completed_count
 ON public.yeu_cau_luan_chuyen (trang_thai)
 WHERE trang_thai = 'hoan_thanh';
@@ -126,6 +120,10 @@ BEGIN
   IF p_view_mode NOT IN ('table', 'kanban') THEN
     RAISE EXCEPTION 'Invalid view_mode: must be ''table'' or ''kanban''';
   END IF;
+
+  -- Security: Cap p_per_column_limit to prevent abuse (1-100 range)
+  p_per_column_limit := LEAST(GREATEST(COALESCE(p_per_column_limit, 30), 1), 100);
+
   -- Tenant isolation (same as existing logic)
   IF v_role = 'global' THEN
     v_effective_donvi := p_don_vi;
@@ -408,24 +406,41 @@ SELECT transfer_request_list(p_view_mode := 'invalid');
 git add supabase/migrations/20260112_extend_transfer_list_for_kanban.sql
 git commit -m "feat(backend): extend transfer_request_list with optimized kanban mode
 
-PERFORMANCE OPTIMIZATIONS (Gemini recommendations):
+PERFORMANCE OPTIMIZATIONS (Backend Architect + Gemini review):
 - LATERAL JOIN instead of ROW_NUMBER() window function (O(Groups*Limit) vs O(N log N))
-- 3 specialized indexes instead of 1 composite:
-  - idx_transfer_kanban_by_status: (trang_thai, created_at DESC) for LATERAL subqueries
-  - idx_transfer_thiet_bi_lookup: (thiet_bi_id) INCLUDE (trang_thai, created_at) for JOINs
-  - idx_transfer_completed_count: (trang_thai) WHERE hoan_thanh for fast counting
-- Conditional status array based on p_exclude_completed (avoids hoan_thanh scan)
+- Leverages existing indexes (no new redundant indexes):
+  - idx_transfers_kanban_facility_status_date for LATERAL subqueries
+  - idx_yclc_thiet_bi_id for JOINs
+- Added idx_transfer_completed_count partial index for fast hoan_thanh counting
+
+SECURITY:
+- Validate p_view_mode to prevent injection
+- Cap p_per_column_limit (1-100) to prevent abuse
+- Tenant isolation via allowed_don_vi_for_session()
 
 FEATURES:
 - Add p_view_mode ('table'|'kanban'), p_per_column_limit, p_exclude_completed params
 - Kanban mode returns per-status grouped data via LATERAL JOIN
 - Table mode unchanged (backward compatible)
 
-SECURITY:
-- Validate p_view_mode to prevent injection
-- Tenant isolation via allowed_don_vi_for_session()
+Expected query time: <100ms for 10k transfers"
+```
 
-Expected query time: <100ms for 10k transfers (vs 500ms+ with window functions)"
+**Step 7: Verify ALLOWED_FUNCTIONS whitelist**
+
+Before proceeding, verify `transfer_request_list` is whitelisted:
+
+```bash
+grep -n "transfer_request_list" src/app/api/rpc/[fn]/route.ts
+```
+
+Expected: Function should appear in `ALLOWED_FUNCTIONS` array. If not present, add it:
+
+```typescript
+const ALLOWED_FUNCTIONS = [
+  // ... existing functions ...
+  'transfer_request_list',
+]
 ```
 
 ---
@@ -534,16 +549,31 @@ export const transferKanbanKeys = {
 interface UseTransfersKanbanOptions {
   excludeCompleted?: boolean
   perColumnLimit?: number
+  /**
+   * For global/regional users who can access multiple tenants:
+   * Require explicit tenant selection before fetching data.
+   * This prevents loading huge datasets across all tenants.
+   */
+  userRole?: 'global' | 'regional_leader' | 'to_qltb' | 'technician' | 'user'
 }
 
 /**
  * Initial kanban load - fetches first page of each column (30 items each)
+ *
+ * IMPORTANT: For global/regional_leader users, data is NOT fetched until
+ * a specific tenant (facilityId) is selected. This prevents performance issues
+ * when user has access to 100+ tenants with 10k+ transfers each.
  */
 export function useTransfersKanban(
   filters: TransferListFilters,
   options: UseTransfersKanbanOptions = {}
 ) {
-  const { excludeCompleted = true, perColumnLimit = 30 } = options
+  const { excludeCompleted = true, perColumnLimit = 30, userRole } = options
+
+  // Multi-tenant users must select a specific tenant before fetching
+  const isMultiTenantUser = userRole === 'global' || userRole === 'regional_leader'
+  const hasTenantSelected = !!filters.facilityId
+  const shouldFetch = isMultiTenantUser ? hasTenantSelected : true
 
   return useQuery({
     queryKey: transferKanbanKeys.filtered(filters),
@@ -569,7 +599,8 @@ export function useTransfersKanban(
     },
     staleTime: 30000, // 30 seconds
     refetchInterval: 60000, // Poll every 60 seconds
-    enabled: !!filters.types && filters.types.length > 0,
+    // Require types AND (single-tenant user OR multi-tenant user with facility selected)
+    enabled: !!filters.types && filters.types.length > 0 && shouldFetch,
   })
 }
 
@@ -612,6 +643,8 @@ export function useTransferColumnInfiniteScroll(
         hasMore: (result.total as number) > pageParam * 30,
       }
     },
+    // TanStack Query v5: initialPageParam is required (no longer uses queryFn default)
+    initialPageParam: 2, // Start at page 2 - page 1 data comes from initial kanban load
     getNextPageParam: (lastPage, allPages) => {
       // Pages start at 2 (page 1 is from initial kanban load)
       return lastPage.hasMore ? allPages.length + 2 : undefined
@@ -1051,12 +1084,18 @@ import type {
   TransferStatus,
 } from '@/types/transfers-data-grid'
 import { ACTIVE_TRANSFER_STATUSES } from '@/types/transfers-data-grid'
+import { Building2 } from 'lucide-react'
 
 interface TransfersKanbanViewProps {
   filters: TransferListFilters
   onViewTransfer: (item: TransferListItem) => void
   renderRowActions: (item: TransferListItem) => React.ReactNode
   statusCounts: TransferStatusCounts | undefined
+  /**
+   * User role - determines if tenant selection is required before loading.
+   * Global and regional_leader users must select a facility first.
+   */
+  userRole?: 'global' | 'regional_leader' | 'to_qltb' | 'technician' | 'user'
 }
 
 /**
@@ -1122,13 +1161,21 @@ export function TransfersKanbanView({
   onViewTransfer,
   renderRowActions,
   statusCounts,
+  userRole,
 }: TransfersKanbanViewProps) {
   const [showCompleted, setShowCompleted] = React.useState(false)
 
+  // Check if multi-tenant user needs to select a facility first
+  const isMultiTenantUser = userRole === 'global' || userRole === 'regional_leader'
+  const hasTenantSelected = !!filters.facilityId
+  const requiresTenantSelection = isMultiTenantUser && !hasTenantSelected
+
   // Initial kanban load (30 items per column)
+  // For multi-tenant users, this won't fetch until facilityId is set
   const { data, isLoading, isFetching } = useTransfersKanban(filters, {
     excludeCompleted: !showCompleted,
     perColumnLimit: 30,
+    userRole,
   })
 
   const columns = data?.columns || {}
@@ -1138,6 +1185,24 @@ export function TransfersKanbanView({
   const allColumns = showCompleted
     ? ([...activeColumns, 'hoan_thanh'] as TransferStatus[])
     : activeColumns
+
+  // Multi-tenant users must select a facility before viewing Kanban
+  if (requiresTenantSelection) {
+    return (
+      <div className="flex min-h-[400px] items-center justify-center">
+        <div className="flex flex-col items-center gap-4 text-center max-w-md">
+          <Building2 className="h-12 w-12 text-muted-foreground" />
+          <div className="space-y-2">
+            <h3 className="font-medium text-lg">Chọn cơ sở y tế</h3>
+            <p className="text-sm text-muted-foreground">
+              Vui lòng chọn một cơ sở y tế từ bộ lọc phía trên để xem bảng Kanban.
+              Điều này giúp tránh tải dữ liệu lớn từ nhiều cơ sở cùng lúc.
+            </p>
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   if (isLoading) {
     return (
@@ -1168,8 +1233,10 @@ export function TransfersKanbanView({
         WebkitOverflowScrolling: 'touch'
       }}>
         {allColumns.map((status) => {
-          const columnData = columns[status]
-          const initialTasks = columnData?.tasks || []
+          // Handle empty columns: Backend may omit statuses with 0 items
+          // Provide defaults to ensure all columns render correctly
+          const columnData = columns[status] ?? { tasks: [], total: 0, hasMore: false }
+          const initialTasks = columnData.tasks || []
 
           return (
             <KanbanColumnWithInfiniteScroll
@@ -1490,12 +1557,20 @@ import { TransfersKanbanView } from '@/components/transfers/TransfersKanbanView'
 import { TransfersViewToggle, useTransfersViewMode } from '@/components/transfers/TransfersViewToggle'
 ```
 
-**Step 2: Add view mode state in TransfersPageContent**
+**Step 2: Add view mode state and tenant check in TransfersPageContent**
 
 After line 132 (`const [activeTab, setActiveTab] = useTransferTypeTab("noi_bo")`), add:
 
 ```typescript
 const [viewMode, setViewMode] = useTransfersViewMode()
+
+// Get user role from session context
+const { data: session } = useSession()
+const userRole = session?.user?.role as 'global' | 'regional_leader' | 'to_qltb' | 'technician' | 'user' | undefined
+
+// Multi-tenant users (global, regional_leader) must select a facility before loading data
+const isMultiTenantUser = userRole === 'global' || userRole === 'regional_leader'
+const requiresTenantSelection = isMultiTenantUser && !selectedFacilityId
 ```
 
 **Step 3: Add view toggle to header**
@@ -1522,13 +1597,27 @@ In the header section (around line 426), add the view toggle button before facil
 Replace the table rendering section (lines 540-591) with:
 
 ```typescript
-{/* Conditional view rendering */}
-{viewMode === 'kanban' ? (
+{/* Tenant selection required for multi-tenant users */}
+{requiresTenantSelection ? (
+  <div className="flex min-h-[400px] items-center justify-center">
+    <div className="flex flex-col items-center gap-4 text-center max-w-md">
+      <Building2 className="h-12 w-12 text-muted-foreground" />
+      <div className="space-y-2">
+        <h3 className="font-medium text-lg">Chọn cơ sở y tế</h3>
+        <p className="text-sm text-muted-foreground">
+          Vui lòng chọn một cơ sở y tế từ bộ lọc phía trên để xem dữ liệu.
+          Điều này giúp tránh tải dữ liệu lớn từ nhiều cơ sở cùng lúc.
+        </p>
+      </div>
+    </div>
+  </div>
+) : viewMode === 'kanban' ? (
   <TransfersKanbanView
     filters={filters}
     onViewTransfer={handleViewDetail}
     renderRowActions={renderRowActions}
     statusCounts={statusCounts?.columnCounts}
+    userRole={userRole}
   />
 ) : (
   <>
@@ -1594,6 +1683,9 @@ Test checklist:
 - [ ] Clicking "Bảng" switches back to table
 - [ ] Filters apply to both views
 - [ ] localStorage persists view preference (check DevTools → Application → Local Storage)
+- [ ] **Global/Regional users**: Shows "Chọn cơ sở y tế" message before selecting facility
+- [ ] **Global/Regional users**: Data loads after selecting a facility
+- [ ] **Single-tenant users (to_qltb, technician, user)**: Data loads immediately without facility selection
 
 **Step 7: Commit**
 
@@ -1604,7 +1696,12 @@ git commit -m "feat(transfers): integrate dual view mode (Table + Kanban)
 - Add view toggle in header
 - Conditional rendering: table vs kanban
 - View preference persisted in localStorage
-- Kanban view functional with 5 status columns"
+- Kanban view functional with 5 status columns
+
+PERFORMANCE:
+- Global/regional users must select facility before loading data
+- Prevents fetching 100k+ transfers across all tenants
+- Single-tenant users load data immediately"
 ```
 
 ---
@@ -1824,17 +1921,34 @@ See `docs/plans/2026-01-12-transfers-kanban-board-design.md` Phase 3 for details
 
 ---
 
-## Gemini Review Summary (2026-01-12)
+## Review Summary (2026-01-12)
 
-**Reviewer**: Gemini 2.5 Pro (backend-architect + database-architect)
+**Reviewers**:
+- Backend Architect Agent (Claude)
+- Gemini CLI (gemini-2.5-pro)
 
-**Critical Issues Fixed**:
-- ✅ Infinite scroll data duplication (page 1 fetched twice)
-- ✅ Window function performance (replaced with LATERAL JOIN)
-- ✅ Suboptimal indexes (3 specialized indexes instead of 1 composite)
+### Critical Fixes Applied:
 
-**Warnings Addressed**:
-- ✅ Pagination drift documented (cursor-based pagination in Phase 2)
+| Issue | Fix |
+|-------|-----|
+| Redundant indexes | Removed `idx_transfer_kanban_by_status` and `idx_transfer_thiet_bi_lookup` - covered by existing indexes |
+| Parameter abuse | Added `p_per_column_limit` cap (1-100) to prevent memory exhaustion |
+| Empty columns | Added nullish coalescing for missing status columns in frontend |
+| ALLOWED_FUNCTIONS | Added verification step for RPC whitelist |
+| **Multi-tenant performance** | **Global/regional users must select facility before data loads** |
+
+### Confirmed Correct:
+
+- ✅ LATERAL JOIN strategy (optimal for Top-N-per-Group)
+- ✅ Security model (JWT claims, tenant isolation)
+- ✅ Virtual scrolling with @tanstack/react-virtual
+- ✅ Zod runtime validation
+- ✅ Backward compatibility (table mode unchanged)
+
+### Accepted Trade-offs:
+
+- ⚠️ Pagination drift with offset-based infinite scroll (cursor-based in Phase 2)
+- ⚠️ Correlated COUNT subqueries (acceptable for MVP, optimize if slow)
 
 **Approved**:
 - ✅ RPC security, virtualization, Zod schemas, component architecture
