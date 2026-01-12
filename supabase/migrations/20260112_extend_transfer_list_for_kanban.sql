@@ -104,7 +104,7 @@ BEGIN
     status_groups AS (
       SELECT
         s.status,
-        jsonb_agg(row_data ORDER BY yclc.created_at DESC) as tasks,
+        jsonb_agg(lateral_data.row_data ORDER BY lateral_data.created_at DESC) as tasks,
         (
           SELECT COUNT(*)
           FROM public.yeu_cau_luan_chuyen yclc_count
@@ -159,15 +159,14 @@ BEGIN
             'ma_thiet_bi', tb.ma_thiet_bi,
             'model', tb.model,
             'serial', tb.serial,
-            'khoa_phong_quan_ly', kp.ten_khoa_phong,
-            'facility_name', dv.ten_don_vi,
+            'khoa_phong_quan_ly', tb.khoa_phong_quan_ly,
+            'facility_name', dv.name,
             'facility_id', dv.id
           )
         ) as row_data, yclc.created_at
         FROM public.yeu_cau_luan_chuyen yclc
         JOIN public.thiet_bi tb ON tb.id = yclc.thiet_bi_id
         LEFT JOIN public.don_vi dv ON dv.id = tb.don_vi
-        LEFT JOIN public.khoa_phong kp ON kp.id = tb.khoa_phong_id
         WHERE yclc.trang_thai = s.status
           AND (
             (v_role = 'global' AND (v_effective_donvi IS NULL OR tb.don_vi = v_effective_donvi)) OR
@@ -257,15 +256,14 @@ BEGIN
         'ma_thiet_bi', tb.ma_thiet_bi,
         'model', tb.model,
         'serial', tb.serial,
-        'khoa_phong_quan_ly', kp.ten_khoa_phong,
-        'facility_name', dv.ten_don_vi,
+        'khoa_phong_quan_ly', tb.khoa_phong_quan_ly,
+        'facility_name', dv.name,
         'facility_id', dv.id
       )
     ) as row_data, yclc.created_at
     FROM public.yeu_cau_luan_chuyen yclc
     JOIN public.thiet_bi tb ON tb.id = yclc.thiet_bi_id
     LEFT JOIN public.don_vi dv ON dv.id = tb.don_vi
-    LEFT JOIN public.khoa_phong kp ON kp.id = tb.khoa_phong_id
     WHERE (
       (v_role = 'global' AND (v_effective_donvi IS NULL OR tb.don_vi = v_effective_donvi)) OR
       (v_role <> 'global' AND ((v_effective_donvi IS NOT NULL AND tb.don_vi = v_effective_donvi) OR (v_effective_donvi IS NULL AND tb.don_vi = ANY(v_allowed))))
