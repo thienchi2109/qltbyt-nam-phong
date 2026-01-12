@@ -79,6 +79,14 @@ WHERE trang_thai = 'hoan_thanh';
 
 COMMENT ON INDEX idx_transfer_completed_count IS 'Fast COUNT(*) for completed transfers without scanning active transfers';
 
+-- Performance Note: If window function becomes slow with 10k+ rows,
+-- consider refactoring to use LATERAL JOIN for "Top N per Group" queries:
+-- SELECT ... FROM unnest(ARRAY['cho_duyet', 'da_duyet', ...]) s
+-- CROSS JOIN LATERAL (
+--   SELECT ... FROM yeu_cau_luan_chuyen WHERE trang_thai = s ... LIMIT 30
+-- )
+-- This is O(Groups * Limit) vs current O(N log N) approach.
+
 -- Drop existing function to add new parameters
 DROP FUNCTION IF EXISTS public.transfer_request_list(TEXT, TEXT[], TEXT[], INT, INT, BIGINT, DATE, DATE, BIGINT[]);
 
@@ -533,14 +541,16 @@ export function useTransfersKanban(
 /**
  * Per-column infinite scroll - loads additional pages for a specific status column
  * Uses table mode with single status filter for pagination
+ * IMPORTANT: Starts at page 2 to avoid duplicating initial kanban data (page 1)
  */
 export function useTransferColumnInfiniteScroll(
   filters: TransferListFilters,
-  status: TransferStatus
+  status: TransferStatus,
+  enabled: boolean = false // Disabled by default, enable when user scrolls near bottom
 ) {
   return useInfiniteQuery({
     queryKey: transferKanbanKeys.column(filters, status),
-    queryFn: async ({ pageParam = 1 }): Promise<{ data: TransferListItem[], hasMore: boolean }> => {
+    queryFn: async ({ pageParam = 2 }): Promise<{ data: TransferListItem[], hasMore: boolean }> => {
       const result = await callRpc({
         fn: 'transfer_request_list',
         args: {
@@ -563,10 +573,11 @@ export function useTransferColumnInfiniteScroll(
       }
     },
     getNextPageParam: (lastPage, allPages) => {
-      return lastPage.hasMore ? allPages.length + 1 : undefined
+      // Pages start at 2 (page 1 is from initial kanban load)
+      return lastPage.hasMore ? allPages.length + 2 : undefined
     },
     staleTime: 30000,
-    enabled: !!filters.types && filters.types.length > 0,
+    enabled: enabled && !!filters.types && filters.types.length > 0,
   })
 }
 
@@ -651,11 +662,14 @@ git commit -m "feat(hooks): add useTransfersKanban with infinite scroll support
 
 - useTransfersKanban: Initial kanban load (30 items/column)
 - useTransferColumnInfiniteScroll: Per-column pagination via table mode
+  - Starts at page 2 to avoid duplicating initial data
+  - Disabled by default, enabled on first scroll trigger
+  - getNextPageParam returns allPages.length + 2
 - useMergedColumnData: Merges initial + infinite scroll data
 - Zod validation prevents runtime type errors
 - 60-second polling for updates
 - Smart cache invalidation for affected statuses
-- FIXES: Infinite scroll actually works beyond 30 items"
+- FIXES: Infinite scroll works beyond 30 items WITHOUT duplication"
 ```
 
 ---
@@ -1021,13 +1035,15 @@ function KanbanColumnWithInfiniteScroll({
   onViewTransfer: (item: TransferListItem) => void
   renderRowActions: (item: TransferListItem) => React.ReactNode
 }) {
-  // Infinite scroll for this specific column
+  const [infiniteScrollEnabled, setInfiniteScrollEnabled] = React.useState(false)
+
+  // Infinite scroll for this specific column (disabled until user scrolls near bottom)
   const {
     data: infiniteData,
     fetchNextPage,
     hasNextPage,
     isFetchingNextPage,
-  } = useTransferColumnInfiniteScroll(filters, status)
+  } = useTransferColumnInfiniteScroll(filters, status, infiniteScrollEnabled)
 
   // Merge initial kanban data with infinite scroll pages
   const { tasks, hasMore, isLoadingMore } = useMergedColumnData(
@@ -1037,10 +1053,15 @@ function KanbanColumnWithInfiniteScroll({
   )
 
   const handleLoadMore = React.useCallback(() => {
+    // Enable infinite scroll on first trigger (loads page 2)
+    if (!infiniteScrollEnabled) {
+      setInfiniteScrollEnabled(true)
+    }
+
     if (hasNextPage && !isFetchingNextPage) {
       fetchNextPage()
     }
-  }, [hasNextPage, isFetchingNextPage, fetchNextPage])
+  }, [infiniteScrollEnabled, hasNextPage, isFetchingNextPage, fetchNextPage])
 
   return (
     <TransfersKanbanColumn
@@ -1144,15 +1165,17 @@ Expected: No errors
 
 ```bash
 git add src/components/transfers/TransfersKanbanView.tsx
-git commit -m "feat(components): add TransfersKanbanView container
+git commit -m "feat(components): add TransfersKanbanView with working infinite scroll
 
 - Horizontal scroll for 5 status columns
 - Show/Hide completed toggle
 - KanbanColumnWithInfiniteScroll: Integrates initial + paginated data
+  - infiniteScrollEnabled state prevents premature fetching
+  - Enables infinite query only when user scrolls near bottom
 - Uses useTransferColumnInfiniteScroll for per-column pagination
 - useMergedColumnData merges initial 30 items + infinite pages
 - Loading states
-- FIXES: Infinite scroll actually loads beyond 30 items per column"
+- FIXES: Infinite scroll loads beyond 30 items WITHOUT duplicating page 1"
 ```
 
 ---
