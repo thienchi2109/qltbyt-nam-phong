@@ -37,8 +37,8 @@ export function FacilityFilter({
             onSelect(value === "all" ? null : Number(value))
           }
         >
-          <SelectTrigger className="w-[200px]">
-            <Building2 className="mr-2 h-4 w-4" />
+          <SelectTrigger className="w-[320px]">
+            <Building2 className="mr-2 h-4 w-4 shrink-0" />
             <SelectValue placeholder="Tất cả cơ sở" />
           </SelectTrigger>
           <SelectContent>
