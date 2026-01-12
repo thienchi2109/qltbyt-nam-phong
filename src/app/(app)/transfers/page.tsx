@@ -19,6 +19,7 @@ import {
   Loader2,
   PlusCircle,
   Search,
+  Building2,
 } from "lucide-react"
 import { useSession } from "next-auth/react"
 import { useRouter } from "next/navigation"
@@ -36,6 +37,9 @@ import { FilterModal } from "@/components/transfers/FilterModal"
 import { FilterChips } from "@/components/transfers/FilterChips"
 import { TransferRowActions } from "@/components/transfers/TransferRowActions"
 import { FacilityFilter } from "@/components/transfers/FacilityFilter"
+import { TransfersTableView } from '@/components/transfers/TransfersTableView'
+import { TransfersKanbanView } from '@/components/transfers/TransfersKanbanView'
+import { TransfersViewToggle, useTransfersViewMode } from '@/components/transfers/TransfersViewToggle'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -127,6 +131,15 @@ function TransfersPageContent({ user }: TransfersPageContentProps) {
       userRole: (user?.role as string) || "user",
       facilities: facilityOptionsData || [],
     })
+
+  const [viewMode, setViewMode] = useTransfersViewMode()
+
+  // Get user role from session context
+  const userRole = user?.role as 'global' | 'regional_leader' | 'to_qltb' | 'technician' | 'user' | undefined
+
+  // Multi-tenant users (global, regional_leader) must select a facility before loading data
+  const isMultiTenantUser = userRole === 'global' || userRole === 'regional_leader'
+  const requiresTenantSelection = isMultiTenantUser && !selectedFacilityId
 
   const [activeTab, setActiveTab] = useTransferTypeTab("noi_bo")
   const { searchTerm, setSearchTerm, debouncedSearch, clearSearch } = useTransferSearch()
@@ -423,6 +436,8 @@ function TransfersPageContent({ user }: TransfersPageContentProps) {
             </CardDescription>
           </div>
           <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-row sm:items-center sm:gap-2">
+            <TransfersViewToggle />
+            
             <FacilityFilter
               facilities={facilityOptionsData || []}
               selectedId={selectedFacilityId}
@@ -512,83 +527,69 @@ function TransfersPageContent({ user }: TransfersPageContentProps) {
                 )}
               </div>
 
-              <div className="space-y-3 lg:hidden">
-                {isListLoading ? (
-                  <div className="flex min-h-[200px] items-center justify-center rounded-lg border border-dashed">
-                    <div className="flex flex-col items-center gap-2 text-sm text-muted-foreground">
-                      <Loader2 className="h-6 w-6 animate-spin" />
-                      Đang tải dữ liệu...
+              {requiresTenantSelection ? (
+                <div className="flex min-h-[400px] items-center justify-center">
+                  <div className="flex flex-col items-center gap-4 text-center max-w-md">
+                    <Building2 className="h-12 w-12 text-muted-foreground" />
+                    <div className="space-y-2">
+                      <h3 className="font-medium text-lg">Chọn cơ sở y tế</h3>
+                      <p className="text-sm text-muted-foreground">
+                        Vui lòng chọn một cơ sở y tế từ bộ lọc phía trên để xem dữ liệu.
+                        Điều này giúp tránh tải dữ liệu lớn từ nhiều cơ sở cùng lúc.
+                      </p>
                     </div>
                   </div>
-                ) : tableData.length > 0 ? (
-                  tableData.map((item) => (
-                    <TransferCard
-                      key={item.id}
-                      transfer={item}
-                      referenceDate={referenceDate}
-                      onClick={() => handleViewDetail(item)}
-                      actions={renderRowActions(item)}
-                    />
-                  ))
-                ) : (
-                  <div className="rounded-lg border border-dashed py-12 text-center text-sm text-muted-foreground">
-                    Không có dữ liệu phù hợp.
-                  </div>
-                )}
-              </div>
-
-              <div className="hidden lg:block">
-                <div className="overflow-hidden rounded-lg border">
-                  <Table>
-                    <TableHeader>
-                      {table.getHeaderGroups().map((headerGroup) => (
-                        <TableRow key={headerGroup.id}>
-                          {headerGroup.headers.map((header) => (
-                            <TableHead key={header.id}>
-                              {header.isPlaceholder
-                                ? null
-                                : flexRender(header.column.columnDef.header, header.getContext())}
-                            </TableHead>
-                          ))}
-                        </TableRow>
-                      ))}
-                    </TableHeader>
-                    <TableBody>
-                      {isListLoading ? (
-                        <TableRow>
-                          <TableCell colSpan={columns.length} className="h-40 text-center">
-                            <Loader2 className="mx-auto h-6 w-6 animate-spin text-muted-foreground" />
-                            <p className="mt-2 text-sm text-muted-foreground">Đang tải dữ liệu...</p>
-                          </TableCell>
-                        </TableRow>
-                      ) : table.getRowModel().rows.length > 0 ? (
-                        table.getRowModel().rows.map((row) => (
-                          <TableRow
-                            key={row.id}
-                            className="cursor-pointer hover:bg-muted/60"
-                            onClick={() => handleViewDetail(row.original)}
-                          >
-                            {row.getVisibleCells().map((cell) => (
-                              <TableCell key={cell.id}>
-                                {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                              </TableCell>
-                            ))}
-                          </TableRow>
-                        ))
-                      ) : (
-                        <TableRow>
-                          <TableCell
-                            colSpan={columns.length}
-                            className="h-40 text-center text-sm text-muted-foreground"
-                          >
-                            Không có dữ liệu phù hợp.
-                          </TableCell>
-                        </TableRow>
-                      )}
-                    </TableBody>
-                  </Table>
                 </div>
-              </div>
+              ) : viewMode === 'kanban' ? (
+                <TransfersKanbanView
+                  filters={filters}
+                  onViewTransfer={handleViewDetail}
+                  renderRowActions={renderRowActions}
+                  statusCounts={statusCounts?.columnCounts}
+                  userRole={userRole}
+                />
+              ) : (
+                <>
+                  <div className="space-y-3 lg:hidden">
+                    {isListLoading ? (
+                      <div className="flex min-h-[200px] items-center justify-center rounded-lg border border-dashed">
+                        <div className="flex flex-col items-center gap-2 text-sm text-muted-foreground">
+                          <Loader2 className="h-6 w-6 animate-spin" />
+                          Đang tải dữ liệu...
+                        </div>
+                      </div>
+                    ) : tableData.length > 0 ? (
+                      tableData.map((item) => (
+                        <TransferCard
+                          key={item.id}
+                          transfer={item}
+                          referenceDate={referenceDate}
+                          onClick={() => handleViewDetail(item)}
+                          actions={renderRowActions(item)}
+                        />
+                      ))
+                    ) : (
+                      <div className="rounded-lg border border-dashed py-12 text-center text-sm text-muted-foreground">
+                        Không có dữ liệu phù hợp.
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="hidden lg:block">
+                    <TransfersTableView
+                      data={tableData}
+                      columns={columns}
+                      sorting={sorting}
+                      onSortingChange={setSorting}
+                      pagination={pagination}
+                      onPaginationChange={setPagination}
+                      pageCount={pageCount}
+                      isLoading={isListLoading}
+                      onRowClick={handleViewDetail}
+                    />
+                  </div>
+                </>
+              )}
 
               {isListFetching && !isListLoading && (
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">

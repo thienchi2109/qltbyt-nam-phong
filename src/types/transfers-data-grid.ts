@@ -1,3 +1,5 @@
+import { z } from 'zod'
+
 export type TransferType = 'noi_bo' | 'ben_ngoai' | 'thanh_ly'
 
 export type TransferStatus =
@@ -86,3 +88,41 @@ export interface TransferCountsResponse {
   totalCount: number
   columnCounts: TransferStatusCounts
 }
+
+// Zod schema for runtime validation
+export const TransferListItemSchema = z.custom<TransferListItem>()
+
+export const TransferKanbanColumnDataSchema = z.object({
+  tasks: z.array(TransferListItemSchema),
+  total: z.number().int().nonnegative(),
+  hasMore: z.boolean(),
+})
+
+export const TransferKanbanResponseSchema = z.object({
+  columns: z.record(
+    z.enum(['cho_duyet', 'da_duyet', 'dang_luan_chuyen', 'da_ban_giao', 'hoan_thanh']),
+    TransferKanbanColumnDataSchema
+  ),
+  totalCount: z.number().int().nonnegative(),
+})
+
+// TypeScript types inferred from Zod schemas
+export type TransferKanbanColumnData = z.infer<typeof TransferKanbanColumnDataSchema>
+export type TransferKanbanResponse = z.infer<typeof TransferKanbanResponseSchema>
+
+export type ViewMode = 'table' | 'kanban'
+
+export const TRANSFER_STATUS_LABELS: Record<TransferStatus, string> = {
+  cho_duyet: 'Chờ duyệt',
+  da_duyet: 'Đã duyệt',
+  dang_luan_chuyen: 'Đang luân chuyển',
+  da_ban_giao: 'Đã bàn giao',
+  hoan_thanh: 'Hoàn thành',
+}
+
+export const ACTIVE_TRANSFER_STATUSES: TransferStatus[] = [
+  'cho_duyet',
+  'da_duyet',
+  'dang_luan_chuyen',
+  'da_ban_giao',
+]
