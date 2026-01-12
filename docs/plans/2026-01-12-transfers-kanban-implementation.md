@@ -64,28 +64,29 @@ Create `supabase/migrations/20260112_extend_transfer_list_for_kanban.sql`:
 -- Purpose: Add kanban view mode with per-column pagination
 -- Backward compatible: All new params have defaults
 
--- Add composite index optimized for window functions and JOIN filtering
--- This index supports: 1) JOINs on thiet_bi, 2) filtering by trang_thai, 3) ordering by created_at
-CREATE INDEX IF NOT EXISTS idx_transfer_kanban_optimized
-ON public.yeu_cau_luan_chuyen (thiet_bi_id, trang_thai, created_at DESC)
+-- Strategy: Use LATERAL JOIN for "Top N per Group" (O(Groups * Limit) vs ROW_NUMBER O(N log N))
+-- This avoids sorting ALL 10k+ rows just to get 30 items per status
+
+-- Index 1: Optimize LATERAL JOIN subqueries (partition by status, order by date)
+CREATE INDEX IF NOT EXISTS idx_transfer_kanban_by_status
+ON public.yeu_cau_luan_chuyen (trang_thai, created_at DESC)
 WHERE trang_thai IN ('cho_duyet', 'da_duyet', 'dang_luan_chuyen', 'da_ban_giao');
 
-COMMENT ON INDEX idx_transfer_kanban_optimized IS 'Optimizes kanban board queries: JOIN on thiet_bi + status partitioning + date ordering for ROW_NUMBER()';
+COMMENT ON INDEX idx_transfer_kanban_by_status IS 'Optimizes LATERAL JOIN Top-N-per-Group queries: partition by status + date ordering';
 
--- Separate index for hoan_thanh fast counting (used when showing completed column)
+-- Index 2: Optimize JOIN to thiet_bi table
+CREATE INDEX IF NOT EXISTS idx_transfer_thiet_bi_lookup
+ON public.yeu_cau_luan_chuyen (thiet_bi_id)
+INCLUDE (trang_thai, created_at);
+
+COMMENT ON INDEX idx_transfer_thiet_bi_lookup IS 'Optimizes JOIN to thiet_bi table with covering index for status filtering';
+
+-- Index 3: Fast counting for hoan_thanh column (when shown)
 CREATE INDEX IF NOT EXISTS idx_transfer_completed_count
 ON public.yeu_cau_luan_chuyen (trang_thai)
 WHERE trang_thai = 'hoan_thanh';
 
 COMMENT ON INDEX idx_transfer_completed_count IS 'Fast COUNT(*) for completed transfers without scanning active transfers';
-
--- Performance Note: If window function becomes slow with 10k+ rows,
--- consider refactoring to use LATERAL JOIN for "Top N per Group" queries:
--- SELECT ... FROM unnest(ARRAY['cho_duyet', 'da_duyet', ...]) s
--- CROSS JOIN LATERAL (
---   SELECT ... FROM yeu_cau_luan_chuyen WHERE trang_thai = s ... LIMIT 30
--- )
--- This is O(Groups * Limit) vs current O(N log N) approach.
 
 -- Drop existing function to add new parameters
 DROP FUNCTION IF EXISTS public.transfer_request_list(TEXT, TEXT[], TEXT[], INT, INT, BIGINT, DATE, DATE, BIGINT[]);
@@ -153,80 +154,103 @@ BEGIN
 
   -- KANBAN MODE BRANCH
   IF p_view_mode = 'kanban' THEN
-    -- Performance optimization: Only count hoan_thanh if explicitly requested
-    -- (Avoid scanning 100k+ completed transfers when user hides that column)
-    WITH status_groups AS (
+    -- Performance: Use LATERAL JOIN for "Top N per Group" (O(Groups * Limit) vs O(N log N))
+    -- Avoids sorting ALL rows with ROW_NUMBER() OVER (PARTITION BY ...)
+    WITH active_statuses AS (
+      SELECT unnest(
+        CASE
+          WHEN p_exclude_completed THEN ARRAY['cho_duyet', 'da_duyet', 'dang_luan_chuyen', 'da_ban_giao']::TEXT[]
+          ELSE ARRAY['cho_duyet', 'da_duyet', 'dang_luan_chuyen', 'da_ban_giao', 'hoan_thanh']::TEXT[]
+        END
+      ) AS status
+    ),
+    status_groups AS (
       SELECT
-        yclc.trang_thai as status,
-        jsonb_agg(
-          jsonb_build_object(
-            'id', yclc.id,
-            'ma_yeu_cau', yclc.ma_yeu_cau,
-            'thiet_bi_id', yclc.thiet_bi_id,
-            'loai_hinh', yclc.loai_hinh,
-            'trang_thai', yclc.trang_thai,
-            'nguoi_yeu_cau_id', yclc.nguoi_yeu_cau_id,
-            'ly_do_luan_chuyen', yclc.ly_do_luan_chuyen,
-            'khoa_phong_hien_tai', yclc.khoa_phong_hien_tai,
-            'khoa_phong_nhan', yclc.khoa_phong_nhan,
-            'muc_dich', yclc.muc_dich,
-            'don_vi_nhan', yclc.don_vi_nhan,
-            'dia_chi_don_vi', yclc.dia_chi_don_vi,
-            'nguoi_lien_he', yclc.nguoi_lien_he,
-            'so_dien_thoai', yclc.so_dien_thoai,
-            'ngay_du_kien_tra', yclc.ngay_du_kien_tra,
-            'ngay_ban_giao', yclc.ngay_ban_giao,
-            'ngay_hoan_tra', yclc.ngay_hoan_tra,
-            'ngay_hoan_thanh', yclc.ngay_hoan_thanh,
-            'nguoi_duyet_id', yclc.nguoi_duyet_id,
-            'ngay_duyet', yclc.ngay_duyet,
-            'ghi_chu_duyet', yclc.ghi_chu_duyet,
-            'created_at', yclc.created_at,
-            'updated_at', yclc.updated_at,
-            'created_by', yclc.created_by,
-            'updated_by', yclc.updated_by,
-            'thiet_bi', jsonb_build_object(
-              'ten_thiet_bi', tb.ten_thiet_bi,
-              'ma_thiet_bi', tb.ma_thiet_bi,
-              'model', tb.model,
-              'serial', tb.serial,
-              'khoa_phong_quan_ly', kp.ten_khoa_phong,
-              'facility_name', dv.ten_don_vi,
-              'facility_id', dv.id
+        s.status,
+        jsonb_agg(row_data ORDER BY yclc.created_at DESC) as tasks,
+        (
+          SELECT COUNT(*)
+          FROM public.yeu_cau_luan_chuyen yclc_count
+          JOIN public.thiet_bi tb_count ON tb_count.id = yclc_count.thiet_bi_id
+          WHERE yclc_count.trang_thai = s.status
+            AND (
+              (v_role = 'global' AND (v_effective_donvi IS NULL OR tb_count.don_vi = v_effective_donvi)) OR
+              (v_role <> 'global' AND ((v_effective_donvi IS NOT NULL AND tb_count.don_vi = v_effective_donvi) OR (v_effective_donvi IS NULL AND tb_count.don_vi = ANY(v_allowed))))
             )
+            AND (p_types IS NULL OR yclc_count.loai_hinh = ANY(p_types))
+            AND (p_assignee_ids IS NULL OR yclc_count.nguoi_yeu_cau_id = ANY(p_assignee_ids))
+            AND (
+              p_q IS NULL OR p_q = '' OR
+              yclc_count.ma_yeu_cau ILIKE '%' || p_q || '%' OR
+              yclc_count.ly_do_luan_chuyen ILIKE '%' || p_q || '%' OR
+              tb_count.ten_thiet_bi ILIKE '%' || p_q || '%' OR
+              tb_count.ma_thiet_bi ILIKE '%' || p_q || '%'
+            )
+            AND (p_date_from IS NULL OR yclc_count.created_at >= (p_date_from::timestamp AT TIME ZONE 'Asia/Ho_Chi_Minh'))
+            AND (p_date_to IS NULL OR yclc_count.created_at < ((p_date_to + interval '1 day')::timestamp AT TIME ZONE 'Asia/Ho_Chi_Minh'))
+        ) as total_count
+      FROM active_statuses s
+      CROSS JOIN LATERAL (
+        SELECT jsonb_build_object(
+          'id', yclc.id,
+          'ma_yeu_cau', yclc.ma_yeu_cau,
+          'thiet_bi_id', yclc.thiet_bi_id,
+          'loai_hinh', yclc.loai_hinh,
+          'trang_thai', yclc.trang_thai,
+          'nguoi_yeu_cau_id', yclc.nguoi_yeu_cau_id,
+          'ly_do_luan_chuyen', yclc.ly_do_luan_chuyen,
+          'khoa_phong_hien_tai', yclc.khoa_phong_hien_tai,
+          'khoa_phong_nhan', yclc.khoa_phong_nhan,
+          'muc_dich', yclc.muc_dich,
+          'don_vi_nhan', yclc.don_vi_nhan,
+          'dia_chi_don_vi', yclc.dia_chi_don_vi,
+          'nguoi_lien_he', yclc.nguoi_lien_he,
+          'so_dien_thoai', yclc.so_dien_thoai,
+          'ngay_du_kien_tra', yclc.ngay_du_kien_tra,
+          'ngay_ban_giao', yclc.ngay_ban_giao,
+          'ngay_hoan_tra', yclc.ngay_hoan_tra,
+          'ngay_hoan_thanh', yclc.ngay_hoan_thanh,
+          'nguoi_duyet_id', yclc.nguoi_duyet_id,
+          'ngay_duyet', yclc.ngay_duyet,
+          'ghi_chu_duyet', yclc.ghi_chu_duyet,
+          'created_at', yclc.created_at,
+          'updated_at', yclc.updated_at,
+          'created_by', yclc.created_by,
+          'updated_by', yclc.updated_by,
+          'thiet_bi', jsonb_build_object(
+            'ten_thiet_bi', tb.ten_thiet_bi,
+            'ma_thiet_bi', tb.ma_thiet_bi,
+            'model', tb.model,
+            'serial', tb.serial,
+            'khoa_phong_quan_ly', kp.ten_khoa_phong,
+            'facility_name', dv.ten_don_vi,
+            'facility_id', dv.id
           )
-          ORDER BY yclc.created_at DESC
-        ) FILTER (WHERE rn <= p_per_column_limit) as tasks,
-        COUNT(*) as total_count
-      FROM (
-        SELECT *, ROW_NUMBER() OVER (
-          PARTITION BY yclc.trang_thai
-          ORDER BY yclc.created_at DESC
-        ) as rn
+        ) as row_data, yclc.created_at
         FROM public.yeu_cau_luan_chuyen yclc
         JOIN public.thiet_bi tb ON tb.id = yclc.thiet_bi_id
         LEFT JOIN public.don_vi dv ON dv.id = tb.don_vi
         LEFT JOIN public.khoa_phong kp ON kp.id = tb.khoa_phong_id
-        WHERE (
-          (v_role = 'global' AND (v_effective_donvi IS NULL OR tb.don_vi = v_effective_donvi)) OR
-          (v_role <> 'global' AND ((v_effective_donvi IS NOT NULL AND tb.don_vi = v_effective_donvi) OR (v_effective_donvi IS NULL AND tb.don_vi = ANY(v_allowed))))
-        )
-        AND (p_types IS NULL OR yclc.loai_hinh = ANY(p_types))
-        AND (NOT p_exclude_completed OR yclc.trang_thai != 'hoan_thanh')
-        AND (p_assignee_ids IS NULL OR yclc.nguoi_yeu_cau_id = ANY(p_assignee_ids))
-        AND (
-          p_q IS NULL OR p_q = '' OR
-          yclc.ma_yeu_cau ILIKE '%' || p_q || '%' OR
-          yclc.ly_do_luan_chuyen ILIKE '%' || p_q || '%' OR
-          tb.ten_thiet_bi ILIKE '%' || p_q || '%' OR
-          tb.ma_thiet_bi ILIKE '%' || p_q || '%'
-        )
-        AND (p_date_from IS NULL OR yclc.created_at >= (p_date_from::timestamp AT TIME ZONE 'Asia/Ho_Chi_Minh'))
-        AND (p_date_to IS NULL OR yclc.created_at < ((p_date_to + interval '1 day')::timestamp AT TIME ZONE 'Asia/Ho_Chi_Minh'))
-      ) yclc
-      -- Critical filter: exclude hoan_thanh from window function if not requested
-      WHERE p_exclude_completed = FALSE OR yclc.trang_thai != 'hoan_thanh'
-      GROUP BY yclc.trang_thai
+        WHERE yclc.trang_thai = s.status
+          AND (
+            (v_role = 'global' AND (v_effective_donvi IS NULL OR tb.don_vi = v_effective_donvi)) OR
+            (v_role <> 'global' AND ((v_effective_donvi IS NOT NULL AND tb.don_vi = v_effective_donvi) OR (v_effective_donvi IS NULL AND tb.don_vi = ANY(v_allowed))))
+          )
+          AND (p_types IS NULL OR yclc.loai_hinh = ANY(p_types))
+          AND (p_assignee_ids IS NULL OR yclc.nguoi_yeu_cau_id = ANY(p_assignee_ids))
+          AND (
+            p_q IS NULL OR p_q = '' OR
+            yclc.ma_yeu_cau ILIKE '%' || p_q || '%' OR
+            yclc.ly_do_luan_chuyen ILIKE '%' || p_q || '%' OR
+            tb.ten_thiet_bi ILIKE '%' || p_q || '%' OR
+            tb.ma_thiet_bi ILIKE '%' || p_q || '%'
+          )
+          AND (p_date_from IS NULL OR yclc.created_at >= (p_date_from::timestamp AT TIME ZONE 'Asia/Ho_Chi_Minh'))
+          AND (p_date_to IS NULL OR yclc.created_at < ((p_date_to + interval '1 day')::timestamp AT TIME ZONE 'Asia/Ho_Chi_Minh'))
+        ORDER BY yclc.created_at DESC
+        LIMIT p_per_column_limit
+      ) lateral_data
+      GROUP BY s.status
     )
     SELECT jsonb_build_object(
       'columns', COALESCE(jsonb_object_agg(status, jsonb_build_object(
@@ -382,15 +406,26 @@ SELECT transfer_request_list(p_view_mode := 'invalid');
 
 ```bash
 git add supabase/migrations/20260112_extend_transfer_list_for_kanban.sql
-git commit -m "feat(backend): extend transfer_request_list with kanban mode
+git commit -m "feat(backend): extend transfer_request_list with optimized kanban mode
 
+PERFORMANCE OPTIMIZATIONS (Gemini recommendations):
+- LATERAL JOIN instead of ROW_NUMBER() window function (O(Groups*Limit) vs O(N log N))
+- 3 specialized indexes instead of 1 composite:
+  - idx_transfer_kanban_by_status: (trang_thai, created_at DESC) for LATERAL subqueries
+  - idx_transfer_thiet_bi_lookup: (thiet_bi_id) INCLUDE (trang_thai, created_at) for JOINs
+  - idx_transfer_completed_count: (trang_thai) WHERE hoan_thanh for fast counting
+- Conditional status array based on p_exclude_completed (avoids hoan_thanh scan)
+
+FEATURES:
 - Add p_view_mode ('table'|'kanban'), p_per_column_limit, p_exclude_completed params
-- Kanban mode returns per-status grouped data with window functions
+- Kanban mode returns per-status grouped data via LATERAL JOIN
 - Table mode unchanged (backward compatible)
-- Add idx_transfer_kanban_optimized index (thiet_bi_id, trang_thai, created_at)
-- Add idx_transfer_completed_count index for fast hoan_thanh counting
-- Security: Validate p_view_mode to prevent injection
-- Performance: Skip hoan_thanh aggregation when p_exclude_completed=true"
+
+SECURITY:
+- Validate p_view_mode to prevent injection
+- Tenant isolation via allowed_don_vi_for_session()
+
+Expected query time: <100ms for 10k transfers (vs 500ms+ with window functions)"
 ```
 
 ---
@@ -542,6 +577,11 @@ export function useTransfersKanban(
  * Per-column infinite scroll - loads additional pages for a specific status column
  * Uses table mode with single status filter for pagination
  * IMPORTANT: Starts at page 2 to avoid duplicating initial kanban data (page 1)
+ *
+ * NOTE: Uses offset pagination for MVP. Known issue: "pagination drift"
+ * - If new items arrive during 60s polling, offset shifts
+ * - User scrolling down may miss items or see duplicates at page boundary
+ * - FUTURE: Implement cursor-based pagination using created_at or id
  */
 export function useTransferColumnInfiniteScroll(
   filters: TransferListFilters,
@@ -1768,12 +1808,36 @@ git push origin main
 
 After MVP is stable (2-4 weeks):
 
-1. **Drag-and-drop**: Add dnd-kit for status changes
-2. **Real-time**: Supabase Realtime subscriptions
-3. **Analytics**: Track which view is more popular
-4. **Infinite scroll per column**: Load beyond 30 tasks
+1. **Cursor-based Pagination** (Addresses Gemini Warning #3)
+   - Replace offset pagination with cursor using `created_at` or `id`
+   - Eliminates pagination drift from 60-second polling
+   - No duplicates/missing items when new data arrives
+   - Implementation: Add `p_cursor` parameter to RPC, use `WHERE created_at < p_cursor`
+
+2. **Drag-and-drop**: Add dnd-kit for status changes
+
+3. **Real-time**: Supabase Realtime subscriptions instead of polling
+
+4. **Analytics**: Track which view is more popular
 
 See `docs/plans/2026-01-12-transfers-kanban-board-design.md` Phase 3 for details.
+
+---
+
+## Gemini Review Summary (2026-01-12)
+
+**Reviewer**: Gemini 2.5 Pro (backend-architect + database-architect)
+
+**Critical Issues Fixed**:
+- ✅ Infinite scroll data duplication (page 1 fetched twice)
+- ✅ Window function performance (replaced with LATERAL JOIN)
+- ✅ Suboptimal indexes (3 specialized indexes instead of 1 composite)
+
+**Warnings Addressed**:
+- ✅ Pagination drift documented (cursor-based pagination in Phase 2)
+
+**Approved**:
+- ✅ RPC security, virtualization, Zod schemas, component architecture
 
 ---
 
