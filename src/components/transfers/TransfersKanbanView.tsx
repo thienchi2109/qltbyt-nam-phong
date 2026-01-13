@@ -14,7 +14,6 @@ import type {
   TransferStatus,
 } from '@/types/transfers-data-grid'
 import { ACTIVE_TRANSFER_STATUSES } from '@/types/transfers-data-grid'
-import { Building2 } from 'lucide-react'
 
 interface TransfersKanbanViewProps {
   filters: TransferListFilters
@@ -107,13 +106,9 @@ export function TransfersKanbanView({
 }: TransfersKanbanViewProps) {
   const [showCompleted, setShowCompleted] = React.useState(false)
 
-  // Check if multi-tenant user needs to select a facility first
-  const isMultiTenantUser = userRole === 'global' || userRole === 'regional_leader'
-  const hasTenantSelected = !!filters.facilityId
-  const requiresTenantSelection = isMultiTenantUser && !hasTenantSelected
-
   // Initial kanban load (30 items per column)
-  // For multi-tenant users, this won't fetch until facilityId is set
+  // NOTE: Tenant selection check is handled by parent (page.tsx)
+  // This component assumes data fetching is already authorized
   const { data, isLoading, isFetching } = useTransfersKanban(filters, {
     excludeCompleted: !showCompleted,
     perColumnLimit: 30,
@@ -127,24 +122,6 @@ export function TransfersKanbanView({
   const allColumns = showCompleted
     ? ([...activeColumns, 'hoan_thanh'] as TransferStatus[])
     : activeColumns
-
-  // Multi-tenant users must select a facility before viewing Kanban
-  if (requiresTenantSelection) {
-    return (
-      <div className="flex min-h-[400px] items-center justify-center">
-        <div className="flex flex-col items-center gap-4 text-center max-w-md">
-          <Building2 className="h-12 w-12 text-muted-foreground" />
-          <div className="space-y-2">
-            <h3 className="font-medium text-lg">Chọn cơ sở y tế</h3>
-            <p className="text-sm text-muted-foreground">
-              Vui lòng chọn một cơ sở y tế từ bộ lọc phía trên để xem bảng Kanban.
-              Điều này giúp tránh tải dữ liệu lớn từ nhiều cơ sở cùng lúc.
-            </p>
-          </div>
-        </div>
-      </div>
-    )
-  }
 
   if (isLoading) {
     return (

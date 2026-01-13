@@ -21,6 +21,13 @@ WHERE trang_thai = 'hoan_thanh';
 
 COMMENT ON INDEX idx_transfer_completed_count IS 'Fast COUNT(*) for completed transfers without scanning active transfers';
 
+-- Index: Optimize kanban ORDER BY pattern (status + created_at DESC)
+-- Enables index-only scans for LATERAL LIMIT queries per status
+CREATE INDEX IF NOT EXISTS idx_yclc_status_created_desc
+ON public.yeu_cau_luan_chuyen (trang_thai, created_at DESC);
+
+COMMENT ON INDEX idx_yclc_status_created_desc IS 'Optimize kanban per-column queries: ORDER BY created_at DESC with status filter';
+
 -- Drop existing function to add new parameters
 DROP FUNCTION IF EXISTS public.transfer_request_list(TEXT, TEXT[], TEXT[], INT, INT, BIGINT, DATE, DATE, BIGINT[]);
 
