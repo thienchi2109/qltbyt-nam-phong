@@ -180,6 +180,9 @@ const EQUIPMENT_STATUS_OPTIONS = [
  */
 const EQUIPMENT_CLASSIFICATION_OPTIONS = ['A', 'B', 'C', 'D'] as const
 
+/** Maximum rows for data validation in template. */
+const MAX_TEMPLATE_ROWS = 1000
+
 /**
  * Column labels for equipment import template
  * Matches the columnLabels in equipment-table-columns.tsx
@@ -220,160 +223,159 @@ const EQUIPMENT_COLUMN_LABELS: Record<string, string> = {
  * This provides a better user experience with dropdown lists for status and classification fields
  */
 export async function generateEquipmentImportTemplate(): Promise<Blob> {
-  // Dynamic import of ExcelJS for code splitting
-  const ExcelJS = await import('exceljs')
-  const workbook = new ExcelJS.Workbook()
+  try {
+    // Dynamic import of ExcelJS for code splitting
+    const ExcelJS = await import('exceljs')
+    const workbook = new ExcelJS.Workbook()
 
-  // Sheet 1: Template Thiết Bị (main data entry sheet)
-  const templateSheet = workbook.addWorksheet('Template Thiết Bị')
+    // Sheet 1: Template Thiết Bị (main data entry sheet)
+    const templateSheet = workbook.addWorksheet('Template Thiết Bị')
 
-  // Get headers from column labels (excluding 'id')
-  const headers = Object.values(EQUIPMENT_COLUMN_LABELS)
-  const columnKeys = Object.keys(EQUIPMENT_COLUMN_LABELS)
+    // Get headers from column labels (excluding 'id')
+    const headers = Object.values(EQUIPMENT_COLUMN_LABELS)
+    const columnKeys = Object.keys(EQUIPMENT_COLUMN_LABELS)
 
-  // Add header row
-  templateSheet.addRow(headers)
+    // Add header row
+    templateSheet.addRow(headers)
 
-  // Style header row
-  const headerRow = templateSheet.getRow(1)
-  headerRow.font = { bold: true, color: { argb: 'FFFFFFFF' } }
-  headerRow.fill = {
-    type: 'pattern',
-    pattern: 'solid',
-    fgColor: { argb: 'FF2563EB' }, // Blue-600
-  }
-  headerRow.alignment = { horizontal: 'center', vertical: 'middle' }
-  headerRow.height = 28
+    // Style header row
+    const headerRow = templateSheet.getRow(1)
+    headerRow.font = { bold: true, color: { argb: 'FFFFFFFF' } }
+    headerRow.fill = {
+      type: 'pattern',
+      pattern: 'solid',
+      fgColor: { argb: 'FF2563EB' }, // Blue-600
+    }
+    headerRow.alignment = { horizontal: 'center', vertical: 'middle' }
+    headerRow.height = 28
 
-  // Set column widths based on header text length
-  templateSheet.columns = headers.map((header, index) => ({
-    key: columnKeys[index],
-    width: Math.max(header.length + 4, 18),
-  }))
+    // Set column widths based on header text length
+    templateSheet.columns = headers.map((header, index) => ({
+      key: columnKeys[index],
+      width: Math.max(header.length + 4, 18),
+    }))
 
-  // Find column indices for data validation (1-based for ExcelJS)
-  const statusColumnIndex = columnKeys.findIndex(key => key === 'tinh_trang_hien_tai') + 1
-  const classificationColumnIndex = columnKeys.findIndex(key => key === 'phan_loai_theo_nd98') + 1
+    // Find column indices for data validation (1-based for ExcelJS)
+    const statusColumnIndex = columnKeys.findIndex(key => key === 'tinh_trang_hien_tai') + 1
+    const classificationColumnIndex = columnKeys.findIndex(key => key === 'phan_loai_theo_nd98') + 1
 
-  // Add data validation for status column (rows 2-1000)
-  if (statusColumnIndex > 0) {
-    const statusColumn = templateSheet.getColumn(statusColumnIndex)
-    statusColumn.eachCell({ includeEmpty: false }, (cell, rowNumber) => {
-      if (rowNumber === 1) return // Skip header
+    // Add data validation for status column
+    if (statusColumnIndex > 0) {
+      for (let row = 2; row <= MAX_TEMPLATE_ROWS; row++) {
+        const cell = templateSheet.getCell(row, statusColumnIndex)
+        cell.dataValidation = {
+          type: 'list',
+          allowBlank: true,
+          formulae: [`"${EQUIPMENT_STATUS_OPTIONS.join(',')}"`],
+          showErrorMessage: true,
+          errorTitle: 'Giá trị không hợp lệ',
+          error: 'Vui lòng chọn giá trị từ danh sách.',
+        }
+      }
+    }
+
+    // Add data validation for classification column
+    if (classificationColumnIndex > 0) {
+      for (let row = 2; row <= MAX_TEMPLATE_ROWS; row++) {
+        const cell = templateSheet.getCell(row, classificationColumnIndex)
+        cell.dataValidation = {
+          type: 'list',
+          allowBlank: true,
+          formulae: [`"${EQUIPMENT_CLASSIFICATION_OPTIONS.join(',')}"`],
+          showErrorMessage: true,
+          errorTitle: 'Giá trị không hợp lệ',
+          error: 'Vui lòng chọn A, B, C hoặc D.',
+        }
+      }
+    }
+
+    // Highlight required columns with light yellow background
+    const requiredColumns = ['khoa_phong_quan_ly', 'nguoi_dang_truc_tiep_quan_ly', 'tinh_trang_hien_tai', 'vi_tri_lap_dat']
+    requiredColumns.forEach(colKey => {
+      const colIndex = columnKeys.findIndex(key => key === colKey) + 1
+      if (colIndex > 0) {
+        const headerCell = templateSheet.getCell(1, colIndex)
+        headerCell.fill = {
+          type: 'pattern',
+          pattern: 'solid',
+          fgColor: { argb: 'FFDC2626' }, // Red-600 for required
+        }
+      }
     })
 
-    // Apply data validation to rows 2-1000
-    for (let row = 2; row <= 1000; row++) {
-      const cell = templateSheet.getCell(row, statusColumnIndex)
-      cell.dataValidation = {
-        type: 'list',
-        allowBlank: true,
-        formulae: [`"${EQUIPMENT_STATUS_OPTIONS.join(',')}"`],
-        showErrorMessage: true,
-        errorTitle: 'Giá trị không hợp lệ',
-        error: 'Vui lòng chọn giá trị từ danh sách.',
+    // Sheet 2: Hướng dẫn (Instructions)
+    const instructionsSheet = workbook.addWorksheet('Hướng dẫn')
+
+    // Set column widths for instructions
+    instructionsSheet.getColumn(1).width = 60
+
+    // Add title
+    instructionsSheet.addRow(['HƯỚNG DẪN NHẬP LIỆU THIẾT BỊ'])
+    const titleRow = instructionsSheet.getRow(1)
+    titleRow.font = { bold: true, size: 16, color: { argb: 'FF1E40AF' } }
+    titleRow.height = 30
+
+    instructionsSheet.addRow([''])
+
+    // Required fields section
+    instructionsSheet.addRow(['1. CÁC TRƯỜNG BẮT BUỘC (tiêu đề màu đỏ):'])
+    instructionsSheet.getRow(3).font = { bold: true, size: 12, color: { argb: 'FFDC2626' } }
+    instructionsSheet.addRow(['   - Khoa/phòng quản lý'])
+    instructionsSheet.addRow(['   - Người sử dụng'])
+    instructionsSheet.addRow(['   - Tình trạng'])
+    instructionsSheet.addRow(['   - Vị trí lắp đặt'])
+    instructionsSheet.addRow([''])
+
+    // Status values section
+    instructionsSheet.addRow(['2. GIÁ TRỊ TÌNH TRẠNG HỢP LỆ:'])
+    instructionsSheet.getRow(9).font = { bold: true, size: 12 }
+    EQUIPMENT_STATUS_OPTIONS.forEach(status => {
+      instructionsSheet.addRow([`   - ${status}`])
+    })
+    instructionsSheet.addRow([''])
+
+    // Classification section
+    const classificationStartRow = instructionsSheet.rowCount + 1
+    instructionsSheet.addRow(['3. PHÂN LOẠI THEO NĐ98:'])
+    instructionsSheet.getRow(classificationStartRow).font = { bold: true, size: 12 }
+    instructionsSheet.addRow(['   - A: Loại A'])
+    instructionsSheet.addRow(['   - B: Loại B'])
+    instructionsSheet.addRow(['   - C: Loại C'])
+    instructionsSheet.addRow(['   - D: Loại D'])
+    instructionsSheet.addRow([''])
+
+    // Date format section
+    const dateStartRow = instructionsSheet.rowCount + 1
+    instructionsSheet.addRow(['4. ĐỊNH DẠNG NGÀY:'])
+    instructionsSheet.getRow(dateStartRow).font = { bold: true, size: 12 }
+    instructionsSheet.addRow(['   - DD/MM/YYYY (ví dụ: 25/12/2024)'])
+    instructionsSheet.addRow(['   - hoặc YYYY-MM-DD (ví dụ: 2024-12-25)'])
+    instructionsSheet.addRow([''])
+
+    // Notes section
+    const notesStartRow = instructionsSheet.rowCount + 1
+    instructionsSheet.addRow(['5. LƯU Ý:'])
+    instructionsSheet.getRow(notesStartRow).font = { bold: true, size: 12 }
+    instructionsSheet.addRow(['   - Cột "Tình trạng" có dropdown để chọn giá trị'])
+    instructionsSheet.addRow(['   - Cột "Phân loại theo NĐ98" có dropdown để chọn giá trị'])
+    instructionsSheet.addRow(['   - Không thay đổi tên các cột tiêu đề'])
+    instructionsSheet.addRow(['   - Các cột có tiêu đề màu đỏ là bắt buộc'])
+
+    // Add border to all instruction cells
+    for (let row = 1; row <= instructionsSheet.rowCount; row++) {
+      const cell = instructionsSheet.getCell(row, 1)
+      if (cell.value) {
+        cell.alignment = { wrapText: true, vertical: 'middle' }
       }
     }
+
+    // Generate buffer and return as Blob
+    const buffer: ArrayBuffer = await workbook.xlsx.writeBuffer()
+    return new Blob([buffer], {
+      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    })
+  } catch (error) {
+    console.error('Failed to generate equipment import template:', error)
+    throw new Error('Không thể tạo file template. Vui lòng thử lại.')
   }
-
-  // Add data validation for classification column (rows 2-1000)
-  if (classificationColumnIndex > 0) {
-    for (let row = 2; row <= 1000; row++) {
-      const cell = templateSheet.getCell(row, classificationColumnIndex)
-      cell.dataValidation = {
-        type: 'list',
-        allowBlank: true,
-        formulae: [`"${EQUIPMENT_CLASSIFICATION_OPTIONS.join(',')}"`],
-        showErrorMessage: true,
-        errorTitle: 'Giá trị không hợp lệ',
-        error: 'Vui lòng chọn A, B, C hoặc D.',
-      }
-    }
-  }
-
-  // Highlight required columns with light yellow background
-  const requiredColumns = ['khoa_phong_quan_ly', 'nguoi_dang_truc_tiep_quan_ly', 'tinh_trang_hien_tai', 'vi_tri_lap_dat']
-  requiredColumns.forEach(colKey => {
-    const colIndex = columnKeys.findIndex(key => key === colKey) + 1
-    if (colIndex > 0) {
-      const headerCell = templateSheet.getCell(1, colIndex)
-      headerCell.fill = {
-        type: 'pattern',
-        pattern: 'solid',
-        fgColor: { argb: 'FFDC2626' }, // Red-600 for required
-      }
-    }
-  })
-
-  // Sheet 2: Hướng dẫn (Instructions)
-  const instructionsSheet = workbook.addWorksheet('Hướng dẫn')
-
-  // Set column widths for instructions
-  instructionsSheet.getColumn(1).width = 60
-
-  // Add title
-  instructionsSheet.addRow(['HƯỚNG DẪN NHẬP LIỆU THIẾT BỊ'])
-  const titleRow = instructionsSheet.getRow(1)
-  titleRow.font = { bold: true, size: 16, color: { argb: 'FF1E40AF' } }
-  titleRow.height = 30
-
-  instructionsSheet.addRow([''])
-
-  // Required fields section
-  instructionsSheet.addRow(['1. CÁC TRƯỜNG BẮT BUỘC (tiêu đề màu đỏ):'])
-  instructionsSheet.getRow(3).font = { bold: true, size: 12, color: { argb: 'FFDC2626' } }
-  instructionsSheet.addRow(['   - Khoa/phòng quản lý'])
-  instructionsSheet.addRow(['   - Người sử dụng'])
-  instructionsSheet.addRow(['   - Tình trạng'])
-  instructionsSheet.addRow(['   - Vị trí lắp đặt'])
-  instructionsSheet.addRow([''])
-
-  // Status values section
-  instructionsSheet.addRow(['2. GIÁ TRỊ TÌNH TRẠNG HỢP LỆ:'])
-  instructionsSheet.getRow(9).font = { bold: true, size: 12 }
-  EQUIPMENT_STATUS_OPTIONS.forEach(status => {
-    instructionsSheet.addRow([`   - ${status}`])
-  })
-  instructionsSheet.addRow([''])
-
-  // Classification section
-  const classificationStartRow = instructionsSheet.rowCount + 1
-  instructionsSheet.addRow(['3. PHÂN LOẠI THEO NĐ98:'])
-  instructionsSheet.getRow(classificationStartRow).font = { bold: true, size: 12 }
-  instructionsSheet.addRow(['   - A: Loại A'])
-  instructionsSheet.addRow(['   - B: Loại B'])
-  instructionsSheet.addRow(['   - C: Loại C'])
-  instructionsSheet.addRow(['   - D: Loại D'])
-  instructionsSheet.addRow([''])
-
-  // Date format section
-  const dateStartRow = instructionsSheet.rowCount + 1
-  instructionsSheet.addRow(['4. ĐỊNH DẠNG NGÀY:'])
-  instructionsSheet.getRow(dateStartRow).font = { bold: true, size: 12 }
-  instructionsSheet.addRow(['   - DD/MM/YYYY (ví dụ: 25/12/2024)'])
-  instructionsSheet.addRow(['   - hoặc YYYY-MM-DD (ví dụ: 2024-12-25)'])
-  instructionsSheet.addRow([''])
-
-  // Notes section
-  const notesStartRow = instructionsSheet.rowCount + 1
-  instructionsSheet.addRow(['5. LƯU Ý:'])
-  instructionsSheet.getRow(notesStartRow).font = { bold: true, size: 12 }
-  instructionsSheet.addRow(['   - Cột "Tình trạng" có dropdown để chọn giá trị'])
-  instructionsSheet.addRow(['   - Cột "Phân loại theo NĐ98" có dropdown để chọn giá trị'])
-  instructionsSheet.addRow(['   - Không thay đổi tên các cột tiêu đề'])
-  instructionsSheet.addRow(['   - Các cột có tiêu đề màu đỏ là bắt buộc'])
-
-  // Add border to all instruction cells
-  for (let row = 1; row <= instructionsSheet.rowCount; row++) {
-    const cell = instructionsSheet.getCell(row, 1)
-    if (cell.value) {
-      cell.alignment = { wrapText: true, vertical: 'middle' }
-    }
-  }
-
-  // Generate buffer and return as Blob
-  const buffer = await workbook.xlsx.writeBuffer()
-  return new Blob([buffer], {
-    type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-  })
 }
