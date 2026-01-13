@@ -223,7 +223,7 @@ export function ImportEquipmentDialog({ open, onOpenChange, onSuccess }: ImportE
         const workbook = await readExcelFile(file)
         const sheetName = workbook.SheetNames[0]
         const worksheet = workbook.Sheets[sheetName]
-        const json: Record<string, any>[] = await worksheetToJson(worksheet)
+        const json = await worksheetToJson(worksheet)
 
         if (json.length === 0) {
             setError("File không có dữ liệu. Vui lòng kiểm tra lại file của bạn.")
