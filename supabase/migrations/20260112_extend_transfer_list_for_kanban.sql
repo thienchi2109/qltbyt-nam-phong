@@ -102,12 +102,16 @@ BEGIN
     -- Phase 1: Efficient counts per status (single index scan per status)
     -- Phase 2: LATERAL with LIMIT for top N items (early termination, O(Groups * Limit))
     WITH active_statuses AS (
-      SELECT unnest(
-        CASE
-          WHEN p_exclude_completed THEN ARRAY['cho_duyet', 'da_duyet', 'dang_luan_chuyen', 'da_ban_giao']::TEXT[]
-          ELSE ARRAY['cho_duyet', 'da_duyet', 'dang_luan_chuyen', 'da_ban_giao', 'hoan_thanh']::TEXT[]
-        END
-      ) AS status
+      -- Respect p_statuses filter if provided (intersection with base statuses)
+      SELECT status FROM (
+        SELECT unnest(
+          CASE
+            WHEN p_exclude_completed THEN ARRAY['cho_duyet', 'da_duyet', 'dang_luan_chuyen', 'da_ban_giao']::TEXT[]
+            ELSE ARRAY['cho_duyet', 'da_duyet', 'dang_luan_chuyen', 'da_ban_giao', 'hoan_thanh']::TEXT[]
+          END
+        ) AS status
+      ) base
+      WHERE p_statuses IS NULL OR status = ANY(p_statuses)
     ),
     -- Phase 1: Get counts per status efficiently
     status_counts AS (
@@ -116,12 +120,8 @@ BEGIN
         COUNT(*) as total_count
       FROM public.yeu_cau_luan_chuyen yclc
       JOIN public.thiet_bi tb ON tb.id = yclc.thiet_bi_id
-      WHERE yclc.trang_thai = ANY(
-        CASE
-          WHEN p_exclude_completed THEN ARRAY['cho_duyet', 'da_duyet', 'dang_luan_chuyen', 'da_ban_giao']::TEXT[]
-          ELSE ARRAY['cho_duyet', 'da_duyet', 'dang_luan_chuyen', 'da_ban_giao', 'hoan_thanh']::TEXT[]
-        END
-      )
+      WHERE yclc.trang_thai = ANY(SELECT status FROM active_statuses)
+        AND (p_statuses IS NULL OR yclc.trang_thai = ANY(p_statuses))
         AND (
           (v_role = 'global' AND (v_effective_donvi IS NULL OR tb.don_vi = v_effective_donvi)) OR
           (v_role <> 'global' AND ((v_effective_donvi IS NOT NULL AND tb.don_vi = v_effective_donvi) OR (v_effective_donvi IS NULL AND tb.don_vi = ANY(v_allowed))))
@@ -190,6 +190,7 @@ BEGIN
         JOIN public.thiet_bi tb ON tb.id = yclc.thiet_bi_id
         LEFT JOIN public.don_vi dv ON dv.id = tb.don_vi
         WHERE yclc.trang_thai = s.status
+          AND (p_statuses IS NULL OR yclc.trang_thai = ANY(p_statuses))
           AND (
             (v_role = 'global' AND (v_effective_donvi IS NULL OR tb.don_vi = v_effective_donvi)) OR
             (v_role <> 'global' AND ((v_effective_donvi IS NOT NULL AND tb.don_vi = v_effective_donvi) OR (v_effective_donvi IS NULL AND tb.don_vi = ANY(v_allowed))))
