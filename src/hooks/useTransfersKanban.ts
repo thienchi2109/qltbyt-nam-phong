@@ -69,6 +69,7 @@ export function useTransfersKanban(
     },
     staleTime: 30000, // 30 seconds
     refetchInterval: 60000, // Poll every 60 seconds
+    gcTime: 5 * 60 * 1000, // Garbage collect after 5 minutes of inactivity
     // Require types AND (single-tenant user OR multi-tenant user with facility selected)
     enabled: !!filters.types && filters.types.length > 0 && shouldFetch,
   })
@@ -126,6 +127,9 @@ export function useTransferColumnInfiniteScroll(
       return lastPage.hasMore ? allPages.length + 2 : undefined
     },
     staleTime: 30000,
+    gcTime: 2 * 60 * 1000, // Shorter gc for infinite scroll pages (2 min) - prevents memory bloat
+    // Limit max pages to prevent excessive memory usage (10 pages = 300 items per column)
+    maxPages: 10,
     enabled: enabled && !!filters.types && filters.types.length > 0,
   })
 }

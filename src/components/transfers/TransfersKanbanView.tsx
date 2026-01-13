@@ -56,6 +56,15 @@ function KanbanColumnWithInfiniteScroll({
     isFetchingNextPage,
   } = useTransferColumnInfiniteScroll(filters, status, infiniteScrollEnabled)
 
+  // Fix race condition: when infinite scroll is first enabled, fetch immediately
+  // This handles the case where user scrolls, we enable the query, but fetchNextPage
+  // wasn't called because hasNextPage was undefined during the initial scroll trigger
+  React.useEffect(() => {
+    if (infiniteScrollEnabled && hasNextPage && !isFetchingNextPage) {
+      fetchNextPage()
+    }
+  }, [infiniteScrollEnabled, hasNextPage, isFetchingNextPage, fetchNextPage])
+
   // Merge initial kanban data with infinite scroll pages
   const { tasks, hasMore, isLoadingMore } = useMergedColumnData(
     initialTasks,
@@ -67,6 +76,7 @@ function KanbanColumnWithInfiniteScroll({
     // Enable infinite scroll on first trigger (loads page 2)
     if (!infiniteScrollEnabled) {
       setInfiniteScrollEnabled(true)
+      return // useEffect above will handle the fetch once query is enabled
     }
 
     if (hasNextPage && !isFetchingNextPage) {

@@ -28,6 +28,12 @@ export function TransfersKanbanColumn({
 }: TransfersKanbanColumnProps) {
   const parentRef = React.useRef<HTMLDivElement>(null)
 
+  // Use ref to avoid onLoadMore in useEffect deps (prevents infinite loops)
+  const onLoadMoreRef = React.useRef(onLoadMore)
+  React.useEffect(() => {
+    onLoadMoreRef.current = onLoadMore
+  }, [onLoadMore])
+
   // Virtual scrolling with dynamic height measurement
   const rowVirtualizer = useVirtualizer({
     count: tasks.length,
@@ -47,12 +53,12 @@ export function TransfersKanbanColumn({
       lastItemIndex !== undefined &&
       lastItemIndex >= tasks.length - 3 &&
       hasMore &&
-      onLoadMore &&
+      onLoadMoreRef.current &&
       !isLoadingMore
     ) {
-      onLoadMore()
+      onLoadMoreRef.current()
     }
-  }, [lastItemIndex, tasks.length, hasMore, onLoadMore, isLoadingMore])
+  }, [lastItemIndex, tasks.length, hasMore, isLoadingMore])
 
   return (
     <div className="flex flex-col w-80 min-w-[320px] bg-sidebar rounded-lg border shrink-0">

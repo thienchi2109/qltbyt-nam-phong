@@ -91,8 +91,8 @@ BEGIN
 
   -- KANBAN MODE BRANCH
   IF p_view_mode = 'kanban' THEN
-    -- Performance: Use LATERAL JOIN for "Top N per Group" (O(Groups * Limit) vs O(N log N))
-    -- Avoids sorting ALL rows with ROW_NUMBER() OVER (PARTITION BY ...)
+    -- Performance: Use LATERAL JOIN with window function for "Top N per Group"
+    -- Single scan per status: fetches tasks AND count together (O(Groups * N) vs 2x scans)
     WITH active_statuses AS (
       SELECT unnest(
         CASE
@@ -104,66 +104,50 @@ BEGIN
     status_groups AS (
       SELECT
         s.status,
-        COALESCE(jsonb_agg(lateral_data.row_data ORDER BY lateral_data.created_at DESC) FILTER (WHERE lateral_data.row_data IS NOT NULL), '[]'::jsonb) as tasks,
-        (
-          SELECT COUNT(*)
-          FROM public.yeu_cau_luan_chuyen yclc_count
-          JOIN public.thiet_bi tb_count ON tb_count.id = yclc_count.thiet_bi_id
-          WHERE yclc_count.trang_thai = s.status
-            AND (
-              (v_role = 'global' AND (v_effective_donvi IS NULL OR tb_count.don_vi = v_effective_donvi)) OR
-              (v_role <> 'global' AND ((v_effective_donvi IS NOT NULL AND tb_count.don_vi = v_effective_donvi) OR (v_effective_donvi IS NULL AND tb_count.don_vi = ANY(v_allowed))))
-            )
-            AND (p_types IS NULL OR yclc_count.loai_hinh = ANY(p_types))
-            AND (p_assignee_ids IS NULL OR yclc_count.nguoi_yeu_cau_id = ANY(p_assignee_ids))
-            AND (
-              p_q IS NULL OR p_q = '' OR
-              yclc_count.ma_yeu_cau ILIKE '%' || p_q || '%' OR
-              yclc_count.ly_do_luan_chuyen ILIKE '%' || p_q || '%' OR
-              tb_count.ten_thiet_bi ILIKE '%' || p_q || '%' OR
-              tb_count.ma_thiet_bi ILIKE '%' || p_q || '%'
-            )
-            AND (p_date_from IS NULL OR yclc_count.created_at >= (p_date_from::timestamp AT TIME ZONE 'Asia/Ho_Chi_Minh'))
-            AND (p_date_to IS NULL OR yclc_count.created_at < ((p_date_to + interval '1 day')::timestamp AT TIME ZONE 'Asia/Ho_Chi_Minh'))
-        ) as total_count
+        COALESCE(jsonb_agg(lateral_data.row_data ORDER BY lateral_data.created_at DESC) FILTER (WHERE lateral_data.rn <= p_per_column_limit), '[]'::jsonb) as tasks,
+        COALESCE(MAX(lateral_data.total_in_status), 0) as total_count
       FROM active_statuses s
       LEFT JOIN LATERAL (
-        SELECT jsonb_build_object(
-          'id', yclc.id,
-          'ma_yeu_cau', yclc.ma_yeu_cau,
-          'thiet_bi_id', yclc.thiet_bi_id,
-          'loai_hinh', yclc.loai_hinh,
-          'trang_thai', yclc.trang_thai,
-          'nguoi_yeu_cau_id', yclc.nguoi_yeu_cau_id,
-          'ly_do_luan_chuyen', yclc.ly_do_luan_chuyen,
-          'khoa_phong_hien_tai', yclc.khoa_phong_hien_tai,
-          'khoa_phong_nhan', yclc.khoa_phong_nhan,
-          'muc_dich', yclc.muc_dich,
-          'don_vi_nhan', yclc.don_vi_nhan,
-          'dia_chi_don_vi', yclc.dia_chi_don_vi,
-          'nguoi_lien_he', yclc.nguoi_lien_he,
-          'so_dien_thoai', yclc.so_dien_thoai,
-          'ngay_du_kien_tra', yclc.ngay_du_kien_tra,
-          'ngay_ban_giao', yclc.ngay_ban_giao,
-          'ngay_hoan_tra', yclc.ngay_hoan_tra,
-          'ngay_hoan_thanh', yclc.ngay_hoan_thanh,
-          'nguoi_duyet_id', yclc.nguoi_duyet_id,
-          'ngay_duyet', yclc.ngay_duyet,
-          'ghi_chu_duyet', yclc.ghi_chu_duyet,
-          'created_at', yclc.created_at,
-          'updated_at', yclc.updated_at,
-          'created_by', yclc.created_by,
-          'updated_by', yclc.updated_by,
-          'thiet_bi', jsonb_build_object(
-            'ten_thiet_bi', tb.ten_thiet_bi,
-            'ma_thiet_bi', tb.ma_thiet_bi,
-            'model', tb.model,
-            'serial', tb.serial,
-            'khoa_phong_quan_ly', tb.khoa_phong_quan_ly,
-            'facility_name', dv.name,
-            'facility_id', dv.id
-          )
-        ) as row_data, yclc.created_at
+        SELECT
+          jsonb_build_object(
+            'id', yclc.id,
+            'ma_yeu_cau', yclc.ma_yeu_cau,
+            'thiet_bi_id', yclc.thiet_bi_id,
+            'loai_hinh', yclc.loai_hinh,
+            'trang_thai', yclc.trang_thai,
+            'nguoi_yeu_cau_id', yclc.nguoi_yeu_cau_id,
+            'ly_do_luan_chuyen', yclc.ly_do_luan_chuyen,
+            'khoa_phong_hien_tai', yclc.khoa_phong_hien_tai,
+            'khoa_phong_nhan', yclc.khoa_phong_nhan,
+            'muc_dich', yclc.muc_dich,
+            'don_vi_nhan', yclc.don_vi_nhan,
+            'dia_chi_don_vi', yclc.dia_chi_don_vi,
+            'nguoi_lien_he', yclc.nguoi_lien_he,
+            'so_dien_thoai', yclc.so_dien_thoai,
+            'ngay_du_kien_tra', yclc.ngay_du_kien_tra,
+            'ngay_ban_giao', yclc.ngay_ban_giao,
+            'ngay_hoan_tra', yclc.ngay_hoan_tra,
+            'ngay_hoan_thanh', yclc.ngay_hoan_thanh,
+            'nguoi_duyet_id', yclc.nguoi_duyet_id,
+            'ngay_duyet', yclc.ngay_duyet,
+            'ghi_chu_duyet', yclc.ghi_chu_duyet,
+            'created_at', yclc.created_at,
+            'updated_at', yclc.updated_at,
+            'created_by', yclc.created_by,
+            'updated_by', yclc.updated_by,
+            'thiet_bi', jsonb_build_object(
+              'ten_thiet_bi', tb.ten_thiet_bi,
+              'ma_thiet_bi', tb.ma_thiet_bi,
+              'model', tb.model,
+              'serial', tb.serial,
+              'khoa_phong_quan_ly', tb.khoa_phong_quan_ly,
+              'facility_name', dv.name,
+              'facility_id', dv.id
+            )
+          ) as row_data,
+          yclc.created_at,
+          ROW_NUMBER() OVER (ORDER BY yclc.created_at DESC) as rn,
+          COUNT(*) OVER () as total_in_status
         FROM public.yeu_cau_luan_chuyen yclc
         JOIN public.thiet_bi tb ON tb.id = yclc.thiet_bi_id
         LEFT JOIN public.don_vi dv ON dv.id = tb.don_vi
@@ -183,8 +167,6 @@ BEGIN
           )
           AND (p_date_from IS NULL OR yclc.created_at >= (p_date_from::timestamp AT TIME ZONE 'Asia/Ho_Chi_Minh'))
           AND (p_date_to IS NULL OR yclc.created_at < ((p_date_to + interval '1 day')::timestamp AT TIME ZONE 'Asia/Ho_Chi_Minh'))
-        ORDER BY yclc.created_at DESC
-        LIMIT p_per_column_limit
       ) lateral_data ON true
       GROUP BY s.status
     )
