@@ -602,75 +602,78 @@ function TransfersPageContent({ user }: TransfersPageContentProps) {
           </TransferTypeTabs>
         </CardContent>
 
-        <CardFooter className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-          <ResponsivePaginationInfo
-            currentCount={table.getPaginationRowModel().rows.length}
-            totalCount={totalCount}
-            currentPage={pagination.pageIndex + 1}
-            totalPages={pageCount}
-          />
+        {/* Pagination controls - only show for table view */}
+        {viewMode === 'table' && (
+          <CardFooter className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+            <ResponsivePaginationInfo
+              currentCount={table.getPaginationRowModel().rows.length}
+              totalCount={totalCount}
+              currentPage={pagination.pageIndex + 1}
+              totalPages={pageCount}
+            />
 
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-6">
-            <div className="flex items-center gap-2">
-              <span className="text-sm">Số dòng</span>
-              <Select
-                value={String(pagination.pageSize)}
-                onValueChange={(value) =>
-                  setPagination({ pageIndex: 0, pageSize: Number(value) })
-                }
-              >
-                <SelectTrigger className="h-8 w-[80px]">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent side="top">
-                  {[10, 20, 50, 100].map((size) => (
-                    <SelectItem key={size} value={String(size)}>
-                      {size}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-6">
+              <div className="flex items-center gap-2">
+                <span className="text-sm">Số dòng</span>
+                <Select
+                  value={String(pagination.pageSize)}
+                  onValueChange={(value) =>
+                    setPagination({ pageIndex: 0, pageSize: Number(value) })
+                  }
+                >
+                  <SelectTrigger className="h-8 w-[80px]">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent side="top">
+                    {[10, 20, 50, 100].map((size) => (
+                      <SelectItem key={size} value={String(size)}>
+                        {size}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
 
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                className="hidden h-8 w-8 p-0 sm:flex"
-                onClick={() => table.setPageIndex(0)}
-                disabled={!table.getCanPreviousPage()}
-              >
-                <ChevronsLeft className="h-4 w-4" />
-              </Button>
-              <Button
-                variant="outline"
-                className="h-10 w-10 rounded-xl p-0 sm:h-8 sm:w-8"
-                onClick={() => table.previousPage()}
-                disabled={!table.getCanPreviousPage()}
-              >
-                <ChevronLeft className="h-5 w-5 sm:h-4 sm:w-4" />
-              </Button>
-              <span className="text-sm font-medium">
-                Trang {pagination.pageIndex + 1} / {pageCount}
-              </span>
-              <Button
-                variant="outline"
-                className="h-10 w-10 rounded-xl p-0 sm:h-8 sm:w-8"
-                onClick={() => table.nextPage()}
-                disabled={!table.getCanNextPage()}
-              >
-                <ChevronRight className="h-5 w-5 sm:h-4 sm:w-4" />
-              </Button>
-              <Button
-                variant="outline"
-                className="hidden h-8 w-8 p-0 sm:flex"
-                onClick={() => table.setPageIndex(pageCount - 1)}
-                disabled={!table.getCanNextPage()}
-              >
-                <ChevronsRight className="h-4 w-4" />
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  className="hidden h-8 w-8 p-0 sm:flex"
+                  onClick={() => table.setPageIndex(0)}
+                  disabled={!table.getCanPreviousPage()}
+                >
+                  <ChevronsLeft className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="outline"
+                  className="h-10 w-10 rounded-xl p-0 sm:h-8 sm:w-8"
+                  onClick={() => table.previousPage()}
+                  disabled={!table.getCanPreviousPage()}
+                >
+                  <ChevronLeft className="h-5 w-5 sm:h-4 sm:w-4" />
+                </Button>
+                <span className="text-sm font-medium">
+                  Trang {pagination.pageIndex + 1} / {pageCount}
+                </span>
+                <Button
+                  variant="outline"
+                  className="h-10 w-10 rounded-xl p-0 sm:h-8 sm:w-8"
+                  onClick={() => table.nextPage()}
+                  disabled={!table.getCanNextPage()}
+                >
+                  <ChevronRight className="h-5 w-5 sm:h-4 sm:w-4" />
+                </Button>
+                <Button
+                  variant="outline"
+                  className="hidden h-8 w-8 p-0 sm:flex"
+                  onClick={() => table.setPageIndex(pageCount - 1)}
+                  disabled={!table.getCanNextPage()}
+                >
+                  <ChevronsRight className="h-4 w-4" />
+                </Button>
+              </div>
             </div>
-          </div>
-        </CardFooter>
+          </CardFooter>
+        )}
       </Card>
     </>
   )

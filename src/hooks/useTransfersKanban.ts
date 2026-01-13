@@ -10,10 +10,10 @@ import { TransferKanbanResponseSchema, TransferTableModeResponseSchema } from '@
 
 export const transferKanbanKeys = {
   all: ['transfers-kanban'] as const,
-  filtered: (filters: TransferListFilters) =>
-    [...transferKanbanKeys.all, filters] as const,
+  filtered: (filters: TransferListFilters, options?: { excludeCompleted?: boolean }) =>
+    [...transferKanbanKeys.all, filters, options] as const,
   column: (filters: TransferListFilters, status: TransferStatus) =>
-    [...transferKanbanKeys.filtered(filters), status] as const,
+    [...transferKanbanKeys.all, 'column', filters, status] as const,
 }
 
 interface UseTransfersKanbanOptions {
@@ -46,7 +46,7 @@ export function useTransfersKanban(
   const shouldFetch = isMultiTenantUser ? hasTenantSelected : true
 
   return useQuery({
-    queryKey: transferKanbanKeys.filtered(filters),
+    queryKey: transferKanbanKeys.filtered(filters, { excludeCompleted }),
     queryFn: async (): Promise<TransferKanbanResponse> => {
       const result = await callRpc({
         fn: 'transfer_request_list',
@@ -169,17 +169,10 @@ export function useMergedColumnData(
 export function useInvalidateTransfersKanban() {
   const queryClient = useQueryClient()
 
-  return (affectedStatuses?: string[]) => {
-    if (affectedStatuses && affectedStatuses.length > 0) {
-      // Invalidate main kanban query + affected column queries
-      queryClient.invalidateQueries({
-        queryKey: transferKanbanKeys.all,
-      })
-    } else {
-      // Invalidate all kanban queries
-      queryClient.invalidateQueries({
-        queryKey: transferKanbanKeys.all,
-      })
-    }
+  return () => {
+    // Invalidate all kanban queries (main + column-specific)
+    queryClient.invalidateQueries({
+      queryKey: transferKanbanKeys.all,
+    })
   }
 }

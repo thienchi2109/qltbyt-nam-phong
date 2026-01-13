@@ -1,3 +1,5 @@
+'use client'
+
 import * as React from 'react'
 import { LayoutGrid, Table } from 'lucide-react'
 import { Button } from '@/components/ui/button'
