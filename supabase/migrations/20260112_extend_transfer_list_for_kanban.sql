@@ -144,7 +144,7 @@ BEGIN
       SELECT
         s.status,
         COALESCE(sc.total_count, 0) as total_count,
-        COALESCE(jsonb_agg(lateral_data.row_data ORDER BY lateral_data.created_at DESC), '[]'::jsonb) as tasks
+        COALESCE(jsonb_agg(lateral_data.row_data ORDER BY lateral_data.created_at DESC) FILTER (WHERE lateral_data.row_data IS NOT NULL), '[]'::jsonb) as tasks
       FROM active_statuses s
       LEFT JOIN status_counts sc ON sc.status = s.status
       LEFT JOIN LATERAL (
