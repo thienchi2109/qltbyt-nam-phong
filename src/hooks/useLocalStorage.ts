@@ -55,11 +55,17 @@ export function useLocalStorage<T>(
   // Sync state when localStorage changes (from other tabs or same-tab components)
   React.useEffect(() => {
     const handleStorageChange = (e: StorageEvent) => {
-      if (e.key === key && e.newValue !== null) {
-        try {
-          setStoredValue(JSON.parse(e.newValue))
-        } catch {
-          // Ignore parse errors
+      if (e.key === key) {
+        if (e.newValue !== null) {
+          try {
+            setStoredValue(JSON.parse(e.newValue))
+          } catch {
+            // Parse error - revert to initial value
+            setStoredValue(initialValue)
+          }
+        } else {
+          // Key was removed - revert to initial value
+          setStoredValue(initialValue)
         }
       }
     }
@@ -78,7 +84,7 @@ export function useLocalStorage<T>(
       window.removeEventListener('storage', handleStorageChange)
       window.removeEventListener('local-storage-change', handleLocalChange as EventListener)
     }
-  }, [key])
+  }, [key, initialValue])
 
   return [storedValue, setValue]
 }
