@@ -18,6 +18,7 @@ import { Label } from "@/components/ui/label"
 import { useToast } from "@/hooks/use-toast"
 import { callRpc } from "@/lib/rpc-client"
 import type { Equipment } from "@/lib/data"
+import { equipmentStatusOptions } from "@/components/equipment/equipment-table-columns"
 
 // Required fields for equipment validation
 const REQUIRED_FIELDS = {
@@ -31,6 +32,7 @@ const REQUIRED_FIELDS = {
 const validateEquipmentData = (data: Partial<Equipment>[], headerMapping: Record<string, string>) => {
   const errors: string[] = [];
   const validationResults: { isValid: boolean; missingFields: string[] }[] = [];
+  const validStatuses = new Set(equipmentStatusOptions);
 
   data.forEach((item, index) => {
     const missingFields: string[] = [];
@@ -42,6 +44,12 @@ const validateEquipmentData = (data: Partial<Equipment>[], headerMapping: Record
         missingFields.push(displayName);
       }
     });
+
+    // Validate status value if provided
+    const status = item.tinh_trang_hien_tai;
+    if (status && typeof status === 'string' && status.trim() !== '' && !validStatuses.has(status as typeof equipmentStatusOptions[number])) {
+      errors.push(`Dòng ${index + 2}: Tình trạng "${status}" không hợp lệ. Phải là một trong: ${equipmentStatusOptions.join(', ')}`);
+    }
 
     validationResults.push({
       isValid: missingFields.length === 0,
