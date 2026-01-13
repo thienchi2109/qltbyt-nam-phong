@@ -14,6 +14,8 @@ interface TransfersKanbanColumnProps {
   renderActions: (task: TransferListItem) => React.ReactNode
   onLoadMore?: () => void
   isLoadingMore?: boolean
+  /** Current date for overdue calculation - should refresh periodically */
+  referenceDate: Date
 }
 
 export function TransfersKanbanColumn({
@@ -25,6 +27,7 @@ export function TransfersKanbanColumn({
   renderActions,
   onLoadMore,
   isLoadingMore = false,
+  referenceDate,
 }: TransfersKanbanColumnProps) {
   const parentRef = React.useRef<HTMLDivElement>(null)
 
@@ -111,6 +114,7 @@ export function TransfersKanbanColumn({
                     transfer={task}
                     onClick={onClickTask}
                     actions={renderActions(task)}
+                    referenceDate={referenceDate}
                   />
                 </div>
               )

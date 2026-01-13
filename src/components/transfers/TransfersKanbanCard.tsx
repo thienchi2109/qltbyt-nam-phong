@@ -10,8 +10,8 @@ interface TransfersKanbanCardProps {
   transfer: TransferListItem
   onClick: (transfer: TransferListItem) => void
   actions: React.ReactNode
-  /** Reference date for overdue calculation - should be stable from parent */
-  referenceDate?: Date
+  /** Reference date for overdue calculation - passed from parent for consistent updates */
+  referenceDate: Date
 }
 
 function getTypeVariant(type: string): 'default' | 'secondary' | 'destructive' {
@@ -46,14 +46,11 @@ function isOverdue(dateStr: string | null, currentDate: Date): boolean {
   return dueDate < currentDate && dueDate.getTime() !== 0
 }
 
-// Stable fallback date created once at module level
-const MODULE_REFERENCE_DATE = new Date()
-
 function TransfersKanbanCardComponent({
   transfer,
   onClick,
   actions,
-  referenceDate = MODULE_REFERENCE_DATE,
+  referenceDate,
 }: TransfersKanbanCardProps) {
   const handleClick = React.useCallback(
     (e: React.MouseEvent) => {

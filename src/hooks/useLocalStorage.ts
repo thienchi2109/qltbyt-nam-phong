@@ -39,6 +39,19 @@ export function useLocalStorage<T>(
     [key]
   )
 
+  // Re-sync when key prop changes (prevents stale state when switching keys)
+  React.useEffect(() => {
+    if (typeof window === 'undefined') return
+    try {
+      const item = window.localStorage.getItem(key)
+      setStoredValue(item ? JSON.parse(item) : initialValue)
+    } catch (error) {
+      console.warn(`Error reading localStorage key "${key}" on key change:`, error)
+      setStoredValue(initialValue)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key]) // Only re-read when key changes, not initialValue
+
   // Sync state when localStorage changes (from other tabs or same-tab components)
   React.useEffect(() => {
     const handleStorageChange = (e: StorageEvent) => {

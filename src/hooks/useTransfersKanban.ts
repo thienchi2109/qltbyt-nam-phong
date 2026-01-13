@@ -10,7 +10,7 @@ import { TransferKanbanResponseSchema, TransferTableModeResponseSchema } from '@
 
 export const transferKanbanKeys = {
   all: ['transfers-kanban'] as const,
-  filtered: (filters: TransferListFilters, options?: { excludeCompleted?: boolean }) =>
+  filtered: (filters: TransferListFilters, options?: { excludeCompleted?: boolean; perColumnLimit?: number }) =>
     [...transferKanbanKeys.all, filters, options] as const,
   column: (filters: TransferListFilters, status: TransferStatus) =>
     [...transferKanbanKeys.all, 'column', filters, status] as const,
@@ -46,7 +46,7 @@ export function useTransfersKanban(
   const shouldFetch = isMultiTenantUser ? hasTenantSelected : true
 
   return useQuery({
-    queryKey: transferKanbanKeys.filtered(filters, { excludeCompleted }),
+    queryKey: transferKanbanKeys.filtered(filters, { excludeCompleted, perColumnLimit }),
     queryFn: async (): Promise<TransferKanbanResponse> => {
       const result = await callRpc({
         fn: 'transfer_request_list',

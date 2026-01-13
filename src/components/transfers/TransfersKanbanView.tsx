@@ -37,6 +37,7 @@ function KanbanColumnWithInfiniteScroll({
   initialTotal,
   onViewTransfer,
   renderRowActions,
+  referenceDate,
 }: {
   status: TransferStatus
   filters: TransferListFilters
@@ -44,8 +45,17 @@ function KanbanColumnWithInfiniteScroll({
   initialTotal: number
   onViewTransfer: (item: TransferListItem) => void
   renderRowActions: (item: TransferListItem) => React.ReactNode
+  referenceDate: Date
 }) {
   const [infiniteScrollEnabled, setInfiniteScrollEnabled] = React.useState(false)
+
+  // Create a stable key from filters to detect changes
+  const filtersKey = React.useMemo(() => JSON.stringify(filters), [filters])
+
+  // Reset infinite scroll state when filters change (prevents auto-fetching after filter change)
+  React.useEffect(() => {
+    setInfiniteScrollEnabled(false)
+  }, [filtersKey])
 
   // Infinite scroll for this specific column (disabled until user scrolls near bottom)
   const {
@@ -93,6 +103,7 @@ function KanbanColumnWithInfiniteScroll({
       renderActions={renderRowActions}
       onLoadMore={handleLoadMore}
       isLoadingMore={isFetchingNextPage}
+      referenceDate={referenceDate}
     />
   )
 }
@@ -105,6 +116,15 @@ export function TransfersKanbanView({
   userRole,
 }: TransfersKanbanViewProps) {
   const [showCompleted, setShowCompleted] = React.useState(false)
+
+  // Reference date for overdue calculation, refreshes every minute
+  const [referenceDate, setReferenceDate] = React.useState(() => new Date())
+  React.useEffect(() => {
+    const interval = setInterval(() => {
+      setReferenceDate(new Date())
+    }, 60_000) // Refresh every minute
+    return () => clearInterval(interval)
+  }, [])
 
   // Initial kanban load (30 items per column)
   // NOTE: Tenant selection check is handled by parent (page.tsx)
@@ -167,6 +187,7 @@ export function TransfersKanbanView({
               initialTotal={initialTotal}
               onViewTransfer={onViewTransfer}
               renderRowActions={renderRowActions}
+              referenceDate={referenceDate}
             />
           )
         })}

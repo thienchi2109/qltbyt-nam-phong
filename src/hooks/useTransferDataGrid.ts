@@ -128,9 +128,9 @@ export const transferDataGridKeys = {
   all: ['transfers-data-grid'] as const,
   lists: () => [...transferDataGridKeys.all, 'list'] as const,
   list: (filters: TransferListFilters) =>
-    [...transferDataGridKeys.lists(), { filters }] as const,
+    [...transferDataGridKeys.lists(), sanitizeFilters(filters)] as const,
   counts: (filters: TransferListFilters) =>
-    [...transferDataGridKeys.all, 'counts', { filters }] as const,
+    [...transferDataGridKeys.all, 'counts', sanitizeFilters(filters)] as const,
 }
 
 export {
