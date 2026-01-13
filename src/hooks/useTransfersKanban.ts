@@ -94,7 +94,8 @@ export function useTransferColumnInfiniteScroll(
   perColumnLimit: number = 30 // Per-column page size (must match initial kanban load)
 ) {
   return useInfiniteQuery({
-    queryKey: transferKanbanKeys.column(filters, status),
+    // Include perColumnLimit in key: changing page size must trigger fresh fetch
+    queryKey: [...transferKanbanKeys.column(filters, status), perColumnLimit],
     queryFn: async ({ pageParam }): Promise<ColumnPageData> => {
       const result = await callRpc({
         fn: 'transfer_request_list',
