@@ -527,27 +527,29 @@ function TransfersPageContent({ user }: TransfersPageContentProps) {
                 )}
               </div>
 
-              {requiresTenantSelection ? (
-                <div className="flex min-h-[400px] items-center justify-center">
-                  <div className="flex flex-col items-center gap-4 text-center max-w-md">
-                    <Building2 className="h-12 w-12 text-muted-foreground" />
-                    <div className="space-y-2">
-                      <h3 className="font-medium text-lg">Chọn cơ sở y tế</h3>
-                      <p className="text-sm text-muted-foreground">
-                        Vui lòng chọn một cơ sở y tế từ bộ lọc phía trên để xem dữ liệu.
-                        Điều này giúp tránh tải dữ liệu lớn từ nhiều cơ sở cùng lúc.
-                      </p>
+              {viewMode === 'kanban' ? (
+                requiresTenantSelection ? (
+                  <div className="flex min-h-[400px] items-center justify-center">
+                    <div className="flex flex-col items-center gap-4 text-center max-w-md">
+                      <Building2 className="h-12 w-12 text-muted-foreground" />
+                      <div className="space-y-2">
+                        <h3 className="font-medium text-lg">Chọn cơ sở y tế</h3>
+                        <p className="text-sm text-muted-foreground">
+                          Vui lòng chọn một cơ sở y tế từ bộ lọc phía trên để xem dữ liệu.
+                          Điều này giúp tránh tải dữ liệu lớn từ nhiều cơ sở cùng lúc.
+                        </p>
+                      </div>
                     </div>
                   </div>
-                </div>
-              ) : viewMode === 'kanban' ? (
-                <TransfersKanbanView
-                  filters={filters}
-                  onViewTransfer={handleViewDetail}
-                  renderRowActions={renderRowActions}
-                  statusCounts={statusCounts?.columnCounts}
-                  userRole={userRole}
-                />
+                ) : (
+                  <TransfersKanbanView
+                    filters={filters}
+                    onViewTransfer={handleViewDetail}
+                    renderRowActions={renderRowActions}
+                    statusCounts={statusCounts?.columnCounts}
+                    userRole={userRole}
+                  />
+                )
               ) : (
                 <>
                   <div className="space-y-3 lg:hidden">

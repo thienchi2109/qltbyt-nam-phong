@@ -89,7 +89,8 @@ type ColumnPageData = { data: TransferListItem[]; hasMore: boolean }
 export function useTransferColumnInfiniteScroll(
   filters: TransferListFilters,
   status: TransferStatus,
-  enabled: boolean = false // Disabled by default, enable when user scrolls near bottom
+  enabled: boolean = false, // Disabled by default, enable when user scrolls near bottom
+  perColumnLimit: number = 30 // Per-column page size (must match initial kanban load)
 ) {
   return useInfiniteQuery({
     queryKey: transferKanbanKeys.column(filters, status),
@@ -106,7 +107,7 @@ export function useTransferColumnInfiniteScroll(
           p_assignee_ids: filters.assigneeIds,
           p_view_mode: 'table', // Use table mode for pagination
           p_page: pageParam,
-          p_page_size: 30,
+          p_page_size: perColumnLimit,
         },
       })
 
@@ -115,7 +116,7 @@ export function useTransferColumnInfiniteScroll(
 
       return {
         data: validated.data,
-        hasMore: validated.total > pageParam * 30,
+        hasMore: validated.total > pageParam * perColumnLimit,
       }
     },
     // TanStack Query v5: initialPageParam is required
@@ -135,7 +136,8 @@ export function useTransferColumnInfiniteScroll(
 export function useMergedColumnData(
   initialData: TransferListItem[] | undefined,
   infiniteData: { data: TransferListItem[], hasMore: boolean }[] | undefined,
-  isInitialLoading: boolean
+  isInitialLoading: boolean,
+  perColumnLimit: number = 30 // Per-column page size for hasMore fallback
 ): { tasks: TransferListItem[], hasMore: boolean, isLoadingMore: boolean } {
   if (isInitialLoading) {
     return { tasks: [], hasMore: false, isLoadingMore: true }
@@ -159,7 +161,7 @@ export function useMergedColumnData(
   // Use initial data's hasMore flag (from initial kanban load)
   return {
     tasks,
-    hasMore: tasks.length >= 30, // Assume more if we got full page
+    hasMore: tasks.length >= perColumnLimit, // Use perColumnLimit instead of hardcoded 30
     isLoadingMore: false,
   }
 }

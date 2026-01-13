@@ -104,7 +104,7 @@ BEGIN
     status_groups AS (
       SELECT
         s.status,
-        jsonb_agg(lateral_data.row_data ORDER BY lateral_data.created_at DESC) as tasks,
+        COALESCE(jsonb_agg(lateral_data.row_data ORDER BY lateral_data.created_at DESC) FILTER (WHERE lateral_data.row_data IS NOT NULL), '[]'::jsonb) as tasks,
         (
           SELECT COUNT(*)
           FROM public.yeu_cau_luan_chuyen yclc_count
@@ -127,7 +127,7 @@ BEGIN
             AND (p_date_to IS NULL OR yclc_count.created_at < ((p_date_to + interval '1 day')::timestamp AT TIME ZONE 'Asia/Ho_Chi_Minh'))
         ) as total_count
       FROM active_statuses s
-      CROSS JOIN LATERAL (
+      LEFT JOIN LATERAL (
         SELECT jsonb_build_object(
           'id', yclc.id,
           'ma_yeu_cau', yclc.ma_yeu_cau,
@@ -185,7 +185,7 @@ BEGIN
           AND (p_date_to IS NULL OR yclc.created_at < ((p_date_to + interval '1 day')::timestamp AT TIME ZONE 'Asia/Ho_Chi_Minh'))
         ORDER BY yclc.created_at DESC
         LIMIT p_per_column_limit
-      ) lateral_data
+      ) lateral_data ON true
       GROUP BY s.status
     )
     SELECT jsonb_build_object(

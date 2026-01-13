@@ -20,21 +20,23 @@ export function useLocalStorage<T>(
   const setValue = React.useCallback(
     (value: T | ((val: T) => T)) => {
       try {
-        const valueToStore =
-          value instanceof Function ? value(storedValue) : value
-        setStoredValue(valueToStore)
-        if (typeof window !== 'undefined') {
-          window.localStorage.setItem(key, JSON.stringify(valueToStore))
-          // Dispatch custom event to sync across components in same tab
-          window.dispatchEvent(new CustomEvent('local-storage-change', {
-            detail: { key, value: valueToStore }
-          }))
-        }
+        // Use functional update form to get latest state value
+        setStoredValue(prev => {
+          const valueToStore = value instanceof Function ? value(prev) : value
+          if (typeof window !== 'undefined') {
+            window.localStorage.setItem(key, JSON.stringify(valueToStore))
+            // Dispatch custom event to sync across components in same tab
+            window.dispatchEvent(new CustomEvent('local-storage-change', {
+              detail: { key, value: valueToStore }
+            }))
+          }
+          return valueToStore
+        })
       } catch (error) {
         console.warn(`Error setting localStorage key "${key}":`, error)
       }
     },
-    [key, storedValue]
+    [key]
   )
 
   // Sync state when localStorage changes (from other tabs or same-tab components)
