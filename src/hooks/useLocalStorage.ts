@@ -29,8 +29,13 @@ export function useLocalStorage<T>(
         // Allow value to be a function so we have same API as useState
         setStoredValue((prev) => {
           const valueToStore = value instanceof Function ? value(prev) : value
-          isLocalUpdate.current = true
-          return valueToStore
+          // Only mark as local update if value actually differs
+          // Otherwise the flag stays stuck and remote updates are mishandled
+          if (!Object.is(prev, valueToStore)) {
+            isLocalUpdate.current = true
+            return valueToStore
+          }
+          return prev
         })
       } catch (error) {
         console.warn(`Error setting localStorage key "${key}":`, error)
