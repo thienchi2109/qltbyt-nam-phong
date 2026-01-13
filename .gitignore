@@ -88,3 +88,4 @@ firebase_config.md
 
 # bv (beads viewer) local config and caches
 .bv/
+tmpclaude-*-cwd
