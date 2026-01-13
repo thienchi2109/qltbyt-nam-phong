@@ -49,12 +49,16 @@ function KanbanColumnWithInfiniteScroll({
 }) {
   const [infiniteScrollEnabled, setInfiniteScrollEnabled] = React.useState(false)
 
+  // Track if we've done the initial fetch after enabling infinite scroll
+  const didInitialFetchRef = React.useRef(false)
+
   // Create a stable key from filters to detect changes
   const filtersKey = React.useMemo(() => JSON.stringify(filters), [filters])
 
   // Reset infinite scroll state when filters change (prevents auto-fetching after filter change)
   React.useEffect(() => {
     setInfiniteScrollEnabled(false)
+    didInitialFetchRef.current = false
   }, [filtersKey])
 
   // Infinite scroll for this specific column (disabled until user scrolls near bottom)
@@ -65,11 +69,17 @@ function KanbanColumnWithInfiniteScroll({
     isFetchingNextPage,
   } = useTransferColumnInfiniteScroll(filters, status, infiniteScrollEnabled)
 
-  // Fix race condition: when infinite scroll is first enabled, fetch immediately
+  // One-time fetch when infinite scroll is first enabled
   // This handles the case where user scrolls, we enable the query, but fetchNextPage
   // wasn't called because hasNextPage was undefined during the initial scroll trigger
   React.useEffect(() => {
-    if (infiniteScrollEnabled && hasNextPage && !isFetchingNextPage) {
+    if (
+      infiniteScrollEnabled &&
+      hasNextPage &&
+      !isFetchingNextPage &&
+      !didInitialFetchRef.current
+    ) {
+      didInitialFetchRef.current = true
       fetchNextPage()
     }
   }, [infiniteScrollEnabled, hasNextPage, isFetchingNextPage, fetchNextPage])

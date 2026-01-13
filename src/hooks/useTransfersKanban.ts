@@ -122,9 +122,9 @@ export function useTransferColumnInfiniteScroll(
     },
     // TanStack Query v5: initialPageParam is required
     initialPageParam: 2, // Start at page 2 - page 1 data comes from initial kanban load
-    getNextPageParam: (lastPage, allPages) => {
-      // Pages start at 2 (page 1 is from initial kanban load)
-      return lastPage.hasMore ? allPages.length + 2 : undefined
+    getNextPageParam: (lastPage, _allPages, lastPageParam) => {
+      // Use lastPageParam (not allPages.length) because maxPages truncates old pages
+      return lastPage.hasMore ? lastPageParam + 1 : undefined
     },
     staleTime: 30000,
     gcTime: 2 * 60 * 1000, // Shorter gc for infinite scroll pages (2 min) - prevents memory bloat

@@ -98,8 +98,9 @@ BEGIN
 
   -- KANBAN MODE BRANCH
   IF p_view_mode = 'kanban' THEN
-    -- Performance: Use LATERAL JOIN with window function for "Top N per Group"
-    -- Single scan per status: fetches tasks AND count together (O(Groups * N) vs 2x scans)
+    -- Performance: Two-phase approach for optimal performance
+    -- Phase 1: Efficient counts per status (single index scan per status)
+    -- Phase 2: LATERAL with LIMIT for top N items (early termination, O(Groups * Limit))
     WITH active_statuses AS (
       SELECT unnest(
         CASE
@@ -108,12 +109,44 @@ BEGIN
         END
       ) AS status
     ),
+    -- Phase 1: Get counts per status efficiently
+    status_counts AS (
+      SELECT
+        yclc.trang_thai as status,
+        COUNT(*) as total_count
+      FROM public.yeu_cau_luan_chuyen yclc
+      JOIN public.thiet_bi tb ON tb.id = yclc.thiet_bi_id
+      WHERE yclc.trang_thai = ANY(
+        CASE
+          WHEN p_exclude_completed THEN ARRAY['cho_duyet', 'da_duyet', 'dang_luan_chuyen', 'da_ban_giao']::TEXT[]
+          ELSE ARRAY['cho_duyet', 'da_duyet', 'dang_luan_chuyen', 'da_ban_giao', 'hoan_thanh']::TEXT[]
+        END
+      )
+        AND (
+          (v_role = 'global' AND (v_effective_donvi IS NULL OR tb.don_vi = v_effective_donvi)) OR
+          (v_role <> 'global' AND ((v_effective_donvi IS NOT NULL AND tb.don_vi = v_effective_donvi) OR (v_effective_donvi IS NULL AND tb.don_vi = ANY(v_allowed))))
+        )
+        AND (p_types IS NULL OR yclc.loai_hinh = ANY(p_types))
+        AND (p_assignee_ids IS NULL OR yclc.nguoi_yeu_cau_id = ANY(p_assignee_ids))
+        AND (
+          p_q IS NULL OR p_q = '' OR
+          yclc.ma_yeu_cau ILIKE '%' || p_q || '%' OR
+          yclc.ly_do_luan_chuyen ILIKE '%' || p_q || '%' OR
+          tb.ten_thiet_bi ILIKE '%' || p_q || '%' OR
+          tb.ma_thiet_bi ILIKE '%' || p_q || '%'
+        )
+        AND (p_date_from IS NULL OR yclc.created_at >= (p_date_from::timestamp AT TIME ZONE 'Asia/Ho_Chi_Minh'))
+        AND (p_date_to IS NULL OR yclc.created_at < ((p_date_to + interval '1 day')::timestamp AT TIME ZONE 'Asia/Ho_Chi_Minh'))
+      GROUP BY yclc.trang_thai
+    ),
+    -- Phase 2: LATERAL with LIMIT for top N items per status (early termination)
     status_groups AS (
       SELECT
         s.status,
-        COALESCE(jsonb_agg(lateral_data.row_data ORDER BY lateral_data.created_at DESC) FILTER (WHERE lateral_data.rn <= p_per_column_limit), '[]'::jsonb) as tasks,
-        COALESCE(MAX(lateral_data.total_in_status), 0) as total_count
+        COALESCE(sc.total_count, 0) as total_count,
+        COALESCE(jsonb_agg(lateral_data.row_data ORDER BY lateral_data.created_at DESC), '[]'::jsonb) as tasks
       FROM active_statuses s
+      LEFT JOIN status_counts sc ON sc.status = s.status
       LEFT JOIN LATERAL (
         SELECT
           jsonb_build_object(
@@ -152,9 +185,7 @@ BEGIN
               'facility_id', dv.id
             )
           ) as row_data,
-          yclc.created_at,
-          ROW_NUMBER() OVER (ORDER BY yclc.created_at DESC) as rn,
-          COUNT(*) OVER () as total_in_status
+          yclc.created_at
         FROM public.yeu_cau_luan_chuyen yclc
         JOIN public.thiet_bi tb ON tb.id = yclc.thiet_bi_id
         LEFT JOIN public.don_vi dv ON dv.id = tb.don_vi
@@ -174,8 +205,10 @@ BEGIN
           )
           AND (p_date_from IS NULL OR yclc.created_at >= (p_date_from::timestamp AT TIME ZONE 'Asia/Ho_Chi_Minh'))
           AND (p_date_to IS NULL OR yclc.created_at < ((p_date_to + interval '1 day')::timestamp AT TIME ZONE 'Asia/Ho_Chi_Minh'))
+        ORDER BY yclc.created_at DESC
+        LIMIT p_per_column_limit
       ) lateral_data ON true
-      GROUP BY s.status
+      GROUP BY s.status, sc.total_count
     )
     SELECT jsonb_build_object(
       'columns', COALESCE(jsonb_object_agg(status, jsonb_build_object(
