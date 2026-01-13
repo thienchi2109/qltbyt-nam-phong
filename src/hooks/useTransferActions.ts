@@ -5,6 +5,7 @@ import { useSession } from "next-auth/react"
 import { useToast } from "@/hooks/use-toast"
 import { callRpc } from "@/lib/rpc-client"
 import { transferDataGridKeys } from "@/hooks/useTransferDataGrid"
+import { transferKanbanKeys } from "@/hooks/useTransfersKanban"
 import type { TransferListItem } from "@/types/transfers-data-grid"
 import type { TransferRequest } from "@/types/database"
 
@@ -56,7 +57,9 @@ export function useTransferActions(): UseTransferActionsReturn {
   }, [toast])
 
   const invalidateTransferQueries = React.useCallback(() => {
+    // Invalidate both table view and kanban view query keys
     queryClient.invalidateQueries({ queryKey: transferDataGridKeys.all })
+    queryClient.invalidateQueries({ queryKey: transferKanbanKeys.all })
   }, [queryClient])
 
   // mapToTransferRequest - converts TransferListItem to TransferRequest
