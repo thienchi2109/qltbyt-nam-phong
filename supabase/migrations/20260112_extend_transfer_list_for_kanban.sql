@@ -28,10 +28,26 @@ ON public.yeu_cau_luan_chuyen (trang_thai, created_at DESC);
 
 COMMENT ON INDEX idx_yclc_status_created_desc IS 'Optimize kanban per-column queries: ORDER BY created_at DESC with status filter';
 
+-- P0 Security Fix: Helper function to sanitize ILIKE patterns (escape %, _, \)
+CREATE OR REPLACE FUNCTION public._sanitize_ilike_pattern(input TEXT)
+RETURNS TEXT
+LANGUAGE plpgsql IMMUTABLE
+AS $$
+BEGIN
+  IF input IS NULL OR input = '' THEN
+    RETURN NULL;
+  END IF;
+  -- Escape special characters: \ must be escaped first, then % and _
+  RETURN replace(replace(replace(input, '\', '\\'), '%', '\%'), '_', '\_');
+END;
+$$;
+
+COMMENT ON FUNCTION public._sanitize_ilike_pattern IS 'Escape ILIKE special characters (%, _, \) to prevent pattern injection';
+
 -- Drop existing function to add new parameters
 DROP FUNCTION IF EXISTS public.transfer_request_list(TEXT, TEXT[], TEXT[], INT, INT, BIGINT, DATE, DATE, BIGINT[]);
 
--- Recreate with kanban parameters (backward compatible)
+-- Recreate with kanban parameters (backward compatible) and P0 security fixes
 CREATE OR REPLACE FUNCTION public.transfer_request_list(
   p_q TEXT DEFAULT NULL,
   p_statuses TEXT[] DEFAULT NULL,
@@ -61,6 +77,8 @@ DECLARE
   v_total BIGINT := 0;
   v_data JSONB := '[]'::jsonb;
   v_kanban_result JSONB;
+  v_max_array_size INT := 100;
+  v_sanitized_q TEXT;
 BEGIN
   -- Security: Validate p_view_mode to prevent injection
   IF p_view_mode NOT IN ('table', 'kanban') THEN
@@ -69,6 +87,22 @@ BEGIN
 
   -- Security: Cap p_per_column_limit to prevent abuse (1-100 range)
   p_per_column_limit := LEAST(GREATEST(COALESCE(p_per_column_limit, 30), 1), 100);
+
+  -- P0 FIX #2: Validate array sizes to prevent DoS
+  IF p_types IS NOT NULL AND array_length(p_types, 1) > v_max_array_size THEN
+    RAISE EXCEPTION 'p_types array exceeds maximum size of %', v_max_array_size;
+  END IF;
+
+  IF p_assignee_ids IS NOT NULL AND array_length(p_assignee_ids, 1) > v_max_array_size THEN
+    RAISE EXCEPTION 'p_assignee_ids array exceeds maximum size of %', v_max_array_size;
+  END IF;
+
+  IF p_statuses IS NOT NULL AND array_length(p_statuses, 1) > v_max_array_size THEN
+    RAISE EXCEPTION 'p_statuses array exceeds maximum size of %', v_max_array_size;
+  END IF;
+
+  -- P0 FIX #1: Sanitize search parameter to prevent ILIKE injection
+  v_sanitized_q := public._sanitize_ilike_pattern(p_q);
 
   -- Tenant isolation (same as existing logic)
   IF v_role = 'global' THEN
@@ -129,11 +163,11 @@ BEGIN
         AND (p_types IS NULL OR yclc.loai_hinh = ANY(p_types))
         AND (p_assignee_ids IS NULL OR yclc.nguoi_yeu_cau_id = ANY(p_assignee_ids))
         AND (
-          p_q IS NULL OR p_q = '' OR
-          yclc.ma_yeu_cau ILIKE '%' || p_q || '%' OR
-          yclc.ly_do_luan_chuyen ILIKE '%' || p_q || '%' OR
-          tb.ten_thiet_bi ILIKE '%' || p_q || '%' OR
-          tb.ma_thiet_bi ILIKE '%' || p_q || '%'
+          v_sanitized_q IS NULL OR
+          yclc.ma_yeu_cau ILIKE '%' || v_sanitized_q || '%' OR
+          yclc.ly_do_luan_chuyen ILIKE '%' || v_sanitized_q || '%' OR
+          tb.ten_thiet_bi ILIKE '%' || v_sanitized_q || '%' OR
+          tb.ma_thiet_bi ILIKE '%' || v_sanitized_q || '%'
         )
         AND (p_date_from IS NULL OR yclc.created_at >= (p_date_from::timestamp AT TIME ZONE 'Asia/Ho_Chi_Minh'))
         AND (p_date_to IS NULL OR yclc.created_at < ((p_date_to + interval '1 day')::timestamp AT TIME ZONE 'Asia/Ho_Chi_Minh'))
@@ -198,11 +232,11 @@ BEGIN
           AND (p_types IS NULL OR yclc.loai_hinh = ANY(p_types))
           AND (p_assignee_ids IS NULL OR yclc.nguoi_yeu_cau_id = ANY(p_assignee_ids))
           AND (
-            p_q IS NULL OR p_q = '' OR
-            yclc.ma_yeu_cau ILIKE '%' || p_q || '%' OR
-            yclc.ly_do_luan_chuyen ILIKE '%' || p_q || '%' OR
-            tb.ten_thiet_bi ILIKE '%' || p_q || '%' OR
-            tb.ma_thiet_bi ILIKE '%' || p_q || '%'
+            v_sanitized_q IS NULL OR
+            yclc.ma_yeu_cau ILIKE '%' || v_sanitized_q || '%' OR
+            yclc.ly_do_luan_chuyen ILIKE '%' || v_sanitized_q || '%' OR
+            tb.ten_thiet_bi ILIKE '%' || v_sanitized_q || '%' OR
+            tb.ma_thiet_bi ILIKE '%' || v_sanitized_q || '%'
           )
           AND (p_date_from IS NULL OR yclc.created_at >= (p_date_from::timestamp AT TIME ZONE 'Asia/Ho_Chi_Minh'))
           AND (p_date_to IS NULL OR yclc.created_at < ((p_date_to + interval '1 day')::timestamp AT TIME ZONE 'Asia/Ho_Chi_Minh'))
@@ -237,11 +271,11 @@ BEGIN
   AND (p_types IS NULL OR yclc.loai_hinh = ANY(p_types))
   AND (p_assignee_ids IS NULL OR yclc.nguoi_yeu_cau_id = ANY(p_assignee_ids))
   AND (
-    p_q IS NULL OR p_q = '' OR
-    yclc.ma_yeu_cau ILIKE '%' || p_q || '%' OR
-    yclc.ly_do_luan_chuyen ILIKE '%' || p_q || '%' OR
-    tb.ten_thiet_bi ILIKE '%' || p_q || '%' OR
-    tb.ma_thiet_bi ILIKE '%' || p_q || '%'
+    v_sanitized_q IS NULL OR
+    yclc.ma_yeu_cau ILIKE '%' || v_sanitized_q || '%' OR
+    yclc.ly_do_luan_chuyen ILIKE '%' || v_sanitized_q || '%' OR
+    tb.ten_thiet_bi ILIKE '%' || v_sanitized_q || '%' OR
+    tb.ma_thiet_bi ILIKE '%' || v_sanitized_q || '%'
   )
   AND (p_date_from IS NULL OR yclc.created_at >= (p_date_from::timestamp AT TIME ZONE 'Asia/Ho_Chi_Minh'))
   AND (p_date_to IS NULL OR yclc.created_at < ((p_date_to + interval '1 day')::timestamp AT TIME ZONE 'Asia/Ho_Chi_Minh'));
@@ -295,11 +329,11 @@ BEGIN
     AND (p_types IS NULL OR yclc.loai_hinh = ANY(p_types))
     AND (p_assignee_ids IS NULL OR yclc.nguoi_yeu_cau_id = ANY(p_assignee_ids))
     AND (
-      p_q IS NULL OR p_q = '' OR
-      yclc.ma_yeu_cau ILIKE '%' || p_q || '%' OR
-      yclc.ly_do_luan_chuyen ILIKE '%' || p_q || '%' OR
-      tb.ten_thiet_bi ILIKE '%' || p_q || '%' OR
-      tb.ma_thiet_bi ILIKE '%' || p_q || '%'
+      v_sanitized_q IS NULL OR
+      yclc.ma_yeu_cau ILIKE '%' || v_sanitized_q || '%' OR
+      yclc.ly_do_luan_chuyen ILIKE '%' || v_sanitized_q || '%' OR
+      tb.ten_thiet_bi ILIKE '%' || v_sanitized_q || '%' OR
+      tb.ma_thiet_bi ILIKE '%' || v_sanitized_q || '%'
     )
     AND (p_date_from IS NULL OR yclc.created_at >= (p_date_from::timestamp AT TIME ZONE 'Asia/Ho_Chi_Minh'))
     AND (p_date_to IS NULL OR yclc.created_at < ((p_date_to + interval '1 day')::timestamp AT TIME ZONE 'Asia/Ho_Chi_Minh'))
@@ -319,4 +353,4 @@ $$;
 
 GRANT EXECUTE ON FUNCTION public.transfer_request_list TO authenticated;
 
-COMMENT ON FUNCTION public.transfer_request_list IS 'Unified transfer list function - supports both table (paginated) and kanban (per-column) views';
+COMMENT ON FUNCTION public.transfer_request_list IS 'Unified transfer list function with P0 security fixes: ILIKE sanitization and array size validation';
