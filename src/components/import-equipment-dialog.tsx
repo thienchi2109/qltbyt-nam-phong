@@ -28,11 +28,13 @@ const REQUIRED_FIELDS = {
   'vi_tri_lap_dat': 'Vị trí lắp đặt'
 } as const;
 
+// Valid status values - moved to module level to avoid recreation on each validation call
+const VALID_STATUSES: Set<string> = new Set(equipmentStatusOptions);
+
 // Validation function for equipment data
 const validateEquipmentData = (data: Partial<Equipment>[], headerMapping: Record<string, string>) => {
   const errors: string[] = [];
   const validationResults: { isValid: boolean; missingFields: string[] }[] = [];
-  const validStatuses = new Set(equipmentStatusOptions);
 
   data.forEach((item, index) => {
     const missingFields: string[] = [];
@@ -47,8 +49,11 @@ const validateEquipmentData = (data: Partial<Equipment>[], headerMapping: Record
 
     // Validate status value if provided
     const status = item.tinh_trang_hien_tai;
-    if (status && typeof status === 'string' && status.trim() !== '' && !validStatuses.has(status as typeof equipmentStatusOptions[number])) {
-      errors.push(`Dòng ${index + 2}: Tình trạng "${status}" không hợp lệ. Phải là một trong: ${equipmentStatusOptions.join(', ')}`);
+    if (status && typeof status === 'string') {
+      const trimmedStatus = status.trim();
+      if (trimmedStatus !== '' && !VALID_STATUSES.has(trimmedStatus)) {
+        errors.push(`Dòng ${index + 2}: Tình trạng "${trimmedStatus}" không hợp lệ. Phải là một trong: ${equipmentStatusOptions.join(', ')}`);
+      }
     }
 
     validationResults.push({
