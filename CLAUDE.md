@@ -112,6 +112,13 @@ Invoke `context-engineering` skill for: agent systems, token optimization (>70%)
 
 ---
 
+## Required Commands
+
+| Command | When to Use |
+|---------|-------------|
+| `/ultra-think` | Complex decisions, architecture choices, trade-off analysis, multi-perspective problems |
+| `/generate-tests` | After implementing features or fixing bugs - generate comprehensive tests |
+
 ## MCP Tools
 
 **Code Search:** `mcp__filesystem-with-morph__warpgrep_codebase_search` (NEVER grep/ripgrep)
