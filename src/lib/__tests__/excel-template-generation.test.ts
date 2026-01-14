@@ -363,15 +363,10 @@ describe('Excel Template Generation', () => {
         })
       })
 
-      // Check that status values are mentioned
-      let foundStatusSection = false
+      // Check that ALL status values are mentioned
       EXPECTED_STATUS_OPTIONS.forEach((status) => {
-        if (sheetText.includes(status)) {
-          foundStatusSection = true
-        }
+        expect(sheetText).toContain(status)
       })
-
-      expect(foundStatusSection).toBe(true)
     })
 
     it('should mention date format guidance', () => {

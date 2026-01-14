@@ -1,17 +1,13 @@
 /**
- * Integration tests for equipment RPC validation.
+ * Unit tests for equipment status validation logic.
  *
- * These tests verify that the equipment_create RPC function
- * properly validates status values (defense-in-depth validation).
+ * These tests verify the validation logic that mirrors the PostgreSQL
+ * equipment_create RPC function's status validation (defense-in-depth).
  *
- * Note: These tests require a running Supabase instance with the
- * status validation migration applied. They are designed to be
- * run manually or in a CI/CD environment with proper database setup.
- *
- * To run these tests:
- * 1. Ensure the migration 20260113_add_status_validation.sql is applied
- * 2. Set environment variables for Supabase connection
- * 3. Run: npm run test:run -- --grep "Equipment RPC"
+ * Note: These are unit tests using a local mock of the validation logic.
+ * They do NOT call the actual Supabase RPC functions. For true integration
+ * tests against the database, a separate test suite with a running Supabase
+ * instance would be required.
  */
 
 import { describe, it, expect, beforeAll, afterAll } from 'vitest'
