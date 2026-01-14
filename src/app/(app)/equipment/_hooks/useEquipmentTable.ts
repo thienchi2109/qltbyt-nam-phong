@@ -62,6 +62,9 @@ export interface UseEquipmentTableParams {
   debouncedSearch: string
   searchTerm: string
   setSearchTerm: React.Dispatch<React.SetStateAction<string>>
+  // For pagination reset on filter change
+  selectedDonVi: number | null
+  selectedFacilityId: number | null
 }
 
 export interface UseEquipmentTableReturn {
@@ -93,6 +96,8 @@ export function useEquipmentTable(params: UseEquipmentTableParams): UseEquipment
     setColumnFilters,
     debouncedSearch,
     setSearchTerm,
+    selectedDonVi,
+    selectedFacilityId,
   } = params
 
   // Pagination state
@@ -107,6 +112,28 @@ export function useEquipmentTable(params: UseEquipmentTableParams): UseEquipment
     pageIndex: number
     pageSize: number
   } | null>(null)
+
+  // Pagination reset when filters change
+  const filterKey = React.useMemo(
+    () =>
+      JSON.stringify({
+        filters: columnFilters,
+        search: debouncedSearch,
+        facility: selectedFacilityId,
+        tenant: selectedDonVi,
+      }),
+    [columnFilters, debouncedSearch, selectedFacilityId, selectedDonVi]
+  )
+  const [lastFilterKey, setLastFilterKey] = React.useState(filterKey)
+
+  React.useEffect(() => {
+    if (filterKey !== lastFilterKey && pagination.pageIndex > 0) {
+      setPagination((prev) => ({ ...prev, pageIndex: 0 }))
+      setLastFilterKey(filterKey)
+    } else if (filterKey !== lastFilterKey) {
+      setLastFilterKey(filterKey)
+    }
+  }, [filterKey, lastFilterKey, pagination.pageIndex])
 
   // Media queries
   const isMobile = useIsMobile()
@@ -166,17 +193,21 @@ export function useEquipmentTable(params: UseEquipmentTableParams): UseEquipment
 
   // Restore table state after data changes
   React.useEffect(() => {
-    if (preservePageState && data.length > 0) {
-      setTimeout(() => {
-        tableRef.current.setPageIndex(preservePageState.pageIndex)
-        tableRef.current.setPageSize(preservePageState.pageSize)
-        setPreservePageState(null)
-      }, 150)
-    }
+    if (!preservePageState || data.length === 0) return
+
+    const timer = setTimeout(() => {
+      tableRef.current.setPageIndex(preservePageState.pageIndex)
+      tableRef.current.setPageSize(preservePageState.pageSize)
+      setPreservePageState(null)
+    }, 150)
+
+    return () => clearTimeout(timer)
   }, [preservePageState, data.length])
 
   const isFiltered = table.getState().columnFilters.length > 0
 
+  // Note: useState setters (setPagination, setColumnVisibility, setPreservePageState)
+  // are stable references and intentionally excluded from the dependency array.
   return React.useMemo(
     () => ({
       table,

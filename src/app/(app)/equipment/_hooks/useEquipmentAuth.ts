@@ -76,8 +76,8 @@ export function useEquipmentAuth(): UseEquipmentAuthReturn {
       : "unset"
     : tenantKey
 
-  // Selected tenant ID for UI display
-  const selectedDonViUI = React.useMemo(() => {
+  // Selected don_vi for query filtering (also used for UI display)
+  const selectedDonVi = React.useMemo(() => {
     if (!isGlobal) return null
     if (tenantFilter === "all") return null
     const v = parseInt(tenantFilter, 10)
@@ -87,17 +87,9 @@ export function useEquipmentAuth(): UseEquipmentAuthReturn {
   // Current tenant ID for queries
   const currentTenantId = React.useMemo(() => {
     if (!isGlobal) return user?.don_vi ? Number(user.don_vi) : null
-    if (selectedDonViUI !== null) return selectedDonViUI
+    if (selectedDonVi !== null) return selectedDonVi
     return null
-  }, [isGlobal, user?.don_vi, selectedDonViUI])
-
-  // Selected don_vi for query filtering
-  const selectedDonVi = React.useMemo(() => {
-    if (!isGlobal) return null
-    if (tenantFilter === "all") return null
-    const v = parseInt(tenantFilter, 10)
-    return Number.isFinite(v) ? v : null
-  }, [isGlobal, tenantFilter])
+  }, [isGlobal, user?.don_vi, selectedDonVi])
 
   return React.useMemo(
     () => ({

@@ -20,4 +20,6 @@ export {
   useEquipmentRouteSync,
   type UseEquipmentRouteSyncParams,
   type UseEquipmentRouteSyncReturn,
+  type RouteAction,
 } from "./useEquipmentRouteSync"
+export { useEquipmentContext } from "./useEquipmentContext"

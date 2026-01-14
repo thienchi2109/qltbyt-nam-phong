@@ -76,6 +76,8 @@ export function useEquipmentFilters(): UseEquipmentFiltersReturn {
     [getArrayFilter]
   )
 
+  // Note: useState setters (setSearchTerm, setSorting, setColumnFilters) are stable
+  // references and intentionally excluded from the dependency array per React guidelines.
   return React.useMemo(
     () => ({
       searchTerm,
