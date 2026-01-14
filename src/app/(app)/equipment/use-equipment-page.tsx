@@ -20,7 +20,7 @@ import { useIsMobile } from "@/hooks/use-mobile"
 import { useMediaQuery } from "@/hooks/use-media-query"
 import { useSearchDebounce } from "@/hooks/use-debounce"
 import { useFacilityFilter } from "@/hooks/useFacilityFilter"
-import { exportArrayToExcel, exportToExcel } from "@/lib/excel-utils"
+import { exportToExcel, generateEquipmentImportTemplate } from "@/lib/excel-utils"
 import { generateProfileSheet, generateDeviceLabel, type PrintContext } from "@/components/equipment/equipment-print-utils"
 import { columnLabels, createEquipmentColumns } from "@/components/equipment/equipment-table-columns"
 import { EquipmentActionsMenu } from "@/components/equipment/equipment-actions-menu"
@@ -504,18 +504,15 @@ export function useEquipmentPage(): UseEquipmentPageReturn {
 
   const handleDownloadTemplate = React.useCallback(async () => {
     try {
-      const templateHeaders = Object.entries(columnLabels)
-        .filter(([key]) => key !== 'id')
-        .map(([, label]) => label)
-
-      const colWidths = templateHeaders.map(header => Math.max(header.length, 25))
-
-      await exportArrayToExcel(
-        [templateHeaders],
-        "Mau_Nhap_Thiet_Bi.xlsx",
-        "Template Thiết Bị",
-        colWidths
-      )
+      const blob = await generateEquipmentImportTemplate()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = 'Mau_Nhap_Thiet_Bi.xlsx'
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
     } catch (error) {
       console.error('Error downloading template:', error)
       toast({

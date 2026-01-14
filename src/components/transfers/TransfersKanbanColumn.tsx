@@ -1,6 +1,15 @@
 import * as React from 'react'
+import { cn } from '@/lib/utils'
 import { useVirtualizer } from '@tanstack/react-virtual'
-import { Loader2 } from 'lucide-react'
+import {
+  Loader2,
+  Clock,
+  FileCheck,
+  Truck,
+  PackageCheck,
+  CheckCircle2,
+  type LucideIcon
+} from 'lucide-react'
 import { TransfersKanbanCard } from './TransfersKanbanCard'
 import type { TransferListItem, TransferStatus } from '@/types/transfers-data-grid'
 import { TRANSFER_STATUS_LABELS } from '@/types/transfers-data-grid'
@@ -16,6 +25,22 @@ interface TransfersKanbanColumnProps {
   isLoadingMore?: boolean
   /** Current date for overdue calculation - should refresh periodically */
   referenceDate: Date
+}
+
+const STATUS_HEADER_STYLES: Record<TransferStatus, string> = {
+  cho_duyet: "bg-secondary/50 border-secondary/20 text-secondary-foreground",
+  da_duyet: "bg-primary/10 border-primary/20 text-primary",
+  dang_luan_chuyen: "bg-destructive/10 border-destructive/20 text-destructive",
+  da_ban_giao: "bg-secondary/50 border-secondary/20 text-secondary-foreground",
+  hoan_thanh: "bg-green-500/10 border-green-500/20 text-green-600 dark:text-green-400",
+}
+
+const STATUS_ICONS: Record<TransferStatus, LucideIcon> = {
+  cho_duyet: Clock,
+  da_duyet: FileCheck,
+  dang_luan_chuyen: Truck,
+  da_ban_giao: PackageCheck,
+  hoan_thanh: CheckCircle2,
 }
 
 export function TransfersKanbanColumn({
@@ -64,12 +89,15 @@ export function TransfersKanbanColumn({
   }, [lastItemIndex, tasks.length, hasMore, isLoadingMore])
 
   return (
-    <div className="flex flex-col w-80 min-w-[320px] bg-sidebar rounded-lg border shrink-0">
+    <div className="flex flex-col w-full lg:w-80 lg:min-w-[320px] bg-sidebar rounded-lg border lg:shrink-0">
       {/* Header */}
-      <div className="p-3 border-b shrink-0">
-        <h3 className="font-medium text-sm">
-          {TRANSFER_STATUS_LABELS[status]}
-        </h3>
+      <div className={cn("p-3 border-b shrink-0 transition-colors", STATUS_HEADER_STYLES[status])}>
+        <div className="flex items-center gap-2">
+          {React.createElement(STATUS_ICONS[status], { className: "h-4 w-4" })}
+          <h3 className="font-medium text-sm">
+            {TRANSFER_STATUS_LABELS[status]}
+          </h3>
+        </div>
         <span className="text-xs text-muted-foreground">
           {tasks.length} / {total}
         </span>

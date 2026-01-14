@@ -18,17 +18,21 @@ import { Label } from "@/components/ui/label"
 import { useToast } from "@/hooks/use-toast"
 import { callRpc } from "@/lib/rpc-client"
 import type { Equipment } from "@/lib/data"
+import { equipmentStatusOptions } from "@/components/equipment/equipment-table-columns"
 
 // Required fields for equipment validation
-const REQUIRED_FIELDS = {
+export const REQUIRED_FIELDS = {
   'khoa_phong_quan_ly': 'Khoa/phòng quản lý',
   'nguoi_dang_truc_tiep_quan_ly': 'Người sử dụng',
   'tinh_trang_hien_tai': 'Tình trạng',
   'vi_tri_lap_dat': 'Vị trí lắp đặt'
 } as const;
 
+// Valid status values - moved to module level to avoid recreation on each validation call
+const VALID_STATUSES: Set<string> = new Set(equipmentStatusOptions);
+
 // Validation function for equipment data
-const validateEquipmentData = (data: Partial<Equipment>[], headerMapping: Record<string, string>) => {
+export const validateEquipmentData = (data: Partial<Equipment>[], headerMapping: Record<string, string>) => {
   const errors: string[] = [];
   const validationResults: { isValid: boolean; missingFields: string[] }[] = [];
 
@@ -42,6 +46,15 @@ const validateEquipmentData = (data: Partial<Equipment>[], headerMapping: Record
         missingFields.push(displayName);
       }
     });
+
+    // Validate status value if provided
+    const status = item.tinh_trang_hien_tai;
+    if (status && typeof status === 'string') {
+      const trimmedStatus = status.trim();
+      if (trimmedStatus !== '' && !VALID_STATUSES.has(trimmedStatus)) {
+        errors.push(`Dòng ${index + 2}: Tình trạng "${trimmedStatus}" không hợp lệ. Phải là một trong: ${equipmentStatusOptions.join(', ')}`);
+      }
+    }
 
     validationResults.push({
       isValid: missingFields.length === 0,
@@ -210,7 +223,7 @@ export function ImportEquipmentDialog({ open, onOpenChange, onSuccess }: ImportE
         const workbook = await readExcelFile(file)
         const sheetName = workbook.SheetNames[0]
         const worksheet = workbook.Sheets[sheetName]
-        const json: Record<string, any>[] = await worksheetToJson(worksheet)
+        const json = await worksheetToJson(worksheet)
 
         if (json.length === 0) {
             setError("File không có dữ liệu. Vui lòng kiểm tra lại file của bạn.")

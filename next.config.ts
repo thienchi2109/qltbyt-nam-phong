@@ -20,11 +20,6 @@ const nextConfig: NextConfig = {
   experimental: {
     // Enable experimental features for better Cloudflare Workers support
   },
-  // Turbopack configuration (stable in Next.js 15)
-  turbo: {
-    // Turbopack is configured and enabled via --turbopack flag
-    // PWA webpack config is only used in production builds
-  },
   // Fix for app-build-manifest.json 404 error
   async headers() {
     return [
