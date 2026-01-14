@@ -9,17 +9,10 @@
 
 import { describe, it, expect } from 'vitest'
 import { equipmentStatusOptions } from '@/components/equipment/equipment-table-columns'
+import { validateEquipmentData, REQUIRED_FIELDS } from '@/components/import-equipment-dialog'
 
 // Use the source of truth for valid status values
 const VALID_STATUSES: Set<string> = new Set(equipmentStatusOptions)
-
-// Required fields for equipment validation (same as in import-equipment-dialog.tsx)
-const REQUIRED_FIELDS = {
-  'khoa_phong_quan_ly': 'Khoa/phòng quản lý',
-  'nguoi_dang_truc_tiep_quan_ly': 'Người sử dụng',
-  'tinh_trang_hien_tai': 'Tình trạng',
-  'vi_tri_lap_dat': 'Vị trí lắp đặt'
-} as const
 
 type Equipment = {
   ma_thiet_bi?: string
@@ -29,50 +22,6 @@ type Equipment = {
   tinh_trang_hien_tai?: string
   vi_tri_lap_dat?: string
   [key: string]: unknown
-}
-
-/**
- * Extracted validation function - mirrors import-equipment-dialog.tsx logic
- */
-function validateEquipmentData(data: Partial<Equipment>[], headerMapping: Record<string, string>) {
-  const errors: string[] = []
-  const validationResults: { isValid: boolean; missingFields: string[] }[] = []
-
-  data.forEach((item, index) => {
-    const missingFields: string[] = []
-
-    // Check each required field
-    Object.entries(REQUIRED_FIELDS).forEach(([dbKey, displayName]) => {
-      const value = item[dbKey as keyof Equipment]
-      if (!value || (typeof value === 'string' && value.trim() === '')) {
-        missingFields.push(displayName)
-      }
-    })
-
-    // Validate status value if provided
-    const status = item.tinh_trang_hien_tai
-    if (status && typeof status === 'string') {
-      const trimmedStatus = status.trim()
-      if (trimmedStatus !== '' && !VALID_STATUSES.has(trimmedStatus)) {
-        errors.push(`Dòng ${index + 2}: Tình trạng "${trimmedStatus}" không hợp lệ. Phải là một trong: ${equipmentStatusOptions.join(', ')}`)
-      }
-    }
-
-    validationResults.push({
-      isValid: missingFields.length === 0,
-      missingFields
-    })
-
-    if (missingFields.length > 0) {
-      errors.push(`Dòng ${index + 2}: Thiếu ${missingFields.join(', ')}`)
-    }
-  })
-
-  return {
-    isValid: errors.length === 0,
-    errors,
-    validationResults
-  }
 }
 
 describe('Equipment Import Validation', () => {

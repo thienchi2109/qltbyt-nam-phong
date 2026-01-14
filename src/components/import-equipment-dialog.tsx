@@ -21,7 +21,7 @@ import type { Equipment } from "@/lib/data"
 import { equipmentStatusOptions } from "@/components/equipment/equipment-table-columns"
 
 // Required fields for equipment validation
-const REQUIRED_FIELDS = {
+export const REQUIRED_FIELDS = {
   'khoa_phong_quan_ly': 'Khoa/phòng quản lý',
   'nguoi_dang_truc_tiep_quan_ly': 'Người sử dụng',
   'tinh_trang_hien_tai': 'Tình trạng',
@@ -32,7 +32,7 @@ const REQUIRED_FIELDS = {
 const VALID_STATUSES: Set<string> = new Set(equipmentStatusOptions);
 
 // Validation function for equipment data
-const validateEquipmentData = (data: Partial<Equipment>[], headerMapping: Record<string, string>) => {
+export const validateEquipmentData = (data: Partial<Equipment>[], headerMapping: Record<string, string>) => {
   const errors: string[] = [];
   const validationResults: { isValid: boolean; missingFields: string[] }[] = [];
 
