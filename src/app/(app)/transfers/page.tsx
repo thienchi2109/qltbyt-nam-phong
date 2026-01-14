@@ -132,7 +132,8 @@ function TransfersPageContent({ user }: TransfersPageContentProps) {
       facilities: facilityOptionsData || [],
     })
 
-  const [viewMode] = useTransfersViewMode()
+  const [rawViewMode] = useTransfersViewMode()
+  const viewMode = isMobile ? 'table' : rawViewMode
 
   // Get user role from session context
   const userRole = user?.role as 'global' | 'regional_leader' | 'to_qltb' | 'technician' | 'user' | undefined
@@ -439,8 +440,10 @@ function TransfersPageContent({ user }: TransfersPageContentProps) {
             </CardDescription>
           </div>
           <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-row sm:items-center sm:gap-2">
-            <TransfersViewToggle />
-            
+            <div className="hidden sm:block">
+              <TransfersViewToggle />
+            </div>
+
             <FacilityFilter
               facilities={facilityOptionsData || []}
               selectedId={selectedFacilityId}
