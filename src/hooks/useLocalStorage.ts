@@ -32,18 +32,19 @@ export function useLocalStorage<T>(
 
   const setValue = React.useCallback(
     (value: T | ((val: T) => T)) => {
-      try {
-        const prev = storedValueRef.current
-        const valueToStore = value instanceof Function ? value(prev) : value
+      const prev = storedValueRef.current
+      const valueToStore = value instanceof Function ? value(prev) : value
 
-        // Only persist if value actually differs
-        if (!Object.is(prev, valueToStore)) {
-          // Update ref immediately for subsequent calls before React re-renders
-          storedValueRef.current = valueToStore
+      // Only persist if value actually differs
+      if (!Object.is(prev, valueToStore)) {
+        // Update ref and state first - these must always succeed together
+        storedValueRef.current = valueToStore
+        setStoredValue(valueToStore)
 
-          // Write to localStorage synchronously - critical for unmount safety
-          // If we defer to an effect, the write is lost on immediate unmount
-          if (typeof window !== 'undefined') {
+        // Try to persist to localStorage (non-critical for hook functionality)
+        // Hook gracefully degrades to in-memory-only if localStorage unavailable
+        if (typeof window !== 'undefined') {
+          try {
             window.localStorage.setItem(key, JSON.stringify(valueToStore))
             // Dispatch custom event to sync across components in same tab
             window.dispatchEvent(
@@ -51,13 +52,10 @@ export function useLocalStorage<T>(
                 detail: { key, value: valueToStore, source: hookId.current },
               })
             )
+          } catch (error) {
+            console.warn(`Error writing to localStorage key "${key}":`, error)
           }
-
-          // Update React state
-          setStoredValue(valueToStore)
         }
-      } catch (error) {
-        console.warn(`Error setting localStorage key "${key}":`, error)
       }
     },
     [key]
