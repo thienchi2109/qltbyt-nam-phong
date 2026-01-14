@@ -231,8 +231,10 @@ export async function exportToExcel(
       return
     }
 
-    // Extract headers from first row
-    const headers = Object.keys(data[0])
+    // Extract headers from all rows to handle sparse data
+    const headers = Array.from(
+      new Set(data.flatMap((row) => Object.keys(row)))
+    )
 
     // Add header row
     worksheet.addRow(headers)
@@ -360,8 +362,10 @@ export async function createMultiSheetExcel(
         const jsonData = sheet.data as Record<string, unknown>[]
 
         if (jsonData.length > 0) {
-          // Extract headers from first row
-          const headers = Object.keys(jsonData[0])
+          // Extract headers from all rows to handle sparse data
+          const headers = Array.from(
+            new Set(jsonData.flatMap((row) => Object.keys(row)))
+          )
 
           // Add header row
           worksheet.addRow(headers)
