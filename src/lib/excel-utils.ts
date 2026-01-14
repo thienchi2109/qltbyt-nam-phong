@@ -518,7 +518,7 @@ export async function generateEquipmentImportTemplate(): Promise<Blob> {
       }
     }
 
-    // Highlight required columns with light yellow background
+    // Highlight required columns with red background
     const requiredColumns = ['khoa_phong_quan_ly', 'nguoi_dang_truc_tiep_quan_ly', 'tinh_trang_hien_tai', 'vi_tri_lap_dat']
     requiredColumns.forEach(colKey => {
       const colIndex = columnKeys.findIndex(key => key === colKey) + 1
