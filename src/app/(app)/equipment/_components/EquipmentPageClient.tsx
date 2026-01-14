@@ -14,14 +14,6 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog"
-import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -29,16 +21,15 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Skeleton } from "@/components/ui/skeleton"
 import { FilterBottomSheet } from "@/components/equipment/filter-bottom-sheet"
-import { columnLabels } from "@/components/equipment/equipment-table-columns"
 import { EquipmentPagination } from "@/components/equipment/equipment-pagination"
 import { FacilityFilterSheet } from "@/components/equipment/facility-filter-sheet"
 import { EquipmentToolbar } from "@/components/equipment/equipment-toolbar"
-import type { Equipment } from "@/types/database"
 
 import { useEquipmentPage } from "../use-equipment-page"
 import { EquipmentContent } from "../equipment-content"
 import { EquipmentDialogs } from "../equipment-dialogs"
 import { EquipmentDialogProvider } from "./EquipmentDialogContext"
+import { EquipmentColumnsDialog } from "./EquipmentColumnsDialog"
 import { useEquipmentContext } from "../_hooks/useEquipmentContext"
 
 export function EquipmentPageClient() {
@@ -68,16 +59,18 @@ export function EquipmentPageClient() {
   )
 }
 
-// Separate component to use context inside provider
-function EquipmentPageContent({ pageState }: { pageState: ReturnType<typeof useEquipmentPage> }) {
+// Separate component to use context inside provider - memoized to prevent re-renders
+const EquipmentPageContent = React.memo(function EquipmentPageContent({
+  pageState
+}: {
+  pageState: ReturnType<typeof useEquipmentPage>
+}) {
   const {
     openAddDialog,
     openImportDialog,
     openColumnsDialog,
     openDetailDialog,
     openEditDialog,
-    dialogState,
-    closeColumnsDialog,
   } = useEquipmentContext()
 
   const {
@@ -234,38 +227,7 @@ function EquipmentPageContent({ pageState }: { pageState: ReturnType<typeof useE
             onShowEquipmentDetails={(eq) => openDetailDialog(eq)}
           />
 
-          {/* Columns dialog */}
-          <Dialog open={dialogState.isColumnsOpen} onOpenChange={(open) => !open && closeColumnsDialog()}>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Hiện/Ẩn cột</DialogTitle>
-                <DialogDescription>Chọn các cột muốn hiển thị trong bảng.</DialogDescription>
-              </DialogHeader>
-              <div className="max-h-[50vh] overflow-y-auto space-y-1">
-                {table
-                  .getAllColumns()
-                  .filter((column) => column.getCanHide())
-                  .map((column) => (
-                    <div key={column.id} className="flex items-center justify-between py-1">
-                      <span className="text-sm text-muted-foreground">
-                        {columnLabels[column.id as keyof Equipment] || column.id}
-                      </span>
-                      <Button
-                        variant={column.getIsVisible() ? 'secondary' : 'outline'}
-                        size="sm"
-                        className="h-7"
-                        onClick={() => column.toggleVisibility(!column.getIsVisible())}
-                      >
-                        {column.getIsVisible() ? 'Ẩn' : 'Hiện'}
-                      </Button>
-                    </div>
-                  ))}
-              </div>
-              <DialogFooter>
-                <Button variant="outline" onClick={closeColumnsDialog}>Đóng</Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
+          <EquipmentColumnsDialog table={table} />
 
           <div className="mt-4">
             <EquipmentContent
@@ -346,4 +308,4 @@ function EquipmentPageContent({ pageState }: { pageState: ReturnType<typeof useE
       />
     </>
   )
-}
+})

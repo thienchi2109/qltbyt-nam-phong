@@ -60,7 +60,6 @@ export interface UseEquipmentTableParams {
   columnFilters: ColumnFiltersState
   setColumnFilters: React.Dispatch<React.SetStateAction<ColumnFiltersState>>
   debouncedSearch: string
-  searchTerm: string
   setSearchTerm: React.Dispatch<React.SetStateAction<string>>
   // For pagination reset on filter change
   selectedDonVi: number | null

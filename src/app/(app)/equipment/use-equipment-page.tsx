@@ -117,7 +117,6 @@ export function useEquipmentPage(): UseEquipmentPageReturn {
     columnFilters: filters.columnFilters,
     setColumnFilters: filters.setColumnFilters,
     debouncedSearch: filters.debouncedSearch,
-    searchTerm: filters.searchTerm,
     setSearchTerm: filters.setSearchTerm,
     selectedDonVi: auth.selectedDonVi,
     selectedFacilityId: data.selectedFacilityId,
@@ -199,16 +198,6 @@ export function useEquipmentPage(): UseEquipmentPageReturn {
     setPendingFacilityId(data.selectedFacilityId ?? null)
     setIsFacilitySheetOpen(false)
   }, [data.selectedFacilityId])
-
-  // Filter sheet handlers
-  const handleFilterApply = React.useCallback(() => {
-    setIsFilterSheetOpen(false)
-  }, [])
-
-  const handleFilterClear = React.useCallback(() => {
-    filters.resetFilters()
-    setIsFilterSheetOpen(false)
-  }, [filters.resetFilters])
 
   // Mutation success handlers
   const onDataMutationSuccess = React.useCallback(() => {
