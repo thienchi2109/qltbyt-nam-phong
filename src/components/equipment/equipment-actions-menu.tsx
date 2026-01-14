@@ -4,11 +4,15 @@
  * Dropdown menu for per-row equipment actions.
  * Includes view details, usage logging, and repair request creation.
  * Handles RBAC-based visibility and disabled states.
+ * 
+ * Consumes EquipmentDialogContext for dialog actions - must be used
+ * within EquipmentDialogProvider.
  */
 
 "use client"
 
 import * as React from "react"
+import { useRouter } from "next/navigation"
 import { MoreHorizontal } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
@@ -18,31 +22,29 @@ import {
   DropdownMenuLabel,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import type { Equipment, UsageLog, SessionUser } from "@/types/database"
+import { useEquipmentContext } from "@/app/(app)/equipment/_hooks/useEquipmentContext"
+import type { Equipment, UsageLog } from "@/types/database"
 
 export interface EquipmentActionsMenuProps {
   equipment: Equipment
-  user: SessionUser | null
-  isRegionalLeader: boolean
   activeUsageLogs: UsageLog[] | undefined
   isLoadingActiveUsage: boolean
-  onShowDetails: (equipment: Equipment) => void
-  onStartUsage: (equipment: Equipment) => void
-  onEndUsage: (usageLog: UsageLog) => void
-  onCreateRepairRequest: (equipment: Equipment) => void
 }
 
 export function EquipmentActionsMenu({
   equipment,
-  user,
-  isRegionalLeader,
   activeUsageLogs,
   isLoadingActiveUsage,
-  onShowDetails,
-  onStartUsage,
-  onEndUsage,
-  onCreateRepairRequest,
 }: EquipmentActionsMenuProps) {
+  const router = useRouter()
+  const {
+    user,
+    isRegionalLeader,
+    openDetailDialog,
+    openStartUsageDialog,
+    openEndUsageDialog,
+  } = useEquipmentContext()
+
   const userId = React.useMemo(() => {
     const uid = user?.id
     const n = typeof uid === 'string' ? Number(uid) : uid
@@ -55,6 +57,26 @@ export function EquipmentActionsMenu({
 
   const isCurrentUserUsing = !!activeUsageLog && userId != null && activeUsageLog.nguoi_su_dung_id === userId
   const startUsageDisabled = isLoadingActiveUsage || !user || !!activeUsageLog || isRegionalLeader
+
+  const handleShowDetails = React.useCallback(() => {
+    openDetailDialog(equipment)
+  }, [openDetailDialog, equipment])
+
+  const handleStartUsage = React.useCallback(() => {
+    if (startUsageDisabled) return
+    openStartUsageDialog(equipment)
+  }, [openStartUsageDialog, equipment, startUsageDisabled])
+
+  const handleEndUsage = React.useCallback(() => {
+    if (activeUsageLog) {
+      openEndUsageDialog(activeUsageLog)
+    }
+  }, [openEndUsageDialog, activeUsageLog])
+
+  const handleCreateRepairRequest = React.useCallback(() => {
+    if (isRegionalLeader) return
+    router.push(`/repair-requests?equipmentId=${equipment.id}`)
+  }, [router, equipment.id, isRegionalLeader])
 
   return (
     <DropdownMenu>
@@ -70,34 +92,26 @@ export function EquipmentActionsMenu({
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
         <DropdownMenuLabel>Hành động</DropdownMenuLabel>
-        <DropdownMenuItem onSelect={() => onShowDetails(equipment)}>
+        <DropdownMenuItem onSelect={handleShowDetails}>
           Xem chi tiết
         </DropdownMenuItem>
         {!isCurrentUserUsing && (
           <DropdownMenuItem
             disabled={startUsageDisabled}
-            onSelect={() => {
-              if (startUsageDisabled) return
-              onStartUsage(equipment)
-            }}
+            onSelect={handleStartUsage}
             title={activeUsageLog ? "Thiết bị đang được sử dụng" : undefined}
           >
             Viết nhật ký SD
           </DropdownMenuItem>
         )}
         {isCurrentUserUsing && (
-          <DropdownMenuItem
-            onSelect={() => onEndUsage(activeUsageLog as UsageLog)}
-          >
+          <DropdownMenuItem onSelect={handleEndUsage}>
             Kết thúc sử dụng
           </DropdownMenuItem>
         )}
         <DropdownMenuItem
           disabled={isRegionalLeader}
-          onSelect={() => {
-            if (isRegionalLeader) return
-            onCreateRepairRequest(equipment)
-          }}
+          onSelect={handleCreateRepairRequest}
         >
           Tạo yêu cầu sửa chữa
         </DropdownMenuItem>

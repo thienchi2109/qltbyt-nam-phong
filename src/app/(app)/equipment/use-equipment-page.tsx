@@ -89,32 +89,16 @@ export function useEquipmentPage(): UseEquipmentPageReturn {
   const routeSync = useEquipmentRouteSync({ data: data.data })
 
   // Render actions helper (needed for columns)
+  // EquipmentActionsMenu now consumes dialog actions from context directly
   const renderActions = React.useCallback(
     (equipment: Equipment) => (
       <EquipmentActionsMenu
         equipment={equipment}
-        user={auth.user}
-        isRegionalLeader={auth.isRegionalLeader}
         activeUsageLogs={data.activeUsageLogs}
         isLoadingActiveUsage={data.isLoadingActiveUsage}
-        onShowDetails={(eq) => {
-          setSelectedEquipment(eq)
-          setIsDetailModalOpen(true)
-        }}
-        onStartUsage={(eq) => {
-          setStartUsageEquipment(eq)
-          setIsStartUsageDialogOpen(true)
-        }}
-        onEndUsage={(usage) => {
-          setEndUsageLog(usage)
-          setIsEndUsageDialogOpen(true)
-        }}
-        onCreateRepairRequest={(eq) =>
-          routeSync.router.push(`/repair-requests?equipmentId=${eq.id}`)
-        }
       />
     ),
-    [auth.user, auth.isRegionalLeader, data.activeUsageLogs, data.isLoadingActiveUsage, routeSync.router]
+    [data.activeUsageLogs, data.isLoadingActiveUsage]
   )
 
   // Columns definition
@@ -151,36 +135,15 @@ export function useEquipmentPage(): UseEquipmentPageReturn {
     userRole: auth.user?.role,
   })
 
-  // Dialog state (temporary - will move to context in Phase 5)
-  const [isAddDialogOpen, setIsAddDialogOpen] = React.useState(false)
-  const [isImportDialogOpen, setIsImportDialogOpen] = React.useState(false)
-  const [editingEquipment, setEditingEquipment] = React.useState<Equipment | null>(null)
-  const [selectedEquipment, setSelectedEquipment] = React.useState<Equipment | null>(null)
-  const [isDetailModalOpen, setIsDetailModalOpen] = React.useState(false)
-  const [isStartUsageDialogOpen, setIsStartUsageDialogOpen] = React.useState(false)
-  const [startUsageEquipment, setStartUsageEquipment] = React.useState<Equipment | null>(null)
-  const [isEndUsageDialogOpen, setIsEndUsageDialogOpen] = React.useState(false)
-  const [endUsageLog, setEndUsageLog] = React.useState<UsageLog | null>(null)
-  const [isFilterSheetOpen, setIsFilterSheetOpen] = React.useState(false)
-  const [isColumnsDialogOpen, setIsColumnsDialogOpen] = React.useState(false)
+  // NOTE: Legacy dialog state removed - now managed by EquipmentDialogContext
+  // Route sync pending actions are exposed for handling in page.tsx with context
 
   // Facility sheet state
   const [isFacilitySheetOpen, setIsFacilitySheetOpen] = React.useState(false)
   const [pendingFacilityId, setPendingFacilityId] = React.useState<number | null>(null)
 
-  // Handle route sync pending actions
-  React.useEffect(() => {
-    if (!routeSync.pendingAction) return
-
-    if (routeSync.pendingAction.type === "openAdd") {
-      setIsAddDialogOpen(true)
-      routeSync.clearPendingAction()
-    } else if (routeSync.pendingAction.type === "openDetail" && routeSync.pendingAction.equipment) {
-      setSelectedEquipment(routeSync.pendingAction.equipment)
-      setIsDetailModalOpen(true)
-      routeSync.clearPendingAction()
-    }
-  }, [routeSync.pendingAction, routeSync.clearPendingAction])
+  // Filter sheet state (not a dialog - stays here)
+  const [isFilterSheetOpen, setIsFilterSheetOpen] = React.useState(false)
 
   // Tenant change effect: clear filters + show toast
   const prevTenantFilterRef = React.useRef(auth.tenantFilter)
@@ -237,21 +200,15 @@ export function useEquipmentPage(): UseEquipmentPageReturn {
     setIsFacilitySheetOpen(false)
   }, [data.selectedFacilityId])
 
-  // Dialog handlers
-  const handleShowDetails = React.useCallback((equipment: Equipment) => {
-    setSelectedEquipment(equipment)
-    setIsDetailModalOpen(true)
+  // Filter sheet handlers
+  const handleFilterApply = React.useCallback(() => {
+    setIsFilterSheetOpen(false)
   }, [])
 
-  const handleStartUsage = React.useCallback((equipment: Equipment) => {
-    setStartUsageEquipment(equipment)
-    setIsStartUsageDialogOpen(true)
-  }, [])
-
-  const handleEndUsage = React.useCallback((usage: UsageLog) => {
-    setEndUsageLog(usage)
-    setIsEndUsageDialogOpen(true)
-  }, [])
+  const handleFilterClear = React.useCallback(() => {
+    filters.resetFilters()
+    setIsFilterSheetOpen(false)
+  }, [filters.resetFilters])
 
   // Mutation success handlers
   const onDataMutationSuccess = React.useCallback(() => {
@@ -278,9 +235,12 @@ export function useEquipmentPage(): UseEquipmentPageReturn {
       status: auth.status,
       isGlobal: auth.isGlobal,
       isRegionalLeader: auth.isRegionalLeader,
+      effectiveTenantKey: auth.effectiveTenantKey,
 
-      // Router
+      // Router & Route sync
       router: routeSync.router,
+      pendingAction: routeSync.pendingAction,
+      clearPendingAction: routeSync.clearPendingAction,
 
       // Data
       data: data.data,
@@ -330,38 +290,11 @@ export function useEquipmentPage(): UseEquipmentPageReturn {
       handleFacilityClear,
       handleFacilityCancel,
 
-      // Dialogs
-      isAddDialogOpen,
-      setIsAddDialogOpen,
-      isImportDialogOpen,
-      setIsImportDialogOpen,
-      editingEquipment,
-      setEditingEquipment,
-      selectedEquipment,
-      setSelectedEquipment,
-      isDetailModalOpen,
-      setIsDetailModalOpen,
-      isStartUsageDialogOpen,
-      setIsStartUsageDialogOpen,
-      startUsageEquipment,
-      setStartUsageEquipment,
-      isEndUsageDialogOpen,
-      setIsEndUsageDialogOpen,
-      endUsageLog,
-      setEndUsageLog,
-
       // Filter sheet
       isFilterSheetOpen,
       setIsFilterSheetOpen,
 
-      // Columns dialog
-      isColumnsDialogOpen,
-      setIsColumnsDialogOpen,
-
       // Handlers
-      handleShowDetails,
-      handleStartUsage,
-      handleEndUsage,
       handleDownloadTemplate: exports.handleDownloadTemplate,
       handleExportData: exports.handleExportData,
       handleGenerateProfileSheet: exports.handleGenerateProfileSheet,
@@ -380,6 +313,8 @@ export function useEquipmentPage(): UseEquipmentPageReturn {
     [
       auth,
       routeSync.router,
+      routeSync.pendingAction,
+      routeSync.clearPendingAction,
       data,
       table,
       columns,
@@ -390,20 +325,7 @@ export function useEquipmentPage(): UseEquipmentPageReturn {
       handleFacilityApply,
       handleFacilityClear,
       handleFacilityCancel,
-      isAddDialogOpen,
-      isImportDialogOpen,
-      editingEquipment,
-      selectedEquipment,
-      isDetailModalOpen,
-      isStartUsageDialogOpen,
-      startUsageEquipment,
-      isEndUsageDialogOpen,
-      endUsageLog,
       isFilterSheetOpen,
-      isColumnsDialogOpen,
-      handleShowDetails,
-      handleStartUsage,
-      handleEndUsage,
       exports,
       onDataMutationSuccess,
       onDataMutationSuccessWithStatePreservation,

@@ -629,3 +629,47 @@ React.useEffect(() => {
 - The composition pattern is working correctly with proper dependency tracking
 
 ---
+
+## Phase 5 Review Findings - 2026-01-14
+
+### ✅ High-Priority Issues (FIXED)
+
+| Issue | Fix Applied | Files Changed |
+|-------|-------------|---------------|
+| Fragile `effectiveTenantKey` derivation from `data[0]?.don_vi` | Changed to use stable `pageState.effectiveTenantKey` from auth | page.tsx, types.ts, use-equipment-page.tsx |
+| `renderActions` uses legacy state instead of context | EquipmentActionsMenu now consumes context directly via `useEquipmentContext()` | equipment-actions-menu.tsx, use-equipment-page.tsx |
+| Route sync effect uses legacy dialog state | Moved effect to page.tsx, uses context actions (`openAddDialog`, `openDetailDialog`) | page.tsx, use-equipment-page.tsx |
+| Duplicated dialog state between hook and context | Removed all legacy dialog state (12 useState) from useEquipmentPage | use-equipment-page.tsx, types.ts |
+| Dialog handlers (handleShowDetails, etc.) reference removed state | Removed handlers - EquipmentActionsMenu uses context directly | use-equipment-page.tsx, types.ts |
+
+### 🟡 Medium-Priority Issues (NOTED FOR FUTURE)
+
+| Issue | Severity | Recommendation | Target |
+|-------|----------|----------------|--------|
+| Test coverage for context integration | Medium | Add integration tests for dialog actions via context | Future |
+| Missing data invalidation events in context | Medium | Context should emit custom events for mutation success | Future |
+| Accessibility not verified after refactor | Medium | Run axe-core on dialogs, verify ARIA labels | Phase 7 |
+| EquipmentActionsMenu creates callbacks per render | Low | Memoize callbacks with useCallback (current is acceptable) | Phase 7 |
+| Filter sheet state still in useEquipmentPage | Low | Consider moving to separate hook or context | Future |
+| Pagination sync effect uses object reference | Low | Compare pageIndex/pageSize values instead | Phase 7 |
+
+### Implementation Summary
+
+**Phase 5 Changes:**
+1. `EquipmentDialogs` refactored to consume context (reduced from 20+ props to 3)
+2. `EquipmentActionsMenu` refactored to consume context (reduced from 8 props to 3)
+3. Page split into `EquipmentPage` (provider wrapper) and `EquipmentPageContent` (context consumer)
+4. Route sync now uses context actions (`openAddDialog`, `openDetailDialog`)
+5. Legacy dialog state removed from `useEquipmentPage` hook
+6. Types updated to reflect simplified return interface
+7. `pendingAction` and `clearPendingAction` exposed for route sync
+
+**Lines of Code:**
+- `use-equipment-page.tsx`: ~335 lines (down from ~400, dialog state removed)
+- `equipment-actions-menu.tsx`: ~121 lines (now uses context)
+- `page.tsx`: ~345 lines (added route sync effect)
+- `types.ts`: ~130 lines (removed dialog state properties)
+
+**Typecheck:** ✅ Passes
+
+---

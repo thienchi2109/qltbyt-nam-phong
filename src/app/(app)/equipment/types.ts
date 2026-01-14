@@ -8,6 +8,7 @@ import type { Equipment, UsageLog, SessionUser } from "@/types/database"
 import type { TenantBranding } from "@/hooks/use-tenant-branding"
 import type { Table, ColumnDef, ColumnFiltersState, VisibilityState } from "@tanstack/react-table"
 import type { useRouter } from "next/navigation"
+import type { RouteAction } from "./_hooks/useEquipmentRouteSync"
 
 // Re-export commonly used types
 export type { Equipment, UsageLog, SessionUser }
@@ -58,7 +59,7 @@ export interface EquipmentListResponse {
 
 /**
  * Main hook return value interface
- * Will be simplified as hooks are extracted
+ * Dialog state is now managed by EquipmentDialogContext
  */
 export interface UseEquipmentPageReturn {
   // Session/Auth
@@ -66,9 +67,12 @@ export interface UseEquipmentPageReturn {
   status: "loading" | "authenticated" | "unauthenticated"
   isGlobal: boolean
   isRegionalLeader: boolean
+  effectiveTenantKey: string
 
-  // Router
+  // Router & Route sync
   router: ReturnType<typeof useRouter>
+  pendingAction: RouteAction | null
+  clearPendingAction: () => void
 
   // Data
   data: Equipment[]
@@ -118,38 +122,11 @@ export interface UseEquipmentPageReturn {
   handleFacilityClear: () => void
   handleFacilityCancel: () => void
 
-  // Dialogs
-  isAddDialogOpen: boolean
-  setIsAddDialogOpen: React.Dispatch<React.SetStateAction<boolean>>
-  isImportDialogOpen: boolean
-  setIsImportDialogOpen: React.Dispatch<React.SetStateAction<boolean>>
-  editingEquipment: Equipment | null
-  setEditingEquipment: React.Dispatch<React.SetStateAction<Equipment | null>>
-  selectedEquipment: Equipment | null
-  setSelectedEquipment: React.Dispatch<React.SetStateAction<Equipment | null>>
-  isDetailModalOpen: boolean
-  setIsDetailModalOpen: React.Dispatch<React.SetStateAction<boolean>>
-  isStartUsageDialogOpen: boolean
-  setIsStartUsageDialogOpen: React.Dispatch<React.SetStateAction<boolean>>
-  startUsageEquipment: Equipment | null
-  setStartUsageEquipment: React.Dispatch<React.SetStateAction<Equipment | null>>
-  isEndUsageDialogOpen: boolean
-  setIsEndUsageDialogOpen: React.Dispatch<React.SetStateAction<boolean>>
-  endUsageLog: UsageLog | null
-  setEndUsageLog: React.Dispatch<React.SetStateAction<UsageLog | null>>
-
   // Filter sheet
   isFilterSheetOpen: boolean
   setIsFilterSheetOpen: React.Dispatch<React.SetStateAction<boolean>>
 
-  // Columns dialog
-  isColumnsDialogOpen: boolean
-  setIsColumnsDialogOpen: React.Dispatch<React.SetStateAction<boolean>>
-
   // Handlers
-  handleShowDetails: (equipment: Equipment) => void
-  handleStartUsage: (equipment: Equipment) => void
-  handleEndUsage: (usage: UsageLog) => void
   handleDownloadTemplate: () => Promise<void>
   handleExportData: () => Promise<void>
   handleGenerateProfileSheet: (equipment: Equipment) => Promise<void>

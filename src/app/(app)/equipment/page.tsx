@@ -1,5 +1,6 @@
 "use client"
 
+import * as React from "react"
 import { Building2, Plus } from "lucide-react"
 
 import { Badge } from "@/components/ui/badge"
@@ -61,7 +62,7 @@ export default function EquipmentPage() {
   }
 
   return (
-    <EquipmentDialogProvider effectiveTenantKey={pageState.data.length > 0 ? String(pageState.data[0]?.don_vi || "all") : "all"}>
+    <EquipmentDialogProvider effectiveTenantKey={pageState.effectiveTenantKey}>
       <EquipmentPageContent pageState={pageState} />
     </EquipmentDialogProvider>
   )
@@ -83,6 +84,10 @@ function EquipmentPageContent({ pageState }: { pageState: ReturnType<typeof useE
     // Session/Auth
     isGlobal,
     isRegionalLeader,
+
+    // Route sync
+    pendingAction,
+    clearPendingAction,
 
     // Data
     data,
@@ -148,6 +153,19 @@ function EquipmentPageContent({ pageState }: { pageState: ReturnType<typeof useE
     // Branding
     tenantBranding,
   } = pageState
+
+  // Handle route sync pending actions using context
+  React.useEffect(() => {
+    if (!pendingAction) return
+
+    if (pendingAction.type === "openAdd") {
+      openAddDialog()
+      clearPendingAction()
+    } else if (pendingAction.type === "openDetail" && pendingAction.equipment) {
+      openDetailDialog(pendingAction.equipment)
+      clearPendingAction()
+    }
+  }, [pendingAction, clearPendingAction, openAddDialog, openDetailDialog])
 
   return (
     <>
