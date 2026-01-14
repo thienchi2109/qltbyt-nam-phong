@@ -8,18 +8,10 @@
  */
 
 import { describe, it, expect } from 'vitest'
+import { equipmentStatusOptions } from '@/components/equipment/equipment-table-columns'
 
-// Valid status values - the source of truth from equipment-table-columns.tsx
-const EQUIPMENT_STATUS_OPTIONS = [
-  "Hoạt động",
-  "Chờ sửa chữa",
-  "Chờ bảo trì",
-  "Chờ hiệu chuẩn/kiểm định",
-  "Ngưng sử dụng",
-  "Chưa có nhu cầu sử dụng"
-] as const
-
-const VALID_STATUSES: Set<string> = new Set(EQUIPMENT_STATUS_OPTIONS)
+// Use the source of truth for valid status values
+const VALID_STATUSES: Set<string> = new Set(equipmentStatusOptions)
 
 // Required fields for equipment validation (same as in import-equipment-dialog.tsx)
 const REQUIRED_FIELDS = {
@@ -62,7 +54,7 @@ function validateEquipmentData(data: Partial<Equipment>[], headerMapping: Record
     if (status && typeof status === 'string') {
       const trimmedStatus = status.trim()
       if (trimmedStatus !== '' && !VALID_STATUSES.has(trimmedStatus)) {
-        errors.push(`Dòng ${index + 2}: Tình trạng "${trimmedStatus}" không hợp lệ. Phải là một trong: ${EQUIPMENT_STATUS_OPTIONS.join(', ')}`)
+        errors.push(`Dòng ${index + 2}: Tình trạng "${trimmedStatus}" không hợp lệ. Phải là một trong: ${equipmentStatusOptions.join(', ')}`)
       }
     }
 
@@ -93,7 +85,7 @@ describe('Equipment Import Validation', () => {
 
   describe('Valid Status Values', () => {
     it('should accept all 6 valid status values', () => {
-      EQUIPMENT_STATUS_OPTIONS.forEach((status) => {
+      equipmentStatusOptions.forEach((status) => {
         const data: Partial<Equipment>[] = [{
           khoa_phong_quan_ly: 'Khoa Nội',
           nguoi_dang_truc_tiep_quan_ly: 'Nguyễn Văn A',
@@ -438,21 +430,21 @@ describe('Equipment Import Validation', () => {
 
 describe('Equipment Status Options Integrity', () => {
   it('should have exactly 6 valid status options', () => {
-    expect(EQUIPMENT_STATUS_OPTIONS).toHaveLength(6)
+    expect(equipmentStatusOptions).toHaveLength(6)
   })
 
   it('should have the correct status values', () => {
-    expect(EQUIPMENT_STATUS_OPTIONS).toContain('Hoạt động')
-    expect(EQUIPMENT_STATUS_OPTIONS).toContain('Chờ sửa chữa')
-    expect(EQUIPMENT_STATUS_OPTIONS).toContain('Chờ bảo trì')
-    expect(EQUIPMENT_STATUS_OPTIONS).toContain('Chờ hiệu chuẩn/kiểm định')
-    expect(EQUIPMENT_STATUS_OPTIONS).toContain('Ngưng sử dụng')
-    expect(EQUIPMENT_STATUS_OPTIONS).toContain('Chưa có nhu cầu sử dụng')
+    expect(equipmentStatusOptions).toContain('Hoạt động')
+    expect(equipmentStatusOptions).toContain('Chờ sửa chữa')
+    expect(equipmentStatusOptions).toContain('Chờ bảo trì')
+    expect(equipmentStatusOptions).toContain('Chờ hiệu chuẩn/kiểm định')
+    expect(equipmentStatusOptions).toContain('Ngưng sử dụng')
+    expect(equipmentStatusOptions).toContain('Chưa có nhu cầu sử dụng')
   })
 
-  it('VALID_STATUSES Set should match EQUIPMENT_STATUS_OPTIONS', () => {
-    expect(VALID_STATUSES.size).toBe(EQUIPMENT_STATUS_OPTIONS.length)
-    EQUIPMENT_STATUS_OPTIONS.forEach(status => {
+  it('VALID_STATUSES Set should match equipmentStatusOptions', () => {
+    expect(VALID_STATUSES.size).toBe(equipmentStatusOptions.length)
+    equipmentStatusOptions.forEach(status => {
       expect(VALID_STATUSES.has(status)).toBe(true)
     })
   })
