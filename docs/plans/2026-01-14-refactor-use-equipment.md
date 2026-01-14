@@ -555,3 +555,47 @@ npm run typecheck
 **Created**: 2026-01-14
 **Reviewed**: 2026-01-14 (3 expert subagents)
 **Status**: Ready for execution (with review findings incorporated)
+
+---
+
+## Post-Implementation Review (Phase 2-3) - 2026-01-14
+
+### ✅ Issues Addressed (10)
+
+| Issue | Fix Applied | File(s) |
+|-------|-------------|---------|
+| Timer cleanup in useEquipmentTable | Added `clearTimeout(timer)` cleanup function | useEquipmentTable.ts:195-204 |
+| Timer cleanup in useEquipmentRouteSync | Refactored with cleanup function | useEquipmentRouteSync.ts |
+| useEquipmentRouteSync tight coupling | Returns `pendingAction` + `clearPendingAction` instead of calling external setters | useEquipmentRouteSync.ts |
+| Duplicate selectedDonViUI/selectedDonVi | Removed `selectedDonViUI`, uses only `selectedDonVi` | useEquipmentAuth.ts |
+| Missing pagination reset on filter change | Added `filterKey` tracking with auto-reset to page 0 | useEquipmentTable.ts:117-136 |
+| Missing mutations documentation | Added design note explaining dialog-focused context | EquipmentDialogContext.tsx:8-22 |
+| Highlight processed ref | Added `processedParamsRef` | useEquipmentRouteSync.ts |
+| Missing locations in return value | Added `locations` to interface and return | useEquipmentData.ts:39,358,381 |
+| Missing AbortSignal for queries | Added `signal` to all 5 filter option queries | useEquipmentData.ts |
+| Clear filters on tenant change | Added `resetFilters()` callback | useEquipmentFilters.ts:82-86 |
+
+### 🔸 Deferred Issues (Phase 7 or Future)
+
+| Issue | Priority | Reason Deferred | Recommended Phase |
+|-------|----------|-----------------|-------------------|
+| userRole type specificity | Low | Works correctly, cosmetic | Phase 7 (code-simplifier) |
+| Tenant filter toast effect | Medium | UI polish, not critical | Phase 4 (composition hook) |
+| Inconsistent dialog state pattern (boolean vs null check) | Low | Works correctly, cosmetic | Phase 7 (code-simplifier) |
+| Type import paths (`../types` vs `@/types`) | Minor | Consistency, low impact | Phase 7 (code-simplifier) |
+| useEquipmentData too large (398 lines) | Medium | Still within acceptable range, works well | Future refactor |
+| Auth duplication (useEquipmentAuth vs context) | Low | Context only reads session, minimal duplication | Future optimization |
+| Context splitting (dialog state causes re-renders) | Medium | Requires major architectural change | Future optimization |
+
+### Notes for Phase 4
+
+The main composition hook should include:
+```typescript
+// Tenant change effect (clear filters when tenant changes)
+React.useEffect(() => {
+  if (!auth.isGlobal) return
+  filters.resetFilters()
+}, [auth.tenantFilter, auth.isGlobal, filters.resetFilters])
+```
+
+---

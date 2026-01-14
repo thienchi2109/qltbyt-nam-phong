@@ -19,6 +19,9 @@ export interface UseEquipmentFiltersReturn {
   columnFilters: ColumnFiltersState
   setColumnFilters: React.Dispatch<React.SetStateAction<ColumnFiltersState>>
 
+  // Reset all filters (for tenant change)
+  resetFilters: () => void
+
   // Selected filter arrays (memoized)
   selectedDepartments: string[]
   selectedUsers: string[]
@@ -76,6 +79,12 @@ export function useEquipmentFilters(): UseEquipmentFiltersReturn {
     [getArrayFilter]
   )
 
+  // Reset all filters (called on tenant change)
+  const resetFilters = React.useCallback(() => {
+    setColumnFilters([])
+    setSearchTerm("")
+  }, [])
+
   // Note: useState setters (setSearchTerm, setSorting, setColumnFilters) are stable
   // references and intentionally excluded from the dependency array per React guidelines.
   return React.useMemo(
@@ -88,6 +97,7 @@ export function useEquipmentFilters(): UseEquipmentFiltersReturn {
       sortParam,
       columnFilters,
       setColumnFilters,
+      resetFilters,
       selectedDepartments,
       selectedUsers,
       selectedLocations,
@@ -100,6 +110,7 @@ export function useEquipmentFilters(): UseEquipmentFiltersReturn {
       sorting,
       sortParam,
       columnFilters,
+      resetFilters,
       selectedDepartments,
       selectedUsers,
       selectedLocations,

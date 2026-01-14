@@ -36,6 +36,7 @@ export interface UseEquipmentDataReturn {
   // Filter options
   departments: string[]
   users: string[]
+  locations: string[]
   statuses: string[]
   classifications: string[]
   filterData: FilterBottomSheetData
@@ -206,10 +207,11 @@ export function useEquipmentData(params: UseEquipmentDataParams): UseEquipmentDa
   // Filter options queries
   const { data: departmentsData } = useQuery<{ name: string; count: number }[]>({
     queryKey: ["departments_list_for_tenant", effectiveSelectedDonVi],
-    queryFn: async () => {
+    queryFn: async ({ signal }) => {
       const result = await callRpc<{ name: string; count: number }[]>({
         fn: "departments_list_for_tenant",
         args: { p_don_vi: effectiveSelectedDonVi },
+        signal,
       })
       return result || []
     },
@@ -225,10 +227,11 @@ export function useEquipmentData(params: UseEquipmentDataParams): UseEquipmentDa
 
   const { data: usersData } = useQuery<{ name: string; count: number }[]>({
     queryKey: ["equipment_users_list_for_tenant", effectiveSelectedDonVi],
-    queryFn: async () => {
+    queryFn: async ({ signal }) => {
       const result = await callRpc<{ name: string; count: number }[]>({
         fn: "equipment_users_list_for_tenant",
         args: { p_don_vi: effectiveSelectedDonVi },
+        signal,
       })
       return result || []
     },
@@ -244,10 +247,11 @@ export function useEquipmentData(params: UseEquipmentDataParams): UseEquipmentDa
 
   const { data: locationsData } = useQuery<{ name: string; count: number }[]>({
     queryKey: ["equipment_locations_list_for_tenant", effectiveSelectedDonVi],
-    queryFn: async () => {
+    queryFn: async ({ signal }) => {
       const result = await callRpc<{ name: string; count: number }[]>({
         fn: "equipment_locations_list_for_tenant",
         args: { p_don_vi: effectiveSelectedDonVi },
+        signal,
       })
       return result || []
     },
@@ -256,13 +260,18 @@ export function useEquipmentData(params: UseEquipmentDataParams): UseEquipmentDa
     gcTime: 10 * 60_000,
     refetchOnWindowFocus: false,
   })
+  const locations = React.useMemo(
+    () => (locationsData || []).map((x) => x.name).filter(Boolean),
+    [locationsData]
+  )
 
   const { data: classificationsData } = useQuery<{ name: string; count: number }[]>({
     queryKey: ["equipment_classifications_list_for_tenant", effectiveSelectedDonVi],
-    queryFn: async () => {
+    queryFn: async ({ signal }) => {
       const result = await callRpc<{ name: string; count: number }[]>({
         fn: "equipment_classifications_list_for_tenant",
         args: { p_don_vi: effectiveSelectedDonVi },
+        signal,
       })
       return result || []
     },
@@ -278,10 +287,11 @@ export function useEquipmentData(params: UseEquipmentDataParams): UseEquipmentDa
 
   const { data: statusesData } = useQuery<{ name: string; count: number }[]>({
     queryKey: ["equipment_statuses_list_for_tenant", effectiveSelectedDonVi],
-    queryFn: async () => {
+    queryFn: async ({ signal }) => {
       const result = await callRpc<{ name: string; count: number }[]>({
         fn: "equipment_statuses_list_for_tenant",
         args: { p_don_vi: effectiveSelectedDonVi },
+        signal,
       })
       return result || []
     },
@@ -345,6 +355,7 @@ export function useEquipmentData(params: UseEquipmentDataParams): UseEquipmentDa
       isFetching,
       departments,
       users,
+      locations,
       statuses,
       classifications,
       filterData,
@@ -367,6 +378,7 @@ export function useEquipmentData(params: UseEquipmentDataParams): UseEquipmentDa
       isFetching,
       departments,
       users,
+      locations,
       statuses,
       classifications,
       filterData,

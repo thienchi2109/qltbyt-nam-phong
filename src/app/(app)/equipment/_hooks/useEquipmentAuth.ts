@@ -20,6 +20,10 @@ export interface UseEquipmentAuthReturn {
   selectedDonVi: number | null
 }
 
+// Note: Tenant change effects (clear filters, show toast) are handled
+// in the main useEquipmentPage composition hook which has access to
+// both tenantFilter and filter setters.
+
 export function useEquipmentAuth(): UseEquipmentAuthReturn {
   const { data: session, status } = useSession()
   const user = session?.user as SessionUser | null
