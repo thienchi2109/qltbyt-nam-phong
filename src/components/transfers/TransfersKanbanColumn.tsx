@@ -89,7 +89,7 @@ export function TransfersKanbanColumn({
   }, [lastItemIndex, tasks.length, hasMore, isLoadingMore])
 
   return (
-    <div className="flex flex-col w-80 min-w-[320px] bg-sidebar rounded-lg border shrink-0">
+    <div className="flex flex-col w-full lg:w-80 lg:min-w-[320px] bg-sidebar rounded-lg border lg:shrink-0">
       {/* Header */}
       <div className={cn("p-3 border-b shrink-0 transition-colors", STATUS_HEADER_STYLES[status])}>
         <div className="flex items-center gap-2">
