@@ -37,15 +37,52 @@ import type { Equipment } from "@/types/database"
 import { useEquipmentPage } from "./use-equipment-page"
 import { EquipmentContent } from "./equipment-content"
 import { EquipmentDialogs } from "./equipment-dialogs"
+import { EquipmentDialogProvider } from "./_components/EquipmentDialogContext"
+import { useEquipmentContext } from "./_hooks/useEquipmentContext"
 
 export default function EquipmentPage() {
+  const pageState = useEquipmentPage()
+
+  // Redirect if not authenticated
+  if (pageState.status === "loading") {
+    return (
+      <div className="flex items-center justify-center min-h-[50vh]">
+        <div className="text-center space-y-2">
+          <Skeleton className="h-8 w-32 mx-auto" />
+          <Skeleton className="h-4 w-48 mx-auto" />
+        </div>
+      </div>
+    )
+  }
+
+  if (pageState.status === "unauthenticated") {
+    pageState.router.push("/")
+    return null
+  }
+
+  return (
+    <EquipmentDialogProvider effectiveTenantKey={pageState.data.length > 0 ? String(pageState.data[0]?.don_vi || "all") : "all"}>
+      <EquipmentPageContent pageState={pageState} />
+    </EquipmentDialogProvider>
+  )
+}
+
+// Separate component to use context inside provider
+function EquipmentPageContent({ pageState }: { pageState: ReturnType<typeof useEquipmentPage> }) {
+  const {
+    openAddDialog,
+    openImportDialog,
+    openColumnsDialog,
+    openDetailDialog,
+    openEditDialog,
+    dialogState,
+    closeColumnsDialog,
+  } = useEquipmentContext()
+
   const {
     // Session/Auth
-    user,
-    status,
     isGlobal,
     isRegionalLeader,
-    router,
 
     // Data
     data,
@@ -93,41 +130,15 @@ export default function EquipmentPage() {
     handleFacilityClear,
     handleFacilityCancel,
 
-    // Dialogs
-    isAddDialogOpen,
-    setIsAddDialogOpen,
-    isImportDialogOpen,
-    setIsImportDialogOpen,
-    editingEquipment,
-    setEditingEquipment,
-    selectedEquipment,
-    setSelectedEquipment,
-    isDetailModalOpen,
-    setIsDetailModalOpen,
-    isStartUsageDialogOpen,
-    setIsStartUsageDialogOpen,
-    startUsageEquipment,
-    setStartUsageEquipment,
-    isEndUsageDialogOpen,
-    setIsEndUsageDialogOpen,
-    endUsageLog,
-    setEndUsageLog,
-
     // Filter sheet
     isFilterSheetOpen,
     setIsFilterSheetOpen,
 
-    // Columns dialog
-    isColumnsDialogOpen,
-    setIsColumnsDialogOpen,
-
     // Handlers
-    handleShowDetails,
-    handleDownloadTemplate,
     handleExportData,
+    handleDownloadTemplate,
     handleGenerateProfileSheet,
     handleGenerateDeviceLabel,
-    onDataMutationSuccessWithStatePreservation,
 
     // UI state
     isMobile,
@@ -136,50 +147,13 @@ export default function EquipmentPage() {
 
     // Branding
     tenantBranding,
-  } = useEquipmentPage()
-
-  // Redirect if not authenticated
-  if (status === "loading") {
-    return (
-      <div className="flex items-center justify-center min-h-[50vh]">
-        <div className="text-center space-y-2">
-          <Skeleton className="h-8 w-32 mx-auto" />
-          <Skeleton className="h-4 w-48 mx-auto" />
-        </div>
-      </div>
-    )
-  }
-
-  if (status === "unauthenticated") {
-    router.push("/")
-    return null
-  }
+  } = pageState
 
   return (
     <>
       <EquipmentDialogs
-        isAddDialogOpen={isAddDialogOpen}
-        setIsAddDialogOpen={setIsAddDialogOpen}
-        isImportDialogOpen={isImportDialogOpen}
-        setIsImportDialogOpen={setIsImportDialogOpen}
-        editingEquipment={editingEquipment}
-        setEditingEquipment={setEditingEquipment}
-        selectedEquipment={selectedEquipment}
-        isDetailModalOpen={isDetailModalOpen}
-        setIsDetailModalOpen={setIsDetailModalOpen}
-        isStartUsageDialogOpen={isStartUsageDialogOpen}
-        setIsStartUsageDialogOpen={setIsStartUsageDialogOpen}
-        startUsageEquipment={startUsageEquipment}
-        setStartUsageEquipment={setStartUsageEquipment}
-        isEndUsageDialogOpen={isEndUsageDialogOpen}
-        setIsEndUsageDialogOpen={setIsEndUsageDialogOpen}
-        endUsageLog={endUsageLog}
-        setEndUsageLog={setEndUsageLog}
-        onSuccess={onDataMutationSuccessWithStatePreservation}
         onGenerateProfileSheet={handleGenerateProfileSheet}
         onGenerateDeviceLabel={handleGenerateDeviceLabel}
-        user={user}
-        isRegionalLeader={isRegionalLeader}
         tenantBranding={tenantBranding}
       />
 
@@ -233,17 +207,17 @@ export default function EquipmentPage() {
             isRegionalLeader={isRegionalLeader}
             hasFacilityFilter={hasFacilityFilter}
             onOpenFilterSheet={() => setIsFilterSheetOpen(true)}
-            onOpenColumnsDialog={() => setIsColumnsDialogOpen(true)}
+            onOpenColumnsDialog={openColumnsDialog}
             onDownloadTemplate={handleDownloadTemplate}
             onExportData={handleExportData}
-            onAddEquipment={() => setIsAddDialogOpen(true)}
-            onImportEquipment={() => setIsImportDialogOpen(true)}
+            onAddEquipment={openAddDialog}
+            onImportEquipment={openImportDialog}
             onClearFacilityFilter={() => setSelectedFacilityId(null)}
-            onShowEquipmentDetails={handleShowDetails}
+            onShowEquipmentDetails={(eq) => openDetailDialog(eq)}
           />
 
           {/* Columns dialog */}
-          <Dialog open={isColumnsDialogOpen} onOpenChange={setIsColumnsDialogOpen}>
+          <Dialog open={dialogState.isColumnsOpen} onOpenChange={(open) => !open && closeColumnsDialog()}>
             <DialogContent>
               <DialogHeader>
                 <DialogTitle>Hiện/Ẩn cột</DialogTitle>
@@ -270,7 +244,7 @@ export default function EquipmentPage() {
                   ))}
               </div>
               <DialogFooter>
-                <Button variant="outline" onClick={() => setIsColumnsDialogOpen(false)}>Đóng</Button>
+                <Button variant="outline" onClick={closeColumnsDialog}>Đóng</Button>
               </DialogFooter>
             </DialogContent>
           </Dialog>
@@ -284,8 +258,8 @@ export default function EquipmentPage() {
               isCardView={isCardView}
               table={table}
               columns={columns}
-              onShowDetails={handleShowDetails}
-              onEdit={setEditingEquipment}
+              onShowDetails={(eq) => openDetailDialog(eq)}
+              onEdit={(eq) => eq && openEditDialog(eq)}
             />
           </div>
         </CardContent>
@@ -319,10 +293,10 @@ export default function EquipmentPage() {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" side="top" className="mb-2">
-              <DropdownMenuItem onSelect={() => setIsAddDialogOpen(true)}>
+              <DropdownMenuItem onSelect={openAddDialog}>
                 Thêm thủ công
               </DropdownMenuItem>
-              <DropdownMenuItem onSelect={() => setIsImportDialogOpen(true)}>
+              <DropdownMenuItem onSelect={openImportDialog}>
                 Nhập từ Excel
               </DropdownMenuItem>
             </DropdownMenuContent>

@@ -8,132 +8,116 @@ import { EditEquipmentDialog } from "@/components/edit-equipment-dialog"
 import { EquipmentDetailDialog } from "@/components/equipment/equipment-detail-dialog"
 import { StartUsageDialog } from "@/components/start-usage-dialog"
 import { EndUsageDialog } from "@/components/end-usage-dialog"
-import type { Equipment, UsageLog } from "@/types/database"
+import type { Equipment } from "@/types/database"
 import type { TenantBranding } from "@/hooks/use-tenant-branding"
-import type { SessionUser } from "./use-equipment-page"
+import { useEquipmentContext } from "./_hooks/useEquipmentContext"
 
+// ============================================
+// Props - Minimal props for export handlers only
+// ============================================
 export interface EquipmentDialogsProps {
-  // Add dialog
-  isAddDialogOpen: boolean
-  setIsAddDialogOpen: React.Dispatch<React.SetStateAction<boolean>>
-
-  // Import dialog
-  isImportDialogOpen: boolean
-  setIsImportDialogOpen: React.Dispatch<React.SetStateAction<boolean>>
-
-  // Edit dialog
-  editingEquipment: Equipment | null
-  setEditingEquipment: React.Dispatch<React.SetStateAction<Equipment | null>>
-
-  // Detail dialog
-  selectedEquipment: Equipment | null
-  isDetailModalOpen: boolean
-  setIsDetailModalOpen: React.Dispatch<React.SetStateAction<boolean>>
-
-  // Usage dialogs
-  isStartUsageDialogOpen: boolean
-  setIsStartUsageDialogOpen: React.Dispatch<React.SetStateAction<boolean>>
-  startUsageEquipment: Equipment | null
-  setStartUsageEquipment: React.Dispatch<React.SetStateAction<Equipment | null>>
-  isEndUsageDialogOpen: boolean
-  setIsEndUsageDialogOpen: React.Dispatch<React.SetStateAction<boolean>>
-  endUsageLog: UsageLog | null
-  setEndUsageLog: React.Dispatch<React.SetStateAction<UsageLog | null>>
-
-  // Callbacks
-  onSuccess: () => void
   onGenerateProfileSheet: (equipment: Equipment) => Promise<void>
   onGenerateDeviceLabel: (equipment: Equipment) => Promise<void>
-
-  // Context
-  user: SessionUser | null
-  isRegionalLeader: boolean
   tenantBranding: TenantBranding | undefined
 }
 
-export function EquipmentDialogs({
-  isAddDialogOpen,
-  setIsAddDialogOpen,
-  isImportDialogOpen,
-  setIsImportDialogOpen,
-  editingEquipment,
-  setEditingEquipment,
-  selectedEquipment,
-  isDetailModalOpen,
-  setIsDetailModalOpen,
-  isStartUsageDialogOpen,
-  setIsStartUsageDialogOpen,
-  startUsageEquipment,
-  setStartUsageEquipment,
-  isEndUsageDialogOpen,
-  setIsEndUsageDialogOpen,
-  endUsageLog,
-  setEndUsageLog,
-  onSuccess,
+// ============================================
+// Component - Consumes context for dialog state
+// ============================================
+export const EquipmentDialogs = React.memo(function EquipmentDialogs({
   onGenerateProfileSheet,
   onGenerateDeviceLabel,
-  user,
-  isRegionalLeader,
   tenantBranding,
 }: EquipmentDialogsProps) {
+  const {
+    user,
+    isRegionalLeader,
+    dialogState,
+    closeAddDialog,
+    closeImportDialog,
+    closeEditDialog,
+    closeDetailDialog,
+    closeStartUsageDialog,
+    closeEndUsageDialog,
+    onDataMutationSuccess,
+  } = useEquipmentContext()
+
+  // Handlers for dialog close with state cleanup
+  const handleEditClose = React.useCallback(
+    (open: boolean) => {
+      if (!open) {
+        closeEditDialog()
+      }
+    },
+    [closeEditDialog]
+  )
+
+  const handleEditSuccess = React.useCallback(() => {
+    closeEditDialog()
+    onDataMutationSuccess()
+  }, [closeEditDialog, onDataMutationSuccess])
+
+  const handleStartUsageClose = React.useCallback(
+    (open: boolean) => {
+      if (!open) {
+        closeStartUsageDialog()
+      }
+    },
+    [closeStartUsageDialog]
+  )
+
+  const handleEndUsageClose = React.useCallback(
+    (open: boolean) => {
+      if (!open) {
+        closeEndUsageDialog()
+      }
+    },
+    [closeEndUsageDialog]
+  )
+
   return (
     <>
       <AddEquipmentDialog
-        open={isAddDialogOpen}
-        onOpenChange={setIsAddDialogOpen}
-        onSuccess={onSuccess}
+        open={dialogState.isAddOpen}
+        onOpenChange={(open) => !open && closeAddDialog()}
+        onSuccess={onDataMutationSuccess}
       />
 
       <ImportEquipmentDialog
-        open={isImportDialogOpen}
-        onOpenChange={setIsImportDialogOpen}
-        onSuccess={onSuccess}
+        open={dialogState.isImportOpen}
+        onOpenChange={(open) => !open && closeImportDialog()}
+        onSuccess={onDataMutationSuccess}
       />
 
       <EditEquipmentDialog
-        open={!!editingEquipment}
-        onOpenChange={(open) => {
-          if (!open) {
-            setEditingEquipment(null)
-          }
-        }}
-        onSuccess={() => {
-          setEditingEquipment(null)
-          onSuccess()
-        }}
-        equipment={editingEquipment}
+        open={!!dialogState.editingEquipment}
+        onOpenChange={handleEditClose}
+        onSuccess={handleEditSuccess}
+        equipment={dialogState.editingEquipment}
       />
 
       <EquipmentDetailDialog
-        equipment={selectedEquipment}
-        open={isDetailModalOpen}
-        onOpenChange={setIsDetailModalOpen}
+        equipment={dialogState.detailEquipment}
+        open={dialogState.isDetailOpen}
+        onOpenChange={(open) => !open && closeDetailDialog()}
         user={user}
         isRegionalLeader={isRegionalLeader}
         onGenerateProfileSheet={onGenerateProfileSheet}
         onGenerateDeviceLabel={onGenerateDeviceLabel}
-        onEquipmentUpdated={onSuccess}
+        onEquipmentUpdated={onDataMutationSuccess}
       />
 
       <StartUsageDialog
-        open={isStartUsageDialogOpen}
-        onOpenChange={(open) => {
-          setIsStartUsageDialogOpen(open)
-          if (!open) {
-            setStartUsageEquipment(null)
-          }
-        }}
-        equipment={startUsageEquipment}
+        open={dialogState.isStartUsageOpen}
+        onOpenChange={handleStartUsageClose}
+        equipment={dialogState.startUsageEquipment}
       />
 
       <EndUsageDialog
-        open={isEndUsageDialogOpen}
-        onOpenChange={(open) => {
-          setIsEndUsageDialogOpen(open)
-          if (!open) setEndUsageLog(null)
-        }}
-        usageLog={endUsageLog}
+        open={dialogState.isEndUsageOpen}
+        onOpenChange={handleEndUsageClose}
+        usageLog={dialogState.endUsageLog}
       />
     </>
   )
-}
+})

@@ -599,3 +599,33 @@ React.useEffect(() => {
 ```
 
 ---
+
+## Phase 4 Review Findings - 2026-01-14
+
+### ✅ High-Priority Issues (FIXED)
+
+| Issue | Fix Applied | Commit |
+|-------|-------------|--------|
+| dataParams memoization using entire `[auth, filters]` objects | Changed to 15 explicit property dependencies | 5797d1b |
+| Pagination dual-source (hardcoded `{ pageIndex: 0, pageSize: 20 }` dead code) | Removed, now uses actual `pagination` state | 5797d1b |
+| renderActions missing `routeSync.router` dependency | Moved routeSync before renderActions, added to deps | 5797d1b |
+
+### 🟡 Medium-Priority Issues (DEFERRED)
+
+| Issue | Severity | Recommendation | Target Phase |
+|-------|----------|----------------|--------------|
+| Dialog state still in main hook (12 useState) | Medium | Move to EquipmentDialogContext as planned | Phase 5 |
+| Large return value memoization deps (~40 items) | Medium | Consider splitting context by update frequency | Phase 5/7 |
+| Missing locations in return value | Medium | Expose `data.locations` in return if needed by consumers | Phase 5 |
+| Pagination sync effect compares by reference | Medium | Optimize to compare `pageIndex`/`pageSize` values, not object reference | Phase 7 |
+| Effect dependency arrays could use refs | Low | Use ref pattern for stable table/router references | Phase 7 |
+| Lazy initialization for dialog states | Low | `useState(() => null)` pattern for Equipment objects | Phase 7 |
+| useMemo final return has many deps (40+) | Low | Acceptable for now, monitor performance | Phase 7 |
+
+### Notes
+
+- All high-priority issues resolved in commit `5797d1b`
+- Medium-priority issues are architectural and will be addressed when dialog refactoring begins (Phase 5)
+- The composition pattern is working correctly with proper dependency tracking
+
+---
