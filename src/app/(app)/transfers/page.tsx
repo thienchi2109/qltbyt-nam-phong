@@ -19,7 +19,6 @@ import {
   Loader2,
   PlusCircle,
   Search,
-  Building2,
 } from "lucide-react"
 import { useSession } from "next-auth/react"
 import { useRouter } from "next/navigation"
@@ -40,6 +39,7 @@ import { FacilityFilter } from "@/components/transfers/FacilityFilter"
 import { TransfersTableView } from '@/components/transfers/TransfersTableView'
 import { TransfersKanbanView } from '@/components/transfers/TransfersKanbanView'
 import { TransfersViewToggle, useTransfersViewMode } from '@/components/transfers/TransfersViewToggle'
+import { TransfersTenantSelectionPlaceholder } from '@/components/transfers/TransfersTenantSelectionPlaceholder'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -177,11 +177,14 @@ function TransfersPageContent({ user }: TransfersPageContentProps) {
     isFetching: isListFetching,
   } = useTransferList(filters, {
     placeholderData: (previous) => previous,
+    enabled: !requiresTenantSelection,
   })
 
   const {
     data: statusCounts,
-  } = useTransferCounts(countsFilters)
+  } = useTransferCounts(countsFilters, {
+    enabled: !requiresTenantSelection,
+  })
 
   const {
     approveTransfer,
@@ -529,18 +532,7 @@ function TransfersPageContent({ user }: TransfersPageContentProps) {
 
               {viewMode === 'kanban' ? (
                 requiresTenantSelection ? (
-                  <div className="flex min-h-[400px] items-center justify-center">
-                    <div className="flex flex-col items-center gap-4 text-center max-w-md">
-                      <Building2 className="h-12 w-12 text-muted-foreground" />
-                      <div className="space-y-2">
-                        <h3 className="font-medium text-lg">Chọn cơ sở y tế</h3>
-                        <p className="text-sm text-muted-foreground">
-                          Vui lòng chọn một cơ sở y tế từ bộ lọc phía trên để xem dữ liệu.
-                          Điều này giúp tránh tải dữ liệu lớn từ nhiều cơ sở cùng lúc.
-                        </p>
-                      </div>
-                    </div>
-                  </div>
+                  <TransfersTenantSelectionPlaceholder />
                 ) : (
                   <TransfersKanbanView
                     filters={filters}
@@ -550,6 +542,8 @@ function TransfersPageContent({ user }: TransfersPageContentProps) {
                     userRole={userRole}
                   />
                 )
+              ) : requiresTenantSelection ? (
+                <TransfersTenantSelectionPlaceholder />
               ) : (
                 <>
                   <div className="space-y-3 lg:hidden">
