@@ -25,6 +25,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { useEquipmentUsageLogs } from "@/hooks/use-usage-logs"
+import { useTenantBranding } from "@/hooks/use-tenant-branding"
 import { type Equipment, type UsageLog } from "@/types/database"
 
 interface UsageLogPrintProps {
@@ -45,6 +46,9 @@ export function UsageLogPrint({ equipment }: UsageLogPrintProps) {
   const [statusFilter, setStatusFilter] = React.useState<string>("all")
 
   const { data: usageLogs } = useEquipmentUsageLogs(equipment.id.toString())
+  const branding = useTenantBranding()
+  const tenantName = branding.data?.name || 'Nền tảng QLTBYT'
+  const tenantLogoUrl = branding.data?.logo_url || 'https://i.postimg.cc/26dHxmnV/89307731ad9526cb7f84-1-Photoroom.png'
 
   // Filter logs based on date range and status
   const filteredLogs = React.useMemo(() => {
@@ -284,9 +288,9 @@ export function UsageLogPrint({ equipment }: UsageLogPrintProps) {
       <body>
         <div class="content-body">
         <div class="header">
-          <img src="https://i.postimg.cc/26dHxmnV/89307731ad9526cb7f84-1-Photoroom.png" alt="Logo CDC" class="header-logo" onerror="this.onerror=null;this.src='https://i.postimg.cc/26dHxmnV/89307731ad9526cb7f84-1-Photoroom.png';">
+          <img src="${tenantLogoUrl}" alt="Logo" class="header-logo" onerror="this.onerror=null;this.style.display='none';">
           <div class="header-content">
-            <h2 style="font-size: 14px; font-weight: bold; margin: 0 0 5px 0; text-transform: uppercase;">TRUNG TÂM KIỂM SOÁT BỆNH TẬT THÀNH PHỐ CẦN THƠ</h2>
+            <h2 style="font-size: 14px; font-weight: bold; margin: 0 0 5px 0; text-transform: uppercase;">${tenantName}</h2>
             <h1>NHẬT KÝ SỬ DỤNG THIẾT BỊ</h1>
             <h2>${equipment.ten_thiet_bi}</h2>
             <div>Mã thiết bị: ${equipment.ma_thiet_bi} ${dateRange}</div>
