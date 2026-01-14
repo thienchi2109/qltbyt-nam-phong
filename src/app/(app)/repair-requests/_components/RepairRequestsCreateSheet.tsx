@@ -31,7 +31,7 @@ import type { EquipmentSelectItem, RepairUnit } from "../types"
 
 export function RepairRequestsCreateSheet() {
   const {
-    dialogState: { isCreateOpen },
+    dialogState: { isCreateOpen, preSelectedEquipment },
     closeAllDialogs,
     createMutation,
     user,
@@ -50,7 +50,7 @@ export function RepairRequestsCreateSheet() {
   const [externalCompanyName, setExternalCompanyName] = React.useState("")
   const [allEquipment, setAllEquipment] = React.useState<EquipmentSelectItem[]>([])
 
-  // Reset form when sheet closes
+  // Reset form when sheet closes, or initialize from pre-selected equipment when sheet opens
   React.useEffect(() => {
     if (!isCreateOpen) {
       setSelectedEquipment(null)
@@ -60,8 +60,12 @@ export function RepairRequestsCreateSheet() {
       setDesiredDate(undefined)
       setRepairUnit("noi_bo")
       setExternalCompanyName("")
+    } else if (preSelectedEquipment && !selectedEquipment) {
+      // Pre-fill when opened with equipment from context
+      setSelectedEquipment(preSelectedEquipment)
+      setSearchQuery(`${preSelectedEquipment.ten_thiet_bi} (${preSelectedEquipment.ma_thiet_bi})`)
     }
-  }, [isCreateOpen])
+  }, [isCreateOpen, preSelectedEquipment, selectedEquipment])
 
   // Fetch equipment options
   React.useEffect(() => {

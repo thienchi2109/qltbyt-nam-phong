@@ -45,6 +45,8 @@ export function EquipmentActionsMenu({
     openEndUsageDialog,
   } = useEquipmentContext()
 
+  const isGlobal = user?.role === 'global'
+
   const userId = React.useMemo(() => {
     const uid = user?.id
     const n = typeof uid === 'string' ? Number(uid) : uid
@@ -74,9 +76,9 @@ export function EquipmentActionsMenu({
   }, [openEndUsageDialog, activeUsageLog])
 
   const handleCreateRepairRequest = React.useCallback(() => {
-    if (isRegionalLeader) return
-    router.push(`/repair-requests?equipmentId=${equipment.id}`)
-  }, [router, equipment.id, isRegionalLeader])
+    if (isGlobal || isRegionalLeader) return
+    router.push(`/repair-requests?action=create&equipmentId=${equipment.id}`)
+  }, [router, equipment.id, isGlobal, isRegionalLeader])
 
   return (
     <DropdownMenu>
@@ -109,12 +111,11 @@ export function EquipmentActionsMenu({
             Kết thúc sử dụng
           </DropdownMenuItem>
         )}
-        <DropdownMenuItem
-          disabled={isRegionalLeader}
-          onSelect={handleCreateRepairRequest}
-        >
-          Tạo yêu cầu sửa chữa
-        </DropdownMenuItem>
+        {!isGlobal && !isRegionalLeader && (
+          <DropdownMenuItem onSelect={handleCreateRepairRequest}>
+            Tạo yêu cầu sửa chữa
+          </DropdownMenuItem>
+        )}
       </DropdownMenuContent>
     </DropdownMenu>
   )

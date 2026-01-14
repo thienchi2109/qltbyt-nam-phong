@@ -345,16 +345,26 @@ function RepairRequestsPageClientInner() {
     run();
   }, [searchParams, allEquipment, uiFilters]);
 
-  // Handle action=create param
+  // Handle action=create param with equipment pre-selection
   React.useEffect(() => {
     if (searchParams.get('action') === 'create') {
-      openCreateSheet()
+      const equipmentId = searchParams.get('equipmentId')
+      if (equipmentId) {
+        // Find pre-fetched equipment and pass to openCreateSheet
+        const idNum = Number(equipmentId)
+        const equipment = allEquipment.find(eq => eq.id === idNum)
+        openCreateSheet(equipment)
+      } else {
+        openCreateSheet()
+      }
+      // Clean up URL
       const params = new URLSearchParams(searchParams.toString())
       params.delete('action')
+      params.delete('equipmentId')
       const nextPath = params.size ? `${pathname}?${params.toString()}` : pathname
       router.replace(nextPath, { scroll: false })
     }
-  }, [searchParams, router, pathname, openCreateSheet])
+  }, [searchParams, router, pathname, openCreateSheet, allEquipment])
 
   // Adapter functions to bridge context (non-null) with column options (nullable)
   const setEditingRequestAdapter = React.useCallback((req: RepairRequestWithEquipment | null) => {
