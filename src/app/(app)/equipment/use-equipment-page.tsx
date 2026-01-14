@@ -36,7 +36,12 @@ export function useEquipmentPage(): UseEquipmentPageReturn {
   const auth = useEquipmentAuth()
   const filters = useEquipmentFilters()
 
+  // Create pagination state for data hook coordination
+  // Note: This is the source of truth for pagination. The table hook syncs to this.
+  const [pagination, setPagination] = React.useState({ pageIndex: 0, pageSize: 20 })
+
   // Data hook needs params from auth and filters
+  // Use explicit property dependencies instead of entire objects for better memoization
   const dataParams = React.useMemo(
     () => ({
       isGlobal: auth.isGlobal,
@@ -48,24 +53,40 @@ export function useEquipmentPage(): UseEquipmentPageReturn {
       currentTenantId: auth.currentTenantId,
       debouncedSearch: filters.debouncedSearch,
       sortParam: filters.sortParam,
-      pagination: { pageIndex: 0, pageSize: 20 }, // Will be updated by table hook
+      pagination,
       selectedDepartments: filters.selectedDepartments,
       selectedUsers: filters.selectedUsers,
       selectedLocations: filters.selectedLocations,
       selectedStatuses: filters.selectedStatuses,
       selectedClassifications: filters.selectedClassifications,
     }),
-    [auth, filters]
+    [
+      auth.isGlobal,
+      auth.isRegionalLeader,
+      auth.user?.role,
+      auth.shouldFetchEquipment,
+      auth.effectiveTenantKey,
+      auth.selectedDonVi,
+      auth.currentTenantId,
+      filters.debouncedSearch,
+      filters.sortParam,
+      pagination,
+      filters.selectedDepartments,
+      filters.selectedUsers,
+      filters.selectedLocations,
+      filters.selectedStatuses,
+      filters.selectedClassifications,
+    ]
   )
-
-  // Create pagination state for data hook coordination
-  const [pagination, setPagination] = React.useState({ pageIndex: 0, pageSize: 20 })
 
   // Data hook with pagination state
   const data = useEquipmentData({
     ...dataParams,
     pagination,
   })
+
+  // Route sync hook - defined before renderActions which uses routeSync.router
+  const routeSync = useEquipmentRouteSync({ data: data.data })
 
   // Render actions helper (needed for columns)
   const renderActions = React.useCallback(
@@ -93,7 +114,7 @@ export function useEquipmentPage(): UseEquipmentPageReturn {
         }
       />
     ),
-    [auth.user, auth.isRegionalLeader, data.activeUsageLogs, data.isLoadingActiveUsage]
+    [auth.user, auth.isRegionalLeader, data.activeUsageLogs, data.isLoadingActiveUsage, routeSync.router]
   )
 
   // Columns definition
@@ -122,9 +143,6 @@ export function useEquipmentPage(): UseEquipmentPageReturn {
   React.useEffect(() => {
     setPagination(table.pagination)
   }, [table.pagination])
-
-  // Route sync hook
-  const routeSync = useEquipmentRouteSync({ data: data.data })
 
   // Export hook
   const exports = useEquipmentExport({
