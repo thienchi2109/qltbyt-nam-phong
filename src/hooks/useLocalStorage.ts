@@ -7,8 +7,9 @@ export function useLocalStorage<T>(
   // Generate a unique ID for this hook instance to prevent handling own events
   const hookId = React.useRef(Math.random().toString(36).substring(7))
   
-  // Track if the update was initiated locally to sync to localStorage
-  const isLocalUpdate = React.useRef(false)
+  // Track pending local update with the key it was initiated under
+  // This prevents writing to wrong key if key prop changes before effect runs
+  const pendingUpdate = React.useRef<{ key: string } | null>(null)
 
   const [storedValue, setStoredValue] = React.useState<T>(() => {
     if (typeof window === 'undefined') {
@@ -32,7 +33,8 @@ export function useLocalStorage<T>(
           // Only mark as local update if value actually differs
           // Otherwise the flag stays stuck and remote updates are mishandled
           if (!Object.is(prev, valueToStore)) {
-            isLocalUpdate.current = true
+            // Capture the key at time of update, not at effect execution
+            pendingUpdate.current = { key }
             return valueToStore
           }
           return prev
@@ -46,19 +48,21 @@ export function useLocalStorage<T>(
 
   // Sync to localStorage and dispatch event when local state changes
   React.useEffect(() => {
-    if (isLocalUpdate.current) {
-      isLocalUpdate.current = false
+    const pending = pendingUpdate.current
+    if (pending) {
+      pendingUpdate.current = null
       if (typeof window !== 'undefined') {
         try {
-          window.localStorage.setItem(key, JSON.stringify(storedValue))
+          // Use captured key from when setValue was called
+          window.localStorage.setItem(pending.key, JSON.stringify(storedValue))
           // Dispatch custom event to sync across components in same tab
           window.dispatchEvent(
             new CustomEvent('local-storage-change', {
-              detail: { key, value: storedValue, source: hookId.current },
+              detail: { key: pending.key, value: storedValue, source: hookId.current },
             })
           )
         } catch (error) {
-          console.warn(`Error writing to localStorage key "${key}":`, error)
+          console.warn(`Error writing to localStorage key "${pending.key}":`, error)
         }
       }
     }
