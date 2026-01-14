@@ -14,6 +14,132 @@
 
 ---
 
+## 🔍 Expert Review Findings (2026-01-14)
+
+### Reviewers
+
+| Reviewer | Verdict | Agent ID |
+|----------|---------|----------|
+| **Code Reviewer** | Approved with Required Changes | a7de7f8 |
+| **Backend Architect** | GO with modifications | a999822 |
+| **Performance Engineer** | Risks identified, mitigations provided | ac0cf00 |
+
+---
+
+### 🔴 Critical Issues (MUST FIX)
+
+#### 1. `useEquipmentEffects` Anti-Pattern
+**All 3 reviewers flagged this.** Consolidating 10+ effects into one hook violates single-responsibility principle and creates a "junk drawer" that is untestable and hard to debug.
+
+**Original Plan:** Single `useEquipmentEffects.ts` (~120 lines) with all effects
+
+**Revised Approach:** Distribute effects to their owning hooks:
+| Effect | Original Location | New Location |
+|--------|------------------|--------------|
+| Auto-hide columns on medium screens | useEquipmentEffects | `useEquipmentTable` |
+| Cache invalidation listeners | useEquipmentEffects | `useEquipmentData` |
+| Tenant filter persistence (localStorage) | useEquipmentEffects | `useEquipmentAuth` |
+| URL parameter handling | useEquipmentEffects | `useEquipmentRouteSync` (NEW) |
+| Pagination reset on filter change | useEquipmentEffects | `useEquipmentFilters` |
+| Restore table state after mutations | useEquipmentEffects | `useEquipmentTable` |
+
+#### 2. Execution Plan Order Was Wrong
+**Issue:** Steps 11-14 (Context creation) came AFTER step 9 (main hook refactor), but main hook needs context to exist first.
+
+**Fixed:** Context creation now comes before main hook refactor (see revised execution plan below).
+
+#### 3. Table Instance in Effect Dependencies (HIGH Performance Risk)
+**Issue:** `table` from `useReactTable` is a new instance every render. Effects with `table` in dependencies will run on EVERY render.
+
+**Fix Required:** Use ref pattern:
+```typescript
+const tableRef = useRef(table)
+tableRef.current = table
+
+useEffect(() => {
+  tableRef.current.resetColumnFilters()
+}, [tenantFilter, isGlobal]) // Remove table from deps
+```
+
+#### 4. Missing `EquipmentDialogState` Interface
+**Issue:** Plan didn't show explicit dialog state consolidation like RepairRequests pattern.
+
+**Required Addition:**
+```typescript
+interface EquipmentDialogState {
+  isAddOpen: boolean
+  isImportOpen: boolean
+  editingEquipment: Equipment | null
+  detailEquipment: Equipment | null
+  usageEquipment: Equipment | null
+  endUsageEquipment: Equipment | null
+}
+```
+
+---
+
+### 🟡 Important Issues (SHOULD FIX)
+
+| Issue | Impact | Recommendation |
+|-------|--------|----------------|
+| Missing `equipment/types.ts` | Type organization | Create centralized types file |
+| Filter arrays not memoized | Query key instability | Add `useMemo` to all `getArrayFilter` calls |
+| No intermediate typechecks | Late error discovery | Add typecheck after steps 6, 11, 14 |
+| Context scope too broad | Re-render cascades | Use `EquipmentDialogContext` (dialog-focused only) |
+| `queryClient`, `toast`, `router` access unclear | Implementation gap | Import directly in hooks that need them |
+
+---
+
+### 🟢 Suggestions (NICE TO HAVE)
+
+1. **Split Context by update frequency:**
+   - `EquipmentAuthContext` (rarely changes)
+   - `EquipmentDialogContext` (medium frequency)
+
+2. **Add `React.memo` to all dialog components** for performance
+
+3. **Consider `useEquipmentFacility`** separate hook for facility filter logic
+
+4. **Extract reusable utilities post-refactor:**
+   - `useTableWithServerPagination`
+   - `useFilterPersistence`
+   - `useDataExport<T>`
+
+---
+
+### ⚡ Performance Considerations
+
+#### Memoization Requirements
+
+| Value | Hook | Must Memoize? | Reason |
+|-------|------|---------------|--------|
+| `selectedDepartments`, `selectedUsers`, etc. | useEquipmentFilters | ✅ YES | Used in query keys |
+| `sortParam` | useEquipmentFilters | ✅ Already done | Used in query keys |
+| `renderActions` callback | useEquipmentTable | ✅ YES | Creates JSX, passed to columns |
+| All handlers in context | EquipmentDialogContext | ✅ YES | Prevent context value changes |
+| Hook return values | All hooks | ✅ YES | Prevent downstream cascades |
+
+#### Re-render Prevention
+
+```typescript
+// Context value MUST be memoized
+const value = React.useMemo<EquipmentDialogContextValue>(() => ({
+  dialogState,
+  openAddDialog,
+  closeAllDialogs,
+  // ... all handlers must be useCallback
+}), [dialogState]) // Minimal dependencies
+
+// Dialogs should use React.memo
+export const EquipmentAddDialog = React.memo(function EquipmentAddDialog() {
+  const { dialogState, closeAllDialogs } = useEquipmentDialogContext()
+  if (!dialogState.isAddOpen) return null
+  // ...
+})
+```
+
+---
+
 ## Current Analysis
 
 ### Issues Identified
@@ -46,94 +172,77 @@ RepairRequests module (`_components/RepairRequestsContext.tsx`):
 
 ---
 
-## Implementation Plan
+## Implementation Plan (REVISED)
 
-### PHASE 1: Create Context Infrastructure
+### PHASE 1: Setup & Types
 
 **New Files:**
 
-1. `src/app/(app)/equipment/_components/EquipmentContext.tsx` (~200 lines)
+1. `src/app/(app)/equipment/types.ts` (~50 lines)
    ```typescript
-   // Context manages:
-   - Dialog state (isAddOpen, isImportOpen, editingEquipment, etc.)
-   - Dialog actions (openAddDialog, closeAllDialogs, etc.)
-   - Shared handlers (handleShowDetails, handleStartUsage, handleEndUsage)
-   - Export handlers (handleExportData, handleDownloadTemplate, etc.)
-   - Cache invalidation (onDataMutationSuccess, etc.)
+   // Centralized types:
+   - EquipmentDialogState
+   - FilterBottomSheetData
+   - FacilityOption
+   - UseEquipmentPageReturn (updated)
    ```
 
-2. `src/app/(app)/equipment/_hooks/useEquipmentContext.ts` (~10 lines)
-   ```typescript
-   // Consumer hook for accessing context
-   export function useEquipmentContext() { ... }
-   ```
+2. Create `_hooks/` and `_components/` directories
 
 ---
 
-### PHASE 2: Split Hooks
+### PHASE 2: Extract Hooks
 
-Create 6 focused hooks in `_hooks/`:
+Create 7 focused hooks in `_hooks/` (revised from 6):
 
-#### 1. `useEquipmentAuth.ts` (~30 lines)
+#### 1. `useEquipmentAuth.ts` (~50 lines)
 ```typescript
 // Exports:
 - user, status, isGlobal, isRegionalLeader
 - tenantKey, currentTenantId
+- tenantFilter, setTenantFilter (with localStorage effect)
 ```
 
-#### 2. `useEquipmentFilters.ts` (~100 lines)
+#### 2. `useEquipmentFilters.ts` (~70 lines)
 ```typescript
 // Manages:
 - searchTerm, debouncedSearch, columnFilters, sorting
-- getArrayFilter helper
-- selectedDepartments, selectedUsers, selectedLocations, selectedStatuses, selectedClassifications
+- getArrayFilter helper (MEMOIZED)
+- selectedDepartments, selectedUsers, selectedLocations, selectedStatuses, selectedClassifications (ALL MEMOIZED)
 - isFiltered computed value
-- Facility filter state (integrates useFacilityFilter)
+- Pagination reset effect on filter change
 ```
 
-#### 3. `useEquipmentData.ts` (~180 lines)
+#### 3. `useEquipmentData.ts` (~150 lines)
 ```typescript
-// Queries:
+// Queries + cache invalidation effects:
 - Equipment list (equipment_list_enhanced)
 - Filter options (departments, users, locations, statuses, classifications)
 - Facilities (for regional leaders/global)
 - Active usage logs
 - Tenant list (for global users)
-
-// Returns:
-- data, total, isLoading, isFetching
-- departments, users, statuses, classifications, filterData
-- facilities, activeFacility, isFacilitiesLoading
-- activeUsageLogs, isLoadingActiveUsage
+- Cache invalidation window event listeners
 ```
 
 #### 4. `useEquipmentTable.ts` (~100 lines)
 ```typescript
-// Manages:
-- Table instance (useReactTable)
-- Pagination state
-- Column visibility state
+// Table + related effects:
+- Table instance (useReactTable) with REF PATTERN
+- Pagination state + preservePageState logic
+- Column visibility state + auto-hide effect
 - Columns definition (createEquipmentColumns with renderActions)
 - pageCount calculation
 ```
 
-#### 5. `useEquipmentEffects.ts` (~120 lines)
+#### 5. `useEquipmentRouteSync.ts` (~40 lines) - NEW
 ```typescript
-// Effects for:
-- Auto-hide columns on medium screens
-- Sync pending facility when sheet opens
-- Cache invalidation listeners (window events)
-- Tenant filter changes
-- Toast on tenant selection
-- LocalStorage persistence
-- Restore tenant selection
-- Clear filters on tenant change
-- URL parameter handling (action=add, highlight=id)
-- Pagination reset on filter changes
-- Restore table state after mutations
+// URL parameter handling:
+- Parse action=add, highlight=id from URL
+- Return initial dialog state based on URL
+- Handle navigation after actions
 ```
 
-#### 6. `useEquipmentExport.ts` (~80 lines)
+#### 6. `useEquipmentExport.ts` (~60 lines)
 ```typescript
 // Handlers:
 - handleDownloadTemplate
@@ -142,63 +251,105 @@ Create 6 focused hooks in `_hooks/`:
 - handleGenerateDeviceLabel
 ```
 
+#### 7. `useEquipmentFacility.ts` (~40 lines) - NEW (optional)
+```typescript
+// Facility filter logic:
+- Integrates useFacilityFilter
+- isFacilitySheetOpen, pendingFacilityId
+- Sync pending facility effect
+```
+
 ---
 
-### PHASE 3: Refactor Main Hook
+### PHASE 3: Create Context Infrastructure
 
-**File**: `src/app/(app)/equipment/use-equipment-page.tsx` (~150 lines)
+**Files:**
+
+1. `src/app/(app)/equipment/_components/EquipmentDialogContext.tsx` (~150 lines)
+   ```typescript
+   // Context manages (DIALOG-FOCUSED ONLY):
+   - dialogState: EquipmentDialogState
+   - Dialog actions (openAddDialog, openEditDialog, closeAllDialogs, etc.)
+   - Mutation handlers (createMutation, updateMutation, deleteMutation)
+   - Shared handlers (handleShowDetails, handleStartUsage, handleEndUsage)
+   - onDataMutationSuccess callback
+   
+   // MUST use useMemo on context value
+   // ALL handlers MUST use useCallback
+   ```
+
+2. `src/app/(app)/equipment/_hooks/useEquipmentContext.ts` (~15 lines)
+   ```typescript
+   export function useEquipmentContext() {
+     const context = useContext(EquipmentDialogContext)
+     if (!context) throw new Error('useEquipmentContext must be used within EquipmentProvider')
+     return context
+   }
+   ```
+
+---
+
+### PHASE 4: Refactor Main Hook
+
+**File**: `src/app/(app)/equipment/use-equipment-page.tsx` (~120 lines)
 
 Becomes a **composition hook**:
 
 ```typescript
 export function useEquipmentPage(): UseEquipmentPageReturn {
   const auth = useEquipmentAuth()
-  const filters = useEquipmentFilters(auth)
-  const data = useEquipmentData(auth, filters)
-  const table = useEquipmentTable(data, filters)
+  const routeSync = useEquipmentRouteSync()
+  const filters = useEquipmentFilters({
+    tenantKey: auth.tenantKey,  // Pass primitives, not objects
+    isGlobal: auth.isGlobal,
+  })
+  const data = useEquipmentData({
+    tenantId: auth.currentTenantId,
+    isGlobal: auth.isGlobal,
+    debouncedSearch: filters.debouncedSearch,
+    selectedFilters: filters.selectedFilters, // Must be memoized
+    sortParam: filters.sortParam,
+  })
+  const table = useEquipmentTable({
+    data: data.data,
+    total: data.total,
+    pagination: filters.pagination,
+  })
   const exports = useEquipmentExport(data)
 
-  useEquipmentEffects(auth, filters, data, table)
-
-  return {
+  return useMemo(() => ({
     ...auth,
     ...filters,
     ...data,
     ...table,
     ...exports,
-    // ... other combined values
-  }
+    ...routeSync,
+  }), [auth, filters, data, table, exports, routeSync])
 }
 ```
 
 ---
 
-### PHASE 4: Refactor Dialog Components
+### PHASE 5: Refactor Dialog Components
 
-**Files to update:**
-1. `EquipmentAddDialog.tsx` → Use `useEquipmentContext()`, zero props
-2. `EquipmentImportDialog.tsx` → Use context
-3. `EquipmentEditDialog.tsx` → Use context
-4. `EquipmentDetailDialog.tsx` → Use context
-5. `EquipmentStartUsageDialog.tsx` → Use context
-6. `EquipmentEndUsageDialog.tsx` → Use context
+**Files to update (add React.memo):**
+1. `EquipmentAddDialog.tsx` → Use `useEquipmentContext()`, zero props, React.memo
+2. `EquipmentImportDialog.tsx` → Use context, React.memo
+3. `EquipmentEditDialog.tsx` → Use context, React.memo
+4. `EquipmentDetailDialog.tsx` → Use context, React.memo
+5. `EquipmentStartUsageDialog.tsx` → Use context, React.memo
+6. `EquipmentEndUsageDialog.tsx` → Use context, React.memo
 
 **Pattern:**
 ```typescript
-// Before: Props passed from page
-interface Props {
-  isOpen: boolean
-  onClose: () => void
-  equipment: Equipment | null
-  // ... many more props
-}
-
-// After: Zero props, consume context
-export function EquipmentAddDialog() {
+// After: Zero props, consume context, memoized
+export const EquipmentAddDialog = React.memo(function EquipmentAddDialog() {
   const { dialogState, closeAllDialogs, createMutation } = useEquipmentContext()
-  const isOpen = dialogState.isAddOpen
+  
+  if (!dialogState.isAddOpen) return null
+  
   // ... use context values
-}
+})
 ```
 
 **New file**: `_components/EquipmentDialogs.tsx`
@@ -207,16 +358,16 @@ export function EquipmentAddDialog() {
 
 ---
 
-### PHASE 5: Update Page Component
+### PHASE 6: Update Page Component
 
 **File**: `src/app/(app)/equipment/_components/EquipmentPageClient.tsx` (~300 lines)
 
 ```typescript
 export function EquipmentPageClient() {
   return (
-    <EquipmentProvider>
+    <EquipmentDialogProvider>
       <EquipmentPageContent />
-    </EquipmentProvider>
+    </EquipmentDialogProvider>
   )
 }
 
@@ -241,16 +392,16 @@ export default function EquipmentPage() {
 
 ---
 
-### PHASE 6: Code Simplification (Automated)
+### PHASE 7: Code Simplification (Automated)
 
 Invoke code-simplifier agent:
 
 ```
 Task tool with:
-- subagent_type: "code-simplifier:code-simplifier"
+- subagent_type: "code-simplifier"
 - description: "Simplify refactored equipment code"
 - prompt: "Review and simplify equipment module. Apply CLAUDE.md standards, eliminate complexity, ensure consistency. Focus on:
-  - _components/EquipmentContext.tsx
+  - _components/EquipmentDialogContext.tsx
   - _hooks/*.ts
   - use-equipment-page.tsx
   - _components/*Dialog.tsx
@@ -259,52 +410,78 @@ Task tool with:
 
 ---
 
-## File Structure After Refactor
+## File Structure After Refactor (REVISED)
 
 ```
 equipment/
 ├── _components/
-│   ├── EquipmentContext.tsx          # NEW - Context + Provider
+│   ├── EquipmentDialogContext.tsx    # NEW - Dialog Context + Provider (~150 lines)
 │   ├── EquipmentPageClient.tsx       # RENAMED from page.tsx
 │   ├── EquipmentDialogs.tsx          # NEW - Wrapper for all dialogs
-│   ├── Equipment*Dialog.tsx          # UPDATED - Zero props, use context
+│   ├── Equipment*Dialog.tsx          # UPDATED - Zero props, React.memo
 │   └── [other components]
 ├── _hooks/
-│   ├── useEquipmentContext.ts        # NEW - Consumer hook
-│   ├── useEquipmentAuth.ts           # NEW - Auth logic
-│   ├── useEquipmentFilters.ts        # NEW - Filter logic
-│   ├── useEquipmentData.ts           # NEW - Data queries
-│   ├── useEquipmentTable.ts          # NEW - Table setup
-│   ├── useEquipmentEffects.ts        # NEW - Effects
-│   └── useEquipmentExport.ts         # NEW - Export handlers
-├── use-equipment-page.tsx            # REFACTORED - Composition (~150 lines)
+│   ├── useEquipmentContext.ts        # NEW - Consumer hook (~15 lines)
+│   ├── useEquipmentAuth.ts           # NEW - Auth + tenant (~50 lines)
+│   ├── useEquipmentFilters.ts        # NEW - Filters + pagination (~70 lines)
+│   ├── useEquipmentData.ts           # NEW - Queries + cache (~150 lines)
+│   ├── useEquipmentTable.ts          # NEW - Table + effects (~100 lines)
+│   ├── useEquipmentRouteSync.ts      # NEW - URL params (~40 lines)
+│   └── useEquipmentExport.ts         # NEW - Export handlers (~60 lines)
+├── types.ts                          # NEW - Centralized types (~50 lines)
+├── use-equipment-page.tsx            # REFACTORED - Composition (~120 lines)
 └── page.tsx                          # NEW - Server component entry (~10 lines)
 ```
 
+**Total: ~665 lines across 10 focused files** (vs 952 lines in 1 file)
+
 ---
 
-## Step-by-Step Execution
+## Step-by-Step Execution (REVISED - 30 Steps)
 
-1. ✅ Create `_hooks/` directory
-2. ✅ Create `_components/` directory (if not exists)
-3. ✅ Extract `useEquipmentAuth.ts`
-4. ✅ Extract `useEquipmentFilters.ts`
-5. ✅ Extract `useEquipmentData.ts`
-6. ✅ Extract `useEquipmentTable.ts`
-7. ✅ Extract `useEquipmentEffects.ts`
-8. ✅ Extract `useEquipmentExport.ts`
-9. ✅ Refactor `use-equipment-page.tsx` (composition)
-10. ✅ Run `npm run typecheck` - verify hooks
-11. ✅ Create `EquipmentContext.tsx`
-12. ✅ Create `useEquipmentContext.ts`
-13. ✅ Update all dialog components (use context)
-14. ✅ Create `EquipmentDialogs.tsx` wrapper
-15. ✅ Rename `page.tsx` → `EquipmentPageClient.tsx`
-16. ✅ Update `EquipmentPageClient.tsx` (use provider)
-17. ✅ Create new `page.tsx` (server component)
-18. ✅ Run `npm run typecheck`
-19. ✅ Auto-invoke code-simplifier agent
-20. ✅ Final typecheck + manual testing
+### PHASE 1: Setup (Steps 1-3)
+1. □ Create `_hooks/` directory
+2. □ Create `_components/` directory (if not exists)
+3. □ Create `types.ts` with EquipmentDialogState, FilterBottomSheetData, etc.
+
+### PHASE 2: Extract Hooks (Steps 4-12)
+4. □ Extract `useEquipmentAuth.ts` (~50 lines, include localStorage effect)
+5. □ Extract `useEquipmentFilters.ts` (~70 lines, memoize all arrays)
+6. □ Run `npm run typecheck` (intermediate checkpoint)
+7. □ Extract `useEquipmentData.ts` (~150 lines, include cache effects)
+8. □ Extract `useEquipmentTable.ts` (~100 lines, use ref pattern, include table effects)
+9. □ Extract `useEquipmentExport.ts` (~60 lines)
+10. □ Extract `useEquipmentRouteSync.ts` (~40 lines, URL params)
+11. □ Run `npm run typecheck` (intermediate checkpoint)
+
+### PHASE 3: Context Infrastructure (Steps 12-14)
+12. □ Create `EquipmentDialogContext.tsx` (~150 lines, dialog-focused)
+13. □ Create `useEquipmentContext.ts` (~15 lines)
+14. □ Run `npm run typecheck` (intermediate checkpoint)
+
+### PHASE 4: Main Hook Refactor (Steps 15-16)
+15. □ Refactor `use-equipment-page.tsx` to composition (~120 lines)
+16. □ Run `npm run typecheck`
+
+### PHASE 5: Dialog Updates (Steps 17-24)
+17. □ Update `EquipmentAddDialog` (use context, add React.memo)
+18. □ Update `EquipmentImportDialog` (use context, add React.memo)
+19. □ Update `EquipmentEditDialog` (use context, add React.memo)
+20. □ Update `EquipmentDetailDialog` (use context, add React.memo)
+21. □ Update `EquipmentStartUsageDialog` (use context, add React.memo)
+22. □ Update `EquipmentEndUsageDialog` (use context, add React.memo)
+23. □ Create `EquipmentDialogs.tsx` wrapper
+24. □ Run `npm run typecheck`
+
+### PHASE 6: Page Restructure (Steps 25-27)
+25. □ Update `EquipmentPageClient.tsx` (wrap with provider)
+26. □ Create new `page.tsx` (server component)
+27. □ Run `npm run typecheck`
+
+### PHASE 7: Verification & Simplification (Steps 28-30)
+28. □ Run full test suite
+29. □ Invoke code-simplifier agent on all modified files
+30. □ Final typecheck + manual testing
 
 ---
 
@@ -313,6 +490,18 @@ equipment/
 ### TypeScript
 ```bash
 npm run typecheck
+```
+
+### Performance Verification
+```bash
+# Enable React DevTools Profiler
+# Settings > Profiler > Record why each component rendered
+
+# Check re-render counts:
+# - Page load: baseline measurement
+# - Filter change: should be 1-2 re-renders max
+# - Page change: should be 1-2 re-renders max
+# - Dialog open/close: only dialog should re-render
 ```
 
 ### Manual Testing
@@ -327,40 +516,42 @@ npm run typecheck
 - [ ] URL parameters (action=add, highlight=id)
 - [ ] Cache invalidation
 - [ ] LocalStorage persistence
-- [ ] All 10 useEffect hooks function correctly
 
 ### File Size Compliance
 - [ ] All files within 350-450 lines
-- [ ] `use-equipment-page.tsx`: 952 → ~150 lines
-- [ ] Context file: ~200 lines
-- [ ] Each hook: < 200 lines
+- [ ] `use-equipment-page.tsx`: 952 → ~120 lines ✓
+- [ ] Context file: ~150 lines ✓
+- [ ] Each hook: < 150 lines ✓
+- [ ] types.ts: ~50 lines ✓
 
 ---
 
 ## Benefits
 
-1. ✅ **Maintainability**: 9 focused files vs 1 massive hook
-2. ✅ **Consistency**: Follows RepairRequests pattern
+1. ✅ **Maintainability**: 10 focused files vs 1 massive hook
+2. ✅ **Consistency**: Follows RepairRequests pattern (improved)
 3. ✅ **CLAUDE.md Compliance**: File sizes within guidelines
-4. ✅ **Testability**: Individual hooks testable
+4. ✅ **Testability**: Individual hooks testable in isolation
 5. ✅ **Readability**: Single responsibility per file
-6. ✅ **Zero Props Dialogs**: Cleaner components
-7. ✅ **Code Simplification**: Automated standards enforcement
+6. ✅ **Zero Props Dialogs**: Cleaner components with React.memo
+7. ✅ **Performance**: Proper memoization prevents re-render cascades
+8. ✅ **Code Simplification**: Automated standards enforcement
 
 ---
 
-## Risks & Mitigation
+## Risks & Mitigation (UPDATED)
 
-**Risk 1**: Breaking functionality
-→ Incremental refactor, test after each phase, preserve public API
-
-**Risk 2**: Complex state dependencies
-→ Trace dependencies carefully, use proper memoization
-
-**Risk 3**: Performance regression
-→ Use React.useMemo/useCallback, verify no unnecessary re-renders
+| Risk | Likelihood | Impact | Mitigation |
+|------|------------|--------|------------|
+| Breaking functionality | Medium | High | Incremental refactor, typecheck after each phase, preserve public API |
+| Complex state dependencies | Medium | Medium | Trace dependencies, pass primitives not objects to hooks |
+| Performance regression | Medium | High | useMemo/useCallback everywhere, React.memo on dialogs, ref pattern for table |
+| Context value instability | High | Medium | useMemo on context value, useCallback on all handlers |
+| Effect infinite loops | Medium | High | Use ref pattern, stabilize object dependencies with JSON.stringify |
+| Filter array reference changes | High | Medium | Memoize all getArrayFilter calls |
 
 ---
 
 **Created**: 2026-01-14
-**Status**: Ready for execution
+**Reviewed**: 2026-01-14 (3 expert subagents)
+**Status**: Ready for execution (with review findings incorporated)
