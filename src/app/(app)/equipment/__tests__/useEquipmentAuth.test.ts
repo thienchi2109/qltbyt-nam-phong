@@ -31,6 +31,7 @@ describe('useEquipmentAuth', () => {
         }),
       },
       writable: true,
+      configurable: true,
     })
   })
 
