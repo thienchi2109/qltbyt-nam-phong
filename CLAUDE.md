@@ -126,7 +126,28 @@ Invoke `context-engineering` skill for: agent systems, token optimization (>70%)
 
 **Code Search:** `mcp__filesystem-with-morph__warpgrep_codebase_search` (NEVER grep/ripgrep)
 **File Editing:** `mcp__filesystem-with-morph__edit_file` (NEVER full rewrites)
-**Docs:** Context7 MCP for library documentation
+**Docs:** Context7 MCP for library documentation (including Supabase docs)
+
+<!-- SUPABASE-CLI:START -->
+## Supabase CLI (NOT MCP)
+
+Use `npx supabase` CLI commands for all database operations. **Do NOT use Supabase MCP tools.**
+
+| Task | Command |
+|------|---------|
+| **Execute SQL** | `npx supabase db query "SELECT..."` |
+| **Run SQL file** | `npx supabase db query --file path/to/file.sql` |
+| **Push migrations** | `npx supabase db push` |
+| **Create migration** | `npx supabase migration new migration_name` |
+| **List migrations** | `npx supabase migration list` |
+| **Generate types** | `npx supabase gen types typescript --project-id cdthersvldpnlbvpufrr > src/types/database.ts` |
+| **Security check** | `npx supabase inspect db lint` |
+| **View logs** | `npx supabase logs --service postgres` |
+| **Schema diff** | `npx supabase db diff` |
+| **Deploy function** | `npx supabase functions deploy fn_name` |
+
+**Why CLI over MCP:** Saves ~3,000 tokens/conversation. Use Context7 for Supabase documentation.
+<!-- SUPABASE-CLI:END -->
 
 ---
 
