@@ -130,7 +130,7 @@ export default function Dashboard() {
         
       case 'create-repair':
         if (equipment) {
-          router.push(`/repair-requests?equipmentId=${equipment.id}`)
+          router.push(`/repair-requests?action=create&equipmentId=${equipment.id}`)
         }
         break
         

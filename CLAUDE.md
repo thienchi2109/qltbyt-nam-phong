@@ -131,24 +131,21 @@ Invoke `context-engineering` skill for: agent systems, token optimization (>70%)
 **Docs:** Context7 MCP for library documentation (including Supabase docs)
 
 <!-- SUPABASE-CLI:START -->
-## Supabase CLI (NOT MCP)
+## Supabase CLI + MCP (Hybrid Approach)
 
-Use `npx supabase` CLI commands for all database operations. **Do NOT use Supabase MCP tools.**
+Use CLI for schema operations, MCP for SQL execution.
 
-| Task | Command |
-|------|---------|
-| **Execute SQL** | `npx supabase db query "SELECT..."` |
-| **Run SQL file** | `npx supabase db query --file path/to/file.sql` |
-| **Push migrations** | `npx supabase db push` |
-| **Create migration** | `npx supabase migration new migration_name` |
-| **List migrations** | `npx supabase migration list` |
-| **Generate types** | `npx supabase gen types typescript --project-id cdthersvldpnlbvpufrr > src/types/database.ts` |
-| **Security check** | `npx supabase inspect db lint` |
-| **View logs** | `npx supabase logs --service postgres` |
-| **Schema diff** | `npx supabase db diff` |
-| **Deploy function** | `npx supabase functions deploy fn_name` |
+| Task | Tool | Command |
+|------|------|---------|
+| **Execute SQL** | MCP | `mcp__supabase__execute_sql` |
+| **Generate types** | CLI | `npm run db:types` |
+| **DB stats** | CLI | `npm run db:stats` |
+| **Table stats** | CLI | `npx supabase inspect db table-stats --linked` |
+| **Index stats** | CLI | `npx supabase inspect db index-stats --linked` |
+| **List migrations** | CLI | `npx supabase migration list` |
+| **List projects** | CLI | `npx supabase projects list` |
 
-**Why CLI over MCP:** Saves ~3,000 tokens/conversation. Use Context7 for Supabase documentation.
+> **Note:** Migration push/pull requires synced history. Use MCP `apply_migration` for DDL changes when drift exists.
 <!-- SUPABASE-CLI:END -->
 
 ---

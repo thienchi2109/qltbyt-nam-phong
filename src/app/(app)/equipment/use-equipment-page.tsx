@@ -233,7 +233,7 @@ export function useEquipmentPage(): UseEquipmentPageReturn {
       total: data.total,
       isLoading: data.isLoading,
       isFetching: data.isFetching,
-      shouldFetchEquipment: auth.shouldFetchEquipment,
+      shouldFetchEquipment: data.shouldFetchData,
 
       // Table
       table: table.table,
