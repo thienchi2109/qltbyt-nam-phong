@@ -145,6 +145,13 @@ export function useEquipmentTable(params: UseEquipmentTableParams): UseEquipment
   // Page count calculation
   const pageCount = Math.max(1, Math.ceil((total || 0) / Math.max(pagination.pageSize, 1)))
 
+  // Clamp page index when pageCount decreases (e.g., after deletions)
+  React.useEffect(() => {
+    if (pagination.pageIndex >= pageCount && pageCount > 0) {
+      setPagination((prev) => ({ ...prev, pageIndex: pageCount - 1 }))
+    }
+  }, [pageCount, pagination.pageIndex, setPagination])
+
   // Table instance
   const table = useReactTable({
     data,

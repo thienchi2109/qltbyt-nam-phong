@@ -96,7 +96,12 @@ export function useEquipmentExport(params: UseEquipmentExportParams): UseEquipme
         dbKeysInOrder.forEach((key) => {
           const header = columnLabels[key]
           const value = item[key]
-          rowData[header] = value ?? ""
+          // Sanitize to prevent CSV/Excel formula injection
+          const sanitizedValue =
+            typeof value === "string" && /^[=+\-@]/.test(value)
+              ? `'${value}`
+              : value ?? ""
+          rowData[header] = sanitizedValue
         })
         return rowData
       })

@@ -106,9 +106,8 @@ export function useEquipmentRouteSync(
         // Schedule scroll before URL replace to prevent timer being cleared
         // Use ref to store timer so it persists across effect re-runs
         scrollTimerRef.current = setTimeout(() => {
-          const element = document.querySelector(
-            `[data-equipment-id="${highlightParam}"]`
-          )
+          const selector = `[data-equipment-id="${CSS.escape(highlightParam)}"]`
+          const element = document.querySelector(selector)
           if (element) {
             element.scrollIntoView({ behavior: "smooth", block: "center" })
           }

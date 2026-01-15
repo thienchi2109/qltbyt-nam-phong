@@ -409,14 +409,17 @@ describe('Equipment Get By Code - Error Message Security', () => {
       dia_ban_id: null,
     }
 
+    let capturedError: Error | undefined
     try {
       equipmentGetByCode(userTenant1, 'TB-C001')
     } catch (e: any) {
+      capturedError = e
       // Error should not contain tenant info
       expect(e.message).not.toContain('don_vi')
       expect(e.message).not.toContain('tenant')
       expect(e.message).not.toContain('3') // Actual tenant ID
     }
+    expect(capturedError).toBeDefined()
   })
 
   it('should NOT include equipment details in error for denied access', () => {
@@ -426,13 +429,16 @@ describe('Equipment Get By Code - Error Message Security', () => {
       dia_ban_id: null,
     }
 
+    let capturedError: Error | undefined
     try {
       equipmentGetByCode(userTenant1, 'TB-C001')
     } catch (e: any) {
+      capturedError = e
       // Error should not reveal equipment exists or its details
       expect(e.message).not.toContain('Máy CT Scanner')
       expect(e.message).not.toContain('C1')
     }
+    expect(capturedError).toBeDefined()
   })
 })
 

@@ -230,7 +230,7 @@ const EquipmentPageContent = React.memo(function EquipmentPageContent({
             onExportData={handleExportData}
             onAddEquipment={openAddDialog}
             onImportEquipment={openImportDialog}
-            onClearFacilityFilter={() => setSelectedFacilityId(null)}
+            onClearFacilityFilter={handleFacilityClear}
             onShowEquipmentDetails={(eq) => openDetailDialog(eq)}
           />
 

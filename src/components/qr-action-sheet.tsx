@@ -20,7 +20,7 @@ export function QRActionSheet({ qrCode, onClose, onAction }: QRActionSheetProps)
   const [equipment, setEquipment] = React.useState<Equipment | null>(null)
   const [loading, setLoading] = React.useState(true)
   const [error, setError] = React.useState<string | null>(null)
-  const [errorType, setErrorType] = React.useState<'not_found' | 'access_denied' | 'network' | null>(null)
+  const [errorType, setErrorType] = React.useState<'not_found' | 'access_denied' | 'network' | 'server_error' | null>(null)
   const { toast } = useToast()
 
   // Tìm kiếm thiết bị theo mã thiết bị
@@ -60,7 +60,7 @@ export function QRActionSheet({ qrCode, onClose, onAction }: QRActionSheetProps)
         setErrorType('not_found')
       } else {
         setError(`Đã có lỗi xảy ra khi tìm kiếm thiết bị: ${errorMsg}`)
-        setErrorType('not_found')
+        setErrorType('server_error')
       }
       setEquipment(null)
     } finally {
@@ -144,12 +144,15 @@ export function QRActionSheet({ qrCode, onClose, onAction }: QRActionSheetProps)
             <div className="text-center py-8">
               <div className={`mx-auto flex h-16 w-16 items-center justify-center rounded-full ${
                 errorType === 'access_denied' ? 'bg-orange-100' :
-                errorType === 'network' ? 'bg-yellow-100' : 'bg-red-100'
+                errorType === 'network' ? 'bg-yellow-100' :
+                errorType === 'server_error' ? 'bg-red-100' : 'bg-red-100'
               }`}>
                 {errorType === 'access_denied' ? (
                   <AlertCircle className="h-8 w-8 text-orange-600" />
                 ) : errorType === 'network' ? (
                   <AlertCircle className="h-8 w-8 text-yellow-600" />
+                ) : errorType === 'server_error' ? (
+                  <AlertCircle className="h-8 w-8 text-red-600" />
                 ) : (
                   <Search className="h-8 w-8 text-red-600" />
                 )}
@@ -157,18 +160,22 @@ export function QRActionSheet({ qrCode, onClose, onAction }: QRActionSheetProps)
 
               <h3 className={`mt-4 text-lg font-semibold ${
                 errorType === 'access_denied' ? 'text-orange-900' :
-                errorType === 'network' ? 'text-yellow-900' : 'text-red-900'
+                errorType === 'network' ? 'text-yellow-900' :
+                errorType === 'server_error' ? 'text-red-900' : 'text-red-900'
               }`}>
                 {errorType === 'access_denied'
                   ? 'Không có quyền truy cập'
                   : errorType === 'network'
                   ? 'Lỗi kết nối mạng'
+                  : errorType === 'server_error'
+                  ? 'Lỗi hệ thống'
                   : 'Không tìm thấy thiết bị'}
               </h3>
 
               <p className={`mt-2 text-sm ${
                 errorType === 'access_denied' ? 'text-orange-600' :
-                errorType === 'network' ? 'text-yellow-600' : 'text-red-600'
+                errorType === 'network' ? 'text-yellow-600' :
+                errorType === 'server_error' ? 'text-red-600' : 'text-red-600'
               }`}>
                 {error}
               </p>
@@ -217,6 +224,14 @@ export function QRActionSheet({ qrCode, onClose, onAction }: QRActionSheetProps)
                   <div className="bg-yellow-50 rounded-lg p-4 text-left">
                     <p className="text-sm text-yellow-700">
                       Không thể kết nối đến máy chủ. Vui lòng kiểm tra kết nối Internet và thử lại.
+                    </p>
+                  </div>
+                )}
+
+                {errorType === 'server_error' && (
+                  <div className="bg-red-50 rounded-lg p-4 text-left">
+                    <p className="text-sm text-red-700">
+                      Máy chủ gặp sự cố khi xử lý yêu cầu. Vui lòng thử lại sau hoặc liên hệ quản trị viên nếu lỗi tiếp tục xảy ra.
                     </p>
                   </div>
                 )}

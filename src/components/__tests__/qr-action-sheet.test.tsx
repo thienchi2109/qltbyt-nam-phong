@@ -368,16 +368,22 @@ describe('QRActionSheet', () => {
         />
       )
 
-      // Find and click close button (X icon button)
+      // Wait for equipment to load
+      await waitFor(() => {
+        expect(screen.getByText('Máy siêu âm')).toBeInTheDocument()
+      })
+
+      // Find close button (X icon button in header)
       const closeButtons = screen.getAllByRole('button')
       const closeButton = closeButtons.find(btn =>
         btn.querySelector('svg') && btn.getAttribute('variant') !== 'default'
       )
 
-      if (closeButton) {
-        fireEvent.click(closeButton)
-        expect(mockOnClose).toHaveBeenCalled()
-      }
+      // Assert the button exists - test should fail if not found
+      expect(closeButton).toBeDefined()
+
+      fireEvent.click(closeButton!)
+      expect(mockOnClose).toHaveBeenCalled()
     })
   })
 })
