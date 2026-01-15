@@ -5,7 +5,7 @@ import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
-import { Eye, History, Wrench, Settings, X, Search, ClipboardList } from "lucide-react"
+import { Eye, History, Wrench, Settings, X, Search, ClipboardList, AlertCircle, RotateCcw } from "lucide-react"
 import { callRpc } from "@/lib/rpc-client"
 import { useToast } from "@/hooks/use-toast"
 import type { Equipment } from "@/lib/data"
@@ -20,42 +20,59 @@ export function QRActionSheet({ qrCode, onClose, onAction }: QRActionSheetProps)
   const [equipment, setEquipment] = React.useState<Equipment | null>(null)
   const [loading, setLoading] = React.useState(true)
   const [error, setError] = React.useState<string | null>(null)
+  const [errorType, setErrorType] = React.useState<'not_found' | 'access_denied' | 'network' | null>(null)
   const { toast } = useToast()
 
   // Tìm kiếm thiết bị theo mã thiết bị
-  React.useEffect(() => {
-    const searchEquipment = async () => {
-      try {
-        setLoading(true)
-        setError(null)
+  const searchEquipment = React.useCallback(async () => {
+    try {
+      setLoading(true)
+      setError(null)
+      setErrorType(null)
 
-        // Use dedicated RPC for exact ma_thiet_bi lookup with tenant security
-        const normalizedCode = qrCode.trim()
-        const result = await callRpc<any>({
-          fn: 'equipment_get_by_code',
-          args: { p_ma_thiet_bi: normalizedCode }
-        })
+      // Use dedicated RPC for exact ma_thiet_bi lookup with tenant security
+      const normalizedCode = qrCode.trim()
+      const result = await callRpc<any>({
+        fn: 'equipment_get_by_code',
+        args: { p_ma_thiet_bi: normalizedCode }
+      })
 
-        if (!result) {
-          setError(`Không tìm thấy thiết bị với mã: ${qrCode}`)
-          setEquipment(null)
-        } else {
-          setEquipment(result)
-        }
-      } catch (err: any) {
-        // Parse RPC error response
-        const errorMsg = err?.message || 'Đã có lỗi xảy ra khi tìm kiếm'
-        setError(`Lỗi tìm kiếm: ${errorMsg}`)
+      if (!result) {
+        setError(`Không tìm thấy thiết bị với mã "${qrCode}" trong hệ thống`)
+        setErrorType('not_found')
         setEquipment(null)
-      } finally {
-        setLoading(false)
+      } else {
+        setEquipment(result)
       }
-    }
+    } catch (err: any) {
+      // Parse RPC error response
+      const errorMsg = err?.message || ''
 
+      // Determine error type for better Vietnamese messaging
+      if (errorMsg.includes('access denied') || errorMsg.includes('42501')) {
+        setError(`Thiết bị với mã "${qrCode}" không thuộc quyền quản lý của bạn`)
+        setErrorType('access_denied')
+      } else if (errorMsg.includes('network') || errorMsg.includes('fetch') || errorMsg.includes('Failed to fetch') || errorMsg.includes('Network request failed')) {
+        setError('Không thể kết nối đến máy chủ. Vui lòng kiểm tra kết nối mạng.')
+        setErrorType('network')
+      } else if (errorMsg.includes('not found')) {
+        setError(`Không tìm thấy thiết bị với mã "${qrCode}" trong hệ thống`)
+        setErrorType('not_found')
+      } else {
+        setError(`Đã có lỗi xảy ra khi tìm kiếm thiết bị: ${errorMsg}`)
+        setErrorType('not_found')
+      }
+      setEquipment(null)
+    } finally {
+      setLoading(false)
+    }
+  }, [qrCode])
+
+  React.useEffect(() => {
     if (qrCode) {
       searchEquipment()
     }
-  }, [qrCode])
+  }, [qrCode, searchEquipment])
 
   const getStatusColor = (status: string | null) => {
     switch (status) {
@@ -125,18 +142,101 @@ export function QRActionSheet({ qrCode, onClose, onAction }: QRActionSheetProps)
 
           {error && !loading && (
             <div className="text-center py-8">
-              <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-red-100">
-                <Search className="h-8 w-8 text-red-600" />
+              <div className={`mx-auto flex h-16 w-16 items-center justify-center rounded-full ${
+                errorType === 'access_denied' ? 'bg-orange-100' :
+                errorType === 'network' ? 'bg-yellow-100' : 'bg-red-100'
+              }`}>
+                {errorType === 'access_denied' ? (
+                  <AlertCircle className="h-8 w-8 text-orange-600" />
+                ) : errorType === 'network' ? (
+                  <AlertCircle className="h-8 w-8 text-yellow-600" />
+                ) : (
+                  <Search className="h-8 w-8 text-red-600" />
+                )}
               </div>
-              <h3 className="mt-4 text-lg font-semibold text-red-900">Không tìm thấy thiết bị</h3>
-              <p className="mt-2 text-sm text-red-600">{error}</p>
-              <div className="mt-4 space-y-2">
-                <p className="text-xs text-muted-foreground">Vui lòng kiểm tra:</p>
-                <ul className="text-xs text-muted-foreground space-y-1">
-                  <li>• Mã QR có đúng định dạng không</li>
-                  <li>• Thiết bị đã được đăng ký trong hệ thống chưa</li>
-                  <li>• Thử quét lại mã QR</li>
-                </ul>
+
+              <h3 className={`mt-4 text-lg font-semibold ${
+                errorType === 'access_denied' ? 'text-orange-900' :
+                errorType === 'network' ? 'text-yellow-900' : 'text-red-900'
+              }`}>
+                {errorType === 'access_denied'
+                  ? 'Không có quyền truy cập'
+                  : errorType === 'network'
+                  ? 'Lỗi kết nối mạng'
+                  : 'Không tìm thấy thiết bị'}
+              </h3>
+
+              <p className={`mt-2 text-sm ${
+                errorType === 'access_denied' ? 'text-orange-600' :
+                errorType === 'network' ? 'text-yellow-600' : 'text-red-600'
+              }`}>
+                {error}
+              </p>
+
+              <div className="mt-4 space-y-3">
+                {errorType === 'not_found' && (
+                  <div className="bg-muted/50 rounded-lg p-4 text-left">
+                    <p className="text-sm font-medium text-foreground mb-2">Vui lòng kiểm tra:</p>
+                    <ul className="text-sm text-muted-foreground space-y-1">
+                      <li className="flex items-start gap-2">
+                        <span className="text-primary">•</span>
+                        <span>Mã QR có đúng định dạng không (ví dụ: TB-001)</span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <span className="text-primary">•</span>
+                        <span>Thiết bị đã được đăng ký trong hệ thống chưa</span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <span className="text-primary">•</span>
+                        <span>Thử quét lại mã QR để đảm bảo quét chính xác</span>
+                      </li>
+                    </ul>
+                  </div>
+                )}
+
+                {errorType === 'access_denied' && (
+                  <div className="bg-orange-50 rounded-lg p-4 text-left">
+                    <p className="text-sm font-medium text-orange-900 mb-2">Lý do có thể:</p>
+                    <ul className="text-sm text-orange-700 space-y-1">
+                      <li className="flex items-start gap-2">
+                        <span>•</span>
+                        <span>Thiết bị thuộc đơn vị khác mà bạn không quản lý</span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <span>•</span>
+                        <span>Tài khoản của bạn chưa được cấp quyền truy cập thiết bị này</span>
+                      </li>
+                    </ul>
+                    <p className="text-sm text-orange-700 mt-2">
+                      Liên hệ quản trị viên nếu bạn cần truy cập thiết bị này.
+                    </p>
+                  </div>
+                )}
+
+                {errorType === 'network' && (
+                  <div className="bg-yellow-50 rounded-lg p-4 text-left">
+                    <p className="text-sm text-yellow-700">
+                      Không thể kết nối đến máy chủ. Vui lòng kiểm tra kết nối Internet và thử lại.
+                    </p>
+                  </div>
+                )}
+
+                <div className="flex gap-2 justify-center pt-2">
+                  <Button
+                    variant="outline"
+                    onClick={searchEquipment}
+                    className="gap-2"
+                  >
+                    <RotateCcw className="h-4 w-4" />
+                    Thử lại
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    onClick={onClose}
+                  >
+                    Đóng
+                  </Button>
+                </div>
               </div>
             </div>
           )}
