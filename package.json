@@ -12,7 +12,13 @@
     "test": "vitest",
     "test:run": "vitest run",
     "test:ui": "vitest --ui",
-    "test:coverage": "vitest run --coverage"
+    "test:coverage": "vitest run --coverage",
+    "db:types": "supabase gen types typescript --linked > src/types/database.ts",
+    "db:push": "supabase db push",
+    "db:pull": "supabase db pull",
+    "db:diff": "supabase db diff --linked",
+    "db:migration": "supabase migration new",
+    "db:stats": "supabase inspect db db-stats --linked"
   },
   "dependencies": {
     "@hookform/resolvers": "^4.1.3",
@@ -84,6 +90,7 @@
     "jsdom": "^27.4.0",
     "patch-package": "^8.0.0",
     "postcss": "^8",
+    "supabase": "^2.72.7",
     "tailwindcss": "^3.4.1",
     "typescript": "^5",
     "vitest": "^4.0.17"
