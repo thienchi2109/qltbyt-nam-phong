@@ -121,6 +121,8 @@ Invoke `context-engineering` skill for: agent systems, token optimization (>70%)
 |---------|-------------|
 | `/ultra-think` | Complex decisions, architecture choices, trade-off analysis, multi-perspective problems |
 | `/generate-tests` | After implementing features or fixing bugs - generate comprehensive tests |
+| `/react-best-practices` | **AUTO-INVOKE** when writing/reviewing React components, hooks, data fetching, or optimizing performance |
+| `/web-design-guidelines` | When reviewing UI code for accessibility, UX, or design compliance |
 
 ## MCP Tools
 
@@ -197,6 +199,21 @@ module/
 ```
 
 **Principles:** Context for shared state • Local form state in dialogs • useMemo on context value • useCallback on actions
+
+<!-- REACT-SKILLS:START -->
+## React/Next.js Skills (Auto-Invoke)
+
+<IMPORTANT>
+When working on React/Next.js code, PROACTIVELY invoke `/react-best-practices` skill:
+- **Before** writing new components, hooks, or pages
+- **During** code reviews for performance issues
+- **When** implementing data fetching (client or server-side)
+- **When** optimizing bundle size or re-renders
+
+The skill contains 45 rules across 8 priority categories from Vercel Engineering.
+Reference `C:\Users\win\.claude\skills\react-best-practices\rules\` for specific patterns.
+</IMPORTANT>
+<!-- REACT-SKILLS:END -->
 
 ## Data Fetching
 
