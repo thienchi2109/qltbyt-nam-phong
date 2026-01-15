@@ -313,12 +313,87 @@ export function ImportEquipmentDialog({ open, onOpenChange, onSuccess }: ImportE
       const inserted = result?.inserted ?? parsedData.length
       const failed = result?.failed ?? 0
 
-      toast({
-        title: failed > 0 ? "Nhập hoàn tất với một số lỗi" : "Thành công",
-        description: failed > 0
-          ? `Đã nhập ${inserted}/${result?.total ?? parsedData.length} thiết bị. ${failed} bản ghi lỗi.`
-          : `Đã nhập thành công ${inserted} thiết bị.`,
-      })
+      // Translate common PostgreSQL errors to Vietnamese
+      const translateError = (error: string): string => {
+        if (!error) return 'Lỗi không xác định'
+
+        // Duplicate key errors
+        if (error.includes('duplicate key') && error.includes('ma_thiet_bi')) {
+          return 'Mã thiết bị đã tồn tại (trùng lặp)'
+        }
+        if (error.includes('duplicate key')) {
+          return 'Dữ liệu trùng lặp'
+        }
+
+        // Permission errors (PostgreSQL returns lowercase "permission denied")
+        if (error.toLowerCase().includes('permission denied')) {
+          return 'Không có quyền thực hiện'
+        }
+
+        // Null/required field errors
+        if (error.includes('null value in column')) {
+          const match = error.match(/null value in column "(\w+)"/)
+          const field = match?.[1] || 'không xác định'
+          return `Thiếu giá trị bắt buộc: ${field}`
+        }
+
+        // Data type errors
+        if (error.includes('invalid input syntax for type integer')) {
+          return 'Định dạng số không hợp lệ'
+        }
+        if (error.includes('invalid input syntax for type date')) {
+          return 'Định dạng ngày không hợp lệ (dùng DD/MM/YYYY)'
+        }
+        if (error.includes('invalid input syntax for type numeric')) {
+          return 'Định dạng số thập phân không hợp lệ'
+        }
+        if (error.includes('invalid input syntax')) {
+          return 'Định dạng dữ liệu không hợp lệ'
+        }
+
+        // Constraint violations
+        if (error.includes('violates check constraint')) {
+          return 'Giá trị không hợp lệ theo ràng buộc'
+        }
+        if (error.includes('violates foreign key constraint')) {
+          return 'Tham chiếu không hợp lệ'
+        }
+
+        // Return original if no translation found (truncate if too long)
+        return error.length > 60 ? error.substring(0, 60) + '...' : error
+      }
+
+      // Extract error details for failed records
+      const failedDetails = (result?.details ?? [])
+        .filter((d: any) => !d.success)
+        .slice(0, 5) // Show first 5 errors to avoid overwhelming the user
+
+      if (failed > 0 && failedDetails.length > 0) {
+        // Build detailed error message with Vietnamese translations
+        const errorSummary = failedDetails
+          .map((d: any) => `Dòng ${d.index + 2}: ${translateError(d.error)}`)
+          .join('\n')
+
+        const moreErrors = failed > 5 ? `\n...và ${failed - 5} lỗi khác` : ''
+
+        toast({
+          variant: "destructive",
+          title: `Nhập hoàn tất với ${failed} lỗi`,
+          description: `Đã nhập ${inserted}/${result?.total ?? parsedData.length} thiết bị.\n\nChi tiết lỗi:\n${errorSummary}${moreErrors}`,
+          duration: 10000, // Show longer for error details
+        })
+      } else if (failed > 0) {
+        toast({
+          variant: "destructive",
+          title: "Nhập hoàn tất với một số lỗi",
+          description: `Đã nhập ${inserted}/${result?.total ?? parsedData.length} thiết bị. ${failed} bản ghi lỗi.`,
+        })
+      } else {
+        toast({
+          title: "Thành công",
+          description: `Đã nhập thành công ${inserted} thiết bị.`,
+        })
+      }
       onSuccess()
       handleClose()
     } catch (error: any) {

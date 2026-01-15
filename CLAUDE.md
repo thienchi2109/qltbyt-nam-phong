@@ -74,11 +74,14 @@ GRANT EXECUTE ON FUNCTION fn_name TO authenticated;
 
 | Role | Tenant Access | Notes |
 |------|--------------|-------|
-| `global` | All tenants | Full access |
-| `regional_leader` | Multi-tenant in region | Limited by `dia_ban_id` |
-| `to_qltb` | Single tenant | Equipment team |
-| `technician` | Single tenant + dept | Department restricted |
-| `user` | Single tenant | Basic access |
+| `global` | All tenants | Full admin access (`admin` is alias) |
+| `regional_leader` | Multi-tenant in region | **Read-only**, limited by `dia_ban_id` |
+| `to_qltb` | Single tenant | Equipment team - full tenant operations |
+| `technician` | Single tenant + dept | Technical staff, department restricted |
+| `qltb_khoa` | Single tenant + dept | Department equipment manager |
+| `user` | Single tenant | Basic read access |
+
+📖 **Full RBAC Documentation:** See [`docs/RBAC.md`](docs/RBAC.md) for complete permission matrices, role hierarchy diagrams, and implementation patterns.
 
 </SECURITY_CRITICAL>
 
@@ -112,11 +115,41 @@ Invoke `context-engineering` skill for: agent systems, token optimization (>70%)
 
 ---
 
+## Required Commands
+
+| Command | When to Use |
+|---------|-------------|
+| `/ultra-think` | Complex decisions, architecture choices, trade-off analysis, multi-perspective problems |
+| `/generate-tests` | After implementing features or fixing bugs - generate comprehensive tests |
+| `/react-best-practices` | **AUTO-INVOKE** when writing/reviewing React components, hooks, data fetching, or optimizing performance |
+| `/web-design-guidelines` | When reviewing UI code for accessibility, UX, or design compliance |
+
 ## MCP Tools
 
 **Code Search:** `mcp__filesystem-with-morph__warpgrep_codebase_search` (NEVER grep/ripgrep)
 **File Editing:** `mcp__filesystem-with-morph__edit_file` (NEVER full rewrites)
-**Docs:** Context7 MCP for library documentation
+**Docs:** Context7 MCP for library documentation (including Supabase docs)
+
+<!-- SUPABASE-CLI:START -->
+## Supabase CLI (NOT MCP)
+
+Use `npx supabase` CLI commands for all database operations. **Do NOT use Supabase MCP tools.**
+
+| Task | Command |
+|------|---------|
+| **Execute SQL** | `npx supabase db query "SELECT..."` |
+| **Run SQL file** | `npx supabase db query --file path/to/file.sql` |
+| **Push migrations** | `npx supabase db push` |
+| **Create migration** | `npx supabase migration new migration_name` |
+| **List migrations** | `npx supabase migration list` |
+| **Generate types** | `npx supabase gen types typescript --project-id cdthersvldpnlbvpufrr > src/types/database.ts` |
+| **Security check** | `npx supabase inspect db lint` |
+| **View logs** | `npx supabase logs --service postgres` |
+| **Schema diff** | `npx supabase db diff` |
+| **Deploy function** | `npx supabase functions deploy fn_name` |
+
+**Why CLI over MCP:** Saves ~3,000 tokens/conversation. Use Context7 for Supabase documentation.
+<!-- SUPABASE-CLI:END -->
 
 ---
 
@@ -166,6 +199,21 @@ module/
 ```
 
 **Principles:** Context for shared state • Local form state in dialogs • useMemo on context value • useCallback on actions
+
+<!-- REACT-SKILLS:START -->
+## React/Next.js Skills (Auto-Invoke)
+
+<IMPORTANT>
+When working on React/Next.js code, PROACTIVELY invoke `/react-best-practices` skill:
+- **Before** writing new components, hooks, or pages
+- **During** code reviews for performance issues
+- **When** implementing data fetching (client or server-side)
+- **When** optimizing bundle size or re-renders
+
+The skill contains 45 rules across 8 priority categories from Vercel Engineering.
+Reference `C:\Users\win\.claude\skills\react-best-practices\rules\` for specific patterns.
+</IMPORTANT>
+<!-- REACT-SKILLS:END -->
 
 ## Data Fetching
 

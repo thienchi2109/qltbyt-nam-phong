@@ -324,7 +324,7 @@ export function EquipmentDetailDialog({
     mutationFn: async (vars: { id: number; patch: Partial<EquipmentFormValues> }) => {
       await callRpc<void>({
         fn: "equipment_update",
-        args: { p_id: vars.id, ...vars.patch },
+        args: { p_id: vars.id, p_patch: vars.patch },
       })
     },
     onSuccess: () => {

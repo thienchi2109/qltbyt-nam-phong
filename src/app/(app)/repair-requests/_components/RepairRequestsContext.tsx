@@ -8,7 +8,8 @@ import { callRpc } from "@/lib/rpc-client"
 import type {
   RepairRequestWithEquipment,
   RepairUnit,
-  AuthUser
+  AuthUser,
+  EquipmentSelectItem
 } from "../types"
 
 // ============================================
@@ -23,6 +24,7 @@ interface DialogState {
   requestToView: RepairRequestWithEquipment | null
   completionType: 'Hoàn thành' | 'Không HT' | null
   isCreateOpen: boolean
+  preSelectedEquipment: EquipmentSelectItem | null
 }
 
 interface RepairRequestsContextValue {
@@ -40,7 +42,7 @@ interface RepairRequestsContextValue {
   openApproveDialog: (request: RepairRequestWithEquipment) => void
   openCompleteDialog: (request: RepairRequestWithEquipment, type: 'Hoàn thành' | 'Không HT') => void
   openViewDialog: (request: RepairRequestWithEquipment) => void
-  openCreateSheet: () => void
+  openCreateSheet: (equipment?: EquipmentSelectItem) => void
   closeAllDialogs: () => void
 
   // Mutations
@@ -261,6 +263,7 @@ export function RepairRequestsProvider({ children }: RepairRequestsProviderProps
     requestToView: null,
     completionType: null,
     isCreateOpen: false,
+    preSelectedEquipment: null,
   })
 
   // Cache invalidation
@@ -307,8 +310,12 @@ export function RepairRequestsProvider({ children }: RepairRequestsProviderProps
     setDialogState(prev => ({ ...prev, requestToView: request }))
   }, [])
 
-  const openCreateSheet = React.useCallback(() => {
-    setDialogState(prev => ({ ...prev, isCreateOpen: true }))
+  const openCreateSheet = React.useCallback((equipment?: EquipmentSelectItem) => {
+    setDialogState(prev => ({
+      ...prev,
+      isCreateOpen: true,
+      preSelectedEquipment: equipment ?? null
+    }))
   }, [])
 
   const closeAllDialogs = React.useCallback(() => {
@@ -320,6 +327,7 @@ export function RepairRequestsProvider({ children }: RepairRequestsProviderProps
       requestToView: null,
       completionType: null,
       isCreateOpen: false,
+      preSelectedEquipment: null,
     })
   }, [])
 

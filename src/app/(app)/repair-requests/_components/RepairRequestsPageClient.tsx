@@ -127,6 +127,9 @@ function RepairRequestsPageClientInner() {
   // useRepairRealtimeSync()
   const searchParams = useSearchParams()
   const [allEquipment, setAllEquipment] = React.useState<EquipmentSelectItem[]>([])
+  const [hasLoadedEquipment, setHasLoadedEquipment] = React.useState(false)
+  // Track when equipment_get fetch for deep link is in progress
+  const [isEquipmentFetchPending, setIsEquipmentFetchPending] = React.useState(false)
 
   // Table state
   const [sorting, setSorting] = React.useState<SortingState>([
@@ -303,6 +306,8 @@ function RepairRequestsPageClientInner() {
           title: 'Lỗi',
           description: 'Không thể tải danh sách thiết bị. ' + (error?.message || ''),
         })
+      } finally {
+        setHasLoadedEquipment(true)
       }
     }
     fetchInitialData()
@@ -327,6 +332,8 @@ function RepairRequestsPageClientInner() {
       if (existing) {
         return;
       }
+      // Mark fetch as pending so action=create effect waits for it
+      setIsEquipmentFetchPending(true)
       try {
         const row: any = await callRpc({ fn: 'equipment_get', args: { p_id: idNum } })
         if (row) {
@@ -340,21 +347,45 @@ function RepairRequestsPageClientInner() {
         }
       } catch (e) {
         // ignore; toast not necessary for deep link preselect
+      } finally {
+        setIsEquipmentFetchPending(false)
       }
     }
     run();
   }, [searchParams, allEquipment, uiFilters]);
 
-  // Handle action=create param
+  // Handle action=create param with equipment pre-selection
   React.useEffect(() => {
-    if (searchParams.get('action') === 'create') {
+    if (searchParams.get('action') !== 'create') return
+
+    const equipmentId = searchParams.get('equipmentId')
+
+    if (equipmentId) {
+      // Wait for initial equipment list to load AND for equipment_get fetch to complete
+      if (!hasLoadedEquipment || isEquipmentFetchPending) return
+
+      const idNum = Number(equipmentId)
+      const equipment = allEquipment.find(eq => eq.id === idNum)
+
+      // Open sheet with or without pre-selection based on whether equipment was found
+      if (equipment) {
+        openCreateSheet(equipment)
+      } else {
+        // Equipment not found in loaded data - open sheet without pre-selection
+        openCreateSheet()
+      }
+    } else {
+      // No equipment to pre-select, just open the sheet
       openCreateSheet()
-      const params = new URLSearchParams(searchParams.toString())
-      params.delete('action')
-      const nextPath = params.size ? `${pathname}?${params.toString()}` : pathname
-      router.replace(nextPath, { scroll: false })
     }
-  }, [searchParams, router, pathname, openCreateSheet])
+
+    // Clean up URL only after we've processed the action
+    const params = new URLSearchParams(searchParams.toString())
+    params.delete('action')
+    params.delete('equipmentId')
+    const nextPath = params.size ? `${pathname}?${params.toString()}` : pathname
+    router.replace(nextPath, { scroll: false })
+  }, [searchParams, router, pathname, openCreateSheet, allEquipment, hasLoadedEquipment, isEquipmentFetchPending])
 
   // Adapter functions to bridge context (non-null) with column options (nullable)
   const setEditingRequestAdapter = React.useCallback((req: RepairRequestWithEquipment | null) => {

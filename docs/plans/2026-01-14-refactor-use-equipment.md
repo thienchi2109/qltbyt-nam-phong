@@ -555,3 +555,168 @@ npm run typecheck
 **Created**: 2026-01-14
 **Reviewed**: 2026-01-14 (3 expert subagents)
 **Status**: Ready for execution (with review findings incorporated)
+
+---
+
+## Post-Implementation Review (Phase 2-3) - 2026-01-14
+
+### ✅ Issues Addressed (10)
+
+| Issue | Fix Applied | File(s) |
+|-------|-------------|---------|
+| Timer cleanup in useEquipmentTable | Added `clearTimeout(timer)` cleanup function | useEquipmentTable.ts:195-204 |
+| Timer cleanup in useEquipmentRouteSync | Refactored with cleanup function | useEquipmentRouteSync.ts |
+| useEquipmentRouteSync tight coupling | Returns `pendingAction` + `clearPendingAction` instead of calling external setters | useEquipmentRouteSync.ts |
+| Duplicate selectedDonViUI/selectedDonVi | Removed `selectedDonViUI`, uses only `selectedDonVi` | useEquipmentAuth.ts |
+| Missing pagination reset on filter change | Added `filterKey` tracking with auto-reset to page 0 | useEquipmentTable.ts:117-136 |
+| Missing mutations documentation | Added design note explaining dialog-focused context | EquipmentDialogContext.tsx:8-22 |
+| Highlight processed ref | Added `processedParamsRef` | useEquipmentRouteSync.ts |
+| Missing locations in return value | Added `locations` to interface and return | useEquipmentData.ts:39,358,381 |
+| Missing AbortSignal for queries | Added `signal` to all 5 filter option queries | useEquipmentData.ts |
+| Clear filters on tenant change | Added `resetFilters()` callback | useEquipmentFilters.ts:82-86 |
+
+### 🔸 Deferred Issues (Phase 7 or Future)
+
+| Issue | Priority | Reason Deferred | Recommended Phase |
+|-------|----------|-----------------|-------------------|
+| userRole type specificity | Low | Works correctly, cosmetic | Phase 7 (code-simplifier) |
+| Tenant filter toast effect | Medium | UI polish, not critical | Phase 4 (composition hook) |
+| Inconsistent dialog state pattern (boolean vs null check) | Low | Works correctly, cosmetic | Phase 7 (code-simplifier) |
+| Type import paths (`../types` vs `@/types`) | Minor | Consistency, low impact | Phase 7 (code-simplifier) |
+| useEquipmentData too large (398 lines) | Medium | Still within acceptable range, works well | Future refactor |
+| Auth duplication (useEquipmentAuth vs context) | Low | Context only reads session, minimal duplication | Future optimization |
+| Context splitting (dialog state causes re-renders) | Medium | Requires major architectural change | Future optimization |
+
+### Notes for Phase 4
+
+The main composition hook should include:
+```typescript
+// Tenant change effect (clear filters when tenant changes)
+React.useEffect(() => {
+  if (!auth.isGlobal) return
+  filters.resetFilters()
+}, [auth.tenantFilter, auth.isGlobal, filters.resetFilters])
+```
+
+---
+
+## Phase 4 Review Findings - 2026-01-14
+
+### ✅ High-Priority Issues (FIXED)
+
+| Issue | Fix Applied | Commit |
+|-------|-------------|--------|
+| dataParams memoization using entire `[auth, filters]` objects | Changed to 15 explicit property dependencies | 5797d1b |
+| Pagination dual-source (hardcoded `{ pageIndex: 0, pageSize: 20 }` dead code) | Removed, now uses actual `pagination` state | 5797d1b |
+| renderActions missing `routeSync.router` dependency | Moved routeSync before renderActions, added to deps | 5797d1b |
+
+### 🟡 Medium-Priority Issues (DEFERRED)
+
+| Issue | Severity | Recommendation | Target Phase |
+|-------|----------|----------------|--------------|
+| Dialog state still in main hook (12 useState) | Medium | Move to EquipmentDialogContext as planned | Phase 5 |
+| Large return value memoization deps (~40 items) | Medium | Consider splitting context by update frequency | Phase 5/7 |
+| Missing locations in return value | Medium | Expose `data.locations` in return if needed by consumers | Phase 5 |
+| Pagination sync effect compares by reference | Medium | Optimize to compare `pageIndex`/`pageSize` values, not object reference | Phase 7 |
+| Effect dependency arrays could use refs | Low | Use ref pattern for stable table/router references | Phase 7 |
+| Lazy initialization for dialog states | Low | `useState(() => null)` pattern for Equipment objects | Phase 7 |
+| useMemo final return has many deps (40+) | Low | Acceptable for now, monitor performance | Phase 7 |
+
+### Notes
+
+- All high-priority issues resolved in commit `5797d1b`
+- Medium-priority issues are architectural and will be addressed when dialog refactoring begins (Phase 5)
+- The composition pattern is working correctly with proper dependency tracking
+
+---
+
+## Phase 5 Review Findings - 2026-01-14
+
+### ✅ High-Priority Issues (FIXED)
+
+| Issue | Fix Applied | Files Changed |
+|-------|-------------|---------------|
+| Fragile `effectiveTenantKey` derivation from `data[0]?.don_vi` | Changed to use stable `pageState.effectiveTenantKey` from auth | page.tsx, types.ts, use-equipment-page.tsx |
+| `renderActions` uses legacy state instead of context | EquipmentActionsMenu now consumes context directly via `useEquipmentContext()` | equipment-actions-menu.tsx, use-equipment-page.tsx |
+| Route sync effect uses legacy dialog state | Moved effect to page.tsx, uses context actions (`openAddDialog`, `openDetailDialog`) | page.tsx, use-equipment-page.tsx |
+| Duplicated dialog state between hook and context | Removed all legacy dialog state (12 useState) from useEquipmentPage | use-equipment-page.tsx, types.ts |
+| Dialog handlers (handleShowDetails, etc.) reference removed state | Removed handlers - EquipmentActionsMenu uses context directly | use-equipment-page.tsx, types.ts |
+
+### 🟡 Medium-Priority Issues (NOTED FOR FUTURE)
+
+| Issue | Severity | Recommendation | Target |
+|-------|----------|----------------|--------|
+| Test coverage for context integration | Medium | Add integration tests for dialog actions via context | Future |
+| Missing data invalidation events in context | Medium | Context should emit custom events for mutation success | Future |
+| Accessibility not verified after refactor | Medium | Run axe-core on dialogs, verify ARIA labels | Phase 7 |
+| EquipmentActionsMenu creates callbacks per render | Low | Memoize callbacks with useCallback (current is acceptable) | Phase 7 |
+| Filter sheet state still in useEquipmentPage | Low | Consider moving to separate hook or context | Future |
+| Pagination sync effect uses object reference | Low | Compare pageIndex/pageSize values instead | Phase 7 |
+
+### Implementation Summary
+
+**Phase 5 Changes:**
+1. `EquipmentDialogs` refactored to consume context (reduced from 20+ props to 3)
+2. `EquipmentActionsMenu` refactored to consume context (reduced from 8 props to 3)
+3. Page split into `EquipmentPage` (provider wrapper) and `EquipmentPageContent` (context consumer)
+4. Route sync now uses context actions (`openAddDialog`, `openDetailDialog`)
+5. Legacy dialog state removed from `useEquipmentPage` hook
+6. Types updated to reflect simplified return interface
+7. `pendingAction` and `clearPendingAction` exposed for route sync
+
+**Lines of Code:**
+- `use-equipment-page.tsx`: ~335 lines (down from ~400, dialog state removed)
+- `equipment-actions-menu.tsx`: ~121 lines (now uses context)
+- `page.tsx`: ~345 lines (added route sync effect)
+- `types.ts`: ~130 lines (removed dialog state properties)
+
+**Typecheck:** ✅ Passes
+
+---
+
+## Phase 6 Review Findings - 2026-01-14
+
+### ✅ Reviewers
+
+| Reviewer | Verdict | Score |
+|----------|---------|-------|
+| Backend Architect | GO | ✅ |
+| Frontend Developer | APPROVED with minor improvements | 9/10 |
+| Code Reviewer | FULL compliance | ✅ |
+
+### 🟡 Important Issues (For Phase 7)
+
+| Issue | Recommendation | Target |
+|-------|----------------|--------|
+| Inline Columns Dialog (~30 lines) | Extract to `EquipmentColumnsDialog.tsx` | Phase 7 |
+| Missing React.memo on EquipmentPageContent | Add memo to prevent unnecessary re-renders | Phase 7 |
+| Verbose props destructuring (83 lines) | Consider grouping related state in hook return | Phase 7 |
+
+### 🟢 Suggestions (Nice to Have)
+
+| Suggestion | Reviewer | Priority |
+|------------|----------|----------|
+| Extract explicit type: `UseEquipmentPageReturn` instead of `ReturnType<>` | Backend Architect, Frontend Dev | Low |
+| Extract `LoadingSkeleton` as reusable component | Frontend Dev | Low |
+| Extract filter/facility sheet section to wrapper component | Code Reviewer | Low |
+
+### Implementation Summary
+
+**Phase 6 Changes:**
+1. Created `_components/EquipmentPageClient.tsx` (349 lines) - client component with provider wrapper
+2. Simplified `page.tsx` to 5-line server component entry point
+3. Follows RepairRequests pattern correctly
+4. All imports resolve correctly
+5. Provider/consumer architecture properly implemented
+
+**File Structure:**
+```
+equipment/
+├── _components/
+│   └── EquipmentPageClient.tsx   # NEW - 349 lines (client component)
+└── page.tsx                       # SIMPLIFIED - 5 lines (server component)
+```
+
+**Typecheck:** ✅ Passes
+
+---

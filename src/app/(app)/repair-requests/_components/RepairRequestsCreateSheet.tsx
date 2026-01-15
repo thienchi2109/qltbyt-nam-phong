@@ -31,7 +31,7 @@ import type { EquipmentSelectItem, RepairUnit } from "../types"
 
 export function RepairRequestsCreateSheet() {
   const {
-    dialogState: { isCreateOpen },
+    dialogState: { isCreateOpen, preSelectedEquipment },
     closeAllDialogs,
     createMutation,
     user,
@@ -39,6 +39,9 @@ export function RepairRequestsCreateSheet() {
   } = useRepairRequestsContext()
 
   const isSheetMobile = useMediaQuery("(max-width: 1279px)")
+
+  // Track if we've already prefilled from preSelectedEquipment (reset on close)
+  const hasPrefilledRef = React.useRef(false)
 
   // Local form state
   const [selectedEquipment, setSelectedEquipment] = React.useState<EquipmentSelectItem | null>(null)
@@ -50,7 +53,7 @@ export function RepairRequestsCreateSheet() {
   const [externalCompanyName, setExternalCompanyName] = React.useState("")
   const [allEquipment, setAllEquipment] = React.useState<EquipmentSelectItem[]>([])
 
-  // Reset form when sheet closes
+  // Reset form when sheet closes, or initialize from pre-selected equipment when sheet opens
   React.useEffect(() => {
     if (!isCreateOpen) {
       setSelectedEquipment(null)
@@ -60,8 +63,14 @@ export function RepairRequestsCreateSheet() {
       setDesiredDate(undefined)
       setRepairUnit("noi_bo")
       setExternalCompanyName("")
+      hasPrefilledRef.current = false
+    } else if (preSelectedEquipment && !hasPrefilledRef.current) {
+      // Pre-fill only once when opened with equipment from context
+      setSelectedEquipment(preSelectedEquipment)
+      setSearchQuery(`${preSelectedEquipment.ten_thiet_bi} (${preSelectedEquipment.ma_thiet_bi})`)
+      hasPrefilledRef.current = true
     }
-  }, [isCreateOpen])
+  }, [isCreateOpen, preSelectedEquipment])
 
   // Fetch equipment options
   React.useEffect(() => {
