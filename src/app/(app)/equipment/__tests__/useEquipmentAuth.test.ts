@@ -48,6 +48,14 @@ describe('useEquipmentAuth', () => {
       expect(result.current.status).toBe('loading')
       expect(result.current.user).toBeUndefined()
     })
+
+    it('should not fetch equipment during loading state', () => {
+      mockUseSession.mockReturnValue({ data: null, status: 'loading' })
+
+      const { result } = renderHook(() => useEquipmentAuth())
+
+      expect(result.current.shouldFetchEquipment).toBe(false)
+    })
   })
 
   describe('Unauthenticated State', () => {
@@ -60,6 +68,14 @@ describe('useEquipmentAuth', () => {
       expect(result.current.user).toBeUndefined()
       expect(result.current.isGlobal).toBe(false)
       expect(result.current.isRegionalLeader).toBe(false)
+    })
+
+    it('should not fetch equipment when unauthenticated', () => {
+      mockUseSession.mockReturnValue({ data: null, status: 'unauthenticated' })
+
+      const { result } = renderHook(() => useEquipmentAuth())
+
+      expect(result.current.shouldFetchEquipment).toBe(false)
     })
   })
 

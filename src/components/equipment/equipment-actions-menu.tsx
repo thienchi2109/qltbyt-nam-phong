@@ -39,13 +39,12 @@ export function EquipmentActionsMenu({
   const router = useRouter()
   const {
     user,
+    isGlobal,
     isRegionalLeader,
     openDetailDialog,
     openStartUsageDialog,
     openEndUsageDialog,
   } = useEquipmentContext()
-
-  const isGlobal = user?.role === 'global'
 
   const userId = React.useMemo(() => {
     const uid = user?.id

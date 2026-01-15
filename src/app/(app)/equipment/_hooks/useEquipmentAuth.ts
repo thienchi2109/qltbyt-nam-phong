@@ -105,11 +105,13 @@ export function useEquipmentAuth(): UseEquipmentAuthReturn {
   )
 
   // Computed: should we fetch equipment based on tenant selection
+  // Gate on authenticated status to prevent premature fetches during loading
   const shouldFetchEquipment = React.useMemo(() => {
+    if (status !== "authenticated") return false
     if (!isGlobal) return true
     if (tenantFilter === "all") return true
     return /^\d+$/.test(tenantFilter)
-  }, [isGlobal, tenantFilter])
+  }, [status, isGlobal, tenantFilter])
 
   // Effective tenant key for queries
   const effectiveTenantKey = isGlobal
