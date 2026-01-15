@@ -256,16 +256,19 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 {branding.isLoading ? (
                   <Skeleton className="h-5 w-48" />
                 ) : (
-                  <TenantName name={branding.data?.name ?? null} className="text-base lg:text-lg" />
+                  <TenantName
+                    name={branding.data?.name ?? null}
+                    className="text-sm sm:text-base lg:text-lg truncate max-w-[calc(100vw-120px)] sm:max-w-[400px] md:max-w-none"
+                  />
                 )}
               </div>
             </div>
 
             {/* Realtime Status */}
-            <RealtimeStatus variant="icon" />
+            <RealtimeStatus variant="icon" className="hidden md:flex" />
 
             {/* Help Button for Onboarding Tours */}
-            <HelpButton />
+            <HelpButton className="hidden md:flex" />
 
             {/* Tenant switcher removed */}
 

@@ -7,14 +7,14 @@ export type TenantNameProps = {
   className?: string
 }
 
-export function TenantName({ name, fallback = 'Nền tảng QLTBYT', className }: TenantNameProps) {
+export function TenantName({ name, fallback = 'CVMEMS', className }: TenantNameProps) {
   const text = (name && name.trim()) || fallback
   return (
-    <span className={["font-semibold tracking-tight", className].filter(Boolean).join(" ")}
+    <div className={["font-semibold tracking-tight", className].filter(Boolean).join(" ")}
       aria-label={text}
       title={text}
     >
       {text}
-    </span>
+    </div>
   )
 }
