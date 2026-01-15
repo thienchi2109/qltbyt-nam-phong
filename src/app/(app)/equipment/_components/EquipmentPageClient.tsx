@@ -35,7 +35,14 @@ import { useEquipmentContext } from "../_hooks/useEquipmentContext"
 export function EquipmentPageClient() {
   const pageState = useEquipmentPage()
 
-  // Redirect if not authenticated
+  // Redirect unauthenticated users via useEffect to avoid side effects during render
+  React.useEffect(() => {
+    if (pageState.status === "unauthenticated") {
+      pageState.router.push("/")
+    }
+  }, [pageState.status, pageState.router])
+
+  // Show loading state
   if (pageState.status === "loading") {
     return (
       <div className="flex items-center justify-center min-h-[50vh]">
@@ -47,8 +54,8 @@ export function EquipmentPageClient() {
     )
   }
 
+  // Show nothing while redirecting unauthenticated users
   if (pageState.status === "unauthenticated") {
-    pageState.router.push("/")
     return null
   }
 

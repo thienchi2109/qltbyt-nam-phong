@@ -521,7 +521,9 @@ describe('Equipment CRUD Mutations', () => {
       })
     })
 
-    it('should reject regional_leader from updating equipment', async () => {
+    it('should handle permission denied error from RPC', async () => {
+      // Note: Actual RBAC is enforced server-side in RPC functions.
+      // This test verifies the client correctly handles permission errors.
       mockCallRpc.mockRejectedValue(new Error('Permission denied'))
 
       const { result } = renderHook(

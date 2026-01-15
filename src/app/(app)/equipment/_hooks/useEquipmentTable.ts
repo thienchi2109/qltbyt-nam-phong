@@ -61,6 +61,9 @@ export interface UseEquipmentTableParams {
   setColumnFilters: React.Dispatch<React.SetStateAction<ColumnFiltersState>>
   debouncedSearch: string
   setSearchTerm: React.Dispatch<React.SetStateAction<string>>
+  // Controlled pagination state (lifted to parent to avoid desync)
+  pagination: { pageIndex: number; pageSize: number }
+  setPagination: React.Dispatch<React.SetStateAction<{ pageIndex: number; pageSize: number }>>
   // For pagination reset on filter change
   selectedDonVi: number | null
   selectedFacilityId: number | null
@@ -95,12 +98,11 @@ export function useEquipmentTable(params: UseEquipmentTableParams): UseEquipment
     setColumnFilters,
     debouncedSearch,
     setSearchTerm,
+    pagination,
+    setPagination,
     selectedDonVi,
     selectedFacilityId,
   } = params
-
-  // Pagination state
-  const [pagination, setPagination] = React.useState({ pageIndex: 0, pageSize: 20 })
 
   // Column visibility state
   const [columnVisibility, setColumnVisibility] =

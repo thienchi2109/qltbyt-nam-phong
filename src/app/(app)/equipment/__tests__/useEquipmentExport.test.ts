@@ -71,8 +71,10 @@ const createDefaultParams = (overrides?: Partial<UseEquipmentExportParams>): Use
 })
 
 describe('useEquipmentExport', () => {
-  // Store original before mocking
+  // Store originals before mocking
   const originalCreateElement = document.createElement.bind(document)
+  const originalCreateObjectURL = global.URL.createObjectURL
+  const originalRevokeObjectURL = global.URL.revokeObjectURL
 
   beforeEach(() => {
     vi.clearAllMocks()
@@ -96,6 +98,9 @@ describe('useEquipmentExport', () => {
 
   afterEach(() => {
     vi.restoreAllMocks()
+    // Restore URL methods manually since vi.restoreAllMocks doesn't cover direct assignments
+    global.URL.createObjectURL = originalCreateObjectURL
+    global.URL.revokeObjectURL = originalRevokeObjectURL
   })
 
   describe('handleDownloadTemplate', () => {

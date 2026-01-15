@@ -118,14 +118,11 @@ export function useEquipmentPage(): UseEquipmentPageReturn {
     setColumnFilters: filters.setColumnFilters,
     debouncedSearch: filters.debouncedSearch,
     setSearchTerm: filters.setSearchTerm,
+    pagination,
+    setPagination,
     selectedDonVi: auth.selectedDonVi,
     selectedFacilityId: data.selectedFacilityId,
   })
-
-  // Sync pagination state with table
-  React.useEffect(() => {
-    setPagination(table.pagination)
-  }, [table.pagination])
 
   // Export hook
   const exports = useEquipmentExport({

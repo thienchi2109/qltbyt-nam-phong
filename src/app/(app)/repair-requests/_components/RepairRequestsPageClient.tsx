@@ -347,23 +347,35 @@ function RepairRequestsPageClientInner() {
 
   // Handle action=create param with equipment pre-selection
   React.useEffect(() => {
-    if (searchParams.get('action') === 'create') {
-      const equipmentId = searchParams.get('equipmentId')
-      if (equipmentId) {
-        // Find pre-fetched equipment and pass to openCreateSheet
-        const idNum = Number(equipmentId)
-        const equipment = allEquipment.find(eq => eq.id === idNum)
+    if (searchParams.get('action') !== 'create') return
+
+    const equipmentId = searchParams.get('equipmentId')
+
+    if (equipmentId) {
+      // Wait for equipment data to load before processing
+      if (allEquipment.length === 0) return
+
+      const idNum = Number(equipmentId)
+      const equipment = allEquipment.find(eq => eq.id === idNum)
+
+      // Only proceed if we found the equipment or gave up trying
+      if (equipment) {
         openCreateSheet(equipment)
       } else {
+        // Equipment not found in loaded data - open sheet without pre-selection
         openCreateSheet()
       }
-      // Clean up URL
-      const params = new URLSearchParams(searchParams.toString())
-      params.delete('action')
-      params.delete('equipmentId')
-      const nextPath = params.size ? `${pathname}?${params.toString()}` : pathname
-      router.replace(nextPath, { scroll: false })
+    } else {
+      // No equipment to pre-select, just open the sheet
+      openCreateSheet()
     }
+
+    // Clean up URL only after we've processed the action
+    const params = new URLSearchParams(searchParams.toString())
+    params.delete('action')
+    params.delete('equipmentId')
+    const nextPath = params.size ? `${pathname}?${params.toString()}` : pathname
+    router.replace(nextPath, { scroll: false })
   }, [searchParams, router, pathname, openCreateSheet, allEquipment])
 
   // Adapter functions to bridge context (non-null) with column options (nullable)

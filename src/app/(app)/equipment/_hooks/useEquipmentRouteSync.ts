@@ -36,6 +36,18 @@ export function useEquipmentRouteSync(
   // Track if we've processed the current URL params to prevent re-runs
   const processedParamsRef = React.useRef<string | null>(null)
 
+  // Track scroll timer to prevent it from being cleared on URL change
+  const scrollTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  // Cleanup scroll timer on unmount only
+  React.useEffect(() => {
+    return () => {
+      if (scrollTimerRef.current) {
+        clearTimeout(scrollTimerRef.current)
+      }
+    }
+  }, [])
+
   // Handle URL parameters for dialog opening and equipment highlighting
   React.useEffect(() => {
     const actionParam = searchParams.get("action")
@@ -68,19 +80,21 @@ export function useEquipmentRouteSync(
           equipment: equipmentToHighlight,
           highlightId,
         })
-        router.replace("/equipment", { scroll: false })
 
-        // Scroll to element with cleanup
-        const timer = setTimeout(() => {
+        // Schedule scroll before URL replace to prevent timer being cleared
+        // Use ref to store timer so it persists across effect re-runs
+        scrollTimerRef.current = setTimeout(() => {
           const element = document.querySelector(
             `[data-equipment-id="${highlightParam}"]`
           )
           if (element) {
             element.scrollIntoView({ behavior: "smooth", block: "center" })
           }
+          scrollTimerRef.current = null
         }, 300)
 
-        return () => clearTimeout(timer)
+        // Replace URL after setting up the scroll timer
+        router.replace("/equipment", { scroll: false })
       }
     }
   }, [searchParams, router, data])

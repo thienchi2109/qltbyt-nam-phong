@@ -413,15 +413,20 @@ describe('useEquipmentData', () => {
         expect(result.current.data).toHaveLength(1)
       })
 
+      // Capture call count before event
+      const callCountBeforeEvent = mockCallRpc.mock.calls.filter(
+        (call) => call[0].fn === 'equipment_list_enhanced'
+      ).length
+
       // Dispatch event
       window.dispatchEvent(new CustomEvent('equipment-cache-invalidated'))
 
-      // Should trigger refetch (callRpc called again)
+      // Should trigger refetch - call count should increase
       await waitFor(() => {
-        const equipmentCalls = mockCallRpc.mock.calls.filter(
+        const callCountAfterEvent = mockCallRpc.mock.calls.filter(
           (call) => call[0].fn === 'equipment_list_enhanced'
-        )
-        expect(equipmentCalls.length).toBeGreaterThanOrEqual(1)
+        ).length
+        expect(callCountAfterEvent).toBeGreaterThan(callCountBeforeEvent)
       })
     })
   })
