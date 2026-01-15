@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { useRouter, useSearchParams } from "next/navigation"
+import { useRouter, useSearchParams, usePathname } from "next/navigation"
 import type { Equipment } from "../types"
 
 export interface UseEquipmentRouteSyncParams {
@@ -22,12 +22,24 @@ export interface UseEquipmentRouteSyncReturn {
   clearPendingAction: () => void
 }
 
+/**
+ * Build a URL path that removes only transient keys (action, highlight)
+ * while preserving other query parameters like filters and pagination.
+ */
+function buildCleanUrl(pathname: string, searchParams: URLSearchParams): string {
+  const params = new URLSearchParams(searchParams.toString())
+  params.delete("action")
+  params.delete("highlight")
+  return params.size > 0 ? `${pathname}?${params.toString()}` : pathname
+}
+
 export function useEquipmentRouteSync(
   params: UseEquipmentRouteSyncParams
 ): UseEquipmentRouteSyncReturn {
   const { data } = params
 
   const router = useRouter()
+  const pathname = usePathname()
   const searchParams = useSearchParams()
 
   // Track pending action for consumer to handle
@@ -69,7 +81,7 @@ export function useEquipmentRouteSync(
     if (actionParam === "add") {
       processedParamsRef.current = paramsKey
       setPendingAction({ type: "openAdd" })
-      router.replace("/equipment", { scroll: false })
+      router.replace(buildCleanUrl(pathname, searchParams), { scroll: false })
       return
     }
 
@@ -103,11 +115,11 @@ export function useEquipmentRouteSync(
           scrollTimerRef.current = null
         }, 300)
 
-        // Replace URL after setting up the scroll timer
-        router.replace("/equipment", { scroll: false })
+        // Replace URL after setting up the scroll timer (preserves other params)
+        router.replace(buildCleanUrl(pathname, searchParams), { scroll: false })
       }
     }
-  }, [searchParams, router, data])
+  }, [searchParams, router, pathname, data])
 
   const clearPendingAction = React.useCallback(() => {
     setPendingAction(null)

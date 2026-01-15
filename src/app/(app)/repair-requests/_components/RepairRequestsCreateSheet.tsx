@@ -40,6 +40,9 @@ export function RepairRequestsCreateSheet() {
 
   const isSheetMobile = useMediaQuery("(max-width: 1279px)")
 
+  // Track if we've already prefilled from preSelectedEquipment (reset on close)
+  const hasPrefilledRef = React.useRef(false)
+
   // Local form state
   const [selectedEquipment, setSelectedEquipment] = React.useState<EquipmentSelectItem | null>(null)
   const [searchQuery, setSearchQuery] = React.useState("")
@@ -60,12 +63,14 @@ export function RepairRequestsCreateSheet() {
       setDesiredDate(undefined)
       setRepairUnit("noi_bo")
       setExternalCompanyName("")
-    } else if (preSelectedEquipment && !selectedEquipment) {
-      // Pre-fill when opened with equipment from context
+      hasPrefilledRef.current = false
+    } else if (preSelectedEquipment && !hasPrefilledRef.current) {
+      // Pre-fill only once when opened with equipment from context
       setSelectedEquipment(preSelectedEquipment)
       setSearchQuery(`${preSelectedEquipment.ten_thiet_bi} (${preSelectedEquipment.ma_thiet_bi})`)
+      hasPrefilledRef.current = true
     }
-  }, [isCreateOpen, preSelectedEquipment, selectedEquipment])
+  }, [isCreateOpen, preSelectedEquipment])
 
   // Fetch equipment options
   React.useEffect(() => {

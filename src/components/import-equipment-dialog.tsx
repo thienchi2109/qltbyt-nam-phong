@@ -325,8 +325,8 @@ export function ImportEquipmentDialog({ open, onOpenChange, onSuccess }: ImportE
           return 'Dữ liệu trùng lặp'
         }
 
-        // Permission errors
-        if (error.includes('Permission denied')) {
+        // Permission errors (PostgreSQL returns lowercase "permission denied")
+        if (error.toLowerCase().includes('permission denied')) {
           return 'Không có quyền thực hiện'
         }
 
