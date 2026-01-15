@@ -128,6 +128,8 @@ function RepairRequestsPageClientInner() {
   const searchParams = useSearchParams()
   const [allEquipment, setAllEquipment] = React.useState<EquipmentSelectItem[]>([])
   const [hasLoadedEquipment, setHasLoadedEquipment] = React.useState(false)
+  // Track when equipment_get fetch for deep link is in progress
+  const [isEquipmentFetchPending, setIsEquipmentFetchPending] = React.useState(false)
 
   // Table state
   const [sorting, setSorting] = React.useState<SortingState>([
@@ -330,6 +332,8 @@ function RepairRequestsPageClientInner() {
       if (existing) {
         return;
       }
+      // Mark fetch as pending so action=create effect waits for it
+      setIsEquipmentFetchPending(true)
       try {
         const row: any = await callRpc({ fn: 'equipment_get', args: { p_id: idNum } })
         if (row) {
@@ -343,6 +347,8 @@ function RepairRequestsPageClientInner() {
         }
       } catch (e) {
         // ignore; toast not necessary for deep link preselect
+      } finally {
+        setIsEquipmentFetchPending(false)
       }
     }
     run();
@@ -355,8 +361,8 @@ function RepairRequestsPageClientInner() {
     const equipmentId = searchParams.get('equipmentId')
 
     if (equipmentId) {
-      // Wait for equipment data to finish loading (success or failure)
-      if (!hasLoadedEquipment) return
+      // Wait for initial equipment list to load AND for equipment_get fetch to complete
+      if (!hasLoadedEquipment || isEquipmentFetchPending) return
 
       const idNum = Number(equipmentId)
       const equipment = allEquipment.find(eq => eq.id === idNum)
@@ -379,7 +385,7 @@ function RepairRequestsPageClientInner() {
     params.delete('equipmentId')
     const nextPath = params.size ? `${pathname}?${params.toString()}` : pathname
     router.replace(nextPath, { scroll: false })
-  }, [searchParams, router, pathname, openCreateSheet, allEquipment, hasLoadedEquipment])
+  }, [searchParams, router, pathname, openCreateSheet, allEquipment, hasLoadedEquipment, isEquipmentFetchPending])
 
   // Adapter functions to bridge context (non-null) with column options (nullable)
   const setEditingRequestAdapter = React.useCallback((req: RepairRequestWithEquipment | null) => {

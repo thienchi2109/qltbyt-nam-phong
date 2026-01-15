@@ -206,7 +206,7 @@ export function useEquipmentData(params: UseEquipmentDataParams): UseEquipmentDa
 
   // Filter options queries
   const { data: departmentsData } = useQuery<{ name: string; count: number }[]>({
-    queryKey: ["departments_list_for_tenant", effectiveSelectedDonVi],
+    queryKey: ["departments_list_for_tenant", effectiveTenantKey, effectiveSelectedDonVi],
     queryFn: async ({ signal }) => {
       const result = await callRpc<{ name: string; count: number }[]>({
         fn: "departments_list_for_tenant",
@@ -226,7 +226,7 @@ export function useEquipmentData(params: UseEquipmentDataParams): UseEquipmentDa
   )
 
   const { data: usersData } = useQuery<{ name: string; count: number }[]>({
-    queryKey: ["equipment_users_list_for_tenant", effectiveSelectedDonVi],
+    queryKey: ["equipment_users_list_for_tenant", effectiveTenantKey, effectiveSelectedDonVi],
     queryFn: async ({ signal }) => {
       const result = await callRpc<{ name: string; count: number }[]>({
         fn: "equipment_users_list_for_tenant",
@@ -246,7 +246,7 @@ export function useEquipmentData(params: UseEquipmentDataParams): UseEquipmentDa
   )
 
   const { data: locationsData } = useQuery<{ name: string; count: number }[]>({
-    queryKey: ["equipment_locations_list_for_tenant", effectiveSelectedDonVi],
+    queryKey: ["equipment_locations_list_for_tenant", effectiveTenantKey, effectiveSelectedDonVi],
     queryFn: async ({ signal }) => {
       const result = await callRpc<{ name: string; count: number }[]>({
         fn: "equipment_locations_list_for_tenant",
@@ -266,7 +266,7 @@ export function useEquipmentData(params: UseEquipmentDataParams): UseEquipmentDa
   )
 
   const { data: classificationsData } = useQuery<{ name: string; count: number }[]>({
-    queryKey: ["equipment_classifications_list_for_tenant", effectiveSelectedDonVi],
+    queryKey: ["equipment_classifications_list_for_tenant", effectiveTenantKey, effectiveSelectedDonVi],
     queryFn: async ({ signal }) => {
       const result = await callRpc<{ name: string; count: number }[]>({
         fn: "equipment_classifications_list_for_tenant",
@@ -286,7 +286,7 @@ export function useEquipmentData(params: UseEquipmentDataParams): UseEquipmentDa
   )
 
   const { data: statusesData } = useQuery<{ name: string; count: number }[]>({
-    queryKey: ["equipment_statuses_list_for_tenant", effectiveSelectedDonVi],
+    queryKey: ["equipment_statuses_list_for_tenant", effectiveTenantKey, effectiveSelectedDonVi],
     queryFn: async ({ signal }) => {
       const result = await callRpc<{ name: string; count: number }[]>({
         fn: "equipment_statuses_list_for_tenant",
