@@ -58,7 +58,12 @@ export function useEquipmentRouteSync(
 
     // Skip if we've already processed these exact params
     if (processedParamsRef.current === paramsKey) return
-    if (!actionParam && !highlightParam) return
+
+    // Reset ref when params are cleared so repeat navigation works
+    if (!actionParam && !highlightParam) {
+      processedParamsRef.current = null
+      return
+    }
 
     // Handle "add" action
     if (actionParam === "add") {
@@ -80,6 +85,11 @@ export function useEquipmentRouteSync(
           equipment: equipmentToHighlight,
           highlightId,
         })
+
+        // Clear any previous scroll timer before scheduling new one
+        if (scrollTimerRef.current) {
+          clearTimeout(scrollTimerRef.current)
+        }
 
         // Schedule scroll before URL replace to prevent timer being cleared
         // Use ref to store timer so it persists across effect re-runs

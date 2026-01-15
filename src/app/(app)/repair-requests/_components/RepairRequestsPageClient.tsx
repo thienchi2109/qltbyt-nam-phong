@@ -127,6 +127,7 @@ function RepairRequestsPageClientInner() {
   // useRepairRealtimeSync()
   const searchParams = useSearchParams()
   const [allEquipment, setAllEquipment] = React.useState<EquipmentSelectItem[]>([])
+  const [hasLoadedEquipment, setHasLoadedEquipment] = React.useState(false)
 
   // Table state
   const [sorting, setSorting] = React.useState<SortingState>([
@@ -303,6 +304,8 @@ function RepairRequestsPageClientInner() {
           title: 'Lỗi',
           description: 'Không thể tải danh sách thiết bị. ' + (error?.message || ''),
         })
+      } finally {
+        setHasLoadedEquipment(true)
       }
     }
     fetchInitialData()
@@ -352,13 +355,13 @@ function RepairRequestsPageClientInner() {
     const equipmentId = searchParams.get('equipmentId')
 
     if (equipmentId) {
-      // Wait for equipment data to load before processing
-      if (allEquipment.length === 0) return
+      // Wait for equipment data to finish loading (success or failure)
+      if (!hasLoadedEquipment) return
 
       const idNum = Number(equipmentId)
       const equipment = allEquipment.find(eq => eq.id === idNum)
 
-      // Only proceed if we found the equipment or gave up trying
+      // Open sheet with or without pre-selection based on whether equipment was found
       if (equipment) {
         openCreateSheet(equipment)
       } else {
@@ -376,7 +379,7 @@ function RepairRequestsPageClientInner() {
     params.delete('equipmentId')
     const nextPath = params.size ? `${pathname}?${params.toString()}` : pathname
     router.replace(nextPath, { scroll: false })
-  }, [searchParams, router, pathname, openCreateSheet, allEquipment])
+  }, [searchParams, router, pathname, openCreateSheet, allEquipment, hasLoadedEquipment])
 
   // Adapter functions to bridge context (non-null) with column options (nullable)
   const setEditingRequestAdapter = React.useCallback((req: RepairRequestWithEquipment | null) => {

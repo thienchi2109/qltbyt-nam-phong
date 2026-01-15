@@ -225,6 +225,7 @@ CREATE TABLE nhan_vien (
 // src/types/database.ts
 export const USER_ROLES = {
   global: 'Quản trị hệ thống',
+  regional_leader: 'Lãnh đạo Sở/Vùng',
   to_qltb: 'Tổ/Phòng VT-TBYT',
   technician: 'Kỹ thuật viên',
   qltb_khoa: 'QLTB của Khoa/Phòng',
