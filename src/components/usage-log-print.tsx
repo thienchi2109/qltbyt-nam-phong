@@ -39,6 +39,34 @@ const STATUS_FILTER_OPTIONS = [
   { value: 'dang_su_dung', label: 'Đang sử dụng' },
 ] as const
 
+/**
+ * Escapes HTML special characters to prevent XSS attacks.
+ * Used when interpolating user-supplied data into HTML template strings.
+ */
+function escapeHtml(str: string | null | undefined): string {
+  if (str == null) return ''
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+}
+
+/**
+ * Escapes a URL for safe use in HTML attributes.
+ * Only allows http, https, and data URLs to prevent javascript: injection.
+ */
+function escapeUrl(url: string | null | undefined): string {
+  if (url == null) return ''
+  const trimmed = String(url).trim()
+  // Only allow safe URL protocols
+  if (trimmed.startsWith('http://') || trimmed.startsWith('https://') || trimmed.startsWith('data:')) {
+    return escapeHtml(trimmed)
+  }
+  return ''
+}
+
 export function UsageLogPrint({ equipment }: UsageLogPrintProps) {
   const [isDialogOpen, setIsDialogOpen] = React.useState(false)
   const [dateFrom, setDateFrom] = React.useState("")
@@ -134,7 +162,7 @@ export function UsageLogPrint({ equipment }: UsageLogPrintProps) {
       <html>
       <head>
         <meta charset="utf-8">
-        <title>Nhật ký sử dụng thiết bị - ${equipment.ten_thiet_bi}</title>
+        <title>Nhật ký sử dụng thiết bị - ${escapeHtml(equipment.ten_thiet_bi)}</title>
         <style>
           @page {
             size: A4 landscape;
@@ -288,12 +316,12 @@ export function UsageLogPrint({ equipment }: UsageLogPrintProps) {
       <body>
         <div class="content-body">
         <div class="header">
-          <img src="${tenantLogoUrl}" alt="Logo" class="header-logo" onerror="this.onerror=null;this.style.display='none';">
+          <img src="${escapeUrl(tenantLogoUrl)}" alt="Logo" class="header-logo" onerror="this.onerror=null;this.style.display='none';">
           <div class="header-content">
-            <h2 style="font-size: 14px; font-weight: bold; margin: 0 0 5px 0; text-transform: uppercase;">${tenantName}</h2>
+            <h2 style="font-size: 14px; font-weight: bold; margin: 0 0 5px 0; text-transform: uppercase;">${escapeHtml(tenantName)}</h2>
             <h1>NHẬT KÝ SỬ DỤNG THIẾT BỊ</h1>
-            <h2>${equipment.ten_thiet_bi}</h2>
-            <div>Mã thiết bị: ${equipment.ma_thiet_bi} ${dateRange}</div>
+            <h2>${escapeHtml(equipment.ten_thiet_bi)}</h2>
+            <div>Mã thiết bị: ${escapeHtml(equipment.ma_thiet_bi)} ${dateRange}</div>
           </div>
           <div class="header-spacer"></div>
         </div>
@@ -302,29 +330,29 @@ export function UsageLogPrint({ equipment }: UsageLogPrintProps) {
           <div>
             <div class="info-item">
               <span class="info-label">Tên thiết bị:</span>
-              <span>${equipment.ten_thiet_bi}</span>
+              <span>${escapeHtml(equipment.ten_thiet_bi)}</span>
             </div>
             <div class="info-item">
               <span class="info-label">Mã thiết bị:</span>
-              <span>${equipment.ma_thiet_bi}</span>
+              <span>${escapeHtml(equipment.ma_thiet_bi)}</span>
             </div>
             <div class="info-item">
               <span class="info-label">Khoa/Phòng:</span>
-              <span>${equipment.khoa_phong_quan_ly || 'Chưa xác định'}</span>
+              <span>${escapeHtml(equipment.khoa_phong_quan_ly) || 'Chưa xác định'}</span>
             </div>
           </div>
           <div>
             <div class="info-item">
               <span class="info-label">Hãng sản xuất:</span>
-              <span>${equipment.hang_san_xuat || 'Chưa có thông tin'}</span>
+              <span>${escapeHtml(equipment.hang_san_xuat) || 'Chưa có thông tin'}</span>
             </div>
             <div class="info-item">
               <span class="info-label">Model:</span>
-              <span>${equipment.model || 'Chưa có thông tin'}</span>
+              <span>${escapeHtml(equipment.model) || 'Chưa có thông tin'}</span>
             </div>
             <div class="info-item">
               <span class="info-label">Tình trạng hiện tại:</span>
-              <span>${equipment.tinh_trang_hien_tai || 'Chưa xác định'}</span>
+              <span>${escapeHtml(equipment.tinh_trang_hien_tai) || 'Chưa xác định'}</span>
             </div>
           </div>
         </div>
@@ -345,14 +373,14 @@ export function UsageLogPrint({ equipment }: UsageLogPrintProps) {
             ${filteredLogs.map((log, index) => `
               <tr>
                 <td style="text-align: center;">${index + 1}</td>
-                <td>${log.nguoi_su_dung?.full_name || 'Không xác định'}</td>
+                <td>${escapeHtml(log.nguoi_su_dung?.full_name) || 'Không xác định'}</td>
                 <td>${format(new Date(log.thoi_gian_bat_dau), 'dd/MM/yyyy HH:mm', { locale: vi })}</td>
                 <td>${log.thoi_gian_ket_thuc ? format(new Date(log.thoi_gian_ket_thuc), 'dd/MM/yyyy HH:mm', { locale: vi }) : '-'}</td>
                 <td>${formatDuration(log.thoi_gian_bat_dau, log.thoi_gian_ket_thuc)}</td>
                 <td class="${log.trang_thai === 'dang_su_dung' ? 'status-active' : 'status-completed'}">
                   ${log.trang_thai === 'dang_su_dung' ? 'Đang sử dụng' : 'Hoàn thành'}
                 </td>
-                <td>${log.ghi_chu || '-'}</td>
+                <td>${escapeHtml(log.ghi_chu) || '-'}</td>
               </tr>
             `).join('')}
           </tbody>

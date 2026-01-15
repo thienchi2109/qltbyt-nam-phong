@@ -35,7 +35,11 @@ export function useEquipmentAuth(): UseEquipmentAuthReturn {
   // Tenant key for non-global users
   const tenantKey = user?.don_vi ? String(user.don_vi) : "none"
 
+  // Track if we've synced localStorage after auth completed
+  const hasSyncedRef = React.useRef(false)
+
   // Tenant filter state with localStorage persistence (global users only)
+  // Note: Initial value may be incorrect during loading state - useEffect below will sync
   const [tenantFilter, setTenantFilterState] = React.useState<string>(() => {
     if (typeof window === "undefined") return isGlobal ? "unset" : tenantKey
     if (!isGlobal) return tenantKey
@@ -49,6 +53,40 @@ export function useEquipmentAuth(): UseEquipmentAuthReturn {
     }
     return "unset"
   })
+
+  // Sync tenant filter after authentication completes
+  // This fixes the race condition where useState initializer runs during "loading" state
+  // when isGlobal is incorrectly false, preventing localStorage restoration for global users
+  React.useEffect(() => {
+    // Only run after auth is complete
+    if (status !== "authenticated") {
+      hasSyncedRef.current = false
+      return
+    }
+
+    // Only sync once per authentication
+    if (hasSyncedRef.current) return
+    hasSyncedRef.current = true
+
+    if (isGlobal) {
+      // Global user: restore from localStorage
+      if (typeof window !== "undefined") {
+        try {
+          const saved = localStorage.getItem(STORAGE_KEY)
+          if (saved && (saved === "unset" || saved === "all" || /^\d+$/.test(saved))) {
+            setTenantFilterState(saved)
+          } else {
+            setTenantFilterState("unset")
+          }
+        } catch {
+          setTenantFilterState("unset")
+        }
+      }
+    } else {
+      // Non-global user: force their tenant key
+      setTenantFilterState(tenantKey)
+    }
+  }, [status, isGlobal, tenantKey])
 
   // Wrapper to persist to localStorage when setting
   const setTenantFilter = React.useCallback(
