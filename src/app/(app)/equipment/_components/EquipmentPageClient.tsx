@@ -239,6 +239,7 @@ const EquipmentPageContent = React.memo(function EquipmentPageContent({
           <div className="mt-4">
             <EquipmentContent
               isGlobal={isGlobal}
+              isRegionalLeader={isRegionalLeader}
               shouldFetchEquipment={shouldFetchEquipment}
               isLoading={isLoading}
               isFetching={isFetching}

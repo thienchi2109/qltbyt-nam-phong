@@ -20,6 +20,7 @@ import type { Equipment } from "@/types/database"
 
 export interface EquipmentContentProps {
   isGlobal: boolean
+  isRegionalLeader: boolean
   shouldFetchEquipment: boolean
   isLoading: boolean
   isFetching: boolean
@@ -32,6 +33,7 @@ export interface EquipmentContentProps {
 
 export function EquipmentContent({
   isGlobal,
+  isRegionalLeader,
   shouldFetchEquipment,
   isLoading,
   isFetching,
@@ -41,8 +43,8 @@ export function EquipmentContent({
   onShowDetails,
   onEdit,
 }: EquipmentContentProps) {
-  // Global users must select a tenant first
-  if (isGlobal && !shouldFetchEquipment) {
+  // Global users and regional leaders must select a tenant/facility first
+  if ((isGlobal || isRegionalLeader) && !shouldFetchEquipment) {
     return (
       <div className="p-4 border rounded-md bg-muted/30 text-sm text-muted-foreground">
         Vui lòng chọn đơn vị cụ thể ở bộ lọc để xem dữ liệu thiết bị

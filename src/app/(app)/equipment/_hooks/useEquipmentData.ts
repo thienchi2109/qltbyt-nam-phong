@@ -33,6 +33,9 @@ export interface UseEquipmentDataReturn {
   isLoading: boolean
   isFetching: boolean
 
+  // Computed fetch flag (for UI display)
+  shouldFetchData: boolean
+
   // Filter options
   departments: string[]
   users: string[]
@@ -88,6 +91,14 @@ export function useEquipmentData(params: UseEquipmentDataParams): UseEquipmentDa
     userRole: userRole || "user",
   })
 
+  // Computed: should we fetch data based on tenant/facility selection
+  // For regional_leader, require facility selection before fetching
+  const shouldFetchData = React.useMemo(() => {
+    if (!shouldFetchEquipment) return false
+    if (isRegionalLeader && selectedFacilityId === null) return false
+    return true
+  }, [shouldFetchEquipment, isRegionalLeader, selectedFacilityId])
+
   // Effective don_vi considering regional leader
   const effectiveSelectedDonVi = React.useMemo(() => {
     if (isRegionalLeader) return selectedFacilityId
@@ -141,7 +152,7 @@ export function useEquipmentData(params: UseEquipmentDataParams): UseEquipmentDa
         sort: sortParam,
       },
     ],
-    enabled: shouldFetchEquipment,
+    enabled: shouldFetchData,
     queryFn: async ({ signal }) => {
       const result = await callRpc<EquipmentListResponse>({
         fn: "equipment_list_enhanced",
@@ -215,7 +226,7 @@ export function useEquipmentData(params: UseEquipmentDataParams): UseEquipmentDa
       })
       return result || []
     },
-    enabled: shouldFetchEquipment,
+    enabled: shouldFetchData,
     staleTime: 300_000,
     gcTime: 10 * 60_000,
     refetchOnWindowFocus: false,
@@ -235,7 +246,7 @@ export function useEquipmentData(params: UseEquipmentDataParams): UseEquipmentDa
       })
       return result || []
     },
-    enabled: shouldFetchEquipment,
+    enabled: shouldFetchData,
     staleTime: 300_000,
     gcTime: 10 * 60_000,
     refetchOnWindowFocus: false,
@@ -255,7 +266,7 @@ export function useEquipmentData(params: UseEquipmentDataParams): UseEquipmentDa
       })
       return result || []
     },
-    enabled: shouldFetchEquipment,
+    enabled: shouldFetchData,
     staleTime: 300_000,
     gcTime: 10 * 60_000,
     refetchOnWindowFocus: false,
@@ -275,7 +286,7 @@ export function useEquipmentData(params: UseEquipmentDataParams): UseEquipmentDa
       })
       return result || []
     },
-    enabled: shouldFetchEquipment,
+    enabled: shouldFetchData,
     staleTime: 300_000,
     gcTime: 10 * 60_000,
     refetchOnWindowFocus: false,
@@ -295,7 +306,7 @@ export function useEquipmentData(params: UseEquipmentDataParams): UseEquipmentDa
       })
       return result || []
     },
-    enabled: shouldFetchEquipment,
+    enabled: shouldFetchData,
     staleTime: 300_000,
     gcTime: 10 * 60_000,
     refetchOnWindowFocus: false,
@@ -319,7 +330,7 @@ export function useEquipmentData(params: UseEquipmentDataParams): UseEquipmentDa
 
   // Cache invalidation
   const invalidateEquipmentForCurrentTenant = React.useCallback(() => {
-    if (isGlobal && !shouldFetchEquipment) return
+    if (isGlobal && !shouldFetchData) return
     queryClient.invalidateQueries({
       predicate: (q) => {
         const key = q.queryKey
@@ -330,7 +341,7 @@ export function useEquipmentData(params: UseEquipmentDataParams): UseEquipmentDa
       },
       refetchType: "active",
     })
-  }, [queryClient, effectiveTenantKey, isGlobal, shouldFetchEquipment])
+  }, [queryClient, effectiveTenantKey, isGlobal, shouldFetchData])
 
   // Cache invalidation event listeners
   React.useEffect(() => {
@@ -353,6 +364,7 @@ export function useEquipmentData(params: UseEquipmentDataParams): UseEquipmentDa
       total,
       isLoading,
       isFetching,
+      shouldFetchData,
       departments,
       users,
       locations,
@@ -376,6 +388,7 @@ export function useEquipmentData(params: UseEquipmentDataParams): UseEquipmentDa
       total,
       isLoading,
       isFetching,
+      shouldFetchData,
       departments,
       users,
       locations,
