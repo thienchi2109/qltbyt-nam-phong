@@ -74,11 +74,14 @@ GRANT EXECUTE ON FUNCTION fn_name TO authenticated;
 
 | Role | Tenant Access | Notes |
 |------|--------------|-------|
-| `global` | All tenants | Full access |
-| `regional_leader` | Multi-tenant in region | Limited by `dia_ban_id` |
-| `to_qltb` | Single tenant | Equipment team |
-| `technician` | Single tenant + dept | Department restricted |
-| `user` | Single tenant | Basic access |
+| `global` | All tenants | Full admin access (`admin` is alias) |
+| `regional_leader` | Multi-tenant in region | **Read-only**, limited by `dia_ban_id` |
+| `to_qltb` | Single tenant | Equipment team - full tenant operations |
+| `technician` | Single tenant + dept | Technical staff, department restricted |
+| `qltb_khoa` | Single tenant + dept | Department equipment manager |
+| `user` | Single tenant | Basic read access |
+
+📖 **Full RBAC Documentation:** See [`docs/RBAC.md`](docs/RBAC.md) for complete permission matrices, role hierarchy diagrams, and implementation patterns.
 
 </SECURITY_CRITICAL>
 
@@ -123,7 +126,28 @@ Invoke `context-engineering` skill for: agent systems, token optimization (>70%)
 
 **Code Search:** `mcp__filesystem-with-morph__warpgrep_codebase_search` (NEVER grep/ripgrep)
 **File Editing:** `mcp__filesystem-with-morph__edit_file` (NEVER full rewrites)
-**Docs:** Context7 MCP for library documentation
+**Docs:** Context7 MCP for library documentation (including Supabase docs)
+
+<!-- SUPABASE-CLI:START -->
+## Supabase CLI (NOT MCP)
+
+Use `npx supabase` CLI commands for all database operations. **Do NOT use Supabase MCP tools.**
+
+| Task | Command |
+|------|---------|
+| **Execute SQL** | `npx supabase db query "SELECT..."` |
+| **Run SQL file** | `npx supabase db query --file path/to/file.sql` |
+| **Push migrations** | `npx supabase db push` |
+| **Create migration** | `npx supabase migration new migration_name` |
+| **List migrations** | `npx supabase migration list` |
+| **Generate types** | `npx supabase gen types typescript --project-id cdthersvldpnlbvpufrr > src/types/database.ts` |
+| **Security check** | `npx supabase inspect db lint` |
+| **View logs** | `npx supabase logs --service postgres` |
+| **Schema diff** | `npx supabase db diff` |
+| **Deploy function** | `npx supabase functions deploy fn_name` |
+
+**Why CLI over MCP:** Saves ~3,000 tokens/conversation. Use Context7 for Supabase documentation.
+<!-- SUPABASE-CLI:END -->
 
 ---
 
