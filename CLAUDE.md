@@ -74,11 +74,14 @@ GRANT EXECUTE ON FUNCTION fn_name TO authenticated;
 
 | Role | Tenant Access | Notes |
 |------|--------------|-------|
-| `global` | All tenants | Full access |
-| `regional_leader` | Multi-tenant in region | Limited by `dia_ban_id` |
-| `to_qltb` | Single tenant | Equipment team |
-| `technician` | Single tenant + dept | Department restricted |
-| `user` | Single tenant | Basic access |
+| `global` | All tenants | Full admin access (`admin` is alias) |
+| `regional_leader` | Multi-tenant in region | **Read-only**, limited by `dia_ban_id` |
+| `to_qltb` | Single tenant | Equipment team - full tenant operations |
+| `technician` | Single tenant + dept | Technical staff, department restricted |
+| `qltb_khoa` | Single tenant + dept | Department equipment manager |
+| `user` | Single tenant | Basic read access |
+
+📖 **Full RBAC Documentation:** See [`docs/RBAC.md`](docs/RBAC.md) for complete permission matrices, role hierarchy diagrams, and implementation patterns.
 
 </SECURITY_CRITICAL>
 
