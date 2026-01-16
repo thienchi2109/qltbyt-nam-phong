@@ -247,9 +247,21 @@ export function EquipmentDetailDialog({
     },
   })
 
-  // Reset form when equipment changes or editing starts
+  // Track previous equipment ID to only reset form when viewing different equipment
+  const prevEquipmentIdRef = React.useRef<number | null>(null)
+
+  // Clear ref when dialog closes to ensure fresh data on reopen
   React.useEffect(() => {
-    if (equipment && isEditingDetails) {
+    if (!open) {
+      prevEquipmentIdRef.current = null
+    }
+  }, [open])
+
+  // Reset form only when equipment ID changes (new equipment loaded)
+  // This prevents form reset when toggling edit mode, preserving user edits after save
+  React.useEffect(() => {
+    if (equipment && equipment.id !== prevEquipmentIdRef.current) {
+      prevEquipmentIdRef.current = equipment.id
       editForm.reset({
         ma_thiet_bi: equipment.ma_thiet_bi || "",
         ten_thiet_bi: equipment.ten_thiet_bi || "",
@@ -283,7 +295,7 @@ export function EquipmentDetailDialog({
             : null,
       })
     }
-  }, [equipment, isEditingDetails, editForm])
+  }, [equipment, editForm])
 
   // Data queries
   const attachmentsQuery = useQuery({
