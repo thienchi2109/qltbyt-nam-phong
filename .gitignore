@@ -90,6 +90,11 @@ firebase_config.md
 .bv/
 tmpclaude-*-cwd
 
+# beads daemon-managed files
+.beads/issues.jsonl
+.beads/.sync.lock
+.beads/sync-state.json
+
 # Presentation workspace
 /workspace/
 create-pptx.js
