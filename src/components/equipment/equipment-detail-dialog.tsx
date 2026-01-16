@@ -213,6 +213,8 @@ export function EquipmentDetailDialog({
   const [newFileName, setNewFileName] = React.useState("")
   const [newFileUrl, setNewFileUrl] = React.useState("")
   const [deletingAttachmentId, setDeletingAttachmentId] = React.useState<string | null>(null)
+  // Store saved values to display after save (equipment prop is stale until dialog reopens)
+  const [savedValues, setSavedValues] = React.useState<Partial<EquipmentFormValues> | null>(null)
 
   // Form
   const editForm = useForm<EquipmentFormValues>({
@@ -247,9 +249,22 @@ export function EquipmentDetailDialog({
     },
   })
 
-  // Reset form when equipment changes or editing starts
+  // Track previous equipment ID to only reset form when viewing different equipment
+  const prevEquipmentIdRef = React.useRef<number | null>(null)
+
+  // Clear state when dialog closes to ensure fresh data on reopen
   React.useEffect(() => {
-    if (equipment && isEditingDetails) {
+    if (!open) {
+      prevEquipmentIdRef.current = null
+      setSavedValues(null)
+    }
+  }, [open])
+
+  // Reset form only when equipment ID changes (new equipment loaded)
+  // This prevents form reset when toggling edit mode, preserving user edits after save
+  React.useEffect(() => {
+    if (equipment && equipment.id !== prevEquipmentIdRef.current) {
+      prevEquipmentIdRef.current = equipment.id
       editForm.reset({
         ma_thiet_bi: equipment.ma_thiet_bi || "",
         ten_thiet_bi: equipment.ten_thiet_bi || "",
@@ -283,7 +298,7 @@ export function EquipmentDetailDialog({
             : null,
       })
     }
-  }, [equipment, isEditingDetails, editForm])
+  }, [equipment, editForm])
 
   // Data queries
   const attachmentsQuery = useQuery({
@@ -326,9 +341,12 @@ export function EquipmentDetailDialog({
         fn: "equipment_update",
         args: { p_id: vars.id, p_patch: vars.patch },
       })
+      return vars.patch // Return patch for use in onSuccess
     },
-    onSuccess: () => {
+    onSuccess: (savedPatch) => {
       toast({ title: "Thành công", description: "Đã cập nhật thiết bị." })
+      // Store saved values to display in detail view
+      setSavedValues((prev) => ({ ...prev, ...savedPatch }))
       setIsEditingDetails(false)
       onEquipmentUpdated()
     },
@@ -429,6 +447,17 @@ export function EquipmentDetailDialog({
   )
 
   const requestClose = React.useCallback(() => handleDialogOpenChange(false), [handleDialogOpenChange])
+
+  // Merge equipment prop with saved values for display
+  // After save, savedValues contains updated data while equipment prop is stale
+  const displayEquipment = React.useMemo(() => {
+    if (!equipment) return null
+    if (!savedValues) return equipment
+    return {
+      ...equipment,
+      ...savedValues,
+    } as Equipment
+  }, [equipment, savedValues])
 
   // RBAC check
   const canEdit =
@@ -800,7 +829,7 @@ export function EquipmentDetailDialog({
                     if (key === "id") return null
 
                     const renderValue = () => {
-                      const value = equipment[key]
+                      const value = displayEquipment?.[key]
                       if (key === "tinh_trang_hien_tai") {
                         const statusValue = value as Equipment["tinh_trang_hien_tai"]
                         return statusValue ? (
