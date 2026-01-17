@@ -1,6 +1,8 @@
 -- Migration: get_accessible_facilities
 -- Returns facilities accessible to the current user based on role
 
+BEGIN;
+
 CREATE OR REPLACE FUNCTION public.get_accessible_facilities()
 RETURNS JSONB
 LANGUAGE plpgsql
@@ -67,6 +69,26 @@ $$;
 -- Grant execute permission
 GRANT EXECUTE ON FUNCTION public.get_accessible_facilities TO authenticated;
 
+-- Set owner for SECURITY DEFINER safety
+ALTER FUNCTION public.get_accessible_facilities() OWNER TO postgres;
+
 -- Add comment for documentation
-COMMENT ON FUNCTION public.get_accessible_facilities IS 
+COMMENT ON FUNCTION public.get_accessible_facilities IS
   'Returns facilities accessible to the current user. Global users get all active facilities, regional_leader users get facilities in their region.';
+
+COMMIT;
+
+-- ============================================================================
+-- VERIFICATION (run manually to test)
+-- ============================================================================
+-- Test as global user:
+-- SET request.jwt.claims TO '{"app_role": "global"}';
+-- SELECT jsonb_pretty(get_accessible_facilities());
+
+-- Test as regional_leader:
+-- SET request.jwt.claims TO '{"app_role": "regional_leader", "dia_ban": "1"}';
+-- SELECT jsonb_pretty(get_accessible_facilities());
+
+-- Test as regular user:
+-- SET request.jwt.claims TO '{"app_role": "user"}';
+-- SELECT get_accessible_facilities(); -- Should return []

@@ -5,6 +5,7 @@ import { useSession } from "next-auth/react"
 import { useQuery } from "@tanstack/react-query"
 import { callRpc } from "@/lib/rpc-client"
 import type { FacilityOption } from "@/types/tenant"
+import { isPrivilegedRole } from "@/types/tenant"
 
 type TenantSelectionContextValue = {
   /** Currently selected facility ID, or null if none selected */
@@ -30,9 +31,7 @@ export function TenantSelectionProvider({ children }: { children: React.ReactNod
   const user = session?.user as { role?: string; dia_ban_id?: number } | undefined
 
   // Determine if user has multi-tenant selection privileges
-  const isGlobal = user?.role === "global" || user?.role === "admin"
-  const isRegionalLeader = user?.role === "regional_leader"
-  const showSelector = isGlobal || isRegionalLeader
+  const showSelector = isPrivilegedRole(user?.role)
 
   // State for selected facility with sessionStorage persistence
   const [selectedFacilityId, setSelectedFacilityIdState] = React.useState<number | null>(() => {

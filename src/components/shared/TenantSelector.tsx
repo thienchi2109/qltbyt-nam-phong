@@ -44,10 +44,10 @@ export function TenantSelector({ className }: { className?: string }) {
   const selectedFacility = facilities.find((f) => f.id === selectedFacilityId)
   const displayValue = selectedFacility?.name || "Chọn cơ sở y tế..."
 
-  const handleSelect = (facilityId: number | null) => {
+  const handleSelect = React.useCallback((facilityId: number | null) => {
     setSelectedFacilityId(facilityId)
     setOpen(false)
-  }
+  }, [setSelectedFacilityId])
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -56,6 +56,7 @@ export function TenantSelector({ className }: { className?: string }) {
           variant="outline"
           role="combobox"
           aria-expanded={open}
+          aria-label="Chọn cơ sở y tế"
           className={cn(
             "w-[280px] justify-between font-normal",
             !selectedFacilityId && "text-muted-foreground",
@@ -77,7 +78,7 @@ export function TenantSelector({ className }: { className?: string }) {
             <CommandEmpty>Không tìm thấy cơ sở</CommandEmpty>
             <CommandGroup>
               {/* "All Facilities" option - clears selection */}
-              <CommandItem value="all" onSelect={() => handleSelect(null)}>
+              <CommandItem value="Tất cả cơ sở" onSelect={() => handleSelect(null)}>
                 <Building2 className="mr-2 h-4 w-4" />
                 <span>Tất cả cơ sở</span>
                 {selectedFacilityId === null && (
