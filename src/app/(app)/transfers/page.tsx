@@ -137,8 +137,8 @@ function TransfersPageContent({ user }: TransfersPageContentProps) {
   // Get user role from session context
   const userRole = user?.role as 'global' | 'regional_leader' | 'to_qltb' | 'technician' | 'user' | undefined
 
-  // Tenant key for query cache isolation
-  const effectiveTenantKey = user?.don_vi ?? 'none'
+  // Tenant key for query cache isolation - use selected facility for multi-tenant users
+  const effectiveTenantKey = selectedFacilityId ?? user?.don_vi ?? 'none'
 
   const [activeTab, setActiveTab] = useTransferTypeTab("noi_bo")
   const { searchTerm, setSearchTerm, debouncedSearch, clearSearch } = useTransferSearch()
