@@ -41,8 +41,11 @@ export function TenantSelector({ className }: { className?: string }) {
   }
 
   // Find selected facility name
+  // undefined = not selected yet, null = "all facilities", number = specific facility
   const selectedFacility = facilities.find((f) => f.id === selectedFacilityId)
-  const displayValue = selectedFacility?.name || "Chọn cơ sở y tế..."
+  const displayValue = selectedFacilityId === undefined
+    ? "Chọn cơ sở y tế..."
+    : selectedFacility?.name || "Tất cả cơ sở"
 
   const handleSelect = React.useCallback((facilityId: number | null) => {
     setSelectedFacilityId(facilityId)
@@ -59,7 +62,7 @@ export function TenantSelector({ className }: { className?: string }) {
           aria-label="Chọn cơ sở y tế"
           className={cn(
             "w-[280px] justify-between font-normal",
-            !selectedFacilityId && "text-muted-foreground",
+            selectedFacilityId === undefined && "text-muted-foreground",
             className
           )}
           disabled={isLoading}

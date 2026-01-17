@@ -169,6 +169,8 @@ function RepairRequestsPageClientInner() {
   } = useQuery<{ data: RepairRequestWithEquipment[], total: number, page: number, pageSize: number }>({
     queryKey: ['repair_request_list', {
       tenant: effectiveTenantKey,
+      role: user?.role,           // Cache isolation by role
+      diaBan: user?.dia_ban_id,   // Cache isolation by region
       donVi: selectedFacilityId,
       statuses: uiFilters.status || [],
       q: debouncedSearch || null,
@@ -216,7 +218,15 @@ function RepairRequestsPageClientInner() {
   const STATUSES = ['Chờ xử lý', 'Đã duyệt', 'Hoàn thành', 'Không HT'] as const
   type Status = typeof STATUSES[number]
   const { data: statusCounts, isLoading: statusCountsLoading } = useQuery<Record<Status, number>>({
-    queryKey: ['repair_request_status_counts', { facilityId: selectedFacilityId, search: debouncedSearch, dateFrom: uiFilters.dateRange?.from || null, dateTo: uiFilters.dateRange?.to || null }],
+    queryKey: ['repair_request_status_counts', {
+      tenant: effectiveTenantKey,
+      role: user?.role,           // Cache isolation by role
+      diaBan: user?.dia_ban_id,   // Cache isolation by region
+      facilityId: selectedFacilityId,
+      search: debouncedSearch,
+      dateFrom: uiFilters.dateRange?.from || null,
+      dateTo: uiFilters.dateRange?.to || null,
+    }],
     queryFn: async () => {
       const res = await callRpc<Record<Status, number>>({
         fn: 'repair_request_status_counts',

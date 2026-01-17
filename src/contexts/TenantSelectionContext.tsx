@@ -8,8 +8,13 @@ import type { FacilityOption } from "@/types/tenant"
 import { isPrivilegedRole } from "@/types/tenant"
 
 type TenantSelectionContextValue = {
-  /** Currently selected facility ID, or null if none selected */
-  selectedFacilityId: number | null
+  /**
+   * Currently selected facility ID:
+   * - `undefined` = not selected yet (initial state)
+   * - `null` = "All facilities" explicitly selected
+   * - `number` = specific facility selected
+   */
+  selectedFacilityId: number | null | undefined
   /** Update the selected facility. Persists to sessionStorage. */
   setSelectedFacilityId: (id: number | null) => void
   /** List of facilities accessible to the current user */
@@ -34,30 +39,37 @@ export function TenantSelectionProvider({ children }: { children: React.ReactNod
   const showSelector = isPrivilegedRole(user?.role)
 
   // State for selected facility with sessionStorage persistence
-  const [selectedFacilityId, setSelectedFacilityIdState] = React.useState<number | null>(() => {
+  // undefined = not selected yet, null = "all facilities", number = specific facility
+  const [selectedFacilityId, setSelectedFacilityIdState] = React.useState<number | null | undefined>(() => {
     // Initialize from sessionStorage if available (client-side only)
-    if (typeof window === "undefined") return null
+    if (typeof window === "undefined") return undefined
     try {
       const stored = sessionStorage.getItem(STORAGE_KEY)
+      if (stored === "null") {
+        // Explicitly stored "all facilities" selection
+        return null
+      }
       if (stored) {
         const parsed = parseInt(stored, 10)
-        return Number.isFinite(parsed) ? parsed : null
+        return Number.isFinite(parsed) ? parsed : undefined
       }
     } catch {
       // sessionStorage access failed
     }
-    return null
+    return undefined
   })
 
   // Stable setter with sessionStorage persistence
+  // null = "all facilities", number = specific facility
   const setSelectedFacilityId = React.useCallback((id: number | null) => {
     setSelectedFacilityIdState(id)
     if (typeof window === "undefined") return
     try {
-      if (id !== null) {
-        sessionStorage.setItem(STORAGE_KEY, String(id))
+      if (id === null) {
+        // Store "null" string to indicate explicit "all facilities" selection
+        sessionStorage.setItem(STORAGE_KEY, "null")
       } else {
-        sessionStorage.removeItem(STORAGE_KEY)
+        sessionStorage.setItem(STORAGE_KEY, String(id))
       }
     } catch {
       // sessionStorage access failed
@@ -74,10 +86,13 @@ export function TenantSelectionProvider({ children }: { children: React.ReactNod
 
   // Determine if data queries should be enabled
   // Non-privileged users can always fetch (server enforces their don_vi)
-  // Privileged users must select a facility first
+  // Privileged users must select a facility first (undefined = not selected, null = "all", number = specific)
   const shouldFetchData = React.useMemo(() => {
     if (!showSelector) return true
-    return selectedFacilityId !== null
+    // undefined = not selected yet, block fetching
+    // null = "all facilities" selected, allow fetching
+    // number = specific facility selected, allow fetching
+    return selectedFacilityId !== undefined
   }, [showSelector, selectedFacilityId])
 
   // Memoize context value to prevent unnecessary re-renders
