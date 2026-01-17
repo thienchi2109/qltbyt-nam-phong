@@ -1,3 +1,12 @@
+/**
+ * @deprecated This hook is deprecated in favor of useTenantSelection() from
+ * @/contexts/TenantSelectionContext which provides centralized facility list
+ * via the get_accessible_facilities RPC function.
+ *
+ * Migration: Use useTenantSelection().facilities instead.
+ * @see src/contexts/TenantSelectionContext.tsx
+ */
+
 import { useQuery } from "@tanstack/react-query"
 
 import { callRpc } from "@/lib/rpc-client"

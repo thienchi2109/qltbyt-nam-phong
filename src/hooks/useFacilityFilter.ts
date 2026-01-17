@@ -1,3 +1,13 @@
+/**
+ * @deprecated This hook is deprecated in favor of useTenantSelection() from
+ * @/contexts/TenantSelectionContext which provides centralized tenant selection
+ * with sessionStorage persistence and consistent UX across all pages.
+ *
+ * Migration: Replace useFacilityFilter() with useTenantSelection() hook.
+ * @see src/contexts/TenantSelectionContext.tsx
+ * @see src/components/shared/TenantSelector.tsx
+ */
+
 import * as React from 'react'
 import { USER_ROLES } from '@/types/database'
 

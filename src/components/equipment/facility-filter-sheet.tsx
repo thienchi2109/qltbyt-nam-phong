@@ -33,7 +33,7 @@ export interface FacilityFilterSheetProps {
   onOpenChange: (open: boolean) => void
   facilities: Facility[]
   isLoading: boolean
-  selectedFacilityId: number | null
+  selectedFacilityId: number | null | undefined
   pendingFacilityId: number | null
   onPendingChange: (facilityId: number | null) => void
   onApply: () => void
