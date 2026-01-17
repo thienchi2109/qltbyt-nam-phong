@@ -53,8 +53,10 @@ export function TenantSelectionProvider({ children }: { children: React.ReactNod
         const parsed = parseInt(stored, 10)
         return Number.isFinite(parsed) ? parsed : undefined
       }
-    } catch {
-      // sessionStorage access failed
+    } catch (err) {
+      if (process.env.NODE_ENV === 'development') {
+        console.warn('sessionStorage read failed:', err)
+      }
     }
     return undefined
   })
@@ -71,8 +73,10 @@ export function TenantSelectionProvider({ children }: { children: React.ReactNod
       } else {
         sessionStorage.setItem(STORAGE_KEY, String(id))
       }
-    } catch {
-      // sessionStorage access failed
+    } catch (err) {
+      if (process.env.NODE_ENV === 'development') {
+        console.warn('sessionStorage write failed:', err)
+      }
     }
   }, [])
 

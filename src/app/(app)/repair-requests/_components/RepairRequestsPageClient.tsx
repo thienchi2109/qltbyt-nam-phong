@@ -207,8 +207,9 @@ function RepairRequestsPageClientInner() {
   const requests = repairRequestsRes?.data ?? [];
 
   const selectedFacilityName = React.useMemo(() => {
-    if (!selectedFacilityId) return null;
-    const facility = facilityOptions.find((f: FacilityOption) => f.id === selectedFacilityId);
+    // Explicit check for null/undefined to handle facility ID 0 correctly
+    if (selectedFacilityId === null || selectedFacilityId === undefined) return null;
+    const facility = facilityOptions.find(f => f.id === selectedFacilityId);
     return facility?.name ?? null;
   }, [selectedFacilityId, facilityOptions]);
 
