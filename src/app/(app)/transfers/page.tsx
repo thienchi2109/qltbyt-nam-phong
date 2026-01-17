@@ -164,7 +164,7 @@ function TransfersPageContent({ user }: TransfersPageContentProps) {
       dateTo: dateRange?.to?.toISOString().split("T")[0] || undefined,
       // Cache isolation fields - for query key scoping only
       _role: user?.role,
-      _diaBan: user?.dia_ban_id,
+      _diaBan: typeof user?.dia_ban_id === 'number' ? user.dia_ban_id : null,
       _tenantKey: effectiveTenantKey,
     }
   }, [activeTab, pagination, debouncedSearch, selectedFacilityId, statusFilter, dateRange, user?.role, user?.dia_ban_id, effectiveTenantKey])
