@@ -31,6 +31,10 @@ const sanitizeFilters = (filters: TransferListFilters = {}) => {
     dateFrom = null,
     dateTo = null,
     assigneeIds = [],
+    // Cache isolation fields - for query key scoping only
+    _role = null,
+    _diaBan = null,
+    _tenantKey = null,
   } = filters
 
   return {
@@ -43,6 +47,10 @@ const sanitizeFilters = (filters: TransferListFilters = {}) => {
     dateFrom,
     dateTo,
     assigneeIds: [...assigneeIds].sort((a, b) => a - b),
+    // Include cache isolation fields in query key
+    _role,
+    _diaBan,
+    _tenantKey,
   }
 }
 

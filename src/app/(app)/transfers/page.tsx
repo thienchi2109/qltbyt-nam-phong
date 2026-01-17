@@ -35,7 +35,7 @@ import { getColumnsForType } from "@/components/transfers/columnDefinitions"
 import { FilterModal } from "@/components/transfers/FilterModal"
 import { FilterChips } from "@/components/transfers/FilterChips"
 import { TransferRowActions } from "@/components/transfers/TransferRowActions"
-import { FacilityFilter } from "@/components/transfers/FacilityFilter"
+import { TenantSelector } from "@/components/shared/TenantSelector"
 import { TransfersTableView } from '@/components/transfers/TransfersTableView'
 import { TransfersKanbanView } from '@/components/transfers/TransfersKanbanView'
 import { TransfersViewToggle, useTransfersViewMode } from '@/components/transfers/TransfersViewToggle'
@@ -70,12 +70,11 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import { useFacilityFilter } from "@/hooks/useFacilityFilter"
+import { useTenantSelection } from "@/contexts/TenantSelectionContext"
 import { useIsMobile } from "@/hooks/use-mobile"
 import { useToast } from "@/hooks/use-toast"
 import { useTransferActions } from "@/hooks/useTransferActions"
 import { useTransferList, useTransferCounts, transferDataGridKeys } from "@/hooks/useTransferDataGrid"
-import { useTransferFacilities } from "@/hooks/useTransferFacilities"
 import { useTransferSearch } from "@/hooks/useTransferSearch"
 import type {
   TransferListFilters,
@@ -123,14 +122,14 @@ function TransfersPageContent({ user }: TransfersPageContentProps) {
     queryClient.invalidateQueries({ queryKey: transferDataGridKeys.all })
   }, [queryClient])
 
-  const { data: facilityOptionsData } = useTransferFacilities()
-
-  const { selectedFacilityId, setSelectedFacilityId: setFacilityId, showFacilityFilter } =
-    useFacilityFilter({
-      mode: "server",
-      userRole: (user?.role as string) || "user",
-      facilities: facilityOptionsData || [],
-    })
+  // Get facility selection from shared context
+  const {
+    selectedFacilityId,
+    setSelectedFacilityId,
+    facilities: facilityOptions,
+    showSelector: showFacilityFilter,
+    shouldFetchData,
+  } = useTenantSelection()
 
   const [rawViewMode] = useTransfersViewMode()
   const viewMode = isMobile ? 'table' : rawViewMode
@@ -138,9 +137,8 @@ function TransfersPageContent({ user }: TransfersPageContentProps) {
   // Get user role from session context
   const userRole = user?.role as 'global' | 'regional_leader' | 'to_qltb' | 'technician' | 'user' | undefined
 
-  // Multi-tenant users (global, regional_leader) must select a facility before loading data
-  const isMultiTenantUser = userRole === 'global' || userRole === 'regional_leader'
-  const requiresTenantSelection = isMultiTenantUser && !selectedFacilityId
+  // Tenant key for query cache isolation
+  const effectiveTenantKey = user?.don_vi ?? 'none'
 
   const [activeTab, setActiveTab] = useTransferTypeTab("noi_bo")
   const { searchTerm, setSearchTerm, debouncedSearch, clearSearch } = useTransferSearch()
@@ -164,8 +162,12 @@ function TransfersPageContent({ user }: TransfersPageContentProps) {
       facilityId: selectedFacilityId ?? null,
       dateFrom: dateRange?.from?.toISOString().split("T")[0] || undefined,
       dateTo: dateRange?.to?.toISOString().split("T")[0] || undefined,
+      // Cache isolation fields - for query key scoping only
+      _role: user?.role,
+      _diaBan: user?.dia_ban_id,
+      _tenantKey: effectiveTenantKey,
     }
-  }, [activeTab, pagination, debouncedSearch, selectedFacilityId, statusFilter, dateRange])
+  }, [activeTab, pagination, debouncedSearch, selectedFacilityId, statusFilter, dateRange, user?.role, user?.dia_ban_id, effectiveTenantKey])
 
   const countsFilters = React.useMemo<TransferListFilters>(() => {
     const { statuses: _statuses, page: _page, pageSize: _pageSize, ...rest } = filters
@@ -178,13 +180,13 @@ function TransfersPageContent({ user }: TransfersPageContentProps) {
     isFetching: isListFetching,
   } = useTransferList(filters, {
     placeholderData: (previous) => previous,
-    enabled: !requiresTenantSelection,
+    enabled: shouldFetchData,
   })
 
   const {
     data: statusCounts,
   } = useTransferCounts(countsFilters, {
-    enabled: !requiresTenantSelection,
+    enabled: shouldFetchData,
   })
 
   const {
@@ -444,12 +446,10 @@ function TransfersPageContent({ user }: TransfersPageContentProps) {
               <TransfersViewToggle />
             </div>
 
-            <FacilityFilter
-              facilities={facilityOptionsData || []}
-              selectedId={selectedFacilityId}
-              onSelect={setFacilityId}
-              show={showFacilityFilter}
-            />
+            {/* Tenant selector from shared context */}
+            {showFacilityFilter && (
+              <TenantSelector />
+            )}
 
             {/* Filter button - mobile optimized */}
             <Button
@@ -534,9 +534,7 @@ function TransfersPageContent({ user }: TransfersPageContentProps) {
               </div>
 
               {viewMode === 'kanban' ? (
-                requiresTenantSelection ? (
-                  <TransfersTenantSelectionPlaceholder />
-                ) : (
+                shouldFetchData ? (
                   <TransfersKanbanView
                     filters={filters}
                     onViewTransfer={handleViewDetail}
@@ -544,10 +542,10 @@ function TransfersPageContent({ user }: TransfersPageContentProps) {
                     statusCounts={statusCounts?.columnCounts}
                     userRole={userRole}
                   />
+                ) : (
+                  <TransfersTenantSelectionPlaceholder />
                 )
-              ) : requiresTenantSelection ? (
-                <TransfersTenantSelectionPlaceholder />
-              ) : (
+              ) : shouldFetchData ? (
                 <>
                   <div className="space-y-3 lg:hidden">
                     {isListLoading ? (
@@ -588,6 +586,8 @@ function TransfersPageContent({ user }: TransfersPageContentProps) {
                     />
                   </div>
                 </>
+              ) : (
+                <TransfersTenantSelectionPlaceholder />
               )}
 
               {isListFetching && !isListLoading && (
