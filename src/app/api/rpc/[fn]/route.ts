@@ -73,6 +73,7 @@ const ALLOWED_FUNCTIONS = new Set<string>([
   // Tenants + Users
   'tenant_list',
   'get_facilities_with_equipment_count',
+  'get_accessible_facilities',
   'user_create',
   'user_membership_add',
   'user_membership_remove',
