@@ -1,5 +1,5 @@
-import { renderHook, act } from '@testing-library/react'
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { renderHook } from '@testing-library/react'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 import * as React from 'react'
 
 // Mock next-auth
@@ -8,35 +8,28 @@ vi.mock('next-auth/react', () => ({
   useSession: () => mockUseSession(),
 }))
 
+// Mock TenantSelectionContext
+const mockUseTenantSelection = vi.fn()
+vi.mock('@/contexts/TenantSelectionContext', () => ({
+  useTenantSelection: () => mockUseTenantSelection(),
+}))
+
 // Import after mocking
 import { useEquipmentAuth } from '../_hooks/useEquipmentAuth'
 
 describe('useEquipmentAuth', () => {
-  const mockLocalStorage: Record<string, string> = {}
+  const defaultContextMock = {
+    selectedFacilityId: undefined as number | null | undefined,
+    setSelectedFacilityId: vi.fn(),
+    facilities: [],
+    showSelector: false,
+    isLoading: false,
+    shouldFetchData: true,
+  }
 
   beforeEach(() => {
     vi.clearAllMocks()
-    // Mock localStorage
-    Object.defineProperty(window, 'localStorage', {
-      value: {
-        getItem: vi.fn((key: string) => mockLocalStorage[key] || null),
-        setItem: vi.fn((key: string, value: string) => {
-          mockLocalStorage[key] = value
-        }),
-        removeItem: vi.fn((key: string) => {
-          delete mockLocalStorage[key]
-        }),
-        clear: vi.fn(() => {
-          Object.keys(mockLocalStorage).forEach((key) => delete mockLocalStorage[key])
-        }),
-      },
-      writable: true,
-      configurable: true,
-    })
-  })
-
-  afterEach(() => {
-    Object.keys(mockLocalStorage).forEach((key) => delete mockLocalStorage[key])
+    mockUseTenantSelection.mockReturnValue(defaultContextMock)
   })
 
   describe('Loading State', () => {
@@ -46,7 +39,7 @@ describe('useEquipmentAuth', () => {
       const { result } = renderHook(() => useEquipmentAuth())
 
       expect(result.current.status).toBe('loading')
-      expect(result.current.user).toBeUndefined()
+      expect(result.current.user).toBeNull()
     })
 
     it('should not fetch equipment during loading state', () => {
@@ -65,7 +58,7 @@ describe('useEquipmentAuth', () => {
       const { result } = renderHook(() => useEquipmentAuth())
 
       expect(result.current.status).toBe('unauthenticated')
-      expect(result.current.user).toBeUndefined()
+      expect(result.current.user).toBeNull()
       expect(result.current.isGlobal).toBe(false)
       expect(result.current.isRegionalLeader).toBe(false)
     })
@@ -91,6 +84,12 @@ describe('useEquipmentAuth', () => {
           },
         },
         status: 'authenticated',
+      })
+      // Non-privileged users don't see selector
+      mockUseTenantSelection.mockReturnValue({
+        ...defaultContextMock,
+        showSelector: false,
+        shouldFetchData: true,
       })
     })
 
@@ -139,6 +138,13 @@ describe('useEquipmentAuth', () => {
         },
         status: 'authenticated',
       })
+      // Global users see selector
+      mockUseTenantSelection.mockReturnValue({
+        ...defaultContextMock,
+        showSelector: true,
+        selectedFacilityId: undefined,
+        shouldFetchData: false, // Not selected yet
+      })
     })
 
     it('should identify as global user', () => {
@@ -148,87 +154,86 @@ describe('useEquipmentAuth', () => {
       expect(result.current.isRegionalLeader).toBe(false)
     })
 
-    it('should default tenantFilter to "unset"', () => {
-      const { result } = renderHook(() => useEquipmentAuth())
-
-      expect(result.current.tenantFilter).toBe('unset')
-    })
-
-    it('should not fetch equipment when tenantFilter is "unset"', () => {
+    it('should not fetch equipment when no facility selected (undefined)', () => {
       const { result } = renderHook(() => useEquipmentAuth())
 
       expect(result.current.shouldFetchEquipment).toBe(false)
     })
 
-    it('should fetch equipment when tenantFilter is "all"', () => {
-      const { result } = renderHook(() => useEquipmentAuth())
-
-      act(() => {
-        result.current.setTenantFilter('all')
+    it('should fetch equipment when "all" facilities selected (null)', () => {
+      mockUseTenantSelection.mockReturnValue({
+        ...defaultContextMock,
+        showSelector: true,
+        selectedFacilityId: null,
+        shouldFetchData: true,
       })
+
+      const { result } = renderHook(() => useEquipmentAuth())
 
       expect(result.current.shouldFetchEquipment).toBe(true)
     })
 
-    it('should fetch equipment when tenantFilter is a numeric ID', () => {
-      const { result } = renderHook(() => useEquipmentAuth())
-
-      act(() => {
-        result.current.setTenantFilter('123')
+    it('should fetch equipment when specific facility selected', () => {
+      mockUseTenantSelection.mockReturnValue({
+        ...defaultContextMock,
+        showSelector: true,
+        selectedFacilityId: 123,
+        shouldFetchData: true,
       })
+
+      const { result } = renderHook(() => useEquipmentAuth())
 
       expect(result.current.shouldFetchEquipment).toBe(true)
     })
 
-    it('should persist tenantFilter to localStorage', () => {
-      const { result } = renderHook(() => useEquipmentAuth())
-
-      act(() => {
-        result.current.setTenantFilter('42')
+    it('should set selectedDonVi when filtering by specific facility', () => {
+      mockUseTenantSelection.mockReturnValue({
+        ...defaultContextMock,
+        showSelector: true,
+        selectedFacilityId: 99,
+        shouldFetchData: true,
       })
 
-      expect(window.localStorage.setItem).toHaveBeenCalledWith(
-        'equipment_tenant_filter',
-        '42'
-      )
-    })
-
-    it('should set selectedDonVi when filtering by specific tenant', () => {
       const { result } = renderHook(() => useEquipmentAuth())
-
-      act(() => {
-        result.current.setTenantFilter('99')
-      })
 
       expect(result.current.selectedDonVi).toBe(99)
     })
 
-    it('should have null selectedDonVi when filtering by "all"', () => {
-      const { result } = renderHook(() => useEquipmentAuth())
-
-      act(() => {
-        result.current.setTenantFilter('all')
+    it('should have null selectedDonVi when filtering by "all" (null)', () => {
+      mockUseTenantSelection.mockReturnValue({
+        ...defaultContextMock,
+        showSelector: true,
+        selectedFacilityId: null,
+        shouldFetchData: true,
       })
+
+      const { result } = renderHook(() => useEquipmentAuth())
 
       expect(result.current.selectedDonVi).toBeNull()
     })
 
-    it('should set currentTenantId when filtering by specific tenant', () => {
-      const { result } = renderHook(() => useEquipmentAuth())
-
-      act(() => {
-        result.current.setTenantFilter('77')
+    it('should set currentTenantId when filtering by specific facility', () => {
+      mockUseTenantSelection.mockReturnValue({
+        ...defaultContextMock,
+        showSelector: true,
+        selectedFacilityId: 77,
+        shouldFetchData: true,
       })
+
+      const { result } = renderHook(() => useEquipmentAuth())
 
       expect(result.current.currentTenantId).toBe(77)
     })
 
     it('should have null currentTenantId when filtering by "all"', () => {
-      const { result } = renderHook(() => useEquipmentAuth())
-
-      act(() => {
-        result.current.setTenantFilter('all')
+      mockUseTenantSelection.mockReturnValue({
+        ...defaultContextMock,
+        showSelector: true,
+        selectedFacilityId: null,
+        shouldFetchData: true,
       })
+
+      const { result } = renderHook(() => useEquipmentAuth())
 
       expect(result.current.currentTenantId).toBeNull()
     })
@@ -246,6 +251,10 @@ describe('useEquipmentAuth', () => {
           },
         },
         status: 'authenticated',
+      })
+      mockUseTenantSelection.mockReturnValue({
+        ...defaultContextMock,
+        showSelector: true,
       })
 
       const { result } = renderHook(() => useEquipmentAuth())
@@ -268,6 +277,10 @@ describe('useEquipmentAuth', () => {
         },
         status: 'authenticated',
       })
+      mockUseTenantSelection.mockReturnValue({
+        ...defaultContextMock,
+        showSelector: true,
+      })
 
       const { result } = renderHook(() => useEquipmentAuth())
 
@@ -277,12 +290,16 @@ describe('useEquipmentAuth', () => {
   })
 
   describe('effectiveTenantKey', () => {
-    it('should return tenantKey for non-global users', () => {
+    it('should return tenantKey for non-privileged users', () => {
       mockUseSession.mockReturnValue({
         data: {
           user: { id: 1, role: 'user', don_vi: 42 },
         },
         status: 'authenticated',
+      })
+      mockUseTenantSelection.mockReturnValue({
+        ...defaultContextMock,
+        showSelector: false,
       })
 
       const { result } = renderHook(() => useEquipmentAuth())
@@ -290,12 +307,17 @@ describe('useEquipmentAuth', () => {
       expect(result.current.effectiveTenantKey).toBe('42')
     })
 
-    it('should return "unset" for global users before selection', () => {
+    it('should return "unset" for global users before selection (undefined)', () => {
       mockUseSession.mockReturnValue({
         data: {
           user: { id: 1, role: 'global', don_vi: null },
         },
         status: 'authenticated',
+      })
+      mockUseTenantSelection.mockReturnValue({
+        ...defaultContextMock,
+        showSelector: true,
+        selectedFacilityId: undefined,
       })
 
       const { result } = renderHook(() => useEquipmentAuth())
@@ -303,21 +325,83 @@ describe('useEquipmentAuth', () => {
       expect(result.current.effectiveTenantKey).toBe('unset')
     })
 
-    it('should return tenantFilter for global users after selection', () => {
+    it('should return "all" for global users when all facilities selected (null)', () => {
       mockUseSession.mockReturnValue({
         data: {
           user: { id: 1, role: 'global', don_vi: null },
         },
         status: 'authenticated',
       })
+      mockUseTenantSelection.mockReturnValue({
+        ...defaultContextMock,
+        showSelector: true,
+        selectedFacilityId: null,
+      })
 
       const { result } = renderHook(() => useEquipmentAuth())
 
-      act(() => {
-        result.current.setTenantFilter('55')
+      expect(result.current.effectiveTenantKey).toBe('all')
+    })
+
+    it('should return facility ID for global users after selection', () => {
+      mockUseSession.mockReturnValue({
+        data: {
+          user: { id: 1, role: 'global', don_vi: null },
+        },
+        status: 'authenticated',
+      })
+      mockUseTenantSelection.mockReturnValue({
+        ...defaultContextMock,
+        showSelector: true,
+        selectedFacilityId: 55,
       })
 
+      const { result } = renderHook(() => useEquipmentAuth())
+
       expect(result.current.effectiveTenantKey).toBe('55')
+    })
+  })
+
+  describe('Context values passthrough', () => {
+    it('should expose setSelectedFacilityId from context', () => {
+      const mockSetSelectedFacilityId = vi.fn()
+      mockUseSession.mockReturnValue({
+        data: {
+          user: { id: 1, role: 'global', don_vi: null },
+        },
+        status: 'authenticated',
+      })
+      mockUseTenantSelection.mockReturnValue({
+        ...defaultContextMock,
+        showSelector: true,
+        setSelectedFacilityId: mockSetSelectedFacilityId,
+      })
+
+      const { result } = renderHook(() => useEquipmentAuth())
+
+      expect(result.current.setSelectedFacilityId).toBe(mockSetSelectedFacilityId)
+    })
+
+    it('should expose facilities from context', () => {
+      const mockFacilities = [
+        { id: 1, name: 'Facility 1' },
+        { id: 2, name: 'Facility 2' },
+      ]
+      mockUseSession.mockReturnValue({
+        data: {
+          user: { id: 1, role: 'global', don_vi: null },
+        },
+        status: 'authenticated',
+      })
+      mockUseTenantSelection.mockReturnValue({
+        ...defaultContextMock,
+        showSelector: true,
+        facilities: mockFacilities,
+      })
+
+      const { result } = renderHook(() => useEquipmentAuth())
+
+      expect(result.current.facilities).toBe(mockFacilities)
     })
   })
 })

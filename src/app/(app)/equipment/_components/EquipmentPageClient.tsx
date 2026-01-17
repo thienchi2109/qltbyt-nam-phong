@@ -1,9 +1,8 @@
 "use client"
 
 import * as React from "react"
-import { Building2, Plus } from "lucide-react"
+import { Plus } from "lucide-react"
 
-import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
   Card,
@@ -24,6 +23,7 @@ import { FilterBottomSheet } from "@/components/equipment/filter-bottom-sheet"
 import { EquipmentPagination } from "@/components/equipment/equipment-pagination"
 import { FacilityFilterSheet } from "@/components/equipment/facility-filter-sheet"
 import { EquipmentToolbar } from "@/components/equipment/equipment-toolbar"
+import { TenantSelector } from "@/components/shared/TenantSelector"
 
 import { useEquipmentPage } from "../use-equipment-page"
 import { EquipmentContent } from "../equipment-content"
@@ -117,7 +117,7 @@ const EquipmentPageContent = React.memo(function EquipmentPageContent({
     classifications,
     filterData,
 
-    // Facility filter
+    // Facility filter - now from TenantSelectionContext
     showFacilityFilter,
     facilities,
     selectedFacilityId,
@@ -179,30 +179,16 @@ const EquipmentPageContent = React.memo(function EquipmentPageContent({
         <CardHeader>
           <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
             <div>
-              <CardTitle className="heading-responsive-h2">Danh mục thiết bị</CardTitle>
+              <CardTitle className="heading-responsive-h2">Danh muc thiet bi</CardTitle>
               <CardDescription className="body-responsive-sm">
-                Quản lý danh sách các trang thiết bị y tế.
+                Quan ly danh sach cac trang thiet bi y te.
               </CardDescription>
             </div>
 
-            {/* Facility filter (global + regional leader) */}
+            {/* Facility selector using shared TenantSelector component */}
             {showFacilityFilter && (
               <div className="flex w-full max-w-md items-center gap-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="flex h-10 flex-1 items-center justify-start gap-2 rounded-xl border border-dashed px-3"
-                  onClick={() => setIsFacilitySheetOpen(true)}
-                  disabled={isFacilitiesLoading}
-                >
-                  <Building2 className="h-4 w-4 text-muted-foreground" />
-                  <span className="flex-1 truncate text-left text-sm font-medium">
-                    {activeFacility ? activeFacility.name : "Tất cả cơ sở"}
-                  </span>
-                  <Badge variant="secondary" className="shrink-0">
-                    {activeFacility ? `${activeFacility.count ?? 0} TB` : `${facilities.length || 0} cơ sở`}
-                  </Badge>
-                </Button>
+                <TenantSelector className="flex-1" />
               </div>
             )}
           </div>
@@ -277,15 +263,15 @@ const EquipmentPageContent = React.memo(function EquipmentPageContent({
                 className="h-14 w-14 rounded-full shadow-lg hover:shadow-xl transition-shadow"
               >
                 <Plus className="h-6 w-6" />
-                <span className="sr-only">Thêm thiết bị</span>
+                <span className="sr-only">Them thiet bi</span>
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" side="top" className="mb-2">
               <DropdownMenuItem onSelect={openAddDialog}>
-                Thêm thủ công
+                Them thu cong
               </DropdownMenuItem>
               <DropdownMenuItem onSelect={openImportDialog}>
-                Nhập từ Excel
+                Nhap tu Excel
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>

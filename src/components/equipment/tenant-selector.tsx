@@ -1,5 +1,12 @@
 "use client";
 
+/**
+ * @deprecated This component is deprecated in favor of the shared TenantSelector
+ * at @/components/shared/TenantSelector which uses TenantSelectionContext.
+ * This file is kept for backward compatibility but should be removed in a future cleanup.
+ * @see src/components/shared/TenantSelector.tsx
+ */
+
 import * as React from "react";
 import { Building2, Check, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
