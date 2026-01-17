@@ -107,7 +107,7 @@ export interface UseEquipmentPageReturn {
   // Facility filter
   showFacilityFilter: boolean
   facilities: FacilityOption[]
-  selectedFacilityId: number | null
+  selectedFacilityId: number | null | undefined
   setSelectedFacilityId: (id: number | null) => void
   activeFacility: FacilityOption | null
   hasFacilityFilter: boolean

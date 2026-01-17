@@ -322,7 +322,7 @@ export function useEquipmentData(params: UseEquipmentDataParams): UseEquipmentDa
     [statusesData, departmentsData, locationsData, usersData, classificationsData]
   )
 
-  // Cache invalidation
+  // Cache invalidation - check all cache isolation fields
   const invalidateEquipmentForCurrentTenant = React.useCallback(() => {
     if (isGlobal && !shouldFetchData) return
     queryClient.invalidateQueries({
@@ -331,11 +331,15 @@ export function useEquipmentData(params: UseEquipmentDataParams): UseEquipmentDa
         if (!Array.isArray(key)) return false
         if (key[0] !== "equipment_list_enhanced") return false
         const queryParams = key[1] as Record<string, unknown>
-        return queryParams?.tenant === effectiveTenantKey
+        return (
+          queryParams?.tenant === effectiveTenantKey &&
+          queryParams?.role === userRole &&
+          queryParams?.diaBan === userDiaBanId
+        )
       },
       refetchType: "active",
     })
-  }, [queryClient, effectiveTenantKey, isGlobal, shouldFetchData])
+  }, [queryClient, effectiveTenantKey, userRole, userDiaBanId, isGlobal, shouldFetchData])
 
   // Cache invalidation event listeners
   React.useEffect(() => {
