@@ -170,8 +170,8 @@ export function useEquipmentPage(): UseEquipmentPageReturn {
         : `Đơn vị ${auth.selectedDonVi}`
       toast({
         variant: "default",
-        title: "Da ap dung bo loc don vi",
-        description: `Hien thi thiet bi thuoc ${tenantName}`,
+        title: "Đã áp dụng bộ lọc đơn vị",
+        description: `Hiển thị thiết bị thuộc ${tenantName}`,
       })
     }
   }, [auth.effectiveTenantKey, auth.showSelector, auth.selectedDonVi, filters.resetFilters, data.tenantOptions, toast])

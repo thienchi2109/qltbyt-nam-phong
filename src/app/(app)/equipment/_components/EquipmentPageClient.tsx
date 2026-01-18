@@ -179,9 +179,9 @@ const EquipmentPageContent = React.memo(function EquipmentPageContent({
         <CardHeader>
           <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
             <div>
-              <CardTitle className="heading-responsive-h2">Danh muc thiet bi</CardTitle>
+              <CardTitle className="heading-responsive-h2">Danh mục thiết bị</CardTitle>
               <CardDescription className="body-responsive-sm">
-                Quan ly danh sach cac trang thiet bi y te.
+                Quản lý danh sách các trang thiết bị y tế.
               </CardDescription>
             </div>
 

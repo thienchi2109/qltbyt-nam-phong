@@ -1,21 +1,14 @@
 "use client"
 
 import * as React from "react"
-import { Building2, Check, ChevronDown } from "lucide-react"
-import { Button } from "@/components/ui/button"
+import { Building2 } from "lucide-react"
 import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-} from "@/components/ui/command"
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover"
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { cn } from "@/lib/utils"
 import { useTenantSelection } from "@/contexts/TenantSelectionContext"
 
@@ -23,6 +16,8 @@ import { useTenantSelection } from "@/contexts/TenantSelectionContext"
  * Shared tenant/facility selector component.
  * Uses the TenantSelectionContext for state management.
  * Only renders for global/admin/regional_leader users.
+ *
+ * Uses Radix Select instead of cmdk Command for reliable selection behavior.
  */
 export function TenantSelector({ className }: { className?: string }) {
   const {
@@ -33,79 +28,67 @@ export function TenantSelector({ className }: { className?: string }) {
     isLoading,
   } = useTenantSelection()
 
-  const [open, setOpen] = React.useState(false)
-
   // Don't render if user doesn't have multi-tenant privileges
   if (!showSelector) {
     return null
   }
 
-  // Find selected facility name
-  // undefined = not selected yet, null = "all facilities", number = specific facility
-  const selectedFacility = facilities.find((f) => f.id === selectedFacilityId)
-  const displayValue = selectedFacilityId === undefined
-    ? "Chọn cơ sở y tế..."
-    : selectedFacility?.name || "Tất cả cơ sở"
+  // Convert selection state to string for Select component
+  // undefined = not selected yet (show placeholder)
+  // null = "all facilities" = "all"
+  // number = specific facility = String(id)
+  const selectValue = selectedFacilityId === undefined
+    ? ""
+    : selectedFacilityId === null
+      ? "all"
+      : String(selectedFacilityId)
 
-  const handleSelect = React.useCallback((facilityId: number | null) => {
-    setSelectedFacilityId(facilityId)
-    setOpen(false)
+  const handleValueChange = React.useCallback((value: string) => {
+    if (value === "all") {
+      setSelectedFacilityId(null)
+    } else {
+      const facilityId = parseInt(value, 10)
+      if (Number.isFinite(facilityId)) {
+        setSelectedFacilityId(facilityId)
+      }
+    }
   }, [setSelectedFacilityId])
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <Button
-          variant="outline"
-          role="combobox"
-          aria-expanded={open}
-          aria-label="Chọn cơ sở y tế"
-          className={cn(
-            "w-[280px] justify-between font-normal",
-            selectedFacilityId === undefined && "text-muted-foreground",
-            className
-          )}
-          disabled={isLoading}
-        >
-          <div className="flex items-center gap-2 truncate">
-            <Building2 className="h-4 w-4 shrink-0" />
-            <span className="truncate">{displayValue}</span>
+    <Select
+      value={selectValue}
+      onValueChange={handleValueChange}
+      disabled={isLoading}
+    >
+      <SelectTrigger
+        aria-label="Chọn cơ sở y tế"
+        className={cn(
+          "w-[280px] font-normal",
+          !selectValue && "text-muted-foreground",
+          className
+        )}
+      >
+        <div className="flex items-center gap-2 truncate">
+          <Building2 className="h-4 w-4 shrink-0" />
+          <SelectValue placeholder="Chọn cơ sở y tế..." />
+        </div>
+      </SelectTrigger>
+      <SelectContent>
+        {/* "All Facilities" option */}
+        <SelectItem value="all">
+          <div className="flex items-center gap-2">
+            <Building2 className="h-4 w-4" />
+            <span>Tất cả cơ sở</span>
           </div>
-          <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent className="w-[280px] p-0" align="start">
-        <Command>
-          <CommandInput placeholder="Tìm cơ sở..." />
-          <CommandList>
-            <CommandEmpty>Không tìm thấy cơ sở</CommandEmpty>
-            <CommandGroup>
-              {/* "All Facilities" option - clears selection */}
-              <CommandItem value="Tất cả cơ sở" onSelect={() => handleSelect(null)}>
-                <Building2 className="mr-2 h-4 w-4" />
-                <span>Tất cả cơ sở</span>
-                {selectedFacilityId === null && (
-                  <Check className="ml-auto h-4 w-4" />
-                )}
-              </CommandItem>
+        </SelectItem>
 
-              {/* Individual facilities */}
-              {facilities.map((facility) => (
-                <CommandItem
-                  key={facility.id}
-                  value={facility.name}
-                  onSelect={() => handleSelect(facility.id)}
-                >
-                  <span className="truncate">{facility.name}</span>
-                  {selectedFacilityId === facility.id && (
-                    <Check className="ml-auto h-4 w-4" />
-                  )}
-                </CommandItem>
-              ))}
-            </CommandGroup>
-          </CommandList>
-        </Command>
-      </PopoverContent>
-    </Popover>
+        {/* Individual facilities */}
+        {facilities.map((facility) => (
+          <SelectItem key={facility.id} value={String(facility.id)}>
+            <span className="truncate">{facility.name}</span>
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
   )
 }
