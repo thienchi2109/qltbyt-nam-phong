@@ -18,7 +18,12 @@
     "db:pull": "supabase db pull",
     "db:diff": "supabase db diff --linked",
     "db:migration": "supabase migration new",
-    "db:stats": "supabase inspect db db-stats --linked"
+    "db:stats": "supabase inspect db db-stats --linked",
+    "n": "node scripts/npm-run.js",
+    "n:typecheck": "node scripts/npm-run.js run typecheck",
+    "n:build": "node scripts/npm-run.js run build",
+    "n:lint": "node scripts/npm-run.js run lint",
+    "n:test": "node scripts/npm-run.js run test:run"
   },
   "dependencies": {
     "@hookform/resolvers": "^4.1.3",

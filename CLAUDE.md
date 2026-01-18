@@ -96,12 +96,17 @@ Open `@/openspec/AGENTS.md` for: planning/proposals/specs, breaking changes, arc
 <!-- BEADS-TRACKER:START -->
 ## Issue Tracking (Beads)
 
+**On Windows, use the helper script for proper output capture:**
+
 ```bash
-bd ready                    # Find work
-bd create --title="..." --type=task --priority=2  # 0=critical..4=backlog
-bd update <id> --status=in_progress
-bd close <id>
-bd sync                     # ALWAYS at session end
+# Use helper script for ALL bd commands
+node scripts/run-cmd.js bd ready                    # Find work
+node scripts/run-cmd.js bd create --title="..." --type=task --priority=2
+node scripts/run-cmd.js bd update <id> --status=in_progress
+node scripts/run-cmd.js bd close <id>
+node scripts/run-cmd.js bd sync                     # ALWAYS at session end
+node scripts/run-cmd.js bd stats                    # Project statistics
+node scripts/run-cmd.js bd list --status=in_progress
 ```
 <!-- BEADS-TRACKER:END -->
 
@@ -138,14 +143,15 @@ Use CLI for schema operations, MCP for SQL execution.
 | Task | Tool | Command |
 |------|------|---------|
 | **Execute SQL** | MCP | `mcp__supabase__execute_sql` |
-| **Generate types** | CLI | `npm run db:types` |
-| **DB stats** | CLI | `npm run db:stats` |
-| **Table stats** | CLI | `npx supabase inspect db table-stats --linked` |
-| **Index stats** | CLI | `npx supabase inspect db index-stats --linked` |
-| **List migrations** | CLI | `npx supabase migration list` |
-| **List projects** | CLI | `npx supabase projects list` |
+| **Generate types** | CLI | `node scripts/npm-run.js run db:types` |
+| **DB stats** | CLI | `node scripts/npm-run.js run db:stats` |
+| **Table stats** | CLI | `node scripts/npm-run.js npx supabase inspect db table-stats --linked` |
+| **Index stats** | CLI | `node scripts/npm-run.js npx supabase inspect db index-stats --linked` |
+| **List migrations** | CLI | `node scripts/npm-run.js npx supabase migration list` |
+| **List projects** | CLI | `node scripts/npm-run.js npx supabase projects list` |
 
 > **Note:** Migration push/pull requires synced history. Use MCP `apply_migration` for DDL changes when drift exists.
+> **Windows:** Always use `node scripts/npm-run.js` wrapper for npm/npx commands to capture output.
 <!-- SUPABASE-CLI:END -->
 
 ---
@@ -160,10 +166,42 @@ Use CLI for schema operations, MCP for SQL execution.
 
 ```bash
 npm run dev          # Dev (port 3000)
-npm run typecheck    # REQUIRED before commits
 npm run build        # Production build
 npm run lint         # ESLint
 ```
+
+### Windows Shell Output Fix (REQUIRED)
+
+On Windows, `npm`, `npx`, and `bd` commands don't return stdout properly. **Always use the helper scripts:**
+
+```bash
+# Universal helper for ANY command (npm, npx, bd, etc.)
+node scripts/run-cmd.js <command> [args...]
+
+# npm/npx specific helper
+node scripts/npm-run.js run typecheck    # Typecheck (REQUIRED before commits)
+node scripts/npm-run.js run build        # Build with output
+node scripts/npm-run.js run lint         # Lint with output
+node scripts/npm-run.js run test:run     # Run tests
+node scripts/npm-run.js npx <command>    # Any npx command
+
+# Shortcut scripts
+npm run n:typecheck   # Typecheck
+npm run n:build       # Build
+npm run n:lint        # Lint
+npm run n:test        # Tests
+
+# Beads commands
+node scripts/run-cmd.js bd ready
+node scripts/run-cmd.js bd stats
+node scripts/run-cmd.js bd list --status=in_progress
+```
+
+**Helper scripts:**
+- `scripts/run-cmd.js` - Universal helper for any CLI command
+- `scripts/npm-run.js` - Specialized helper for npm/npx commands
+
+**Why:** `.cmd` batch files and some `.exe` files don't return stdout in certain shell contexts (Claude Code's Bash tool). These helpers use Node's `child_process.execSync` to properly capture output.
 
 ## File Structure
 
