@@ -268,10 +268,10 @@ const EquipmentPageContent = React.memo(function EquipmentPageContent({
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" side="top" className="mb-2">
               <DropdownMenuItem onSelect={openAddDialog}>
-                Them thu cong
+                Thêm từng thiết bị
               </DropdownMenuItem>
               <DropdownMenuItem onSelect={openImportDialog}>
-                Nhap tu Excel
+                Thêm hàng loạt bằng Excel
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
