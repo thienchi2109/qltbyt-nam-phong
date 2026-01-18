@@ -9,12 +9,15 @@ import type { TenantBranding } from "@/hooks/use-tenant-branding"
 import type { Table, ColumnDef, ColumnFiltersState, VisibilityState } from "@tanstack/react-table"
 import type { useRouter } from "next/navigation"
 import type { RouteAction } from "./_hooks/useEquipmentRouteSync"
+import type { FacilityOption } from "@/types/tenant"
 
 // Re-export commonly used types
 export type { Equipment, UsageLog, SessionUser }
 
+// Re-export FacilityOption from canonical location
+export type { FacilityOption } from "@/types/tenant"
+
 /**
- * Consolidated dialog state for Equipment module
  * Used by EquipmentDialogContext to manage all dialog visibility
  */
 export interface EquipmentDialogState {
@@ -36,15 +39,6 @@ export interface FilterBottomSheetData {
   location: { id: string; label: string; count: number }[]
   user: { id: string; label: string; count: number }[]
   classification: { id: string; label: string; count: number }[]
-}
-
-/**
- * Facility option for regional/global user filtering
- */
-export interface FacilityOption {
-  id: number
-  name: string
-  count: number
 }
 
 /**

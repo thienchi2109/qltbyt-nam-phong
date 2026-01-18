@@ -7,6 +7,7 @@ export interface FacilityOption {
   id: number
   name: string
   count?: number  // Optional - not all RPCs return count
+  code?: string   // Optional - facility code for display
 }
 
 export type TenantRole = 'global' | 'admin' | 'regional_leader' | 'to_qltb' | 'technician' | 'qltb_khoa' | 'user'
