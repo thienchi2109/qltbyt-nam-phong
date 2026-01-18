@@ -3,7 +3,6 @@
 import * as React from "react"
 import { useQuery, useQueryClient, keepPreviousData } from "@tanstack/react-query"
 import { callRpc } from "@/lib/rpc-client"
-import { useFacilityFilter } from "@/hooks/useFacilityFilter"
 import { useActiveUsageLogs } from "@/hooks/use-usage-logs"
 import type { Equipment } from "../types"
 import type { FilterBottomSheetData, FacilityOption, EquipmentListResponse } from "../types"
@@ -12,6 +11,7 @@ export interface UseEquipmentDataParams {
   isGlobal: boolean
   isRegionalLeader: boolean
   userRole: string
+  userDiaBanId?: number | null
   shouldFetchEquipment: boolean
   effectiveTenantKey: string
   selectedDonVi: number | null
@@ -24,6 +24,11 @@ export interface UseEquipmentDataParams {
   selectedLocations: string[]
   selectedStatuses: string[]
   selectedClassifications: string[]
+  // From TenantSelectionContext via useEquipmentAuth
+  selectedFacilityId: number | null | undefined
+  showSelector: boolean
+  facilities: { id: number; name: string; code?: string; count?: number }[]
+  isFacilitiesLoading: boolean
 }
 
 export interface UseEquipmentDataReturn {
@@ -44,15 +49,14 @@ export interface UseEquipmentDataReturn {
   classifications: string[]
   filterData: FilterBottomSheetData
 
-  // Facility filter
+  // Facility filter (from context via auth hook)
   showFacilityFilter: boolean
   facilities: FacilityOption[]
-  selectedFacilityId: number | null
-  setSelectedFacilityId: (id: number | null) => void
+  selectedFacilityId: number | null | undefined
   activeFacility: FacilityOption | null
   isFacilitiesLoading: boolean
 
-  // Tenant list (for global users)
+  // Tenant list (for global users - deprecated, kept for compatibility)
   tenantOptions: { id: number; name: string; code: string }[]
   isTenantsLoading: boolean
 
@@ -69,6 +73,7 @@ export function useEquipmentData(params: UseEquipmentDataParams): UseEquipmentDa
     isGlobal,
     isRegionalLeader,
     userRole,
+    userDiaBanId,
     shouldFetchEquipment,
     effectiveTenantKey,
     selectedDonVi,
@@ -81,27 +86,30 @@ export function useEquipmentData(params: UseEquipmentDataParams): UseEquipmentDa
     selectedLocations,
     selectedStatuses,
     selectedClassifications,
+    // From context
+    selectedFacilityId,
+    showSelector,
+    facilities: contextFacilities,
+    isFacilitiesLoading,
   } = params
 
   const queryClient = useQueryClient()
-
-  // Facility filter hook
-  const { showFacilityFilter, selectedFacilityId, setSelectedFacilityId } = useFacilityFilter({
-    mode: "server",
-    userRole: userRole || "user",
-  })
 
   // Computed: should we fetch data based on tenant/facility selection
   // For regional_leader, require facility selection before fetching
   const shouldFetchData = React.useMemo(() => {
     if (!shouldFetchEquipment) return false
-    if (isRegionalLeader && selectedFacilityId === null) return false
+    // Regional leaders must select a specific facility
+    if (isRegionalLeader && (selectedFacilityId === null || selectedFacilityId === undefined)) return false
     return true
   }, [shouldFetchEquipment, isRegionalLeader, selectedFacilityId])
 
   // Effective don_vi considering regional leader
   const effectiveSelectedDonVi = React.useMemo(() => {
-    if (isRegionalLeader) return selectedFacilityId
+    if (isRegionalLeader) {
+      // Regional leaders always use selectedFacilityId
+      return selectedFacilityId !== undefined && selectedFacilityId !== null ? selectedFacilityId : null
+    }
     return selectedDonVi
   }, [isRegionalLeader, selectedFacilityId, selectedDonVi])
 
@@ -112,7 +120,7 @@ export function useEquipmentData(params: UseEquipmentDataParams): UseEquipmentDa
     refetchInterval: 5 * 60 * 1000,
   })
 
-  // Tenant list query (for global users)
+  // Tenant list query (for global users - kept for backward compatibility with tenant change toasts)
   const { data: tenantList, isLoading: isTenantsLoading } = useQuery<
     { id: number; name: string; code: string }[]
   >({
@@ -131,7 +139,7 @@ export function useEquipmentData(params: UseEquipmentDataParams): UseEquipmentDa
   })
   const tenantOptions = (tenantList ?? []) as { id: number; name: string; code: string }[]
 
-  // Equipment list query
+  // Equipment list query - updated with role/diaBan in query key
   const effectivePageSize = pagination.pageSize
   const effectivePage = pagination.pageIndex + 1
 
@@ -140,6 +148,8 @@ export function useEquipmentData(params: UseEquipmentDataParams): UseEquipmentDa
       "equipment_list_enhanced",
       {
         tenant: effectiveTenantKey,
+        role: userRole,           // Cache isolation by role
+        diaBan: userDiaBanId,     // Cache isolation by region
         donVi: effectiveSelectedDonVi,
         page: pagination.pageIndex,
         size: pagination.pageSize,
@@ -182,42 +192,26 @@ export function useEquipmentData(params: UseEquipmentDataParams): UseEquipmentDa
   const total = equipmentRes?.total ?? 0
   const isLoading = isEqLoading
 
-  // Facilities query for regional leader
-  const { data: facilitiesData, isLoading: isFacilitiesLoading } = useQuery<
-    Array<{ id: number; name: string; code: string; equipment_count: number }>
-  >({
-    queryKey: ["facilities_with_equipment_count"],
-    queryFn: async () => {
-      const result = await callRpc<
-        { id: number; name: string; code: string; equipment_count: number }[]
-      >({ fn: "get_facilities_with_equipment_count", args: {} })
-      return result || []
-    },
-    enabled: showFacilityFilter,
-    staleTime: 300_000,
-    gcTime: 10 * 60_000,
-    refetchOnWindowFocus: false,
-  })
-
-  const facilities = React.useMemo(() => {
-    if (!showFacilityFilter || !facilitiesData) return []
-    return facilitiesData.map((f) => ({
+  // Map context facilities to FacilityOption format
+  const facilities: FacilityOption[] = React.useMemo(() => {
+    if (!showSelector || !contextFacilities) return []
+    return contextFacilities.map((f) => ({
       id: f.id,
       name: f.name,
-      count: f.equipment_count,
+      count: f.count ?? 0,
     }))
-  }, [showFacilityFilter, facilitiesData])
+  }, [showSelector, contextFacilities])
 
   const activeFacility = React.useMemo(() => {
-    if (selectedFacilityId == null) return null
+    if (selectedFacilityId == null || selectedFacilityId === undefined) return null
     return facilities.find((facility) => facility.id === selectedFacilityId) ?? null
   }, [facilities, selectedFacilityId])
 
-  const isFetching = isEqFetching || isFacilitiesLoading
+  const isFetching = isEqFetching
 
-  // Filter options queries
+  // Filter options queries - updated with role/diaBan in query key
   const { data: departmentsData } = useQuery<{ name: string; count: number }[]>({
-    queryKey: ["departments_list_for_tenant", effectiveTenantKey, effectiveSelectedDonVi],
+    queryKey: ["departments_list_for_tenant", { tenant: effectiveTenantKey, role: userRole, diaBan: userDiaBanId, donVi: effectiveSelectedDonVi }],
     queryFn: async ({ signal }) => {
       const result = await callRpc<{ name: string; count: number }[]>({
         fn: "departments_list_for_tenant",
@@ -237,7 +231,7 @@ export function useEquipmentData(params: UseEquipmentDataParams): UseEquipmentDa
   )
 
   const { data: usersData } = useQuery<{ name: string; count: number }[]>({
-    queryKey: ["equipment_users_list_for_tenant", effectiveTenantKey, effectiveSelectedDonVi],
+    queryKey: ["equipment_users_list_for_tenant", { tenant: effectiveTenantKey, role: userRole, diaBan: userDiaBanId, donVi: effectiveSelectedDonVi }],
     queryFn: async ({ signal }) => {
       const result = await callRpc<{ name: string; count: number }[]>({
         fn: "equipment_users_list_for_tenant",
@@ -257,7 +251,7 @@ export function useEquipmentData(params: UseEquipmentDataParams): UseEquipmentDa
   )
 
   const { data: locationsData } = useQuery<{ name: string; count: number }[]>({
-    queryKey: ["equipment_locations_list_for_tenant", effectiveTenantKey, effectiveSelectedDonVi],
+    queryKey: ["equipment_locations_list_for_tenant", { tenant: effectiveTenantKey, role: userRole, diaBan: userDiaBanId, donVi: effectiveSelectedDonVi }],
     queryFn: async ({ signal }) => {
       const result = await callRpc<{ name: string; count: number }[]>({
         fn: "equipment_locations_list_for_tenant",
@@ -277,7 +271,7 @@ export function useEquipmentData(params: UseEquipmentDataParams): UseEquipmentDa
   )
 
   const { data: classificationsData } = useQuery<{ name: string; count: number }[]>({
-    queryKey: ["equipment_classifications_list_for_tenant", effectiveTenantKey, effectiveSelectedDonVi],
+    queryKey: ["equipment_classifications_list_for_tenant", { tenant: effectiveTenantKey, role: userRole, diaBan: userDiaBanId, donVi: effectiveSelectedDonVi }],
     queryFn: async ({ signal }) => {
       const result = await callRpc<{ name: string; count: number }[]>({
         fn: "equipment_classifications_list_for_tenant",
@@ -297,7 +291,7 @@ export function useEquipmentData(params: UseEquipmentDataParams): UseEquipmentDa
   )
 
   const { data: statusesData } = useQuery<{ name: string; count: number }[]>({
-    queryKey: ["equipment_statuses_list_for_tenant", effectiveTenantKey, effectiveSelectedDonVi],
+    queryKey: ["equipment_statuses_list_for_tenant", { tenant: effectiveTenantKey, role: userRole, diaBan: userDiaBanId, donVi: effectiveSelectedDonVi }],
     queryFn: async ({ signal }) => {
       const result = await callRpc<{ name: string; count: number }[]>({
         fn: "equipment_statuses_list_for_tenant",
@@ -328,7 +322,7 @@ export function useEquipmentData(params: UseEquipmentDataParams): UseEquipmentDa
     [statusesData, departmentsData, locationsData, usersData, classificationsData]
   )
 
-  // Cache invalidation
+  // Cache invalidation - check all cache isolation fields
   const invalidateEquipmentForCurrentTenant = React.useCallback(() => {
     if (isGlobal && !shouldFetchData) return
     queryClient.invalidateQueries({
@@ -337,11 +331,15 @@ export function useEquipmentData(params: UseEquipmentDataParams): UseEquipmentDa
         if (!Array.isArray(key)) return false
         if (key[0] !== "equipment_list_enhanced") return false
         const queryParams = key[1] as Record<string, unknown>
-        return queryParams?.tenant === effectiveTenantKey
+        return (
+          queryParams?.tenant === effectiveTenantKey &&
+          queryParams?.role === userRole &&
+          queryParams?.diaBan === userDiaBanId
+        )
       },
       refetchType: "active",
     })
-  }, [queryClient, effectiveTenantKey, isGlobal, shouldFetchData])
+  }, [queryClient, effectiveTenantKey, userRole, userDiaBanId, isGlobal, shouldFetchData])
 
   // Cache invalidation event listeners
   React.useEffect(() => {
@@ -371,10 +369,9 @@ export function useEquipmentData(params: UseEquipmentDataParams): UseEquipmentDa
       statuses,
       classifications,
       filterData,
-      showFacilityFilter,
+      showFacilityFilter: showSelector,
       facilities,
       selectedFacilityId,
-      setSelectedFacilityId,
       activeFacility,
       isFacilitiesLoading,
       tenantOptions,
@@ -395,10 +392,9 @@ export function useEquipmentData(params: UseEquipmentDataParams): UseEquipmentDa
       statuses,
       classifications,
       filterData,
-      showFacilityFilter,
+      showSelector,
       facilities,
       selectedFacilityId,
-      setSelectedFacilityId,
       activeFacility,
       isFacilitiesLoading,
       tenantOptions,

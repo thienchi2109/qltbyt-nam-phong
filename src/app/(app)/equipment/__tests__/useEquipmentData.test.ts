@@ -9,15 +9,6 @@ vi.mock('@/lib/rpc-client', () => ({
   callRpc: (args: any) => mockCallRpc(args),
 }))
 
-// Mock useFacilityFilter
-vi.mock('@/hooks/useFacilityFilter', () => ({
-  useFacilityFilter: () => ({
-    showFacilityFilter: false,
-    selectedFacilityId: null,
-    setSelectedFacilityId: vi.fn(),
-  }),
-}))
-
 // Mock useActiveUsageLogs
 vi.mock('@/hooks/use-usage-logs', () => ({
   useActiveUsageLogs: () => ({
@@ -30,11 +21,12 @@ vi.mock('@/hooks/use-usage-logs', () => ({
 import { useEquipmentData } from '../_hooks/useEquipmentData'
 import type { UseEquipmentDataParams } from '../_hooks/useEquipmentData'
 
-// Default params for tests
+// Default params for tests - now includes context values that were previously from useFacilityFilter
 const createDefaultParams = (overrides?: Partial<UseEquipmentDataParams>): UseEquipmentDataParams => ({
   isGlobal: false,
   isRegionalLeader: false,
   userRole: 'user',
+  userDiaBanId: undefined,
   shouldFetchEquipment: true,
   effectiveTenantKey: '5',
   selectedDonVi: 5,
@@ -47,6 +39,11 @@ const createDefaultParams = (overrides?: Partial<UseEquipmentDataParams>): UseEq
   selectedLocations: [],
   selectedStatuses: [],
   selectedClassifications: [],
+  // Context values passed from auth hook
+  selectedFacilityId: undefined,
+  showSelector: false,
+  facilities: [],
+  isFacilitiesLoading: false,
   ...overrides,
 })
 
@@ -153,7 +150,7 @@ describe('useEquipmentData', () => {
               pagination: { pageIndex: 2, pageSize: 50 },
               selectedDonVi: 10,
               selectedDepartments: ['Khoa A'],
-              selectedStatuses: ['Hoạt động'],
+              selectedStatuses: ['Hoat dong'],
             })
           ),
         { wrapper: createWrapper() }
@@ -170,7 +167,7 @@ describe('useEquipmentData', () => {
               p_page_size: 50,
               p_don_vi: 10,
               p_khoa_phong_array: ['Khoa A'],
-              p_tinh_trang_array: ['Hoạt động'],
+              p_tinh_trang_array: ['Hoat dong'],
             }),
           })
         )
@@ -203,8 +200,8 @@ describe('useEquipmentData', () => {
   describe('Filter Options Queries', () => {
     it('should fetch departments for tenant', async () => {
       const mockDepartments = [
-        { name: 'Khoa Nội', count: 10 },
-        { name: 'Khoa Ngoại', count: 5 },
+        { name: 'Khoa Noi', count: 10 },
+        { name: 'Khoa Ngoai', count: 5 },
       ]
       mockCallRpc.mockImplementation(({ fn }: { fn: string }) => {
         if (fn === 'departments_list_for_tenant') {
@@ -221,14 +218,14 @@ describe('useEquipmentData', () => {
       })
 
       await waitFor(() => {
-        expect(result.current.departments).toEqual(['Khoa Nội', 'Khoa Ngoại'])
+        expect(result.current.departments).toEqual(['Khoa Noi', 'Khoa Ngoai'])
       })
     })
 
     it('should fetch users for tenant', async () => {
       const mockUsers = [
-        { name: 'Nguyễn Văn A', count: 3 },
-        { name: 'Trần Thị B', count: 2 },
+        { name: 'Nguyen Van A', count: 3 },
+        { name: 'Tran Thi B', count: 2 },
       ]
       mockCallRpc.mockImplementation(({ fn }: { fn: string }) => {
         if (fn === 'equipment_users_list_for_tenant') {
@@ -245,14 +242,14 @@ describe('useEquipmentData', () => {
       })
 
       await waitFor(() => {
-        expect(result.current.users).toEqual(['Nguyễn Văn A', 'Trần Thị B'])
+        expect(result.current.users).toEqual(['Nguyen Van A', 'Tran Thi B'])
       })
     })
 
     it('should fetch statuses for tenant', async () => {
       const mockStatuses = [
-        { name: 'Hoạt động', count: 50 },
-        { name: 'Chờ sửa chữa', count: 10 },
+        { name: 'Hoat dong', count: 50 },
+        { name: 'Cho sua chua', count: 10 },
       ]
       mockCallRpc.mockImplementation(({ fn }: { fn: string }) => {
         if (fn === 'equipment_statuses_list_for_tenant') {
@@ -269,7 +266,7 @@ describe('useEquipmentData', () => {
       })
 
       await waitFor(() => {
-        expect(result.current.statuses).toEqual(['Hoạt động', 'Chờ sửa chữa'])
+        expect(result.current.statuses).toEqual(['Hoat dong', 'Cho sua chua'])
       })
     })
 
@@ -281,9 +278,9 @@ describe('useEquipmentData', () => {
           case 'departments_list_for_tenant':
             return Promise.resolve([{ name: 'Khoa A', count: 5 }])
           case 'equipment_statuses_list_for_tenant':
-            return Promise.resolve([{ name: 'Hoạt động', count: 10 }])
+            return Promise.resolve([{ name: 'Hoat dong', count: 10 }])
           case 'equipment_locations_list_for_tenant':
-            return Promise.resolve([{ name: 'Phòng 101', count: 3 }])
+            return Promise.resolve([{ name: 'Phong 101', count: 3 }])
           default:
             return Promise.resolve([])
         }
@@ -298,10 +295,10 @@ describe('useEquipmentData', () => {
           { id: 'Khoa A', label: 'Khoa A', count: 5 },
         ])
         expect(result.current.filterData.status).toEqual([
-          { id: 'Hoạt động', label: 'Hoạt động', count: 10 },
+          { id: 'Hoat dong', label: 'Hoat dong', count: 10 },
         ])
         expect(result.current.filterData.location).toEqual([
-          { id: 'Phòng 101', label: 'Phòng 101', count: 3 },
+          { id: 'Phong 101', label: 'Phong 101', count: 3 },
         ])
       })
     })
@@ -432,10 +429,7 @@ describe('useEquipmentData', () => {
   })
 
   describe('Regional Leader', () => {
-    it('should use effectiveSelectedDonVi based on isRegionalLeader flag', async () => {
-      // Note: useFacilityFilter is mocked at module level with selectedFacilityId: null
-      // This test verifies that isRegionalLeader param is passed correctly
-      // and affects how the hook computes effectiveSelectedDonVi
+    it('should not fetch data when regional leader has no facility selected', async () => {
       mockCallRpc.mockImplementation(({ fn }: { fn: string }) => {
         if (fn === 'equipment_list_enhanced') {
           return Promise.resolve({ data: [], total: 0 })
@@ -444,17 +438,48 @@ describe('useEquipmentData', () => {
       })
 
       const { result } = renderHook(
-        () => useEquipmentData(createDefaultParams({ isRegionalLeader: true, selectedDonVi: 5 })),
+        () => useEquipmentData(createDefaultParams({
+          isRegionalLeader: true,
+          selectedFacilityId: undefined,  // Not selected yet
+        })),
+        { wrapper: createWrapper() }
+      )
+
+      await new Promise((r) => setTimeout(r, 100))
+
+      // Should not fetch because regional leader needs to select facility
+      expect(result.current.shouldFetchData).toBe(false)
+    })
+
+    it('should fetch data when regional leader has facility selected', async () => {
+      mockCallRpc.mockImplementation(({ fn }: { fn: string }) => {
+        if (fn === 'equipment_list_enhanced') {
+          return Promise.resolve({ data: [], total: 0 })
+        }
+        return Promise.resolve([])
+      })
+
+      const { result } = renderHook(
+        () => useEquipmentData(createDefaultParams({
+          isRegionalLeader: true,
+          selectedFacilityId: 42,
+          shouldFetchEquipment: true,
+        })),
         { wrapper: createWrapper() }
       )
 
       await waitFor(() => {
-        expect(result.current.isLoading).toBe(false)
+        expect(result.current.shouldFetchData).toBe(true)
       })
 
-      // showFacilityFilter comes from the mocked useFacilityFilter (false in our mock)
-      // The actual RBAC enforcement happens server-side in RPC functions
-      expect(result.current.showFacilityFilter).toBe(false)
+      expect(mockCallRpc).toHaveBeenCalledWith(
+        expect.objectContaining({
+          fn: 'equipment_list_enhanced',
+          args: expect.objectContaining({
+            p_don_vi: 42,  // Should use selectedFacilityId for regional leader
+          }),
+        })
+      )
     })
 
     it('should pass selectedDonVi to RPC when not regional leader', async () => {
@@ -480,6 +505,54 @@ describe('useEquipmentData', () => {
           })
         )
       })
+    })
+  })
+
+  describe('Facility Filter from Context', () => {
+    it('should expose showFacilityFilter from params', async () => {
+      const { result } = renderHook(
+        () => useEquipmentData(createDefaultParams({ showSelector: true })),
+        { wrapper: createWrapper() }
+      )
+
+      expect(result.current.showFacilityFilter).toBe(true)
+    })
+
+    it('should expose facilities from params', async () => {
+      const mockFacilities = [
+        { id: 1, name: 'Facility 1', count: 10 },
+        { id: 2, name: 'Facility 2', count: 20 },
+      ]
+
+      const { result } = renderHook(
+        () => useEquipmentData(createDefaultParams({
+          showSelector: true,
+          facilities: mockFacilities,
+        })),
+        { wrapper: createWrapper() }
+      )
+
+      expect(result.current.facilities).toHaveLength(2)
+      expect(result.current.facilities[0].name).toBe('Facility 1')
+    })
+
+    it('should compute activeFacility correctly', async () => {
+      const mockFacilities = [
+        { id: 1, name: 'Facility 1', count: 10 },
+        { id: 2, name: 'Facility 2', count: 20 },
+      ]
+
+      const { result } = renderHook(
+        () => useEquipmentData(createDefaultParams({
+          showSelector: true,
+          facilities: mockFacilities,
+          selectedFacilityId: 2,
+        })),
+        { wrapper: createWrapper() }
+      )
+
+      expect(result.current.activeFacility?.id).toBe(2)
+      expect(result.current.activeFacility?.name).toBe('Facility 2')
     })
   })
 })

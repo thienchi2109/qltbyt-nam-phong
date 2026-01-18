@@ -50,6 +50,7 @@ import { MobileFooterNav } from "@/components/mobile-footer-nav"
 import { HelpButton } from "@/components/onboarding/HelpButton"
 import { USER_ROLES } from "@/types/database"
 import { callRpc } from "@/lib/rpc-client"
+import { TenantSelectionProvider } from "@/contexts/TenantSelectionContext"
 // Tenant switcher removed in favor of per-page tenant filters
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
@@ -137,6 +138,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   }
 
   return (
+    <TenantSelectionProvider>
     <>
       <ChangePasswordDialog
         open={isChangePasswordOpen}
@@ -336,6 +338,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         </div>
       </div>
     </>
+    </TenantSelectionProvider>
   )
 }
 

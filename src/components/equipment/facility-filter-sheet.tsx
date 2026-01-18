@@ -21,19 +21,14 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet"
-
-export interface Facility {
-  id: number
-  name: string
-  count: number
-}
+import type { FacilityOption } from "@/types/tenant"
 
 export interface FacilityFilterSheetProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  facilities: Facility[]
+  facilities: FacilityOption[]
   isLoading: boolean
-  selectedFacilityId: number | null
+  selectedFacilityId: number | null | undefined
   pendingFacilityId: number | null
   onPendingChange: (facilityId: number | null) => void
   onApply: () => void
@@ -142,7 +137,7 @@ export function FacilityFilterSheet({
                     {isSelected && <Check className="h-4 w-4 text-primary" />}
                   </span>
                   <span className="text-xs text-muted-foreground">
-                    {facility.count} TB
+                    {facility.count ?? 0} TB
                   </span>
                 </button>
               )

@@ -6,11 +6,10 @@ import { useRouter } from "next/navigation"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Skeleton } from "@/components/ui/skeleton"
-import { TenantFilterDropdown } from "./components/tenant-filter-dropdown"
+import { TenantSelector } from "@/components/shared/TenantSelector"
 import { TenantSelectionTip } from "./components/tenant-selection-tip"
 import { useToast } from "@/hooks/use-toast"
-import { useQuery } from "@tanstack/react-query"
-import { callRpc } from "@/lib/rpc-client"
+import { useTenantSelection } from "@/contexts/TenantSelectionContext"
 
 // Lazy load components to improve initial load time
 const InventoryReportTab = React.lazy(() => import("./components/inventory-report-tab").then(module => ({ default: module.InventoryReportTab })))
@@ -75,11 +74,15 @@ function TabSkeleton() {
 export default function ReportsPage() {
   const router = useRouter()
   const { data: session, status } = useSession()
-  const user = session?.user as any
+  const user = session?.user as { role?: string; don_vi?: number; dia_ban_id?: number } | undefined
   const { toast } = useToast()
-  
-  // Global/admin/regional_leader role check computed early so hooks below can depend on it safely
-  const isGlobalOrRegionalLeader = user?.role === 'global' || user?.role === 'admin' || user?.role === 'regional_leader'
+
+  // Get facility selection from shared context
+  const {
+    selectedFacilityId,
+    showSelector,
+    shouldFetchData,
+  } = useTenantSelection()
 
   // Redirect if not authenticated (same pattern as Equipment page)
   if (status === "loading") {
@@ -101,94 +104,25 @@ export default function ReportsPage() {
   // State
   const [activeTab, setActiveTab] = React.useState("inventory")
   
-  // Tenant filtering logic (EXACT same pattern as Equipment page)
-  const tenantKey = user?.don_vi ? String(user.don_vi) : 'none'
-  const [tenantFilter, setTenantFilter] = React.useState<string>(() => {
-    if (!isGlobalOrRegionalLeader) return tenantKey
-    
-    // For global/regional_leader users, try to restore from localStorage first
-    if (typeof window !== 'undefined') {
-      try {
-        const saved = localStorage.getItem('reports_tenant_filter')
-        if (saved && (saved === 'unset' || saved === 'all' || /^\d+$/.test(saved))) {
-          return saved
-        }
-      } catch {}
+  // Map selectedFacilityId to legacy string-based tenantFilter for child components
+  // undefined = 'unset', null = 'all', number = String(number)
+  const tenantFilter = React.useMemo(() => {
+    if (selectedFacilityId === undefined) return 'unset'
+    if (selectedFacilityId === null) return 'all'
+    return String(selectedFacilityId)
+  }, [selectedFacilityId])
+
+  // selectedDonVi for child components (number | null)
+  // undefined becomes null (child components expect null for "not selected")
+  const selectedDonVi = selectedFacilityId ?? null
+
+  // Effective tenant key for query cache scoping
+  const effectiveTenantKey = React.useMemo(() => {
+    if (selectedFacilityId !== undefined) {
+      return selectedFacilityId === null ? 'all' : String(selectedFacilityId)
     }
-    return 'unset'
-  })
-
-  // Load allowed facilities for validation (prevents stale saved IDs causing 403)
-  const { data: allowedFacilities } = useQuery<{ id: number; name: string }[]>({
-    queryKey: ['reports-facilities-validate', user?.role, user?.don_vi],
-    queryFn: async () => {
-      if (isGlobalOrRegionalLeader) {
-        const result = await callRpc<any>({ fn: 'get_facilities_with_equipment_count', args: {} })
-        const list = Array.isArray(result) ? result : []
-        return list.map((t: any) => ({ id: Number(t.id), name: t.name }))
-      }
-      return []
-    },
-    enabled: isGlobalOrRegionalLeader,
-    staleTime: 5 * 60_000,
-  })
-
-  // Validate persisted selection against allowed list
-  const [tenantValidated, setTenantValidated] = React.useState<boolean>(!isGlobalOrRegionalLeader)
-  React.useEffect(() => {
-    if (!isGlobalOrRegionalLeader) {
-      setTenantValidated(true)
-      return
-    }
-    if (!allowedFacilities) return
-
-    if (tenantFilter === 'unset' || tenantFilter === 'all') {
-      setTenantValidated(tenantFilter === 'all')
-      return
-    }
-
-    if (/^\d+$/.test(tenantFilter)) {
-      const n = parseInt(tenantFilter, 10)
-      const valid = allowedFacilities.some((f) => f.id === n)
-      if (!valid) {
-        // Reset to unset to force user selection; prevents unauthorized RPC calls
-        setTenantFilter('unset')
-        setTenantValidated(false)
-      } else {
-        setTenantValidated(true)
-      }
-    } else {
-      setTenantValidated(false)
-    }
-  }, [isGlobalOrRegionalLeader, allowedFacilities, tenantFilter])
-  
-  // Compute gating logic with validation to avoid 403 on first load
-  const shouldFetchReports = React.useMemo(() => {
-    if (!isGlobalOrRegionalLeader) return true
-    if (tenantFilter === 'all') return true
-    return tenantValidated && /^\d+$/.test(tenantFilter)
-  }, [isGlobalOrRegionalLeader, tenantFilter, tenantValidated])
-
-  const selectedDonVi = React.useMemo(() => {
-    if (!isGlobalOrRegionalLeader) return null
-    if (tenantFilter === 'all') return null
-    const v = parseInt(tenantFilter, 10)
-    return Number.isFinite(v) ? v : null
-  }, [isGlobalOrRegionalLeader, tenantFilter])
-
-  const effectiveTenantKey = isGlobalOrRegionalLeader ? (shouldFetchReports ? tenantFilter : 'unset') : tenantKey
-
-  // Persist tenant selection for global/admin/regional_leader users (same as Equipment page)
-  React.useEffect(() => {
-    if (typeof window === 'undefined') return
-    if (isGlobalOrRegionalLeader) {
-      try { localStorage.setItem('reports_tenant_filter', tenantFilter) } catch {}
-    } else {
-      try { localStorage.removeItem('reports_tenant_filter') } catch {}
-    }
-  }, [isGlobalOrRegionalLeader, tenantFilter])
-
-  // No separate restoration effect needed - handled in useState initializer above
+    return user?.don_vi ? String(user.don_vi) : 'none'
+  }, [selectedFacilityId, user?.don_vi])
 
   return (
     <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
@@ -196,17 +130,13 @@ export default function ReportsPage() {
       <h2 className="text-3xl font-bold tracking-tight">Báo cáo</h2>
 
       {/* Tenant selector for global/regional_leader users */}
-      {isGlobalOrRegionalLeader && (
-        <TenantFilterDropdown 
-          value={tenantFilter}
-          onChange={setTenantFilter}
-          className="min-w-[360px] sm:min-w-[480px] lg:min-w-[600px]"
-        />
+      {showSelector && (
+        <TenantSelector className="min-w-[280px] sm:min-w-[360px]" />
       )}
     </div>
       
       {/* Show tip when no tenant selected (same pattern as Equipment page) */}
-      {isGlobalOrRegionalLeader && !shouldFetchReports && (
+      {showSelector && !shouldFetchData && (
         <TenantSelectionTip />
       )}
       
@@ -222,8 +152,8 @@ export default function ReportsPage() {
           </TabsTrigger>
         </TabsList>
         
-        {/* Only show content when shouldFetchReports is true */}
-        {shouldFetchReports ? (
+        {/* Only show content when shouldFetchData is true */}
+        {shouldFetchData ? (
           <>
             <TabsContent value="inventory" className="space-y-4">
               <React.Suspense fallback={<TabSkeleton />}>
@@ -231,7 +161,7 @@ export default function ReportsPage() {
                   tenantFilter={tenantFilter}
                   selectedDonVi={selectedDonVi}
                   effectiveTenantKey={effectiveTenantKey}
-                  isGlobalOrRegionalLeader={isGlobalOrRegionalLeader}
+                  isGlobalOrRegionalLeader={showSelector}
                 />
               </React.Suspense>
             </TabsContent>
@@ -256,10 +186,8 @@ export default function ReportsPage() {
               </React.Suspense>
             </TabsContent>
           </>
-        ) : (
-          <div></div>
-        )}
+        ) : null}
       </Tabs>
     </div>
   )
-} 
+}

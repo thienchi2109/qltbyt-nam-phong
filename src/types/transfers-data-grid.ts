@@ -28,6 +28,12 @@ export interface TransferListFilters {
   dateTo?: string
   /** Assignee filter */
   assigneeIds?: number[]
+  /** User role - for query key cache isolation only (not sent to API) */
+  _role?: string
+  /** User dia_ban_id - for query key cache isolation only (not sent to API) */
+  _diaBan?: number | null
+  /** Tenant key - for query key cache isolation only (not sent to API) */
+  _tenantKey?: string | number
 }
 
 export interface TransferEquipmentInfo {

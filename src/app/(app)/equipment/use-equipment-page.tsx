@@ -47,6 +47,7 @@ export function useEquipmentPage(): UseEquipmentPageReturn {
       isGlobal: auth.isGlobal,
       isRegionalLeader: auth.isRegionalLeader,
       userRole: auth.user?.role || "user",
+      userDiaBanId: auth.user?.dia_ban_id,
       shouldFetchEquipment: auth.shouldFetchEquipment,
       effectiveTenantKey: auth.effectiveTenantKey,
       selectedDonVi: auth.selectedDonVi,
@@ -59,15 +60,25 @@ export function useEquipmentPage(): UseEquipmentPageReturn {
       selectedLocations: filters.selectedLocations,
       selectedStatuses: filters.selectedStatuses,
       selectedClassifications: filters.selectedClassifications,
+      // Pass context values from auth hook
+      selectedFacilityId: auth.selectedFacilityId,
+      showSelector: auth.showSelector,
+      facilities: auth.facilities,
+      isFacilitiesLoading: auth.isFacilitiesLoading,
     }),
     [
       auth.isGlobal,
       auth.isRegionalLeader,
       auth.user?.role,
+      auth.user?.dia_ban_id,
       auth.shouldFetchEquipment,
       auth.effectiveTenantKey,
       auth.selectedDonVi,
       auth.currentTenantId,
+      auth.selectedFacilityId,
+      auth.showSelector,
+      auth.facilities,
+      auth.isFacilitiesLoading,
       filters.debouncedSearch,
       filters.sortParam,
       pagination,
@@ -142,12 +153,13 @@ export function useEquipmentPage(): UseEquipmentPageReturn {
   const [isFilterSheetOpen, setIsFilterSheetOpen] = React.useState(false)
 
   // Tenant change effect: clear filters + show toast
-  const prevTenantFilterRef = React.useRef(auth.tenantFilter)
+  // Track by effectiveTenantKey which now uses context's selectedFacilityId
+  const prevEffectiveTenantKeyRef = React.useRef(auth.effectiveTenantKey)
   React.useEffect(() => {
-    if (!auth.isGlobal) return
-    if (prevTenantFilterRef.current === auth.tenantFilter) return
+    if (!auth.showSelector) return
+    if (prevEffectiveTenantKeyRef.current === auth.effectiveTenantKey) return
 
-    prevTenantFilterRef.current = auth.tenantFilter
+    prevEffectiveTenantKeyRef.current = auth.effectiveTenantKey
     filters.resetFilters()
 
     // Show toast for tenant change
@@ -158,40 +170,34 @@ export function useEquipmentPage(): UseEquipmentPageReturn {
         : `Đơn vị ${auth.selectedDonVi}`
       toast({
         variant: "default",
-        title: "✅ Đã áp dụng bộ lọc đơn vị",
+        title: "Đã áp dụng bộ lọc đơn vị",
         description: `Hiển thị thiết bị thuộc ${tenantName}`,
       })
     }
-  }, [auth.tenantFilter, auth.isGlobal, auth.selectedDonVi, filters.resetFilters, data.tenantOptions, toast])
+  }, [auth.effectiveTenantKey, auth.showSelector, auth.selectedDonVi, filters.resetFilters, data.tenantOptions, toast])
 
   // Sync pending facility when sheet opens
   React.useEffect(() => {
     if (isFacilitySheetOpen) {
+      // Handle undefined as null for pending facility
       setPendingFacilityId(data.selectedFacilityId ?? null)
     }
   }, [isFacilitySheetOpen, data.selectedFacilityId])
 
-  // Facility handlers
+  // Facility handlers - now use context's setSelectedFacilityId via auth hook
   const handleFacilityApply = React.useCallback(() => {
-    data.setSelectedFacilityId(pendingFacilityId ?? null)
-    if (auth.isGlobal && pendingFacilityId) {
-      auth.setTenantFilter(String(pendingFacilityId))
-    } else if (auth.isGlobal) {
-      auth.setTenantFilter("all")
-    }
+    auth.setSelectedFacilityId(pendingFacilityId)
     setIsFacilitySheetOpen(false)
-  }, [pendingFacilityId, data.setSelectedFacilityId, auth.isGlobal, auth.setTenantFilter])
+  }, [pendingFacilityId, auth.setSelectedFacilityId])
 
   const handleFacilityClear = React.useCallback(() => {
     setPendingFacilityId(null)
-    data.setSelectedFacilityId(null)
-    if (auth.isGlobal) {
-      auth.setTenantFilter("all")
-    }
+    auth.setSelectedFacilityId(null)
     setIsFacilitySheetOpen(false)
-  }, [data.setSelectedFacilityId, auth.isGlobal, auth.setTenantFilter])
+  }, [auth.setSelectedFacilityId])
 
   const handleFacilityCancel = React.useCallback(() => {
+    // Handle undefined as null for pending facility
     setPendingFacilityId(data.selectedFacilityId ?? null)
     setIsFacilitySheetOpen(false)
   }, [data.selectedFacilityId])
@@ -211,7 +217,7 @@ export function useEquipmentPage(): UseEquipmentPageReturn {
   }, [table.table, table.setPreservePageState, onDataMutationSuccess])
 
   // Computed values
-  const hasFacilityFilter = data.showFacilityFilter && data.selectedFacilityId !== null
+  const hasFacilityFilter = data.showFacilityFilter && data.selectedFacilityId !== null && data.selectedFacilityId !== undefined
 
   // Memoized return value for performance
   return React.useMemo<UseEquipmentPageReturn>(
@@ -258,11 +264,11 @@ export function useEquipmentPage(): UseEquipmentPageReturn {
       classifications: data.classifications,
       filterData: data.filterData,
 
-      // Facility filter
+      // Facility filter - now from context via auth/data hooks
       showFacilityFilter: data.showFacilityFilter,
       facilities: data.facilities,
-      selectedFacilityId: data.selectedFacilityId,
-      setSelectedFacilityId: data.setSelectedFacilityId,
+      selectedFacilityId: data.selectedFacilityId ?? null,  // Convert undefined to null for return type
+      setSelectedFacilityId: auth.setSelectedFacilityId,
       activeFacility: data.activeFacility,
       hasFacilityFilter,
       isFacilitiesLoading: data.isFacilitiesLoading,

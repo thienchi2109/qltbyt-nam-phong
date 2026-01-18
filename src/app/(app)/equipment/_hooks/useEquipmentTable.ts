@@ -66,7 +66,7 @@ export interface UseEquipmentTableParams {
   setPagination: React.Dispatch<React.SetStateAction<{ pageIndex: number; pageSize: number }>>
   // For pagination reset on filter change
   selectedDonVi: number | null
-  selectedFacilityId: number | null
+  selectedFacilityId: number | null | undefined
 }
 
 export interface UseEquipmentTableReturn {

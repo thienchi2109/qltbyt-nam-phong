@@ -68,7 +68,7 @@ export function UserManagement() {
       toast({
         variant: "destructive",
         title: "Thiếu thông tin",
-        description: "Vui lòng chọn user và nhập mật khẩu mới"
+        description: "Vui lòng chọn người dùng và nhập mật khẩu mới"
       });
       return;
     }
@@ -85,7 +85,7 @@ export function UserManagement() {
       if (error) throw error;
 
       toast({
-        title: "Reset thành công",
+        title: "Đặt lại mật khẩu thành công",
         description: `Mật khẩu của ${selectedUser} đã được reset`
       });
 
@@ -94,7 +94,7 @@ export function UserManagement() {
     } catch (error: any) {
       toast({
         variant: "destructive",
-        title: "Lỗi reset password",
+        title: "Lỗi đặt lại mật khẩu",
         description: error.message
       });
     } finally {
@@ -108,7 +108,7 @@ export function UserManagement() {
       toast({
         variant: "destructive",
         title: "Thiếu thông tin",
-        description: "Vui lòng chọn user"
+        description: "Vui lòng chọn người dùng"
       });
       return;
     }
@@ -194,17 +194,17 @@ export function UserManagement() {
           {/* Reset Password Section */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-4">
-              <h3 className="text-lg font-semibold">Reset Mật Khẩu</h3>
+              <h3 className="text-lg font-semibold">Đặt lại mật khẩu</h3>
               
               <div>
-                <Label htmlFor="user-select">Chọn User</Label>
+                <Label htmlFor="user-select">Chọn người dùng</Label>
                 <select
                   id="user-select"
                   className="w-full p-2 border rounded"
                   value={selectedUser}
                   onChange={(e) => setSelectedUser(e.target.value)}
                 >
-                  <option value="">-- Chọn user --</option>
+                  <option value="">-- Chọn người dùng --</option>
                   {users.map(u => (
                     <option key={u.username} value={u.username}>
                       {u.username} - {u.full_name}

@@ -12,7 +12,6 @@ import {
 } from "@tanstack/react-table"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { useToast } from "@/hooks/use-toast"
-import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
   Card,
@@ -23,16 +22,9 @@ import {
   CardFooter,
 } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
 // Supabase client is not used directly; use RPC proxy instead
 import { callRpc } from "@/lib/rpc-client"
-import { Building2, Loader2, PlusCircle, Layers, Clock, CheckCircle, CheckCheck, XCircle } from "lucide-react"
+import { Loader2, PlusCircle, Layers, Clock, CheckCircle, CheckCheck, XCircle } from "lucide-react"
 import { format } from "date-fns"
 import { cn } from "@/lib/utils"
 import { ScrollArea } from "@/components/ui/scroll-area"
@@ -44,9 +36,10 @@ import { useIsMobile } from "@/hooks/use-mobile"
 import { useSearchParams } from "next/navigation"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog"
 import { useSearchDebounce } from "@/hooks/use-debounce"
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { RepairRequestAlert } from "@/components/repair-request-alert"
-import { useFacilityFilter, type FacilityOption } from "@/hooks/useFacilityFilter"
+import { useTenantSelection } from "@/contexts/TenantSelectionContext"
+import { TenantSelector } from "@/components/shared/TenantSelector"
+import type { FacilityOption } from "@/types/tenant"
 import { useMediaQuery } from "@/hooks/use-media-query"
 import { ErrorBoundary } from "@/components/error-boundary"
 import { Sheet, SheetContent, SheetHeader as SheetHeaderUI, SheetTitle, SheetDescription } from "@/components/ui/sheet"
@@ -155,42 +148,17 @@ function RepairRequestsPageClientInner() {
     toast,
   })
 
-  // Regional leader facility filtering (server mode - matches Equipment page pattern)
+  // Regional leader facility filtering via TenantSelectionContext
   const effectiveTenantKey = user?.don_vi ?? user?.current_don_vi ?? 'none';
 
-  // Separate query for facility options (unfiltered list) - uses dedicated lightweight RPC
-  const { data: facilityOptionsData } = useQuery<FacilityOption[]>({
-    queryKey: ['repair_request_facilities', { tenant: effectiveTenantKey }],
-    queryFn: async () => {
-      try {
-        // Call dedicated RPC that returns only facility IDs and names (lightweight ~1-2KB vs ~500KB)
-        const result = await callRpc<FacilityOption[]>({
-          fn: 'get_repair_request_facilities',
-          args: {},
-        });
-
-        return result || [];
-      } catch (error) {
-        console.error('[repair-requests] Failed to fetch facility options:', error);
-        return [];
-      }
-    },
-    enabled: !!user,
-    staleTime: 5 * 60_000, // 5 minutes (facilities change rarely)
-    gcTime: 10 * 60_000,
-  });
-
-  const { selectedFacilityId, setSelectedFacilityId: setFacilityId, showFacilityFilter } = useFacilityFilter({
-    mode: 'server',
-    userRole: (user?.role as string) || 'user',
-    facilities: facilityOptionsData || [],
-  })
-
-  // Wrapper to trigger refetch when facility changes
-  const setSelectedFacilityId = React.useCallback((id: number | null) => {
-    setFacilityId(id);
-    // Don't manually refetch - let queryKey change trigger it
-  }, [setFacilityId]);
+  // Get facility selection from shared context
+  const {
+    selectedFacilityId,
+    setSelectedFacilityId,
+    facilities: facilityOptions,
+    showSelector: showFacilityFilter,
+    shouldFetchData,
+  } = useTenantSelection()
 
   // TanStack Query for repair requests (server-side pagination + facility filtering + date range)
   const {
@@ -201,6 +169,8 @@ function RepairRequestsPageClientInner() {
   } = useQuery<{ data: RepairRequestWithEquipment[], total: number, page: number, pageSize: number }>({
     queryKey: ['repair_request_list', {
       tenant: effectiveTenantKey,
+      role: user?.role,           // Cache isolation by role
+      diaBan: user?.dia_ban_id,   // Cache isolation by region
       donVi: selectedFacilityId,
       statuses: uiFilters.status || [],
       q: debouncedSearch || null,
@@ -226,7 +196,7 @@ function RepairRequestsPageClientInner() {
       });
       return result;
     },
-    enabled: !!user,
+    enabled: !!user && shouldFetchData,
     placeholderData: (previousData) => previousData, // Keep previous data during refetch (prevents flash)
     staleTime: 30_000, // 30 seconds (repair requests change frequently)
     gcTime: 5 * 60_000, // 5 minutes
@@ -236,29 +206,12 @@ function RepairRequestsPageClientInner() {
   // Extract data from query response
   const requests = repairRequestsRes?.data ?? [];
 
-  // Use facilities from separate query (prevents circular dependency)
-  const facilityOptions = facilityOptionsData || [];
-
   const selectedFacilityName = React.useMemo(() => {
-    if (!selectedFacilityId) return null;
-    const facility = facilityOptions.find((f: FacilityOption) => f.id === selectedFacilityId);
+    // Explicit check for null/undefined to handle facility ID 0 correctly
+    if (selectedFacilityId === null || selectedFacilityId === undefined) return null;
+    const facility = facilityOptions.find(f => f.id === selectedFacilityId);
     return facility?.name ?? null;
   }, [selectedFacilityId, facilityOptions]);
-
-  // Backward-compat aliases for existing UI code
-  const selectedFacility = selectedFacilityName;
-
-  // Memoize facility counts for display (from current filtered data only)
-  const facilityCounts = React.useMemo(() => {
-    const counts = new Map<number, number>();
-    requests.forEach((r: RepairRequestWithEquipment) => {
-      const facilityId = r.thiet_bi?.facility_id;
-      if (facilityId) {
-        counts.set(facilityId, (counts.get(facilityId) || 0) + 1);
-      }
-    });
-    return counts;
-  }, [requests]);
 
   const totalRequests = repairRequestsRes?.total ?? 0;
 
@@ -266,7 +219,15 @@ function RepairRequestsPageClientInner() {
   const STATUSES = ['Chờ xử lý', 'Đã duyệt', 'Hoàn thành', 'Không HT'] as const
   type Status = typeof STATUSES[number]
   const { data: statusCounts, isLoading: statusCountsLoading } = useQuery<Record<Status, number>>({
-    queryKey: ['repair_request_status_counts', { facilityId: selectedFacilityId, search: debouncedSearch, dateFrom: uiFilters.dateRange?.from || null, dateTo: uiFilters.dateRange?.to || null }],
+    queryKey: ['repair_request_status_counts', {
+      tenant: effectiveTenantKey,
+      role: user?.role,           // Cache isolation by role
+      diaBan: user?.dia_ban_id,   // Cache isolation by region
+      facilityId: selectedFacilityId,
+      search: debouncedSearch,
+      dateFrom: uiFilters.dateRange?.from || null,
+      dateTo: uiFilters.dateRange?.to || null,
+    }],
     queryFn: async () => {
       const res = await callRpc<Record<Status, number>>({
         fn: 'repair_request_status_counts',
@@ -280,10 +241,10 @@ function RepairRequestsPageClientInner() {
       return res as Record<Status, number>
     },
     staleTime: 30_000,
-    enabled: !!user,
+    enabled: !!user && shouldFetchData,
   })
 
-  // Note: showFacilityFilter comes from useFacilityFilter hook above
+  // Note: showFacilityFilter comes from TenantSelectionContext
   // It returns true for global, admin, and regional_leader roles
 
   // Initial load: fetch a small equipment list via RPC
@@ -672,74 +633,10 @@ function RepairRequestsPageClientInner() {
                     Tất cả các yêu cầu sửa chữa đã được ghi nhận.
                   </CardDescription>
 
-                  {/* Facility filter for global, admin, and regional leaders */}
+                  {/* Tenant selector from shared context */}
                   {showFacilityFilter && (
-                    <div className="flex items-center gap-2 mt-4 flex-wrap">
-                      <div className="flex items-center gap-2 flex-1 min-w-0">
-                        <Building2 className="h-4 w-4 text-muted-foreground shrink-0" />
-                        <Select
-                          value={selectedFacilityId?.toString() || "all"}
-                          onValueChange={(value) => setSelectedFacilityId(value === "all" ? null : Number(value))}
-                          disabled={facilityOptions.length === 0}
-                        >
-                          <SelectTrigger className="h-9 border-dashed">
-                            <SelectValue placeholder="Chọn cơ sở..." />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="all">
-                              <div className="flex items-center gap-2">
-                                <Building2 className="h-4 w-4 text-muted-foreground" />
-                                <span>Tất cả cơ sở</span>
-                              </div>
-                            </SelectItem>
-                            {facilityOptions.length === 0 ? (
-                              <SelectItem value="empty" disabled>
-                                <span className="text-muted-foreground italic">Chưa có yêu cầu</span>
-                              </SelectItem>
-                            ) : (
-                              facilityOptions.map((facility) => {
-                                const count = facilityCounts.get(facility.id) || 0;
-                                return (
-                                  <SelectItem key={facility.id} value={facility.id.toString()}>
-                                    <div className="flex items-center justify-between w-full gap-4">
-                                      <span className="truncate">{facility.name}</span>
-                                      <span className="text-xs text-muted-foreground shrink-0">{count}</span>
-                                    </div>
-                                  </SelectItem>
-                                );
-                              })
-                            )}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      {selectedFacilityName && selectedFacilityId && (
-                        <TooltipProvider>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Badge variant="secondary" className="shrink-0 cursor-help">
-                                {facilityCounts.get(selectedFacilityId) || 0} yêu cầu
-                              </Badge>
-                            </TooltipTrigger>
-                            <TooltipContent>
-                              <p>Số yêu cầu hiển thị ở cơ sở này</p>
-                            </TooltipContent>
-                          </Tooltip>
-                        </TooltipProvider>
-                      )}
-                      {!selectedFacility && facilityOptions.length > 0 && (
-                        <TooltipProvider>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Badge variant="outline" className="shrink-0 cursor-help">
-                                {facilityOptions.length} cơ sở • {totalRequests} yêu cầu
-                              </Badge>
-                            </TooltipTrigger>
-                            <TooltipContent>
-                              <p>Tổng số cơ sở và yêu cầu hiển thị</p>
-                            </TooltipContent>
-                          </Tooltip>
-                        </TooltipProvider>
-                      )}
+                    <div className="mt-4">
+                      <TenantSelector />
                     </div>
                   )}
                 </CardHeader>
