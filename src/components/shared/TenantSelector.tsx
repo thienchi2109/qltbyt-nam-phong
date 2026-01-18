@@ -120,6 +120,7 @@ export function TenantSelector({ className }: { className?: string }) {
 
       {/* Mobile/Tablet (<xl): Button trigger - hidden on desktop */}
       <Button
+        type="button"
         variant="outline"
         onClick={() => setSheetOpen(true)}
         disabled={isLoading}
