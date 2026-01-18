@@ -25,7 +25,7 @@ export type {
 // Re-export hook return type
 export type { UseEquipmentPageReturn } from "./types"
 
-import type { Equipment, UsageLog } from "./types"
+import type { Equipment } from "./types"
 import type { UseEquipmentPageReturn } from "./types"
 
 export function useEquipmentPage(): UseEquipmentPageReturn {
@@ -145,10 +145,6 @@ export function useEquipmentPage(): UseEquipmentPageReturn {
   // NOTE: Legacy dialog state removed - now managed by EquipmentDialogContext
   // Route sync pending actions are exposed for handling in page.tsx with context
 
-  // Facility sheet state
-  const [isFacilitySheetOpen, setIsFacilitySheetOpen] = React.useState(false)
-  const [pendingFacilityId, setPendingFacilityId] = React.useState<number | null>(null)
-
   // Filter sheet state (not a dialog - stays here)
   const [isFilterSheetOpen, setIsFilterSheetOpen] = React.useState(false)
 
@@ -176,31 +172,10 @@ export function useEquipmentPage(): UseEquipmentPageReturn {
     }
   }, [auth.effectiveTenantKey, auth.showSelector, auth.selectedDonVi, filters.resetFilters, data.tenantOptions, toast])
 
-  // Sync pending facility when sheet opens
-  React.useEffect(() => {
-    if (isFacilitySheetOpen) {
-      // Handle undefined as null for pending facility
-      setPendingFacilityId(data.selectedFacilityId ?? null)
-    }
-  }, [isFacilitySheetOpen, data.selectedFacilityId])
-
-  // Facility handlers - now use context's setSelectedFacilityId via auth hook
-  const handleFacilityApply = React.useCallback(() => {
-    auth.setSelectedFacilityId(pendingFacilityId)
-    setIsFacilitySheetOpen(false)
-  }, [pendingFacilityId, auth.setSelectedFacilityId])
-
+  // Facility clear handler - simplified (sheet now managed by TenantSelector)
   const handleFacilityClear = React.useCallback(() => {
-    setPendingFacilityId(null)
     auth.setSelectedFacilityId(null)
-    setIsFacilitySheetOpen(false)
   }, [auth.setSelectedFacilityId])
-
-  const handleFacilityCancel = React.useCallback(() => {
-    // Handle undefined as null for pending facility
-    setPendingFacilityId(data.selectedFacilityId ?? null)
-    setIsFacilitySheetOpen(false)
-  }, [data.selectedFacilityId])
 
   // Mutation success handlers
   const onDataMutationSuccess = React.useCallback(() => {
@@ -272,15 +247,7 @@ export function useEquipmentPage(): UseEquipmentPageReturn {
       activeFacility: data.activeFacility,
       hasFacilityFilter,
       isFacilitiesLoading: data.isFacilitiesLoading,
-
-      // Facility sheet
-      isFacilitySheetOpen,
-      setIsFacilitySheetOpen,
-      pendingFacilityId,
-      setPendingFacilityId,
-      handleFacilityApply,
       handleFacilityClear,
-      handleFacilityCancel,
 
       // Filter sheet
       isFilterSheetOpen,
@@ -312,11 +279,7 @@ export function useEquipmentPage(): UseEquipmentPageReturn {
       columns,
       filters,
       hasFacilityFilter,
-      isFacilitySheetOpen,
-      pendingFacilityId,
-      handleFacilityApply,
       handleFacilityClear,
-      handleFacilityCancel,
       isFilterSheetOpen,
       exports,
       onDataMutationSuccess,

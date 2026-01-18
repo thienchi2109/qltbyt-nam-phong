@@ -106,15 +106,7 @@ export interface UseEquipmentPageReturn {
   activeFacility: FacilityOption | null
   hasFacilityFilter: boolean
   isFacilitiesLoading: boolean
-
-  // Facility sheet
-  isFacilitySheetOpen: boolean
-  setIsFacilitySheetOpen: React.Dispatch<React.SetStateAction<boolean>>
-  pendingFacilityId: number | null
-  setPendingFacilityId: React.Dispatch<React.SetStateAction<number | null>>
-  handleFacilityApply: () => void
   handleFacilityClear: () => void
-  handleFacilityCancel: () => void
 
   // Filter sheet
   isFilterSheetOpen: boolean

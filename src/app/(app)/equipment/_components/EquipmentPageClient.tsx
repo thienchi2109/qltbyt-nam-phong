@@ -21,7 +21,6 @@ import {
 import { Skeleton } from "@/components/ui/skeleton"
 import { FilterBottomSheet } from "@/components/equipment/filter-bottom-sheet"
 import { EquipmentPagination } from "@/components/equipment/equipment-pagination"
-import { FacilityFilterSheet } from "@/components/equipment/facility-filter-sheet"
 import { EquipmentToolbar } from "@/components/equipment/equipment-toolbar"
 import { TenantSelector } from "@/components/shared/TenantSelector"
 
@@ -119,21 +118,8 @@ const EquipmentPageContent = React.memo(function EquipmentPageContent({
 
     // Facility filter - now from TenantSelectionContext
     showFacilityFilter,
-    facilities,
-    selectedFacilityId,
-    setSelectedFacilityId,
-    activeFacility,
     hasFacilityFilter,
-    isFacilitiesLoading,
-
-    // Facility sheet
-    isFacilitySheetOpen,
-    setIsFacilitySheetOpen,
-    pendingFacilityId,
-    setPendingFacilityId,
-    handleFacilityApply,
     handleFacilityClear,
-    handleFacilityCancel,
 
     // Filter sheet
     isFilterSheetOpen,
@@ -186,11 +172,11 @@ const EquipmentPageContent = React.memo(function EquipmentPageContent({
             </div>
 
             {/* Facility selector using shared TenantSelector component */}
-            {showFacilityFilter && (
+            {showFacilityFilter ? (
               <div className="flex w-full max-w-md items-center gap-2">
                 <TenantSelector className="flex-1" />
               </div>
-            )}
+            ) : null}
           </div>
         </CardHeader>
 
@@ -254,7 +240,7 @@ const EquipmentPageContent = React.memo(function EquipmentPageContent({
       </Card>
 
       {/* Floating Add Button - Mobile only */}
-      {!isRegionalLeader && (
+      {!isRegionalLeader ? (
         <div className="fixed bottom-20 right-6 md:hidden z-[100]">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -276,7 +262,7 @@ const EquipmentPageContent = React.memo(function EquipmentPageContent({
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
-      )}
+      ) : null}
 
       <FilterBottomSheet
         open={isFilterSheetOpen}
@@ -285,20 +271,6 @@ const EquipmentPageContent = React.memo(function EquipmentPageContent({
         columnFilters={columnFilters}
         onApply={setColumnFilters}
         onClearAll={() => setColumnFilters([])}
-      />
-
-      <FacilityFilterSheet
-        open={isFacilitySheetOpen}
-        onOpenChange={setIsFacilitySheetOpen}
-        facilities={facilities}
-        isLoading={isFacilitiesLoading}
-        selectedFacilityId={selectedFacilityId}
-        pendingFacilityId={pendingFacilityId}
-        onPendingChange={setPendingFacilityId}
-        onApply={handleFacilityApply}
-        onClear={handleFacilityClear}
-        onCancel={handleFacilityCancel}
-        totalEquipmentCount={total}
       />
     </>
   )

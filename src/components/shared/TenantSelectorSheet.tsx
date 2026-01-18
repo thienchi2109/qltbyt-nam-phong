@@ -1,8 +1,9 @@
 /**
- * facility-filter-sheet.tsx
+ * TenantSelectorSheet.tsx
  *
- * Bottom sheet for regional leaders to filter equipment by facility.
- * Includes search, facility list with equipment counts, and apply/clear/cancel buttons.
+ * Shared bottom sheet for selecting tenant/facility on mobile/tablet.
+ * Uses TenantSelectionContext for state - no prop drilling.
+ * Auto-applies selection on tap (simpler UX than Apply/Cancel pattern).
  */
 
 "use client"
@@ -10,46 +11,32 @@
 import * as React from "react"
 import { Building2, Check, Search, X } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Skeleton } from "@/components/ui/skeleton"
 import {
   Sheet,
-  SheetClose,
   SheetContent,
-  SheetFooter,
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet"
-import type { FacilityOption } from "@/types/tenant"
+import { useTenantSelection } from "@/contexts/TenantSelectionContext"
 
-export interface FacilityFilterSheetProps {
+export interface TenantSelectorSheetProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  facilities: FacilityOption[]
-  isLoading: boolean
-  selectedFacilityId: number | null | undefined
-  pendingFacilityId: number | null
-  onPendingChange: (facilityId: number | null) => void
-  onApply: () => void
-  onClear: () => void
-  onCancel: () => void
-  totalEquipmentCount: number
 }
 
-export function FacilityFilterSheet({
+export function TenantSelectorSheet({
   open,
   onOpenChange,
-  facilities,
-  isLoading,
-  selectedFacilityId,
-  pendingFacilityId,
-  onPendingChange,
-  onApply,
-  onClear,
-  onCancel,
-  totalEquipmentCount,
-}: FacilityFilterSheetProps) {
+}: TenantSelectorSheetProps) {
+  const {
+    selectedFacilityId,
+    setSelectedFacilityId,
+    facilities,
+    isLoading,
+  } = useTenantSelection()
+
   const [searchTerm, setSearchTerm] = React.useState("")
 
   // Clear search when sheet closes
@@ -59,21 +46,43 @@ export function FacilityFilterSheet({
     }
   }, [open])
 
+  // Memoize filtered facilities (per rerender-memo)
   const filteredFacilities = React.useMemo(() => {
     if (!searchTerm.trim()) return facilities
     const query = searchTerm.trim().toLowerCase()
-    return facilities.filter((facility) => facility.name.toLowerCase().includes(query))
+    return facilities.filter((facility) =>
+      facility.name.toLowerCase().includes(query)
+    )
   }, [searchTerm, facilities])
+
+  // Calculate total equipment count
+  const totalEquipmentCount = React.useMemo(() => {
+    return facilities.reduce((sum, f) => sum + (f.count ?? 0), 0)
+  }, [facilities])
+
+  // Auto-apply on selection (simpler UX)
+  const handleSelect = React.useCallback(
+    (facilityId: number | null) => {
+      setSelectedFacilityId(facilityId)
+      onOpenChange(false)
+    },
+    [setSelectedFacilityId, onOpenChange]
+  )
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="bottom" className="flex h-[70vh] flex-col rounded-t-3xl border-border/60 bg-background px-6 pb-6 pt-4">
+      <SheetContent
+        side="bottom"
+        className="flex h-[70vh] max-h-[70vh] flex-col rounded-t-3xl border-border/60 bg-background px-6 pb-6 pt-4"
+      >
         <SheetHeader>
-          <SheetTitle>Chọn cơ sở quản lý</SheetTitle>
+          <SheetTitle>Chọn cơ sở y tế</SheetTitle>
           <p className="text-sm text-muted-foreground">
-            Lọc danh sách thiết bị theo cơ sở thuộc địa bàn của bạn.
+            Chọn cơ sở để lọc dữ liệu theo đơn vị quản lý.
           </p>
         </SheetHeader>
+
+        {/* Search input */}
         <div className="mt-4">
           <div className="relative">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -83,7 +92,8 @@ export function FacilityFilterSheet({
               placeholder="Tìm kiếm cơ sở..."
               className="h-11 rounded-xl border-border/70 pl-9 pr-9"
             />
-            {searchTerm && (
+            {/* Use explicit ternary for conditional (per rendering-conditional-render) */}
+            {searchTerm.length > 0 ? (
               <button
                 type="button"
                 onClick={() => setSearchTerm("")}
@@ -91,28 +101,36 @@ export function FacilityFilterSheet({
               >
                 <X className="h-4 w-4" />
               </button>
-            )}
+            ) : null}
           </div>
         </div>
 
+        {/* Facility list */}
         <div className="mt-4 flex-1 overflow-y-auto space-y-2">
+          {/* "All facilities" option */}
           <button
             type="button"
-            onClick={() => onPendingChange(null)}
+            onClick={() => handleSelect(null)}
             className={cn(
               "flex w-full items-center justify-between rounded-2xl border px-4 py-3 text-left text-sm transition",
-              pendingFacilityId === null ? "border-primary bg-primary/10 text-primary" : "border-border/60 hover:border-primary/60 hover:bg-primary/5"
+              selectedFacilityId === null
+                ? "border-primary bg-primary/10 text-primary"
+                : "border-border/60 hover:border-primary/60 hover:bg-primary/5"
             )}
           >
             <div className="flex items-center gap-2">
               <Building2 className="h-4 w-4" />
               <span className="font-medium">Tất cả cơ sở</span>
+              {selectedFacilityId === null ? (
+                <Check className="h-4 w-4 text-primary" />
+              ) : null}
             </div>
             <span className="text-xs text-muted-foreground">
               {facilities.length} cơ sở • {totalEquipmentCount} TB
             </span>
           </button>
 
+          {/* Facility list with loading/empty states */}
           {isLoading ? (
             <div className="space-y-2">
               {Array.from({ length: 6 }).map((_, index) => (
@@ -121,20 +139,24 @@ export function FacilityFilterSheet({
             </div>
           ) : filteredFacilities.length > 0 ? (
             filteredFacilities.map((facility) => {
-              const isSelected = pendingFacilityId === facility.id
+              const isSelected = selectedFacilityId === facility.id
               return (
                 <button
                   key={facility.id}
                   type="button"
-                  onClick={() => onPendingChange(facility.id)}
+                  onClick={() => handleSelect(facility.id)}
                   className={cn(
                     "flex w-full items-center justify-between rounded-2xl border px-4 py-3 text-left text-sm transition",
-                    isSelected ? "border-primary bg-primary/10 text-primary" : "border-border/60 hover:border-primary/60 hover:bg-primary/5"
+                    isSelected
+                      ? "border-primary bg-primary/10 text-primary"
+                      : "border-border/60 hover:border-primary/60 hover:bg-primary/5"
                   )}
                 >
                   <span className="flex items-center gap-2 truncate">
                     <span className="truncate">{facility.name}</span>
-                    {isSelected && <Check className="h-4 w-4 text-primary" />}
+                    {isSelected ? (
+                      <Check className="h-4 w-4 text-primary" />
+                    ) : null}
                   </span>
                   <span className="text-xs text-muted-foreground">
                     {facility.count ?? 0} TB
@@ -148,31 +170,6 @@ export function FacilityFilterSheet({
             </div>
           )}
         </div>
-
-        <SheetFooter className="mt-4 flex-col sm:flex-col">
-          <div className="grid w-full grid-cols-1 gap-2 sm:grid-cols-3">
-            <Button
-              variant="outline"
-              onClick={onCancel}
-              className="w-full"
-            >
-              Hủy
-            </Button>
-            <Button
-              variant="ghost"
-              className="w-full border border-border/60"
-              onClick={onClear}
-              disabled={pendingFacilityId === null && selectedFacilityId === null}
-            >
-              Xóa
-            </Button>
-            <SheetClose asChild>
-              <Button onClick={onApply} className="w-full">
-                Áp dụng
-              </Button>
-            </SheetClose>
-          </div>
-        </SheetFooter>
       </SheetContent>
     </Sheet>
   )
