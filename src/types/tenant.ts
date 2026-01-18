@@ -9,7 +9,7 @@ export interface FacilityOption {
   count?: number  // Optional - not all RPCs return count
 }
 
-export type TenantRole = 'global' | 'admin' | 'regional_leader' | 'to_qltb' | 'user'
+export type TenantRole = 'global' | 'admin' | 'regional_leader' | 'to_qltb' | 'technician' | 'qltb_khoa' | 'user'
 
 /**
  * Check if the given role has multi-tenant selection privileges.

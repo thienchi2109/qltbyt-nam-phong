@@ -61,6 +61,18 @@ export function TenantSelectionProvider({ children }: { children: React.ReactNod
     return undefined
   })
 
+  // Clear sessionStorage when user logs out to prevent stale selections
+  React.useEffect(() => {
+    if (status === 'unauthenticated') {
+      setSelectedFacilityIdState(undefined)
+      try {
+        sessionStorage.removeItem(STORAGE_KEY)
+      } catch {
+        // Ignore storage errors
+      }
+    }
+  }, [status])
+
   // Stable setter with sessionStorage persistence
   // null = "all facilities", number = specific facility
   const setSelectedFacilityId = React.useCallback((id: number | null) => {
