@@ -94,8 +94,20 @@ export function TenantSelectionProvider({ children }: { children: React.ReactNod
 
   // Fetch facilities for global/regional users
   const { data: facilities = [], isLoading } = useQuery<FacilityOption[]>({
-    queryKey: ["accessible_facilities", { role: user?.role, diaBan: user?.dia_ban_id }],
-    queryFn: () => callRpc({ fn: "get_accessible_facilities", args: {} }),
+    queryKey: ["facilities_with_equipment_count", { role: user?.role, diaBan: user?.dia_ban_id }],
+    queryFn: async () => {
+      const result = await callRpc<{ id: number; name: string; code?: string; equipment_count: number }[]>({
+        fn: "get_facilities_with_equipment_count",
+        args: {}
+      })
+      // Map equipment_count to count for FacilityOption compatibility
+      return result.map(f => ({
+        id: f.id,
+        name: f.name,
+        code: f.code,
+        count: f.equipment_count
+      }))
+    },
     enabled: status === "authenticated" && showSelector,
     staleTime: 5 * 60_000, // 5 minutes
   })
