@@ -18,17 +18,21 @@ import { Label } from "@/components/ui/label"
 import { useToast } from "@/hooks/use-toast"
 import { callRpc } from "@/lib/rpc-client"
 import type { Equipment } from "@/lib/data"
+import { equipmentStatusOptions } from "@/components/equipment/equipment-table-columns"
 
 // Required fields for equipment validation
-const REQUIRED_FIELDS = {
+export const REQUIRED_FIELDS = {
   'khoa_phong_quan_ly': 'Khoa/phòng quản lý',
   'nguoi_dang_truc_tiep_quan_ly': 'Người sử dụng',
   'tinh_trang_hien_tai': 'Tình trạng',
   'vi_tri_lap_dat': 'Vị trí lắp đặt'
 } as const;
 
+// Valid status values - moved to module level to avoid recreation on each validation call
+const VALID_STATUSES: Set<string> = new Set(equipmentStatusOptions);
+
 // Validation function for equipment data
-const validateEquipmentData = (data: Partial<Equipment>[], headerMapping: Record<string, string>) => {
+export const validateEquipmentData = (data: Partial<Equipment>[], headerMapping: Record<string, string>) => {
   const errors: string[] = [];
   const validationResults: { isValid: boolean; missingFields: string[] }[] = [];
 
@@ -42,6 +46,15 @@ const validateEquipmentData = (data: Partial<Equipment>[], headerMapping: Record
         missingFields.push(displayName);
       }
     });
+
+    // Validate status value if provided
+    const status = item.tinh_trang_hien_tai;
+    if (status && typeof status === 'string') {
+      const trimmedStatus = status.trim();
+      if (trimmedStatus !== '' && !VALID_STATUSES.has(trimmedStatus)) {
+        errors.push(`Dòng ${index + 2}: Tình trạng "${trimmedStatus}" không hợp lệ. Phải là một trong: ${equipmentStatusOptions.join(', ')}`);
+      }
+    }
 
     validationResults.push({
       isValid: missingFields.length === 0,
@@ -210,7 +223,7 @@ export function ImportEquipmentDialog({ open, onOpenChange, onSuccess }: ImportE
         const workbook = await readExcelFile(file)
         const sheetName = workbook.SheetNames[0]
         const worksheet = workbook.Sheets[sheetName]
-        const json: Record<string, any>[] = await worksheetToJson(worksheet)
+        const json = await worksheetToJson(worksheet)
 
         if (json.length === 0) {
             setError("File không có dữ liệu. Vui lòng kiểm tra lại file của bạn.")
@@ -300,12 +313,87 @@ export function ImportEquipmentDialog({ open, onOpenChange, onSuccess }: ImportE
       const inserted = result?.inserted ?? parsedData.length
       const failed = result?.failed ?? 0
 
-      toast({
-        title: failed > 0 ? "Nhập hoàn tất với một số lỗi" : "Thành công",
-        description: failed > 0
-          ? `Đã nhập ${inserted}/${result?.total ?? parsedData.length} thiết bị. ${failed} bản ghi lỗi.`
-          : `Đã nhập thành công ${inserted} thiết bị.`,
-      })
+      // Translate common PostgreSQL errors to Vietnamese
+      const translateError = (error: string): string => {
+        if (!error) return 'Lỗi không xác định'
+
+        // Duplicate key errors
+        if (error.includes('duplicate key') && error.includes('ma_thiet_bi')) {
+          return 'Mã thiết bị đã tồn tại (trùng lặp)'
+        }
+        if (error.includes('duplicate key')) {
+          return 'Dữ liệu trùng lặp'
+        }
+
+        // Permission errors (PostgreSQL returns lowercase "permission denied")
+        if (error.toLowerCase().includes('permission denied')) {
+          return 'Không có quyền thực hiện'
+        }
+
+        // Null/required field errors
+        if (error.includes('null value in column')) {
+          const match = error.match(/null value in column "(\w+)"/)
+          const field = match?.[1] || 'không xác định'
+          return `Thiếu giá trị bắt buộc: ${field}`
+        }
+
+        // Data type errors
+        if (error.includes('invalid input syntax for type integer')) {
+          return 'Định dạng số không hợp lệ'
+        }
+        if (error.includes('invalid input syntax for type date')) {
+          return 'Định dạng ngày không hợp lệ (dùng DD/MM/YYYY)'
+        }
+        if (error.includes('invalid input syntax for type numeric')) {
+          return 'Định dạng số thập phân không hợp lệ'
+        }
+        if (error.includes('invalid input syntax')) {
+          return 'Định dạng dữ liệu không hợp lệ'
+        }
+
+        // Constraint violations
+        if (error.includes('violates check constraint')) {
+          return 'Giá trị không hợp lệ theo ràng buộc'
+        }
+        if (error.includes('violates foreign key constraint')) {
+          return 'Tham chiếu không hợp lệ'
+        }
+
+        // Return original if no translation found (truncate if too long)
+        return error.length > 60 ? error.substring(0, 60) + '...' : error
+      }
+
+      // Extract error details for failed records
+      const failedDetails = (result?.details ?? [])
+        .filter((d: any) => !d.success)
+        .slice(0, 5) // Show first 5 errors to avoid overwhelming the user
+
+      if (failed > 0 && failedDetails.length > 0) {
+        // Build detailed error message with Vietnamese translations
+        const errorSummary = failedDetails
+          .map((d: any) => `Dòng ${d.index + 2}: ${translateError(d.error)}`)
+          .join('\n')
+
+        const moreErrors = failed > 5 ? `\n...và ${failed - 5} lỗi khác` : ''
+
+        toast({
+          variant: "destructive",
+          title: `Nhập hoàn tất với ${failed} lỗi`,
+          description: `Đã nhập ${inserted}/${result?.total ?? parsedData.length} thiết bị.\n\nChi tiết lỗi:\n${errorSummary}${moreErrors}`,
+          duration: 10000, // Show longer for error details
+        })
+      } else if (failed > 0) {
+        toast({
+          variant: "destructive",
+          title: "Nhập hoàn tất với một số lỗi",
+          description: `Đã nhập ${inserted}/${result?.total ?? parsedData.length} thiết bị. ${failed} bản ghi lỗi.`,
+        })
+      } else {
+        toast({
+          title: "Thành công",
+          description: `Đã nhập thành công ${inserted} thiết bị.`,
+        })
+      }
       onSuccess()
       handleClose()
     } catch (error: any) {

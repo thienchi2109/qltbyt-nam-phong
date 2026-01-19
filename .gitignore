@@ -26,6 +26,7 @@
 
 # local MCP config (contains secrets)
 .kilocode/mcp.json
+.mcp.json
 
 # debug
 npm-debug.log*
@@ -84,3 +85,16 @@ firebase_config.md
 # scripts/
 # docs/
 # DEVOPS_WORKFLOW_SUMMARY.md
+
+# bv (beads viewer) local config and caches
+.bv/
+tmpclaude-*-cwd
+
+# beads daemon-managed files
+.beads/issues.jsonl
+.beads/.sync.lock
+.beads/sync-state.json
+
+# Presentation workspace
+/workspace/
+create-pptx.js

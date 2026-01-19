@@ -152,7 +152,7 @@ export function useInventoryData(
         ngay_nhap: item.created_at,
         created_at: item.created_at,
         type: 'import' as const,
-        source: 'manual' as const,
+        source: (item.nguon_nhap === 'excel' ? 'excel' : 'manual') as 'manual' | 'excel',
         quantity: 1,
         value: item.gia_goc,
       }))

@@ -47,6 +47,7 @@ import { ChangePasswordDialog } from "@/components/change-password-dialog"
 import { NotificationBellDialog } from "@/components/notification-bell-dialog"
 import { RealtimeStatus } from "@/components/realtime-status"
 import { MobileFooterNav } from "@/components/mobile-footer-nav"
+import { HelpButton } from "@/components/onboarding/HelpButton"
 import { USER_ROLES } from "@/types/database"
 import { callRpc } from "@/lib/rpc-client"
 // Tenant switcher removed in favor of per-page tenant filters
@@ -85,6 +86,17 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     fetchSummary()
     return () => { cancelled = true }
   }, [user])
+
+  // Tour attribute mapping for Driver.js sidebar navigation tour
+  const tourAttributes: Record<string, string> = {
+    "/dashboard": "sidebar-nav-dashboard",
+    "/equipment": "sidebar-nav-equipment",
+    "/repair-requests": "sidebar-nav-repairs",
+    "/maintenance": "sidebar-nav-maintenance",
+    "/transfers": "sidebar-nav-transfers",
+    "/reports": "sidebar-nav-reports",
+    "/qr-scanner": "sidebar-nav-qr",
+  }
 
   // Dynamic nav items based on user role
   const navItems = React.useMemo(() => {
@@ -134,7 +146,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         <div className="hidden border-r border-slate-200 bg-white md:block shadow-[2px_0_8px_rgba(0,0,0,0.04)]">
           <div className="flex h-full max-h-screen flex-col">
             <div className="flex h-auto flex-col items-center gap-4 border-b border-slate-200 p-4">
-              <Link href="/" className="flex flex-col items-center gap-3 font-semibold text-primary">
+              <Link href="/" className="flex flex-col items-center gap-3 font-semibold text-primary" data-tour="sidebar-logo">
                 {/* Tenant-only logo in sidebar */}
                 {branding.isLoading ? (
                   <Skeleton className={isSidebarOpen ? "h-16 w-16" : "h-8 w-8"} />
@@ -158,6 +170,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                     )}
                     title={!isSidebarOpen ? label : ""}
                     aria-label={label}
+                    data-tour={tourAttributes[href]}
                   >
                     <Icon className={cn(
                       "h-5 w-5 transition-colors",
@@ -227,6 +240,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               size="icon"
               className="hidden shrink-0 md:flex touch-target"
               onClick={() => setSidebarOpen(!isSidebarOpen)}
+              data-tour="sidebar-toggle"
             >
               <Menu className="h-5 w-5" />
               <span className="sr-only">Toggle sidebar</span>
@@ -242,13 +256,19 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 {branding.isLoading ? (
                   <Skeleton className="h-5 w-48" />
                 ) : (
-                  <TenantName name={branding.data?.name ?? null} className="text-base lg:text-lg" />
+                  <TenantName
+                    name={branding.data?.name ?? null}
+                    className="text-sm sm:text-base lg:text-lg truncate max-w-[calc(100vw-120px)] sm:max-w-[400px] md:max-w-none"
+                  />
                 )}
               </div>
             </div>
 
             {/* Realtime Status */}
-            <RealtimeStatus variant="icon" />
+            <RealtimeStatus variant="icon" className="hidden md:flex" />
+
+            {/* Help Button for Onboarding Tours */}
+            <HelpButton className="hidden md:flex" />
 
             {/* Tenant switcher removed */}
 

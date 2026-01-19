@@ -3,7 +3,6 @@
 import * as React from "react"
 import type { ColumnFiltersState, SortingState } from "@tanstack/react-table"
 import {
-  flexRender,
   getCoreRowModel,
   getFacetedRowModel,
   getFacetedUniqueValues,
@@ -25,17 +24,6 @@ import {
 } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table"
-import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
-import { Input } from "@/components/ui/input"
-import {
   Select,
   SelectContent,
   SelectItem,
@@ -44,11 +32,8 @@ import {
 } from "@/components/ui/select"
 // Supabase client is not used directly; use RPC proxy instead
 import { callRpc } from "@/lib/rpc-client"
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import { Calendar } from "@/components/ui/calendar"
-import { Building2, Calendar as CalendarIcon, Check, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, ChevronUp, FilterX, History, Loader2, PlusCircle, Layers, Clock, CheckCircle, CheckCheck, XCircle } from "lucide-react"
-import { format, parseISO } from "date-fns"
-import { vi } from 'date-fns/locale'
+import { Building2, Loader2, PlusCircle, Layers, Clock, CheckCircle, CheckCheck, XCircle } from "lucide-react"
+import { format } from "date-fns"
 import { cn } from "@/lib/utils"
 import { ScrollArea } from "@/components/ui/scroll-area"
 // Legacy auth-context removed; NextAuth is used throughout
@@ -58,9 +43,7 @@ import { usePathname, useRouter } from "next/navigation"
 import { useIsMobile } from "@/hooks/use-mobile"
 import { useSearchParams } from "next/navigation"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog"
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
 import { useSearchDebounce } from "@/hooks/use-debounce"
-import { Separator } from "@/components/ui/separator"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { RepairRequestAlert } from "@/components/repair-request-alert"
 import { useFacilityFilter, type FacilityOption } from "@/hooks/useFacilityFilter"
@@ -68,44 +51,40 @@ import { useMediaQuery } from "@/hooks/use-media-query"
 import { ErrorBoundary } from "@/components/error-boundary"
 import { Sheet, SheetContent, SheetHeader as SheetHeaderUI, SheetTitle, SheetDescription } from "@/components/ui/sheet"
 import { SummaryBar, type SummaryItem } from "@/components/summary/summary-bar"
-import { FilterChips } from "./FilterChips"
-import { FilterModal } from "./FilterModal"
-import { RequestDetailContent } from "./RequestDetailContent"
-import { EditRequestDialog } from "./EditRequestDialog"
-import { DeleteRequestDialog } from "./DeleteRequestDialog"
-import { ApproveRequestDialog } from "./ApproveRequestDialog"
-import { CompleteRequestDialog } from "./CompleteRequestDialog"
-import { CreateRequestSheet } from "./CreateRequestSheet"
-import type { EquipmentSelectItem, RepairRequestWithEquipment, RepairUnit } from "../types"
-import { calculateDaysRemaining, getStatusVariant } from "../utils"
+import { RepairRequestsFilterModal } from "./RepairRequestsFilterModal"
+import { RepairRequestsDetailContent } from "./RepairRequestsDetailContent"
+import { RepairRequestsEditDialog } from "./RepairRequestsEditDialog"
+import { RepairRequestsDeleteDialog } from "./RepairRequestsDeleteDialog"
+import { RepairRequestsApproveDialog } from "./RepairRequestsApproveDialog"
+import { RepairRequestsCompleteDialog } from "./RepairRequestsCompleteDialog"
+import { RepairRequestsCreateSheet } from "./RepairRequestsCreateSheet"
+import { RepairRequestsProvider } from "./RepairRequestsContext"
+import { RepairRequestsTable } from "./RepairRequestsTable"
+import { RepairRequestsToolbar } from "./RepairRequestsToolbar"
+import type { EquipmentSelectItem, RepairRequestWithEquipment } from "../types"
+import { calculateDaysRemaining } from "../utils"
 import { useRepairRequestShortcuts } from "../_hooks/useRepairRequestShortcuts"
-import { useRepairRequestDialogs } from "../_hooks/useRepairRequestDialogs"
+import { useRepairRequestsContext } from "../_hooks/useRepairRequestsContext"
 import { useRepairRequestUIHandlers } from "../_hooks/useRepairRequestUIHandlers"
-import { useRepairRequestMutations } from "../_hooks/useRepairRequestMutations"
-import { useRepairRequestWorkflows } from "../_hooks/useRepairRequestWorkflows"
-import { useRepairRequestColumns, renderActions } from "./repair-requests-columns"
+import { useRepairRequestColumns, renderActions } from "./RepairRequestsColumns"
 import { RepairRequestsPagination } from "./RepairRequestsPagination"
-import { MobileRequestList } from "./MobileRequestList"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+import { RepairRequestsMobileList } from "./RepairRequestsMobileList"
 import {
   getUiFilters,
   setUiFilters,
   getColumnVisibility,
   setColumnVisibility,
-  getTableDensity,
-  setTableDensity,
-  getTextWrap,
-  setTextWrap,
   type UiFilters as UiFiltersPrefs,
   type ColumnVisibility as ColumnVisibilityPrefs,
-  type ViewDensity,
-  type TextWrap as TextWrapPref,
 } from "@/lib/rr-prefs"
 // Auto department filter removed
 
 
-
-export default function RepairRequestsPageClient() {
+/**
+ * Inner component that consumes the RepairRequestsContext.
+ * Separated to allow useRepairRequestsContext to be called within the provider.
+ */
+function RepairRequestsPageClientInner() {
   const { toast } = useToast()
   const { data: session, status } = useSession()
   const { data: branding } = useTenantBranding()
@@ -115,6 +94,19 @@ export default function RepairRequestsPageClient() {
   const isMobile = useIsMobile()
   const isSheetMobile = useMediaQuery("(max-width: 1279px)")
   const queryClient = useQueryClient()
+
+  // Get context values
+  const {
+    isRegionalLeader,
+    dialogState,
+    openEditDialog,
+    openDeleteDialog,
+    openApproveDialog,
+    openCompleteDialog,
+    openViewDialog,
+    openCreateSheet,
+    closeAllDialogs,
+  } = useRepairRequestsContext()
 
   // Redirect if not authenticated
   if (status === "loading") {
@@ -135,26 +127,9 @@ export default function RepairRequestsPageClient() {
   // useRepairRealtimeSync()
   const searchParams = useSearchParams()
   const [allEquipment, setAllEquipment] = React.useState<EquipmentSelectItem[]>([])
-
-  // Form state
-  const [isSubmitting, setIsSubmitting] = React.useState(false)
-  const [selectedEquipment, setSelectedEquipment] = React.useState<EquipmentSelectItem | null>(null)
-  const [searchQuery, setSearchQuery] = React.useState("")
-  const [issueDescription, setIssueDescription] = React.useState("")
-  const [repairItems, setRepairItems] = React.useState("")
-  const [desiredDate, setDesiredDate] = React.useState<Date>()
-  const [repairUnit, setRepairUnit] = React.useState<RepairUnit>('noi_bo')
-  const [externalCompanyName, setExternalCompanyName] = React.useState("")
-
-  // Edit/Delete loading state (kept in parent for handlers)
-  const [isEditSubmitting, setIsEditSubmitting] = React.useState(false);
-  const [isDeleting, setIsDeleting] = React.useState(false);
-
-  // Approval loading state (kept in parent for handlers)
-  const [isApproving, setIsApproving] = React.useState(false);
-
-  // Completion loading state (kept in parent for handlers)
-  const [isCompleting, setIsCompleting] = React.useState(false);
+  const [hasLoadedEquipment, setHasLoadedEquipment] = React.useState(false)
+  // Track when equipment_get fetch for deep link is in progress
+  const [isEquipmentFetchPending, setIsEquipmentFetchPending] = React.useState(false)
 
   // Table state
   const [sorting, setSorting] = React.useState<SortingState>([
@@ -171,31 +146,8 @@ export default function RepairRequestsPageClient() {
 
   // Table presentation preferences
   const [columnVisibility, setColumnVisibilityState] = React.useState<ColumnVisibilityPrefs>(() => getColumnVisibility() || {});
-  const [density, setDensity] = React.useState<ViewDensity>(() => getTableDensity());
-  const [textWrap, setTextWrapState] = React.useState<TextWrapPref>(() => getTextWrap());
 
   const searchInputRef = React.useRef<HTMLInputElement | null>(null)
-
-  // Dialog state (consolidated in hook)
-  const dialogs = useRepairRequestDialogs()
-  const {
-    isCreateOpen, setIsCreateOpen,
-    editingRequest, setEditingRequest,
-    editIssueDescription, setEditIssueDescription,
-    editRepairItems, setEditRepairItems,
-    editDesiredDate, setEditDesiredDate,
-    editRepairUnit, setEditRepairUnit,
-    editExternalCompanyName, setEditExternalCompanyName,
-    requestToDelete, setRequestToDelete,
-    requestToApprove, setRequestToApprove,
-    approvalRepairUnit, setApprovalRepairUnit,
-    approvalExternalCompanyName, setApprovalExternalCompanyName,
-    requestToComplete, setRequestToComplete,
-    completionType, setCompletionType,
-    completionResult, setCompletionResult,
-    nonCompletionReason, setNonCompletionReason,
-    requestToView, setRequestToView,
-  } = dialogs
 
   // UI handlers (sheet generation, etc.)
   const { handleGenerateRequestSheet } = useRepairRequestUIHandlers({
@@ -308,8 +260,7 @@ export default function RepairRequestsPageClient() {
     return counts;
   }, [requests]);
 
-  // Align with repo roles: use 'global' instead of legacy 'admin'
-  const canSetRepairUnit = !!user && ['global', 'to_qltb'].includes(user.role);
+  const totalRequests = repairRequestsRes?.total ?? 0;
 
   // Status counts for summary (server-side via RPC per status)
   const STATUSES = ['Chờ xử lý', 'Đã duyệt', 'Hoàn thành', 'Không HT'] as const
@@ -332,126 +283,8 @@ export default function RepairRequestsPageClient() {
     enabled: !!user,
   })
 
-  // Regional leaders are read-only on this page (no create)
-  const isRegionalLeader = !!user && user.role === 'regional_leader';
   // Note: showFacilityFilter comes from useFacilityFilter hook above
   // It returns true for global, admin, and regional_leader roles
-
-  React.useEffect(() => {
-    if (editingRequest) {
-      setEditIssueDescription(editingRequest.mo_ta_su_co);
-      setEditRepairItems(editingRequest.hang_muc_sua_chua || "");
-      setEditDesiredDate(
-        editingRequest.ngay_mong_muon_hoan_thanh
-          ? parseISO(editingRequest.ngay_mong_muon_hoan_thanh)
-          : undefined
-      );
-      setEditRepairUnit(editingRequest.don_vi_thuc_hien || 'noi_bo');
-      setEditExternalCompanyName(editingRequest.ten_don_vi_thue || "");
-    }
-  }, [editingRequest]);
-
-  const totalRequests = repairRequestsRes?.total ?? 0;
-
-  // Legacy function for backward compatibility (now uses refetch + cache invalidation)
-  const invalidateCacheAndRefetch = React.useCallback(() => {
-    // Refetch main repair requests query
-    refetchRequests();
-    // Invalidate facility options cache so new facilities appear in dropdown
-    queryClient.invalidateQueries({ queryKey: ['repair_request_facilities'] });
-    // Invalidate status counts so SummaryBar reflects latest changes immediately
-    queryClient.invalidateQueries({ queryKey: ['repair_request_status_counts'] });
-  }, [refetchRequests, queryClient]);
-
-  // Mutations (create, update, delete) - must be after invalidateCacheAndRefetch is defined
-  const { handleSubmit, handleUpdateRequest, handleDeleteRequest } = useRepairRequestMutations(
-    {
-      selectedEquipment,
-      issueDescription,
-      repairItems,
-      desiredDate,
-      repairUnit,
-      externalCompanyName,
-    },
-    {
-      editingRequest,
-      editIssueDescription,
-      editRepairItems,
-      editDesiredDate,
-      editRepairUnit,
-      editExternalCompanyName,
-      requestToDelete,
-    },
-    {
-      user,
-      canSetRepairUnit,
-      invalidateCacheAndRefetch,
-      toast,
-    },
-    {
-      setIsSubmitting,
-      setIsEditSubmitting,
-      setIsDeleting,
-    },
-    {
-      setSelectedEquipment,
-      setSearchQuery,
-      setIssueDescription,
-      setRepairItems,
-      setDesiredDate,
-      setRepairUnit,
-      setExternalCompanyName,
-    },
-    {
-      setEditingRequest,
-      setRequestToDelete,
-    }
-  )
-
-  // Workflows (approve, complete) - must be after invalidateCacheAndRefetch is defined
-  const {
-    handleApproveRequest,
-    handleConfirmApproval,
-    handleCompletion,
-    handleConfirmCompletion,
-  } = useRepairRequestWorkflows(
-    {
-      requestToApprove,
-      approvalRepairUnit,
-      approvalExternalCompanyName,
-    },
-    {
-      requestToComplete,
-      completionType,
-      completionResult,
-      nonCompletionReason,
-    },
-    {
-      user,
-      invalidateCacheAndRefetch,
-      toast,
-    },
-    {
-      setIsApproving,
-      setIsCompleting,
-    },
-    {
-      setRequestToApprove,
-      setApprovalRepairUnit,
-      setApprovalExternalCompanyName,
-    },
-    {
-      setRequestToComplete,
-      setCompletionType,
-      setCompletionResult,
-      setNonCompletionReason,
-    }
-  )
-
-  const handleSelectEquipment = React.useCallback((equipment: EquipmentSelectItem) => {
-    setSelectedEquipment(equipment);
-    setSearchQuery(`${equipment.ten_thiet_bi} (${equipment.ma_thiet_bi})`);
-  }, []);
 
   // Initial load: fetch a small equipment list via RPC
   React.useEffect(() => {
@@ -473,6 +306,8 @@ export default function RepairRequestsPageClient() {
           title: 'Lỗi',
           description: 'Không thể tải danh sách thiết bị. ' + (error?.message || ''),
         })
+      } finally {
+        setHasLoadedEquipment(true)
       }
     }
     fetchInitialData()
@@ -493,12 +328,12 @@ export default function RepairRequestsPageClient() {
     const run = async () => {
       if (!equipmentId) return;
       const idNum = Number(equipmentId);
-      if (selectedEquipment && selectedEquipment.id === idNum) return;
       const existing = allEquipment.find(eq => eq.id === idNum);
       if (existing) {
-        handleSelectEquipment(existing);
         return;
       }
+      // Mark fetch as pending so action=create effect waits for it
+      setIsEquipmentFetchPending(true)
       try {
         const row: any = await callRpc({ fn: 'equipment_get', args: { p_id: idNum } })
         if (row) {
@@ -509,94 +344,79 @@ export default function RepairRequestsPageClient() {
             khoa_phong_quan_ly: row.khoa_phong_quan_ly,
           }
           setAllEquipment(prev => [item, ...prev.filter(x => x.id !== item.id)])
-          handleSelectEquipment(item)
         }
       } catch (e) {
         // ignore; toast not necessary for deep link preselect
+      } finally {
+        setIsEquipmentFetchPending(false)
       }
     }
     run();
-  }, [searchParams, allEquipment, handleSelectEquipment, selectedEquipment]);
+  }, [searchParams, allEquipment, uiFilters]);
 
-  // Handle action=create param
+  // Handle action=create param with equipment pre-selection
   React.useEffect(() => {
-    if (searchParams.get('action') === 'create') {
-      setIsCreateOpen(true)
-      const params = new URLSearchParams(searchParams.toString())
-      params.delete('action')
-      const nextPath = params.size ? `${pathname}?${params.toString()}` : pathname
-      router.replace(nextPath, { scroll: false })
-    }
-  }, [searchParams, router, pathname])
+    if (searchParams.get('action') !== 'create') return
 
+    const equipmentId = searchParams.get('equipmentId')
 
-  const filteredEquipment = React.useMemo(() => {
-    if (!searchQuery) return []
-    if (selectedEquipment && searchQuery === `${selectedEquipment.ten_thiet_bi} (${selectedEquipment.ma_thiet_bi})`) {
-      return []
-    }
-    return allEquipment
-  }, [searchQuery, allEquipment, selectedEquipment])
+    if (equipmentId) {
+      // Wait for initial equipment list to load AND for equipment_get fetch to complete
+      if (!hasLoadedEquipment || isEquipmentFetchPending) return
 
-  const shouldShowNoResults = React.useMemo(() => {
-    if (!searchQuery) return false;
-    if (selectedEquipment && searchQuery === `${selectedEquipment.ten_thiet_bi} (${selectedEquipment.ma_thiet_bi})`) {
-      return false;
-    }
-    return filteredEquipment.length === 0;
-  }, [searchQuery, selectedEquipment, filteredEquipment]);
+      const idNum = Number(equipmentId)
+      const equipment = allEquipment.find(eq => eq.id === idNum)
 
-  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setSearchQuery(e.target.value);
-    if (selectedEquipment) {
-      setSelectedEquipment(null);
-    }
-  }
-
-  // Fetch equipment options via RPC when searchQuery changes
-  React.useEffect(() => {
-    const label = selectedEquipment ? `${selectedEquipment.ten_thiet_bi} (${selectedEquipment.ma_thiet_bi})` : ''
-    const q = searchQuery?.trim()
-    if (!q || (label && q === label)) return
-    const ctrl = new AbortController()
-    const run = async () => {
-      try {
-        const eq = await callRpc<any[]>({
-          fn: 'equipment_list',
-          args: { p_q: q, p_sort: 'ten_thiet_bi.asc', p_page: 1, p_page_size: 20 },
-        })
-        if (ctrl.signal.aborted) return
-        setAllEquipment((eq || []).map((row: any) => ({
-          id: row.id,
-          ma_thiet_bi: row.ma_thiet_bi,
-          ten_thiet_bi: row.ten_thiet_bi,
-          khoa_phong_quan_ly: row.khoa_phong_quan_ly,
-        })))
-      } catch (e) {
-        // Silent fail for suggestions
+      // Open sheet with or without pre-selection based on whether equipment was found
+      if (equipment) {
+        openCreateSheet(equipment)
+      } else {
+        // Equipment not found in loaded data - open sheet without pre-selection
+        openCreateSheet()
       }
+    } else {
+      // No equipment to pre-select, just open the sheet
+      openCreateSheet()
     }
-    run()
-    return () => ctrl.abort()
-  }, [searchQuery, selectedEquipment])
+
+    // Clean up URL only after we've processed the action
+    const params = new URLSearchParams(searchParams.toString())
+    params.delete('action')
+    params.delete('equipmentId')
+    const nextPath = params.size ? `${pathname}?${params.toString()}` : pathname
+    router.replace(nextPath, { scroll: false })
+  }, [searchParams, router, pathname, openCreateSheet, allEquipment, hasLoadedEquipment, isEquipmentFetchPending])
+
+  // Adapter functions to bridge context (non-null) with column options (nullable)
+  const setEditingRequestAdapter = React.useCallback((req: RepairRequestWithEquipment | null) => {
+    if (req) openEditDialog(req)
+  }, [openEditDialog])
+
+  const setRequestToDeleteAdapter = React.useCallback((req: RepairRequestWithEquipment | null) => {
+    if (req) openDeleteDialog(req)
+  }, [openDeleteDialog])
+
+  const setRequestToViewAdapter = React.useCallback((req: RepairRequestWithEquipment | null) => {
+    if (req) openViewDialog(req)
+  }, [openViewDialog])
 
   // Table columns (extracted to separate file)
   const columnOptions = React.useMemo(() => ({
     onGenerateSheet: handleGenerateRequestSheet,
-    setEditingRequest,
-    setRequestToDelete,
-    handleApproveRequest,
-    handleCompletion,
-    setRequestToView,
+    setEditingRequest: setEditingRequestAdapter,
+    setRequestToDelete: setRequestToDeleteAdapter,
+    handleApproveRequest: openApproveDialog,
+    handleCompletion: openCompleteDialog,
+    setRequestToView: setRequestToViewAdapter,
     user,
     isRegionalLeader
   }), [
     handleGenerateRequestSheet,
-    setEditingRequest,
-    setRequestToDelete,
-    handleApproveRequest,
-    handleCompletion,
-    setRequestToView,
+    setEditingRequestAdapter,
+    setRequestToDeleteAdapter,
+    openApproveDialog,
+    openCompleteDialog,
+    setRequestToViewAdapter,
     user,
     isRegionalLeader
   ])
@@ -659,14 +479,10 @@ export default function RepairRequestsPageClient() {
 
   // Server-side status filtering; no column filter syncing needed.
 
-  // Persist density and text wrap changes
-  React.useEffect(() => { setTableDensity(density) }, [density])
-  React.useEffect(() => { setTextWrap(textWrap) }, [textWrap])
-
   // Keyboard shortcuts: '/', 'n'
   useRepairRequestShortcuts({
     searchInputRef,
-    onCreate: () => setIsCreateOpen(true),
+    onCreate: openCreateSheet,
     isRegionalLeader
   })
 
@@ -717,60 +533,47 @@ export default function RepairRequestsPageClient() {
     return [...base, ...statusItems]
   }, [totalRequests, statusCounts, uiFilters, setUiFiltersState, setUiFilters])
 
+  // Get requestToView from context for detail dialogs
+  const requestToView = dialogState.requestToView
+
+  // Toolbar handlers
+  const handleClearFilters = React.useCallback(() => {
+    table.resetColumnFilters();
+    setUiFiltersState({ status: [], dateRange: null });
+    setUiFilters({ status: [], dateRange: null });
+    if (showFacilityFilter) setSelectedFacilityId(null);
+    setSearchTerm("");
+  }, [table, setUiFiltersState, showFacilityFilter, setSelectedFacilityId]);
+
+  const handleRemoveFilter = React.useCallback((key: "status" | "facilityName" | "dateRange", sub?: string) => {
+    if (key === 'status' && sub) {
+      const next = uiFilters.status.filter(s => s !== sub);
+      const updated = { ...uiFilters, status: next };
+      setUiFiltersState(updated);
+      setUiFilters(updated);
+    } else if (key === 'facilityName') {
+      setSelectedFacilityId(null);
+    } else if (key === 'dateRange') {
+      const updated = { ...uiFilters, dateRange: null };
+      setUiFiltersState(updated);
+      setUiFilters(updated);
+    }
+  }, [uiFilters, setUiFiltersState, setSelectedFacilityId]);
+
   return (
     <ErrorBoundary>
       <>
-        <EditRequestDialog
-          request={editingRequest}
-          onClose={() => setEditingRequest(null)}
-          issueDescription={editIssueDescription}
-          setIssueDescription={setEditIssueDescription}
-          repairItems={editRepairItems}
-          setRepairItems={setEditRepairItems}
-          desiredDate={editDesiredDate}
-          setDesiredDate={setEditDesiredDate}
-          repairUnit={editRepairUnit}
-          setRepairUnit={setEditRepairUnit}
-          externalCompanyName={editExternalCompanyName}
-          setExternalCompanyName={setEditExternalCompanyName}
-          isSubmitting={isEditSubmitting}
-          onSubmit={handleUpdateRequest}
-          canSetRepairUnit={canSetRepairUnit}
-        />
+        <RepairRequestsEditDialog />
 
-        <DeleteRequestDialog
-          request={requestToDelete}
-          onClose={() => setRequestToDelete(null)}
-          isDeleting={isDeleting}
-          onConfirm={handleDeleteRequest}
-        />
+        <RepairRequestsDeleteDialog />
 
-        <ApproveRequestDialog
-          request={requestToApprove}
-          onClose={() => setRequestToApprove(null)}
-          repairUnit={approvalRepairUnit}
-          setRepairUnit={setApprovalRepairUnit}
-          externalCompanyName={approvalExternalCompanyName}
-          setExternalCompanyName={setApprovalExternalCompanyName}
-          isApproving={isApproving}
-          onConfirm={handleConfirmApproval}
-        />
+        <RepairRequestsApproveDialog />
 
-        <CompleteRequestDialog
-          request={requestToComplete}
-          completionType={completionType}
-          onClose={() => setRequestToComplete(null)}
-          completionResult={completionResult}
-          setCompletionResult={setCompletionResult}
-          nonCompletionReason={nonCompletionReason}
-          setNonCompletionReason={setNonCompletionReason}
-          isCompleting={isCompleting}
-          onConfirm={handleConfirmCompletion}
-        />
+        <RepairRequestsCompleteDialog />
 
         {/* Request Detail - Mobile */}
         {requestToView && isMobile && (
-          <Dialog open={!!requestToView} onOpenChange={(open) => !open && setRequestToView(null)}>
+          <Dialog open={!!requestToView} onOpenChange={(open) => !open && closeAllDialogs()}>
             <DialogContent className="max-w-4xl h-[90vh] flex flex-col overflow-hidden">
               <DialogHeader className="flex-shrink-0">
                 <DialogTitle className="text-lg font-semibold">
@@ -783,12 +586,12 @@ export default function RepairRequestsPageClient() {
 
               <div className="flex-1 overflow-hidden pr-4">
                 <ScrollArea className="h-full">
-                  <RequestDetailContent request={requestToView} />
+                  <RepairRequestsDetailContent request={requestToView} />
                 </ScrollArea>
               </div>
 
               <DialogFooter className="flex-shrink-0 mt-4 border-t pt-4">
-                <Button variant="outline" onClick={() => setRequestToView(null)}>
+                <Button variant="outline" onClick={() => closeAllDialogs()}>
                   Đóng
                 </Button>
               </DialogFooter>
@@ -798,7 +601,7 @@ export default function RepairRequestsPageClient() {
 
         {/* Request Detail - Desktop */}
         {requestToView && !isMobile && (
-          <Sheet open={!!requestToView} onOpenChange={(open) => !open && setRequestToView(null)}>
+          <Sheet open={!!requestToView} onOpenChange={(open) => !open && closeAllDialogs()}>
             <SheetContent side="right" className="w-full sm:max-w-xl md:max-w-2xl lg:max-w-3xl p-0">
               <div className="h-full flex flex-col">
                 <div className="p-4 border-b">
@@ -807,11 +610,11 @@ export default function RepairRequestsPageClient() {
                 </div>
                 <div className="flex-1 overflow-hidden px-4">
                   <ScrollArea className="h-full">
-                    <RequestDetailContent request={requestToView} />
+                    <RepairRequestsDetailContent request={requestToView} />
                   </ScrollArea>
                 </div>
                 <div className="p-4 border-t flex justify-end">
-                  <Button variant="outline" onClick={() => setRequestToView(null)}>Đóng</Button>
+                  <Button variant="outline" onClick={() => closeAllDialogs()}>Đóng</Button>
                 </div>
               </div>
             </SheetContent>
@@ -832,7 +635,7 @@ export default function RepairRequestsPageClient() {
             </div>
             {!isRegionalLeader && (
               <div className="hidden md:flex items-center gap-2">
-                <Button onClick={() => setIsCreateOpen(true)} className="touch-target">
+                <Button onClick={() => openCreateSheet()} className="touch-target">
                   <PlusCircle className="mr-2 h-4 w-4" /> Tạo yêu cầu
                 </Button>
               </div>
@@ -844,37 +647,14 @@ export default function RepairRequestsPageClient() {
 
           {/* Create Sheet */}
           {!isRegionalLeader && (
-            <CreateRequestSheet
-              open={isCreateOpen}
-              onOpenChange={setIsCreateOpen}
-              selectedEquipment={selectedEquipment}
-              searchQuery={searchQuery}
-              onSearchChange={handleSearchChange}
-              onSelectEquipment={handleSelectEquipment}
-              filteredEquipment={filteredEquipment}
-              shouldShowNoResults={shouldShowNoResults}
-              issueDescription={issueDescription}
-              setIssueDescription={setIssueDescription}
-              repairItems={repairItems}
-              setRepairItems={setRepairItems}
-              desiredDate={desiredDate}
-              setDesiredDate={setDesiredDate}
-              repairUnit={repairUnit}
-              setRepairUnit={setRepairUnit}
-              externalCompanyName={externalCompanyName}
-              setExternalCompanyName={setExternalCompanyName}
-              isSubmitting={isSubmitting}
-              onSubmit={handleSubmit}
-              canSetRepairUnit={canSetRepairUnit}
-              isSheetMobile={isSheetMobile}
-            />
+            <RepairRequestsCreateSheet />
           )}
 
           {/* Mobile FAB for quick create */}
           {!isRegionalLeader && isMobile && (
             <Button
               className="fixed right-6 fab-above-footer rounded-full h-14 w-14 shadow-lg"
-              onClick={() => setIsCreateOpen(true)}
+              onClick={() => openCreateSheet()}
               aria-label="Tạo yêu cầu"
             >
               <PlusCircle className="h-6 w-6" />
@@ -964,108 +744,22 @@ export default function RepairRequestsPageClient() {
                   )}
                 </CardHeader>
                 <CardContent className="p-3 md:p-6 gap-3 md:gap-4">
-                  <div className="flex items-center justify-between gap-2 flex-wrap mb-2 md:mb-3">
-                    <div className="flex flex-1 items-center gap-2">
-                      <Input
-                        ref={searchInputRef}
-                        placeholder="Tìm thiết bị, mô tả..."
-                        value={searchTerm}
-                        onChange={(event) => setSearchTerm(event.target.value)}
-                        className="h-8 w-[120px] md:w-[200px] lg:w-[250px] touch-target-sm md:h-8"
-                      />
+                  <RepairRequestsToolbar
+                    searchTerm={searchTerm}
+                    onSearchChange={setSearchTerm}
+                    searchInputRef={searchInputRef}
+                    isFiltered={isFiltered as boolean}
+                    onClearFilters={handleClearFilters}
+                    onOpenFilterModal={() => setIsFilterModalOpen(true)}
 
-                      <Button variant="outline" size="sm" className="h-8 touch-target-sm" onClick={() => setIsFilterModalOpen(true)}>Bộ lọc</Button>
-
-                      {/* Advanced filters only: open modal/sheet */}
-
-                      {/* Clear all filters button */}
-                      {isFiltered && (
-                        <Button
-                          variant="ghost"
-                          onClick={() => {
-                            table.resetColumnFilters();
-                            setUiFiltersState({ status: [], dateRange: null });
-                            setUiFilters({ status: [], dateRange: null });
-                            if (showFacilityFilter) setSelectedFacilityId(null);
-                            setSearchTerm("");
-                          }}
-                          className="h-8 px-2 lg:px-3 touch-target-sm md:h-8"
-                          aria-label="Xóa bộ lọc"
-                        >
-                          <span className="hidden sm:inline">Xóa</span>
-                          <FilterX className="h-4 w-4 sm:ml-2" />
-                        </Button>
-                      )}
-
-                      {/* Display menu: presets, density, wrap */}
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="outline" size="sm" className="h-8 touch-target-sm">Hiển thị</Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuLabel>Preset cột</DropdownMenuLabel>
-                          <DropdownMenuItem onSelect={() => {
-                            const next: any = { thiet_bi_va_mo_ta: true, ngay_yeu_cau: true, trang_thai: true, nguoi_yeu_cau: false, ngay_mong_muon_hoan_thanh: false, actions: true }
-                            setColumnVisibilityState(next); setColumnVisibility(next)
-                          }}>Compact</DropdownMenuItem>
-                          <DropdownMenuItem onSelect={() => {
-                            const next: any = { thiet_bi_va_mo_ta: true, nguoi_yeu_cau: true, ngay_yeu_cau: true, ngay_mong_muon_hoan_thanh: true, trang_thai: true, actions: true }
-                            setColumnVisibilityState(next); setColumnVisibility(next)
-                          }}>Standard</DropdownMenuItem>
-                          <DropdownMenuItem onSelect={() => {
-                            const next: any = { thiet_bi_va_mo_ta: true, nguoi_yeu_cau: true, ngay_yeu_cau: true, ngay_mong_muon_hoan_thanh: true, trang_thai: true, actions: true }
-                            setColumnVisibilityState(next); setColumnVisibility(next)
-                          }}>Full</DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuLabel>Mật độ</DropdownMenuLabel>
-                          <DropdownMenuItem onSelect={() => setDensity('compact')}>
-                            {density === 'compact' ? '✓ ' : ''}Compact
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onSelect={() => setDensity('standard')}>
-                            {density === 'standard' ? '✓ ' : ''}Standard
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onSelect={() => setDensity('spacious')}>
-                            {density === 'spacious' ? '✓ ' : ''}Spacious
-                          </DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuLabel>Văn bản</DropdownMenuLabel>
-                          <DropdownMenuItem onSelect={() => setTextWrapState('truncate')}>
-                            {textWrap === 'truncate' ? '✓ ' : ''}Thu gọn
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onSelect={() => setTextWrapState('wrap')}>
-                            {textWrap === 'wrap' ? '✓ ' : ''}Xuống dòng
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </div>
-
-                    {/* Chips under search */}
-                    <div className="w-full pt-2">
-                      <FilterChips
-                        value={{
-                          status: uiFilters.status,
-                          facilityName: selectedFacilityName,
-                          dateRange: uiFilters.dateRange ? { from: uiFilters.dateRange.from ?? null, to: uiFilters.dateRange.to ?? null } : null,
-                        }}
-                        showFacility={showFacilityFilter}
-                        onRemove={(key, sub) => {
-                          if (key === 'status' && sub) {
-                            const next = uiFilters.status.filter(s => s !== sub)
-                            const updated = { ...uiFilters, status: next }
-                            setUiFiltersState(updated); setUiFilters(updated)
-                          } else if (key === 'facilityName') {
-                            setSelectedFacilityId(null)
-                          } else if (key === 'dateRange') {
-                            const updated = { ...uiFilters, dateRange: null }
-                            setUiFiltersState(updated); setUiFilters(updated)
-                          }
-                        }}
-                      />
-                    </div>
-                  </div>
+                    uiFilters={uiFilters}
+                    selectedFacilityName={selectedFacilityName}
+                    showFacilityFilter={showFacilityFilter}
+                    onRemoveFilter={handleRemoveFilter}
+                  />
 
                   {/* Filter Modal */}
-                  <FilterModal
+                  <RepairRequestsFilterModal
                     open={isFilterModalOpen}
                     onOpenChange={setIsFilterModalOpen}
                     value={{
@@ -1095,92 +789,20 @@ export default function RepairRequestsPageClient() {
                   />
                   {/* Mobile Card View */}
                   {isMobile ? (
-                    <MobileRequestList
+                    <RepairRequestsMobileList
                       requests={table.getRowModel().rows.map(row => row.original)}
                       isLoading={isLoading}
-                      setRequestToView={setRequestToView}
+                      setRequestToView={setRequestToViewAdapter}
                       renderActions={(req) => renderActions(req, columnOptions)}
                     />
                   ) : (
                     /* Desktop Table View */
                     <div key={tableKey} className="rounded-md border overflow-x-auto">
                       <div className="min-w-[1100px]">
-                        <Table>
-                          <TableHeader>
-                            {table.getHeaderGroups().map((headerGroup) => (
-                              <TableRow key={headerGroup.id}>
-                                {headerGroup.headers.map((header, colIdx) => (
-                                  <TableHead
-                                    key={header.id}
-                                    className={cn(
-                                      density === 'compact' ? 'py-1' : density === 'spacious' ? 'py-3' : 'py-2',
-                                      colIdx === 0 && 'sticky left-0 z-20 bg-background w-[20rem] min-w-[20rem] max-w-[20rem] border-r',
-                                      colIdx === 1 && 'sticky left-[20rem] z-20 bg-background w-[14rem] min-w-[14rem] max-w-[14rem] border-r'
-                                    )}
-                                    style={undefined}
-                                  >
-                                    {header.isPlaceholder ? null : flexRender(
-                                      header.column.columnDef.header,
-                                      header.getContext()
-                                    )}
-                                  </TableHead>
-                                ))}
-                              </TableRow>
-                            ))}
-                          </TableHeader>
-                          <TableBody>
-                            {isLoading ? (
-                              <TableRow>
-                                <TableCell colSpan={columns.length} className={cn("h-24 text-center", density === 'compact' ? 'py-1' : density === 'spacious' ? 'py-3' : 'py-2')}>
-                                  <div className="flex justify-center items-center gap-2">
-                                    <Loader2 className="h-4 w-4 animate-spin" />
-                                    <span>Đang tải...</span>
-                                  </div>
-                                </TableCell>
-                              </TableRow>
-                            ) : table.getRowModel().rows?.length ? (
-                              table.getRowModel().rows.map((row) => {
-                                const req = row.original
-                                const isCompleted = req.trang_thai === 'Hoàn thành' || req.trang_thai === 'Không HT'
-                                const daysInfo = !isCompleted && req.ngay_mong_muon_hoan_thanh ? calculateDaysRemaining(req.ngay_mong_muon_hoan_thanh) : null
-                                const stripeClass = daysInfo ? (daysInfo.status === 'success' ? 'border-l-4 border-green-500' : daysInfo.status === 'warning' ? 'border-l-4 border-orange-500' : 'border-l-4 border-red-500') : ''
-                                return (
-                                  <TableRow
-                                    key={row.id}
-                                    data-state={row.getIsSelected() && "selected"}
-                                    tabIndex={0}
-                                    className={cn("cursor-pointer hover:bg-muted/50 focus:outline-none", stripeClass)}
-                                    onClick={() => setRequestToView(row.original)}
-                                    onKeyDown={(e) => { if (e.key === 'Enter') setRequestToView(row.original) }}
-                                  >
-                                    {row.getVisibleCells().map((cell, colIdx) => (
-                                      <TableCell
-                                        key={cell.id}
-                                        className={cn(
-                                          density === 'compact' ? 'py-1' : density === 'spacious' ? 'py-3' : 'py-2',
-                                          colIdx === 0 && 'sticky left-0 z-10 bg-background w-[20rem] min-w-[20rem] max-w-[20rem] border-r',
-                                          colIdx === 1 && 'sticky left-[20rem] z-10 bg-background w-[14rem] min-w-[14rem] max-w-[14rem] border-r',
-                                          textWrap === 'truncate' ? 'truncate' : 'whitespace-normal break-words'
-                                        )}
-                                      >
-                                        {flexRender(
-                                          cell.column.columnDef.cell,
-                                          cell.getContext()
-                                        )}
-                                      </TableCell>
-                                    ))}
-                                  </TableRow>
-                                )
-                              })
-                            ) : (
-                              <TableRow>
-                                <TableCell colSpan={columns.length} className="h-24 text-center">
-                                  Không có kết quả.
-                                </TableCell>
-                              </TableRow>
-                            )}
-                          </TableBody>
-                        </Table>
+                        <RepairRequestsTable
+                          table={table}
+                          isLoading={isLoading || isFetching}
+                        />
                       </div>
                     </div>
                   )}
@@ -1203,5 +825,13 @@ export default function RepairRequestsPageClient() {
 
       </>
     </ErrorBoundary>
+  )
+}
+
+export default function RepairRequestsPageClient() {
+  return (
+    <RepairRequestsProvider>
+      <RepairRequestsPageClientInner />
+    </RepairRequestsProvider>
   )
 }
