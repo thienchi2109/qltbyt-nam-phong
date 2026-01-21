@@ -66,6 +66,10 @@ BEGIN
   IF p_sort IS NOT NULL AND p_sort != '' THEN
     v_sort_col := split_part(p_sort, '.', 1);
     v_sort_dir := UPPER(COALESCE(NULLIF(split_part(p_sort, '.', 2), ''), 'ASC'));
+    -- FIX: Validate sort direction to prevent SQL injection
+    IF v_sort_dir NOT IN ('ASC', 'DESC') THEN
+      v_sort_dir := 'ASC';
+    END IF;
   END IF;
 
   -- Get allowed don_vi based on role
