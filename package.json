@@ -89,7 +89,7 @@
     "@vitest/ui": "^4.0.17",
     "cross-env": "^7.0.3",
     "dotenv": "^16.5.0",
-    "esbuild": "0.14.47",
+    "esbuild": "0.27.2",
     "eslint": "9.36.0",
     "eslint-config-next": "15.5.3",
     "jsdom": "^27.4.0",
