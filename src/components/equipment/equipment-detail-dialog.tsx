@@ -889,7 +889,9 @@ export function EquipmentDetailDialog({
                           <div className="italic text-muted-foreground">Chưa có dữ liệu</div>
                         )
                       }
-                      if (key === "ngay_dua_vao_su_dung") {
+                      // TEXT date fields that may contain suspicious dates from Excel import
+                      const textDateFields = ["ngay_dua_vao_su_dung", "ngay_nhap", "han_bao_hanh"]
+                      if (textDateFields.includes(key)) {
                         if (value === null || value === undefined || value === "") {
                           return <div className="italic text-muted-foreground">Chưa có dữ liệu</div>
                         }
