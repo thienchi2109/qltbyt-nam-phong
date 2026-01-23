@@ -83,6 +83,12 @@ import {
   getStatusVariant,
   getClassificationVariant,
 } from "@/components/equipment/equipment-table-columns"
+import {
+  normalizeDateForForm,
+  isSuspiciousDate,
+  SUSPICIOUS_DATE_WARNING,
+  TEXT_DATE_FIELDS,
+} from "@/lib/date-utils"
 import type { Equipment } from "@/types/database"
 
 // Types
@@ -122,47 +128,6 @@ interface UserSession {
 }
 
 // Form schema
-const normalizeDate = (v: string | null | undefined) => {
-  if (!v) return null
-  const s = String(v).trim()
-  if (s === "") return null
-  const m = s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/)
-  if (m) {
-    const d = m[1].padStart(2, "0")
-    const mo = m[2].padStart(2, "0")
-    const y = m[3]
-    return `${y}-${mo}-${d}`
-  }
-  return s
-}
-
-/**
- * Detects suspicious dates with year < 1970 (likely Excel import errors)
- * Handles both YYYY-MM-DD (database format) and DD/MM/YYYY (user input)
- */
-const isSuspiciousDate = (dateStr: string | null | undefined): boolean => {
-  if (!dateStr) return false
-  const s = String(dateStr).trim()
-
-  // Match YYYY-MM-DD or YYYY/MM/DD (database/ISO format)
-  const isoMatch = s.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})$/)
-  if (isoMatch) {
-    const year = parseInt(isoMatch[1], 10)
-    return year < 1970
-  }
-
-  // Match DD/MM/YYYY or DD-MM-YYYY (Vietnamese format)
-  const vietMatch = s.match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{4})$/)
-  if (vietMatch) {
-    const year = parseInt(vietMatch[3], 10)
-    return year < 1970
-  }
-
-  return false
-}
-
-const SUSPICIOUS_DATE_WARNING = "Định dạng ngày có thể không chính xác. Vui lòng kiểm tra lại ngày đưa vào sử dụng của thiết bị"
-
 const equipmentFormSchema = z.object({
   ma_thiet_bi: z.string().min(1, "Mã thiết bị là bắt buộc"),
   ten_thiet_bi: z.string().min(1, "Tên thiết bị là bắt buộc"),
@@ -171,11 +136,11 @@ const equipmentFormSchema = z.object({
   hang_san_xuat: z.string().optional().nullable(),
   noi_san_xuat: z.string().optional().nullable(),
   nam_san_xuat: z.coerce.number().optional().nullable(),
-  ngay_nhap: z.string().optional().nullable().transform(normalizeDate),
-  ngay_dua_vao_su_dung: z.string().optional().nullable().transform(normalizeDate),
+  ngay_nhap: z.string().optional().nullable().transform(normalizeDateForForm),
+  ngay_dua_vao_su_dung: z.string().optional().nullable().transform(normalizeDateForForm),
   nguon_kinh_phi: z.string().optional().nullable(),
   gia_goc: z.coerce.number().optional().nullable(),
-  han_bao_hanh: z.string().optional().nullable().transform(normalizeDate),
+  han_bao_hanh: z.string().optional().nullable().transform(normalizeDateForForm),
   vi_tri_lap_dat: z.string().min(1, "Vị trí lắp đặt là bắt buộc").nullable().transform(val => val || ""),
   khoa_phong_quan_ly: z.string().min(1, "Khoa/Phòng quản lý là bắt buộc").nullable().transform(val => val || ""),
   nguoi_dang_truc_tiep_quan_ly: z.string().min(1, "Người trực tiếp quản lý (sử dụng) là bắt buộc").nullable().transform(val => val || ""),
@@ -184,11 +149,11 @@ const equipmentFormSchema = z.object({
   phu_kien_kem_theo: z.string().optional().nullable(),
   ghi_chu: z.string().optional().nullable(),
   chu_ky_bt_dinh_ky: z.coerce.number().optional().nullable(),
-  ngay_bt_tiep_theo: z.string().optional().nullable().transform(normalizeDate),
+  ngay_bt_tiep_theo: z.string().optional().nullable().transform(normalizeDateForForm),
   chu_ky_hc_dinh_ky: z.coerce.number().optional().nullable(),
-  ngay_hc_tiep_theo: z.string().optional().nullable().transform(normalizeDate),
+  ngay_hc_tiep_theo: z.string().optional().nullable().transform(normalizeDateForForm),
   chu_ky_kd_dinh_ky: z.coerce.number().optional().nullable(),
-  ngay_kd_tiep_theo: z.string().optional().nullable().transform(normalizeDate),
+  ngay_kd_tiep_theo: z.string().optional().nullable().transform(normalizeDateForForm),
   phan_loai_theo_nd98: z.enum(["A", "B", "C", "D"]).optional().nullable(),
 })
 
@@ -890,8 +855,7 @@ export function EquipmentDetailDialog({
                         )
                       }
                       // TEXT date fields that may contain suspicious dates from Excel import
-                      const textDateFields = ["ngay_dua_vao_su_dung", "ngay_nhap", "han_bao_hanh"]
-                      if (textDateFields.includes(key)) {
+                      if (TEXT_DATE_FIELDS.has(key)) {
                         if (value === null || value === undefined || value === "") {
                           return <div className="italic text-muted-foreground">Chưa có dữ liệu</div>
                         }

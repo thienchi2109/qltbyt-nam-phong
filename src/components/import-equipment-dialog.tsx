@@ -17,6 +17,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { useToast } from "@/hooks/use-toast"
 import { callRpc } from "@/lib/rpc-client"
+import { normalizeDateForImport } from "@/lib/date-utils"
 import type { Equipment } from "@/lib/data"
 import { equipmentStatusOptions } from "@/components/equipment/equipment-table-columns"
 
@@ -104,53 +105,6 @@ const headerToDbKeyMap: Record<string, string> = {
     'Ngày KĐ tiếp theo': 'ngay_kd_tiep_theo',
     'Phân loại theo NĐ98': 'phan_loai_theo_nd98',
 };
-
-// Helper: convert Excel date (serial or string) to ISO 'YYYY-MM-DD'
-// Returns { value, rejected } to track rejected suspicious dates
-function normalizeDate(val: any): { value: string | null; rejected: boolean } {
-  if (val === undefined || val === null || val === '') return { value: null, rejected: false };
-  // If already ISO-like
-  if (typeof val === 'string') {
-    const s = val.trim();
-    // Try DD/MM/YYYY
-    const ddmmyyyy = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/;
-    const yyyymmdd = /^(\d{4})-(\d{2})-(\d{2})$/;
-    if (yyyymmdd.test(s)) return { value: s, rejected: false };
-    const m = s.match(ddmmyyyy);
-    if (m) {
-      const d = m[1].padStart(2,'0');
-      const mo = m[2].padStart(2,'0');
-      const y = m[3];
-      return { value: `${y}-${mo}-${d}`, rejected: false };
-    }
-    // Fallback: try Date parse
-    const parsed = new Date(s);
-    if (!isNaN(parsed.getTime())) {
-      const y = parsed.getFullYear();
-      const mo = String(parsed.getMonth()+1).padStart(2,'0');
-      const d = String(parsed.getDate()).padStart(2,'0');
-      return { value: `${y}-${mo}-${d}`, rejected: false };
-    }
-    return { value: null, rejected: false };
-  }
-  if (typeof val === 'number') {
-    // Excel serial date (1900 system): epoch 1899-12-30
-    const epoch = new Date(Date.UTC(1899, 11, 30));
-    const ms = val * 24 * 60 * 60 * 1000;
-    const dt = new Date(epoch.getTime() + ms);
-    const y = dt.getUTCFullYear();
-
-    // Sanity check: reject dates before 1970 (likely invalid Excel serial)
-    if (y < 1970) {
-      return { value: null, rejected: true };
-    }
-
-    const mo = String(dt.getUTCMonth()+1).padStart(2,'0');
-    const d = String(dt.getUTCDate()).padStart(2,'0');
-    return { value: `${y}-${mo}-${d}`, rejected: false };
-  }
-  return { value: null, rejected: false };
-}
 
 function normalizeInt(val: any): number | null {
   if (val === undefined || val === null || val === '') return null;
@@ -249,7 +203,7 @@ export function ImportEquipmentDialog({ open, onOpenChange, onSuccess }: ImportE
                     const rawVal = row[header]
                     let v: any = (rawVal === "" || rawVal === undefined) ? null : rawVal
                     if (dateFields.has(dbKey)) {
-                      const dateResult = normalizeDate(rawVal)
+                      const dateResult = normalizeDateForImport(rawVal)
                       v = dateResult.value
                       if (dateResult.rejected) rejectedDates++
                     } else if (intFields.has(dbKey)) {
