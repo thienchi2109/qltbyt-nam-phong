@@ -660,6 +660,12 @@ BEGIN
 END;
 $$;
 
+-- SECURITY: Revoke public access to internal helper function
+-- This function has no permission checks - it must only be callable by other trusted SECURITY DEFINER functions
+REVOKE ALL ON FUNCTION public._equipment_insert_core(JSONB, BIGINT) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public._equipment_insert_core(JSONB, BIGINT) FROM authenticated;
+-- Note: SECURITY DEFINER functions can still call this because they run as the function owner
+
 -- Enhanced equipment creation with Circular 141 data
 CREATE OR REPLACE FUNCTION public.equipment_create_with_circular141(p_payload JSONB)
 RETURNS public.thiet_bi
@@ -802,10 +808,10 @@ BEGIN
 
   -- Return combined data
   SELECT jsonb_build_object(
-    'equipment', row_to_json(tb.*),
-    'cost_details', row_to_json(cd.*),
-    'depreciation', row_to_json(ad.*),
-    'acquisition', row_to_json(aa.*)
+    'equipment', row_to_json(tb),
+    'cost_details', row_to_json(cd),
+    'depreciation', row_to_json(ad),
+    'acquisition', row_to_json(aa)
   ) INTO v_result
   FROM public.thiet_bi tb
   LEFT JOIN public.asset_cost_details cd ON tb.id = cd.thiet_bi_id
