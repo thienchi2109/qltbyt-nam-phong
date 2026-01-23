@@ -18,6 +18,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import Link from "next/link"
 import {
   AlertCircle,
+  AlertTriangle,
   ArrowRightLeft,
   Calendar,
   CheckCircle,
@@ -69,6 +70,12 @@ import {
 import { Skeleton } from "@/components/ui/skeleton"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
 import { UsageHistoryTab } from "@/components/usage-history-tab"
 import {
   columnLabels,
@@ -128,6 +135,33 @@ const normalizeDate = (v: string | null | undefined) => {
   }
   return s
 }
+
+/**
+ * Detects suspicious dates with year < 1970 (likely Excel import errors)
+ * Handles both YYYY-MM-DD (database format) and DD/MM/YYYY (user input)
+ */
+const isSuspiciousDate = (dateStr: string | null | undefined): boolean => {
+  if (!dateStr) return false
+  const s = String(dateStr).trim()
+
+  // Match YYYY-MM-DD or YYYY/MM/DD (database/ISO format)
+  const isoMatch = s.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})$/)
+  if (isoMatch) {
+    const year = parseInt(isoMatch[1], 10)
+    return year < 1970
+  }
+
+  // Match DD/MM/YYYY or DD-MM-YYYY (Vietnamese format)
+  const vietMatch = s.match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{4})$/)
+  if (vietMatch) {
+    const year = parseInt(vietMatch[3], 10)
+    return year < 1970
+  }
+
+  return false
+}
+
+const SUSPICIOUS_DATE_WARNING = "Định dạng ngày có thể không chính xác. Vui lòng kiểm tra lại ngày đưa vào sử dụng của thiết bị"
 
 const equipmentFormSchema = z.object({
   ma_thiet_bi: z.string().min(1, "Mã thiết bị là bắt buộc"),
@@ -854,6 +888,33 @@ export function EquipmentDetailDialog({
                         ) : (
                           <div className="italic text-muted-foreground">Chưa có dữ liệu</div>
                         )
+                      }
+                      if (key === "ngay_dua_vao_su_dung") {
+                        if (value === null || value === undefined || value === "") {
+                          return <div className="italic text-muted-foreground">Chưa có dữ liệu</div>
+                        }
+                        const dateStr = String(value)
+                        if (isSuspiciousDate(dateStr)) {
+                          return (
+                            <div className="flex items-center gap-2">
+                              <span>{dateStr}</span>
+                              <TooltipProvider>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <span className="inline-flex items-center">
+                                      <AlertTriangle className="h-4 w-4 text-amber-500 cursor-help" aria-hidden="true" />
+                                      <span className="sr-only">{SUSPICIOUS_DATE_WARNING}</span>
+                                    </span>
+                                  </TooltipTrigger>
+                                  <TooltipContent className="max-w-xs">
+                                    <p>{SUSPICIOUS_DATE_WARNING}</p>
+                                  </TooltipContent>
+                                </Tooltip>
+                              </TooltipProvider>
+                            </div>
+                          )
+                        }
+                        return dateStr
                       }
                       if (value === null || value === undefined || value === "") {
                         return <div className="italic text-muted-foreground">Chưa có dữ liệu</div>

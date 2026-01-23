@@ -138,6 +138,12 @@ function normalizeDate(val: any): string | null {
     const ms = val * 24 * 60 * 60 * 1000;
     const dt = new Date(epoch.getTime() + ms);
     const y = dt.getUTCFullYear();
+
+    // Sanity check: reject dates before 1970 (likely invalid Excel serial)
+    if (y < 1970) {
+      return null;
+    }
+
     const mo = String(dt.getUTCMonth()+1).padStart(2,'0');
     const d = String(dt.getUTCDate()).padStart(2,'0');
     return `${y}-${mo}-${d}`;
