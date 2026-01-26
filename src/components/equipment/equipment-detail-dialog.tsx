@@ -13,7 +13,6 @@ import { format, parseISO } from "date-fns"
 import { vi } from "date-fns/locale"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import Link from "next/link"
 import {
   AlertCircle,
@@ -27,7 +26,6 @@ import {
   Trash2,
 } from "lucide-react"
 
-import { callRpc } from "@/lib/rpc-client"
 import { useToast } from "@/hooks/use-toast"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -82,13 +80,15 @@ import {
   TEXT_DATE_FIELDS,
 } from "@/lib/date-utils"
 import type { Equipment } from "@/types/database"
-import type { Attachment, HistoryItem } from "@/app/(app)/equipment/types"
 import {
   equipmentFormSchema,
   type EquipmentFormValues,
   type UserSession,
   getHistoryIcon,
 } from "@/app/(app)/equipment/_components/EquipmentDetailDialog/EquipmentDetailTypes"
+import { useEquipmentHistory } from "@/app/(app)/equipment/_components/EquipmentDetailDialog/hooks/useEquipmentHistory"
+import { useEquipmentAttachments } from "@/app/(app)/equipment/_components/EquipmentDetailDialog/hooks/useEquipmentAttachments"
+import { useEquipmentUpdate } from "@/app/(app)/equipment/_components/EquipmentDetailDialog/hooks/useEquipmentUpdate"
 
 export interface EquipmentDetailDialogProps {
   equipment: Equipment | null
@@ -112,7 +112,6 @@ export function EquipmentDetailDialog({
   onEquipmentUpdated,
 }: EquipmentDetailDialogProps) {
   const { toast } = useToast()
-  const queryClient = useQueryClient()
 
   // Internal state
   const [currentTab, setCurrentTab] = React.useState<string>("details")
@@ -207,105 +206,36 @@ export function EquipmentDetailDialog({
     }
   }, [equipment, editForm])
 
-  // Data queries
-  const attachmentsQuery = useQuery({
-    queryKey: ["attachments", equipment?.id],
-    queryFn: async () => {
-      const data = await callRpc<any[]>({
-        fn: "equipment_attachments_list",
-        args: { p_thiet_bi_id: equipment!.id },
-      })
-      return data || []
-    },
-    enabled: !!equipment && open,
-    staleTime: 300_000,
-    refetchOnWindowFocus: false,
+  // Custom hooks for data fetching and mutations
+  const { history, isLoading: isLoadingHistory } = useEquipmentHistory({
+    equipmentId: equipment?.id,
+    enabled: open,
   })
 
-  const historyQuery = useQuery({
-    queryKey: ["history", equipment?.id],
-    queryFn: async () => {
-      const data = await callRpc<any[]>({
-        fn: "equipment_history_list",
-        args: { p_thiet_bi_id: equipment!.id },
-      })
-      return (data || []) as HistoryItem[]
-    },
-    enabled: !!equipment && open,
-    staleTime: 300_000,
-    refetchOnWindowFocus: false,
+  const {
+    attachments,
+    isLoading: isLoadingAttachments,
+    addAttachment,
+    deleteAttachment,
+    isAdding: isAddingAttachment,
+    isDeleting: isDeletingAttachment,
+  } = useEquipmentAttachments({
+    equipmentId: equipment?.id,
+    enabled: open,
   })
 
-  const attachments = (attachmentsQuery.data ?? []) as Attachment[]
-  const isLoadingAttachments = attachmentsQuery.isLoading
-  const history = (historyQuery.data ?? []) as HistoryItem[]
-  const isLoadingHistory = historyQuery.isLoading
-
-  // Mutations
-  const updateEquipmentMutation = useMutation({
-    mutationFn: async (vars: { id: number; patch: Partial<EquipmentFormValues> }) => {
-      await callRpc<void>({
-        fn: "equipment_update",
-        args: { p_id: vars.id, p_patch: vars.patch },
-      })
-      return vars.patch // Return patch for use in onSuccess
-    },
+  const { updateEquipment, isPending: isUpdating } = useEquipmentUpdate({
     onSuccess: (savedPatch) => {
-      toast({ title: "Thành công", description: "Đã cập nhật thiết bị." })
-      // Store saved values to display in detail view
       setSavedValues((prev) => ({ ...prev, ...savedPatch }))
       setIsEditingDetails(false)
       onEquipmentUpdated()
-    },
-    onError: (error: any) => {
-      toast({
-        variant: "destructive",
-        title: "Lỗi",
-        description: "Không thể cập nhật thiết bị. " + (error?.message || ""),
-      })
-    },
-  })
-
-  const addAttachmentMutation = useMutation({
-    mutationFn: async (vars: { id: number; name: string; url: string }) => {
-      await callRpc<string>({
-        fn: "equipment_attachment_create",
-        args: { p_thiet_bi_id: vars.id, p_ten_file: vars.name, p_duong_dan: vars.url },
-      })
-    },
-    onSuccess: (_res, vars) => {
-      toast({ title: "Thành công", description: "Đã thêm liên kết mới." })
-      setNewFileName("")
-      setNewFileUrl("")
-      queryClient.invalidateQueries({ queryKey: ["attachments", vars.id] })
-    },
-    onError: (error: any) => {
-      toast({ variant: "destructive", title: "Lỗi thêm liên kết", description: error?.message })
-    },
-  })
-
-  const deleteAttachmentMutation = useMutation({
-    mutationFn: async (vars: { attachmentId: string }) => {
-      await callRpc<void>({
-        fn: "equipment_attachment_delete",
-        args: { p_id: String(vars.attachmentId) },
-      })
-    },
-    onSuccess: async () => {
-      toast({ title: "Đã xóa", description: "Đã xóa liên kết thành công." })
-      if (equipment) {
-        await queryClient.invalidateQueries({ queryKey: ["attachments", equipment.id] })
-      }
-    },
-    onError: (error: any) => {
-      toast({ variant: "destructive", title: "Lỗi xóa liên kết", description: error?.message })
     },
   })
 
   // Handlers
   const onSubmitInlineEdit = async (values: EquipmentFormValues) => {
     if (!equipment) return
-    await updateEquipmentMutation.mutateAsync({ id: equipment.id, patch: values })
+    await updateEquipment({ id: equipment.id, patch: values })
   }
 
   const handleAddAttachment = async (e: React.FormEvent) => {
@@ -323,7 +253,9 @@ export function EquipmentDetailDialog({
       return
     }
 
-    await addAttachmentMutation.mutateAsync({ id: equipment.id, name: newFileName, url: newFileUrl })
+    await addAttachment({ name: newFileName, url: newFileUrl })
+    setNewFileName("")
+    setNewFileUrl("")
   }
 
   const handleDeleteAttachment = async (attachmentId: string) => {
@@ -331,7 +263,7 @@ export function EquipmentDetailDialog({
     if (!confirm("Bạn có chắc chắn muốn xóa file đính kèm này không?")) return
     setDeletingAttachmentId(attachmentId)
     try {
-      await deleteAttachmentMutation.mutateAsync({ attachmentId })
+      await deleteAttachment(attachmentId)
     } finally {
       setDeletingAttachmentId(null)
     }
@@ -825,7 +757,7 @@ export function EquipmentDetailDialog({
                         value={newFileName}
                         onChange={(e) => setNewFileName(e.target.value)}
                         required
-                        disabled={addAttachmentMutation.isPending}
+                        disabled={isAddingAttachment}
                       />
                     </div>
                     <div className="space-y-1">
@@ -837,7 +769,7 @@ export function EquipmentDetailDialog({
                         value={newFileUrl}
                         onChange={(e) => setNewFileUrl(e.target.value)}
                         required
-                        disabled={addAttachmentMutation.isPending}
+                        disabled={isAddingAttachment}
                       />
                     </div>
                     <Alert>
@@ -865,9 +797,9 @@ export function EquipmentDetailDialog({
                     </Alert>
                     <Button
                       type="submit"
-                      disabled={addAttachmentMutation.isPending || !newFileName || !newFileUrl}
+                      disabled={isAddingAttachment || !newFileName || !newFileUrl}
                     >
-                      {addAttachmentMutation.isPending && (
+                      {isAddingAttachment && (
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                       )}
                       Lưu liên kết
@@ -909,9 +841,9 @@ export function EquipmentDetailDialog({
                             size="icon"
                             className="h-8 w-8 text-destructive hover:bg-destructive/10"
                             onClick={() => handleDeleteAttachment(file.id)}
-                            disabled={!!deletingAttachmentId || deleteAttachmentMutation.isPending}
+                            disabled={!!deletingAttachmentId || isDeletingAttachment}
                           >
-                            {deletingAttachmentId === file.id || deleteAttachmentMutation.isPending ? (
+                            {deletingAttachmentId === file.id || isDeletingAttachment ? (
                               <Loader2 className="h-4 w-4 animate-spin" />
                             ) : (
                               <Trash2 className="h-4 w-4" />
@@ -1047,16 +979,16 @@ export function EquipmentDetailDialog({
                       variant="outline"
                       type="button"
                       onClick={() => setIsEditingDetails(false)}
-                      disabled={updateEquipmentMutation.isPending}
+                      disabled={isUpdating}
                     >
                       Hủy
                     </Button>
                     <Button
                       type="submit"
                       form="equipment-inline-edit-form"
-                      disabled={updateEquipmentMutation.isPending}
+                      disabled={isUpdating}
                     >
-                      {updateEquipmentMutation.isPending && (
+                      {isUpdating && (
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                       )}
                       Lưu thay đổi
