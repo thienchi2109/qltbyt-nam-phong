@@ -33,15 +33,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { callRpc } from "@/lib/rpc-client"
 import { normalizeDateForForm } from "@/lib/date-utils"
-
-const equipmentStatusOptions = [
-    "Hoạt động",
-    "Chờ sửa chữa",
-    "Chờ bảo trì",
-    "Chờ hiệu chuẩn/kiểm định",
-    "Ngưng sử dụng",
-    "Chưa có nhu cầu sử dụng"
-] as const;
+import { equipmentStatusOptions } from "@/components/equipment/equipment-table-columns"
 
 const equipmentFormSchema = z.object({
   ma_thiet_bi: z.string().min(1, "Mã thiết bị là bắt buộc"),
