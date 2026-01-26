@@ -75,13 +75,13 @@ export function normalizeDateForImport(val: unknown): NormalizeDateResult {
     const s = val.trim()
 
     // Try YYYY-MM-DD (ISO format)
-    const yyyymmdd = /^(\d{4})-(\d{2})-(\d{2})$/
+    const yyyymmdd = /^(\d{4})-(\\d{2})-(\\d{2})$/
     if (yyyymmdd.test(s)) {
       return { value: s, rejected: false }
     }
 
-    // Try DD/MM/YYYY (Vietnamese format)
-    const ddmmyyyy = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/
+    // Try DD/MM/YYYY or DD-MM-YYYY (Vietnamese format)
+    const ddmmyyyy = /^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/
     const m = s.match(ddmmyyyy)
     if (m) {
       const d = m[1].padStart(2, "0")
