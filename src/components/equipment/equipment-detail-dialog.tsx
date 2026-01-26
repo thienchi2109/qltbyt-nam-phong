@@ -11,7 +11,6 @@
 import * as React from "react"
 import { format, parseISO } from "date-fns"
 import { vi } from "date-fns/locale"
-import { z } from "zod"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
@@ -19,21 +18,15 @@ import Link from "next/link"
 import {
   AlertCircle,
   AlertTriangle,
-  ArrowRightLeft,
-  Calendar,
-  CheckCircle,
   Edit,
   ExternalLink,
   Link as LinkIcon,
   Loader2,
   Printer,
   QrCode,
-  Settings,
   Trash2,
-  Wrench,
 } from "lucide-react"
 
-import { cn } from "@/lib/utils"
 import { callRpc } from "@/lib/rpc-client"
 import { useToast } from "@/hooks/use-toast"
 import { Badge } from "@/components/ui/badge"
@@ -84,103 +77,18 @@ import {
   getClassificationVariant,
 } from "@/components/equipment/equipment-table-columns"
 import {
-  normalizeDateForForm,
   isSuspiciousDate,
   SUSPICIOUS_DATE_WARNING,
   TEXT_DATE_FIELDS,
 } from "@/lib/date-utils"
 import type { Equipment } from "@/types/database"
-
-// Types
-type Attachment = {
-  id: string
-  ten_file: string
-  duong_dan_luu_tru: string
-  thiet_bi_id: number
-}
-
-type HistoryItem = {
-  id: number
-  ngay_thuc_hien: string
-  loai_su_kien: string
-  mo_ta: string
-  chi_tiet: {
-    mo_ta_su_co?: string
-    hang_muc_sua_chua?: string
-    nguoi_yeu_cau?: string
-    cong_viec_id?: number
-    thang?: number
-    ten_ke_hoach?: string
-    khoa_phong?: string
-    nam?: number
-    ma_yeu_cau?: string
-    loai_hinh?: string
-    khoa_phong_hien_tai?: string
-    khoa_phong_nhan?: string
-    don_vi_nhan?: string
-  } | null
-}
-
-interface UserSession {
-  id: string | number
-  role: string
-  khoa_phong: string | null
-}
-
-// Form schema
-const equipmentFormSchema = z.object({
-  ma_thiet_bi: z.string().min(1, "Mã thiết bị là bắt buộc"),
-  ten_thiet_bi: z.string().min(1, "Tên thiết bị là bắt buộc"),
-  model: z.string().optional().nullable(),
-  serial: z.string().optional().nullable(),
-  hang_san_xuat: z.string().optional().nullable(),
-  noi_san_xuat: z.string().optional().nullable(),
-  nam_san_xuat: z.coerce.number().optional().nullable(),
-  ngay_nhap: z.string().optional().nullable().transform(normalizeDateForForm),
-  ngay_dua_vao_su_dung: z.string().optional().nullable().transform(normalizeDateForForm),
-  nguon_kinh_phi: z.string().optional().nullable(),
-  gia_goc: z.coerce.number().optional().nullable(),
-  han_bao_hanh: z.string().optional().nullable().transform(normalizeDateForForm),
-  vi_tri_lap_dat: z.string().min(1, "Vị trí lắp đặt là bắt buộc").nullable().transform(val => val || ""),
-  khoa_phong_quan_ly: z.string().min(1, "Khoa/Phòng quản lý là bắt buộc").nullable().transform(val => val || ""),
-  nguoi_dang_truc_tiep_quan_ly: z.string().min(1, "Người trực tiếp quản lý (sử dụng) là bắt buộc").nullable().transform(val => val || ""),
-  tinh_trang_hien_tai: z.enum(equipmentStatusOptions, { required_error: "Tình trạng hiện tại là bắt buộc" }).nullable().transform(val => val || "" as any),
-  cau_hinh_thiet_bi: z.string().optional().nullable(),
-  phu_kien_kem_theo: z.string().optional().nullable(),
-  ghi_chu: z.string().optional().nullable(),
-  chu_ky_bt_dinh_ky: z.coerce.number().optional().nullable(),
-  ngay_bt_tiep_theo: z.string().optional().nullable().transform(normalizeDateForForm),
-  chu_ky_hc_dinh_ky: z.coerce.number().optional().nullable(),
-  ngay_hc_tiep_theo: z.string().optional().nullable().transform(normalizeDateForForm),
-  chu_ky_kd_dinh_ky: z.coerce.number().optional().nullable(),
-  ngay_kd_tiep_theo: z.string().optional().nullable().transform(normalizeDateForForm),
-  phan_loai_theo_nd98: z.enum(["A", "B", "C", "D"]).optional().nullable(),
-})
-
-type EquipmentFormValues = z.infer<typeof equipmentFormSchema>
-
-// Helper function
-function getHistoryIcon(eventType: string) {
-  switch (eventType) {
-    case "Sửa chữa":
-      return <Wrench className="h-4 w-4 text-muted-foreground" />
-    case "Bảo trì":
-    case "Bảo trì định kỳ":
-    case "Bảo trì dự phòng":
-      return <Settings className="h-4 w-4 text-muted-foreground" />
-    case "Luân chuyển":
-    case "Luân chuyển nội bộ":
-    case "Luân chuyển bên ngoài":
-      return <ArrowRightLeft className="h-4 w-4 text-muted-foreground" />
-    case "Hiệu chuẩn":
-    case "Kiểm định":
-      return <CheckCircle className="h-4 w-4 text-muted-foreground" />
-    case "Thanh lý":
-      return <Trash2 className="h-4 w-4 text-muted-foreground" />
-    default:
-      return <Calendar className="h-4 w-4 text-muted-foreground" />
-  }
-}
+import type { Attachment, HistoryItem } from "@/app/(app)/equipment/types"
+import {
+  equipmentFormSchema,
+  type EquipmentFormValues,
+  type UserSession,
+  getHistoryIcon,
+} from "@/app/(app)/equipment/_components/EquipmentDetailDialog/EquipmentDetailTypes"
 
 export interface EquipmentDetailDialogProps {
   equipment: Equipment | null

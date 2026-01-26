@@ -17,6 +17,60 @@ export type { Equipment, UsageLog, SessionUser }
 // Re-export FacilityOption from canonical location
 export type { FacilityOption } from "@/types/tenant"
 
+// ============================================================================
+// Equipment Detail Dialog Types
+// ============================================================================
+
+/**
+ * Attachment file linked to equipment
+ * Maps to equipment_attachments table
+ */
+export type Attachment = {
+  id: string
+  ten_file: string
+  duong_dan_luu_tru: string
+  thiet_bi_id: number
+}
+
+/**
+ * History event for equipment timeline
+ * Returned by equipment_history_list RPC
+ */
+export type HistoryItem = {
+  id: number
+  ngay_thuc_hien: string
+  loai_su_kien: string
+  mo_ta: string
+  chi_tiet: {
+    mo_ta_su_co?: string
+    hang_muc_sua_chua?: string
+    nguoi_yeu_cau?: string
+    cong_viec_id?: number
+    thang?: number
+    ten_ke_hoach?: string
+    khoa_phong?: string
+    nam?: number
+    ma_yeu_cau?: string
+    loai_hinh?: string
+    khoa_phong_hien_tai?: string
+    khoa_phong_nhan?: string
+    don_vi_nhan?: string
+  } | null
+}
+
+/**
+ * Query keys for equipment detail dialog data fetching
+ * Centralized to prevent cache key drift
+ */
+export const equipmentDetailQueryKeys = {
+  attachments: (equipmentId: number | undefined) => ["attachments", equipmentId] as const,
+  history: (equipmentId: number | undefined) => ["history", equipmentId] as const,
+} as const
+
+// ============================================================================
+// Dialog State Types
+// ============================================================================
+
 /**
  * Used by EquipmentDialogContext to manage all dialog visibility
  */
