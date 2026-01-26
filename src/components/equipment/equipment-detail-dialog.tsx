@@ -18,6 +18,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import Link from "next/link"
 import {
   AlertCircle,
+  AlertTriangle,
   ArrowRightLeft,
   Calendar,
   CheckCircle,
@@ -69,6 +70,12 @@ import {
 import { Skeleton } from "@/components/ui/skeleton"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
 import { UsageHistoryTab } from "@/components/usage-history-tab"
 import {
   columnLabels,
@@ -76,6 +83,12 @@ import {
   getStatusVariant,
   getClassificationVariant,
 } from "@/components/equipment/equipment-table-columns"
+import {
+  normalizeDateForForm,
+  isSuspiciousDate,
+  SUSPICIOUS_DATE_WARNING,
+  TEXT_DATE_FIELDS,
+} from "@/lib/date-utils"
 import type { Equipment } from "@/types/database"
 
 // Types
@@ -115,20 +128,6 @@ interface UserSession {
 }
 
 // Form schema
-const normalizeDate = (v: string | null | undefined) => {
-  if (!v) return null
-  const s = String(v).trim()
-  if (s === "") return null
-  const m = s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/)
-  if (m) {
-    const d = m[1].padStart(2, "0")
-    const mo = m[2].padStart(2, "0")
-    const y = m[3]
-    return `${y}-${mo}-${d}`
-  }
-  return s
-}
-
 const equipmentFormSchema = z.object({
   ma_thiet_bi: z.string().min(1, "Mã thiết bị là bắt buộc"),
   ten_thiet_bi: z.string().min(1, "Tên thiết bị là bắt buộc"),
@@ -137,11 +136,11 @@ const equipmentFormSchema = z.object({
   hang_san_xuat: z.string().optional().nullable(),
   noi_san_xuat: z.string().optional().nullable(),
   nam_san_xuat: z.coerce.number().optional().nullable(),
-  ngay_nhap: z.string().optional().nullable().transform(normalizeDate),
-  ngay_dua_vao_su_dung: z.string().optional().nullable().transform(normalizeDate),
+  ngay_nhap: z.string().optional().nullable().transform(normalizeDateForForm),
+  ngay_dua_vao_su_dung: z.string().optional().nullable().transform(normalizeDateForForm),
   nguon_kinh_phi: z.string().optional().nullable(),
   gia_goc: z.coerce.number().optional().nullable(),
-  han_bao_hanh: z.string().optional().nullable().transform(normalizeDate),
+  han_bao_hanh: z.string().optional().nullable().transform(normalizeDateForForm),
   vi_tri_lap_dat: z.string().min(1, "Vị trí lắp đặt là bắt buộc").nullable().transform(val => val || ""),
   khoa_phong_quan_ly: z.string().min(1, "Khoa/Phòng quản lý là bắt buộc").nullable().transform(val => val || ""),
   nguoi_dang_truc_tiep_quan_ly: z.string().min(1, "Người trực tiếp quản lý (sử dụng) là bắt buộc").nullable().transform(val => val || ""),
@@ -150,11 +149,11 @@ const equipmentFormSchema = z.object({
   phu_kien_kem_theo: z.string().optional().nullable(),
   ghi_chu: z.string().optional().nullable(),
   chu_ky_bt_dinh_ky: z.coerce.number().optional().nullable(),
-  ngay_bt_tiep_theo: z.string().optional().nullable().transform(normalizeDate),
+  ngay_bt_tiep_theo: z.string().optional().nullable().transform(normalizeDateForForm),
   chu_ky_hc_dinh_ky: z.coerce.number().optional().nullable(),
-  ngay_hc_tiep_theo: z.string().optional().nullable().transform(normalizeDate),
+  ngay_hc_tiep_theo: z.string().optional().nullable().transform(normalizeDateForForm),
   chu_ky_kd_dinh_ky: z.coerce.number().optional().nullable(),
-  ngay_kd_tiep_theo: z.string().optional().nullable().transform(normalizeDate),
+  ngay_kd_tiep_theo: z.string().optional().nullable().transform(normalizeDateForForm),
   phan_loai_theo_nd98: z.enum(["A", "B", "C", "D"]).optional().nullable(),
 })
 
@@ -854,6 +853,34 @@ export function EquipmentDetailDialog({
                         ) : (
                           <div className="italic text-muted-foreground">Chưa có dữ liệu</div>
                         )
+                      }
+                      // TEXT date fields that may contain suspicious dates from Excel import
+                      if (TEXT_DATE_FIELDS.has(key)) {
+                        if (value === null || value === undefined || value === "") {
+                          return <div className="italic text-muted-foreground">Chưa có dữ liệu</div>
+                        }
+                        const dateStr = String(value)
+                        if (isSuspiciousDate(dateStr)) {
+                          return (
+                            <div className="flex items-center gap-2">
+                              <span>{dateStr}</span>
+                              <TooltipProvider>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <span className="inline-flex items-center">
+                                      <AlertTriangle className="h-4 w-4 text-amber-500 cursor-help" aria-hidden="true" />
+                                      <span className="sr-only">{SUSPICIOUS_DATE_WARNING}</span>
+                                    </span>
+                                  </TooltipTrigger>
+                                  <TooltipContent className="max-w-xs">
+                                    <p>{SUSPICIOUS_DATE_WARNING}</p>
+                                  </TooltipContent>
+                                </Tooltip>
+                              </TooltipProvider>
+                            </div>
+                          )
+                        }
+                        return dateStr
                       }
                       if (value === null || value === undefined || value === "") {
                         return <div className="italic text-muted-foreground">Chưa có dữ liệu</div>

@@ -32,30 +32,8 @@ import { type Equipment } from "@/types/database"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { callRpc } from "@/lib/rpc-client"
-
-const equipmentStatusOptions = [
-    "Hoạt động",
-    "Chờ sửa chữa",
-    "Chờ bảo trì",
-    "Chờ hiệu chuẩn/kiểm định",
-    "Ngưng sử dụng",
-    "Chưa có nhu cầu sử dụng"
-] as const;
-
-
-const normalizeDate = (v: string | null | undefined) => {
-  if (!v) return null
-  const s = String(v).trim()
-  if (s === '') return null
-  const m = s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/)
-  if (m) {
-    const d = m[1].padStart(2, '0')
-    const mo = m[2].padStart(2, '0')
-    const y = m[3]
-    return `${y}-${mo}-${d}`
-  }
-  return s
-}
+import { normalizeDateForForm } from "@/lib/date-utils"
+import { equipmentStatusOptions } from "@/components/equipment/equipment-table-columns"
 
 const equipmentFormSchema = z.object({
   ma_thiet_bi: z.string().min(1, "Mã thiết bị là bắt buộc"),
@@ -65,11 +43,11 @@ const equipmentFormSchema = z.object({
   hang_san_xuat: z.string().optional().nullable(),
   noi_san_xuat: z.string().optional().nullable(),
   nam_san_xuat: z.coerce.number().optional().nullable(),
-  ngay_nhap: z.string().optional().nullable().transform(normalizeDate),
-  ngay_dua_vao_su_dung: z.string().optional().nullable().transform(normalizeDate),
+  ngay_nhap: z.string().optional().nullable().transform(normalizeDateForForm),
+  ngay_dua_vao_su_dung: z.string().optional().nullable().transform(normalizeDateForForm),
   nguon_kinh_phi: z.string().optional().nullable(),
   gia_goc: z.coerce.number().optional().nullable(),
-  han_bao_hanh: z.string().optional().nullable().transform(normalizeDate),
+  han_bao_hanh: z.string().optional().nullable().transform(normalizeDateForForm),
   vi_tri_lap_dat: z.string().min(1, "Vị trí lắp đặt là bắt buộc").nullable().transform(val => val || ""),
   khoa_phong_quan_ly: z.string().min(1, "Khoa/Phòng quản lý là bắt buộc").nullable().transform(val => val || ""),
   nguoi_dang_truc_tiep_quan_ly: z.string().min(1, "Người trực tiếp quản lý (sử dụng) là bắt buộc").nullable().transform(val => val || ""),
@@ -79,11 +57,11 @@ const equipmentFormSchema = z.object({
   ghi_chu: z.string().optional().nullable(),
   // Maintenance cycles and next dates
   chu_ky_bt_dinh_ky: z.coerce.number().optional().nullable(),
-  ngay_bt_tiep_theo: z.string().optional().nullable().transform(normalizeDate),
+  ngay_bt_tiep_theo: z.string().optional().nullable().transform(normalizeDateForForm),
   chu_ky_hc_dinh_ky: z.coerce.number().optional().nullable(),
-  ngay_hc_tiep_theo: z.string().optional().nullable().transform(normalizeDate),
+  ngay_hc_tiep_theo: z.string().optional().nullable().transform(normalizeDateForForm),
   chu_ky_kd_dinh_ky: z.coerce.number().optional().nullable(),
-  ngay_kd_tiep_theo: z.string().optional().nullable().transform(normalizeDate),
+  ngay_kd_tiep_theo: z.string().optional().nullable().transform(normalizeDateForForm),
   phan_loai_theo_nd98: z.enum(['A', 'B', 'C', 'D']).optional().nullable(),
 });
 

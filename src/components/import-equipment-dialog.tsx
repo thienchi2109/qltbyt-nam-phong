@@ -17,6 +17,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { useToast } from "@/hooks/use-toast"
 import { callRpc } from "@/lib/rpc-client"
+import { normalizeDateForImport } from "@/lib/date-utils"
 import type { Equipment } from "@/lib/data"
 import { equipmentStatusOptions } from "@/components/equipment/equipment-table-columns"
 
@@ -105,46 +106,6 @@ const headerToDbKeyMap: Record<string, string> = {
     'Phân loại theo NĐ98': 'phan_loai_theo_nd98',
 };
 
-// Helper: convert Excel date (serial or string) to ISO 'YYYY-MM-DD'
-function normalizeDate(val: any): string | null {
-  if (val === undefined || val === null || val === '') return null;
-  // If already ISO-like
-  if (typeof val === 'string') {
-    const s = val.trim();
-    // Try DD/MM/YYYY
-    const ddmmyyyy = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/;
-    const yyyymmdd = /^(\d{4})-(\d{2})-(\d{2})$/;
-    if (yyyymmdd.test(s)) return s;
-    const m = s.match(ddmmyyyy);
-    if (m) {
-      const d = m[1].padStart(2,'0');
-      const mo = m[2].padStart(2,'0');
-      const y = m[3];
-      return `${y}-${mo}-${d}`;
-    }
-    // Fallback: try Date parse
-    const parsed = new Date(s);
-    if (!isNaN(parsed.getTime())) {
-      const y = parsed.getFullYear();
-      const mo = String(parsed.getMonth()+1).padStart(2,'0');
-      const d = String(parsed.getDate()).padStart(2,'0');
-      return `${y}-${mo}-${d}`;
-    }
-    return null;
-  }
-  if (typeof val === 'number') {
-    // Excel serial date (1900 system): epoch 1899-12-30
-    const epoch = new Date(Date.UTC(1899, 11, 30));
-    const ms = val * 24 * 60 * 60 * 1000;
-    const dt = new Date(epoch.getTime() + ms);
-    const y = dt.getUTCFullYear();
-    const mo = String(dt.getUTCMonth()+1).padStart(2,'0');
-    const d = String(dt.getUTCDate()).padStart(2,'0');
-    return `${y}-${mo}-${d}`;
-  }
-  return null;
-}
-
 function normalizeInt(val: any): number | null {
   if (val === undefined || val === null || val === '') return null;
   if (typeof val === 'number') return Number.isFinite(val) ? Math.trunc(val) : null;
@@ -189,6 +150,7 @@ export function ImportEquipmentDialog({ open, onOpenChange, onSuccess }: ImportE
   const [parsedData, setParsedData] = React.useState<Partial<Equipment>[]>([])
   const [error, setError] = React.useState<string | null>(null)
   const [validationErrors, setValidationErrors] = React.useState<string[]>([])
+  const [rejectedDatesCount, setRejectedDatesCount] = React.useState(0)
   const fileInputRef = React.useRef<HTMLInputElement>(null)
 
   const resetState = () => {
@@ -197,6 +159,7 @@ export function ImportEquipmentDialog({ open, onOpenChange, onSuccess }: ImportE
     setParsedData([])
     setError(null)
     setValidationErrors([])
+    setRejectedDatesCount(0)
     if (fileInputRef.current) {
         fileInputRef.current.value = ""
     }
@@ -231,6 +194,7 @@ export function ImportEquipmentDialog({ open, onOpenChange, onSuccess }: ImportE
             return
         }
 
+        let rejectedDates = 0
         const transformedData = json.map(row => {
             const newRow: Partial<Equipment> = {}
             for (const header in row) {
@@ -239,7 +203,9 @@ export function ImportEquipmentDialog({ open, onOpenChange, onSuccess }: ImportE
                     const rawVal = row[header]
                     let v: any = (rawVal === "" || rawVal === undefined) ? null : rawVal
                     if (dateFields.has(dbKey)) {
-                      v = normalizeDate(rawVal)
+                      const dateResult = normalizeDateForImport(rawVal)
+                      v = dateResult.value
+                      if (dateResult.rejected) rejectedDates++
                     } else if (intFields.has(dbKey)) {
                       v = normalizeInt(rawVal)
                     } else if (numberFields.has(dbKey)) {
@@ -255,6 +221,8 @@ export function ImportEquipmentDialog({ open, onOpenChange, onSuccess }: ImportE
             }
             return newRow
         })
+
+        setRejectedDatesCount(rejectedDates)
 
         // Validate the transformed data
         const validation = validateEquipmentData(transformedData, headerToDbKeyMap);
@@ -450,6 +418,17 @@ export function ImportEquipmentDialog({ open, onOpenChange, onSuccess }: ImportE
                             <li key={index}>{error}</li>
                         ))}
                     </ul>
+                </div>
+            )}
+            {rejectedDatesCount > 0 && (
+                <div className="text-sm text-amber-700 bg-amber-50 p-3 rounded-md border border-amber-200">
+                    <div className="flex items-center gap-2">
+                        <AlertTriangle className="h-4 w-4" />
+                        <span>
+                            <strong>{rejectedDatesCount}</strong> ngày có định dạng không hợp lệ (trước năm 1970) đã bị bỏ qua.
+                            Các trường ngày này sẽ được để trống.
+                        </span>
+                    </div>
                 </div>
             )}
             {selectedFile && !error && validationErrors.length === 0 && (
