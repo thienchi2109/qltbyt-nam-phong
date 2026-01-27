@@ -28,6 +28,7 @@ export interface UseEquipmentFiltersReturn {
   selectedLocations: string[]
   selectedStatuses: string[]
   selectedClassifications: string[]
+  selectedFundingSources: string[]
 }
 
 export function useEquipmentFilters(): UseEquipmentFiltersReturn {
@@ -78,6 +79,10 @@ export function useEquipmentFilters(): UseEquipmentFiltersReturn {
     () => getArrayFilter("phan_loai_theo_nd98"),
     [getArrayFilter]
   )
+  const selectedFundingSources = React.useMemo(
+    () => getArrayFilter("nguon_kinh_phi"),
+    [getArrayFilter]
+  )
 
   // Reset all filters (called on tenant change)
   const resetFilters = React.useCallback(() => {
@@ -103,6 +108,7 @@ export function useEquipmentFilters(): UseEquipmentFiltersReturn {
       selectedLocations,
       selectedStatuses,
       selectedClassifications,
+      selectedFundingSources,
     }),
     [
       searchTerm,
@@ -116,6 +122,7 @@ export function useEquipmentFilters(): UseEquipmentFiltersReturn {
       selectedLocations,
       selectedStatuses,
       selectedClassifications,
+      selectedFundingSources,
     ]
   )
 }

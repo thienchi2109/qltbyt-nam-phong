@@ -16,6 +16,7 @@ export type EquipmentFilterData = {
   location: FilterOption[]
   user: FilterOption[]
   classification: FilterOption[]
+  fundingSource: FilterOption[]
 }
 
 interface FilterBottomSheetProps {
@@ -157,6 +158,7 @@ export function FilterBottomSheet({
     { key: "vi_tri_lap_dat", label: "Vị trí", options: data.location },
     { key: "nguoi_dang_truc_tiep_quan_ly", label: "Người dùng", options: data.user },
     { key: "phan_loai_theo_nd98", label: "Phân loại", options: data.classification },
+    { key: "nguon_kinh_phi", label: "Nguồn kinh phí", options: data.fundingSource },
   ]
 
   return (

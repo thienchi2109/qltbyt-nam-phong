@@ -39,6 +39,7 @@ export interface FilterBottomSheetData {
   location: { id: string; label: string; count: number }[]
   user: { id: string; label: string; count: number }[]
   classification: { id: string; label: string; count: number }[]
+  fundingSource: { id: string; label: string; count: number }[]
 }
 
 /**
@@ -94,8 +95,10 @@ export interface UseEquipmentPageReturn {
   // Filter options (from server)
   departments: string[]
   users: string[]
+  locations: string[]
   statuses: string[]
   classifications: string[]
+  fundingSources: string[]
   filterData: FilterBottomSheetData
 
   // Facility filter

@@ -114,6 +114,7 @@ const EquipmentPageContent = React.memo(function EquipmentPageContent({
     users,
     statuses,
     classifications,
+    fundingSources,
     filterData,
 
     // Facility filter - now from TenantSelectionContext
@@ -192,6 +193,7 @@ const EquipmentPageContent = React.memo(function EquipmentPageContent({
             departments={departments}
             users={users}
             classifications={classifications}
+            fundingSources={fundingSources}
             isMobile={isMobile}
             useTabletFilters={useTabletFilters}
             isRegionalLeader={isRegionalLeader}
