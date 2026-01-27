@@ -78,6 +78,17 @@ GRANT EXECUTE ON FUNCTION public.equipment_funding_sources_list_for_tenant TO au
 -- Adds support for both single value and array-based filtering
 -- ============================================================================
 
+-- Drop previous signature to avoid PostgREST overload ambiguity
+-- Previous signature from 20260121150000_add_serial_to_equipment_search.sql
+-- Signature: (p_q, p_sort, p_page, p_page_size, p_don_vi, p_khoa_phong, p_khoa_phong_array,
+--             p_nguoi_su_dung, p_nguoi_su_dung_array, p_vi_tri_lap_dat, p_vi_tri_lap_dat_array,
+--             p_tinh_trang, p_tinh_trang_array, p_phan_loai, p_phan_loai_array, p_fields)
+DROP FUNCTION IF EXISTS public.equipment_list_enhanced(
+  TEXT, TEXT, INT, INT, BIGINT,
+  TEXT, TEXT[], TEXT, TEXT[], TEXT, TEXT[],
+  TEXT, TEXT[], TEXT, TEXT[], TEXT
+);
+
 CREATE OR REPLACE FUNCTION public.equipment_list_enhanced(
   p_q TEXT DEFAULT NULL,
   p_sort TEXT DEFAULT 'id.asc',
@@ -263,7 +274,7 @@ BEGIN
         SELECT ARRAY(SELECT x FROM unnest(p_nguon_kinh_phi_array) AS x WHERE x != 'Chưa có') INTO v_non_empty_sources;
 
         IF v_non_empty_sources IS NOT NULL AND array_length(v_non_empty_sources, 1) > 0 THEN
-          v_where := v_where || ' AND (nguon_kinh_phi IS NULL OR TRIM(nguon_kinh_phi) = '''' OR nguon_kinh_phi = ANY(ARRAY[' ||
+          v_where := v_where || ' AND (nguon_kinh_phi IS NULL OR TRIM(nguon_kinh_phi) = '''' OR TRIM(nguon_kinh_phi) = ANY(ARRAY[' ||
             array_to_string(ARRAY(SELECT quote_literal(x) FROM unnest(v_non_empty_sources) AS x), ',') || ']))';
         ELSE
           -- Only 'Chưa có' in array
@@ -271,14 +282,14 @@ BEGIN
         END IF;
       END;
     ELSE
-      v_where := v_where || ' AND nguon_kinh_phi = ANY(ARRAY[' ||
+      v_where := v_where || ' AND TRIM(nguon_kinh_phi) = ANY(ARRAY[' ||
         array_to_string(ARRAY(SELECT quote_literal(x) FROM unnest(p_nguon_kinh_phi_array) AS x), ',') || '])';
     END IF;
   ELSIF p_nguon_kinh_phi IS NOT NULL AND trim(p_nguon_kinh_phi) != '' THEN
     IF p_nguon_kinh_phi = 'Chưa có' THEN
       v_where := v_where || ' AND (nguon_kinh_phi IS NULL OR TRIM(nguon_kinh_phi) = '''')';
     ELSE
-      v_where := v_where || ' AND nguon_kinh_phi = ' || quote_literal(p_nguon_kinh_phi);
+      v_where := v_where || ' AND TRIM(nguon_kinh_phi) = ' || quote_literal(p_nguon_kinh_phi);
     END IF;
   END IF;
 

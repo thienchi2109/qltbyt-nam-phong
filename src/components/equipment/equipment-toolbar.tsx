@@ -173,11 +173,11 @@ export interface EquipmentToolbarProps {
   onSearchChange: (value: string) => void
   columnFilters: ColumnFiltersState
   isFiltered: boolean
-  statuses: (string | null)[]
-  departments: (string | null)[]
-  users: (string | null)[]
-  classifications: (string | null)[]
-  fundingSources: (string | null)[]
+  statuses: string[]
+  departments: string[]
+  users: string[]
+  classifications: string[]
+  fundingSources: string[]
   isMobile: boolean
   useTabletFilters: boolean
   isRegionalLeader: boolean
@@ -377,27 +377,27 @@ export function EquipmentToolbar({
                   <DataTableFacetedFilter
                     column={table.getColumn("tinh_trang_hien_tai")}
                     title="Tình trạng"
-                    options={statuses.map(s => ({label: s!, value: s!}))}
+                    options={statuses.map(s => ({label: s, value: s}))}
                   />
                   <DataTableFacetedFilter
                     column={table.getColumn("khoa_phong_quan_ly")}
                     title="Khoa/Phòng"
-                    options={departments.filter((d): d is string => !!d).map(d => ({label: d, value: d}))}
+                    options={departments.map(d => ({label: d, value: d}))}
                   />
                   <DataTableFacetedFilter
                     column={table.getColumn("nguoi_dang_truc_tiep_quan_ly")}
                     title="Người sử dụng"
-                    options={users.filter((d): d is string => !!d).map(d => ({label: d, value: d}))}
+                    options={users.map(d => ({label: d, value: d}))}
                   />
                   <DataTableFacetedFilter
                     column={table.getColumn("phan_loai_theo_nd98")}
                     title="Phân loại"
-                    options={classifications.filter((c): c is string => !!c).map(c => ({label: c, value: c}))}
+                    options={classifications.map(c => ({label: c, value: c}))}
                   />
                   <DataTableFacetedFilter
                     column={table.getColumn("nguon_kinh_phi")}
                     title="Nguồn kinh phí"
-                    options={fundingSources.filter((f): f is string => !!f).map(f => ({label: f, value: f}))}
+                    options={fundingSources.map(f => ({label: f, value: f}))}
                   />
                   {isFiltered && (
                     <Button

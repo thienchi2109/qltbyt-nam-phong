@@ -39,6 +39,7 @@ const createDefaultParams = (overrides?: Partial<UseEquipmentDataParams>): UseEq
   selectedLocations: [],
   selectedStatuses: [],
   selectedClassifications: [],
+  selectedFundingSources: [],
   // Context values passed from auth hook
   selectedFacilityId: undefined,
   showSelector: false,
@@ -80,6 +81,8 @@ describe('useEquipmentData', () => {
         case 'equipment_statuses_list_for_tenant':
           return Promise.resolve([])
         case 'equipment_classifications_list_for_tenant':
+          return Promise.resolve([])
+        case 'equipment_funding_sources_list_for_tenant':
           return Promise.resolve([])
         case 'get_facilities_with_equipment_count':
           return Promise.resolve([])
@@ -553,6 +556,52 @@ describe('useEquipmentData', () => {
 
       expect(result.current.activeFacility?.id).toBe(2)
       expect(result.current.activeFacility?.name).toBe('Facility 2')
+    })
+  })
+
+  describe('Funding Source Filter', () => {
+    it('should fetch funding sources for tenant', async () => {
+      const mockFundingSources = [
+        { name: 'Ngân sách nhà nước', count: 42 },
+        { name: 'Chưa có', count: 15 },
+      ]
+      mockCallRpc.mockImplementation(({ fn }: { fn: string }) => {
+        if (fn === 'equipment_funding_sources_list_for_tenant') {
+          return Promise.resolve(mockFundingSources)
+        }
+        if (fn === 'equipment_list_enhanced') {
+          return Promise.resolve({ data: [], total: 0 })
+        }
+        return Promise.resolve([])
+      })
+
+      const { result } = renderHook(() => useEquipmentData(createDefaultParams()), {
+        wrapper: createWrapper(),
+      })
+
+      await waitFor(() => {
+        expect(result.current.fundingSources).toEqual(['Ngân sách nhà nước', 'Chưa có'])
+      })
+    })
+
+    it('should pass funding sources filter to equipment_list_enhanced', async () => {
+      const { result } = renderHook(
+        () => useEquipmentData(createDefaultParams({
+          selectedFundingSources: ['Ngân sách nhà nước', 'Chưa có'],
+        })),
+        { wrapper: createWrapper() }
+      )
+
+      await waitFor(() => {
+        expect(mockCallRpc).toHaveBeenCalledWith(
+          expect.objectContaining({
+            fn: 'equipment_list_enhanced',
+            args: expect.objectContaining({
+              p_nguon_kinh_phi_array: ['Ngân sách nhà nước', 'Chưa có'],
+            }),
+          })
+        )
+      })
     })
   })
 })

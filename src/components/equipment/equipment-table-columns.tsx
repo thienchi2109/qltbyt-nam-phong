@@ -104,7 +104,8 @@ export const filterableColumns: (keyof Equipment)[] = [
   'vi_tri_lap_dat',
   'nguoi_dang_truc_tiep_quan_ly',
   'phan_loai_theo_nd98',
-  'tinh_trang_hien_tai'
+  'tinh_trang_hien_tai',
+  'nguon_kinh_phi'
 ]
 
 interface CreateEquipmentColumnsConfig {
