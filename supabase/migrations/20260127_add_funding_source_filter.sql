@@ -49,8 +49,14 @@ BEGIN
       v_effective := NULL;
     END IF;
   ELSE
+    -- SECURITY: Guard against empty/NULL allowed list for non-global users
+    -- Without this check, v_effective = NULL would return ALL tenants
+    IF v_allowed IS NULL OR array_length(v_allowed, 1) = 0 THEN
+      RETURN;  -- Return empty set, no cross-tenant leak
+    END IF;
+
     IF p_don_vi IS NOT NULL THEN
-      IF v_allowed IS NULL OR NOT (p_don_vi = ANY(v_allowed)) THEN
+      IF NOT (p_don_vi = ANY(v_allowed)) THEN
         RAISE EXCEPTION 'Access denied for tenant %', p_don_vi USING ERRCODE = '42501';
       END IF;
       v_effective := ARRAY[p_don_vi];
