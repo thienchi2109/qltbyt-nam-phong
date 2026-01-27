@@ -9,27 +9,18 @@
 "use client"
 
 import * as React from "react"
-import { format, parseISO } from "date-fns"
-import { vi } from "date-fns/locale"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
-import Link from "next/link"
 import {
-  AlertCircle,
   AlertTriangle,
   Edit,
-  ExternalLink,
-  Link as LinkIcon,
   Loader2,
   Printer,
   QrCode,
-  Trash2,
 } from "lucide-react"
 
-import { useToast } from "@/hooks/use-toast"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import {
   Dialog,
   DialogContent,
@@ -39,8 +30,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import {
   Form,
   FormControl,
@@ -58,7 +47,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { Skeleton } from "@/components/ui/skeleton"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import {
@@ -67,7 +55,6 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
-import { UsageHistoryTab } from "@/components/usage-history-tab"
 import {
   columnLabels,
   equipmentStatusOptions,
@@ -84,11 +71,13 @@ import {
   equipmentFormSchema,
   type EquipmentFormValues,
   type UserSession,
-  getHistoryIcon,
 } from "@/app/(app)/equipment/_components/EquipmentDetailDialog/EquipmentDetailTypes"
 import { useEquipmentHistory } from "@/app/(app)/equipment/_components/EquipmentDetailDialog/hooks/useEquipmentHistory"
 import { useEquipmentAttachments } from "@/app/(app)/equipment/_components/EquipmentDetailDialog/hooks/useEquipmentAttachments"
 import { useEquipmentUpdate } from "@/app/(app)/equipment/_components/EquipmentDetailDialog/hooks/useEquipmentUpdate"
+import { EquipmentDetailHistoryTab } from "@/app/(app)/equipment/_components/EquipmentDetailDialog/EquipmentDetailHistoryTab"
+import { EquipmentDetailUsageTab } from "@/app/(app)/equipment/_components/EquipmentDetailDialog/EquipmentDetailUsageTab"
+import { EquipmentDetailFilesTab } from "@/app/(app)/equipment/_components/EquipmentDetailDialog/EquipmentDetailFilesTab"
 
 export interface EquipmentDetailDialogProps {
   equipment: Equipment | null
@@ -111,14 +100,9 @@ export function EquipmentDetailDialog({
   onGenerateDeviceLabel,
   onEquipmentUpdated,
 }: EquipmentDetailDialogProps) {
-  const { toast } = useToast()
-
   // Internal state
   const [currentTab, setCurrentTab] = React.useState<string>("details")
   const [isEditingDetails, setIsEditingDetails] = React.useState(false)
-  const [newFileName, setNewFileName] = React.useState("")
-  const [newFileUrl, setNewFileUrl] = React.useState("")
-  const [deletingAttachmentId, setDeletingAttachmentId] = React.useState<string | null>(null)
   // Store saved values to display after save (equipment prop is stale until dialog reopens)
   const [savedValues, setSavedValues] = React.useState<Partial<EquipmentFormValues> | null>(null)
 
@@ -236,37 +220,6 @@ export function EquipmentDetailDialog({
   const onSubmitInlineEdit = async (values: EquipmentFormValues) => {
     if (!equipment) return
     await updateEquipment({ id: equipment.id, patch: values })
-  }
-
-  const handleAddAttachment = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!newFileName || !newFileUrl || !equipment) return
-
-    try {
-      new URL(newFileUrl)
-    } catch (_) {
-      toast({
-        variant: "destructive",
-        title: "URL không hợp lệ",
-        description: "Vui lòng nhập một đường dẫn URL hợp lệ.",
-      })
-      return
-    }
-
-    await addAttachment({ name: newFileName, url: newFileUrl })
-    setNewFileName("")
-    setNewFileUrl("")
-  }
-
-  const handleDeleteAttachment = async (attachmentId: string) => {
-    if (!equipment || deletingAttachmentId) return
-    if (!confirm("Bạn có chắc chắn muốn xóa file đính kèm này không?")) return
-    setDeletingAttachmentId(attachmentId)
-    try {
-      await deleteAttachment(attachmentId)
-    } finally {
-      setDeletingAttachmentId(null)
-    }
   }
 
   const handleDialogOpenChange = React.useCallback(
@@ -742,220 +695,25 @@ export function EquipmentDetailDialog({
 
           {/* Files Tab */}
           <TabsContent value="files" className="flex-grow overflow-hidden">
-            <div className="h-full flex flex-col gap-4 py-4">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-lg">Thêm file đính kèm mới</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <form onSubmit={handleAddAttachment} className="space-y-4">
-                    <div className="space-y-1">
-                      <Label htmlFor="file-name">Tên file</Label>
-                      <Input
-                        id="file-name"
-                        placeholder="VD: Giấy chứng nhận hiệu chuẩn"
-                        value={newFileName}
-                        onChange={(e) => setNewFileName(e.target.value)}
-                        required
-                        disabled={isAddingAttachment}
-                      />
-                    </div>
-                    <div className="space-y-1">
-                      <Label htmlFor="file-url">Đường dẫn (URL)</Label>
-                      <Input
-                        id="file-url"
-                        type="url"
-                        placeholder="https://..."
-                        value={newFileUrl}
-                        onChange={(e) => setNewFileUrl(e.target.value)}
-                        required
-                        disabled={isAddingAttachment}
-                      />
-                    </div>
-                    <Alert>
-                      <AlertCircle className="h-4 w-4" />
-                      <AlertTitle>Làm thế nào để lấy URL?</AlertTitle>
-                      <AlertDescription className="space-y-2">
-                        <div>
-                          Tải file của bạn lên thư mục Drive chia sẻ của đơn vị, sau đó lấy link chia sẻ
-                          công khai và dán vào đây.
-                        </div>
-                        {equipment?.google_drive_folder_url && (
-                          <Button type="button" variant="outline" size="sm" asChild className="mt-2">
-                            <a
-                              href={equipment.google_drive_folder_url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="inline-flex items-center gap-2"
-                            >
-                              <ExternalLink className="h-4 w-4" />
-                              Mở thư mục chung
-                            </a>
-                          </Button>
-                        )}
-                      </AlertDescription>
-                    </Alert>
-                    <Button
-                      type="submit"
-                      disabled={isAddingAttachment || !newFileName || !newFileUrl}
-                    >
-                      {isAddingAttachment && (
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      )}
-                      Lưu liên kết
-                    </Button>
-                  </form>
-                </CardContent>
-              </Card>
-              <div className="flex-grow overflow-hidden">
-                <p className="font-medium mb-2">Danh sách file đã đính kèm</p>
-                <ScrollArea className="h-full pr-4">
-                  {isLoadingAttachments ? (
-                    <div className="space-y-2">
-                      <Skeleton className="h-10 w-full" />
-                      <Skeleton className="h-10 w-full" />
-                      <Skeleton className="h-10 w-full" />
-                    </div>
-                  ) : attachments.length === 0 ? (
-                    <p className="text-sm text-muted-foreground italic text-center py-4">
-                      Chưa có file nào được đính kèm.
-                    </p>
-                  ) : (
-                    <div className="space-y-2">
-                      {attachments.map((file) => (
-                        <div
-                          key={file.id}
-                          className="flex items-center justify-between p-2 border rounded-md bg-muted/50"
-                        >
-                          <Link
-                            href={file.duong_dan_luu_tru}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="flex items-center gap-2 text-primary hover:underline truncate"
-                          >
-                            <LinkIcon className="h-4 w-4 shrink-0" />
-                            <span className="truncate">{file.ten_file}</span>
-                          </Link>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 text-destructive hover:bg-destructive/10"
-                            onClick={() => handleDeleteAttachment(file.id)}
-                            disabled={!!deletingAttachmentId || isDeletingAttachment}
-                          >
-                            {deletingAttachmentId === file.id || isDeletingAttachment ? (
-                              <Loader2 className="h-4 w-4 animate-spin" />
-                            ) : (
-                              <Trash2 className="h-4 w-4" />
-                            )}
-                          </Button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </ScrollArea>
-              </div>
-            </div>
+            <EquipmentDetailFilesTab
+              attachments={attachments}
+              isLoading={isLoadingAttachments}
+              googleDriveFolderUrl={equipment?.google_drive_folder_url}
+              onAddAttachment={addAttachment}
+              onDeleteAttachment={deleteAttachment}
+              isAdding={isAddingAttachment}
+              isDeleting={isDeletingAttachment}
+            />
           </TabsContent>
 
           {/* History Tab */}
           <TabsContent value="history" className="flex-grow overflow-hidden">
-            <ScrollArea className="h-full pr-4 py-4">
-              {isLoadingHistory ? (
-                <div className="space-y-4">
-                  <Skeleton className="h-20 w-full" />
-                  <Skeleton className="h-20 w-full" />
-                  <Skeleton className="h-20 w-full" />
-                </div>
-              ) : history.length === 0 ? (
-                <div className="flex flex-col items-center justify-center h-full text-center text-muted-foreground">
-                  <p className="font-semibold">Chưa có lịch sử</p>
-                  <p className="text-sm">Mọi hoạt động sửa chữa, bảo trì sẽ được ghi lại tại đây.</p>
-                </div>
-              ) : (
-                <div className="relative pl-6">
-                  <div className="absolute left-0 top-0 h-full w-0.5 bg-border -translate-x-1/2 ml-3"></div>
-                  {history.map((item) => (
-                    <div key={item.id} className="relative mb-8 last:mb-0">
-                      <div className="absolute left-0 top-1 w-3 h-3 rounded-full bg-primary ring-4 ring-background -translate-x-1/2 ml-3"></div>
-                      <div className="pl-2">
-                        <div className="flex items-center gap-4">
-                          <div className="flex items-center justify-center h-8 w-8 rounded-full bg-muted">
-                            {getHistoryIcon(item.loai_su_kien)}
-                          </div>
-                          <div>
-                            <p className="font-semibold">{item.loai_su_kien}</p>
-                            <p className="text-xs text-muted-foreground">
-                              {format(parseISO(item.ngay_thuc_hien), "dd/MM/yyyy HH:mm", { locale: vi })}
-                            </p>
-                          </div>
-                        </div>
-                        <div className="mt-2 ml-10 p-3 rounded-md bg-muted/50 border">
-                          <p className="text-sm font-medium">{item.mo_ta}</p>
-                          {item.chi_tiet?.mo_ta_su_co && (
-                            <p className="text-sm text-muted-foreground mt-1">
-                              Sự cố: {item.chi_tiet.mo_ta_su_co}
-                            </p>
-                          )}
-                          {item.chi_tiet?.hang_muc_sua_chua && (
-                            <p className="text-sm text-muted-foreground">
-                              Hạng mục: {item.chi_tiet.hang_muc_sua_chua}
-                            </p>
-                          )}
-                          {item.chi_tiet?.nguoi_yeu_cau && (
-                            <p className="text-sm text-muted-foreground">
-                              Người yêu cầu: {item.chi_tiet.nguoi_yeu_cau}
-                            </p>
-                          )}
-                          {item.chi_tiet?.ten_ke_hoach && (
-                            <p className="text-sm text-muted-foreground mt-1">
-                              Kế hoạch: {item.chi_tiet.ten_ke_hoach}
-                            </p>
-                          )}
-                          {item.chi_tiet?.thang && (
-                            <p className="text-sm text-muted-foreground">
-                              Tháng: {item.chi_tiet.thang}/{item.chi_tiet.nam}
-                            </p>
-                          )}
-                          {item.chi_tiet?.ma_yeu_cau && (
-                            <p className="text-sm text-muted-foreground mt-1">
-                              Mã yêu cầu: {item.chi_tiet.ma_yeu_cau}
-                            </p>
-                          )}
-                          {item.chi_tiet?.loai_hinh && (
-                            <p className="text-sm text-muted-foreground">
-                              Loại hình:{" "}
-                              {item.chi_tiet.loai_hinh === "noi_bo"
-                                ? "Nội bộ"
-                                : item.chi_tiet.loai_hinh === "ben_ngoai"
-                                ? "Bên ngoài"
-                                : "Thanh lý"}
-                            </p>
-                          )}
-                          {item.chi_tiet?.khoa_phong_hien_tai && item.chi_tiet?.khoa_phong_nhan && (
-                            <p className="text-sm text-muted-foreground">
-                              Từ: {item.chi_tiet.khoa_phong_hien_tai} → {item.chi_tiet.khoa_phong_nhan}
-                            </p>
-                          )}
-                          {item.chi_tiet?.don_vi_nhan && (
-                            <p className="text-sm text-muted-foreground">
-                              Đơn vị nhận: {item.chi_tiet.don_vi_nhan}
-                            </p>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </ScrollArea>
+            <EquipmentDetailHistoryTab history={history} isLoading={isLoadingHistory} />
           </TabsContent>
 
           {/* Usage Tab */}
           <TabsContent value="usage" className="flex-grow overflow-hidden">
-            <div className="h-full py-4">
-              <UsageHistoryTab equipment={equipment} />
-            </div>
+            <EquipmentDetailUsageTab equipment={equipment} />
           </TabsContent>
         </Tabs>
         <DialogFooter className="shrink-0 pt-4 border-t">
