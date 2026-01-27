@@ -60,6 +60,7 @@ export function useEquipmentPage(): UseEquipmentPageReturn {
       selectedLocations: filters.selectedLocations,
       selectedStatuses: filters.selectedStatuses,
       selectedClassifications: filters.selectedClassifications,
+      selectedFundingSources: filters.selectedFundingSources,
       // Pass context values from auth hook
       selectedFacilityId: auth.selectedFacilityId,
       showSelector: auth.showSelector,
@@ -87,6 +88,7 @@ export function useEquipmentPage(): UseEquipmentPageReturn {
       filters.selectedLocations,
       filters.selectedStatuses,
       filters.selectedClassifications,
+      filters.selectedFundingSources,
     ]
   )
 
@@ -237,6 +239,7 @@ export function useEquipmentPage(): UseEquipmentPageReturn {
       users: data.users,
       statuses: data.statuses,
       classifications: data.classifications,
+      fundingSources: data.fundingSources,
       filterData: data.filterData,
 
       // Facility filter - now from context via auth/data hooks

@@ -177,6 +177,7 @@ export interface EquipmentToolbarProps {
   departments: (string | null)[]
   users: (string | null)[]
   classifications: (string | null)[]
+  fundingSources: (string | null)[]
   isMobile: boolean
   useTabletFilters: boolean
   isRegionalLeader: boolean
@@ -201,6 +202,7 @@ export function EquipmentToolbar({
   departments,
   users,
   classifications,
+  fundingSources,
   isMobile,
   useTabletFilters,
   isRegionalLeader,
@@ -391,6 +393,11 @@ export function EquipmentToolbar({
                     column={table.getColumn("phan_loai_theo_nd98")}
                     title="Phân loại"
                     options={classifications.filter((c): c is string => !!c).map(c => ({label: c, value: c}))}
+                  />
+                  <DataTableFacetedFilter
+                    column={table.getColumn("nguon_kinh_phi")}
+                    title="Nguồn kinh phí"
+                    options={fundingSources.filter((f): f is string => !!f).map(f => ({label: f, value: f}))}
                   />
                   {isFiltered && (
                     <Button

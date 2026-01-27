@@ -24,6 +24,7 @@ export interface UseEquipmentDataParams {
   selectedLocations: string[]
   selectedStatuses: string[]
   selectedClassifications: string[]
+  selectedFundingSources: string[]
   // From TenantSelectionContext via useEquipmentAuth
   selectedFacilityId: number | null | undefined
   showSelector: boolean
@@ -47,6 +48,7 @@ export interface UseEquipmentDataReturn {
   locations: string[]
   statuses: string[]
   classifications: string[]
+  fundingSources: string[]
   filterData: FilterBottomSheetData
 
   // Facility filter (from context via auth hook)
@@ -86,6 +88,7 @@ export function useEquipmentData(params: UseEquipmentDataParams): UseEquipmentDa
     selectedLocations,
     selectedStatuses,
     selectedClassifications,
+    selectedFundingSources,
     // From context
     selectedFacilityId,
     showSelector,
@@ -159,6 +162,7 @@ export function useEquipmentData(params: UseEquipmentDataParams): UseEquipmentDa
         vi_tri_lap_dat_array: selectedLocations,
         tinh_trang_array: selectedStatuses,
         phan_loai_array: selectedClassifications,
+        nguon_kinh_phi_array: selectedFundingSources,
         sort: sortParam,
       },
     ],
@@ -177,6 +181,7 @@ export function useEquipmentData(params: UseEquipmentDataParams): UseEquipmentDa
           p_vi_tri_lap_dat_array: selectedLocations.length > 0 ? selectedLocations : null,
           p_tinh_trang_array: selectedStatuses.length > 0 ? selectedStatuses : null,
           p_phan_loai_array: selectedClassifications.length > 0 ? selectedClassifications : null,
+          p_nguon_kinh_phi_array: selectedFundingSources.length > 0 ? selectedFundingSources : null,
         },
         signal,
       })
@@ -310,6 +315,26 @@ export function useEquipmentData(params: UseEquipmentDataParams): UseEquipmentDa
     [statusesData]
   )
 
+  const { data: fundingSourcesData } = useQuery<{ name: string; count: number }[]>({
+    queryKey: ["equipment_funding_sources_list_for_tenant", { tenant: effectiveTenantKey, role: userRole, diaBan: userDiaBanId, donVi: effectiveSelectedDonVi }],
+    queryFn: async ({ signal }) => {
+      const result = await callRpc<{ name: string; count: number }[]>({
+        fn: "equipment_funding_sources_list_for_tenant",
+        args: { p_don_vi: effectiveSelectedDonVi },
+        signal,
+      })
+      return result || []
+    },
+    enabled: shouldFetchData,
+    staleTime: 300_000,
+    gcTime: 10 * 60_000,
+    refetchOnWindowFocus: false,
+  })
+  const fundingSources = React.useMemo(
+    () => (fundingSourcesData || []).map((x) => x.name).filter(Boolean),
+    [fundingSourcesData]
+  )
+
   // Filter data for bottom sheet
   const filterData: FilterBottomSheetData = React.useMemo(
     () => ({
@@ -318,8 +343,9 @@ export function useEquipmentData(params: UseEquipmentDataParams): UseEquipmentDa
       location: (locationsData || []).map((x) => ({ id: x.name, label: x.name, count: x.count })),
       user: (usersData || []).map((x) => ({ id: x.name, label: x.name, count: x.count })),
       classification: (classificationsData || []).map((x) => ({ id: x.name, label: x.name, count: x.count })),
+      fundingSource: (fundingSourcesData || []).map((x) => ({ id: x.name, label: x.name, count: x.count })),
     }),
-    [statusesData, departmentsData, locationsData, usersData, classificationsData]
+    [statusesData, departmentsData, locationsData, usersData, classificationsData, fundingSourcesData]
   )
 
   // Cache invalidation - check all cache isolation fields
@@ -368,6 +394,7 @@ export function useEquipmentData(params: UseEquipmentDataParams): UseEquipmentDa
       locations,
       statuses,
       classifications,
+      fundingSources,
       filterData,
       showFacilityFilter: showSelector,
       facilities,
@@ -391,6 +418,7 @@ export function useEquipmentData(params: UseEquipmentDataParams): UseEquipmentDa
       locations,
       statuses,
       classifications,
+      fundingSources,
       filterData,
       showSelector,
       facilities,
