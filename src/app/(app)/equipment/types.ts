@@ -95,6 +95,7 @@ export interface UseEquipmentPageReturn {
   // Filter options (from server)
   departments: string[]
   users: string[]
+  locations: string[]
   statuses: string[]
   classifications: string[]
   fundingSources: string[]

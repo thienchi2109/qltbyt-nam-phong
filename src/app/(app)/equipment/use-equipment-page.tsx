@@ -237,6 +237,7 @@ export function useEquipmentPage(): UseEquipmentPageReturn {
       // Filter options
       departments: data.departments,
       users: data.users,
+      locations: data.locations,
       statuses: data.statuses,
       classifications: data.classifications,
       fundingSources: data.fundingSources,
