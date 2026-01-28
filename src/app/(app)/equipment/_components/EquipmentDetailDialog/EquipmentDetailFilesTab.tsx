@@ -74,9 +74,15 @@ export function EquipmentDetailFilesTab({
       return
     }
 
-    await onAddAttachment({ name: newFileName, url: newFileUrl })
-    setNewFileName("")
-    setNewFileUrl("")
+    try {
+      await onAddAttachment({ name: newFileName, url: newFileUrl })
+      // Only clear inputs on success - allows retry on error
+      setNewFileName("")
+      setNewFileUrl("")
+    } catch {
+      // Error already handled via toast in useEquipmentAttachments hook
+      // Catch here to prevent unhandled rejection warning
+    }
   }
 
   const handleDeleteAttachment = async (attachmentId: string) => {
