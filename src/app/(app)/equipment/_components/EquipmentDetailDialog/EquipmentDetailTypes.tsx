@@ -60,8 +60,13 @@ export const equipmentFormSchema = z.object({
   ),
   tinh_trang_hien_tai: z.enum(equipmentStatusOptions, { required_error: "Tình trạng hiện tại là bắt buộc" })
     .nullable()
-    .refine((val): val is EquipmentStatus => val !== null, {
-      message: "Tình trạng hiện tại là bắt buộc",
+    .superRefine((val, ctx) => {
+      if (val === null) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Tình trạng hiện tại là bắt buộc",
+        });
+      }
     }),
   cau_hinh_thiet_bi: z.string().optional().nullable(),
   phu_kien_kem_theo: z.string().optional().nullable(),
@@ -76,7 +81,7 @@ export const equipmentFormSchema = z.object({
 })
 
 /**
- * Inferred type from equipment form schema
+ * Inferred type from equipment form schema (output after validation)
  */
 export type EquipmentFormValues = z.infer<typeof equipmentFormSchema>
 

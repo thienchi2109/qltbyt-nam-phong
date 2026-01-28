@@ -42,13 +42,13 @@ import { EquipmentDetailFilesTab } from "./EquipmentDetailFilesTab"
 import { EquipmentDetailDetailsTab } from "./EquipmentDetailDetailsTab"
 import { EquipmentDetailEditForm } from "./EquipmentDetailEditForm"
 
-const DEFAULT_FORM_VALUES: EquipmentFormValues = {
+const DEFAULT_FORM_VALUES = {
   ma_thiet_bi: "",
   ten_thiet_bi: "",
   vi_tri_lap_dat: "",
   khoa_phong_quan_ly: "",
   nguoi_dang_truc_tiep_quan_ly: "",
-  tinh_trang_hien_tai: "" as EquipmentStatus,
+  tinh_trang_hien_tai: null,
   model: null,
   serial: null,
   hang_san_xuat: null,
@@ -74,7 +74,7 @@ const DEFAULT_FORM_VALUES: EquipmentFormValues = {
 /**
  * Converts equipment data to form values
  */
-function equipmentToFormValues(equipment: Equipment): EquipmentFormValues {
+function equipmentToFormValues(equipment: Equipment) {
   const classification = equipment.phan_loai_theo_nd98
   const normalizedClassification =
     classification && ["A", "B", "C", "D"].includes(String(classification).toUpperCase())
@@ -87,7 +87,7 @@ function equipmentToFormValues(equipment: Equipment): EquipmentFormValues {
     vi_tri_lap_dat: equipment.vi_tri_lap_dat || "",
     khoa_phong_quan_ly: equipment.khoa_phong_quan_ly || "",
     nguoi_dang_truc_tiep_quan_ly: equipment.nguoi_dang_truc_tiep_quan_ly || "",
-    tinh_trang_hien_tai: (equipment.tinh_trang_hien_tai || "") as EquipmentStatus,
+    tinh_trang_hien_tai: (equipment.tinh_trang_hien_tai as EquipmentStatus) || null,
     model: equipment.model || null,
     serial: equipment.serial || null,
     hang_san_xuat: equipment.hang_san_xuat || null,
@@ -142,7 +142,7 @@ export function EquipmentDetailDialog({
   // Form
   const editForm = useForm<EquipmentFormValues>({
     resolver: zodResolver(equipmentFormSchema),
-    defaultValues: DEFAULT_FORM_VALUES,
+    defaultValues: DEFAULT_FORM_VALUES as EquipmentFormValues,
   })
 
   // Track previous equipment ID to only reset form when viewing different equipment
