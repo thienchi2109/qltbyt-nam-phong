@@ -198,7 +198,7 @@ export function EquipmentDetailFilesTab({
                     onClick={() => handleDeleteAttachment(file.id)}
                     disabled={!!deletingAttachmentId || isDeleting}
                   >
-                    {deletingAttachmentId === file.id || isDeleting ? (
+                    {deletingAttachmentId === file.id ? (
                       <Loader2 className="h-4 w-4 animate-spin" />
                     ) : (
                       <Trash2 className="h-4 w-4" />

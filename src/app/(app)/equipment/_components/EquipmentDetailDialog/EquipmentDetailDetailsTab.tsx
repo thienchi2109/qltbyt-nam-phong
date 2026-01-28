@@ -72,11 +72,11 @@ function FieldValue({
 
   // Price formatting
   if (fieldKey === "gia_goc") {
-    return value ? (
-      <>{`${Number(value).toLocaleString()} đ`}</>
-    ) : (
-      <div className="italic text-muted-foreground">Chưa có dữ liệu</div>
-    )
+    // Check for null/undefined explicitly - 0 is a valid price
+    if (value === null || value === undefined) {
+      return <div className="italic text-muted-foreground">Chưa có dữ liệu</div>
+    }
+    return <>{`${Number(value).toLocaleString()} đ`}</>
   }
 
   // Text date fields with suspicious date warning

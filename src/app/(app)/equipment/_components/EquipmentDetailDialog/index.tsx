@@ -331,11 +331,11 @@ export function EquipmentDetailDialog({
             <div className="flex items-center gap-2">
               {!isRegionalLeader && (
                 <>
-                  <Button variant="secondary" onClick={() => onGenerateDeviceLabel(equipment)}>
+                  <Button variant="secondary" onClick={() => onGenerateDeviceLabel(displayEquipment!)}>
                     <QrCode className="mr-2 h-4 w-4" />
                     Tạo nhãn thiết bị
                   </Button>
-                  <Button onClick={() => onGenerateProfileSheet(equipment)}>
+                  <Button onClick={() => onGenerateProfileSheet(displayEquipment!)}>
                     <Printer className="mr-2 h-4 w-4" />
                     In lý lịch
                   </Button>
