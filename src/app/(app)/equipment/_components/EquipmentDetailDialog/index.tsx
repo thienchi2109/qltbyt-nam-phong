@@ -30,6 +30,7 @@ import type { Equipment } from "@/types/database"
 import {
   equipmentFormSchema,
   type EquipmentFormValues,
+  type EquipmentStatus,
   type UserSession,
 } from "./EquipmentDetailTypes"
 import { useEquipmentHistory } from "./hooks/useEquipmentHistory"
@@ -40,9 +41,6 @@ import { EquipmentDetailUsageTab } from "./EquipmentDetailUsageTab"
 import { EquipmentDetailFilesTab } from "./EquipmentDetailFilesTab"
 import { EquipmentDetailDetailsTab } from "./EquipmentDetailDetailsTab"
 import { EquipmentDetailEditForm } from "./EquipmentDetailEditForm"
-import { equipmentStatusOptions } from "@/components/equipment/equipment-table-columns"
-
-type EquipmentStatus = (typeof equipmentStatusOptions)[number]
 
 const DEFAULT_FORM_VALUES: EquipmentFormValues = {
   ma_thiet_bi: "",

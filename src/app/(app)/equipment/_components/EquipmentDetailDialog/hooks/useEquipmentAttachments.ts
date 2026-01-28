@@ -19,6 +19,17 @@ interface AddAttachmentParams {
   url: string
 }
 
+/** Internal mutation variables that include captured equipmentId */
+interface AddAttachmentMutationVars extends AddAttachmentParams {
+  _equipmentId: number
+}
+
+/** Internal mutation variables for delete */
+interface DeleteAttachmentMutationVars {
+  attachmentId: string
+  _equipmentId: number
+}
+
 interface UseEquipmentAttachmentsReturn {
   attachments: Attachment[]
   isLoading: boolean
@@ -59,20 +70,21 @@ export function useEquipmentAttachments({
   })
 
   const addMutation = useMutation({
-    mutationFn: async (vars: AddAttachmentParams) => {
+    mutationFn: async (vars: AddAttachmentMutationVars) => {
       await callRpc<string>({
         fn: "equipment_attachment_create",
         args: {
-          p_thiet_bi_id: equipmentId!,
+          p_thiet_bi_id: vars._equipmentId,
           p_ten_file: vars.name,
           p_duong_dan: vars.url
         },
       })
     },
-    onSuccess: () => {
+    onSuccess: (_, variables) => {
       toast({ title: "Thành công", description: "Đã thêm liên kết mới." })
+      // Use captured equipmentId from variables to invalidate correct cache
       queryClient.invalidateQueries({
-        queryKey: equipmentDetailQueryKeys.attachments(equipmentId)
+        queryKey: equipmentDetailQueryKeys.attachments(variables._equipmentId)
       })
     },
     onError: (error: Error) => {
@@ -85,16 +97,17 @@ export function useEquipmentAttachments({
   })
 
   const deleteMutation = useMutation({
-    mutationFn: async (attachmentId: string) => {
+    mutationFn: async (vars: DeleteAttachmentMutationVars) => {
       await callRpc<void>({
         fn: "equipment_attachment_delete",
-        args: { p_id: String(attachmentId) },
+        args: { p_id: String(vars.attachmentId) },
       })
     },
-    onSuccess: () => {
+    onSuccess: (_, variables) => {
       toast({ title: "Đã xóa", description: "Đã xóa liên kết thành công." })
+      // Use captured equipmentId from variables to invalidate correct cache
       queryClient.invalidateQueries({
-        queryKey: equipmentDetailQueryKeys.attachments(equipmentId)
+        queryKey: equipmentDetailQueryKeys.attachments(variables._equipmentId)
       })
     },
     onError: (error: Error) => {
@@ -106,13 +119,25 @@ export function useEquipmentAttachments({
     },
   })
 
+  // Wrapper functions that capture equipmentId at call time (not at success time)
+  // This prevents race conditions if dialog switches to different equipment before mutation completes
+  const addAttachment = async (params: AddAttachmentParams): Promise<void> => {
+    if (!equipmentId) throw new Error("Equipment ID is required")
+    await addMutation.mutateAsync({ ...params, _equipmentId: equipmentId })
+  }
+
+  const deleteAttachment = async (attachmentId: string): Promise<void> => {
+    if (!equipmentId) throw new Error("Equipment ID is required")
+    await deleteMutation.mutateAsync({ attachmentId, _equipmentId: equipmentId })
+  }
+
   return {
     attachments: query.data ?? [],
     isLoading: query.isLoading,
     error: query.error,
     refetch: query.refetch,
-    addAttachment: addMutation.mutateAsync,
-    deleteAttachment: deleteMutation.mutateAsync,
+    addAttachment,
+    deleteAttachment,
     isAdding: addMutation.isPending,
     isDeleting: deleteMutation.isPending,
   }

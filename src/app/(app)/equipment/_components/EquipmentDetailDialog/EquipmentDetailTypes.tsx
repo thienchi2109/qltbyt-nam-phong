@@ -18,6 +18,13 @@ import { normalizeDateForForm } from "@/lib/date-utils"
 import { equipmentStatusOptions } from "@/components/equipment/equipment-table-columns"
 
 // ============================================================================
+// Types
+// ============================================================================
+
+/** Equipment status enum type */
+export type EquipmentStatus = (typeof equipmentStatusOptions)[number]
+
+// ============================================================================
 // Form Schema
 // ============================================================================
 
@@ -41,7 +48,7 @@ export const equipmentFormSchema = z.object({
   vi_tri_lap_dat: z.string().min(1, "Vị trí lắp đặt là bắt buộc").nullable().transform(val => val || ""),
   khoa_phong_quan_ly: z.string().min(1, "Khoa/Phòng quản lý là bắt buộc").nullable().transform(val => val || ""),
   nguoi_dang_truc_tiep_quan_ly: z.string().min(1, "Người trực tiếp quản lý (sử dụng) là bắt buộc").nullable().transform(val => val || ""),
-  tinh_trang_hien_tai: z.enum(equipmentStatusOptions, { required_error: "Tình trạng hiện tại là bắt buộc" }).nullable().transform(val => val || "" as any),
+  tinh_trang_hien_tai: z.enum(equipmentStatusOptions, { required_error: "Tình trạng hiện tại là bắt buộc" }).nullable().transform(val => (val || "") as EquipmentStatus),
   cau_hinh_thiet_bi: z.string().optional().nullable(),
   phu_kien_kem_theo: z.string().optional().nullable(),
   ghi_chu: z.string().optional().nullable(),
