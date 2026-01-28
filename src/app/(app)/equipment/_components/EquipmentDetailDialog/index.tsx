@@ -237,8 +237,8 @@ export function EquipmentDetailDialog({
     <Dialog open={open} onOpenChange={handleDialogOpenChange}>
       <DialogContent className="max-w-4xl h-[90vh] flex flex-col overflow-hidden">
         <DialogHeader>
-          <DialogTitle>Chi tiết thiết bị: {equipment.ten_thiet_bi}</DialogTitle>
-          <DialogDescription>Mã thiết bị: {equipment.ma_thiet_bi}</DialogDescription>
+          <DialogTitle>Chi tiết thiết bị: {displayEquipment?.ten_thiet_bi}</DialogTitle>
+          <DialogDescription>Mã thiết bị: {displayEquipment?.ma_thiet_bi}</DialogDescription>
         </DialogHeader>
         <Tabs
           value={currentTab}
