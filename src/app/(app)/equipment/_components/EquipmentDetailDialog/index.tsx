@@ -102,11 +102,12 @@ function equipmentToFormValues(equipment: Equipment): EquipmentFormValues {
     ngay_bt_tiep_theo: (equipment as Equipment & { ngay_bt_tiep_theo?: string }).ngay_bt_tiep_theo || null,
     ngay_hc_tiep_theo: (equipment as Equipment & { ngay_hc_tiep_theo?: string }).ngay_hc_tiep_theo || null,
     ngay_kd_tiep_theo: (equipment as Equipment & { ngay_kd_tiep_theo?: string }).ngay_kd_tiep_theo || null,
-    nam_san_xuat: equipment.nam_san_xuat || null,
-    gia_goc: equipment.gia_goc || null,
-    chu_ky_bt_dinh_ky: (equipment as Equipment & { chu_ky_bt_dinh_ky?: number }).chu_ky_bt_dinh_ky || null,
-    chu_ky_hc_dinh_ky: (equipment as Equipment & { chu_ky_hc_dinh_ky?: number }).chu_ky_hc_dinh_ky || null,
-    chu_ky_kd_dinh_ky: (equipment as Equipment & { chu_ky_kd_dinh_ky?: number }).chu_ky_kd_dinh_ky || null,
+    // Use ?? for numeric fields to preserve 0 as valid value
+    nam_san_xuat: equipment.nam_san_xuat ?? null,
+    gia_goc: equipment.gia_goc ?? null,
+    chu_ky_bt_dinh_ky: (equipment as Equipment & { chu_ky_bt_dinh_ky?: number }).chu_ky_bt_dinh_ky ?? null,
+    chu_ky_hc_dinh_ky: (equipment as Equipment & { chu_ky_hc_dinh_ky?: number }).chu_ky_hc_dinh_ky ?? null,
+    chu_ky_kd_dinh_ky: (equipment as Equipment & { chu_ky_kd_dinh_ky?: number }).chu_ky_kd_dinh_ky ?? null,
     phan_loai_theo_nd98: normalizedClassification,
   }
 }
