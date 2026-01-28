@@ -3,30 +3,15 @@
  * Tests the fix for missing transfer history in equipment history tab
  */
 
-import { describe, it, expect, beforeEach, afterEach } from '@jest/globals';
-import { createClient } from '@supabase/supabase-js';
-
-// Mock Supabase client for testing
-const mockSupabase = {
-  from: jest.fn(() => ({
-    insert: jest.fn(() => ({
-      select: jest.fn(() => Promise.resolve({ data: null, error: null }))
-    })),
-    select: jest.fn(() => ({
-      eq: jest.fn(() => ({
-        order: jest.fn(() => Promise.resolve({ data: [], error: null }))
-      }))
-    }))
-  }))
-};
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
 describe('Transfer History Logging', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   afterEach(() => {
-    jest.restoreAllMocks();
+    vi.restoreAllMocks();
   });
 
   it('should include ngay_thuc_hien when logging transfer completion', async () => {
@@ -61,8 +46,8 @@ describe('Transfer History Logging', () => {
     };
 
     // Mock the insert function
-    const mockInsert = jest.fn(() => Promise.resolve({ error: null }));
-    const mockFrom = jest.fn(() => ({ insert: mockInsert }));
+    const mockInsert = vi.fn(() => Promise.resolve({ error: null }));
+    const mockFrom = vi.fn(() => ({ insert: mockInsert }));
     
     // Simulate the history logging logic from handleCompleteTransfer
     const loai_su_kien = mockTransfer.loai_hinh === 'noi_bo' 
