@@ -45,9 +45,19 @@ export const equipmentFormSchema = z.object({
   nguon_kinh_phi: z.string().optional().nullable(),
   gia_goc: z.coerce.number().optional().nullable(),
   han_bao_hanh: z.string().optional().nullable().transform(normalizeDateForForm),
-  vi_tri_lap_dat: z.string().min(1, "Vị trí lắp đặt là bắt buộc").nullable().transform(val => val || ""),
-  khoa_phong_quan_ly: z.string().min(1, "Khoa/Phòng quản lý là bắt buộc").nullable().transform(val => val || ""),
-  nguoi_dang_truc_tiep_quan_ly: z.string().min(1, "Người trực tiếp quản lý (sử dụng) là bắt buộc").nullable().transform(val => val || ""),
+  // Required fields: preprocess null to "" so min(1) validation works
+  vi_tri_lap_dat: z.preprocess(
+    (val) => val ?? "",
+    z.string().min(1, "Vị trí lắp đặt là bắt buộc")
+  ),
+  khoa_phong_quan_ly: z.preprocess(
+    (val) => val ?? "",
+    z.string().min(1, "Khoa/Phòng quản lý là bắt buộc")
+  ),
+  nguoi_dang_truc_tiep_quan_ly: z.preprocess(
+    (val) => val ?? "",
+    z.string().min(1, "Người trực tiếp quản lý (sử dụng) là bắt buộc")
+  ),
   tinh_trang_hien_tai: z.enum(equipmentStatusOptions, { required_error: "Tình trạng hiện tại là bắt buộc" })
     .nullable()
     .refine((val): val is EquipmentStatus => val !== null, {
