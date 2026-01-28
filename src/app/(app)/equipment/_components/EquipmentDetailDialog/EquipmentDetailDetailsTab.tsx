@@ -47,7 +47,7 @@ function FieldValue({
 }: {
   fieldKey: keyof Equipment
   value: Equipment[keyof Equipment]
-}) {
+}): React.ReactNode {
   // Status badge
   if (fieldKey === "tinh_trang_hien_tai") {
     const statusValue = value as Equipment["tinh_trang_hien_tai"]
@@ -122,7 +122,7 @@ export function EquipmentDetailDetailsTab({
   displayEquipment,
   isEditing,
   children,
-}: EquipmentDetailDetailsTabProps) {
+}: EquipmentDetailDetailsTabProps): React.ReactNode {
   if (isEditing) {
     // Render edit form passed as children
     return <>{children}</>

@@ -30,17 +30,17 @@ import {
 import { equipmentStatusOptions } from "@/components/equipment/equipment-table-columns"
 import type { EquipmentFormValues } from "./EquipmentDetailTypes"
 
+const CLASSIFICATION_OPTIONS = ["A", "B", "C", "D"] as const
+
 export interface EquipmentDetailEditFormProps {
-  /** Form ID for external submit button */
   formId: string
-  /** Form submit handler */
   onSubmit: (values: EquipmentFormValues) => void
 }
 
 export function EquipmentDetailEditForm({
   formId,
   onSubmit,
-}: EquipmentDetailEditFormProps) {
+}: EquipmentDetailEditFormProps): React.ReactNode {
   const form = useFormContext<EquipmentFormValues>()
 
   return (
@@ -338,7 +338,7 @@ export function EquipmentDetailEditForm({
                   </FormControl>
                   <SelectContent>
                     {equipmentStatusOptions.map((status) => (
-                      <SelectItem key={status!} value={status!}>
+                      <SelectItem key={status} value={status}>
                         {status}
                       </SelectItem>
                     ))}
@@ -411,7 +411,7 @@ export function EquipmentDetailEditForm({
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
-                    {["A", "B", "C", "D"].map((type) => (
+                    {CLASSIFICATION_OPTIONS.map((type) => (
                       <SelectItem key={type} value={type}>
                         {`Loại ${type}`}
                       </SelectItem>

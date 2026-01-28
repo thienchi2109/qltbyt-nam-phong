@@ -1,9 +1,11 @@
 /**
- * equipment-detail-dialog.tsx
+ * EquipmentDetailDialog/index.tsx
  *
+ * Main entry point for the Equipment Detail Dialog.
  * Full-screen dialog for viewing and editing equipment details.
  * Contains tabs: Details, Attachments, History, Usage.
- * Includes inline edit form, attachment management, and history timeline.
+ *
+ * @module equipment/_components/EquipmentDetailDialog
  */
 
 "use client"
@@ -11,12 +13,7 @@
 import * as React from "react"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm, FormProvider } from "react-hook-form"
-import {
-  Edit,
-  Loader2,
-  Printer,
-  QrCode,
-} from "lucide-react"
+import { Edit, Loader2, Printer, QrCode } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -29,19 +26,92 @@ import {
 } from "@/components/ui/dialog"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import type { Equipment } from "@/types/database"
+
 import {
   equipmentFormSchema,
   type EquipmentFormValues,
   type UserSession,
-} from "@/app/(app)/equipment/_components/EquipmentDetailDialog/EquipmentDetailTypes"
-import { useEquipmentHistory } from "@/app/(app)/equipment/_components/EquipmentDetailDialog/hooks/useEquipmentHistory"
-import { useEquipmentAttachments } from "@/app/(app)/equipment/_components/EquipmentDetailDialog/hooks/useEquipmentAttachments"
-import { useEquipmentUpdate } from "@/app/(app)/equipment/_components/EquipmentDetailDialog/hooks/useEquipmentUpdate"
-import { EquipmentDetailHistoryTab } from "@/app/(app)/equipment/_components/EquipmentDetailDialog/EquipmentDetailHistoryTab"
-import { EquipmentDetailUsageTab } from "@/app/(app)/equipment/_components/EquipmentDetailDialog/EquipmentDetailUsageTab"
-import { EquipmentDetailFilesTab } from "@/app/(app)/equipment/_components/EquipmentDetailDialog/EquipmentDetailFilesTab"
-import { EquipmentDetailDetailsTab } from "@/app/(app)/equipment/_components/EquipmentDetailDialog/EquipmentDetailDetailsTab"
-import { EquipmentDetailEditForm } from "@/app/(app)/equipment/_components/EquipmentDetailDialog/EquipmentDetailEditForm"
+} from "./EquipmentDetailTypes"
+import { useEquipmentHistory } from "./hooks/useEquipmentHistory"
+import { useEquipmentAttachments } from "./hooks/useEquipmentAttachments"
+import { useEquipmentUpdate } from "./hooks/useEquipmentUpdate"
+import { EquipmentDetailHistoryTab } from "./EquipmentDetailHistoryTab"
+import { EquipmentDetailUsageTab } from "./EquipmentDetailUsageTab"
+import { EquipmentDetailFilesTab } from "./EquipmentDetailFilesTab"
+import { EquipmentDetailDetailsTab } from "./EquipmentDetailDetailsTab"
+import { EquipmentDetailEditForm } from "./EquipmentDetailEditForm"
+import { equipmentStatusOptions } from "@/components/equipment/equipment-table-columns"
+
+type EquipmentStatus = (typeof equipmentStatusOptions)[number]
+
+const DEFAULT_FORM_VALUES: EquipmentFormValues = {
+  ma_thiet_bi: "",
+  ten_thiet_bi: "",
+  vi_tri_lap_dat: "",
+  khoa_phong_quan_ly: "",
+  nguoi_dang_truc_tiep_quan_ly: "",
+  tinh_trang_hien_tai: "" as EquipmentStatus,
+  model: null,
+  serial: null,
+  hang_san_xuat: null,
+  noi_san_xuat: null,
+  nguon_kinh_phi: null,
+  cau_hinh_thiet_bi: null,
+  phu_kien_kem_theo: null,
+  ghi_chu: null,
+  ngay_nhap: null,
+  ngay_dua_vao_su_dung: null,
+  han_bao_hanh: null,
+  ngay_bt_tiep_theo: null,
+  ngay_hc_tiep_theo: null,
+  ngay_kd_tiep_theo: null,
+  nam_san_xuat: null,
+  gia_goc: null,
+  chu_ky_bt_dinh_ky: null,
+  chu_ky_hc_dinh_ky: null,
+  chu_ky_kd_dinh_ky: null,
+  phan_loai_theo_nd98: null,
+}
+
+/**
+ * Converts equipment data to form values
+ */
+function equipmentToFormValues(equipment: Equipment): EquipmentFormValues {
+  const classification = equipment.phan_loai_theo_nd98
+  const normalizedClassification =
+    classification && ["A", "B", "C", "D"].includes(String(classification).toUpperCase())
+      ? (String(classification).toUpperCase() as "A" | "B" | "C" | "D")
+      : null
+
+  return {
+    ma_thiet_bi: equipment.ma_thiet_bi || "",
+    ten_thiet_bi: equipment.ten_thiet_bi || "",
+    vi_tri_lap_dat: equipment.vi_tri_lap_dat || "",
+    khoa_phong_quan_ly: equipment.khoa_phong_quan_ly || "",
+    nguoi_dang_truc_tiep_quan_ly: equipment.nguoi_dang_truc_tiep_quan_ly || "",
+    tinh_trang_hien_tai: (equipment.tinh_trang_hien_tai || "") as EquipmentStatus,
+    model: equipment.model || null,
+    serial: equipment.serial || null,
+    hang_san_xuat: equipment.hang_san_xuat || null,
+    noi_san_xuat: equipment.noi_san_xuat || null,
+    nguon_kinh_phi: equipment.nguon_kinh_phi || null,
+    cau_hinh_thiet_bi: equipment.cau_hinh_thiet_bi || null,
+    phu_kien_kem_theo: equipment.phu_kien_kem_theo || null,
+    ghi_chu: equipment.ghi_chu || null,
+    ngay_nhap: equipment.ngay_nhap || null,
+    ngay_dua_vao_su_dung: equipment.ngay_dua_vao_su_dung || null,
+    han_bao_hanh: equipment.han_bao_hanh || null,
+    ngay_bt_tiep_theo: (equipment as Equipment & { ngay_bt_tiep_theo?: string }).ngay_bt_tiep_theo || null,
+    ngay_hc_tiep_theo: (equipment as Equipment & { ngay_hc_tiep_theo?: string }).ngay_hc_tiep_theo || null,
+    ngay_kd_tiep_theo: (equipment as Equipment & { ngay_kd_tiep_theo?: string }).ngay_kd_tiep_theo || null,
+    nam_san_xuat: equipment.nam_san_xuat || null,
+    gia_goc: equipment.gia_goc || null,
+    chu_ky_bt_dinh_ky: (equipment as Equipment & { chu_ky_bt_dinh_ky?: number }).chu_ky_bt_dinh_ky || null,
+    chu_ky_hc_dinh_ky: (equipment as Equipment & { chu_ky_hc_dinh_ky?: number }).chu_ky_hc_dinh_ky || null,
+    chu_ky_kd_dinh_ky: (equipment as Equipment & { chu_ky_kd_dinh_ky?: number }).chu_ky_kd_dinh_ky || null,
+    phan_loai_theo_nd98: normalizedClassification,
+  }
+}
 
 export interface EquipmentDetailDialogProps {
   equipment: Equipment | null
@@ -63,7 +133,7 @@ export function EquipmentDetailDialog({
   onGenerateProfileSheet,
   onGenerateDeviceLabel,
   onEquipmentUpdated,
-}: EquipmentDetailDialogProps) {
+}: EquipmentDetailDialogProps): React.ReactNode {
   // Internal state
   const [currentTab, setCurrentTab] = React.useState<string>("details")
   const [isEditingDetails, setIsEditingDetails] = React.useState(false)
@@ -73,34 +143,7 @@ export function EquipmentDetailDialog({
   // Form
   const editForm = useForm<EquipmentFormValues>({
     resolver: zodResolver(equipmentFormSchema),
-    defaultValues: {
-      ma_thiet_bi: "",
-      ten_thiet_bi: "",
-      vi_tri_lap_dat: "",
-      khoa_phong_quan_ly: "",
-      nguoi_dang_truc_tiep_quan_ly: "",
-      tinh_trang_hien_tai: "" as any,
-      model: null,
-      serial: null,
-      hang_san_xuat: null,
-      noi_san_xuat: null,
-      nguon_kinh_phi: null,
-      cau_hinh_thiet_bi: null,
-      phu_kien_kem_theo: null,
-      ghi_chu: null,
-      ngay_nhap: null,
-      ngay_dua_vao_su_dung: null,
-      han_bao_hanh: null,
-      ngay_bt_tiep_theo: null,
-      ngay_hc_tiep_theo: null,
-      ngay_kd_tiep_theo: null,
-      nam_san_xuat: null,
-      gia_goc: null,
-      chu_ky_bt_dinh_ky: null,
-      chu_ky_hc_dinh_ky: null,
-      chu_ky_kd_dinh_ky: null,
-      phan_loai_theo_nd98: null,
-    },
+    defaultValues: DEFAULT_FORM_VALUES,
   })
 
   // Track previous equipment ID to only reset form when viewing different equipment
@@ -119,38 +162,7 @@ export function EquipmentDetailDialog({
   React.useEffect(() => {
     if (equipment && equipment.id !== prevEquipmentIdRef.current) {
       prevEquipmentIdRef.current = equipment.id
-      editForm.reset({
-        ma_thiet_bi: equipment.ma_thiet_bi || "",
-        ten_thiet_bi: equipment.ten_thiet_bi || "",
-        vi_tri_lap_dat: equipment.vi_tri_lap_dat || "",
-        khoa_phong_quan_ly: equipment.khoa_phong_quan_ly || "",
-        nguoi_dang_truc_tiep_quan_ly: equipment.nguoi_dang_truc_tiep_quan_ly || "",
-        tinh_trang_hien_tai: equipment.tinh_trang_hien_tai || ("" as any),
-        model: equipment.model || null,
-        serial: equipment.serial || null,
-        hang_san_xuat: equipment.hang_san_xuat || null,
-        noi_san_xuat: equipment.noi_san_xuat || null,
-        nguon_kinh_phi: equipment.nguon_kinh_phi || null,
-        cau_hinh_thiet_bi: equipment.cau_hinh_thiet_bi || null,
-        phu_kien_kem_theo: equipment.phu_kien_kem_theo || null,
-        ghi_chu: equipment.ghi_chu || null,
-        ngay_nhap: equipment.ngay_nhap || null,
-        ngay_dua_vao_su_dung: equipment.ngay_dua_vao_su_dung || null,
-        han_bao_hanh: equipment.han_bao_hanh || null,
-        ngay_bt_tiep_theo: (equipment as any).ngay_bt_tiep_theo || null,
-        ngay_hc_tiep_theo: (equipment as any).ngay_hc_tiep_theo || null,
-        ngay_kd_tiep_theo: (equipment as any).ngay_kd_tiep_theo || null,
-        nam_san_xuat: equipment.nam_san_xuat || null,
-        gia_goc: equipment.gia_goc || null,
-        chu_ky_bt_dinh_ky: (equipment as any).chu_ky_bt_dinh_ky || null,
-        chu_ky_hc_dinh_ky: (equipment as any).chu_ky_hc_dinh_ky || null,
-        chu_ky_kd_dinh_ky: (equipment as any).chu_ky_kd_dinh_ky || null,
-        phan_loai_theo_nd98:
-          equipment.phan_loai_theo_nd98 &&
-          ["A", "B", "C", "D"].includes(String(equipment.phan_loai_theo_nd98).toUpperCase())
-            ? (String(equipment.phan_loai_theo_nd98).toUpperCase() as "A" | "B" | "C" | "D")
-            : null,
-      })
+      editForm.reset(equipmentToFormValues(equipment))
     }
   }, [equipment, editForm])
 
@@ -181,7 +193,7 @@ export function EquipmentDetailDialog({
   })
 
   // Handlers
-  const onSubmitInlineEdit = async (values: EquipmentFormValues) => {
+  const onSubmitInlineEdit = async (values: EquipmentFormValues): Promise<void> => {
     if (!equipment) return
     await updateEquipment({ id: equipment.id, patch: values })
   }
@@ -201,8 +213,6 @@ export function EquipmentDetailDialog({
     },
     [isEditingDetails, editForm.formState.isDirty, onOpenChange]
   )
-
-  const requestClose = React.useCallback(() => handleDialogOpenChange(false), [handleDialogOpenChange])
 
   // Merge equipment prop with saved values for display
   // After save, savedValues contains updated data while equipment prop is stale
@@ -333,7 +343,7 @@ export function EquipmentDetailDialog({
                   </Button>
                 </>
               )}
-              <Button variant="outline" onClick={requestClose}>
+              <Button variant="outline" onClick={() => handleDialogOpenChange(false)}>
                 Đóng
               </Button>
             </div>
