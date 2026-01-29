@@ -160,6 +160,11 @@ DECLARE
   v_role TEXT := lower(COALESCE(public._get_jwt_claim('app_role'), public._get_jwt_claim('role'), ''));
   v_donvi BIGINT := NULLIF(public._get_jwt_claim('don_vi'), '')::BIGINT;
   v_khoa_phong_new TEXT := COALESCE(p_patch->>'khoa_phong_quan_ly', NULL);
+  v_status TEXT := NULLIF(TRIM(p_patch->>'tinh_trang_hien_tai'), '');
+  v_valid_statuses TEXT[] := ARRAY[
+    'Hoạt động', 'Chờ sửa chữa', 'Chờ bảo trì',
+    'Chờ hiệu chuẩn/kiểm định', 'Ngưng sử dụng', 'Chưa có nhu cầu sử dụng'
+  ];
 BEGIN
   -- Permission checks
   IF v_role IN ('regional_leader','user') THEN
@@ -179,6 +184,14 @@ BEGIN
     PERFORM 1 FROM public.nhan_vien nv WHERE nv.id = (public._get_jwt_claim('user_id'))::BIGINT AND nv.khoa_phong = v_khoa_phong_new;
     IF NOT FOUND THEN
       RAISE EXCEPTION 'Technician department mismatch' USING ERRCODE = '42501';
+    END IF;
+  END IF;
+
+  -- Validate status value when provided (defense-in-depth)
+  IF p_patch ? 'tinh_trang_hien_tai' THEN
+    IF v_status IS NOT NULL AND NOT (v_status = ANY(v_valid_statuses)) THEN
+      RAISE EXCEPTION 'Invalid status: %. Must be one of: %', v_status, array_to_string(v_valid_statuses, ', ')
+        USING ERRCODE = '22023';
     END IF;
   END IF;
 
