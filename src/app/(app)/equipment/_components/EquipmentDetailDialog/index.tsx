@@ -311,7 +311,12 @@ export function EquipmentDetailDialog({
                     <Button
                       variant="outline"
                       type="button"
-                      onClick={() => setIsEditingDetails(false)}
+                      onClick={() => {
+                        if (displayEquipment) {
+                          editForm.reset(equipmentToFormValues(displayEquipment))
+                        }
+                        setIsEditingDetails(false)
+                      }}
                       disabled={isUpdating}
                     >
                       Hủy
