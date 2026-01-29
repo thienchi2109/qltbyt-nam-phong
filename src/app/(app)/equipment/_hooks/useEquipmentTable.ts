@@ -18,6 +18,9 @@ import { useMediaQuery } from "@/hooks/use-media-query"
 import { useIsMobile } from "@/hooks/use-mobile"
 import type { Equipment } from "../types"
 
+// Columns to hide on medium screens (768px-1800px)
+const RESPONSIVE_HIDE_COLUMNS = ['serial', 'phan_loai_theo_nd98', 'so_luu_hanh'] as const
+
 // Default column visibility
 const DEFAULT_COLUMN_VISIBILITY: VisibilityState = {
   id: false,
@@ -109,6 +112,11 @@ export function useEquipmentTable(params: UseEquipmentTableParams): UseEquipment
   const [columnVisibility, setColumnVisibility] =
     React.useState<VisibilityState>(DEFAULT_COLUMN_VISIBILITY)
 
+  // Track columns hidden by responsive logic (for proper restoration)
+  const [responsiveHiddenColumns, setResponsiveHiddenColumns] = React.useState<
+    Set<string>
+  >(new Set())
+
   // State preservation after mutations
   const [preservePageState, setPreservePageState] = React.useState<{
     pageIndex: number
@@ -181,19 +189,35 @@ export function useEquipmentTable(params: UseEquipmentTableParams): UseEquipment
   const tableRef = React.useRef(table)
   tableRef.current = table
 
-  // Auto-hide columns on medium screens (hide additional columns to save space)
-  // Note: We only hide on medium screens, we don't force-show on large screens
-  // to preserve user column visibility preferences
+  // Auto-hide columns on medium screens and restore on large screens
+  // Tracks responsive-hidden columns separately from user preferences
   React.useEffect(() => {
     if (isMediumScreen) {
+      // Hide columns when entering medium screen
+      setResponsiveHiddenColumns(new Set(RESPONSIVE_HIDE_COLUMNS))
       setColumnVisibility((prev) => ({
         ...prev,
         serial: false,
         phan_loai_theo_nd98: false,
         so_luu_hanh: false,
       }))
+    } else {
+      // Restore columns that were hidden by responsive logic when returning to large screen
+      setResponsiveHiddenColumns((prevHidden) => {
+        if (prevHidden.size === 0) return prevHidden
+
+        setColumnVisibility((prevVisibility) => {
+          const updated = { ...prevVisibility }
+          prevHidden.forEach((col) => {
+            // Restore to default visibility
+            updated[col] = DEFAULT_COLUMN_VISIBILITY[col] ?? true
+          })
+          return updated
+        })
+
+        return new Set()
+      })
     }
-    // No else branch - let DEFAULT_COLUMN_VISIBILITY and user preferences persist
   }, [isMediumScreen])
 
   // Restore table state after data changes
@@ -241,3 +265,4 @@ export function useEquipmentTable(params: UseEquipmentTableParams): UseEquipment
     ]
   )
 }
+
