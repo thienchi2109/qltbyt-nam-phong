@@ -82,6 +82,7 @@ export const columnLabels: Record<string, string> = {
   chu_ky_kd_dinh_ky: 'Chu kỳ KĐ định kỳ (ngày)',
   ngay_kd_tiep_theo: 'Ngày KĐ tiếp theo',
   phan_loai_theo_nd98: 'Phân loại theo NĐ98',
+  so_luu_hanh: 'Số lưu hành',
 }
 
 /**
