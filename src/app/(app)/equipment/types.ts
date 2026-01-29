@@ -68,20 +68,8 @@ export const equipmentDetailQueryKeys = {
 } as const
 
 // ============================================================================
-// Dialog State Types
+// Filter Types
 // ============================================================================
-
-/**
- * Used by EquipmentDialogContext to manage all dialog visibility
- */
-export interface EquipmentDialogState {
-  isAddOpen: boolean
-  isImportOpen: boolean
-  editingEquipment: Equipment | null
-  detailEquipment: Equipment | null
-  usageEquipment: Equipment | null
-  endUsageEquipment: Equipment | null
-}
 
 /**
  * Filter bottom sheet data structure
