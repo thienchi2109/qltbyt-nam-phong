@@ -80,8 +80,8 @@ export function normalizeDateForImport(val: unknown): NormalizeDateResult {
       return { value: s, rejected: false }
     }
 
-    // Try DD/MM/YYYY (Vietnamese format)
-    const ddmmyyyy = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/
+    // Try DD/MM/YYYY or DD-MM-YYYY (Vietnamese format)
+    const ddmmyyyy = /^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/
     const m = s.match(ddmmyyyy)
     if (m) {
       const d = m[1].padStart(2, "0")
