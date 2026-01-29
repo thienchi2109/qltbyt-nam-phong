@@ -112,10 +112,7 @@ export function useEquipmentTable(params: UseEquipmentTableParams): UseEquipment
   const [columnVisibility, setColumnVisibility] =
     React.useState<VisibilityState>(DEFAULT_COLUMN_VISIBILITY)
 
-  // Track columns hidden by responsive logic (for proper restoration)
-  const [responsiveHiddenColumns, setResponsiveHiddenColumns] = React.useState<
-    Set<string>
-  >(new Set())
+  // Track pre-responsive visibility to restore user preferences
   const preResponsiveVisibilityRef = React.useRef<VisibilityState | null>(null)
 
   // State preservation after mutations
@@ -191,11 +188,9 @@ export function useEquipmentTable(params: UseEquipmentTableParams): UseEquipment
   tableRef.current = table
 
   // Auto-hide columns on medium screens and restore on large screens
-  // Tracks responsive-hidden columns separately from user preferences
   React.useEffect(() => {
     if (isMediumScreen) {
       // Hide columns when entering medium screen
-      setResponsiveHiddenColumns(new Set(RESPONSIVE_HIDE_COLUMNS))
       setColumnVisibility((prev) => {
         if (!preResponsiveVisibilityRef.current) {
           const snapshot: VisibilityState = {}
@@ -212,26 +207,20 @@ export function useEquipmentTable(params: UseEquipmentTableParams): UseEquipment
           so_luu_hanh: false,
         }
       })
-    } else {
+    } else if (preResponsiveVisibilityRef.current) {
       // Restore columns that were hidden by responsive logic when returning to large screen
-      setResponsiveHiddenColumns((prevHidden) => {
-        if (prevHidden.size === 0) return prevHidden
+      const snapshot = preResponsiveVisibilityRef.current
 
-        setColumnVisibility((prevVisibility) => {
-          const updated = { ...prevVisibility }
-          const snapshot = preResponsiveVisibilityRef.current
+      setColumnVisibility((prevVisibility) => {
+        const updated = { ...prevVisibility }
 
-          if (snapshot) {
-            Object.entries(snapshot).forEach(([col, value]) => {
-              updated[col] = value
-            })
-          }
-          return updated
+        Object.entries(snapshot).forEach(([col, value]) => {
+          updated[col] = value
         })
-
-        preResponsiveVisibilityRef.current = null
-        return new Set()
+        return updated
       })
+
+      preResponsiveVisibilityRef.current = null
     }
   }, [isMediumScreen])
 
