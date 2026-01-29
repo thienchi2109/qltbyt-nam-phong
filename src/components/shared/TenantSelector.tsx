@@ -2,15 +2,22 @@
 
 import * as React from "react"
 import dynamic from "next/dynamic"
-import { Building2 } from "lucide-react"
+import { Building2, Check, ChevronsUpDown } from "lucide-react"
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command"
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover"
 import { Button } from "@/components/ui/button"
+import { Skeleton } from "@/components/ui/skeleton"
 import { cn } from "@/lib/utils"
 import { useTenantSelection } from "@/contexts/TenantSelectionContext"
 
@@ -26,7 +33,7 @@ const TenantSelectorSheet = dynamic(
  * Only renders for global/admin/regional_leader users.
  *
  * Responsive behavior (CSS-only, no hydration issues):
- * - Desktop (xl+, ≥1280px): Radix Select dropdown
+ * - Desktop (xl+, ≥1280px): Searchable combobox (Popover + Command)
  * - Mobile/Tablet (<1280px): Button that opens bottom sheet
  */
 export function TenantSelector({ className }: { className?: string }) {
@@ -39,6 +46,29 @@ export function TenantSelector({ className }: { className?: string }) {
   } = useTenantSelection()
 
   const [sheetOpen, setSheetOpen] = React.useState(false)
+  const [open, setOpen] = React.useState(false)
+
+  // Hooks must be called before early return
+  const handleValueChange = React.useCallback(
+    (value: string) => {
+      if (value === "all") {
+        setSelectedFacilityId(null)
+      } else {
+        const facilityId = parseInt(value, 10)
+        if (Number.isFinite(facilityId)) {
+          setSelectedFacilityId(facilityId)
+        }
+      }
+    },
+    [setSelectedFacilityId]
+  )
+
+  // Memoize facility name lookup to avoid .find() on every render
+  const currentFacilityName = React.useMemo(() => {
+    if (selectedFacilityId === null) return "Tất cả cơ sở"
+    if (selectedFacilityId === undefined) return "Chọn cơ sở..."
+    return facilities.find((f) => f.id === selectedFacilityId)?.name ?? "Đang tải..."
+  }, [selectedFacilityId, facilities])
 
   // Don't render if user doesn't have multi-tenant privileges
   if (!showSelector) {
@@ -56,67 +86,93 @@ export function TenantSelector({ className }: { className?: string }) {
         ? "all"
         : String(selectedFacilityId)
 
-  // Get current facility name for mobile button
-  const currentFacilityName =
-    selectedFacilityId === null
-      ? "Tất cả cơ sở"
-      : selectedFacilityId === undefined
-        ? "Chọn cơ sở..."
-        : facilities.find((f) => f.id === selectedFacilityId)?.name ??
-          "Đang tải..."
-
-  const handleValueChange = React.useCallback(
-    (value: string) => {
-      if (value === "all") {
-        setSelectedFacilityId(null)
-      } else {
-        const facilityId = parseInt(value, 10)
-        if (Number.isFinite(facilityId)) {
-          setSelectedFacilityId(facilityId)
-        }
-      }
-    },
-    [setSelectedFacilityId]
-  )
-
   return (
     <>
-      {/* Desktop (xl+): Dropdown - hidden on mobile/tablet */}
-      <Select
-        value={selectValue}
-        onValueChange={handleValueChange}
-        disabled={isLoading}
-      >
-        <SelectTrigger
-          aria-label="Chọn cơ sở y tế"
-          className={cn(
-            "hidden xl:flex w-[280px] font-normal",
-            !selectValue && "text-muted-foreground",
-            className
-          )}
-        >
-          <div className="flex items-center gap-2 truncate">
-            <Building2 className="h-4 w-4 shrink-0" />
-            <SelectValue placeholder="Chọn cơ sở y tế..." />
-          </div>
-        </SelectTrigger>
-        <SelectContent>
-          {/* "All Facilities" option */}
-          <SelectItem value="all">
-            <div className="flex items-center gap-2">
-              <Building2 className="h-4 w-4" />
-              <span>Tất cả cơ sở</span>
+      {/* Desktop (xl+): Searchable combobox - hidden on mobile/tablet */}
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger asChild>
+          <Button
+            variant="outline"
+            role="combobox"
+            aria-expanded={open}
+            aria-label="Chọn cơ sở y tế"
+            disabled={isLoading}
+            className={cn(
+              "hidden xl:flex w-[280px] justify-between font-normal",
+              !selectValue && "text-muted-foreground",
+              className
+            )}
+          >
+            <div className="flex items-center gap-2 truncate">
+              <Building2 className="h-4 w-4 shrink-0" />
+              <span className="truncate">{currentFacilityName}</span>
             </div>
-          </SelectItem>
+            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="w-[280px] p-0" align="start">
+          {/* Key resets search input when popover reopens */}
+          <Command key={open ? "open" : "closed"}>
+            <CommandInput placeholder="Tìm kiếm cơ sở..." />
+            <CommandList>
+              {isLoading ? (
+                <div className="p-2 space-y-1">
+                  {Array.from({ length: 3 }).map((_, i) => (
+                    <Skeleton key={i} className="h-8 w-full" />
+                  ))}
+                </div>
+              ) : (
+                <>
+                  <CommandEmpty>Không tìm thấy cơ sở phù hợp.</CommandEmpty>
+                  <CommandGroup>
+                    {/* "All facilities" option */}
+                    <CommandItem
+                      value="all"
+                      keywords={["tất cả", "all"]}
+                      onSelect={() => {
+                        handleValueChange("all")
+                        setOpen(false)
+                      }}
+                    >
+                      <Building2 className="mr-2 h-4 w-4" />
+                      <span>Tất cả cơ sở</span>
+                      <Check
+                        className={cn(
+                          "ml-auto h-4 w-4",
+                          selectedFacilityId === null ? "opacity-100" : "opacity-0"
+                        )}
+                      />
+                    </CommandItem>
 
-          {/* Individual facilities */}
-          {facilities.map((facility) => (
-            <SelectItem key={facility.id} value={String(facility.id)}>
-              <span className="truncate">{facility.name}</span>
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
+                    {/* Individual facilities */}
+                    {facilities.map((facility) => (
+                      <CommandItem
+                        key={facility.id}
+                        value={String(facility.id)}
+                        keywords={[facility.name]}
+                        onSelect={(value) => {
+                          handleValueChange(value)
+                          setOpen(false)
+                        }}
+                      >
+                        <span className="truncate">{facility.name}</span>
+                        <Check
+                          className={cn(
+                            "ml-auto h-4 w-4",
+                            selectedFacilityId === facility.id
+                              ? "opacity-100"
+                              : "opacity-0"
+                          )}
+                        />
+                      </CommandItem>
+                    ))}
+                  </CommandGroup>
+                </>
+              )}
+            </CommandList>
+          </Command>
+        </PopoverContent>
+      </Popover>
 
       {/* Mobile/Tablet (<xl): Button trigger - hidden on desktop */}
       <Button
