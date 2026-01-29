@@ -116,6 +116,7 @@ export function useEquipmentTable(params: UseEquipmentTableParams): UseEquipment
   const [responsiveHiddenColumns, setResponsiveHiddenColumns] = React.useState<
     Set<string>
   >(new Set())
+  const preResponsiveVisibilityRef = React.useRef<VisibilityState | null>(null)
 
   // State preservation after mutations
   const [preservePageState, setPreservePageState] = React.useState<{
@@ -195,12 +196,22 @@ export function useEquipmentTable(params: UseEquipmentTableParams): UseEquipment
     if (isMediumScreen) {
       // Hide columns when entering medium screen
       setResponsiveHiddenColumns(new Set(RESPONSIVE_HIDE_COLUMNS))
-      setColumnVisibility((prev) => ({
-        ...prev,
-        serial: false,
-        phan_loai_theo_nd98: false,
-        so_luu_hanh: false,
-      }))
+      setColumnVisibility((prev) => {
+        if (!preResponsiveVisibilityRef.current) {
+          const snapshot: VisibilityState = {}
+          RESPONSIVE_HIDE_COLUMNS.forEach((col) => {
+            snapshot[col] = prev[col] ?? true
+          })
+          preResponsiveVisibilityRef.current = snapshot
+        }
+
+        return {
+          ...prev,
+          serial: false,
+          phan_loai_theo_nd98: false,
+          so_luu_hanh: false,
+        }
+      })
     } else {
       // Restore columns that were hidden by responsive logic when returning to large screen
       setResponsiveHiddenColumns((prevHidden) => {
@@ -208,13 +219,17 @@ export function useEquipmentTable(params: UseEquipmentTableParams): UseEquipment
 
         setColumnVisibility((prevVisibility) => {
           const updated = { ...prevVisibility }
-          prevHidden.forEach((col) => {
-            // Restore to default visibility
-            updated[col] = DEFAULT_COLUMN_VISIBILITY[col] ?? true
-          })
+          const snapshot = preResponsiveVisibilityRef.current
+
+          if (snapshot) {
+            Object.entries(snapshot).forEach(([col, value]) => {
+              updated[col] = value
+            })
+          }
           return updated
         })
 
+        preResponsiveVisibilityRef.current = null
         return new Set()
       })
     }
@@ -265,4 +280,3 @@ export function useEquipmentTable(params: UseEquipmentTableParams): UseEquipment
     ]
   )
 }
-
