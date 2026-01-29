@@ -39,7 +39,7 @@ describe('useEquipmentAuth', () => {
       const { result } = renderHook(() => useEquipmentAuth())
 
       expect(result.current.status).toBe('loading')
-      expect(result.current.user).toBeNull()
+      expect(result.current.user).toBeUndefined()
     })
 
     it('should not fetch equipment during loading state', () => {
@@ -58,7 +58,7 @@ describe('useEquipmentAuth', () => {
       const { result } = renderHook(() => useEquipmentAuth())
 
       expect(result.current.status).toBe('unauthenticated')
-      expect(result.current.user).toBeNull()
+      expect(result.current.user).toBeUndefined()
       expect(result.current.isGlobal).toBe(false)
       expect(result.current.isRegionalLeader).toBe(false)
     })

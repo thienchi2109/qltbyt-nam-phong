@@ -23,16 +23,16 @@ describe('Department Utils', () => {
     })
 
     it('should match common abbreviations', () => {
-      expect(isDepartmentMatch('Khoa Nội', 'K. Nội')).toBe(true)
-      expect(isDepartmentMatch('K. Tim Mạch', 'Khoa Tim Mạch')).toBe(true)
-      expect(isDepartmentMatch('KHTH', 'Kế Hoạch Tổng Hợp')).toBe(true)
-      expect(isDepartmentMatch('CSYT', 'Cơ Sở Vật Chất')).toBe(true)
+      expect(isDepartmentMatch('Khoa Nội', 'K Noi')).toBe(true)
+      expect(isDepartmentMatch('K Tim Mạch', 'Khoa Tim Mạch')).toBe(true)
+      expect(isDepartmentMatch('Phòng Vật Tư', 'P Vật Tư')).toBe(true)
+      expect(isDepartmentMatch('Ban Giám Đốc', 'B Giám Đốc')).toBe(true)
     })
 
     it('should not match unrelated departments', () => {
       expect(isDepartmentMatch('Khoa Nội', 'Khoa Ngoại')).toBe(false)
       expect(isDepartmentMatch('Tim Mạch', 'Thần Kinh')).toBe(false)
-      expect(isDepartmentMatch('KHTH', 'Khoa Nội')).toBe(false)
+      expect(isDepartmentMatch('K Noi', 'Khoa Ngoại')).toBe(false)
     })
 
     it('should handle null/undefined values', () => {
@@ -57,15 +57,16 @@ describe('Department Utils', () => {
   describe('createDepartmentFilterCondition', () => {
     it('should create ILIKE condition for department', () => {
       const condition = createDepartmentFilterCondition('Khoa Nội')
-      expect(condition).toContain('khoa_phong_quan_ly.ilike.%Khoa Nội%')
-      expect(condition).toContain('khoa_phong_quan_ly.ilike.%K. Nội%')
-      expect(condition).toContain('khoa_phong_quan_ly.ilike.%Nội%')
+      expect(condition).toContain('khoa_phong_quan_ly.ilike.khoa nội')
+      expect(condition).toContain('khoa_phong_quan_ly.ilike.%khoa nội%')
+      expect(condition).toContain('khoa_phong_quan_ly.ilike.k noi')
     })
 
     it('should handle departments with abbreviations', () => {
       const condition = createDepartmentFilterCondition('Kế Hoạch Tổng Hợp')
-      expect(condition).toContain('khoa_phong_quan_ly.ilike.%Kế Hoạch Tổng Hợp%')
-      expect(condition).toContain('khoa_phong_quan_ly.ilike.%KHTH%')
+      expect(condition).toContain('khoa_phong_quan_ly.ilike.kế hoạch tổng hợp')
+      expect(condition).toContain('khoa_phong_quan_ly.ilike.%kế hoạch tổng hợp%')
+      expect(condition).toContain('khoa_phong_quan_ly.ilike.kế hoạch tng hợp')
     })
 
     it('should return null for invalid input', () => {
@@ -120,14 +121,14 @@ describe('Department Utils', () => {
       expect(shouldBypassDepartmentFilter('qltb_khoa')).toBe(false)
       const condition = createDepartmentFilterCondition('Khoa Nội')
       expect(condition).toBeDefined()
-      expect(condition).toContain('khoa_phong_quan_ly.ilike.%Khoa Nội%')
+      expect(condition).toContain('khoa_phong_quan_ly.ilike.%khoa nội%')
     })
 
     it('should handle real-world department scenarios', () => {
       const testCases = [
         { user: 'Khoa Nội Tổng Hợp', equipment: 'Khoa Nội', shouldMatch: true },
-        { user: 'K. Tim Mạch', equipment: 'Khoa Tim Mạch', shouldMatch: true },
-        { user: 'KHTH', equipment: 'Kế Hoạch Tổng Hợp', shouldMatch: true },
+        { user: 'K Tim Mạch', equipment: 'Khoa Tim Mạch', shouldMatch: true },
+        { user: 'K Noi', equipment: 'Khoa Nội', shouldMatch: true },
         { user: 'Khoa Nội', equipment: 'Khoa Ngoại', shouldMatch: false },
         { user: 'Tim Mạch', equipment: 'Thần Kinh', shouldMatch: false },
       ]

@@ -384,7 +384,7 @@ describe('Regional leader sees only their facilities', () => {
     // Verify useQuery was called with correct query key
     expect(mockUseQuery).toHaveBeenCalledWith(
       expect.objectContaining({
-        queryKey: ['accessible_facilities', { role: 'regional_leader', diaBan: 1 }],
+        queryKey: ['facilities_with_equipment_count', { role: 'regional_leader', diaBan: 1 }],
         enabled: true,
       })
     )
@@ -464,7 +464,7 @@ describe('Global user sees all facilities', () => {
 
     expect(mockUseQuery).toHaveBeenCalledWith(
       expect.objectContaining({
-        queryKey: ['accessible_facilities', { role: 'global', diaBan: undefined }],
+        queryKey: ['facilities_with_equipment_count', { role: 'global', diaBan: undefined }],
         enabled: true,
       })
     )

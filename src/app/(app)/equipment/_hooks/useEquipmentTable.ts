@@ -18,12 +18,15 @@ import { useMediaQuery } from "@/hooks/use-media-query"
 import { useIsMobile } from "@/hooks/use-mobile"
 import type { Equipment } from "../types"
 
+// Columns to hide on medium screens (768px-1800px)
+const RESPONSIVE_HIDE_COLUMNS = ['serial', 'phan_loai_theo_nd98', 'so_luu_hanh'] as const
+
 // Default column visibility
 const DEFAULT_COLUMN_VISIBILITY: VisibilityState = {
   id: false,
   ma_thiet_bi: true,
   ten_thiet_bi: true,
-  model: true,
+  model: false,
   serial: true,
   cau_hinh_thiet_bi: false,
   phu_kien_kem_theo: false,
@@ -37,7 +40,7 @@ const DEFAULT_COLUMN_VISIBILITY: VisibilityState = {
   nam_tinh_hao_mon: false,
   ty_le_hao_mon: false,
   han_bao_hanh: false,
-  vi_tri_lap_dat: true,
+  vi_tri_lap_dat: false,
   nguoi_dang_truc_tiep_quan_ly: true,
   khoa_phong_quan_ly: true,
   tinh_trang_hien_tai: true,
@@ -49,6 +52,7 @@ const DEFAULT_COLUMN_VISIBILITY: VisibilityState = {
   chu_ky_kd_dinh_ky: false,
   ngay_kd_tiep_theo: false,
   phan_loai_theo_nd98: true,
+  so_luu_hanh: true,
 }
 
 export interface UseEquipmentTableParams {
@@ -107,6 +111,9 @@ export function useEquipmentTable(params: UseEquipmentTableParams): UseEquipment
   // Column visibility state
   const [columnVisibility, setColumnVisibility] =
     React.useState<VisibilityState>(DEFAULT_COLUMN_VISIBILITY)
+
+  // Track pre-responsive visibility to restore user preferences
+  const preResponsiveVisibilityRef = React.useRef<VisibilityState | null>(null)
 
   // State preservation after mutations
   const [preservePageState, setPreservePageState] = React.useState<{
@@ -180,22 +187,40 @@ export function useEquipmentTable(params: UseEquipmentTableParams): UseEquipment
   const tableRef = React.useRef(table)
   tableRef.current = table
 
-  // Auto-hide columns on medium screens
+  // Auto-hide columns on medium screens and restore on large screens
   React.useEffect(() => {
     if (isMediumScreen) {
-      setColumnVisibility((prev) => ({
-        ...prev,
-        model: false,
-        serial: false,
-        phan_loai_theo_nd98: false,
-      }))
-    } else {
-      setColumnVisibility((prev) => ({
-        ...prev,
-        model: true,
-        serial: true,
-        phan_loai_theo_nd98: true,
-      }))
+      // Hide columns when entering medium screen
+      setColumnVisibility((prev) => {
+        if (!preResponsiveVisibilityRef.current) {
+          const snapshot: VisibilityState = {}
+          RESPONSIVE_HIDE_COLUMNS.forEach((col) => {
+            snapshot[col] = prev[col] ?? true
+          })
+          preResponsiveVisibilityRef.current = snapshot
+        }
+
+        return {
+          ...prev,
+          serial: false,
+          phan_loai_theo_nd98: false,
+          so_luu_hanh: false,
+        }
+      })
+    } else if (preResponsiveVisibilityRef.current) {
+      // Restore columns that were hidden by responsive logic when returning to large screen
+      const snapshot = preResponsiveVisibilityRef.current
+
+      setColumnVisibility((prevVisibility) => {
+        const updated = { ...prevVisibility }
+
+        Object.entries(snapshot).forEach(([col, value]) => {
+          updated[col] = value
+        })
+        return updated
+      })
+
+      preResponsiveVisibilityRef.current = null
     }
   }, [isMediumScreen])
 

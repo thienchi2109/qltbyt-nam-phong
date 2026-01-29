@@ -119,6 +119,25 @@ export function EquipmentDetailEditForm({
             />
           </div>
 
+          {/* Marketing Authorization Number */}
+          <FormField
+            control={form.control}
+            name="so_luu_hanh"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Số lưu hành</FormLabel>
+                <FormControl>
+                  <Input
+                    placeholder="VD: LH-2024-001"
+                    {...field}
+                    value={field.value ?? ""}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
           {/* Manufacturer */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <FormField

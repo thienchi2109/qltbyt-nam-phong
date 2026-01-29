@@ -40,6 +40,7 @@ const equipmentFormSchema = z.object({
   ten_thiet_bi: z.string().min(1, "Tên thiết bị là bắt buộc"),
   model: z.string().optional().nullable(),
   serial: z.string().optional().nullable(),
+  so_luu_hanh: z.string().optional().nullable(),
   hang_san_xuat: z.string().optional().nullable(),
   noi_san_xuat: z.string().optional().nullable(),
   nam_san_xuat: z.coerce.number().optional().nullable(),
@@ -175,6 +176,9 @@ export function EditEquipmentDialog({ open, onOpenChange, onSuccess, equipment }
                         <FormItem><FormLabel>Serial</FormLabel><FormControl><Input {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>
                     )} />
                 </div>
+                <FormField control={form.control} name="so_luu_hanh" render={({ field }) => (
+                    <FormItem><FormLabel>Số lưu hành</FormLabel><FormControl><Input placeholder="VD: LH-2024-001" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>
+                )} />
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <FormField control={form.control} name="hang_san_xuat" render={({ field }) => (
                         <FormItem><FormLabel>Hãng sản xuất</FormLabel><FormControl><Input {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>
