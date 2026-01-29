@@ -80,6 +80,7 @@ const headerToDbKeyMap: Record<string, string> = {
     'Tên thiết bị': 'ten_thiet_bi',
     'Model': 'model',
     'Serial': 'serial',
+    'Số lưu hành': 'so_luu_hanh',
     'Cấu hình': 'cau_hinh_thiet_bi',
     'Phụ kiện kèm theo': 'phu_kien_kem_theo',
     'Hãng sản xuất': 'hang_san_xuat',

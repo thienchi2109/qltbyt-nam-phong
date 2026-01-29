@@ -23,7 +23,7 @@ const DEFAULT_COLUMN_VISIBILITY: VisibilityState = {
   id: false,
   ma_thiet_bi: true,
   ten_thiet_bi: true,
-  model: true,
+  model: false,
   serial: true,
   cau_hinh_thiet_bi: false,
   phu_kien_kem_theo: false,
@@ -37,7 +37,7 @@ const DEFAULT_COLUMN_VISIBILITY: VisibilityState = {
   nam_tinh_hao_mon: false,
   ty_le_hao_mon: false,
   han_bao_hanh: false,
-  vi_tri_lap_dat: true,
+  vi_tri_lap_dat: false,
   nguoi_dang_truc_tiep_quan_ly: true,
   khoa_phong_quan_ly: true,
   tinh_trang_hien_tai: true,
@@ -49,6 +49,7 @@ const DEFAULT_COLUMN_VISIBILITY: VisibilityState = {
   chu_ky_kd_dinh_ky: false,
   ngay_kd_tiep_theo: false,
   phan_loai_theo_nd98: true,
+  so_luu_hanh: true,
 }
 
 export interface UseEquipmentTableParams {
@@ -180,23 +181,19 @@ export function useEquipmentTable(params: UseEquipmentTableParams): UseEquipment
   const tableRef = React.useRef(table)
   tableRef.current = table
 
-  // Auto-hide columns on medium screens
+  // Auto-hide columns on medium screens (hide additional columns to save space)
+  // Note: We only hide on medium screens, we don't force-show on large screens
+  // to preserve user column visibility preferences
   React.useEffect(() => {
     if (isMediumScreen) {
       setColumnVisibility((prev) => ({
         ...prev,
-        model: false,
         serial: false,
         phan_loai_theo_nd98: false,
-      }))
-    } else {
-      setColumnVisibility((prev) => ({
-        ...prev,
-        model: true,
-        serial: true,
-        phan_loai_theo_nd98: true,
+        so_luu_hanh: false,
       }))
     }
+    // No else branch - let DEFAULT_COLUMN_VISIBILITY and user preferences persist
   }, [isMediumScreen])
 
   // Restore table state after data changes

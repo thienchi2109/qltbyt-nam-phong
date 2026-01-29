@@ -34,6 +34,7 @@ const EQUIPMENT_COLUMN_LABELS: Record<string, string> = {
   ten_thiet_bi: 'Tên thiết bị',
   model: 'Model',
   serial: 'Serial',
+  so_luu_hanh: 'Số lưu hành',
   cau_hinh_thiet_bi: 'Cấu hình',
   phu_kien_kem_theo: 'Phụ kiện kèm theo',
   hang_san_xuat: 'Hãng sản xuất',

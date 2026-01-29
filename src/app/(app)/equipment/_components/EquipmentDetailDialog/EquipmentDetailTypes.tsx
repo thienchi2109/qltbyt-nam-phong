@@ -37,6 +37,7 @@ export const equipmentFormSchema = z.object({
   ten_thiet_bi: z.string().min(1, "Tên thiết bị là bắt buộc"),
   model: z.string().optional().nullable(),
   serial: z.string().optional().nullable(),
+  so_luu_hanh: z.string().optional().nullable(),
   hang_san_xuat: z.string().optional().nullable(),
   noi_san_xuat: z.string().optional().nullable(),
   nam_san_xuat: z.coerce.number().optional().nullable(),
