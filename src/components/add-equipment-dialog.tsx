@@ -35,6 +35,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge"
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query"
 import { callRpc } from "@/lib/rpc-client"
+import { normalizePartialDateForForm, isValidPartialDate, PARTIAL_DATE_ERROR_MESSAGE } from "@/lib/date-utils"
 
 const equipmentStatusOptions = [
     "Hoạt động", 
@@ -51,14 +52,15 @@ const equipmentFormSchema = z.object({
   ten_thiet_bi: z.string().min(1, "Tên thiết bị là bắt buộc"),
   model: z.string().optional(),
   serial: z.string().optional(),
+  so_luu_hanh: z.string().optional(),
   hang_san_xuat: z.string().optional(),
   noi_san_xuat: z.string().optional(),
   nam_san_xuat: z.coerce.number().optional().nullable(),
-  ngay_nhap: z.string().optional(),
-  ngay_dua_vao_su_dung: z.string().optional(),
+  ngay_nhap: z.string().optional().nullable().refine(isValidPartialDate, PARTIAL_DATE_ERROR_MESSAGE).transform(normalizePartialDateForForm),
+  ngay_dua_vao_su_dung: z.string().optional().nullable().refine(isValidPartialDate, PARTIAL_DATE_ERROR_MESSAGE).transform(normalizePartialDateForForm),
   nguon_kinh_phi: z.string().optional(),
   gia_goc: z.coerce.number().optional().nullable(),
-  han_bao_hanh: z.string().optional(),
+  han_bao_hanh: z.string().optional().nullable().refine(isValidPartialDate, PARTIAL_DATE_ERROR_MESSAGE).transform(normalizePartialDateForForm),
   vi_tri_lap_dat: z.string().min(1, "Vị trí lắp đặt là bắt buộc"),
   khoa_phong_quan_ly: z.string().min(1, "Khoa/Phòng quản lý là bắt buộc"),
   nguoi_dang_truc_tiep_quan_ly: z.string().min(1, "Người trực tiếp quản lý (sử dụng) là bắt buộc"),
@@ -122,6 +124,7 @@ export function AddEquipmentDialog({ open, onOpenChange, onSuccess }: AddEquipme
       ten_thiet_bi: "",
       model: "",
       serial: "",
+      so_luu_hanh: "",
       hang_san_xuat: "",
       noi_san_xuat: "",
       nam_san_xuat: null,
@@ -243,6 +246,9 @@ export function AddEquipmentDialog({ open, onOpenChange, onSuccess }: AddEquipme
                         <FormItem><FormLabel>Serial</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
                     )} />
                 </div>
+                <FormField control={form.control} name="so_luu_hanh" render={({ field }) => (
+                    <FormItem><FormLabel>Số lưu hành</FormLabel><FormControl><Input placeholder="VD: LH-2024-001" {...field} /></FormControl><FormMessage /></FormItem>
+                )} />
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <FormField control={form.control} name="hang_san_xuat" render={({ field }) => (
                         <FormItem><FormLabel>Hãng sản xuất</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
@@ -265,10 +271,10 @@ export function AddEquipmentDialog({ open, onOpenChange, onSuccess }: AddEquipme
 
                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <FormField control={form.control} name="ngay_nhap" render={({ field }) => (
-                        <FormItem><FormLabel>Ngày nhập</FormLabel><FormControl><Input placeholder="DD/MM/YYYY" {...field} /></FormControl><FormMessage /></FormItem>
+                        <FormItem><FormLabel>Ngày nhập</FormLabel><FormControl><Input placeholder="DD/MM/YYYY hoặc MM/YYYY hoặc YYYY" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>
                     )} />
                     <FormField control={form.control} name="ngay_dua_vao_su_dung" render={({ field }) => (
-                        <FormItem><FormLabel>Ngày đưa vào sử dụng</FormLabel><FormControl><Input placeholder="DD/MM/YYYY" {...field} /></FormControl><FormMessage /></FormItem>
+                        <FormItem><FormLabel>Ngày đưa vào sử dụng</FormLabel><FormControl><Input placeholder="DD/MM/YYYY hoặc MM/YYYY hoặc YYYY" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>
                     )} />
                 </div>
 
@@ -290,7 +296,7 @@ export function AddEquipmentDialog({ open, onOpenChange, onSuccess }: AddEquipme
                 </div>
                 
                 <FormField control={form.control} name="han_bao_hanh" render={({ field }) => (
-                    <FormItem><FormLabel>Hạn bảo hành</FormLabel><FormControl><Input placeholder="DD/MM/YYYY" {...field} /></FormControl><FormMessage /></FormItem>
+                    <FormItem><FormLabel>Hạn bảo hành</FormLabel><FormControl><Input placeholder="DD/MM/YYYY hoặc MM/YYYY hoặc YYYY" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>
                 )} />
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
