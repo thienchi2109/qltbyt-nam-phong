@@ -190,8 +190,13 @@ export function parsePartialDateToISO(vn: string | null | undefined): string | n
     return `${year}-${month}-${day}`
   }
 
-  // Already in valid ISO format? Pass through (nested optional groups)
-  if (/^\d{4}(-\d{2}(-\d{2})?)?$/.test(s)) {
+  // Already in valid ISO format? Validate month/day ranges before passing through
+  const isoMatch = s.match(/^(\d{4})(?:-(\d{2})(?:-(\d{2}))?)?$/)
+  if (isoMatch) {
+    const monthNum = isoMatch[2] ? parseInt(isoMatch[2], 10) : null
+    const dayNum = isoMatch[3] ? parseInt(isoMatch[3], 10) : null
+    if (monthNum !== null && (monthNum < 1 || monthNum > 12)) return null
+    if (dayNum !== null && (dayNum < 1 || dayNum > 31)) return null
     return s
   }
 
@@ -239,8 +244,15 @@ export function isValidPartialDate(value: string | null | undefined): boolean {
     return monthNum >= 1 && monthNum <= 12 && dayNum >= 1 && dayNum <= 31
   }
 
-  // ISO formats (already stored) - nested optional groups
-  if (/^\d{4}(-\d{2}(-\d{2})?)?$/.test(s)) return true
+  // ISO formats (already stored) - validate month/day ranges
+  const isoMatch = s.match(/^(\d{4})(?:-(\d{2})(?:-(\d{2}))?)?$/)
+  if (isoMatch) {
+    const monthNum = isoMatch[2] ? parseInt(isoMatch[2], 10) : null
+    const dayNum = isoMatch[3] ? parseInt(isoMatch[3], 10) : null
+    if (monthNum !== null && (monthNum < 1 || monthNum > 12)) return false
+    if (dayNum !== null && (dayNum < 1 || dayNum > 31)) return false
+    return true
+  }
 
   return false
 }
