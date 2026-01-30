@@ -368,36 +368,6 @@ export function EquipmentDetailEditForm({
             )}
           />
 
-          {/* Configuration */}
-          <FormField
-            control={form.control}
-            name="cau_hinh_thiet_bi"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Cấu hình thiết bị</FormLabel>
-                <FormControl>
-                  <Textarea rows={4} {...field} value={field.value ?? ""} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          {/* Accessories */}
-          <FormField
-            control={form.control}
-            name="phu_kien_kem_theo"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Phụ kiện kèm theo</FormLabel>
-                <FormControl>
-                  <Textarea rows={3} {...field} value={field.value ?? ""} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
           {/* Notes */}
           <FormField
             control={form.control}

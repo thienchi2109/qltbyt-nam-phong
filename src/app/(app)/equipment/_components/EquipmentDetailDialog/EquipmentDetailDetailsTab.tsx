@@ -29,6 +29,9 @@ import {
 } from "@/lib/date-utils"
 import type { Equipment } from "@/types/database"
 
+/** Fields moved to the Config tab - excluded from Details tab */
+const CONFIG_TAB_FIELDS = new Set(["cau_hinh_thiet_bi", "phu_kien_kem_theo"])
+
 export interface EquipmentDetailDetailsTabProps {
   /** Equipment data to display (merged with savedValues for optimistic updates) */
   displayEquipment: Equipment
@@ -128,24 +131,23 @@ export function EquipmentDetailDetailsTab({
     return <>{children}</>
   }
 
-  // View mode: display all fields
+  // View mode: display all fields (excluding id and config tab fields)
+  const visibleFields = (Object.keys(columnLabels) as Array<keyof Equipment>)
+    .filter((key) => key !== "id" && !CONFIG_TAB_FIELDS.has(key))
+
   return (
     <ScrollArea className="h-full pr-4">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4 py-4">
-        {(Object.keys(columnLabels) as Array<keyof Equipment>).map((key) => {
-          if (key === "id") return null
-
-          return (
-            <div key={key} className="border-b pb-2">
-              <p className="text-xs font-medium text-muted-foreground">
-                {columnLabels[key]}
-              </p>
-              <div className="font-semibold break-words">
-                <FieldValue fieldKey={key} value={displayEquipment[key]} />
-              </div>
+        {visibleFields.map((key) => (
+          <div key={key} className="border-b pb-2">
+            <p className="text-xs font-medium text-muted-foreground">
+              {columnLabels[key]}
+            </p>
+            <div className="font-semibold break-words">
+              <FieldValue fieldKey={key} value={displayEquipment[key]} />
             </div>
-          )
-        })}
+          </div>
+        ))}
       </div>
     </ScrollArea>
   )
