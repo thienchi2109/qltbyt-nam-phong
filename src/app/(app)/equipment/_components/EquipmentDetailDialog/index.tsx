@@ -41,6 +41,7 @@ import { EquipmentDetailHistoryTab } from "./EquipmentDetailHistoryTab"
 import { EquipmentDetailUsageTab } from "./EquipmentDetailUsageTab"
 import { EquipmentDetailFilesTab } from "./EquipmentDetailFilesTab"
 import { EquipmentDetailDetailsTab } from "./EquipmentDetailDetailsTab"
+import { EquipmentDetailConfigTab } from "./EquipmentDetailConfigTab"
 import { EquipmentDetailEditForm } from "./EquipmentDetailEditForm"
 
 const DEFAULT_FORM_VALUES = {
@@ -142,6 +143,18 @@ export function EquipmentDetailDialog({
   const [isEditingDetails, setIsEditingDetails] = React.useState(false)
   // Store saved values to display after save (equipment prop is stale until dialog reopens)
   const [savedValues, setSavedValues] = React.useState<Partial<EquipmentFormValues> | null>(null)
+  // Ref for scrolling active tab into view on mobile
+  const tabsScrollRef = React.useRef<HTMLDivElement>(null)
+
+  // Scroll active tab into view when tab changes (mobile accessibility)
+  React.useEffect(() => {
+    const scrollContainer = tabsScrollRef.current
+    if (!scrollContainer) return
+    const activeTab = scrollContainer.querySelector('[data-state="active"]') as HTMLElement
+    if (activeTab) {
+      activeTab.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' })
+    }
+  }, [currentTab])
 
   // Form
   const editForm = useForm<EquipmentFormValues>({
@@ -250,16 +263,23 @@ export function EquipmentDetailDialog({
           onValueChange={setCurrentTab}
           className="flex-grow flex flex-col overflow-hidden"
         >
-          <TabsList className="shrink-0">
-            <TabsTrigger value="details">Thông tin chi tiết</TabsTrigger>
-            <TabsTrigger value="files">File đính kèm</TabsTrigger>
-            <TabsTrigger value="history">Lịch sử</TabsTrigger>
-            <TabsTrigger value="usage">Nhật ký sử dụng</TabsTrigger>
-          </TabsList>
+          <div ref={tabsScrollRef} className="overflow-x-auto flex-shrink-0">
+            <TabsList className="w-max">
+              <TabsTrigger value="details">Thông tin chi tiết</TabsTrigger>
+              <TabsTrigger value="config">Cấu hình & Phụ kiện</TabsTrigger>
+              <TabsTrigger value="files">File đính kèm</TabsTrigger>
+              <TabsTrigger value="history">Lịch sử</TabsTrigger>
+              <TabsTrigger value="usage">Nhật ký sử dụng</TabsTrigger>
+            </TabsList>
+          </div>
 
-          {/* Details Tab */}
-          <TabsContent value="details" className="flex-grow overflow-hidden">
-            <FormProvider {...editForm}>
+          <FormProvider {...editForm}>
+            {/* Details Tab - forceMount when editing to keep form in DOM for submit */}
+            <TabsContent
+              value="details"
+              className={`flex-grow overflow-hidden ${currentTab !== "details" && isEditingDetails ? "hidden" : ""}`}
+              forceMount={isEditingDetails ? true : undefined}
+            >
               <EquipmentDetailDetailsTab
                 displayEquipment={displayEquipment!}
                 isEditing={isEditingDetails}
@@ -269,8 +289,16 @@ export function EquipmentDetailDialog({
                   onSubmit={onSubmitInlineEdit}
                 />
               </EquipmentDetailDetailsTab>
-            </FormProvider>
-          </TabsContent>
+            </TabsContent>
+
+            {/* Config Tab */}
+            <TabsContent value="config" className="flex-grow overflow-hidden">
+              <EquipmentDetailConfigTab
+                displayEquipment={displayEquipment!}
+                isEditing={isEditingDetails}
+              />
+            </TabsContent>
+          </FormProvider>
 
           {/* Files Tab */}
           <TabsContent value="files" className="flex-grow overflow-hidden">
@@ -303,7 +331,6 @@ export function EquipmentDetailDialog({
                   <Button
                     variant="outline"
                     onClick={() => {
-                      setCurrentTab("details")
                       setIsEditingDetails(true)
                     }}
                   >
