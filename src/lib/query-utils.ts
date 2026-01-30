@@ -13,7 +13,9 @@ export class CacheManager {
 
   // Invalidate transfer-related caches
   invalidateTransfers() {
-    this.queryClient.invalidateQueries({ queryKey: ['transfers'] })
+    this.queryClient.invalidateQueries({ queryKey: ['transfers-kanban'] })
+    this.queryClient.invalidateQueries({ queryKey: ['transfers-data-grid'] })
+    this.queryClient.invalidateQueries({ queryKey: ['transfers'] }) // Legacy compatibility
     this.queryClient.invalidateQueries({ queryKey: ['reports'] })
     this.queryClient.invalidateQueries({ queryKey: ['equipment'] })
   }
@@ -43,4 +45,4 @@ export class CacheManager {
   clearAll() {
     this.queryClient.clear()
   }
-} 
+}
