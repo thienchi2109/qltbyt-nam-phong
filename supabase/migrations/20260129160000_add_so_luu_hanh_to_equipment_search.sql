@@ -87,7 +87,8 @@ BEGIN
       'id', 'ma_thiet_bi', 'ten_thiet_bi', 'model', 'serial',
       'khoa_phong_quan_ly', 'tinh_trang_hien_tai', 'vi_tri_lap_dat',
       'nguoi_dang_truc_tiep_quan_ly', 'phan_loai_theo_nd98', 'don_vi',
-      'gia_goc', 'ngay_nhap', 'ngay_dua_vao_su_dung', 'ngay_bt_tiep_theo'
+      'gia_goc', 'ngay_nhap', 'ngay_dua_vao_su_dung', 'ngay_bt_tiep_theo',
+      'so_luu_hanh'
     ) THEN
       v_sort_col := 'id';
     END IF;
