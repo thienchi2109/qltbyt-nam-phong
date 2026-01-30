@@ -19,6 +19,7 @@ ON public.thiet_bi USING gin (so_luu_hanh gin_trgm_ops);
 
 -- ============================================================================
 -- Update equipment_list_enhanced to include so_luu_hanh in search
+-- NOTE: Must match existing signature including p_nguon_kinh_phi parameters
 -- ============================================================================
 
 CREATE OR REPLACE FUNCTION public.equipment_list_enhanced(
@@ -37,6 +38,8 @@ CREATE OR REPLACE FUNCTION public.equipment_list_enhanced(
   p_tinh_trang_array TEXT[] DEFAULT NULL,
   p_phan_loai TEXT DEFAULT NULL,
   p_phan_loai_array TEXT[] DEFAULT NULL,
+  p_nguon_kinh_phi TEXT DEFAULT NULL,
+  p_nguon_kinh_phi_array TEXT[] DEFAULT NULL,
   p_fields TEXT DEFAULT 'id,ma_thiet_bi,ten_thiet_bi,model,serial,khoa_phong_quan_ly,tinh_trang_hien_tai,vi_tri_lap_dat,nguoi_dang_truc_tiep_quan_ly,phan_loai_theo_nd98'
 )
 RETURNS JSONB
@@ -68,25 +71,25 @@ BEGIN
 
   -- Get role and claims
   v_role := COALESCE(
-    v_jwt_claims ->> 'app_role',
-    v_jwt_claims ->> 'role',
+    v_jwt_claims ->>'app_role',
+    v_jwt_claims ->>'role',
     ''
   );
-  v_claim_donvi := NULLIF(v_jwt_claims ->> 'don_vi', '')::BIGINT;
+  v_claim_donvi := NULLIF(v_jwt_claims ->>'don_vi', '')::BIGINT;
 
   -- Parse sort parameter
   IF p_sort IS NOT NULL AND p_sort != '' THEN
     v_sort_col := split_part(p_sort, '.', 1);
     v_sort_dir := UPPER(COALESCE(NULLIF(split_part(p_sort, '.', 2), ''), 'ASC'));
-    -- FIX: Validate sort direction to prevent SQL injection
+    -- Validate sort direction to prevent SQL injection
     IF v_sort_dir NOT IN ('ASC', 'DESC') THEN
       v_sort_dir := 'ASC';
     END IF;
-    -- FIX: Validate sort column whitelist for defense in depth
+    -- Validate sort column whitelist for defense in depth
     IF v_sort_col NOT IN (
       'id', 'ma_thiet_bi', 'ten_thiet_bi', 'model', 'serial',
       'khoa_phong_quan_ly', 'tinh_trang_hien_tai', 'vi_tri_lap_dat',
-      'nguoi_dang_truc_tiep_quan_ly', 'phan_loai_theo_nd98', 'don_vi',
+      'nguoi_dang_truc_tiep_quan_ly', 'phan_loai_theo_nd98', 'nguon_kinh_phi', 'don_vi',
       'gia_goc', 'ngay_nhap', 'ngay_dua_vao_su_dung', 'ngay_bt_tiep_theo',
       'so_luu_hanh'
     ) THEN
@@ -97,48 +100,16 @@ BEGIN
   -- Get allowed don_vi based on role
   v_allowed_don_vi := public.allowed_don_vi_for_session_safe();
 
-  -- Debug logging
-  RAISE LOG 'Equipment List Enhanced - Role: %, Allowed DonVi: %, Claim DonVi: %', v_role, v_allowed_don_vi, v_claim_donvi;
-
   -- Tenant isolation logic
   IF lower(v_role) = 'global' THEN
-    -- Global users can see all don_vi or filter by specific don_vi
-    IF p_don_vi IS NOT NULL THEN
-      v_effective_donvi := p_don_vi;
-    ELSE
-      v_effective_donvi := NULL; -- All tenants
-    END IF;
+    IF p_don_vi IS NOT NULL THEN v_effective_donvi := p_don_vi; ELSE v_effective_donvi := NULL; END IF;
   ELSE
-    -- Non-global users: use allowed_don_vi_for_session
     IF v_allowed_don_vi IS NOT NULL AND array_length(v_allowed_don_vi, 1) > 0 THEN
       IF p_don_vi IS NOT NULL THEN
-        -- Check if requested don_vi is in allowed list
-        IF p_don_vi = ANY(v_allowed_don_vi) THEN
-          v_effective_donvi := p_don_vi;
-        ELSE
-          -- Access denied
-          RETURN jsonb_build_object(
-            'data', '[]'::jsonb,
-            'total', 0,
-            'page', p_page,
-            'pageSize', p_page_size,
-            'error', 'Access denied for tenant'
-          );
-        END IF;
-      ELSE
-        -- For regional leaders and other non-global users, use all allowed don_vi
-        v_effective_donvi := NULL;
-      END IF;
-    ELSE
-      -- No access
-      RETURN jsonb_build_object(
-        'data', '[]'::jsonb,
-        'total', 0,
-        'page', p_page,
-        'pageSize', p_page_size,
-        'error', 'No tenant access'
-      );
-    END IF;
+        IF p_don_vi = ANY(v_allowed_don_vi) THEN v_effective_donvi := p_don_vi;
+        ELSE RETURN jsonb_build_object('data', '[]'::jsonb, 'total', 0, 'page', p_page, 'pageSize', p_page_size, 'error', 'Access denied for tenant'); END IF;
+      ELSE v_effective_donvi := NULL; END IF;
+    ELSE RETURN jsonb_build_object('data', '[]'::jsonb, 'total', 0, 'page', p_page, 'pageSize', p_page_size, 'error', 'No tenant access'); END IF;
   END IF;
 
   -- Build WHERE clause with proper conditions
@@ -147,18 +118,15 @@ BEGIN
   END IF;
 
   -- For non-global users with no specific don_vi filter, use proper array syntax
-  -- FIX: Use array_to_string with ARRAY[] constructor instead of quote_literal
   IF v_effective_donvi IS NULL AND lower(v_role) <> 'global' AND v_allowed_don_vi IS NOT NULL THEN
     v_where := v_where || ' AND don_vi = ANY(ARRAY[' || array_to_string(v_allowed_don_vi, ',') || '])';
   END IF;
 
   -- Handle department filtering: prioritize array over single value
   IF p_khoa_phong_array IS NOT NULL AND array_length(p_khoa_phong_array, 1) > 0 THEN
-    -- Multiple departments: use ANY for efficient IN clause
     v_where := v_where || ' AND khoa_phong_quan_ly = ANY(ARRAY[' ||
                array_to_string(ARRAY(SELECT quote_literal(x) FROM unnest(p_khoa_phong_array) AS x), ',') || '])';
   ELSIF p_khoa_phong IS NOT NULL AND trim(p_khoa_phong) != '' THEN
-    -- Single department: backward compatibility
     v_where := v_where || ' AND khoa_phong_quan_ly = ' || quote_literal(p_khoa_phong);
   END IF;
 
@@ -194,6 +162,29 @@ BEGIN
     v_where := v_where || ' AND phan_loai_theo_nd98 = ' || quote_literal(p_phan_loai);
   END IF;
 
+  -- Handle funding source filtering with consistent TRIM
+  IF p_nguon_kinh_phi_array IS NOT NULL AND array_length(p_nguon_kinh_phi_array, 1) > 0 THEN
+    IF 'Chưa có' = ANY(p_nguon_kinh_phi_array) THEN
+      DECLARE v_non_empty_sources TEXT[];
+      BEGIN
+        SELECT ARRAY(SELECT x FROM unnest(p_nguon_kinh_phi_array) AS x WHERE x != 'Chưa có') INTO v_non_empty_sources;
+        IF v_non_empty_sources IS NOT NULL AND array_length(v_non_empty_sources, 1) > 0 THEN
+          v_where := v_where || ' AND (nguon_kinh_phi IS NULL OR TRIM(nguon_kinh_phi) = '''' OR TRIM(nguon_kinh_phi) = ANY(ARRAY[' || array_to_string(ARRAY(SELECT quote_literal(x) FROM unnest(v_non_empty_sources) AS x), ',') || ']))';
+        ELSE
+          v_where := v_where || ' AND (nguon_kinh_phi IS NULL OR TRIM(nguon_kinh_phi) = '''')';
+        END IF;
+      END;
+    ELSE
+      v_where := v_where || ' AND TRIM(nguon_kinh_phi) = ANY(ARRAY[' || array_to_string(ARRAY(SELECT quote_literal(x) FROM unnest(p_nguon_kinh_phi_array) AS x), ',') || '])';
+    END IF;
+  ELSIF p_nguon_kinh_phi IS NOT NULL AND trim(p_nguon_kinh_phi) != '' THEN
+    IF p_nguon_kinh_phi = 'Chưa có' THEN
+      v_where := v_where || ' AND (nguon_kinh_phi IS NULL OR TRIM(nguon_kinh_phi) = '''')';
+    ELSE
+      v_where := v_where || ' AND TRIM(nguon_kinh_phi) = ' || quote_literal(p_nguon_kinh_phi);
+    END IF;
+  END IF;
+
   -- Handle search query (UPDATED: includes so_luu_hanh)
   IF p_q IS NOT NULL AND trim(p_q) != '' THEN
     v_where := v_where || ' AND (ten_thiet_bi ILIKE ' || quote_literal('%' || p_q || '%') ||
@@ -211,7 +202,6 @@ BEGIN
   END IF;
 
   -- Get data page with proper sort
-  -- FIX: Now includes don_vi_name in the returned JSON object
   EXECUTE format(
     'SELECT COALESCE(jsonb_agg(t), ''[]''::jsonb) FROM (
        SELECT (to_jsonb(tb.*) || jsonb_build_object(''google_drive_folder_url'', dv.google_drive_folder_url, ''don_vi_name'', dv.name)) AS t
@@ -233,7 +223,10 @@ BEGIN
 END;
 $$;
 
-GRANT EXECUTE ON FUNCTION public.equipment_list_enhanced TO authenticated;
+-- Use full signature to avoid ambiguity error
+GRANT EXECUTE ON FUNCTION public.equipment_list_enhanced(
+  TEXT, TEXT, INT, INT, BIGINT, TEXT, TEXT[], TEXT, TEXT[], TEXT, TEXT[], TEXT, TEXT[], TEXT, TEXT[], TEXT, TEXT[], TEXT
+) TO authenticated;
 
 COMMIT;
 
@@ -245,4 +238,6 @@ COMMIT;
 -- SELECT jsonb_pretty(equipment_list_enhanced('SH-123', 'id.asc', 1, 10, NULL));
 -- Expected: Returns equipment where so_luu_hanh contains 'SH-123'
 
-COMMENT ON FUNCTION public.equipment_list_enhanced IS 'Returns equipment list with pagination and filters. Search includes: ten_thiet_bi, ma_thiet_bi, serial, so_luu_hanh.';
+COMMENT ON FUNCTION public.equipment_list_enhanced(
+  TEXT, TEXT, INT, INT, BIGINT, TEXT, TEXT[], TEXT, TEXT[], TEXT, TEXT[], TEXT, TEXT[], TEXT, TEXT[], TEXT, TEXT[], TEXT
+) IS 'Returns equipment list with pagination and filters. Search includes: ten_thiet_bi, ma_thiet_bi, serial, so_luu_hanh.';
