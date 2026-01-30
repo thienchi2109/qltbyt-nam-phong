@@ -119,8 +119,10 @@ export function RealtimeProvider({ children }: RealtimeProviderProps) {
         break
 
       case 'yeu_cau_luan_chuyen':
-        // Transfer request changes
-        debouncedInvalidate(['transfers'])
+        // Transfer request changes - invalidate both Kanban and Table views
+        debouncedInvalidate(['transfers-kanban'])    // Kanban board view
+        debouncedInvalidate(['transfers-data-grid']) // Table/list view  
+        debouncedInvalidate(['transfers'])           // Legacy (useTransferRequestsRealtime)
         debouncedInvalidate(['equipment'])
         debouncedInvalidate(['reports'])
         break

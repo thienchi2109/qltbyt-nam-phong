@@ -123,8 +123,10 @@ export function useEquipmentRealtimeSync() {
       (payload) => {
         console.log(`[useEquipmentRealtimeSync] ${payload.eventType} on yeu_cau_luan_chuyen:`, payload)
 
-        // Invalidate React Query cache
-        queryClient.invalidateQueries({ queryKey: ['transfers'] })
+        // Invalidate React Query cache - use actual query keys
+        queryClient.invalidateQueries({ queryKey: ['transfers-kanban'] })
+        queryClient.invalidateQueries({ queryKey: ['transfers-data-grid'] })
+        queryClient.invalidateQueries({ queryKey: ['transfers'] }) // Legacy compatibility
         queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] })
       }
     )
