@@ -2,8 +2,8 @@
 
 import * as React from "react"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
 import { FilterX } from "lucide-react"
+import { SearchInput } from "@/components/shared/SearchInput"
 import { RepairRequestsFilterChips, type FilterChipsValue } from "./RepairRequestsFilterChips"
 import type { UiFilters as UiFiltersPrefs } from "@/lib/rr-prefs"
 
@@ -37,11 +37,12 @@ export function RepairRequestsToolbar({
     <>
       <div className="flex items-center justify-between gap-2 flex-wrap mb-2 md:mb-3">
         <div className="flex flex-1 items-center gap-2">
-          <Input
+          <SearchInput
             ref={searchInputRef}
             placeholder="Tìm thiết bị, mô tả..."
             value={searchTerm}
-            onChange={(event) => onSearchChange(event.target.value)}
+            onChange={onSearchChange}
+            showSearchIcon={false}
             className="h-8 w-[120px] md:w-[200px] lg:w-[250px] touch-target-sm md:h-8"
           />
 

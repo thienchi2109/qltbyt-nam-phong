@@ -1,9 +1,7 @@
 "use client"
 
-import { AlertTriangle, Building2, X } from "lucide-react"
+import { AlertTriangle, Building2 } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
 import {
   Select,
   SelectContent,
@@ -11,6 +9,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { SearchInput } from "@/components/shared/SearchInput"
 
 export type PlanFiltersBarProps = {
   // Facility filter
@@ -108,23 +107,14 @@ export function PlanFiltersBar({
       {/* Search Section */}
       <div className="flex flex-col sm:flex-row gap-4 mb-4">
         <div className="flex-1">
-          <Input
+          <SearchInput
             placeholder="Tìm kiếm theo tên kế hoạch, khoa/phòng, người lập..."
             value={searchTerm}
-            onChange={(e) => onSearchChange(e.target.value)}
+            onChange={onSearchChange}
+            showSearchIcon={false}
             className="max-w-sm"
           />
         </div>
-        {searchTerm && (
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => onSearchChange("")}
-          >
-            <X className="h-4 w-4 mr-1" />
-            Xóa tìm kiếm
-          </Button>
-        )}
       </div>
     </>
   )
