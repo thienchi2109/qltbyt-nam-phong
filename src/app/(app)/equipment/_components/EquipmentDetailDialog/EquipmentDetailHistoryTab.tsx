@@ -110,7 +110,7 @@ export function EquipmentDetailHistoryTab({
                     Kế hoạch: {item.chi_tiet.ten_ke_hoach}
                   </p>
                 )}
-                {item.chi_tiet?.thang && (
+                {item.chi_tiet?.thang && item.chi_tiet?.nam && (
                   <p className="text-sm text-muted-foreground">
                     Tháng: {item.chi_tiet.thang}/{item.chi_tiet.nam}
                   </p>
