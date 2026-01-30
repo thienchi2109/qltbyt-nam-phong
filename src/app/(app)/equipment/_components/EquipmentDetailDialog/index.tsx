@@ -263,8 +263,8 @@ export function EquipmentDetailDialog({
           onValueChange={setCurrentTab}
           className="flex-grow flex flex-col overflow-hidden"
         >
-          <div ref={tabsScrollRef} className="overflow-x-auto pb-1">
-            <TabsList className="shrink-0 w-max min-w-full">
+          <div ref={tabsScrollRef} className="overflow-x-auto flex-shrink-0">
+            <TabsList className="w-max">
               <TabsTrigger value="details">Thông tin chi tiết</TabsTrigger>
               <TabsTrigger value="config">Cấu hình & Phụ kiện</TabsTrigger>
               <TabsTrigger value="files">File đính kèm</TabsTrigger>
