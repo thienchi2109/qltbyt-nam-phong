@@ -208,6 +208,10 @@ export const normalizePartialDateForForm = (v: string | null | undefined): strin
   return parsePartialDateToISO(v)
 }
 
+/** Error message for invalid partial date format (Vietnamese) */
+export const PARTIAL_DATE_ERROR_MESSAGE =
+  "Định dạng ngày không hợp lệ. Sử dụng: DD/MM/YYYY, MM/YYYY hoặc YYYY"
+
 /**
  * Validates partial date format and semantic correctness
  * @returns true if valid format (YYYY, MM/YYYY, DD/MM/YYYY, or ISO equivalents) with valid month/day values

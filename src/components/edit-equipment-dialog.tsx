@@ -32,7 +32,7 @@ import { type Equipment } from "@/types/database"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { callRpc } from "@/lib/rpc-client"
-import { normalizeDateForForm, normalizePartialDateForForm, formatPartialDateToDisplay } from "@/lib/date-utils"
+import { normalizeDateForForm, normalizePartialDateForForm, formatPartialDateToDisplay, isValidPartialDate, PARTIAL_DATE_ERROR_MESSAGE } from "@/lib/date-utils"
 import { equipmentStatusOptions } from "@/components/equipment/equipment-table-columns"
 
 const equipmentFormSchema = z.object({
@@ -44,11 +44,11 @@ const equipmentFormSchema = z.object({
   hang_san_xuat: z.string().optional().nullable(),
   noi_san_xuat: z.string().optional().nullable(),
   nam_san_xuat: z.coerce.number().optional().nullable(),
-  ngay_nhap: z.string().optional().nullable().transform(normalizePartialDateForForm),
-  ngay_dua_vao_su_dung: z.string().optional().nullable().transform(normalizePartialDateForForm),
+  ngay_nhap: z.string().optional().nullable().refine(isValidPartialDate, PARTIAL_DATE_ERROR_MESSAGE).transform(normalizePartialDateForForm),
+  ngay_dua_vao_su_dung: z.string().optional().nullable().refine(isValidPartialDate, PARTIAL_DATE_ERROR_MESSAGE).transform(normalizePartialDateForForm),
   nguon_kinh_phi: z.string().optional().nullable(),
   gia_goc: z.coerce.number().optional().nullable(),
-  han_bao_hanh: z.string().optional().nullable().transform(normalizePartialDateForForm),
+  han_bao_hanh: z.string().optional().nullable().refine(isValidPartialDate, PARTIAL_DATE_ERROR_MESSAGE).transform(normalizePartialDateForForm),
   vi_tri_lap_dat: z.string().min(1, "Vị trí lắp đặt là bắt buộc").nullable().transform(val => val || ""),
   khoa_phong_quan_ly: z.string().min(1, "Khoa/Phòng quản lý là bắt buộc").nullable().transform(val => val || ""),
   nguoi_dang_truc_tiep_quan_ly: z.string().min(1, "Người trực tiếp quản lý (sử dụng) là bắt buộc").nullable().transform(val => val || ""),
