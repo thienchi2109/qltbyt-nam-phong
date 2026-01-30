@@ -12,6 +12,14 @@ import { ArrowUpDown } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import type { Equipment } from "@/types/database"
+import { formatPartialDateToDisplay } from "@/lib/date-utils"
+
+/** Partial date fields that should be formatted for display */
+const PARTIAL_DATE_FIELDS: Set<keyof Equipment> = new Set([
+  "ngay_nhap",
+  "ngay_dua_vao_su_dung",
+  "han_bao_hanh",
+])
 
 /**
  * Returns badge variant based on equipment status.
@@ -168,6 +176,15 @@ export function createEquipmentColumns(
             return <div className="text-right italic text-muted-foreground">Chưa có dữ liệu</div>
           }
           return <div className="text-right">{Number(value).toLocaleString()}đ</div>
+        }
+
+        // Format partial date fields (ngay_nhap, ngay_dua_vao_su_dung, han_bao_hanh)
+        if (PARTIAL_DATE_FIELDS.has(key)) {
+          if (value === null || value === undefined || value === "") {
+            return <div className="italic text-muted-foreground">Chưa có dữ liệu</div>
+          }
+          const formatted = formatPartialDateToDisplay(String(value))
+          return <div className="truncate max-w-xs">{formatted}</div>
         }
 
         if (value === null || value === undefined || value === "") {

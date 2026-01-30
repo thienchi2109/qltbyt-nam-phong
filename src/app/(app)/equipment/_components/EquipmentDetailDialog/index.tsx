@@ -33,6 +33,7 @@ import {
   type EquipmentStatus,
   type UserSession,
 } from "./EquipmentDetailTypes"
+import { formatPartialDateToDisplay } from "@/lib/date-utils"
 import { useEquipmentHistory } from "./hooks/useEquipmentHistory"
 import { useEquipmentAttachments } from "./hooks/useEquipmentAttachments"
 import { useEquipmentUpdate } from "./hooks/useEquipmentUpdate"
@@ -98,9 +99,10 @@ function equipmentToFormValues(equipment: Equipment) {
     phu_kien_kem_theo: equipment.phu_kien_kem_theo || null,
     so_luu_hanh: equipment.so_luu_hanh || null,
     ghi_chu: equipment.ghi_chu || null,
-    ngay_nhap: equipment.ngay_nhap || null,
-    ngay_dua_vao_su_dung: equipment.ngay_dua_vao_su_dung || null,
-    han_bao_hanh: equipment.han_bao_hanh || null,
+    // Partial date fields: convert ISO to Vietnamese format for display in form
+    ngay_nhap: formatPartialDateToDisplay(equipment.ngay_nhap) || null,
+    ngay_dua_vao_su_dung: formatPartialDateToDisplay(equipment.ngay_dua_vao_su_dung) || null,
+    han_bao_hanh: formatPartialDateToDisplay(equipment.han_bao_hanh) || null,
     ngay_bt_tiep_theo: (equipment as Equipment & { ngay_bt_tiep_theo?: string }).ngay_bt_tiep_theo || null,
     ngay_hc_tiep_theo: (equipment as Equipment & { ngay_hc_tiep_theo?: string }).ngay_hc_tiep_theo || null,
     ngay_kd_tiep_theo: (equipment as Equipment & { ngay_kd_tiep_theo?: string }).ngay_kd_tiep_theo || null,

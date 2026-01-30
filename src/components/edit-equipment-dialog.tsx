@@ -32,7 +32,7 @@ import { type Equipment } from "@/types/database"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { callRpc } from "@/lib/rpc-client"
-import { normalizeDateForForm } from "@/lib/date-utils"
+import { normalizeDateForForm, normalizePartialDateForForm, formatPartialDateToDisplay } from "@/lib/date-utils"
 import { equipmentStatusOptions } from "@/components/equipment/equipment-table-columns"
 
 const equipmentFormSchema = z.object({
@@ -44,11 +44,11 @@ const equipmentFormSchema = z.object({
   hang_san_xuat: z.string().optional().nullable(),
   noi_san_xuat: z.string().optional().nullable(),
   nam_san_xuat: z.coerce.number().optional().nullable(),
-  ngay_nhap: z.string().optional().nullable().transform(normalizeDateForForm),
-  ngay_dua_vao_su_dung: z.string().optional().nullable().transform(normalizeDateForForm),
+  ngay_nhap: z.string().optional().nullable().transform(normalizePartialDateForForm),
+  ngay_dua_vao_su_dung: z.string().optional().nullable().transform(normalizePartialDateForForm),
   nguon_kinh_phi: z.string().optional().nullable(),
   gia_goc: z.coerce.number().optional().nullable(),
-  han_bao_hanh: z.string().optional().nullable().transform(normalizeDateForForm),
+  han_bao_hanh: z.string().optional().nullable().transform(normalizePartialDateForForm),
   vi_tri_lap_dat: z.string().min(1, "Vị trí lắp đặt là bắt buộc").nullable().transform(val => val || ""),
   khoa_phong_quan_ly: z.string().min(1, "Khoa/Phòng quản lý là bắt buộc").nullable().transform(val => val || ""),
   nguoi_dang_truc_tiep_quan_ly: z.string().min(1, "Người trực tiếp quản lý (sử dụng) là bắt buộc").nullable().transform(val => val || ""),
@@ -97,6 +97,10 @@ export function EditEquipmentDialog({ open, onOpenChange, onSuccess, equipment }
             ? (String(equipment.phan_loai_theo_nd98).toUpperCase() as 'A'|'B'|'C'|'D')
             : null
         ),
+        // Partial date fields: convert ISO to Vietnamese format for display
+        ngay_nhap: formatPartialDateToDisplay(equipment.ngay_nhap) || undefined,
+        ngay_dua_vao_su_dung: formatPartialDateToDisplay(equipment.ngay_dua_vao_su_dung) || undefined,
+        han_bao_hanh: formatPartialDateToDisplay(equipment.han_bao_hanh) || undefined,
         nam_san_xuat: equipment.nam_san_xuat ?? undefined,
         gia_goc: equipment.gia_goc ?? undefined,
         chu_ky_bt_dinh_ky: equipment.chu_ky_bt_dinh_ky ?? undefined,
@@ -193,10 +197,10 @@ export function EditEquipmentDialog({ open, onOpenChange, onSuccess, equipment }
 
                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <FormField control={form.control} name="ngay_nhap" render={({ field }) => (
-                        <FormItem><FormLabel>Ngày nhập</FormLabel><FormControl><Input placeholder="DD/MM/YYYY" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>
+                        <FormItem><FormLabel>Ngày nhập</FormLabel><FormControl><Input placeholder="DD/MM/YYYY hoặc MM/YYYY hoặc YYYY" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>
                     )} />
                     <FormField control={form.control} name="ngay_dua_vao_su_dung" render={({ field }) => (
-                        <FormItem><FormLabel>Ngày đưa vào sử dụng</FormLabel><FormControl><Input placeholder="DD/MM/YYYY" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>
+                        <FormItem><FormLabel>Ngày đưa vào sử dụng</FormLabel><FormControl><Input placeholder="DD/MM/YYYY hoặc MM/YYYY hoặc YYYY" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>
                     )} />
                 </div>
 
@@ -210,7 +214,7 @@ export function EditEquipmentDialog({ open, onOpenChange, onSuccess, equipment }
                 </div>
                 
                 <FormField control={form.control} name="han_bao_hanh" render={({ field }) => (
-                    <FormItem><FormLabel>Hạn bảo hành</FormLabel><FormControl><Input placeholder="DD/MM/YYYY" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>
+                    <FormItem><FormLabel>Hạn bảo hành</FormLabel><FormControl><Input placeholder="DD/MM/YYYY hoặc MM/YYYY hoặc YYYY" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>
                 )} />
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

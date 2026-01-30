@@ -14,7 +14,7 @@ import {
   Wrench,
 } from "lucide-react"
 
-import { normalizeDateForForm } from "@/lib/date-utils"
+import { normalizeDateForForm, normalizePartialDateForForm } from "@/lib/date-utils"
 import { equipmentStatusOptions } from "@/components/equipment/equipment-table-columns"
 
 // ============================================================================
@@ -41,11 +41,11 @@ export const equipmentFormSchema = z.object({
   hang_san_xuat: z.string().optional().nullable(),
   noi_san_xuat: z.string().optional().nullable(),
   nam_san_xuat: z.coerce.number().optional().nullable(),
-  ngay_nhap: z.string().optional().nullable().transform(normalizeDateForForm),
-  ngay_dua_vao_su_dung: z.string().optional().nullable().transform(normalizeDateForForm),
+  ngay_nhap: z.string().optional().nullable().transform(normalizePartialDateForForm),
+  ngay_dua_vao_su_dung: z.string().optional().nullable().transform(normalizePartialDateForForm),
   nguon_kinh_phi: z.string().optional().nullable(),
   gia_goc: z.coerce.number().optional().nullable(),
-  han_bao_hanh: z.string().optional().nullable().transform(normalizeDateForForm),
+  han_bao_hanh: z.string().optional().nullable().transform(normalizePartialDateForForm),
   // Required fields: preprocess null to "" so min(1) validation works
   vi_tri_lap_dat: z.preprocess(
     (val) => val ?? "",

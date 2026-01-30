@@ -129,3 +129,114 @@ export const TEXT_DATE_FIELDS = new Set([
   "ngay_nhap",
   "han_bao_hanh",
 ])
+
+// =============================================================================
+// PARTIAL DATE UTILITIES
+// Supports flexible date input: YYYY, MM/YYYY, or DD/MM/YYYY
+// Stored as ISO format: YYYY, YYYY-MM, or YYYY-MM-DD
+// =============================================================================
+
+/**
+ * Formats a partial ISO date string to Vietnamese display format
+ * @param iso - ISO format: "2020", "2020-03", or "2020-03-15"
+ * @returns Vietnamese format: "2020", "03/2020", or "15/03/2020"
+ */
+export function formatPartialDateToDisplay(iso: string | null | undefined): string {
+  if (!iso) return ""
+  const s = String(iso).trim()
+  if (s === "") return ""
+
+  const parts = s.split("-")
+  if (parts.length === 1) return parts[0] // "2020"
+  if (parts.length === 2) return `${parts[1]}/${parts[0]}` // "03/2020"
+  return `${parts[2]}/${parts[1]}/${parts[0]}` // "15/03/2020"
+}
+
+/**
+ * Parses a Vietnamese partial date string to ISO storage format
+ * @param vn - Vietnamese format: "2020", "03/2020", or "15/03/2020"
+ * @returns ISO format: "2020", "2020-03", or "2020-03-15" (or null if invalid)
+ */
+export function parsePartialDateToISO(vn: string | null | undefined): string | null {
+  if (!vn) return null
+  const s = String(vn).trim()
+  if (s === "") return null
+
+  // Year only: "2020"
+  if (/^\d{4}$/.test(s)) {
+    return s
+  }
+
+  // Month/Year: "03/2020" or "3/2020"
+  const mmyyyyMatch = s.match(/^(\d{1,2})\/(\d{4})$/)
+  if (mmyyyyMatch) {
+    const monthNum = parseInt(mmyyyyMatch[1], 10)
+    if (monthNum < 1 || monthNum > 12) return null // Invalid month
+    const month = String(monthNum).padStart(2, "0")
+    const year = mmyyyyMatch[2]
+    return `${year}-${month}`
+  }
+
+  // Full date: "15/03/2020" or "15-03-2020"
+  const ddmmyyyyMatch = s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/)
+  if (ddmmyyyyMatch) {
+    const dayNum = parseInt(ddmmyyyyMatch[1], 10)
+    const monthNum = parseInt(ddmmyyyyMatch[2], 10)
+    if (monthNum < 1 || monthNum > 12) return null // Invalid month
+    if (dayNum < 1 || dayNum > 31) return null // Invalid day
+    const day = String(dayNum).padStart(2, "0")
+    const month = String(monthNum).padStart(2, "0")
+    const year = ddmmyyyyMatch[3]
+    return `${year}-${month}-${day}`
+  }
+
+  // Already in valid ISO format? Pass through (nested optional groups)
+  if (/^\d{4}(-\d{2}(-\d{2})?)?$/.test(s)) {
+    return s
+  }
+
+  // Invalid format - return null
+  return null
+}
+
+/**
+ * Normalizes partial date for form submission (Zod transform)
+ * Converts Vietnamese input to ISO storage format
+ * Supports: YYYY, MM/YYYY, DD/MM/YYYY
+ */
+export const normalizePartialDateForForm = (v: string | null | undefined): string | null => {
+  return parsePartialDateToISO(v)
+}
+
+/**
+ * Validates partial date format and semantic correctness
+ * @returns true if valid format (YYYY, MM/YYYY, DD/MM/YYYY, or ISO equivalents) with valid month/day values
+ */
+export function isValidPartialDate(value: string | null | undefined): boolean {
+  if (!value) return true // Empty is valid (optional field)
+  const s = String(value).trim()
+  if (s === "") return true
+
+  // Year only: YYYY
+  if (/^\d{4}$/.test(s)) return true
+
+  // Month/Year: MM/YYYY - validate month range
+  const mmyyyyMatch = s.match(/^(\d{1,2})\/(\d{4})$/)
+  if (mmyyyyMatch) {
+    const monthNum = parseInt(mmyyyyMatch[1], 10)
+    return monthNum >= 1 && monthNum <= 12
+  }
+
+  // Full date: DD/MM/YYYY or DD-MM-YYYY - validate month and day range
+  const ddmmyyyyMatch = s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/)
+  if (ddmmyyyyMatch) {
+    const dayNum = parseInt(ddmmyyyyMatch[1], 10)
+    const monthNum = parseInt(ddmmyyyyMatch[2], 10)
+    return monthNum >= 1 && monthNum <= 12 && dayNum >= 1 && dayNum <= 31
+  }
+
+  // ISO formats (already stored) - nested optional groups
+  if (/^\d{4}(-\d{2}(-\d{2})?)?$/.test(s)) return true
+
+  return false
+}

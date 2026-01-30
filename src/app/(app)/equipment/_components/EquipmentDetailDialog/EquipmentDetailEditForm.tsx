@@ -202,7 +202,7 @@ export function EquipmentDetailEditForm({
                   <FormLabel>Ngày nhập</FormLabel>
                   <FormControl>
                     <Input
-                      placeholder="DD/MM/YYYY"
+                      placeholder="DD/MM/YYYY hoặc MM/YYYY hoặc YYYY"
                       {...field}
                       value={field.value ?? ""}
                     />
@@ -219,7 +219,7 @@ export function EquipmentDetailEditForm({
                   <FormLabel>Ngày đưa vào sử dụng</FormLabel>
                   <FormControl>
                     <Input
-                      placeholder="DD/MM/YYYY"
+                      placeholder="DD/MM/YYYY hoặc MM/YYYY hoặc YYYY"
                       {...field}
                       value={field.value ?? ""}
                     />
