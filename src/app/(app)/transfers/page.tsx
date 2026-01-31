@@ -18,7 +18,6 @@ import {
   Filter,
   Loader2,
   PlusCircle,
-  Search,
 } from "lucide-react"
 import { useSession } from "next-auth/react"
 import { useRouter } from "next/navigation"
@@ -35,6 +34,7 @@ import { getColumnsForType } from "@/components/transfers/columnDefinitions"
 import { FilterModal } from "@/components/transfers/FilterModal"
 import { FilterChips } from "@/components/transfers/FilterChips"
 import { TransferRowActions } from "@/components/transfers/TransferRowActions"
+import { SearchInput } from "@/components/shared/SearchInput"
 import { TenantSelector } from "@/components/shared/TenantSelector"
 import { TransfersTableView } from '@/components/transfers/TransfersTableView'
 import { TransfersKanbanView } from '@/components/transfers/TransfersKanbanView'
@@ -513,25 +513,14 @@ function TransfersPageContent({ user }: TransfersPageContentProps) {
                 onClearAll={handleClearAllFilters}
               />
 
-              <div className="relative w-full max-w-sm">
-                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  className="pl-10"
-                  placeholder="Tìm kiếm mã yêu cầu, thiết bị, lý do..."
-                  value={searchTerm}
-                  onChange={(event) => setSearchTerm(event.target.value)}
-                />
-                {searchTerm && (
-                  <button
-                    type="button"
-                    aria-label="Xóa tìm kiếm"
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                    onClick={() => clearSearch()}
-                  >
-                    ×
-                  </button>
-                )}
-              </div>
+              <SearchInput
+                placeholder="Tìm kiếm mã yêu cầu, thiết bị, lý do..."
+                value={searchTerm}
+                onChange={setSearchTerm}
+                onClear={clearSearch}
+                showSearchIcon={true}
+                className="w-full max-w-sm"
+              />
 
               {viewMode === 'kanban' ? (
                 shouldFetchData ? (

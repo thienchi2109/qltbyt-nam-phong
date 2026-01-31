@@ -27,7 +27,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { Input } from "@/components/ui/input"
+import { SearchInput } from "@/components/shared/SearchInput"
 import { useToast } from "@/hooks/use-toast"
 import type { Equipment } from "@/types/database"
 
@@ -303,24 +303,25 @@ export function EquipmentToolbar({
           {/* Left: search + filters */}
           <div className="order-1 w-full flex flex-col gap-2 md:flex-row md:flex-1 md:flex-wrap md:items-center md:gap-2 md:min-w-0">
             <div className="w-full md:w-auto md:min-w-[260px]">
-              <div className="relative">
-                <Input
-                  placeholder="Tìm kiếm chung..."
-                  value={searchTerm}
-                  onChange={(event) => onSearchChange(event.target.value)}
-                  className="h-8 w-full pr-10"
-                />
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  onClick={handleStartScanning}
-                  className="absolute right-0 top-0 h-8 w-8 hover:bg-primary/10"
-                  title="Quét mã QR"
-                >
-                  <ScanLine className="h-4 w-4 text-muted-foreground hover:text-primary" />
-                </Button>
-              </div>
+              <SearchInput
+                placeholder="Tìm kiếm chung..."
+                value={searchTerm}
+                onChange={onSearchChange}
+                showSearchIcon={false}
+                className="h-8 w-full"
+                endAddon={
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    onClick={handleStartScanning}
+                    className="h-8 w-8 hover:bg-primary/10"
+                    title="Quét mã QR"
+                  >
+                    <ScanLine className="h-4 w-4 text-muted-foreground hover:text-primary" />
+                  </Button>
+                }
+              />
             </div>
             <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
               {(isMobile || useTabletFilters) ? (
