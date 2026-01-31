@@ -21,6 +21,9 @@ This directory contains all planning and design documents for the Device Quota (
 
 ## Quick Links
 
+### Implementation Plan
+- **[2026-01-31-device-quota-mapping.md](../plans/2026-01-31-device-quota-mapping.md)** - Step-by-step executable plan (use with `superpowers:executing-plans`)
+
 ### Regulations
 - **Circular 46/2025/TT-BYT** (Primary) - Decentralizes quota authority to facility directors
 - **Circular 08/2019/TT-BYT** - Calculation methodology (still valid)
