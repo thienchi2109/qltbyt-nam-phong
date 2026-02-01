@@ -113,6 +113,31 @@ const ALLOWED_FUNCTIONS = new Set<string>([
   'don_vi_branding_get',
   // Header notifications
   'header_notifications_summary',
+  // Device Quota Management (Định mức thiết bị)
+  // Decisions
+  'dinh_muc_quyet_dinh_list',
+  'dinh_muc_quyet_dinh_get',
+  'dinh_muc_quyet_dinh_create',
+  'dinh_muc_quyet_dinh_update',
+  'dinh_muc_quyet_dinh_activate',
+  'dinh_muc_quyet_dinh_delete',
+  // Categories
+  'dinh_muc_nhom_list',
+  'dinh_muc_nhom_get',
+  'dinh_muc_nhom_upsert',
+  'dinh_muc_nhom_delete',
+  // Equipment Mapping
+  'dinh_muc_thiet_bi_link',
+  'dinh_muc_thiet_bi_unlink',
+  'dinh_muc_thiet_bi_unassigned',
+  'dinh_muc_thiet_bi_by_nhom',
+  // Line Items
+  'dinh_muc_chi_tiet_list',
+  'dinh_muc_chi_tiet_upsert',
+  'dinh_muc_chi_tiet_delete',
+  // Compliance
+  'dinh_muc_compliance_summary',
+  'dinh_muc_compliance_detail',
 ])
 
 function getEnv(name: string) {
