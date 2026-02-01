@@ -363,6 +363,7 @@ BEGIN
   -- 3. Business logic: INSERT or UPDATE
   IF p_id IS NULL THEN
     -- INSERT new category
+    -- Note: p_parent_id = 0 is a sentinel meaning "create at root (NULL)"
     INSERT INTO public.nhom_thiet_bi (
       don_vi_id,
       parent_id,
@@ -377,7 +378,7 @@ BEGIN
       updated_by
     ) VALUES (
       p_don_vi,
-      p_parent_id,
+      CASE WHEN p_parent_id IS NULL OR p_parent_id <= 0 THEN NULL ELSE p_parent_id END,
       TRIM(p_ma_nhom),
       TRIM(p_ten_nhom),
       COALESCE(p_phan_loai, 'B'),
