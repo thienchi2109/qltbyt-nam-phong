@@ -23,6 +23,7 @@ import {
   ArrowLeftRight,
   BarChart3,
   Activity,
+  Calculator,
 } from "lucide-react"
 
 import {
@@ -95,6 +96,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     "/repair-requests": "sidebar-nav-repairs",
     "/maintenance": "sidebar-nav-maintenance",
     "/transfers": "sidebar-nav-transfers",
+    "/device-quota": "sidebar-nav-device-quota",
     "/reports": "sidebar-nav-reports",
     "/qr-scanner": "sidebar-nav-qr",
   }
@@ -107,6 +109,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       { href: "/repair-requests", icon: Wrench, label: "Yêu cầu sửa chữa" },
       { href: "/maintenance", icon: HardHat, label: "Bảo trì" },
       { href: "/transfers", icon: ArrowLeftRight, label: "Luân chuyển" },
+      { href: "/device-quota", icon: Calculator, label: "Định mức" },
       { href: "/reports", icon: BarChart3, label: "Báo cáo" },
       { href: "/qr-scanner", icon: QrCode, label: "Quét QR" },
     ]
