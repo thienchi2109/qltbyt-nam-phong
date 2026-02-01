@@ -67,6 +67,41 @@ COMMENT ON COLUMN public.nhom_thiet_bi.phan_loai IS 'Equipment classification: A
 COMMENT ON COLUMN public.nhom_thiet_bi.tu_khoa IS 'Keywords array for AI-powered equipment matching';
 
 -- ============================================================================
+-- PART 1.1: Cross-tenant parent_id validation for nhom_thiet_bi
+-- ============================================================================
+-- Ensures parent category belongs to the same facility (don_vi_id)
+
+CREATE OR REPLACE FUNCTION public.validate_nhom_thiet_bi_parent_tenant()
+RETURNS TRIGGER AS $$
+DECLARE
+  v_parent_don_vi BIGINT;
+BEGIN
+  IF NEW.parent_id IS NOT NULL THEN
+    SELECT don_vi_id INTO v_parent_don_vi
+    FROM public.nhom_thiet_bi WHERE id = NEW.parent_id;
+
+    IF v_parent_don_vi IS NULL THEN
+      RAISE EXCEPTION 'Parent category (id=%) not found', NEW.parent_id;
+    END IF;
+
+    IF v_parent_don_vi != NEW.don_vi_id THEN
+      RAISE EXCEPTION 'Parent category must belong to the same facility. Expected don_vi_id=%, found %',
+        NEW.don_vi_id, v_parent_don_vi;
+    END IF;
+  END IF;
+
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trg_nhom_thiet_bi_parent_tenant_check
+BEFORE INSERT OR UPDATE OF parent_id, don_vi_id ON public.nhom_thiet_bi
+FOR EACH ROW EXECUTE FUNCTION public.validate_nhom_thiet_bi_parent_tenant();
+
+COMMENT ON FUNCTION public.validate_nhom_thiet_bi_parent_tenant() IS
+  'Enforces tenant isolation: parent_id must reference category in same don_vi_id';
+
+-- ============================================================================
 -- PART 2: quyet_dinh_dinh_muc (Quota Decisions)
 -- ============================================================================
 -- Official quota decision documents issued by facility leadership.
@@ -107,6 +142,41 @@ COMMENT ON COLUMN public.quyet_dinh_dinh_muc.ngay_hieu_luc IS 'Date decision tak
 COMMENT ON COLUMN public.quyet_dinh_dinh_muc.ngay_het_hieu_luc IS 'Date decision expires (NULL = no expiry)';
 COMMENT ON COLUMN public.quyet_dinh_dinh_muc.trang_thai IS 'Decision status: draft, active, or inactive';
 COMMENT ON COLUMN public.quyet_dinh_dinh_muc.thay_the_cho_id IS 'References the previous decision this one replaces';
+
+-- ============================================================================
+-- PART 2.1: Cross-tenant thay_the_cho_id validation for quyet_dinh_dinh_muc
+-- ============================================================================
+-- Ensures replaced decision belongs to the same facility (don_vi_id)
+
+CREATE OR REPLACE FUNCTION public.validate_quyet_dinh_replacement_tenant()
+RETURNS TRIGGER AS $$
+DECLARE
+  v_replaced_don_vi BIGINT;
+BEGIN
+  IF NEW.thay_the_cho_id IS NOT NULL THEN
+    SELECT don_vi_id INTO v_replaced_don_vi
+    FROM public.quyet_dinh_dinh_muc WHERE id = NEW.thay_the_cho_id;
+
+    IF v_replaced_don_vi IS NULL THEN
+      RAISE EXCEPTION 'Replaced decision (id=%) not found', NEW.thay_the_cho_id;
+    END IF;
+
+    IF v_replaced_don_vi != NEW.don_vi_id THEN
+      RAISE EXCEPTION 'Replaced decision must belong to the same facility. Expected don_vi_id=%, found %',
+        NEW.don_vi_id, v_replaced_don_vi;
+    END IF;
+  END IF;
+
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trg_quyet_dinh_replacement_tenant_check
+BEFORE INSERT OR UPDATE OF thay_the_cho_id, don_vi_id ON public.quyet_dinh_dinh_muc
+FOR EACH ROW EXECUTE FUNCTION public.validate_quyet_dinh_replacement_tenant();
+
+COMMENT ON FUNCTION public.validate_quyet_dinh_replacement_tenant() IS
+  'Enforces tenant isolation: thay_the_cho_id must reference decision in same don_vi_id';
 
 -- ============================================================================
 -- PART 3: chi_tiet_dinh_muc (Quota Line Items)
@@ -209,7 +279,18 @@ FOR EACH ROW EXECUTE FUNCTION public.validate_thiet_bi_category_tenant();
 -- ============================================================================
 -- Audit trail for all equipment category link/unlink operations.
 -- Tracks bulk operations via thiet_bi_ids array.
--- Append-only: UPDATE and DELETE are blocked.
+-- Append-only: UPDATE and DELETE raise exceptions.
+
+-- Shared trigger function for all append-only audit tables
+CREATE OR REPLACE FUNCTION public.raise_audit_immutable_error()
+RETURNS TRIGGER AS $$
+BEGIN
+  RAISE EXCEPTION 'Audit log records are immutable. % not permitted on %', TG_OP, TG_TABLE_NAME;
+END;
+$$ LANGUAGE plpgsql;
+
+COMMENT ON FUNCTION public.raise_audit_immutable_error() IS
+  'Raises exception on UPDATE/DELETE attempts on audit tables. Ensures append-only behavior with loud failure.';
 
 CREATE TABLE IF NOT EXISTS public.thiet_bi_nhom_audit_log (
   id BIGSERIAL PRIMARY KEY,
@@ -222,12 +303,10 @@ CREATE TABLE IF NOT EXISTS public.thiet_bi_nhom_audit_log (
   metadata JSONB DEFAULT '{}'
 );
 
--- Append-only constraints: prevent modification of audit records
-CREATE RULE prevent_thiet_bi_audit_update AS
-ON UPDATE TO public.thiet_bi_nhom_audit_log DO INSTEAD NOTHING;
-
-CREATE RULE prevent_thiet_bi_audit_delete AS
-ON DELETE TO public.thiet_bi_nhom_audit_log DO INSTEAD NOTHING;
+-- Append-only constraints: prevent modification of audit records (raises exception)
+CREATE TRIGGER trg_thiet_bi_audit_immutable
+BEFORE UPDATE OR DELETE ON public.thiet_bi_nhom_audit_log
+FOR EACH ROW EXECUTE FUNCTION public.raise_audit_immutable_error();
 
 CREATE INDEX IF NOT EXISTS idx_audit_log_don_vi ON public.thiet_bi_nhom_audit_log(don_vi_id);
 CREATE INDEX IF NOT EXISTS idx_audit_log_performed_at ON public.thiet_bi_nhom_audit_log(performed_at DESC);
@@ -242,7 +321,7 @@ COMMENT ON COLUMN public.thiet_bi_nhom_audit_log.metadata IS 'Additional context
 -- ============================================================================
 -- Immutable audit log for quota decision lifecycle changes.
 -- Tracks: create, update, adjust, cancel, publish operations.
--- Append-only: UPDATE and DELETE are blocked via PostgreSQL rules.
+-- Append-only: UPDATE and DELETE raise exceptions via trigger.
 
 CREATE TABLE IF NOT EXISTS public.lich_su_dinh_muc (
   id BIGSERIAL PRIMARY KEY,
@@ -258,12 +337,10 @@ CREATE TABLE IF NOT EXISTS public.lich_su_dinh_muc (
   thoi_diem TIMESTAMPTZ DEFAULT NOW() NOT NULL
 );
 
--- Append-only constraints: prevent modification of audit records
-CREATE RULE prevent_lich_su_update AS
-ON UPDATE TO public.lich_su_dinh_muc DO INSTEAD NOTHING;
-
-CREATE RULE prevent_lich_su_delete AS
-ON DELETE TO public.lich_su_dinh_muc DO INSTEAD NOTHING;
+-- Append-only constraints: prevent modification of audit records (raises exception)
+CREATE TRIGGER trg_lich_su_immutable
+BEFORE UPDATE OR DELETE ON public.lich_su_dinh_muc
+FOR EACH ROW EXECUTE FUNCTION public.raise_audit_immutable_error();
 
 CREATE INDEX IF NOT EXISTS idx_lich_su_don_vi ON public.lich_su_dinh_muc(don_vi_id);
 CREATE INDEX IF NOT EXISTS idx_lich_su_quyet_dinh ON public.lich_su_dinh_muc(quyet_dinh_id);

@@ -599,6 +599,7 @@ DECLARE
   v_user_id TEXT := current_setting('request.jwt.claims', true)::json->>'user_id';
   v_decision RECORD;
   v_id bigint;
+  v_is_insert boolean;
   v_action text;
 BEGIN
   -- Permission check
@@ -642,9 +643,9 @@ BEGIN
     mua_sam_tap_trung = EXCLUDED.mua_sam_tap_trung,
     ghi_chu = EXCLUDED.ghi_chu,
     updated_at = now()
-  RETURNING id, (xmax = 0) AS is_insert INTO v_id, v_action;
+  RETURNING id, (xmax = 0) AS is_insert INTO v_id, v_is_insert;
 
-  v_action := CASE WHEN v_action THEN 'tao' ELSE 'cap_nhat' END;
+  v_action := CASE WHEN v_is_insert THEN 'tao' ELSE 'cap_nhat' END;
 
   -- Audit log
   INSERT INTO lich_su_dinh_muc (chi_tiet_id, quyet_dinh_id, don_vi_id, thao_tac, thuc_hien_boi)
