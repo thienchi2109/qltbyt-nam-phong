@@ -175,10 +175,7 @@ export function DeviceQuotaMappingProvider({ children }: DeviceQuotaMappingProvi
     queryFn: async () => {
       const result = await callRpc<Category[]>({
         fn: 'dinh_muc_nhom_list',
-        args: {
-          p_quyet_dinh_id: null, // Auto-find active decision
-          p_don_vi: donViId,
-        },
+        args: { p_don_vi: donViId },
       })
       return result || []
     },

@@ -47,7 +47,7 @@ function formatVietnameseDate(dateString: string | null): string {
 // ============================================
 
 export function DeviceQuotaActiveDecision() {
-  const { complianceSummary, donViId } = useDeviceQuotaDashboardContext()
+  const { complianceSummary, donViId, isLoading: isSummaryLoading, isError: isSummaryError } = useDeviceQuotaDashboardContext()
 
   const activeDecisionId = complianceSummary?.quyet_dinh_id
 
@@ -84,14 +84,14 @@ export function DeviceQuotaActiveDecision() {
         </CardTitle>
       </CardHeader>
       <CardContent>
-        {isLoading ? (
+        {isLoading || isSummaryLoading ? (
           <div className="space-y-3">
             <Skeleton className="h-6 w-32" />
             <Skeleton className="h-4 w-full" />
             <Skeleton className="h-4 w-full" />
             <Skeleton className="h-4 w-full" />
           </div>
-        ) : isError ? (
+        ) : isError || isSummaryError ? (
           <div className="text-sm text-destructive">
             Không thể tải thông tin quyết định
           </div>

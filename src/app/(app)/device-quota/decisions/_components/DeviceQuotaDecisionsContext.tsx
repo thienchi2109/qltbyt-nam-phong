@@ -277,14 +277,14 @@ export function DeviceQuotaDecisionsProvider({ children }: DeviceQuotaDecisionsP
   } = useQuery({
     queryKey: ['dinh_muc_quyet_dinh_list', { donViId, statusFilter }],
     queryFn: async () => {
-      const result = await callRpc<Decision[]>({
+      const result = await callRpc<{ data: Decision[]; total: number }>({
         fn: 'dinh_muc_quyet_dinh_list',
         args: {
           p_don_vi: donViId,
           p_trang_thai: statusFilter === 'all' ? null : statusFilter,
         },
       })
-      return result || []
+      return result?.data || []
     },
     enabled: !!donViId,
     staleTime: 30000, // 30 seconds

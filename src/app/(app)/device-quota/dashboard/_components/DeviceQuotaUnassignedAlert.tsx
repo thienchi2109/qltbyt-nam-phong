@@ -7,24 +7,26 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import { useDeviceQuotaDashboardContext } from "../_hooks/useDeviceQuotaDashboardContext"
 
-const STORAGE_KEY = "device-quota-unassigned-dismissed"
+const STORAGE_KEY_PREFIX = "device-quota-unassigned-dismissed"
 
 export function DeviceQuotaUnassignedAlert() {
-  const { complianceSummary } = useDeviceQuotaDashboardContext()
+  const { complianceSummary, donViId } = useDeviceQuotaDashboardContext()
   const [isDismissed, setIsDismissed] = React.useState(false)
 
-  // Load dismissed state from localStorage on mount
+  // Scope dismissal by tenant to reset when switching facilities
+  const storageKey = `${STORAGE_KEY_PREFIX}-${donViId || "unknown"}`
+
+  // Load dismissed state from localStorage on mount or tenant change
   React.useEffect(() => {
-    const dismissed = localStorage.getItem(STORAGE_KEY)
-    if (dismissed === "true") {
-      setIsDismissed(true)
-    }
-  }, [])
+    if (!donViId) return
+    const dismissed = localStorage.getItem(storageKey)
+    setIsDismissed(dismissed === "true")
+  }, [storageKey, donViId])
 
   const handleDismiss = React.useCallback(() => {
     setIsDismissed(true)
-    localStorage.setItem(STORAGE_KEY, "true")
-  }, [])
+    localStorage.setItem(storageKey, "true")
+  }, [storageKey])
 
   const unassignedCount = complianceSummary?.unassigned_equipment ?? 0
 
