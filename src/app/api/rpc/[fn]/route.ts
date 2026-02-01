@@ -140,10 +140,45 @@ const ALLOWED_FUNCTIONS = new Set<string>([
   'dinh_muc_compliance_detail',
 ])
 
+// SECURITY: Maximum request body size (2MB) to prevent DoS via memory exhaustion
+const MAX_BODY_SIZE = 2 * 1024 * 1024
+
+// Sensitive keys to redact from logs (case-insensitive matching)
+const SENSITIVE_KEYS = ['password', 'token', 'secret', 'mat_khau', 'p_password', 'api_key', 'apikey', 'authorization', 'credential']
+
 function getEnv(name: string) {
   const v = process.env[name]
   if (!v) throw new Error(`${name} is not set`)
   return v
+}
+
+// SECURITY: Recursively sanitize objects for logging to prevent PII/credential exposure
+// Handles nested objects and arrays at any depth
+function sanitizeForLog(obj: unknown, depth = 0): unknown {
+  // Prevent infinite recursion on deeply nested or circular structures
+  if (depth > 10) return '[MAX_DEPTH]'
+
+  if (obj === null || obj === undefined) return obj
+  if (typeof obj !== 'object') return obj
+
+  // Handle arrays
+  if (Array.isArray(obj)) {
+    return obj.map(item => sanitizeForLog(item, depth + 1))
+  }
+
+  // Handle objects
+  const sanitized: Record<string, unknown> = {}
+  for (const [key, value] of Object.entries(obj as Record<string, unknown>)) {
+    const keyLower = key.toLowerCase()
+    if (SENSITIVE_KEYS.some(sk => keyLower.includes(sk))) {
+      sanitized[key] = '[REDACTED]'
+    } else if (typeof value === 'object' && value !== null) {
+      sanitized[key] = sanitizeForLog(value, depth + 1)
+    } else {
+      sanitized[key] = value
+    }
+  }
+  return sanitized
 }
 
 export async function POST(req: NextRequest, context: { params: Promise<{ fn: string }> }) {
@@ -153,7 +188,19 @@ export async function POST(req: NextRequest, context: { params: Promise<{ fn: st
       return NextResponse.json({ error: 'Function not allowed' }, { status: 403 })
     }
 
+    // SECURITY: Check Content-Length header to reject oversized payloads early
+    const contentLength = parseInt(req.headers.get('content-length') || '0', 10)
+    if (contentLength > MAX_BODY_SIZE) {
+      return NextResponse.json({ error: 'Payload too large' }, { status: 413 })
+    }
+
     const rawBody = await req.json().catch(() => ({}))
+
+    // SECURITY: Post-parse size check (Content-Length can be spoofed or missing)
+    const bodyString = JSON.stringify(rawBody)
+    if (bodyString.length > MAX_BODY_SIZE) {
+      return NextResponse.json({ error: 'Payload too large' }, { status: 413 })
+    }
 
   // Pull claims from NextAuth session securely (no client headers trusted)
   const session = await getServerSession(authOptions as any)
@@ -223,17 +270,17 @@ export async function POST(req: NextRequest, context: { params: Promise<{ fn: st
     const isJson = res.headers.get('content-type')?.includes('application/json')
     const payload = isJson ? JSON.parse(text || 'null') : text
     if (!res.ok) {
+      // SECURITY: Sanitize logs to prevent PII/credential exposure
       console.error(`Supabase RPC error for ${fn}:`, {
         status: res.status,
-        payload,
-        body: JSON.stringify(body, null, 2),
-        claims: {app_role: appRole, don_vi: donVi, user_id: userId}
+        error: typeof payload === 'object' ? (payload?.message || payload?.hint || 'RPC failed') : 'RPC failed',
       })
       return NextResponse.json({ error: payload || 'RPC error' }, { status: res.status })
     }
     return NextResponse.json(payload)
   } catch (err: any) {
-    console.error('RPC proxy error', err)
+    // SECURITY: Log only error message, not full stack trace or request details
+    console.error('RPC proxy error:', { message: err?.message || 'Unknown error' })
     return NextResponse.json({ error: err?.message || 'Unexpected error' }, { status: 500 })
   }
 }
