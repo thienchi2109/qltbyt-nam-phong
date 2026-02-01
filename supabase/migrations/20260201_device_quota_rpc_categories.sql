@@ -190,14 +190,25 @@ DECLARE
   v_role TEXT := current_setting('request.jwt.claims', true)::json->>'app_role';
   v_don_vi TEXT := current_setting('request.jwt.claims', true)::json->>'don_vi';
   v_category_don_vi BIGINT;
+  v_allowed_facilities BIGINT[];
 BEGIN
   -- Fallback for older tokens
   IF v_role IS NULL OR v_role = '' THEN
     v_role := current_setting('request.jwt.claims', true)::json->>'role';
   END IF;
 
-  -- Tenant isolation: non-global/admin users use their own tenant
-  IF v_role NOT IN ('global', 'admin', 'regional_leader') THEN
+  -- Tenant isolation based on role
+  IF v_role IN ('global', 'admin') THEN
+    -- Global/admin can access any tenant (use provided p_don_vi)
+    NULL;
+  ELSIF v_role = 'regional_leader' THEN
+    -- Regional leader: validate p_don_vi against allowed facilities
+    v_allowed_facilities := public.allowed_don_vi_for_session();
+    IF p_don_vi IS NULL OR NOT (p_don_vi = ANY(v_allowed_facilities)) THEN
+      RAISE EXCEPTION 'Access denied: facility % is not in your region', p_don_vi;
+    END IF;
+  ELSE
+    -- Other roles: force to their own tenant
     p_don_vi := NULLIF(v_don_vi, '')::BIGINT;
   END IF;
 
