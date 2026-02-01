@@ -157,6 +157,12 @@ export async function POST(req: NextRequest, context: { params: Promise<{ fn: st
 
   // Pull claims from NextAuth session securely (no client headers trusted)
   const session = await getServerSession(authOptions as any)
+
+  // SECURITY: Reject unauthenticated requests - do NOT mint JWT without valid session
+  if (!(session as any)?.user) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
   const rawRole = (session as any)?.user?.role ?? ''
   const role = typeof rawRole === 'string' ? rawRole : String(rawRole)
   const roleLower = role.toLowerCase()
