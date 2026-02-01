@@ -135,6 +135,11 @@ CREATE TABLE IF NOT EXISTS public.quyet_dinh_dinh_muc (
 CREATE INDEX IF NOT EXISTS idx_quyet_dinh_don_vi ON public.quyet_dinh_dinh_muc(don_vi_id);
 CREATE INDEX IF NOT EXISTS idx_quyet_dinh_trang_thai ON public.quyet_dinh_dinh_muc(trang_thai);
 
+-- CRITICAL: Enforce exactly one active decision per tenant
+-- Prevents race condition in dinh_muc_quyet_dinh_activate()
+CREATE UNIQUE INDEX IF NOT EXISTS idx_quyet_dinh_unique_active_per_tenant
+ON public.quyet_dinh_dinh_muc(don_vi_id) WHERE trang_thai = 'active';
+
 COMMENT ON TABLE public.quyet_dinh_dinh_muc IS 'Equipment quota decision documents for facility-wide equipment planning';
 COMMENT ON COLUMN public.quyet_dinh_dinh_muc.so_quyet_dinh IS 'Decision number unique within facility';
 COMMENT ON COLUMN public.quyet_dinh_dinh_muc.ngay_ban_hanh IS 'Date decision was issued';

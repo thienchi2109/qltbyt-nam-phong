@@ -47,9 +47,13 @@ DECLARE
 BEGIN
   -- Tenant isolation: global/admin can specify, others forced to their tenant
   IF v_role IN ('global', 'admin') THEN
-    v_effective_donvi := p_don_vi; -- NULL means all tenants
+    v_effective_donvi := p_don_vi; -- NULL means all tenants for global/admin only
   ELSE
-    v_effective_donvi := v_claim_donvi; -- Always their own tenant
+    v_effective_donvi := v_claim_donvi;
+    -- SECURITY: Non-global/admin roles MUST have a tenant - fail closed if missing
+    IF v_effective_donvi IS NULL THEN
+      RETURN jsonb_build_object('data', '[]'::jsonb, 'total', 0, 'page', p_page, 'pageSize', p_page_size);
+    END IF;
   END IF;
 
   -- Total count for pagination
@@ -142,9 +146,13 @@ DECLARE
 BEGIN
   -- Tenant isolation
   IF v_role IN ('global', 'admin') THEN
-    v_effective_donvi := p_don_vi;
+    v_effective_donvi := p_don_vi; -- NULL means all tenants for global/admin only
   ELSE
     v_effective_donvi := v_claim_donvi;
+    -- SECURITY: Non-global/admin roles MUST have a tenant - fail closed if missing
+    IF v_effective_donvi IS NULL THEN
+      RAISE EXCEPTION 'Access denied: tenant context required';
+    END IF;
   END IF;
 
   -- Get decision with line items
@@ -389,9 +397,13 @@ BEGIN
 
   -- Tenant isolation
   IF v_role IN ('global', 'admin') THEN
-    v_effective_donvi := p_don_vi;
+    v_effective_donvi := p_don_vi; -- NULL means all tenants for global/admin only
   ELSE
     v_effective_donvi := v_claim_donvi;
+    -- SECURITY: Non-global/admin roles MUST have a tenant - fail closed if missing
+    IF v_effective_donvi IS NULL THEN
+      RAISE EXCEPTION 'Access denied: tenant context required';
+    END IF;
   END IF;
 
   -- Get current decision for validation and snapshot
@@ -507,9 +519,13 @@ BEGIN
 
   -- Tenant isolation
   IF v_role IN ('global', 'admin') THEN
-    v_effective_donvi := p_don_vi;
+    v_effective_donvi := p_don_vi; -- NULL means all tenants for global/admin only
   ELSE
     v_effective_donvi := v_claim_donvi;
+    -- SECURITY: Non-global/admin roles MUST have a tenant - fail closed if missing
+    IF v_effective_donvi IS NULL THEN
+      RAISE EXCEPTION 'Access denied: tenant context required';
+    END IF;
   END IF;
 
   -- Get decision to activate
@@ -631,9 +647,13 @@ BEGIN
 
   -- Tenant isolation
   IF v_role IN ('global', 'admin') THEN
-    v_effective_donvi := p_don_vi;
+    v_effective_donvi := p_don_vi; -- NULL means all tenants for global/admin only
   ELSE
     v_effective_donvi := v_claim_donvi;
+    -- SECURITY: Non-global/admin roles MUST have a tenant - fail closed if missing
+    IF v_effective_donvi IS NULL THEN
+      RAISE EXCEPTION 'Access denied: tenant context required';
+    END IF;
   END IF;
 
   -- Get decision to delete

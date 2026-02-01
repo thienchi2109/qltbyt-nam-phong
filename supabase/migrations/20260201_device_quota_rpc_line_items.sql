@@ -223,6 +223,20 @@ BEGIN
       'ghi_chu', v_existing.ghi_chu
     );
 
+    -- Validate final min/max values after COALESCE (prevents partial update constraint violations)
+    DECLARE
+      v_final_min INT := COALESCE(p_so_luong_toi_thieu, v_existing.so_luong_toi_thieu);
+      v_final_max INT := COALESCE(p_so_luong_toi_da, v_existing.so_luong_toi_da);
+    BEGIN
+      IF v_final_min > v_final_max THEN
+        RAISE EXCEPTION 'Minimum quantity (%) cannot exceed maximum quantity (%). Current min=%, max=%; updating min to %, max to %',
+          v_final_min, v_final_max,
+          v_existing.so_luong_toi_thieu, v_existing.so_luong_toi_da,
+          COALESCE(p_so_luong_toi_thieu::TEXT, '(unchanged)'),
+          COALESCE(p_so_luong_toi_da::TEXT, '(unchanged)');
+      END IF;
+    END;
+
     -- Perform update
     UPDATE public.chi_tiet_dinh_muc SET
       nhom_thiet_bi_id = COALESCE(p_nhom_thiet_bi_id, nhom_thiet_bi_id),

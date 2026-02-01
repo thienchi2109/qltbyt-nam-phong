@@ -345,7 +345,8 @@ BEGIN
   END IF;
 
   -- Validate parent category belongs to same tenant
-  IF p_parent_id IS NOT NULL THEN
+  -- Note: p_parent_id = 0 is a sentinel meaning "set to root (NULL)"
+  IF p_parent_id IS NOT NULL AND p_parent_id > 0 THEN
     SELECT don_vi_id INTO v_category_don_vi
     FROM public.nhom_thiet_bi
     WHERE id = p_parent_id;
@@ -380,7 +381,7 @@ BEGIN
       TRIM(p_ma_nhom),
       TRIM(p_ten_nhom),
       COALESCE(p_phan_loai, 'B'),
-      COALESCE(p_don_vi_tinh, 'Cai'),
+      COALESCE(p_don_vi_tinh, 'Cái'),
       COALESCE(p_thu_tu_hien_thi, 0),
       p_mo_ta,
       p_tu_khoa,
@@ -405,14 +406,20 @@ BEGIN
     END IF;
 
     -- Prevent circular parent reference
-    IF p_parent_id IS NOT NULL AND p_parent_id = p_id THEN
+    -- Note: p_parent_id = 0 is a sentinel meaning "set to root (NULL)"
+    IF p_parent_id IS NOT NULL AND p_parent_id > 0 AND p_parent_id = p_id THEN
       RAISE EXCEPTION 'Category cannot be its own parent.';
     END IF;
 
     -- Update category
+    -- Note: p_parent_id = 0 means "set to root (NULL)", NULL means "keep existing"
     UPDATE public.nhom_thiet_bi
     SET
-      parent_id = COALESCE(p_parent_id, parent_id),
+      parent_id = CASE
+        WHEN p_parent_id = 0 THEN NULL           -- Sentinel: move to root
+        WHEN p_parent_id IS NULL THEN parent_id  -- Not provided: keep existing
+        ELSE p_parent_id                          -- Provided: set new parent
+      END,
       ma_nhom = COALESCE(NULLIF(TRIM(p_ma_nhom), ''), ma_nhom),
       ten_nhom = COALESCE(NULLIF(TRIM(p_ten_nhom), ''), ten_nhom),
       phan_loai = COALESCE(p_phan_loai, phan_loai),
@@ -437,6 +444,7 @@ GRANT EXECUTE ON FUNCTION public.dinh_muc_nhom_upsert(
 COMMENT ON FUNCTION public.dinh_muc_nhom_upsert IS
   'Create or update equipment category.
    Pass NULL for p_id to create new, or provide p_id to update existing.
+   For p_parent_id: NULL = keep existing, 0 = move to root, >0 = set new parent.
    Enforces tenant isolation and role permissions.';
 
 
@@ -522,7 +530,7 @@ BEGIN
   WHERE parent_id = p_id;
 
   IF v_child_count > 0 THEN
-    RAISE EXCEPTION 'Cannot delete category: % child categorie(s) exist. Delete or reassign children first.', v_child_count;
+    RAISE EXCEPTION 'Cannot delete category: % child category(ies) exist. Delete or reassign children first.', v_child_count;
   END IF;
 
   -- 5. Check for quota line items referencing this category
