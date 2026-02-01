@@ -188,18 +188,34 @@ export async function POST(req: NextRequest, context: { params: Promise<{ fn: st
       return NextResponse.json({ error: 'Function not allowed' }, { status: 403 })
     }
 
-    // SECURITY: Check Content-Length header to reject oversized payloads early
-    const contentLength = parseInt(req.headers.get('content-length') || '0', 10)
+    // SECURITY: Enforce body size limit BEFORE buffering/parsing to prevent DoS
+    // 1. Require Content-Length header - reject chunked/streaming requests without it
+    const contentLengthHeader = req.headers.get('content-length')
+    if (!contentLengthHeader) {
+      return NextResponse.json({ error: 'Content-Length header required' }, { status: 411 })
+    }
+
+    // 2. Validate Content-Length is within limit
+    const contentLength = parseInt(contentLengthHeader, 10)
+    if (isNaN(contentLength) || contentLength < 0) {
+      return NextResponse.json({ error: 'Invalid Content-Length' }, { status: 400 })
+    }
     if (contentLength > MAX_BODY_SIZE) {
       return NextResponse.json({ error: 'Payload too large' }, { status: 413 })
     }
 
-    const rawBody = await req.json().catch(() => ({}))
-
-    // SECURITY: Post-parse size check (Content-Length can be spoofed or missing)
-    const bodyString = JSON.stringify(rawBody)
-    if (bodyString.length > MAX_BODY_SIZE) {
+    // 3. Read raw body with size enforcement (defense in depth against spoofed header)
+    const rawText = await req.text()
+    if (rawText.length > MAX_BODY_SIZE) {
       return NextResponse.json({ error: 'Payload too large' }, { status: 413 })
+    }
+
+    // 4. Parse JSON from validated raw text
+    let rawBody: Record<string, unknown> = {}
+    try {
+      rawBody = rawText ? JSON.parse(rawText) : {}
+    } catch {
+      return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
     }
 
   // Pull claims from NextAuth session securely (no client headers trusted)
