@@ -205,14 +205,16 @@ export async function POST(req: NextRequest, context: { params: Promise<{ fn: st
     }
 
     // 3. Read raw body with size enforcement (defense in depth against spoofed header)
-    const rawText = await req.text()
-    if (rawText.length > MAX_BODY_SIZE) {
+    // SECURITY: Use arrayBuffer to measure actual bytes, not UTF-16 code units
+    const buf = await req.arrayBuffer()
+    if (buf.byteLength > MAX_BODY_SIZE) {
       return NextResponse.json({ error: 'Payload too large' }, { status: 413 })
     }
 
-    // 4. Parse JSON from validated raw text
+    // 4. Decode buffer to text and parse JSON
     let rawBody: Record<string, unknown> = {}
     try {
+      const rawText = new TextDecoder().decode(buf)
       rawBody = rawText ? JSON.parse(rawText) : {}
     } catch {
       return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })

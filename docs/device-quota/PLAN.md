@@ -153,49 +153,53 @@ Show count of equipment not linked to any category.
 
 ---
 
-## Phase 5: Frontend - Mapping Interface
+## Phase 5: Frontend - Mapping Interface ✅ COMPLETE
 
-### Task 5.1: Split-Screen Layout
+### Task 5.1: Split-Screen Layout ✅
 
 Left panel: Unmapped equipment list with search
 Right panel: Category tree with current counts
 
-### Task 5.2: Drag-and-Drop or Selection-Based Mapping
+### Task 5.2: Selection-Based Mapping ✅
 
 Bulk select equipment → assign to category
 
 ### Task 5.3: AI Suggestion Integration
 
-Gemini API for smart category suggestions based on equipment name/model
+> **TODO (Deferred):** Gemini API for smart category suggestions based on equipment name/model.
+> Schema supports this via `nhom_thiet_bi.tu_khoa` (keywords array).
+> Requires: New RPC function, API route for Gemini, UI component.
 
 ---
 
-## Phase 6: Frontend - Decisions Management
+## Phase 6: Frontend - Decisions Management ✅ COMPLETE
 
-### Task 6.1: Decisions List Page
+### Task 6.1: Decisions List Page ✅
 
 Table of quota decisions with status badges
 
-### Task 6.2: Decision Create/Edit Dialog
+### Task 6.2: Decision Create/Edit Dialog ✅
 
-Form for decision metadata + line items editor
+Form for decision metadata with zod validation
 
 ### Task 6.3: Excel Import for Line Items
 
-Bulk import quota line items from spreadsheet
+> **TODO (Deferred):** Bulk import quota line items from spreadsheet
 
 ---
 
-## Phase 7: Reports
+## Phase 7: Reports ✅ COMPLETE
 
-### Task 7.1: HTML Compliance Report
+### Task 7.1: HTML Compliance Report ✅
 
 Printable report with signature block per Circular 46/2025/TT-BYT
 
 ---
 
-## Future (Phase 2 Scope)
+## Future (Deferred)
 
+- **AI Suggestion for Mapping**: Gemini API integration using `nhom_thiet_bi.tu_khoa` keywords
+- **Excel Import for Line Items**: Bulk import quota line items from spreadsheet
 - Quota enforcement at Equipment Add/Import/Transfer
 - Automated expiry notifications
 - Historical compliance trends
