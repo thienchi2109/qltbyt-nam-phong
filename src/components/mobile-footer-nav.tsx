@@ -14,6 +14,7 @@ import {
   QrCode,
   Users,
   Activity,
+  Calculator,
 } from "lucide-react"
 
 import {
@@ -44,6 +45,7 @@ export function MobileFooterNav() {
     const baseItems = [
       { href: "/transfers", icon: ArrowLeftRight, label: "Luân chuyển" },
       { href: "/maintenance", icon: HardHat, label: "Bảo trì" },
+      { href: "/device-quota", icon: Calculator, label: "Định mức" },
       { href: "/reports", icon: BarChart3, label: "Báo cáo" },
       { href: "/qr-scanner", icon: QrCode, label: "Quét QR" },
     ]
