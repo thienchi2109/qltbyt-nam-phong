@@ -81,7 +81,8 @@ interface DeviceQuotaMappingContextValue {
 function useLinkEquipmentMutation(
   toast: ReturnType<typeof useToast>["toast"],
   invalidate: () => void,
-  clearSelection: () => void
+  clearSelection: () => void,
+  donViId: number | null
 ) {
   return useMutation({
     mutationFn: async (data: {
@@ -93,6 +94,7 @@ function useLinkEquipmentMutation(
         args: {
           p_thiet_bi_ids: data.thiet_bi_ids,
           p_nhom_id: data.nhom_id,
+          p_don_vi: donViId,
         }
       })
     },
@@ -199,7 +201,7 @@ export function DeviceQuotaMappingProvider({ children }: DeviceQuotaMappingProvi
   }, [])
 
   // Link mutation
-  const linkMutation = useLinkEquipmentMutation(toast, invalidateAndRefetch, clearSelection)
+  const linkMutation = useLinkEquipmentMutation(toast, invalidateAndRefetch, clearSelection, donViId)
 
   // Selection actions
   const toggleEquipmentSelection = React.useCallback((id: number) => {

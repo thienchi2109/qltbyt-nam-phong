@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import { useSession } from "next-auth/react"
-import { redirect } from "next/navigation"
+import { useRouter } from "next/navigation"
 import { Loader2 } from "lucide-react"
 
 import { DeviceQuotaMappingProvider } from "./_components/DeviceQuotaMappingContext"
@@ -13,6 +13,7 @@ import { DeviceQuotaMappingActions } from "./_components/DeviceQuotaMappingActio
 
 export default function DeviceQuotaMappingPage() {
   const { status } = useSession()
+  const router = useRouter()
 
   if (status === "loading") {
     return (
@@ -23,7 +24,8 @@ export default function DeviceQuotaMappingPage() {
   }
 
   if (status === "unauthenticated") {
-    redirect("/")
+    router.push("/")
+    return null
   }
 
   return (

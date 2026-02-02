@@ -40,6 +40,20 @@ import { cn } from "@/lib/utils"
 import { useDeviceQuotaDecisionsContext } from "../_hooks/useDeviceQuotaDecisionsContext"
 
 // ============================================
+// Helpers
+// ============================================
+
+/**
+ * Parse a YYYY-MM-DD date string as a local date (not UTC).
+ * Using new Date("2024-01-15") parses as UTC midnight, which can shift
+ * the day in non-UTC timezones. This function creates a local date.
+ */
+function parseLocalDate(dateString: string): Date {
+  const [year, month, day] = dateString.split("-").map(Number)
+  return new Date(year, month - 1, day)
+}
+
+// ============================================
 // Validation Schema
 // ============================================
 
@@ -119,10 +133,10 @@ export function DeviceQuotaDecisionDialog() {
     if (isEditMode && selectedDecision) {
       form.reset({
         so_quyet_dinh: selectedDecision.so_quyet_dinh,
-        ngay_ban_hanh: new Date(selectedDecision.ngay_ban_hanh),
-        ngay_hieu_luc: new Date(selectedDecision.ngay_hieu_luc),
+        ngay_ban_hanh: parseLocalDate(selectedDecision.ngay_ban_hanh),
+        ngay_hieu_luc: parseLocalDate(selectedDecision.ngay_hieu_luc),
         ngay_het_hieu_luc: selectedDecision.ngay_het_hieu_luc
-          ? new Date(selectedDecision.ngay_het_hieu_luc)
+          ? parseLocalDate(selectedDecision.ngay_het_hieu_luc)
           : null,
         nguoi_ky: selectedDecision.nguoi_ky,
         chuc_vu_nguoi_ky: selectedDecision.chuc_vu_nguoi_ky,

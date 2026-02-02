@@ -75,17 +75,8 @@ export function DeviceQuotaUnassignedList() {
             {/* Select All Header */}
             <div className="flex items-center gap-2 pb-3 border-b mb-3">
               <Checkbox
-                checked={allSelected}
+                checked={allSelected ? true : someSelected ? "indeterminate" : false}
                 onCheckedChange={handleSelectAllChange}
-                ref={(el) => {
-                  if (el) {
-                    // Set indeterminate state for "some selected"
-                    const input = el.querySelector('button') as HTMLButtonElement
-                    if (input) {
-                      (input as any).indeterminate = someSelected && !allSelected
-                    }
-                  }
-                }}
               />
               <span className="text-sm font-medium">
                 Chọn tất cả ({selectedEquipmentIds.size}/{unassignedEquipment.length})

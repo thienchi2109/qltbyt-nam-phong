@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import { useSession } from "next-auth/react"
-import { redirect } from "next/navigation"
+import { useRouter } from "next/navigation"
 import { Loader2 } from "lucide-react"
 
 import { DeviceQuotaDecisionsProvider } from "./_components/DeviceQuotaDecisionsContext"
@@ -29,6 +29,7 @@ import { DeviceQuotaDecisionDialog } from "./_components/DeviceQuotaDecisionDial
  */
 export default function DeviceQuotaDecisionsPage() {
   const { status } = useSession()
+  const router = useRouter()
 
   // Loading state
   if (status === "loading") {
@@ -41,7 +42,8 @@ export default function DeviceQuotaDecisionsPage() {
 
   // Unauthenticated redirect
   if (status === "unauthenticated") {
-    redirect("/")
+    router.push("/")
+    return null
   }
 
   return (

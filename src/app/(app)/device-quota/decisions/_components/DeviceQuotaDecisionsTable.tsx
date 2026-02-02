@@ -110,13 +110,12 @@ function EmptyState() {
 
 interface MobileDecisionCardProps {
   decision: Decision
-  onView: () => void
   onEdit: () => void
   onActivate: () => void
   onDelete: () => void
 }
 
-function MobileDecisionCard({ decision, onView, onEdit, onActivate, onDelete }: MobileDecisionCardProps) {
+function MobileDecisionCard({ decision, onEdit, onActivate, onDelete }: MobileDecisionCardProps) {
   return (
     <div className="border rounded-lg p-4 space-y-3 bg-card">
       <div className="flex items-start justify-between">
@@ -133,9 +132,9 @@ function MobileDecisionCard({ decision, onView, onEdit, onActivate, onDelete }: 
       </div>
 
       <div className="flex gap-2 flex-wrap">
-        <Button variant="outline" size="sm" onClick={onView}>
+        <Button variant="outline" size="sm" disabled className="text-muted-foreground">
           <Eye className="h-4 w-4" />
-          Xem
+          Xem (sắp có)
         </Button>
         {decision.trang_thai === "draft" && (
           <>
@@ -164,13 +163,12 @@ function MobileDecisionCard({ decision, onView, onEdit, onActivate, onDelete }: 
 
 interface ActionsDropdownProps {
   decision: Decision
-  onView: () => void
   onEdit: () => void
   onActivate: () => void
   onDelete: () => void
 }
 
-function ActionsDropdown({ decision, onView, onEdit, onActivate, onDelete }: ActionsDropdownProps) {
+function ActionsDropdown({ decision, onEdit, onActivate, onDelete }: ActionsDropdownProps) {
   const isDraft = decision.trang_thai === "draft"
 
   return (
@@ -182,9 +180,9 @@ function ActionsDropdown({ decision, onView, onEdit, onActivate, onDelete }: Act
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
-        <DropdownMenuItem onClick={onView}>
+        <DropdownMenuItem disabled className="text-muted-foreground">
           <Eye className="h-4 w-4" />
-          Xem chi tiết
+          Xem chi tiết (sắp có)
         </DropdownMenuItem>
 
         {isDraft && (
@@ -226,12 +224,6 @@ export function DeviceQuotaDecisionsTable() {
   // Confirmation dialogs state
   const [activateDialog, setActivateDialog] = React.useState<Decision | null>(null)
   const [deleteDialog, setDeleteDialog] = React.useState<Decision | null>(null)
-
-  // View handler (TODO: implement view dialog/navigation)
-  const handleView = React.useCallback((decision: Decision) => {
-    // TODO: Navigate to detail view or open view dialog
-    console.log("View decision:", decision.id)
-  }, [])
 
   const handleActivateConfirm = React.useCallback(() => {
     if (!activateDialog) return
@@ -286,7 +278,6 @@ export function DeviceQuotaDecisionsTable() {
                   <TableCell>
                     <ActionsDropdown
                       decision={decision}
-                      onView={() => handleView(decision)}
                       onEdit={() => openEditDialog(decision)}
                       onActivate={() => setActivateDialog(decision)}
                       onDelete={() => setDeleteDialog(decision)}
@@ -317,7 +308,6 @@ export function DeviceQuotaDecisionsTable() {
             <MobileDecisionCard
               key={decision.id}
               decision={decision}
-              onView={() => handleView(decision)}
               onEdit={() => openEditDialog(decision)}
               onActivate={() => setActivateDialog(decision)}
               onDelete={() => setDeleteDialog(decision)}
