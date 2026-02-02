@@ -2,6 +2,7 @@
 
 import * as React from 'react'
 import { useQueryClient } from '@tanstack/react-query'
+import { parseLocalDate } from '@/lib/date-utils'
 
 export interface DateRange {
   from: Date
@@ -48,8 +49,8 @@ function deserializeFilters(raw: string | null): ReportInventoryFilters | null {
     const parsed = JSON.parse(raw)
     const fromStr = parsed?.dateRange?.from
     const toStr = parsed?.dateRange?.to
-    const from = fromStr ? new Date(fromStr) : undefined
-    const to = toStr ? new Date(toStr) : undefined
+    const from = fromStr ? parseLocalDate(fromStr) : undefined
+    const to = toStr ? parseLocalDate(toStr) : undefined
     if (!from || !to || Number.isNaN(from.getTime()) || Number.isNaN(to.getTime())) {
       return null
     }

@@ -2,6 +2,7 @@
 
 import { useQuery } from '@tanstack/react-query'
 import { callRpc } from '@/lib/rpc-client'
+import { parseLocalDate } from '@/lib/date-utils'
 import { type TaskType } from '@/lib/data'
 
 export interface CalendarEvent {
@@ -64,7 +65,7 @@ export function useCalendarData(year: number, month: number, options?: { enabled
       // Transform events: convert date strings to Date objects
       const calendarEvents: CalendarEvent[] = data.events.map(event => ({
         ...event,
-        date: new Date(event.date)
+        date: parseLocalDate(event.date) ?? new Date()
       }))
 
       return {

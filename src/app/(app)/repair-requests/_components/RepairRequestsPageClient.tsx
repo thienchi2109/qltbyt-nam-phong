@@ -70,6 +70,7 @@ import {
   type UiFilters as UiFiltersPrefs,
   type ColumnVisibility as ColumnVisibilityPrefs,
 } from "@/lib/rr-prefs"
+import { parseLocalDate } from "@/lib/date-utils"
 // Auto department filter removed
 
 
@@ -663,8 +664,8 @@ function RepairRequestsPageClientInner() {
                       status: uiFilters.status,
                       facilityId: selectedFacilityId ?? null,
                       dateRange: uiFilters.dateRange ? {
-                        from: uiFilters.dateRange.from ? new Date(uiFilters.dateRange.from) : null,
-                        to: uiFilters.dateRange.to ? new Date(uiFilters.dateRange.to) : null,
+                        from: uiFilters.dateRange.from ? parseLocalDate(uiFilters.dateRange.from) : null,
+                        to: uiFilters.dateRange.to ? parseLocalDate(uiFilters.dateRange.to) : null,
                       } : { from: null, to: null },
                     }}
                     onChange={(v) => {

@@ -1,3 +1,5 @@
+import { parseLocalDate } from "@/lib/date-utils"
+
 export type DaysRemainingInfo = {
   days: number
   status: 'success' | 'warning' | 'danger'
@@ -10,7 +12,8 @@ export function calculateDaysRemaining(desiredDate: string | null): DaysRemainin
   if (!desiredDate) return null
 
   const today = new Date()
-  const targetDate = new Date(desiredDate)
+  const targetDate = parseLocalDate(desiredDate)
+  if (!targetDate) return null
   const diffTime = targetDate.getTime() - today.getTime()
   const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
 

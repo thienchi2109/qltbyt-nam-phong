@@ -1,7 +1,8 @@
 "use client" // Vì sử dụng Date, có thể không cần nếu logic thuần túy
 
 import * as React from "react"
-import { differenceInDays, parseISO, startOfDay, addDays } from "date-fns"
+import { differenceInDays, startOfDay, addDays } from "date-fns"
+import { parseLocalDate } from "@/lib/date-utils"
 import type { TransferRequest } from "@/types/database" // Đảm bảo type này có thông tin thiết bị
 
 // Các trạng thái của yêu cầu luân chuyển 'ben_ngoai' cần theo dõi ngày hoàn trả
@@ -31,7 +32,9 @@ export function useTransferAlerts(allTransferRequests: TransferRequest[] | null 
         RELEVANT_TRANSFER_STATUSES_FOR_RETURN_ALERT.includes(req.trang_thai)
       ) {
         try {
-          const dueDate = startOfDay(parseISO(req.ngay_du_kien_tra));
+          const parsedDate = parseLocalDate(req.ngay_du_kien_tra);
+          if (!parsedDate) return;
+          const dueDate = startOfDay(parsedDate);
           const daysDifference = differenceInDays(dueDate, today);
 
           const isOverdue = daysDifference < 0;

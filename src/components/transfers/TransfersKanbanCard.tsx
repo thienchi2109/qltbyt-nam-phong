@@ -5,6 +5,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import type { TransferListItem } from '@/types/transfers-data-grid'
 import { formatDistanceToNow } from 'date-fns'
 import { vi } from 'date-fns/locale'
+import { parseLocalDate } from '@/lib/date-utils'
 
 interface TransfersKanbanCardProps {
   transfer: TransferListItem
@@ -42,7 +43,8 @@ function getTypeLabel(type: string): string {
 
 function isOverdue(dateStr: string | null, currentDate: Date): boolean {
   if (!dateStr) return false
-  const dueDate = new Date(dateStr)
+  const dueDate = parseLocalDate(dateStr)
+  if (!dueDate) return false
   return dueDate < currentDate && dueDate.getTime() !== 0
 }
 

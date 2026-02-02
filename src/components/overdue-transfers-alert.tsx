@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 import { callRpc } from "@/lib/rpc-client"
+import { parseLocalDate } from "@/lib/date-utils"
 import { TransferRequest } from "@/types/database"
 
 interface OverdueTransfersAlertProps {
@@ -42,12 +43,12 @@ export function OverdueTransfersAlert({ onViewTransfer }: OverdueTransfersAlertP
       // Prevent setState on unmounted component
       if (!isMountedRef.current) return
       
-      const overdue = transfers.filter(t => 
-        new Date(t.ngay_du_kien_tra!) < today
+      const overdue = transfers.filter(t =>
+        parseLocalDate(t.ngay_du_kien_tra)! < today
       )
-      
+
       const upcoming = transfers.filter(t => {
-        const dueDate = new Date(t.ngay_du_kien_tra!)
+        const dueDate = parseLocalDate(t.ngay_du_kien_tra)!
         return dueDate >= today && dueDate <= nextWeek
       })
 
@@ -69,7 +70,7 @@ export function OverdueTransfersAlert({ onViewTransfer }: OverdueTransfersAlertP
 
   const getDaysOverdue = (dueDate: string) => {
     const today = new Date()
-    const due = new Date(dueDate)
+    const due = parseLocalDate(dueDate)!
     const diffTime = today.getTime() - due.getTime()
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
     return diffDays
@@ -77,7 +78,7 @@ export function OverdueTransfersAlert({ onViewTransfer }: OverdueTransfersAlertP
 
   const getDaysUntilDue = (dueDate: string) => {
     const today = new Date()
-    const due = new Date(dueDate)
+    const due = parseLocalDate(dueDate)!
     const diffTime = due.getTime() - today.getTime()
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
     return diffDays

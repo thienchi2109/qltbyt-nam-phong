@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { callRpc } from '@/lib/rpc-client'
 import { format } from 'date-fns'
+import { parseLocalDate } from '@/lib/date-utils'
 import * as React from 'react'
 
 export interface InventoryItem {
@@ -247,7 +248,11 @@ export function useInventoryData(
       }
 
       // Sort by date
-      allItems.sort((a, b) => new Date(b.ngay_nhap).getTime() - new Date(a.ngay_nhap).getTime())
+      allItems.sort((a, b) => {
+        const dateA = parseLocalDate(a.ngay_nhap)?.getTime() ?? 0
+        const dateB = parseLocalDate(b.ngay_nhap)?.getTime() ?? 0
+        return dateB - dateA
+      })
 
       // Calculate summary
       const totalImported = importedItems.length

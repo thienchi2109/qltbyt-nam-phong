@@ -1,7 +1,8 @@
 "use client"
 
 import * as React from "react"
-import { differenceInDays, parseISO, startOfDay } from "date-fns"
+import { differenceInDays, startOfDay } from "date-fns"
+import { parseLocalDate } from "@/lib/date-utils"
 
 // Các trạng thái được coi là chưa hoàn thành
 const UNCOMPLETED_REPAIR_STATUSES = ['Chờ xử lý', 'Đã duyệt'];
@@ -39,7 +40,9 @@ export function useRepairAlerts<T extends MinimalRepairRequest>(
         return; // Bỏ qua nếu không có ngày mong muốn
       }
       try {
-        const dueDate = startOfDay(parseISO(req.ngay_mong_muon_hoan_thanh));
+        const parsedDate = parseLocalDate(req.ngay_mong_muon_hoan_thanh);
+        if (!parsedDate) return;
+        const dueDate = startOfDay(parsedDate);
         const daysDifference = differenceInDays(dueDate, today);
 
         const isOverdue = daysDifference < 0;

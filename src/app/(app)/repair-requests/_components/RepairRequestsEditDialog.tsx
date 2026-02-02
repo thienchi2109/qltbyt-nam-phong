@@ -24,6 +24,7 @@ import {
 } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { cn } from "@/lib/utils"
+import { parseLocalDate } from "@/lib/date-utils"
 import { Calendar as CalendarIcon, Loader2 } from "lucide-react"
 import { useRepairRequestsContext } from "../_hooks/useRepairRequestsContext"
 import type { RepairUnit } from "../types"
@@ -135,7 +136,7 @@ export function RepairRequestsEditDialog() {
                   initialFocus
                   disabled={(date) => {
                     const requestDate = requestToEdit?.ngay_yeu_cau
-                      ? new Date(requestToEdit.ngay_yeu_cau)
+                      ? parseLocalDate(requestToEdit.ngay_yeu_cau) ?? new Date()
                       : new Date()
                     return date < new Date(requestDate.setHours(0, 0, 0, 0))
                   }}

@@ -5,6 +5,7 @@ import type { ColumnDef, SortingState, Row } from "@tanstack/react-table"
 import { ArrowUpDown, MoreHorizontal, Check, X, Edit, Trash2, Save, CheckCircle2, Loader2 } from "lucide-react"
 import { format, parseISO } from 'date-fns'
 import { vi } from 'date-fns/locale'
+import { parseLocalDate } from '@/lib/date-utils'
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Badge } from "@/components/ui/badge"
@@ -332,7 +333,7 @@ export function useTaskColumns(options: TaskColumnOptions): ColumnDef<Maintenanc
           if (isCompletedFromDB) {
             const completionDateField = `ngay_hoan_thanh_${month}` as keyof MaintenanceTask;
             const completionDate = row.original[completionDateField] as string;
-            const formattedDate = completionDate ? new Date(completionDate).toLocaleDateString('vi-VN') : '';
+            const formattedDate = completionDate ? parseLocalDate(completionDate)?.toLocaleDateString('vi-VN') : '';
 
             return (
               <div className="flex justify-center items-center h-full">

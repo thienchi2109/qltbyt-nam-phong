@@ -16,6 +16,7 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import { TransferStatusProgress } from "@/components/transfers/TransferStatusProgress"
 import { useToast } from "@/hooks/use-toast"
 import { callRpc } from "@/lib/rpc-client"
+import { parseLocalDate } from "@/lib/date-utils"
 import { 
   TRANSFER_TYPES, 
   TRANSFER_STATUSES,
@@ -195,7 +196,7 @@ export function TransferDetailDialog({ open, onOpenChange, transfer }: TransferD
                         <Calendar className="h-4 w-4 text-muted-foreground" />
                         <span className="font-medium">Ngày dự kiến trả về:</span>
                       </div>
-                      <p className="ml-6">{new Date(transfer.ngay_du_kien_tra).toLocaleDateString('vi-VN')}</p>
+                      <p className="ml-6">{parseLocalDate(transfer.ngay_du_kien_tra)?.toLocaleDateString('vi-VN')}</p>
                     </div>
                   )}
                 </div>

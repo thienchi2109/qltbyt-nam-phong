@@ -27,6 +27,7 @@ import {
 import { useEquipmentUsageLogs } from "@/hooks/use-usage-logs"
 import { useTenantBranding } from "@/hooks/use-tenant-branding"
 import { type Equipment, type UsageLog } from "@/types/database"
+import { parseLocalDate } from "@/lib/date-utils"
 
 interface UsageLogPrintProps {
   equipment: Pick<Equipment, 'id' | 'ten_thiet_bi' | 'ma_thiet_bi'> & Partial<Equipment>
@@ -83,9 +84,10 @@ export function UsageLogPrint({ equipment }: UsageLogPrintProps) {
     if (!usageLogs) return []
 
     // Pre-calculate date boundaries to avoid creating Date objects in loop
-    const fromDate = dateFrom ? new Date(dateFrom) : null
+    const fromDate = dateFrom ? parseLocalDate(dateFrom) : null
     const toDate = dateTo ? (() => {
-      const date = new Date(dateTo)
+      const date = parseLocalDate(dateTo)
+      if (!date) return null
       date.setHours(23, 59, 59, 999) // End of day
       return date
     })() : null
@@ -153,8 +155,8 @@ export function UsageLogPrint({ equipment }: UsageLogPrintProps) {
 
   const generatePrintContent = () => {
     const currentDate = format(new Date(), 'dd/MM/yyyy HH:mm', { locale: vi })
-    const dateRange = dateFrom || dateTo 
-      ? `(${dateFrom ? format(new Date(dateFrom), 'dd/MM/yyyy', { locale: vi }) : '...'} - ${dateTo ? format(new Date(dateTo), 'dd/MM/yyyy', { locale: vi }) : '...'})`
+    const dateRange = dateFrom || dateTo
+      ? `(${dateFrom ? format(parseLocalDate(dateFrom) ?? new Date(), 'dd/MM/yyyy', { locale: vi }) : '...'} - ${dateTo ? format(parseLocalDate(dateTo) ?? new Date(), 'dd/MM/yyyy', { locale: vi }) : '...'})`
       : ''
 
     return `

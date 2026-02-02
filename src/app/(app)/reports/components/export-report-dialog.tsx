@@ -5,6 +5,7 @@ import { Download, FileSpreadsheet, Loader2 } from "lucide-react"
 import { format } from "date-fns"
 import { vi } from "date-fns/locale"
 import { createMultiSheetExcel } from "@/lib/excel-utils"
+import { parseLocalDate } from "@/lib/date-utils"
 
 import {
   Dialog,
@@ -89,7 +90,7 @@ export function ExportReportDialog({
 
       // Prepare detailed data (JSON rows)
       const detailedData = data.map(item => ({
-        "Ngày": format(new Date(item.ngay_nhap), "dd/MM/yyyy"),
+        "Ngày": format(parseLocalDate(item.ngay_nhap) ?? new Date(), "dd/MM/yyyy"),
         "Mã thiết bị": item.ma_thiet_bi,
         "Tên thiết bị": item.ten_thiet_bi,
         "Model": item.model || "",

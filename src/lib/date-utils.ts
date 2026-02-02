@@ -256,3 +256,30 @@ export function isValidPartialDate(value: string | null | undefined): boolean {
 
   return false
 }
+
+// =============================================================================
+// LOCAL DATE PARSING
+// Fixes timezone shift when parsing YYYY-MM-DD date strings from database
+// =============================================================================
+
+/**
+ * Parses a YYYY-MM-DD date string as a local date (not UTC).
+ * Prevents timezone shift issues with date-only database fields.
+ */
+export function parseLocalDate(dateString: string | null | undefined): Date | null {
+  if (!dateString) return null
+
+  const trimmed = String(dateString).trim()
+  if (!trimmed) return null
+
+  const match = trimmed.match(/^(\d{4})-(\d{2})-(\d{2})$/)
+  if (!match) return null
+
+  const year = parseInt(match[1], 10)
+  const month = parseInt(match[2], 10)
+  const day = parseInt(match[3], 10)
+
+  if (month < 1 || month > 12 || day < 1 || day > 31) return null
+
+  return new Date(year, month - 1, day)
+}
