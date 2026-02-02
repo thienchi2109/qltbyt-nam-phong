@@ -21,6 +21,7 @@ BEGIN;
 -- If p_quyet_dinh_id is NULL, finds the active decision for the tenant.
 --
 -- Returns:
+--   - ten_don_vi: Facility name for report headers
 --   - total_categories: Count of categories in the decision
 --   - dat_count: Categories meeting quota (min <= current <= max)
 --   - thieu_count: Categories under minimum quota
@@ -36,6 +37,7 @@ CREATE OR REPLACE FUNCTION public.dinh_muc_compliance_summary(
 RETURNS TABLE (
   quyet_dinh_id BIGINT,
   so_quyet_dinh TEXT,
+  ten_don_vi TEXT,
   total_categories BIGINT,
   dat_count BIGINT,
   thieu_count BIGINT,
@@ -52,6 +54,7 @@ DECLARE
   v_decision_id BIGINT;
   v_decision_don_vi BIGINT;
   v_allowed_facilities BIGINT[];
+  v_facility_name TEXT;
 BEGIN
   -- Fallback for older tokens using 'role' instead of 'app_role'
   IF v_role IS NULL OR v_role = '' THEN
@@ -77,6 +80,11 @@ BEGIN
   IF p_don_vi IS NULL THEN
     RETURN;
   END IF;
+
+  -- Fetch facility name for report headers
+  SELECT dv.name INTO v_facility_name
+  FROM public.don_vi dv
+  WHERE dv.id = p_don_vi;
 
   -- Determine which decision to use
   IF p_quyet_dinh_id IS NOT NULL THEN
@@ -104,6 +112,7 @@ BEGIN
       SELECT
         NULL::BIGINT AS quyet_dinh_id,
         NULL::TEXT AS so_quyet_dinh,
+        v_facility_name AS ten_don_vi,
         0::BIGINT AS total_categories,
         0::BIGINT AS dat_count,
         0::BIGINT AS thieu_count,
@@ -149,6 +158,7 @@ BEGIN
   SELECT
     v_decision_id AS quyet_dinh_id,
     qd.so_quyet_dinh,
+    v_facility_name AS ten_don_vi,
     COUNT(*)::BIGINT AS total_categories,
     COUNT(*) FILTER (WHERE cs.trang_thai_tuan_thu = 'dat')::BIGINT AS dat_count,
     COUNT(*) FILTER (WHERE cs.trang_thai_tuan_thu = 'thieu')::BIGINT AS thieu_count,
@@ -171,7 +181,8 @@ GRANT EXECUTE ON FUNCTION public.dinh_muc_compliance_summary(BIGINT, BIGINT) TO 
 COMMENT ON FUNCTION public.dinh_muc_compliance_summary IS
   'Get dashboard-level compliance statistics for a quota decision.
    If p_quyet_dinh_id is NULL, uses active decision for tenant.
-   Returns counts for compliant (dat), under quota (thieu), and over quota (vuot) categories.';
+   Returns counts for compliant (dat), under quota (thieu), and over quota (vuot) categories.
+   Includes ten_don_vi (facility name) for report headers.';
 
 
 -- ============================================================================

@@ -64,12 +64,11 @@ export default function DeviceQuotaDashboardPage() {
  * Separated to allow useDeviceQuotaDashboardContext hook usage.
  */
 function DeviceQuotaDashboardPageContent() {
-  const { complianceSummary, user } = useDeviceQuotaDashboardContext()
+  const { complianceSummary } = useDeviceQuotaDashboardContext()
   const [reportDialogOpen, setReportDialogOpen] = React.useState(false)
 
-  // Extract facility name from user's don_vi info if available
-  // For now, use a placeholder. In production, you might fetch this from a separate query.
-  const facilityName = user?.full_name || "Đơn vị y tế"
+  // Use facility name from compliance summary (fetched from don_vi table)
+  const facilityName = complianceSummary?.ten_don_vi || "Đơn vị y tế"
 
   // Check if we have an active decision to show report button
   const hasActiveDecision = !!complianceSummary?.quyet_dinh_id

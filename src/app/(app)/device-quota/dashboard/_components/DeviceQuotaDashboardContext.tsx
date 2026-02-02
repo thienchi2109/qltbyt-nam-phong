@@ -12,6 +12,7 @@ import { callRpc } from "@/lib/rpc-client"
 interface ComplianceSummary {
   quyet_dinh_id: number | null
   so_quyet_dinh: string | null
+  ten_don_vi: string | null
   total_categories: number
   dat_count: number
   thieu_count: number
