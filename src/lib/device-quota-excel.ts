@@ -157,6 +157,7 @@ export async function generateDeviceQuotaImportTemplate(
         operator: 'greaterThanOrEqual',
         showErrorMessage: true,
         formulae: [0],
+        allowBlank: true,
         errorTitle: 'Giá trị không hợp lệ',
         error: 'Số lượng tối thiểu phải là số nguyên >= 0 và <= số lượng định mức.',
       }
