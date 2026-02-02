@@ -31,19 +31,20 @@ export default function DeviceQuotaDecisionsPage() {
   const { status } = useSession()
   const router = useRouter()
 
-  // Loading state
-  if (status === "loading") {
+  // Handle unauthenticated redirect in useEffect (not during render)
+  React.useEffect(() => {
+    if (status === "unauthenticated") {
+      router.push("/")
+    }
+  }, [status, router])
+
+  // Show loading state for both loading and unauthenticated (while redirecting)
+  if (status === "loading" || status === "unauthenticated") {
     return (
       <div className="flex min-h-[50vh] items-center justify-center">
         <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
       </div>
     )
-  }
-
-  // Unauthenticated redirect
-  if (status === "unauthenticated") {
-    router.push("/")
-    return null
   }
 
   return (
