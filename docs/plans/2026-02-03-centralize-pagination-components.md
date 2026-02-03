@@ -20,13 +20,13 @@ Three specialized agents reviewed this plan. Key changes incorporated:
 | Finding | Source | Resolution |
 |---------|--------|------------|
 | 3 missing implementations | Code Reviewer | Added Users, InventoryTable, Dashboard Tabs |
-| Dual control mode ambiguity | Architect | Use discriminated union types |
+| Dual control mode ambiguity | Architect | Require `mode` when paginationMode is provided |
 | `resetDependencies` fragility | Architect | Replace with `resetKey: string \| number` |
 | `indexMode` unused | Architect | Removed from hook |
 | Missing `React.memo` | Frontend | Added to sub-components |
 | Inconsistent breakpoints | Frontend | Added granular `responsive` prop |
 | Missing tests | Code Reviewer | Added testing strategy section |
-| Edge case: `pageCount === 0` | Code Reviewer | Fixed bounds checking |
+| Edge case: `pageCount === 0` | Code Reviewer | Allow 0-page empty state |
 
 ---
 
@@ -105,9 +105,9 @@ export interface EntityLabels {
 // Pagination Mode Types (Discriminated Unions)
 // ============================================================================
 
-/** Mode 1: TanStack Table manages state internally */
+/** Mode 1: TanStack Table manages state internally (default when paginationMode is omitted) */
 interface TanStackManagedMode {
-  mode?: "tanstack"  // Default when not specified
+  mode: "tanstack"
 }
 
 /** Mode 2: External controlled pagination (0-based) */
@@ -153,6 +153,7 @@ export interface DataTablePaginationProps<TData extends RowData> {
   entity: EntityLabels
 
   // Pagination control (discriminated union)
+  // Omit paginationMode to use TanStack internal state
   paginationMode?: PaginationMode
 
   // Display options
@@ -235,7 +236,7 @@ export function usePaginationState({
     pageSize: initialPageSize,
   })
 
-  const pageCount = Math.max(1, Math.ceil(totalCount / pagination.pageSize))
+  const pageCount = Math.max(0, Math.ceil(totalCount / pagination.pageSize))
 
   // Auto-reset to first page when resetKey changes
   const prevResetKey = React.useRef(resetKey)
@@ -495,7 +496,7 @@ describe('usePaginationState', () => {
   // Bounds checking (CRITICAL)
   it('clamps pageIndex when totalCount decreases')
   it('resets to page 0 when pageCount becomes 1')
-  it('handles totalCount of 0 without infinite loop')
+  it('handles totalCount of 0 without infinite loop (pageCount = 0)')
   it('handles negative totalCount gracefully')
 
   // Reset on key change
