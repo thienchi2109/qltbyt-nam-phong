@@ -320,6 +320,7 @@ export function DeviceQuotaImportDialog({
       setError("File không hợp lệ. Vui lòng chọn file Excel (.xlsx, .xls, .csv).")
       setSelectedFile(null)
       setParsedData([])
+      setValidationErrors([])
       return
     }
 

@@ -150,15 +150,17 @@ export async function generateDeviceQuotaImportTemplate(
       }
     }
 
-    // Add number validation for "Số lượng tối thiểu" (column F) - must be integer >= 0
+    // Add number validation for "Số lượng tối thiểu" (column F)
+    // Must be integer >= 0 AND <= column E (số lượng định mức)
+    // Uses custom formula to compare with column E
     for (let row = 2; row <= MAX_TEMPLATE_ROWS; row++) {
       const cell = dataEntrySheet.getCell(row, 6) // Column F
       cell.dataValidation = {
-        type: 'whole',
-        operator: 'greaterThanOrEqual',
+        type: 'custom',
         showErrorMessage: true,
-        formulae: [0],
         allowBlank: true,
+        // Formula: F is blank OR (F >= 0 AND F is whole number AND F <= E)
+        formulae: [`OR(F${row}="",AND(F${row}>=0,F${row}=INT(F${row}),F${row}<=E${row}))`],
         errorTitle: 'Giá trị không hợp lệ',
         error: 'Số lượng tối thiểu phải là số nguyên >= 0 và <= số lượng định mức.',
       }
