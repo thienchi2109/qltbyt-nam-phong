@@ -57,6 +57,10 @@ BEGIN
   IF v_role IN ('global', 'admin') THEN
     v_effective_donvi := p_don_vi;
   ELSE
+    -- SECURITY: Non-global users MUST have a valid tenant claim
+    IF v_claim_donvi IS NULL THEN
+      RAISE EXCEPTION 'Access denied: tenant claim (don_vi) is required for non-global users';
+    END IF;
     v_effective_donvi := v_claim_donvi;  -- Force user's tenant
   END IF;
 
