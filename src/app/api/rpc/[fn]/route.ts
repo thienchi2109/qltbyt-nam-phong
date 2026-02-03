@@ -135,6 +135,7 @@ const ALLOWED_FUNCTIONS = new Set<string>([
   'dinh_muc_chi_tiet_list',
   'dinh_muc_chi_tiet_upsert',
   'dinh_muc_chi_tiet_delete',
+  'dinh_muc_chi_tiet_bulk_import',
   // Compliance
   'dinh_muc_compliance_summary',
   'dinh_muc_compliance_detail',
