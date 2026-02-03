@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import { useRouter } from "next/navigation"
 import { MoreHorizontal, Eye, Edit, CheckCircle, Trash2, Loader2 } from "lucide-react"
 import {
   Table,
@@ -110,12 +111,13 @@ function EmptyState() {
 
 interface MobileDecisionCardProps {
   decision: Decision
+  onView: () => void
   onEdit: () => void
   onActivate: () => void
   onDelete: () => void
 }
 
-function MobileDecisionCard({ decision, onEdit, onActivate, onDelete }: MobileDecisionCardProps) {
+function MobileDecisionCard({ decision, onView, onEdit, onActivate, onDelete }: MobileDecisionCardProps) {
   return (
     <div className="border rounded-lg p-4 space-y-3 bg-card">
       <div className="flex items-start justify-between">
@@ -132,9 +134,9 @@ function MobileDecisionCard({ decision, onEdit, onActivate, onDelete }: MobileDe
       </div>
 
       <div className="flex gap-2 flex-wrap">
-        <Button variant="outline" size="sm" disabled className="text-muted-foreground">
+        <Button variant="outline" size="sm" onClick={onView}>
           <Eye className="h-4 w-4" />
-          Xem (sắp có)
+          Xem chi tiết
         </Button>
         {decision.trang_thai === "draft" && (
           <>
@@ -163,12 +165,13 @@ function MobileDecisionCard({ decision, onEdit, onActivate, onDelete }: MobileDe
 
 interface ActionsDropdownProps {
   decision: Decision
+  onView: () => void
   onEdit: () => void
   onActivate: () => void
   onDelete: () => void
 }
 
-function ActionsDropdown({ decision, onEdit, onActivate, onDelete }: ActionsDropdownProps) {
+function ActionsDropdown({ decision, onView, onEdit, onActivate, onDelete }: ActionsDropdownProps) {
   const isDraft = decision.trang_thai === "draft"
 
   return (
@@ -180,13 +183,14 @@ function ActionsDropdown({ decision, onEdit, onActivate, onDelete }: ActionsDrop
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
-        <DropdownMenuItem disabled className="text-muted-foreground">
+        <DropdownMenuItem onClick={onView}>
           <Eye className="h-4 w-4" />
-          Xem chi tiết (sắp có)
+          Xem chi tiết
         </DropdownMenuItem>
 
         {isDraft && (
           <>
+            <DropdownMenuSeparator />
             <DropdownMenuItem onClick={onEdit}>
               <Edit className="h-4 w-4" />
               Chỉnh sửa
@@ -213,6 +217,7 @@ function ActionsDropdown({ decision, onEdit, onActivate, onDelete }: ActionsDrop
 // ============================================
 
 export function DeviceQuotaDecisionsTable() {
+  const router = useRouter()
   const {
     decisions,
     isLoading,
@@ -224,6 +229,11 @@ export function DeviceQuotaDecisionsTable() {
   // Confirmation dialogs state
   const [activateDialog, setActivateDialog] = React.useState<Decision | null>(null)
   const [deleteDialog, setDeleteDialog] = React.useState<Decision | null>(null)
+
+  // Navigate to decision detail page
+  const handleViewDetails = React.useCallback((decisionId: number) => {
+    router.push(`/device-quota/decisions/${decisionId}`)
+  }, [router])
 
   const handleActivateConfirm = React.useCallback(() => {
     if (!activateDialog) return
@@ -278,6 +288,7 @@ export function DeviceQuotaDecisionsTable() {
                   <TableCell>
                     <ActionsDropdown
                       decision={decision}
+                      onView={() => handleViewDetails(decision.id)}
                       onEdit={() => openEditDialog(decision)}
                       onActivate={() => setActivateDialog(decision)}
                       onDelete={() => setDeleteDialog(decision)}
@@ -308,6 +319,7 @@ export function DeviceQuotaDecisionsTable() {
             <MobileDecisionCard
               key={decision.id}
               decision={decision}
+              onView={() => handleViewDetails(decision.id)}
               onEdit={() => openEditDialog(decision)}
               onActivate={() => setActivateDialog(decision)}
               onDelete={() => setDeleteDialog(decision)}
