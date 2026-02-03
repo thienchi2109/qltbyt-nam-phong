@@ -48,6 +48,9 @@ next-env.d.ts
 firebase-debug.log
 firestore-debug.log
 
+# scripts output
+/scripts/output/
+
 # html backups from form migration
 *.html.backup
 
@@ -98,4 +101,3 @@ tmpclaude-*-cwd
 # Presentation workspace
 /workspace/
 create-pptx.js
-generate-sample-nhom-thiet-bi.ts
