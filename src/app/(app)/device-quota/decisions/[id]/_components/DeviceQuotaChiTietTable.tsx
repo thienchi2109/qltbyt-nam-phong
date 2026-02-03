@@ -26,34 +26,36 @@ interface ComplianceStatusProps {
 }
 
 function ComplianceStatus({ soLuongHienCo, soLuongDinhMuc, soLuongToiThieu }: ComplianceStatusProps) {
-  // Check if meets quota
-  const meetsQuota = soLuongHienCo >= soLuongDinhMuc
+  // Check if over quota (exceeds maximum allowed)
+  const isOverQuota = soLuongHienCo > soLuongDinhMuc
 
-  // Check if meets minimum (if specified)
-  const meetsMinimum = soLuongToiThieu !== null ? soLuongHienCo >= soLuongToiThieu : true
+  // Check if under minimum (if minimum is specified)
+  const isUnderMinimum = soLuongToiThieu !== null && soLuongHienCo < soLuongToiThieu
 
-  if (meetsQuota) {
+  // Compliant = within range [toi_thieu, dinh_muc]
+  if (isOverQuota) {
     return (
-      <Badge variant="default" className="bg-green-600 hover:bg-green-700">
-        <CheckCircle className="h-3 w-3 mr-1" />
-        Đạt định mức
-      </Badge>
-    )
-  }
-
-  if (meetsMinimum) {
-    return (
-      <Badge variant="outline" className="border-yellow-600 text-yellow-700">
+      <Badge variant="destructive" className="bg-orange-600 hover:bg-orange-700">
         <AlertCircle className="h-3 w-3 mr-1" />
-        Đạt tối thiểu
+        Vượt định mức
       </Badge>
     )
   }
 
+  if (isUnderMinimum) {
+    return (
+      <Badge variant="destructive">
+        <XCircle className="h-3 w-3 mr-1" />
+        Chưa đạt
+      </Badge>
+    )
+  }
+
+  // Within range: meets minimum (or no minimum) AND doesn't exceed maximum
   return (
-    <Badge variant="destructive">
-      <XCircle className="h-3 w-3 mr-1" />
-      Chưa đạt
+    <Badge variant="default" className="bg-green-600 hover:bg-green-700">
+      <CheckCircle className="h-3 w-3 mr-1" />
+      Đạt định mức
     </Badge>
   )
 }

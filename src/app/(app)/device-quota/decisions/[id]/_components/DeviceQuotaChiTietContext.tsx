@@ -150,6 +150,21 @@ export function DeviceQuotaChiTietProvider({ children, quyetDinhId }: DeviceQuot
     gcTime: 5 * 60 * 1000, // 5 minutes
   })
 
+  // Type for what the RPC actually returns (TABLE format)
+  type CategoryFromRpc = {
+    id: number
+    parent_id: number | null
+    ma_nhom: string
+    ten_nhom: string
+    phan_loai: string | null
+    don_vi_tinh: string | null
+    thu_tu_hien_thi: number
+    mo_ta: string | null
+    tu_khoa: string[] | null
+    level: number
+    so_luong_hien_co: number
+  }
+
   // Fetch categories for import template
   const {
     data: categoriesData,
@@ -157,11 +172,28 @@ export function DeviceQuotaChiTietProvider({ children, quyetDinhId }: DeviceQuot
   } = useQuery({
     queryKey: ['dinh_muc_nhom_list', { donViId }],
     queryFn: async () => {
-      const result = await callRpc<{ data: NhomThietBiForTemplate[]; total: number }>({
+      // RPC returns TABLE (array) directly, not { data, total }
+      const result = await callRpc<CategoryFromRpc[]>({
         fn: 'dinh_muc_nhom_list',
         args: { p_don_vi: donViId },
       })
-      return result?.data || []
+      const rows = result ?? []
+
+      // Build a set of parent IDs to determine which categories are leaves
+      const parentIds = new Set(rows.map(r => r.parent_id).filter(Boolean))
+
+      // Build a lookup map for parent names
+      const idToName = new Map(rows.map(r => [r.id, r.ten_nhom]))
+
+      // Transform to NhomThietBiForTemplate format
+      return rows.map((row): NhomThietBiForTemplate => ({
+        ma_nhom: row.ma_nhom,
+        ten_nhom: row.ten_nhom,
+        phan_loai: row.phan_loai,
+        don_vi_tinh: row.don_vi_tinh,
+        parent_name: row.parent_id ? (idToName.get(row.parent_id) ?? null) : null,
+        is_leaf: !parentIds.has(row.id),
+      }))
     },
     enabled: !!donViId,
     staleTime: 5 * 60 * 1000, // 5 minutes (categories don't change often)
@@ -171,7 +203,7 @@ export function DeviceQuotaChiTietProvider({ children, quyetDinhId }: DeviceQuot
   // Filter to leaf-only categories (for import)
   const leafCategories = React.useMemo(() => {
     if (!categoriesData) return []
-    return categoriesData.filter(cat => cat.is_leaf === true)
+    return categoriesData.filter(cat => cat.is_leaf)
   }, [categoriesData])
 
   // Cache invalidation
