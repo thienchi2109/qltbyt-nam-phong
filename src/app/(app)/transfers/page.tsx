@@ -52,7 +52,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
 import {
   Table,
   TableBody,
@@ -622,7 +621,8 @@ function TransfersPageContent({ user }: TransfersPageContentProps) {
                 onPaginationChange: setPagination,
               }}
               displayFormat={transferDisplayFormat}
-              responsive={{ stackLayoutAt: "md" }}
+              pageSizeOptions={[10, 20, 50, 100]}
+              responsive={{ showFirstLastAt: "sm", stackLayoutAt: "md" }}
               isLoading={isListLoading}
             />
           </CardFooter>
