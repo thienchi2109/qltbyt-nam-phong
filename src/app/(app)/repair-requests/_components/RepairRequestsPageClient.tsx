@@ -62,7 +62,6 @@ import { useRepairRequestUIHandlers } from "../_hooks/useRepairRequestUIHandlers
 import { useRepairRequestColumns, renderActions } from "./RepairRequestsColumns"
 import { RepairRequestsMobileList } from "./RepairRequestsMobileList"
 import { DataTablePagination } from "@/components/shared/DataTablePagination"
-import type { DisplayContext } from "@/components/shared/DataTablePagination/types"
 import {
   getUiFilters,
   setUiFilters,
@@ -74,11 +73,6 @@ import {
 // Auto department filter removed
 
 const REPAIR_REQUEST_ENTITY = { singular: "yêu cầu" } as const
-
-const repairRequestsDisplayFormat = (ctx: DisplayContext) => {
-  const entityLabel = ctx.entity.plural ?? ctx.entity.singular
-  return `Hiển thị ${ctx.startItem}-${ctx.endItem} trên tổng ${ctx.totalCount} ${entityLabel}`
-}
 
 /**
  * Inner component that consumes the RepairRequestsContext.
@@ -721,7 +715,7 @@ function RepairRequestsPageClientInner() {
                       pagination,
                       onPaginationChange: setPagination,
                     }}
-                    displayFormat={repairRequestsDisplayFormat}
+                    displayFormat="range-total"
                     responsive={{ stackLayoutAt: "md", showFirstLastAt: "lg" }}
                     isLoading={isLoading || isFetching}
                   />

@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { 
+import {
   ColumnDef,
   flexRender,
   getCoreRowModel,
@@ -12,13 +12,15 @@ import {
   SortingState,
   ColumnFiltersState
 } from "@tanstack/react-table"
-import { ArrowUpDown, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from "lucide-react"
+import { ArrowUpDown } from "lucide-react"
 import { format, parseISO } from "date-fns"
 import { vi } from "date-fns/locale"
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
+import { DataTablePagination } from "@/components/shared/DataTablePagination"
+import type { DisplayContext } from "@/components/shared/DataTablePagination/types"
 import {
   Table,
   TableBody,
@@ -41,6 +43,13 @@ import { InventoryItem } from "../hooks/use-inventory-data"
 interface InventoryTableProps {
   data: InventoryItem[]
   isLoading: boolean
+}
+
+const INVENTORY_ENTITY = { singular: "bản ghi" } as const
+
+const inventoryDisplayFormat = (ctx: DisplayContext) => {
+  const entityLabel = ctx.entity.plural ?? ctx.entity.singular
+  return `Hiển thị ${ctx.startItem} đến ${ctx.endItem} trong tổng số ${ctx.totalCount} ${entityLabel}`
 }
 
 export function InventoryTable({ data, isLoading }: InventoryTableProps) {
@@ -309,52 +318,14 @@ export function InventoryTable({ data, isLoading }: InventoryTableProps) {
         </div>
 
         {/* Pagination */}
-        <div className="flex items-center justify-between space-x-2 py-4">
-          <div className="text-sm text-muted-foreground">
-            Hiển thị {table.getState().pagination.pageIndex * table.getState().pagination.pageSize + 1} đến{" "}
-            {Math.min(
-              (table.getState().pagination.pageIndex + 1) * table.getState().pagination.pageSize,
-              table.getFilteredRowModel().rows.length
-            )}{" "}
-            trong tổng số {table.getFilteredRowModel().rows.length} bản ghi
-          </div>
-          <div className="flex items-center space-x-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => table.setPageIndex(0)}
-              disabled={!table.getCanPreviousPage()}
-            >
-              <ChevronsLeft className="h-4 w-4" />
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => table.previousPage()}
-              disabled={!table.getCanPreviousPage()}
-            >
-              <ChevronLeft className="h-4 w-4" />
-            </Button>
-            <div className="flex w-[100px] items-center justify-center text-sm font-medium">
-              Trang {table.getState().pagination.pageIndex + 1} / {table.getPageCount()}
-            </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => table.nextPage()}
-              disabled={!table.getCanNextPage()}
-            >
-              <ChevronRight className="h-4 w-4" />
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => table.setPageIndex(table.getPageCount() - 1)}
-              disabled={!table.getCanNextPage()}
-            >
-              <ChevronsRight className="h-4 w-4" />
-            </Button>
-          </div>
+        <div className="py-4">
+          <DataTablePagination
+            table={table}
+            totalCount={table.getFilteredRowModel().rows.length}
+            entity={INVENTORY_ENTITY}
+            displayFormat={inventoryDisplayFormat}
+            pageSizeOptions={[]}
+          />
         </div>
       </CardContent>
     </Card>
