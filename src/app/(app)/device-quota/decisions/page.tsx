@@ -41,19 +41,21 @@ export default function DeviceQuotaDecisionsPage() {
   // Show loading state for both loading and unauthenticated (while redirecting)
   if (status === "loading" || status === "unauthenticated") {
     return (
-      <div className="flex min-h-[50vh] items-center justify-center">
-        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+      <div className="flex items-center justify-center min-h-[50vh]">
+        <div className="text-center space-y-2">
+          <Loader2 className="h-8 w-8 mx-auto animate-spin text-muted-foreground" />
+        </div>
       </div>
     )
   }
 
   return (
     <DeviceQuotaDecisionsProvider>
-      <div className="container mx-auto py-6 space-y-6">
+      <div className="space-y-6">
         {/* Page header */}
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Quyết định định mức</h1>
-          <p className="text-muted-foreground">
+          <h1 className="text-xl md:text-2xl font-semibold">Quyết định định mức</h1>
+          <p className="text-sm text-muted-foreground">
             Quản lý các quyết định định mức thiết bị y tế
           </p>
         </div>

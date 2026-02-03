@@ -30,14 +30,16 @@ function DeviceQuotaChiTietContent() {
 
   return (
     <div className="space-y-6">
-      {/* Page Header with Toolbar */}
+      {/* Page Header */}
       <div>
-        <h1 className="text-3xl font-bold tracking-tight mb-2">Chi tiết định mức</h1>
-        <p className="text-muted-foreground mb-4">
+        <h1 className="text-xl md:text-2xl font-semibold mb-2">Chi tiết định mức</h1>
+        <p className="text-sm text-muted-foreground">
           Danh sách định mức thiết bị theo quyết định
         </p>
-        <DeviceQuotaChiTietToolbar />
       </div>
+
+      {/* Toolbar */}
+      <DeviceQuotaChiTietToolbar />
 
       {/* Table */}
       <DeviceQuotaChiTietTable />

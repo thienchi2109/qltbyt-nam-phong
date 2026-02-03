@@ -119,10 +119,10 @@ interface MobileDecisionCardProps {
 
 function MobileDecisionCard({ decision, onView, onEdit, onActivate, onDelete }: MobileDecisionCardProps) {
   return (
-    <div className="border rounded-lg p-4 space-y-3 bg-card">
+    <div className="border rounded-lg p-4 space-y-3 bg-card hover:shadow-md transition-shadow">
       <div className="flex items-start justify-between">
         <div className="space-y-1 flex-1">
-          <p className="font-medium">{decision.so_quyet_dinh}</p>
+          <p className="font-medium text-base">{decision.so_quyet_dinh}</p>
           <p className="text-sm text-muted-foreground">
             Ngày ban hành: {formatDate(decision.ngay_ban_hanh)}
           </p>
@@ -133,23 +133,23 @@ function MobileDecisionCard({ decision, onView, onEdit, onActivate, onDelete }: 
         <StatusBadge status={decision.trang_thai} />
       </div>
 
-      <div className="flex gap-2 flex-wrap">
-        <Button variant="outline" size="sm" onClick={onView}>
-          <Eye className="h-4 w-4" />
-          Xem chi tiết
+      <div className="flex gap-2 flex-wrap pt-2">
+        <Button variant="outline" size="sm" onClick={onView} className="flex-1">
+          <Eye className="mr-2 h-4 w-4" />
+          Xem
         </Button>
         {decision.trang_thai === "draft" && (
           <>
-            <Button variant="outline" size="sm" onClick={onEdit}>
-              <Edit className="h-4 w-4" />
+            <Button variant="outline" size="sm" onClick={onEdit} className="flex-1">
+              <Edit className="mr-2 h-4 w-4" />
               Sửa
             </Button>
             <Button variant="outline" size="sm" onClick={onActivate}>
-              <CheckCircle className="h-4 w-4" />
+              <CheckCircle className="mr-2 h-4 w-4" />
               Kích hoạt
             </Button>
-            <Button variant="outline" size="sm" onClick={onDelete}>
-              <Trash2 className="h-4 w-4" />
+            <Button variant="outline" size="sm" onClick={onDelete} className="text-destructive">
+              <Trash2 className="mr-2 h-4 w-4" />
               Xóa
             </Button>
           </>
@@ -179,12 +179,12 @@ function ActionsDropdown({ decision, onView, onEdit, onActivate, onDelete }: Act
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" size="icon" className="h-8 w-8">
           <MoreHorizontal className="h-4 w-4" />
-          <span className="sr-only">Mở menu</span>
+          <span className="sr-only">Mở menu hành động</span>
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
         <DropdownMenuItem onClick={onView}>
-          <Eye className="h-4 w-4" />
+          <Eye className="mr-2 h-4 w-4" />
           Xem chi tiết
         </DropdownMenuItem>
 
@@ -192,17 +192,17 @@ function ActionsDropdown({ decision, onView, onEdit, onActivate, onDelete }: Act
           <>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={onEdit}>
-              <Edit className="h-4 w-4" />
+              <Edit className="mr-2 h-4 w-4" />
               Chỉnh sửa
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={onActivate}>
-              <CheckCircle className="h-4 w-4" />
+              <CheckCircle className="mr-2 h-4 w-4" />
               Kích hoạt
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={onDelete} className="text-destructive focus:text-destructive">
-              <Trash2 className="h-4 w-4" />
+              <Trash2 className="mr-2 h-4 w-4" />
               Xóa
             </DropdownMenuItem>
           </>

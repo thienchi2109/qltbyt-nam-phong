@@ -38,7 +38,7 @@ export function DeviceQuotaDecisionsToolbar() {
   } = useDeviceQuotaDecisionsContext()
 
   return (
-    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-4">
+    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
       {/* Left: Filter controls */}
       <div className="flex items-center gap-2 w-full sm:w-auto">
         <Select
@@ -77,8 +77,8 @@ export function DeviceQuotaDecisionsToolbar() {
         size="sm"
         className="h-9 w-full sm:w-auto"
       >
-        <Plus className="h-4 w-4" />
-        <span className="ml-2">Tạo quyết định</span>
+        <Plus className="mr-2 h-4 w-4" />
+        Tạo quyết định
       </Button>
     </div>
   )

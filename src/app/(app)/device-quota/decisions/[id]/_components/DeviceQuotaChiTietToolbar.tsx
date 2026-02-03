@@ -122,7 +122,7 @@ export function DeviceQuotaChiTietToolbar() {
             <ArrowLeft className="h-5 w-5" />
           </Button>
           <div>
-            <h2 className="text-xl font-semibold">
+            <h2 className="text-lg font-semibold">
               {isDecisionLoading ? "Đang tải..." : decision?.so_quyet_dinh || "Không tìm thấy"}
             </h2>
             {decision && (
@@ -151,8 +151,8 @@ export function DeviceQuotaChiTietToolbar() {
             className="h-9 w-full sm:w-auto"
             aria-label="Tải xuống file mẫu Excel định mức"
           >
-            <Download className="h-4 w-4" />
-            <span className="ml-2">Tải mẫu Excel</span>
+            <Download className="mr-2 h-4 w-4" />
+            Tải mẫu Excel
           </Button>
 
           <Button
@@ -163,8 +163,8 @@ export function DeviceQuotaChiTietToolbar() {
             className="h-9 w-full sm:w-auto"
             aria-label="Nhập định mức từ file Excel"
           >
-            <Upload className="h-4 w-4" />
-            <span className="ml-2">Nhập từ Excel</span>
+            <Upload className="mr-2 h-4 w-4" />
+            Nhập từ Excel
           </Button>
         </div>
       )}

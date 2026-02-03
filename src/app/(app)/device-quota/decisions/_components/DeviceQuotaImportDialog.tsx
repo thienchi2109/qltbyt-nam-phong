@@ -474,7 +474,7 @@ export function DeviceQuotaImportDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        className="sm:max-w-[480px]"
+        className="sm:max-w-[500px]"
         onInteractOutside={(e) => e.preventDefault()}
         onCloseAutoFocus={resetState}
       >
@@ -486,7 +486,7 @@ export function DeviceQuotaImportDialog({
         </DialogHeader>
 
         <div className="grid gap-4 py-4">
-          <div className="grid w-full max-w-sm items-center gap-1.5">
+          <div className="grid w-full items-center gap-2">
             <Label htmlFor="quota-excel-file">Chọn file</Label>
             <Input
               id="quota-excel-file"
@@ -500,7 +500,7 @@ export function DeviceQuotaImportDialog({
 
           {error && (
             <div className="flex items-center gap-2 text-sm text-destructive bg-destructive/10 p-3 rounded-md">
-              <AlertTriangle className="h-4 w-4" aria-hidden="true" />
+              <AlertTriangle className="h-4 w-4 flex-shrink-0" aria-hidden="true" />
               <span>{error}</span>
             </div>
           )}
@@ -508,10 +508,10 @@ export function DeviceQuotaImportDialog({
           {validationErrors.length > 0 && (
             <div className="text-sm text-destructive bg-destructive/10 p-3 rounded-md">
               <div className="flex items-center gap-2 mb-2">
-                <AlertTriangle className="h-4 w-4" aria-hidden="true" />
+                <AlertTriangle className="h-4 w-4 flex-shrink-0" aria-hidden="true" />
                 <span className="font-medium">Dữ liệu không hợp lệ:</span>
               </div>
-              <ul className="list-disc list-inside space-y-1 ml-6">
+              <ul className="list-disc list-inside space-y-1 ml-6 max-h-40 overflow-y-auto">
                 {validationErrors.map((validationError, index) => (
                   <li key={index}>{validationError}</li>
                 ))}
@@ -525,7 +525,7 @@ export function DeviceQuotaImportDialog({
               role="status"
               aria-live="polite"
             >
-              <FileCheck className="h-4 w-4" aria-hidden="true" />
+              <FileCheck className="h-4 w-4 flex-shrink-0" aria-hidden="true" />
               <span>
                 Đã đọc file <strong>{selectedFile.name}</strong>. Tìm thấy <strong>{parsedData.length}</strong> bản ghi hợp lệ.
               </span>

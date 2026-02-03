@@ -111,11 +111,11 @@ interface MobileQuotaCardProps {
 
 function MobileQuotaCard({ detail, index }: MobileQuotaCardProps) {
   return (
-    <div className="border rounded-lg p-4 space-y-3 bg-card">
+    <div className="border rounded-lg p-4 space-y-3 bg-card hover:shadow-md transition-shadow">
       <div className="flex items-start justify-between">
         <div className="space-y-1 flex-1">
           <p className="text-sm text-muted-foreground">#{index + 1}</p>
-          <p className="font-medium">{detail.ten_nhom}</p>
+          <p className="font-medium text-base">{detail.ten_nhom}</p>
           <p className="text-xs text-muted-foreground">Mã: {detail.ma_nhom}</p>
         </div>
         <ComplianceStatus
@@ -145,9 +145,9 @@ function MobileQuotaCard({ detail, index }: MobileQuotaCardProps) {
       </div>
 
       {detail.ghi_chu && (
-        <div className="text-sm">
-          <p className="text-muted-foreground">Ghi chú</p>
-          <p className="text-xs">{detail.ghi_chu}</p>
+        <div className="pt-2 border-t">
+          <p className="text-xs text-muted-foreground">Ghi chú</p>
+          <p className="text-sm">{detail.ghi_chu}</p>
         </div>
       )}
     </div>
