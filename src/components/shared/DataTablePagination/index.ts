@@ -9,4 +9,11 @@ export const DataTablePagination = Object.assign(DataTablePaginationMain, {
   Navigation: DataTablePaginationNavigation,
 })
 
-export type { DataTablePaginationProps, EntityLabels, DisplayFormat } from "./types"
+export type {
+  DataTablePaginationProps,
+  EntityLabels,
+  DisplayFormat,
+  PaginationMode,
+  ResponsiveConfig,
+  DisplayContext,
+} from "./types"

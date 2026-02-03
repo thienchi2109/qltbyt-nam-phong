@@ -19,14 +19,14 @@ function renderDisplay(format: DisplayFormat, ctx: DisplayContext) {
 
   switch (format) {
     case "range-total":
-      return `Hien thi ${ctx.startItem}-${ctx.endItem} tren tong ${ctx.totalCount} ${entityLabel}`
+      return `Hiển thị ${ctx.startItem}-${ctx.endItem} trên tổng ${ctx.totalCount} ${entityLabel}`
     case "selection-count":
-      return `Da chon ${ctx.selectedCount ?? 0} tren ${ctx.totalCount} ${entityLabel}`
+      return `Đã chọn ${ctx.selectedCount ?? 0} trên ${ctx.totalCount} ${entityLabel}`
     case "compact":
       return `${currentCount} / ${ctx.totalCount} ${entityLabel}`
     case "count-total":
     default:
-      return `Hien thi ${currentCount} tren ${ctx.totalCount} ${entityLabel}`
+      return `Hiển thị ${currentCount} trên ${ctx.totalCount} ${entityLabel}`
   }
 }
 
@@ -50,7 +50,7 @@ export const DataTablePaginationInfo = React.memo(function DataTablePaginationIn
       )}
     >
       {content}
-      {showFilteredIndicator && isFiltered ? " (da loc)" : null}
+      {showFilteredIndicator && isFiltered ? " (đã lọc)" : null}
     </div>
   )
 })

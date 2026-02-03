@@ -30,15 +30,16 @@ export const DataTablePaginationSizeSelector = React.memo(function DataTablePagi
 
   return (
     <div className={cn("flex items-center space-x-2", showAtClass, className)}>
-      <p className="text-sm font-medium">So dong</p>
+      <p className="text-sm font-medium">Số dòng</p>
       <Select
         value={`${pageSize}`}
         onValueChange={(value) => {
           onPageSizeChange(Number(value))
         }}
         disabled={disabled}
+        aria-label="Chọn số dòng mỗi trang"
       >
-        <SelectTrigger className="h-8 w-[70px]">
+        <SelectTrigger className="h-8 w-20">
           <SelectValue placeholder={pageSize} />
         </SelectTrigger>
         <SelectContent side="top">

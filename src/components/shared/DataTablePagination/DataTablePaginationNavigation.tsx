@@ -7,10 +7,10 @@ import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 
 const DEFAULT_ARIA_LABELS = {
-  firstPage: "Den trang dau",
-  prevPage: "Trang truoc",
-  nextPage: "Trang tiep",
-  lastPage: "Den trang cuoi",
+  firstPage: "Đến trang đầu",
+  prevPage: "Trang trước",
+  nextPage: "Trang tiếp",
+  lastPage: "Đến trang cuối",
 }
 
 export interface DataTablePaginationNavigationProps {
@@ -68,7 +68,12 @@ export const DataTablePaginationNavigation = React.memo(function DataTablePagina
 
   return (
     <div className={cn("flex flex-col items-center gap-2", stackClass, className)}>
-      <div className="text-sm font-medium">
+      <div 
+        className="text-sm font-medium"
+        role="status"
+        aria-live="polite"
+        aria-atomic="true"
+      >
         Trang {currentPage} / {totalPages}
       </div>
       <div className="flex items-center space-x-2">
@@ -83,7 +88,7 @@ export const DataTablePaginationNavigation = React.memo(function DataTablePagina
         </Button>
         <Button
           variant="outline"
-          className="h-10 w-10 p-0 rounded-xl sm:h-8 sm:w-8"
+          className="h-11 w-11 p-0 rounded-xl sm:h-8 sm:w-8"
           onClick={onPreviousPage}
           disabled={isDisabled || !canPreviousPage}
         >
@@ -92,7 +97,7 @@ export const DataTablePaginationNavigation = React.memo(function DataTablePagina
         </Button>
         <Button
           variant="outline"
-          className="h-10 w-10 p-0 rounded-xl sm:h-8 sm:w-8"
+          className="h-11 w-11 p-0 rounded-xl sm:h-8 sm:w-8"
           onClick={onNextPage}
           disabled={isDisabled || !canNextPage}
         >

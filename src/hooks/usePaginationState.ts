@@ -46,7 +46,8 @@ export function usePaginationState({
     setPagination(prev => ({ ...prev, pageIndex: Math.max(0, page - 1) }))
   }, [])
 
-  return {
+  // Memoize return object to prevent unnecessary re-renders in consumers
+  return React.useMemo(() => ({
     pagination,
     setPagination,
     pageCount,
@@ -56,5 +57,5 @@ export function usePaginationState({
     goToPage,
     canPreviousPage: pagination.pageIndex > 0,
     canNextPage: pagination.pageIndex < pageCount - 1,
-  }
+  }), [pagination, pageCount, resetToFirstPage, setPageSize, goToPage])
 }
