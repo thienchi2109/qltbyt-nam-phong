@@ -33,7 +33,7 @@
  */
 
 import * as React from "react"
-import { Loader2, Upload, FileCheck, AlertTriangle } from "lucide-react"
+import { Loader2, FileCheck, AlertTriangle } from "lucide-react"
 import { readExcelFile, worksheetToJson } from "@/lib/excel-utils"
 import { callRpc } from "@/lib/rpc-client"
 import type { NhomThietBiForTemplate } from "@/lib/device-quota-excel"
@@ -331,6 +331,12 @@ export function DeviceQuotaImportDialog({
     }
   }, [resetState, validCategoryCodes])
 
+  // Handle dialog close
+  const handleClose = React.useCallback(() => {
+    resetState()
+    onOpenChange(false)
+  }, [resetState, onOpenChange])
+
   // Handle import submission
   const handleImport = React.useCallback(async () => {
     if (parsedData.length === 0) {
@@ -418,12 +424,7 @@ export function DeviceQuotaImportDialog({
     } finally {
       setIsSubmitting(false)
     }
-  }, [parsedData, validationErrors, quyetDinhId, toast, onSuccess])
-
-  const handleClose = React.useCallback(() => {
-    resetState()
-    onOpenChange(false)
-  }, [resetState, onOpenChange])
+  }, [parsedData, validationErrors, quyetDinhId, toast, onSuccess, handleClose])
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -466,8 +467,8 @@ export function DeviceQuotaImportDialog({
                 <span className="font-medium">Dữ liệu không hợp lệ:</span>
               </div>
               <ul className="list-disc list-inside space-y-1 ml-6">
-                {validationErrors.map((error, index) => (
-                  <li key={index}>{error}</li>
+                {validationErrors.map((validationError, index) => (
+                  <li key={index}>{validationError}</li>
                 ))}
               </ul>
             </div>

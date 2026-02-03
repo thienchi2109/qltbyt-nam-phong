@@ -143,6 +143,7 @@ export async function generateDeviceQuotaImportTemplate(
         type: 'whole',
         operator: 'greaterThan',
         showErrorMessage: true,
+        allowBlank: false, // Required field
         formulae: [0],
         errorTitle: 'Giá trị không hợp lệ',
         error: 'Số lượng định mức phải là số nguyên lớn hơn 0.',
