@@ -90,15 +90,44 @@ const HEADER_TO_DB_MAP: Record<string, string> = {
 // ============================================
 
 /**
- * Normalize value to integer
+ * Normalize value to integer.
+ * Returns null for empty/undefined values.
+ * Returns { error: string } for invalid formats (negative, decimal, non-numeric).
+ * Returns the integer value for valid inputs.
  */
-function normalizeInt(val: unknown): number | null {
+function normalizeInt(val: unknown): number | null | { error: string } {
   if (val === undefined || val === null || val === '') return null
-  if (typeof val === 'number') return Number.isFinite(val) ? Math.trunc(val) : null
-  const cleaned = String(val).replace(/\D+/g, '')
-  if (!cleaned) return null
-  const num = parseInt(cleaned, 10)
-  return Number.isFinite(num) ? num : null
+
+  // Handle numeric values directly
+  if (typeof val === 'number') {
+    if (!Number.isFinite(val)) return { error: 'không phải số hợp lệ' }
+    // Reject decimals - must be a whole number
+    if (!Number.isInteger(val)) return { error: 'phải là số nguyên (không có phần thập phân)' }
+    return val
+  }
+
+  // Handle string values - must be a valid positive integer format
+  const str = String(val).trim()
+  if (!str) return null
+
+  // Reject negative numbers explicitly
+  if (str.startsWith('-')) {
+    return { error: 'không được là số âm' }
+  }
+
+  // Reject decimal formats explicitly (1.5, 1,5, etc.)
+  if (/[.,]/.test(str)) {
+    return { error: 'phải là số nguyên (không có phần thập phân)' }
+  }
+
+  // Only allow digits (optionally with leading/trailing whitespace already trimmed)
+  if (!/^\d+$/.test(str)) {
+    return { error: 'chứa ký tự không hợp lệ' }
+  }
+
+  const num = parseInt(str, 10)
+  if (!Number.isFinite(num)) return { error: 'không phải số hợp lệ' }
+  return num
 }
 
 /**
@@ -119,24 +148,33 @@ function validateQuotaData(
     const rowNum = index + 2 // Excel row number (header is row 1)
 
     // Extract and normalize fields
-    const maNhom = row.ma_nhom as string | undefined
-    const soLuongDinhMuc = normalizeInt(row.so_luong_dinh_muc)
-    const soLuongToiThieu = normalizeInt(row.so_luong_toi_thieu)
+    // Coerce ma_nhom to string - Excel may store numeric codes as numbers
+    const rawMaNhom = row.ma_nhom
+    const maNhom = rawMaNhom === undefined || rawMaNhom === null
+      ? ''
+      : String(rawMaNhom).trim()
+    const soLuongDinhMucResult = normalizeInt(row.so_luong_dinh_muc)
+    const soLuongToiThieuResult = normalizeInt(row.so_luong_toi_thieu)
     const ghiChu = row.ghi_chu ? String(row.ghi_chu).trim() : null
 
     // Required field validation: ma_nhom
-    if (!maNhom || maNhom.trim() === '') {
+    if (!maNhom) {
       errors.push(`Dòng ${rowNum}: Thiếu mã nhóm thiết bị`)
       return
     }
 
-    const trimmedMaNhom = maNhom.trim()
-
     // Check if category code exists in valid categories
-    if (!validCategoryCodes.has(trimmedMaNhom)) {
-      errors.push(`Dòng ${rowNum}: Không tìm thấy mã nhóm "${trimmedMaNhom}" trong danh mục`)
+    if (!validCategoryCodes.has(maNhom)) {
+      errors.push(`Dòng ${rowNum}: Không tìm thấy mã nhóm "${maNhom}" trong danh mục`)
       return
     }
+
+    // Validate so_luong_dinh_muc format
+    if (soLuongDinhMucResult !== null && typeof soLuongDinhMucResult === 'object' && 'error' in soLuongDinhMucResult) {
+      errors.push(`Dòng ${rowNum}: Số lượng định mức ${soLuongDinhMucResult.error}`)
+      return
+    }
+    const soLuongDinhMuc = soLuongDinhMucResult as number | null
 
     // Required field validation: so_luong_dinh_muc
     if (soLuongDinhMuc === null) {
@@ -149,6 +187,13 @@ function validateQuotaData(
       errors.push(`Dòng ${rowNum}: Số lượng định mức phải lớn hơn 0`)
       return
     }
+
+    // Validate so_luong_toi_thieu format
+    if (soLuongToiThieuResult !== null && typeof soLuongToiThieuResult === 'object' && 'error' in soLuongToiThieuResult) {
+      errors.push(`Dòng ${rowNum}: Số lượng tối thiểu ${soLuongToiThieuResult.error}`)
+      return
+    }
+    const soLuongToiThieu = soLuongToiThieuResult as number | null
 
     // Validate so_luong_toi_thieu if provided
     if (soLuongToiThieu !== null) {
@@ -164,7 +209,7 @@ function validateQuotaData(
 
     // All validations passed
     validRecords.push({
-      ma_nhom: trimmedMaNhom,
+      ma_nhom: maNhom,
       so_luong_dinh_muc: soLuongDinhMuc,
       so_luong_toi_thieu: soLuongToiThieu,
       ghi_chu: ghiChu && ghiChu.length > 0 ? ghiChu : null,
