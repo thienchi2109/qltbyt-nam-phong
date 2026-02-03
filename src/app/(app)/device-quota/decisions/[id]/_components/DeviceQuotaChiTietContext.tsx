@@ -105,12 +105,6 @@ export function DeviceQuotaChiTietProvider({ children, quyetDinhId }: DeviceQuot
   const { data: session } = useSession()
   const user = session?.user as AuthUser | null
 
-  // Get tenant ID from user's session or decision
-  // Fallback to decision's tenant for global/admin users who have no don_vi claim
-  const donViId = user?.don_vi 
-    ? parseInt(user.don_vi, 10) 
-    : (decisionData?.don_vi_id ?? null)
-
   // Import dialog state
   const [isImportDialogOpen, setIsImportDialogOpen] = React.useState(false)
 
@@ -132,6 +126,15 @@ export function DeviceQuotaChiTietProvider({ children, quyetDinhId }: DeviceQuot
     staleTime: 30000, // 30 seconds
     gcTime: 5 * 60 * 1000, // 5 minutes
   })
+
+  // Get tenant ID from user's session or decision
+  // Fallback to decision's tenant for global/admin users who have no don_vi claim
+  const donViId = React.useMemo(() => {
+    if (user?.don_vi) {
+      return parseInt(user.don_vi, 10)
+    }
+    return decisionData?.don_vi_id ?? null
+  }, [user?.don_vi, decisionData?.don_vi_id])
 
   // Fetch quota line items
   const {
