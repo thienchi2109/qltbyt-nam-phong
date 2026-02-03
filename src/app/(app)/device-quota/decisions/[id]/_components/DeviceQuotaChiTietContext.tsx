@@ -105,8 +105,11 @@ export function DeviceQuotaChiTietProvider({ children, quyetDinhId }: DeviceQuot
   const { data: session } = useSession()
   const user = session?.user as AuthUser | null
 
-  // Get tenant ID from user
-  const donViId = user?.don_vi ? parseInt(user.don_vi, 10) : null
+  // Get tenant ID from user's session or decision
+  // Fallback to decision's tenant for global/admin users who have no don_vi claim
+  const donViId = user?.don_vi 
+    ? parseInt(user.don_vi, 10) 
+    : (decisionData?.don_vi_id ?? null)
 
   // Import dialog state
   const [isImportDialogOpen, setIsImportDialogOpen] = React.useState(false)

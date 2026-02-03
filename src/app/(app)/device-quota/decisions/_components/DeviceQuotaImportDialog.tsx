@@ -315,9 +315,9 @@ export function DeviceQuotaImportDialog({
       return
     }
 
-    // Validate file extension
-    if (!/\.(xlsx|xls|csv)$/i.test(file.name)) {
-      setError("File không hợp lệ. Vui lòng chọn file Excel (.xlsx, .xls, .csv).")
+    // Validate file extension (Excel only - XLSX/XLS)
+    if (!/\.(xlsx|xls)$/i.test(file.name)) {
+      setError("File không hợp lệ. Vui lòng chọn file Excel (.xlsx, .xls).")
       setSelectedFile(null)
       setParsedData([])
       setValidationErrors([])
@@ -492,7 +492,7 @@ export function DeviceQuotaImportDialog({
             <Input
               id="quota-excel-file"
               type="file"
-              accept=".xlsx, .xls, .csv"
+              accept=".xlsx, .xls"
               onChange={handleFileChange}
               ref={fileInputRef}
               disabled={isSubmitting}

@@ -97,8 +97,8 @@ export async function generateDeviceQuotaImportTemplate(
       { state: 'frozen', xSplit: 0, ySplit: 1 }
     ]
 
-    // Add row numbers (STT) automatically (column A)
-    for (let row = 2; row <= 100; row++) {
+    // Add row numbers (STT) automatically (column A) - up to MAX_TEMPLATE_ROWS
+    for (let row = 2; row <= MAX_TEMPLATE_ROWS; row++) {
       dataEntrySheet.getCell(row, 1).value = row - 1
       dataEntrySheet.getCell(row, 1).alignment = { horizontal: 'center' }
     }
