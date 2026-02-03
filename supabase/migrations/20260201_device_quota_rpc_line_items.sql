@@ -59,7 +59,7 @@ BEGIN
       'id', ct.id,
       'quyet_dinh_id', ct.quyet_dinh_id,
       'nhom_thiet_bi_id', ct.nhom_thiet_bi_id,
-      'so_luong_toi_da', ct.so_luong_toi_da,
+      'so_luong_dinh_muc', ct.so_luong_toi_da,  -- Alias for frontend compatibility
       'so_luong_toi_thieu', ct.so_luong_toi_thieu,
       'ghi_chu', ct.ghi_chu,
       'created_at', ct.created_at,
@@ -95,7 +95,7 @@ GRANT EXECUTE ON FUNCTION public.dinh_muc_chi_tiet_list(BIGINT, BIGINT) TO authe
 COMMENT ON FUNCTION public.dinh_muc_chi_tiet_list(BIGINT, BIGINT) IS
 'Lists quota line items for a decision with category details and current equipment counts.
 Returns: {data: [...], quyet_dinh_id, total}
-Each item includes: id, quyet_dinh_id, nhom_thiet_bi_id, so_luong_toi_da, so_luong_toi_thieu,
+Each item includes: id, quyet_dinh_id, nhom_thiet_bi_id, so_luong_dinh_muc, so_luong_toi_thieu,
   ghi_chu, ma_nhom, ten_nhom, phan_loai, don_vi_tinh, so_luong_hien_co
 Tenant isolation: global/admin can specify tenant, others see only their tenant decisions.';
 
