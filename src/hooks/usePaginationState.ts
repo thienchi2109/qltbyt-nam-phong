@@ -24,10 +24,8 @@ export function usePaginationState({
   }, [resetKey])
 
   // Bounds checking - ensure pageIndex doesn't exceed pageCount
-  // Handles: deletion of last items on page, filter reducing results
+  // Handles: deletion of last items on page, filter reducing results, empty state
   React.useEffect(() => {
-    // Guard against pageCount === 0 (empty state)
-    if (pageCount === 0) return
     if (pagination.pageIndex >= pageCount) {
       setPagination(prev => ({ ...prev, pageIndex: Math.max(0, pageCount - 1) }))
     }
@@ -38,7 +36,8 @@ export function usePaginationState({
   }, [])
 
   const setPageSize = React.useCallback((size: number) => {
-    setPagination({ pageIndex: 0, pageSize: size })
+    const safeSize = Math.max(1, size)
+    setPagination({ pageIndex: 0, pageSize: safeSize })
   }, [])
 
   const goToPage = React.useCallback((page: number) => {

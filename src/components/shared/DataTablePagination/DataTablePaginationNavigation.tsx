@@ -13,6 +13,11 @@ const DEFAULT_ARIA_LABELS = {
   lastPage: "Đến trang cuối",
 }
 
+const DEFAULT_LABELS = {
+  pageIndicator: "Trang",
+  pageSeparator: "/",
+}
+
 export interface DataTablePaginationNavigationProps {
   currentPage: number
   totalPages: number
@@ -32,6 +37,10 @@ export interface DataTablePaginationNavigationProps {
     nextPage?: string
     lastPage?: string
   }
+  labels?: {
+    pageIndicator?: string
+    pageSeparator?: string
+  }
   className?: string
 }
 
@@ -49,9 +58,11 @@ export const DataTablePaginationNavigation = React.memo(function DataTablePagina
   disabled,
   isLoading,
   ariaLabels,
+  labels,
   className,
 }: DataTablePaginationNavigationProps) {
-  const labels = { ...DEFAULT_ARIA_LABELS, ...ariaLabels }
+  const resolvedAriaLabels = { ...DEFAULT_ARIA_LABELS, ...ariaLabels }
+  const resolvedLabels = { ...DEFAULT_LABELS, ...labels }
   const isDisabled = disabled || isLoading
   const showFirstLastClass =
     showFirstLastAt === "md"
@@ -74,43 +85,47 @@ export const DataTablePaginationNavigation = React.memo(function DataTablePagina
         aria-live="polite"
         aria-atomic="true"
       >
-        Trang {currentPage} / {totalPages}
+        {resolvedLabels.pageIndicator} {currentPage} {resolvedLabels.pageSeparator} {totalPages}
       </div>
       <div className="flex items-center space-x-2">
         <Button
+          type="button"
           variant="outline"
           className={cn("hidden h-8 w-8 p-0", showFirstLastClass)}
           onClick={onFirstPage}
           disabled={isDisabled || !canPreviousPage}
         >
-          <span className="sr-only">{labels.firstPage}</span>
+          <span className="sr-only">{resolvedAriaLabels.firstPage}</span>
           <ChevronsLeft className="h-4 w-4" />
         </Button>
         <Button
+          type="button"
           variant="outline"
           className="h-11 w-11 p-0 rounded-xl sm:h-8 sm:w-8"
           onClick={onPreviousPage}
           disabled={isDisabled || !canPreviousPage}
         >
-          <span className="sr-only">{labels.prevPage}</span>
+          <span className="sr-only">{resolvedAriaLabels.prevPage}</span>
           <ChevronLeft className="h-5 w-5 sm:h-4 sm:w-4" />
         </Button>
         <Button
+          type="button"
           variant="outline"
           className="h-11 w-11 p-0 rounded-xl sm:h-8 sm:w-8"
           onClick={onNextPage}
           disabled={isDisabled || !canNextPage}
         >
-          <span className="sr-only">{labels.nextPage}</span>
+          <span className="sr-only">{resolvedAriaLabels.nextPage}</span>
           <ChevronRight className="h-5 w-5 sm:h-4 sm:w-4" />
         </Button>
         <Button
+          type="button"
           variant="outline"
           className={cn("hidden h-8 w-8 p-0", showFirstLastClass)}
           onClick={onLastPage}
           disabled={isDisabled || !canNextPage}
         >
-          <span className="sr-only">{labels.lastPage}</span>
+          <span className="sr-only">{resolvedAriaLabels.lastPage}</span>
           <ChevronsRight className="h-4 w-4" />
         </Button>
       </div>

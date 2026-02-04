@@ -311,9 +311,9 @@ export default function UsersPage() {
       const currentCount =
         ctx.totalCount > 0 ? Math.max(0, ctx.endItem - ctx.startItem + 1) : 0
 
-      return `Hiển thị ${currentCount} trên ${users.length} ${entityLabel}.`
+      return `Hiển thị ${currentCount} trên ${ctx.totalCount} ${entityLabel}.`
     },
-    [users.length]
+    []
   )
 
   // Don't render anything if not admin

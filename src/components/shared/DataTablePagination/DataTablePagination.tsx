@@ -31,7 +31,7 @@ export function DataTablePaginationMain<TData extends RowData>({
   const safeTotalCount = Math.max(0, totalCount)
   const isServer = paginationMode?.mode === "server"
   const isControlled = paginationMode?.mode === "controlled"
-  const tablePagination = table.getState().pagination
+  const tablePagination = table.getState().pagination ?? { pageIndex: 0, pageSize: 10 }
 
   const pageSize = paginationMode?.mode === "server"
     ? paginationMode.pageSize
