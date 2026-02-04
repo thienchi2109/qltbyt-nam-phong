@@ -630,6 +630,7 @@ export default function MaintenancePage() {
     openApproveDialog: operations.openApproveDialog,
     openRejectDialog: operations.openRejectDialog,
     openDeleteDialog: operations.openDeleteDialog,
+    setEditingPlan,
     canManagePlans,
     isRegionalLeader,
   })
