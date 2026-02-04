@@ -2,20 +2,7 @@
 
 import type { Table, ColumnDef } from "@tanstack/react-table"
 import { flexRender } from "@tanstack/react-table"
-import {
-  ChevronLeft,
-  ChevronRight,
-  ChevronsLeft,
-  ChevronsRight,
-} from "lucide-react"
-import { Button } from "@/components/ui/button"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
+import { DataTablePagination } from "@/components/shared/DataTablePagination"
 import { Skeleton } from "@/components/ui/skeleton"
 import {
   Table as UITable,
@@ -26,6 +13,8 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import type { MaintenancePlan } from "@/hooks/use-cached-maintenance"
+
+const PLAN_ENTITY = { singular: "kế hoạch" } as const
 
 export type PlansTableProps = {
   table: Table<MaintenancePlan>
@@ -60,6 +49,11 @@ export function PlansTable({
   displayCount,
   isFiltered,
 }: PlansTableProps) {
+  const displayFormat = () => {
+    const base = `Hiển thị ${displayCount} trên ${totalCount} kế hoạch`
+    return isFiltered ? `${base} (đã lọc)` : base
+  }
+
   return (
     <>
       <div className="rounded-md border">
@@ -116,77 +110,25 @@ export function PlansTable({
       </div>
 
       {/* Pagination Footer */}
-      <div className="flex items-center justify-between w-full mt-4">
-        <div className="flex-1 text-sm text-muted-foreground">
-          Hiển thị <strong>{displayCount}</strong> trên <strong>{totalCount}</strong> kế hoạch
-          {isFiltered && " (đã lọc)"}
-        </div>
-        <div className="flex items-center gap-x-6 lg:gap-x-8">
-          {/* Page size selector */}
-          <div className="flex items-center space-x-2">
-            <p className="text-sm font-medium">Số dòng</p>
-            <Select
-              value={`${pageSize}`}
-              onValueChange={(value) => onPageSizeChange(Number(value))}
-            >
-              <SelectTrigger className="h-8 w-[70px]">
-                <SelectValue placeholder={pageSize} />
-              </SelectTrigger>
-              <SelectContent side="top">
-                {[10, 20, 50, 100, 200].map((size) => (
-                  <SelectItem key={size} value={`${size}`}>
-                    {size}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* Page indicator */}
-          <div className="flex w-[100px] items-center justify-center text-sm font-medium">
-            Trang {currentPage} / {totalPages || 1}
-          </div>
-
-          {/* Navigation buttons */}
-          <div className="flex items-center space-x-2">
-            <Button
-              variant="outline"
-              className="hidden h-8 w-8 p-0 lg:flex"
-              onClick={() => onPageChange(1)}
-              disabled={currentPage === 1 || isLoading}
-            >
-              <span className="sr-only">Đến trang đầu</span>
-              <ChevronsLeft className="h-4 w-4" />
-            </Button>
-            <Button
-              variant="outline"
-              className="h-8 w-8 p-0"
-              onClick={() => onPageChange(Math.max(1, currentPage - 1))}
-              disabled={currentPage === 1 || isLoading}
-            >
-              <span className="sr-only">Trang trước</span>
-              <ChevronLeft className="h-4 w-4" />
-            </Button>
-            <Button
-              variant="outline"
-              className="h-8 w-8 p-0"
-              onClick={() => onPageChange(Math.min(totalPages, currentPage + 1))}
-              disabled={currentPage === totalPages || isLoading}
-            >
-              <span className="sr-only">Trang tiếp</span>
-              <ChevronRight className="h-4 w-4" />
-            </Button>
-            <Button
-              variant="outline"
-              className="hidden h-8 w-8 p-0 lg:flex"
-              onClick={() => onPageChange(totalPages)}
-              disabled={currentPage === totalPages || isLoading}
-            >
-              <span className="sr-only">Đến trang cuối</span>
-              <ChevronsRight className="h-4 w-4" />
-            </Button>
-          </div>
-        </div>
+      <div className="w-full mt-4">
+        <DataTablePagination
+          table={table}
+          totalCount={totalCount}
+          entity={PLAN_ENTITY}
+          paginationMode={{
+            mode: "server",
+            currentPage,
+            totalPages,
+            pageSize,
+            onPageChange,
+            onPageSizeChange,
+          }}
+          displayFormat={displayFormat}
+          pageSizeOptions={[10, 20, 50, 100, 200]}
+          responsive={{ showFirstLastAt: "lg" }}
+          isLoading={isLoading}
+          enabled
+        />
       </div>
     </>
   )
