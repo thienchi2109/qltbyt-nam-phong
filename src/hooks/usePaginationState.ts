@@ -8,8 +8,8 @@ export function usePaginationState({
   resetKey,
 }: UsePaginationStateOptions): UsePaginationStateReturn {
   const [pagination, setPagination] = React.useState({
-    pageIndex: initialPageIndex,
-    pageSize: initialPageSize,
+    pageIndex: Math.max(0, initialPageIndex),
+    pageSize: Math.max(1, initialPageSize),
   })
 
   const pageCount = Math.max(0, Math.ceil(totalCount / pagination.pageSize))
