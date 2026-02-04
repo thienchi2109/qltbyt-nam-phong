@@ -28,10 +28,6 @@ export function DataTablePaginationMain<TData extends RowData>({
   ariaLabels,
   className,
 }: DataTablePaginationProps<TData>) {
-  if (!enabled) {
-    return null
-  }
-
   const safeTotalCount = Math.max(0, totalCount)
   const isServer = paginationMode?.mode === "server"
   const isControlled = paginationMode?.mode === "controlled"
@@ -78,6 +74,7 @@ export function DataTablePaginationMain<TData extends RowData>({
 
   const resolvedPageSizeOptions = pageSizeOptions ?? DEFAULT_PAGE_SIZES
 
+  // All hooks must be called before any early return
   const setPageIndex = React.useCallback(
     (nextIndex: number) => {
       if (isServer && paginationMode?.mode === "server") {
@@ -127,6 +124,11 @@ export function DataTablePaginationMain<TData extends RowData>({
   const handleLastPage = React.useCallback(() => {
     setPageIndex(lastPageIndex)
   }, [setPageIndex, lastPageIndex])
+
+  // Early return AFTER all hooks
+  if (!enabled) {
+    return null
+  }
 
   const stackClass =
     stackLayoutAt === "md"
