@@ -60,8 +60,8 @@ import { useRepairRequestShortcuts } from "../_hooks/useRepairRequestShortcuts"
 import { useRepairRequestsContext } from "../_hooks/useRepairRequestsContext"
 import { useRepairRequestUIHandlers } from "../_hooks/useRepairRequestUIHandlers"
 import { useRepairRequestColumns, renderActions } from "./RepairRequestsColumns"
-import { RepairRequestsPagination } from "./RepairRequestsPagination"
 import { RepairRequestsMobileList } from "./RepairRequestsMobileList"
+import { DataTablePagination } from "@/components/shared/DataTablePagination"
 import {
   getUiFilters,
   setUiFilters,
@@ -72,6 +72,7 @@ import {
 } from "@/lib/rr-prefs"
 // Auto department filter removed
 
+const REPAIR_REQUEST_ENTITY = { singular: "yêu cầu" } as const
 
 /**
  * Inner component that consumes the RepairRequestsContext.
@@ -395,7 +396,7 @@ function RepairRequestsPageClientInner() {
   // Calculate page count from server total
   const pageCount = React.useMemo(() => {
     const total = repairRequestsRes?.total ?? 0;
-    return Math.max(1, Math.ceil(total / Math.max(pagination.pageSize, 1)));
+    return Math.max(0, Math.ceil(total / Math.max(pagination.pageSize, 1)));
   }, [repairRequestsRes?.total, pagination.pageSize]);
 
   // Reset pagination to first page when search, facility filter, or date range changes
@@ -705,10 +706,18 @@ function RepairRequestsPageClientInner() {
                   )}
                 </CardContent>
                 <CardFooter className="py-4">
-                  <RepairRequestsPagination
+                  <DataTablePagination
                     table={table}
-                    totalRequests={totalRequests}
-                    pagination={pagination}
+                    totalCount={totalRequests}
+                    entity={REPAIR_REQUEST_ENTITY}
+                    paginationMode={{
+                      mode: "controlled",
+                      pagination,
+                      onPaginationChange: setPagination,
+                    }}
+                    displayFormat="range-total"
+                    responsive={{ stackLayoutAt: "md", showFirstLastAt: "lg" }}
+                    isLoading={isLoading || isFetching}
                   />
                 </CardFooter>
               </Card>

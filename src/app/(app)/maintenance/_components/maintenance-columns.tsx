@@ -46,6 +46,7 @@ export interface PlanColumnOptions {
   openApproveDialog: (plan: MaintenancePlan) => void
   openRejectDialog: (plan: MaintenancePlan) => void
   openDeleteDialog: (plan: MaintenancePlan) => void
+  setEditingPlan: (plan: MaintenancePlan | null) => void
   canManagePlans: boolean
   isRegionalLeader: boolean
 }
@@ -70,6 +71,7 @@ export function usePlanColumns(options: PlanColumnOptions): ColumnDef<Maintenanc
     openApproveDialog,
     openRejectDialog,
     openDeleteDialog,
+    setEditingPlan,
     canManagePlans,
   } = options
 
@@ -189,7 +191,7 @@ export function usePlanColumns(options: PlanColumnOptions): ColumnDef<Maintenanc
                   )}
                   {canManage && (
                     <>
-                      <DropdownMenuItem onSelect={() => {/* setEditingPlan(plan) */}}>
+                      <DropdownMenuItem onSelect={() => setEditingPlan(plan)}>
                         <Edit className="mr-2 h-4 w-4" />
                         Sửa
                       </DropdownMenuItem>
