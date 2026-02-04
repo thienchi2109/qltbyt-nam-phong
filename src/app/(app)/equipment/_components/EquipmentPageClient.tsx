@@ -20,7 +20,8 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Skeleton } from "@/components/ui/skeleton"
 import { FilterBottomSheet } from "@/components/equipment/filter-bottom-sheet"
-import { EquipmentPagination } from "@/components/equipment/equipment-pagination"
+import { DataTablePagination } from "@/components/shared/DataTablePagination"
+import type { DisplayContext } from "@/components/shared/DataTablePagination/types"
 import { EquipmentToolbar } from "@/components/equipment/equipment-toolbar"
 import { TenantSelector } from "@/components/shared/TenantSelector"
 
@@ -30,6 +31,33 @@ import { EquipmentDialogs } from "../equipment-dialogs"
 import { EquipmentDialogProvider } from "./EquipmentDialogContext"
 import { EquipmentColumnsDialog } from "./EquipmentColumnsDialog"
 import { useEquipmentContext } from "../_hooks/useEquipmentContext"
+
+const EQUIPMENT_ENTITY = { singular: "thiết bị" } as const
+
+const equipmentDisplayFormat = (ctx: DisplayContext) => {
+  const entityLabel = ctx.entity.plural ?? ctx.entity.singular
+  const currentCount =
+    ctx.totalCount > 0 ? Math.max(0, ctx.endItem - ctx.startItem + 1) : 0
+
+  return (
+    <div className="space-y-1">
+      <div className="block sm:hidden">
+        <div>
+          <strong>{currentCount}</strong> / <strong>{ctx.totalCount}</strong>{" "}
+          {entityLabel}
+        </div>
+        <div>
+          Trang <strong>{ctx.currentPage}</strong> /{" "}
+          <strong>{ctx.totalPages}</strong>
+        </div>
+      </div>
+      <div className="hidden sm:block">
+        Hiển thị <strong>{currentCount}</strong> trên{" "}
+        <strong>{ctx.totalCount}</strong> {entityLabel}.
+      </div>
+    </div>
+  )
+}
 
 export function EquipmentPageClient() {
   const pageState = useEquipmentPage()
@@ -89,7 +117,6 @@ const EquipmentPageContent = React.memo(function EquipmentPageContent({
     clearPendingAction,
 
     // Data
-    data,
     total,
     isLoading,
     isFetching,
@@ -100,7 +127,6 @@ const EquipmentPageContent = React.memo(function EquipmentPageContent({
     columns,
     pagination,
     setPagination,
-    pageCount,
 
     // Filters
     searchTerm,
@@ -227,16 +253,30 @@ const EquipmentPageContent = React.memo(function EquipmentPageContent({
         </CardContent>
 
         <CardFooter className="flex flex-col gap-4 py-4 px-4 md:px-6 sm:flex-row sm:items-center sm:justify-between">
-          <EquipmentPagination
+          <DataTablePagination
             table={table}
-            pagination={pagination}
-            onPaginationChange={setPagination}
-            pageCount={pageCount}
-            currentCount={data.length}
             totalCount={total}
-            onExportData={handleExportData}
+            entity={EQUIPMENT_ENTITY}
+            paginationMode={{
+              mode: "controlled",
+              pagination,
+              onPaginationChange: setPagination,
+            }}
+            displayFormat={equipmentDisplayFormat}
+            responsive={{ showFirstLastAt: "sm", showSizeSelectorAt: "sm" }}
             isLoading={isLoading}
-            shouldFetchEquipment={shouldFetchEquipment}
+            enabled={shouldFetchEquipment}
+            slots={{
+              beforeNav: (
+                <button
+                  onClick={handleExportData}
+                  className="text-sm font-medium text-primary underline-offset-4 hover:underline disabled:text-muted-foreground disabled:no-underline disabled:cursor-not-allowed"
+                  disabled={table.getFilteredRowModel().rows.length === 0 || isLoading}
+                >
+                  Tải về file Excel
+                </button>
+              ),
+            }}
           />
         </CardFooter>
       </Card>
