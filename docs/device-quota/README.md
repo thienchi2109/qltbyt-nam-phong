@@ -35,8 +35,8 @@ This directory contains all planning and design documents for the Device Quota (
 - Compliance status: `đạt` (met), `thiếu` (below), `vượt` (exceeded)
 
 ### Implementation Phases
-1. **Database** - Schema with ltree, triggers, audit log
-2. **Backend** - RPC functions with tenant isolation
+1. **Database** - Schema with parent-child hierarchy, triggers, audit log
+2. **Backend** - RPC functions with tenant isolation (recursive CTE for hierarchy)
 3. **Frontend** - Tree-table, decision workflow, compliance dashboard
 4. **Testing** - Unit tests, accessibility audit
 
