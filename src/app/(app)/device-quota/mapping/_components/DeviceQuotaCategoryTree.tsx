@@ -111,11 +111,11 @@ function CategoryTreeEmpty() {
       </h3>
       <p className="text-sm text-muted-foreground mb-4 max-w-sm">
         Hiện tại chưa có danh mục định mức nào được thiết lập.
-        Vui lòng tạo quyết định định mức và danh mục trước khi gán thiết bị.
+        Vui lòng tạo danh mục trước khi gán thiết bị.
       </p>
       <Button variant="outline" size="sm" asChild>
-        <a href="/device-quota/decisions">
-          Quản lý quyết định định mức
+        <a href="/device-quota/categories">
+          Tạo danh mục
         </a>
       </Button>
     </div>

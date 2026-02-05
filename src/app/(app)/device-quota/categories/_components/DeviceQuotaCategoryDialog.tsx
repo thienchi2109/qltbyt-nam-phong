@@ -34,7 +34,7 @@ const categoryFormSchema = z.object({
   ma_nhom: z.string().min(1, "Mã nhóm không được để trống"),
   ten_nhom: z.string().min(1, "Tên nhóm không được để trống"),
   parent_id: z.string().optional(),
-  phan_loai: z.string().optional(),
+  phan_loai: z.union([z.literal(""), z.enum(["A", "B", "C", "D"])]).optional(),
   don_vi_tinh: z.string().optional(),
   thu_tu_hien_thi: z.coerce.number().int().min(0).default(0),
   mo_ta: z.string().optional(),
@@ -224,6 +224,8 @@ export function DeviceQuotaCategoryDialog() {
                         <SelectItem value="">Không xác định</SelectItem>
                         <SelectItem value="A">A</SelectItem>
                         <SelectItem value="B">B</SelectItem>
+                        <SelectItem value="C">C</SelectItem>
+                        <SelectItem value="D">D</SelectItem>
                       </SelectContent>
                     </Select>
                   </FormItem>

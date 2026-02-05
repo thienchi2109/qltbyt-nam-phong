@@ -6,6 +6,7 @@ import { useSession } from "next-auth/react"
 
 import { useToast } from "@/hooks/use-toast"
 import { callRpc } from "@/lib/rpc-client"
+import { translateRpcError } from "@/lib/error-translations"
 import type {
   CategoryDeleteState,
   CategoryDialogState,
@@ -101,7 +102,7 @@ function useCreateMutation(
       toast({
         variant: "destructive",
         title: "Tạo danh mục thất bại",
-        description: error.message,
+        description: translateRpcError(error.message),
       })
     },
   })
@@ -149,7 +150,7 @@ function useUpdateMutation(
       toast({
         variant: "destructive",
         title: "Lỗi cập nhật",
-        description: error.message,
+        description: translateRpcError(error.message),
       })
     },
     onSettled: () => {
@@ -193,7 +194,7 @@ function useDeleteMutation(
       toast({
         variant: "destructive",
         title: "Xóa danh mục thất bại",
-        description: error.message,
+        description: translateRpcError(error.message),
       })
     },
     onSettled: () => {

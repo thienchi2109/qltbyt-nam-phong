@@ -6,6 +6,11 @@ import { useRouter } from "next/navigation"
 import { AlertTriangle, Loader2, Shield } from "lucide-react"
 
 import { Card, CardContent } from "@/components/ui/card"
+import { DeviceQuotaCategoryProvider } from "./_components/DeviceQuotaCategoryContext"
+import { DeviceQuotaCategoryToolbar } from "./_components/DeviceQuotaCategoryToolbar"
+import { DeviceQuotaCategoryTree } from "./_components/DeviceQuotaCategoryTree"
+import { DeviceQuotaCategoryDialog } from "./_components/DeviceQuotaCategoryDialog"
+import { DeviceQuotaCategoryDeleteDialog } from "./_components/DeviceQuotaCategoryDeleteDialog"
 
 export default function DeviceQuotaCategoriesPage() {
   const { data: session, status } = useSession()
@@ -61,13 +66,23 @@ export default function DeviceQuotaCategoriesPage() {
   }
 
   return (
-    <div className="container mx-auto py-6 space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold">Danh mục thiết bị</h1>
-        <p className="text-sm text-muted-foreground">
-          Quản lý danh mục nhóm thiết bị phục vụ phân loại và định mức
-        </p>
+    <DeviceQuotaCategoryProvider>
+      <div className="container mx-auto py-6 space-y-6">
+        <div className="flex flex-col gap-4">
+          <div>
+            <h1 className="text-2xl font-bold">Danh mục thiết bị</h1>
+            <p className="text-sm text-muted-foreground">
+              Quản lý danh mục nhóm thiết bị phục vụ phân loại và định mức
+            </p>
+          </div>
+          <DeviceQuotaCategoryToolbar />
+        </div>
+
+        <DeviceQuotaCategoryTree />
+
+        <DeviceQuotaCategoryDialog />
+        <DeviceQuotaCategoryDeleteDialog />
       </div>
-    </div>
+    </DeviceQuotaCategoryProvider>
   )
 }

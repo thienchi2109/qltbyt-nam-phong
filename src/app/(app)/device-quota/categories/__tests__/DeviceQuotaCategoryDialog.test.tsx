@@ -1,3 +1,4 @@
+import React from 'react'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
@@ -64,5 +65,21 @@ describe('DeviceQuotaCategoryDialog', () => {
         expect.objectContaining({ ma_nhom: 'DM01', ten_nhom: 'Danh mục 1' })
       )
     })
+  })
+
+  it('includes phan_loai options C and D', () => {
+    mockUseContext.mockReturnValue({
+      dialogState: { mode: 'create' },
+      closeDialog: vi.fn(),
+      createMutation: { mutate: vi.fn(), isPending: false },
+      updateMutation: { mutate: vi.fn(), isPending: false },
+      categories: [],
+      getDescendantIds: vi.fn(() => new Set()),
+    } as any)
+
+    render(<DeviceQuotaCategoryDialog />)
+
+    expect(screen.getByRole('option', { name: 'C' })).toBeInTheDocument()
+    expect(screen.getByRole('option', { name: 'D' })).toBeInTheDocument()
   })
 })
