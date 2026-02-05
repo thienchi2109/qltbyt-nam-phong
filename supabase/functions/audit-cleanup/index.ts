@@ -1,16 +1,5 @@
 import { createClient } from 'jsr:@supabase/supabase-js@2'
 
-// Validate required environment variables at startup
-const CRON_SECRET = Deno.env.get('CRON_SECRET')
-const SUPABASE_URL = Deno.env.get('SUPABASE_URL')
-const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
-
-if (!CRON_SECRET || !SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
-  throw new Error(
-    'Missing required environment variables: CRON_SECRET, SUPABASE_URL, or SUPABASE_SERVICE_ROLE_KEY'
-  )
-}
-
 // Type definition for cleanup RPC response
 interface CleanupResult {
   deleted_count: number
@@ -19,7 +8,29 @@ interface CleanupResult {
 }
 
 Deno.serve(async (req: Request) => {
-  // 1. Validate cron secret (required)
+  // 1. Validate required environment variables (inside handler for graceful errors)
+  const CRON_SECRET = Deno.env.get('CRON_SECRET') ?? ''
+  const SUPABASE_URL = Deno.env.get('SUPABASE_URL') ?? ''
+  const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+
+  if (!CRON_SECRET || !SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
+    console.error('Missing required environment variables', {
+      hasCronSecret: !!CRON_SECRET,
+      hasSupabaseUrl: !!SUPABASE_URL,
+      hasServiceRoleKey: !!SUPABASE_SERVICE_ROLE_KEY,
+    })
+    return new Response(
+      JSON.stringify({
+        error: 'Server configuration error: missing required environment variables',
+      }),
+      {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' },
+      }
+    )
+  }
+
+  // 2. Validate cron secret (required)
   const authHeader = req.headers.get('Authorization')
   if (authHeader !== `Bearer ${CRON_SECRET}`) {
     console.error('Unauthorized cleanup attempt', {
@@ -29,18 +40,18 @@ Deno.serve(async (req: Request) => {
     return new Response('Unauthorized', { status: 401 })
   }
 
-  // 2. Only allow POST method
+  // 3. Only allow POST method
   if (req.method !== 'POST') {
     return new Response('Method not allowed', { status: 405 })
   }
 
-  // 3. Create service role client (NOT anon key)
+  // 4. Create service role client (NOT anon key)
   const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
     auth: { persistSession: false },
   })
 
-  // 4. Execute cleanup (no parameters - uses hardcoded retention)
-  const { data, error } = await supabase.rpc('audit_logs_cleanup_scheduled') as {
+  // 5. Execute cleanup (no parameters - uses hardcoded retention)
+  const { data, error } = (await supabase.rpc('audit_logs_cleanup_scheduled')) as {
     data: CleanupResult[] | null
     error: { message: string } | null
   }
@@ -53,7 +64,7 @@ Deno.serve(async (req: Request) => {
     })
   }
 
-  // 5. Log success
+  // 6. Log success
   console.log('Audit cleanup completed:', data)
 
   return new Response(JSON.stringify({ success: true, result: data }), {
