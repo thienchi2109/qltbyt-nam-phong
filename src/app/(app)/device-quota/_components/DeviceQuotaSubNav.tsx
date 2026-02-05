@@ -1,6 +1,5 @@
 "use client"
 
-import * as React from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { useSession } from "next-auth/react"
@@ -18,34 +17,51 @@ const BASE_ITEMS: NavItem[] = [
   { href: "/device-quota/mapping", label: "Phân loại" },
 ]
 
-const CATEGORIES_ITEM: NavItem = {
-  href: "/device-quota/categories",
-  label: "Danh mục",
+const ALL_ITEMS: NavItem[] = [
+  ...BASE_ITEMS,
+  { href: "/device-quota/categories", label: "Danh mục" },
+]
+
+function NavSkeleton() {
+  return (
+    <div className="border-b border-slate-200 bg-white">
+      <div className="container mx-auto px-4">
+        <div className="flex gap-2 py-3">
+          {[1, 2, 3].map((i) => (
+            <div
+              key={i}
+              className="h-9 w-24 animate-pulse rounded-full bg-slate-200"
+            />
+          ))}
+        </div>
+      </div>
+    </div>
+  )
 }
 
 export function DeviceQuotaSubNav() {
   const pathname = usePathname()
-  const { data: session } = useSession()
-  const user = session?.user as { role?: string } | undefined
+  const { data: session, status } = useSession()
 
+  // Handle loading state to avoid flash of incomplete navigation
+  if (status === "loading") {
+    return <NavSkeleton />
+  }
+
+  const user = session?.user
+  // Note: 'admin' is normalized to 'global' by API proxy, but session may still show 'admin'
   const canManageCategories =
     user?.role === "global" || user?.role === "admin" || user?.role === "to_qltb"
 
-  const items = React.useMemo(
-    () => (canManageCategories ? [...BASE_ITEMS, CATEGORIES_ITEM] : BASE_ITEMS),
-    [canManageCategories]
-  )
+  const items = canManageCategories ? ALL_ITEMS : BASE_ITEMS
 
-  const isActive = React.useCallback(
-    (href: string) => {
-      if (!pathname) return false
-      if (href === "/device-quota/dashboard") {
-        return pathname === "/device-quota" || pathname === href || pathname.startsWith(href + "/")
-      }
-      return pathname === href || pathname.startsWith(href + "/")
-    },
-    [pathname]
-  )
+  const isActive = (href: string) => {
+    if (!pathname) return false
+    if (href === "/device-quota/dashboard") {
+      return pathname === "/device-quota" || pathname === href || pathname.startsWith(href + "/")
+    }
+    return pathname === href || pathname.startsWith(href + "/")
+  }
 
   return (
     <div className="border-b border-slate-200 bg-white">
