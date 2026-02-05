@@ -31,10 +31,10 @@ import { useDeviceQuotaCategoryContext } from "../_hooks/useDeviceQuotaCategoryC
 import type { CategoryFormInput, CategoryListItem } from "../_types/categories"
 
 const categoryFormSchema = z.object({
-  ma_nhom: z.string().min(1, "Mã nhóm không được để trống"),
-  ten_nhom: z.string().min(1, "Tên nhóm không được để trống"),
+  ma_nhom: z.string().trim().min(1, "Mã nhóm không được để trống"),
+  ten_nhom: z.string().trim().min(1, "Tên nhóm không được để trống"),
   parent_id: z.string().optional(),
-  phan_loai: z.union([z.literal(""), z.enum(["A", "B", "C", "D"])]).optional(),
+  phan_loai: z.union([z.literal(""), z.enum(["A", "B"])]).optional(),
   don_vi_tinh: z.string().optional(),
   thu_tu_hien_thi: z.coerce.number().int().min(0).default(0),
   mo_ta: z.string().optional(),
@@ -53,7 +53,7 @@ function buildPayload(values: CategoryFormValues): CategoryFormInput {
     ma_nhom: values.ma_nhom.trim(),
     ten_nhom: values.ten_nhom.trim(),
     parent_id: normalizeParentId(values.parent_id),
-    phan_loai: values.phan_loai ? (values.phan_loai as "A" | "B" | "C" | "D") : null,
+    phan_loai: values.phan_loai ? (values.phan_loai as "A" | "B") : null,
     don_vi_tinh: values.don_vi_tinh?.trim() || null,
     thu_tu_hien_thi: values.thu_tu_hien_thi ?? 0,
     mo_ta: values.mo_ta?.trim() || null,
@@ -93,7 +93,7 @@ export function DeviceQuotaCategoryDialog() {
         ma_nhom: editingCategory.ma_nhom,
         ten_nhom: editingCategory.ten_nhom,
         parent_id: editingCategory.parent_id ? String(editingCategory.parent_id) : "",
-        phan_loai: editingCategory.phan_loai || "",
+        phan_loai: editingCategory.phan_loai === "A" || editingCategory.phan_loai === "B" ? editingCategory.phan_loai : "",
         don_vi_tinh: editingCategory.don_vi_tinh || "",
         thu_tu_hien_thi: editingCategory.thu_tu_hien_thi ?? 0,
         mo_ta: editingCategory.mo_ta || "",
@@ -224,8 +224,6 @@ export function DeviceQuotaCategoryDialog() {
                         <SelectItem value="">Không xác định</SelectItem>
                         <SelectItem value="A">A</SelectItem>
                         <SelectItem value="B">B</SelectItem>
-                        <SelectItem value="C">C</SelectItem>
-                        <SelectItem value="D">D</SelectItem>
                       </SelectContent>
                     </Select>
                   </FormItem>
