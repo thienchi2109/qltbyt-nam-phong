@@ -18,7 +18,7 @@
  */
 
 import * as React from "react"
-import { FileSpreadsheet, Loader2, Upload, AlertTriangle, CheckCircle2 } from "lucide-react"
+import { FileSpreadsheet, Loader2, Upload, AlertTriangle, CheckCircle2, AlertCircle } from "lucide-react"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 
 import { Button } from "@/components/ui/button"
@@ -71,31 +71,48 @@ interface ImportResult {
 type ImportStatus = "idle" | "parsing" | "parsed" | "success" | "error"
 
 // ============================================
-// Header Mapping
+// Header Mapping with Diacritic Support
 // ============================================
 
-// Map Vietnamese Excel headers to database field names
-// Supports both with and without diacritics for flexibility
+/**
+ * Normalize Vietnamese text by removing diacritics for header matching.
+ * This allows Excel files with either diacritic or non-diacritic headers to work.
+ */
+function normalizeVietnamese(text: string): string {
+  return text
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "") // Remove diacritics
+    .replace(/đ/gi, "d") // Handle đ separately
+    .toLowerCase()
+    .trim()
+}
+
+// Map normalized Vietnamese headers to database field names
+// Supports both with and without diacritics
 const HEADER_TO_DB_MAP: Record<string, string> = {
-  "STT": "_stt", // Ignored
-  "Ma nhom": "ma_nhom",
-  "Ten nhom": "ten_nhom",
-  "Ma nhom cha": "parent_ma_nhom",
-  "Phan loai": "phan_loai",
-  "Don vi tinh": "don_vi_tinh",
-  "Thu tu hien thi": "thu_tu_hien_thi",
-  "Mo ta": "mo_ta",
+  "stt": "_stt", // Ignored
+  "ma nhom": "ma_nhom",
+  "ten nhom": "ten_nhom",
+  "ma nhom cha": "parent_ma_nhom",
+  "phan loai": "phan_loai",
+  "don vi tinh": "don_vi_tinh",
+  "thu tu hien thi": "thu_tu_hien_thi",
+  "mo ta": "mo_ta",
 }
 
 // ============================================
 // Validation
 // ============================================
 
+// ma_nhom format pattern: XX, XX.XX, XX.XX.XX, XX.XX.XX.XX (1-4 levels, alphanumeric)
+const MA_NHOM_PATTERN = /^[A-Za-z0-9]+(\.[A-Za-z0-9]+){0,3}$/
+
 function validateParsedRows(
   rows: Record<string, unknown>[],
   existingCodes: Set<string>
-): { validRows: ParsedCategoryRow[]; errors: string[] } {
+): { validRows: ParsedCategoryRow[]; errors: string[]; warnings: string[] } {
   const errors: string[] = []
+  const warnings: string[] = []
   const validRows: ParsedCategoryRow[] = []
   const seenCodes = new Set<string>()
 
@@ -103,6 +120,7 @@ function validateParsedRows(
     const row = rows[i]
     const rowNum = i + 2 // Excel row (1-indexed, header is row 1)
     const rowErrors: string[] = []
+    const rowWarnings: string[] = []
 
     // Get values
     const maNhom = String(row.ma_nhom ?? "").trim()
@@ -118,7 +136,7 @@ function validateParsedRows(
       continue
     }
 
-    // Required field validation
+    // Required field validation (blocking errors)
     if (!maNhom) {
       rowErrors.push(`Dong ${rowNum}: Thieu ma nhom (bat buoc)`)
     }
@@ -126,17 +144,22 @@ function validateParsedRows(
       rowErrors.push(`Dong ${rowNum}: Thieu ten nhom (bat buoc)`)
     }
 
-    // Duplicate check within file
+    // ma_nhom format validation (blocking error)
+    if (maNhom && !MA_NHOM_PATTERN.test(maNhom)) {
+      rowErrors.push(`Dong ${rowNum}: Ma nhom "${maNhom}" khong dung dinh dang (VD: XX, XX.XX, XX.XX.XX)`)
+    }
+
+    // Duplicate check within file (blocking error)
     if (maNhom && seenCodes.has(maNhom)) {
       rowErrors.push(`Dong ${rowNum}: Ma nhom "${maNhom}" bi trung trong file`)
     }
 
-    // Duplicate check against existing categories
+    // Duplicate check against existing categories (warning - server will handle per-item)
     if (maNhom && existingCodes.has(maNhom)) {
-      rowErrors.push(`Dong ${rowNum}: Ma nhom "${maNhom}" da ton tai trong he thong`)
+      rowWarnings.push(`Dong ${rowNum}: Ma nhom "${maNhom}" da ton tai - se bi bo qua`)
     }
 
-    // Classification validation (only A or B per TT 08/2019)
+    // Classification validation (blocking error for invalid values)
     if (phanLoai && phanLoai !== "A" && phanLoai !== "B") {
       rowErrors.push(`Dong ${rowNum}: Phan loai phai la "A" hoac "B", khong phai "${phanLoai}"`)
     }
@@ -154,7 +177,10 @@ function validateParsedRows(
 
     if (rowErrors.length > 0) {
       errors.push(...rowErrors)
+      // Row with errors won't be added to validRows
     } else if (maNhom) {
+      // Add warnings but still include the row
+      warnings.push(...rowWarnings)
       seenCodes.add(maNhom)
       validRows.push({
         ma_nhom: maNhom,
@@ -168,7 +194,7 @@ function validateParsedRows(
     }
   }
 
-  return { validRows, errors }
+  return { validRows, errors, warnings }
 }
 
 // ============================================
@@ -188,6 +214,7 @@ export function DeviceQuotaCategoryImportDialog() {
   const [parsedRows, setParsedRows] = React.useState<ParsedCategoryRow[]>([])
   const [parseError, setParseError] = React.useState<string | null>(null)
   const [validationErrors, setValidationErrors] = React.useState<string[]>([])
+  const [validationWarnings, setValidationWarnings] = React.useState<string[]>([])
   const [importResult, setImportResult] = React.useState<ImportResult | null>(null)
 
   // Existing category codes for duplicate detection
@@ -205,6 +232,7 @@ export function DeviceQuotaCategoryImportDialog() {
         setParsedRows([])
         setParseError(null)
         setValidationErrors([])
+        setValidationWarnings([])
         setImportResult(null)
         if (fileInputRef.current) {
           fileInputRef.current.value = ""
@@ -223,6 +251,7 @@ export function DeviceQuotaCategoryImportDialog() {
     setStatus("parsing")
     setParseError(null)
     setValidationErrors([])
+    setValidationWarnings([])
     setParsedRows([])
 
     try {
@@ -240,12 +269,14 @@ export function DeviceQuotaCategoryImportDialog() {
         throw new Error("Khong tim thay du lieu trong file Excel")
       }
 
-      // Transform headers to database field names
+      // Transform headers to database field names (with diacritic normalization)
       const transformedData = jsonData.map(row => {
         const newRow: Record<string, unknown> = {}
         for (const header in row) {
-          if (Object.prototype.hasOwnProperty.call(HEADER_TO_DB_MAP, header)) {
-            const dbKey = HEADER_TO_DB_MAP[header]
+          // Normalize header for matching
+          const normalizedHeader = normalizeVietnamese(header)
+          if (Object.prototype.hasOwnProperty.call(HEADER_TO_DB_MAP, normalizedHeader)) {
+            const dbKey = HEADER_TO_DB_MAP[normalizedHeader]
             const rawVal = row[header]
             let value: unknown = (rawVal === "" || rawVal === undefined) ? null : rawVal
 
@@ -260,10 +291,22 @@ export function DeviceQuotaCategoryImportDialog() {
         return newRow
       })
 
-      const { validRows, errors } = validateParsedRows(transformedData, existingCodes)
+      // Check if any rows have data (after transformation)
+      const hasData = transformedData.some(row => 
+        row.ma_nhom !== undefined || row.ten_nhom !== undefined
+      )
+      
+      if (!hasData) {
+        throw new Error(
+          "Khong nhan dang duoc cot du lieu. Hay kiem tra ten cot trong file Excel phai khop voi mau (VD: 'Ma nhom', 'Ten nhom')."
+        )
+      }
+
+      const { validRows, errors, warnings } = validateParsedRows(transformedData, existingCodes)
 
       setParsedRows(validRows)
       setValidationErrors(errors)
+      setValidationWarnings(warnings)
       setStatus("parsed")
     } catch (error) {
       console.error("Failed to parse Excel file:", error)
@@ -321,9 +364,9 @@ export function DeviceQuotaCategoryImportDialog() {
     closeImportDialog()
   }
 
-  // Determine if import button should be enabled
-  const canImport =
-    status === "parsed" && parsedRows.length > 0 && validationErrors.length === 0
+  // Allow import if there are valid rows (even if there are warnings or errors for other rows)
+  // Errors mean some rows were skipped, warnings mean some rows may fail on server
+  const canImport = status === "parsed" && parsedRows.length > 0
 
   // Mark selectedFile as used to avoid lint warning
   void selectedFile
@@ -372,11 +415,11 @@ export function DeviceQuotaCategoryImportDialog() {
             </Alert>
           )}
 
-          {/* Validation errors */}
+          {/* Validation errors (blocking - rows were skipped) */}
           {validationErrors.length > 0 && (
             <Alert variant="destructive">
               <AlertTriangle className="h-4 w-4" />
-              <AlertTitle>Loi du lieu ({validationErrors.length})</AlertTitle>
+              <AlertTitle>Loi du lieu - {validationErrors.length} dong bi bo qua</AlertTitle>
               <AlertDescription>
                 <ScrollArea className="h-32 mt-2">
                   <ul className="list-disc list-inside space-y-1 text-sm">
@@ -394,13 +437,51 @@ export function DeviceQuotaCategoryImportDialog() {
             </Alert>
           )}
 
-          {/* Parsed successfully */}
-          {status === "parsed" && parsedRows.length > 0 && validationErrors.length === 0 && (
-            <Alert>
-              <CheckCircle2 className="h-4 w-4 text-green-600" />
-              <AlertTitle>San sang nhap</AlertTitle>
-              <AlertDescription>
+          {/* Validation warnings (non-blocking - rows included but may fail on server) */}
+          {validationWarnings.length > 0 && (
+            <Alert className="border-yellow-200 bg-yellow-50">
+              <AlertCircle className="h-4 w-4 text-yellow-600" />
+              <AlertTitle className="text-yellow-800">Canh bao ({validationWarnings.length})</AlertTitle>
+              <AlertDescription className="text-yellow-700">
+                <ScrollArea className="h-24 mt-2">
+                  <ul className="list-disc list-inside space-y-1 text-sm">
+                    {validationWarnings.slice(0, 10).map((warning, idx) => (
+                      <li key={idx}>{warning}</li>
+                    ))}
+                    {validationWarnings.length > 10 && (
+                      <li className="text-yellow-600">
+                        ... va {validationWarnings.length - 10} canh bao khac
+                      </li>
+                    )}
+                  </ul>
+                </ScrollArea>
+              </AlertDescription>
+            </Alert>
+          )}
+
+          {/* Parsed successfully - show valid row count */}
+          {status === "parsed" && parsedRows.length > 0 && (
+            <Alert className={validationErrors.length > 0 ? "border-yellow-200 bg-yellow-50" : ""}>
+              <CheckCircle2 className={`h-4 w-4 ${validationErrors.length > 0 ? "text-yellow-600" : "text-green-600"}`} />
+              <AlertTitle className={validationErrors.length > 0 ? "text-yellow-800" : ""}>
+                {validationErrors.length > 0 ? "San sang nhap (mot phan)" : "San sang nhap"}
+              </AlertTitle>
+              <AlertDescription className={validationErrors.length > 0 ? "text-yellow-700" : ""}>
                 Da doc duoc {parsedRows.length} danh muc hop le tu file Excel.
+                {validationErrors.length > 0 && (
+                  <span className="text-red-600"> ({validationErrors.length} dong bi bo qua do loi.)</span>
+                )}
+              </AlertDescription>
+            </Alert>
+          )}
+
+          {/* No valid rows after parsing */}
+          {status === "parsed" && parsedRows.length === 0 && validationErrors.length > 0 && (
+            <Alert variant="destructive">
+              <AlertTriangle className="h-4 w-4" />
+              <AlertTitle>Khong co du lieu hop le</AlertTitle>
+              <AlertDescription>
+                Tat ca cac dong trong file deu co loi. Vui long sua file va thu lai.
               </AlertDescription>
             </Alert>
           )}

@@ -104,105 +104,93 @@ BEGIN
   PERFORM pg_advisory_xact_lock(hashtext('nhom_thiet_bi_import_' || v_effective_donvi::text));
 
   -- ========================================================================
-  -- VALIDATION: Check for duplicate ma_nhom within batch
+  -- VALIDATION: Check for duplicate ma_nhom within batch (hard-stop)
   -- ========================================================================
-  IF EXISTS (
-    SELECT 1
-    FROM jsonb_array_elements(p_items) AS item
-    GROUP BY item->>'ma_nhom'
-    HAVING COUNT(*) > 1
-  ) THEN
-    RAISE EXCEPTION 'Duplicate category codes (ma_nhom) found within import batch';
-  END IF;
+  DECLARE
+    v_dup_codes TEXT;
+  BEGIN
+    SELECT string_agg(ma_nhom, ', ')
+    INTO v_dup_codes
+    FROM (
+      SELECT elem->>'ma_nhom' AS ma_nhom
+      FROM jsonb_array_elements(p_items) AS elem
+      GROUP BY elem->>'ma_nhom'
+      HAVING COUNT(*) > 1
+    ) dups;
 
-  -- ========================================================================
-  -- VALIDATION: Check for duplicates against existing categories
-  -- ========================================================================
-  IF EXISTS (
-    SELECT 1
-    FROM jsonb_array_elements(p_items) AS item
-    INNER JOIN public.nhom_thiet_bi n
-      ON n.ma_nhom = item->>'ma_nhom'
-      AND n.don_vi_id = v_effective_donvi
-  ) THEN
-    -- Get the conflicting codes for error message
-    DECLARE
-      v_conflicts TEXT;
-    BEGIN
-      SELECT string_agg(item->>'ma_nhom', ', ')
-      INTO v_conflicts
-      FROM jsonb_array_elements(p_items) AS item
-      INNER JOIN public.nhom_thiet_bi n
-        ON n.ma_nhom = item->>'ma_nhom'
-        AND n.don_vi_id = v_effective_donvi;
-
-      RAISE EXCEPTION 'Category codes already exist: %', v_conflicts;
-    END;
-  END IF;
+    IF v_dup_codes IS NOT NULL THEN
+      RAISE EXCEPTION 'Duplicate category codes within batch: %', v_dup_codes;
+    END IF;
+  END;
 
   -- ========================================================================
   -- CYCLE DETECTION: Check for cycles in parent references within batch
   -- ========================================================================
   -- Build adjacency list and detect cycles using recursive CTE
-  WITH batch_items AS (
-    SELECT
-      item->>'ma_nhom' AS ma_nhom,
-      item->>'parent_ma_nhom' AS parent_ma_nhom
-    FROM jsonb_array_elements(p_items) AS item
-    WHERE item->>'parent_ma_nhom' IS NOT NULL
-      AND item->>'parent_ma_nhom' <> ''
-  ),
-  RECURSIVE cycle_check AS (
-    -- Base: start from each item
-    SELECT
-      ma_nhom AS start_node,
-      ma_nhom AS current_node,
-      ARRAY[ma_nhom] AS path,
-      false AS is_cycle
-    FROM batch_items
+  DECLARE
+    v_has_cycle BOOLEAN := FALSE;
+  BEGIN
+    WITH batch_items AS (
+      SELECT
+        elem->>'ma_nhom' AS ma_nhom,
+        elem->>'parent_ma_nhom' AS parent_ma_nhom
+      FROM jsonb_array_elements(p_items) AS elem
+      WHERE elem->>'parent_ma_nhom' IS NOT NULL
+        AND elem->>'parent_ma_nhom' <> ''
+    ),
+    RECURSIVE cycle_check AS (
+      -- Base: start from each item
+      SELECT
+        ma_nhom AS start_node,
+        ma_nhom AS current_node,
+        ARRAY[ma_nhom] AS path,
+        false AS is_cycle
+      FROM batch_items
 
-    UNION ALL
+      UNION ALL
 
-    -- Recursive: follow parent links
-    SELECT
-      cc.start_node,
-      bi.parent_ma_nhom,
-      cc.path || bi.parent_ma_nhom,
-      bi.parent_ma_nhom = ANY(cc.path) AS is_cycle
-    FROM cycle_check cc
-    INNER JOIN batch_items bi ON bi.ma_nhom = cc.current_node
-    WHERE NOT cc.is_cycle
-      AND array_length(cc.path, 1) < v_len + 1  -- Prevent infinite recursion
-  )
-  SELECT 1 INTO v_idx FROM cycle_check WHERE is_cycle LIMIT 1;
+      -- Recursive: follow parent links
+      SELECT
+        cc.start_node,
+        bi.parent_ma_nhom,
+        cc.path || bi.parent_ma_nhom,
+        bi.parent_ma_nhom = ANY(cc.path) AS is_cycle
+      FROM cycle_check cc
+      INNER JOIN batch_items bi ON bi.ma_nhom = cc.current_node
+      WHERE NOT cc.is_cycle
+        AND array_length(cc.path, 1) < v_len + 1  -- Prevent infinite recursion
+    )
+    SELECT TRUE INTO v_has_cycle FROM cycle_check WHERE is_cycle LIMIT 1;
 
-  IF FOUND THEN
-    RAISE EXCEPTION 'Cycle detected in parent references within batch';
-  END IF;
+    IF v_has_cycle THEN
+      RAISE EXCEPTION 'Cycle detected in parent references within batch';
+    END IF;
+  END;
 
   -- ========================================================================
   -- TOPOLOGICAL SORT: Process parents before children
   -- ========================================================================
   -- Sort by depth of ma_nhom code (number of dots + 1) as proxy for hierarchy
   -- Also preserve original index for error reporting
+  -- NOTE: jsonb_array_elements returns jsonb directly, WITH ORDINALITY adds ordinality column
   WITH indexed_items AS (
     SELECT
-      item,
-      ordinality - 1 AS original_idx,
+      elem AS item,
+      (row_number() OVER ()) - 1 AS original_idx,
       -- Depth based on ma_nhom structure (count dots)
-      array_length(string_to_array(item->>'ma_nhom', '.'), 1) AS depth,
+      array_length(string_to_array(elem->>'ma_nhom', '.'), 1) AS depth,
       -- If parent_ma_nhom references existing DB category, depth = 0
       -- If parent_ma_nhom references batch item, need to process parent first
       CASE
-        WHEN item->>'parent_ma_nhom' IS NULL OR item->>'parent_ma_nhom' = '' THEN 0
+        WHEN elem->>'parent_ma_nhom' IS NULL OR elem->>'parent_ma_nhom' = '' THEN 0
         WHEN EXISTS (
           SELECT 1 FROM public.nhom_thiet_bi n
-          WHERE n.ma_nhom = item->>'parent_ma_nhom'
+          WHERE n.ma_nhom = elem->>'parent_ma_nhom'
             AND n.don_vi_id = v_effective_donvi
         ) THEN 0  -- Parent exists in DB, can process early
         ELSE 1  -- Parent is in batch, need topological order
       END AS needs_batch_parent
-    FROM jsonb_array_elements(p_items) WITH ORDINALITY AS item
+    FROM jsonb_array_elements(p_items) AS elem
   )
   SELECT jsonb_agg(
     jsonb_set(item, '{_original_idx}', to_jsonb(original_idx))
@@ -240,6 +228,14 @@ BEGIN
         RAISE EXCEPTION 'Classification (phan_loai) must be A or B, got: %', v_phan_loai;
       END IF;
 
+      -- Check for duplicate against existing DB (per-item, allows partial success)
+      IF EXISTS (
+        SELECT 1 FROM public.nhom_thiet_bi
+        WHERE ma_nhom = v_ma_nhom AND don_vi_id = v_effective_donvi
+      ) THEN
+        RAISE EXCEPTION 'Category code already exists: %', v_ma_nhom;
+      END IF;
+
       -- Resolve parent_id from parent_ma_nhom
       v_parent_id := NULL;
       IF v_parent_ma_nhom IS NOT NULL THEN
@@ -259,7 +255,7 @@ BEGIN
         END IF;
       END IF;
 
-      -- Insert the category
+      -- Insert the category (phan_loai defaults to NULL to match CRUD)
       INSERT INTO public.nhom_thiet_bi (
         don_vi_id,
         parent_id,
@@ -276,7 +272,7 @@ BEGIN
         v_parent_id,
         v_ma_nhom,
         v_ten_nhom,
-        COALESCE(v_phan_loai, 'B'),
+        v_phan_loai,  -- NULL if not provided (matches CRUD)
         COALESCE(v_don_vi_tinh, 'Cái'),
         COALESCE(v_thu_tu_hien_thi, 0),
         v_mo_ta,
@@ -335,14 +331,16 @@ COMMENT ON FUNCTION public.dinh_muc_nhom_bulk_import(JSONB, BIGINT) IS
 Input: p_items = [{ma_nhom, ten_nhom, parent_ma_nhom?, phan_loai?, don_vi_tinh?, thu_tu_hien_thi?, mo_ta?}]
 Features:
   - Topological sort: parents processed before children
-  - Cycle detection: prevents circular parent references
+  - Cycle detection: prevents circular parent references (batch-level)
+  - Duplicate within batch: hard-stop (data quality issue)
+  - Duplicate against existing: per-item (allows partial success)
   - Parent resolution: looks up parent_ma_nhom in DB and within batch
   - Per-item error recovery: one failure does not abort others
   - Advisory lock: prevents concurrent imports
 Validates:
   - ma_nhom and ten_nhom required
   - phan_loai must be NULL, A, or B (per TT 08/2019)
-  - No duplicate ma_nhom within batch or existing categories
+  - No duplicate ma_nhom within batch
   - parent_ma_nhom must exist (in DB or earlier in batch)
 Returns:
   {success, inserted, failed, total, details: [{index, success, ma_nhom, id?, error?}]}
