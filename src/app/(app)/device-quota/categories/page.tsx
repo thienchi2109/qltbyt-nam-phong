@@ -11,6 +11,7 @@ import { DeviceQuotaCategoryToolbar } from "./_components/DeviceQuotaCategoryToo
 import { DeviceQuotaCategoryTree } from "./_components/DeviceQuotaCategoryTree"
 import { DeviceQuotaCategoryDialog } from "./_components/DeviceQuotaCategoryDialog"
 import { DeviceQuotaCategoryDeleteDialog } from "./_components/DeviceQuotaCategoryDeleteDialog"
+import { DeviceQuotaCategoryImportDialog } from "./_components/DeviceQuotaCategoryImportDialog"
 
 export default function DeviceQuotaCategoriesPage() {
   const { data: session, status } = useSession()
@@ -50,7 +51,7 @@ export default function DeviceQuotaCategoriesPage() {
                   Truy cập bị hạn chế
                 </h2>
                 <p className="text-gray-600 text-sm">
-                  Tính năng "Danh mục thiết bị" chỉ dành cho quản trị viên hoặc bộ phận quản lý thiết bị.
+                  Tính năng &quot;Danh mục thiết bị&quot; chỉ dành cho quản trị viên hoặc bộ phận quản lý thiết bị.
                   Bạn không có quyền truy cập vào trang này.
                 </p>
               </div>
@@ -82,6 +83,7 @@ export default function DeviceQuotaCategoriesPage() {
 
         <DeviceQuotaCategoryDialog />
         <DeviceQuotaCategoryDeleteDialog />
+        <DeviceQuotaCategoryImportDialog />
       </div>
     </DeviceQuotaCategoryProvider>
   )
