@@ -88,7 +88,7 @@ BEGIN
   ) VALUES (
     c_retention_days,
     v_cutoff_date,
-    v_deleted::integer,
+    v_deleted,  -- bigint, matches audit_cleanup_log.deleted_count
     v_oldest,
     'system-cron'
   );

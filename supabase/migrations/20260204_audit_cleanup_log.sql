@@ -4,7 +4,7 @@ CREATE TABLE IF NOT EXISTS public.audit_cleanup_log (
   executed_at timestamptz NOT NULL DEFAULT now(),
   retention_days integer NOT NULL,
   cutoff_date timestamptz NOT NULL,
-  deleted_count integer NOT NULL,
+  deleted_count bigint NOT NULL,
   oldest_remaining timestamptz,
   executed_by text NOT NULL DEFAULT 'system-cron'
 );
