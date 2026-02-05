@@ -66,10 +66,14 @@ BEGIN
     WHERE ctid IN (SELECT ctid FROM to_delete);
 
     GET DIAGNOSTICS v_batch_deleted = ROW_COUNT;
+
+    -- Exit early if nothing to delete (don't count as a batch)
+    EXIT WHEN v_batch_deleted = 0;
+
     v_deleted := v_deleted + v_batch_deleted;
     v_batches := v_batches + 1;
 
-    EXIT WHEN v_batch_deleted = 0 OR v_batches >= c_max_batches;
+    EXIT WHEN v_batches >= c_max_batches;
 
     -- Yield to other transactions (50ms)
     PERFORM pg_sleep(0.05);
