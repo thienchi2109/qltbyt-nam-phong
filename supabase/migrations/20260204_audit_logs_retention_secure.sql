@@ -34,11 +34,23 @@ BEGIN
   END IF;
 
   -- SECURITY: Check bulk deletion threshold (50% max per run)
+  -- Exception: First run is allowed to exceed threshold (detected by empty audit_cleanup_log)
   SELECT COUNT(*) INTO v_total_count FROM audit_logs;
   SELECT COUNT(*) INTO v_to_delete_count FROM audit_logs WHERE created_at < v_cutoff_date;
 
   IF v_total_count > 0 AND v_to_delete_count > (v_total_count * 0.5) THEN
-    RAISE EXCEPTION 'Bulk deletion blocked: % records exceeds 50%% threshold. Review manually.', v_to_delete_count;
+    -- Check if this is the first cleanup run (audit_cleanup_log is empty)
+    IF EXISTS (SELECT 1 FROM audit_cleanup_log LIMIT 1) THEN
+      -- Not first run - enforce threshold
+      RAISE EXCEPTION 'Bulk deletion blocked: % of % records (>50%%) would be deleted. '
+        'This safety check prevents accidental mass deletion. '
+        'If intentional, review records manually and run in smaller batches.',
+        v_to_delete_count, v_total_count;
+    ELSE
+      -- First run - allow initial cleanup with warning in logs
+      RAISE NOTICE 'First-time cleanup: allowing % of % records (>50%%) to be deleted.',
+        v_to_delete_count, v_total_count;
+    END IF;
   END IF;
 
   -- Batch delete with SKIP LOCKED to avoid blocking concurrent operations

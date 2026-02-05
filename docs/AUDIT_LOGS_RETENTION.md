@@ -84,7 +84,8 @@ The system implements:
 3. **50% Bulk Deletion Threshold**
    - Cleanup is blocked if >50% of records would be deleted
    - Prevents accidental mass data loss
-   - Requires manual review for large deletions
+   - **Exception**: First run (empty `audit_cleanup_log`) bypasses this check
+   - This allows initial deployment to systems with existing data
 
 4. **Advisory Lock**
    - `pg_advisory_xact_lock` prevents concurrent execution
@@ -290,9 +291,13 @@ WHERE relname = 'audit_logs';
 
 ### Cleanup Function Fails with "Bulk deletion blocked"
 
-**Cause**: More than 50% of records would be deleted.
+**Cause**: More than 50% of records would be deleted, AND this is not the first cleanup run.
 
-**Solution**: This is a safety feature. Review the data manually:
+**Note**: The first cleanup run (detected by empty `audit_cleanup_log`) is allowed to exceed
+the 50% threshold. This handles the common case of deploying to systems with existing data
+where all records older than 1 year need to be cleaned up initially.
+
+**If this happens on subsequent runs**, it indicates unusual data growth patterns:
 
 ```sql
 -- Check the distribution
@@ -303,9 +308,19 @@ FROM audit_logs
 GROUP BY 1
 ORDER BY 1;
 
--- If deletion is intentional, temporarily increase threshold
--- (requires modifying the function - not recommended)
+-- Check if cleanup has run before
+SELECT COUNT(*) as cleanup_runs FROM audit_cleanup_log;
 ```
+
+**Solutions**:
+1. If cleanup has never run (`cleanup_runs = 0`), the function should allow it automatically
+2. If cleanup HAS run before but is now blocked, investigate why so many old records exist
+3. For intentional large deletions, you can manually delete in batches:
+   ```sql
+   -- Delete oldest month manually (repeat as needed)
+   DELETE FROM audit_logs
+   WHERE created_at < (SELECT MIN(created_at) + INTERVAL '1 month' FROM audit_logs);
+   ```
 
 ### Edge Function Returns 401 Unauthorized
 
