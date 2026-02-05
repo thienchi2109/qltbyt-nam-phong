@@ -95,10 +95,17 @@ The system implements:
    - Table is append-only (UPDATE/DELETE revoked from all roles)
    - Required for healthcare compliance auditing
 
-6. **Not in RPC Whitelist**
+6. **Not in RPC Whitelist (Intentional - System Function)**
    - Function is NOT added to `ALLOWED_FUNCTIONS` in `/api/rpc/[fn]/route.ts`
    - Cannot be called through the application's RPC proxy
-   - Only accessible via service_role from Edge Function
+   - Only accessible via `service_role` from Edge Function (backend-to-backend)
+
+   **Note**: This does NOT violate the project's RPC-only security model. The RPC-only
+   architecture in CLAUDE.md applies to **user-initiated requests** (Client → callRpc →
+   RPC proxy). System functions like audit cleanup are **backend-initiated** via cron/Edge
+   Function with `SUPABASE_SERVICE_ROLE_KEY`, which is the correct pattern for privileged
+   operations that should never be user-callable. Adding this to the whitelist would
+   REDUCE security by exposing a destructive function to authenticated users.
 
 ## Deployment Instructions
 
