@@ -1,8 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { Loader2, Upload, FileCheck, AlertTriangle } from "lucide-react"
-import { readExcelFile, worksheetToJson } from "@/lib/excel-utils"
+import { AlertTriangle } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -13,13 +12,21 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
 import { useToast } from "@/hooks/use-toast"
 import { callRpc } from "@/lib/rpc-client"
 import { normalizeDateForImport } from "@/lib/date-utils"
 import type { Equipment } from "@/lib/data"
 import { equipmentStatusOptions } from "@/components/equipment/equipment-table-columns"
+import {
+  useBulkImportState,
+  BulkImportFileInput,
+  BulkImportErrorAlert,
+  BulkImportValidationErrors,
+  BulkImportSuccessMessage,
+  BulkImportSubmitButton,
+  buildImportToastMessage,
+} from "@/components/bulk-import"
+import type { BulkImportRpcResult, ValidationResult } from "@/components/bulk-import"
 
 // Required fields for equipment validation
 export const REQUIRED_FIELDS = {
@@ -33,9 +40,11 @@ export const REQUIRED_FIELDS = {
 const VALID_STATUSES: Set<string> = new Set(equipmentStatusOptions);
 
 // Validation function for equipment data
-export const validateEquipmentData = (data: Partial<Equipment>[], headerMapping: Record<string, string>) => {
+export const validateEquipmentData = (
+  data: Partial<Equipment>[]
+): ValidationResult<Partial<Equipment>> => {
   const errors: string[] = [];
-  const validationResults: { isValid: boolean; missingFields: string[] }[] = [];
+  const validRecords: Partial<Equipment>[] = [];
 
   data.forEach((item, index) => {
     const missingFields: string[] = [];
@@ -50,27 +59,29 @@ export const validateEquipmentData = (data: Partial<Equipment>[], headerMapping:
 
     // Validate status value if provided
     const status = item.tinh_trang_hien_tai;
-    if (status && typeof status === 'string') {
-      const trimmedStatus = status.trim();
-      if (trimmedStatus !== '' && !VALID_STATUSES.has(trimmedStatus)) {
-        errors.push(`Dòng ${index + 2}: Tình trạng "${trimmedStatus}" không hợp lệ. Phải là một trong: ${equipmentStatusOptions.join(', ')}`);
-      }
+    const hasInvalidStatus = Boolean(
+      status &&
+      typeof status === 'string' &&
+      status.trim() !== '' &&
+      !VALID_STATUSES.has(status.trim())
+    )
+    if (hasInvalidStatus) {
+      errors.push(`Dòng ${index + 2}: Tình trạng "${status}" không hợp lệ. Phải là một trong: ${equipmentStatusOptions.join(', ')}`);
     }
-
-    validationResults.push({
-      isValid: missingFields.length === 0,
-      missingFields
-    });
 
     if (missingFields.length > 0) {
       errors.push(`Dòng ${index + 2}: Thiếu ${missingFields.join(', ')}`);
+    }
+
+    if (missingFields.length === 0 && !hasInvalidStatus) {
+      validRecords.push(item)
     }
   });
 
   return {
     isValid: errors.length === 0,
     errors,
-    validationResults
+    validRecords: errors.length === 0 ? data : validRecords
   };
 };
 
@@ -146,101 +157,75 @@ interface ImportEquipmentDialogProps {
 
 export function ImportEquipmentDialog({ open, onOpenChange, onSuccess }: ImportEquipmentDialogProps) {
   const { toast } = useToast()
-  const [isSubmitting, setIsSubmitting] = React.useState(false)
-  const [selectedFile, setSelectedFile] = React.useState<File | null>(null)
-  const [parsedData, setParsedData] = React.useState<Partial<Equipment>[]>([])
-  const [error, setError] = React.useState<string | null>(null)
-  const [validationErrors, setValidationErrors] = React.useState<string[]>([])
   const [rejectedDatesCount, setRejectedDatesCount] = React.useState(0)
-  const fileInputRef = React.useRef<HTMLInputElement>(null)
+  const rejectedDatesRef = React.useRef(0)
 
-  const resetState = () => {
-    setIsSubmitting(false)
-    setSelectedFile(null)
-    setParsedData([])
-    setError(null)
-    setValidationErrors([])
+  const transformRow = React.useCallback((raw: Record<string, unknown>): Partial<Equipment> => {
+    const newRow: Partial<Equipment> = {}
+
+    Object.entries(raw).forEach(([key, rawVal]) => {
+      let value: unknown = rawVal
+      if (dateFields.has(key)) {
+        const dateResult = normalizeDateForImport(rawVal)
+        value = dateResult.value
+        if (dateResult.rejected) {
+          rejectedDatesRef.current += 1
+        }
+      } else if (intFields.has(key)) {
+        value = normalizeInt(rawVal)
+      } else if (numberFields.has(key)) {
+        value = normalizeNumber(rawVal)
+      } else if (key === 'phan_loai_theo_nd98') {
+        value = normalizeClassification(rawVal)
+      } else if (typeof rawVal === 'string') {
+        value = rawVal.trim() === '' ? null : rawVal.trim()
+      }
+      newRow[key as keyof Equipment] = value as never
+    })
+
+    return newRow
+  }, [])
+
+  const validateData = React.useCallback((data: Partial<Equipment>[]) => {
+    return validateEquipmentData(data)
+  }, [])
+
+  const {
+    state,
+    fileInputRef,
+    handleFileChange,
+    resetState,
+    setSubmitting,
+    setSuccess,
+    setSubmitError,
+  } = useBulkImportState<Partial<Equipment>, Partial<Equipment>>({
+    headerMap: headerToDbKeyMap,
+    transformRow,
+    validateData,
+    acceptedExtensions: '.xlsx, .xls, .csv',
+  })
+
+  const { status, selectedFile, parsedData, parseError, validationErrors } = state
+  const isSubmitting = status === 'submitting'
+
+  const resetAll = React.useCallback(() => {
+    rejectedDatesRef.current = 0
     setRejectedDatesCount(0)
-    if (fileInputRef.current) {
-        fileInputRef.current.value = ""
-    }
-  }
+    resetState()
+  }, [resetState])
 
-  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0]
-    if (!file) {
-      resetState()
-      return
-    }
+  const handleFileChangeWithWarnings = React.useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
+    rejectedDatesRef.current = 0
+    await handleFileChange(event)
+    setRejectedDatesCount(rejectedDatesRef.current)
+  }, [handleFileChange])
 
-    if (!/\.(xlsx|xls|csv)$/i.test(file.name)) {
-        setError("File không hợp lệ. Vui lòng chọn một file Excel (.xlsx, .xls, .csv).")
-        setSelectedFile(null)
-        setParsedData([])
-        return
-    }
+  const handleClose = React.useCallback(() => {
+    resetAll()
+    onOpenChange(false)
+  }, [resetAll, onOpenChange])
 
-    setSelectedFile(file)
-    setError(null)
-
-    try {
-        const workbook = await readExcelFile(file)
-        const sheetName = workbook.SheetNames[0]
-        const worksheet = workbook.Sheets[sheetName]
-        const json = await worksheetToJson(worksheet)
-
-        if (json.length === 0) {
-            setError("File không có dữ liệu. Vui lòng kiểm tra lại file của bạn.")
-            setParsedData([])
-            return
-        }
-
-        let rejectedDates = 0
-        const transformedData = json.map(row => {
-            const newRow: Partial<Equipment> = {}
-            for (const header in row) {
-                if (Object.prototype.hasOwnProperty.call(headerToDbKeyMap, header)) {
-                    const dbKey = headerToDbKeyMap[header];
-                    const rawVal = row[header]
-                    let v: any = (rawVal === "" || rawVal === undefined) ? null : rawVal
-                    if (dateFields.has(dbKey)) {
-                      const dateResult = normalizeDateForImport(rawVal)
-                      v = dateResult.value
-                      if (dateResult.rejected) rejectedDates++
-                    } else if (intFields.has(dbKey)) {
-                      v = normalizeInt(rawVal)
-                    } else if (numberFields.has(dbKey)) {
-                      v = normalizeNumber(rawVal)
-                    } else if (dbKey === 'phan_loai_theo_nd98') {
-                      v = normalizeClassification(rawVal)
-                    } else if (typeof rawVal === 'string') {
-                      v = rawVal.trim() === '' ? null : String(rawVal).trim()
-                    }
-                    // @ts-ignore
-                    newRow[dbKey] = v
-                }
-            }
-            return newRow
-        })
-
-        setRejectedDatesCount(rejectedDates)
-
-        // Validate the transformed data
-        const validation = validateEquipmentData(transformedData, headerToDbKeyMap);
-        if (!validation.isValid) {
-            setValidationErrors(validation.errors);
-        } else {
-            setValidationErrors([]);
-        }
-
-        setParsedData(transformedData)
-    } catch (err: any) {
-        setError("Đã có lỗi xảy ra khi đọc file: " + err.message)
-        setParsedData([])
-    }
-  }
-
-  const handleImport = async () => {
+  const handleImport = React.useCallback(async () => {
     if (parsedData.length === 0) {
       toast({
         variant: "destructive",
@@ -250,7 +235,6 @@ export function ImportEquipmentDialog({ open, onOpenChange, onSuccess }: ImportE
       return
     }
 
-    // Check validation before importing
     if (validationErrors.length > 0) {
       toast({
         variant: "destructive",
@@ -260,7 +244,7 @@ export function ImportEquipmentDialog({ open, onOpenChange, onSuccess }: ImportE
       return
     }
 
-    setIsSubmitting(true)
+    setSubmitting()
     try {
       // Clean undefined keys for RPC payloads.
       const dataToInsert = parsedData.map(item => {
@@ -273,117 +257,43 @@ export function ImportEquipmentDialog({ open, onOpenChange, onSuccess }: ImportE
         return cleanItem;
       });
 
-      // Bulk insert via RPC proxy for performance; DB sets don_vi via JWT
-      const result = await callRpc<{ success: boolean; inserted: number; failed: number; total: number; details: any[] }>({
+      const result = await callRpc<BulkImportRpcResult>({
         fn: 'equipment_bulk_import',
         args: { p_items: dataToInsert as any }
       })
 
-      const inserted = result?.inserted ?? parsedData.length
-      const failed = result?.failed ?? 0
+      const toastMessage = buildImportToastMessage({
+        inserted: result?.inserted ?? parsedData.length,
+        failed: result?.failed ?? 0,
+        total: result?.total ?? parsedData.length,
+        details: result?.details ?? [],
+        entityName: 'thiet bi'
+      })
 
-      // Translate common PostgreSQL errors to Vietnamese
-      const translateError = (error: string): string => {
-        if (!error) return 'Lỗi không xác định'
+      toast({
+        variant: toastMessage.variant,
+        title: toastMessage.title,
+        description: toastMessage.description,
+        duration: toastMessage.duration,
+      })
 
-        // Duplicate key errors
-        if (error.includes('duplicate key') && error.includes('ma_thiet_bi')) {
-          return 'Mã thiết bị đã tồn tại (trùng lặp)'
-        }
-        if (error.includes('duplicate key')) {
-          return 'Dữ liệu trùng lặp'
-        }
-
-        // Permission errors (PostgreSQL returns lowercase "permission denied")
-        if (error.toLowerCase().includes('permission denied')) {
-          return 'Không có quyền thực hiện'
-        }
-
-        // Null/required field errors
-        if (error.includes('null value in column')) {
-          const match = error.match(/null value in column "(\w+)"/)
-          const field = match?.[1] || 'không xác định'
-          return `Thiếu giá trị bắt buộc: ${field}`
-        }
-
-        // Data type errors
-        if (error.includes('invalid input syntax for type integer')) {
-          return 'Định dạng số không hợp lệ'
-        }
-        if (error.includes('invalid input syntax for type date')) {
-          return 'Định dạng ngày không hợp lệ (dùng DD/MM/YYYY)'
-        }
-        if (error.includes('invalid input syntax for type numeric')) {
-          return 'Định dạng số thập phân không hợp lệ'
-        }
-        if (error.includes('invalid input syntax')) {
-          return 'Định dạng dữ liệu không hợp lệ'
-        }
-
-        // Constraint violations
-        if (error.includes('violates check constraint')) {
-          return 'Giá trị không hợp lệ theo ràng buộc'
-        }
-        if (error.includes('violates foreign key constraint')) {
-          return 'Tham chiếu không hợp lệ'
-        }
-
-        // Return original if no translation found (truncate if too long)
-        return error.length > 60 ? error.substring(0, 60) + '...' : error
-      }
-
-      // Extract error details for failed records
-      const failedDetails = (result?.details ?? [])
-        .filter((d: any) => !d.success)
-        .slice(0, 5) // Show first 5 errors to avoid overwhelming the user
-
-      if (failed > 0 && failedDetails.length > 0) {
-        // Build detailed error message with Vietnamese translations
-        const errorSummary = failedDetails
-          .map((d: any) => `Dòng ${d.index + 2}: ${translateError(d.error)}`)
-          .join('\n')
-
-        const moreErrors = failed > 5 ? `\n...và ${failed - 5} lỗi khác` : ''
-
-        toast({
-          variant: "destructive",
-          title: `Nhập hoàn tất với ${failed} lỗi`,
-          description: `Đã nhập ${inserted}/${result?.total ?? parsedData.length} thiết bị.\n\nChi tiết lỗi:\n${errorSummary}${moreErrors}`,
-          duration: 10000, // Show longer for error details
-        })
-      } else if (failed > 0) {
-        toast({
-          variant: "destructive",
-          title: "Nhập hoàn tất với một số lỗi",
-          description: `Đã nhập ${inserted}/${result?.total ?? parsedData.length} thiết bị. ${failed} bản ghi lỗi.`,
-        })
-      } else {
-        toast({
-          title: "Thành công",
-          description: `Đã nhập thành công ${inserted} thiết bị.`,
-        })
-      }
+      setSuccess()
       onSuccess()
       handleClose()
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : ''
       toast({
         variant: "destructive",
         title: "Lỗi",
-        description: "Không thể nhập dữ liệu. " + (error?.message || ''),
+        description: "Không thể nhập dữ liệu. " + errorMessage,
       })
-    } finally {
-      setIsSubmitting(false)
+      setSubmitError(errorMessage)
     }
-  }
-
-  const handleClose = () => {
-      resetState()
-      onOpenChange(false)
-  }
+  }, [parsedData, validationErrors, toast, onSuccess, handleClose, setSubmitting, setSuccess, setSubmitError])
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[480px]" onInteractOutside={(e) => e.preventDefault()} onCloseAutoFocus={resetState}>
+      <DialogContent className="sm:max-w-[480px]" onInteractOutside={(e) => e.preventDefault()} onCloseAutoFocus={resetAll}>
         <DialogHeader>
           <DialogTitle>Nhập thiết bị từ file Excel</DialogTitle>
           <DialogDescription>
@@ -391,68 +301,46 @@ export function ImportEquipmentDialog({ open, onOpenChange, onSuccess }: ImportE
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-4">
-            <div className="grid w-full max-w-sm items-center gap-1.5">
-                <Label htmlFor="excel-file">Chọn file</Label>
-                <Input 
-                    id="excel-file" 
-                    type="file" 
-                    accept=".xlsx, .xls, .csv" 
-                    onChange={handleFileChange}
-                    ref={fileInputRef}
-                    disabled={isSubmitting}
-                />
+          <BulkImportFileInput
+            id="excel-file"
+            fileInputRef={fileInputRef}
+            onFileChange={handleFileChangeWithWarnings}
+            disabled={isSubmitting}
+            accept=".xlsx, .xls, .csv"
+            label="Chọn file"
+          />
+          <BulkImportErrorAlert error={parseError} />
+          <BulkImportValidationErrors errors={validationErrors} />
+          {rejectedDatesCount > 0 && (
+            <div className="text-sm text-amber-700 bg-amber-50 p-3 rounded-md border border-amber-200">
+              <div className="flex items-center gap-2">
+                <AlertTriangle className="h-4 w-4" />
+                <span>
+                  <strong>{rejectedDatesCount}</strong> ngày có định dạng không hợp lệ (trước năm 1970) đã bị bỏ qua.
+                  Các trường ngày này sẽ được để trống.
+                </span>
+              </div>
             </div>
-            {error && (
-                <div className="flex items-center gap-2 text-sm text-destructive bg-destructive/10 p-3 rounded-md">
-                    <AlertTriangle className="h-4 w-4" />
-                    <span>{error}</span>
-                </div>
-            )}
-            {validationErrors.length > 0 && (
-                <div className="text-sm text-destructive bg-destructive/10 p-3 rounded-md">
-                    <div className="flex items-center gap-2 mb-2">
-                        <AlertTriangle className="h-4 w-4" />
-                        <span className="font-medium">Dữ liệu không hợp lệ:</span>
-                    </div>
-                    <ul className="list-disc list-inside space-y-1 ml-6">
-                        {validationErrors.map((error, index) => (
-                            <li key={index}>{error}</li>
-                        ))}
-                    </ul>
-                </div>
-            )}
-            {rejectedDatesCount > 0 && (
-                <div className="text-sm text-amber-700 bg-amber-50 p-3 rounded-md border border-amber-200">
-                    <div className="flex items-center gap-2">
-                        <AlertTriangle className="h-4 w-4" />
-                        <span>
-                            <strong>{rejectedDatesCount}</strong> ngày có định dạng không hợp lệ (trước năm 1970) đã bị bỏ qua.
-                            Các trường ngày này sẽ được để trống.
-                        </span>
-                    </div>
-                </div>
-            )}
-            {selectedFile && !error && validationErrors.length === 0 && (
-                <div className="flex items-center gap-2 text-sm text-primary bg-primary/10 p-3 rounded-md">
-                    <FileCheck className="h-4 w-4" />
-                    <span>
-                        Đã đọc file <strong>{selectedFile.name}</strong>. Tìm thấy <strong>{parsedData.length}</strong> bản ghi hợp lệ.
-                    </span>
-                </div>
-            )}
+          )}
+          {selectedFile && !parseError && validationErrors.length === 0 && parsedData.length > 0 && (
+            <BulkImportSuccessMessage
+              fileName={selectedFile.name}
+              recordCount={parsedData.length}
+            />
+          )}
         </div>
         <DialogFooter>
           <Button type="button" variant="outline" onClick={handleClose} disabled={isSubmitting}>
             Hủy
           </Button>
-          <Button
-            type="button"
+          <BulkImportSubmitButton
+            isSubmitting={isSubmitting}
+            disabled={isSubmitting || !selectedFile || parseError !== null || parsedData.length === 0 || validationErrors.length > 0}
+            recordCount={parsedData.length}
+            labelSingular="thiet bi"
+            labelPlural="thiet bi"
             onClick={handleImport}
-            disabled={isSubmitting || !selectedFile || error !== null || parsedData.length === 0 || validationErrors.length > 0}
-            >
-            {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            {isSubmitting ? "Đang nhập..." : `Nhập ${parsedData.length} thiết bị`}
-          </Button>
+          />
         </DialogFooter>
       </DialogContent>
     </Dialog>
