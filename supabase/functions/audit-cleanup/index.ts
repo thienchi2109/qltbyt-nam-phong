@@ -30,19 +30,31 @@ Deno.serve(async (req: Request) => {
     )
   }
 
-  // 2. Validate cron secret (required)
+  // 2. Only allow POST method (check before auth for cleaner error semantics)
+  if (req.method !== 'POST') {
+    return new Response(
+      JSON.stringify({ error: 'Method not allowed' }),
+      {
+        status: 405,
+        headers: { 'Content-Type': 'application/json', 'Allow': 'POST' },
+      }
+    )
+  }
+
+  // 3. Validate cron secret (required)
   const authHeader = req.headers.get('Authorization')
   if (authHeader !== `Bearer ${CRON_SECRET}`) {
     console.error('Unauthorized cleanup attempt', {
       ip: req.headers.get('x-forwarded-for'),
       userAgent: req.headers.get('user-agent'),
     })
-    return new Response('Unauthorized', { status: 401 })
-  }
-
-  // 3. Only allow POST method
-  if (req.method !== 'POST') {
-    return new Response('Method not allowed', { status: 405 })
+    return new Response(
+      JSON.stringify({ error: 'Unauthorized' }),
+      {
+        status: 401,
+        headers: { 'Content-Type': 'application/json' },
+      }
+    )
   }
 
   // 4. Create service role client (NOT anon key)
