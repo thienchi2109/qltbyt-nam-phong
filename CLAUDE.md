@@ -275,6 +275,21 @@ const { data } = useQuery({
 - **Files:** 350-450 lines max
 - **UI:** Radix + Tailwind, mobile-first, react-hook-form + zod
 
+### Git Commands: Quote Paths with Special Characters
+
+**ALWAYS quote file paths containing parentheses, brackets, or spaces in git commands:**
+
+```bash
+# ✅ CORRECT - quoted paths
+git add "src/app/(app)/device-quota/file.tsx"
+git diff "src/app/(app)/some-file.ts"
+
+# ❌ WRONG - unquoted paths cause shell parsing errors
+git add src/app/(app)/device-quota/file.tsx
+```
+
+**Why:** Next.js App Router uses `(group)` folders. Unquoted parentheses are interpreted as shell subshells, causing syntax errors.
+
 ### File Naming: Grep-Friendly Prefixes (MANDATORY)
 
 **All new files MUST use module prefix for AI agent discoverability:**
