@@ -358,7 +358,7 @@ export function DeviceQuotaImportDialog({
 
           <BulkImportErrorAlert error={parseError} />
 
-          <BulkImportValidationErrors errors={validationErrors} maxHeight="10rem" />
+          <BulkImportValidationErrors errors={validationErrors} />
 
           {selectedFile && !parseError && validationErrors.length === 0 && parsedData.length > 0 && (
             <BulkImportSuccessMessage

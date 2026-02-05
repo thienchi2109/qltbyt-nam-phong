@@ -118,7 +118,7 @@ const headerToDbKeyMap: Record<string, string> = {
     'Phân loại theo NĐ98': 'phan_loai_theo_nd98',
 };
 
-function normalizeInt(val: any): number | null {
+function normalizeInt(val: unknown): number | null {
   if (val === undefined || val === null || val === '') return null;
   if (typeof val === 'number') return Number.isFinite(val) ? Math.trunc(val) : null;
   const cleaned = String(val).replace(/\D+/g, '');
@@ -127,7 +127,7 @@ function normalizeInt(val: any): number | null {
   return Number.isFinite(num) ? num : null;
 }
 
-function normalizeNumber(val: any): number | null {
+function normalizeNumber(val: unknown): number | null {
   if (val === undefined || val === null || val === '') return null;
   if (typeof val === 'number') return Number.isFinite(val) ? val : null;
   const cleaned = String(val).replace(/[,\s]/g, '');
@@ -135,7 +135,7 @@ function normalizeNumber(val: any): number | null {
   return Number.isFinite(num) ? num : null;
 }
 
-function normalizeClassification(val: any): string | null {
+function normalizeClassification(val: unknown): string | null {
   if (val === undefined || val === null || val === '') return null;
   const s = String(val).trim().toUpperCase();
   if (['A','B','C','D'].includes(s)) return s;
@@ -247,19 +247,18 @@ export function ImportEquipmentDialog({ open, onOpenChange, onSuccess }: ImportE
     setSubmitting()
     try {
       // Clean undefined keys for RPC payloads.
-      const dataToInsert = parsedData.map(item => {
-        const cleanItem: Record<string, any> = {};
-        Object.entries(item).forEach(([key, value]) => {
-          if (value !== undefined) {
-            cleanItem[key] = value;
-          }
-        });
-        return cleanItem;
-      });
+      const dataToInsert = parsedData.map((item) => {
+        const entries = Object.entries(item) as Array<[
+          keyof Equipment,
+          Equipment[keyof Equipment] | undefined
+        ]>
+        const filtered = entries.filter(([, value]) => value !== undefined)
+        return Object.fromEntries(filtered) as Partial<Equipment>
+      })
 
       const result = await callRpc<BulkImportRpcResult>({
         fn: 'equipment_bulk_import',
-        args: { p_items: dataToInsert as any }
+        args: { p_items: dataToInsert }
       })
 
       const toastMessage = buildImportToastMessage({
