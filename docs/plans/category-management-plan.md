@@ -33,8 +33,8 @@ The documentation claims categories are "pre-loaded per TT 08/2019" but no seed 
 ### Phase 1: Category CRUD UI (New Management Page)
 Add UI to create/edit/delete categories one-by-one in `/device-quota/categories` (new page).
 
-### Phase 2: Bulk Import (Excel)
-Add Excel import dialog + **required** bulk import RPC to load TT 08/2019 hierarchy. Excel template is generated from a canonical dataset file committed in the repo.
+### Phase 2: Bulk Import (Excel) — Deferred (Post-MVP)
+Deferred for MVP. Will add Excel import dialog + **required** bulk import RPC to load TT 08/2019 hierarchy. Excel template will be generated from a canonical dataset file committed in the repo.
 
 ### Mapping Page Behavior
 `/device-quota/mapping` remains for assigning equipment to categories. If no categories exist, it should link admins/to_qltb to `/device-quota/categories` to create/import them.
@@ -45,6 +45,9 @@ Add a module-level sub-nav inside `/device-quota` (keep the main sidebar shallow
 - Decisions (`/device-quota/decisions`)
 - Mapping (`/device-quota/mapping`)
 - Categories (`/device-quota/categories`, role-gated to `global` / `to_qltb`)
+
+### MVP Scope
+MVP includes **Phase 1 only** (manual CRUD + navigation + empty-state routing). Phase 2 (bulk import, dataset, template) is deferred.
 
 ---
 
@@ -110,11 +113,10 @@ export interface CategoryDeleteState {
 - Others: show Access Denied UI (pattern from `activity-logs/page.tsx`) or redirect to `/dashboard`
 
 **Renders:**
-- Toolbar (create/import/download template)
+- Toolbar (create only; import buttons deferred)
 - Category tree with edit/delete actions
 - Create/Edit dialog
 - Delete confirmation dialog
-- Import dialog
 
 #### 2. `src/app/(app)/device-quota/categories/_components/DeviceQuotaCategoryContext.tsx`
 **Purpose:** Separate context for category CRUD operations
@@ -275,16 +277,13 @@ const availableParents = categories.filter(cat =>
 
 **Features:**
 - "Tạo danh mục" button → opens create dialog
-- "Nhập từ Excel" button → opens import dialog
-- "Tải mẫu Excel" button → downloads template (available in Phase 1)
+- "Nhập từ Excel" button → deferred (Phase 2)
+- "Tải mẫu Excel" button → deferred (Phase 2)
 
-#### 8. `src/app/(app)/device-quota/categories/_components/DeviceQuotaCategoryImportDialog.tsx`
-**Purpose:** Import categories from Excel file (context-controlled, zero-props)
-
-#### 9. `src/app/(app)/device-quota/categories/_types/categories.ts`
+#### 8. `src/app/(app)/device-quota/categories/_types/categories.ts`
 **Purpose:** Types shared by tree, dialogs, and context (see Type Definitions section above)
 
-#### 10. `src/app/(app)/device-quota/_components/DeviceQuotaSubNav.tsx`
+#### 9. `src/app/(app)/device-quota/_components/DeviceQuotaSubNav.tsx`
 **Purpose:** Module sub-navigation for device-quota pages
 
 ### Files to Modify
@@ -322,7 +321,9 @@ UNIQUE (don_vi_id, ma_nhom);
 
 ---
 
-## Phase 2: Bulk Import (Excel)
+## Phase 2: Bulk Import (Excel) — Deferred (Post-MVP)
+
+**Status:** Deferred for MVP. Do not implement in Phase 1.
 
 ### Files to Create
 
@@ -414,6 +415,8 @@ CREATE FUNCTION dinh_muc_nhom_bulk_import(
 
 ## Canonical Dataset (TT 08/2019)
 
+**Status:** Deferred to Phase 2 (post-MVP).
+
 **Decision:** Store a versioned, canonical dataset file in the repo and use it for:
 - Excel template generation
 - Initial bulk import (seed)
@@ -498,31 +501,31 @@ DeviceQuotaMappingContext.tsx (unchanged)
 
 ### Phase 1 (CRUD UI)
 1. Add `ma_nhom` uniqueness constraint migration
-2. Create canonical dataset file `src/data/tt08-2019-categories.json` with metadata
-3. Create types file `_types/categories.ts`
-4. Add bulk import RPC migration (transactional, role-guarded, cycle detection)
-5. Add `dinh_muc_nhom_bulk_import` to `ALLOWED_FUNCTIONS` whitelist
-6. Create `DeviceQuotaSubNav.tsx` and render it in `src/app/(app)/device-quota/layout.tsx`
-7. Create `/device-quota/categories` page with role gating
-8. Create `DeviceQuotaCategoryContext.tsx` (data + mutations + dialog state + delete state)
-9. Create `useDeviceQuotaCategoryContext.ts`
-10. Create `DeviceQuotaCategoryDialog.tsx` (zod form with parent filtering)
-11. Create `DeviceQuotaCategoryDeleteDialog.tsx` (AlertDialog pattern)
-12. Create `DeviceQuotaCategoryToolbar.tsx`
-13. Create `DeviceQuotaCategoryTree.tsx` (edit/delete + ARIA listbox + React.memo)
-14. Add template generation to `src/lib/category-excel.ts` (moved from Phase 2)
-15. Wire provider + components in `/device-quota/categories`
-16. Update mapping empty state to link to `/device-quota/categories`
-17. Update alert message link in `DeviceQuotaChiTietToolbar.tsx`
-18. Create shared `src/lib/error-translations.ts`
-19. Test: Create, edit, delete categories manually
+2. Create types file `_types/categories.ts`
+3. Create `DeviceQuotaSubNav.tsx` and render it in `src/app/(app)/device-quota/layout.tsx`
+4. Create `/device-quota/categories` page with role gating
+5. Create `DeviceQuotaCategoryContext.tsx` (data + mutations + dialog state + delete state)
+6. Create `useDeviceQuotaCategoryContext.ts`
+7. Create `DeviceQuotaCategoryDialog.tsx` (zod form with parent filtering)
+8. Create `DeviceQuotaCategoryDeleteDialog.tsx` (AlertDialog pattern)
+9. Create `DeviceQuotaCategoryToolbar.tsx`
+10. Create `DeviceQuotaCategoryTree.tsx` (edit/delete + ARIA listbox + React.memo)
+11. Wire provider + components in `/device-quota/categories`
+12. Update mapping empty state to link to `/device-quota/categories`
+13. Update alert message link in `DeviceQuotaChiTietToolbar.tsx`
+14. Create shared `src/lib/error-translations.ts`
+15. Test: Create, edit, delete categories manually
 
-### Phase 2 (Bulk Import)
-1. Create `DeviceQuotaCategoryImportDialog.tsx` (context-controlled)
-2. Connect toolbar buttons
-3. Test: Import TT 08/2019 categories from Excel (transactional)
-4. Test: Concurrent import handling (advisory locks)
-5. Test: Cycle detection in import
+### Phase 2 (Bulk Import) — Deferred (Post-MVP)
+1. Create canonical dataset file `src/data/tt08-2019-categories.json` with metadata
+2. Add bulk import RPC migration (transactional, role-guarded, cycle detection)
+3. Add `dinh_muc_nhom_bulk_import` to `ALLOWED_FUNCTIONS` whitelist
+4. Add template generation to `src/lib/category-excel.ts`
+5. Create `DeviceQuotaCategoryImportDialog.tsx` (context-controlled)
+6. Connect toolbar buttons
+7. Test: Import TT 08/2019 categories from Excel (transactional)
+8. Test: Concurrent import handling (advisory locks)
+9. Test: Cycle detection in import
 
 ---
 
@@ -553,6 +556,7 @@ DeviceQuotaMappingContext.tsx (unchanged)
 8. Run: `node scripts/npm-run.js run typecheck`
 
 ### Phase 2 Tests
+**Status:** Deferred for MVP.
 1. Click "Tải mẫu Excel" → Download template
 2. Fill template with sample categories
 3. Click "Nhập từ Excel" → Upload file → Preview → Import
@@ -568,9 +572,10 @@ DeviceQuotaMappingContext.tsx (unchanged)
 | Question | Decision |
 |----------|----------|
 | Management page route | `/device-quota/categories` (new page) |
-| Import semantics | Transactional, all-or-nothing |
-| Duplicate handling | Error (no upsert) |
-| Canonical dataset | Versioned JSON in `src/data/tt08-2019-categories.json` with metadata |
+| MVP scope | Phase 1 only; Phase 2 (bulk import/dataset/template) deferred |
+| Import semantics | Transactional, all-or-nothing (Phase 2) |
+| Duplicate handling | Error (no upsert) (Phase 2) |
+| Canonical dataset | Deferred to Phase 2 (`src/data/tt08-2019-categories.json`) |
 | Access control | `global` / `to_qltb` only (`admin` normalized to `global`) |
 | `regional_leader` access | READ-ONLY for listing, no write access |
 | Navigation pattern | Module sub-nav inside `/device-quota` layout |
@@ -578,8 +583,8 @@ DeviceQuotaMappingContext.tsx (unchanged)
 | Delete behavior | Require manual cleanup (no cascade), check dependencies |
 | Keywords (`tu_khoa`) | Defer to future AI matching feature |
 | ARIA pattern | Listbox for flat hierarchical display (not collapsible tree) |
-| Import dialog pattern | Context-controlled (zero-props) |
-| Template generation | Phase 1 (not Phase 2) |
+| Import dialog pattern | Deferred to Phase 2 (context-controlled) |
+| Template generation | Deferred to Phase 2 |
 
 ---
 
@@ -589,15 +594,15 @@ DeviceQuotaMappingContext.tsx (unchanged)
 
 | Issue | Severity | Resolution |
 |-------|----------|------------|
-| Bulk import RPC not in whitelist | CRITICAL | Add to `ALLOWED_FUNCTIONS` ✅ |
-| Cycle detection missing | HIGH | Implement recursive CTE cycle detection ✅ |
+| Bulk import RPC not in whitelist | CRITICAL | Deferred to Phase 2 |
+| Cycle detection missing | HIGH | Deferred to Phase 2 |
 | `ma_nhom` uniqueness constraint | HIGH | Add database unique constraint migration ✅ |
 | Delete dependency checks | MEDIUM | Verify existing RPC checks equipment and child categories |
 | `regional_leader` access undefined | MEDIUM | Explicitly defined as read-only ✅ |
-| Concurrent import race condition | MEDIUM | Add advisory locks ✅ |
+| Concurrent import race condition | MEDIUM | Deferred to Phase 2 |
 | Audit trail for compliance | MEDIUM | Defer (existing created_by/updated_by sufficient for now) |
 | `admin` role normalization | LOW | Standardized on `global` only in documentation ✅ |
-| JSON dataset schema validation | LOW | Add metadata structure ✅ |
+| JSON dataset schema validation | LOW | Deferred to Phase 2 |
 | Large import progress feedback | LOW | Defer to future enhancement |
 
 ### Code Review Recommendations
@@ -608,10 +613,10 @@ DeviceQuotaMappingContext.tsx (unchanged)
 | Incomplete type definitions | CRITICAL | Added complete type definitions section ✅ |
 | Context dialog state incomplete | HIGH | Added `categoryToDelete` and `openDeleteDialog` ✅ |
 | ARIA tree pattern under-specified | HIGH | Clarified as listbox pattern ✅ |
-| Import dialog props pattern mismatch | HIGH | Standardized on context-controlled ✅ |
+| Import dialog props pattern mismatch | HIGH | Deferred to Phase 2 |
 | Parent dropdown filtering unspecified | MEDIUM | Added `getDescendantIds` helper ✅ |
 | Query keys not documented | MEDIUM | Added query key patterns ✅ |
-| Template generation in Phase 2 | MEDIUM | Moved to Phase 1 ✅ |
+| Template generation in Phase 2 | MEDIUM | Deferred to Phase 2 |
 | React.memo pattern not prominent | LOW | Added explicit code pattern ✅ |
 | Error translation not reused | LOW | Added shared utility file ✅ |
 | Empty state behavior per page | LOW | Clarified different behavior per page ✅ |
