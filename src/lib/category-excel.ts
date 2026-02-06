@@ -28,20 +28,20 @@ export async function generateCategoryImportTemplate(): Promise<Blob> {
     const workbook = new ExcelJS.Workbook()
 
     // ============================================================
-    // SHEET 1: Nhap Danh Muc (Data Entry)
+    // SHEET 1: Nhập Danh Mục (Data Entry)
     // ============================================================
-    const dataEntrySheet = workbook.addWorksheet('Nhap Danh Muc')
+    const dataEntrySheet = workbook.addWorksheet('Nhập Danh Mục')
 
     // Define headers
     const headers = [
       'STT',
-      'Ma nhom',
-      'Ten nhom',
-      'Ma nhom cha',
-      'Phan loai',
-      'Don vi tinh',
-      'Thu tu hien thi',
-      'Mo ta',
+      'Mã nhóm',
+      'Tên nhóm',
+      'Mã nhóm cha',
+      'Phân loại',
+      'Đơn vị tính',
+      'Thứ tự hiển thị',
+      'Mô tả',
     ]
 
     // Add header row
@@ -61,16 +61,16 @@ export async function generateCategoryImportTemplate(): Promise<Blob> {
     // Set column widths
     dataEntrySheet.columns = [
       { key: 'stt', width: 8 },                    // A: STT
-      { key: 'ma_nhom', width: 20 },               // B: Ma nhom
-      { key: 'ten_nhom', width: 40 },              // C: Ten nhom
-      { key: 'parent_ma_nhom', width: 20 },        // D: Ma nhom cha
-      { key: 'phan_loai', width: 15 },             // E: Phan loai
-      { key: 'don_vi_tinh', width: 18 },           // F: Don vi tinh
-      { key: 'thu_tu_hien_thi', width: 18 },       // G: Thu tu hien thi
-      { key: 'mo_ta', width: 40 },                 // H: Mo ta
+      { key: 'ma_nhom', width: 20 },               // B: Mã nhóm
+      { key: 'ten_nhom', width: 40 },              // C: Tên nhóm
+      { key: 'parent_ma_nhom', width: 20 },        // D: Mã nhóm cha
+      { key: 'phan_loai', width: 15 },             // E: Phân loại
+      { key: 'don_vi_tinh', width: 18 },           // F: Đơn vị tính
+      { key: 'thu_tu_hien_thi', width: 18 },       // G: Thứ tự hiển thị
+      { key: 'mo_ta', width: 40 },                 // H: Mô tả
     ]
 
-    // Mark required columns with red background (B: Ma nhom, C: Ten nhom)
+    // Mark required columns with red background (B: Mã nhóm, C: Tên nhóm)
     const requiredColumnIndices = [2, 3] // B and C (1-based)
     requiredColumnIndices.forEach(colIndex => {
       const headerCell = dataEntrySheet.getCell(1, colIndex)
@@ -92,7 +92,7 @@ export async function generateCategoryImportTemplate(): Promise<Blob> {
       dataEntrySheet.getCell(row, 1).alignment = { horizontal: 'center' }
     }
 
-    // Add data validation dropdown for "Phan loai" (column E)
+    // Add data validation dropdown for "Phân loại" (column E)
     for (let row = 2; row <= MAX_TEMPLATE_ROWS; row++) {
       const cell = dataEntrySheet.getCell(row, 5) // Column E
       cell.dataValidation = {
@@ -100,12 +100,12 @@ export async function generateCategoryImportTemplate(): Promise<Blob> {
         allowBlank: true,
         formulae: [`"${CATEGORY_CLASSIFICATION_OPTIONS.join(',')}"`],
         showErrorMessage: true,
-        errorTitle: 'Gia tri khong hop le',
-        error: 'Vui long chon A hoac B theo TT 08/2019.',
+        errorTitle: 'Giá trị không hợp lệ',
+        error: 'Vui lòng chọn A hoặc B theo TT 08/2019.',
       }
     }
 
-    // Add number validation for "Thu tu hien thi" (column G) - must be integer >= 0
+    // Add number validation for "Thứ tự hiển thị" (column G) - must be integer >= 0
     for (let row = 2; row <= MAX_TEMPLATE_ROWS; row++) {
       const cell = dataEntrySheet.getCell(row, 7) // Column G
       cell.dataValidation = {
@@ -114,21 +114,21 @@ export async function generateCategoryImportTemplate(): Promise<Blob> {
         showErrorMessage: true,
         allowBlank: true,
         formulae: [0],
-        errorTitle: 'Gia tri khong hop le',
-        error: 'Thu tu hien thi phai la so nguyen >= 0.',
+        errorTitle: 'Giá trị không hợp lệ',
+        error: 'Thứ tự hiển thị phải là số nguyên >= 0.',
       }
     }
 
     // ============================================================
-    // SHEET 2: Huong Dan (Instructions)
+    // SHEET 2: Hướng Dẫn (Instructions)
     // ============================================================
-    const instructionsSheet = workbook.addWorksheet('Huong Dan')
+    const instructionsSheet = workbook.addWorksheet('Hướng Dẫn')
 
     // Set column widths for instructions
     instructionsSheet.getColumn(1).width = 80
 
     // Add title
-    instructionsSheet.addRow(['HUONG DAN NHAP DANH MUC THIET BI Y TE'])
+    instructionsSheet.addRow(['HƯỚNG DẪN NHẬP DANH MỤC THIẾT BỊ Y TẾ'])
     const titleRow = instructionsSheet.getRow(1)
     titleRow.font = { bold: true, size: 16, color: { argb: 'FF1E40AF' } }
     titleRow.height = 35
@@ -137,66 +137,66 @@ export async function generateCategoryImportTemplate(): Promise<Blob> {
     instructionsSheet.addRow([''])
 
     // Legal basis section
-    instructionsSheet.addRow(['1. CO SO PHAP LY:'])
+    instructionsSheet.addRow(['1. CƠ SỞ PHÁP LÝ:'])
     instructionsSheet.getRow(3).font = { bold: true, size: 12, color: { argb: 'FF059669' } }
-    instructionsSheet.addRow(['   - Thong tu 08/2019/TT-BYT huong dan quan ly, su dung trang thiet bi y te'])
-    instructionsSheet.addRow(['   - Nghi dinh 98/2021/ND-CP ve quan ly thiet bi y te'])
+    instructionsSheet.addRow(['   - Thông tư 08/2019/TT-BYT hướng dẫn quản lý, sử dụng trang thiết bị y tế'])
+    instructionsSheet.addRow(['   - Nghị định 98/2021/NĐ-CP về quản lý thiết bị y tế'])
     instructionsSheet.addRow([''])
 
     // Required fields section
-    instructionsSheet.addRow(['2. CAC TRUONG BAT BUOC (tieu de mau do):'])
+    instructionsSheet.addRow(['2. CÁC TRƯỜNG BẮT BUỘC (tiêu đề màu đỏ):'])
     instructionsSheet.getRow(7).font = { bold: true, size: 12, color: { argb: 'FFDC2626' } }
-    instructionsSheet.addRow(['   - Ma nhom: Ma dinh danh duy nhat (VD: 01, 01.01, 01.01.001)'])
-    instructionsSheet.addRow(['   - Ten nhom: Ten day du cua danh muc'])
+    instructionsSheet.addRow(['   - Mã nhóm: Mã định danh duy nhất (VD: 01, 01.01, 01.01.001)'])
+    instructionsSheet.addRow(['   - Tên nhóm: Tên đầy đủ của danh mục'])
     instructionsSheet.addRow([''])
 
     // Code format section
-    instructionsSheet.addRow(['3. DINH DANG MA NHOM:'])
+    instructionsSheet.addRow(['3. ĐỊNH DẠNG MÃ NHÓM:'])
     instructionsSheet.getRow(11).font = { bold: true, size: 12 }
-    instructionsSheet.addRow(['   - Cap 1: XX (VD: 01, 02, 03)'])
-    instructionsSheet.addRow(['   - Cap 2: XX.XX (VD: 01.01, 01.02, 02.01)'])
-    instructionsSheet.addRow(['   - Cap 3: XX.XX.XXX (VD: 01.01.001, 01.01.002)'])
+    instructionsSheet.addRow(['   - Cấp 1: XX (VD: 01, 02, 03)'])
+    instructionsSheet.addRow(['   - Cấp 2: XX.XX (VD: 01.01, 01.02, 02.01)'])
+    instructionsSheet.addRow(['   - Cấp 3: XX.XX.XXX (VD: 01.01.001, 01.01.002)'])
     instructionsSheet.addRow([''])
 
     // Classification section
-    instructionsSheet.addRow(['4. PHAN LOAI THEO TT 08/2019:'])
+    instructionsSheet.addRow(['4. PHÂN LOẠI THEO TT 08/2019:'])
     instructionsSheet.getRow(16).font = { bold: true, size: 12 }
-    instructionsSheet.addRow(['   - A: Thiet bi y te loai A (nguy co thap)'])
-    instructionsSheet.addRow(['   - B: Thiet bi y te loai B (nguy co trung binh thap)'])
+    instructionsSheet.addRow(['   - A: Thiết bị y tế loại A (nguy cơ thấp)'])
+    instructionsSheet.addRow(['   - B: Thiết bị y tế loại B (nguy cơ trung bình thấp)'])
     instructionsSheet.addRow([''])
 
     // Data entry rules section
-    instructionsSheet.addRow(['5. QUY TAC NHAP LIEU:'])
+    instructionsSheet.addRow(['5. QUY TẮC NHẬP LIỆU:'])
     instructionsSheet.getRow(20).font = { bold: true, size: 12, color: { argb: 'FFDC2626' } }
-    instructionsSheet.addRow(['   - Nhom cha phai ton tai truoc nhom con'])
-    instructionsSheet.addRow(['   - Ma nhom khong duoc trung lap'])
-    instructionsSheet.addRow(['   - Neu nhap nhom cha, nhap dong nhom cha truoc dong nhom con'])
-    instructionsSheet.addRow(['   - Khong thay doi ten cac cot tieu de'])
+    instructionsSheet.addRow(['   - Nhóm cha phải tồn tại trước nhóm con'])
+    instructionsSheet.addRow(['   - Mã nhóm không được trùng lặp'])
+    instructionsSheet.addRow(['   - Nếu nhập nhóm cha, nhập dòng nhóm cha trước dòng nhóm con'])
+    instructionsSheet.addRow(['   - Không thay đổi tên các cột tiêu đề'])
     instructionsSheet.addRow([''])
 
     // Example section
-    instructionsSheet.addRow(['6. VI DU:'])
+    instructionsSheet.addRow(['6. VÍ DỤ:'])
     instructionsSheet.getRow(26).font = { bold: true, size: 12 }
     instructionsSheet.addRow([''])
-    instructionsSheet.addRow(['   Ma nhom: 01'])
-    instructionsSheet.addRow(['   Ten nhom: Thiet bi chan doan hinh anh'])
-    instructionsSheet.addRow(['   Ma nhom cha: (de trong - day la nhom goc)'])
-    instructionsSheet.addRow(['   Phan loai: B'])
-    instructionsSheet.addRow(['   Don vi tinh: Cai'])
-    instructionsSheet.addRow(['   Thu tu hien thi: 1'])
-    instructionsSheet.addRow(['   Mo ta: Nhom cac thiet bi chan doan bang hinh anh'])
+    instructionsSheet.addRow(['   Mã nhóm: 01'])
+    instructionsSheet.addRow(['   Tên nhóm: Thiết bị chẩn đoán hình ảnh'])
+    instructionsSheet.addRow(['   Mã nhóm cha: (để trống - đây là nhóm gốc)'])
+    instructionsSheet.addRow(['   Phân loại: B'])
+    instructionsSheet.addRow(['   Đơn vị tính: Cái'])
+    instructionsSheet.addRow(['   Thứ tự hiển thị: 1'])
+    instructionsSheet.addRow(['   Mô tả: Nhóm các thiết bị chẩn đoán bằng hình ảnh'])
     instructionsSheet.addRow([''])
 
     // Second example - child category
-    instructionsSheet.addRow(['   --- Vi du nhom con ---'])
+    instructionsSheet.addRow(['   --- Ví dụ nhóm con ---'])
     instructionsSheet.getRow(36).font = { italic: true }
-    instructionsSheet.addRow(['   Ma nhom: 01.01'])
-    instructionsSheet.addRow(['   Ten nhom: May X-quang'])
-    instructionsSheet.addRow(['   Ma nhom cha: 01'])
-    instructionsSheet.addRow(['   Phan loai: B'])
-    instructionsSheet.addRow(['   Don vi tinh: Cai'])
-    instructionsSheet.addRow(['   Thu tu hien thi: 1'])
-    instructionsSheet.addRow(['   Mo ta: Thiet bi chup X-quang'])
+    instructionsSheet.addRow(['   Mã nhóm: 01.01'])
+    instructionsSheet.addRow(['   Tên nhóm: Máy X-quang'])
+    instructionsSheet.addRow(['   Mã nhóm cha: 01'])
+    instructionsSheet.addRow(['   Phân loại: B'])
+    instructionsSheet.addRow(['   Đơn vị tính: Cái'])
+    instructionsSheet.addRow(['   Thứ tự hiển thị: 1'])
+    instructionsSheet.addRow(['   Mô tả: Thiết bị chụp X-quang'])
 
     // Format instruction cells
     for (let row = 1; row <= instructionsSheet.rowCount; row++) {
@@ -213,7 +213,7 @@ export async function generateCategoryImportTemplate(): Promise<Blob> {
     })
   } catch (error) {
     console.error('Failed to generate category import template:', error)
-    throw new Error('Khong the tao file template danh muc. Vui long thu lai.')
+    throw new Error('Không thể tạo file template danh mục. Vui lòng thử lại.')
   }
 }
 

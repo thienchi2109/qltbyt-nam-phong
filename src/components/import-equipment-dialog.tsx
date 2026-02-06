@@ -304,7 +304,7 @@ export function ImportEquipmentDialog({ open, onOpenChange, onSuccess }: ImportE
             id="excel-file"
             fileInputRef={fileInputRef}
             onFileChange={handleFileChangeWithWarnings}
-            disabled={isSubmitting}
+            disabled={isSubmitting || status === 'parsing'}
             accept=".xlsx, .xls, .csv"
             label="Chọn file"
           />

@@ -77,7 +77,7 @@ export function BulkImportValidationErrors({
     <div className="text-sm text-destructive bg-destructive/10 p-3 rounded-md">
       <div className="flex items-center gap-2 mb-2">
         <AlertTriangle className="h-4 w-4 flex-shrink-0" aria-hidden="true" />
-        <span className="font-medium">Du lieu khong hop le:</span>
+        <span className="font-medium">Dữ liệu không hợp lệ:</span>
       </div>
       <ul
         className="list-disc list-inside space-y-1 ml-6 overflow-y-auto"
@@ -111,7 +111,7 @@ export function BulkImportSuccessMessage({
     >
       <FileCheck className="h-4 w-4 flex-shrink-0" aria-hidden="true" />
       <span>
-        Da doc file <strong>{fileName}</strong>. Tim thay <strong>{recordCount}</strong> ban ghi hop le.
+        Đã đọc file <strong>{fileName}</strong>. Tìm thấy <strong>{recordCount}</strong> bản ghi hợp lệ.
       </span>
     </div>
   )
@@ -133,8 +133,8 @@ export function BulkImportSubmitButton({
   isSubmitting,
   disabled,
   recordCount,
-  labelSingular = 'ban ghi',
-  labelPlural = 'ban ghi',
+  labelSingular = 'bản ghi',
+  labelPlural = 'bản ghi',
   onClick
 }: BulkImportSubmitButtonProps): JSX.Element {
   const label = recordCount === 1 ? labelSingular : labelPlural
@@ -146,7 +146,7 @@ export function BulkImportSubmitButton({
       disabled={disabled}
     >
       {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" />}
-      {isSubmitting ? 'Dang nhap...' : `Nhap ${recordCount} ${label}`}
+      {isSubmitting ? 'Đang nhập...' : `Nhập ${recordCount} ${label}`}
     </Button>
   )
 }

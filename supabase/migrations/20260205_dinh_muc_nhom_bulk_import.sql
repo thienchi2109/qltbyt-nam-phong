@@ -130,7 +130,7 @@ BEGIN
   DECLARE
     v_has_cycle BOOLEAN := FALSE;
   BEGIN
-    WITH batch_items AS (
+    WITH RECURSIVE batch_items AS (
       SELECT
         elem->>'ma_nhom' AS ma_nhom,
         elem->>'parent_ma_nhom' AS parent_ma_nhom
@@ -138,7 +138,7 @@ BEGIN
       WHERE elem->>'parent_ma_nhom' IS NOT NULL
         AND elem->>'parent_ma_nhom' <> ''
     ),
-    RECURSIVE cycle_check AS (
+    cycle_check AS (
       -- Base: start from each item
       SELECT
         ma_nhom AS start_node,
