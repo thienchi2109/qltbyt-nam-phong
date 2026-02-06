@@ -191,15 +191,13 @@ export default function UsersPage() {
   }, [userToReset, currentUser, toast])
 
   const getRoleVariant = (role: User["role"]) => {
+    if (isGlobalRole(role)) return "destructive"
+
     switch (role) {
-      case "admin":
-        return "destructive"
       case "to_qltb":
         return "default"
       case "qltb_khoa":
         return "secondary"
-      case "user":
-        return "outline"
       default:
         return "outline"
     }

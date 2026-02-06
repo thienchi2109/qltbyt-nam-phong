@@ -116,9 +116,16 @@ export function isDeptScopedRole(role: string | null | undefined): boolean {
 
 /**
  * Multi-tenant selection privilege check.
- * Re-exported from tenant.ts for convenience.
  *
  * Use for: showing tenant selection dropdown.
  * Includes: global, admin, regional_leader
+ *
+ * Note: Implemented here (not re-exported from tenant.ts) to ensure
+ * consistent normalization with trim() across all RBAC utilities.
  */
-export { isPrivilegedRole } from '@/types/tenant'
+export function isPrivilegedRole(role: string | null | undefined): boolean {
+  const normalized = normalizeRole(role)
+  return normalized === ROLES.GLOBAL
+    || normalized === ROLES.ADMIN
+    || normalized === ROLES.REGIONAL_LEADER
+}

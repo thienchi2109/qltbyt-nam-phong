@@ -3,6 +3,7 @@ import {
   isRegionalLeaderRole,
   isEquipmentManagerRole,
   isDeptScopedRole,
+  isPrivilegedRole,
   ROLES,
 } from '../rbac'
 
@@ -15,6 +16,7 @@ describe('RBAC Utilities', () => {
       expect(isRegionalLeaderRole(value)).toBe(false)
       expect(isEquipmentManagerRole(value)).toBe(false)
       expect(isDeptScopedRole(value)).toBe(false)
+      expect(isPrivilegedRole(value)).toBe(false)
     })
   })
 
@@ -25,6 +27,7 @@ describe('RBAC Utilities', () => {
       expect(isRegionalLeaderRole(value)).toBe(false)
       expect(isEquipmentManagerRole(value)).toBe(false)
       expect(isDeptScopedRole(value)).toBe(false)
+      expect(isPrivilegedRole(value)).toBe(false)
     })
   })
 
@@ -34,6 +37,8 @@ describe('RBAC Utilities', () => {
     expect(isEquipmentManagerRole('  To_QLTB ')).toBe(true)
     expect(isRegionalLeaderRole(' regional_leader ')).toBe(true)
     expect(isDeptScopedRole(' QLTB_KHOA ')).toBe(true)
+    expect(isPrivilegedRole(' ADMIN ')).toBe(true)
+    expect(isPrivilegedRole('  regional_leader  ')).toBe(true)
   })
 
   it('should identify global roles correctly', () => {
@@ -119,6 +124,25 @@ describe('RBAC Utilities', () => {
       expect(isRegionalLeaderRole(value)).toBe(false)
       expect(isEquipmentManagerRole(value)).toBe(false)
       expect(isDeptScopedRole(value)).toBe(false)
+      expect(isPrivilegedRole(value)).toBe(false)
+    })
+  })
+
+  it('should identify privileged roles correctly', () => {
+    const allowed = [ROLES.GLOBAL, ROLES.ADMIN, ROLES.REGIONAL_LEADER]
+    const denied = [
+      ROLES.TO_QLTB,
+      ROLES.TECHNICIAN,
+      ROLES.QLTB_KHOA,
+      ROLES.USER,
+    ]
+
+    allowed.forEach(role => {
+      expect(isPrivilegedRole(role)).toBe(true)
+    })
+
+    denied.forEach(role => {
+      expect(isPrivilegedRole(role)).toBe(false)
     })
   })
 })

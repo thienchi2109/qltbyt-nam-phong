@@ -653,7 +653,7 @@ export default function MaintenancePage() {
   });
 
   const isPlanApproved = selectedPlan?.trang_thai === 'Đã duyệt';
-  const canCompleteTask = !isRegionalLeader && user && ((user.role === 'global' || user.role === 'admin') || user.role === 'to_qltb');
+  const canCompleteTask = !isRegionalLeader && isEquipmentManagerRole(user?.role);
 
   // ✅ Extracted hook for task inline editing (must be after isPlanApproved is declared)
   const taskEditing = useTaskEditing({
