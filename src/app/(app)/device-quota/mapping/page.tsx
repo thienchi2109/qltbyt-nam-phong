@@ -10,6 +10,7 @@ import { DeviceQuotaMappingSplitView } from "./_components/DeviceQuotaMappingSpl
 import { DeviceQuotaUnassignedList } from "./_components/DeviceQuotaUnassignedList"
 import { DeviceQuotaCategoryTree } from "./_components/DeviceQuotaCategoryTree"
 import { DeviceQuotaMappingActions } from "./_components/DeviceQuotaMappingActions"
+import { TenantSelector } from "@/components/shared/TenantSelector"
 
 export default function DeviceQuotaMappingPage() {
   const { status } = useSession()
@@ -35,11 +36,14 @@ export default function DeviceQuotaMappingPage() {
     <DeviceQuotaMappingProvider>
       <div className="container mx-auto py-6 space-y-6">
         {/* Page header */}
-        <div>
-          <h1 className="text-2xl font-bold">Phân loại thiết bị</h1>
-          <p className="text-muted-foreground">
-            Gán thiết bị vào các nhóm định mức
-          </p>
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h1 className="text-2xl font-bold">Phân loại thiết bị</h1>
+            <p className="text-muted-foreground">
+              Gán thiết bị vào các nhóm định mức
+            </p>
+          </div>
+          <TenantSelector hideAllOption />
         </div>
 
         {/* Split view */}

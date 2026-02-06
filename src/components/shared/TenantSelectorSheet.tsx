@@ -24,11 +24,14 @@ import { useTenantSelection } from "@/contexts/TenantSelectionContext"
 export interface TenantSelectorSheetProps {
   open: boolean
   onOpenChange: (open: boolean) => void
+  /** Hide the "All facilities" option - useful for pages that require a specific facility */
+  hideAllOption?: boolean
 }
 
 export function TenantSelectorSheet({
   open,
   onOpenChange,
+  hideAllOption = false,
 }: TenantSelectorSheetProps) {
   const {
     selectedFacilityId,
@@ -107,28 +110,30 @@ export function TenantSelectorSheet({
 
         {/* Facility list */}
         <div className="mt-4 flex-1 overflow-y-auto space-y-2">
-          {/* "All facilities" option */}
-          <button
-            type="button"
-            onClick={() => handleSelect(null)}
-            className={cn(
-              "flex w-full items-center justify-between rounded-2xl border px-4 py-3 text-left text-sm transition",
-              selectedFacilityId === null
-                ? "border-primary bg-primary/10 text-primary"
-                : "border-border/60 hover:border-primary/60 hover:bg-primary/5"
-            )}
-          >
-            <div className="flex items-center gap-2">
-              <Building2 className="h-4 w-4" />
-              <span className="font-medium">Tất cả cơ sở</span>
-              {selectedFacilityId === null ? (
-                <Check className="h-4 w-4 text-primary" />
-              ) : null}
-            </div>
-            <span className="text-xs text-muted-foreground">
-              {facilities.length} cơ sở • {totalEquipmentCount} TB
-            </span>
-          </button>
+          {/* "All facilities" option - hidden when hideAllOption is true */}
+          {!hideAllOption && (
+            <button
+              type="button"
+              onClick={() => handleSelect(null)}
+              className={cn(
+                "flex w-full items-center justify-between rounded-2xl border px-4 py-3 text-left text-sm transition",
+                selectedFacilityId === null
+                  ? "border-primary bg-primary/10 text-primary"
+                  : "border-border/60 hover:border-primary/60 hover:bg-primary/5"
+              )}
+            >
+              <div className="flex items-center gap-2">
+                <Building2 className="h-4 w-4" />
+                <span className="font-medium">Tất cả cơ sở</span>
+                {selectedFacilityId === null ? (
+                  <Check className="h-4 w-4 text-primary" />
+                ) : null}
+              </div>
+              <span className="text-xs text-muted-foreground">
+                {facilities.length} cơ sở • {totalEquipmentCount} TB
+              </span>
+            </button>
+          )}
 
           {/* Facility list with loading/empty states */}
           {isLoading ? (

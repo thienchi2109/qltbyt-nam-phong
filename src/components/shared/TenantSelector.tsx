@@ -14,7 +14,13 @@ import { TenantSelectorSheet } from "./TenantSelectorSheet"
  *
  * Opens a bottom sheet with search functionality on all viewports.
  */
-export function TenantSelector({ className }: { className?: string }) {
+export interface TenantSelectorProps {
+  className?: string
+  /** Hide the "All facilities" option - useful for pages that require a specific facility */
+  hideAllOption?: boolean
+}
+
+export function TenantSelector({ className, hideAllOption = false }: TenantSelectorProps) {
   const {
     selectedFacilityId,
     facilities,
@@ -58,7 +64,7 @@ export function TenantSelector({ className }: { className?: string }) {
         <ChevronDown className="h-4 w-4 shrink-0 opacity-50" />
       </Button>
 
-      <TenantSelectorSheet open={sheetOpen} onOpenChange={setSheetOpen} />
+      <TenantSelectorSheet open={sheetOpen} onOpenChange={setSheetOpen} hideAllOption={hideAllOption} />
     </>
   )
 }

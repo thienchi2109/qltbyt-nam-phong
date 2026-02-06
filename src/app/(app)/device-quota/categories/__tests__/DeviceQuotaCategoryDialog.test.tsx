@@ -67,7 +67,7 @@ describe('DeviceQuotaCategoryDialog', () => {
     })
   })
 
-  it('includes phan_loai options C and D', () => {
+  it('includes phan_loai options A and B only', () => {
     mockUseContext.mockReturnValue({
       dialogState: { mode: 'create' },
       closeDialog: vi.fn(),
@@ -79,7 +79,9 @@ describe('DeviceQuotaCategoryDialog', () => {
 
     render(<DeviceQuotaCategoryDialog />)
 
-    expect(screen.getByRole('option', { name: 'C' })).toBeInTheDocument()
-    expect(screen.getByRole('option', { name: 'D' })).toBeInTheDocument()
+    expect(screen.getByRole('option', { name: 'A' })).toBeInTheDocument()
+    expect(screen.getByRole('option', { name: 'B' })).toBeInTheDocument()
+    expect(screen.queryByRole('option', { name: 'C' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('option', { name: 'D' })).not.toBeInTheDocument()
   })
 })
