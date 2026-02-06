@@ -37,7 +37,7 @@ const categoryFormSchema = z.object({
   ma_nhom: z.string().trim().min(1, "Mã nhóm không được để trống"),
   ten_nhom: z.string().trim().min(1, "Tên nhóm không được để trống"),
   parent_id: z.string().optional(),
-  phan_loai: z.string().optional(),
+  phan_loai: z.union([z.literal(NONE_VALUE), z.enum(["A", "B"])]).optional(),
   don_vi_tinh: z.string().optional(),
   thu_tu_hien_thi: z.coerce.number().int().min(0).default(0),
   mo_ta: z.string().optional(),
