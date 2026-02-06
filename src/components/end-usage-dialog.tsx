@@ -36,6 +36,7 @@ import {
 import { useEndUsageSession } from "@/hooks/use-usage-logs"
 import { useSession } from "next-auth/react"
 import { type UsageLog } from "@/types/database"
+import { isRegionalLeaderRole } from "@/lib/rbac"
 
 const equipmentStatusOptions = [
   "Hoạt động",
@@ -65,7 +66,7 @@ export function EndUsageDialog({
   usageLog,
 }: EndUsageDialogProps) {
   const { data: session } = useSession()
-  const isRegionalLeader = ((session?.user as any)?.role ?? '') === 'regional_leader'
+  const isRegionalLeader = isRegionalLeaderRole((session?.user as any)?.role)
   const endUsageMutation = useEndUsageSession()
 
   const form = useForm<EndUsageFormData>({

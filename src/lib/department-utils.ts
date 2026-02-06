@@ -1,3 +1,5 @@
+import { isEquipmentManagerRole } from '@/lib/rbac'
+
 /**
  * Department Matching Utilities for Role-Based Access Control
  * 
@@ -121,10 +123,7 @@ export function createDepartmentFilterCondition(userDepartment: string | null | 
  * Admin and management roles typically see all equipment
  */
 export function shouldBypassDepartmentFilter(userRole: string | null | undefined): boolean {
-  if (!userRole) return false
-  
-  const adminRoles = ['admin', 'to_qltb']
-  return adminRoles.includes(userRole.toLowerCase())
+  return isEquipmentManagerRole(userRole)
 }
 
 /**

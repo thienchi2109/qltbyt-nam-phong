@@ -54,6 +54,7 @@ import { Input } from "@/components/ui/input"
 import { useSearchDebounce } from "@/hooks/use-debounce"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { TenantsManagement } from "@/components/tenants-management"
+import { isGlobalRole } from "@/lib/rbac"
 
 const USER_ENTITY = { singular: "người dùng" } as const
 
@@ -83,7 +84,7 @@ export default function UsersPage() {
   const isMobile = useMediaQuery("(max-width: 768px)")
 
   // Check if current user is admin/global
-  const isAdmin = currentUser?.role === 'global' || currentUser?.role === 'admin'
+  const isAdmin = isGlobalRole(currentUser?.role)
 
   // Redirect if not admin
   React.useEffect(() => {

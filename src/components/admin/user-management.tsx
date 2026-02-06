@@ -9,6 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { useToast } from '@/hooks/use-toast'
 import { supabase } from '@/lib/supabase'
+import { isGlobalRole } from '@/lib/rbac'
 import { useSession } from 'next-auth/react'
 
 interface UserStatus {
@@ -37,7 +38,7 @@ export function UserManagement() {
 
   // Load user list
   const loadUsers = async () => {
-    if (!user || user.role !== 'admin') return;
+    if (!user || !isGlobalRole(user.role)) return;
 
     try {
       // Direct query (after rollback - admin_get_user_status function removed)
@@ -175,7 +176,7 @@ export function UserManagement() {
     }
   };
 
-  if (!user || user.role !== 'admin') {
+  if (!user || !isGlobalRole(user.role)) {
     return (
       <div className="text-center p-8">
         <p className="text-red-500">Chỉ admin mới có quyền truy cập trang này</p>
@@ -279,7 +280,7 @@ export function UserManagement() {
                       <td className="border border-gray-300 p-2">{u.username}</td>
                       <td className="border border-gray-300 p-2">{u.full_name}</td>
                       <td className="border border-gray-300 p-2">
-                        <Badge variant={(u.role === 'global' || u.role === 'admin') ? 'destructive' : 'secondary'}>
+                        <Badge variant={isGlobalRole(u.role) ? 'destructive' : 'secondary'}>
                           {u.role}
                         </Badge>
                       </td>

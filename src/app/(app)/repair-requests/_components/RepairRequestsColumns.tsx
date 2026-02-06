@@ -9,6 +9,7 @@ import { vi } from 'date-fns/locale'
 import type { RepairRequestWithEquipment, AuthUser } from "../types"
 import { calculateDaysRemaining, getStatusVariant } from "../utils"
 import { cn } from "@/lib/utils"
+import { isEquipmentManagerRole } from "@/lib/rbac"
 
 // Re-export for backward compatibility
 export type { AuthUser } from "../types"
@@ -58,7 +59,7 @@ export function renderActions(
   if (!user) return null
   // Regional leaders are read-only, hide all actions
   if (isRegionalLeader) return null
-  const canManage = user.role === 'global' || user.role === 'admin' || user.role === 'to_qltb'
+  const canManage = isEquipmentManagerRole(user.role)
 
   return (
     <DropdownMenu>

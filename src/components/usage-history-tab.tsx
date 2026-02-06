@@ -33,6 +33,7 @@ import { useEquipmentUsageLogs, useEquipmentUsageLogsMore, useDeleteUsageLog } f
 import { useSession } from "next-auth/react"
 import { useIsMobile } from "@/hooks/use-mobile"
 import { type Equipment, type UsageLog, USAGE_STATUS } from "@/types/database"
+import { isGlobalRole } from "@/lib/rbac"
 import { EndUsageDialog } from "./end-usage-dialog"
 import { UsageLogPrint } from "./usage-log-print"
 
@@ -43,6 +44,7 @@ interface UsageHistoryTabProps {
 export function UsageHistoryTab({ equipment }: UsageHistoryTabProps) {
   const { data: session } = useSession()
   const user = session?.user as any
+  const canDeleteUsageLogs = isGlobalRole(user?.role)
   const userId = React.useMemo(() => {
     const uid = (user?.id as any)
     const n = typeof uid === 'string' ? Number(uid) : uid
@@ -217,7 +219,7 @@ export function UsageHistoryTab({ equipment }: UsageHistoryTabProps) {
                         </Badge>
                       </div>
                       
-                      {(user?.role === 'global' || user?.role === 'admin') && log.trang_thai === 'hoan_thanh' && (
+                      {canDeleteUsageLogs && log.trang_thai === 'hoan_thanh' && (
                         <AlertDialog>
                           <AlertDialogTrigger asChild>
                             <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
@@ -295,7 +297,7 @@ export function UsageHistoryTab({ equipment }: UsageHistoryTabProps) {
                   <TableHead>Tình trạng TB</TableHead>
                   <TableHead>Trạng thái</TableHead>
                   <TableHead>Ghi chú</TableHead>
-                  {(user?.role === 'global' || user?.role === 'admin') && <TableHead className="w-[50px]"></TableHead>}
+                  {canDeleteUsageLogs && <TableHead className="w-[50px]"></TableHead>}
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -325,7 +327,7 @@ export function UsageHistoryTab({ equipment }: UsageHistoryTabProps) {
                     <TableCell className="max-w-[200px] truncate">
                       {log.ghi_chu || '-'}
                     </TableCell>
-                    {(user?.role === 'global' || user?.role === 'admin') && (
+                    {canDeleteUsageLogs && (
                       <TableCell>
                         {log.trang_thai === 'hoan_thanh' && (
                           <AlertDialog>

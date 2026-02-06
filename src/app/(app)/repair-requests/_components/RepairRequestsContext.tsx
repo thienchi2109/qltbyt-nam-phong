@@ -5,6 +5,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { useSession } from "next-auth/react"
 import { useToast } from "@/hooks/use-toast"
 import { callRpc } from "@/lib/rpc-client"
+import { isEquipmentManagerRole, isRegionalLeaderRole } from "@/lib/rbac"
 import type {
   RepairRequestWithEquipment,
   RepairUnit,
@@ -251,8 +252,8 @@ export function RepairRequestsProvider({ children }: RepairRequestsProviderProps
   const user = session?.user as AuthUser | null
 
   // Computed permissions
-  const canSetRepairUnit = !!user && ['global', 'to_qltb'].includes(user.role)
-  const isRegionalLeader = !!user && user.role === 'regional_leader'
+  const canSetRepairUnit = isEquipmentManagerRole(user?.role)
+  const isRegionalLeader = isRegionalLeaderRole(user?.role)
 
   // Dialog state
   const [dialogState, setDialogState] = React.useState<DialogState>({

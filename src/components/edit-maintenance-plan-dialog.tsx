@@ -29,6 +29,7 @@ import { callRpc } from "@/lib/rpc-client"
 import { type MaintenancePlan, taskTypes } from "@/lib/data"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select"
 import { useSession } from "next-auth/react"
+import { isRegionalLeaderRole } from "@/lib/rbac"
 
 const planFormSchema = z.object({
   ten_ke_hoach: z.string().min(1, "Tên kế hoạch là bắt buộc."),
@@ -49,7 +50,7 @@ interface EditMaintenancePlanDialogProps {
 export function EditMaintenancePlanDialog({ open, onOpenChange, onSuccess, plan }: EditMaintenancePlanDialogProps) {
   const { toast } = useToast()
   const { data: session } = useSession()
-  const isRegionalLeader = ((session?.user as any)?.role ?? '') === 'regional_leader'
+  const isRegionalLeader = isRegionalLeaderRole((session?.user as any)?.role)
   const [isSubmitting, setIsSubmitting] = React.useState(false)
 
   const form = useForm<PlanFormValues>({

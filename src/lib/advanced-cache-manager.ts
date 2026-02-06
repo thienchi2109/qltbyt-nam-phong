@@ -7,6 +7,7 @@
 
 import { QueryClient } from '@tanstack/react-query'
 import type { User } from '@/types/database'
+import { isEquipmentManagerRole } from '@/lib/rbac'
 
 // Cache configuration constants
 export const CACHE_CONFIG = {
@@ -229,7 +230,7 @@ export const DepartmentCacheUtils = {
   } {
     if (!user) return { scope: 'none' }
     
-    if (['admin', 'to_qltb'].includes(user.role)) {
+    if (isEquipmentManagerRole(user.role)) {
       return { scope: 'global' }
     }
     

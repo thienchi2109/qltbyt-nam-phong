@@ -21,6 +21,7 @@ import { DashboardTabs } from "@/components/dashboard/dashboard-tabs"
 import { QRScannerErrorBoundary } from "@/components/qr-scanner-error-boundary"
 import { useToast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils"
+import { isRegionalLeaderRole } from "@/lib/rbac"
 import type { Equipment } from "@/lib/data"
 // import { useDashboardRealtimeSync } from "@/hooks/use-realtime-sync"
 
@@ -57,7 +58,7 @@ export default function Dashboard() {
   const [editingEquipment, setEditingEquipment] = React.useState<Equipment | null>(null)
 
   // Check if user is regional leader
-  const isRegionalLeader = user?.role === 'regional_leader'
+  const isRegionalLeader = isRegionalLeaderRole(user?.role)
 
   // Get greeting based on time of day
   const getGreeting = () => {

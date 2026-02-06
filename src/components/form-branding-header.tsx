@@ -6,6 +6,7 @@ import { TenantLogo, TenantLogoProps } from "@/components/tenant-logo"
 import { TenantName, TenantNameProps } from "@/components/tenant-name"
 import { useTenantBranding } from "@/hooks/use-tenant-branding"
 import { Skeleton } from "@/components/ui/skeleton"
+import { isGlobalRole } from "@/lib/rbac"
 
 export interface FormBrandingHeaderProps {
   align?: "left" | "center" | "right"
@@ -26,7 +27,7 @@ export function FormBrandingHeader({
 }: FormBrandingHeaderProps) {
   const { data: session } = useSession()
   const user = session?.user as any
-  const isPrivileged = (user?.role === 'global' || user?.role === 'admin')
+  const isPrivileged = isGlobalRole(user?.role)
   
   // Determine branding mode
   const shouldUseFormContext = mode === 'static' || 

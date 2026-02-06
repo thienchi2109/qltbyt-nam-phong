@@ -27,6 +27,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { useSession } from "next-auth/react"
 import { cn } from "@/lib/utils"
+import { isGlobalRole } from "@/lib/rbac"
 
 export function MobileFooterNav() {
   const pathname = usePathname()
@@ -51,7 +52,7 @@ export function MobileFooterNav() {
     ]
 
     // Add admin-only items with role-based permissions
-  if (user?.role === 'global' || user?.role === 'admin') {
+  if (isGlobalRole(user?.role)) {
       baseItems.push({ href: "/users", icon: Users, label: "Người dùng" })
       baseItems.push({ href: "/activity-logs", icon: Activity, label: "Nhật ký hoạt động" })
     }

@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Label } from "@/components/ui/label"
 import { callRpc } from "@/lib/rpc-client"
 import { Skeleton } from "@/components/ui/skeleton"
+import { isGlobalRole, isRegionalLeaderRole } from "@/lib/rbac"
 
 interface TenantFilterDropdownProps {
   value: string
@@ -21,8 +22,8 @@ export function TenantFilterDropdown({
 }: TenantFilterDropdownProps) {
   const { data: session } = useSession()
   const user = session?.user as any
-  const isGlobal = user?.role === 'global' || user?.role === 'admin'
-  const isRegionalLeader = user?.role === 'regional_leader'
+  const isGlobal = isGlobalRole(user?.role)
+  const isRegionalLeader = isRegionalLeaderRole(user?.role)
 
   // Load tenant options using TanStack Query
   // Use get_facilities_with_equipment_count for both global and regional_leader

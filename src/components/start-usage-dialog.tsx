@@ -38,6 +38,7 @@ import { useSession } from "next-auth/react"
 import { useStartUsageSession } from "@/hooks/use-usage-logs"
 import { useToast } from "@/hooks/use-toast"
 import type { Equipment as DbEquipment } from "@/types/database"
+import { isRegionalLeaderRole } from "@/lib/rbac"
 
 const equipmentStatusOptions = [
   "Hoạt động",
@@ -70,7 +71,7 @@ export function StartUsageDialog({
 }: StartUsageDialogProps) {
   const { data: session } = useSession()
   const user = session?.user as any
-  const isRegionalLeader = user?.role === 'regional_leader'
+  const isRegionalLeader = isRegionalLeaderRole(user?.role)
   const { toast } = useToast()
   const currentUserId = React.useMemo(() => {
     const rawId = user?.id

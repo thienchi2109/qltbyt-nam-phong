@@ -18,6 +18,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea"
 import { useToast } from "@/hooks/use-toast"
 import { callRpc } from "@/lib/rpc-client"
+import { isRegionalLeaderRole } from "@/lib/rbac"
 import { useSession } from "next-auth/react"
 import {
   TRANSFER_TYPES,
@@ -71,7 +72,7 @@ export function EditTransferDialog({ open, onOpenChange, onSuccess, transfer }: 
     }
     return null
   }, [user?.id])
-  const isRegionalLeader = user?.role === 'regional_leader'
+  const isRegionalLeader = isRegionalLeaderRole(user?.role)
   const [isLoading, setIsLoading] = React.useState(false)
   const [equipmentResults, setEquipmentResults] = React.useState<EquipmentWithDept[]>([])
   const [isEquipmentLoading, setIsEquipmentLoading] = React.useState(false)

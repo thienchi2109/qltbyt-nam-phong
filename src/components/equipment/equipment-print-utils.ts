@@ -11,6 +11,7 @@
 import type { Equipment } from "@/types/database"
 import type { TenantBranding } from "@/hooks/use-tenant-branding"
 import { callRpc } from "@/lib/rpc-client"
+import { isGlobalRole } from "@/lib/rbac"
 
 export interface PrintContext {
   tenantBranding: TenantBranding | null | undefined
@@ -47,7 +48,7 @@ async function resolveBranding(context: PrintContext): Promise<TenantBranding | 
   const { tenantBranding, userRole, equipmentTenantId } = context
 
   // For global/admin users, ALWAYS use equipment's tenant branding
-  if ((userRole === 'global' || userRole === 'admin') && equipmentTenantId) {
+  if (isGlobalRole(userRole) && equipmentTenantId) {
     return await fetchTenantBranding(equipmentTenantId) || tenantBranding || null
   }
 

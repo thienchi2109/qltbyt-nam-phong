@@ -1,5 +1,6 @@
 import { useQuery, UseQueryOptions } from '@tanstack/react-query'
 import { useSession } from 'next-auth/react'
+import { isGlobalRole } from '@/lib/rbac'
 
 // Types for audit logs
 export interface AuditLogEntry {
@@ -77,8 +78,7 @@ export function useAuditLogs(
   const { data: session } = useSession()
   
   // Only global users can access audit logs
-  const isGlobalUser = (session?.user as any)?.role?.toLowerCase() === 'admin' || 
-                      (session?.user as any)?.role?.toLowerCase() === 'global'
+  const isGlobalUser = isGlobalRole((session?.user as any)?.role)
 
   return useQuery<AuditLogEntry[], Error>({
     queryKey: ['audit-logs', filters],
@@ -122,8 +122,7 @@ export function useAuditLogsStats(
 ) {
   const { data: session } = useSession()
   
-  const isGlobalUser = (session?.user as any)?.role?.toLowerCase() === 'admin' || 
-                      (session?.user as any)?.role?.toLowerCase() === 'global'
+  const isGlobalUser = isGlobalRole((session?.user as any)?.role)
 
   return useQuery<AuditLogStats[], Error>({
     queryKey: ['audit-logs-stats', filters],
@@ -156,8 +155,7 @@ export function useAuditLogsRecentSummary(
 ) {
   const { data: session } = useSession()
   
-  const isGlobalUser = (session?.user as any)?.role?.toLowerCase() === 'admin' || 
-                      (session?.user as any)?.role?.toLowerCase() === 'global'
+  const isGlobalUser = isGlobalRole((session?.user as any)?.role)
 
   return useQuery<AuditLogSummary[], Error>({
     queryKey: ['audit-logs-recent-summary'],
