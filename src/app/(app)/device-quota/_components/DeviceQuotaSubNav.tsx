@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation"
 import { useSession } from "next-auth/react"
 
 import { cn } from "@/lib/utils"
+import { isEquipmentManagerRole } from "@/lib/rbac"
 
 interface NavItem {
   href: string
@@ -50,8 +51,7 @@ export function DeviceQuotaSubNav() {
 
   const user = session?.user
   // Note: 'admin' is normalized to 'global' by API proxy, but session may still show 'admin'
-  const canManageCategories =
-    user?.role === "global" || user?.role === "admin" || user?.role === "to_qltb"
+  const canManageCategories = isEquipmentManagerRole(user?.role)
 
   const items = canManageCategories ? ALL_ITEMS : BASE_ITEMS
 

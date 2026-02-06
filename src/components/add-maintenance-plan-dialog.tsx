@@ -28,6 +28,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { useToast } from "@/hooks/use-toast"
 import { callRpc } from "@/lib/rpc-client"
+import { isGlobalRole } from "@/lib/rbac"
 import { useSession } from "next-auth/react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { taskTypes } from "@/lib/data"
@@ -55,7 +56,7 @@ export function AddMaintenancePlanDialog({ open, onOpenChange, onSuccess }: AddM
   const [isSubmitting, setIsSubmitting] = React.useState(false)
   
   // Detect global user (no facility restriction)
-  const isGlobalUser = user?.role === 'global'
+  const isGlobalUser = isGlobalRole(user?.role)
   
   // Use TanStack Query for tenants with proper caching (same pattern as equipment dialog)
   const { data: tenantList = [], isLoading: tenantsLoading } = useQuery({

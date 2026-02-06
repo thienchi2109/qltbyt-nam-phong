@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation"
 import { AlertTriangle, Loader2, Shield } from "lucide-react"
 
 import { Card, CardContent } from "@/components/ui/card"
+import { isEquipmentManagerRole } from "@/lib/rbac"
 import { DeviceQuotaCategoryProvider } from "./_components/DeviceQuotaCategoryContext"
 import { DeviceQuotaCategoryToolbar } from "./_components/DeviceQuotaCategoryToolbar"
 import { DeviceQuotaCategoryTree } from "./_components/DeviceQuotaCategoryTree"
@@ -32,8 +33,7 @@ export default function DeviceQuotaCategoriesPage() {
   }
 
   const userRole = (session?.user as { role?: string } | undefined)?.role
-  const canManageCategories =
-    userRole === "global" || userRole === "admin" || userRole === "to_qltb"
+  const canManageCategories = isEquipmentManagerRole(userRole)
 
   if (!canManageCategories) {
     return (

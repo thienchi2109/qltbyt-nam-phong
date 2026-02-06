@@ -4,6 +4,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { useSession } from "next-auth/react"
 import { useToast } from "@/hooks/use-toast"
 import { callRpc } from "@/lib/rpc-client"
+import { isEquipmentManagerRole, isRegionalLeaderRole } from "@/lib/rbac"
 import { transferDataGridKeys } from "@/hooks/useTransferDataGrid"
 import { transferKanbanKeys } from "@/hooks/useTransfersKanban"
 import type { TransferListItem } from "@/types/transfers-data-grid"
@@ -44,9 +45,8 @@ export function useTransferActions(): UseTransferActionsReturn {
   const user = session?.user
   const queryClient = useQueryClient()
 
-  const isRegionalLeader = user?.role === "regional_leader"
-  const isTransferCoreRole =
-    user?.role === "global" || user?.role === "admin" || user?.role === "to_qltb"
+  const isRegionalLeader = isRegionalLeaderRole(user?.role)
+  const isTransferCoreRole = isEquipmentManagerRole(user?.role)
 
   const notifyRegionalLeaderRestricted = React.useCallback(() => {
     toast({

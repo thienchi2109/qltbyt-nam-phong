@@ -14,6 +14,7 @@ import { useSession } from "next-auth/react"
 import { MobileUsageActions } from "./mobile-usage-actions"
 import { ActiveUsageIndicator } from "./active-usage-indicator"
 import { cn } from "@/lib/utils"
+import { isEquipmentManagerRole } from "@/lib/rbac"
 
 interface MobileEquipmentListItemProps {
   equipment: Equipment
@@ -65,9 +66,8 @@ export function MobileEquipmentListItem({
   const { data: session } = useSession()
   const user = session?.user as any
 
-  const canEdit = user && (
-    user.role === 'global' || user.role === 'admin' ||
-    user.role === 'to_qltb' ||
+  const canEdit = !!user && (
+    isEquipmentManagerRole(user.role) ||
     (user.role === 'qltb_khoa' && user.khoa_phong === equipment.khoa_phong_quan_ly)
   )
 

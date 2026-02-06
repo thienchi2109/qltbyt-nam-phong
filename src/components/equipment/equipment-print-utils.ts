@@ -11,6 +11,7 @@
 import type { Equipment } from "@/types/database"
 import type { TenantBranding } from "@/hooks/use-tenant-branding"
 import { callRpc } from "@/lib/rpc-client"
+import { isGlobalRole } from "@/lib/rbac"
 
 export interface PrintContext {
   tenantBranding: TenantBranding | null | undefined
@@ -47,7 +48,7 @@ async function resolveBranding(context: PrintContext): Promise<TenantBranding | 
   const { tenantBranding, userRole, equipmentTenantId } = context
 
   // For global/admin users, ALWAYS use equipment's tenant branding
-  if ((userRole === 'global' || userRole === 'admin') && equipmentTenantId) {
+  if (isGlobalRole(userRole) && equipmentTenantId) {
     return await fetchTenantBranding(equipmentTenantId) || tenantBranding || null
   }
 
@@ -59,7 +60,27 @@ async function resolveBranding(context: PrintContext): Promise<TenantBranding | 
   return tenantBranding || null
 }
 
-const formatValue = (value: unknown): string => (value as string) ?? ""
+/**
+ * Escapes HTML special characters to prevent XSS.
+ * Used for inserting values into HTML attributes and content.
+ */
+const escapeHtml = (str: string): string => {
+  return str.replace(/[&<>"']/g, (c) => {
+    switch (c) {
+      case '&': return '&amp;'
+      case '<': return '&lt;'
+      case '>': return '&gt;'
+      case '"': return '&quot;'
+      case "'": return '&#39;'
+      default: return c
+    }
+  })
+}
+
+const formatValue = (value: unknown): string => {
+  const str = value === null || value === undefined ? "" : String(value)
+  return escapeHtml(str)
+}
 
 const formatCurrency = (value: unknown): string => {
   if (value === null || value === undefined || value === "") return ""
@@ -118,9 +139,9 @@ export async function generateProfileSheet(
             <div class="content-body">
                 <header class="text-center">
                     <div class="flex justify-between items-center">
-                        <img src="${brandingToUse?.logo_url || 'https://placehold.co/100x100/e2e8f0/e2e8f0?text=Logo'}" alt="Logo ${brandingToUse?.name || 'Organization'}" class="w-20 h-20" onerror="this.onerror=null;this.src='https://placehold.co/100x100/e2e8f0/e2e8f0?text=Logo';">
+                        <img src="${escapeHtml(brandingToUse?.logo_url || 'https://placehold.co/100x100/e2e8f0/e2e8f0?text=Logo')}" alt="Logo ${escapeHtml(brandingToUse?.name || 'Organization')}" class="w-20 h-20" onerror="this.onerror=null;this.src='https://placehold.co/100x100/e2e8f0/e2e8f0?text=Logo';">
                         <div class="flex-grow">
-                            <h2 class="title-sub uppercase font-bold text-xl">${brandingToUse?.name || 'ĐƠN VỊ'}</h2>
+                            <h2 class="title-sub uppercase font-bold text-xl">${escapeHtml(brandingToUse?.name || 'ĐƠN VỊ')}</h2>
                             <div class="flex items-baseline justify-center mt-2">
                                 <label class="font-bold whitespace-nowrap">KHOA/PHÒNG:</label>
                                 <div class="w-1/2 ml-2"><input type="text" class="form-input-line" value="${formatValue(equipment.khoa_phong_quan_ly)}"></div>
@@ -257,7 +278,10 @@ export async function generateDeviceLabel(
     equipmentTenantId: equipment.don_vi ?? undefined
   })
 
-  const qrText = formatValue(equipment.ma_thiet_bi)
+  // Use raw value for QR code data (not HTML-escaped) to ensure scanned data matches equipment code
+  const qrText = equipment.ma_thiet_bi != null ? String(equipment.ma_thiet_bi) : ""
+  // Escaped version for HTML contexts (alt text, etc.)
+  const qrTextEscaped = escapeHtml(qrText)
   const qrSize = 112
   const qrUrl = qrText
     ? `https://quickchart.io/qr?text=${encodeURIComponent(qrText)}&caption=${encodeURIComponent(qrText)}&captionFontFamily=mono&captionFontSize=12&size=${qrSize}&ecLevel=H&margin=2`
@@ -289,7 +313,7 @@ export async function generateDeviceLabel(
         <div class="w-full max-w-md bg-white p-4 shadow-lg label-container" style="border: 3px double #000;">
             <header class="flex items-start justify-between gap-3 border-b-2 border-black pb-3">
                 <div class="flex-shrink-0">
-                    <img src="${brandingToUse?.logo_url || 'https://placehold.co/100x100/e2e8f0/e2e8f0?text=Logo'}" alt="Logo ${brandingToUse?.name || 'Organization'}" class="w-16 h-auto" onerror="this.onerror=null;this.src='https://placehold.co/100x100/e2e8f0/e2e8f0?text=Logo';">
+                    <img src="${escapeHtml(brandingToUse?.logo_url || 'https://placehold.co/100x100/e2e8f0/e2e8f0?text=Logo')}" alt="Logo ${escapeHtml(brandingToUse?.name || 'Organization')}" class="w-16 h-auto" onerror="this.onerror=null;this.src='https://placehold.co/100x100/e2e8f0/e2e8f0?text=Logo';">
                 </div>
                 <div class="text-center flex-grow">
                     <h1 class="text-2xl font-bold tracking-wider">NHÃN THIẾT BỊ</h1>
@@ -334,7 +358,7 @@ export async function generateDeviceLabel(
                      <label class="text-sm font-semibold">Mã QR của TB</label>
                      <img id="qr-image"
                          src="${qrUrl}"
-                         alt="Mã QR của ${qrText}"
+                         alt="Mã QR của ${qrTextEscaped}"
                          class="w-28 h-28 border rounded-md p-1 bg-white mt-1"
                          onerror="this.onerror=null;this.src='https://placehold.co/112x112/ffffff/cccccc?text=QR+Code';"
                      >

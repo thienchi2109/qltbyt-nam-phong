@@ -1,5 +1,6 @@
 import { useQuery, useQueryClient, useInfiniteQuery } from '@tanstack/react-query'
 import { callRpc } from '@/lib/rpc-client'
+import { isGlobalRole, isRegionalLeaderRole } from '@/lib/rbac'
 import type {
   TransferListFilters,
   TransferKanbanResponse,
@@ -41,7 +42,7 @@ export function useTransfersKanban(
   const { excludeCompleted = true, perColumnLimit = 30, userRole } = options
 
   // Multi-tenant users must select a specific tenant before fetching
-  const isMultiTenantUser = userRole === 'global' || userRole === 'regional_leader'
+  const isMultiTenantUser = isGlobalRole(userRole) || isRegionalLeaderRole(userRole)
   const hasTenantSelected = !!filters.facilityId
   const shouldFetch = isMultiTenantUser ? hasTenantSelected : true
 

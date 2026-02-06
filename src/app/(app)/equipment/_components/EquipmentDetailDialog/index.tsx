@@ -34,6 +34,7 @@ import {
   type UserSession,
 } from "./EquipmentDetailTypes"
 import { formatPartialDateToDisplay } from "@/lib/date-utils"
+import { isEquipmentManagerRole } from "@/lib/rbac"
 import { useEquipmentHistory } from "./hooks/useEquipmentHistory"
 import { useEquipmentAttachments } from "./hooks/useEquipmentAttachments"
 import { useEquipmentUpdate } from "./hooks/useEquipmentUpdate"
@@ -243,10 +244,8 @@ export function EquipmentDetailDialog({
 
   // RBAC check
   const canEdit =
-    user &&
-    (user.role === "global" ||
-      user.role === "admin" ||
-      user.role === "to_qltb" ||
+    !!user &&
+    (isEquipmentManagerRole(user.role) ||
       (user.role === "qltb_khoa" && user.khoa_phong === equipment?.khoa_phong_quan_ly))
 
   if (!equipment) return null

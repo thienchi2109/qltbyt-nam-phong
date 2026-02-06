@@ -1,6 +1,7 @@
 "use client"
 import { useQuery, keepPreviousData, useQueryClient } from "@tanstack/react-query"
 import { callRpc } from "@/lib/rpc-client"
+import { isGlobalRole } from "@/lib/rbac"
 import { useSession } from "next-auth/react"
 import * as React from "react"
 
@@ -16,7 +17,7 @@ export function useTenantBranding(options?: {
 }) {
   const { data: session } = useSession()
   const user = session?.user as any
-  const isPrivileged = (user?.role === 'global' || user?.role === 'admin')
+  const isPrivileged = isGlobalRole(user?.role)
   
   // Determine effective tenant ID based on user privilege and options
   const sessionTenantKey = user?.don_vi ? String(user.don_vi) : 'none'

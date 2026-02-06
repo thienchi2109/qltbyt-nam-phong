@@ -131,6 +131,22 @@ Client → callRpc() → /api/rpc/[fn] → Supabase PostgREST → RPC Function
 
 ---
 
+## Frontend Utility Functions
+
+Frontend role checks are centralized in `src/lib/rbac.ts` to keep UI logic consistent and avoid duplication.
+
+Available helpers:
+- `ROLES` (typed role constants)
+- `isGlobalRole()` (global/admin)
+- `isRegionalLeaderRole()`
+- `isEquipmentManagerRole()` (global/admin/to_qltb)
+- `isDeptScopedRole()` (technician/qltb_khoa)
+- `isPrivilegedRole()` (re-export from `src/types/tenant.ts`)
+
+**Security note:** These helpers control **UI visibility only**. All permission enforcement remains server-side via the API proxy and PostgreSQL RPC functions.
+
+---
+
 ## Tenant Isolation Rules
 
 ### API Proxy Enforcement (`/api/rpc/[fn]`)

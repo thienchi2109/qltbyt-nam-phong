@@ -15,8 +15,8 @@ export type TenantRole = 'global' | 'admin' | 'regional_leader' | 'to_qltb' | 't
 /**
  * Check if the given role has multi-tenant selection privileges.
  * Global, admin, and regional_leader users can select which facility to view.
+ *
+ * Re-exported from @/lib/rbac for single source of truth.
+ * @see src/lib/rbac.ts for implementation
  */
-export function isPrivilegedRole(role: string | undefined | null): boolean {
-  if (!role) return false
-  return ['global', 'admin', 'regional_leader'].includes(role.toLowerCase())
-}
+export { isPrivilegedRole } from '@/lib/rbac'

@@ -20,6 +20,7 @@ import { useToast } from "@/hooks/use-toast"
 import { useIsMobile } from "@/hooks/use-mobile"
 import { MaintenanceTask, taskTypes, type Equipment } from "@/lib/data"
 import { callRpc } from "@/lib/rpc-client"
+import { isEquipmentManagerRole, isGlobalRole, isRegionalLeaderRole } from "@/lib/rbac"
 import type { MaintenancePlan } from "@/hooks/use-cached-maintenance" // ✅ Use hook's type for paginated data
 import { useFeatureFlag } from "@/lib/feature-flags"
 import { Badge } from "@/components/ui/badge"
@@ -79,9 +80,9 @@ export default function MaintenancePage() {
   const { toast } = useToast()
   const { data: session, status } = useSession()
   const user = session?.user as any // Cast NextAuth user to our User type
-  const isRegionalLeader = user?.role === 'regional_leader'
+  const isRegionalLeader = isRegionalLeaderRole(user?.role)
   // Regional leaders can VIEW maintenance plans but cannot manage them
-  const canManagePlans = !!user && !isRegionalLeader && ((user.role === 'global' || user.role === 'admin') || user.role === 'to_qltb')
+  const canManagePlans = isEquipmentManagerRole(user?.role)
   const router = useRouter()
   const searchParams = useSearchParams()
   const isMobile = useIsMobile()
@@ -136,7 +137,7 @@ export default function MaintenancePage() {
 
   React.useEffect(() => {
     // Only global and regional_leader users need the facility dropdown
-    const canSeeFacilityFilter = user?.role === 'global' || user?.role === 'regional_leader';
+    const canSeeFacilityFilter = isGlobalRole(user?.role) || isRegionalLeaderRole(user?.role);
     if (!canSeeFacilityFilter) return;
 
     setIsLoadingFacilities(true);
@@ -155,7 +156,7 @@ export default function MaintenancePage() {
       .finally(() => setIsLoadingFacilities(false));
   }, [user?.role]);
 
-  const showFacilityFilter = user?.role === 'global' || user?.role === 'regional_leader';
+  const showFacilityFilter = isGlobalRole(user?.role) || isRegionalLeaderRole(user?.role);
   const activeMobileFilterCount = React.useMemo(() => {
     let count = 0
     if (selectedFacilityId) count += 1
@@ -652,7 +653,7 @@ export default function MaintenancePage() {
   });
 
   const isPlanApproved = selectedPlan?.trang_thai === 'Đã duyệt';
-  const canCompleteTask = !isRegionalLeader && user && ((user.role === 'global' || user.role === 'admin') || user.role === 'to_qltb');
+  const canCompleteTask = !isRegionalLeader && isEquipmentManagerRole(user?.role);
 
   // ✅ Extracted hook for task inline editing (must be after isPlanApproved is declared)
   const taskEditing = useTaskEditing({

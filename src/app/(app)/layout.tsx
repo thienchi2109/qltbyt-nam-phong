@@ -42,6 +42,7 @@ import { useTenantBranding } from "@/hooks/use-tenant-branding"
 import { TenantLogo } from "@/components/tenant-logo"
 import { TenantName } from "@/components/tenant-name"
 import { cn } from "@/lib/utils"
+import { isGlobalRole } from "@/lib/rbac"
 import { useSession, signOut } from "next-auth/react"
 import { Skeleton } from "@/components/ui/skeleton"
 import { ChangePasswordDialog } from "@/components/change-password-dialog"
@@ -115,7 +116,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     ]
 
     // Add admin/global-only pages
-    if (user?.role === 'global' || user?.role === 'admin') {
+    if (isGlobalRole(user?.role)) {
       baseItems.push({ href: "/users", icon: Users, label: "Người dùng" })
       baseItems.push({ href: "/activity-logs", icon: Activity, label: "Nhật ký hoạt động" })
     }

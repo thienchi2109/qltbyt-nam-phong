@@ -5,6 +5,7 @@ import { Filter } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { useSession } from "next-auth/react"
 import { cn } from "@/lib/utils"
+import { isEquipmentManagerRole } from "@/lib/rbac"
 
 interface DepartmentFilterStatusProps {
   /** Number of items currently displayed after filtering */
@@ -63,7 +64,7 @@ export function DepartmentFilterStatus({
   
   // Only show for non-admin users with department
   const shouldShow = user && 
-    !['global', 'to_qltb', 'admin'].includes(user.role) && 
+    !isEquipmentManagerRole(user.role) && 
     user.khoa_phong
 
   if (!shouldShow) {

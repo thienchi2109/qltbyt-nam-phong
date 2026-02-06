@@ -12,6 +12,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { DynamicBarChart } from "@/components/dynamic-chart"
 import { callRpc } from "@/lib/rpc-client"
 import { InteractiveEquipmentChart } from "@/components/interactive-equipment-chart"
+import { isGlobalRole, isRegionalLeaderRole } from "@/lib/rbac"
 
 interface UnifiedInventoryChartProps {
   tenantFilter?: string
@@ -36,8 +37,8 @@ export function UnifiedInventoryChart({
   const { data: session } = useSession()
   const rawRole = (session as any)?.user?.role ?? ''
   const role = String(rawRole).toLowerCase()
-  const isGlobal = role === 'global' || role === 'admin'
-  const isRegionalLeader = role === 'regional_leader'
+  const isGlobal = isGlobalRole(rawRole)
+  const isRegionalLeader = isRegionalLeaderRole(rawRole)
 
   // Only render for RL / Global per spec
   if (!isGlobalOrRegionalLeader) return null

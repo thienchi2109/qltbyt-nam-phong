@@ -22,6 +22,7 @@ import {
 import { useDepartmentPerformance } from "@/hooks/use-department-performance"
 import { useSession } from "next-auth/react"
 import { cn } from "@/lib/utils"
+import { isGlobalRole } from "@/lib/rbac"
 
 export function PerformanceDashboard() {
   const { data: session } = useSession()
@@ -38,7 +39,7 @@ export function PerformanceDashboard() {
   } = useDepartmentPerformance()
 
   // Only show to admin users
-  if (!user || user.role !== 'admin') {
+  if (!user || !isGlobalRole(user.role)) {
     return null
   }
 
