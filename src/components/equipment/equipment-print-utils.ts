@@ -280,6 +280,8 @@ export async function generateDeviceLabel(
 
   // Use raw value for QR code data (not HTML-escaped) to ensure scanned data matches equipment code
   const qrText = equipment.ma_thiet_bi != null ? String(equipment.ma_thiet_bi) : ""
+  // Escaped version for HTML contexts (alt text, etc.)
+  const qrTextEscaped = escapeHtml(qrText)
   const qrSize = 112
   const qrUrl = qrText
     ? `https://quickchart.io/qr?text=${encodeURIComponent(qrText)}&caption=${encodeURIComponent(qrText)}&captionFontFamily=mono&captionFontSize=12&size=${qrSize}&ecLevel=H&margin=2`
@@ -356,7 +358,7 @@ export async function generateDeviceLabel(
                      <label class="text-sm font-semibold">Mã QR của TB</label>
                      <img id="qr-image"
                          src="${qrUrl}"
-                         alt="Mã QR của ${qrText}"
+                         alt="Mã QR của ${qrTextEscaped}"
                          class="w-28 h-28 border rounded-md p-1 bg-white mt-1"
                          onerror="this.onerror=null;this.src='https://placehold.co/112x112/ffffff/cccccc?text=QR+Code';"
                      >
