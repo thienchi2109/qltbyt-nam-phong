@@ -78,7 +78,7 @@ const escapeHtml = (str: string): string => {
 }
 
 const formatValue = (value: unknown): string => {
-  const str = (value as string) ?? ""
+  const str = value === null || value === undefined ? "" : String(value)
   return escapeHtml(str)
 }
 
@@ -278,7 +278,8 @@ export async function generateDeviceLabel(
     equipmentTenantId: equipment.don_vi ?? undefined
   })
 
-  const qrText = formatValue(equipment.ma_thiet_bi)
+  // Use raw value for QR code data (not HTML-escaped) to ensure scanned data matches equipment code
+  const qrText = equipment.ma_thiet_bi != null ? String(equipment.ma_thiet_bi) : ""
   const qrSize = 112
   const qrUrl = qrText
     ? `https://quickchart.io/qr?text=${encodeURIComponent(qrText)}&caption=${encodeURIComponent(qrText)}&captionFontFamily=mono&captionFontSize=12&size=${qrSize}&ecLevel=H&margin=2`
