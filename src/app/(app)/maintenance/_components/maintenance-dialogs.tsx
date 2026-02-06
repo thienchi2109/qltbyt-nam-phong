@@ -1,5 +1,6 @@
 "use client"
 
+import * as React from "react"
 import { Loader2 } from "lucide-react"
 import { format, parseISO } from 'date-fns'
 import { vi } from 'date-fns/locale'
@@ -17,6 +18,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
+import type { MaintenancePlan as DialogMaintenancePlan } from "@/lib/data"
 import { useMaintenanceContext } from "../_hooks/useMaintenanceContext"
 
 export function MaintenanceDialogs() {
@@ -45,6 +47,25 @@ export function MaintenanceDialogs() {
   } = ctx
 
   const { taskToDelete, setTaskToDelete } = taskEditing
+  const editDialogPlan = React.useMemo<DialogMaintenancePlan | null>(() => {
+    if (!dialogState.editingPlan) {
+      return null
+    }
+    return {
+      ...dialogState.editingPlan,
+      facility_name: dialogState.editingPlan.facility_name ?? undefined,
+    }
+  }, [dialogState.editingPlan])
+
+  const addTasksDialogPlan = React.useMemo<DialogMaintenancePlan | null>(() => {
+    if (!selectedPlan) {
+      return null
+    }
+    return {
+      ...selectedPlan,
+      facility_name: selectedPlan.facility_name ?? undefined,
+    }
+  }, [selectedPlan])
 
   return (
     <>
@@ -57,7 +78,7 @@ export function MaintenanceDialogs() {
         open={!!dialogState.editingPlan}
         onOpenChange={(open) => !open && setEditingPlan(null)}
         onSuccess={onPlanMutationSuccess}
-        plan={dialogState.editingPlan as any}
+        plan={editDialogPlan}
       />
       {/* Approve Dialog */}
       <AlertDialog open={operations.confirmDialog.type === 'approve'} onOpenChange={(open) => !open && operations.closeDialog()}>
@@ -202,7 +223,7 @@ export function MaintenanceDialogs() {
       <AddTasksDialog
         open={dialogState.isAddTasksDialogOpen}
         onOpenChange={setIsAddTasksDialogOpen}
-        plan={selectedPlan as any}
+        plan={addTasksDialogPlan}
         existingEquipmentIds={existingEquipmentIdsInDraft}
         onSuccess={handleAddTasksFromDialog}
       />

@@ -4,7 +4,6 @@ import * as React from "react"
 import type { RowSelectionState } from "@tanstack/react-table"
 import { useSession } from "next-auth/react"
 import { Skeleton } from "@/components/ui/skeleton"
-import { useMaintenancePlans } from "@/hooks/use-cached-maintenance"
 import { MaintenanceProvider } from "./_components/MaintenanceContext"
 import { MaintenancePageClient } from "./_components/MaintenancePageClient"
 
@@ -39,15 +38,8 @@ export default function MaintenancePage() {
 function MaintenancePageWrapper() {
   const [taskRowSelection, setTaskRowSelection] = React.useState<RowSelectionState>({})
 
-  // Data fetching hook - needed for refetch callback
-  const { refetch: refetchPlans } = useMaintenancePlans({
-    page: 1,
-    pageSize: 50,
-  })
-
   return (
     <MaintenanceProvider
-      refetchPlans={refetchPlans}
       taskRowSelection={taskRowSelection}
       setTaskRowSelection={setTaskRowSelection}
     >

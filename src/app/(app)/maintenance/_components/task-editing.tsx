@@ -2,7 +2,6 @@
 
 import * as React from "react"
 import { useToast } from "@/hooks/use-toast"
-import { Input } from "@/components/ui/input"
 import type { MaintenanceTask } from "@/lib/data"
 
 export interface UseTaskEditingOptions {
@@ -14,6 +13,7 @@ export interface UseTaskEditingOptions {
 
 export function useTaskEditing(options: UseTaskEditingOptions) {
   const { toast } = useToast()
+  const { setDraftTasks } = options
 
   const [editingTaskId, setEditingTaskId] = React.useState<number | null>(null)
   const [editingTaskData, setEditingTaskData] = React.useState<Partial<MaintenanceTask> | null>(null)
@@ -36,7 +36,7 @@ export function useTaskEditing(options: UseTaskEditingOptions) {
   const handleSaveTask = React.useCallback(() => {
     if (!editingTaskId || !editingTaskData) return
 
-    options.setDraftTasks(currentDrafts =>
+    setDraftTasks(currentDrafts =>
       currentDrafts.map(task =>
         task.id === editingTaskId ? { ...task, ...editingTaskData } : task
       )
@@ -50,7 +50,7 @@ export function useTaskEditing(options: UseTaskEditingOptions) {
       title: "Thành công",
       description: "Đã cập nhật công việc"
     })
-  }, [editingTaskId, editingTaskData, options.setDraftTasks, toast])
+  }, [editingTaskId, editingTaskData, setDraftTasks, toast])
 
   return {
     editingTaskId,

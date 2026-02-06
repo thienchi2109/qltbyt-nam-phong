@@ -43,6 +43,13 @@ export function useMaintenanceDrafts({
     }
   }, [draftTasks, selectedPlan, hasChanges, getDraftCacheKey])
 
+  React.useEffect(() => {
+    if (!selectedPlan) {
+      setTasks([])
+      setDraftTasks([])
+    }
+  }, [selectedPlan])
+
   // Fetch tasks when plan changes
   const fetchTasks = React.useCallback(async (plan: MaintenancePlan) => {
     setIsLoading(true)
@@ -50,7 +57,7 @@ export function useMaintenanceDrafts({
     const cachedDraft = localStorage.getItem(cacheKey)
 
     try {
-      const data = await callRpc<any[]>({
+      const data = await callRpc<MaintenanceTask[]>({
         fn: 'maintenance_tasks_list_with_equipment',
         args: {
           p_ke_hoach_id: plan.id,
@@ -59,7 +66,7 @@ export function useMaintenanceDrafts({
           p_don_vi_thuc_hien: null
         }
       })
-      const dbTasks = (data || []) as MaintenanceTask[]
+      const dbTasks = data || []
       setTasks(dbTasks)
 
       if (cachedDraft) {
@@ -72,8 +79,9 @@ export function useMaintenanceDrafts({
       } else {
         setDraftTasks(dbTasks)
       }
-    } catch (error: any) {
-      toast({ variant: "destructive", title: "Lỗi tải công việc", description: error.message })
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Lỗi không xác định"
+      toast({ variant: "destructive", title: "Lỗi tải công việc", description: message })
       setTasks([])
       setDraftTasks([])
     }
@@ -88,7 +96,7 @@ export function useMaintenanceDrafts({
     const tasksToInsert = draftTasks
       .filter(t => t.id < 0)
       .map(task => {
-        const { id, thiet_bi, ...dbData } = task
+        const { id: _id, thiet_bi: _thiet_bi, ...dbData } = task
         return dbData
       })
 
@@ -97,7 +105,7 @@ export function useMaintenanceDrafts({
         original.id === t.id && JSON.stringify(original) !== JSON.stringify(t)
       ))
       .map(task => {
-        const { thiet_bi, ...dbData } = task
+        const { thiet_bi: _thiet_bi, ...dbData } = task
         return dbData
       })
 
@@ -110,9 +118,10 @@ export function useMaintenanceDrafts({
 
     if (tasksToInsert.length > 0) {
       try {
-        await callRpc<void>({ fn: 'maintenance_tasks_bulk_insert', args: { p_tasks: tasksToInsert } as any })
-      } catch (e: any) {
-        toast({ variant: "destructive", title: "Lỗi thêm công việc mới", description: e.message, duration: 10000 })
+        await callRpc<void>({ fn: 'maintenance_tasks_bulk_insert', args: { p_tasks: tasksToInsert } })
+      } catch (e) {
+        const message = e instanceof Error ? e.message : "Lỗi không xác định"
+        toast({ variant: "destructive", title: "Lỗi thêm công việc mới", description: message, duration: 10000 })
         hasError = true
       }
     }
@@ -120,9 +129,10 @@ export function useMaintenanceDrafts({
     if (tasksToUpdate.length > 0 && !hasError) {
       for (const taskToUpdate of tasksToUpdate) {
         try {
-          await callRpc<void>({ fn: 'maintenance_task_update', args: { p_id: taskToUpdate.id, p_task: taskToUpdate } as any })
-        } catch (e: any) {
-          toast({ variant: "destructive", title: `Lỗi cập nhật công việc ID ${taskToUpdate.id}`, description: e.message, duration: 10000 })
+          await callRpc<void>({ fn: 'maintenance_task_update', args: { p_id: taskToUpdate.id, p_task: taskToUpdate } })
+        } catch (e) {
+          const message = e instanceof Error ? e.message : "Lỗi không xác định"
+          toast({ variant: "destructive", title: `Lỗi cập nhật công việc ID ${taskToUpdate.id}`, description: message, duration: 10000 })
           hasError = true
           break
         }
@@ -131,9 +141,10 @@ export function useMaintenanceDrafts({
 
     if (idsToDelete.length > 0 && !hasError) {
       try {
-        await callRpc<void>({ fn: 'maintenance_tasks_delete', args: { p_ids: idsToDelete } as any })
-      } catch (e: any) {
-        toast({ variant: "destructive", title: "Lỗi xóa công việc cũ", description: e.message, duration: 10000 })
+        await callRpc<void>({ fn: 'maintenance_tasks_delete', args: { p_ids: idsToDelete } })
+      } catch (e) {
+        const message = e instanceof Error ? e.message : "Lỗi không xác định"
+        toast({ variant: "destructive", title: "Lỗi xóa công việc cũ", description: message, duration: 10000 })
         hasError = true
       }
     }

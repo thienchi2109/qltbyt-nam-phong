@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import type { ColumnDef, SortingState, Row } from "@tanstack/react-table"
+import type { ColumnDef, Row, Table } from "@tanstack/react-table"
 import { ArrowUpDown, MoreHorizontal, Check, X, Edit, Trash2, Save, CheckCircle2, Loader2 } from "lucide-react"
 import { format, parseISO } from 'date-fns'
 import { vi } from 'date-fns/locale'
@@ -16,40 +16,14 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { Input } from "@/components/ui/input"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import type { MaintenancePlan } from "@/hooks/use-cached-maintenance"
 import type { MaintenanceTask } from "@/lib/data"
 import { NotesInput } from "./notes-input"
+import type { PlanColumnOptions, TableMeta, TaskColumnOptions } from "./maintenance-columns.types"
 
-export interface TableMeta {
-  editingTaskId: number | null
-  editingTaskData: Partial<MaintenanceTask> | null
-  handleTaskDataChange: (field: keyof MaintenanceTask, value: unknown) => void
-  handleSaveTask: () => void
-  handleCancelEdit: () => void
-  handleStartEdit: (task: MaintenanceTask) => void
-  isPlanApproved: boolean
-  setTaskToDelete: (task: MaintenanceTask | null) => void
-  completionStatus: Record<string, { historyId: number }>
-  isLoadingCompletion: boolean
-  handleMarkAsCompleted: (task: MaintenanceTask, month: number) => void
-  isCompletingTask: string | null
-  canCompleteTask: boolean
-}
-
-export interface PlanColumnOptions {
-  sorting: SortingState
-  setSorting: (sorting: SortingState) => void
-  onRowClick: (plan: MaintenancePlan) => void
-  openApproveDialog: (plan: MaintenancePlan) => void
-  openRejectDialog: (plan: MaintenancePlan) => void
-  openDeleteDialog: (plan: MaintenancePlan) => void
-  setEditingPlan: (plan: MaintenancePlan | null) => void
-  canManagePlans: boolean
-  isRegionalLeader: boolean
-}
+export type { PlanColumnOptions, TableMeta, TaskColumnOptions } from "./maintenance-columns.types"
 
 // Helper function for status badge variants
 const getStatusVariant = (status: MaintenancePlan["trang_thai"]) => {
@@ -214,35 +188,10 @@ export function usePlanColumns(options: PlanColumnOptions): ColumnDef<Maintenanc
   return planColumns
 }
 
-export interface TaskColumnOptions {
-  editingTaskId: number | null
-  handleStartEdit: (task: MaintenanceTask) => void
-  handleCancelEdit: () => void
-  handleTaskDataChange: (field: keyof MaintenanceTask, value: unknown) => void
-  handleSaveTask: () => void
-  setTaskToDelete: (task: MaintenanceTask | null) => void
-  canManagePlans: boolean
-  isPlanApproved: boolean
-  canCompleteTask: boolean
-  handleMarkAsCompleted: (task: MaintenanceTask, month: number) => void
-  isCompletingTask: string | null
-  completionStatus: Record<string, { historyId: number }>
-  isLoadingCompletion: boolean
-  selectedPlan: MaintenancePlan | null
-}
-
 export function useTaskColumns(options: TaskColumnOptions): ColumnDef<MaintenanceTask>[] {
   const {
     editingTaskId,
-    handleStartEdit,
-    handleCancelEdit,
-    handleTaskDataChange,
-    handleSaveTask,
-    setTaskToDelete,
-    canManagePlans,
     isPlanApproved,
-    canCompleteTask,
-    handleMarkAsCompleted,
     isCompletingTask,
     completionStatus,
     isLoadingCompletion,
@@ -301,7 +250,7 @@ export function useTaskColumns(options: TaskColumnOptions): ColumnDef<Maintenanc
     ...Array.from({ length: 12 }, (_, i) => i + 1).map((month) => ({
       id: `thang_${month}`,
       header: () => <div className="text-center">{month}</div>,
-      cell: ({ row, table }: { row: Row<MaintenanceTask>, table: any }) => {
+      cell: ({ row, table }: { row: Row<MaintenanceTask>, table: Table<MaintenanceTask> }) => {
         const meta = table.options.meta as TableMeta;
         const {
           editingTaskId, editingTaskData, handleTaskDataChange,

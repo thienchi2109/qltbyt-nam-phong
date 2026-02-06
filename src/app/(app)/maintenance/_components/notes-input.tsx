@@ -1,8 +1,8 @@
 import * as React from "react"
 import { Input } from "@/components/ui/input"
 
-export const NotesInput = React.memo(({ taskId, value, onChange }: {
-  taskId: number;
+export const NotesInput = React.memo(({ value, onChange }: {
+  taskId?: number;
   value: string;
   onChange: (value: string) => void;
 }) => {
