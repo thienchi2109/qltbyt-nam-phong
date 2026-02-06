@@ -3,7 +3,7 @@ export interface CategoryListItem {
   parent_id: number | null
   ma_nhom: string
   ten_nhom: string
-  phan_loai: 'A' | 'B' | 'C' | 'D' | null
+  phan_loai: 'A' | 'B' | null
   don_vi_tinh: string | null
   thu_tu_hien_thi: number
   level: number
@@ -20,7 +20,7 @@ export interface CategoryFormInput {
   ma_nhom: string
   ten_nhom: string
   parent_id: number | null
-  phan_loai: 'A' | 'B' | 'C' | 'D' | null
+  phan_loai: 'A' | 'B' | null
   don_vi_tinh: string | null
   thu_tu_hien_thi: number
   mo_ta: string | null
