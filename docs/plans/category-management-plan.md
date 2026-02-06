@@ -24,7 +24,7 @@ The documentation claims categories are "pre-loaded per TT 08/2019" but no seed 
 | `/device-quota/mapping` (assignment UI) | ✅ Ready |
 | `/device-quota/categories` (management UI) | ❌ Missing |
 | Category bulk import (Excel) | ❌ Missing |
-| Canonical TT 08/2019 dataset file | ❌ Missing |
+| Canonical TT 08/2019 dataset file | ⏭️ Skipped |
 | `ma_nhom` uniqueness constraint | ❌ Missing |
 | Sample data script | ✅ Exists (`scripts/generate-sample-nhom-thiet-bi.ts`) |
 
@@ -34,7 +34,7 @@ The documentation claims categories are "pre-loaded per TT 08/2019" but no seed 
 Add UI to create/edit/delete categories one-by-one in `/device-quota/categories` (new page).
 
 ### Phase 2: Bulk Import (Excel) — Deferred (Post-MVP)
-Deferred for MVP. Will add Excel import dialog + **required** bulk import RPC to load TT 08/2019 hierarchy. Excel template will be generated from a canonical dataset file committed in the repo.
+Deferred for MVP. Will add Excel import dialog + **required** bulk import RPC with partial success (row-level errors). No TT 08/2019 canonical dataset is planned; template focuses on format guidance only.
 
 ### Mapping Page Behavior
 `/device-quota/mapping` remains for assigning equipment to categories. If no categories exist, it should link admins/to_qltb to `/device-quota/categories` to create/import them.
@@ -47,7 +47,7 @@ Add a module-level sub-nav inside `/device-quota` (keep the main sidebar shallow
 - Categories (`/device-quota/categories`, role-gated to `global` / `to_qltb`)
 
 ### MVP Scope
-MVP includes **Phase 1 only** (manual CRUD + navigation + empty-state routing). Phase 2 (bulk import, dataset, template) is deferred.
+MVP includes **Phase 1 only** (manual CRUD + navigation + empty-state routing). Phase 2 (bulk import + template) is deferred; TT 08 dataset is skipped.
 
 ---
 
@@ -62,7 +62,7 @@ export interface CategoryListItem {
   parent_id: number | null
   ma_nhom: string
   ten_nhom: string
-  phan_loai: 'A' | 'B' | 'C' | 'D' | null
+  phan_loai: 'A' | 'B' | null
   don_vi_tinh: string | null
   thu_tu_hien_thi: number
   level: number
@@ -81,7 +81,7 @@ export interface CategoryFormInput {
   ma_nhom: string
   ten_nhom: string
   parent_id: number | null
-  phan_loai: 'A' | 'B' | 'C' | 'D' | null
+  phan_loai: 'A' | 'B' | null
   don_vi_tinh: string | null
   thu_tu_hien_thi: number
   mo_ta: string | null
@@ -228,7 +228,7 @@ export function useDeviceQuotaCategoryContext() {
 | `ma_nhom` | Input | ✅ | Unique per tenant, pattern: `XX` or `XX.XX` or `XX.XX.XXX` |
 | `ten_nhom` | Input | ✅ | Non-empty |
 | `parent_id` | Select | ❌ | Must exist in same tenant, filter self + descendants when editing |
-| `phan_loai` | Select | ❌ | 'A', 'B', 'C', 'D', or null |
+| `phan_loai` | Select | ❌ | 'A', 'B', or null |
 | `don_vi_tinh` | Input | ❌ | Default 'Cái' |
 | `thu_tu_hien_thi` | Number | ❌ | Default 0 |
 | `mo_ta` | Textarea | ❌ | Optional description |
@@ -352,7 +352,7 @@ const HEADER_MAP = {
   'Mã nhóm': 'ma_nhom',
   'Tên nhóm thiết bị': 'ten_nhom',
   'Mã nhóm cha': 'parent_ma_nhom', // Lookup to get parent_id
-  'Phân loại': 'phan_loai',
+  'Phân loại (A/B)': 'phan_loai',
   'Đơn vị tính': 'don_vi_tinh',
   'Mô tả': 'mo_ta',
 }
@@ -361,32 +361,25 @@ const HEADER_MAP = {
 #### 2. `src/lib/category-excel.ts`
 **Purpose:** Generate category import template
 
-**Template structure (3 sheets):**
-1. **"Nhập Danh Mục"** - Data entry with validation
-2. **"Danh Mục Mẫu TT 08/2019"** - Reference data from canonical dataset
-3. **"Hướng Dẫn"** - Instructions in Vietnamese
+**Template structure (2 sheets):**
+1. **"Nhập Danh Mục"** - Data entry with validation (Phân loại: A/B)
+2. **"Hướng Dẫn"** - Instructions in Vietnamese
 
-**Note:** Template generation moved to Phase 1 so users can see expected format before importing.
+### Bulk Import RPC (Required, Partial Success)
 
-### Bulk Import RPC (Required, Transactional)
-
-**Migration file:** Add to Phase 1 implementation
+**Migration file:** Add in Phase 2 implementation
 
 ```sql
 CREATE FUNCTION dinh_muc_nhom_bulk_import(
   p_items JSONB,  -- Array of category objects
-  p_don_vi BIGINT,
-  p_mode TEXT DEFAULT 'strict'  -- 'strict' only (no upsert)
-) RETURNS TABLE (
-  success_count INT,
-  errors JSONB  -- [{row: 1, code: 'DUPLICATE_CODE', field: 'ma_nhom', detail: '...'}]
-)
+  p_don_vi BIGINT
+) RETURNS JSONB
 ```
 
 **Rules:**
-- All-or-nothing (transactional) — if any row fails validation, abort and insert nothing
+- Partial success — continue processing valid rows, return row-level errors for invalid ones
 - Error on duplicate `ma_nhom` (no upsert behavior in bulk import)
-- Error on missing parent reference
+- Error on missing parent reference for that row
 - **Cycle detection** using recursive CTE:
   ```sql
   -- Detect cycles using recursive CTE
@@ -401,13 +394,13 @@ CREATE FUNCTION dinh_muc_nhom_bulk_import(
   )
   SELECT * FROM parent_chain WHERE parent_id = ANY(path);
   ```
-- Sort inserts topologically (parents before children)
+- Sort inserts topologically (parents before children) for valid rows
 - Enforce role checks (`global`, `to_qltb`) inside the function
 - **Advisory lock** to prevent concurrent imports:
   ```sql
   PERFORM pg_advisory_xact_lock(hashtext('nhom_thiet_bi_import_' || p_don_vi::text));
   ```
-- Return structured error objects with `row_number` and `error_code` for UI translation
+- Return structured error objects with `row_number` and `error_code` for UI translation, plus inserted/failed counts
 
 **Whitelist:** Add `dinh_muc_nhom_bulk_import` to `ALLOWED_FUNCTIONS` in `/api/rpc/[fn]/route.ts`
 
@@ -415,39 +408,9 @@ CREATE FUNCTION dinh_muc_nhom_bulk_import(
 
 ## Canonical Dataset (TT 08/2019)
 
-**Status:** Deferred to Phase 2 (post-MVP).
+**Status:** Skipped (not planned for Phase 2).
 
-**Decision:** Store a versioned, canonical dataset file in the repo and use it for:
-- Excel template generation
-- Initial bulk import (seed)
-- Documentation reference
-
-**File:** `src/data/tt08-2019-categories.json`
-
-**Shape:**
-```json
-{
-  "metadata": {
-    "source": "Thông tư 08/2019/TT-BYT",
-    "version": "1.0.0",
-    "effective_date": "2019-05-01",
-    "last_updated": "2026-02-05"
-  },
-  "categories": [
-    {
-      "ma_nhom": "01",
-      "ten_nhom": "Thiết bị chẩn đoán hình ảnh",
-      "phan_loai": null,
-      "don_vi_tinh": null,
-      "parent_ma_nhom": null
-    }
-  ]
-}
-```
-
-**Updates:**
-- Update `scripts/generate-sample-nhom-thiet-bi.ts` to read this file (single source of truth)
-- Add a small loader helper (e.g., `src/lib/category-data.ts`) to read the JSON for UI template generation
+**Decision:** Do not add a TT 08/2019 canonical dataset file. Template generation will focus on format guidance only.
 
 ---
 
@@ -517,15 +480,14 @@ DeviceQuotaMappingContext.tsx (unchanged)
 15. Test: Create, edit, delete categories manually
 
 ### Phase 2 (Bulk Import) — Deferred (Post-MVP)
-1. Create canonical dataset file `src/data/tt08-2019-categories.json` with metadata
-2. Add bulk import RPC migration (transactional, role-guarded, cycle detection)
-3. Add `dinh_muc_nhom_bulk_import` to `ALLOWED_FUNCTIONS` whitelist
-4. Add template generation to `src/lib/category-excel.ts`
-5. Create `DeviceQuotaCategoryImportDialog.tsx` (context-controlled)
-6. Connect toolbar buttons
-7. Test: Import TT 08/2019 categories from Excel (transactional)
+1. Add bulk import RPC migration (partial success, role-guarded, cycle detection, advisory lock)
+2. Add `dinh_muc_nhom_bulk_import` to `ALLOWED_FUNCTIONS` whitelist
+3. Add template generation to `src/lib/category-excel.ts` (2 sheets, A/B classification)
+4. Create `DeviceQuotaCategoryImportDialog.tsx` (context-controlled)
+5. Connect toolbar buttons
+6. Test: Import sample categories from Excel with row-level errors
+7. Test: Cycle detection flags cyclic rows without blocking valid inserts
 8. Test: Concurrent import handling (advisory locks)
-9. Test: Cycle detection in import
 
 ---
 
@@ -561,8 +523,8 @@ DeviceQuotaMappingContext.tsx (unchanged)
 2. Fill template with sample categories
 3. Click "Nhập từ Excel" → Upload file → Preview → Import
 4. Verify categories appear in tree with correct hierarchy
-5. Try importing duplicate `ma_nhom` → Should error and **not insert any rows**
-6. Try importing with cycle (A -> B -> A) → Should error with cycle message
+5. Try importing duplicate `ma_nhom` → Should report row error and still insert valid rows
+6. Try importing with cycle (A -> B -> A) → Should report cycle errors for affected rows
 7. Test concurrent import from two browsers → Should handle via advisory lock
 
 ---
@@ -572,10 +534,11 @@ DeviceQuotaMappingContext.tsx (unchanged)
 | Question | Decision |
 |----------|----------|
 | Management page route | `/device-quota/categories` (new page) |
-| MVP scope | Phase 1 only; Phase 2 (bulk import/dataset/template) deferred |
-| Import semantics | Transactional, all-or-nothing (Phase 2) |
+| MVP scope | Phase 1 only; Phase 2 (bulk import + template) deferred |
+| Import semantics | Partial success with row-level errors (Phase 2) |
 | Duplicate handling | Error (no upsert) (Phase 2) |
-| Canonical dataset | Deferred to Phase 2 (`src/data/tt08-2019-categories.json`) |
+| `phan_loai` values | A/B only |
+| Canonical dataset | Skipped (no TT 08 dataset planned) |
 | Access control | `global` / `to_qltb` only (`admin` normalized to `global`) |
 | `regional_leader` access | READ-ONLY for listing, no write access |
 | Navigation pattern | Module sub-nav inside `/device-quota` layout |
@@ -602,7 +565,7 @@ DeviceQuotaMappingContext.tsx (unchanged)
 | Concurrent import race condition | MEDIUM | Deferred to Phase 2 |
 | Audit trail for compliance | MEDIUM | Defer (existing created_by/updated_by sufficient for now) |
 | `admin` role normalization | LOW | Standardized on `global` only in documentation ✅ |
-| JSON dataset schema validation | LOW | Deferred to Phase 2 |
+| JSON dataset schema validation | LOW | Skipped (no dataset planned) |
 | Large import progress feedback | LOW | Defer to future enhancement |
 
 ### Code Review Recommendations

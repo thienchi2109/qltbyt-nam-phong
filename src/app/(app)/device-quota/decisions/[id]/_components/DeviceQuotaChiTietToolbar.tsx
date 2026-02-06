@@ -152,7 +152,7 @@ export function DeviceQuotaChiTietToolbar() {
               <AlertDescription className="text-amber-800">
                 Chưa có danh mục thiết bị. Vui lòng{" "}
                 <Link
-                  href="/device-quota/mapping"
+                  href="/device-quota/categories"
                   className="underline font-medium hover:text-amber-900"
                 >
                   tạo danh mục

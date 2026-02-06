@@ -8,12 +8,12 @@ export interface CategoryListItem {
   thu_tu_hien_thi: number
   level: number
   so_luong_hien_co: number
+  mo_ta?: string | null
 }
 
 export interface CategoryFull extends CategoryListItem {
-  mo_ta: string | null
-  created_at: string
-  updated_at: string
+  created_at?: string
+  updated_at?: string
 }
 
 export interface CategoryFormInput {
@@ -29,7 +29,7 @@ export interface CategoryFormInput {
 export type CategoryDialogState =
   | { mode: 'closed' }
   | { mode: 'create' }
-  | { mode: 'edit'; category: CategoryFull }
+  | { mode: 'edit'; category: CategoryListItem }
 
 export interface CategoryDeleteState {
   categoryToDelete: CategoryListItem | null
