@@ -10,15 +10,7 @@ import {
   type SortingState,
 } from "@tanstack/react-table"
 import { useQueryClient } from "@tanstack/react-query"
-import {
-  ChevronLeft,
-  ChevronRight,
-  ChevronsLeft,
-  ChevronsRight,
-  Filter,
-  Loader2,
-  PlusCircle,
-} from "lucide-react"
+import { Filter, Loader2, PlusCircle } from "lucide-react"
 import { useSession } from "next-auth/react"
 import { useRouter } from "next/navigation"
 
@@ -26,7 +18,7 @@ import { AddTransferDialog } from "@/components/add-transfer-dialog"
 import { EditTransferDialog } from "@/components/edit-transfer-dialog"
 import { HandoverPreviewDialog } from "@/components/handover-preview-dialog"
 import { OverdueTransfersAlert } from "@/components/overdue-transfers-alert"
-import { ResponsivePaginationInfo } from "@/components/responsive-pagination-info"
+import { DataTablePagination } from "@/components/shared/DataTablePagination"
 import { TransferDetailDialog } from "@/components/transfer-detail-dialog"
 import { TransferCard } from "@/components/transfers/TransferCard"
 import { TransferTypeTabs, useTransferTypeTab } from "@/components/transfers/TransferTypeTabs"
@@ -60,8 +52,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import {
   Table,
   TableBody,
@@ -82,6 +72,36 @@ import type {
   TransferStatus,
 } from "@/types/transfers-data-grid"
 import { type TransferRequest } from "@/types/database"
+import type { DisplayContext } from "@/components/shared/DataTablePagination/types"
+
+const TRANSFER_ENTITY = { singular: "yêu cầu" } as const
+
+const transferDisplayFormat = (ctx: DisplayContext) => {
+  const entityLabel = ctx.entity.plural ?? ctx.entity.singular
+  const currentCount =
+    ctx.totalCount > 0 ? Math.max(0, ctx.endItem - ctx.startItem + 1) : 0
+
+  return (
+    <>
+      <div className="block sm:hidden">
+        <div className="space-y-1">
+          <div>
+            <strong>{currentCount}</strong> / <strong>{ctx.totalCount}</strong>{" "}
+            {entityLabel}
+          </div>
+          <div>
+            Trang <strong>{ctx.currentPage}</strong> /{" "}
+            <strong>{ctx.totalPages}</strong>
+          </div>
+        </div>
+      </div>
+      <div className="hidden sm:block">
+        Hiển thị <strong>{currentCount}</strong> trên{" "}
+        <strong>{ctx.totalCount}</strong> {entityLabel}.
+      </div>
+    </>
+  )
+}
 
 export default function TransfersPage() {
   const { data: session, status } = useSession()
@@ -206,7 +226,7 @@ function TransfersPageContent({ user }: TransfersPageContentProps) {
   const tableData = transferList?.data ?? []
   const totalCount = transferList?.total ?? 0
   const pageSize = transferList?.pageSize ?? pagination.pageSize
-  const pageCount = transferList ? Math.max(1, Math.ceil(totalCount / pageSize)) : 1
+  const pageCount = transferList ? Math.max(0, Math.ceil(totalCount / pageSize)) : 0
 
   const referenceDate = React.useMemo(() => new Date(), [])
 
@@ -591,73 +611,20 @@ function TransfersPageContent({ user }: TransfersPageContentProps) {
         {/* Pagination controls - only show for table view */}
         {viewMode === 'table' && (
           <CardFooter className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-            <ResponsivePaginationInfo
-              currentCount={table.getPaginationRowModel().rows.length}
+            <DataTablePagination
+              table={table}
               totalCount={totalCount}
-              currentPage={pagination.pageIndex + 1}
-              totalPages={pageCount}
+              entity={TRANSFER_ENTITY}
+              paginationMode={{
+                mode: "controlled",
+                pagination,
+                onPaginationChange: setPagination,
+              }}
+              displayFormat={transferDisplayFormat}
+              pageSizeOptions={[10, 20, 50, 100]}
+              responsive={{ showFirstLastAt: "sm", stackLayoutAt: "md" }}
+              isLoading={isListLoading}
             />
-
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-6">
-              <div className="flex items-center gap-2">
-                <span className="text-sm">Số dòng</span>
-                <Select
-                  value={String(pagination.pageSize)}
-                  onValueChange={(value) =>
-                    setPagination({ pageIndex: 0, pageSize: Number(value) })
-                  }
-                >
-                  <SelectTrigger className="h-8 w-[80px]">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent side="top">
-                    {[10, 20, 50, 100].map((size) => (
-                      <SelectItem key={size} value={String(size)}>
-                        {size}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="outline"
-                  className="hidden h-8 w-8 p-0 sm:flex"
-                  onClick={() => table.setPageIndex(0)}
-                  disabled={!table.getCanPreviousPage()}
-                >
-                  <ChevronsLeft className="h-4 w-4" />
-                </Button>
-                <Button
-                  variant="outline"
-                  className="h-10 w-10 rounded-xl p-0 sm:h-8 sm:w-8"
-                  onClick={() => table.previousPage()}
-                  disabled={!table.getCanPreviousPage()}
-                >
-                  <ChevronLeft className="h-5 w-5 sm:h-4 sm:w-4" />
-                </Button>
-                <span className="text-sm font-medium">
-                  Trang {pagination.pageIndex + 1} / {pageCount}
-                </span>
-                <Button
-                  variant="outline"
-                  className="h-10 w-10 rounded-xl p-0 sm:h-8 sm:w-8"
-                  onClick={() => table.nextPage()}
-                  disabled={!table.getCanNextPage()}
-                >
-                  <ChevronRight className="h-5 w-5 sm:h-4 sm:w-4" />
-                </Button>
-                <Button
-                  variant="outline"
-                  className="hidden h-8 w-8 p-0 sm:flex"
-                  onClick={() => table.setPageIndex(pageCount - 1)}
-                  disabled={!table.getCanNextPage()}
-                >
-                  <ChevronsRight className="h-4 w-4" />
-                </Button>
-              </div>
-            </div>
           </CardFooter>
         )}
       </Card>

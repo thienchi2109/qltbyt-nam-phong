@@ -8,6 +8,7 @@ import { ChevronDown } from "lucide-react"
 
 import { callRpc } from "@/lib/rpc-client"
 import { cn } from "@/lib/utils"
+import { isGlobalRole } from "@/lib/rbac"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
@@ -70,7 +71,7 @@ export function TenantsManagement() {
   const router = useRouter()
   const { data: session, status } = useSession()
   const user = (session?.user || {}) as any
-  const isGlobal = (user?.role || "").toLowerCase() === "global" || (user?.role || "").toLowerCase() === "admin"
+  const isGlobal = isGlobalRole(user?.role)
   const { toast } = useToast()
   const qc = useQueryClient()
 

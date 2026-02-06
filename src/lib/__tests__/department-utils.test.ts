@@ -84,6 +84,10 @@ describe('Department Utils', () => {
   })
 
   describe('shouldBypassDepartmentFilter', () => {
+    it('should bypass for global role', () => {
+      expect(shouldBypassDepartmentFilter('global')).toBe(true)
+    })
+
     it('should bypass for admin role', () => {
       expect(shouldBypassDepartmentFilter('admin')).toBe(true)
     })
@@ -94,6 +98,10 @@ describe('Department Utils', () => {
 
     it('should not bypass for qltb_khoa role', () => {
       expect(shouldBypassDepartmentFilter('qltb_khoa')).toBe(false)
+    })
+
+    it('should not bypass for regional_leader role', () => {
+      expect(shouldBypassDepartmentFilter('regional_leader')).toBe(false)
     })
 
     it('should not bypass for user role', () => {

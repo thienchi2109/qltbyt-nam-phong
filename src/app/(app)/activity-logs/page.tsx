@@ -7,6 +7,7 @@ import { Activity, Shield, AlertTriangle } from 'lucide-react'
 
 import { ActivityLogsViewer } from '@/components/activity-logs/activity-logs-viewer'
 import { Card, CardContent } from '@/components/ui/card'
+import { isGlobalRole } from '@/lib/rbac'
 
 export default function ActivityLogsPage() {
   const { data: session, status } = useSession()
@@ -36,8 +37,7 @@ export default function ActivityLogsPage() {
   }
 
   // Check if user is global admin
-  const userRole = (session.user as any)?.role?.toLowerCase()
-  const isGlobalUser = userRole === 'admin' || userRole === 'global'
+  const isGlobalUser = isGlobalRole((session.user as any)?.role)
 
   if (!isGlobalUser) {
     return (

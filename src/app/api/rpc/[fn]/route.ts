@@ -113,12 +113,74 @@ const ALLOWED_FUNCTIONS = new Set<string>([
   'don_vi_branding_get',
   // Header notifications
   'header_notifications_summary',
+  // Device Quota Management (Định mức thiết bị)
+  // Decisions
+  'dinh_muc_quyet_dinh_list',
+  'dinh_muc_quyet_dinh_get',
+  'dinh_muc_quyet_dinh_create',
+  'dinh_muc_quyet_dinh_update',
+  'dinh_muc_quyet_dinh_activate',
+  'dinh_muc_quyet_dinh_delete',
+  // Categories
+  'dinh_muc_nhom_list',
+  'dinh_muc_nhom_get',
+  'dinh_muc_nhom_upsert',
+  'dinh_muc_nhom_delete',
+  'dinh_muc_nhom_bulk_import',
+  // Equipment Mapping
+  'dinh_muc_thiet_bi_link',
+  'dinh_muc_thiet_bi_unlink',
+  'dinh_muc_thiet_bi_unassigned',
+  'dinh_muc_thiet_bi_by_nhom',
+  // Line Items
+  'dinh_muc_chi_tiet_list',
+  'dinh_muc_chi_tiet_upsert',
+  'dinh_muc_chi_tiet_delete',
+  'dinh_muc_chi_tiet_bulk_import',
+  // Compliance
+  'dinh_muc_compliance_summary',
+  'dinh_muc_compliance_detail',
 ])
+
+// SECURITY: Maximum request body size (2MB) to prevent DoS via memory exhaustion
+const MAX_BODY_SIZE = 2 * 1024 * 1024
+
+// Sensitive keys to redact from logs (case-insensitive matching)
+const SENSITIVE_KEYS = ['password', 'token', 'secret', 'mat_khau', 'p_password', 'api_key', 'apikey', 'authorization', 'credential']
 
 function getEnv(name: string) {
   const v = process.env[name]
   if (!v) throw new Error(`${name} is not set`)
   return v
+}
+
+// SECURITY: Recursively sanitize objects for logging to prevent PII/credential exposure
+// Handles nested objects and arrays at any depth
+function sanitizeForLog(obj: unknown, depth = 0): unknown {
+  // Prevent infinite recursion on deeply nested or circular structures
+  if (depth > 10) return '[MAX_DEPTH]'
+
+  if (obj === null || obj === undefined) return obj
+  if (typeof obj !== 'object') return obj
+
+  // Handle arrays
+  if (Array.isArray(obj)) {
+    return obj.map(item => sanitizeForLog(item, depth + 1))
+  }
+
+  // Handle objects
+  const sanitized: Record<string, unknown> = {}
+  for (const [key, value] of Object.entries(obj as Record<string, unknown>)) {
+    const keyLower = key.toLowerCase()
+    if (SENSITIVE_KEYS.some(sk => keyLower.includes(sk))) {
+      sanitized[key] = '[REDACTED]'
+    } else if (typeof value === 'object' && value !== null) {
+      sanitized[key] = sanitizeForLog(value, depth + 1)
+    } else {
+      sanitized[key] = value
+    }
+  }
+  return sanitized
 }
 
 export async function POST(req: NextRequest, context: { params: Promise<{ fn: string }> }) {
@@ -128,10 +190,46 @@ export async function POST(req: NextRequest, context: { params: Promise<{ fn: st
       return NextResponse.json({ error: 'Function not allowed' }, { status: 403 })
     }
 
-    const rawBody = await req.json().catch(() => ({}))
+    // SECURITY: Enforce body size limit BEFORE buffering/parsing to prevent DoS
+    // 1. Require Content-Length header - reject chunked/streaming requests without it
+    const contentLengthHeader = req.headers.get('content-length')
+    if (!contentLengthHeader) {
+      return NextResponse.json({ error: 'Content-Length header required' }, { status: 411 })
+    }
+
+    // 2. Validate Content-Length is within limit
+    const contentLength = parseInt(contentLengthHeader, 10)
+    if (isNaN(contentLength) || contentLength < 0) {
+      return NextResponse.json({ error: 'Invalid Content-Length' }, { status: 400 })
+    }
+    if (contentLength > MAX_BODY_SIZE) {
+      return NextResponse.json({ error: 'Payload too large' }, { status: 413 })
+    }
+
+    // 3. Read raw body with size enforcement (defense in depth against spoofed header)
+    // SECURITY: Use arrayBuffer to measure actual bytes, not UTF-16 code units
+    const buf = await req.arrayBuffer()
+    if (buf.byteLength > MAX_BODY_SIZE) {
+      return NextResponse.json({ error: 'Payload too large' }, { status: 413 })
+    }
+
+    // 4. Decode buffer to text and parse JSON
+    let rawBody: Record<string, unknown> = {}
+    try {
+      const rawText = new TextDecoder().decode(buf)
+      rawBody = rawText ? JSON.parse(rawText) : {}
+    } catch {
+      return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
+    }
 
   // Pull claims from NextAuth session securely (no client headers trusted)
   const session = await getServerSession(authOptions as any)
+
+  // SECURITY: Reject unauthenticated requests - do NOT mint JWT without valid session
+  if (!(session as any)?.user) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
   const rawRole = (session as any)?.user?.role ?? ''
   const role = typeof rawRole === 'string' ? rawRole : String(rawRole)
   const roleLower = role.toLowerCase()
@@ -192,17 +290,17 @@ export async function POST(req: NextRequest, context: { params: Promise<{ fn: st
     const isJson = res.headers.get('content-type')?.includes('application/json')
     const payload = isJson ? JSON.parse(text || 'null') : text
     if (!res.ok) {
+      // SECURITY: Sanitize logs to prevent PII/credential exposure
       console.error(`Supabase RPC error for ${fn}:`, {
         status: res.status,
-        payload,
-        body: JSON.stringify(body, null, 2),
-        claims: {app_role: appRole, don_vi: donVi, user_id: userId}
+        error: typeof payload === 'object' ? (payload?.message || payload?.hint || 'RPC failed') : 'RPC failed',
       })
       return NextResponse.json({ error: payload || 'RPC error' }, { status: res.status })
     }
     return NextResponse.json(payload)
   } catch (err: any) {
-    console.error('RPC proxy error', err)
+    // SECURITY: Log only error message, not full stack trace or request details
+    console.error('RPC proxy error:', { message: err?.message || 'Unknown error' })
     return NextResponse.json({ error: err?.message || 'Unexpected error' }, { status: 500 })
   }
 }

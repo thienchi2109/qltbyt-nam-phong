@@ -14,6 +14,7 @@ import {
   QrCode,
   Users,
   Activity,
+  Calculator,
 } from "lucide-react"
 
 import {
@@ -26,6 +27,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { useSession } from "next-auth/react"
 import { cn } from "@/lib/utils"
+import { isGlobalRole } from "@/lib/rbac"
 
 export function MobileFooterNav() {
   const pathname = usePathname()
@@ -44,12 +46,13 @@ export function MobileFooterNav() {
     const baseItems = [
       { href: "/transfers", icon: ArrowLeftRight, label: "Luân chuyển" },
       { href: "/maintenance", icon: HardHat, label: "Bảo trì" },
+      { href: "/device-quota", icon: Calculator, label: "Định mức" },
       { href: "/reports", icon: BarChart3, label: "Báo cáo" },
       { href: "/qr-scanner", icon: QrCode, label: "Quét QR" },
     ]
 
     // Add admin-only items with role-based permissions
-  if (user?.role === 'global' || user?.role === 'admin') {
+  if (isGlobalRole(user?.role)) {
       baseItems.push({ href: "/users", icon: Users, label: "Người dùng" })
       baseItems.push({ href: "/activity-logs", icon: Activity, label: "Nhật ký hoạt động" })
     }

@@ -3,6 +3,7 @@
 import * as React from "react"
 import { useSession } from "next-auth/react"
 import { useTenantSelection } from "@/contexts/TenantSelectionContext"
+import { isGlobalRole, isRegionalLeaderRole } from "@/lib/rbac"
 import type { SessionUser } from "../types"
 
 export interface UseEquipmentAuthReturn {
@@ -43,8 +44,8 @@ export function useEquipmentAuth(): UseEquipmentAuthReturn {
   } = useTenantSelection()
 
   // Role checks
-  const isGlobal = user?.role === "global" || user?.role === "admin"
-  const isRegionalLeader = user?.role === "regional_leader"
+  const isGlobal = isGlobalRole(user?.role)
+  const isRegionalLeader = isRegionalLeaderRole(user?.role)
 
   // Tenant key for non-global users
   const tenantKey = user?.don_vi ? String(user.don_vi) : "none"

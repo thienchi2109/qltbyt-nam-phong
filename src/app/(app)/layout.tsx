@@ -23,6 +23,7 @@ import {
   ArrowLeftRight,
   BarChart3,
   Activity,
+  Calculator,
 } from "lucide-react"
 
 import {
@@ -41,6 +42,7 @@ import { useTenantBranding } from "@/hooks/use-tenant-branding"
 import { TenantLogo } from "@/components/tenant-logo"
 import { TenantName } from "@/components/tenant-name"
 import { cn } from "@/lib/utils"
+import { isGlobalRole } from "@/lib/rbac"
 import { useSession, signOut } from "next-auth/react"
 import { Skeleton } from "@/components/ui/skeleton"
 import { ChangePasswordDialog } from "@/components/change-password-dialog"
@@ -95,6 +97,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     "/repair-requests": "sidebar-nav-repairs",
     "/maintenance": "sidebar-nav-maintenance",
     "/transfers": "sidebar-nav-transfers",
+    "/device-quota": "sidebar-nav-device-quota",
     "/reports": "sidebar-nav-reports",
     "/qr-scanner": "sidebar-nav-qr",
   }
@@ -107,12 +110,13 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       { href: "/repair-requests", icon: Wrench, label: "Yêu cầu sửa chữa" },
       { href: "/maintenance", icon: HardHat, label: "Bảo trì" },
       { href: "/transfers", icon: ArrowLeftRight, label: "Luân chuyển" },
+      { href: "/device-quota", icon: Calculator, label: "Định mức" },
       { href: "/reports", icon: BarChart3, label: "Báo cáo" },
       { href: "/qr-scanner", icon: QrCode, label: "Quét QR" },
     ]
 
     // Add admin/global-only pages
-    if (user?.role === 'global' || user?.role === 'admin') {
+    if (isGlobalRole(user?.role)) {
       baseItems.push({ href: "/users", icon: Users, label: "Người dùng" })
       baseItems.push({ href: "/activity-logs", icon: Activity, label: "Nhật ký hoạt động" })
     }

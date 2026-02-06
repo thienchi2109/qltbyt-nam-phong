@@ -36,6 +36,7 @@ import { Badge } from "@/components/ui/badge"
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query"
 import { callRpc } from "@/lib/rpc-client"
 import { normalizePartialDateForForm, isValidPartialDate, PARTIAL_DATE_ERROR_MESSAGE } from "@/lib/date-utils"
+import { isGlobalRole, isRegionalLeaderRole } from "@/lib/rbac"
 
 const equipmentStatusOptions = [
     "Hoạt động", 
@@ -83,8 +84,8 @@ export function AddEquipmentDialog({ open, onOpenChange, onSuccess }: AddEquipme
   const queryClient = useQueryClient()
   const { data: session } = useSession()
   const user = session?.user as any
-  const isRegionalLeader = (user?.role ?? '') === 'regional_leader'
-  const isGlobal = user?.role === 'global' || user?.role === 'admin'
+  const isRegionalLeader = isRegionalLeaderRole(user?.role)
+  const isGlobal = isGlobalRole(user?.role)
   
   // Use TanStack Query for departments with proper caching
   const { data: departments = [] } = useQuery({

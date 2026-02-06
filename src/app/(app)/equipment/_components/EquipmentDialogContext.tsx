@@ -3,6 +3,7 @@
 import * as React from "react"
 import { useQueryClient } from "@tanstack/react-query"
 import { useSession } from "next-auth/react"
+import { isGlobalRole, isRegionalLeaderRole } from "@/lib/rbac"
 import type { Equipment, UsageLog, SessionUser } from "../types"
 
 // ============================================
@@ -92,8 +93,8 @@ export function EquipmentDialogProvider({
   const user = session?.user as SessionUser | null
 
   // Computed permissions
-  const isGlobal = user?.role === "global" || user?.role === "admin"
-  const isRegionalLeader = user?.role === "regional_leader"
+  const isGlobal = isGlobalRole(user?.role)
+  const isRegionalLeader = isRegionalLeaderRole(user?.role)
 
   // Dialog state
   const [dialogState, setDialogState] = React.useState<DialogState>({

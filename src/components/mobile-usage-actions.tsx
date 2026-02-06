@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/sheet"
 import { useActiveUsageLogs } from "@/hooks/use-usage-logs"
 import { useSession } from "next-auth/react"
+import { isRegionalLeaderRole } from "@/lib/rbac"
 import { StartUsageDialog } from "./start-usage-dialog"
 import { EndUsageDialog } from "./end-usage-dialog"
 
@@ -36,7 +37,7 @@ interface MobileUsageActionsProps {
 export function MobileUsageActions({ equipment, className = "" }: MobileUsageActionsProps) {
   const { data: session } = useSession()
   const user = session?.user as any
-  const isRegionalLeader = user?.role === 'regional_leader'
+  const isRegionalLeader = isRegionalLeaderRole(user?.role)
   const userId = React.useMemo(() => {
     const uid = (user?.id as any)
     const n = typeof uid === 'string' ? Number(uid) : uid

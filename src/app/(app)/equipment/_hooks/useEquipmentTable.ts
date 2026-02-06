@@ -150,12 +150,12 @@ export function useEquipmentTable(params: UseEquipmentTableParams): UseEquipment
   const isMediumScreen = useMediaQuery("(min-width: 768px) and (max-width: 1800px)")
 
   // Page count calculation
-  const pageCount = Math.max(1, Math.ceil((total || 0) / Math.max(pagination.pageSize, 1)))
+  const pageCount = Math.max(0, Math.ceil((total || 0) / Math.max(pagination.pageSize, 1)))
 
   // Clamp page index when pageCount decreases (e.g., after deletions)
   React.useEffect(() => {
-    if (pagination.pageIndex >= pageCount && pageCount > 0) {
-      setPagination((prev) => ({ ...prev, pageIndex: pageCount - 1 }))
+    if (pagination.pageIndex >= pageCount) {
+      setPagination((prev) => ({ ...prev, pageIndex: Math.max(0, pageCount - 1) }))
     }
   }, [pageCount, pagination.pageIndex, setPagination])
 

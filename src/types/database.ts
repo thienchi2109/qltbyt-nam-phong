@@ -49,7 +49,7 @@ export interface User {
   username: string;
   password: string;
   full_name: string;
-  role: 'global' | 'admin' | 'to_qltb' | 'technician' | 'qltb_khoa' | 'user';
+  role: 'global' | 'admin' | 'regional_leader' | 'to_qltb' | 'technician' | 'qltb_khoa' | 'user';
   khoa_phong?: string;
   created_at: string;
 }
@@ -57,6 +57,7 @@ export interface User {
 export const USER_ROLES = {
   // Canonical roles
   global: 'Quản trị hệ thống',
+  regional_leader: 'Lãnh đạo vùng',
   to_qltb: 'Tổ/Phòng VT-TBYT', 
   technician: 'Kỹ thuật viên',
   qltb_khoa: 'QLTB của Khoa/Phòng',
