@@ -30,11 +30,14 @@ import { Textarea } from "@/components/ui/textarea"
 import { useDeviceQuotaCategoryContext } from "../_hooks/useDeviceQuotaCategoryContext"
 import type { CategoryFormInput, CategoryListItem } from "../_types/categories"
 
+// Sentinel value for "no selection" - Radix Select doesn't allow empty string
+const NONE_VALUE = "__none__"
+
 const categoryFormSchema = z.object({
   ma_nhom: z.string().trim().min(1, "Mã nhóm không được để trống"),
   ten_nhom: z.string().trim().min(1, "Tên nhóm không được để trống"),
   parent_id: z.string().optional(),
-  phan_loai: z.union([z.literal(""), z.enum(["A", "B"])]).optional(),
+  phan_loai: z.string().optional(),
   don_vi_tinh: z.string().optional(),
   thu_tu_hien_thi: z.coerce.number().int().min(0).default(0),
   mo_ta: z.string().optional(),
@@ -43,7 +46,7 @@ const categoryFormSchema = z.object({
 type CategoryFormValues = z.infer<typeof categoryFormSchema>
 
 function normalizeParentId(value?: string) {
-  if (!value) return null
+  if (!value || value === NONE_VALUE) return null
   const parsed = Number(value)
   return Number.isNaN(parsed) ? null : parsed
 }
@@ -53,7 +56,7 @@ function buildPayload(values: CategoryFormValues): CategoryFormInput {
     ma_nhom: values.ma_nhom.trim(),
     ten_nhom: values.ten_nhom.trim(),
     parent_id: normalizeParentId(values.parent_id),
-    phan_loai: values.phan_loai ? (values.phan_loai as "A" | "B") : null,
+    phan_loai: values.phan_loai && values.phan_loai !== NONE_VALUE ? (values.phan_loai as "A" | "B") : null,
     don_vi_tinh: values.don_vi_tinh?.trim() || null,
     thu_tu_hien_thi: values.thu_tu_hien_thi ?? 0,
     mo_ta: values.mo_ta?.trim() || null,
@@ -79,7 +82,7 @@ export function DeviceQuotaCategoryDialog() {
     defaultValues: {
       ma_nhom: "",
       ten_nhom: "",
-      parent_id: "",
+      parent_id: NONE_VALUE,
       phan_loai: "B",
       don_vi_tinh: "Cái",
       thu_tu_hien_thi: 0,
@@ -92,8 +95,8 @@ export function DeviceQuotaCategoryDialog() {
       form.reset({
         ma_nhom: editingCategory.ma_nhom,
         ten_nhom: editingCategory.ten_nhom,
-        parent_id: editingCategory.parent_id ? String(editingCategory.parent_id) : "",
-        phan_loai: editingCategory.phan_loai === "A" || editingCategory.phan_loai === "B" ? editingCategory.phan_loai : "",
+        parent_id: editingCategory.parent_id ? String(editingCategory.parent_id) : NONE_VALUE,
+        phan_loai: editingCategory.phan_loai === "A" || editingCategory.phan_loai === "B" ? editingCategory.phan_loai : NONE_VALUE,
         don_vi_tinh: editingCategory.don_vi_tinh || "",
         thu_tu_hien_thi: editingCategory.thu_tu_hien_thi ?? 0,
         mo_ta: editingCategory.mo_ta || "",
@@ -105,7 +108,7 @@ export function DeviceQuotaCategoryDialog() {
       form.reset({
         ma_nhom: "",
         ten_nhom: "",
-        parent_id: "",
+        parent_id: NONE_VALUE,
         phan_loai: "B",
         don_vi_tinh: "Cái",
         thu_tu_hien_thi: 0,
@@ -196,7 +199,7 @@ export function DeviceQuotaCategoryDialog() {
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="">Không có (nhóm gốc)</SelectItem>
+                        <SelectItem value={NONE_VALUE}>Không có (nhóm gốc)</SelectItem>
                         {availableParents.map((cat: CategoryListItem) => (
                           <SelectItem key={cat.id} value={String(cat.id)}>
                             {cat.ma_nhom} - {cat.ten_nhom}
@@ -221,7 +224,7 @@ export function DeviceQuotaCategoryDialog() {
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="">Không xác định</SelectItem>
+                        <SelectItem value={NONE_VALUE}>Không xác định</SelectItem>
                         <SelectItem value="A">A</SelectItem>
                         <SelectItem value="B">B</SelectItem>
                       </SelectContent>
