@@ -33,8 +33,6 @@
  */
 
 import * as React from "react"
-import { Loader2, FileCheck, AlertTriangle } from "lucide-react"
-import { readExcelFile, worksheetToJson } from "@/lib/excel-utils"
 import { callRpc } from "@/lib/rpc-client"
 import type { NhomThietBiForTemplate } from "@/lib/device-quota-excel"
 
@@ -47,9 +45,17 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
 import { useToast } from "@/hooks/use-toast"
+import {
+  useBulkImportState,
+  BulkImportFileInput,
+  BulkImportErrorAlert,
+  BulkImportValidationErrors,
+  BulkImportSuccessMessage,
+  BulkImportSubmitButton,
+  buildImportToastMessage,
+} from "@/components/bulk-import"
+import type { BulkImportRpcResult, ValidationResult } from "@/components/bulk-import"
 
 // ============================================
 // Types
@@ -136,11 +142,7 @@ function normalizeInt(val: unknown): number | null | { error: string } {
 function validateQuotaData(
   data: Record<string, unknown>[],
   validCategoryCodes: Set<string>
-): {
-  isValid: boolean
-  errors: string[]
-  validRecords: ParsedQuotaRow[]
-} {
+): ValidationResult<ParsedQuotaRow> {
   const errors: string[] = []
   const validRecords: ParsedQuotaRow[] = []
 
@@ -223,54 +225,6 @@ function validateQuotaData(
   }
 }
 
-/**
- * Translate PostgreSQL errors to Vietnamese
- */
-function translateError(error: string): string {
-  if (!error) return 'Lỗi không xác định'
-
-  // Category not found
-  if (error.includes('Category not found') || error.includes('nhom_thiet_bi')) {
-    return 'Không tìm thấy mã nhóm trong danh mục'
-  }
-
-  // Parent category (not a leaf)
-  if (error.includes('is a parent category') || error.includes('là nhóm cha')) {
-    return 'Mã nhóm là nhóm cha, chỉ được nhập nhóm lá (nhóm không có nhóm con)'
-  }
-
-  // Quantity validation
-  if (error.includes('must be greater than 0') || error.includes('phải lớn hơn 0')) {
-    return 'Số lượng định mức phải lớn hơn 0'
-  }
-
-  if (error.includes('must be greater than or equal to 0')) {
-    return 'Số lượng tối thiểu phải >= 0'
-  }
-
-  if (error.includes('minimum quantity cannot exceed quota')) {
-    return 'Số lượng tối thiểu không được lớn hơn số lượng định mức'
-  }
-
-  // Duplicate entries
-  if (error.includes('duplicate key') || error.includes('already exists')) {
-    return 'Mã nhóm đã tồn tại trong quyết định này'
-  }
-
-  // Permission errors
-  if (error.toLowerCase().includes('permission denied')) {
-    return 'Không có quyền thực hiện'
-  }
-
-  // Decision status errors
-  if (error.includes('can only import for draft decisions')) {
-    return 'Chỉ được nhập cho quyết định ở trạng thái nháp'
-  }
-
-  // Return truncated error if no translation found
-  return error.length > 80 ? error.substring(0, 80) + '...' : error
-}
-
 // ============================================
 // Component
 // ============================================
@@ -283,107 +237,42 @@ export function DeviceQuotaImportDialog({
   onSuccess,
 }: DeviceQuotaImportDialogProps) {
   const { toast } = useToast()
-  const [isSubmitting, setIsSubmitting] = React.useState(false)
-  const [selectedFile, setSelectedFile] = React.useState<File | null>(null)
-  const [parsedData, setParsedData] = React.useState<ParsedQuotaRow[]>([])
-  const [error, setError] = React.useState<string | null>(null)
-  const [validationErrors, setValidationErrors] = React.useState<string[]>([])
-  const fileInputRef = React.useRef<HTMLInputElement>(null)
 
   // Build set of valid category codes for O(1) lookup
   const validCategoryCodes = React.useMemo(() => {
     return new Set(categories.map(cat => cat.ma_nhom))
   }, [categories])
 
-  // Reset state when dialog closes
-  const resetState = React.useCallback(() => {
-    setIsSubmitting(false)
-    setSelectedFile(null)
-    setParsedData([])
-    setError(null)
-    setValidationErrors([])
-    if (fileInputRef.current) {
-      fileInputRef.current.value = ""
-    }
+  const transformRow = React.useCallback((raw: Record<string, unknown>) => {
+    return raw
   }, [])
 
-  // Handle file selection and parsing
-  const handleFileChange = React.useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0]
-    if (!file) {
-      resetState()
-      return
-    }
+  const validateData = React.useCallback((data: Record<string, unknown>[]) => {
+    return validateQuotaData(data, validCategoryCodes)
+  }, [validCategoryCodes])
 
-    // Validate file extension (Excel only - XLSX/XLS)
-    if (!/\.(xlsx|xls)$/i.test(file.name)) {
-      setError("File không hợp lệ. Vui lòng chọn file Excel (.xlsx, .xls).")
-      setSelectedFile(null)
-      setParsedData([])
-      setValidationErrors([])
-      return
-    }
+  const {
+    state,
+    fileInputRef,
+    handleFileChange,
+    resetState,
+    setSubmitting,
+    setSuccess,
+    setSubmitError,
+  } = useBulkImportState<Record<string, unknown>, ParsedQuotaRow>({
+    headerMap: HEADER_TO_DB_MAP,
+    transformRow,
+    validateData,
+  })
 
-    setSelectedFile(file)
-    setError(null)
+  const { status, selectedFile, parsedData, parseError, validationErrors } = state
+  const isSubmitting = status === 'submitting'
 
-    try {
-      // Read Excel file
-      const workbook = await readExcelFile(file)
-      const sheetName = workbook.SheetNames[0]
-      const worksheet = workbook.Sheets[sheetName]
-      const json = await worksheetToJson(worksheet)
-
-      if (json.length === 0) {
-        setError("File không có dữ liệu. Vui lòng kiểm tra lại file của bạn.")
-        setParsedData([])
-        return
-      }
-
-      // Transform headers to database field names
-      const transformedData = json.map(row => {
-        const newRow: Record<string, unknown> = {}
-        for (const header in row) {
-          if (Object.prototype.hasOwnProperty.call(HEADER_TO_DB_MAP, header)) {
-            const dbKey = HEADER_TO_DB_MAP[header]
-            const rawVal = row[header]
-            let value: unknown = (rawVal === "" || rawVal === undefined) ? null : rawVal
-
-            // Trim string values
-            if (typeof rawVal === 'string') {
-              value = rawVal.trim() === '' ? null : rawVal.trim()
-            }
-
-            newRow[dbKey] = value
-          }
-        }
-        return newRow
-      })
-
-      // Validate the transformed data
-      const validation = validateQuotaData(transformedData, validCategoryCodes)
-
-      if (!validation.isValid) {
-        setValidationErrors(validation.errors)
-        setParsedData([])
-      } else {
-        setValidationErrors([])
-        setParsedData(validation.validRecords)
-      }
-    } catch (err: unknown) {
-      const errorMessage = err instanceof Error ? err.message : 'Lỗi không xác định'
-      setError("Đã có lỗi xảy ra khi đọc file: " + errorMessage)
-      setParsedData([])
-    }
-  }, [resetState, validCategoryCodes])
-
-  // Handle dialog close
   const handleClose = React.useCallback(() => {
     resetState()
     onOpenChange(false)
   }, [resetState, onOpenChange])
 
-  // Handle import submission
   const handleImport = React.useCallback(async () => {
     if (parsedData.length === 0) {
       toast({
@@ -403,17 +292,9 @@ export function DeviceQuotaImportDialog({
       return
     }
 
-    setIsSubmitting(true)
+    setSubmitting()
     try {
-      // Call bulk import RPC
-      const result = await callRpc<{
-        success: boolean
-        inserted: number
-        updated: number
-        failed: number
-        total: number
-        details: Array<{ index: number; success: boolean; error?: string; ma_nhom?: string }>
-      }>({
+      const result = await callRpc<BulkImportRpcResult>({
         fn: 'dinh_muc_chi_tiet_bulk_import',
         args: {
           p_quyet_dinh_id: quyetDinhId,
@@ -421,43 +302,23 @@ export function DeviceQuotaImportDialog({
         }
       })
 
-      const inserted = result?.inserted ?? 0
-      const updated = result?.updated ?? 0
-      const failed = result?.failed ?? 0
-      const total = result?.total ?? parsedData.length
+      const toastMessage = buildImportToastMessage({
+        inserted: result?.inserted ?? 0,
+        updated: result?.updated ?? 0,
+        failed: result?.failed ?? 0,
+        total: result?.total ?? parsedData.length,
+        details: result?.details ?? [],
+        entityName: 'dinh muc'
+      })
 
-      // Extract error details for failed records
-      const failedDetails = (result?.details ?? [])
-        .filter(d => !d.success && d.error)
-        .slice(0, 5) // Show first 5 errors max
+      toast({
+        variant: toastMessage.variant,
+        title: toastMessage.title,
+        description: toastMessage.description,
+        duration: toastMessage.duration,
+      })
 
-      if (failed > 0 && failedDetails.length > 0) {
-        // Build detailed error message with Vietnamese translations
-        const errorSummary = failedDetails
-          .map((d) => `Dòng ${d.index + 2}: ${translateError(d.error ?? '')}`)
-          .join('\n')
-
-        const moreErrors = failed > 5 ? `\n...và ${failed - 5} lỗi khác` : ''
-
-        toast({
-          variant: "destructive",
-          title: `Nhập hoàn tất với ${failed} lỗi`,
-          description: `Đã nhập ${inserted} mới, cập nhật ${updated}/${total} định mức.\n\nChi tiết lỗi:\n${errorSummary}${moreErrors}`,
-          duration: 10000, // Show longer for error details
-        })
-      } else if (failed > 0) {
-        toast({
-          variant: "destructive",
-          title: "Nhập hoàn tất với một số lỗi",
-          description: `Đã nhập ${inserted} mới, cập nhật ${updated}/${total} định mức. ${failed} bản ghi lỗi.`,
-        })
-      } else {
-        toast({
-          title: "Thành công",
-          description: `Đã nhập ${inserted} mới, cập nhật ${updated} định mức.`,
-        })
-      }
-
+      setSuccess()
       onSuccess()
       handleClose()
     } catch (err: unknown) {
@@ -467,10 +328,9 @@ export function DeviceQuotaImportDialog({
         title: "Lỗi",
         description: "Không thể nhập dữ liệu. " + errorMessage,
       })
-    } finally {
-      setIsSubmitting(false)
+      setSubmitError(errorMessage)
     }
-  }, [parsedData, validationErrors, quyetDinhId, toast, onSuccess, handleClose])
+  }, [parsedData, validationErrors, quyetDinhId, toast, onSuccess, handleClose, setSubmitting, setSuccess, setSubmitError])
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -487,50 +347,24 @@ export function DeviceQuotaImportDialog({
         </DialogHeader>
 
         <div className="grid gap-4 py-4">
-          <div className="grid w-full items-center gap-2">
-            <Label htmlFor="quota-excel-file">Chọn file</Label>
-            <Input
-              id="quota-excel-file"
-              type="file"
-              accept=".xlsx, .xls"
-              onChange={handleFileChange}
-              ref={fileInputRef}
-              disabled={isSubmitting}
+          <BulkImportFileInput
+            id="quota-excel-file"
+            fileInputRef={fileInputRef}
+            onFileChange={handleFileChange}
+            disabled={isSubmitting}
+            accept=".xlsx, .xls"
+            label="Chọn file"
+          />
+
+          <BulkImportErrorAlert error={parseError} />
+
+          <BulkImportValidationErrors errors={validationErrors} />
+
+          {selectedFile && !parseError && validationErrors.length === 0 && parsedData.length > 0 && (
+            <BulkImportSuccessMessage
+              fileName={selectedFile.name}
+              recordCount={parsedData.length}
             />
-          </div>
-
-          {error && (
-            <div className="flex items-center gap-2 text-sm text-destructive bg-destructive/10 p-3 rounded-md">
-              <AlertTriangle className="h-4 w-4 flex-shrink-0" aria-hidden="true" />
-              <span>{error}</span>
-            </div>
-          )}
-
-          {validationErrors.length > 0 && (
-            <div className="text-sm text-destructive bg-destructive/10 p-3 rounded-md">
-              <div className="flex items-center gap-2 mb-2">
-                <AlertTriangle className="h-4 w-4 flex-shrink-0" aria-hidden="true" />
-                <span className="font-medium">Dữ liệu không hợp lệ:</span>
-              </div>
-              <ul className="list-disc list-inside space-y-1 ml-6 max-h-40 overflow-y-auto">
-                {validationErrors.map((validationError, index) => (
-                  <li key={index}>{validationError}</li>
-                ))}
-              </ul>
-            </div>
-          )}
-
-          {selectedFile && !error && validationErrors.length === 0 && parsedData.length > 0 && (
-            <div
-              className="flex items-center gap-2 text-sm text-primary bg-primary/10 p-3 rounded-md"
-              role="status"
-              aria-live="polite"
-            >
-              <FileCheck className="h-4 w-4 flex-shrink-0" aria-hidden="true" />
-              <span>
-                Đã đọc file <strong>{selectedFile.name}</strong>. Tìm thấy <strong>{parsedData.length}</strong> bản ghi hợp lệ.
-              </span>
-            </div>
           )}
         </div>
 
@@ -543,14 +377,14 @@ export function DeviceQuotaImportDialog({
           >
             Hủy
           </Button>
-          <Button
-            type="button"
+          <BulkImportSubmitButton
+            isSubmitting={isSubmitting}
+            disabled={isSubmitting || !selectedFile || parseError !== null || parsedData.length === 0 || validationErrors.length > 0}
+            recordCount={parsedData.length}
+            labelSingular="dinh muc"
+            labelPlural="dinh muc"
             onClick={handleImport}
-            disabled={isSubmitting || !selectedFile || error !== null || parsedData.length === 0 || validationErrors.length > 0}
-          >
-            {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" />}
-            {isSubmitting ? "Đang nhập…" : `Nhập ${parsedData.length} định mức`}
-          </Button>
+          />
         </DialogFooter>
       </DialogContent>
     </Dialog>

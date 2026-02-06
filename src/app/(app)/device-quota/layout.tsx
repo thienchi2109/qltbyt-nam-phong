@@ -1,4 +1,5 @@
 import type { Metadata } from "next"
+import { DeviceQuotaSubNav } from "./_components/DeviceQuotaSubNav"
 
 export const metadata: Metadata = {
   title: "Định mức thiết bị",
@@ -10,5 +11,10 @@ export default function DeviceQuotaLayout({
 }: {
   children: React.ReactNode
 }) {
-  return <>{children}</>
+  return (
+    <>
+      <DeviceQuotaSubNav />
+      {children}
+    </>
+  )
 }

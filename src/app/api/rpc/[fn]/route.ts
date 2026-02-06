@@ -126,6 +126,7 @@ const ALLOWED_FUNCTIONS = new Set<string>([
   'dinh_muc_nhom_get',
   'dinh_muc_nhom_upsert',
   'dinh_muc_nhom_delete',
+  'dinh_muc_nhom_bulk_import',
   // Equipment Mapping
   'dinh_muc_thiet_bi_link',
   'dinh_muc_thiet_bi_unlink',
