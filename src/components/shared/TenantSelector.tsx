@@ -32,12 +32,14 @@ export function TenantSelector({ className, hideAllOption = false }: TenantSelec
 
   // Get current facility name for button display
   // Must be before early return to satisfy Rules of Hooks
+  // When hideAllOption is true, treat null selection as "not selected" to avoid UX confusion
+  const effectiveSelectionId = hideAllOption && selectedFacilityId === null ? undefined : selectedFacilityId
   const currentFacilityName =
-    selectedFacilityId === null
+    effectiveSelectionId === null
       ? "Tất cả cơ sở"
-      : selectedFacilityId === undefined
+      : effectiveSelectionId === undefined
         ? "Chọn cơ sở..."
-        : facilities.find((f) => f.id === selectedFacilityId)?.name ?? "Đang tải..."
+        : facilities.find((f) => f.id === effectiveSelectionId)?.name ?? "Đang tải..."
 
   // Don't render if user doesn't have multi-tenant privileges
   if (!showSelector) {
@@ -55,7 +57,7 @@ export function TenantSelector({ className, hideAllOption = false }: TenantSelec
         aria-haspopup="dialog"
         className={cn(
           "flex items-center gap-2 font-normal",
-          selectedFacilityId === undefined && "text-muted-foreground",
+          effectiveSelectionId === undefined && "text-muted-foreground",
           className
         )}
       >
