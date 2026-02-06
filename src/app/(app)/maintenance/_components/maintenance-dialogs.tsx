@@ -17,106 +17,47 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import type { MaintenancePlan } from "@/hooks/use-cached-maintenance"
-import type { MaintenanceTask } from "@/lib/data"
-import type { Equipment } from "@/lib/data"
+import { useMaintenanceContext } from "../_hooks/useMaintenanceContext"
 
-export interface MaintenanceDialogsProps {
-  // Dialog triggers (controlled by parent)
-  isAddPlanDialogOpen: boolean
-  setIsAddPlanDialogOpen: (open: boolean) => void
-  editingPlan: MaintenancePlan | null
-  setEditingPlan: (plan: MaintenancePlan | null) => void
-  isAddTasksDialogOpen: boolean
-  setIsAddTasksDialogOpen: (open: boolean) => void
-  isBulkScheduleOpen: boolean
-  setIsBulkScheduleOpen: (open: boolean) => void
-  isConfirmingCancel: boolean
-  setIsConfirmingCancel: (open: boolean) => void
-  isConfirmingBulkDelete: boolean
-  setIsConfirmingBulkDelete: (open: boolean) => void
+export function MaintenanceDialogs() {
+  const ctx = useMaintenanceContext()
 
-  // Data references
-  selectedPlan: MaintenancePlan | null
-  draftTasks: MaintenanceTask[]
-  selectedTaskRowsCount: number
-  existingEquipmentIdsInDraft: number[]
-
-  // Handlers (from hooks or parent)
-  onAddPlanSuccess: () => void
-  onEditPlanSuccess: () => void
-  onAddTasksSuccess: (newlySelectedEquipment: Equipment[]) => void
-  onBulkScheduleApply: (months: Record<string, boolean>) => void
-  onCancelConfirm: () => void
-  confirmDeleteSingleTask: () => void
-  confirmDeleteSelectedTasks: () => void
-  taskToDelete: MaintenanceTask | null
-  setTaskToDelete: (task: MaintenanceTask | null) => void
-
-  // Operations state (for approve/reject/delete dialogs)
-  operations: {
-    confirmDialog: {
-      type: 'approve' | 'reject' | 'delete' | null
-      plan: MaintenancePlan | null
-      rejectionReason?: string
-    }
-    isApproving: boolean
-    isRejecting: boolean
-    isDeleting: boolean
-    closeDialog: () => void
-    setRejectionReason: (reason: string) => void
-    handleApprovePlan: () => void
-    handleRejectPlan: () => void
-    handleDeletePlan: () => void
-  }
-
-  // Additional state
-  isDeletingTasks: boolean
-}
-
-export function MaintenanceDialogs(props: MaintenanceDialogsProps) {
   const {
-    isAddPlanDialogOpen,
+    dialogState,
     setIsAddPlanDialogOpen,
-    editingPlan,
     setEditingPlan,
-    isAddTasksDialogOpen,
     setIsAddTasksDialogOpen,
-    isBulkScheduleOpen,
     setIsBulkScheduleOpen,
-    isConfirmingCancel,
     setIsConfirmingCancel,
-    isConfirmingBulkDelete,
     setIsConfirmingBulkDelete,
     selectedPlan,
-    draftTasks,
     selectedTaskRowsCount,
     existingEquipmentIdsInDraft,
-    onAddPlanSuccess,
-    onEditPlanSuccess,
-    onAddTasksSuccess,
-    onBulkScheduleApply,
-    onCancelConfirm,
+    onPlanMutationSuccess,
+    handleAddTasksFromDialog,
+    handleBulkScheduleApply,
+    handleCancelAllChanges,
     confirmDeleteSingleTask,
     confirmDeleteSelectedTasks,
-    taskToDelete,
-    setTaskToDelete,
+    taskEditing,
     operations,
     isDeletingTasks,
-  } = props
+  } = ctx
+
+  const { taskToDelete, setTaskToDelete } = taskEditing
 
   return (
     <>
       <AddMaintenancePlanDialog
-        open={isAddPlanDialogOpen}
+        open={dialogState.isAddPlanDialogOpen}
         onOpenChange={setIsAddPlanDialogOpen}
-        onSuccess={onAddPlanSuccess}
+        onSuccess={onPlanMutationSuccess}
       />
       <EditMaintenancePlanDialog
-        open={!!editingPlan}
+        open={!!dialogState.editingPlan}
         onOpenChange={(open) => !open && setEditingPlan(null)}
-        onSuccess={onEditPlanSuccess}
-        plan={editingPlan as any}
+        onSuccess={onPlanMutationSuccess}
+        plan={dialogState.editingPlan as any}
       />
       {/* Approve Dialog */}
       <AlertDialog open={operations.confirmDialog.type === 'approve'} onOpenChange={(open) => !open && operations.closeDialog()}>
@@ -190,9 +131,9 @@ export function MaintenanceDialogs(props: MaintenanceDialogsProps) {
         </AlertDialogContent>
       </AlertDialog>
       <BulkScheduleDialog
-        open={isBulkScheduleOpen}
+        open={dialogState.isBulkScheduleOpen}
         onOpenChange={setIsBulkScheduleOpen}
-        onApply={onBulkScheduleApply}
+        onApply={handleBulkScheduleApply}
       />
       {/* Delete Dialog */}
       <AlertDialog open={operations.confirmDialog.type === 'delete'} onOpenChange={(open) => !open && operations.closeDialog()}>
@@ -214,8 +155,8 @@ export function MaintenanceDialogs(props: MaintenanceDialogsProps) {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-      {(taskToDelete || isConfirmingBulkDelete) && (
-        <AlertDialog open={!!taskToDelete || isConfirmingBulkDelete} onOpenChange={(open) => {
+      {(taskToDelete || dialogState.isConfirmingBulkDelete) && (
+        <AlertDialog open={!!taskToDelete || dialogState.isConfirmingBulkDelete} onOpenChange={(open) => {
           if (!open) {
             setTaskToDelete(null)
             setIsConfirmingBulkDelete(false)
@@ -242,8 +183,8 @@ export function MaintenanceDialogs(props: MaintenanceDialogsProps) {
           </AlertDialogContent>
         </AlertDialog>
       )}
-      {isConfirmingCancel && (
-        <AlertDialog open={isConfirmingCancel} onOpenChange={setIsConfirmingCancel}>
+      {dialogState.isConfirmingCancel && (
+        <AlertDialog open={dialogState.isConfirmingCancel} onOpenChange={setIsConfirmingCancel}>
           <AlertDialogContent>
             <AlertDialogHeader>
               <AlertDialogTitle>Hủy bỏ mọi thay đổi?</AlertDialogTitle>
@@ -253,17 +194,17 @@ export function MaintenanceDialogs(props: MaintenanceDialogsProps) {
             </AlertDialogHeader>
             <AlertDialogFooter>
               <AlertDialogCancel>Ở lại</AlertDialogCancel>
-              <AlertDialogAction onClick={onCancelConfirm}>Xác nhận hủy</AlertDialogAction>
+              <AlertDialogAction onClick={handleCancelAllChanges}>Xác nhận hủy</AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
       )}
       <AddTasksDialog
-        open={isAddTasksDialogOpen}
+        open={dialogState.isAddTasksDialogOpen}
         onOpenChange={setIsAddTasksDialogOpen}
         plan={selectedPlan as any}
         existingEquipmentIds={existingEquipmentIdsInDraft}
-        onSuccess={onAddTasksSuccess}
+        onSuccess={handleAddTasksFromDialog}
       />
     </>
   )
