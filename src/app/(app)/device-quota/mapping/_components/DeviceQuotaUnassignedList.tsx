@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { Search, CheckCircle2 } from "lucide-react"
+import { Search, CheckCircle2, Building2 } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -31,6 +31,7 @@ export function DeviceQuotaUnassignedList() {
     searchQuery,
     setSearchQuery,
     isLoading,
+    isFacilitySelected,
   } = useDeviceQuotaMappingContext()
 
   // Determine if all visible equipment is selected
@@ -57,16 +58,19 @@ export function DeviceQuotaUnassignedList() {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
             type="text"
-            placeholder="Tìm kiếm thiết bị..."
+            placeholder={isFacilitySelected ? "Tìm kiếm thiết bị..." : "Chọn cơ sở để tìm kiếm..."}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
+            disabled={!isFacilitySelected}
             className="pl-9"
           />
         </div>
       </CardHeader>
 
       <CardContent className="flex-1 overflow-y-auto">
-        {isLoading ? (
+        {!isFacilitySelected ? (
+          <FacilitySelectionEmptyState />
+        ) : isLoading ? (
           <LoadingSkeleton />
         ) : unassignedEquipment.length === 0 ? (
           <EmptyState />
@@ -197,6 +201,20 @@ function EmptyState() {
       <h3 className="font-semibold text-lg mb-1">Hoàn thành phân loại</h3>
       <p className="text-sm text-muted-foreground max-w-sm">
         Tất cả thiết bị đã được phân loại vào các nhóm định mức.
+      </p>
+    </div>
+  )
+}
+
+function FacilitySelectionEmptyState() {
+  return (
+    <div className="flex flex-col items-center justify-center py-12 text-center">
+      <div className="rounded-full bg-blue-100 dark:bg-blue-900/20 p-3 mb-4">
+        <Building2 className="h-8 w-8 text-blue-600 dark:text-blue-500" />
+      </div>
+      <h3 className="font-semibold text-lg mb-1">Chọn cơ sở</h3>
+      <p className="text-sm text-muted-foreground max-w-sm">
+        Vui lòng chọn cơ sở để xem danh sách thiết bị chưa phân loại.
       </p>
     </div>
   )

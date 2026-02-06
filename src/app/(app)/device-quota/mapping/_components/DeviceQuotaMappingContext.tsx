@@ -5,6 +5,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { useSession } from "next-auth/react"
 import { useToast } from "@/hooks/use-toast"
 import { callRpc } from "@/lib/rpc-client"
+import { useTenantSelection } from "@/contexts/TenantSelectionContext"
 
 // ============================================
 // Types
@@ -44,6 +45,7 @@ interface DeviceQuotaMappingContextValue {
   // User/Auth
   user: AuthUser | null
   donViId: number | null
+  isFacilitySelected: boolean
 
   // Data
   unassignedEquipment: UnassignedEquipment[]
@@ -136,9 +138,14 @@ export function DeviceQuotaMappingProvider({ children }: DeviceQuotaMappingProvi
   const queryClient = useQueryClient()
   const { data: session } = useSession()
   const user = session?.user as AuthUser | null
+  const { selectedFacilityId, showSelector } = useTenantSelection()
 
-  // Get tenant ID from user
-  const donViId = user?.don_vi ? parseInt(user.don_vi, 10) : null
+  // Resolve tenant ID (global/admin must select a specific facility)
+  const userDonViId = user?.don_vi ? parseInt(user.don_vi, 10) : null
+  const isFacilitySelected = !showSelector || typeof selectedFacilityId === "number"
+  const donViId = showSelector
+    ? (typeof selectedFacilityId === "number" ? selectedFacilityId : null)
+    : userDonViId
 
   // Selection state
   const [selectedEquipmentIds, setSelectedEquipmentIds] = React.useState<Set<number>>(new Set())
@@ -235,6 +242,7 @@ export function DeviceQuotaMappingProvider({ children }: DeviceQuotaMappingProvi
   const value = React.useMemo<DeviceQuotaMappingContextValue>(() => ({
     user,
     donViId,
+    isFacilitySelected,
     unassignedEquipment: unassignedData || [],
     categories: categoriesData || [],
     selectedEquipmentIds,
@@ -252,6 +260,7 @@ export function DeviceQuotaMappingProvider({ children }: DeviceQuotaMappingProvi
   }), [
     user,
     donViId,
+    isFacilitySelected,
     unassignedData,
     categoriesData,
     selectedEquipmentIds,
