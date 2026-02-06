@@ -78,9 +78,7 @@ export function MaintenanceProvider({
     isConfirmingBulkDelete: false,
   })
 
-  const [isDeletingTasks, setIsDeletingTasks] = React.useState(false)
   const [completionStatus, setCompletionStatus] = React.useState<Record<string, CompletionStatusEntry>>({})
-  const [isLoadingCompletion, setIsLoadingCompletion] = React.useState(false)
   const [isCompletingTask, setIsCompletingTask] = React.useState<string | null>(null)
 
   const isPlanApproved = selectedPlan?.trang_thai === "Đã duyệt"
@@ -98,6 +96,8 @@ export function MaintenanceProvider({
     cancelAllChanges,
     getDraftCacheKey,
   } = maintenanceDrafts
+  const isLoadingCompletion =
+    Boolean(selectedPlan && selectedPlan.trang_thai === "Đã duyệt") && isLoadingTasks
 
   const taskEditing = useTaskEditing({
     draftTasks,
@@ -155,13 +155,10 @@ export function MaintenanceProvider({
   React.useEffect(() => {
     if (!selectedPlan || selectedPlan.trang_thai !== "Đã duyệt") {
       setCompletionStatus({})
-      setIsLoadingCompletion(false)
       return
     }
 
-    setIsLoadingCompletion(true)
     setCompletionStatus(buildCompletionStatus(tasks))
-    setIsLoadingCompletion(false)
   }, [selectedPlan, tasks])
 
   const handleCancelAllChanges = React.useCallback(() => {
@@ -355,10 +352,8 @@ export function MaintenanceProvider({
       return
     }
 
-    setIsDeletingTasks(true)
     setDraftTasks((currentDrafts) => currentDrafts.filter((task) => task.id !== toDelete.id))
     taskEditing.setTaskToDelete(null)
-    setIsDeletingTasks(false)
     toast({ title: "Đã xóa khỏi bản nháp" })
   }, [taskEditing, setDraftTasks, toast])
 
@@ -367,11 +362,9 @@ export function MaintenanceProvider({
       return
     }
 
-    setIsDeletingTasks(true)
     setDraftTasks((currentDrafts) => currentDrafts.filter((task) => !selectedTaskIdSet.has(task.id)))
     setTaskRowSelection({})
     setIsConfirmingBulkDelete(false)
-    setIsDeletingTasks(false)
     toast({ title: "Đã xóa khỏi bản nháp", description: `Đã xóa ${selectedTaskIds.length} công việc.` })
   }, [selectedTaskIds.length, selectedTaskIdSet, setDraftTasks, setTaskRowSelection, setIsConfirmingBulkDelete, toast])
 
@@ -425,7 +418,6 @@ export function MaintenanceProvider({
     handleBulkAssignUnit,
     confirmDeleteSingleTask,
     confirmDeleteSelectedTasks,
-    isDeletingTasks,
     isPlanApproved,
     selectedTaskRowsCount,
     taskRowSelection,

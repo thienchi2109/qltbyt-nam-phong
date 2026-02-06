@@ -43,7 +43,6 @@ export function MaintenanceDialogs() {
     confirmDeleteSelectedTasks,
     taskEditing,
     operations,
-    isDeletingTasks,
   } = ctx
 
   const { taskToDelete, setTaskToDelete } = taskEditing
@@ -191,13 +190,11 @@ export function MaintenanceDialogs() {
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-              <AlertDialogCancel disabled={isDeletingTasks}>Hủy</AlertDialogCancel>
+              <AlertDialogCancel>Hủy</AlertDialogCancel>
               <AlertDialogAction
                 onClick={taskToDelete ? confirmDeleteSingleTask : confirmDeleteSelectedTasks}
-                disabled={isDeletingTasks}
                 className="bg-destructive hover:bg-destructive/90"
               >
-                {isDeletingTasks && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 Xóa
               </AlertDialogAction>
             </AlertDialogFooter>

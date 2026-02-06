@@ -26,7 +26,7 @@ export default function MaintenancePage() {
     return (
       <div className="flex items-center justify-center min-h-[50vh]">
         <div className="text-center space-y-2">
-          <p className="text-muted-foreground">Vui long dang nhap de xem trang nay.</p>
+          <p className="text-muted-foreground">Vui lòng đăng nhập để xem trang này.</p>
         </div>
       </div>
     )

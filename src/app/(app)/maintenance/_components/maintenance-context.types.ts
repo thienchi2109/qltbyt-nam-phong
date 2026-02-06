@@ -77,7 +77,6 @@ export interface MaintenanceContextValue {
   handleBulkAssignUnit: (unit: string | null) => void
   confirmDeleteSingleTask: () => void
   confirmDeleteSelectedTasks: () => void
-  isDeletingTasks: boolean
   isPlanApproved: boolean
   selectedTaskRowsCount: number
   taskRowSelection: RowSelectionState

@@ -1,11 +1,20 @@
 import type { MaintenancePlan } from "@/hooks/use-cached-maintenance"
 import type { MaintenanceTask } from "@/lib/data"
 
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;")
+}
+
 export function formatValue(value: unknown): string {
   if (value === null || value === undefined) {
     return ""
   }
-  return String(value)
+  return escapeHtml(String(value))
 }
 
 export function buildPrintTemplate(params: {
@@ -16,6 +25,13 @@ export function buildPrintTemplate(params: {
   organizationName: string
 }): string {
   const { selectedPlan, tasks, user, logoUrl, organizationName } = params
+  const safePlanName = formatValue(selectedPlan.ten_ke_hoach)
+  const safePlanType = formatValue(selectedPlan.loai_cong_viec)
+  const safePlanTypeUpper = formatValue(selectedPlan.loai_cong_viec.toUpperCase())
+  const safePlanTypeLower = formatValue(selectedPlan.loai_cong_viec.toLowerCase())
+  const safePlanYear = formatValue(selectedPlan.nam)
+  const safeLogoUrl = formatValue(logoUrl)
+  const safeOrganizationName = formatValue(organizationName)
 
   const generateTableRows = () => {
     return tasks.map((task, index) => {
@@ -49,7 +65,7 @@ export function buildPrintTemplate(params: {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Kế Hoạch ${selectedPlan.loai_cong_viec} Thiết Bị - ${selectedPlan.ten_ke_hoach}</title>
+    <title>Kế Hoạch ${safePlanType} Thiết Bị - ${safePlanName}</title>
     <!-- Import Tailwind CSS for styling -->
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
@@ -354,10 +370,10 @@ export function buildPrintTemplate(params: {
             <header>
                  <div class="flex justify-between items-start">
                     <div class="text-center w-1/4">
-                        <img src="${logoUrl}" alt="Logo" class="w-16" onerror="this.onerror=null;this.src='https://placehold.co/100x100/e2e8f0/e2e8f0?text=Logo';">
+                        <img src="${safeLogoUrl}" alt="Logo" class="w-16" onerror="this.onerror=null;this.src='https://placehold.co/100x100/e2e8f0/e2e8f0?text=Logo';">
                     </div>
                     <div class="text-center w-1/2">
-                         <h2 class="title-sub uppercase font-bold">${organizationName}</h2>
+                         <h2 class="title-sub uppercase font-bold">${safeOrganizationName}</h2>
                          <div class="flex items-baseline justify-center font-bold text-base">
                             <label for="department-name">KHOA/PHÒNG:</label>
                             <input type="text" id="department-name" class="form-input-line flex-grow ml-2" value="${formatValue(selectedPlan.khoa_phong)}">
@@ -367,8 +383,8 @@ export function buildPrintTemplate(params: {
                 </div>
                  <div class="text-center mt-4">
                      <h1 class="title-main uppercase font-bold flex justify-center items-baseline">
-                        KẾ HOẠCH ${selectedPlan.loai_cong_viec.toUpperCase()} THIẾT BỊ NĂM
-                        <input type="text" class="form-input-line w-24 ml-2" value="${selectedPlan.nam}">
+                        KẾ HOẠCH ${safePlanTypeUpper} THIẾT BỊ NĂM
+                        <input type="text" class="form-input-line w-24 ml-2" value="${safePlanYear}">
                     </h1>
                 </div>
             </header>
@@ -383,7 +399,7 @@ export function buildPrintTemplate(params: {
                             <th rowspan="2" class="w-[12%]">Tên TB</th>
                             <th rowspan="2" class="w-[10%]">Khoa/Phòng</th>
                             <th colspan="2">Đơn vị thực hiện</th>
-                            <th colspan="12">Thời gian dự kiến ${selectedPlan.loai_cong_viec.toLowerCase()} (tháng)</th>
+                            <th colspan="12">Thời gian dự kiến ${safePlanTypeLower} (tháng)</th>
                             <th rowspan="2" class="w-[16%]">Điểm BT/HC/KĐ</th>
                         </tr>
                         <tr>
