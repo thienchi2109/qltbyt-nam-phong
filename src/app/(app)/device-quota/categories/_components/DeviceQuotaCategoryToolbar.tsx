@@ -21,8 +21,8 @@ export function DeviceQuotaCategoryToolbar() {
       console.error("Failed to download template:", error)
       toast({
         variant: "destructive",
-        title: "Loi",
-        description: "Khong the tai file mau. Vui long thu lai.",
+        title: "Lỗi",
+        description: "Không thể tải file mẫu. Vui lòng thử lại.",
       })
     } finally {
       setIsDownloading(false)
@@ -40,7 +40,7 @@ export function DeviceQuotaCategoryToolbar() {
           disabled={isDownloading}
         >
           <Download className="mr-2 h-4 w-4" />
-          {isDownloading ? "Dang tai..." : "Tai mau Excel"}
+          {isDownloading ? "Đang tải..." : "Tải mẫu Excel"}
         </Button>
         <Button
           variant="outline"
@@ -48,11 +48,11 @@ export function DeviceQuotaCategoryToolbar() {
           onClick={openImportDialog}
         >
           <Upload className="mr-2 h-4 w-4" />
-          Nhap tu Excel
+          Nhập từ Excel
         </Button>
         <Button onClick={openCreateDialog}>
           <PlusCircle className="mr-2 h-4 w-4" />
-          Tao danh muc
+          Tạo danh mục
         </Button>
       </div>
     </div>
