@@ -7,7 +7,11 @@ import { useSession } from "next-auth/react"
 import { useToast } from "@/hooks/use-toast"
 import { callRpc } from "@/lib/rpc-client"
 import { isEquipmentManagerRole, isRegionalLeaderRole } from "@/lib/rbac"
-import { maintenanceKeys, type MaintenancePlan } from "@/hooks/use-cached-maintenance"
+import {
+  maintenanceKeys,
+  type MaintenancePlan,
+  type MaintenancePlanListResponse,
+} from "@/hooks/use-cached-maintenance"
 import type { Equipment, MaintenanceTask } from "@/lib/data"
 import { useMaintenanceOperations } from "../_hooks/use-maintenance-operations"
 import { useMaintenancePrint } from "../_hooks/use-maintenance-print"
@@ -50,6 +54,20 @@ function getSelectedTaskIds(taskRowSelection: RowSelectionState) {
     .filter(([, selected]) => Boolean(selected))
     .map(([rowId]) => Number(rowId))
     .filter((id) => Number.isFinite(id))
+}
+
+function findPlanInCachedResponses(
+  cachedResponses: Array<[readonly unknown[], MaintenancePlanListResponse | undefined]>,
+  planId: number
+): MaintenancePlan | null {
+  for (const [, response] of cachedResponses) {
+    const matchedPlan = response?.data.find((plan) => plan.id === planId)
+    if (matchedPlan) {
+      return matchedPlan
+    }
+  }
+
+  return null
 }
 
 export function MaintenanceProvider({
@@ -300,7 +318,25 @@ export function MaintenanceProvider({
   )
 
   const onPlanMutationSuccess = React.useCallback(() => {
-    queryClient.invalidateQueries({ queryKey: maintenanceKeys.plans() })
+    void queryClient
+      .invalidateQueries({ queryKey: maintenanceKeys.plans() })
+      .then(() => {
+        setSelectedPlan((currentSelectedPlan) => {
+          if (!currentSelectedPlan) {
+            return null
+          }
+
+          const cachedResponses = queryClient.getQueriesData<MaintenancePlanListResponse>({
+            queryKey: maintenanceKeys.plans(),
+          })
+          const refreshedSelectedPlan = findPlanInCachedResponses(cachedResponses, currentSelectedPlan.id)
+
+          return refreshedSelectedPlan ?? currentSelectedPlan
+        })
+      })
+      .catch(() => {
+        // Keep existing selected plan when refresh fails.
+      })
   }, [queryClient])
 
   const selectedTaskIds = React.useMemo(() => getSelectedTaskIds(taskRowSelection), [taskRowSelection])

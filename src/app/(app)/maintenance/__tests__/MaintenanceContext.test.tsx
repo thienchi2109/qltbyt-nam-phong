@@ -1,9 +1,9 @@
 import * as React from "react"
-import { act, renderHook } from "@testing-library/react"
+import { act, renderHook, waitFor } from "@testing-library/react"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import type { RowSelectionState } from "@tanstack/react-table"
 import type { MaintenanceTask } from "@/lib/data"
-import { maintenanceKeys } from "@/hooks/use-cached-maintenance"
+import { maintenanceKeys, type MaintenancePlan } from "@/hooks/use-cached-maintenance"
 import { MaintenanceProvider } from "../_components/MaintenanceContext"
 import { useMaintenanceContext } from "../_hooks/useMaintenanceContext"
 
@@ -28,7 +28,8 @@ const mocks = vi.hoisted(() => {
     cancelAllChanges: vi.fn(),
     getDraftCacheKey: vi.fn((planId: number) => `maintenance_draft_${planId}`),
     toast: vi.fn(),
-    invalidateQueries: vi.fn(),
+    invalidateQueries: vi.fn(async () => {}),
+    getQueriesData: vi.fn(() => []),
     setTaskToDelete: vi.fn(),
     handleStartEdit: vi.fn(),
     handleCancelEdit: vi.fn(),
@@ -65,6 +66,7 @@ vi.mock("@tanstack/react-query", async () => {
     ...actual,
     useQueryClient: () => ({
       invalidateQueries: mocks.invalidateQueries,
+      getQueriesData: mocks.getQueriesData,
     }),
   }
 })
@@ -156,6 +158,25 @@ function createTask(id: number): MaintenanceTask {
   }
 }
 
+function createPlan(overrides: Partial<MaintenancePlan> = {}): MaintenancePlan {
+  return {
+    id: 1,
+    ten_ke_hoach: "Kế hoạch gốc",
+    nam: 2026,
+    loai_cong_viec: "Bảo trì",
+    khoa_phong: "Khoa A",
+    nguoi_lap_ke_hoach: "Tester",
+    trang_thai: "Bản nháp",
+    ngay_phe_duyet: null,
+    nguoi_duyet: null,
+    ly_do_khong_duyet: null,
+    created_at: "2026-01-01T00:00:00.000Z",
+    don_vi: 1,
+    facility_name: "Cơ sở A",
+    ...overrides,
+  }
+}
+
 function createWrapper(
   rowSelection: RowSelectionState,
   setTaskRowSelection: React.Dispatch<React.SetStateAction<RowSelectionState>>
@@ -176,6 +197,7 @@ describe("MaintenanceContext", () => {
   beforeEach(() => {
     mocks.setDraftTasksState([createTask(101), createTask(202), createTask(303)])
     mocks.setTasksState([createTask(101), createTask(202), createTask(303)])
+    mocks.getQueriesData.mockReturnValue([])
     vi.clearAllMocks()
   })
 
@@ -222,6 +244,42 @@ describe("MaintenanceContext", () => {
 
     expect(mocks.invalidateQueries).toHaveBeenCalledWith({
       queryKey: maintenanceKeys.plans(),
+    })
+  })
+
+  it("re-syncs selected plan from refreshed plan cache on mutation success", async () => {
+    const wrapper = createWrapper({}, vi.fn())
+    const { result } = renderHook(() => useMaintenanceContext(), { wrapper })
+
+    const stalePlan = createPlan()
+    const refreshedPlan = createPlan({
+      ten_ke_hoach: "Kế hoạch đã cập nhật",
+      trang_thai: "Đã duyệt",
+    })
+
+    mocks.getQueriesData.mockReturnValue([
+      [
+        ["maintenance", "plans", { filters: { page: 1 } }],
+        {
+          data: [refreshedPlan],
+          total: 1,
+          page: 1,
+          pageSize: 50,
+        },
+      ],
+    ])
+
+    act(() => {
+      result.current.setSelectedPlan(stalePlan)
+    })
+
+    act(() => {
+      result.current.onPlanMutationSuccess()
+    })
+
+    await waitFor(() => {
+      expect(result.current.selectedPlan?.ten_ke_hoach).toBe("Kế hoạch đã cập nhật")
+      expect(result.current.selectedPlan?.trang_thai).toBe("Đã duyệt")
     })
   })
 })
