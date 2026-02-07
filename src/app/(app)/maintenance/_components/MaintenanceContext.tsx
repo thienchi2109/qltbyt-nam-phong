@@ -70,6 +70,17 @@ function findPlanInCachedResponses(
   return null
 }
 
+export function getNextMaintenanceTempTaskId(
+  tasks: Array<Pick<MaintenanceTask, "id">>
+): number {
+  const smallestExistingTempId = tasks.reduce(
+    (minId, task) => (task.id < minId ? task.id : minId),
+    -1
+  )
+
+  return smallestExistingTempId - 1
+}
+
 export function MaintenanceProvider({
   children,
   taskRowSelection,
@@ -284,7 +295,7 @@ export function MaintenanceProvider({
       if (!selectedPlan) return
 
       setDraftTasks((currentDrafts) => {
-        let tempIdCounter = Math.min(-1, ...currentDrafts.map((task) => task.id).filter((id) => id < 0), 0) - 1
+        let tempIdCounter = getNextMaintenanceTempTaskId(currentDrafts)
 
         const tasksToAdd: MaintenanceTask[] = newlySelectedEquipment.map((equipment) => ({
           id: tempIdCounter--,

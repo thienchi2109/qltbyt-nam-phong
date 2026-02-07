@@ -3,6 +3,7 @@
 import * as React from "react"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import type { PaginationState, SortingState } from "@tanstack/react-table"
+import { useQuery } from "@tanstack/react-query"
 import {
   getCoreRowModel,
   getFilteredRowModel,
@@ -26,6 +27,7 @@ import { usePlanColumns, useTaskColumns } from "./maintenance-columns"
 import { MaintenanceDialogs } from "./maintenance-dialogs"
 import { MaintenancePageDesktopContent } from "./maintenance-page-desktop-content"
 import { MaintenancePageLegacyMobileCards } from "./maintenance-page-legacy-mobile-cards"
+import { findMaintenancePlanById } from "./maintenance-plan-lookup"
 
 export function MaintenancePageClient() {
   const ctx = useMaintenanceContext()
@@ -46,9 +48,6 @@ export function MaintenancePageClient() {
   const [pendingFacilityFilter, setPendingFacilityFilter] = React.useState<number | null>(null)
   const [expandedTaskIds, setExpandedTaskIds] = React.useState<Record<number, boolean>>({})
 
-  const [facilities, setFacilities] = React.useState<Array<{ id: number; name: string }>>([])
-  const [isLoadingFacilities, setIsLoadingFacilities] = React.useState(false)
-
   const [planSorting, setPlanSorting] = React.useState<SortingState>([])
   const [taskPagination, setTaskPagination] = React.useState<PaginationState>({
     pageIndex: 0,
@@ -68,30 +67,35 @@ export function MaintenancePageClient() {
   const plans = React.useMemo(() => paginatedResponse?.data ?? [], [paginatedResponse?.data])
   const totalCount = paginatedResponse?.total ?? 0
   const totalPages = Math.ceil(totalCount / pageSize)
+  const showFacilityFilter = isGlobalRole(ctx.user?.role) || isRegionalLeaderRole(ctx.user?.role)
+
+  const {
+    data: facilities = [],
+    isLoading: isLoadingFacilities,
+    error: facilitiesError,
+  } = useQuery<Array<{ id: number; name: string }>>({
+    queryKey: ["maintenance", "facilities", ctx.user?.role ?? null],
+    queryFn: async () => {
+      const result = await callRpc<FacilityOption[]>({
+        fn: "get_facilities_with_equipment_count",
+        args: {},
+      })
+
+      return (result || []).map((facility) => ({
+        id: Number(facility.id),
+        name: String(facility.name || `Cơ sở ${facility.id}`),
+      }))
+    },
+    enabled: showFacilityFilter,
+    staleTime: 5 * 60 * 1000,
+    gcTime: 15 * 60 * 1000,
+  })
 
   React.useEffect(() => {
-    const canSeeFacilityFilter = isGlobalRole(ctx.user?.role) || isRegionalLeaderRole(ctx.user?.role)
-    if (!canSeeFacilityFilter) {
-      return
+    if (facilitiesError) {
+      console.error("[Maintenance] Failed to fetch facilities:", facilitiesError)
     }
-
-    setIsLoadingFacilities(true)
-    callRpc<FacilityOption[]>({ fn: "get_facilities_with_equipment_count", args: {} })
-      .then((result) => {
-        const mapped = (result || []).map((facility) => ({
-          id: Number(facility.id),
-          name: String(facility.name || `Cơ sở ${facility.id}`),
-        }))
-        setFacilities(mapped)
-      })
-      .catch((error) => {
-        console.error("[Maintenance] Failed to fetch facilities:", error)
-        setFacilities([])
-      })
-      .finally(() => setIsLoadingFacilities(false))
-  }, [ctx.user?.role])
-
-  const showFacilityFilter = isGlobalRole(ctx.user?.role) || isRegionalLeaderRole(ctx.user?.role)
+  }, [facilitiesError])
 
   const activeMobileFilterCount = React.useMemo(() => {
     let count = 0
@@ -110,37 +114,79 @@ export function MaintenancePageClient() {
   }, [ctx.selectedPlan, fetchPlanDetails, setTaskRowSelection])
 
   React.useEffect(() => {
-    const planIdParam = searchParams.get("planId")
-    const tabParam = searchParams.get("tab")
-    const actionParam = searchParams.get("action")
+    let isCancelled = false
 
-    if (actionParam === "create") {
-      setIsAddPlanDialogOpen(true)
-      router.replace(pathname, { scroll: false })
-      return
-    }
+    const resolveDeepLink = async () => {
+      const planIdParam = searchParams.get("planId")
+      const tabParam = searchParams.get("tab")
+      const actionParam = searchParams.get("action")
 
-    if (!planIdParam) return
-    // Wait for plans to finish loading before attempting lookup
-    if (isLoadingPlans) return
-
-    const planId = Number.parseInt(planIdParam, 10)
-    const targetPlan = plans.find((plan) => plan.id === planId)
-
-    if (targetPlan) {
-      setSelectedPlan(targetPlan)
-      if (tabParam === "tasks") {
-        setActiveTab("tasks")
+      if (actionParam === "create") {
+        setIsAddPlanDialogOpen(true)
+        router.replace(pathname, { scroll: false })
+        return
       }
-    } else {
-      toast({
-        variant: "destructive",
-        title: "Không tìm thấy kế hoạch",
-        description: `Kế hoạch #${planId} không tồn tại hoặc bạn không có quyền truy cập.`,
-      })
+
+      if (!planIdParam) return
+      // Wait for plans to finish loading before attempting lookup
+      if (isLoadingPlans) return
+
+      const planId = Number.parseInt(planIdParam, 10)
+      if (!Number.isFinite(planId)) {
+        toast({
+          variant: "destructive",
+          title: "Không tìm thấy kế hoạch",
+          description: `Kế hoạch #${planIdParam} không hợp lệ.`,
+        })
+        router.replace(pathname, { scroll: false })
+        return
+      }
+
+      let targetPlan = plans.find((plan) => plan.id === planId)
+
+      if (!targetPlan) {
+        try {
+          targetPlan = await findMaintenancePlanById(planId)
+        } catch (error) {
+          console.error("[Maintenance] Deep link plan lookup failed:", error)
+        }
+      }
+
+      if (isCancelled) {
+        return
+      }
+
+      if (targetPlan) {
+        setSelectedPlan(targetPlan)
+        if (tabParam === "tasks") {
+          setActiveTab("tasks")
+        }
+      } else {
+        toast({
+          variant: "destructive",
+          title: "Không tìm thấy kế hoạch",
+          description: `Kế hoạch #${planId} không tồn tại hoặc bạn không có quyền truy cập.`,
+        })
+      }
+      router.replace(pathname, { scroll: false })
     }
-    router.replace(pathname, { scroll: false })
-  }, [searchParams, plans, isLoadingPlans, setIsAddPlanDialogOpen, setSelectedPlan, setActiveTab, toast, router, pathname])
+
+    void resolveDeepLink()
+
+    return () => {
+      isCancelled = true
+    }
+  }, [
+    searchParams,
+    plans,
+    isLoadingPlans,
+    setIsAddPlanDialogOpen,
+    setSelectedPlan,
+    setActiveTab,
+    toast,
+    router,
+    pathname,
+  ])
 
   React.useEffect(() => {
     setCurrentPage(1)

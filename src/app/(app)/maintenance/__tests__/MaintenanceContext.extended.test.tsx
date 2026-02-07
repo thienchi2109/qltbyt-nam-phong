@@ -331,6 +331,7 @@ describe("MaintenanceContext - Extended Coverage", () => {
 
       act(() => {
         result.current.setSelectedPlan(mockPlan)
+        result.current.setIsAddTasksDialogOpen(true)
       })
 
       const newEquipment: Equipment[] = [
@@ -340,6 +341,12 @@ describe("MaintenanceContext - Extended Coverage", () => {
           ten_thiet_bi: "New Equipment",
           khoa_phong_quan_ly: "Khoa B",
         } as Equipment,
+        {
+          id: 1000,
+          ma_thiet_bi: "TB-1000",
+          ten_thiet_bi: "Second Equipment",
+          khoa_phong_quan_ly: "Khoa C",
+        } as Equipment,
       ]
 
       act(() => {
@@ -347,6 +354,45 @@ describe("MaintenanceContext - Extended Coverage", () => {
       })
 
       expect(mocks.setDraftTasks).toHaveBeenCalled()
+      expect(result.current.dialogState.isAddTasksDialogOpen).toBe(false)
+
+      const updatedDrafts = mocks.getDraftTasks()
+      expect(updatedDrafts).toHaveLength(5)
+
+      const firstAddedTask = updatedDrafts.at(-2)!
+      const secondAddedTask = updatedDrafts.at(-1)!
+
+      expect(firstAddedTask).toMatchObject({
+        id: -2,
+        ke_hoach_id: mockPlan.id,
+        thiet_bi_id: 999,
+        loai_cong_viec: mockPlan.loai_cong_viec,
+        diem_hieu_chuan: null,
+        don_vi_thuc_hien: null,
+        ghi_chu: null,
+        thiet_bi: {
+          ma_thiet_bi: "TB-999",
+          ten_thiet_bi: "New Equipment",
+          khoa_phong_quan_ly: "Khoa B",
+        },
+      })
+
+      expect(secondAddedTask).toMatchObject({
+        id: -3,
+        ke_hoach_id: mockPlan.id,
+        thiet_bi_id: 1000,
+        loai_cong_viec: mockPlan.loai_cong_viec,
+        thiet_bi: {
+          ma_thiet_bi: "TB-1000",
+          ten_thiet_bi: "Second Equipment",
+          khoa_phong_quan_ly: "Khoa C",
+        },
+      })
+
+      expect(firstAddedTask.thang_1).toBe(false)
+      expect(firstAddedTask.thang_12).toBe(false)
+      expect(secondAddedTask.thang_6).toBe(false)
+
       expect(mocks.toast).toHaveBeenCalledWith(
         expect.objectContaining({
           title: "Đã thêm vào bản nháp",

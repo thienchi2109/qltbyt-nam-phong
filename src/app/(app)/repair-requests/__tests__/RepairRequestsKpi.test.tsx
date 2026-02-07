@@ -169,11 +169,11 @@ vi.mock('@/lib/rr-prefs', () => ({
 }))
 
 // Track useQuery calls to verify enabled conditions
-let useQueryCalls: Array<{ queryKey: unknown[]; enabled: boolean }> = []
+let mockUseQueryCalls: Array<{ queryKey: unknown[]; enabled: boolean }> = []
 
 vi.mock('@tanstack/react-query', () => ({
   useQuery: (options: { queryKey: unknown[]; enabled: boolean; queryFn: () => Promise<unknown> }) => {
-    useQueryCalls.push({ queryKey: options.queryKey, enabled: options.enabled })
+    mockUseQueryCalls.push({ queryKey: options.queryKey, enabled: options.enabled })
 
     // Determine which query this is based on queryKey
     const key = options.queryKey[0] as string
@@ -251,7 +251,7 @@ function setupTenantUser() {
 describe('RepairRequests KPI Cards', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    useQueryCalls = []
+    mockUseQueryCalls = []
     mockStatusCounts = {
       'Chờ xử lý': 3,
       'Đã duyệt': 2,
@@ -266,7 +266,7 @@ describe('RepairRequests KPI Cards', () => {
       setupGlobalUser({ shouldFetchData: false })
       render(<RepairRequestsPageClient />)
 
-      const statusCountsCall = useQueryCalls.find(
+      const statusCountsCall = mockUseQueryCalls.find(
         (c) => (c.queryKey[0] as string) === 'repair_request_status_counts'
       )
       expect(statusCountsCall).toBeDefined()
@@ -277,7 +277,7 @@ describe('RepairRequests KPI Cards', () => {
       setupGlobalUser({ shouldFetchData: false })
       render(<RepairRequestsPageClient />)
 
-      const statusCountsCall = useQueryCalls.find(
+      const statusCountsCall = mockUseQueryCalls.find(
         (c) => (c.queryKey[0] as string) === 'repair_request_status_counts'
       )
       // queryKey should have facilityId: null (coalesced from undefined)
@@ -321,7 +321,7 @@ describe('RepairRequests KPI Cards', () => {
       setupGlobalUser({ shouldFetchData: false })
       render(<RepairRequestsPageClient />)
 
-      const listCall = useQueryCalls.find(
+      const listCall = mockUseQueryCalls.find(
         (c) => (c.queryKey[0] as string) === 'repair_request_list'
       )
       expect(listCall).toBeDefined()
@@ -332,7 +332,7 @@ describe('RepairRequests KPI Cards', () => {
       setupTenantUser()
       render(<RepairRequestsPageClient />)
 
-      const listCall = useQueryCalls.find(
+      const listCall = mockUseQueryCalls.find(
         (c) => (c.queryKey[0] as string) === 'repair_request_list'
       )
       expect(listCall).toBeDefined()
@@ -355,7 +355,7 @@ describe('RepairRequests KPI Cards', () => {
       setupGlobalUser({ shouldFetchData: false })
       render(<RepairRequestsPageClient />)
 
-      expect(screen.queryByTestId('repair-toolbar')).not.toBeInTheDocument()
+      // Toolbar is always visible (contains search/filters for tenant selection)
       expect(screen.queryByTestId('repair-table')).not.toBeInTheDocument()
       expect(screen.queryByTestId('pagination')).not.toBeInTheDocument()
     })
