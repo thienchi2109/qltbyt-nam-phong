@@ -52,14 +52,26 @@ export function useTaskEditing(options: UseTaskEditingOptions) {
     })
   }, [editingTaskId, editingTaskData, setDraftTasks, toast])
 
-  return {
-    editingTaskId,
-    editingTaskData,
-    taskToDelete,
-    setTaskToDelete,
-    handleStartEdit,
-    handleCancelEdit,
-    handleTaskDataChange,
-    handleSaveTask,
-  }
+  return React.useMemo(
+    () => ({
+      editingTaskId,
+      editingTaskData,
+      taskToDelete,
+      setTaskToDelete,
+      handleStartEdit,
+      handleCancelEdit,
+      handleTaskDataChange,
+      handleSaveTask,
+    }),
+    [
+      editingTaskId,
+      editingTaskData,
+      taskToDelete,
+      setTaskToDelete,
+      handleStartEdit,
+      handleCancelEdit,
+      handleTaskDataChange,
+      handleSaveTask,
+    ]
+  )
 }

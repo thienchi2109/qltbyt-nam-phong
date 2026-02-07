@@ -91,6 +91,26 @@ describe("useMaintenanceOperations", () => {
       expect(result.current.confirmDialog.plan).toBeNull()
       expect(result.current.confirmDialog.rejectionReason).toBe("")
     })
+
+    it("keeps returned object reference stable when state is unchanged", () => {
+      const stableUser = { full_name: "Test User" }
+      const { result, rerender } = renderHook(
+        () =>
+          useMaintenanceOperations({
+            selectedPlan: null,
+            setSelectedPlan,
+            setActiveTab,
+            getDraftCacheKey,
+            user: stableUser,
+          }),
+        { wrapper: createWrapper() }
+      )
+
+      const firstResult = result.current
+      rerender()
+
+      expect(result.current).toBe(firstResult)
+    })
   })
 
   describe("Dialog openers", () => {

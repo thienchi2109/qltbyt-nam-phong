@@ -71,6 +71,22 @@ describe("useTaskEditing", () => {
       expect(result.current.editingTaskData).toBeNull()
       expect(result.current.taskToDelete).toBeNull()
     })
+
+    it("keeps returned object reference stable when state is unchanged", () => {
+      const { result, rerender } = renderHook(() =>
+        useTaskEditing({
+          draftTasks,
+          setDraftTasks,
+          canManagePlans: true,
+          isPlanApproved: false,
+        })
+      )
+
+      const firstResult = result.current
+      rerender()
+
+      expect(result.current).toBe(firstResult)
+    })
   })
 
   describe("handleStartEdit", () => {

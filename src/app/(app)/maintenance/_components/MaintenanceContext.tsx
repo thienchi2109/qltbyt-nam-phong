@@ -135,6 +135,38 @@ export function MaintenanceProvider({
     canManagePlans,
     isPlanApproved,
   })
+  const {
+    editingTaskId,
+    editingTaskData,
+    taskToDelete,
+    setTaskToDelete,
+    handleStartEdit,
+    handleCancelEdit,
+    handleTaskDataChange,
+    handleSaveTask,
+  } = taskEditing
+  const taskEditingValue = React.useMemo(
+    () => ({
+      editingTaskId,
+      editingTaskData,
+      taskToDelete,
+      setTaskToDelete,
+      handleStartEdit,
+      handleCancelEdit,
+      handleTaskDataChange,
+      handleSaveTask,
+    }),
+    [
+      editingTaskId,
+      editingTaskData,
+      taskToDelete,
+      setTaskToDelete,
+      handleStartEdit,
+      handleCancelEdit,
+      handleTaskDataChange,
+      handleSaveTask,
+    ]
+  )
 
   const operations = useMaintenanceOperations({
     selectedPlan,
@@ -143,6 +175,50 @@ export function MaintenanceProvider({
     getDraftCacheKey,
     user,
   })
+  const {
+    confirmDialog,
+    setRejectionReason,
+    closeDialog,
+    openApproveDialog,
+    openRejectDialog,
+    openDeleteDialog,
+    handleApprovePlan,
+    handleRejectPlan,
+    handleDeletePlan,
+    isApproving,
+    isRejecting,
+    isDeleting,
+  } = operations
+  const operationsValue = React.useMemo(
+    () => ({
+      confirmDialog,
+      setRejectionReason,
+      closeDialog,
+      openApproveDialog,
+      openRejectDialog,
+      openDeleteDialog,
+      handleApprovePlan,
+      handleRejectPlan,
+      handleDeletePlan,
+      isApproving,
+      isRejecting,
+      isDeleting,
+    }),
+    [
+      confirmDialog,
+      setRejectionReason,
+      closeDialog,
+      openApproveDialog,
+      openRejectDialog,
+      openDeleteDialog,
+      handleApprovePlan,
+      handleRejectPlan,
+      handleDeletePlan,
+      isApproving,
+      isRejecting,
+      isDeleting,
+    ]
+  )
 
   const { generatePlanForm, isGenerating: isPrintGenerating } = useMaintenancePrint({
     selectedPlan,
@@ -402,15 +478,15 @@ export function MaintenanceProvider({
   )
 
   const confirmDeleteSingleTask = React.useCallback(() => {
-    const toDelete = taskEditing.taskToDelete
+    const toDelete = taskToDelete
     if (!toDelete) {
       return
     }
 
     setDraftTasks((currentDrafts) => currentDrafts.filter((task) => task.id !== toDelete.id))
-    taskEditing.setTaskToDelete(null)
+    setTaskToDelete(null)
     toast({ title: "Đã xóa khỏi bản nháp" })
-  }, [taskEditing, setDraftTasks, toast])
+  }, [taskToDelete, setTaskToDelete, setDraftTasks, toast])
 
   const confirmDeleteSelectedTasks = React.useCallback(() => {
     if (selectedTaskIds.length === 0) {
@@ -454,14 +530,14 @@ export function MaintenanceProvider({
       handleCancelAllChanges,
       getDraftCacheKey,
 
-      taskEditing,
+      taskEditing: taskEditingValue,
 
       completionStatus,
       isLoadingCompletion,
       isCompletingTask,
       handleMarkAsCompleted,
 
-      operations,
+      operations: operationsValue,
 
       generatePlanForm,
       isPrintGenerating,
@@ -503,12 +579,12 @@ export function MaintenanceProvider({
       handleSaveAllChanges,
       handleCancelAllChanges,
       getDraftCacheKey,
-      taskEditing,
+      taskEditingValue,
       completionStatus,
       isLoadingCompletion,
       isCompletingTask,
       handleMarkAsCompleted,
-      operations,
+      operationsValue,
       generatePlanForm,
       isPrintGenerating,
       existingEquipmentIdsInDraft,
