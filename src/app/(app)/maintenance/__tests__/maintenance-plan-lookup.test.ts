@@ -32,43 +32,21 @@ describe("findMaintenancePlanById", () => {
     vi.clearAllMocks()
   })
 
-  it("returns a plan when found on the first page", async () => {
-    mocks.callRpc.mockResolvedValueOnce({
-      data: [createPlan(123)],
-      total: 1,
-      page: 1,
-      pageSize: 200,
-    })
+  it("returns a plan when the id exists", async () => {
+    mocks.callRpc.mockResolvedValueOnce(createPlan(123))
 
     const result = await findMaintenancePlanById(123)
 
     expect(result?.id).toBe(123)
     expect(mocks.callRpc).toHaveBeenCalledTimes(1)
     expect(mocks.callRpc).toHaveBeenCalledWith({
-      fn: "maintenance_plan_list",
-      args: {
-        p_q: null,
-        p_don_vi: null,
-        p_page: 1,
-        p_page_size: 200,
-      },
+      fn: "maintenance_plan_get",
+      args: { p_id: 123 },
     })
   })
 
-  it("continues fetching pages until the target plan is found", async () => {
-    mocks.callRpc
-      .mockResolvedValueOnce({
-        data: [createPlan(1)],
-        total: 300,
-        page: 1,
-        pageSize: 200,
-      })
-      .mockResolvedValueOnce({
-        data: [createPlan(234, "9")],
-        total: 300,
-        page: 2,
-        pageSize: 200,
-      })
+  it("normalizes don_vi when the RPC returns a string id", async () => {
+    mocks.callRpc.mockResolvedValueOnce(createPlan(234, "9"))
 
     const result = await findMaintenancePlanById(234)
 
@@ -76,36 +54,15 @@ describe("findMaintenancePlanById", () => {
       id: 234,
       don_vi: 9,
     })
-    expect(mocks.callRpc).toHaveBeenCalledTimes(2)
-    expect(mocks.callRpc.mock.calls[1]?.[0]).toEqual({
-      fn: "maintenance_plan_list",
-      args: {
-        p_q: null,
-        p_don_vi: null,
-        p_page: 2,
-        p_page_size: 200,
-      },
-    })
+    expect(mocks.callRpc).toHaveBeenCalledTimes(1)
   })
 
-  it("returns null after checking all pages when plan does not exist", async () => {
-    mocks.callRpc
-      .mockResolvedValueOnce({
-        data: [createPlan(10)],
-        total: 250,
-        page: 1,
-        pageSize: 200,
-      })
-      .mockResolvedValueOnce({
-        data: [createPlan(20)],
-        total: 250,
-        page: 2,
-        pageSize: 200,
-      })
+  it("returns null when the plan does not exist", async () => {
+    mocks.callRpc.mockResolvedValueOnce(null)
 
     const result = await findMaintenancePlanById(999)
 
     expect(result).toBeNull()
-    expect(mocks.callRpc).toHaveBeenCalledTimes(2)
+    expect(mocks.callRpc).toHaveBeenCalledTimes(1)
   })
 })
