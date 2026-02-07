@@ -282,4 +282,48 @@ describe("MaintenanceContext", () => {
       expect(result.current.selectedPlan?.trang_thai).toBe("Đã duyệt")
     })
   })
+
+  it("opens cancel confirmation when switching plans with unsaved changes", () => {
+    const wrapper = createWrapper({}, vi.fn())
+    const { result } = renderHook(() => useMaintenanceContext(), { wrapper })
+    const currentPlan = createPlan({ id: 10, ten_ke_hoach: "Kế hoạch hiện tại" })
+    const nextPlan = createPlan({ id: 11, ten_ke_hoach: "Kế hoạch mới" })
+
+    act(() => {
+      result.current.setSelectedPlan(currentPlan)
+      result.current.setActiveTab("plans")
+    })
+
+    act(() => {
+      result.current.handleSelectPlan(nextPlan)
+    })
+
+    expect(result.current.dialogState.isConfirmingCancel).toBe(true)
+    expect(result.current.selectedPlan?.id).toBe(currentPlan.id)
+  })
+
+  it("switches to pending plan after confirming discard changes", () => {
+    const wrapper = createWrapper({}, vi.fn())
+    const { result } = renderHook(() => useMaintenanceContext(), { wrapper })
+    const currentPlan = createPlan({ id: 20, ten_ke_hoach: "Kế hoạch cũ" })
+    const nextPlan = createPlan({ id: 21, ten_ke_hoach: "Kế hoạch mới" })
+
+    act(() => {
+      result.current.setSelectedPlan(currentPlan)
+      result.current.setActiveTab("plans")
+    })
+
+    act(() => {
+      result.current.handleSelectPlan(nextPlan)
+    })
+
+    act(() => {
+      result.current.handleCancelAllChanges()
+    })
+
+    expect(mocks.cancelAllChanges).toHaveBeenCalled()
+    expect(result.current.dialogState.isConfirmingCancel).toBe(false)
+    expect(result.current.selectedPlan?.id).toBe(nextPlan.id)
+    expect(result.current.activeTab).toBe("tasks")
+  })
 })

@@ -85,6 +85,7 @@ export function MaintenanceProvider({
   const canCompleteTask = !isRegionalLeader && isEquipmentManagerRole(user?.role)
 
   const [selectedPlan, setSelectedPlan] = React.useState<MaintenancePlan | null>(null)
+  const [pendingPlanSelection, setPendingPlanSelection] = React.useState<MaintenancePlan | null>(null)
   const [activeTab, setActiveTab] = React.useState("plans")
 
   const [dialogState, setDialogState] = React.useState<DialogState>({
@@ -154,9 +155,17 @@ export function MaintenanceProvider({
     setDialogState((prev) => ({ ...prev, isBulkScheduleOpen: open }))
   }, [])
 
-  const setIsConfirmingCancel = React.useCallback((open: boolean) => {
-    setDialogState((prev) => ({ ...prev, isConfirmingCancel: open }))
-  }, [])
+  const setIsConfirmingCancel = React.useCallback(
+    (open: boolean) => {
+      setDialogState((prev) => ({ ...prev, isConfirmingCancel: open }))
+
+      if (!open && pendingPlanSelection) {
+        setPendingPlanSelection(null)
+        setActiveTab("tasks")
+      }
+    },
+    [pendingPlanSelection]
+  )
 
   const setIsConfirmingBulkDelete = React.useCallback((open: boolean) => {
     setDialogState((prev) => ({ ...prev, isConfirmingBulkDelete: open }))
@@ -180,9 +189,16 @@ export function MaintenanceProvider({
   }, [selectedPlan, tasks])
 
   const handleCancelAllChanges = React.useCallback(() => {
+    const nextPlan = pendingPlanSelection
     cancelAllChanges()
-    setIsConfirmingCancel(false)
-  }, [cancelAllChanges, setIsConfirmingCancel])
+    setPendingPlanSelection(null)
+    setDialogState((prev) => ({ ...prev, isConfirmingCancel: false }))
+
+    if (nextPlan) {
+      setSelectedPlan(nextPlan)
+      setActiveTab("tasks")
+    }
+  }, [cancelAllChanges, pendingPlanSelection])
 
   const handleSaveAllChanges = React.useCallback(async () => {
     await saveAllChanges()
@@ -248,22 +264,15 @@ export function MaintenanceProvider({
   const handleSelectPlan = React.useCallback(
     (plan: MaintenancePlan) => {
       if (hasChanges && selectedPlan) {
-        const shouldDiscard = confirm(
-          `Bạn có các thay đổi chưa lưu trong kế hoạch "${selectedPlan.ten_ke_hoach}". Bạn có muốn hủy các thay đổi và chuyển sang kế hoạch khác không?`
-        )
-
-        if (!shouldDiscard) {
-          setActiveTab("tasks")
-          return
-        }
-
-        handleCancelAllChanges()
+        setPendingPlanSelection(plan)
+        setIsConfirmingCancel(true)
+        return
       }
 
       setSelectedPlan(plan)
       setActiveTab("tasks")
     },
-    [hasChanges, selectedPlan, handleCancelAllChanges]
+    [hasChanges, selectedPlan, setIsConfirmingCancel]
   )
 
   const existingEquipmentIdsInDraft = React.useMemo(
