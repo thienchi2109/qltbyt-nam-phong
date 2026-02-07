@@ -52,6 +52,7 @@ export function MaintenancePageClient() {
   })
 
   const { taskRowSelection, setTaskRowSelection } = ctx
+  const { setIsAddPlanDialogOpen, setSelectedPlan, setActiveTab } = ctx
 
   const { data: paginatedResponse, isLoading: isLoadingPlans } = useMaintenancePlans({
     search: debouncedPlanSearch || undefined,
@@ -110,7 +111,7 @@ export function MaintenancePageClient() {
     const actionParam = searchParams.get("action")
 
     if (actionParam === "create") {
-      ctx.setIsAddPlanDialogOpen(true)
+      setIsAddPlanDialogOpen(true)
       window.history.replaceState({}, "", "/maintenance")
       return
     }
@@ -120,14 +121,14 @@ export function MaintenancePageClient() {
       const targetPlan = plans.find((plan) => plan.id === planId)
 
       if (targetPlan) {
-        ctx.setSelectedPlan(targetPlan)
+        setSelectedPlan(targetPlan)
         if (tabParam === "tasks") {
-          ctx.setActiveTab("tasks")
+          setActiveTab("tasks")
         }
         window.history.replaceState({}, "", "/maintenance")
       }
     }
-  }, [searchParams, plans, ctx])
+  }, [searchParams, plans, setIsAddPlanDialogOpen, setSelectedPlan, setActiveTab])
 
   React.useEffect(() => {
     setCurrentPage(1)
