@@ -1,18 +1,12 @@
 import type * as React from "react"
+import type { Session } from "next-auth"
 import type { RowSelectionState } from "@tanstack/react-table"
 import type { MaintenancePlan } from "@/hooks/use-cached-maintenance"
 import type { Equipment, MaintenanceTask } from "@/lib/data"
 import type { useMaintenanceOperations } from "../_hooks/use-maintenance-operations"
 import type { useTaskEditing } from "./task-editing"
 
-export interface AuthUser {
-  id?: string
-  role?: string
-  don_vi_id?: number
-  dia_ban_id?: number
-  full_name?: string
-  username?: string
-}
+export type AuthUser = Session["user"]
 
 export interface DialogState {
   isAddPlanDialogOpen: boolean

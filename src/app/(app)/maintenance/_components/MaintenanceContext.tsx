@@ -78,7 +78,7 @@ export function MaintenanceProvider({
   const { toast } = useToast()
   const queryClient = useQueryClient()
   const { data: session } = useSession()
-  const user = session?.user as AuthUser | null
+  const user: AuthUser | null = session?.user ?? null
 
   const isRegionalLeader = isRegionalLeaderRole(user?.role)
   const canManagePlans = isEquipmentManagerRole(user?.role)

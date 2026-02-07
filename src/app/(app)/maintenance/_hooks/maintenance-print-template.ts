@@ -20,7 +20,7 @@ export function formatValue(value: unknown): string {
 export function buildPrintTemplate(params: {
   selectedPlan: MaintenancePlan
   tasks: MaintenanceTask[]
-  user: { full_name?: string } | null
+  user: { full_name?: string | null } | null
   logoUrl: string
   organizationName: string
 }): string {

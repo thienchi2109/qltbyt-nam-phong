@@ -13,7 +13,7 @@ interface UseMaintenanceOperationsParams {
   setSelectedPlan: React.Dispatch<React.SetStateAction<MaintenancePlan | null>>
   setActiveTab: React.Dispatch<React.SetStateAction<string>>
   getDraftCacheKey: (planId: number) => string
-  user: { full_name?: string; username?: string } | null
+  user: { full_name?: string | null; username?: string | null } | null
 }
 
 interface ConfirmDialogState {
