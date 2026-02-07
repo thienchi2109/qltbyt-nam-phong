@@ -1,5 +1,5 @@
 import * as React from "react"
-import { act, renderHook, waitFor } from "@testing-library/react"
+import { act, renderHook } from "@testing-library/react"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import type { MaintenancePlan } from "@/hooks/use-cached-maintenance"
@@ -90,6 +90,26 @@ describe("useMaintenanceOperations", () => {
       expect(result.current.confirmDialog.type).toBeNull()
       expect(result.current.confirmDialog.plan).toBeNull()
       expect(result.current.confirmDialog.rejectionReason).toBe("")
+    })
+
+    it("keeps returned object reference stable when state is unchanged", () => {
+      const stableUser = { full_name: "Test User" }
+      const { result, rerender } = renderHook(
+        () =>
+          useMaintenanceOperations({
+            selectedPlan: null,
+            setSelectedPlan,
+            setActiveTab,
+            getDraftCacheKey,
+            user: stableUser,
+          }),
+        { wrapper: createWrapper() }
+      )
+
+      const firstResult = result.current
+      rerender()
+
+      expect(result.current).toBe(firstResult)
     })
   })
 
@@ -241,6 +261,44 @@ describe("useMaintenanceOperations", () => {
       )
     })
 
+    it("handles approve success by updating selected plan and closing dialog", () => {
+      const { result } = renderHook(
+        () =>
+          useMaintenanceOperations({
+            selectedPlan: mockPlan,
+            setSelectedPlan,
+            setActiveTab,
+            getDraftCacheKey,
+            user: { full_name: "Test User" },
+          }),
+        { wrapper: createWrapper() }
+      )
+
+      act(() => {
+        result.current.openApproveDialog(mockPlan)
+      })
+
+      act(() => {
+        result.current.handleApprovePlan()
+      })
+
+      const [, options] = mocks.approveMutate.mock.calls[0]
+
+      act(() => {
+        options.onSuccess()
+      })
+
+      expect(setSelectedPlan).toHaveBeenCalledWith(
+        expect.objectContaining({
+          id: mockPlan.id,
+          trang_thai: "Đã duyệt",
+          ngay_phe_duyet: expect.any(String),
+        })
+      )
+      expect(result.current.confirmDialog.type).toBeNull()
+      expect(result.current.confirmDialog.plan).toBeNull()
+    })
+
     it("does nothing when no plan in dialog", () => {
       const { result } = renderHook(
         () =>
@@ -296,6 +354,45 @@ describe("useMaintenanceOperations", () => {
         },
         expect.any(Object)
       )
+    })
+
+    it("handles reject success by updating selected plan and closing dialog", () => {
+      const { result } = renderHook(
+        () =>
+          useMaintenanceOperations({
+            selectedPlan: mockPlan,
+            setSelectedPlan,
+            setActiveTab,
+            getDraftCacheKey,
+            user: { full_name: "Test User" },
+          }),
+        { wrapper: createWrapper() }
+      )
+
+      act(() => {
+        result.current.openRejectDialog(mockPlan)
+        result.current.setRejectionReason("Không đáp ứng điều kiện")
+      })
+
+      act(() => {
+        result.current.handleRejectPlan()
+      })
+
+      const [, options] = mocks.rejectMutate.mock.calls[0]
+
+      act(() => {
+        options.onSuccess()
+      })
+
+      expect(setSelectedPlan).toHaveBeenCalledWith(
+        expect.objectContaining({
+          id: mockPlan.id,
+          trang_thai: "Không duyệt",
+          ngay_phe_duyet: expect.any(String),
+        })
+      )
+      expect(result.current.confirmDialog.type).toBeNull()
+      expect(result.current.confirmDialog.plan).toBeNull()
     })
 
     it("does nothing when rejection reason is empty", () => {
@@ -376,6 +473,45 @@ describe("useMaintenanceOperations", () => {
       })
 
       expect(mocks.deleteMutate).toHaveBeenCalledWith(1, expect.any(Object))
+    })
+
+    it("handles delete success by clearing draft cache and resetting selection", () => {
+      const removeItemSpy = vi.spyOn(Storage.prototype, "removeItem")
+
+      const { result } = renderHook(
+        () =>
+          useMaintenanceOperations({
+            selectedPlan: mockPlan,
+            setSelectedPlan,
+            setActiveTab,
+            getDraftCacheKey,
+            user: { full_name: "Test User" },
+          }),
+        { wrapper: createWrapper() }
+      )
+
+      act(() => {
+        result.current.openDeleteDialog(mockPlan)
+      })
+
+      act(() => {
+        result.current.handleDeletePlan()
+      })
+
+      const [, options] = mocks.deleteMutate.mock.calls[0]
+
+      act(() => {
+        options.onSuccess()
+      })
+
+      expect(getDraftCacheKey).toHaveBeenCalledWith(mockPlan.id)
+      expect(removeItemSpy).toHaveBeenCalledWith("maintenance_draft_1")
+      expect(setSelectedPlan).toHaveBeenCalledWith(null)
+      expect(setActiveTab).toHaveBeenCalledWith("plans")
+      expect(result.current.confirmDialog.type).toBeNull()
+      expect(result.current.confirmDialog.plan).toBeNull()
+
+      removeItemSpy.mockRestore()
     })
 
     it("does nothing when no plan in dialog", () => {

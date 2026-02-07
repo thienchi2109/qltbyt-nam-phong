@@ -24,7 +24,7 @@ import {
 import { Skeleton } from "@/components/ui/skeleton"
 // Supabase client is not used directly; use RPC proxy instead
 import { callRpc } from "@/lib/rpc-client"
-import { Loader2, PlusCircle, Layers, Clock, CheckCircle, CheckCheck, XCircle } from "lucide-react"
+import { Building2, Loader2, PlusCircle, Layers, Clock, CheckCircle, CheckCheck, XCircle } from "lucide-react"
 import { format } from "date-fns"
 import { cn } from "@/lib/utils"
 import { ScrollArea } from "@/components/ui/scroll-area"
@@ -80,7 +80,7 @@ const REPAIR_REQUEST_ENTITY = { singular: "yêu cầu" } as const
  */
 function RepairRequestsPageClientInner() {
   const { toast } = useToast()
-  const { data: session, status } = useSession()
+  const { data: session } = useSession()
   const { data: branding } = useTenantBranding()
   const user = session?.user // Properly typed via NextAuth module augmentation
   const router = useRouter()
@@ -101,21 +101,6 @@ function RepairRequestsPageClientInner() {
     openCreateSheet,
     closeAllDialogs,
   } = useRepairRequestsContext()
-
-  // Redirect if not authenticated
-  if (status === "loading") {
-    return <div className="flex items-center justify-center min-h-[50vh]">
-      <div className="text-center space-y-2">
-        <Skeleton className="h-8 w-32 mx-auto" />
-        <Skeleton className="h-4 w-48 mx-auto" />
-      </div>
-    </div>
-  }
-
-  if (status === "unauthenticated") {
-    router.push("/")
-    return null
-  }
 
   // Temporarily disable useRealtimeSync to avoid conflict with RealtimeProvider
   // useRepairRealtimeSync()
@@ -224,7 +209,7 @@ function RepairRequestsPageClientInner() {
       tenant: effectiveTenantKey,
       role: user?.role,           // Cache isolation by role
       diaBan: user?.dia_ban_id,   // Cache isolation by region
-      facilityId: selectedFacilityId,
+      facilityId: selectedFacilityId ?? null,  // undefined → null for aggregate
       search: debouncedSearch,
       dateFrom: uiFilters.dateRange?.from || null,
       dateTo: uiFilters.dateRange?.to || null,
@@ -234,7 +219,7 @@ function RepairRequestsPageClientInner() {
         fn: 'repair_request_status_counts',
         args: {
           p_q: debouncedSearch || null,
-          p_don_vi: selectedFacilityId,
+          p_don_vi: selectedFacilityId ?? null,  // undefined → null
           p_date_from: uiFilters.dateRange?.from || null,
           p_date_to: uiFilters.dateRange?.to || null,
         },
@@ -242,7 +227,7 @@ function RepairRequestsPageClientInner() {
       return res as Record<Status, number>
     },
     staleTime: 30_000,
-    enabled: !!user && shouldFetchData,
+    enabled: !!user,  // Always fetch — KPI should always show data
   })
 
   // Note: showFacilityFilter comes from TenantSelectionContext
@@ -448,6 +433,12 @@ function RepairRequestsPageClientInner() {
     isRegionalLeader
   })
 
+  // KPI total: sum of all status counts (always available, independent of table filters)
+  const kpiTotal = React.useMemo(() => {
+    if (!statusCounts) return 0
+    return Object.values(statusCounts).reduce((sum, v) => sum + (v || 0), 0)
+  }, [statusCounts])
+
   const summaryItems: SummaryItem[] = React.useMemo(() => {
     const toneMap: Record<Status, SummaryItem["tone"]> = {
       'Chờ xử lý': 'warning',
@@ -481,7 +472,7 @@ function RepairRequestsPageClientInner() {
     }
 
     const base: SummaryItem[] = [
-      { key: 'total', label: 'Tổng', value: totalRequests, tone: 'default', icon: iconMap['total'], onClick: handleShowAll, active: isTotalActive },
+      { key: 'total', label: 'Tổng', value: kpiTotal, tone: 'default', icon: iconMap['total'], onClick: handleShowAll, active: isTotalActive },
     ]
     const statusItems: SummaryItem[] = STATUSES.map((s) => ({
       key: s,
@@ -493,7 +484,7 @@ function RepairRequestsPageClientInner() {
       active: uiFilters.status.length === 1 && uiFilters.status[0] === s,
     }))
     return [...base, ...statusItems]
-  }, [totalRequests, statusCounts, uiFilters, setUiFiltersState, setUiFilters])
+  }, [kpiTotal, statusCounts, uiFilters, setUiFiltersState, setUiFilters])
 
   // Get requestToView from context for detail dialogs
   const requestToView = dialogState.requestToView
@@ -685,6 +676,9 @@ function RepairRequestsPageClientInner() {
                     facilities={facilityOptions.map(f => ({ id: f.id, name: f.name }))}
                     variant={isMobile ? 'sheet' : 'dialog'}
                   />
+
+                  {shouldFetchData ? (
+                    <>
                   {/* Mobile Card View */}
                   {isMobile ? (
                     <RepairRequestsMobileList
@@ -704,7 +698,22 @@ function RepairRequestsPageClientInner() {
                       </div>
                     </div>
                   )}
+                    </>
+                  ) : (
+                    <div className="flex items-center justify-center min-h-[400px]">
+                      <div className="flex max-w-md flex-col items-center gap-4 text-center">
+                        <Building2 className="h-12 w-12 text-muted-foreground" />
+                        <div className="space-y-2">
+                          <h3 className="text-lg font-medium">Chọn cơ sở y tế</h3>
+                          <p className="text-sm text-muted-foreground">
+                            Vui lòng chọn một cơ sở y tế từ bộ lọc phía trên để xem danh sách yêu cầu sửa chữa.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </CardContent>
+                {shouldFetchData && (
                 <CardFooter className="py-4">
                   <DataTablePagination
                     table={table}
@@ -720,6 +729,7 @@ function RepairRequestsPageClientInner() {
                     isLoading={isLoading || isFetching}
                   />
                 </CardFooter>
+                )}
               </Card>
             </div>
 
@@ -735,6 +745,26 @@ function RepairRequestsPageClientInner() {
 }
 
 export default function RepairRequestsPageClient() {
+  const { status } = useSession()
+  const router = useRouter()
+
+  // Handle unauthenticated redirect in useEffect (not during render)
+  React.useEffect(() => {
+    if (status === "unauthenticated") router.push("/")
+  }, [status, router])
+
+  // Show loading state for both loading and unauthenticated (while redirecting)
+  if (status === "loading" || status === "unauthenticated") {
+    return (
+      <div className="flex items-center justify-center min-h-[50vh]">
+        <div className="text-center space-y-2">
+          <Skeleton className="h-8 w-32 mx-auto" />
+          <Skeleton className="h-4 w-48 mx-auto" />
+        </div>
+      </div>
+    )
+  }
+
   return (
     <RepairRequestsProvider>
       <RepairRequestsPageClientInner />

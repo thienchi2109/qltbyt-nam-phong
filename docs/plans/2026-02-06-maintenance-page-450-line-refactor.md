@@ -195,7 +195,7 @@ Expected: FAIL due missing component.
 export function MaintenancePageClient() {
   // move orchestration from page.tsx:
   // - server-side plan filtering/pagination
-  // - facility loading/filter state
+  // - facility loading/filter state (use TanStack Query, not manual useEffect fetching)
   // - table setup (plan + task)
   // - mobile/desktop branch
   // Keep existing UI text and business logic unchanged.

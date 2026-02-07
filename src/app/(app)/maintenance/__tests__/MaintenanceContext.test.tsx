@@ -5,11 +5,13 @@ import type { RowSelectionState } from "@tanstack/react-table"
 import type { MaintenanceTask } from "@/lib/data"
 import { maintenanceKeys, type MaintenancePlan } from "@/hooks/use-cached-maintenance"
 import { MaintenanceProvider } from "../_components/MaintenanceContext"
+import { toMaintenanceTaskRowId } from "../_components/maintenance-task-row-id"
 import { useMaintenanceContext } from "../_hooks/useMaintenanceContext"
 
 const mocks = vi.hoisted(() => {
   let draftTasks: MaintenanceTask[] = []
   let tasks: MaintenanceTask[] = []
+  let hasChanges = true
 
   return {
     getDraftTasks: () => draftTasks,
@@ -20,6 +22,10 @@ const mocks = vi.hoisted(() => {
       tasks = next
     },
     getTasks: () => tasks,
+    getHasChanges: () => hasChanges,
+    setHasChangesState: (next: boolean) => {
+      hasChanges = next
+    },
     setDraftTasks: vi.fn((updater: React.SetStateAction<MaintenanceTask[]>) => {
       draftTasks = typeof updater === "function" ? updater(draftTasks) : updater
     }),
@@ -82,7 +88,7 @@ vi.mock("../_hooks/use-maintenance-drafts", () => ({
     tasks: mocks.getTasks(),
     draftTasks: mocks.getDraftTasks(),
     setDraftTasks: mocks.setDraftTasks,
-    hasChanges: true,
+    hasChanges: mocks.getHasChanges(),
     isLoading: false,
     isSaving: false,
     fetchTasks: mocks.fetchTasks,
@@ -195,6 +201,7 @@ function createWrapper(
 
 describe("MaintenanceContext", () => {
   beforeEach(() => {
+    mocks.setHasChangesState(true)
     mocks.setDraftTasksState([createTask(101), createTask(202), createTask(303)])
     mocks.setTasksState([createTask(101), createTask(202), createTask(303)])
     mocks.getQueriesData.mockReturnValue([])
@@ -202,7 +209,7 @@ describe("MaintenanceContext", () => {
   })
 
   it("applies bulk unit assignment by selected task IDs", () => {
-    const wrapper = createWrapper({ "202": true }, vi.fn())
+    const wrapper = createWrapper({ [toMaintenanceTaskRowId(202)]: true }, vi.fn())
     const { result } = renderHook(() => useMaintenanceContext(), { wrapper })
 
     act(() => {
@@ -220,7 +227,13 @@ describe("MaintenanceContext", () => {
 
   it("deletes selected tasks and resets row selection", () => {
     const setTaskRowSelection = vi.fn()
-    const wrapper = createWrapper({ "101": true, "303": true }, setTaskRowSelection)
+    const wrapper = createWrapper(
+      {
+        [toMaintenanceTaskRowId(101)]: true,
+        [toMaintenanceTaskRowId(303)]: true,
+      },
+      setTaskRowSelection
+    )
     const { result } = renderHook(() => useMaintenanceContext(), { wrapper })
 
     act(() => {
@@ -234,12 +247,25 @@ describe("MaintenanceContext", () => {
     )
   })
 
-  it("invalidates maintenance plan queries on mutation success", () => {
-    const wrapper = createWrapper({}, vi.fn())
+  it("ignores row selection keys that are not maintenance task row IDs", () => {
+    const wrapper = createWrapper({ "0": true }, vi.fn())
     const { result } = renderHook(() => useMaintenanceContext(), { wrapper })
 
     act(() => {
+      result.current.handleBulkAssignUnit("Nội bộ")
+    })
+
+    expect(result.current.selectedTaskRowsCount).toBe(0)
+    expect(mocks.getDraftTasks().every((task) => task.don_vi_thuc_hien === null)).toBe(true)
+  })
+
+  it("invalidates maintenance plan queries on mutation success", async () => {
+    const wrapper = createWrapper({}, vi.fn())
+    const { result } = renderHook(() => useMaintenanceContext(), { wrapper })
+
+    await act(async () => {
       result.current.onPlanMutationSuccess()
+      await Promise.resolve()
     })
 
     expect(mocks.invalidateQueries).toHaveBeenCalledWith({
@@ -322,6 +348,27 @@ describe("MaintenanceContext", () => {
     })
 
     expect(mocks.cancelAllChanges).toHaveBeenCalled()
+    expect(result.current.dialogState.isConfirmingCancel).toBe(false)
+    expect(result.current.selectedPlan?.id).toBe(nextPlan.id)
+    expect(result.current.activeTab).toBe("tasks")
+  })
+
+  it("switches plan immediately when there are no unsaved changes", () => {
+    mocks.setHasChangesState(false)
+    const wrapper = createWrapper({}, vi.fn())
+    const { result } = renderHook(() => useMaintenanceContext(), { wrapper })
+    const currentPlan = createPlan({ id: 22, ten_ke_hoach: "Kế hoạch đang mở" })
+    const nextPlan = createPlan({ id: 23, ten_ke_hoach: "Kế hoạch chuyển tới" })
+
+    act(() => {
+      result.current.setSelectedPlan(currentPlan)
+      result.current.setActiveTab("plans")
+    })
+
+    act(() => {
+      result.current.handleSelectPlan(nextPlan)
+    })
+
     expect(result.current.dialogState.isConfirmingCancel).toBe(false)
     expect(result.current.selectedPlan?.id).toBe(nextPlan.id)
     expect(result.current.activeTab).toBe("tasks")

@@ -17,6 +17,7 @@ import { useMaintenanceOperations } from "../_hooks/use-maintenance-operations"
 import { useMaintenancePrint } from "../_hooks/use-maintenance-print"
 import { useMaintenanceDrafts } from "../_hooks/use-maintenance-drafts"
 import { useTaskEditing } from "./task-editing"
+import { parseMaintenanceTaskRowId } from "./maintenance-task-row-id"
 import type {
   AuthUser,
   CompletionStatusEntry,
@@ -52,8 +53,8 @@ function buildCompletionStatus(tasks: MaintenanceTask[]) {
 function getSelectedTaskIds(taskRowSelection: RowSelectionState) {
   return Object.entries(taskRowSelection)
     .filter(([, selected]) => Boolean(selected))
-    .map(([rowId]) => Number(rowId))
-    .filter((id) => Number.isFinite(id))
+    .map(([rowId]) => parseMaintenanceTaskRowId(rowId))
+    .filter((taskId): taskId is number => taskId !== null)
 }
 
 function findPlanInCachedResponses(
@@ -70,6 +71,17 @@ function findPlanInCachedResponses(
   return null
 }
 
+export function getNextMaintenanceTempTaskId(
+  tasks: Array<Pick<MaintenanceTask, "id">>
+): number {
+  const smallestExistingTempId = tasks.reduce(
+    (minId, task) => (task.id < minId ? task.id : minId),
+    -1
+  )
+
+  return smallestExistingTempId - 1
+}
+
 export function MaintenanceProvider({
   children,
   taskRowSelection,
@@ -78,7 +90,7 @@ export function MaintenanceProvider({
   const { toast } = useToast()
   const queryClient = useQueryClient()
   const { data: session } = useSession()
-  const user = session?.user as AuthUser | null
+  const user: AuthUser | null = session?.user ?? null
 
   const isRegionalLeader = isRegionalLeaderRole(user?.role)
   const canManagePlans = isEquipmentManagerRole(user?.role)
@@ -124,6 +136,38 @@ export function MaintenanceProvider({
     canManagePlans,
     isPlanApproved,
   })
+  const {
+    editingTaskId,
+    editingTaskData,
+    taskToDelete,
+    setTaskToDelete,
+    handleStartEdit,
+    handleCancelEdit,
+    handleTaskDataChange,
+    handleSaveTask,
+  } = taskEditing
+  const taskEditingValue = React.useMemo(
+    () => ({
+      editingTaskId,
+      editingTaskData,
+      taskToDelete,
+      setTaskToDelete,
+      handleStartEdit,
+      handleCancelEdit,
+      handleTaskDataChange,
+      handleSaveTask,
+    }),
+    [
+      editingTaskId,
+      editingTaskData,
+      taskToDelete,
+      setTaskToDelete,
+      handleStartEdit,
+      handleCancelEdit,
+      handleTaskDataChange,
+      handleSaveTask,
+    ]
+  )
 
   const operations = useMaintenanceOperations({
     selectedPlan,
@@ -132,6 +176,50 @@ export function MaintenanceProvider({
     getDraftCacheKey,
     user,
   })
+  const {
+    confirmDialog,
+    setRejectionReason,
+    closeDialog,
+    openApproveDialog,
+    openRejectDialog,
+    openDeleteDialog,
+    handleApprovePlan,
+    handleRejectPlan,
+    handleDeletePlan,
+    isApproving,
+    isRejecting,
+    isDeleting,
+  } = operations
+  const operationsValue = React.useMemo(
+    () => ({
+      confirmDialog,
+      setRejectionReason,
+      closeDialog,
+      openApproveDialog,
+      openRejectDialog,
+      openDeleteDialog,
+      handleApprovePlan,
+      handleRejectPlan,
+      handleDeletePlan,
+      isApproving,
+      isRejecting,
+      isDeleting,
+    }),
+    [
+      confirmDialog,
+      setRejectionReason,
+      closeDialog,
+      openApproveDialog,
+      openRejectDialog,
+      openDeleteDialog,
+      handleApprovePlan,
+      handleRejectPlan,
+      handleDeletePlan,
+      isApproving,
+      isRejecting,
+      isDeleting,
+    ]
+  )
 
   const { generatePlanForm, isGenerating: isPrintGenerating } = useMaintenancePrint({
     selectedPlan,
@@ -284,7 +372,7 @@ export function MaintenanceProvider({
       if (!selectedPlan) return
 
       setDraftTasks((currentDrafts) => {
-        let tempIdCounter = Math.min(-1, ...currentDrafts.map((task) => task.id).filter((id) => id < 0), 0) - 1
+        let tempIdCounter = getNextMaintenanceTempTaskId(currentDrafts)
 
         const tasksToAdd: MaintenanceTask[] = newlySelectedEquipment.map((equipment) => ({
           id: tempIdCounter--,
@@ -391,15 +479,15 @@ export function MaintenanceProvider({
   )
 
   const confirmDeleteSingleTask = React.useCallback(() => {
-    const toDelete = taskEditing.taskToDelete
+    const toDelete = taskToDelete
     if (!toDelete) {
       return
     }
 
     setDraftTasks((currentDrafts) => currentDrafts.filter((task) => task.id !== toDelete.id))
-    taskEditing.setTaskToDelete(null)
+    setTaskToDelete(null)
     toast({ title: "Đã xóa khỏi bản nháp" })
-  }, [taskEditing, setDraftTasks, toast])
+  }, [taskToDelete, setTaskToDelete, setDraftTasks, toast])
 
   const confirmDeleteSelectedTasks = React.useCallback(() => {
     if (selectedTaskIds.length === 0) {
@@ -443,14 +531,14 @@ export function MaintenanceProvider({
       handleCancelAllChanges,
       getDraftCacheKey,
 
-      taskEditing,
+      taskEditing: taskEditingValue,
 
       completionStatus,
       isLoadingCompletion,
       isCompletingTask,
       handleMarkAsCompleted,
 
-      operations,
+      operations: operationsValue,
 
       generatePlanForm,
       isPrintGenerating,
@@ -492,12 +580,12 @@ export function MaintenanceProvider({
       handleSaveAllChanges,
       handleCancelAllChanges,
       getDraftCacheKey,
-      taskEditing,
+      taskEditingValue,
       completionStatus,
       isLoadingCompletion,
       isCompletingTask,
       handleMarkAsCompleted,
-      operations,
+      operationsValue,
       generatePlanForm,
       isPrintGenerating,
       existingEquipmentIdsInDraft,

@@ -10,7 +10,7 @@ import { buildPrintTemplate } from "./maintenance-print-template"
 interface UseMaintenancePrintParams {
   selectedPlan: MaintenancePlan | null
   tasks: MaintenanceTask[]
-  user: { full_name?: string } | null
+  user: { full_name?: string | null } | null
 }
 
 export function useMaintenancePrint({

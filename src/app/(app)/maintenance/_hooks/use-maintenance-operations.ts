@@ -13,7 +13,7 @@ interface UseMaintenanceOperationsParams {
   setSelectedPlan: React.Dispatch<React.SetStateAction<MaintenancePlan | null>>
   setActiveTab: React.Dispatch<React.SetStateAction<string>>
   getDraftCacheKey: (planId: number) => string
-  user: { full_name?: string; username?: string } | null
+  user: { full_name?: string | null; username?: string | null } | null
 }
 
 interface ConfirmDialogState {
@@ -37,9 +37,9 @@ export function useMaintenanceOperations({
   })
 
   // Mutations from cached hook
-  const approvePlanMutation = useApproveMaintenancePlan()
-  const rejectPlanMutation = useRejectMaintenancePlan()
-  const deletePlanMutation = useDeleteMaintenancePlan()
+  const { mutate: approvePlan, isPending: isApproving } = useApproveMaintenancePlan()
+  const { mutate: rejectPlan, isPending: isRejecting } = useRejectMaintenancePlan()
+  const { mutate: deletePlan, isPending: isDeleting } = useDeleteMaintenancePlan()
 
   // Dialog openers
   const openApproveDialog = React.useCallback((plan: MaintenancePlan) => {
@@ -67,7 +67,7 @@ export function useMaintenanceOperations({
     const planToApprove = confirmDialog.plan
     if (!planToApprove) return
 
-    approvePlanMutation.mutate(
+    approvePlan(
       {
         id: planToApprove.id,
         nguoi_duyet: user?.full_name || user?.username || ''
@@ -89,7 +89,7 @@ export function useMaintenanceOperations({
         }
       }
     )
-  }, [confirmDialog.plan, approvePlanMutation, selectedPlan, setSelectedPlan, user, closeDialog])
+  }, [confirmDialog.plan, approvePlan, selectedPlan, setSelectedPlan, user, closeDialog])
 
   // Reject handler
   const handleRejectPlan = React.useCallback(() => {
@@ -97,7 +97,7 @@ export function useMaintenanceOperations({
     const reason = confirmDialog.rejectionReason
     if (!planToReject || !reason.trim()) return
 
-    rejectPlanMutation.mutate(
+    rejectPlan(
       {
         id: planToReject.id,
         nguoi_duyet: user?.full_name || user?.username || '',
@@ -120,14 +120,14 @@ export function useMaintenanceOperations({
         }
       }
     )
-  }, [confirmDialog.plan, confirmDialog.rejectionReason, rejectPlanMutation, selectedPlan, setSelectedPlan, user, closeDialog])
+  }, [confirmDialog.plan, confirmDialog.rejectionReason, rejectPlan, selectedPlan, setSelectedPlan, user, closeDialog])
 
   // Delete handler
   const handleDeletePlan = React.useCallback(() => {
     const planToDelete = confirmDialog.plan
     if (!planToDelete) return
 
-    deletePlanMutation.mutate(
+    deletePlan(
       planToDelete.id,
       {
         onSuccess: () => {
@@ -143,27 +143,43 @@ export function useMaintenanceOperations({
         }
       }
     )
-  }, [confirmDialog.plan, deletePlanMutation, selectedPlan, setSelectedPlan, setActiveTab, getDraftCacheKey, closeDialog])
+  }, [confirmDialog.plan, deletePlan, selectedPlan, setSelectedPlan, setActiveTab, getDraftCacheKey, closeDialog])
 
-  return {
-    // Dialog state
-    confirmDialog,
-    setRejectionReason,
-    closeDialog,
+  return React.useMemo(
+    () => ({
+      // Dialog state
+      confirmDialog,
+      setRejectionReason,
+      closeDialog,
 
-    // Dialog openers (for row actions)
-    openApproveDialog,
-    openRejectDialog,
-    openDeleteDialog,
+      // Dialog openers (for row actions)
+      openApproveDialog,
+      openRejectDialog,
+      openDeleteDialog,
 
-    // Confirmed actions (for dialog buttons)
-    handleApprovePlan,
-    handleRejectPlan,
-    handleDeletePlan,
+      // Confirmed actions (for dialog buttons)
+      handleApprovePlan,
+      handleRejectPlan,
+      handleDeletePlan,
 
-    // Loading states
-    isApproving: approvePlanMutation.isPending,
-    isRejecting: rejectPlanMutation.isPending,
-    isDeleting: deletePlanMutation.isPending,
-  }
+      // Loading states
+      isApproving,
+      isRejecting,
+      isDeleting,
+    }),
+    [
+      confirmDialog,
+      setRejectionReason,
+      closeDialog,
+      openApproveDialog,
+      openRejectDialog,
+      openDeleteDialog,
+      handleApprovePlan,
+      handleRejectPlan,
+      handleDeletePlan,
+      isApproving,
+      isRejecting,
+      isDeleting,
+    ]
+  )
 }

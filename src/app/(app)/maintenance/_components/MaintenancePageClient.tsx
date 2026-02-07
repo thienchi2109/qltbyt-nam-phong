@@ -1,8 +1,9 @@
 "use client"
 
 import * as React from "react"
-import { useSearchParams } from "next/navigation"
+import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import type { PaginationState, SortingState } from "@tanstack/react-table"
+import { useQuery } from "@tanstack/react-query"
 import {
   getCoreRowModel,
   getFilteredRowModel,
@@ -11,6 +12,7 @@ import {
   useReactTable,
 } from "@tanstack/react-table"
 
+import { useToast } from "@/hooks/use-toast"
 import { useIsMobile } from "@/hooks/use-mobile"
 import { callRpc } from "@/lib/rpc-client"
 import { isGlobalRole, isRegionalLeaderRole } from "@/lib/rbac"
@@ -25,11 +27,16 @@ import { usePlanColumns, useTaskColumns } from "./maintenance-columns"
 import { MaintenanceDialogs } from "./maintenance-dialogs"
 import { MaintenancePageDesktopContent } from "./maintenance-page-desktop-content"
 import { MaintenancePageLegacyMobileCards } from "./maintenance-page-legacy-mobile-cards"
+import { findMaintenancePlanById } from "./maintenance-plan-lookup"
+import { toMaintenanceTaskRowId } from "./maintenance-task-row-id"
 
 export function MaintenancePageClient() {
   const ctx = useMaintenanceContext()
   const searchParams = useSearchParams()
+  const router = useRouter()
+  const pathname = usePathname()
   const isMobile = useIsMobile()
+  const { toast } = useToast()
   const mobileMaintenanceEnabled = useFeatureFlag("mobile-maintenance-redesign")
   const shouldUseMobileMaintenance = isMobile && mobileMaintenanceEnabled
 
@@ -41,9 +48,6 @@ export function MaintenancePageClient() {
   const [isMobileFilterSheetOpen, setIsMobileFilterSheetOpen] = React.useState(false)
   const [pendingFacilityFilter, setPendingFacilityFilter] = React.useState<number | null>(null)
   const [expandedTaskIds, setExpandedTaskIds] = React.useState<Record<number, boolean>>({})
-
-  const [facilities, setFacilities] = React.useState<Array<{ id: number; name: string }>>([])
-  const [isLoadingFacilities, setIsLoadingFacilities] = React.useState(false)
 
   const [planSorting, setPlanSorting] = React.useState<SortingState>([])
   const [taskPagination, setTaskPagination] = React.useState<PaginationState>({
@@ -64,30 +68,35 @@ export function MaintenancePageClient() {
   const plans = React.useMemo(() => paginatedResponse?.data ?? [], [paginatedResponse?.data])
   const totalCount = paginatedResponse?.total ?? 0
   const totalPages = Math.ceil(totalCount / pageSize)
+  const showFacilityFilter = isGlobalRole(ctx.user?.role) || isRegionalLeaderRole(ctx.user?.role)
+
+  const {
+    data: facilities = [],
+    isLoading: isLoadingFacilities,
+    error: facilitiesError,
+  } = useQuery<Array<{ id: number; name: string }>>({
+    queryKey: ["maintenance", "facilities", ctx.user?.role ?? null],
+    queryFn: async () => {
+      const result = await callRpc<FacilityOption[]>({
+        fn: "get_facilities_with_equipment_count",
+        args: {},
+      })
+
+      return (result || []).map((facility) => ({
+        id: Number(facility.id),
+        name: String(facility.name || `Cơ sở ${facility.id}`),
+      }))
+    },
+    enabled: showFacilityFilter,
+    staleTime: 5 * 60 * 1000,
+    gcTime: 15 * 60 * 1000,
+  })
 
   React.useEffect(() => {
-    const canSeeFacilityFilter = isGlobalRole(ctx.user?.role) || isRegionalLeaderRole(ctx.user?.role)
-    if (!canSeeFacilityFilter) {
-      return
+    if (facilitiesError) {
+      console.error("[Maintenance] Failed to fetch facilities:", facilitiesError)
     }
-
-    setIsLoadingFacilities(true)
-    callRpc<FacilityOption[]>({ fn: "get_facilities_with_equipment_count", args: {} })
-      .then((result) => {
-        const mapped = (result || []).map((facility) => ({
-          id: Number(facility.id),
-          name: String(facility.name || `Cơ sở ${facility.id}`),
-        }))
-        setFacilities(mapped)
-      })
-      .catch((error) => {
-        console.error("[Maintenance] Failed to fetch facilities:", error)
-        setFacilities([])
-      })
-      .finally(() => setIsLoadingFacilities(false))
-  }, [ctx.user?.role])
-
-  const showFacilityFilter = isGlobalRole(ctx.user?.role) || isRegionalLeaderRole(ctx.user?.role)
+  }, [facilitiesError])
 
   const activeMobileFilterCount = React.useMemo(() => {
     let count = 0
@@ -106,29 +115,79 @@ export function MaintenancePageClient() {
   }, [ctx.selectedPlan, fetchPlanDetails, setTaskRowSelection])
 
   React.useEffect(() => {
-    const planIdParam = searchParams.get("planId")
-    const tabParam = searchParams.get("tab")
-    const actionParam = searchParams.get("action")
+    let isCancelled = false
 
-    if (actionParam === "create") {
-      setIsAddPlanDialogOpen(true)
-      window.history.replaceState({}, "", "/maintenance")
-      return
-    }
+    const resolveDeepLink = async () => {
+      const planIdParam = searchParams.get("planId")
+      const tabParam = searchParams.get("tab")
+      const actionParam = searchParams.get("action")
 
-    if (planIdParam && plans.length > 0) {
+      if (actionParam === "create") {
+        setIsAddPlanDialogOpen(true)
+        router.replace(pathname, { scroll: false })
+        return
+      }
+
+      if (!planIdParam) return
+      // Wait for plans to finish loading before attempting lookup
+      if (isLoadingPlans) return
+
       const planId = Number.parseInt(planIdParam, 10)
-      const targetPlan = plans.find((plan) => plan.id === planId)
+      if (!Number.isFinite(planId)) {
+        toast({
+          variant: "destructive",
+          title: "Không tìm thấy kế hoạch",
+          description: `Kế hoạch #${planIdParam} không hợp lệ.`,
+        })
+        router.replace(pathname, { scroll: false })
+        return
+      }
+
+      let targetPlan = plans.find((plan) => plan.id === planId)
+
+      if (!targetPlan) {
+        try {
+          targetPlan = await findMaintenancePlanById(planId)
+        } catch (error) {
+          console.error("[Maintenance] Deep link plan lookup failed:", error)
+        }
+      }
+
+      if (isCancelled) {
+        return
+      }
 
       if (targetPlan) {
         setSelectedPlan(targetPlan)
         if (tabParam === "tasks") {
           setActiveTab("tasks")
         }
-        window.history.replaceState({}, "", "/maintenance")
+      } else {
+        toast({
+          variant: "destructive",
+          title: "Không tìm thấy kế hoạch",
+          description: `Kế hoạch #${planId} không tồn tại hoặc bạn không có quyền truy cập.`,
+        })
       }
+      router.replace(pathname, { scroll: false })
     }
-  }, [searchParams, plans, setIsAddPlanDialogOpen, setSelectedPlan, setActiveTab])
+
+    void resolveDeepLink()
+
+    return () => {
+      isCancelled = true
+    }
+  }, [
+    searchParams,
+    plans,
+    isLoadingPlans,
+    setIsAddPlanDialogOpen,
+    setSelectedPlan,
+    setActiveTab,
+    toast,
+    router,
+    pathname,
+  ])
 
   React.useEffect(() => {
     setCurrentPage(1)
@@ -238,7 +297,7 @@ export function MaintenancePageClient() {
     getCoreRowModel: getCoreRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
-    getRowId: (row) => String(row.id),
+    getRowId: (row) => toMaintenanceTaskRowId(row.id),
     onPaginationChange: setTaskPagination,
     onRowSelectionChange: setTaskRowSelection,
     state: {
@@ -297,28 +356,6 @@ export function MaintenancePageClient() {
     <>
       <MaintenanceDialogs />
       <MaintenancePageDesktopContent
-        activeTab={ctx.activeTab}
-        setActiveTab={ctx.setActiveTab}
-        selectedPlan={ctx.selectedPlan}
-        canManagePlans={ctx.canManagePlans}
-        isRegionalLeader={ctx.isRegionalLeader}
-        hasChanges={ctx.hasChanges}
-        isPlanApproved={ctx.isPlanApproved}
-        isSavingAll={ctx.isSavingAll}
-        isLoadingTasks={ctx.isLoadingTasks}
-        tasks={ctx.tasks}
-        draftTasks={ctx.draftTasks}
-        selectedTaskRowsCount={ctx.selectedTaskRowsCount}
-        editingTaskId={ctx.taskEditing.editingTaskId}
-        onOpenAddPlanDialog={() => ctx.setIsAddPlanDialogOpen(true)}
-        onOpenCancelConfirm={() => ctx.setIsConfirmingCancel(true)}
-        onSaveAllChanges={() => void ctx.handleSaveAllChanges()}
-        onGeneratePlanForm={ctx.generatePlanForm}
-        onOpenAddTasksDialog={() => ctx.setIsAddTasksDialogOpen(true)}
-        onOpenBulkSchedule={() => ctx.setIsBulkScheduleOpen(true)}
-        onBulkAssignUnit={ctx.handleBulkAssignUnit}
-        onOpenBulkDeleteConfirm={() => ctx.setIsConfirmingBulkDelete(true)}
-        onSelectPlan={ctx.handleSelectPlan}
         showFacilityFilter={showFacilityFilter}
         facilities={facilities}
         selectedFacilityId={selectedFacilityId}

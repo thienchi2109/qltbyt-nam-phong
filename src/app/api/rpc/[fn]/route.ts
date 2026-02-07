@@ -57,6 +57,7 @@ const ALLOWED_FUNCTIONS = new Set<string>([
   'transfer_request_counts',
   // Maintenance
   'maintenance_plan_list',
+  'maintenance_plan_get',
   'maintenance_plan_create',
   'maintenance_plan_update',
   'maintenance_plan_delete',
