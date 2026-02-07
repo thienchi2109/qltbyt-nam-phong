@@ -309,28 +309,6 @@ export function MaintenancePageClient() {
     <>
       <MaintenanceDialogs />
       <MaintenancePageDesktopContent
-        activeTab={ctx.activeTab}
-        setActiveTab={ctx.setActiveTab}
-        selectedPlan={ctx.selectedPlan}
-        canManagePlans={ctx.canManagePlans}
-        isRegionalLeader={ctx.isRegionalLeader}
-        hasChanges={ctx.hasChanges}
-        isPlanApproved={ctx.isPlanApproved}
-        isSavingAll={ctx.isSavingAll}
-        isLoadingTasks={ctx.isLoadingTasks}
-        tasks={ctx.tasks}
-        draftTasks={ctx.draftTasks}
-        selectedTaskRowsCount={ctx.selectedTaskRowsCount}
-        editingTaskId={ctx.taskEditing.editingTaskId}
-        onOpenAddPlanDialog={() => ctx.setIsAddPlanDialogOpen(true)}
-        onOpenCancelConfirm={() => ctx.setIsConfirmingCancel(true)}
-        onSaveAllChanges={() => void ctx.handleSaveAllChanges()}
-        onGeneratePlanForm={ctx.generatePlanForm}
-        onOpenAddTasksDialog={() => ctx.setIsAddTasksDialogOpen(true)}
-        onOpenBulkSchedule={() => ctx.setIsBulkScheduleOpen(true)}
-        onBulkAssignUnit={ctx.handleBulkAssignUnit}
-        onOpenBulkDeleteConfirm={() => ctx.setIsConfirmingBulkDelete(true)}
-        onSelectPlan={ctx.handleSelectPlan}
         showFacilityFilter={showFacilityFilter}
         facilities={facilities}
         selectedFacilityId={selectedFacilityId}
