@@ -11,6 +11,7 @@ import {
   useReactTable,
 } from "@tanstack/react-table"
 
+import { useToast } from "@/hooks/use-toast"
 import { useIsMobile } from "@/hooks/use-mobile"
 import { callRpc } from "@/lib/rpc-client"
 import { isGlobalRole, isRegionalLeaderRole } from "@/lib/rbac"
@@ -30,6 +31,7 @@ export function MaintenancePageClient() {
   const ctx = useMaintenanceContext()
   const searchParams = useSearchParams()
   const isMobile = useIsMobile()
+  const { toast } = useToast()
   const mobileMaintenanceEnabled = useFeatureFlag("mobile-maintenance-redesign")
   const shouldUseMobileMaintenance = isMobile && mobileMaintenanceEnabled
 
@@ -116,19 +118,27 @@ export function MaintenancePageClient() {
       return
     }
 
-    if (planIdParam && plans.length > 0) {
-      const planId = Number.parseInt(planIdParam, 10)
-      const targetPlan = plans.find((plan) => plan.id === planId)
+    if (!planIdParam) return
+    // Wait for plans to finish loading before attempting lookup
+    if (isLoadingPlans) return
 
-      if (targetPlan) {
-        setSelectedPlan(targetPlan)
-        if (tabParam === "tasks") {
-          setActiveTab("tasks")
-        }
-        window.history.replaceState({}, "", "/maintenance")
+    const planId = Number.parseInt(planIdParam, 10)
+    const targetPlan = plans.find((plan) => plan.id === planId)
+
+    if (targetPlan) {
+      setSelectedPlan(targetPlan)
+      if (tabParam === "tasks") {
+        setActiveTab("tasks")
       }
+    } else {
+      toast({
+        variant: "destructive",
+        title: "Không tìm thấy kế hoạch",
+        description: `Kế hoạch #${planId} không tồn tại hoặc bạn không có quyền truy cập.`,
+      })
     }
-  }, [searchParams, plans, setIsAddPlanDialogOpen, setSelectedPlan, setActiveTab])
+    window.history.replaceState({}, "", "/maintenance")
+  }, [searchParams, plans, isLoadingPlans, setIsAddPlanDialogOpen, setSelectedPlan, setActiveTab, toast])
 
   React.useEffect(() => {
     setCurrentPage(1)
