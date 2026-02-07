@@ -633,8 +633,6 @@ function RepairRequestsPageClientInner() {
                   )}
                 </CardHeader>
                 <CardContent className="p-3 md:p-6 gap-3 md:gap-4">
-                  {shouldFetchData ? (
-                    <>
                   <RepairRequestsToolbar
                     searchTerm={searchTerm}
                     onSearchChange={setSearchTerm}
@@ -678,6 +676,9 @@ function RepairRequestsPageClientInner() {
                     facilities={facilityOptions.map(f => ({ id: f.id, name: f.name }))}
                     variant={isMobile ? 'sheet' : 'dialog'}
                   />
+
+                  {shouldFetchData ? (
+                    <>
                   {/* Mobile Card View */}
                   {isMobile ? (
                     <RepairRequestsMobileList
