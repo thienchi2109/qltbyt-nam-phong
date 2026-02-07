@@ -13,16 +13,18 @@ export interface UseTaskEditingOptions {
 
 export function useTaskEditing(options: UseTaskEditingOptions) {
   const { toast } = useToast()
-  const { setDraftTasks } = options
+  const { setDraftTasks, canManagePlans, isPlanApproved } = options
 
   const [editingTaskId, setEditingTaskId] = React.useState<number | null>(null)
   const [editingTaskData, setEditingTaskData] = React.useState<Partial<MaintenanceTask> | null>(null)
   const [taskToDelete, setTaskToDelete] = React.useState<MaintenanceTask | null>(null)
 
   const handleStartEdit = React.useCallback((task: MaintenanceTask) => {
+    if (!canManagePlans || isPlanApproved) return
+
     setEditingTaskId(task.id)
     setEditingTaskData({ ...task })
-  }, [])
+  }, [canManagePlans, isPlanApproved])
 
   const handleCancelEdit = React.useCallback(() => {
     setEditingTaskId(null)
@@ -30,10 +32,13 @@ export function useTaskEditing(options: UseTaskEditingOptions) {
   }, [])
 
   const handleTaskDataChange = React.useCallback((field: keyof MaintenanceTask, value: unknown) => {
+    if (!canManagePlans || isPlanApproved) return
+
     setEditingTaskData(prev => prev ? { ...prev, [field]: value } : null)
-  }, [])
+  }, [canManagePlans, isPlanApproved])
 
   const handleSaveTask = React.useCallback(() => {
+    if (!canManagePlans || isPlanApproved) return
     if (!editingTaskId || !editingTaskData) return
 
     setDraftTasks(currentDrafts =>
@@ -50,7 +55,7 @@ export function useTaskEditing(options: UseTaskEditingOptions) {
       title: "Thành công",
       description: "Đã cập nhật công việc"
     })
-  }, [editingTaskId, editingTaskData, setDraftTasks, toast])
+  }, [canManagePlans, isPlanApproved, editingTaskId, editingTaskData, setDraftTasks, toast])
 
   return {
     editingTaskId,

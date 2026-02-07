@@ -96,6 +96,42 @@ describe("useTaskEditing", () => {
         ghi_chu: "Test note",
       }))
     })
+
+    it("does not start editing when user cannot manage plans", () => {
+      const { result } = renderHook(() =>
+        useTaskEditing({
+          draftTasks,
+          setDraftTasks,
+          canManagePlans: false,
+          isPlanApproved: false,
+        })
+      )
+
+      act(() => {
+        result.current.handleStartEdit(createTask(2))
+      })
+
+      expect(result.current.editingTaskId).toBeNull()
+      expect(result.current.editingTaskData).toBeNull()
+    })
+
+    it("does not start editing when plan is approved", () => {
+      const { result } = renderHook(() =>
+        useTaskEditing({
+          draftTasks,
+          setDraftTasks,
+          canManagePlans: true,
+          isPlanApproved: true,
+        })
+      )
+
+      act(() => {
+        result.current.handleStartEdit(createTask(2))
+      })
+
+      expect(result.current.editingTaskId).toBeNull()
+      expect(result.current.editingTaskData).toBeNull()
+    })
   })
 
   describe("handleCancelEdit", () => {
@@ -204,6 +240,72 @@ describe("useTaskEditing", () => {
 
       expect(result.current.editingTaskData).toBeNull()
     })
+
+    it("does not update editing data when user cannot manage plans", () => {
+      const { result, rerender } = renderHook(
+        ({ canManagePlans, isPlanApproved }) =>
+          useTaskEditing({
+            draftTasks,
+            setDraftTasks,
+            canManagePlans,
+            isPlanApproved,
+          }),
+        {
+          initialProps: {
+            canManagePlans: true,
+            isPlanApproved: false,
+          },
+        }
+      )
+
+      act(() => {
+        result.current.handleStartEdit(createTask(1, { ghi_chu: "Original" }))
+      })
+
+      rerender({
+        canManagePlans: false,
+        isPlanApproved: false,
+      })
+
+      act(() => {
+        result.current.handleTaskDataChange("ghi_chu", "Blocked change")
+      })
+
+      expect(result.current.editingTaskData?.ghi_chu).toBe("Original")
+    })
+
+    it("does not update editing data when plan is approved", () => {
+      const { result, rerender } = renderHook(
+        ({ canManagePlans, isPlanApproved }) =>
+          useTaskEditing({
+            draftTasks,
+            setDraftTasks,
+            canManagePlans,
+            isPlanApproved,
+          }),
+        {
+          initialProps: {
+            canManagePlans: true,
+            isPlanApproved: false,
+          },
+        }
+      )
+
+      act(() => {
+        result.current.handleStartEdit(createTask(1, { ghi_chu: "Original" }))
+      })
+
+      rerender({
+        canManagePlans: true,
+        isPlanApproved: true,
+      })
+
+      act(() => {
+        result.current.handleTaskDataChange("ghi_chu", "Blocked change")
+      })
+
+      expect(result.current.editingTaskData?.ghi_chu).toBe("Original")
+    })
   })
 
   describe("handleSaveTask", () => {
@@ -257,6 +359,80 @@ describe("useTaskEditing", () => {
 
       expect(setDraftTasks).not.toHaveBeenCalled()
       expect(mocks.toast).not.toHaveBeenCalled()
+    })
+
+    it("does not save when user cannot manage plans", () => {
+      const { result, rerender } = renderHook(
+        ({ canManagePlans, isPlanApproved }) =>
+          useTaskEditing({
+            draftTasks,
+            setDraftTasks,
+            canManagePlans,
+            isPlanApproved,
+          }),
+        {
+          initialProps: {
+            canManagePlans: true,
+            isPlanApproved: false,
+          },
+        }
+      )
+
+      act(() => {
+        result.current.handleStartEdit(createTask(2))
+        result.current.handleTaskDataChange("ghi_chu", "Saved note")
+      })
+
+      rerender({
+        canManagePlans: false,
+        isPlanApproved: false,
+      })
+
+      act(() => {
+        result.current.handleSaveTask()
+      })
+
+      expect(setDraftTasks).not.toHaveBeenCalled()
+      expect(mocks.toast).not.toHaveBeenCalled()
+      expect(result.current.editingTaskId).toBe(2)
+      expect(result.current.editingTaskData?.ghi_chu).toBe("Saved note")
+    })
+
+    it("does not save when plan is approved", () => {
+      const { result, rerender } = renderHook(
+        ({ canManagePlans, isPlanApproved }) =>
+          useTaskEditing({
+            draftTasks,
+            setDraftTasks,
+            canManagePlans,
+            isPlanApproved,
+          }),
+        {
+          initialProps: {
+            canManagePlans: true,
+            isPlanApproved: false,
+          },
+        }
+      )
+
+      act(() => {
+        result.current.handleStartEdit(createTask(2))
+        result.current.handleTaskDataChange("ghi_chu", "Saved note")
+      })
+
+      rerender({
+        canManagePlans: true,
+        isPlanApproved: true,
+      })
+
+      act(() => {
+        result.current.handleSaveTask()
+      })
+
+      expect(setDraftTasks).not.toHaveBeenCalled()
+      expect(mocks.toast).not.toHaveBeenCalled()
+      expect(result.current.editingTaskId).toBe(2)
+      expect(result.current.editingTaskData?.ghi_chu).toBe("Saved note")
     })
   })
 
