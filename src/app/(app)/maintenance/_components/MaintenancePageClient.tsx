@@ -28,6 +28,7 @@ import { MaintenanceDialogs } from "./maintenance-dialogs"
 import { MaintenancePageDesktopContent } from "./maintenance-page-desktop-content"
 import { MaintenancePageLegacyMobileCards } from "./maintenance-page-legacy-mobile-cards"
 import { findMaintenancePlanById } from "./maintenance-plan-lookup"
+import { toMaintenanceTaskRowId } from "./maintenance-task-row-id"
 
 export function MaintenancePageClient() {
   const ctx = useMaintenanceContext()
@@ -296,7 +297,7 @@ export function MaintenancePageClient() {
     getCoreRowModel: getCoreRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
-    getRowId: (row) => String(row.id),
+    getRowId: (row) => toMaintenanceTaskRowId(row.id),
     onPaginationChange: setTaskPagination,
     onRowSelectionChange: setTaskRowSelection,
     state: {

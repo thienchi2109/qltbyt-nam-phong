@@ -17,6 +17,7 @@ import { useMaintenanceOperations } from "../_hooks/use-maintenance-operations"
 import { useMaintenancePrint } from "../_hooks/use-maintenance-print"
 import { useMaintenanceDrafts } from "../_hooks/use-maintenance-drafts"
 import { useTaskEditing } from "./task-editing"
+import { parseMaintenanceTaskRowId } from "./maintenance-task-row-id"
 import type {
   AuthUser,
   CompletionStatusEntry,
@@ -52,8 +53,8 @@ function buildCompletionStatus(tasks: MaintenanceTask[]) {
 function getSelectedTaskIds(taskRowSelection: RowSelectionState) {
   return Object.entries(taskRowSelection)
     .filter(([, selected]) => Boolean(selected))
-    .map(([rowId]) => Number(rowId))
-    .filter((id) => Number.isFinite(id))
+    .map(([rowId]) => parseMaintenanceTaskRowId(rowId))
+    .filter((taskId): taskId is number => taskId !== null)
 }
 
 function findPlanInCachedResponses(

@@ -5,6 +5,7 @@ import type { RowSelectionState } from "@tanstack/react-table"
 import type { MaintenanceTask } from "@/lib/data"
 import { maintenanceKeys, type MaintenancePlan } from "@/hooks/use-cached-maintenance"
 import { MaintenanceProvider } from "../_components/MaintenanceContext"
+import { toMaintenanceTaskRowId } from "../_components/maintenance-task-row-id"
 import { useMaintenanceContext } from "../_hooks/useMaintenanceContext"
 
 const mocks = vi.hoisted(() => {
@@ -208,7 +209,7 @@ describe("MaintenanceContext", () => {
   })
 
   it("applies bulk unit assignment by selected task IDs", () => {
-    const wrapper = createWrapper({ "202": true }, vi.fn())
+    const wrapper = createWrapper({ [toMaintenanceTaskRowId(202)]: true }, vi.fn())
     const { result } = renderHook(() => useMaintenanceContext(), { wrapper })
 
     act(() => {
@@ -226,7 +227,13 @@ describe("MaintenanceContext", () => {
 
   it("deletes selected tasks and resets row selection", () => {
     const setTaskRowSelection = vi.fn()
-    const wrapper = createWrapper({ "101": true, "303": true }, setTaskRowSelection)
+    const wrapper = createWrapper(
+      {
+        [toMaintenanceTaskRowId(101)]: true,
+        [toMaintenanceTaskRowId(303)]: true,
+      },
+      setTaskRowSelection
+    )
     const { result } = renderHook(() => useMaintenanceContext(), { wrapper })
 
     act(() => {
@@ -238,6 +245,18 @@ describe("MaintenanceContext", () => {
     expect(mocks.toast).toHaveBeenCalledWith(
       expect.objectContaining({ title: "Đã xóa khỏi bản nháp" })
     )
+  })
+
+  it("ignores row selection keys that are not maintenance task row IDs", () => {
+    const wrapper = createWrapper({ "0": true }, vi.fn())
+    const { result } = renderHook(() => useMaintenanceContext(), { wrapper })
+
+    act(() => {
+      result.current.handleBulkAssignUnit("Nội bộ")
+    })
+
+    expect(result.current.selectedTaskRowsCount).toBe(0)
+    expect(mocks.getDraftTasks().every((task) => task.don_vi_thuc_hien === null)).toBe(true)
   })
 
   it("invalidates maintenance plan queries on mutation success", async () => {

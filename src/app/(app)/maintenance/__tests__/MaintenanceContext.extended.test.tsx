@@ -7,6 +7,7 @@ import type { RowSelectionState } from "@tanstack/react-table"
 import type { MaintenanceTask, Equipment } from "@/lib/data"
 import type { MaintenancePlan } from "@/hooks/use-cached-maintenance"
 import { MaintenanceProvider } from "../_components/MaintenanceContext"
+import { toMaintenanceTaskRowId } from "../_components/maintenance-task-row-id"
 import { useMaintenanceContext } from "../_hooks/useMaintenanceContext"
 
 const mocks = vi.hoisted(() => {
@@ -272,7 +273,13 @@ describe("MaintenanceContext - Extended Coverage", () => {
 
   describe("Bulk schedule operations", () => {
     it("handleBulkScheduleApply updates months for selected tasks", () => {
-      const wrapper = createWrapper({ "101": true, "202": true }, vi.fn())
+      const wrapper = createWrapper(
+        {
+          [toMaintenanceTaskRowId(101)]: true,
+          [toMaintenanceTaskRowId(202)]: true,
+        },
+        vi.fn()
+      )
       const { result } = renderHook(() => useMaintenanceContext(), { wrapper })
 
       const monthSchedule = {
@@ -499,7 +506,13 @@ describe("MaintenanceContext - Extended Coverage", () => {
 
   describe("Selected task count", () => {
     it("selectedTaskRowsCount returns correct count", () => {
-      const wrapper = createWrapper({ "101": true, "303": true }, vi.fn())
+      const wrapper = createWrapper(
+        {
+          [toMaintenanceTaskRowId(101)]: true,
+          [toMaintenanceTaskRowId(303)]: true,
+        },
+        vi.fn()
+      )
       const { result } = renderHook(() => useMaintenanceContext(), { wrapper })
 
       expect(result.current.selectedTaskRowsCount).toBe(2)
