@@ -200,13 +200,13 @@ export function MaintenancePageDesktopContent({
                   </>
                 )}
                 {tasks.length > 0 && !isRegionalLeader && (
-                  <Button variant="secondary" onClick={onGeneratePlanForm} disabled={Boolean(editingTaskId) || isSavingAll}>
+                  <Button variant="secondary" onClick={onGeneratePlanForm} disabled={editingTaskId !== null || isSavingAll}>
                     <FileText className="mr-2 h-4 w-4" />
                     Xuất phiếu KH
                   </Button>
                 )}
                 {!isPlanApproved && canManagePlans && (
-                  <Button onClick={onOpenAddTasksDialog} disabled={Boolean(editingTaskId) || isSavingAll}>
+                  <Button onClick={onOpenAddTasksDialog} disabled={editingTaskId !== null || isSavingAll}>
                     <PlusCircle className="mr-2 h-4 w-4" />
                     Thêm thiết bị
                   </Button>

@@ -10,6 +10,7 @@ import { useMaintenanceContext } from "../_hooks/useMaintenanceContext"
 const mocks = vi.hoisted(() => {
   let draftTasks: MaintenanceTask[] = []
   let tasks: MaintenanceTask[] = []
+  let hasChanges = true
 
   return {
     getDraftTasks: () => draftTasks,
@@ -20,6 +21,10 @@ const mocks = vi.hoisted(() => {
       tasks = next
     },
     getTasks: () => tasks,
+    getHasChanges: () => hasChanges,
+    setHasChangesState: (next: boolean) => {
+      hasChanges = next
+    },
     setDraftTasks: vi.fn((updater: React.SetStateAction<MaintenanceTask[]>) => {
       draftTasks = typeof updater === "function" ? updater(draftTasks) : updater
     }),
@@ -82,7 +87,7 @@ vi.mock("../_hooks/use-maintenance-drafts", () => ({
     tasks: mocks.getTasks(),
     draftTasks: mocks.getDraftTasks(),
     setDraftTasks: mocks.setDraftTasks,
-    hasChanges: true,
+    hasChanges: mocks.getHasChanges(),
     isLoading: false,
     isSaving: false,
     fetchTasks: mocks.fetchTasks,
@@ -195,6 +200,7 @@ function createWrapper(
 
 describe("MaintenanceContext", () => {
   beforeEach(() => {
+    mocks.setHasChangesState(true)
     mocks.setDraftTasksState([createTask(101), createTask(202), createTask(303)])
     mocks.setTasksState([createTask(101), createTask(202), createTask(303)])
     mocks.getQueriesData.mockReturnValue([])
@@ -234,12 +240,13 @@ describe("MaintenanceContext", () => {
     )
   })
 
-  it("invalidates maintenance plan queries on mutation success", () => {
+  it("invalidates maintenance plan queries on mutation success", async () => {
     const wrapper = createWrapper({}, vi.fn())
     const { result } = renderHook(() => useMaintenanceContext(), { wrapper })
 
-    act(() => {
+    await act(async () => {
       result.current.onPlanMutationSuccess()
+      await Promise.resolve()
     })
 
     expect(mocks.invalidateQueries).toHaveBeenCalledWith({
@@ -322,6 +329,27 @@ describe("MaintenanceContext", () => {
     })
 
     expect(mocks.cancelAllChanges).toHaveBeenCalled()
+    expect(result.current.dialogState.isConfirmingCancel).toBe(false)
+    expect(result.current.selectedPlan?.id).toBe(nextPlan.id)
+    expect(result.current.activeTab).toBe("tasks")
+  })
+
+  it("switches plan immediately when there are no unsaved changes", () => {
+    mocks.setHasChangesState(false)
+    const wrapper = createWrapper({}, vi.fn())
+    const { result } = renderHook(() => useMaintenanceContext(), { wrapper })
+    const currentPlan = createPlan({ id: 22, ten_ke_hoach: "Kế hoạch đang mở" })
+    const nextPlan = createPlan({ id: 23, ten_ke_hoach: "Kế hoạch chuyển tới" })
+
+    act(() => {
+      result.current.setSelectedPlan(currentPlan)
+      result.current.setActiveTab("plans")
+    })
+
+    act(() => {
+      result.current.handleSelectPlan(nextPlan)
+    })
+
     expect(result.current.dialogState.isConfirmingCancel).toBe(false)
     expect(result.current.selectedPlan?.id).toBe(nextPlan.id)
     expect(result.current.activeTab).toBe("tasks")

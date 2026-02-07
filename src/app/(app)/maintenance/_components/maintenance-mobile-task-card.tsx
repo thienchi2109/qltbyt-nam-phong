@@ -164,6 +164,7 @@ export const MaintenanceMobileTaskCard = React.memo(function MaintenanceMobileTa
                     return (
                       <Button
                         key={month}
+                        type="button"
                         variant={isCompleted ? "secondary" : "outline"}
                         className={`h-11 rounded-xl text-sm ${isCompleted ? "bg-emerald-50 text-emerald-700 border-emerald-200" : ""}`}
                         disabled={!canCompleteTask || isUpdating}
@@ -196,17 +197,21 @@ export const MaintenanceMobileTaskCard = React.memo(function MaintenanceMobileTa
                     {months.map((month) => {
                       const field = `thang_${month}` as keyof MaintenanceTask
                       const checked = Boolean(editingData?.[field])
+                      const checkboxId = `maintenance-task-${task.id}-month-${month}`
                       return (
-                        <label
+                        <div
                           key={month}
                           className="flex items-center gap-2 rounded-xl border border-border/70 bg-white px-3 py-2"
                         >
                           <Checkbox
+                            id={checkboxId}
                             checked={checked}
                             onCheckedChange={(value) => taskEditing.handleTaskDataChange(field, Boolean(value))}
                           />
-                          <span className="text-sm">Tháng {month}</span>
-                        </label>
+                          <label htmlFor={checkboxId} className="text-sm cursor-pointer">
+                            Tháng {month}
+                          </label>
+                        </div>
                       )
                     })}
                   </div>
@@ -217,21 +222,21 @@ export const MaintenanceMobileTaskCard = React.memo(function MaintenanceMobileTa
             <div className="flex flex-wrap items-center gap-2">
               {isPlanApproved ? null : isEditing ? (
                 <>
-                  <Button size="sm" onClick={taskEditing.handleSaveTask}>
+                  <Button type="button" size="sm" onClick={taskEditing.handleSaveTask}>
                     <Save className="mr-2 h-4 w-4" />
                     Lưu
                   </Button>
-                  <Button size="sm" variant="outline" onClick={taskEditing.handleCancelEdit}>
+                  <Button type="button" size="sm" variant="outline" onClick={taskEditing.handleCancelEdit}>
                     Hủy
                   </Button>
                 </>
               ) : (
                 <>
-                  <Button size="sm" variant="outline" onClick={() => taskEditing.handleStartEdit(task)} disabled={isPlanApproved}>
+                  <Button type="button" size="sm" variant="outline" onClick={() => taskEditing.handleStartEdit(task)} disabled={isPlanApproved}>
                     <Edit className="mr-2 h-4 w-4" />
                     Sửa
                   </Button>
-                  <Button size="sm" variant="outline" className="text-destructive" onClick={() => taskEditing.setTaskToDelete(task)}>
+                  <Button type="button" size="sm" variant="outline" className="text-destructive" onClick={() => taskEditing.setTaskToDelete(task)}>
                     <Trash2 className="mr-2 h-4 w-4" />
                     Xóa
                   </Button>
