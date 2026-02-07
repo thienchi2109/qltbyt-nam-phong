@@ -326,4 +326,32 @@ describe("MaintenanceContext", () => {
     expect(result.current.selectedPlan?.id).toBe(nextPlan.id)
     expect(result.current.activeTab).toBe("tasks")
   })
+
+  it("keeps current tab and plan when closing discard dialog without confirming", () => {
+    const wrapper = createWrapper({}, vi.fn())
+    const { result } = renderHook(() => useMaintenanceContext(), { wrapper })
+    const currentPlan = createPlan({ id: 30, ten_ke_hoach: "Kế hoạch đang mở" })
+    const nextPlan = createPlan({ id: 31, ten_ke_hoach: "Kế hoạch được chọn" })
+
+    act(() => {
+      result.current.setSelectedPlan(currentPlan)
+      result.current.setActiveTab("plans")
+    })
+
+    act(() => {
+      result.current.handleSelectPlan(nextPlan)
+    })
+
+    expect(result.current.dialogState.isConfirmingCancel).toBe(true)
+    expect(result.current.selectedPlan?.id).toBe(currentPlan.id)
+    expect(result.current.activeTab).toBe("plans")
+
+    act(() => {
+      result.current.setIsConfirmingCancel(false)
+    })
+
+    expect(result.current.dialogState.isConfirmingCancel).toBe(false)
+    expect(result.current.selectedPlan?.id).toBe(currentPlan.id)
+    expect(result.current.activeTab).toBe("plans")
+  })
 })

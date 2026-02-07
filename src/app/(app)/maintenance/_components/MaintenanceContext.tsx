@@ -159,12 +159,11 @@ export function MaintenanceProvider({
     (open: boolean) => {
       setDialogState((prev) => ({ ...prev, isConfirmingCancel: open }))
 
-      if (!open && pendingPlanSelection) {
+      if (!open) {
         setPendingPlanSelection(null)
-        setActiveTab("tasks")
       }
     },
-    [pendingPlanSelection]
+    []
   )
 
   const setIsConfirmingBulkDelete = React.useCallback((open: boolean) => {
