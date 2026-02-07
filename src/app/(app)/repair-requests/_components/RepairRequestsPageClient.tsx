@@ -80,7 +80,7 @@ const REPAIR_REQUEST_ENTITY = { singular: "yêu cầu" } as const
  */
 function RepairRequestsPageClientInner() {
   const { toast } = useToast()
-  const { data: session, status } = useSession()
+  const { data: session } = useSession()
   const { data: branding } = useTenantBranding()
   const user = session?.user // Properly typed via NextAuth module augmentation
   const router = useRouter()
@@ -101,21 +101,6 @@ function RepairRequestsPageClientInner() {
     openCreateSheet,
     closeAllDialogs,
   } = useRepairRequestsContext()
-
-  // Redirect if not authenticated
-  if (status === "loading") {
-    return <div className="flex items-center justify-center min-h-[50vh]">
-      <div className="text-center space-y-2">
-        <Skeleton className="h-8 w-32 mx-auto" />
-        <Skeleton className="h-4 w-48 mx-auto" />
-      </div>
-    </div>
-  }
-
-  if (status === "unauthenticated") {
-    router.push("/")
-    return null
-  }
 
   // Temporarily disable useRealtimeSync to avoid conflict with RealtimeProvider
   // useRepairRealtimeSync()
@@ -759,6 +744,26 @@ function RepairRequestsPageClientInner() {
 }
 
 export default function RepairRequestsPageClient() {
+  const { status } = useSession()
+  const router = useRouter()
+
+  // Handle unauthenticated redirect in useEffect (not during render)
+  React.useEffect(() => {
+    if (status === "unauthenticated") router.push("/")
+  }, [status, router])
+
+  // Show loading state for both loading and unauthenticated (while redirecting)
+  if (status === "loading" || status === "unauthenticated") {
+    return (
+      <div className="flex items-center justify-center min-h-[50vh]">
+        <div className="text-center space-y-2">
+          <Skeleton className="h-8 w-32 mx-auto" />
+          <Skeleton className="h-4 w-48 mx-auto" />
+        </div>
+      </div>
+    )
+  }
+
   return (
     <RepairRequestsProvider>
       <RepairRequestsPageClientInner />
