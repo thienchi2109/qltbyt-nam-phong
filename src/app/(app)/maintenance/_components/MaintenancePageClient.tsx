@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { useSearchParams } from "next/navigation"
+import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import type { PaginationState, SortingState } from "@tanstack/react-table"
 import {
   getCoreRowModel,
@@ -30,6 +30,8 @@ import { MaintenancePageLegacyMobileCards } from "./maintenance-page-legacy-mobi
 export function MaintenancePageClient() {
   const ctx = useMaintenanceContext()
   const searchParams = useSearchParams()
+  const router = useRouter()
+  const pathname = usePathname()
   const isMobile = useIsMobile()
   const { toast } = useToast()
   const mobileMaintenanceEnabled = useFeatureFlag("mobile-maintenance-redesign")
@@ -114,7 +116,7 @@ export function MaintenancePageClient() {
 
     if (actionParam === "create") {
       setIsAddPlanDialogOpen(true)
-      window.history.replaceState({}, "", "/maintenance")
+      router.replace(pathname, { scroll: false })
       return
     }
 
@@ -137,8 +139,8 @@ export function MaintenancePageClient() {
         description: `Kế hoạch #${planId} không tồn tại hoặc bạn không có quyền truy cập.`,
       })
     }
-    window.history.replaceState({}, "", "/maintenance")
-  }, [searchParams, plans, isLoadingPlans, setIsAddPlanDialogOpen, setSelectedPlan, setActiveTab, toast])
+    router.replace(pathname, { scroll: false })
+  }, [searchParams, plans, isLoadingPlans, setIsAddPlanDialogOpen, setSelectedPlan, setActiveTab, toast, router, pathname])
 
   React.useEffect(() => {
     setCurrentPage(1)
