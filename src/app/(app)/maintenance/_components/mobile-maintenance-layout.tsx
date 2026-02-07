@@ -1,58 +1,10 @@
 "use client"
 
 import * as React from "react"
-import { format, parseISO } from 'date-fns'
-import { vi } from 'date-fns/locale'
 import type { MaintenancePlan } from "@/hooks/use-cached-maintenance"
-import type { MaintenanceTask } from "@/lib/data"
-import {
-  AlertTriangle,
-  CalendarDays,
-  Check,
-  CheckCircle2,
-  ChevronDown,
-  ChevronLeft,
-  ChevronRight,
-  ChevronsLeft,
-  ChevronsRight,
-  ClipboardList,
-  Edit,
-  FileText,
-  Filter,
-  Loader2,
-  MoreHorizontal,
-  PlusCircle,
-  Save,
-  Search,
-  Trash2,
-  Undo2,
-  X,
-} from "lucide-react"
-import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import {
-  Card,
-  CardContent,
-  CardFooter,
-  CardHeader,
-} from "@/components/ui/card"
-import { Checkbox } from "@/components/ui/checkbox"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
+import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
 import {
   Sheet,
   SheetClose,
@@ -62,18 +14,23 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet"
 import { Skeleton } from "@/components/ui/skeleton"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Textarea } from "@/components/ui/textarea"
-import { NotesInput } from "./notes-input"
+import {
+  ChevronLeft,
+  ChevronRight,
+  ChevronsLeft,
+  ChevronsRight,
+  Filter,
+  Loader2,
+  PlusCircle,
+  Search,
+  X,
+} from "lucide-react"
+import { useMaintenanceContext } from "../_hooks/useMaintenanceContext"
+import { MaintenanceMobilePlanCards } from "./maintenance-mobile-plan-cards"
+import { MaintenanceMobileTasksPanel } from "./maintenance-mobile-tasks-panel"
 
-export type MobileMaintenanceLayoutProps = {
-  activeTab: string
-  setActiveTab: (value: string) => void
+export interface MobileMaintenanceLayoutProps {
   plans: MaintenancePlan[]
-  selectedPlan: MaintenancePlan | null
-  handleSelectPlan: (plan: MaintenancePlan) => void
-  canManagePlans: boolean
-  isRegionalLeader: boolean
   isLoadingPlans: boolean
   planSearchTerm: string
   setPlanSearchTerm: (value: string) => void
@@ -93,66 +50,12 @@ export type MobileMaintenanceLayoutProps = {
   handleMobileFilterApply: () => void
   handleMobileFilterClear: () => void
   activeMobileFilterCount: number
-  setIsAddPlanDialogOpen: (open: boolean) => void
-  openApproveDialog: (plan: MaintenancePlan) => void
-  openRejectDialog: (plan: MaintenancePlan) => void
-  openDeleteDialog: (plan: MaintenancePlan) => void
-  setEditingPlan: (plan: MaintenancePlan | null) => void
-  setIsAddTasksDialogOpen: (open: boolean) => void
-  handleGeneratePlanForm: () => void | Promise<void>
-  tasks: MaintenanceTask[]
-  draftTasks: MaintenanceTask[]
-  isLoadingTasks: boolean
   expandedTaskIds: Record<number, boolean>
   toggleTaskExpansion: (taskId: number) => void
-  hasChanges: boolean
-  handleSaveAllChanges: () => void | Promise<void>
-  handleCancelAllChanges: () => void
-  isSavingAll: boolean
-  setIsConfirmingCancel: (open: boolean) => void
-  handleStartEdit: (task: MaintenanceTask) => void
-  handleCancelEdit: () => void
-  handleTaskDataChange: (field: keyof MaintenanceTask, value: unknown) => void
-  handleSaveTask: () => void
-  editingTaskId: number | null
-  editingTaskData: Partial<MaintenanceTask> | null
-  setTaskToDelete: (task: MaintenanceTask | null) => void
-  canCompleteTask: boolean
-  completionStatus: Record<string, { historyId: number }>
-  handleMarkAsCompleted: (task: MaintenanceTask, month: number) => void | Promise<void>
-  isCompletingTask: string | null
-  isPlanApprovedForTasks: boolean
-}
-
-function getPlanStatusTone(status: MaintenancePlan["trang_thai"]) {
-  switch (status) {
-    case "Bản nháp":
-      return {
-        header: "bg-amber-50 border-b border-amber-100",
-      }
-    case "Đã duyệt":
-      return {
-        header: "bg-emerald-50 border-b border-emerald-100",
-      }
-    case "Không duyệt":
-      return {
-        header: "bg-red-50 border-b border-red-100",
-      }
-    default:
-      return {
-        header: "bg-muted border-b border-border/60",
-      }
-  }
 }
 
 export function MobileMaintenanceLayout({
-  activeTab,
-  setActiveTab,
   plans,
-  selectedPlan,
-  handleSelectPlan,
-  canManagePlans,
-  isRegionalLeader,
   isLoadingPlans,
   planSearchTerm,
   setPlanSearchTerm,
@@ -172,529 +75,43 @@ export function MobileMaintenanceLayout({
   handleMobileFilterApply,
   handleMobileFilterClear,
   activeMobileFilterCount,
-  setIsAddPlanDialogOpen,
-  openApproveDialog,
-  openRejectDialog,
-  openDeleteDialog,
-  setEditingPlan,
-  setIsAddTasksDialogOpen,
-  handleGeneratePlanForm,
-  tasks,
-  draftTasks,
-  isLoadingTasks,
   expandedTaskIds,
   toggleTaskExpansion,
-  hasChanges,
-  handleSaveAllChanges,
-  handleCancelAllChanges,
-  isSavingAll,
-  setIsConfirmingCancel,
-  handleStartEdit,
-  handleCancelEdit,
-  handleTaskDataChange,
-  handleSaveTask,
-  editingTaskId,
-  editingTaskData,
-  setTaskToDelete,
-  canCompleteTask,
-  completionStatus,
-  handleMarkAsCompleted,
-  isCompletingTask,
-  isPlanApprovedForTasks,
 }: MobileMaintenanceLayoutProps) {
-  const months = React.useMemo(() => Array.from({ length: 12 }, (_, idx) => idx + 1), [])
-  const planTabActive = activeTab === "plans"
-  const safeAreaFooterStyle = React.useMemo(() => ({ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 16px)" }), [])
-  const fabStyle = React.useMemo(() => ({ bottom: "calc(env(safe-area-inset-bottom, 0px) + 5.5rem)" }), [])
+  const ctx = useMaintenanceContext()
+
+  const months = React.useMemo(() => Array.from({ length: 12 }, (_, index) => index + 1), [])
+  const planTabActive = ctx.activeTab === "plans"
+  const safeAreaFooterStyle = React.useMemo(
+    () => ({ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 16px)" }),
+    []
+  )
+  const fabStyle = React.useMemo(
+    () => ({ bottom: "calc(env(safe-area-inset-bottom, 0px) + 5.5rem)" }),
+    []
+  )
+
   const facilityOptions = React.useMemo(() => {
-    if (!showFacilityFilter) return [] as Array<{ id: number; name: string }>
+    if (!showFacilityFilter) {
+      return [] as Array<{ id: number; name: string }>
+    }
     return facilities
   }, [showFacilityFilter, facilities])
 
   const activeFacilityLabel = React.useMemo(() => {
-    if (selectedFacilityId == null) return null
+    if (selectedFacilityId == null) {
+      return null
+    }
     const match = facilities.find((facility) => facility.id === selectedFacilityId)
     return match?.name || "Cơ sở đã chọn"
   }, [facilities, selectedFacilityId])
 
-  const resolveStatusBadgeVariant = React.useCallback((status: MaintenancePlan["trang_thai"]) => {
-    switch (status) {
-      case "Bản nháp":
-        return "secondary" as const
-      case "Đã duyệt":
-        return "default" as const
-      case "Không duyệt":
-        return "destructive" as const
-      default:
-        return "outline" as const
-    }
-  }, [])
-
-  const handleFacilityOptionSelect = React.useCallback((value: number | null) => {
-    setPendingFacilityFilter(value)
-  }, [setPendingFacilityFilter])
-
-  const renderPlanCards = () => {
-    if (isLoadingPlans) {
-      return (
-        <div className="space-y-3">
-          {Array.from({ length: 4 }).map((_, idx) => (
-            <Card key={idx} className="border-muted shadow-none">
-              <CardHeader className="space-y-2">
-                <Skeleton className="h-6 w-2/3" />
-                <Skeleton className="h-4 w-1/3" />
-              </CardHeader>
-              <CardContent className="space-y-2">
-                <Skeleton className="h-4 w-1/2" />
-                <Skeleton className="h-4 w-full" />
-                <Skeleton className="h-4 w-2/3" />
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      )
-    }
-
-    if (!plans.length) {
-      return (
-        <Card className="border-dashed bg-muted/40">
-          <CardContent className="flex flex-col items-center justify-center space-y-3 py-8 text-center">
-            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted">
-              <CalendarDays className="h-6 w-6 text-muted-foreground" />
-            </div>
-            <div>
-              <h3 className="text-base font-semibold">Chưa có kế hoạch</h3>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Hãy tạo kế hoạch mới hoặc điều chỉnh bộ lọc để xem dữ liệu phù hợp.
-              </p>
-            </div>
-            {canManagePlans && (
-              <Button onClick={() => setIsAddPlanDialogOpen(true)} className="h-11 px-6">
-                <PlusCircle className="mr-2 h-4 w-4" />
-                Tạo kế hoạch mới
-              </Button>
-            )}
-          </CardContent>
-        </Card>
-      )
-    }
-
-    return (
-      <div className="space-y-3">
-        {plans.map((plan) => {
-          const statusTone = getPlanStatusTone(plan.trang_thai)
-          return (
-            <Card
-              key={plan.id}
-              className="cursor-pointer overflow-hidden rounded-2xl border border-border/70 bg-background shadow-sm transition-transform active:scale-[0.985]"
-              onClick={() => handleSelectPlan(plan)}
-            >
-              <div className={`px-4 py-3 ${statusTone.header}`}>
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex-1 min-w-0">
-                    <h3 className="text-base font-semibold leading-tight line-clamp-2">
-                      {plan.ten_ke_hoach}
-                    </h3>
-                    <p className="mt-1 text-xs text-muted-foreground line-clamp-1">
-                      Năm {plan.nam} • {plan.khoa_phong || "Tổng thể"}
-                    </p>
-                  </div>
-                  <Badge variant={resolveStatusBadgeVariant(plan.trang_thai)} className="shrink-0">
-                    {plan.trang_thai}
-                  </Badge>
-                </div>
-              </div>
-              <CardContent className="space-y-3 px-4 py-3 text-sm">
-                <div className="flex items-start justify-between gap-3">
-                  <span className="text-muted-foreground">Loại công việc</span>
-                  <Badge variant="outline" className="shrink-0">
-                    {plan.loai_cong_viec}
-                  </Badge>
-                </div>
-                <div className="flex items-start justify-between gap-3">
-                  <span className="text-muted-foreground">Người lập</span>
-                  <span className="max-w-[55%] text-right font-medium">
-                    {plan.nguoi_lap_ke_hoach || "Chưa cập nhật"}
-                  </span>
-                </div>
-                {showFacilityFilter && (
-                  <div className="flex items-start justify-between gap-3">
-                    <span className="text-muted-foreground">Cơ sở</span>
-                    <span className="max-w-[55%] text-right font-medium">
-                      {plan.facility_name || "Tất cả"}
-                    </span>
-                  </div>
-                )}
-                <div className="flex items-start justify-between gap-3">
-                  <span className="text-muted-foreground">Ngày phê duyệt</span>
-                  <span className="max-w-[55%] text-right font-medium text-sm">
-                    {plan.ngay_phe_duyet
-                      ? format(parseISO(plan.ngay_phe_duyet), 'dd/MM/yyyy HH:mm', { locale: vi })
-                      : "Chưa duyệt"}
-                  </span>
-                </div>
-              </CardContent>
-              <CardFooter className="px-4 py-3">
-                <div className="flex w-full items-center justify-between">
-                  <Button variant="ghost" size="sm" className="px-0 text-sm" onClick={(e) => {
-                    e.stopPropagation()
-                    handleSelectPlan(plan)
-                    setActiveTab('tasks')
-                  }}>
-                    Xem công việc
-                  </Button>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                      <Button variant="ghost" size="icon" className="h-9 w-9">
-                        <MoreHorizontal className="h-5 w-5" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="w-48">
-                      <DropdownMenuLabel>Hành động</DropdownMenuLabel>
-                      <DropdownMenuItem onSelect={() => handleSelectPlan(plan)}>
-                        Xem chi tiết công việc
-                      </DropdownMenuItem>
-                      {plan.trang_thai === 'Bản nháp' && canManagePlans && (
-                        <>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem onSelect={() => setEditingPlan(plan)}>
-                            Sửa kế hoạch
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onSelect={() => openApproveDialog(plan)}>
-                            Duyệt kế hoạch
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onSelect={() => openRejectDialog(plan)}>
-                            Không duyệt
-                          </DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem onSelect={() => openDeleteDialog(plan)} className="text-destructive">
-                            Xóa kế hoạch
-                          </DropdownMenuItem>
-                        </>
-                      )}
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </div>
-              </CardFooter>
-            </Card>
-          )
-        })}
-      </div>
-    )
-  }
-
-  const renderTasks = () => {
-    if (!selectedPlan) {
-      return (
-        <Card className="border-dashed bg-muted/30">
-          <CardContent className="flex flex-col items-center justify-center space-y-3 py-10 text-center">
-            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted">
-              <ClipboardList className="h-6 w-6 text-muted-foreground" />
-            </div>
-            <div>
-              <h3 className="text-base font-semibold">Chọn kế hoạch để xem công việc</h3>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Nhấn vào một kế hoạch trong danh sách để xem hoặc chỉnh sửa các thiết bị trong kế hoạch đó.
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-      )
-    }
-
-    const isDraft = selectedPlan.trang_thai === 'Bản nháp'
-
-    return (
-      <div className="space-y-4">
-        <Card className="rounded-2xl border border-border/80 bg-background">
-          <CardHeader className="space-y-2">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <h2 className="text-lg font-semibold leading-tight">
-                  {selectedPlan.ten_ke_hoach}
-                </h2>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  Năm {selectedPlan.nam} • {selectedPlan.khoa_phong || "Tổng thể"}
-                </p>
-              </div>
-              <Badge variant={resolveStatusBadgeVariant(selectedPlan.trang_thai)}>
-                {selectedPlan.trang_thai}
-              </Badge>
-            </div>
-            {selectedPlan.ly_do_khong_duyet && selectedPlan.trang_thai === 'Không duyệt' && (
-              <div className="rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-xs text-destructive">
-                Lý do: {selectedPlan.ly_do_khong_duyet}
-              </div>
-            )}
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <div className="flex flex-wrap items-center gap-2">
-              {canManagePlans && isDraft && (
-                <Button size="sm" onClick={() => setIsAddTasksDialogOpen(true)}>
-                  <PlusCircle className="mr-2 h-4 w-4" />
-                  Thêm thiết bị
-                </Button>
-              )}
-              {tasks.length > 0 && (
-                <Button
-                  size="sm"
-                  variant="secondary"
-                  onClick={() => void handleGeneratePlanForm()}
-                  disabled={isSavingAll}
-                  className="flex items-center"
-                >
-                  <FileText className="mr-2 h-4 w-4" />
-                  Xuất phiếu kế hoạch
-                </Button>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-
-        {hasChanges && isDraft && (
-          <div className="rounded-2xl border border-amber-200 bg-amber-50/80 px-4 py-3 shadow-sm">
-            <div className="flex items-start gap-3">
-              <AlertTriangle className="mt-1 h-5 w-5 text-amber-600" />
-              <div className="flex-1">
-                <div className="text-sm font-medium text-amber-900">Có thay đổi chưa lưu</div>
-                <p className="mt-1 text-xs text-amber-700">
-                  Lưu lại để cập nhật vào cơ sở dữ liệu hoặc hủy bỏ để khôi phục dữ liệu ban đầu.
-                </p>
-                <div className="mt-3 grid grid-cols-2 gap-3">
-                  <Button
-                    variant="outline"
-                    className="border-amber-300 text-amber-900 hover:bg-amber-100"
-                    onClick={() => setIsConfirmingCancel(true)}
-                    disabled={isSavingAll}
-                  >
-                    Hủy bỏ
-                  </Button>
-                  <Button onClick={() => void handleSaveAllChanges()} disabled={isSavingAll}>
-                    {isSavingAll && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                    Lưu thay đổi
-                  </Button>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {isLoadingTasks ? (
-          <div className="space-y-3">
-            {Array.from({ length: 3 }).map((_, idx) => (
-              <Card key={idx} className="rounded-2xl border border-border/70 bg-background">
-                <CardHeader className="flex flex-row items-center gap-3">
-                  <Skeleton className="h-10 w-10 rounded-full" />
-                  <div className="space-y-2">
-                    <Skeleton className="h-4 w-40" />
-                    <Skeleton className="h-3 w-24" />
-                  </div>
-                </CardHeader>
-                <CardContent className="space-y-2">
-                  <Skeleton className="h-3 w-full" />
-                  <Skeleton className="h-3 w-2/3" />
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        ) : (
-          <div className="space-y-3">
-            {draftTasks.map((task, index) => {
-              const isEditing = editingTaskId === task.id
-              const monthsScheduled = months.filter((month) => Boolean((isEditing ? editingTaskData?.[`thang_${month}` as keyof MaintenanceTask] : task[`thang_${month}` as keyof MaintenanceTask])))
-              const isExpanded = expandedTaskIds[task.id]
-              const completionKeyPrefix = `${task.id}-`
-
-              return (
-                <Card
-                  key={task.id}
-                  className="rounded-2xl border border-border/70 bg-background shadow-sm"
-                >
-                  <CardContent className="p-0">
-                    <button
-                      type="button"
-                      onClick={() => toggleTaskExpansion(task.id)}
-                      className="flex w-full items-center gap-3 px-4 py-3 text-left"
-                    >
-                      <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-primary/10 text-sm font-semibold text-primary">
-                        {index + 1}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <h4 className="text-sm font-semibold leading-tight line-clamp-2">
-                          {task.thiet_bi?.ten_thiet_bi || 'Thiết bị chưa xác định'}
-                        </h4>
-                        <p className="mt-1 text-xs text-muted-foreground line-clamp-1">
-                          {task.thiet_bi?.ma_thiet_bi || '---'} • {task.thiet_bi?.khoa_phong_quan_ly || '---'}
-                        </p>
-                        {!isPlanApprovedForTasks && !isEditing && monthsScheduled.length > 0 && (
-                          <div className="mt-2 flex flex-wrap gap-1">
-                            {monthsScheduled.map((month) => (
-                              <Badge key={month} variant="outline" className="text-xs">
-                                T{month}
-                              </Badge>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                      <ChevronDown
-                        className={`h-5 w-5 flex-shrink-0 text-muted-foreground transition-transform ${isExpanded ? 'rotate-180' : ''}`}
-                      />
-                    </button>
-
-                    {isExpanded && (
-                      <div className="border-t border-border/70 px-4 py-4 space-y-4">
-                        <div className="flex flex-col gap-2 text-sm">
-                          <div className="flex items-start justify-between gap-3">
-                            <span className="text-muted-foreground">Đơn vị thực hiện</span>
-                            {isEditing ? (
-                              <Select
-                                value={editingTaskData?.don_vi_thuc_hien || ''}
-                                onValueChange={(value) => handleTaskDataChange('don_vi_thuc_hien', value === 'none' ? null : value)}
-                              >
-                                <SelectTrigger className="h-9 w-[160px]">
-                                  <SelectValue placeholder="Chọn" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="Nội bộ">Nội bộ</SelectItem>
-                                  <SelectItem value="Thuê ngoài">Thuê ngoài</SelectItem>
-                                  <SelectItem value="none">Xóa</SelectItem>
-                                </SelectContent>
-                              </Select>
-                            ) : (
-                              <span className="max-w-[60%] text-right font-medium">
-                                {task.don_vi_thuc_hien || 'Chưa gán'}
-                              </span>
-                            )}
-                          </div>
-                          <div className="flex items-start justify-between gap-3">
-                            <span className="text-muted-foreground">Ghi chú</span>
-                            {isEditing ? (
-                              <div className="w-2/3">
-                                <NotesInput
-                                  taskId={task.id}
-                                  value={editingTaskData?.ghi_chu || ''}
-                                  onChange={(value) => handleTaskDataChange('ghi_chu', value)}
-                                />
-                              </div>
-                            ) : (
-                              <span className="max-w-[60%] text-right text-sm">
-                                {task.ghi_chu || '—'}
-                              </span>
-                            )}
-                          </div>
-                        </div>
-
-                        {isPlanApprovedForTasks ? (
-                          <div className="space-y-2">
-                            <div className="text-sm font-medium">Theo dõi hoàn thành</div>
-                            <div className="grid grid-cols-3 gap-2">
-                              {months.map((month) => {
-                                const scheduled = Boolean(task[`thang_${month}` as keyof MaintenanceTask])
-                                if (!scheduled) {
-                                  return (
-                                    <div
-                                      key={month}
-                                      className="flex h-11 items-center justify-center rounded-xl border border-dashed border-muted-foreground/30 text-xs text-muted-foreground"
-                                    >
-                                      T{month}
-                                    </div>
-                                  )
-                                }
-
-                                const completionKey = `${completionKeyPrefix}${month}`
-                                const isCompleted = Boolean((task as any)[`thang_${month}_hoan_thanh`])
-                                const isUpdating = isCompletingTask === completionKey
-
-                                return (
-                                  <Button
-                                    key={month}
-                                    variant={isCompleted ? 'secondary' : 'outline'}
-                                    className={`h-11 rounded-xl text-sm ${isCompleted ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : ''}`}
-                                    disabled={!canCompleteTask || isUpdating}
-                                    onClick={() => {
-                                      if (!isCompleted && canCompleteTask) {
-                                        void handleMarkAsCompleted(task, month)
-                                      }
-                                    }}
-                                  >
-                                    {isUpdating ? (
-                                      <Loader2 className="h-4 w-4 animate-spin" />
-                                    ) : isCompleted ? (
-                                      <div className="flex items-center gap-1">
-                                        <CheckCircle2 className="h-4 w-4 text-emerald-600" />
-                                        <span>T{month}</span>
-                                      </div>
-                                    ) : (
-                                      <span>Hoàn thành T{month}</span>
-                                    )}
-                                  </Button>
-                                )
-                              })}
-                            </div>
-                          </div>
-                        ) : (
-                          <>
-                            {isEditing && (
-                              <div className="space-y-2">
-                                <div className="text-sm font-medium">Lịch thực hiện</div>
-                                <div className="grid grid-cols-3 gap-2 text-sm">
-                                  {months.map((month) => {
-                                    const field = `thang_${month}` as keyof MaintenanceTask
-                                    const checked = Boolean(editingTaskData?.[field])
-                                    return (
-                                      <label
-                                        key={month}
-                                        className="flex items-center gap-2 rounded-xl border border-border/70 bg-white px-3 py-2"
-                                      >
-                                        <Checkbox
-                                          checked={checked}
-                                          onCheckedChange={(value) => handleTaskDataChange(field, Boolean(value))}
-                                        />
-                                        <span className="text-sm">Tháng {month}</span>
-                                      </label>
-                                    )
-                                  })}
-                                </div>
-                              </div>
-                            )}
-                          </>
-                        )}
-
-                        <div className="flex flex-wrap items-center gap-2">
-                          {isPlanApprovedForTasks ? null : isEditing ? (
-                            <>
-                              <Button size="sm" onClick={handleSaveTask}>
-                                <Save className="mr-2 h-4 w-4" />
-                                Lưu
-                              </Button>
-                              <Button size="sm" variant="outline" onClick={handleCancelEdit}>
-                                Hủy
-                              </Button>
-                            </>
-                          ) : (
-                            <>
-                              <Button size="sm" variant="outline" onClick={() => handleStartEdit(task)} disabled={isPlanApprovedForTasks}>
-                                <Edit className="mr-2 h-4 w-4" />
-                                Sửa
-                              </Button>
-                              <Button size="sm" variant="outline" className="text-destructive" onClick={() => setTaskToDelete(task)}>
-                                <Trash2 className="mr-2 h-4 w-4" />
-                                Xóa
-                              </Button>
-                            </>
-                          )}
-                        </div>
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-              )
-            })}
-          </div>
-        )}
-      </div>
-    )
-  }
+  const handleFacilityOptionSelect = React.useCallback(
+    (value: number | null) => {
+      setPendingFacilityFilter(value)
+    },
+    [setPendingFacilityFilter]
+  )
 
   return (
     <div className="relative flex min-h-screen flex-col bg-muted/20">
@@ -708,6 +125,7 @@ export function MobileMaintenanceLayout({
               </p>
             </div>
           </div>
+
           <div className="space-y-2">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -721,12 +139,13 @@ export function MobileMaintenanceLayout({
                 <button
                   type="button"
                   className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full bg-muted p-1"
-                  onClick={() => onClearSearch()}
+                  onClick={onClearSearch}
                 >
                   <X className="h-3.5 w-3.5" />
                 </button>
               )}
             </div>
+
             <div className="flex items-center gap-2">
               <Button
                 variant="outline"
@@ -739,7 +158,7 @@ export function MobileMaintenanceLayout({
                 ) : (
                   <Filter className="mr-2 h-4 w-4" />
                 )}
-                {isLoadingFacilities ? 'Đang tải' : 'Bộ lọc'}
+                {isLoadingFacilities ? "Đang tải" : "Bộ lọc"}
                 {activeMobileFilterCount > 0 && (
                   <Badge variant="secondary" className="ml-auto rounded-full bg-primary text-primary-foreground">
                     {activeMobileFilterCount}
@@ -747,13 +166,17 @@ export function MobileMaintenanceLayout({
                 )}
               </Button>
             </div>
+
             {activeFacilityLabel && (
               <div className="flex items-center gap-2">
-                <Badge variant="outline" className="flex items-center gap-2 rounded-full border-primary/40 bg-primary/5 px-3 py-1 text-xs text-primary">
+                <Badge
+                  variant="outline"
+                  className="flex items-center gap-2 rounded-full border-primary/40 bg-primary/5 px-3 py-1 text-xs text-primary"
+                >
                   {activeFacilityLabel}
                   <button
                     type="button"
-                    onClick={() => handleMobileFilterClear()}
+                    onClick={handleMobileFilterClear}
                     className="rounded-full bg-primary/10 p-0.5 text-primary hover:bg-primary/20"
                   >
                     <X className="h-3 w-3" />
@@ -766,20 +189,20 @@ export function MobileMaintenanceLayout({
           <div className="grid grid-cols-2 gap-2 rounded-full bg-muted/80 p-1">
             <Button
               type="button"
-              variant={planTabActive ? 'default' : 'ghost'}
+              variant={planTabActive ? "default" : "ghost"}
               size="sm"
-              className={`h-9 rounded-full text-sm ${planTabActive ? '' : 'bg-transparent text-muted-foreground hover:bg-transparent'}`}
-              onClick={() => setActiveTab('plans')}
+              className={`h-9 rounded-full text-sm ${planTabActive ? "" : "bg-transparent text-muted-foreground hover:bg-transparent"}`}
+              onClick={() => ctx.setActiveTab("plans")}
             >
               Kế hoạch
             </Button>
             <Button
               type="button"
-              variant={!planTabActive ? 'default' : 'ghost'}
+              variant={!planTabActive ? "default" : "ghost"}
               size="sm"
-              className={`h-9 rounded-full text-sm ${!planTabActive ? '' : 'bg-transparent text-muted-foreground hover:bg-transparent'}`}
-              onClick={() => setActiveTab('tasks')}
-              disabled={!selectedPlan}
+              className={`h-9 rounded-full text-sm ${!planTabActive ? "" : "bg-transparent text-muted-foreground hover:bg-transparent"}`}
+              onClick={() => ctx.setActiveTab("tasks")}
+              disabled={!ctx.selectedPlan}
             >
               Công việc
             </Button>
@@ -789,13 +212,49 @@ export function MobileMaintenanceLayout({
 
       <main className="flex-1 overflow-y-auto pb-24">
         <div className="px-4 pb-6 pt-4 space-y-4">
-          {planTabActive ? renderPlanCards() : renderTasks()}
+          {planTabActive ? (
+            <MaintenanceMobilePlanCards
+              plans={plans}
+              isLoadingPlans={isLoadingPlans}
+              showFacilityFilter={showFacilityFilter}
+              canManagePlans={ctx.canManagePlans}
+              onOpenAddPlanDialog={() => ctx.setIsAddPlanDialogOpen(true)}
+              onSelectPlan={ctx.handleSelectPlan}
+              onSetTasksTab={() => ctx.setActiveTab("tasks")}
+              onEditPlan={ctx.setEditingPlan}
+              onOpenApproveDialog={ctx.operations.openApproveDialog}
+              onOpenRejectDialog={ctx.operations.openRejectDialog}
+              onOpenDeleteDialog={ctx.operations.openDeleteDialog}
+            />
+          ) : (
+            <MaintenanceMobileTasksPanel
+              selectedPlan={ctx.selectedPlan}
+              canManagePlans={ctx.canManagePlans}
+              tasks={ctx.tasks}
+              draftTasks={ctx.draftTasks}
+              hasChanges={ctx.hasChanges}
+              isSavingAll={ctx.isSavingAll}
+              isLoadingTasks={ctx.isLoadingTasks}
+              isPlanApproved={ctx.isPlanApproved}
+              canCompleteTask={ctx.canCompleteTask}
+              isCompletingTask={ctx.isCompletingTask}
+              taskEditing={ctx.taskEditing}
+              months={months}
+              expandedTaskIds={expandedTaskIds}
+              toggleTaskExpansion={toggleTaskExpansion}
+              setIsAddTasksDialogOpen={ctx.setIsAddTasksDialogOpen}
+              generatePlanForm={ctx.generatePlanForm}
+              setIsConfirmingCancel={ctx.setIsConfirmingCancel}
+              handleSaveAllChanges={ctx.handleSaveAllChanges}
+              handleMarkAsCompleted={ctx.handleMarkAsCompleted}
+            />
+          )}
         </div>
       </main>
 
-      {canManagePlans && !isRegionalLeader && (
+      {ctx.canManagePlans && !ctx.isRegionalLeader && (
         <Button
-          onClick={() => setIsAddPlanDialogOpen(true)}
+          onClick={() => ctx.setIsAddPlanDialogOpen(true)}
           className="fixed right-4 z-50 h-14 w-14 rounded-full shadow-xl transition-transform active:scale-95"
           style={fabStyle}
           aria-label="Tạo kế hoạch mới"
@@ -812,12 +271,7 @@ export function MobileMaintenanceLayout({
               <span>{totalCount} kế hoạch</span>
             </div>
             <div className="grid grid-cols-4 gap-2 pb-2">
-              <Button
-                variant="outline"
-                className="h-10 rounded-xl"
-                onClick={() => setCurrentPage(1)}
-                disabled={currentPage === 1}
-              >
+              <Button variant="outline" className="h-10 rounded-xl" onClick={() => setCurrentPage(1)} disabled={currentPage === 1}>
                 <ChevronsLeft className="h-4 w-4" />
               </Button>
               <Button
@@ -863,8 +317,8 @@ export function MobileMaintenanceLayout({
                 <h3 className="text-sm font-semibold">Cơ sở</h3>
                 {isLoadingFacilities ? (
                   <div className="space-y-2">
-                    {Array.from({ length: 4 }).map((_, idx) => (
-                      <Skeleton key={idx} className="h-11 w-full rounded-2xl" />
+                    {Array.from({ length: 4 }).map((_, index) => (
+                      <Skeleton key={index} className="h-11 w-full rounded-2xl" />
                     ))}
                   </div>
                 ) : (
@@ -872,7 +326,7 @@ export function MobileMaintenanceLayout({
                     <button
                       type="button"
                       onClick={() => handleFacilityOptionSelect(null)}
-                      className={`w-full rounded-2xl border px-4 py-3 text-left text-sm transition ${pendingFacilityFilter === null ? 'border-primary bg-primary/10 text-primary' : 'border-border/70 bg-background'}`}
+                      className={`w-full rounded-2xl border px-4 py-3 text-left text-sm transition ${pendingFacilityFilter === null ? "border-primary bg-primary/10 text-primary" : "border-border/70 bg-background"}`}
                     >
                       Tất cả cơ sở
                     </button>
@@ -881,7 +335,7 @@ export function MobileMaintenanceLayout({
                         key={facility.id}
                         type="button"
                         onClick={() => handleFacilityOptionSelect(facility.id)}
-                        className={`w-full rounded-2xl border px-4 py-3 text-left text-sm transition ${pendingFacilityFilter === facility.id ? 'border-primary bg-primary/10 text-primary' : 'border-border/70 bg-background'}`}
+                        className={`w-full rounded-2xl border px-4 py-3 text-left text-sm transition ${pendingFacilityFilter === facility.id ? "border-primary bg-primary/10 text-primary" : "border-border/70 bg-background"}`}
                       >
                         {facility.name}
                       </button>
@@ -896,10 +350,7 @@ export function MobileMaintenanceLayout({
             )}
           </div>
           <SheetFooter className="mt-4 grid grid-cols-2 gap-3 shrink-0">
-            <Button
-              variant="outline"
-              onClick={() => setIsMobileFilterSheetOpen(false)}
-            >
+            <Button variant="outline" onClick={() => setIsMobileFilterSheetOpen(false)}>
               Hủy
             </Button>
             <div className="grid grid-cols-2 gap-2">
@@ -912,9 +363,7 @@ export function MobileMaintenanceLayout({
                 Xóa
               </Button>
               <SheetClose asChild>
-                <Button onClick={handleMobileFilterApply}>
-                  Áp dụng
-                </Button>
+                <Button onClick={handleMobileFilterApply}>Áp dụng</Button>
               </SheetClose>
             </div>
           </SheetFooter>
