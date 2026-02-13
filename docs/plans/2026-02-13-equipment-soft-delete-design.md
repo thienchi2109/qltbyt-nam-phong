@@ -15,6 +15,10 @@
 
 ### Impact surface
 - Core equipment module: list/detail/search/filter/KPI endpoints.
+- Reports module inventory surfaces that read from equipment:
+  - `equipment_list_for_reports`
+  - `equipment_count_enhanced`
+  - `departments_list_for_facilities`
 - Cross-module selectors and operations that depend on active equipment records:
   - repair request creation
   - transfer request creation/update
@@ -39,16 +43,21 @@
 ## Recommended Design
 - Use Option A (`is_deleted boolean not null default false`).
 - Change `equipment_delete` to `UPDATE thiet_bi SET is_deleted = true`.
-- Add `equipment_restore` RPC (`is_deleted = false`).
+- Add `equipment_restore` RPC (`is_deleted = false`) with explicit grants:
+  - `REVOKE ALL ON FUNCTION public.equipment_restore(BIGINT) FROM PUBLIC`
+  - `GRANT EXECUTE ON FUNCTION public.equipment_restore(BIGINT) TO authenticated`
 - Keep `equipment_create`/`equipment_bulk_import` unchanged; explicit insert columns mean `is_deleted` is populated by default as `false`.
 - No manual backfill required for existing rows when migration adds `is_deleted` with `NOT NULL DEFAULT false`.
 - Keep `ma_thiet_bi` unique across all rows in phase 1 (no partial unique migration yet).
-- Exclude soft-deleted rows from all operational inventory reads and counts.
+- Exclude soft-deleted rows from all operational inventory reads and counts, including reports RPCs.
+- For overloaded report functions (notably `equipment_status_distribution`), patch every active overload or remove legacy overloads explicitly.
 - Keep historical transactional rows (`yeu_cau_*`, `nhat_ky_su_dung`, `lich_su_thiet_bi`) intact; only block new operations from targeting soft-deleted equipment.
+- Use immutable, sequential migrations (new file per phase) rather than repeatedly editing one migration version.
 
 ## Acceptance Criteria
 - Deleting equipment no longer removes the row physically.
 - Active inventory screens and selectors never show soft-deleted rows.
+- Reports inventory list/count/department summaries never include soft-deleted rows.
 - KPI/count functions return active-equipment counts.
 - New repair/transfer/usage-start operations reject soft-deleted equipment IDs.
-- Restore RPC makes equipment visible again without data loss.
+- Restore RPC makes equipment visible again without data loss and is executable by `authenticated` only (not `PUBLIC`).
