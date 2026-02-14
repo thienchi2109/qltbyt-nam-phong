@@ -101,3 +101,6 @@ tmpclaude-*-cwd
 # Presentation workspace
 /workspace/
 create-pptx.js
+
+# Local git worktrees
+.worktrees/
