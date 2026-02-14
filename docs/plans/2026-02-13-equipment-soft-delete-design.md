@@ -46,12 +46,28 @@
 - Add `equipment_restore` RPC (`is_deleted = false`) with explicit grants:
   - `REVOKE ALL ON FUNCTION public.equipment_restore(BIGINT) FROM PUBLIC`
   - `GRANT EXECUTE ON FUNCTION public.equipment_restore(BIGINT) TO authenticated`
+- Add audit logging for delete/restore RPCs via existing `public.audit_log(...)` helper:
+  - `equipment_delete` => action `equipment_delete`
+  - `equipment_restore` => action `equipment_restore`
+- Add `Xóa TB` action in Equipment row action menu (`equipment-actions-menu`) and wire it to `equipment_delete`.
+- Row action visibility follows soft-delete RBAC: show only for `global` and `to_qltb`; hide for `regional_leader`, `technician`, and `user`.
+- Require confirmation before executing row soft-delete.
 - Keep `equipment_create`/`equipment_bulk_import` unchanged; explicit insert columns mean `is_deleted` is populated by default as `false`.
 - No manual backfill required for existing rows when migration adds `is_deleted` with `NOT NULL DEFAULT false`.
-- Keep `ma_thiet_bi` unique across all rows in phase 1 (no partial unique migration yet).
+- Keep `ma_thiet_bi` unique across all rows in phase 1, but treat this as an explicit product constraint:
+  - a soft-deleted code still blocks new equipment with the same code
+  - document operator guidance (restore old row vs create with new code)
+  - keep partial unique index option as a tracked follow-up
 - Exclude soft-deleted rows from all operational inventory reads and counts, including reports RPCs.
 - For overloaded report functions (notably `equipment_status_distribution`), patch every active overload or remove legacy overloads explicitly.
 - Keep historical transactional rows (`yeu_cau_*`, `nhat_ky_su_dung`, `lich_su_thiet_bi`) intact; only block new operations from targeting soft-deleted equipment.
+- Define explicit read-policy matrix for non-inventory RPCs that join `thiet_bi`:
+  - active inventory/reporting RPCs: must filter `is_deleted = false`
+  - historical workflow RPCs (`equipment_history_list`, `repair_request_list`, `transfer_request_list`, `usage_log_list`): do not drop historical rows, but must remain stable when related equipment is soft-deleted
+- Add restore safety checks:
+  - restore enforces same RBAC/tenant boundary as delete
+  - restore fails if `thiet_bi.don_vi` no longer references an existing tenant row
+- Add performance gate: collect pre/post `EXPLAIN ANALYZE` for high-traffic inventory/report RPCs and reject regressions above agreed thresholds.
 - Use immutable, sequential migrations (new file per phase) rather than repeatedly editing one migration version.
 
 ## Acceptance Criteria
@@ -61,3 +77,9 @@
 - KPI/count functions return active-equipment counts.
 - New repair/transfer/usage-start operations reject soft-deleted equipment IDs.
 - Restore RPC makes equipment visible again without data loss and is executable by `authenticated` only (not `PUBLIC`).
+- Equipment data table row action menu contains `Xóa TB` for authorized roles and triggers soft-delete after confirmation.
+- Delete and restore actions create audit log entries with equipment entity context.
+- Historical workflow list RPCs continue returning historical records without failures after soft-delete.
+- Type generation is run after RPC signature changes (`npm run db:types`) and validated with `npm run typecheck`.
+- Performance gate is executed with `EXPLAIN ANALYZE` on key inventory/report RPCs before rollout.
+- Phase-1 code reuse constraint for `ma_thiet_bi` is explicitly documented for operators.

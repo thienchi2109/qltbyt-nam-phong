@@ -2,9 +2,9 @@
 
 > **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
 
-**Goal:** Replace hard-delete behavior for equipment with reversible soft-delete, while ensuring active equipment, dashboard, and reports surfaces exclude deleted records.
+**Goal:** Replace hard-delete behavior for equipment with reversible soft-delete, expose `Xóa TB` in row action menu for authorized roles, and ensure active equipment/dashboard/reports surfaces exclude deleted records.
 
-**Architecture:** Add `is_deleted boolean` to `public.thiet_bi` and convert delete to `UPDATE`-based soft-delete. Keep physical rows for referential/history integrity, then filter read RPCs and guard write workflows from targeting deleted equipment. Use sequential immutable migrations: one migration file per phase, never re-edit an already applied migration.
+**Architecture:** Add `is_deleted boolean` to `public.thiet_bi` and convert delete to `UPDATE`-based soft-delete. Keep physical rows for referential/history integrity, then filter read RPCs and guard write workflows from targeting deleted equipment. Add row-level UI delete action (`Xóa TB`) in equipment action menu with RBAC visibility + confirmation. Use sequential immutable migrations: one migration file per phase, never re-edit an already applied migration.
 
 **Tech Stack:** Supabase Postgres (PL/pgSQL RPCs, migrations), Next.js API RPC proxy, React Query hooks, Vitest.
 
@@ -17,6 +17,7 @@ Use new migration files for each task below:
 - `supabase/migrations/20260213094000_equipment_soft_delete_rpcs.sql`
 - `supabase/migrations/20260213095000_equipment_soft_delete_active_reads.sql`
 - `supabase/migrations/20260213100000_equipment_soft_delete_report_reads.sql`
+- `supabase/migrations/20260213100500_equipment_soft_delete_historical_read_policy.sql`
 - `supabase/migrations/20260213101000_equipment_soft_delete_workflow_guards.sql`
 
 Do not reopen and edit earlier migration versions after they are applied.
@@ -76,6 +77,16 @@ Expected:
 - `null_rows = 0`.
 - No manual backfill `UPDATE` needed.
 
+**Step 3.1: Lock phase-1 equipment code policy**
+
+Run SQL checks:
+- confirm global unique constraint still exists on `ma_thiet_bi`
+- confirm no partial unique index on active rows is introduced in this milestone
+
+Expected:
+- phase-1 behavior is explicit: deleted equipment code still blocks reuse
+- follow-up issue for partial unique index remains tracked for later policy change
+
 **Step 4: Add schema smoke script**
 
 `supabase/tests/equipment_soft_delete_schema_smoke.sql` should assert:
@@ -90,10 +101,11 @@ git add supabase/migrations/20260213093000_equipment_soft_delete_schema.sql supa
 git commit -m "feat(db): add equipment is_deleted schema and indexes"
 ```
 
-### Task 2: Convert Delete RPC and Add Restore RPC with Explicit Grants
+### Task 2: Convert Delete/Restore RPCs with Restore Safety, Audit Trail, and Explicit Grants
 
 **Files:**
 - Create: `supabase/migrations/20260213094000_equipment_soft_delete_rpcs.sql`
+- Create: `supabase/tests/equipment_soft_delete_delete_restore_audit_smoke.sql`
 - Modify: `src/app/api/rpc/[fn]/route.ts`
 - Modify: `src/app/(app)/equipment/__tests__/equipmentMutations.test.ts`
 
@@ -110,20 +122,25 @@ git commit -m "feat(db): add equipment is_deleted schema and indexes"
 
 Expected before implementation: FAIL (row is physically deleted and restore RPC missing).
 
-**Step 2: Replace hard delete with soft delete**
+**Step 2: Replace hard delete with soft delete + audit log**
 
 Implement `CREATE OR REPLACE FUNCTION public.equipment_delete(p_id bigint)`:
 - preserve current role/tenant permission checks
 - `UPDATE public.thiet_bi SET is_deleted = true WHERE id = p_id AND is_deleted = false`
 - raise `P0002` when not found/already deleted
+- write audit entry via `public.audit_log('equipment_delete', 'equipment', p_id, ..., details_jsonb)`
 - return payload `{ success, id, soft_deleted: true }`
 
-**Step 3: Add `equipment_restore` RPC**
+**Step 3: Add `equipment_restore` RPC with safety checks + audit log**
 
 Implement `CREATE OR REPLACE FUNCTION public.equipment_restore(p_id bigint)`:
 - same authorization boundary as delete (`global` or tenant-scoped manager roles)
+- lock/load target row first (`FOR UPDATE`) before restore
+- validate target row tenant still exists and is active (`public.don_vi.active = true`)
 - `UPDATE ... SET is_deleted = false WHERE id = p_id AND is_deleted = true`
 - raise `P0002` when row not found/not deleted
+- raise business error when tenant is inactive/missing
+- write audit entry via `public.audit_log('equipment_restore', 'equipment', p_id, ..., details_jsonb)`
 - return payload `{ success, id, restored: true }`
 
 **Step 4: Add explicit permission statements**
@@ -145,7 +162,15 @@ Extend `src/app/(app)/equipment/__tests__/equipmentMutations.test.ts`:
 - assert delete still calls `equipment_delete`
 - add restore test asserting `callRpc({ fn: 'equipment_restore', args: { p_id } })`
 
-**Step 7: Run targeted tests**
+**Step 7: Add SQL smoke checks for audit + restore safety**
+
+Create `supabase/tests/equipment_soft_delete_delete_restore_audit_smoke.sql` to validate:
+- delete marks `is_deleted = true`
+- restore marks `is_deleted = false`
+- delete/restore each insert one audit row in `public.audit_logs` with matching action type + entity
+- restore fails for inactive tenant rows (controlled test fixture)
+
+**Step 8: Run targeted tests**
 
 ```bash
 npm run test:run -- src/app/(app)/equipment/__tests__/equipmentMutations.test.ts
@@ -153,11 +178,11 @@ npm run test:run -- src/app/(app)/equipment/__tests__/equipmentMutations.test.ts
 
 Expected: PASS
 
-**Step 8: Commit**
+**Step 9: Commit**
 
 ```bash
-git add supabase/migrations/20260213094000_equipment_soft_delete_rpcs.sql src/app/api/rpc/[fn]/route.ts src/app/(app)/equipment/__tests__/equipmentMutations.test.ts
-git commit -m "feat(equipment): soft-delete rpc and restore rpc with explicit grants"
+git add supabase/migrations/20260213094000_equipment_soft_delete_rpcs.sql supabase/tests/equipment_soft_delete_delete_restore_audit_smoke.sql src/app/api/rpc/[fn]/route.ts src/app/(app)/equipment/__tests__/equipmentMutations.test.ts
+git commit -m "feat(equipment): soft-delete restore safety and audit logging"
 ```
 
 ### Task 3: Exclude Deleted Rows from Core Equipment and Dashboard Reads
@@ -265,7 +290,53 @@ git add supabase/migrations/20260213100000_equipment_soft_delete_report_reads.sq
 git commit -m "fix(reports): exclude soft-deleted equipment from report rpc outputs"
 ```
 
-### Task 5: Block New Workflow Writes on Soft-Deleted Equipment
+### Task 5: Classify and Stabilize Historical RPCs That Join `thiet_bi`
+
+**Files:**
+- Create: `supabase/migrations/20260213100500_equipment_soft_delete_historical_read_policy.sql`
+- Create: `supabase/tests/equipment_soft_delete_historical_reads_smoke.sql`
+
+**Step 1: Build policy matrix for join-based RPCs**
+
+Document in migration comments and test notes:
+- active-only surfaces: must filter `tb.is_deleted = false`
+- historical surfaces: keep rows, no hard filtering by `tb.is_deleted`
+
+Historical set in this milestone:
+- `equipment_history_list`
+- `repair_request_list`
+- `transfer_request_list`
+- `transfer_request_list_enhanced`
+- `usage_log_list` (all overloads)
+
+**Step 2: Patch historical RPCs for stability (not active-only filtering)**
+
+For the historical set:
+- ensure soft-deleted equipment does not break list responses
+- ensure joins do not accidentally drop historical rows required for workflow history
+- if needed, expose a derived flag (for example `equipment_is_deleted`) without removing rows
+
+**Step 3: Add historical read smoke script**
+
+Create `supabase/tests/equipment_soft_delete_historical_reads_smoke.sql`:
+- create equipment + dependent historical rows
+- soft-delete equipment
+- call each historical RPC
+- assert responses still return historical records and no errors
+
+**Step 4: Run SQL smoke script**
+
+Run via Supabase MCP SQL execution or SQL editor.  
+Expected: PASS
+
+**Step 5: Commit**
+
+```bash
+git add supabase/migrations/20260213100500_equipment_soft_delete_historical_read_policy.sql supabase/tests/equipment_soft_delete_historical_reads_smoke.sql
+git commit -m "fix(history): preserve historical rpc behavior after equipment soft-delete"
+```
+
+### Task 6: Block New Workflow Writes on Soft-Deleted Equipment
 
 **Files:**
 - Create: `supabase/migrations/20260213101000_equipment_soft_delete_workflow_guards.sql`
@@ -314,7 +385,56 @@ git add supabase/migrations/20260213101000_equipment_soft_delete_workflow_guards
 git commit -m "fix(workflows): reject soft-deleted equipment in repair transfer and usage start"
 ```
 
-### Task 6: Add Restore Client Hook and Audit Label
+### Task 7: Add `Xóa TB` in Equipment Row Action Menu
+
+**Files:**
+- Modify: `src/components/equipment/equipment-actions-menu.tsx`
+- Modify (if needed): `src/hooks/use-cached-equipment.ts`
+- Create: `src/app/(app)/equipment/__tests__/equipment-actions-menu.test.tsx`
+- Modify: `src/app/(app)/equipment/__tests__/equipmentMutations.test.ts`
+
+**Step 1: Add failing row-action tests**
+
+Create tests for `equipment-actions-menu`:
+- shows `Xóa TB` for `global`
+- shows `Xóa TB` for `to_qltb`
+- hides `Xóa TB` for `regional_leader`
+- hides `Xóa TB` for `user`
+- selecting `Xóa TB` and confirming calls delete mutation for the row ID
+- selecting `Xóa TB` and canceling confirmation does not call delete mutation
+
+**Step 2: Implement row delete action**
+
+In `equipment-actions-menu.tsx`:
+- import and use delete mutation hook
+- add role allowlist check (`global` and `to_qltb`)
+- add row menu item label: `Xóa TB`
+- on select:
+  - ask for confirmation
+  - call soft-delete mutation (`equipment_delete`) for current row
+- disable the action while delete mutation is pending
+
+**Step 3: Keep non-authorized experience safe**
+
+For non-authorized roles (`regional_leader`, `technician`, `user`):
+- do not render `Xóa TB` action in row menu
+
+**Step 4: Run targeted tests**
+
+```bash
+npm run test:run -- src/app/(app)/equipment/__tests__/equipment-actions-menu.test.tsx src/app/(app)/equipment/__tests__/equipmentMutations.test.ts
+```
+
+Expected: PASS
+
+**Step 5: Commit**
+
+```bash
+git add src/components/equipment/equipment-actions-menu.tsx src/hooks/use-cached-equipment.ts src/app/(app)/equipment/__tests__/equipment-actions-menu.test.tsx src/app/(app)/equipment/__tests__/equipmentMutations.test.ts
+git commit -m "feat(equipment-ui): add row action soft-delete for authorized roles"
+```
+
+### Task 8: Add Restore Client Hook and Audit Label
 
 **Files:**
 - Modify: `src/hooks/use-cached-equipment.ts`
@@ -357,42 +477,80 @@ git add src/hooks/use-cached-equipment.ts src/hooks/use-audit-logs.ts src/app/(a
 git commit -m "feat(equipment): add restore mutation hook and audit label"
 ```
 
-### Task 7: Full Regression and Type Safety
+### Task 9: Full Regression and Type Safety
 
 **Files:**
 - Modify (if needed): `src/types/database.ts`
+- Test: `src/app/(app)/equipment/__tests__/useEquipmentData.test.ts`
+- Test: `src/app/(app)/equipment/__tests__/equipmentMutations.test.ts`
+- Test: `src/app/(app)/equipment/__tests__/equipment-actions-menu.test.tsx`
+- Test: `src/app/api/rpc/__tests__/equipment-get-by-code-security.test.ts`
+- Test: `src/app/(app)/__tests__/tenant-selection.integration.test.tsx`
+- Test: `supabase/tests/equipment_soft_delete_schema_smoke.sql`
+- Test: `supabase/tests/equipment_soft_delete_delete_restore_audit_smoke.sql`
+- Test: `supabase/tests/equipment_soft_delete_reports_smoke.sql`
+- Test: `supabase/tests/equipment_soft_delete_historical_reads_smoke.sql`
+- Test: `supabase/tests/equipment_soft_delete_workflow_guards_smoke.sql`
+- Create/Modify: `supabase/tests/equipment_soft_delete_performance.sql`
 
-**Step 1: Run typecheck**
-
-Run: `npm run typecheck`  
-Expected: PASS
-
-**Step 2: Run high-impact frontend tests**
+**Step 1: Run high-impact frontend tests**
 
 ```bash
-npm run test:run -- src/app/(app)/equipment/__tests__/useEquipmentData.test.ts src/app/(app)/equipment/__tests__/equipmentMutations.test.ts src/app/api/rpc/__tests__/equipment-get-by-code-security.test.ts src/app/(app)/__tests__/tenant-selection.integration.test.tsx
+npm run test:run -- src/app/(app)/equipment/__tests__/useEquipmentData.test.ts src/app/(app)/equipment/__tests__/equipmentMutations.test.ts src/app/(app)/equipment/__tests__/equipment-actions-menu.test.tsx src/app/api/rpc/__tests__/equipment-get-by-code-security.test.ts src/app/(app)/__tests__/tenant-selection.integration.test.tsx
 ```
 
-Expected: PASS
+Expected: PASS for all 5 suites (active-list filtering, row delete action visibility + invocation, delete/restore mutation contract, get-by-code deleted-row behavior, tenant equipment counts).
 
-**Step 3: Run lint**
+**Step 2: Run lint**
 
 Run: `npm run lint`  
 Expected: PASS
 
-**Step 4: Run SQL smoke suite**
+**Step 3: Run SQL smoke suite**
 
-Run and capture results for:
-- `supabase/tests/equipment_soft_delete_schema_smoke.sql`
-- `supabase/tests/equipment_soft_delete_reports_smoke.sql`
-- `supabase/tests/equipment_soft_delete_workflow_guards_smoke.sql`
+Run:
+```bash
+psql "$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 -f supabase/tests/equipment_soft_delete_schema_smoke.sql
+psql "$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 -f supabase/tests/equipment_soft_delete_delete_restore_audit_smoke.sql
+psql "$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 -f supabase/tests/equipment_soft_delete_reports_smoke.sql
+psql "$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 -f supabase/tests/equipment_soft_delete_historical_reads_smoke.sql
+psql "$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 -f supabase/tests/equipment_soft_delete_workflow_guards_smoke.sql
+```
 
-Expected: PASS
+Expected: PASS (no `ERROR:` output; each script assertions succeed).
 
-**Step 5: Regenerate database types if required**
+**Step 4: Run performance gate (EXPLAIN ANALYZE)**
 
-If RPC signatures changed in generated types:
-- regenerate and update `src/types/database.ts`
+Prepare `supabase/tests/equipment_soft_delete_performance.sql` to:
+- run representative `EXPLAIN (ANALYZE, BUFFERS, FORMAT TEXT)` probes
+- capture baseline section and post-change section for comparison
+
+Run:
+```bash
+psql "$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 -f supabase/tests/equipment_soft_delete_performance.sql
+```
+
+Include at minimum:
+- `equipment_list_enhanced`
+- `equipment_count_enhanced`
+- `get_facilities_with_equipment_count`
+- `equipment_list_for_reports`
+
+Expected:
+- no material regression vs baseline snapshot (target <= 25% slower on representative fixture data)
+- no unexpected full-table scan on `thiet_bi` for tenant-filtered queries
+
+**Step 5: Regenerate DB types and verify**
+
+Run:
+```bash
+npm run db:types
+npm run typecheck
+```
+
+Expected:
+- `src/types/database.ts` updated (if RPC signatures changed)
+- typecheck remains PASS after regeneration
 
 **Step 6: Commit final verification changes**
 
@@ -401,7 +559,7 @@ git add -A
 git commit -m "test: verify equipment soft-delete behavior across equipment reports and workflow guards"
 ```
 
-### Task 8: Rollout and Safe Closeout
+### Task 10: Rollout and Safe Closeout
 
 **Files:**
 - Modify: `docs/plans/2026-02-13-equipment-soft-delete-design.md` (if assumptions changed during implementation)
@@ -412,6 +570,7 @@ Document:
 - no physical purge in this milestone
 - global `ma_thiet_bi` uniqueness remains unchanged
 - historical rows are preserved
+- code reuse policy in phase 1: deleted code is not reusable until partial-unique follow-up is delivered
 
 **Step 2: Deploy workflow**
 
@@ -429,8 +588,11 @@ Expected: clean and up to date with `origin`.
 Validate by tenant:
 - active vs deleted counts
 - equipment page list/search excludes deleted rows
+- equipment row action menu shows `Xóa TB` for `global`/`to_qltb` and hides it for `regional_leader`/`user`
 - reports counts exclude deleted rows
 - restore returns row to active surfaces
+- delete/restore actions are visible in `audit_logs` with expected action types
+- historical list RPCs (`repair_request_list`, `transfer_request_list`, `usage_log_list`, `equipment_history_list`) still return data without regression
 
 **Step 4: File follow-up issues**
 
