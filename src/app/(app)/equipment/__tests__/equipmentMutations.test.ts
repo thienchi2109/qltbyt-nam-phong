@@ -444,6 +444,36 @@ describe('Equipment CRUD Mutations', () => {
     })
   })
 
+  describe('Restore Equipment (equipment_restore)', () => {
+    it('should restore equipment successfully', async () => {
+      mockCallRpc.mockResolvedValue({ success: true, id: 1, restored: true })
+
+      const { result } = renderHook(
+        () =>
+          useMutation({
+            mutationFn: async (id: number) => {
+              return await mockCallRpc({ fn: 'equipment_restore', args: { p_id: id } })
+            },
+          }),
+        { wrapper: createWrapper(queryClient) }
+      )
+
+      act(() => {
+        result.current.mutate(1)
+      })
+
+      await waitFor(() => {
+        expect(result.current.isSuccess).toBe(true)
+      })
+
+      expect(mockCallRpc).toHaveBeenCalledWith({
+        fn: 'equipment_restore',
+        args: { p_id: 1 },
+      })
+      expect(result.current.data).toEqual({ success: true, id: 1, restored: true })
+    })
+  })
+
   describe('Get Single Equipment (equipment_get)', () => {
     it('should fetch single equipment by ID', async () => {
       mockCallRpc.mockResolvedValue(mockEquipment)
