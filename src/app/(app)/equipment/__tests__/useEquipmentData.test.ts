@@ -121,6 +121,38 @@ describe('useEquipmentData', () => {
       expect(result.current.total).toBe(2)
     })
 
+    it('should reflect active-only server contract (deleted fixtures excluded upstream)', async () => {
+      const activeEquipment = { id: 1, ma_thiet_bi: 'EQ-001', ten_thiet_bi: 'Active Equipment' }
+      const deletedFixture = {
+        id: 2,
+        ma_thiet_bi: 'EQ-DEL-001',
+        ten_thiet_bi: 'Deleted Equipment',
+        is_deleted: true,
+      }
+
+      mockCallRpc.mockImplementation(({ fn }: { fn: string }) => {
+        if (fn === 'equipment_list_enhanced') {
+          // Server contract after soft-delete Task 3: deleted rows are excluded.
+          return Promise.resolve({ data: [activeEquipment], total: 1 })
+        }
+        return Promise.resolve([])
+      })
+
+      const { result } = renderHook(() => useEquipmentData(createDefaultParams()), {
+        wrapper: createWrapper(),
+      })
+
+      await waitFor(() => {
+        expect(result.current.isLoading).toBe(false)
+      })
+
+      expect(result.current.data).toEqual([activeEquipment])
+      expect(result.current.data).not.toContainEqual(
+        expect.objectContaining({ id: deletedFixture.id, is_deleted: true })
+      )
+      expect(result.current.total).toBe(1)
+    })
+
     it('should not fetch equipment when shouldFetchEquipment is false', async () => {
       const { result } = renderHook(
         () => useEquipmentData(createDefaultParams({ shouldFetchEquipment: false })),
