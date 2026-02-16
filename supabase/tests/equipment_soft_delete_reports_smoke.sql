@@ -178,11 +178,11 @@ BEGIN
 
   SELECT COALESCE(SUM(so_luong), 0)
   INTO v_legacy_total
-  FROM public.equipment_status_distribution(v_tenant_main, NULL, NULL);
+  FROM public.equipment_status_distribution(v_tenant_main, v_dept, v_loc);
 
   IF v_legacy_total <> 1 THEN
     RAISE EXCEPTION
-      'equipment_status_distribution(BIGINT,...) expected total 1, got %',
+      'equipment_status_distribution(BIGINT,TEXT,TEXT) expected total 1, got %',
       v_legacy_total;
   END IF;
 

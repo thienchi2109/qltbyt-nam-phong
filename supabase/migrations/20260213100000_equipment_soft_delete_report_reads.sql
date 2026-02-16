@@ -579,8 +579,8 @@ $function$;
 
 CREATE OR REPLACE FUNCTION public.equipment_status_distribution(
   p_don_vi bigint DEFAULT NULL::bigint,
-  p_khoa_phong bigint DEFAULT NULL::bigint,
-  p_vi_tri bigint DEFAULT NULL::bigint
+  p_khoa_phong text DEFAULT NULL::text,
+  p_vi_tri text DEFAULT NULL::text
 )
 RETURNS TABLE(tinh_trang text, so_luong bigint)
 LANGUAGE plpgsql
@@ -629,8 +629,8 @@ BEGIN
   FROM public.thiet_bi tb
   WHERE tb.is_deleted = false
     AND (v_effective_donvi IS NULL OR tb.don_vi = v_effective_donvi)
-    AND (p_khoa_phong IS NULL OR tb.khoa_phong_quan_ly = p_khoa_phong::text)
-    AND (p_vi_tri IS NULL OR tb.vi_tri_lap_dat = p_vi_tri::text)
+    AND (p_khoa_phong IS NULL OR tb.khoa_phong_quan_ly = p_khoa_phong)
+    AND (p_vi_tri IS NULL OR tb.vi_tri_lap_dat = p_vi_tri)
   GROUP BY COALESCE(NULLIF(TRIM(tb.tinh_trang_hien_tai), ''), U&'Kh\00F4ng x\00E1c \0111\1ECBnh')
   ORDER BY so_luong DESC;
 END;
@@ -641,6 +641,6 @@ GRANT EXECUTE ON FUNCTION public.equipment_count_enhanced(TEXT[], TEXT, BIGINT, 
 GRANT EXECUTE ON FUNCTION public.departments_list_for_facilities(BIGINT[]) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.equipment_aggregates_for_reports(BIGINT[], TEXT, DATE, DATE) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.equipment_status_distribution(TEXT, BIGINT, TEXT, TEXT) TO authenticated;
-GRANT EXECUTE ON FUNCTION public.equipment_status_distribution(BIGINT, BIGINT, BIGINT) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.equipment_status_distribution(BIGINT, TEXT, TEXT) TO authenticated;
 
 COMMIT;

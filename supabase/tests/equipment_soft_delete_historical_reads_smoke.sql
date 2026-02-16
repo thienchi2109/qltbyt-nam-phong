@@ -15,8 +15,11 @@ DECLARE
   v_repair_payload jsonb;
   v_transfer_payload jsonb;
   v_transfer_enhanced jsonb;
+  v_transfer_enhanced_wildcard jsonb;
   v_usage_new jsonb;
   v_usage_legacy jsonb;
+  v_repair_wildcard jsonb;
+  v_usage_has_search_path boolean := false;
   v_history_count integer;
 BEGIN
   INSERT INTO public.don_vi(name, active)
@@ -150,6 +153,18 @@ BEGIN
     RAISE EXCEPTION 'repair_request_list must expose equipment_is_deleted=true';
   END IF;
 
+  SELECT public.repair_request_list(
+    p_q => '%',
+    p_page => 1,
+    p_page_size => 20,
+    p_don_vi => v_tenant
+  )
+  INTO v_repair_wildcard;
+
+  IF COALESCE((v_repair_wildcard->>'total')::integer, 0) <> 0 THEN
+    RAISE EXCEPTION 'repair_request_list wildcard query should be escaped and return 0 rows';
+  END IF;
+
   SELECT public.transfer_request_list(
     p_q => v_suffix,
     p_page => 1,
@@ -186,6 +201,20 @@ BEGIN
   END IF;
 
   SELECT t
+  INTO v_transfer_enhanced_wildcard
+  FROM public.transfer_request_list_enhanced(
+    p_q => '%',
+    p_page => 1,
+    p_page_size => 20,
+    p_don_vi => v_tenant
+  ) AS t
+  LIMIT 1;
+
+  IF v_transfer_enhanced_wildcard IS NOT NULL THEN
+    RAISE EXCEPTION 'transfer_request_list_enhanced wildcard query should be escaped and return 0 rows';
+  END IF;
+
+  SELECT t
   INTO v_usage_new
   FROM public.usage_log_list(
     p_thiet_bi_id => v_equipment_id,
@@ -219,6 +248,24 @@ BEGIN
 
   IF (v_usage_legacy->>'equipment_is_deleted')::boolean IS DISTINCT FROM true THEN
     RAISE EXCEPTION 'usage_log_list(legacy signature) must expose equipment_is_deleted=true';
+  END IF;
+
+  SELECT EXISTS (
+    SELECT 1
+    FROM pg_proc p
+    JOIN pg_namespace n ON n.oid = p.pronamespace
+    WHERE n.nspname = 'public'
+      AND p.proname = 'usage_log_list'
+      AND pg_get_function_identity_arguments(p.oid) = 'p_thiet_bi_id bigint, p_trang_thai text, p_active_only boolean, p_started_from timestamp with time zone, p_started_to timestamp with time zone, p_limit integer, p_offset integer, p_don_vi bigint'
+      AND EXISTS (
+        SELECT 1
+        FROM unnest(COALESCE(p.proconfig, ARRAY[]::text[])) AS cfg
+        WHERE cfg = 'search_path=public, pg_temp'
+      )
+  ) INTO v_usage_has_search_path;
+
+  IF v_usage_has_search_path IS DISTINCT FROM true THEN
+    RAISE EXCEPTION 'usage_log_list(new signature) must set function-level search_path to public, pg_temp';
   END IF;
 
   RAISE NOTICE 'OK: historical read smoke checks passed';

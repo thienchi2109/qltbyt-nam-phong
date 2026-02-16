@@ -45,8 +45,10 @@ DECLARE
   v_total BIGINT := 0;
   v_data JSONB := '[]'::jsonb;
   v_statuses TEXT[] := NULL;
+  v_sanitized_q TEXT := NULL;
 BEGIN
   v_is_global := v_role IN ('global', 'admin');
+  v_sanitized_q := public._sanitize_ilike_pattern(p_q);
 
   IF p_statuses IS NOT NULL AND array_length(p_statuses, 1) IS NOT NULL THEN
     v_statuses := p_statuses;
@@ -80,11 +82,11 @@ BEGIN
   )
   AND (v_statuses IS NULL OR r.trang_thai = ANY(v_statuses))
   AND (
-    p_q IS NULL OR p_q = '' OR
-    r.mo_ta_su_co ILIKE '%' || p_q || '%' OR
-    r.hang_muc_sua_chua ILIKE '%' || p_q || '%' OR
-    tb.ten_thiet_bi ILIKE '%' || p_q || '%' OR
-    tb.ma_thiet_bi ILIKE '%' || p_q || '%'
+    v_sanitized_q IS NULL OR
+    r.mo_ta_su_co ILIKE '%' || v_sanitized_q || '%' OR
+    r.hang_muc_sua_chua ILIKE '%' || v_sanitized_q || '%' OR
+    tb.ten_thiet_bi ILIKE '%' || v_sanitized_q || '%' OR
+    tb.ma_thiet_bi ILIKE '%' || v_sanitized_q || '%'
   )
   AND (p_date_from IS NULL OR r.ngay_yeu_cau >= (p_date_from::timestamp AT TIME ZONE 'Asia/Ho_Chi_Minh'))
   AND (p_date_to IS NULL OR r.ngay_yeu_cau < ((p_date_to + interval '1 day')::timestamp AT TIME ZONE 'Asia/Ho_Chi_Minh'));
@@ -131,11 +133,11 @@ BEGIN
     )
     AND (v_statuses IS NULL OR r.trang_thai = ANY(v_statuses))
     AND (
-      p_q IS NULL OR p_q = '' OR
-      r.mo_ta_su_co ILIKE '%' || p_q || '%' OR
-      r.hang_muc_sua_chua ILIKE '%' || p_q || '%' OR
-      tb.ten_thiet_bi ILIKE '%' || p_q || '%' OR
-      tb.ma_thiet_bi ILIKE '%' || p_q || '%'
+      v_sanitized_q IS NULL OR
+      r.mo_ta_su_co ILIKE '%' || v_sanitized_q || '%' OR
+      r.hang_muc_sua_chua ILIKE '%' || v_sanitized_q || '%' OR
+      tb.ten_thiet_bi ILIKE '%' || v_sanitized_q || '%' OR
+      tb.ma_thiet_bi ILIKE '%' || v_sanitized_q || '%'
     )
     AND (p_date_from IS NULL OR r.ngay_yeu_cau >= (p_date_from::timestamp AT TIME ZONE 'Asia/Ho_Chi_Minh'))
     AND (p_date_to IS NULL OR r.ngay_yeu_cau < ((p_date_to + interval '1 day')::timestamp AT TIME ZONE 'Asia/Ho_Chi_Minh'))
@@ -464,10 +466,12 @@ DECLARE
   v_allowed BIGINT[];
   v_effective_donvi BIGINT;
   v_offset INT;
+  v_sanitized_q TEXT := NULL;
 BEGIN
   v_role := lower(COALESCE(public._get_jwt_claim('app_role'), public._get_jwt_claim('role'), ''));
   v_is_global := v_role IN ('global', 'admin');
   v_allowed := public.allowed_don_vi_for_session_safe();
+  v_sanitized_q := public._sanitize_ilike_pattern(p_q);
 
   IF v_is_global THEN
     v_effective_donvi := p_don_vi;
@@ -517,11 +521,11 @@ BEGIN
       AND (p_date_from IS NULL OR yc.created_at::date >= p_date_from)
       AND (p_date_to IS NULL OR yc.created_at::date <= p_date_to)
       AND (
-        p_q IS NULL OR (
-          yc.ma_yeu_cau ILIKE '%' || p_q || '%' OR
-          yc.ly_do_luan_chuyen ILIKE '%' || p_q || '%' OR
-          tb.ten_thiet_bi ILIKE '%' || p_q || '%' OR
-          tb.ma_thiet_bi ILIKE '%' || p_q || '%'
+        v_sanitized_q IS NULL OR (
+          yc.ma_yeu_cau ILIKE '%' || v_sanitized_q || '%' OR
+          yc.ly_do_luan_chuyen ILIKE '%' || v_sanitized_q || '%' OR
+          tb.ten_thiet_bi ILIKE '%' || v_sanitized_q || '%' OR
+          tb.ma_thiet_bi ILIKE '%' || v_sanitized_q || '%'
         )
       )
     ORDER BY yc.created_at DESC
@@ -543,6 +547,7 @@ CREATE OR REPLACE FUNCTION public.usage_log_list(
 RETURNS SETOF jsonb
 LANGUAGE plpgsql
 SECURITY DEFINER
+SET search_path TO 'public', 'pg_temp'
 AS $function$
 DECLARE
   v_role TEXT := lower(COALESCE(public._get_jwt_claim('app_role'), public._get_jwt_claim('role'), ''));
@@ -553,8 +558,6 @@ DECLARE
   v_offset INT := GREATEST(p_offset, 0);
 BEGIN
   v_is_global := v_role IN ('global', 'admin');
-
-  PERFORM set_config('search_path', 'public', true);
 
   IF p_trang_thai IS NOT NULL AND p_trang_thai NOT IN ('dang_su_dung', 'hoan_thanh') THEN
     RAISE EXCEPTION 'Invalid status filter' USING ERRCODE = '22023';
