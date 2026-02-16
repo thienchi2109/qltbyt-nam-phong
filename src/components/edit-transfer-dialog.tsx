@@ -211,7 +211,6 @@ export function EditTransferDialog({ open, onOpenChange, onSuccess, transfer }: 
             p_sort: 'ten_thiet_bi.asc',
             p_page: 1,
             p_page_size: 20,
-            p_fields: 'id,ma_thiet_bi,ten_thiet_bi,model,serial,khoa_phong_quan_ly',
           },
           signal: controller.signal,
         })

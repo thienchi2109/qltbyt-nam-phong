@@ -201,9 +201,13 @@ BEGIN
 END;
 $function$;
 
-GRANT EXECUTE ON FUNCTION public.equipment_list_enhanced TO authenticated;
+GRANT EXECUTE ON FUNCTION public.equipment_list_enhanced(
+  TEXT, TEXT, INT, INT, BIGINT, TEXT, TEXT[], TEXT, TEXT[], TEXT, TEXT[], TEXT, TEXT[], TEXT, TEXT[], TEXT, TEXT[]
+) TO authenticated;
 
-COMMENT ON FUNCTION public.equipment_list_enhanced IS 
+COMMENT ON FUNCTION public.equipment_list_enhanced(
+  TEXT, TEXT, INT, INT, BIGINT, TEXT, TEXT[], TEXT, TEXT[], TEXT, TEXT[], TEXT, TEXT[], TEXT, TEXT[], TEXT, TEXT[]
+) IS 
 'Returns paginated equipment list with filters. Always returns all columns via to_jsonb(tb.*). 
 Search includes: ten_thiet_bi, ma_thiet_bi, serial, so_luu_hanh. 
 Filters: departments, users, locations, status, classification, funding source (single or array).';
