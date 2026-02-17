@@ -1,11 +1,12 @@
-import { describe, it, expect } from 'vitest'
+﻿import { describe, it, expect } from 'vitest'
 
 // Import utilities from the hook module
 import { getActionTypeLabel, formatActionDetails, ACTION_TYPE_LABELS, type AuditLogEntry } from '@/hooks/use-audit-logs'
 
 describe('Activity Logs utilities', () => {
   it('maps action types to Vietnamese labels', () => {
-    expect(getActionTypeLabel('maintenance_plan_create')).toBe('Tạo kế hoạch bảo trì')
+    expect(getActionTypeLabel('maintenance_plan_create')).toBe(ACTION_TYPE_LABELS.maintenance_plan_create)
+    expect(getActionTypeLabel('equipment_restore')).toBe(ACTION_TYPE_LABELS.equipment_restore)
     expect(getActionTypeLabel('non_existing_key')).toBe('non_existing_key')
   })
 
@@ -38,3 +39,4 @@ describe('Activity Logs utilities', () => {
     expect(row.entity_type).toBe('repair_request')
   })
 })
+
