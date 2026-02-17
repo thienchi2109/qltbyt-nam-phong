@@ -18,10 +18,22 @@ DECLARE
   v_transfer_enhanced_wildcard jsonb;
   v_usage_new jsonb;
   v_usage_legacy jsonb;
+  v_usage_legacy_wildcard jsonb;
   v_repair_wildcard jsonb;
   v_usage_has_search_path boolean := false;
+  v_region_allowed bigint;
+  v_region_other bigint;
+  v_tenant_allowed bigint;
+  v_tenant_blocked bigint;
+  v_eq_allowed bigint;
+  v_eq_blocked bigint;
+  v_rl_prefix text;
+  v_rl_count integer;
+  v_rl_blocked_count integer;
   v_history_count integer;
 BEGIN
+  v_rl_prefix := 'RL-SMK-' || v_suffix;
+
   INSERT INTO public.don_vi(name, active)
   VALUES ('Smoke Historical Tenant ' || v_suffix, true)
   RETURNING id INTO v_tenant;
@@ -214,6 +226,144 @@ BEGIN
     RAISE EXCEPTION 'transfer_request_list_enhanced wildcard query should be escaped and return 0 rows';
   END IF;
 
+  INSERT INTO public.dia_ban(ma_dia_ban, ten_dia_ban, active)
+  VALUES ('DBA-' || v_suffix, 'Smoke Region Allowed ' || v_suffix, true)
+  RETURNING id INTO v_region_allowed;
+
+  INSERT INTO public.dia_ban(ma_dia_ban, ten_dia_ban, active)
+  VALUES ('DBB-' || v_suffix, 'Smoke Region Blocked ' || v_suffix, true)
+  RETURNING id INTO v_region_other;
+
+  INSERT INTO public.don_vi(name, active, dia_ban_id)
+  VALUES ('Smoke RL Allowed Tenant ' || v_suffix, true, v_region_allowed)
+  RETURNING id INTO v_tenant_allowed;
+
+  INSERT INTO public.don_vi(name, active, dia_ban_id)
+  VALUES ('Smoke RL Blocked Tenant ' || v_suffix, true, v_region_other)
+  RETURNING id INTO v_tenant_blocked;
+
+  INSERT INTO public.thiet_bi(
+    ma_thiet_bi,
+    ten_thiet_bi,
+    don_vi,
+    khoa_phong_quan_ly,
+    tinh_trang_hien_tai,
+    is_deleted
+  )
+  VALUES (
+    'SMK-RL-A-' || v_suffix,
+    'Smoke RL Allowed Equipment ' || v_suffix,
+    v_tenant_allowed,
+    'Khoa RL',
+    'Hoat dong',
+    false
+  )
+  RETURNING id INTO v_eq_allowed;
+
+  INSERT INTO public.thiet_bi(
+    ma_thiet_bi,
+    ten_thiet_bi,
+    don_vi,
+    khoa_phong_quan_ly,
+    tinh_trang_hien_tai,
+    is_deleted
+  )
+  VALUES (
+    'SMK-RL-B-' || v_suffix,
+    'Smoke RL Blocked Equipment ' || v_suffix,
+    v_tenant_blocked,
+    'Khoa RL',
+    'Hoat dong',
+    false
+  )
+  RETURNING id INTO v_eq_blocked;
+
+  INSERT INTO public.yeu_cau_luan_chuyen(
+    ma_yeu_cau,
+    thiet_bi_id,
+    loai_hinh,
+    trang_thai,
+    ly_do_luan_chuyen,
+    created_at
+  )
+  VALUES (
+    'YCLC-RL-A-' || v_suffix,
+    v_eq_allowed,
+    'noi_bo',
+    'cho_duyet',
+    v_rl_prefix || '-allowed',
+    now()
+  );
+
+  INSERT INTO public.yeu_cau_luan_chuyen(
+    ma_yeu_cau,
+    thiet_bi_id,
+    loai_hinh,
+    trang_thai,
+    ly_do_luan_chuyen,
+    created_at
+  )
+  VALUES (
+    'YCLC-RL-B-' || v_suffix,
+    v_eq_blocked,
+    'noi_bo',
+    'cho_duyet',
+    v_rl_prefix || '-blocked',
+    now()
+  );
+
+  PERFORM set_config(
+    'request.jwt.claims',
+    json_build_object(
+      'app_role', 'regional_leader',
+      'role', 'authenticated',
+      'user_id', '1',
+      'sub', '1',
+      'don_vi', null,
+      'dia_ban', v_region_allowed
+    )::text,
+    true
+  );
+
+  SELECT COUNT(*)
+  INTO v_rl_count
+  FROM public.transfer_request_list_enhanced(
+    p_q => v_rl_prefix,
+    p_page => 1,
+    p_page_size => 50,
+    p_don_vi => NULL
+  ) AS t;
+
+  IF v_rl_count <> 1 THEN
+    RAISE EXCEPTION 'regional_leader scope expected 1 transfer row, got %', v_rl_count;
+  END IF;
+
+  SELECT COUNT(*)
+  INTO v_rl_blocked_count
+  FROM public.transfer_request_list_enhanced(
+    p_q => v_rl_prefix,
+    p_page => 1,
+    p_page_size => 50,
+    p_don_vi => NULL
+  ) AS t
+  WHERE COALESCE((t->'thiet_bi'->>'don_vi')::bigint, -1) = v_tenant_blocked;
+
+  IF v_rl_blocked_count <> 0 THEN
+    RAISE EXCEPTION 'regional_leader scope leaked blocked-tenant transfer rows';
+  END IF;
+
+  PERFORM set_config(
+    'request.jwt.claims',
+    json_build_object(
+      'app_role', 'global',
+      'role', 'authenticated',
+      'user_id', '1',
+      'sub', '1',
+      'don_vi', null
+    )::text,
+    true
+  );
+
   SELECT t
   INTO v_usage_new
   FROM public.usage_log_list(
@@ -248,6 +398,20 @@ BEGIN
 
   IF (v_usage_legacy->>'equipment_is_deleted')::boolean IS DISTINCT FROM true THEN
     RAISE EXCEPTION 'usage_log_list(legacy signature) must expose equipment_is_deleted=true';
+  END IF;
+
+  SELECT t
+  INTO v_usage_legacy_wildcard
+  FROM public.usage_log_list(
+    p_q => '%',
+    p_page => 1,
+    p_page_size => 20,
+    p_don_vi => v_tenant
+  ) AS t
+  LIMIT 1;
+
+  IF v_usage_legacy_wildcard IS NOT NULL THEN
+    RAISE EXCEPTION 'usage_log_list(legacy signature) wildcard query should be escaped and return 0 rows';
   END IF;
 
   SELECT EXISTS (

@@ -226,6 +226,7 @@ DECLARE
   v_is_global BOOLEAN := false;
   v_allowed BIGINT[];
   v_effective_donvi BIGINT;
+  v_effective BIGINT[] := NULL;
   v_offset INT;
   v_sanitized_q TEXT := NULL;
 BEGIN
@@ -235,7 +236,9 @@ BEGIN
   v_sanitized_q := public._sanitize_ilike_pattern(p_q);
 
   IF v_is_global THEN
-    v_effective_donvi := p_don_vi;
+    IF p_don_vi IS NOT NULL THEN
+      v_effective := ARRAY[p_don_vi];
+    END IF;
   ELSIF v_role = 'regional_leader' THEN
     IF v_allowed IS NULL OR array_length(v_allowed, 1) IS NULL THEN
       RETURN;
@@ -243,18 +246,22 @@ BEGIN
 
     IF p_don_vi IS NOT NULL THEN
       IF p_don_vi = ANY(v_allowed) THEN
-        v_effective_donvi := p_don_vi;
+        v_effective := ARRAY[p_don_vi];
       ELSE
         RAISE EXCEPTION 'Access denied for facility %', p_don_vi USING ERRCODE = '42501';
       END IF;
     ELSE
-      v_effective_donvi := NULLIF(public._get_jwt_claim('don_vi'), '')::BIGINT;
+      v_effective := v_allowed;
     END IF;
   ELSE
     v_effective_donvi := NULLIF(public._get_jwt_claim('don_vi'), '')::BIGINT;
+    IF v_effective_donvi IS NULL THEN
+      RAISE EXCEPTION 'Missing don_vi claim for role %', v_role USING ERRCODE = '42501';
+    END IF;
     IF p_don_vi IS NOT NULL AND p_don_vi != v_effective_donvi THEN
       RAISE EXCEPTION 'Access denied for facility %', p_don_vi USING ERRCODE = '42501';
     END IF;
+    v_effective := ARRAY[v_effective_donvi];
   END IF;
 
   v_offset := GREATEST((p_page - 1), 0) * GREATEST(p_page_size, 1);
@@ -276,7 +283,7 @@ BEGIN
       ) AS thiet_bi
     FROM public.yeu_cau_luan_chuyen yc
     LEFT JOIN public.thiet_bi tb ON yc.thiet_bi_id = tb.id
-    WHERE (v_effective_donvi IS NULL OR tb.don_vi = v_effective_donvi)
+    WHERE (v_effective IS NULL OR tb.don_vi = ANY(v_effective))
       AND (p_khoa_phong IS NULL OR tb.khoa_phong_quan_ly = p_khoa_phong)
       AND (p_status IS NULL OR yc.trang_thai = p_status)
       AND (p_date_from IS NULL OR yc.created_at::date >= p_date_from)

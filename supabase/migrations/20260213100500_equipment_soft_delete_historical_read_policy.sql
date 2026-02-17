@@ -647,8 +647,10 @@ DECLARE
   v_allowed BIGINT[] := public.allowed_don_vi_for_session();
   v_effective BIGINT[] := NULL;
   v_offset INT := GREATEST(p_page - 1, 0) * GREATEST(p_page_size, 1);
+  v_sanitized_q TEXT := NULL;
 BEGIN
   v_is_global := v_role IN ('global', 'admin');
+  v_sanitized_q := public._sanitize_ilike_pattern(p_q);
 
   IF v_is_global THEN
     IF p_don_vi IS NOT NULL THEN
@@ -690,9 +692,9 @@ BEGIN
     AND (p_date_from IS NULL OR nk.thoi_gian_bat_dau::date >= p_date_from)
     AND (p_date_to IS NULL OR nk.thoi_gian_bat_dau::date <= p_date_to)
     AND (
-      p_q IS NULL OR p_q = '' OR
-      tb.ten_thiet_bi ILIKE '%' || p_q || '%' OR
-      tb.ma_thiet_bi ILIKE '%' || p_q || '%'
+      v_sanitized_q IS NULL OR
+      tb.ten_thiet_bi ILIKE '%' || v_sanitized_q || '%' OR
+      tb.ma_thiet_bi ILIKE '%' || v_sanitized_q || '%'
     )
   ORDER BY nk.thoi_gian_bat_dau DESC
   OFFSET v_offset
