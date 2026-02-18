@@ -1045,7 +1045,7 @@ GRANT EXECUTE ON FUNCTION public.equipment_get(BIGINT) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.equipment_get_by_code(TEXT) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.equipment_list(TEXT, TEXT, INT, INT, BIGINT) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.equipment_list_enhanced(
-  TEXT, TEXT, INT, INT, BIGINT, TEXT, TEXT[], TEXT, TEXT[], TEXT, TEXT[], TEXT, TEXT[], TEXT, TEXT[], TEXT, TEXT[], TEXT
+  TEXT, TEXT, INT, INT, BIGINT, TEXT, TEXT[], TEXT, TEXT[], TEXT, TEXT[], TEXT, TEXT[], TEXT, TEXT[], TEXT, TEXT[]
 ) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.equipment_count(TEXT[], TEXT) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.departments_list() TO authenticated;
