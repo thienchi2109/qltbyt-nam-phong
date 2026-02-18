@@ -274,16 +274,14 @@ BEGIN
     SELECT COUNT(*)
     INTO v_total_imported
     FROM public.thiet_bi tb
-    WHERE tb.is_deleted = false
-      AND (p_khoa_phong IS NULL OR tb.khoa_phong_quan_ly = p_khoa_phong)
+    WHERE (p_khoa_phong IS NULL OR tb.khoa_phong_quan_ly = p_khoa_phong)
       AND (v_from_ts IS NULL OR tb.created_at >= v_from_ts)
       AND (v_to_ts_excl IS NULL OR tb.created_at < v_to_ts_excl);
   ELSE
     SELECT COUNT(*)
     INTO v_total_imported
     FROM public.thiet_bi tb
-    WHERE tb.is_deleted = false
-      AND tb.don_vi = ANY(v_facilities_to_query)
+    WHERE tb.don_vi = ANY(v_facilities_to_query)
       AND (p_khoa_phong IS NULL OR tb.khoa_phong_quan_ly = p_khoa_phong)
       AND (v_from_ts IS NULL OR tb.created_at >= v_from_ts)
       AND (v_to_ts_excl IS NULL OR tb.created_at < v_to_ts_excl);
@@ -294,8 +292,7 @@ BEGIN
     INTO v_total_exported
     FROM public.yeu_cau_luan_chuyen ylc
     INNER JOIN public.thiet_bi tb ON ylc.thiet_bi_id = tb.id
-    WHERE tb.is_deleted = false
-      AND (p_khoa_phong IS NULL OR tb.khoa_phong_quan_ly = p_khoa_phong)
+    WHERE (p_khoa_phong IS NULL OR tb.khoa_phong_quan_ly = p_khoa_phong)
       AND ylc.trang_thai IN ('da_ban_giao', 'hoan_thanh')
       AND (
         (
@@ -315,8 +312,7 @@ BEGIN
     INTO v_total_exported
     FROM public.yeu_cau_luan_chuyen ylc
     INNER JOIN public.thiet_bi tb ON ylc.thiet_bi_id = tb.id
-    WHERE tb.is_deleted = false
-      AND tb.don_vi = ANY(v_facilities_to_query)
+    WHERE tb.don_vi = ANY(v_facilities_to_query)
       AND (p_khoa_phong IS NULL OR tb.khoa_phong_quan_ly = p_khoa_phong)
       AND ylc.trang_thai IN ('da_ban_giao', 'hoan_thanh')
       AND (

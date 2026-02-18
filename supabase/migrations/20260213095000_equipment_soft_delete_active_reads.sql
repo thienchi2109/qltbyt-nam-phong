@@ -178,7 +178,7 @@ CREATE OR REPLACE FUNCTION public.equipment_list_enhanced(
   p_phan_loai_array text[] DEFAULT NULL::text[],
   p_nguon_kinh_phi text DEFAULT NULL::text,
   p_nguon_kinh_phi_array text[] DEFAULT NULL::text[],
-  p_fields text DEFAULT 'id,ma_thiet_bi,ten_thiet_bi,model,serial,khoa_phong_quan_ly,tinh_trang_hien_tai,vi_tri_lap_dat,nguoi_dang_truc_tiep_quan_ly,phan_loai_theo_nd98'::text
+  -- p_fields removed: parameter was accepted but never used (query always returns to_jsonb(tb.*))
 )
 RETURNS jsonb
 LANGUAGE plpgsql
@@ -197,7 +197,7 @@ DECLARE
   v_where TEXT := '1=1 AND is_deleted = false';
   v_total BIGINT := 0;
   v_data JSONB := '[]'::jsonb;
-  v_fields TEXT := 'id,ma_thiet_bi,ten_thiet_bi,model,serial,khoa_phong_quan_ly,tinh_trang_hien_tai,vi_tri_lap_dat,nguoi_dang_truc_tiep_quan_ly,phan_loai_theo_nd98';
+  -- v_fields removed: was never referenced in the dynamic query
   v_jwt_claims JSONB;
 BEGIN
   BEGIN
@@ -330,9 +330,7 @@ BEGIN
 
   EXECUTE format('SELECT count(*) FROM public.thiet_bi WHERE %s', v_where) INTO v_total;
 
-  IF p_fields IS NOT NULL AND trim(p_fields) != '' THEN
-    v_fields := p_fields;
-  END IF;
+  -- p_fields/v_fields assignment removed: query always uses to_jsonb(tb.*)
 
   EXECUTE format(
     'SELECT COALESCE(jsonb_agg(t), ''[]''::jsonb) FROM (

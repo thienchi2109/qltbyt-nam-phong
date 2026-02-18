@@ -95,7 +95,7 @@ BEGIN
         )
       )
     ORDER BY yc.created_at DESC
-    OFFSET v_offset LIMIT p_page_size
+    OFFSET v_offset LIMIT GREATEST(p_page_size, 1)
   ) row;
 END;
 $function$;
