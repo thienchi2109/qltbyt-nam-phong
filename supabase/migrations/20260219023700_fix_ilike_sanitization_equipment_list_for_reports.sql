@@ -92,7 +92,7 @@ BEGIN
      OFFSET $4 LIMIT $6',
     v_sort_col,
     v_sort_dir
-  ) USING v_effective_donvi, p_khoa_phong, v_sanitized_q, v_offset, ('%' || COALESCE(v_sanitized_q, '') || '%'), p_page_size;
+  ) USING v_effective_donvi, p_khoa_phong, v_sanitized_q, v_offset, ('%' || COALESCE(v_sanitized_q, '') || '%'), GREATEST(p_page_size, 1);
 END;
 $function$;
 
