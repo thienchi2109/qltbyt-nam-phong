@@ -370,7 +370,8 @@ BEGIN
         end
       else ngay_du_kien_tra
     end,
-    updated_by = coalesce(nullif(p_data->>'updated_by', '')::int, v_user_id),
+    -- FIX: always use server-side v_user_id; client-supplied updated_by enabled audit spoofing
+    updated_by = v_user_id,
     updated_at = now()
   where id = p_id;
 END;
