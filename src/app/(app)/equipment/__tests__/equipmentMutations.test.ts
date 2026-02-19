@@ -13,6 +13,7 @@ vi.mock('@/lib/rpc-client', () => ({
 const mockToast = vi.fn()
 vi.mock('@/hooks/use-toast', () => ({
   useToast: () => ({ toast: mockToast }),
+  toast: (args: any) => mockToast(args),
 }))
 
 // Mock next-auth
@@ -29,6 +30,9 @@ vi.mock('next-auth/react', () => ({
     status: 'authenticated',
   }),
 }))
+
+// Import hook under test after mocks
+import { useDeleteEquipment } from '@/hooks/use-cached-equipment'
 
 // Test utilities
 const createQueryClient = () =>
@@ -441,6 +445,27 @@ describe('Equipment CRUD Mutations', () => {
 
       expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['equipment_list'] })
       expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['dashboard-stats'] })
+    })
+
+    it('should coerce string row id before calling equipment_delete RPC', async () => {
+      mockCallRpc.mockResolvedValue(undefined)
+
+      const { result } = renderHook(() => useDeleteEquipment(), {
+        wrapper: createWrapper(queryClient),
+      })
+
+      act(() => {
+        result.current.mutate('42')
+      })
+
+      await waitFor(() => {
+        expect(result.current.isSuccess).toBe(true)
+      })
+
+      expect(mockCallRpc).toHaveBeenCalledWith({
+        fn: 'equipment_delete',
+        args: { p_id: 42 },
+      })
     })
   })
 

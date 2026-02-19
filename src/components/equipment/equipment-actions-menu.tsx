@@ -23,6 +23,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { useEquipmentContext } from "@/app/(app)/equipment/_hooks/useEquipmentContext"
+import { useDeleteEquipment } from "@/hooks/use-cached-equipment"
+import { isEquipmentManagerRole } from "@/lib/rbac"
 import type { Equipment, UsageLog } from "@/types/database"
 
 export interface EquipmentActionsMenuProps {
@@ -51,6 +53,11 @@ export function EquipmentActionsMenu({
     const n = typeof uid === 'string' ? Number(uid) : uid
     return Number.isFinite(n) ? (n as number) : null
   }, [user?.id])
+  const canDeleteEquipment = React.useMemo(
+    () => isEquipmentManagerRole(user?.role),
+    [user?.role]
+  )
+  const { mutate: deleteEquipment, isPending: isDeletingEquipment } = useDeleteEquipment()
 
   const activeUsageLog = activeUsageLogs?.find(
     (log) => log.thiet_bi_id === equipment.id && log.trang_thai === 'dang_su_dung'
@@ -78,6 +85,13 @@ export function EquipmentActionsMenu({
     if (isGlobal || isRegionalLeader) return
     router.push(`/repair-requests?action=create&equipmentId=${equipment.id}`)
   }, [router, equipment.id, isGlobal, isRegionalLeader])
+
+  const handleDeleteEquipment = React.useCallback(() => {
+    if (!canDeleteEquipment || isDeletingEquipment) return
+    const confirmed = window.confirm("Ban co chac chan muon xoa thiet bi nay?")
+    if (!confirmed) return
+    deleteEquipment(String(equipment.id))
+  }, [canDeleteEquipment, isDeletingEquipment, deleteEquipment, equipment.id])
 
   return (
     <DropdownMenu>
@@ -113,6 +127,14 @@ export function EquipmentActionsMenu({
         {!isGlobal && !isRegionalLeader && (
           <DropdownMenuItem onSelect={handleCreateRepairRequest}>
             Tạo yêu cầu sửa chữa
+          </DropdownMenuItem>
+        )}
+        {canDeleteEquipment && (
+          <DropdownMenuItem
+            disabled={isDeletingEquipment}
+            onSelect={handleDeleteEquipment}
+          >
+            Xóa TB
           </DropdownMenuItem>
         )}
       </DropdownMenuContent>
