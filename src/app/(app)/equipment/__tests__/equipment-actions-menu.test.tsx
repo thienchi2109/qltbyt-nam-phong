@@ -133,6 +133,7 @@ describe('EquipmentActionsMenu delete action', () => {
 
     expect(confirmSpy).toHaveBeenCalled()
     expect(mocks.deleteMutate).toHaveBeenCalledWith('101')
+    confirmSpy.mockRestore()
   })
 
   it('does not call delete mutation when canceling Xóa TB', () => {
@@ -144,5 +145,6 @@ describe('EquipmentActionsMenu delete action', () => {
 
     expect(confirmSpy).toHaveBeenCalled()
     expect(mocks.deleteMutate).not.toHaveBeenCalled()
+    confirmSpy.mockRestore()
   })
 })
