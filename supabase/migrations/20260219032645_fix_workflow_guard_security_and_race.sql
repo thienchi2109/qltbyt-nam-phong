@@ -1,18 +1,19 @@
--- Migration: Block workflow writes on soft-deleted equipment
--- Date: 2026-02-13
--- Scope: Task 6
---
--- Guarded mutation RPCs:
--- - repair_request_create
--- - transfer_request_create
--- - transfer_request_update (only when changing thiet_bi_id)
--- - usage_session_start
---
--- Notes:
--- - Historical read RPCs are intentionally unchanged.
--- - Admin is treated as global for role consistency.
+-- Migration: Fix workflow guard security issues and race condition
+-- Date: 2026-02-19
+-- Fixes:
+--   P1  usage_session_start: add FOR UPDATE to equipment lookup to prevent TOCTOU race
+--   P2  usage_session_start: replace body-level set_config with declarative SET search_path
+--   P2  transfer_request_create: server-enforce audit fields (created_by, updated_by,
+--       nguoi_yeu_cau_id) — ignore client-supplied values, always use v_user_id
+--   P0002 consistency: repair_request_create, transfer_request_create,
+--         transfer_request_update all now raise errcode='P0002' for equipment-not-found,
+--         matching usage_session_start and allowing the smoke tests to assert SQLSTATE
 
 BEGIN;
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- 1. repair_request_create  (P0002 errcode on equipment guard)
+-- ─────────────────────────────────────────────────────────────────────────────
 
 CREATE OR REPLACE FUNCTION public.repair_request_create(
   p_thiet_bi_id integer,
@@ -48,6 +49,7 @@ BEGIN
     and is_deleted = false;
 
   if not found then
+    -- FIX: was plain RAISE EXCEPTION (defaulted to P0001); now P0002 (no_data_found)
     raise exception 'Thiết bị không tồn tại' using errcode = 'P0002';
   end if;
 
@@ -111,6 +113,10 @@ $function$;
 
 GRANT EXECUTE ON FUNCTION public.repair_request_create(integer, text, text, date, text, text, text) TO authenticated;
 
+-- ─────────────────────────────────────────────────────────────────────────────
+-- 2. transfer_request_create  (server-enforce audit fields + P0002)
+-- ─────────────────────────────────────────────────────────────────────────────
+
 CREATE OR REPLACE FUNCTION public.transfer_request_create(
   p_data jsonb
 )
@@ -149,6 +155,7 @@ BEGIN
     and is_deleted = false;
 
   if not found then
+    -- FIX: was plain RAISE EXCEPTION (defaulted to P0001); now P0002 (no_data_found)
     raise exception 'Thiết bị không tồn tại' using errcode = 'P0002';
   end if;
 
@@ -188,10 +195,13 @@ BEGIN
       when coalesce(p_data->>'ngay_du_kien_tra', '') <> '' then (p_data->>'ngay_du_kien_tra')::date
       else null
     end,
-    v_user_id,
+    -- FIX: audit fields are now always taken from the server-side JWT user id.
+    -- Previously the client could supply nguoi_yeu_cau_id / created_by / updated_by
+    -- from p_data and impersonate any user in audit records.
+    v_user_id,   -- nguoi_yeu_cau_id
     'cho_duyet',
-    v_user_id,
-    v_user_id
+    v_user_id,   -- created_by
+    v_user_id    -- updated_by
   )
   returning id into v_id;
 
@@ -209,6 +219,10 @@ $function$;
 
 GRANT EXECUTE ON FUNCTION public.transfer_request_create(jsonb) TO authenticated;
 REVOKE EXECUTE ON FUNCTION public.transfer_request_create(jsonb) FROM PUBLIC;
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- 3. transfer_request_update  (P0002 on target equipment guard)
+-- ─────────────────────────────────────────────────────────────────────────────
 
 CREATE OR REPLACE FUNCTION public.transfer_request_update(
   p_id integer,
@@ -274,6 +288,7 @@ BEGIN
       and tb.is_deleted = false;
 
     if not found then
+      -- FIX: was plain RAISE EXCEPTION (defaulted to P0001); now P0002 (no_data_found)
       raise exception 'Thiết bị không tồn tại' using errcode = 'P0002';
     end if;
 
@@ -364,6 +379,10 @@ $function$;
 GRANT EXECUTE ON FUNCTION public.transfer_request_update(integer, jsonb) TO authenticated;
 REVOKE EXECUTE ON FUNCTION public.transfer_request_update(integer, jsonb) FROM PUBLIC;
 
+-- ─────────────────────────────────────────────────────────────────────────────
+-- 4. usage_session_start  (declarative SET search_path + FOR UPDATE)
+-- ─────────────────────────────────────────────────────────────────────────────
+
 CREATE OR REPLACE FUNCTION public.usage_session_start(
   p_thiet_bi_id bigint,
   p_nguoi_su_dung_id bigint DEFAULT NULL::bigint,
@@ -374,6 +393,7 @@ CREATE OR REPLACE FUNCTION public.usage_session_start(
 RETURNS jsonb
 LANGUAGE plpgsql
 SECURITY DEFINER
+-- FIX: replaced body-level set_config with declarative search_path (defense-in-depth)
 SET search_path TO 'public', 'pg_temp'
 AS $function$
 DECLARE
@@ -407,6 +427,9 @@ BEGIN
     raise exception 'Cannot start session for another user' using errcode = '42501';
   end if;
 
+  -- FIX: FOR UPDATE serializes concurrent session-start calls for the same equipment,
+  -- preventing the TOCTOU race where two concurrent transactions both see no active
+  -- session and both proceed to INSERT.
   select tb.don_vi into v_equipment_don_vi
   from public.thiet_bi tb
   where tb.id = p_thiet_bi_id

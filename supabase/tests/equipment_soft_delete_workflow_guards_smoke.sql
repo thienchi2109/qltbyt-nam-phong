@@ -106,6 +106,12 @@ BEGIN
     RAISE EXCEPTION 'Expected repair_request_create to reject soft-deleted equipment';
   END IF;
 
+  IF v_sqlstate IS DISTINCT FROM 'P0002' THEN
+    RAISE EXCEPTION
+      'Expected repair_request_create to fail with P0002 equipment guard, got % (%).',
+      v_sqlstate, v_sqlerrm;
+  END IF;
+
   RAISE NOTICE 'OK: repair_request_create blocked soft-deleted equipment (% / %)', v_sqlstate, v_sqlerrm;
 
   v_failed := false;
@@ -132,6 +138,12 @@ BEGIN
     RAISE EXCEPTION 'Expected transfer_request_create to reject soft-deleted equipment';
   END IF;
 
+  IF v_sqlstate IS DISTINCT FROM 'P0002' THEN
+    RAISE EXCEPTION
+      'Expected transfer_request_create to fail with P0002 equipment guard, got % (%).',
+      v_sqlstate, v_sqlerrm;
+  END IF;
+
   RAISE NOTICE 'OK: transfer_request_create blocked soft-deleted equipment (% / %)', v_sqlstate, v_sqlerrm;
 
   v_failed := false;
@@ -151,6 +163,12 @@ BEGIN
 
   IF NOT v_failed THEN
     RAISE EXCEPTION 'Expected transfer_request_update to reject soft-deleted target equipment';
+  END IF;
+
+  IF v_sqlstate IS DISTINCT FROM 'P0002' THEN
+    RAISE EXCEPTION
+      'Expected transfer_request_update to fail with P0002 equipment guard, got % (%).',
+      v_sqlstate, v_sqlerrm;
   END IF;
 
   RAISE NOTICE 'OK: transfer_request_update blocked soft-deleted equipment switch (% / %)', v_sqlstate, v_sqlerrm;
