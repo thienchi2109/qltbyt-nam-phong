@@ -43,6 +43,12 @@ BEGIN
     raise exception 'Missing role claim in JWT' using errcode = '42501';
   end if;
 
+  -- FIX 1b: non-global users MUST have a don_vi claim, otherwise
+  -- the v_don_vi IS NOT NULL condition below silently skips tenant enforcement
+  if not v_is_global and v_don_vi is null then
+    raise exception 'Missing don_vi claim for non-global role %', v_role using errcode = '42501';
+  end if;
+
   select id, don_vi, tinh_trang_hien_tai
   into v_tb
   from public.thiet_bi

@@ -238,7 +238,8 @@ BEGIN
   v_role := COALESCE(public._get_jwt_claim('app_role'), public._get_jwt_claim('role'), '');
   v_claim_donvi := NULLIF(public._get_jwt_claim('don_vi'), '')::BIGINT;
 
-  IF lower(v_role) = 'global' THEN
+  -- FIX: map admin → global for consistency with other functions
+  IF lower(v_role) IN ('global', 'admin') THEN
     v_effective_donvi := NULL;
   ELSE
     v_effective_donvi := v_claim_donvi;
@@ -265,10 +266,16 @@ SECURITY DEFINER
 SET search_path TO 'public', 'pg_temp'
 AS $function$
 DECLARE
-  v_role TEXT := COALESCE(public._get_jwt_claim('app_role'), public._get_jwt_claim('role'), '');
+  -- FIX: add lower() to normalize role
+  v_role TEXT := lower(COALESCE(public._get_jwt_claim('app_role'), public._get_jwt_claim('role'), ''));
   v_allowed_don_vi BIGINT[];
   result INTEGER;
 BEGIN
+  -- FIX: map admin → global
+  IF v_role = 'admin' THEN
+    v_role := 'global';
+  END IF;
+
   v_allowed_don_vi := public.allowed_don_vi_for_session();
 
   SELECT COUNT(*)::INTEGER INTO result

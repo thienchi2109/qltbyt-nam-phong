@@ -147,10 +147,12 @@ BEGIN
       USING ERRCODE = 'P0001';
   END IF;
 
+  -- FIX: add defense-in-depth tenant filter matching equipment_delete
   UPDATE public.thiet_bi
   SET is_deleted = false
   WHERE id = p_id
-    AND is_deleted = true;
+    AND is_deleted = true
+    AND (v_role = 'global' OR don_vi = v_donvi);
 
   IF NOT FOUND THEN
     RAISE EXCEPTION 'Equipment not found or already restored'

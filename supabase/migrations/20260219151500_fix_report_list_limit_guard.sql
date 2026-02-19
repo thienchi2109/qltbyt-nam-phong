@@ -29,6 +29,7 @@ DECLARE
   v_sort_dir text;
   v_offset int;
   v_limit int;
+  v_sanitized_q TEXT;
 BEGIN
   v_role := lower(COALESCE(public._get_jwt_claim('app_role'), public._get_jwt_claim('role'), ''));
   v_allowed := public.allowed_don_vi_for_session_safe();
@@ -73,6 +74,11 @@ BEGIN
   v_limit := GREATEST(COALESCE(p_page_size, 10000), 1);
   v_offset := GREATEST((p_page - 1), 0) * v_limit;
 
+  -- FIX: sanitize ILIKE metacharacters (%, _, \) before embedding in pattern.
+  -- _sanitize_ilike_pattern returns NULL for NULL/empty input, so the
+  -- $3 IS NULL guard in the query correctly skips the clause when p_q is absent.
+  v_sanitized_q := public._sanitize_ilike_pattern(p_q);
+
   RETURN QUERY EXECUTE format(
     'SELECT * FROM public.thiet_bi
      WHERE is_deleted = false
@@ -83,7 +89,7 @@ BEGIN
      OFFSET $4 LIMIT $6',
     v_sort_col,
     v_sort_dir
-  ) USING v_effective_donvi, p_khoa_phong, p_q, v_offset, ('%' || COALESCE(p_q, '') || '%'), v_limit;
+  ) USING v_effective_donvi, p_khoa_phong, v_sanitized_q, v_offset, ('%' || COALESCE(v_sanitized_q, '') || '%'), v_limit;
 END;
 $function$;
 
