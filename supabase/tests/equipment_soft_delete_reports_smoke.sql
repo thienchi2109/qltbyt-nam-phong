@@ -150,9 +150,12 @@ BEGIN
       COALESCE((v_agg->>'currentStock')::bigint, 0);
   END IF;
 
-  IF COALESCE((v_agg->>'totalImported')::bigint, 0) <> 1 THEN
+  -- totalImported intentionally counts both active + soft-deleted registrations:
+  -- historically, both rows were physically imported within the date range.
+  -- MAIN-ACTIVE (is_deleted=false) + MAIN-DELETED (is_deleted=true) = 2.
+  IF COALESCE((v_agg->>'totalImported')::bigint, 0) <> 2 THEN
     RAISE EXCEPTION
-      'equipment_aggregates_for_reports totalImported expected 1, got %',
+      'equipment_aggregates_for_reports totalImported expected 2 (active+deleted), got %',
       COALESCE((v_agg->>'totalImported')::bigint, 0);
   END IF;
 
