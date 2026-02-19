@@ -75,7 +75,7 @@ BEGIN
     )
   ORDER BY nk.thoi_gian_bat_dau DESC
   OFFSET v_offset
-  LIMIT p_page_size;
+  LIMIT GREATEST(p_page_size, 1);
 END;
 $function$;
 
