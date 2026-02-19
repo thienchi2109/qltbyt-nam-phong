@@ -240,7 +240,8 @@ BEGIN
   into v_tb
   from public.thiet_bi
   where id = p_thiet_bi_id
-    and is_deleted = false;
+    and is_deleted = false
+  for update;
 
   if not found then
     raise exception 'Thiết bị không tồn tại' using errcode = 'P0002';
@@ -275,6 +276,7 @@ BEGIN
   update public.thiet_bi
   set tinh_trang_hien_tai = 'Chờ sửa chữa'
   where id = p_thiet_bi_id
+    and is_deleted = false
     and coalesce(tinh_trang_hien_tai, '') <> 'Chờ sửa chữa';
 
   insert into public.lich_su_thiet_bi(thiet_bi_id, loai_su_kien, mo_ta, chi_tiet, yeu_cau_id)
