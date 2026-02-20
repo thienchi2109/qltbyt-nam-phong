@@ -19,28 +19,36 @@ DECLARE
   v_code TEXT;
   v_name TEXT;
   v_row_don_vi BIGINT;
+  v_is_deleted BOOLEAN;
 BEGIN
-  IF v_role IN ('regional_leader', 'technician', 'user') THEN
+  IF v_role NOT IN ('global', 'to_qltb') THEN
     RAISE EXCEPTION 'Permission denied' USING ERRCODE = '42501';
   END IF;
 
-  IF v_role <> 'global' THEN
-    PERFORM 1
-    FROM public.thiet_bi
-    WHERE id = p_id
-      AND don_vi = v_donvi;
+  SELECT tb.ma_thiet_bi, tb.ten_thiet_bi, tb.don_vi, tb.is_deleted
+  INTO v_code, v_name, v_row_don_vi, v_is_deleted
+  FROM public.thiet_bi tb
+  WHERE tb.id = p_id
+  FOR UPDATE;
 
-    IF NOT FOUND THEN
-      RAISE EXCEPTION 'Access denied' USING ERRCODE = '42501';
-    END IF;
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'Equipment not found' USING ERRCODE = 'P0002';
+  END IF;
+
+  IF v_role <> 'global' AND v_row_don_vi IS DISTINCT FROM v_donvi THEN
+    RAISE EXCEPTION 'Access denied' USING ERRCODE = '42501';
+  END IF;
+
+  IF v_is_deleted IS DISTINCT FROM false THEN
+    RAISE EXCEPTION 'Equipment not found or already deleted'
+      USING ERRCODE = 'P0002';
   END IF;
 
   UPDATE public.thiet_bi
   SET is_deleted = true
   WHERE id = p_id
     AND is_deleted = false
-  RETURNING ma_thiet_bi, ten_thiet_bi, don_vi
-  INTO v_code, v_name, v_row_don_vi;
+    AND (v_role = 'global' OR don_vi = v_donvi);
 
   IF NOT FOUND THEN
     RAISE EXCEPTION 'Equipment not found or already deleted'
@@ -80,7 +88,7 @@ DECLARE
   v_is_deleted BOOLEAN;
   v_tenant_active BOOLEAN;
 BEGIN
-  IF v_role IN ('regional_leader', 'technician', 'user') THEN
+  IF v_role NOT IN ('global', 'to_qltb') THEN
     RAISE EXCEPTION 'Permission denied' USING ERRCODE = '42501';
   END IF;
 
@@ -120,7 +128,8 @@ BEGIN
   UPDATE public.thiet_bi
   SET is_deleted = false
   WHERE id = p_id
-    AND is_deleted = true;
+    AND is_deleted = true
+    AND (v_role = 'global' OR don_vi = v_donvi);
 
   IF NOT FOUND THEN
     RAISE EXCEPTION 'Equipment not found or already restored'
