@@ -467,6 +467,35 @@ describe('Equipment CRUD Mutations', () => {
         args: { p_id: 42 },
       })
     })
+
+    it('should invalidate equipment_list_enhanced and dispatch cache event after successful delete', async () => {
+      mockCallRpc.mockResolvedValue(undefined)
+      const invalidateSpy = vi.spyOn(queryClient, 'invalidateQueries')
+      const dispatchEventSpy = vi.spyOn(window, 'dispatchEvent')
+
+      const { result } = renderHook(() => useDeleteEquipment(), {
+        wrapper: createWrapper(queryClient),
+      })
+
+      act(() => {
+        result.current.mutate('42')
+      })
+
+      await waitFor(() => {
+        expect(result.current.isSuccess).toBe(true)
+      })
+
+      expect(invalidateSpy).toHaveBeenCalledWith({
+        queryKey: ['equipment_list_enhanced'],
+        refetchType: 'active',
+      })
+      expect(dispatchEventSpy).toHaveBeenCalled()
+
+      const dispatchedEvent = dispatchEventSpy.mock.calls.find(
+        ([event]) => event instanceof CustomEvent && event.type === 'equipment-cache-invalidated'
+      )
+      expect(dispatchedEvent).toBeDefined()
+    })
   })
 
   describe('Restore Equipment (equipment_restore)', () => {

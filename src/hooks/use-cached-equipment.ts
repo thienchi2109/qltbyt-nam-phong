@@ -139,10 +139,16 @@ export function useDeleteEquipment() {
       await callRpc({ fn: 'equipment_delete', args: { p_id: Number(id) } })
     },
     onSuccess: () => {
-      // Invalidate all equipment queries
+      // Invalidate main equipment table queries and refetch active pages immediately
+      queryClient.invalidateQueries({ queryKey: ['equipment_list_enhanced'], refetchType: 'active' })
+      // Keep legacy cache family invalidation for older screens
       queryClient.invalidateQueries({ queryKey: ['equipment'] })
+      // Keep active usage status in sync with table actions
+      queryClient.invalidateQueries({ queryKey: ['active_usage_logs'] })
       // Invalidate dashboard stats to update KPI cards
       queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] })
+      // Notify listeners that rely on event-driven invalidation
+      window.dispatchEvent(new CustomEvent('equipment-cache-invalidated'))
 
       toast({
         title: "Thành công",
