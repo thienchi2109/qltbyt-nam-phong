@@ -1,0 +1,30 @@
+{
+    "extends": "./tsconfig.json",
+    "compilerOptions": {
+        "types": [
+            "vitest/globals",
+            "@testing-library/jest-dom"
+        ]
+    },
+    "include": [
+        "next-env.d.ts",
+        "**/*.ts",
+        "**/*.tsx",
+        ".next/types/**/*.ts",
+        "**/__tests__/**/*.ts",
+        "**/__tests__/**/*.tsx",
+        "**/*.test.ts",
+        "**/*.test.tsx",
+        "vitest.setup.ts"
+    ],
+    "exclude": [
+        "node_modules",
+        "supabase/**",
+        "src/ai/**",
+        "src/lib/ai-utils.tsx",
+        "src/lib/firebase.ts",
+        "src/lib/firebase-utils.tsx",
+        "mainenance_page_reference.tsx",
+        "page_reference.tsx"
+    ]
+}

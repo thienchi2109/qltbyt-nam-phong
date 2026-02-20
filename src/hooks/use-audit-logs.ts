@@ -196,6 +196,7 @@ export const ACTION_TYPE_LABELS: Record<string, string> = {
   'equipment_create': 'Tạo thiết bị mới',
   'equipment_update': 'Cập nhật thiết bị',
   'equipment_delete': 'Xóa thiết bị',
+  'equipment_restore': 'Khôi phục thiết bị',
   'equipment_import': 'Import danh sách thiết bị',
   'equipment_status_change': 'Thay đổi trạng thái thiết bị',
   

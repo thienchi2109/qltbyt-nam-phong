@@ -479,6 +479,21 @@ describe('Global user sees all facilities', () => {
     expect(result.current.facilities.length).toBe(4)
   })
 
+  it('should preserve active-only equipment counts from facility payload', () => {
+    const activeOnlyFacilities: FacilityOption[] = [
+      { id: 1, name: 'Facility A', count: 3 },
+      { id: 2, name: 'Facility B', count: 1 },
+    ]
+    mockUseQuery.mockReturnValue({ data: activeOnlyFacilities, isLoading: false })
+
+    const { result } = renderHook(() => useTenantSelection(), {
+      wrapper: createWrapper(),
+    })
+
+    expect(result.current.facilities).toEqual(activeOnlyFacilities)
+    expect(result.current.facilities.map((facility) => facility.count)).toEqual([3, 1])
+  })
+
   it('should show selector for global user', () => {
     const { result } = renderHook(() => useTenantSelection(), {
       wrapper: createWrapper(),

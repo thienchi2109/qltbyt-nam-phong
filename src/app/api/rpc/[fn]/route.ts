@@ -12,6 +12,7 @@ const ALLOWED_FUNCTIONS = new Set<string>([
   'equipment_create',
   'equipment_update',
   'equipment_delete',
+  'equipment_restore',
   'equipment_count',
   'equipment_count_enhanced',
   'equipment_attention_list',

@@ -13,6 +13,7 @@ vi.mock('@/lib/rpc-client', () => ({
 const mockToast = vi.fn()
 vi.mock('@/hooks/use-toast', () => ({
   useToast: () => ({ toast: mockToast }),
+  toast: (args: any) => mockToast(args),
 }))
 
 // Mock next-auth
@@ -29,6 +30,9 @@ vi.mock('next-auth/react', () => ({
     status: 'authenticated',
   }),
 }))
+
+// Import hook under test after mocks
+import { useDeleteEquipment } from '@/hooks/use-cached-equipment'
 
 // Test utilities
 const createQueryClient = () =>
@@ -441,6 +445,86 @@ describe('Equipment CRUD Mutations', () => {
 
       expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['equipment_list'] })
       expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['dashboard-stats'] })
+    })
+
+    it('should coerce string row id before calling equipment_delete RPC', async () => {
+      mockCallRpc.mockResolvedValue(undefined)
+
+      const { result } = renderHook(() => useDeleteEquipment(), {
+        wrapper: createWrapper(queryClient),
+      })
+
+      act(() => {
+        result.current.mutate('42')
+      })
+
+      await waitFor(() => {
+        expect(result.current.isSuccess).toBe(true)
+      })
+
+      expect(mockCallRpc).toHaveBeenCalledWith({
+        fn: 'equipment_delete',
+        args: { p_id: 42 },
+      })
+    })
+
+    it('should invalidate equipment_list_enhanced and dispatch cache event after successful delete', async () => {
+      mockCallRpc.mockResolvedValue(undefined)
+      const invalidateSpy = vi.spyOn(queryClient, 'invalidateQueries')
+      const dispatchEventSpy = vi.spyOn(window, 'dispatchEvent')
+
+      const { result } = renderHook(() => useDeleteEquipment(), {
+        wrapper: createWrapper(queryClient),
+      })
+
+      act(() => {
+        result.current.mutate('42')
+      })
+
+      await waitFor(() => {
+        expect(result.current.isSuccess).toBe(true)
+      })
+
+      expect(invalidateSpy).toHaveBeenCalledWith({
+        queryKey: ['equipment_list_enhanced'],
+        refetchType: 'active',
+      })
+      expect(dispatchEventSpy).toHaveBeenCalled()
+
+      const dispatchedEvent = dispatchEventSpy.mock.calls.find(
+        ([event]) => event instanceof CustomEvent && event.type === 'equipment-cache-invalidated'
+      )
+      expect(dispatchedEvent).toBeDefined()
+    })
+  })
+
+  describe('Restore Equipment (equipment_restore)', () => {
+    it('should restore equipment successfully', async () => {
+      mockCallRpc.mockResolvedValue({ success: true, id: 1, restored: true })
+
+      const { result } = renderHook(
+        () =>
+          useMutation({
+            mutationFn: async (id: number) => {
+              return await mockCallRpc({ fn: 'equipment_restore', args: { p_id: id } })
+            },
+          }),
+        { wrapper: createWrapper(queryClient) }
+      )
+
+      act(() => {
+        result.current.mutate(1)
+      })
+
+      await waitFor(() => {
+        expect(result.current.isSuccess).toBe(true)
+      })
+
+      expect(mockCallRpc).toHaveBeenCalledWith({
+        fn: 'equipment_restore',
+        args: { p_id: 1 },
+      })
+      expect(result.current.data).toEqual({ success: true, id: 1, restored: true })
     })
   })
 

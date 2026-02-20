@@ -60,6 +60,7 @@ interface Equipment {
   ma_thiet_bi: string
   ten_thiet_bi: string
   don_vi: number
+  is_deleted?: boolean
 }
 
 // Simulated database state
@@ -72,12 +73,13 @@ const mockDatabase = {
     { id: 5, name: 'Bệnh viện E (inactive)', dia_ban_id: 1, active: false },
   ],
   thiet_bi: [
-    { id: 101, ma_thiet_bi: 'TB-A001', ten_thiet_bi: 'Máy siêu âm A1', don_vi: 1 },
-    { id: 102, ma_thiet_bi: 'TB-A002', ten_thiet_bi: 'Máy X-quang A2', don_vi: 1 },
-    { id: 201, ma_thiet_bi: 'TB-B001', ten_thiet_bi: 'Máy siêu âm B1', don_vi: 2 },
-    { id: 301, ma_thiet_bi: 'TB-C001', ten_thiet_bi: 'Máy CT Scanner C1', don_vi: 3 },
-    { id: 401, ma_thiet_bi: 'TB-D001', ten_thiet_bi: 'Máy MRI D1', don_vi: 4 },
-    { id: 501, ma_thiet_bi: 'TB-E001', ten_thiet_bi: 'Máy ở BV inactive', don_vi: 5 },
+    { id: 101, ma_thiet_bi: 'TB-A001', ten_thiet_bi: 'Máy siêu âm A1', don_vi: 1, is_deleted: false },
+    { id: 102, ma_thiet_bi: 'TB-A002', ten_thiet_bi: 'Máy X-quang A2', don_vi: 1, is_deleted: false },
+    { id: 103, ma_thiet_bi: 'TB-ADEL', ten_thiet_bi: 'Máy đã xóa A', don_vi: 1, is_deleted: true },
+    { id: 201, ma_thiet_bi: 'TB-B001', ten_thiet_bi: 'Máy siêu âm B1', don_vi: 2, is_deleted: false },
+    { id: 301, ma_thiet_bi: 'TB-C001', ten_thiet_bi: 'Máy CT Scanner C1', don_vi: 3, is_deleted: false },
+    { id: 401, ma_thiet_bi: 'TB-D001', ten_thiet_bi: 'Máy MRI D1', don_vi: 4, is_deleted: false },
+    { id: 501, ma_thiet_bi: 'TB-E001', ten_thiet_bi: 'Máy ở BV inactive', don_vi: 5, is_deleted: false },
   ] as Equipment[],
 }
 
@@ -133,7 +135,7 @@ function equipmentGetByCode(
   // Global users: no tenant filtering
   if (session.role === 'global') {
     const equipment = mockDatabase.thiet_bi.find(
-      (e) => e.ma_thiet_bi.toLowerCase() === normalizedCode
+      (e) => e.ma_thiet_bi.toLowerCase() === normalizedCode && e.is_deleted !== true
     )
     if (!equipment) {
       throw new Error('Equipment not found or access denied')
@@ -149,7 +151,8 @@ function equipmentGetByCode(
   const equipment = mockDatabase.thiet_bi.find(
     (e) =>
       e.ma_thiet_bi.toLowerCase() === normalizedCode &&
-      allowedDonVi.includes(e.don_vi)
+      allowedDonVi.includes(e.don_vi) &&
+      e.is_deleted !== true
   )
 
   if (!equipment) {
@@ -183,6 +186,12 @@ describe('Equipment Get By Code - Tenant Isolation', () => {
 
       // Equipment in tenant 4
       expect(equipmentGetByCode(globalSession, 'TB-D001')?.id).toBe(401)
+    })
+
+    it('should NOT access soft-deleted equipment', () => {
+      expect(() => equipmentGetByCode(globalSession, 'TB-ADEL')).toThrow(
+        'Equipment not found or access denied'
+      )
     })
 
     it('should NOT access equipment in inactive tenants', () => {
@@ -276,6 +285,12 @@ describe('Equipment Get By Code - Tenant Isolation', () => {
 
       // qltb_khoa in tenant 3 can see tenant 3 equipment
       expect(equipmentGetByCode(qltbKhoaTenant3, 'TB-C001')?.id).toBe(301)
+    })
+
+    it('should NOT access soft-deleted equipment in own tenant', () => {
+      expect(() => equipmentGetByCode(toQltbTenant1, 'TB-ADEL')).toThrow(
+        'Equipment not found or access denied'
+      )
     })
 
     it('should NOT access equipment in other tenants', () => {

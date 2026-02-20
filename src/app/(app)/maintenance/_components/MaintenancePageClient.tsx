@@ -147,7 +147,7 @@ export function MaintenancePageClient() {
 
       if (!targetPlan) {
         try {
-          targetPlan = await findMaintenancePlanById(planId)
+          targetPlan = await findMaintenancePlanById(planId) ?? undefined
         } catch (error) {
           console.error("[Maintenance] Deep link plan lookup failed:", error)
         }
