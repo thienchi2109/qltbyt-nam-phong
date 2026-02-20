@@ -131,7 +131,7 @@ Props: { table: Table<Equipment>, canBulkSelect: boolean, isCardView: boolean }
 - Derives selected rows from `table.getFilteredSelectedRowModel().rows`
 - Internally uses `useBulkDeleteEquipment()` hook
 - Contains `AlertDialog` for confirmation (same pattern as `equipment-actions-menu.tsx` lines 160-182)
-- On success: calls `table.resetRowSelection()` + `useEquipmentContext().onDataMutationSuccess()` for tenant-scoped cache coherence
+- On success: calls `table.resetRowSelection()` only (invalidation/event dispatch is owned by `useBulkDeleteEquipment` to avoid duplicate refetches)
 - Renders `BulkActionBar` with a destructive delete button
 
 ### 5e. Page client — `EquipmentPageClient.tsx`
@@ -233,4 +233,4 @@ Props: { table: Table<Equipment>, canBulkSelect: boolean, isCardView: boolean }
 - [x] Extract `EquipmentBulkDeleteBar` component (keeps PageClient lean)
 - [x] Separate effects for filter vs page change selection reset
 - [x] Don't expose `rowSelection` from hook (avoid cascading re-renders)
-- [x] Call `onDataMutationSuccess()` from context for tenant-scoped cache
+- [x] Single-owner invalidation: keep cache invalidation/event dispatch inside `useBulkDeleteEquipment` only
