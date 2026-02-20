@@ -31,8 +31,8 @@ vi.mock('next-auth/react', () => ({
   }),
 }))
 
-// Import hook under test after mocks
-import { useDeleteEquipment } from '@/hooks/use-cached-equipment'
+// Import hooks under test after mocks
+import { useDeleteEquipment, useRestoreEquipment } from '@/hooks/use-cached-equipment'
 
 // Test utilities
 const createQueryClient = () =>
@@ -499,6 +499,27 @@ describe('Equipment CRUD Mutations', () => {
   })
 
   describe('Restore Equipment (equipment_restore)', () => {
+    it('should coerce string row id before calling equipment_restore RPC', async () => {
+      mockCallRpc.mockResolvedValue(undefined)
+
+      const { result } = renderHook(() => useRestoreEquipment(), {
+        wrapper: createWrapper(queryClient),
+      })
+
+      act(() => {
+        result.current.mutate('7')
+      })
+
+      await waitFor(() => {
+        expect(result.current.isSuccess).toBe(true)
+      })
+
+      expect(mockCallRpc).toHaveBeenCalledWith({
+        fn: 'equipment_restore',
+        args: { p_id: 7 },
+      })
+    })
+
     it('should restore equipment successfully', async () => {
       mockCallRpc.mockResolvedValue({ success: true, id: 1, restored: true })
 
@@ -525,6 +546,53 @@ describe('Equipment CRUD Mutations', () => {
         args: { p_id: 1 },
       })
       expect(result.current.data).toEqual({ success: true, id: 1, restored: true })
+    })
+
+    it('should show localized success toast after restore', async () => {
+      mockCallRpc.mockResolvedValue(undefined)
+
+      const { result } = renderHook(() => useRestoreEquipment(), {
+        wrapper: createWrapper(queryClient),
+      })
+
+      act(() => {
+        result.current.mutate('7')
+      })
+
+      await waitFor(() => {
+        expect(result.current.isSuccess).toBe(true)
+      })
+
+      expect(mockToast).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: 'Th\u00e0nh c\u00f4ng',
+          description: 'Kh\u00f4i ph\u1ee5c thi\u1ebft b\u1ecb th\u00e0nh c\u00f4ng',
+        })
+      )
+    })
+
+    it('should show localized fallback error toast after restore failure', async () => {
+      mockCallRpc.mockRejectedValue(new Error(''))
+
+      const { result } = renderHook(() => useRestoreEquipment(), {
+        wrapper: createWrapper(queryClient),
+      })
+
+      act(() => {
+        result.current.mutate('7')
+      })
+
+      await waitFor(() => {
+        expect(result.current.isError).toBe(true)
+      })
+
+      expect(mockToast).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: 'L\u1ed7i',
+          description: 'Kh\u00f4ng th\u1ec3 kh\u00f4i ph\u1ee5c thi\u1ebft b\u1ecb',
+          variant: 'destructive',
+        })
+      )
     })
   })
 

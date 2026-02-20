@@ -164,3 +164,38 @@ export function useDeleteEquipment() {
     },
   })
 } 
+
+// Restore equipment mutation
+export function useRestoreEquipment() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async (id: string) => {
+      await callRpc({ fn: 'equipment_restore', args: { p_id: Number(id) } })
+    },
+    onSuccess: () => {
+      // Invalidate main equipment table queries and refetch active pages immediately
+      queryClient.invalidateQueries({ queryKey: ['equipment_list_enhanced'], refetchType: 'active' })
+      // Keep legacy cache family invalidation for older screens
+      queryClient.invalidateQueries({ queryKey: ['equipment'] })
+      // Keep active usage status in sync with table actions
+      queryClient.invalidateQueries({ queryKey: ['active_usage_logs'] })
+      // Invalidate dashboard stats to update KPI cards
+      queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] })
+      // Notify listeners that rely on event-driven invalidation
+      window.dispatchEvent(new CustomEvent('equipment-cache-invalidated'))
+
+      toast({
+        title: "Th\u00e0nh c\u00f4ng",
+        description: "Kh\u00f4i ph\u1ee5c thi\u1ebft b\u1ecb th\u00e0nh c\u00f4ng",
+      })
+    },
+    onError: (error: any) => {
+      toast({
+        title: "L\u1ed7i",
+        description: error.message || "Kh\u00f4ng th\u1ec3 kh\u00f4i ph\u1ee5c thi\u1ebft b\u1ecb",
+        variant: "destructive",
+      })
+    },
+  })
+}
