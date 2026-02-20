@@ -28,7 +28,7 @@ DECLARE
   v_is_deleted BOOLEAN;
 BEGIN
   -- Permission check: only global/to_qltb can delete
-  IF v_role IN ('regional_leader', 'technician', 'user') THEN
+  IF v_role NOT IN ('global', 'to_qltb') THEN
     RAISE EXCEPTION 'Permission denied' USING ERRCODE = '42501';
   END IF;
 

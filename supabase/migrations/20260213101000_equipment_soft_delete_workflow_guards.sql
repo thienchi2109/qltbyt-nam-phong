@@ -45,7 +45,8 @@ BEGIN
   into v_tb
   from public.thiet_bi
   where id = p_thiet_bi_id
-    and is_deleted = false;
+    and is_deleted = false
+  for update;
 
   if not found then
     raise exception 'Thiết bị không tồn tại' using errcode = 'P0002';
@@ -146,7 +147,8 @@ BEGIN
   into v_tb
   from public.thiet_bi
   where id = (p_data->>'thiet_bi_id')::int
-    and is_deleted = false;
+    and is_deleted = false
+  for update;
 
   if not found then
     raise exception 'Thiết bị không tồn tại' using errcode = 'P0002';
