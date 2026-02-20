@@ -1,10 +1,9 @@
-﻿-- Migration: Audit transfer_request_update mutations in unified audit_log
+-- Migration: Fix transfer_request_update security guards
 -- Date: 2026-02-20
--- Issue: transfer updates were not recorded in audit_log while creates were.
--- NOTE: This migration is an accidental duplicate of 20260220040801_fix_transfer_request_update_request_row_lock.sql.
---       Both files are identical. The CREATE OR REPLACE is idempotent so the DB state is correct.
---       The security guards that were missing here (v_user_id NULL, v_don_vi NULL for non-global users,
---       and loai_hinh empty-string CASE branch) were fixed in 20260220050000_fix_transfer_request_update_security_guards.sql.
+-- Fixes:
+--   1. v_user_id can silently become NULL when JWT claim is missing, setting updated_by=NULL
+--   2. Non-global users with missing don_vi JWT claim bypass tenant isolation checks
+--   3. Sending {"loai_hinh": ""} triggers CASE branches with empty string, wiping fields incorrectly
 
 BEGIN;
 
@@ -34,8 +33,19 @@ BEGIN
   v_don_vi := nullif(v_claims->>'don_vi', '');
   v_user_id := nullif(v_claims->>'user_id', '')::int;
 
+  -- FIX 1: Guard missing role
   if v_role is null or v_role = '' then
     raise exception 'Missing role claim in JWT' using errcode = '42501';
+  end if;
+
+  -- FIX 2: Guard missing user_id — prevents NULL audit trail (updated_by=NULL defeats audit spoofing fix)
+  if v_user_id is null then
+    raise exception 'Missing user_id claim in JWT' using errcode = '42501';
+  end if;
+
+  -- FIX 3: Guard missing don_vi for non-global users — prevents tenant isolation bypass
+  if not v_is_global and v_don_vi is null then
+    raise exception 'Missing don_vi claim in JWT for non-global user' using errcode = '42501';
   end if;
 
   if v_role = 'regional_leader' then
@@ -55,7 +65,7 @@ BEGIN
 
   v_tb_don_vi := v_req.tb_don_vi;
 
-  if not v_is_global and v_don_vi is not null and v_tb_don_vi is distinct from v_don_vi then
+  if not v_is_global and v_tb_don_vi is distinct from v_don_vi then
     raise exception 'Không có quyền trên thiết bị thuộc đơn vị khác';
   end if;
 
@@ -74,89 +84,86 @@ BEGIN
     for update;
 
     if not found then
-      -- FIX: was plain RAISE EXCEPTION (defaulted to P0001); now P0002 (no_data_found)
       raise exception 'Thiết bị không tồn tại' using errcode = 'P0002';
     end if;
 
-    if not v_is_global and v_don_vi is not null and v_target_tb.don_vi::text is distinct from v_don_vi then
+    if not v_is_global and v_target_tb.don_vi::text is distinct from v_don_vi then
       raise exception 'Không có quyền trên thiết bị thuộc đơn vị khác';
     end if;
   end if;
 
-  -- Keep existing partial-update semantics:
-  -- - when loai_hinh is omitted: preserve internal/external fields
-  -- - when loai_hinh changes: clear opposite field group
+  -- FIX 4: loai_hinh="" now treated as "not supplied" — CASE branches only fire when loai_hinh
+  -- is present AND non-empty, preventing empty string from wiping dependent field groups.
   update public.yeu_cau_luan_chuyen set
     thiet_bi_id = coalesce(v_new_thiet_bi_id, thiet_bi_id),
     loai_hinh = coalesce(nullif(p_data->>'loai_hinh', ''), loai_hinh),
     ly_do_luan_chuyen = coalesce(nullif(p_data->>'ly_do_luan_chuyen', ''), ly_do_luan_chuyen),
     khoa_phong_hien_tai = case
-      when p_data ? 'loai_hinh' then
+      when p_data ? 'loai_hinh' and nullif(p_data->>'loai_hinh', '') is not null then
         case
-          when coalesce(p_data->>'loai_hinh', '') = 'noi_bo' then nullif(p_data->>'khoa_phong_hien_tai', '')
+          when p_data->>'loai_hinh' = 'noi_bo' then nullif(p_data->>'khoa_phong_hien_tai', '')
           else null
         end
       else khoa_phong_hien_tai
     end,
     khoa_phong_nhan = case
-      when p_data ? 'loai_hinh' then
+      when p_data ? 'loai_hinh' and nullif(p_data->>'loai_hinh', '') is not null then
         case
-          when coalesce(p_data->>'loai_hinh', '') = 'noi_bo' then nullif(p_data->>'khoa_phong_nhan', '')
+          when p_data->>'loai_hinh' = 'noi_bo' then nullif(p_data->>'khoa_phong_nhan', '')
           else null
         end
       else khoa_phong_nhan
     end,
     muc_dich = case
-      when p_data ? 'loai_hinh' then
+      when p_data ? 'loai_hinh' and nullif(p_data->>'loai_hinh', '') is not null then
         case
-          when coalesce(p_data->>'loai_hinh', '') <> 'noi_bo' then nullif(p_data->>'muc_dich', '')
+          when p_data->>'loai_hinh' <> 'noi_bo' then nullif(p_data->>'muc_dich', '')
           else null
         end
       else muc_dich
     end,
     don_vi_nhan = case
-      when p_data ? 'loai_hinh' then
+      when p_data ? 'loai_hinh' and nullif(p_data->>'loai_hinh', '') is not null then
         case
-          when coalesce(p_data->>'loai_hinh', '') <> 'noi_bo' then nullif(p_data->>'don_vi_nhan', '')
+          when p_data->>'loai_hinh' <> 'noi_bo' then nullif(p_data->>'don_vi_nhan', '')
           else null
         end
       else don_vi_nhan
     end,
     dia_chi_don_vi = case
-      when p_data ? 'loai_hinh' then
+      when p_data ? 'loai_hinh' and nullif(p_data->>'loai_hinh', '') is not null then
         case
-          when coalesce(p_data->>'loai_hinh', '') <> 'noi_bo' then nullif(p_data->>'dia_chi_don_vi', '')
+          when p_data->>'loai_hinh' <> 'noi_bo' then nullif(p_data->>'dia_chi_don_vi', '')
           else null
         end
       else dia_chi_don_vi
     end,
     nguoi_lien_he = case
-      when p_data ? 'loai_hinh' then
+      when p_data ? 'loai_hinh' and nullif(p_data->>'loai_hinh', '') is not null then
         case
-          when coalesce(p_data->>'loai_hinh', '') <> 'noi_bo' then nullif(p_data->>'nguoi_lien_he', '')
+          when p_data->>'loai_hinh' <> 'noi_bo' then nullif(p_data->>'nguoi_lien_he', '')
           else null
         end
       else nguoi_lien_he
     end,
     so_dien_thoai = case
-      when p_data ? 'loai_hinh' then
+      when p_data ? 'loai_hinh' and nullif(p_data->>'loai_hinh', '') is not null then
         case
-          when coalesce(p_data->>'loai_hinh', '') <> 'noi_bo' then nullif(p_data->>'so_dien_thoai', '')
+          when p_data->>'loai_hinh' <> 'noi_bo' then nullif(p_data->>'so_dien_thoai', '')
           else null
         end
       else so_dien_thoai
     end,
     ngay_du_kien_tra = case
-      when p_data ? 'loai_hinh' then
+      when p_data ? 'loai_hinh' and nullif(p_data->>'loai_hinh', '') is not null then
         case
-          when coalesce(p_data->>'loai_hinh', '') <> 'noi_bo'
+          when p_data->>'loai_hinh' <> 'noi_bo'
             and coalesce(p_data->>'ngay_du_kien_tra', '') <> ''
             then (p_data->>'ngay_du_kien_tra')::date
           else null
         end
       else ngay_du_kien_tra
     end,
-    -- FIX: always use server-side v_user_id; client-supplied updated_by enabled audit spoofing
     updated_by = v_user_id,
     updated_at = now()
   where id = p_id;
