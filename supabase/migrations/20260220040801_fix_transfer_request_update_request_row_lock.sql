@@ -156,6 +156,14 @@ BEGIN
     updated_by = v_user_id,
     updated_at = now()
   where id = p_id;
+
+  perform public.audit_log(
+    'transfer_request_update',
+    'transfer_request',
+    p_id,
+    v_req.ma_yeu_cau,
+    p_data
+  );
 END;
 $function$;
 

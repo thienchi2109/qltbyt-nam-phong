@@ -1,6 +1,6 @@
-﻿-- Migration: Lock transfer_request_update target equipment row during reassignment
+﻿-- Migration: Audit transfer_request_update mutations in unified audit_log
 -- Date: 2026-02-20
--- Issue: TOCTOU window allowed concurrent soft-delete after validation SELECT.
+-- Issue: transfer updates were not recorded in audit_log while creates were.
 
 BEGIN;
 
