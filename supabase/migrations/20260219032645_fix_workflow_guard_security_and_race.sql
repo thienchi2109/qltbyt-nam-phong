@@ -271,7 +271,8 @@ BEGIN
   into v_req
   from public.yeu_cau_luan_chuyen t
   join public.thiet_bi tb on tb.id = t.thiet_bi_id
-  where t.id = p_id;
+  where t.id = p_id
+  for update of t;
 
   if not found then
     raise exception 'Yêu cầu không tồn tại';
@@ -294,7 +295,8 @@ BEGIN
     into v_target_tb
     from public.thiet_bi tb
     where tb.id = v_new_thiet_bi_id
-      and tb.is_deleted = false;
+      and tb.is_deleted = false
+    for update;
 
     if not found then
       -- FIX: was plain RAISE EXCEPTION (defaulted to P0001); now P0002 (no_data_found)
@@ -383,6 +385,14 @@ BEGIN
     updated_by = v_user_id,
     updated_at = now()
   where id = p_id;
+
+  perform public.audit_log(
+    'transfer_request_update',
+    'transfer_request',
+    p_id,
+    v_req.ma_yeu_cau,
+    p_data
+  );
 END;
 $function$;
 
