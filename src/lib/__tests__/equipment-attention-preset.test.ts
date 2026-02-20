@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest"
 import {
   EQUIPMENT_ATTENTION_ACTION,
   EQUIPMENT_ATTENTION_STATUSES,
+  applyAttentionStatusPresetFilters,
   getEquipmentAttentionHrefForRole,
 } from "../equipment-attention-preset"
 
@@ -26,6 +27,21 @@ describe("equipment attention preset", () => {
       "Chờ sửa chữa",
       "Chờ bảo trì",
       "Chờ hiệu chuẩn/kiểm định",
+    ])
+  })
+
+  it("replaces status filter and preserves non-status filters", () => {
+    expect(
+      applyAttentionStatusPresetFilters([
+        { id: "khoa_phong_quan_ly", value: ["Khoa A"] },
+        { id: "tinh_trang_hien_tai", value: ["Hoạt động"] },
+      ])
+    ).toEqual([
+      { id: "khoa_phong_quan_ly", value: ["Khoa A"] },
+      {
+        id: "tinh_trang_hien_tai",
+        value: ["Chờ sửa chữa", "Chờ bảo trì", "Chờ hiệu chuẩn/kiểm định"],
+      },
     ])
   })
 })

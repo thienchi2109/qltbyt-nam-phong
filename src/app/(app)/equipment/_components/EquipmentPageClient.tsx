@@ -24,6 +24,7 @@ import { DataTablePagination } from "@/components/shared/DataTablePagination"
 import type { DisplayContext } from "@/components/shared/DataTablePagination/types"
 import { EquipmentToolbar } from "@/components/equipment/equipment-toolbar"
 import { TenantSelector } from "@/components/shared/TenantSelector"
+import { applyAttentionStatusPresetFilters } from "@/lib/equipment-attention-preset"
 
 import { useEquipmentPage } from "../use-equipment-page"
 import { EquipmentContent } from "../equipment-content"
@@ -174,11 +175,30 @@ const EquipmentPageContent = React.memo(function EquipmentPageContent({
     if (pendingAction.type === "openAdd") {
       openAddDialog()
       clearPendingAction()
-    } else if (pendingAction.type === "openDetail" && pendingAction.equipment) {
+      return
+    }
+
+    if (pendingAction.type === "openDetail" && pendingAction.equipment) {
       openDetailDialog(pendingAction.equipment)
       clearPendingAction()
+      return
     }
-  }, [pendingAction, clearPendingAction, openAddDialog, openDetailDialog])
+
+    if (pendingAction.type === "applyAttentionStatusPreset") {
+      if (!isGlobal && !isRegionalLeader) {
+        setColumnFilters((prev) => applyAttentionStatusPresetFilters(prev))
+      }
+      clearPendingAction()
+    }
+  }, [
+    pendingAction,
+    clearPendingAction,
+    openAddDialog,
+    openDetailDialog,
+    isGlobal,
+    isRegionalLeader,
+    setColumnFilters,
+  ])
 
   return (
     <>
