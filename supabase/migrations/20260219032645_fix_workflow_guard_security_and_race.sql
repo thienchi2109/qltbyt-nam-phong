@@ -271,7 +271,8 @@ BEGIN
   into v_req
   from public.yeu_cau_luan_chuyen t
   join public.thiet_bi tb on tb.id = t.thiet_bi_id
-  where t.id = p_id;
+  where t.id = p_id
+  for update of t;
 
   if not found then
     raise exception 'Yêu cầu không tồn tại';

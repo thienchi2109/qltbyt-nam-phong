@@ -1,6 +1,6 @@
-﻿-- Migration: Lock transfer_request_update target equipment row during reassignment
+﻿-- Migration: Lock transfer_request_update request row during status/tenant guard checks
 -- Date: 2026-02-20
--- Issue: TOCTOU window allowed concurrent soft-delete after validation SELECT.
+-- Issue: TOCTOU on yeu_cau_luan_chuyen row allowed concurrent status changes.
 
 BEGIN;
 
