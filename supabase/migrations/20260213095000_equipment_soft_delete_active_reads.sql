@@ -177,7 +177,7 @@ CREATE OR REPLACE FUNCTION public.equipment_list_enhanced(
   p_phan_loai text DEFAULT NULL::text,
   p_phan_loai_array text[] DEFAULT NULL::text[],
   p_nguon_kinh_phi text DEFAULT NULL::text,
-  p_nguon_kinh_phi_array text[] DEFAULT NULL::text[],
+  p_nguon_kinh_phi_array text[] DEFAULT NULL::text[]
   -- p_fields removed: parameter was accepted but never used (query always returns to_jsonb(tb.*))
 )
 RETURNS jsonb
