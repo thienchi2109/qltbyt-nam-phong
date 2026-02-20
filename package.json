@@ -13,7 +13,7 @@
     "test:run": "vitest run",
     "test:ui": "vitest --ui",
     "test:coverage": "vitest run --coverage",
-    "db:types": "supabase gen types typescript --linked > src/types/database.ts",
+    "db:types": "node scripts/gen-types.js",
     "db:push": "supabase db push",
     "db:pull": "supabase db pull",
     "db:diff": "supabase db diff --linked",

@@ -65,6 +65,7 @@ firestore-debug.log
 .env.test.local
 
 # Supabase local development
+src/types/database.generated.ts
 supabase/.temp/
 supabase/docker/
 supabase/logs/
