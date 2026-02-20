@@ -17,7 +17,7 @@ CREATE OR REPLACE FUNCTION public.transfer_request_list_enhanced(
 RETURNS SETOF jsonb
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path TO 'public', 'pg_temp'
+SET search_path TO 'public'
 AS $function$
 DECLARE
   v_role TEXT;
