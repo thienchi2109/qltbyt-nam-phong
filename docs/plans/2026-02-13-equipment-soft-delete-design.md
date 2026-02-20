@@ -83,3 +83,17 @@
 - Type generation is run after RPC signature changes (`npm run db:types`) and validated with `npm run typecheck`.
 - Performance gate is executed with `EXPLAIN ANALYZE` on key inventory/report RPCs before rollout.
 - Phase-1 code reuse constraint for `ma_thiet_bi` is explicitly documented for operators.
+
+## Rollout Constraints (2026-02-20)
+- No physical purge is included in this milestone. Equipment soft-delete is flag-based only.
+- `ma_thiet_bi` global uniqueness remains unchanged in phase 1.
+- Historical rows are intentionally preserved across repair, transfer, usage, and history RPCs.
+- Phase-1 code reuse policy:
+  - soft-deleted equipment codes are not reusable yet
+  - restore existing equipment when reactivating the same code
+  - partial-unique index strategy stays as a tracked follow-up
+
+## Operator Notes (2026-02-20)
+- For accidental delete: use `equipment_restore` (authorized roles only).
+- For a needed code currently soft-deleted: restore and update metadata instead of creating duplicate code.
+- For retention and physical cleanup: wait for dedicated hard-purge follow-up milestone.
