@@ -186,14 +186,14 @@ export function useRestoreEquipment() {
       window.dispatchEvent(new CustomEvent('equipment-cache-invalidated'))
 
       toast({
-        title: "Th\u00e0nh c\u00f4ng",
-        description: "Kh\u00f4i ph\u1ee5c thi\u1ebft b\u1ecb th\u00e0nh c\u00f4ng",
+        title: "Thành công",
+        description: "Khôi phục thiết bị thành công",
       })
     },
     onError: (error: any) => {
       toast({
-        title: "L\u1ed7i",
-        description: error.message || "Kh\u00f4ng th\u1ec3 kh\u00f4i ph\u1ee5c thi\u1ebft b\u1ecb",
+        title: "Lỗi",
+        description: error.message || "Không thể khôi phục thiết bị",
         variant: "destructive",
       })
     },
