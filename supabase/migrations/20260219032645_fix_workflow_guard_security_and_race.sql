@@ -294,7 +294,8 @@ BEGIN
     into v_target_tb
     from public.thiet_bi tb
     where tb.id = v_new_thiet_bi_id
-      and tb.is_deleted = false;
+      and tb.is_deleted = false
+    for update;
 
     if not found then
       -- FIX: was plain RAISE EXCEPTION (defaulted to P0001); now P0002 (no_data_found)
