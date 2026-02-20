@@ -42,6 +42,14 @@ BEGIN
   v_is_global := v_role in ('global', 'admin');
   v_don_vi := nullif(v_claims->>'don_vi', '')::bigint;
 
+  if v_role is null or v_role = '' then
+    raise exception 'Missing role claim in JWT' using errcode = '42501';
+  end if;
+
+  if not v_is_global and v_don_vi is null then
+    raise exception 'Missing don_vi claim for non-global role %', v_role using errcode = '42501';
+  end if;
+
   select id, don_vi, tinh_trang_hien_tai
   into v_tb
   from public.thiet_bi
@@ -112,6 +120,7 @@ end;
 $function$;
 
 GRANT EXECUTE ON FUNCTION public.repair_request_create(integer, text, text, date, text, text, text) TO authenticated;
+REVOKE EXECUTE ON FUNCTION public.repair_request_create(integer, text, text, date, text, text, text) FROM PUBLIC;
 
 -- ─────────────────────────────────────────────────────────────────────────────
 -- 2. transfer_request_create  (server-enforce audit fields + P0002)

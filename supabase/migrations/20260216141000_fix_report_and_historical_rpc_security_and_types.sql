@@ -227,6 +227,7 @@ DECLARE
   v_allowed BIGINT[];
   v_effective_donvi BIGINT;
   v_effective BIGINT[] := NULL;
+  v_limit INT;
   v_offset INT;
   v_sanitized_q TEXT := NULL;
 BEGIN
@@ -264,7 +265,8 @@ BEGIN
     v_effective := ARRAY[v_effective_donvi];
   END IF;
 
-  v_offset := GREATEST((p_page - 1), 0) * GREATEST(p_page_size, 1);
+  v_limit := GREATEST(COALESCE(p_page_size, 100), 1);
+  v_offset := GREATEST((p_page - 1), 0) * v_limit;
 
   RETURN QUERY
   SELECT to_jsonb(row) FROM (
@@ -297,7 +299,7 @@ BEGIN
         )
       )
     ORDER BY yc.created_at DESC
-    OFFSET v_offset LIMIT p_page_size
+    OFFSET v_offset LIMIT v_limit
   ) row;
 END;
 $function$;

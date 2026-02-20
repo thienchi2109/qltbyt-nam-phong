@@ -683,7 +683,17 @@ BEGIN
       'thiet_bi', to_jsonb(tb),
       'equipment_is_deleted', tb.is_deleted
     )
-    || jsonb_build_object('nguoi_su_dung', to_jsonb(u))
+    || jsonb_build_object(
+      'nguoi_su_dung',
+      CASE
+        WHEN u.id IS NOT NULL THEN jsonb_build_object(
+          'id', u.id,
+          'full_name', u.full_name,
+          'khoa_phong', u.khoa_phong
+        )
+        ELSE NULL
+      END
+    )
   FROM public.nhat_ky_su_dung nk
   LEFT JOIN public.thiet_bi tb ON nk.thiet_bi_id = tb.id
   LEFT JOIN public.nhan_vien u ON nk.nguoi_su_dung_id = u.id
