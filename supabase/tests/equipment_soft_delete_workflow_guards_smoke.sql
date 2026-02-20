@@ -192,6 +192,12 @@ BEGIN
     RAISE EXCEPTION 'Expected usage_session_start to reject soft-deleted equipment';
   END IF;
 
+  IF v_sqlstate IS DISTINCT FROM 'P0002' THEN
+    RAISE EXCEPTION
+      'Expected usage_session_start to fail with P0002 equipment guard, got % (%).',
+      v_sqlstate, v_sqlerrm;
+  END IF;
+
   RAISE NOTICE 'OK: usage_session_start blocked soft-deleted equipment (% / %)', v_sqlstate, v_sqlerrm;
 
   -- Admin/global mapping guard: admin should behave as global and still hit equipment guard.

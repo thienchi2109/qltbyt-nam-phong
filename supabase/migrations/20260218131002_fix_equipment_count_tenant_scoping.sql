@@ -21,6 +21,7 @@ CREATE OR REPLACE FUNCTION public.equipment_count(
 RETURNS bigint
 LANGUAGE plpgsql
 SECURITY DEFINER
+SET search_path = public
 AS $function$
 DECLARE
   v_role    TEXT     := lower(COALESCE(public._get_jwt_claim('app_role'), public._get_jwt_claim('role'), ''));
