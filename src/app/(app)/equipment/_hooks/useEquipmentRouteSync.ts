@@ -2,6 +2,7 @@
 
 import * as React from "react"
 import { useRouter, useSearchParams, usePathname } from "next/navigation"
+import { EQUIPMENT_ATTENTION_ACTION } from "@/lib/equipment-attention-preset"
 import type { Equipment } from "../types"
 
 export interface UseEquipmentRouteSyncParams {
@@ -9,7 +10,7 @@ export interface UseEquipmentRouteSyncParams {
 }
 
 export interface RouteAction {
-  type: "openAdd" | "openDetail"
+  type: "openAdd" | "openDetail" | "applyAttentionStatusPreset"
   equipment?: Equipment
   highlightId?: number
 }
@@ -81,6 +82,14 @@ export function useEquipmentRouteSync(
     if (actionParam === "add") {
       processedParamsRef.current = paramsKey
       setPendingAction({ type: "openAdd" })
+      router.replace(buildCleanUrl(pathname, searchParams), { scroll: false })
+      return
+    }
+
+    // Handle status preset action from dashboard attention redirect
+    if (actionParam === EQUIPMENT_ATTENTION_ACTION) {
+      processedParamsRef.current = paramsKey
+      setPendingAction({ type: "applyAttentionStatusPreset" })
       router.replace(buildCleanUrl(pathname, searchParams), { scroll: false })
       return
     }

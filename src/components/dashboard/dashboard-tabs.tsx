@@ -2,6 +2,7 @@
 
 import * as React from "react"
 import Link from "next/link"
+import { useSession } from "next-auth/react"
 import { ArrowUpRight, Wrench, Calendar, Clock, AlertTriangle } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -13,8 +14,10 @@ import { useEquipmentAttentionPaginated } from "@/hooks/use-dashboard-stats"
 import { useMaintenancePlans } from "@/hooks/use-cached-maintenance"
 import { useCalendarData } from "@/hooks/use-calendar-data"
 import { TaskType } from "@/lib/data"
+import { getEquipmentAttentionHrefForRole } from "@/lib/equipment-attention-preset"
 
 export function DashboardTabs() {
+  const { data: session } = useSession()
   const currentDate = new Date()
   const year = currentDate.getFullYear()
   const month = currentDate.getMonth() + 1
@@ -23,6 +26,7 @@ export function DashboardTabs() {
   const [activeTab, setActiveTab] = React.useState<'equipment' | 'plans' | 'monthly'>('equipment')
   const [equipmentPage, setEquipmentPage] = React.useState(1)
   const [planPage, setPlanPage] = React.useState(1)
+  const equipmentAttentionHref = getEquipmentAttentionHrefForRole(session?.user?.role)
 
   const {
     data: equipmentPageData,
@@ -178,7 +182,7 @@ export function DashboardTabs() {
                 Danh sách các thiết bị cần sửa chữa hoặc đang bảo trì
               </CardDescription>
               <Button asChild size="sm" variant="ghost" className="gap-1 text-blue-600 hover:text-blue-700">
-                <Link href="/equipment">
+                <Link href={equipmentAttentionHref}>
                   Xem tất cả
                   <ArrowUpRight className="h-4 w-4" />
                 </Link>

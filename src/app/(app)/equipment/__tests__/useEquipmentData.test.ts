@@ -2,6 +2,7 @@ import { renderHook, waitFor } from '@testing-library/react'
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import * as React from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { EQUIPMENT_ATTENTION_STATUSES } from '@/lib/equipment-attention-preset'
 
 // Mock callRpc
 const mockCallRpc = vi.fn()
@@ -225,6 +226,74 @@ describe('useEquipmentData', () => {
               p_vi_tri_lap_dat_array: null,
               p_tinh_trang_array: null,
               p_phan_loai_array: null,
+            }),
+          })
+        )
+      })
+    })
+  })
+
+  describe('Attention preset tenant isolation', () => {
+    it('should pass preset statuses without changing non-regional tenant scope', async () => {
+      renderHook(
+        () =>
+          useEquipmentData(
+            createDefaultParams({
+              userRole: 'user',
+              isGlobal: false,
+              isRegionalLeader: false,
+              selectedDonVi: 5,
+              // Should be ignored for non-regional users.
+              selectedFacilityId: 999,
+              selectedStatuses: [...EQUIPMENT_ATTENTION_STATUSES],
+            })
+          ),
+        { wrapper: createWrapper() }
+      )
+
+      await waitFor(() => {
+        expect(mockCallRpc).toHaveBeenCalledWith(
+          expect.objectContaining({
+            fn: 'equipment_list_enhanced',
+            args: expect.objectContaining({
+              p_tinh_trang_array: [...EQUIPMENT_ATTENTION_STATUSES],
+              p_don_vi: 5,
+            }),
+          })
+        )
+      })
+
+      const equipmentListCall = mockCallRpc.mock.calls.find(
+        (call) => call[0].fn === 'equipment_list_enhanced'
+      )?.[0]
+
+      expect(equipmentListCall?.args).not.toHaveProperty('selectedFacilityId')
+      expect(equipmentListCall?.args).not.toHaveProperty('p_selected_facility_id')
+    })
+
+    it('should keep regional-leader tenant selection behavior with preset statuses', async () => {
+      renderHook(
+        () =>
+          useEquipmentData(
+            createDefaultParams({
+              userRole: 'regional_leader',
+              isGlobal: false,
+              isRegionalLeader: true,
+              selectedDonVi: 5,
+              selectedFacilityId: 42,
+              selectedStatuses: [...EQUIPMENT_ATTENTION_STATUSES],
+            })
+          ),
+        { wrapper: createWrapper() }
+      )
+
+      await waitFor(() => {
+        expect(mockCallRpc).toHaveBeenCalledWith(
+          expect.objectContaining({
+            fn: 'equipment_list_enhanced',
+            args: expect.objectContaining({
+              p_tinh_trang_array: [...EQUIPMENT_ATTENTION_STATUSES],
+              p_don_vi: 42,
             }),
           })
         )
