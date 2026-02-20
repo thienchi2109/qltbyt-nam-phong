@@ -27,12 +27,12 @@ const REQUIRED_MARKER = 'export type Json';
 let output;
 try {
   const isWindows = process.platform === 'win32';
-  const bin = isWindows ? 'npx.cmd' : 'npx';
-  output = execSync(`${bin} supabase gen types typescript --linked`, {
+  output = execSync(`npx supabase gen types typescript --linked`, {
     encoding: 'utf8',
     cwd: path.resolve(__dirname, '..'),
     stdio: ['inherit', 'pipe', 'pipe'],
     maxBuffer: 20 * 1024 * 1024,
+    shell: isWindows, // cmd.exe /c ensures .cmd batch files pipe stdout correctly
   });
 } catch (err) {
   console.error('\nERROR: supabase gen types failed.');
