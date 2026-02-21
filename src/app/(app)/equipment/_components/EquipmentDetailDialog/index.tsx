@@ -272,9 +272,10 @@ export function EquipmentDetailDialog({
     !!user &&
     (isEquipmentManagerRole(user.role) ||
       (user.role === "qltb_khoa" && user.khoa_phong === equipment?.khoa_phong_quan_ly))
+  const canDeleteEquipment = isEquipmentManagerRole(user?.role)
 
   const handleDeleteEquipment = React.useCallback(() => {
-    if (!equipment || !canEdit || isDeleting) return
+    if (!equipment || !canDeleteEquipment || isDeleting) return
     deleteEquipment(String(equipment.id), {
       onSuccess: () => {
         setShowDeleteConfirm(false)
@@ -282,7 +283,7 @@ export function EquipmentDetailDialog({
         onEquipmentUpdated()
       }
     })
-  }, [equipment, canEdit, isDeleting, deleteEquipment, onOpenChange, onEquipmentUpdated])
+  }, [equipment, canDeleteEquipment, isDeleting, deleteEquipment, onOpenChange, onEquipmentUpdated])
 
   if (!equipment) return null
 
@@ -434,7 +435,7 @@ export function EquipmentDetailDialog({
 
                 <div className="w-px h-6 bg-border mx-1 hidden sm:block"></div>
 
-                {canEdit && (
+                {canDeleteEquipment && (
                   <Tooltip delayDuration={200}>
                     <TooltipTrigger asChild>
                       <Button
