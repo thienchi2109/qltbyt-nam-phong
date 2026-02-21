@@ -25,6 +25,16 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
+import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
@@ -50,6 +60,7 @@ import { EquipmentDetailFilesTab } from "./EquipmentDetailFilesTab"
 import { EquipmentDetailDetailsTab } from "./EquipmentDetailDetailsTab"
 import { EquipmentDetailConfigTab } from "./EquipmentDetailConfigTab"
 import { EquipmentDetailEditForm } from "./EquipmentDetailEditForm"
+import { useDeleteEquipment } from "@/hooks/use-cached-equipment"
 
 const DEFAULT_FORM_VALUES = {
   ma_thiet_bi: "",
@@ -153,6 +164,9 @@ export function EquipmentDetailDialog({
   // Ref for scrolling active tab into view on mobile
   const tabsScrollRef = React.useRef<HTMLDivElement>(null)
 
+  // Delete confirm dialog state
+  const [showDeleteConfirm, setShowDeleteConfirm] = React.useState(false)
+
   // Scroll active tab into view when tab changes (mobile accessibility)
   React.useEffect(() => {
     const scrollContainer = tabsScrollRef.current
@@ -215,6 +229,8 @@ export function EquipmentDetailDialog({
     },
   })
 
+  const { mutate: deleteEquipment, isPending: isDeleting } = useDeleteEquipment()
+
   // Handlers
   const onSubmitInlineEdit = async (values: EquipmentFormValues): Promise<void> => {
     if (!equipment) return
@@ -237,6 +253,8 @@ export function EquipmentDetailDialog({
     [isEditingDetails, editForm.formState.isDirty, onOpenChange]
   )
 
+
+
   // Merge equipment prop with saved values for display
   // After save, savedValues contains updated data while equipment prop is stale
   const displayEquipment = React.useMemo(() => {
@@ -253,6 +271,16 @@ export function EquipmentDetailDialog({
     !!user &&
     (isEquipmentManagerRole(user.role) ||
       (user.role === "qltb_khoa" && user.khoa_phong === equipment?.khoa_phong_quan_ly))
+
+  const handleDeleteEquipment = React.useCallback(() => {
+    if (!equipment || !canEdit || isDeleting) return
+    deleteEquipment(String(equipment.id), {
+      onSuccess: () => {
+        setShowDeleteConfirm(false)
+        onOpenChange(false) // Close the detail dialog too after deletion
+      }
+    })
+  }, [equipment, canEdit, isDeleting, deleteEquipment, onOpenChange])
 
   if (!equipment) return null
 
@@ -431,6 +459,32 @@ export function EquipmentDetailDialog({
           </TooltipProvider>
         </DialogFooter>
       </DialogContent>
+
+      <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+        <AlertDialogContent onClick={(e) => e.stopPropagation()}>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Bạn có chắc chắn muốn xóa thiết bị này không?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Hành động này sẽ chuyển thiết bị vào thùng rác (xóa mềm).
+              Bạn có thể khôi phục lại sau nếu cần.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={(e) => e.stopPropagation()}>Hủy</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => {
+                e.preventDefault()
+                e.stopPropagation()
+                handleDeleteEquipment()
+              }}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={isDeleting}
+            >
+              {isDeleting ? "Đang xóa..." : "Xóa"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Dialog>
   )
 }
