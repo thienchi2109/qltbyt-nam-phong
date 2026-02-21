@@ -13,7 +13,7 @@
 import * as React from "react"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm, FormProvider } from "react-hook-form"
-import { Edit, Loader2, Printer, QrCode } from "lucide-react"
+import { Edit, Loader2, Printer, QrCode, Trash2 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -24,6 +24,12 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import type { Equipment } from "@/types/database"
 
@@ -323,65 +329,106 @@ export function EquipmentDetailDialog({
           </TabsContent>
         </Tabs>
         <DialogFooter className="shrink-0 pt-4 border-t">
-          <div className="w-full flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex items-center gap-2">
-              {canEdit &&
-                (!isEditingDetails ? (
-                  <Button
-                    variant="outline"
-                    onClick={() => {
-                      setIsEditingDetails(true)
-                    }}
-                  >
-                    <Edit className="mr-2 h-4 w-4" />
-                    Sửa thông tin
-                  </Button>
-                ) : (
+          <TooltipProvider>
+            <div className="w-full flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex items-center gap-2">
+                {canEdit &&
+                  (!isEditingDetails ? (
+                    <Tooltip delayDuration={200}>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          onClick={() => {
+                            setIsEditingDetails(true)
+                          }}
+                        >
+                          <Edit className="h-4 w-4" />
+                          <span className="sr-only">Sửa thông tin</span>
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>Sửa thông tin</TooltipContent>
+                    </Tooltip>
+                  ) : (
+                    <>
+                      <Button
+                        variant="outline"
+                        type="button"
+                        onClick={() => {
+                          if (displayEquipment) {
+                            editForm.reset(equipmentToFormValues(displayEquipment))
+                          }
+                          setIsEditingDetails(false)
+                        }}
+                        disabled={isUpdating}
+                      >
+                        Hủy
+                      </Button>
+                      <Button
+                        type="submit"
+                        form="equipment-inline-edit-form"
+                        disabled={isUpdating}
+                      >
+                        {isUpdating && (
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        )}
+                        Lưu thay đổi
+                      </Button>
+                    </>
+                  ))}
+              </div>
+              <div className="flex items-center gap-2">
+                {!isRegionalLeader && (
                   <>
-                    <Button
-                      variant="outline"
-                      type="button"
-                      onClick={() => {
-                        if (displayEquipment) {
-                          editForm.reset(equipmentToFormValues(displayEquipment))
-                        }
-                        setIsEditingDetails(false)
-                      }}
-                      disabled={isUpdating}
-                    >
-                      Hủy
-                    </Button>
-                    <Button
-                      type="submit"
-                      form="equipment-inline-edit-form"
-                      disabled={isUpdating}
-                    >
-                      {isUpdating && (
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      )}
-                      Lưu thay đổi
-                    </Button>
+                    <Tooltip delayDuration={200}>
+                      <TooltipTrigger asChild>
+                        <Button variant="outline" size="icon" onClick={() => onGenerateDeviceLabel(displayEquipment!)}>
+                          <QrCode className="h-4 w-4" />
+                          <span className="sr-only">Tạo nhãn thiết bị</span>
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>Tạo nhãn thiết bị</TooltipContent>
+                    </Tooltip>
+
+                    <Tooltip delayDuration={200}>
+                      <TooltipTrigger asChild>
+                        <Button variant="outline" size="icon" onClick={() => onGenerateProfileSheet(displayEquipment!)}>
+                          <Printer className="h-4 w-4" />
+                          <span className="sr-only">In lý lịch</span>
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>In lý lịch</TooltipContent>
+                    </Tooltip>
                   </>
-                ))}
+                )}
+
+                <div className="w-px h-6 bg-border mx-1 hidden sm:block"></div>
+
+                {canEdit && (
+                  <Tooltip delayDuration={200}>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        className="text-destructive hover:bg-destructive hover:text-destructive-foreground border-destructive/30"
+                        onClick={() => {
+                          alert("Tính năng Xóa thiết bị sẽ được cập nhật sau.")
+                        }}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                        <span className="sr-only">Xóa thiết bị</span>
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>Xóa thiết bị</TooltipContent>
+                  </Tooltip>
+                )}
+
+                <Button variant="default" onClick={() => handleDialogOpenChange(false)}>
+                  Đóng
+                </Button>
+              </div>
             </div>
-            <div className="flex items-center gap-2">
-              {!isRegionalLeader && (
-                <>
-                  <Button variant="secondary" onClick={() => onGenerateDeviceLabel(displayEquipment!)}>
-                    <QrCode className="mr-2 h-4 w-4" />
-                    Tạo nhãn thiết bị
-                  </Button>
-                  <Button onClick={() => onGenerateProfileSheet(displayEquipment!)}>
-                    <Printer className="mr-2 h-4 w-4" />
-                    In lý lịch
-                  </Button>
-                </>
-              )}
-              <Button variant="outline" onClick={() => handleDialogOpenChange(false)}>
-                Đóng
-              </Button>
-            </div>
-          </div>
+          </TooltipProvider>
         </DialogFooter>
       </DialogContent>
     </Dialog>
