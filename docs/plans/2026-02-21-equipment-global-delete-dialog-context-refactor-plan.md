@@ -47,7 +47,7 @@
 **Step 5: Commit**
 
 ```bash
-git add src/app/(app)/equipment/_components/EquipmentDialogContext.tsx src/app/(app)/equipment/__tests__/EquipmentDialogContext.test.tsx
+git add "src/app/(app)/equipment/_components/EquipmentDialogContext.tsx" "src/app/(app)/equipment/__tests__/EquipmentDialogContext.test.tsx"
 git commit -m "refactor(equipment): add global delete dialog state to context"
 ```
 
@@ -74,7 +74,7 @@ git commit -m "refactor(equipment): add global delete dialog state to context"
 
 **Step 3: Mount shared dialog in equipment host**
 
-- Render `<EquipmentDeleteDialog />` as the **last child** in the `EquipmentDialogs` return fragment, after `<EquipmentDetailDialog />`. Radix portals to `<body>` in mount order; last-mounted portal wins z-index, ensuring the `AlertDialog` layers above the `Dialog` per `docs/frontend/layering.md`.
+- Render `<EquipmentDeleteDialog />` in the shared `EquipmentDialogs` host (after `<EquipmentDetailDialog />` for predictable structure). Layering correctness must come from shared primitive z-index tiers in `docs/frontend/layering.md` (`AlertDialog` above `Dialog`), not from mount-order assumptions.
 
 **Step 4: Add focused tests for shared dialog**
 
@@ -87,7 +87,7 @@ git commit -m "refactor(equipment): add global delete dialog state to context"
 **Step 5: Commit**
 
 ```bash
-git add src/app/(app)/equipment/_components/EquipmentDeleteDialog.tsx src/app/(app)/equipment/equipment-dialogs.tsx src/app/(app)/equipment/__tests__/equipment-delete-dialog.test.tsx
+git add "src/app/(app)/equipment/_components/EquipmentDeleteDialog.tsx" "src/app/(app)/equipment/equipment-dialogs.tsx" "src/app/(app)/equipment/__tests__/equipment-delete-dialog.test.tsx"
 git commit -m "feat(equipment): add shared global delete dialog host"
 ```
 
@@ -124,7 +124,7 @@ git commit -m "feat(equipment): add shared global delete dialog host"
 **Step 5: Commit**
 
 ```bash
-git add src/components/equipment/equipment-actions-menu.tsx src/app/(app)/equipment/__tests__/equipment-actions-menu.test.tsx
+git add "src/components/equipment/equipment-actions-menu.tsx" "src/app/(app)/equipment/__tests__/equipment-actions-menu.test.tsx"
 git commit -m "refactor(equipment): route row delete through global dialog context"
 ```
 
@@ -156,14 +156,14 @@ git commit -m "refactor(equipment): route row delete through global dialog conte
 **Step 4: Update tests**
 
 - keep existing RBAC button-visibility assertions
-- add `useEquipmentContext` mock that exposes `openDeleteDialog`
+- add `useEquipmentContext` mock that exposes `openDeleteDialog` to both `equipment-detail-dialog-delete-rbac.test.tsx` and `equipment-detail-dialog-tabs.test.tsx` — adding `useEquipmentContext` consumption to the component means **every** existing test for it now requires the mock, not just the delete test
 - add assertion that clicking the delete icon button calls `openDeleteDialog(equipment, "detail_dialog")`
 - remove the dead mock for `@/hooks/use-cached-equipment` (no longer used in this component after refactor)
 
 **Step 5: Commit**
 
 ```bash
-git add src/app/(app)/equipment/_components/EquipmentDetailDialog/index.tsx src/app/(app)/equipment/__tests__/equipment-detail-dialog-delete-rbac.test.tsx
+git add "src/app/(app)/equipment/_components/EquipmentDetailDialog/index.tsx" "src/app/(app)/equipment/__tests__/equipment-detail-dialog-delete-rbac.test.tsx" "src/app/(app)/equipment/__tests__/equipment-detail-dialog-tabs.test.tsx"
 git commit -m "refactor(equipment): move detail delete confirm to global dialog flow"
 ```
 
@@ -173,15 +173,17 @@ git commit -m "refactor(equipment): move detail delete confirm to global dialog 
 - Test: `src/app/(app)/equipment/__tests__/EquipmentDialogContext.test.tsx`
 - Test: `src/app/(app)/equipment/__tests__/equipment-actions-menu.test.tsx`
 - Test: `src/app/(app)/equipment/__tests__/equipment-detail-dialog-delete-rbac.test.tsx`
+- Test: `src/app/(app)/equipment/__tests__/equipment-detail-dialog-tabs.test.tsx`
 - Test: `src/app/(app)/equipment/__tests__/equipment-delete-dialog.test.tsx`
 
 **Step 1: Run targeted tests first**
 
 ```bash
-node scripts/npm-run.js run test:run -- src/app/(app)/equipment/__tests__/EquipmentDialogContext.test.tsx
-node scripts/npm-run.js run test:run -- src/app/(app)/equipment/__tests__/equipment-actions-menu.test.tsx
-node scripts/npm-run.js run test:run -- src/app/(app)/equipment/__tests__/equipment-detail-dialog-delete-rbac.test.tsx
-node scripts/npm-run.js run test:run -- src/app/(app)/equipment/__tests__/equipment-delete-dialog.test.tsx
+node scripts/npm-run.js run test:run -- "src/app/(app)/equipment/__tests__/EquipmentDialogContext.test.tsx"
+node scripts/npm-run.js run test:run -- "src/app/(app)/equipment/__tests__/equipment-actions-menu.test.tsx"
+node scripts/npm-run.js run test:run -- "src/app/(app)/equipment/__tests__/equipment-detail-dialog-delete-rbac.test.tsx"
+node scripts/npm-run.js run test:run -- "src/app/(app)/equipment/__tests__/equipment-detail-dialog-tabs.test.tsx"
+node scripts/npm-run.js run test:run -- "src/app/(app)/equipment/__tests__/equipment-delete-dialog.test.tsx"
 ```
 
 Expected: all pass.
@@ -205,7 +207,7 @@ Expected: no equipment-module regressions introduced by context API changes.
 **Step 4: Commit**
 
 ```bash
-git add src/app/(app)/equipment/__tests__
+git add "src/app/(app)/equipment/__tests__"
 git commit -m "test(equipment): cover global delete dialog context flow"
 ```
 
@@ -244,7 +246,7 @@ git commit -m "test(equipment): cover global delete dialog context flow"
 1. Keep `EquipmentDialogContext` mutation-free (orchestration only) to stay aligned with existing design notes in `EquipmentDialogContext.tsx`.
 2. Keep one delete confirmation dialog host per equipment page provider scope.
 3. Keep delete invalidation responsibility in `useDeleteEquipment` to prevent duplicate invalidation/event dispatch chains.
-4. Keep AlertDialog layering unchanged (`AlertDialog` remains above `Dialog`) per `docs/frontend/layering.md`. Enforced by rendering `<EquipmentDeleteDialog />` last in `equipment-dialogs.tsx`.
+4. Keep AlertDialog layering unchanged (`AlertDialog` remains above `Dialog`) per `docs/frontend/layering.md`. Enforce via shared primitive tiers (`src/components/ui/alert-dialog.tsx` and `src/components/ui/dialog.tsx`), not per-page mount-order coupling.
 5. Use explicit `isDeleteOpen` boolean (not derived from `deleteTarget !== null`) so Radix exit animations complete without the dialog content flashing blank while `deleteTarget` is cleared.
 
 ## Resolved Decisions
@@ -259,4 +261,3 @@ git commit -m "test(equipment): cover global delete dialog context flow"
    - `equipment-actions-menu.tsx`
    - `EquipmentDetailDialog/index.tsx`
 3. Re-run targeted equipment tests to confirm behavior parity.
-
