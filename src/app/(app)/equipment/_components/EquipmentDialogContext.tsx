@@ -26,20 +26,25 @@ import type { Equipment, UsageLog, SessionUser } from "../types"
 // Context Types
 // ============================================
 
-interface DialogState {
+export type DeleteDialogSource = "actions_menu" | "detail_dialog"
+
+export interface DialogState {
   isAddOpen: boolean
   isImportOpen: boolean
   isColumnsOpen: boolean
   isDetailOpen: boolean
   isStartUsageOpen: boolean
   isEndUsageOpen: boolean
+  isDeleteOpen: boolean
   editingEquipment: Equipment | null
   detailEquipment: Equipment | null
   startUsageEquipment: Equipment | null
   endUsageLog: UsageLog | null
+  deleteTarget: Equipment | null
+  deleteSource: DeleteDialogSource | null
 }
 
-interface EquipmentDialogContextValue {
+export interface EquipmentDialogContextValue {
   // User/Auth
   user: SessionUser | null
   isGlobal: boolean
@@ -56,6 +61,7 @@ interface EquipmentDialogContextValue {
   openDetailDialog: (equipment: Equipment) => void
   openStartUsageDialog: (equipment: Equipment) => void
   openEndUsageDialog: (usageLog: UsageLog) => void
+  openDeleteDialog: (equipment: Equipment, source: DeleteDialogSource) => void
   closeAddDialog: () => void
   closeImportDialog: () => void
   closeColumnsDialog: () => void
@@ -63,6 +69,7 @@ interface EquipmentDialogContextValue {
   closeDetailDialog: () => void
   closeStartUsageDialog: () => void
   closeEndUsageDialog: () => void
+  closeDeleteDialog: () => void
   closeAllDialogs: () => void
 
   // Cache invalidation callback for dialogs
@@ -104,10 +111,13 @@ export function EquipmentDialogProvider({
     isDetailOpen: false,
     isStartUsageOpen: false,
     isEndUsageOpen: false,
+    isDeleteOpen: false,
     editingEquipment: null,
     detailEquipment: null,
     startUsageEquipment: null,
     endUsageLog: null,
+    deleteTarget: null,
+    deleteSource: null,
   })
 
   // Cache invalidation
@@ -171,6 +181,15 @@ export function EquipmentDialogProvider({
     }))
   }, [])
 
+  const openDeleteDialog = React.useCallback((equipment: Equipment, source: DeleteDialogSource) => {
+    setDialogState((prev) => ({
+      ...prev,
+      isDeleteOpen: true,
+      deleteTarget: equipment,
+      deleteSource: source,
+    }))
+  }, [])
+
   // Dialog close actions
   const closeAddDialog = React.useCallback(() => {
     setDialogState((prev) => ({ ...prev, isAddOpen: false }))
@@ -212,6 +231,13 @@ export function EquipmentDialogProvider({
     }))
   }, [])
 
+  const closeDeleteDialog = React.useCallback(() => {
+    setDialogState((prev) => ({
+      ...prev,
+      isDeleteOpen: false,
+    }))
+  }, [])
+
   const closeAllDialogs = React.useCallback(() => {
     setDialogState({
       isAddOpen: false,
@@ -220,10 +246,13 @@ export function EquipmentDialogProvider({
       isDetailOpen: false,
       isStartUsageOpen: false,
       isEndUsageOpen: false,
+      isDeleteOpen: false,
       editingEquipment: null,
       detailEquipment: null,
       startUsageEquipment: null,
       endUsageLog: null,
+      deleteTarget: null,
+      deleteSource: null,
     })
   }, [])
 
@@ -240,6 +269,7 @@ export function EquipmentDialogProvider({
       openDetailDialog,
       openStartUsageDialog,
       openEndUsageDialog,
+      openDeleteDialog,
       closeAddDialog,
       closeImportDialog,
       closeColumnsDialog,
@@ -247,6 +277,7 @@ export function EquipmentDialogProvider({
       closeDetailDialog,
       closeStartUsageDialog,
       closeEndUsageDialog,
+      closeDeleteDialog,
       closeAllDialogs,
       onDataMutationSuccess,
     }),
@@ -262,6 +293,7 @@ export function EquipmentDialogProvider({
       openDetailDialog,
       openStartUsageDialog,
       openEndUsageDialog,
+      openDeleteDialog,
       closeAddDialog,
       closeImportDialog,
       closeColumnsDialog,
@@ -269,6 +301,7 @@ export function EquipmentDialogProvider({
       closeDetailDialog,
       closeStartUsageDialog,
       closeEndUsageDialog,
+      closeDeleteDialog,
       closeAllDialogs,
       onDataMutationSuccess,
     ]

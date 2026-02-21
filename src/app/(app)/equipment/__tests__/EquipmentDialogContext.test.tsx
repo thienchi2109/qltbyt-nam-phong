@@ -81,6 +81,9 @@ describe('EquipmentDialogContext', () => {
       expect(result.current.dialogState.detailEquipment).toBeNull()
       expect(result.current.dialogState.startUsageEquipment).toBeNull()
       expect(result.current.dialogState.endUsageLog).toBeNull()
+      expect(result.current.dialogState.deleteTarget).toBeNull()
+      expect(result.current.dialogState.deleteSource).toBeNull()
+      expect(result.current.dialogState.isDeleteOpen).toBe(false)
     })
   })
 
@@ -295,6 +298,46 @@ describe('EquipmentDialogContext', () => {
     })
   })
 
+  describe('Delete Dialog', () => {
+    const mockEquipment = {
+      id: 4,
+      ten_thiet_bi: 'Delete Equipment',
+      don_vi: 5,
+    } as any
+
+    it('should open delete dialog with equipment and source', () => {
+      const { result } = renderHook(() => useEquipmentContext(), {
+        wrapper: createWrapper(),
+      })
+
+      act(() => {
+        result.current.openDeleteDialog(mockEquipment, 'actions_menu')
+      })
+
+      expect(result.current.dialogState.isDeleteOpen).toBe(true)
+      expect(result.current.dialogState.deleteTarget).toEqual(mockEquipment)
+      expect(result.current.dialogState.deleteSource).toBe('actions_menu')
+    })
+
+    it('should close delete dialog and preserve target/source for animation-safe fade out', () => {
+      const { result } = renderHook(() => useEquipmentContext(), {
+        wrapper: createWrapper(),
+      })
+
+      act(() => {
+        result.current.openDeleteDialog(mockEquipment, 'detail_dialog')
+      })
+
+      act(() => {
+        result.current.closeDeleteDialog()
+      })
+
+      expect(result.current.dialogState.isDeleteOpen).toBe(false)
+      expect(result.current.dialogState.deleteTarget).toEqual(mockEquipment)
+      expect(result.current.dialogState.deleteSource).toBe('detail_dialog')
+    })
+  })
+
   describe('Close All Dialogs', () => {
     const mockEquipment = { id: 1, ten_thiet_bi: 'Test' } as any
 
@@ -308,11 +351,15 @@ describe('EquipmentDialogContext', () => {
         result.current.openAddDialog()
         result.current.openEditDialog(mockEquipment)
         result.current.openColumnsDialog()
+        result.current.openDeleteDialog(mockEquipment, 'actions_menu')
       })
 
       expect(result.current.dialogState.isAddOpen).toBe(true)
       expect(result.current.dialogState.isColumnsOpen).toBe(true)
       expect(result.current.dialogState.editingEquipment).toEqual(mockEquipment)
+      expect(result.current.dialogState.isDeleteOpen).toBe(true)
+      expect(result.current.dialogState.deleteTarget).toEqual(mockEquipment)
+      expect(result.current.dialogState.deleteSource).toBe('actions_menu')
 
       // Close all
       act(() => {
@@ -327,6 +374,9 @@ describe('EquipmentDialogContext', () => {
       expect(result.current.dialogState.isEndUsageOpen).toBe(false)
       expect(result.current.dialogState.editingEquipment).toBeNull()
       expect(result.current.dialogState.detailEquipment).toBeNull()
+      expect(result.current.dialogState.isDeleteOpen).toBe(false)
+      expect(result.current.dialogState.deleteTarget).toBeNull()
+      expect(result.current.dialogState.deleteSource).toBeNull()
     })
   })
 
