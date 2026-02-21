@@ -275,6 +275,12 @@ const { data } = useQuery({
 - **Files:** 350-450 lines max
 - **UI:** Radix + Tailwind, mobile-first, react-hook-form + zod
 
+### UI Layering Contract (MANDATORY)
+
+- Shared overlay z-index tiers are defined in `docs/frontend/layering.md`.
+- Do not add ad-hoc `z-[...]` values for modal/overlay primitives without updating that document.
+- If you change overlay tiers, update/add regression tests (at minimum `src/components/ui/__tests__/alert-dialog-z-index.test.tsx`).
+
 ### Git Commands: Quote Paths with Special Characters
 
 **ALWAYS quote file paths containing parentheses, brackets, or spaces in git commands:**
