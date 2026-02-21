@@ -92,4 +92,35 @@ describe('EquipmentDistributionSummary donut', () => {
 
     expect(screen.getByText('Không có dữ liệu trạng thái')).toBeInTheDocument()
   })
+  it('renders legend keys for donut status colors', () => {
+    mockUseEquipmentDistribution.mockReturnValue({
+      data: {
+        totalEquipment: 10,
+        byDepartment: [
+          {
+            name: 'Khoa A',
+            total: 10,
+            hoat_dong: 8,
+            cho_sua_chua: 2,
+            cho_bao_tri: 0,
+            cho_hieu_chuan: 0,
+            ngung_su_dung: 0,
+            chua_co_nhu_cau: 0,
+          },
+        ],
+        byLocation: [],
+        departments: ['Khoa A'],
+        locations: [],
+      },
+      isLoading: false,
+      error: null,
+    })
+
+    render(<EquipmentDistributionSummary tenantFilter="42" selectedDonVi={42} effectiveTenantKey="42" />)
+
+    expect(screen.getByTestId('status-donut-legend')).toBeInTheDocument()
+    expect(screen.getAllByTestId('status-donut-legend-item')).toHaveLength(2)
+    expect(screen.getByTestId('status-donut-legend-swatch-hoat_dong')).toBeInTheDocument()
+    expect(screen.getByTestId('status-donut-legend-swatch-cho_sua_chua')).toBeInTheDocument()
+  })
 })

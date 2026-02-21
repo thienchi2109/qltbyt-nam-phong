@@ -233,6 +233,27 @@ export function EquipmentDistributionSummary({ className, tenantFilter, selected
                   Không có dữ liệu trạng thái
                 </div>
               )}
+              {hasDonutData && (
+                <div data-testid="status-donut-legend" className="mt-4 space-y-2">
+                  {donutData.map((item) => (
+                    <div
+                      key={item.key}
+                      data-testid="status-donut-legend-item"
+                      className="flex items-center justify-between text-xs"
+                    >
+                      <div className="flex items-center gap-2">
+                        <span
+                          data-testid={`status-donut-legend-swatch-${item.key}`}
+                          className="h-2.5 w-2.5 rounded-full"
+                          style={{ backgroundColor: item.color }}
+                        />
+                        <span className="text-muted-foreground">{item.name}</span>
+                      </div>
+                      <span className="font-medium">{item.percent}%</span>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
 
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
