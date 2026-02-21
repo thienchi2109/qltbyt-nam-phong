@@ -191,6 +191,7 @@ export function EquipmentDetailDialog({
     if (!open) {
       prevEquipmentIdRef.current = null
       setSavedValues(null)
+      setShowDeleteConfirm(false)
     }
   }, [open])
 
@@ -277,10 +278,11 @@ export function EquipmentDetailDialog({
     deleteEquipment(String(equipment.id), {
       onSuccess: () => {
         setShowDeleteConfirm(false)
-        onOpenChange(false) // Close the detail dialog too after deletion
+        onOpenChange(false)
+        onEquipmentUpdated()
       }
     })
-  }, [equipment, canEdit, isDeleting, deleteEquipment, onOpenChange])
+  }, [equipment, canEdit, isDeleting, deleteEquipment, onOpenChange, onEquipmentUpdated])
 
   if (!equipment) return null
 
