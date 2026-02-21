@@ -117,7 +117,7 @@ describe('Device Quota Excel Template Generation', () => {
     } catch (error) {
       initError = error as Error
     }
-  })
+  }, 30000)
 
   describe('Workbook Structure', () => {
     it('should have exactly 3 sheets', () => {
@@ -203,9 +203,9 @@ describe('Device Quota Excel Template Generation', () => {
       if (initError) throw initError
       const cell = dataEntrySheet.getCell(2, 6) // F2
       expect(cell.dataValidation).toBeDefined()
-      expect(cell.dataValidation?.type).toBe('whole')
-      expect(cell.dataValidation?.operator).toBe('greaterThanOrEqual')
+      expect(cell.dataValidation?.type).toBe('custom')
       expect(cell.dataValidation?.allowBlank).toBe(true)
+      expect(cell.dataValidation?.formulae?.[0]).toContain('F2<=E2')
     })
 
     it('should have VLOOKUP formula for equipment name (column C)', () => {

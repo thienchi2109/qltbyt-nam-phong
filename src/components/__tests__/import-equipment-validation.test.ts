@@ -354,10 +354,15 @@ describe('Equipment Import Validation', () => {
 
       const result = validateEquipmentData(data, headerMapping)
       expect(result.isValid).toBe(false)
-      expect(result.validationResults[0].missingFields).toContain('Khoa/phòng quản lý')
-      expect(result.validationResults[0].missingFields).toContain('Người sử dụng')
-      expect(result.validationResults[0].missingFields).toContain('Tình trạng')
-      expect(result.validationResults[0].missingFields).toContain('Vị trí lắp đặt')
+      const missingError =
+        result.errors.find((error) =>
+          error.includes(REQUIRED_FIELDS.khoa_phong_quan_ly)
+        ) ?? ''
+
+      expect(missingError).not.toBe('')
+      Object.values(REQUIRED_FIELDS).forEach((requiredField) => {
+        expect(missingError).toContain(requiredField)
+      })
     })
 
     it('should report both missing fields and invalid status', () => {

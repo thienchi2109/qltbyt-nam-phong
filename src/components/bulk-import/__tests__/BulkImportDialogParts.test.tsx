@@ -178,7 +178,7 @@ describe('BulkImportValidationErrors', () => {
   it('should show header text', () => {
     render(<BulkImportValidationErrors errors={['Error']} />)
 
-    expect(screen.getByText('Du lieu khong hop le:')).toBeInTheDocument()
+    expect(screen.getByText('Dữ liệu không hợp lệ:')).toBeInTheDocument()
   })
 
   it('should use default maxHeight', () => {
@@ -266,7 +266,7 @@ describe('BulkImportSubmitButton', () => {
       />
     )
 
-    expect(screen.getByRole('button')).toHaveTextContent('Nhap 10 ban ghi')
+    expect(screen.getByRole('button')).toHaveTextContent('Nhập 10 bản ghi')
   })
 
   it('should use singular label for 1 record', () => {
@@ -281,7 +281,7 @@ describe('BulkImportSubmitButton', () => {
       />
     )
 
-    expect(screen.getByRole('button')).toHaveTextContent('Nhap 1 danh muc')
+    expect(screen.getByRole('button')).toHaveTextContent('Nhập 1 danh muc')
   })
 
   it('should use plural label for multiple records', () => {
@@ -296,7 +296,7 @@ describe('BulkImportSubmitButton', () => {
       />
     )
 
-    expect(screen.getByRole('button')).toHaveTextContent('Nhap 5 items')
+    expect(screen.getByRole('button')).toHaveTextContent('Nhập 5 items')
   })
 
   it('should show loading state when submitting', () => {
@@ -309,7 +309,7 @@ describe('BulkImportSubmitButton', () => {
       />
     )
 
-    expect(screen.getByRole('button')).toHaveTextContent('Dang nhap...')
+    expect(screen.getByRole('button')).toHaveTextContent('Đang nhập...')
   })
 
   it('should be disabled when disabled prop is true', () => {

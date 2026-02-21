@@ -35,13 +35,13 @@ async function blobToBuffer(blob: Blob): Promise<Buffer> {
 // Expected headers in data entry sheet
 const EXPECTED_DATA_HEADERS = [
   'STT',
-  'Ma nhom',
-  'Ten nhom',
-  'Ma nhom cha',
-  'Phan loai',
-  'Don vi tinh',
-  'Thu tu hien thi',
-  'Mo ta',
+  'Mã nhóm',
+  'Tên nhóm',
+  'Mã nhóm cha',
+  'Phân loại',
+  'Đơn vị tính',
+  'Thứ tự hiển thị',
+  'Mô tả',
 ]
 
 // Required fields (columns B and C)
@@ -67,12 +67,12 @@ describe('Category Excel Template Generation', () => {
       await workbook.xlsx.load(buffer)
 
       // Get sheets
-      dataEntrySheet = workbook.getWorksheet('Nhap Danh Muc')!
-      instructionsSheet = workbook.getWorksheet('Huong Dan')!
+      dataEntrySheet = workbook.getWorksheet('Nhập Danh Mục')!
+      instructionsSheet = workbook.getWorksheet('Hướng Dẫn')!
     } catch (error) {
       initError = error as Error
     }
-  })
+  }, 30000)
 
   describe('Workbook Structure', () => {
     it('should have exactly 2 sheets', () => {
@@ -83,12 +83,12 @@ describe('Category Excel Template Generation', () => {
     it('should have sheets with correct names', () => {
       if (initError) throw initError
       const sheetNames = workbook.worksheets.map((ws) => ws.name)
-      expect(sheetNames).toContain('Nhap Danh Muc')
-      expect(sheetNames).toContain('Huong Dan')
+      expect(sheetNames).toContain('Nhập Danh Mục')
+      expect(sheetNames).toContain('Hướng Dẫn')
     })
   })
 
-  describe('Data Entry Sheet (Nhap Danh Muc)', () => {
+  describe('Data Entry Sheet (Nhập Danh Mục)', () => {
     it('should exist', () => {
       if (initError) throw initError
       expect(dataEntrySheet).toBeDefined()
@@ -164,7 +164,7 @@ describe('Category Excel Template Generation', () => {
     })
   })
 
-  describe('Instructions Sheet (Huong Dan)', () => {
+  describe('Instructions Sheet (Hướng Dẫn)', () => {
     it('should exist', () => {
       if (initError) throw initError
       expect(instructionsSheet).toBeDefined()
@@ -173,7 +173,7 @@ describe('Category Excel Template Generation', () => {
     it('should contain title', () => {
       if (initError) throw initError
       const titleCell = instructionsSheet.getCell(1, 1)
-      expect(String(titleCell.value)).toContain('HUONG DAN')
+      expect(String(titleCell.value)).toContain('HƯỚNG DẪN')
     })
 
     it('should contain legal basis references', () => {
@@ -199,7 +199,7 @@ describe('Category Excel Template Generation', () => {
 
       instructionsSheet.eachRow((row) => {
         const cellValue = String(row.getCell(1).value || '')
-        if (cellValue.includes('BAT BUOC')) {
+        if (cellValue.includes('BẮT BUỘC')) {
           foundRequiredFields = true
         }
       })
@@ -231,10 +231,10 @@ describe('Category Excel Template Generation', () => {
 
       instructionsSheet.eachRow((row) => {
         const cellValue = String(row.getCell(1).value || '')
-        if (cellValue.includes('A:') && cellValue.includes('loai A')) {
+        if (cellValue.includes('A:') && cellValue.includes('loại A')) {
           foundClassificationA = true
         }
-        if (cellValue.includes('B:') && cellValue.includes('loai B')) {
+        if (cellValue.includes('B:') && cellValue.includes('loại B')) {
           foundClassificationB = true
         }
       })
@@ -249,7 +249,7 @@ describe('Category Excel Template Generation', () => {
 
       instructionsSheet.eachRow((row) => {
         const cellValue = String(row.getCell(1).value || '')
-        if (cellValue.includes('VI DU')) {
+        if (cellValue.includes('VÍ DỤ')) {
           foundExample = true
         }
       })

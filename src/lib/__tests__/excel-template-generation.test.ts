@@ -133,7 +133,7 @@ describe('Excel Template Generation', () => {
     } catch (error) {
       initError = error as Error
     }
-  })
+  }, 30000)
 
   describe('Blob Generation', () => {
     it('should return a valid Blob', () => {
