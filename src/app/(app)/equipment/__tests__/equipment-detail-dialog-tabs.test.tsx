@@ -2,6 +2,14 @@ import { render, screen, fireEvent } from '@testing-library/react'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import * as React from 'react'
 
+const mockOpenDeleteDialog = vi.fn()
+
+vi.mock('../_hooks/useEquipmentContext', () => ({
+  useEquipmentContext: () => ({
+    openDeleteDialog: mockOpenDeleteDialog,
+  }),
+}))
+
 vi.mock('@/components/ui/dialog', () => ({
   Dialog: ({ open, children }: { open: boolean; children: React.ReactNode }) =>
     open ? <div data-testid="dialog">{children}</div> : null,
@@ -88,6 +96,12 @@ describe('EquipmentDetailDialog tabs', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+    if (!HTMLElement.prototype.scrollIntoView) {
+      Object.defineProperty(HTMLElement.prototype, "scrollIntoView", {
+        writable: true,
+        value: vi.fn(),
+      })
+    }
   })
 
   it('renders details tab by default', () => {

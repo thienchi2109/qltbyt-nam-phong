@@ -25,16 +25,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog"
-import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
@@ -42,6 +32,7 @@ import {
 } from "@/components/ui/tooltip"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import type { Equipment } from "@/types/database"
+import { useEquipmentContext } from "../../_hooks/useEquipmentContext"
 
 import {
   equipmentFormSchema,
@@ -60,7 +51,6 @@ import { EquipmentDetailFilesTab } from "./EquipmentDetailFilesTab"
 import { EquipmentDetailDetailsTab } from "./EquipmentDetailDetailsTab"
 import { EquipmentDetailConfigTab } from "./EquipmentDetailConfigTab"
 import { EquipmentDetailEditForm } from "./EquipmentDetailEditForm"
-import { useDeleteEquipment } from "@/hooks/use-cached-equipment"
 
 const DEFAULT_FORM_VALUES = {
   ma_thiet_bi: "",
@@ -163,9 +153,7 @@ export function EquipmentDetailDialog({
   const [savedValues, setSavedValues] = React.useState<Partial<EquipmentFormValues> | null>(null)
   // Ref for scrolling active tab into view on mobile
   const tabsScrollRef = React.useRef<HTMLDivElement>(null)
-
-  // Delete confirm dialog state
-  const [showDeleteConfirm, setShowDeleteConfirm] = React.useState(false)
+  const { openDeleteDialog } = useEquipmentContext()
 
   // Scroll active tab into view when tab changes (mobile accessibility)
   React.useEffect(() => {
@@ -191,7 +179,6 @@ export function EquipmentDetailDialog({
     if (!open) {
       prevEquipmentIdRef.current = null
       setSavedValues(null)
-      setShowDeleteConfirm(false)
     }
   }, [open])
 
@@ -229,8 +216,6 @@ export function EquipmentDetailDialog({
       onEquipmentUpdated()
     },
   })
-
-  const { mutate: deleteEquipment, isPending: isDeleting } = useDeleteEquipment()
 
   // Handlers
   const onSubmitInlineEdit = async (values: EquipmentFormValues): Promise<void> => {
@@ -273,17 +258,6 @@ export function EquipmentDetailDialog({
     (isEquipmentManagerRole(user.role) ||
       (user.role === "qltb_khoa" && user.khoa_phong === equipment?.khoa_phong_quan_ly))
   const canDeleteEquipment = isEquipmentManagerRole(user?.role)
-
-  const handleDeleteEquipment = React.useCallback(() => {
-    if (!equipment || !canDeleteEquipment || isDeleting) return
-    deleteEquipment(String(equipment.id), {
-      onSuccess: () => {
-        setShowDeleteConfirm(false)
-        onOpenChange(false)
-        onEquipmentUpdated()
-      }
-    })
-  }, [equipment, canDeleteEquipment, isDeleting, deleteEquipment, onOpenChange, onEquipmentUpdated])
 
   if (!equipment) return null
 
@@ -442,7 +416,7 @@ export function EquipmentDetailDialog({
                         variant="outline"
                         size="icon"
                         className="text-destructive hover:bg-destructive hover:text-destructive-foreground border-destructive/30"
-                        onClick={() => setShowDeleteConfirm(true)}
+                        onClick={() => openDeleteDialog(equipment, "detail_dialog")}
                       >
                         <Trash2 className="h-4 w-4" />
                         <span className="sr-only">Xóa thiết bị</span>
@@ -459,33 +433,8 @@ export function EquipmentDetailDialog({
             </div>
           </TooltipProvider>
         </DialogFooter>
-      </DialogContent>
-
-      <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
-        <AlertDialogContent onClick={(e) => e.stopPropagation()}>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Bạn có chắc chắn muốn xóa thiết bị này không?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Hành động này sẽ chuyển thiết bị vào thùng rác (xóa mềm).
-              Bạn có thể khôi phục lại sau nếu cần.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel onClick={(e) => e.stopPropagation()}>Hủy</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={(e) => {
-                e.preventDefault()
-                e.stopPropagation()
-                handleDeleteEquipment()
-              }}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              disabled={isDeleting}
-            >
-              {isDeleting ? "Đang xóa..." : "Xóa"}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      </DialogContent>
     </Dialog>
   )
 }
+
