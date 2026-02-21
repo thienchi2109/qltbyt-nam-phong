@@ -16,6 +16,7 @@ AS $function$
 DECLARE
   v_role TEXT := lower(COALESCE(public._get_jwt_claim('app_role'), public._get_jwt_claim('role'), ''));
   v_donvi BIGINT := NULLIF(public._get_jwt_claim('don_vi'), '')::BIGINT;
+  v_is_global BOOLEAN := false;
   v_expected_count INTEGER;
   v_count INTEGER;
   v_missing_ids BIGINT[];
@@ -24,9 +25,16 @@ DECLARE
   v_batch_id UUID := gen_random_uuid();
   v_row RECORD;
 BEGIN
+  v_is_global := v_role = 'global';
+
   -- Permission check: only global/to_qltb can delete (allow-list).
   IF v_role NOT IN ('global', 'to_qltb') THEN
     RAISE EXCEPTION 'Permission denied' USING ERRCODE = '42501';
+  END IF;
+
+  -- Mandatory tenant-claim guard for non-global users.
+  IF NOT v_is_global AND v_donvi IS NULL THEN
+    RAISE EXCEPTION 'Missing don_vi claim' USING ERRCODE = '42501';
   END IF;
 
   -- Input validation.
@@ -63,6 +71,20 @@ BEGIN
   SELECT count(*) INTO v_count
   FROM _equipment_bulk_delete_locked;
 
+  IF NOT v_is_global THEN
+    SELECT ARRAY(
+      SELECT l.id
+      FROM _equipment_bulk_delete_locked l
+      WHERE l.don_vi IS DISTINCT FROM v_donvi
+      ORDER BY l.id
+    ) INTO v_cross_tenant_ids;
+
+    IF COALESCE(array_length(v_cross_tenant_ids, 1), 0) > 0 THEN
+      RAISE EXCEPTION 'Access denied for equipment ids: %', array_to_string(v_cross_tenant_ids, ', ')
+        USING ERRCODE = '42501';
+    END IF;
+  END IF;
+
   IF v_count <> v_expected_count THEN
     SELECT ARRAY(
       SELECT req.id
@@ -88,26 +110,12 @@ BEGIN
       USING ERRCODE = 'P0002';
   END IF;
 
-  IF v_role <> 'global' THEN
-    SELECT ARRAY(
-      SELECT l.id
-      FROM _equipment_bulk_delete_locked l
-      WHERE l.don_vi IS DISTINCT FROM v_donvi
-      ORDER BY l.id
-    ) INTO v_cross_tenant_ids;
-
-    IF COALESCE(array_length(v_cross_tenant_ids, 1), 0) > 0 THEN
-      RAISE EXCEPTION 'Access denied for equipment ids: %', array_to_string(v_cross_tenant_ids, ', ')
-        USING ERRCODE = '42501';
-    END IF;
-  END IF;
-
   -- Defense in depth: keep deletion constraints in UPDATE.
   UPDATE public.thiet_bi tb
   SET is_deleted = true
   WHERE tb.id = ANY(p_ids)
     AND tb.is_deleted = false
-    AND (v_role = 'global' OR tb.don_vi = v_donvi);
+    AND (v_is_global OR tb.don_vi = v_donvi);
 
   GET DIAGNOSTICS v_count = ROW_COUNT;
   IF v_count <> v_expected_count THEN

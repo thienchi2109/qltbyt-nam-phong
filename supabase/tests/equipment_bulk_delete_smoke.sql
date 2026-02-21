@@ -12,7 +12,10 @@ DECLARE
   v_returned_ids BIGINT[];
   v_duplicate_ids BIGINT[];
   v_guard_ids BIGINT[];
+  v_null_donvi_id BIGINT;
   v_cross_tenant_ids BIGINT[];
+  v_cross_tenant_deleted_id BIGINT;
+  v_cross_tenant_mixed_id BIGINT;
   v_large_ids BIGINT[];
   v_response JSONB;
   v_batch_id UUID;
@@ -176,6 +179,41 @@ BEGIN
     RAISE EXCEPTION 'Expected all-or-nothing rollback behavior for mixed deleted batch';
   END IF;
 
+  -- Non-global users must provide don_vi claim.
+  INSERT INTO public.thiet_bi(ma_thiet_bi, ten_thiet_bi, don_vi)
+  VALUES (
+    format('SMK-BULK-NULL-DONVI-%s', to_char(clock_timestamp(), 'YYYYMMDDHH24MISSMS')),
+    'Bulk null don_vi smoke',
+    null
+  )
+  RETURNING id INTO v_null_donvi_id;
+
+  PERFORM set_config(
+    'request.jwt.claims',
+    json_build_object('app_role', 'to_qltb', 'role', 'authenticated', 'user_id', '1', 'sub', '1', 'don_vi', null)::TEXT,
+    true
+  );
+
+  BEGIN
+    PERFORM public.equipment_bulk_delete(ARRAY[v_null_donvi_id]);
+    RAISE EXCEPTION 'Expected missing don_vi claim error';
+  EXCEPTION WHEN OTHERS THEN
+    v_err_text := lower(SQLERRM);
+    IF SQLSTATE <> '42501' OR position('missing don_vi claim' in v_err_text) = 0 THEN
+      RAISE EXCEPTION 'Expected 42501 missing don_vi claim error, got [%] %', SQLSTATE, SQLERRM;
+    END IF;
+  END;
+
+  SELECT COUNT(*)
+  INTO v_count
+  FROM public.thiet_bi
+  WHERE id = v_null_donvi_id
+    AND is_deleted = false;
+
+  IF v_count <> 1 THEN
+    RAISE EXCEPTION 'Expected row to remain undeleted when don_vi claim is missing';
+  END IF;
+
   -- Tenant isolation for non-global users.
   WITH inserted AS (
     INSERT INTO public.thiet_bi(ma_thiet_bi, ten_thiet_bi, don_vi)
@@ -211,6 +249,68 @@ BEGIN
 
   IF v_count <> 0 THEN
     RAISE EXCEPTION 'Expected tenant-violation batch to remain unchanged';
+  END IF;
+
+  -- Cross-tenant authorization must win over already-deleted checks.
+  INSERT INTO public.thiet_bi(ma_thiet_bi, ten_thiet_bi, don_vi)
+  VALUES (
+    format('SMK-BULK-TENANT-DELETED-%s', to_char(clock_timestamp(), 'YYYYMMDDHH24MISSMS')),
+    'Bulk tenant deleted smoke',
+    v_tenant_b
+  )
+  RETURNING id INTO v_cross_tenant_deleted_id;
+
+  UPDATE public.thiet_bi
+  SET is_deleted = true
+  WHERE id = v_cross_tenant_deleted_id;
+
+  BEGIN
+    PERFORM public.equipment_bulk_delete(ARRAY[v_cross_tenant_deleted_id]);
+    RAISE EXCEPTION 'Expected access denied for cross-tenant soft-deleted row';
+  EXCEPTION WHEN OTHERS THEN
+    v_err_text := lower(SQLERRM);
+    IF SQLSTATE <> '42501' OR position('access denied' in v_err_text) = 0 THEN
+      RAISE EXCEPTION 'Expected 42501 access denied for cross-tenant soft-deleted row, got [%] %', SQLSTATE, SQLERRM;
+    END IF;
+  END;
+
+  SELECT COUNT(*)
+  INTO v_count
+  FROM public.thiet_bi
+  WHERE id = v_cross_tenant_deleted_id
+    AND is_deleted = true;
+
+  IF v_count <> 1 THEN
+    RAISE EXCEPTION 'Expected cross-tenant soft-deleted row to remain unchanged';
+  END IF;
+
+  -- Mixed cross-tenant + missing must deny access before not-found details.
+  INSERT INTO public.thiet_bi(ma_thiet_bi, ten_thiet_bi, don_vi)
+  VALUES (
+    format('SMK-BULK-TENANT-MIXED-%s', to_char(clock_timestamp(), 'YYYYMMDDHH24MISSMS')),
+    'Bulk tenant mixed smoke',
+    v_tenant_b
+  )
+  RETURNING id INTO v_cross_tenant_mixed_id;
+
+  BEGIN
+    PERFORM public.equipment_bulk_delete(ARRAY[v_cross_tenant_mixed_id, -1::BIGINT]);
+    RAISE EXCEPTION 'Expected access denied for mixed cross-tenant + missing ids';
+  EXCEPTION WHEN OTHERS THEN
+    v_err_text := lower(SQLERRM);
+    IF SQLSTATE <> '42501' OR position('access denied' in v_err_text) = 0 THEN
+      RAISE EXCEPTION 'Expected 42501 access denied for mixed cross-tenant + missing ids, got [%] %', SQLSTATE, SQLERRM;
+    END IF;
+  END;
+
+  SELECT COUNT(*)
+  INTO v_count
+  FROM public.thiet_bi
+  WHERE id = v_cross_tenant_mixed_id
+    AND is_deleted = false;
+
+  IF v_count <> 1 THEN
+    RAISE EXCEPTION 'Expected mixed-case cross-tenant row to remain unchanged';
   END IF;
 
   -- Max size guard.
