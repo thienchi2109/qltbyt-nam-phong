@@ -6,6 +6,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Progress } from "@/components/ui/progress"
+import { DynamicPieChart } from "@/components/dynamic-chart"
+import { buildStatusDonutData } from "@/components/equipment-distribution-summary.utils"
 import { 
   useEquipmentDistribution, 
   STATUS_COLORS,
@@ -120,6 +122,9 @@ export function EquipmentDistributionSummary({ className, tenantFilter, selected
     return "destructive"
   }
 
+  const donutData = buildStatusDonutData(overallStats.statusPercentages)
+  const hasDonutData = donutData.length > 0
+
   return (
     <div className={`space-y-4 ${className}`}>
       {/* Main Statistics Cards */}
@@ -206,7 +211,52 @@ export function EquipmentDistributionSummary({ className, tenantFilter, selected
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          <div
+            data-testid="status-distribution-layout"
+            className="grid gap-6 lg:grid-cols-[360px_minmax(0,1fr)]"
+          >
+            <div className="rounded-lg border p-4">
+              <div className="mb-2 text-sm font-medium">Tỷ lệ trạng thái</div>
+              {hasDonutData ? (
+                <DynamicPieChart
+                  data={donutData}
+                  height={260}
+                  dataKey="value"
+                  nameKey="name"
+                  colors={donutData.map((d) => d.color)}
+                  innerRadius={70}
+                  outerRadius={105}
+                  showLabels={false}
+                />
+              ) : (
+                <div className="flex h-[260px] items-center justify-center text-sm text-muted-foreground">
+                  Không có dữ liệu trạng thái
+                </div>
+              )}
+              {hasDonutData && (
+                <div data-testid="status-donut-legend" className="mt-4 space-y-2">
+                  {donutData.map((item) => (
+                    <div
+                      key={item.key}
+                      data-testid="status-donut-legend-item"
+                      className="flex items-center justify-between text-xs"
+                    >
+                      <div className="flex items-center gap-2">
+                        <span
+                          data-testid={`status-donut-legend-swatch-${item.key}`}
+                          className="h-2.5 w-2.5 rounded-full"
+                          style={{ backgroundColor: item.color }}
+                        />
+                        <span className="text-muted-foreground">{item.name}</span>
+                      </div>
+                      <span className="font-medium">{item.percent}%</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
             {overallStats.statusPercentages
               .filter(status => status.count > 0)
               .sort((a, b) => b.count - a.count)
@@ -230,6 +280,7 @@ export function EquipmentDistributionSummary({ className, tenantFilter, selected
                   </div>
                 </div>
               ))}
+            </div>
           </div>
         </CardContent>
       </Card>
