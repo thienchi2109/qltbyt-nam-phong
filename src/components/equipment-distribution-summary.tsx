@@ -123,6 +123,7 @@ export function EquipmentDistributionSummary({ className, tenantFilter, selected
   }
 
   const donutData = buildStatusDonutData(overallStats.statusPercentages)
+  const hasDonutData = donutData.length > 0
 
   return (
     <div className={`space-y-4 ${className}`}>
@@ -216,16 +217,22 @@ export function EquipmentDistributionSummary({ className, tenantFilter, selected
           >
             <div className="rounded-lg border p-4">
               <div className="mb-2 text-sm font-medium">Tỷ lệ trạng thái</div>
-              <DynamicPieChart
-                data={donutData}
-                height={260}
-                dataKey="value"
-                nameKey="name"
-                colors={donutData.map((d) => d.color)}
-                innerRadius={70}
-                outerRadius={105}
-                showLabels={false}
-              />
+              {hasDonutData ? (
+                <DynamicPieChart
+                  data={donutData}
+                  height={260}
+                  dataKey="value"
+                  nameKey="name"
+                  colors={donutData.map((d) => d.color)}
+                  innerRadius={70}
+                  outerRadius={105}
+                  showLabels={false}
+                />
+              ) : (
+                <div className="flex h-[260px] items-center justify-center text-sm text-muted-foreground">
+                  Không có dữ liệu trạng thái
+                </div>
+              )}
             </div>
 
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">

@@ -63,4 +63,33 @@ describe('EquipmentDistributionSummary donut', () => {
     expect(mockUseEquipmentDistribution).toHaveBeenCalledWith(undefined, undefined, '42', 42, '42')
     expect(screen.getByTestId('status-distribution-layout')).toBeInTheDocument()
   })
+
+  it('shows empty-state message when all status counts are zero', () => {
+    mockUseEquipmentDistribution.mockReturnValue({
+      data: {
+        totalEquipment: 0,
+        byDepartment: [
+          {
+            name: 'Khoa A',
+            total: 0,
+            hoat_dong: 0,
+            cho_sua_chua: 0,
+            cho_bao_tri: 0,
+            cho_hieu_chuan: 0,
+            ngung_su_dung: 0,
+            chua_co_nhu_cau: 0,
+          },
+        ],
+        byLocation: [],
+        departments: ['Khoa A'],
+        locations: [],
+      },
+      isLoading: false,
+      error: null,
+    })
+
+    render(<EquipmentDistributionSummary tenantFilter="42" selectedDonVi={42} effectiveTenantKey="42" />)
+
+    expect(screen.getByText('Không có dữ liệu trạng thái')).toBeInTheDocument()
+  })
 })
