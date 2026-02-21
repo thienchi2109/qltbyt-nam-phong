@@ -1,9 +1,9 @@
 import * as React from "react"
-import { render } from "@testing-library/react"
+import { fireEvent, render } from "@testing-library/react"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
-const { mockDeleteEquipment } = vi.hoisted(() => ({
-  mockDeleteEquipment: vi.fn(),
+const { mockOpenDeleteDialog } = vi.hoisted(() => ({
+  mockOpenDeleteDialog: vi.fn(),
 }))
 
 vi.mock("@/components/ui/dialog", () => ({
@@ -82,10 +82,9 @@ vi.mock("../_components/EquipmentDetailDialog/hooks/useEquipmentUpdate", () => (
   }),
 }))
 
-vi.mock("@/hooks/use-cached-equipment", () => ({
-  useDeleteEquipment: () => ({
-    mutate: mockDeleteEquipment,
-    isPending: false,
+vi.mock("../_hooks/useEquipmentContext", () => ({
+  useEquipmentContext: () => ({
+    openDeleteDialog: mockOpenDeleteDialog,
   }),
 }))
 
@@ -142,5 +141,21 @@ describe("EquipmentDetailDialog delete RBAC", () => {
 
     const deleteButton = container.querySelector('button[class*="border-destructive/30"]')
     expect(deleteButton).toBeNull()
+  })
+
+  it("calls openDeleteDialog with detail source when delete button is clicked", () => {
+    const { container } = render(
+      <EquipmentDetailDialog
+        {...baseProps}
+        user={{ id: 1, role: "to_qltb", khoa_phong: "ICU" } as any}
+      />
+    )
+
+    const deleteButton = container.querySelector('button[class*="border-destructive/30"]')
+    expect(deleteButton).not.toBeNull()
+
+    fireEvent.click(deleteButton as HTMLButtonElement)
+
+    expect(mockOpenDeleteDialog).toHaveBeenCalledWith(equipment, "detail_dialog")
   })
 })
