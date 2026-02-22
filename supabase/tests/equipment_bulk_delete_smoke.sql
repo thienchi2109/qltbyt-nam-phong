@@ -233,11 +233,11 @@ BEGIN
 
   BEGIN
     PERFORM public.equipment_bulk_delete(v_cross_tenant_ids);
-    RAISE EXCEPTION 'Expected cross-tenant access denied error';
+    RAISE EXCEPTION 'Expected cross-tenant not-found error';
   EXCEPTION WHEN OTHERS THEN
     v_err_text := lower(SQLERRM);
-    IF position('access denied' in v_err_text) = 0 THEN
-      RAISE EXCEPTION 'Expected access denied error, got: %', SQLERRM;
+    IF position('not found' in v_err_text) = 0 THEN
+      RAISE EXCEPTION 'Expected not-found error for cross-tenant ids, got: %', SQLERRM;
     END IF;
   END;
 
@@ -251,7 +251,7 @@ BEGIN
     RAISE EXCEPTION 'Expected tenant-violation batch to remain unchanged';
   END IF;
 
-  -- Cross-tenant authorization must win over already-deleted checks.
+  -- Cross-tenant ids are treated as missing before already-deleted checks.
   INSERT INTO public.thiet_bi(ma_thiet_bi, ten_thiet_bi, don_vi)
   VALUES (
     format('SMK-BULK-TENANT-DELETED-%s', to_char(clock_timestamp(), 'YYYYMMDDHH24MISSMS')),
@@ -266,11 +266,11 @@ BEGIN
 
   BEGIN
     PERFORM public.equipment_bulk_delete(ARRAY[v_cross_tenant_deleted_id]);
-    RAISE EXCEPTION 'Expected access denied for cross-tenant soft-deleted row';
+    RAISE EXCEPTION 'Expected not-found for cross-tenant soft-deleted row';
   EXCEPTION WHEN OTHERS THEN
     v_err_text := lower(SQLERRM);
-    IF SQLSTATE <> '42501' OR position('access denied' in v_err_text) = 0 THEN
-      RAISE EXCEPTION 'Expected 42501 access denied for cross-tenant soft-deleted row, got [%] %', SQLSTATE, SQLERRM;
+    IF SQLSTATE <> 'P0002' OR position('not found' in v_err_text) = 0 THEN
+      RAISE EXCEPTION 'Expected P0002 not-found for cross-tenant soft-deleted row, got [%] %', SQLSTATE, SQLERRM;
     END IF;
   END;
 
@@ -284,7 +284,7 @@ BEGIN
     RAISE EXCEPTION 'Expected cross-tenant soft-deleted row to remain unchanged';
   END IF;
 
-  -- Mixed cross-tenant + missing must deny access before not-found details.
+  -- Mixed cross-tenant + missing must resolve to the same not-found semantics.
   INSERT INTO public.thiet_bi(ma_thiet_bi, ten_thiet_bi, don_vi)
   VALUES (
     format('SMK-BULK-TENANT-MIXED-%s', to_char(clock_timestamp(), 'YYYYMMDDHH24MISSMS')),
@@ -295,11 +295,11 @@ BEGIN
 
   BEGIN
     PERFORM public.equipment_bulk_delete(ARRAY[v_cross_tenant_mixed_id, -1::BIGINT]);
-    RAISE EXCEPTION 'Expected access denied for mixed cross-tenant + missing ids';
+    RAISE EXCEPTION 'Expected not-found for mixed cross-tenant + missing ids';
   EXCEPTION WHEN OTHERS THEN
     v_err_text := lower(SQLERRM);
-    IF SQLSTATE <> '42501' OR position('access denied' in v_err_text) = 0 THEN
-      RAISE EXCEPTION 'Expected 42501 access denied for mixed cross-tenant + missing ids, got [%] %', SQLSTATE, SQLERRM;
+    IF SQLSTATE <> 'P0002' OR position('not found' in v_err_text) = 0 THEN
+      RAISE EXCEPTION 'Expected P0002 not-found for mixed cross-tenant + missing ids, got [%] %', SQLSTATE, SQLERRM;
     END IF;
   END;
 
