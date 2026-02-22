@@ -7,6 +7,7 @@ describe('Activity Logs utilities', () => {
   it('maps action types to Vietnamese labels', () => {
     expect(getActionTypeLabel('maintenance_plan_create')).toBe(ACTION_TYPE_LABELS.maintenance_plan_create)
     expect(getActionTypeLabel('equipment_restore')).toBe(ACTION_TYPE_LABELS.equipment_restore)
+    expect(getActionTypeLabel('equipment_bulk_delete')).toBe(ACTION_TYPE_LABELS.equipment_bulk_delete)
     expect(getActionTypeLabel('non_existing_key')).toBe('non_existing_key')
   })
 

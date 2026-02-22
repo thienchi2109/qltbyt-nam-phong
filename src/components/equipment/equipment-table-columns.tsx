@@ -11,6 +11,7 @@ import type { ColumnDef } from "@tanstack/react-table"
 import { ArrowUpDown } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
+import { createSelectionColumn } from "@/components/ui/data-table-selection"
 import type { Equipment } from "@/types/database"
 import { formatPartialDateToDisplay } from "@/lib/date-utils"
 
@@ -119,6 +120,7 @@ export const filterableColumns: (keyof Equipment)[] = [
 
 interface CreateEquipmentColumnsConfig {
   renderActions: (equipment: Equipment) => React.ReactNode
+  canBulkSelect?: boolean
 }
 
 /**
@@ -129,7 +131,7 @@ interface CreateEquipmentColumnsConfig {
 export function createEquipmentColumns(
   config: CreateEquipmentColumnsConfig
 ): ColumnDef<Equipment>[] {
-  const { renderActions } = config
+  const { renderActions, canBulkSelect = false } = config
 
   const dataColumns = (Object.keys(columnLabels) as Array<keyof Equipment>).map((key) => {
     const columnDef: ColumnDef<Equipment> = {
@@ -203,6 +205,10 @@ export function createEquipmentColumns(
     id: "actions",
     enableHiding: false,
     cell: ({ row }) => renderActions(row.original),
+  }
+
+  if (canBulkSelect) {
+    return [createSelectionColumn<Equipment>(), ...dataColumns, actionsColumn]
   }
 
   return [...dataColumns, actionsColumn]

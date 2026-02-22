@@ -32,7 +32,7 @@ vi.mock('next-auth/react', () => ({
 }))
 
 // Import hooks under test after mocks
-import { useDeleteEquipment, useRestoreEquipment } from '@/hooks/use-cached-equipment'
+import { useBulkDeleteEquipment, useDeleteEquipment, useRestoreEquipment } from '@/hooks/use-cached-equipment'
 
 // Test utilities
 const createQueryClient = () =>
@@ -590,6 +590,131 @@ describe('Equipment CRUD Mutations', () => {
         expect.objectContaining({
           title: 'L\u1ed7i',
           description: 'Kh\u00f4ng th\u1ec3 kh\u00f4i ph\u1ee5c thi\u1ebft b\u1ecb',
+          variant: 'destructive',
+        })
+      )
+    })
+  })
+
+  describe('Bulk Delete Equipment (equipment_bulk_delete)', () => {
+    it('should call equipment_bulk_delete RPC with p_ids', async () => {
+      mockCallRpc.mockResolvedValue({ success: true, deleted_count: 2, ids: [10, 11] })
+
+      const { result } = renderHook(() => useBulkDeleteEquipment(), {
+        wrapper: createWrapper(queryClient),
+      })
+
+      act(() => {
+        result.current.mutate([10, 11])
+      })
+
+      await waitFor(() => {
+        expect(result.current.isSuccess).toBe(true)
+      })
+
+      expect(mockCallRpc).toHaveBeenCalledWith({
+        fn: 'equipment_bulk_delete',
+        args: { p_ids: [10, 11] },
+      })
+    })
+
+    it('should invalidate equipment caches and dispatch cache event after success', async () => {
+      mockCallRpc.mockResolvedValue({ success: true, deleted_count: 2, ids: [10, 11] })
+      const invalidateSpy = vi.spyOn(queryClient, 'invalidateQueries')
+      const dispatchEventSpy = vi.spyOn(window, 'dispatchEvent')
+
+      const { result } = renderHook(() => useBulkDeleteEquipment(), {
+        wrapper: createWrapper(queryClient),
+      })
+
+      act(() => {
+        result.current.mutate([10, 11])
+      })
+
+      await waitFor(() => {
+        expect(result.current.isSuccess).toBe(true)
+      })
+
+      expect(invalidateSpy).toHaveBeenCalledWith({
+        queryKey: ['equipment_list_enhanced'],
+        refetchType: 'active',
+      })
+      expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['equipment'] })
+      expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['active_usage_logs'] })
+      expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['dashboard-stats'] })
+
+      const dispatchedEvent = dispatchEventSpy.mock.calls.find(
+        ([event]) => event instanceof CustomEvent && event.type === 'equipment-cache-invalidated'
+      )
+      expect(dispatchedEvent).toBeDefined()
+    })
+
+    it('should show localized success toast with deleted count', async () => {
+      mockCallRpc.mockResolvedValue({ success: true, deleted_count: 3, ids: [1, 2, 3] })
+
+      const { result } = renderHook(() => useBulkDeleteEquipment(), {
+        wrapper: createWrapper(queryClient),
+      })
+
+      act(() => {
+        result.current.mutate([1, 2, 3])
+      })
+
+      await waitFor(() => {
+        expect(result.current.isSuccess).toBe(true)
+      })
+
+      expect(mockToast).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: 'Th\u00e0nh c\u00f4ng',
+          description: '\u0110\u00e3 x\u00f3a 3 thi\u1ebft b\u1ecb th\u00e0nh c\u00f4ng',
+        })
+      )
+    })
+
+    it('should show RPC error message in toast when bulk delete fails', async () => {
+      mockCallRpc.mockRejectedValue(new Error('Bulk delete denied'))
+
+      const { result } = renderHook(() => useBulkDeleteEquipment(), {
+        wrapper: createWrapper(queryClient),
+      })
+
+      act(() => {
+        result.current.mutate([1, 2])
+      })
+
+      await waitFor(() => {
+        expect(result.current.isError).toBe(true)
+      })
+
+      expect(mockToast).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: 'L\u1ed7i',
+          description: 'Bulk delete denied',
+          variant: 'destructive',
+        })
+      )
+    })
+
+    it('should show fallback error toast when bulk delete fails without message', async () => {
+      mockCallRpc.mockRejectedValue(new Error(''))
+
+      const { result } = renderHook(() => useBulkDeleteEquipment(), {
+        wrapper: createWrapper(queryClient),
+      })
+
+      act(() => {
+        result.current.mutate([1, 2])
+      })
+
+      await waitFor(() => {
+        expect(result.current.isError).toBe(true)
+      })
+
+      expect(mockToast).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: 'L\u1ed7i',
+          description: 'Kh\u00f4ng th\u1ec3 x\u00f3a h\u00e0ng lo\u1ea1t thi\u1ebft b\u1ecb',
           variant: 'destructive',
         })
       )
