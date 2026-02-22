@@ -33,10 +33,6 @@ export function EquipmentBulkDeleteBar({
   const [isConfirmOpen, setIsConfirmOpen] = React.useState(false)
   const { mutate: bulkDelete, isPending: isDeleting } = useBulkDeleteEquipment()
 
-  if (!canBulkSelect || isCardView) {
-    return null
-  }
-
   const selectedRows = table.getFilteredSelectedRowModel().rows
   const selectedIds = React.useMemo(
     () =>
@@ -68,6 +64,10 @@ export function EquipmentBulkDeleteBar({
     },
     [selectedIds, isDeleting, bulkDelete, table]
   )
+
+  if (!canBulkSelect || isCardView) {
+    return null
+  }
 
   return (
     <BulkActionBar
