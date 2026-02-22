@@ -4,6 +4,7 @@ import * as React from "react"
 import type {
   ColumnDef,
   ColumnFiltersState,
+  RowSelectionState,
   SortingState,
   VisibilityState,
   Table,
@@ -120,6 +121,7 @@ export function useEquipmentTable(params: UseEquipmentTableParams): UseEquipment
     pageIndex: number
     pageSize: number
   } | null>(null)
+  const [rowSelection, setRowSelection] = React.useState<RowSelectionState>({})
 
   // Pagination reset when filters change
   const filterKey = React.useMemo(
@@ -135,13 +137,26 @@ export function useEquipmentTable(params: UseEquipmentTableParams): UseEquipment
   const [lastFilterKey, setLastFilterKey] = React.useState(filterKey)
 
   React.useEffect(() => {
-    if (filterKey !== lastFilterKey && pagination.pageIndex > 0) {
+    if (filterKey === lastFilterKey) return
+
+    setRowSelection({})
+
+    if (pagination.pageIndex > 0) {
       setPagination((prev) => ({ ...prev, pageIndex: 0 }))
-      setLastFilterKey(filterKey)
-    } else if (filterKey !== lastFilterKey) {
-      setLastFilterKey(filterKey)
     }
-  }, [filterKey, lastFilterKey, pagination.pageIndex])
+
+    setLastFilterKey(filterKey)
+  }, [filterKey, lastFilterKey, pagination.pageIndex, setPagination])
+
+  const skipSelectionResetOnMountRef = React.useRef(true)
+  React.useEffect(() => {
+    if (skipSelectionResetOnMountRef.current) {
+      skipSelectionResetOnMountRef.current = false
+      return
+    }
+
+    setRowSelection({})
+  }, [pagination.pageIndex, pagination.pageSize, sorting])
 
   // Media queries
   const isMobile = useIsMobile()
@@ -166,17 +181,21 @@ export function useEquipmentTable(params: UseEquipmentTableParams): UseEquipment
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
     onPaginationChange: setPagination,
+    onRowSelectionChange: setRowSelection,
     getCoreRowModel: getCoreRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
     getSortedRowModel: getSortedRowModel(),
+    getRowId: (row) => String(row.id),
     onColumnVisibilityChange: setColumnVisibility,
     onGlobalFilterChange: (value: string) => setSearchTerm(value),
+    enableRowSelection: true,
     state: {
       sorting,
       columnFilters,
       columnVisibility,
       globalFilter: debouncedSearch,
       pagination,
+      rowSelection,
     },
     manualPagination: true,
     manualFiltering: true,

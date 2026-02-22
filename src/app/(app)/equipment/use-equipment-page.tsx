@@ -5,6 +5,7 @@ import { useTenantBranding } from "@/hooks/use-tenant-branding"
 import { useToast } from "@/hooks/use-toast"
 import { createEquipmentColumns } from "@/components/equipment/equipment-table-columns"
 import { EquipmentActionsMenu } from "@/components/equipment/equipment-actions-menu"
+import { isEquipmentManagerRole } from "@/lib/rbac"
 
 // Import extracted hooks
 import { useEquipmentAuth } from "./_hooks/useEquipmentAuth"
@@ -114,10 +115,15 @@ export function useEquipmentPage(): UseEquipmentPageReturn {
     [data.activeUsageLogs, data.isLoadingActiveUsage]
   )
 
+  const canBulkSelect = React.useMemo(
+    () => isEquipmentManagerRole(auth.user?.role),
+    [auth.user?.role]
+  )
+
   // Columns definition
   const columns = React.useMemo(
-    () => createEquipmentColumns({ renderActions }),
-    [renderActions]
+    () => createEquipmentColumns({ renderActions, canBulkSelect }),
+    [renderActions, canBulkSelect]
   )
 
   // Table hook
@@ -269,6 +275,7 @@ export function useEquipmentPage(): UseEquipmentPageReturn {
       isMobile: table.isMobile,
       isCardView: table.isCardView,
       useTabletFilters: table.useTabletFilters,
+      canBulkSelect,
 
       // Branding
       tenantBranding: tenantBranding ?? undefined,
@@ -288,6 +295,7 @@ export function useEquipmentPage(): UseEquipmentPageReturn {
       exports,
       onDataMutationSuccess,
       onDataMutationSuccessWithStatePreservation,
+      canBulkSelect,
       tenantBranding,
     ]
   )

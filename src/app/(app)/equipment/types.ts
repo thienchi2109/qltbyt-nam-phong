@@ -169,6 +169,7 @@ export interface UseEquipmentPageReturn {
   isMobile: boolean
   isCardView: boolean
   useTabletFilters: boolean
+  canBulkSelect: boolean
 
   // Branding
   tenantBranding: TenantBranding | undefined

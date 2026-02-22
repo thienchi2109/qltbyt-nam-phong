@@ -17,6 +17,7 @@ const mocks = vi.hoisted(() => ({
   openColumnsDialog: vi.fn(),
   openDetailDialog: vi.fn(),
   openEditDialog: vi.fn(),
+  renderBulkDeleteBar: vi.fn(),
 }))
 
 vi.mock("../use-equipment-page", () => ({
@@ -47,6 +48,13 @@ vi.mock("../equipment-dialogs", () => ({
 
 vi.mock("../_components/EquipmentColumnsDialog", () => ({
   EquipmentColumnsDialog: () => null,
+}))
+
+vi.mock("../_components/EquipmentBulkDeleteBar", () => ({
+  EquipmentBulkDeleteBar: (props: Record<string, unknown>) => {
+    mocks.renderBulkDeleteBar(props)
+    return null
+  },
 }))
 
 vi.mock("@/components/equipment/equipment-toolbar", () => ({
@@ -117,6 +125,7 @@ function createPageState(overrides?: Record<string, unknown>) {
     isMobile: false,
     isCardView: false,
     useTabletFilters: false,
+    canBulkSelect: false,
     tenantBranding: undefined,
     ...overrides,
   }
@@ -126,6 +135,28 @@ describe("EquipmentPageClient attention preset action", () => {
   beforeEach(() => {
     vi.clearAllMocks()
     state.pageState = createPageState()
+  })
+
+  it("passes table selection flags to EquipmentBulkDeleteBar", () => {
+    const table = {
+      getFilteredRowModel: () => ({ rows: [] }),
+    }
+
+    state.pageState = createPageState({
+      table,
+      canBulkSelect: true,
+      isCardView: false,
+    })
+
+    render(<EquipmentPageClient />)
+
+    expect(mocks.renderBulkDeleteBar).toHaveBeenCalledWith(
+      expect.objectContaining({
+        table,
+        canBulkSelect: true,
+        isCardView: false,
+      })
+    )
   })
 
   it("applies attention status preset filters for non-global users", async () => {

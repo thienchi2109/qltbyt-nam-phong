@@ -31,6 +31,7 @@ import { EquipmentContent } from "../equipment-content"
 import { EquipmentDialogs } from "../equipment-dialogs"
 import { EquipmentDialogProvider } from "./EquipmentDialogContext"
 import { EquipmentColumnsDialog } from "./EquipmentColumnsDialog"
+import { EquipmentBulkDeleteBar } from "./EquipmentBulkDeleteBar"
 import { useEquipmentContext } from "../_hooks/useEquipmentContext"
 
 const EQUIPMENT_ENTITY = { singular: "thiết bị" } as const
@@ -163,6 +164,7 @@ const EquipmentPageContent = React.memo(function EquipmentPageContent({
     isMobile,
     isCardView,
     useTabletFilters,
+    canBulkSelect,
 
     // Branding
     tenantBranding,
@@ -252,6 +254,12 @@ const EquipmentPageContent = React.memo(function EquipmentPageContent({
             onImportEquipment={openImportDialog}
             onClearFacilityFilter={handleFacilityClear}
             onShowEquipmentDetails={(eq) => openDetailDialog(eq)}
+          />
+
+          <EquipmentBulkDeleteBar
+            table={table}
+            canBulkSelect={canBulkSelect}
+            isCardView={isCardView}
           />
 
           <EquipmentColumnsDialog table={table} />
