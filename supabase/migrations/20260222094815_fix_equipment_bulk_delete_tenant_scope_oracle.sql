@@ -1,9 +1,9 @@
--- Migration: enforce mandatory JWT claim guards in equipment_bulk_delete
+-- Migration: eliminate cross-tenant existence oracle in equipment_bulk_delete
 -- Date: 2026-02-22
 -- Fixes:
---   - Add explicit missing-role guard
---   - Add missing user_id extraction and guard
---   - Keep non-global don_vi guard as mandatory
+--   - Scope row locking by tenant for non-global users
+--   - Treat cross-tenant ids as missing ids instead of emitting a separate branch
+--   - Preserve existing JWT claim guards and permission model
 
 BEGIN;
 
@@ -59,6 +59,7 @@ BEGIN
   END IF;
 
   -- Lock rows in deterministic order to prevent deadlocks.
+  -- Non-global users only lock rows from their own tenant to avoid cross-tenant existence oracle.
   CREATE TEMP TABLE IF NOT EXISTS _equipment_bulk_delete_locked (
     id BIGINT PRIMARY KEY,
     don_vi BIGINT,
@@ -156,6 +157,7 @@ REVOKE ALL ON FUNCTION public.equipment_bulk_delete(BIGINT[]) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.equipment_bulk_delete(BIGINT[]) TO authenticated;
 
 COMMENT ON FUNCTION public.equipment_bulk_delete(BIGINT[]) IS
-  'Bulk soft-delete for equipment. Enforces mandatory JWT claims (role, user_id, don_vi for non-global).';
+  'Bulk soft-delete for equipment. Uses tenant-scoped locking for non-global users to avoid cross-tenant existence oracle.';
 
 COMMIT;
+

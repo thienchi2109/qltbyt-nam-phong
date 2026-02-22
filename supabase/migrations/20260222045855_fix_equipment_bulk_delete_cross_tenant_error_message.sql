@@ -1,7 +1,7 @@
--- Migration: remove cross-tenant ID enumeration in equipment_bulk_delete errors
+-- Migration: remove cross-tenant existence oracle in equipment_bulk_delete
 -- Date: 2026-02-22
 -- Fixes:
---   - Replace detailed cross-tenant error with generic access denied
+--   - Scope lock query by tenant for non-global users so cross-tenant ids are treated as missing
 --   - Preserve existing JWT claim guards and tenant enforcement
 
 BEGIN;
@@ -21,7 +21,6 @@ DECLARE
   v_count INTEGER;
   v_missing_ids BIGINT[];
   v_already_deleted_ids BIGINT[];
-  v_cross_tenant_ids BIGINT[];
   v_batch_id UUID := gen_random_uuid();
   v_row RECORD;
 BEGIN
@@ -73,25 +72,12 @@ BEGIN
   SELECT tb.id, tb.don_vi, tb.is_deleted, tb.ma_thiet_bi, tb.ten_thiet_bi
   FROM public.thiet_bi tb
   WHERE tb.id = ANY(p_ids)
+    AND (v_is_global OR tb.don_vi = v_donvi)
   ORDER BY tb.id
   FOR UPDATE;
 
   SELECT count(*) INTO v_count
   FROM _equipment_bulk_delete_locked;
-
-  IF NOT v_is_global THEN
-    SELECT ARRAY(
-      SELECT l.id
-      FROM _equipment_bulk_delete_locked l
-      WHERE l.don_vi IS DISTINCT FROM v_donvi
-      ORDER BY l.id
-    ) INTO v_cross_tenant_ids;
-
-    IF COALESCE(array_length(v_cross_tenant_ids, 1), 0) > 0 THEN
-      RAISE EXCEPTION 'Access denied'
-        USING ERRCODE = '42501';
-    END IF;
-  END IF;
 
   IF v_count <> v_expected_count THEN
     SELECT ARRAY(
@@ -169,7 +155,6 @@ REVOKE ALL ON FUNCTION public.equipment_bulk_delete(BIGINT[]) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.equipment_bulk_delete(BIGINT[]) TO authenticated;
 
 COMMENT ON FUNCTION public.equipment_bulk_delete(BIGINT[]) IS
-  'Bulk soft-delete for equipment. Uses generic access-denied errors to avoid cross-tenant ID disclosure.';
+  'Bulk soft-delete for equipment. Uses tenant-scoped locking for non-global users to avoid cross-tenant existence oracle.';
 
 COMMIT;
-

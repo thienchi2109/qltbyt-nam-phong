@@ -21,7 +21,6 @@ DECLARE
   v_count INTEGER;
   v_missing_ids BIGINT[];
   v_already_deleted_ids BIGINT[];
-  v_cross_tenant_ids BIGINT[];
   v_batch_id UUID := gen_random_uuid();
   v_row RECORD;
 BEGIN
@@ -65,25 +64,12 @@ BEGIN
   SELECT tb.id, tb.don_vi, tb.is_deleted, tb.ma_thiet_bi, tb.ten_thiet_bi
   FROM public.thiet_bi tb
   WHERE tb.id = ANY(p_ids)
+    AND (v_is_global OR tb.don_vi = v_donvi)
   ORDER BY tb.id
   FOR UPDATE;
 
   SELECT count(*) INTO v_count
   FROM _equipment_bulk_delete_locked;
-
-  IF NOT v_is_global THEN
-    SELECT ARRAY(
-      SELECT l.id
-      FROM _equipment_bulk_delete_locked l
-      WHERE l.don_vi IS DISTINCT FROM v_donvi
-      ORDER BY l.id
-    ) INTO v_cross_tenant_ids;
-
-    IF COALESCE(array_length(v_cross_tenant_ids, 1), 0) > 0 THEN
-      RAISE EXCEPTION 'Access denied for equipment ids: %', array_to_string(v_cross_tenant_ids, ', ')
-        USING ERRCODE = '42501';
-    END IF;
-  END IF;
 
   IF v_count <> v_expected_count THEN
     SELECT ARRAY(
