@@ -18,6 +18,7 @@ import { Button } from "@/components/ui/button"
 import { BulkActionBar } from "@/components/ui/data-table-selection"
 import { useBulkDeleteEquipment } from "@/hooks/use-cached-equipment"
 import type { Equipment } from "@/types/database"
+import { EQUIPMENT_BULK_DELETE_LABEL } from "../_constants/equipmentBulkActions"
 
 interface EquipmentBulkDeleteBarProps {
   table: Table<Equipment>
@@ -78,7 +79,7 @@ export function EquipmentBulkDeleteBar({
       <AlertDialog open={isConfirmOpen} onOpenChange={setIsConfirmOpen}>
         <AlertDialogTrigger asChild>
           <Button type="button" size="sm" variant="destructive" disabled={isDeleting}>
-            Xóa đã chọn
+            {EQUIPMENT_BULK_DELETE_LABEL}
           </Button>
         </AlertDialogTrigger>
         <AlertDialogContent onClick={(event) => event.stopPropagation()}>
