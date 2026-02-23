@@ -8,7 +8,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 import { createSelectionColumn } from "@/components/ui/data-table-selection"
 import type { Equipment } from "@/types/database"
 import { EquipmentBulkDeleteBar } from "../_components/EquipmentBulkDeleteBar"
-import { EQUIPMENT_BULK_DELETE_LABEL } from "../_constants/EquipmentBulkActions"
+import { EQUIPMENT_BULK_DELETE_LABEL } from "../_constants/equipmentBulkActions"
 
 const state = vi.hoisted(() => ({
   isPending: false,

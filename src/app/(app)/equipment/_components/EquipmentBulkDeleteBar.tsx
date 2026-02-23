@@ -18,7 +18,7 @@ import { Button } from "@/components/ui/button"
 import { BulkActionBar } from "@/components/ui/data-table-selection"
 import { useBulkDeleteEquipment } from "@/hooks/use-cached-equipment"
 import type { Equipment } from "@/types/database"
-import { EQUIPMENT_BULK_DELETE_LABEL } from "../_constants/EquipmentBulkActions"
+import { EQUIPMENT_BULK_DELETE_LABEL } from "../_constants/equipmentBulkActions"
 
 interface EquipmentBulkDeleteBarProps {
   table: Table<Equipment>
