@@ -21,12 +21,12 @@ Use these tiers for shared primitives:
 | `Select` | n/a | `z-[1003]` | Same tier as popover |
 | `AlertDialog` | `z-[1100]` | `z-[1101]` | Must be top-most confirmation layer |
 | `Tooltip` | n/a | `z-50` | Informational only, not a blocking layer |
-| `ToastViewport` | n/a | `z-[100]` | Non-blocking notifications |
+| `ToastViewport` | n/a | `z-[1300]` | Toasts must stay visible above dialogs/sheets |
 
 ## Rules
 
 1. Do not introduce arbitrary `z-[...]` values for overlays without updating this table.
-2. If a shared primitive changes z-index, add or update a regression test.
+2. If a shared primitive changes z-index, add or update a regression test (e.g., toast viewport tier).
 3. Prefer changing shared primitive tiers over per-page z-index hacks.
 4. `AlertDialog` must remain above `Dialog` and `Sheet` to avoid blocked confirmations.
 

@@ -1,5 +1,5 @@
 import * as React from "react"
-import { render, screen } from "@testing-library/react"
+import { render, screen, waitFor } from "@testing-library/react"
 import { describe, expect, it } from "vitest"
 
 import {
@@ -15,6 +15,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet"
+import { ToastProvider, ToastViewport } from "@/components/ui/toast"
 
 describe("AlertDialog layering", () => {
   it("renders above dialog layer", () => {
@@ -61,5 +62,18 @@ describe("AlertDialog layering", () => {
     // Sheet uses z-[1002]; AlertDialog must always be top-most.
     expect(alertContent.className).toContain("z-[1101]")
     expect(sheetLayer).toBeTruthy()
+  })
+
+  it("assigns toast viewport a higher z-index tier", async () => {
+    render(
+      <ToastProvider>
+        <ToastViewport data-testid="toast-viewport" />
+      </ToastProvider>
+    )
+
+    await waitFor(() => {
+      const viewport = screen.getByTestId("toast-viewport") as HTMLElement
+      expect(viewport.className).toContain("z-[1300]")
+    })
   })
 })
