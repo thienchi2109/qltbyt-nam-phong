@@ -17,6 +17,19 @@ BEGIN
 
 END $$;
 
+-- Guard activation race hardening: activate RPC should lock target decision row.
+DO $$
+DECLARE
+  v_def text;
+BEGIN
+  SELECT pg_get_functiondef('public.dinh_muc_quyet_dinh_activate(bigint,bigint)'::regprocedure)
+  INTO v_def;
+
+  IF position('for update' in lower(v_def)) = 0 THEN
+    RAISE EXCEPTION 'Expected dinh_muc_quyet_dinh_activate() to lock row with FOR UPDATE';
+  END IF;
+END $$;
+
 -- Guard against silent NOT NULL/FK failures: all decision write RPCs must validate user context.
 DO $$
 DECLARE
@@ -44,8 +57,13 @@ SELECT count(*) AS before_count FROM public.quyet_dinh_dinh_muc;
 CREATE TEMP TABLE tmp_fixture(don_vi_id BIGINT, user_id BIGINT);
 INSERT INTO tmp_fixture(don_vi_id, user_id)
 SELECT
-  (SELECT id FROM public.don_vi ORDER BY id LIMIT 1),
-  (SELECT id FROM public.nhan_vien ORDER BY id LIMIT 1);
+  dv.id,
+  nv.id
+FROM public.don_vi dv
+JOIN public.nhan_vien nv
+  ON COALESCE(nv.current_don_vi, nv.don_vi) = dv.id
+ORDER BY dv.id, nv.id
+LIMIT 1;
 
 DO $$
 DECLARE

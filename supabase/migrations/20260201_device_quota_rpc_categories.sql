@@ -472,7 +472,7 @@ CREATE OR REPLACE FUNCTION public.dinh_muc_nhom_delete(
 RETURNS BOOLEAN
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public
+SET search_path = public, pg_temp
 AS $$
 DECLARE
   v_role TEXT := current_setting('request.jwt.claims', true)::json->>'app_role';

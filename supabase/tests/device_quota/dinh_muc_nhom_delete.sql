@@ -36,6 +36,10 @@ BEGIN
   IF position('for update' in lower(v_def)) = 0 THEN
     RAISE EXCEPTION 'Expected dinh_muc_nhom_delete() to lock category row with FOR UPDATE';
   END IF;
+
+  IF position('set search_path to ''public'', ''pg_temp''' in lower(v_def)) = 0 THEN
+    RAISE EXCEPTION 'Expected dinh_muc_nhom_delete() to set search_path to public, pg_temp';
+  END IF;
 END $$;
 
 DO $$

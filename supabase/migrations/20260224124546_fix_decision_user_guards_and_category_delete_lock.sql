@@ -278,11 +278,12 @@ BEGIN
     END IF;
   END IF;
 
-  -- Get decision to activate
+  -- Get + lock decision row to reduce activation race window
   SELECT * INTO v_current
   FROM public.quyet_dinh_dinh_muc
   WHERE id = p_id
-    AND (v_effective_donvi IS NULL OR don_vi_id = v_effective_donvi);
+    AND (v_effective_donvi IS NULL OR don_vi_id = v_effective_donvi)
+  FOR UPDATE;
 
   IF v_current IS NULL THEN
     RAISE EXCEPTION 'Quota decision not found or access denied (id=%)', p_id;
@@ -457,7 +458,7 @@ CREATE OR REPLACE FUNCTION public.dinh_muc_nhom_delete(
 RETURNS BOOLEAN
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public
+SET search_path = public, pg_temp
 AS $$
 DECLARE
   v_role TEXT := current_setting('request.jwt.claims', true)::json->>'app_role';
