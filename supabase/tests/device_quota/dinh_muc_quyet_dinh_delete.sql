@@ -30,6 +30,19 @@ BEGIN
   END IF;
 END $$;
 
+-- Guard update race hardening: update RPC should lock target decision row.
+DO $$
+DECLARE
+  v_def text;
+BEGIN
+  SELECT pg_get_functiondef('public.dinh_muc_quyet_dinh_update(bigint,text,date,date,date,text,text,text,bigint,bigint)'::regprocedure)
+  INTO v_def;
+
+  IF position('for update' in lower(v_def)) = 0 THEN
+    RAISE EXCEPTION 'Expected dinh_muc_quyet_dinh_update() to lock row with FOR UPDATE';
+  END IF;
+END $$;
+
 -- Guard against silent NOT NULL/FK failures: all decision write RPCs must validate user context.
 DO $$
 DECLARE
