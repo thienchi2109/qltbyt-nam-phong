@@ -656,11 +656,12 @@ BEGIN
     END IF;
   END IF;
 
-  -- Get decision to delete
+  -- Get + lock decision row to prevent TOCTOU between status check and delete
   SELECT * INTO v_current
   FROM public.quyet_dinh_dinh_muc
   WHERE id = p_id
-    AND (v_effective_donvi IS NULL OR don_vi_id = v_effective_donvi);
+    AND (v_effective_donvi IS NULL OR don_vi_id = v_effective_donvi)
+  FOR UPDATE;
 
   IF v_current IS NULL THEN
     RAISE EXCEPTION 'Quota decision not found or access denied (id=%)', p_id;

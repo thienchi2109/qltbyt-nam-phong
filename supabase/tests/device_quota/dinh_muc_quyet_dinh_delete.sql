@@ -3,6 +3,19 @@
 
 BEGIN;
 
+-- Guard against TOCTOU: validation SELECT must lock the decision row.
+DO $$
+DECLARE
+  v_def text;
+BEGIN
+  SELECT pg_get_functiondef('public.dinh_muc_quyet_dinh_delete(bigint,bigint,text)'::regprocedure)
+  INTO v_def;
+
+  IF position('for update' in lower(v_def)) = 0 THEN
+    RAISE EXCEPTION 'Expected dinh_muc_quyet_dinh_delete() to lock row with FOR UPDATE';
+  END IF;
+END $$;
+
 -- Snapshot baseline count for visibility
 SELECT count(*) AS before_count FROM public.quyet_dinh_dinh_muc;
 
