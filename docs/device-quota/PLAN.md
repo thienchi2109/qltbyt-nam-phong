@@ -64,7 +64,8 @@
 | `dinh_muc_quyet_dinh_create` | Create draft decision |
 | `dinh_muc_quyet_dinh_update` | Update draft decision |
 | `dinh_muc_quyet_dinh_activate` | Publish decision (draft → active) |
-| `dinh_muc_quyet_dinh_delete` | Delete draft decision |
+| `dinh_muc_quyet_dinh_delete` | Delete draft decision
+  - Audit: Insert-only log validated via trigger; FK dropped to keep immutable rows from blocking delete.
 
 ### Task 2.2: Category RPC Functions
 
