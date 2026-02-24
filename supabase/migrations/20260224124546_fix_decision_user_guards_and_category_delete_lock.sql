@@ -1,240 +1,7 @@
--- Migration: Device Quota Decision RPC Functions
--- Date: 2026-02-01
--- Purpose: RPC functions for managing quota decisions (quyet_dinh_dinh_muc)
--- Security: All functions enforce tenant isolation per CLAUDE.md security template
--- Related: 20260131_device_quota_schema.sql
+-- Migration: add explicit JWT user guards for decision write RPCs and lock category delete row
+-- Date: 2026-02-24
 
--- ============================================================================
--- SECTION 1: Helper - Get current user ID from JWT
--- ============================================================================
-
-CREATE OR REPLACE FUNCTION public._get_jwt_user_id()
-RETURNS BIGINT
-LANGUAGE sql
-STABLE
-AS $$
-  SELECT NULLIF(public._get_jwt_claim('user_id'), '')::BIGINT;
-$$;
-
-COMMENT ON FUNCTION public._get_jwt_user_id() IS 'Extract user_id from JWT claims as BIGINT';
-
--- ============================================================================
--- SECTION 2: dinh_muc_quyet_dinh_list
--- ============================================================================
--- Lists quota decisions with aggregated counts for categories and equipment
--- Returns: JSONB with data array, total count, page, pageSize
--- Security: Tenant isolation enforced via JWT claims
-
-CREATE OR REPLACE FUNCTION public.dinh_muc_quyet_dinh_list(
-  p_don_vi BIGINT DEFAULT NULL,
-  p_trang_thai TEXT DEFAULT NULL,
-  p_page INT DEFAULT 1,
-  p_page_size INT DEFAULT 50
-)
-RETURNS JSONB
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public, pg_temp
-AS $$
-DECLARE
-  v_role TEXT := lower(COALESCE(public._get_jwt_claim('app_role'), ''));
-  v_claim_donvi BIGINT := NULLIF(public._get_jwt_claim('don_vi'), '')::BIGINT;
-  v_effective_donvi BIGINT := NULL;
-  v_limit INT := GREATEST(COALESCE(p_page_size, 50), 1);
-  v_offset INT := GREATEST((COALESCE(p_page, 1) - 1) * v_limit, 0);
-  v_total BIGINT := 0;
-  v_data JSONB := '[]'::jsonb;
-BEGIN
-  -- Tenant isolation: global/admin can specify, others forced to their tenant
-  IF v_role IN ('global', 'admin') THEN
-    v_effective_donvi := p_don_vi; -- NULL means all tenants for global/admin only
-  ELSE
-    v_effective_donvi := v_claim_donvi;
-    -- SECURITY: Non-global/admin roles MUST have a tenant - fail closed if missing
-    IF v_effective_donvi IS NULL THEN
-      RETURN jsonb_build_object('data', '[]'::jsonb, 'total', 0, 'page', p_page, 'pageSize', p_page_size);
-    END IF;
-  END IF;
-
-  -- Total count for pagination
-  SELECT count(*) INTO v_total
-  FROM public.quyet_dinh_dinh_muc qd
-  WHERE (v_effective_donvi IS NULL OR qd.don_vi_id = v_effective_donvi)
-    AND (p_trang_thai IS NULL OR qd.trang_thai = p_trang_thai);
-
-  -- Data page with aggregated counts
-  SELECT COALESCE(jsonb_agg(row_data ORDER BY ngay_ban_hanh DESC, id DESC), '[]'::jsonb) INTO v_data
-  FROM (
-    SELECT jsonb_build_object(
-      'id', qd.id,
-      'don_vi_id', qd.don_vi_id,
-      'so_quyet_dinh', qd.so_quyet_dinh,
-      'ngay_ban_hanh', qd.ngay_ban_hanh,
-      'ngay_hieu_luc', qd.ngay_hieu_luc,
-      'ngay_het_hieu_luc', qd.ngay_het_hieu_luc,
-      'nguoi_ky', qd.nguoi_ky,
-      'chuc_vu_nguoi_ky', qd.chuc_vu_nguoi_ky,
-      'trang_thai', qd.trang_thai,
-      'ghi_chu', qd.ghi_chu,
-      'thay_the_cho_id', qd.thay_the_cho_id,
-      'created_at', qd.created_at,
-      'updated_at', qd.updated_at,
-      'created_by', qd.created_by,
-      'updated_by', qd.updated_by,
-      -- Aggregated counts
-      'total_categories', (
-        SELECT count(DISTINCT ct.nhom_thiet_bi_id)
-        FROM public.chi_tiet_dinh_muc ct
-        WHERE ct.quyet_dinh_id = qd.id
-      ),
-      'total_equipment_mapped', (
-        SELECT count(*)
-        FROM public.thiet_bi tb
-        JOIN public.chi_tiet_dinh_muc ct ON ct.nhom_thiet_bi_id = tb.nhom_thiet_bi_id
-        WHERE ct.quyet_dinh_id = qd.id
-          AND tb.don_vi = qd.don_vi_id
-      ),
-      -- Facility info
-      'don_vi', (
-        SELECT jsonb_build_object('id', dv.id, 'name', dv.name)
-        FROM public.don_vi dv
-        WHERE dv.id = qd.don_vi_id
-      )
-    ) as row_data,
-    qd.ngay_ban_hanh,
-    qd.id
-    FROM public.quyet_dinh_dinh_muc qd
-    WHERE (v_effective_donvi IS NULL OR qd.don_vi_id = v_effective_donvi)
-      AND (p_trang_thai IS NULL OR qd.trang_thai = p_trang_thai)
-    ORDER BY qd.ngay_ban_hanh DESC, qd.id DESC
-    OFFSET v_offset
-    LIMIT v_limit
-  ) subq;
-
-  RETURN jsonb_build_object('data', v_data, 'total', v_total, 'page', p_page, 'pageSize', p_page_size);
-END;
-$$;
-
-GRANT EXECUTE ON FUNCTION public.dinh_muc_quyet_dinh_list(BIGINT, TEXT, INT, INT) TO authenticated;
-
-COMMENT ON FUNCTION public.dinh_muc_quyet_dinh_list(BIGINT, TEXT, INT, INT) IS
-'Lists quota decisions with aggregated category and equipment counts.
-Returns JSONB with {data, total, page, pageSize} structure.
-Tenant isolation: global/admin can filter by tenant, others see only their tenant.';
-
--- ============================================================================
--- SECTION 3: dinh_muc_quyet_dinh_get
--- ============================================================================
--- Get single decision with line items
--- Returns: JSONB with decision details and chi_tiet array
--- Security: Tenant isolation enforced via JWT claims
-
-CREATE OR REPLACE FUNCTION public.dinh_muc_quyet_dinh_get(
-  p_id BIGINT,
-  p_don_vi BIGINT DEFAULT NULL
-)
-RETURNS JSONB
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public, pg_temp
-AS $$
-DECLARE
-  v_role TEXT := lower(COALESCE(public._get_jwt_claim('app_role'), ''));
-  v_claim_donvi BIGINT := NULLIF(public._get_jwt_claim('don_vi'), '')::BIGINT;
-  v_effective_donvi BIGINT := NULL;
-  v_result JSONB := NULL;
-BEGIN
-  -- Tenant isolation
-  IF v_role IN ('global', 'admin') THEN
-    v_effective_donvi := p_don_vi; -- NULL means all tenants for global/admin only
-  ELSE
-    v_effective_donvi := v_claim_donvi;
-    -- SECURITY: Non-global/admin roles MUST have a tenant - fail closed if missing
-    IF v_effective_donvi IS NULL THEN
-      RAISE EXCEPTION 'Access denied: tenant context required';
-    END IF;
-  END IF;
-
-  -- Get decision with line items
-  SELECT jsonb_build_object(
-    'id', qd.id,
-    'don_vi_id', qd.don_vi_id,
-    'so_quyet_dinh', qd.so_quyet_dinh,
-    'ngay_ban_hanh', qd.ngay_ban_hanh,
-    'ngay_hieu_luc', qd.ngay_hieu_luc,
-    'ngay_het_hieu_luc', qd.ngay_het_hieu_luc,
-    'nguoi_ky', qd.nguoi_ky,
-    'chuc_vu_nguoi_ky', qd.chuc_vu_nguoi_ky,
-    'trang_thai', qd.trang_thai,
-    'ghi_chu', qd.ghi_chu,
-    'thay_the_cho_id', qd.thay_the_cho_id,
-    'created_at', qd.created_at,
-    'updated_at', qd.updated_at,
-    'created_by', qd.created_by,
-    'updated_by', qd.updated_by,
-    -- Facility info
-    'don_vi', (
-      SELECT jsonb_build_object('id', dv.id, 'name', dv.name)
-      FROM public.don_vi dv
-      WHERE dv.id = qd.don_vi_id
-    ),
-    -- Line items with category details
-    'chi_tiet', COALESCE((
-      SELECT jsonb_agg(jsonb_build_object(
-        'id', ct.id,
-        'quyet_dinh_id', ct.quyet_dinh_id,
-        'nhom_thiet_bi_id', ct.nhom_thiet_bi_id,
-        'so_luong_toi_da', ct.so_luong_toi_da,
-        'so_luong_toi_thieu', ct.so_luong_toi_thieu,
-        'ghi_chu', ct.ghi_chu,
-        'created_at', ct.created_at,
-        'updated_at', ct.updated_at,
-        -- Category info
-        'nhom_thiet_bi', jsonb_build_object(
-          'id', nt.id,
-          'ma_nhom', nt.ma_nhom,
-          'ten_nhom', nt.ten_nhom,
-          'phan_loai', nt.phan_loai,
-          'don_vi_tinh', nt.don_vi_tinh
-        ),
-        -- Current equipment count in this category
-        'so_luong_hien_tai', (
-          SELECT count(*)
-          FROM public.thiet_bi tb
-          WHERE tb.nhom_thiet_bi_id = ct.nhom_thiet_bi_id
-            AND tb.don_vi = qd.don_vi_id
-        )
-      ) ORDER BY nt.thu_tu_hien_thi, nt.ma_nhom)
-      FROM public.chi_tiet_dinh_muc ct
-      JOIN public.nhom_thiet_bi nt ON nt.id = ct.nhom_thiet_bi_id
-      WHERE ct.quyet_dinh_id = qd.id
-    ), '[]'::jsonb)
-  ) INTO v_result
-  FROM public.quyet_dinh_dinh_muc qd
-  WHERE qd.id = p_id
-    AND (v_effective_donvi IS NULL OR qd.don_vi_id = v_effective_donvi);
-
-  IF v_result IS NULL THEN
-    RAISE EXCEPTION 'Quota decision not found or access denied (id=%)', p_id;
-  END IF;
-
-  RETURN v_result;
-END;
-$$;
-
-GRANT EXECUTE ON FUNCTION public.dinh_muc_quyet_dinh_get(BIGINT, BIGINT) TO authenticated;
-
-COMMENT ON FUNCTION public.dinh_muc_quyet_dinh_get(BIGINT, BIGINT) IS
-'Get single quota decision with all line items and category details.
-Returns JSONB with decision data and chi_tiet array containing category info and current equipment counts.
-Tenant isolation: global/admin can access any tenant, others only their tenant.';
-
--- ============================================================================
--- SECTION 4: dinh_muc_quyet_dinh_create
--- ============================================================================
--- Create new quota decision in draft status
--- Security: Only global, admin, to_qltb roles
--- Audit: Writes to lich_su_dinh_muc with thao_tac='tao'
+BEGIN;
 
 CREATE OR REPLACE FUNCTION public.dinh_muc_quyet_dinh_create(
   p_so_quyet_dinh TEXT,
@@ -352,21 +119,6 @@ BEGIN
   RETURN v_result;
 END;
 $$;
-
-GRANT EXECUTE ON FUNCTION public.dinh_muc_quyet_dinh_create(TEXT, DATE, DATE, TEXT, TEXT, BIGINT, DATE, TEXT, BIGINT) TO authenticated;
-
-COMMENT ON FUNCTION public.dinh_muc_quyet_dinh_create(TEXT, DATE, DATE, TEXT, TEXT, BIGINT, DATE, TEXT, BIGINT) IS
-'Create a new quota decision in draft status.
-Required: so_quyet_dinh, ngay_ban_hanh, ngay_hieu_luc, nguoi_ky, chuc_vu_nguoi_ky
-Roles: global, admin, to_qltb only.
-Audit: Creates lich_su_dinh_muc record with thao_tac=tao.';
-
--- ============================================================================
--- SECTION 5: dinh_muc_quyet_dinh_update
--- ============================================================================
--- Update draft decision only
--- Security: Only global, admin, to_qltb roles
--- Audit: Writes to lich_su_dinh_muc with thao_tac='cap_nhat'
 
 CREATE OR REPLACE FUNCTION public.dinh_muc_quyet_dinh_update(
   p_id BIGINT,
@@ -488,20 +240,6 @@ BEGIN
 END;
 $$;
 
-GRANT EXECUTE ON FUNCTION public.dinh_muc_quyet_dinh_update(BIGINT, TEXT, DATE, DATE, DATE, TEXT, TEXT, TEXT, BIGINT, BIGINT) TO authenticated;
-
-COMMENT ON FUNCTION public.dinh_muc_quyet_dinh_update(BIGINT, TEXT, DATE, DATE, DATE, TEXT, TEXT, TEXT, BIGINT, BIGINT) IS
-'Update a draft quota decision. Active/inactive decisions cannot be updated.
-Roles: global, admin, to_qltb only.
-Audit: Creates lich_su_dinh_muc record with thao_tac=cap_nhat and before/after snapshots.';
-
--- ============================================================================
--- SECTION 6: dinh_muc_quyet_dinh_activate
--- ============================================================================
--- Activate a draft decision, deactivate any current active decision
--- Security: Only global, admin, to_qltb roles
--- Audit: Writes to lich_su_dinh_muc with thao_tac='cong_khai'
-
 CREATE OR REPLACE FUNCTION public.dinh_muc_quyet_dinh_activate(
   p_id BIGINT,
   p_don_vi BIGINT DEFAULT NULL
@@ -621,20 +359,6 @@ BEGIN
 END;
 $$;
 
-GRANT EXECUTE ON FUNCTION public.dinh_muc_quyet_dinh_activate(BIGINT, BIGINT) TO authenticated;
-
-COMMENT ON FUNCTION public.dinh_muc_quyet_dinh_activate(BIGINT, BIGINT) IS
-'Activate a draft quota decision. Any currently active decision for the same tenant will be deactivated.
-Roles: global, admin, to_qltb only.
-Audit: Creates lich_su_dinh_muc record with thao_tac=cong_khai.';
-
--- ============================================================================
--- SECTION 7: dinh_muc_quyet_dinh_delete
--- ============================================================================
--- Delete a draft decision only
--- Security: Only global, admin, to_qltb roles
--- Audit: Writes to lich_su_dinh_muc with thao_tac='huy' before deletion
-
 CREATE OR REPLACE FUNCTION public.dinh_muc_quyet_dinh_delete(
   p_id BIGINT,
   p_don_vi BIGINT DEFAULT NULL,
@@ -644,7 +368,7 @@ RETURNS JSONB
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public, pg_temp
-AS $$
+AS $function$
 DECLARE
   v_role TEXT := lower(COALESCE(public._get_jwt_claim('app_role'), ''));
   v_claim_donvi BIGINT := NULLIF(public._get_jwt_claim('don_vi'), '')::BIGINT;
@@ -672,7 +396,7 @@ BEGIN
     END IF;
   END IF;
 
-  -- Get + lock decision row to prevent TOCTOU between status check and delete
+  -- Lock decision row to avoid TOCTOU between status check and delete
   SELECT * INTO v_current
   FROM public.quyet_dinh_dinh_muc
   WHERE id = p_id
@@ -724,40 +448,93 @@ BEGIN
     'so_quyet_dinh', v_current.so_quyet_dinh
   );
 END;
+$function$;
+
+CREATE OR REPLACE FUNCTION public.dinh_muc_nhom_delete(
+  p_id BIGINT,
+  p_don_vi BIGINT DEFAULT NULL
+)
+RETURNS BOOLEAN
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_role TEXT := current_setting('request.jwt.claims', true)::json->>'app_role';
+  v_don_vi TEXT := current_setting('request.jwt.claims', true)::json->>'don_vi';
+  v_category_don_vi BIGINT;
+  v_equipment_count BIGINT;
+  v_child_count BIGINT;
+  v_quota_count BIGINT;
+BEGIN
+  -- Fallback for older tokens
+  IF v_role IS NULL OR v_role = '' THEN
+    v_role := current_setting('request.jwt.claims', true)::json->>'role';
+  END IF;
+
+  -- 1. Permission check: only global, admin, to_qltb can delete
+  IF v_role IS NULL OR v_role NOT IN ('global', 'admin', 'to_qltb') THEN
+    RAISE EXCEPTION 'Insufficient permissions. Required: global, admin, or to_qltb role.';
+  END IF;
+
+  -- 2. Tenant isolation: non-global/admin users must use their own tenant
+  IF v_role NOT IN ('global', 'admin') THEN
+    p_don_vi := NULLIF(v_don_vi, '')::BIGINT;
+  END IF;
+
+  -- Validate category ID
+  IF p_id IS NULL THEN
+    RAISE EXCEPTION 'Category ID (p_id) is required.';
+  END IF;
+
+  -- Verify category exists and lock row to prevent TOCTOU before dependency checks + delete
+  SELECT don_vi_id INTO v_category_don_vi
+  FROM public.nhom_thiet_bi
+  WHERE id = p_id
+  FOR UPDATE;
+
+  IF v_category_don_vi IS NULL THEN
+    RAISE EXCEPTION 'Category not found.';
+  END IF;
+
+  -- Enforce tenant ownership
+  IF p_don_vi IS NOT NULL AND v_category_don_vi != p_don_vi THEN
+    RAISE EXCEPTION 'Category belongs to different tenant.';
+  END IF;
+
+  -- 3. Check for linked equipment
+  SELECT COUNT(*) INTO v_equipment_count
+  FROM public.thiet_bi
+  WHERE nhom_thiet_bi_id = p_id;
+
+  IF v_equipment_count > 0 THEN
+    RAISE EXCEPTION 'Cannot delete category: % equipment item(s) are linked. Unlink equipment first.', v_equipment_count;
+  END IF;
+
+  -- 4. Check for child categories
+  SELECT COUNT(*) INTO v_child_count
+  FROM public.nhom_thiet_bi
+  WHERE parent_id = p_id;
+
+  IF v_child_count > 0 THEN
+    RAISE EXCEPTION 'Cannot delete category: % child category(ies) exist. Delete or reassign children first.', v_child_count;
+  END IF;
+
+  -- 5. Check for quota line items referencing this category
+  SELECT COUNT(*) INTO v_quota_count
+  FROM public.chi_tiet_dinh_muc
+  WHERE nhom_thiet_bi_id = p_id;
+
+  IF v_quota_count > 0 THEN
+    RAISE EXCEPTION 'Cannot delete category: % quota line item(s) reference this category. Remove from quotas first.', v_quota_count;
+  END IF;
+
+  -- 6. Delete the category
+  DELETE FROM public.nhom_thiet_bi
+  WHERE id = p_id;
+
+  RETURN TRUE;
+END;
 $$;
 
-GRANT EXECUTE ON FUNCTION public.dinh_muc_quyet_dinh_delete(BIGINT, BIGINT, TEXT) TO authenticated;
-
-COMMENT ON FUNCTION public.dinh_muc_quyet_dinh_delete(BIGINT, BIGINT, TEXT) IS
-'Delete a draft quota decision. Active/inactive decisions cannot be deleted.
-Roles: global, admin, to_qltb only.
-Audit: Creates lich_su_dinh_muc record with thao_tac=huy before deletion.';
-
--- ============================================================================
--- SECTION 8: Index Suggestions for Performance
--- ============================================================================
--- These indexes support the RPC functions above
-
--- Already created in schema migration:
--- idx_quyet_dinh_don_vi (don_vi_id)
--- idx_quyet_dinh_trang_thai (trang_thai)
-
--- Additional indexes for list queries with ordering
-CREATE INDEX IF NOT EXISTS idx_quyet_dinh_don_vi_date
-ON public.quyet_dinh_dinh_muc(don_vi_id, ngay_ban_hanh DESC, id DESC);
-
--- ============================================================================
--- MIGRATION COMPLETE
--- ============================================================================
-
--- Rollback procedure:
-/*
-DROP FUNCTION IF EXISTS public.dinh_muc_quyet_dinh_delete(BIGINT, BIGINT, TEXT);
-DROP FUNCTION IF EXISTS public.dinh_muc_quyet_dinh_activate(BIGINT, BIGINT);
-DROP FUNCTION IF EXISTS public.dinh_muc_quyet_dinh_update(BIGINT, TEXT, DATE, DATE, DATE, TEXT, TEXT, TEXT, BIGINT, BIGINT);
-DROP FUNCTION IF EXISTS public.dinh_muc_quyet_dinh_create(TEXT, DATE, DATE, TEXT, TEXT, BIGINT, DATE, TEXT, BIGINT);
-DROP FUNCTION IF EXISTS public.dinh_muc_quyet_dinh_get(BIGINT, BIGINT);
-DROP FUNCTION IF EXISTS public.dinh_muc_quyet_dinh_list(BIGINT, TEXT, INT, INT);
-DROP FUNCTION IF EXISTS public._get_jwt_user_id();
-DROP INDEX IF EXISTS public.idx_quyet_dinh_don_vi_date;
-*/
+COMMIT;

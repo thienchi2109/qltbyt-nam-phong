@@ -25,6 +25,19 @@ BEGIN
   END IF;
 END $$;
 
+-- Guard against TOCTOU: category read in delete RPC must lock row.
+DO $$
+DECLARE
+  v_def text;
+BEGIN
+  SELECT pg_get_functiondef('public.dinh_muc_nhom_delete(bigint,bigint)'::regprocedure)
+  INTO v_def;
+
+  IF position('for update' in lower(v_def)) = 0 THEN
+    RAISE EXCEPTION 'Expected dinh_muc_nhom_delete() to lock category row with FOR UPDATE';
+  END IF;
+END $$;
+
 DO $$
 DECLARE
   v_don_vi_id bigint;

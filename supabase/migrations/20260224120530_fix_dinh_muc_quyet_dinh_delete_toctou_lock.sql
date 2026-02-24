@@ -26,6 +26,10 @@ BEGIN
     RAISE EXCEPTION 'Insufficient permissions. Required: global, admin, or to_qltb role';
   END IF;
 
+  IF v_user_id IS NULL THEN
+    RAISE EXCEPTION 'Authenticated user_id claim is required';
+  END IF;
+
   -- Tenant isolation
   IF v_role IN ('global', 'admin') THEN
     v_effective_donvi := p_don_vi; -- NULL means all tenants for global/admin only

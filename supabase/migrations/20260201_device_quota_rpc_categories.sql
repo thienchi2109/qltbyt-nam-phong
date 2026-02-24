@@ -502,10 +502,11 @@ BEGIN
     RAISE EXCEPTION 'Category ID (p_id) is required.';
   END IF;
 
-  -- Verify category exists and get its tenant
+  -- Verify category exists and lock row to prevent TOCTOU before dependency checks + delete
   SELECT don_vi_id INTO v_category_don_vi
   FROM public.nhom_thiet_bi
-  WHERE id = p_id;
+  WHERE id = p_id
+  FOR UPDATE;
 
   IF v_category_don_vi IS NULL THEN
     RAISE EXCEPTION 'Category not found.';
