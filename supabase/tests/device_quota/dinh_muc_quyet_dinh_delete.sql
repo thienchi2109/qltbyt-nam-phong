@@ -21,12 +21,18 @@ END $$;
 DO $$
 DECLARE
   v_def text;
+  v_select_pos int;
 BEGIN
   SELECT pg_get_functiondef('public.dinh_muc_quyet_dinh_activate(bigint,bigint)'::regprocedure)
   INTO v_def;
 
   IF position('for update' in lower(v_def)) = 0 THEN
     RAISE EXCEPTION 'Expected dinh_muc_quyet_dinh_activate() to lock row with FOR UPDATE';
+  END IF;
+
+  v_select_pos := position('select id into v_previous_active_id' in lower(v_def));
+  IF v_select_pos = 0 OR position('for update' in substring(lower(v_def) from v_select_pos)) = 0 THEN
+    RAISE EXCEPTION 'Expected dinh_muc_quyet_dinh_activate() to lock previous active decision lookup with FOR UPDATE';
   END IF;
 END $$;
 

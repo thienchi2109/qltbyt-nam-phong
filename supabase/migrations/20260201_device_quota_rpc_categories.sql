@@ -495,6 +495,10 @@ BEGIN
   -- 2. Tenant isolation: non-global/admin users must use their own tenant
   IF v_role NOT IN ('global', 'admin') THEN
     p_don_vi := NULLIF(v_don_vi, '')::BIGINT;
+    -- SECURITY: Non-global/admin roles MUST have a tenant - fail closed if missing
+    IF p_don_vi IS NULL THEN
+      RAISE EXCEPTION 'Access denied: tenant context required';
+    END IF;
   END IF;
 
   -- Validate category ID

@@ -562,7 +562,8 @@ BEGIN
   FROM public.quyet_dinh_dinh_muc
   WHERE don_vi_id = v_current.don_vi_id
     AND trang_thai = 'active'
-    AND id != p_id;
+    AND id != p_id
+  FOR UPDATE;
 
   IF v_previous_active_id IS NOT NULL THEN
     -- Deactivate previous active decision

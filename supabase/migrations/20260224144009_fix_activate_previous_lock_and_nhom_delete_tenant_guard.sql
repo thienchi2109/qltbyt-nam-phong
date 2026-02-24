@@ -1,4 +1,4 @@
--- Migration: lock decision activation target row and harden category delete search_path
+-- Migration: lock previous active decision lookup and enforce tenant fail-closed in category delete
 -- Date: 2026-02-24
 
 BEGIN;
@@ -57,7 +57,7 @@ BEGIN
     RAISE EXCEPTION 'Only draft decisions can be activated. Current status: %', v_current.trang_thai;
   END IF;
 
-  -- Find and deactivate current active decision for this tenant
+  -- Find + lock current active decision for this tenant before deactivating.
   SELECT id INTO v_previous_active_id
   FROM public.quyet_dinh_dinh_muc
   WHERE don_vi_id = v_current.don_vi_id

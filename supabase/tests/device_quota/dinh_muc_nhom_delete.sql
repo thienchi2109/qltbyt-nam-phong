@@ -40,15 +40,61 @@ BEGIN
   IF position('set search_path to ''public'', ''pg_temp''' in lower(v_def)) = 0 THEN
     RAISE EXCEPTION 'Expected dinh_muc_nhom_delete() to set search_path to public, pg_temp';
   END IF;
+
+  IF position('access denied: tenant context required' in lower(v_def)) = 0 THEN
+    RAISE EXCEPTION 'Expected dinh_muc_nhom_delete() to fail closed when tenant claim is missing';
+  END IF;
 END $$;
 
 DO $$
 DECLARE
+  v_tenant_id bigint;
+  v_missing_claim_category_id bigint;
+  v_missing_claim_deleted boolean;
   v_don_vi_id bigint;
   v_user_id bigint;
   v_category_id bigint;
   v_deleted boolean;
 BEGIN
+  -- Missing-tenant claim must fail closed for non-global/admin roles.
+  SELECT id INTO v_tenant_id
+  FROM public.don_vi
+  ORDER BY id
+  LIMIT 1;
+
+  IF v_tenant_id IS NULL THEN
+    RAISE EXCEPTION 'Missing fixture rows in don_vi';
+  END IF;
+
+  INSERT INTO public.nhom_thiet_bi (don_vi_id, ma_nhom, ten_nhom)
+  VALUES (
+    v_tenant_id,
+    'TEST-NHOM-MISSING-TENANT-' || floor(random() * 1000000)::text,
+    'Category missing tenant guard regression'
+  )
+  RETURNING id INTO v_missing_claim_category_id;
+
+  PERFORM set_config(
+    'request.jwt.claims',
+    json_build_object(
+      'app_role', 'to_qltb',
+      'role', 'authenticated',
+      'user_id', '0',
+      'sub', '0'
+    )::text,
+    true
+  );
+
+  BEGIN
+    v_missing_claim_deleted := public.dinh_muc_nhom_delete(v_missing_claim_category_id, NULL);
+    RAISE EXCEPTION 'Expected tenant guard to reject missing don_vi claim, but got result=%', v_missing_claim_deleted;
+  EXCEPTION
+    WHEN OTHERS THEN
+      IF position('tenant context required' in lower(SQLERRM)) = 0 THEN
+        RAISE;
+      END IF;
+  END;
+
   SELECT id INTO v_don_vi_id
   FROM public.don_vi
   ORDER BY id
