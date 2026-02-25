@@ -49,4 +49,32 @@ describe('toKeyedTexts', () => {
     const input = ['x', 'y', 'x']
     expect(toKeyedTexts(input)).toEqual(toKeyedTexts(input))
   })
+
+  it('uses stable ids when provided to prevent duplicate-text key drift', () => {
+    const ids = ['row-a', 'row-b', 'row-c']
+    const result = toKeyedTexts(['error', 'error', 'error'], {
+      getStableId: (_, index) => ids[index],
+    })
+
+    expect(result).toEqual([
+      { key: 'id-row-a', text: 'error' },
+      { key: 'id-row-b', text: 'error' },
+      { key: 'id-row-c', text: 'error' },
+    ])
+  })
+
+  it('keeps identity stable across reorders when stable ids are provided', () => {
+    const input = ['dup', 'dup']
+
+    const first = toKeyedTexts(input, {
+      getStableId: (_, index) => (index === 0 ? 'a' : 'b'),
+    })
+
+    const reordered = toKeyedTexts(input, {
+      getStableId: (_, index) => (index === 0 ? 'b' : 'a'),
+    })
+
+    expect(first.map((item) => item.key)).toEqual(['id-a', 'id-b'])
+    expect(reordered.map((item) => item.key)).toEqual(['id-b', 'id-a'])
+  })
 })
