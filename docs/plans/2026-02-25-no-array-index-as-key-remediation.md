@@ -326,10 +326,28 @@ Expected: clean working tree and branch up to date with origin.
 
 ## Review Notes (2026-02-25)
 
-All 29 flagged locations verified against source. Changes from original plan:
+### Baseline Verification (react-doctor v0.0.29, full scan, 456 files)
+
+Score: **79/100** — 1 error, 447 warnings across 240 files.  
+`no-array-index-as-key`: **exactly 29 warnings** — all locations confirmed, match plan inventory 1-for-1. ✅
+
+### Changes from original plan
 
 1. **Task 2 — `performance-dashboard.tsx:243` (suggestions):** Changed from raw string key to `list-key-utils` helper. Suggestions is `string[]` which may contain duplicates — same dedup pattern as Task 3.
 2. **Task 2 — `dynamic-chart.tsx:255` (pie cells):** Clarified fix to use `entry[nameKey]` (dynamic property access on generic `ChartData`). Added defensive `${entry[nameKey]}-${index}` suffix to guard against duplicate name values.
 3. **Task 2 — `performance-dashboard.tsx:207` (alerts):** Clarified composite key to `${alert.timestamp}-${alert.type}`.
 4. **Dependency added:** Task 1 must complete before Tasks 2 and 3 (both consume the helper).
+
+### ⚠️ Dead Code Warning (from full scan)
+
+React Doctor flagged these plan-targeted files as **unused** (not imported anywhere in the project):
+
+| File | Tasks Affected | Risk |
+|---|---|---|
+| `src/components/performance-dashboard.tsx` | Task 2 | Low — fix is safe but low-value |
+| `src/components/monthly-maintenance-summary.tsx` | Task 6 | Low |
+| `src/components/upcoming-maintenance-card.tsx` | Task 6 | Low |
+| `src/components/dynamic-chart.tsx` | Task 2 | Low |
+
+**Decision:** Fix these anyway for completeness (zeroing all 29 warnings is the goal). Do **not** delete the unused files as part of this plan — that is a separate dead-code cleanup task.
 
