@@ -44,6 +44,22 @@ BEGIN
   IF position('access denied: tenant context required' in lower(v_def)) = 0 THEN
     RAISE EXCEPTION 'Expected dinh_muc_nhom_delete() to fail closed when tenant claim is missing';
   END IF;
+
+  IF position('public._get_jwt_claim(''app_role'')' in lower(v_def)) = 0 THEN
+    RAISE EXCEPTION 'Expected dinh_muc_nhom_delete() to use _get_jwt_claim(''app_role'') helper';
+  END IF;
+
+  IF position('public._get_jwt_claim(''role'')' in lower(v_def)) = 0 THEN
+    RAISE EXCEPTION 'Expected dinh_muc_nhom_delete() to support legacy role via _get_jwt_claim(''role'')';
+  END IF;
+
+  IF position('public._get_jwt_user_id()' in lower(v_def)) = 0 THEN
+    RAISE EXCEPTION 'Expected dinh_muc_nhom_delete() to use _get_jwt_user_id() helper';
+  END IF;
+
+  IF position('v_user_id is null' in lower(v_def)) = 0 THEN
+    RAISE EXCEPTION 'Expected dinh_muc_nhom_delete() to guard v_user_id IS NULL';
+  END IF;
 END $$;
 
 DO $$
@@ -51,6 +67,7 @@ DECLARE
   v_tenant_id bigint;
   v_missing_claim_category_id bigint;
   v_missing_claim_deleted boolean;
+  v_missing_user_deleted boolean;
   v_don_vi_id bigint;
   v_user_id bigint;
   v_category_id bigint;
@@ -94,6 +111,35 @@ BEGIN
         RAISE;
       END IF;
   END;
+
+  -- Missing user_id claim must fail before delete proceeds.
+  PERFORM set_config(
+    'request.jwt.claims',
+    json_build_object(
+      'app_role', 'to_qltb',
+      'role', 'authenticated',
+      'don_vi', v_tenant_id::text
+    )::text,
+    true
+  );
+
+  BEGIN
+    v_missing_user_deleted := public.dinh_muc_nhom_delete(v_missing_claim_category_id, NULL);
+    RAISE EXCEPTION 'Expected user_id guard to reject missing user_id claim, but got result=%', v_missing_user_deleted;
+  EXCEPTION
+    WHEN OTHERS THEN
+      IF position('authenticated user_id claim is required' in lower(SQLERRM)) = 0 THEN
+        RAISE;
+      END IF;
+  END;
+
+  IF NOT EXISTS (
+    SELECT 1
+    FROM public.nhom_thiet_bi
+    WHERE id = v_missing_claim_category_id
+  ) THEN
+    RAISE EXCEPTION 'Expected category to remain after missing user_id guard failure';
+  END IF;
 
   SELECT id INTO v_don_vi_id
   FROM public.don_vi
