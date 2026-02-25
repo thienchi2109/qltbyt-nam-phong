@@ -8,6 +8,8 @@
 
 **Tech Stack:** Next.js 15, React 18, TypeScript, React Doctor v0.0.29, Vitest
 
+**Dependencies:** Task 1 (key utility) **must** complete before Tasks 2 and 3, which both consume `list-key-utils`.
+
 ---
 
 ### Task 1: Baseline and Key Utility
@@ -77,12 +79,12 @@ Expected locations include:
 **Step 2: Implement minimal key fixes**
 
 - `performance-dashboard.tsx`
-  - alerts: key from stable composite (`timestamp + metric/message`)
-  - suggestions: key from suggestion string
+  - alerts: key from stable composite (`${alert.timestamp}-${alert.type}`)
+  - suggestions: **use `list-key-utils` helper** (suggestions is `string[]` — may contain duplicates, same pattern as Task 3)
 - `interactive-equipment-chart.tsx`
   - tooltip rows: key from `entry.dataKey` (fallback `entry.name`)
 - `dynamic-chart.tsx`
-  - pie cells: key from entry `nameKey` value, not index
+  - pie cells: key from `entry[nameKey]` (dynamic property access). Use defensive `${entry[nameKey]}-${index}` to guard against duplicate name values across slices
 - `RepairRequestsProcessStepper.tsx`
   - step key from stable `step.title`
 
@@ -319,4 +321,15 @@ Expected: clean working tree and branch up to date with origin.
 27. `src/components/ui/calendar-widget.tsx:66`
 28. `src/components/ui/calendar-widget.tsx:396`
 29. `src/components/upcoming-maintenance-card.tsx:105`
+
+---
+
+## Review Notes (2026-02-25)
+
+All 29 flagged locations verified against source. Changes from original plan:
+
+1. **Task 2 — `performance-dashboard.tsx:243` (suggestions):** Changed from raw string key to `list-key-utils` helper. Suggestions is `string[]` which may contain duplicates — same dedup pattern as Task 3.
+2. **Task 2 — `dynamic-chart.tsx:255` (pie cells):** Clarified fix to use `entry[nameKey]` (dynamic property access on generic `ChartData`). Added defensive `${entry[nameKey]}-${index}` suffix to guard against duplicate name values.
+3. **Task 2 — `performance-dashboard.tsx:207` (alerts):** Clarified composite key to `${alert.timestamp}-${alert.type}`.
+4. **Dependency added:** Task 1 must complete before Tasks 2 and 3 (both consume the helper).
 
