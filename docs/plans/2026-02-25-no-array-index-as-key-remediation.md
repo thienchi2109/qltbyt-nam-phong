@@ -79,12 +79,12 @@ Expected locations include:
 **Step 2: Implement minimal key fixes**
 
 - `performance-dashboard.tsx`
-  - alerts: key from stable composite (`${alert.timestamp}-${alert.type}`)
+  - alerts: key from three-part composite `${alert.timestamp}-${alert.type}-${alert.message}` (timestamp+type alone can collide under burst updates at the same millisecond)
   - suggestions: **use `list-key-utils` helper** (suggestions is `string[]` — may contain duplicates, same pattern as Task 3)
 - `interactive-equipment-chart.tsx`
   - tooltip rows: key from `entry.dataKey` (fallback `entry.name`)
 - `dynamic-chart.tsx`
-  - pie cells: key from `entry[nameKey]` (dynamic property access). Use defensive `${entry[nameKey]}-${index}` to guard against duplicate name values across slices
+  - pie cells: key from `entry[nameKey]` **only** — no index fallback. Pie slices are domain data; if `nameKey` values are non-unique the data is malformed. Document assumption in a comment
 - `RepairRequestsProcessStepper.tsx`
   - step key from stable `step.title`
 
@@ -271,18 +271,18 @@ $cfg='react-doctor.config.json'; $created=$false; if (!(Test-Path $cfg)) { Set-C
 ```
 Expected: no `react-doctor/no-array-index-as-key` warnings.
 
-**Step 3: Commit verification updates**
+**Step 3: Commit verification updates (only if file changed)**
 
 ```bash
 git add docs/react-doctor-full-scan-2026-02-25.md
-git commit -m "docs: refresh react-doctor scan summary after key fixes"
+git diff --cached --quiet || git commit -m "docs: refresh react-doctor scan summary after key fixes"
 ```
 
 **Step 4: Sync and push**
 
 ```bash
 git pull --rebase
-bd sync
+node scripts/run-cmd.js bd sync  # requires beads CLI; skip if not installed
 git push
 git status
 ```
@@ -334,9 +334,11 @@ Score: **79/100** — 1 error, 447 warnings across 240 files.
 ### Changes from original plan
 
 1. **Task 2 — `performance-dashboard.tsx:243` (suggestions):** Changed from raw string key to `list-key-utils` helper. Suggestions is `string[]` which may contain duplicates — same dedup pattern as Task 3.
-2. **Task 2 — `dynamic-chart.tsx:255` (pie cells):** Clarified fix to use `entry[nameKey]` (dynamic property access on generic `ChartData`). Added defensive `${entry[nameKey]}-${index}` suffix to guard against duplicate name values.
-3. **Task 2 — `performance-dashboard.tsx:207` (alerts):** Clarified composite key to `${alert.timestamp}-${alert.type}`.
-4. **Dependency added:** Task 1 must complete before Tasks 2 and 3 (both consume the helper).
+2. **Task 2 — `dynamic-chart.tsx:255` (pie cells) [HIGH]:** Removed `${entry[nameKey]}-${index}` — the index suffix still triggers `react-doctor/no-array-index-as-key`. Fixed to pure `entry[nameKey]`; assumption that `nameKey` values are unique documented in a code comment.
+3. **Task 2 — `performance-dashboard.tsx:207` (alerts) [MEDIUM]:** Strengthened composite key from `${alert.timestamp}-${alert.type}` to `${alert.timestamp}-${alert.type}-${alert.message}` to prevent collision under burst updates at the same millisecond.
+4. **Task 7 — Step 3 (docs commit) [MEDIUM]:** Added `git diff --cached --quiet ||` guard so the commit only runs if the file actually changed (prevents "nothing to commit" failure when docs refresh is skipped).
+5. **Task 7 — Step 4 (`bd sync`) [LOW]:** Wrapped with note that it can be skipped if beads CLI is not installed.
+6. **Dependency added:** Task 1 must complete before Tasks 2 and 3 (both consume the helper).
 
 ### ⚠️ Dead Code Warning (from full scan)
 
