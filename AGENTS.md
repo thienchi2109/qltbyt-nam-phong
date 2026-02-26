@@ -345,3 +345,18 @@ This project is indexed with **GitLab Knowledge Graph MCP**. You have access to 
 ❌ Don't ignore GKG results in favor of assumptions
 ❌ Don't over-use GKG for simple tasks (reading config, etc.)
 ❌ Don't skip GKG for discovery/impact tasks without a stated reason
+
+## SQL Code Generation Checklist
+
+Before finalizing any data-access code, verify each item:
+QUERY REVIEW CHECKLIST
+──────────────────────
+[ ] No N+1: related data fetched in a single query (JOIN / eager load / IN clause)
+[ ] No SELECT *: only required columns are fetched
+[ ] Pagination applied: all list endpoints have limit/offset or cursor
+[ ] Indexes noted: filtered/sorted/joined columns have or need an index
+[ ] Transactions used: multi-table writes are wrapped
+[ ] Connection managed: using pool or singleton client, not per-request instantiation
+[ ] Errors handled: try/catch present, no raw DB errors exposed to client
+[ ] Caching flagged: read-heavy queries noted as cache candidates if appropriate
+[ ] Query log verified: no duplicate/repetitive queries for a single request
