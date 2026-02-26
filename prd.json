@@ -75,7 +75,8 @@
         "Assistant panel is available across protected routes",
         "Assistant panel is hidden for unauthenticated sessions",
         "Typecheck passes",
-        "Verify in browser using dev-browser skill"
+        "Tests pass",
+        "Manual browser verification completed"
       ],
       "priority": 5,
       "passes": false,
@@ -90,7 +91,8 @@
         "No file or image attachment controls are rendered in v1 UI",
         "Streaming assistant responses are rendered in the panel",
         "Typecheck passes",
-        "Verify in browser using dev-browser skill"
+        "Tests pass",
+        "Manual browser verification completed"
       ],
       "priority": 6,
       "passes": false,
@@ -151,7 +153,7 @@
         "Missing tenant-selection scenarios show explicit Vietnamese guidance message",
         "Typecheck passes",
         "Tests pass",
-        "Verify in browser using dev-browser skill"
+        "Manual browser verification completed"
       ],
       "priority": 10,
       "passes": false,
