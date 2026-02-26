@@ -16,7 +16,9 @@ bd sync               # Sync with git
 
 When running Ralph workflow, follow this exact loop:
 
-1. Read `prd.json` and `progress.txt` (read `## Codebase Patterns` first).
+1. Read `prd.json` and `progress.txt` (read `## Codebase Patterns` first). If `progress.txt` does not exist, initialize it with:
+   - `## Codebase Patterns`
+   - `## Progress Log`
 2. Ensure git branch matches `prd.json.branchName`; if not, checkout/create from `main`.
 3. Pick the highest-priority story where `passes: false`.
 4. Implement **only that one story**.

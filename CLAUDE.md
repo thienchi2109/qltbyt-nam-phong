@@ -147,7 +147,9 @@ Use this workflow whenever user requests Ralph flow or execution from `prd.json`
 
 ### B) Ralph Iteration Loop (one story at a time)
 
-1. Read `prd.json` and `progress.txt` (`## Codebase Patterns` first).
+1. Read `prd.json` and `progress.txt` (`## Codebase Patterns` first). If `progress.txt` does not exist, initialize it with:
+   - `## Codebase Patterns`
+   - `## Progress Log`
 2. Ensure current branch matches `prd.json.branchName`; checkout/create from `main` if needed.
 3. Select highest-priority story with `passes: false`.
 4. Implement only that story.
