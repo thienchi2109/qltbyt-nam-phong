@@ -128,6 +128,55 @@ Invoke `context-engineering` skill for: agent systems, token optimization (>70%)
 | `/generate-tests` | After implementing features or fixing bugs - generate comprehensive tests |
 | `/react-best-practices` | **AUTO-INVOKE** when writing/reviewing React components, hooks, data fetching, or optimizing performance |
 | `/web-design-guidelines` | When reviewing UI code for accessibility, UX, or design compliance |
+| `/prd` | Create or update a PRD before Ralph execution |
+| `/ralph` | Convert PRD markdown to `prd.json` for Ralph |
+
+## Ralph Flow (Claude Code/Codex Execution Contract)
+
+Use this workflow whenever user requests Ralph flow or execution from `prd.json`.
+
+### A) Planning + Conversion
+
+1. Create/align PRD first (`docs/` and/or `tasks/` per user request) using `/prd`.
+2. Convert approved PRD to root `prd.json` using `/ralph`.
+3. In `prd.json`, enforce:
+   - `Typecheck passes` for every story
+   - `Tests pass` for every story
+   - UI stories use `Manual browser verification completed` (no `dev-browser` dependency required)
+4. Keep stories one-iteration sized and dependency-ordered.
+
+### B) Ralph Iteration Loop (one story at a time)
+
+1. Read `prd.json` and `progress.txt` (`## Codebase Patterns` first).
+2. Ensure current branch matches `prd.json.branchName`; checkout/create from `main` if needed.
+3. Select highest-priority story with `passes: false`.
+4. Implement only that story.
+5. Run quality gates (typecheck/lint/test as required by project).
+6. If green:
+   - Commit all related changes with: `feat: [Story ID] - [Story Title]`
+   - Set that story `passes: true` in `prd.json`
+   - Append progress to `progress.txt` (append-only)
+7. Add reusable patterns to top `## Codebase Patterns` in `progress.txt` when discovered.
+8. Update nearby `CLAUDE.md` with reusable module-level guidance only (no temporary story notes).
+9. For UI work: verify in browser if tooling is available; otherwise explicitly note manual verification status.
+
+### C) Progress Entry Format (append-only)
+
+```text
+## [Date/Time] - [Story ID]
+- What was implemented
+- Files changed
+- Learnings for future iterations:
+  - Patterns discovered
+  - Gotchas encountered
+  - Useful context
+---
+```
+
+### D) Stop Condition
+
+- Complete exactly one story per iteration.
+- If all stories have `passes: true`, return `<promise>COMPLETE</promise>`.
 
 ## MCP Tools
 
