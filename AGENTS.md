@@ -12,6 +12,47 @@ bd close <id>         # Complete work
 bd sync               # Sync with git
 ```
 
+## Ralph Flow (Claude Code/Codex Execution)
+
+When running Ralph workflow, follow this exact loop:
+
+1. Read `prd.json` and `progress.txt` (read `## Codebase Patterns` first).
+2. Ensure git branch matches `prd.json.branchName`; if not, checkout/create from `main`.
+3. Pick the highest-priority story where `passes: false`.
+4. Implement **only that one story**.
+5. Run project quality checks (typecheck, lint, tests as applicable).
+6. If checks pass:
+   - Commit all related changes with: `feat: [Story ID] - [Story Title]`
+   - Update `prd.json` to set that story `passes: true`
+   - Append progress to `progress.txt` (never overwrite)
+7. If you discover reusable patterns:
+   - Add general patterns to top `## Codebase Patterns` in `progress.txt`
+   - Update nearby `CLAUDE.md` files with durable, reusable guidance only
+8. UI stories:
+   - Verify in browser if tooling is available
+   - If no browser tooling, record manual verification requirement/status
+9. Stop after one story. If all stories are complete, return: `<promise>COMPLETE</promise>`.
+
+### Progress Report Format (append only)
+
+```text
+## [Date/Time] - [Story ID]
+- What was implemented
+- Files changed
+- Learnings for future iterations:
+  - Patterns discovered
+  - Gotchas encountered
+  - Useful context
+---
+```
+
+### Ralph PRD Constraints
+
+- Keep each story small enough for one iteration/context window.
+- Order stories by dependency (schema/backend before UI/aggregation).
+- Every story must include `Typecheck passes` and `Tests pass`.
+- UI stories should use `Manual browser verification completed` in this project.
+
 ## Landing the Plane (Session Completion)
 
 **When ending a work session**, you MUST complete ALL steps below. Work is NOT complete until `git push` succeeds.
