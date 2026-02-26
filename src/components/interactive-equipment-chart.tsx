@@ -16,6 +16,7 @@ import {
   STATUS_COLORS,
   STATUS_LABELS
 } from "@/hooks/use-equipment-distribution"
+import { buildKeyedTooltipEntries } from "@/lib/runtime-list-keys"
 
 interface InteractiveEquipmentChartProps {
   className?: string
@@ -24,17 +25,25 @@ interface InteractiveEquipmentChartProps {
   effectiveTenantKey?: string
 }
 
+type TooltipPayloadEntry = {
+  dataKey?: unknown
+  name?: unknown
+  color?: string
+  value?: number
+}
+
 // Custom tooltip component
 function CustomTooltip({ active, payload, label }: any) {
   if (active && payload && payload.length) {
     const total = payload.reduce((sum: number, entry: any) => sum + entry.value, 0)
+    const keyedPayload = buildKeyedTooltipEntries<TooltipPayloadEntry>(payload as TooltipPayloadEntry[])
     
     return (
       <div className="bg-background border rounded-lg shadow-lg p-3 min-w-[200px]">
         <p className="font-medium mb-2">{label}</p>
         <div className="space-y-1">
-          {payload.map((entry: any, index: number) => (
-            <div key={index} className="flex items-center justify-between gap-2 text-sm">
+          {keyedPayload.map(({ key, entry }) => (
+            <div key={key} className="flex items-center justify-between gap-2 text-sm">
               <div className="flex items-center gap-2">
                 <div 
                   className="w-3 h-3 rounded"

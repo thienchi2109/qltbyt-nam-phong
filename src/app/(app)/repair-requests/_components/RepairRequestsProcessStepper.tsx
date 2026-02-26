@@ -97,7 +97,7 @@ export function RepairRequestsProcessStepper({ status, className }: RepairReques
 
                     return (
                         <div
-                            key={idx}
+                            key={step.title}
                             className={cn(
                                 "relative flex-1 flex items-center justify-center h-12 transition-colors duration-300",
                                 bgClass,

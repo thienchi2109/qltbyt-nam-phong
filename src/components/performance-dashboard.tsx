@@ -23,6 +23,7 @@ import { useDepartmentPerformance } from "@/hooks/use-department-performance"
 import { useSession } from "next-auth/react"
 import { cn } from "@/lib/utils"
 import { isGlobalRole } from "@/lib/rbac"
+import { buildKeyedSuggestions, buildPerformanceAlertKey } from "@/lib/runtime-list-keys"
 
 export function PerformanceDashboard() {
   const { data: session } = useSession()
@@ -61,6 +62,7 @@ export function PerformanceDashboard() {
 
   const summary = getPerformanceSummary()
   const suggestions = getOptimizationSuggestions()
+  const keyedSuggestions = buildKeyedSuggestions(suggestions)
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -203,8 +205,8 @@ export function PerformanceDashboard() {
             </Card>
           ) : (
             <div className="space-y-2">
-              {alerts.map((alert, index) => (
-                <Alert key={index} className={cn(
+              {alerts.map((alert) => (
+                <Alert key={buildPerformanceAlertKey(alert)} className={cn(
                   alert.type === 'error' && "border-red-200 bg-red-50",
                   alert.type === 'warning' && "border-amber-200 bg-amber-50",
                   alert.type === 'info' && "border-blue-200 bg-blue-50"
@@ -239,11 +241,11 @@ export function PerformanceDashboard() {
             </Card>
           ) : (
             <div className="space-y-2">
-              {suggestions.map((suggestion, index) => (
-                <Card key={index}>
+              {keyedSuggestions.map((suggestion) => (
+                <Card key={suggestion.key}>
                   <CardContent className="flex items-start gap-3 pt-4">
                     <Zap className="h-5 w-5 text-amber-600 mt-0.5" />
-                    <p className="text-sm">{suggestion}</p>
+                    <p className="text-sm">{suggestion.text}</p>
                   </CardContent>
                 </Card>
               ))}
