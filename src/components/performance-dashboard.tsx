@@ -63,6 +63,10 @@ export function PerformanceDashboard() {
   const summary = getPerformanceSummary()
   const suggestions = getOptimizationSuggestions()
   const keyedSuggestions = buildKeyedSuggestions(suggestions)
+  const alertKeys = React.useMemo(
+    () => new Map(alerts.map((a) => [a, buildPerformanceAlertKey(a)])),
+    [alerts],
+  )
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -206,7 +210,7 @@ export function PerformanceDashboard() {
           ) : (
             <div className="space-y-2">
               {alerts.map((alert) => (
-                <Alert key={buildPerformanceAlertKey(alert)} className={cn(
+                <Alert key={alertKeys.get(alert)} className={cn(
                   alert.type === 'error' && "border-red-200 bg-red-50",
                   alert.type === 'warning' && "border-amber-200 bg-amber-50",
                   alert.type === 'info' && "border-blue-200 bg-blue-50"

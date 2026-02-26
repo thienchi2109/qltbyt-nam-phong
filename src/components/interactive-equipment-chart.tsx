@@ -32,8 +32,8 @@ type TooltipPayloadEntry = {
   value?: number
 }
 
-// Custom tooltip component
-function CustomTooltip({ active, payload, label }: any) {
+// Custom tooltip component — memoized to avoid re-computing keyed entries on unchanged payload
+const CustomTooltip = React.memo(function CustomTooltip({ active, payload, label }: any) {
   if (active && payload && payload.length) {
     const total = payload.reduce((sum: number, entry: any) => sum + entry.value, 0)
     const keyedPayload = buildKeyedTooltipEntries<TooltipPayloadEntry>(payload as TooltipPayloadEntry[])
@@ -65,7 +65,7 @@ function CustomTooltip({ active, payload, label }: any) {
     )
   }
   return null
-}
+})
 
 // Filter component for departments and locations
 function DataFilters({ 
