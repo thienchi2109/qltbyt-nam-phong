@@ -1,0 +1,161 @@
+{
+  "project": "qltbyt-nam-phong",
+  "branchName": "ralph/vercel-ai-sdk-strategic-spec",
+  "description": "Integrate a provider-agnostic Vercel AI SDK assistant with secure RPC-only read access, tenant-safe behavior, and repair-request draft generation (no direct writes, no attachments).",
+  "userStories": [
+    {
+      "id": "US-001",
+      "title": "Create secure /api/chat route with session guard",
+      "description": "As a system administrator, I want chat requests authenticated server-side so that unauthenticated users cannot invoke models or tools.",
+      "acceptanceCriteria": [
+        "Add /api/chat route handler in App Router",
+        "Route validates NextAuth session before processing requests",
+        "Unauthenticated requests return 401 or 403 and skip model/tool execution",
+        "Request payload is schema-validated and malformed payloads are rejected",
+        "Typecheck passes",
+        "Tests pass"
+      ],
+      "priority": 1,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-002",
+      "title": "Add provider-agnostic AI SDK configuration",
+      "description": "As a platform maintainer, I want provider selection abstracted behind config so that model providers can change without rewriting product logic.",
+      "acceptanceCriteria": [
+        "Model provider is selected through configuration or environment variables",
+        "Chat route uses Vercel AI SDK abstractions instead of provider-specific UI coupling",
+        "No provider-specific requirement is hard-coded into user-facing behavior",
+        "Typecheck passes",
+        "Tests pass"
+      ],
+      "priority": 2,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-003",
+      "title": "Implement RPC-only tool execution guardrails",
+      "description": "As a security owner, I want AI tools restricted to approved RPC pathways so that tenant isolation and data boundaries are preserved.",
+      "acceptanceCriteria": [
+        "Define explicit allowlist mapping for AI callable tools",
+        "Tool execution path does not use direct Supabase table reads via supabase.from(...)",
+        "Tool execution routes through approved RPC functions only",
+        "Arbitrary RPC/function invocation is blocked",
+        "Typecheck passes",
+        "Tests pass"
+      ],
+      "priority": 3,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-004",
+      "title": "Enforce tenant-aware context rules in chat backend",
+      "description": "As a multi-tenant user, I want assistant responses constrained to my authorized tenant scope so that AI output matches permitted data boundaries.",
+      "acceptanceCriteria": [
+        "Chat backend accepts tenant context metadata from client request",
+        "Role-aware tenant enforcement mirrors existing app security behavior",
+        "Privileged users missing required facility selection receive guidance instead of broad data reads",
+        "Non-privileged users cannot override tenant boundaries through request metadata",
+        "Typecheck passes",
+        "Tests pass"
+      ],
+      "priority": 4,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-005",
+      "title": "Add global assistant panel in protected layout",
+      "description": "As an authenticated user, I want a global assistant panel in the protected app shell so that I can open AI help from any protected page.",
+      "acceptanceCriteria": [
+        "Render chat trigger and panel from protected layout layer",
+        "Assistant panel is available across protected routes",
+        "Assistant panel is hidden for unauthenticated sessions",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 5,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-006",
+      "title": "Implement v1 chat interaction constraints",
+      "description": "As a user, I want stable chat interaction states so that I can safely use the assistant without unsupported features.",
+      "acceptanceCriteria": [
+        "Chat input and submit controls are disabled while status is not ready",
+        "No file or image attachment controls are rendered in v1 UI",
+        "Streaming assistant responses are rendered in the panel",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 6,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-007",
+      "title": "Add equipment read-only retrieval tool",
+      "description": "As a technician, I want AI to retrieve equipment details through approved tools so that I can answer operational questions quickly.",
+      "acceptanceCriteria": [
+        "Implement equipment read-only tool with explicit schema and description",
+        "Tool returns equipment lookup or summary data through RPC-only execution",
+        "Tool output is included in assistant response flow",
+        "Typecheck passes",
+        "Tests pass"
+      ],
+      "priority": 7,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-008",
+      "title": "Add maintenance and repair summary read-only tools",
+      "description": "As an equipment manager, I want AI to summarize maintenance and repair status through read-only tools so that I can triage work faster.",
+      "acceptanceCriteria": [
+        "Implement maintenance summary read-only tool with explicit schema",
+        "Implement repair summary read-only tool with explicit schema",
+        "Both tools execute through approved RPC pathways only",
+        "Typecheck passes",
+        "Tests pass"
+      ],
+      "priority": 8,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-009",
+      "title": "Generate structured repair-request drafts without submission",
+      "description": "As a user creating repair requests, I want AI to generate a structured draft so that I can prefill forms while keeping final submission manual.",
+      "acceptanceCriteria": [
+        "Assistant can generate a structured repair-request draft payload from natural language",
+        "Draft output is validated against a defined schema",
+        "Draft flow does not call create, update, or delete RPC operations",
+        "Typecheck passes",
+        "Tests pass"
+      ],
+      "priority": 9,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-010",
+      "title": "Implement safe error handling and fallback guidance",
+      "description": "As an operator, I want predictable and safe failure behavior so that users receive clear guidance without sensitive data leakage.",
+      "acceptanceCriteria": [
+        "API error responses avoid exposing secrets and internal infrastructure details",
+        "Chat UI displays retryable failure state for request errors",
+        "Missing tenant-selection scenarios show explicit Vietnamese guidance message",
+        "Typecheck passes",
+        "Tests pass",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 10,
+      "passes": false,
+      "notes": ""
+    }
+  ]
+}
