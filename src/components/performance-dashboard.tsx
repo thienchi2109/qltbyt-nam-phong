@@ -16,7 +16,6 @@ import {
   CheckCircle, 
   Download,
   Zap,
-  Users,
   Filter
 } from "lucide-react"
 import { useDepartmentPerformance } from "@/hooks/use-department-performance"
@@ -25,9 +24,22 @@ import { cn } from "@/lib/utils"
 import { isGlobalRole } from "@/lib/rbac"
 import { buildKeyedSuggestions, buildPerformanceAlertKey } from "@/lib/runtime-list-keys"
 
+type DepartmentPerformanceData = ReturnType<typeof useDepartmentPerformance>
+type SessionUserWithRole = { role?: string | null } | null | undefined
+
+interface PerformanceDashboardContentProps {
+  metrics: DepartmentPerformanceData["metrics"]
+  alerts: DepartmentPerformanceData["alerts"]
+  cacheScope: DepartmentPerformanceData["cacheScope"]
+  clearAlerts: DepartmentPerformanceData["clearAlerts"]
+  getPerformanceSummary: DepartmentPerformanceData["getPerformanceSummary"]
+  getOptimizationSuggestions: DepartmentPerformanceData["getOptimizationSuggestions"]
+  exportPerformanceData: DepartmentPerformanceData["exportPerformanceData"]
+}
+
 export function PerformanceDashboard() {
   const { data: session } = useSession()
-  const user = session?.user as any
+  const role = (session?.user as SessionUserWithRole)?.role
   const {
     metrics,
     alerts,
@@ -40,7 +52,7 @@ export function PerformanceDashboard() {
   } = useDepartmentPerformance()
 
   // Only show to admin users
-  if (!user || !isGlobalRole(user.role)) {
+  if (!session?.user || !isGlobalRole(role)) {
     return null
   }
 
@@ -60,6 +72,28 @@ export function PerformanceDashboard() {
     )
   }
 
+  return (
+    <PerformanceDashboardContent
+      metrics={metrics}
+      alerts={alerts}
+      cacheScope={cacheScope}
+      clearAlerts={clearAlerts}
+      getPerformanceSummary={getPerformanceSummary}
+      getOptimizationSuggestions={getOptimizationSuggestions}
+      exportPerformanceData={exportPerformanceData}
+    />
+  )
+}
+
+function PerformanceDashboardContent({
+  metrics,
+  alerts,
+  cacheScope,
+  clearAlerts,
+  getPerformanceSummary,
+  getOptimizationSuggestions,
+  exportPerformanceData,
+}: PerformanceDashboardContentProps) {
   const summary = getPerformanceSummary()
   const suggestions = getOptimizationSuggestions()
   const keyedSuggestions = buildKeyedSuggestions(suggestions)
