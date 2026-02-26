@@ -147,7 +147,9 @@ Use this workflow whenever user requests Ralph flow or execution from `prd.json`
 
 ### B) Ralph Iteration Loop (one story at a time)
 
-1. Read `prd.json` and `progress.txt` (`## Codebase Patterns` first).
+1. Read `prd.json` and `progress.txt` (`## Codebase Patterns` first). If `progress.txt` does not exist, initialize it with:
+   - `## Codebase Patterns`
+   - `## Progress Log`
 2. Ensure current branch matches `prd.json.branchName`; checkout/create from `main` if needed.
 3. Select highest-priority story with `passes: false`.
 4. Implement only that story.
@@ -321,8 +323,9 @@ const { data } = useQuery({
 
 - **Imports:** `@/*` alias, order: React → 3rd-party → `@/components` → `@/lib`
 - **Types:** Never `any`, explicit interfaces, DB types in `src/types/database.ts`
-- **Files:** 350-450 lines max
+- **Files:**  TRY TO KEEP 350-450 lines max
 - **UI:** Radix + Tailwind, mobile-first, react-hook-form + zod
+
 
 ### UI Layering Contract (MANDATORY)
 
@@ -377,3 +380,19 @@ git pull --rebase && bd sync && git push
 ## Priority
 
 1. Security 2. Data Integrity 3. Type Safety 4. Performance 5. Maintainability
+
+
+## SQL Code Generation Checklist
+
+Before finalizing any data-access code, verify each item:
+QUERY REVIEW CHECKLIST
+──────────────────────
+[ ] No N+1: related data fetched in a single query (JOIN / eager load / IN clause)
+[ ] No SELECT *: only required columns are fetched
+[ ] Pagination applied: all list endpoints have limit/offset or cursor
+[ ] Indexes noted: filtered/sorted/joined columns have or need an index
+[ ] Transactions used: multi-table writes are wrapped
+[ ] Connection managed: using pool or singleton client, not per-request instantiation
+[ ] Errors handled: try/catch present, no raw DB errors exposed to client
+[ ] Caching flagged: read-heavy queries noted as cache candidates if appropriate
+[ ] Query log verified: no duplicate/repetitive queries for a single request
