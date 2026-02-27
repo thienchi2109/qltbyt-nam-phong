@@ -76,7 +76,7 @@ export function LoginTemplate() {
                   description: "Truy xuất tức thì thông tin và lịch sử thiết bị chỉ với một lần quét."
                 }
               ].map((feature, index) => (
-                <Card key={index} className="bg-blue-50 border-blue-100">
+                <Card key={feature.title} className="bg-blue-50 border-blue-100">
                   <CardContent className="p-4">
                     <div className="text-2xl mb-2">{feature.icon}</div>
                     <h3 className="font-bold text-sm text-[#004AAD] mb-2">{feature.title}</h3>
@@ -99,8 +99,8 @@ export function LoginTemplate() {
                       paddingAngle={5}
                       dataKey="value"
                     >
-                      {chartData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.color} />
+                      {chartData.map((entry) => (
+                        <Cell key={entry.name} fill={entry.color} />
                       ))}
                     </Pie>
                     <RechartsLegend 

@@ -233,7 +233,7 @@ export default function LoginPage() {
                 {/* Stats */}
                 <div className="flex flex-wrap justify-center gap-4">
                   {stats.map((stat, index) => (
-                    <div key={index} className="bg-card border border-border rounded-2xl p-4 min-w-[100px] group hover:shadow-lg transition-all duration-300">
+                    <div key={stat.label} className="bg-card border border-border rounded-2xl p-4 min-w-[100px] group hover:shadow-lg transition-all duration-300">
                       <div className="flex items-center gap-2 mb-1">
                         <stat.icon className={`h-4 w-4 ${stat.color}`} />
                         <span className="text-xl font-bold text-slate-800">{stat.value}</span>
@@ -248,7 +248,7 @@ export default function LoginPage() {
               <div className="grid grid-cols-1 gap-4">
                 {features.map((feature, index) => (
                   <div
-                    key={index}
+                    key={feature.title}
                     className={`bg-card border border-border rounded-2xl p-4 group hover:border-primary/30 transition-all duration-300 hover:shadow-lg ${mounted ? `animate-in slide-in-from-bottom duration-700` : 'opacity-0'}`}
                     style={{ animationDelay: `${(index + 2) * 100}ms` }}
                   >
@@ -317,7 +317,7 @@ export default function LoginPage() {
                 {/* Stats */}
                 <div className="flex flex-wrap gap-6">
                   {stats.map((stat, index) => (
-                    <div key={index} className="bg-card border border-border rounded-2xl p-4 min-w-[120px] group hover:shadow-lg transition-all duration-300">
+                    <div key={stat.label} className="bg-card border border-border rounded-2xl p-4 min-w-[120px] group hover:shadow-lg transition-all duration-300">
                       <div className="flex items-center gap-2 mb-1">
                         <stat.icon className={`h-4 w-4 ${stat.color}`} />
                         <span className="text-2xl font-bold text-slate-800">{stat.value}</span>
@@ -332,7 +332,7 @@ export default function LoginPage() {
               <div className="grid grid-cols-2 gap-4">
                 {features.map((feature, index) => (
                   <div
-                    key={index}
+                    key={feature.title}
                     className={`bg-card border border-border rounded-2xl p-6 group hover:border-primary/30 hover:scale-105 transition-all duration-300 hover:shadow-lg ${mounted ? `animate-in slide-in-from-bottom duration-700` : 'opacity-0'}`}
                     style={{ animationDelay: `${index * 100}ms` }}
                   >
