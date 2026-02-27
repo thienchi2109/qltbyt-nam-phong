@@ -44,6 +44,12 @@ const getTaskColor = (type: TaskType) => {
   }
 }
 
+const UPCOMING_MAINTENANCE_SKELETON_KEYS = [
+  "upcoming-maintenance-skeleton-1",
+  "upcoming-maintenance-skeleton-2",
+  "upcoming-maintenance-skeleton-3",
+] as const
+
 export function UpcomingMaintenanceCard({ className }: UpcomingMaintenanceCardProps) {
   const currentDate = new Date()
   const year = currentDate.getFullYear()
@@ -101,8 +107,8 @@ export function UpcomingMaintenanceCard({ className }: UpcomingMaintenanceCardPr
       <CardContent>
         {isLoading ? (
           <div className="space-y-3">
-            {[...Array(3)].map((_, i) => (
-              <div key={i} className="flex items-center space-x-3">
+            {UPCOMING_MAINTENANCE_SKELETON_KEYS.map((token) => (
+              <div key={token} className="flex items-center space-x-3">
                 <Skeleton className="h-10 w-10 rounded-full" />
                 <div className="space-y-2 flex-1">
                   <Skeleton className="h-4 w-3/4" />

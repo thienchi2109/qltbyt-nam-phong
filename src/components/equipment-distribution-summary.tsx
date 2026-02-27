@@ -21,6 +21,13 @@ interface EquipmentDistributionSummaryProps {
   effectiveTenantKey?: string
 }
 
+const EQUIPMENT_DISTRIBUTION_SKELETON_KEYS = [
+  "equipment-distribution-skeleton-1",
+  "equipment-distribution-skeleton-2",
+  "equipment-distribution-skeleton-3",
+  "equipment-distribution-skeleton-4",
+] as const
+
 export function EquipmentDistributionSummary({ className, tenantFilter, selectedDonVi, effectiveTenantKey }: EquipmentDistributionSummaryProps) {
   const { data, isLoading, error } = useEquipmentDistribution(undefined, undefined, tenantFilter, selectedDonVi, effectiveTenantKey)
 
@@ -73,8 +80,8 @@ export function EquipmentDistributionSummary({ className, tenantFilter, selected
   if (isLoading) {
     return (
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        {[...Array(4)].map((_, i) => (
-          <Card key={i}>
+        {EQUIPMENT_DISTRIBUTION_SKELETON_KEYS.map((token) => (
+          <Card key={token}>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <Skeleton className="h-4 w-24" />
               <Skeleton className="h-4 w-4" />

@@ -42,6 +42,12 @@ const getTaskColor = (type: TaskType) => {
   }
 }
 
+const MONTHLY_MAINTENANCE_SKELETON_KEYS = [
+  "monthly-maintenance-skeleton-1",
+  "monthly-maintenance-skeleton-2",
+  "monthly-maintenance-skeleton-3",
+] as const
+
 export function MonthlyMaintenanceSummary({ className }: MonthlyMaintenanceSummaryProps) {
   const currentDate = new Date()
   const year = currentDate.getFullYear()
@@ -99,8 +105,8 @@ export function MonthlyMaintenanceSummary({ className }: MonthlyMaintenanceSumma
       <CardContent className="md:p-8 md:pt-0">
         {isLoading ? (
           <div className="space-y-3">
-            {[...Array(3)].map((_, i) => (
-              <div key={i} className="flex items-center space-x-3">
+            {MONTHLY_MAINTENANCE_SKELETON_KEYS.map((token) => (
+              <div key={token} className="flex items-center space-x-3">
                 <Skeleton className="h-8 w-8 rounded" />
                 <div className="space-y-2 flex-1">
                   <Skeleton className="h-4 w-3/4" />

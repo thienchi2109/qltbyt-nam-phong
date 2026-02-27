@@ -24,6 +24,15 @@ interface CategoryTreeItemProps {
   isMutating: boolean
 }
 
+const CATEGORY_TREE_SKELETON_KEYS = [
+  "category-tree-skeleton-1",
+  "category-tree-skeleton-2",
+  "category-tree-skeleton-3",
+  "category-tree-skeleton-4",
+  "category-tree-skeleton-5",
+  "category-tree-skeleton-6",
+] as const
+
 const CategoryTreeItem = React.memo(function CategoryTreeItem({
   category,
   onEdit,
@@ -88,8 +97,8 @@ const CategoryTreeItem = React.memo(function CategoryTreeItem({
 function CategoryTreeSkeleton() {
   return (
     <div className="space-y-2">
-      {[...Array(6)].map((_, i) => (
-        <div key={i} className="flex items-center gap-3 p-3">
+      {CATEGORY_TREE_SKELETON_KEYS.map((token) => (
+        <div key={token} className="flex items-center gap-3 p-3">
           <Skeleton className="h-4 w-16" />
           <Skeleton className="h-4 flex-1" />
           <Skeleton className="h-5 w-12 rounded-full" />

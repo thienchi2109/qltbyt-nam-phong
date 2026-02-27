@@ -23,14 +23,16 @@ const ALL_ITEMS: NavItem[] = [
   { href: "/device-quota/categories", label: "Danh mục" },
 ]
 
+const NAV_SKELETON_KEYS = ["nav-skeleton-1", "nav-skeleton-2", "nav-skeleton-3"] as const
+
 function NavSkeleton() {
   return (
     <div className="border-b border-slate-200 bg-white">
       <div className="container mx-auto px-4">
         <div className="flex gap-2 py-3">
-          {[1, 2, 3].map((i) => (
+          {NAV_SKELETON_KEYS.map((token) => (
             <div
-              key={i}
+              key={token}
               className="h-9 w-24 animate-pulse rounded-full bg-slate-200"
             />
           ))}

@@ -19,6 +19,17 @@ interface CategoryTreeItemProps {
   onSelect: (id: number) => void
 }
 
+const MAPPING_TREE_SKELETON_KEYS = [
+  "mapping-tree-skeleton-1",
+  "mapping-tree-skeleton-2",
+  "mapping-tree-skeleton-3",
+  "mapping-tree-skeleton-4",
+  "mapping-tree-skeleton-5",
+  "mapping-tree-skeleton-6",
+  "mapping-tree-skeleton-7",
+  "mapping-tree-skeleton-8",
+] as const
+
 function CategoryTreeItem({ category, isSelected, onSelect }: CategoryTreeItemProps) {
   return (
     <button
@@ -85,8 +96,8 @@ function CategoryTreeItem({ category, isSelected, onSelect }: CategoryTreeItemPr
 function CategoryTreeSkeleton() {
   return (
     <div className="space-y-2">
-      {[...Array(8)].map((_, i) => (
-        <div key={i} className="flex items-center gap-3 p-3">
+      {MAPPING_TREE_SKELETON_KEYS.map((token) => (
+        <div key={token} className="flex items-center gap-3 p-3">
           <Skeleton className="h-4 w-4 rounded-full" />
           <Skeleton className="h-4 w-16" />
           <Skeleton className="h-4 flex-1" />
