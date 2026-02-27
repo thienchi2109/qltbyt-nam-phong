@@ -20,6 +20,10 @@ interface LogTemplateProps {
   usageLogs?: UsageLogEntry[]
 }
 
+interface UsageLogDisplayRow extends UsageLogEntry {
+  _rowKey: string
+}
+
 export function LogTemplate({
   department = "",
   deviceManager = "",
@@ -36,11 +40,42 @@ export function LogTemplate({
     return String(value).trim()
   }
 
-  // Create at least 10 rows for the table
-  const displayLogs = [...usageLogs]
-  while (displayLogs.length < 10) {
-    displayLogs.push({})
+  const buildRowBaseKey = (log: UsageLogEntry) => {
+    const dateTime = formatValue(log.dateTime)
+    const user = formatValue(log.user)
+    if (dateTime || user) {
+      return `log-${dateTime || "unknown"}-${user || "unknown"}`
+    }
+
+    const condition = formatValue(log.condition)
+    if (condition) return `condition-${condition}`
+
+    const note = formatValue(log.note)
+    if (note) return `note-${note}`
+
+    return "log-row"
   }
+
+  // Build deterministic keys for filled rows and explicit keys for placeholder rows.
+  const displayLogs: UsageLogDisplayRow[] = (() => {
+    const keyCounts = new Map<string, number>()
+    const rows = usageLogs.map((log) => {
+      const baseKey = buildRowBaseKey(log)
+      const seenCount = (keyCounts.get(baseKey) ?? 0) + 1
+      keyCounts.set(baseKey, seenCount)
+      return {
+        ...log,
+        _rowKey: seenCount === 1 ? baseKey : `${baseKey}-${seenCount}`,
+      }
+    })
+
+    const placeholdersNeeded = Math.max(10 - rows.length, 0)
+    for (let placeholderIndex = 0; placeholderIndex < placeholdersNeeded; placeholderIndex += 1) {
+      rows.push({ _rowKey: `placeholder-${placeholderIndex + 1}` })
+    }
+
+    return rows
+  })()
 
   return (
     <div className="bg-gray-200 min-h-screen">
@@ -134,7 +169,7 @@ export function LogTemplate({
               </thead>
               <tbody>
                 {displayLogs.map((log, index) => (
-                  <tr key={index}>
+                  <tr key={log._rowKey}>
                     <td>{formatValue(log.dateTime) || (index === 0 ? '\u00A0' : '')}</td>
                     <td>{formatValue(log.user)}</td>
                     <td>{formatValue(log.condition)}</td>
