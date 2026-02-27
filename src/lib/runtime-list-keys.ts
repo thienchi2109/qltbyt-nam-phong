@@ -34,6 +34,22 @@ export function buildPerformanceAlertKey(alert: PerformanceAlertKeyInput): strin
   return `${alert.timestamp}-${alert.type}-${alert.message}`
 }
 
+export interface KeyedAlert<T> {
+  key: string
+  alert: T
+}
+
+export function buildKeyedAlerts<T extends PerformanceAlertKeyInput>(
+  alerts: T[],
+): KeyedAlert<T>[] {
+  const rawKeys = alerts.map((a) => buildPerformanceAlertKey(a))
+  const keyed = toKeyedTexts(rawKeys)
+  return alerts.map((alert, index) => ({
+    key: keyed[index].key,
+    alert,
+  }))
+}
+
 export function buildKeyedSuggestions(suggestions: string[]): KeyedText[] {
   return toKeyedTexts(suggestions)
 }

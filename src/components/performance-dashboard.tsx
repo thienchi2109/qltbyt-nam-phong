@@ -7,13 +7,13 @@ import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { 
-  Activity, 
-  Database, 
-  Clock, 
-  TrendingUp, 
-  AlertTriangle, 
-  CheckCircle, 
+import {
+  Activity,
+  Database,
+  Clock,
+  TrendingUp,
+  AlertTriangle,
+  CheckCircle,
   Download,
   Zap,
   Filter
@@ -22,7 +22,7 @@ import { useDepartmentPerformance } from "@/hooks/use-department-performance"
 import { useSession } from "next-auth/react"
 import { cn } from "@/lib/utils"
 import { isGlobalRole } from "@/lib/rbac"
-import { buildKeyedSuggestions, buildPerformanceAlertKey } from "@/lib/runtime-list-keys"
+import { buildKeyedAlerts, buildKeyedSuggestions } from "@/lib/runtime-list-keys"
 
 type DepartmentPerformanceData = ReturnType<typeof useDepartmentPerformance>
 type SessionUserWithRole = { role?: string | null } | null | undefined
@@ -97,8 +97,8 @@ function PerformanceDashboardContent({
   const summary = getPerformanceSummary()
   const suggestions = getOptimizationSuggestions()
   const keyedSuggestions = buildKeyedSuggestions(suggestions)
-  const alertKeys = React.useMemo(
-    () => new Map(alerts.map((a) => [a, buildPerformanceAlertKey(a)])),
+  const keyedAlerts = React.useMemo(
+    () => buildKeyedAlerts(alerts),
     [alerts],
   )
 
@@ -231,7 +231,7 @@ function PerformanceDashboardContent({
               </Button>
             )}
           </div>
-          
+
           {alerts.length === 0 ? (
             <Card>
               <CardContent className="flex items-center justify-center py-8">
@@ -243,8 +243,8 @@ function PerformanceDashboardContent({
             </Card>
           ) : (
             <div className="space-y-2">
-              {alerts.map((alert) => (
-                <Alert key={alertKeys.get(alert)} className={cn(
+              {keyedAlerts.map(({ key, alert }) => (
+                <Alert key={key} className={cn(
                   alert.type === 'error' && "border-red-200 bg-red-50",
                   alert.type === 'warning' && "border-amber-200 bg-amber-50",
                   alert.type === 'info' && "border-blue-200 bg-blue-50"
@@ -265,7 +265,7 @@ function PerformanceDashboardContent({
         {/* Suggestions Tab */}
         <TabsContent value="suggestions" className="space-y-4">
           <h3 className="text-lg font-semibold">Optimization Suggestions</h3>
-          
+
           {suggestions.length === 0 ? (
             <Card>
               <CardContent className="flex items-center justify-center py-8">
@@ -294,7 +294,7 @@ function PerformanceDashboardContent({
         {/* Details Tab */}
         <TabsContent value="details" className="space-y-4">
           <h3 className="text-lg font-semibold">Detailed Metrics</h3>
-          
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Card>
               <CardHeader>
