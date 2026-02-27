@@ -1,11 +1,5 @@
 import type { ChartData } from '@/lib/chart-utils'
-import { toKeyedTexts, type KeyedText } from '@/lib/list-key-utils'
-
-export interface PerformanceAlertKeyInput {
-  timestamp: string
-  type: string
-  message: string
-}
+import { toKeyedTexts } from '@/lib/list-key-utils'
 
 export interface TooltipEntryLike {
   dataKey?: unknown
@@ -28,30 +22,6 @@ const normalizeKeyPart = (value: unknown): string => {
   if (value === null || value === undefined) return ''
   if (typeof value === 'string') return value.trim()
   return String(value).trim()
-}
-
-export function buildPerformanceAlertKey(alert: PerformanceAlertKeyInput): string {
-  return `${alert.timestamp}-${alert.type}-${alert.message}`
-}
-
-export interface KeyedAlert<T> {
-  key: string
-  alert: T
-}
-
-export function buildKeyedAlerts<T extends PerformanceAlertKeyInput>(
-  alerts: T[],
-): KeyedAlert<T>[] {
-  const rawKeys = alerts.map((a) => buildPerformanceAlertKey(a))
-  const keyed = toKeyedTexts(rawKeys)
-  return alerts.map((alert, index) => ({
-    key: keyed[index].key,
-    alert,
-  }))
-}
-
-export function buildKeyedSuggestions(suggestions: string[]): KeyedText[] {
-  return toKeyedTexts(suggestions)
 }
 
 export function buildKeyedTooltipEntries<T extends TooltipEntryLike>(
