@@ -114,8 +114,8 @@ vi.mock('@/components/bulk-import', () => ({
       <div data-testid="validation-errors">
         <span>Du lieu khong hop le:</span>
         <ul>
-          {errors.map((err, i) => (
-            <li key={i}>{err}</li>
+          {errors.map((err) => (
+            <li key={err}>{err}</li>
           ))}
         </ul>
       </div>
