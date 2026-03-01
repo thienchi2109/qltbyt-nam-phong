@@ -14,7 +14,8 @@
 
 - RPC-only data access for AI tools (`callRpc` or internal `/api/rpc/[fn]` fetch only).
 - No direct `supabase.from(...)` in AI tool path.
-- No attachments/multimodal in v1.
+- No user-uploaded chat attachments/multimodal in v1.
+- Read-only attachment lookup is allowed in v1 only via approved RPC tools and must return short-lived signed URLs (never raw storage paths).
 - Draft generation is schema-validated output only; no create/update/delete RPC invocation from chat route.
 - Auth check must run before model/tool execution.
 - Tenant isolation and role behavior must mirror existing app rules.
@@ -172,7 +173,7 @@ git commit -m "feat: [US-002][US-007] - secure schema-validated provider-agnosti
 - `buildSystemPrompt(ctx)` includes:
   - read-only policy
   - tenant-safety policy
-  - no-attachments policy
+  - no user-upload/multimodal policy (attachment lookup allowed only via read-only signed-URL tool outputs)
   - clear "Fact vs Inference vs Draft" response contract
   - Vietnamese-first response requirement.
 - prompt builder is deterministic for same input context.
@@ -345,7 +346,7 @@ git commit -m "feat: [US-003][US-004] - enforce RPC-only AI tools with tenant-aw
 - maintenance summary uses approved RPC fn only.
 - repair summary uses approved RPC fn only.
 - usage history lookup uses approved RPC fn only.
-- attachment retrieval only provides secured/signed URLs from `file_dinh_kem` via approved RPC/Storage API.
+- attachment retrieval only provides secured short-lived signed URLs + file metadata from `file_dinh_kem` via approved read-only RPC (no direct Storage API calls in AI tool path).
 - tool responses are tagged/structured as factual retrieval outputs.
 - AI utilizes equipment usage frequency (from `nhat_ky_su_dung` via RPC) to correctly advocate maintenance cycle changes.
 
@@ -478,7 +479,7 @@ git commit -m "feat: [US-006] - add schema-validated repair-request draft genera
 - assistant trigger visible only in authenticated protected layout.
 - panel opens/closes.
 - input/send disabled whenever status is not `ready`.
-- no attachment controls rendered.
+- no user attachment controls rendered.
 - exactly 3 suggested question chips render in chat UI.
 - clicking a suggested question sends a user message immediately (quick ask).
 - suggested question chips are disabled while status is not `ready`.
@@ -595,7 +596,7 @@ Expected: PASS.
 - Authenticated user sees AI trigger in protected layout.
 - Unauthenticated user cannot access `/api/chat`.
 - Composer disabled during streaming.
-- No attachment upload UI.
+- No user attachment upload UI.
 - Three suggested question chips are visible on first open.
 - Clicking a suggested chip submits a user question immediately.
 - Requests exceeding limits return safe message (no internal details).
