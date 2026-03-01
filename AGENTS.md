@@ -92,6 +92,8 @@ IMPORTANT: Use `edit_file` over `str_replace` or full file writes. It works with
 ## Skill Enforcement
 
 - For any task that generates or materially edits TypeScript/React code (`.ts`, `.tsx`, React components, hooks, client/server UI logic), you MUST invoke the `react-best-practices` skill first (or `vercel-react-best-practices` if that is the available skill name in the session).
+- For any task that generates or materially edits Next.js code or framework behavior (App Router routes/layouts/pages, route handlers, metadata, error boundaries, middleware/proxy, RSC boundaries, async request APIs, image/font/script/bundling), you MUST invoke the `next-best-practices` skill first.
+- For Next.js tasks that also involve substantial React component logic, invoke both skills in this order: `next-best-practices` then `react-best-practices` (or `vercel-react-best-practices`).
 - For any task that creates or modifies SQL migration files/DDL for Supabase/Postgres, you MUST invoke the `supabase-best-practices` skill first (or `supabase-postgres-best-practices` if that is the available skill name in the session).
 - If a required skill is unavailable in the current session, state that explicitly and proceed with the closest available fallback guidance.
 
