@@ -427,6 +427,8 @@ git commit -m "feat: [US-006] - add schema-validated repair-request draft genera
 
 ### Task 5: Assistant Panel UI + Layout Integration
 
+> **See dedicated Design Plan:** `docs/plans/2026-03-01-assistant-chat-ui-design.md` for complete UI/UX specifications, styling, and micro-interactions.
+
 **Files:**
 - Create: `src/components/assistant/AssistantTriggerButton.tsx`
 - Create: `src/components/assistant/AssistantPanel.tsx`
