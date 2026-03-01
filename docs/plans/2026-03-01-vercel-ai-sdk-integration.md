@@ -333,6 +333,7 @@ git commit -m "feat: [US-003][US-004] - enforce RPC-only AI tools with tenant-aw
 - Create: `src/lib/ai/tools/equipment-tools.ts`
 - Create: `src/lib/ai/tools/maintenance-tools.ts`
 - Create: `src/lib/ai/tools/repair-tools.ts`
+- Create: `src/lib/ai/tools/usage-tools.ts`
 - Modify: `src/lib/ai/tools/registry.ts`
 - Modify: `src/lib/ai/prompts/system.ts`
 - Modify: `src/lib/ai/prompts/__tests__/system.test.ts`
@@ -342,7 +343,9 @@ git commit -m "feat: [US-003][US-004] - enforce RPC-only AI tools with tenant-aw
 - equipment lookup uses approved RPC fn only.
 - maintenance summary uses approved RPC fn only.
 - repair summary uses approved RPC fn only.
+- usage history lookup uses approved RPC fn only.
 - tool responses are tagged/structured as factual retrieval outputs.
+- AI utilizes equipment usage frequency (from `nhat_ky_su_dung` via RPC) to correctly advocate maintenance cycle changes.
 
 **Step 2: Run failing read-only tests**
 
@@ -355,7 +358,7 @@ Expected: FAIL.
 **Step 3: Implement minimal tool execute functions (GREEN)**
 - Each tool has explicit `inputSchema` (Zod) and deterministic RPC mapping.
 - No tool may call mutation RPCs.
-- Update `system.ts` tool-instruction block to describe read-only toolset and factual citation behavior; bump prompt version if behavior changes.
+- Update `system.ts` tool-instruction block to describe read-only toolset, factual citation behavior, and predictive maintenance suggestions (i.e. if usage frequency is exceptionally high, proactively recommend shortening the maintenance cycle); bump prompt version if behavior changes.
 
 **Step 4: Re-run tests**
 
@@ -368,8 +371,8 @@ Expected: PASS.
 **Step 5: Commit**
 
 ```bash
-git add src/lib/ai/tools/equipment-tools.ts src/lib/ai/tools/maintenance-tools.ts src/lib/ai/tools/repair-tools.ts src/lib/ai/tools/registry.ts src/lib/ai/prompts/system.ts src/lib/ai/prompts/__tests__/system.test.ts src/app/api/chat/__tests__/route.readonly-tools.test.ts
-git commit -m "feat: [US-005] - add read-only operational AI tools via RPC allowlist"
+git add src/lib/ai/tools/equipment-tools.ts src/lib/ai/tools/maintenance-tools.ts src/lib/ai/tools/repair-tools.ts src/lib/ai/tools/usage-tools.ts src/lib/ai/tools/registry.ts src/lib/ai/prompts/system.ts src/lib/ai/prompts/__tests__/system.test.ts src/app/api/chat/__tests__/route.readonly-tools.test.ts
+git commit -m "feat: [US-005] - add read-only AI tools with usage-based predictive maintenance rules"
 ```
 
 ### Task 4: AI Diagnostic & Remediation Generation (Troubleshooting Assistant)
