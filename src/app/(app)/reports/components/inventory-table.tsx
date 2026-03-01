@@ -46,6 +46,13 @@ interface InventoryTableProps {
 }
 
 const INVENTORY_ENTITY = { singular: "bản ghi" } as const
+const INVENTORY_TABLE_SKELETON_ROW_KEYS = [
+  "inventory-table-skeleton-row-1",
+  "inventory-table-skeleton-row-2",
+  "inventory-table-skeleton-row-3",
+  "inventory-table-skeleton-row-4",
+  "inventory-table-skeleton-row-5",
+] as const
 
 const inventoryDisplayFormat = (ctx: DisplayContext) => {
   const entityLabel = ctx.entity.plural ?? ctx.entity.singular
@@ -222,8 +229,8 @@ export function InventoryTable({ data, isLoading }: InventoryTableProps) {
         <CardContent>
           <div className="space-y-4">
             <Skeleton className="h-10 w-full" />
-            {[...Array(5)].map((_, i) => (
-              <Skeleton key={i} className="h-16 w-full" />
+            {INVENTORY_TABLE_SKELETON_ROW_KEYS.map((token) => (
+              <Skeleton key={token} className="h-16 w-full" />
             ))}
           </div>
         </CardContent>

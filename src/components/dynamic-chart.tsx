@@ -3,6 +3,7 @@
 import * as React from "react"
 import { loadChartsLibrary, type ChartData, type RechartsComponents } from "@/lib/chart-utils"
 import { ChartLoadingFallback, ChartErrorFallback } from "@/components/chart-fallbacks"
+import { buildPieSliceCells } from "@/lib/runtime-list-keys"
 
 interface DynamicChartProps {
   children: (components: RechartsComponents) => React.ReactNode
@@ -234,6 +235,11 @@ export function DynamicPieChart({
   outerRadius = 80,
   innerRadius,
 }: PieChartProps) {
+  const pieSliceCells = React.useMemo(
+    () => buildPieSliceCells(data, nameKey, colors),
+    [colors, data, nameKey],
+  )
+
   return (
     <DynamicChart height={height}>
       {({ PieChart, Pie, Cell, Tooltip, ResponsiveContainer }) => (
@@ -251,8 +257,8 @@ export function DynamicPieChart({
                 `${name}: ${value} (${(percent * 100).toFixed(0)}%)` : false
               }
             >
-              {data.map((_, index) => (
-                <Cell key={`cell-${index}`} fill={colors[index % colors.length]} />
+              {pieSliceCells.map((cell) => (
+                <Cell key={cell.key} fill={cell.fill} />
               ))}
             </Pie>
             {showTooltip && <Tooltip />}

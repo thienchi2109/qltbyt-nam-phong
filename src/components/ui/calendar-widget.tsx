@@ -50,6 +50,25 @@ const getEventTypeIcon = (type: TaskType) => {
   }
 }
 
+const CALENDAR_SKELETON_ROW_KEYS = [
+  "calendar-skeleton-row-1",
+  "calendar-skeleton-row-2",
+  "calendar-skeleton-row-3",
+  "calendar-skeleton-row-4",
+  "calendar-skeleton-row-5",
+  "calendar-skeleton-row-6",
+] as const
+
+const CALENDAR_SKELETON_COL_KEYS = [
+  "calendar-skeleton-col-1",
+  "calendar-skeleton-col-2",
+  "calendar-skeleton-col-3",
+  "calendar-skeleton-col-4",
+  "calendar-skeleton-col-5",
+  "calendar-skeleton-col-6",
+  "calendar-skeleton-col-7",
+] as const
+
 // Loading skeleton component
 function CalendarSkeleton({ className }: { className?: string }) {
   return (
@@ -62,10 +81,10 @@ function CalendarSkeleton({ className }: { className?: string }) {
       </CardHeader>
       <CardContent className="md:p-8 md:pt-0">
         <div className="space-y-2">
-          {[...Array(6)].map((_, i) => (
-            <div key={i} className="grid grid-cols-7 gap-1">
-              {[...Array(7)].map((_, j) => (
-                <Skeleton key={j} className="h-20 w-full" />
+          {CALENDAR_SKELETON_ROW_KEYS.map((rowKey) => (
+            <div key={rowKey} className="grid grid-cols-7 gap-1">
+              {CALENDAR_SKELETON_COL_KEYS.map((colKey) => (
+                <Skeleton key={`${rowKey}-${colKey}`} className="h-20 w-full" />
               ))}
             </div>
           ))}
@@ -392,10 +411,10 @@ function CalendarWidgetImpl({
         {/* Calendar Grid */}
         {isLoading ? (
           <div className="space-y-2">
-            {[...Array(6)].map((_, i) => (
-              <div key={i} className="grid grid-cols-7 gap-1">
-                {[...Array(7)].map((_, j) => (
-                  <Skeleton key={j} className="h-20 w-full" />
+            {CALENDAR_SKELETON_ROW_KEYS.map((rowKey) => (
+              <div key={rowKey} className="grid grid-cols-7 gap-1">
+                {CALENDAR_SKELETON_COL_KEYS.map((colKey) => (
+                  <Skeleton key={`${rowKey}-${colKey}`} className="h-20 w-full" />
                 ))}
               </div>
             ))}

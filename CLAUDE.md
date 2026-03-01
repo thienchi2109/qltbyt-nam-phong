@@ -186,6 +186,19 @@ Use this workflow whenever user requests Ralph flow or execution from `prd.json`
 **File Editing:** `mcp__filesystem-with-morph__edit_file` (NEVER full rewrites)
 **Docs:** Context7 MCP for library documentation (including Supabase docs)
 
+## GKG Known Issue (2026-02-27)
+
+In this environment, GitLab Knowledge Graph (GKG) can miss many `.tsx` React component definitions even after re-indexing.
+
+Required workflow when symbols are unexpectedly missing:
+1. Re-index once.
+2. Re-run definition search for the exact symbol.
+3. If still missing, treat GKG as incomplete for that symbol and switch to fallback:
+   - `warpgrep` for semantic discovery
+   - `rg` for exact definition/usage checks
+   - direct file reads for final verification
+4. Explicitly state in handoff/response that fallback was used due incomplete GKG results.
+
 <!-- SUPABASE-CLI:START -->
 ## Supabase CLI + MCP (Hybrid Approach)
 

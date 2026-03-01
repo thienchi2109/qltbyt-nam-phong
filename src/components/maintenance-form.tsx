@@ -20,21 +20,53 @@ interface MaintenanceFormProps {
   tenantId?: number | null  // New: Tenant ID for form branding context
 }
 
+interface MaintenanceDisplayRow extends MaintenanceDevice {
+  _rowKey: string
+}
+
 export function MaintenanceForm({
   department = "",
   year = new Date().getFullYear(),
   devices = [],
   tenantId = null
 }: MaintenanceFormProps) {
-  // Create empty rows if no devices provided
-  const displayDevices = devices.length > 0 ? devices : [{}]
-
   const formatValue = (value: any) => {
     if (value === null || value === undefined || value === '') {
       return ''
     }
     return String(value).trim()
   }
+
+  const buildRowBaseKey = (device: MaintenanceDevice) => {
+    const code = formatValue(device.code)
+    if (code) return `code-${code}`
+
+    const name = formatValue(device.name)
+    const departmentName = formatValue(device.department)
+    if (name || departmentName) {
+      return `name-${name || "unknown"}-dept-${departmentName || "unknown"}`
+    }
+
+    return "maintenance-row"
+  }
+
+  // Create deterministic keys for data rows and a stable placeholder row for manual entry.
+  const displayDevices: MaintenanceDisplayRow[] = (() => {
+    if (devices.length === 0) {
+      return [{ _rowKey: "placeholder-1" }]
+    }
+
+    const keyCounts = new Map<string, number>()
+    return devices.map((device) => {
+      const baseKey = buildRowBaseKey(device)
+      const seenCount = (keyCounts.get(baseKey) ?? 0) + 1
+      keyCounts.set(baseKey, seenCount)
+      return {
+        ...device,
+        _rowKey: seenCount === 1 ? baseKey : `${baseKey}-${seenCount}`,
+      }
+    })
+  })()
 
   return (
     <div className="bg-gray-200 min-h-screen">
@@ -108,7 +140,7 @@ export function MaintenanceForm({
               </thead>
               <tbody>
                 {displayDevices.map((device, index) => (
-                  <tr key={index}>
+                  <tr key={device._rowKey}>
                     <td>{index + 1 || ''}</td>
                     <td>{formatValue(device.code)}</td>
                     <td>{formatValue(device.name)}</td>

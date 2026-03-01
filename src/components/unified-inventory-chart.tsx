@@ -28,6 +28,28 @@ interface FacilityRow {
   equipment_count: number
 }
 
+interface SessionWithRole {
+  user?: {
+    role?: string | null
+  } | null
+}
+
+interface UnifiedInventoryChartContentProps {
+  tenantFilter?: string
+  selectedDonVi?: number | null
+  effectiveTenantKey?: string
+  role: string
+  isGlobal: boolean
+  isRegionalLeader: boolean
+}
+
+interface FacilitiesRpcRow {
+  id: number
+  name: string
+  code?: string
+  equipment_count: number
+}
+
 export function UnifiedInventoryChart({
   tenantFilter,
   selectedDonVi,
@@ -35,23 +57,42 @@ export function UnifiedInventoryChart({
   isGlobalOrRegionalLeader,
 }: UnifiedInventoryChartProps) {
   const { data: session } = useSession()
-  const rawRole = (session as any)?.user?.role ?? ''
+  const rawRole = (session as SessionWithRole | null | undefined)?.user?.role ?? ''
   const role = String(rawRole).toLowerCase()
   const isGlobal = isGlobalRole(rawRole)
   const isRegionalLeader = isRegionalLeaderRole(rawRole)
 
   // Only render for RL / Global per spec
-  if (!isGlobalOrRegionalLeader) return null
+  if (!isGlobalOrRegionalLeader || (!isGlobal && !isRegionalLeader)) return null
 
+  return (
+    <UnifiedInventoryChartContent
+      tenantFilter={tenantFilter}
+      selectedDonVi={selectedDonVi}
+      effectiveTenantKey={effectiveTenantKey}
+      role={role}
+      isGlobal={isGlobal}
+      isRegionalLeader={isRegionalLeader}
+    />
+  )
+}
+
+function UnifiedInventoryChartContent({
+  tenantFilter,
+  selectedDonVi,
+  effectiveTenantKey,
+  role,
+  isGlobal,
+  isRegionalLeader,
+}: UnifiedInventoryChartContentProps) {
   const isAllMode = tenantFilter === 'all'
 
   // All-facilities view: fetch facilities with counts
   const { data: facilities, isLoading, error } = useQuery<FacilityRow[]>({
     queryKey: ['unified-inventory-chart', 'facilities', role],
     queryFn: async () => {
-      const res = await callRpc<any>({ fn: 'get_facilities_with_equipment_count', args: {} })
-      const list = Array.isArray(res) ? res as FacilityRow[] : []
-      return list
+      const res = await callRpc<FacilitiesRpcRow[]>({ fn: 'get_facilities_with_equipment_count', args: {} })
+      return Array.isArray(res) ? res : []
     },
     enabled: isAllMode,
     staleTime: 5 * 60_000,

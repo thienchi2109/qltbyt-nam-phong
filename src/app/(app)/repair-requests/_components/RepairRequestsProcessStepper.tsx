@@ -95,9 +95,12 @@ export function RepairRequestsProcessStepper({ status, className }: RepairReques
 
                     const Icon = step.icon
 
+                    // Positional key: steps array is always exactly 3 fixed-position elements.
+                    // Do NOT use step.title — the third title is dynamic (isFailure-dependent)
+                    // and would cause unmount/remount instead of in-place update.
                     return (
                         <div
-                            key={idx}
+                            key={`step-${idx}`}
                             className={cn(
                                 "relative flex-1 flex items-center justify-center h-12 transition-colors duration-300",
                                 bgClass,

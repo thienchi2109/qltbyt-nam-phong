@@ -22,6 +22,12 @@ interface InventoryChartsProps {
 
 // Colors for charts
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8', '#82CA9D']
+const INVENTORY_CHART_SKELETON_KEYS = [
+  "inventory-chart-skeleton-1",
+  "inventory-chart-skeleton-2",
+  "inventory-chart-skeleton-3",
+  "inventory-chart-skeleton-4",
+] as const
 
 export function InventoryCharts({ data, isLoading }: InventoryChartsProps) {
   // Process data for different chart types
@@ -111,8 +117,8 @@ export function InventoryCharts({ data, isLoading }: InventoryChartsProps) {
   if (isLoading) {
     return (
       <div className="grid gap-4 md:grid-cols-2">
-        {[...Array(4)].map((_, i) => (
-          <Card key={i}>
+        {INVENTORY_CHART_SKELETON_KEYS.map((token) => (
+          <Card key={token}>
             <CardHeader>
               <Skeleton className="h-5 w-32" />
               <Skeleton className="h-4 w-48" />

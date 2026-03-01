@@ -26,6 +26,10 @@ interface HandoverTemplateProps {
   tenantId?: number | null  // New: Tenant ID for form branding context
 }
 
+interface HandoverDisplayRow extends HandoverDevice {
+  _rowKey: string
+}
+
 export function HandoverTemplate({
   department = "Tổ QLTB",
   handoverDate = new Date(),
@@ -66,8 +70,36 @@ export function HandoverTemplate({
     return String(value).trim()
   }
 
-  // Use devices or create empty rows for manual entry
-  const displayDevices = devices.length > 0 ? devices : [{}]
+  const buildRowBaseKey = (device: HandoverDevice) => {
+    const code = formatValue(device.code)
+    if (code) return `code-${code}`
+
+    const serial = formatValue(device.serial)
+    if (serial) return `serial-${serial}`
+
+    const name = formatValue(device.name)
+    if (name) return `name-${name}`
+
+    return "handover-row"
+  }
+
+  // Use device identifiers when available; keep a stable placeholder row for manual entry.
+  const displayDevices: HandoverDisplayRow[] = (() => {
+    if (devices.length === 0) {
+      return [{ _rowKey: "placeholder-1" }]
+    }
+
+    const keyCounts = new Map<string, number>()
+    return devices.map((device) => {
+      const baseKey = buildRowBaseKey(device)
+      const seenCount = (keyCounts.get(baseKey) ?? 0) + 1
+      keyCounts.set(baseKey, seenCount)
+      return {
+        ...device,
+        _rowKey: seenCount === 1 ? baseKey : `${baseKey}-${seenCount}`,
+      }
+    })
+  })()
 
   return (
     <div className="bg-gray-200 min-h-screen">
@@ -138,7 +170,7 @@ export function HandoverTemplate({
               </thead>
               <tbody>
                 {displayDevices.map((device, index) => (
-                  <tr key={index}>
+                  <tr key={device._rowKey}>
                     <td>{index + 1}</td>
                     <td>{formatValue(device.code)}</td>
                     <td className="text-left">{formatValue(device.name)}</td>

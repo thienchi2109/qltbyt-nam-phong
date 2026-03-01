@@ -123,6 +123,17 @@ This project is indexed with **GitLab Knowledge Graph MCP**. You have access to 
 - If GKG is skipped, explicitly state why (for example: direct file-path request, simple grep task, or config lookup).
 - If GKG is unavailable or failing, explicitly state that and use fallback methods (`warpgrep`/`rg` + direct code reading).
 
+#### Known Limitation (Observed 2026-02-27):
+- In this environment, GKG indexing currently returns a reduced subset of TypeScript files and may miss many `.tsx` React component definitions.
+- Required handling:
+  - Re-index once (`index_project`) when symbols are unexpectedly missing.
+  - Re-run `search_codebase_definitions` for the exact symbol.
+  - If still missing, treat GKG result as incomplete (not authoritative for `.tsx`) and switch to fallback discovery:
+    - `warpgrep` for semantic discovery
+    - `rg` for exact symbol/import usage
+    - direct file reads for final verification
+  - Explicitly note this fallback decision in your response.
+
 **✅ ALWAYS use GKG for:**
 - Finding where functions/classes are defined
 - Understanding code structure and relationships

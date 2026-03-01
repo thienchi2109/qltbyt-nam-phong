@@ -5,6 +5,7 @@ import { Loader2, FileCheck, AlertTriangle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { toKeyedTexts } from '@/lib/list-key-utils'
 
 /**
  * File input with label for bulk import dialogs
@@ -83,8 +84,8 @@ export function BulkImportValidationErrors({
         className="list-disc list-inside space-y-1 ml-6 overflow-y-auto"
         style={{ maxHeight }}
       >
-        {errors.map((validationError, index) => (
-          <li key={index}>{validationError}</li>
+        {toKeyedTexts(errors).map(({ key, text }) => (
+          <li key={key}>{text}</li>
         ))}
       </ul>
     </div>

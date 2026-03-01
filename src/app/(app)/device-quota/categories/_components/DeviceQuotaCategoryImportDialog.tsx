@@ -38,6 +38,7 @@ import { useToast } from "@/hooks/use-toast"
 import { callRpc } from "@/lib/rpc-client"
 import { readExcelFile, worksheetToJson } from "@/lib/excel-utils"
 import { translateRpcError } from "@/lib/error-translations"
+import { toKeyedTexts } from "@/lib/list-key-utils"
 import { useDeviceQuotaCategoryContext } from "../_hooks/useDeviceQuotaCategoryContext"
 
 // ============================================
@@ -423,8 +424,8 @@ export function DeviceQuotaCategoryImportDialog() {
               <AlertDescription>
                 <ScrollArea className="h-32 mt-2">
                   <ul className="list-disc list-inside space-y-1 text-sm">
-                    {validationErrors.slice(0, 20).map((error, idx) => (
-                      <li key={idx}>{error}</li>
+                    {toKeyedTexts(validationErrors.slice(0, 20)).map(({ key, text }) => (
+                      <li key={key}>{text}</li>
                     ))}
                     {validationErrors.length > 20 && (
                       <li className="text-muted-foreground">
@@ -445,8 +446,8 @@ export function DeviceQuotaCategoryImportDialog() {
               <AlertDescription className="text-yellow-700">
                 <ScrollArea className="h-24 mt-2">
                   <ul className="list-disc list-inside space-y-1 text-sm">
-                    {validationWarnings.slice(0, 10).map((warning, idx) => (
-                      <li key={idx}>{warning}</li>
+                    {toKeyedTexts(validationWarnings.slice(0, 10)).map(({ key, text }) => (
+                      <li key={key}>{text}</li>
                     ))}
                     {validationWarnings.length > 10 && (
                       <li className="text-yellow-600">
