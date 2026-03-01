@@ -64,11 +64,11 @@ Expected: FAIL (route does not exist yet).
 - Add runtime deps pinned for AI SDK 6 line:
   - `ai@^6.0.0`
   - `@ai-sdk/react@^3.0.0`
-  - `@ai-sdk/openai@^3.0.0` (or chosen first provider package in `@ai-sdk/*@^3.0.0`)
+  - `@ai-sdk/google@^3.0.0` (or chosen first provider package in `@ai-sdk/*@^3.0.0`)
 - Add env keys:
-  - `AI_PROVIDER=openai`
-  - `AI_MODEL=openai/gpt-4o-mini`
-  - `OPENAI_API_KEY=`
+  - `AI_PROVIDER=google`
+  - `AI_MODEL=gemini-2.5-flash`
+  - `GOOGLE_GENERATIVE_AI_API_KEY=`
   - optional future provider placeholders (anthropic/gateway).
 
 **Step 4: Add minimal route stub to satisfy setup test (GREEN)**
