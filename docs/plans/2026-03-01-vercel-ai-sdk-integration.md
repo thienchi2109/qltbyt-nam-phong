@@ -98,6 +98,8 @@ git commit -m "feat: [US-002] - establish /api/chat scaffold and AI SDK dependen
 - Modify: `src/app/api/chat/route.ts`
 - Create: `src/lib/ai/chat-request-schema.ts`
 - Create: `src/lib/ai/provider.ts`
+- Create: `src/lib/ai/prompts/system.ts`
+- Create: `src/lib/ai/prompts/__tests__/system.test.ts`
 - Create: `src/app/api/chat/__tests__/route.auth-and-schema.test.ts`
 
 **Step 1: Write failing auth test (RED)**
@@ -106,6 +108,7 @@ git commit -m "feat: [US-002] - establish /api/chat scaffold and AI SDK dependen
   - malformed payload => `400`
   - malformed messages item => `400`
   - valid payload with authenticated session reaches model call path.
+  - route uses prompt from `src/lib/ai/prompts/system.ts` (versioned prompt wiring).
 
 **Step 2: Run failing auth/schema tests**
 
@@ -121,6 +124,7 @@ Expected: FAIL for missing validation/auth behavior.
   - `export const maxDuration = 30`
   - `getServerSession(authOptions)` before any AI SDK call.
   - parse and validate body using `chat-request-schema.ts`.
+  - load system prompt via `buildSystemPrompt(...)` from `src/lib/ai/prompts/system.ts`.
   - call `streamText({ model, messages: await convertToModelMessages(...) })`.
   - return `result.toUIMessageStreamResponse()`.
 - In `provider.ts`:
@@ -147,8 +151,69 @@ Expected: PASS.
 **Step 6: Commit**
 
 ```bash
-git add src/app/api/chat/route.ts src/lib/ai/chat-request-schema.ts src/lib/ai/provider.ts src/app/api/chat/__tests__/route.auth-and-schema.test.ts
+git add src/app/api/chat/route.ts src/lib/ai/chat-request-schema.ts src/lib/ai/provider.ts src/lib/ai/prompts/system.ts src/lib/ai/prompts/__tests__/system.test.ts src/app/api/chat/__tests__/route.auth-and-schema.test.ts
 git commit -m "feat: [US-002][US-007] - secure schema-validated provider-agnostic chat route"
+```
+
+---
+
+### Task 1A: Versioned System Prompt Module (Explicit, Testable, Changeable)
+
+**Files:**
+- Create: `src/lib/ai/prompts/system.ts`
+- Create: `src/lib/ai/prompts/types.ts`
+- Create: `src/lib/ai/prompts/__tests__/system.test.ts`
+- Create: `docs/ai/system-prompt-changelog.md`
+- Modify: `src/app/api/chat/route.ts`
+
+**Step 1: Write failing prompt module tests (RED)**
+- `SYSTEM_PROMPT_VERSION` exists and matches `v<major>.<minor>.<patch>`.
+- `buildSystemPrompt(ctx)` includes:
+  - read-only policy
+  - tenant-safety policy
+  - no-attachments policy
+  - clear "Fact vs Inference vs Draft" response contract
+  - Vietnamese-first response requirement.
+- prompt builder is deterministic for same input context.
+- route consumes `buildSystemPrompt` (not inline hard-coded prompt text).
+
+**Step 2: Run failing prompt tests**
+
+Run:
+```bash
+node scripts/npm-run.js run test:run -- "src/lib/ai/prompts/__tests__/system.test.ts"
+```
+Expected: FAIL.
+
+**Step 3: Implement minimal prompt module (GREEN)**
+- Add `SYSTEM_PROMPT_VERSION = 'v1.0.0'`.
+- Add `buildSystemPrompt(context)` with sectioned blocks:
+  - Identity and language
+  - Security and tenant boundaries
+  - Tool usage constraints
+  - Output contract and tone
+  - Failure behavior and guidance.
+- Update `/api/chat` to use prompt module output.
+
+**Step 4: Re-run prompt tests**
+
+Run:
+```bash
+node scripts/npm-run.js run test:run -- "src/lib/ai/prompts/__tests__/system.test.ts"
+```
+Expected: PASS.
+
+**Step 5: Add prompt change policy document**
+- In `docs/ai/system-prompt-changelog.md`, define:
+  - version bump rules (`major` policy change, `minor` behavior expansion, `patch` wording fix),
+  - required tests for each bump,
+  - date + rationale entry format.
+
+**Step 6: Commit**
+
+```bash
+git add src/lib/ai/prompts/system.ts src/lib/ai/prompts/types.ts src/lib/ai/prompts/__tests__/system.test.ts docs/ai/system-prompt-changelog.md src/app/api/chat/route.ts
+git commit -m "feat: [US-002] - add versioned system prompt module with tests and changelog"
 ```
 
 ---
@@ -213,6 +278,8 @@ git commit -m "feat: [US-003][US-004] - enforce RPC-only AI tools with tenant-aw
 - Create: `src/lib/ai/tools/maintenance-tools.ts`
 - Create: `src/lib/ai/tools/repair-tools.ts`
 - Modify: `src/lib/ai/tools/registry.ts`
+- Modify: `src/lib/ai/prompts/system.ts`
+- Modify: `src/lib/ai/prompts/__tests__/system.test.ts`
 - Create: `src/app/api/chat/__tests__/route.readonly-tools.test.ts`
 
 **Step 1: Write failing read-only tool tests (RED)**
@@ -232,6 +299,7 @@ Expected: FAIL.
 **Step 3: Implement minimal tool execute functions (GREEN)**
 - Each tool has explicit `inputSchema` (Zod) and deterministic RPC mapping.
 - No tool may call mutation RPCs.
+- Update `system.ts` tool-instruction block to describe read-only toolset and factual citation behavior; bump prompt version if behavior changes.
 
 **Step 4: Re-run tests**
 
@@ -244,7 +312,7 @@ Expected: PASS.
 **Step 5: Commit**
 
 ```bash
-git add src/lib/ai/tools/equipment-tools.ts src/lib/ai/tools/maintenance-tools.ts src/lib/ai/tools/repair-tools.ts src/lib/ai/tools/registry.ts src/app/api/chat/__tests__/route.readonly-tools.test.ts
+git add src/lib/ai/tools/equipment-tools.ts src/lib/ai/tools/maintenance-tools.ts src/lib/ai/tools/repair-tools.ts src/lib/ai/tools/registry.ts src/lib/ai/prompts/system.ts src/lib/ai/prompts/__tests__/system.test.ts src/app/api/chat/__tests__/route.readonly-tools.test.ts
 git commit -m "feat: [US-005] - add read-only operational AI tools via RPC allowlist"
 ```
 
@@ -254,6 +322,8 @@ git commit -m "feat: [US-005] - add read-only operational AI tools via RPC allow
 - Create: `src/lib/ai/draft/repair-request-draft-schema.ts`
 - Create: `src/lib/ai/draft/repair-request-draft-tool.ts`
 - Modify: `src/lib/ai/tools/registry.ts`
+- Modify: `src/lib/ai/prompts/system.ts`
+- Modify: `src/lib/ai/prompts/__tests__/system.test.ts`
 - Create: `src/app/api/chat/__tests__/route.draft-output.test.ts`
 
 **Step 1: Write failing draft tests (RED)**
@@ -278,6 +348,7 @@ Expected: FAIL.
   - `don_vi_thuc_hien?`
   - `ten_don_vi_thue?`
 - Attach `draftOnly: true` metadata.
+- Update `system.ts` output-contract section to enforce "Draft does not submit" language and explicit `Fact/Inference/Draft` labels; bump version when behavior changes.
 
 **Step 4: Re-run tests**
 
@@ -290,7 +361,7 @@ Expected: PASS.
 **Step 5: Commit**
 
 ```bash
-git add src/lib/ai/draft/repair-request-draft-schema.ts src/lib/ai/draft/repair-request-draft-tool.ts src/lib/ai/tools/registry.ts src/app/api/chat/__tests__/route.draft-output.test.ts
+git add src/lib/ai/draft/repair-request-draft-schema.ts src/lib/ai/draft/repair-request-draft-tool.ts src/lib/ai/tools/registry.ts src/lib/ai/prompts/system.ts src/lib/ai/prompts/__tests__/system.test.ts src/app/api/chat/__tests__/route.draft-output.test.ts
 git commit -m "feat: [US-006] - add schema-validated repair-request draft generation tool"
 ```
 
@@ -305,6 +376,7 @@ git commit -m "feat: [US-006] - add schema-validated repair-request draft genera
 - Create: `src/components/assistant/AssistantPanel.tsx`
 - Create: `src/components/assistant/AssistantComposer.tsx`
 - Create: `src/components/assistant/AssistantMessageList.tsx`
+- Create: `src/components/assistant/AssistantSuggestedQuestions.tsx`
 - Modify: `src/app/(app)/layout.tsx`
 - Create: `src/components/assistant/__tests__/AssistantPanel.ui.test.tsx`
 - Create: `src/app/(app)/__tests__/layout.assistant-integration.test.tsx`
@@ -314,6 +386,9 @@ git commit -m "feat: [US-006] - add schema-validated repair-request draft genera
 - panel opens/closes.
 - input/send disabled whenever status is not `ready`.
 - no attachment controls rendered.
+- exactly 3 suggested question chips render in chat UI.
+- clicking a suggested question sends a user message immediately (quick ask).
+- suggested question chips are disabled while status is not `ready`.
 
 **Step 2: Run failing UI tests**
 
@@ -328,6 +403,12 @@ Expected: FAIL.
 - Pass tenant metadata from `useTenantSelection()`.
 - Lazy-load panel (`next/dynamic`) to keep initial bundle lean.
 - Respect existing overlay layering contract in `docs/frontend/layering.md`.
+- Add `AssistantSuggestedQuestions` with 3 default Vietnamese prompts:
+  - `Thiết bị nào sắp đến hạn bảo trì trong 30 ngày tới?`
+  - `Có bao nhiêu yêu cầu sửa chữa đang chờ xử lý tại cơ sở hiện tại?`
+  - `Tóm tắt các thiết bị đang cần ưu tiên xử lý hôm nay.`
+- Wire chip click to quick-send via chat action (not just prefill input).
+- Show chips when conversation is empty (or until first user message), then hide.
 
 **Step 4: Re-run tests**
 
@@ -422,6 +503,8 @@ Expected: PASS.
 - Unauthenticated user cannot access `/api/chat`.
 - Composer disabled during streaming.
 - No attachment upload UI.
+- Three suggested question chips are visible on first open.
+- Clicking a suggested chip submits a user question immediately.
 - Tenant-missing privileged scenario shows Vietnamese guidance.
 - Draft response appears as structured draft and is not auto-submitted.
 
@@ -463,6 +546,24 @@ git commit -m "feat: [US-001..US-008] - finalize verification and documentation 
 
 ---
 
+## System Prompt Versioning Rules (Critical)
+
+- Single source of truth: `src/lib/ai/prompts/system.ts`.
+- Never inline the full system prompt directly inside `route.ts`.
+- Every semantic behavior change to assistant policy requires:
+  - prompt version bump in `SYSTEM_PROMPT_VERSION`,
+  - updated tests in `src/lib/ai/prompts/__tests__/system.test.ts`,
+  - changelog entry in `docs/ai/system-prompt-changelog.md`.
+- Version bump policy:
+  - `major`: safety model or permission-policy changes.
+  - `minor`: new behavior block (new tool class, new output mode).
+  - `patch`: wording/clarity-only changes with no policy shift.
+- CI/test gate for prompt changes:
+  - prompt tests must pass before merge.
+  - route tests must prove prompt module is actually consumed.
+
+---
+
 ## Risk Controls
 
 - Keep AI tool registry closed-by-default.
@@ -479,3 +580,4 @@ git commit -m "feat: [US-001..US-008] - finalize verification and documentation 
 - Manual browser verification completed and documented.
 - No tenant boundary regressions in test matrix.
 - No assistant-initiated write path exists in v1.
+- Suggested-question quick asks (3 chips) work and respect disabled/loading states.
