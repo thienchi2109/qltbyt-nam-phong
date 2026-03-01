@@ -14,7 +14,8 @@
 
 - RPC-only data access for AI tools (`callRpc` or internal `/api/rpc/[fn]` fetch only).
 - No direct `supabase.from(...)` in AI tool path.
-- No attachments/multimodal in v1.
+- No user-uploaded chat attachments/multimodal in v1.
+- Read-only attachment lookup is allowed in v1 only via approved RPC tools and must return short-lived signed URLs (never raw storage paths).
 - Draft generation is schema-validated output only; no create/update/delete RPC invocation from chat route.
 - Auth check must run before model/tool execution.
 - Tenant isolation and role behavior must mirror existing app rules.
@@ -64,11 +65,11 @@ Expected: FAIL (route does not exist yet).
 - Add runtime deps pinned for AI SDK 6 line:
   - `ai@^6.0.0`
   - `@ai-sdk/react@^3.0.0`
-  - `@ai-sdk/openai@^3.0.0` (or chosen first provider package in `@ai-sdk/*@^3.0.0`)
+  - `@ai-sdk/google@^3.0.0` (or chosen first provider package in `@ai-sdk/*@^3.0.0`)
 - Add env keys:
-  - `AI_PROVIDER=openai`
-  - `AI_MODEL=openai/gpt-4o-mini`
-  - `OPENAI_API_KEY=`
+  - `AI_PROVIDER=google`
+  - `AI_MODEL=gemini-2.5-flash`
+  - `GOOGLE_GENERATIVE_AI_API_KEY=`
   - optional future provider placeholders (anthropic/gateway).
 
 **Step 4: Add minimal route stub to satisfy setup test (GREEN)**
@@ -172,7 +173,7 @@ git commit -m "feat: [US-002][US-007] - secure schema-validated provider-agnosti
 - `buildSystemPrompt(ctx)` includes:
   - read-only policy
   - tenant-safety policy
-  - no-attachments policy
+  - no user-upload/multimodal policy (attachment lookup allowed only via read-only signed-URL tool outputs)
   - clear "Fact vs Inference vs Draft" response contract
   - Vietnamese-first response requirement.
 - prompt builder is deterministic for same input context.
@@ -333,6 +334,8 @@ git commit -m "feat: [US-003][US-004] - enforce RPC-only AI tools with tenant-aw
 - Create: `src/lib/ai/tools/equipment-tools.ts`
 - Create: `src/lib/ai/tools/maintenance-tools.ts`
 - Create: `src/lib/ai/tools/repair-tools.ts`
+- Create: `src/lib/ai/tools/usage-tools.ts`
+- Create: `src/lib/ai/tools/attachment-tools.ts`
 - Modify: `src/lib/ai/tools/registry.ts`
 - Modify: `src/lib/ai/prompts/system.ts`
 - Modify: `src/lib/ai/prompts/__tests__/system.test.ts`
@@ -342,7 +345,10 @@ git commit -m "feat: [US-003][US-004] - enforce RPC-only AI tools with tenant-aw
 - equipment lookup uses approved RPC fn only.
 - maintenance summary uses approved RPC fn only.
 - repair summary uses approved RPC fn only.
+- usage history lookup uses approved RPC fn only.
+- attachment retrieval only provides secured short-lived signed URLs + file metadata from `file_dinh_kem` via approved read-only RPC (no direct Storage API calls in AI tool path).
 - tool responses are tagged/structured as factual retrieval outputs.
+- AI utilizes equipment usage frequency (from `nhat_ky_su_dung` via RPC) to correctly advocate maintenance cycle changes.
 
 **Step 2: Run failing read-only tests**
 
@@ -355,7 +361,7 @@ Expected: FAIL.
 **Step 3: Implement minimal tool execute functions (GREEN)**
 - Each tool has explicit `inputSchema` (Zod) and deterministic RPC mapping.
 - No tool may call mutation RPCs.
-- Update `system.ts` tool-instruction block to describe read-only toolset and factual citation behavior; bump prompt version if behavior changes.
+- Update `system.ts` tool-instruction block to describe read-only toolset, factual citation behavior, and predictive maintenance suggestions (i.e. if usage frequency is exceptionally high, proactively recommend shortening the maintenance cycle); bump prompt version if behavior changes.
 
 **Step 4: Re-run tests**
 
@@ -368,11 +374,41 @@ Expected: PASS.
 **Step 5: Commit**
 
 ```bash
-git add src/lib/ai/tools/equipment-tools.ts src/lib/ai/tools/maintenance-tools.ts src/lib/ai/tools/repair-tools.ts src/lib/ai/tools/registry.ts src/lib/ai/prompts/system.ts src/lib/ai/prompts/__tests__/system.test.ts src/app/api/chat/__tests__/route.readonly-tools.test.ts
-git commit -m "feat: [US-005] - add read-only operational AI tools via RPC allowlist"
+git add src/lib/ai/tools/equipment-tools.ts src/lib/ai/tools/maintenance-tools.ts src/lib/ai/tools/repair-tools.ts src/lib/ai/tools/usage-tools.ts src/lib/ai/tools/attachment-tools.ts src/lib/ai/tools/registry.ts src/lib/ai/prompts/system.ts src/lib/ai/prompts/__tests__/system.test.ts src/app/api/chat/__tests__/route.readonly-tools.test.ts
+git commit -m "feat: [US-005] - add read-only AI tools with usage and attachment lookup features"
 ```
 
-### Task 4: Draft Repair Request Object Generation (No Submission)
+### Task 4: AI Diagnostic & Remediation Generation (Troubleshooting Assistant)
+
+**Files:**
+- Create: `src/lib/ai/draft/troubleshooting-schema.ts`
+- Create: `src/lib/ai/draft/troubleshooting-tool.ts`
+- Modify: `src/lib/ai/tools/registry.ts`
+- Modify: `src/lib/ai/prompts/system.ts`
+
+**Step 1: Write failing diagnostic tests (RED)**
+- generated diagnostic plan validates against Zod schema (problem context, potential causes, step-by-step remediation).
+- tool correctly correlates equipment model/type from context if available.
+- **Context Dependency Test**: ensure diagnostic tool is only processed if RAG context has been retrieved first.
+
+**Step 2: Implement minimal diagnostic tool & RAG Instructions (GREEN)**
+- Return typed object with structured troubleshooting steps:
+  - `equipment_context` (chủng loại, model)
+  - `probable_causes` (danh sách nguyên nhân có thể xảy ra)
+  - `remediation_steps` (các bước khắc phục)
+- **RAG System Prompt Update (`system.ts`)**: 
+  - Strictly instruct the AI that it **MUST NOT** hallucinate medical equipment repairs based on general knowledge.
+  - Instruct the AI to explicitly execute `equipmentLookup` and `repairSummary` tools FIRST, specifically searching for historical solutions to similar issues.
+  - Only after gathering internal historical context, invoke the `troubleshooting-tool` to map `probable_causes` and `remediation_steps`.
+
+**Step 3: Commit**
+
+```bash
+git add src/lib/ai/draft/troubleshooting-schema.ts src/lib/ai/draft/troubleshooting-tool.ts src/lib/ai/tools/registry.ts src/lib/ai/prompts/system.ts
+git commit -m "feat: [US-009] - add schema-validated AI diagnostic and remediation tool"
+```
+
+### Task 4.5: Draft Repair Request Object Generation (No Submission)
 
 **Files:**
 - Create: `src/lib/ai/draft/repair-request-draft-schema.ts`
@@ -427,6 +463,8 @@ git commit -m "feat: [US-006] - add schema-validated repair-request draft genera
 
 ### Task 5: Assistant Panel UI + Layout Integration
 
+> **See dedicated Design Plan:** `docs/plans/2026-03-01-assistant-chat-ui-design.md` for complete UI/UX specifications, styling, and micro-interactions.
+
 **Files:**
 - Create: `src/components/assistant/AssistantTriggerButton.tsx`
 - Create: `src/components/assistant/AssistantPanel.tsx`
@@ -441,7 +479,7 @@ git commit -m "feat: [US-006] - add schema-validated repair-request draft genera
 - assistant trigger visible only in authenticated protected layout.
 - panel opens/closes.
 - input/send disabled whenever status is not `ready`.
-- no attachment controls rendered.
+- no user attachment controls rendered.
 - exactly 3 suggested question chips render in chat UI.
 - clicking a suggested question sends a user message immediately (quick ask).
 - suggested question chips are disabled while status is not `ready`.
@@ -558,7 +596,7 @@ Expected: PASS.
 - Authenticated user sees AI trigger in protected layout.
 - Unauthenticated user cannot access `/api/chat`.
 - Composer disabled during streaming.
-- No attachment upload UI.
+- No user attachment upload UI.
 - Three suggested question chips are visible on first open.
 - Clicking a suggested chip submits a user question immediately.
 - Requests exceeding limits return safe message (no internal details).

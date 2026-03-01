@@ -126,6 +126,7 @@ Invoke `context-engineering` skill for: agent systems, token optimization (>70%)
 |---------|-------------|
 | `/ultra-think` | Complex decisions, architecture choices, trade-off analysis, multi-perspective problems |
 | `/generate-tests` | After implementing features or fixing bugs - generate comprehensive tests |
+| `/next-best-practices` | **AUTO-INVOKE** when writing/reviewing Next.js App Router code, route handlers, metadata, error files, middleware/proxy, RSC boundaries, async request APIs, or Next.js optimizations |
 | `/react-best-practices` | **AUTO-INVOKE** when writing/reviewing React components, hooks, data fetching, or optimizing performance |
 | `/web-design-guidelines` | When reviewing UI code for accessibility, UX, or design compliance |
 | `/prd` | Create or update a PRD before Ralph execution |
@@ -325,14 +326,14 @@ module/
 ## React/Next.js Skills (Auto-Invoke)
 
 <IMPORTANT>
-When working on React/Next.js code, PROACTIVELY invoke `/react-best-practices` skill:
-- **Before** writing new components, hooks, or pages
-- **During** code reviews for performance issues
-- **When** implementing data fetching (client or server-side)
-- **When** optimizing bundle size or re-renders
+When working on React/Next.js code, PROACTIVELY invoke these skills:
+- **Invoke `/next-best-practices` first** for Next.js framework concerns (App Router conventions, routes/layouts/pages, route handlers, metadata/error files, middleware/proxy, RSC boundaries, async APIs, image/font/script/bundling).
+- **Invoke `/react-best-practices`** for React component architecture, hooks, rendering behavior, and re-render/performance guidance.
+- For Next.js tasks that include substantial component logic, invoke both in order: `/next-best-practices` then `/react-best-practices`.
 
-The skill contains 45 rules across 8 priority categories from Vercel Engineering.
-Reference `C:\Users\win\.claude\skills\react-best-practices\rules\` for specific patterns.
+Reference installed skills:
+- `C:\Users\PC\.codex\skills\next-best-practices\`
+- `C:\Users\PC\.codex\skills\vercel-react-best-practices\`
 </IMPORTANT>
 <!-- REACT-SKILLS:END -->
 
