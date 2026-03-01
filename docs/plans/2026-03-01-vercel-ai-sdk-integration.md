@@ -372,7 +372,33 @@ git add src/lib/ai/tools/equipment-tools.ts src/lib/ai/tools/maintenance-tools.t
 git commit -m "feat: [US-005] - add read-only operational AI tools via RPC allowlist"
 ```
 
-### Task 4: Draft Repair Request Object Generation (No Submission)
+### Task 4: AI Diagnostic & Remediation Generation (Troubleshooting Assistant)
+
+**Files:**
+- Create: `src/lib/ai/draft/troubleshooting-schema.ts`
+- Create: `src/lib/ai/draft/troubleshooting-tool.ts`
+- Modify: `src/lib/ai/tools/registry.ts`
+- Modify: `src/lib/ai/prompts/system.ts`
+
+**Step 1: Write failing diagnostic tests (RED)**
+- generated diagnostic plan validates against Zod schema (problem context, potential causes, step-by-step remediation).
+- tool correctly correlates equipment model/type from context if available.
+
+**Step 2: Implement minimal diagnostic tool (GREEN)**
+- Return typed object with structured troubleshooting steps:
+  - `equipment_context` (chủng loại, model)
+  - `probable_causes` (danh sách nguyên nhân có thể xảy ra)
+  - `remediation_steps` (các bước khắc phục)
+- Update `system.ts` to instruct the AI to analyze "Mo Ta Su Co" (Issue Description) and invoke this tool to provide contextual remediation paths.
+
+**Step 3: Commit**
+
+```bash
+git add src/lib/ai/draft/troubleshooting-schema.ts src/lib/ai/draft/troubleshooting-tool.ts src/lib/ai/tools/registry.ts src/lib/ai/prompts/system.ts
+git commit -m "feat: [US-009] - add schema-validated AI diagnostic and remediation tool"
+```
+
+### Task 4.5: Draft Repair Request Object Generation (No Submission)
 
 **Files:**
 - Create: `src/lib/ai/draft/repair-request-draft-schema.ts`
