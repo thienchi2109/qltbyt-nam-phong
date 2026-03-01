@@ -383,13 +383,17 @@ git commit -m "feat: [US-005] - add read-only operational AI tools via RPC allow
 **Step 1: Write failing diagnostic tests (RED)**
 - generated diagnostic plan validates against Zod schema (problem context, potential causes, step-by-step remediation).
 - tool correctly correlates equipment model/type from context if available.
+- **Context Dependency Test**: ensure diagnostic tool is only processed if RAG context has been retrieved first.
 
-**Step 2: Implement minimal diagnostic tool (GREEN)**
+**Step 2: Implement minimal diagnostic tool & RAG Instructions (GREEN)**
 - Return typed object with structured troubleshooting steps:
   - `equipment_context` (chủng loại, model)
   - `probable_causes` (danh sách nguyên nhân có thể xảy ra)
   - `remediation_steps` (các bước khắc phục)
-- Update `system.ts` to instruct the AI to analyze "Mo Ta Su Co" (Issue Description) and invoke this tool to provide contextual remediation paths.
+- **RAG System Prompt Update (`system.ts`)**: 
+  - Strictly instruct the AI that it **MUST NOT** hallucinate medical equipment repairs based on general knowledge.
+  - Instruct the AI to explicitly execute `equipmentLookup` and `repairSummary` tools FIRST, specifically searching for historical solutions to similar issues.
+  - Only after gathering internal historical context, invoke the `troubleshooting-tool` to map `probable_causes` and `remediation_steps`.
 
 **Step 3: Commit**
 
