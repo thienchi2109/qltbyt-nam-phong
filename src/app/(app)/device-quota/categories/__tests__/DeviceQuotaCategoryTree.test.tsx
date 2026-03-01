@@ -10,6 +10,7 @@ vi.mock('../_hooks/useDeviceQuotaCategoryContext', () => ({
 }))
 
 const mockUseContext = vi.mocked(useDeviceQuotaCategoryContext)
+type MockCategoryContextValue = ReturnType<typeof useDeviceQuotaCategoryContext>
 
 describe('DeviceQuotaCategoryTree', () => {
   beforeEach(() => {
@@ -26,7 +27,7 @@ describe('DeviceQuotaCategoryTree', () => {
       openEditDialog: vi.fn(),
       openDeleteDialog: vi.fn(),
       mutatingCategoryId: null,
-    } as any)
+    } as unknown as MockCategoryContextValue)
 
     render(<DeviceQuotaCategoryTree />)
 
@@ -47,11 +48,31 @@ describe('DeviceQuotaCategoryTree', () => {
       openEditDialog: vi.fn(),
       openDeleteDialog: vi.fn(),
       mutatingCategoryId: null,
-    } as any)
+    } as unknown as MockCategoryContextValue)
 
     render(<DeviceQuotaCategoryTree />)
 
     expect(screen.getByText('Nhóm 1')).toBeInTheDocument()
     expect(screen.getByText('Nhóm 1.1')).toBeInTheDocument()
   })
+
+  it('uses semantic list markup for category tree', () => {
+    mockUseContext.mockReturnValue({
+      categories: [
+        { id: 1, parent_id: null, ma_nhom: '01', ten_nhom: 'Nhóm 1', level: 1, so_luong_hien_co: 0 },
+      ],
+      isLoading: false,
+      openCreateDialog: vi.fn(),
+      openEditDialog: vi.fn(),
+      openDeleteDialog: vi.fn(),
+      mutatingCategoryId: null,
+    } as unknown as MockCategoryContextValue)
+
+    render(<DeviceQuotaCategoryTree />)
+
+    expect(screen.getByRole('list', { name: 'Danh mục thiết bị' })).toBeInTheDocument()
+    expect(screen.queryByRole('listbox')).not.toBeInTheDocument()
+    expect(screen.queryByRole('option')).not.toBeInTheDocument()
+  })
 })
+

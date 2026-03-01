@@ -12,6 +12,28 @@ bd close <id>         # Complete work
 bd sync               # Sync with git
 ```
 
+## React Doctor: True Full Scan (Non-Diff)
+
+React Doctor can auto-switch to diff-only scanning in non-interactive runs. When you need a true full-repo scan, force `diff: false` temporarily:
+
+```powershell
+$cfg = "react-doctor.config.json"
+Set-Content -Path $cfg -Value '{"diff": false}' -Encoding utf8
+try {
+  node scripts/npm-run.js npx react-doctor@latest . --verbose --yes --project nextn --no-ami
+} finally {
+  Remove-Item $cfg -Force -ErrorAction SilentlyContinue
+}
+```
+
+For score-only full scan:
+
+```bash
+node scripts/npm-run.js npx react-doctor@latest . --score --yes --project nextn --no-ami
+```
+
+Do not rely on the default `react-doctor` script when you specifically need full-scan metrics.
+
 ## Ralph Flow (Claude Code/Codex Execution)
 
 When running Ralph workflow, follow this exact loop:
