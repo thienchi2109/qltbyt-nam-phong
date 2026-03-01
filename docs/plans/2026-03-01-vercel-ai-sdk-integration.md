@@ -334,6 +334,7 @@ git commit -m "feat: [US-003][US-004] - enforce RPC-only AI tools with tenant-aw
 - Create: `src/lib/ai/tools/maintenance-tools.ts`
 - Create: `src/lib/ai/tools/repair-tools.ts`
 - Create: `src/lib/ai/tools/usage-tools.ts`
+- Create: `src/lib/ai/tools/attachment-tools.ts`
 - Modify: `src/lib/ai/tools/registry.ts`
 - Modify: `src/lib/ai/prompts/system.ts`
 - Modify: `src/lib/ai/prompts/__tests__/system.test.ts`
@@ -344,6 +345,7 @@ git commit -m "feat: [US-003][US-004] - enforce RPC-only AI tools with tenant-aw
 - maintenance summary uses approved RPC fn only.
 - repair summary uses approved RPC fn only.
 - usage history lookup uses approved RPC fn only.
+- attachment retrieval only provides secured/signed URLs from `file_dinh_kem` via approved RPC/Storage API.
 - tool responses are tagged/structured as factual retrieval outputs.
 - AI utilizes equipment usage frequency (from `nhat_ky_su_dung` via RPC) to correctly advocate maintenance cycle changes.
 
@@ -371,8 +373,8 @@ Expected: PASS.
 **Step 5: Commit**
 
 ```bash
-git add src/lib/ai/tools/equipment-tools.ts src/lib/ai/tools/maintenance-tools.ts src/lib/ai/tools/repair-tools.ts src/lib/ai/tools/usage-tools.ts src/lib/ai/tools/registry.ts src/lib/ai/prompts/system.ts src/lib/ai/prompts/__tests__/system.test.ts src/app/api/chat/__tests__/route.readonly-tools.test.ts
-git commit -m "feat: [US-005] - add read-only AI tools with usage-based predictive maintenance rules"
+git add src/lib/ai/tools/equipment-tools.ts src/lib/ai/tools/maintenance-tools.ts src/lib/ai/tools/repair-tools.ts src/lib/ai/tools/usage-tools.ts src/lib/ai/tools/attachment-tools.ts src/lib/ai/tools/registry.ts src/lib/ai/prompts/system.ts src/lib/ai/prompts/__tests__/system.test.ts src/app/api/chat/__tests__/route.readonly-tools.test.ts
+git commit -m "feat: [US-005] - add read-only AI tools with usage and attachment lookup features"
 ```
 
 ### Task 4: AI Diagnostic & Remediation Generation (Troubleshooting Assistant)
