@@ -18,6 +18,7 @@
 - Draft generation is schema-validated output only; no create/update/delete RPC invocation from chat route.
 - Auth check must run before model/tool execution.
 - Tenant isolation and role behavior must mirror existing app rules.
+- Budget and abuse guardrails are mandatory: output token cap, tool-step cap, rate limit, quota checks, and usage telemetry.
 
 ---
 
@@ -214,6 +215,61 @@ Expected: PASS.
 ```bash
 git add src/lib/ai/prompts/system.ts src/lib/ai/prompts/types.ts src/lib/ai/prompts/__tests__/system.test.ts docs/ai/system-prompt-changelog.md src/app/api/chat/route.ts
 git commit -m "feat: [US-002] - add versioned system prompt module with tests and changelog"
+```
+
+---
+
+### Task 1B: Budget and Abuse Guardrails (Token/Cost/Rate)
+
+**Files:**
+- Create: `src/lib/ai/limits.ts`
+- Create: `src/lib/ai/usage-metering.ts`
+- Modify: `src/app/api/chat/route.ts`
+- Create: `src/app/api/chat/__tests__/route.limits.test.ts`
+- Create: `src/app/api/chat/__tests__/route.rate-limit-and-quota.test.ts`
+
+**Step 1: Write failing guardrail tests (RED)**
+- route enforces `maxOutputTokens` on model call.
+- route enforces max tool-step count (`stopWhen: stepCountIs(...)`).
+- route rejects excessive chat history/input size with safe `400`.
+- rate-limited users receive `429`.
+- over-quota users/tenants receive `429` and safe budget message.
+
+**Step 2: Run failing guardrail tests**
+
+Run:
+```bash
+node scripts/npm-run.js run test:run -- "src/app/api/chat/__tests__/route.limits.test.ts" "src/app/api/chat/__tests__/route.rate-limit-and-quota.test.ts"
+```
+Expected: FAIL.
+
+**Step 3: Implement minimal guardrail layer (GREEN)**
+- Add `limits.ts` defaults (env-configurable):
+  - `AI_MAX_OUTPUT_TOKENS`
+  - `AI_MAX_TOOL_STEPS`
+  - `AI_MAX_MESSAGES`
+  - `AI_MAX_INPUT_CHARS`
+- In `route.ts`, apply:
+  - `maxOutputTokens`
+  - `stopWhen: stepCountIs(AI_MAX_TOOL_STEPS)`
+  - bounded/truncated/validated input.
+- Add `usage-metering.ts` hook points:
+  - record request token usage and estimated cost.
+  - enforce per-user/tenant request throttling and quota checks (implementation can start in-memory; phase-upgradable).
+
+**Step 4: Re-run tests**
+
+Run:
+```bash
+node scripts/npm-run.js run test:run -- "src/app/api/chat/__tests__/route.limits.test.ts" "src/app/api/chat/__tests__/route.rate-limit-and-quota.test.ts"
+```
+Expected: PASS.
+
+**Step 5: Commit**
+
+```bash
+git add src/lib/ai/limits.ts src/lib/ai/usage-metering.ts src/app/api/chat/route.ts src/app/api/chat/__tests__/route.limits.test.ts src/app/api/chat/__tests__/route.rate-limit-and-quota.test.ts
+git commit -m "feat: [US-002] - add AI token, rate, and quota guardrails"
 ```
 
 ---
@@ -505,6 +561,8 @@ Expected: PASS.
 - No attachment upload UI.
 - Three suggested question chips are visible on first open.
 - Clicking a suggested chip submits a user question immediately.
+- Requests exceeding limits return safe message (no internal details).
+- Rapid repeated requests hit rate limit with predictable UX state.
 - Tenant-missing privileged scenario shows Vietnamese guidance.
 - Draft response appears as structured draft and is not auto-submitted.
 
@@ -570,6 +628,9 @@ git commit -m "feat: [US-001..US-008] - finalize verification and documentation 
 - Keep v1 tools read-only; block write RPCs via tests and explicit guard.
 - Keep prompt/system policy explicit about factual vs inference vs draft output.
 - Keep route runtime Node-only to match current secure API patterns.
+- Apply hard caps on output tokens and tool steps.
+- Enforce per-user and per-tenant rate/quota checks before model execution.
+- Capture usage telemetry for budget monitoring and emergency kill-switch response.
 
 ---
 
@@ -581,3 +642,4 @@ git commit -m "feat: [US-001..US-008] - finalize verification and documentation 
 - No tenant boundary regressions in test matrix.
 - No assistant-initiated write path exists in v1.
 - Suggested-question quick asks (3 chips) work and respect disabled/loading states.
+- Token/rate/quota guardrail tests pass and prevent accidental budget overrun.
