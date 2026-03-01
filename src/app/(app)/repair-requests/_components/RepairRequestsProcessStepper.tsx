@@ -37,14 +37,17 @@ export function RepairRequestsProcessStepper({ status, className }: RepairReques
 
     const steps = [
         {
+            id: "pending",
             title: "Chờ xử lý",
             icon: Clock
         },
         {
+            id: "approved",
             title: "Đã duyệt & Sửa chữa",
             icon: Loader2
         },
         {
+            id: "final",
             title: isFailure ? "Không hoàn thành" : "Hoàn thành",
             icon: isFailure ? X : Check
         },
@@ -95,12 +98,11 @@ export function RepairRequestsProcessStepper({ status, className }: RepairReques
 
                     const Icon = step.icon
 
-                    // Positional key: steps array is always exactly 3 fixed-position elements.
-                    // Do NOT use step.title — the third title is dynamic (isFailure-dependent)
-                    // and would cause unmount/remount instead of in-place update.
+                    // Stable semantic IDs avoid index keys and preserve node identity
+                    // even when the final step title/icon changes with status.
                     return (
                         <div
-                            key={`step-${idx}`}
+                            key={step.id}
                             className={cn(
                                 "relative flex-1 flex items-center justify-center h-12 transition-colors duration-300",
                                 bgClass,
