@@ -98,7 +98,7 @@ export function useMaintenancePlans(
 }
 
 // Fetch maintenance schedules with filters
-export function useMaintenanceSchedules(filters?: {
+function useMaintenanceSchedules(filters?: {
   search?: string
   phong_ban?: string
   trang_thai?: string
@@ -153,7 +153,7 @@ export function useMaintenanceHistory(filters?: {
 }
 
 // Fetch single maintenance record details
-export function useMaintenanceDetail(id: string | null) {
+function useMaintenanceDetail(id: string | null) {
   return useQuery({
     queryKey: maintenanceKeys.detail(id || ''),
     queryFn: async () => {
@@ -355,7 +355,7 @@ export function useDeleteMaintenancePlan() {
 }
 
 // Create maintenance schedule mutation
-export function useCreateMaintenanceSchedule() {
+function useCreateMaintenanceSchedule() {
   const queryClient = useQueryClient()
 
   return useMutation({
@@ -418,7 +418,7 @@ export function useUpdateMaintenanceSchedule() {
 }
 
 // Complete maintenance mutation
-export function useCompleteMaintenance() {
+function useCompleteMaintenance() {
   const queryClient = useQueryClient()
 
   return useMutation({
@@ -455,7 +455,7 @@ export function useCompleteMaintenance() {
 }
 
 // Delete maintenance schedule mutation
-export function useDeleteMaintenanceSchedule() {
+function useDeleteMaintenanceSchedule() {
   const queryClient = useQueryClient()
 
   return useMutation({
