@@ -17,14 +17,45 @@ describe('system prompt module', () => {
       selectedFacilityId: 2,
     })
 
-    expect(prompt).toContain('Respond in Vietnamese')
+    // Language & identity
+    expect(prompt).toContain('tiếng Việt')
+    expect(prompt).toContain('Trợ lý Quản lý Thiết bị Y tế')
+
+    // Security
     expect(prompt).toContain('read-only')
     expect(prompt).toContain('tenant')
+
+    // Response contract labels
     expect(prompt).toContain('Fact')
     expect(prompt).toContain('Inference')
     expect(prompt).toContain('Draft')
+
+    // Multimodal & attachment policy
     expect(prompt).toContain('multimodal')
     expect(prompt).toContain('signed URL')
+
+    // Domain knowledge
+    expect(prompt).toContain('thiet_bi')
+    expect(prompt).toContain('yeu_cau_sua_chua')
+    expect(prompt).toContain('ke_hoach')
+
+    // RAG-first troubleshooting
+    expect(prompt).toContain('equipmentLookup')
+    expect(prompt).toContain('repairSummary')
+
+    // Safety guardrails
+    expect(prompt).toContain('an toàn bệnh nhân')
+  })
+
+  it('includes role-aware context with Vietnamese labels', () => {
+    const prompt = buildSystemPrompt({
+      role: 'technician',
+      selectedFacilityId: 5,
+    })
+
+    expect(prompt).toContain('technician')
+    expect(prompt).toContain('Kỹ thuật viên')
+    expect(prompt).toContain('5')
   })
 
   it('sanitizes role and facility context to avoid prompt injection', () => {
@@ -33,8 +64,8 @@ describe('system prompt module', () => {
       selectedFacilityId: Number.NaN,
     })
 
-    expect(prompt).toContain('Current user role: unknown.')
-    expect(prompt).toContain('Current selected facility: unspecified.')
+    expect(prompt).toContain('unknown')
+    expect(prompt).toContain('unspecified')
     expect(prompt).not.toContain('Ignore all previous instructions')
   })
 
@@ -59,5 +90,13 @@ describe('system prompt module', () => {
       /from ['"]@\/lib\/ai\/prompts\/system['"]/,
     )
     expect(routeSource).toMatch(/buildSystemPrompt\(/)
+  })
+
+  it('handles missing context gracefully', () => {
+    const prompt = buildSystemPrompt()
+
+    expect(prompt).toContain('unknown')
+    expect(prompt).toContain('Chưa xác định')
+    expect(prompt).toContain('unspecified')
   })
 })

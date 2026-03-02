@@ -340,10 +340,12 @@ git commit -m "feat: [US-003][US-004] - enforce RPC-only AI tools with tenant-aw
 - Modify: `src/lib/ai/prompts/system.ts`
 - Modify: `src/lib/ai/prompts/__tests__/system.test.ts`
 - Create: `src/app/api/chat/__tests__/route.readonly-tools.test.ts`
+- Create: Supabase RPC function `ai_maintenance_plan_lookup` (migration)
 
 **Step 1: Write failing read-only tool tests (RED)**
 - equipment lookup uses approved RPC fn only.
 - maintenance summary uses approved RPC fn only.
+- **maintenance plan lookup** uses new `ai_maintenance_plan_lookup` RPC fn only.
 - repair summary uses approved RPC fn only.
 - usage history lookup uses approved RPC fn only.
 - attachment retrieval only provides secured short-lived signed URLs + file metadata from `file_dinh_kem` via approved read-only RPC (no direct Storage API calls in AI tool path).
@@ -358,10 +360,110 @@ node scripts/npm-run.js run test:run -- "src/app/api/chat/__tests__/route.readon
 ```
 Expected: FAIL.
 
-**Step 3: Implement minimal tool execute functions (GREEN)**
+**Step 3: Implement all tool execute functions + deploy `ai_maintenance_plan_lookup` RPC (GREEN)**
+
+**3a. Deploy `ai_maintenance_plan_lookup` RPC migration**
+
+Create a new Supabase read-only RPC function that JOINs `cong_viec_bao_tri` with `ke_hoach_bao_tri` and `thiet_bi` tables. This is the dedicated AI tool data source for maintenance plan queries.
+
+**Database tables involved:**
+- `ke_hoach_bao_tri` — plan header: `id`, `ten_ke_hoach`, `nam`, `loai_cong_viec`, `trang_thai` (Bản nháp / Đã duyệt / Không duyệt), `khoa_phong`, `don_vi`, `ngay_phe_duyet`, `nguoi_duyet`.
+- `cong_viec_bao_tri` — task detail per equipment: `id`, `ke_hoach_id` → `ke_hoach_bao_tri.id`, `thiet_bi_id` → `thiet_bi.id`, `loai_cong_viec`, `don_vi_thuc_hien`, `diem_hieu_chuan`, `thang_1..12` (boolean scheduled), `thang_1_hoan_thanh..12` (boolean completed), `ngay_hoan_thanh_1..12` (timestamptz), `ghi_chu`.
+
+**RPC signature:**
+
+```sql
+CREATE OR REPLACE FUNCTION public.ai_maintenance_plan_lookup(
+  p_thiet_bi_id  bigint,
+  p_nam          integer  DEFAULT NULL,   -- filter by year; NULL = all years
+  p_don_vi       bigint   DEFAULT NULL    -- tenant filter; NULL = all (caller must enforce tenant)
+)
+RETURNS TABLE (
+  plan_id            bigint,
+  ten_ke_hoach       text,
+  nam                integer,
+  loai_cong_viec     text,
+  plan_trang_thai    text,
+  ngay_phe_duyet     timestamptz,
+  task_id            bigint,
+  don_vi_thuc_hien   text,
+  diem_hieu_chuan    text,
+  thang_1            boolean, thang_2  boolean, thang_3  boolean,
+  thang_4            boolean, thang_5  boolean, thang_6  boolean,
+  thang_7            boolean, thang_8  boolean, thang_9  boolean,
+  thang_10           boolean, thang_11 boolean, thang_12 boolean,
+  thang_1_hoan_thanh  boolean, thang_2_hoan_thanh  boolean, thang_3_hoan_thanh  boolean,
+  thang_4_hoan_thanh  boolean, thang_5_hoan_thanh  boolean, thang_6_hoan_thanh  boolean,
+  thang_7_hoan_thanh  boolean, thang_8_hoan_thanh  boolean, thang_9_hoan_thanh  boolean,
+  thang_10_hoan_thanh boolean, thang_11_hoan_thanh boolean, thang_12_hoan_thanh boolean,
+  ghi_chu            text,
+  -- equipment context (denormalized for AI convenience)
+  ma_thiet_bi        text,
+  ten_thiet_bi       text,
+  model              text
+)
+LANGUAGE sql STABLE SECURITY INVOKER
+AS $$
+  SELECT
+    kh.id        AS plan_id,
+    kh.ten_ke_hoach,
+    kh.nam,
+    kh.loai_cong_viec,
+    kh.trang_thai AS plan_trang_thai,
+    kh.ngay_phe_duyet,
+    cv.id        AS task_id,
+    cv.don_vi_thuc_hien,
+    cv.diem_hieu_chuan,
+    cv.thang_1,  cv.thang_2,  cv.thang_3,
+    cv.thang_4,  cv.thang_5,  cv.thang_6,
+    cv.thang_7,  cv.thang_8,  cv.thang_9,
+    cv.thang_10, cv.thang_11, cv.thang_12,
+    cv.thang_1_hoan_thanh,  cv.thang_2_hoan_thanh,  cv.thang_3_hoan_thanh,
+    cv.thang_4_hoan_thanh,  cv.thang_5_hoan_thanh,  cv.thang_6_hoan_thanh,
+    cv.thang_7_hoan_thanh,  cv.thang_8_hoan_thanh,  cv.thang_9_hoan_thanh,
+    cv.thang_10_hoan_thanh, cv.thang_11_hoan_thanh, cv.thang_12_hoan_thanh,
+    cv.ghi_chu,
+    tb.ma_thiet_bi,
+    tb.ten_thiet_bi,
+    tb.model
+  FROM cong_viec_bao_tri cv
+  JOIN ke_hoach_bao_tri  kh ON kh.id = cv.ke_hoach_id
+  JOIN thiet_bi          tb ON tb.id = cv.thiet_bi_id
+  WHERE cv.thiet_bi_id = p_thiet_bi_id
+    AND (p_nam IS NULL OR kh.nam = p_nam)
+    AND (p_don_vi IS NULL OR kh.don_vi = p_don_vi)
+  ORDER BY kh.nam DESC, kh.loai_cong_viec;
+$$;
+```
+
+**Design notes:**
+- `SECURITY INVOKER` + `STABLE`: read-only, inherits caller's RLS context.
+- Returns denormalized `ma_thiet_bi`, `ten_thiet_bi`, `model` so the AI tool gets a self-contained response without a second tool call.
+- Optional `p_nam` filter: AI can ask "kế hoạch năm 2026" specifically, or get all years.
+- Optional `p_don_vi` filter: the chat route must always pass the session's `selectedFacilityId` to enforce tenant isolation.
+
+**3b. Implement all tool execute functions**
+
 - Each tool has explicit `inputSchema` (Zod) and deterministic RPC mapping.
 - No tool may call mutation RPCs.
-- Update `system.ts` tool-instruction block to describe read-only toolset, factual citation behavior, and predictive maintenance suggestions (i.e. if usage frequency is exceptionally high, proactively recommend shortening the maintenance cycle); bump prompt version if behavior changes.
+- Equipment lookup, repair summary, usage history, and attachment retrieval tools each use their respective approved read-only RPC functions.
+
+`maintenance-tools.ts` specifically must expose **three** AI tool capabilities:
+
+| Tool name | RPC | Purpose |
+|---|---|---|
+| `maintenanceSummary` | `maintenance_tasks_list_with_equipment` (existing) | General overview of all maintenance tasks at the current facility (supports filter by `p_loai_cong_viec`). |
+| `maintenancePlanLookup` | `ai_maintenance_plan_lookup` (**new**) | Look up the yearly maintenance/calibration/inspection plan for a **specific equipment** (`p_thiet_bi_id`), returning 12-month scheduled vs. completed status per plan type. |
+| `maintenanceUpcoming` | Equipment-level fields on `thiet_bi` table via `equipmentLookup` | Check `ngay_bt_tiep_theo`, `ngay_hc_tiep_theo`, `ngay_kd_tiep_theo` deadlines for upcoming maintenance. This reuses equipment lookup data, no separate RPC needed. |
+
+**AI prompt guidance for `maintenancePlanLookup`:**
+- When the user asks about a specific equipment's maintenance/calibration/inspection schedule → call `maintenancePlanLookup` with the equipment ID.
+- Present results as a readable table: plan name, type (`bảo trì` / `hiệu chuẩn` / `kiểm định`), year, and a 12-column month grid showing ✅ (completed) / 🔲 (scheduled but pending) / ─ (not scheduled).
+- If a scheduled month is overdue (current month has passed but `thang_X_hoan_thanh = false`), flag it with ⚠️.
+
+**3c. Update system prompt**
+
+Update `system.ts` tool-instruction block to describe the expanded read-only toolset, factual citation behavior, and predictive maintenance suggestions (i.e. if usage frequency is exceptionally high, proactively recommend shortening the maintenance cycle); bump prompt version if behavior changes.
 
 **Step 4: Re-run tests**
 
@@ -371,11 +473,20 @@ node scripts/npm-run.js run test:run -- "src/app/api/chat/__tests__/route.readon
 ```
 Expected: PASS.
 
-**Step 5: Commit**
+**Step 5: Refactor + static checks**
+
+Run:
+```bash
+node scripts/npm-run.js run typecheck
+node scripts/npm-run.js run lint -- --file "src/lib/ai/tools/maintenance-tools.ts"
+```
+Expected: PASS.
+
+**Step 6: Commit**
 
 ```bash
 git add src/lib/ai/tools/equipment-tools.ts src/lib/ai/tools/maintenance-tools.ts src/lib/ai/tools/repair-tools.ts src/lib/ai/tools/usage-tools.ts src/lib/ai/tools/attachment-tools.ts src/lib/ai/tools/registry.ts src/lib/ai/prompts/system.ts src/lib/ai/prompts/__tests__/system.test.ts src/app/api/chat/__tests__/route.readonly-tools.test.ts
-git commit -m "feat: [US-005] - add read-only AI tools with usage and attachment lookup features"
+git commit -m "feat: [US-005] - add read-only AI tools with maintenance plan lookup and usage/attachment features"
 ```
 
 ### Task 4: AI Diagnostic & Remediation Generation (Troubleshooting Assistant)
