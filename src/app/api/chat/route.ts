@@ -11,12 +11,43 @@ import { authOptions } from '@/auth/config'
 import { chatRequestSchema } from '@/lib/ai/chat-request-schema'
 import { getChatModel } from '@/lib/ai/provider'
 import { buildSystemPrompt } from '@/lib/ai/prompts/system'
+import { ROLES } from '@/lib/rbac'
 
 export const runtime = 'nodejs'
 export const maxDuration = 30
 
 function badRequest(message: string) {
   return NextResponse.json({ error: message }, { status: 400 })
+}
+
+const ALLOWED_CHAT_ROLES = new Set<string>(Object.values(ROLES))
+
+function hasAllowedChatRole(value: unknown): boolean {
+  if (typeof value !== 'string') {
+    return false
+  }
+
+  return ALLOWED_CHAT_ROLES.has(value.trim().toLowerCase())
+}
+
+function toFacilityId(value: unknown): number | undefined {
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return value
+  }
+
+  if (typeof value === 'string') {
+    const trimmed = value.trim()
+    if (!trimmed) {
+      return undefined
+    }
+
+    const parsed = Number(trimmed)
+    if (Number.isFinite(parsed)) {
+      return parsed
+    }
+  }
+
+  return undefined
 }
 
 export async function POST(request: Request) {
@@ -27,6 +58,9 @@ export async function POST(request: Request) {
   }
 
   const user = session.user as Record<string, unknown>
+  if (!hasAllowedChatRole(user.role)) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
 
   const payload = await request.json().catch(() => null)
   const parsedRequest = chatRequestSchema.safeParse(payload)
@@ -49,8 +83,7 @@ export async function POST(request: Request) {
       typeof user.id === 'string' || typeof user.id === 'number'
         ? String(user.id)
         : undefined,
-    selectedFacilityId:
-      typeof user.don_vi === 'number' ? user.don_vi : undefined,
+    selectedFacilityId: toFacilityId(user.don_vi),
   })
 
   const result = streamText({

@@ -63,6 +63,18 @@ describe('/api/chat auth + schema', () => {
     expect(streamTextMock).not.toHaveBeenCalled()
   })
 
+  it('returns 403 when authenticated role is not allowed', async () => {
+    getServerSessionMock.mockResolvedValue({ user: { id: 'u1', role: 'auditor' } })
+
+    const res = await POST(buildRequest({ messages: VALID_MESSAGES }) as never)
+    const payload = await res.json()
+
+    expect(res.status).toBe(403)
+    expect(payload).toEqual({ error: 'Forbidden' })
+    expect(streamTextMock).not.toHaveBeenCalled()
+    expect(buildSystemPromptMock).not.toHaveBeenCalled()
+  })
+
   it('returns 400 for malformed payload', async () => {
     getServerSessionMock.mockResolvedValue({ user: { id: 'u1', role: 'user' } })
 
@@ -70,6 +82,18 @@ describe('/api/chat auth + schema', () => {
 
     expect(res.status).toBe(400)
     expect(streamTextMock).not.toHaveBeenCalled()
+  })
+
+  it('returns 400 when messages array is empty', async () => {
+    getServerSessionMock.mockResolvedValue({ user: { id: 'u1', role: 'user' } })
+
+    const res = await POST(buildRequest({ messages: [] }) as never)
+    const payload = await res.json()
+
+    expect(res.status).toBe(400)
+    expect(payload).toEqual({ error: 'Invalid request payload' })
+    expect(streamTextMock).not.toHaveBeenCalled()
+    expect(buildSystemPromptMock).not.toHaveBeenCalled()
   })
 
   it('returns 400 for malformed messages item', async () => {
@@ -103,5 +127,17 @@ describe('/api/chat auth + schema', () => {
       system?: string
     }
     expect(streamTextArgs?.system).toBe('SYSTEM_PROMPT_V1')
+  })
+
+  it('normalizes string tenant IDs when deriving facility context', async () => {
+    getServerSessionMock.mockResolvedValue({
+      user: { id: 'u1', role: 'admin', don_vi: '2' },
+    })
+
+    await POST(buildRequest({ messages: VALID_MESSAGES }) as never)
+
+    expect(buildSystemPromptMock).toHaveBeenCalledWith(
+      expect.objectContaining({ selectedFacilityId: 2 }),
+    )
   })
 })
