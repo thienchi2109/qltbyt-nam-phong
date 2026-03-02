@@ -11,6 +11,7 @@ import { authOptions } from '@/auth/config'
 import { chatRequestSchema } from '@/lib/ai/chat-request-schema'
 import { getChatModel } from '@/lib/ai/provider'
 import { buildSystemPrompt } from '@/lib/ai/prompts/system'
+import type { SystemPromptContext } from '@/lib/ai/prompts/types'
 import { ROLES } from '@/lib/rbac'
 
 export const runtime = 'nodejs'
@@ -77,14 +78,15 @@ export async function POST(request: Request) {
     return badRequest('Invalid messages payload')
   }
 
-  const systemPrompt = buildSystemPrompt({
+  const promptContext: SystemPromptContext = {
     role: typeof user.role === 'string' ? user.role : undefined,
     userId:
       typeof user.id === 'string' || typeof user.id === 'number'
         ? String(user.id)
         : undefined,
     selectedFacilityId: toFacilityId(user.don_vi),
-  })
+  }
+  const systemPrompt = buildSystemPrompt(promptContext)
 
   const result = streamText({
     model: getChatModel(),
