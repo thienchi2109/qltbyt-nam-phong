@@ -127,7 +127,7 @@ function useMaintenanceSchedules(filters?: {
 }
 
 // Fetch maintenance history
-export function useMaintenanceHistory(filters?: {
+function useMaintenanceHistory(filters?: {
   thiet_bi_id?: string
   dateFrom?: string
   dateTo?: string
@@ -385,7 +385,7 @@ function useCreateMaintenanceSchedule() {
 }
 
 // Update maintenance schedule mutation
-export function useUpdateMaintenanceSchedule() {
+function useUpdateMaintenanceSchedule() {
   const queryClient = useQueryClient()
 
   return useMutation({

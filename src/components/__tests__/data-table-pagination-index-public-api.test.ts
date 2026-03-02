@@ -1,18 +1,10 @@
 import * as PaginationModule from '@/components/shared/DataTablePagination'
 
 describe('DataTablePagination barrel public API', () => {
-  it('exposes DataTablePagination component', () => {
-    expect('DataTablePagination' in PaginationModule).toBe(true)
-  })
+  it('exposes only DataTablePagination at runtime', () => {
+    const runtimeExports = Object.keys(PaginationModule)
 
-  it.each([
-    'DataTablePaginationProps',
-    'EntityLabels',
-    'DisplayFormat',
-    'PaginationMode',
-    'ResponsiveConfig',
-    'DisplayContext',
-  ])('does not expose %s as runtime exports', (name) => {
-    expect(name in PaginationModule).toBe(false)
+    expect(runtimeExports).toContain('DataTablePagination')
+    expect(runtimeExports).toHaveLength(1)
   })
 })

@@ -18,7 +18,7 @@
 | `maintenanceKeys` | Used in realtime context, maintenance context, tests (+others) | Keep exposed |
 | `useMaintenancePlans` | Used by dashboard tabs, maintenance page client | Keep exposed |
 | `useMaintenanceSchedules` | No references across repo | Remove export |
-| `useMaintenanceHistory` | Only used by equipment detail history tab for plan timeline | Keep exposed |
+| `useMaintenanceHistory` | No references across repo | Remove export |
 | `useMaintenanceDetail` | No references | Remove export |
 | `useCreateMaintenancePlan` | Used by maintenance context/operations | Keep exposed |
 | `useUpdateMaintenancePlan` | Used by maintenance context/operations | Keep exposed |
@@ -26,7 +26,7 @@
 | `useRejectMaintenancePlan` | Used by maintenance dialogs | Keep exposed |
 | `useDeleteMaintenancePlan` | Used by maintenance list actions | Keep exposed |
 | `useCreateMaintenanceSchedule` | No references | Remove export |
-| `useUpdateMaintenanceSchedule` | Used by maintenance tasks editing | Keep exposed |
+| `useUpdateMaintenanceSchedule` | No references across repo | Remove export |
 | `useCompleteMaintenance` | No references | Remove export (still accessible internally) |
 | `useDeleteMaintenanceSchedule` | No references | Remove export |
 

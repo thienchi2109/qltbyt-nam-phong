@@ -4,21 +4,21 @@ describe('cached maintenance public API', () => {
   it.each([
     'maintenanceKeys',
     'useMaintenancePlans',
-    'useMaintenanceHistory',
     'useCreateMaintenancePlan',
     'useUpdateMaintenancePlan',
     'useApproveMaintenancePlan',
     'useRejectMaintenancePlan',
     'useDeleteMaintenancePlan',
-    'useUpdateMaintenanceSchedule',
   ])('exposes %s', (name) => {
     expect(name in CachedMaintenance).toBe(true)
   })
 
   it.each([
     'useMaintenanceSchedules',
+    'useMaintenanceHistory',
     'useMaintenanceDetail',
     'useCreateMaintenanceSchedule',
+    'useUpdateMaintenanceSchedule',
     'useCompleteMaintenance',
     'useDeleteMaintenanceSchedule',
   ])('does not expose %s', (name) => {
