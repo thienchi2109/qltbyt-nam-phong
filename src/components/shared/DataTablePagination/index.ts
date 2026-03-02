@@ -8,12 +8,3 @@ export const DataTablePagination = Object.assign(DataTablePaginationMain, {
   SizeSelector: DataTablePaginationSizeSelector,
   Navigation: DataTablePaginationNavigation,
 })
-
-export type {
-  DataTablePaginationProps,
-  EntityLabels,
-  DisplayFormat,
-  PaginationMode,
-  ResponsiveConfig,
-  DisplayContext,
-} from "./types"
