@@ -1,7 +1,6 @@
 /**
  * Onboarding components using Driver.js
  * Provides user onboarding tours for the application
+ *
+ * Intentionally no barrel re-exports: import onboarding modules directly.
  */
-
-export { HelpButton } from './HelpButton'
-export { TOUR_CONFIGS, TOUR_IDS } from './tour-configs'

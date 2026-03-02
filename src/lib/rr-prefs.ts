@@ -43,42 +43,35 @@ const safeSet = (key: string, value: any) => {
   }
 }
 
-// Keys
-export const RR_COL_VIS_KEY = 'rr_col_vis'
-export const RR_TABLE_DENSITY_KEY = 'rr_table_density'
-export const RR_TEXT_WRAP_KEY = 'rr_text_wrap'
-export const RR_FILTER_STATE_KEY = 'rr_filter_state'
-export const RR_SAVED_FILTERS_PREFIX = 'rr_saved_filters_' // + userId
-
 // Column visibility
 export function getColumnVisibility(): ColumnVisibility | null {
-  return safeParse<ColumnVisibility>(safeGet(RR_COL_VIS_KEY))
+  return safeParse<ColumnVisibility>(safeGet('rr_col_vis'))
 }
 export function setColumnVisibility(v: ColumnVisibility) {
-  safeSet(RR_COL_VIS_KEY, v)
+  safeSet('rr_col_vis', v)
 }
 
 // Density
 export function getTableDensity(): ViewDensity {
-  const raw = safeParse<ViewDensity>(safeGet(RR_TABLE_DENSITY_KEY))
+  const raw = safeParse<ViewDensity>(safeGet('rr_table_density'))
   return raw ?? 'standard'
 }
 export function setTableDensity(v: ViewDensity) {
-  safeSet(RR_TABLE_DENSITY_KEY, v)
+  safeSet('rr_table_density', v)
 }
 
 // Text wrap
 export function getTextWrap(): TextWrap {
-  const raw = safeParse<TextWrap>(safeGet(RR_TEXT_WRAP_KEY))
+  const raw = safeParse<TextWrap>(safeGet('rr_text_wrap'))
   return raw ?? 'truncate'
 }
 export function setTextWrap(v: TextWrap) {
-  safeSet(RR_TEXT_WRAP_KEY, v)
+  safeSet('rr_text_wrap', v)
 }
 
 // UI Filters
 export function getUiFilters(): UiFilters {
-  const raw = safeParse<UiFilters>(safeGet(RR_FILTER_STATE_KEY))
+  const raw = safeParse<UiFilters>(safeGet('rr_filter_state'))
   return (
     raw ?? {
       status: [],
@@ -87,17 +80,17 @@ export function getUiFilters(): UiFilters {
   )
 }
 export function setUiFilters(v: UiFilters) {
-  safeSet(RR_FILTER_STATE_KEY, v)
+  safeSet('rr_filter_state', v)
 }
 
 // Saved filter sets per user (optional)
 export type SavedFilterSet = { id: string; name: string; filters: UiFilters }
 
 export function getSavedFilterSets(userId: string): SavedFilterSet[] {
-  const key = RR_SAVED_FILTERS_PREFIX + userId
+  const key = 'rr_saved_filters_' + userId
   return safeParse<SavedFilterSet[]>(safeGet(key)) ?? []
 }
 export function setSavedFilterSets(userId: string, sets: SavedFilterSet[]) {
-  const key = RR_SAVED_FILTERS_PREFIX + userId
+  const key = 'rr_saved_filters_' + userId
   safeSet(key, sets)
 }
