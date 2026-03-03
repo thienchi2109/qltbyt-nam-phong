@@ -1,16 +1,9 @@
+import { ROLES } from '@/lib/rbac'
 import type { SystemPromptContext } from './types'
 
 export const SYSTEM_PROMPT_VERSION = 'v1.2.0'
 
-const ALLOWED_ROLES = new Set([
-  'admin',
-  'global',
-  'regional_leader',
-  'to_qltb',
-  'technician',
-  'qltb_khoa',
-  'user',
-])
+const ALLOWED_ROLES: Set<string> = new Set(Object.values(ROLES))
 
 /** Human-readable Vietnamese labels for each role, used in prompt context. */
 const ROLE_DESCRIPTIONS: Record<string, string> = {
