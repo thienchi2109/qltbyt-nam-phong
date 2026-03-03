@@ -78,6 +78,7 @@ BEGIN
   END IF;
 
   -- Recursive CTE for hierarchical category listing
+  -- Uses sort_path array for depth-first tree traversal (children grouped under parent)
   RETURN QUERY
   WITH RECURSIVE category_tree AS (
     -- Base case: root categories (no parent)
@@ -91,7 +92,9 @@ BEGIN
       n.thu_tu_hien_thi,
       n.mo_ta,
       n.tu_khoa,
-      1 AS level
+      1 AS level,
+      -- Zero-pad thu_tu (10 digits) + ma_nhom for correct text sorting
+      ARRAY[lpad(COALESCE(n.thu_tu_hien_thi, 0)::text, 10, '0') || ':' || n.ma_nhom] AS sort_path
     FROM public.nhom_thiet_bi n
     WHERE n.don_vi_id = p_don_vi
       AND n.parent_id IS NULL
@@ -109,7 +112,8 @@ BEGIN
       n.thu_tu_hien_thi,
       n.mo_ta,
       n.tu_khoa,
-      ct.level + 1
+      ct.level + 1,
+      ct.sort_path || (lpad(COALESCE(n.thu_tu_hien_thi, 0)::text, 10, '0') || ':' || n.ma_nhom)
     FROM public.nhom_thiet_bi n
     INNER JOIN category_tree ct ON n.parent_id = ct.id
     WHERE n.don_vi_id = p_don_vi
@@ -138,7 +142,7 @@ BEGIN
     COALESCE(ec.cnt, 0) AS so_luong_hien_co
   FROM category_tree ct
   LEFT JOIN equipment_counts ec ON ec.nhom_thiet_bi_id = ct.id
-  ORDER BY ct.level, ct.thu_tu_hien_thi, ct.ma_nhom;
+  ORDER BY ct.sort_path;
 END;
 $$;
 
