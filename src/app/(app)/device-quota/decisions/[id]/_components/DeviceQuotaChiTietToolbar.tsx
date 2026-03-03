@@ -47,8 +47,8 @@ function StatusBadge({ status }: { status: 'draft' | 'active' | 'inactive' }) {
  * Toolbar for Device Quota Decision Detail page.
  * Features:
  * - Back button to decisions list
- * - Download template button (draft only)
- * - Import from Excel button (draft only)
+ * - Download template button (draft and active)
+ * - Import from Excel button (draft and active)
  * - Decision status badge
  */
 export function DeviceQuotaChiTietToolbar() {
@@ -64,7 +64,7 @@ export function DeviceQuotaChiTietToolbar() {
 
   const [isDownloading, setIsDownloading] = React.useState(false)
 
-  const isDraft = decision?.trang_thai === 'draft'
+  const canEdit = decision?.trang_thai === 'draft' || decision?.trang_thai === 'active'
 
   // Handle download template
   const handleDownloadTemplate = React.useCallback(async () => {
@@ -142,8 +142,8 @@ export function DeviceQuotaChiTietToolbar() {
         </div>
       </div>
 
-      {/* Action Buttons (Draft only) */}
-      {isDraft && (
+      {/* Action Buttons (draft and active) */}
+      {canEdit && (
         <div className="space-y-2">
           {/* Alert when no categories available */}
           {!isCategoriesLoading && leafCategories.length === 0 && (

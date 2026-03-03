@@ -87,13 +87,13 @@ function TableLoadingSkeleton() {
 // Empty State
 // ============================================
 
-function EmptyState({ isDraft }: { isDraft: boolean }) {
+function EmptyState({ canEdit }: { canEdit: boolean }) {
   return (
     <TableRow>
       <TableCell colSpan={8} className="h-32 text-center text-muted-foreground">
         <div className="flex flex-col items-center justify-center gap-2">
           <span className="text-lg font-medium">Chưa có định mức nào</span>
-          {isDraft && (
+          {canEdit && (
             <span className="text-sm">Nhấn "Nhập từ Excel" để thêm định mức hàng loạt</span>
           )}
         </div>
@@ -167,7 +167,7 @@ export function DeviceQuotaChiTietTable() {
     decision,
   } = useDeviceQuotaChiTietContext()
 
-  const isDraft = decision?.trang_thai === 'draft'
+  const canEdit = decision?.trang_thai === 'draft' || decision?.trang_thai === 'active'
 
   return (
     <>
@@ -206,7 +206,7 @@ export function DeviceQuotaChiTietTable() {
             {isDetailsLoading ? (
               <TableLoadingSkeleton />
             ) : quotaDetails.length === 0 ? (
-              <EmptyState isDraft={isDraft} />
+              <EmptyState canEdit={canEdit} />
             ) : (
               quotaDetails.map((detail, index) => (
                 <TableRow key={detail.id} className="hover:bg-muted/40">
@@ -256,7 +256,7 @@ export function DeviceQuotaChiTietTable() {
         ) : quotaDetails.length === 0 ? (
           <div className="border rounded-lg p-8 text-center text-muted-foreground">
             <p className="font-medium">Chưa có định mức nào</p>
-            {isDraft && (
+            {canEdit && (
               <p className="text-sm mt-1">Nhấn "Nhập từ Excel" để thêm định mức</p>
             )}
           </div>

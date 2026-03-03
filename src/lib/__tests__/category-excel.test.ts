@@ -42,6 +42,8 @@ const EXPECTED_DATA_HEADERS = [
   'Đơn vị tính',
   'Thứ tự hiển thị',
   'Mô tả',
+  'Định mức (SL tối đa)',
+  'Tối thiểu',
 ]
 
 // Required fields (columns B and C)
@@ -292,6 +294,53 @@ describe('Category Excel Template Generation', () => {
 
       const cell = dataEntrySheet.getCell(2, 1) // A2
       expect(cell.alignment?.horizontal).toBe('center')
+    })
+  })
+
+  describe('Quota Columns (Định Mức)', () => {
+    it('should include quota headers in columns I and J', () => {
+      if (initError) throw initError
+      const headerRow = dataEntrySheet.getRow(1)
+
+      expect(String(headerRow.getCell(9).value || '')).toBe('Định mức (SL tối đa)')
+      expect(String(headerRow.getCell(10).value || '')).toBe('Tối thiểu')
+    })
+
+    it('should have number validation for quota columns (I and J)', () => {
+      if (initError) throw initError
+
+      // Column I (Định mức SL tối đa)
+      const quotaCell = dataEntrySheet.getCell(2, 9) // I2
+      expect(quotaCell.dataValidation).toBeDefined()
+      expect(quotaCell.dataValidation?.type).toBe('whole')
+      expect(quotaCell.dataValidation?.operator).toBe('greaterThanOrEqual')
+      expect(quotaCell.dataValidation?.allowBlank).toBe(true)
+
+      // Column J (Tối thiểu)
+      const minCell = dataEntrySheet.getCell(2, 10) // J2
+      expect(minCell.dataValidation).toBeDefined()
+      expect(minCell.dataValidation?.type).toBe('whole')
+      expect(minCell.dataValidation?.operator).toBe('greaterThanOrEqual')
+      expect(minCell.dataValidation?.allowBlank).toBe(true)
+    })
+
+    it('should explain quota columns in instructions sheet', () => {
+      if (initError) throw initError
+      let foundQuotaSection = false
+      let foundLeafNote = false
+
+      instructionsSheet.eachRow((row) => {
+        const cellValue = String(row.getCell(1).value || '')
+        if (cellValue.includes('ĐỊNH MỨC') && cellValue.includes('TÙY CHỌN')) {
+          foundQuotaSection = true
+        }
+        if (cellValue.includes('nhóm lá') || cellValue.includes('nhóm con')) {
+          foundLeafNote = true
+        }
+      })
+
+      expect(foundQuotaSection).toBe(true)
+      expect(foundLeafNote).toBe(true)
     })
   })
 })
