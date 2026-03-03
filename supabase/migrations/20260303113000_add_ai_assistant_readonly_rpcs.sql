@@ -470,6 +470,7 @@ BEGIN
               'don_vi', don_vi,
               'facility_name', facility_name
             )
+            ORDER BY ngay_yeu_cau DESC NULLS LAST, id DESC
           )
           FROM recent
         ),
