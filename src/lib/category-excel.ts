@@ -146,57 +146,80 @@ export async function generateCategoryImportTemplate(): Promise<Blob> {
     // Required fields section
     instructionsSheet.addRow(['2. CÁC TRƯỜNG BẮT BUỘC (tiêu đề màu đỏ):'])
     instructionsSheet.getRow(7).font = { bold: true, size: 12, color: { argb: 'FFDC2626' } }
-    instructionsSheet.addRow(['   - Mã nhóm: Mã định danh duy nhất (VD: 01, 01.01, 01.01.001)'])
+    instructionsSheet.addRow(['   - Mã nhóm: Mã định danh duy nhất, chấp nhận chữ và số (VD: I, 01, XN, 01.01)'])
     instructionsSheet.addRow(['   - Tên nhóm: Tên đầy đủ của danh mục'])
     instructionsSheet.addRow([''])
 
     // Code format section
     instructionsSheet.addRow(['3. ĐỊNH DẠNG MÃ NHÓM:'])
     instructionsSheet.getRow(11).font = { bold: true, size: 12 }
-    instructionsSheet.addRow(['   - Cấp 1: XX (VD: 01, 02, 03)'])
-    instructionsSheet.addRow(['   - Cấp 2: XX.XX (VD: 01.01, 01.02, 02.01)'])
-    instructionsSheet.addRow(['   - Cấp 3: XX.XX.XXX (VD: 01.01.001, 01.01.002)'])
+    instructionsSheet.addRow(['   - Chấp nhận chữ cái và số (A-Z, a-z, 0-9)'])
+    instructionsSheet.addRow(['   - Dùng dấu chấm (.) để phân cấp, tối đa 4 cấp'])
+    instructionsSheet.addRow(['   - Cấp 1: VD: I, 01, XN (nhóm gốc, không có nhóm cha)'])
+    instructionsSheet.addRow(['   - Cấp 2: VD: 01, 02 hoặc 01.01 (nhóm con của cấp 1)'])
+    instructionsSheet.addRow(['   - Cấp 3: VD: 01.01, 01.02 hoặc 01.01.001 (nhóm con của cấp 2)'])
+    instructionsSheet.addRow(['   - Lưu ý: Mã nhóm phải duy nhất trong cùng cơ sở'])
     instructionsSheet.addRow([''])
 
     // Classification section
     instructionsSheet.addRow(['4. PHÂN LOẠI THEO TT 08/2019:'])
-    instructionsSheet.getRow(16).font = { bold: true, size: 12 }
+    const classificationRowNum = instructionsSheet.rowCount
+    instructionsSheet.getRow(classificationRowNum).font = { bold: true, size: 12 }
     instructionsSheet.addRow(['   - A: Thiết bị y tế loại A (nguy cơ thấp)'])
     instructionsSheet.addRow(['   - B: Thiết bị y tế loại B (nguy cơ trung bình thấp)'])
     instructionsSheet.addRow([''])
 
     // Data entry rules section
     instructionsSheet.addRow(['5. QUY TẮC NHẬP LIỆU:'])
-    instructionsSheet.getRow(20).font = { bold: true, size: 12, color: { argb: 'FFDC2626' } }
-    instructionsSheet.addRow(['   - Nhóm cha phải tồn tại trước nhóm con'])
+    const rulesRowNum = instructionsSheet.rowCount
+    instructionsSheet.getRow(rulesRowNum).font = { bold: true, size: 12, color: { argb: 'FFDC2626' } }
     instructionsSheet.addRow(['   - Mã nhóm không được trùng lặp'])
-    instructionsSheet.addRow(['   - Nếu nhập nhóm cha, nhập dòng nhóm cha trước dòng nhóm con'])
+    instructionsSheet.addRow(['   - Nếu có nhóm cha, mã nhóm cha phải tồn tại (trong file hoặc trong hệ thống)'])
+    instructionsSheet.addRow(['   - Thứ tự dòng không quan trọng - hệ thống tự sắp xếp cha trước con'])
     instructionsSheet.addRow(['   - Không thay đổi tên các cột tiêu đề'])
     instructionsSheet.addRow([''])
 
     // Example section
     instructionsSheet.addRow(['6. VÍ DỤ:'])
-    instructionsSheet.getRow(26).font = { bold: true, size: 12 }
-    instructionsSheet.addRow([''])
-    instructionsSheet.addRow(['   Mã nhóm: 01'])
-    instructionsSheet.addRow(['   Tên nhóm: Thiết bị chẩn đoán hình ảnh'])
-    instructionsSheet.addRow(['   Mã nhóm cha: (để trống - đây là nhóm gốc)'])
-    instructionsSheet.addRow(['   Phân loại: B'])
-    instructionsSheet.addRow(['   Đơn vị tính: Cái'])
-    instructionsSheet.addRow(['   Thứ tự hiển thị: 1'])
-    instructionsSheet.addRow(['   Mô tả: Nhóm các thiết bị chẩn đoán bằng hình ảnh'])
+    const exampleHeaderRowNum = instructionsSheet.rowCount
+    instructionsSheet.getRow(exampleHeaderRowNum).font = { bold: true, size: 12 }
     instructionsSheet.addRow([''])
 
-    // Second example - child category
-    instructionsSheet.addRow(['   --- Ví dụ nhóm con ---'])
-    instructionsSheet.getRow(36).font = { italic: true }
+    // Example 1: Root category
+    instructionsSheet.addRow(['   --- Ví dụ nhóm gốc (cấp 1) ---'])
+    const example1LabelRowNum = instructionsSheet.rowCount
+    instructionsSheet.getRow(example1LabelRowNum).font = { italic: true, color: { argb: 'FF059669' } }
+    instructionsSheet.addRow(['   Mã nhóm: I'])
+    instructionsSheet.addRow(['   Tên nhóm: Trang thiết bị y tế chuyên dùng đặc thù'])
+    instructionsSheet.addRow(['   Mã nhóm cha: (để trống - đây là nhóm gốc)'])
+    instructionsSheet.addRow(['   Phân loại: (để trống)'])
+    instructionsSheet.addRow(['   Đơn vị tính: (để trống)'])
+    instructionsSheet.addRow(['   Thứ tự hiển thị: 1'])
+    instructionsSheet.addRow([''])
+
+    // Example 2: Child category (level 2)
+    instructionsSheet.addRow(['   --- Ví dụ nhóm con (cấp 2) ---'])
+    const example2LabelRowNum = instructionsSheet.rowCount
+    instructionsSheet.getRow(example2LabelRowNum).font = { italic: true, color: { argb: 'FF2563EB' } }
+    instructionsSheet.addRow(['   Mã nhóm: 01'])
+    instructionsSheet.addRow(['   Tên nhóm: Hệ thống X - quang'])
+    instructionsSheet.addRow(['   Mã nhóm cha: I'])
+    instructionsSheet.addRow(['   Phân loại: (để trống)'])
+    instructionsSheet.addRow(['   Đơn vị tính: Hệ thống'])
+    instructionsSheet.addRow(['   Thứ tự hiển thị: 1'])
+    instructionsSheet.addRow([''])
+
+    // Example 3: Grandchild category (level 3)
+    instructionsSheet.addRow(['   --- Ví dụ nhóm cháu (cấp 3) ---'])
+    const example3LabelRowNum = instructionsSheet.rowCount
+    instructionsSheet.getRow(example3LabelRowNum).font = { italic: true, color: { argb: 'FFDC2626' } }
     instructionsSheet.addRow(['   Mã nhóm: 01.01'])
-    instructionsSheet.addRow(['   Tên nhóm: Máy X-quang'])
+    instructionsSheet.addRow(['   Tên nhóm: Máy X quang kỹ thuật số chụp tổng quát'])
     instructionsSheet.addRow(['   Mã nhóm cha: 01'])
     instructionsSheet.addRow(['   Phân loại: B'])
-    instructionsSheet.addRow(['   Đơn vị tính: Cái'])
+    instructionsSheet.addRow(['   Đơn vị tính: Máy'])
     instructionsSheet.addRow(['   Thứ tự hiển thị: 1'])
-    instructionsSheet.addRow(['   Mô tả: Thiết bị chụp X-quang'])
+    instructionsSheet.addRow(['   Mô tả: Máy chụp X quang kỹ thuật số dùng trong chẩn đoán tổng quát'])
 
     // Format instruction cells
     for (let row = 1; row <= instructionsSheet.rowCount; row++) {
