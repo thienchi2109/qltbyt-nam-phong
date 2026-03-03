@@ -267,13 +267,11 @@ BEGIN
       WHERE (v_effective IS NULL OR COALESCE(tb.don_vi, kh.don_vi) = ANY(v_effective))
         AND (
           v_from_date IS NULL
-          OR kh.ngay_phe_duyet IS NULL
-          OR kh.ngay_phe_duyet::DATE >= v_from_date
+          OR (kh.ngay_phe_duyet IS NOT NULL AND kh.ngay_phe_duyet::DATE >= v_from_date)
         )
         AND (
           v_to_date IS NULL
-          OR kh.ngay_phe_duyet IS NULL
-          OR kh.ngay_phe_duyet::DATE <= v_to_date
+          OR (kh.ngay_phe_duyet IS NOT NULL AND kh.ngay_phe_duyet::DATE <= v_to_date)
         )
     ),
     status_counts AS (

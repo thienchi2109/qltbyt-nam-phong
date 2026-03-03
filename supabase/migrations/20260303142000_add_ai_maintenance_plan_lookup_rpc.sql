@@ -165,7 +165,7 @@ BEGIN
         ),
         '[]'::JSONB
       ),
-      'totalPlans', COALESCE((SELECT COUNT(*)::BIGINT FROM rows), 0),
+      'totalPlans', COALESCE((SELECT COUNT(DISTINCT plan_id)::BIGINT FROM rows), 0),
       'yearFilter', p_nam
     )
   );
