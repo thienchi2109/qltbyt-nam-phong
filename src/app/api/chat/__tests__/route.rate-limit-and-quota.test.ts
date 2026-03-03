@@ -7,6 +7,7 @@ const getChatModelMock = vi.fn()
 const buildSystemPromptMock = vi.fn()
 const checkUsageLimitsMock = vi.fn()
 const recordUsageMock = vi.fn()
+const confirmUsageMock = vi.fn()
 
 vi.mock('next-auth', () => ({
   getServerSession: (...args: unknown[]) => getServerSessionMock(...args),
@@ -30,6 +31,7 @@ vi.mock('@/lib/ai/limits', () => ({
 vi.mock('@/lib/ai/usage-metering', () => ({
   checkUsageLimits: (...args: unknown[]) => checkUsageLimitsMock(...args),
   recordUsage: (...args: unknown[]) => recordUsageMock(...args),
+  confirmUsage: (...args: unknown[]) => confirmUsageMock(...args),
 }))
 
 vi.mock('ai', async () => {
@@ -70,8 +72,20 @@ describe('/api/chat rate limit and quota', () => {
     buildSystemPromptMock.mockReturnValue('SYSTEM_PROMPT_V1')
     stepCountIsMock.mockReturnValue('STOP_WHEN_SENTINEL')
     checkUsageLimitsMock.mockReturnValue({ allowed: true })
-    streamTextMock.mockReturnValue({
-      toUIMessageStreamResponse: () => new Response(null, { status: 200 }),
+    streamTextMock.mockImplementation((opts: Record<string, unknown>) => {
+      // Simulate onFinish callback firing with mock usage data
+      const onFinish = opts.onFinish as
+        | ((result: { usage: { inputTokens: number; outputTokens: number }; finishReason: string }) => void)
+        | undefined
+      if (onFinish) {
+        onFinish({
+          usage: { inputTokens: 100, outputTokens: 50 },
+          finishReason: 'stop',
+        })
+      }
+      return {
+        toUIMessageStreamResponse: () => new Response(null, { status: 200 }),
+      }
     })
   })
 
@@ -88,6 +102,7 @@ describe('/api/chat rate limit and quota', () => {
     expect(payload).toEqual({ error: 'Too many requests. Please try again later.' })
     expect(streamTextMock).not.toHaveBeenCalled()
     expect(recordUsageMock).not.toHaveBeenCalled()
+    expect(confirmUsageMock).not.toHaveBeenCalled()
   })
 
   it('returns 429 when quota is exceeded', async () => {
@@ -103,6 +118,7 @@ describe('/api/chat rate limit and quota', () => {
     expect(payload).toEqual({ error: 'AI usage quota exceeded for this facility.' })
     expect(streamTextMock).not.toHaveBeenCalled()
     expect(recordUsageMock).not.toHaveBeenCalled()
+    expect(confirmUsageMock).not.toHaveBeenCalled()
   })
 
   it('records usage when request is allowed', async () => {
@@ -113,6 +129,13 @@ describe('/api/chat rate limit and quota', () => {
       expect.objectContaining({ userId: 'u1', tenantId: 2 }),
     )
     expect(streamTextMock).toHaveBeenCalledTimes(1)
+    // recordUsage is called upfront for rate-limit tracking
     expect(recordUsageMock).toHaveBeenCalledTimes(1)
+    // confirmUsage is called via onFinish after successful stream
+    expect(confirmUsageMock).toHaveBeenCalledTimes(1)
+    expect(confirmUsageMock).toHaveBeenCalledWith(
+      expect.objectContaining({ userId: 'u1', tenantId: 2 }),
+      expect.objectContaining({ inputTokens: 100, outputTokens: 50 }),
+    )
   })
 })

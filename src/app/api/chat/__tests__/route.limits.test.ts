@@ -7,6 +7,7 @@ const getChatModelMock = vi.fn()
 const buildSystemPromptMock = vi.fn()
 const checkUsageLimitsMock = vi.fn()
 const recordUsageMock = vi.fn()
+const confirmUsageMock = vi.fn()
 
 vi.mock('next-auth', () => ({
   getServerSession: (...args: unknown[]) => getServerSessionMock(...args),
@@ -30,6 +31,7 @@ vi.mock('@/lib/ai/limits', () => ({
 vi.mock('@/lib/ai/usage-metering', () => ({
   checkUsageLimits: (...args: unknown[]) => checkUsageLimitsMock(...args),
   recordUsage: (...args: unknown[]) => recordUsageMock(...args),
+  confirmUsage: (...args: unknown[]) => confirmUsageMock(...args),
 }))
 
 vi.mock('ai', async () => {

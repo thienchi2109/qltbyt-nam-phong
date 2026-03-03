@@ -32,6 +32,33 @@ const latestUsageByUser = new Map<
   UsageRecord & { estimatedCostUsd: number; timestamp: number }
 >()
 
+/** Tracks the last calendar day we ran cleanup on. */
+let lastCleanupDay = ''
+
+/**
+ * Removes entries from dailyUserRequests and dailyTenantRequests whose
+ * date suffix does not match the current day. This runs lazily — only
+ * on the first request of each new calendar day — so there is no timer.
+ */
+function pruneStaleDailyEntries(now: number): void {
+  const today = dayKey(now)
+  if (lastCleanupDay === today) {
+    return
+  }
+  lastCleanupDay = today
+
+  for (const key of dailyUserRequests.keys()) {
+    if (!key.endsWith(today)) {
+      dailyUserRequests.delete(key)
+    }
+  }
+  for (const key of dailyTenantRequests.keys()) {
+    if (!key.endsWith(today)) {
+      dailyTenantRequests.delete(key)
+    }
+  }
+}
+
 function dayKey(timestamp: number): string {
   return new Date(timestamp).toISOString().slice(0, 10)
 }
@@ -73,6 +100,8 @@ export function checkUsageLimits(
   context: UsageContext,
   now: number = Date.now(),
 ): UsageLimitCheckResult {
+  pruneStaleDailyEntries(now)
+
   const userId = context.userId.trim()
   if (!userId) {
     return {
@@ -114,11 +143,16 @@ export function checkUsageLimits(
   return { allowed: true }
 }
 
+/**
+ * Records a request in the rate-limit sliding window.
+ * Safe to call upfront (anti-abuse) — does NOT increment daily quotas.
+ */
 export function recordUsage(
   context: UsageContext,
-  record: UsageRecord = {},
   now: number = Date.now(),
 ): void {
+  pruneStaleDailyEntries(now)
+
   const userId = context.userId.trim()
   if (!userId) {
     return
@@ -127,6 +161,21 @@ export function recordUsage(
   const inWindow = pruneRateWindow(userId, now)
   inWindow.push(now)
   recentRequestsByUser.set(userId, inWindow)
+}
+
+/**
+ * Confirms a successful AI response and increments daily quotas.
+ * Call this only after the stream finishes successfully.
+ */
+export function confirmUsage(
+  context: UsageContext,
+  record: UsageRecord = {},
+  now: number = Date.now(),
+): void {
+  const userId = context.userId.trim()
+  if (!userId) {
+    return
+  }
 
   const userKey = userDayKey(userId, now)
   dailyUserRequests.set(userKey, (dailyUserRequests.get(userKey) ?? 0) + 1)
@@ -152,4 +201,5 @@ export function __resetUsageMeteringForTests() {
   dailyUserRequests.clear()
   dailyTenantRequests.clear()
   latestUsageByUser.clear()
+  lastCleanupDay = ''
 }

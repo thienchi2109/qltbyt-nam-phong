@@ -19,7 +19,7 @@ import {
 import { getChatModel } from '@/lib/ai/provider'
 import { buildSystemPrompt } from '@/lib/ai/prompts/system'
 import type { SystemPromptContext } from '@/lib/ai/prompts/types'
-import { checkUsageLimits, recordUsage } from '@/lib/ai/usage-metering'
+import { checkUsageLimits, confirmUsage, recordUsage } from '@/lib/ai/usage-metering'
 import { ROLES } from '@/lib/rbac'
 
 export const runtime = 'nodejs'
@@ -127,20 +127,27 @@ export async function POST(request: Request) {
   }
   const systemPrompt = buildSystemPrompt(promptContext)
 
+  const usageContext = { userId: usageUserId, tenantId: selectedFacilityId }
+
+  // Record in rate-limit sliding window upfront (anti-abuse).
+  recordUsage(usageContext)
+
   const result = streamText({
     model: getChatModel(),
     system: systemPrompt,
     maxOutputTokens: AI_MAX_OUTPUT_TOKENS,
     stopWhen: stepCountIs(AI_MAX_TOOL_STEPS),
     messages: await convertToModelMessages(validatedMessages),
-  })
-  recordUsage(
-    { userId: usageUserId, tenantId: selectedFacilityId },
-    {
-      inputTokens: Math.ceil(inputChars / 4),
-      outputTokens: AI_MAX_OUTPUT_TOKENS,
+    onFinish({ usage, finishReason }) {
+      // Only increment daily quotas after a successful completion.
+      if (finishReason !== 'error') {
+        confirmUsage(usageContext, {
+          inputTokens: usage.inputTokens ?? 0,
+          outputTokens: usage.outputTokens ?? 0,
+        })
+      }
     },
-  )
+  })
 
   return result.toUIMessageStreamResponse()
 }
