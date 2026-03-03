@@ -30,6 +30,17 @@ const READ_ONLY_TOOL_DEFINITIONS: Record<string, ReadOnlyToolDefinition> = {
       })
       .strict(),
   },
+  maintenancePlanLookup: {
+    description:
+      'Lookup maintenance, calibration, and inspection plans for a specific equipment item.',
+    rpcFunction: 'ai_maintenance_plan_lookup',
+    inputSchema: z
+      .object({
+        thiet_bi_id: z.number().int().positive(),
+        p_nam: z.number().int().min(2000).max(2100).optional(),
+      })
+      .strict(),
+  },
   repairSummary: {
     description: 'Retrieve repair summary data via approved read-only RPC.',
     rpcFunction: 'ai_repair_summary',

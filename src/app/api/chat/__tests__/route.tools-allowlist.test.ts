@@ -113,4 +113,16 @@ describe('/api/chat tools allowlist policy', () => {
     })
     expect(streamTextMock).not.toHaveBeenCalled()
   })
+
+  it('allows maintenancePlanLookup when explicitly requested', async () => {
+    const res = await POST(
+      buildRequest({
+        messages: VALID_MESSAGES,
+        requestedTools: ['maintenancePlanLookup'],
+      }) as never,
+    )
+
+    expect(res.status).toBe(200)
+    expect(streamTextMock).toHaveBeenCalledOnce()
+  })
 })

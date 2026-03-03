@@ -374,106 +374,66 @@ Create a new Supabase read-only RPC function that JOINs `cong_viec_bao_tri` with
 
 ```sql
 CREATE OR REPLACE FUNCTION public.ai_maintenance_plan_lookup(
-  p_thiet_bi_id  bigint,
-  p_nam          integer  DEFAULT NULL,   -- filter by year; NULL = all years
-  p_don_vi       bigint   DEFAULT NULL    -- tenant filter; overridden by JWT for non-privileged roles
+  thiet_bi_id BIGINT,
+  p_nam INTEGER DEFAULT NULL,   -- filter by year; NULL = all years
+  p_don_vi BIGINT DEFAULT NULL, -- tenant filter; overridden by JWT for non-privileged roles
+  p_user_id TEXT DEFAULT NULL   -- optional anti-spoof context check
 )
-RETURNS TABLE (
-  plan_id            bigint,
-  ten_ke_hoach       text,
-  nam                integer,
-  loai_cong_viec     text,
-  plan_trang_thai    text,
-  ngay_phe_duyet     timestamptz,
-  task_id            bigint,
-  don_vi_thuc_hien   text,
-  diem_hieu_chuan    text,
-  thang_1            boolean, thang_2  boolean, thang_3  boolean,
-  thang_4            boolean, thang_5  boolean, thang_6  boolean,
-  thang_7            boolean, thang_8  boolean, thang_9  boolean,
-  thang_10           boolean, thang_11 boolean, thang_12 boolean,
-  thang_1_hoan_thanh  boolean, thang_2_hoan_thanh  boolean, thang_3_hoan_thanh  boolean,
-  thang_4_hoan_thanh  boolean, thang_5_hoan_thanh  boolean, thang_6_hoan_thanh  boolean,
-  thang_7_hoan_thanh  boolean, thang_8_hoan_thanh  boolean, thang_9_hoan_thanh  boolean,
-  thang_10_hoan_thanh boolean, thang_11_hoan_thanh boolean, thang_12_hoan_thanh boolean,
-  ghi_chu            text,
-  -- equipment context (denormalized for AI convenience)
-  ma_thiet_bi        text,
-  ten_thiet_bi       text,
-  model              text
-)
-LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = public
+RETURNS JSONB
+LANGUAGE plpgsql
+STABLE
+SECURITY DEFINER
+SET search_path TO 'public', 'pg_temp'
 AS $$
 DECLARE
-  v_jwt_claims JSONB;
   v_role TEXT;
+  v_user_id TEXT;
   v_don_vi BIGINT;
 BEGIN
-  -- ============================================
-  -- JWT Claims Extraction (fail-closed on error)
-  -- ============================================
-  BEGIN
-    v_jwt_claims := current_setting('request.jwt.claims', true)::jsonb;
-  EXCEPTION WHEN OTHERS THEN
-    RETURN;  -- no JWT → empty result set
-  END;
+  -- JWT claim extraction + null guards
+  v_role := lower(COALESCE(public._get_jwt_claim('app_role'), public._get_jwt_claim('role'), ''));
+  v_user_id := NULLIF(COALESCE(public._get_jwt_claim('user_id'), public._get_jwt_claim('sub')), '');
+  v_don_vi := NULLIF(public._get_jwt_claim('don_vi'), '')::BIGINT;
 
-  v_role := COALESCE(v_jwt_claims->>'app_role', v_jwt_claims->>'role', '');
-  v_don_vi := NULLIF(v_jwt_claims->>'don_vi', '')::BIGINT;
+  IF v_role IS NULL OR v_role = '' THEN
+    RAISE EXCEPTION 'Missing role claim' USING ERRCODE = '42501';
+  END IF;
+  IF v_user_id IS NULL THEN
+    RAISE EXCEPTION 'Missing user_id claim' USING ERRCODE = '42501';
+  END IF;
+  IF thiet_bi_id IS NULL OR thiet_bi_id <= 0 THEN
+    RAISE EXCEPTION 'thiet_bi_id is required' USING ERRCODE = '22023';
+  END IF;
 
-  -- ============================================
-  -- Tenant isolation: non-privileged roles forced to their own tenant
-  -- ============================================
+  -- Tenant isolation: non-privileged roles forced to their own tenant.
+  -- regional_leader is constrained via allowed_don_vi_for_session_safe().
   IF v_role NOT IN ('global', 'admin', 'regional_leader') THEN
-    -- SECURITY: fail-closed when don_vi claim is NULL/missing.
-    -- Without this guard, p_don_vi would be NULL and the WHERE clause
-    -- (p_don_vi IS NULL OR ...) would return data from ALL tenants.
     IF v_don_vi IS NULL THEN
-      RETURN;  -- empty result set — no tenant access
+      RAISE EXCEPTION 'Missing don_vi claim' USING ERRCODE = '42501';
     END IF;
     p_don_vi := v_don_vi;
   END IF;
 
-  RETURN QUERY
-  SELECT
-    kh.id        AS plan_id,
-    kh.ten_ke_hoach,
-    kh.nam,
-    kh.loai_cong_viec,
-    kh.trang_thai AS plan_trang_thai,
-    kh.ngay_phe_duyet,
-    cv.id        AS task_id,
-    cv.don_vi_thuc_hien,
-    cv.diem_hieu_chuan,
-    cv.thang_1,  cv.thang_2,  cv.thang_3,
-    cv.thang_4,  cv.thang_5,  cv.thang_6,
-    cv.thang_7,  cv.thang_8,  cv.thang_9,
-    cv.thang_10, cv.thang_11, cv.thang_12,
-    cv.thang_1_hoan_thanh,  cv.thang_2_hoan_thanh,  cv.thang_3_hoan_thanh,
-    cv.thang_4_hoan_thanh,  cv.thang_5_hoan_thanh,  cv.thang_6_hoan_thanh,
-    cv.thang_7_hoan_thanh,  cv.thang_8_hoan_thanh,  cv.thang_9_hoan_thanh,
-    cv.thang_10_hoan_thanh, cv.thang_11_hoan_thanh, cv.thang_12_hoan_thanh,
-    cv.ghi_chu,
-    tb.ma_thiet_bi,
-    tb.ten_thiet_bi,
-    tb.model
-  FROM cong_viec_bao_tri cv
-  JOIN ke_hoach_bao_tri  kh ON kh.id = cv.ke_hoach_id
-  JOIN thiet_bi          tb ON tb.id = cv.thiet_bi_id
-  WHERE cv.thiet_bi_id = p_thiet_bi_id
-    AND (p_nam IS NULL OR kh.nam = p_nam)
-    AND (p_don_vi IS NULL OR kh.don_vi = p_don_vi)
-  ORDER BY kh.nam DESC, kh.loai_cong_viec;
+  -- Return shape:
+  -- {
+  --   equipment: { id, ma_thiet_bi, ten_thiet_bi, model, don_vi } | null,
+  --   plans: [{ plan_id, ten_ke_hoach, nam, loai_cong_viec, plan_trang_thai, ngay_phe_duyet, task_id, ...month flags..., ghi_chu }],
+  --   totalPlans: number,
+  --   yearFilter: p_nam
+  -- }
+  RETURN ...; -- See migration implementation for full query body
 END;
 $$;
 
-GRANT EXECUTE ON FUNCTION public.ai_maintenance_plan_lookup TO authenticated;
+GRANT EXECUTE ON FUNCTION public.ai_maintenance_plan_lookup(BIGINT, INTEGER, BIGINT, TEXT) TO authenticated;
+REVOKE EXECUTE ON FUNCTION public.ai_maintenance_plan_lookup(BIGINT, INTEGER, BIGINT, TEXT) FROM PUBLIC;
 ```
 
 **Design notes:**
-- `SECURITY DEFINER` + `SET search_path = public` + `STABLE`: read-only, follows the project's mandated RPC security model (no RLS; tenant isolation via JWT-claim enforcement).
-- Non-privileged roles have `p_don_vi` forcibly overridden from `request.jwt.claims->>'don_vi'`, matching the standard RPC template.
-- `GRANT EXECUTE ... TO authenticated` restricts access to authenticated callers only.
+- `SECURITY DEFINER` + `SET search_path TO 'public', 'pg_temp'` + `STABLE`: read-only and hardened against search_path injection.
+- Non-privileged roles have tenant scoping enforced server-side; missing required JWT claims fail closed.
+- JSONB response provides tool-ready structure (`equipment`, `plans`, `totalPlans`, `yearFilter`) without extra server reshaping.
+- `GRANT EXECUTE ... TO authenticated` + `REVOKE ... FROM PUBLIC` enforces authenticated-only RPC execution.
 
 **3b. Implement all tool execute functions**
 
@@ -486,7 +446,7 @@ GRANT EXECUTE ON FUNCTION public.ai_maintenance_plan_lookup TO authenticated;
 | Tool name | RPC | Purpose |
 |---|---|---|
 | `maintenanceSummary` | `maintenance_tasks_list_with_equipment` (existing) | General overview of all maintenance tasks at the current facility (supports filter by `p_loai_cong_viec`). |
-| `maintenancePlanLookup` | `ai_maintenance_plan_lookup` (**new**) | Look up the yearly maintenance/calibration/inspection plan for a **specific equipment** (`p_thiet_bi_id`), returning 12-month scheduled vs. completed status per plan type. |
+| `maintenancePlanLookup` | `ai_maintenance_plan_lookup` (**new**) | Look up yearly maintenance/calibration/inspection plans for a **specific equipment** (`thiet_bi_id`), returning structured JSON with equipment context and 12-month scheduled vs completed status. |
 | `maintenanceUpcoming` | Equipment-level fields on `thiet_bi` table via `equipmentLookup` | Check `ngay_bt_tiep_theo`, `ngay_hc_tiep_theo`, `ngay_kd_tiep_theo` deadlines for upcoming maintenance. This reuses equipment lookup data, no separate RPC needed. |
 
 **AI prompt guidance for `maintenancePlanLookup`:**
