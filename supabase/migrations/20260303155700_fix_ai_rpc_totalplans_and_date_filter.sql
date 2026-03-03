@@ -333,6 +333,7 @@ BEGIN
               'ten_thiet_bi', ten_thiet_bi,
               'model', model
             )
+            ORDER BY COALESCE(task_updated_at, ngay_phe_duyet) DESC NULLS LAST, task_id DESC
           )
           FROM recent
         ),
