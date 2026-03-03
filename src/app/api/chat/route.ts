@@ -19,8 +19,9 @@ import {
 import { getChatModel } from '@/lib/ai/provider'
 import { buildSystemPrompt } from '@/lib/ai/prompts/system'
 import type { SystemPromptContext } from '@/lib/ai/prompts/types'
+import { buildToolRegistry, validateRequestedTools } from '@/lib/ai/tools/registry'
 import { checkUsageLimits, confirmUsage, recordUsage } from '@/lib/ai/usage-metering'
-import { ROLES } from '@/lib/rbac'
+import { isPrivilegedRole, ROLES } from '@/lib/rbac'
 
 export const runtime = 'nodejs'
 export const maxDuration = 30
@@ -88,6 +89,14 @@ export async function POST(request: Request) {
   if (!parsedRequest.success) {
     return badRequest('Invalid request payload')
   }
+  const requestedToolsValidation = validateRequestedTools(
+    parsedRequest.data.requestedTools ?? [],
+  )
+  if (!requestedToolsValidation.ok) {
+    return badRequest(requestedToolsValidation.message)
+  }
+  const requestedTools = requestedToolsValidation.requestedTools
+
   if (parsedRequest.data.messages.length > AI_MAX_MESSAGES) {
     return badRequest('Request exceeds message limit')
   }
@@ -106,7 +115,25 @@ export async function POST(request: Request) {
     return badRequest('Invalid messages payload')
   }
 
-  const selectedFacilityId = toFacilityId(user.don_vi)
+  const role = typeof user.role === 'string' ? user.role : undefined
+  const sessionFacilityId = toFacilityId(user.don_vi)
+  const requestedFacilityId = parsedRequest.data.selectedFacilityId
+  let selectedFacilityId = sessionFacilityId
+
+  if (isPrivilegedRole(role)) {
+    if (requestedTools.length > 0 && requestedFacilityId === undefined) {
+      return badRequest('Please select a facility before using assistant tools.')
+    }
+
+    if (requestedFacilityId !== undefined) {
+      selectedFacilityId = requestedFacilityId
+    }
+  }
+
+  if (requestedTools.length > 0 && selectedFacilityId === undefined) {
+    return badRequest('Unable to resolve facility context for tool execution.')
+  }
+
   const promptUserId =
     typeof user.id === 'string' || typeof user.id === 'number'
       ? String(user.id)
@@ -121,13 +148,22 @@ export async function POST(request: Request) {
   }
 
   const promptContext: SystemPromptContext = {
-    role: typeof user.role === 'string' ? user.role : undefined,
+    role,
     userId: promptUserId,
     selectedFacilityId,
   }
   const systemPrompt = buildSystemPrompt(promptContext)
 
   const usageContext = { userId: usageUserId, tenantId: selectedFacilityId }
+  const tools =
+    requestedTools.length > 0 && selectedFacilityId !== undefined
+      ? buildToolRegistry({
+          request,
+          tenantId: selectedFacilityId,
+          userId: usageUserId,
+          requestedTools,
+        })
+      : undefined
 
   // Record in rate-limit sliding window upfront (anti-abuse).
   recordUsage(usageContext)
@@ -138,6 +174,7 @@ export async function POST(request: Request) {
     maxOutputTokens: AI_MAX_OUTPUT_TOKENS,
     stopWhen: stepCountIs(AI_MAX_TOOL_STEPS),
     messages: await convertToModelMessages(validatedMessages),
+    tools,
     onFinish({ usage, finishReason }) {
       // Only increment daily quotas after a successful completion.
       if (finishReason !== 'error') {
