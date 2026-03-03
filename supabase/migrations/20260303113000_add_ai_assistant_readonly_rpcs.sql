@@ -101,6 +101,7 @@ BEGIN
         tb.ten_thiet_bi,
         tb.model,
         tb.serial,
+        tb.so_luu_hanh,
         tb.tinh_trang_hien_tai,
         tb.khoa_phong_quan_ly,
         tb.vi_tri_lap_dat,
@@ -120,6 +121,7 @@ BEGIN
           OR tb.ten_thiet_bi ILIKE '%' || v_sanitized_q || '%'
           OR COALESCE(tb.model, '') ILIKE '%' || v_sanitized_q || '%'
           OR COALESCE(tb.serial, '') ILIKE '%' || v_sanitized_q || '%'
+          OR COALESCE(tb.so_luu_hanh, '') ILIKE '%' || v_sanitized_q || '%'
         )
       ORDER BY tb.updated_at DESC NULLS LAST, tb.id DESC
       LIMIT v_limit
@@ -134,6 +136,7 @@ BEGIN
             'ten_thiet_bi', ten_thiet_bi,
             'model', model,
             'serial', serial,
+            'so_luu_hanh', so_luu_hanh,
             'tinh_trang_hien_tai', tinh_trang_hien_tai,
             'khoa_phong_quan_ly', khoa_phong_quan_ly,
             'vi_tri_lap_dat', vi_tri_lap_dat,
