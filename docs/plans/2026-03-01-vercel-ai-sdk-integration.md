@@ -376,7 +376,7 @@ Create a new Supabase read-only RPC function that JOINs `cong_viec_bao_tri` with
 CREATE OR REPLACE FUNCTION public.ai_maintenance_plan_lookup(
   p_thiet_bi_id  bigint,
   p_nam          integer  DEFAULT NULL,   -- filter by year; NULL = all years
-  p_don_vi       bigint   DEFAULT NULL    -- tenant filter; NULL = all (caller must enforce tenant)
+  p_don_vi       bigint   DEFAULT NULL    -- tenant filter; overridden by JWT for non-privileged roles
 )
 RETURNS TABLE (
   plan_id            bigint,
@@ -402,8 +402,18 @@ RETURNS TABLE (
   ten_thiet_bi       text,
   model              text
 )
-LANGUAGE sql STABLE SECURITY INVOKER
+LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = public
 AS $$
+DECLARE
+  v_role TEXT := current_setting('request.jwt.claims', true)::json->>'app_role';
+  v_don_vi TEXT := current_setting('request.jwt.claims', true)::json->>'don_vi';
+BEGIN
+  -- Tenant isolation: non-privileged roles forced to their own tenant
+  IF v_role NOT IN ('global', 'admin', 'regional_leader') THEN
+    p_don_vi := v_don_vi::bigint;
+  END IF;
+
+  RETURN QUERY
   SELECT
     kh.id        AS plan_id,
     kh.ten_ke_hoach,
@@ -433,14 +443,16 @@ AS $$
     AND (p_nam IS NULL OR kh.nam = p_nam)
     AND (p_don_vi IS NULL OR kh.don_vi = p_don_vi)
   ORDER BY kh.nam DESC, kh.loai_cong_viec;
+END;
 $$;
+
+GRANT EXECUTE ON FUNCTION public.ai_maintenance_plan_lookup TO authenticated;
 ```
 
 **Design notes:**
-- `SECURITY INVOKER` + `STABLE`: read-only, inherits caller's RLS context.
-- Returns denormalized `ma_thiet_bi`, `ten_thiet_bi`, `model` so the AI tool gets a self-contained response without a second tool call.
-- Optional `p_nam` filter: AI can ask "kế hoạch năm 2026" specifically, or get all years.
-- Optional `p_don_vi` filter: the chat route must always pass the session's `selectedFacilityId` to enforce tenant isolation.
+- `SECURITY DEFINER` + `SET search_path = public` + `STABLE`: read-only, follows the project's mandated RPC security model (no RLS; tenant isolation via JWT-claim enforcement).
+- Non-privileged roles have `p_don_vi` forcibly overridden from `request.jwt.claims->>'don_vi'`, matching the standard RPC template.
+- `GRANT EXECUTE ... TO authenticated` restricts access to authenticated callers only.
 
 **3b. Implement all tool execute functions**
 
