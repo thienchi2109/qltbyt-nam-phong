@@ -4,6 +4,9 @@
 --   - ai_maintenance_summary
 --   - ai_repair_summary
 --
+-- Also pins search_path on helper functions (_get_jwt_claim,
+-- _sanitize_ilike_pattern) to clear Supabase security linter warnings.
+--
 -- Security requirements (REVIEW.md):
 --   * SECURITY DEFINER + pinned search_path
 --   * JWT claim NULL guards (role, user_id, don_vi for non-global roles)
@@ -475,6 +478,11 @@ BEGIN
   );
 END;
 $function$;
+
+-- Pin search_path on helper functions referenced by the new RPCs
+-- to clear Supabase security linter warnings (function_search_path_mutable).
+ALTER FUNCTION public._get_jwt_claim(text) SET search_path TO 'public', 'pg_temp';
+ALTER FUNCTION public._sanitize_ilike_pattern(text) SET search_path TO 'public', 'pg_temp';
 
 GRANT EXECUTE ON FUNCTION public.ai_equipment_lookup(TEXT, INTEGER, BIGINT, TEXT) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.ai_maintenance_summary(TEXT, TEXT, BIGINT, TEXT) TO authenticated;
