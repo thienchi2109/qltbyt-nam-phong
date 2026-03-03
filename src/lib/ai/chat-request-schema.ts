@@ -15,12 +15,12 @@ const selectedFacilityIdSchema = z.preprocess(value => {
   }
 
   return value
-}, z.number().int().positive().safe())
+}, z.number().int().positive().safe().optional())
 
 export const chatRequestSchema = z.object({
   messages: z.array(z.unknown()).min(1),
   requestedTools: z.array(z.string().trim().min(1).max(80)).max(20).optional(),
-  selectedFacilityId: selectedFacilityIdSchema.optional(),
+  selectedFacilityId: selectedFacilityIdSchema,
 })
 
 export type ChatRequest = z.infer<typeof chatRequestSchema>

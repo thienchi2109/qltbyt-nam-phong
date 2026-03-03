@@ -405,12 +405,33 @@ RETURNS TABLE (
 LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = public
 AS $$
 DECLARE
-  v_role TEXT := current_setting('request.jwt.claims', true)::json->>'app_role';
-  v_don_vi TEXT := current_setting('request.jwt.claims', true)::json->>'don_vi';
+  v_jwt_claims JSONB;
+  v_role TEXT;
+  v_don_vi BIGINT;
 BEGIN
+  -- ============================================
+  -- JWT Claims Extraction (fail-closed on error)
+  -- ============================================
+  BEGIN
+    v_jwt_claims := current_setting('request.jwt.claims', true)::jsonb;
+  EXCEPTION WHEN OTHERS THEN
+    RETURN;  -- no JWT → empty result set
+  END;
+
+  v_role := COALESCE(v_jwt_claims->>'app_role', v_jwt_claims->>'role', '');
+  v_don_vi := NULLIF(v_jwt_claims->>'don_vi', '')::BIGINT;
+
+  -- ============================================
   -- Tenant isolation: non-privileged roles forced to their own tenant
+  -- ============================================
   IF v_role NOT IN ('global', 'admin', 'regional_leader') THEN
-    p_don_vi := v_don_vi::bigint;
+    -- SECURITY: fail-closed when don_vi claim is NULL/missing.
+    -- Without this guard, p_don_vi would be NULL and the WHERE clause
+    -- (p_don_vi IS NULL OR ...) would return data from ALL tenants.
+    IF v_don_vi IS NULL THEN
+      RETURN;  -- empty result set — no tenant access
+    END IF;
+    p_don_vi := v_don_vi;
   END IF;
 
   RETURN QUERY

@@ -24,7 +24,7 @@ export async function executeRpcTool({
     method: 'POST',
     headers,
     cache: 'no-store',
-    body: JSON.stringify({ args }),
+    body: JSON.stringify(args),
   })
 
   const payload = await response.json().catch(() => null)
