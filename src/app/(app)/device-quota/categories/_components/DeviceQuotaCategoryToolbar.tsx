@@ -4,12 +4,14 @@ import * as React from "react"
 import { Download, PlusCircle, Upload } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
+import { SearchInput } from "@/components/shared/SearchInput"
 import { useToast } from "@/hooks/use-toast"
 import { downloadCategoryImportTemplate } from "@/lib/category-excel"
 import { useDeviceQuotaCategoryContext } from "../_hooks/useDeviceQuotaCategoryContext"
 
 export function DeviceQuotaCategoryToolbar() {
-  const { openCreateDialog, openImportDialog } = useDeviceQuotaCategoryContext()
+  const { openCreateDialog, openImportDialog, searchTerm, setSearchTerm } =
+    useDeviceQuotaCategoryContext()
   const { toast } = useToast()
   const [isDownloading, setIsDownloading] = React.useState(false)
 
@@ -30,8 +32,14 @@ export function DeviceQuotaCategoryToolbar() {
   }
 
   return (
-    <div className="flex flex-wrap items-center justify-between gap-2">
-      <div />
+    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="w-full sm:max-w-sm">
+        <SearchInput
+          value={searchTerm}
+          onChange={setSearchTerm}
+          placeholder="Tìm theo mã, tên nhóm..."
+        />
+      </div>
       <div className="flex items-center gap-2">
         <Button
           variant="outline"
