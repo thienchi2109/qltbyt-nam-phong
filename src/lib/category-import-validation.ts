@@ -163,8 +163,8 @@ export function validateParsedRows(
 
     if (dinhMucRaw !== null && dinhMucRaw !== undefined && dinhMucRaw !== "") {
       const parsed = Number(dinhMucRaw)
-      if (isNaN(parsed) || !Number.isInteger(parsed) || parsed < 0) {
-        rowErrors.push(`Dong ${rowNum}: Dinh muc phai la so nguyen >= 0`)
+      if (isNaN(parsed) || !Number.isInteger(parsed) || parsed <= 0) {
+        rowErrors.push(`Dong ${rowNum}: Dinh muc phai la so nguyen > 0`)
       } else {
         dinhMucToiDa = parsed
       }

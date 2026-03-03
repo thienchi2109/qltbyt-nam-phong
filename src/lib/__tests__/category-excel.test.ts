@@ -309,18 +309,20 @@ describe('Category Excel Template Generation', () => {
     it('should have number validation for quota columns (I and J)', () => {
       if (initError) throw initError
 
-      // Column I (Định mức SL tối đa)
+      // Column I (Định mức SL tối đa): must be > 0 if provided
       const quotaCell = dataEntrySheet.getCell(2, 9) // I2
       expect(quotaCell.dataValidation).toBeDefined()
       expect(quotaCell.dataValidation?.type).toBe('whole')
-      expect(quotaCell.dataValidation?.operator).toBe('greaterThanOrEqual')
+      expect(quotaCell.dataValidation?.operator).toBe('greaterThan')
+      expect(quotaCell.dataValidation?.formulae).toEqual([0])
       expect(quotaCell.dataValidation?.allowBlank).toBe(true)
 
-      // Column J (Tối thiểu)
+      // Column J (Tối thiểu): must be >= 0 if provided
       const minCell = dataEntrySheet.getCell(2, 10) // J2
       expect(minCell.dataValidation).toBeDefined()
       expect(minCell.dataValidation?.type).toBe('whole')
       expect(minCell.dataValidation?.operator).toBe('greaterThanOrEqual')
+      expect(minCell.dataValidation?.formulae).toEqual([0])
       expect(minCell.dataValidation?.allowBlank).toBe(true)
     })
 

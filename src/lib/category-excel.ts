@@ -123,17 +123,17 @@ export async function generateCategoryImportTemplate(): Promise<Blob> {
       }
     }
 
-    // Add number validation for "Định mức (SL tối đa)" (column I) - optional, must be integer >= 0
+    // Add number validation for "Định mức (SL tối đa)" (column I) - optional, must be integer > 0
     for (let row = 2; row <= MAX_TEMPLATE_ROWS; row++) {
       const cell = dataEntrySheet.getCell(row, 9) // Column I
       cell.dataValidation = {
         type: 'whole',
-        operator: 'greaterThanOrEqual',
+        operator: 'greaterThan',
         showErrorMessage: true,
         allowBlank: true,
         formulae: [0],
         errorTitle: 'Giá trị không hợp lệ',
-        error: 'Số lượng định mức phải là số nguyên >= 0.',
+        error: 'Số lượng định mức phải là số nguyên > 0.',
       }
     }
 
@@ -261,6 +261,7 @@ export async function generateCategoryImportTemplate(): Promise<Blob> {
     const quotaSectionRowNum = instructionsSheet.rowCount
     instructionsSheet.getRow(quotaSectionRowNum).font = { bold: true, size: 12, color: { argb: 'FF2563EB' } }
     instructionsSheet.addRow(['   - Cột I "Định mức (SL tối đa)": Số lượng tối đa thiết bị được phép có'])
+    instructionsSheet.addRow(['   - Nếu nhập cột I, giá trị phải là số nguyên > 0'])
     instructionsSheet.addRow(['   - Cột J "Tối thiểu": Số lượng tối thiểu (không được lớn hơn SL tối đa)'])
     instructionsSheet.addRow(['   - Chỉ áp dụng cho nhóm lá (nhóm không có nhóm con)'])
     instructionsSheet.addRow(['   - Nếu có giá trị: hệ thống tự tạo Quyết Định Định mức nháp'])
