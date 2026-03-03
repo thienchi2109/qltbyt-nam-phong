@@ -1,6 +1,10 @@
 import { z } from 'zod'
 
 const selectedFacilityIdSchema = z.preprocess(value => {
+  if (value === null || value === undefined) {
+    return undefined
+  }
+
   if (typeof value === 'number') {
     return value
   }
@@ -14,7 +18,7 @@ const selectedFacilityIdSchema = z.preprocess(value => {
     return Number(trimmed)
   }
 
-  return value
+  return undefined
 }, z.number().int().positive().safe().optional())
 
 export const chatRequestSchema = z.object({
