@@ -340,10 +340,12 @@ git commit -m "feat: [US-003][US-004] - enforce RPC-only AI tools with tenant-aw
 - Modify: `src/lib/ai/prompts/system.ts`
 - Modify: `src/lib/ai/prompts/__tests__/system.test.ts`
 - Create: `src/app/api/chat/__tests__/route.readonly-tools.test.ts`
+- Create: Supabase RPC function `ai_maintenance_plan_lookup` (migration)
 
 **Step 1: Write failing read-only tool tests (RED)**
 - equipment lookup uses approved RPC fn only.
 - maintenance summary uses approved RPC fn only.
+- **maintenance plan lookup** uses new `ai_maintenance_plan_lookup` RPC fn only.
 - repair summary uses approved RPC fn only.
 - usage history lookup uses approved RPC fn only.
 - attachment retrieval only provides secured short-lived signed URLs + file metadata from `file_dinh_kem` via approved read-only RPC (no direct Storage API calls in AI tool path).
@@ -358,10 +360,103 @@ node scripts/npm-run.js run test:run -- "src/app/api/chat/__tests__/route.readon
 ```
 Expected: FAIL.
 
-**Step 3: Implement minimal tool execute functions (GREEN)**
+**Step 3: Implement all tool execute functions + deploy `ai_maintenance_plan_lookup` RPC (GREEN)**
+
+**3a. Deploy `ai_maintenance_plan_lookup` RPC migration**
+
+Create a new Supabase read-only RPC function that JOINs `cong_viec_bao_tri` with `ke_hoach_bao_tri` and `thiet_bi` tables. This is the dedicated AI tool data source for maintenance plan queries.
+
+**Database tables involved:**
+- `ke_hoach_bao_tri` — plan header: `id`, `ten_ke_hoach`, `nam`, `loai_cong_viec`, `trang_thai` (Bản nháp / Đã duyệt / Không duyệt), `khoa_phong`, `don_vi`, `ngay_phe_duyet`, `nguoi_duyet`.
+- `cong_viec_bao_tri` — task detail per equipment: `id`, `ke_hoach_id` → `ke_hoach_bao_tri.id`, `thiet_bi_id` → `thiet_bi.id`, `loai_cong_viec`, `don_vi_thuc_hien`, `diem_hieu_chuan`, `thang_1..12` (boolean scheduled), `thang_1_hoan_thanh..12` (boolean completed), `ngay_hoan_thanh_1..12` (timestamptz), `ghi_chu`.
+
+**RPC signature:**
+
+```sql
+CREATE OR REPLACE FUNCTION public.ai_maintenance_plan_lookup(
+  thiet_bi_id BIGINT,
+  p_nam INTEGER DEFAULT NULL,   -- filter by year; NULL = all years
+  p_don_vi BIGINT DEFAULT NULL, -- tenant filter; overridden by JWT for non-privileged roles
+  p_user_id TEXT DEFAULT NULL   -- optional anti-spoof context check
+)
+RETURNS JSONB
+LANGUAGE plpgsql
+STABLE
+SECURITY DEFINER
+SET search_path TO 'public', 'pg_temp'
+AS $$
+DECLARE
+  v_role TEXT;
+  v_user_id TEXT;
+  v_don_vi BIGINT;
+BEGIN
+  -- JWT claim extraction + null guards
+  v_role := lower(COALESCE(public._get_jwt_claim('app_role'), public._get_jwt_claim('role'), ''));
+  v_user_id := NULLIF(COALESCE(public._get_jwt_claim('user_id'), public._get_jwt_claim('sub')), '');
+  v_don_vi := NULLIF(public._get_jwt_claim('don_vi'), '')::BIGINT;
+
+  IF v_role IS NULL OR v_role = '' THEN
+    RAISE EXCEPTION 'Missing role claim' USING ERRCODE = '42501';
+  END IF;
+  IF v_user_id IS NULL THEN
+    RAISE EXCEPTION 'Missing user_id claim' USING ERRCODE = '42501';
+  END IF;
+  IF thiet_bi_id IS NULL OR thiet_bi_id <= 0 THEN
+    RAISE EXCEPTION 'thiet_bi_id is required' USING ERRCODE = '22023';
+  END IF;
+
+  -- Tenant isolation: non-privileged roles forced to their own tenant.
+  -- regional_leader is constrained via allowed_don_vi_for_session_safe().
+  IF v_role NOT IN ('global', 'admin', 'regional_leader') THEN
+    IF v_don_vi IS NULL THEN
+      RAISE EXCEPTION 'Missing don_vi claim' USING ERRCODE = '42501';
+    END IF;
+    p_don_vi := v_don_vi;
+  END IF;
+
+  -- Return shape:
+  -- {
+  --   equipment: { id, ma_thiet_bi, ten_thiet_bi, model, don_vi } | null,
+  --   plans: [{ plan_id, ten_ke_hoach, nam, loai_cong_viec, plan_trang_thai, ngay_phe_duyet, task_id, ...month flags..., ghi_chu }],
+  --   totalPlans: number,
+  --   yearFilter: p_nam
+  -- }
+  RETURN ...; -- See migration implementation for full query body
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION public.ai_maintenance_plan_lookup(BIGINT, INTEGER, BIGINT, TEXT) TO authenticated;
+REVOKE EXECUTE ON FUNCTION public.ai_maintenance_plan_lookup(BIGINT, INTEGER, BIGINT, TEXT) FROM PUBLIC;
+```
+
+**Design notes:**
+- `SECURITY DEFINER` + `SET search_path TO 'public', 'pg_temp'` + `STABLE`: read-only and hardened against search_path injection.
+- Non-privileged roles have tenant scoping enforced server-side; missing required JWT claims fail closed.
+- JSONB response provides tool-ready structure (`equipment`, `plans`, `totalPlans`, `yearFilter`) without extra server reshaping.
+- `GRANT EXECUTE ... TO authenticated` + `REVOKE ... FROM PUBLIC` enforces authenticated-only RPC execution.
+
+**3b. Implement all tool execute functions**
+
 - Each tool has explicit `inputSchema` (Zod) and deterministic RPC mapping.
 - No tool may call mutation RPCs.
-- Update `system.ts` tool-instruction block to describe read-only toolset, factual citation behavior, and predictive maintenance suggestions (i.e. if usage frequency is exceptionally high, proactively recommend shortening the maintenance cycle); bump prompt version if behavior changes.
+- Equipment lookup, repair summary, usage history, and attachment retrieval tools each use their respective approved read-only RPC functions.
+
+`maintenance-tools.ts` specifically must expose **three** AI tool capabilities:
+
+| Tool name | RPC | Purpose |
+|---|---|---|
+| `maintenanceSummary` | `maintenance_tasks_list_with_equipment` (existing) | General overview of all maintenance tasks at the current facility (supports filter by `p_loai_cong_viec`). |
+| `maintenancePlanLookup` | `ai_maintenance_plan_lookup` (**new**) | Look up yearly maintenance/calibration/inspection plans for a **specific equipment** (`thiet_bi_id`), returning structured JSON with equipment context and 12-month scheduled vs completed status. |
+| `maintenanceUpcoming` | Equipment-level fields on `thiet_bi` table via `equipmentLookup` | Check `ngay_bt_tiep_theo`, `ngay_hc_tiep_theo`, `ngay_kd_tiep_theo` deadlines for upcoming maintenance. This reuses equipment lookup data, no separate RPC needed. |
+
+**AI prompt guidance for `maintenancePlanLookup`:**
+- When the user asks about a specific equipment's maintenance/calibration/inspection schedule → call `maintenancePlanLookup` with the equipment ID.
+- Present results as a readable table: plan name, type (`bảo trì` / `hiệu chuẩn` / `kiểm định`), year, and a 12-column month grid showing ✅ (completed) / 🔲 (scheduled but pending) / ─ (not scheduled).
+- If a scheduled month is overdue (current month has passed but `thang_X_hoan_thanh = false`), flag it with ⚠️.
+
+**3c. Update system prompt**
+
+Update `system.ts` tool-instruction block to describe the expanded read-only toolset, factual citation behavior, and predictive maintenance suggestions (i.e. if usage frequency is exceptionally high, proactively recommend shortening the maintenance cycle); bump prompt version if behavior changes.
 
 **Step 4: Re-run tests**
 
@@ -371,11 +466,20 @@ node scripts/npm-run.js run test:run -- "src/app/api/chat/__tests__/route.readon
 ```
 Expected: PASS.
 
-**Step 5: Commit**
+**Step 5: Refactor + static checks**
+
+Run:
+```bash
+node scripts/npm-run.js run typecheck
+node scripts/npm-run.js run lint -- --file "src/lib/ai/tools/maintenance-tools.ts"
+```
+Expected: PASS.
+
+**Step 6: Commit**
 
 ```bash
 git add src/lib/ai/tools/equipment-tools.ts src/lib/ai/tools/maintenance-tools.ts src/lib/ai/tools/repair-tools.ts src/lib/ai/tools/usage-tools.ts src/lib/ai/tools/attachment-tools.ts src/lib/ai/tools/registry.ts src/lib/ai/prompts/system.ts src/lib/ai/prompts/__tests__/system.test.ts src/app/api/chat/__tests__/route.readonly-tools.test.ts
-git commit -m "feat: [US-005] - add read-only AI tools with usage and attachment lookup features"
+git commit -m "feat: [US-005] - add read-only AI tools with maintenance plan lookup and usage/attachment features"
 ```
 
 ### Task 4: AI Diagnostic & Remediation Generation (Troubleshooting Assistant)

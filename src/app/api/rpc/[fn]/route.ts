@@ -74,6 +74,11 @@ const ALLOWED_FUNCTIONS = new Set<string>([
   'maintenance_stats_enhanced',
   'maintenance_stats_for_reports',
   'get_maintenance_report_data',
+  // AI Assistant (read-only)
+  'ai_equipment_lookup',
+  'ai_maintenance_plan_lookup',
+  'ai_maintenance_summary',
+  'ai_repair_summary',
   // Tenants + Users
   'tenant_list',
   'get_facilities_with_equipment_count',
