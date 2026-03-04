@@ -119,4 +119,89 @@ describe('DeviceQuotaCategoryTree', () => {
 
     expect(screen.getByRole('list', { name: 'Tiêu chuẩn, định mức thiết bị' })).toBeInTheDocument()
   })
+
+  it('shows column header when data exists', () => {
+    mockUseContext.mockReturnValue({
+      categories: [
+        { id: 1, parent_id: null, ma_nhom: 'I', ten_nhom: 'Nhóm 1', level: 1, so_luong_hien_co: 0 },
+      ],
+      isLoading: false,
+      totalRootCount: 1,
+      searchTerm: '',
+      pagination: basePagination,
+      openCreateDialog: vi.fn(),
+      openEditDialog: vi.fn(),
+      openDeleteDialog: vi.fn(),
+      mutatingCategoryId: null,
+    } as unknown as MockCategoryContextValue)
+
+    render(<DeviceQuotaCategoryTree />)
+
+    expect(screen.getByText('Phân loại')).toBeInTheDocument()
+    expect(screen.getByText('Tình trạng sử dụng')).toBeInTheDocument()
+  })
+
+  it('hides column header when no data', () => {
+    mockUseContext.mockReturnValue({
+      categories: [],
+      isLoading: false,
+      totalRootCount: 0,
+      searchTerm: '',
+      pagination: basePagination,
+      openCreateDialog: vi.fn(),
+      openEditDialog: vi.fn(),
+      openDeleteDialog: vi.fn(),
+      mutatingCategoryId: null,
+    } as unknown as MockCategoryContextValue)
+
+    render(<DeviceQuotaCategoryTree />)
+
+    expect(screen.queryByText('Phân loại')).not.toBeInTheDocument()
+    expect(screen.queryByText('Tình trạng sử dụng')).not.toBeInTheDocument()
+  })
+
+  it('renders quota progress bars for child rows', () => {
+    mockUseContext.mockReturnValue({
+      categories: [
+        { id: 1, parent_id: null, ma_nhom: 'I', ten_nhom: 'Root', level: 1, so_luong_hien_co: 0, so_luong_toi_da: null },
+        { id: 2, parent_id: 1, ma_nhom: '01', ten_nhom: 'Child', level: 2, so_luong_hien_co: 3, so_luong_toi_da: 9 },
+      ],
+      isLoading: false,
+      totalRootCount: 1,
+      searchTerm: '',
+      pagination: basePagination,
+      openCreateDialog: vi.fn(),
+      openEditDialog: vi.fn(),
+      openDeleteDialog: vi.fn(),
+      mutatingCategoryId: null,
+    } as unknown as MockCategoryContextValue)
+
+    render(<DeviceQuotaCategoryTree />)
+
+    // Child row should show fraction 3/9
+    expect(screen.getByText('3/9')).toBeInTheDocument()
+  })
+
+  it('renders aggregated quota progress bar on group header', () => {
+    mockUseContext.mockReturnValue({
+      categories: [
+        { id: 1, parent_id: null, ma_nhom: 'I', ten_nhom: 'Root', level: 1, so_luong_hien_co: 0, so_luong_toi_da: 5 },
+        { id: 2, parent_id: 1, ma_nhom: '01', ten_nhom: 'Child A', level: 2, so_luong_hien_co: 3, so_luong_toi_da: 9 },
+        { id: 3, parent_id: 1, ma_nhom: '02', ten_nhom: 'Child B', level: 2, so_luong_hien_co: 2, so_luong_toi_da: 6 },
+      ],
+      isLoading: false,
+      totalRootCount: 1,
+      searchTerm: '',
+      pagination: basePagination,
+      openCreateDialog: vi.fn(),
+      openEditDialog: vi.fn(),
+      openDeleteDialog: vi.fn(),
+      mutatingCategoryId: null,
+    } as unknown as MockCategoryContextValue)
+
+    render(<DeviceQuotaCategoryTree />)
+
+    // Group header: total equipment = 0+3+2=5, total quota = 5+9+6=20
+    expect(screen.getByText('5/20')).toBeInTheDocument()
+  })
 })

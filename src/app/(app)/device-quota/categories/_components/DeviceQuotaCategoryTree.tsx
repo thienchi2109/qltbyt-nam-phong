@@ -2,6 +2,8 @@
 
 import * as React from "react"
 
+import { cn } from "@/lib/utils"
+
 import {
   Card,
   CardContent,
@@ -12,7 +14,7 @@ import {
 } from "@/components/ui/card"
 import { DataTablePagination } from "@/components/shared/DataTablePagination"
 import { useDeviceQuotaCategoryContext } from "../_hooks/useDeviceQuotaCategoryContext"
-import { CATEGORY_ENTITY, groupByRoot } from "./category-tree-utils"
+import { CATEGORY_ENTITY, CATEGORY_GRID_COLS, groupByRoot } from "./category-tree-utils"
 import { CategoryGroup } from "./CategoryGroup"
 import { CategoryTreeSkeleton, CategoryTreeEmpty } from "./CategoryTreeStates"
 
@@ -75,22 +77,38 @@ export function DeviceQuotaCategoryTree() {
             hasSearch={searchTerm.length > 0}
           />
         ) : (
-          <div
-            role="list"
-            aria-label="Tiêu chuẩn, định mức thiết bị"
-            className="space-y-3"
-          >
-            {roots.map((root) => (
-              <div key={root.id} role="listitem">
-                <CategoryGroup
-                  root={root}
-                  children={childrenMap.get(root.id) || []}
-                  onEdit={openEditDialog}
-                  onDelete={openDeleteDialog}
-                  mutatingCategoryId={mutatingCategoryId}
-                />
-              </div>
-            ))}
+          <div className="space-y-3">
+            {/* Column header */}
+            <div
+              className={cn(
+                CATEGORY_GRID_COLS,
+                "px-4 py-1.5 text-xs font-medium text-muted-foreground uppercase tracking-wide"
+              )}
+              aria-hidden="true"
+            >
+              <span>Tên nhóm</span>
+              <span>Phân loại</span>
+              <span>Tình trạng sử dụng</span>
+              <span /> {/* Actions column */}
+            </div>
+
+            <div
+              role="list"
+              aria-label="Tiêu chuẩn, định mức thiết bị"
+              className="space-y-3"
+            >
+              {roots.map((root) => (
+                <div key={root.id} role="listitem">
+                  <CategoryGroup
+                    root={root}
+                    children={childrenMap.get(root.id) || []}
+                    onEdit={openEditDialog}
+                    onDelete={openDeleteDialog}
+                    mutatingCategoryId={mutatingCategoryId}
+                  />
+                </div>
+              ))}
+            </div>
           </div>
         )}
       </CardContent>

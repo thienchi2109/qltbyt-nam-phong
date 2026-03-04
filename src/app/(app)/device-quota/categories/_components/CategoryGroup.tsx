@@ -9,7 +9,6 @@ import {
     Trash2,
 } from "lucide-react"
 
-
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -19,7 +18,8 @@ import {
     DropdownMenuItem,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { CLASSIFICATION_STYLES } from "./category-tree-utils"
+import { CATEGORY_GRID_COLS, CLASSIFICATION_STYLES } from "./category-tree-utils"
+import { QuotaProgressBar } from "./QuotaProgressBar"
 import type { CategoryListItem } from "../_types/categories"
 
 // ============================================
@@ -41,14 +41,12 @@ const CategoryChildRow = React.memo(function CategoryChildRow({
 }: CategoryChildRowProps) {
     const classStyle = CLASSIFICATION_STYLES[category.phan_loai || ""] ?? null
 
-    const hasEquipment = category.so_luong_hien_co > 0
-
     return (
         <div
             className={cn(
                 "group relative rounded-md border border-transparent px-3 py-2.5 transition-all duration-150",
                 "hover:bg-accent/50 hover:border-border/50",
-                "grid grid-cols-[minmax(0,1fr)_auto] gap-x-6 items-center"
+                CATEGORY_GRID_COLS
             )}
             style={{ paddingLeft: `${Math.max(0, category.level - 2) * 20 + 16}px` }}
         >
@@ -78,61 +76,47 @@ const CategoryChildRow = React.memo(function CategoryChildRow({
                 )}
             </div>
 
-            {/* Column 2: Classification + Metrics + Actions */}
-            <div className="flex items-center gap-4 shrink-0">
+            {/* Column 2: Classification badge */}
+            <div>
                 {classStyle && (
                     <Badge variant="outline" className={cn("text-xs font-medium", classStyle.className)}>
                         {classStyle.label}
                     </Badge>
                 )}
-
-                <div className="flex items-center gap-1 min-w-[5.5rem]" title="Định mức tối đa">
-                    <span className="text-[11px] text-muted-foreground">Định mức</span>
-                    <span className="text-sm font-semibold tabular-nums">
-                        {category.so_luong_toi_da ?? '–'}
-                    </span>
-                </div>
-
-                <div className="flex items-center gap-1.5 min-w-[5rem]" title="Số lượng hiện có">
-                    <span
-                        className={cn(
-                            "inline-block h-2 w-2 rounded-full shrink-0",
-                            hasEquipment ? "bg-emerald-500" : "bg-muted-foreground/30"
-                        )}
-                        aria-hidden="true"
-                    />
-                    <span className="text-[11px] text-muted-foreground">Hiện có</span>
-                    <span className="text-sm font-semibold tabular-nums">
-                        {category.so_luong_hien_co}
-                    </span>
-                </div>
-
-                <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                        <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity"
-                            disabled={isMutating}
-                        >
-                            <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                        <DropdownMenuItem onSelect={() => onEdit(category)}>
-                            <Pencil className="mr-2 h-4 w-4" />
-                            Sửa
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                            onSelect={() => onDelete(category)}
-                            className="text-destructive focus:text-destructive"
-                        >
-                            <Trash2 className="mr-2 h-4 w-4" />
-                            Xóa
-                        </DropdownMenuItem>
-                    </DropdownMenuContent>
-                </DropdownMenu>
             </div>
+
+            {/* Column 3: Quota progress bar */}
+            <QuotaProgressBar
+                current={category.so_luong_hien_co}
+                max={category.so_luong_toi_da}
+            />
+
+            {/* Column 4: Actions */}
+            <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity"
+                        disabled={isMutating}
+                    >
+                        <MoreHorizontal className="h-4 w-4" />
+                    </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                    <DropdownMenuItem onSelect={() => onEdit(category)}>
+                        <Pencil className="mr-2 h-4 w-4" />
+                        Sửa
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                        onSelect={() => onDelete(category)}
+                        className="text-destructive focus:text-destructive"
+                    >
+                        <Trash2 className="mr-2 h-4 w-4" />
+                        Xóa
+                    </DropdownMenuItem>
+                </DropdownMenuContent>
+            </DropdownMenu>
         </div>
     )
 })
@@ -162,16 +146,16 @@ const CategoryGroup = React.memo(function CategoryGroup({
     const allGroupItems = [root, ...children]
     const hasUnknownQuota = allGroupItems.some((item) => item.so_luong_toi_da == null)
     const totalQuota = allGroupItems.reduce((sum, item) => sum + (item.so_luong_toi_da ?? 0), 0)
-    const hasEquipment = totalEquipment > 0
 
     return (
         <div className="rounded-lg border bg-card overflow-hidden transition-shadow hover:shadow-sm">
             {/* Group Header */}
             <div
                 className={cn(
-                    "flex items-center gap-3 px-4 py-3 cursor-pointer select-none",
+                    "group cursor-pointer select-none px-4 py-3",
                     "bg-muted/50 border-l-4 border-l-primary/60",
-                    "hover:bg-muted/80 transition-colors"
+                    "hover:bg-muted/80 transition-colors",
+                    CATEGORY_GRID_COLS
                 )}
                 onClick={() => setIsCollapsed(!isCollapsed)}
                 role="button"
@@ -185,88 +169,74 @@ const CategoryGroup = React.memo(function CategoryGroup({
                 aria-expanded={!isCollapsed}
                 aria-label={`Nhóm ${root.ma_nhom}: ${root.ten_nhom}`}
             >
-                {/* Chevron */}
-                <span className="shrink-0 text-muted-foreground">
-                    {isCollapsed ? (
-                        <ChevronRight className="h-4 w-4" />
-                    ) : (
-                        <ChevronDown className="h-4 w-4" />
-                    )}
-                </span>
-
-                {/* Root info */}
-                <div className="min-w-0 flex-1">
-                    <div className="flex items-baseline gap-2">
-                        <span className="text-sm font-bold text-primary">
-                            {root.ma_nhom}
-                        </span>
-                        <span className="text-sm font-semibold truncate">
-                            {root.ten_nhom}
-                        </span>
+                {/* Column 1: Chevron + Root info */}
+                <div className="min-w-0 flex items-center gap-3">
+                    <span className="shrink-0 text-muted-foreground">
+                        {isCollapsed ? (
+                            <ChevronRight className="h-4 w-4" />
+                        ) : (
+                            <ChevronDown className="h-4 w-4" />
+                        )}
+                    </span>
+                    <div className="min-w-0 flex-1">
+                        <div className="flex items-baseline gap-2">
+                            <span className="text-sm font-bold text-primary">
+                                {root.ma_nhom}
+                            </span>
+                            <span className="text-sm font-semibold truncate">
+                                {root.ten_nhom}
+                            </span>
+                        </div>
                     </div>
                 </div>
 
-                {/* Right side: meta */}
-                <div className="flex items-center gap-4 shrink-0">
+                {/* Column 2: Classification badge */}
+                <div>
                     {classStyle && (
                         <Badge variant="outline" className={cn("text-xs font-medium", classStyle.className)}>
                             {classStyle.label}
                         </Badge>
                     )}
+                </div>
 
-                    <div className="flex items-center gap-1 min-w-[5.5rem]" title="Tổng định mức">
-                        <span className="text-[11px] text-muted-foreground">Định mức</span>
-                        <span className="text-sm font-semibold tabular-nums">
-                            {hasUnknownQuota ? '–' : totalQuota}
-                        </span>
-                    </div>
-
-                    <div className="flex items-center gap-1.5 min-w-[5rem]" title="Tổng thiết bị hiện có">
-                        <span
-                            className={cn(
-                                "inline-block h-2 w-2 rounded-full shrink-0",
-                                hasEquipment ? "bg-emerald-500" : "bg-muted-foreground/30"
-                            )}
-                            aria-hidden="true"
-                        />
-                        <span className="text-[11px] text-muted-foreground">Hiện có</span>
-                        <span className="text-sm font-semibold tabular-nums">
-                            {totalEquipment}
-                        </span>
-                    </div>
-
-                    <span className="text-xs text-muted-foreground">
+                {/* Column 3: Aggregated quota progress + children count */}
+                <div className="flex items-center gap-3">
+                    <QuotaProgressBar
+                        current={totalEquipment}
+                        max={hasUnknownQuota ? null : totalQuota}
+                    />
+                    <span className="text-xs text-muted-foreground whitespace-nowrap">
                         {children.length} mục con
                     </span>
-
-                    {/* Actions (stop propagation to avoid collapse toggle) */}
-                    <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                            <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-7 w-7"
-                                disabled={mutatingCategoryId === root.id}
-                                onClick={(e) => e.stopPropagation()}
-                            >
-                                <MoreHorizontal className="h-4 w-4" />
-                            </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                            <DropdownMenuItem onSelect={() => onEdit(root)}>
-                                <Pencil className="mr-2 h-4 w-4" />
-                                Sửa
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                                onSelect={() => onDelete(root)}
-                                className="text-destructive focus:text-destructive"
-                            >
-                                <Trash2 className="mr-2 h-4 w-4" />
-                                Xóa
-                            </DropdownMenuItem>
-                        </DropdownMenuContent>
-                    </DropdownMenu>
                 </div>
+
+                {/* Column 4: Actions (stop propagation to avoid collapse toggle) */}
+                <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7"
+                            disabled={mutatingCategoryId === root.id}
+                            onClick={(e) => e.stopPropagation()}
+                        >
+                            <MoreHorizontal className="h-4 w-4" />
+                        </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                        <DropdownMenuItem onSelect={() => onEdit(root)}>
+                            <Pencil className="mr-2 h-4 w-4" />
+                            Sửa
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                            onSelect={() => onDelete(root)}
+                            className="text-destructive focus:text-destructive"
+                        >
+                            <Trash2 className="mr-2 h-4 w-4" />
+                            Xóa
+                        </DropdownMenuItem>
+                    </DropdownMenuContent>
+                </DropdownMenu>
             </div>
 
             {/* Children */}
