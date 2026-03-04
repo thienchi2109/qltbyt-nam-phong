@@ -168,6 +168,8 @@ describe("DeviceQuotaCategoryImportDialog", () => {
             thu_tu_hien_thi: 0,
             level: 1,
             so_luong_hien_co: 0,
+            so_luong_toi_da: null,
+            so_luong_toi_thieu: null,
             mo_ta: null,
           },
         ],
