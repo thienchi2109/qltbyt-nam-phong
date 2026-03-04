@@ -18,6 +18,19 @@ describe('useServerPagination', () => {
     expect(result.current.page).toBe(1)
   })
 
+  it('keeps a stable return reference when inputs are unchanged', () => {
+    const { result, rerender } = renderHook(
+      ({ totalCount, resetKey }) => useServerPagination({ totalCount, resetKey }),
+      { initialProps: { totalCount: 100, resetKey: 'stable-key' } }
+    )
+
+    const firstReference = result.current
+
+    rerender({ totalCount: 100, resetKey: 'stable-key' })
+
+    expect(result.current).toBe(firstReference)
+  })
+
   it('updates page when navigating via setPagination', () => {
     const { result } = renderHook(() =>
       useServerPagination({ totalCount: 100 })

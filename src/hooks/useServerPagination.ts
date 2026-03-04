@@ -8,6 +8,7 @@
  * Consumers still get the full usePaginationState return for
  * DataTablePagination compatibility (0-based pageIndex, setPagination, etc.).
  */
+import * as React from 'react'
 import { usePaginationState } from '@/hooks/usePaginationState'
 
 export interface UseServerPaginationOptions {
@@ -45,7 +46,7 @@ export function useServerPagination({
     resetKey: resetKey ?? undefined,
   })
 
-  return {
+  return React.useMemo(() => ({
     // 1-based accessors for RPC calls
     page: state.pagination.pageIndex + 1,
     pageSize: state.pagination.pageSize,
@@ -57,5 +58,12 @@ export function useServerPagination({
     canPreviousPage: state.canPreviousPage,
     canNextPage: state.canNextPage,
     resetToFirstPage: state.resetToFirstPage,
-  }
+  }), [
+    state.pagination,
+    state.setPagination,
+    state.pageCount,
+    state.canPreviousPage,
+    state.canNextPage,
+    state.resetToFirstPage,
+  ])
 }
