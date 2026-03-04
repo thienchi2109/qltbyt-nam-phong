@@ -9,6 +9,7 @@ import {
     Trash2,
 } from "lucide-react"
 
+
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -18,12 +19,6 @@ import {
     DropdownMenuItem,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import {
-    Tooltip,
-    TooltipContent,
-    TooltipProvider,
-    TooltipTrigger,
-} from "@/components/ui/tooltip"
 import { CLASSIFICATION_STYLES } from "./category-tree-utils"
 import type { CategoryListItem } from "../_types/categories"
 
@@ -44,15 +39,14 @@ const CategoryChildRow = React.memo(function CategoryChildRow({
     onDelete,
     isMutating,
 }: CategoryChildRowProps) {
-    const [isExpanded, setIsExpanded] = React.useState(false)
     const classStyle = CLASSIFICATION_STYLES[category.phan_loai || ""] ?? null
-    const isLongText = (category.ten_nhom?.length ?? 0) > 80
 
     return (
         <div
             className={cn(
-                "group relative flex items-start gap-3 rounded-md border border-transparent px-3 py-2.5 transition-all duration-150",
-                "hover:bg-accent/50 hover:border-border/50"
+                "group relative rounded-md border border-transparent px-3 py-2.5 transition-all duration-150",
+                "hover:bg-accent/50 hover:border-border/50",
+                "grid grid-cols-[1fr_auto_auto] gap-x-4 items-baseline"
             )}
             style={{ paddingLeft: `${Math.max(0, category.level - 2) * 20 + 16}px` }}
         >
@@ -65,63 +59,34 @@ const CategoryChildRow = React.memo(function CategoryChildRow({
                 />
             )}
 
-            {/* Content */}
-            <div className="min-w-0 flex-1">
+            {/* Column 1: Category name */}
+            <div className="min-w-0">
                 <div className="flex items-baseline gap-2">
                     <span className="text-sm font-semibold text-primary/80 shrink-0">
                         {category.ma_nhom}
                     </span>
-                    <TooltipProvider delayDuration={300}>
-                        <Tooltip>
-                            <TooltipTrigger asChild>
-                                <span
-                                    className={cn(
-                                        "text-sm text-foreground/80 cursor-default",
-                                        !isExpanded && "line-clamp-2"
-                                    )}
-                                    onClick={isLongText ? () => setIsExpanded(!isExpanded) : undefined}
-                                    role={isLongText ? "button" : undefined}
-                                    tabIndex={isLongText ? 0 : undefined}
-                                    onKeyDown={
-                                        isLongText
-                                            ? (e) => {
-                                                if (e.key === "Enter" || e.key === " ") {
-                                                    e.preventDefault()
-                                                    setIsExpanded(!isExpanded)
-                                                }
-                                            }
-                                            : undefined
-                                    }
-                                >
-                                    {category.ten_nhom}
-                                </span>
-                            </TooltipTrigger>
-                            {isLongText && !isExpanded && (
-                                <TooltipContent
-                                    side="bottom"
-                                    align="start"
-                                    className="max-w-md text-xs"
-                                >
-                                    {category.ten_nhom}
-                                </TooltipContent>
-                            )}
-                        </Tooltip>
-                    </TooltipProvider>
+                    <span className="text-sm text-foreground/80 break-words">
+                        {category.ten_nhom}
+                    </span>
                 </div>
-                {isExpanded && category.mo_ta && (
+                {category.mo_ta && (
                     <p className="text-xs text-muted-foreground mt-1 italic">
                         {category.mo_ta}
                     </p>
                 )}
             </div>
 
-            {/* Right side: badges + actions */}
-            <div className="flex items-center gap-2 shrink-0">
+            {/* Column 2: Classification badge */}
+            <div className="pl-2">
                 {classStyle && (
                     <Badge variant="outline" className={cn("text-xs font-medium", classStyle.className)}>
                         {classStyle.label}
                     </Badge>
                 )}
+            </div>
+
+            {/* Column 3: Quantity + actions */}
+            <div className="flex items-center gap-2 pl-2">
                 <Badge variant="secondary" className="tabular-nums text-xs">
                     {category.so_luong_hien_co}
                 </Badge>
@@ -222,7 +187,7 @@ const CategoryGroup = React.memo(function CategoryGroup({
                 </div>
 
                 {/* Right side: meta */}
-                <div className="flex items-center gap-2 shrink-0">
+                <div className="flex items-center gap-3 shrink-0">
                     {classStyle && (
                         <Badge variant="outline" className={cn("text-xs font-medium", classStyle.className)}>
                             {classStyle.label}
