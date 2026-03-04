@@ -14,6 +14,8 @@ import { Filter, Loader2, PlusCircle } from "lucide-react"
 import { useSession } from "next-auth/react"
 import { useRouter } from "next/navigation"
 
+import { useServerPagination } from "@/hooks/useServerPagination"
+
 import { AddTransferDialog } from "@/components/add-transfer-dialog"
 import { EditTransferDialog } from "@/components/edit-transfer-dialog"
 import { HandoverPreviewDialog } from "@/components/handover-preview-dialog"
@@ -165,19 +167,28 @@ function TransfersPageContent({ user }: TransfersPageContentProps) {
   const [sorting, setSorting] = React.useState<SortingState>([
     { id: "created_at", desc: true },
   ])
-  const [pagination, setPagination] = React.useState({ pageIndex: 0, pageSize: 20 })
   const [statusFilter, setStatusFilter] = React.useState<TransferStatus[]>([])
   const [dateRange, setDateRange] = React.useState<{ from: Date | null; to: Date | null } | null>(
     null,
   )
   const [isFilterModalOpen, setIsFilterModalOpen] = React.useState(false)
 
+  // Derive resetKey from all filter values that should auto-reset pagination
+  const paginationResetKey = `${activeTab}|${selectedFacilityId}|${debouncedSearch}|${statusFilter.join(',')}|${dateRange?.from?.getTime()}|${dateRange?.to?.getTime()}`
+
+  // Server-side pagination — totalCount starts at 0 and updates after first fetch
+  const [totalCount, setTotalCount] = React.useState(0)
+  const transferPagination = useServerPagination({
+    totalCount,
+    resetKey: paginationResetKey,
+  })
+
   const filters = React.useMemo<TransferListFilters>(() => {
     return {
       statuses: statusFilter,
       types: [activeTab],
-      page: pagination.pageIndex + 1,
-      pageSize: pagination.pageSize,
+      page: transferPagination.page,
+      pageSize: transferPagination.pageSize,
       q: debouncedSearch || undefined,
       facilityId: selectedFacilityId ?? null,
       dateFrom: dateRange?.from?.toISOString().split("T")[0] || undefined,
@@ -187,7 +198,7 @@ function TransfersPageContent({ user }: TransfersPageContentProps) {
       _diaBan: typeof user?.dia_ban_id === 'number' ? user.dia_ban_id : null,
       _tenantKey: effectiveTenantKey,
     }
-  }, [activeTab, pagination, debouncedSearch, selectedFacilityId, statusFilter, dateRange, user?.role, user?.dia_ban_id, effectiveTenantKey])
+  }, [activeTab, transferPagination.page, transferPagination.pageSize, debouncedSearch, selectedFacilityId, statusFilter, dateRange, user?.role, user?.dia_ban_id, effectiveTenantKey])
 
   const countsFilters = React.useMemo<TransferListFilters>(() => {
     const { statuses: _statuses, page: _page, pageSize: _pageSize, ...rest } = filters
@@ -224,9 +235,12 @@ function TransfersPageContent({ user }: TransfersPageContentProps) {
   } = useTransferActions()
 
   const tableData = transferList?.data ?? []
-  const totalCount = transferList?.total ?? 0
-  const pageSize = transferList?.pageSize ?? pagination.pageSize
-  const pageCount = transferList ? Math.max(0, Math.ceil(totalCount / pageSize)) : 0
+
+  // Sync totalCount from query result (render-time sync, guarded)
+  const serverTotal = transferList?.total ?? 0
+  if (serverTotal !== totalCount) {
+    setTotalCount(serverTotal)
+  }
 
   const referenceDate = React.useMemo(() => new Date(), [])
 
@@ -243,10 +257,6 @@ function TransfersPageContent({ user }: TransfersPageContentProps) {
   React.useEffect(() => {
     setStatusFilter([])
   }, [activeTab])
-
-  React.useEffect(() => {
-    setPagination((prev) => ({ ...prev, pageIndex: 0 }))
-  }, [activeTab, selectedFacilityId, debouncedSearch, statusFilter, dateRange])
 
   const handleClearAllFilters = React.useCallback(() => {
     setStatusFilter([])
@@ -364,14 +374,14 @@ function TransfersPageContent({ user }: TransfersPageContentProps) {
   const table = useReactTable({
     data: tableData,
     columns,
-    state: { sorting, pagination },
+    state: { sorting, pagination: transferPagination.pagination },
     onSortingChange: setSorting,
-    onPaginationChange: setPagination,
+    onPaginationChange: transferPagination.setPagination,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
     manualPagination: true,
-    pageCount,
+    pageCount: transferPagination.pageCount,
   })
 
   return (
@@ -587,9 +597,9 @@ function TransfersPageContent({ user }: TransfersPageContentProps) {
                       columns={columns}
                       sorting={sorting}
                       onSortingChange={setSorting}
-                      pagination={pagination}
-                      onPaginationChange={setPagination}
-                      pageCount={pageCount}
+                      pagination={transferPagination.pagination}
+                      onPaginationChange={transferPagination.setPagination}
+                      pageCount={transferPagination.pageCount}
                       isLoading={isListLoading}
                       onRowClick={handleViewDetail}
                     />
@@ -617,8 +627,8 @@ function TransfersPageContent({ user }: TransfersPageContentProps) {
               entity={TRANSFER_ENTITY}
               paginationMode={{
                 mode: "controlled",
-                pagination,
-                onPaginationChange: setPagination,
+                pagination: transferPagination.pagination,
+                onPaginationChange: transferPagination.setPagination,
               }}
               displayFormat={transferDisplayFormat}
               pageSizeOptions={[10, 20, 50, 100]}
