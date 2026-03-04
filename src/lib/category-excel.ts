@@ -137,17 +137,18 @@ export async function generateCategoryImportTemplate(): Promise<Blob> {
       }
     }
 
-    // Add number validation for "Tối thiểu" (column J) - optional, must be integer >= 0
+    // Add number validation for "Tối thiểu" (column J)
+    // Must be integer >= 0 AND <= column I (Định mức SL tối đa)
     for (let row = 2; row <= MAX_TEMPLATE_ROWS; row++) {
       const cell = dataEntrySheet.getCell(row, 10) // Column J
       cell.dataValidation = {
-        type: 'whole',
-        operator: 'greaterThanOrEqual',
+        type: 'custom',
         showErrorMessage: true,
         allowBlank: true,
-        formulae: [0],
+        // Formula: J is blank OR (J >= 0 AND J is whole number AND J <= I)
+        formulae: [`OR(J${row}="",AND(J${row}>=0,J${row}=INT(J${row}),J${row}<=I${row}))`],
         errorTitle: 'Giá trị không hợp lệ',
-        error: 'Số lượng tối thiểu phải là số nguyên >= 0.',
+        error: 'Số lượng tối thiểu phải là số nguyên >= 0 và <= định mức (SL tối đa).',
       }
     }
 

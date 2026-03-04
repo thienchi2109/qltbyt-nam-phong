@@ -317,12 +317,13 @@ describe('Category Excel Template Generation', () => {
       expect(quotaCell.dataValidation?.formulae).toEqual([0])
       expect(quotaCell.dataValidation?.allowBlank).toBe(true)
 
-      // Column J (Tối thiểu): must be >= 0 if provided
+      // Column J (Tối thiểu): must be >= 0 and <= column I if provided
       const minCell = dataEntrySheet.getCell(2, 10) // J2
       expect(minCell.dataValidation).toBeDefined()
-      expect(minCell.dataValidation?.type).toBe('whole')
-      expect(minCell.dataValidation?.operator).toBe('greaterThanOrEqual')
-      expect(minCell.dataValidation?.formulae).toEqual([0])
+      expect(minCell.dataValidation?.type).toBe('custom')
+      expect(minCell.dataValidation?.formulae).toEqual([
+        'OR(J2="",AND(J2>=0,J2=INT(J2),J2<=I2))',
+      ])
       expect(minCell.dataValidation?.allowBlank).toBe(true)
     })
 
