@@ -4,12 +4,8 @@ import Link from "next/link"
 import { ArrowUpRight } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip"
+import { TooltipProvider } from "@/components/ui/tooltip"
+import { TruncatedText } from "@/components/ui/truncated-text"
 import {
   Card,
   CardContent,
@@ -105,14 +101,11 @@ export function EquipmentAttentionTable() {
                     <TableRow key={item.id}>
                       <TableCell>
                         <div className="max-w-[200px]">
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <div className="font-medium truncate cursor-default">{item.ten_thiet_bi}</div>
-                            </TooltipTrigger>
-                            <TooltipContent side="top" align="start">
-                              <p className="max-w-xs">{item.ten_thiet_bi}</p>
-                            </TooltipContent>
-                          </Tooltip>
+                          <TruncatedText
+                            text={item.ten_thiet_bi}
+                            as="div"
+                            className="font-medium"
+                          />
                           <div className="hidden text-sm text-muted-foreground md:inline truncate">
                             {item.model || item.ma_thiet_bi}
                           </div>

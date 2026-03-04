@@ -5,12 +5,8 @@ import Link from "next/link"
 import { useSession } from "next-auth/react"
 import { ArrowUpRight, Wrench, Calendar, Clock, AlertTriangle } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip"
+import { TooltipProvider } from "@/components/ui/tooltip"
+import { TruncatedText } from "@/components/ui/truncated-text"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -224,16 +220,11 @@ export function DashboardTabs() {
                       >
                         <div className="flex items-start justify-between gap-4">
                           <div className="flex-1 min-w-0">
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <h4 className="font-semibold text-gray-900 mb-1 truncate cursor-default">
-                                  {item.ten_thiet_bi}
-                                </h4>
-                              </TooltipTrigger>
-                              <TooltipContent side="top" align="start">
-                                <p className="max-w-xs">{item.ten_thiet_bi}</p>
-                              </TooltipContent>
-                            </Tooltip>
+                            <TruncatedText
+                              text={item.ten_thiet_bi}
+                              as="h4"
+                              className="font-semibold text-gray-900 mb-1"
+                            />
                             <p className="text-sm text-gray-600 mb-2 truncate">
                               {item.model || item.ma_thiet_bi}
                             </p>
@@ -496,12 +487,12 @@ export function DashboardTabs() {
                             <div
                               key={task.id}
                               className={`p-3 rounded-xl border-l-4 backdrop-blur-sm transition-all duration-200 hover:scale-[1.01] hover:shadow-md ${priorityTasks.includes(task)
-                                  ? 'border-yellow-500 bg-yellow-50/80'
-                                  : task.type === 'Bảo trì'
-                                    ? 'border-blue-500 bg-blue-50/80'
-                                    : task.type === 'Hiệu chuẩn'
-                                      ? 'border-orange-500 bg-orange-50/80'
-                                      : 'border-purple-500 bg-purple-50/80'
+                                ? 'border-yellow-500 bg-yellow-50/80'
+                                : task.type === 'Bảo trì'
+                                  ? 'border-blue-500 bg-blue-50/80'
+                                  : task.type === 'Hiệu chuẩn'
+                                    ? 'border-orange-500 bg-orange-50/80'
+                                    : 'border-purple-500 bg-purple-50/80'
                                 }`}
                             >
                               <div className="flex items-start gap-2 mb-2">
