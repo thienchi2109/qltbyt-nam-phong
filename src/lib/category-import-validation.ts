@@ -38,7 +38,7 @@ export interface ImportResult {
   details: ImportResultDetail[]
 }
 
-export type ImportStatus = "idle" | "parsing" | "parsed" | "success" | "error"
+export type ImportStatus = "idle" | "parsing" | "parsed" | "importing" | "success" | "partial_success" | "error"
 
 // ============================================
 // Header Mapping with Diacritic Support

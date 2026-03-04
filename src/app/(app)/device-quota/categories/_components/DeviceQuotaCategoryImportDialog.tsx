@@ -153,10 +153,12 @@ export function DeviceQuotaCategoryImportDialog() {
       return result
     },
     onSuccess: async (result) => {
+      setStatus("importing")
       setImportResult(result)
 
       // Check if any rows have quota data for unified import
       const quotaRows = parsedRows.filter(r => r.dinh_muc_toi_da !== null && r.dinh_muc_toi_da > 0)
+      let quotaImportFailed = false
 
       if (quotaRows.length > 0 && donViId) {
         try {
@@ -181,6 +183,7 @@ export function DeviceQuotaCategoryImportDialog() {
             description: `Da them ${result.inserted} danh muc va ${quotaRows.length} dinh muc. Quyet dinh dinh muc nhap da duoc tao tu dong.`,
           })
         } catch (quotaError) {
+          quotaImportFailed = true
           console.error("Failed to import quotas:", quotaError)
           toast({
             variant: "destructive",
@@ -195,7 +198,7 @@ export function DeviceQuotaCategoryImportDialog() {
         })
       }
 
-      setStatus("success")
+      setStatus(quotaImportFailed ? "partial_success" : "success")
 
       // Invalidate queries to refresh category list
       queryClient.invalidateQueries({ queryKey: ["dinh_muc_nhom_list_paginated"] })
@@ -216,8 +219,10 @@ export function DeviceQuotaCategoryImportDialog() {
     importMutation.mutate(parsedRows)
   }
 
+  const isSubmitting = importMutation.isPending || status === "importing"
+
   const handleClose = () => {
-    if (importMutation.isPending) return // Prevent closing while submitting
+    if (isSubmitting) return // Prevent closing while submitting
     closeImportDialog()
   }
 
@@ -247,7 +252,7 @@ export function DeviceQuotaCategoryImportDialog() {
               type="file"
               accept=".xlsx,.xls"
               onChange={handleFileChange}
-              disabled={importMutation.isPending}
+              disabled={isSubmitting}
             />
           </div>
 
@@ -356,8 +361,20 @@ export function DeviceQuotaCategoryImportDialog() {
             </Alert>
           )}
 
+          {/* Partial success – categories OK but quota import failed */}
+          {status === "partial_success" && importResult && (
+            <Alert className="border-yellow-200 bg-yellow-50">
+              <AlertTriangle className="h-4 w-4 text-yellow-600" />
+              <AlertTitle className="text-yellow-800">Nhap thanh cong mot phan</AlertTitle>
+              <AlertDescription className="text-yellow-700">
+                Da them {importResult.inserted} danh muc nhung nhap dinh muc that bai.
+                Vui long thu nhap dinh muc rieng.
+              </AlertDescription>
+            </Alert>
+          )}
+
           {/* Submitting indicator */}
-          {importMutation.isPending && (
+          {isSubmitting && (
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <Loader2 className="h-4 w-4 animate-spin" />
               Dang nhap du lieu...
@@ -366,12 +383,12 @@ export function DeviceQuotaCategoryImportDialog() {
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={handleClose} disabled={importMutation.isPending}>
-            {status === "success" ? "Dong" : "Huy"}
+          <Button variant="outline" onClick={handleClose} disabled={isSubmitting}>
+            {status === "success" || status === "partial_success" ? "Dong" : "Huy"}
           </Button>
-          {status !== "success" && (
-            <Button onClick={handleImport} disabled={!canImport || importMutation.isPending}>
-              {importMutation.isPending ? (
+          {status !== "success" && status !== "partial_success" && (
+            <Button onClick={handleImport} disabled={!canImport || isSubmitting}>
+              {isSubmitting ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   Dang nhap...
