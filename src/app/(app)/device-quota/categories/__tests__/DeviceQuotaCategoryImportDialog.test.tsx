@@ -177,7 +177,7 @@ describe("DeviceQuotaCategoryImportDialog", () => {
       type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     })
 
-    fireEvent.change(screen.getByLabelText("Chon file Excel"), {
+    fireEvent.change(screen.getByLabelText("Chọn file Excel"), {
       target: { files: [file] },
     })
 

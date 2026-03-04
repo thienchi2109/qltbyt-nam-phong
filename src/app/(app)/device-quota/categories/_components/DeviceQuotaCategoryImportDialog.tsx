@@ -179,22 +179,24 @@ export function DeviceQuotaCategoryImportDialog() {
           queryClient.invalidateQueries({ queryKey: ["dinh_muc_quyet_dinh_list"] })
 
           toast({
-            title: "Nhap thanh cong",
-            description: `Da them ${result.inserted} danh muc va ${quotaRows.length} dinh muc. Quyet dinh dinh muc nhap da duoc tao tu dong.`,
+            title: "Nhập thành công",
+            description: result.failed > 0
+              ? `Đã thêm ${result.inserted} danh mục mới (${result.failed} đã tồn tại) và ${quotaRows.length} định mức. Quyết định định mức nhập đã được tạo tự động.`
+              : `Đã thêm ${result.inserted} danh mục và ${quotaRows.length} định mức. Quyết định định mức nhập đã được tạo tự động.`,
           })
         } catch (quotaError) {
           quotaImportFailed = true
           console.error("Failed to import quotas:", quotaError)
           toast({
             variant: "destructive",
-            title: "Dinh muc that bai",
-            description: `Da them ${result.inserted} danh muc nhung nhap dinh muc that bai: ${translateRpcError(quotaError instanceof Error ? quotaError.message : "Loi khong xac dinh")}`,
+            title: "Định mức thất bại",
+            description: `Đã thêm ${result.inserted} danh mục nhưng nhập định mức thất bại: ${translateRpcError(quotaError instanceof Error ? quotaError.message : "Lỗi không xác định")}`,
           })
         }
       } else {
         toast({
-          title: "Nhap thanh cong",
-          description: `Da them ${result.inserted} danh muc${result.failed > 0 ? `, ${result.failed} that bai` : ""}.`,
+          title: "Nhập thành công",
+          description: `Đã thêm ${result.inserted} danh mục${result.failed > 0 ? `, ${result.failed} thất bại` : ""}.`,
         })
       }
 
@@ -208,7 +210,7 @@ export function DeviceQuotaCategoryImportDialog() {
       setStatus("error")
       toast({
         variant: "destructive",
-        title: "Nhap that bai",
+        title: "Nhập thất bại",
         description: translateRpcError(error.message),
       })
     },
@@ -235,17 +237,17 @@ export function DeviceQuotaCategoryImportDialog() {
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <FileSpreadsheet className="h-5 w-5" />
-            Nhap danh muc tu Excel
+            Nhập danh mục từ Excel
           </DialogTitle>
           <DialogDescription>
-            Tai len file Excel theo mau de nhap hang loat danh muc thiet bi.
+            Tải lên file Excel theo mẫu để nhập hàng loạt danh mục thiết bị.
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4 py-4">
           {/* File Input */}
           <div className="space-y-2">
-            <Label htmlFor="category-import-file">Chon file Excel</Label>
+            <Label htmlFor="category-import-file">Chọn file Excel</Label>
             <Input
               ref={fileInputRef}
               id="category-import-file"
@@ -260,7 +262,7 @@ export function DeviceQuotaCategoryImportDialog() {
           {status === "parsing" && (
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <Loader2 className="h-4 w-4 animate-spin" />
-              Dang doc file...
+              Đang đọc file...
             </div>
           )}
 
@@ -268,7 +270,7 @@ export function DeviceQuotaCategoryImportDialog() {
           {parseError && (
             <Alert variant="destructive">
               <AlertTriangle className="h-4 w-4" />
-              <AlertTitle>Loi doc file</AlertTitle>
+              <AlertTitle>Lỗi đọc file</AlertTitle>
               <AlertDescription>{parseError}</AlertDescription>
             </Alert>
           )}
@@ -277,7 +279,7 @@ export function DeviceQuotaCategoryImportDialog() {
           {validationErrors.length > 0 && (
             <Alert variant="destructive">
               <AlertTriangle className="h-4 w-4" />
-              <AlertTitle>Loi du lieu - {validationErrors.length} dong bi bo qua</AlertTitle>
+              <AlertTitle>Lỗi dữ liệu - {validationErrors.length} dòng bị bỏ qua</AlertTitle>
               <AlertDescription>
                 <ScrollArea className="h-32 mt-2">
                   <ul className="list-disc list-inside space-y-1 text-sm">
@@ -286,7 +288,7 @@ export function DeviceQuotaCategoryImportDialog() {
                     ))}
                     {validationErrors.length > 20 && (
                       <li className="text-muted-foreground">
-                        ... va {validationErrors.length - 20} loi khac
+                        ... và {validationErrors.length - 20} lỗi khác
                       </li>
                     )}
                   </ul>
@@ -299,7 +301,7 @@ export function DeviceQuotaCategoryImportDialog() {
           {validationWarnings.length > 0 && (
             <Alert className="border-yellow-200 bg-yellow-50">
               <AlertCircle className="h-4 w-4 text-yellow-600" />
-              <AlertTitle className="text-yellow-800">Canh bao ({validationWarnings.length})</AlertTitle>
+              <AlertTitle className="text-yellow-800">Cảnh báo ({validationWarnings.length})</AlertTitle>
               <AlertDescription className="text-yellow-700">
                 <ScrollArea className="h-24 mt-2">
                   <ul className="list-disc list-inside space-y-1 text-sm">
@@ -308,7 +310,7 @@ export function DeviceQuotaCategoryImportDialog() {
                     ))}
                     {validationWarnings.length > 10 && (
                       <li className="text-yellow-600">
-                        ... va {validationWarnings.length - 10} canh bao khac
+                        ... và {validationWarnings.length - 10} cảnh báo khác
                       </li>
                     )}
                   </ul>
@@ -322,12 +324,12 @@ export function DeviceQuotaCategoryImportDialog() {
             <Alert className={validationErrors.length > 0 ? "border-yellow-200 bg-yellow-50" : ""}>
               <CheckCircle2 className={`h-4 w-4 ${validationErrors.length > 0 ? "text-yellow-600" : "text-green-600"}`} />
               <AlertTitle className={validationErrors.length > 0 ? "text-yellow-800" : ""}>
-                {validationErrors.length > 0 ? "San sang nhap (mot phan)" : "San sang nhap"}
+                {validationErrors.length > 0 ? "Sẵn sàng nhập (một phần)" : "Sẵn sàng nhập"}
               </AlertTitle>
               <AlertDescription className={validationErrors.length > 0 ? "text-yellow-700" : ""}>
-                Da doc duoc {parsedRows.length} danh muc hop le tu file Excel.
+                Đã đọc được {parsedRows.length} danh mục hợp lệ từ file Excel.
                 {validationErrors.length > 0 && (
-                  <span className="text-red-600"> ({validationErrors.length} dong bi bo qua do loi.)</span>
+                  <span className="text-red-600"> ({validationErrors.length} dòng bị bỏ qua do lỗi.)</span>
                 )}
               </AlertDescription>
             </Alert>
@@ -337,9 +339,9 @@ export function DeviceQuotaCategoryImportDialog() {
           {status === "parsed" && parsedRows.length === 0 && validationErrors.length > 0 && (
             <Alert variant="destructive">
               <AlertTriangle className="h-4 w-4" />
-              <AlertTitle>Khong co du lieu hop le</AlertTitle>
+              <AlertTitle>Không có dữ liệu hợp lệ</AlertTitle>
               <AlertDescription>
-                Tat ca cac dong trong file deu co loi. Vui long sua file va thu lai.
+                Tất cả các dòng trong file đều có lỗi. Vui lòng sửa file và thử lại.
               </AlertDescription>
             </Alert>
           )}
@@ -348,13 +350,13 @@ export function DeviceQuotaCategoryImportDialog() {
           {status === "success" && importResult && (
             <Alert className="border-green-200 bg-green-50">
               <CheckCircle2 className="h-4 w-4 text-green-600" />
-              <AlertTitle className="text-green-800">Nhap thanh cong</AlertTitle>
+              <AlertTitle className="text-green-800">Nhập thành công</AlertTitle>
               <AlertDescription className="text-green-700">
-                Da them {importResult.inserted} danh muc vao he thong.
+                Đã thêm {importResult.inserted} danh mục vào hệ thống.
                 {importResult.failed > 0 && (
                   <span className="text-red-600">
                     {" "}
-                    {importResult.failed} danh muc that bai.
+                    {importResult.failed} danh mục thất bại.
                   </span>
                 )}
               </AlertDescription>
@@ -365,10 +367,10 @@ export function DeviceQuotaCategoryImportDialog() {
           {status === "partial_success" && importResult && (
             <Alert className="border-yellow-200 bg-yellow-50">
               <AlertTriangle className="h-4 w-4 text-yellow-600" />
-              <AlertTitle className="text-yellow-800">Nhap thanh cong mot phan</AlertTitle>
+              <AlertTitle className="text-yellow-800">Nhập thành công một phần</AlertTitle>
               <AlertDescription className="text-yellow-700">
-                Da them {importResult.inserted} danh muc nhung nhap dinh muc that bai.
-                Vui long thu nhap dinh muc rieng.
+                Đã thêm {importResult.inserted} danh mục nhưng nhập định mức thất bại.
+                Vui lòng thử nhập định mức riêng.
               </AlertDescription>
             </Alert>
           )}
@@ -377,26 +379,26 @@ export function DeviceQuotaCategoryImportDialog() {
           {isSubmitting && (
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <Loader2 className="h-4 w-4 animate-spin" />
-              Dang nhap du lieu...
+              Đang nhập dữ liệu...
             </div>
           )}
         </div>
 
         <DialogFooter>
           <Button variant="outline" onClick={handleClose} disabled={isSubmitting}>
-            {status === "success" || status === "partial_success" ? "Dong" : "Huy"}
+            {status === "success" || status === "partial_success" ? "Đóng" : "Hủy"}
           </Button>
           {status !== "success" && status !== "partial_success" && (
             <Button onClick={handleImport} disabled={!canImport || isSubmitting}>
               {isSubmitting ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Dang nhap...
+                  Đang nhập...
                 </>
               ) : (
                 <>
                   <Upload className="mr-2 h-4 w-4" />
-                  Nhap {parsedRows.length > 0 ? `(${parsedRows.length})` : ""}
+                  Nhập {parsedRows.length > 0 ? `(${parsedRows.length})` : ""}
                 </>
               )}
             </Button>
