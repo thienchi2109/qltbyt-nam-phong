@@ -85,10 +85,13 @@ const CategoryChildRow = React.memo(function CategoryChildRow({
                 )}
             </div>
 
-            {/* Column 3: Quantity + actions */}
+            {/* Column 3: Quota + equipment count + actions */}
             <div className="flex items-center gap-2 pl-2">
-                <Badge variant="secondary" className="tabular-nums text-xs">
-                    {category.so_luong_hien_co}
+                <span className="text-xs text-muted-foreground tabular-nums" title="Định mức tối đa">
+                    ĐM: {category.so_luong_toi_da ?? '–'}
+                </span>
+                <Badge variant="secondary" className="tabular-nums text-xs" title="Số lượng hiện có">
+                    HC: {category.so_luong_hien_co}
                 </Badge>
 
                 <DropdownMenu>
@@ -193,8 +196,11 @@ const CategoryGroup = React.memo(function CategoryGroup({
                             {classStyle.label}
                         </Badge>
                     )}
-                    <Badge variant="secondary" className="tabular-nums text-xs">
-                        {totalEquipment} TB
+                    <span className="text-xs text-muted-foreground tabular-nums" title="Tổng định mức">
+                        ĐM: {children.reduce((sum, c) => sum + (c.so_luong_toi_da ?? 0), 0) + (root.so_luong_toi_da ?? 0)}
+                    </span>
+                    <Badge variant="secondary" className="tabular-nums text-xs" title="Tổng thiết bị hiện có">
+                        HC: {totalEquipment}
                     </Badge>
                     <span className="text-xs text-muted-foreground">
                         {children.length} mục con

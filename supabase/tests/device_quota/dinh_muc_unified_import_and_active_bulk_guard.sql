@@ -44,6 +44,16 @@ BEGIN
   IF position('''success'', v_bulk_result->''success''' in lower(v_unified_def)) = 0 THEN
     RAISE EXCEPTION 'Expected unified import to propagate success as JSON boolean via ->';
   END IF;
+
+  -- Guard: INSERT must include nguoi_ky (NOT NULL column on quyet_dinh_dinh_muc)
+  IF position('nguoi_ky' in lower(v_unified_def)) = 0 THEN
+    RAISE EXCEPTION 'Expected unified import INSERT to include nguoi_ky (NOT NULL column)';
+  END IF;
+
+  -- Guard: INSERT must include chuc_vu_nguoi_ky (NOT NULL column on quyet_dinh_dinh_muc)
+  IF position('chuc_vu_nguoi_ky' in lower(v_unified_def)) = 0 THEN
+    RAISE EXCEPTION 'Expected unified import INSERT to include chuc_vu_nguoi_ky (NOT NULL column)';
+  END IF;
 END $$;
 
 ROLLBACK;

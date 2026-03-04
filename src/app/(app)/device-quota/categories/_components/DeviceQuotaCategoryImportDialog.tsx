@@ -180,9 +180,9 @@ export function DeviceQuotaCategoryImportDialog() {
 
           toast({
             title: "Nhập thành công",
-            description: result.failed > 0
-              ? `Đã thêm ${result.inserted} danh mục mới (${result.failed} đã tồn tại) và ${quotaResult.inserted} định mức${quotaResult.failed > 0 ? ` (${quotaResult.failed} lỗi)` : ""}. Quyết định định mức nhập đã được tạo tự động.`
-              : `Đã thêm ${result.inserted} danh mục và ${quotaResult.inserted} định mức${quotaResult.failed > 0 ? ` (${quotaResult.failed} lỗi)` : ""}. Quyết định định mức nhập đã được tạo tự động.`,
+            description: result.inserted > 0
+              ? `Đã thêm ${result.inserted} danh mục và ${quotaResult.inserted} định mức${quotaResult.failed > 0 ? ` (${quotaResult.failed} lỗi)` : ""}. Quyết định định mức nhập đã được tạo tự động.`
+              : `Đã nhập ${quotaResult.inserted} định mức cho danh mục hiện có${quotaResult.failed > 0 ? ` (${quotaResult.failed} lỗi)` : ""}. Quyết định định mức nhập đã được tạo tự động.`,
           })
         } catch (quotaError) {
           quotaImportFailed = true

@@ -220,6 +220,7 @@ describe("DeviceQuotaCategoryImportDialog", () => {
       },
     ])
 
+    // Quota import mock — consumed by callRpc inside onSuccess
     mockCallRpc.mockResolvedValueOnce({
       success: true,
       inserted: 1,
@@ -244,6 +245,7 @@ describe("DeviceQuotaCategoryImportDialog", () => {
 
     expect(capturedMutationOptions?.onSuccess).toBeTypeOf("function")
 
+    // Simulate category import result: 2 new categories inserted
     await act(async () => {
       await capturedMutationOptions?.onSuccess?.({
         success: true,
@@ -262,6 +264,64 @@ describe("DeviceQuotaCategoryImportDialog", () => {
         title: "Nhập thành công",
         description:
           "Đã thêm 2 danh mục và 1 định mức (1 lỗi). Quyết định định mức nhập đã được tạo tự động.",
+      })
+    )
+  })
+
+  it("shows quota-only backfill message when 0 new categories inserted", async () => {
+    mockReadExcelFile.mockResolvedValue({
+      SheetNames: ["Sheet1"],
+      Sheets: { Sheet1: {} },
+    } as Awaited<ReturnType<typeof readExcelFile>>)
+    mockWorksheetToJson.mockResolvedValue([
+      {
+        "Ma nhom": "DM001",
+        "Ten nhom": "Danh mục 1",
+        "Dinh muc": 10,
+        "Toi thieu": 2,
+      },
+    ])
+
+    // Quota import mock — consumed by callRpc inside onSuccess
+    mockCallRpc.mockResolvedValueOnce({
+      success: true,
+      inserted: 1,
+      failed: 0,
+      total: 1,
+      details: [],
+    })
+
+    render(<DeviceQuotaCategoryImportDialog />)
+
+    const file = new File(["dummy"], "backfill-quotas.xlsx", {
+      type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    })
+
+    fireEvent.change(screen.getByLabelText("Chọn file Excel"), {
+      target: { files: [file] },
+    })
+
+    await waitFor(() => {
+      expect(screen.getByText(/sẵn sàng nhập/i)).toBeInTheDocument()
+    })
+
+    expect(capturedMutationOptions?.onSuccess).toBeTypeOf("function")
+
+    await act(async () => {
+      await capturedMutationOptions?.onSuccess?.({
+        success: false,
+        inserted: 0,
+        failed: 1,
+        total: 1,
+        details: [{ ma_nhom: "DM001", success: false, error: "already exists" }],
+      })
+    })
+
+    expect(mockToast).toHaveBeenCalledWith(
+      expect.objectContaining({
+        title: "Nhập thành công",
+        description:
+          "Đã nhập 1 định mức cho danh mục hiện có. Quyết định định mức nhập đã được tạo tự động.",
       })
     )
   })
