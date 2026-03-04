@@ -191,15 +191,18 @@ BEGIN
   FOR v_idx IN 0 .. jsonb_array_length(v_sorted_items) - 1 LOOP
     v_item := v_sorted_items->v_idx;
     v_original_idx := (v_item->>'_original_idx')::INT;
-    v_ma_nhom := NULLIF(TRIM(v_item->>'ma_nhom'), '');
-    v_ten_nhom := NULLIF(TRIM(v_item->>'ten_nhom'), '');
-    v_parent_ma_nhom := NULLIF(TRIM(v_item->>'parent_ma_nhom'), '');
-    v_phan_loai := NULLIF(TRIM(v_item->>'phan_loai'), '');
-    v_don_vi_tinh := NULLIF(TRIM(v_item->>'don_vi_tinh'), '');
-    v_thu_tu_hien_thi := NULLIF(v_item->>'thu_tu_hien_thi', '')::INT;
-    v_mo_ta := NULLIF(TRIM(v_item->>'mo_ta'), '');
 
     BEGIN
+      -- Extract all user-input fields inside the per-item error boundary
+      -- so that invalid data (e.g. non-numeric thu_tu_hien_thi) is caught
+      -- per-item instead of aborting the entire import.
+      v_ma_nhom := NULLIF(TRIM(v_item->>'ma_nhom'), '');
+      v_ten_nhom := NULLIF(TRIM(v_item->>'ten_nhom'), '');
+      v_parent_ma_nhom := NULLIF(TRIM(v_item->>'parent_ma_nhom'), '');
+      v_phan_loai := NULLIF(TRIM(v_item->>'phan_loai'), '');
+      v_don_vi_tinh := NULLIF(TRIM(v_item->>'don_vi_tinh'), '');
+      v_thu_tu_hien_thi := NULLIF(v_item->>'thu_tu_hien_thi', '')::INT;
+      v_mo_ta := NULLIF(TRIM(v_item->>'mo_ta'), '');
       -- Validate required fields
       IF v_ma_nhom IS NULL THEN
         RAISE EXCEPTION 'Category code (ma_nhom) is required';
