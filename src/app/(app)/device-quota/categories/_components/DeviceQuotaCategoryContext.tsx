@@ -37,7 +37,9 @@ interface CategoryContextValue {
 
   // Data
   categories: CategoryListItem[]
+  allCategories: CategoryListItem[]
   isLoading: boolean
+  isAllCategoriesLoading: boolean
   totalRootCount: number
 
   // Search
@@ -286,6 +288,23 @@ export function DeviceQuotaCategoryProvider({ children }: DeviceQuotaCategoryPro
     gcTime: 10 * 60 * 1000,
   })
 
+  const {
+    data: allCategoriesData,
+    isLoading: isAllCategoriesLoading,
+  } = useQuery({
+    queryKey: ["dinh_muc_nhom_list", { donViId }],
+    queryFn: async () => {
+      const result = await callRpc<CategoryListItem[]>({
+        fn: "dinh_muc_nhom_list",
+        args: { p_don_vi: donViId },
+      })
+      return result || []
+    },
+    enabled: !!donViId,
+    staleTime: 60000,
+    gcTime: 10 * 60 * 1000,
+  })
+
   // Extract total_root_count from first row (same across all rows)
   React.useEffect(() => {
     if (categoriesData && categoriesData.length > 0) {
@@ -300,6 +319,11 @@ export function DeviceQuotaCategoryProvider({ children }: DeviceQuotaCategoryPro
     () =>
       (categoriesData || []).map(({ total_root_count: _, ...rest }) => rest),
     [categoriesData]
+  )
+
+  const allCategories: CategoryListItem[] = React.useMemo(
+    () => allCategoriesData || [],
+    [allCategoriesData]
   )
 
   const invalidateAndRefetch = React.useCallback(() => {
@@ -361,7 +385,6 @@ export function DeviceQuotaCategoryProvider({ children }: DeviceQuotaCategoryPro
 
   const getDescendantIds = React.useCallback(
     (parentId: number) => {
-      const allCategories = categories
       const descendants = new Set<number>()
       const stack = [parentId]
 
@@ -377,7 +400,7 @@ export function DeviceQuotaCategoryProvider({ children }: DeviceQuotaCategoryPro
 
       return descendants
     },
-    [categories]
+    [allCategories]
   )
 
   const value = React.useMemo<CategoryContextValue>(
@@ -385,7 +408,9 @@ export function DeviceQuotaCategoryProvider({ children }: DeviceQuotaCategoryPro
       user,
       donViId,
       categories,
+      allCategories,
       isLoading: isLoadingCategories,
+      isAllCategoriesLoading,
       totalRootCount,
       searchTerm,
       setSearchTerm,
@@ -410,7 +435,9 @@ export function DeviceQuotaCategoryProvider({ children }: DeviceQuotaCategoryPro
       user,
       donViId,
       categories,
+      allCategories,
       isLoadingCategories,
+      isAllCategoriesLoading,
       totalRootCount,
       searchTerm,
       paginationState,
