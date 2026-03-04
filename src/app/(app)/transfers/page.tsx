@@ -176,7 +176,10 @@ function TransfersPageContent({ user }: TransfersPageContentProps) {
   // Derive resetKey from all filter values that should auto-reset pagination
   const paginationResetKey = `${activeTab}|${selectedFacilityId}|${debouncedSearch}|${statusFilter.join(',')}|${dateRange?.from?.getTime()}|${dateRange?.to?.getTime()}`
 
-  // Server-side pagination — totalCount starts at 0 and updates after first fetch
+  // Server-side pagination — totalCount stored in state because of a circular
+  // dependency: filters → query → totalCount → pagination → page → filters.
+  // Render-time sync with guard is the documented React pattern for this case.
+  // See: https://react.dev/reference/react/useState#storing-information-from-previous-renders
   const [totalCount, setTotalCount] = React.useState(0)
   const transferPagination = useServerPagination({
     totalCount,
@@ -236,7 +239,7 @@ function TransfersPageContent({ user }: TransfersPageContentProps) {
 
   const tableData = transferList?.data ?? []
 
-  // Sync totalCount from query result (render-time sync, guarded)
+  // Render-time sync: update totalCount when query data changes (guarded)
   const serverTotal = transferList?.total ?? 0
   if (serverTotal !== totalCount) {
     setTotalCount(serverTotal)

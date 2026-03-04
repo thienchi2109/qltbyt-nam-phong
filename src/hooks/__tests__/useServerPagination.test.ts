@@ -24,7 +24,7 @@ describe('useServerPagination', () => {
     )
 
     act(() => {
-      result.current.setPagination(prev => ({ ...prev, pageIndex: 2 }))
+      result.current.setPagination((prev: { pageIndex: number; pageSize: number }) => ({ ...prev, pageIndex: 2 }))
     })
 
     expect(result.current.page).toBe(3)
@@ -48,7 +48,7 @@ describe('useServerPagination', () => {
 
     // Navigate to page 2
     act(() => {
-      result.current.setPagination(prev => ({ ...prev, pageIndex: 2 }))
+      result.current.setPagination((prev: { pageIndex: number; pageSize: number }) => ({ ...prev, pageIndex: 2 }))
     })
     expect(result.current.page).toBe(3)
 
@@ -67,7 +67,7 @@ describe('useServerPagination', () => {
 
     // Navigate to page 4 (0-based index 3)
     act(() => {
-      result.current.setPagination(prev => ({ ...prev, pageIndex: 3 }))
+      result.current.setPagination((prev: { pageIndex: number; pageSize: number }) => ({ ...prev, pageIndex: 3 }))
     })
     expect(result.current.page).toBe(4)
 
@@ -89,7 +89,7 @@ describe('useServerPagination', () => {
 
     // Navigate to last page
     act(() => {
-      result.current.setPagination(prev => ({ ...prev, pageIndex: 2 }))
+      result.current.setPagination((prev: { pageIndex: number; pageSize: number }) => ({ ...prev, pageIndex: 2 }))
     })
 
     expect(result.current.canPreviousPage).toBe(true)
@@ -110,7 +110,7 @@ describe('useServerPagination', () => {
     )
 
     act(() => {
-      result.current.setPagination(prev => ({ ...prev, pageIndex: 3 }))
+      result.current.setPagination((prev: { pageIndex: number; pageSize: number }) => ({ ...prev, pageIndex: 3 }))
     })
     expect(result.current.page).toBe(4)
 

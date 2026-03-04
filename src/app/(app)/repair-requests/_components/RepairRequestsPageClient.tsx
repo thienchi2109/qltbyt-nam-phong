@@ -146,7 +146,11 @@ function RepairRequestsPageClientInner() {
     shouldFetchData,
   } = useTenantSelection()
 
-  // Server-side pagination with auto-reset on filter changes
+  // Server-side pagination with auto-reset on filter changes.
+  // totalCount stored in state because of a circular dependency:
+  // filters → query → totalCount → pagination → page → filters.
+  // Render-time sync with guard is the documented React pattern for this case.
+  // See: https://react.dev/reference/react/useState#storing-information-from-previous-renders
   const paginationResetKey = `${debouncedSearch}|${selectedFacilityId}|${JSON.stringify(uiFilters.dateRange)}|${uiFilters.status.join(',')}`
   const [totalRequests, setTotalRequests] = React.useState(0)
   const repairPagination = useServerPagination({
