@@ -45,8 +45,8 @@ BEGIN
     RAISE EXCEPTION 'Tenant ID (don_vi) is required';
   END IF;
 
-  -- Auto-generate decision number with timestamp
-  v_so_quyet_dinh := 'AUTO-' || to_char(NOW(), 'YYYYMMDD-HH24MISS');
+  -- Auto-generate decision number with collision-resistant suffix
+  v_so_quyet_dinh := format('AUTO-%s-%s', to_char(clock_timestamp(), 'YYYYMMDD-HH24MISS-US'), txid_current());
 
   -- Create draft decision (placeholder signer fields — user updates before activating)
   INSERT INTO public.quyet_dinh_dinh_muc (
