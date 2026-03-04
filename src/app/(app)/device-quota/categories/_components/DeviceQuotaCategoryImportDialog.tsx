@@ -163,7 +163,7 @@ export function DeviceQuotaCategoryImportDialog() {
       if (quotaRows.length > 0 && donViId) {
         try {
           // Auto-create draft decision + import chi_tiet via unified RPC
-          await callRpc({
+          const quotaResult = await callRpc<{ success: boolean; inserted: number; failed: number; total: number }>({
             fn: "dinh_muc_unified_import",
             args: {
               p_items: quotaRows.map(r => ({
@@ -181,8 +181,8 @@ export function DeviceQuotaCategoryImportDialog() {
           toast({
             title: "Nhập thành công",
             description: result.failed > 0
-              ? `Đã thêm ${result.inserted} danh mục mới (${result.failed} đã tồn tại) và ${quotaRows.length} định mức. Quyết định định mức nhập đã được tạo tự động.`
-              : `Đã thêm ${result.inserted} danh mục và ${quotaRows.length} định mức. Quyết định định mức nhập đã được tạo tự động.`,
+              ? `Đã thêm ${result.inserted} danh mục mới (${result.failed} đã tồn tại) và ${quotaResult.inserted} định mức${quotaResult.failed > 0 ? ` (${quotaResult.failed} lỗi)` : ""}. Quyết định định mức nhập đã được tạo tự động.`
+              : `Đã thêm ${result.inserted} danh mục và ${quotaResult.inserted} định mức${quotaResult.failed > 0 ? ` (${quotaResult.failed} lỗi)` : ""}. Quyết định định mức nhập đã được tạo tự động.`,
           })
         } catch (quotaError) {
           quotaImportFailed = true

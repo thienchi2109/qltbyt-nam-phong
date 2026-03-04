@@ -6,6 +6,7 @@ import { describe, it, expect, vi, beforeEach, beforeAll } from "vitest"
 import { DeviceQuotaCategoryImportDialog } from "../_components/DeviceQuotaCategoryImportDialog"
 import { useDeviceQuotaCategoryContext } from "../_hooks/useDeviceQuotaCategoryContext"
 import { readExcelFile, worksheetToJson } from "@/lib/excel-utils"
+import { callRpc } from "@/lib/rpc-client"
 import type { CategoryListItem } from "../_types/categories"
 
 let capturedMutationOptions: {
@@ -19,6 +20,7 @@ let capturedMutationOptions: {
 } | null = null
 
 const mockInvalidateQueries = vi.fn()
+const mockToast = vi.fn()
 
 vi.mock("@tanstack/react-query", async () => {
   const actual = await vi.importActual<typeof import("@tanstack/react-query")>("@tanstack/react-query")
@@ -46,10 +48,15 @@ vi.mock("@/lib/excel-utils", () => ({
 }))
 
 vi.mock("@/hooks/use-toast", () => ({
-  useToast: () => ({ toast: vi.fn() }),
+  useToast: () => ({ toast: mockToast }),
+}))
+
+vi.mock("@/lib/rpc-client", () => ({
+  callRpc: vi.fn(),
 }))
 
 const mockUseContext = vi.mocked(useDeviceQuotaCategoryContext)
+const mockCallRpc = vi.mocked(callRpc)
 const mockReadExcelFile = vi.mocked(readExcelFile)
 const mockWorksheetToJson = vi.mocked(worksheetToJson)
 
@@ -119,6 +126,13 @@ describe("DeviceQuotaCategoryImportDialog", () => {
     capturedMutationOptions = null
 
     mockUseContext.mockReturnValue(createMockContextValue())
+    mockCallRpc.mockResolvedValue({
+      success: true,
+      inserted: 0,
+      failed: 0,
+      total: 0,
+      details: [],
+    })
   })
 
   it("invalidates paginated and legacy category queries after successful import", async () => {
@@ -184,5 +198,71 @@ describe("DeviceQuotaCategoryImportDialog", () => {
     await waitFor(() => {
       expect(screen.getByText(/đã tồn tại - sẽ bị bỏ qua/i)).toBeInTheDocument()
     })
+  })
+
+  it("uses inserted quota count from dinh_muc_unified_import result in success message", async () => {
+    mockReadExcelFile.mockResolvedValue({
+      SheetNames: ["Sheet1"],
+      Sheets: { Sheet1: {} },
+    } as Awaited<ReturnType<typeof readExcelFile>>)
+    mockWorksheetToJson.mockResolvedValue([
+      {
+        "Ma nhom": "DM001",
+        "Ten nhom": "Danh mục 1",
+        "Dinh muc": 10,
+        "Toi thieu": 2,
+      },
+      {
+        "Ma nhom": "DM002",
+        "Ten nhom": "Danh mục 2",
+        "Dinh muc": 5,
+        "Toi thieu": 0,
+      },
+    ])
+
+    mockCallRpc.mockResolvedValueOnce({
+      success: true,
+      inserted: 1,
+      failed: 1,
+      total: 2,
+      details: [],
+    })
+
+    render(<DeviceQuotaCategoryImportDialog />)
+
+    const file = new File(["dummy"], "categories-with-quota.xlsx", {
+      type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    })
+
+    fireEvent.change(screen.getByLabelText("Chọn file Excel"), {
+      target: { files: [file] },
+    })
+
+    await waitFor(() => {
+      expect(screen.getByText(/sẵn sàng nhập/i)).toBeInTheDocument()
+    })
+
+    expect(capturedMutationOptions?.onSuccess).toBeTypeOf("function")
+
+    await act(async () => {
+      await capturedMutationOptions?.onSuccess?.({
+        success: true,
+        inserted: 2,
+        failed: 0,
+        total: 2,
+        details: [
+          { ma_nhom: "DM001", success: true },
+          { ma_nhom: "DM002", success: true },
+        ],
+      })
+    })
+
+    expect(mockToast).toHaveBeenCalledWith(
+      expect.objectContaining({
+        title: "Nhập thành công",
+        description:
+          "Đã thêm 2 danh mục và 1 định mức (1 lỗi). Quyết định định mức nhập đã được tạo tự động.",
+      })
+    )
   })
 })
