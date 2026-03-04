@@ -44,7 +44,7 @@ import { useDeviceQuotaCategoryContext } from "../_hooks/useDeviceQuotaCategoryC
 // ============================================
 
 export function DeviceQuotaCategoryImportDialog() {
-  const { isImportDialogOpen, closeImportDialog, categories, donViId } =
+  const { isImportDialogOpen, closeImportDialog, allCategories, donViId } =
     useDeviceQuotaCategoryContext()
   const { toast } = useToast()
   const queryClient = useQueryClient()
@@ -52,28 +52,30 @@ export function DeviceQuotaCategoryImportDialog() {
 
   // State
   const [status, setStatus] = React.useState<ImportStatus>("idle")
-  const [selectedFile, setSelectedFile] = React.useState<File | null>(null)
   const [parsedRows, setParsedRows] = React.useState<ParsedCategoryRow[]>([])
   const [parseError, setParseError] = React.useState<string | null>(null)
   const [validationErrors, setValidationErrors] = React.useState<string[]>([])
   const [validationWarnings, setValidationWarnings] = React.useState<string[]>([])
   const [importResult, setImportResult] = React.useState<ImportResult | null>(null)
 
+  const resetParsedState = React.useCallback((): void => {
+    setParsedRows([])
+    setParseError(null)
+    setValidationErrors([])
+    setValidationWarnings([])
+  }, [])
+
   // Existing category codes for duplicate detection
   const existingCodes = React.useMemo(() => {
-    return new Set(categories.map((c) => c.ma_nhom))
-  }, [categories])
+    return new Set((allCategories ?? []).map((c) => c.ma_nhom))
+  }, [allCategories])
 
   // Reset state when dialog opens/closes
   React.useEffect(() => {
     if (!isImportDialogOpen) {
       const timer = setTimeout(() => {
         setStatus("idle")
-        setSelectedFile(null)
-        setParsedRows([])
-        setParseError(null)
-        setValidationErrors([])
-        setValidationWarnings([])
+        resetParsedState()
         setImportResult(null)
         if (fileInputRef.current) {
           fileInputRef.current.value = ""
@@ -81,19 +83,15 @@ export function DeviceQuotaCategoryImportDialog() {
       }, 200)
       return () => clearTimeout(timer)
     }
-  }, [isImportDialogOpen])
+  }, [isImportDialogOpen, resetParsedState])
 
   // File change handler
   const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
     if (!file) return
 
-    setSelectedFile(file)
     setStatus("parsing")
-    setParseError(null)
-    setValidationErrors([])
-    setValidationWarnings([])
-    setParsedRows([])
+    resetParsedState()
 
     try {
       const workbook = await readExcelFile(file)
@@ -114,10 +112,10 @@ export function DeviceQuotaCategoryImportDialog() {
       const transformedData = transformExcelHeaders(jsonData)
 
       // Check if any rows have data (after transformation)
-      const hasData = transformedData.some(row => 
-        row.ma_nhom !== undefined || row.ten_nhom !== undefined
+      const hasData = transformedData.some(
+        (row) => row.ma_nhom !== undefined || row.ten_nhom !== undefined
       )
-      
+
       if (!hasData) {
         throw new Error(
           "Khong nhan dang duoc cot du lieu. Hay kiem tra ten cot trong file Excel phai khop voi mau (VD: 'Ma nhom', 'Ten nhom')."
@@ -225,9 +223,6 @@ export function DeviceQuotaCategoryImportDialog() {
 
   // Allow import if there are valid rows (even if there are warnings or errors for other rows)
   const canImport = status === "parsed" && parsedRows.length > 0
-
-  // Mark selectedFile as used to avoid lint warning
-  void selectedFile
 
   return (
     <Dialog open={isImportDialogOpen} onOpenChange={handleClose}>

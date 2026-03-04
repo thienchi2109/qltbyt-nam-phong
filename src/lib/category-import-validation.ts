@@ -82,6 +82,23 @@ export const HEADER_TO_DB_MAP: Record<string, string> = {
 // ma_nhom format pattern: XX, XX.XX, XX.XX.XX, XX.XX.XX.XX (1-4 levels, alphanumeric)
 const MA_NHOM_PATTERN = /^[A-Za-z0-9]+(\.[A-Za-z0-9]+){0,3}$/
 
+function hasProvidedValue(value: unknown): boolean {
+  return value !== null && value !== undefined && value !== ""
+}
+
+function parseOptionalInteger(value: unknown): number | null {
+  if (!hasProvidedValue(value)) {
+    return null
+  }
+
+  const parsedNumber = Number(value)
+  if (Number.isNaN(parsedNumber) || !Number.isInteger(parsedNumber)) {
+    return null
+  }
+
+  return parsedNumber
+}
+
 /**
  * Validate parsed rows from Excel, returning valid rows, errors, and warnings.
  * Performs: required field checks, format validation, duplicate detection,
@@ -136,7 +153,7 @@ export function validateParsedRows(
 
     // Duplicate check against existing categories (warning - server will handle per-item)
     if (maNhom && existingCodes.has(maNhom)) {
-      rowWarnings.push(`Dong ${rowNum}: Ma nhom "${maNhom}" da ton tai - se bi bo qua`)
+      rowWarnings.push(`Dòng ${rowNum}: Mã nhóm "${maNhom}" đã tồn tại - sẽ bị bỏ qua`)
     }
 
     // Classification validation (blocking error for invalid values)
@@ -145,37 +162,37 @@ export function validateParsedRows(
     }
 
     // Display order validation (must be integer >= 0)
+    const parsedThuTu = parseOptionalInteger(thuTuRaw)
     let thuTuHienThi: number | null = null
-    if (thuTuRaw !== null && thuTuRaw !== undefined && thuTuRaw !== "") {
-      const parsed = Number(thuTuRaw)
-      if (isNaN(parsed) || !Number.isInteger(parsed) || parsed < 0) {
+    if (hasProvidedValue(thuTuRaw)) {
+      if (parsedThuTu === null || parsedThuTu < 0) {
         rowErrors.push(`Dong ${rowNum}: Thu tu hien thi phai la so nguyen >= 0`)
       } else {
-        thuTuHienThi = parsed
+        thuTuHienThi = parsedThuTu
       }
     }
 
     // Quota validation (optional columns)
     const dinhMucRaw = row.dinh_muc_toi_da
     const toiThieuRaw = row.toi_thieu
+    const parsedDinhMuc = parseOptionalInteger(dinhMucRaw)
+    const parsedToiThieu = parseOptionalInteger(toiThieuRaw)
     let dinhMucToiDa: number | null = null
     let toiThieu: number | null = null
 
-    if (dinhMucRaw !== null && dinhMucRaw !== undefined && dinhMucRaw !== "") {
-      const parsed = Number(dinhMucRaw)
-      if (isNaN(parsed) || !Number.isInteger(parsed) || parsed <= 0) {
+    if (hasProvidedValue(dinhMucRaw)) {
+      if (parsedDinhMuc === null || parsedDinhMuc <= 0) {
         rowErrors.push(`Dong ${rowNum}: Dinh muc phai la so nguyen > 0`)
       } else {
-        dinhMucToiDa = parsed
+        dinhMucToiDa = parsedDinhMuc
       }
     }
 
-    if (toiThieuRaw !== null && toiThieuRaw !== undefined && toiThieuRaw !== "") {
-      const parsed = Number(toiThieuRaw)
-      if (isNaN(parsed) || !Number.isInteger(parsed) || parsed < 0) {
+    if (hasProvidedValue(toiThieuRaw)) {
+      if (parsedToiThieu === null || parsedToiThieu < 0) {
         rowErrors.push(`Dong ${rowNum}: Toi thieu phai la so nguyen >= 0`)
       } else {
-        toiThieu = parsed
+        toiThieu = parsedToiThieu
       }
     }
 
@@ -212,14 +229,14 @@ export function validateParsedRows(
  * Transform raw Excel JSON rows to database field names using normalized header matching.
  */
 export function transformExcelHeaders(jsonData: Record<string, unknown>[]): Record<string, unknown>[] {
-  return jsonData.map(row => {
+  return jsonData.map((row) => {
     const newRow: Record<string, unknown> = {}
     for (const header in row) {
       const normalizedHeader = normalizeVietnamese(header)
       if (Object.prototype.hasOwnProperty.call(HEADER_TO_DB_MAP, normalizedHeader)) {
         const dbKey = HEADER_TO_DB_MAP[normalizedHeader]
         const rawVal = row[header]
-        let value: unknown = (rawVal === "" || rawVal === undefined) ? null : rawVal
+        let value: unknown = rawVal === "" || rawVal === undefined ? null : rawVal
 
         // Trim string values
         if (typeof rawVal === "string") {
