@@ -149,8 +149,7 @@ function RepairRequestsPageClientInner() {
   // Server-side pagination with auto-reset on filter changes.
   // totalCount stored in state because of a circular dependency:
   // filters → query → totalCount → pagination → page → filters.
-  // Render-time sync with guard is the documented React pattern for this case.
-  // See: https://react.dev/reference/react/useState#storing-information-from-previous-renders
+  // Synced via useEffect when query data arrives (see below).
   const paginationResetKey = `${debouncedSearch}|${selectedFacilityId}|${JSON.stringify(uiFilters.dateRange)}|${uiFilters.status.join(',')}`
   const [totalRequests, setTotalRequests] = React.useState(0)
   const repairPagination = useServerPagination({
@@ -211,11 +210,14 @@ function RepairRequestsPageClientInner() {
     return facility?.name ?? null;
   }, [selectedFacilityId, facilityOptions]);
 
-  // Sync totalRequests from query result (render-time sync, guarded)
-  const serverTotal = repairRequestsRes?.total ?? 0
-  if (serverTotal !== totalRequests) {
+  // Sync totalRequests from query result into pagination state.
+  // useEffect avoids the abandoned-render overhead of render-time setState
+  // while still breaking the circular dependency:
+  // filters → query → totalRequests → pagination → page → filters
+  React.useEffect(() => {
+    const serverTotal = repairRequestsRes?.total ?? 0
     setTotalRequests(serverTotal)
-  }
+  }, [repairRequestsRes?.total])
 
   // Status counts for summary (server-side via RPC per status)
   const STATUSES = ['Chờ xử lý', 'Đã duyệt', 'Hoàn thành', 'Không HT'] as const

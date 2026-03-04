@@ -178,8 +178,7 @@ function TransfersPageContent({ user }: TransfersPageContentProps) {
 
   // Server-side pagination — totalCount stored in state because of a circular
   // dependency: filters → query → totalCount → pagination → page → filters.
-  // Render-time sync with guard is the documented React pattern for this case.
-  // See: https://react.dev/reference/react/useState#storing-information-from-previous-renders
+  // Synced via useEffect when query data arrives (see below).
   const [totalCount, setTotalCount] = React.useState(0)
   const transferPagination = useServerPagination({
     totalCount,
@@ -239,11 +238,14 @@ function TransfersPageContent({ user }: TransfersPageContentProps) {
 
   const tableData = transferList?.data ?? []
 
-  // Render-time sync: update totalCount when query data changes (guarded)
-  const serverTotal = transferList?.total ?? 0
-  if (serverTotal !== totalCount) {
+  // Sync totalCount from query result into pagination state.
+  // useEffect avoids the abandoned-render overhead of render-time setState
+  // while still breaking the circular dependency:
+  // filters → query → totalCount → pagination → page → filters
+  React.useEffect(() => {
+    const serverTotal = transferList?.total ?? 0
     setTotalCount(serverTotal)
-  }
+  }, [transferList?.total])
 
   const referenceDate = React.useMemo(() => new Date(), [])
 
