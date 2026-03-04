@@ -262,25 +262,8 @@ $$;
 -- Changed to: NOT IN ('draft', 'active')
 -- Full function recreation needed because CREATE OR REPLACE requires full body
 
--- Read the current bulk import function and check its exact guard
-DO $$
-DECLARE
-  v_src TEXT;
-BEGIN
-  -- Get current function source
-  SELECT prosrc INTO v_src
-  FROM pg_proc
-  WHERE proname = 'dinh_muc_chi_tiet_bulk_import';
-
-  -- Verify the guard exists (safety check before replacing)
-  IF v_src IS NULL THEN
-    RAISE NOTICE 'dinh_muc_chi_tiet_bulk_import function not found - skipping';
-  ELSIF position('trang_thai' in v_src) = 0 THEN
-    RAISE NOTICE 'trang_thai guard not found in function - skipping';
-  ELSE
-    RAISE NOTICE 'Function found, will be updated below';
-  END IF;
-END;
-$$;
+-- NOTE: FIX 3 implementation is provided by follow-up migration:
+--   20260303131639_fix_bulk_import_active_decision_guard.sql
+-- This migration intentionally does not recreate dinh_muc_chi_tiet_bulk_import.
 
 COMMIT;
