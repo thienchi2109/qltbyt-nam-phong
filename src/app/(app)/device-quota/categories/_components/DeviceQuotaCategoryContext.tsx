@@ -6,7 +6,7 @@ import { useSession } from "next-auth/react"
 
 import { useToast } from "@/hooks/use-toast"
 import { useDebounce } from "@/hooks/use-debounce"
-import { usePaginationState } from "@/hooks/usePaginationState"
+import { useServerPagination } from "@/hooks/useServerPagination"
 import { callRpc } from "@/lib/rpc-client"
 import { translateRpcError } from "@/lib/error-translations"
 import type {
@@ -47,7 +47,7 @@ interface CategoryContextValue {
   setSearchTerm: (term: string) => void
 
   // Pagination
-  pagination: ReturnType<typeof usePaginationState>
+  pagination: ReturnType<typeof useServerPagination>
 
   // Dialog state (discriminated union)
   dialogState: CategoryDialogState
@@ -251,9 +251,9 @@ export function DeviceQuotaCategoryProvider({ children }: DeviceQuotaCategoryPro
   const [searchTerm, setSearchTerm] = React.useState("")
   const debouncedSearch = useDebounce(searchTerm, 300)
 
-  // Pagination state (totalCount synced from query result during render)
+  // totalRootCount is synced from query data via render-time derivation below
   const [totalRootCount, setTotalRootCount] = React.useState(0)
-  const paginationState = usePaginationState({
+  const paginationState = useServerPagination({
     totalCount: totalRootCount,
     resetKey: debouncedSearch, // auto-reset to page 0 when search changes
   })
@@ -266,8 +266,8 @@ export function DeviceQuotaCategoryProvider({ children }: DeviceQuotaCategoryPro
       "dinh_muc_nhom_list_paginated",
       {
         donViId,
-        page: paginationState.pagination.pageIndex + 1,
-        pageSize: paginationState.pagination.pageSize,
+        page: paginationState.page,
+        pageSize: paginationState.pageSize,
         search: debouncedSearch || null,
       },
     ],
@@ -276,8 +276,8 @@ export function DeviceQuotaCategoryProvider({ children }: DeviceQuotaCategoryPro
         fn: "dinh_muc_nhom_list_paginated",
         args: {
           p_don_vi: donViId,
-          p_page: paginationState.pagination.pageIndex + 1,
-          p_page_size: paginationState.pagination.pageSize,
+          p_page: paginationState.page,
+          p_page_size: paginationState.pageSize,
           p_search: debouncedSearch || null,
         },
       })

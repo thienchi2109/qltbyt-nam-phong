@@ -124,7 +124,7 @@ describe('DeviceQuotaCategoryProvider pagination', () => {
 
         // Navigate to page 2
         act(() => {
-            result.current.pagination.setPagination(prev => ({
+            result.current.pagination.setPagination((prev: { pageIndex: number; pageSize: number }) => ({
                 ...prev,
                 pageIndex: 1,
             }))
@@ -135,9 +135,10 @@ describe('DeviceQuotaCategoryProvider pagination', () => {
         // and the guard prevents resetting from undefined data.
         expect(result.current.totalRootCount).toBeGreaterThan(0)
 
-        // Wait for page 2 data to load
+        // Wait for page 2 data to actually load (assert on the data, not
+        // the pageIndex which is set synchronously by setPagination)
         await waitFor(() => {
-            expect(result.current.pagination.pagination.pageIndex).toBe(1)
+            expect(result.current.categories[0]?.ten_nhom).toBe('Nhóm 21')
         })
 
         // After page 2 loads, totalRootCount should still be 50
@@ -181,7 +182,7 @@ describe('DeviceQuotaCategoryProvider pagination', () => {
 
         // Navigate to page 2
         act(() => {
-            result.current.pagination.setPagination(prev => ({
+            result.current.pagination.setPagination((prev: { pageIndex: number; pageSize: number }) => ({
                 ...prev,
                 pageIndex: 1,
             }))

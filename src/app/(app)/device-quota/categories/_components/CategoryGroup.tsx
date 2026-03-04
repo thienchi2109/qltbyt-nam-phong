@@ -9,6 +9,7 @@ import {
     Trash2,
 } from "lucide-react"
 
+
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -18,12 +19,6 @@ import {
     DropdownMenuItem,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import {
-    Tooltip,
-    TooltipContent,
-    TooltipProvider,
-    TooltipTrigger,
-} from "@/components/ui/tooltip"
 import { CLASSIFICATION_STYLES } from "./category-tree-utils"
 import type { CategoryListItem } from "../_types/categories"
 
@@ -44,15 +39,16 @@ const CategoryChildRow = React.memo(function CategoryChildRow({
     onDelete,
     isMutating,
 }: CategoryChildRowProps) {
-    const [isExpanded, setIsExpanded] = React.useState(false)
     const classStyle = CLASSIFICATION_STYLES[category.phan_loai || ""] ?? null
-    const isLongText = (category.ten_nhom?.length ?? 0) > 80
+
+    const hasEquipment = category.so_luong_hien_co > 0
 
     return (
         <div
             className={cn(
-                "group relative flex items-start gap-3 rounded-md border border-transparent px-3 py-2.5 transition-all duration-150",
-                "hover:bg-accent/50 hover:border-border/50"
+                "group relative rounded-md border border-transparent px-3 py-2.5 transition-all duration-150",
+                "hover:bg-accent/50 hover:border-border/50",
+                "grid grid-cols-[minmax(0,1fr)_auto] gap-x-6 items-center"
             )}
             style={{ paddingLeft: `${Math.max(0, category.level - 2) * 20 + 16}px` }}
         >
@@ -65,66 +61,51 @@ const CategoryChildRow = React.memo(function CategoryChildRow({
                 />
             )}
 
-            {/* Content */}
-            <div className="min-w-0 flex-1">
+            {/* Column 1: Category name */}
+            <div className="min-w-0">
                 <div className="flex items-baseline gap-2">
                     <span className="text-sm font-semibold text-primary/80 shrink-0">
                         {category.ma_nhom}
                     </span>
-                    <TooltipProvider delayDuration={300}>
-                        <Tooltip>
-                            <TooltipTrigger asChild>
-                                <span
-                                    className={cn(
-                                        "text-sm text-foreground/80 cursor-default",
-                                        !isExpanded && "line-clamp-2"
-                                    )}
-                                    onClick={isLongText ? () => setIsExpanded(!isExpanded) : undefined}
-                                    role={isLongText ? "button" : undefined}
-                                    tabIndex={isLongText ? 0 : undefined}
-                                    onKeyDown={
-                                        isLongText
-                                            ? (e) => {
-                                                if (e.key === "Enter" || e.key === " ") {
-                                                    e.preventDefault()
-                                                    setIsExpanded(!isExpanded)
-                                                }
-                                            }
-                                            : undefined
-                                    }
-                                >
-                                    {category.ten_nhom}
-                                </span>
-                            </TooltipTrigger>
-                            {isLongText && !isExpanded && (
-                                <TooltipContent
-                                    side="bottom"
-                                    align="start"
-                                    className="max-w-md text-xs"
-                                >
-                                    {category.ten_nhom}
-                                </TooltipContent>
-                            )}
-                        </Tooltip>
-                    </TooltipProvider>
+                    <span className="text-sm text-foreground/80 break-words">
+                        {category.ten_nhom}
+                    </span>
                 </div>
-                {isExpanded && category.mo_ta && (
+                {category.mo_ta && (
                     <p className="text-xs text-muted-foreground mt-1 italic">
                         {category.mo_ta}
                     </p>
                 )}
             </div>
 
-            {/* Right side: badges + actions */}
-            <div className="flex items-center gap-2 shrink-0">
+            {/* Column 2: Classification + Metrics + Actions */}
+            <div className="flex items-center gap-4 shrink-0">
                 {classStyle && (
                     <Badge variant="outline" className={cn("text-xs font-medium", classStyle.className)}>
                         {classStyle.label}
                     </Badge>
                 )}
-                <Badge variant="secondary" className="tabular-nums text-xs">
-                    {category.so_luong_hien_co}
-                </Badge>
+
+                <div className="flex items-center gap-1 min-w-[5.5rem]" title="Định mức tối đa">
+                    <span className="text-[11px] text-muted-foreground">Định mức</span>
+                    <span className="text-sm font-semibold tabular-nums">
+                        {category.so_luong_toi_da ?? '–'}
+                    </span>
+                </div>
+
+                <div className="flex items-center gap-1.5 min-w-[5rem]" title="Số lượng hiện có">
+                    <span
+                        className={cn(
+                            "inline-block h-2 w-2 rounded-full shrink-0",
+                            hasEquipment ? "bg-emerald-500" : "bg-muted-foreground/30"
+                        )}
+                        aria-hidden="true"
+                    />
+                    <span className="text-[11px] text-muted-foreground">Hiện có</span>
+                    <span className="text-sm font-semibold tabular-nums">
+                        {category.so_luong_hien_co}
+                    </span>
+                </div>
 
                 <DropdownMenu>
                     <DropdownMenuTrigger asChild>
@@ -178,6 +159,10 @@ const CategoryGroup = React.memo(function CategoryGroup({
     const [isCollapsed, setIsCollapsed] = React.useState(false)
     const classStyle = CLASSIFICATION_STYLES[root.phan_loai || ""] ?? null
     const totalEquipment = children.reduce((sum, c) => sum + c.so_luong_hien_co, 0) + root.so_luong_hien_co
+    const allGroupItems = [root, ...children]
+    const hasUnknownQuota = allGroupItems.some((item) => item.so_luong_toi_da == null)
+    const totalQuota = allGroupItems.reduce((sum, item) => sum + (item.so_luong_toi_da ?? 0), 0)
+    const hasEquipment = totalEquipment > 0
 
     return (
         <div className="rounded-lg border bg-card overflow-hidden transition-shadow hover:shadow-sm">
@@ -222,15 +207,34 @@ const CategoryGroup = React.memo(function CategoryGroup({
                 </div>
 
                 {/* Right side: meta */}
-                <div className="flex items-center gap-2 shrink-0">
+                <div className="flex items-center gap-4 shrink-0">
                     {classStyle && (
                         <Badge variant="outline" className={cn("text-xs font-medium", classStyle.className)}>
                             {classStyle.label}
                         </Badge>
                     )}
-                    <Badge variant="secondary" className="tabular-nums text-xs">
-                        {totalEquipment} TB
-                    </Badge>
+
+                    <div className="flex items-center gap-1 min-w-[5.5rem]" title="Tổng định mức">
+                        <span className="text-[11px] text-muted-foreground">Định mức</span>
+                        <span className="text-sm font-semibold tabular-nums">
+                            {hasUnknownQuota ? '–' : totalQuota}
+                        </span>
+                    </div>
+
+                    <div className="flex items-center gap-1.5 min-w-[5rem]" title="Tổng thiết bị hiện có">
+                        <span
+                            className={cn(
+                                "inline-block h-2 w-2 rounded-full shrink-0",
+                                hasEquipment ? "bg-emerald-500" : "bg-muted-foreground/30"
+                            )}
+                            aria-hidden="true"
+                        />
+                        <span className="text-[11px] text-muted-foreground">Hiện có</span>
+                        <span className="text-sm font-semibold tabular-nums">
+                            {totalEquipment}
+                        </span>
+                    </div>
+
                     <span className="text-xs text-muted-foreground">
                         {children.length} mục con
                     </span>

@@ -8,6 +8,8 @@ export interface CategoryListItem {
   thu_tu_hien_thi: number
   level: number
   so_luong_hien_co: number
+  so_luong_toi_da: number | null
+  so_luong_toi_thieu: number | null
   mo_ta?: string | null
 }
 

@@ -62,6 +62,7 @@ import { useRepairRequestUIHandlers } from "../_hooks/useRepairRequestUIHandlers
 import { useRepairRequestColumns, renderActions } from "./RepairRequestsColumns"
 import { RepairRequestsMobileList } from "./RepairRequestsMobileList"
 import { DataTablePagination } from "@/components/shared/DataTablePagination"
+import { useServerPagination } from "@/hooks/useServerPagination"
 import {
   getUiFilters,
   setUiFilters,
@@ -117,7 +118,6 @@ function RepairRequestsPageClientInner() {
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);
   const [searchTerm, setSearchTerm] = React.useState("");
   const debouncedSearch = useSearchDebounce(searchTerm);
-  const [pagination, setPagination] = React.useState({ pageIndex: 0, pageSize: 20 });
 
   // UI filters (status/date) persisted
   const [uiFilters, setUiFiltersState] = React.useState<UiFiltersPrefs>(() => getUiFilters());
@@ -146,6 +146,17 @@ function RepairRequestsPageClientInner() {
     shouldFetchData,
   } = useTenantSelection()
 
+  // Server-side pagination with auto-reset on filter changes.
+  // totalCount stored in state because of a circular dependency:
+  // filters → query → totalCount → pagination → page → filters.
+  // Synced via useEffect when query data arrives (see below).
+  const paginationResetKey = `${debouncedSearch}|${selectedFacilityId}|${JSON.stringify(uiFilters.dateRange)}|${uiFilters.status.join(',')}`
+  const [totalRequests, setTotalRequests] = React.useState(0)
+  const repairPagination = useServerPagination({
+    totalCount: totalRequests,
+    resetKey: paginationResetKey,
+  })
+
   // TanStack Query for repair requests (server-side pagination + facility filtering + date range)
   const {
     data: repairRequestsRes,
@@ -160,8 +171,8 @@ function RepairRequestsPageClientInner() {
       donVi: selectedFacilityId,
       statuses: uiFilters.status || [],
       q: debouncedSearch || null,
-      page: pagination.pageIndex + 1,
-      pageSize: pagination.pageSize,
+      page: repairPagination.page,
+      pageSize: repairPagination.pageSize,
       dateFrom: uiFilters.dateRange?.from || null,
       dateTo: uiFilters.dateRange?.to || null,
     }],
@@ -171,8 +182,8 @@ function RepairRequestsPageClientInner() {
         args: {
           p_q: debouncedSearch || null,
           p_status: null,
-          p_page: pagination.pageIndex + 1,
-          p_page_size: pagination.pageSize,
+          p_page: repairPagination.page,
+          p_page_size: repairPagination.pageSize,
           p_don_vi: selectedFacilityId,
           p_date_from: uiFilters.dateRange?.from || null,
           p_date_to: uiFilters.dateRange?.to || null,
@@ -199,7 +210,14 @@ function RepairRequestsPageClientInner() {
     return facility?.name ?? null;
   }, [selectedFacilityId, facilityOptions]);
 
-  const totalRequests = repairRequestsRes?.total ?? 0;
+  // Sync totalRequests from query result into pagination state.
+  // useEffect avoids the abandoned-render overhead of render-time setState
+  // while still breaking the circular dependency:
+  // filters → query → totalRequests → pagination → page → filters
+  React.useEffect(() => {
+    const serverTotal = repairRequestsRes?.total ?? 0
+    setTotalRequests(serverTotal)
+  }, [repairRequestsRes?.total])
 
   // Status counts for summary (server-side via RPC per status)
   const STATUSES = ['Chờ xử lý', 'Đã duyệt', 'Hoàn thành', 'Không HT'] as const
@@ -379,15 +397,7 @@ function RepairRequestsPageClientInner() {
   }, [selectedFacilityId, tableData.length]);
 
   // Calculate page count from server total
-  const pageCount = React.useMemo(() => {
-    const total = repairRequestsRes?.total ?? 0;
-    return Math.max(0, Math.ceil(total / Math.max(pagination.pageSize, 1)));
-  }, [repairRequestsRes?.total, pagination.pageSize]);
-
-  // Reset pagination to first page when search, facility filter, or date range changes
-  React.useEffect(() => {
-    setPagination(prev => ({ ...prev, pageIndex: 0 }));
-  }, [debouncedSearch, selectedFacilityId, uiFilters.dateRange, uiFilters.status]);
+  const pageCount = repairPagination.pageCount
 
   const table = useReactTable({
     data: tableData,
@@ -396,7 +406,7 @@ function RepairRequestsPageClientInner() {
       sorting,
       columnFilters,
       globalFilter: debouncedSearch,
-      pagination,
+      pagination: repairPagination.pagination,
       columnVisibility,
     },
     pageCount,
@@ -408,7 +418,7 @@ function RepairRequestsPageClientInner() {
       // Do not sync status via column filters; status is server-side now.
     },
     onGlobalFilterChange: (value: string) => setSearchTerm(value),
-    onPaginationChange: setPagination,
+    onPaginationChange: repairPagination.setPagination,
     onColumnVisibilityChange: (updater) => {
       const next = typeof updater === 'function' ? (updater as any)(columnVisibility) : updater
       setColumnVisibilityState(next)
@@ -679,25 +689,25 @@ function RepairRequestsPageClientInner() {
 
                   {shouldFetchData ? (
                     <>
-                  {/* Mobile Card View */}
-                  {isMobile ? (
-                    <RepairRequestsMobileList
-                      requests={table.getRowModel().rows.map(row => row.original)}
-                      isLoading={isLoading}
-                      setRequestToView={setRequestToViewAdapter}
-                      renderActions={(req) => renderActions(req, columnOptions)}
-                    />
-                  ) : (
-                    /* Desktop Table View */
-                    <div key={tableKey} className="rounded-md border overflow-x-auto">
-                      <div className="min-w-[1100px]">
-                        <RepairRequestsTable
-                          table={table}
-                          isLoading={isLoading || isFetching}
+                      {/* Mobile Card View */}
+                      {isMobile ? (
+                        <RepairRequestsMobileList
+                          requests={table.getRowModel().rows.map(row => row.original)}
+                          isLoading={isLoading}
+                          setRequestToView={setRequestToViewAdapter}
+                          renderActions={(req) => renderActions(req, columnOptions)}
                         />
-                      </div>
-                    </div>
-                  )}
+                      ) : (
+                        /* Desktop Table View */
+                        <div key={tableKey} className="rounded-md border overflow-x-auto">
+                          <div className="min-w-[1100px]">
+                            <RepairRequestsTable
+                              table={table}
+                              isLoading={isLoading || isFetching}
+                            />
+                          </div>
+                        </div>
+                      )}
                     </>
                   ) : (
                     <div className="flex items-center justify-center min-h-[400px]">
@@ -714,21 +724,21 @@ function RepairRequestsPageClientInner() {
                   )}
                 </CardContent>
                 {shouldFetchData && (
-                <CardFooter className="py-4">
-                  <DataTablePagination
-                    table={table}
-                    totalCount={totalRequests}
-                    entity={REPAIR_REQUEST_ENTITY}
-                    paginationMode={{
-                      mode: "controlled",
-                      pagination,
-                      onPaginationChange: setPagination,
-                    }}
-                    displayFormat="range-total"
-                    responsive={{ stackLayoutAt: "md", showFirstLastAt: "lg" }}
-                    isLoading={isLoading || isFetching}
-                  />
-                </CardFooter>
+                  <CardFooter className="py-4">
+                    <DataTablePagination
+                      table={table}
+                      totalCount={totalRequests}
+                      entity={REPAIR_REQUEST_ENTITY}
+                      paginationMode={{
+                        mode: "controlled",
+                        pagination: repairPagination.pagination,
+                        onPaginationChange: repairPagination.setPagination,
+                      }}
+                      displayFormat="range-total"
+                      responsive={{ stackLayoutAt: "md", showFirstLastAt: "lg" }}
+                      isLoading={isLoading || isFetching}
+                    />
+                  </CardFooter>
                 )}
               </Card>
             </div>
