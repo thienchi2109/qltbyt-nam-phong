@@ -251,7 +251,7 @@ export function DeviceQuotaCategoryProvider({ children }: DeviceQuotaCategoryPro
   const [searchTerm, setSearchTerm] = React.useState("")
   const debouncedSearch = useDebounce(searchTerm, 300)
 
-  // Pagination state (totalCount updated from query result)
+  // Pagination state (totalCount synced from query result during render)
   const [totalRootCount, setTotalRootCount] = React.useState(0)
   const paginationState = usePaginationState({
     totalCount: totalRootCount,
@@ -305,14 +305,14 @@ export function DeviceQuotaCategoryProvider({ children }: DeviceQuotaCategoryPro
     gcTime: 10 * 60 * 1000,
   })
 
-  // Extract total_root_count from first row (same across all rows)
-  React.useEffect(() => {
-    if (categoriesData && categoriesData.length > 0) {
-      setTotalRootCount(categoriesData[0].total_root_count)
-    } else if (categoriesData && categoriesData.length === 0) {
-      setTotalRootCount(0)
-    }
-  }, [categoriesData])
+  // Sync totalRootCount during render (not via useEffect) to avoid
+  // a wasted render cycle where pagination shows stale count.
+  const derivedTotalRootCount = (categoriesData && categoriesData.length > 0)
+    ? categoriesData[0].total_root_count
+    : 0
+  if (derivedTotalRootCount !== totalRootCount) {
+    setTotalRootCount(derivedTotalRootCount)
+  }
 
   // Strip the extra `total_root_count` field for downstream consumers
   const categories: CategoryListItem[] = React.useMemo(
