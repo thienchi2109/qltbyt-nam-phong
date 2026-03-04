@@ -41,6 +41,8 @@ const CategoryChildRow = React.memo(function CategoryChildRow({
 }: CategoryChildRowProps) {
     const classStyle = CLASSIFICATION_STYLES[category.phan_loai || ""] ?? null
 
+    const indentPx = Math.max(0, category.level - 2) * 20
+
     return (
         <div
             className={cn(
@@ -48,19 +50,17 @@ const CategoryChildRow = React.memo(function CategoryChildRow({
                 "hover:bg-accent/50 hover:border-border/50",
                 CATEGORY_GRID_COLS
             )}
-            style={{ paddingLeft: `${Math.max(0, category.level - 2) * 20 + 16}px` }}
         >
-            {/* Tree connector line */}
-            {category.level > 2 && (
-                <div
-                    className="absolute top-0 bottom-0 border-l-2 border-muted-foreground/15"
-                    style={{ left: `${Math.max(0, category.level - 3) * 20 + 20}px` }}
-                    aria-hidden="true"
-                />
-            )}
-
-            {/* Column 1: Category name */}
-            <div className="min-w-0">
+            {/* Column 1: Category name (indentation applied here, not on grid container) */}
+            <div className="relative min-w-0" style={{ paddingLeft: `${indentPx}px` }}>
+                {/* Tree connector line */}
+                {category.level > 2 && (
+                    <div
+                        className="absolute top-0 bottom-0 border-l-2 border-muted-foreground/15"
+                        style={{ left: `${Math.max(0, category.level - 3) * 20}px` }}
+                        aria-hidden="true"
+                    />
+                )}
                 <div className="flex items-baseline gap-2">
                     <span className="text-sm font-semibold text-primary/80 shrink-0">
                         {category.ma_nhom}
