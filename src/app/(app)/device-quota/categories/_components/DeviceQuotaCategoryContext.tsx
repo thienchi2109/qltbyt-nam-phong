@@ -1,10 +1,12 @@
 "use client"
 
 import * as React from "react"
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
+import { useMutation, useQuery, useQueryClient, keepPreviousData } from "@tanstack/react-query"
 import { useSession } from "next-auth/react"
 
 import { useToast } from "@/hooks/use-toast"
+import { useDebounce } from "@/hooks/use-debounce"
+import { usePaginationState } from "@/hooks/usePaginationState"
 import { callRpc } from "@/lib/rpc-client"
 import { translateRpcError } from "@/lib/error-translations"
 import type {
@@ -23,6 +25,11 @@ interface AuthUser {
   dia_ban_id?: number | null
 }
 
+/** Shape returned by the paginated RPC (extra column) */
+interface PaginatedCategoryRow extends CategoryListItem {
+  total_root_count: number
+}
+
 interface CategoryContextValue {
   // User/Auth
   user: AuthUser | null
@@ -30,7 +37,17 @@ interface CategoryContextValue {
 
   // Data
   categories: CategoryListItem[]
+  allCategories: CategoryListItem[]
   isLoading: boolean
+  isAllCategoriesLoading: boolean
+  totalRootCount: number
+
+  // Search
+  searchTerm: string
+  setSearchTerm: (term: string) => void
+
+  // Pagination
+  pagination: ReturnType<typeof usePaginationState>
 
   // Dialog state (discriminated union)
   dialogState: CategoryDialogState
@@ -230,9 +247,51 @@ export function DeviceQuotaCategoryProvider({ children }: DeviceQuotaCategoryPro
   const [categoryToDelete, setCategoryToDelete] = React.useState<CategoryListItem | null>(null)
   const [isImportDialogOpen, setIsImportDialogOpen] = React.useState(false)
 
+  // Search state with debounce
+  const [searchTerm, setSearchTerm] = React.useState("")
+  const debouncedSearch = useDebounce(searchTerm, 300)
+
+  // Pagination state (totalCount synced from query result during render)
+  const [totalRootCount, setTotalRootCount] = React.useState(0)
+  const paginationState = usePaginationState({
+    totalCount: totalRootCount,
+    resetKey: debouncedSearch, // auto-reset to page 0 when search changes
+  })
+
   const {
     data: categoriesData,
     isLoading: isLoadingCategories,
+  } = useQuery({
+    queryKey: [
+      "dinh_muc_nhom_list_paginated",
+      {
+        donViId,
+        page: paginationState.pagination.pageIndex + 1,
+        pageSize: paginationState.pagination.pageSize,
+        search: debouncedSearch || null,
+      },
+    ],
+    queryFn: async () => {
+      const result = await callRpc<PaginatedCategoryRow[]>({
+        fn: "dinh_muc_nhom_list_paginated",
+        args: {
+          p_don_vi: donViId,
+          p_page: paginationState.pagination.pageIndex + 1,
+          p_page_size: paginationState.pagination.pageSize,
+          p_search: debouncedSearch || null,
+        },
+      })
+      return result || []
+    },
+    enabled: !!donViId,
+    staleTime: 60000,
+    gcTime: 10 * 60 * 1000,
+    placeholderData: keepPreviousData,
+  })
+
+  const {
+    data: allCategoriesData,
+    isLoading: isAllCategoriesLoading,
   } = useQuery({
     queryKey: ["dinh_muc_nhom_list", { donViId }],
     queryFn: async () => {
@@ -247,7 +306,33 @@ export function DeviceQuotaCategoryProvider({ children }: DeviceQuotaCategoryPro
     gcTime: 10 * 60 * 1000,
   })
 
+  // Sync totalRootCount during render (not via useEffect) to avoid
+  // a wasted render cycle where pagination shows stale count.
+  // Guard: only update when data is defined to prevent resetting to 0
+  // during loading/cache-miss states (which would break pagination).
+  if (categoriesData !== undefined) {
+    const derivedTotalRootCount = categoriesData.length > 0
+      ? categoriesData[0].total_root_count
+      : 0
+    if (derivedTotalRootCount !== totalRootCount) {
+      setTotalRootCount(derivedTotalRootCount)
+    }
+  }
+
+  // Strip the extra `total_root_count` field for downstream consumers
+  const categories: CategoryListItem[] = React.useMemo(
+    () =>
+      (categoriesData || []).map(({ total_root_count: _, ...rest }) => rest),
+    [categoriesData]
+  )
+
+  const allCategories: CategoryListItem[] = React.useMemo(
+    () => allCategoriesData || [],
+    [allCategoriesData]
+  )
+
   const invalidateAndRefetch = React.useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: ["dinh_muc_nhom_list_paginated"] })
     queryClient.invalidateQueries({ queryKey: ["dinh_muc_nhom_list"] })
     queryClient.invalidateQueries({ queryKey: ["dinh_muc_compliance_summary"] })
   }, [queryClient])
@@ -305,13 +390,12 @@ export function DeviceQuotaCategoryProvider({ children }: DeviceQuotaCategoryPro
 
   const getDescendantIds = React.useCallback(
     (parentId: number) => {
-      const categories = categoriesData || []
       const descendants = new Set<number>()
       const stack = [parentId]
 
       while (stack.length > 0) {
         const current = stack.pop()!
-        for (const cat of categories) {
+        for (const cat of allCategories) {
           if (cat.parent_id === current && !descendants.has(cat.id)) {
             descendants.add(cat.id)
             stack.push(cat.id)
@@ -321,15 +405,21 @@ export function DeviceQuotaCategoryProvider({ children }: DeviceQuotaCategoryPro
 
       return descendants
     },
-    [categoriesData]
+    [allCategories]
   )
 
   const value = React.useMemo<CategoryContextValue>(
     () => ({
       user,
       donViId,
-      categories: categoriesData || [],
+      categories,
+      allCategories,
       isLoading: isLoadingCategories,
+      isAllCategoriesLoading,
+      totalRootCount,
+      searchTerm,
+      setSearchTerm,
+      pagination: paginationState,
       dialogState,
       mutatingCategoryId,
       categoryToDelete,
@@ -349,8 +439,13 @@ export function DeviceQuotaCategoryProvider({ children }: DeviceQuotaCategoryPro
     [
       user,
       donViId,
-      categoriesData,
+      categories,
+      allCategories,
       isLoadingCategories,
+      isAllCategoriesLoading,
+      totalRootCount,
+      searchTerm,
+      paginationState,
       dialogState,
       mutatingCategoryId,
       categoryToDelete,

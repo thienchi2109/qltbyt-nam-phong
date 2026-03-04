@@ -42,6 +42,8 @@ const EXPECTED_DATA_HEADERS = [
   'Đơn vị tính',
   'Thứ tự hiển thị',
   'Mô tả',
+  'Định mức (SL tối đa)',
+  'Tối thiểu',
 ]
 
 // Required fields (columns B and C)
@@ -209,19 +211,21 @@ describe('Category Excel Template Generation', () => {
 
     it('should explain code format', () => {
       if (initError) throw initError
-      let foundCodeFormat = false
+      let foundAlphanumericRule = false
+      let foundDotSeparator = false
 
       instructionsSheet.eachRow((row) => {
         const cellValue = String(row.getCell(1).value || '')
-        if (
-          cellValue.includes('XX') ||
-          cellValue.includes('XX.XX')
-        ) {
-          foundCodeFormat = true
+        if (cellValue.includes('A-Z') || cellValue.includes('0-9')) {
+          foundAlphanumericRule = true
+        }
+        if (cellValue.includes('.') && cellValue.includes('phân cấp')) {
+          foundDotSeparator = true
         }
       })
 
-      expect(foundCodeFormat).toBe(true)
+      expect(foundAlphanumericRule).toBe(true)
+      expect(foundDotSeparator).toBe(true)
     })
 
     it('should explain classification A and B', () => {
@@ -290,6 +294,56 @@ describe('Category Excel Template Generation', () => {
 
       const cell = dataEntrySheet.getCell(2, 1) // A2
       expect(cell.alignment?.horizontal).toBe('center')
+    })
+  })
+
+  describe('Quota Columns (Định Mức)', () => {
+    it('should include quota headers in columns I and J', () => {
+      if (initError) throw initError
+      const headerRow = dataEntrySheet.getRow(1)
+
+      expect(String(headerRow.getCell(9).value || '')).toBe('Định mức (SL tối đa)')
+      expect(String(headerRow.getCell(10).value || '')).toBe('Tối thiểu')
+    })
+
+    it('should have number validation for quota columns (I and J)', () => {
+      if (initError) throw initError
+
+      // Column I (Định mức SL tối đa): must be > 0 if provided
+      const quotaCell = dataEntrySheet.getCell(2, 9) // I2
+      expect(quotaCell.dataValidation).toBeDefined()
+      expect(quotaCell.dataValidation?.type).toBe('whole')
+      expect(quotaCell.dataValidation?.operator).toBe('greaterThan')
+      expect(quotaCell.dataValidation?.formulae).toEqual([0])
+      expect(quotaCell.dataValidation?.allowBlank).toBe(true)
+
+      // Column J (Tối thiểu): must be >= 0 and <= column I if provided
+      const minCell = dataEntrySheet.getCell(2, 10) // J2
+      expect(minCell.dataValidation).toBeDefined()
+      expect(minCell.dataValidation?.type).toBe('custom')
+      expect(minCell.dataValidation?.formulae).toEqual([
+        'OR(J2="",AND(J2>=0,J2=INT(J2),J2<=I2))',
+      ])
+      expect(minCell.dataValidation?.allowBlank).toBe(true)
+    })
+
+    it('should explain quota columns in instructions sheet', () => {
+      if (initError) throw initError
+      let foundQuotaSection = false
+      let foundLeafNote = false
+
+      instructionsSheet.eachRow((row) => {
+        const cellValue = String(row.getCell(1).value || '')
+        if (cellValue.includes('ĐỊNH MỨC') && cellValue.includes('TÙY CHỌN')) {
+          foundQuotaSection = true
+        }
+        if (cellValue.includes('nhóm lá') || cellValue.includes('nhóm con')) {
+          foundLeafNote = true
+        }
+      })
+
+      expect(foundQuotaSection).toBe(true)
+      expect(foundLeafNote).toBe(true)
     })
   })
 })

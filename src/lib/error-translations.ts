@@ -31,6 +31,10 @@ export function translateRpcError(error: string | null | undefined): string {
     return "Danh mục không thể là cha của chính nó"
   }
 
+  if (message.includes("Circular parent reference is not allowed")) {
+    return "Không thể chọn nhóm con làm nhóm cha (quan hệ vòng lặp)"
+  }
+
   if (message.includes("Cannot delete category") && message.includes("equipment")) {
     return "Danh mục đang được gán thiết bị. Vui lòng gỡ thiết bị trước."
   }

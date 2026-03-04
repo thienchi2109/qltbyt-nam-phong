@@ -13,6 +13,7 @@ describe('translateRpcError', () => {
 
   it('translates parent category errors', () => {
     expect(translateRpcError('Parent category not found.')).toBe('Không tìm thấy nhóm cha')
+    expect(translateRpcError('Circular parent reference is not allowed.')).toBe('Không thể chọn nhóm con làm nhóm cha (quan hệ vòng lặp)')
   })
 
   it('truncates unknown errors', () => {

@@ -69,7 +69,7 @@ export function DeviceQuotaCategoryDialog() {
     closeDialog,
     createMutation,
     updateMutation,
-    categories,
+    allCategories,
     getDescendantIds,
   } = useDeviceQuotaCategoryContext()
 
@@ -124,13 +124,15 @@ export function DeviceQuotaCategoryDialog() {
     }
   }
 
+  const categoryOptions = allCategories ?? []
+
   const availableParents = React.useMemo(() => {
-    if (!editingCategory) return categories
+    if (!editingCategory) return categoryOptions
     const descendantIds = getDescendantIds(editingCategory.id)
-    return categories.filter(
+    return categoryOptions.filter(
       (cat) => cat.id !== editingCategory.id && !descendantIds.has(cat.id)
     )
-  }, [categories, editingCategory, getDescendantIds])
+  }, [categoryOptions, editingCategory, getDescendantIds])
 
   const onSubmit = (values: CategoryFormValues) => {
     const payload = buildPayload(values)

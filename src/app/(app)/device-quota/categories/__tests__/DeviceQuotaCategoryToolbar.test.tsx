@@ -1,5 +1,6 @@
 import React from 'react'
 import { render, screen, fireEvent } from '@testing-library/react'
+import "@testing-library/jest-dom"
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 import { DeviceQuotaCategoryToolbar } from '../_components/DeviceQuotaCategoryToolbar'
@@ -22,6 +23,8 @@ describe('DeviceQuotaCategoryToolbar', () => {
     mockUseContext.mockReturnValue({
       openCreateDialog,
       openImportDialog: vi.fn(),
+      searchTerm: '',
+      setSearchTerm: vi.fn(),
     } as any)
 
     render(<DeviceQuotaCategoryToolbar />)
@@ -29,5 +32,18 @@ describe('DeviceQuotaCategoryToolbar', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Tạo danh mục' }))
 
     expect(openCreateDialog).toHaveBeenCalledTimes(1)
+  })
+
+  it('renders search input', () => {
+    mockUseContext.mockReturnValue({
+      openCreateDialog: vi.fn(),
+      openImportDialog: vi.fn(),
+      searchTerm: '',
+      setSearchTerm: vi.fn(),
+    } as any)
+
+    render(<DeviceQuotaCategoryToolbar />)
+
+    expect(screen.getByPlaceholderText('Tìm theo mã, tên nhóm...')).toBeInTheDocument()
   })
 })

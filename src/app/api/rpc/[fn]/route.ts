@@ -131,10 +131,12 @@ const ALLOWED_FUNCTIONS = new Set<string>([
   'dinh_muc_quyet_dinh_delete',
   // Categories
   'dinh_muc_nhom_list',
+  'dinh_muc_nhom_list_paginated',
   'dinh_muc_nhom_get',
   'dinh_muc_nhom_upsert',
   'dinh_muc_nhom_delete',
   'dinh_muc_nhom_bulk_import',
+  'dinh_muc_unified_import',
   // Equipment Mapping
   'dinh_muc_thiet_bi_link',
   'dinh_muc_thiet_bi_unlink',
