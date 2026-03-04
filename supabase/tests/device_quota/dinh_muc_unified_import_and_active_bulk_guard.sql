@@ -36,6 +36,14 @@ BEGIN
   IF position('insert into public.quyet_dinh_dinh_muc' in lower(v_unified_def)) = 0 THEN
     RAISE EXCEPTION 'Expected unified import to create a draft decision before importing line items';
   END IF;
+
+  IF position('''success'', v_bulk_result->>''success''' in lower(v_unified_def)) > 0 THEN
+    RAISE EXCEPTION 'Expected unified import to return success as JSON boolean, not text';
+  END IF;
+
+  IF position('''success'', v_bulk_result->''success''' in lower(v_unified_def)) = 0 THEN
+    RAISE EXCEPTION 'Expected unified import to propagate success as JSON boolean via ->';
+  END IF;
 END $$;
 
 ROLLBACK;
