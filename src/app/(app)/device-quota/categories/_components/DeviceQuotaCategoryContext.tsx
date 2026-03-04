@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
+import { useMutation, useQuery, useQueryClient, keepPreviousData } from "@tanstack/react-query"
 import { useSession } from "next-auth/react"
 
 import { useToast } from "@/hooks/use-toast"
@@ -286,6 +286,7 @@ export function DeviceQuotaCategoryProvider({ children }: DeviceQuotaCategoryPro
     enabled: !!donViId,
     staleTime: 60000,
     gcTime: 10 * 60 * 1000,
+    placeholderData: keepPreviousData,
   })
 
   const {
@@ -307,11 +308,15 @@ export function DeviceQuotaCategoryProvider({ children }: DeviceQuotaCategoryPro
 
   // Sync totalRootCount during render (not via useEffect) to avoid
   // a wasted render cycle where pagination shows stale count.
-  const derivedTotalRootCount = (categoriesData && categoriesData.length > 0)
-    ? categoriesData[0].total_root_count
-    : 0
-  if (derivedTotalRootCount !== totalRootCount) {
-    setTotalRootCount(derivedTotalRootCount)
+  // Guard: only update when data is defined to prevent resetting to 0
+  // during loading/cache-miss states (which would break pagination).
+  if (categoriesData !== undefined) {
+    const derivedTotalRootCount = categoriesData.length > 0
+      ? categoriesData[0].total_root_count
+      : 0
+    if (derivedTotalRootCount !== totalRootCount) {
+      setTotalRootCount(derivedTotalRootCount)
+    }
   }
 
   // Strip the extra `total_root_count` field for downstream consumers
