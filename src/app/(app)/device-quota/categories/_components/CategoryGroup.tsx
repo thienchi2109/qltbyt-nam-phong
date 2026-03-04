@@ -159,7 +159,9 @@ const CategoryGroup = React.memo(function CategoryGroup({
     const [isCollapsed, setIsCollapsed] = React.useState(false)
     const classStyle = CLASSIFICATION_STYLES[root.phan_loai || ""] ?? null
     const totalEquipment = children.reduce((sum, c) => sum + c.so_luong_hien_co, 0) + root.so_luong_hien_co
-    const totalQuota = children.reduce((sum, c) => sum + (c.so_luong_toi_da ?? 0), 0) + (root.so_luong_toi_da ?? 0)
+    const allGroupItems = [root, ...children]
+    const hasUnknownQuota = allGroupItems.some((item) => item.so_luong_toi_da == null)
+    const totalQuota = allGroupItems.reduce((sum, item) => sum + (item.so_luong_toi_da ?? 0), 0)
     const hasEquipment = totalEquipment > 0
 
     return (
@@ -215,7 +217,7 @@ const CategoryGroup = React.memo(function CategoryGroup({
                     <div className="flex items-center gap-1 min-w-[5.5rem]" title="Tổng định mức">
                         <span className="text-[11px] text-muted-foreground">Định mức</span>
                         <span className="text-sm font-semibold tabular-nums">
-                            {totalQuota}
+                            {hasUnknownQuota ? '–' : totalQuota}
                         </span>
                     </div>
 
