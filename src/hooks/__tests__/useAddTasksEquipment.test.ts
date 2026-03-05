@@ -114,4 +114,28 @@ describe('useAddTasksEquipment', () => {
     expect(result.current.error).toBeInstanceOf(Error)
     expect(result.current.error?.message).toBe('Network error')
   })
+
+  it('warns when returned data count hits the fetch limit', async () => {
+    const { EQUIPMENT_FETCH_LIMIT } = await import('../useAddTasksEquipment')
+    const atLimitData = Array.from({ length: EQUIPMENT_FETCH_LIMIT }, (_, i) => ({
+      ...MOCK_EQUIPMENT[0],
+      id: i + 1,
+      ma_thiet_bi: `TB-${String(i + 1).padStart(3, '0')}`,
+    }))
+    mockCallRpc.mockResolvedValue(atLimitData)
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+
+    const { result } = renderHook(() => useAddTasksEquipment(true), {
+      wrapper: createWrapper(),
+    })
+
+    await waitFor(() => {
+      expect(result.current.isSuccess).toBe(true)
+    })
+
+    expect(warnSpy).toHaveBeenCalledWith(
+      expect.stringContaining('equipment_list returned'),
+    )
+    warnSpy.mockRestore()
+  })
 })
