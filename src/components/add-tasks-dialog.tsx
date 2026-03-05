@@ -206,7 +206,7 @@ export function AddTasksDialog({
   const totalSelectableRows = React.useMemo(
     () => table.getFilteredRowModel().rows.filter(row => row.getCanSelect()).length,
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [equipment.length, columnFilters, existingEquipmentIds, debouncedSearch]
+    [equipment, columnFilters, existingEquipmentIds, debouncedSearch]
   );
 
   return (
