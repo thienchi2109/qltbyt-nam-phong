@@ -90,6 +90,7 @@ export function AddTasksDialog({
   const [searchTerm, setSearchTerm] = React.useState("")
   const debouncedSearch = useSearchDebounce(searchTerm)
   const [rowSelection, setRowSelection] = React.useState({})
+  const [pagination, setPagination] = React.useState({ pageIndex: 0, pageSize: 10 })
   const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({
     "nguoi_dang_truc_tiep_quan_ly": false,
     "vi_tri_lap_dat": false,
@@ -101,6 +102,7 @@ export function AddTasksDialog({
       setRowSelection({})
       setSearchTerm("")
       setColumnFilters([])
+      setPagination({ pageIndex: 0, pageSize: 10 })
     }
   }, [open])
 
@@ -165,12 +167,14 @@ export function AddTasksDialog({
       globalFilter: debouncedSearch,
       rowSelection,
       columnVisibility,
+      pagination,
     },
     enableRowSelection: (row) => !existingEquipmentIds.includes(row.original.id),
     onRowSelectionChange: setRowSelection,
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
     onColumnVisibilityChange: setColumnVisibility,
+    onPaginationChange: setPagination,
     onGlobalFilterChange: (value: string) => setSearchTerm(value),
     getCoreRowModel: getCoreRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
