@@ -253,11 +253,29 @@ export function DeviceQuotaMappingProvider({ children }: DeviceQuotaMappingProvi
     gcTime: 5 * 60 * 1000,
   })
 
-  // Parse total_count from first row and sync to pagination
-  const totalEquipmentCount = equipmentRawData?.[0]?.total_count ?? 0
+  // Keep a stable total count when current page is empty:
+  // - If page has rows, read total_count from first row
+  // - If page 1 resolves empty, total is truly 0
+  // - If non-first page resolves empty (out-of-range after data changes), preserve previous total
   React.useEffect(() => {
-    setPaginationTotalCount(totalEquipmentCount)
-  }, [totalEquipmentCount])
+    if (!donViId) {
+      setPaginationTotalCount(0)
+      return
+    }
+
+    if (!equipmentRawData) return
+
+    if (equipmentRawData.length > 0) {
+      setPaginationTotalCount(equipmentRawData[0]?.total_count ?? 0)
+      return
+    }
+
+    if (paginationState.page === 1) {
+      setPaginationTotalCount(0)
+    }
+  }, [donViId, equipmentRawData, paginationState.page])
+
+  const totalEquipmentCount = paginationTotalCount
 
   // Strip total_count from rows for consumers
   const unassignedEquipment: UnassignedEquipment[] = React.useMemo(

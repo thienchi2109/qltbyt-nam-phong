@@ -125,6 +125,23 @@ function CategoryTreeEmpty() {
   )
 }
 
+function CategoryTreeNoResults({ searchTerm }: { searchTerm: string }) {
+  return (
+    <div className="flex flex-col items-center justify-center py-12 text-center">
+      <div className="rounded-full bg-muted p-3 mb-4">
+        <FolderTree className="h-6 w-6 text-muted-foreground" />
+      </div>
+      <h3 className="font-semibold text-base mb-1">
+        Không tìm thấy danh mục phù hợp
+      </h3>
+      <p className="text-sm text-muted-foreground max-w-sm">
+        Không có danh mục nào khớp với từ khóa "{searchTerm.trim()}".
+        Hãy thử từ khóa khác.
+      </p>
+    </div>
+  )
+}
+
 /**
  * DeviceQuotaCategoryTree - Hierarchical category selection for equipment mapping
  *
@@ -149,6 +166,8 @@ export function DeviceQuotaCategoryTree() {
     setSelectedCategory(selectedCategoryId === id ? null : id)
   }, [selectedCategoryId, setSelectedCategory])
 
+  const hasSearchTerm = categorySearchTerm.trim().length > 0
+
   return (
     <Card className="h-full flex flex-col">
       <CardHeader>
@@ -169,8 +188,10 @@ export function DeviceQuotaCategoryTree() {
       <CardContent className="flex-1 overflow-auto">
         {isLoading ? (
           <CategoryTreeSkeleton />
-        ) : categories.length === 0 ? (
+        ) : allCategories.length === 0 ? (
           <CategoryTreeEmpty />
+        ) : categories.length === 0 && hasSearchTerm ? (
+          <CategoryTreeNoResults searchTerm={categorySearchTerm} />
         ) : (
           <div className="space-y-1">
             {categories.map((category) => (
