@@ -253,10 +253,10 @@ export function DeviceQuotaMappingProvider({ children }: DeviceQuotaMappingProvi
     gcTime: 5 * 60 * 1000,
   })
 
-  // Keep a stable total count when current page is empty:
+  // Keep total count synced to server while recovering from empty out-of-range pages:
   // - If page has rows, read total_count from first row
+  // - If non-first page resolves empty, jump back to page 1 to refetch authoritative total
   // - If page 1 resolves empty, total is truly 0
-  // - If non-first page resolves empty (out-of-range after data changes), preserve previous total
   React.useEffect(() => {
     if (!donViId) {
       setPaginationTotalCount(0)
@@ -270,10 +270,13 @@ export function DeviceQuotaMappingProvider({ children }: DeviceQuotaMappingProvi
       return
     }
 
-    if (paginationState.page === 1) {
-      setPaginationTotalCount(0)
+    if (paginationState.page > 1) {
+      paginationState.resetToFirstPage()
+      return
     }
-  }, [donViId, equipmentRawData, paginationState.page])
+
+    setPaginationTotalCount(0)
+  }, [donViId, equipmentRawData, paginationState.page, paginationState.resetToFirstPage])
 
   const totalEquipmentCount = paginationTotalCount
 
