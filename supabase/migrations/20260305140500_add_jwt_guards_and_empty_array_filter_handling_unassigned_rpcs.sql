@@ -1,26 +1,13 @@
--- Add faceted filter parameters + so_luu_hanh search to dinh_muc_thiet_bi_unassigned
--- Also adds companion RPC for distinct filter option values
---
--- Changes:
---   1. New params: p_khoa_phong_array, p_nguoi_su_dung_array, p_vi_tri_lap_dat_array, p_nguon_kinh_phi_array
---   2. Expanded search scope: so_luu_hanh now included in text search
---   3. New function: dinh_muc_thiet_bi_unassigned_filter_options
+-- Add mandatory JWT claim guards and empty-array filter handling
+-- for unassigned equipment RPCs already deployed in production.
 
 BEGIN;
-
--- ============================================
--- 1. Update dinh_muc_thiet_bi_unassigned with filter params
--- ============================================
-
--- Drop old signature first (params changed)
-DROP FUNCTION IF EXISTS public.dinh_muc_thiet_bi_unassigned(BIGINT, TEXT, INT, INT);
 
 CREATE OR REPLACE FUNCTION public.dinh_muc_thiet_bi_unassigned(
   p_don_vi BIGINT DEFAULT NULL,
   p_search TEXT DEFAULT NULL,
   p_limit INT DEFAULT 50,
   p_offset INT DEFAULT 0,
-  -- Faceted filter arrays
   p_khoa_phong_array TEXT[] DEFAULT NULL,
   p_nguoi_su_dung_array TEXT[] DEFAULT NULL,
   p_vi_tri_lap_dat_array TEXT[] DEFAULT NULL,
@@ -49,12 +36,10 @@ DECLARE
   v_total BIGINT;
   v_allowed_facilities BIGINT[];
 BEGIN
-  -- Fallback for older tokens using 'role' instead of 'app_role'
   IF v_role IS NULL OR v_role = '' THEN
     v_role := current_setting('request.jwt.claims', true)::json->>'role';
   END IF;
 
-  -- Mandatory JWT claim guards
   IF v_role IS NULL OR v_role = '' THEN
     RAISE EXCEPTION 'Missing role claim' USING errcode = '42501';
   END IF;
@@ -67,7 +52,6 @@ BEGIN
     RAISE EXCEPTION 'Missing don_vi claim' USING errcode = '42501';
   END IF;
 
-  -- Tenant isolation based on role
   IF v_role IN ('global', 'admin') THEN
     NULL;
   ELSIF v_role = 'regional_leader' THEN
@@ -83,7 +67,6 @@ BEGIN
     RETURN;
   END IF;
 
-  -- Sanitize limit and offset
   IF p_limit IS NULL OR p_limit < 1 THEN
     p_limit := 50;
   END IF;
@@ -94,15 +77,12 @@ BEGIN
     p_offset := 0;
   END IF;
 
-  -- Prepare search pattern
   v_search_pattern := '%' || COALESCE(LOWER(TRIM(p_search)), '') || '%';
 
-  -- Get total count (with ALL filters applied)
   SELECT COUNT(*) INTO v_total
   FROM public.thiet_bi tb
   WHERE tb.don_vi = p_don_vi
     AND tb.nhom_thiet_bi_id IS NULL
-    -- Text search (expanded to include so_luu_hanh)
     AND (
       p_search IS NULL
       OR p_search = ''
@@ -112,13 +92,11 @@ BEGIN
       OR LOWER(COALESCE(tb.serial, '')) LIKE v_search_pattern
       OR LOWER(COALESCE(tb.so_luu_hanh, '')) LIKE v_search_pattern
     )
-    -- Faceted filters
     AND (p_khoa_phong_array IS NULL OR cardinality(p_khoa_phong_array) = 0 OR tb.khoa_phong_quan_ly = ANY(p_khoa_phong_array))
     AND (p_nguoi_su_dung_array IS NULL OR cardinality(p_nguoi_su_dung_array) = 0 OR tb.nguoi_dang_truc_tiep_quan_ly = ANY(p_nguoi_su_dung_array))
     AND (p_vi_tri_lap_dat_array IS NULL OR cardinality(p_vi_tri_lap_dat_array) = 0 OR tb.vi_tri_lap_dat = ANY(p_vi_tri_lap_dat_array))
     AND (p_nguon_kinh_phi_array IS NULL OR cardinality(p_nguon_kinh_phi_array) = 0 OR tb.nguon_kinh_phi = ANY(p_nguon_kinh_phi_array));
 
-  -- Return equipment with total count
   RETURN QUERY
   SELECT
     tb.id,
@@ -152,21 +130,6 @@ BEGIN
 END;
 $$;
 
--- Grant execute to authenticated users
-GRANT EXECUTE ON FUNCTION public.dinh_muc_thiet_bi_unassigned(
-  BIGINT, TEXT, INT, INT, TEXT[], TEXT[], TEXT[], TEXT[]
-) TO authenticated;
-REVOKE EXECUTE ON FUNCTION public.dinh_muc_thiet_bi_unassigned(
-  BIGINT, TEXT, INT, INT, TEXT[], TEXT[], TEXT[], TEXT[]
-) FROM PUBLIC;
-
-COMMENT ON FUNCTION public.dinh_muc_thiet_bi_unassigned IS
-  'List unassigned equipment (not linked to any category) with search, pagination, and faceted filters';
-
--- ============================================
--- 2. Filter options companion RPC
--- ============================================
-
 CREATE OR REPLACE FUNCTION public.dinh_muc_thiet_bi_unassigned_filter_options(
   p_don_vi BIGINT DEFAULT NULL
 )
@@ -182,12 +145,10 @@ DECLARE
   v_allowed_facilities BIGINT[];
   v_result JSONB;
 BEGIN
-  -- Fallback for older tokens
   IF v_role IS NULL OR v_role = '' THEN
     v_role := current_setting('request.jwt.claims', true)::json->>'role';
   END IF;
 
-  -- Mandatory JWT claim guards
   IF v_role IS NULL OR v_role = '' THEN
     RAISE EXCEPTION 'Missing role claim' USING errcode = '42501';
   END IF;
@@ -200,7 +161,6 @@ BEGIN
     RAISE EXCEPTION 'Missing don_vi claim' USING errcode = '42501';
   END IF;
 
-  -- Tenant isolation
   IF v_role IN ('global', 'admin') THEN
     NULL;
   ELSIF v_role = 'regional_leader' THEN
@@ -256,10 +216,14 @@ BEGIN
 END;
 $$;
 
+GRANT EXECUTE ON FUNCTION public.dinh_muc_thiet_bi_unassigned(
+  BIGINT, TEXT, INT, INT, TEXT[], TEXT[], TEXT[], TEXT[]
+) TO authenticated;
+REVOKE EXECUTE ON FUNCTION public.dinh_muc_thiet_bi_unassigned(
+  BIGINT, TEXT, INT, INT, TEXT[], TEXT[], TEXT[], TEXT[]
+) FROM PUBLIC;
+
 GRANT EXECUTE ON FUNCTION public.dinh_muc_thiet_bi_unassigned_filter_options(BIGINT) TO authenticated;
 REVOKE EXECUTE ON FUNCTION public.dinh_muc_thiet_bi_unassigned_filter_options(BIGINT) FROM PUBLIC;
-
-COMMENT ON FUNCTION public.dinh_muc_thiet_bi_unassigned_filter_options IS
-  'Returns distinct filter option values (departments, users, locations, funding sources) for unassigned equipment';
 
 COMMIT;

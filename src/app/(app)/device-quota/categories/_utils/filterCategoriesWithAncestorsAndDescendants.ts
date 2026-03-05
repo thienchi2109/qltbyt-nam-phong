@@ -40,6 +40,18 @@ export function filterCategoriesWithAncestorsAndDescendants<T extends CategoryIt
   const byId = new Map<number, T>()
   for (const cat of allCategories) byId.set(cat.id, cat)
 
+  // Build parent→children index once to avoid rescanning all categories per parent.
+  const childrenByParentId = new Map<number, number[]>()
+  for (const cat of allCategories) {
+    if (cat.parent_id == null) continue
+    const siblings = childrenByParentId.get(cat.parent_id)
+    if (siblings) {
+      siblings.push(cat.id)
+    } else {
+      childrenByParentId.set(cat.parent_id, [cat.id])
+    }
+  }
+
   const visibleIds = new Set(matchingIds)
 
   // Include ancestors (preserve tree structure)
@@ -56,11 +68,13 @@ export function filterCategoriesWithAncestorsAndDescendants<T extends CategoryIt
   const stack = [...matchingIds]
   while (stack.length > 0) {
     const parentId = stack.pop()!
-    for (const cat of allCategories) {
-      if (cat.parent_id === parentId && !visibleIds.has(cat.id)) {
-        visibleIds.add(cat.id)
-        stack.push(cat.id)
-      }
+    const childIds = childrenByParentId.get(parentId)
+    if (!childIds) continue
+
+    for (const childId of childIds) {
+      if (visibleIds.has(childId)) continue
+      visibleIds.add(childId)
+      stack.push(childId)
     }
   }
 

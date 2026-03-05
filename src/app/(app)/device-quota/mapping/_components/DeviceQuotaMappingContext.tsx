@@ -180,8 +180,8 @@ export function DeviceQuotaMappingProvider({ children }: DeviceQuotaMappingProvi
   // Equipment filters + search
   const filters = useUnassignedEquipmentFilters()
 
-  // Build resetKey so pagination resets to page 1 on any filter/search change
-  const paginationResetKey = `${filters.debouncedSearch}|${filters.selectedDepartments.join(',')}|${filters.selectedUsers.join(',')}|${filters.selectedLocations.join(',')}|${filters.selectedFundingSources.join(',')}`
+  // Build resetKey so pagination resets to page 1 on tenant + any filter/search change.
+  const paginationResetKey = `${donViId ?? 'none'}|${filters.debouncedSearch}|${filters.selectedDepartments.join(',')}|${filters.selectedUsers.join(',')}|${filters.selectedLocations.join(',')}|${filters.selectedFundingSources.join(',')}`
 
   // Selection state
   const [selectedEquipmentIds, setSelectedEquipmentIds] = React.useState<Set<number>>(new Set())
