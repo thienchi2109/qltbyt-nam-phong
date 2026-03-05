@@ -141,6 +141,7 @@ const ALLOWED_FUNCTIONS = new Set<string>([
   'dinh_muc_thiet_bi_link',
   'dinh_muc_thiet_bi_unlink',
   'dinh_muc_thiet_bi_unassigned',
+  'dinh_muc_thiet_bi_unassigned_filter_options',
   'dinh_muc_thiet_bi_by_nhom',
   // Line Items
   'dinh_muc_chi_tiet_list',

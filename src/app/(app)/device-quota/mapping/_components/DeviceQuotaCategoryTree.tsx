@@ -7,6 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Button } from "@/components/ui/button"
+import { SearchInput } from "@/components/shared/SearchInput"
 import { useDeviceQuotaMappingContext } from "../_hooks/useDeviceQuotaMappingContext"
 import type { Category } from "./DeviceQuotaMappingContext"
 
@@ -59,12 +60,10 @@ function CategoryTreeItem({ category, isSelected, onSelect }: CategoryTreeItemPr
             )}
           </div>
 
-          {/* Hierarchy indicator */}
           {category.level > 1 && (
             <ChevronRight className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
           )}
 
-          {/* Category info */}
           <div className="min-w-0 flex-1">
             <div className="flex items-baseline gap-2">
               <span className="font-medium text-sm">{category.ma_nhom}</span>
@@ -80,7 +79,6 @@ function CategoryTreeItem({ category, isSelected, onSelect }: CategoryTreeItemPr
           </div>
         </div>
 
-        {/* Equipment count badge */}
         <Badge variant="secondary" className="flex-shrink-0 ml-2">
           <Package className="h-3 w-3 mr-1" />
           {category.so_luong_hien_co}
@@ -90,9 +88,6 @@ function CategoryTreeItem({ category, isSelected, onSelect }: CategoryTreeItemPr
   )
 }
 
-/**
- * Loading skeleton for category tree
- */
 function CategoryTreeSkeleton() {
   return (
     <div className="space-y-2">
@@ -108,9 +103,6 @@ function CategoryTreeSkeleton() {
   )
 }
 
-/**
- * Empty state when no categories exist
- */
 function CategoryTreeEmpty() {
   return (
     <div className="flex flex-col items-center justify-center py-12 text-center">
@@ -137,17 +129,19 @@ function CategoryTreeEmpty() {
  * DeviceQuotaCategoryTree - Hierarchical category selection for equipment mapping
  *
  * Features:
+ * - Client-side search with ancestor + descendant preservation
  * - Radio-button style single selection
  * - Visual hierarchy with indentation based on level
  * - Equipment count badges
- * - Loading and empty states
- * - Responsive design
  */
 export function DeviceQuotaCategoryTree() {
   const {
     categories,
+    allCategories,
     selectedCategoryId,
     setSelectedCategory,
+    categorySearchTerm,
+    setCategorySearchTerm,
     isLoading,
   } = useDeviceQuotaMappingContext()
 
@@ -160,8 +154,17 @@ export function DeviceQuotaCategoryTree() {
       <CardHeader>
         <CardTitle className="text-lg">Danh mục định mức</CardTitle>
         <CardDescription>
-          Chọn danh mục để gán thiết bị ({categories.length} danh mục)
+          Chọn danh mục để gán thiết bị ({categories.length}/{allCategories.length} danh mục)
         </CardDescription>
+
+        {/* Category Search */}
+        <div className="mt-3">
+          <SearchInput
+            value={categorySearchTerm}
+            onChange={setCategorySearchTerm}
+            placeholder="Tìm danh mục..."
+          />
+        </div>
       </CardHeader>
       <CardContent className="flex-1 overflow-auto">
         {isLoading ? (

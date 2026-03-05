@@ -1,9 +1,12 @@
 /**
  * FacetedMultiSelectFilter.tsx
  *
- * Shared multi-select faceted filter for TanStack Table columns.
+ * Shared multi-select faceted filter supporting two modes:
+ * 1. Column mode: coupled to TanStack Table Column API (column prop)
+ * 2. Controlled mode: standalone with value/onChange props (no table needed)
+ *
  * Renders a dropdown with checkmark-style option list, selected count badge,
- * and clear action. Designed for use in toolbars and dialogs.
+ * and clear action. Designed for use in toolbars, dialogs, and standalone panels.
  */
 
 "use client"
@@ -27,14 +30,26 @@ export interface FacetedMultiSelectFilterProps<TData, TValue> {
         label: string
         value: string
     }[]
+    /** Controlled mode: current selected values (no column needed) */
+    value?: string[]
+    /** Controlled mode: callback when selection changes */
+    onChange?: (values: string[]) => void
 }
 
 export function FacetedMultiSelectFilter<TData, TValue>({
     column,
     title,
     options,
+    value: controlledValue,
+    onChange,
 }: FacetedMultiSelectFilterProps<TData, TValue>) {
-    const selectedValues = new Set((column?.getFilterValue() as string[]) || [])
+    // Resolve selected values from either column mode or controlled mode
+    const isControlled = controlledValue !== undefined
+    const selectedValues = new Set(
+        isControlled
+            ? controlledValue
+            : (column?.getFilterValue() as string[]) || []
+    )
 
     return (
         <DropdownMenu>
@@ -91,9 +106,13 @@ export function FacetedMultiSelectFilter<TData, TValue>({
                                         selectedValues.add(option.value)
                                     }
                                     const filterValues = Array.from(selectedValues)
-                                    column?.setFilterValue(
-                                        filterValues.length ? filterValues : undefined
-                                    )
+                                    if (isControlled) {
+                                        onChange?.(filterValues)
+                                    } else {
+                                        column?.setFilterValue(
+                                            filterValues.length ? filterValues : undefined
+                                        )
+                                    }
                                 }}
                                 className={cn(
                                     "w-full flex items-center gap-3 px-3 py-2.5 text-sm transition-colors",
@@ -127,7 +146,13 @@ export function FacetedMultiSelectFilter<TData, TValue>({
                             type="button"
                             variant="ghost"
                             size="sm"
-                            onClick={() => column?.setFilterValue(undefined)}
+                            onClick={() => {
+                                if (isControlled) {
+                                    onChange?.([])
+                                } else {
+                                    column?.setFilterValue(undefined)
+                                }
+                            }}
                             className="w-full h-8 text-xs font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100"
                         >
                             Xóa bộ lọc

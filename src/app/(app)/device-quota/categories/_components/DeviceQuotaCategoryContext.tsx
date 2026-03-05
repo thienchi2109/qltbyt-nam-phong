@@ -261,13 +261,13 @@ export function DeviceQuotaCategoryProvider({ children }: DeviceQuotaCategoryPro
     [allCategoriesData]
   )
 
-  // Client-side search: match on ma_nhom, ten_nhom, mo_ta, then include ancestors
+  // Client-side search: match on ma_nhom, ten_nhom, mo_ta, then include ancestors + descendants
   const categories: CategoryListItem[] = React.useMemo(() => {
     if (!searchTerm.trim()) return allCategories
 
     const needle = searchTerm.trim().toLowerCase()
 
-    // Find directly matching category IDs
+    // Find directly matching category IDs (includes mo_ta field specific to categories page)
     const matchingIds = new Set<number>()
     for (const cat of allCategories) {
       if (
@@ -279,18 +279,31 @@ export function DeviceQuotaCategoryProvider({ children }: DeviceQuotaCategoryPro
       }
     }
 
-    // Build id→item lookup for ancestor traversal
+    // Build id→item lookup
     const byId = new Map<number, CategoryListItem>()
     for (const cat of allCategories) byId.set(cat.id, cat)
 
-    // Include ancestors of matched items so tree structure is preserved
     const visibleIds = new Set(matchingIds)
+
+    // Include ancestors (preserve tree structure)
     for (const id of matchingIds) {
       let current = byId.get(id)
       while (current?.parent_id != null) {
         if (visibleIds.has(current.parent_id)) break
         visibleIds.add(current.parent_id)
         current = byId.get(current.parent_id)
+      }
+    }
+
+    // Include descendants (show full subtree of matching items)
+    const stack = [...matchingIds]
+    while (stack.length > 0) {
+      const parentId = stack.pop()!
+      for (const cat of allCategories) {
+        if (cat.parent_id === parentId && !visibleIds.has(cat.id)) {
+          visibleIds.add(cat.id)
+          stack.push(cat.id)
+        }
       }
     }
 

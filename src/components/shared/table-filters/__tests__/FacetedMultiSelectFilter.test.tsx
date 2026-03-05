@@ -191,3 +191,86 @@ describe('FacetedMultiSelectFilter', () => {
         expect(screen.getByText('Empty')).toBeInTheDocument()
     })
 })
+
+// ============================================
+// Controlled (standalone) mode — no TanStack Table column
+// ============================================
+
+function ControlledWrapper({
+    initialValue = [],
+    onChange,
+}: {
+    initialValue?: string[]
+    onChange?: (values: string[]) => void
+}) {
+    const [value, setValue] = React.useState(initialValue)
+    const handleChange = (newValues: string[]) => {
+        setValue(newValues)
+        onChange?.(newValues)
+    }
+    return (
+        <FacetedMultiSelectFilter
+            title="Khoa/Phòng"
+            options={OPTIONS}
+            value={value}
+            onChange={handleChange}
+        />
+    )
+}
+
+describe('FacetedMultiSelectFilter — controlled mode', () => {
+    it('renders pre-selected values from controlled value prop', () => {
+        render(<ControlledWrapper initialValue={['ICU']} />)
+
+        // Badge should show "1" for the pre-selected item
+        expect(screen.getByText('1')).toBeInTheDocument()
+    })
+
+    it('calls onChange when an option is toggled on', () => {
+        const onChange = vi.fn()
+        render(<ControlledWrapper onChange={onChange} />)
+
+        fireEvent.click(screen.getByText('Khoa/Phòng'))
+        fireEvent.click(screen.getByRole('button', { name: 'ICU' }))
+
+        expect(onChange).toHaveBeenCalledWith(['ICU'])
+    })
+
+    it('calls onChange when an option is toggled off', () => {
+        const onChange = vi.fn()
+        render(<ControlledWrapper initialValue={['ICU']} onChange={onChange} />)
+
+        fireEvent.click(screen.getByText('Khoa/Phòng'))
+        fireEvent.click(screen.getByRole('button', { name: 'ICU' }))
+
+        expect(onChange).toHaveBeenCalledWith([])
+    })
+
+    it('supports multi-select in controlled mode', () => {
+        const onChange = vi.fn()
+        render(<ControlledWrapper onChange={onChange} />)
+
+        fireEvent.click(screen.getByText('Khoa/Phòng'))
+        fireEvent.click(screen.getByRole('button', { name: 'ICU' }))
+        fireEvent.click(screen.getByRole('button', { name: 'Surgery' }))
+
+        expect(onChange).toHaveBeenLastCalledWith(
+            expect.arrayContaining(['ICU', 'Surgery'])
+        )
+    })
+
+    it('clears all selections via clear button in controlled mode', () => {
+        const onChange = vi.fn()
+        render(<ControlledWrapper initialValue={['ICU', 'Surgery']} onChange={onChange} />)
+
+        fireEvent.click(screen.getByText('Khoa/Phòng'))
+        fireEvent.click(screen.getByText('Xóa bộ lọc'))
+
+        expect(onChange).toHaveBeenCalledWith([])
+    })
+
+    it('shows badge count matching controlled value length', () => {
+        render(<ControlledWrapper initialValue={['ICU', 'Surgery']} />)
+        expect(screen.getByText('2')).toBeInTheDocument()
+    })
+})
