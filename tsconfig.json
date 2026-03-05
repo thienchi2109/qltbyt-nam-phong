@@ -37,6 +37,9 @@
   "exclude": [
     "node_modules",
     "supabase/**",
+    "**/__tests__/**",
+    "**/*.test.ts",
+    "**/*.test.tsx",
     "src/ai/**",
     "src/lib/ai-utils.tsx",
     "src/lib/firebase.ts",
