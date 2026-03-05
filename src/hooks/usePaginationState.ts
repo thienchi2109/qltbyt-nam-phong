@@ -14,14 +14,15 @@ export function usePaginationState({
 
   const pageCount = Math.max(0, Math.ceil(totalCount / pagination.pageSize))
 
-  // Auto-reset to first page when resetKey changes
+  // Auto-reset to first page when resetKey changes (render-time, not useEffect).
+  // Must be synchronous so pagination resets in the SAME render where the
+  // query key changes — prevents useQuery from firing with stale page number.
+  // See: rerender-derived-state-no-effect (Vercel React best practices)
   const prevResetKey = React.useRef(resetKey)
-  React.useEffect(() => {
-    if (resetKey !== prevResetKey.current) {
-      setPagination(prev => ({ ...prev, pageIndex: 0 }))
-      prevResetKey.current = resetKey
-    }
-  }, [resetKey])
+  if (resetKey !== prevResetKey.current) {
+    setPagination(prev => ({ ...prev, pageIndex: 0 }))
+    prevResetKey.current = resetKey
+  }
 
   // Bounds checking - ensure pageIndex doesn't exceed pageCount
   // Handles: deletion of last items on page, filter reducing results, empty state
