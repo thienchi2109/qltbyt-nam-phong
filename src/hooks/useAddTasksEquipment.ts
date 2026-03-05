@@ -22,7 +22,7 @@ export function useAddTasksEquipment(open: boolean) {
   return useQuery<Equipment[], Error>({
     queryKey: ['equipment_list', 'add-tasks'],
     queryFn: async () => {
-      const data = await callRpc<Equipment[]>({
+      const raw = await callRpc<Equipment[] | null>({
         fn: 'equipment_list',
         args: {
           p_q: null,
@@ -31,6 +31,7 @@ export function useAddTasksEquipment(open: boolean) {
           p_page_size: EQUIPMENT_FETCH_LIMIT,
         },
       })
+      const data = raw ?? []
 
       if (data.length >= EQUIPMENT_FETCH_LIMIT) {
         console.warn(

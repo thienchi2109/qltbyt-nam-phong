@@ -138,4 +138,18 @@ describe('useAddTasksEquipment', () => {
     )
     warnSpy.mockRestore()
   })
+
+  it('returns empty array when RPC returns null', async () => {
+    mockCallRpc.mockResolvedValue(null)
+
+    const { result } = renderHook(() => useAddTasksEquipment(true), {
+      wrapper: createWrapper(),
+    })
+
+    await waitFor(() => {
+      expect(result.current.isSuccess).toBe(true)
+    })
+
+    expect(result.current.data).toEqual([])
+  })
 })
