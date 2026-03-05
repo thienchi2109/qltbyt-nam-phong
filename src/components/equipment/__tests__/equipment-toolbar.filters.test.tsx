@@ -7,17 +7,8 @@
 
 import * as React from 'react'
 import { describe, it, expect, vi } from 'vitest'
+import "@testing-library/jest-dom"
 import { render, screen, fireEvent } from '@testing-library/react'
-import {
-    getCoreRowModel,
-    getFilteredRowModel,
-    getFacetedRowModel,
-    getFacetedUniqueValues,
-    useReactTable,
-    type ColumnDef,
-} from '@tanstack/react-table'
-import type { Equipment } from '@/types/database'
-
 /**
  * Mock dynamic imports (QR scanner components) to avoid SSR issues in tests
  */
@@ -69,18 +60,8 @@ vi.mock('@/hooks/use-toast', () => ({
     useToast: () => ({ toast: vi.fn() }),
 }))
 
+
 import { EquipmentToolbar } from '../equipment-toolbar'
-
-type Row = Equipment
-
-const MOCK_DATA: Partial<Equipment>[] = [
-    { id: 1, tinh_trang_hien_tai: 'Hoạt động', khoa_phong_quan_ly: 'ICU' },
-]
-
-const COLUMNS: ColumnDef<Equipment>[] = [
-    { accessorKey: 'tinh_trang_hien_tai', header: 'Tình trạng' },
-    { accessorKey: 'khoa_phong_quan_ly', header: 'Khoa/Phòng' },
-]
 
 function createMockTable() {
     const table = {
