@@ -9,6 +9,7 @@ import * as React from 'react'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import "@testing-library/jest-dom"
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 
 /**
  * Mock radix DropdownMenu for inline rendering in jsdom
@@ -96,6 +97,21 @@ import { callRpc } from '@/lib/rpc-client'
 
 const mockCallRpc = vi.mocked(callRpc)
 
+function createTestQueryClient() {
+    return new QueryClient({
+        defaultOptions: {
+            queries: { retry: false, gcTime: 0 },
+        },
+    })
+}
+
+function renderWithQueryClient(ui: React.ReactElement) {
+    const queryClient = createTestQueryClient()
+    return render(
+        React.createElement(QueryClientProvider, { client: queryClient }, ui)
+    )
+}
+
 const MOCK_EQUIPMENT = Array.from({ length: 15 }, (_, i) => ({
     id: i + 1,
     ma_thiet_bi: `TB-${String(i + 1).padStart(3, '0')}`,
@@ -121,7 +137,7 @@ describe('AddTasksDialog filters and pagination', () => {
     })
 
     it('renders SearchInput with type="search" attribute', async () => {
-        render(<AddTasksDialog {...baseProps} />)
+        renderWithQueryClient(<AddTasksDialog {...baseProps} />)
 
         await waitFor(() => {
             expect(screen.getByPlaceholderText('Tìm kiếm chung...')).toBeInTheDocument()
@@ -132,7 +148,7 @@ describe('AddTasksDialog filters and pagination', () => {
     })
 
     it('renders shared FacetedMultiSelectFilter titles', async () => {
-        render(<AddTasksDialog {...baseProps} />)
+        renderWithQueryClient(<AddTasksDialog {...baseProps} />)
 
         // Wait for data to load (table headers + filter buttons both visible)
         await waitFor(() => {
@@ -147,7 +163,7 @@ describe('AddTasksDialog filters and pagination', () => {
     })
 
     it('renders pagination controls after data loads', async () => {
-        render(<AddTasksDialog {...baseProps} />)
+        renderWithQueryClient(<AddTasksDialog {...baseProps} />)
 
         // Wait for table data to render
         await waitFor(() => {
@@ -160,7 +176,7 @@ describe('AddTasksDialog filters and pagination', () => {
     })
 
     it('disables selection for already-added equipment', async () => {
-        render(<AddTasksDialog {...baseProps} existingEquipmentIds={[1, 2, 3]} />)
+        renderWithQueryClient(<AddTasksDialog {...baseProps} existingEquipmentIds={[1, 2, 3]} />)
 
         await waitFor(() => {
             expect(screen.getByText('TB-001')).toBeInTheDocument()

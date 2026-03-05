@@ -49,7 +49,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { useToast } from "@/hooks/use-toast"
-import { callRpc } from "@/lib/rpc-client"
+import { useAddTasksEquipment } from "@/hooks/useAddTasksEquipment"
 import type { Equipment, MaintenancePlan } from "@/lib/data"
 import { ScrollArea } from "./ui/scroll-area"
 import { useSearchDebounce } from "@/hooks/use-debounce"
@@ -73,9 +73,16 @@ export function AddTasksDialog({
   onSuccess,
 }: AddTasksDialogProps) {
   const { toast } = useToast()
-  const [equipment, setEquipment] = React.useState<Equipment[]>([])
-  const [isLoading, setIsLoading] = React.useState(true)
+  const { data, isLoading, error } = useAddTasksEquipment(open)
+  const equipment = data ?? []
   const [isSubmitting, setIsSubmitting] = React.useState(false)
+
+  // Show toast on fetch error
+  React.useEffect(() => {
+    if (error) {
+      toast({ variant: "destructive", title: "Lỗi tải thiết bị", description: error.message })
+    }
+  }, [error, toast])
 
   // Table state
   const [sorting, setSorting] = React.useState<SortingState>([])
@@ -88,26 +95,14 @@ export function AddTasksDialog({
     "vi_tri_lap_dat": false,
   })
 
+  // Reset table state when dialog closes
   React.useEffect(() => {
-    if (open) {
-      const fetchEquipment = async () => {
-        setIsLoading(true)
-        try {
-          const eq = await callRpc<any[]>({ fn: 'equipment_list', args: { p_q: null, p_sort: 'id.asc', p_page: 1, p_page_size: 5000 } })
-          setEquipment((eq || []) as Equipment[])
-        } catch (error: any) {
-          toast({ variant: "destructive", title: "Lỗi tải thiết bị", description: error.message })
-          setEquipment([])
-        }
-        setIsLoading(false)
-      }
-      fetchEquipment()
-    } else {
+    if (!open) {
       setRowSelection({})
       setSearchTerm("")
       setColumnFilters([])
     }
-  }, [open, toast])
+  }, [open])
 
   const columns: ColumnDef<Equipment>[] = React.useMemo(
     () => [
