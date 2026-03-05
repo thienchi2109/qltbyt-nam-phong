@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { CheckCircle2, Building2 } from "lucide-react"
+import { CheckCircle2, Building2, SearchX } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -29,7 +29,6 @@ export function DeviceQuotaUnassignedList() {
     selectedEquipmentIds,
     toggleEquipmentSelection,
     selectAllEquipment,
-    clearEquipmentSelection,
     filters,
     filterOptions,
     pagination,
@@ -45,20 +44,13 @@ export function DeviceQuotaUnassignedList() {
   const handleSelectAllChange = React.useCallback(() => {
     if (allPageSelected) {
       // Deselect only current page items (keep cross-page selections)
-      const currentPageIds = new Set(unassignedEquipment.map(eq => eq.id))
-      const prev = selectedEquipmentIds
-      const next = new Set([...prev].filter(id => !currentPageIds.has(id)))
-      // We need to use clearEquipmentSelection or toggle individually
-      // For simplicity, clear all current page selections
       for (const eq of unassignedEquipment) {
-        if (selectedEquipmentIds.has(eq.id)) {
-          toggleEquipmentSelection(eq.id)
-        }
+        toggleEquipmentSelection(eq.id)
       }
     } else {
       selectAllEquipment()
     }
-  }, [allPageSelected, unassignedEquipment, selectedEquipmentIds, selectAllEquipment, toggleEquipmentSelection])
+  }, [allPageSelected, unassignedEquipment, selectAllEquipment, toggleEquipmentSelection])
 
   // Build filter options for FacetedMultiSelectFilter
   const departmentOptions = React.useMemo(
@@ -77,6 +69,7 @@ export function DeviceQuotaUnassignedList() {
     () => filterOptions.fundingSources.map(f => ({ label: f, value: f })),
     [filterOptions.fundingSources]
   )
+  const hasSearchOrFilters = filters.hasActiveFilters || filters.debouncedSearch.trim().length > 0
 
   return (
     <Card className="flex flex-col h-full">
@@ -129,6 +122,8 @@ export function DeviceQuotaUnassignedList() {
           <FacilitySelectionEmptyState />
         ) : isLoading ? (
           <LoadingSkeleton />
+        ) : unassignedEquipment.length === 0 && hasSearchOrFilters ? (
+          <NoResultsState />
         ) : unassignedEquipment.length === 0 ? (
           <EmptyState />
         ) : (
@@ -281,6 +276,21 @@ function EmptyState() {
       <h3 className="font-semibold text-lg mb-1">Hoàn thành phân loại</h3>
       <p className="text-sm text-muted-foreground max-w-sm">
         Tất cả thiết bị đã được phân loại vào các nhóm định mức.
+      </p>
+    </div>
+  )
+}
+
+function NoResultsState() {
+  return (
+    <div className="flex flex-col items-center justify-center py-12 text-center">
+      <div className="rounded-full bg-muted p-3 mb-4">
+        <SearchX className="h-8 w-8 text-muted-foreground" />
+      </div>
+      <h3 className="font-semibold text-lg mb-1">Không có kết quả phù hợp</h3>
+      <p className="text-sm text-muted-foreground max-w-sm">
+        Không có thiết bị nào khớp với bộ lọc hoặc từ khóa hiện tại.
+        Hãy điều chỉnh bộ lọc hoặc thay đổi từ khóa tìm kiếm.
       </p>
     </div>
   )
