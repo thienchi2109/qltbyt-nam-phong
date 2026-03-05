@@ -203,7 +203,6 @@ export function DeviceQuotaCategoryImportDialog() {
       setStatus(quotaImportFailed ? "partial_success" : "success")
 
       // Invalidate queries to refresh category list
-      queryClient.invalidateQueries({ queryKey: ["dinh_muc_nhom_list_paginated"] })
       queryClient.invalidateQueries({ queryKey: ["dinh_muc_nhom_list"] })
     },
     onError: (error: Error) => {

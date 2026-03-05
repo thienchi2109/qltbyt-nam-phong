@@ -1,12 +1,10 @@
 "use client"
 
 import * as React from "react"
-import { useMutation, useQuery, useQueryClient, keepPreviousData } from "@tanstack/react-query"
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { useSession } from "next-auth/react"
 
 import { useToast } from "@/hooks/use-toast"
-import { useDebounce } from "@/hooks/use-debounce"
-import { useServerPagination } from "@/hooks/useServerPagination"
 import { callRpc } from "@/lib/rpc-client"
 import { translateRpcError } from "@/lib/error-translations"
 import type {
@@ -25,29 +23,19 @@ interface AuthUser {
   dia_ban_id?: number | null
 }
 
-/** Shape returned by the paginated RPC (extra column) */
-interface PaginatedCategoryRow extends CategoryListItem {
-  total_root_count: number
-}
-
 interface CategoryContextValue {
   // User/Auth
   user: AuthUser | null
   donViId: number | null
 
-  // Data
+  // Data — `categories` is search-filtered, `allCategories` is the full set
   categories: CategoryListItem[]
   allCategories: CategoryListItem[]
   isLoading: boolean
-  isAllCategoriesLoading: boolean
-  totalRootCount: number
 
   // Search
   searchTerm: string
   setSearchTerm: (term: string) => void
-
-  // Pagination
-  pagination: ReturnType<typeof useServerPagination>
 
   // Dialog state (discriminated union)
   dialogState: CategoryDialogState
@@ -247,51 +235,13 @@ export function DeviceQuotaCategoryProvider({ children }: DeviceQuotaCategoryPro
   const [categoryToDelete, setCategoryToDelete] = React.useState<CategoryListItem | null>(null)
   const [isImportDialogOpen, setIsImportDialogOpen] = React.useState(false)
 
-  // Search state with debounce
+  // Search state (instant client-side filtering, no debounce needed for < 500 items)
   const [searchTerm, setSearchTerm] = React.useState("")
-  const debouncedSearch = useDebounce(searchTerm, 300)
 
-  // totalRootCount is synced from query data via render-time derivation below
-  const [totalRootCount, setTotalRootCount] = React.useState(0)
-  const paginationState = useServerPagination({
-    totalCount: totalRootCount,
-    resetKey: debouncedSearch, // auto-reset to page 0 when search changes
-  })
-
-  const {
-    data: categoriesData,
-    isLoading: isLoadingCategories,
-  } = useQuery({
-    queryKey: [
-      "dinh_muc_nhom_list_paginated",
-      {
-        donViId,
-        page: paginationState.page,
-        pageSize: paginationState.pageSize,
-        search: debouncedSearch || null,
-      },
-    ],
-    queryFn: async () => {
-      const result = await callRpc<PaginatedCategoryRow[]>({
-        fn: "dinh_muc_nhom_list_paginated",
-        args: {
-          p_don_vi: donViId,
-          p_page: paginationState.page,
-          p_page_size: paginationState.pageSize,
-          p_search: debouncedSearch || null,
-        },
-      })
-      return result || []
-    },
-    enabled: !!donViId,
-    staleTime: 60000,
-    gcTime: 10 * 60 * 1000,
-    placeholderData: keepPreviousData,
-  })
-
+  // Single query — fetch ALL categories once (< 500 items, no pagination needed)
   const {
     data: allCategoriesData,
-    isLoading: isAllCategoriesLoading,
+    isLoading,
   } = useQuery({
     queryKey: ["dinh_muc_nhom_list", { donViId }],
     queryFn: async () => {
@@ -306,33 +256,48 @@ export function DeviceQuotaCategoryProvider({ children }: DeviceQuotaCategoryPro
     gcTime: 10 * 60 * 1000,
   })
 
-  // Sync totalRootCount during render (not via useEffect) to avoid
-  // a wasted render cycle where pagination shows stale count.
-  // Guard: only update when data is defined to prevent resetting to 0
-  // during loading/cache-miss states (which would break pagination).
-  if (categoriesData !== undefined) {
-    const derivedTotalRootCount = categoriesData.length > 0
-      ? categoriesData[0].total_root_count
-      : 0
-    if (derivedTotalRootCount !== totalRootCount) {
-      setTotalRootCount(derivedTotalRootCount)
-    }
-  }
-
-  // Strip the extra `total_root_count` field for downstream consumers
-  const categories: CategoryListItem[] = React.useMemo(
-    () =>
-      (categoriesData || []).map(({ total_root_count: _, ...rest }) => rest),
-    [categoriesData]
-  )
-
   const allCategories: CategoryListItem[] = React.useMemo(
     () => allCategoriesData || [],
     [allCategoriesData]
   )
 
+  // Client-side search: match on ma_nhom, ten_nhom, mo_ta, then include ancestors
+  const categories: CategoryListItem[] = React.useMemo(() => {
+    if (!searchTerm.trim()) return allCategories
+
+    const needle = searchTerm.trim().toLowerCase()
+
+    // Find directly matching category IDs
+    const matchingIds = new Set<number>()
+    for (const cat of allCategories) {
+      if (
+        cat.ma_nhom?.toLowerCase().includes(needle) ||
+        cat.ten_nhom?.toLowerCase().includes(needle) ||
+        (cat.mo_ta && cat.mo_ta.toLowerCase().includes(needle))
+      ) {
+        matchingIds.add(cat.id)
+      }
+    }
+
+    // Build id→item lookup for ancestor traversal
+    const byId = new Map<number, CategoryListItem>()
+    for (const cat of allCategories) byId.set(cat.id, cat)
+
+    // Include ancestors of matched items so tree structure is preserved
+    const visibleIds = new Set(matchingIds)
+    for (const id of matchingIds) {
+      let current = byId.get(id)
+      while (current?.parent_id != null) {
+        if (visibleIds.has(current.parent_id)) break
+        visibleIds.add(current.parent_id)
+        current = byId.get(current.parent_id)
+      }
+    }
+
+    return allCategories.filter(cat => visibleIds.has(cat.id))
+  }, [allCategories, searchTerm])
+
   const invalidateAndRefetch = React.useCallback(() => {
-    queryClient.invalidateQueries({ queryKey: ["dinh_muc_nhom_list_paginated"] })
     queryClient.invalidateQueries({ queryKey: ["dinh_muc_nhom_list"] })
     queryClient.invalidateQueries({ queryKey: ["dinh_muc_compliance_summary"] })
   }, [queryClient])
@@ -414,12 +379,9 @@ export function DeviceQuotaCategoryProvider({ children }: DeviceQuotaCategoryPro
       donViId,
       categories,
       allCategories,
-      isLoading: isLoadingCategories,
-      isAllCategoriesLoading,
-      totalRootCount,
+      isLoading,
       searchTerm,
       setSearchTerm,
-      pagination: paginationState,
       dialogState,
       mutatingCategoryId,
       categoryToDelete,
@@ -441,11 +403,8 @@ export function DeviceQuotaCategoryProvider({ children }: DeviceQuotaCategoryPro
       donViId,
       categories,
       allCategories,
-      isLoadingCategories,
-      isAllCategoriesLoading,
-      totalRootCount,
+      isLoading,
       searchTerm,
-      paginationState,
       dialogState,
       mutatingCategoryId,
       categoryToDelete,

@@ -46,7 +46,7 @@ const CategoryChildRow = React.memo(function CategoryChildRow({
     return (
         <div
             className={cn(
-                "group relative rounded-md border border-transparent px-3 py-2.5 transition-all duration-150",
+                "group relative rounded-md border border-transparent px-4 py-2.5 transition-all duration-150",
                 "hover:bg-accent/50 hover:border-border/50",
                 CATEGORY_GRID_COLS
             )}
@@ -186,6 +186,9 @@ const CategoryGroup = React.memo(function CategoryGroup({
                             <span className="text-sm font-semibold truncate">
                                 {root.ten_nhom}
                             </span>
+                            <span className="text-xs text-muted-foreground whitespace-nowrap shrink-0">
+                                · {children.length} mục con
+                            </span>
                         </div>
                     </div>
                 </div>
@@ -199,16 +202,11 @@ const CategoryGroup = React.memo(function CategoryGroup({
                     )}
                 </div>
 
-                {/* Column 3: Aggregated quota progress + children count */}
-                <div className="flex items-center gap-3">
-                    <QuotaProgressBar
-                        current={totalEquipment}
-                        max={hasUnknownQuota ? null : totalQuota}
-                    />
-                    <span className="text-xs text-muted-foreground whitespace-nowrap">
-                        {children.length} mục con
-                    </span>
-                </div>
+                {/* Column 3: Aggregated quota progress */}
+                <QuotaProgressBar
+                    current={totalEquipment}
+                    max={hasUnknownQuota ? null : totalQuota}
+                />
 
                 {/* Column 4: Actions (stop propagation to avoid collapse toggle) */}
                 <DropdownMenu>

@@ -8,37 +8,19 @@ import {
   Card,
   CardContent,
   CardDescription,
-  CardFooter,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
-import { DataTablePagination } from "@/components/shared/DataTablePagination"
 import { useDeviceQuotaCategoryContext } from "../_hooks/useDeviceQuotaCategoryContext"
-import { CATEGORY_ENTITY, CATEGORY_GRID_COLS, groupByRoot } from "./category-tree-utils"
+import { CATEGORY_GRID_COLS, groupByRoot } from "./category-tree-utils"
 import { CategoryGroup } from "./CategoryGroup"
 import { CategoryTreeSkeleton, CategoryTreeEmpty } from "./CategoryTreeStates"
-
-/** Minimal stub table for DataTablePagination compatibility */
-function useStubTable() {
-  return React.useMemo(
-    () => ({
-      getState: () => ({ pagination: { pageIndex: 0, pageSize: 20 } }),
-      setPageIndex: () => { },
-      setPageSize: () => { },
-      getFilteredSelectedRowModel: () => ({ rows: [] }),
-      getFilteredRowModel: () => ({ rows: [] }),
-    }),
-    []
-  )
-}
 
 export function DeviceQuotaCategoryTree() {
   const {
     categories,
     isLoading,
-    totalRootCount,
     searchTerm,
-    pagination: paginationState,
     openCreateDialog,
     openEditDialog,
     openDeleteDialog,
@@ -50,8 +32,7 @@ export function DeviceQuotaCategoryTree() {
     [categories]
   )
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const stubTable = useStubTable() as any
+  const rootCount = roots.length
 
   return (
     <Card className="h-full flex flex-col">
@@ -62,8 +43,8 @@ export function DeviceQuotaCategoryTree() {
         <CardDescription>
           {isLoading
             ? "Đang tải..."
-            : totalRootCount > 0
-              ? `${totalRootCount} nhóm gốc · ${categories.length} danh mục trên trang này`
+            : rootCount > 0
+              ? `${rootCount} nhóm gốc · ${categories.length} danh mục`
               : "Không có dữ liệu"}
         </CardDescription>
       </CardHeader>
@@ -112,24 +93,6 @@ export function DeviceQuotaCategoryTree() {
           </div>
         )}
       </CardContent>
-
-      <CardFooter className="border-t pt-4">
-        <DataTablePagination
-          table={stubTable}
-          totalCount={totalRootCount}
-          entity={CATEGORY_ENTITY}
-          paginationMode={{
-            mode: "controlled",
-            pagination: paginationState.pagination,
-            onPaginationChange: paginationState.setPagination,
-          }}
-          displayFormat="range-total"
-          responsive={{ showFirstLastAt: "sm", showSizeSelectorAt: "sm" }}
-          isLoading={isLoading}
-          enabled={totalRootCount > 0}
-          pageSizeOptions={[10, 20, 50]}
-        />
-      </CardFooter>
     </Card>
   )
 }
