@@ -46,7 +46,7 @@ const CategoryChildRow = React.memo(function CategoryChildRow({
     return (
         <div
             className={cn(
-                "group relative rounded-md border border-transparent px-3 py-2.5 transition-all duration-150",
+                "group relative rounded-md border border-transparent px-4 py-2.5 transition-all duration-150",
                 "hover:bg-accent/50 hover:border-border/50",
                 CATEGORY_GRID_COLS
             )}
