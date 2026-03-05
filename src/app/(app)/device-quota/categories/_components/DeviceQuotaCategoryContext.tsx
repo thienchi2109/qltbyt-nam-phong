@@ -298,7 +298,6 @@ export function DeviceQuotaCategoryProvider({ children }: DeviceQuotaCategoryPro
   }, [allCategories, searchTerm])
 
   const invalidateAndRefetch = React.useCallback(() => {
-    queryClient.invalidateQueries({ queryKey: ["dinh_muc_nhom_list_paginated"] })
     queryClient.invalidateQueries({ queryKey: ["dinh_muc_nhom_list"] })
     queryClient.invalidateQueries({ queryKey: ["dinh_muc_compliance_summary"] })
   }, [queryClient])

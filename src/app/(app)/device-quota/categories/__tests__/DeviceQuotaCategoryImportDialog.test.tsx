@@ -73,18 +73,8 @@ function createMockContextValue(
     categories: [],
     allCategories,
     isLoading: false,
-    isAllCategoriesLoading: false,
-    totalRootCount: 0,
     searchTerm: "",
     setSearchTerm: vi.fn(),
-    pagination: {
-      pagination: {
-        pageIndex: 0,
-        pageSize: 10,
-      },
-      setPagination: vi.fn(),
-      resetPagination: vi.fn(),
-    },
     dialogState: { mode: "closed" },
     mutatingCategoryId: null,
     categoryToDelete: null,
@@ -135,7 +125,7 @@ describe("DeviceQuotaCategoryImportDialog", () => {
     })
   })
 
-  it("invalidates paginated and legacy category queries after successful import", async () => {
+  it("invalidates category queries after successful import", async () => {
     render(<DeviceQuotaCategoryImportDialog />)
 
     expect(capturedMutationOptions?.onSuccess).toBeTypeOf("function")
@@ -150,8 +140,8 @@ describe("DeviceQuotaCategoryImportDialog", () => {
       })
     })
 
-    expect(mockInvalidateQueries).toHaveBeenCalledWith({ queryKey: ["dinh_muc_nhom_list_paginated"] })
     expect(mockInvalidateQueries).toHaveBeenCalledWith({ queryKey: ["dinh_muc_nhom_list"] })
+    expect(mockInvalidateQueries).not.toHaveBeenCalledWith({ queryKey: ["dinh_muc_nhom_list_paginated"] })
   })
 
   it("warns duplicate codes from the unpaginated category list with Vietnamese diacritics", async () => {
