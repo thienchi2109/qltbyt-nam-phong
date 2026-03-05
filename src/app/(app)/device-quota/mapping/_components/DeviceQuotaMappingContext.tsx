@@ -81,6 +81,7 @@ export interface DeviceQuotaMappingContextValue {
   selectedCategoryId: number | null
   toggleEquipmentSelection: (id: number) => void
   selectAllEquipment: () => void
+  deselectPageEquipment: () => void
   clearEquipmentSelection: () => void
   setSelectedCategory: (id: number | null) => void
 
@@ -347,6 +348,17 @@ export function DeviceQuotaMappingProvider({ children }: DeviceQuotaMappingProvi
     }
   }, [unassignedEquipment])
 
+  const deselectPageEquipment = React.useCallback(() => {
+    if (unassignedEquipment) {
+      const pageIds = new Set(unassignedEquipment.map(eq => eq.id))
+      setSelectedEquipmentIds(prev => {
+        const next = new Set(prev)
+        for (const id of pageIds) next.delete(id)
+        return next
+      })
+    }
+  }, [unassignedEquipment])
+
   const clearEquipmentSelection = React.useCallback(() => {
     setSelectedEquipmentIds(new Set())
   }, [])
@@ -361,7 +373,7 @@ export function DeviceQuotaMappingProvider({ children }: DeviceQuotaMappingProvi
     unassignedEquipment, totalEquipmentCount,
     allCategories, categories,
     selectedEquipmentIds, selectedCategoryId,
-    toggleEquipmentSelection, selectAllEquipment, clearEquipmentSelection,
+    toggleEquipmentSelection, selectAllEquipment, deselectPageEquipment, clearEquipmentSelection,
     setSelectedCategory: setSelectedCategoryId,
     filters, filterOptions, pagination: paginationState,
     categorySearchTerm, setCategorySearchTerm,
@@ -374,7 +386,7 @@ export function DeviceQuotaMappingProvider({ children }: DeviceQuotaMappingProvi
     unassignedEquipment, totalEquipmentCount,
     allCategories, categories,
     selectedEquipmentIds, selectedCategoryId,
-    toggleEquipmentSelection, selectAllEquipment, clearEquipmentSelection,
+    toggleEquipmentSelection, selectAllEquipment, deselectPageEquipment, clearEquipmentSelection,
     filters, filterOptions, paginationState,
     categorySearchTerm,
     linkMutation, isLoadingEquipment, isLoadingCategories, refetch,

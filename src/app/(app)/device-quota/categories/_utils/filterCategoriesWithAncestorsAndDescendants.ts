@@ -17,21 +17,32 @@ interface CategoryItem {
   ten_nhom: string
 }
 
+interface FilterCategoriesOptions<T extends CategoryItem> {
+  // Optional matcher to support page-specific fields (for example, `mo_ta`).
+  matchFn?: (category: T, needle: string) => boolean
+}
+
+function defaultCategoryMatch(category: CategoryItem, needle: string): boolean {
+  return (
+    category.ma_nhom?.toLowerCase().includes(needle) ||
+    category.ten_nhom?.toLowerCase().includes(needle)
+  )
+}
+
 export function filterCategoriesWithAncestorsAndDescendants<T extends CategoryItem>(
   allCategories: T[],
-  searchTerm: string
+  searchTerm: string,
+  options: FilterCategoriesOptions<T> = {}
 ): T[] {
   if (!searchTerm.trim()) return allCategories
 
   const needle = searchTerm.trim().toLowerCase()
+  const matches = options.matchFn ?? defaultCategoryMatch
 
   // Find directly matching category IDs
   const matchingIds = new Set<number>()
   for (const cat of allCategories) {
-    if (
-      cat.ma_nhom?.toLowerCase().includes(needle) ||
-      cat.ten_nhom?.toLowerCase().includes(needle)
-    ) {
+    if (matches(cat, needle)) {
       matchingIds.add(cat.id)
     }
   }

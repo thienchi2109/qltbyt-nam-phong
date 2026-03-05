@@ -61,20 +61,38 @@ export function useUnassignedEquipmentFilters(): UseUnassignedEquipmentFiltersRe
     setSelectedFundingSources([])
   }, [])
 
-  return {
-    searchTerm,
-    setSearchTerm,
-    debouncedSearch,
-    selectedDepartments,
-    setSelectedDepartments,
-    selectedUsers,
-    setSelectedUsers,
-    selectedLocations,
-    setSelectedLocations,
-    selectedFundingSources,
-    setSelectedFundingSources,
-    activeFilterCount,
-    hasActiveFilters,
-    resetAllFilters,
-  }
+  return React.useMemo(
+    () => ({
+      searchTerm,
+      setSearchTerm,
+      debouncedSearch,
+      selectedDepartments,
+      setSelectedDepartments,
+      selectedUsers,
+      setSelectedUsers,
+      selectedLocations,
+      setSelectedLocations,
+      selectedFundingSources,
+      setSelectedFundingSources,
+      activeFilterCount,
+      hasActiveFilters,
+      resetAllFilters,
+    }),
+    [
+      searchTerm,
+      setSearchTerm,
+      debouncedSearch,
+      selectedDepartments,
+      setSelectedDepartments,
+      selectedUsers,
+      setSelectedUsers,
+      selectedLocations,
+      setSelectedLocations,
+      selectedFundingSources,
+      setSelectedFundingSources,
+      activeFilterCount,
+      hasActiveFilters,
+      resetAllFilters,
+    ]
+  )
 }

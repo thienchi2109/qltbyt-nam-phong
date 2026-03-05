@@ -71,4 +71,23 @@ describe('filterCategoriesWithAncestorsAndDescendants', () => {
     // Should be in same order as original
     expect(ids).toEqual([1, 2, 3, 4])
   })
+
+  it('supports custom matcher for fields outside ma_nhom/ten_nhom (e.g. mo_ta)', () => {
+    const categoriesWithDescription = [
+      { id: 1, parent_id: null, ma_nhom: 'G1', ten_nhom: 'Nhóm 1', mo_ta: null },
+      { id: 2, parent_id: 1, ma_nhom: 'G1.1', ten_nhom: 'Nhóm 1.1', mo_ta: 'Thiết bị nội soi' },
+      { id: 3, parent_id: null, ma_nhom: 'G2', ten_nhom: 'Nhóm 2', mo_ta: 'Không liên quan' },
+    ]
+
+    const result = filterCategoriesWithAncestorsAndDescendants(
+      categoriesWithDescription,
+      'nội soi',
+      {
+        matchFn: (cat, needle) => (cat.mo_ta ?? '').toLowerCase().includes(needle),
+      }
+    )
+
+    // Match id=2 by mo_ta and include its ancestor id=1
+    expect(result.map(c => c.id)).toEqual([1, 2])
+  })
 })

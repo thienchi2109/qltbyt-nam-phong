@@ -29,6 +29,7 @@ export function DeviceQuotaUnassignedList() {
     selectedEquipmentIds,
     toggleEquipmentSelection,
     selectAllEquipment,
+    deselectPageEquipment,
     filters,
     filterOptions,
     pagination,
@@ -44,13 +45,11 @@ export function DeviceQuotaUnassignedList() {
   const handleSelectAllChange = React.useCallback(() => {
     if (allPageSelected) {
       // Deselect only current page items (keep cross-page selections)
-      for (const eq of unassignedEquipment) {
-        toggleEquipmentSelection(eq.id)
-      }
+      deselectPageEquipment()
     } else {
       selectAllEquipment()
     }
-  }, [allPageSelected, unassignedEquipment, selectAllEquipment, toggleEquipmentSelection])
+  }, [allPageSelected, deselectPageEquipment, selectAllEquipment])
 
   // Build filter options for FacetedMultiSelectFilter
   const departmentOptions = React.useMemo(

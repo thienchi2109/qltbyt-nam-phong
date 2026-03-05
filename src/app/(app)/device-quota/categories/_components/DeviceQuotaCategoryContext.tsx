@@ -7,6 +7,7 @@ import { useSession } from "next-auth/react"
 import { useToast } from "@/hooks/use-toast"
 import { callRpc } from "@/lib/rpc-client"
 import { translateRpcError } from "@/lib/error-translations"
+import { filterCategoriesWithAncestorsAndDescendants } from "../_utils/filterCategoriesWithAncestorsAndDescendants"
 import type {
   CategoryDeleteState,
   CategoryDialogState,
@@ -261,54 +262,18 @@ export function DeviceQuotaCategoryProvider({ children }: DeviceQuotaCategoryPro
     [allCategoriesData]
   )
 
-  // Client-side search: match on ma_nhom, ten_nhom, mo_ta, then include ancestors + descendants
-  const categories: CategoryListItem[] = React.useMemo(() => {
-    if (!searchTerm.trim()) return allCategories
-
-    const needle = searchTerm.trim().toLowerCase()
-
-    // Find directly matching category IDs (includes mo_ta field specific to categories page)
-    const matchingIds = new Set<number>()
-    for (const cat of allCategories) {
-      if (
-        cat.ma_nhom?.toLowerCase().includes(needle) ||
-        cat.ten_nhom?.toLowerCase().includes(needle) ||
-        (cat.mo_ta && cat.mo_ta.toLowerCase().includes(needle))
-      ) {
-        matchingIds.add(cat.id)
-      }
-    }
-
-    // Build id→item lookup
-    const byId = new Map<number, CategoryListItem>()
-    for (const cat of allCategories) byId.set(cat.id, cat)
-
-    const visibleIds = new Set(matchingIds)
-
-    // Include ancestors (preserve tree structure)
-    for (const id of matchingIds) {
-      let current = byId.get(id)
-      while (current?.parent_id != null) {
-        if (visibleIds.has(current.parent_id)) break
-        visibleIds.add(current.parent_id)
-        current = byId.get(current.parent_id)
-      }
-    }
-
-    // Include descendants (show full subtree of matching items)
-    const stack = [...matchingIds]
-    while (stack.length > 0) {
-      const parentId = stack.pop()!
-      for (const cat of allCategories) {
-        if (cat.parent_id === parentId && !visibleIds.has(cat.id)) {
-          visibleIds.add(cat.id)
-          stack.push(cat.id)
-        }
-      }
-    }
-
-    return allCategories.filter(cat => visibleIds.has(cat.id))
-  }, [allCategories, searchTerm])
+  // Client-side search with ancestor + descendant preservation.
+  // Categories page extends matching to include mo_ta.
+  const categories: CategoryListItem[] = React.useMemo(
+    () =>
+      filterCategoriesWithAncestorsAndDescendants(allCategories, searchTerm, {
+        matchFn: (cat, needle) =>
+          cat.ma_nhom?.toLowerCase().includes(needle) ||
+          cat.ten_nhom?.toLowerCase().includes(needle) ||
+          (cat.mo_ta ?? "").toLowerCase().includes(needle),
+      }),
+    [allCategories, searchTerm]
+  )
 
   const invalidateAndRefetch = React.useCallback(() => {
     queryClient.invalidateQueries({ queryKey: ["dinh_muc_nhom_list"] })
