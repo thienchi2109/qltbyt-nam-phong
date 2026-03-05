@@ -4,8 +4,10 @@
  * Tests for the QR scanner state management hook extracted from equipment-toolbar.
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { renderHook, act } from '@testing-library/react'
+
+const originalNavigatorDescriptor = Object.getOwnPropertyDescriptor(globalThis, 'navigator')
 
 // Must mock toast before importing hook
 vi.mock('@/hooks/use-toast', () => ({
@@ -19,6 +21,15 @@ import { useQRScanner } from '../useEquipmentQRScanner'
 describe('useQRScanner', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+  })
+
+  afterEach(() => {
+    if (originalNavigatorDescriptor) {
+      Object.defineProperty(globalThis, 'navigator', originalNavigatorDescriptor)
+      return
+    }
+
+    Reflect.deleteProperty(globalThis, 'navigator')
   })
 
   it('starts with camera inactive and no scanned code', () => {
