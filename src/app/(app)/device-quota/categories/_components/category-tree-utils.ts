@@ -6,6 +6,9 @@ import type { CategoryListItem } from "../_types/categories"
 
 export const CATEGORY_ENTITY = { singular: "nhóm gốc" } as const
 
+/** Shared grid template for column alignment across header, group rows, and child rows */
+export const CATEGORY_GRID_COLS = "grid grid-cols-[minmax(0,1fr)_5rem_12rem_2rem] gap-x-4 items-center"
+
 export const CLASSIFICATION_STYLES: Record<string, { className: string; label: string }> = {
   A: { className: "bg-teal-100 text-teal-800 dark:bg-teal-900/40 dark:text-teal-300", label: "Loại A" },
   B: { className: "bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300", label: "Loại B" },
