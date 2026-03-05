@@ -40,6 +40,7 @@ export function FacetedMultiSelectFilter<TData, TValue>({
         <DropdownMenu>
             <DropdownMenuTrigger asChild>
                 <Button
+                    type="button"
                     variant="outline"
                     size="sm"
                     className={cn(
@@ -80,6 +81,7 @@ export function FacetedMultiSelectFilter<TData, TValue>({
                         const isSelected = selectedValues.has(option.value)
                         return (
                             <button
+                                type="button"
                                 key={option.value}
                                 onClick={(e) => {
                                     e.preventDefault()
@@ -122,6 +124,7 @@ export function FacetedMultiSelectFilter<TData, TValue>({
                 {selectedValues.size > 0 && (
                     <div className="border-t border-slate-100 p-2">
                         <Button
+                            type="button"
                             variant="ghost"
                             size="sm"
                             onClick={() => column?.setFilterValue(undefined)}

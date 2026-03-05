@@ -14,7 +14,7 @@ vi.mock('@/hooks/use-toast', () => ({
   }),
 }))
 
-import { useQRScanner } from '../useQRScanner'
+import { useQRScanner } from '../useEquipmentQRScanner'
 
 describe('useQRScanner', () => {
   beforeEach(() => {

@@ -22,7 +22,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { SearchInput } from "@/components/shared/SearchInput"
 import { FacetedMultiSelectFilter } from "@/components/shared/table-filters/FacetedMultiSelectFilter"
-import { useQRScanner } from "./useQRScanner"
+import { useQRScanner } from "./useEquipmentQRScanner"
 import type { Equipment } from "@/types/database"
 
 const QRScannerCamera = dynamic(
