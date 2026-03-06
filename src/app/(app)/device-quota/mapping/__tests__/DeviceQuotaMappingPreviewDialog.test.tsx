@@ -2,6 +2,23 @@ import React from 'react'
 import { render, screen, fireEvent } from '@testing-library/react'
 import { describe, it, expect, vi, beforeEach, beforeAll } from 'vitest'
 
+class ResizeObserverMock implements ResizeObserver {
+    constructor(callback: ResizeObserverCallback) {
+        void callback
+    }
+
+    observe(target: Element, options?: ResizeObserverOptions) {
+        void target
+        void options
+    }
+
+    unobserve(target: Element) {
+        void target
+    }
+
+    disconnect() { }
+}
+
 // jsdom does not implement matchMedia or ResizeObserver — polyfill for Dialog and SVG connectors
 beforeAll(() => {
     Object.defineProperty(window, 'matchMedia', {
@@ -18,14 +35,10 @@ beforeAll(() => {
         })),
     })
 
-    global.ResizeObserver = class ResizeObserver {
-        observe() { }
-        unobserve() { }
-        disconnect() { }
-    } as any
+    globalThis.ResizeObserver = ResizeObserverMock
 })
 
-import { MappingPreviewDialog } from '../_components/MappingPreviewDialog'
+import { DeviceQuotaMappingPreviewDialog as MappingPreviewDialog } from '../_components/DeviceQuotaMappingPreviewDialog'
 import type { Category } from '../_components/DeviceQuotaMappingContext'
 
 // Mock TanStack Query's useQuery to control data fetching in tests
@@ -33,7 +46,7 @@ vi.mock('@tanstack/react-query', () => ({
     useQuery: vi.fn(),
 }))
 
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, type UseQueryResult } from '@tanstack/react-query'
 const mockUseQuery = vi.mocked(useQuery)
 
 // ============================================
@@ -70,8 +83,10 @@ const defaultProps = {
 // Setup helper: simulate useQuery returning equipment data
 // ============================================
 
-function setupQuery(overrides: Partial<ReturnType<typeof useQuery>> = {}) {
-    mockUseQuery.mockReturnValue({
+type EquipmentQueryResult = Partial<UseQueryResult<typeof EQUIPMENT_LIST, Error>>
+
+function setupQuery(overrides: EquipmentQueryResult = {}) {
+    const queryResult = {
         data: EQUIPMENT_LIST,
         isLoading: false,
         isError: false,
@@ -81,14 +96,16 @@ function setupQuery(overrides: Partial<ReturnType<typeof useQuery>> = {}) {
         status: 'success',
         fetchStatus: 'idle',
         ...overrides,
-    } as any)
+    } satisfies EquipmentQueryResult
+
+    mockUseQuery.mockReturnValue(queryResult as unknown as ReturnType<typeof useQuery>)
 }
 
 // ============================================
 // Tests
 // ============================================
 
-describe('MappingPreviewDialog', () => {
+describe('DeviceQuotaMappingPreviewDialog', () => {
     beforeEach(() => {
         vi.clearAllMocks()
     })
@@ -193,7 +210,7 @@ describe('MappingPreviewDialog', () => {
 
     // Test 9: Loading state
     it('shows skeleton loading state while fetching data', () => {
-        setupQuery({ data: undefined, isLoading: true, status: 'pending' as any })
+        setupQuery({ data: undefined, isLoading: true, status: 'pending' })
         render(<MappingPreviewDialog {...defaultProps} />)
 
         const skeletons = document.querySelectorAll('[data-testid="equipment-skeleton"]')

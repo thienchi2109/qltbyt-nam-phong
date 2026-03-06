@@ -4,7 +4,7 @@ import * as React from "react"
 import { Link } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useDeviceQuotaMappingContext } from "../_hooks/useDeviceQuotaMappingContext"
-import { MappingPreviewDialog } from "./MappingPreviewDialog"
+import { DeviceQuotaMappingPreviewDialog } from "./DeviceQuotaMappingPreviewDialog"
 
 /**
  * Action bar for bulk mapping operations.
@@ -81,7 +81,7 @@ export function DeviceQuotaMappingActions() {
         </div>
       </div>
 
-      <MappingPreviewDialog
+      <DeviceQuotaMappingPreviewDialog
         open={showPreview}
         onOpenChange={setShowPreview}
         selectedIds={selectedEquipmentIds}

@@ -10,8 +10,8 @@ vi.mock('../_hooks/useDeviceQuotaMappingContext', () => ({
   useDeviceQuotaMappingContext: vi.fn(),
 }))
 
-vi.mock('../_components/MappingPreviewDialog', () => ({
-  MappingPreviewDialog: ({
+vi.mock('../_components/DeviceQuotaMappingPreviewDialog', () => ({
+  DeviceQuotaMappingPreviewDialog: ({
     open,
     onConfirm,
     isLinking,

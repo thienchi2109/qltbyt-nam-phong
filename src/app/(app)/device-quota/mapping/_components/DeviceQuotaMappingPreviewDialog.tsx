@@ -33,7 +33,9 @@ interface EquipmentPreview {
     tinh_trang: string | null
 }
 
-export interface MappingPreviewDialogProps {
+const EMPTY_EQUIPMENT_LIST: EquipmentPreview[] = []
+
+export interface DeviceQuotaMappingPreviewDialogProps {
     open: boolean
     onOpenChange: (open: boolean) => void
     selectedIds: Set<number>
@@ -230,7 +232,7 @@ function SvgConnectors({
  * Shows a mapping diagram with category on the left and equipment list on the right,
  * connected by SVG bezier curves. Users can exclude/restore individual items before confirming.
  */
-export function MappingPreviewDialog({
+export function DeviceQuotaMappingPreviewDialog({
     open,
     onOpenChange,
     selectedIds,
@@ -238,7 +240,7 @@ export function MappingPreviewDialog({
     onConfirm,
     isLinking,
     donViId,
-}: MappingPreviewDialogProps) {
+}: DeviceQuotaMappingPreviewDialogProps) {
     const [excludedIds, setExcludedIds] = React.useState<Set<number>>(new Set())
 
     // Reset excluded items whenever the dialog opens
@@ -266,7 +268,7 @@ export function MappingPreviewDialog({
         enabled: open && idsArray.length > 0 && donViId !== null,
     })
 
-    const equipmentList = equipment ?? []
+    const equipmentList = equipment ?? EMPTY_EQUIPMENT_LIST
     const activeCount = equipmentList.filter(
         (eq) => !excludedIds.has(eq.id)
     ).length
