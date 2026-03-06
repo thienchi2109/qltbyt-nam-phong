@@ -41,11 +41,17 @@ export function DeviceQuotaMappingActions() {
   const handleConfirm = React.useCallback(
     (confirmedIds: number[]) => {
       if (selectedCategoryId === null) return
-      linkEquipment.mutate({
-        thiet_bi_ids: confirmedIds,
-        nhom_id: selectedCategoryId,
-      })
-      setShowPreview(false)
+      linkEquipment.mutate(
+        {
+          thiet_bi_ids: confirmedIds,
+          nhom_id: selectedCategoryId,
+        },
+        {
+          onSuccess: () => {
+            setShowPreview(false)
+          },
+        }
+      )
     },
     [selectedCategoryId, linkEquipment]
   )
