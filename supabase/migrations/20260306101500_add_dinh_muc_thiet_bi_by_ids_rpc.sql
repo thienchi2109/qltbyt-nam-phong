@@ -1,5 +1,7 @@
 -- Fetch full equipment details by an array of IDs.
 -- Used by the MappingPreviewDialog to hydrate cross-page selections.
+BEGIN;
+
 CREATE OR REPLACE FUNCTION public.dinh_muc_thiet_bi_by_ids(
   p_thiet_bi_ids BIGINT[],
   p_don_vi       BIGINT DEFAULT NULL
@@ -16,10 +18,11 @@ RETURNS TABLE (
 )
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path TO 'public'
+SET search_path = public, pg_temp
 AS $$
 DECLARE
   v_role  TEXT := current_setting('request.jwt.claims', true)::json->>'app_role';
+  v_user_id TEXT := current_setting('request.jwt.claims', true)::json->>'user_id';
   v_don_vi TEXT := current_setting('request.jwt.claims', true)::json->>'don_vi';
   v_allowed_facilities BIGINT[];
 BEGIN
@@ -28,9 +31,13 @@ BEGIN
     v_role := current_setting('request.jwt.claims', true)::json->>'role';
   END IF;
 
-  -- JWT claim guard
+  -- JWT claim guards (all three mandatory per REVIEW.md)
   IF v_role IS NULL OR v_role = '' THEN
     RAISE EXCEPTION 'Missing role claim' USING errcode = '42501';
+  END IF;
+
+  IF v_user_id IS NULL OR v_user_id = '' THEN
+    RAISE EXCEPTION 'Missing user_id claim' USING errcode = '42501';
   END IF;
 
   -- Tenant isolation based on role
@@ -46,6 +53,9 @@ BEGIN
   ELSE
     -- Other roles: force to their own tenant
     p_don_vi := NULLIF(v_don_vi, '')::BIGINT;
+    IF p_don_vi IS NULL THEN
+      RAISE EXCEPTION 'Missing don_vi claim' USING errcode = '42501';
+    END IF;
   END IF;
 
   -- Validate required parameter
@@ -73,3 +83,6 @@ $$;
 
 -- Grant execute to authenticated users
 GRANT EXECUTE ON FUNCTION public.dinh_muc_thiet_bi_by_ids(BIGINT[], BIGINT) TO authenticated;
+REVOKE EXECUTE ON FUNCTION public.dinh_muc_thiet_bi_by_ids(BIGINT[], BIGINT) FROM PUBLIC;
+
+COMMIT;
