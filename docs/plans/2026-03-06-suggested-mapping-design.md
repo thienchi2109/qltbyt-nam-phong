@@ -2,232 +2,322 @@
 
 ## Tóm tắt
 
-Tự động gợi ý mapping thiết bị → danh mục cho toàn bộ thiết bị chưa gán, sử dụng **Supabase Hybrid Search**: kết hợp full-text search (tsvector) + semantic search (pgvector + gte-small) thông qua **Reciprocal Rank Fusion (RRF)**. Toàn bộ chạy trong Supabase, zero API cost.
+Tính năng này tự động gợi ý mapping thiết bị -> danh mục cho **toàn bộ thiết bị chưa gán của đơn vị đang chọn**, dùng hybrid search gồm full-text search (`tsvector`) + semantic search (`pgvector`) + Reciprocal Rank Fusion (RRF). Ở phiên bản đầu, semantic search dùng **exact cosine scan trên tập category của tenant**, chưa dùng ANN/HNSW, vì dữ liệu hiện còn nhỏ và yêu cầu chính là độ đúng, không phải tối đa throughput.
 
 ## Bối cảnh
 
-- **567** danh mục (`nhom_thiet_bi`), **2,740** thiết bị chưa gán
-- `pg_trgm` v1.6 đã cài; `pgvector` v0.8.0 có sẵn, chưa cài
-- Edge Functions hỗ trợ `gte-small` model (384 dimensions) chạy nội bộ, miễn phí
+- Khoảng **567** category (`nhom_thiet_bi`) trong toàn hệ thống, khoảng **2,740** thiết bị chưa gán
+- `pg_trgm` đã có; `pgvector` có sẵn nhưng chưa enable trong schema này
+- RPC proxy hiện giới hạn body khoảng **2MB**, nên request embedding/search phải chunk
+- Luồng save hiện hữu (`dinh_muc_thiet_bi_link`) đã là bulk update một lần, nhưng flow mới cần thêm guard để tránh overwrite dữ liệu mới hơn
 
-## Kiến trúc: Hybrid Search + RRF
+## Kiến trúc đề xuất
 
-### Tại sao Hybrid Search thay vì 2-tier fallback?
+### Tại sao vẫn dùng Hybrid Search?
 
-Phương án trước dùng 2 tầng tuần tự: string match trước → AI fallback cho phần còn lại. **Hybrid Search tốt hơn** vì:
+Hybrid search vẫn là lựa chọn đúng vì nó kết hợp được hai tín hiệu khác nhau:
 
-- **Chạy song song**: Full-text search + semantic search cùng lúc qua RRF
-- **Kết quả chính xác hơn**: RRF kết hợp ranking từ cả 2 phương pháp, thiết bị xuất hiện cao ở cả 2 phương pháp sẽ được ưu tiên
-- **Đơn giản hơn**: 1 RPC function thay vì 2 tầng logic
-- **Tunable**: `full_text_weight` và `semantic_weight` điều chỉnh tầm quan trọng của từng phương pháp
+- Full-text search cho các trường hợp tên thiết bị gần trùng tên category
+- Semantic similarity cho các trường hợp khác từ ngữ nhưng cùng ngữ nghĩa
+- RRF để gộp hai ranking mà không phải viết heuristic fallback phức tạp
+
+Điểm thay đổi quan trọng là **không ANN hóa sớm**. Với tập category nhỏ và luôn filter theo `don_vi_id`, exact scan trên tenant-local set đơn giản hơn, đúng 100%, và tránh trường hợp HNSW/IVFFlat trả thiếu hàng khi kết hợp thêm filter phụ.
 
 ### Luồng xử lý
 
-```
+```text
 Client bấm "Gợi ý phân loại"
-  │
-  ▼
-Edge Function: suggest-mapping
-  │
-  ├─ Fetch all unassigned devices (tên thiết bị)
-  ├─ Group devices by unique tên (giảm 2,740 → ~200 tên duy nhất)
-  │
-  ├─ Cho mỗi unique tên thiết bị:
-  │    ├─ gte-small tạo embedding cho tên
-  │    └─ Gọi RPC hybrid_search_category:
-  │         ├── CTE 1: tsvector full-text match trên nhom_thiet_bi
-  │         ├── CTE 2: pgvector cosine similarity trên embeddings
-  │         └── RRF merge → trả category tốt nhất + score
-  │
-  ├─ Map kết quả: nhóm devices theo category được gợi ý
-  └─ Return kết quả grouped
-
-  ▼
-Preview Dialog (grouped by category)
-  User review & confirm
-  │
-  ▼
-Bulk save via dinh_muc_thiet_bi_link (batch theo nhóm)
+  |
+  v
+callRpc('dinh_muc_thiet_bi_unassigned_names')
+  -> lấy toàn bộ tên thiết bị chưa gán của đơn vị đã chọn
+  -> group theo tên để giảm số query thực tế
+  |
+  v
+Batch 50 tên / lần
+  |- Edge Function `embed-device-name` sinh embedding
+  '- callRpc('hybrid_search_category_batch')
+       |- full-text match trên fts
+       |- exact cosine similarity trên category của tenant
+       '- RRF merge -> lấy category tốt nhất + score
+  |
+  v
+Client merge kết quả các chunk -> preview dialog grouped theo category
+  |
+  |- role = regional_leader -> chỉ xem
+  '- role ghi -> xác nhận lưu
+       |
+       v
+callRpc('dinh_muc_thiet_bi_link_batch')
+  -> chỉ update các thiết bị vẫn còn chưa gán tại thời điểm lưu
+  -> trả summary số row đã lưu và số row bị skip
 ```
 
-### Tối ưu hiệu năng: Group by unique tên
+### Tối ưu hiệu năng thực tế
 
-2,740 thiết bị nhưng nhiều thiết bị cùng tên (ví dụ 8 máy "Máy chạy thận"). Thay vì gọi hybrid search 2,740 lần, ta **group by `ten_thiet_bi`** → chỉ cần ~200 lần search. Tiết kiệm ~93% computation.
+1. **Group by `ten_thiet_bi`**
+   - 2,740 thiết bị chưa gán nhưng chỉ khoảng 200 tên duy nhất.
+   - Đây là tối ưu lớn nhất của luồng: giảm mạnh số lần embedding và search.
+
+2. **Chunk 50 item/lần**
+   - Giữ request body đủ nhỏ cho proxy.
+   - Giữ round-trip ở mức khoảng `~10` calls cho `~200` tên duy nhất.
+
+3. **Exact semantic scan trước**
+   - V1 không tạo HNSW.
+   - Chỉ thêm ANN trong follow-up migration nếu benchmark dữ liệu thật chứng minh exact scan không đạt.
+
+4. **Index đúng query shape của `unassigned_names`**
+   - Tạo partial composite index cho pattern `don_vi + ten_thiet_bi + nhom_thiet_bi_id IS NULL`.
 
 ## Database Setup
 
-### 1. Enable pgvector + thêm cột embedding
+### 1. Hybrid-search foundation trên `nhom_thiet_bi`
 
 ```sql
--- Enable pgvector
 CREATE EXTENSION IF NOT EXISTS vector WITH SCHEMA extensions;
 
--- Thêm cột embedding vào nhom_thiet_bi
-ALTER TABLE nhom_thiet_bi ADD COLUMN embedding extensions.vector(384);
+ALTER TABLE public.nhom_thiet_bi
+ADD COLUMN embedding extensions.vector(384);
 
--- Thêm cột tsvector generated cho full-text search
-ALTER TABLE nhom_thiet_bi ADD COLUMN fts tsvector
-  GENERATED ALWAYS AS (to_tsvector('simple', ten_nhom)) STORED;
+ALTER TABLE public.nhom_thiet_bi
+ADD COLUMN fts tsvector
+GENERATED ALWAYS AS (to_tsvector('simple', ten_nhom)) STORED;
 
--- Indexes
-CREATE INDEX ON nhom_thiet_bi USING gin(fts);
-CREATE INDEX ON nhom_thiet_bi USING hnsw (embedding extensions.vector_ip_ops);
+CREATE INDEX IF NOT EXISTS idx_nhom_thiet_bi_fts
+ON public.nhom_thiet_bi USING gin (fts);
 ```
 
-> **Lưu ý**: Dùng `'simple'` thay vì `'english'` cho tsvector vì tên thiết bị y tế bằng **tiếng Việt**.
+**Không tạo HNSW ở migration đầu tiên.**
 
-### 2. RPC: Hybrid Search Category
+Lý do:
+- Dataset hiện nhỏ
+- Query luôn có tenant filter
+- Exact scan giúp giữ accuracy tuyệt đối và tránh tuning sớm
+
+### 2. Index cho query aggregate thiết bị chưa gán
 
 ```sql
-CREATE OR REPLACE FUNCTION hybrid_search_category(
-  query_text text,
-  query_embedding extensions.vector(384),
-  match_count int DEFAULT 3,
-  full_text_weight float DEFAULT 1.0,
-  semantic_weight float DEFAULT 1.0,
-  rrf_k int DEFAULT 50
-)
-RETURNS TABLE (
-  id int, ten_nhom text, ma_nhom text,
-  phan_loai text, rrf_score float
-)
-LANGUAGE sql AS $$
-  WITH full_text AS (
-    SELECT ntb.id,
-      row_number() OVER (ORDER BY ts_rank_cd(fts, plainto_tsquery('simple', query_text)) DESC) AS rank_ix
-    FROM nhom_thiet_bi ntb
-    WHERE fts @@ plainto_tsquery('simple', query_text)
-    ORDER BY rank_ix
-    LIMIT match_count * 2
-  ),
-  semantic AS (
-    SELECT ntb.id,
-      row_number() OVER (ORDER BY ntb.embedding <#> query_embedding) AS rank_ix
-    FROM nhom_thiet_bi ntb
-    WHERE ntb.embedding IS NOT NULL
-    ORDER BY rank_ix
-    LIMIT match_count * 2
-  )
-  SELECT
-    ntb.id, ntb.ten_nhom, ntb.ma_nhom, ntb.phan_loai,
-    (COALESCE(1.0 / (rrf_k + ft.rank_ix), 0.0) * full_text_weight +
-     COALESCE(1.0 / (rrf_k + s.rank_ix), 0.0) * semantic_weight) AS rrf_score
-  FROM full_text ft
-  FULL OUTER JOIN semantic s ON ft.id = s.id
-  JOIN nhom_thiet_bi ntb ON COALESCE(ft.id, s.id) = ntb.id
-  ORDER BY rrf_score DESC
-  LIMIT match_count;
-$$;
+CREATE INDEX IF NOT EXISTS idx_thiet_bi_unassigned_name_by_unit
+ON public.thiet_bi (don_vi, ten_thiet_bi)
+WHERE nhom_thiet_bi_id IS NULL;
 ```
 
-## Edge Functions
+Index này phục vụ trực tiếp cho RPC `dinh_muc_thiet_bi_unassigned_names`.
 
-### 1. `generate-category-embeddings` (chạy 1 lần)
+### 3. RPC `hybrid_search_category_batch`
 
-Sinh embedding cho 567 categories, lưu vào cột `embedding`:
+Contract:
 
-```typescript
-const model = new Supabase.ai.Session('gte-small')
+- Input: `p_queries JSONB`, tối đa 50 query/lần
+- Tenant isolation đầy đủ bằng JWT guards
+- `regional_leader` chỉ được đọc khi `p_don_vi` nằm trong `allowed_don_vi_for_session()`
+- `embedding = null` phải rơi về FTS-only path, không được cast lỗi
+- Semantic branch dùng exact cosine similarity trên tập category đã filter theo tenant
 
-// Fetch all categories → generate embedding → update
-for (const cat of categories) {
-  const embedding = await model.run(cat.ten_nhom, {
-    mean_pool: true, normalize: true
-  })
-  await supabase
-    .from('nhom_thiet_bi')
-    .update({ embedding: JSON.stringify(embedding) })
-    .eq('id', cat.id)
+Pseudo-shape:
+
+```sql
+WITH tenant_categories AS (
+  SELECT id, ten_nhom, ma_nhom, phan_loai, fts, embedding
+  FROM public.nhom_thiet_bi
+  WHERE don_vi_id = p_don_vi
+),
+full_text AS (...),
+semantic AS (
+  SELECT id
+  FROM tenant_categories
+  WHERE embedding IS NOT NULL
+  ORDER BY embedding <=> v_query_embedding
+  LIMIT p_match_count * 2
+)
+SELECT ... FROM full_text
+FULL OUTER JOIN semantic ...
+```
+
+### 4. RPC `dinh_muc_thiet_bi_unassigned_names`
+
+Mục tiêu:
+- Trả về danh sách tên thiết bị duy nhất của toàn bộ thiết bị chưa gán trong đơn vị
+- Gom sẵn `device_ids[]` để client không cần query lại
+- Chuẩn hóa bằng `BTRIM()` để giảm duplicate group do whitespace vô tình
+
+### 5. RPC `dinh_muc_thiet_bi_link_batch`
+
+Đây là chỗ cần guard về race condition.
+
+Yêu cầu contract:
+- Chỉ role ghi được gọi
+- Chạy trong 1 transaction
+- Chỉ update row vẫn còn `nhom_thiet_bi_id IS NULL`
+- Không ghi đè dữ liệu vừa được người khác map sau lúc preview
+- Trả `JSONB` summary thay vì chỉ trả count
+
+Ví dụ return:
+
+```json
+{
+  "affected_count": 120,
+  "skipped_already_assigned": 7,
+  "skipped_not_found": 2
 }
 ```
 
-### 2. `suggest-mapping` (gọi khi user bấm nút)
+## Edge Functions Và Embedding Lifecycle
 
-Orchestrator: fetch unassigned devices → group by tên → hybrid search → merge → return:
+### 1. `embed-device-name`
+
+Edge Function này chỉ sinh embedding cho tên thiết bị:
 
 ```typescript
 const model = new Supabase.ai.Session('gte-small')
-
-// 1. Fetch unique device names
-// 2. For each unique name, generate embedding + call hybrid_search_category
-// 3. Group results: { category_id → [device_ids] }
-// 4. Return grouped result with score
+const embeddings = await Promise.all(
+  texts.map((text) => model.run(text, { mean_pool: true, normalize: true }))
+)
 ```
+
+Yêu cầu:
+- Batch tối đa 50 text/lần
+- `verify_jwt: true`
+- Không truy cập DB
+
+### 2. Lifecycle của category embeddings
+
+- **Backfill 1 lần** bằng utility chạy ở server tin cậy, dùng `SUPABASE_SERVICE_ROLE_KEY`
+- **Refresh theo batch** sau các luồng làm thay đổi category
+- Refresh helper nhận `category_ids[]`, re-read row hiện tại từ DB rồi mới sinh embedding
+- Không dùng public function `verify_jwt = false`
+
+Các luồng cần refresh:
+- `dinh_muc_nhom_upsert`
+- `dinh_muc_nhom_bulk_import`
+
+Các luồng **không** cần refresh:
+- `dinh_muc_unified_import`
+  - Lý do: chỉ import quota line items, không sửa bảng `nhom_thiet_bi`
 
 ## UX Flow
 
 ### Nút "Gợi ý phân loại"
 
-- Nằm bên cạnh nút "Phân loại" trong action bar (sticky bottom)
-- Luôn hiện khi đã chọn đơn vị (không cần chọn thiết bị trước)
-- Khi bấm → loading state → gọi Edge Function → mở Preview Dialog
+- Nằm cạnh nút "Phân loại" trong action bar
+- Luôn hiện khi đã chọn đơn vị
+- Có note rõ: **"Áp dụng cho toàn bộ thiết bị chưa gán của đơn vị hiện tại"**
+- Không phụ thuộc các filter/search đang hiển thị trên bảng
+- **Reuse `DeviceQuotaMappingActions.tsx`** để thêm suggested action; không tạo thêm một footer/action bar riêng chỉ cho flow mới
 
-### Preview Dialog — Grouped by Category
+### Preview Dialog
 
-```
-┌──────────────────────────────────────────────┐
-│ Gợi ý phân loại                         [X]  │
-├──────────────────────────────────────────────┤
-│ Kết quả: 2,450/2,740 thiết bị được gợi ý    │
-│                                              │
-│ ▼ 📁 Bơm tiêm điện (5 TB) ✅ High           │
-│   ├ NT-TN.007 Bơm tiêm điện         [Loại]  │
-│   ├ NT-TN.008 Bơm tiêm điện         [Loại]  │
-│   └ ...                                      │
-│                                              │
-│ ▼ 📁 Máy thận nhân tạo (8 TB) 🔶 Medium     │
-│   ├ TT.1.92004.08T6409 Máy chạy thận [Loại] │
-│   └ ...                                      │
-│                                              │
-│ ▶ 📁 Siêu âm (3 TB) 🔶 Medium               │
-│                                              │
-│ ▼ ❌ Chưa gợi ý được (290 TB)                │
-│   ├ ... (thiết bị không match được)          │
-│   └ ...                                      │
-│                                              │
-├──────────────────────────────────────────────┤
-│ [Bỏ chọn tất cả]   [Xác nhận 2,450 thiết bị]│
-└──────────────────────────────────────────────┘
-```
+Dialog hiển thị kết quả grouped theo category, gồm:
 
-**Tương tác:**
-- Mỗi thiết bị có nút [Loại] để loại bỏ khỏi gợi ý
-- Mỗi nhóm collapse/expand + checkbox để loại cả nhóm
-- Nhóm "❌ Chưa gợi ý được" cho những thiết bị không match → user mapping thủ công sau
-- Nút "Xác nhận N thiết bị" lưu tất cả (gọi `dinh_muc_thiet_bi_link` tuần tự theo nhóm)
+- Tổng số thiết bị được match / không match
+- Nhóm theo category được gợi ý
+- Exclude/restore từng thiết bị hoặc cả nhóm
+- `regional_leader`: chỉ xem kết quả, không có nút lưu
+- Role ghi: có nút xác nhận lưu toàn bộ phần còn được chọn
+- Footer note nhỏ, luôn hiện gần vùng action: **"Đây chỉ là gợi ý phân loại. Vui lòng kiểm tra lại trước khi lưu"**
 
-**Confidence levels dựa trên RRF score:**
+Ngoài trạng thái loading/error/saving thông thường, dialog phải xử lý thêm case **stale preview**:
+- Nếu một số thiết bị đã được map ở nơi khác sau lúc preview, save vẫn thành công phần còn lại
+- UI hiện rõ số lượng thiết bị bị skip, thay vì báo thành công mơ hồ
 
-| RRF Score | Confidence | Badge |
-|-----------|-----------|-------|
-| ≥ 0.03 | High | ✅ |
-| 0.015 – 0.03 | Medium | 🔶 |
-| < 0.015 | Low (không gợi ý) | ❌ |
+### Reuse strategy và file-size guard
+
+Không nên tạo một `SuggestedMappingPreviewDialog.tsx` lớn rồi nhồi toàn bộ logic vào đó. Trong codebase hiện đã có `DeviceQuotaMappingPreviewDialog.tsx`; đó là ứng viên tốt để **trích các phần dùng chung** cho preview flows, ví dụ:
+
+- Dialog shell/header/footer pattern
+- Count badge / summary badge
+- Loading skeleton list
+- Equipment row với tương tác exclude/restore
+- Footer disclaimer note
+
+Thiết kế khuyến nghị:
+- Reuse `DeviceQuotaMappingActions.tsx` cho action bar
+- Refactor `DeviceQuotaMappingPreviewDialog.tsx` để lấy ra shared preview primitives nếu cần
+- Nếu suggested flow cần container riêng, giữ nó ở dạng **thin container**; phần summary, category-group section, unmatched section nên là các component trình bày nhỏ
+- Không để bất kỳ file preview-related nào vượt khoảng **350 lines**
+
+Mục tiêu là tránh vừa duplicate UI, vừa tạo thêm file monolith khó review và khó test.
+
+### Concrete file split đề xuất
+
+Đề xuất chia preview thành các file sau:
+
+1. `DeviceQuotaMappingActions.tsx`
+   - Action bar hiện hữu
+   - Chỉ thêm wiring cho nút "Gợi ý phân loại"
+
+2. `DeviceQuotaMappingPreviewDialog.tsx`
+   - Giữ preview manual mapping hiện tại
+   - Dùng shared preview primitives sau khi refactor
+
+3. `MappingPreviewPrimitives.tsx`
+   - Shared pieces cho các preview dialog
+   - Gồm dialog shell, count badge, footer note, loading state, equipment row
+
+4. `SuggestedMappingPreviewDialog.tsx`
+   - Thin container cho suggested flow
+   - Chỉ chịu trách nhiệm compose dữ liệu và save action
+
+5. `SuggestedMappingGroupSection.tsx`
+   - Render từng nhóm category được gợi ý
+
+6. `SuggestedMappingUnmatchedSection.tsx`
+   - Render section thiết bị chưa match được
+
+Cách chia này giữ reuse cao nhưng vẫn tránh việc một file đơn phải gánh toàn bộ state machine, group rendering, unmatched rendering và footer/action logic cùng lúc.
 
 ## Quyết định thiết kế
 
 | Quyết định | Lựa chọn | Lý do |
 |---|---|---|
-| Search method | Hybrid (FTS + semantic + RRF) | Chính xác nhất, kết hợp ưu điểm cả 2 |
-| Embedding model | gte-small (384d, built-in Edge) | Miễn phí, không dependency ngoài |
-| tsvector config | `'simple'` | Tiếng Việt, không cần stemming |
-| Xác nhận | Xác nhận toàn bộ (1 nút) | Đơn giản, user loại bỏ cái không muốn rồi confirm |
-| Batch save | `dinh_muc_thiet_bi_link` tuần tự | Tái sử dụng RPC có sẵn |
-| Category embeddings | Sinh 1 lần + webhook | 567 categories ít thay đổi |
+| Search method | Hybrid (FTS + semantic + RRF) | Kết hợp tốt nhất giữa string match và semantic match |
+| Semantic execution | Exact cosine scan trên tenant-local category set | Dataset nhỏ, accuracy cao, tránh filtered ANN issues |
+| ANN/HNSW | Chưa dùng ở v1 | Chỉ thêm khi benchmark chứng minh cần |
+| tsvector config | `'simple'` | Phù hợp tên tiếng Việt, không cần stemming kiểu English |
+| Search batching | Chunk 50 queries/lần | Tránh chạm body limit, vẫn giữ ít round-trip |
+| Suggestion scope | Toàn bộ thiết bị chưa gán của đơn vị | Phục vụ bulk triage, không phụ thuộc filter tạm thời |
+| `regional_leader` | Được xem, không được lưu | Phù hợp quyền read-only |
+| Batch save contract | Chỉ link row còn unassigned, trả summary JSONB | Tránh overwrite do stale preview, dễ hiển thị UX |
+| Preview UI architecture | Shared preview primitives + thin suggested container + section components | Reuse cao, không phình file |
+| Footer disclaimer | Luôn hiển thị trong suggested preview | Nhấn mạnh tính gợi ý và yêu cầu user kiểm tra lại |
+| Category embeddings | Backfill 1 lần + refresh server-side theo batch | Giữ embeddings mới mà không lộ service role |
+| Unified import | Không refresh category embeddings | Luồng này không sửa category |
 
 ## Thành phần cần xây dựng
 
 ### Database
 1. Enable `pgvector` extension
 2. Cột `embedding vector(384)` + `fts tsvector` trên `nhom_thiet_bi`
-3. Indexes (GIN + HNSW)
-4. RPC `hybrid_search_category`
+3. GIN index cho `fts`
+4. Partial index cho `thiet_bi` unassigned-name aggregation
+5. RPC `hybrid_search_category_batch`
+6. RPC `dinh_muc_thiet_bi_unassigned_names`
+7. RPC `dinh_muc_thiet_bi_link_batch`
 
 ### Edge Functions
-1. `generate-category-embeddings` — sinh embedding 1 lần
-2. `suggest-mapping` — orchestrator gọi khi user bấm nút
+1. `embed-device-name` — sinh embedding theo batch
+
+### Server-side utilities
+1. Backfill category embeddings utility
+2. Protected refresh helper nhận `category_ids[]`
 
 ### Frontend
-1. Nút "Gợi ý phân loại" trong `DeviceQuotaMappingActions.tsx`
-2. `SuggestedMappingPreviewDialog` — dialog mới grouped by category
-3. Hook gọi Edge Function + xử lý kết quả
+1. Mở rộng `DeviceQuotaMappingActions.tsx` thay vì tạo action bar mới
+2. Refactor `DeviceQuotaMappingPreviewDialog.tsx` để lấy shared preview pieces nếu cần
+3. `MappingPreviewPrimitives.tsx` cho shared preview UI
+4. `SuggestedMappingPreviewDialog.tsx` làm thin container
+5. `SuggestedMappingGroupSection.tsx` cho grouped results
+6. `SuggestedMappingUnmatchedSection.tsx` cho unmatched results
+7. Hook orchestration gọi RPC + Edge Function theo chunk
+8. UI hiển thị save summary khi có row bị skip do concurrent update
+9. Footer disclaimer note luôn hiện trong suggested preview
+
+## Deferred Optimization
+
+Nếu benchmark thực tế sau khi backfill cho thấy exact scan không còn phù hợp, tạo follow-up plan riêng để:
+
+- Benchmark exact scan vs HNSW trên dữ liệu thật
+- Chọn ngưỡng kích hoạt ANN rõ ràng
+- Thêm HNSW trong migration tách biệt
+- Đánh giá lại recall khi kết hợp tenant filter
