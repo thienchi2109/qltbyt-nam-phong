@@ -42,22 +42,16 @@ export function DeviceQuotaMappingActions() {
     (confirmedIds: number[]) => {
       if (selectedCategoryId === null) return
       linkEquipment.mutate(
-        {
-          thiet_bi_ids: confirmedIds,
-          nhom_id: selectedCategoryId,
-        },
-        {
-          onSuccess: () => {
-            setShowPreview(false)
-          },
-        }
+        { thiet_bi_ids: confirmedIds, nhom_id: selectedCategoryId },
+        { onSuccess: () => setShowPreview(false) }
       )
     },
     [selectedCategoryId, linkEquipment]
   )
 
-  // Don't render if nothing selected
-  if (selectedCount === 0) {
+  // Keep mounted while dialog is open so .mutate() onSuccess can close it cleanly
+  // (context-level onSuccess clears selection before .mutate() onSuccess fires)
+  if (selectedCount === 0 && !showPreview) {
     return null
   }
 
