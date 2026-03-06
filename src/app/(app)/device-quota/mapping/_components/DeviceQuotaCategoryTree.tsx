@@ -7,6 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Button } from "@/components/ui/button"
+import { SearchInput } from "@/components/shared/SearchInput"
 import { useDeviceQuotaMappingContext } from "../_hooks/useDeviceQuotaMappingContext"
 import type { Category } from "./DeviceQuotaMappingContext"
 
@@ -59,12 +60,10 @@ function CategoryTreeItem({ category, isSelected, onSelect }: CategoryTreeItemPr
             )}
           </div>
 
-          {/* Hierarchy indicator */}
           {category.level > 1 && (
             <ChevronRight className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
           )}
 
-          {/* Category info */}
           <div className="min-w-0 flex-1">
             <div className="flex items-baseline gap-2">
               <span className="font-medium text-sm">{category.ma_nhom}</span>
@@ -80,7 +79,6 @@ function CategoryTreeItem({ category, isSelected, onSelect }: CategoryTreeItemPr
           </div>
         </div>
 
-        {/* Equipment count badge */}
         <Badge variant="secondary" className="flex-shrink-0 ml-2">
           <Package className="h-3 w-3 mr-1" />
           {category.so_luong_hien_co}
@@ -90,9 +88,6 @@ function CategoryTreeItem({ category, isSelected, onSelect }: CategoryTreeItemPr
   )
 }
 
-/**
- * Loading skeleton for category tree
- */
 function CategoryTreeSkeleton() {
   return (
     <div className="space-y-2">
@@ -108,9 +103,6 @@ function CategoryTreeSkeleton() {
   )
 }
 
-/**
- * Empty state when no categories exist
- */
 function CategoryTreeEmpty() {
   return (
     <div className="flex flex-col items-center justify-center py-12 text-center">
@@ -133,21 +125,40 @@ function CategoryTreeEmpty() {
   )
 }
 
+function CategoryTreeNoResults({ searchTerm }: { searchTerm: string }) {
+  return (
+    <div className="flex flex-col items-center justify-center py-12 text-center">
+      <div className="rounded-full bg-muted p-3 mb-4">
+        <FolderTree className="h-6 w-6 text-muted-foreground" />
+      </div>
+      <h3 className="font-semibold text-base mb-1">
+        Không tìm thấy danh mục phù hợp
+      </h3>
+      <p className="text-sm text-muted-foreground max-w-sm">
+        Không có danh mục nào khớp với từ khóa "{searchTerm.trim()}".
+        Hãy thử từ khóa khác.
+      </p>
+    </div>
+  )
+}
+
 /**
  * DeviceQuotaCategoryTree - Hierarchical category selection for equipment mapping
  *
  * Features:
+ * - Client-side search with ancestor + descendant preservation
  * - Radio-button style single selection
  * - Visual hierarchy with indentation based on level
  * - Equipment count badges
- * - Loading and empty states
- * - Responsive design
  */
 export function DeviceQuotaCategoryTree() {
   const {
     categories,
+    allCategories,
     selectedCategoryId,
     setSelectedCategory,
+    categorySearchTerm,
+    setCategorySearchTerm,
     isLoading,
   } = useDeviceQuotaMappingContext()
 
@@ -155,19 +166,32 @@ export function DeviceQuotaCategoryTree() {
     setSelectedCategory(selectedCategoryId === id ? null : id)
   }, [selectedCategoryId, setSelectedCategory])
 
+  const hasSearchTerm = categorySearchTerm.trim().length > 0
+
   return (
     <Card className="h-full flex flex-col">
       <CardHeader>
         <CardTitle className="text-lg">Danh mục định mức</CardTitle>
         <CardDescription>
-          Chọn danh mục để gán thiết bị ({categories.length} danh mục)
+          Chọn danh mục để gán thiết bị ({categories.length}/{allCategories.length} danh mục)
         </CardDescription>
+
+        {/* Category Search */}
+        <div className="mt-3">
+          <SearchInput
+            value={categorySearchTerm}
+            onChange={setCategorySearchTerm}
+            placeholder="Tìm danh mục..."
+          />
+        </div>
       </CardHeader>
       <CardContent className="flex-1 overflow-auto">
         {isLoading ? (
           <CategoryTreeSkeleton />
-        ) : categories.length === 0 ? (
+        ) : allCategories.length === 0 ? (
           <CategoryTreeEmpty />
+        ) : categories.length === 0 && hasSearchTerm ? (
+          <CategoryTreeNoResults searchTerm={categorySearchTerm} />
         ) : (
           <div className="space-y-1">
             {categories.map((category) => (
