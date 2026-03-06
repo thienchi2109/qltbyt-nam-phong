@@ -77,7 +77,7 @@ describe('DeviceQuotaCategoriesPage', () => {
     })
   })
 
-  it('keeps categories search ancestor-only on the categories page', async () => {
+  it('includes descendants of matching categories on the categories page', async () => {
     mockUseSession.mockReturnValue({
       data: { user: { role: 'admin', don_vi: '1' } },
       status: 'authenticated',
@@ -156,7 +156,7 @@ describe('DeviceQuotaCategoriesPage', () => {
       expect(screen.getByText('Nhóm 1')).toBeInTheDocument()
       expect(screen.getByText('Nhóm 1.1')).toBeInTheDocument()
       expect(screen.getByText('Nhóm 1.2')).toBeInTheDocument()
-      expect(screen.queryByText('Child A')).not.toBeInTheDocument()
+      expect(screen.getByText('Child A')).toBeInTheDocument()
     })
   })
 })
