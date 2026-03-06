@@ -144,11 +144,13 @@ function SvgConnectors({
     categoryRef,
     itemRefs,
     containerRef,
+    scrollRef,
     excludedIds,
 }: {
     categoryRef: React.RefObject<HTMLDivElement | null>
     itemRefs: React.RefObject<Map<number, HTMLDivElement>>
     containerRef: React.RefObject<HTMLDivElement | null>
+    scrollRef: React.RefObject<HTMLDivElement | null>
     excludedIds: Set<number>
 }) {
     const [paths, setPaths] = React.useState<
@@ -184,8 +186,15 @@ function SvgConnectors({
         const observer = new ResizeObserver(recalculate)
         if (containerRef.current) observer.observe(containerRef.current)
 
-        return () => observer.disconnect()
-    }, [categoryRef, itemRefs, containerRef, excludedIds])
+        // Recalculate on scroll so lines track equipment items
+        const scrollEl = scrollRef.current
+        scrollEl?.addEventListener('scroll', recalculate, { passive: true })
+
+        return () => {
+            observer.disconnect()
+            scrollEl?.removeEventListener('scroll', recalculate)
+        }
+    }, [categoryRef, itemRefs, containerRef, scrollRef, excludedIds])
 
     if (paths.length === 0) return null
 
@@ -258,6 +267,7 @@ export function MappingPreviewDialog({
     // Refs for SVG connectors
     const containerRef = React.useRef<HTMLDivElement>(null)
     const categoryRef = React.useRef<HTMLDivElement>(null)
+    const scrollRef = React.useRef<HTMLDivElement>(null)
     const itemRefsMap = React.useRef<Map<number, HTMLDivElement>>(new Map())
 
     const toggleExclude = React.useCallback((id: number) => {
@@ -328,11 +338,12 @@ export function MappingPreviewDialog({
                         categoryRef={categoryRef}
                         itemRefs={itemRefsMap}
                         containerRef={containerRef}
+                        scrollRef={scrollRef}
                         excludedIds={excludedIds}
                     />
 
                     {/* Equipment list (right) */}
-                    <div className="flex-1 overflow-y-auto max-h-[350px] space-y-2 relative z-10">
+                    <div ref={scrollRef} className="flex-1 overflow-y-auto max-h-[350px] space-y-2 relative z-10">
                         {isLoading ? (
                             <EquipmentSkeletonList />
                         ) : (
