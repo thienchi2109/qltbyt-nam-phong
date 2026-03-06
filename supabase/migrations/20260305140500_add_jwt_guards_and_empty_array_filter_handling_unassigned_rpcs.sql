@@ -32,7 +32,7 @@ DECLARE
   v_role TEXT := current_setting('request.jwt.claims', true)::json->>'app_role';
   v_don_vi TEXT := current_setting('request.jwt.claims', true)::json->>'don_vi';
   v_user_id TEXT := current_setting('request.jwt.claims', true)::json->>'user_id';
-  v_search_pattern TEXT;
+  v_sanitized_search TEXT;
   v_total BIGINT;
   v_allowed_facilities BIGINT[];
 BEGIN
@@ -77,20 +77,19 @@ BEGIN
     p_offset := 0;
   END IF;
 
-  v_search_pattern := '%' || COALESCE(LOWER(TRIM(p_search)), '') || '%';
+  v_sanitized_search := public._sanitize_ilike_pattern(LOWER(TRIM(p_search)));
 
   SELECT COUNT(*) INTO v_total
   FROM public.thiet_bi tb
   WHERE tb.don_vi = p_don_vi
     AND tb.nhom_thiet_bi_id IS NULL
     AND (
-      p_search IS NULL
-      OR p_search = ''
-      OR LOWER(COALESCE(tb.ten_thiet_bi, '')) LIKE v_search_pattern
-      OR LOWER(COALESCE(tb.ma_thiet_bi, '')) LIKE v_search_pattern
-      OR LOWER(COALESCE(tb.model, '')) LIKE v_search_pattern
-      OR LOWER(COALESCE(tb.serial, '')) LIKE v_search_pattern
-      OR LOWER(COALESCE(tb.so_luu_hanh, '')) LIKE v_search_pattern
+      v_sanitized_search IS NULL
+      OR LOWER(COALESCE(tb.ten_thiet_bi, '')) LIKE '%' || v_sanitized_search || '%'
+      OR LOWER(COALESCE(tb.ma_thiet_bi, '')) LIKE '%' || v_sanitized_search || '%'
+      OR LOWER(COALESCE(tb.model, '')) LIKE '%' || v_sanitized_search || '%'
+      OR LOWER(COALESCE(tb.serial, '')) LIKE '%' || v_sanitized_search || '%'
+      OR LOWER(COALESCE(tb.so_luu_hanh, '')) LIKE '%' || v_sanitized_search || '%'
     )
     AND (p_khoa_phong_array IS NULL OR cardinality(p_khoa_phong_array) = 0 OR tb.khoa_phong_quan_ly = ANY(p_khoa_phong_array))
     AND (p_nguoi_su_dung_array IS NULL OR cardinality(p_nguoi_su_dung_array) = 0 OR tb.nguoi_dang_truc_tiep_quan_ly = ANY(p_nguoi_su_dung_array))
@@ -112,13 +111,12 @@ BEGIN
   WHERE tb.don_vi = p_don_vi
     AND tb.nhom_thiet_bi_id IS NULL
     AND (
-      p_search IS NULL
-      OR p_search = ''
-      OR LOWER(COALESCE(tb.ten_thiet_bi, '')) LIKE v_search_pattern
-      OR LOWER(COALESCE(tb.ma_thiet_bi, '')) LIKE v_search_pattern
-      OR LOWER(COALESCE(tb.model, '')) LIKE v_search_pattern
-      OR LOWER(COALESCE(tb.serial, '')) LIKE v_search_pattern
-      OR LOWER(COALESCE(tb.so_luu_hanh, '')) LIKE v_search_pattern
+      v_sanitized_search IS NULL
+      OR LOWER(COALESCE(tb.ten_thiet_bi, '')) LIKE '%' || v_sanitized_search || '%'
+      OR LOWER(COALESCE(tb.ma_thiet_bi, '')) LIKE '%' || v_sanitized_search || '%'
+      OR LOWER(COALESCE(tb.model, '')) LIKE '%' || v_sanitized_search || '%'
+      OR LOWER(COALESCE(tb.serial, '')) LIKE '%' || v_sanitized_search || '%'
+      OR LOWER(COALESCE(tb.so_luu_hanh, '')) LIKE '%' || v_sanitized_search || '%'
     )
     AND (p_khoa_phong_array IS NULL OR cardinality(p_khoa_phong_array) = 0 OR tb.khoa_phong_quan_ly = ANY(p_khoa_phong_array))
     AND (p_nguoi_su_dung_array IS NULL OR cardinality(p_nguoi_su_dung_array) = 0 OR tb.nguoi_dang_truc_tiep_quan_ly = ANY(p_nguoi_su_dung_array))
