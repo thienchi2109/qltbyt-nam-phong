@@ -246,6 +246,13 @@ export function MappingPreviewDialog({
         if (open) setExcludedIds(new Set())
     }, [open])
 
+    // Reset parent open state if targetCategory disappears while dialog is open
+    React.useEffect(() => {
+        if (open && !targetCategory) {
+            onOpenChange(false)
+        }
+    }, [open, targetCategory, onOpenChange])
+
     // Fetch full equipment details for selected IDs
     const idsArray = React.useMemo(() => Array.from(selectedIds), [selectedIds])
 
