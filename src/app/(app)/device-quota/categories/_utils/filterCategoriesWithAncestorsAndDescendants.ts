@@ -20,6 +20,8 @@ interface CategoryItem {
 interface FilterCategoriesOptions<T extends CategoryItem> {
   // Optional matcher to support page-specific fields (for example, `mo_ta`).
   matchFn?: (category: T, needle: string) => boolean
+  /** When true (default), include all descendants of matching items. */
+  includeDescendants?: boolean
 }
 
 function defaultCategoryMatch(category: CategoryItem, needle: string): boolean {
@@ -75,17 +77,19 @@ export function filterCategoriesWithAncestorsAndDescendants<T extends CategoryIt
     }
   }
 
-  // Include descendants (show full subtree of matching items)
-  const stack = [...matchingIds]
-  while (stack.length > 0) {
-    const parentId = stack.pop()!
-    const childIds = childrenByParentId.get(parentId)
-    if (!childIds) continue
+  // Include descendants (show full subtree of matching items) — opt-out via options
+  if (options.includeDescendants !== false) {
+    const stack = [...matchingIds]
+    while (stack.length > 0) {
+      const parentId = stack.pop()!
+      const childIds = childrenByParentId.get(parentId)
+      if (!childIds) continue
 
-    for (const childId of childIds) {
-      if (visibleIds.has(childId)) continue
-      visibleIds.add(childId)
-      stack.push(childId)
+      for (const childId of childIds) {
+        if (visibleIds.has(childId)) continue
+        visibleIds.add(childId)
+        stack.push(childId)
+      }
     }
   }
 

@@ -72,6 +72,25 @@ describe('filterCategoriesWithAncestorsAndDescendants', () => {
     expect(ids).toEqual([1, 2, 3, 4])
   })
 
+  it('excludes descendants when includeDescendants is false', () => {
+    const result = filterCategoriesWithAncestorsAndDescendants(CATEGORIES, 'Nhóm 1', {
+      includeDescendants: false,
+    })
+    const ids = result.map(c => c.id)
+
+    // id=1 "Nhóm 1", id=2 "Nhóm 1.1", id=3 "Nhóm 1.2" match directly
+    expect(ids).toContain(1)
+    expect(ids).toContain(2)
+    expect(ids).toContain(3)
+
+    // id=4 "Child A" is a descendant of id=2 but does NOT match search — excluded
+    expect(ids).not.toContain(4)
+
+    // Unrelated group excluded
+    expect(ids).not.toContain(5)
+    expect(ids).not.toContain(6)
+  })
+
   it('supports custom matcher for fields outside ma_nhom/ten_nhom (e.g. mo_ta)', () => {
     const categoriesWithDescription = [
       { id: 1, parent_id: null, ma_nhom: 'G1', ten_nhom: 'Nhóm 1', mo_ta: null },

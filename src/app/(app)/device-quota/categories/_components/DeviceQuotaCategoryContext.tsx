@@ -267,6 +267,7 @@ export function DeviceQuotaCategoryProvider({ children }: DeviceQuotaCategoryPro
   const categories: CategoryListItem[] = React.useMemo(
     () =>
       filterCategoriesWithAncestorsAndDescendants(allCategories, searchTerm, {
+        includeDescendants: false,
         matchFn: (cat, needle) =>
           cat.ma_nhom?.toLowerCase().includes(needle) ||
           cat.ten_nhom?.toLowerCase().includes(needle) ||
