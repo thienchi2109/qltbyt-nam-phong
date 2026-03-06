@@ -40,6 +40,10 @@ BEGIN
     RAISE EXCEPTION 'Missing user_id claim' USING errcode = '42501';
   END IF;
 
+  IF v_role NOT IN ('global', 'admin') AND (v_don_vi IS NULL OR v_don_vi = '') THEN
+    RAISE EXCEPTION 'Missing don_vi claim' USING errcode = '42501';
+  END IF;
+
   -- Tenant isolation based on role
   IF v_role IN ('global', 'admin') THEN
     -- Global/admin can access any tenant
@@ -56,6 +60,11 @@ BEGIN
     IF p_don_vi IS NULL THEN
       RAISE EXCEPTION 'Missing don_vi claim' USING errcode = '42501';
     END IF;
+  END IF;
+
+  -- Guard: require explicit tenant even for global/admin
+  IF p_don_vi IS NULL THEN
+    RETURN;
   END IF;
 
   -- Validate required parameter
