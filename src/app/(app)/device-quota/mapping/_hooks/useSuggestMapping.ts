@@ -3,7 +3,7 @@
 // fetch unassigned names → embed → hybrid search.
 // Returns grouped suggestions ready for preview display.
 
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, useRef } from "react"
 import { useMutation } from "@tanstack/react-query"
 import { callRpc } from "@/lib/rpc-client"
 
@@ -78,6 +78,7 @@ function chunkArray<T>(arr: T[], size: number): T[][] {
 
 async function fetchEmbeddings(
   texts: string[],
+  signal: AbortSignal,
   onProgress?: (completedChunks: number, totalChunks: number) => void,
 ): Promise<number[][]> {
   const chunks = chunkArray(texts, CHUNK_SIZE)
@@ -88,6 +89,7 @@ async function fetchEmbeddings(
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ texts: chunks[i] }),
+      signal,
     })
 
     if (!res.ok) {
@@ -96,7 +98,7 @@ async function fetchEmbeddings(
 
     const { embeddings } = await res.json()
     allEmbeddings.push(...embeddings)
-    onProgress?.(i + 1, chunks.length)
+    if (!signal.aborted) onProgress?.(i + 1, chunks.length)
   }
 
   return allEmbeddings
@@ -105,12 +107,15 @@ async function fetchEmbeddings(
 async function searchCategories(
   queries: { text: string; embedding: number[] }[],
   donViId: number,
+  signal: AbortSignal,
   onProgress?: (completedChunks: number, totalChunks: number) => void,
 ): Promise<SearchResult[]> {
   const chunks = chunkArray(queries, CHUNK_SIZE)
   const allResults: SearchResult[] = []
 
   for (let i = 0; i < chunks.length; i++) {
+    if (signal.aborted) throw new DOMException("Aborted", "AbortError")
+
     const chunk = chunks[i]
     const p_queries = chunk.map((q) => ({
       text: q.text,
@@ -123,7 +128,7 @@ async function searchCategories(
     })
 
     allResults.push(...results)
-    onProgress?.(i + 1, chunks.length)
+    if (!signal.aborted) onProgress?.(i + 1, chunks.length)
   }
 
   return allResults
@@ -192,65 +197,92 @@ function mergeResults(
 export function useSuggestMapping({ donViId, enabled }: UseSuggestMappingOptions) {
   const [pipelineStatus, setPipelineStatus] = useState<SuggestMappingStatus>("idle")
   const [progress, setProgress] = useState(0)
+  const abortRef = useRef<AbortController | null>(null)
 
   const mutation = useMutation({
     mutationFn: async (dvId: number): Promise<SuggestMappingResult> => {
+      const signal = abortRef.current!.signal
+
       // Stage 1: Fetch unassigned names
-      setPipelineStatus("fetching-names")
-      setProgress(0)
+      if (!signal.aborted) setPipelineStatus("fetching-names")
+      if (!signal.aborted) setProgress(0)
 
       const names = await callRpc<UnassignedName[]>({
         fn: "dinh_muc_thiet_bi_unassigned_names",
         args: { p_don_vi: dvId },
       })
 
+      if (signal.aborted) throw new DOMException("Aborted", "AbortError")
+
       if (!names || names.length === 0) {
         return { groups: [], unmatched: [], totalDevices: 0, matchedDevices: 0 }
       }
 
       // Stage 2: Generate embeddings
-      setPipelineStatus("embedding")
+      if (!signal.aborted) setPipelineStatus("embedding")
       const texts = names.map((n) => n.ten_thiet_bi)
       const totalStages = 3
-      const embeddings = await fetchEmbeddings(texts, (done, total) => {
-        setProgress(Math.round((done / total) * (100 / totalStages)))
+      const embeddings = await fetchEmbeddings(texts, signal, (done, total) => {
+        if (!signal.aborted) setProgress(Math.round((done / total) * (100 / totalStages)))
       })
 
+      if (signal.aborted) throw new DOMException("Aborted", "AbortError")
+
       // Stage 3: Hybrid search
-      setPipelineStatus("searching")
+      if (!signal.aborted) setPipelineStatus("searching")
       const queries = texts.map((text, i) => ({
         text,
         embedding: embeddings[i],
       }))
-      const searchResults = await searchCategories(queries, dvId, (done, total) => {
-        setProgress(Math.round(((2 + done / total) / totalStages) * 100))
+      const searchResults = await searchCategories(queries, dvId, signal, (done, total) => {
+        if (!signal.aborted) setProgress(Math.round(((2 + done / total) / totalStages) * 100))
       })
+
+      if (signal.aborted) throw new DOMException("Aborted", "AbortError")
 
       return mergeResults(names, searchResults)
     },
-    onSuccess: () => {
-      setPipelineStatus("done")
-      setProgress(100)
+    onSuccess: (_data, _vars, _ctx) => {
+      if (!abortRef.current?.signal.aborted) {
+        setPipelineStatus("done")
+        setProgress(100)
+      }
     },
-    onError: () => {
-      setPipelineStatus("error")
+    onError: (err) => {
+      // Don't set error state for intentional aborts
+      if (err instanceof DOMException && err.name === "AbortError") return
+      if (!abortRef.current?.signal.aborted) {
+        setPipelineStatus("error")
+      }
     },
   })
 
   // Auto-trigger when enabled, auto-reset when disabled
   useEffect(() => {
     if (!enabled || donViId === null) {
+      abortRef.current?.abort()
+      abortRef.current = null
       setPipelineStatus("idle")
       setProgress(0)
       mutation.reset()
       return
     }
 
+    // Abort any in-flight pipeline before starting a new one
+    abortRef.current?.abort()
+    abortRef.current = new AbortController()
+
     mutation.mutate(donViId)
+
+    return () => {
+      abortRef.current?.abort()
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [enabled, donViId])
 
   const reset = useCallback(() => {
+    abortRef.current?.abort()
+    abortRef.current = null
     mutation.reset()
     setPipelineStatus("idle")
     setProgress(0)
