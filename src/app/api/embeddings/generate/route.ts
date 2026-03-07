@@ -1,6 +1,7 @@
 // Protected API route: generate text embeddings via Edge Function proxy
 // Purpose: client calls this instead of directly calling Edge Function,
 // keeping Supabase URL and service role key server-side only
+// Roles: global, admin, to_qltb, regional_leader (preview-only)
 // Input: { texts: string[] } (max 50)
 // Output: { embeddings: number[][] }
 
@@ -11,6 +12,7 @@ import { authOptions } from '@/auth/config'
 export const runtime = 'nodejs'
 
 const MAX_BATCH_SIZE = 50
+const ALLOWED_ROLES = ['global', 'admin', 'to_qltb', 'regional_leader']
 
 /**
  * POST /api/embeddings/generate
@@ -23,6 +25,17 @@ export async function POST(request: NextRequest) {
     const session = await getServerSession(authOptions)
     if (!session?.user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    // Role guard: only mapping-capable roles can generate embeddings
+    const user = session.user as { id: string; role?: string }
+    const role = (user.role || '').toLowerCase()
+
+    if (!ALLOWED_ROLES.includes(role)) {
+      return NextResponse.json(
+        { error: 'Forbidden: insufficient role' },
+        { status: 403 }
+      )
     }
 
     const { texts } = await request.json()

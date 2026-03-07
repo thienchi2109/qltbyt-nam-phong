@@ -64,6 +64,36 @@ describe("POST /api/embeddings/generate", () => {
     expect(body.error).toBe("Unauthorized")
   })
 
+  // --- Role guard ---
+  test("returns 403 when user has restricted role", async () => {
+    getServerSessionMock.mockResolvedValue({
+      user: { id: "1", role: "user", don_vi: "17" },
+    })
+
+    const { POST } = await import("@/app/api/embeddings/generate/route")
+
+    const response = await POST(createRequest({ texts: ["test"] }))
+    expect(response.status).toBe(403)
+
+    const body = await response.json()
+    expect(body.error).toContain("Forbidden")
+  })
+
+  test("allows regional_leader role (preview-only access)", async () => {
+    getServerSessionMock.mockResolvedValue({
+      user: { id: "1", role: "regional_leader", don_vi: null },
+    })
+
+    fetchMock.mockResolvedValue(
+      new Response(JSON.stringify({ embeddings: [[0.1]] }), { status: 200 })
+    )
+
+    const { POST } = await import("@/app/api/embeddings/generate/route")
+
+    const response = await POST(createRequest({ texts: ["test"] }))
+    expect(response.status).toBe(200)
+  })
+
   // --- Input validation ---
   test("returns 400 when texts is missing", async () => {
     getServerSessionMock.mockResolvedValue(AUTHENTICATED_SESSION)

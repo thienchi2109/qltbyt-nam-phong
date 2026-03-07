@@ -193,10 +193,10 @@ export function useSuggestMapping({ donViId, enabled }: UseSuggestMappingOptions
   const [error, setError] = useState<string | null>(null)
   const [progress, setProgress] = useState(0)
 
-  const abortRef = useRef(false)
+  const runIdRef = useRef(0)
 
   const reset = useCallback(() => {
-    abortRef.current = true
+    runIdRef.current++
     setStatus("idle")
     setResult(null)
     setError(null)
@@ -208,20 +208,23 @@ export function useSuggestMapping({ donViId, enabled }: UseSuggestMappingOptions
       return
     }
 
-    abortRef.current = false
+    runIdRef.current++
+    const currentRunId = runIdRef.current
 
     async function runPipeline() {
       try {
         // Stage 1: Fetch unassigned names
         setStatus("fetching-names")
         setProgress(0)
+        setError(null)
+        setResult(null)
 
         const names = await callRpc<UnassignedName[]>({
           fn: "dinh_muc_thiet_bi_unassigned_names",
           args: { p_don_vi: donViId },
         })
 
-        if (abortRef.current) return
+        if (runIdRef.current !== currentRunId) return
 
         if (!names || names.length === 0) {
           setResult({ groups: [], unmatched: [], totalDevices: 0, matchedDevices: 0 })
@@ -237,7 +240,7 @@ export function useSuggestMapping({ donViId, enabled }: UseSuggestMappingOptions
           setProgress(Math.round((done / total) * (100 / totalStages)))
         })
 
-        if (abortRef.current) return
+        if (runIdRef.current !== currentRunId) return
 
         // Stage 3: Hybrid search
         setStatus("searching")
@@ -245,11 +248,11 @@ export function useSuggestMapping({ donViId, enabled }: UseSuggestMappingOptions
           text,
           embedding: embeddings[i],
         }))
-        const searchResults = await searchCategories(queries, donViId, (done, total) => {
+        const searchResults = await searchCategories(queries, donViId!, (done, total) => {
           setProgress(Math.round(((1 + done / total) / totalStages) * 100))
         })
 
-        if (abortRef.current) return
+        if (runIdRef.current !== currentRunId) return
 
         // Merge results
         const merged = mergeResults(names, searchResults)
@@ -257,7 +260,7 @@ export function useSuggestMapping({ donViId, enabled }: UseSuggestMappingOptions
         setStatus("done")
         setProgress(100)
       } catch (err) {
-        if (abortRef.current) return
+        if (runIdRef.current !== currentRunId) return
         setError(err instanceof Error ? err.message : String(err))
         setStatus("error")
       }
@@ -266,7 +269,7 @@ export function useSuggestMapping({ donViId, enabled }: UseSuggestMappingOptions
     runPipeline()
 
     return () => {
-      abortRef.current = true
+      runIdRef.current++
     }
   }, [enabled, donViId])
 
