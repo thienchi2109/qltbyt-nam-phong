@@ -9,6 +9,12 @@ interface BeforeInstallPromptEvent extends Event {
   userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>;
 }
 
+interface SerwistWindow extends Window {
+  serwist?: {
+    register: () => Promise<ServiceWorkerRegistration>;
+  };
+}
+
 export function PWAInstallPrompt() {
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [showInstallPrompt, setShowInstallPrompt] = useState(false);
@@ -34,13 +40,17 @@ export function PWAInstallPrompt() {
 
     checkIfInstalled();
 
-    // Register service worker (production only); in dev, ensure no stale SW remains
+    // In production, register manually because Serwist auto-registration is disabled in config.
+    // In development, unregister any stale SW and clear caches to avoid old precache behavior.
     const manageSW = async () => {
       if (!('serviceWorker' in navigator)) return;
 
       if (process.env.NODE_ENV === 'production') {
         try {
-          const registration = await navigator.serviceWorker.register('/sw.js');
+          const serwistWindow = window as SerwistWindow;
+          const registration = serwistWindow.serwist
+            ? await serwistWindow.serwist.register()
+            : await navigator.serviceWorker.register('/sw.js');
           console.log('Service Worker registered:', registration);
         } catch (error) {
           console.error('Service Worker registration failed:', error);

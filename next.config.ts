@@ -4,7 +4,7 @@ import withSerwistInit from '@serwist/next';
 const withSerwist = withSerwistInit({
   swSrc: 'src/sw.ts',
   swDest: 'public/sw.js',
-  register: true,
+  register: false,
   reloadOnOnline: true,
   // Exclude internal Next.js manifest that is not publicly served on some deployments.
   exclude: [/app-build-manifest\.json$/],
