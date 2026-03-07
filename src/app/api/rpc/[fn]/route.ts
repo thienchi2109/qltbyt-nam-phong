@@ -152,6 +152,9 @@ const ALLOWED_FUNCTIONS = new Set<string>([
   // Compliance
   'dinh_muc_compliance_summary',
   'dinh_muc_compliance_detail',
+  // Suggested Mapping (read-path)
+  'hybrid_search_category_batch',
+  'dinh_muc_thiet_bi_unassigned_names',
 ])
 
 // SECURITY: Maximum request body size (2MB) to prevent DoS via memory exhaustion
