@@ -30,19 +30,35 @@ async function main() {
 
   const supabase = createClient(supabaseUrl, serviceRoleKey)
 
-  // Fetch categories missing embeddings
-  const { data: categories, error: fetchError } = await supabase
-    .from('nhom_thiet_bi')
-    .select('id, ten_nhom')
-    .is('embedding', null)
-    .order('id')
+  // Fetch all categories missing embeddings (paginated to avoid Supabase row limit truncation)
+  const PAGE_SIZE = 500
+  const categories: { id: number; ten_nhom: string }[] = []
+  let lastId = 0
 
-  if (fetchError) {
-    console.error('Failed to fetch categories:', fetchError)
-    process.exit(1)
+  // eslint-disable-next-line no-constant-condition
+  while (true) {
+    const { data: page, error: fetchError } = await supabase
+      .from('nhom_thiet_bi')
+      .select('id, ten_nhom')
+      .is('embedding', null)
+      .gt('id', lastId)
+      .order('id')
+      .limit(PAGE_SIZE)
+
+    if (fetchError) {
+      console.error('Failed to fetch categories:', fetchError)
+      process.exit(1)
+    }
+
+    if (!page || page.length === 0) break
+
+    categories.push(...page)
+    lastId = page[page.length - 1].id
+
+    if (page.length < PAGE_SIZE) break
   }
 
-  if (!categories || categories.length === 0) {
+  if (categories.length === 0) {
     console.log('All categories already have embeddings. Nothing to do.')
     return
   }
