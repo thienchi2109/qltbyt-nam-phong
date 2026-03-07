@@ -82,12 +82,11 @@ export function DeviceQuotaMappingActions() {
           <div className="flex items-center gap-2">
             {hasFacility && (
               <Button
-                variant="outline"
                 size="sm"
-                className="touch-target-sm"
+                className="touch-target-sm bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-md hover:from-amber-600 hover:to-orange-600 hover:shadow-lg transition-all duration-200 group"
                 onClick={() => setShowSuggested(true)}
               >
-                <Sparkles className="h-4 w-4" />
+                <Sparkles className="h-4 w-4 group-hover:animate-pulse" />
                 Gợi ý phân loại
               </Button>
             )}
