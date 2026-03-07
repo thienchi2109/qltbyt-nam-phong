@@ -1,8 +1,10 @@
 // Orchestration hook for suggested mapping pipeline.
-// Runs 3-stage pipeline: fetch unassigned names → embed → hybrid search.
+// Uses useMutation from TanStack Query for the 3-stage pipeline:
+// fetch unassigned names → embed → hybrid search.
 // Returns grouped suggestions ready for preview display.
 
-import { useState, useEffect, useCallback, useRef } from "react"
+import { useState, useEffect, useCallback } from "react"
+import { useMutation } from "@tanstack/react-query"
 import { callRpc } from "@/lib/rpc-client"
 
 // ============================================
@@ -188,94 +190,86 @@ function mergeResults(
 // ============================================
 
 export function useSuggestMapping({ donViId, enabled }: UseSuggestMappingOptions) {
-  const [status, setStatus] = useState<SuggestMappingStatus>("idle")
-  const [result, setResult] = useState<SuggestMappingResult | null>(null)
-  const [error, setError] = useState<string | null>(null)
+  const [pipelineStatus, setPipelineStatus] = useState<SuggestMappingStatus>("idle")
   const [progress, setProgress] = useState(0)
 
-  const runIdRef = useRef(0)
+  const mutation = useMutation({
+    mutationFn: async (dvId: number): Promise<SuggestMappingResult> => {
+      // Stage 1: Fetch unassigned names
+      setPipelineStatus("fetching-names")
+      setProgress(0)
 
-  const reset = useCallback(() => {
-    runIdRef.current++
-    setStatus("idle")
-    setResult(null)
-    setError(null)
-    setProgress(0)
-  }, [])
+      const names = await callRpc<UnassignedName[]>({
+        fn: "dinh_muc_thiet_bi_unassigned_names",
+        args: { p_don_vi: dvId },
+      })
 
+      if (!names || names.length === 0) {
+        return { groups: [], unmatched: [], totalDevices: 0, matchedDevices: 0 }
+      }
+
+      // Stage 2: Generate embeddings
+      setPipelineStatus("embedding")
+      const texts = names.map((n) => n.ten_thiet_bi)
+      const totalStages = 3
+      const embeddings = await fetchEmbeddings(texts, (done, total) => {
+        setProgress(Math.round((done / total) * (100 / totalStages)))
+      })
+
+      // Stage 3: Hybrid search
+      setPipelineStatus("searching")
+      const queries = texts.map((text, i) => ({
+        text,
+        embedding: embeddings[i],
+      }))
+      const searchResults = await searchCategories(queries, dvId, (done, total) => {
+        setProgress(Math.round(((2 + done / total) / totalStages) * 100))
+      })
+
+      return mergeResults(names, searchResults)
+    },
+    onSuccess: () => {
+      setPipelineStatus("done")
+      setProgress(100)
+    },
+    onError: () => {
+      setPipelineStatus("error")
+    },
+  })
+
+  // Auto-trigger when enabled, auto-reset when disabled
   useEffect(() => {
     if (!enabled || donViId === null) {
-      setStatus("idle")
-      setResult(null)
-      setError(null)
+      setPipelineStatus("idle")
       setProgress(0)
+      mutation.reset()
       return
     }
 
-    runIdRef.current++
-    const currentRunId = runIdRef.current
-
-    async function runPipeline() {
-      try {
-        // Stage 1: Fetch unassigned names
-        setStatus("fetching-names")
-        setProgress(0)
-        setError(null)
-        setResult(null)
-
-        const names = await callRpc<UnassignedName[]>({
-          fn: "dinh_muc_thiet_bi_unassigned_names",
-          args: { p_don_vi: donViId },
-        })
-
-        if (runIdRef.current !== currentRunId) return
-
-        if (!names || names.length === 0) {
-          setResult({ groups: [], unmatched: [], totalDevices: 0, matchedDevices: 0 })
-          setStatus("done")
-          return
-        }
-
-        // Stage 2: Generate embeddings
-        setStatus("embedding")
-        const texts = names.map((n) => n.ten_thiet_bi)
-        const totalStages = 3
-        const embeddings = await fetchEmbeddings(texts, (done, total) => {
-          setProgress(Math.round((done / total) * (100 / totalStages)))
-        })
-
-        if (runIdRef.current !== currentRunId) return
-
-        // Stage 3: Hybrid search
-        setStatus("searching")
-        const queries = texts.map((text, i) => ({
-          text,
-          embedding: embeddings[i],
-        }))
-        const searchResults = await searchCategories(queries, donViId!, (done, total) => {
-          setProgress(Math.round(((1 + done / total) / totalStages) * 100))
-        })
-
-        if (runIdRef.current !== currentRunId) return
-
-        // Merge results
-        const merged = mergeResults(names, searchResults)
-        setResult(merged)
-        setStatus("done")
-        setProgress(100)
-      } catch (err) {
-        if (runIdRef.current !== currentRunId) return
-        setError(err instanceof Error ? err.message : String(err))
-        setStatus("error")
-      }
-    }
-
-    runPipeline()
-
-    return () => {
-      runIdRef.current++
-    }
+    mutation.mutate(donViId)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [enabled, donViId])
 
-  return { status, result, error, progress, reset }
+  const reset = useCallback(() => {
+    mutation.reset()
+    setPipelineStatus("idle")
+    setProgress(0)
+  }, [mutation])
+
+  // Derive public status from mutation + pipeline states
+  const status: SuggestMappingStatus = mutation.isError
+    ? "error"
+    : mutation.isSuccess
+      ? "done"
+      : mutation.isPending
+        ? pipelineStatus
+        : "idle"
+
+  return {
+    status,
+    result: mutation.data ?? null,
+    error: mutation.error?.message ?? null,
+    progress,
+    reset,
+  }
 }

@@ -9,6 +9,8 @@
  */
 import { describe, test, expect, vi, beforeEach } from "vitest"
 import { renderHook, waitFor, act } from "@testing-library/react"
+import React from "react"
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 
 // ============================================
 // Mocks
@@ -23,6 +25,16 @@ const fetchMock = vi.fn()
 vi.stubGlobal("fetch", fetchMock)
 
 import { useSuggestMapping } from "../_hooks/useSuggestMapping"
+
+// Wrapper with fresh QueryClient per test
+function createWrapper() {
+  const queryClient = new QueryClient({
+    defaultOptions: { mutations: { retry: false } },
+  })
+  return function Wrapper({ children }: { children: React.ReactNode }) {
+    return React.createElement(QueryClientProvider, { client: queryClient }, children)
+  }
+}
 
 // ============================================
 // Fixtures
@@ -83,7 +95,8 @@ describe("useSuggestMapping", () => {
 
   test("stays idle when not enabled", () => {
     const { result } = renderHook(() =>
-      useSuggestMapping({ donViId: 1, enabled: false })
+      useSuggestMapping({ donViId: 1, enabled: false }),
+      { wrapper: createWrapper() }
     )
 
     expect(result.current.status).toBe("idle")
@@ -93,7 +106,8 @@ describe("useSuggestMapping", () => {
 
   test("stays idle when donViId is null", () => {
     const { result } = renderHook(() =>
-      useSuggestMapping({ donViId: null, enabled: true })
+      useSuggestMapping({ donViId: null, enabled: true }),
+      { wrapper: createWrapper() }
     )
 
     expect(result.current.status).toBe("idle")
@@ -104,7 +118,8 @@ describe("useSuggestMapping", () => {
     setupSuccessfulPipeline()
 
     const { result } = renderHook(() =>
-      useSuggestMapping({ donViId: 1, enabled: true })
+      useSuggestMapping({ donViId: 1, enabled: true }),
+      { wrapper: createWrapper() }
     )
 
     await waitFor(() => {
@@ -134,7 +149,8 @@ describe("useSuggestMapping", () => {
     setupSuccessfulPipeline()
 
     const { result } = renderHook(() =>
-      useSuggestMapping({ donViId: 1, enabled: true })
+      useSuggestMapping({ donViId: 1, enabled: true }),
+      { wrapper: createWrapper() }
     )
 
     await waitFor(() => {
@@ -160,7 +176,8 @@ describe("useSuggestMapping", () => {
     setupSuccessfulPipeline()
 
     const { result } = renderHook(() =>
-      useSuggestMapping({ donViId: 1, enabled: true })
+      useSuggestMapping({ donViId: 1, enabled: true }),
+      { wrapper: createWrapper() }
     )
 
     await waitFor(() => {
@@ -177,7 +194,8 @@ describe("useSuggestMapping", () => {
     setupSuccessfulPipeline()
 
     const { result } = renderHook(() =>
-      useSuggestMapping({ donViId: 1, enabled: true })
+      useSuggestMapping({ donViId: 1, enabled: true }),
+      { wrapper: createWrapper() }
     )
 
     await waitFor(() => {
@@ -193,7 +211,8 @@ describe("useSuggestMapping", () => {
     callRpcMock.mockRejectedValue(new Error("Network error"))
 
     const { result } = renderHook(() =>
-      useSuggestMapping({ donViId: 1, enabled: true })
+      useSuggestMapping({ donViId: 1, enabled: true }),
+      { wrapper: createWrapper() }
     )
 
     await waitFor(() => {
@@ -216,7 +235,8 @@ describe("useSuggestMapping", () => {
     )
 
     const { result } = renderHook(() =>
-      useSuggestMapping({ donViId: 1, enabled: true })
+      useSuggestMapping({ donViId: 1, enabled: true }),
+      { wrapper: createWrapper() }
     )
 
     await waitFor(() => {
@@ -230,7 +250,8 @@ describe("useSuggestMapping", () => {
     setupSuccessfulPipeline()
 
     const { result } = renderHook(() =>
-      useSuggestMapping({ donViId: 1, enabled: true })
+      useSuggestMapping({ donViId: 1, enabled: true }),
+      { wrapper: createWrapper() }
     )
 
     await waitFor(() => {
@@ -281,7 +302,8 @@ describe("useSuggestMapping", () => {
     )
 
     const { result } = renderHook(() =>
-      useSuggestMapping({ donViId: 1, enabled: true })
+      useSuggestMapping({ donViId: 1, enabled: true }),
+      { wrapper: createWrapper() }
     )
 
     await waitFor(() => {
@@ -299,10 +321,11 @@ describe("useSuggestMapping", () => {
   test("auto-resets to idle when enabled becomes false after pipeline started", async () => {
     setupSuccessfulPipeline()
 
+    const wrapper = createWrapper()
     const { result, rerender } = renderHook(
       ({ enabled }: { enabled: boolean }) =>
         useSuggestMapping({ donViId: 1, enabled }),
-      { initialProps: { enabled: true } }
+      { initialProps: { enabled: true }, wrapper }
     )
 
     // Wait for pipeline to complete
