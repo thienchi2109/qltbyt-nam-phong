@@ -1,7 +1,8 @@
 /**
  * Tests for POST /api/embeddings/refresh-categories
  *
- * Verifies auth guard, input validation, DB fetch + Edge Function call + update flow.
+ * Verifies auth guard, role guard, tenant isolation,
+ * input validation, DB fetch + Edge Function call + update flow.
  */
 import { describe, test, expect, vi, beforeEach } from "vitest"
 import { NextRequest } from "next/server"
@@ -66,6 +67,12 @@ beforeEach(() => {
 // Test helpers
 // ============================================
 
+const WRITE_SESSION = { user: { id: "1", role: "to_qltb", don_vi: "17" } }
+const ADMIN_SESSION = { user: { id: "2", role: "admin", don_vi: "17" } }
+const GLOBAL_SESSION = { user: { id: "3", role: "global", don_vi: null } }
+const VIEWER_SESSION = { user: { id: "4", role: "viewer", don_vi: "17" } }
+const OTHER_TENANT_SESSION = { user: { id: "5", role: "to_qltb", don_vi: "99" } }
+
 function createRequest(body: unknown): NextRequest {
   return new NextRequest("http://localhost/api/embeddings/refresh-categories", {
     method: "POST",
@@ -79,6 +86,7 @@ function createRequest(body: unknown): NextRequest {
 // ============================================
 
 describe("POST /api/embeddings/refresh-categories", () => {
+  // --- Auth guard ---
   test("returns 401 when unauthenticated", async () => {
     getServerSessionMock.mockResolvedValue(null)
 
@@ -93,8 +101,84 @@ describe("POST /api/embeddings/refresh-categories", () => {
     expect(body.error).toBe("Unauthorized")
   })
 
+  // --- Role guard ---
+  test("returns 403 when user has viewer role", async () => {
+    getServerSessionMock.mockResolvedValue(VIEWER_SESSION)
+
+    const { POST } = await import(
+      "@/app/api/embeddings/refresh-categories/route"
+    )
+
+    const response = await POST(createRequest({ category_ids: [1] }))
+    expect(response.status).toBe(403)
+
+    const body = await response.json()
+    expect(body.error).toContain("Forbidden")
+  })
+
+  test("allows to_qltb role", async () => {
+    getServerSessionMock.mockResolvedValue(WRITE_SESSION)
+    inMock.mockResolvedValue({ data: [], error: null })
+
+    const { POST } = await import(
+      "@/app/api/embeddings/refresh-categories/route"
+    )
+
+    const response = await POST(createRequest({ category_ids: [1] }))
+    expect(response.status).toBe(200)
+  })
+
+  test("allows admin role", async () => {
+    getServerSessionMock.mockResolvedValue(ADMIN_SESSION)
+    inMock.mockResolvedValue({ data: [], error: null })
+
+    const { POST } = await import(
+      "@/app/api/embeddings/refresh-categories/route"
+    )
+
+    const response = await POST(createRequest({ category_ids: [1] }))
+    expect(response.status).toBe(200)
+  })
+
+  test("allows global role", async () => {
+    getServerSessionMock.mockResolvedValue(GLOBAL_SESSION)
+    inMock.mockResolvedValue({ data: [], error: null })
+
+    const { POST } = await import(
+      "@/app/api/embeddings/refresh-categories/route"
+    )
+
+    const response = await POST(createRequest({ category_ids: [1] }))
+    expect(response.status).toBe(200)
+  })
+
+  // --- Tenant isolation ---
+  test("filters out categories not belonging to non-global user tenant", async () => {
+    getServerSessionMock.mockResolvedValue(OTHER_TENANT_SESSION)
+
+    // DB returns categories for don_vi=17, but user is don_vi=99
+    inMock.mockResolvedValue({
+      data: [
+        { id: 42, ten_nhom: "Máy thở", don_vi_id: 17 },
+      ],
+      error: null,
+    })
+
+    const { POST } = await import(
+      "@/app/api/embeddings/refresh-categories/route"
+    )
+
+    const response = await POST(createRequest({ category_ids: [42] }))
+    expect(response.status).toBe(200)
+
+    const body = await response.json()
+    // Category belongs to tenant 17 but user is tenant 99 → filtered out
+    expect(body.refreshed).toBe(0)
+  })
+
+  // --- Input validation ---
   test("returns 400 when category_ids is empty", async () => {
-    getServerSessionMock.mockResolvedValue({ user: { id: "u1" } })
+    getServerSessionMock.mockResolvedValue(WRITE_SESSION)
 
     const { POST } = await import(
       "@/app/api/embeddings/refresh-categories/route"
@@ -108,7 +192,7 @@ describe("POST /api/embeddings/refresh-categories", () => {
   })
 
   test("returns 400 when category_ids is missing", async () => {
-    getServerSessionMock.mockResolvedValue({ user: { id: "u1" } })
+    getServerSessionMock.mockResolvedValue(WRITE_SESSION)
 
     const { POST } = await import(
       "@/app/api/embeddings/refresh-categories/route"
@@ -118,14 +202,15 @@ describe("POST /api/embeddings/refresh-categories", () => {
     expect(response.status).toBe(400)
   })
 
+  // --- Full flow ---
   test("fetches categories and calls Edge Function then updates DB", async () => {
-    getServerSessionMock.mockResolvedValue({ user: { id: "u1" } })
+    getServerSessionMock.mockResolvedValue(WRITE_SESSION)
 
-    // DB returns categories
+    // DB returns categories matching user's tenant
     inMock.mockResolvedValue({
       data: [
-        { id: 42, ten_nhom: "Máy thở" },
-        { id: 99, ten_nhom: "Bơm tiêm điện" },
+        { id: 42, ten_nhom: "Máy thở", don_vi_id: 17 },
+        { id: 99, ten_nhom: "Bơm tiêm điện", don_vi_id: 17 },
       ],
       error: null,
     })
@@ -163,7 +248,7 @@ describe("POST /api/embeddings/refresh-categories", () => {
   })
 
   test("returns refreshed=0 when no categories found in DB", async () => {
-    getServerSessionMock.mockResolvedValue({ user: { id: "u1" } })
+    getServerSessionMock.mockResolvedValue(WRITE_SESSION)
 
     inMock.mockResolvedValue({ data: [], error: null })
 
@@ -180,10 +265,10 @@ describe("POST /api/embeddings/refresh-categories", () => {
   })
 
   test("counts failed when Edge Function returns non-ok", async () => {
-    getServerSessionMock.mockResolvedValue({ user: { id: "u1" } })
+    getServerSessionMock.mockResolvedValue(WRITE_SESSION)
 
     inMock.mockResolvedValue({
-      data: [{ id: 42, ten_nhom: "Máy thở" }],
+      data: [{ id: 42, ten_nhom: "Máy thở", don_vi_id: 17 }],
       error: null,
     })
 

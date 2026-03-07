@@ -10,6 +10,7 @@ import { createClient } from '@supabase/supabase-js'
 export const runtime = 'nodejs'
 
 const BATCH_SIZE = 50
+const WRITE_ROLES = ['global', 'admin', 'to_qltb']
 
 /**
  * POST /api/embeddings/refresh-categories
@@ -17,6 +18,11 @@ const BATCH_SIZE = 50
  * Refresh embeddings for specified category IDs.
  * Reads latest category names from DB, generates embeddings via Edge Function,
  * and updates nhom_thiet_bi.embedding column.
+ *
+ * Security:
+ * - Auth: requires valid session
+ * - Role: only global/admin/to_qltb (write-capable roles)
+ * - Tenant isolation: non-global users can only refresh their own tenant's categories
  *
  * Body: { category_ids: number[] }
  * Returns: { refreshed: number, failed: number }
@@ -26,6 +32,17 @@ export async function POST(request: NextRequest) {
     const session = await getServerSession(authOptions)
     if (!session?.user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    // Role guard: only write-capable roles can refresh embeddings
+    const user = session.user as { id: string; role?: string; don_vi?: string | null }
+    const role = (user.role || '').toLowerCase()
+
+    if (!WRITE_ROLES.includes(role)) {
+      return NextResponse.json(
+        { error: 'Forbidden: insufficient role' },
+        { status: 403 }
+      )
     }
 
     const { category_ids } = await request.json()
@@ -50,10 +67,10 @@ export async function POST(request: NextRequest) {
 
     const supabase = createClient(supabaseUrl, serviceRoleKey)
 
-    // Read latest category names from DB
+    // Read latest category names from DB (include don_vi_id for tenant check)
     const { data: categories, error: fetchError } = await supabase
       .from('nhom_thiet_bi')
-      .select('id, ten_nhom')
+      .select('id, ten_nhom, don_vi_id')
       .in('id', category_ids)
 
     if (fetchError) {
@@ -68,12 +85,22 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ refreshed: 0, failed: 0 })
     }
 
+    // Tenant isolation: non-global users can only refresh their own tenant's categories
+    const userDonVi = user.don_vi ? parseInt(user.don_vi, 10) : null
+    const filteredCategories = role === 'global'
+      ? categories
+      : categories.filter(c => c.don_vi_id === userDonVi)
+
+    if (filteredCategories.length === 0) {
+      return NextResponse.json({ refreshed: 0, failed: 0 })
+    }
+
     let refreshed = 0
     let failed = 0
 
     // Process in batches of BATCH_SIZE
-    for (let i = 0; i < categories.length; i += BATCH_SIZE) {
-      const batch = categories.slice(i, i + BATCH_SIZE)
+    for (let i = 0; i < filteredCategories.length; i += BATCH_SIZE) {
+      const batch = filteredCategories.slice(i, i + BATCH_SIZE)
       const texts = batch.map(c => c.ten_nhom || '')
 
       try {
