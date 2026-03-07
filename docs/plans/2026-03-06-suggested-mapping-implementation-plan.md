@@ -87,14 +87,14 @@
 - Modify: `src/app/api/rpc/[fn]/route.ts`
 
 **Tasks:**
-- [ ] Enable `vector` extension nếu chưa có.
-- [ ] Thêm `embedding extensions.vector(384)` vào `nhom_thiet_bi`.
-- [ ] Thêm `fts tsvector GENERATED ALWAYS AS (to_tsvector('simple', ten_nhom)) STORED`.
-- [ ] Tạo GIN index cho `fts`.
-- [ ] Tạo partial index `idx_thiet_bi_unassigned_name_by_unit` trên `public.thiet_bi (don_vi, ten_thiet_bi) WHERE nhom_thiet_bi_id IS NULL`.
-- [ ] Implement `hybrid_search_category_batch` với đầy đủ JWT guards: `role`, `user_id`, mandatory `don_vi` guard cho non-global users, tenant isolation, null-safe fallback, exact cosine scan.
-- [ ] Implement `dinh_muc_thiet_bi_unassigned_names` với JWT guards, tenant isolation, grouping theo tên thiết bị.
-- [ ] Whitelist 2 RPC mới trong `/api/rpc/[fn]`.
+- [x] Enable `vector` extension nếu chưa có.
+- [x] Thêm `embedding extensions.vector(384)` vào `nhom_thiet_bi`.
+- [x] Thêm `fts tsvector GENERATED ALWAYS AS (to_tsvector('simple', ten_nhom)) STORED`.
+- [x] Tạo GIN index cho `fts`.
+- [x] Tạo partial index `idx_thiet_bi_unassigned_name_by_unit` trên `public.thiet_bi (don_vi, ten_thiet_bi) WHERE nhom_thiet_bi_id IS NULL`.
+- [x] Implement `hybrid_search_category_batch` với đầy đủ JWT guards: `role`, `user_id`, mandatory `don_vi` guard cho non-global users, tenant isolation, null-safe fallback, exact cosine scan.
+- [x] Implement `dinh_muc_thiet_bi_unassigned_names` với JWT guards, tenant isolation, grouping theo tên thiết bị.
+- [x] Whitelist 2 RPC mới trong `/api/rpc/[fn]`.
 
 **Exit criteria:** Có thể gọi `dinh_muc_thiet_bi_unassigned_names` và `hybrid_search_category_batch` qua proxy với tenant rules đúng; `hybrid_search_category_batch` phải fail sớm với `Missing don_vi claim` cho malformed non-global JWT và không lỗi khi `embedding = null`.
 
@@ -109,12 +109,12 @@
 - Modify: luồng category create/update/import phía server để gọi refresh helper
 
 **Tasks:**
-- [ ] Tạo Edge Function `embed-device-name` chỉ nhận `{ texts: string[] }` và trả về `{ embeddings }`.
-- [ ] Viết backfill script chạy theo batch 50 category/lần.
-- [ ] Viết protected refresh helper nhận `category_ids[]` và xử lý theo batch.
-- [ ] Hook helper sau `dinh_muc_nhom_upsert`.
-- [ ] Hook helper sau `dinh_muc_nhom_bulk_import`.
-- [ ] Ghi rõ `dinh_muc_unified_import` không gọi refresh vì không đổi category.
+- [x] Tạo Edge Function `embed-device-name` chỉ nhận `{ texts: string[] }` và trả về `{ embeddings }`.
+- [x] Viết backfill script chạy theo batch 5 category/lần.
+- [x] Viết protected refresh helper nhận `category_ids[]` và xử lý theo batch.
+- [x] Hook helper sau `dinh_muc_nhom_upsert`.
+- [x] Hook helper sau `dinh_muc_nhom_bulk_import`.
+- [x] Ghi rõ `dinh_muc_unified_import` không gọi refresh vì không đổi category.
 
 **Exit criteria:** Category mới/sửa/import category có embedding mới; unified import quota không kích hoạt refresh thừa.
 
