@@ -165,7 +165,8 @@
 **Mục tiêu:** Lưu batch trong một transaction mà không ghi đè dữ liệu mới hơn.
 
 **Files:**
-- Create or extend: `supabase/migrations/20260306205700_add_suggest_mapping_helper_rpcs.sql`
+- Create: `supabase/migrations/20260306205800_add_dinh_muc_thiet_bi_link_batch.sql`
+- Modify: `src/app/api/rpc/[fn]/route.ts`
 - Modify: thin suggested-preview container / shared preview subcomponents trong `src/app/(app)/device-quota/mapping/_components/`
 - Modify: `src/app/(app)/device-quota/mapping/_hooks/useSuggestMapping.ts`
 
@@ -174,6 +175,7 @@
 - [ ] `dinh_muc_thiet_bi_link_batch` nhận payload grouped theo category, ví dụ `[{ "nhom_id": 1, "thiet_bi_ids": [10, 11] }, { "nhom_id": 2, "thiet_bi_ids": [12] }]`.
 - [ ] Validate payload để fail sớm nếu cùng một `device_id` xuất hiện ở nhiều group khác nhau trong cùng request.
 - [ ] Giữ `dinh_muc_thiet_bi_link` nguyên trạng cho manual flow; suggested save không được bẻ sang reuse manual mutation signature.
+- [ ] Chỉ whitelist `dinh_muc_thiet_bi_link_batch` trong `/api/rpc/[fn]` sau khi migration Phase 4 đã tạo function đầy đủ.
 - [ ] Contract trả về `JSONB` summary, ví dụ:
   ```sql
   {"affected_count": 120, "skipped_already_assigned": 7, "skipped_not_found": 2}
@@ -212,7 +214,7 @@
 
 ## Detailed Changes
 
-### Database (Migration 1 of 2)
+### Database (Migration 1 of 3)
 
 #### [NEW] `20260306205600_add_hybrid_search_category.sql`
 
@@ -226,6 +228,11 @@
 **`hybrid_search_category_batch` RPC** — Processes one chunk at a time (recommended: max 50 queries/call):
 
 ```sql
+-- Migration: add hybrid_search_category_batch foundation for suggested mapping
+-- Purpose: enable tenant-scoped hybrid category search with pgvector + fts for preview flow
+
+BEGIN;
+
 CREATE OR REPLACE FUNCTION public.hybrid_search_category_batch(
   p_queries JSONB,
   p_don_vi BIGINT DEFAULT NULL,
@@ -344,15 +351,22 @@ $$;
 
 GRANT EXECUTE ON FUNCTION public.hybrid_search_category_batch(JSONB, BIGINT, INT, FLOAT, FLOAT, INT) TO authenticated;
 REVOKE EXECUTE ON FUNCTION public.hybrid_search_category_batch(JSONB, BIGINT, INT, FLOAT, FLOAT, INT) FROM PUBLIC;
+
+COMMIT;
 ```
 
-### Database (Migration 2 of 2)
+### Database (Migration 2 of 3)
 
 #### [NEW] `20260306205700_add_suggest_mapping_helper_rpcs.sql`
 
 **1. Partial index for unassigned-name aggregation**
 
 ```sql
+-- Migration: add read-path helper RPCs for suggested mapping preview
+-- Purpose: expose tenant-scoped unassigned-name aggregation before write-path save is introduced
+
+BEGIN;
+
 CREATE INDEX IF NOT EXISTS idx_thiet_bi_unassigned_name_by_unit
 ON public.thiet_bi (don_vi, ten_thiet_bi)
 WHERE nhom_thiet_bi_id IS NULL;
@@ -423,40 +437,36 @@ $$;
 
 GRANT EXECUTE ON FUNCTION public.dinh_muc_thiet_bi_unassigned_names(BIGINT) TO authenticated;
 REVOKE EXECUTE ON FUNCTION public.dinh_muc_thiet_bi_unassigned_names(BIGINT) FROM PUBLIC;
+
+COMMIT;
 ```
 
-**3. `dinh_muc_thiet_bi_link_batch`** — Batch link in single transaction, race-safe:
+### Database (Migration 3 of 3)
 
-This RPC is **not** a replacement for `dinh_muc_thiet_bi_link`. It is a separate command for suggested mapping, where one confirmation can commit many grouped operations of the existing domain shape `1 category -> many devices`.
+#### [NEW] `20260306205800_add_dinh_muc_thiet_bi_link_batch.sql`
 
-```sql
-CREATE OR REPLACE FUNCTION public.dinh_muc_thiet_bi_link_batch(
-  p_mappings JSONB,
-  p_don_vi BIGINT DEFAULT NULL
-)
-RETURNS JSONB
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public, pg_temp
-AS $$
-BEGIN
-  -- Full JWT guards + tenant isolation
-  -- Roles: global, admin, to_qltb only
-  -- regional_leader forbidden
-  -- Payload shape:
-  -- [
-  --   { "nhom_id": 1, "thiet_bi_ids": [10, 11] },
-  --   { "nhom_id": 2, "thiet_bi_ids": [12] }
-  -- ]
-  -- Validate no device_id appears in more than one group inside p_mappings
-  -- Only update rows still nhom_thiet_bi_id IS NULL at save time
-  -- Return summary JSONB instead of plain INT
-END;
-$$;
+`dinh_muc_thiet_bi_link_batch` must **not** be created in `20260306205700_add_suggest_mapping_helper_rpcs.sql` as an empty stub. It is introduced only in Phase 4, when the full implementation is ready.
 
-GRANT EXECUTE ON FUNCTION public.dinh_muc_thiet_bi_link_batch(JSONB, BIGINT) TO authenticated;
-REVOKE EXECUTE ON FUNCTION public.dinh_muc_thiet_bi_link_batch(JSONB, BIGINT) FROM PUBLIC;
-```
+Required contents for this migration:
+
+- Header comment explaining that the migration adds the write-path RPC for suggested mapping save
+- `BEGIN; ... COMMIT;`
+- `CREATE OR REPLACE FUNCTION public.dinh_muc_thiet_bi_link_batch(...)`
+- Full JWT guards + tenant isolation
+- Roles: `global`, `admin`, `to_qltb` only
+- `regional_leader` forbidden
+- Payload shape:
+  ```json
+  [
+    { "nhom_id": 1, "thiet_bi_ids": [10, 11] },
+    { "nhom_id": 2, "thiet_bi_ids": [12] }
+  ]
+  ```
+- Validation that no `device_id` appears in more than one group inside `p_mappings`
+- Race-safe update that only links rows still `nhom_thiet_bi_id IS NULL` at save time
+- Audit logging by saved group
+- `GRANT EXECUTE ... TO authenticated`
+- `REVOKE EXECUTE ... FROM PUBLIC`
 
 Recommended return shape:
 
@@ -472,7 +482,7 @@ Recommended return shape:
 }
 ```
 
-Both RPCs: `SECURITY DEFINER SET search_path = public, pg_temp` + JWT guards + `GRANT/REVOKE`.
+All RPCs in their respective migrations must use `SECURITY DEFINER SET search_path = public, pg_temp` + JWT guards + `GRANT/REVOKE`.
 
 ### Edge Functions
 
@@ -593,6 +603,11 @@ Add:
 ```typescript
 'hybrid_search_category_batch',
 'dinh_muc_thiet_bi_unassigned_names',
+```
+
+Phase 4 adds:
+
+```typescript
 'dinh_muc_thiet_bi_link_batch',
 ```
 
