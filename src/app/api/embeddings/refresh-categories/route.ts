@@ -55,6 +55,18 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Sanitize: keep only finite positive integers
+    const sanitizedIds = category_ids
+      .map(Number)
+      .filter((id): id is number => Number.isFinite(id) && id > 0 && Number.isInteger(id))
+
+    if (sanitizedIds.length === 0) {
+      return NextResponse.json(
+        { error: 'category_ids must contain valid numeric IDs' },
+        { status: 400 }
+      )
+    }
+
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
     const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
 
@@ -72,7 +84,7 @@ export async function POST(request: NextRequest) {
     const { data: categories, error: fetchError } = await supabase
       .from('nhom_thiet_bi')
       .select('id, ten_nhom, don_vi_id')
-      .in('id', category_ids)
+      .in('id', sanitizedIds)
 
     if (fetchError) {
       console.error('Failed to fetch categories:', fetchError)

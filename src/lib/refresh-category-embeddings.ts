@@ -11,11 +11,18 @@ export async function refreshCategoryEmbeddings(
   if (!categoryIds.length) return
 
   try {
-    await fetch('/api/embeddings/refresh-categories', {
+    const response = await fetch('/api/embeddings/refresh-categories', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ category_ids: categoryIds }),
     })
+
+    if (!response.ok) {
+      console.warn(
+        `Embedding refresh returned ${response.status} for ids:`,
+        categoryIds
+      )
+    }
   } catch {
     // Fire-and-forget: don't block category operations
     console.warn('Failed to refresh category embeddings for ids:', categoryIds)

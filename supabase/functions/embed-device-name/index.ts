@@ -16,7 +16,16 @@ Deno.serve(async (req: Request) => {
   }
 
   try {
-    const { texts } = await req.json()
+    let texts: unknown
+    try {
+      const body = await req.json()
+      texts = body.texts
+    } catch {
+      return new Response(
+        JSON.stringify({ error: 'Invalid JSON in request body' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
 
     if (!Array.isArray(texts) || texts.length === 0) {
       return new Response(
@@ -67,7 +76,7 @@ Deno.serve(async (req: Request) => {
     const message = err instanceof Error ? err.message : String(err)
     console.error('Error generating embeddings:', message)
     return new Response(
-      JSON.stringify({ error: message }),
+      JSON.stringify({ error: 'Internal error generating embeddings' }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
   }

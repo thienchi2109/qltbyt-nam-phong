@@ -71,6 +71,11 @@ async function main() {
   let totalFailed = 0
 
   for (let i = 0; i < categories.length; i += BATCH_SIZE) {
+    // Delay between batches to avoid rate limiting (after first batch)
+    if (i > 0) {
+      await delay(DELAY_BETWEEN_BATCHES_MS)
+    }
+
     const batchIndex = Math.floor(i / BATCH_SIZE) + 1
     const batch = categories.slice(i, i + BATCH_SIZE)
     const texts = batch.map(c => c.ten_nhom || '')
@@ -131,11 +136,6 @@ async function main() {
         console.error(`ERROR: ${msg}`)
       }
       totalFailed += batch.length
-    }
-
-    // Delay between batches to avoid rate limiting
-    if (i + BATCH_SIZE < categories.length) {
-      await delay(DELAY_BETWEEN_BATCHES_MS)
     }
   }
 
