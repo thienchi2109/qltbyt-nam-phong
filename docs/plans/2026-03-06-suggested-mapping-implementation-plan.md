@@ -68,12 +68,12 @@
 - Modify: `docs/plans/2026-03-06-suggested-mapping-design.md`
 
 **Tasks:**
-- [ ] Chốt exact semantic scan cho v1, không thêm HNSW trong migration đầu tiên.
-- [ ] Chốt partial index cho query `unassigned_names`.
-- [ ] Chốt command model: manual flow giữ `dinh_muc_thiet_bi_link`; suggested flow dùng `dinh_muc_thiet_bi_link_batch` với grouped payload riêng.
-- [ ] Chốt contract race-safe cho `dinh_muc_thiet_bi_link_batch`.
-- [ ] Chốt lifecycle refresh embedding và loại `dinh_muc_unified_import` khỏi danh sách refresh.
-- [ ] Chốt chiến lược reuse component và giới hạn file-size cho preview UI.
+- [x] Chốt exact semantic scan cho v1, không thêm HNSW trong migration đầu tiên.
+- [x] Chốt partial index cho query `unassigned_names`.
+- [x] Chốt command model: manual flow giữ `dinh_muc_thiet_bi_link`; suggested flow dùng `dinh_muc_thiet_bi_link_batch` với grouped payload riêng.
+- [x] Chốt contract race-safe cho `dinh_muc_thiet_bi_link_batch`.
+- [x] Chốt lifecycle refresh embedding và loại `dinh_muc_unified_import` khỏi danh sách refresh.
+- [x] Chốt chiến lược reuse component và giới hạn file-size cho preview UI.
 
 **Exit criteria:** Design doc và implementation plan thống nhất hoàn toàn về query shape, index strategy, permission, concurrency guard, và interaction model giữa manual flow với suggested flow.
 
