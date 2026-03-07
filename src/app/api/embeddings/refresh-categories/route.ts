@@ -126,6 +126,15 @@ export async function POST(request: NextRequest) {
 
         const { embeddings } = await embedResponse.json()
 
+        // Validate embedding payload shape matches batch
+        if (!Array.isArray(embeddings) || embeddings.length !== batch.length) {
+          console.error(
+            `Embedding batch ${i / BATCH_SIZE + 1} shape mismatch: expected ${batch.length}, got ${Array.isArray(embeddings) ? embeddings.length : 'non-array'}`
+          )
+          failed += batch.length
+          continue
+        }
+
         // Update each category embedding
         for (let j = 0; j < batch.length; j++) {
           const { error: updateError } = await supabase

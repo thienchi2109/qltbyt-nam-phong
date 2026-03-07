@@ -107,11 +107,12 @@ async function main() {
       }
 
       console.log(`OK (${batchOk}/${batch.length})`)
-    } catch (batchError: any) {
-      if (batchError.name === 'AbortError') {
+    } catch (batchError: unknown) {
+      if (batchError instanceof Error && batchError.name === 'AbortError') {
         console.error(`TIMEOUT after ${FETCH_TIMEOUT_MS / 1000}s`)
       } else {
-        console.error(`ERROR: ${batchError.message}`)
+        const msg = batchError instanceof Error ? batchError.message : String(batchError)
+        console.error(`ERROR: ${msg}`)
       }
       totalFailed += batch.length
     }
@@ -123,6 +124,13 @@ async function main() {
   }
 
   console.log(`\nBackfill complete: ${totalRefreshed} refreshed, ${totalFailed} failed out of ${categories.length} total`)
+
+  if (totalFailed > 0) {
+    process.exit(1)
+  }
 }
 
-main().catch(console.error)
+main().catch((err) => {
+  console.error(err)
+  process.exit(1)
+})

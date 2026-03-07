@@ -32,9 +32,26 @@ Deno.serve(async (req: Request) => {
       )
     }
 
+    // Validate each element is a non-empty string
+    const sanitized = texts.map((t: unknown) =>
+      typeof t === 'string' && t.trim().length > 0 ? t.trim() : ''
+    )
+    const invalidCount = sanitized.filter((t: string) => t === '').length
+    if (invalidCount === sanitized.length) {
+      return new Response(
+        JSON.stringify({ error: 'All texts are empty or invalid' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
     // Generate embeddings sequentially to avoid memory pressure
+    // Empty strings get a zero-vector placeholder
     const embeddings: number[][] = []
-    for (const text of texts) {
+    for (const text of sanitized) {
+      if (text === '') {
+        embeddings.push(new Array(384).fill(0))
+        continue
+      }
       const embedding = await model.run(text, {
         mean_pool: true,
         normalize: true,
@@ -46,10 +63,11 @@ Deno.serve(async (req: Request) => {
       JSON.stringify({ embeddings }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json', 'Connection': 'keep-alive' } }
     )
-  } catch (err) {
-    console.error('Error generating embeddings:', err)
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err)
+    console.error('Error generating embeddings:', message)
     return new Response(
-      JSON.stringify({ error: err.message }),
+      JSON.stringify({ error: message }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
   }
