@@ -33,6 +33,17 @@ vi.mock('../_components/DeviceQuotaMappingPreviewDialog', () => ({
     ) : null,
 }))
 
+vi.mock('../_components/SuggestedMappingPreviewDialog', () => ({
+  SuggestedMappingPreviewDialog: ({
+    open,
+  }: {
+    open: boolean
+  }) =>
+    open ? (
+      <div data-testid="suggested-mapping-dialog">Suggested dialog</div>
+    ) : null,
+}))
+
 const mockUseContext = vi.mocked(useDeviceQuotaMappingContext)
 
 const mutate = vi.fn()
@@ -54,6 +65,7 @@ const makeContext = (overrides: Record<string, unknown> = {}) => ({
   linkEquipment: { mutate },
   isLinking: false,
   donViId: 1,
+  user: { id: '1', username: 'admin', role: 'admin' },
   ...overrides,
 })
 
@@ -70,7 +82,7 @@ describe('DeviceQuotaMappingActions', () => {
 
     const { rerender } = render(<DeviceQuotaMappingActions />)
 
-    fireEvent.click(screen.getByRole('button', { name: /phân loại/i }))
+    fireEvent.click(screen.getByRole('button', { name: 'Phân loại' }))
     expect(screen.getByTestId('mapping-preview-dialog')).toBeInTheDocument()
     expect(screen.getByTestId('linking-state')).toHaveTextContent('idle')
 
@@ -99,4 +111,50 @@ describe('DeviceQuotaMappingActions', () => {
 
     expect(screen.queryByTestId('mapping-preview-dialog')).not.toBeInTheDocument()
   })
+
+  it('shows "Gợi ý phân loại" button when donViId is set, even without equipment selection', () => {
+    mockUseContext.mockImplementation(
+      () =>
+        makeContext({
+          selectedEquipmentIds: new Set(),
+          selectedCategoryId: null,
+        }) as unknown as DeviceQuotaMappingContextValue
+    )
+
+    render(<DeviceQuotaMappingActions />)
+
+    expect(screen.getByRole('button', { name: /gợi ý phân loại/i })).toBeInTheDocument()
+  })
+
+  it('opens suggested mapping dialog when "Gợi ý phân loại" button is clicked', () => {
+    mockUseContext.mockImplementation(
+      () =>
+        makeContext({
+          selectedEquipmentIds: new Set(),
+          selectedCategoryId: null,
+        }) as unknown as DeviceQuotaMappingContextValue
+    )
+
+    render(<DeviceQuotaMappingActions />)
+
+    fireEvent.click(screen.getByRole('button', { name: /gợi ý phân loại/i }))
+
+    expect(screen.getByTestId('suggested-mapping-dialog')).toBeInTheDocument()
+  })
+
+  it('does not show "Gợi ý phân loại" button when donViId is null', () => {
+    mockUseContext.mockImplementation(
+      () =>
+        makeContext({
+          selectedEquipmentIds: new Set(),
+          selectedCategoryId: null,
+          donViId: null,
+        }) as unknown as DeviceQuotaMappingContextValue
+    )
+
+    render(<DeviceQuotaMappingActions />)
+
+    expect(screen.queryByRole('button', { name: /gợi ý phân loại/i })).not.toBeInTheDocument()
+  })
 })
+

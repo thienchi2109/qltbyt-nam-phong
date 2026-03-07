@@ -295,4 +295,28 @@ describe("useSuggestMapping", () => {
     expect(res.groups[0].device_names).toContain("Máy thở")
     expect(res.groups[0].device_names).toContain("Bơm tiêm điện")
   })
+
+  test("auto-resets to idle when enabled becomes false after pipeline started", async () => {
+    setupSuccessfulPipeline()
+
+    const { result, rerender } = renderHook(
+      ({ enabled }: { enabled: boolean }) =>
+        useSuggestMapping({ donViId: 1, enabled }),
+      { initialProps: { enabled: true } }
+    )
+
+    // Wait for pipeline to complete
+    await waitFor(() => {
+      expect(result.current.status).toBe("done")
+    })
+    expect(result.current.result).not.toBeNull()
+
+    // Disable the hook — should auto-reset all state
+    rerender({ enabled: false })
+
+    expect(result.current.status).toBe("idle")
+    expect(result.current.result).toBeNull()
+    expect(result.current.error).toBeNull()
+    expect(result.current.progress).toBe(0)
+  })
 })

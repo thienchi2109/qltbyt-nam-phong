@@ -205,6 +205,10 @@ export function useSuggestMapping({ donViId, enabled }: UseSuggestMappingOptions
 
   useEffect(() => {
     if (!enabled || donViId === null) {
+      setStatus("idle")
+      setResult(null)
+      setError(null)
+      setProgress(0)
       return
     }
 
