@@ -69,6 +69,7 @@ beforeEach(() => {
 
 const WRITE_SESSION = { user: { id: "1", role: "to_qltb", don_vi: "17" } }
 const ADMIN_SESSION = { user: { id: "2", role: "admin", don_vi: "17" } }
+const ADMIN_NO_TENANT_SESSION = { user: { id: "2b", role: "admin", don_vi: null } }
 const GLOBAL_SESSION = { user: { id: "3", role: "global", don_vi: null } }
 const VIEWER_SESSION = { user: { id: "4", role: "viewer", don_vi: "17" } }
 const OTHER_TENANT_SESSION = { user: { id: "5", role: "to_qltb", don_vi: "99" } }
@@ -174,6 +175,74 @@ describe("POST /api/embeddings/refresh-categories", () => {
     const body = await response.json()
     // Category belongs to tenant 17 but user is tenant 99 → filtered out
     expect(body.refreshed).toBe(0)
+  })
+
+  test("admin with don_vi=null refreshes ALL categories (admin is alias for global)", async () => {
+    getServerSessionMock.mockResolvedValue(ADMIN_NO_TENANT_SESSION)
+
+    // DB returns categories across multiple tenants
+    inMock.mockResolvedValue({
+      data: [
+        { id: 42, ten_nhom: "Máy thở", don_vi_id: 17 },
+        { id: 99, ten_nhom: "Bơm tiêm điện", don_vi_id: 23 },
+      ],
+      error: null,
+    })
+
+    // Edge Function returns embeddings
+    fetchMock.mockResolvedValue(
+      new Response(
+        JSON.stringify({ embeddings: [[0.1, 0.2], [0.3, 0.4]] }),
+        { status: 200 }
+      )
+    )
+
+    // DB update succeeds
+    eqMock.mockResolvedValue({ error: null })
+
+    const { POST } = await import(
+      "@/app/api/embeddings/refresh-categories/route"
+    )
+
+    const response = await POST(createRequest({ category_ids: [42, 99] }))
+    expect(response.status).toBe(200)
+
+    const body = await response.json()
+    // admin should see ALL categories regardless of don_vi
+    expect(body.refreshed).toBe(2)
+    expect(body.failed).toBe(0)
+  })
+
+  test("global with don_vi=null refreshes ALL categories", async () => {
+    getServerSessionMock.mockResolvedValue(GLOBAL_SESSION)
+
+    inMock.mockResolvedValue({
+      data: [
+        { id: 42, ten_nhom: "Máy thở", don_vi_id: 17 },
+        { id: 99, ten_nhom: "Bơm tiêm điện", don_vi_id: 23 },
+      ],
+      error: null,
+    })
+
+    fetchMock.mockResolvedValue(
+      new Response(
+        JSON.stringify({ embeddings: [[0.1, 0.2], [0.3, 0.4]] }),
+        { status: 200 }
+      )
+    )
+
+    eqMock.mockResolvedValue({ error: null })
+
+    const { POST } = await import(
+      "@/app/api/embeddings/refresh-categories/route"
+    )
+
+    const response = await POST(createRequest({ category_ids: [42, 99] }))
+    expect(response.status).toBe(200)
+
+    const body = await response.json()
+    expect(body.refreshed).toBe(2)
+    expect(body.failed).toBe(0)
   })
 
   // --- Input validation ---

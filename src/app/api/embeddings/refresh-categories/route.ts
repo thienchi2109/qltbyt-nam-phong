@@ -6,6 +6,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/auth/config'
 import { createClient } from '@supabase/supabase-js'
+import { isGlobalRole } from '@/lib/rbac'
 
 export const runtime = 'nodejs'
 
@@ -87,7 +88,7 @@ export async function POST(request: NextRequest) {
 
     // Tenant isolation: non-global users can only refresh their own tenant's categories
     const userDonVi = user.don_vi ? parseInt(user.don_vi, 10) : null
-    const filteredCategories = role === 'global'
+    const filteredCategories = isGlobalRole(role)
       ? categories
       : categories.filter(c => c.don_vi_id === userDonVi)
 
