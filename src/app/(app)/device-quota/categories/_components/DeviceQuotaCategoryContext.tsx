@@ -105,9 +105,10 @@ function useCreateMutation(
       closeDialog()
       invalidate()
       // Fire-and-forget: refresh embedding for newly created category
-      const row = result as { id?: number } | null
-      if (row?.id) {
-        refreshCategoryEmbeddings([row.id])
+      // dinh_muc_nhom_upsert returns scalar BIGINT (the category ID)
+      const categoryId = typeof result === 'number' ? result : null
+      if (categoryId) {
+        refreshCategoryEmbeddings([categoryId])
       }
     },
     onError: (error: Error) => {
