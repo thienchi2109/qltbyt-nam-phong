@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import { useQuery } from "@tanstack/react-query"
-import { Folder, X, Undo2, CheckCircle2 } from "lucide-react"
+import { Folder, CheckCircle2 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { callRpc } from "@/lib/rpc-client"
 import {
@@ -15,25 +15,19 @@ import {
 } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Skeleton } from "@/components/ui/skeleton"
 import type { Category } from "./DeviceQuotaMappingContext"
+import {
+    MappingPreviewCountBadge,
+    MappingPreviewLoadingState,
+    MappingPreviewEquipmentItem,
+    type EquipmentPreviewItem,
+} from "./MappingPreviewPrimitives"
 
 // ============================================
 // Types
 // ============================================
 
-interface EquipmentPreview {
-    id: number
-    ma_thiet_bi: string
-    ten_thiet_bi: string
-    model: string | null
-    serial: string | null
-    hang_san_xuat: string | null
-    khoa_phong_quan_ly: string | null
-    tinh_trang: string | null
-}
-
-const EMPTY_EQUIPMENT_LIST: EquipmentPreview[] = []
+const EMPTY_EQUIPMENT_LIST: EquipmentPreviewItem[] = []
 
 export interface DeviceQuotaMappingPreviewDialogProps {
     open: boolean
@@ -64,79 +58,7 @@ function CategoryCard({ category }: { category: Category }) {
     )
 }
 
-function EquipmentPreviewItem({
-    item,
-    isExcluded,
-    onToggle,
-}: {
-    item: EquipmentPreview
-    isExcluded: boolean
-    onToggle: () => void
-}) {
-    return (
-        <div
-            className={cn(
-                "flex items-start justify-between gap-2 rounded-md border p-3 transition-opacity",
-                isExcluded && "opacity-50 bg-muted/30"
-            )}
-            data-testid="equipment-item"
-        >
-            <div className="flex-1 min-w-0">
-                <p
-                    className={cn(
-                        "text-sm font-semibold truncate",
-                        isExcluded && "line-through"
-                    )}
-                >
-                    {item.ten_thiet_bi}
-                </p>
-                <div className="flex flex-wrap items-center gap-1.5 mt-1">
-                    <Badge variant="secondary" className="font-mono text-xs">
-                        {item.ma_thiet_bi}
-                    </Badge>
-                    {item.khoa_phong_quan_ly ? (
-                        <Badge variant="outline" className="text-xs">
-                            {item.khoa_phong_quan_ly}
-                        </Badge>
-                    ) : null}
-                </div>
-            </div>
-            <Button
-                variant="ghost"
-                size="icon"
-                className="h-7 w-7 shrink-0"
-                onClick={onToggle}
-                aria-label={isExcluded ? "Khôi phục" : "Loại bỏ"}
-            >
-                {isExcluded ? (
-                    <Undo2 className="h-4 w-4" />
-                ) : (
-                    <X className="h-4 w-4 text-destructive" />
-                )}
-            </Button>
-        </div>
-    )
-}
-
-function EquipmentSkeletonList() {
-    return (
-        <div className="space-y-2">
-            {Array.from({ length: 3 }).map((_, i) => (
-                <div
-                    key={i}
-                    className="rounded-md border p-3 space-y-2"
-                    data-testid="equipment-skeleton"
-                >
-                    <Skeleton className="h-4 w-3/4" />
-                    <div className="flex gap-1.5">
-                        <Skeleton className="h-5 w-20" />
-                        <Skeleton className="h-5 w-28" />
-                    </div>
-                </div>
-            ))}
-        </div>
-    )
-}
+// EquipmentPreviewItem and EquipmentSkeletonList extracted to MappingPreviewPrimitives.tsx
 
 // ============================================
 // SVG Connectors
@@ -318,11 +240,7 @@ export function DeviceQuotaMappingPreviewDialog({
                 </DialogHeader>
 
                 {/* Active count badge */}
-                <div className="text-center">
-                    <Badge variant="secondary" className="text-sm px-3 py-1">
-                        {activeCount} thiết bị đã chọn
-                    </Badge>
-                </div>
+                <MappingPreviewCountBadge count={activeCount} label="thiết bị đã chọn" />
 
                 {/* Mapping diagram */}
                 <div
@@ -354,7 +272,7 @@ export function DeviceQuotaMappingPreviewDialog({
                     {/* Equipment list (right) */}
                     <div ref={scrollRef} className="flex-1 overflow-y-auto max-h-[350px] space-y-2 relative z-10">
                         {isLoading ? (
-                            <EquipmentSkeletonList />
+                            <MappingPreviewLoadingState />
                         ) : (
                             equipmentList.map((item) => (
                                 <div
@@ -367,7 +285,7 @@ export function DeviceQuotaMappingPreviewDialog({
                                         }
                                     }}
                                 >
-                                    <EquipmentPreviewItem
+                                    <MappingPreviewEquipmentItem
                                         item={item}
                                         isExcluded={excludedIds.has(item.id)}
                                         onToggle={() => toggleExclude(item.id)}
