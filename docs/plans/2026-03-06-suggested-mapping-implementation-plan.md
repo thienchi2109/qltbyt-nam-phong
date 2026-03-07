@@ -295,23 +295,31 @@ BEGIN
         WHERE don_vi_id = p_don_vi
       ),
       full_text AS (
-        SELECT tc.id,
-          row_number() OVER (
-            ORDER BY ts_rank_cd(tc.fts, plainto_tsquery('simple', v_query_text)) DESC, tc.id
-          ) AS rank_ix
-        FROM tenant_categories tc
-        WHERE v_query_text IS NOT NULL
-          AND tc.fts @@ plainto_tsquery('simple', v_query_text)
+        SELECT ft.id, ft.rank_ix
+        FROM (
+          SELECT tc.id,
+            row_number() OVER (
+              ORDER BY ts_rank_cd(tc.fts, plainto_tsquery('simple', v_query_text)) DESC, tc.id
+            ) AS rank_ix
+          FROM tenant_categories tc
+          WHERE v_query_text IS NOT NULL
+            AND tc.fts @@ plainto_tsquery('simple', v_query_text)
+        ) ft
+        ORDER BY ft.rank_ix
         LIMIT p_match_count * 2
       ),
       semantic AS (
-        SELECT tc.id,
-          row_number() OVER (
-            ORDER BY tc.embedding <=> v_query_embedding, tc.id
-          ) AS rank_ix
-        FROM tenant_categories tc
-        WHERE v_query_embedding IS NOT NULL
-          AND tc.embedding IS NOT NULL
+        SELECT s.id, s.rank_ix
+        FROM (
+          SELECT tc.id,
+            row_number() OVER (
+              ORDER BY tc.embedding <=> v_query_embedding, tc.id
+            ) AS rank_ix
+          FROM tenant_categories tc
+          WHERE v_query_embedding IS NOT NULL
+            AND tc.embedding IS NOT NULL
+        ) s
+        ORDER BY s.rank_ix
         LIMIT p_match_count * 2
       )
       SELECT tc.id, tc.ten_nhom, tc.ma_nhom, tc.phan_loai,
@@ -445,6 +453,9 @@ BEGIN
   -- Return summary JSONB instead of plain INT
 END;
 $$;
+
+GRANT EXECUTE ON FUNCTION public.dinh_muc_thiet_bi_link_batch(JSONB, BIGINT) TO authenticated;
+REVOKE EXECUTE ON FUNCTION public.dinh_muc_thiet_bi_link_batch(JSONB, BIGINT) FROM PUBLIC;
 ```
 
 Recommended return shape:

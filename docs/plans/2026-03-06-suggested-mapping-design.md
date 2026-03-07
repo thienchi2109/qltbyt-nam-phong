@@ -136,6 +136,7 @@ Contract:
 - Non-global users phải fail sớm với `Missing don_vi claim` nếu JWT thiếu `don_vi`; không được silent-return `[]`
 - `embedding = null` phải rơi về FTS-only path, không được cast lỗi
 - Semantic branch dùng exact cosine similarity trên tập category đã filter theo tenant
+- Trong các CTE được xếp hạng rồi `LIMIT`, phải `ORDER BY rank_ix` trước khi giới hạn kết quả; không được `LIMIT` trên tập chưa có outer ordering
 
 Pseudo-shape:
 
@@ -147,10 +148,14 @@ WITH tenant_categories AS (
 ),
 full_text AS (...),
 semantic AS (
-  SELECT id
-  FROM tenant_categories
-  WHERE embedding IS NOT NULL
-  ORDER BY embedding <=> v_query_embedding
+  SELECT *
+  FROM (
+    SELECT id,
+      row_number() OVER (ORDER BY embedding <=> v_query_embedding, id) AS rank_ix
+    FROM tenant_categories
+    WHERE embedding IS NOT NULL
+  ) semantic_ranked
+  ORDER BY rank_ix
   LIMIT p_match_count * 2
 )
 SELECT ... FROM full_text
@@ -174,6 +179,7 @@ Yêu cầu contract:
 - Chạy trong 1 transaction
 - Input là mảng group theo category, ví dụ `[{ "nhom_id": 1, "thiet_bi_ids": [10, 11] }, { "nhom_id": 2, "thiet_bi_ids": [12] }]`
 - Không thay thế `dinh_muc_thiet_bi_link`; manual flow hiện tại vẫn dùng RPC cũ
+- Must include explicit `GRANT EXECUTE ... TO authenticated` and `REVOKE EXECUTE ... FROM PUBLIC` statements in the migration
 - Reject nếu cùng một `device_id` xuất hiện ở nhiều group trong cùng request
 - Chỉ update row vẫn còn `nhom_thiet_bi_id IS NULL`
 - Không ghi đè dữ liệu vừa được người khác map sau lúc preview
