@@ -1,46 +1,8 @@
--- Migration: add hybrid search foundation for suggested mapping
--- Purpose: enable pgvector extension, add embedding + fts columns to nhom_thiet_bi,
---          create hybrid_search_category_batch RPC with tenant isolation and exact cosine scan
--- Decision: NO HNSW index in v1 — exact scan is sufficient for ~567 categories
+-- Migration: fix hybrid_search_category_batch RRF parameter guard
+-- Purpose: enforce positive p_rrf_k to prevent invalid RRF denominators in live DB
 
 BEGIN;
 
--- ============================================================
--- 1. Enable pgvector extension (384-dim embeddings for gte-small)
--- ============================================================
-CREATE EXTENSION IF NOT EXISTS vector WITH SCHEMA extensions;
-
--- ============================================================
--- 2. Add embedding column to nhom_thiet_bi
--- ============================================================
-ALTER TABLE public.nhom_thiet_bi
-ADD COLUMN IF NOT EXISTS embedding extensions.vector(384);
-
--- ============================================================
--- 3. Add generated tsvector column for full-text search
---    Uses 'simple' config — suitable for Vietnamese names (no stemming)
--- ============================================================
-ALTER TABLE public.nhom_thiet_bi
-ADD COLUMN IF NOT EXISTS fts tsvector
-GENERATED ALWAYS AS (to_tsvector('simple', COALESCE(ten_nhom, ''))) STORED;
-
--- ============================================================
--- 4. GIN index for full-text search
--- ============================================================
-CREATE INDEX IF NOT EXISTS idx_nhom_thiet_bi_fts
-ON public.nhom_thiet_bi USING gin (fts);
-
--- ============================================================
--- 5. hybrid_search_category_batch RPC
---    Hybrid search combining full-text + exact cosine similarity + RRF
---    Processes one chunk of queries at a time (recommended max 50/call)
---
---    Security:
---      - SECURITY DEFINER + tight search_path
---      - Standalone JWT guards for v_role, v_user_id, v_don_vi
---      - Tenant isolation per role
---      - GRANT authenticated / REVOKE PUBLIC
--- ============================================================
 CREATE OR REPLACE FUNCTION public.hybrid_search_category_batch(
   p_queries JSONB,
   p_don_vi BIGINT DEFAULT NULL,
@@ -66,12 +28,12 @@ DECLARE
   v_results JSONB := '[]'::JSONB;
   v_matches JSONB;
 BEGIN
-  -- ── Parameter guard ────────────────────────────────────────
+  -- Parameter guard
   IF p_rrf_k IS NULL OR p_rrf_k <= 0 THEN
     RAISE EXCEPTION 'p_rrf_k must be > 0' USING ERRCODE = '22023';
   END IF;
 
-  -- ── Role guard ──────────────────────────────────────────────
+  -- Role guard
   IF v_role IS NULL OR v_role = '' THEN
     v_role := current_setting('request.jwt.claims', true)::json->>'role';
   END IF;
@@ -79,17 +41,17 @@ BEGIN
     RAISE EXCEPTION 'Missing role claim' USING errcode = '42501';
   END IF;
 
-  -- ── User ID guard ──────────────────────────────────────────
+  -- User ID guard
   IF v_user_id IS NULL OR v_user_id = '' THEN
     RAISE EXCEPTION 'Missing user_id claim' USING errcode = '42501';
   END IF;
 
-  -- ── Tenant guard (non-global must have don_vi) ─────────────
+  -- Tenant guard (non-global must have don_vi)
   IF v_role NOT IN ('global', 'admin') AND (v_don_vi IS NULL OR v_don_vi = '') THEN
     RAISE EXCEPTION 'Missing don_vi claim' USING errcode = '42501';
   END IF;
 
-  -- ── Tenant isolation per role ──────────────────────────────
+  -- Tenant isolation per role
   IF v_role IN ('global', 'admin') THEN
     -- global/admin: honour the caller-supplied p_don_vi
     NULL;
@@ -103,12 +65,12 @@ BEGIN
     p_don_vi := NULLIF(v_don_vi, '')::BIGINT;
   END IF;
 
-  -- ── Null don_vi guard (prevent cross-tenant exposure) ──────
+  -- Null don_vi guard (prevent cross-tenant exposure)
   IF p_don_vi IS NULL THEN
     RETURN '[]'::JSONB;
   END IF;
 
-  -- ── Process each query in the batch ────────────────────────
+  -- Process each query in the batch
   FOR v_query IN SELECT * FROM jsonb_array_elements(p_queries)
   LOOP
     v_query_text := NULLIF(BTRIM(v_query->>'text'), '');
@@ -176,7 +138,6 @@ BEGIN
 END;
 $$;
 
--- ── Permission grants ────────────────────────────────────────
 GRANT EXECUTE ON FUNCTION public.hybrid_search_category_batch(JSONB, BIGINT, INT, FLOAT, FLOAT, INT) TO authenticated;
 REVOKE EXECUTE ON FUNCTION public.hybrid_search_category_batch(JSONB, BIGINT, INT, FLOAT, FLOAT, INT) FROM PUBLIC;
 

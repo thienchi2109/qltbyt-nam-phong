@@ -81,6 +81,14 @@ GRANT EXECUTE ON FUNCTION fn_name TO authenticated;
 | `qltb_khoa` | Single tenant + dept | Department equipment manager |
 | `user` | Single tenant | Basic read access |
 
+> ⚠️ **`admin` = `global` alias — ALWAYS normalize!**
+>
+> The RPC proxy (`/api/rpc/[fn]`) auto-normalizes `admin` → `global` before signing JWT.
+> **Outside the proxy** (standalone API routes, Edge Functions, server utilities), the session
+> still contains the raw `admin` role. You MUST use `isGlobalRole()` from `@/lib/rbac` instead
+> of `role === 'global'`. Checking `role === 'global'` alone **silently excludes admin users**
+> from tenant-bypass logic, causing data-empty responses.
+
 📖 **Full RBAC Documentation:** See [`docs/RBAC.md`](docs/RBAC.md) for complete permission matrices, role hierarchy diagrams, and implementation patterns.
 
 </SECURITY_CRITICAL>

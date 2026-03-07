@@ -7,6 +7,7 @@ import { useSession } from "next-auth/react"
 import { useToast } from "@/hooks/use-toast"
 import { callRpc } from "@/lib/rpc-client"
 import { translateRpcError } from "@/lib/error-translations"
+import { refreshCategoryEmbeddings } from "@/lib/refresh-category-embeddings"
 import { filterCategoriesWithAncestorsAndDescendants } from "../_utils/filterCategoriesWithAncestorsAndDescendants"
 import type {
   CategoryDeleteState,
@@ -96,13 +97,19 @@ function useCreateMutation(
         },
       })
     },
-    onSuccess: () => {
+    onSuccess: (result: unknown) => {
       toast({
         title: "Thành công",
         description: "Đã tạo danh mục thiết bị.",
       })
       closeDialog()
       invalidate()
+      // Fire-and-forget: refresh embedding for newly created category
+      // dinh_muc_nhom_upsert returns scalar BIGINT (the category ID)
+      const categoryId = typeof result === 'number' ? result : null
+      if (categoryId) {
+        refreshCategoryEmbeddings([categoryId])
+      }
     },
     onError: (error: Error) => {
       toast({
@@ -144,13 +151,15 @@ function useUpdateMutation(
     onMutate: (data) => {
       setMutatingCategoryId(data.id)
     },
-    onSuccess: () => {
+    onSuccess: (_result: unknown, variables) => {
       toast({
         title: "Thành công",
         description: "Đã cập nhật danh mục.",
       })
       closeDialog()
       invalidate()
+      // Fire-and-forget: refresh embedding for updated category
+      refreshCategoryEmbeddings([variables.id])
     },
     onError: (error: Error) => {
       toast({
