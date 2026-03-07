@@ -208,9 +208,9 @@ export function DeviceQuotaCategoryImportDialog() {
 
       // Fire-and-forget: refresh embeddings for imported categories
       // result.details contains {index, success, ma_nhom, id?} per the RPC definition
-      const importedIds = ((result as any).details ?? [])
-        .filter((d: any) => d.success && d.id)
-        .map((d: any) => d.id as number)
+      const importedIds = (result.details ?? [])
+        .filter((d) => d.success && d.id != null)
+        .map((d) => d.id as number)
       if (importedIds.length > 0) {
         refreshCategoryEmbeddings(importedIds)
       }

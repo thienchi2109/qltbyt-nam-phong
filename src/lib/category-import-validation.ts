@@ -28,6 +28,7 @@ export interface ImportResultDetail {
   ma_nhom: string
   success: boolean
   error?: string
+  id?: number
 }
 
 export interface ImportResult {
