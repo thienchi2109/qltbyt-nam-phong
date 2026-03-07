@@ -4,7 +4,7 @@
 
 **Goal:** Xây dựng luồng gợi ý phân loại cho toàn bộ thiết bị chưa gán của một đơn vị, cho phép role có quyền ghi xem trước và lưu hàng loạt, đồng thời giữ hiệu năng, tính đúng và an toàn dữ liệu ổn định ở quy mô hiện tại.
 
-**Architecture:** Client-side hook điều phối các call theo batch/chunk qua `/api/rpc/[fn]`, cộng thêm một Edge Function chỉ dùng để sinh embedding. Tìm category dùng hybrid search gồm full-text + exact cosine similarity trên tập category của đúng tenant; chưa dùng ANN/HNSW ở v1 vì số lượng category hiện còn nhỏ và độ chính xác quan trọng hơn throughput. Batch save phải race-safe: chỉ link những thiết bị vẫn còn chưa gán tại thời điểm lưu và phải trả về summary các row bị skip.
+**Architecture:** Client-side hook điều phối các call theo batch/chunk qua `/api/rpc/[fn]`, cộng thêm một Edge Function chỉ dùng để sinh embedding. Tìm category dùng hybrid search gồm full-text + exact cosine similarity trên tập category của đúng tenant; chưa dùng ANN/HNSW ở v1 vì số lượng category hiện còn nhỏ và độ chính xác quan trọng hơn throughput. Suggested save là **một command riêng** với manual flow hiện tại: manual flow vẫn là `1 category -> many devices` qua `dinh_muc_thiet_bi_link`, còn suggested flow commit **nhiều group `1 category -> many devices` trong một lần xác nhận** qua `dinh_muc_thiet_bi_link_batch`. Batch save phải race-safe: chỉ link những thiết bị vẫn còn chưa gán tại thời điểm lưu, không cho một `device_id` xuất hiện ở nhiều group trong cùng payload, và phải trả về summary các row bị skip.
 
 **Tech Stack:** Next.js App Router, React/TypeScript, Supabase RPC, Supabase Edge Functions, Postgres `tsvector`, `pgvector`, React Query.
 
@@ -17,6 +17,8 @@
 - Chunking: `embed-device-name` và `hybrid_search_category_batch` chạy theo chunk **50 item/lần** để giữ headroom so với giới hạn body 2MB của RPC proxy.
 - Embedding lifecycle: backfill 1 lần bằng utility chạy ở server tin cậy; refresh tự động chỉ cho các luồng thực sự làm thay đổi category.
 - Security: không deploy public function `verify_jwt = false` với `SUPABASE_SERVICE_ROLE_KEY`.
+- Save model: manual mapping hiện tại **giữ nguyên** contract `selectedCategoryId + selectedEquipmentIds -> dinh_muc_thiet_bi_link`; suggested mapping là flow riêng với payload grouped theo category.
+- Suggested payload invariant: trong một lần xác nhận suggested mapping, mỗi `device_id` chỉ được phép xuất hiện **tối đa một lần** trên toàn bộ `p_mappings`.
 - Frontend reuse: ưu tiên **tận dụng `DeviceQuotaMappingActions.tsx` và refactor các phần tái sử dụng được từ `DeviceQuotaMappingPreviewDialog.tsx`** thay vì tạo thêm một preview dialog monolith.
 - File-size guard: không để bất kỳ file preview-related nào vượt khoảng **350 lines**; nếu có nguy cơ vượt ngưỡng, tách theo trách nhiệm trước khi thêm logic mới.
 
@@ -39,6 +41,8 @@
 3. **Race-safe batch save**
    - `dinh_muc_thiet_bi_link_batch` chỉ được update các row vẫn còn `nhom_thiet_bi_id IS NULL` tại thời điểm lưu.
    - Không được ghi đè mapping vừa được người khác phân loại thủ công sau lúc preview.
+   - Về mặt domain, `dinh_muc_thiet_bi_link_batch` là tập hợp của nhiều thao tác `1 category -> many devices` trong một transaction; không mở rộng manual flow hiện tại thành mô hình many-to-many mơ hồ.
+   - Một `device_id` không được xuất hiện ở nhiều `nhom_id` khác nhau trong cùng payload; RPC phải validate và fail sớm nếu payload sai.
    - RPC nên trả về `JSONB` summary thay vì chỉ `INT`, để UI hiện được số lượng/link bị skip do stale preview.
 
 4. **Refresh embedding theo batch, không N+1**
@@ -66,11 +70,12 @@
 **Tasks:**
 - [ ] Chốt exact semantic scan cho v1, không thêm HNSW trong migration đầu tiên.
 - [ ] Chốt partial index cho query `unassigned_names`.
+- [ ] Chốt command model: manual flow giữ `dinh_muc_thiet_bi_link`; suggested flow dùng `dinh_muc_thiet_bi_link_batch` với grouped payload riêng.
 - [ ] Chốt contract race-safe cho `dinh_muc_thiet_bi_link_batch`.
 - [ ] Chốt lifecycle refresh embedding và loại `dinh_muc_unified_import` khỏi danh sách refresh.
 - [ ] Chốt chiến lược reuse component và giới hạn file-size cho preview UI.
 
-**Exit criteria:** Design doc và implementation plan thống nhất hoàn toàn về query shape, index strategy, permission, concurrency guard.
+**Exit criteria:** Design doc và implementation plan thống nhất hoàn toàn về query shape, index strategy, permission, concurrency guard, và interaction model giữa manual flow với suggested flow.
 
 ### Phase 1 — Schema nền và read-path RPCs
 
@@ -87,11 +92,11 @@
 - [ ] Thêm `fts tsvector GENERATED ALWAYS AS (to_tsvector('simple', ten_nhom)) STORED`.
 - [ ] Tạo GIN index cho `fts`.
 - [ ] Tạo partial index `idx_thiet_bi_unassigned_name_by_unit` trên `public.thiet_bi (don_vi, ten_thiet_bi) WHERE nhom_thiet_bi_id IS NULL`.
-- [ ] Implement `hybrid_search_category_batch` với JWT guards, tenant isolation, null-safe fallback, exact cosine scan.
+- [ ] Implement `hybrid_search_category_batch` với đầy đủ JWT guards: `role`, `user_id`, mandatory `don_vi` guard cho non-global users, tenant isolation, null-safe fallback, exact cosine scan.
 - [ ] Implement `dinh_muc_thiet_bi_unassigned_names` với JWT guards, tenant isolation, grouping theo tên thiết bị.
 - [ ] Whitelist 2 RPC mới trong `/api/rpc/[fn]`.
 
-**Exit criteria:** Có thể gọi `dinh_muc_thiet_bi_unassigned_names` và `hybrid_search_category_batch` qua proxy với tenant rules đúng, không lỗi khi `embedding = null`.
+**Exit criteria:** Có thể gọi `dinh_muc_thiet_bi_unassigned_names` và `hybrid_search_category_batch` qua proxy với tenant rules đúng; `hybrid_search_category_batch` phải fail sớm với `Missing don_vi claim` cho malformed non-global JWT và không lỗi khi `embedding = null`.
 
 ### Phase 2 — Embedding lifecycle
 
@@ -115,7 +120,7 @@
 
 ### Phase 3 — Frontend preview flow
 
-**Mục tiêu:** Người dùng chạy gợi ý, xem preview grouped theo category và hiểu rõ scope.
+**Mục tiêu:** Người dùng chạy gợi ý, xem preview grouped theo category và hiểu rõ scope mà không làm méo model `1 category -> many devices` của manual flow hiện tại.
 
 **Files:**
 - Modify: `src/app/(app)/device-quota/mapping/_components/DeviceQuotaMappingActions.tsx`
@@ -131,16 +136,16 @@
 
 **Concrete split proposal:**
 - `DeviceQuotaMappingActions.tsx`: giữ vai trò action bar hiện có, chỉ thêm wiring cho nút "Gợi ý phân loại".
-- `DeviceQuotaMappingPreviewDialog.tsx`: giữ flow preview manual mapping hiện tại, nhưng refactor để dùng shared preview primitives.
+- `DeviceQuotaMappingPreviewDialog.tsx`: giữ nguyên manual flow `1 category -> many devices` hiện tại, nhưng refactor để dùng shared preview primitives.
 - `MappingPreviewPrimitives.tsx`: file shared cho preview flows, gồm dialog shell, footer note, count badge, loading skeleton, equipment row với exclude/restore.
-- `SuggestedMappingPreviewDialog.tsx`: thin container cho suggested flow; chỉ giữ state machine, orchestration result binding, save action, và compose các section con.
+- `SuggestedMappingPreviewDialog.tsx`: thin container cho suggested flow; chỉ giữ state machine grouped-by-category, orchestration result binding, save action, và compose các section con.
 - `SuggestedMappingGroupSection.tsx`: render một nhóm category được gợi ý.
 - `SuggestedMappingUnmatchedSection.tsx`: render section "Chưa gợi ý được".
 
 **Tasks:**
 - [ ] Tận dụng `DeviceQuotaMappingActions.tsx` làm action bar hiện hữu; không tạo thêm footer/action component mới chỉ để phục vụ suggested flow.
 - [ ] Refactor `DeviceQuotaMappingPreviewDialog.tsx` để trích các phần có thể dùng chung vào `MappingPreviewPrimitives.tsx`: dialog shell/header-footer pattern, count badge, loading skeleton, item row với exclude/restore.
-- [ ] Tạo `SuggestedMappingPreviewDialog.tsx` như **thin container**; không nhồi toàn bộ rendering logic của grouped results và unmatched results vào đây.
+- [ ] Tạo `SuggestedMappingPreviewDialog.tsx` như **thin container**; không nhồi toàn bộ rendering logic của grouped results và unmatched results vào đây, và không reuse trực tiếp manual confirm contract kiểu `targetCategory + confirmedIds`.
 - [ ] Tách `SuggestedMappingGroupSection.tsx` để render mỗi nhóm category được gợi ý.
 - [ ] Tách `SuggestedMappingUnmatchedSection.tsx` để render section "Chưa gợi ý được".
 - [ ] Thêm note footer bắt buộc, dùng lại ở preview flow phù hợp: `"Đây chỉ là gợi ý phân loại. Vui lòng kiểm tra lại trước khi lưu"`.
@@ -148,10 +153,12 @@
 - [ ] Implement hook orchestration: `unassigned_names` → `embed-device-name` theo chunk 50 → `hybrid_search_category_batch` theo chunk 50.
 - [ ] Hiển thị progress/loading rõ trong dialog.
 - [ ] Hiển thị grouped results, unmatched results, exclude/restore per item và per group.
+- [ ] Suggested preview phải giữ state theo grouped mappings, ví dụ `{ nhom_id, nhom_label, thiet_bi_ids[] }[]`; không phụ thuộc `selectedCategoryId` của manual flow.
+- [ ] Nút xác nhận của suggested flow phải phản ánh đây là nhiều group được áp dụng trong một lần lưu, ví dụ `Áp dụng 12 gợi ý phân loại`, không dùng wording dễ hiểu nhầm là single-category manual save.
 - [ ] `regional_leader` chỉ xem preview, không có save action.
 - [ ] Mở rộng test hiện có và thêm test mới cho suggested preview; không tạo test harness song song nếu logic có thể bám theo shared preview primitives.
 
-**Exit criteria:** Preview chạy được end-to-end cho role đọc và role ghi; kiến trúc UI reuse tối đa component hiện có, footer disclaimer luôn hiển thị ở suggested preview, và không sinh thêm file preview monolith.
+**Exit criteria:** Preview chạy được end-to-end cho role đọc và role ghi; kiến trúc UI reuse tối đa component hiện có, footer disclaimer luôn hiển thị ở suggested preview, manual flow vẫn giữ contract `1 category -> many devices`, và không sinh thêm file preview monolith.
 
 ### Phase 4 — Save path an toàn và audit
 
@@ -164,6 +171,9 @@
 
 **Tasks:**
 - [ ] Implement `dinh_muc_thiet_bi_link_batch`.
+- [ ] `dinh_muc_thiet_bi_link_batch` nhận payload grouped theo category, ví dụ `[{ "nhom_id": 1, "thiet_bi_ids": [10, 11] }, { "nhom_id": 2, "thiet_bi_ids": [12] }]`.
+- [ ] Validate payload để fail sớm nếu cùng một `device_id` xuất hiện ở nhiều group khác nhau trong cùng request.
+- [ ] Giữ `dinh_muc_thiet_bi_link` nguyên trạng cho manual flow; suggested save không được bẻ sang reuse manual mutation signature.
 - [ ] Contract trả về `JSONB` summary, ví dụ:
   ```sql
   {"affected_count": 120, "skipped_already_assigned": 7, "skipped_not_found": 2}
@@ -188,7 +198,9 @@
 - [ ] SQL smoke test cho `hybrid_search_category_batch` với `embedding = null`.
 - [ ] SQL smoke test cho `dinh_muc_thiet_bi_unassigned_names`.
 - [ ] SQL smoke test cho `dinh_muc_thiet_bi_link_batch` với case stale preview.
+- [ ] SQL smoke test để xác nhận payload duplicate `device_id` across groups bị reject.
 - [ ] Frontend unit tests cho button, preview dialog, chunk orchestration, preview-only flow.
+- [ ] Frontend unit tests để xác nhận manual flow vẫn gọi `dinh_muc_thiet_bi_link`, còn suggested flow gọi `dinh_muc_thiet_bi_link_batch`.
 - [ ] Chạy `EXPLAIN (ANALYZE, BUFFERS)` cho query `dinh_muc_thiet_bi_unassigned_names` trên tenant có dữ liệu thật.
 - [ ] Chạy benchmark đại diện cho end-to-end suggestion flow.
 - [ ] Chỉ khi benchmark không đạt mục tiêu mới mở follow-up plan để thêm ANN/HNSW.
@@ -246,6 +258,9 @@ BEGIN
   END IF;
   IF v_user_id IS NULL OR v_user_id = '' THEN
     RAISE EXCEPTION 'Missing user_id claim' USING errcode = '42501';
+  END IF;
+  IF v_role NOT IN ('global', 'admin') AND (v_don_vi IS NULL OR v_don_vi = '') THEN
+    RAISE EXCEPTION 'Missing don_vi claim' USING errcode = '42501';
   END IF;
 
   IF v_role IN ('global', 'admin') THEN
@@ -318,6 +333,9 @@ BEGIN
   RETURN v_results;
 END;
 $$;
+
+GRANT EXECUTE ON FUNCTION public.hybrid_search_category_batch(JSONB, BIGINT, INT, FLOAT, FLOAT, INT) TO authenticated;
+REVOKE EXECUTE ON FUNCTION public.hybrid_search_category_batch(JSONB, BIGINT, INT, FLOAT, FLOAT, INT) FROM PUBLIC;
 ```
 
 ### Database (Migration 2 of 2)
@@ -347,9 +365,40 @@ LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public, pg_temp
 AS $$
+DECLARE
+  v_role TEXT := current_setting('request.jwt.claims', true)::json->>'app_role';
+  v_user_id TEXT := current_setting('request.jwt.claims', true)::json->>'user_id';
+  v_don_vi TEXT := current_setting('request.jwt.claims', true)::json->>'don_vi';
+  v_allowed_facilities BIGINT[];
 BEGIN
-  -- Full JWT guards + tenant isolation
-  -- regional_leader allowed to read via allowed_don_vi_for_session()
+  IF v_role IS NULL OR v_role = '' THEN
+    v_role := current_setting('request.jwt.claims', true)::json->>'role';
+  END IF;
+  IF v_role IS NULL OR v_role = '' THEN
+    RAISE EXCEPTION 'Missing role claim' USING errcode = '42501';
+  END IF;
+  IF v_user_id IS NULL OR v_user_id = '' THEN
+    RAISE EXCEPTION 'Missing user_id claim' USING errcode = '42501';
+  END IF;
+  IF v_role NOT IN ('global', 'admin') AND (v_don_vi IS NULL OR v_don_vi = '') THEN
+    RAISE EXCEPTION 'Missing don_vi claim' USING errcode = '42501';
+  END IF;
+
+  IF v_role IN ('global', 'admin') THEN
+    NULL;
+  ELSIF v_role = 'regional_leader' THEN
+    v_allowed_facilities := public.allowed_don_vi_for_session();
+    IF p_don_vi IS NULL OR NOT (p_don_vi = ANY(v_allowed_facilities)) THEN
+      RAISE EXCEPTION 'Access denied: facility % is not in your region', p_don_vi;
+    END IF;
+  ELSE
+    p_don_vi := NULLIF(v_don_vi, '')::BIGINT;
+  END IF;
+
+  IF p_don_vi IS NULL THEN
+    RETURN;
+  END IF;
+
   RETURN QUERY
   SELECT
     BTRIM(tb.ten_thiet_bi) AS ten_thiet_bi,
@@ -363,9 +412,14 @@ BEGIN
   ORDER BY COUNT(*) DESC, BTRIM(tb.ten_thiet_bi);
 END;
 $$;
+
+GRANT EXECUTE ON FUNCTION public.dinh_muc_thiet_bi_unassigned_names(BIGINT) TO authenticated;
+REVOKE EXECUTE ON FUNCTION public.dinh_muc_thiet_bi_unassigned_names(BIGINT) FROM PUBLIC;
 ```
 
 **3. `dinh_muc_thiet_bi_link_batch`** — Batch link in single transaction, race-safe:
+
+This RPC is **not** a replacement for `dinh_muc_thiet_bi_link`. It is a separate command for suggested mapping, where one confirmation can commit many grouped operations of the existing domain shape `1 category -> many devices`.
 
 ```sql
 CREATE OR REPLACE FUNCTION public.dinh_muc_thiet_bi_link_batch(
@@ -381,6 +435,12 @@ BEGIN
   -- Full JWT guards + tenant isolation
   -- Roles: global, admin, to_qltb only
   -- regional_leader forbidden
+  -- Payload shape:
+  -- [
+  --   { "nhom_id": 1, "thiet_bi_ids": [10, 11] },
+  --   { "nhom_id": 2, "thiet_bi_ids": [12] }
+  -- ]
+  -- Validate no device_id appears in more than one group inside p_mappings
   -- Only update rows still nhom_thiet_bi_id IS NULL at save time
   -- Return summary JSONB instead of plain INT
 END;
@@ -394,6 +454,7 @@ Recommended return shape:
   "affected_count": 120,
   "skipped_already_assigned": 7,
   "skipped_not_found": 2,
+  "invalid_duplicate_device_ids": [],
   "groups": [
     {"nhom_id": 1, "affected": 40, "skipped": 3}
   ]
@@ -453,7 +514,7 @@ Refactor dialog hiện có để trích các phần dùng chung cho preview flow
 - Equipment/item row với exclude/restore interaction
 - Footer note slot để có thể dùng chung disclaimer hoặc helper copy khi cần
 
-Mục tiêu là dùng lại các phần này cho suggested preview thay vì copy-paste hoặc tạo thêm một file preview rất lớn.
+Mục tiêu là dùng lại các phần này cho suggested preview thay vì copy-paste hoặc tạo thêm một file preview rất lớn. Dialog này vẫn giữ model manual `targetCategory + confirmedIds`; không mở rộng nó để gánh state grouped-by-category của suggested flow.
 
 #### [CREATE ONLY IF NEEDED] thin suggested-preview container
 
@@ -482,6 +543,8 @@ Thin container cho suggested flow:
 - Compose `MappingPreviewPrimitives`, `SuggestedMappingGroupSection`, `SuggestedMappingUnmatchedSection`
 - Hiển thị footer note bắt buộc: `"Đây chỉ là gợi ý phân loại. Vui lòng kiểm tra lại trước khi lưu"`
 - Xử lý save action, preview-only state cho `regional_leader`, và summary sau save
+- Giữ state dạng grouped mappings (`[{ nhom_id, thiet_bi_ids[] }]`) thay vì contract manual `targetCategory + confirmedIds`
+- Confirm action phải thể hiện đây là một lần lưu nhiều group, không phải single-category save
 
 #### [NEW] `SuggestedMappingGroupSection.tsx`
 
@@ -509,7 +572,8 @@ Client-side orchestration:
 // 4× Edge Function 'embed-device-name' (50 names/batch)
 // 4× callRpc('hybrid_search_category_batch', { p_queries, p_don_vi })
 // 1× callRpc('dinh_muc_thiet_bi_link_batch') for write roles only
-```
+// manual flow continues to use callRpc('dinh_muc_thiet_bi_link')
+``` 
 
 #### [MODIFY] `route.ts` — ALLOWED_FUNCTIONS
 
@@ -530,6 +594,7 @@ Add:
 **Database**
 
 ```sql
+-- malformed non-global JWT without don_vi claim must fail with Missing don_vi claim
 -- FTS-only fallback must work
 SELECT hybrid_search_category_batch(
   '[{"text":"Bơm tiêm điện","embedding":null}]'::JSONB,
@@ -537,11 +602,18 @@ SELECT hybrid_search_category_batch(
 );
 
 -- unassigned_names must group by trimmed name and stay tenant-scoped
+-- malformed non-global JWT without don_vi claim must also fail for unassigned_names
 SELECT * FROM dinh_muc_thiet_bi_unassigned_names(<don_vi_id>);
 
 -- link_batch must skip rows that are no longer unassigned
 SELECT dinh_muc_thiet_bi_link_batch(
   '[{"nhom_id":1,"thiet_bi_ids":[10,11]}]'::JSONB,
+  <don_vi_id>
+);
+
+-- duplicate device_id across groups must be rejected
+SELECT dinh_muc_thiet_bi_link_batch(
+  '[{"nhom_id":1,"thiet_bi_ids":[10,11]},{"nhom_id":2,"thiet_bi_ids":[11]}]'::JSONB,
   <don_vi_id>
 );
 ```
@@ -587,6 +659,7 @@ SELECT * FROM dinh_muc_thiet_bi_unassigned_names(<don_vi_id>);
 | Semantic index strategy | HNSW in initial migration | Exact semantic scan first, ANN deferred until benchmark proves need |
 | Unassigned-name query | No dedicated index | Partial composite index for `(don_vi, ten_thiet_bi)` where `nhom_thiet_bi_id IS NULL` |
 | Batch save contract | `RETURNS INT`, overwrite risk unspecified | `RETURNS JSONB` summary + skip rows no longer unassigned |
+| Save interaction model | New flow could be mistaken for arbitrary many-to-many save | Manual flow stays `1 category -> many devices`; suggested flow commits many grouped `1 category -> many devices` operations in one confirm |
 | Refresh lifecycle | Included `dinh_muc_unified_import` | Refresh only for category-changing flows |
 | Preview UI architecture | Risk of new monolithic dialog | Concrete split: shared preview primitives + thin suggested container + section components |
 | UX disclaimer | Not specified | Footer note bắt buộc: `"Đây chỉ là gợi ý phân loại. Vui lòng kiểm tra lại trước khi lưu"` |
