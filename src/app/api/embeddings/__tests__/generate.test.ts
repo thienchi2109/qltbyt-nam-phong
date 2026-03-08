@@ -121,12 +121,12 @@ describe("POST /api/embeddings/generate", () => {
 
     const { POST } = await import("@/app/api/embeddings/generate/route")
 
-    const oversizedTexts = Array.from({ length: 51 }, (_, i) => `text-${i}`)
+    const oversizedTexts = Array.from({ length: 11 }, (_, i) => `text-${i}`)
     const response = await POST(createRequest({ texts: oversizedTexts }))
     expect(response.status).toBe(400)
 
     const body = await response.json()
-    expect(body.error).toContain("50")
+    expect(body.error).toContain("10")
   })
 
   // --- Successful proxy ---

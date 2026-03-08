@@ -11,7 +11,7 @@ import { authOptions } from '@/auth/config'
 
 export const runtime = 'nodejs'
 
-const MAX_BATCH_SIZE = 50
+const MAX_BATCH_SIZE = 10
 const ALLOWED_ROLES = ['global', 'admin', 'to_qltb', 'regional_leader']
 
 /**

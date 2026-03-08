@@ -8,7 +8,8 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts"
 import { corsHeaders } from "../_shared/cors.ts"
 
 const model = new Supabase.ai.Session('gte-small')
-const MAX_BATCH_SIZE = 50
+// Free tier: 512MB RAM limit per execution. Tested: batch=10 OK, batch=20 → 546
+const MAX_BATCH_SIZE = 10
 
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') {

@@ -58,7 +58,7 @@ interface SearchResult {
   }[]
 }
 
-const CHUNK_SIZE = 50
+const CHUNK_SIZE = 10
 
 // ============================================
 // Chunking helpers
