@@ -303,14 +303,6 @@ export function useSuggestMapping({ donViId, enabled }: UseSuggestMappingOptions
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [enabled, donViId])
 
-  const reset = useCallback(() => {
-    abortRef.current?.abort()
-    abortRef.current = null
-    mutation.reset()
-    setPipelineStatus("idle")
-    setProgress(0)
-  }, [mutation])
-
   // ============================================
   // Save Batch Mutation
   // ============================================
@@ -333,6 +325,15 @@ export function useSuggestMapping({ donViId, enabled }: UseSuggestMappingOptions
     },
     [saveMutation]
   )
+
+  const reset = useCallback(() => {
+    abortRef.current?.abort()
+    abortRef.current = null
+    mutation.reset()
+    saveMutation.reset()
+    setPipelineStatus("idle")
+    setProgress(0)
+  }, [mutation, saveMutation])
 
   const saveStatus: SaveStatus = saveMutation.isPending
     ? "saving"
