@@ -97,6 +97,9 @@ async function fetchEmbeddings(
     }
 
     const { embeddings } = await res.json()
+    if (!Array.isArray(embeddings)) {
+      throw new Error(`Invalid embedding response for chunk ${i + 1}`)
+    }
     allEmbeddings.push(...embeddings)
     if (!signal.aborted) onProgress?.(i + 1, chunks.length)
   }
@@ -127,7 +130,7 @@ async function searchCategories(
       args: { p_queries, p_don_vi: donViId },
     })
 
-    allResults.push(...results)
+    allResults.push(...(results ?? []))
     if (!signal.aborted) onProgress?.(i + 1, chunks.length)
   }
 

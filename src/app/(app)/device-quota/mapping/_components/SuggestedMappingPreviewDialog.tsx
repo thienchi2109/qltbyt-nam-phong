@@ -2,6 +2,7 @@
 
 import * as React from "react"
 import { Sparkles, CheckCircle2, AlertTriangle } from "lucide-react"
+import { isEquipmentManagerRole, isRegionalLeaderRole } from "@/lib/rbac"
 import {
     Dialog,
     DialogContent,
@@ -37,8 +38,6 @@ export interface SuggestedMappingPreviewDialogProps {
     donViId: number | null
     userRole: string | null
 }
-
-const WRITE_ROLES = ["global", "admin", "to_qltb"]
 
 // ============================================
 // Status label mapping
@@ -132,8 +131,8 @@ export function SuggestedMappingPreviewDialog({
         : 0
 
     const isLoading = status === "fetching-names" || status === "embedding" || status === "searching"
-    const canWrite = WRITE_ROLES.includes(userRole?.toLowerCase() ?? "")
-    const isRegionalLeader = userRole?.toLowerCase() === "regional_leader"
+    const canWrite = isEquipmentManagerRole(userRole)
+    const isRegionalLeader = isRegionalLeaderRole(userRole)
 
     return (
         <Dialog open={open} onOpenChange={(val) => { if (!val) handleClose() }}>
