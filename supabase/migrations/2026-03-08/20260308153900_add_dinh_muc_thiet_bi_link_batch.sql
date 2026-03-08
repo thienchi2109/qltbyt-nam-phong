@@ -147,14 +147,21 @@ BEGIN
 
     v_group_affected := COALESCE(array_length(v_valid_ids, 1), 0);
 
-    -- Count skipped: already assigned
+    -- Classify all requested IDs that were NOT selected for update.
+    -- This counts rows existing in tenant with nhom_thiet_bi_id set,
+    -- which covers both truly-assigned and locked-but-unassigned rows
+    -- (locked rows are invisible to FOR UPDATE SKIP LOCKED but visible
+    -- to this plain SELECT). The remainder is genuinely not found.
     SELECT COUNT(*)::INT INTO v_group_skipped_assigned
     FROM public.thiet_bi tb
     WHERE tb.id = ANY(v_group_device_ids)
       AND tb.don_vi = p_don_vi
-      AND tb.nhom_thiet_bi_id IS NOT NULL;
+      AND (
+        tb.nhom_thiet_bi_id IS NOT NULL
+        OR NOT (tb.id = ANY(COALESCE(v_valid_ids, '{}'::BIGINT[])))
+      );
 
-    -- Count skipped: not found in tenant
+    -- Remainder = IDs not found in this tenant at all
     v_group_skipped_not_found := array_length(v_group_device_ids, 1)
       - v_group_affected
       - v_group_skipped_assigned;
