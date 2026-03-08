@@ -3,6 +3,7 @@
 import * as React from "react"
 import { Link, Sparkles } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { isEquipmentManagerRole, isRegionalLeaderRole } from "@/lib/rbac"
 import { useDeviceQuotaMappingContext } from "../_hooks/useDeviceQuotaMappingContext"
 import { DeviceQuotaMappingPreviewDialog } from "./DeviceQuotaMappingPreviewDialog"
 import { SuggestedMappingPreviewDialog } from "./SuggestedMappingPreviewDialog"
@@ -80,7 +81,7 @@ export function DeviceQuotaMappingActions() {
 
           {/* Actions */}
           <div className="flex items-center gap-2">
-            {hasFacility && (
+            {hasFacility && (isEquipmentManagerRole(user?.role) || isRegionalLeaderRole(user?.role)) && (
               <Button
                 size="sm"
                 className="touch-target-sm bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-md hover:from-amber-600 hover:to-orange-600 hover:shadow-lg transition-all duration-200 group"
