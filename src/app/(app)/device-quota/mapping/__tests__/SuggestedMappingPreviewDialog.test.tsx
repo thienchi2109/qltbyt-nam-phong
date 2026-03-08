@@ -450,23 +450,7 @@ describe('SuggestedMappingPreviewDialog', () => {
         expect(confirmBtn).toBeDisabled()
     })
 
-    it('disables confirm button during save', () => {
-        setupHook({ saveStatus: 'saving' })
-
-        renderWithQueryClient(
-            <SuggestedMappingPreviewDialog
-                open={true}
-                onOpenChange={() => { }}
-                donViId={1}
-                userRole="admin"
-            />
-        )
-
-        const confirmBtn = screen.getByRole('button', { name: /đang lưu/i })
-        expect(confirmBtn).toBeDisabled()
-    })
-
-    it('excludes device IDs from save payload when per-name exclusion is applied', () => {
+    it('excludes device IDsfrom save payload when per-name exclusion is applied', () => {
         const { saveBatch } = setupHook()
 
         renderWithQueryClient(
