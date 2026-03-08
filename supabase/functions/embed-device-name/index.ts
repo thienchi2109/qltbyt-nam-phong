@@ -1,6 +1,6 @@
 // Edge Function: embed-device-name
 // Purpose: Generate 384-dim text embeddings using built-in gte-small model
-// Input: { texts: string[] } (max 50 per call)
+// Input: { texts: string[] } (max 10 per call — Free tier 512MB RAM limit)
 // Output: { embeddings: number[][] }
 // Security: verify_jwt = true, zero DB access
 

@@ -2,7 +2,7 @@
 // Purpose: client calls this instead of directly calling Edge Function,
 // keeping Supabase URL and service role key server-side only
 // Roles: global, admin, to_qltb, regional_leader (preview-only)
-// Input: { texts: string[] } (max 50)
+// Input: { texts: string[] } (max 10 — Edge Function Free tier limit)
 // Output: { embeddings: number[][] }
 
 import { NextRequest, NextResponse } from 'next/server'
