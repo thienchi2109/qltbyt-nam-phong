@@ -1,6 +1,7 @@
 import React from 'react'
 import { render, screen, fireEvent, within } from '@testing-library/react'
 import { describe, it, expect, vi, beforeEach, beforeAll } from 'vitest'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 
 // ============================================
 // Polyfills for jsdom
@@ -31,10 +32,20 @@ vi.mock('../_hooks/useSuggestMapping', () => ({
     useSuggestMapping: (...args: unknown[]) => mockUseSuggestMapping(...args),
 }))
 
-import type { SuggestMappingResult, SuggestMappingStatus, SuggestedGroup } from '../_hooks/useSuggestMapping'
+import type { SuggestMappingResult, SuggestMappingStatus, SuggestedGroup, SaveStatus, BatchSaveResult } from '../_hooks/useSuggestMapping'
 import { SuggestedMappingGroupSection } from '../_components/SuggestedMappingGroupSection'
 import { SuggestedMappingUnmatchedSection } from '../_components/SuggestedMappingUnmatchedSection'
 import { SuggestedMappingPreviewDialog } from '../_components/SuggestedMappingPreviewDialog'
+
+// Wrapper that provides QueryClient
+function renderWithQueryClient(ui: React.ReactElement) {
+    const queryClient = new QueryClient({
+        defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+    })
+    return render(
+        React.createElement(QueryClientProvider, { client: queryClient }, ui)
+    )
+}
 
 // ============================================
 // Fixtures
@@ -48,6 +59,10 @@ const GROUP_A: SuggestedGroup = {
     rrf_score: 0.95,
     device_names: ['Máy thở Drager', 'Máy thở Hamilton'],
     device_ids: [1, 2, 3, 4, 5],
+    device_name_to_ids: {
+        'Máy thở Drager': [1, 2, 3],
+        'Máy thở Hamilton': [4, 5],
+    },
 }
 
 const GROUP_B: SuggestedGroup = {
@@ -58,6 +73,9 @@ const GROUP_B: SuggestedGroup = {
     rrf_score: 0.88,
     device_names: ['Bơm tiêm điện'],
     device_ids: [6, 7],
+    device_name_to_ids: {
+        'Bơm tiêm điện': [6, 7],
+    },
 }
 
 const UNMATCHED = [
@@ -77,17 +95,25 @@ function setupHook(overrides: {
     result?: SuggestMappingResult | null
     error?: string | null
     progress?: number
+    saveStatus?: SaveStatus
+    saveResult?: BatchSaveResult | null
+    saveError?: string | null
 } = {}) {
     const reset = vi.fn()
+    const saveBatch = vi.fn()
     mockUseSuggestMapping.mockReturnValue({
         status: 'done',
         result: DONE_RESULT,
         error: null,
         progress: 100,
         reset,
+        saveBatch,
+        saveStatus: 'idle',
+        saveResult: null,
+        saveError: null,
         ...overrides,
     })
-    return { reset }
+    return { reset, saveBatch }
 }
 
 // ============================================
@@ -236,7 +262,7 @@ describe('SuggestedMappingPreviewDialog', () => {
     it('shows loading progress during pipeline', () => {
         setupHook({ status: 'embedding', result: null, progress: 33 })
 
-        render(
+        renderWithQueryClient(
             <SuggestedMappingPreviewDialog
                 open={true}
                 onOpenChange={() => { }}
@@ -251,7 +277,7 @@ describe('SuggestedMappingPreviewDialog', () => {
     it('renders grouped suggestions after pipeline completes', () => {
         setupHook()
 
-        render(
+        renderWithQueryClient(
             <SuggestedMappingPreviewDialog
                 open={true}
                 onOpenChange={() => { }}
@@ -267,7 +293,7 @@ describe('SuggestedMappingPreviewDialog', () => {
     it('renders footer disclaimer always visible', () => {
         setupHook()
 
-        render(
+        renderWithQueryClient(
             <SuggestedMappingPreviewDialog
                 open={true}
                 onOpenChange={() => { }}
@@ -284,7 +310,7 @@ describe('SuggestedMappingPreviewDialog', () => {
     it('hides confirm button for regional_leader', () => {
         setupHook()
 
-        render(
+        renderWithQueryClient(
             <SuggestedMappingPreviewDialog
                 open={true}
                 onOpenChange={() => { }}
@@ -296,10 +322,10 @@ describe('SuggestedMappingPreviewDialog', () => {
         expect(screen.queryByRole('button', { name: /áp dụng/i })).not.toBeInTheDocument()
     })
 
-    it('shows disabled confirm button with group count for write-capable role', () => {
+    it('shows enabled confirm button with group count for write-capable role', () => {
         setupHook()
 
-        render(
+        renderWithQueryClient(
             <SuggestedMappingPreviewDialog
                 open={true}
                 onOpenChange={() => { }}
@@ -309,13 +335,13 @@ describe('SuggestedMappingPreviewDialog', () => {
         )
 
         const confirmBtn = screen.getByRole('button', { name: /áp dụng 2 gợi ý/i })
-        expect(confirmBtn).toBeDisabled()
+        expect(confirmBtn).toBeEnabled()
     })
 
     it('shows summary count badge with matched/total devices', () => {
         setupHook()
 
-        render(
+        renderWithQueryClient(
             <SuggestedMappingPreviewDialog
                 open={true}
                 onOpenChange={() => { }}
@@ -330,7 +356,7 @@ describe('SuggestedMappingPreviewDialog', () => {
     it('renders unmatched section when there are unmatched devices', () => {
         setupHook()
 
-        render(
+        renderWithQueryClient(
             <SuggestedMappingPreviewDialog
                 open={true}
                 onOpenChange={() => { }}
@@ -345,7 +371,7 @@ describe('SuggestedMappingPreviewDialog', () => {
     it('shows error state when pipeline fails', () => {
         setupHook({ status: 'error', result: null, error: 'Network error' })
 
-        render(
+        renderWithQueryClient(
             <SuggestedMappingPreviewDialog
                 open={true}
                 onOpenChange={() => { }}
@@ -361,7 +387,7 @@ describe('SuggestedMappingPreviewDialog', () => {
         const { reset } = setupHook()
         const onOpenChange = vi.fn()
 
-        render(
+        renderWithQueryClient(
             <SuggestedMappingPreviewDialog
                 open={true}
                 onOpenChange={onOpenChange}
@@ -376,4 +402,88 @@ describe('SuggestedMappingPreviewDialog', () => {
         expect(onOpenChange).toHaveBeenCalledWith(false)
         expect(reset).toHaveBeenCalled()
     })
+
+    // ============================================
+    // Save Flow (Phase 4)
+    // ============================================
+
+    it('calls saveBatch with filtered payload when confirm is clicked', () => {
+        const { saveBatch } = setupHook()
+
+        renderWithQueryClient(
+            <SuggestedMappingPreviewDialog
+                open={true}
+                onOpenChange={() => { }}
+                donViId={1}
+                userRole="admin"
+            />
+        )
+
+        const confirmBtn = screen.getByRole('button', { name: /áp dụng 2 gợi ý/i })
+        fireEvent.click(confirmBtn)
+
+        expect(saveBatch).toHaveBeenCalledWith([
+            { nhom_id: 10, thiet_bi_ids: [1, 2, 3, 4, 5] },
+            { nhom_id: 20, thiet_bi_ids: [6, 7] },
+        ])
+    })
+
+    it('shows saving indicator when save is in progress', () => {
+        setupHook({ saveStatus: 'saving' })
+
+        renderWithQueryClient(
+            <SuggestedMappingPreviewDialog
+                open={true}
+                onOpenChange={() => { }}
+                donViId={1}
+                userRole="admin"
+            />
+        )
+
+        const confirmBtn = screen.getByRole('button', { name: /đang lưu/i })
+        expect(confirmBtn).toBeDisabled()
+    })
+
+    it('disables confirm button during save', () => {
+        setupHook({ saveStatus: 'saving' })
+
+        renderWithQueryClient(
+            <SuggestedMappingPreviewDialog
+                open={true}
+                onOpenChange={() => { }}
+                donViId={1}
+                userRole="admin"
+            />
+        )
+
+        const confirmBtn = screen.getByRole('button', { name: /đang lưu/i })
+        expect(confirmBtn).toBeDisabled()
+    })
+
+    it('excludes device IDs from save payload when per-name exclusion is applied', () => {
+        const { saveBatch } = setupHook()
+
+        renderWithQueryClient(
+            <SuggestedMappingPreviewDialog
+                open={true}
+                onOpenChange={() => { }}
+                donViId={1}
+                userRole="admin"
+            />
+        )
+
+        // Exclude 'Máy thở Drager' (IDs 1,2,3) from GROUP_A
+        const removeButtons = screen.getAllByRole('button', { name: 'Loại bỏ' })
+        fireEvent.click(removeButtons[0]) // first device name in GROUP_A
+
+        const confirmBtn = screen.getByRole('button', { name: /áp dụng/i })
+        fireEvent.click(confirmBtn)
+
+        // Should only include IDs from 'Máy thở Hamilton' (4,5) for GROUP_A
+        expect(saveBatch).toHaveBeenCalledWith([
+            { nhom_id: 10, thiet_bi_ids: [4, 5] },
+            { nhom_id: 20, thiet_bi_ids: [6, 7] },
+        ])
+    })
 })
+
