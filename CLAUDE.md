@@ -367,7 +367,7 @@ const { data } = useQuery({
 
 - **Imports:** `@/*` alias, order: React → 3rd-party → `@/components` → `@/lib`
 - **Types:** Never `any`, explicit interfaces, DB types in `src/types/database.ts`
-- **Files:**  TRY TO KEEP 350-450 lines max
+- **Files:** **350-line extraction threshold.** When a file approaches ~350 lines, proactively extract logical chunks (helpers, sub-components, types, constants) into separate files. Hard ceiling: **450 lines** — no file should exceed this. When splitting, follow the module prefix naming convention (`{ModuleName}{Chunk}.tsx`).
 - **UI:** Radix + Tailwind, mobile-first, react-hook-form + zod
 
 

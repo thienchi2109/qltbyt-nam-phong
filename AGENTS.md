@@ -297,6 +297,13 @@ This project is indexed with **GitLab Knowledge Graph MCP**. You have access to 
 - Models define data structure and DB operations
 - All async operations use async/await (no callbacks)
 
+### File Size Rules (MANDATORY)
+
+- **350-line extraction threshold:** When a file approaches ~350 lines, proactively extract logical chunks (helpers, sub-components, types, constants) into separate files.
+- **450-line hard ceiling:** No source file should exceed 450 lines. If it does, split it before adding more code.
+- **What to extract:** utility functions → `{Module}Utils.ts`, types → `{Module}Types.ts`, sub-components → `{Module}{Part}.tsx`, constants → `{Module}Constants.ts`.
+- **Naming:** Follow grep-friendly module prefix convention (`{ModuleName}{Chunk}.tsx`).
+
 ---
 
 
