@@ -10,7 +10,7 @@ import { isGlobalRole } from '@/lib/rbac'
 
 export const runtime = 'nodejs'
 
-const BATCH_SIZE = 50
+const BATCH_SIZE = 10
 const WRITE_ROLES = ['global', 'admin', 'to_qltb']
 
 /**

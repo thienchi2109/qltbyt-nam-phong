@@ -143,20 +143,20 @@
 - `SuggestedMappingUnmatchedSection.tsx`: render section "Chưa gợi ý được".
 
 **Tasks:**
-- [ ] Tận dụng `DeviceQuotaMappingActions.tsx` làm action bar hiện hữu; không tạo thêm footer/action component mới chỉ để phục vụ suggested flow.
-- [ ] Refactor `DeviceQuotaMappingPreviewDialog.tsx` để trích các phần có thể dùng chung vào `MappingPreviewPrimitives.tsx`: dialog shell/header-footer pattern, count badge, loading skeleton, item row với exclude/restore.
-- [ ] Tạo `SuggestedMappingPreviewDialog.tsx` như **thin container**; không nhồi toàn bộ rendering logic của grouped results và unmatched results vào đây, và không reuse trực tiếp manual confirm contract kiểu `targetCategory + confirmedIds`.
-- [ ] Tách `SuggestedMappingGroupSection.tsx` để render mỗi nhóm category được gợi ý.
-- [ ] Tách `SuggestedMappingUnmatchedSection.tsx` để render section "Chưa gợi ý được".
-- [ ] Thêm note footer bắt buộc, dùng lại ở preview flow phù hợp: `"Đây chỉ là gợi ý phân loại. Vui lòng kiểm tra lại trước khi lưu"`.
-- [ ] Giữ mỗi file preview-related dưới khoảng 350 lines; nếu một file tiến gần 250-300 lines thì tách trách nhiệm sớm.
-- [ ] Implement hook orchestration: `unassigned_names` → `embed-device-name` theo chunk 50 → `hybrid_search_category_batch` theo chunk 50.
-- [ ] Hiển thị progress/loading rõ trong dialog.
-- [ ] Hiển thị grouped results, unmatched results, exclude/restore per item và per group.
-- [ ] Suggested preview phải giữ state theo grouped mappings, ví dụ `{ nhom_id, nhom_label, thiet_bi_ids[] }[]`; không phụ thuộc `selectedCategoryId` của manual flow.
-- [ ] Nút xác nhận của suggested flow phải phản ánh đây là nhiều group được áp dụng trong một lần lưu, ví dụ `Áp dụng 12 gợi ý phân loại`, không dùng wording dễ hiểu nhầm là single-category manual save.
-- [ ] `regional_leader` chỉ xem preview, không có save action.
-- [ ] Mở rộng test hiện có và thêm test mới cho suggested preview; không tạo test harness song song nếu logic có thể bám theo shared preview primitives.
+- [x] Tận dụng `DeviceQuotaMappingActions.tsx` làm action bar hiện hữu; không tạo thêm footer/action component mới chỉ để phục vụ suggested flow.
+- [x] Refactor `DeviceQuotaMappingPreviewDialog.tsx` để trích các phần có thể dùng chung vào `MappingPreviewPrimitives.tsx`: dialog shell/header-footer pattern, count badge, loading skeleton, item row với exclude/restore.
+- [x] Tạo `SuggestedMappingPreviewDialog.tsx` như **thin container**; không nhồi toàn bộ rendering logic của grouped results và unmatched results vào đây, và không reuse trực tiếp manual confirm contract kiểu `targetCategory + confirmedIds`.
+- [x] Tách `SuggestedMappingGroupSection.tsx` để render mỗi nhóm category được gợi ý.
+- [x] Tách `SuggestedMappingUnmatchedSection.tsx` để render section "Chưa gợi ý được".
+- [x] Thêm note footer bắt buộc, dùng lại ở preview flow phù hợp: `"Đây chỉ là gợi ý phân loại. Vui lòng kiểm tra lại trước khi lưu"`.
+- [x] Giữ mỗi file preview-related dưới khoảng 350 lines; nếu một file tiến gần 250-300 lines thì tách trách nhiệm sớm.
+- [x] Implement hook orchestration: `unassigned_names` → `embed-device-name` theo chunk 50 → `hybrid_search_category_batch` theo chunk 50.
+- [x] Hiển thị progress/loading rõ trong dialog.
+- [x] Hiển thị grouped results, unmatched results, exclude/restore per item và per group.
+- [x] Suggested preview phải giữ state theo grouped mappings, ví dụ `{ nhom_id, nhom_label, thiet_bi_ids[] }[]`; không phụ thuộc `selectedCategoryId` của manual flow.
+- [x] Nút xác nhận của suggested flow phải phản ánh đây là nhiều group được áp dụng trong một lần lưu, ví dụ `Áp dụng 12 gợi ý phân loại`, không dùng wording dễ hiểu nhầm là single-category manual save.
+- [x] `regional_leader` chỉ xem preview, không có save action.
+- [x] Mở rộng test hiện có và thêm test mới cho suggested preview; không tạo test harness song song nếu logic có thể bám theo shared preview primitives.
 
 **Exit criteria:** Preview chạy được end-to-end cho role đọc và role ghi; kiến trúc UI reuse tối đa component hiện có, footer disclaimer luôn hiển thị ở suggested preview, manual flow vẫn giữ contract `1 category -> many devices`, và không sinh thêm file preview monolith.
 
