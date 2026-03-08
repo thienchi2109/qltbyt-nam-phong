@@ -1,12 +1,13 @@
 import type {NextConfig} from 'next';
-import withPWAInit from 'next-pwa';
+import withSerwistInit from '@serwist/next';
 
-const withPWA = withPWAInit({
-  dest: 'public',
-  register: true,
-  skipWaiting: true,
+const withSerwist = withSerwistInit({
+  swSrc: 'src/sw.ts',
+  swDest: 'public/sw.js',
+  register: false,
+  reloadOnOnline: true,
   // Exclude internal Next.js manifest that is not publicly served on some deployments.
-  buildExcludes: [/app-build-manifest\.json$/],
+  exclude: [/app-build-manifest\.json$/],
   disable: process.env.NODE_ENV === 'development', // Disable PWA in development
 });
 
@@ -112,4 +113,4 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default withPWA(nextConfig);
+export default withSerwist(nextConfig);

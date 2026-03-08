@@ -17,7 +17,9 @@
 /.next/
 /out/
 /public/sw.js
-/public/workbox-4754cb34.js
+/public/sw.js.map
+/public/swe-worker-*.js
+/public/swe-worker-*.js.map
 
 # production
 /build
