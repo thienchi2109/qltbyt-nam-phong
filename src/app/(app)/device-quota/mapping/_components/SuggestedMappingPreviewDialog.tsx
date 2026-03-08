@@ -81,11 +81,17 @@ export function SuggestedMappingPreviewDialog({
         Map<number, Set<string>>
     >(new Map())
 
-    // Reset exclude state when dialog opens
+    // Guard: ensures toast + invalidation fire exactly once per save, even if
+    // handleClose is recreated mid-flight due to unstable useMutation references.
+    const hasNotifiedRef = React.useRef(false)
+    const handleCloseRef = React.useRef<() => void>(() => {})
+
+    // Reset exclude state and notification guard when dialog opens
     React.useEffect(() => {
         if (open) {
             setExcludedGroups(new Set())
             setExcludedDeviceNames(new Map())
+            hasNotifiedRef.current = false
         }
     }, [open])
 
@@ -94,9 +100,14 @@ export function SuggestedMappingPreviewDialog({
         onOpenChange(false)
     }, [reset, onOpenChange])
 
+    // Keep ref in sync so the stable timeout always calls the latest closure
+    handleCloseRef.current = handleClose
+
     // Auto-close dialog after successful save with toast
     React.useEffect(() => {
         if (saveStatus !== "saved") return
+        if (hasNotifiedRef.current) return
+        hasNotifiedRef.current = true
 
         // Invalidate queries (same as manual flow)
         queryClient.invalidateQueries({ queryKey: ['dinh_muc_thiet_bi_unassigned'] })
@@ -115,11 +126,11 @@ export function SuggestedMappingPreviewDialog({
         })
 
         const timer = setTimeout(() => {
-            handleClose()
+            handleCloseRef.current()
         }, 1500)
 
         return () => clearTimeout(timer)
-    }, [saveStatus, handleClose, queryClient, toast])
+    }, [saveStatus, saveResult, queryClient, toast])
 
     const handleConfirmSave = React.useCallback(() => {
         if (!result) return

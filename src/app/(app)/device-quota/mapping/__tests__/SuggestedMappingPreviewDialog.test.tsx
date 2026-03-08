@@ -42,7 +42,7 @@ import { SuggestedMappingGroupSection } from '../_components/SuggestedMappingGro
 import { SuggestedMappingUnmatchedSection } from '../_components/SuggestedMappingUnmatchedSection'
 import { SuggestedMappingPreviewDialog } from '../_components/SuggestedMappingPreviewDialog'
 
-// Wrapper that provides QueryClient
+// Wrapper that provides QueryClient — also returns rerender bound to the same provider
 function renderWithQueryClient(ui: React.ReactElement) {
     const queryClient = new QueryClient({
         defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
@@ -554,6 +554,36 @@ describe('SuggestedMappingPreviewDialog', () => {
 
         const btn = screen.getByRole('button', { name: /áp dụng/i })
         expect(btn).toBeDisabled()
+    })
+
+    it('fires toast and invalidation exactly once even when re-renders occur during auto-close window', () => {
+        setupHook({
+            saveStatus: 'saved',
+            saveResult: { affected_count: 3, skipped_already_assigned: 0, skipped_not_found: 0, groups: [] },
+        })
+
+        const props = {
+            open: true,
+            onOpenChange: vi.fn(),
+            donViId: 1,
+            userRole: 'admin',
+        }
+
+        const { rerender } = renderWithQueryClient(<SuggestedMappingPreviewDialog {...props} />)
+
+        // Simulate re-renders (e.g. from query invalidation or parent state changes)
+        rerender(
+            React.createElement(QueryClientProvider, {
+                client: new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
+            }, <SuggestedMappingPreviewDialog {...props} />)
+        )
+        rerender(
+            React.createElement(QueryClientProvider, {
+                client: new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
+            }, <SuggestedMappingPreviewDialog {...props} />)
+        )
+
+        expect(mockToast).toHaveBeenCalledTimes(1)
     })
 
     it('includes skipped device counts in success toast when skips occur', () => {
