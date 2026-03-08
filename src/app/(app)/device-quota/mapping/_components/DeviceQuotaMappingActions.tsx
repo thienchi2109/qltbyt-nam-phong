@@ -57,8 +57,8 @@ export function DeviceQuotaMappingActions() {
 
   // Keep mounted while dialog is open so .mutate() onSuccess can close it cleanly
   // (context-level onSuccess clears selection before .mutate() onSuccess fires)
-  // Also render when hasFacility to show the "Gợi ý phân loại" button
-  if (selectedCount === 0 && !showPreview && !hasFacility) {
+  const showSuggestButton = hasFacility && (isEquipmentManagerRole(user?.role) || isRegionalLeaderRole(user?.role))
+  if (selectedCount === 0 && !showPreview && !showSuggestButton) {
     return null
   }
 
@@ -81,7 +81,7 @@ export function DeviceQuotaMappingActions() {
 
           {/* Actions */}
           <div className="flex items-center gap-2">
-            {hasFacility && (isEquipmentManagerRole(user?.role) || isRegionalLeaderRole(user?.role)) && (
+            {showSuggestButton && (
               <Button
                 size="sm"
                 className="touch-target-sm bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-md hover:from-amber-600 hover:to-orange-600 hover:shadow-lg transition-all duration-200 group"
