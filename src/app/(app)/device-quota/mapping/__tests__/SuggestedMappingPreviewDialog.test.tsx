@@ -32,6 +32,11 @@ vi.mock('../_hooks/useSuggestMapping', () => ({
     useSuggestMapping: (...args: unknown[]) => mockUseSuggestMapping(...args),
 }))
 
+const mockToast = vi.hoisted(() => vi.fn())
+vi.mock('@/hooks/use-toast', () => ({
+    useToast: () => ({ toast: mockToast }),
+}))
+
 import type { SuggestMappingResult, SuggestMappingStatus, SuggestedGroup, SaveStatus, BatchSaveResult } from '../_hooks/useSuggestMapping'
 import { SuggestedMappingGroupSection } from '../_components/SuggestedMappingGroupSection'
 import { SuggestedMappingUnmatchedSection } from '../_components/SuggestedMappingUnmatchedSection'
@@ -257,6 +262,7 @@ describe('SuggestedMappingUnmatchedSection', () => {
 describe('SuggestedMappingPreviewDialog', () => {
     beforeEach(() => {
         vi.clearAllMocks()
+        mockToast.mockClear()
     })
 
     it('shows loading progress during pipeline', () => {
@@ -484,6 +490,92 @@ describe('SuggestedMappingPreviewDialog', () => {
             { nhom_id: 10, thiet_bi_ids: [4, 5] },
             { nhom_id: 20, thiet_bi_ids: [6, 7] },
         ])
+    })
+
+    it('does not call saveBatch when all device names in every active group are excluded', () => {
+        const { saveBatch } = setupHook()
+
+        renderWithQueryClient(
+            <SuggestedMappingPreviewDialog
+                open={true}
+                onOpenChange={() => { }}
+                donViId={1}
+                userRole="admin"
+            />
+        )
+
+        // Exclude all device names individually across both groups
+        // GROUP_A: 'Máy thở Drager' [0], 'Máy thở Hamilton' [1]
+        // GROUP_B: 'Bơm tiêm điện' [2]
+        const removeButtons = screen.getAllByRole('button', { name: 'Loại bỏ' })
+        fireEvent.click(removeButtons[0])
+        fireEvent.click(removeButtons[1])
+        fireEvent.click(removeButtons[2])
+
+        // Button is still enabled (groups not excluded at group level)
+        const confirmBtn = screen.getByRole('button', { name: /áp dụng/i })
+        expect(confirmBtn).toBeEnabled()
+        fireEvent.click(confirmBtn)
+
+        // saveBatch must NOT be called — empty mappings would cause RPC error
+        expect(saveBatch).not.toHaveBeenCalled()
+    })
+
+    // ============================================
+    // Save Error Feedback (Issue Fix)
+    // ============================================
+
+    it('shows save error block when save fails', () => {
+        setupHook({ saveStatus: 'save-error', saveError: 'Lỗi kết nối máy chủ' })
+
+        renderWithQueryClient(
+            <SuggestedMappingPreviewDialog
+                open={true}
+                onOpenChange={() => { }}
+                donViId={1}
+                userRole="admin"
+            />
+        )
+
+        expect(screen.getByText(/lỗi kết nối máy chủ/i)).toBeInTheDocument()
+    })
+
+    it('disables confirm button when saveStatus is save-error', () => {
+        setupHook({ saveStatus: 'save-error', saveError: 'Lỗi kết nối máy chủ' })
+
+        renderWithQueryClient(
+            <SuggestedMappingPreviewDialog
+                open={true}
+                onOpenChange={() => { }}
+                donViId={1}
+                userRole="admin"
+            />
+        )
+
+        const btn = screen.getByRole('button', { name: /áp dụng/i })
+        expect(btn).toBeDisabled()
+    })
+
+    it('includes skipped device counts in success toast when skips occur', () => {
+        setupHook({
+            saveStatus: 'saved',
+            saveResult: { affected_count: 5, skipped_already_assigned: 2, skipped_not_found: 1, groups: [] },
+        })
+
+        renderWithQueryClient(
+            <SuggestedMappingPreviewDialog
+                open={true}
+                onOpenChange={() => { }}
+                donViId={1}
+                userRole="admin"
+            />
+        )
+
+        expect(mockToast).toHaveBeenCalledWith(
+            expect.objectContaining({
+                description: expect.stringMatching(/bỏ qua/i),
+            })
+        )
     })
 })
 

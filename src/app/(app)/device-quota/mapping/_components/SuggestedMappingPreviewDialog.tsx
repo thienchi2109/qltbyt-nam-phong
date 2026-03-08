@@ -67,7 +67,7 @@ export function SuggestedMappingPreviewDialog({
     donViId,
     userRole,
 }: SuggestedMappingPreviewDialogProps) {
-    const { status, result, error, progress, reset, saveBatch, saveStatus } = useSuggestMapping({
+    const { status, result, error, progress, reset, saveBatch, saveStatus, saveError, saveResult } = useSuggestMapping({
         donViId,
         enabled: open,
     })
@@ -89,6 +89,11 @@ export function SuggestedMappingPreviewDialog({
         }
     }, [open])
 
+    const handleClose = React.useCallback(() => {
+        reset()
+        onOpenChange(false)
+    }, [reset, onOpenChange])
+
     // Auto-close dialog after successful save with toast
     React.useEffect(() => {
         if (saveStatus !== "saved") return
@@ -101,7 +106,12 @@ export function SuggestedMappingPreviewDialog({
 
         toast({
             title: "Thành công",
-            description: "Đã phân loại thiết bị theo gợi ý thành công",
+            description: (() => {
+                const skipped = (saveResult?.skipped_already_assigned ?? 0) + (saveResult?.skipped_not_found ?? 0)
+                return skipped > 0
+                    ? `Đã phân loại thiết bị theo gợi ý thành công. Bỏ qua ${skipped} thiết bị đã được gán hoặc không tìm thấy.`
+                    : "Đã phân loại thiết bị theo gợi ý thành công"
+            })(),
         })
 
         const timer = setTimeout(() => {
@@ -109,13 +119,7 @@ export function SuggestedMappingPreviewDialog({
         }, 1500)
 
         return () => clearTimeout(timer)
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [saveStatus])
-
-    const handleClose = React.useCallback(() => {
-        reset()
-        onOpenChange(false)
-    }, [reset, onOpenChange])
+    }, [saveStatus, handleClose, queryClient, toast])
 
     const handleConfirmSave = React.useCallback(() => {
         if (!result) return
@@ -135,6 +139,7 @@ export function SuggestedMappingPreviewDialog({
             })
             .filter((m) => m.thiet_bi_ids.length > 0)
 
+        if (mappings.length === 0) return
         saveBatch(mappings)
     }, [result, excludedGroups, excludedDeviceNames, saveBatch])
 
@@ -215,6 +220,14 @@ export function SuggestedMappingPreviewDialog({
                     </div>
                 )}
 
+                {/* Save error state */}
+                {saveStatus === "save-error" && (
+                    <div className="flex items-center gap-2 rounded-md border border-destructive/50 bg-destructive/10 p-3 text-sm text-destructive">
+                        <AlertTriangle className="h-4 w-4 shrink-0" />
+                        <span>{saveError ?? "Không thể lưu phân loại. Vui lòng thử lại."}</span>
+                    </div>
+                )}
+
                 {/* Results */}
                 {status === "done" && result && (result.groups.length > 0 || result.unmatched.length > 0) && (
                     <div className="flex-1 overflow-y-auto space-y-4">
@@ -263,7 +276,7 @@ export function SuggestedMappingPreviewDialog({
                     {canWrite && !isRegionalLeader && status === "done" && (
                         <Button
                             onClick={handleConfirmSave}
-                            disabled={saveStatus === "saving" || activeGroupCount === 0}
+                            disabled={saveStatus === "saving" || saveStatus === "save-error" || activeGroupCount === 0}
                         >
                             {saveStatus === "saving" ? (
                                 <>

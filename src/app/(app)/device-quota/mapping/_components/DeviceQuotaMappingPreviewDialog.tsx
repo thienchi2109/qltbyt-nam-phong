@@ -183,7 +183,7 @@ export function DeviceQuotaMappingPreviewDialog({
     const { data: equipment, isLoading } = useQuery({
         queryKey: ["dinh_muc_thiet_bi_by_ids", { ids: idsArray, donViId }],
         queryFn: () =>
-            callRpc<EquipmentPreview[]>({
+            callRpc<EquipmentPreviewItem[]>({
                 fn: "dinh_muc_thiet_bi_by_ids",
                 args: { p_thiet_bi_ids: idsArray, p_don_vi: donViId },
             }),
