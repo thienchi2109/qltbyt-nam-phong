@@ -556,6 +556,22 @@ describe('SuggestedMappingPreviewDialog', () => {
         expect(btn).toBeDisabled()
     })
 
+    it('disables confirm button when saveStatus is saved (prevents double-submit during auto-close)', () => {
+        setupHook({ saveStatus: 'saved', saveResult: { affected_count: 5, skipped_already_assigned: 0, skipped_not_found: 0, groups: [] } })
+
+        renderWithQueryClient(
+            <SuggestedMappingPreviewDialog
+                open={true}
+                onOpenChange={() => { }}
+                donViId={1}
+                userRole="admin"
+            />
+        )
+
+        const btn = screen.getByRole('button', { name: /áp dụng/i })
+        expect(btn).toBeDisabled()
+    })
+
     it('includes skipped device counts in success toast when skips occur', () => {
         setupHook({
             saveStatus: 'saved',
