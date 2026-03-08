@@ -155,6 +155,8 @@ const ALLOWED_FUNCTIONS = new Set<string>([
   // Suggested Mapping (read-path)
   'hybrid_search_category_batch',
   'dinh_muc_thiet_bi_unassigned_names',
+  // Suggested Mapping (write-path)
+  'dinh_muc_thiet_bi_link_batch',
 ])
 
 // SECURITY: Maximum request body size (2MB) to prevent DoS via memory exhaustion

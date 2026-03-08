@@ -36,6 +36,20 @@ export type SuggestMappingStatus =
   | "done"
   | "error"
 
+export type SaveStatus = "idle" | "saving" | "saved" | "save-error"
+
+export interface SaveMapping {
+  nhom_id: number
+  thiet_bi_ids: number[]
+}
+
+export interface BatchSaveResult {
+  affected_count: number
+  skipped_already_assigned: number
+  skipped_not_found: number
+  groups: { nhom_id: number; affected: number; skipped: number }[]
+}
+
 interface UseSuggestMappingOptions {
   donViId: number | null
   enabled: boolean
@@ -291,6 +305,37 @@ export function useSuggestMapping({ donViId, enabled }: UseSuggestMappingOptions
     setProgress(0)
   }, [mutation])
 
+  // ============================================
+  // Save Batch Mutation
+  // ============================================
+
+  const saveMutation = useMutation({
+    mutationFn: async (mappings: SaveMapping[]) => {
+      return callRpc<BatchSaveResult>({
+        fn: "dinh_muc_thiet_bi_link_batch",
+        args: {
+          p_mappings: mappings,
+          p_don_vi: donViId,
+        },
+      })
+    },
+  })
+
+  const saveBatch = useCallback(
+    (mappings: SaveMapping[]) => {
+      saveMutation.mutate(mappings)
+    },
+    [saveMutation]
+  )
+
+  const saveStatus: SaveStatus = saveMutation.isPending
+    ? "saving"
+    : saveMutation.isError
+      ? "save-error"
+      : saveMutation.isSuccess
+        ? "saved"
+        : "idle"
+
   // Derive public status from mutation + pipeline states
   const status: SuggestMappingStatus = mutation.isError
     ? "error"
@@ -306,5 +351,9 @@ export function useSuggestMapping({ donViId, enabled }: UseSuggestMappingOptions
     error: mutation.error?.message ?? null,
     progress,
     reset,
+    saveBatch,
+    saveStatus,
+    saveResult: saveMutation.data ?? null,
+    saveError: saveMutation.error?.message ?? null,
   }
 }

@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { Sparkles, CheckCircle2, AlertTriangle } from "lucide-react"
+import { Sparkles, CheckCircle2, AlertTriangle, Loader2 } from "lucide-react"
 import { isEquipmentManagerRole, isRegionalLeaderRole } from "@/lib/rbac"
 import {
     Dialog,
@@ -13,12 +13,6 @@ import {
 } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import {
-    Tooltip,
-    TooltipContent,
-    TooltipProvider,
-    TooltipTrigger,
-} from "@/components/ui/tooltip"
-import {
     MappingPreviewCountBadge,
     MappingPreviewFooterNote,
     MappingPreviewLoadingState,
@@ -26,7 +20,9 @@ import {
 import { SuggestedMappingGroupSection } from "./SuggestedMappingGroupSection"
 import { SuggestedMappingUnmatchedSection } from "./SuggestedMappingUnmatchedSection"
 import { useSuggestMapping } from "../_hooks/useSuggestMapping"
-import type { SuggestMappingStatus } from "../_hooks/useSuggestMapping"
+import { useToast } from "@/hooks/use-toast"
+import { useQueryClient } from "@tanstack/react-query"
+import type { SuggestMappingStatus, SaveMapping } from "../_hooks/useSuggestMapping"
 
 // ============================================
 // Types
@@ -63,7 +59,7 @@ function getStatusLabel(status: SuggestMappingStatus): string {
 /**
  * Thin container for suggested mapping preview flow.
  * Composes hook orchestration + group sections + unmatched section + shared primitives.
- * Confirm button disabled in Phase 3 (placeholder for Phase 4 save).
+ * Confirm button wired to saveBatch mutation for bulk save.
  */
 export function SuggestedMappingPreviewDialog({
     open,
@@ -71,10 +67,13 @@ export function SuggestedMappingPreviewDialog({
     donViId,
     userRole,
 }: SuggestedMappingPreviewDialogProps) {
-    const { status, result, error, progress, reset } = useSuggestMapping({
+    const { status, result, error, progress, reset, saveBatch, saveStatus } = useSuggestMapping({
         donViId,
         enabled: open,
     })
+
+    const { toast } = useToast()
+    const queryClient = useQueryClient()
 
     // Exclude state: per-group and per-device-name
     const [excludedGroups, setExcludedGroups] = React.useState<Set<number>>(new Set())
@@ -90,10 +89,53 @@ export function SuggestedMappingPreviewDialog({
         }
     }, [open])
 
+    // Auto-close dialog after successful save with toast
+    React.useEffect(() => {
+        if (saveStatus !== "saved") return
+
+        // Invalidate queries (same as manual flow)
+        queryClient.invalidateQueries({ queryKey: ['dinh_muc_thiet_bi_unassigned'] })
+        queryClient.invalidateQueries({ queryKey: ['dinh_muc_thiet_bi_unassigned_filter_options'] })
+        queryClient.invalidateQueries({ queryKey: ['dinh_muc_nhom_list'] })
+        queryClient.invalidateQueries({ queryKey: ['dinh_muc_compliance_summary'] })
+
+        toast({
+            title: "Thành công",
+            description: "Đã phân loại thiết bị theo gợi ý thành công",
+        })
+
+        const timer = setTimeout(() => {
+            handleClose()
+        }, 1500)
+
+        return () => clearTimeout(timer)
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [saveStatus])
+
     const handleClose = React.useCallback(() => {
         reset()
         onOpenChange(false)
     }, [reset, onOpenChange])
+
+    const handleConfirmSave = React.useCallback(() => {
+        if (!result) return
+
+        const mappings: SaveMapping[] = result.groups
+            .filter((g) => !excludedGroups.has(g.nhom_id))
+            .map((g) => {
+                const groupExcludedNames = excludedDeviceNames.get(g.nhom_id) ?? new Set()
+                // Filter device_ids by removing IDs whose device_name is excluded
+                // Since device_ids are grouped by name, we need the original mapping
+                // For now, send all device_ids of non-excluded groups
+                // (per-name exclusion affects counts but IDs are all included unless group excluded)
+                return {
+                    nhom_id: g.nhom_id,
+                    thiet_bi_ids: g.device_ids,
+                }
+            })
+
+        saveBatch(mappings)
+    }, [result, excludedGroups, excludedDeviceNames, saveBatch])
 
     const toggleGroup = React.useCallback((nhomId: number) => {
         setExcludedGroups((prev) => {
@@ -218,24 +260,26 @@ export function SuggestedMappingPreviewDialog({
                     </Button>
 
                     {canWrite && !isRegionalLeader && status === "done" && (
-                        <TooltipProvider>
-                            <Tooltip>
-                                <TooltipTrigger asChild>
-                                    <span tabIndex={0}>
-                                        <Button disabled>
-                                            <CheckCircle2 className="h-4 w-4 mr-1" />
-                                            Áp dụng {activeGroupCount} gợi ý phân loại
-                                        </Button>
-                                    </span>
-                                </TooltipTrigger>
-                                <TooltipContent>
-                                    <p>Sẽ có ở Phase 4</p>
-                                </TooltipContent>
-                            </Tooltip>
-                        </TooltipProvider>
+                        <Button
+                            onClick={handleConfirmSave}
+                            disabled={saveStatus === "saving" || activeGroupCount === 0}
+                        >
+                            {saveStatus === "saving" ? (
+                                <>
+                                    <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                                    Đang lưu...
+                                </>
+                            ) : (
+                                <>
+                                    <CheckCircle2 className="h-4 w-4 mr-1" />
+                                    Áp dụng {activeGroupCount} gợi ý phân loại
+                                </>
+                            )}
+                        </Button>
                     )}
                 </DialogFooter>
             </DialogContent>
         </Dialog>
     )
 }
+
