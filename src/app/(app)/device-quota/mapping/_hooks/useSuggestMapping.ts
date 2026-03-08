@@ -19,6 +19,7 @@ export interface SuggestedGroup {
   rrf_score: number
   device_names: string[]
   device_ids: number[]
+  device_name_to_ids: Record<string, number[]>
 }
 
 export interface SuggestMappingResult {
@@ -183,6 +184,10 @@ function mergeResults(
       if (!existing.device_names.includes(sr.query_text)) {
         existing.device_names.push(sr.query_text)
       }
+      existing.device_name_to_ids[sr.query_text] = [
+        ...(existing.device_name_to_ids[sr.query_text] ?? []),
+        ...nameInfo.device_ids,
+      ]
       existing.rrf_score = Math.max(existing.rrf_score, best.rrf_score)
     } else {
       groupMap.set(best.id, {
@@ -193,6 +198,7 @@ function mergeResults(
         rrf_score: best.rrf_score,
         device_names: [sr.query_text],
         device_ids: [...nameInfo.device_ids],
+        device_name_to_ids: { [sr.query_text]: [...nameInfo.device_ids] },
       })
     }
   }

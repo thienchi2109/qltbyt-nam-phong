@@ -124,15 +124,16 @@ export function SuggestedMappingPreviewDialog({
             .filter((g) => !excludedGroups.has(g.nhom_id))
             .map((g) => {
                 const groupExcludedNames = excludedDeviceNames.get(g.nhom_id) ?? new Set()
-                // Filter device_ids by removing IDs whose device_name is excluded
-                // Since device_ids are grouped by name, we need the original mapping
-                // For now, send all device_ids of non-excluded groups
-                // (per-name exclusion affects counts but IDs are all included unless group excluded)
+                // Filter device_ids via name→ID mapping, removing excluded names
+                const filteredIds = Object.entries(g.device_name_to_ids)
+                    .filter(([name]) => !groupExcludedNames.has(name))
+                    .flatMap(([, ids]) => ids)
                 return {
                     nhom_id: g.nhom_id,
-                    thiet_bi_ids: g.device_ids,
+                    thiet_bi_ids: filteredIds,
                 }
             })
+            .filter((m) => m.thiet_bi_ids.length > 0)
 
         saveBatch(mappings)
     }, [result, excludedGroups, excludedDeviceNames, saveBatch])

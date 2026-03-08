@@ -59,6 +59,10 @@ const GROUP_A: SuggestedGroup = {
     rrf_score: 0.95,
     device_names: ['Máy thở Drager', 'Máy thở Hamilton'],
     device_ids: [1, 2, 3, 4, 5],
+    device_name_to_ids: {
+        'Máy thở Drager': [1, 2, 3],
+        'Máy thở Hamilton': [4, 5],
+    },
 }
 
 const GROUP_B: SuggestedGroup = {
@@ -69,6 +73,9 @@ const GROUP_B: SuggestedGroup = {
     rrf_score: 0.88,
     device_names: ['Bơm tiêm điện'],
     device_ids: [6, 7],
+    device_name_to_ids: {
+        'Bơm tiêm điện': [6, 7],
+    },
 }
 
 const UNMATCHED = [
@@ -451,6 +458,32 @@ describe('SuggestedMappingPreviewDialog', () => {
 
         const confirmBtn = screen.getByRole('button', { name: /đang lưu/i })
         expect(confirmBtn).toBeDisabled()
+    })
+
+    it('excludes device IDs from save payload when per-name exclusion is applied', () => {
+        const { saveBatch } = setupHook()
+
+        renderWithQueryClient(
+            <SuggestedMappingPreviewDialog
+                open={true}
+                onOpenChange={() => { }}
+                donViId={1}
+                userRole="admin"
+            />
+        )
+
+        // Exclude 'Máy thở Drager' (IDs 1,2,3) from GROUP_A
+        const removeButtons = screen.getAllByRole('button', { name: 'Loại bỏ' })
+        fireEvent.click(removeButtons[0]) // first device name in GROUP_A
+
+        const confirmBtn = screen.getByRole('button', { name: /áp dụng/i })
+        fireEvent.click(confirmBtn)
+
+        // Should only include IDs from 'Máy thở Hamilton' (4,5) for GROUP_A
+        expect(saveBatch).toHaveBeenCalledWith([
+            { nhom_id: 10, thiet_bi_ids: [4, 5] },
+            { nhom_id: 20, thiet_bi_ids: [6, 7] },
+        ])
     })
 })
 
