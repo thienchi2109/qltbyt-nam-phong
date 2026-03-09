@@ -171,20 +171,20 @@
 - Modify: `src/app/(app)/device-quota/mapping/_hooks/useSuggestMapping.ts`
 
 **Tasks:**
-- [ ] Implement `dinh_muc_thiet_bi_link_batch`.
-- [ ] `dinh_muc_thiet_bi_link_batch` nhận payload grouped theo category, ví dụ `[{ "nhom_id": 1, "thiet_bi_ids": [10, 11] }, { "nhom_id": 2, "thiet_bi_ids": [12] }]`.
-- [ ] Validate payload để fail sớm nếu cùng một `device_id` xuất hiện ở nhiều group khác nhau trong cùng request.
-- [ ] Giữ `dinh_muc_thiet_bi_link` nguyên trạng cho manual flow; suggested save không được bẻ sang reuse manual mutation signature.
-- [ ] Chỉ whitelist `dinh_muc_thiet_bi_link_batch` trong `/api/rpc/[fn]` sau khi migration Phase 4 đã tạo function đầy đủ.
-- [ ] Contract trả về `JSONB` summary, ví dụ:
+- [x] Implement `dinh_muc_thiet_bi_link_batch`.
+- [x] `dinh_muc_thiet_bi_link_batch` nhận payload grouped theo category, ví dụ `[{ "nhom_id": 1, "thiet_bi_ids": [10, 11] }, { "nhom_id": 2, "thiet_bi_ids": [12] }]`.
+- [x] Validate payload để fail sớm nếu cùng một `device_id` xuất hiện ở nhiều group khác nhau trong cùng request.
+- [x] Giữ `dinh_muc_thiet_bi_link` nguyên trạng cho manual flow; suggested save không được bẻ sang reuse manual mutation signature.
+- [x] Chỉ whitelist `dinh_muc_thiet_bi_link_batch` trong `/api/rpc/[fn]` sau khi migration Phase 4 đã tạo function đầy đủ.
+- [x] Contract trả về `JSONB` summary, ví dụ:
   ```sql
   {"affected_count": 120, "skipped_already_assigned": 7, "skipped_not_found": 2}
   ```
-- [ ] Update SQL chỉ áp dụng cho row còn `nhom_thiet_bi_id IS NULL`.
-- [ ] Ghi audit log theo từng mapping group đã lưu thành công.
-- [ ] Chặn `regional_leader` ở cả UI lẫn RPC.
-- [ ] UI hiển thị thông tin nếu có row bị skip do stale preview hoặc concurrent update.
-- [ ] Sau khi lưu, invalidate/refetch đầy đủ các query liên quan.
+- [x] Update SQL chỉ áp dụng cho row còn `nhom_thiet_bi_id IS NULL`.
+- [x] Ghi audit log theo từng mapping group đã lưu thành công.
+- [x] Chặn `regional_leader` ở cả UI lẫn RPC.
+- [x] UI hiển thị thông tin nếu có row bị skip do stale preview hoặc concurrent update.
+- [x] Sau khi lưu, invalidate/refetch đầy đủ các query liên quan.
 
 **Exit criteria:** Save là idempotent và race-safe; stale preview không thể ghi đè mapping vừa được cập nhật bởi người khác.
 

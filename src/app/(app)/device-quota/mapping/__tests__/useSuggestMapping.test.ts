@@ -342,4 +342,152 @@ describe("useSuggestMapping", () => {
     expect(result.current.error).toBeNull()
     expect(result.current.progress).toBe(0)
   })
+
+  // ============================================
+  // Save Batch Mutation (Phase 4)
+  // ============================================
+
+  describe("saveBatch", () => {
+    const SAVE_RESULT = {
+      affected_count: 5,
+      skipped_already_assigned: 1,
+      skipped_not_found: 0,
+      groups: [
+        { nhom_id: 10, affected: 3, skipped: 0 },
+        { nhom_id: 20, affected: 2, skipped: 1 },
+      ],
+    }
+
+    test("calls dinh_muc_thiet_bi_link_batch RPC with correct payload", async () => {
+      setupSuccessfulPipeline()
+      callRpcMock.mockImplementation(({ fn }: { fn: string }) => {
+        if (fn === "dinh_muc_thiet_bi_unassigned_names") return Promise.resolve(UNASSIGNED_NAMES)
+        if (fn === "hybrid_search_category_batch") return Promise.resolve(SEARCH_RESULTS)
+        if (fn === "dinh_muc_thiet_bi_link_batch") return Promise.resolve(SAVE_RESULT)
+        return Promise.reject(new Error(`Unknown RPC: ${fn}`))
+      })
+
+      const { result } = renderHook(() =>
+        useSuggestMapping({ donViId: 42, enabled: true }),
+        { wrapper: createWrapper() }
+      )
+
+      await waitFor(() => { expect(result.current.status).toBe("done") })
+
+      const mappings = [
+        { nhom_id: 10, thiet_bi_ids: [1, 2, 3] },
+        { nhom_id: 20, thiet_bi_ids: [4, 5] },
+      ]
+
+      await act(async () => {
+        result.current.saveBatch(mappings)
+      })
+
+      await waitFor(() => {
+        expect(result.current.saveStatus).toBe("saved")
+      })
+
+      expect(callRpcMock).toHaveBeenCalledWith({
+        fn: "dinh_muc_thiet_bi_link_batch",
+        args: {
+          p_mappings: mappings,
+          p_don_vi: 42,
+        },
+      })
+    })
+
+    test("transitions through saving → saved status lifecycle", async () => {
+      setupSuccessfulPipeline()
+
+      // Delay save RPC to observe saving state
+      let resolveSave: (value: unknown) => void
+      callRpcMock.mockImplementation(({ fn }: { fn: string }) => {
+        if (fn === "dinh_muc_thiet_bi_unassigned_names") return Promise.resolve(UNASSIGNED_NAMES)
+        if (fn === "hybrid_search_category_batch") return Promise.resolve(SEARCH_RESULTS)
+        if (fn === "dinh_muc_thiet_bi_link_batch") {
+          return new Promise((resolve) => { resolveSave = resolve })
+        }
+        return Promise.reject(new Error(`Unknown RPC: ${fn}`))
+      })
+
+      const { result } = renderHook(() =>
+        useSuggestMapping({ donViId: 1, enabled: true }),
+        { wrapper: createWrapper() }
+      )
+
+      await waitFor(() => { expect(result.current.status).toBe("done") })
+      expect(result.current.saveStatus).toBe("idle")
+
+      act(() => {
+        result.current.saveBatch([{ nhom_id: 10, thiet_bi_ids: [1] }])
+      })
+
+      await waitFor(() => {
+        expect(result.current.saveStatus).toBe("saving")
+      })
+
+      await act(async () => {
+        resolveSave!(SAVE_RESULT)
+      })
+
+      await waitFor(() => {
+        expect(result.current.saveStatus).toBe("saved")
+      })
+    })
+
+    test("exposes save result with affected and skipped counts", async () => {
+      setupSuccessfulPipeline()
+      callRpcMock.mockImplementation(({ fn }: { fn: string }) => {
+        if (fn === "dinh_muc_thiet_bi_unassigned_names") return Promise.resolve(UNASSIGNED_NAMES)
+        if (fn === "hybrid_search_category_batch") return Promise.resolve(SEARCH_RESULTS)
+        if (fn === "dinh_muc_thiet_bi_link_batch") return Promise.resolve(SAVE_RESULT)
+        return Promise.reject(new Error(`Unknown RPC: ${fn}`))
+      })
+
+      const { result } = renderHook(() =>
+        useSuggestMapping({ donViId: 1, enabled: true }),
+        { wrapper: createWrapper() }
+      )
+
+      await waitFor(() => { expect(result.current.status).toBe("done") })
+
+      await act(async () => {
+        result.current.saveBatch([{ nhom_id: 10, thiet_bi_ids: [1] }])
+      })
+
+      await waitFor(() => {
+        expect(result.current.saveStatus).toBe("saved")
+      })
+
+      expect(result.current.saveResult).toEqual(SAVE_RESULT)
+    })
+
+    test("sets saveError on RPC failure", async () => {
+      setupSuccessfulPipeline()
+      callRpcMock.mockImplementation(({ fn }: { fn: string }) => {
+        if (fn === "dinh_muc_thiet_bi_unassigned_names") return Promise.resolve(UNASSIGNED_NAMES)
+        if (fn === "hybrid_search_category_batch") return Promise.resolve(SEARCH_RESULTS)
+        if (fn === "dinh_muc_thiet_bi_link_batch") return Promise.reject(new Error("Permission denied"))
+        return Promise.reject(new Error(`Unknown RPC: ${fn}`))
+      })
+
+      const { result } = renderHook(() =>
+        useSuggestMapping({ donViId: 1, enabled: true }),
+        { wrapper: createWrapper() }
+      )
+
+      await waitFor(() => { expect(result.current.status).toBe("done") })
+
+      await act(async () => {
+        result.current.saveBatch([{ nhom_id: 10, thiet_bi_ids: [1] }])
+      })
+
+      await waitFor(() => {
+        expect(result.current.saveStatus).toBe("save-error")
+      })
+
+      expect(result.current.saveError).toBe("Permission denied")
+    })
+  })
 })
+

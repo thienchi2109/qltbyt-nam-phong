@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { Sparkles, CheckCircle2, AlertTriangle } from "lucide-react"
+import { Sparkles, CheckCircle2, AlertTriangle, Loader2 } from "lucide-react"
 import { isEquipmentManagerRole, isRegionalLeaderRole } from "@/lib/rbac"
 import {
     Dialog,
@@ -13,12 +13,6 @@ import {
 } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import {
-    Tooltip,
-    TooltipContent,
-    TooltipProvider,
-    TooltipTrigger,
-} from "@/components/ui/tooltip"
-import {
     MappingPreviewCountBadge,
     MappingPreviewFooterNote,
     MappingPreviewLoadingState,
@@ -26,7 +20,9 @@ import {
 import { SuggestedMappingGroupSection } from "./SuggestedMappingGroupSection"
 import { SuggestedMappingUnmatchedSection } from "./SuggestedMappingUnmatchedSection"
 import { useSuggestMapping } from "../_hooks/useSuggestMapping"
-import type { SuggestMappingStatus } from "../_hooks/useSuggestMapping"
+import { useToast } from "@/hooks/use-toast"
+import { useQueryClient } from "@tanstack/react-query"
+import type { SuggestMappingStatus, SaveMapping } from "../_hooks/useSuggestMapping"
 
 // ============================================
 // Types
@@ -63,7 +59,7 @@ function getStatusLabel(status: SuggestMappingStatus): string {
 /**
  * Thin container for suggested mapping preview flow.
  * Composes hook orchestration + group sections + unmatched section + shared primitives.
- * Confirm button disabled in Phase 3 (placeholder for Phase 4 save).
+ * Confirm button wired to saveBatch mutation for bulk save.
  */
 export function SuggestedMappingPreviewDialog({
     open,
@@ -71,10 +67,13 @@ export function SuggestedMappingPreviewDialog({
     donViId,
     userRole,
 }: SuggestedMappingPreviewDialogProps) {
-    const { status, result, error, progress, reset } = useSuggestMapping({
+    const { status, result, error, progress, reset, saveBatch, saveStatus, saveError, saveResult } = useSuggestMapping({
         donViId,
         enabled: open,
     })
+
+    const { toast } = useToast()
+    const queryClient = useQueryClient()
 
     // Exclude state: per-group and per-device-name
     const [excludedGroups, setExcludedGroups] = React.useState<Set<number>>(new Set())
@@ -82,11 +81,17 @@ export function SuggestedMappingPreviewDialog({
         Map<number, Set<string>>
     >(new Map())
 
-    // Reset exclude state when dialog opens
+    // Guard: ensures toast + invalidation fire exactly once per save, even if
+    // handleClose is recreated mid-flight due to unstable useMutation references.
+    const hasNotifiedRef = React.useRef(false)
+    const handleCloseRef = React.useRef<() => void>(() => { })
+
+    // Reset exclude state and notification guard when dialog opens
     React.useEffect(() => {
         if (open) {
             setExcludedGroups(new Set())
             setExcludedDeviceNames(new Map())
+            hasNotifiedRef.current = false
         }
     }, [open])
 
@@ -94,6 +99,67 @@ export function SuggestedMappingPreviewDialog({
         reset()
         onOpenChange(false)
     }, [reset, onOpenChange])
+
+    // Keep ref in sync so the stable timeout always calls the latest closure
+    handleCloseRef.current = handleClose
+
+    // Auto-close dialog after successful save with toast
+    React.useEffect(() => {
+        if (saveStatus !== "saved") return
+        if (hasNotifiedRef.current) return
+        hasNotifiedRef.current = true
+
+        // Invalidate queries (same as manual flow)
+        queryClient.invalidateQueries({ queryKey: ['dinh_muc_thiet_bi_unassigned'] })
+        queryClient.invalidateQueries({ queryKey: ['dinh_muc_thiet_bi_unassigned_filter_options'] })
+        queryClient.invalidateQueries({ queryKey: ['dinh_muc_nhom_list'] })
+        queryClient.invalidateQueries({ queryKey: ['dinh_muc_compliance_summary'] })
+
+        toast({
+            title: "Thành công",
+            description: (() => {
+                const skipped = (saveResult?.skipped_already_assigned ?? 0) + (saveResult?.skipped_not_found ?? 0)
+                return skipped > 0
+                    ? `Đã phân loại thiết bị theo gợi ý thành công. Bỏ qua ${skipped} thiết bị đã được gán hoặc không tìm thấy.`
+                    : "Đã phân loại thiết bị theo gợi ý thành công"
+            })(),
+        })
+
+        const timer = setTimeout(() => {
+            handleCloseRef.current()
+        }, 1500)
+
+        return () => clearTimeout(timer)
+    }, [saveStatus, saveResult, queryClient, toast])
+
+    const handleConfirmSave = React.useCallback(() => {
+        if (!result) return
+
+        const mappings: SaveMapping[] = result.groups
+            .filter((g) => !excludedGroups.has(g.nhom_id))
+            .map((g) => {
+                const groupExcludedNames = excludedDeviceNames.get(g.nhom_id) ?? new Set()
+                // Filter device_ids via name→ID mapping, removing excluded names
+                const filteredIds = Object.entries(g.device_name_to_ids)
+                    .filter(([name]) => !groupExcludedNames.has(name))
+                    .flatMap(([, ids]) => ids)
+                return {
+                    nhom_id: g.nhom_id,
+                    thiet_bi_ids: filteredIds,
+                }
+            })
+            .filter((m) => m.thiet_bi_ids.length > 0)
+
+        if (mappings.length === 0) {
+            toast({
+                title: "Không có thiết bị để phân loại",
+                description: "Tất cả thiết bị đã bị loại bỏ. Vui lòng chọn lại ít nhất một thiết bị.",
+                variant: "destructive",
+            })
+            return
+        }
+        saveBatch(mappings)
+    }, [result, excludedGroups, excludedDeviceNames, saveBatch, toast])
 
     const toggleGroup = React.useCallback((nhomId: number) => {
         setExcludedGroups((prev) => {
@@ -125,9 +191,13 @@ export function SuggestedMappingPreviewDialog({
         []
     )
 
-    // Count active groups (not excluded)
+    // Count active groups (not excluded at group level AND has at least one active device name)
     const activeGroupCount = result
-        ? result.groups.filter((g) => !excludedGroups.has(g.nhom_id)).length
+        ? result.groups.filter((g) => {
+            if (excludedGroups.has(g.nhom_id)) return false
+            const groupExcludedNames = excludedDeviceNames.get(g.nhom_id) ?? new Set()
+            return g.device_names.some((name) => !groupExcludedNames.has(name))
+        }).length
         : 0
 
     const isLoading = status === "fetching-names" || status === "embedding" || status === "searching"
@@ -169,6 +239,14 @@ export function SuggestedMappingPreviewDialog({
                     <div className="flex items-center gap-2 rounded-md border border-destructive/50 bg-destructive/10 p-3 text-sm text-destructive">
                         <AlertTriangle className="h-4 w-4 shrink-0" />
                         <span>{error}</span>
+                    </div>
+                )}
+
+                {/* Save error state */}
+                {saveStatus === "save-error" && (
+                    <div className="flex items-center gap-2 rounded-md border border-destructive/50 bg-destructive/10 p-3 text-sm text-destructive">
+                        <AlertTriangle className="h-4 w-4 shrink-0" />
+                        <span>{saveError ?? "Không thể lưu phân loại. Vui lòng thử lại."}</span>
                     </div>
                 )}
 
@@ -218,24 +296,26 @@ export function SuggestedMappingPreviewDialog({
                     </Button>
 
                     {canWrite && !isRegionalLeader && status === "done" && (
-                        <TooltipProvider>
-                            <Tooltip>
-                                <TooltipTrigger asChild>
-                                    <span tabIndex={0}>
-                                        <Button disabled>
-                                            <CheckCircle2 className="h-4 w-4 mr-1" />
-                                            Áp dụng {activeGroupCount} gợi ý phân loại
-                                        </Button>
-                                    </span>
-                                </TooltipTrigger>
-                                <TooltipContent>
-                                    <p>Sẽ có ở Phase 4</p>
-                                </TooltipContent>
-                            </Tooltip>
-                        </TooltipProvider>
+                        <Button
+                            onClick={handleConfirmSave}
+                            disabled={saveStatus === "saving" || saveStatus === "save-error" || saveStatus === "saved" || activeGroupCount === 0}
+                        >
+                            {saveStatus === "saving" ? (
+                                <>
+                                    <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                                    Đang lưu...
+                                </>
+                            ) : (
+                                <>
+                                    <CheckCircle2 className="h-4 w-4 mr-1" />
+                                    Áp dụng {activeGroupCount} gợi ý phân loại
+                                </>
+                            )}
+                        </Button>
                     )}
                 </DialogFooter>
             </DialogContent>
         </Dialog>
     )
 }
+
