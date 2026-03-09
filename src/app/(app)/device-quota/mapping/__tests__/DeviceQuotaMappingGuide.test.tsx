@@ -1,5 +1,5 @@
 import React from 'react'
-import { render, screen, fireEvent } from '@testing-library/react'
+import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 import { DeviceQuotaMappingGuide } from '../_components/DeviceQuotaMappingGuide'
@@ -61,11 +61,13 @@ describe('DeviceQuotaMappingGuide', () => {
         )
     })
 
-    it('does not render when previously dismissed via localStorage', () => {
+    it('does not render when previously dismissed via localStorage', async () => {
         localStorageMock.getItem.mockReturnValue('true')
 
         render(<DeviceQuotaMappingGuide />)
 
-        expect(screen.queryByText(/Hướng dẫn phân loại thủ công/)).not.toBeInTheDocument()
+        await waitFor(() => {
+            expect(screen.queryByText(/Hướng dẫn phân loại thủ công/)).not.toBeInTheDocument()
+        })
     })
 })
