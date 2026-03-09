@@ -348,5 +348,10 @@ describe('DeviceQuotaCategoryTree', () => {
     // Even though leaves are not in the visible categories,
     // the intermediate node should still show aggregated count from full tree
     expect(screen.getByText('5/10')).toBeInTheDocument()
+
+    // Root header quota denominator must also use full-tree scope:
+    // Root(null) + Intermediate(10) + LeafA(5) + LeafB(5) + EmptyInterm(null) + EmptyLeaf(null) = 20
+    // hasUnknown=true because Root/EmptyIntermediate/EmptyLeaf have null quota → shows "5/–"
+    expect(screen.getByText('5/–')).toBeInTheDocument()
   })
 })

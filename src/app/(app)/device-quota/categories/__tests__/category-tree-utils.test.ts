@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 
-import { buildAggregatedCounts, getLeafIds } from '../_components/category-tree-utils'
+import { buildAggregatedCounts, getLeafIds, buildAggregatedQuotas } from '../_components/category-tree-utils'
 import type { CategoryListItem } from '../_types/categories'
 
 /**
@@ -122,5 +122,43 @@ describe('getLeafIds', () => {
     const leaves = getLeafIds([])
 
     expect(leaves.size).toBe(0)
+  })
+})
+
+// ============================================
+// buildAggregatedQuotas
+// ============================================
+
+describe('buildAggregatedQuotas', () => {
+  it('aggregates quotas up through a 3-level tree', () => {
+    const categories: CategoryListItem[] = [
+      makeCat({ id: 1, level: 1, so_luong_toi_da: 5 }),
+      makeCat({ id: 2, level: 2, parent_id: 1, so_luong_toi_da: 10 }),
+      makeCat({ id: 4, level: 3, parent_id: 2, so_luong_toi_da: 3 }),
+      makeCat({ id: 5, level: 3, parent_id: 2, so_luong_toi_da: 4 }),
+    ]
+
+    const quotas = buildAggregatedQuotas(categories)
+
+    // Root: 5 + 10 + 3 + 4 = 22
+    expect(quotas.get(1)).toEqual({ total: 22, hasUnknown: false })
+    // Intermediate: 10 + 3 + 4 = 17
+    expect(quotas.get(2)).toEqual({ total: 17, hasUnknown: false })
+    // Leaves keep own values
+    expect(quotas.get(4)).toEqual({ total: 3, hasUnknown: false })
+  })
+
+  it('propagates hasUnknown when any descendant has null quota', () => {
+    const categories: CategoryListItem[] = [
+      makeCat({ id: 1, level: 1, so_luong_toi_da: 5 }),
+      makeCat({ id: 2, level: 2, parent_id: 1, so_luong_toi_da: null }),
+      makeCat({ id: 3, level: 2, parent_id: 1, so_luong_toi_da: 8 }),
+    ]
+
+    const quotas = buildAggregatedQuotas(categories)
+
+    expect(quotas.get(1)).toEqual({ total: 13, hasUnknown: true })
+    expect(quotas.get(2)).toEqual({ total: 0, hasUnknown: true })
+    expect(quotas.get(3)).toEqual({ total: 8, hasUnknown: false })
   })
 })

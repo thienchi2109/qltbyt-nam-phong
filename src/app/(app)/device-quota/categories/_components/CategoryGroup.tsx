@@ -18,7 +18,7 @@ import {
     DropdownMenuItem,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { CATEGORY_GRID_COLS, CLASSIFICATION_STYLES } from "./category-tree-utils"
+import { CATEGORY_GRID_COLS, CLASSIFICATION_STYLES, type AggregatedQuota } from "./category-tree-utils"
 import { QuotaProgressBar } from "./QuotaProgressBar"
 import { DeviceQuotaCategoryAssignedEquipment } from "./DeviceQuotaCategoryAssignedEquipment"
 import type { CategoryListItem } from "../_types/categories"
@@ -177,6 +177,7 @@ interface CategoryGroupProps {
     onDelete: (category: CategoryListItem) => void
     mutatingCategoryId: number | null
     aggregatedCounts: Map<number, number>
+    aggregatedQuotas: Map<number, AggregatedQuota>
     leafIds: Set<number>
     expandedCategoryId: number | null
     onToggleExpand: (id: number) => void
@@ -190,6 +191,7 @@ const CategoryGroup = React.memo(function CategoryGroup({
     onDelete,
     mutatingCategoryId,
     aggregatedCounts,
+    aggregatedQuotas,
     leafIds,
     expandedCategoryId,
     onToggleExpand,
@@ -198,12 +200,11 @@ const CategoryGroup = React.memo(function CategoryGroup({
     const [isCollapsed, setIsCollapsed] = React.useState(false)
     const classStyle = CLASSIFICATION_STYLES[root.phan_loai || ""] ?? null
 
-    // Use aggregated count from full-tree computation — no double-counting
+    // Use aggregated values from full-tree computation — same scope for both
     const totalEquipment = aggregatedCounts.get(root.id) ?? root.so_luong_hien_co
-
-    const allGroupItems = [root, ...children]
-    const hasUnknownQuota = allGroupItems.some((item) => item.so_luong_toi_da == null)
-    const totalQuota = allGroupItems.reduce((sum, item) => sum + (item.so_luong_toi_da ?? 0), 0)
+    const rootQuota = aggregatedQuotas.get(root.id)
+    const hasUnknownQuota = rootQuota?.hasUnknown ?? true
+    const totalQuota = rootQuota?.total ?? 0
 
     return (
         <div className="rounded-lg border bg-card overflow-hidden transition-shadow hover:shadow-sm">

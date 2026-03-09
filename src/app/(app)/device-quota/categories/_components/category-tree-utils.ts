@@ -118,3 +118,47 @@ export function getLeafIds(
 
   return leaves
 }
+
+// ============================================
+// Quota Aggregation
+// ============================================
+
+export interface AggregatedQuota {
+  total: number
+  hasUnknown: boolean
+}
+
+/**
+ * Build aggregated quota totals: each category's quota =
+ * its own so_luong_toi_da + sum of all descendants' so_luong_toi_da.
+ * Tracks whether any node in the subtree has null (unknown) quota.
+ *
+ * Must receive the FULL category list (allCategories) for same scope
+ * as buildAggregatedCounts. Uses the same bottom-up reverse iteration.
+ */
+export function buildAggregatedQuotas(
+  categories: CategoryListItem[]
+): Map<number, AggregatedQuota> {
+  const quotas = new Map<number, AggregatedQuota>()
+
+  // Seed each node with its own quota
+  for (const cat of categories) {
+    quotas.set(cat.id, {
+      total: cat.so_luong_toi_da ?? 0,
+      hasUnknown: cat.so_luong_toi_da == null,
+    })
+  }
+
+  // Bottom-up: iterate in reverse (depth-first order)
+  for (let i = categories.length - 1; i >= 0; i--) {
+    const cat = categories[i]
+    if (cat.parent_id !== null && quotas.has(cat.parent_id)) {
+      const parent = quotas.get(cat.parent_id)!
+      const child = quotas.get(cat.id)!
+      parent.total += child.total
+      parent.hasUnknown = parent.hasUnknown || child.hasUnknown
+    }
+  }
+
+  return quotas
+}

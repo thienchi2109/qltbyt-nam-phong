@@ -12,7 +12,7 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import { useDeviceQuotaCategoryContext } from "../_hooks/useDeviceQuotaCategoryContext"
-import { CATEGORY_GRID_COLS, groupByRoot, buildAggregatedCounts, getLeafIds } from "./category-tree-utils"
+import { CATEGORY_GRID_COLS, groupByRoot, buildAggregatedCounts, buildAggregatedQuotas, getLeafIds } from "./category-tree-utils"
 import { CategoryGroup } from "./CategoryGroup"
 import { CategoryTreeSkeleton, CategoryTreeEmpty } from "./CategoryTreeStates"
 
@@ -36,6 +36,11 @@ export function DeviceQuotaCategoryTree() {
 
   const aggregatedCounts = React.useMemo(
     () => buildAggregatedCounts(allCategories),
+    [allCategories]
+  )
+
+  const aggregatedQuotas = React.useMemo(
+    () => buildAggregatedQuotas(allCategories),
     [allCategories]
   )
 
@@ -105,6 +110,7 @@ export function DeviceQuotaCategoryTree() {
                     onDelete={openDeleteDialog}
                     mutatingCategoryId={mutatingCategoryId}
                     aggregatedCounts={aggregatedCounts}
+                    aggregatedQuotas={aggregatedQuotas}
                     leafIds={leafIds}
                     expandedCategoryId={expandedCategoryId}
                     onToggleExpand={handleToggleExpand}
