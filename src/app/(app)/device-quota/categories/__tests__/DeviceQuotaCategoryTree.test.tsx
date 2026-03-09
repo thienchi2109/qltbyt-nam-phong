@@ -354,4 +354,92 @@ describe('DeviceQuotaCategoryTree', () => {
     // hasUnknown=true because Root/EmptyIntermediate/EmptyLeaf have null quota → shows "5/–"
     expect(screen.getByText('5/–')).toBeInTheDocument()
   })
+
+  // ============================================
+  // Root-level drill-down for single-level taxonomy
+  // ============================================
+
+  it('root that is a leaf with equipment shows expand button and toggles panel', () => {
+    const singleLevel = [
+      { id: 10, parent_id: null, ma_nhom: 'R', ten_nhom: 'Root Leaf', level: 1, so_luong_hien_co: 2, so_luong_toi_da: 5 },
+    ]
+
+    mockUseContext.mockReturnValue({
+      categories: singleLevel,
+      allCategories: singleLevel,
+      donViId: 1,
+      isLoading: false,
+      totalRootCount: 1,
+      searchTerm: '',
+      pagination: basePagination,
+      openCreateDialog: vi.fn(),
+      openEditDialog: vi.fn(),
+      openDeleteDialog: vi.fn(),
+      mutatingCategoryId: null,
+    } as unknown as MockCategoryContextValue)
+
+    render(<DeviceQuotaCategoryTree />)
+
+    const rootExpandBtn = screen.getByRole('button', { name: /Xem thiết bị Root Leaf/i })
+    expect(rootExpandBtn).toHaveAttribute('aria-expanded', 'false')
+
+    fireEvent.click(rootExpandBtn)
+    expect(screen.getByTestId('assigned-equipment-panel-10')).toBeInTheDocument()
+    expect(rootExpandBtn).toHaveAttribute('aria-expanded', 'true')
+
+    // Collapse
+    fireEvent.click(rootExpandBtn)
+    expect(screen.queryByTestId('assigned-equipment-panel-10')).not.toBeInTheDocument()
+    expect(rootExpandBtn).toHaveAttribute('aria-expanded', 'false')
+  })
+
+  it('root that is a leaf with zero equipment has no expand button', () => {
+    const singleLevelZero = [
+      { id: 11, parent_id: null, ma_nhom: 'R', ten_nhom: 'Empty Root Leaf', level: 1, so_luong_hien_co: 0, so_luong_toi_da: 5 },
+    ]
+
+    mockUseContext.mockReturnValue({
+      categories: singleLevelZero,
+      allCategories: singleLevelZero,
+      donViId: 1,
+      isLoading: false,
+      totalRootCount: 1,
+      searchTerm: '',
+      pagination: basePagination,
+      openCreateDialog: vi.fn(),
+      openEditDialog: vi.fn(),
+      openDeleteDialog: vi.fn(),
+      mutatingCategoryId: null,
+    } as unknown as MockCategoryContextValue)
+
+    render(<DeviceQuotaCategoryTree />)
+
+    expect(screen.queryByRole('button', { name: /Xem thiết bị Empty Root Leaf/i })).not.toBeInTheDocument()
+  })
+
+  it('root with children (not a leaf) has no expand button', () => {
+    const rootWithChild = [
+      { id: 12, parent_id: null, ma_nhom: 'R', ten_nhom: 'Root With Child', level: 1, so_luong_hien_co: 2, so_luong_toi_da: 5 },
+      { id: 13, parent_id: 12, ma_nhom: '01', ten_nhom: 'Child', level: 2, so_luong_hien_co: 1, so_luong_toi_da: 5 },
+    ]
+
+    mockUseContext.mockReturnValue({
+      categories: rootWithChild,
+      allCategories: rootWithChild,
+      donViId: 1,
+      isLoading: false,
+      totalRootCount: 1,
+      searchTerm: '',
+      pagination: basePagination,
+      openCreateDialog: vi.fn(),
+      openEditDialog: vi.fn(),
+      openDeleteDialog: vi.fn(),
+      mutatingCategoryId: null,
+    } as unknown as MockCategoryContextValue)
+
+    render(<DeviceQuotaCategoryTree />)
+
+    // Header remains a button for collapsing groups; ensure there is no root-level expand affordance
+    expect(screen.queryByRole('button', { name: /Xem thiết bị Root With Child/i })).not.toBeInTheDocument()
+  })
 })

@@ -261,11 +261,33 @@ const CategoryGroup = React.memo(function CategoryGroup({
                     )}
                 </div>
 
-                {/* Column 3: Aggregated quota progress */}
-                <QuotaProgressBar
-                    current={totalEquipment}
-                    max={hasUnknownQuota ? null : totalQuota}
-                />
+                {/* Column 3: Aggregated quota progress — clickable when root is a leaf with equipment */}
+                {leafIds.has(root.id) && totalEquipment > 0 ? (
+                    <button
+                        type="button"
+                        className="flex items-center gap-1.5 w-full text-left hover:opacity-80 transition-opacity cursor-pointer"
+                        onClick={(e) => {
+                            e.stopPropagation()
+                            onToggleExpand(root.id)
+                        }}
+                        aria-expanded={expandedCategoryId === root.id}
+                        aria-label={`Xem thiết bị ${root.ten_nhom}`}
+                    >
+                        <ChevronRight className={cn(
+                            "h-3 w-3 text-muted-foreground shrink-0 transition-transform duration-200",
+                            expandedCategoryId === root.id && "rotate-90"
+                        )} />
+                        <QuotaProgressBar
+                            current={totalEquipment}
+                            max={hasUnknownQuota ? null : totalQuota}
+                        />
+                    </button>
+                ) : (
+                    <QuotaProgressBar
+                        current={totalEquipment}
+                        max={hasUnknownQuota ? null : totalQuota}
+                    />
+                )}
 
                 {/* Column 4: Actions */}
                 <DropdownMenu>
@@ -295,6 +317,13 @@ const CategoryGroup = React.memo(function CategoryGroup({
                     </DropdownMenuContent>
                 </DropdownMenu>
             </div>
+
+            {/* Root-level assigned equipment panel (single-level taxonomy support) */}
+            {!isCollapsed && children.length === 0 && expandedCategoryId === root.id && leafIds.has(root.id) && totalEquipment > 0 && (
+                <div className="border-t">
+                    <DeviceQuotaCategoryAssignedEquipment nhomId={root.id} donViId={donViId} />
+                </div>
+            )}
 
             {/* Children */}
             {!isCollapsed && children.length > 0 && (
