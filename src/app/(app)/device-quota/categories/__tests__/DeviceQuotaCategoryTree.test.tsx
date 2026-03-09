@@ -293,6 +293,22 @@ describe('DeviceQuotaCategoryTree', () => {
     expect(screen.getByTestId('assigned-equipment-panel-4')).toBeInTheDocument()
   })
 
+  it('clicking expand button again collapses the panel', () => {
+    renderWithThreeLevelTree()
+
+    const expandButton = screen.getByRole('button', { name: /Leaf A/i })
+
+    // Open
+    fireEvent.click(expandButton)
+    expect(expandButton).toHaveAttribute('aria-expanded', 'true')
+    expect(screen.getByTestId('assigned-equipment-panel-4')).toBeInTheDocument()
+
+    // Collapse
+    fireEvent.click(expandButton)
+    expect(expandButton).toHaveAttribute('aria-expanded', 'false')
+    expect(screen.queryByTestId('assigned-equipment-panel-4')).not.toBeInTheDocument()
+  })
+
   it('intermediate node has no expand button', () => {
     renderWithThreeLevelTree()
 

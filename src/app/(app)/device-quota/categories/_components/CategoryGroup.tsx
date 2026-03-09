@@ -156,7 +156,7 @@ const CategoryChildRow = React.memo(function CategoryChildRow({
             </div>
 
             {/* Expanded equipment panel */}
-            {isExpanded && (
+            {isExpanded && isExpandable && (
                 <DeviceQuotaCategoryAssignedEquipment
                     nhomId={category.id}
                     donViId={donViId}
