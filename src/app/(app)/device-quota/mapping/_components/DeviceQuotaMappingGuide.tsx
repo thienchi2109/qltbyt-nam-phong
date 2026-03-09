@@ -10,19 +10,20 @@ const STORAGE_KEY = "mapping-guide-dismissed"
  * Dismissable 3-step guide teaching users how to map devices manually.
  * Persists dismissal via localStorage so it only appears once per user.
  *
- * Initializes as `false` on both server and client to avoid hydration mismatch,
- * then syncs with localStorage in useEffect.
+ * Uses `null` as the initial state (not yet hydrated) to avoid both SSR
+ * hydration mismatch and the first-paint flash for previously-dismissed users.
+ * The component renders nothing until after mount, at which point it reads
+ * localStorage and either shows or permanently hides the guide.
  */
 export function DeviceQuotaMappingGuide() {
-    const [dismissed, setDismissed] = React.useState(false)
+    // null = not yet hydrated; false = show guide; true = dismissed
+    const [dismissed, setDismissed] = React.useState<boolean | null>(null)
 
     React.useEffect(() => {
-        if (localStorage.getItem(STORAGE_KEY) === "true") {
-            setDismissed(true)
-        }
+        setDismissed(localStorage.getItem(STORAGE_KEY) === "true")
     }, [])
 
-    if (dismissed) return null
+    if (dismissed === null || dismissed) return null
 
     const handleDismiss = () => {
         localStorage.setItem(STORAGE_KEY, "true")

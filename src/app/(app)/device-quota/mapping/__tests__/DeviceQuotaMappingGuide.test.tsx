@@ -33,25 +33,29 @@ describe('DeviceQuotaMappingGuide', () => {
         localStorageMock.clear()
     })
 
-    it('renders 3-step manual mapping instructions', () => {
+    it('renders 3-step manual mapping instructions', async () => {
         render(<DeviceQuotaMappingGuide />)
 
-        expect(screen.getByText(/Hướng dẫn phân loại thủ công/)).toBeInTheDocument()
+        await waitFor(() => {
+            expect(screen.getByText(/Hướng dẫn phân loại thủ công/)).toBeInTheDocument()
+        })
         expect(screen.getByText(/Chọn thiết bị/)).toBeInTheDocument()
         expect(screen.getByText(/Chọn danh mục/)).toBeInTheDocument()
         expect(screen.getByText(/Phân loại/)).toBeInTheDocument()
     })
 
-    it('mentions that AI suggestion is resource-heavy', () => {
+    it('mentions that AI suggestion is resource-heavy', async () => {
         render(<DeviceQuotaMappingGuide />)
 
-        expect(screen.getByText(/tài nguyên/i)).toBeInTheDocument()
+        await waitFor(() => {
+            expect(screen.getByText(/tài nguyên/i)).toBeInTheDocument()
+        })
     })
 
-    it('dismisses the guide when "Đã hiểu" button is clicked', () => {
+    it('dismisses the guide when "Đã hiểu" button is clicked', async () => {
         render(<DeviceQuotaMappingGuide />)
 
-        const dismissButton = screen.getByRole('button', { name: /đã hiểu/i })
+        const dismissButton = await screen.findByRole('button', { name: /đã hiểu/i })
         fireEvent.click(dismissButton)
 
         expect(screen.queryByText(/Hướng dẫn phân loại thủ công/)).not.toBeInTheDocument()
