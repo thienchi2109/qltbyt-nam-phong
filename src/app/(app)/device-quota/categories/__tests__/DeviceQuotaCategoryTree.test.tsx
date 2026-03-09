@@ -442,4 +442,40 @@ describe('DeviceQuotaCategoryTree', () => {
     // Header remains a button for collapsing groups; ensure there is no root-level expand affordance
     expect(screen.queryByRole('button', { name: /Xem thiết bị Root With Child/i })).not.toBeInTheDocument()
   })
+
+  it('clicking root expand button does not collapse the header (stopPropagation)', () => {
+    const singleLevel = [
+      { id: 20, parent_id: null, ma_nhom: 'R', ten_nhom: 'Root Leaf Stop', level: 1, so_luong_hien_co: 2, so_luong_toi_da: 5 },
+    ]
+
+    mockUseContext.mockReturnValue({
+      categories: singleLevel,
+      allCategories: singleLevel,
+      donViId: 1,
+      isLoading: false,
+      totalRootCount: 1,
+      searchTerm: '',
+      pagination: basePagination,
+      openCreateDialog: vi.fn(),
+      openEditDialog: vi.fn(),
+      openDeleteDialog: vi.fn(),
+      mutatingCategoryId: null,
+    } as unknown as MockCategoryContextValue)
+
+    render(<DeviceQuotaCategoryTree />)
+
+    const header = screen.getByRole('button', { name: /Nhóm R: Root Leaf Stop/i })
+    const rootExpandBtn = screen.getByRole('button', { name: /Xem thiết bị Root Leaf Stop/i })
+
+    // Header should be expanded by default
+    expect(header).toHaveAttribute('aria-expanded', 'true')
+
+    // Click expand button: should not collapse header (aria-expanded stays true)
+    fireEvent.click(rootExpandBtn)
+    expect(header).toHaveAttribute('aria-expanded', 'true')
+
+    // Click again to collapse the panel: header should still remain expanded
+    fireEvent.click(rootExpandBtn)
+    expect(header).toHaveAttribute('aria-expanded', 'true')
+  })
 })

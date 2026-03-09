@@ -329,18 +329,19 @@ const CategoryGroup = React.memo(function CategoryGroup({
             {!isCollapsed && children.length > 0 && (
                 <div className="divide-y divide-border/50">
                     {children.map((child) => (
-                        <CategoryChildRow
-                            key={child.id}
-                            category={child}
-                            onEdit={onEdit}
-                            onDelete={onDelete}
-                            isMutating={mutatingCategoryId === child.id}
-                            aggregatedCount={aggregatedCounts.get(child.id) ?? child.so_luong_hien_co}
-                            isLeaf={leafIds.has(child.id)}
-                            isExpanded={expandedCategoryId === child.id}
-                            onToggleExpand={onToggleExpand}
-                            donViId={donViId}
-                        />
+                        <div key={child.id}>
+                            <CategoryChildRow
+                                category={child}
+                                onEdit={onEdit}
+                                onDelete={onDelete}
+                                isMutating={mutatingCategoryId === child.id}
+                                aggregatedCount={aggregatedCounts.get(child.id) ?? child.so_luong_hien_co}
+                                isLeaf={leafIds.has(child.id)}
+                                isExpanded={expandedCategoryId === child.id}
+                                onToggleExpand={onToggleExpand}
+                                donViId={donViId}
+                            />
+                        </div>
                     ))}
                 </div>
             )}
