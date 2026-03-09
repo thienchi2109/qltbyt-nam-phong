@@ -1,5 +1,6 @@
 import React from 'react'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import { renderToStaticMarkup } from 'react-dom/server'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 import { DeviceQuotaMappingGuide } from '../_components/DeviceQuotaMappingGuide'
@@ -31,6 +32,12 @@ describe('DeviceQuotaMappingGuide', () => {
     beforeEach(() => {
         vi.clearAllMocks()
         localStorageMock.clear()
+    })
+
+    it('does not include the guide in the initial render before dismissal state hydrates', () => {
+        const html = renderToStaticMarkup(<DeviceQuotaMappingGuide />)
+
+        expect(html).not.toContain('Hướng dẫn phân loại thủ công')
     })
 
     it('renders 3-step manual mapping instructions', async () => {
@@ -66,7 +73,7 @@ describe('DeviceQuotaMappingGuide', () => {
     })
 
     it('does not render when previously dismissed via localStorage', async () => {
-        localStorageMock.getItem.mockReturnValue('true')
+        localStorageMock.setItem('mapping-guide-dismissed', 'true')
 
         render(<DeviceQuotaMappingGuide />)
 
