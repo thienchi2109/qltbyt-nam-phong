@@ -33,6 +33,7 @@ interface CategoryChildRowProps {
     onDelete: (category: CategoryListItem) => void
     isMutating: boolean
     aggregatedCount: number
+    aggregatedQuota: AggregatedQuota | undefined
     isLeaf: boolean
     isExpanded: boolean
     onToggleExpand: (id: number) => void
@@ -45,6 +46,7 @@ const CategoryChildRow = React.memo(function CategoryChildRow({
     onDelete,
     isMutating,
     aggregatedCount,
+    aggregatedQuota,
     isLeaf,
     isExpanded,
     onToggleExpand,
@@ -55,6 +57,7 @@ const CategoryChildRow = React.memo(function CategoryChildRow({
     const indentPx = Math.max(0, category.level - 2) * 20
 
     const isExpandable = isLeaf && aggregatedCount > 0
+    const quotaMax = aggregatedQuota?.hasUnknown ? null : (aggregatedQuota?.total ?? category.so_luong_toi_da)
 
     return (
         <>
@@ -117,13 +120,13 @@ const CategoryChildRow = React.memo(function CategoryChildRow({
                         )} />
                         <QuotaProgressBar
                             current={aggregatedCount}
-                            max={category.so_luong_toi_da}
+                            max={quotaMax}
                         />
                     </button>
                 ) : (
                     <QuotaProgressBar
                         current={aggregatedCount}
-                        max={category.so_luong_toi_da}
+                        max={quotaMax}
                     />
                 )}
 
@@ -336,6 +339,7 @@ const CategoryGroup = React.memo(function CategoryGroup({
                                 onDelete={onDelete}
                                 isMutating={mutatingCategoryId === child.id}
                                 aggregatedCount={aggregatedCounts.get(child.id) ?? child.so_luong_hien_co}
+                                aggregatedQuota={aggregatedQuotas.get(child.id)}
                                 isLeaf={leafIds.has(child.id)}
                                 isExpanded={expandedCategoryId === child.id}
                                 onToggleExpand={onToggleExpand}

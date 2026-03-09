@@ -263,9 +263,9 @@ describe('DeviceQuotaCategoryTree', () => {
   it('shows aggregated count for intermediate node from descendant leaves', () => {
     renderWithThreeLevelTree()
 
-    // Intermediate node (id:2): raw count=0, but leaves 4+5 = 2+3=5
-    // Should show "5/10" (aggregated current / quota)
-    expect(screen.getByText('5/10')).toBeInTheDocument()
+    // Intermediate node (id:2): aggregated count = 0+2+3=5
+    // Aggregated quota = own(10) + LeafA(5) + LeafB(5) = 20
+    expect(screen.getByText('5/20')).toBeInTheDocument()
   })
 
   it('root header uses aggregated total without double-counting', () => {
@@ -347,7 +347,7 @@ describe('DeviceQuotaCategoryTree', () => {
 
     // Even though leaves are not in the visible categories,
     // the intermediate node should still show aggregated count from full tree
-    expect(screen.getByText('5/10')).toBeInTheDocument()
+    expect(screen.getByText('5/20')).toBeInTheDocument()
 
     // Root header quota denominator must also use full-tree scope:
     // Root(null) + Intermediate(10) + LeafA(5) + LeafB(5) + EmptyInterm(null) + EmptyLeaf(null) = 20
