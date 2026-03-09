@@ -70,12 +70,15 @@ function SvgConnectors({
     containerRef,
     scrollRef,
     excludedIds,
+    itemCount,
 }: {
     categoryRef: React.RefObject<HTMLDivElement | null>
     itemRefs: React.RefObject<Map<number, HTMLDivElement>>
     containerRef: React.RefObject<HTMLDivElement | null>
     scrollRef: React.RefObject<HTMLDivElement | null>
     excludedIds: Set<number>
+    /** Drives effect re-run when equipment items finish loading */
+    itemCount: number
 }) {
     const [paths, setPaths] = React.useState<
         { id: number; d: string; excluded: boolean }[]
@@ -105,13 +108,7 @@ function SvgConnectors({
             setPaths(newPaths)
         }
 
-        // Delay initial calculation to wait for dialog open animation to settle.
-        // Without this, getBoundingClientRect() returns zero dimensions during the
-        // CSS scale+fade animation, producing empty paths on first render.
-        let timerId: ReturnType<typeof setTimeout> | undefined
-        const animFrameId = requestAnimationFrame(() => {
-            timerId = setTimeout(recalculate, 50)
-        })
+        recalculate()
 
         const observer = new ResizeObserver(recalculate)
         if (containerRef.current) observer.observe(containerRef.current)
@@ -121,12 +118,10 @@ function SvgConnectors({
         scrollEl?.addEventListener('scroll', recalculate, { passive: true })
 
         return () => {
-            cancelAnimationFrame(animFrameId)
-            if (timerId !== undefined) clearTimeout(timerId)
             observer.disconnect()
             scrollEl?.removeEventListener('scroll', recalculate)
         }
-    }, [categoryRef, itemRefs, containerRef, scrollRef, excludedIds])
+    }, [categoryRef, itemRefs, containerRef, scrollRef, excludedIds, itemCount])
 
     if (paths.length === 0) return null
 
@@ -275,6 +270,7 @@ export function DeviceQuotaMappingPreviewDialog({
                         containerRef={containerRef}
                         scrollRef={scrollRef}
                         excludedIds={excludedIds}
+                        itemCount={equipmentList.length}
                     />
 
                     {/* Equipment list (right) */}
