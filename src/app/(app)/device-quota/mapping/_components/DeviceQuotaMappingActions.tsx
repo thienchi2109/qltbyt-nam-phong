@@ -83,11 +83,13 @@ export function DeviceQuotaMappingActions() {
           <div className="flex items-center gap-2">
             {showSuggestButton && (
               <Button
+                variant="outline"
                 size="sm"
-                className="touch-target-sm bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-md hover:from-amber-600 hover:to-orange-600 hover:shadow-lg transition-all duration-200 group"
+                className="touch-target-sm group"
                 onClick={() => setShowSuggested(true)}
+                title="Sử dụng AI để gợi ý — tốn tài nguyên server, chỉ dùng khi cần"
               >
-                <Sparkles className="h-4 w-4 group-hover:animate-pulse" />
+                <Sparkles className="h-4 w-4 text-amber-500 group-hover:animate-pulse" />
                 Gợi ý phân loại
               </Button>
             )}

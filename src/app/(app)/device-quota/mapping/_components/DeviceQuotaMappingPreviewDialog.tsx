@@ -105,7 +105,13 @@ function SvgConnectors({
             setPaths(newPaths)
         }
 
-        recalculate()
+        // Delay initial calculation to wait for dialog open animation to settle.
+        // Without this, getBoundingClientRect() returns zero dimensions during the
+        // CSS scale+fade animation, producing empty paths on first render.
+        let timerId: ReturnType<typeof setTimeout> | undefined
+        const animFrameId = requestAnimationFrame(() => {
+            timerId = setTimeout(recalculate, 50)
+        })
 
         const observer = new ResizeObserver(recalculate)
         if (containerRef.current) observer.observe(containerRef.current)
@@ -115,6 +121,8 @@ function SvgConnectors({
         scrollEl?.addEventListener('scroll', recalculate, { passive: true })
 
         return () => {
+            cancelAnimationFrame(animFrameId)
+            if (timerId !== undefined) clearTimeout(timerId)
             observer.disconnect()
             scrollEl?.removeEventListener('scroll', recalculate)
         }

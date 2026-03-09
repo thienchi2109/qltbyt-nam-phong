@@ -10,6 +10,7 @@ import { DeviceQuotaMappingSplitView } from "./_components/DeviceQuotaMappingSpl
 import { DeviceQuotaUnassignedList } from "./_components/DeviceQuotaUnassignedList"
 import { DeviceQuotaCategoryTree } from "./_components/DeviceQuotaCategoryTree"
 import { DeviceQuotaMappingActions } from "./_components/DeviceQuotaMappingActions"
+import { MappingGuide } from "./_components/MappingGuide"
 import { TenantSelector } from "@/components/shared/TenantSelector"
 
 export default function DeviceQuotaMappingPage() {
@@ -45,6 +46,9 @@ export default function DeviceQuotaMappingPage() {
           </div>
           <TenantSelector hideAllOption />
         </div>
+
+        {/* Manual mapping guide banner */}
+        <MappingGuide />
 
         {/* Split view */}
         <DeviceQuotaMappingSplitView
