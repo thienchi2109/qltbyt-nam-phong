@@ -84,7 +84,7 @@ export function SuggestedMappingPreviewDialog({
     // Guard: ensures toast + invalidation fire exactly once per save, even if
     // handleClose is recreated mid-flight due to unstable useMutation references.
     const hasNotifiedRef = React.useRef(false)
-    const handleCloseRef = React.useRef<() => void>(() => {})
+    const handleCloseRef = React.useRef<() => void>(() => { })
 
     // Reset exclude state and notification guard when dialog opens
     React.useEffect(() => {
@@ -150,9 +150,16 @@ export function SuggestedMappingPreviewDialog({
             })
             .filter((m) => m.thiet_bi_ids.length > 0)
 
-        if (mappings.length === 0) return
+        if (mappings.length === 0) {
+            toast({
+                title: "Không có thiết bị để phân loại",
+                description: "Tất cả thiết bị đã bị loại bỏ. Vui lòng chọn lại ít nhất một thiết bị.",
+                variant: "destructive",
+            })
+            return
+        }
         saveBatch(mappings)
-    }, [result, excludedGroups, excludedDeviceNames, saveBatch])
+    }, [result, excludedGroups, excludedDeviceNames, saveBatch, toast])
 
     const toggleGroup = React.useCallback((nhomId: number) => {
         setExcludedGroups((prev) => {
@@ -184,9 +191,13 @@ export function SuggestedMappingPreviewDialog({
         []
     )
 
-    // Count active groups (not excluded)
+    // Count active groups (not excluded at group level AND has at least one active device name)
     const activeGroupCount = result
-        ? result.groups.filter((g) => !excludedGroups.has(g.nhom_id)).length
+        ? result.groups.filter((g) => {
+            if (excludedGroups.has(g.nhom_id)) return false
+            const groupExcludedNames = excludedDeviceNames.get(g.nhom_id) ?? new Set()
+            return g.device_names.some((name) => !groupExcludedNames.has(name))
+        }).length
         : 0
 
     const isLoading = status === "fetching-names" || status === "embedding" || status === "searching"

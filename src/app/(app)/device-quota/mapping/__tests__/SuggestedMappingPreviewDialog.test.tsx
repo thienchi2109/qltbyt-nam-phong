@@ -476,7 +476,7 @@ describe('SuggestedMappingPreviewDialog', () => {
         ])
     })
 
-    it('does not call saveBatch when all device names in every active group are excluded', () => {
+    it('disables confirm button when all device names in every group are individually excluded', () => {
         const { saveBatch } = setupHook()
 
         renderWithQueryClient(
@@ -496,13 +496,35 @@ describe('SuggestedMappingPreviewDialog', () => {
         fireEvent.click(removeButtons[1])
         fireEvent.click(removeButtons[2])
 
-        // Button is still enabled (groups not excluded at group level)
+        // Button should be disabled — activeGroupCount drops to 0
         const confirmBtn = screen.getByRole('button', { name: /áp dụng/i })
-        expect(confirmBtn).toBeEnabled()
-        fireEvent.click(confirmBtn)
+        expect(confirmBtn).toBeDisabled()
 
-        // saveBatch must NOT be called — empty mappings would cause RPC error
+        // saveBatch must NOT be called
         expect(saveBatch).not.toHaveBeenCalled()
+    })
+
+    it('updates button label to reflect only groups with active device names', () => {
+        setupHook()
+
+        renderWithQueryClient(
+            <SuggestedMappingPreviewDialog
+                open={true}
+                onOpenChange={() => { }}
+                donViId={1}
+                userRole="admin"
+            />
+        )
+
+        // Initially "Áp dụng 2 gợi ý"
+        expect(screen.getByRole('button', { name: /áp dụng 2 gợi ý/i })).toBeEnabled()
+
+        // Exclude ALL device names in GROUP_B (only 'Bơm tiêm điện')
+        const removeButtons = screen.getAllByRole('button', { name: 'Loại bỏ' })
+        fireEvent.click(removeButtons[2]) // 'Bơm tiêm điện'
+
+        // Button should now say "Áp dụng 1 gợi ý"
+        expect(screen.getByRole('button', { name: /áp dụng 1 gợi ý/i })).toBeEnabled()
     })
 
     // ============================================
