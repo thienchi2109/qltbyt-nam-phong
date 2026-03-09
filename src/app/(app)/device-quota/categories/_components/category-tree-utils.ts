@@ -56,3 +56,65 @@ export function groupByRoot(categories: CategoryListItem[]) {
 
   return { roots, childrenMap }
 }
+
+// ============================================
+// Aggregation Helpers
+// ============================================
+
+/**
+ * Build aggregated equipment counts: each category's count =
+ * its own so_luong_hien_co + sum of all descendants' so_luong_hien_co.
+ *
+ * Must receive the FULL category list (allCategories), not search-filtered,
+ * so totals remain correct regardless of search state.
+ *
+ * Algorithm: the input list is depth-first ordered by sort_path,
+ * so iterating in reverse guarantees children are processed before parents.
+ */
+export function buildAggregatedCounts(
+  categories: CategoryListItem[]
+): Map<number, number> {
+  const totals = new Map<number, number>()
+
+  // Seed each node with its own direct count
+  for (const cat of categories) {
+    totals.set(cat.id, cat.so_luong_hien_co)
+  }
+
+  // Bottom-up: iterate in reverse (depth-first order means leaves come last)
+  for (let i = categories.length - 1; i >= 0; i--) {
+    const cat = categories[i]
+    if (cat.parent_id !== null && totals.has(cat.parent_id)) {
+      totals.set(
+        cat.parent_id,
+        (totals.get(cat.parent_id) ?? 0) + (totals.get(cat.id) ?? 0)
+      )
+    }
+  }
+
+  return totals
+}
+
+/**
+ * Identify leaf categories — nodes that have no children in the list.
+ * A node is a leaf if no other category has parent_id === node.id.
+ */
+export function getLeafIds(
+  categories: CategoryListItem[]
+): Set<number> {
+  const parentIds = new Set<number>()
+  for (const cat of categories) {
+    if (cat.parent_id !== null) {
+      parentIds.add(cat.parent_id)
+    }
+  }
+
+  const leaves = new Set<number>()
+  for (const cat of categories) {
+    if (!parentIds.has(cat.id)) {
+      leaves.add(cat.id)
+    }
+  }
+
+  return leaves
+}
