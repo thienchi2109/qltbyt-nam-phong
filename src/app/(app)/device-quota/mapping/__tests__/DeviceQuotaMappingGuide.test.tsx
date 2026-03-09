@@ -2,7 +2,7 @@ import React from 'react'
 import { render, screen, fireEvent } from '@testing-library/react'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
-import { MappingGuide } from '../_components/MappingGuide'
+import { DeviceQuotaMappingGuide } from '../_components/DeviceQuotaMappingGuide'
 
 // ============================================
 // localStorage mock
@@ -27,14 +27,14 @@ Object.defineProperty(window, 'localStorage', { value: localStorageMock })
 // Tests
 // ============================================
 
-describe('MappingGuide', () => {
+describe('DeviceQuotaMappingGuide', () => {
     beforeEach(() => {
         vi.clearAllMocks()
         localStorageMock.clear()
     })
 
     it('renders 3-step manual mapping instructions', () => {
-        render(<MappingGuide />)
+        render(<DeviceQuotaMappingGuide />)
 
         expect(screen.getByText(/Hướng dẫn phân loại thủ công/)).toBeInTheDocument()
         expect(screen.getByText(/Chọn thiết bị/)).toBeInTheDocument()
@@ -43,13 +43,13 @@ describe('MappingGuide', () => {
     })
 
     it('mentions that AI suggestion is resource-heavy', () => {
-        render(<MappingGuide />)
+        render(<DeviceQuotaMappingGuide />)
 
         expect(screen.getByText(/tài nguyên/i)).toBeInTheDocument()
     })
 
     it('dismisses the guide when "Đã hiểu" button is clicked', () => {
-        render(<MappingGuide />)
+        render(<DeviceQuotaMappingGuide />)
 
         const dismissButton = screen.getByRole('button', { name: /đã hiểu/i })
         fireEvent.click(dismissButton)
@@ -64,7 +64,7 @@ describe('MappingGuide', () => {
     it('does not render when previously dismissed via localStorage', () => {
         localStorageMock.getItem.mockReturnValue('true')
 
-        render(<MappingGuide />)
+        render(<DeviceQuotaMappingGuide />)
 
         expect(screen.queryByText(/Hướng dẫn phân loại thủ công/)).not.toBeInTheDocument()
     })

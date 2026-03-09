@@ -13,7 +13,7 @@ const STORAGE_KEY = "mapping-guide-dismissed"
  * Follows `client-localstorage-schema` (version and minimize localStorage data)
  * and `rerender-lazy-state-init` (lazy initializer for useState).
  */
-export function MappingGuide() {
+export function DeviceQuotaMappingGuide() {
     const [dismissed, setDismissed] = React.useState<boolean>(() => {
         if (typeof window === "undefined") return false
         return localStorage.getItem(STORAGE_KEY) === "true"
