@@ -38,26 +38,26 @@ function EquipmentRow({ item }: { item: EquipmentPreviewItem }) {
     const statusStyle = STATUS_STYLES[item.tinh_trang ?? ""] ?? ""
 
     return (
-        <div
-            className="grid grid-cols-[5rem_minmax(0,1fr)_6rem_6rem_7rem_5rem] gap-x-3 items-center px-3 py-2 text-xs hover:bg-accent/30 transition-colors"
+        <tr
+            className="text-xs hover:bg-accent/30 transition-colors"
             data-testid="assigned-equipment-row"
         >
-            <span className="font-mono text-muted-foreground truncate">
+            <td className="px-3 py-2 font-mono text-muted-foreground truncate max-w-[5rem]">
                 {item.ma_thiet_bi}
-            </span>
-            <span className="font-medium truncate">
+            </td>
+            <td className="px-3 py-2 font-medium truncate">
                 {item.ten_thiet_bi}
-            </span>
-            <span className="text-muted-foreground truncate">
+            </td>
+            <td className="px-3 py-2 text-muted-foreground truncate max-w-[6rem]">
                 {item.model ?? "–"}
-            </span>
-            <span className="text-muted-foreground truncate">
+            </td>
+            <td className="px-3 py-2 text-muted-foreground truncate max-w-[6rem]">
                 {item.serial ?? "–"}
-            </span>
-            <span className="text-muted-foreground truncate">
+            </td>
+            <td className="px-3 py-2 text-muted-foreground truncate max-w-[7rem]">
                 {item.khoa_phong_quan_ly ?? "–"}
-            </span>
-            <div>
+            </td>
+            <td className="px-3 py-2">
                 {item.tinh_trang ? (
                     <Badge
                         variant="outline"
@@ -68,28 +68,8 @@ function EquipmentRow({ item }: { item: EquipmentPreviewItem }) {
                 ) : (
                     <span className="text-muted-foreground">–</span>
                 )}
-            </div>
-        </div>
-    )
-}
-
-// ============================================
-// Column Header
-// ============================================
-
-function ColumnHeader() {
-    return (
-        <div
-            className="grid grid-cols-[5rem_minmax(0,1fr)_6rem_6rem_7rem_5rem] gap-x-3 items-center px-3 py-1.5 text-[10px] font-medium text-muted-foreground uppercase tracking-wide border-b"
-            aria-hidden="true"
-        >
-            <span>Mã TB</span>
-            <span>Tên thiết bị</span>
-            <span>Model</span>
-            <span>Serial</span>
-            <span>Khoa phòng</span>
-            <span>Tình trạng</span>
-        </div>
+            </td>
+        </tr>
     )
 }
 
@@ -127,14 +107,23 @@ export function DeviceQuotaCategoryAssignedEquipment({
                     <span>Chưa có thiết bị nào được gán</span>
                 </div>
             ) : (
-                <>
-                    <ColumnHeader />
-                    <div className="divide-y divide-border/30">
+                <table className="w-full text-left">
+                    <thead>
+                        <tr className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide border-b">
+                            <th scope="col" className="px-3 py-1.5 font-medium">Mã TB</th>
+                            <th scope="col" className="px-3 py-1.5 font-medium">Tên thiết bị</th>
+                            <th scope="col" className="px-3 py-1.5 font-medium">Model</th>
+                            <th scope="col" className="px-3 py-1.5 font-medium">Serial</th>
+                            <th scope="col" className="px-3 py-1.5 font-medium">Khoa phòng</th>
+                            <th scope="col" className="px-3 py-1.5 font-medium">Tình trạng</th>
+                        </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border/30">
                         {equipment.map((item) => (
                             <EquipmentRow key={item.id} item={item} />
                         ))}
-                    </div>
-                </>
+                    </tbody>
+                </table>
             )}
         </div>
     )

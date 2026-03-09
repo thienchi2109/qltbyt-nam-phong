@@ -304,4 +304,33 @@ describe('DeviceQuotaCategoryTree', () => {
 
     expect(screen.queryByRole('button', { name: /Empty Leaf/i })).not.toBeInTheDocument()
   })
+
+  it('displays full-tree aggregated totals even when categories is search-filtered', () => {
+    // Simulate search: only root and one intermediate are visible,
+    // but allCategories still contains the full tree
+    const filteredCategories = [
+      threeLevelTree[0], // Root (id:1)
+      threeLevelTree[1], // Intermediate (id:2)
+    ]
+
+    mockUseContext.mockReturnValue({
+      categories: filteredCategories,
+      allCategories: threeLevelTree, // full tree with all leaves
+      donViId: 1,
+      isLoading: false,
+      totalRootCount: 1,
+      searchTerm: 'Intermediate',
+      pagination: basePagination,
+      openCreateDialog: vi.fn(),
+      openEditDialog: vi.fn(),
+      openDeleteDialog: vi.fn(),
+      mutatingCategoryId: null,
+    } as unknown as MockCategoryContextValue)
+
+    render(<DeviceQuotaCategoryTree />)
+
+    // Even though leaves are not in the visible categories,
+    // the intermediate node should still show aggregated count from full tree
+    expect(screen.getByText('5/10')).toBeInTheDocument()
+  })
 })
