@@ -114,15 +114,43 @@ describe('/api/chat tools allowlist policy', () => {
     expect(streamTextMock).not.toHaveBeenCalled()
   })
 
-  it('allows maintenancePlanLookup when explicitly requested', async () => {
+  it.each([
+    'equipmentLookup',
+    'maintenanceSummary',
+    'maintenancePlanLookup',
+    'repairSummary',
+  ])('allows shipped tool "%s" when explicitly requested', async (toolName) => {
     const res = await POST(
       buildRequest({
         messages: VALID_MESSAGES,
-        requestedTools: ['maintenancePlanLookup'],
+        requestedTools: [toolName],
       }) as never,
     )
 
     expect(res.status).toBe(200)
     expect(streamTextMock).toHaveBeenCalledOnce()
+
+    const streamArgs = streamTextMock.mock.calls[0]?.[0] as {
+      tools?: Record<string, unknown>
+    }
+    expect(streamArgs?.tools).toHaveProperty(toolName)
+  })
+
+  it('allows all four shipped tools requested together', async () => {
+    const allTools = ['equipmentLookup', 'maintenanceSummary', 'maintenancePlanLookup', 'repairSummary']
+    const res = await POST(
+      buildRequest({
+        messages: VALID_MESSAGES,
+        requestedTools: allTools,
+      }) as never,
+    )
+
+    expect(res.status).toBe(200)
+    const streamArgs = streamTextMock.mock.calls[0]?.[0] as {
+      tools?: Record<string, unknown>
+    }
+    for (const toolName of allTools) {
+      expect(streamArgs?.tools).toHaveProperty(toolName)
+    }
   })
 })

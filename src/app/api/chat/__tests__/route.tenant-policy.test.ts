@@ -67,7 +67,12 @@ describe('/api/chat tenant policy', () => {
     })
   })
 
-  it('returns guidance when privileged role has no selected facility for tool usage', async () => {
+  it.each([
+    'equipmentLookup',
+    'maintenanceSummary',
+    'maintenancePlanLookup',
+    'repairSummary',
+  ])('returns guidance when privileged role has no facility for tool "%s"', async (toolName) => {
     getServerSessionMock.mockResolvedValue({
       user: { id: 'u1', role: 'global', don_vi: null },
     })
@@ -75,7 +80,7 @@ describe('/api/chat tenant policy', () => {
     const res = await POST(
       buildRequest({
         messages: VALID_MESSAGES,
-        requestedTools: ['equipmentLookup'],
+        requestedTools: [toolName],
       }) as never,
     )
     const payload = await res.json()

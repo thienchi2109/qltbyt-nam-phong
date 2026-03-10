@@ -55,6 +55,13 @@ const READ_ONLY_TOOL_DEFINITIONS: Record<string, ReadOnlyToolDefinition> = {
 const KNOWN_BUT_BLOCKED_TOOLS = new Set(['systemDiagnostics'])
 
 const ALLOWED_TOOL_NAMES = new Set(Object.keys(READ_ONLY_TOOL_DEFINITIONS))
+
+/** Returns tool name → RPC function mapping for contract-locking tests. */
+export function getToolRpcMapping(): Record<string, string> {
+  return Object.fromEntries(
+    Object.entries(READ_ONLY_TOOL_DEFINITIONS).map(([k, v]) => [k, v.rpcFunction]),
+  )
+}
 const KNOWN_TOOL_NAMES = new Set([
   ...Object.keys(READ_ONLY_TOOL_DEFINITIONS),
   ...KNOWN_BUT_BLOCKED_TOOLS,

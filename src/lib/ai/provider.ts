@@ -2,7 +2,7 @@ import { google } from '@ai-sdk/google'
 import type { LanguageModel } from 'ai'
 
 const DEFAULT_PROVIDER = 'google'
-const DEFAULT_MODEL = 'gemini-2.5-flash'
+const DEFAULT_MODEL = 'gemini-3-flash-preview'
 
 export function getChatModel(): LanguageModel {
   const provider = (process.env.AI_PROVIDER ?? DEFAULT_PROVIDER).toLowerCase()
