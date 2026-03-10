@@ -37,11 +37,15 @@ describe('system prompt module', () => {
     expect(prompt).toContain('thiet_bi')
     expect(prompt).toContain('yeu_cau_sua_chua')
     expect(prompt).toContain('ke_hoach')
+    expect(prompt).toContain('dinh_muc')
 
     // RAG-first troubleshooting
     expect(prompt).toContain('equipmentLookup')
     expect(prompt).toContain('repairSummary')
     expect(prompt).toContain('usageHistory')
+    expect(prompt).toContain('attachmentLookup')
+    expect(prompt).toContain('deviceQuotaLookup')
+    expect(prompt).toContain('quotaComplianceSummary')
 
     // Safety guardrails
     expect(prompt).toContain('an toàn bệnh nhân')
@@ -113,18 +117,40 @@ describe('system prompt module', () => {
     expect(prompt).toContain('tần suất sử dụng')
   })
 
-  it('does NOT claim universal signed URL attachment access before tool is shipped', () => {
+  it('describes attachment lookup capabilities via attachmentLookup tool', () => {
     const prompt = buildSystemPrompt({
       role: 'admin',
       userId: 'u1',
       selectedFacilityId: 2,
     })
 
-    // Attachment tool is not shipped yet.
+    // Attachment tool is now shipped.
+    expect(prompt).toContain('attachmentLookup')
+    expect(prompt).toContain('metadata')
+    expect(prompt).toContain('external_url')
+    // Should NOT claim signed URL access since all are external links
     expect(prompt).not.toContain('signed URL')
   })
 
-  it('prompt version is v1.4.0 after usage-history tool', () => {
-    expect(SYSTEM_PROMPT_VERSION).toBe('v1.4.0')
+  it('prompt version is v2.0.0 after quota tools', () => {
+    expect(SYSTEM_PROMPT_VERSION).toBe('v2.0.0')
+  })
+
+  it('contains quota anti-hallucination rules', () => {
+    const prompt = buildSystemPrompt({
+      role: 'to_qltb',
+      userId: 'u1',
+      selectedFacilityId: 5,
+    })
+
+    // All 4 status enums must be documented
+    expect(prompt).toContain('inQuotaCatalog')
+    expect(prompt).toContain('notMapped')
+    expect(prompt).toContain('notInApprovedCatalog')
+    expect(prompt).toContain('insufficientEvidence')
+
+    // Anti-hallucination constraint
+    expect(prompt).toContain('TUYỆT ĐỐI KHÔNG tự suy luận')
+    expect(prompt).toContain('KHÔNG làm tròn, ước tính, hoặc bịa số liệu')
   })
 })

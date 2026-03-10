@@ -61,6 +61,32 @@ const READ_ONLY_TOOL_DEFINITIONS: Record<string, ReadOnlyToolDefinition> = {
       })
       .strict(),
   },
+  attachmentLookup: {
+    description:
+      'Lookup attachment metadata (file names, external links) for a specific equipment item.',
+    rpcFunction: 'ai_attachment_metadata',
+    inputSchema: z
+      .object({
+        thiet_bi_id: z.number().int().positive(),
+      })
+      .strict(),
+  },
+  deviceQuotaLookup: {
+    description:
+      'Check quota status for a specific equipment item against the active quota decision.',
+    rpcFunction: 'ai_device_quota_lookup',
+    inputSchema: z
+      .object({
+        thiet_bi_id: z.number().int().positive(),
+      })
+      .strict(),
+  },
+  quotaComplianceSummary: {
+    description:
+      'Get facility-level device quota compliance overview from the active decision.',
+    rpcFunction: 'ai_quota_compliance_summary',
+    inputSchema: z.object({}).strict(),
+  },
 }
 
 const KNOWN_BUT_BLOCKED_TOOLS = new Set(['systemDiagnostics'])

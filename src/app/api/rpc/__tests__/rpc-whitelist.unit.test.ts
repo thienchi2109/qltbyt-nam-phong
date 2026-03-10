@@ -28,6 +28,9 @@ describe('RPC proxy whitelist', () => {
     'ai_maintenance_plan_lookup',
     'ai_repair_summary',
     'ai_usage_summary',
+    'ai_attachment_metadata',
+    'ai_device_quota_lookup',
+    'ai_quota_compliance_summary',
   ])('allows AI RPC "%s" through whitelist checks', async (fn) => {
     const res = await invokeRpcProxy(fn)
 
