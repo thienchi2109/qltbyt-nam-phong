@@ -70,12 +70,15 @@ function SvgConnectors({
     containerRef,
     scrollRef,
     excludedIds,
+    itemCount,
 }: {
     categoryRef: React.RefObject<HTMLDivElement | null>
     itemRefs: React.RefObject<Map<number, HTMLDivElement>>
     containerRef: React.RefObject<HTMLDivElement | null>
     scrollRef: React.RefObject<HTMLDivElement | null>
     excludedIds: Set<number>
+    /** Drives effect re-run when equipment items finish loading */
+    itemCount: number
 }) {
     const [paths, setPaths] = React.useState<
         { id: number; d: string; excluded: boolean }[]
@@ -118,7 +121,7 @@ function SvgConnectors({
             observer.disconnect()
             scrollEl?.removeEventListener('scroll', recalculate)
         }
-    }, [categoryRef, itemRefs, containerRef, scrollRef, excludedIds])
+    }, [categoryRef, itemRefs, containerRef, scrollRef, excludedIds, itemCount])
 
     if (paths.length === 0) return null
 
@@ -267,6 +270,7 @@ export function DeviceQuotaMappingPreviewDialog({
                         containerRef={containerRef}
                         scrollRef={scrollRef}
                         excludedIds={excludedIds}
+                        itemCount={equipmentList.length}
                     />
 
                     {/* Equipment list (right) */}

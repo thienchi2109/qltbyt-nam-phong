@@ -56,3 +56,109 @@ export function groupByRoot(categories: CategoryListItem[]) {
 
   return { roots, childrenMap }
 }
+
+// ============================================
+// Aggregation Helpers
+// ============================================
+
+/**
+ * Build aggregated equipment counts: each category's count =
+ * its own so_luong_hien_co + sum of all descendants' so_luong_hien_co.
+ *
+ * Must receive the FULL category list (allCategories), not search-filtered,
+ * so totals remain correct regardless of search state.
+ *
+ * Algorithm: the input list is depth-first ordered by sort_path,
+ * so iterating in reverse guarantees children are processed before parents.
+ */
+export function buildAggregatedCounts(
+  categories: CategoryListItem[]
+): Map<number, number> {
+  const totals = new Map<number, number>()
+
+  // Seed each node with its own direct count
+  for (const cat of categories) {
+    totals.set(cat.id, cat.so_luong_hien_co)
+  }
+
+  // Bottom-up: iterate in reverse (depth-first order means leaves come last)
+  for (let i = categories.length - 1; i >= 0; i--) {
+    const cat = categories[i]
+    if (cat.parent_id !== null && totals.has(cat.parent_id)) {
+      totals.set(
+        cat.parent_id,
+        (totals.get(cat.parent_id) ?? 0) + (totals.get(cat.id) ?? 0)
+      )
+    }
+  }
+
+  return totals
+}
+
+/**
+ * Identify leaf categories — nodes that have no children in the list.
+ * A node is a leaf if no other category has parent_id === node.id.
+ */
+export function getLeafIds(
+  categories: CategoryListItem[]
+): Set<number> {
+  const parentIds = new Set<number>()
+  for (const cat of categories) {
+    if (cat.parent_id !== null) {
+      parentIds.add(cat.parent_id)
+    }
+  }
+
+  const leaves = new Set<number>()
+  for (const cat of categories) {
+    if (!parentIds.has(cat.id)) {
+      leaves.add(cat.id)
+    }
+  }
+
+  return leaves
+}
+
+// ============================================
+// Quota Aggregation
+// ============================================
+
+export interface AggregatedQuota {
+  total: number
+  hasUnknown: boolean
+}
+
+/**
+ * Build aggregated quota totals: each category's quota =
+ * its own so_luong_toi_da + sum of all descendants' so_luong_toi_da.
+ * Tracks whether any node in the subtree has null (unknown) quota.
+ *
+ * Must receive the FULL category list (allCategories) for same scope
+ * as buildAggregatedCounts. Uses the same bottom-up reverse iteration.
+ */
+export function buildAggregatedQuotas(
+  categories: CategoryListItem[]
+): Map<number, AggregatedQuota> {
+  const quotas = new Map<number, AggregatedQuota>()
+
+  // Seed each node with its own quota
+  for (const cat of categories) {
+    quotas.set(cat.id, {
+      total: cat.so_luong_toi_da ?? 0,
+      hasUnknown: cat.so_luong_toi_da == null,
+    })
+  }
+
+  // Bottom-up: iterate in reverse (depth-first order)
+  for (let i = categories.length - 1; i >= 0; i--) {
+    const cat = categories[i]
+    if (cat.parent_id !== null && quotas.has(cat.parent_id)) {
+      const parent = quotas.get(cat.parent_id)!
+      const child = quotas.get(cat.id)!
+      parent.total += child.total
+      parent.hasUnknown = parent.hasUnknown || child.hasUnknown
+    }
+  }
+
+  return quotas
+}

@@ -18,8 +18,9 @@ import {
     DropdownMenuItem,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { CATEGORY_GRID_COLS, CLASSIFICATION_STYLES } from "./category-tree-utils"
+import { CATEGORY_GRID_COLS, CLASSIFICATION_STYLES, type AggregatedQuota } from "./category-tree-utils"
 import { QuotaProgressBar } from "./QuotaProgressBar"
+import { DeviceQuotaCategoryAssignedEquipment } from "./DeviceQuotaCategoryAssignedEquipment"
 import type { CategoryListItem } from "../_types/categories"
 
 // ============================================
@@ -31,6 +32,12 @@ interface CategoryChildRowProps {
     onEdit: (category: CategoryListItem) => void
     onDelete: (category: CategoryListItem) => void
     isMutating: boolean
+    aggregatedCount: number
+    aggregatedQuota: AggregatedQuota | undefined
+    isLeaf: boolean
+    isExpanded: boolean
+    onToggleExpand: (id: number) => void
+    donViId: number | null
 }
 
 const CategoryChildRow = React.memo(function CategoryChildRow({
@@ -38,86 +45,127 @@ const CategoryChildRow = React.memo(function CategoryChildRow({
     onEdit,
     onDelete,
     isMutating,
+    aggregatedCount,
+    aggregatedQuota,
+    isLeaf,
+    isExpanded,
+    onToggleExpand,
+    donViId,
 }: CategoryChildRowProps) {
     const classStyle = CLASSIFICATION_STYLES[category.phan_loai || ""] ?? null
 
     const indentPx = Math.max(0, category.level - 2) * 20
 
+    const isExpandable = isLeaf && aggregatedCount > 0
+    const quotaMax = aggregatedQuota?.hasUnknown ? null : (aggregatedQuota?.total ?? category.so_luong_toi_da)
+
     return (
-        <div
-            className={cn(
-                "group relative rounded-md border border-transparent px-4 py-2.5 transition-all duration-150",
-                "hover:bg-accent/50 hover:border-border/50",
-                CATEGORY_GRID_COLS
-            )}
-        >
-            {/* Column 1: Category name (indentation applied here, not on grid container) */}
-            <div className="relative min-w-0" style={{ paddingLeft: `${indentPx}px` }}>
-                {/* Tree connector line */}
-                {category.level > 2 && (
-                    <div
-                        className="absolute top-0 bottom-0 border-l-2 border-muted-foreground/15"
-                        style={{ left: `${Math.max(0, category.level - 3) * 20}px` }}
-                        aria-hidden="true"
+        <>
+            <div
+                className={cn(
+                    "group relative rounded-md border border-transparent px-4 py-2.5 transition-all duration-150",
+                    "hover:bg-accent/50 hover:border-border/50",
+                    isExpanded && "bg-accent/30 border-border/50",
+                    CATEGORY_GRID_COLS
+                )}
+            >
+                {/* Column 1: Category name */}
+                <div className="relative min-w-0" style={{ paddingLeft: `${indentPx}px` }}>
+                    {category.level > 2 && (
+                        <div
+                            className="absolute top-0 bottom-0 border-l-2 border-muted-foreground/15"
+                            style={{ left: `${Math.max(0, category.level - 3) * 20}px` }}
+                            aria-hidden="true"
+                        />
+                    )}
+                    <div className="flex items-baseline gap-2">
+                        <span className="text-sm font-semibold text-primary/80 shrink-0">
+                            {category.ma_nhom}
+                        </span>
+                        <span className="text-sm text-foreground/80 break-words">
+                            {category.ten_nhom}
+                        </span>
+                    </div>
+                    {category.mo_ta && (
+                        <p className="text-xs text-muted-foreground mt-1 italic">
+                            {category.mo_ta}
+                        </p>
+                    )}
+                </div>
+
+                {/* Column 2: Classification badge */}
+                <div>
+                    {classStyle && (
+                        <Badge variant="outline" className={cn("text-xs font-medium", classStyle.className)}>
+                            {classStyle.label}
+                        </Badge>
+                    )}
+                </div>
+
+                {/* Column 3: Quota progress bar — clickable for expandable leaves */}
+                {isExpandable ? (
+                    <button
+                        type="button"
+                        className="flex items-center gap-1.5 w-full text-left hover:opacity-80 transition-opacity cursor-pointer"
+                        onClick={(e) => {
+                            e.stopPropagation()
+                            onToggleExpand(category.id)
+                        }}
+                        aria-expanded={isExpanded}
+                        aria-label={`Xem thiết bị ${category.ten_nhom}`}
+                    >
+                        <ChevronRight className={cn(
+                            "h-3 w-3 text-muted-foreground shrink-0 transition-transform duration-200",
+                            isExpanded && "rotate-90"
+                        )} />
+                        <QuotaProgressBar
+                            current={aggregatedCount}
+                            max={quotaMax}
+                        />
+                    </button>
+                ) : (
+                    <QuotaProgressBar
+                        current={aggregatedCount}
+                        max={quotaMax}
                     />
                 )}
-                <div className="flex items-baseline gap-2">
-                    <span className="text-sm font-semibold text-primary/80 shrink-0">
-                        {category.ma_nhom}
-                    </span>
-                    <span className="text-sm text-foreground/80 break-words">
-                        {category.ten_nhom}
-                    </span>
-                </div>
-                {category.mo_ta && (
-                    <p className="text-xs text-muted-foreground mt-1 italic">
-                        {category.mo_ta}
-                    </p>
-                )}
+
+                {/* Column 4: Actions */}
+                <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity"
+                            disabled={isMutating}
+                        >
+                            <MoreHorizontal className="h-4 w-4" />
+                        </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                        <DropdownMenuItem onSelect={() => onEdit(category)}>
+                            <Pencil className="mr-2 h-4 w-4" />
+                            Sửa
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                            onSelect={() => onDelete(category)}
+                            className="text-destructive focus:text-destructive"
+                        >
+                            <Trash2 className="mr-2 h-4 w-4" />
+                            Xóa
+                        </DropdownMenuItem>
+                    </DropdownMenuContent>
+                </DropdownMenu>
             </div>
 
-            {/* Column 2: Classification badge */}
-            <div>
-                {classStyle && (
-                    <Badge variant="outline" className={cn("text-xs font-medium", classStyle.className)}>
-                        {classStyle.label}
-                    </Badge>
-                )}
-            </div>
-
-            {/* Column 3: Quota progress bar */}
-            <QuotaProgressBar
-                current={category.so_luong_hien_co}
-                max={category.so_luong_toi_da}
-            />
-
-            {/* Column 4: Actions */}
-            <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                    <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity"
-                        disabled={isMutating}
-                    >
-                        <MoreHorizontal className="h-4 w-4" />
-                    </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                    <DropdownMenuItem onSelect={() => onEdit(category)}>
-                        <Pencil className="mr-2 h-4 w-4" />
-                        Sửa
-                    </DropdownMenuItem>
-                    <DropdownMenuItem
-                        onSelect={() => onDelete(category)}
-                        className="text-destructive focus:text-destructive"
-                    >
-                        <Trash2 className="mr-2 h-4 w-4" />
-                        Xóa
-                    </DropdownMenuItem>
-                </DropdownMenuContent>
-            </DropdownMenu>
-        </div>
+            {/* Expanded equipment panel */}
+            {isExpanded && isExpandable && (
+                <DeviceQuotaCategoryAssignedEquipment
+                    nhomId={category.id}
+                    donViId={donViId}
+                />
+            )}
+        </>
     )
 })
 
@@ -131,6 +179,12 @@ interface CategoryGroupProps {
     onEdit: (category: CategoryListItem) => void
     onDelete: (category: CategoryListItem) => void
     mutatingCategoryId: number | null
+    aggregatedCounts: Map<number, number>
+    aggregatedQuotas: Map<number, AggregatedQuota>
+    leafIds: Set<number>
+    expandedCategoryId: number | null
+    onToggleExpand: (id: number) => void
+    donViId: number | null
 }
 
 const CategoryGroup = React.memo(function CategoryGroup({
@@ -139,13 +193,21 @@ const CategoryGroup = React.memo(function CategoryGroup({
     onEdit,
     onDelete,
     mutatingCategoryId,
+    aggregatedCounts,
+    aggregatedQuotas,
+    leafIds,
+    expandedCategoryId,
+    onToggleExpand,
+    donViId,
 }: CategoryGroupProps) {
     const [isCollapsed, setIsCollapsed] = React.useState(false)
     const classStyle = CLASSIFICATION_STYLES[root.phan_loai || ""] ?? null
-    const totalEquipment = children.reduce((sum, c) => sum + c.so_luong_hien_co, 0) + root.so_luong_hien_co
-    const allGroupItems = [root, ...children]
-    const hasUnknownQuota = allGroupItems.some((item) => item.so_luong_toi_da == null)
-    const totalQuota = allGroupItems.reduce((sum, item) => sum + (item.so_luong_toi_da ?? 0), 0)
+
+    // Use aggregated values from full-tree computation — same scope for both
+    const totalEquipment = aggregatedCounts.get(root.id) ?? root.so_luong_hien_co
+    const rootQuota = aggregatedQuotas.get(root.id)
+    const hasUnknownQuota = rootQuota?.hasUnknown ?? true
+    const totalQuota = rootQuota?.total ?? 0
 
     return (
         <div className="rounded-lg border bg-card overflow-hidden transition-shadow hover:shadow-sm">
@@ -202,13 +264,35 @@ const CategoryGroup = React.memo(function CategoryGroup({
                     )}
                 </div>
 
-                {/* Column 3: Aggregated quota progress */}
-                <QuotaProgressBar
-                    current={totalEquipment}
-                    max={hasUnknownQuota ? null : totalQuota}
-                />
+                {/* Column 3: Aggregated quota progress — clickable when root is a leaf with equipment */}
+                {leafIds.has(root.id) && totalEquipment > 0 ? (
+                    <button
+                        type="button"
+                        className="flex items-center gap-1.5 w-full text-left hover:opacity-80 transition-opacity cursor-pointer"
+                        onClick={(e) => {
+                            e.stopPropagation()
+                            onToggleExpand(root.id)
+                        }}
+                        aria-expanded={expandedCategoryId === root.id}
+                        aria-label={`Xem thiết bị ${root.ten_nhom}`}
+                    >
+                        <ChevronRight className={cn(
+                            "h-3 w-3 text-muted-foreground shrink-0 transition-transform duration-200",
+                            expandedCategoryId === root.id && "rotate-90"
+                        )} />
+                        <QuotaProgressBar
+                            current={totalEquipment}
+                            max={hasUnknownQuota ? null : totalQuota}
+                        />
+                    </button>
+                ) : (
+                    <QuotaProgressBar
+                        current={totalEquipment}
+                        max={hasUnknownQuota ? null : totalQuota}
+                    />
+                )}
 
-                {/* Column 4: Actions (stop propagation to avoid collapse toggle) */}
+                {/* Column 4: Actions */}
                 <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                         <Button
@@ -237,17 +321,31 @@ const CategoryGroup = React.memo(function CategoryGroup({
                 </DropdownMenu>
             </div>
 
+            {/* Root-level assigned equipment panel (single-level taxonomy support) */}
+            {!isCollapsed && children.length === 0 && expandedCategoryId === root.id && leafIds.has(root.id) && totalEquipment > 0 && (
+                <div className="border-t">
+                    <DeviceQuotaCategoryAssignedEquipment nhomId={root.id} donViId={donViId} />
+                </div>
+            )}
+
             {/* Children */}
             {!isCollapsed && children.length > 0 && (
                 <div className="divide-y divide-border/50">
                     {children.map((child) => (
-                        <CategoryChildRow
-                            key={child.id}
-                            category={child}
-                            onEdit={onEdit}
-                            onDelete={onDelete}
-                            isMutating={mutatingCategoryId === child.id}
-                        />
+                        <div key={child.id}>
+                            <CategoryChildRow
+                                category={child}
+                                onEdit={onEdit}
+                                onDelete={onDelete}
+                                isMutating={mutatingCategoryId === child.id}
+                                aggregatedCount={aggregatedCounts.get(child.id) ?? child.so_luong_hien_co}
+                                aggregatedQuota={aggregatedQuotas.get(child.id)}
+                                isLeaf={leafIds.has(child.id)}
+                                isExpanded={expandedCategoryId === child.id}
+                                onToggleExpand={onToggleExpand}
+                                donViId={donViId}
+                            />
+                        </div>
                     ))}
                 </div>
             )}
