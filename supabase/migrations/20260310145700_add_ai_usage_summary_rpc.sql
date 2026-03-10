@@ -3,6 +3,8 @@
 --
 -- Security: SECURITY DEFINER + pinned search_path, JWT claim guards,
 -- tenant isolation via thiet_bi.don_vi, authenticated-only.
+-- Facility scope: honors selected-facility contract (p_don_vi required
+-- for global/regional_leader roles, matching app enforcement).
 
 BEGIN;
 
@@ -30,7 +32,7 @@ DECLARE
   v_cutoff TIMESTAMPTZ;
   v_months INT := GREATEST(LEAST(COALESCE(p_months, 6), 24), 1);
 BEGIN
-  -- JWT claim guards
+  -- ── JWT claim guards (security boundary → RAISE) ──────────────
   IF v_role IS NULL OR v_role = '' THEN
     RAISE EXCEPTION 'Missing role claim' USING ERRCODE = '42501';
   END IF;
@@ -54,37 +56,75 @@ BEGIN
     RAISE EXCEPTION 'user_id claim mismatch' USING ERRCODE = '42501';
   END IF;
 
-  -- Validate equipment exists and get its facility
+  -- ── Defense-in-depth: validate thiet_bi_id ────────────────────
+  IF ai_usage_summary.thiet_bi_id IS NULL OR ai_usage_summary.thiet_bi_id <= 0 THEN
+    RETURN jsonb_build_object(
+      'error', 'Invalid thiet_bi_id',
+      'thiet_bi_id', ai_usage_summary.thiet_bi_id
+    );
+  END IF;
+
+  -- ── Validate equipment exists and get its facility ────────────
   SELECT tb.don_vi INTO v_equip_don_vi
   FROM public.thiet_bi tb
-  WHERE tb.id = thiet_bi_id AND tb.is_deleted = FALSE;
+  WHERE tb.id = ai_usage_summary.thiet_bi_id AND tb.is_deleted = FALSE;
 
   IF NOT FOUND THEN
     RETURN jsonb_build_object(
       'error', 'Equipment not found',
-      'thiet_bi_id', thiet_bi_id
+      'thiet_bi_id', ai_usage_summary.thiet_bi_id
     );
   END IF;
 
-  -- Tenant isolation check
+  -- ── Tenant isolation: honor selected-facility contract ────────
+  -- App layer (route.ts) requires privileged roles to select a
+  -- facility first. SQL enforces this with p_don_vi check.
   IF v_is_global THEN
-    IF p_don_vi IS NOT NULL AND p_don_vi IS DISTINCT FROM v_equip_don_vi THEN
-      RAISE EXCEPTION 'Access denied for facility %', p_don_vi USING ERRCODE = '42501';
+    IF p_don_vi IS NULL THEN
+      RETURN jsonb_build_object(
+        'error', 'Facility selection required',
+        'thiet_bi_id', ai_usage_summary.thiet_bi_id
+      );
+    END IF;
+    IF p_don_vi IS DISTINCT FROM v_equip_don_vi THEN
+      RETURN jsonb_build_object(
+        'error', 'Equipment does not belong to selected facility',
+        'thiet_bi_id', ai_usage_summary.thiet_bi_id
+      );
     END IF;
   ELSIF v_role = 'regional_leader' THEN
     v_allowed := public.allowed_don_vi_for_session_safe();
     IF v_allowed IS NULL OR cardinality(v_allowed) = 0 THEN
       RETURN jsonb_build_object(
         'error', 'No accessible facilities',
-        'thiet_bi_id', thiet_bi_id
+        'thiet_bi_id', ai_usage_summary.thiet_bi_id
       );
     END IF;
-    IF NOT (v_equip_don_vi = ANY(v_allowed)) THEN
-      RAISE EXCEPTION 'Access denied for facility %', v_equip_don_vi USING ERRCODE = '42501';
+    IF p_don_vi IS NULL THEN
+      RETURN jsonb_build_object(
+        'error', 'Facility selection required',
+        'thiet_bi_id', ai_usage_summary.thiet_bi_id
+      );
+    END IF;
+    IF NOT (p_don_vi = ANY(v_allowed)) THEN
+      RETURN jsonb_build_object(
+        'error', 'Access denied for selected facility',
+        'thiet_bi_id', ai_usage_summary.thiet_bi_id
+      );
+    END IF;
+    IF p_don_vi IS DISTINCT FROM v_equip_don_vi THEN
+      RETURN jsonb_build_object(
+        'error', 'Equipment does not belong to selected facility',
+        'thiet_bi_id', ai_usage_summary.thiet_bi_id
+      );
     END IF;
   ELSE
+    -- Regular role: scoped to JWT don_vi claim
     IF v_equip_don_vi IS DISTINCT FROM v_don_vi THEN
-      RAISE EXCEPTION 'Access denied for facility %', v_equip_don_vi USING ERRCODE = '42501';
+      RETURN jsonb_build_object(
+        'error', 'Access denied for facility',
+        'thiet_bi_id', ai_usage_summary.thiet_bi_id
+      );
     END IF;
   END IF;
 
@@ -130,6 +170,10 @@ BEGIN
   );
 END;
 $function$;
+
+-- Performance: composite index for the primary query shape
+CREATE INDEX IF NOT EXISTS idx_nhat_ky_su_dung_thiet_bi_bat_dau
+  ON public.nhat_ky_su_dung (thiet_bi_id, thoi_gian_bat_dau);
 
 GRANT EXECUTE ON FUNCTION public.ai_usage_summary(INTEGER, INTEGER, BIGINT, TEXT) TO authenticated;
 REVOKE EXECUTE ON FUNCTION public.ai_usage_summary(INTEGER, INTEGER, BIGINT, TEXT) FROM PUBLIC;

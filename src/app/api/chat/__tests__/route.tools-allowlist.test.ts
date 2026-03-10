@@ -119,6 +119,7 @@ describe('/api/chat tools allowlist policy', () => {
     'maintenanceSummary',
     'maintenancePlanLookup',
     'repairSummary',
+    'usageHistory',
   ])('allows shipped tool "%s" when explicitly requested', async (toolName) => {
     const res = await POST(
       buildRequest({
@@ -137,7 +138,7 @@ describe('/api/chat tools allowlist policy', () => {
   })
 
   it('allows all four shipped tools requested together', async () => {
-    const allTools = ['equipmentLookup', 'maintenanceSummary', 'maintenancePlanLookup', 'repairSummary']
+    const allTools = ['equipmentLookup', 'maintenanceSummary', 'maintenancePlanLookup', 'repairSummary', 'usageHistory']
     const res = await POST(
       buildRequest({
         messages: VALID_MESSAGES,

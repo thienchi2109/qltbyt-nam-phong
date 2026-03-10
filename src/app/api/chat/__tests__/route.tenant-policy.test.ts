@@ -72,6 +72,7 @@ describe('/api/chat tenant policy', () => {
     'maintenanceSummary',
     'maintenancePlanLookup',
     'repairSummary',
+    'usageHistory',
   ])('returns guidance when privileged role has no facility for tool "%s"', async (toolName) => {
     getServerSessionMock.mockResolvedValue({
       user: { id: 'u1', role: 'global', don_vi: null },
