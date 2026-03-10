@@ -104,34 +104,137 @@ git commit -m "feat: [US-002] - establish /api/chat scaffold and AI SDK dependen
 - Create: `src/lib/ai/prompts/__tests__/system.test.ts`
 - Create: `src/app/api/chat/__tests__/route.auth-and-schema.test.ts`
 
-**Step 1: Write failing auth test (RED)**
-- Add test cases:
-  - missing session => `401`
-  - malformed payload => `400`
-  - malformed messages item => `400`
-  - valid payload with authenticated session reaches model call path.
-  - route uses prompt from `src/lib/ai/prompts/system.ts` (versioned prompt wiring).
+**Step 1: Write failing API route smoke test (RED)**
 
-**Step 2: Run failing auth/schema tests**
+```ts
+// src/app/api/chat/__tests__/route.auth-and-schema.test.ts
+import { describe, it, expect } from 'vitest'
+import { POST } from '../route'
+
+describe('/api/chat', () => {
+  it('returns 401 when session missing', async () => {
+    const req = new Request('http://localhost/api/chat', {
+      method: 'POST',
+      body: JSON.stringify({ messages: [] }),
+      headers: { 'content-type': 'application/json' },
+    })
+    const res = await POST(req as never)
+    expect(res.status).toBe(401)
+  })
+})
+```
+
+**Step 2: Run test to confirm fail**
 
 Run:
 ```bash
 node scripts/npm-run.js run test:run -- "src/app/api/chat/__tests__/route.auth-and-schema.test.ts"
 ```
-Expected: FAIL for missing validation/auth behavior.
+Expected: FAIL (auth gate missing).
 
 **Step 3: Implement minimal secure route (GREEN)**
-- In `route.ts`:
-  - `export const runtime = 'nodejs'`
-  - `export const maxDuration = 30`
-  - `getServerSession(authOptions)` before any AI SDK call.
-  - parse and validate body using `chat-request-schema.ts`.
-  - load system prompt via `buildSystemPrompt(...)` from `src/lib/ai/prompts/system.ts`.
-  - call `streamText({ model, messages: await convertToModelMessages(...) })`.
-  - return `result.toUIMessageStreamResponse()`.
-- In `provider.ts`:
-  - resolve model from env (`AI_PROVIDER`, `AI_MODEL`) server-side only.
-  - no provider-specific code in UI.
+
+```ts
+// src/app/api/chat/route.ts
+import { POST } from 'ai'
+import { useServerAuth } from 'next/server'
+
+export const runtime = 'nodejs'
+export const maxDuration = 30
+
+const SYSTEM_PROMPT_VERSION = 'v1.0.0'
+
+const SYSTEM_PROMPT = `
+  You are a Vercel AI assistant for a maintenance management system.
+  Your role is to provide guidance and recommendations based on the system's current state.
+  You have access to read-only tools only and can generate draft repair requests.
+  You must always retrieve context before providing guidance.
+  You must always label your output as "Draft" or "Inference" or "Fact".
+`
+
+const TOOL_ALLOWLIST = [
+  'equipmentLookup',
+  'maintenanceSummary',
+  'maintenancePlanLookup',
+  'repairSummary',
+]
+
+const TENANT_POLICY = {
+  'privileged': {
+    'equipmentLookup': true,
+    'maintenanceSummary': true,
+    'maintenancePlanLookup': true,
+    'repairSummary': true,
+  },
+  'non-privileged': {
+    'equipmentLookup': false,
+    'maintenanceSummary': false,
+    'maintenancePlanLookup': false,
+    'repairSummary': false,
+  },
+}
+
+const buildSystemPrompt = (ctx: any) => {
+  const { user, tenant } = ctx
+  const { role, selectedFacilityId } = user
+  const { id, name } = tenant
+
+  let prompt = SYSTEM_PROMPT
+
+  if (role === 'privileged' && !selectedFacilityId) {
+    prompt += `
+      IMPORTANT: You must select a facility before providing any guidance.
+      You can use the "equipmentLookup" tool to find a facility ID.
+    `
+  }
+
+  if (role === 'non-privileged') {
+    prompt += `
+      IMPORTANT: You cannot provide guidance for equipment outside your assigned facilities.
+      You can use the "equipmentLookup" tool to find your assigned equipment.
+    `
+  }
+
+  prompt += `
+    Tenant: ${name} (ID: ${id})
+    Role: ${role}
+    Tool Allowlist: ${TOOL_ALLOWLIST.join(', ')}
+  `
+
+  return prompt
+}
+
+export default POST({
+  async handler(req) {
+    const session = await useServerAuth()
+    if (!session?.user) {
+      return Response.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const { messages } = await req.json()
+    if (!messages || !Array.isArray(messages)) {
+      return Response.json({ error: 'Invalid messages array' }, { status: 400 })
+    }
+
+    const ctx = {
+      user: session.user,
+      tenant: session.tenant,
+      messages,
+    }
+
+    const prompt = buildSystemPrompt(ctx)
+
+    const result = await streamText({
+      model: AI_MODEL,
+      messages: await convertToModelMessages(prompt, ctx),
+      stopWhen: stepCountIs(AI_MAX_TOOL_STEPS),
+      maxOutputTokens: AI_MAX_OUTPUT_TOKENS,
+    })
+
+    return result.toUIMessageStreamResponse()
+  },
+})
+```
 
 **Step 4: Re-run tests**
 
@@ -169,15 +272,37 @@ git commit -m "feat: [US-002][US-007] - secure schema-validated provider-agnosti
 - Modify: `src/app/api/chat/route.ts`
 
 **Step 1: Write failing prompt module tests (RED)**
-- `SYSTEM_PROMPT_VERSION` exists and matches `v<major>.<minor>.<patch>`.
-- `buildSystemPrompt(ctx)` includes:
-  - read-only policy
-  - tenant-safety policy
-  - no user-upload/multimodal policy (attachment lookup allowed only via read-only signed-URL tool outputs)
-  - clear "Fact vs Inference vs Draft" response contract
-  - Vietnamese-first response requirement.
-- prompt builder is deterministic for same input context.
-- route consumes `buildSystemPrompt` (not inline hard-coded prompt text).
+
+```ts
+// src/lib/ai/prompts/__tests__/system.test.ts
+import { describe, it, expect } from 'vitest'
+
+describe('system prompt', () => {
+  it('includes version', () => {
+    expect(SYSTEM_PROMPT_VERSION).toBeDefined()
+  })
+
+  it('includes identity and language', () => {
+    expect(SYSTEM_PROMPT).toContain('You are a Vercel AI assistant')
+    expect(SYSTEM_PROMPT).toContain('maintenance management system')
+  })
+
+  it('includes security and tenant boundaries', () => {
+    expect(SYSTEM_PROMPT).toContain('You have access to read-only tools only')
+    expect(SYSTEM_PROMPT).toContain('You must always retrieve context before providing guidance')
+  })
+
+  it('includes tool usage constraints', () => {
+    expect(SYSTEM_PROMPT).toContain('You must always label your output as')
+    expect(SYSTEM_PROMPT).toContain('You can use the "equipmentLookup" tool to find a facility ID')
+  })
+
+  it('includes failure behavior and guidance', () => {
+    expect(SYSTEM_PROMPT).toContain('IMPORTANT: You must select a facility')
+    expect(SYSTEM_PROMPT).toContain('You can use the "equipmentLookup" tool to find your assigned equipment')
+  })
+})
+```
 
 **Step 2: Run failing prompt tests**
 
@@ -188,14 +313,71 @@ node scripts/npm-run.js run test:run -- "src/lib/ai/prompts/__tests__/system.tes
 Expected: FAIL.
 
 **Step 3: Implement minimal prompt module (GREEN)**
-- Add `SYSTEM_PROMPT_VERSION = 'v1.0.0'`.
-- Add `buildSystemPrompt(context)` with sectioned blocks:
-  - Identity and language
-  - Security and tenant boundaries
-  - Tool usage constraints
-  - Output contract and tone
-  - Failure behavior and guidance.
-- Update `/api/chat` to use prompt module output.
+
+```ts
+// src/lib/ai/prompts/system.ts
+export const SYSTEM_PROMPT_VERSION = 'v1.0.0'
+
+export const SYSTEM_PROMPT = `
+  You are a Vercel AI assistant for a maintenance management system.
+  Your role is to provide guidance and recommendations based on the system's current state.
+  You have access to read-only tools only and can generate draft repair requests.
+  You must always retrieve context before providing guidance.
+  You must always label your output as "Draft" or "Inference" or "Fact".
+`
+
+export const TOOL_ALLOWLIST = [
+  'equipmentLookup',
+  'maintenanceSummary',
+  'maintenancePlanLookup',
+  'repairSummary',
+]
+
+export const TENANT_POLICY = {
+  'privileged': {
+    'equipmentLookup': true,
+    'maintenanceSummary': true,
+    'maintenancePlanLookup': true,
+    'repairSummary': true,
+  },
+  'non-privileged': {
+    'equipmentLookup': false,
+    'maintenanceSummary': false,
+    'maintenancePlanLookup': false,
+    'repairSummary': false,
+  },
+}
+
+export const buildSystemPrompt = (ctx: any) => {
+  const { user, tenant } = ctx
+  const { role, selectedFacilityId } = user
+  const { id, name } = tenant
+
+  let prompt = SYSTEM_PROMPT
+
+  if (role === 'privileged' && !selectedFacilityId) {
+    prompt += `
+      IMPORTANT: You must select a facility before providing any guidance.
+      You can use the "equipmentLookup" tool to find a facility ID.
+    `
+  }
+
+  if (role === 'non-privileged') {
+    prompt += `
+      IMPORTANT: You cannot provide guidance for equipment outside your assigned facilities.
+      You can use the "equipmentLookup" tool to find your assigned equipment.
+    `
+  }
+
+  prompt += `
+    Tenant: ${name} (ID: ${id})
+    Role: ${role}
+    Tool Allowlist: ${TOOL_ALLOWLIST.join(', ')}
+  `
+
+  return prompt
+}
+```
 
 **Step 4: Re-run prompt tests**
 
@@ -206,10 +388,24 @@ node scripts/npm-run.js run test:run -- "src/lib/ai/prompts/__tests__/system.tes
 Expected: PASS.
 
 **Step 5: Add prompt change policy document**
-- In `docs/ai/system-prompt-changelog.md`, define:
-  - version bump rules (`major` policy change, `minor` behavior expansion, `patch` wording fix),
-  - required tests for each bump,
-  - date + rationale entry format.
+
+Create:
+```markdown
+// docs/ai/system-prompt-changelog.md
+# AI System Prompt Changelog
+
+## Versioning Rules
+- `major`: Safety model or permission-policy changes.
+- `minor`: New behavior block (new tool class, new output mode).
+- `patch`: Wording/clarity-only changes with no policy shift.
+
+## Required Tests for Each Bump
+- Prompt tests must pass before merge.
+- Route tests must prove prompt module is actually consumed.
+
+## Date + Rationale Entry Format
+- Include date, rationale, and before/after examples.
+```
 
 **Step 6: Commit**
 
@@ -230,11 +426,64 @@ git commit -m "feat: [US-002] - add versioned system prompt module with tests an
 - Create: `src/app/api/chat/__tests__/route.rate-limit-and-quota.test.ts`
 
 **Step 1: Write failing guardrail tests (RED)**
-- route enforces `maxOutputTokens` on model call.
-- route enforces max tool-step count (`stopWhen: stepCountIs(...)`).
-- route rejects excessive chat history/input size with safe `400`.
-- rate-limited users receive `429`.
-- over-quota users/tenants receive `429` and safe budget message.
+
+```ts
+// src/app/api/chat/__tests__/route.limits.test.ts
+import { describe, it, expect } from 'vitest'
+import { POST } from '../route'
+
+describe('/api/chat limits', () => {
+  it('enforces maxOutputTokens', async () => {
+    const req = new Request('http://localhost/api/chat', {
+      method: 'POST',
+      body: JSON.stringify({ messages: [{ role: 'user', content: 'test' }] }),
+      headers: { 'content-type': 'application/json' },
+    })
+    const res = await POST(req as never)
+    expect(res.status).toBe(400)
+  })
+
+  it('enforces maxToolSteps', async () => {
+    const req = new Request('http://localhost/api/chat', {
+      method: 'POST',
+      body: JSON.stringify({ messages: [{ role: 'user', content: 'test' }] }),
+      headers: { 'content-type': 'application/json' },
+    })
+    const res = await POST(req as never)
+    expect(res.status).toBe(400)
+  })
+
+  it('rejects excessive chat history', async () => {
+    const req = new Request('http://localhost/api/chat', {
+      method: 'POST',
+      body: JSON.stringify({ messages: Array(1000).fill({ role: 'user', content: 'test' }) }),
+      headers: { 'content-type': 'application/json' },
+    })
+    const res = await POST(req as never)
+    expect(res.status).toBe(400)
+  })
+
+  it('rate-limits users', async () => {
+    const req = new Request('http://localhost/api/chat', {
+      method: 'POST',
+      body: JSON.stringify({ messages: [{ role: 'user', content: 'test' }] }),
+      headers: { 'content-type': 'application/json' },
+    })
+    const res = await POST(req as never)
+    expect(res.status).toBe(429)
+  })
+
+  it('over-quota users receive safe message', async () => {
+    const req = new Request('http://localhost/api/chat', {
+      method: 'POST',
+      body: JSON.stringify({ messages: [{ role: 'user', content: 'test' }] }),
+      headers: { 'content-type': 'application/json' },
+    })
+    const res = await POST(req as never)
+    expect(res.status).toBe(429)
+  })
+})
+```
 
 **Step 2: Run failing guardrail tests**
 
@@ -245,18 +494,129 @@ node scripts/npm-run.js run test:run -- "src/app/api/chat/__tests__/route.limits
 Expected: FAIL.
 
 **Step 3: Implement minimal guardrail layer (GREEN)**
-- Add `limits.ts` defaults (env-configurable):
-  - `AI_MAX_OUTPUT_TOKENS`
-  - `AI_MAX_TOOL_STEPS`
-  - `AI_MAX_MESSAGES`
-  - `AI_MAX_INPUT_CHARS`
-- In `route.ts`, apply:
-  - `maxOutputTokens`
-  - `stopWhen: stepCountIs(AI_MAX_TOOL_STEPS)`
-  - bounded/truncated/validated input.
-- Add `usage-metering.ts` hook points:
-  - record request token usage and estimated cost.
-  - enforce per-user/tenant request throttling and quota checks (implementation can start in-memory; phase-upgradable).
+
+```ts
+// src/lib/ai/limits.ts
+export const AI_MAX_OUTPUT_TOKENS = 1000
+export const AI_MAX_TOOL_STEPS = 5
+export const AI_MAX_MESSAGES = 100
+export const AI_MAX_INPUT_CHARS = 1000
+
+// src/lib/ai/usage-metering.ts
+export const usageMetering = {
+  recordRequestUsage: (userId: string, tenantId: string, tokensUsed: number, cost: number) => {
+    // Implementation can start in-memory; phase-upgradable.
+  },
+  checkRequestThrottling: (userId: string, tenantId: string) => {
+    // Implementation can start in-memory; phase-upgradable.
+    return { allowed: true, waitSeconds?: number }
+  },
+  checkTenantQuota: (tenantId: string) => {
+    // Implementation can start in-memory; phase-upgradable.
+    return { allowed: true, remainingTokens?: number }
+  },
+}
+
+// src/app/api/chat/route.ts
+import { POST } from 'ai'
+import { useServerAuth } from 'next/server'
+
+export const runtime = 'nodejs'
+export const maxDuration = 30
+
+const SYSTEM_PROMPT_VERSION = 'v1.0.0'
+
+const SYSTEM_PROMPT = `
+  You are a Vercel AI assistant for a maintenance management system.
+  Your role is to provide guidance and recommendations based on the system's current state.
+  You have access to read-only tools only and can generate draft repair requests.
+  You must always retrieve context before providing guidance.
+  You must always label your output as "Draft" or "Inference" or "Fact".
+`
+
+const TOOL_ALLOWLIST = [
+  'equipmentLookup',
+  'maintenanceSummary',
+  'maintenancePlanLookup',
+  'repairSummary',
+]
+
+const TENANT_POLICY = {
+  'privileged': {
+    'equipmentLookup': true,
+    'maintenanceSummary': true,
+    'maintenancePlanLookup': true,
+    'repairSummary': true,
+  },
+  'non-privileged': {
+    'equipmentLookup': false,
+    'maintenanceSummary': false,
+    'maintenancePlanLookup': false,
+    'repairSummary': false,
+  },
+}
+
+const buildSystemPrompt = (ctx: any) => {
+  const { user, tenant } = ctx
+  const { role, selectedFacilityId } = user
+  const { id, name } = tenant
+
+  let prompt = SYSTEM_PROMPT
+
+  if (role === 'privileged' && !selectedFacilityId) {
+    prompt += `
+      IMPORTANT: You must select a facility before providing any guidance.
+      You can use the "equipmentLookup" tool to find a facility ID.
+    `
+  }
+
+  if (role === 'non-privileged') {
+    prompt += `
+      IMPORTANT: You cannot provide guidance for equipment outside your assigned facilities.
+      You can use the "equipmentLookup" tool to find your assigned equipment.
+    `
+  }
+
+  prompt += `
+    Tenant: ${name} (ID: ${id})
+    Role: ${role}
+    Tool Allowlist: ${TOOL_ALLOWLIST.join(', ')}
+  `
+
+  return prompt
+}
+
+export default POST({
+  async handler(req) {
+    const session = await useServerAuth()
+    if (!session?.user) {
+      return Response.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const { messages } = await req.json()
+    if (!messages || !Array.isArray(messages)) {
+      return Response.json({ error: 'Invalid messages array' }, { status: 400 })
+    }
+
+    const ctx = {
+      user: session.user,
+      tenant: session.tenant,
+      messages,
+    }
+
+    const prompt = buildSystemPrompt(ctx)
+
+    const result = await streamText({
+      model: AI_MODEL,
+      messages: await convertToModelMessages(prompt, ctx),
+      stopWhen: stepCountIs(AI_MAX_TOOL_STEPS),
+      maxOutputTokens: AI_MAX_OUTPUT_TOKENS,
+    })
+
+    return result.toUIMessageStreamResponse()
+  },
+})
+```
 
 **Step 4: Re-run tests**
 
@@ -287,14 +647,108 @@ git commit -m "feat: [US-002] - add AI token, rate, and quota guardrails"
 - Create: `src/app/api/chat/__tests__/route.tenant-policy.test.ts`
 
 **Step 1: Write failing allowlist tests (RED)**
-- unknown tool name blocked.
-- tool not in allowlist blocked.
-- write-intent tool names (`create`, `update`, `delete`) blocked.
+
+```ts
+// src/app/api/chat/__tests__/route.tools-allowlist.test.ts
+import { describe, it, expect } from 'vitest'
+import { POST } from '../route'
+
+describe('/api/chat tools allowlist', () => {
+  it('unknown tool name blocked', async () => {
+    const req = new Request('http://localhost/api/chat', {
+      method: 'POST',
+      body: JSON.stringify({ messages: [{ role: 'user', content: 'tool: unknown' }] }),
+      headers: { 'content-type': 'application/json' },
+    })
+    const res = await POST(req as never)
+    expect(res.status).toBe(400)
+  })
+
+  it('tool not in allowlist blocked', async () => {
+    const req = new Request('http://localhost/api/chat', {
+      method: 'POST',
+      body: JSON.stringify({ messages: [{ role: 'user', content: 'tool: equipmentUpdate' }] }),
+      headers: { 'content-type': 'application/json' },
+    })
+    const res = await POST(req as never)
+    expect(res.status).toBe(400)
+  })
+
+  it('write-intent tool names blocked', async () => {
+    const req = new Request('http://localhost/api/chat', {
+      method: 'POST',
+      body: JSON.stringify({ messages: [{ role: 'user', content: 'tool: create' }] }),
+      headers: { 'content-type': 'application/json' },
+    })
+    const res = await POST(req as never)
+    expect(res.status).toBe(400)
+  })
+})
+```
 
 **Step 2: Write failing tenant policy tests (RED)**
-- privileged role + `selectedFacilityId: undefined` => guidance response (no tool execution).
-- non-privileged role ignores unsafe tenant override attempts.
-- privileged + specific facility allows scoped tool execution.
+
+```ts
+// src/app/api/chat/__tests__/route.tenant-policy.test.ts
+import { describe, it, expect } from 'vitest'
+import { POST } from '../route'
+
+describe('/api/chat tenant policy', () => {
+  it('privileged role + undefined facility => guidance response', async () => {
+    const req = new Request('http://localhost/api/chat', {
+      method: 'POST',
+      body: JSON.stringify({ messages: [{ role: 'user', content: 'tool: equipmentLookup' }] }),
+      headers: { 'content-type': 'application/json' },
+    })
+    const res = await POST(req as never)
+    expect(res.status).toBe(200)
+    expect(await res.json()).toMatchObject({
+      messages: [
+        {
+          role: 'assistant',
+          content: expect.stringContaining('Chọn cơ sở trước'),
+        },
+      ],
+    })
+  })
+
+  it('non-privileged role ignores unsafe tenant override attempts', async () => {
+    const req = new Request('http://localhost/api/chat', {
+      method: 'POST',
+      body: JSON.stringify({ messages: [{ role: 'user', content: 'tool: equipmentLookup tenant: { id: "unsafe-tenant-id" }' }] }),
+      headers: { 'content-type': 'application/json' },
+    })
+    const res = await POST(req as never)
+    expect(res.status).toBe(200)
+    expect(await res.json()).toMatchObject({
+      messages: [
+        {
+          role: 'assistant',
+          content: expect.stringContaining('không cấp quyền truy cập'),
+        },
+      ],
+    })
+  })
+
+  it('privileged + specific facility allows scoped tool execution', async () => {
+    const req = new Request('http://localhost/api/chat', {
+      method: 'POST',
+      body: JSON.stringify({ messages: [{ role: 'user', content: 'tool: equipmentLookup tenant: { id: "safe-tenant-id" }' }] }),
+      headers: { 'content-type': 'application/json' },
+    })
+    const res = await POST(req as never)
+    expect(res.status).toBe(200)
+    expect(await res.json()).toMatchObject({
+      messages: [
+        {
+          role: 'assistant',
+          content: expect.stringContaining('Truy cập thành công'),
+        },
+      ],
+    })
+  })
+})
+```
 
 **Step 3: Run both test files to confirm fail**
 
@@ -305,9 +759,140 @@ node scripts/npm-run.js run test:run -- "src/app/api/chat/__tests__/route.tools-
 Expected: FAIL.
 
 **Step 4: Implement minimal policy layer (GREEN)**
-- `registry.ts`: static tool map (read-only v1).
-- `rpc-tool-executor.ts`: only call internal `/api/rpc/[fn]` with forwarded cookie/session context.
-- `route.ts`: enforce tenant policy before tool execution.
+
+```ts
+// src/lib/ai/tools/registry.ts
+export const TOOL_ALLOWLIST = [
+  'equipmentLookup',
+  'maintenanceSummary',
+  'maintenancePlanLookup',
+  'repairSummary',
+]
+
+// src/lib/ai/tools/rpc-tool-executor.ts
+import { POST } from 'ai'
+
+export const rpcToolExecutor = {
+  execute: async (toolName: string, args: any, session: any) => {
+    if (!TOOL_ALLOWLIST.includes(toolName)) {
+      return Response.json({ error: 'Tool not allowed' }, { status: 400 })
+    }
+
+    const req = new Request(`http://localhost/api/rpc/${toolName}`, {
+      method: 'POST',
+      body: JSON.stringify(args),
+      headers: { 'content-type': 'application/json' },
+    })
+
+    const res = await POST(req as never)
+    if (!res.ok) {
+      return Response.json({ error: 'Tool execution failed' }, { status: 400 })
+    }
+
+    return res
+  },
+}
+
+// src/app/api/chat/route.ts
+import { POST } from 'ai'
+import { useServerAuth } from 'next/server'
+
+export const runtime = 'nodejs'
+export const maxDuration = 30
+
+const SYSTEM_PROMPT_VERSION = 'v1.0.0'
+
+const SYSTEM_PROMPT = `
+  You are a Vercel AI assistant for a maintenance management system.
+  Your role is to provide guidance and recommendations based on the system's current state.
+  You have access to read-only tools only and can generate draft repair requests.
+  You must always retrieve context before providing guidance.
+  You must always label your output as "Draft" or "Inference" or "Fact".
+`
+
+const TOOL_ALLOWLIST = [
+  'equipmentLookup',
+  'maintenanceSummary',
+  'maintenancePlanLookup',
+  'repairSummary',
+]
+
+const TENANT_POLICY = {
+  'privileged': {
+    'equipmentLookup': true,
+    'maintenanceSummary': true,
+    'maintenancePlanLookup': true,
+    'repairSummary': true,
+  },
+  'non-privileged': {
+    'equipmentLookup': false,
+    'maintenanceSummary': false,
+    'maintenancePlanLookup': false,
+    'repairSummary': false,
+  },
+}
+
+const buildSystemPrompt = (ctx: any) => {
+  const { user, tenant } = ctx
+  const { role, selectedFacilityId } = user
+  const { id, name } = tenant
+
+  let prompt = SYSTEM_PROMPT
+
+  if (role === 'privileged' && !selectedFacilityId) {
+    prompt += `
+      IMPORTANT: You must select a facility before providing any guidance.
+      You can use the "equipmentLookup" tool to find a facility ID.
+    `
+  }
+
+  if (role === 'non-privileged') {
+    prompt += `
+      IMPORTANT: You cannot provide guidance for equipment outside your assigned facilities.
+      You can use the "equipmentLookup" tool to find your assigned equipment.
+    `
+  }
+
+  prompt += `
+    Tenant: ${name} (ID: ${id})
+    Role: ${role}
+    Tool Allowlist: ${TOOL_ALLOWLIST.join(', ')}
+  `
+
+  return prompt
+}
+
+export default POST({
+  async handler(req) {
+    const session = await useServerAuth()
+    if (!session?.user) {
+      return Response.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const { messages } = await req.json()
+    if (!messages || !Array.isArray(messages)) {
+      return Response.json({ error: 'Invalid messages array' }, { status: 400 })
+    }
+
+    const ctx = {
+      user: session.user,
+      tenant: session.tenant,
+      messages,
+    }
+
+    const prompt = buildSystemPrompt(ctx)
+
+    const result = await streamText({
+      model: AI_MODEL,
+      messages: await convertToModelMessages(prompt, ctx),
+      stopWhen: stepCountIs(AI_MAX_TOOL_STEPS),
+      maxOutputTokens: AI_MAX_OUTPUT_TOKENS,
+    })
+
+    return result.toUIMessageStreamResponse()
+  },
+})
+```
 
 **Step 5: Re-run tests**
 
@@ -328,141 +913,139 @@ git commit -m "feat: [US-003][US-004] - enforce RPC-only AI tools with tenant-aw
 
 ## Phase 3 (US-005, US-006): Read-Only Domain Tools + Draft Generator
 
-### Task 3: Read-Only Domain Toolset
+> **Audit update (2026-03-10):** Phase 3 is now **partially implemented**. The current codebase already has `equipmentLookup`, `maintenanceSummary`, `maintenancePlanLookup`, and `repairSummary` wired in `src/lib/ai/tools/registry.ts`; the RPC proxy whitelist includes the AI read-only RPCs in `src/app/api/rpc/[fn]/route.ts`; and Supabase migrations for `ai_equipment_lookup`, `ai_maintenance_summary`, `ai_repair_summary`, and `ai_maintenance_plan_lookup` already exist, with follow-up correctness fixes in `supabase/migrations/20260303155700_fix_ai_rpc_totalplans_and_date_filter.sql` and `supabase/migrations/20260303152500_ai_equipment_lookup_add_so_luu_hanh.sql`. The remaining Phase 3 work is to close the gaps: add explicit tests for read-only tool execution, extract registry definitions into dedicated tool modules only if that improves clarity, add usage-history and attachment capabilities, harden prompt/tests around factual tool outputs, and implement the draft-generation flow.
+
+### Task 3A: Lock in the current read-only tool baseline with regression tests
+
+**Audit note (2026-03-10):** The current baseline is broader than the existing tests capture. The shipped read-only AI tool surface is `equipmentLookup`, `maintenanceSummary`, `maintenancePlanLookup`, and `repairSummary`, but current regression coverage does not explicitly lock all four tools, all four RPC whitelist entries, or the exact tool→RPC mapping contract.
 
 **Files:**
-- Create: `src/lib/ai/tools/equipment-tools.ts`
-- Create: `src/lib/ai/tools/maintenance-tools.ts`
-- Create: `src/lib/ai/tools/repair-tools.ts`
-- Create: `src/lib/ai/tools/usage-tools.ts`
-- Create: `src/lib/ai/tools/attachment-tools.ts`
-- Modify: `src/lib/ai/tools/registry.ts`
-- Modify: `src/lib/ai/prompts/system.ts`
-- Modify: `src/lib/ai/prompts/__tests__/system.test.ts`
-- Create: `src/app/api/chat/__tests__/route.readonly-tools.test.ts`
-- Create: Supabase RPC function `ai_maintenance_plan_lookup` (migration)
+- Modify: `src/app/api/chat/__tests__/route.tools-allowlist.test.ts`
+- Modify: `src/app/api/chat/__tests__/route.tenant-policy.test.ts`
+- Modify: `src/app/api/rpc/__tests__/rpc-whitelist.unit.test.ts`
+- Create or modify: focused tests for AI tool registry/tool→RPC mapping if missing
 
-**Step 1: Write failing read-only tool tests (RED)**
-- equipment lookup uses approved RPC fn only.
-- maintenance summary uses approved RPC fn only.
-- **maintenance plan lookup** uses new `ai_maintenance_plan_lookup` RPC fn only.
-- repair summary uses approved RPC fn only.
-- usage history lookup uses approved RPC fn only.
-- attachment retrieval only provides secured short-lived signed URLs + file metadata from `file_dinh_kem` via approved read-only RPC (no direct Storage API calls in AI tool path).
-- tool responses are tagged/structured as factual retrieval outputs.
-- AI utilizes equipment usage frequency (from `nhat_ky_su_dung` via RPC) to correctly advocate maintenance cycle changes.
+**Step 1: Write the missing baseline regression tests (RED)**
+Add tests for:
+- all four currently shipped read-only tools (`equipmentLookup`, `maintenanceSummary`, `maintenancePlanLookup`, `repairSummary`) are explicitly accepted when requested.
+- all four approved AI RPCs (`ai_equipment_lookup`, `ai_maintenance_summary`, `ai_maintenance_plan_lookup`, `ai_repair_summary`) are explicitly covered by whitelist tests.
+- the current tool→RPC mapping contract is locked, so a future registry drift fails tests instead of silently changing behavior.
+- facility-selection policy still gates tool execution for privileged roles across the shipped tool set.
+- known-but-blocked tools and write-intent tool names remain rejected.
 
-**Step 2: Run failing read-only tests**
+**Step 2: Run the focused tests**
 
 Run:
 ```bash
-node scripts/npm-run.js run test:run -- "src/app/api/chat/__tests__/route.readonly-tools.test.ts"
+node scripts/npm-run.js run test:run -- "src/app/api/chat/__tests__/route.tools-allowlist.test.ts" "src/app/api/chat/__tests__/route.tenant-policy.test.ts" "src/app/api/rpc/__tests__/rpc-whitelist.unit.test.ts"
 ```
 Expected: FAIL.
 
-**Step 3: Implement all tool execute functions + deploy `ai_maintenance_plan_lookup` RPC (GREEN)**
+**Step 3: Implement the minimal test additions (GREEN)**
+- Extend the allowlist and tenant-policy tests to cover the full shipped read-only tool surface, not just one representative tool.
+- Add or extend focused assertions that lock the registry contract between tool names and approved RPC function names.
+- Keep the tests narrow and behavior-focused: do not add implementation-coupled assertions beyond the approved tool/RPC contract and tenant policy.
 
-**3a. Deploy `ai_maintenance_plan_lookup` RPC migration**
-
-Create a new Supabase read-only RPC function that JOINs `cong_viec_bao_tri` with `ke_hoach_bao_tri` and `thiet_bi` tables. This is the dedicated AI tool data source for maintenance plan queries.
-
-**Database tables involved:**
-- `ke_hoach_bao_tri` — plan header: `id`, `ten_ke_hoach`, `nam`, `loai_cong_viec`, `trang_thai` (Bản nháp / Đã duyệt / Không duyệt), `khoa_phong`, `don_vi`, `ngay_phe_duyet`, `nguoi_duyet`.
-- `cong_viec_bao_tri` — task detail per equipment: `id`, `ke_hoach_id` → `ke_hoach_bao_tri.id`, `thiet_bi_id` → `thiet_bi.id`, `loai_cong_viec`, `don_vi_thuc_hien`, `diem_hieu_chuan`, `thang_1..12` (boolean scheduled), `thang_1_hoan_thanh..12` (boolean completed), `ngay_hoan_thanh_1..12` (timestamptz), `ghi_chu`.
-
-**RPC signature:**
-
-```sql
-CREATE OR REPLACE FUNCTION public.ai_maintenance_plan_lookup(
-  thiet_bi_id BIGINT,
-  p_nam INTEGER DEFAULT NULL,   -- filter by year; NULL = all years
-  p_don_vi BIGINT DEFAULT NULL, -- tenant filter; overridden by JWT for non-privileged roles
-  p_user_id TEXT DEFAULT NULL   -- optional anti-spoof context check
-)
-RETURNS JSONB
-LANGUAGE plpgsql
-STABLE
-SECURITY DEFINER
-SET search_path TO 'public', 'pg_temp'
-AS $$
-DECLARE
-  v_role TEXT;
-  v_user_id TEXT;
-  v_don_vi BIGINT;
-BEGIN
-  -- JWT claim extraction + null guards
-  v_role := lower(COALESCE(public._get_jwt_claim('app_role'), public._get_jwt_claim('role'), ''));
-  v_user_id := NULLIF(COALESCE(public._get_jwt_claim('user_id'), public._get_jwt_claim('sub')), '');
-  v_don_vi := NULLIF(public._get_jwt_claim('don_vi'), '')::BIGINT;
-
-  IF v_role IS NULL OR v_role = '' THEN
-    RAISE EXCEPTION 'Missing role claim' USING ERRCODE = '42501';
-  END IF;
-  IF v_user_id IS NULL THEN
-    RAISE EXCEPTION 'Missing user_id claim' USING ERRCODE = '42501';
-  END IF;
-  IF thiet_bi_id IS NULL OR thiet_bi_id <= 0 THEN
-    RAISE EXCEPTION 'thiet_bi_id is required' USING ERRCODE = '22023';
-  END IF;
-
-  -- Tenant isolation: non-privileged roles forced to their own tenant.
-  -- regional_leader is constrained via allowed_don_vi_for_session_safe().
-  IF v_role NOT IN ('global', 'admin', 'regional_leader') THEN
-    IF v_don_vi IS NULL THEN
-      RAISE EXCEPTION 'Missing don_vi claim' USING ERRCODE = '42501';
-    END IF;
-    p_don_vi := v_don_vi;
-  END IF;
-
-  -- Return shape:
-  -- {
-  --   equipment: { id, ma_thiet_bi, ten_thiet_bi, model, don_vi } | null,
-  --   plans: [{ plan_id, ten_ke_hoach, nam, loai_cong_viec, plan_trang_thai, ngay_phe_duyet, task_id, ...month flags..., ghi_chu }],
-  --   totalPlans: number,
-  --   yearFilter: p_nam
-  -- }
-  RETURN ...; -- See migration implementation for full query body
-END;
-$$;
-
-GRANT EXECUTE ON FUNCTION public.ai_maintenance_plan_lookup(BIGINT, INTEGER, BIGINT, TEXT) TO authenticated;
-REVOKE EXECUTE ON FUNCTION public.ai_maintenance_plan_lookup(BIGINT, INTEGER, BIGINT, TEXT) FROM PUBLIC;
-```
-
-**Design notes:**
-- `SECURITY DEFINER` + `SET search_path TO 'public', 'pg_temp'` + `STABLE`: read-only and hardened against search_path injection.
-- Non-privileged roles have tenant scoping enforced server-side; missing required JWT claims fail closed.
-- JSONB response provides tool-ready structure (`equipment`, `plans`, `totalPlans`, `yearFilter`) without extra server reshaping.
-- `GRANT EXECUTE ... TO authenticated` + `REVOKE ... FROM PUBLIC` enforces authenticated-only RPC execution.
-
-**3b. Implement all tool execute functions**
-
-- Each tool has explicit `inputSchema` (Zod) and deterministic RPC mapping.
-- No tool may call mutation RPCs.
-- Equipment lookup, repair summary, usage history, and attachment retrieval tools each use their respective approved read-only RPC functions.
-
-`maintenance-tools.ts` specifically must expose **three** AI tool capabilities:
-
-| Tool name | RPC | Purpose |
-|---|---|---|
-| `maintenanceSummary` | `maintenance_tasks_list_with_equipment` (existing) | General overview of all maintenance tasks at the current facility (supports filter by `p_loai_cong_viec`). |
-| `maintenancePlanLookup` | `ai_maintenance_plan_lookup` (**new**) | Look up yearly maintenance/calibration/inspection plans for a **specific equipment** (`thiet_bi_id`), returning structured JSON with equipment context and 12-month scheduled vs completed status. |
-| `maintenanceUpcoming` | Equipment-level fields on `thiet_bi` table via `equipmentLookup` | Check `ngay_bt_tiep_theo`, `ngay_hc_tiep_theo`, `ngay_kd_tiep_theo` deadlines for upcoming maintenance. This reuses equipment lookup data, no separate RPC needed. |
-
-**AI prompt guidance for `maintenancePlanLookup`:**
-- When the user asks about a specific equipment's maintenance/calibration/inspection schedule → call `maintenancePlanLookup` with the equipment ID.
-- Present results as a readable table: plan name, type (`bảo trì` / `hiệu chuẩn` / `kiểm định`), year, and a 12-column month grid showing ✅ (completed) / 🔲 (scheduled but pending) / ─ (not scheduled).
-- If a scheduled month is overdue (current month has passed but `thang_X_hoan_thanh = false`), flag it with ⚠️.
-
-**3c. Update system prompt**
-
-Update `system.ts` tool-instruction block to describe the expanded read-only toolset, factual citation behavior, and predictive maintenance suggestions (i.e. if usage frequency is exceptionally high, proactively recommend shortening the maintenance cycle); bump prompt version if behavior changes.
-
-**Step 4: Re-run tests**
+**Step 4: Re-run the focused tests**
 
 Run:
 ```bash
-node scripts/npm-run.js run test:run -- "src/app/api/chat/__tests__/route.readonly-tools.test.ts"
+node scripts/npm-run.js run test:run -- "src/app/api/chat/__tests__/route.tools-allowlist.test.ts" "src/app/api/chat/__tests__/route.tenant-policy.test.ts" "src/app/api/rpc/__tests__/rpc-whitelist.unit.test.ts"
+```
+Expected: PASS.
+
+**Step 5: Commit**
+
+```bash
+git add src/app/api/chat/__tests__/route.tools-allowlist.test.ts src/app/api/chat/__tests__/route.tenant-policy.test.ts src/app/api/rpc/__tests__/rpc-whitelist.unit.test.ts
+git commit -m "test: [US-005] - lock shipped AI tool baseline and RPC mappings"
+```
+
+### Task 3B: Align prompt, registry, and RPC whitelist with the shipped AI read-only surface
+
+**Audit note (2026-03-10):** This task is not just wording cleanup. It is a contract-alignment pass across `src/lib/ai/prompts/system.ts`, `src/lib/ai/tools/registry.ts`, and `src/app/api/rpc/[fn]/route.ts`. Current drift exists where the prompt implies capabilities (for example usage-history-backed maintenance guidance and signed-URL-only attachment access) that are not yet fully implemented in the shipped tool surface.
+
+**Files:**
+- Modify: `src/lib/ai/prompts/system.ts`
+- Modify: `src/lib/ai/prompts/__tests__/system.test.ts`
+- Modify: `src/lib/ai/tools/registry.ts`
+- Modify: `src/app/api/rpc/[fn]/route.ts`
+- Review: existing AI read-only RPC migrations for parity with current registry entries
+
+**Step 1: Write failing alignment tests (RED)**
+Add tests for:
+- the prompt only claims read-only capabilities that are actually backed by the shipped tool/whitelist surface.
+- the prompt accurately describes attachment access boundaries for the current implementation stage.
+- the prompt does not imply usage-history evidence is available until the usage-history tool from Task 3C is implemented.
+- the registry and whitelist remain aligned with the currently shipped read-only AI RPC set.
+
+**Step 2: Run the focused tests**
+
+Run:
+```bash
+node scripts/npm-run.js run test:run -- "src/lib/ai/prompts/__tests__/system.test.ts" "src/app/api/rpc/__tests__/rpc-whitelist.unit.test.ts"
+```
+Expected: FAIL.
+
+**Step 3: Implement the minimal alignment changes (GREEN)**
+- Update prompt wording so it does not over-claim unavailable capabilities.
+- Keep troubleshooting guidance aligned with the actually shipped tools (`equipmentLookup`, `repairSummary`, and other existing read-only tools) while explicitly deferring usage-history-backed guidance until Task 3C is complete.
+- Keep attachment wording aligned with the current safe-access contract, not an assumed universal signed-URL storage model.
+- Confirm registry and whitelist continue to match the shipped AI RPC set exactly.
+
+**Step 4: Re-run the focused tests**
+
+Run:
+```bash
+node scripts/npm-run.js run test:run -- "src/lib/ai/prompts/__tests__/system.test.ts" "src/app/api/rpc/__tests__/rpc-whitelist.unit.test.ts"
+```
+Expected: PASS.
+
+**Step 5: Commit**
+
+```bash
+git add src/lib/ai/prompts/system.ts src/lib/ai/prompts/__tests__/system.test.ts src/lib/ai/tools/registry.ts src/app/api/rpc/[fn]/route.ts
+git commit -m "feat: [US-005] - align AI prompt, registry, and RPC whitelist contract"
+```
+
+### Task 3C: Add missing usage-history tool needed by predictive maintenance guidance
+
+**Files:**
+- Create: `src/app/api/chat/__tests__/route.usage-tools.test.ts`
+- Modify: `src/lib/ai/tools/registry.ts`
+- Modify: `src/lib/ai/prompts/system.ts`
+- Modify: `src/lib/ai/prompts/__tests__/system.test.ts`
+- Create: Supabase RPC migration for AI-specific usage-summary lookup (name explicitly chosen during implementation)
+- Modify: `src/app/api/rpc/[fn]/route.ts`
+- Modify: `src/app/api/rpc/__tests__/rpc-whitelist.unit.test.ts`
+
+**Step 1: Write the failing usage-history tool tests (RED)**
+Add tests for:
+- a new read-only tool (for example `usageHistory` or `equipmentUsageHistory`) is allowed by the registry.
+- the tool calls only the approved usage-summary RPC through `/api/rpc/[fn]`.
+- prompt guidance about high usage shortening maintenance cycles is backed by an actual tool path.
+- no direct `supabase.from(...)`, ad hoc SQL, or reuse of broad raw usage-log payloads is introduced.
+
+**Step 2: Run the focused tests**
+
+Run:
+```bash
+node scripts/npm-run.js run test:run -- "src/app/api/chat/__tests__/route.usage-tools.test.ts" "src/lib/ai/prompts/__tests__/system.test.ts" "src/app/api/rpc/__tests__/rpc-whitelist.unit.test.ts"
+```
+Expected: FAIL.
+
+**Step 3: Implement the minimal usage-history read path (GREEN)**
+- Add one dedicated AI-specific read-only RPC that returns bounded aggregate evidence from `nhat_ky_su_dung` (for example frequency, recency, duration, post-use condition counts) rather than exposing raw usage-log rows.
+- Enforce the same JWT claim checks, tenant scoping, `SECURITY DEFINER`, pinned `search_path`, and authenticated-only grants as the existing AI RPCs.
+- Keep the response shape narrow and evidence-ready: avoid `SELECT *`, bound result size, and return only the fields needed for predictive maintenance reasoning.
+- Add the RPC to the proxy whitelist and the AI tool registry.
+- Update prompt wording so predictive maintenance recommendations only reference evidence returned by this tool.
+
+**Step 4: Re-run the focused tests**
+
+Run:
+```bash
+node scripts/npm-run.js run test:run -- "src/app/api/chat/__tests__/route.usage-tools.test.ts" "src/lib/ai/prompts/__tests__/system.test.ts" "src/app/api/rpc/__tests__/rpc-whitelist.unit.test.ts"
 ```
 Expected: PASS.
 
@@ -471,16 +1054,102 @@ Expected: PASS.
 Run:
 ```bash
 node scripts/npm-run.js run typecheck
-node scripts/npm-run.js run lint -- --file "src/lib/ai/tools/maintenance-tools.ts"
+node scripts/npm-run.js run lint -- --file "src/lib/ai/tools/registry.ts"
 ```
 Expected: PASS.
 
 **Step 6: Commit**
 
 ```bash
-git add src/lib/ai/tools/equipment-tools.ts src/lib/ai/tools/maintenance-tools.ts src/lib/ai/tools/repair-tools.ts src/lib/ai/tools/usage-tools.ts src/lib/ai/tools/attachment-tools.ts src/lib/ai/tools/registry.ts src/lib/ai/prompts/system.ts src/lib/ai/prompts/__tests__/system.test.ts src/app/api/chat/__tests__/route.readonly-tools.test.ts
-git commit -m "feat: [US-005] - add read-only AI tools with maintenance plan lookup and usage/attachment features"
+git add src/app/api/chat/__tests__/route.usage-tools.test.ts src/lib/ai/tools/registry.ts src/lib/ai/prompts/system.ts src/lib/ai/prompts/__tests__/system.test.ts src/app/api/rpc/[fn]/route.ts src/app/api/rpc/__tests__/rpc-whitelist.unit.test.ts supabase/migrations
+git commit -m "feat: [US-005] - add usage-history AI tool for evidence-based maintenance guidance"
 ```
+
+### Task 3D: Add missing attachment lookup tool with safe access contracts
+
+**Audit note (2026-03-10):** Live DB inspection shows `file_dinh_kem.duong_dan_luu_tru` is currently populated with external absolute URLs (for example Google Docs links), not a normalized Supabase Storage object key. Phase 3 should therefore implement a safe attachment metadata/access tool first, rather than assuming all attachments can be converted into signed storage URLs.
+
+**Files:**
+- Create: `src/app/api/chat/__tests__/route.attachment-tools.test.ts`
+- Modify: `src/lib/ai/tools/registry.ts`
+- Modify: `src/lib/ai/prompts/system.ts`
+- Modify: `src/lib/ai/prompts/__tests__/system.test.ts`
+- Create: Supabase RPC migration for attachment metadata lookup
+- Modify: `src/app/api/rpc/[fn]/route.ts`
+- Modify: `src/app/api/rpc/__tests__/rpc-whitelist.unit.test.ts`
+- Modify: trusted server-side AI tool execution path only if storage-backed signing is actually supported by the returned attachment type
+
+**Step 1: Write failing attachment tool tests (RED)**
+Add tests for:
+- attachment retrieval returns only safe metadata plus an explicit access contract.
+- raw table rows and unsafe internal storage details are never returned to the model.
+- the tool uses only the approved attachment metadata RPC.
+- the tool is blocked without facility context.
+- storage-backed attachments may return short-lived signed URLs, but external absolute URLs are handled as external links instead of being forced through a signing path.
+
+**Step 2: Run the focused tests**
+
+Run:
+```bash
+node scripts/npm-run.js run test:run -- "src/app/api/chat/__tests__/route.attachment-tools.test.ts" "src/lib/ai/prompts/__tests__/system.test.ts" "src/app/api/rpc/__tests__/rpc-whitelist.unit.test.ts"
+```
+Expected: FAIL.
+
+**Step 3: Implement the minimal attachment read path (GREEN)**
+- Add one dedicated read-only RPC that returns only safe attachment metadata and a normalized access contract for each record.
+- Do **not** assume every attachment is a signable storage object. The RPC/tool result must distinguish at least between external absolute URLs and future storage-backed attachments.
+- For external links, return only the safe external URL metadata path needed by the assistant contract.
+- For storage-backed attachments, short-lived signed URLs may be generated in the trusted server/tool layer only if the underlying record format actually supports signing.
+- Add the RPC to the whitelist and registry.
+- Ensure the tool output never exposes raw table rows, bucket internals, or direct table access.
+- Update prompt wording to explain attachment lookup boundaries and the distinction between external links vs storage-backed files.
+
+**Step 4: Re-run the focused tests**
+
+Run:
+```bash
+node scripts/npm-run.js run test:run -- "src/app/api/chat/__tests__/route.attachment-tools.test.ts" "src/lib/ai/prompts/__tests__/system.test.ts" "src/app/api/rpc/__tests__/rpc-whitelist.unit.test.ts"
+```
+Expected: PASS.
+
+**Step 5: Commit**
+
+```bash
+git add src/app/api/chat/__tests__/route.attachment-tools.test.ts src/lib/ai/tools/registry.ts src/lib/ai/prompts/system.ts src/lib/ai/prompts/__tests__/system.test.ts src/app/api/rpc/[fn]/route.ts src/app/api/rpc/__tests__/rpc-whitelist.unit.test.ts supabase/migrations
+git commit -m "feat: [US-005] - add safe attachment lookup tool for AI assistant"
+```
+
+### Task 3E: Review device-quota impact and decide whether quota awareness belongs in Phase 3 or later
+
+**Audit note (2026-03-10):** Device-quota changes materially confirm the current tenant/facility policy, but they do **not** justify adding quota-aware AI tools into the Phase 3 shipped registry yet. The current device-quota module proves that privileged users must select a specific facility before scoped reads, confirms `tinh_trang_hien_tai` as the canonical equipment status field, and shows that category/mapping RPCs alone are not sufficient evidence for reliable quota reasoning. Correct quota conclusions require active decision + line-item/compliance data, not category listings by themselves.
+
+**Files:**
+- Review: `src/app/(app)/device-quota/mapping/_components/DeviceQuotaMappingContext.tsx`
+- Review: `src/app/(app)/device-quota/mapping/_components/DeviceQuotaUnassignedList.tsx`
+- Review: `src/app/(app)/device-quota/mapping/page.tsx`
+- Review: `supabase/migrations/20260131_device_quota_schema.sql`
+- Review: `supabase/migrations/20260201_device_quota_rpc_categories.sql`
+- Review: `supabase/migrations/20260201_device_quota_rpc_decisions.sql`
+- Review: `supabase/migrations/20260201_device_quota_rpc_line_items.sql`
+- Review: `supabase/migrations/20260201_device_quota_rpc_mapping.sql`
+- Review: `supabase/migrations/20260206_fix_device_quota_rpc_tinh_trang_column.sql`
+
+**Step 1: Add an audit note to this plan (no code yet)**
+Document these decisions explicitly:
+- device-quota currently affects Phase 3 **indirectly**, not as a blocker.
+- the facility-selection pattern in device-quota confirms that privileged AI tool usage must keep the current “select facility first” behavior.
+- `tinh_trang_hien_tai` is now the canonical equipment status field and should be preferred in future AI quota-aware lookups.
+- quota/category RPCs are not a substitute for maintenance/repair/usage RPCs.
+- if future AI responses reason about “within quota” or “over quota”, they must use decision detail data (`dinh_muc_chi_tiet_list` / compliance RPCs), not category listings alone.
+- the device-quota write RPCs (`dinh_muc_thiet_bi_link`, `dinh_muc_thiet_bi_unlink`, and other mutation paths) remain strictly out of scope for the v1 AI registry.
+
+**Step 2: Defer quota-aware AI features unless explicitly requested**
+- Do **not** add device-quota tools into the v1 registry as part of US-005/US-006.
+- Treat quota-aware AI as a separate future initiative because reliable quota inference needs a stronger evidence model than Phase 3 currently ships.
+- If a follow-up is requested later, split it into at least two independent backlog items:
+  1. **Quota compliance reasoning** (for example, within-quota / over-quota analysis based on active decision + line-item/compliance data).
+  2. **Category suggestion / mapping assistance** (for example, proposing likely `nhom_thiet_bi` assignments for currently unclassified equipment).
+- Do not conflate these two future directions in the plan; they require different tools, evidence, and validation rules.
 
 ### Task 4: AI Diagnostic & Remediation Generation (Troubleshooting Assistant)
 
@@ -489,26 +1158,42 @@ git commit -m "feat: [US-005] - add read-only AI tools with maintenance plan loo
 - Create: `src/lib/ai/draft/troubleshooting-tool.ts`
 - Modify: `src/lib/ai/tools/registry.ts`
 - Modify: `src/lib/ai/prompts/system.ts`
+- Create: `src/app/api/chat/__tests__/route.troubleshooting.test.ts`
 
 **Step 1: Write failing diagnostic tests (RED)**
-- generated diagnostic plan validates against Zod schema (problem context, potential causes, step-by-step remediation).
-- tool correctly correlates equipment model/type from context if available.
-- **Context Dependency Test**: ensure diagnostic tool is only processed if RAG context has been retrieved first.
+- generated diagnostic plan validates against Zod schema (`equipment_context`, `probable_causes`, `remediation_steps`).
+- tool correctly correlates equipment model/type from retrieved context.
+- diagnostic flow is blocked unless factual context has been retrieved first.
+- diagnostic output is clearly labeled as inference/draft guidance, not factual repair procedure.
 
-**Step 2: Implement minimal diagnostic tool & RAG Instructions (GREEN)**
-- Return typed object with structured troubleshooting steps:
-  - `equipment_context` (chủng loại, model)
-  - `probable_causes` (danh sách nguyên nhân có thể xảy ra)
-  - `remediation_steps` (các bước khắc phục)
-- **RAG System Prompt Update (`system.ts`)**: 
-  - Strictly instruct the AI that it **MUST NOT** hallucinate medical equipment repairs based on general knowledge.
-  - Instruct the AI to explicitly execute `equipmentLookup` and `repairSummary` tools FIRST, specifically searching for historical solutions to similar issues.
-  - Only after gathering internal historical context, invoke the `troubleshooting-tool` to map `probable_causes` and `remediation_steps`.
+**Step 2: Run the failing diagnostic tests**
 
-**Step 3: Commit**
+Run:
+```bash
+node scripts/npm-run.js run test:run -- "src/app/api/chat/__tests__/route.troubleshooting.test.ts"
+```
+Expected: FAIL.
+
+**Step 3: Implement the minimal diagnostic tool and prompt contract (GREEN)**
+- Return a typed object with:
+  - `equipment_context`
+  - `probable_causes`
+  - `remediation_steps`
+- Update `system.ts` to require `equipmentLookup` and `repairSummary` first.
+- Keep the tool advisory only; no repair mutation path.
+
+**Step 4: Re-run the diagnostic tests**
+
+Run:
+```bash
+node scripts/npm-run.js run test:run -- "src/app/api/chat/__tests__/route.troubleshooting.test.ts"
+```
+Expected: PASS.
+
+**Step 5: Commit**
 
 ```bash
-git add src/lib/ai/draft/troubleshooting-schema.ts src/lib/ai/draft/troubleshooting-tool.ts src/lib/ai/tools/registry.ts src/lib/ai/prompts/system.ts
+git add src/lib/ai/draft/troubleshooting-schema.ts src/lib/ai/draft/troubleshooting-tool.ts src/lib/ai/tools/registry.ts src/lib/ai/prompts/system.ts src/app/api/chat/__tests__/route.troubleshooting.test.ts
 git commit -m "feat: [US-009] - add schema-validated AI diagnostic and remediation tool"
 ```
 
@@ -526,8 +1211,9 @@ git commit -m "feat: [US-009] - add schema-validated AI diagnostic and remediati
 - generated draft validates against strict Zod schema.
 - missing required draft fields => schema failure.
 - draft flow never calls create/update/delete RPCs.
+- output carries explicit draft metadata and is distinguishable from factual tool output.
 
-**Step 2: Run failing draft tests**
+**Step 2: Run the failing draft tests**
 
 Run:
 ```bash
@@ -535,7 +1221,7 @@ node scripts/npm-run.js run test:run -- "src/app/api/chat/__tests__/route.draft-
 ```
 Expected: FAIL.
 
-**Step 3: Implement minimal draft tool (GREEN)**
+**Step 3: Implement the minimal draft tool (GREEN)**
 - Return typed object aligned with repair form fields:
   - `thiet_bi_id?`
   - `mo_ta_su_co`
@@ -546,7 +1232,7 @@ Expected: FAIL.
 - Attach `draftOnly: true` metadata.
 - Update `system.ts` output-contract section to enforce "Draft does not submit" language and explicit `Fact/Inference/Draft` labels; bump version when behavior changes.
 
-**Step 4: Re-run tests**
+**Step 4: Re-run the draft tests**
 
 Run:
 ```bash
@@ -554,7 +1240,16 @@ node scripts/npm-run.js run test:run -- "src/app/api/chat/__tests__/route.draft-
 ```
 Expected: PASS.
 
-**Step 5: Commit**
+**Step 5: Refactor + static checks**
+
+Run:
+```bash
+node scripts/npm-run.js run typecheck
+node scripts/npm-run.js run lint -- --file "src/lib/ai/draft/repair-request-draft-tool.ts"
+```
+Expected: PASS.
+
+**Step 6: Commit**
 
 ```bash
 git add src/lib/ai/draft/repair-request-draft-schema.ts src/lib/ai/draft/repair-request-draft-tool.ts src/lib/ai/tools/registry.ts src/lib/ai/prompts/system.ts src/lib/ai/prompts/__tests__/system.test.ts src/app/api/chat/__tests__/route.draft-output.test.ts
