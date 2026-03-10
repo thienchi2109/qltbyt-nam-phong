@@ -30,9 +30,8 @@ describe('system prompt module', () => {
     expect(prompt).toContain('Inference')
     expect(prompt).toContain('Draft')
 
-    // Multimodal & attachment policy
+    // Multimodal policy
     expect(prompt).toContain('multimodal')
-    expect(prompt).toContain('signed URL')
 
     // Domain knowledge
     expect(prompt).toContain('thiet_bi')
@@ -98,5 +97,33 @@ describe('system prompt module', () => {
     expect(prompt).toContain('unknown')
     expect(prompt).toContain('Chưa xác định')
     expect(prompt).toContain('unspecified')
+  })
+
+  it('does NOT claim usage-frequency analysis before tool is shipped', () => {
+    const prompt = buildSystemPrompt({
+      role: 'admin',
+      userId: 'u1',
+      selectedFacilityId: 2,
+    })
+
+    // Usage-history tool (usageHistory) is not shipped yet.
+    // Prompt must not claim ability to analyze usage frequency.
+    expect(prompt).not.toContain('tần suất sử dụng')
+  })
+
+  it('does NOT claim universal signed URL attachment access before tool is shipped', () => {
+    const prompt = buildSystemPrompt({
+      role: 'admin',
+      userId: 'u1',
+      selectedFacilityId: 2,
+    })
+
+    // Attachment tool is not shipped yet.
+    // Prompt must not claim signed URL access is available.
+    expect(prompt).not.toContain('signed URL')
+  })
+
+  it('prompt version is v1.3.0 after alignment', () => {
+    expect(SYSTEM_PROMPT_VERSION).toBe('v1.3.0')
   })
 })

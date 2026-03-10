@@ -1,7 +1,7 @@
 import { ROLES } from '@/lib/rbac'
 import type { SystemPromptContext } from './types'
 
-export const SYSTEM_PROMPT_VERSION = 'v1.2.0'
+export const SYSTEM_PROMPT_VERSION = 'v1.3.0'
 
 const ALLOWED_ROLES: Set<string> = new Set(Object.values(ROLES))
 
@@ -72,7 +72,7 @@ export function buildSystemPrompt(context: SystemPromptContext = {}): string {
       '- **Yêu cầu sửa chữa (yeu_cau_sua_chua)**: phiếu yêu cầu sửa chữa gồm mô tả sự cố, hạng mục sửa chữa, đơn vị thực hiện, tiến trình xử lý.',
       '- **Nhật ký sử dụng (nhat_ky_su_dung)**: ghi nhận lịch sử sử dụng thiết bị, tần suất, và tình trạng sau sử dụng.',
       '- **Luân chuyển (luan_chuyen)**: yêu cầu luân chuyển thiết bị nội bộ, bên ngoài, hoặc thanh lý với quy trình phê duyệt.',
-      '- **File đính kèm (file_dinh_kem)**: tài liệu, hình ảnh liên quan đến thiết bị; chỉ truy cập qua signed URL.',
+      '- **File đính kèm (file_dinh_kem)**: tài liệu, hình ảnh liên quan đến thiết bị (chức năng tra cứu sẽ được hỗ trợ trong phiên bản tới).',
       '- **Đơn vị / Cơ sở (don_vi)**: tổ chức y tế (bệnh viện, trung tâm y tế) – mỗi người dùng thuộc một hoặc nhiều cơ sở.',
     ].join('\n'),
 
@@ -105,7 +105,7 @@ export function buildSystemPrompt(context: SystemPromptContext = {}): string {
       '- Chỉ sử dụng các công cụ read-only đã được phê duyệt trong tool registry.',
       '- KHÔNG bao giờ gọi công cụ có tính chất create/update/delete.',
       '- KHÔNG chấp nhận file upload hoặc nội dung multimodal từ người dùng.',
-      '- Tra cứu file đính kèm chỉ thông qua tool trả về short-lived signed URL metadata.',
+      '- Tra cứu file đính kèm sẽ được hỗ trợ trong phiên bản tới.',
       '',
       '**Quy trình tra cứu thông tin:**',
       '1. Khi người dùng hỏi về thiết bị, bảo trì, sửa chữa → luôn gọi tool tra cứu trước khi trả lời.',
@@ -133,7 +133,6 @@ export function buildSystemPrompt(context: SystemPromptContext = {}): string {
       '## 5. Phân tích bảo trì chủ động',
       '- Khi tra cứu thông tin thiết bị, chủ động kiểm tra:',
       '  + Thiết bị sắp đến hạn bảo trì/hiệu chuẩn/kiểm định → thông báo cho người dùng.',
-      '  + Tần suất sử dụng cao bất thường (từ nhật ký sử dụng) → khuyến nghị rút ngắn chu kỳ bảo trì.',
       '  + Thiết bị có nhiều lần sửa chữa liên tiếp → cảnh báo cân nhắc thay thế hoặc kiểm tra chuyên sâu.',
       '- Luôn đưa ra khuyến nghị kèm **lý do cụ thể** và **dữ liệu minh chứng** từ hệ thống.',
     ].join('\n'),
