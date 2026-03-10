@@ -41,6 +41,7 @@ describe('system prompt module', () => {
     // RAG-first troubleshooting
     expect(prompt).toContain('equipmentLookup')
     expect(prompt).toContain('repairSummary')
+    expect(prompt).toContain('usageHistory')
 
     // Safety guardrails
     expect(prompt).toContain('an toàn bệnh nhân')
@@ -99,16 +100,17 @@ describe('system prompt module', () => {
     expect(prompt).toContain('unspecified')
   })
 
-  it('does NOT claim usage-frequency analysis before tool is shipped', () => {
+  it('claims usage-frequency analysis backed by usageHistory tool', () => {
     const prompt = buildSystemPrompt({
       role: 'admin',
       userId: 'u1',
       selectedFacilityId: 2,
     })
 
-    // Usage-history tool (usageHistory) is not shipped yet.
-    // Prompt must not claim ability to analyze usage frequency.
-    expect(prompt).not.toContain('tần suất sử dụng')
+    // Usage-history tool is now shipped.
+    // Prompt should reference usageHistory for usage analysis.
+    expect(prompt).toContain('usageHistory')
+    expect(prompt).toContain('tần suất sử dụng')
   })
 
   it('does NOT claim universal signed URL attachment access before tool is shipped', () => {
@@ -119,11 +121,10 @@ describe('system prompt module', () => {
     })
 
     // Attachment tool is not shipped yet.
-    // Prompt must not claim signed URL access is available.
     expect(prompt).not.toContain('signed URL')
   })
 
-  it('prompt version is v1.3.0 after alignment', () => {
-    expect(SYSTEM_PROMPT_VERSION).toBe('v1.3.0')
+  it('prompt version is v1.4.0 after usage-history tool', () => {
+    expect(SYSTEM_PROMPT_VERSION).toBe('v1.4.0')
   })
 })

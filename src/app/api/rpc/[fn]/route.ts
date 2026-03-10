@@ -79,6 +79,7 @@ const ALLOWED_FUNCTIONS = new Set<string>([
   'ai_maintenance_plan_lookup',
   'ai_maintenance_summary',
   'ai_repair_summary',
+  'ai_usage_summary',
   // Tenants + Users
   'tenant_list',
   'get_facilities_with_equipment_count',

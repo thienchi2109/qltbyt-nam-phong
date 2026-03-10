@@ -8,6 +8,7 @@ describe('AI tool → RPC mapping contract', () => {
     maintenanceSummary: 'ai_maintenance_summary',
     maintenancePlanLookup: 'ai_maintenance_plan_lookup',
     repairSummary: 'ai_repair_summary',
+    usageHistory: 'ai_usage_summary',
   }
 
   it('maps tool names to their approved RPC functions', () => {
@@ -25,6 +26,7 @@ describe('AI tool → RPC mapping contract', () => {
     maintenanceSummary: 'ai_maintenance_summary',
     maintenancePlanLookup: 'ai_maintenance_plan_lookup',
     repairSummary: 'ai_repair_summary',
+    usageHistory: 'ai_usage_summary',
   }))('tool "%s" maps to RPC "%s"', (tool, rpc) => {
     const mapping = getToolRpcMapping()
     expect(mapping[tool]).toBe(rpc)

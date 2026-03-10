@@ -1,7 +1,7 @@
 import { ROLES } from '@/lib/rbac'
 import type { SystemPromptContext } from './types'
 
-export const SYSTEM_PROMPT_VERSION = 'v1.3.0'
+export const SYSTEM_PROMPT_VERSION = 'v1.4.0'
 
 const ALLOWED_ROLES: Set<string> = new Set(Object.values(ROLES))
 
@@ -9,7 +9,7 @@ const ALLOWED_ROLES: Set<string> = new Set(Object.values(ROLES))
 const ROLE_DESCRIPTIONS: Record<string, string> = {
   global: 'Quản trị hệ thống (toàn quyền)',
   admin: 'Quản trị hệ thống (toàn quyền)',
-  regional_leader: 'Lãnh đạo vùng (giám sát nhiều cơ sở)',
+  regional_leader: 'Sở Y tế (giám sát nhiều cơ sở)',
   to_qltb: 'Tổ/Phòng Vật tư – Thiết bị Y tế (quản lý thiết bị cơ sở)',
   technician: 'Kỹ thuật viên (bảo trì, sửa chữa)',
   qltb_khoa: 'Quản lý thiết bị khoa/phòng',
@@ -123,7 +123,8 @@ export function buildSystemPrompt(context: SystemPromptContext = {}): string {
       'Khi người dùng yêu cầu hỗ trợ xử lý sự cố hoặc hỏng hóc thiết bị:',
       '1. **Bước 1 – Thu thập ngữ cảnh**: Gọi `equipmentLookup` để lấy thông tin thiết bị (mã, model, hãng sản xuất, tình trạng hiện tại).',
       '2. **Bước 2 – Tra cứu lịch sử**: Gọi `repairSummary` để tìm các sự cố tương tự đã xảy ra và cách giải quyết trước đó.',
-      '3. **Bước 3 – Phân tích & đề xuất**: Chỉ SAU KHI đã thu thập đủ dữ liệu nội bộ, mới tổng hợp nguyên nhân có thể và các bước khắc phục.',
+      '3. **Bước 3 – Kiểm tra sử dụng**: Gọi `usageHistory` để xem tần suất sử dụng và tình trạng thiết bị sau sử dụng.',
+      '4. **Bước 4 – Phân tích & đề xuất**: Chỉ SAU KHI đã thu thập đủ dữ liệu nội bộ, mới tổng hợp nguyên nhân có thể và các bước khắc phục.',
       '- **TUYỆT ĐỐI KHÔNG** bịa đặt quy trình sửa chữa thiết bị y tế dựa trên kiến thức chung.',
       '- Nếu không tìm thấy lịch sử nội bộ, hãy nêu rõ: "Không tìm thấy dữ liệu lịch sử tương tự trong hệ thống. Đề xuất liên hệ kỹ thuật viên hoặc hãng sản xuất."',
     ].join('\n'),
@@ -133,6 +134,7 @@ export function buildSystemPrompt(context: SystemPromptContext = {}): string {
       '## 5. Phân tích bảo trì chủ động',
       '- Khi tra cứu thông tin thiết bị, chủ động kiểm tra:',
       '  + Thiết bị sắp đến hạn bảo trì/hiệu chuẩn/kiểm định → thông báo cho người dùng.',
+      '  + Tần suất sử dụng cao bất thường (từ `usageHistory`) → khuyến nghị rút ngắn chu kỳ bảo trì.',
       '  + Thiết bị có nhiều lần sửa chữa liên tiếp → cảnh báo cân nhắc thay thế hoặc kiểm tra chuyên sâu.',
       '- Luôn đưa ra khuyến nghị kèm **lý do cụ thể** và **dữ liệu minh chứng** từ hệ thống.',
     ].join('\n'),

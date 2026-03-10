@@ -50,6 +50,17 @@ const READ_ONLY_TOOL_DEFINITIONS: Record<string, ReadOnlyToolDefinition> = {
       })
       .strict(),
   },
+  usageHistory: {
+    description:
+      'Retrieve usage summary evidence for a specific equipment item from usage logs.',
+    rpcFunction: 'ai_usage_summary',
+    inputSchema: z
+      .object({
+        thiet_bi_id: z.number().int().positive(),
+        p_months: z.number().int().min(1).max(24).optional(),
+      })
+      .strict(),
+  },
 }
 
 const KNOWN_BUT_BLOCKED_TOOLS = new Set(['systemDiagnostics'])
