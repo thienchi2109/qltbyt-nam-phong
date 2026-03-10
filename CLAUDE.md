@@ -333,6 +333,8 @@ const { data } = useQuery({
 
 **No RLS** - Security via RPC functions only.
 
+**Project ID**: cdthersvldpnlbvpufrr
+
 ## Conventions
 
 - **Imports:** `@/*` alias, order: React → 3rd-party → `@/components` → `@/lib`

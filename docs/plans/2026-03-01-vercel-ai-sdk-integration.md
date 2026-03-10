@@ -1119,9 +1119,9 @@ git add src/app/api/chat/__tests__/route.attachment-tools.test.ts src/lib/ai/too
 git commit -m "feat: [US-005] - add safe attachment lookup tool for AI assistant"
 ```
 
-### Task 3E: Review device-quota impact and decide whether quota awareness belongs in Phase 3 or later
+### Task 3E: Add narrowly scoped quota-aware AI support for starter prompts and read-only device quota lookup
 
-**Audit note (2026-03-10):** Device-quota changes materially confirm the current tenant/facility policy, but they do **not** justify adding quota-aware AI tools into the Phase 3 shipped registry yet. The current device-quota module proves that privileged users must select a specific facility before scoped reads, confirms `tinh_trang_hien_tai` as the canonical equipment status field, and shows that category/mapping RPCs alone are not sufficient evidence for reliable quota reasoning. Correct quota conclusions require active decision + line-item/compliance data, not category listings by themselves.
+**Audit note (2026-03-10):** Device-quota changes no longer stay purely out of scope for Phase 3. They justify a **narrow read-only quota-aware AI slice** in Phase 3: expose quota-related starter prompts when the user opens AI chat, and support quota lookup for a specific device the user asks about. This must preserve the project security model exactly: RPC-only access through the trusted `/api/rpc/[fn]` gateway, no direct table reads from AI tools, no write-capable quota RPCs in the AI registry, and no model-side inference from raw category listings alone. The current device-quota module still proves that privileged users must select a specific facility before scoped reads, confirms `tinh_trang_hien_tai` as the canonical equipment status field, and shows that category/mapping RPCs alone are not sufficient evidence for reliable quota reasoning. Any answer about “còn bao nhiêu” must be backed by active decision + line-item/compliance data, not category listings by themselves. Live DB review also shows current quota coverage is incomplete (for example, active decisions are sparse and device-to-category mapping coverage is still limited), so the contract must explicitly support `notMapped`, `notInApprovedCatalog`, and `insufficientEvidence` as first-class outcomes.
 
 **Files:**
 - Review: `src/app/(app)/device-quota/mapping/_components/DeviceQuotaMappingContext.tsx`
@@ -1133,23 +1133,134 @@ git commit -m "feat: [US-005] - add safe attachment lookup tool for AI assistant
 - Review: `supabase/migrations/20260201_device_quota_rpc_line_items.sql`
 - Review: `supabase/migrations/20260201_device_quota_rpc_mapping.sql`
 - Review: `supabase/migrations/20260206_fix_device_quota_rpc_tinh_trang_column.sql`
+- Future modify: AI chat starter prompt source/config for welcome suggestions
+- Future modify: AI tool registry / prompt contract for quota-aware read-only lookup
+- Future create: AI-specific read-only quota lookup RPC migration (via `/api/rpc/[fn]` allowlist only)
 
 **Step 1: Add an audit note to this plan (no code yet)**
 Document these decisions explicitly:
-- device-quota currently affects Phase 3 **indirectly**, not as a blocker.
-- the facility-selection pattern in device-quota confirms that privileged AI tool usage must keep the current “select facility first” behavior.
-- `tinh_trang_hien_tai` is now the canonical equipment status field and should be preferred in future AI quota-aware lookups.
-- quota/category RPCs are not a substitute for maintenance/repair/usage RPCs.
-- if future AI responses reason about “within quota” or “over quota”, they must use decision detail data (`dinh_muc_chi_tiet_list` / compliance RPCs), not category listings alone.
+- device-quota now affects Phase 3 in a **limited read-only way**, not as a blocker.
+- the facility-selection pattern in device-quota confirms that privileged AI tool usage must keep the current facility-scoping behavior.
+- `tinh_trang_hien_tai` is the canonical equipment status field and should be preferred in quota-aware AI lookups.
+- quota/category RPCs are not a substitute for maintenance/repair/usage RPCs and are also not enough by themselves for quota conclusions.
+- if AI answers whether a device is within quota or how much quota remains, it must use decision detail data (`dinh_muc_chi_tiet_list` / compliance RPCs or equivalent evidence-ready data), not category listings alone.
+- existing quota RPCs are useful source data, but they are **not** the final AI contract; Phase 3 should add a dedicated AI-specific read-only quota RPC that returns a bounded, evidence-ready result for one device at a time.
+- the AI quota RPC must remain behind the same trusted RPC gateway and follow the same pattern as other AI read-only RPCs: `SECURITY DEFINER`, pinned `search_path`, JWT claim checks, tenant/facility scoping, authenticated-only execution grant, and explicit whitelist registration.
 - the device-quota write RPCs (`dinh_muc_thiet_bi_link`, `dinh_muc_thiet_bi_unlink`, and other mutation paths) remain strictly out of scope for the v1 AI registry.
 
-**Step 2: Defer quota-aware AI features unless explicitly requested**
-- Do **not** add device-quota tools into the v1 registry as part of US-005/US-006.
-- Treat quota-aware AI as a separate future initiative because reliable quota inference needs a stronger evidence model than Phase 3 currently ships.
-- If a follow-up is requested later, split it into at least two independent backlog items:
-  1. **Quota compliance reasoning** (for example, within-quota / over-quota analysis based on active decision + line-item/compliance data).
-  2. **Category suggestion / mapping assistance** (for example, proposing likely `nhom_thiet_bi` assignments for currently unclassified equipment).
-- Do not conflate these two future directions in the plan; they require different tools, evidence, and validation rules.
+**Step 2: Add quota-aware starter prompts to AI chat scope**
+- When the user opens the AI chat UI, include visible starter questions that make quota support discoverable.
+- Add at least one quota-related suggestion group, for example:
+  - “Thiết bị này có nằm trong định mức hiện hành không?”
+  - “Định mức còn lại của thiết bị này là bao nhiêu?”
+  - “Thiết bị này đã được gán vào danh mục định mức chưa?”
+- Treat these as discovery/UX affordances only; they do not change the read-only boundary.
+- If the user asks a quota question without sufficient scope context, the assistant must ask for the missing scope before attempting lookup.
+- If a local/single-facility user asks a broad quota question such as “Tiêu chuẩn, định mức sử dụng thiết bị y tế của đơn vị tôi như thế nào?”, the assistant should treat it as a request for a facility-scoped quota/compliance summary, not as a device-specific lookup and not as a free-form policy explanation.
+- In that case, the assistant should first return a short evidence-based summary of the current effective quota context for the user’s facility (for example active decision context, counts of compliant / under-quota / over-quota categories, and number of unmapped devices if available), then ask a clarifying follow-up to drill into category-level or device-level details.
+- The assistant must not claim the facility is “đạt chuẩn”, “đủ định mức”, or “không có định mức” unless the returned evidence explicitly supports that conclusion.
+
+**Step 3: Define the quota-aware lookup contract as a narrow read-only feature**
+- Add a dedicated quota-aware AI lookup path for a specific user-supplied device.
+- Implement this as **one AI-specific read-only RPC**, not as model-driven orchestration over multiple existing quota RPCs.
+- The AI quota RPC must return a bounded result for one device at a time and must not expose raw quota tables or broad decision/category payloads to the model.
+- The lookup must answer one of these evidence-backed states:
+  1. `inQuotaCatalog`
+  2. `notMapped`
+  3. `notInApprovedCatalog`
+  4. `insufficientEvidence`
+- If the result is `inQuotaCatalog`, return:
+  - the applicable quota category / approved decision context
+  - the quota amount
+  - the current counted amount used for comparison
+  - the remaining amount
+  - the scope used to compute the result
+- If the result is `notMapped`, clearly state that the device has not yet been assigned to a quota catalog/category.
+- If the result is `notInApprovedCatalog`, clearly state that the device is not present in the currently approved/effective quota catalog.
+- If the result is `insufficientEvidence`, clearly state that available mapping/category data is not enough to conclude current quota status.
+- Derive quota status from active/effective decision data plus line-item/compliance evidence; do **not** infer quota membership from category listings alone.
+- Mini response contract examples (pseudo-JSON only; implementation may rename fields but must preserve semantics):
+
+```json
+// A. Facility-scoped quota summary for broad questions from local users
+{
+  "kind": "quotaSummary",
+  "scope": {
+    "mode": "facility",
+    "don_vi_id": 17,
+    "label": "Đơn vị hiện tại"
+  },
+  "decision": {
+    "id": 22,
+    "so_quyet_dinh": "289/QĐ-SYT",
+    "trang_thai": "active",
+    "ngay_hieu_luc": "2026-02-27"
+  },
+  "summary": {
+    "total_categories": 284,
+    "dat_count": 210,
+    "thieu_count": 40,
+    "vuot_count": 34,
+    "unmapped_equipment": 120
+  },
+  "evidence_status": "complete",
+  "suggested_follow_ups": [
+    "Xem các nhóm đang thiếu định mức",
+    "Xem các nhóm đang vượt định mức",
+    "Xem thiết bị chưa được gán danh mục",
+    "Kiểm tra một thiết bị cụ thể"
+  ]
+}
+
+// B. Device-specific quota lookup
+{
+  "kind": "deviceQuotaLookup",
+  "scope": {
+    "mode": "facility",
+    "don_vi_id": 17,
+    "label": "Đơn vị hiện tại"
+  },
+  "device": {
+    "id": 123,
+    "ma_thiet_bi": "TB-001",
+    "ten_thiet_bi": "Máy siêu âm A"
+  },
+  "status": "inQuotaCatalog",
+  "decision": {
+    "id": 22,
+    "so_quyet_dinh": "289/QĐ-SYT",
+    "trang_thai": "active"
+  },
+  "category": {
+    "id": 45,
+    "ma_nhom": "CDHA-001",
+    "ten_nhom": "Thiết bị chẩn đoán hình ảnh"
+  },
+  "quota": {
+    "quota_amount": 5,
+    "current_count": 3,
+    "remaining_amount": 2
+  },
+  "evidence_status": "complete"
+}
+```
+
+- For `quotaSummary`, prefer a short summary payload that supports a concise assistant answer plus follow-up prompts.
+- For `deviceQuotaLookup`, `status` must be one of `inQuotaCatalog | notMapped | notInApprovedCatalog | insufficientEvidence`.
+- If `status != inQuotaCatalog`, the payload may omit `category` or `quota`, but it must still include enough evidence/context for the assistant to explain the outcome clearly and safely.
+
+**Step 4: Lock scope rules for local vs privileged users**
+- For local/single-facility users (`to_qltb`, `technician`, `qltb_khoa`, `user`), quota answers must be computed within the currently selected facility.
+- For `regional_leader`, `global`, and `admin`, quota answers may be computed more flexibly across a wider allowed scope, but the assistant must explicitly state whether the answer is based on one facility, multiple facilities, or a wider regional/system scope.
+- Prefer a single-facility answer whenever the user has already selected a facility; do not silently widen scope.
+- Do not silently collapse multi-facility results into a single-facility answer.
+- If no valid scope is available, ask the user to choose or clarify the scope before lookup.
+- The AI quota RPC must validate scope server-side; do not rely on client-supplied tenant/facility scope for non-global users.
+
+**Step 5: Keep quota-aware AI intentionally narrow in Phase 3**
+- Do **not** add auto-mapping, auto-classification, or quota write actions into the Phase 3 AI registry as part of US-005/US-006.
+- Do **not** conflate quota lookup with category suggestion / mapping assistance; those remain separate future work.
+- Treat this Phase 3 addition as an evidence-backed read-only lookup plus discoverability improvement, not a full quota decision engine.
 
 ### Task 4: AI Diagnostic & Remediation Generation (Troubleshooting Assistant)
 
