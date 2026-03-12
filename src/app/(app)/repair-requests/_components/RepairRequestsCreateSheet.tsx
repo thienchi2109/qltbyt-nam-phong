@@ -151,7 +151,6 @@ export function RepairRequestsCreateSheet() {
     draftEquipmentLabel,
     hasDraftEquipmentLookupCompleted,
     hasSeededDraftEquipmentLookup,
-    searchQuery,
   ])
 
   // Fetch equipment options

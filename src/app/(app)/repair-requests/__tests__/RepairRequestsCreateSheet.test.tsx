@@ -1,3 +1,6 @@
+import { readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
+
 import * as React from 'react'
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
@@ -349,5 +352,19 @@ describe('RepairRequestsCreateSheet assistant draft hydration', () => {
     await waitFor(() => {
       expect(screen.queryByText('⚠️ Thiết bị trong bản nháp không tìm thấy ở cơ sở hiện tại. Vui lòng chọn thiết bị thủ công.')).not.toBeInTheDocument()
     })
+  })
+
+  it('does not depend on searchQuery in the hydration effect dependency list', () => {
+    const source = readFileSync(
+      resolve(process.cwd(), 'src/app/(app)/repair-requests/_components/RepairRequestsCreateSheet.tsx'),
+      'utf8',
+    )
+
+    const hydrationEffectDependencies = source.match(
+      /React\.useEffect\(\(\) => \{[\s\S]*?\n  \}, \[([\s\S]*?)\]\)/,
+    )?.[1]
+
+    expect(hydrationEffectDependencies).toBeDefined()
+    expect(hydrationEffectDependencies).not.toContain('searchQuery')
   })
 })
