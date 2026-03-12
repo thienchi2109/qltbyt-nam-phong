@@ -1637,6 +1637,32 @@ git commit -m "feat: [US-006] - add schema-validated repair-request draft artifa
 - Create: `src/components/assistant/__tests__/AssistantPanel.ui.test.tsx`
 - Create: `src/app/(app)/__tests__/layout.assistant-integration.test.tsx`
 
+**Architecture note:**
+- This task is the first place where the deferred Phase 4 UI handoff for `repairRequestDraft` is implemented.
+- The AI chat trigger is mounted in the protected app header/layout and is available from all authenticated in-app screens.
+- `AssistantMessageList` becomes the structured message renderer that was intentionally deferred out of Task 4.5.
+- The chat UI may render draft artifacts, but it must not submit mutations directly from chat.
+- For `repairRequestDraft`, chat is responsible only for:
+  1. rendering the structured draft card,
+  2. showing draft-state warnings/labels,
+  3. exposing the explicit CTA (`Dùng bản nháp này`), and
+  4. handing the draft off into repair-request UI state.
+- The actual create mutation must remain inside the existing repair-request flow after the user reviews the hydrated sheet and clicks `Gửi yêu cầu`.
+
+**Phase 4 handoff contract (must match Task 4.5 exactly):**
+- `repairRequestDraft` must render as a structured draft card in chat.
+- The card must include:
+  - a visible draft label,
+  - a warning that the draft has not been submitted,
+  - a primary CTA such as `Dùng bản nháp này`.
+- Chat must not auto-open `RepairRequestsCreateSheet` when a draft message arrives.
+- Chat must not auto-apply draft data on receipt.
+- Only an explicit user click on `Dùng bản nháp này` may:
+  1. store/apply the draft in repair-request UI state/context,
+  2. open `RepairRequestsCreateSheet`, and
+  3. hydrate the create form with draft-backed values.
+- Troubleshooting drafts and factual tool outputs must remain visually distinct from repair-request draft cards.
+
 **Step 1: Write failing UI behavior tests (RED)**
 - assistant trigger visible only in authenticated protected layout.
 - panel opens/closes.
@@ -1645,6 +1671,10 @@ git commit -m "feat: [US-006] - add schema-validated repair-request draft artifa
 - exactly 3 suggested question chips render in chat UI.
 - clicking a suggested question sends a user message immediately (quick ask).
 - suggested question chips are disabled while status is not `ready`.
+- `repairRequestDraft` renders as a structured draft card with draft warning text and a `Dùng bản nháp này` CTA.
+- receiving a `repairRequestDraft` message does **not** auto-open the repair-request sheet.
+- clicking `Dùng bản nháp này` applies the draft handoff and opens the repair-request sheet.
+- troubleshooting drafts and factual messages do not render with the repair-request CTA.
 
 **Step 2: Run failing UI tests**
 
@@ -1665,6 +1695,11 @@ Expected: FAIL.
   - `Tóm tắt các thiết bị đang cần ưu tiên xử lý hôm nay.`
 - Wire chip click to quick-send via chat action (not just prefill input).
 - Show chips when conversation is empty (or until first user message), then hide.
+- Implement `AssistantMessageList` so it:
+  - renders structured `repairRequestDraft` cards,
+  - keeps troubleshooting drafts visually separate,
+  - does not auto-open the repair-request sheet on draft arrival,
+  - hands draft data off only on explicit CTA click.
 
 **Step 4: Re-run tests**
 
@@ -1678,7 +1713,7 @@ Expected: PASS.
 
 ```bash
 git add src/components/assistant src/app/(app)/layout.tsx src/components/assistant/__tests__/AssistantPanel.ui.test.tsx src/app/(app)/__tests__/layout.assistant-integration.test.tsx
-git commit -m "feat: [US-001] - add global protected assistant panel with status-aware composer"
+git commit -m "feat: [US-001] - add global protected assistant panel with draft handoff UI"
 ```
 
 ---
