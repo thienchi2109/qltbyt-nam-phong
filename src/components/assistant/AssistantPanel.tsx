@@ -9,6 +9,9 @@ import { Button } from "@/components/ui/button"
 import { useTenantSelection } from "@/contexts/TenantSelectionContext"
 import { cn } from "@/lib/utils"
 
+import { AssistantComposer } from "./AssistantComposer"
+import { AssistantEmptyState } from "./AssistantEmptyState"
+
 import "@/components/assistant/assistant-styles.css"
 
 interface AssistantPanelProps {
@@ -53,26 +56,27 @@ export function AssistantPanel({ isOpen, onClose }: AssistantPanelProps) {
         [selectedFacilityId],
     )
 
-    const { messages, status, sendMessage, stop, setMessages, error } = useChat({
+    const { messages, status, sendMessage, stop, setMessages } = useChat({
         transport,
     })
 
+    const isStreaming = status === "streaming"
+    const isReady = status === "ready"
+
     const handleSend = React.useCallback(() => {
         const trimmed = input.trim()
-        if (!trimmed || status !== "ready") return
+        if (!trimmed || !isReady) return
 
         sendMessage({ text: trimmed })
         setInput("")
-    }, [input, status, sendMessage])
+    }, [input, isReady, sendMessage])
 
-    const handleKeyDown = React.useCallback(
-        (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-            if (e.key === "Enter" && !e.shiftKey) {
-                e.preventDefault()
-                handleSend()
-            }
+    const handleSuggestionClick = React.useCallback(
+        (text: string) => {
+            if (!isReady) return
+            sendMessage({ text })
         },
-        [handleSend],
+        [isReady, sendMessage],
     )
 
     const handleReset = React.useCallback(() => {
@@ -81,8 +85,6 @@ export function AssistantPanel({ isOpen, onClose }: AssistantPanelProps) {
     }, [setMessages])
 
     if (!isOpen) return null
-
-    const isStreaming = status === "streaming"
 
     return (
         <div
@@ -136,55 +138,22 @@ export function AssistantPanel({ isOpen, onClose }: AssistantPanelProps) {
             {/* Message area — placeholder for Batch 5 MessageList */}
             <div className="flex-1 overflow-y-auto px-4 py-3">
                 {messages.length === 0 && (
-                    <div className="flex flex-col items-center justify-center h-full text-center text-muted-foreground text-sm">
-                        <p>Hãy bắt đầu cuộc trò chuyện!</p>
-                    </div>
+                    <AssistantEmptyState
+                        onSuggestionClick={handleSuggestionClick}
+                        isReady={isReady}
+                    />
                 )}
             </div>
 
             {/* Composer */}
-            <div className="px-4 py-3 border-t border-[hsl(var(--assistant-border))] shrink-0">
-                <div className="flex items-end gap-2">
-                    <textarea
-                        value={input}
-                        onChange={(e) => setInput(e.target.value)}
-                        onKeyDown={handleKeyDown}
-                        placeholder="Hỏi trợ lý..."
-                        rows={1}
-                        disabled={isStreaming}
-                        className={cn(
-                            "flex-1 resize-none rounded-xl border border-input bg-background px-3 py-2",
-                            "text-sm leading-relaxed",
-                            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                            "disabled:opacity-50 disabled:cursor-not-allowed",
-                            "max-h-[120px]",
-                        )}
-                    />
-                    {isStreaming ? (
-                        <Button
-                            variant="destructive"
-                            size="icon"
-                            onClick={() => stop()}
-                            className="h-9 w-9 rounded-xl shrink-0"
-                            aria-label="Dừng"
-                        >
-                            <div className="h-3 w-3 rounded-sm bg-white" />
-                        </Button>
-                    ) : (
-                        <Button
-                            size="icon"
-                            onClick={handleSend}
-                            disabled={!input.trim()}
-                            className="h-9 w-9 rounded-xl shrink-0 bg-[hsl(var(--assistant-accent))] hover:bg-[hsl(var(--assistant-accent))]/90 text-white"
-                            aria-label="Gửi"
-                        >
-                            <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                <path d="M12 19V5M5 12l7-7 7 7" />
-                            </svg>
-                        </Button>
-                    )}
-                </div>
-            </div>
+            <AssistantComposer
+                input={input}
+                onInputChange={setInput}
+                onSend={handleSend}
+                onStop={() => stop()}
+                isStreaming={isStreaming}
+                isReady={isReady}
+            />
 
             {/* Disclaimer */}
             <div className="px-4 pb-3 shrink-0">
