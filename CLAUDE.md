@@ -81,6 +81,14 @@ GRANT EXECUTE ON FUNCTION fn_name TO authenticated;
 | `qltb_khoa` | Single tenant + dept | Department equipment manager |
 | `user` | Single tenant | Basic read access |
 
+> ⚠️ **`admin` = `global` alias — ALWAYS normalize!**
+>
+> The RPC proxy (`/api/rpc/[fn]`) auto-normalizes `admin` → `global` before signing JWT.
+> **Outside the proxy** (standalone API routes, Edge Functions, server utilities), the session
+> still contains the raw `admin` role. You MUST use `isGlobalRole()` from `@/lib/rbac` instead
+> of `role === 'global'`. Checking `role === 'global'` alone **silently excludes admin users**
+> from tenant-bypass logic, causing data-empty responses.
+
 📖 **Full RBAC Documentation:** See [`docs/RBAC.md`](docs/RBAC.md) for complete permission matrices, role hierarchy diagrams, and implementation patterns.
 
 </SECURITY_CRITICAL>
@@ -361,7 +369,7 @@ const { data } = useQuery({
 
 - **Imports:** `@/*` alias, order: React → 3rd-party → `@/components` → `@/lib`
 - **Types:** Never `any`, explicit interfaces, DB types in `src/types/database.ts`
-- **Files:**  TRY TO KEEP 350-450 lines max
+- **Files:** **350-line extraction threshold.** When a file approaches ~350 lines, proactively extract logical chunks (helpers, sub-components, types, constants) into separate files. Hard ceiling: **450 lines** — no file should exceed this. When splitting, follow the module prefix naming convention (`{ModuleName}{Chunk}.tsx`).
 - **UI:** Radix + Tailwind, mobile-first, react-hook-form + zod
 
 
@@ -434,3 +442,47 @@ QUERY REVIEW CHECKLIST
 [ ] Errors handled: try/catch present, no raw DB errors exposed to client
 [ ] Caching flagged: read-heavy queries noted as cache candidates if appropriate
 [ ] Query log verified: no duplicate/repetitive queries for a single request
+
+## SQL Migration Safety Rules (MANDATORY)
+
+### LIKE/ILIKE Sanitization
+
+**NEVER concatenate user input directly into LIKE/ILIKE patterns.** Always use `_sanitize_ilike_pattern()`:
+
+```sql
+-- ❌ BAD: raw concatenation — `_` and `%` act as wildcards
+v_search_pattern := '%' || COALESCE(LOWER(TRIM(p_search)), '') || '%';
+
+-- ✅ GOOD: use deployed helper (returns NULL for NULL/empty input)
+v_sanitized_search := public._sanitize_ilike_pattern(LOWER(TRIM(p_search)));
+-- Then use: ... LIKE '%' || v_sanitized_search || '%'
+```
+
+### SECURITY DEFINER Functions
+
+All `SECURITY DEFINER` functions MUST set `search_path`:
+
+```sql
+CREATE OR REPLACE FUNCTION public.fn_name(...)
+RETURNS ... LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_temp  -- ← MANDATORY
+AS $$ ... $$;
+```
+
+### JWT Claim Guards
+
+All authenticated RPCs MUST validate JWT claims before executing business logic:
+
+```sql
+-- Extract and validate claims
+v_role := current_setting('request.jwt.claims', true)::json->>'app_role';
+v_user_id := current_setting('request.jwt.claims', true)::json->>'user_id';
+IF v_role IS NULL OR v_role = '' THEN
+  RAISE EXCEPTION 'Missing role claim' USING errcode = '42501';
+END IF;
+```
+
+### Post-Migration Verification
+
+After applying any migration, run `get_advisors(security)` via Supabase MCP to catch regressions.

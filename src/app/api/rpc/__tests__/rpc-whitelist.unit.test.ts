@@ -44,4 +44,28 @@ describe('RPC proxy whitelist', () => {
     expect(res.status).toBe(403)
     await expect(res.json()).resolves.toEqual({ error: 'Function not allowed' })
   })
+
+  it('allows dinh_muc_unified_import through whitelist checks', async () => {
+    const res = await invokeRpcProxy('dinh_muc_unified_import')
+
+    // Whitelist check passed; next guard is missing Content-Length.
+    expect(res.status).toBe(411)
+    await expect(res.json()).resolves.toEqual({ error: 'Content-Length header required' })
+  })
+
+  it('allows hybrid_search_category_batch through whitelist checks', async () => {
+    const res = await invokeRpcProxy('hybrid_search_category_batch')
+
+    // Whitelist check passed; next guard is missing Content-Length.
+    expect(res.status).toBe(411)
+    await expect(res.json()).resolves.toEqual({ error: 'Content-Length header required' })
+  })
+
+  it('allows dinh_muc_thiet_bi_unassigned_names through whitelist checks', async () => {
+    const res = await invokeRpcProxy('dinh_muc_thiet_bi_unassigned_names')
+
+    // Whitelist check passed; next guard is missing Content-Length.
+    expect(res.status).toBe(411)
+    await expect(res.json()).resolves.toEqual({ error: 'Content-Length header required' })
+  })
 })

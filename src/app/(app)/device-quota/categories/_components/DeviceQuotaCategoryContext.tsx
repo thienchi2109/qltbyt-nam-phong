@@ -7,6 +7,8 @@ import { useSession } from "next-auth/react"
 import { useToast } from "@/hooks/use-toast"
 import { callRpc } from "@/lib/rpc-client"
 import { translateRpcError } from "@/lib/error-translations"
+import { refreshCategoryEmbeddings } from "@/lib/refresh-category-embeddings"
+import { filterCategoriesWithAncestorsAndDescendants } from "../_utils/filterCategoriesWithAncestorsAndDescendants"
 import type {
   CategoryDeleteState,
   CategoryDialogState,
@@ -28,9 +30,14 @@ interface CategoryContextValue {
   user: AuthUser | null
   donViId: number | null
 
-  // Data
+  // Data — `categories` is search-filtered, `allCategories` is the full set
   categories: CategoryListItem[]
+  allCategories: CategoryListItem[]
   isLoading: boolean
+
+  // Search
+  searchTerm: string
+  setSearchTerm: (term: string) => void
 
   // Dialog state (discriminated union)
   dialogState: CategoryDialogState
@@ -90,13 +97,19 @@ function useCreateMutation(
         },
       })
     },
-    onSuccess: () => {
+    onSuccess: (result: unknown) => {
       toast({
         title: "Thành công",
         description: "Đã tạo danh mục thiết bị.",
       })
       closeDialog()
       invalidate()
+      // Fire-and-forget: refresh embedding for newly created category
+      // dinh_muc_nhom_upsert returns scalar BIGINT (the category ID)
+      const categoryId = typeof result === 'number' ? result : null
+      if (categoryId) {
+        refreshCategoryEmbeddings([categoryId])
+      }
     },
     onError: (error: Error) => {
       toast({
@@ -138,13 +151,15 @@ function useUpdateMutation(
     onMutate: (data) => {
       setMutatingCategoryId(data.id)
     },
-    onSuccess: () => {
+    onSuccess: (_result: unknown, variables) => {
       toast({
         title: "Thành công",
         description: "Đã cập nhật danh mục.",
       })
       closeDialog()
       invalidate()
+      // Fire-and-forget: refresh embedding for updated category
+      refreshCategoryEmbeddings([variables.id])
     },
     onError: (error: Error) => {
       toast({
@@ -230,9 +245,13 @@ export function DeviceQuotaCategoryProvider({ children }: DeviceQuotaCategoryPro
   const [categoryToDelete, setCategoryToDelete] = React.useState<CategoryListItem | null>(null)
   const [isImportDialogOpen, setIsImportDialogOpen] = React.useState(false)
 
+  // Search state (instant client-side filtering, no debounce needed for < 500 items)
+  const [searchTerm, setSearchTerm] = React.useState("")
+
+  // Single query — fetch ALL categories once (< 500 items, no pagination needed)
   const {
-    data: categoriesData,
-    isLoading: isLoadingCategories,
+    data: allCategoriesData,
+    isLoading,
   } = useQuery({
     queryKey: ["dinh_muc_nhom_list", { donViId }],
     queryFn: async () => {
@@ -246,6 +265,24 @@ export function DeviceQuotaCategoryProvider({ children }: DeviceQuotaCategoryPro
     staleTime: 60000,
     gcTime: 10 * 60 * 1000,
   })
+
+  const allCategories: CategoryListItem[] = React.useMemo(
+    () => allCategoriesData || [],
+    [allCategoriesData]
+  )
+
+  // Client-side search with ancestor + descendant preservation.
+  // Categories page extends matching to include mo_ta.
+  const categories: CategoryListItem[] = React.useMemo(
+    () =>
+      filterCategoriesWithAncestorsAndDescendants(allCategories, searchTerm, {
+        matchFn: (cat, needle) =>
+          cat.ma_nhom?.toLowerCase().includes(needle) ||
+          cat.ten_nhom?.toLowerCase().includes(needle) ||
+          (cat.mo_ta ?? "").toLowerCase().includes(needle),
+      }),
+    [allCategories, searchTerm]
+  )
 
   const invalidateAndRefetch = React.useCallback(() => {
     queryClient.invalidateQueries({ queryKey: ["dinh_muc_nhom_list"] })
@@ -305,13 +342,12 @@ export function DeviceQuotaCategoryProvider({ children }: DeviceQuotaCategoryPro
 
   const getDescendantIds = React.useCallback(
     (parentId: number) => {
-      const categories = categoriesData || []
       const descendants = new Set<number>()
       const stack = [parentId]
 
       while (stack.length > 0) {
         const current = stack.pop()!
-        for (const cat of categories) {
+        for (const cat of allCategories) {
           if (cat.parent_id === current && !descendants.has(cat.id)) {
             descendants.add(cat.id)
             stack.push(cat.id)
@@ -321,15 +357,18 @@ export function DeviceQuotaCategoryProvider({ children }: DeviceQuotaCategoryPro
 
       return descendants
     },
-    [categoriesData]
+    [allCategories]
   )
 
   const value = React.useMemo<CategoryContextValue>(
     () => ({
       user,
       donViId,
-      categories: categoriesData || [],
-      isLoading: isLoadingCategories,
+      categories,
+      allCategories,
+      isLoading,
+      searchTerm,
+      setSearchTerm,
       dialogState,
       mutatingCategoryId,
       categoryToDelete,
@@ -349,8 +388,10 @@ export function DeviceQuotaCategoryProvider({ children }: DeviceQuotaCategoryPro
     [
       user,
       donViId,
-      categoriesData,
-      isLoadingCategories,
+      categories,
+      allCategories,
+      isLoading,
+      searchTerm,
       dialogState,
       mutatingCategoryId,
       categoryToDelete,

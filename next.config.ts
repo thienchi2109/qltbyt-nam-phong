@@ -1,10 +1,13 @@
 import type {NextConfig} from 'next';
-import withPWAInit from 'next-pwa';
+import withSerwistInit from '@serwist/next';
 
-const withPWA = withPWAInit({
-  dest: 'public',
-  register: true,
-  skipWaiting: true,
+const withSerwist = withSerwistInit({
+  swSrc: 'src/sw.ts',
+  swDest: 'public/sw.js',
+  register: false,
+  reloadOnOnline: true,
+  // Exclude internal Next.js manifest that is not publicly served on some deployments.
+  exclude: [/app-build-manifest\.json$/],
   disable: process.env.NODE_ENV === 'development', // Disable PWA in development
 });
 
@@ -19,20 +22,6 @@ const nextConfig: NextConfig = {
   // Cloudflare Workers compatibility
   experimental: {
     // Enable experimental features for better Cloudflare Workers support
-  },
-  // Fix for app-build-manifest.json 404 error
-  async headers() {
-    return [
-      {
-        source: '/_next/app-build-manifest.json',
-        headers: [
-          {
-            key: 'Cache-Control',
-            value: 'public, max-age=31536000, immutable',
-          },
-        ],
-      },
-    ];
   },
   // Output configuration for dual deployment
   output: process.env.CLOUDFLARE_WORKERS ? 'export' : undefined,
@@ -124,4 +113,4 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default withPWA(nextConfig);
+export default withSerwist(nextConfig);

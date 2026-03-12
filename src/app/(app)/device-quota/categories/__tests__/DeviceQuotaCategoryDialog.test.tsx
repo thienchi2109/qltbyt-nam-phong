@@ -50,6 +50,7 @@ describe('DeviceQuotaCategoryDialog', () => {
       createMutation: { mutate: createMutate, isPending: false },
       updateMutation: { mutate: vi.fn(), isPending: false },
       categories: [],
+      allCategories: [],
       getDescendantIds: vi.fn(() => new Set()),
     } as any)
 
@@ -74,6 +75,7 @@ describe('DeviceQuotaCategoryDialog', () => {
       createMutation: { mutate: vi.fn(), isPending: false },
       updateMutation: { mutate: vi.fn(), isPending: false },
       categories: [],
+      allCategories: [],
       getDescendantIds: vi.fn(() => new Set()),
     } as any)
 
@@ -83,5 +85,48 @@ describe('DeviceQuotaCategoryDialog', () => {
     expect(screen.getByRole('option', { name: 'B' })).toBeInTheDocument()
     expect(screen.queryByRole('option', { name: 'C' })).not.toBeInTheDocument()
     expect(screen.queryByRole('option', { name: 'D' })).not.toBeInTheDocument()
+  })
+
+  it('shows parent options from unpaginated category list in edit mode', () => {
+    mockUseContext.mockReturnValue({
+      dialogState: {
+        mode: 'edit',
+        category: {
+          id: 1,
+          parent_id: null,
+          ma_nhom: 'DM01',
+          ten_nhom: 'Danh mục 1',
+          phan_loai: 'B',
+          don_vi_tinh: 'Cái',
+          thu_tu_hien_thi: 0,
+          level: 1,
+          so_luong_hien_co: 0,
+          mo_ta: null,
+        },
+      },
+      closeDialog: vi.fn(),
+      createMutation: { mutate: vi.fn(), isPending: false },
+      updateMutation: { mutate: vi.fn(), isPending: false },
+      categories: [],
+      allCategories: [
+        {
+          id: 2,
+          parent_id: null,
+          ma_nhom: 'DM02',
+          ten_nhom: 'Danh mục 2',
+          phan_loai: 'B',
+          don_vi_tinh: 'Cái',
+          thu_tu_hien_thi: 1,
+          level: 1,
+          so_luong_hien_co: 0,
+          mo_ta: null,
+        },
+      ],
+      getDescendantIds: vi.fn(() => new Set()),
+    } as any)
+
+    render(<DeviceQuotaCategoryDialog />)
+
+    expect(screen.getByRole('option', { name: 'DM02 - Danh mục 2' })).toBeInTheDocument()
   })
 })

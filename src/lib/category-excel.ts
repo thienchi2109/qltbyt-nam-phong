@@ -42,6 +42,8 @@ export async function generateCategoryImportTemplate(): Promise<Blob> {
       'Đơn vị tính',
       'Thứ tự hiển thị',
       'Mô tả',
+      'Định mức (SL tối đa)',
+      'Tối thiểu',
     ]
 
     // Add header row
@@ -68,6 +70,8 @@ export async function generateCategoryImportTemplate(): Promise<Blob> {
       { key: 'don_vi_tinh', width: 18 },           // F: Đơn vị tính
       { key: 'thu_tu_hien_thi', width: 18 },       // G: Thứ tự hiển thị
       { key: 'mo_ta', width: 40 },                 // H: Mô tả
+      { key: 'dinh_muc_toi_da', width: 22 },       // I: Định mức (SL tối đa)
+      { key: 'toi_thieu', width: 15 },             // J: Tối thiểu
     ]
 
     // Mark required columns with red background (B: Mã nhóm, C: Tên nhóm)
@@ -116,6 +120,35 @@ export async function generateCategoryImportTemplate(): Promise<Blob> {
         formulae: [0],
         errorTitle: 'Giá trị không hợp lệ',
         error: 'Thứ tự hiển thị phải là số nguyên >= 0.',
+      }
+    }
+
+    // Add number validation for "Định mức (SL tối đa)" (column I) - optional, must be integer > 0
+    for (let row = 2; row <= MAX_TEMPLATE_ROWS; row++) {
+      const cell = dataEntrySheet.getCell(row, 9) // Column I
+      cell.dataValidation = {
+        type: 'whole',
+        operator: 'greaterThan',
+        showErrorMessage: true,
+        allowBlank: true,
+        formulae: [0],
+        errorTitle: 'Giá trị không hợp lệ',
+        error: 'Số lượng định mức phải là số nguyên > 0.',
+      }
+    }
+
+    // Add number validation for "Tối thiểu" (column J)
+    // Must be integer >= 0 AND <= column I (Định mức SL tối đa)
+    for (let row = 2; row <= MAX_TEMPLATE_ROWS; row++) {
+      const cell = dataEntrySheet.getCell(row, 10) // Column J
+      cell.dataValidation = {
+        type: 'custom',
+        showErrorMessage: true,
+        allowBlank: true,
+        // Formula: J is blank OR (J >= 0 AND J is whole number AND J <= I)
+        formulae: [`OR(J${row}="",AND(J${row}>=0,J${row}=INT(J${row}),J${row}<=I${row}))`],
+        errorTitle: 'Giá trị không hợp lệ',
+        error: 'Số lượng tối thiểu phải là số nguyên >= 0 và <= định mức (SL tối đa).',
       }
     }
 
@@ -220,6 +253,20 @@ export async function generateCategoryImportTemplate(): Promise<Blob> {
     instructionsSheet.addRow(['   Đơn vị tính: Máy'])
     instructionsSheet.addRow(['   Thứ tự hiển thị: 1'])
     instructionsSheet.addRow(['   Mô tả: Máy chụp X quang kỹ thuật số dùng trong chẩn đoán tổng quát'])
+    instructionsSheet.addRow(['   Định mức (SL tối đa): 5'])
+    instructionsSheet.addRow(['   Tối thiểu: 3'])
+    instructionsSheet.addRow([''])
+
+    // Section 7: Quota columns explanation
+    instructionsSheet.addRow(['7. ĐỊNH MỨC THIẾT BỊ (TÙY CHỌN):'])
+    const quotaSectionRowNum = instructionsSheet.rowCount
+    instructionsSheet.getRow(quotaSectionRowNum).font = { bold: true, size: 12, color: { argb: 'FF2563EB' } }
+    instructionsSheet.addRow(['   - Cột I "Định mức (SL tối đa)": Số lượng tối đa thiết bị được phép có'])
+    instructionsSheet.addRow(['   - Nếu nhập cột I, giá trị phải là số nguyên > 0'])
+    instructionsSheet.addRow(['   - Cột J "Tối thiểu": Số lượng tối thiểu (không được lớn hơn SL tối đa)'])
+    instructionsSheet.addRow(['   - Chỉ áp dụng cho nhóm lá (nhóm không có nhóm con)'])
+    instructionsSheet.addRow(['   - Nếu có giá trị: hệ thống tự tạo Quyết Định Định mức nháp'])
+    instructionsSheet.addRow(['   - Nếu để trống: chỉ import danh mục (không ảnh hưởng định mức)'])
 
     // Format instruction cells
     for (let row = 1; row <= instructionsSheet.rowCount; row++) {

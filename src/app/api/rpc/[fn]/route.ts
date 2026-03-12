@@ -135,15 +135,19 @@ const ALLOWED_FUNCTIONS = new Set<string>([
   'dinh_muc_quyet_dinh_delete',
   // Categories
   'dinh_muc_nhom_list',
+  'dinh_muc_nhom_list_paginated',
   'dinh_muc_nhom_get',
   'dinh_muc_nhom_upsert',
   'dinh_muc_nhom_delete',
   'dinh_muc_nhom_bulk_import',
+  'dinh_muc_unified_import',
   // Equipment Mapping
   'dinh_muc_thiet_bi_link',
   'dinh_muc_thiet_bi_unlink',
   'dinh_muc_thiet_bi_unassigned',
+  'dinh_muc_thiet_bi_unassigned_filter_options',
   'dinh_muc_thiet_bi_by_nhom',
+  'dinh_muc_thiet_bi_by_ids',
   // Line Items
   'dinh_muc_chi_tiet_list',
   'dinh_muc_chi_tiet_upsert',
@@ -152,6 +156,11 @@ const ALLOWED_FUNCTIONS = new Set<string>([
   // Compliance
   'dinh_muc_compliance_summary',
   'dinh_muc_compliance_detail',
+  // Suggested Mapping (read-path)
+  'hybrid_search_category_batch',
+  'dinh_muc_thiet_bi_unassigned_names',
+  // Suggested Mapping (write-path)
+  'dinh_muc_thiet_bi_link_batch',
 ])
 
 // SECURITY: Maximum request body size (2MB) to prevent DoS via memory exhaustion

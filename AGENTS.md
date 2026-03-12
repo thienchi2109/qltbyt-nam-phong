@@ -119,6 +119,21 @@ IMPORTANT: Use `edit_file` over `str_replace` or full file writes. It works with
 - For any task that creates or modifies SQL migration files/DDL for Supabase/Postgres, you MUST invoke the `supabase-best-practices` skill first (or `supabase-postgres-best-practices` if that is the available skill name in the session).
 - If a required skill is unavailable in the current session, state that explicitly and proceed with the closest available fallback guidance.
 
+## ⚠️ Role Normalization (`admin` = `global`)
+
+The RPC proxy (`/api/rpc/[fn]`) auto-normalizes `admin` → `global` before signing JWT. **Outside the proxy** (standalone API routes, Edge Functions, server utilities), the NextAuth session still contains the raw `admin` role.
+
+**MANDATORY:** When checking for global/admin access outside the RPC proxy, ALWAYS use `isGlobalRole()` from `@/lib/rbac`. NEVER write `role === 'global'` — this silently excludes `admin` users from tenant-bypass logic.
+
+```typescript
+// ❌ BAD: misses admin users → silent data-empty failure
+const filtered = role === 'global' ? allItems : items.filter(...)
+
+// ✅ GOOD: isGlobalRole handles both global and admin
+import { isGlobalRole } from '@/lib/rbac'
+const filtered = isGlobalRole(role) ? allItems : items.filter(...)
+```
+
 
 ## 🎓 Summary for AI
 
@@ -282,6 +297,13 @@ This project is indexed with **GitLab Knowledge Graph MCP**. You have access to 
 - Models define data structure and DB operations
 - All async operations use async/await (no callbacks)
 
+### File Size Rules (MANDATORY)
+
+- **350-line extraction threshold:** When a file approaches ~350 lines, proactively extract logical chunks (helpers, sub-components, types, constants) into separate files.
+- **450-line hard ceiling:** No source file should exceed 450 lines. If it does, split it before adding more code.
+- **What to extract:** utility functions → `{Module}Utils.ts`, types → `{Module}Types.ts`, sub-components → `{Module}{Part}.tsx`, constants → `{Module}Constants.ts`.
+- **Naming:** Follow grep-friendly module prefix convention (`{ModuleName}{Chunk}.tsx`).
+
 ---
 
 
@@ -395,3 +417,47 @@ QUERY REVIEW CHECKLIST
 [ ] Errors handled: try/catch present, no raw DB errors exposed to client
 [ ] Caching flagged: read-heavy queries noted as cache candidates if appropriate
 [ ] Query log verified: no duplicate/repetitive queries for a single request
+
+## SQL Migration Safety Rules (MANDATORY)
+
+### LIKE/ILIKE Sanitization
+
+**NEVER concatenate user input directly into LIKE/ILIKE patterns.** Always use `_sanitize_ilike_pattern()`:
+
+```sql
+-- ❌ BAD: raw concatenation — `_` and `%` act as wildcards
+v_search_pattern := '%' || COALESCE(LOWER(TRIM(p_search)), '') || '%';
+
+-- ✅ GOOD: use deployed helper (returns NULL for NULL/empty input)
+v_sanitized_search := public._sanitize_ilike_pattern(LOWER(TRIM(p_search)));
+-- Then use: ... LIKE '%' || v_sanitized_search || '%'
+```
+
+### SECURITY DEFINER Functions
+
+All `SECURITY DEFINER` functions MUST set `search_path`:
+
+```sql
+CREATE OR REPLACE FUNCTION public.fn_name(...)
+RETURNS ... LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_temp  -- ← MANDATORY
+AS $$ ... $$;
+```
+
+### JWT Claim Guards
+
+All authenticated RPCs MUST validate JWT claims before executing business logic:
+
+```sql
+-- Extract and validate claims
+v_role := current_setting('request.jwt.claims', true)::json->>'app_role';
+v_user_id := current_setting('request.jwt.claims', true)::json->>'user_id';
+IF v_role IS NULL OR v_role = '' THEN
+  RAISE EXCEPTION 'Missing role claim' USING errcode = '42501';
+END IF;
+```
+
+### Post-Migration Verification
+
+After applying any migration, run `get_advisors(security)` via Supabase MCP to catch regressions.

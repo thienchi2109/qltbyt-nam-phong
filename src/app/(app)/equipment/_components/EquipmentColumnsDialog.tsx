@@ -20,7 +20,7 @@ interface EquipmentColumnsDialogProps {
   table: Table<Equipment>
 }
 
-export const EquipmentColumnsDialog = React.memo(function EquipmentColumnsDialog({
+export function EquipmentColumnsDialog({
   table,
 }: EquipmentColumnsDialogProps) {
   const { dialogState, closeColumnsDialog } = useEquipmentContext()
@@ -58,4 +58,4 @@ export const EquipmentColumnsDialog = React.memo(function EquipmentColumnsDialog
       </DialogContent>
     </Dialog>
   )
-})
+}
