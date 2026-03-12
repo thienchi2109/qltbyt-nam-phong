@@ -209,19 +209,21 @@ describe('Category Excel Template Generation', () => {
 
     it('should explain code format', () => {
       if (initError) throw initError
-      let foundCodeFormat = false
+      let foundAlphanumericRule = false
+      let foundDotSeparator = false
 
       instructionsSheet.eachRow((row) => {
         const cellValue = String(row.getCell(1).value || '')
-        if (
-          cellValue.includes('XX') ||
-          cellValue.includes('XX.XX')
-        ) {
-          foundCodeFormat = true
+        if (cellValue.includes('A-Z') || cellValue.includes('0-9')) {
+          foundAlphanumericRule = true
+        }
+        if (cellValue.includes('.') && cellValue.includes('phân cấp')) {
+          foundDotSeparator = true
         }
       })
 
-      expect(foundCodeFormat).toBe(true)
+      expect(foundAlphanumericRule).toBe(true)
+      expect(foundDotSeparator).toBe(true)
     })
 
     it('should explain classification A and B', () => {

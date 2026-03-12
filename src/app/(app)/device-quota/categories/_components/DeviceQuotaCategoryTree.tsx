@@ -40,9 +40,7 @@ const CategoryTreeItem = React.memo(function CategoryTreeItem({
   isMutating,
 }: CategoryTreeItemProps) {
   return (
-    <div
-      role="option"
-      aria-level={category.level}
+    <li
       className={cn(
         "flex items-center justify-between gap-3 rounded-md border border-transparent p-3 transition-colors",
         "hover:bg-accent"
@@ -90,7 +88,7 @@ const CategoryTreeItem = React.memo(function CategoryTreeItem({
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
-    </div>
+    </li>
   )
 })
 
@@ -150,7 +148,7 @@ export function DeviceQuotaCategoryTree() {
         ) : categories.length === 0 ? (
           <CategoryTreeEmpty onCreate={openCreateDialog} />
         ) : (
-          <div role="listbox" aria-label="Danh mục thiết bị" className="space-y-1">
+          <ul aria-label="Danh mục thiết bị" className="space-y-1 list-none m-0 p-0">
             {categories.map((category) => (
               <CategoryTreeItem
                 key={category.id}
@@ -160,7 +158,7 @@ export function DeviceQuotaCategoryTree() {
                 isMutating={mutatingCategoryId === category.id}
               />
             ))}
-          </div>
+          </ul>
         )}
       </CardContent>
     </Card>

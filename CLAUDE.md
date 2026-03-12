@@ -268,6 +268,28 @@ node scripts/run-cmd.js bd list --status=in_progress
 
 **Why:** `.cmd` batch files and some `.exe` files don't return stdout in certain shell contexts (Claude Code's Bash tool). These helpers use Node's `child_process.execSync` to properly capture output.
 
+### React Doctor: True Full Scan (Non-Diff)
+
+React Doctor can auto-scan only branch/current changes in non-interactive mode. To force a true full-repo scan, temporarily set `diff: false`:
+
+```powershell
+$cfg = "react-doctor.config.json"
+Set-Content -Path $cfg -Value '{"diff": false}' -Encoding utf8
+try {
+  node scripts/npm-run.js npx react-doctor@latest . --verbose --yes --project nextn --no-ami
+} finally {
+  Remove-Item $cfg -Force -ErrorAction SilentlyContinue
+}
+```
+
+For score-only full scan:
+
+```bash
+node scripts/npm-run.js npx react-doctor@latest . --score --yes --project nextn --no-ami
+```
+
+Do not rely on default `react-doctor` scripts when full-scan metrics are required.
+
 ## File Structure
 
 ```
