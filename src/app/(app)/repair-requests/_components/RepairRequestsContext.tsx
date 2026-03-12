@@ -12,6 +12,8 @@ import type {
   AuthUser,
   EquipmentSelectItem
 } from "../types"
+import type { RepairRequestDraftPayload } from "@/lib/ai/draft/repair-request-draft-schema"
+import { useAssistantDraft } from "../_hooks/useAssistantDraft"
 
 // ============================================
 // Context Types
@@ -55,6 +57,11 @@ interface RepairRequestsContextValue {
 
   // Cache invalidation
   invalidateAndRefetch: () => void
+
+  // Assistant draft
+  assistantDraft: RepairRequestDraftPayload | null
+  applyAssistantDraft: (draft: RepairRequestDraftPayload) => void
+  clearAssistantDraft: () => void
 }
 
 // ============================================
@@ -255,6 +262,14 @@ export function RepairRequestsProvider({ children }: RepairRequestsProviderProps
   const canSetRepairUnit = isEquipmentManagerRole(user?.role)
   const isRegionalLeader = isRegionalLeaderRole(user?.role)
 
+  // Assistant draft state (extracted hook)
+  const {
+    assistantDraft,
+    draftEquipment,
+    applyAssistantDraft,
+    clearAssistantDraft,
+  } = useAssistantDraft()
+
   // Dialog state
   const [dialogState, setDialogState] = React.useState<DialogState>({
     requestToEdit: null,
@@ -330,7 +345,8 @@ export function RepairRequestsProvider({ children }: RepairRequestsProviderProps
       isCreateOpen: false,
       preSelectedEquipment: null,
     })
-  }, [])
+    clearAssistantDraft()
+  }, [clearAssistantDraft])
 
   const value = React.useMemo<RepairRequestsContextValue>(() => ({
     user,
@@ -350,6 +366,9 @@ export function RepairRequestsProvider({ children }: RepairRequestsProviderProps
     approveMutation,
     completeMutation,
     invalidateAndRefetch,
+    assistantDraft,
+    applyAssistantDraft,
+    clearAssistantDraft,
   }), [
     user,
     canSetRepairUnit,
@@ -368,6 +387,9 @@ export function RepairRequestsProvider({ children }: RepairRequestsProviderProps
     approveMutation,
     completeMutation,
     invalidateAndRefetch,
+    assistantDraft,
+    applyAssistantDraft,
+    clearAssistantDraft,
   ])
 
   return (

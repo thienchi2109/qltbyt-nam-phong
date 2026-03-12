@@ -135,8 +135,35 @@ describe('system prompt module', () => {
     expect(prompt).toContain('metadata')
   })
 
-  it('prompt version is v2.0.0 after quota tools', () => {
-    expect(SYSTEM_PROMPT_VERSION).toBe('v2.0.0')
+  it('prompt version is v2.2.0 after repair request draft', () => {
+    expect(SYSTEM_PROMPT_VERSION).toBe('v2.2.0')
+  })
+
+  it('includes § 10 troubleshooting drafts section', () => {
+    const prompt = buildSystemPrompt({
+      role: 'admin',
+      userId: 'u1',
+      selectedFacilityId: 2,
+    })
+
+    expect(prompt).toContain('Bản nháp chẩn đoán sự cố')
+    expect(prompt).toContain('equipmentLookup')
+    expect(prompt).toContain('generateTroubleshootingDraft')
+    expect(prompt).toContain('📝 Bản nháp (Draft)')
+    expect(prompt).toContain('💡 Nhận định (Inference)')
+    expect(prompt).toContain('📋 Dữ liệu (Fact)')
+  })
+
+  it('includes § 11 repair request drafts section', () => {
+    const prompt = buildSystemPrompt({
+      role: 'admin',
+      userId: 'u1',
+      selectedFacilityId: 2,
+    })
+
+    expect(prompt).toContain('Bản nháp yêu cầu sửa chữa')
+    expect(prompt).toContain('ý định')
+    expect(prompt).toContain('KHÔNG BAO GIỜ tự gửi yêu cầu sửa chữa')
   })
 
   it('contains quota anti-hallucination rules', () => {

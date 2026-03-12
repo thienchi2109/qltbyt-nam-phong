@@ -14,13 +14,15 @@ Use these tiers for shared primitives:
 
 | Primitive | Overlay | Content | Notes |
 |---|---|---|---|
+| `Tooltip` | n/a | `z-50` | Informational only, not a blocking layer |
+| `AssistantTriggerButton` | n/a | `z-[70]` | FAB above mobile footer nav, below all overlays |
+| `AssistantPanel` | `z-[998]` | `z-[998]` | Chat panel below Dialog so dialogs from chat stay on top |
 | `Dialog` | `z-[999]` | `z-[1000]` | Base modal layer |
 | `DropdownMenu` | n/a | `z-[1001]` | Menu above dialog content |
 | `Sheet` | `z-[1002]` | `z-[1002]` | Side panels above dialogs |
 | `Popover` | n/a | `z-[1003]` | Popovers above sheets/dialogs |
 | `Select` | n/a | `z-[1003]` | Same tier as popover |
 | `AlertDialog` | `z-[1100]` | `z-[1101]` | Must be top-most confirmation layer |
-| `Tooltip` | n/a | `z-50` | Informational only, not a blocking layer |
 | `ToastViewport` | n/a | `z-[1300]` | Toasts must stay visible above dialogs/sheets |
 
 ## Rules

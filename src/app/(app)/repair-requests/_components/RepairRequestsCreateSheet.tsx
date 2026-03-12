@@ -29,6 +29,19 @@ import { useMediaQuery } from "@/hooks/use-media-query"
 import { useRepairRequestsContext } from "../_hooks/useRepairRequestsContext"
 import type { EquipmentSelectItem, RepairUnit } from "../types"
 
+function formatEquipmentLabel(equipment: Pick<EquipmentSelectItem, "ten_thiet_bi" | "ma_thiet_bi">) {
+  return `${equipment.ten_thiet_bi} (${equipment.ma_thiet_bi})`
+}
+
+function parseDraftDate(value: string) {
+  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    const [year, month, day] = value.split("-").map(Number)
+    return new Date(year, month - 1, day)
+  }
+
+  return new Date(value)
+}
+
 export function RepairRequestsCreateSheet() {
   const {
     dialogState: { isCreateOpen, preSelectedEquipment },
@@ -36,12 +49,15 @@ export function RepairRequestsCreateSheet() {
     createMutation,
     user,
     canSetRepairUnit,
+    assistantDraft,
   } = useRepairRequestsContext()
 
   const isSheetMobile = useMediaQuery("(max-width: 1279px)")
 
   // Track if we've already prefilled from preSelectedEquipment (reset on close)
   const hasPrefilledRef = React.useRef(false)
+  const hasHydratedFormFieldsRef = React.useRef(false)
+  const hasUserEditedSearchRef = React.useRef(false)
 
   // Local form state
   const [selectedEquipment, setSelectedEquipment] = React.useState<EquipmentSelectItem | null>(null)
@@ -52,6 +68,20 @@ export function RepairRequestsCreateSheet() {
   const [repairUnit, setRepairUnit] = React.useState<RepairUnit>("noi_bo")
   const [externalCompanyName, setExternalCompanyName] = React.useState("")
   const [allEquipment, setAllEquipment] = React.useState<EquipmentSelectItem[]>([])
+  const [unresolvedDraftEquipment, setUnresolvedDraftEquipment] = React.useState(false)
+  const [hasDraftEquipmentLookupCompleted, setHasDraftEquipmentLookupCompleted] = React.useState(false)
+  const [hasSeededDraftEquipmentLookup, setHasSeededDraftEquipmentLookup] = React.useState(false)
+
+  const draftEquipmentLabel = React.useMemo(() => {
+    if (!assistantDraft?.equipment?.ten_thiet_bi || !assistantDraft.equipment.ma_thiet_bi) {
+      return ""
+    }
+
+    return formatEquipmentLabel({
+      ten_thiet_bi: assistantDraft.equipment.ten_thiet_bi,
+      ma_thiet_bi: assistantDraft.equipment.ma_thiet_bi,
+    })
+  }, [assistantDraft])
 
   // Reset form when sheet closes, or initialize from pre-selected equipment when sheet opens
   React.useEffect(() => {
@@ -63,14 +93,65 @@ export function RepairRequestsCreateSheet() {
       setDesiredDate(undefined)
       setRepairUnit("noi_bo")
       setExternalCompanyName("")
+      setUnresolvedDraftEquipment(false)
+      setHasDraftEquipmentLookupCompleted(false)
+      setHasSeededDraftEquipmentLookup(false)
       hasPrefilledRef.current = false
+      hasHydratedFormFieldsRef.current = false
+      hasUserEditedSearchRef.current = false
+    } else if (assistantDraft) {
+      // Hydrate non-equipment fields exactly once.
+      if (!hasHydratedFormFieldsRef.current) {
+        const fd = assistantDraft.formData
+        if (fd.mo_ta_su_co) setIssueDescription(fd.mo_ta_su_co)
+        if (fd.hang_muc_sua_chua) setRepairItems(fd.hang_muc_sua_chua)
+        if (fd.ngay_mong_muon_hoan_thanh) {
+          setDesiredDate(parseDraftDate(fd.ngay_mong_muon_hoan_thanh))
+        }
+        if (fd.don_vi_thuc_hien) setRepairUnit(fd.don_vi_thuc_hien)
+        if (fd.ten_don_vi_thue) setExternalCompanyName(fd.ten_don_vi_thue)
+        hasHydratedFormFieldsRef.current = true
+      }
+
+      if (!hasPrefilledRef.current && assistantDraft.equipment?.thiet_bi_id) {
+        const resolved = allEquipment.find(
+          eq => eq.id === assistantDraft.equipment?.thiet_bi_id,
+        )
+        if (resolved) {
+          setSelectedEquipment(resolved)
+          setSearchQuery(formatEquipmentLabel(resolved))
+          setUnresolvedDraftEquipment(false)
+          hasPrefilledRef.current = true
+        } else if (hasDraftEquipmentLookupCompleted) {
+          // Equipment lookup finished but ID not found — cross-tenant or stale
+          setUnresolvedDraftEquipment(true)
+          hasPrefilledRef.current = true
+        } else if (
+          draftEquipmentLabel &&
+          !hasSeededDraftEquipmentLookup &&
+          !hasUserEditedSearchRef.current
+        ) {
+          // Seed the lookup once, but never clobber manual user input.
+          setSearchQuery(draftEquipmentLabel)
+          setHasSeededDraftEquipmentLookup(true)
+        }
+      }
     } else if (preSelectedEquipment && !hasPrefilledRef.current) {
       // Pre-fill only once when opened with equipment from context
       setSelectedEquipment(preSelectedEquipment)
       setSearchQuery(`${preSelectedEquipment.ten_thiet_bi} (${preSelectedEquipment.ma_thiet_bi})`)
       hasPrefilledRef.current = true
+      hasHydratedFormFieldsRef.current = true
     }
-  }, [isCreateOpen, preSelectedEquipment])
+  }, [
+    isCreateOpen,
+    preSelectedEquipment,
+    assistantDraft,
+    allEquipment,
+    draftEquipmentLabel,
+    hasDraftEquipmentLookupCompleted,
+    hasSeededDraftEquipmentLookup,
+  ])
 
   // Fetch equipment options
   React.useEffect(() => {
@@ -96,13 +177,16 @@ export function RepairRequestsCreateSheet() {
             khoa_phong_quan_ly: row.khoa_phong_quan_ly,
           }))
         )
+        if (assistantDraft?.equipment?.thiet_bi_id && q === draftEquipmentLabel) {
+          setHasDraftEquipmentLookupCompleted(true)
+        }
       } catch (e) {
         // Silent fail for suggestions
       }
     }
     run()
     return () => ctrl.abort()
-  }, [searchQuery, selectedEquipment])
+  }, [assistantDraft, draftEquipmentLabel, searchQuery, selectedEquipment])
 
   const filteredEquipment = React.useMemo(() => {
     if (!searchQuery) return []
@@ -122,10 +206,13 @@ export function RepairRequestsCreateSheet() {
 
   const handleSelectEquipment = (equipment: EquipmentSelectItem) => {
     setSelectedEquipment(equipment)
-    setSearchQuery(`${equipment.ten_thiet_bi} (${equipment.ma_thiet_bi})`)
+    setSearchQuery(formatEquipmentLabel(equipment))
+    setUnresolvedDraftEquipment(false)
+    hasUserEditedSearchRef.current = true
   }
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    hasUserEditedSearchRef.current = true
     setSearchQuery(e.target.value)
     if (selectedEquipment) {
       setSelectedEquipment(null)
@@ -163,6 +250,16 @@ export function RepairRequestsCreateSheet() {
           <SheetDescription>Điền thông tin bên dưới để gửi yêu cầu mới.</SheetDescription>
         </SheetHeaderUI>
         <div className={cn("mt-4", isSheetMobile ? "px-4 overflow-y-auto h-[calc(90vh-80px)]" : "")}>
+          {assistantDraft && (
+            <div className="mb-4 rounded-md border border-blue-200 bg-blue-50 p-3 text-sm text-blue-800 dark:border-blue-800 dark:bg-blue-950 dark:text-blue-200">
+              📝 Được điền sẵn từ AI trợ lý. Vui lòng kiểm tra kỹ trước khi gửi.
+            </div>
+          )}
+          {unresolvedDraftEquipment && (
+            <div className="mb-4 rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-200">
+              ⚠️ Thiết bị trong bản nháp không tìm thấy ở cơ sở hiện tại. Vui lòng chọn thiết bị thủ công.
+            </div>
+          )}
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="search-equipment">Thiết bị</Label>

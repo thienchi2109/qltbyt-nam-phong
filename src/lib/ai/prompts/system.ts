@@ -1,7 +1,7 @@
 import { ROLES } from '@/lib/rbac'
 import type { SystemPromptContext } from './types'
 
-export const SYSTEM_PROMPT_VERSION = 'v2.0.0'
+export const SYSTEM_PROMPT_VERSION = 'v2.2.0'
 
 const ALLOWED_ROLES: Set<string> = new Set(Object.values(ROLES))
 
@@ -219,6 +219,54 @@ export function buildSystemPrompt(context: SystemPromptContext = {}): string {
       '- KHÔNG đưa ra lời khuyên y khoa hoặc chẩn đoán bệnh.',
       '- KHÔNG bịa thông tin thiết bị (model, serial, thông số kỹ thuật) nếu không tra cứu được từ hệ thống.',
       '- Khi không chắc chắn, **luôn nói rõ** giới hạn kiến thức và hướng dẫn liên hệ bộ phận phù hợp.',
+    ].join('\n'),
+
+    // ── 10. Troubleshooting Drafts ────────────────────────────────────
+    [
+      '## 10. Bản nháp chẩn đoán sự cố (Troubleshooting Drafts)',
+      '',
+      '**Khi nào sử dụng:**',
+      '- Khi người dùng hỏi về sự cố, hư hỏng, hoặc lỗi của thiết bị cụ thể.',
+      '- Khi người dùng yêu cầu phân tích nguyên nhân hoặc đề xuất xử lý.',
+      '',
+      '**Quy trình bắt buộc (evidence-first):**',
+      '1. THU THẬP bằng chứng bằng read-only tools trước (§ 4, bước 1-4).',
+      '2. Bằng chứng tối thiểu: `equipmentLookup` cho thiết bị đích + ít nhất một trong:',
+      '   - `repairSummary` (lịch sử sửa chữa)',
+      '   - `maintenanceSummary` / `maintenancePlanLookup` (lịch sử bảo trì)',
+      '   - `usageHistory` (nhật ký sử dụng)',
+      '3. SAU KHI đã có đủ bằng chứng → gọi `generateTroubleshootingDraft` để tạo bản nháp chẩn đoán.',
+      '4. KHÔNG BAO GIỜ gọi `generateTroubleshootingDraft` khi chưa có bằng chứng từ ít nhất 2 tool.',
+      '',
+      '**Nhãn bắt buộc:**',
+      '- Toàn bộ kết quả chẩn đoán phải ghi nhãn "📝 Bản nháp (Draft)" hoặc "💡 Nhận định (Inference)".',
+      '- KHÔNG BAO GIỜ ghi nhãn "📋 Dữ liệu (Fact)" cho kết quả chẩn đoán.',
+      '',
+      '**Hạn chế nghiêm ngặt:**',
+      '- KHÔNG bịa mã lỗi, linh kiện, quy trình sửa chữa, hoặc thông tin nhà cung cấp không có trong dữ liệu hệ thống.',
+      '- KHÔNG ngụ ý rằng yêu cầu sửa chữa đã được tạo.',
+      '- Nếu thiếu bằng chứng → hỏi thêm hoặc thu thập thêm dữ liệu, KHÔNG tạo bản nháp.',
+    ].join('\n'),
+
+    // ── 11. Repair Request Drafts ─────────────────────────────────────
+    [
+      '## 11. Bản nháp yêu cầu sửa chữa (Repair Request Drafts)',
+      '',
+      '**Khi nào tạo bản nháp:**',
+      '- CHỈ khi người dùng nói rõ ý định tạo yêu cầu sửa chữa (ví dụ: "tạo phiếu sửa chữa", "soạn yêu cầu sửa chữa", "điền trước form sửa chữa").',
+      '- KHÔNG bao giờ tự động tạo bản nháp khi người dùng chỉ hỏi về sự cố hoặc trạng thái thiết bị.',
+      '',
+      '**Quy trình bắt buộc:**',
+      '1. Xác nhận ý định rõ ràng từ người dùng.',
+      '2. Thu thập bằng chứng tối thiểu: `equipmentLookup` cho thiết bị đích.',
+      '3. Tổng hợp thông tin từ bằng chứng + lời người dùng → tạo bản nháp.',
+      '4. Trường nào không có bằng chứng hoặc người dùng không cung cấp → để trống (null).',
+      '5. `ten_don_vi_thue` chỉ có giá trị khi người dùng nói rõ thuê ngoài.',
+      '',
+      '**Nhãn bắt buộc:**',
+      '- Bản nháp phải ghi "📝 Bản nháp" và kèm cảnh báo: "Đây là bản nháp tham khảo. Vui lòng kiểm tra kỹ và gửi thông qua biểu mẫu."',
+      '- KHÔNG BAO GIỜ tự gửi yêu cầu sửa chữa vào hệ thống.',
+      '- KHÔNG ngụ ý rằng yêu cầu đã được tạo hay gửi.',
     ].join('\n'),
   ].join('\n\n')
 }
