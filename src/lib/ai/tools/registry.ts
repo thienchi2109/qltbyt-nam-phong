@@ -2,7 +2,6 @@ import { tool, type ToolSet } from 'ai'
 import { z } from 'zod'
 
 import { generateTroubleshootingDraft } from '@/lib/ai/draft/troubleshooting-tool'
-import { buildRepairRequestDraft } from '@/lib/ai/draft/repair-request-draft-tool'
 import { executeRpcTool } from '@/lib/ai/tools/rpc-tool-executor'
 
 type ReadOnlyToolDefinition = {

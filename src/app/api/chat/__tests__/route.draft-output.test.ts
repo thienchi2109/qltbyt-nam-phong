@@ -1,3 +1,6 @@
+import { readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
+
 import { describe, expect, it } from 'vitest'
 
 import {
@@ -300,6 +303,17 @@ describe('repairRequestDraft safety', () => {
     })
 
     expect(registry).toHaveProperty('generateTroubleshootingDraft')
+  })
+
+  it('registry does not import buildRepairRequestDraft directly', () => {
+    const registrySource = readFileSync(
+      resolve(process.cwd(), 'src/lib/ai/tools/registry.ts'),
+      'utf8',
+    )
+
+    expect(registrySource).not.toContain(
+      "import { buildRepairRequestDraft } from '@/lib/ai/draft/repair-request-draft-tool'",
+    )
   })
 
   it('system prompt version is v2.2.0', () => {
