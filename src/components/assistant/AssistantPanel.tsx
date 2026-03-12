@@ -35,6 +35,7 @@ const REQUESTED_TOOLS = [
     "deviceQuotaLookup",
     "quotaComplianceSummary",
     "generateTroubleshootingDraft",
+    "generateRepairRequestDraft",
 ]
 
 /**
@@ -97,7 +98,7 @@ export function AssistantPanel({ isOpen, onClose }: AssistantPanelProps) {
         (draft: RepairRequestDraft | TroubleshootingDraft) => {
             if (draft.kind === "repairRequestDraft") {
                 queryClient.setQueryData(["assistant-draft"], draft)
-                router.push("/repair-requests")
+                router.push("/repair-requests?action=create")
             }
         },
         [queryClient, router],

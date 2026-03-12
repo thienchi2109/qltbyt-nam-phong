@@ -2,24 +2,39 @@ import * as React from 'react'
 import { render, screen, fireEvent } from '@testing-library/react'
 import { describe, expect, it, vi, beforeEach } from 'vitest'
 
-// Mock useChat from @ai-sdk/react
-const mockSendMessage = vi.fn()
-const mockStop = vi.fn()
-const mockSetMessages = vi.fn()
+const mocks = vi.hoisted(() => ({
+    sendMessage: vi.fn(),
+    stop: vi.fn(),
+    setMessages: vi.fn(),
+    setQueryData: vi.fn(),
+    removeQueries: vi.fn(),
+    push: vi.fn(),
+    replace: vi.fn(),
+    back: vi.fn(),
+    defaultChatTransport: vi.fn(),
+    useChatState: {
+        messages: [] as Array<Record<string, unknown>>,
+        status: 'ready' as const,
+    },
+}))
+
 vi.mock('@ai-sdk/react', () => ({
     useChat: () => ({
-        messages: [],
-        status: 'ready' as const,
-        sendMessage: mockSendMessage,
-        stop: mockStop,
-        setMessages: mockSetMessages,
+        messages: mocks.useChatState.messages,
+        status: mocks.useChatState.status,
+        sendMessage: mocks.sendMessage,
+        stop: mocks.stop,
+        setMessages: mocks.setMessages,
         error: null,
     }),
 }))
 
-// Mock DefaultChatTransport + AI SDK helpers from ai
 vi.mock('ai', () => {
-    class MockTransport { }
+    class MockTransport {
+        constructor(options: unknown) {
+            mocks.defaultChatTransport(options)
+        }
+    }
     return {
         DefaultChatTransport: MockTransport,
         isToolUIPart: (part: { type: string }) => part.type.startsWith('tool-'),
@@ -27,20 +42,18 @@ vi.mock('ai', () => {
     }
 })
 
-// Mock TanStack Query
 vi.mock('@tanstack/react-query', () => ({
     useQueryClient: () => ({
-        setQueryData: vi.fn(),
-        removeQueries: vi.fn(),
+        setQueryData: mocks.setQueryData,
+        removeQueries: mocks.removeQueries,
     }),
 }))
 
-// Mock Next.js router
 vi.mock('next/navigation', () => ({
     useRouter: () => ({
-        push: vi.fn(),
-        replace: vi.fn(),
-        back: vi.fn(),
+        push: mocks.push,
+        replace: mocks.replace,
+        back: mocks.back,
     }),
 }))
 
@@ -58,6 +71,8 @@ import { AssistantPanel } from '../AssistantPanel'
 describe('AssistantPanel', () => {
     beforeEach(() => {
         vi.clearAllMocks()
+        mocks.useChatState.messages = []
+        mocks.useChatState.status = 'ready'
     })
 
     it('renders panel header with title when open', () => {
@@ -97,7 +112,7 @@ describe('AssistantPanel', () => {
         render(<AssistantPanel isOpen={true} onClose={vi.fn()} />)
 
         fireEvent.click(screen.getByLabelText('Đặt lại cuộc trò chuyện'))
-        expect(mockSetMessages).toHaveBeenCalledWith([])
+        expect(mocks.setMessages).toHaveBeenCalledWith([])
     })
 
     it('renders the composer input area', () => {
@@ -117,5 +132,58 @@ describe('AssistantPanel', () => {
 
         const panel = screen.getByTestId('assistant-panel')
         expect(panel.className).toContain('z-[998]')
+    })
+
+    it('requests the repair draft tool in chat transport', () => {
+        render(<AssistantPanel isOpen={true} onClose={vi.fn()} />)
+
+        expect(mocks.defaultChatTransport).toHaveBeenCalledWith(
+            expect.objectContaining({
+                body: expect.objectContaining({
+                    requestedTools: expect.arrayContaining(['generateRepairRequestDraft']),
+                }),
+            }),
+        )
+    })
+
+    it('stores repair drafts and navigates to repair requests when apply is clicked', () => {
+        mocks.useChatState.messages = [
+            {
+                id: 'msg-1',
+                role: 'assistant',
+                parts: [
+                    {
+                        type: 'tool-generateRepairRequestDraft',
+                        toolCallId: 'tc-1',
+                        toolName: 'generateRepairRequestDraft',
+                        state: 'output-available',
+                        output: {
+                            kind: 'repairRequestDraft',
+                            draftOnly: true,
+                            source: 'assistant',
+                            confidence: 'medium',
+                            equipment: { thiet_bi_id: 42 },
+                            formData: {
+                                thiet_bi_id: 42,
+                                mo_ta_su_co: 'Mất nguồn',
+                                hang_muc_sua_chua: 'Kiểm tra bo nguồn',
+                            },
+                            missingFields: [],
+                            reviewNotes: [],
+                        },
+                    },
+                ],
+            },
+        ]
+
+        render(<AssistantPanel isOpen={true} onClose={vi.fn()} />)
+
+        fireEvent.click(screen.getByRole('button', { name: 'Dùng bản nháp này' }))
+
+        expect(mocks.setQueryData).toHaveBeenCalledWith(
+            ['assistant-draft'],
+            expect.objectContaining({ kind: 'repairRequestDraft' }),
+        )
+        expect(mocks.push).toHaveBeenCalledWith('/repair-requests?action=create')
     })
 })

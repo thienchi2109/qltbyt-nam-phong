@@ -26,6 +26,19 @@ function getToolDisplayName(toolName: string): string {
     return TOOL_DISPLAY_NAMES[toolName] ?? toolName
 }
 
+function getToolExpandedSummary(toolName: string): string {
+    switch (toolName) {
+        case "equipmentLookup":
+            return "Đã hoàn tất tra cứu thiết bị."
+        case "generateRepairRequestDraft":
+            return "Đã tạo xong bản nháp yêu cầu sửa chữa."
+        case "generateTroubleshootingDraft":
+            return "Đã hoàn tất phân tích chẩn đoán."
+        default:
+            return `Đã hoàn tất: ${getToolDisplayName(toolName)}.`
+    }
+}
+
 interface AssistantToolExecutionCardProps {
     toolName: string
     state: string
@@ -100,6 +113,12 @@ export function AssistantToolExecutionCard({
                     </button>
                 )}
             </div>
+
+            {isCompleted && isExpanded && (
+                <div className="mt-2 rounded-md bg-background/70 px-2.5 py-2 text-[11px] text-muted-foreground">
+                    {getToolExpandedSummary(toolName)}
+                </div>
+            )}
 
             {/* Shimmer overlay during execution */}
             {isExecuting && (

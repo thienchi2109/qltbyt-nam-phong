@@ -101,6 +101,7 @@ function RepairRequestsPageClientInner() {
     openViewDialog,
     openCreateSheet,
     closeAllDialogs,
+    applyAssistantDraft,
   } = useRepairRequestsContext()
 
   // Temporarily disable useRealtimeSync to avoid conflict with RealtimeProvider
@@ -323,6 +324,20 @@ function RepairRequestsPageClientInner() {
   React.useEffect(() => {
     if (searchParams.get('action') !== 'create') return
 
+    const cachedAssistantDraft = queryClient.getQueryData(["assistant-draft"])
+    if (cachedAssistantDraft) {
+      applyAssistantDraft(cachedAssistantDraft)
+      openCreateSheet()
+      queryClient.removeQueries({ queryKey: ["assistant-draft"] })
+
+      const params = new URLSearchParams(searchParams.toString())
+      params.delete('action')
+      params.delete('equipmentId')
+      const nextPath = params.size ? `${pathname}?${params.toString()}` : pathname
+      router.replace(nextPath, { scroll: false })
+      return
+    }
+
     const equipmentId = searchParams.get('equipmentId')
 
     if (equipmentId) {
@@ -350,7 +365,7 @@ function RepairRequestsPageClientInner() {
     params.delete('equipmentId')
     const nextPath = params.size ? `${pathname}?${params.toString()}` : pathname
     router.replace(nextPath, { scroll: false })
-  }, [searchParams, router, pathname, openCreateSheet, allEquipment, hasLoadedEquipment, isEquipmentFetchPending])
+  }, [searchParams, router, pathname, openCreateSheet, allEquipment, hasLoadedEquipment, isEquipmentFetchPending, queryClient, applyAssistantDraft])
 
   // Adapter functions to bridge context (non-null) with column options (nullable)
   const setEditingRequestAdapter = React.useCallback((req: RepairRequestWithEquipment | null) => {
