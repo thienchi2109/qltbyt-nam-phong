@@ -8,7 +8,9 @@ import {
 import {
   DRAFT_TOOL_DEFINITIONS_FOR_TEST,
   READ_ONLY_TOOL_DEFINITIONS_FOR_TEST,
+  validateRequestedTools,
 } from '@/lib/ai/tools/registry'
+import { generateTroubleshootingDraft } from '@/lib/ai/draft/troubleshooting-tool'
 import { SYSTEM_PROMPT_VERSION, buildSystemPrompt } from '@/lib/ai/prompts/system'
 
 // ============================================
@@ -121,8 +123,16 @@ describe('troubleshootingDraft schema contract', () => {
 })
 
 // ============================================
-// 2. Evidence guard tests
+// 2. Evidence guard tests (runtime enforcement)
 // ============================================
+
+const VALID_TOOL_INPUT = {
+  thiet_bi_id: 42,
+  equipment_context: { ten_thiet_bi: 'Máy thở ABC' },
+  evidence_refs: ['equipmentLookup', 'repairSummary'],
+  probable_causes: [{ label: 'Test', confidence: 'low' as const, rationale: 'r' }],
+  remediation_steps: [{ step: 'Check', type: 'inspection' as const }],
+}
 
 describe('troubleshooting draft evidence guard', () => {
   it('draft definition requires evidence', () => {
@@ -137,6 +147,43 @@ describe('troubleshooting draft evidence guard', () => {
     expect(def.draftKind).toBe('troubleshootingDraft')
   })
 
+  it('rejects when equipmentLookup is missing from evidence_refs', async () => {
+    await expect(
+      generateTroubleshootingDraft.execute!(
+        { ...VALID_TOOL_INPUT, evidence_refs: ['repairSummary', 'usageHistory'] },
+        { toolCallId: 't1', messages: [], abortSignal: undefined as never },
+      ),
+    ).rejects.toThrow('equipmentLookup')
+  })
+
+  it('rejects when fewer than 2 evidence sources', async () => {
+    await expect(
+      generateTroubleshootingDraft.execute!(
+        { ...VALID_TOOL_INPUT, evidence_refs: ['equipmentLookup'] },
+        { toolCallId: 't1', messages: [], abortSignal: undefined as never },
+      ),
+    ).rejects.toThrow('at least 2')
+  })
+
+  it('succeeds with valid evidence (equipmentLookup + operational source)', async () => {
+    const result = await generateTroubleshootingDraft.execute!(
+      VALID_TOOL_INPUT,
+      { toolCallId: 't1', messages: [], abortSignal: undefined as never },
+    )
+    expect(result.kind).toBe('troubleshootingDraft')
+    expect(result.evidenceRefs).toEqual(['equipmentLookup', 'repairSummary'])
+    expect(result.draftOnly).toBe(true)
+  })
+
+  it('filters unknown evidence sources from evidenceRefs', async () => {
+    const result = await generateTroubleshootingDraft.execute!(
+      { ...VALID_TOOL_INPUT, evidence_refs: ['equipmentLookup', 'repairSummary', 'unknownTool'] },
+      { toolCallId: 't1', messages: [], abortSignal: undefined as never },
+    )
+    expect(result.evidenceRefs).toEqual(['equipmentLookup', 'repairSummary'])
+    expect(result.evidenceRefs).not.toContain('unknownTool')
+  })
+
   it('system prompt requires evidence gathering before troubleshooting', () => {
     const prompt = buildSystemPrompt({
       role: 'admin',
@@ -144,10 +191,8 @@ describe('troubleshooting draft evidence guard', () => {
       selectedFacilityId: 2,
     })
 
-    // Must mention evidence-first requirement
     expect(prompt).toContain('equipmentLookup')
     expect(prompt).toContain('generateTroubleshootingDraft')
-    // Must require minimum 2 tool evidence sources
     expect(prompt).toContain('ít nhất')
   })
 })
@@ -169,8 +214,12 @@ describe('troubleshooting draft safety', () => {
     )
   })
 
+  it('validateRequestedTools accepts draft tool names', () => {
+    const result = validateRequestedTools(['generateTroubleshootingDraft'])
+    expect(result.ok).toBe(true)
+  })
+
   it('draft output is distinguishable from factual RPC tool results', () => {
-    // Factual tools return arbitrary objects; drafts always have these metadata fields
     const result = troubleshootingDraftSchema.safeParse({
       kind: 'troubleshootingDraft',
       draftOnly: true,
@@ -199,10 +248,8 @@ describe('troubleshooting draft safety', () => {
       selectedFacilityId: 2,
     })
 
-    // The troubleshooting section (§ 10) must reference these labels
     expect(prompt).toContain('📝 Bản nháp (Draft)')
     expect(prompt).toContain('💡 Nhận định (Inference)')
-    // Must warn against labeling diagnostic output as Fact
     expect(prompt).toContain('📋 Dữ liệu (Fact)')
   })
 })

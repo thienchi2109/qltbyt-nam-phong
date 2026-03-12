@@ -53,6 +53,7 @@ export function RepairRequestsCreateSheet() {
   const [repairUnit, setRepairUnit] = React.useState<RepairUnit>("noi_bo")
   const [externalCompanyName, setExternalCompanyName] = React.useState("")
   const [allEquipment, setAllEquipment] = React.useState<EquipmentSelectItem[]>([])
+  const [unresolvedDraftEquipment, setUnresolvedDraftEquipment] = React.useState(false)
 
   // Reset form when sheet closes, or initialize from pre-selected equipment when sheet opens
   React.useEffect(() => {
@@ -64,19 +65,31 @@ export function RepairRequestsCreateSheet() {
       setDesiredDate(undefined)
       setRepairUnit("noi_bo")
       setExternalCompanyName("")
+      setUnresolvedDraftEquipment(false)
       hasPrefilledRef.current = false
     } else if (assistantDraft && !hasPrefilledRef.current) {
       // Hydrate from assistant draft (priority over preSelectedEquipment)
       const fd = assistantDraft.formData
+
+      // Validate equipment against tenant scope before selecting
       if (assistantDraft.equipment?.thiet_bi_id) {
-        const eq: EquipmentSelectItem = {
-          id: assistantDraft.equipment.thiet_bi_id,
-          ma_thiet_bi: assistantDraft.equipment.ma_thiet_bi ?? '',
-          ten_thiet_bi: assistantDraft.equipment.ten_thiet_bi ?? '',
+        const resolved = allEquipment.find(
+          eq => eq.id === assistantDraft.equipment?.thiet_bi_id,
+        )
+        if (resolved) {
+          setSelectedEquipment(resolved)
+          setSearchQuery(`${resolved.ten_thiet_bi} (${resolved.ma_thiet_bi})`)
+          setUnresolvedDraftEquipment(false)
+        } else if (allEquipment.length > 0) {
+          // Equipment list loaded but ID not found — cross-tenant or stale
+          setUnresolvedDraftEquipment(true)
+        } else {
+          // Equipment list not yet loaded — defer selection
+          // Will be resolved on next effect run when allEquipment populates
+          return
         }
-        setSelectedEquipment(eq)
-        setSearchQuery(`${eq.ten_thiet_bi} (${eq.ma_thiet_bi})`)
       }
+
       if (fd.mo_ta_su_co) setIssueDescription(fd.mo_ta_su_co)
       if (fd.hang_muc_sua_chua) setRepairItems(fd.hang_muc_sua_chua)
       if (fd.ngay_mong_muon_hoan_thanh) {
@@ -91,7 +104,7 @@ export function RepairRequestsCreateSheet() {
       setSearchQuery(`${preSelectedEquipment.ten_thiet_bi} (${preSelectedEquipment.ma_thiet_bi})`)
       hasPrefilledRef.current = true
     }
-  }, [isCreateOpen, preSelectedEquipment, assistantDraft])
+  }, [isCreateOpen, preSelectedEquipment, assistantDraft, allEquipment])
 
   // Fetch equipment options
   React.useEffect(() => {
@@ -187,6 +200,11 @@ export function RepairRequestsCreateSheet() {
           {assistantDraft && (
             <div className="mb-4 rounded-md border border-blue-200 bg-blue-50 p-3 text-sm text-blue-800 dark:border-blue-800 dark:bg-blue-950 dark:text-blue-200">
               📝 Được điền sẵn từ AI trợ lý. Vui lòng kiểm tra kỹ trước khi gửi.
+            </div>
+          )}
+          {unresolvedDraftEquipment && (
+            <div className="mb-4 rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-200">
+              ⚠️ Thiết bị trong bản nháp không tìm thấy ở cơ sở hiện tại. Vui lòng chọn thiết bị thủ công.
             </div>
           )}
           <form onSubmit={handleSubmit} className="space-y-4">

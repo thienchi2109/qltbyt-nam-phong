@@ -147,6 +147,7 @@ export const READ_ONLY_TOOL_DEFINITIONS_FOR_TEST = READ_ONLY_TOOL_DEFINITIONS
 const KNOWN_TOOL_NAMES = new Set([
   ...Object.keys(READ_ONLY_TOOL_DEFINITIONS),
   ...KNOWN_BUT_BLOCKED_TOOLS,
+  ...DRAFT_TOOL_NAMES,
 ])
 
 function normalizeToolNames(toolNames: string[]): string[] {

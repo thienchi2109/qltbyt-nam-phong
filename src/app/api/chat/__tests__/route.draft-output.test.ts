@@ -8,8 +8,12 @@ import {
 import {
   DRAFT_TOOL_DEFINITIONS_FOR_TEST,
   READ_ONLY_TOOL_DEFINITIONS_FOR_TEST,
+  validateRequestedTools,
 } from '@/lib/ai/tools/registry'
-import { buildRepairRequestDraft } from '@/lib/ai/draft/repair-request-draft-tool'
+import {
+  buildRepairRequestDraft,
+  repairRequestDraftInputSchema,
+} from '@/lib/ai/draft/repair-request-draft-tool'
 import { SYSTEM_PROMPT_VERSION, buildSystemPrompt } from '@/lib/ai/prompts/system'
 
 // ============================================
@@ -153,6 +157,8 @@ describe('repairRequestDraft generation guard', () => {
 
   it('builder produces a valid draft from minimal input', () => {
     const result = buildRepairRequestDraft({
+      draftIntent: true,
+      evidenceRefs: ['equipmentLookup'],
       thiet_bi_id: 42,
       mo_ta_su_co: 'Thiết bị không hoạt động',
       hang_muc_sua_chua: 'Kiểm tra nguồn điện',
@@ -166,6 +172,8 @@ describe('repairRequestDraft generation guard', () => {
 
   it('builder leaves optional fields unset when not provided', () => {
     const result = buildRepairRequestDraft({
+      draftIntent: true,
+      evidenceRefs: ['equipmentLookup'],
       thiet_bi_id: 1,
       mo_ta_su_co: 'Test',
       hang_muc_sua_chua: 'Test',
@@ -174,6 +182,50 @@ describe('repairRequestDraft generation guard', () => {
     expect(result.formData.ngay_mong_muon_hoan_thanh).toBeNull()
     expect(result.formData.don_vi_thuc_hien).toBeNull()
     expect(result.formData.ten_don_vi_thue).toBeNull()
+  })
+
+  it('input schema rejects when draftIntent is false', () => {
+    const result = repairRequestDraftInputSchema.safeParse({
+      draftIntent: false,
+      evidenceRefs: ['equipmentLookup'],
+      thiet_bi_id: 1,
+      mo_ta_su_co: 'x',
+      hang_muc_sua_chua: 'y',
+    })
+    expect(result.success).toBe(false)
+  })
+
+  it('input schema rejects when draftIntent is missing', () => {
+    const result = repairRequestDraftInputSchema.safeParse({
+      evidenceRefs: ['equipmentLookup'],
+      thiet_bi_id: 1,
+      mo_ta_su_co: 'x',
+      hang_muc_sua_chua: 'y',
+    })
+    expect(result.success).toBe(false)
+  })
+
+  it('rejects when evidenceRefs is empty', () => {
+    const result = repairRequestDraftInputSchema.safeParse({
+      draftIntent: true,
+      evidenceRefs: [],
+      thiet_bi_id: 1,
+      mo_ta_su_co: 'x',
+      hang_muc_sua_chua: 'y',
+    })
+    expect(result.success).toBe(false)
+  })
+
+  it('builder rejects when equipmentLookup is missing from evidenceRefs', () => {
+    expect(() =>
+      buildRepairRequestDraft({
+        draftIntent: true,
+        evidenceRefs: ['repairSummary'],
+        thiet_bi_id: 1,
+        mo_ta_su_co: 'x',
+        hang_muc_sua_chua: 'y',
+      }),
+    ).toThrow('equipmentLookup')
   })
 
   it('system prompt requires explicit user intent for repair drafts', () => {
@@ -208,6 +260,8 @@ describe('repairRequestDraft safety', () => {
 
   it('builder output is schema-valid', () => {
     const result = buildRepairRequestDraft({
+      draftIntent: true,
+      evidenceRefs: ['equipmentLookup'],
       thiet_bi_id: 10,
       equipment_context: { ma_thiet_bi: 'TB-010', ten_thiet_bi: 'Máy X' },
       mo_ta_su_co: 'Sự cố',
@@ -218,6 +272,11 @@ describe('repairRequestDraft safety', () => {
 
     const parsed = repairRequestDraftSchema.safeParse(result)
     expect(parsed.success).toBe(true)
+  })
+
+  it('validateRequestedTools accepts draft tool names', () => {
+    const result = validateRequestedTools(['generateRepairRequestDraft'])
+    expect(result.ok).toBe(true)
   })
 
   it('system prompt version is v2.2.0', () => {

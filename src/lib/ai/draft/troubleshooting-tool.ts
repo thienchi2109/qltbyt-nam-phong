@@ -7,6 +7,22 @@ import {
 } from '@/lib/ai/draft/troubleshooting-schema'
 
 /**
+ * Approved factual tool names that count as valid evidence sources.
+ * The troubleshooting draft requires at least 2 distinct sources,
+ * including equipmentLookup.
+ */
+const VALID_EVIDENCE_SOURCES = new Set([
+  'equipmentLookup',
+  'repairSummary',
+  'maintenanceSummary',
+  'maintenancePlanLookup',
+  'usageHistory',
+])
+
+/** Minimum distinct evidence sources required (must include equipmentLookup). */
+const MIN_EVIDENCE_COUNT = 2
+
+/**
  * AI SDK 6 tool for generating schema-validated troubleshooting drafts.
  *
  * Model-autonomous: the model calls this after gathering factual evidence.
@@ -33,40 +49,60 @@ export const generateTroubleshootingDraft = tool({
         tinh_trang_hien_tai: z.string().nullable().optional(),
       })
       .optional(),
-    evidence_summary: z.string().min(1).optional(),
+    evidence_refs: z
+      .array(z.string().min(1))
+      .min(MIN_EVIDENCE_COUNT)
+      .describe('Tool names whose output was used as evidence (e.g. equipmentLookup, repairSummary)'),
+    probable_causes: z.array(
+      z.object({
+        label: z.string().min(1),
+        confidence: z.enum(['low', 'medium', 'high']),
+        rationale: z.string().min(1),
+      }),
+    ).min(1),
+    remediation_steps: z.array(
+      z.object({
+        step: z.string().min(1),
+        type: z.enum(['inspection', 'configuration', 'maintenance', 'escalation']),
+      }),
+    ).min(1),
+    limitations: z.array(z.string()).optional(),
   }),
   outputSchema: troubleshootingDraftSchema,
   execute: async (input): Promise<TroubleshootingDraft> => {
-    // The model generates the full structured output.
-    // This execute function returns the model-provided input
-    // re-shaped into the output contract as a pass-through.
-    // The actual reasoning is done by the model; this tool
-    // provides the schema validation boundary.
+    // ── Runtime evidence guard ──────────────────────────────────
+    const validRefs = input.evidence_refs.filter(ref =>
+      VALID_EVIDENCE_SOURCES.has(ref),
+    )
+
+    if (!validRefs.includes('equipmentLookup')) {
+      throw new Error(
+        'Troubleshooting draft requires equipmentLookup evidence. ' +
+        'Please look up the equipment first.',
+      )
+    }
+
+    if (validRefs.length < MIN_EVIDENCE_COUNT) {
+      throw new Error(
+        `Troubleshooting draft requires at least ${MIN_EVIDENCE_COUNT} evidence sources ` +
+        `(got ${validRefs.length}). Include equipmentLookup plus at least one of: ` +
+        'repairSummary, maintenanceSummary, maintenancePlanLookup, usageHistory.',
+      )
+    }
+
+    // ── Build validated output ──────────────────────────────────
     return {
       kind: 'troubleshootingDraft',
       draftOnly: true,
       basedOnEvidence: true,
-      evidenceRefs: ['equipmentLookup'],
+      evidenceRefs: validRefs,
       equipment_context: {
         thiet_bi_id: input.thiet_bi_id,
         ...input.equipment_context,
       },
-      probable_causes: [
-        {
-          label: 'Pending model analysis',
-          confidence: 'low',
-          rationale: 'Evidence collected, awaiting model inference.',
-        },
-      ],
-      remediation_steps: [
-        {
-          step: 'Review collected evidence and consult specialist.',
-          type: 'escalation',
-        },
-      ],
-      limitations: [
-        'Draft generated from available system evidence only.',
-      ],
+      probable_causes: input.probable_causes,
+      remediation_steps: input.remediation_steps,
+      limitations: input.limitations,
     }
   },
 })
