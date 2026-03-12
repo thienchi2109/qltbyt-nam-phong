@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 
 const mocks = vi.hoisted(() => ({
@@ -92,6 +92,10 @@ function setAssistantDraft(draft: typeof contextValue.assistantDraft) {
 }
 
 describe('RepairRequestsCreateSheet assistant draft hydration', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
   beforeEach(() => {
     vi.clearAllMocks()
     contextValue.dialogState.isCreateOpen = true
@@ -189,8 +193,112 @@ describe('RepairRequestsCreateSheet assistant draft hydration', () => {
     await waitFor(() => {
       expect(screen.getByText('20/03/2026')).toBeInTheDocument()
     })
+  })
 
-    vi.unstubAllGlobals()
+  it('preserves manual non-equipment field edits after draft lookup resolves as unresolved', async () => {
+    let releaseLookup: (() => void) | null = null
+
+    mocks.callRpc.mockImplementation(({ args }: { args: { p_q?: string } }) => {
+      if (args.p_q === 'Máy siêu âm A (TB-001)') {
+        return new Promise(resolve => {
+          releaseLookup = () => resolve([])
+        })
+      }
+      return Promise.resolve([])
+    })
+
+    setAssistantDraft({
+      equipment: {
+        thiet_bi_id: 999,
+        ma_thiet_bi: 'TB-001',
+        ten_thiet_bi: 'Máy siêu âm A',
+      },
+      formData: {
+        mo_ta_su_co: 'Lỗi cần chọn lại thiết bị',
+        hang_muc_sua_chua: 'Kiểm tra lại',
+      },
+      missingFields: [],
+      reviewNotes: [],
+    })
+
+    render(<RepairRequestsCreateSheet />)
+
+    await waitFor(() => {
+      expect(screen.getByLabelText('Mô tả sự cố')).toHaveValue('Lỗi cần chọn lại thiết bị')
+    })
+
+    fireEvent.change(screen.getByLabelText('Mô tả sự cố'), {
+      target: { value: 'Người dùng đã sửa mô tả' },
+    })
+
+    expect(screen.getByLabelText('Mô tả sự cố')).toHaveValue('Người dùng đã sửa mô tả')
+
+    releaseLookup?.()
+
+    await waitFor(() => {
+      expect(screen.getByText('⚠️ Thiết bị trong bản nháp không tìm thấy ở cơ sở hiện tại. Vui lòng chọn thiết bị thủ công.')).toBeInTheDocument()
+    })
+
+    expect(screen.getByLabelText('Mô tả sự cố')).toHaveValue('Người dùng đã sửa mô tả')
+  })
+
+  it('does not overwrite manual equipment search input while draft lookup is pending', async () => {
+    let releaseLookup: (() => void) | null = null
+
+    mocks.callRpc.mockImplementation(({ args }: { args: { p_q?: string } }) => {
+      if (args.p_q === 'Máy siêu âm A (TB-001)') {
+        return new Promise(resolve => {
+          releaseLookup = () => resolve([])
+        })
+      }
+      if (args.p_q === 'Máy siêu âm') {
+        return Promise.resolve([
+          {
+            id: 202,
+            ma_thiet_bi: 'TB-202',
+            ten_thiet_bi: 'Máy siêu âm B',
+            khoa_phong_quan_ly: 'CDHA',
+          },
+        ])
+      }
+      return Promise.resolve([])
+    })
+
+    setAssistantDraft({
+      equipment: {
+        thiet_bi_id: 999,
+        ma_thiet_bi: 'TB-001',
+        ten_thiet_bi: 'Máy siêu âm A',
+      },
+      formData: {
+        mo_ta_su_co: 'Lỗi cần chọn lại thiết bị',
+        hang_muc_sua_chua: 'Kiểm tra lại',
+      },
+      missingFields: [],
+      reviewNotes: [],
+    })
+
+    render(<RepairRequestsCreateSheet />)
+
+    await waitFor(() => {
+      expect(mocks.callRpc).toHaveBeenCalledWith(
+        expect.objectContaining({
+          args: expect.objectContaining({ p_q: 'Máy siêu âm A (TB-001)' }),
+        }),
+      )
+    })
+
+    fireEvent.change(screen.getByLabelText('Thiết bị'), {
+      target: { value: 'Máy siêu âm' },
+    })
+
+    expect(screen.getByLabelText('Thiết bị')).toHaveValue('Máy siêu âm')
+
+    releaseLookup?.()
+
+    await waitFor(() => {
+      expect(screen.getByLabelText('Thiết bị')).toHaveValue('Máy siêu âm')
+    })
   })
 
   it('clears unresolved draft warning after manual equipment selection', async () => {

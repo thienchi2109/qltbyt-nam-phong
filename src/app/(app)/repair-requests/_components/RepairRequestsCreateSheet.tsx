@@ -56,6 +56,8 @@ export function RepairRequestsCreateSheet() {
 
   // Track if we've already prefilled from preSelectedEquipment (reset on close)
   const hasPrefilledRef = React.useRef(false)
+  const hasHydratedFormFieldsRef = React.useRef(false)
+  const hasUserEditedSearchRef = React.useRef(false)
 
   // Local form state
   const [selectedEquipment, setSelectedEquipment] = React.useState<EquipmentSelectItem | null>(null)
@@ -68,6 +70,7 @@ export function RepairRequestsCreateSheet() {
   const [allEquipment, setAllEquipment] = React.useState<EquipmentSelectItem[]>([])
   const [unresolvedDraftEquipment, setUnresolvedDraftEquipment] = React.useState(false)
   const [hasDraftEquipmentLookupCompleted, setHasDraftEquipmentLookupCompleted] = React.useState(false)
+  const [hasSeededDraftEquipmentLookup, setHasSeededDraftEquipmentLookup] = React.useState(false)
 
   const draftEquipmentLabel = React.useMemo(() => {
     if (!assistantDraft?.equipment?.ten_thiet_bi || !assistantDraft.equipment.ma_thiet_bi) {
@@ -92,14 +95,25 @@ export function RepairRequestsCreateSheet() {
       setExternalCompanyName("")
       setUnresolvedDraftEquipment(false)
       setHasDraftEquipmentLookupCompleted(false)
+      setHasSeededDraftEquipmentLookup(false)
       hasPrefilledRef.current = false
-    } else if (assistantDraft && !hasPrefilledRef.current) {
-      // Hydrate from assistant draft (priority over preSelectedEquipment)
-      const fd = assistantDraft.formData
-      let canFinishDraftPrefill = true
+      hasHydratedFormFieldsRef.current = false
+      hasUserEditedSearchRef.current = false
+    } else if (assistantDraft) {
+      // Hydrate non-equipment fields exactly once.
+      if (!hasHydratedFormFieldsRef.current) {
+        const fd = assistantDraft.formData
+        if (fd.mo_ta_su_co) setIssueDescription(fd.mo_ta_su_co)
+        if (fd.hang_muc_sua_chua) setRepairItems(fd.hang_muc_sua_chua)
+        if (fd.ngay_mong_muon_hoan_thanh) {
+          setDesiredDate(parseDraftDate(fd.ngay_mong_muon_hoan_thanh))
+        }
+        if (fd.don_vi_thuc_hien) setRepairUnit(fd.don_vi_thuc_hien)
+        if (fd.ten_don_vi_thue) setExternalCompanyName(fd.ten_don_vi_thue)
+        hasHydratedFormFieldsRef.current = true
+      }
 
-      // Validate equipment against tenant scope before selecting
-      if (assistantDraft.equipment?.thiet_bi_id) {
+      if (!hasPrefilledRef.current && assistantDraft.equipment?.thiet_bi_id) {
         const resolved = allEquipment.find(
           eq => eq.id === assistantDraft.equipment?.thiet_bi_id,
         )
@@ -107,33 +121,27 @@ export function RepairRequestsCreateSheet() {
           setSelectedEquipment(resolved)
           setSearchQuery(formatEquipmentLabel(resolved))
           setUnresolvedDraftEquipment(false)
+          hasPrefilledRef.current = true
         } else if (hasDraftEquipmentLookupCompleted) {
           // Equipment lookup finished but ID not found — cross-tenant or stale
           setUnresolvedDraftEquipment(true)
-        } else {
-          // Seed the lookup, but still hydrate the rest of the draft immediately.
-          if (draftEquipmentLabel && searchQuery !== draftEquipmentLabel) {
-            setSearchQuery(draftEquipmentLabel)
-          }
-          canFinishDraftPrefill = false
+          hasPrefilledRef.current = true
+        } else if (
+          draftEquipmentLabel &&
+          !hasSeededDraftEquipmentLookup &&
+          !hasUserEditedSearchRef.current
+        ) {
+          // Seed the lookup once, but never clobber manual user input.
+          setSearchQuery(draftEquipmentLabel)
+          setHasSeededDraftEquipmentLookup(true)
         }
-      }
-
-      if (fd.mo_ta_su_co) setIssueDescription(fd.mo_ta_su_co)
-      if (fd.hang_muc_sua_chua) setRepairItems(fd.hang_muc_sua_chua)
-      if (fd.ngay_mong_muon_hoan_thanh) {
-        setDesiredDate(parseDraftDate(fd.ngay_mong_muon_hoan_thanh))
-      }
-      if (fd.don_vi_thuc_hien) setRepairUnit(fd.don_vi_thuc_hien)
-      if (fd.ten_don_vi_thue) setExternalCompanyName(fd.ten_don_vi_thue)
-      if (canFinishDraftPrefill) {
-        hasPrefilledRef.current = true
       }
     } else if (preSelectedEquipment && !hasPrefilledRef.current) {
       // Pre-fill only once when opened with equipment from context
       setSelectedEquipment(preSelectedEquipment)
       setSearchQuery(`${preSelectedEquipment.ten_thiet_bi} (${preSelectedEquipment.ma_thiet_bi})`)
       hasPrefilledRef.current = true
+      hasHydratedFormFieldsRef.current = true
     }
   }, [
     isCreateOpen,
@@ -142,6 +150,7 @@ export function RepairRequestsCreateSheet() {
     allEquipment,
     draftEquipmentLabel,
     hasDraftEquipmentLookupCompleted,
+    hasSeededDraftEquipmentLookup,
     searchQuery,
   ])
 
@@ -200,9 +209,11 @@ export function RepairRequestsCreateSheet() {
     setSelectedEquipment(equipment)
     setSearchQuery(formatEquipmentLabel(equipment))
     setUnresolvedDraftEquipment(false)
+    hasUserEditedSearchRef.current = true
   }
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    hasUserEditedSearchRef.current = true
     setSearchQuery(e.target.value)
     if (selectedEquipment) {
       setSelectedEquipment(null)
