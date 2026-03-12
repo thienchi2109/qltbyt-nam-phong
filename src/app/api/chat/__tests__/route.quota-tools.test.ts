@@ -159,4 +159,39 @@ describe('/api/chat quota tools', () => {
     )
     expect(migrationSource).toContain("RAISE EXCEPTION 'don_vi claim mismatch'")
   })
+
+  it('device quota lookup migration returns insufficientEvidence when category metadata is missing', () => {
+    const migrationPath = path.resolve(
+      process.cwd(),
+      'supabase/migrations/20260310174000_add_ai_device_quota_lookup_rpc.sql',
+    )
+    const migrationSource = readFileSync(migrationPath, 'utf8')
+
+    expect(migrationSource).toContain('IF NOT FOUND THEN')
+    expect(migrationSource).toContain("'status', 'insufficientEvidence'")
+    expect(migrationSource).toContain(
+      "'reason', 'Category metadata not found for equipment group'",
+    )
+  })
+
+  it('has a migration that enforces so_luong_toi_thieu as NOT NULL DEFAULT 0', () => {
+    const migrationsDir = path.resolve(process.cwd(), 'supabase/migrations')
+    const migrationFile = require('node:fs')
+      .readdirSync(migrationsDir)
+      .find((file: string) => file.includes('so_luong_toi_thieu_not_null'))
+
+    expect(migrationFile).toBeTruthy()
+
+    const migrationSource = readFileSync(path.join(migrationsDir, migrationFile!), 'utf8')
+    expect(migrationSource).toContain('UPDATE public.chi_tiet_dinh_muc')
+    expect(migrationSource).toContain('SET so_luong_toi_thieu = 0')
+    expect(migrationSource).toContain('WHERE so_luong_toi_thieu IS NULL;')
+    expect(migrationSource).toContain('ALTER TABLE public.chi_tiet_dinh_muc')
+    expect(migrationSource).toContain(
+      'ALTER COLUMN so_luong_toi_thieu SET DEFAULT 0;',
+    )
+    expect(migrationSource).toContain(
+      'ALTER COLUMN so_luong_toi_thieu SET NOT NULL;',
+    )
+  })
 })

@@ -178,6 +178,21 @@ BEGIN
   WHERE ntb.id = v_equip_nhom_id
     AND ntb.don_vi_id = v_equip_don_vi;
 
+  IF NOT FOUND THEN
+    RETURN jsonb_build_object(
+      'kind', 'deviceQuotaLookup',
+      'device', jsonb_build_object(
+        'id', ai_device_quota_lookup.thiet_bi_id,
+        'ma_thiet_bi', v_equip_ma,
+        'ten_thiet_bi', v_equip_ten
+      ),
+      'status', 'insufficientEvidence',
+      'scope', jsonb_build_object('mode', 'facility', 'don_vi_id', v_equip_don_vi),
+      'reason', 'Category metadata not found for equipment group',
+      'evidence_status', 'none'
+    );
+  END IF;
+
   -- ── Step 4: Check if category is in the active decision ───────
   SELECT cd.so_luong_toi_da, cd.so_luong_toi_thieu
   INTO v_quota_max, v_quota_min
