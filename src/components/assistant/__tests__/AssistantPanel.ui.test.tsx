@@ -82,7 +82,7 @@ describe('AssistantPanel', () => {
     it('renders the composer input area', () => {
         render(<AssistantPanel isOpen={true} onClose={vi.fn()} />)
 
-        expect(screen.getByPlaceholderText('Hỏi trợ lý...')).toBeInTheDocument()
+        expect(screen.getByPlaceholderText('Hỏi AI về thiết bị, bảo trì...')).toBeInTheDocument()
     })
 
     it('renders disclaimer footer', () => {

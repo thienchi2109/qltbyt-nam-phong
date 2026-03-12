@@ -42,6 +42,7 @@ export function AssistantComposer({
 
     const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
         if (isDisabled) return
+        if (e.nativeEvent.isComposing) return
 
         if (e.key === "Enter" && !e.shiftKey) {
             e.preventDefault()
