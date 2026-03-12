@@ -3,6 +3,8 @@
 import * as React from "react"
 import { useChat } from "@ai-sdk/react"
 import { DefaultChatTransport } from "ai"
+import { useQueryClient } from "@tanstack/react-query"
+import { useRouter } from "next/navigation"
 import { RotateCcw, X } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
@@ -11,6 +13,9 @@ import { cn } from "@/lib/utils"
 
 import { AssistantComposer } from "./AssistantComposer"
 import { AssistantEmptyState } from "./AssistantEmptyState"
+import { AssistantMessageList } from "./AssistantMessageList"
+import type { RepairRequestDraft } from "@/lib/ai/draft/repair-request-draft-schema"
+import type { TroubleshootingDraft } from "@/lib/ai/draft/troubleshooting-schema"
 
 import "@/components/assistant/assistant-styles.css"
 
@@ -60,6 +65,9 @@ export function AssistantPanel({ isOpen, onClose }: AssistantPanelProps) {
         transport,
     })
 
+    const queryClient = useQueryClient()
+    const router = useRouter()
+
     const isStreaming = status === "streaming"
     const isReady = status === "ready"
 
@@ -83,6 +91,17 @@ export function AssistantPanel({ isOpen, onClose }: AssistantPanelProps) {
         setMessages([])
         setInput("")
     }, [setMessages])
+
+    /** TanStack Query bridge for draft handoff to /repair-requests */
+    const handleApplyDraft = React.useCallback(
+        (draft: RepairRequestDraft | TroubleshootingDraft) => {
+            if (draft.kind === "repairRequestDraft") {
+                queryClient.setQueryData(["assistant-draft"], draft)
+                router.push("/repair-requests")
+            }
+        },
+        [queryClient, router],
+    )
 
     if (!isOpen) return null
 
@@ -135,15 +154,21 @@ export function AssistantPanel({ isOpen, onClose }: AssistantPanelProps) {
                 </div>
             </div>
 
-            {/* Message area — placeholder for Batch 5 MessageList */}
-            <div className="flex-1 overflow-y-auto px-4 py-3">
-                {messages.length === 0 && (
+            {/* Message area */}
+            {messages.length === 0 ? (
+                <div className="flex-1 overflow-y-auto px-4 py-3">
                     <AssistantEmptyState
                         onSuggestionClick={handleSuggestionClick}
                         isReady={isReady}
                     />
-                )}
-            </div>
+                </div>
+            ) : (
+                <AssistantMessageList
+                    messages={messages}
+                    status={status}
+                    onApplyDraft={handleApplyDraft}
+                />
+            )}
 
             {/* Composer */}
             <AssistantComposer

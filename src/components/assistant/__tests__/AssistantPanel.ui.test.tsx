@@ -17,11 +17,32 @@ vi.mock('@ai-sdk/react', () => ({
     }),
 }))
 
-// Mock DefaultChatTransport from ai — must be constructable (used with `new`)
+// Mock DefaultChatTransport + AI SDK helpers from ai
 vi.mock('ai', () => {
     class MockTransport { }
-    return { DefaultChatTransport: MockTransport }
+    return {
+        DefaultChatTransport: MockTransport,
+        isToolUIPart: (part: { type: string }) => part.type.startsWith('tool-'),
+        getToolName: (part: { type: string }) => part.type.replace('tool-', ''),
+    }
 })
+
+// Mock TanStack Query
+vi.mock('@tanstack/react-query', () => ({
+    useQueryClient: () => ({
+        setQueryData: vi.fn(),
+        removeQueries: vi.fn(),
+    }),
+}))
+
+// Mock Next.js router
+vi.mock('next/navigation', () => ({
+    useRouter: () => ({
+        push: vi.fn(),
+        replace: vi.fn(),
+        back: vi.fn(),
+    }),
+}))
 
 // Mock TenantSelectionContext
 vi.mock('@/contexts/TenantSelectionContext', () => ({

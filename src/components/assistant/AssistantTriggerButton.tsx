@@ -25,8 +25,9 @@ export function AssistantTriggerButton({
             type="button"
             onClick={onToggle}
             aria-label={isOpen ? "Đóng trợ lý" : "Trợ lý AI"}
+            data-testid="assistant-trigger-button"
             className={cn(
-                "fixed bottom-6 right-6 z-[70] rounded-full",
+                "fixed bottom-6 right-6 z-[997] rounded-full",
                 "w-12 h-12 md:w-12 md:h-12",
                 "flex items-center justify-center",
                 "bg-gradient-to-br from-[hsl(194,45%,42%)] to-[hsl(194,45%,36%)]",
