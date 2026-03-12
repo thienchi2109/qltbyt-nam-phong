@@ -36,6 +36,7 @@ export function RepairRequestsCreateSheet() {
     createMutation,
     user,
     canSetRepairUnit,
+    assistantDraft,
   } = useRepairRequestsContext()
 
   const isSheetMobile = useMediaQuery("(max-width: 1279px)")
@@ -64,13 +65,33 @@ export function RepairRequestsCreateSheet() {
       setRepairUnit("noi_bo")
       setExternalCompanyName("")
       hasPrefilledRef.current = false
+    } else if (assistantDraft && !hasPrefilledRef.current) {
+      // Hydrate from assistant draft (priority over preSelectedEquipment)
+      const fd = assistantDraft.formData
+      if (assistantDraft.equipment?.thiet_bi_id) {
+        const eq: EquipmentSelectItem = {
+          id: assistantDraft.equipment.thiet_bi_id,
+          ma_thiet_bi: assistantDraft.equipment.ma_thiet_bi ?? '',
+          ten_thiet_bi: assistantDraft.equipment.ten_thiet_bi ?? '',
+        }
+        setSelectedEquipment(eq)
+        setSearchQuery(`${eq.ten_thiet_bi} (${eq.ma_thiet_bi})`)
+      }
+      if (fd.mo_ta_su_co) setIssueDescription(fd.mo_ta_su_co)
+      if (fd.hang_muc_sua_chua) setRepairItems(fd.hang_muc_sua_chua)
+      if (fd.ngay_mong_muon_hoan_thanh) {
+        setDesiredDate(new Date(fd.ngay_mong_muon_hoan_thanh))
+      }
+      if (fd.don_vi_thuc_hien) setRepairUnit(fd.don_vi_thuc_hien)
+      if (fd.ten_don_vi_thue) setExternalCompanyName(fd.ten_don_vi_thue)
+      hasPrefilledRef.current = true
     } else if (preSelectedEquipment && !hasPrefilledRef.current) {
       // Pre-fill only once when opened with equipment from context
       setSelectedEquipment(preSelectedEquipment)
       setSearchQuery(`${preSelectedEquipment.ten_thiet_bi} (${preSelectedEquipment.ma_thiet_bi})`)
       hasPrefilledRef.current = true
     }
-  }, [isCreateOpen, preSelectedEquipment])
+  }, [isCreateOpen, preSelectedEquipment, assistantDraft])
 
   // Fetch equipment options
   React.useEffect(() => {
@@ -163,6 +184,11 @@ export function RepairRequestsCreateSheet() {
           <SheetDescription>Điền thông tin bên dưới để gửi yêu cầu mới.</SheetDescription>
         </SheetHeaderUI>
         <div className={cn("mt-4", isSheetMobile ? "px-4 overflow-y-auto h-[calc(90vh-80px)]" : "")}>
+          {assistantDraft && (
+            <div className="mb-4 rounded-md border border-blue-200 bg-blue-50 p-3 text-sm text-blue-800 dark:border-blue-800 dark:bg-blue-950 dark:text-blue-200">
+              📝 Được điền sẵn từ AI trợ lý. Vui lòng kiểm tra kỹ trước khi gửi.
+            </div>
+          )}
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="search-equipment">Thiết bị</Label>

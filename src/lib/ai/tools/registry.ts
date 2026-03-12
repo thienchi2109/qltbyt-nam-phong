@@ -2,6 +2,7 @@ import { tool, type Tool, type ToolSet } from 'ai'
 import { z } from 'zod'
 
 import { generateTroubleshootingDraft } from '@/lib/ai/draft/troubleshooting-tool'
+import { buildRepairRequestDraft } from '@/lib/ai/draft/repair-request-draft-tool'
 import { executeRpcTool } from '@/lib/ai/tools/rpc-tool-executor'
 
 type ReadOnlyToolDefinition = {
@@ -110,6 +111,14 @@ const DRAFT_TOOL_DEFINITIONS: Record<string, DraftToolDefinition> = {
     requiresEvidence: true,
     minEvidenceCount: 2,
     tool: generateTroubleshootingDraft,
+  },
+  generateRepairRequestDraft: {
+    description:
+      'Build a schema-validated repair-request draft from evidence. Orchestration-driven: invoked by route, not model-autonomous.',
+    draftKind: 'repairRequestDraft',
+    requiresEvidence: true,
+    minEvidenceCount: 1,
+    tool: null as never, // Not a model-callable tool; route invokes buildRepairRequestDraft() directly
   },
 }
 

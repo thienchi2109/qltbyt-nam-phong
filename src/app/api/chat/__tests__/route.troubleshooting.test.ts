@@ -188,8 +188,8 @@ describe('troubleshooting draft safety', () => {
     }
   })
 
-  it('system prompt version is v2.1.0', () => {
-    expect(SYSTEM_PROMPT_VERSION).toBe('v2.1.0')
+  it('system prompt version is v2.2.0', () => {
+    expect(SYSTEM_PROMPT_VERSION).toBe('v2.2.0')
   })
 
   it('prompt labels troubleshooting output as Draft/Inference, never Fact', () => {
