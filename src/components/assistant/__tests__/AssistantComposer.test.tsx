@@ -14,28 +14,37 @@ describe('AssistantComposer', () => {
         isReady: true,
     }
 
-    it('renders textarea with placeholder', () => {
+    const PLACEHOLDER = 'Hỏi AI về thiết bị, bảo trì...'
+
+    it('renders textarea with the batch 3 placeholder', () => {
         render(<AssistantComposer {...defaultProps} />)
 
-        expect(screen.getByPlaceholderText('Hỏi trợ lý...')).toBeInTheDocument()
+        expect(screen.getByPlaceholderText(PLACEHOLDER)).toBeInTheDocument()
     })
 
     it('calls onInputChange when typing', () => {
         const onInputChange = vi.fn()
         render(<AssistantComposer {...defaultProps} onInputChange={onInputChange} />)
 
-        fireEvent.change(screen.getByPlaceholderText('Hỏi trợ lý...'), {
+        fireEvent.change(screen.getByPlaceholderText(PLACEHOLDER), {
             target: { value: 'Xin chào' },
         })
         expect(onInputChange).toHaveBeenCalledWith('Xin chào')
     })
 
-    it('shows send button only when input has content', () => {
+    it('hides send button when input is empty and shows it when input has content', () => {
         const { rerender } = render(<AssistantComposer {...defaultProps} input="" />)
-        expect(screen.getByLabelText('Gửi')).toBeDisabled()
+        expect(screen.queryByLabelText('Gửi')).not.toBeInTheDocument()
 
         rerender(<AssistantComposer {...defaultProps} input="Xin chào" />)
-        expect(screen.getByLabelText('Gửi')).not.toBeDisabled()
+        expect(screen.getByLabelText('Gửi')).toBeInTheDocument()
+    })
+
+    it('disables composer when not ready', () => {
+        render(<AssistantComposer {...defaultProps} input="Xin chào" isReady={false} />)
+
+        expect(screen.getByPlaceholderText(PLACEHOLDER)).toBeDisabled()
+        expect(screen.getByLabelText('Gửi')).toBeDisabled()
     })
 
     it('calls onSend on send button click', () => {
@@ -50,7 +59,7 @@ describe('AssistantComposer', () => {
         const onSend = vi.fn()
         render(<AssistantComposer {...defaultProps} input="Xin chào" onSend={onSend} />)
 
-        fireEvent.keyDown(screen.getByPlaceholderText('Hỏi trợ lý...'), {
+        fireEvent.keyDown(screen.getByPlaceholderText(PLACEHOLDER), {
             key: 'Enter',
             shiftKey: false,
         })
@@ -61,7 +70,7 @@ describe('AssistantComposer', () => {
         const onSend = vi.fn()
         render(<AssistantComposer {...defaultProps} input="Xin chào" onSend={onSend} />)
 
-        fireEvent.keyDown(screen.getByPlaceholderText('Hỏi trợ lý...'), {
+        fireEvent.keyDown(screen.getByPlaceholderText(PLACEHOLDER), {
             key: 'Enter',
             shiftKey: true,
         })
@@ -86,6 +95,6 @@ describe('AssistantComposer', () => {
     it('disables textarea when streaming', () => {
         render(<AssistantComposer {...defaultProps} isStreaming={true} />)
 
-        expect(screen.getByPlaceholderText('Hỏi trợ lý...')).toBeDisabled()
+        expect(screen.getByPlaceholderText(PLACEHOLDER)).toBeDisabled()
     })
 })

@@ -29,6 +29,8 @@ export function AssistantComposer({
     isReady,
 }: AssistantComposerProps) {
     const textareaRef = React.useRef<HTMLTextAreaElement>(null)
+    const hasInput = input.trim().length > 0
+    const isDisabled = !isReady && !isStreaming
 
     // Auto-resize textarea based on content
     React.useEffect(() => {
@@ -39,6 +41,8 @@ export function AssistantComposer({
     }, [input])
 
     const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+        if (isDisabled) return
+
         if (e.key === "Enter" && !e.shiftKey) {
             e.preventDefault()
             onSend()
@@ -53,9 +57,9 @@ export function AssistantComposer({
                     value={input}
                     onChange={(e) => onInputChange(e.target.value)}
                     onKeyDown={handleKeyDown}
-                    placeholder="Hỏi trợ lý..."
+                    placeholder="Hỏi AI về thiết bị, bảo trì..."
                     rows={1}
-                    disabled={isStreaming}
+                    disabled={isStreaming || isDisabled}
                     className={cn(
                         "flex-1 resize-none rounded-xl border border-input bg-background px-3 py-2",
                         "text-sm leading-relaxed",
@@ -75,11 +79,11 @@ export function AssistantComposer({
                     >
                         <div className="h-3 w-3 rounded-sm bg-white" />
                     </Button>
-                ) : (
+                ) : hasInput ? (
                     <Button
                         size="icon"
                         onClick={onSend}
-                        disabled={!input.trim()}
+                        disabled={isDisabled}
                         className="h-9 w-9 rounded-xl shrink-0 bg-[hsl(var(--assistant-accent))] hover:bg-[hsl(var(--assistant-accent))]/90 text-white"
                         aria-label="Gửi"
                     >
@@ -87,7 +91,7 @@ export function AssistantComposer({
                             <path d="M12 19V5M5 12l7-7 7 7" />
                         </svg>
                     </Button>
-                )}
+                ) : null}
             </div>
         </div>
     )
