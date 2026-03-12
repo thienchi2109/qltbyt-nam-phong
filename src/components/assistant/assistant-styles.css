@@ -1,0 +1,211 @@
+/**
+ * Assistant Chat UI — CSS tokens and keyframe animations.
+ *
+ * Light-mode-only tokens scoped to the assistant panel.
+ * Based on design spec §2.1 and §6.1.
+ * Dark mode excluded per user request.
+ */
+
+/* ============================================
+   1. CSS Variables (Light Mode)
+   ============================================ */
+
+:root {
+  /* Panel background — subtle warm off-white */
+  --assistant-bg: 210 20% 98%;
+  --assistant-border: 214 20% 90%;
+
+  /* User message bubble — primary teal */
+  --assistant-user-bubble: 194 45% 42%;
+  --assistant-user-bubble-hover: 194 45% 38%;
+  --assistant-user-text: 0 0% 100%;
+
+  /* AI message bubble — soft neutral surface */
+  --assistant-ai-bubble: 210 15% 95%;
+  --assistant-ai-text: 224 71% 4%;
+
+  /* Accent for links, icons, interactive elements */
+  --assistant-accent: 194 50% 48%;
+  --assistant-accent-muted: 194 30% 90%;
+
+  /* Tool execution card */
+  --assistant-tool-bg: 194 25% 96%;
+  --assistant-tool-border: 194 20% 88%;
+  --assistant-tool-icon: 194 45% 42%;
+
+  /* Suggested question chip */
+  --assistant-chip-bg: 0 0% 100%;
+  --assistant-chip-border: 214 20% 88%;
+  --assistant-chip-hover-bg: 194 40% 96%;
+  --assistant-chip-hover-border: 194 35% 72%;
+  --assistant-chip-text: 220 10% 35%;
+
+  /* Shimmer/thinking gradient */
+  --assistant-shimmer-from: 194 40% 92%;
+  --assistant-shimmer-via: 194 50% 85%;
+  --assistant-shimmer-to: 194 40% 92%;
+
+  /* Status indicator */
+  --assistant-status-online: 142 70% 45%;
+  --assistant-status-error: 0 84% 60%;
+
+  /* Draft card — warm orange accent */
+  --assistant-draft-bg: 35 100% 97%;
+  --assistant-draft-border: 35 80% 70%;
+  --assistant-draft-badge: 35 90% 55%;
+}
+
+/* ============================================
+   2. Keyframe Definitions (§6.1)
+   ============================================ */
+
+/* Panel open/close */
+@keyframes assistant-panel-open {
+  from {
+    opacity: 0;
+    transform: translateY(16px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes assistant-panel-close {
+  from {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(16px) scale(0.97);
+  }
+}
+
+/* Message entrance */
+@keyframes assistant-message-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Thinking dots bounce */
+@keyframes assistant-dot-bounce {
+  0%, 80%, 100% { transform: translateY(0); }
+  40% { transform: translateY(-4px); }
+}
+
+/* Shimmer sweep */
+@keyframes assistant-shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+/* Indeterminate progress bar */
+@keyframes assistant-progress {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(300%); }
+}
+
+/* Chip stagger entrance */
+@keyframes assistant-chip-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ============================================
+   3. Animation Utility Classes
+   ============================================ */
+
+.assistant-panel-enter {
+  animation: assistant-panel-open 250ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.assistant-panel-exit {
+  animation: assistant-panel-close 180ms ease-in forwards;
+}
+
+.assistant-message-enter {
+  animation: assistant-message-in 200ms ease-out forwards;
+}
+
+.assistant-dot {
+  animation: assistant-dot-bounce 800ms ease-in-out infinite;
+}
+
+.assistant-dot:nth-child(2) {
+  animation-delay: 100ms;
+}
+
+.assistant-dot:nth-child(3) {
+  animation-delay: 200ms;
+}
+
+.assistant-shimmer-bar {
+  background: linear-gradient(
+    90deg,
+    hsl(var(--assistant-shimmer-from)),
+    hsl(var(--assistant-shimmer-via)),
+    hsl(var(--assistant-shimmer-to))
+  );
+  background-size: 200% 100%;
+  animation: assistant-shimmer 1.5s ease-in-out infinite;
+}
+
+.assistant-progress-bar {
+  animation: assistant-progress 1.5s ease-in-out infinite;
+}
+
+.assistant-chip-enter {
+  animation: assistant-chip-in 200ms ease-out forwards;
+}
+
+.assistant-chip-enter:nth-child(2) {
+  animation-delay: 80ms;
+}
+
+.assistant-chip-enter:nth-child(3) {
+  animation-delay: 160ms;
+}
+
+/* ============================================
+   4. Reduced Motion
+   ============================================ */
+
+@media (prefers-reduced-motion: reduce) {
+  .assistant-panel-enter,
+  .assistant-panel-exit,
+  .assistant-message-enter,
+  .assistant-dot,
+  .assistant-shimmer-bar,
+  .assistant-progress-bar,
+  .assistant-chip-enter {
+    animation: none;
+  }
+
+  .assistant-panel-enter {
+    opacity: 1;
+    transform: none;
+  }
+
+  .assistant-message-enter {
+    opacity: 1;
+    transform: none;
+  }
+
+  .assistant-chip-enter {
+    opacity: 1;
+    transform: none;
+  }
+}
