@@ -32,7 +32,12 @@ export function AssistantSuggestedQuestions({
     onSelect,
     isReady,
 }: AssistantSuggestedQuestionsProps) {
-    const chips = React.useMemo(() => pickRandom(3), [])
+    const [chips, setChips] = React.useState<string[]>([])
+
+    // Defer randomization to post-mount to avoid SSR hydration mismatch
+    React.useEffect(() => {
+        setChips(pickRandom(3))
+    }, [])
 
     return (
         <div className="flex flex-col gap-2">

@@ -17,11 +17,11 @@ describe('AssistantEmptyState', () => {
         expect(screen.getByTestId('assistant-empty-icon')).toBeInTheDocument()
     })
 
-    it('renders suggested questions', () => {
+    it('renders suggested questions after mount', async () => {
         render(<AssistantEmptyState onSuggestionClick={vi.fn()} isReady={true} />)
 
-        // Should render exactly 3 suggestion chips
-        const chips = screen.getAllByRole('button')
+        // Chips populate via useEffect, so use async find
+        const chips = await screen.findAllByRole('button')
         expect(chips.length).toBe(3)
     })
 })
