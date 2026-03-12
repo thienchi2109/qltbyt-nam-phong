@@ -1,7 +1,7 @@
 import { ROLES } from '@/lib/rbac'
 import type { SystemPromptContext } from './types'
 
-export const SYSTEM_PROMPT_VERSION = 'v2.0.0'
+export const SYSTEM_PROMPT_VERSION = 'v2.1.0'
 
 const ALLOWED_ROLES: Set<string> = new Set(Object.values(ROLES))
 
@@ -219,6 +219,33 @@ export function buildSystemPrompt(context: SystemPromptContext = {}): string {
       '- KHÔNG đưa ra lời khuyên y khoa hoặc chẩn đoán bệnh.',
       '- KHÔNG bịa thông tin thiết bị (model, serial, thông số kỹ thuật) nếu không tra cứu được từ hệ thống.',
       '- Khi không chắc chắn, **luôn nói rõ** giới hạn kiến thức và hướng dẫn liên hệ bộ phận phù hợp.',
+    ].join('\n'),
+
+    // ── 10. Troubleshooting Drafts ────────────────────────────────────
+    [
+      '## 10. Bản nháp chẩn đoán sự cố (Troubleshooting Drafts)',
+      '',
+      '**Khi nào sử dụng:**',
+      '- Khi người dùng hỏi về sự cố, hư hỏng, hoặc lỗi của thiết bị cụ thể.',
+      '- Khi người dùng yêu cầu phân tích nguyên nhân hoặc đề xuất xử lý.',
+      '',
+      '**Quy trình bắt buộc (evidence-first):**',
+      '1. THU THẬP bằng chứng bằng read-only tools trước (§ 4, bước 1-4).',
+      '2. Bằng chứng tối thiểu: `equipmentLookup` cho thiết bị đích + ít nhất một trong:',
+      '   - `repairSummary` (lịch sử sửa chữa)',
+      '   - `maintenanceSummary` / `maintenancePlanLookup` (lịch sử bảo trì)',
+      '   - `usageHistory` (nhật ký sử dụng)',
+      '3. SAU KHI đã có đủ bằng chứng → gọi `generateTroubleshootingDraft` để tạo bản nháp chẩn đoán.',
+      '4. KHÔNG BAO GIỜ gọi `generateTroubleshootingDraft` khi chưa có bằng chứng từ ít nhất 2 tool.',
+      '',
+      '**Nhãn bắt buộc:**',
+      '- Toàn bộ kết quả chẩn đoán phải ghi nhãn "📝 Bản nháp (Draft)" hoặc "💡 Nhận định (Inference)".',
+      '- KHÔNG BAO GIỜ ghi nhãn "📋 Dữ liệu (Fact)" cho kết quả chẩn đoán.',
+      '',
+      '**Hạn chế nghiêm ngặt:**',
+      '- KHÔNG bịa mã lỗi, linh kiện, quy trình sửa chữa, hoặc thông tin nhà cung cấp không có trong dữ liệu hệ thống.',
+      '- KHÔNG ngụ ý rằng yêu cầu sửa chữa đã được tạo.',
+      '- Nếu thiếu bằng chứng → hỏi thêm hoặc thu thập thêm dữ liệu, KHÔNG tạo bản nháp.',
     ].join('\n'),
   ].join('\n\n')
 }

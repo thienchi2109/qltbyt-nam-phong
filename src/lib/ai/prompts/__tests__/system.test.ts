@@ -135,8 +135,28 @@ describe('system prompt module', () => {
     expect(prompt).toContain('metadata')
   })
 
-  it('prompt version is v2.0.0 after quota tools', () => {
-    expect(SYSTEM_PROMPT_VERSION).toBe('v2.0.0')
+  it('prompt version is v2.1.0 after troubleshooting draft', () => {
+    expect(SYSTEM_PROMPT_VERSION).toBe('v2.1.0')
+  })
+
+  it('includes § 10 troubleshooting drafts section', () => {
+    const prompt = buildSystemPrompt({
+      role: 'admin',
+      userId: 'u1',
+      selectedFacilityId: 2,
+    })
+
+    // Section header
+    expect(prompt).toContain('Bản nháp chẩn đoán sự cố')
+
+    // Evidence-first requirement
+    expect(prompt).toContain('equipmentLookup')
+    expect(prompt).toContain('generateTroubleshootingDraft')
+
+    // Label constraints
+    expect(prompt).toContain('📝 Bản nháp (Draft)')
+    expect(prompt).toContain('💡 Nhận định (Inference)')
+    expect(prompt).toContain('📋 Dữ liệu (Fact)')
   })
 
   it('contains quota anti-hallucination rules', () => {

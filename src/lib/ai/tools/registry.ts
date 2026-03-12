@@ -1,6 +1,7 @@
-import { tool, type ToolSet } from 'ai'
+import { tool, type Tool, type ToolSet } from 'ai'
 import { z } from 'zod'
 
+import { generateTroubleshootingDraft } from '@/lib/ai/draft/troubleshooting-tool'
 import { executeRpcTool } from '@/lib/ai/tools/rpc-tool-executor'
 
 type ReadOnlyToolDefinition = {
@@ -89,9 +90,40 @@ const READ_ONLY_TOOL_DEFINITIONS: Record<string, ReadOnlyToolDefinition> = {
   },
 }
 
+// ============================================
+// Draft Tool Definitions (non-RPC, advisory-only)
+// ============================================
+
+export type DraftToolDefinition = {
+  description: string
+  draftKind: 'troubleshootingDraft' | 'repairRequestDraft'
+  requiresEvidence: boolean
+  minEvidenceCount?: number
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  tool: Tool<any, any>
+}
+
+const DRAFT_TOOL_DEFINITIONS: Record<string, DraftToolDefinition> = {
+  generateTroubleshootingDraft: {
+    description: 'Generate a schema-validated troubleshooting advisory draft.',
+    draftKind: 'troubleshootingDraft',
+    requiresEvidence: true,
+    minEvidenceCount: 2,
+    tool: generateTroubleshootingDraft,
+  },
+}
+
+/** Exposed for contract-shape tests only. Do NOT import in production code. */
+export const DRAFT_TOOL_DEFINITIONS_FOR_TEST = DRAFT_TOOL_DEFINITIONS
+
+const DRAFT_TOOL_NAMES = new Set(Object.keys(DRAFT_TOOL_DEFINITIONS))
+
 const KNOWN_BUT_BLOCKED_TOOLS = new Set(['systemDiagnostics'])
 
-const ALLOWED_TOOL_NAMES = new Set(Object.keys(READ_ONLY_TOOL_DEFINITIONS))
+const ALLOWED_TOOL_NAMES = new Set([
+  ...Object.keys(READ_ONLY_TOOL_DEFINITIONS),
+  ...DRAFT_TOOL_NAMES,
+])
 
 /** Returns tool name → RPC function mapping for contract-locking tests. */
 export function getToolRpcMapping(): Record<string, string> {
@@ -163,19 +195,28 @@ export function buildToolRegistry({
   )
 
   const tools: ToolSet = {}
+
   for (const toolName of allowedRequestedTools) {
-    const definition = READ_ONLY_TOOL_DEFINITIONS[toolName]
-    if (!definition) {
+    // Draft tools: wire directly (no RPC proxy)
+    const draftDef = DRAFT_TOOL_DEFINITIONS[toolName]
+    if (draftDef) {
+      tools[toolName] = draftDef.tool
+      continue
+    }
+
+    // RPC-backed read-only tools
+    const rpcDef = READ_ONLY_TOOL_DEFINITIONS[toolName]
+    if (!rpcDef) {
       continue
     }
 
     tools[toolName] = tool({
-      description: definition.description,
-      inputSchema: definition.inputSchema,
+      description: rpcDef.description,
+      inputSchema: rpcDef.inputSchema,
       execute: async (input: Record<string, unknown>) =>
         executeRpcTool({
           request,
-          rpcFunction: definition.rpcFunction,
+          rpcFunction: rpcDef.rpcFunction,
           args: {
             ...input,
             p_don_vi: tenantId,
