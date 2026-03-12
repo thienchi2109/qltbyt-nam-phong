@@ -1,4 +1,4 @@
-import { tool, type Tool, type ToolSet } from 'ai'
+import { tool, type ToolSet } from 'ai'
 import { z } from 'zod'
 
 import { generateTroubleshootingDraft } from '@/lib/ai/draft/troubleshooting-tool'
@@ -100,8 +100,7 @@ export type DraftToolDefinition = {
   draftKind: 'troubleshootingDraft' | 'repairRequestDraft'
   requiresEvidence: boolean
   minEvidenceCount?: number
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  tool: Tool<any, any>
+  tool: ToolSet[string] | null
 }
 
 const DRAFT_TOOL_DEFINITIONS: Record<string, DraftToolDefinition> = {
@@ -118,7 +117,7 @@ const DRAFT_TOOL_DEFINITIONS: Record<string, DraftToolDefinition> = {
     draftKind: 'repairRequestDraft',
     requiresEvidence: true,
     minEvidenceCount: 1,
-    tool: null as never, // Not a model-callable tool; route invokes buildRepairRequestDraft() directly
+    tool: null, // Orchestration-driven: route invokes buildRepairRequestDraft() directly
   },
 }
 
