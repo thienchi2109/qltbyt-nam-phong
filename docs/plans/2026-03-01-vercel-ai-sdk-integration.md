@@ -1264,7 +1264,7 @@ Document these decisions explicitly:
 
 ### Task 4: AI Diagnostic & Remediation Draft Generation
 
-**Goal:** Add a read-only troubleshooting capability that produces a schema-validated advisory artifact for a specific equipment item. The output is inference-only guidance and must never trigger navigation, mutation, or repair-request creation.
+**Goal:** Add a schema-validated troubleshooting draft path for a specific equipment item. This path produces inference-only advisory output from existing factual evidence and must never trigger navigation, mutation, or repair-request creation.
 
 **Files:**
 - Create: `src/lib/ai/draft/troubleshooting-schema.ts`
@@ -1274,9 +1274,15 @@ Document these decisions explicitly:
 - Modify: `src/lib/ai/prompts/__tests__/system.test.ts`
 - Create: `src/app/api/chat/__tests__/route.troubleshooting.test.ts`
 
+**Architecture note:**
+- Keep factual RPC-backed tools in `READ_ONLY_TOOL_DEFINITIONS`.
+- Introduce a separate `DRAFT_TOOL_DEFINITIONS` registry for schema-validated draft artifacts.
+- Draft tools do **not** call `executeRpcTool(...)` directly; they consume existing approved factual context and return structured output only.
+- Draft tools do **not** access tables directly, do **not** bypass the RPC proxy, and do **not** perform mutations.
+
 **Task contract:**
-- The tool returns a `troubleshootingDraft` artifact, not a factual tool result and not a repair-request draft.
-- The tool may run only when the conversation already contains sufficient factual evidence from approved read-only tools.
+- The draft path returns a `troubleshootingDraft` artifact, not a factual tool result and not a repair-request draft.
+- The draft path may run only when the conversation already contains sufficient factual evidence from approved read-only tools.
 - Minimum required evidence:
   - `equipmentLookup` for the target device.
   - At least one relevant operational evidence source:
@@ -1284,7 +1290,7 @@ Document these decisions explicitly:
     - `maintenanceSummary` or `maintenancePlanLookup` for maintenance-cycle questions.
     - `usageHistory` if the answer depends on usage-based wear or frequency.
 - If sufficient evidence is missing, the assistant must not generate a troubleshooting draft. It must ask for clarification or retrieve the missing context first.
-- The tool remains advisory only; no create/update/delete RPC path is allowed.
+- The troubleshooting draft remains advisory only; no create/update/delete RPC path is allowed.
 
 **Output contract (semantic shape; field names may vary only if tests preserve semantics):**
 ```ts
@@ -1320,31 +1326,54 @@ Document these decisions explicitly:
 - The tool must not invent vendor details, spare parts, service units, fault codes, or unsupported repair procedures.
 - The tool must not imply that a repair request has been created.
 
-**Step 1: Write failing diagnostic tests (RED)**
-- generated troubleshooting draft validates against Zod schema.
-- troubleshooting generation is blocked unless sufficient factual context has already been retrieved.
-- tool correlates equipment context from approved factual tool outputs only.
-- output is explicitly marked as draft/inference guidance and is distinguishable from factual tool results.
-- troubleshooting flow never calls create/update/delete RPCs.
+**Step 1: Write the first failing diagnostic contract test (RED)**
+- Add a test that asserts a generated `troubleshootingDraft` validates against the Zod schema.
+- Keep it focused on one behavior: valid draft shape.
 
-**Step 2: Run the failing diagnostic tests**
+**Step 2: Run the first test and verify it fails for the right reason**
 
 Run:
 ```bash
 node scripts/npm-run.js run test:run -- "src/app/api/chat/__tests__/route.troubleshooting.test.ts"
 ```
-Expected: FAIL.
+Expected: FAIL because the schema/tool path does not exist yet, not because of a typo or broken test setup.
 
-**Step 3: Implement the minimal diagnostic tool and prompt contract (GREEN)**
+**Step 3: Implement the minimal schema to satisfy the first test (GREEN)**
+- Create `src/lib/ai/draft/troubleshooting-schema.ts` with the minimal `troubleshootingDraft` Zod contract.
+- Do not add extra fields beyond the documented contract.
+
+**Step 4: Re-run the test and verify it passes**
+
+Run:
+```bash
+node scripts/npm-run.js run test:run -- "src/app/api/chat/__tests__/route.troubleshooting.test.ts"
+```
+Expected: PASS for the schema-shape assertion.
+
+**Step 5: Write the next failing guardrail test (RED)**
+- Add a test that troubleshooting generation is blocked unless sufficient factual context has already been retrieved.
+- Keep this separate from schema validation.
+
+**Step 6: Run the test and verify it fails for the expected missing-guard reason**
+
+Run:
+```bash
+node scripts/npm-run.js run test:run -- "src/app/api/chat/__tests__/route.troubleshooting.test.ts"
+```
+Expected: FAIL because prerequisite evidence enforcement is not implemented yet.
+
+**Step 7: Implement the minimal diagnostic tool and prompt guard (GREEN)**
+- Create `src/lib/ai/draft/troubleshooting-tool.ts`.
 - Return a typed `troubleshootingDraft` object with:
   - `equipment_context`
   - `probable_causes`
   - `remediation_steps`
   - evidence metadata (`draftOnly`, `basedOnEvidence`, `evidenceRefs`)
-- Update `system.ts` to enforce prerequisite evidence before troubleshooting.
+- Update `src/lib/ai/tools/registry.ts` to register the draft path in `DRAFT_TOOL_DEFINITIONS`, separate from `READ_ONLY_TOOL_DEFINITIONS`.
+- Update `src/lib/ai/prompts/system.ts` to enforce prerequisite evidence before troubleshooting.
 - Keep the tool advisory only and keep all output clearly outside the mutation path.
 
-**Step 4: Re-run the diagnostic tests**
+**Step 8: Re-run the troubleshooting tests and verify they pass**
 
 Run:
 ```bash
@@ -1352,7 +1381,42 @@ node scripts/npm-run.js run test:run -- "src/app/api/chat/__tests__/route.troubl
 ```
 Expected: PASS.
 
-**Step 5: Commit**
+**Step 9: Write the final failing safety/regression tests (RED)**
+- Add tests that:
+  - equipment context is correlated only from approved factual tool outputs,
+  - output is explicitly marked as draft/inference guidance and distinguishable from factual tool results,
+  - troubleshooting flow never calls create/update/delete RPCs.
+
+**Step 10: Run the regression tests and verify they fail for missing behavior**
+
+Run:
+```bash
+node scripts/npm-run.js run test:run -- "src/app/api/chat/__tests__/route.troubleshooting.test.ts"
+```
+Expected: FAIL on the newly added regression assertions.
+
+**Step 11: Implement the minimal fixes for the regression tests (GREEN)**
+- Tighten prompt text and draft-tool behavior only where required by the failing tests.
+- Do not add extra orchestration or UI behavior.
+
+**Step 12: Re-run the full troubleshooting test file**
+
+Run:
+```bash
+node scripts/npm-run.js run test:run -- "src/app/api/chat/__tests__/route.troubleshooting.test.ts"
+```
+Expected: PASS.
+
+**Step 13: Refactor and run static checks**
+
+Run:
+```bash
+node scripts/npm-run.js run typecheck
+node scripts/npm-run.js run lint -- --file "src/lib/ai/draft/troubleshooting-tool.ts" --file "src/lib/ai/tools/registry.ts" --file "src/lib/ai/prompts/system.ts"
+```
+Expected: PASS.
+
+**Step 14: Commit**
 
 ```bash
 git add src/lib/ai/draft/troubleshooting-schema.ts src/lib/ai/draft/troubleshooting-tool.ts src/lib/ai/tools/registry.ts src/lib/ai/prompts/system.ts src/lib/ai/prompts/__tests__/system.test.ts src/app/api/chat/__tests__/route.troubleshooting.test.ts
@@ -1370,21 +1434,27 @@ git commit -m "feat: [US-009] - add schema-validated AI troubleshooting draft to
 - Modify: `src/lib/ai/prompts/system.ts`
 - Modify: `src/lib/ai/prompts/__tests__/system.test.ts`
 - Create: `src/app/api/chat/__tests__/route.draft-output.test.ts`
-- Modify: `src/components/assistant/AssistantMessageList.tsx` (or equivalent chat artifact renderer)
 - Modify: `src/app/(app)/repair-requests/_components/RepairRequestsContext.tsx`
 - Modify: `src/app/(app)/repair-requests/_components/RepairRequestsCreateSheet.tsx`
-- Modify: `src/app/(app)/repair-requests/_components/RepairRequestsPageClient.tsx`
+
+**Architecture note:**
+- Keep factual RPC-backed tools in `READ_ONLY_TOOL_DEFINITIONS`.
+- Register draft artifact builders separately in `DRAFT_TOOL_DEFINITIONS`.
+- The repair-request draft path must **not** be modeled as an RPC-backed factual lookup and must **not** call `executeRpcTool(...)`.
+- The repair-request draft path must consume explicit user intent plus already-approved factual context, then return schema-validated output only.
+- The draft path must not read tables directly, bypass the RPC proxy, or perform mutations.
+- Prefer orchestration-driven invocation for `repairRequestDraft` so generation happens only after explicit draft intent and sufficient evidence are both present.
 
 **Task contract:**
-- The tool returns a `repairRequestDraft` artifact, not a troubleshooting artifact and not a persisted request.
-- The tool may run only when:
+- The draft path returns a `repairRequestDraft` artifact, not a troubleshooting artifact and not a persisted request.
+- The draft path may run only when:
   1. the user explicitly expresses create/draft intent (for example: “tạo yêu cầu sửa chữa nháp”, “soạn giúp tôi phiếu sửa chữa”, “điền trước form sửa chữa”), and
   2. the conversation already contains sufficient factual context for the selected equipment.
 - Minimum required evidence:
   - `equipmentLookup` for the target equipment.
   - Optional supporting evidence from `repairSummary`, `maintenanceSummary`, or `usageHistory` if referenced in the draft rationale.
 - Any field not grounded in factual evidence or explicit user input must remain blank / null in the draft.
-- The tool must never call `repair_request_create`, `repair_request_update`, or any other mutation RPC.
+- The draft path must never call `repair_request_create`, `repair_request_update`, or any other mutation RPC.
 
 **Output contract (semantic shape; field names may vary only if tests preserve semantics):**
 ```ts
@@ -1411,22 +1481,17 @@ git commit -m "feat: [US-009] - add schema-validated AI troubleshooting draft to
 }
 ```
 
-**UX contract: Draft repair request → open dialog → hydrate form**
-- The assistant must render the repair-request draft as a structured draft card in chat.
-- The assistant must not auto-open the repair-request create sheet.
-- The assistant must not auto-fill or auto-submit the repair-request form.
-- The draft card must include:
-  - a visible draft label,
-  - a warning that the draft has not been submitted,
-  - a primary CTA such as `Dùng bản nháp này`.
-- Only when the user explicitly clicks `Dùng bản nháp này` may the app:
-  1. store the draft in repair-request UI state/context,
-  2. open `RepairRequestsCreateSheet`, and
-  3. hydrate the form with draft-backed values.
-- Final submission must still go through the existing repair-request create flow and user click on `Gửi yêu cầu`.
+**Phase boundary + deferred UI handoff:**
+- In Phase 3, Task 4.5 implements only:
+  - backend draft-generation contract,
+  - prompt/tool contract updates,
+  - repair-request context + create-sheet hydration support.
+- Draft card rendering in chat and the explicit CTA (`Dùng bản nháp này`) are deferred to Phase 4, when the assistant message rendering layer exists.
+- Phase 3 must not introduce a dependency on a chat message renderer component that does not yet exist.
 
-**Hydration contract for existing repair-request UI:**
+**Hydration contract for existing repair-request UI (implemented in Phase 3):**
 - Add assistant-draft state to `RepairRequestsContext` (or equivalent context) so the create sheet can consume a pending draft.
+- Expose an explicit context action to apply a repair-request draft into repair-request UI state.
 - Hydrate create-sheet fields on first open using the draft payload:
   - `formData.thiet_bi_id` → selected equipment
   - `formData.mo_ta_su_co` → issue description
@@ -1435,7 +1500,19 @@ git commit -m "feat: [US-009] - add schema-validated AI troubleshooting draft to
   - `formData.don_vi_thuc_hien` → repair unit
   - `formData.ten_don_vi_thue` → external company name
 - If the draft references equipment that cannot be resolved in the current tenant scope, open the create sheet without selected equipment and show a safe warning.
-- If the user closes the sheet without submitting, the draft remains visible in chat but is cleared from the active form state.
+- If the user closes the sheet without submitting, the draft is cleared from the active form state.
+
+**Phase 4 UI handoff contract (deferred implementation):**
+- Once the assistant message rendering layer exists, the repair-request draft must be rendered as a structured draft card in chat.
+- That draft card must include:
+  - a visible draft label,
+  - a warning that the draft has not been submitted,
+  - a primary CTA such as `Dùng bản nháp này`.
+- Only when the user explicitly clicks `Dùng bản nháp này` may the app:
+  1. store/apply the draft in repair-request UI state/context,
+  2. open `RepairRequestsCreateSheet`, and
+  3. hydrate the form with draft-backed values.
+- Final submission must still go through the existing repair-request create flow and user click on `Gửi yêu cầu`.
 
 **Behavioral rules:**
 - Any field not grounded in evidence must remain unset rather than inferred.
@@ -1443,30 +1520,82 @@ git commit -m "feat: [US-009] - add schema-validated AI troubleshooting draft to
 - The chat artifact must clearly state that the draft is reviewable/editable and has not been sent.
 - The assistant must not imply that a repair request already exists in the system.
 
-**Step 1: Write failing draft tests (RED)**
-- generated repair-request draft validates against strict Zod schema.
-- missing factual data leaves optional or unresolved fields unset.
-- draft flow never calls create/update/delete RPCs.
-- output carries explicit draft metadata and is distinguishable from factual tool output and troubleshooting drafts.
-- clicking `Dùng bản nháp này` opens the repair-request create sheet and hydrates the expected fields.
-- the create sheet still requires explicit user submission; draft application alone does not call create RPC.
+**Step 1: Write the first failing draft artifact test (RED)**
+- Add a test that asserts `repairRequestDraft` validates against the strict Zod schema.
+- Keep it focused on one behavior: valid artifact shape.
 
-**Step 2: Run the failing draft tests**
+**Step 2: Run the first test and verify it fails for the right reason**
 
 Run:
 ```bash
 node scripts/npm-run.js run test:run -- "src/app/api/chat/__tests__/route.draft-output.test.ts"
 ```
-Expected: FAIL.
+Expected: FAIL because the draft schema/tool path does not exist yet, not because of test setup problems.
 
-**Step 3: Implement the minimal draft tool + UI handoff (GREEN)**
+**Step 3: Implement the minimal draft schema (GREEN)**
+- Create `src/lib/ai/draft/repair-request-draft-schema.ts` with only the documented artifact fields.
+- Do not add UI-handoff behavior here.
+
+**Step 4: Re-run the test and verify it passes**
+
+Run:
+```bash
+node scripts/npm-run.js run test:run -- "src/app/api/chat/__tests__/route.draft-output.test.ts"
+```
+Expected: PASS for the schema-shape assertion.
+
+**Step 5: Write the next failing generation guard tests (RED)**
+- Add tests that:
+  - the draft path requires explicit draft intent,
+  - missing factual data leaves optional or unresolved fields unset,
+  - the draft path never calls create/update/delete RPCs,
+  - output carries explicit draft metadata and is distinguishable from factual tool output and troubleshooting drafts.
+
+**Step 6: Run the generation tests and verify they fail for the expected missing behavior**
+
+Run:
+```bash
+node scripts/npm-run.js run test:run -- "src/app/api/chat/__tests__/route.draft-output.test.ts"
+```
+Expected: FAIL because draft-generation guardrails are not implemented yet.
+
+**Step 7: Implement the minimal draft generator path (GREEN)**
+- Create `src/lib/ai/draft/repair-request-draft-tool.ts`.
 - Return a typed `repairRequestDraft` object aligned with the repair-request create form.
 - Attach explicit `draftOnly: true` metadata and review guidance.
-- Update `system.ts` output-contract section to enforce “Draft does not submit” language and explicit `Fact/Inference/Draft` labels; bump version when behavior changes.
-- Render a structured draft card in chat with an explicit user CTA.
-- Wire the CTA to open `RepairRequestsCreateSheet` and hydrate form state through repair-request UI context only.
+- Update `src/lib/ai/tools/registry.ts` to register the draft path in `DRAFT_TOOL_DEFINITIONS`, separate from `READ_ONLY_TOOL_DEFINITIONS`.
+- Update `src/lib/ai/prompts/system.ts` output-contract section to enforce “Draft does not submit” language and explicit `Fact/Inference/Draft` labels; bump version when behavior changes.
+- Defer chat draft-card rendering and CTA wiring to Phase 4.
 
-**Step 4: Re-run the draft tests**
+**Step 8: Re-run the draft-generation tests and verify they pass**
+
+Run:
+```bash
+node scripts/npm-run.js run test:run -- "src/app/api/chat/__tests__/route.draft-output.test.ts"
+```
+Expected: PASS for artifact-generation behavior.
+
+**Step 9: Write the failing UI hydration tests (RED)**
+- Add tests that:
+  - applying a repair-request draft through repair-request UI state hydrates the expected create-sheet fields,
+  - unresolved equipment does not auto-select an invalid device,
+  - the create sheet still requires explicit user submission; draft application alone does not call create RPC,
+  - no dependency on chat draft-card rendering is introduced in Phase 3 tests.
+
+**Step 10: Run the hydration tests and verify they fail for the right reason**
+
+Run:
+```bash
+node scripts/npm-run.js run test:run -- "src/app/api/chat/__tests__/route.draft-output.test.ts"
+```
+Expected: FAIL because context/sheet hydration support is not implemented yet.
+
+**Step 11: Implement the minimal context + sheet hydration support (GREEN)**
+- Add repair-request context support for storing/applying a pending assistant draft.
+- Wire the existing create sheet to hydrate form state from the pending repair-request draft.
+- Clear draft-backed form state safely when the sheet closes without submission.
+
+**Step 12: Re-run the full draft-output test file**
 
 Run:
 ```bash
@@ -1474,20 +1603,20 @@ node scripts/npm-run.js run test:run -- "src/app/api/chat/__tests__/route.draft-
 ```
 Expected: PASS.
 
-**Step 5: Refactor + static checks**
+**Step 13: Refactor and run static checks**
 
 Run:
 ```bash
 node scripts/npm-run.js run typecheck
-node scripts/npm-run.js run lint -- --file "src/lib/ai/draft/repair-request-draft-tool.ts"
+node scripts/npm-run.js run lint -- --file "src/lib/ai/draft/repair-request-draft-tool.ts" --file "src/app/(app)/repair-requests/_components/RepairRequestsContext.tsx" --file "src/app/(app)/repair-requests/_components/RepairRequestsCreateSheet.tsx"
 ```
 Expected: PASS.
 
-**Step 6: Commit**
+**Step 14: Commit**
 
 ```bash
-git add src/lib/ai/draft/repair-request-draft-schema.ts src/lib/ai/draft/repair-request-draft-tool.ts src/lib/ai/tools/registry.ts src/lib/ai/prompts/system.ts src/lib/ai/prompts/__tests__/system.test.ts src/app/api/chat/__tests__/route.draft-output.test.ts src/components/assistant/AssistantMessageList.tsx src/app/(app)/repair-requests/_components/RepairRequestsContext.tsx src/app/(app)/repair-requests/_components/RepairRequestsCreateSheet.tsx src/app/(app)/repair-requests/_components/RepairRequestsPageClient.tsx
-git commit -m "feat: [US-006] - add schema-validated repair-request draft artifact with explicit UI handoff"
+git add src/lib/ai/draft/repair-request-draft-schema.ts src/lib/ai/draft/repair-request-draft-tool.ts src/lib/ai/tools/registry.ts src/lib/ai/prompts/system.ts src/lib/ai/prompts/__tests__/system.test.ts src/app/api/chat/__tests__/route.draft-output.test.ts src/app/(app)/repair-requests/_components/RepairRequestsContext.tsx src/app/(app)/repair-requests/_components/RepairRequestsCreateSheet.tsx
+git commit -m "feat: [US-006] - add schema-validated repair-request draft artifact and sheet hydration"
 ```
 
 ---
