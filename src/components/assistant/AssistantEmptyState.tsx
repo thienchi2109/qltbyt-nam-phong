@@ -28,11 +28,8 @@ export function AssistantEmptyState({
 
             <div className="space-y-1">
                 <h3 className="text-sm font-semibold text-foreground">
-                    Xin chào! 👋
+                    Xin chào! Tôi có thể giúp gì cho bạn hôm nay?
                 </h3>
-                <p className="text-xs text-muted-foreground leading-relaxed">
-                    Tôi có thể giúp bạn tra cứu thiết bị, định mức, bảo trì, và nhiều hơn nữa.
-                </p>
             </div>
 
             <div className="w-full max-w-[280px]">

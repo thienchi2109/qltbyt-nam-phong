@@ -5,10 +5,10 @@ import { describe, expect, it, vi } from 'vitest'
 import { AssistantEmptyState } from '../AssistantEmptyState'
 
 describe('AssistantEmptyState', () => {
-    it('renders welcome message', () => {
+    it('renders the Phase 4 empty-state copy', () => {
         render(<AssistantEmptyState onSuggestionClick={vi.fn()} isReady={true} />)
 
-        expect(screen.getByText(/xin chào/i)).toBeInTheDocument()
+        expect(screen.getByText('Xin chào! Tôi có thể giúp gì cho bạn hôm nay?')).toBeInTheDocument()
     })
 
     it('renders the Sparkles icon', () => {
