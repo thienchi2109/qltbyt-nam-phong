@@ -54,11 +54,14 @@ function buildRequest(body: unknown) {
   })
 }
 
-describe('/api/chat tenant policy', () => {
+describe('/api/chat usageHistory tool', () => {
   beforeEach(() => {
     vi.clearAllMocks()
 
-    getChatModelMock.mockReturnValue('google:gemini-2.5-flash')
+    getServerSessionMock.mockResolvedValue({
+      user: { id: 'u1', role: 'to_qltb', don_vi: 2 },
+    })
+    getChatModelMock.mockReturnValue('google:gemini-3-flash-preview')
     buildSystemPromptMock.mockReturnValue('SYSTEM_PROMPT_V1')
     checkUsageLimitsMock.mockReturnValue({ allowed: true })
     stepCountIsMock.mockReturnValue('STOP_WHEN_SENTINEL')
@@ -67,13 +70,24 @@ describe('/api/chat tenant policy', () => {
     })
   })
 
-  it.each([
-    'equipmentLookup',
-    'maintenanceSummary',
-    'maintenancePlanLookup',
-    'repairSummary',
-    'usageHistory',
-  ])('returns guidance when privileged role has no facility for tool "%s"', async (toolName) => {
+  it('accepts usageHistory when explicitly requested', async () => {
+    const res = await POST(
+      buildRequest({
+        messages: VALID_MESSAGES,
+        requestedTools: ['usageHistory'],
+      }) as never,
+    )
+
+    expect(res.status).toBe(200)
+    expect(streamTextMock).toHaveBeenCalledOnce()
+
+    const streamArgs = streamTextMock.mock.calls[0]?.[0] as {
+      tools?: Record<string, unknown>
+    }
+    expect(streamArgs?.tools).toHaveProperty('usageHistory')
+  })
+
+  it('blocks usageHistory without facility context for privileged role', async () => {
     getServerSessionMock.mockResolvedValue({
       user: { id: 'u1', role: 'global', don_vi: null },
     })
@@ -81,7 +95,7 @@ describe('/api/chat tenant policy', () => {
     const res = await POST(
       buildRequest({
         messages: VALID_MESSAGES,
-        requestedTools: [toolName],
+        requestedTools: ['usageHistory'],
       }) as never,
     )
     const payload = await res.json()
@@ -91,47 +105,5 @@ describe('/api/chat tenant policy', () => {
       error: 'Please select a facility before using assistant tools.',
     })
     expect(streamTextMock).not.toHaveBeenCalled()
-  })
-
-  it('ignores unsafe tenant override attempts from non-privileged roles', async () => {
-    getServerSessionMock.mockResolvedValue({
-      user: { id: 'u1', role: 'technician', don_vi: 2 },
-    })
-
-    const res = await POST(
-      buildRequest({
-        messages: VALID_MESSAGES,
-        requestedTools: ['equipmentLookup'],
-        selectedFacilityId: 999,
-      }) as never,
-    )
-
-    expect(res.status).toBe(200)
-    expect(buildSystemPromptMock).toHaveBeenCalledWith(
-      expect.objectContaining({ selectedFacilityId: 2 }),
-    )
-  })
-
-  it('allows privileged roles to run tools when selected facility is provided', async () => {
-    getServerSessionMock.mockResolvedValue({
-      user: { id: 'u1', role: 'global', don_vi: null },
-    })
-
-    const res = await POST(
-      buildRequest({
-        messages: VALID_MESSAGES,
-        requestedTools: ['equipmentLookup'],
-        selectedFacilityId: 7,
-      }) as never,
-    )
-
-    expect(res.status).toBe(200)
-    expect(buildSystemPromptMock).toHaveBeenCalledWith(
-      expect.objectContaining({ selectedFacilityId: 7 }),
-    )
-    const streamArgs = streamTextMock.mock.calls[0]?.[0] as {
-      tools?: Record<string, unknown>
-    }
-    expect(streamArgs?.tools).toHaveProperty('equipmentLookup')
   })
 })

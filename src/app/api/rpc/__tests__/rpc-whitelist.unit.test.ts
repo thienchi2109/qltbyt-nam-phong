@@ -22,20 +22,27 @@ describe('RPC proxy whitelist', () => {
     await expect(res.json()).resolves.toEqual({ error: 'Content-Length header required' })
   })
 
-  it('allows ai_equipment_lookup through whitelist checks', async () => {
-    const res = await invokeRpcProxy('ai_equipment_lookup')
+  it.each([
+    'ai_equipment_lookup',
+    'ai_maintenance_summary',
+    'ai_maintenance_plan_lookup',
+    'ai_repair_summary',
+    'ai_usage_summary',
+    'ai_attachment_metadata',
+    'ai_device_quota_lookup',
+    'ai_quota_compliance_summary',
+  ])('allows AI RPC "%s" through whitelist checks', async (fn) => {
+    const res = await invokeRpcProxy(fn)
 
     // Whitelist check passed; next guard is missing Content-Length.
     expect(res.status).toBe(411)
     await expect(res.json()).resolves.toEqual({ error: 'Content-Length header required' })
   })
 
-  it('allows ai_maintenance_plan_lookup through whitelist checks', async () => {
-    const res = await invokeRpcProxy('ai_maintenance_plan_lookup')
-
-    // Whitelist check passed; next guard is missing Content-Length.
-    expect(res.status).toBe(411)
-    await expect(res.json()).resolves.toEqual({ error: 'Content-Length header required' })
+  it('rejects non-existent AI RPC', async () => {
+    const res = await invokeRpcProxy('ai_does_not_exist')
+    expect(res.status).toBe(403)
+    await expect(res.json()).resolves.toEqual({ error: 'Function not allowed' })
   })
 
   it('allows dinh_muc_unified_import through whitelist checks', async () => {

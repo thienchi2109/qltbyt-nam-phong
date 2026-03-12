@@ -404,7 +404,7 @@ This project is indexed with **GitLab Knowledge Graph MCP**. You have access to 
 ❌ Don't skip GKG for discovery/impact tasks without a stated reason
 
 ## SQL Code Generation Checklist
-
+**Project ID**: cdthersvldpnlbvpufrr (Supabase MCP)
 Before finalizing any data-access code, verify each item:
 QUERY REVIEW CHECKLIST
 ──────────────────────

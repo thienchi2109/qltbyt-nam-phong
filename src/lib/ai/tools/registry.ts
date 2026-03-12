@@ -50,11 +50,59 @@ const READ_ONLY_TOOL_DEFINITIONS: Record<string, ReadOnlyToolDefinition> = {
       })
       .strict(),
   },
+  usageHistory: {
+    description:
+      'Retrieve usage summary evidence for a specific equipment item from usage logs.',
+    rpcFunction: 'ai_usage_summary',
+    inputSchema: z
+      .object({
+        thiet_bi_id: z.number().int().positive(),
+        p_months: z.number().int().min(1).max(24).optional(),
+      })
+      .strict(),
+  },
+  attachmentLookup: {
+    description:
+      'Lookup attachment metadata (file names, access types, URLs) for a specific equipment item. Returns normalized access contract.',
+    rpcFunction: 'ai_attachment_metadata',
+    inputSchema: z
+      .object({
+        thiet_bi_id: z.number().int().positive(),
+      })
+      .strict(),
+  },
+  deviceQuotaLookup: {
+    description:
+      'Check quota status for a specific equipment item against the active quota decision.',
+    rpcFunction: 'ai_device_quota_lookup',
+    inputSchema: z
+      .object({
+        thiet_bi_id: z.number().int().positive(),
+      })
+      .strict(),
+  },
+  quotaComplianceSummary: {
+    description:
+      'Get facility-level device quota compliance overview from the active decision.',
+    rpcFunction: 'ai_quota_compliance_summary',
+    inputSchema: z.object({}).strict(),
+  },
 }
 
 const KNOWN_BUT_BLOCKED_TOOLS = new Set(['systemDiagnostics'])
 
 const ALLOWED_TOOL_NAMES = new Set(Object.keys(READ_ONLY_TOOL_DEFINITIONS))
+
+/** Returns tool name → RPC function mapping for contract-locking tests. */
+export function getToolRpcMapping(): Record<string, string> {
+  return Object.fromEntries(
+    Object.entries(READ_ONLY_TOOL_DEFINITIONS).map(([k, v]) => [k, v.rpcFunction]),
+  )
+}
+
+/** Exposed for contract-shape tests only. Do NOT import in production code. */
+export const READ_ONLY_TOOL_DEFINITIONS_FOR_TEST = READ_ONLY_TOOL_DEFINITIONS
+
 const KNOWN_TOOL_NAMES = new Set([
   ...Object.keys(READ_ONLY_TOOL_DEFINITIONS),
   ...KNOWN_BUT_BLOCKED_TOOLS,

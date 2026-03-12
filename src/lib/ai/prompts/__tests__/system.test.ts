@@ -30,18 +30,22 @@ describe('system prompt module', () => {
     expect(prompt).toContain('Inference')
     expect(prompt).toContain('Draft')
 
-    // Multimodal & attachment policy
+    // Multimodal policy
     expect(prompt).toContain('multimodal')
-    expect(prompt).toContain('signed URL')
 
     // Domain knowledge
     expect(prompt).toContain('thiet_bi')
     expect(prompt).toContain('yeu_cau_sua_chua')
     expect(prompt).toContain('ke_hoach')
+    expect(prompt).toContain('dinh_muc')
 
     // RAG-first troubleshooting
     expect(prompt).toContain('equipmentLookup')
     expect(prompt).toContain('repairSummary')
+    expect(prompt).toContain('usageHistory')
+    expect(prompt).toContain('attachmentLookup')
+    expect(prompt).toContain('deviceQuotaLookup')
+    expect(prompt).toContain('quotaComplianceSummary')
 
     // Safety guardrails
     expect(prompt).toContain('an toàn bệnh nhân')
@@ -98,5 +102,63 @@ describe('system prompt module', () => {
     expect(prompt).toContain('unknown')
     expect(prompt).toContain('Chưa xác định')
     expect(prompt).toContain('unspecified')
+  })
+
+  it('claims usage-frequency analysis backed by usageHistory tool', () => {
+    const prompt = buildSystemPrompt({
+      role: 'admin',
+      userId: 'u1',
+      selectedFacilityId: 2,
+    })
+
+    // Usage-history tool is now shipped.
+    // Prompt should reference usageHistory for usage analysis.
+    expect(prompt).toContain('usageHistory')
+    expect(prompt).toContain('tần suất sử dụng')
+  })
+
+  it('describes normalized access contract via attachmentLookup tool', () => {
+    const prompt = buildSystemPrompt({
+      role: 'admin',
+      userId: 'u1',
+      selectedFacilityId: 2,
+    })
+
+    // Attachment tool describes normalized access contract
+    expect(prompt).toContain('attachmentLookup')
+    expect(prompt).toContain('access_type')
+    expect(prompt).toContain('external_url')
+    expect(prompt).toContain('storage_path')
+    // Should NOT claim signed URL access
+    expect(prompt).not.toContain('signed URL')
+    // Should describe both access types, not hardcode one
+    expect(prompt).toContain('metadata')
+  })
+
+  it('prompt version is v2.0.0 after quota tools', () => {
+    expect(SYSTEM_PROMPT_VERSION).toBe('v2.0.0')
+  })
+
+  it('contains quota anti-hallucination rules', () => {
+    const prompt = buildSystemPrompt({
+      role: 'to_qltb',
+      userId: 'u1',
+      selectedFacilityId: 5,
+    })
+
+    // All 4 status enums must be documented
+    expect(prompt).toContain('inQuotaCatalog')
+    expect(prompt).toContain('notMapped')
+    expect(prompt).toContain('notInApprovedCatalog')
+    expect(prompt).toContain('insufficientEvidence')
+
+    // Anti-hallucination constraint
+    expect(prompt).toContain('TUYỆT ĐỐI KHÔNG tự suy luận')
+    expect(prompt).toContain('KHÔNG làm tròn, ước tính, hoặc bịa số liệu')
+
+    // Facility-scoped scope semantics for privileged users
+    expect(prompt).toContain('một cơ sở duy nhất')
+    expect(prompt).toContain('scope.label')
+    expect(prompt).toContain('chưa hỗ trợ tổng hợp nhiều cơ sở')
   })
 })
