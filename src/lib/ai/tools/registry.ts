@@ -210,7 +210,9 @@ export function buildToolRegistry({
     // Draft tools: wire directly (no RPC proxy)
     const draftDef = DRAFT_TOOL_DEFINITIONS[toolName]
     if (draftDef) {
-      tools[toolName] = draftDef.tool
+      if (draftDef.tool) {
+        tools[toolName] = draftDef.tool
+      }
       continue
     }
 

@@ -165,6 +165,15 @@ describe('troubleshooting draft evidence guard', () => {
     ).rejects.toThrow('at least 2')
   })
 
+  it('rejects duplicated sources that appear to meet minimum count', async () => {
+    await expect(
+      generateTroubleshootingDraft.execute!(
+        { ...VALID_TOOL_INPUT, evidence_refs: ['equipmentLookup', 'equipmentLookup'] },
+        { toolCallId: 't1', messages: [], abortSignal: undefined as never },
+      ),
+    ).rejects.toThrow('at least 2')
+  })
+
   it('succeeds with valid evidence (equipmentLookup + operational source)', async () => {
     const result = await generateTroubleshootingDraft.execute!(
       VALID_TOOL_INPUT,

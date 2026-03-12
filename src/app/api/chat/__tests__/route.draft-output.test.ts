@@ -8,6 +8,7 @@ import {
 import {
   DRAFT_TOOL_DEFINITIONS_FOR_TEST,
   READ_ONLY_TOOL_DEFINITIONS_FOR_TEST,
+  buildToolRegistry,
   validateRequestedTools,
 } from '@/lib/ai/tools/registry'
 import {
@@ -277,6 +278,28 @@ describe('repairRequestDraft safety', () => {
   it('validateRequestedTools accepts draft tool names', () => {
     const result = validateRequestedTools(['generateRepairRequestDraft'])
     expect(result.ok).toBe(true)
+  })
+
+  it('buildToolRegistry excludes orchestration-only draft tools from the runtime ToolSet', () => {
+    const registry = buildToolRegistry({
+      request: new Request('http://localhost/api/chat', { method: 'POST' }),
+      tenantId: 2,
+      userId: 'u1',
+      requestedTools: ['generateRepairRequestDraft'],
+    })
+
+    expect(registry).not.toHaveProperty('generateRepairRequestDraft')
+  })
+
+  it('buildToolRegistry still includes callable draft tools', () => {
+    const registry = buildToolRegistry({
+      request: new Request('http://localhost/api/chat', { method: 'POST' }),
+      tenantId: 2,
+      userId: 'u1',
+      requestedTools: ['generateTroubleshootingDraft'],
+    })
+
+    expect(registry).toHaveProperty('generateTroubleshootingDraft')
   })
 
   it('system prompt version is v2.2.0', () => {

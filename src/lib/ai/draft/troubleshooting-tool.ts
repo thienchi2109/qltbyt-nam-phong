@@ -71,7 +71,7 @@ export const generateTroubleshootingDraft = tool({
   outputSchema: troubleshootingDraftSchema,
   execute: async (input): Promise<TroubleshootingDraft> => {
     // ── Runtime evidence guard ──────────────────────────────────
-    const validRefs = input.evidence_refs.filter(ref =>
+    const validRefs = [...new Set(input.evidence_refs)].filter(ref =>
       VALID_EVIDENCE_SOURCES.has(ref),
     )
 

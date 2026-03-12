@@ -1,0 +1,245 @@
+import * as React from 'react'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+
+const mocks = vi.hoisted(() => ({
+  callRpc: vi.fn(),
+  closeAllDialogs: vi.fn(),
+  createMutate: vi.fn(),
+}))
+
+const contextValue = {
+  dialogState: {
+    isCreateOpen: true,
+    preSelectedEquipment: null,
+  },
+  closeAllDialogs: mocks.closeAllDialogs,
+  createMutation: {
+    mutate: mocks.createMutate,
+    isPending: false,
+  },
+  user: { full_name: 'Test User', username: 'tester' },
+  canSetRepairUnit: true,
+  assistantDraft: null,
+}
+
+vi.mock('@/lib/rpc-client', () => ({
+  callRpc: mocks.callRpc,
+}))
+
+vi.mock('@/hooks/use-media-query', () => ({
+  useMediaQuery: () => false,
+}))
+
+vi.mock('../_hooks/useRepairRequestsContext', () => ({
+  useRepairRequestsContext: () => contextValue,
+}))
+
+vi.mock('@/components/ui/sheet', () => ({
+  Sheet: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+  SheetContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+  SheetDescription: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+  SheetHeader: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+  SheetTitle: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+}))
+
+vi.mock('@/components/ui/button', () => ({
+  Button: ({ children, onClick, type = 'button', disabled, ...props }: React.ButtonHTMLAttributes<HTMLButtonElement>) => (
+    <button type={type} onClick={onClick} disabled={disabled} {...props}>
+      {children}
+    </button>
+  ),
+}))
+
+vi.mock('@/components/ui/input', () => ({
+  Input: (props: React.InputHTMLAttributes<HTMLInputElement>) => <input {...props} />,
+}))
+
+vi.mock('@/components/ui/textarea', () => ({
+  Textarea: (props: React.TextareaHTMLAttributes<HTMLTextAreaElement>) => <textarea {...props} />,
+}))
+
+vi.mock('@/components/ui/label', () => ({
+  Label: ({ children, htmlFor }: { children: React.ReactNode; htmlFor?: string }) => <label htmlFor={htmlFor}>{children}</label>,
+}))
+
+vi.mock('@/components/ui/popover', () => ({
+  Popover: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+  PopoverTrigger: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+  PopoverContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+}))
+
+vi.mock('@/components/ui/calendar', () => ({
+  Calendar: ({ onSelect }: { onSelect?: (date: Date | undefined) => void }) => (
+    <button type="button" onClick={() => onSelect?.(new Date(2026, 2, 20))}>
+      Pick calendar date
+    </button>
+  ),
+}))
+
+vi.mock('@/components/ui/select', () => ({
+  Select: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+  SelectTrigger: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+  SelectValue: ({ children }: { children?: React.ReactNode }) => <div>{children}</div>,
+  SelectContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+  SelectItem: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+}))
+
+import { RepairRequestsCreateSheet } from '../_components/RepairRequestsCreateSheet'
+
+function setAssistantDraft(draft: typeof contextValue.assistantDraft) {
+  contextValue.assistantDraft = draft
+}
+
+describe('RepairRequestsCreateSheet assistant draft hydration', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    contextValue.dialogState.isCreateOpen = true
+    contextValue.dialogState.preSelectedEquipment = null
+    setAssistantDraft(null)
+  })
+
+  it('hydrates non-equipment draft fields even before equipment options are loaded', async () => {
+    mocks.callRpc.mockImplementation(async ({ args }: { args: { p_q?: string } }) => {
+      if (args.p_q === 'Máy siêu âm A (TB-001)') {
+        return [
+          {
+            id: 101,
+            ma_thiet_bi: 'TB-001',
+            ten_thiet_bi: 'Máy siêu âm A',
+            khoa_phong_quan_ly: 'CDHA',
+          },
+        ]
+      }
+      return []
+    })
+
+    setAssistantDraft({
+      equipment: {
+        thiet_bi_id: 101,
+        ma_thiet_bi: 'TB-001',
+        ten_thiet_bi: 'Máy siêu âm A',
+      },
+      formData: {
+        thiet_bi_id: 101,
+        mo_ta_su_co: 'Mất nguồn đột ngột',
+        hang_muc_sua_chua: 'Kiểm tra bo nguồn',
+        ngay_mong_muon_hoan_thanh: '2026-03-20',
+        don_vi_thuc_hien: 'thue_ngoai',
+        ten_don_vi_thue: 'Công ty ABC',
+      },
+      missingFields: [],
+      reviewNotes: [],
+    })
+
+    render(<RepairRequestsCreateSheet />)
+
+    await waitFor(() => {
+      expect(screen.getByLabelText('Mô tả sự cố')).toHaveValue('Mất nguồn đột ngột')
+    })
+
+    expect(screen.getByLabelText('Các hạng mục yêu cầu sửa chữa')).toHaveValue('Kiểm tra bo nguồn')
+    expect(screen.getByLabelText('Tên đơn vị được thuê')).toHaveValue('Công ty ABC')
+    expect(screen.getByText('20/03/2026')).toBeInTheDocument()
+  })
+
+  it('does not shift the desired date when hydrating a date-only string', async () => {
+    const RealDate = Date
+
+    class ShiftedDate extends RealDate {
+      constructor(...args: ConstructorParameters<typeof Date>) {
+        if (args.length === 1 && typeof args[0] === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(args[0])) {
+          super(`${args[0]}T00:00:00.000Z`)
+          this.setHours(this.getHours() - 7)
+          return
+        }
+        // @ts-expect-error test double constructor forwarding
+        super(...args)
+      }
+
+      static now() {
+        return RealDate.now()
+      }
+
+      static parse(value: string) {
+        return RealDate.parse(value)
+      }
+
+      static UTC(...args: Parameters<typeof Date.UTC>) {
+        return RealDate.UTC(...args)
+      }
+    }
+
+    vi.stubGlobal('Date', ShiftedDate)
+    mocks.callRpc.mockResolvedValue([])
+
+    setAssistantDraft({
+      equipment: {},
+      formData: {
+        mo_ta_su_co: 'Lỗi màn hình',
+        hang_muc_sua_chua: 'Kiểm tra hiển thị',
+        ngay_mong_muon_hoan_thanh: '2026-03-20',
+      },
+      missingFields: [],
+      reviewNotes: [],
+    })
+
+    render(<RepairRequestsCreateSheet />)
+
+    await waitFor(() => {
+      expect(screen.getByText('20/03/2026')).toBeInTheDocument()
+    })
+
+    vi.unstubAllGlobals()
+  })
+
+  it('clears unresolved draft warning after manual equipment selection', async () => {
+    mocks.callRpc.mockImplementation(async ({ args }: { args: { p_q?: string } }) => {
+      if (args.p_q === 'Máy siêu âm') {
+        return [
+          {
+            id: 202,
+            ma_thiet_bi: 'TB-202',
+            ten_thiet_bi: 'Máy siêu âm B',
+            khoa_phong_quan_ly: 'CDHA',
+          },
+        ]
+      }
+      return []
+    })
+
+    setAssistantDraft({
+      equipment: {
+        thiet_bi_id: 999,
+        ma_thiet_bi: 'TB-999',
+        ten_thiet_bi: 'Thiết bị không tồn tại',
+      },
+      formData: {
+        mo_ta_su_co: 'Lỗi cần chọn lại thiết bị',
+        hang_muc_sua_chua: 'Kiểm tra lại',
+      },
+      missingFields: [],
+      reviewNotes: [],
+    })
+
+    render(<RepairRequestsCreateSheet />)
+
+    await waitFor(() => {
+      expect(screen.getByText('⚠️ Thiết bị trong bản nháp không tìm thấy ở cơ sở hiện tại. Vui lòng chọn thiết bị thủ công.')).toBeInTheDocument()
+    })
+
+    fireEvent.change(screen.getByLabelText('Thiết bị'), {
+      target: { value: 'Máy siêu âm' },
+    })
+
+    await waitFor(() => {
+      expect(screen.getByText('Máy siêu âm B')).toBeInTheDocument()
+    })
+
+    fireEvent.click(screen.getByText('Máy siêu âm B'))
+
+    await waitFor(() => {
+      expect(screen.queryByText('⚠️ Thiết bị trong bản nháp không tìm thấy ở cơ sở hiện tại. Vui lòng chọn thiết bị thủ công.')).not.toBeInTheDocument()
+    })
+  })
+})
