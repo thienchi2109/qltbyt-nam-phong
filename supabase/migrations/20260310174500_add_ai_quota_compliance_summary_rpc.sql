@@ -98,7 +98,10 @@ BEGIN
     END IF;
     v_effective_don_vi := p_don_vi;
   ELSE
-    -- Local user: force to own facility
+    -- Local user: reject mismatched facility override, then force own facility
+    IF p_don_vi IS NOT NULL AND p_don_vi IS DISTINCT FROM v_don_vi THEN
+      RAISE EXCEPTION 'don_vi claim mismatch' USING ERRCODE = '42501';
+    END IF;
     v_effective_don_vi := v_don_vi;
   END IF;
 

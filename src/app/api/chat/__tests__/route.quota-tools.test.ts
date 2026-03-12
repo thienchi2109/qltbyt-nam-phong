@@ -1,3 +1,6 @@
+import { readFileSync } from 'node:fs'
+import path from 'node:path'
+
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const getServerSessionMock = vi.fn()
@@ -142,5 +145,18 @@ describe('/api/chat quota tools', () => {
       error: 'Please select a facility before using assistant tools.',
     })
     expect(streamTextMock).not.toHaveBeenCalled()
+  })
+
+  it('quota summary migration rejects mismatched p_don_vi for local users', () => {
+    const migrationPath = path.resolve(
+      process.cwd(),
+      'supabase/migrations/20260310174500_add_ai_quota_compliance_summary_rpc.sql',
+    )
+    const migrationSource = readFileSync(migrationPath, 'utf8')
+
+    expect(migrationSource).toContain(
+      "IF p_don_vi IS NOT NULL AND p_don_vi IS DISTINCT FROM v_don_vi THEN",
+    )
+    expect(migrationSource).toContain("RAISE EXCEPTION 'don_vi claim mismatch'")
   })
 })
