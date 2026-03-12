@@ -107,3 +107,54 @@ describe('/api/chat attachmentLookup tool', () => {
     expect(streamTextMock).not.toHaveBeenCalled()
   })
 })
+
+describe('attachmentLookup contract shape', () => {
+  it('maps to ai_attachment_metadata RPC', async () => {
+    const { getToolRpcMapping } = await import('@/lib/ai/tools/registry')
+    const mapping = getToolRpcMapping()
+    expect(mapping.attachmentLookup).toBe('ai_attachment_metadata')
+  })
+
+  it('input schema only accepts thiet_bi_id', async () => {
+    const { READ_ONLY_TOOL_DEFINITIONS_FOR_TEST } = await import(
+      '@/lib/ai/tools/registry'
+    )
+    const def = READ_ONLY_TOOL_DEFINITIONS_FOR_TEST.attachmentLookup
+    expect(def).toBeDefined()
+
+    const schema = def.inputSchema as import('zod').ZodObject<Record<string, unknown>>
+    const keys = Object.keys(schema.shape)
+    expect(keys).toEqual(['thiet_bi_id'])
+  })
+
+  it('description reflects normalized access contract', async () => {
+    const { READ_ONLY_TOOL_DEFINITIONS_FOR_TEST } = await import(
+      '@/lib/ai/tools/registry'
+    )
+    const def = READ_ONLY_TOOL_DEFINITIONS_FOR_TEST.attachmentLookup
+
+    // Must mention normalized/access contract, not just "external links"
+    expect(def.description).toContain('metadata')
+    expect(def.description).toContain('access')
+    // Must NOT reference internal column names or storage internals
+    expect(def.description).not.toContain('duong_dan_luu_tru')
+    expect(def.description).not.toContain('bucket')
+    expect(def.description).not.toContain('storage_key')
+  })
+
+  it('rejects unknown input fields via strict schema', async () => {
+    const { READ_ONLY_TOOL_DEFINITIONS_FOR_TEST } = await import(
+      '@/lib/ai/tools/registry'
+    )
+    const def = READ_ONLY_TOOL_DEFINITIONS_FOR_TEST.attachmentLookup
+    const schema = def.inputSchema
+
+    // Valid input should pass
+    const valid = schema.safeParse({ thiet_bi_id: 42 })
+    expect(valid.success).toBe(true)
+
+    // Extra fields should be rejected (strict schema)
+    const invalid = schema.safeParse({ thiet_bi_id: 42, extra: true })
+    expect(invalid.success).toBe(false)
+  })
+})

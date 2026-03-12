@@ -102,9 +102,17 @@ BEGIN
     v_effective_don_vi := v_don_vi;
   END IF;
 
-  -- ── Get facility name ─────────────────────────────────────────
+  -- ── Validate facility exists ────────────────────────────────────
   SELECT dv.name INTO v_facility_name
   FROM public.don_vi dv WHERE dv.id = v_effective_don_vi;
+
+  IF NOT FOUND THEN
+    RETURN jsonb_build_object(
+      'kind', 'quotaSummary',
+      'error', 'Facility not found',
+      'evidence_status', 'none'
+    );
+  END IF;
 
   -- ── Find active decision ──────────────────────────────────────
   SELECT qd.id, qd.so_quyet_dinh, qd.trang_thai, qd.ngay_hieu_luc

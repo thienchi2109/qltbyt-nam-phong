@@ -117,19 +117,22 @@ describe('system prompt module', () => {
     expect(prompt).toContain('tần suất sử dụng')
   })
 
-  it('describes attachment lookup capabilities via attachmentLookup tool', () => {
+  it('describes normalized access contract via attachmentLookup tool', () => {
     const prompt = buildSystemPrompt({
       role: 'admin',
       userId: 'u1',
       selectedFacilityId: 2,
     })
 
-    // Attachment tool is now shipped.
+    // Attachment tool describes normalized access contract
     expect(prompt).toContain('attachmentLookup')
-    expect(prompt).toContain('metadata')
+    expect(prompt).toContain('access_type')
     expect(prompt).toContain('external_url')
-    // Should NOT claim signed URL access since all are external links
+    expect(prompt).toContain('storage_path')
+    // Should NOT claim signed URL access
     expect(prompt).not.toContain('signed URL')
+    // Should describe both access types, not hardcode one
+    expect(prompt).toContain('metadata')
   })
 
   it('prompt version is v2.0.0 after quota tools', () => {
@@ -152,5 +155,10 @@ describe('system prompt module', () => {
     // Anti-hallucination constraint
     expect(prompt).toContain('TUYỆT ĐỐI KHÔNG tự suy luận')
     expect(prompt).toContain('KHÔNG làm tròn, ước tính, hoặc bịa số liệu')
+
+    // Facility-scoped scope semantics for privileged users
+    expect(prompt).toContain('một cơ sở duy nhất')
+    expect(prompt).toContain('scope.label')
+    expect(prompt).toContain('chưa hỗ trợ tổng hợp nhiều cơ sở')
   })
 })

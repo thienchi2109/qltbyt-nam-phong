@@ -63,7 +63,7 @@ const READ_ONLY_TOOL_DEFINITIONS: Record<string, ReadOnlyToolDefinition> = {
   },
   attachmentLookup: {
     description:
-      'Lookup attachment metadata (file names, external links) for a specific equipment item.',
+      'Lookup attachment metadata (file names, access types, URLs) for a specific equipment item. Returns normalized access contract.',
     rpcFunction: 'ai_attachment_metadata',
     inputSchema: z
       .object({
@@ -99,6 +99,10 @@ export function getToolRpcMapping(): Record<string, string> {
     Object.entries(READ_ONLY_TOOL_DEFINITIONS).map(([k, v]) => [k, v.rpcFunction]),
   )
 }
+
+/** Exposed for contract-shape tests only. Do NOT import in production code. */
+export const READ_ONLY_TOOL_DEFINITIONS_FOR_TEST = READ_ONLY_TOOL_DEFINITIONS
+
 const KNOWN_TOOL_NAMES = new Set([
   ...Object.keys(READ_ONLY_TOOL_DEFINITIONS),
   ...KNOWN_BUT_BLOCKED_TOOLS,

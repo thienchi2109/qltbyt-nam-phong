@@ -113,12 +113,25 @@ BEGIN
 
   -- ── Return attachment metadata ────────────────────────────────
   RETURN (
-    WITH attachments AS (
+    WITH full_count AS (
+      SELECT COUNT(*)::BIGINT AS cnt
+      FROM public.file_dinh_kem f
+      WHERE f.thiet_bi_id = ai_attachment_metadata.thiet_bi_id
+    ),
+    attachments AS (
       SELECT
         f.id,
         f.ten_file,
-        'external_url' AS access_type,
-        f.duong_dan_luu_tru AS external_url,
+        -- Dynamic access_type: absolute URLs → external_url, else storage_path
+        CASE
+          WHEN f.duong_dan_luu_tru ~* '^https?://' THEN 'external_url'
+          ELSE 'storage_path'
+        END AS access_type,
+        -- Only expose raw URL for external links; mask internal paths
+        CASE
+          WHEN f.duong_dan_luu_tru ~* '^https?://' THEN f.duong_dan_luu_tru
+          ELSE NULL
+        END AS url,
         f.ngay_tai_len
       FROM public.file_dinh_kem f
       WHERE f.thiet_bi_id = ai_attachment_metadata.thiet_bi_id
@@ -126,6 +139,7 @@ BEGIN
       LIMIT 20
     )
     SELECT jsonb_build_object(
+      'kind', 'attachmentMetadata',
       'thiet_bi_id', ai_attachment_metadata.thiet_bi_id,
       'attachments',
       COALESCE(
@@ -134,14 +148,14 @@ BEGIN
             'id', a.id,
             'ten_file', a.ten_file,
             'access_type', a.access_type,
-            'external_url', a.external_url,
+            'url', a.url,
             'ngay_tai_len', a.ngay_tai_len
           )
           ORDER BY a.ngay_tai_len DESC NULLS LAST
         ) FROM attachments a),
         '[]'::JSONB
       ),
-      'total_count', COALESCE((SELECT COUNT(*)::BIGINT FROM attachments), 0)
+      'total_count', (SELECT cnt FROM full_count)
     )
   );
 END;
