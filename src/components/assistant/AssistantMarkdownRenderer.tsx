@@ -19,9 +19,11 @@ const markdownComponents: React.ComponentProps<typeof Markdown>["components"] = 
         <strong className="font-semibold">{children}</strong>
     ),
     em: ({ children }) => <em className="italic">{children}</em>,
-    code: ({ className, children, ...props }) => {
-        const isBlock = className?.includes("language-")
-        if (isBlock) {
+    code: ({ className, children, node, ...props }) => {
+        // react-markdown v9+ passes `inline` prop: true for `code spans`, absent for fenced blocks.
+        // This correctly handles fenced blocks without a language (no className).
+        const inline = (props as Record<string, unknown>).inline
+        if (!inline) {
             return (
                 <code
                     className={cn(

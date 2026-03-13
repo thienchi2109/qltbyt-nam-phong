@@ -48,7 +48,7 @@ interface AssistantToolExecutionCardProps {
 /**
  * Inline card showing AI tool execution status.
  *
- * States: input-streaming/input-available → executing, output-available → completed.
+ * States: input-streaming/input-available → executing, output-available → completed, output-error → error.
  * Design spec §4.4.
  */
 export function AssistantToolExecutionCard({
@@ -60,7 +60,7 @@ export function AssistantToolExecutionCard({
 
     const isExecuting = state === "input-streaming" || state === "input-available"
     const isCompleted = state === "output-available"
-    const isError = state === "error"
+    const isError = state === "output-error"
 
     const displayName = getToolDisplayName(toolName)
 
