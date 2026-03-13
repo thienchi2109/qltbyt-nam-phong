@@ -325,8 +325,13 @@ function RepairRequestsPageClientInner() {
     if (searchParams.get('action') !== 'create') return
 
     const cachedAssistantDraft = queryClient.getQueryData(["assistant-draft"])
-    if (cachedAssistantDraft) {
-      applyAssistantDraft(cachedAssistantDraft)
+    if (
+      cachedAssistantDraft &&
+      typeof cachedAssistantDraft === "object" &&
+      "equipment" in cachedAssistantDraft &&
+      "formData" in cachedAssistantDraft
+    ) {
+      applyAssistantDraft(cachedAssistantDraft as Parameters<typeof applyAssistantDraft>[0])
       openCreateSheet()
       queryClient.removeQueries({ queryKey: ["assistant-draft"] })
 

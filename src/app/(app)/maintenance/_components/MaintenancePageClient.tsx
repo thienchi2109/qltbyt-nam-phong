@@ -271,7 +271,21 @@ export function MaintenancePageClient() {
       isCompletingTask: ctx.isCompletingTask,
       canCompleteTask: ctx.canCompleteTask,
     }),
-    [ctx]
+    [
+      ctx.taskEditing.editingTaskId,
+      ctx.taskEditing.editingTaskData,
+      ctx.isPlanApproved,
+      ctx.taskEditing.setTaskToDelete,
+      ctx.taskEditing.handleTaskDataChange,
+      ctx.taskEditing.handleSaveTask,
+      ctx.taskEditing.handleCancelEdit,
+      ctx.taskEditing.handleStartEdit,
+      ctx.completionStatus,
+      ctx.isLoadingCompletion,
+      ctx.handleMarkAsCompleted,
+      ctx.isCompletingTask,
+      ctx.canCompleteTask,
+    ]
   )
 
   const taskColumns = useTaskColumns({
