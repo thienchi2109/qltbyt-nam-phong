@@ -20,10 +20,15 @@ const markdownComponents: React.ComponentProps<typeof Markdown>["components"] = 
     ),
     em: ({ children }) => <em className="italic">{children}</em>,
     code: ({ className, children, node, ...props }) => {
-        // react-markdown v9+ passes `inline` prop: true for `code spans`, absent for fenced blocks.
-        // This correctly handles fenced blocks without a language (no className).
-        const inline = (props as Record<string, unknown>).inline
-        if (!inline) {
+        // `inline` is not available in react-markdown v9+.
+        // Distinguish blocks via language class or multiline content.
+        const codeText = React.Children.toArray(children)
+            .map((child) => (typeof child === "string" ? child : ""))
+            .join("")
+        const isBlockCode =
+            (typeof className === "string" && className.includes("language-")) ||
+            codeText.includes("\n")
+        if (isBlockCode) {
             return (
                 <code
                     className={cn(
