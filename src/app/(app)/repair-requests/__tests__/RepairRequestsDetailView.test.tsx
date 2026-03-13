@@ -56,19 +56,27 @@ describe('RepairRequestsDetailView', () => {
   })
 
   it('renders Dialog with correct title on mobile', () => {
-    render(
+    const { container } = render(
       <RepairRequestsDetailView requestToView={mockRequest} isMobile={true} onClose={vi.fn()} />
     )
     expect(screen.getByText('Chi tiết yêu cầu sửa chữa')).toBeInTheDocument()
     expect(screen.getByTestId('detail-content')).toHaveTextContent('detail for Test Device')
+    // Dialog uses centered positioning (translate-x), not side-anchored
+    const dialogEl = screen.getByRole('dialog')
+    expect(dialogEl.className).toContain('translate-x-')
+    expect(dialogEl.className).not.toContain('inset-y-0')
   })
 
   it('renders Sheet with correct title on desktop', () => {
-    render(
+    const { container } = render(
       <RepairRequestsDetailView requestToView={mockRequest} isMobile={false} onClose={vi.fn()} />
     )
     expect(screen.getByText('Chi tiết yêu cầu sửa chữa')).toBeInTheDocument()
     expect(screen.getByTestId('detail-content')).toHaveTextContent('detail for Test Device')
+    // Sheet uses side-anchored positioning (inset-y-0), not centered
+    const dialogEl = screen.getByRole('dialog')
+    expect(dialogEl.className).toContain('inset-y-0')
+    expect(dialogEl.className).not.toContain('translate-x-')
   })
 
   it('calls onClose when close button clicked on mobile', () => {
