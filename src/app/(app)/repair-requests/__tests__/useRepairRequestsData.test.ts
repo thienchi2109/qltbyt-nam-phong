@@ -5,7 +5,7 @@
  * Verifies:
  * - Hook returns expected shape (requests, pagination, KPI counts)
  * - repair_request_list query enabled = !!user && shouldFetchData
- * - repair_request_status_counts query enabled = !!user && shouldFetchData
+ * - repair_request_status_counts query enabled = !!user (always for auth user)
  * - totalRequests syncs from query result
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest'
@@ -137,7 +137,7 @@ describe('useRepairRequestsData', () => {
     expect(listCall!.enabled).toBe(false)
   })
 
-  it('disables status counts query when shouldFetchData is false', () => {
+  it('enables status counts query when user is authenticated (regardless of shouldFetchData)', () => {
     renderHook(() =>
       useRepairRequestsData({ ...defaultArgs, shouldFetchData: false })
     )
@@ -146,7 +146,7 @@ describe('useRepairRequestsData', () => {
       (c) => (c.queryKey[0] as string) === 'repair_request_status_counts'
     )
     expect(countsCall).toBeDefined()
-    expect(countsCall!.enabled).toBe(false)
+    expect(countsCall!.enabled).toBe(true)
   })
 
   it('disables status counts query when no user', () => {
