@@ -33,12 +33,15 @@ import { toMaintenanceTaskRowId } from "./maintenance-task-row-id"
 export function MaintenancePageClient() {
   const ctx = useMaintenanceContext()
   const searchParams = useSearchParams()
+  const searchParamsKey = searchParams.toString()
   const router = useRouter()
   const pathname = usePathname()
   const isMobile = useIsMobile()
   const { toast } = useToast()
   const mobileMaintenanceEnabled = useFeatureFlag("mobile-maintenance-redesign")
   const shouldUseMobileMaintenance = isMobile && mobileMaintenanceEnabled
+  const lastFetchedPlanIdRef = React.useRef<number | null>(null)
+  const lastHandledSearchParamsKeyRef = React.useRef<string | null>(null)
 
   const [planSearchTerm, setPlanSearchTerm] = React.useState("")
   const debouncedPlanSearch = useSearchDebounce(planSearchTerm)
@@ -106,34 +109,59 @@ export function MaintenancePageClient() {
     return count
   }, [selectedFacilityId])
 
+  const clearTaskRowSelection = React.useCallback(() => {
+    setTaskRowSelection((previousSelection) =>
+      Object.keys(previousSelection).length === 0 ? previousSelection : {}
+    )
+  }, [setTaskRowSelection])
+
   const fetchPlanDetails = ctx.fetchPlanDetails
   React.useEffect(() => {
-    if (ctx.selectedPlan) {
-      void fetchPlanDetails(ctx.selectedPlan)
-      setTaskRowSelection({})
+    if (!ctx.selectedPlan) {
+      lastFetchedPlanIdRef.current = null
+      clearTaskRowSelection()
+      return
     }
-  }, [ctx.selectedPlan, fetchPlanDetails, setTaskRowSelection])
+
+    if (lastFetchedPlanIdRef.current === ctx.selectedPlan.id) {
+      return
+    }
+
+    lastFetchedPlanIdRef.current = ctx.selectedPlan.id
+    void fetchPlanDetails(ctx.selectedPlan)
+    clearTaskRowSelection()
+  }, [ctx.selectedPlan, fetchPlanDetails, clearTaskRowSelection])
 
   React.useEffect(() => {
     let isCancelled = false
 
     const resolveDeepLink = async () => {
-      const planIdParam = searchParams.get("planId")
-      const tabParam = searchParams.get("tab")
-      const actionParam = searchParams.get("action")
+      if (lastHandledSearchParamsKeyRef.current === searchParamsKey) {
+        return
+      }
+
+      const params = new URLSearchParams(searchParamsKey)
+      const planIdParam = params.get("planId")
+      const tabParam = params.get("tab")
+      const actionParam = params.get("action")
 
       if (actionParam === "create") {
+        lastHandledSearchParamsKeyRef.current = searchParamsKey
         setIsAddPlanDialogOpen(true)
         router.replace(pathname, { scroll: false })
         return
       }
 
-      if (!planIdParam) return
+      if (!planIdParam) {
+        lastHandledSearchParamsKeyRef.current = searchParamsKey
+        return
+      }
       // Wait for plans to finish loading before attempting lookup
       if (isLoadingPlans) return
 
       const planId = Number.parseInt(planIdParam, 10)
       if (!Number.isFinite(planId)) {
+        lastHandledSearchParamsKeyRef.current = searchParamsKey
         toast({
           variant: "destructive",
           title: "Không tìm thấy kế hoạch",
@@ -157,6 +185,7 @@ export function MaintenancePageClient() {
         return
       }
 
+      lastHandledSearchParamsKeyRef.current = searchParamsKey
       if (targetPlan) {
         setSelectedPlan(targetPlan)
         if (tabParam === "tasks") {
@@ -178,7 +207,7 @@ export function MaintenancePageClient() {
       isCancelled = true
     }
   }, [
-    searchParams,
+    searchParamsKey,
     plans,
     isLoadingPlans,
     setIsAddPlanDialogOpen,

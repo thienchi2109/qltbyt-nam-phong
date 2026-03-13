@@ -42,7 +42,20 @@ function MaintenancePageWrapper() {
       taskRowSelection={taskRowSelection}
       setTaskRowSelection={setTaskRowSelection}
     >
-      <MaintenancePageClient />
+      <React.Suspense fallback={<MaintenancePageClientFallback />}>
+        <MaintenancePageClient />
+      </React.Suspense>
     </MaintenanceProvider>
+  )
+}
+
+function MaintenancePageClientFallback() {
+  return (
+    <div className="flex items-center justify-center min-h-[50vh]">
+      <div className="text-center space-y-2">
+        <Skeleton className="h-8 w-32 mx-auto" />
+        <Skeleton className="h-4 w-48 mx-auto" />
+      </div>
+    </div>
   )
 }

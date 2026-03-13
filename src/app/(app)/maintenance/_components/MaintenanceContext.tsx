@@ -111,6 +111,11 @@ export function MaintenanceProvider({
 
   const [completionStatus, setCompletionStatus] = React.useState<Record<string, CompletionStatusEntry>>({})
   const [isCompletingTask, setIsCompletingTask] = React.useState<string | null>(null)
+  const resetCompletionStatus = React.useCallback(() => {
+    setCompletionStatus((previousStatus) =>
+      Object.keys(previousStatus).length === 0 ? previousStatus : {}
+    )
+  }, [])
 
   const isPlanApproved = selectedPlan?.trang_thai === "Đã duyệt"
 
@@ -260,20 +265,20 @@ export function MaintenanceProvider({
 
   const fetchPlanDetails = React.useCallback(
     async (plan: MaintenancePlan) => {
-      setCompletionStatus({})
+      resetCompletionStatus()
       await fetchTasks(plan)
     },
-    [fetchTasks]
+    [fetchTasks, resetCompletionStatus]
   )
 
   React.useEffect(() => {
     if (!selectedPlan || selectedPlan.trang_thai !== "Đã duyệt") {
-      setCompletionStatus({})
+      resetCompletionStatus()
       return
     }
 
     setCompletionStatus(buildCompletionStatus(tasks))
-  }, [selectedPlan, tasks])
+  }, [selectedPlan, tasks, resetCompletionStatus])
 
   const handleCancelAllChanges = React.useCallback(() => {
     const nextPlan = pendingPlanSelection
