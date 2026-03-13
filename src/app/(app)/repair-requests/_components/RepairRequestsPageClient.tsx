@@ -10,7 +10,7 @@ import {
   getSortedRowModel,
   useReactTable,
 } from "@tanstack/react-table"
-import { useQuery, useQueryClient } from "@tanstack/react-query"
+import { useQueryClient } from "@tanstack/react-query"
 import { useToast } from "@/hooks/use-toast"
 import { Button } from "@/components/ui/button"
 import {
@@ -22,9 +22,8 @@ import {
   CardFooter,
 } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
-// Supabase client is not used directly; use RPC proxy instead
-import { callRpc } from "@/lib/rpc-client"
-import { Building2, Loader2, PlusCircle, Layers, Clock, CheckCircle, CheckCheck, XCircle } from "lucide-react"
+// callRpc moved to extracted hooks
+import { Building2, Loader2, PlusCircle } from "lucide-react"
 import { format } from "date-fns"
 import { cn } from "@/lib/utils"
 import { ScrollArea } from "@/components/ui/scroll-area"
@@ -55,14 +54,15 @@ import { RepairRequestsProvider } from "./RepairRequestsContext"
 import { RepairRequestsTable } from "./RepairRequestsTable"
 import { RepairRequestsToolbar } from "./RepairRequestsToolbar"
 import type { EquipmentSelectItem, RepairRequestWithEquipment } from "../types"
-import { calculateDaysRemaining } from "../utils"
+import { useRepairRequestsData } from "../_hooks/useRepairRequestsData"
+import { useRepairRequestsDeepLink } from "../_hooks/useRepairRequestsDeepLink"
+import { useRepairRequestsSummary } from "../_hooks/useRepairRequestsSummary"
 import { useRepairRequestShortcuts } from "../_hooks/useRepairRequestShortcuts"
 import { useRepairRequestsContext } from "../_hooks/useRepairRequestsContext"
 import { useRepairRequestUIHandlers } from "../_hooks/useRepairRequestUIHandlers"
 import { useRepairRequestColumns, renderActions } from "./RepairRequestsColumns"
 import { RepairRequestsMobileList } from "./RepairRequestsMobileList"
 import { DataTablePagination } from "@/components/shared/DataTablePagination"
-import { useServerPagination } from "@/hooks/useServerPagination"
 import {
   getUiFilters,
   setUiFilters,
@@ -107,10 +107,6 @@ function RepairRequestsPageClientInner() {
   // Temporarily disable useRealtimeSync to avoid conflict with RealtimeProvider
   // useRepairRealtimeSync()
   const searchParams = useSearchParams()
-  const [allEquipment, setAllEquipment] = React.useState<EquipmentSelectItem[]>([])
-  const [hasLoadedEquipment, setHasLoadedEquipment] = React.useState(false)
-  // Track when equipment_get fetch for deep link is in progress
-  const [isEquipmentFetchPending, setIsEquipmentFetchPending] = React.useState(false)
 
   // Table state
   const [sorting, setSorting] = React.useState<SortingState>([
@@ -147,230 +143,46 @@ function RepairRequestsPageClientInner() {
     shouldFetchData,
   } = useTenantSelection()
 
-  // Server-side pagination with auto-reset on filter changes.
-  // totalCount stored in state because of a circular dependency:
-  // filters → query → totalCount → pagination → page → filters.
-  // Synced via useEffect when query data arrives (see below).
-  const paginationResetKey = `${debouncedSearch}|${selectedFacilityId}|${JSON.stringify(uiFilters.dateRange)}|${uiFilters.status.join(',')}`
-  const [totalRequests, setTotalRequests] = React.useState(0)
-  const repairPagination = useServerPagination({
-    totalCount: totalRequests,
-    resetKey: paginationResetKey,
-  })
-
-  // TanStack Query for repair requests (server-side pagination + facility filtering + date range)
+  // Data fetching (list query, status counts, pagination)
   const {
-    data: repairRequestsRes,
+    requests,
     isLoading,
     isFetching,
-    refetch: refetchRequests
-  } = useQuery<{ data: RepairRequestWithEquipment[], total: number, page: number, pageSize: number }>({
-    queryKey: ['repair_request_list', {
-      tenant: effectiveTenantKey,
-      role: user?.role,           // Cache isolation by role
-      diaBan: user?.dia_ban_id,   // Cache isolation by region
-      donVi: selectedFacilityId,
-      statuses: uiFilters.status || [],
-      q: debouncedSearch || null,
-      page: repairPagination.page,
-      pageSize: repairPagination.pageSize,
-      dateFrom: uiFilters.dateRange?.from || null,
-      dateTo: uiFilters.dateRange?.to || null,
-    }],
-    queryFn: async ({ signal }: { signal: AbortSignal }) => {
-      const result = await callRpc<{ data: RepairRequestWithEquipment[], total: number, page: number, pageSize: number }>({
-        fn: 'repair_request_list',
-        args: {
-          p_q: debouncedSearch || null,
-          p_status: null,
-          p_page: repairPagination.page,
-          p_page_size: repairPagination.pageSize,
-          p_don_vi: selectedFacilityId,
-          p_date_from: uiFilters.dateRange?.from || null,
-          p_date_to: uiFilters.dateRange?.to || null,
-          p_statuses: uiFilters.status && uiFilters.status.length ? uiFilters.status : null,
-        },
-        signal, // Pass signal in options object
-      });
-      return result;
-    },
-    enabled: !!user && shouldFetchData,
-    placeholderData: (previousData) => previousData, // Keep previous data during refetch (prevents flash)
-    staleTime: 30_000, // 30 seconds (repair requests change frequently)
-    gcTime: 5 * 60_000, // 5 minutes
-    refetchOnWindowFocus: false,
-  });
-
-  // Extract data from query response
-  const requests = repairRequestsRes?.data ?? [];
+    refetchRequests,
+    statusCounts,
+    statusCountsLoading,
+    totalRequests,
+    repairPagination,
+  } = useRepairRequestsData({
+    debouncedSearch,
+    uiFilters,
+    selectedFacilityId: selectedFacilityId ?? null,
+    effectiveTenantKey,
+    userRole: user?.role,
+    userDiaBanId: user?.dia_ban_id,
+    shouldFetchData,
+    hasUser: !!user,
+  })
 
   const selectedFacilityName = React.useMemo(() => {
-    // Explicit check for null/undefined to handle facility ID 0 correctly
     if (selectedFacilityId === null || selectedFacilityId === undefined) return null;
     const facility = facilityOptions.find(f => f.id === selectedFacilityId);
     return facility?.name ?? null;
   }, [selectedFacilityId, facilityOptions]);
 
-  // Sync totalRequests from query result into pagination state.
-  // useEffect avoids the abandoned-render overhead of render-time setState
-  // while still breaking the circular dependency:
-  // filters → query → totalRequests → pagination → page → filters
-  React.useEffect(() => {
-    const serverTotal = repairRequestsRes?.total ?? 0
-    setTotalRequests(serverTotal)
-  }, [repairRequestsRes?.total])
-
-  // Status counts for summary (server-side via RPC per status)
-  const STATUSES = ['Chờ xử lý', 'Đã duyệt', 'Hoàn thành', 'Không HT'] as const
-  type Status = typeof STATUSES[number]
-  const { data: statusCounts, isLoading: statusCountsLoading } = useQuery<Record<Status, number>>({
-    queryKey: ['repair_request_status_counts', {
-      tenant: effectiveTenantKey,
-      role: user?.role,           // Cache isolation by role
-      diaBan: user?.dia_ban_id,   // Cache isolation by region
-      facilityId: selectedFacilityId ?? null,  // undefined → null for aggregate
-      search: debouncedSearch,
-      dateFrom: uiFilters.dateRange?.from || null,
-      dateTo: uiFilters.dateRange?.to || null,
-    }],
-    queryFn: async () => {
-      const res = await callRpc<Record<Status, number>>({
-        fn: 'repair_request_status_counts',
-        args: {
-          p_q: debouncedSearch || null,
-          p_don_vi: selectedFacilityId ?? null,  // undefined → null
-          p_date_from: uiFilters.dateRange?.from || null,
-          p_date_to: uiFilters.dateRange?.to || null,
-        },
-      })
-      return res as Record<Status, number>
-    },
-    staleTime: 30_000,
-    enabled: !!user,  // Always fetch — KPI should always show data
+  // Deep-link handling (equipment fetch, URL params, action=create)
+  const { allEquipment } = useRepairRequestsDeepLink({
+    searchParams,
+    router,
+    pathname,
+    toast,
+    uiFilters,
+    setUiFiltersState,
+    setUiFilters,
+    openCreateSheet,
+    applyAssistantDraft,
+    queryClient,
   })
-
-  // Note: showFacilityFilter comes from TenantSelectionContext
-  // It returns true for global, admin, and regional_leader roles
-
-  // Initial load: fetch a small equipment list via RPC
-  React.useEffect(() => {
-    const fetchInitialData = async () => {
-      try {
-        const eq = await callRpc<any[]>({
-          fn: 'equipment_list',
-          args: { p_q: null, p_sort: 'ten_thiet_bi.asc', p_page: 1, p_page_size: 50 },
-        })
-        setAllEquipment((eq || []).map((row: any) => ({
-          id: row.id,
-          ma_thiet_bi: row.ma_thiet_bi,
-          ten_thiet_bi: row.ten_thiet_bi,
-          khoa_phong_quan_ly: row.khoa_phong_quan_ly,
-        })))
-      } catch (error: any) {
-        toast({
-          variant: 'destructive',
-          title: 'Lỗi',
-          description: 'Không thể tải danh sách thiết bị. ' + (error?.message || ''),
-        })
-      } finally {
-        setHasLoadedEquipment(true)
-      }
-    }
-    fetchInitialData()
-  }, [toast])
-
-  // Note: Removed manual fetchRequests useEffect - TanStack Query handles fetching automatically
-  // Query will refetch when selectedFacilityId or debouncedSearch changes (via queryKey)
-
-  // Support preselect by equipmentId query param using equipment_get RPC if needed
-  React.useEffect(() => {
-    const equipmentId = searchParams.get('equipmentId');
-    const statusParam = searchParams.get('status');
-    if (statusParam) {
-      const decoded = decodeURIComponent(statusParam)
-      const updated = { ...uiFilters, status: [decoded] }
-      setUiFiltersState(updated); setUiFilters(updated)
-    }
-    const run = async () => {
-      if (!equipmentId) return;
-      const idNum = Number(equipmentId);
-      const existing = allEquipment.find(eq => eq.id === idNum);
-      if (existing) {
-        return;
-      }
-      // Mark fetch as pending so action=create effect waits for it
-      setIsEquipmentFetchPending(true)
-      try {
-        const row: any = await callRpc({ fn: 'equipment_get', args: { p_id: idNum } })
-        if (row) {
-          const item: EquipmentSelectItem = {
-            id: row.id,
-            ma_thiet_bi: row.ma_thiet_bi,
-            ten_thiet_bi: row.ten_thiet_bi,
-            khoa_phong_quan_ly: row.khoa_phong_quan_ly,
-          }
-          setAllEquipment(prev => [item, ...prev.filter(x => x.id !== item.id)])
-        }
-      } catch (e) {
-        // ignore; toast not necessary for deep link preselect
-      } finally {
-        setIsEquipmentFetchPending(false)
-      }
-    }
-    run();
-  }, [searchParams, allEquipment, uiFilters]);
-
-  // Handle action=create param with equipment pre-selection
-  React.useEffect(() => {
-    if (searchParams.get('action') !== 'create') return
-
-    const cachedAssistantDraft = queryClient.getQueryData(["assistant-draft"])
-    if (
-      cachedAssistantDraft &&
-      typeof cachedAssistantDraft === "object" &&
-      "equipment" in cachedAssistantDraft &&
-      "formData" in cachedAssistantDraft
-    ) {
-      applyAssistantDraft(cachedAssistantDraft as Parameters<typeof applyAssistantDraft>[0])
-      openCreateSheet()
-      queryClient.removeQueries({ queryKey: ["assistant-draft"] })
-
-      const params = new URLSearchParams(searchParams.toString())
-      params.delete('action')
-      params.delete('equipmentId')
-      const nextPath = params.size ? `${pathname}?${params.toString()}` : pathname
-      router.replace(nextPath, { scroll: false })
-      return
-    }
-
-    const equipmentId = searchParams.get('equipmentId')
-
-    if (equipmentId) {
-      // Wait for initial equipment list to load AND for equipment_get fetch to complete
-      if (!hasLoadedEquipment || isEquipmentFetchPending) return
-
-      const idNum = Number(equipmentId)
-      const equipment = allEquipment.find(eq => eq.id === idNum)
-
-      // Open sheet with or without pre-selection based on whether equipment was found
-      if (equipment) {
-        openCreateSheet(equipment)
-      } else {
-        // Equipment not found in loaded data - open sheet without pre-selection
-        openCreateSheet()
-      }
-    } else {
-      // No equipment to pre-select, just open the sheet
-      openCreateSheet()
-    }
-
-    // Clean up URL only after we've processed the action
-    const params = new URLSearchParams(searchParams.toString())
-    params.delete('action')
-    params.delete('equipmentId')
-    const nextPath = params.size ? `${pathname}?${params.toString()}` : pathname
-    router.replace(nextPath, { scroll: false })
-  }, [searchParams, router, pathname, openCreateSheet, allEquipment, hasLoadedEquipment, isEquipmentFetchPending, queryClient, applyAssistantDraft])
 
   // Adapter functions to bridge context (non-null) with column options (nullable)
   const setEditingRequestAdapter = React.useCallback((req: RepairRequestWithEquipment | null) => {
@@ -463,58 +275,13 @@ function RepairRequestsPageClientInner() {
     isRegionalLeader
   })
 
-  // KPI total: sum of all status counts (always available, independent of table filters)
-  const kpiTotal = React.useMemo(() => {
-    if (!statusCounts) return 0
-    return Object.values(statusCounts).reduce((sum, v) => sum + (v || 0), 0)
-  }, [statusCounts])
-
-  const summaryItems: SummaryItem[] = React.useMemo(() => {
-    const toneMap: Record<Status, SummaryItem["tone"]> = {
-      'Chờ xử lý': 'warning',
-      'Đã duyệt': 'muted',
-      'Hoàn thành': 'success',
-      'Không HT': 'danger',
-    }
-    const iconMap: Record<string, React.ReactNode> = {
-      'total': <Layers className="h-5 w-5" />,
-      'Chờ xử lý': <Clock className="h-5 w-5" />,
-      'Đã duyệt': <CheckCheck className="h-5 w-5" />,
-      'Hoàn thành': <CheckCircle className="h-5 w-5" />,
-      'Không HT': <XCircle className="h-5 w-5" />,
-    }
-
-    // Determine active state: true if no filter (shows all) or if this status is the active filter
-    const isTotalActive = uiFilters.status.length === 0
-
-    // Handler to clear status filter (show all requests)
-    const handleShowAll = () => {
-      const updated = { ...uiFilters, status: [] }
-      setUiFiltersState(updated)
-      setUiFilters(updated)
-    }
-
-    // Handler to filter by specific status
-    const handleFilterByStatus = (status: Status) => {
-      const updated = { ...uiFilters, status: [status] }
-      setUiFiltersState(updated)
-      setUiFilters(updated)
-    }
-
-    const base: SummaryItem[] = [
-      { key: 'total', label: 'Tổng', value: kpiTotal, tone: 'default', icon: iconMap['total'], onClick: handleShowAll, active: isTotalActive },
-    ]
-    const statusItems: SummaryItem[] = STATUSES.map((s) => ({
-      key: s,
-      label: s,
-      value: statusCounts?.[s] ?? 0,
-      tone: toneMap[s],
-      icon: iconMap[s],
-      onClick: () => handleFilterByStatus(s),
-      active: uiFilters.status.length === 1 && uiFilters.status[0] === s,
-    }))
-    return [...base, ...statusItems]
-  }, [kpiTotal, statusCounts, uiFilters, setUiFiltersState, setUiFilters])
+  // KPI summary items
+  const { kpiTotal, summaryItems } = useRepairRequestsSummary({
+    statusCounts,
+    uiFilters,
+    setUiFiltersState,
+    setUiFilters,
+  })
 
   // Get requestToView from context for detail dialogs
   const requestToView = dialogState.requestToView
