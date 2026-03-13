@@ -1,5 +1,4 @@
 import * as React from "react"
-import type { RowSelectionState } from "@tanstack/react-table"
 import type { MaintenancePlan } from "@/hooks/use-cached-maintenance"
 
 interface UseSelectedPlanSyncOptions {
@@ -12,32 +11,43 @@ interface UseSelectedPlanSyncOptions {
 }
 
 /**
+ * Derives a compound key from the selected plan that captures
+ * both identity and status. When the plan is edited or approved
+ * in-place (same id, different trang_thai), this key changes and
+ * triggers a task refetch.
+ */
+function getPlanSyncKey(plan: MaintenancePlan): string {
+  return `${plan.id}|${plan.trang_thai}`
+}
+
+/**
  * Syncs side-effects when the selected plan changes.
  *
- * Uses a ref guard (`lastFetchedPlanIdRef`) to only call
- * `fetchPlanDetails` when `selectedPlan.id` actually changes,
- * preventing redundant fetches when the plan object reference
- * changes but the ID is the same.
+ * Uses a compound key guard (`id|trang_thai`) to call
+ * `fetchPlanDetails` when the plan identity OR approval status
+ * changes, while still skipping redundant fetches when only the
+ * object reference changes.
  */
 export function useSelectedPlanSync({
   selectedPlan,
   fetchPlanDetails,
   clearTaskRowSelection,
 }: UseSelectedPlanSyncOptions) {
-  const lastFetchedPlanIdRef = React.useRef<number | null>(null)
+  const lastFetchedKeyRef = React.useRef<string | null>(null)
 
   React.useEffect(() => {
     if (!selectedPlan) {
-      lastFetchedPlanIdRef.current = null
+      lastFetchedKeyRef.current = null
       clearTaskRowSelection()
       return
     }
 
-    if (lastFetchedPlanIdRef.current === selectedPlan.id) {
+    const syncKey = getPlanSyncKey(selectedPlan)
+    if (lastFetchedKeyRef.current === syncKey) {
       return
     }
 
-    lastFetchedPlanIdRef.current = selectedPlan.id
+    lastFetchedKeyRef.current = syncKey
     void fetchPlanDetails(selectedPlan)
     clearTaskRowSelection()
   }, [selectedPlan, fetchPlanDetails, clearTaskRowSelection])
