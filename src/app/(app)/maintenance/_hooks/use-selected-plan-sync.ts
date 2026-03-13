@@ -12,21 +12,23 @@ interface UseSelectedPlanSyncOptions {
 
 /**
  * Derives a compound key from the selected plan that captures
- * both identity and status. When the plan is edited or approved
- * in-place (same id, different trang_thai), this key changes and
- * triggers a task refetch.
+ * identity and every field whose change should trigger a task
+ * refetch: status (trang_thai) and work type (loai_cong_viec).
  */
 function getPlanSyncKey(plan: MaintenancePlan): string {
-  return `${plan.id}|${plan.trang_thai}`
+  return `${plan.id}|${plan.trang_thai}|${plan.loai_cong_viec}`
 }
 
 /**
  * Syncs side-effects when the selected plan changes.
  *
- * Uses a compound key guard (`id|trang_thai`) to call
- * `fetchPlanDetails` when the plan identity OR approval status
- * changes, while still skipping redundant fetches when only the
- * object reference changes.
+ * Uses a compound key guard (`id|trang_thai|loai_cong_viec`) to call
+ * `fetchPlanDetails` when the plan identity, approval status, or
+ * work type changes, while still skipping redundant fetches when
+ * only the object reference changes.
+ *
+ * Includes a stale-response guard: if the user rapidly switches
+ * plans, only the latest fetch's result is applied.
  */
 export function useSelectedPlanSync({
   selectedPlan,
@@ -36,6 +38,8 @@ export function useSelectedPlanSync({
   const lastFetchedKeyRef = React.useRef<string | null>(null)
 
   React.useEffect(() => {
+    let isCancelled = false
+
     if (!selectedPlan) {
       lastFetchedKeyRef.current = null
       clearTaskRowSelection()
@@ -48,7 +52,15 @@ export function useSelectedPlanSync({
     }
 
     lastFetchedKeyRef.current = syncKey
-    void fetchPlanDetails(selectedPlan)
-    clearTaskRowSelection()
+    const planToFetch = selectedPlan
+
+    void fetchPlanDetails(planToFetch).then(() => {
+      if (isCancelled) return
+      clearTaskRowSelection()
+    })
+
+    return () => {
+      isCancelled = true
+    }
   }, [selectedPlan, fetchPlanDetails, clearTaskRowSelection])
 }
