@@ -8,14 +8,37 @@ interface AssistantSuggestedQuestionsProps {
     isReady: boolean
 }
 
-/** Pool all suggestion strings and randomly pick `count` unique items. */
-function pickRandom(count: number): string[] {
-    const pool = STARTER_PROMPT_GROUPS.flatMap((g) => [...g.suggestions])
+function hashString(value: string): number {
+    let hash = 2166136261
+    for (let i = 0; i < value.length; i += 1) {
+        hash ^= value.charCodeAt(i)
+        hash = Math.imul(hash, 16777619)
+    }
+    return hash >>> 0
+}
 
-    // Fisher-Yates shuffle
+function createSeededRandom(seed: number): () => number {
+    let state = seed >>> 0
+    if (state === 0) {
+        state = 0x6d2b79f5
+    }
+    return () => {
+        state = (state * 1664525 + 1013904223) >>> 0
+        return state / 0x100000000
+    }
+}
+
+/** Pool all suggestion strings and pick `count` unique items using deterministic shuffle. */
+function pickDeterministic(count: number, seedSource: string): string[] {
+    const pool = STARTER_PROMPT_GROUPS.flatMap((g) => [...g.suggestions])
+    const nextRandom = createSeededRandom(hashString(seedSource))
+
+    // Fisher-Yates shuffle with deterministic pseudo-random generator.
     for (let i = pool.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1))
-            ;[pool[i], pool[j]] = [pool[j], pool[i]]
+        const j = Math.floor(nextRandom() * (i + 1))
+        const temp = pool[i]
+        pool[i] = pool[j]
+        pool[j] = temp
     }
 
     return pool.slice(0, count)
@@ -32,12 +55,8 @@ export function AssistantSuggestedQuestions({
     onSelect,
     isReady,
 }: AssistantSuggestedQuestionsProps) {
-    const [chips, setChips] = React.useState<string[]>([])
-
-    // Defer randomization to post-mount to avoid SSR hydration mismatch
-    React.useEffect(() => {
-        setChips(pickRandom(3))
-    }, [])
+    const seedSource = React.useId()
+    const chips = React.useMemo(() => pickDeterministic(3, seedSource), [seedSource])
 
     return (
         <div className="flex flex-col gap-2">
