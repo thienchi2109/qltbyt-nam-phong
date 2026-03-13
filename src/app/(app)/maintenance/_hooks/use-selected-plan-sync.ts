@@ -27,8 +27,9 @@ function getPlanSyncKey(plan: MaintenancePlan): string {
  * work type changes, while still skipping redundant fetches when
  * only the object reference changes.
  *
- * Includes a stale-response guard: if the user rapidly switches
- * plans, only the latest fetch's result is applied.
+ * Includes a stale-response guard for post-fetch UI effects in this
+ * hook (row-selection reset). Data-write stale protection is handled
+ * by the fetch implementation (`fetchPlanDetails`/`fetchTasks`).
  */
 export function useSelectedPlanSync({
   selectedPlan,
