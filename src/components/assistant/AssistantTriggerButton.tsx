@@ -12,7 +12,7 @@ interface AssistantTriggerButtonProps {
 /**
  * Floating Action Button (FAB) to toggle the assistant chat panel.
  *
- * Position: fixed bottom-right, z-70 (above mobile footer nav).
+ * Position: fixed bottom-right, z-997 (below AssistantPanel, above page content).
  * Icon transitions between Sparkles (closed) and X (open) with rotation.
  * Design spec §4.1.
  */
