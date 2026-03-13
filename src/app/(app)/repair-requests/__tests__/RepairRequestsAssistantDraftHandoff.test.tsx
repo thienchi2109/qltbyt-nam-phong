@@ -11,7 +11,9 @@ describe('RepairRequests assistant draft handoff', () => {
     )
 
     expect(source).toContain('queryClient.getQueryData(["assistant-draft"])')
-    expect(source).toContain('applyAssistantDraft(cachedAssistantDraft)')
+    expect(source).toMatch(
+      /applyAssistantDraft\(\s*cachedAssistantDraft(?:\s+as\s+Parameters<typeof applyAssistantDraft>\[0\])?\s*\)/
+    )
     expect(source).toContain('openCreateSheet()')
     expect(source).toContain('queryClient.removeQueries({ queryKey: ["assistant-draft"] })')
   })
