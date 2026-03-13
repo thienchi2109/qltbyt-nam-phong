@@ -1,7 +1,6 @@
 "use client"
 
 import * as React from "react"
-import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import type { PaginationState, SortingState } from "@tanstack/react-table"
 import { useQuery } from "@tanstack/react-query"
 import {
@@ -12,7 +11,6 @@ import {
   useReactTable,
 } from "@tanstack/react-table"
 
-import { useToast } from "@/hooks/use-toast"
 import { useIsMobile } from "@/hooks/use-mobile"
 import { callRpc } from "@/lib/rpc-client"
 import { isGlobalRole, isRegionalLeaderRole } from "@/lib/rbac"
@@ -22,26 +20,20 @@ import { useFeatureFlag } from "@/lib/feature-flags"
 import { useSearchDebounce } from "@/hooks/use-debounce"
 
 import { useMaintenanceContext } from "../_hooks/useMaintenanceContext"
+import { useMaintenanceDeepLink } from "../_hooks/use-maintenance-deep-link"
+import { useSelectedPlanSync } from "../_hooks/use-selected-plan-sync"
 import { MobileMaintenanceLayout } from "./mobile-maintenance-layout"
 import { usePlanColumns, useTaskColumns } from "./maintenance-columns"
 import { MaintenanceDialogs } from "./maintenance-dialogs"
 import { MaintenancePageDesktopContent } from "./maintenance-page-desktop-content"
 import { MaintenancePageLegacyMobileCards } from "./maintenance-page-legacy-mobile-cards"
-import { findMaintenancePlanById } from "./maintenance-plan-lookup"
 import { toMaintenanceTaskRowId } from "./maintenance-task-row-id"
 
 export function MaintenancePageClient() {
   const ctx = useMaintenanceContext()
-  const searchParams = useSearchParams()
-  const searchParamsKey = searchParams.toString()
-  const router = useRouter()
-  const pathname = usePathname()
   const isMobile = useIsMobile()
-  const { toast } = useToast()
   const mobileMaintenanceEnabled = useFeatureFlag("mobile-maintenance-redesign")
   const shouldUseMobileMaintenance = isMobile && mobileMaintenanceEnabled
-  const lastFetchedPlanIdRef = React.useRef<number | null>(null)
-  const lastHandledSearchParamsKeyRef = React.useRef<string | null>(null)
 
   const [planSearchTerm, setPlanSearchTerm] = React.useState("")
   const debouncedPlanSearch = useSearchDebounce(planSearchTerm)
@@ -115,108 +107,21 @@ export function MaintenancePageClient() {
     )
   }, [setTaskRowSelection])
 
-  const fetchPlanDetails = ctx.fetchPlanDetails
-  React.useEffect(() => {
-    if (!ctx.selectedPlan) {
-      lastFetchedPlanIdRef.current = null
-      clearTaskRowSelection()
-      return
-    }
-
-    if (lastFetchedPlanIdRef.current === ctx.selectedPlan.id) {
-      return
-    }
-
-    lastFetchedPlanIdRef.current = ctx.selectedPlan.id
-    void fetchPlanDetails(ctx.selectedPlan)
-    clearTaskRowSelection()
-  }, [ctx.selectedPlan, fetchPlanDetails, clearTaskRowSelection])
-
-  React.useEffect(() => {
-    let isCancelled = false
-
-    const resolveDeepLink = async () => {
-      if (lastHandledSearchParamsKeyRef.current === searchParamsKey) {
-        return
-      }
-
-      const params = new URLSearchParams(searchParamsKey)
-      const planIdParam = params.get("planId")
-      const tabParam = params.get("tab")
-      const actionParam = params.get("action")
-
-      if (actionParam === "create") {
-        lastHandledSearchParamsKeyRef.current = searchParamsKey
-        setIsAddPlanDialogOpen(true)
-        router.replace(pathname, { scroll: false })
-        return
-      }
-
-      if (!planIdParam) {
-        lastHandledSearchParamsKeyRef.current = searchParamsKey
-        return
-      }
-      // Wait for plans to finish loading before attempting lookup
-      if (isLoadingPlans) return
-
-      const planId = Number.parseInt(planIdParam, 10)
-      if (!Number.isFinite(planId)) {
-        lastHandledSearchParamsKeyRef.current = searchParamsKey
-        toast({
-          variant: "destructive",
-          title: "Không tìm thấy kế hoạch",
-          description: `Kế hoạch #${planIdParam} không hợp lệ.`,
-        })
-        router.replace(pathname, { scroll: false })
-        return
-      }
-
-      let targetPlan = plans.find((plan) => plan.id === planId)
-
-      if (!targetPlan) {
-        try {
-          targetPlan = await findMaintenancePlanById(planId) ?? undefined
-        } catch (error) {
-          console.error("[Maintenance] Deep link plan lookup failed:", error)
-        }
-      }
-
-      if (isCancelled) {
-        return
-      }
-
-      lastHandledSearchParamsKeyRef.current = searchParamsKey
-      if (targetPlan) {
-        setSelectedPlan(targetPlan)
-        if (tabParam === "tasks") {
-          setActiveTab("tasks")
-        }
-      } else {
-        toast({
-          variant: "destructive",
-          title: "Không tìm thấy kế hoạch",
-          description: `Kế hoạch #${planId} không tồn tại hoặc bạn không có quyền truy cập.`,
-        })
-      }
-      router.replace(pathname, { scroll: false })
-    }
-
-    void resolveDeepLink()
-
-    return () => {
-      isCancelled = true
-    }
-  }, [
-    searchParamsKey,
+  // Deep-link resolution (URL → select plan / open dialog)
+  useMaintenanceDeepLink({
     plans,
     isLoadingPlans,
     setIsAddPlanDialogOpen,
     setSelectedPlan,
     setActiveTab,
-    toast,
-    router,
-    pathname,
-  ])
+  })
+
+  // Sync side-effects when selected plan changes (fetch tasks, clear selection)
+  useSelectedPlanSync({
+    selectedPlan: ctx.selectedPlan,
+    fetchPlanDetails: ctx.fetchPlanDetails,
+    clearTaskRowSelection,
+  })
 
   React.useEffect(() => {
     setCurrentPage(1)
