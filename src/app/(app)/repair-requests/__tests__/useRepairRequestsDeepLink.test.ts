@@ -11,7 +11,7 @@
  * - URL params cleaned up after processing
  * - assistant-draft handoff from query cache
  */
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { renderHook, waitFor, act } from '@testing-library/react'
 
 // ── Hoisted mocks ─────────────────────────────────────────────────
@@ -65,6 +65,11 @@ describe('useRepairRequestsDeepLink', () => {
     vi.clearAllMocks()
     mocks.callRpc.mockResolvedValue([])
     mocks.queryClientGetQueryData.mockReturnValue(undefined)
+  })
+
+  afterEach(() => {
+    // Clean up localStorage written by real setUiFilters from @/lib/rr-prefs
+    localStorage.removeItem('rr_filter_state')
   })
 
   it('returns expected shape', () => {
@@ -136,5 +141,39 @@ describe('useRepairRequestsDeepLink', () => {
     expect(opts.setUiFiltersState).toHaveBeenCalledWith(
       expect.objectContaining({ status: ['Chờ xử lý'] })
     )
+  })
+
+  it('re-applies status deep-link after status param is cleared', async () => {
+    const setUiFiltersState = vi.fn()
+    const baseOpts = createDefaultOptions()
+
+    const { rerender } = renderHook(
+      ({ currentSearchParams }) => useRepairRequestsDeepLink({
+        ...baseOpts,
+        searchParams: currentSearchParams,
+        setUiFiltersState,
+      }),
+      {
+        initialProps: {
+          currentSearchParams: createSearchParams({ status: 'Chờ xử lý' }),
+        },
+      }
+    )
+
+    await waitFor(() => {
+      expect(setUiFiltersState).toHaveBeenCalledTimes(1)
+    })
+
+    act(() => {
+      rerender({ currentSearchParams: createSearchParams() })
+    })
+
+    act(() => {
+      rerender({ currentSearchParams: createSearchParams({ status: 'Chờ xử lý' }) })
+    })
+
+    await waitFor(() => {
+      expect(setUiFiltersState).toHaveBeenCalledTimes(2)
+    })
   })
 })

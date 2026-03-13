@@ -144,7 +144,7 @@ export function useRepairRequestsData(
       return res as Record<Status, number>
     },
     staleTime: 30_000,
-    enabled: hasUser,
+    enabled: hasUser && shouldFetchData,
   })
 
   return {

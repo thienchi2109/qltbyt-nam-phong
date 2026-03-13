@@ -50,6 +50,9 @@ export function useRepairRequestsDeepLink(
   const [allEquipment, setAllEquipment] = React.useState<EquipmentSelectItem[]>([])
   const [hasLoadedEquipment, setHasLoadedEquipment] = React.useState(false)
   const [isEquipmentFetchPending, setIsEquipmentFetchPending] = React.useState(false)
+  // Track the last processed status value to prevent render loops while still
+  // allowing future deep-link navigations after the URL has been cleaned.
+  const lastAppliedStatusRef = React.useRef<string | null>(null)
 
   // Initial load: fetch a small equipment list via RPC
   React.useEffect(() => {
@@ -80,15 +83,24 @@ export function useRepairRequestsDeepLink(
   }, [toast])
 
   // Support preselect by equipmentId query param using equipment_get RPC
+  // and status deep-link (?status=X) — guarded by lastAppliedStatusRef to prevent re-render loop
   React.useEffect(() => {
-    const equipmentId = searchParams.get('equipmentId')
     const statusParam = searchParams.get('status')
-    if (statusParam) {
-      const decoded = decodeURIComponent(statusParam)
-      const updated = { ...uiFilters, status: [decoded] }
+    if (!statusParam) {
+      lastAppliedStatusRef.current = null
+    } else if (lastAppliedStatusRef.current !== statusParam) {
+      lastAppliedStatusRef.current = statusParam
+      const updated = { ...uiFilters, status: [statusParam] }
       setUiFiltersState(updated)
       setUiFilters(updated)
+      // Clean status param from URL to prevent re-processing
+      const params = new URLSearchParams(searchParams.toString())
+      params.delete('status')
+      const nextPath = params.size ? `${pathname}?${params.toString()}` : pathname
+      router.replace(nextPath, { scroll: false })
     }
+
+    const equipmentId = searchParams.get('equipmentId')
     const run = async () => {
       if (!equipmentId) return
       const idNum = Number(equipmentId)
@@ -115,7 +127,7 @@ export function useRepairRequestsDeepLink(
     }
     run()
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchParams, allEquipment, uiFilters])
+  }, [searchParams, allEquipment])
 
   // Handle action=create param with equipment pre-selection
   React.useEffect(() => {

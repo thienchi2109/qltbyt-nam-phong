@@ -261,8 +261,8 @@ describe('RepairRequests KPI Cards', () => {
     mocks.callRpc.mockResolvedValue([])
   })
 
-  describe('KPI query fires without tenant selection', () => {
-    it('should enable status counts query when user is authenticated but no tenant selected', () => {
+  describe('KPI query respects shouldFetchData gate', () => {
+    it('should disable status counts query when shouldFetchData is false', () => {
       setupGlobalUser({ shouldFetchData: false })
       render(<RepairRequestsPageClient />)
 
@@ -270,11 +270,11 @@ describe('RepairRequests KPI Cards', () => {
         (c) => (c.queryKey[0] as string) === 'repair_request_status_counts'
       )
       expect(statusCountsCall).toBeDefined()
-      expect(statusCountsCall!.enabled).toBe(true)
+      expect(statusCountsCall!.enabled).toBe(false)
     })
 
     it('should pass p_don_vi as null when selectedFacilityId is undefined', () => {
-      setupGlobalUser({ shouldFetchData: false })
+      setupGlobalUser({ shouldFetchData: true })
       render(<RepairRequestsPageClient />)
 
       const statusCountsCall = mockUseQueryCalls.find(
