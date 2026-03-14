@@ -211,4 +211,22 @@ describe('/api/chat error safety — sanitization', () => {
     expect(text).toBe('Đã xảy ra lỗi. Vui lòng thử lại.')
     expect(text).not.toContain('Model overloaded')
   })
+
+  it('returns a clear quota message for provider quota exceeded errors', async () => {
+    streamTextMock.mockImplementation(() => {
+      throw new Error(
+        'responseBody: {"error":{"code":429,"message":"You exceeded your current quota. Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-2.5-flash Please retry in 16.292864906s."}}',
+      )
+    })
+
+    const res = await POST(buildRequest({ messages: VALID_MESSAGES }) as never)
+    const text = await res.text()
+
+    expect(res.status).toBe(500)
+    expect(text).toBe(
+      'Model AI đang vượt hạn mức sử dụng của nhà cung cấp. Vui lòng chờ khoảng 17 giây rồi thử lại.',
+    )
+    expect(text).not.toContain('generativelanguage.googleapis.com')
+    expect(text).not.toContain('gemini-2.5-flash')
+  })
 })

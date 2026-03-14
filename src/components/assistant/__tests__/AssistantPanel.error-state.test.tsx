@@ -149,6 +149,24 @@ describe('AssistantPanel error state', () => {
         ).toBeInTheDocument()
     })
 
+    it('maps provider quota exceeded errors to a clear retry message', () => {
+        mocks.useChatState.error = new Error(
+            'responseBody: {"error":{"code":429,"message":"You exceeded your current quota. Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-2.5-flash Please retry in 16.292864906s."}}',
+        )
+        mocks.useChatState.status = 'error'
+
+        render(<AssistantPanel isOpen={true} onClose={vi.fn()} />)
+
+        expect(
+            screen.getByText(
+                'Model AI đang vượt hạn mức sử dụng của nhà cung cấp. Vui lòng chờ khoảng 17 giây rồi thử lại.',
+            ),
+        ).toBeInTheDocument()
+        expect(
+            screen.queryByText(/generativelanguage\.googleapis\.com/i),
+        ).not.toBeInTheDocument()
+    })
+
     it('calls clearError and setMessages when reset button is clicked', () => {
         mocks.useChatState.error = new Error('Test error')
         mocks.useChatState.status = 'error'
