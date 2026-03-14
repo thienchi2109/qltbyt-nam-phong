@@ -174,6 +174,19 @@ describe('/api/chat quota tools', () => {
     )
   })
 
+  it('has a patch migration that keeps active decision context for notMapped devices', () => {
+    const migrationPath = path.resolve(
+      process.cwd(),
+      'supabase/migrations/20260314123500_fix_ai_device_quota_lookup_notmapped_decision_context.sql',
+    )
+    const migrationSource = readFileSync(migrationPath, 'utf8')
+
+    expect(migrationSource).toContain("'reason', 'No active quota decision found for this facility'")
+    expect(migrationSource).toContain("'status', 'notMapped'")
+    expect(migrationSource).toContain("'decision', jsonb_build_object(")
+    expect(migrationSource).toContain("'evidence_status', 'partial'")
+  })
+
   it('has a migration that enforces so_luong_toi_thieu as NOT NULL DEFAULT 0', () => {
     const migrationsDir = path.resolve(process.cwd(), 'supabase/migrations')
     const migrationFile = require('node:fs')
