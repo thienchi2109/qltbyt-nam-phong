@@ -18,14 +18,14 @@ import {
   AI_MAX_OUTPUT_TOKENS,
   AI_MAX_TOOL_STEPS,
 } from '@/lib/ai/limits'
-import { getChatModel } from '@/lib/ai/provider'
+import { getChatModel, getKeyPoolSize, handleProviderQuotaError } from '@/lib/ai/provider'
 import { buildSystemPrompt } from '@/lib/ai/prompts/system'
 import type { SystemPromptContext } from '@/lib/ai/prompts/types'
 import { routeChatIntent } from '@/lib/ai/intent-routing'
 import { extractEquipmentLookupHints } from '@/lib/ai/tools/equipment-lookup-identifiers'
 import { buildToolRegistry, validateRequestedTools } from '@/lib/ai/tools/registry'
 import { checkUsageLimits, confirmUsage, recordUsage } from '@/lib/ai/usage-metering'
-import { sanitizeErrorForClient } from '@/lib/ai/errors'
+import { isProviderQuotaError, sanitizeErrorForClient } from '@/lib/ai/errors'
 import { isPrivilegedRole, ROLES } from '@/lib/rbac'
 
 export const runtime = 'nodejs'
@@ -196,35 +196,51 @@ export async function POST(request: Request) {
   // Record in rate-limit sliding window upfront (anti-abuse).
   recordUsage(usageContext)
 
-  try {
-    const result = streamText({
-      model: getChatModel(),
-      system: systemPrompt,
-      maxOutputTokens: AI_MAX_OUTPUT_TOKENS,
-      stopWhen: stepCountIs(AI_MAX_TOOL_STEPS),
-      messages: await convertToModelMessages(validatedMessages),
-      tools,
-      providerOptions: {
-        google: {
-          thinkingConfig: { thinkingLevel: 'medium' },
-        } satisfies GoogleLanguageModelOptions,
-      },
-      onFinish({ usage, finishReason }) {
-        // Only increment daily quotas after a successful completion.
-        if (finishReason !== 'error') {
-          confirmUsage(usageContext, {
-            inputTokens: usage.inputTokens ?? 0,
-            outputTokens: usage.outputTokens ?? 0,
-          })
-        }
-      },
-    })
+  const modelMessages = await convertToModelMessages(validatedMessages)
+  const maxAttempts = getKeyPoolSize()
 
-    return result.toUIMessageStreamResponse({
-      onError: (error) => sanitizeErrorForClient(error),
-    })
-  } catch (error) {
-    console.error('[chat] Pre-stream error:', error)
-    return plainError(sanitizeErrorForClient(error), 500)
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      const result = streamText({
+        model: getChatModel(),
+        system: systemPrompt,
+        maxOutputTokens: AI_MAX_OUTPUT_TOKENS,
+        stopWhen: stepCountIs(AI_MAX_TOOL_STEPS),
+        messages: modelMessages,
+        tools,
+        providerOptions: {
+          google: {
+            thinkingConfig: { thinkingLevel: 'medium' },
+          } satisfies GoogleLanguageModelOptions,
+        },
+        onFinish({ usage, finishReason }) {
+          // Only increment daily quotas after a successful completion.
+          if (finishReason !== 'error') {
+            confirmUsage(usageContext, {
+              inputTokens: usage.inputTokens ?? 0,
+              outputTokens: usage.outputTokens ?? 0,
+            })
+          }
+        },
+      })
+
+      return result.toUIMessageStreamResponse({
+        onError: (error) => sanitizeErrorForClient(error),
+      })
+    } catch (error) {
+      // On quota error, silently rotate to next API key and retry.
+      if (isProviderQuotaError(error) && attempt < maxAttempts && handleProviderQuotaError()) {
+        console.warn(
+          `[chat] API key #${attempt} quota exceeded — rotating to next key (attempt ${attempt + 1}/${maxAttempts})`,
+        )
+        continue
+      }
+
+      console.error('[chat] Pre-stream error:', error)
+      return plainError(sanitizeErrorForClient(error), 500)
+    }
   }
+
+  // Should be unreachable, but guard defensively.
+  return plainError(sanitizeErrorForClient('All API keys exhausted.'), 500)
 }

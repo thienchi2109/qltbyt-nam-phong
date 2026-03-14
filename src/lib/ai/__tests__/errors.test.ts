@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 import {
   GENERIC_CHAT_ERROR_MESSAGE,
+  isProviderQuotaError,
   parseErrorMessage,
   sanitizeErrorForClient,
 } from '../errors'
@@ -36,3 +37,35 @@ describe('ai errors sanitization', () => {
     expect(sanitizeErrorForClient(raw)).toBe(GENERIC_CHAT_ERROR_MESSAGE)
   })
 })
+
+describe('isProviderQuotaError', () => {
+  it('returns true for "exceeded your current quota" errors', () => {
+    const error = new Error(
+      'You exceeded your current quota. Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests',
+    )
+    expect(isProviderQuotaError(error)).toBe(true)
+  })
+
+  it('returns true for "generate_content_free_tier_requests" pattern', () => {
+    expect(
+      isProviderQuotaError(
+        'quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests',
+      ),
+    ).toBe(true)
+  })
+
+  it('returns true for rate-limits pattern', () => {
+    expect(isProviderQuotaError(new Error('rate-limits exceeded'))).toBe(true)
+  })
+
+  it('returns false for generic errors', () => {
+    expect(isProviderQuotaError(new Error('Network timeout'))).toBe(false)
+  })
+
+  it('returns false for non-error values', () => {
+    expect(isProviderQuotaError(null)).toBe(false)
+    expect(isProviderQuotaError(undefined)).toBe(false)
+    expect(isProviderQuotaError(42)).toBe(false)
+  })
+})
+

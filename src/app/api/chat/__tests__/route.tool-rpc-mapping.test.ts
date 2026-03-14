@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { getToolRpcMapping } from '@/lib/ai/tools/registry'
+import { getToolRpcMapping } from '../../../../lib/ai/tools/registry'
 
 describe('AI tool → RPC mapping contract', () => {
   const EXPECTED_MAPPING: Record<string, string> = {
@@ -12,6 +12,7 @@ describe('AI tool → RPC mapping contract', () => {
     attachmentLookup: 'ai_attachment_metadata',
     deviceQuotaLookup: 'ai_device_quota_lookup',
     quotaComplianceSummary: 'ai_quota_compliance_summary',
+    categorySuggestion: 'ai_category_list',
   }
 
   it('maps tool names to their approved RPC functions', () => {
@@ -33,6 +34,7 @@ describe('AI tool → RPC mapping contract', () => {
     attachmentLookup: 'ai_attachment_metadata',
     deviceQuotaLookup: 'ai_device_quota_lookup',
     quotaComplianceSummary: 'ai_quota_compliance_summary',
+    categorySuggestion: 'ai_category_list',
   }))('tool "%s" maps to RPC "%s"', (tool, rpc) => {
     const mapping = getToolRpcMapping()
     expect(mapping[tool]).toBe(rpc)

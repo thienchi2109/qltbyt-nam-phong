@@ -11,6 +11,8 @@ vi.mock('next-auth', () => ({
 
 vi.mock('@/lib/ai/provider', () => ({
   getChatModel: (...args: unknown[]) => getChatModelMock(...args),
+  getKeyPoolSize: () => 1,
+  handleProviderQuotaError: () => false,
 }))
 
 vi.mock('@/lib/ai/prompts/system', () => ({

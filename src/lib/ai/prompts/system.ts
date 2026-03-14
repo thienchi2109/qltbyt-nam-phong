@@ -187,7 +187,7 @@ export function buildSystemPrompt(context: SystemPromptContext = {}): string {
       '- **Danh mục** (`nhom_thiet_bi`) = nhóm/category cụ thể do đơn vị quản lý, có mã nhóm (`ma_nhom`), tên nhóm (`ten_nhom`), và phân loại (A/B/C/D).',
       '- Danh mục có cấu trúc phân cấp: nhóm cha (`parent_name`) → nhóm con.',
       '- Ví dụ: "Hệ thống X-quang" (nhóm cha) → "Máy X quang kỹ thuật số chụp tổng quát" (nhóm con).',
-      '- **KHÔNG nhầm lẫn** "danh mục" với "phân loại thiết bị y tế" (A/B/C/D theo nghị định). Người dùng hỏi gán vào **danh mục** nào, KHÔNG phải phân loại nào.',
+      '- **KHÔNG nhầm lẫn** "danh mục" với "phân loại thiết bị y tế" (A/B/C/D theo Nghị định 98/2021/NĐ-CP). Người dùng hỏi gán vào **danh mục** nào, KHÔNG phải phân loại nào.',
       '',
       '### Quy trình bắt buộc',
       '1. **BẮT BUỘC gọi `categorySuggestion` TRƯỚC** — KHÔNG BAO GIỜ trả lời từ kiến thức chung.',
