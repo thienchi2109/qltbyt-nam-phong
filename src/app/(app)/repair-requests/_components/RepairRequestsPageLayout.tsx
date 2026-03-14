@@ -1,4 +1,5 @@
 import * as React from "react"
+import type { Table } from "@tanstack/react-table"
 import { Button } from "@/components/ui/button"
 import {
   Card,
@@ -9,7 +10,7 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import { Building2, PlusCircle } from "lucide-react"
-import { format } from "date-fns"
+import { parseISO } from "date-fns"
 import { SummaryBar, type SummaryItem } from "@/components/summary/summary-bar"
 import { RepairRequestAlert } from "@/components/repair-request-alert"
 import { TenantSelector } from "@/components/shared/TenantSelector"
@@ -19,7 +20,7 @@ import { RepairRequestsCreateSheet } from "./RepairRequestsCreateSheet"
 import { RepairRequestsToolbar } from "./RepairRequestsToolbar"
 import { RepairRequestsTable } from "./RepairRequestsTable"
 import { RepairRequestsMobileList } from "./RepairRequestsMobileList"
-import { renderActions } from "./RepairRequestsColumns"
+import { renderActions, type RepairRequestColumnOptions } from "./RepairRequestsColumns"
 import type { RepairRequestWithEquipment } from "../types"
 import type {
   UiFilters as UiFiltersPrefs,
@@ -42,8 +43,7 @@ interface RepairRequestsPageLayoutProps {
   // Search & Filters
   searchTerm: string
   onSearchChange: (value: string) => void
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  searchInputRef: any
+  searchInputRef: React.RefObject<HTMLInputElement>
   isFiltered: boolean
   onClearFilters: () => void
   isFilterModalOpen: boolean
@@ -56,8 +56,7 @@ interface RepairRequestsPageLayoutProps {
   onRemoveFilter: (key: "status" | "facilityName" | "dateRange", sub?: string) => void
 
   // Table
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  table: any
+  table: Table<RepairRequestWithEquipment>
   tableKey: string
   isMobile: boolean
   shouldFetchData: boolean
@@ -72,8 +71,7 @@ interface RepairRequestsPageLayoutProps {
   }
 
   // Column options (for mobile renderActions)
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  columnOptions: any
+  columnOptions: RepairRequestColumnOptions
   setRequestToView: (req: RepairRequestWithEquipment | null) => void
 
   // Create
@@ -195,8 +193,8 @@ export function RepairRequestsPageLayout({
                     status: uiFilters.status,
                     facilityId: selectedFacilityId ?? null,
                     dateRange: uiFilters.dateRange ? {
-                      from: uiFilters.dateRange.from ? new Date(uiFilters.dateRange.from) : null,
-                      to: uiFilters.dateRange.to ? new Date(uiFilters.dateRange.to) : null,
+                      from: uiFilters.dateRange.from ? parseISO(uiFilters.dateRange.from) : null,
+                      to: uiFilters.dateRange.to ? parseISO(uiFilters.dateRange.to) : null,
                     } : { from: null, to: null },
                   }}
                   onChange={onFilterChange}
@@ -210,8 +208,8 @@ export function RepairRequestsPageLayout({
                     {/* Mobile Card View */}
                     {isMobile ? (
                       <RepairRequestsMobileList
-                        requests={table.getRowModel().rows.map((row: any) => row.original)}
-                        isLoading={isLoading}
+                        requests={table.getRowModel().rows.map((row) => row.original)}
+                        isLoading={isLoading || isFetching}
                         setRequestToView={setRequestToView}
                         renderActions={(req: RepairRequestWithEquipment) => renderActions(req, columnOptions)}
                       />

@@ -3,8 +3,8 @@
 import * as React from "react"
 import { callRpc } from "@/lib/rpc-client"
 import type { EquipmentSelectItem } from "../types"
+import type { RepairRequestDraftPayload } from "@/lib/ai/draft/repair-request-draft-schema"
 import type { UiFilters } from "@/lib/rr-prefs"
-import { setUiFilters } from "@/lib/rr-prefs"
 
 // ── Types ────────────────────────────────────────────────────────
 
@@ -17,7 +17,7 @@ export interface UseRepairRequestsDeepLinkOptions {
   setUiFiltersState: (v: UiFilters) => void
   setUiFilters: (v: UiFilters) => void
   openCreateSheet: (equipment?: EquipmentSelectItem) => void
-  applyAssistantDraft: (draft: any) => void
+  applyAssistantDraft: (draft: RepairRequestDraftPayload) => void
   queryClient: {
     getQueryData: (key: unknown[]) => unknown
     removeQueries: (opts: { queryKey: unknown[] }) => void
@@ -42,6 +42,7 @@ export function useRepairRequestsDeepLink(
     toast,
     uiFilters,
     setUiFiltersState,
+    setUiFilters,
     openCreateSheet,
     applyAssistantDraft,
     queryClient,
@@ -53,6 +54,9 @@ export function useRepairRequestsDeepLink(
   // Track the last processed status value to prevent render loops while still
   // allowing future deep-link navigations after the URL has been cleaned.
   const lastAppliedStatusRef = React.useRef<string | null>(null)
+  // Track the last fetched equipmentId to prevent duplicate equipment_get calls
+  // when router.replace() from status cleanup triggers a searchParams change.
+  const lastFetchedEquipmentIdRef = React.useRef<number | null>(null)
 
   // Initial load: fetch a small equipment list via RPC
   React.useEffect(() => {
@@ -82,31 +86,43 @@ export function useRepairRequestsDeepLink(
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [toast])
 
-  // Support preselect by equipmentId query param using equipment_get RPC
-  // and status deep-link (?status=X) — guarded by lastAppliedStatusRef to prevent re-render loop
+  // Handle ?status=X deep-link — separate effect to avoid competing with
+  // equipmentId fetch or action=create URL cleanup.
   React.useEffect(() => {
     const statusParam = searchParams.get('status')
     if (!statusParam) {
       lastAppliedStatusRef.current = null
-    } else if (lastAppliedStatusRef.current !== statusParam) {
-      lastAppliedStatusRef.current = statusParam
-      const updated = { ...uiFilters, status: [statusParam] }
-      setUiFiltersState(updated)
-      setUiFilters(updated)
-      // Clean status param from URL to prevent re-processing
-      const params = new URLSearchParams(searchParams.toString())
-      params.delete('status')
-      const nextPath = params.size ? `${pathname}?${params.toString()}` : pathname
-      router.replace(nextPath, { scroll: false })
+      return
     }
+    if (lastAppliedStatusRef.current === statusParam) return
 
+    lastAppliedStatusRef.current = statusParam
+    const updated = { ...uiFilters, status: [statusParam] }
+    setUiFiltersState(updated)
+    setUiFilters(updated)
+    // Clean status param from URL to prevent re-processing
+    const params = new URLSearchParams(searchParams.toString())
+    params.delete('status')
+    const nextPath = params.size ? `${pathname}?${params.toString()}` : pathname
+    router.replace(nextPath, { scroll: false })
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams])
+
+  // Support preselect by equipmentId query param using equipment_get RPC.
+  // Guarded by lastFetchedEquipmentIdRef to prevent duplicate fetches when
+  // other effects trigger router.replace() (which changes searchParams).
+  React.useEffect(() => {
     const equipmentId = searchParams.get('equipmentId')
-    const run = async () => {
-      if (!equipmentId) return
-      const idNum = Number(equipmentId)
-      const existing = allEquipment.find(eq => eq.id === idNum)
-      if (existing) return
+    if (!equipmentId) return
+    const idNum = Number(equipmentId)
 
+    // Skip if already fetched this ID or already in the list
+    if (lastFetchedEquipmentIdRef.current === idNum) return
+    const existing = allEquipment.find(eq => eq.id === idNum)
+    if (existing) return
+
+    lastFetchedEquipmentIdRef.current = idNum
+    const run = async () => {
       setIsEquipmentFetchPending(true)
       try {
         const row: any = await callRpc({ fn: 'equipment_get', args: { p_id: idNum } })
@@ -140,13 +156,14 @@ export function useRepairRequestsDeepLink(
       "equipment" in cachedAssistantDraft &&
       "formData" in cachedAssistantDraft
     ) {
-      applyAssistantDraft(cachedAssistantDraft as any)
+      applyAssistantDraft(cachedAssistantDraft as RepairRequestDraftPayload)
       openCreateSheet()
       queryClient.removeQueries({ queryKey: ["assistant-draft"] })
 
       const params = new URLSearchParams(searchParams.toString())
       params.delete('action')
       params.delete('equipmentId')
+      params.delete('status')
       const nextPath = params.size ? `${pathname}?${params.toString()}` : pathname
       router.replace(nextPath, { scroll: false })
       return
@@ -170,6 +187,7 @@ export function useRepairRequestsDeepLink(
     const params = new URLSearchParams(searchParams.toString())
     params.delete('action')
     params.delete('equipmentId')
+    params.delete('status')
     const nextPath = params.size ? `${pathname}?${params.toString()}` : pathname
     router.replace(nextPath, { scroll: false })
   // eslint-disable-next-line react-hooks/exhaustive-deps
