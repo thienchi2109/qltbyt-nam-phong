@@ -142,6 +142,8 @@ function MessageBubble({
                     }
 
                     // Tool part (catch-all via isToolUIPart)
+                    // TODO(phase-5b): Handle tool-level output errors (state === 'error')
+                    //   — render inline error UI per tool part, not just the global error banner.
                     if (isToolUIPart(part)) {
                         const toolName = getToolName(part)
 
