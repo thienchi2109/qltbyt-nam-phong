@@ -260,4 +260,7 @@ BEGIN
 END;
 $function$;
 
+GRANT EXECUTE ON FUNCTION public.ai_device_quota_lookup(BIGINT, BIGINT, TEXT) TO authenticated;
+REVOKE EXECUTE ON FUNCTION public.ai_device_quota_lookup(BIGINT, BIGINT, TEXT) FROM PUBLIC;
+
 COMMIT;

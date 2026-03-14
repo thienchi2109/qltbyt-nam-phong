@@ -217,4 +217,7 @@ BEGIN
 END;
 $function$;
 
+GRANT EXECUTE ON FUNCTION public.ai_equipment_lookup(TEXT, INTEGER, BIGINT, TEXT, TEXT, JSONB) TO authenticated;
+REVOKE EXECUTE ON FUNCTION public.ai_equipment_lookup(TEXT, INTEGER, BIGINT, TEXT, TEXT, JSONB) FROM PUBLIC;
+
 COMMIT;
