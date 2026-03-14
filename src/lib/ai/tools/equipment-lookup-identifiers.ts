@@ -25,7 +25,7 @@ function isLikelyEquipmentIdentifier(token: string): boolean {
   return digitCount >= 4 && hasLetter && hasStructure
 }
 
-function getLatestUserText(messages: UIMessage[]): string {
+export function getLatestUserText(messages: UIMessage[]): string {
   for (let index = messages.length - 1; index >= 0; index -= 1) {
     const message = messages[index]
     if (message?.role !== 'user' || !Array.isArray(message.parts)) {

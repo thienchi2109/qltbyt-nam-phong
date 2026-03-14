@@ -132,25 +132,6 @@ export async function POST(request: Request) {
     return plainError('Invalid messages payload', 400)
   }
 
-  const role = typeof user.role === 'string' ? user.role : undefined
-  const sessionFacilityId = toFacilityId(user.don_vi)
-  const requestedFacilityId = parsedRequest.data.selectedFacilityId
-  let selectedFacilityId = sessionFacilityId
-
-  if (isPrivilegedRole(role)) {
-    if (requestedTools.length > 0 && requestedFacilityId === undefined) {
-      return plainError('Please select a facility before using assistant tools.', 400)
-    }
-
-    if (requestedFacilityId !== undefined) {
-      selectedFacilityId = requestedFacilityId
-    }
-  }
-
-  if (requestedTools.length > 0 && selectedFacilityId === undefined) {
-    return plainError('Unable to resolve facility context for tool execution.', 400)
-  }
-
   const routedIntent = routeChatIntent({
     messages: validatedMessages,
     requestedTools,
@@ -160,6 +141,24 @@ export async function POST(request: Request) {
   }
   const effectiveRequestedTools = routedIntent.requestedTools
 
+  const role = typeof user.role === 'string' ? user.role : undefined
+  const sessionFacilityId = toFacilityId(user.don_vi)
+  const requestedFacilityId = parsedRequest.data.selectedFacilityId
+  let selectedFacilityId = sessionFacilityId
+
+  if (isPrivilegedRole(role)) {
+    if (effectiveRequestedTools.length > 0 && requestedFacilityId === undefined) {
+      return plainError('Please select a facility before using assistant tools.', 400)
+    }
+
+    if (requestedFacilityId !== undefined) {
+      selectedFacilityId = requestedFacilityId
+    }
+  }
+
+  if (effectiveRequestedTools.length > 0 && selectedFacilityId === undefined) {
+    return plainError('Unable to resolve facility context for tool execution.', 400)
+  }
   const promptUserId =
     typeof user.id === 'string' || typeof user.id === 'number'
       ? String(user.id)

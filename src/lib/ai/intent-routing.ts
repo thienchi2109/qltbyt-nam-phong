@@ -1,4 +1,5 @@
 import type { UIMessage } from 'ai'
+import { getLatestUserText } from './tools/equipment-lookup-identifiers'
 
 const EQUIPMENT_LOOKUP_TOOL = 'equipmentLookup'
 const REPAIR_SUMMARY_TOOL = 'repairSummary'
@@ -77,7 +78,7 @@ function classifyRepairIntent(
     }
   }
 
-  if (mentionsEquipmentStatus || mentionsEquipment) {
+  if (mentionsEquipmentStatus) {
     return {
       kind: 'proceed',
       requestedTools: removeTool(requestedTools, REPAIR_SUMMARY_TOOL),
@@ -136,32 +137,6 @@ function classifyQuotaIntent(
   }
 }
 
-function getLatestUserText(messages: UIMessage[]): string {
-  for (let index = messages.length - 1; index >= 0; index -= 1) {
-    const message = messages[index]
-    if (message.role !== 'user') {
-      continue
-    }
-
-    const text = message.parts
-      .filter(
-        (
-          part,
-        ): part is Extract<(typeof message.parts)[number], { type: 'text'; text: string }> =>
-          part.type === 'text' && typeof part.text === 'string',
-      )
-      .map(part => part.text.trim())
-      .filter(Boolean)
-      .join(' ')
-
-    if (text) {
-      return text
-    }
-  }
-
-  return ''
-}
-
 function normalizeIntentText(text: string): string {
   return text
     .normalize('NFD')
@@ -172,8 +147,10 @@ function normalizeIntentText(text: string): string {
     .trim()
 }
 
+const EQUIPMENT_IDENTIFIER_RE = /\b[A-Za-z]{1,8}(?:[._-][A-Za-z0-9]{2,}){1,}\b/
+
 function hasEquipmentIdentifier(text: string): boolean {
-  return /\b[A-Za-z]{1,8}(?:[._-][A-Za-z0-9]{2,}){2,}\b/.test(text)
+  return EQUIPMENT_IDENTIFIER_RE.test(text)
 }
 
 function removeTool(requestedTools: string[], toolName: string): string[] {

@@ -142,4 +142,25 @@ describe('/api/chat intent routing + clarification guard', () => {
     expect(text).toContain('một thiết bị cụ thể')
     expect(text).toContain('tổng quan định mức của đơn vị')
   })
+
+  it('returns clarification instead of 400 when privileged user has no facility and intent is ambiguous', async () => {
+    getServerSessionMock.mockResolvedValue({
+      user: { id: 'u1', role: 'admin', don_vi: undefined },
+    })
+
+    const res = await POST(
+      buildRequest({
+        // No selectedFacilityId — privileged user hasn't chosen a facility yet
+        messages: buildMessages('Tình hình sửa chữa hiện tại thế nào?'),
+        requestedTools: ['equipmentLookup', 'repairSummary'],
+      }) as never,
+    )
+    const text = await res.text()
+
+    // Clarification should fire BEFORE the facility guard
+    expect(res.status).toBe(200)
+    expect(res.headers.get('content-type')).toContain('text/event-stream')
+    expect(streamTextMock).not.toHaveBeenCalled()
+    expect(text).toContain('trạng thái thiết bị')
+  })
 })
