@@ -49,6 +49,8 @@ export function usePlanColumns(options: PlanColumnOptions): ColumnDef<Maintenanc
     canManagePlans,
   } = options
 
+  return React.useMemo(() => {
+
   const planColumns: ColumnDef<MaintenancePlan>[] = [
     {
       accessorKey: "ten_ke_hoach",
@@ -186,6 +188,7 @@ export function usePlanColumns(options: PlanColumnOptions): ColumnDef<Maintenanc
   ]
 
   return planColumns
+  }, [onRowClick, openApproveDialog, openRejectDialog, openDeleteDialog, setEditingPlan, canManagePlans])
 }
 
 export function useTaskColumns(options: TaskColumnOptions): ColumnDef<MaintenanceTask>[] {
@@ -196,6 +199,8 @@ export function useTaskColumns(options: TaskColumnOptions): ColumnDef<Maintenanc
     completionStatus,
     isLoadingCompletion,
   } = options
+
+  return React.useMemo(() => {
 
   const taskColumns: ColumnDef<MaintenanceTask>[] = [
     {
@@ -415,4 +420,5 @@ export function useTaskColumns(options: TaskColumnOptions): ColumnDef<Maintenanc
   ]
 
   return taskColumns
+  }, [editingTaskId, isPlanApproved, isCompletingTask, completionStatus, isLoadingCompletion])
 }

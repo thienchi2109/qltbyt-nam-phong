@@ -146,6 +146,56 @@ describe("useMaintenanceDrafts", () => {
       })
     })
 
+    it("ignores stale responses from older in-flight fetches", async () => {
+      let resolveFirstFetch: ((value: MaintenanceTask[]) => void) | undefined
+      let resolveSecondFetch: ((value: MaintenanceTask[]) => void) | undefined
+
+      const firstFetch = new Promise<MaintenanceTask[]>((resolve) => {
+        resolveFirstFetch = resolve
+      })
+      const secondFetch = new Promise<MaintenanceTask[]>((resolve) => {
+        resolveSecondFetch = resolve
+      })
+
+      const secondPlan: MaintenancePlan = {
+        ...mockPlan,
+        id: 2,
+        ten_ke_hoach: "Second Plan",
+      }
+
+      const firstPlanTasks = [createTask(11)]
+      const secondPlanTasks = [createTask(22, { ke_hoach_id: 2 })]
+
+      mocks.callRpc.mockReturnValueOnce(firstFetch).mockReturnValueOnce(secondFetch)
+
+      const { result } = renderHook(() =>
+        useMaintenanceDrafts({ selectedPlan: mockPlan })
+      )
+
+      act(() => {
+        void result.current.fetchTasks(mockPlan)
+        void result.current.fetchTasks(secondPlan)
+      })
+
+      await act(async () => {
+        resolveSecondFetch?.(secondPlanTasks)
+        await secondFetch
+      })
+
+      await waitFor(() => {
+        expect(result.current.tasks).toEqual(secondPlanTasks)
+        expect(result.current.draftTasks).toEqual(secondPlanTasks)
+      })
+
+      await act(async () => {
+        resolveFirstFetch?.(firstPlanTasks)
+        await firstFetch
+      })
+
+      expect(result.current.tasks).toEqual(secondPlanTasks)
+      expect(result.current.draftTasks).toEqual(secondPlanTasks)
+    })
+
     it("restores cached draft on fetch", async () => {
       const dbTasks = [createTask(1)]
       const cachedDrafts = [createTask(1, { ghi_chu: "Cached note" })]

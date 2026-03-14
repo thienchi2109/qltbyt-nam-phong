@@ -217,13 +217,15 @@ export function MaintenanceDialogs() {
           </AlertDialogContent>
         </AlertDialog>
       )}
-      <AddTasksDialog
-        open={dialogState.isAddTasksDialogOpen}
-        onOpenChange={setIsAddTasksDialogOpen}
-        plan={addTasksDialogPlan}
-        existingEquipmentIds={existingEquipmentIdsInDraft}
-        onSuccess={handleAddTasksFromDialog}
-      />
+      {dialogState.isAddTasksDialogOpen && (
+        <AddTasksDialog
+          open={dialogState.isAddTasksDialogOpen}
+          onOpenChange={setIsAddTasksDialogOpen}
+          plan={addTasksDialogPlan}
+          existingEquipmentIds={existingEquipmentIdsInDraft}
+          onSuccess={handleAddTasksFromDialog}
+        />
+      )}
     </>
   )
 }

@@ -21,11 +21,18 @@ export function useMaintenanceDrafts({
   const [draftTasks, setDraftTasks] = React.useState<MaintenanceTask[]>([])
   const [isSaving, setIsSaving] = React.useState(false)
   const [isLoading, setIsLoading] = React.useState(false)
+  const fetchSequenceRef = React.useRef(0)
+  const activeFetchSequenceRef = React.useRef(0)
 
   const getDraftCacheKey = React.useCallback(
     (planId: number) => `maintenance_draft_${planId}`,
     []
   )
+
+  const invalidateActiveFetch = React.useCallback(() => {
+    fetchSequenceRef.current += 1
+    activeFetchSequenceRef.current = fetchSequenceRef.current
+  }, [])
 
   const hasChanges = React.useMemo(() => {
     return JSON.stringify(tasks) !== JSON.stringify(draftTasks)
@@ -45,13 +52,21 @@ export function useMaintenanceDrafts({
 
   React.useEffect(() => {
     if (!selectedPlan) {
+      invalidateActiveFetch()
+      setIsLoading(false)
       setTasks([])
       setDraftTasks([])
     }
-  }, [selectedPlan])
+  }, [selectedPlan, invalidateActiveFetch])
 
   // Fetch tasks when plan changes
   const fetchTasks = React.useCallback(async (plan: MaintenancePlan) => {
+    const fetchSequence = fetchSequenceRef.current + 1
+    fetchSequenceRef.current = fetchSequence
+    activeFetchSequenceRef.current = fetchSequence
+
+    const isStaleFetch = () => activeFetchSequenceRef.current !== fetchSequence
+
     setIsLoading(true)
     const cacheKey = getDraftCacheKey(plan.id)
     const cachedDraft = localStorage.getItem(cacheKey)
@@ -66,26 +81,46 @@ export function useMaintenanceDrafts({
           p_don_vi_thuc_hien: null
         }
       })
+
+      if (isStaleFetch()) {
+        return
+      }
+
       const dbTasks = data || []
       setTasks(dbTasks)
 
       if (cachedDraft) {
         try {
+          if (isStaleFetch()) {
+            return
+          }
           setDraftTasks(JSON.parse(cachedDraft))
           toast({ title: "Thông báo", description: "Đã tải lại bản nháp chưa lưu của bạn." })
         } catch {
+          if (isStaleFetch()) {
+            return
+          }
           setDraftTasks(dbTasks)
         }
       } else {
+        if (isStaleFetch()) {
+          return
+        }
         setDraftTasks(dbTasks)
       }
     } catch (error) {
+      if (isStaleFetch()) {
+        return
+      }
       const message = error instanceof Error ? error.message : "Lỗi không xác định"
       toast({ variant: "destructive", title: "Lỗi tải công việc", description: message })
       setTasks([])
       setDraftTasks([])
+    } finally {
+      if (!isStaleFetch()) {
+        setIsLoading(false)
+      }
     }
-    setIsLoading(false)
   }, [getDraftCacheKey, toast])
 
   // Save all changes

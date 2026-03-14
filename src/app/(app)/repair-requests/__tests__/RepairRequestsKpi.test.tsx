@@ -180,7 +180,7 @@ vi.mock('@tanstack/react-query', () => ({
 
     if (key === 'repair_request_status_counts') {
       return {
-        data: mockStatusCounts,
+        data: options.enabled ? mockStatusCounts : undefined,
         isLoading: false,
       }
     }
