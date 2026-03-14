@@ -102,15 +102,16 @@ describe('AssistantPanel error state', () => {
         expect(screen.getByText('Network connection lost')).toBeInTheDocument()
     })
 
-    it('parses JSON-wrapped error message and displays clean text', () => {
+    it('returns generic message for JSON-wrapped error (deny-by-default)', () => {
         mocks.useChatState.error = new Error('{"error":"Facility not selected"}')
         mocks.useChatState.status = 'error'
 
         render(<AssistantPanel isOpen={true} onClose={vi.fn()} />)
 
-        expect(screen.getByText('Facility not selected')).toBeInTheDocument()
+        // JSON-wrapped values are untrusted — always show generic message
+        expect(screen.getByText('Đã xảy ra lỗi. Vui lòng thử lại.')).toBeInTheDocument()
         expect(
-            screen.queryByText('{"error":"Facility not selected"}'),
+            screen.queryByText('Facility not selected'),
         ).not.toBeInTheDocument()
     })
 

@@ -40,10 +40,11 @@ export function parseErrorMessage(raw: string | undefined): string {
   try {
     const parsed = JSON.parse(raw)
     if (typeof parsed === 'object' && parsed !== null && typeof parsed.error === 'string' && parsed.error.trim() !== '') {
-      return parsed.error
+      // Extracted value is also untrusted — return sanitized version
+      return GENERIC_CHAT_ERROR_MESSAGE
     }
   } catch {
-    // Not JSON — use raw string
+    // Not JSON — use raw string (already sanitized by server-side deny-by-default)
   }
 
   return raw
