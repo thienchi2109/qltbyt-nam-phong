@@ -207,11 +207,14 @@ export async function POST(request: Request) {
   const maxAttempts = getKeyPoolSize()
 
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-    const { model, keyIndex } = getChatModel()
+    let keyIndex = 0
 
     try {
+      const chatModel = getChatModel()
+      keyIndex = chatModel.keyIndex
+
       const result = streamText({
-        model,
+        model: chatModel.model,
         system: systemPrompt,
         maxOutputTokens: AI_MAX_OUTPUT_TOKENS,
         stopWhen: stepCountIs(AI_MAX_TOOL_STEPS),
@@ -234,7 +237,14 @@ export async function POST(request: Request) {
       })
 
       return result.toUIMessageStreamResponse({
-        onError: (error) => sanitizeErrorForClient(error),
+        onError: (error) => {
+          // Mid-stream quota errors can't be retried (response already in-flight),
+          // but rotate the key for future requests so they don't hit the same quota.
+          if (isProviderQuotaError(error)) {
+            handleProviderQuotaError(keyIndex)
+          }
+          return sanitizeErrorForClient(error)
+        },
       })
     } catch (error) {
       // On quota error, silently rotate to next API key and retry.
