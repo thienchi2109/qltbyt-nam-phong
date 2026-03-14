@@ -181,10 +181,17 @@ describe('/api/chat quota tools', () => {
     )
     const migrationSource = readFileSync(migrationPath, 'utf8')
 
-    expect(migrationSource).toContain("'reason', 'No active quota decision found for this facility'")
-    expect(migrationSource).toContain("'status', 'notMapped'")
-    expect(migrationSource).toContain("'decision', jsonb_build_object(")
-    expect(migrationSource).toContain("'evidence_status', 'partial'")
+    const notMappedBranch = migrationSource.match(
+      /IF v_equip_nhom_id IS NULL THEN[\s\S]*?RETURN jsonb_build_object\(([\s\S]*?)\);\s*END IF;/,
+    )?.[0]
+
+    expect(notMappedBranch).toBeTruthy()
+    expect(notMappedBranch).toContain("'status', 'notMapped'")
+    expect(notMappedBranch).toContain("'decision', jsonb_build_object(")
+    expect(notMappedBranch).toContain("'evidence_status', 'partial'")
+    expect(notMappedBranch).not.toContain(
+      "'reason', 'No active quota decision found for this facility'",
+    )
   })
 
   it('has a migration that enforces so_luong_toi_thieu as NOT NULL DEFAULT 0', () => {
