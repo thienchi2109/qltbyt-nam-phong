@@ -67,10 +67,11 @@ describe('/api/chat auth + schema', () => {
     getServerSessionMock.mockResolvedValue({ user: { id: 'u1', role: 'auditor' } })
 
     const res = await POST(buildRequest({ messages: VALID_MESSAGES }) as never)
-    const payload = await res.json()
+    const text = await res.text()
 
     expect(res.status).toBe(403)
-    expect(payload).toEqual({ error: 'Forbidden' })
+    expect(res.headers.get('content-type')).toContain('text/plain')
+    expect(text).toBe('Forbidden')
     expect(streamTextMock).not.toHaveBeenCalled()
     expect(buildSystemPromptMock).not.toHaveBeenCalled()
   })
@@ -88,10 +89,11 @@ describe('/api/chat auth + schema', () => {
     getServerSessionMock.mockResolvedValue({ user: { id: 'u1', role: 'user' } })
 
     const res = await POST(buildRequest({ messages: [] }) as never)
-    const payload = await res.json()
+    const text = await res.text()
 
     expect(res.status).toBe(400)
-    expect(payload).toEqual({ error: 'Invalid request payload' })
+    expect(res.headers.get('content-type')).toContain('text/plain')
+    expect(text).toBe('Invalid request payload')
     expect(streamTextMock).not.toHaveBeenCalled()
     expect(buildSystemPromptMock).not.toHaveBeenCalled()
   })

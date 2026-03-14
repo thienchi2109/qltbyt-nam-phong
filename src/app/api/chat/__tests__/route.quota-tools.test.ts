@@ -118,12 +118,12 @@ describe('/api/chat quota tools', () => {
         requestedTools: ['deviceQuotaLookup'],
       }) as never,
     )
-    const payload = await res.json()
+    const text = await res.text()
 
     expect(res.status).toBe(400)
-    expect(payload).toEqual({
-      error: 'Please select a facility before using assistant tools.',
-    })
+    expect(text).toBe(
+      'Please select a facility before using assistant tools.',
+    )
     expect(streamTextMock).not.toHaveBeenCalled()
   })
 
@@ -138,12 +138,12 @@ describe('/api/chat quota tools', () => {
         requestedTools: ['quotaComplianceSummary'],
       }) as never,
     )
-    const payload = await res.json()
+    const text = await res.text()
 
     expect(res.status).toBe(400)
-    expect(payload).toEqual({
-      error: 'Please select a facility before using assistant tools.',
-    })
+    expect(text).toBe(
+      'Please select a facility before using assistant tools.',
+    )
     expect(streamTextMock).not.toHaveBeenCalled()
   })
 
@@ -171,6 +171,26 @@ describe('/api/chat quota tools', () => {
     expect(migrationSource).toContain("'status', 'insufficientEvidence'")
     expect(migrationSource).toContain(
       "'reason', 'Category metadata not found for equipment group'",
+    )
+  })
+
+  it('has a patch migration that keeps active decision context for notMapped devices', () => {
+    const migrationPath = path.resolve(
+      process.cwd(),
+      'supabase/migrations/20260314123500_fix_ai_device_quota_lookup_notmapped_decision_context.sql',
+    )
+    const migrationSource = readFileSync(migrationPath, 'utf8')
+
+    const notMappedBranch = migrationSource.match(
+      /IF v_equip_nhom_id IS NULL THEN[\s\S]*?RETURN jsonb_build_object\(([\s\S]*?)\);\s*END IF;/,
+    )?.[0]
+
+    expect(notMappedBranch).toBeTruthy()
+    expect(notMappedBranch).toContain("'status', 'notMapped'")
+    expect(notMappedBranch).toContain("'decision', jsonb_build_object(")
+    expect(notMappedBranch).toContain("'evidence_status', 'partial'")
+    expect(notMappedBranch).not.toContain(
+      "'reason', 'No active quota decision found for this facility'",
     )
   })
 

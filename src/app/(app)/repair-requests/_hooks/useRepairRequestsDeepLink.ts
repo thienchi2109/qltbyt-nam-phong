@@ -116,8 +116,10 @@ export function useRepairRequestsDeepLink(
     if (!equipmentId) return
     const idNum = Number(equipmentId)
 
-    // Skip if already fetched this ID or already in the list
-    if (lastFetchedEquipmentIdRef.current === idNum) return
+    // Skip only when a fetch for this same ID is already in flight;
+    // do NOT skip if the item was evicted from allEquipment by the
+    // initial equipment_list overwrite (which replaces the array).
+    if (isEquipmentFetchPending && lastFetchedEquipmentIdRef.current === idNum) return
     const existing = allEquipment.find(eq => eq.id === idNum)
     if (existing) return
 

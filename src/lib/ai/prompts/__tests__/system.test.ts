@@ -135,8 +135,8 @@ describe('system prompt module', () => {
     expect(prompt).toContain('metadata')
   })
 
-  it('prompt version is v2.2.0 after repair request draft', () => {
-    expect(SYSTEM_PROMPT_VERSION).toBe('v2.2.0')
+  it('prompt version is v2.2.3 after clarification guard guidance', () => {
+    expect(SYSTEM_PROMPT_VERSION).toBe('v2.2.3')
   })
 
   it('includes § 10 troubleshooting drafts section', () => {
@@ -187,5 +187,46 @@ describe('system prompt module', () => {
     expect(prompt).toContain('một cơ sở duy nhất')
     expect(prompt).toContain('scope.label')
     expect(prompt).toContain('chưa hỗ trợ tổng hợp nhiều cơ sở')
+  })
+
+  it('tells the model to use equipmentLookup structured filters for count/filter questions', () => {
+    const prompt = buildSystemPrompt({
+      role: 'to_qltb',
+      userId: 'u1',
+      selectedFacilityId: 17,
+    })
+
+    expect(prompt).toContain('`filters`')
+    expect(prompt).toContain('`filters.status`')
+    expect(prompt).toContain('`filters.department`')
+    expect(prompt).toContain('`filters.location`')
+    expect(prompt).toContain('trường `total`')
+    expect(prompt).toContain('bao nhiêu thiết bị')
+  })
+
+  it('tells the model to preserve full equipment codes verbatim for exact lookups', () => {
+    const prompt = buildSystemPrompt({
+      role: 'to_qltb',
+      userId: 'u1',
+      selectedFacilityId: 17,
+    })
+
+    expect(prompt).toContain('mã thiết bị')
+    expect(prompt).toContain('giữ nguyên từng ký tự')
+    expect(prompt).toContain('`filters.equipmentCode`')
+    expect(prompt).toContain('TT.1.92004.JPDCTA1000147')
+  })
+
+  it('tells the model to ask one clarification question for ambiguous multi-tool intents', () => {
+    const prompt = buildSystemPrompt({
+      role: 'to_qltb',
+      userId: 'u1',
+      selectedFacilityId: 17,
+    })
+
+    expect(prompt).toContain('hỏi lại đúng 1 câu ngắn')
+    expect(prompt).toContain('trước khi gọi bất kỳ tool nào')
+    expect(prompt).toContain('trạng thái thiết bị')
+    expect(prompt).toContain('yêu cầu sửa chữa')
   })
 })

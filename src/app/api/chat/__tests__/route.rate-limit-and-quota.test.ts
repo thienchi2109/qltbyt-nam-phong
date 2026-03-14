@@ -96,10 +96,10 @@ describe('/api/chat rate limit and quota', () => {
     })
 
     const res = await POST(buildRequest({ messages: VALID_MESSAGES }) as never)
-    const payload = await res.json()
+    const text = await res.text()
 
     expect(res.status).toBe(429)
-    expect(payload).toEqual({ error: 'Too many requests. Please try again later.' })
+    expect(text).toBe('Too many requests. Please try again later.')
     expect(streamTextMock).not.toHaveBeenCalled()
     expect(recordUsageMock).not.toHaveBeenCalled()
     expect(confirmUsageMock).not.toHaveBeenCalled()
@@ -112,10 +112,10 @@ describe('/api/chat rate limit and quota', () => {
     })
 
     const res = await POST(buildRequest({ messages: VALID_MESSAGES }) as never)
-    const payload = await res.json()
+    const text = await res.text()
 
     expect(res.status).toBe(429)
-    expect(payload).toEqual({ error: 'AI usage quota exceeded for this facility.' })
+    expect(text).toBe('AI usage quota exceeded for this facility.')
     expect(streamTextMock).not.toHaveBeenCalled()
     expect(recordUsageMock).not.toHaveBeenCalled()
     expect(confirmUsageMock).not.toHaveBeenCalled()

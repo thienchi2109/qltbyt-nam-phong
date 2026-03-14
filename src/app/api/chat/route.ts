@@ -1,4 +1,6 @@
 import {
+  createUIMessageStream,
+  createUIMessageStreamResponse,
   convertToModelMessages,
   streamText,
   stepCountIs,
@@ -6,7 +8,6 @@ import {
   validateUIMessages,
 } from 'ai'
 import { getServerSession } from 'next-auth'
-import { NextResponse } from 'next/server'
 
 import { authOptions } from '@/auth/config'
 import { chatRequestSchema } from '@/lib/ai/chat-request-schema'
@@ -19,19 +20,35 @@ import {
 import { getChatModel } from '@/lib/ai/provider'
 import { buildSystemPrompt } from '@/lib/ai/prompts/system'
 import type { SystemPromptContext } from '@/lib/ai/prompts/types'
+import { routeChatIntent } from '@/lib/ai/intent-routing'
+import { extractEquipmentLookupHints } from '@/lib/ai/tools/equipment-lookup-identifiers'
 import { buildToolRegistry, validateRequestedTools } from '@/lib/ai/tools/registry'
 import { checkUsageLimits, confirmUsage, recordUsage } from '@/lib/ai/usage-metering'
+import { sanitizeErrorForClient } from '@/lib/ai/errors'
 import { isPrivilegedRole, ROLES } from '@/lib/rbac'
 
 export const runtime = 'nodejs'
 export const maxDuration = 30
 
-function badRequest(message: string) {
-  return NextResponse.json({ error: message }, { status: 400 })
+function plainError(message: string, status: number) {
+  return new Response(message, {
+    status,
+    headers: { 'Content-Type': 'text/plain; charset=utf-8' },
+  })
 }
 
-function tooManyRequests(message: string) {
-  return NextResponse.json({ error: message }, { status: 429 })
+function clarificationResponse(message: string, originalMessages: UIMessage[]) {
+  const stream = createUIMessageStream({
+    originalMessages,
+    execute: ({ writer }) => {
+      const textId = 'assistant-clarification'
+      writer.write({ type: 'text-start', id: textId })
+      writer.write({ type: 'text-delta', id: textId, delta: message })
+      writer.write({ type: 'text-end', id: textId })
+    },
+  })
+
+  return createUIMessageStreamResponse({ stream })
 }
 
 const ALLOWED_CHAT_ROLES = new Set<string>(Object.values(ROLES))
@@ -76,34 +93,34 @@ export async function POST(request: Request) {
   const session = await getServerSession(authOptions)
 
   if (!session?.user) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    return plainError('Unauthorized', 401)
   }
 
   const user = session.user as Record<string, unknown>
   if (!hasAllowedChatRole(user.role)) {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    return plainError('Forbidden', 403)
   }
 
   const payload = await request.json().catch(() => null)
   const parsedRequest = chatRequestSchema.safeParse(payload)
   if (!parsedRequest.success) {
-    return badRequest('Invalid request payload')
+    return plainError('Invalid request payload', 400)
   }
   const requestedToolsValidation = validateRequestedTools(
     parsedRequest.data.requestedTools ?? [],
   )
   if (!requestedToolsValidation.ok) {
-    return badRequest(requestedToolsValidation.message)
+    return plainError(requestedToolsValidation.message, 400)
   }
   const requestedTools = requestedToolsValidation.requestedTools
 
   if (parsedRequest.data.messages.length > AI_MAX_MESSAGES) {
-    return badRequest('Request exceeds message limit')
+    return plainError('Request exceeds message limit', 400)
   }
 
   const inputChars = calculateInputChars(parsedRequest.data.messages)
   if (inputChars > AI_MAX_INPUT_CHARS) {
-    return badRequest('Request exceeds input size limit')
+    return plainError('Request exceeds input size limit', 400)
   }
 
   let validatedMessages: UIMessage[]
@@ -112,8 +129,17 @@ export async function POST(request: Request) {
       messages: parsedRequest.data.messages as UIMessage[],
     })
   } catch {
-    return badRequest('Invalid messages payload')
+    return plainError('Invalid messages payload', 400)
   }
+
+  const routedIntent = routeChatIntent({
+    messages: validatedMessages,
+    requestedTools,
+  })
+  if (routedIntent.kind === 'clarify') {
+    return clarificationResponse(routedIntent.message, validatedMessages)
+  }
+  const effectiveRequestedTools = routedIntent.requestedTools
 
   const role = typeof user.role === 'string' ? user.role : undefined
   const sessionFacilityId = toFacilityId(user.don_vi)
@@ -121,8 +147,8 @@ export async function POST(request: Request) {
   let selectedFacilityId = sessionFacilityId
 
   if (isPrivilegedRole(role)) {
-    if (requestedTools.length > 0 && requestedFacilityId === undefined) {
-      return badRequest('Please select a facility before using assistant tools.')
+    if (effectiveRequestedTools.length > 0 && requestedFacilityId === undefined) {
+      return plainError('Please select a facility before using assistant tools.', 400)
     }
 
     if (requestedFacilityId !== undefined) {
@@ -130,10 +156,9 @@ export async function POST(request: Request) {
     }
   }
 
-  if (requestedTools.length > 0 && selectedFacilityId === undefined) {
-    return badRequest('Unable to resolve facility context for tool execution.')
+  if (effectiveRequestedTools.length > 0 && selectedFacilityId === undefined) {
+    return plainError('Unable to resolve facility context for tool execution.', 400)
   }
-
   const promptUserId =
     typeof user.id === 'string' || typeof user.id === 'number'
       ? String(user.id)
@@ -144,7 +169,7 @@ export async function POST(request: Request) {
     tenantId: selectedFacilityId,
   })
   if (!usageLimit.allowed) {
-    return tooManyRequests(usageLimit.message ?? 'AI usage limit exceeded.')
+    return plainError(usageLimit.message ?? 'AI usage limit exceeded.', 429)
   }
 
   const promptContext: SystemPromptContext = {
@@ -153,38 +178,47 @@ export async function POST(request: Request) {
     selectedFacilityId,
   }
   const systemPrompt = buildSystemPrompt(promptContext)
+  const equipmentLookupHints = extractEquipmentLookupHints(validatedMessages)
 
   const usageContext = { userId: usageUserId, tenantId: selectedFacilityId }
   const tools =
-    requestedTools.length > 0 && selectedFacilityId !== undefined
+    effectiveRequestedTools.length > 0 && selectedFacilityId !== undefined
       ? buildToolRegistry({
           request,
           tenantId: selectedFacilityId,
           userId: usageUserId,
-          requestedTools,
+          requestedTools: effectiveRequestedTools,
+          equipmentLookupHints,
         })
       : undefined
 
   // Record in rate-limit sliding window upfront (anti-abuse).
   recordUsage(usageContext)
 
-  const result = streamText({
-    model: getChatModel(),
-    system: systemPrompt,
-    maxOutputTokens: AI_MAX_OUTPUT_TOKENS,
-    stopWhen: stepCountIs(AI_MAX_TOOL_STEPS),
-    messages: await convertToModelMessages(validatedMessages),
-    tools,
-    onFinish({ usage, finishReason }) {
-      // Only increment daily quotas after a successful completion.
-      if (finishReason !== 'error') {
-        confirmUsage(usageContext, {
-          inputTokens: usage.inputTokens ?? 0,
-          outputTokens: usage.outputTokens ?? 0,
-        })
-      }
-    },
-  })
+  try {
+    const result = streamText({
+      model: getChatModel(),
+      system: systemPrompt,
+      maxOutputTokens: AI_MAX_OUTPUT_TOKENS,
+      stopWhen: stepCountIs(AI_MAX_TOOL_STEPS),
+      messages: await convertToModelMessages(validatedMessages),
+      tools,
+      onFinish({ usage, finishReason }) {
+        // Only increment daily quotas after a successful completion.
+        if (finishReason !== 'error') {
+          confirmUsage(usageContext, {
+            inputTokens: usage.inputTokens ?? 0,
+            outputTokens: usage.outputTokens ?? 0,
+          })
+        }
+      },
+    })
 
-  return result.toUIMessageStreamResponse()
+    return result.toUIMessageStreamResponse({
+      onError: (error) => sanitizeErrorForClient(error),
+    })
+  } catch (error) {
+    console.error('[chat] Pre-stream error:', error)
+    return plainError(sanitizeErrorForClient(error), 500)
+  }
 }

@@ -98,10 +98,10 @@ describe('/api/chat limits', () => {
         messages: [buildMessage('m1'), buildMessage('m2'), buildMessage('m3')],
       }) as never,
     )
-    const payload = await res.json()
+    const text = await res.text()
 
     expect(res.status).toBe(400)
-    expect(payload).toEqual({ error: 'Request exceeds message limit' })
+    expect(text).toBe('Request exceeds message limit')
     expect(streamTextMock).not.toHaveBeenCalled()
   })
 
@@ -110,10 +110,10 @@ describe('/api/chat limits', () => {
     const res = await POST(
       buildRequest({ messages: [buildMessage('m1', longText)] }) as never,
     )
-    const payload = await res.json()
+    const text = await res.text()
 
     expect(res.status).toBe(400)
-    expect(payload).toEqual({ error: 'Request exceeds input size limit' })
+    expect(text).toBe('Request exceeds input size limit')
     expect(streamTextMock).not.toHaveBeenCalled()
   })
 })
