@@ -1,4 +1,6 @@
 import {
+  createUIMessageStream,
+  createUIMessageStreamResponse,
   convertToModelMessages,
   streamText,
   stepCountIs,
@@ -18,6 +20,7 @@ import {
 import { getChatModel } from '@/lib/ai/provider'
 import { buildSystemPrompt } from '@/lib/ai/prompts/system'
 import type { SystemPromptContext } from '@/lib/ai/prompts/types'
+import { routeChatIntent } from '@/lib/ai/intent-routing'
 import { extractEquipmentLookupHints } from '@/lib/ai/tools/equipment-lookup-identifiers'
 import { buildToolRegistry, validateRequestedTools } from '@/lib/ai/tools/registry'
 import { checkUsageLimits, confirmUsage, recordUsage } from '@/lib/ai/usage-metering'
@@ -32,6 +35,20 @@ function plainError(message: string, status: number) {
     status,
     headers: { 'Content-Type': 'text/plain; charset=utf-8' },
   })
+}
+
+function clarificationResponse(message: string, originalMessages: UIMessage[]) {
+  const stream = createUIMessageStream({
+    originalMessages,
+    execute: ({ writer }) => {
+      const textId = 'assistant-clarification'
+      writer.write({ type: 'text-start', id: textId })
+      writer.write({ type: 'text-delta', id: textId, delta: message })
+      writer.write({ type: 'text-end', id: textId })
+    },
+  })
+
+  return createUIMessageStreamResponse({ stream })
 }
 
 const ALLOWED_CHAT_ROLES = new Set<string>(Object.values(ROLES))
@@ -134,6 +151,15 @@ export async function POST(request: Request) {
     return plainError('Unable to resolve facility context for tool execution.', 400)
   }
 
+  const routedIntent = routeChatIntent({
+    messages: validatedMessages,
+    requestedTools,
+  })
+  if (routedIntent.kind === 'clarify') {
+    return clarificationResponse(routedIntent.message, validatedMessages)
+  }
+  const effectiveRequestedTools = routedIntent.requestedTools
+
   const promptUserId =
     typeof user.id === 'string' || typeof user.id === 'number'
       ? String(user.id)
@@ -157,12 +183,12 @@ export async function POST(request: Request) {
 
   const usageContext = { userId: usageUserId, tenantId: selectedFacilityId }
   const tools =
-    requestedTools.length > 0 && selectedFacilityId !== undefined
+    effectiveRequestedTools.length > 0 && selectedFacilityId !== undefined
       ? buildToolRegistry({
           request,
           tenantId: selectedFacilityId,
           userId: usageUserId,
-          requestedTools,
+          requestedTools: effectiveRequestedTools,
           equipmentLookupHints,
         })
       : undefined
