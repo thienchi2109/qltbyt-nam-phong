@@ -19,6 +19,9 @@ const mocks = vi.hoisted(() => ({
         status: 'ready' as string,
         error: null as Error | null,
     },
+    tenantState: {
+        selectedFacilityId: 1 as number | null,
+    },
 }))
 
 vi.mock('@ai-sdk/react', () => ({
@@ -64,7 +67,7 @@ vi.mock('next/navigation', () => ({
 
 vi.mock('@/contexts/TenantSelectionContext', () => ({
     useTenantSelection: () => ({
-        selectedFacilityId: 1,
+        selectedFacilityId: mocks.tenantState.selectedFacilityId,
         showSelector: false,
         shouldFetchData: true,
     }),
@@ -78,6 +81,7 @@ describe('AssistantPanel error state', () => {
         mocks.useChatState.messages = []
         mocks.useChatState.status = 'ready'
         mocks.useChatState.error = null
+        mocks.tenantState.selectedFacilityId = 1
     })
 
     it('renders error banner when error is present', () => {
@@ -162,5 +166,37 @@ describe('AssistantPanel error state', () => {
         const clearOrder = mocks.clearError.mock.invocationCallOrder[0]
         const setMsgOrder = mocks.setMessages.mock.invocationCallOrder[0]
         expect(clearOrder).toBeLessThan(setMsgOrder!)
+    })
+
+    it('uses body getter that reads latest facilityId without recreating transport', () => {
+        mocks.tenantState.selectedFacilityId = 10
+
+        const { rerender } = render(
+            <AssistantPanel isOpen={true} onClose={vi.fn()} />,
+        )
+
+        // Capture initial transport body arg
+        const firstCallArgs = mocks.defaultChatTransport.mock.calls[0]?.[0] as {
+            body?: unknown
+        }
+        const body = firstCallArgs?.body
+        expect(body).toBeDefined()
+
+        // Body should be a function (getter) for dynamic resolution
+        expect(typeof body).toBe('function')
+
+        // Initial call with facilityId=10
+        const initialBody = (body as () => Record<string, unknown>)()
+        expect(initialBody.selectedFacilityId).toBe(10)
+
+        // Change facility to 20 and rerender
+        mocks.tenantState.selectedFacilityId = 20
+        rerender(<AssistantPanel isOpen={true} onClose={vi.fn()} />)
+
+        // Same body getter should now resolve to 20
+        // Transport must NOT have been recreated (still 1 call)
+        const lateBody = (body as () => Record<string, unknown>)()
+        expect(lateBody.selectedFacilityId).toBe(20)
+        expect(mocks.defaultChatTransport).toHaveBeenCalledTimes(1)
     })
 })

@@ -51,16 +51,21 @@ export function AssistantPanel({ isOpen, onClose }: AssistantPanelProps) {
     const { selectedFacilityId } = useTenantSelection()
     const [input, setInput] = React.useState("")
 
+    const facilityRef = React.useRef(selectedFacilityId)
+    React.useEffect(() => {
+        facilityRef.current = selectedFacilityId
+    }, [selectedFacilityId])
+
     const transport = React.useMemo(
         () =>
             new DefaultChatTransport({
                 api: "/api/chat",
-                body: {
-                    selectedFacilityId,
+                body: () => ({
+                    selectedFacilityId: facilityRef.current,
                     requestedTools: REQUESTED_TOOLS,
-                },
+                }),
             }),
-        [selectedFacilityId],
+        [],
     )
 
     const { messages, status, error, sendMessage, stop, setMessages, regenerate, clearError } = useChat({

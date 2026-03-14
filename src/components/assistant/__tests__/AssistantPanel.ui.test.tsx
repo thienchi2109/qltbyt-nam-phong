@@ -141,10 +141,18 @@ describe('AssistantPanel', () => {
 
         expect(mocks.defaultChatTransport).toHaveBeenCalledWith(
             expect.objectContaining({
-                body: expect.objectContaining({
-                    requestedTools: expect.arrayContaining(['generateRepairRequestDraft']),
-                }),
+                api: '/api/chat',
             }),
+        )
+
+        // body is now a getter function for dynamic resolution
+        const transportArgs = mocks.defaultChatTransport.mock.calls[0]?.[0] as {
+            body?: unknown
+        }
+        expect(typeof transportArgs?.body).toBe('function')
+        const resolved = (transportArgs.body as () => Record<string, unknown>)()
+        expect(resolved.requestedTools).toEqual(
+            expect.arrayContaining(['generateRepairRequestDraft']),
         )
     })
 
