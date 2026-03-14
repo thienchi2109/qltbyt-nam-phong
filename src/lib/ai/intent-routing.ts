@@ -150,7 +150,8 @@ function normalizeIntentText(text: string): string {
 const EQUIPMENT_IDENTIFIER_RE = /\b[A-Za-z]{1,8}(?:[._-][A-Za-z0-9]{2,}){1,}\b/
 
 function hasEquipmentIdentifier(text: string): boolean {
-  return EQUIPMENT_IDENTIFIER_RE.test(text)
+  const match = text.match(EQUIPMENT_IDENTIFIER_RE)
+  return match !== null && /\d/.test(match[0])
 }
 
 function removeTool(requestedTools: string[], toolName: string): string[] {

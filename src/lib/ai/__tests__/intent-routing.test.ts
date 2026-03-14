@@ -106,6 +106,18 @@ describe('routeChatIntent', () => {
         requestedTools: ['deviceQuotaLookup'],
       })
     })
+
+    it('does not treat hyphenated English terms as equipment identifiers', () => {
+      const result = routeChatIntent({
+        messages: [makeUserMessage('kiểm tra định mức cho thiết bị non-invasive')],
+        requestedTools: [...ALL_QUOTA_TOOLS],
+      })
+
+      // "non-invasive" is an English word, not an equipment code.
+      // "thiết bị" alone doesn't match mentionsSpecificEquipment keywords.
+      // Should fall through to clarification, not route to deviceQuotaLookup.
+      expect(result.kind).toBe('clarify')
+    })
   })
 
   // ──────────────────────────────────────────────────────
