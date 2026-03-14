@@ -9,25 +9,47 @@ export const MODEL_PROVIDER_QUOTA_MESSAGE =
   'Model AI đang vượt hạn mức sử dụng của nhà cung cấp.'
 
 const PROVIDER_QUOTA_PATTERNS = [
-  /quota exceeded/i,
   /exceeded your current quota/i,
+  /quota exceeded for metric/i,
   /rate-limits/i,
   /generate_content_free_tier_requests/i,
 ]
 
 const RETRY_IN_SECONDS_PATTERN = /retry in\s+([0-9]+(?:\.[0-9]+)?)s/i
 
-const SAFE_JSON_ERROR_PATTERNS = [
-  /^AI usage quota exceeded\b/i,
-  /^Too many requests\b/i,
-  /^Please select a facility\b/i,
-  /^Unable to resolve facility context\b/i,
-  /^Unauthorized$/i,
-  /^Forbidden$/i,
-  /^Invalid request payload$/i,
-  /^Invalid messages payload$/i,
-  /^Request exceeds\b/i,
-  /^Model AI đang vượt hạn mức sử dụng của nhà cung cấp\./,
+const SAFE_CLIENT_MESSAGE_RULES: Array<{ pattern: RegExp; message: string }> = [
+  {
+    pattern: /^AI usage quota exceeded for this user\b/i,
+    message: 'AI usage quota exceeded for this user.',
+  },
+  {
+    pattern: /^AI usage quota exceeded for this facility\b/i,
+    message: 'AI usage quota exceeded for this facility.',
+  },
+  {
+    pattern: /^Too many requests\. Please try again later\b/i,
+    message: 'Too many requests. Please try again later.',
+  },
+  {
+    pattern: /^Please select a facility before using assistant tools\b/i,
+    message: 'Please select a facility before using assistant tools.',
+  },
+  {
+    pattern: /^Unable to resolve facility context for tool execution\b/i,
+    message: 'Unable to resolve facility context for tool execution.',
+  },
+  { pattern: /^Unauthorized\b/i, message: 'Unauthorized' },
+  { pattern: /^Forbidden\b/i, message: 'Forbidden' },
+  { pattern: /^Invalid request payload\b/i, message: 'Invalid request payload' },
+  { pattern: /^Invalid messages payload\b/i, message: 'Invalid messages payload' },
+  {
+    pattern: /^Request exceeds message limit\b/i,
+    message: 'Request exceeds message limit',
+  },
+  {
+    pattern: /^Request exceeds input size limit\b/i,
+    message: 'Request exceeds input size limit',
+  },
 ]
 
 function formatProviderQuotaMessage(raw: string): string | null {
@@ -48,16 +70,22 @@ function formatProviderQuotaMessage(raw: string): string | null {
 }
 
 function extractSafeClientMessage(raw: string): string | null {
-  const providerQuotaMessage = formatProviderQuotaMessage(raw)
-  if (providerQuotaMessage) {
-    return providerQuotaMessage
+  for (const rule of SAFE_CLIENT_MESSAGE_RULES) {
+    if (rule.pattern.test(raw)) {
+      return rule.message
+    }
   }
 
-  if (SAFE_JSON_ERROR_PATTERNS.some(pattern => pattern.test(raw))) {
-    return raw
+  if (raw.startsWith(MODEL_PROVIDER_QUOTA_MESSAGE)) {
+    const retryMatch = raw.match(/khoảng\s+(\d+)\s+giây/i)
+    if (retryMatch) {
+      return `${MODEL_PROVIDER_QUOTA_MESSAGE} Vui lòng chờ khoảng ${retryMatch[1]} giây rồi thử lại.`
+    }
+
+    return `${MODEL_PROVIDER_QUOTA_MESSAGE} Vui lòng thử lại sau hoặc liên hệ quản trị viên nếu lỗi tiếp diễn.`
   }
 
-  return null
+  return formatProviderQuotaMessage(raw)
 }
 
 /**
@@ -106,5 +134,5 @@ export function parseErrorMessage(raw: string | undefined): string {
     // Not JSON — use raw string (already sanitized by server-side deny-by-default)
   }
 
-  return raw
+  return GENERIC_CHAT_ERROR_MESSAGE
 }

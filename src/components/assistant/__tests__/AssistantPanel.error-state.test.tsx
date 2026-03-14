@@ -93,13 +93,14 @@ describe('AssistantPanel error state', () => {
         expect(screen.getByTestId('assistant-error-banner')).toBeInTheDocument()
     })
 
-    it('displays the error message text', () => {
+    it('displays generic message for unrecognized error text (deny-by-default)', () => {
         mocks.useChatState.error = new Error('Network connection lost')
         mocks.useChatState.status = 'error'
 
         render(<AssistantPanel isOpen={true} onClose={vi.fn()} />)
 
-        expect(screen.getByText('Network connection lost')).toBeInTheDocument()
+        expect(screen.getByText('Đã xảy ra lỗi. Vui lòng thử lại.')).toBeInTheDocument()
+        expect(screen.queryByText('Network connection lost')).not.toBeInTheDocument()
     })
 
     it('returns generic message for JSON-wrapped error (deny-by-default)', () => {
