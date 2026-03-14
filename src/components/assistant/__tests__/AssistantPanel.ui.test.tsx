@@ -26,6 +26,8 @@ vi.mock('@ai-sdk/react', () => ({
         stop: mocks.stop,
         setMessages: mocks.setMessages,
         error: null,
+        regenerate: vi.fn(),
+        clearError: vi.fn(),
     }),
 }))
 

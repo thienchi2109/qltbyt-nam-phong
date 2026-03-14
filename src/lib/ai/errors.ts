@@ -51,3 +51,25 @@ export function sanitizeErrorForClient(error: unknown): string {
 
   return message
 }
+
+/**
+ * Client-side defense: extract a clean display message from a potentially
+ * JSON-wrapped error string (e.g. '{"error":"msg"}' → 'msg').
+ * Falls back to generic Vietnamese message if input is empty/falsy.
+ */
+export function parseErrorMessage(raw: string | undefined): string {
+  if (!raw || raw.trim() === '') {
+    return GENERIC_CHAT_ERROR_MESSAGE
+  }
+
+  try {
+    const parsed = JSON.parse(raw)
+    if (typeof parsed === 'object' && parsed !== null && typeof parsed.error === 'string') {
+      return parsed.error
+    }
+  } catch {
+    // Not JSON — use raw string
+  }
+
+  return raw
+}

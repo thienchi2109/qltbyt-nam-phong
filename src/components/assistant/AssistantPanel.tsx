@@ -5,10 +5,11 @@ import { useChat } from "@ai-sdk/react"
 import { DefaultChatTransport } from "ai"
 import { useQueryClient } from "@tanstack/react-query"
 import { useRouter } from "next/navigation"
-import { RotateCcw, X } from "lucide-react"
+import { RotateCcw, X, AlertTriangle, RefreshCw } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { useTenantSelection } from "@/contexts/TenantSelectionContext"
+import { parseErrorMessage } from "@/lib/ai/errors"
 import { cn } from "@/lib/utils"
 
 import { AssistantComposer } from "./AssistantComposer"
@@ -62,7 +63,7 @@ export function AssistantPanel({ isOpen, onClose }: AssistantPanelProps) {
         [selectedFacilityId],
     )
 
-    const { messages, status, sendMessage, stop, setMessages } = useChat({
+    const { messages, status, error, sendMessage, stop, setMessages, regenerate, clearError } = useChat({
         transport,
     })
 
@@ -89,9 +90,10 @@ export function AssistantPanel({ isOpen, onClose }: AssistantPanelProps) {
     )
 
     const handleReset = React.useCallback(() => {
+        clearError()
         setMessages([])
         setInput("")
-    }, [setMessages])
+    }, [clearError, setMessages])
 
     /** TanStack Query bridge for draft handoff to /repair-requests */
     const handleApplyDraft = React.useCallback(
@@ -169,6 +171,31 @@ export function AssistantPanel({ isOpen, onClose }: AssistantPanelProps) {
                     status={status}
                     onApplyDraft={handleApplyDraft}
                 />
+            )}
+
+            {/* Error banner */}
+            {error && (
+                <div
+                    data-testid="assistant-error-banner"
+                    className="mx-3 mb-2 px-3 py-2.5 rounded-lg bg-destructive/10 border border-destructive/20 flex items-start gap-2 shrink-0"
+                >
+                    <AlertTriangle className="h-4 w-4 text-destructive shrink-0 mt-0.5" />
+                    <div className="flex-1 min-w-0">
+                        <p className="text-sm text-destructive leading-snug">
+                            {parseErrorMessage(error.message)}
+                        </p>
+                    </div>
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => regenerate()}
+                        className="shrink-0 h-7 px-2 text-xs text-destructive hover:text-destructive"
+                        aria-label="Thử lại"
+                    >
+                        <RefreshCw className="h-3 w-3 mr-1" />
+                        Thử lại
+                    </Button>
+                </div>
             )}
 
             {/* Composer */}
