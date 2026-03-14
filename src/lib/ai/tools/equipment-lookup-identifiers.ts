@@ -127,9 +127,7 @@ export function normalizeEquipmentLookupArgs(
     resolveVerbatimIdentifier(rawEquipmentCode, verbatimIdentifiers) ?? rawEquipmentCode?.trim()
 
   const rawQuery = typeof input.query === 'string' ? input.query.trim() : undefined
-  const resolvedFromQuery =
-    resolveVerbatimIdentifier(rawQuery, verbatimIdentifiers) ??
-    (isLikelyEquipmentIdentifier(rawQuery ?? '') ? rawQuery : undefined)
+  const resolvedFromQuery = resolveVerbatimIdentifier(rawQuery, verbatimIdentifiers)
 
   const exactEquipmentCode = resolvedFromFilter ?? resolvedFromQuery
   const nextInput: Record<string, unknown> = { ...input }

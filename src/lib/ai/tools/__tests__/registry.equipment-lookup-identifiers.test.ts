@@ -75,4 +75,34 @@ describe('equipmentLookup identifier preservation', () => {
       }),
     )
   })
+
+  it('does not coerce identifier-shaped queries into equipmentCode when the query does not match the user code hint', async () => {
+    const registry = buildToolRegistry({
+      request: new Request('http://localhost:3000/api/chat', { method: 'POST' }),
+      tenantId: 17,
+      userId: '31',
+      requestedTools: ['equipmentLookup'],
+      equipmentLookupHints: {
+        verbatimIdentifiers: ['TT.1.92004.JPDCTA1000147'],
+      },
+    })
+
+    const lookupTool = registry.equipmentLookup as unknown as ExecutableTool
+    await lookupTool.execute({ query: 'SN-ABC-1234' })
+
+    expect(executeRpcToolMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        args: expect.objectContaining({
+          query: 'SN-ABC-1234',
+          p_don_vi: 17,
+          p_user_id: '31',
+        }),
+      }),
+    )
+
+    const call = executeRpcToolMock.mock.calls[0]?.[0] as {
+      args?: Record<string, unknown>
+    }
+    expect(call.args?.filters).toBeUndefined()
+  })
 })
