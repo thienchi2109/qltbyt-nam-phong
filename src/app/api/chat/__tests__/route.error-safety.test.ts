@@ -144,3 +144,58 @@ describe('/api/chat error safety — non-stream contract', () => {
     expect(res400.headers.get('content-type')).toContain('text/plain')
   })
 })
+
+describe('/api/chat error safety — sanitization', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+
+    getServerSessionMock.mockResolvedValue({
+      user: { id: 'u1', role: 'admin', don_vi: 2 },
+    })
+    getChatModelMock.mockReturnValue('google:gemini-2.5-flash')
+    buildSystemPromptMock.mockReturnValue('SYSTEM_PROMPT_V1')
+    checkUsageLimitsMock.mockReturnValue({ allowed: true })
+    stepCountIsMock.mockReturnValue('STOP_WHEN_SENTINEL')
+  })
+
+  it('sanitizes pre-stream errors containing API keys', async () => {
+    streamTextMock.mockImplementation(() => {
+      throw new Error('Connection failed: API_KEY=sk-abc123xyz provider error')
+    })
+
+    const res = await POST(buildRequest({ messages: VALID_MESSAGES }) as never)
+    const text = await res.text()
+
+    expect(res.status).toBe(500)
+    expect(res.headers.get('content-type')).toContain('text/plain')
+    expect(text).not.toContain('sk-')
+    expect(text).not.toContain('API_KEY')
+  })
+
+  it('sanitizes pre-stream errors containing file paths', async () => {
+    streamTextMock.mockImplementation(() => {
+      throw new Error('Error at C:\\Users\\dev\\node_modules\\ai\\src\\index.ts:42')
+    })
+
+    const res = await POST(buildRequest({ messages: VALID_MESSAGES }) as never)
+    const text = await res.text()
+
+    expect(res.status).toBe(500)
+    expect(text).not.toContain('C:\\Users')
+    expect(text).not.toContain('node_modules')
+  })
+
+  it('passes onError callback to toUIMessageStreamResponse', async () => {
+    let capturedOnError: unknown = undefined
+    streamTextMock.mockReturnValue({
+      toUIMessageStreamResponse: (opts?: { onError?: unknown }) => {
+        capturedOnError = opts?.onError
+        return new Response(null, { status: 200 })
+      },
+    })
+
+    await POST(buildRequest({ messages: VALID_MESSAGES }) as never)
+
+    expect(capturedOnError).toBeTypeOf('function')
+  })
+})

@@ -20,6 +20,7 @@ import { buildSystemPrompt } from '@/lib/ai/prompts/system'
 import type { SystemPromptContext } from '@/lib/ai/prompts/types'
 import { buildToolRegistry, validateRequestedTools } from '@/lib/ai/tools/registry'
 import { checkUsageLimits, confirmUsage, recordUsage } from '@/lib/ai/usage-metering'
+import { sanitizeErrorForClient } from '@/lib/ai/errors'
 import { isPrivilegedRole, ROLES } from '@/lib/rbac'
 
 export const runtime = 'nodejs'
@@ -166,23 +167,30 @@ export async function POST(request: Request) {
   // Record in rate-limit sliding window upfront (anti-abuse).
   recordUsage(usageContext)
 
-  const result = streamText({
-    model: getChatModel(),
-    system: systemPrompt,
-    maxOutputTokens: AI_MAX_OUTPUT_TOKENS,
-    stopWhen: stepCountIs(AI_MAX_TOOL_STEPS),
-    messages: await convertToModelMessages(validatedMessages),
-    tools,
-    onFinish({ usage, finishReason }) {
-      // Only increment daily quotas after a successful completion.
-      if (finishReason !== 'error') {
-        confirmUsage(usageContext, {
-          inputTokens: usage.inputTokens ?? 0,
-          outputTokens: usage.outputTokens ?? 0,
-        })
-      }
-    },
-  })
+  try {
+    const result = streamText({
+      model: getChatModel(),
+      system: systemPrompt,
+      maxOutputTokens: AI_MAX_OUTPUT_TOKENS,
+      stopWhen: stepCountIs(AI_MAX_TOOL_STEPS),
+      messages: await convertToModelMessages(validatedMessages),
+      tools,
+      onFinish({ usage, finishReason }) {
+        // Only increment daily quotas after a successful completion.
+        if (finishReason !== 'error') {
+          confirmUsage(usageContext, {
+            inputTokens: usage.inputTokens ?? 0,
+            outputTokens: usage.outputTokens ?? 0,
+          })
+        }
+      },
+    })
 
-  return result.toUIMessageStreamResponse()
+    return result.toUIMessageStreamResponse({
+      onError: (error) => sanitizeErrorForClient(error),
+    })
+  } catch (error) {
+    console.error('[chat] Pre-stream error:', sanitizeErrorForClient(error))
+    return plainError(sanitizeErrorForClient(error), 500)
+  }
 }
