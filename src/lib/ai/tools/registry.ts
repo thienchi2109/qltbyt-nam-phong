@@ -2,6 +2,10 @@ import { tool, type ToolSet } from 'ai'
 import { z } from 'zod'
 
 import { generateTroubleshootingDraft } from '@/lib/ai/draft/troubleshooting-tool'
+import {
+  type EquipmentLookupHints,
+  normalizeEquipmentLookupArgs,
+} from '@/lib/ai/tools/equipment-lookup-identifiers'
 import { executeRpcTool } from '@/lib/ai/tools/rpc-tool-executor'
 
 type ReadOnlyToolDefinition = {
@@ -13,7 +17,7 @@ type ReadOnlyToolDefinition = {
 const READ_ONLY_TOOL_DEFINITIONS: Record<string, ReadOnlyToolDefinition> = {
   equipmentLookup: {
     description:
-      'Lookup equipment details using approved read-only RPC. Supports text search plus structured `filters` for current status, department, location, classification, model, and serial; use the returned total for aggregate counts.',
+      'Lookup equipment details using approved read-only RPC. Supports text search plus structured `filters` for exact `equipmentCode`, current status, department, location, classification, model, and serial; use the returned total for aggregate counts.',
     rpcFunction: 'ai_equipment_lookup',
     inputSchema: z
       .object({
@@ -22,6 +26,7 @@ const READ_ONLY_TOOL_DEFINITIONS: Record<string, ReadOnlyToolDefinition> = {
         status: z.string().trim().min(1).max(100).optional(),
         filters: z
           .object({
+            equipmentCode: z.string().trim().min(1).max(200).optional(),
             status: z.string().trim().min(1).max(100).optional(),
             department: z.string().trim().min(1).max(200).optional(),
             location: z.string().trim().min(1).max(200).optional(),
@@ -203,6 +208,7 @@ export interface BuildToolRegistryParams {
   tenantId: number
   userId: string
   requestedTools: string[]
+  equipmentLookupHints?: EquipmentLookupHints
 }
 
 export function buildToolRegistry({
@@ -210,6 +216,7 @@ export function buildToolRegistry({
   tenantId,
   userId,
   requestedTools,
+  equipmentLookupHints,
 }: BuildToolRegistryParams): ToolSet {
   const allowedRequestedTools = requestedTools.filter(toolName =>
     ALLOWED_TOOL_NAMES.has(toolName),
@@ -241,7 +248,9 @@ export function buildToolRegistry({
           request,
           rpcFunction: rpcDef.rpcFunction,
           args: {
-            ...input,
+            ...(toolName === 'equipmentLookup'
+              ? normalizeEquipmentLookupArgs(input, equipmentLookupHints)
+              : input),
             p_don_vi: tenantId,
             p_user_id: userId,
           },

@@ -316,8 +316,8 @@ describe('repairRequestDraft safety', () => {
     )
   })
 
-  it('system prompt version is v2.2.0', () => {
-    expect(SYSTEM_PROMPT_VERSION).toBe('v2.2.0')
+  it('system prompt version is v2.2.2', () => {
+    expect(SYSTEM_PROMPT_VERSION).toBe('v2.2.2')
   })
 
   it('prompt prevents auto-submission of repair requests', () => {

@@ -18,6 +18,7 @@ import {
 import { getChatModel } from '@/lib/ai/provider'
 import { buildSystemPrompt } from '@/lib/ai/prompts/system'
 import type { SystemPromptContext } from '@/lib/ai/prompts/types'
+import { extractEquipmentLookupHints } from '@/lib/ai/tools/equipment-lookup-identifiers'
 import { buildToolRegistry, validateRequestedTools } from '@/lib/ai/tools/registry'
 import { checkUsageLimits, confirmUsage, recordUsage } from '@/lib/ai/usage-metering'
 import { sanitizeErrorForClient } from '@/lib/ai/errors'
@@ -152,6 +153,7 @@ export async function POST(request: Request) {
     selectedFacilityId,
   }
   const systemPrompt = buildSystemPrompt(promptContext)
+  const equipmentLookupHints = extractEquipmentLookupHints(validatedMessages)
 
   const usageContext = { userId: usageUserId, tenantId: selectedFacilityId }
   const tools =
@@ -161,6 +163,7 @@ export async function POST(request: Request) {
           tenantId: selectedFacilityId,
           userId: usageUserId,
           requestedTools,
+          equipmentLookupHints,
         })
       : undefined
 

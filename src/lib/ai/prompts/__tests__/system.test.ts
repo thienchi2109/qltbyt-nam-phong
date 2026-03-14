@@ -135,8 +135,8 @@ describe('system prompt module', () => {
     expect(prompt).toContain('metadata')
   })
 
-  it('prompt version is v2.2.1 after structured equipment filter guidance', () => {
-    expect(SYSTEM_PROMPT_VERSION).toBe('v2.2.1')
+  it('prompt version is v2.2.2 after exact equipment-code guidance', () => {
+    expect(SYSTEM_PROMPT_VERSION).toBe('v2.2.2')
   })
 
   it('includes § 10 troubleshooting drafts section', () => {
@@ -202,5 +202,18 @@ describe('system prompt module', () => {
     expect(prompt).toContain('`filters.location`')
     expect(prompt).toContain('trường `total`')
     expect(prompt).toContain('bao nhiêu thiết bị')
+  })
+
+  it('tells the model to preserve full equipment codes verbatim for exact lookups', () => {
+    const prompt = buildSystemPrompt({
+      role: 'to_qltb',
+      userId: 'u1',
+      selectedFacilityId: 17,
+    })
+
+    expect(prompt).toContain('mã thiết bị')
+    expect(prompt).toContain('giữ nguyên từng ký tự')
+    expect(prompt).toContain('`filters.equipmentCode`')
+    expect(prompt).toContain('TT.1.92004.JPDCTA1000147')
   })
 })

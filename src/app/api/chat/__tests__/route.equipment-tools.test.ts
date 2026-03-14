@@ -25,6 +25,7 @@ describe('equipmentLookup contract shape', () => {
         query: 'bơm tiêm điện',
         limit: 10,
         filters: {
+          equipmentCode: 'TT.1.92004.JPDCTA1000147',
           status: 'Ngưng sử dụng',
           department: 'ICU',
           location: 'Phòng mổ',
@@ -61,13 +62,14 @@ describe('equipmentLookup contract shape', () => {
   it('has a patch migration that supports structured filters for ai_equipment_lookup', () => {
     const migrationPath = path.resolve(
       process.cwd(),
-      'supabase/migrations/20260314143000_fix_ai_equipment_lookup_status_filter.sql',
+      'supabase/migrations/20260314152000_add_exact_equipment_code_filter_to_ai_equipment_lookup.sql',
     )
     const migrationSource = readFileSync(migrationPath, 'utf8')
 
     expect(migrationSource).toContain('filters JSONB DEFAULT NULL')
     expect(migrationSource).toContain('status TEXT DEFAULT NULL')
     expect(migrationSource).toContain("v_filters JSONB := COALESCE(filters, '{}'::JSONB);")
+    expect(migrationSource).toContain("v_equipment_code_filter TEXT := NULLIF(BTRIM(COALESCE(v_filters->>'equipmentCode'")
     expect(migrationSource).toContain(
       "COALESCE(v_filters->>'status', status)"
     )
@@ -75,6 +77,7 @@ describe('equipmentLookup contract shape', () => {
     expect(migrationSource).toContain('tb.khoa_phong_quan_ly')
     expect(migrationSource).toContain('tb.vi_tri_lap_dat')
     expect(migrationSource).toContain('tb.phan_loai_theo_nd98')
+    expect(migrationSource).toContain('tb.ma_thiet_bi = v_equipment_code_filter')
     expect(migrationSource).toContain('tb.tinh_trang_hien_tai')
     expect(migrationSource).toContain('v_department_filter IS NULL')
     expect(migrationSource).toContain('v_location_filter IS NULL')
