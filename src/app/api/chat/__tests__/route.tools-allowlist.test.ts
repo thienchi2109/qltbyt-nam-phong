@@ -77,10 +77,10 @@ describe('/api/chat tools allowlist policy', () => {
         requestedTools: ['toolDoesNotExist'],
       }) as never,
     )
-    const payload = await res.json()
+    const text = await res.text()
 
     expect(res.status).toBe(400)
-    expect(payload).toEqual({ error: 'Unknown tool requested: toolDoesNotExist' })
+    expect(text).toBe('Unknown tool requested: toolDoesNotExist')
     expect(streamTextMock).not.toHaveBeenCalled()
   })
 
@@ -91,10 +91,10 @@ describe('/api/chat tools allowlist policy', () => {
         requestedTools: ['systemDiagnostics'],
       }) as never,
     )
-    const payload = await res.json()
+    const text = await res.text()
 
     expect(res.status).toBe(400)
-    expect(payload).toEqual({ error: 'Tool is not allowed in v1: systemDiagnostics' })
+    expect(text).toBe('Tool is not allowed in v1: systemDiagnostics')
     expect(streamTextMock).not.toHaveBeenCalled()
   })
 
@@ -105,12 +105,12 @@ describe('/api/chat tools allowlist policy', () => {
         requestedTools: ['repairRequestCreate'],
       }) as never,
     )
-    const payload = await res.json()
+    const text = await res.text()
 
     expect(res.status).toBe(400)
-    expect(payload).toEqual({
-      error: 'Write-intent tool names are blocked: repairRequestCreate',
-    })
+    expect(text).toBe(
+      'Write-intent tool names are blocked: repairRequestCreate',
+    )
     expect(streamTextMock).not.toHaveBeenCalled()
   })
 

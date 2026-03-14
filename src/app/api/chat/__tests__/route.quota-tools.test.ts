@@ -118,12 +118,12 @@ describe('/api/chat quota tools', () => {
         requestedTools: ['deviceQuotaLookup'],
       }) as never,
     )
-    const payload = await res.json()
+    const text = await res.text()
 
     expect(res.status).toBe(400)
-    expect(payload).toEqual({
-      error: 'Please select a facility before using assistant tools.',
-    })
+    expect(text).toBe(
+      'Please select a facility before using assistant tools.',
+    )
     expect(streamTextMock).not.toHaveBeenCalled()
   })
 
@@ -138,12 +138,12 @@ describe('/api/chat quota tools', () => {
         requestedTools: ['quotaComplianceSummary'],
       }) as never,
     )
-    const payload = await res.json()
+    const text = await res.text()
 
     expect(res.status).toBe(400)
-    expect(payload).toEqual({
-      error: 'Please select a facility before using assistant tools.',
-    })
+    expect(text).toBe(
+      'Please select a facility before using assistant tools.',
+    )
     expect(streamTextMock).not.toHaveBeenCalled()
   })
 

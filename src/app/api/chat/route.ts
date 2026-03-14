@@ -6,7 +6,6 @@ import {
   validateUIMessages,
 } from 'ai'
 import { getServerSession } from 'next-auth'
-import { NextResponse } from 'next/server'
 
 import { authOptions } from '@/auth/config'
 import { chatRequestSchema } from '@/lib/ai/chat-request-schema'
@@ -26,12 +25,11 @@ import { isPrivilegedRole, ROLES } from '@/lib/rbac'
 export const runtime = 'nodejs'
 export const maxDuration = 30
 
-function badRequest(message: string) {
-  return NextResponse.json({ error: message }, { status: 400 })
-}
-
-function tooManyRequests(message: string) {
-  return NextResponse.json({ error: message }, { status: 429 })
+function plainError(message: string, status: number) {
+  return new Response(message, {
+    status,
+    headers: { 'Content-Type': 'text/plain; charset=utf-8' },
+  })
 }
 
 const ALLOWED_CHAT_ROLES = new Set<string>(Object.values(ROLES))
@@ -76,34 +74,34 @@ export async function POST(request: Request) {
   const session = await getServerSession(authOptions)
 
   if (!session?.user) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    return plainError('Unauthorized', 401)
   }
 
   const user = session.user as Record<string, unknown>
   if (!hasAllowedChatRole(user.role)) {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    return plainError('Forbidden', 403)
   }
 
   const payload = await request.json().catch(() => null)
   const parsedRequest = chatRequestSchema.safeParse(payload)
   if (!parsedRequest.success) {
-    return badRequest('Invalid request payload')
+    return plainError('Invalid request payload', 400)
   }
   const requestedToolsValidation = validateRequestedTools(
     parsedRequest.data.requestedTools ?? [],
   )
   if (!requestedToolsValidation.ok) {
-    return badRequest(requestedToolsValidation.message)
+    return plainError(requestedToolsValidation.message, 400)
   }
   const requestedTools = requestedToolsValidation.requestedTools
 
   if (parsedRequest.data.messages.length > AI_MAX_MESSAGES) {
-    return badRequest('Request exceeds message limit')
+    return plainError('Request exceeds message limit', 400)
   }
 
   const inputChars = calculateInputChars(parsedRequest.data.messages)
   if (inputChars > AI_MAX_INPUT_CHARS) {
-    return badRequest('Request exceeds input size limit')
+    return plainError('Request exceeds input size limit', 400)
   }
 
   let validatedMessages: UIMessage[]
@@ -112,7 +110,7 @@ export async function POST(request: Request) {
       messages: parsedRequest.data.messages as UIMessage[],
     })
   } catch {
-    return badRequest('Invalid messages payload')
+    return plainError('Invalid messages payload', 400)
   }
 
   const role = typeof user.role === 'string' ? user.role : undefined
@@ -122,7 +120,7 @@ export async function POST(request: Request) {
 
   if (isPrivilegedRole(role)) {
     if (requestedTools.length > 0 && requestedFacilityId === undefined) {
-      return badRequest('Please select a facility before using assistant tools.')
+      return plainError('Please select a facility before using assistant tools.', 400)
     }
 
     if (requestedFacilityId !== undefined) {
@@ -131,7 +129,7 @@ export async function POST(request: Request) {
   }
 
   if (requestedTools.length > 0 && selectedFacilityId === undefined) {
-    return badRequest('Unable to resolve facility context for tool execution.')
+    return plainError('Unable to resolve facility context for tool execution.', 400)
   }
 
   const promptUserId =
@@ -144,7 +142,7 @@ export async function POST(request: Request) {
     tenantId: selectedFacilityId,
   })
   if (!usageLimit.allowed) {
-    return tooManyRequests(usageLimit.message ?? 'AI usage limit exceeded.')
+    return plainError(usageLimit.message ?? 'AI usage limit exceeded.', 429)
   }
 
   const promptContext: SystemPromptContext = {

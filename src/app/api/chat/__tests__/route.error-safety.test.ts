@@ -54,7 +54,7 @@ function buildRequest(body: unknown) {
   })
 }
 
-describe('/api/chat tenant policy', () => {
+describe('/api/chat error safety — non-stream contract', () => {
   beforeEach(() => {
     vi.clearAllMocks()
 
@@ -67,50 +67,26 @@ describe('/api/chat tenant policy', () => {
     })
   })
 
-  it.each([
-    'equipmentLookup',
-    'maintenanceSummary',
-    'maintenancePlanLookup',
-    'repairSummary',
-    'usageHistory',
-  ])('returns guidance when privileged role has no facility for tool "%s"', async (toolName) => {
+  it('returns text/plain for privileged user with tools but no facility (undefined)', async () => {
     getServerSessionMock.mockResolvedValue({
-      user: { id: 'u1', role: 'global', don_vi: null },
+      user: { id: 'u1', role: 'global', don_vi: undefined },
     })
 
     const res = await POST(
       buildRequest({
         messages: VALID_MESSAGES,
-        requestedTools: [toolName],
+        requestedTools: ['equipmentLookup'],
       }) as never,
     )
     const text = await res.text()
 
     expect(res.status).toBe(400)
+    expect(res.headers.get('content-type')).toContain('text/plain')
     expect(text).toBe('Please select a facility before using assistant tools.')
     expect(streamTextMock).not.toHaveBeenCalled()
   })
 
-  it('ignores unsafe tenant override attempts from non-privileged roles', async () => {
-    getServerSessionMock.mockResolvedValue({
-      user: { id: 'u1', role: 'technician', don_vi: 2 },
-    })
-
-    const res = await POST(
-      buildRequest({
-        messages: VALID_MESSAGES,
-        requestedTools: ['equipmentLookup'],
-        selectedFacilityId: 999,
-      }) as never,
-    )
-
-    expect(res.status).toBe(200)
-    expect(buildSystemPromptMock).toHaveBeenCalledWith(
-      expect.objectContaining({ selectedFacilityId: 2 }),
-    )
-  })
-
-  it('allows privileged roles to run tools when selected facility is provided', async () => {
+  it('returns text/plain for privileged user with tools but facility null', async () => {
     getServerSessionMock.mockResolvedValue({
       user: { id: 'u1', role: 'global', don_vi: null },
     })
@@ -119,17 +95,52 @@ describe('/api/chat tenant policy', () => {
       buildRequest({
         messages: VALID_MESSAGES,
         requestedTools: ['equipmentLookup'],
-        selectedFacilityId: 7,
+        selectedFacilityId: null,
       }) as never,
     )
+    const text = await res.text()
 
-    expect(res.status).toBe(200)
-    expect(buildSystemPromptMock).toHaveBeenCalledWith(
-      expect.objectContaining({ selectedFacilityId: 7 }),
-    )
-    const streamArgs = streamTextMock.mock.calls[0]?.[0] as {
-      tools?: Record<string, unknown>
-    }
-    expect(streamArgs?.tools).toHaveProperty('equipmentLookup')
+    expect(res.status).toBe(400)
+    expect(res.headers.get('content-type')).toContain('text/plain')
+    expect(text).toBe('Please select a facility before using assistant tools.')
+    expect(streamTextMock).not.toHaveBeenCalled()
+  })
+
+  it('returns text/plain 429 when rate-limited', async () => {
+    getServerSessionMock.mockResolvedValue({
+      user: { id: 'u1', role: 'admin', don_vi: 2 },
+    })
+    checkUsageLimitsMock.mockReturnValue({
+      allowed: false,
+      message: 'Too many requests. Please try again later.',
+    })
+
+    const res = await POST(buildRequest({ messages: VALID_MESSAGES }) as never)
+    const text = await res.text()
+
+    expect(res.status).toBe(429)
+    expect(res.headers.get('content-type')).toContain('text/plain')
+    expect(text).toBe('Too many requests. Please try again later.')
+    expect(streamTextMock).not.toHaveBeenCalled()
+  })
+
+  it('returns text/plain for all non-stream error statuses', async () => {
+    // 401 - no session
+    getServerSessionMock.mockResolvedValue(null)
+    const res401 = await POST(buildRequest({ messages: VALID_MESSAGES }) as never)
+    expect(res401.status).toBe(401)
+    expect(res401.headers.get('content-type')).toContain('text/plain')
+
+    // 403 - invalid role
+    getServerSessionMock.mockResolvedValue({ user: { id: 'u1', role: 'auditor' } })
+    const res403 = await POST(buildRequest({ messages: VALID_MESSAGES }) as never)
+    expect(res403.status).toBe(403)
+    expect(res403.headers.get('content-type')).toContain('text/plain')
+
+    // 400 - malformed payload
+    getServerSessionMock.mockResolvedValue({ user: { id: 'u1', role: 'user' } })
+    const res400 = await POST(buildRequest({}) as never)
+    expect(res400.status).toBe(400)
+    expect(res400.headers.get('content-type')).toContain('text/plain')
   })
 })

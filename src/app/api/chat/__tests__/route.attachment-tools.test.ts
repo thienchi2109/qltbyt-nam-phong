@@ -98,12 +98,12 @@ describe('/api/chat attachmentLookup tool', () => {
         requestedTools: ['attachmentLookup'],
       }) as never,
     )
-    const payload = await res.json()
+    const text = await res.text()
 
     expect(res.status).toBe(400)
-    expect(payload).toEqual({
-      error: 'Please select a facility before using assistant tools.',
-    })
+    expect(text).toBe(
+      'Please select a facility before using assistant tools.',
+    )
     expect(streamTextMock).not.toHaveBeenCalled()
   })
 })
