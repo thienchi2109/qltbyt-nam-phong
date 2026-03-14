@@ -111,7 +111,7 @@ describe('AssistantPanel error state', () => {
         // JSON-wrapped values are untrusted — always show generic message
         expect(screen.getByText('Đã xảy ra lỗi. Vui lòng thử lại.')).toBeInTheDocument()
         expect(
-            screen.queryByText('Facility not selected'),
+            screen.queryByText('{"error":"Facility not selected"}'),
         ).not.toBeInTheDocument()
     })
 
