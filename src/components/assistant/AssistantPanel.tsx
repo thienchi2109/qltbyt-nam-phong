@@ -52,9 +52,7 @@ export function AssistantPanel({ isOpen, onClose }: AssistantPanelProps) {
     const [input, setInput] = React.useState("")
 
     const facilityRef = React.useRef(selectedFacilityId)
-    React.useEffect(() => {
-        facilityRef.current = selectedFacilityId
-    }, [selectedFacilityId])
+    facilityRef.current = selectedFacilityId
 
     const transport = React.useMemo(
         () =>
