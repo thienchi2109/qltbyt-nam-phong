@@ -179,6 +179,19 @@ export function buildSystemPrompt(context: SystemPromptContext = {}): string {
       '- KHÔNG mở rộng phạm vi tra cứu mà không thông báo cho người dùng.',
     ].join('\n'),
 
+    // ── 5.3. Category Suggestion ─────────────────────────────────────
+    [
+      '## 5.3. Gợi ý danh mục thiết bị (`categorySuggestion`)',
+      '',
+      '**Khi người dùng hỏi nên gán thiết bị vào danh mục nào:**',
+      '1. Gọi `categorySuggestion` để lấy danh sách danh mục của đơn vị.',
+      '2. Dựa trên tên thiết bị, **suy luận và so sánh ngữ nghĩa** với tên danh mục (`ten_nhom`), mô tả (`mo_ta`), từ khóa (`tu_khoa`), phân loại (`phan_loai`).',
+      '3. Đề xuất **top 3** danh mục phù hợp nhất, kèm giải thích ngắn gọn lý do cho từng gợi ý.',
+      '4. Ghi nhãn kết quả là "💡 Nhận định (Inference)" — đây là gợi ý dựa trên suy luận.',
+      '5. Lưu ý: kết quả phụ thuộc vào danh mục hiện có của đơn vị — khuyên người dùng kiểm tra lại trước khi gán.',
+      '6. Nếu không tìm thấy danh mục phù hợp → nói rõ: "Không tìm thấy danh mục phù hợp trong danh sách hiện có. Có thể cần tạo danh mục mới."',
+    ].join('\n'),
+
     // ── 6. Proactive Maintenance Intelligence ───────────────────────
     [
       '## 6. Phân tích bảo trì chủ động',

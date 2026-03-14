@@ -7,6 +7,7 @@ import {
   type UIMessage,
   validateUIMessages,
 } from 'ai'
+import type { GoogleLanguageModelOptions } from '@ai-sdk/google'
 import { getServerSession } from 'next-auth'
 
 import { authOptions } from '@/auth/config'
@@ -203,6 +204,11 @@ export async function POST(request: Request) {
       stopWhen: stepCountIs(AI_MAX_TOOL_STEPS),
       messages: await convertToModelMessages(validatedMessages),
       tools,
+      providerOptions: {
+        google: {
+          thinkingConfig: { thinkingLevel: 'medium' },
+        } satisfies GoogleLanguageModelOptions,
+      },
       onFinish({ usage, finishReason }) {
         // Only increment daily quotas after a successful completion.
         if (finishReason !== 'error') {
