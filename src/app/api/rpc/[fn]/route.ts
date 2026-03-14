@@ -165,6 +165,7 @@ const ALLOWED_FUNCTIONS = new Set<string>([
 
 // SECURITY: Maximum request body size (2MB) to prevent DoS via memory exhaustion
 const MAX_BODY_SIZE = 2 * 1024 * 1024
+const SUPABASE_JWT_CLOCK_SKEW_SECONDS = 60
 
 // Sensitive keys to redact from logs (case-insensitive matching)
 const SENSITIVE_KEYS = ['password', 'token', 'secret', 'mat_khau', 'p_password', 'api_key', 'apikey', 'authorization', 'credential']
@@ -263,8 +264,10 @@ export async function POST(req: NextRequest, context: { params: Promise<{ fn: st
 
     // Build JWT claims for PostgREST. We keep db role = authenticated; app role in app_role.
     // IMPORTANT: Convert empty strings to null to prevent BIGINT conversion errors
+    const issuedAt = Math.floor(Date.now() / 1000) - SUPABASE_JWT_CLOCK_SKEW_SECONDS
     const claims: Record<string, any> = {
       role: 'authenticated',
+      iat: issuedAt,
       sub: userId, // CRITICAL: 'sub' is required for auth.uid() in PostgreSQL
       app_role: appRole,
       don_vi: donVi || null,  // Convert empty string to null for global users
