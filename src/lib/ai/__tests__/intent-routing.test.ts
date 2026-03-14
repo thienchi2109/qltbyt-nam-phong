@@ -118,6 +118,20 @@ describe('routeChatIntent', () => {
       // Should fall through to clarification, not route to deviceQuotaLookup.
       expect(result.kind).toBe('clarify')
     })
+
+    it('finds equipment code even when preceded by a hyphenated English word', () => {
+      const result = routeChatIntent({
+        messages: [makeUserMessage('kiểm tra định mức high-tech TB-001234')],
+        requestedTools: [...ALL_QUOTA_TOOLS],
+      })
+
+      // "high-tech" is not an equipment code, but "TB-001234" IS.
+      // The function should scan all matches, not just the first.
+      expect(result).toEqual({
+        kind: 'proceed',
+        requestedTools: ['deviceQuotaLookup'],
+      })
+    })
   })
 
   // ──────────────────────────────────────────────────────
