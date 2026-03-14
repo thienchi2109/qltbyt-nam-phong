@@ -82,7 +82,8 @@ describe('RPC proxy JWT signing', () => {
     ]
 
     expect(secret).toBe('test-secret')
-    expect(options).toMatchObject({ algorithm: 'HS256', expiresIn: '2m' })
+    expect(options).toMatchObject({ algorithm: 'HS256' })
+    expect(options).not.toHaveProperty('expiresIn')
     expect(claims).toMatchObject({
       role: 'authenticated',
       app_role: 'to_qltb',
@@ -91,6 +92,9 @@ describe('RPC proxy JWT signing', () => {
       dia_ban: '10',
       sub: '31',
     })
-    expect(claims.iat).toBe(Math.floor(Date.now() / 1000) - 60)
+    const now = Math.floor(Date.now() / 1000)
+    expect(claims.iat).toBe(now - 60)
+    // exp should be 2 minutes from actual signing time, not from backdated iat
+    expect(claims.exp).toBe(now + 120)
   })
 })

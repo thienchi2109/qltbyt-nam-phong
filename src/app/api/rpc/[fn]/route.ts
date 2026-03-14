@@ -264,10 +264,16 @@ export async function POST(req: NextRequest, context: { params: Promise<{ fn: st
 
     // Build JWT claims for PostgREST. We keep db role = authenticated; app role in app_role.
     // IMPORTANT: Convert empty strings to null to prevent BIGINT conversion errors
-    const issuedAt = Math.floor(Date.now() / 1000) - SUPABASE_JWT_CLOCK_SKEW_SECONDS
+    // iat is backdated to handle clock skew between this server and Supabase.
+    // exp is set explicitly (not via expiresIn) because jsonwebtoken computes
+    // exp = iat + expiresIn, which would halve the effective lifetime.
+    const now = Math.floor(Date.now() / 1000)
+    const issuedAt = now - SUPABASE_JWT_CLOCK_SKEW_SECONDS
+    const expiresAt = now + 120 // 2 minutes from actual signing time
     const claims: Record<string, any> = {
       role: 'authenticated',
       iat: issuedAt,
+      exp: expiresAt,
       sub: userId, // CRITICAL: 'sub' is required for auth.uid() in PostgreSQL
       app_role: appRole,
       don_vi: donVi || null,  // Convert empty string to null for global users
@@ -292,7 +298,7 @@ export async function POST(req: NextRequest, context: { params: Promise<{ fn: st
     }
 
     const secret = getEnv('SUPABASE_JWT_SECRET')
-  const token = jwt.sign(claims, secret, { algorithm: 'HS256', expiresIn: '2m' })
+  const token = jwt.sign(claims, secret, { algorithm: 'HS256' })
 
     const urlBase = getEnv('NEXT_PUBLIC_SUPABASE_URL')
     const url = `${urlBase}/rest/v1/rpc/${encodeURIComponent(fn)}`
