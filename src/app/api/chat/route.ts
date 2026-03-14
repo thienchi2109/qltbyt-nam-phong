@@ -20,7 +20,7 @@ import { buildSystemPrompt } from '@/lib/ai/prompts/system'
 import type { SystemPromptContext } from '@/lib/ai/prompts/types'
 import { buildToolRegistry, validateRequestedTools } from '@/lib/ai/tools/registry'
 import { checkUsageLimits, confirmUsage, recordUsage } from '@/lib/ai/usage-metering'
-import { extractErrorMessage, sanitizeErrorForClient } from '@/lib/ai/errors'
+import { sanitizeErrorForClient } from '@/lib/ai/errors'
 import { isPrivilegedRole, ROLES } from '@/lib/rbac'
 
 export const runtime = 'nodejs'
@@ -190,7 +190,7 @@ export async function POST(request: Request) {
       onError: (error) => sanitizeErrorForClient(error),
     })
   } catch (error) {
-    console.error('[chat] Pre-stream error:', extractErrorMessage(error))
+    console.error('[chat] Pre-stream error:', error)
     return plainError(sanitizeErrorForClient(error), 500)
   }
 }

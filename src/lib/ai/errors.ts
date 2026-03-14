@@ -39,7 +39,7 @@ export function parseErrorMessage(raw: string | undefined): string {
 
   try {
     const parsed = JSON.parse(raw)
-    if (typeof parsed === 'object' && parsed !== null && typeof parsed.error === 'string') {
+    if (typeof parsed === 'object' && parsed !== null && typeof parsed.error === 'string' && parsed.error.trim() !== '') {
       return parsed.error
     }
   } catch {
