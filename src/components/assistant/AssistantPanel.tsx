@@ -37,6 +37,7 @@ const REQUESTED_TOOLS = [
     "quotaComplianceSummary",
     "generateTroubleshootingDraft",
     "generateRepairRequestDraft",
+    "categorySuggestion",
 ]
 
 /**
