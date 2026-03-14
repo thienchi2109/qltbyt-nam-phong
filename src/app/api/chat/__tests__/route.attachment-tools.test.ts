@@ -63,7 +63,7 @@ describe('/api/chat attachmentLookup tool', () => {
     getServerSessionMock.mockResolvedValue({
       user: { id: 'u1', role: 'to_qltb', don_vi: 2 },
     })
-    getChatModelMock.mockReturnValue('google:gemini-3-flash-preview')
+    getChatModelMock.mockReturnValue({ model: 'google:gemini-3-flash-preview', keyIndex: 0 })
     buildSystemPromptMock.mockReturnValue('SYSTEM_PROMPT_V1')
     checkUsageLimitsMock.mockReturnValue({ allowed: true })
     stepCountIsMock.mockReturnValue('STOP_WHEN_SENTINEL')

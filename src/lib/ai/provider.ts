@@ -31,17 +31,22 @@ export const _internals = {
   currentIndex: 0,
   /** Set of indices whose quota is exhausted in the current window. */
   exhaustedIndices: new Set<number>(),
-  /** Timestamp of last exhaustion-set reset (epoch ms). */
-  lastResetEpoch: Date.now(),
+  /**
+   * Timestamp of the first exhaustion event in the current window (epoch ms).
+   * `null` means no keys have been exhausted yet — the timer starts on first
+   * exhaustion, not at module load.
+   */
+  firstExhaustedAt: null as number | null,
 }
 
 /** Reset exhausted keys once per hour to re-try keys whose quota may have recovered. */
 const RESET_INTERVAL_MS = 60 * 60 * 1000
 
 function maybeResetExhausted(): void {
-  if (Date.now() - _internals.lastResetEpoch >= RESET_INTERVAL_MS) {
+  const { firstExhaustedAt } = _internals
+  if (firstExhaustedAt !== null && Date.now() - firstExhaustedAt >= RESET_INTERVAL_MS) {
     _internals.exhaustedIndices.clear()
-    _internals.lastResetEpoch = Date.now()
+    _internals.firstExhaustedAt = null
   }
 }
 
@@ -49,23 +54,34 @@ function maybeResetExhausted(): void {
 // Public API
 // ---------------------------------------------------------------------------
 
+export interface ChatModelWithKeyIndex {
+  model: LanguageModel
+  /** The pool index of the API key bound to this model instance. */
+  keyIndex: number
+}
+
 /**
- * Returns a `LanguageModel` using the currently-active API key from the pool.
+ * Returns a `LanguageModel` using the currently-active API key from the pool,
+ * along with the key index that was used.
  *
- * Callers should pair this with `handleProviderQuotaError()` inside a retry
- * loop so that quota failures silently rotate to the next key.
+ * The caller **must** pass `keyIndex` to `handleProviderQuotaError()` so that
+ * the correct key is marked as exhausted even under concurrent requests.
  */
-export function getChatModel(): LanguageModel {
+export function getChatModel(): ChatModelWithKeyIndex {
   const provider = (process.env.AI_PROVIDER ?? DEFAULT_PROVIDER).toLowerCase()
   const model = process.env.AI_MODEL ?? DEFAULT_MODEL
 
   switch (provider) {
     case 'google': {
-      const key = _internals.keys[_internals.currentIndex]
+      const keyIndex = _internals.currentIndex
+      const key = _internals.keys[keyIndex]
       // When an explicit key is available, create a provider bound to it.
       // Otherwise fall through to the default (reads GOOGLE_GENERATIVE_AI_API_KEY).
       const google = createGoogleGenerativeAI(key ? { apiKey: key } : undefined)
-      return google(model as Parameters<typeof google>[0])
+      return {
+        model: google(model as Parameters<typeof google>[0]),
+        keyIndex,
+      }
     }
     default:
       throw new Error(`Unsupported AI provider: ${provider}`)
@@ -75,23 +91,31 @@ export function getChatModel(): LanguageModel {
 /**
  * Rotate to the next non-exhausted API key after a quota error.
  *
+ * @param failedKeyIndex The index of the key that actually received the quota
+ *   error. This prevents concurrent requests from accidentally marking an
+ *   innocent key as exhausted.
  * @returns `true` if a fallback key is available, `false` if all keys in the
  *          pool are exhausted (caller should surface the quota error to the user).
  */
-export function handleProviderQuotaError(): boolean {
+export function handleProviderQuotaError(failedKeyIndex: number): boolean {
   maybeResetExhausted()
 
-  const { keys, currentIndex, exhaustedIndices } = _internals
+  const { keys, exhaustedIndices } = _internals
 
   // Nothing to rotate if pool is empty or has a single key.
   if (keys.length <= 1) return false
 
-  // Mark the current key as exhausted.
-  exhaustedIndices.add(currentIndex)
+  // Mark the key that actually failed — not whatever currentIndex happens to be.
+  exhaustedIndices.add(failedKeyIndex)
 
-  // Search for the next non-exhausted key (round-robin).
+  // Start the hourly reset timer on first exhaustion event.
+  if (_internals.firstExhaustedAt === null) {
+    _internals.firstExhaustedAt = Date.now()
+  }
+
+  // Search for the next non-exhausted key (round-robin from the failed key).
   for (let offset = 1; offset < keys.length; offset++) {
-    const candidate = (currentIndex + offset) % keys.length
+    const candidate = (failedKeyIndex + offset) % keys.length
     if (!exhaustedIndices.has(candidate)) {
       _internals.currentIndex = candidate
       return true

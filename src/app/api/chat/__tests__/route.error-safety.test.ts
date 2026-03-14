@@ -60,7 +60,7 @@ describe('/api/chat error safety — non-stream contract', () => {
   beforeEach(() => {
     vi.clearAllMocks()
 
-    getChatModelMock.mockReturnValue('google:gemini-2.5-flash')
+    getChatModelMock.mockReturnValue({ model: 'google:gemini-2.5-flash', keyIndex: 0 })
     buildSystemPromptMock.mockReturnValue('SYSTEM_PROMPT_V1')
     checkUsageLimitsMock.mockReturnValue({ allowed: true })
     stepCountIsMock.mockReturnValue('STOP_WHEN_SENTINEL')
@@ -154,7 +154,7 @@ describe('/api/chat error safety — sanitization', () => {
     getServerSessionMock.mockResolvedValue({
       user: { id: 'u1', role: 'admin', don_vi: 2 },
     })
-    getChatModelMock.mockReturnValue('google:gemini-2.5-flash')
+    getChatModelMock.mockReturnValue({ model: 'google:gemini-2.5-flash', keyIndex: 0 })
     buildSystemPromptMock.mockReturnValue('SYSTEM_PROMPT_V1')
     checkUsageLimitsMock.mockReturnValue({ allowed: true })
     stepCountIsMock.mockReturnValue('STOP_WHEN_SENTINEL')

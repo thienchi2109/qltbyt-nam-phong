@@ -37,7 +37,7 @@ describe('provider — API key rotation', () => {
     _internals.keys = ['KEY_A', 'KEY_B', 'KEY_C']
     _internals.currentIndex = 0
     _internals.exhaustedIndices.clear()
-    _internals.lastResetEpoch = Date.now()
+    _internals.firstExhaustedAt = null
   })
 
   afterEach(() => {
@@ -49,17 +49,21 @@ describe('provider — API key rotation', () => {
   // -------------------------------------------------------------------
 
   it('returns a model using the current key from the pool', () => {
-    const model = getChatModel() as unknown as { apiKey: string; modelId: string }
+    const { model, keyIndex } = getChatModel()
+    const m = model as unknown as { apiKey: string; modelId: string }
 
-    expect(model.apiKey).toBe('KEY_A')
-    expect(model.modelId).toBe('gemini-3.1-flash-lite-preview')
+    expect(m.apiKey).toBe('KEY_A')
+    expect(m.modelId).toBe('gemini-3.1-flash-lite-preview')
+    expect(keyIndex).toBe(0)
   })
 
   it('returns model bound to the rotated key after handleProviderQuotaError', () => {
-    handleProviderQuotaError() // KEY_A → KEY_B
-    const model = getChatModel() as unknown as { apiKey: string }
+    handleProviderQuotaError(0) // KEY_A → KEY_B
+    const { model, keyIndex } = getChatModel()
+    const m = model as unknown as { apiKey: string }
 
-    expect(model.apiKey).toBe('KEY_B')
+    expect(m.apiKey).toBe('KEY_B')
+    expect(keyIndex).toBe(1)
   })
 
   // -------------------------------------------------------------------
@@ -67,25 +71,25 @@ describe('provider — API key rotation', () => {
   // -------------------------------------------------------------------
 
   it('rotates to next key and returns true', () => {
-    expect(handleProviderQuotaError()).toBe(true)
+    expect(handleProviderQuotaError(0)).toBe(true)
     expect(_internals.currentIndex).toBe(1)
   })
 
   it('skips already-exhausted keys', () => {
     _internals.exhaustedIndices.add(1) // KEY_B exhausted
-    expect(handleProviderQuotaError()).toBe(true) // KEY_A exhausted → skip KEY_B → KEY_C
+    expect(handleProviderQuotaError(0)).toBe(true) // KEY_A exhausted → skip KEY_B → KEY_C
     expect(_internals.currentIndex).toBe(2)
   })
 
   it('returns false when all keys are exhausted', () => {
-    handleProviderQuotaError() // KEY_A exhausted → KEY_B
-    handleProviderQuotaError() // KEY_B exhausted → KEY_C
-    expect(handleProviderQuotaError()).toBe(false) // KEY_C exhausted → none left
+    handleProviderQuotaError(0) // KEY_A exhausted → KEY_B
+    handleProviderQuotaError(1) // KEY_B exhausted → KEY_C
+    expect(handleProviderQuotaError(2)).toBe(false) // KEY_C exhausted → none left
   })
 
   it('wraps around in round-robin', () => {
     _internals.currentIndex = 2 // start at KEY_C
-    expect(handleProviderQuotaError()).toBe(true)
+    expect(handleProviderQuotaError(2)).toBe(true)
     expect(_internals.currentIndex).toBe(0) // wraps to KEY_A
   })
 
@@ -94,7 +98,7 @@ describe('provider — API key rotation', () => {
     _internals.currentIndex = 0
     _internals.exhaustedIndices.clear()
 
-    expect(handleProviderQuotaError()).toBe(false)
+    expect(handleProviderQuotaError(0)).toBe(false)
   })
 
   it('returns false for an empty pool', () => {
@@ -102,7 +106,23 @@ describe('provider — API key rotation', () => {
     _internals.currentIndex = 0
     _internals.exhaustedIndices.clear()
 
-    expect(handleProviderQuotaError()).toBe(false)
+    expect(handleProviderQuotaError(0)).toBe(false)
+  })
+
+  // -------------------------------------------------------------------
+  // Concurrent safety: marks the correct key
+  // -------------------------------------------------------------------
+
+  it('marks the correct key when failedKeyIndex differs from currentIndex', () => {
+    // Simulate: Request A used KEY_A (index 0), rotated to KEY_B.
+    // Now Request B also fails on KEY_A — it should mark KEY_A, not KEY_B.
+    handleProviderQuotaError(0) // rotates to KEY_B (index 1)
+    expect(_internals.currentIndex).toBe(1)
+
+    // Request B also fails with KEY_A (index 0 — already exhausted).
+    // KEY_B is still healthy. Should just pick next non-exhausted.
+    handleProviderQuotaError(0) // KEY_A already marked; round-robin from 0 → 1 (KEY_B, not exhausted)
+    expect(_internals.currentIndex).toBe(1) // stays on KEY_B
   })
 
   // -------------------------------------------------------------------
@@ -110,15 +130,25 @@ describe('provider — API key rotation', () => {
   // -------------------------------------------------------------------
 
   it('resets exhausted keys after the reset interval', () => {
-    handleProviderQuotaError() // KEY_A exhausted → KEY_B
-    handleProviderQuotaError() // KEY_B exhausted → KEY_C
+    handleProviderQuotaError(0) // KEY_A exhausted → KEY_B
+    handleProviderQuotaError(1) // KEY_B exhausted → KEY_C
 
-    // Simulate 1 hour passing.
-    _internals.lastResetEpoch = Date.now() - 61 * 60 * 1000
+    // Simulate 1 hour passing since first exhaustion.
+    _internals.firstExhaustedAt = Date.now() - 61 * 60 * 1000
 
     // Now even though KEY_A and KEY_B were exhausted, the reset should clear them.
-    expect(handleProviderQuotaError()).toBe(true) // KEY_C exhausted (fresh) → KEY_A (re-enabled)
+    expect(handleProviderQuotaError(2)).toBe(true) // KEY_C exhausted (fresh) → KEY_A (re-enabled)
     expect(_internals.currentIndex).toBe(0)
+  })
+
+  it('does not reset if the interval has not elapsed', () => {
+    handleProviderQuotaError(0) // KEY_A exhausted → KEY_B
+    handleProviderQuotaError(1) // KEY_B exhausted → KEY_C
+
+    // Only 30 minutes — should NOT reset
+    _internals.firstExhaustedAt = Date.now() - 30 * 60 * 1000
+
+    expect(handleProviderQuotaError(2)).toBe(false) // all exhausted, no reset yet
   })
 
   // -------------------------------------------------------------------

@@ -49,7 +49,7 @@ describe('/api/chat auth + schema', () => {
   beforeEach(() => {
     vi.clearAllMocks()
 
-    getChatModelMock.mockReturnValue('google:gemini-2.5-flash')
+    getChatModelMock.mockReturnValue({ model: 'google:gemini-2.5-flash', keyIndex: 0 })
     buildSystemPromptMock.mockReturnValue('SYSTEM_PROMPT_V1')
     streamTextMock.mockReturnValue({
       toUIMessageStreamResponse: () => new Response(null, { status: 200 }),

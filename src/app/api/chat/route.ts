@@ -196,13 +196,22 @@ export async function POST(request: Request) {
   // Record in rate-limit sliding window upfront (anti-abuse).
   recordUsage(usageContext)
 
-  const modelMessages = await convertToModelMessages(validatedMessages)
+  let modelMessages: Awaited<ReturnType<typeof convertToModelMessages>>
+  try {
+    modelMessages = await convertToModelMessages(validatedMessages)
+  } catch (error) {
+    console.error('[chat] Message conversion error:', error)
+    return plainError(sanitizeErrorForClient(error), 500)
+  }
+
   const maxAttempts = getKeyPoolSize()
 
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    const { model, keyIndex } = getChatModel()
+
     try {
       const result = streamText({
-        model: getChatModel(),
+        model,
         system: systemPrompt,
         maxOutputTokens: AI_MAX_OUTPUT_TOKENS,
         stopWhen: stepCountIs(AI_MAX_TOOL_STEPS),
@@ -229,7 +238,7 @@ export async function POST(request: Request) {
       })
     } catch (error) {
       // On quota error, silently rotate to next API key and retry.
-      if (isProviderQuotaError(error) && attempt < maxAttempts && handleProviderQuotaError()) {
+      if (isProviderQuotaError(error) && attempt < maxAttempts && handleProviderQuotaError(keyIndex)) {
         console.warn(
           `[chat] API key #${attempt} quota exceeded — rotating to next key (attempt ${attempt + 1}/${maxAttempts})`,
         )

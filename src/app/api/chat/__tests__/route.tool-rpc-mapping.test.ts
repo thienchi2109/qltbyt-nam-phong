@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { getToolRpcMapping } from '../../../../lib/ai/tools/registry'
+import { getToolRpcMapping } from '@/lib/ai/tools/registry'
 
 describe('AI tool → RPC mapping contract', () => {
   const EXPECTED_MAPPING: Record<string, string> = {
