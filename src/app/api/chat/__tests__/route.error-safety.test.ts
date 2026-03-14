@@ -198,4 +198,17 @@ describe('/api/chat error safety — sanitization', () => {
 
     expect(capturedOnError).toBeTypeOf('function')
   })
+
+  it('returns generic message even for clean-looking provider errors (deny-by-default)', async () => {
+    streamTextMock.mockImplementation(() => {
+      throw new Error('Model overloaded, please retry')
+    })
+
+    const res = await POST(buildRequest({ messages: VALID_MESSAGES }) as never)
+    const text = await res.text()
+
+    expect(res.status).toBe(500)
+    expect(text).toBe('Đã xảy ra lỗi. Vui lòng thử lại.')
+    expect(text).not.toContain('Model overloaded')
+  })
 })
