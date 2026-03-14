@@ -135,8 +135,8 @@ describe('system prompt module', () => {
     expect(prompt).toContain('metadata')
   })
 
-  it('prompt version is v2.2.0 after repair request draft', () => {
-    expect(SYSTEM_PROMPT_VERSION).toBe('v2.2.0')
+  it('prompt version is v2.2.1 after structured equipment filter guidance', () => {
+    expect(SYSTEM_PROMPT_VERSION).toBe('v2.2.1')
   })
 
   it('includes § 10 troubleshooting drafts section', () => {
@@ -187,5 +187,20 @@ describe('system prompt module', () => {
     expect(prompt).toContain('một cơ sở duy nhất')
     expect(prompt).toContain('scope.label')
     expect(prompt).toContain('chưa hỗ trợ tổng hợp nhiều cơ sở')
+  })
+
+  it('tells the model to use equipmentLookup structured filters for count/filter questions', () => {
+    const prompt = buildSystemPrompt({
+      role: 'to_qltb',
+      userId: 'u1',
+      selectedFacilityId: 17,
+    })
+
+    expect(prompt).toContain('`filters`')
+    expect(prompt).toContain('`filters.status`')
+    expect(prompt).toContain('`filters.department`')
+    expect(prompt).toContain('`filters.location`')
+    expect(prompt).toContain('trường `total`')
+    expect(prompt).toContain('bao nhiêu thiết bị')
   })
 })

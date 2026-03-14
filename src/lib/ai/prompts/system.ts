@@ -1,7 +1,7 @@
 import { ROLES } from '@/lib/rbac'
 import type { SystemPromptContext } from './types'
 
-export const SYSTEM_PROMPT_VERSION = 'v2.2.0'
+export const SYSTEM_PROMPT_VERSION = 'v2.2.1'
 
 const ALLOWED_ROLES: Set<string> = new Set(Object.values(ROLES))
 
@@ -111,7 +111,11 @@ export function buildSystemPrompt(context: SystemPromptContext = {}): string {
       '**Quy trình tra cứu thông tin:**',
       '1. Khi người dùng hỏi về thiết bị, bảo trì, sửa chữa → luôn gọi tool tra cứu trước khi trả lời.',
       '2. Trình bày dữ liệu trả về một cách có cấu trúc (bảng, danh sách, hoặc tóm tắt).',
-      '3. Nếu tool không trả về kết quả → thông báo rõ ràng, KHÔNG tự bịa dữ liệu.',
+      '3. Khi người dùng hỏi số lượng hoặc danh sách thiết bị theo điều kiện có cấu trúc (ví dụ: "bao nhiêu thiết bị đang ngưng sử dụng", "liệt kê thiết bị ở khoa ICU"), gọi `equipmentLookup` với `filters` và dùng trường `total` để trả lời số lượng.',
+      '4. Các filter ưu tiên dùng trong `equipmentLookup`: `filters.status`, `filters.department`, `filters.location`, `filters.classification`, `filters.model`, `filters.serial`.',
+      '5. Nếu người dùng hỏi theo cả tên/mã thiết bị và điều kiện khác, truyền `query` cho tên/mã và `filters` cho các điều kiện có cấu trúc.',
+      '6. Alias tương thích cũ: có thể dùng `status` top-level khi chỉ cần lọc tình trạng, nhưng ưu tiên `filters.status` cho prompt mới.',
+      '7. Nếu tool không trả về kết quả → thông báo rõ ràng, KHÔNG tự bịa dữ liệu.',
       '',
       '**📅 Tra cứu kế hoạch bảo trì/hiệu chuẩn/kiểm định (`maintenancePlanLookup`):**',
       'Khi người dùng hỏi về lịch bảo trì, hiệu chuẩn, hoặc kiểm định của một thiết bị cụ thể:',

@@ -12,12 +12,25 @@ type ReadOnlyToolDefinition = {
 
 const READ_ONLY_TOOL_DEFINITIONS: Record<string, ReadOnlyToolDefinition> = {
   equipmentLookup: {
-    description: 'Lookup equipment details using approved read-only RPC.',
+    description:
+      'Lookup equipment details using approved read-only RPC. Supports text search plus structured `filters` for current status, department, location, classification, model, and serial; use the returned total for aggregate counts.',
     rpcFunction: 'ai_equipment_lookup',
     inputSchema: z
       .object({
         query: z.string().trim().min(1).max(200).optional(),
         limit: z.number().int().min(1).max(50).optional(),
+        status: z.string().trim().min(1).max(100).optional(),
+        filters: z
+          .object({
+            status: z.string().trim().min(1).max(100).optional(),
+            department: z.string().trim().min(1).max(200).optional(),
+            location: z.string().trim().min(1).max(200).optional(),
+            classification: z.string().trim().min(1).max(50).optional(),
+            model: z.string().trim().min(1).max(200).optional(),
+            serial: z.string().trim().min(1).max(200).optional(),
+          })
+          .strict()
+          .optional(),
       })
       .strict(),
   },
