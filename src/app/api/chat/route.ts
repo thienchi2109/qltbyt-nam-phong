@@ -248,7 +248,7 @@ export async function POST(request: Request) {
       })
     } catch (error) {
       // On quota error, silently rotate to next API key and retry.
-      if (isProviderQuotaError(error) && attempt < maxAttempts && handleProviderQuotaError(keyIndex)) {
+      if (isProviderQuotaError(error) && handleProviderQuotaError(keyIndex) && attempt < maxAttempts) {
         console.warn(
           `[chat] API key #${attempt} quota exceeded — rotating to next key (attempt ${attempt + 1}/${maxAttempts})`,
         )
