@@ -13,6 +13,7 @@ interface AssistantTriggerButtonProps {
  * Floating Action Button (FAB) to toggle the assistant chat panel.
  *
  * Position: fixed bottom-right, z-997 (below AssistantPanel, above page content).
+ * Mobile: bottom offset clears MobileFooterNav (4rem height + 1rem gap).
  * Icon transitions between Sparkles (closed) and X (open) with rotation.
  * Design spec §4.1.
  */
@@ -27,7 +28,7 @@ export function AssistantTriggerButton({
             aria-label={isOpen ? "Đóng trợ lý" : "Trợ lý AI"}
             data-testid="assistant-trigger-button"
             className={cn(
-                "fixed bottom-6 right-6 z-[997] rounded-full",
+                "fixed bottom-[calc(4rem+1rem)] right-6 md:bottom-6 z-[997] rounded-full",
                 "w-12 h-12 md:w-12 md:h-12",
                 "flex items-center justify-center",
                 "bg-gradient-to-br from-[hsl(194,45%,42%)] to-[hsl(194,45%,36%)]",
