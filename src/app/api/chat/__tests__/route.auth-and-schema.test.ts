@@ -11,6 +11,8 @@ vi.mock('next-auth', () => ({
 
 vi.mock('@/lib/ai/provider', () => ({
   getChatModel: (...args: unknown[]) => getChatModelMock(...args),
+  getKeyPoolSize: () => 1,
+  handleProviderQuotaError: () => false,
 }))
 
 vi.mock('@/lib/ai/prompts/system', () => ({
@@ -47,7 +49,7 @@ describe('/api/chat auth + schema', () => {
   beforeEach(() => {
     vi.clearAllMocks()
 
-    getChatModelMock.mockReturnValue('google:gemini-2.5-flash')
+    getChatModelMock.mockReturnValue({ model: 'google:gemini-2.5-flash', keyIndex: 0 })
     buildSystemPromptMock.mockReturnValue('SYSTEM_PROMPT_V1')
     streamTextMock.mockReturnValue({
       toUIMessageStreamResponse: () => new Response(null, { status: 200 }),

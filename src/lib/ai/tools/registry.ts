@@ -106,6 +106,12 @@ const READ_ONLY_TOOL_DEFINITIONS: Record<string, ReadOnlyToolDefinition> = {
     rpcFunction: 'ai_quota_compliance_summary',
     inputSchema: z.object({}).strict(),
   },
+  categorySuggestion: {
+    description:
+      'List all equipment categories for the current facility. Used when the user asks which category a device should be assigned to. The model reasons about semantic similarity between the device name and category names.',
+    rpcFunction: 'ai_category_list',
+    inputSchema: z.object({}).strict(),
+  },
 }
 
 // ============================================

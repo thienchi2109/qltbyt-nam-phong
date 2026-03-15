@@ -179,6 +179,37 @@ export function buildSystemPrompt(context: SystemPromptContext = {}): string {
       '- KHÔNG mở rộng phạm vi tra cứu mà không thông báo cho người dùng.',
     ].join('\n'),
 
+    // ── 5.3. Category Suggestion ─────────────────────────────────────
+    [
+      '## 5.3. Gợi ý danh mục thiết bị (`categorySuggestion`)',
+      '',
+      '### Khái niệm',
+      '- **Danh mục** (`nhom_thiet_bi`) = nhóm/category cụ thể do đơn vị quản lý, có mã nhóm (`ma_nhom`), tên nhóm (`ten_nhom`), và phân loại (A/B/C/D).',
+      '- Danh mục có cấu trúc phân cấp: nhóm cha (`parent_name`) → nhóm con.',
+      '- Ví dụ: "Hệ thống X-quang" (nhóm cha) → "Máy X quang kỹ thuật số chụp tổng quát" (nhóm con).',
+      '- **KHÔNG nhầm lẫn** "danh mục" với "phân loại thiết bị y tế" (A/B/C/D theo Nghị định 98/2021/NĐ-CP). Người dùng hỏi gán vào **danh mục** nào, KHÔNG phải phân loại nào.',
+      '',
+      '### Quy trình bắt buộc',
+      '1. **BẮT BUỘC gọi `categorySuggestion` TRƯỚC** — KHÔNG BAO GIỜ trả lời từ kiến thức chung.',
+      '2. Dựa trên kết quả tool, **suy luận và so sánh ngữ nghĩa** tên thiết bị với:',
+      '   - `ten_nhom` (tên danh mục)',
+      '   - `mo_ta` (mô tả, nếu có)',
+      '   - `tu_khoa` (từ khóa, nếu có)',
+      '   - `parent_name` (nhóm cha, để hiểu ngữ cảnh phân cấp)',
+      '3. Đề xuất **top 3** danh mục phù hợp nhất, mỗi gợi ý gồm:',
+      '   - Mã nhóm + Tên nhóm (trích dẫn chính xác từ kết quả tool)',
+      '   - Nhóm cha (nếu có)',
+      '   - Giải thích ngắn gọn lý do phù hợp',
+      '4. Ghi nhãn kết quả là "💡 Nhận định (Inference)".',
+      '5. Lưu ý: kết quả phụ thuộc vào danh mục hiện có — khuyên người dùng kiểm tra lại.',
+      '6. Nếu không tìm thấy danh mục phù hợp → nói rõ, gợi ý tạo danh mục mới.',
+      '',
+      '### NGHIÊM CẤM',
+      '- KHÔNG tự bịa tên danh mục. Chỉ trích dẫn `ten_nhom` có trong kết quả tool.',
+      '- KHÔNG trả lời "phân loại A/B/C/D" khi người dùng hỏi về danh mục.',
+      '- KHÔNG trả lời nếu chưa gọi tool — luôn gọi tool trước.',
+    ].join('\n'),
+
     // ── 6. Proactive Maintenance Intelligence ───────────────────────
     [
       '## 6. Phân tích bảo trì chủ động',

@@ -69,6 +69,15 @@ function formatProviderQuotaMessage(raw: string): string | null {
   return `${MODEL_PROVIDER_QUOTA_MESSAGE} Vui lòng thử lại sau hoặc liên hệ quản trị viên nếu lỗi tiếp diễn.`
 }
 
+/**
+ * Returns `true` if the error looks like a provider quota/rate-limit error.
+ * Used by the chat route to decide whether to attempt API-key rotation.
+ */
+export function isProviderQuotaError(error: unknown): boolean {
+  const raw = extractErrorMessage(error)
+  return PROVIDER_QUOTA_PATTERNS.some(pattern => pattern.test(raw))
+}
+
 function extractSafeClientMessage(raw: string): string | null {
   for (const rule of SAFE_CLIENT_MESSAGE_RULES) {
     if (rule.pattern.test(raw)) {

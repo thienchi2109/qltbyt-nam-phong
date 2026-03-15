@@ -15,6 +15,8 @@ vi.mock('next-auth', () => ({
 
 vi.mock('@/lib/ai/provider', () => ({
   getChatModel: (...args: unknown[]) => getChatModelMock(...args),
+  getKeyPoolSize: () => 1,
+  handleProviderQuotaError: () => false,
 }))
 
 vi.mock('@/lib/ai/prompts/system', () => ({
@@ -61,7 +63,7 @@ describe('/api/chat usageHistory tool', () => {
     getServerSessionMock.mockResolvedValue({
       user: { id: 'u1', role: 'to_qltb', don_vi: 2 },
     })
-    getChatModelMock.mockReturnValue('google:gemini-3-flash-preview')
+    getChatModelMock.mockReturnValue({ model: 'google:gemini-3-flash-preview', keyIndex: 0 })
     buildSystemPromptMock.mockReturnValue('SYSTEM_PROMPT_V1')
     checkUsageLimitsMock.mockReturnValue({ allowed: true })
     stepCountIsMock.mockReturnValue('STOP_WHEN_SENTINEL')
