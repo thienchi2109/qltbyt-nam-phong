@@ -112,6 +112,12 @@ const READ_ONLY_TOOL_DEFINITIONS: Record<string, ReadOnlyToolDefinition> = {
     rpcFunction: 'ai_category_list',
     inputSchema: z.object({}).strict(),
   },
+  departmentList: {
+    description:
+      'List all departments (khoa/phòng) with equipment in the current facility. Call this BEFORE filtering equipmentLookup by department to get exact department names from the database.',
+    rpcFunction: 'ai_department_list',
+    inputSchema: z.object({}).strict(),
+  },
 }
 
 // ============================================

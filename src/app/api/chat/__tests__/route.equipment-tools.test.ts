@@ -83,3 +83,32 @@ describe('equipmentLookup contract shape', () => {
     expect(migrationSource).toContain('v_location_filter IS NULL')
   })
 })
+
+describe('departmentList contract shape', () => {
+  it('maps to ai_department_list RPC', async () => {
+    const { getToolRpcMapping } = await import('@/lib/ai/tools/registry')
+    const mapping = getToolRpcMapping()
+    expect(mapping.departmentList).toBe('ai_department_list')
+  })
+
+  it('has empty input schema', async () => {
+    const { READ_ONLY_TOOL_DEFINITIONS_FOR_TEST } = await import(
+      '@/lib/ai/tools/registry'
+    )
+    const def = READ_ONLY_TOOL_DEFINITIONS_FOR_TEST.departmentList
+    expect(def).toBeDefined()
+
+    const schema = def.inputSchema as import('zod').ZodObject<Record<string, unknown>>
+    expect(schema.safeParse({}).success).toBe(true)
+    expect(schema.safeParse({ extra: true }).success).toBe(false)
+  })
+
+  it('description mentions department listing before equipment lookup', async () => {
+    const { READ_ONLY_TOOL_DEFINITIONS_FOR_TEST } = await import(
+      '@/lib/ai/tools/registry'
+    )
+    const def = READ_ONLY_TOOL_DEFINITIONS_FOR_TEST.departmentList
+    expect(def.description).toMatch(/department/i)
+    expect(def.description).toMatch(/equipmentLookup/i)
+  })
+})

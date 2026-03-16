@@ -1,7 +1,7 @@
 import { ROLES } from '@/lib/rbac'
 import type { SystemPromptContext } from './types'
 
-export const SYSTEM_PROMPT_VERSION = 'v2.2.3'
+export const SYSTEM_PROMPT_VERSION = 'v2.3.0'
 
 const ALLOWED_ROLES: Set<string> = new Set(Object.values(ROLES))
 
@@ -113,11 +113,12 @@ export function buildSystemPrompt(context: SystemPromptContext = {}): string {
       '2. Khi người dùng hỏi về thiết bị, bảo trì, sửa chữa và ý định đã rõ → gọi tool tra cứu trước khi trả lời.',
       '3. Trình bày dữ liệu trả về một cách có cấu trúc (bảng, danh sách, hoặc tóm tắt).',
       '4. Khi người dùng hỏi số lượng thiết bị theo điều kiện có cấu trúc (ví dụ: "bao nhiêu thiết bị đang ngưng sử dụng"), gọi `equipmentLookup` với `filters` và dùng trường `total` để trả lời số lượng; nếu người dùng yêu cầu danh sách, chỉ liệt kê từ `data` và nêu rõ khi kết quả đang bị giới hạn bởi `limit`.',
-      '5. Các filter ưu tiên dùng trong `equipmentLookup`: `filters.equipmentCode`, `filters.status`, `filters.department`, `filters.location`, `filters.classification`, `filters.model`, `filters.serial`.',
-      '6. Nếu người dùng cung cấp mã thiết bị cụ thể (ví dụ `TT.1.92004.JPDCTA1000147`), phải giữ nguyên từng ký tự và ưu tiên truyền vào `filters.equipmentCode`; KHÔNG rút gọn, KHÔNG bỏ ký tự cuối, KHÔNG tự chuẩn hoá lại mã.',
-      '7. Nếu người dùng hỏi theo cả tên/mã thiết bị và điều kiện khác, truyền `query` cho tên/mã và `filters` cho các điều kiện có cấu trúc.',
-      '8. Alias tương thích cũ: có thể dùng `status` top-level khi chỉ cần lọc tình trạng, nhưng ưu tiên `filters.status` cho prompt mới.',
-      '9. Nếu tool không trả về kết quả → thông báo rõ ràng, KHÔNG tự bịa dữ liệu.',
+      '5. **Tra cứu theo khoa/phòng:** Khi người dùng hỏi về thiết bị theo khoa/phòng, LUÔN gọi `departmentList` trước để lấy danh sách tên khoa/phòng chính xác từ DB, rồi dùng tên chính xác cho `filters.department` trong `equipmentLookup`. KHÔNG tự thêm tiền tố "Khoa"/"Phòng" vào tên khoa/phòng.',
+      '6. Các filter ưu tiên dùng trong `equipmentLookup`: `filters.equipmentCode`, `filters.status`, `filters.department`, `filters.location`, `filters.classification`, `filters.model`, `filters.serial`.',
+      '7. Nếu người dùng cung cấp mã thiết bị cụ thể (ví dụ `TT.1.92004.JPDCTA1000147`), phải giữ nguyên từng ký tự và ưu tiên truyền vào `filters.equipmentCode`; KHÔNG rút gọn, KHÔNG bỏ ký tự cuối, KHÔNG tự chuẩn hoá lại mã.',
+      '8. Nếu người dùng hỏi theo cả tên/mã thiết bị và điều kiện khác, truyền `query` cho tên/mã và `filters` cho các điều kiện có cấu trúc.',
+      '9. Alias tương thích cũ: có thể dùng `status` top-level khi chỉ cần lọc tình trạng, nhưng ưu tiên `filters.status` cho prompt mới.',
+      '10. Nếu tool không trả về kết quả → thông báo rõ ràng, KHÔNG tự bịa dữ liệu.',
       '',
       '**📅 Tra cứu kế hoạch bảo trì/hiệu chuẩn/kiểm định (`maintenancePlanLookup`):**',
       'Khi người dùng hỏi về lịch bảo trì, hiệu chuẩn, hoặc kiểm định của một thiết bị cụ thể:',
