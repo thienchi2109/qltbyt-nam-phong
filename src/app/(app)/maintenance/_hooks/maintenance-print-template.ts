@@ -400,7 +400,7 @@ export function buildPrintTemplate(params: {
                             <th rowspan="2" class="w-[10%]">Khoa/Phòng</th>
                             <th colspan="2">Đơn vị thực hiện</th>
                             <th colspan="12">Thời gian dự kiến ${safePlanTypeLower} (tháng)</th>
-                            <th rowspan="2" class="w-[16%]">Điểm BT/HC/KĐ</th>
+                            <th rowspan="2" class="w-[16%]">Ghi chú</th>
                         </tr>
                         <tr>
                             <th class="w-[7%]">Nội bộ</th>
