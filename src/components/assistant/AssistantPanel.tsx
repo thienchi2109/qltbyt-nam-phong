@@ -38,6 +38,7 @@ const REQUESTED_TOOLS = [
     "generateTroubleshootingDraft",
     "generateRepairRequestDraft",
     "categorySuggestion",
+    "departmentList",
 ]
 
 /**
