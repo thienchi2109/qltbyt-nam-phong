@@ -136,7 +136,7 @@ describe('system prompt module', () => {
   })
 
   it('prompt version is v2.2.3 after clarification guard guidance', () => {
-    expect(SYSTEM_PROMPT_VERSION).toBe('v2.2.3')
+    expect(SYSTEM_PROMPT_VERSION).toBe('v2.3.0')
   })
 
   it('includes § 10 troubleshooting drafts section', () => {
@@ -228,5 +228,17 @@ describe('system prompt module', () => {
     expect(prompt).toContain('trước khi gọi bất kỳ tool nào')
     expect(prompt).toContain('trạng thái thiết bị')
     expect(prompt).toContain('yêu cầu sửa chữa')
+  })
+
+  it('instructs the model to call departmentList before filtering by department', () => {
+    const prompt = buildSystemPrompt({
+      role: 'to_qltb',
+      userId: 'u1',
+      selectedFacilityId: 17,
+    })
+
+    expect(prompt).toContain('departmentList')
+    expect(prompt).toContain('khoa/phòng')
+    expect(prompt).toContain('KHÔNG tự thêm tiền tố')
   })
 })
