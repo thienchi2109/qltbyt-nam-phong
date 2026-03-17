@@ -73,7 +73,7 @@ export function buildRepairRequestSheetHtml(
                   </div>
                   <div class="flex items-baseline mt-6">
                       <label for="department-request" class="font-bold whitespace-nowrap">Khoa/Phòng đề nghị:</label>
-                      <input type="text" id="department-request" class="form-input-line ml-2" value="${formatValue(request.thiet_bi.khoa_phong_quan_ly)}">
+                      <input type="text" id="department-request" class="form-input-line ml-2 flex-1 uppercase" value="${formatValue(request.thiet_bi.khoa_phong_quan_ly)}">
                   </div>
               </header>
               <section>
@@ -81,7 +81,7 @@ export function buildRepairRequestSheetHtml(
                   <div class="space-y-4 mt-3">
                       <div>
                           <label for="device-name" class="whitespace-nowrap">Tên thiết bị:</label>
-                          <input type="text" id="device-name" class="form-input-line ml-2 w-full" value="${formatValue(request.thiet_bi.ten_thiet_bi)}">
+                          <input type="text" id="device-name" class="form-input-line ml-2 w-full text-left" value="${formatValue(request.thiet_bi.ten_thiet_bi)}">
                       </div>
                       <div class="grid grid-cols-3 gap-x-8">
                           <div class="flex items-baseline">
