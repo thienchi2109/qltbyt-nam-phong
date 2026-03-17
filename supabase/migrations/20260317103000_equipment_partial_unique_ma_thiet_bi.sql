@@ -13,8 +13,9 @@
 --   3. Add pre-restore guard in equipment_restore to detect code conflicts
 --   4. Add admin → global normalization to equipment_restore (aligns with newer RPCs)
 --
--- Security: SECURITY DEFINER + pinned search_path, JWT claim guards (allow-list),
+-- Security: SECURITY DEFINER + pinned search_path, allow-list permission check,
 --           tenant isolation, FOR UPDATE row locking, audit logging.
+--           (JWT claim null guards added in 20260317112500 migration)
 
 BEGIN;
 
