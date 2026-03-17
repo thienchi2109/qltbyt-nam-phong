@@ -109,3 +109,4 @@ create-pptx.js
 
 # Local git worktrees
 .worktrees/
+.gitnexus
