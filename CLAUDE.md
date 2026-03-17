@@ -101,22 +101,6 @@ GRANT EXECUTE ON FUNCTION fn_name TO authenticated;
 Open `@/openspec/AGENTS.md` for: planning/proposals/specs, breaking changes, architecture shifts, security/performance work.
 <!-- OPENSPEC:END -->
 
-<!-- BEADS-TRACKER:START -->
-## Issue Tracking (Beads)
-
-**On Windows, use the helper script for proper output capture:**
-
-```bash
-# Use helper script for ALL bd commands
-node scripts/run-cmd.js bd ready                    # Find work
-node scripts/run-cmd.js bd create --title="..." --type=task --priority=2
-node scripts/run-cmd.js bd update <id> --status=in_progress
-node scripts/run-cmd.js bd close <id>
-node scripts/run-cmd.js bd sync                     # ALWAYS at session end
-node scripts/run-cmd.js bd stats                    # Project statistics
-node scripts/run-cmd.js bd list --status=in_progress
-```
-<!-- BEADS-TRACKER:END -->
 
 <!-- CONTEXT-ENGINEERING:START -->
 ## Context Engineering
@@ -245,7 +229,7 @@ npm run lint         # ESLint
 
 ### Windows Shell Output Fix (REQUIRED)
 
-On Windows, `npm`, `npx`, and `bd` commands don't return stdout properly. **Always use the helper scripts:**
+On Windows, `npm` and `npx` commands don't return stdout properly. **Always use the helper scripts:**
 
 ```bash
 # Universal helper for ANY command (npm, npx, bd, etc.)
@@ -263,11 +247,6 @@ npm run n:typecheck   # Typecheck
 npm run n:build       # Build
 npm run n:lint        # Lint
 npm run n:test        # Tests
-
-# Beads commands
-node scripts/run-cmd.js bd ready
-node scripts/run-cmd.js bd stats
-node scripts/run-cmd.js bd list --status=in_progress
 ```
 
 **Helper scripts:**
@@ -418,7 +397,7 @@ useRepairRequestsContext.ts         useContext.ts
 ## Session Completion
 
 ```bash
-git pull --rebase && bd sync && git push
+git pull --rebase && git push
 ```
 
 **Work is NOT complete until `git push` succeeds.**
@@ -486,3 +465,65 @@ END IF;
 ### Post-Migration Verification
 
 After applying any migration, run `get_advisors(security)` via Supabase MCP to catch regressions.
+
+<!-- gitnexus:start -->
+# GitNexus — Code Intelligence (CLI)
+
+This project is indexed by GitNexus as **qltbyt-nam-phong-new** (2936 symbols, 6710 relationships, 178 execution flows). Use the GitNexus **CLI** (not MCP) to understand code, assess impact, and navigate safely.
+
+> **GitNexus MCP is NOT available in Antigravity.** Use CLI commands via terminal instead.
+
+## CLI Binary
+
+On this machine, `npx gitnexus` is intercepted by a batch wrapper. Use the local binary directly:
+
+```powershell
+# Alias for convenience (set GN in your session)
+$GN_NODE = "C:\Users\PC\AppData\Local\Programs\gitnexus-node20\node-v20.20.1-win-x64\node.exe"
+$GN_CLI  = "C:\Users\PC\AppData\Local\Programs\GitNexus\gitnexus\dist\cli\index.js"
+
+# Run any gitnexus command:
+& $GN_NODE $GN_CLI <command> [args] --repo qltbyt-nam-phong-new
+```
+
+## Commands Quick Reference
+
+| Command | When to use | Example |
+|---------|-------------|---------|
+| `query "<concept>"` | Find code by concept | `query "soft delete equipment" --repo qltbyt-nam-phong-new` |
+| `context "<symbol>"` | 360° view: callers, callees, processes | `context "useEquipmentTable" --repo qltbyt-nam-phong-new` |
+| `impact "<symbol>"` | Blast radius before editing | `impact "useEquipmentTable" --repo qltbyt-nam-phong-new` |
+| `cypher "<query>"` | Custom graph queries (read-only) | `cypher "MATCH (n) RETURN n LIMIT 10" --repo qltbyt-nam-phong-new` |
+| `analyze` | Re-index after code changes | Run from repo root |
+| `status` | Check index freshness | Run from repo root |
+| `list` | List all indexed repos | — |
+
+## Always Do
+
+- **MUST run `impact` before editing any symbol.** Report blast radius (direct callers, processes, risk level) to the user.
+- **MUST warn the user** if impact analysis returns HIGH or CRITICAL risk before proceeding.
+- When exploring unfamiliar code, use `query` to find execution flows grouped by process.
+- When you need full context on a symbol, use `context` for callers/callees/process participation.
+
+## Impact Risk Levels
+
+| Depth | Meaning | Action |
+|-------|---------|--------|
+| d=1 | WILL BREAK — direct callers/importers | MUST update these |
+| d=2 | LIKELY AFFECTED — indirect deps | Should test |
+| d=3 | MAY NEED TESTING — transitive | Test if critical path |
+
+## Keeping the Index Fresh
+
+```powershell
+# Re-index after committing code changes (run from repo root)
+& $GN_NODE $GN_CLI analyze
+```
+
+## Important Notes
+
+- `--repo qltbyt-nam-phong-new` is **required** when multiple repos are indexed
+- GitNexus indexes TypeScript/JavaScript symbols well but **does not index SQL function names** — use grep for SQL RPC functions
+- `cypher` queries are **read-only** (no CREATE/DELETE/SET)
+<!-- gitnexus:end -->
+
