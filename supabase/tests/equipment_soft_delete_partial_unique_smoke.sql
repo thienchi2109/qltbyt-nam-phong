@@ -94,11 +94,12 @@ BEGIN
     SELECT 1 FROM pg_indexes
     WHERE tablename = 'thiet_bi'
       AND indexname = 'idx_thiet_bi_ma_unique_active'
+      AND indexdef ILIKE '%lower(ma_thiet_bi)%'
       AND indexdef ILIKE '%WHERE%is_deleted%false%'
   ) THEN
-    RAISE EXCEPTION 'TEST 3 FAIL: Partial unique index idx_thiet_bi_ma_unique_active not found';
+    RAISE EXCEPTION 'TEST 3 FAIL: Partial unique index idx_thiet_bi_ma_unique_active with lower() not found';
   END IF;
-  RAISE NOTICE 'TEST 3 PASS: Partial unique index exists, old constraint removed';
+  RAISE NOTICE 'TEST 3 PASS: Partial unique index uses lower(ma_thiet_bi), old constraint removed';
 
   -- ═══════════════════════════════════════════════════════════════════
   -- TEST 4: Restore guard — code conflict prevents restore
@@ -138,9 +139,24 @@ BEGIN
   END IF;
   RAISE NOTICE 'TEST 5 PASS: Restore without conflict works';
 
+  -- ═══════════════════════════════════════════════════════════════════
+  -- TEST 6: Case-insensitive duplicate blocked
+  -- ═══════════════════════════════════════════════════════════════════
+  INSERT INTO public.thiet_bi(ma_thiet_bi, ten_thiet_bi, don_vi)
+  VALUES (v_code_resok || '-CI', 'CaseSensitive', v_tenant);
+
+  BEGIN
+    INSERT INTO public.thiet_bi(ma_thiet_bi, ten_thiet_bi, don_vi)
+    VALUES (lower(v_code_resok || '-CI'), 'lowercase dup', v_tenant);
+
+    RAISE EXCEPTION 'TEST 6 FAIL: Case-insensitive duplicate should be blocked';
+  EXCEPTION WHEN unique_violation THEN
+    RAISE NOTICE 'TEST 6 PASS: Case-insensitive duplicate correctly blocked';
+  END;
+
   -- Summary
   RAISE NOTICE '══════════════════════════════════════════';
-  RAISE NOTICE 'ALL 5 TESTS PASSED';
+  RAISE NOTICE 'ALL 6 TESTS PASSED';
   RAISE NOTICE '══════════════════════════════════════════';
 END $$;
 
