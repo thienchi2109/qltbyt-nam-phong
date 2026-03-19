@@ -50,11 +50,14 @@ const REQUESTED_TOOLS = [
  * Design spec §4.2.
  */
 export function AssistantPanel({ isOpen, onClose }: AssistantPanelProps) {
-    const { selectedFacilityId } = useTenantSelection()
+    const { selectedFacilityId, facilities } = useTenantSelection()
     const [input, setInput] = React.useState("")
 
     const facilityRef = React.useRef(selectedFacilityId)
     facilityRef.current = selectedFacilityId
+
+    const facilityNameRef = React.useRef<string | null>(null)
+    facilityNameRef.current = facilities.find(f => f.id === selectedFacilityId)?.name ?? null
 
     const transport = React.useMemo(
         () =>
@@ -62,6 +65,7 @@ export function AssistantPanel({ isOpen, onClose }: AssistantPanelProps) {
                 api: "/api/chat",
                 body: () => ({
                     selectedFacilityId: facilityRef.current,
+                    selectedFacilityName: facilityNameRef.current,
                     requestedTools: REQUESTED_TOOLS,
                 }),
             }),

@@ -177,6 +177,7 @@ export async function POST(request: Request) {
     role,
     userId: promptUserId,
     selectedFacilityId,
+    selectedFacilityName: parsedRequest.data.selectedFacilityName ?? undefined,
   }
   const systemPrompt = buildSystemPrompt(promptContext)
   const equipmentLookupHints = extractEquipmentLookupHints(validatedMessages)

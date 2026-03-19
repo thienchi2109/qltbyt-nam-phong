@@ -25,6 +25,7 @@ export const chatRequestSchema = z.object({
   messages: z.array(z.unknown()).min(1),
   requestedTools: z.array(z.string().trim().min(1).max(80)).max(20).optional(),
   selectedFacilityId: selectedFacilityIdSchema,
+  selectedFacilityName: z.string().trim().max(200).nullish(),
 })
 
 export type ChatRequest = z.infer<typeof chatRequestSchema>
