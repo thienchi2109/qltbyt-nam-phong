@@ -149,9 +149,11 @@ export async function POST(request: Request) {
 
   if (isPrivilegedRole(role)) {
     if (effectiveRequestedTools.length > 0 && requestedFacilityId === undefined) {
-      return plainError('Please select a facility before using assistant tools.', 400)
+      return plainError(
+        'Anh/chị vui lòng chọn cơ sở y tế tại bộ lọc đơn vị trên thanh điều hướng (phía trên bên trái màn hình) trước khi sử dụng trợ lý tra cứu.',
+        400,
+      )
     }
-
     if (requestedFacilityId !== undefined) {
       selectedFacilityId = requestedFacilityId
     }
