@@ -55,7 +55,7 @@ const READ_ONLY_TOOL_DEFINITIONS: Record<string, ReadOnlyToolDefinition> = {
     rpcFunction: 'ai_maintenance_plan_lookup',
     inputSchema: z
       .object({
-        thiet_bi_id: z.number().int().positive(),
+        p_thiet_bi_id: z.number().int().positive(),
         p_nam: z.number().int().min(2000).max(2100).optional(),
       })
       .strict(),
@@ -75,7 +75,7 @@ const READ_ONLY_TOOL_DEFINITIONS: Record<string, ReadOnlyToolDefinition> = {
     rpcFunction: 'ai_usage_summary',
     inputSchema: z
       .object({
-        thiet_bi_id: z.number().int().positive(),
+        p_thiet_bi_id: z.number().int().positive(),
         p_months: z.number().int().min(1).max(24).optional(),
       })
       .strict(),
@@ -86,7 +86,7 @@ const READ_ONLY_TOOL_DEFINITIONS: Record<string, ReadOnlyToolDefinition> = {
     rpcFunction: 'ai_attachment_metadata',
     inputSchema: z
       .object({
-        thiet_bi_id: z.number().int().positive(),
+        p_thiet_bi_id: z.number().int().positive(),
       })
       .strict(),
   },
@@ -96,7 +96,7 @@ const READ_ONLY_TOOL_DEFINITIONS: Record<string, ReadOnlyToolDefinition> = {
     rpcFunction: 'ai_device_quota_lookup',
     inputSchema: z
       .object({
-        thiet_bi_id: z.number().int().positive(),
+        p_thiet_bi_id: z.number().int().positive(),
       })
       .strict(),
   },
