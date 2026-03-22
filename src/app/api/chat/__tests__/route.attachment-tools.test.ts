@@ -104,7 +104,7 @@ describe('/api/chat attachmentLookup tool', () => {
 
     expect(res.status).toBe(400)
     expect(text).toBe(
-      'Please select a facility before using assistant tools.',
+      'Anh/chị vui lòng chọn cơ sở y tế tại bộ lọc đơn vị trên thanh điều hướng (phía trên bên trái màn hình) trước khi sử dụng trợ lý tra cứu.',
     )
     expect(streamTextMock).not.toHaveBeenCalled()
   })
@@ -126,7 +126,7 @@ describe('attachmentLookup contract shape', () => {
 
     const schema = def.inputSchema as import('zod').ZodObject<Record<string, unknown>>
     const keys = Object.keys(schema.shape)
-    expect(keys).toEqual(['thiet_bi_id'])
+    expect(keys).toEqual(['p_thiet_bi_id'])
   })
 
   it('description reflects normalized access contract', async () => {
@@ -152,11 +152,11 @@ describe('attachmentLookup contract shape', () => {
     const schema = def.inputSchema
 
     // Valid input should pass
-    const valid = schema.safeParse({ thiet_bi_id: 42 })
+    const valid = schema.safeParse({ p_thiet_bi_id: 42 })
     expect(valid.success).toBe(true)
 
     // Extra fields should be rejected (strict schema)
-    const invalid = schema.safeParse({ thiet_bi_id: 42, extra: true })
+    const invalid = schema.safeParse({ p_thiet_bi_id: 42, extra: true })
     expect(invalid.success).toBe(false)
   })
 })

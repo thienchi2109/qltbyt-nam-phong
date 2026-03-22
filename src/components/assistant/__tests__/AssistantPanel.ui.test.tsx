@@ -63,6 +63,7 @@ vi.mock('next/navigation', () => ({
 vi.mock('@/contexts/TenantSelectionContext', () => ({
     useTenantSelection: () => ({
         selectedFacilityId: 1,
+        facilities: [],
         showSelector: false,
         shouldFetchData: true,
     }),
