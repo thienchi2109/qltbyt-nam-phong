@@ -124,7 +124,7 @@ describe('/api/chat quota tools', () => {
 
     expect(res.status).toBe(400)
     expect(text).toBe(
-      'Please select a facility before using assistant tools.',
+      'Anh/chị vui lòng chọn cơ sở y tế tại bộ lọc đơn vị trên thanh điều hướng (phía trên bên trái màn hình) trước khi sử dụng trợ lý tra cứu.',
     )
     expect(streamTextMock).not.toHaveBeenCalled()
   })
@@ -144,7 +144,7 @@ describe('/api/chat quota tools', () => {
 
     expect(res.status).toBe(400)
     expect(text).toBe(
-      'Please select a facility before using assistant tools.',
+      'Anh/chị vui lòng chọn cơ sở y tế tại bộ lọc đơn vị trên thanh điều hướng (phía trên bên trái màn hình) trước khi sử dụng trợ lý tra cứu.',
     )
     expect(streamTextMock).not.toHaveBeenCalled()
   })

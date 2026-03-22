@@ -24,10 +24,12 @@ interface MaintenanceDisplayRow extends MaintenanceDevice {
   _rowKey: string
 }
 
+const EMPTY_DEVICES: MaintenanceDevice[] = []
+
 export function MaintenanceForm({
   department = "",
   year = new Date().getFullYear(),
-  devices = [],
+  devices = EMPTY_DEVICES,
   tenantId = null
 }: MaintenanceFormProps) {
   const formatValue = (value: any) => {

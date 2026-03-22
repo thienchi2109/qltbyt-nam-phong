@@ -84,7 +84,7 @@ describe('/api/chat error safety — non-stream contract', () => {
 
     expect(res.status).toBe(400)
     expect(res.headers.get('content-type')).toContain('text/plain')
-    expect(text).toBe('Please select a facility before using assistant tools.')
+    expect(text).toBe('Anh/chị vui lòng chọn cơ sở y tế tại bộ lọc đơn vị trên thanh điều hướng (phía trên bên trái màn hình) trước khi sử dụng trợ lý tra cứu.')
     expect(streamTextMock).not.toHaveBeenCalled()
   })
 
@@ -104,7 +104,7 @@ describe('/api/chat error safety — non-stream contract', () => {
 
     expect(res.status).toBe(400)
     expect(res.headers.get('content-type')).toContain('text/plain')
-    expect(text).toBe('Please select a facility before using assistant tools.')
+    expect(text).toBe('Anh/chị vui lòng chọn cơ sở y tế tại bộ lọc đơn vị trên thanh điều hướng (phía trên bên trái màn hình) trước khi sử dụng trợ lý tra cứu.')
     expect(streamTextMock).not.toHaveBeenCalled()
   })
 

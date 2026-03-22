@@ -30,6 +30,8 @@ interface HandoverDisplayRow extends HandoverDevice {
   _rowKey: string
 }
 
+const EMPTY_DEVICES: HandoverDevice[] = []
+
 export function HandoverTemplate({
   department = "Tổ QLTB",
   handoverDate = new Date(),
@@ -38,7 +40,7 @@ export function HandoverTemplate({
   giverName = "",
   directorName = "",
   receiverName = "",
-  devices = [],
+  devices = EMPTY_DEVICES,
   autoPrint = false,
   tenantId = null
 }: HandoverTemplateProps) {
