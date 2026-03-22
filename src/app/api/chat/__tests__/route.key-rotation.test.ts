@@ -326,7 +326,7 @@ describe('/api/chat — API key rotation integration', () => {
     expect(secondReturnSpy).toHaveBeenCalledOnce()
   })
 
-  it('preflight does not rotate keys on non-quota error parts', async () => {
+  it('preflight preserves stream responses for non-quota error parts', async () => {
     getKeyPoolSizeMock.mockReturnValue(2)
     getChatModelMock.mockReturnValue({ model: 'model-key-0', keyIndex: 0 })
 
@@ -339,7 +339,7 @@ describe('/api/chat — API key rotation integration', () => {
 
     const res = await POST(buildValidRequest() as never)
 
-    expect(res.status).toBe(500)
+    expect(res.status).toBe(200)
     expect(handleProviderQuotaErrorMock).not.toHaveBeenCalled()
     expect(streamTextMock).toHaveBeenCalledOnce()
   })

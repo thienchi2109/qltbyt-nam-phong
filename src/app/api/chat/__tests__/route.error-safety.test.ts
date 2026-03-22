@@ -187,9 +187,65 @@ describe('/api/chat error safety — sanitization', () => {
     expect(text).not.toContain('node_modules')
   })
 
+  it('keeps non-quota provider error parts on the stream path instead of failing preflight', async () => {
+    const toUIMessageStreamResponseMock = vi.fn(() => new Response(null, { status: 200 }))
+
+    streamTextMock.mockReturnValue({
+      fullStream: {
+        [Symbol.asyncIterator]() {
+          let index = 0
+          const parts = [
+            { type: 'start' },
+            {
+              type: 'error',
+              error: new Error('User location is not supported for the API use.'),
+            },
+          ]
+
+          return {
+            async next() {
+              if (index >= parts.length) {
+                return { done: true, value: undefined }
+              }
+
+              return { done: false, value: parts[index++] }
+            },
+            async return() {
+              return { done: true, value: undefined }
+            },
+          }
+        },
+      },
+      toUIMessageStreamResponse: toUIMessageStreamResponseMock,
+    })
+
+    const res = await POST(buildRequest({ messages: VALID_MESSAGES }) as never)
+
+    expect(res.status).toBe(200)
+    expect(toUIMessageStreamResponseMock).toHaveBeenCalledOnce()
+  })
+
   it('passes onError callback to toUIMessageStreamResponse', async () => {
     let capturedOnError: unknown = undefined
     streamTextMock.mockReturnValue({
+      fullStream: {
+        [Symbol.asyncIterator]() {
+          let done = false
+          return {
+            async next() {
+              if (done) {
+                return { done: true, value: undefined }
+              }
+
+              done = true
+              return { done: false, value: { type: 'start-step' } }
+            },
+            async return() {
+              return { done: true, value: undefined }
+            },
+          }
+        },
+      },
       toUIMessageStreamResponse: (opts?: { onError?: unknown }) => {
         capturedOnError = opts?.onError
         return new Response(null, { status: 200 })

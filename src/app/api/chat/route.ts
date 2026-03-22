@@ -108,7 +108,11 @@ async function waitForStreamReady(
       }
 
       if (value.type === 'error') {
-        throw value.error
+        if (isProviderQuotaError(value.error)) {
+          throw value.error
+        }
+
+        return
       }
 
       return
