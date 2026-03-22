@@ -27,6 +27,7 @@ import { TransferTypeTabs, useTransferTypeTab } from "@/components/transfers/Tra
 import { getColumnsForType } from "@/components/transfers/columnDefinitions"
 import { FilterModal } from "@/components/transfers/FilterModal"
 import { FilterChips } from "@/components/transfers/FilterChips"
+import { TransfersSearchParamsBoundary } from "@/components/transfers/TransfersSearchParamsBoundary"
 import { TransferRowActions } from "@/components/transfers/TransferRowActions"
 import { SearchInput } from "@/components/shared/SearchInput"
 import { TenantSelector } from "@/components/shared/TenantSelector"
@@ -128,7 +129,11 @@ export default function TransfersPage() {
     return null
   }
 
-  return <TransfersPageContent user={session.user} />
+  return (
+    <TransfersSearchParamsBoundary>
+      <TransfersPageContent user={session.user} />
+    </TransfersSearchParamsBoundary>
+  )
 }
 
 interface TransfersPageContentProps {

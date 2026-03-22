@@ -127,8 +127,10 @@ export function UsageHistoryTab({ equipment }: UsageHistoryTabProps) {
   const canEndUsage = !!activeSession
   
   const handleLoadMore = () => {
-    const currentOffset = loadMoreOffset || (recentUsageLogs?.length || 0)
-    setLoadMoreOffset(currentOffset + 50)
+    setLoadMoreOffset((prev) => {
+      const base = prev || (recentUsageLogs?.length || 0)
+      return base + 50
+    })
   }
   
   const hasMoreData = (moreUsageLogs?.length || 0) === 50 // If we got a full page, there might be more

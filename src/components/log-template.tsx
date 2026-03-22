@@ -24,6 +24,8 @@ interface UsageLogDisplayRow extends UsageLogEntry {
   _rowKey: string
 }
 
+const EMPTY_USAGE_LOGS: UsageLogEntry[] = []
+
 export function LogTemplate({
   department = "",
   deviceManager = "",
@@ -31,7 +33,7 @@ export function LogTemplate({
   deviceCode = "",
   model = "",
   serial = "",
-  usageLogs = []
+  usageLogs = EMPTY_USAGE_LOGS
 }: LogTemplateProps) {
   const formatValue = (value: any) => {
     if (value === null || value === undefined || value === '') {

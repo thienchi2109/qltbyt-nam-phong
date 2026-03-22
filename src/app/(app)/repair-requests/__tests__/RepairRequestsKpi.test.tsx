@@ -9,7 +9,7 @@
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import * as React from 'react'
-import { render, screen } from '@testing-library/react'
+import { render, screen, act } from '@testing-library/react'
 
 // ── Hoisted mocks ──────────────────────────────────────────────────────
 const mocks = vi.hoisted(() => ({
@@ -208,6 +208,12 @@ let mockStatusCounts: Record<string, number> | undefined
 import RepairRequestsPageClient from '../_components/RepairRequestsPageClient'
 
 // ── Helpers ────────────────────────────────────────────────────────────
+async function renderRepairRequestsPageClient() {
+  await act(async () => {
+    render(<RepairRequestsPageClient />)
+  })
+}
+
 function setupGlobalUser(overrides: { shouldFetchData?: boolean } = {}) {
   mocks.useSession.mockReturnValue({
     data: {
@@ -262,9 +268,9 @@ describe('RepairRequests KPI Cards', () => {
   })
 
   describe('KPI query fires without tenant selection', () => {
-    it('should enable status counts query when user is authenticated but no tenant selected', () => {
+    it('should enable status counts query when user is authenticated but no tenant selected', async () => {
       setupGlobalUser({ shouldFetchData: false })
-      render(<RepairRequestsPageClient />)
+      await renderRepairRequestsPageClient()
 
       const statusCountsCall = mockUseQueryCalls.find(
         (c) => (c.queryKey[0] as string) === 'repair_request_status_counts'
@@ -273,9 +279,9 @@ describe('RepairRequests KPI Cards', () => {
       expect(statusCountsCall!.enabled).toBe(true)
     })
 
-    it('should pass p_don_vi as null when selectedFacilityId is undefined', () => {
+    it('should pass p_don_vi as null when selectedFacilityId is undefined', async () => {
       setupGlobalUser({ shouldFetchData: false })
-      render(<RepairRequestsPageClient />)
+      await renderRepairRequestsPageClient()
 
       const statusCountsCall = mockUseQueryCalls.find(
         (c) => (c.queryKey[0] as string) === 'repair_request_status_counts'
@@ -287,27 +293,27 @@ describe('RepairRequests KPI Cards', () => {
   })
 
   describe('KPI total = sum of status counts', () => {
-    it('should compute total KPI as sum of all status counts', () => {
+    it('should compute total KPI as sum of all status counts', async () => {
       setupGlobalUser({ shouldFetchData: false })
-      render(<RepairRequestsPageClient />)
+      await renderRepairRequestsPageClient()
 
       const totalKpi = screen.getByTestId('kpi-total')
       // 3 + 2 + 5 + 1 = 11
       expect(totalKpi).toHaveAttribute('data-value', '11')
     })
 
-    it('should show 0 total when statusCounts is undefined', () => {
+    it('should show 0 total when statusCounts is undefined', async () => {
       mockStatusCounts = undefined
       setupGlobalUser({ shouldFetchData: false })
-      render(<RepairRequestsPageClient />)
+      await renderRepairRequestsPageClient()
 
       const totalKpi = screen.getByTestId('kpi-total')
       expect(totalKpi).toHaveAttribute('data-value', '0')
     })
 
-    it('should show individual status counts correctly', () => {
+    it('should show individual status counts correctly', async () => {
       setupGlobalUser({ shouldFetchData: false })
-      render(<RepairRequestsPageClient />)
+      await renderRepairRequestsPageClient()
 
       expect(screen.getByTestId('kpi-Chờ xử lý')).toHaveAttribute('data-value', '3')
       expect(screen.getByTestId('kpi-Đã duyệt')).toHaveAttribute('data-value', '2')
@@ -317,9 +323,9 @@ describe('RepairRequests KPI Cards', () => {
   })
 
   describe('Table query stays gated', () => {
-    it('should disable list query when shouldFetchData is false', () => {
+    it('should disable list query when shouldFetchData is false', async () => {
       setupGlobalUser({ shouldFetchData: false })
-      render(<RepairRequestsPageClient />)
+      await renderRepairRequestsPageClient()
 
       const listCall = mockUseQueryCalls.find(
         (c) => (c.queryKey[0] as string) === 'repair_request_list'
@@ -328,9 +334,9 @@ describe('RepairRequests KPI Cards', () => {
       expect(listCall!.enabled).toBe(false)
     })
 
-    it('should enable list query when shouldFetchData is true', () => {
+    it('should enable list query when shouldFetchData is true', async () => {
       setupTenantUser()
-      render(<RepairRequestsPageClient />)
+      await renderRepairRequestsPageClient()
 
       const listCall = mockUseQueryCalls.find(
         (c) => (c.queryKey[0] as string) === 'repair_request_list'
@@ -341,9 +347,9 @@ describe('RepairRequests KPI Cards', () => {
   })
 
   describe('Placeholder shown when no tenant selected', () => {
-    it('should show tenant selection placeholder when shouldFetchData is false', () => {
+    it('should show tenant selection placeholder when shouldFetchData is false', async () => {
       setupGlobalUser({ shouldFetchData: false })
-      render(<RepairRequestsPageClient />)
+      await renderRepairRequestsPageClient()
 
       expect(screen.getByText('Chọn cơ sở y tế')).toBeInTheDocument()
       expect(
@@ -351,18 +357,18 @@ describe('RepairRequests KPI Cards', () => {
       ).toBeInTheDocument()
     })
 
-    it('should not show table or pagination when shouldFetchData is false', () => {
+    it('should not show table or pagination when shouldFetchData is false', async () => {
       setupGlobalUser({ shouldFetchData: false })
-      render(<RepairRequestsPageClient />)
+      await renderRepairRequestsPageClient()
 
       // Toolbar is always visible (contains search/filters for tenant selection)
       expect(screen.queryByTestId('repair-table')).not.toBeInTheDocument()
       expect(screen.queryByTestId('pagination')).not.toBeInTheDocument()
     })
 
-    it('should show table and pagination when shouldFetchData is true', () => {
+    it('should show table and pagination when shouldFetchData is true', async () => {
       setupTenantUser()
-      render(<RepairRequestsPageClient />)
+      await renderRepairRequestsPageClient()
 
       expect(screen.queryByText('Chọn cơ sở y tế')).not.toBeInTheDocument()
       expect(screen.getByTestId('repair-toolbar')).toBeInTheDocument()
@@ -371,7 +377,7 @@ describe('RepairRequests KPI Cards', () => {
   })
 
   describe('KPI total consistency with status filters', () => {
-    it('should use status counts total, not list total, for KPI', () => {
+    it('should use status counts total, not list total, for KPI', async () => {
       // Setup: tenant user with shouldFetchData=true, but list returns different total
       setupTenantUser()
       // statusCounts sums to 11, but list total would be different if filtered
@@ -381,7 +387,7 @@ describe('RepairRequests KPI Cards', () => {
         'Hoàn thành': 20,
         'Không HT': 3,
       }
-      render(<RepairRequestsPageClient />)
+      await renderRepairRequestsPageClient()
 
       const totalKpi = screen.getByTestId('kpi-total')
       // Should be 10 + 5 + 20 + 3 = 38, from statusCounts, not from list total
