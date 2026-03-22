@@ -92,12 +92,31 @@ function makeQuotaError(message = 'You exceeded your current quota') {
   return new Error(message)
 }
 
-function makeStreamResult(parts: Array<{ type: string; error?: unknown }>) {
+function makeStreamResult(
+  parts: Array<{ type: string; error?: unknown }>,
+  options?: { returnSpy?: ReturnType<typeof vi.fn> },
+) {
+  const returnSpy =
+    options?.returnSpy ??
+    vi.fn(async () => ({
+      done: true,
+      value: undefined,
+    }))
+
   return {
     fullStream: {
-      async *[Symbol.asyncIterator]() {
-        for (const part of parts) {
-          yield part
+      [Symbol.asyncIterator]() {
+        let index = 0
+        return {
+          async next() {
+            if (index >= parts.length) {
+              return { done: true, value: undefined }
+            }
+
+            const value = parts[index++]
+            return { done: false, value }
+          },
+          return: returnSpy,
         }
       },
     },
@@ -105,18 +124,18 @@ function makeStreamResult(parts: Array<{ type: string; error?: unknown }>) {
   }
 }
 
-function makeQuotaStream() {
+function makeQuotaStream(returnSpy?: ReturnType<typeof vi.fn>) {
   return makeStreamResult([
     { type: 'start' },
     { type: 'error', error: makeQuotaError() },
-  ])
+  ], { returnSpy })
 }
 
-function makeReadyStream() {
+function makeReadyStream(returnSpy?: ReturnType<typeof vi.fn>) {
   return makeStreamResult([
     { type: 'start' },
     { type: 'start-step' },
-  ])
+  ], { returnSpy })
 }
 
 function makeOKStream() {
@@ -205,9 +224,12 @@ describe('/api/chat — API key rotation integration', () => {
       .mockReturnValueOnce({ model: 'model-key-0', keyIndex: 0 })
       .mockReturnValueOnce({ model: 'model-key-1', keyIndex: 1 })
 
+    const firstReturnSpy = vi.fn(async () => ({ done: true, value: undefined }))
+    const secondReturnSpy = vi.fn(async () => ({ done: true, value: undefined }))
+
     streamTextMock
-      .mockReturnValueOnce(makeQuotaStream())
-      .mockReturnValueOnce(makeReadyStream())
+      .mockReturnValueOnce(makeQuotaStream(firstReturnSpy))
+      .mockReturnValueOnce(makeReadyStream(secondReturnSpy))
 
     handleProviderQuotaErrorMock.mockReturnValueOnce(true)
 
@@ -216,6 +238,8 @@ describe('/api/chat — API key rotation integration', () => {
     expect(res.status).toBe(200)
     expect(streamTextMock).toHaveBeenCalledTimes(2)
     expect(handleProviderQuotaErrorMock).toHaveBeenCalledWith(0)
+    expect(firstReturnSpy).toHaveBeenCalledOnce()
+    expect(secondReturnSpy).toHaveBeenCalledOnce()
   })
 
   // -----------------------------------------------------------------

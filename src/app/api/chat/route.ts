@@ -95,22 +95,30 @@ async function waitForStreamReady(
 ): Promise<void> {
   const iterator = result.fullStream[Symbol.asyncIterator]()
 
-  while (true) {
-    const { value, done } = await iterator.next()
+  try {
+    while (true) {
+      const { value, done } = await iterator.next()
 
-    if (done) {
-      throw new Error('AI stream ended before producing a response part')
+      if (done) {
+        throw new Error('AI stream ended before producing a response part')
+      }
+
+      if (value.type === 'start') {
+        continue
+      }
+
+      if (value.type === 'error') {
+        throw value.error
+      }
+
+      return
     }
-
-    if (value.type === 'start') {
-      continue
+  } finally {
+    try {
+      await iterator.return?.()
+    } catch {
+      // Best-effort cleanup only. Preserve the original success/error outcome.
     }
-
-    if (value.type === 'error') {
-      throw value.error
-    }
-
-    return
   }
 }
 
