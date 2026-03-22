@@ -27,7 +27,6 @@ import { TransferTypeTabs, useTransferTypeTab } from "@/components/transfers/Tra
 import { getColumnsForType } from "@/components/transfers/columnDefinitions"
 import { FilterModal } from "@/components/transfers/FilterModal"
 import { FilterChips } from "@/components/transfers/FilterChips"
-import { TransfersSearchParamsBoundary } from "@/components/transfers/TransfersSearchParamsBoundary"
 import { TransferRowActions } from "@/components/transfers/TransferRowActions"
 import { SearchInput } from "@/components/shared/SearchInput"
 import { TenantSelector } from "@/components/shared/TenantSelector"
@@ -78,6 +77,14 @@ import { type TransferRequest } from "@/types/database"
 import type { DisplayContext } from "@/components/shared/DataTablePagination/types"
 
 const TRANSFER_ENTITY = { singular: "yêu cầu" } as const
+
+function TransfersSearchParamsFallback() {
+  return (
+    <div className="flex min-h-[50vh] items-center justify-center">
+      <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+    </div>
+  )
+}
 
 const transferDisplayFormat = (ctx: DisplayContext) => {
   const entityLabel = ctx.entity.plural ?? ctx.entity.singular
@@ -130,9 +137,9 @@ export default function TransfersPage() {
   }
 
   return (
-    <TransfersSearchParamsBoundary>
+    <React.Suspense fallback={<TransfersSearchParamsFallback />}>
       <TransfersPageContent user={session.user} />
-    </TransfersSearchParamsBoundary>
+    </React.Suspense>
   )
 }
 
