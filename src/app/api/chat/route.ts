@@ -244,6 +244,7 @@ export async function POST(request: Request) {
   }
 
   const maxAttempts = getKeyPoolSize()
+  const configuredModel = process.env.AI_MODEL ?? 'gemini-3-flash-preview'
 
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     let keyIndex = 0
@@ -251,6 +252,12 @@ export async function POST(request: Request) {
     try {
       const chatModel = getChatModel()
       keyIndex = chatModel.keyIndex
+      console.info('[chat] Model attempt start', {
+        attempt,
+        maxAttempts,
+        keyIndex,
+        model: configuredModel,
+      })
 
       const result = streamText({
         model: chatModel.model,
@@ -282,7 +289,20 @@ export async function POST(request: Request) {
           // Mid-stream quota errors can't be retried (response already in-flight),
           // but rotate the key for future requests so they don't hit the same quota.
           if (isProviderQuotaError(error)) {
+            console.warn('[chat] Stream quota error', {
+              attempt,
+              maxAttempts,
+              keyIndex,
+              model: configuredModel,
+            })
             handleProviderQuotaError(keyIndex)
+          } else {
+            console.error('[chat] Stream error', {
+              attempt,
+              maxAttempts,
+              keyIndex,
+              model: configuredModel,
+            }, error)
           }
           return sanitizeErrorForClient(error)
         },
@@ -291,12 +311,29 @@ export async function POST(request: Request) {
       // On quota error, silently rotate to next API key and retry.
       if (isProviderQuotaError(error) && handleProviderQuotaError(keyIndex) && attempt < maxAttempts) {
         console.warn(
-          `[chat] API key #${attempt} quota exceeded — rotating to next key (attempt ${attempt + 1}/${maxAttempts})`,
+          '[chat] Pre-stream quota error — rotating to next key',
+          {
+            attempt,
+            maxAttempts,
+            keyIndex,
+            model: configuredModel,
+            nextAttempt: attempt + 1,
+          },
         )
         continue
       }
 
-      console.error('[chat] Pre-stream error:', error)
+      console.error(
+        '[chat] Pre-stream error',
+        {
+          attempt,
+          maxAttempts,
+          keyIndex,
+          model: configuredModel,
+          quotaError: isProviderQuotaError(error),
+        },
+        error,
+      )
       return plainError(sanitizeErrorForClient(error), 500)
     }
   }
