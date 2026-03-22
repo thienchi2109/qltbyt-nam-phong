@@ -1,0 +1,7 @@
+{
+  "ignore": {
+    "files": [
+      "src/app/(app)/repair-requests/_components/RepairRequestsPageClient.tsx"
+    ]
+  }
+}

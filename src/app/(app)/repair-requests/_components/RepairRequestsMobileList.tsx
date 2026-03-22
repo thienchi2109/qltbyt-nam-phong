@@ -4,7 +4,8 @@ import { Loader2 } from "lucide-react"
 import { format, parseISO } from "date-fns"
 import { vi } from 'date-fns/locale'
 import type { RepairRequestWithEquipment } from "../types"
-import { calculateDaysRemaining, getStatusVariant } from "../utils"
+import { getStatusVariant } from "../utils"
+import { DaysRemainingBar } from "./DaysRemainingBar"
 
 /**
  * Props for the MobileRequestList component.
@@ -94,30 +95,10 @@ export function RepairRequestsMobileList({
                     {format(parseISO(request.ngay_mong_muon_hoan_thanh), 'dd/MM/yyyy', { locale: vi })}
                   </span>
                 </div>
-                {(() => {
-                  // Chỉ hiển thị progress bar cho yêu cầu chưa hoàn thành
-                  const isCompleted = request.trang_thai === 'Hoàn thành' || request.trang_thai === 'Không HT';
-                  const daysInfo = !isCompleted ? calculateDaysRemaining(request.ngay_mong_muon_hoan_thanh) : null;
-                  return daysInfo && (
-                    <div className="flex items-center gap-2">
-                      <div className="flex-1 bg-gray-200 rounded-full h-2">
-                        <div
-                          className={`h-2 rounded-full ${daysInfo.color} transition-all duration-300`}
-                          style={{
-                            width: daysInfo.days > 0
-                              ? `${Math.min(100, Math.max(10, (daysInfo.days / 14) * 100))}%`
-                              : '100%'
-                          }}
-                        />
-                      </div>
-                      <span className={`text-xs font-medium ${daysInfo.status === 'success' ? 'text-green-600' :
-                        daysInfo.status === 'warning' ? 'text-orange-600' : 'text-red-600'
-                        }`}>
-                        {daysInfo.text}
-                      </span>
-                    </div>
-                  );
-                })()}
+                <DaysRemainingBar
+                  deadline={request.ngay_mong_muon_hoan_thanh}
+                  status={request.trang_thai}
+                />
               </div>
             )}
 

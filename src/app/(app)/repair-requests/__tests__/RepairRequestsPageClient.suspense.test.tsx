@@ -133,9 +133,9 @@ vi.mock("@/components/ui/skeleton", () => ({
   ),
 }))
 
-import RepairRequestsPageClient from "../_components/RepairRequestsPageClient"
+import RepairRequestsPage from "../page"
 
-describe("RepairRequestsPageClient Suspense boundary", () => {
+describe("RepairRequestsPage Suspense boundary", () => {
   it("renders the loading skeletons when useSearchParams suspends", async () => {
     mocks.useSession.mockReturnValue({
       data: {
@@ -172,7 +172,7 @@ describe("RepairRequestsPageClient Suspense boundary", () => {
       throw pendingSearchParams
     })
 
-    render(<RepairRequestsPageClient />)
+    render(<RepairRequestsPage />)
 
     const skeletons = await screen.findAllByTestId("repair-requests-skeleton")
     expect(skeletons).toHaveLength(2)
