@@ -90,6 +90,38 @@ function calculateInputChars(messages: unknown[]): number {
   }
 }
 
+async function waitForStreamReady(
+  result: Pick<ReturnType<typeof streamText>, 'fullStream'>,
+): Promise<void> {
+  const iterator = result.fullStream[Symbol.asyncIterator]()
+
+  try {
+    while (true) {
+      const { value, done } = await iterator.next()
+
+      if (done) {
+        throw new Error('AI stream ended before producing a response part')
+      }
+
+      if (value.type === 'start') {
+        continue
+      }
+
+      if (value.type === 'error') {
+        throw value.error
+      }
+
+      return
+    }
+  } finally {
+    try {
+      await iterator.return?.()
+    } catch {
+      // Best-effort cleanup only. Preserve the original success/error outcome.
+    }
+  }
+}
+
 export async function POST(request: Request) {
   const session = await getServerSession(authOptions)
 
@@ -238,6 +270,8 @@ export async function POST(request: Request) {
           }
         },
       })
+
+      await waitForStreamReady(result)
 
       return result.toUIMessageStreamResponse({
         onError: (error) => {
