@@ -9,7 +9,7 @@
  * 5. Always marks the exhausted key even on the last attempt.
  *
  * Strategy: Mock the provider to return an incrementing keyIndex,
- * and control streamText to throw quota errors on specific attempts.
+ * and control streamText with async stream parts for quota and success cases.
  * This exercises the full route handler code path, not just the provider module.
  */
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -92,10 +92,35 @@ function makeQuotaError(message = 'You exceeded your current quota') {
   return new Error(message)
 }
 
-function makeOKStream() {
+function makeStreamResult(parts: Array<{ type: string; error?: unknown }>) {
   return {
-    toUIMessageStreamResponse: () => new Response(null, { status: 200 }),
+    fullStream: {
+      async *[Symbol.asyncIterator]() {
+        for (const part of parts) {
+          yield part
+        }
+      },
+    },
+    toUIMessageStreamResponse: vi.fn(() => new Response(null, { status: 200 })),
   }
+}
+
+function makeQuotaStream() {
+  return makeStreamResult([
+    { type: 'start' },
+    { type: 'error', error: makeQuotaError() },
+  ])
+}
+
+function makeReadyStream() {
+  return makeStreamResult([
+    { type: 'start' },
+    { type: 'start-step' },
+  ])
+}
+
+function makeOKStream() {
+  return makeReadyStream()
 }
 
 // ---------------------------------------------------------------------------
@@ -149,10 +174,10 @@ describe('/api/chat — API key rotation integration', () => {
       .mockReturnValueOnce({ model: 'model-with-key-0', keyIndex: 0 })
       .mockReturnValueOnce({ model: 'model-with-key-1', keyIndex: 1 })
 
-    // streamText: fails on first call (key 0), succeeds on second (key 1)
+    // streamText: emits quota error on first call (key 0), succeeds on second (key 1)
     streamTextMock
-      .mockImplementationOnce(() => { throw makeQuotaError() })
-      .mockReturnValueOnce(makeOKStream())
+      .mockReturnValueOnce(makeQuotaStream())
+      .mockReturnValueOnce(makeReadyStream())
 
     // handleProviderQuotaError: simulate successful rotation
     handleProviderQuotaErrorMock.mockReturnValueOnce(true)
@@ -173,6 +198,26 @@ describe('/api/chat — API key rotation integration', () => {
     expect(secondCallArgs.model).toBe('model-with-key-1')
   })
 
+  it('retries within the same request when preflight stream emits a quota error part', async () => {
+    getKeyPoolSizeMock.mockReturnValue(2)
+
+    getChatModelMock
+      .mockReturnValueOnce({ model: 'model-key-0', keyIndex: 0 })
+      .mockReturnValueOnce({ model: 'model-key-1', keyIndex: 1 })
+
+    streamTextMock
+      .mockReturnValueOnce(makeQuotaStream())
+      .mockReturnValueOnce(makeReadyStream())
+
+    handleProviderQuotaErrorMock.mockReturnValueOnce(true)
+
+    const res = await POST(buildValidRequest() as never)
+
+    expect(res.status).toBe(200)
+    expect(streamTextMock).toHaveBeenCalledTimes(2)
+    expect(handleProviderQuotaErrorMock).toHaveBeenCalledWith(0)
+  })
+
   // -----------------------------------------------------------------
   // Multi-hop rotation: key 0 → key 1 → key 2 (all fail except last)
   // -----------------------------------------------------------------
@@ -187,9 +232,9 @@ describe('/api/chat — API key rotation integration', () => {
       .mockReturnValueOnce({ model: 'model-key-2', keyIndex: 2 })
 
     streamTextMock
-      .mockImplementationOnce(() => { throw makeQuotaError() })
-      .mockImplementationOnce(() => { throw makeQuotaError() })
-      .mockReturnValueOnce(makeOKStream())
+      .mockReturnValueOnce(makeQuotaStream())
+      .mockReturnValueOnce(makeQuotaStream())
+      .mockReturnValueOnce(makeReadyStream())
 
     handleProviderQuotaErrorMock
       .mockReturnValueOnce(true)  // key 0 → key 1
@@ -219,8 +264,8 @@ describe('/api/chat — API key rotation integration', () => {
       .mockReturnValueOnce({ model: 'model-key-1', keyIndex: 1 })
 
     streamTextMock
-      .mockImplementationOnce(() => { throw makeQuotaError() })
-      .mockImplementationOnce(() => { throw makeQuotaError() })
+      .mockReturnValueOnce(makeQuotaStream())
+      .mockReturnValueOnce(makeQuotaStream())
 
     // First rotation succeeds, but second call all exhausted
     handleProviderQuotaErrorMock
@@ -314,7 +359,7 @@ describe('/api/chat — API key rotation integration', () => {
     // Given: a single-key pool
     getKeyPoolSizeMock.mockReturnValue(1)
     getChatModelMock.mockReturnValue({ model: 'model-only-key', keyIndex: 0 })
-    streamTextMock.mockImplementation(() => { throw makeQuotaError() })
+    streamTextMock.mockReturnValue(makeQuotaStream())
 
     // handleProviderQuotaError returns false (no other keys)
     handleProviderQuotaErrorMock.mockReturnValue(false)

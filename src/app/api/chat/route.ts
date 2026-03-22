@@ -90,6 +90,30 @@ function calculateInputChars(messages: unknown[]): number {
   }
 }
 
+async function waitForStreamReady(
+  result: Pick<ReturnType<typeof streamText>, 'fullStream'>,
+): Promise<void> {
+  const iterator = result.fullStream[Symbol.asyncIterator]()
+
+  while (true) {
+    const { value, done } = await iterator.next()
+
+    if (done) {
+      throw new Error('AI stream ended before producing a response part')
+    }
+
+    if (value.type === 'start') {
+      continue
+    }
+
+    if (value.type === 'error') {
+      throw value.error
+    }
+
+    return
+  }
+}
+
 export async function POST(request: Request) {
   const session = await getServerSession(authOptions)
 
@@ -239,11 +263,19 @@ export async function POST(request: Request) {
         },
       })
 
+      await waitForStreamReady(result)
+
       return result.toUIMessageStreamResponse({
         onError: (error) => {
+          const rawMessage = error instanceof Error ? error.message : String(error)
+          const isQuota = isProviderQuotaError(error)
+          console.error(
+            `[chat] Stream error (key=${keyIndex}, isQuota=${isQuota}):`,
+            rawMessage,
+          )
           // Mid-stream quota errors can't be retried (response already in-flight),
           // but rotate the key for future requests so they don't hit the same quota.
-          if (isProviderQuotaError(error)) {
+          if (isQuota) {
             handleProviderQuotaError(keyIndex)
           }
           return sanitizeErrorForClient(error)
