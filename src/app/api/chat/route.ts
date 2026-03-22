@@ -275,15 +275,9 @@ export async function POST(request: Request) {
 
       return result.toUIMessageStreamResponse({
         onError: (error) => {
-          const rawMessage = error instanceof Error ? error.message : String(error)
-          const isQuota = isProviderQuotaError(error)
-          console.error(
-            `[chat] Stream error (key=${keyIndex}, isQuota=${isQuota}):`,
-            rawMessage,
-          )
           // Mid-stream quota errors can't be retried (response already in-flight),
           // but rotate the key for future requests so they don't hit the same quota.
-          if (isQuota) {
+          if (isProviderQuotaError(error)) {
             handleProviderQuotaError(keyIndex)
           }
           return sanitizeErrorForClient(error)
