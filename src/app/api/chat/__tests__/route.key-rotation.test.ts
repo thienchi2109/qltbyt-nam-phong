@@ -94,7 +94,10 @@ function makeQuotaError(message = 'You exceeded your current quota') {
 
 function makeStreamResult(
   parts: Array<{ type: string; error?: unknown }>,
-  options?: { returnSpy?: ReturnType<typeof vi.fn> },
+  options?: {
+    returnSpy?: ReturnType<typeof vi.fn>
+    responseError?: unknown
+  },
 ) {
   const returnSpy =
     options?.returnSpy ??
@@ -120,7 +123,13 @@ function makeStreamResult(
         }
       },
     },
-    toUIMessageStreamResponse: vi.fn(() => new Response(null, { status: 200 })),
+    toUIMessageStreamResponse: vi.fn((streamOptions?: { onError?: (error: unknown) => string }) => {
+      if (options?.responseError !== undefined) {
+        streamOptions?.onError?.(options.responseError)
+      }
+
+      return new Response(null, { status: 200 })
+    }),
   }
 }
 
@@ -240,6 +249,28 @@ describe('/api/chat — API key rotation integration', () => {
     expect(handleProviderQuotaErrorMock).toHaveBeenCalledWith(0)
     expect(firstReturnSpy).toHaveBeenCalledOnce()
     expect(secondReturnSpy).toHaveBeenCalledOnce()
+  })
+
+  it('rotates future requests when onError receives a quota error after preflight success', async () => {
+    getKeyPoolSizeMock.mockReturnValue(1)
+    getChatModelMock.mockReturnValue({ model: 'model-key-0', keyIndex: 0 })
+
+    streamTextMock.mockReturnValue(
+      makeStreamResult(
+        [
+          { type: 'start' },
+          { type: 'start-step' },
+        ],
+        { responseError: makeQuotaError() },
+      ),
+    )
+
+    const res = await POST(buildValidRequest() as never)
+
+    expect(res.status).toBe(200)
+    expect(streamTextMock).toHaveBeenCalledOnce()
+    expect(handleProviderQuotaErrorMock).toHaveBeenCalledOnce()
+    expect(handleProviderQuotaErrorMock).toHaveBeenCalledWith(0)
   })
 
   it('preflight ignores leading start and succeeds on first meaningful part', async () => {
