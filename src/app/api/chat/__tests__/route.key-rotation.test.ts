@@ -242,6 +242,77 @@ describe('/api/chat — API key rotation integration', () => {
     expect(secondReturnSpy).toHaveBeenCalledOnce()
   })
 
+  it('preflight ignores leading start and succeeds on first meaningful part', async () => {
+    getKeyPoolSizeMock.mockReturnValue(1)
+    getChatModelMock.mockReturnValue({ model: 'model-key-0', keyIndex: 0 })
+
+    const returnSpy = vi.fn(async () => ({
+      done: true,
+      value: undefined,
+    }))
+    streamTextMock.mockReturnValue(makeReadyStream(returnSpy))
+
+    const res = await POST(buildValidRequest() as never)
+
+    expect(res.status).toBe(200)
+    expect(streamTextMock).toHaveBeenCalledOnce()
+    expect(handleProviderQuotaErrorMock).not.toHaveBeenCalled()
+    expect(returnSpy).toHaveBeenCalledOnce()
+  })
+
+  it('preflight returns sanitized 500 when all attempted keys emit quota error parts', async () => {
+    getKeyPoolSizeMock.mockReturnValue(2)
+
+    getChatModelMock
+      .mockReturnValueOnce({ model: 'model-key-0', keyIndex: 0 })
+      .mockReturnValueOnce({ model: 'model-key-1', keyIndex: 1 })
+
+    const firstReturnSpy = vi.fn(async () => ({
+      done: true,
+      value: undefined,
+    }))
+    const secondReturnSpy = vi.fn(async () => ({
+      done: true,
+      value: undefined,
+    }))
+
+    streamTextMock
+      .mockReturnValueOnce(makeQuotaStream(firstReturnSpy))
+      .mockReturnValueOnce(makeQuotaStream(secondReturnSpy))
+
+    handleProviderQuotaErrorMock
+      .mockReturnValueOnce(true)
+      .mockReturnValueOnce(false)
+
+    const res = await POST(buildValidRequest() as never)
+
+    expect(res.status).toBe(500)
+    expect(await res.text()).not.toContain('exceeded your current quota')
+    expect(streamTextMock).toHaveBeenCalledTimes(2)
+    expect(handleProviderQuotaErrorMock).toHaveBeenNthCalledWith(1, 0)
+    expect(handleProviderQuotaErrorMock).toHaveBeenNthCalledWith(2, 1)
+    expect(firstReturnSpy).toHaveBeenCalledOnce()
+    expect(secondReturnSpy).toHaveBeenCalledOnce()
+  })
+
+  it('preflight does not rotate keys on non-quota error parts', async () => {
+    getKeyPoolSizeMock.mockReturnValue(2)
+    getChatModelMock.mockReturnValue({ model: 'model-key-0', keyIndex: 0 })
+
+    streamTextMock.mockReturnValue(
+      makeStreamResult([
+        { type: 'start' },
+        { type: 'error', error: new Error('Network timeout') },
+      ]),
+    )
+
+    const res = await POST(buildValidRequest() as never)
+
+    expect(res.status).toBe(500)
+    expect(handleProviderQuotaErrorMock).not.toHaveBeenCalled()
+    expect(streamTextMock).toHaveBeenCalledOnce()
+  })
+
   // -----------------------------------------------------------------
   // Multi-hop rotation: key 0 → key 1 → key 2 (all fail except last)
   // -----------------------------------------------------------------
