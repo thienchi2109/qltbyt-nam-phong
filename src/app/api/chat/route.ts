@@ -10,7 +10,6 @@ import {
 import { getServerSession } from 'next-auth'
 
 import { authOptions } from '@/auth/config'
-import { getChatProviderOptions } from '@/lib/ai/chat-provider-options'
 import { chatRequestSchema } from '@/lib/ai/chat-request-schema'
 import {
   AI_MAX_INPUT_CHARS,
@@ -18,7 +17,12 @@ import {
   AI_MAX_OUTPUT_TOKENS,
   AI_MAX_TOOL_STEPS,
 } from '@/lib/ai/limits'
-import { getChatModel, getKeyPoolSize, handleProviderQuotaError } from '@/lib/ai/provider'
+import {
+  getChatModel,
+  getChatProviderConfig,
+  getKeyPoolSize,
+  handleProviderQuotaError,
+} from '@/lib/ai/provider'
 import { buildSystemPrompt } from '@/lib/ai/prompts/system'
 import type { SystemPromptContext } from '@/lib/ai/prompts/types'
 import { routeChatIntent } from '@/lib/ai/intent-routing'
@@ -26,9 +30,9 @@ import { extractEquipmentLookupHints } from '@/lib/ai/tools/equipment-lookup-ide
 import { buildToolRegistry, validateRequestedTools } from '@/lib/ai/tools/registry'
 import { checkUsageLimits, confirmUsage, recordUsage } from '@/lib/ai/usage-metering'
 import {
-  extractErrorMessage,
   isProviderQuotaError,
   sanitizeErrorForClient,
+  sanitizeProviderConfigurationError,
 } from '@/lib/ai/errors'
 import { isPrivilegedRole, ROLES } from '@/lib/rbac'
 
@@ -249,12 +253,12 @@ export async function POST(request: Request) {
 
   let provider: string
   let configuredModel: string
-  let providerOptions: Record<string, unknown> | undefined
+  let providerOptions: ReturnType<typeof getChatProviderConfig>['providerOptions']
   try {
-    ({ provider, configuredModel, providerOptions } = getChatProviderOptions())
+    ({ provider, configuredModel, providerOptions } = getChatProviderConfig())
   } catch (error) {
     console.error('[chat] Provider configuration error', error)
-    return plainError(extractErrorMessage(error), 500)
+    return plainError(sanitizeProviderConfigurationError(error), 500)
   }
 
   const maxAttempts = getKeyPoolSize()

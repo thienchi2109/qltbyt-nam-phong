@@ -1,9 +1,14 @@
 import { createGoogleGenerativeAI } from '@ai-sdk/google'
 import { createGroq } from '@ai-sdk/groq'
+import type { ProviderOptions } from '@ai-sdk/provider-utils'
 import type { LanguageModel } from 'ai'
+
+import { getChatProviderOptions } from './chat-provider-options'
 
 const DEFAULT_PROVIDER = 'google'
 const DEFAULT_GOOGLE_MODEL = 'gemini-3-flash-preview'
+
+export type SupportedAiProvider = 'google' | 'groq'
 
 function getActiveProvider(): string {
   return (process.env.AI_PROVIDER ?? DEFAULT_PROVIDER).toLowerCase()
@@ -50,7 +55,7 @@ function loadApiKeys(provider: string): string[] {
   }
 }
 
-function getModelId(provider: string): string {
+function getModelId(provider: SupportedAiProvider): string {
   switch (provider) {
     case 'google':
       return process.env.GOOGLE_GENERATIVE_AI_MODEL ?? process.env.AI_MODEL ?? DEFAULT_GOOGLE_MODEL
@@ -61,19 +66,15 @@ function getModelId(provider: string): string {
       }
       return model
     }
-    default:
-      throw new Error(`Unsupported AI provider: ${provider}`)
   }
 }
 
-function createProviderWithKey(provider: string, apiKey?: string) {
+function createProviderWithKey(provider: SupportedAiProvider, apiKey?: string) {
   switch (provider) {
     case 'google':
       return createGoogleGenerativeAI(apiKey ? { apiKey } : undefined)
     case 'groq':
       return createGroq(apiKey ? { apiKey } : undefined)
-    default:
-      throw new Error(`Unsupported AI provider: ${provider}`)
   }
 }
 
@@ -112,6 +113,28 @@ export interface ChatModelWithKeyIndex {
   keyIndex: number
 }
 
+export interface ChatProviderConfig {
+  provider: SupportedAiProvider
+  configuredModel: string
+  providerOptions?: ProviderOptions
+}
+
+export function getChatProviderConfig(): ChatProviderConfig {
+  const provider = getActiveProvider()
+
+  switch (provider) {
+    case 'google':
+    case 'groq':
+      return {
+        provider,
+        configuredModel: getModelId(provider),
+        providerOptions: getChatProviderOptions(provider),
+      }
+    default:
+      throw new Error(`Unsupported AI provider: ${provider}`)
+  }
+}
+
 /**
  * Returns a `LanguageModel` using the currently-active API key from the pool,
  * along with the key index that was used.
@@ -120,8 +143,7 @@ export interface ChatModelWithKeyIndex {
  * the correct key is marked as exhausted even under concurrent requests.
  */
 export function getChatModel(): ChatModelWithKeyIndex {
-  const provider = getActiveProvider()
-  const model = getModelId(provider)
+  const { provider, configuredModel } = getChatProviderConfig()
 
   switch (provider) {
     case 'google': {
@@ -131,7 +153,7 @@ export function getChatModel(): ChatModelWithKeyIndex {
       // Otherwise fall through to the default (reads GOOGLE_GENERATIVE_AI_API_KEY).
       const google = createProviderWithKey(provider, key)
       return {
-        model: google(model as Parameters<typeof google>[0]),
+        model: google(configuredModel as Parameters<typeof google>[0]),
         keyIndex,
       }
     }
@@ -140,12 +162,10 @@ export function getChatModel(): ChatModelWithKeyIndex {
       const key = _internals.keys[keyIndex]
       const groq = createProviderWithKey(provider, key)
       return {
-        model: groq(model as Parameters<typeof groq>[0]),
+        model: groq(configuredModel as Parameters<typeof groq>[0]),
         keyIndex,
       }
     }
-    default:
-      throw new Error(`Unsupported AI provider: ${provider}`)
   }
 }
 

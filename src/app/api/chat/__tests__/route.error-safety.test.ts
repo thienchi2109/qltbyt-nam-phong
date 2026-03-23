@@ -13,11 +13,17 @@ vi.mock('next-auth', () => ({
   getServerSession: (...args: unknown[]) => getServerSessionMock(...args),
 }))
 
-vi.mock('@/lib/ai/provider', () => ({
-  getChatModel: (...args: unknown[]) => getChatModelMock(...args),
-  getKeyPoolSize: () => 1,
-  handleProviderQuotaError: () => false,
-}))
+vi.mock('@/lib/ai/provider', async () => {
+  const actual = await vi.importActual<typeof import('@/lib/ai/provider')>(
+    '@/lib/ai/provider',
+  )
+  return {
+    ...actual,
+    getChatModel: (...args: unknown[]) => getChatModelMock(...args),
+    getKeyPoolSize: () => 1,
+    handleProviderQuotaError: () => false,
+  }
+})
 
 vi.mock('@/lib/ai/prompts/system', () => ({
   buildSystemPrompt: (...args: unknown[]) => buildSystemPromptMock(...args),

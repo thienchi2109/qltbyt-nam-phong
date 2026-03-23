@@ -7,6 +7,9 @@
 export const GENERIC_CHAT_ERROR_MESSAGE = 'Đã xảy ra lỗi. Vui lòng thử lại.'
 export const MODEL_PROVIDER_QUOTA_MESSAGE =
   'Model AI đang vượt hạn mức sử dụng của nhà cung cấp.'
+const UNSUPPORTED_AI_PROVIDER_PATTERN = /^Unsupported AI provider:\s*([a-z0-9_-]+)\b/i
+const MISSING_GROQ_MODEL_CONFIGURATION_PATTERN =
+  /^Missing Groq model configuration: set GROQ_MODEL\b/i
 
 const PROVIDER_QUOTA_PATTERNS = [
   /exceeded your current quota/i,
@@ -117,6 +120,20 @@ export function extractErrorMessage(error: unknown): string {
 export function sanitizeErrorForClient(_error: unknown): string {
   const raw = extractErrorMessage(_error)
   return extractSafeClientMessage(raw) ?? GENERIC_CHAT_ERROR_MESSAGE
+}
+
+export function sanitizeProviderConfigurationError(error: unknown): string {
+  const raw = extractErrorMessage(error)
+  const unsupportedProviderMatch = raw.match(UNSUPPORTED_AI_PROVIDER_PATTERN)
+  if (unsupportedProviderMatch) {
+    return `Unsupported AI provider: ${unsupportedProviderMatch[1].toLowerCase()}`
+  }
+
+  if (MISSING_GROQ_MODEL_CONFIGURATION_PATTERN.test(raw)) {
+    return 'Missing Groq model configuration: set GROQ_MODEL'
+  }
+
+  return GENERIC_CHAT_ERROR_MESSAGE
 }
 
 /**

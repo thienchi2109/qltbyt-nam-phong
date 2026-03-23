@@ -5,6 +5,7 @@ import {
   isProviderQuotaError,
   parseErrorMessage,
   sanitizeErrorForClient,
+  sanitizeProviderConfigurationError,
 } from '../errors'
 
 describe('ai errors sanitization', () => {
@@ -35,6 +36,23 @@ describe('ai errors sanitization', () => {
     const raw = 'Unhandled provider exception: stack=abc123'
 
     expect(sanitizeErrorForClient(raw)).toBe(GENERIC_CHAT_ERROR_MESSAGE)
+  })
+
+  it('allowlists explicit provider configuration errors without leaking extra details', () => {
+    const raw = 'Unsupported AI provider: OpenAI internal=/tmp/provider-secret stack=boom'
+
+    expect(sanitizeProviderConfigurationError(raw)).toBe(
+      'Unsupported AI provider: openai',
+    )
+  })
+
+  it('keeps explicit missing Groq model configuration errors safe for clients', () => {
+    const raw =
+      'Missing Groq model configuration: set GROQ_MODEL internal=/tmp/provider-secret'
+
+    expect(sanitizeProviderConfigurationError(raw)).toBe(
+      'Missing Groq model configuration: set GROQ_MODEL',
+    )
   })
 })
 
@@ -68,4 +86,3 @@ describe('isProviderQuotaError', () => {
     expect(isProviderQuotaError(42)).toBe(false)
   })
 })
-
