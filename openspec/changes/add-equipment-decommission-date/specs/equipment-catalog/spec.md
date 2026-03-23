@@ -1,83 +1,110 @@
 ## ADDED Requirements
 
 ### Requirement: Equipment decommission date field
-The system SHALL store an optional decommission date ("Ngày ngừng sử dụng") for each equipment record in `ngay_ngung_su_dung`. The field uses strict DD/MM/YYYY format (stored as ISO YYYY-MM-DD).
+The system SHALL store an optional decommission date ("Ngày ngừng sử dụng") for each equipment record in `ngay_ngung_su_dung`. The field uses strict full-date precision and is stored as ISO `YYYY-MM-DD`.
 
 #### Scenario: Create equipment with decommission date
-- **WHEN** a user creates equipment and provides `ngay_ngung_su_dung` in DD/MM/YYYY format
-- **THEN** the value is normalized to ISO YYYY-MM-DD and persisted
+- **WHEN** a user creates equipment and provides `ngay_ngung_su_dung` in `DD/MM/YYYY` format
+- **THEN** the value is normalized to ISO `YYYY-MM-DD` and persisted
 
 #### Scenario: Existing records without decommission date
 - **WHEN** an equipment record has no `ngay_ngung_su_dung`
 - **THEN** the system returns `null` and the UI shows no value
 
+#### Scenario: Manual backfill for an existing decommissioned record
+- **WHEN** a user edits an existing record whose `tinh_trang_hien_tai` is `"Ngưng sử dụng"` and `ngay_ngung_su_dung` is empty, then manually enters a valid date
+- **THEN** the system persists the user-provided value
+
 #### Scenario: Invalid date format rejected
-- **WHEN** a user enters a partial date (MM/YYYY or YYYY) for `ngay_ngung_su_dung`
-- **THEN** the form displays error "Định dạng ngày không hợp lệ. Sử dụng: DD/MM/YYYY"
+- **WHEN** a user enters a partial date (`MM/YYYY` or `YYYY`) for `ngay_ngung_su_dung`
+- **THEN** the form or import flow rejects the value with the error `Định dạng ngày không hợp lệ. Sử dụng: DD/MM/YYYY`
+
+### Requirement: Decommission date status dependency
+The system SHALL only accept `ngay_ngung_su_dung` when `tinh_trang_hien_tai` is `"Ngưng sử dụng"`.
+
+#### Scenario: Non-decommissioned status with decommission date
+- **WHEN** a user saves or imports equipment whose `tinh_trang_hien_tai` is not `"Ngưng sử dụng"` and `ngay_ngung_su_dung` has a value
+- **THEN** the system rejects the input with a clear validation error
+
+#### Scenario: Decommissioned status with decommission date
+- **WHEN** a user saves or imports equipment whose `tinh_trang_hien_tai` is `"Ngưng sử dụng"` and `ngay_ngung_su_dung` has a valid value
+- **THEN** the system accepts the value
+
+#### Scenario: Non-decommissioned status with empty decommission date
+- **WHEN** a user saves or imports equipment whose `tinh_trang_hien_tai` is not `"Ngưng sử dụng"` and `ngay_ngung_su_dung` is empty
+- **THEN** the system accepts the input
 
 ### Requirement: Cross-field date validation
 The system SHALL validate that `ngay_ngung_su_dung >= ngay_dua_vao_su_dung` when both values are present.
 
 #### Scenario: Decommission date before commission date
 - **WHEN** a user enters `ngay_ngung_su_dung` earlier than `ngay_dua_vao_su_dung`
-- **THEN** the form displays error "Ngày ngừng sử dụng phải sau ngày đưa vào sử dụng"
+- **THEN** the system rejects the input with the error `Ngày ngừng sử dụng phải sau ngày đưa vào sử dụng`
 
 #### Scenario: Decommission date equals commission date
 - **WHEN** `ngay_ngung_su_dung` equals `ngay_dua_vao_su_dung`
-- **THEN** the form accepts the values (same-day decommission is valid)
+- **THEN** the system accepts the values
 
 #### Scenario: Commission date absent
 - **WHEN** `ngay_dua_vao_su_dung` is empty and `ngay_ngung_su_dung` is provided
-- **THEN** the form accepts the value (no cross-field comparison needed)
+- **THEN** the system accepts the value without cross-field comparison
 
 ### Requirement: Auto-set decommission date on status change
-The system SHALL auto-populate `ngay_ngung_su_dung` with today's date (UTC+7, DD/MM/YYYY) when `tinh_trang_hien_tai` is changed to "Ngưng sử dụng", only if the field is currently empty.
+The system SHALL auto-populate `ngay_ngung_su_dung` with today's date (UTC+7, `DD/MM/YYYY`) only when the user changes `tinh_trang_hien_tai` to `"Ngưng sử dụng"` during the current create/edit session and the field is currently empty.
 
 #### Scenario: Status changed to Ngưng sử dụng with empty decommission date
-- **WHEN** user changes `tinh_trang_hien_tai` to "Ngưng sử dụng" and `ngay_ngung_su_dung` is empty
-- **THEN** the system auto-fills `ngay_ngung_su_dung` with today's date in DD/MM/YYYY format
+- **WHEN** the user changes `tinh_trang_hien_tai` to `"Ngưng sử dụng"` during the current session and `ngay_ngung_su_dung` is empty
+- **THEN** the system auto-fills `ngay_ngung_su_dung` with today's date in `DD/MM/YYYY` format
 
 #### Scenario: Status changed to Ngưng sử dụng with existing decommission date
-- **WHEN** user changes `tinh_trang_hien_tai` to "Ngưng sử dụng" and `ngay_ngung_su_dung` already has a value
-- **THEN** the system preserves the existing value (no override)
+- **WHEN** the user changes `tinh_trang_hien_tai` to `"Ngưng sử dụng"` during the current session and `ngay_ngung_su_dung` already has a value
+- **THEN** the system preserves the existing value
 
-#### Scenario: User edits auto-populated date
-- **WHEN** the system auto-populates `ngay_ngung_su_dung` and the user modifies it
-- **THEN** the user-provided value is used instead
+#### Scenario: Existing decommissioned record loads without date
+- **WHEN** an edit/detail form loads an existing record whose `tinh_trang_hien_tai` is already `"Ngưng sử dụng"` and `ngay_ngung_su_dung` is empty
+- **THEN** the system leaves the field empty and does not auto-fill on initial load
 
 ### Requirement: Decommission date hidden by default in table
 The system SHALL hide `ngay_ngung_su_dung` by default in the equipment data table. Users can toggle its visibility.
 
 #### Scenario: Default table view
 - **WHEN** a user opens the equipment table with default column settings
-- **THEN** "Ngày ngừng sử dụng" column is hidden
+- **THEN** the `Ngày ngừng sử dụng` column is hidden
 
 #### Scenario: User enables decommission date column
-- **WHEN** a user toggles "Ngày ngừng sử dụng" visibility on
-- **THEN** the column displays ISO dates formatted as DD/MM/YYYY
+- **WHEN** a user toggles `Ngày ngừng sử dụng` visibility on
+- **THEN** the column displays ISO dates formatted as `DD/MM/YYYY`
 
-### Requirement: Forms and detail view include decommission date
-The system SHALL allow users to enter and edit `ngay_ngung_su_dung` in all equipment forms (add, edit, detail) and display it in equipment detail view and print template.
+### Requirement: Forms, detail view, and print include decommission date
+The system SHALL allow users to enter and edit `ngay_ngung_su_dung` in equipment create/edit/detail forms and display it in the detail view and print template.
 
 #### Scenario: Add dialog includes decommission date
 - **WHEN** a user opens the add equipment dialog
-- **THEN** an optional "Ngày ngừng sử dụng" input is available with DD/MM/YYYY placeholder
+- **THEN** an optional `Ngày ngừng sử dụng` input is available with a `DD/MM/YYYY` placeholder
 
 #### Scenario: Edit dialog includes decommission date
 - **WHEN** a user edits an equipment record
-- **THEN** "Ngày ngừng sử dụng" displays the current value (formatted as DD/MM/YYYY) and can be updated
+- **THEN** `Ngày ngừng sử dụng` displays the current value in `DD/MM/YYYY` format and can be updated
 
 #### Scenario: Detail view displays decommission date
 - **WHEN** a user views equipment details
-- **THEN** "Ngày ngừng sử dụng" is shown with its value or empty-state
+- **THEN** `Ngày ngừng sử dụng` is shown with its value or empty-state
 
-### Requirement: Bulk import mapping for decommission date
-The system SHALL accept an optional "Ngày ngừng sử dụng" column during bulk import and map it to `ngay_ngung_su_dung`.
+#### Scenario: Print template displays decommission date
+- **WHEN** a user prints the equipment profile sheet
+- **THEN** the print output includes `Ngày ngừng sử dụng`
+
+### Requirement: Bulk import and template validation for decommission date
+The system SHALL support an optional `Ngày ngừng sử dụng` column in the equipment import template and SHALL reject imported rows that violate decommission-date validation rules.
 
 #### Scenario: Import with decommission date column
-- **WHEN** a user imports an Excel file containing the "Ngày ngừng sử dụng" header
-- **THEN** values are normalized from DD/MM/YYYY or Excel serial dates to ISO YYYY-MM-DD
+- **WHEN** a user imports an Excel file containing the `Ngày ngừng sử dụng` header with valid full-date values
+- **THEN** the system maps those values to `ngay_ngung_su_dung` and normalizes them to ISO `YYYY-MM-DD`
 
-#### Scenario: Import template includes decommission date
+#### Scenario: Import row with invalid status/date combination
+- **WHEN** an imported row contains `ngay_ngung_su_dung` but `tinh_trang_hien_tai` is not `"Ngưng sử dụng"`
+- **THEN** the system rejects that row with a clear row-level validation error
+
+#### Scenario: Import template guides status/date dependency
 - **WHEN** a user downloads the equipment import template
-- **THEN** the template includes a "Ngày ngừng sử dụng" column header
+- **THEN** the template includes the `Ngày ngừng sử dụng` column and validation guidance that only allows the field when `Tình trạng = "Ngưng sử dụng"`
