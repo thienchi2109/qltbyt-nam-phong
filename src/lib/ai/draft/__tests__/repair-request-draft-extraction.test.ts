@@ -51,6 +51,35 @@ describe('repair-request-draft extraction helpers', () => {
     expect(normalized.ten_don_vi_thue).toBeNull()
   })
 
+  it('removes contradictory missing-field flags when normalized required values are present', () => {
+    const normalized = normalizeRepairRequestDraftExtractionResult({
+      mo_ta_su_co: '  Thiết bị mất nguồn  ',
+      hang_muc_sua_chua: '  Kiểm tra bo nguồn  ',
+      ngay_mong_muon_hoan_thanh: null,
+      don_vi_thuc_hien: null,
+      ten_don_vi_thue: null,
+      missingRequiredFields: ['mo_ta_su_co', 'hang_muc_sua_chua'],
+    })
+
+    expect(normalized.mo_ta_su_co).toBe('Thiết bị mất nguồn')
+    expect(normalized.hang_muc_sua_chua).toBe('Kiểm tra bo nguồn')
+    expect(normalized.missingRequiredFields).toEqual([])
+
+    const input = buildRepairRequestDraftInputFromExtraction({
+      extraction: normalized,
+      evidenceRefs: ['equipmentLookup'],
+      equipment: EQUIPMENT,
+    })
+
+    expect(input).toEqual(
+      expect.objectContaining({
+        thiet_bi_id: 42,
+        mo_ta_su_co: 'Thiết bị mất nguồn',
+        hang_muc_sua_chua: 'Kiểm tra bo nguồn',
+      }),
+    )
+  })
+
   it('assembles repair draft input when required fields are complete', () => {
     const input = buildRepairRequestDraftInputFromExtraction({
       extraction: {
@@ -98,4 +127,3 @@ describe('repair-request-draft extraction helpers', () => {
     expect(input).toBeNull()
   })
 })
-

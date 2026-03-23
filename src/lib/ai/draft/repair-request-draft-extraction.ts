@@ -87,10 +87,14 @@ export function normalizeRepairRequestDraftExtractionResult(
 
   if (moTaSuCo === null) {
     missingRequiredFields.add('mo_ta_su_co')
+  } else {
+    missingRequiredFields.delete('mo_ta_su_co')
   }
 
   if (hangMucSuaChua === null) {
     missingRequiredFields.add('hang_muc_sua_chua')
+  } else {
+    missingRequiredFields.delete('hang_muc_sua_chua')
   }
 
   return {
@@ -201,4 +205,3 @@ export function buildRepairRequestDraftInputFromExtraction({
     ten_don_vi_thue: extraction.ten_don_vi_thue,
   }
 }
-
