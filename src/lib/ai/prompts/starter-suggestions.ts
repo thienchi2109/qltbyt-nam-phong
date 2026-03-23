@@ -10,6 +10,15 @@ export type StarterPromptGroup = {
   readonly suggestions: readonly string[]
 }
 
+/**
+ * Prompts that always appear at the top of the suggestion list.
+ * These are never shuffled and always shown first.
+ */
+export const PINNED_PROMPTS: readonly string[] = [
+  'Gợi ý gán thiết bị vào danh mục định mức của đơn vị',
+  'Tạo phiếu yêu cầu sửa chữa thiết bị',
+] as const
+
 export const STARTER_PROMPT_GROUPS: readonly StarterPromptGroup[] = [
   {
     groupKey: 'equipment',

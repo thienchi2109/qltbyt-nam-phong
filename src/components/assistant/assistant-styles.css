@@ -179,6 +179,14 @@
   animation-delay: 160ms;
 }
 
+.assistant-chip-enter:nth-child(4) {
+  animation-delay: 240ms;
+}
+
+.assistant-chip-enter:nth-child(5) {
+  animation-delay: 320ms;
+}
+
 /* ============================================
    4. Reduced Motion
    ============================================ */

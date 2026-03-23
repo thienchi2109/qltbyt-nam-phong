@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { STARTER_PROMPT_GROUPS } from '../starter-suggestions'
+import { STARTER_PROMPT_GROUPS, PINNED_PROMPTS } from '../starter-suggestions'
 
 describe('starter-suggestions', () => {
   it('contains a quota suggestion group', () => {
@@ -30,5 +30,21 @@ describe('starter-suggestions', () => {
       expect(group.label.length).toBeGreaterThan(0)
       expect(group.suggestions.length).toBeGreaterThan(0)
     }
+  })
+
+  it('exports exactly 2 pinned prompts', () => {
+    expect(PINNED_PROMPTS).toHaveLength(2)
+  })
+
+  it('pinned prompts do not overlap with group suggestions', () => {
+    const allGroupSuggestions = STARTER_PROMPT_GROUPS.flatMap((g) => g.suggestions)
+    for (const pinned of PINNED_PROMPTS) {
+      expect(allGroupSuggestions).not.toContain(pinned)
+    }
+  })
+
+  it('pinned prompts contain the expected texts', () => {
+    expect(PINNED_PROMPTS).toContain('Gợi ý gán thiết bị vào danh mục định mức của đơn vị')
+    expect(PINNED_PROMPTS).toContain('Tạo phiếu yêu cầu sửa chữa thiết bị')
   })
 })

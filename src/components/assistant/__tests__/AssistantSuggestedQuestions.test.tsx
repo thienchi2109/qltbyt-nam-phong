@@ -3,26 +3,45 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 
 import { AssistantSuggestedQuestions } from '../AssistantSuggestedQuestions'
-import { STARTER_PROMPT_GROUPS } from '@/lib/ai/prompts/starter-suggestions'
+import { STARTER_PROMPT_GROUPS, PINNED_PROMPTS } from '@/lib/ai/prompts/starter-suggestions'
 
 /** Flatten all suggestion strings from groups for membership checks. */
-const ALL_SUGGESTIONS = STARTER_PROMPT_GROUPS.flatMap((g) => g.suggestions)
+const ALL_RANDOM_SUGGESTIONS = STARTER_PROMPT_GROUPS.flatMap((g) => g.suggestions)
 
 describe('AssistantSuggestedQuestions', () => {
-    it('renders exactly 3 suggestion chips after mount', async () => {
+    it('renders exactly 5 chips: 2 pinned + 3 random', async () => {
         render(<AssistantSuggestedQuestions onSelect={vi.fn()} isReady={true} />)
 
         const chips = await screen.findAllByRole('button')
-        expect(chips).toHaveLength(3)
+        expect(chips).toHaveLength(5)
     })
 
-    it('each chip text comes from the suggestion pool', async () => {
+    it('first 2 chips are the pinned prompts in order', async () => {
         render(<AssistantSuggestedQuestions onSelect={vi.fn()} isReady={true} />)
 
         const chips = await screen.findAllByRole('button')
-        chips.forEach((chip) => {
-            expect(ALL_SUGGESTIONS).toContain(chip.textContent?.trim())
+        expect(chips[0].textContent?.trim()).toBe(PINNED_PROMPTS[0])
+        expect(chips[1].textContent?.trim()).toBe(PINNED_PROMPTS[1])
+    })
+
+    it('last 3 chips come from the random suggestion pool', async () => {
+        render(<AssistantSuggestedQuestions onSelect={vi.fn()} isReady={true} />)
+
+        const chips = await screen.findAllByRole('button')
+        const randomChips = chips.slice(2)
+        randomChips.forEach((chip) => {
+            expect(ALL_RANDOM_SUGGESTIONS).toContain(chip.textContent?.trim())
         })
+    })
+
+    it('random chips do not duplicate any pinned prompt', async () => {
+        render(<AssistantSuggestedQuestions onSelect={vi.fn()} isReady={true} />)
+
+        const chips = await screen.findAllByRole('button')
+        const randomTexts = chips.slice(2).map((c) => c.textContent?.trim())
+        for (const pinned of PINNED_PROMPTS) {
+            expect(randomTexts).not.toContain(pinned)
+        }
     })
 
     it('calls onSelect with the chip text when clicked', async () => {
@@ -31,8 +50,7 @@ describe('AssistantSuggestedQuestions', () => {
 
         const chips = await screen.findAllByRole('button')
         fireEvent.click(chips[0])
-        expect(onSelect).toHaveBeenCalledWith(expect.any(String))
-        expect(ALL_SUGGESTIONS).toContain(onSelect.mock.calls[0][0])
+        expect(onSelect).toHaveBeenCalledWith(PINNED_PROMPTS[0])
     })
 
     it('disables chips when isReady is false', async () => {
