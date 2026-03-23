@@ -22,6 +22,6 @@ describe('AssistantEmptyState', () => {
 
         // Chips populate via useEffect, so use async find
         const chips = await screen.findAllByRole('button')
-        expect(chips.length).toBe(3)
+        expect(chips.length).toBe(5)
     })
 })

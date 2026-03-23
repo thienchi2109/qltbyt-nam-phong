@@ -1,6 +1,6 @@
 import * as React from "react"
-import { Zap } from "lucide-react"
-import { STARTER_PROMPT_GROUPS } from "@/lib/ai/prompts/starter-suggestions"
+import { Zap, Star } from "lucide-react"
+import { STARTER_PROMPT_GROUPS, PINNED_PROMPTS } from "@/lib/ai/prompts/starter-suggestions"
 import { cn } from "@/lib/utils"
 
 interface AssistantSuggestedQuestionsProps {
@@ -45,9 +45,10 @@ function pickDeterministic(count: number, seedSource: string): string[] {
 }
 
 /**
- * Renders 3 randomly selected prompt chips from the starter suggestions pool.
+ * Renders 2 pinned prompt chips followed by 3 randomly selected chips.
  *
- * Click sends the prompt immediately. Chips are disabled when not ready.
+ * Pinned chips always appear first with a Star icon.
+ * Random chips use a Zap icon. All disabled when not ready.
  * Uses staggered fade-in animation from assistant-styles.css.
  * Design spec §4.6.
  */
@@ -56,11 +57,11 @@ export function AssistantSuggestedQuestions({
     isReady,
 }: AssistantSuggestedQuestionsProps) {
     const seedSource = React.useId()
-    const chips = React.useMemo(() => pickDeterministic(3, seedSource), [seedSource])
+    const randomChips = React.useMemo(() => pickDeterministic(3, seedSource), [seedSource])
 
     return (
         <div className="flex flex-col gap-2">
-            {chips.map((text, i) => (
+            {PINNED_PROMPTS.map((text, i) => (
                 <button
                     key={text}
                     type="button"
@@ -77,6 +78,28 @@ export function AssistantSuggestedQuestions({
                         "disabled:opacity-50 disabled:cursor-not-allowed",
                     )}
                     style={{ animationDelay: `${i * 80}ms` }}
+                >
+                    <Star className="h-3.5 w-3.5 shrink-0 text-[hsl(var(--assistant-accent))]" />
+                    <span>{text}</span>
+                </button>
+            ))}
+            {randomChips.map((text, i) => (
+                <button
+                    key={text}
+                    type="button"
+                    onClick={() => onSelect(text)}
+                    disabled={!isReady}
+                    className={cn(
+                        "assistant-chip-enter",
+                        "flex items-center gap-2 px-3 py-2.5 rounded-xl text-left",
+                        "border border-[hsl(var(--assistant-chip-border))]",
+                        "bg-[hsl(var(--assistant-chip-bg))]",
+                        "text-xs font-medium text-[hsl(var(--assistant-chip-text))]",
+                        "transition-colors duration-150",
+                        "hover:bg-[hsl(var(--assistant-chip-hover-bg))] hover:border-[hsl(var(--assistant-chip-hover-border))]",
+                        "disabled:opacity-50 disabled:cursor-not-allowed",
+                    )}
+                    style={{ animationDelay: `${(PINNED_PROMPTS.length + i) * 80}ms` }}
                 >
                     <Zap className="h-3.5 w-3.5 shrink-0 text-[hsl(var(--assistant-accent))]" />
                     <span>{text}</span>

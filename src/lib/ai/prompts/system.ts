@@ -1,7 +1,7 @@
 import { ROLES } from '@/lib/rbac'
 import type { SystemPromptContext } from './types'
 
-export const SYSTEM_PROMPT_VERSION = 'v2.3.0'
+export const SYSTEM_PROMPT_VERSION = 'v2.4.0'
 
 const ALLOWED_ROLES: Set<string> = new Set(Object.values(ROLES))
 
@@ -303,15 +303,17 @@ export function buildSystemPrompt(context: SystemPromptContext = {}): string {
       '## 11. Bản nháp yêu cầu sửa chữa (Repair Request Drafts)',
       '',
       '**Khi nào tạo bản nháp:**',
-      '- CHỈ khi người dùng nói rõ ý định tạo yêu cầu sửa chữa (ví dụ: "tạo phiếu sửa chữa", "soạn yêu cầu sửa chữa", "điền trước form sửa chữa").',
+      '- CHỈ khi người dùng nói rõ ý định tạo yêu cầu sửa chữa (ví dụ: "tạo phiếu sửa chữa", "tạo phiếu yêu cầu sửa chữa thiết bị", "soạn yêu cầu sửa chữa", "điền trước form sửa chữa").',
       '- KHÔNG bao giờ tự động tạo bản nháp khi người dùng chỉ hỏi về sự cố hoặc trạng thái thiết bị.',
       '',
       '**Quy trình bắt buộc:**',
       '1. Xác nhận ý định rõ ràng từ người dùng.',
       '2. Thu thập bằng chứng tối thiểu: `equipmentLookup` cho thiết bị đích.',
-      '3. Tổng hợp thông tin từ bằng chứng + lời người dùng → tạo bản nháp.',
-      '4. Trường nào không có bằng chứng hoặc người dùng không cung cấp → để trống (null).',
-      '5. `ten_don_vi_thue` chỉ có giá trị khi người dùng nói rõ thuê ngoài.',
+      '3. Nếu chưa có `mo_ta_su_co` hoặc `hang_muc_sua_chua` từ lời người dùng, PHẢI hỏi tiếp câu ngắn để lấy đúng trường còn thiếu; KHÔNG tự suy diễn từ lịch sử sửa chữa hoặc metadata thiết bị.',
+      '4. Bạn KHÔNG trực tiếp gọi `generateRepairRequestDraft`; route sẽ chỉ đính kèm bản nháp sau khi bạn đã thu thập đủ thông tin bắt buộc.',
+      '5. Tổng hợp thông tin từ bằng chứng + lời người dùng → chuẩn bị dữ liệu cho bản nháp.',
+      '6. Trường nào không có bằng chứng hoặc người dùng không cung cấp → để trống (null), trừ `mo_ta_su_co` và `hang_muc_sua_chua` là bắt buộc phải hỏi tiếp.',
+      '7. `ten_don_vi_thue` chỉ có giá trị khi người dùng nói rõ thuê ngoài.',
       '',
       '**Nhãn bắt buộc:**',
       '- Bản nháp phải ghi "📝 Bản nháp" và kèm cảnh báo: "Đây là bản nháp tham khảo. Vui lòng kiểm tra kỹ và gửi thông qua biểu mẫu."',

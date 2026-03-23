@@ -46,6 +46,7 @@ vi.mock('ai', async () => {
 })
 
 import { POST } from '../route'
+import { makeReadyStreamTextResult } from './stream-text-result-test-helpers'
 
 function buildRequest(body: unknown) {
   return new Request('http://localhost/api/chat', {
@@ -74,9 +75,7 @@ describe('/api/chat limits', () => {
     buildSystemPromptMock.mockReturnValue('SYSTEM_PROMPT_V1')
     stepCountIsMock.mockReturnValue('STOP_WHEN_SENTINEL')
     checkUsageLimitsMock.mockReturnValue({ allowed: true })
-    streamTextMock.mockReturnValue({
-      toUIMessageStreamResponse: () => new Response(null, { status: 200 }),
-    })
+    streamTextMock.mockReturnValue(makeReadyStreamTextResult())
   })
 
   it('applies maxOutputTokens and stopWhen guardrails to streamText', async () => {

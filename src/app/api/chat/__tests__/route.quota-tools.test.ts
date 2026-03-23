@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs'
+import { readFileSync, readdirSync } from 'node:fs'
 import path from 'node:path'
 
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -42,6 +42,7 @@ vi.mock('ai', async () => {
 })
 
 import { POST } from '../route'
+import { makeReadyStreamTextResult } from './stream-text-result-test-helpers'
 
 const VALID_MESSAGES = [
   {
@@ -70,9 +71,7 @@ describe('/api/chat quota tools', () => {
     buildSystemPromptMock.mockReturnValue('SYSTEM_PROMPT_V2')
     checkUsageLimitsMock.mockReturnValue({ allowed: true })
     stepCountIsMock.mockReturnValue('STOP_WHEN_SENTINEL')
-    streamTextMock.mockReturnValue({
-      toUIMessageStreamResponse: () => new Response(null, { status: 200 }),
-    })
+    streamTextMock.mockReturnValue(makeReadyStreamTextResult())
   })
 
   it('accepts deviceQuotaLookup when explicitly requested', async () => {
@@ -198,9 +197,9 @@ describe('/api/chat quota tools', () => {
 
   it('has a migration that enforces so_luong_toi_thieu as NOT NULL DEFAULT 0', () => {
     const migrationsDir = path.resolve(process.cwd(), 'supabase/migrations')
-    const migrationFile = require('node:fs')
-      .readdirSync(migrationsDir)
-      .find((file: string) => file.includes('so_luong_toi_thieu_not_null'))
+    const migrationFile = readdirSync(migrationsDir).find((file: string) =>
+      file.includes('so_luong_toi_thieu_not_null'),
+    )
 
     expect(migrationFile).toBeTruthy()
 

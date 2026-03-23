@@ -135,8 +135,8 @@ describe('system prompt module', () => {
     expect(prompt).toContain('metadata')
   })
 
-  it('prompt version is v2.2.3 after clarification guard guidance', () => {
-    expect(SYSTEM_PROMPT_VERSION).toBe('v2.3.0')
+  it('prompt version is v2.4.0 after repair-draft orchestration guidance', () => {
+    expect(SYSTEM_PROMPT_VERSION).toBe('v2.4.0')
   })
 
   it('includes § 10 troubleshooting drafts section', () => {
@@ -164,6 +164,9 @@ describe('system prompt module', () => {
     expect(prompt).toContain('Bản nháp yêu cầu sửa chữa')
     expect(prompt).toContain('ý định')
     expect(prompt).toContain('KHÔNG BAO GIỜ tự gửi yêu cầu sửa chữa')
+    expect(prompt).toContain('tạo phiếu yêu cầu sửa chữa thiết bị')
+    expect(prompt).toContain('PHẢI hỏi tiếp câu ngắn')
+    expect(prompt).toContain('Bạn KHÔNG trực tiếp gọi `generateRepairRequestDraft`')
   })
 
   it('contains quota anti-hallucination rules', () => {

@@ -12,6 +12,9 @@ import { getServerSession } from 'next-auth'
 
 import { authOptions } from '@/auth/config'
 import { chatRequestSchema } from '@/lib/ai/chat-request-schema'
+import { createChatUIStreamResponse, waitForStreamReady } from './chat-ui-stream'
+import { maybeBuildRepairRequestDraftArtifact } from '@/lib/ai/draft/repair-request-draft-orchestrator'
+import { writeRepairRequestDraftToolResult } from '@/lib/ai/draft/repair-request-draft-ui-stream'
 import {
   AI_MAX_INPUT_CHARS,
   AI_MAX_MESSAGES,
@@ -41,11 +44,15 @@ function plainError(message: string, status: number) {
 function clarificationResponse(message: string, originalMessages: UIMessage[]) {
   const stream = createUIMessageStream({
     originalMessages,
+    onError: () => 'Unable to build clarification response.',
     execute: ({ writer }) => {
       const textId = 'assistant-clarification'
+
+      writer.write({ type: 'start' })
       writer.write({ type: 'text-start', id: textId })
       writer.write({ type: 'text-delta', id: textId, delta: message })
       writer.write({ type: 'text-end', id: textId })
+      writer.write({ type: 'finish', finishReason: 'stop' })
     },
   })
 
@@ -87,42 +94,6 @@ function calculateInputChars(messages: unknown[]): number {
     return JSON.stringify(messages).length
   } catch {
     return Number.MAX_SAFE_INTEGER
-  }
-}
-
-async function waitForStreamReady(
-  result: Pick<ReturnType<typeof streamText>, 'fullStream'>,
-): Promise<void> {
-  const iterator = result.fullStream[Symbol.asyncIterator]()
-
-  try {
-    while (true) {
-      const { value, done } = await iterator.next()
-
-      if (done) {
-        throw new Error('AI stream ended before producing a response part')
-      }
-
-      if (value.type === 'start') {
-        continue
-      }
-
-      if (value.type === 'error') {
-        if (isProviderQuotaError(value.error)) {
-          throw value.error
-        }
-
-        return
-      }
-
-      return
-    }
-  } finally {
-    try {
-      await iterator.return?.()
-    } catch {
-      // Best-effort cleanup only. Preserve the original success/error outcome.
-    }
   }
 }
 
@@ -258,6 +229,11 @@ export async function POST(request: Request) {
         keyIndex,
         model: configuredModel,
       })
+      const googleProviderOptions = {
+        google: {
+          thinkingConfig: { thinkingLevel: 'medium' },
+        } satisfies GoogleLanguageModelOptions,
+      }
 
       const result = streamText({
         model: chatModel.model,
@@ -266,11 +242,7 @@ export async function POST(request: Request) {
         stopWhen: stepCountIs(AI_MAX_TOOL_STEPS),
         messages: modelMessages,
         tools,
-        providerOptions: {
-          google: {
-            thinkingConfig: { thinkingLevel: 'medium' },
-          } satisfies GoogleLanguageModelOptions,
-        },
+        providerOptions: googleProviderOptions,
         onFinish({ usage, finishReason }) {
           // Only increment daily quotas after a successful completion.
           if (finishReason !== 'error') {
@@ -282,29 +254,60 @@ export async function POST(request: Request) {
         },
       })
 
-      await waitForStreamReady(result)
+      await waitForStreamReady(result, isProviderQuotaError)
 
-      return result.toUIMessageStreamResponse({
-        onError: (error) => {
-          // Mid-stream quota errors can't be retried (response already in-flight),
-          // but rotate the key for future requests so they don't hit the same quota.
-          if (isProviderQuotaError(error)) {
-            console.warn('[chat] Stream quota error', {
-              attempt,
-              maxAttempts,
-              keyIndex,
-              model: configuredModel,
+      const handleStreamError = (error: unknown) => {
+        // Mid-stream quota errors can't be retried (response already in-flight),
+        // but rotate the key for future requests so they don't hit the same quota.
+        if (isProviderQuotaError(error)) {
+          console.warn('[chat] Stream quota error', {
+            attempt,
+            maxAttempts,
+            keyIndex,
+            model: configuredModel,
+          })
+          handleProviderQuotaError(keyIndex)
+        } else {
+          console.error('[chat] Stream error', {
+            attempt,
+            maxAttempts,
+            keyIndex,
+            model: configuredModel,
+          }, error)
+        }
+        return sanitizeErrorForClient(error)
+      }
+
+      return createChatUIStreamResponse({
+        result,
+        originalMessages: validatedMessages,
+        onError: handleStreamError,
+        onAfterBaseStream: async writer => {
+          try {
+            const steps = await result.steps
+            const repairDraftArtifact = await maybeBuildRepairRequestDraftArtifact({
+              model: chatModel.model,
+              messages: validatedMessages,
+              steps: steps.map(step => ({
+                toolResults: step.toolResults.map(toolResult => ({
+                  toolName: toolResult.toolName,
+                  output: toolResult.output,
+                })),
+              })),
+              providerOptions: googleProviderOptions,
             })
-            handleProviderQuotaError(keyIndex)
-          } else {
-            console.error('[chat] Stream error', {
+
+            if (repairDraftArtifact) {
+              writeRepairRequestDraftToolResult(writer, repairDraftArtifact)
+            }
+          } catch (error) {
+            console.error('[chat] Repair draft orchestration skipped', {
               attempt,
               maxAttempts,
               keyIndex,
               model: configuredModel,
             }, error)
           }
-          return sanitizeErrorForClient(error)
         },
       })
     } catch (error) {
