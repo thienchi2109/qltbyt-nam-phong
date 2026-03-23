@@ -50,7 +50,8 @@ If you use key rotation, populate `GROQ_API_KEYS` with a comma-separated pool an
 - Check that the chat logs include `"[chat] Model attempt start"` with the expected `provider` and `model`.
 - Confirm there is no `Unsupported AI provider` or `Missing Groq model configuration` error in the logs.
 - If Groq rate limiting occurs, confirm the logs show `"[chat] Pre-stream quota error — rotating to next key"` or `"[chat] Stream quota error"` and that the response stays sanitized.
-- If you see `429 Too Many Requests`, treat it as a Groq org-level rate limit event and verify `retry-after` / `x-ratelimit-*` headers in the provider response path when available.
+- If you see a bare `429 Too Many Requests`, investigate provider rate limiting alongside any app or gateway throttling before assuming a Groq org-level limit.
+- If the provider error includes Groq-specific rate-limit wording, verify `retry-after` / `x-ratelimit-*` headers in the provider response path when available.
 
 ## Rollback to Google
 

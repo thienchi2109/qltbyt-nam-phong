@@ -84,12 +84,20 @@ describe('isProviderQuotaError', () => {
     ).toBe(true)
   })
 
-  it('returns true for Groq 429 Too Many Requests errors', () => {
-    expect(isProviderQuotaError(new Error('429 Too Many Requests'))).toBe(true)
+  it('returns true for Groq documented timeframe-based rate limit errors', () => {
+    expect(
+      isProviderQuotaError(
+        new Error('Too many requests were sent in a given timeframe'),
+      ),
+    ).toBe(true)
   })
 
   it('returns false for generic errors', () => {
     expect(isProviderQuotaError(new Error('Network timeout'))).toBe(false)
+  })
+
+  it('returns false for generic 429 wrappers without provider-specific wording', () => {
+    expect(isProviderQuotaError(new Error('429 Too Many Requests'))).toBe(false)
   })
 
   it('returns false for Groq network timeout errors', () => {
@@ -112,5 +120,11 @@ describe('sanitizeErrorForClient', () => {
         'Rate limit reached for model in organization org_123',
       ),
     ).toContain('Model AI đang vượt hạn mức sử dụng của nhà cung cấp.')
+  })
+
+  it('keeps generic 429 wrappers deny-by-default when provider wording is absent', () => {
+    expect(sanitizeErrorForClient('429 Too Many Requests')).toBe(
+      GENERIC_CHAT_ERROR_MESSAGE,
+    )
   })
 })
