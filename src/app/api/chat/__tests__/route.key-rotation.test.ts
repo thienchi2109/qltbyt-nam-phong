@@ -39,6 +39,11 @@ vi.mock('@/lib/ai/provider', async () => {
   )
   return {
     ...actual,
+    getChatProviderConfig: () => ({
+      provider: 'google',
+      configuredModel: 'gemini-3-flash-preview',
+      providerOptions: undefined,
+    }),
     getChatModel: (...args: unknown[]) => getChatModelMock(...args),
     getKeyPoolSize: (...args: unknown[]) => getKeyPoolSizeMock(...args),
     handleProviderQuotaError: (...args: unknown[]) => handleProviderQuotaErrorMock(...args),
