@@ -15,6 +15,8 @@ const PROVIDER_QUOTA_PATTERNS = [
   /exceeded your current quota/i,
   /quota exceeded for metric/i,
   /rate-limits/i,
+  /rate limit reached/i,
+  /429 Too Many Requests/i,
   /generate_content_free_tier_requests/i,
 ]
 

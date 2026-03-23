@@ -76,13 +76,41 @@ describe('isProviderQuotaError', () => {
     expect(isProviderQuotaError(new Error('rate-limits exceeded'))).toBe(true)
   })
 
+  it('returns true for Groq rate limit reached errors', () => {
+    expect(
+      isProviderQuotaError(
+        new Error('Rate limit reached for model in organization org_123'),
+      ),
+    ).toBe(true)
+  })
+
+  it('returns true for Groq 429 Too Many Requests errors', () => {
+    expect(isProviderQuotaError(new Error('429 Too Many Requests'))).toBe(true)
+  })
+
   it('returns false for generic errors', () => {
     expect(isProviderQuotaError(new Error('Network timeout'))).toBe(false)
+  })
+
+  it('returns false for Groq network timeout errors', () => {
+    expect(
+      isProviderQuotaError(new Error('Network timeout while contacting Groq')),
+    ).toBe(false)
   })
 
   it('returns false for non-error values', () => {
     expect(isProviderQuotaError(null)).toBe(false)
     expect(isProviderQuotaError(undefined)).toBe(false)
     expect(isProviderQuotaError(42)).toBe(false)
+  })
+})
+
+describe('sanitizeErrorForClient', () => {
+  it('returns the provider quota message for Groq rate limit errors', () => {
+    expect(
+      sanitizeErrorForClient(
+        'Rate limit reached for model in organization org_123',
+      ),
+    ).toContain('Model AI đang vượt hạn mức sử dụng của nhà cung cấp.')
   })
 })
