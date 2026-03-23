@@ -391,7 +391,7 @@ git commit -m "docs(ai): add provider cutover playbook"
 
 - [ ] Dispatch final code reviewer after Task 3 is merged.
 - [ ] Run `git pull --rebase`.
-- [ ] Run `bd sync`.
+- [ ] Run `bd sync` if available; if not, record `command not found` in the handoff notes and continue with the remaining release checks.
 - [ ] Run `git push`.
 - [ ] Run `git status --short --branch` and confirm the implementation branch is clean and up to date with origin.
 - [ ] Land using the repo's standard finish flow only after tests, reviews, and deployment smoke checks are complete.
