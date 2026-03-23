@@ -7,10 +7,10 @@ import {
   type UIMessage,
   validateUIMessages,
 } from 'ai'
-import type { GoogleLanguageModelOptions } from '@ai-sdk/google'
 import { getServerSession } from 'next-auth'
 
 import { authOptions } from '@/auth/config'
+import { getChatProviderOptions } from '@/lib/ai/chat-provider-options'
 import { chatRequestSchema } from '@/lib/ai/chat-request-schema'
 import {
   AI_MAX_INPUT_CHARS,
@@ -25,7 +25,11 @@ import { routeChatIntent } from '@/lib/ai/intent-routing'
 import { extractEquipmentLookupHints } from '@/lib/ai/tools/equipment-lookup-identifiers'
 import { buildToolRegistry, validateRequestedTools } from '@/lib/ai/tools/registry'
 import { checkUsageLimits, confirmUsage, recordUsage } from '@/lib/ai/usage-metering'
-import { isProviderQuotaError, sanitizeErrorForClient } from '@/lib/ai/errors'
+import {
+  extractErrorMessage,
+  isProviderQuotaError,
+  sanitizeErrorForClient,
+} from '@/lib/ai/errors'
 import { isPrivilegedRole, ROLES } from '@/lib/rbac'
 
 export const runtime = 'nodejs'
@@ -243,8 +247,17 @@ export async function POST(request: Request) {
     return plainError(sanitizeErrorForClient(error), 500)
   }
 
+  let provider: string
+  let configuredModel: string
+  let providerOptions: Record<string, unknown> | undefined
+  try {
+    ({ provider, configuredModel, providerOptions } = getChatProviderOptions())
+  } catch (error) {
+    console.error('[chat] Provider configuration error', error)
+    return plainError(extractErrorMessage(error), 500)
+  }
+
   const maxAttempts = getKeyPoolSize()
-  const configuredModel = process.env.AI_MODEL ?? 'gemini-3-flash-preview'
 
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     let keyIndex = 0
@@ -256,6 +269,7 @@ export async function POST(request: Request) {
         attempt,
         maxAttempts,
         keyIndex,
+        provider,
         model: configuredModel,
       })
 
@@ -266,11 +280,7 @@ export async function POST(request: Request) {
         stopWhen: stepCountIs(AI_MAX_TOOL_STEPS),
         messages: modelMessages,
         tools,
-        providerOptions: {
-          google: {
-            thinkingConfig: { thinkingLevel: 'medium' },
-          } satisfies GoogleLanguageModelOptions,
-        },
+        providerOptions,
         onFinish({ usage, finishReason }) {
           // Only increment daily quotas after a successful completion.
           if (finishReason !== 'error') {
@@ -293,6 +303,7 @@ export async function POST(request: Request) {
               attempt,
               maxAttempts,
               keyIndex,
+              provider,
               model: configuredModel,
             })
             handleProviderQuotaError(keyIndex)
@@ -301,6 +312,7 @@ export async function POST(request: Request) {
               attempt,
               maxAttempts,
               keyIndex,
+              provider,
               model: configuredModel,
             }, error)
           }
@@ -316,6 +328,7 @@ export async function POST(request: Request) {
             attempt,
             maxAttempts,
             keyIndex,
+            provider,
             model: configuredModel,
             nextAttempt: attempt + 1,
           },
@@ -329,6 +342,7 @@ export async function POST(request: Request) {
           attempt,
           maxAttempts,
           keyIndex,
+          provider,
           model: configuredModel,
           quotaError: isProviderQuotaError(error),
         },
