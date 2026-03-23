@@ -1,5 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
+import { makeReadyStreamResult } from './stream-test-utils'
+
 const getServerSessionMock = vi.fn()
 const streamTextMock = vi.fn()
 const stepCountIsMock = vi.fn()
@@ -13,11 +15,17 @@ vi.mock('next-auth', () => ({
   getServerSession: (...args: unknown[]) => getServerSessionMock(...args),
 }))
 
-vi.mock('@/lib/ai/provider', () => ({
-  getChatModel: (...args: unknown[]) => getChatModelMock(...args),
-  getKeyPoolSize: () => 1,
-  handleProviderQuotaError: () => false,
-}))
+vi.mock('@/lib/ai/provider', async () => {
+  const actual = await vi.importActual<typeof import('@/lib/ai/provider')>(
+    '@/lib/ai/provider',
+  )
+  return {
+    ...actual,
+    getChatModel: (...args: unknown[]) => getChatModelMock(...args),
+    getKeyPoolSize: () => 1,
+    handleProviderQuotaError: () => false,
+  }
+})
 
 vi.mock('@/lib/ai/prompts/system', () => ({
   buildSystemPrompt: (...args: unknown[]) => buildSystemPromptMock(...args),
@@ -74,9 +82,7 @@ describe('/api/chat limits', () => {
     buildSystemPromptMock.mockReturnValue('SYSTEM_PROMPT_V1')
     stepCountIsMock.mockReturnValue('STOP_WHEN_SENTINEL')
     checkUsageLimitsMock.mockReturnValue({ allowed: true })
-    streamTextMock.mockReturnValue({
-      toUIMessageStreamResponse: () => new Response(null, { status: 200 }),
-    })
+    streamTextMock.mockReturnValue(makeReadyStreamResult())
   })
 
   it('applies maxOutputTokens and stopWhen guardrails to streamText', async () => {
