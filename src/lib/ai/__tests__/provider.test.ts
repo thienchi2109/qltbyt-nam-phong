@@ -86,6 +86,7 @@ describe('provider — API key rotation', () => {
     process.env.AI_PROVIDER = 'groq'
     process.env.GROQ_API_KEYS = 'GROQ_A,GROQ_B'
     process.env.GROQ_API_KEY = 'GROQ_SINGLE'
+    process.env.GROQ_MODEL = 'groq-model-v1'
 
     const { getChatModel: getGroqChatModel } = await importFreshProvider()
     const { model, keyIndex } = getGroqChatModel()
@@ -99,6 +100,7 @@ describe('provider — API key rotation', () => {
     process.env.AI_PROVIDER = 'groq'
     process.env.GROQ_API_KEYS = 'GROQ_POOL_A,GROQ_POOL_B'
     process.env.GROQ_API_KEY = 'GROQ_SINGLE'
+    process.env.GROQ_MODEL = 'groq-model-v1'
 
     const { getChatModel: getGroqChatModel } = await importFreshProvider()
     const { model } = getGroqChatModel()
@@ -111,6 +113,7 @@ describe('provider — API key rotation', () => {
     process.env.AI_PROVIDER = 'groq'
     process.env.GROQ_API_KEYS = 'GROQ_A,GROQ_B,GROQ_C'
     process.env.GROQ_API_KEY = 'GROQ_SINGLE'
+    process.env.GROQ_MODEL = 'groq-model-v1'
 
     const {
       getChatModel: getGroqChatModel,
@@ -133,14 +136,43 @@ describe('provider — API key rotation', () => {
     process.env.AI_PROVIDER = 'google'
     process.env.GOOGLE_GENERATIVE_AI_API_KEYS = 'GOOGLE_A,GOOGLE_B'
     process.env.GOOGLE_GENERATIVE_AI_API_KEY = 'GOOGLE_SINGLE'
+    process.env.GOOGLE_GENERATIVE_AI_MODEL = 'google-model-v1'
+    process.env.AI_MODEL = 'shared-model-should-not-win'
 
     const { getChatModel: getGoogleChatModel } = await importFreshProvider()
     const { model, keyIndex } = getGoogleChatModel()
     const m = model as unknown as { apiKey: string; modelId: string }
 
     expect(m.apiKey).toBe('GOOGLE_A')
-    expect(m.modelId).toBe('gemini-3.1-flash-lite-preview')
+    expect(m.modelId).toBe('google-model-v1')
     expect(keyIndex).toBe(0)
+  })
+
+  it('uses GROQ_MODEL for Groq and ignores the shared AI_MODEL fallback', async () => {
+    process.env.AI_PROVIDER = 'groq'
+    process.env.GROQ_API_KEYS = 'GROQ_A,GROQ_B'
+    process.env.GROQ_MODEL = 'groq-model-v1'
+    process.env.AI_MODEL = 'shared-model-should-not-win'
+
+    const { getChatModel: getGroqChatModel } = await importFreshProvider()
+    const { model, keyIndex } = getGroqChatModel()
+    const m = model as unknown as { apiKey: string; modelId: string }
+
+    expect(m.apiKey).toBe('GROQ_A')
+    expect(m.modelId).toBe('groq-model-v1')
+    expect(keyIndex).toBe(0)
+  })
+
+  it('fails fast when Groq model config is missing', async () => {
+    process.env.AI_PROVIDER = 'groq'
+    process.env.GROQ_API_KEYS = 'GROQ_A,GROQ_B'
+    process.env.AI_MODEL = 'gemini-3-flash-preview'
+
+    const { getChatModel: getGroqChatModel } = await importFreshProvider()
+
+    expect(() => getGroqChatModel()).toThrow(
+      'Missing Groq model configuration: set GROQ_MODEL',
+    )
   })
 
   // -------------------------------------------------------------------

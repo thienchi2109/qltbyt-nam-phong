@@ -3,7 +3,7 @@ import { createGroq } from '@ai-sdk/groq'
 import type { LanguageModel } from 'ai'
 
 const DEFAULT_PROVIDER = 'google'
-const DEFAULT_MODEL = 'gemini-3-flash-preview'
+const DEFAULT_GOOGLE_MODEL = 'gemini-3-flash-preview'
 
 function getActiveProvider(): string {
   return (process.env.AI_PROVIDER ?? DEFAULT_PROVIDER).toLowerCase()
@@ -14,27 +14,67 @@ function getActiveProvider(): string {
 // ---------------------------------------------------------------------------
 
 function loadApiKeys(provider: string): string[] {
-  const poolEnv =
-    provider === 'groq'
-      ? process.env.GROQ_API_KEYS
-      : process.env.GOOGLE_GENERATIVE_AI_API_KEYS
+  switch (provider) {
+    case 'google': {
+      const poolEnv = process.env.GOOGLE_GENERATIVE_AI_API_KEYS
+      if (poolEnv) {
+        const keys = poolEnv
+          .split(',')
+          .map((k) => k.trim())
+          .filter(Boolean)
+        if (keys.length > 0) return keys
+      }
 
-  if (poolEnv) {
-    const keys = poolEnv
-      .split(',')
-      .map((k) => k.trim())
-      .filter(Boolean)
-    if (keys.length > 0) return keys
+      const singleEnv = process.env.GOOGLE_GENERATIVE_AI_API_KEY
+      if (singleEnv?.trim()) return [singleEnv.trim()]
+
+      return []
+    }
+    case 'groq': {
+      const poolEnv = process.env.GROQ_API_KEYS
+      if (poolEnv) {
+        const keys = poolEnv
+          .split(',')
+          .map((k) => k.trim())
+          .filter(Boolean)
+        if (keys.length > 0) return keys
+      }
+
+      const singleEnv = process.env.GROQ_API_KEY
+      if (singleEnv?.trim()) return [singleEnv.trim()]
+
+      return []
+    }
+    default:
+      return []
   }
+}
 
-  const singleEnv =
-    provider === 'groq'
-      ? process.env.GROQ_API_KEY
-      : process.env.GOOGLE_GENERATIVE_AI_API_KEY
+function getModelId(provider: string): string {
+  switch (provider) {
+    case 'google':
+      return process.env.GOOGLE_GENERATIVE_AI_MODEL ?? process.env.AI_MODEL ?? DEFAULT_GOOGLE_MODEL
+    case 'groq': {
+      const model = process.env.GROQ_MODEL?.trim()
+      if (!model) {
+        throw new Error('Missing Groq model configuration: set GROQ_MODEL')
+      }
+      return model
+    }
+    default:
+      throw new Error(`Unsupported AI provider: ${provider}`)
+  }
+}
 
-  if (singleEnv?.trim()) return [singleEnv.trim()]
-
-  return []
+function createProviderWithKey(provider: string, apiKey?: string) {
+  switch (provider) {
+    case 'google':
+      return createGoogleGenerativeAI(apiKey ? { apiKey } : undefined)
+    case 'groq':
+      return createGroq(apiKey ? { apiKey } : undefined)
+    default:
+      throw new Error(`Unsupported AI provider: ${provider}`)
+  }
 }
 
 /** Visible for testing — do NOT use directly outside tests. */
@@ -81,7 +121,7 @@ export interface ChatModelWithKeyIndex {
  */
 export function getChatModel(): ChatModelWithKeyIndex {
   const provider = getActiveProvider()
-  const model = process.env.AI_MODEL ?? DEFAULT_MODEL
+  const model = getModelId(provider)
 
   switch (provider) {
     case 'google': {
@@ -89,7 +129,7 @@ export function getChatModel(): ChatModelWithKeyIndex {
       const key = _internals.keys[keyIndex]
       // When an explicit key is available, create a provider bound to it.
       // Otherwise fall through to the default (reads GOOGLE_GENERATIVE_AI_API_KEY).
-      const google = createGoogleGenerativeAI(key ? { apiKey: key } : undefined)
+      const google = createProviderWithKey(provider, key)
       return {
         model: google(model as Parameters<typeof google>[0]),
         keyIndex,
@@ -98,7 +138,7 @@ export function getChatModel(): ChatModelWithKeyIndex {
     case 'groq': {
       const keyIndex = _internals.currentIndex
       const key = _internals.keys[keyIndex]
-      const groq = createGroq(key ? { apiKey: key } : undefined)
+      const groq = createProviderWithKey(provider, key)
       return {
         model: groq(model as Parameters<typeof groq>[0]),
         keyIndex,
