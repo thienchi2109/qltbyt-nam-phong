@@ -19,6 +19,8 @@ export interface RepairRequestDraftSessionState {
   startMessageIndex?: number
 }
 
+type RepairRequestDraftIntent = 'start' | 'cancel' | 'none'
+
 function normalizeDraftText(text: string): string {
   return text
     .normalize('NFD')
@@ -54,6 +56,27 @@ function readMessageText(message: UIMessage): string {
     .trim()
 }
 
+function hasMatchingPhrase(text: string, phrases: readonly string[]): boolean {
+  return phrases.some(phrase => text.includes(normalizeDraftText(phrase)))
+}
+
+function getRepairRequestDraftIntent(text: string): RepairRequestDraftIntent {
+  const normalized = normalizeDraftText(text)
+  if (!normalized) {
+    return 'none'
+  }
+
+  if (hasMatchingPhrase(normalized, REPAIR_REQUEST_DRAFT_CANCEL_PHRASES)) {
+    return 'cancel'
+  }
+
+  if (hasMatchingPhrase(normalized, REPAIR_REQUEST_DRAFT_START_PHRASES)) {
+    return 'start'
+  }
+
+  return 'none'
+}
+
 function messageHasCompletedRepairDraft(message: UIMessage): boolean {
   if (message.role !== 'assistant' || !Array.isArray(message.parts)) {
     return false
@@ -77,17 +100,11 @@ function messageHasCompletedRepairDraft(message: UIMessage): boolean {
 }
 
 export function hasRepairRequestDraftStartIntent(text: string): boolean {
-  const normalized = normalizeDraftText(text)
-  return REPAIR_REQUEST_DRAFT_START_PHRASES.some(phrase =>
-    normalized.includes(normalizeDraftText(phrase)),
-  )
+  return getRepairRequestDraftIntent(text) === 'start'
 }
 
 export function hasRepairRequestDraftCancelIntent(text: string): boolean {
-  const normalized = normalizeDraftText(text)
-  return REPAIR_REQUEST_DRAFT_CANCEL_PHRASES.some(phrase =>
-    normalized.includes(normalizeDraftText(phrase)),
-  )
+  return getRepairRequestDraftIntent(text) === 'cancel'
 }
 
 export function getRepairRequestDraftSessionState(
@@ -102,15 +119,14 @@ export function getRepairRequestDraftSessionState(
         continue
       }
 
-      if (
-        activeStartMessageIndex !== undefined &&
-        hasRepairRequestDraftCancelIntent(text)
-      ) {
+      const draftIntent = getRepairRequestDraftIntent(text)
+
+      if (draftIntent === 'cancel') {
         activeStartMessageIndex = undefined
         continue
       }
 
-      if (hasRepairRequestDraftStartIntent(text)) {
+      if (draftIntent === 'start') {
         activeStartMessageIndex = index
       }
 

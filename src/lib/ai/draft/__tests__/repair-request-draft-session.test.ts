@@ -32,6 +32,12 @@ describe('repair-request-draft session state', () => {
     ).toBe(true)
   })
 
+  it('does not treat a cancel phrase as draft-start intent when the phrases overlap', () => {
+    expect(hasRepairRequestDraftStartIntent('Hủy tạo phiếu sửa chữa')).toBe(
+      false,
+    )
+  })
+
   it('keeps the session active across follow-up turns without repeating the start phrase', () => {
     const result = getRepairRequestDraftSessionState([
       makeUserMessage('u1', 'Tạo phiếu yêu cầu sửa chữa thiết bị'),
@@ -54,6 +60,14 @@ describe('repair-request-draft session state', () => {
         { type: 'text', text: 'Anh/chị cho tôi mô tả sự cố.' },
       ]),
       makeUserMessage('u2', 'Thôi không tạo nữa'),
+    ])
+
+    expect(result).toEqual({ status: 'inactive' })
+  })
+
+  it('does not activate a session for a cancel phrase when no session is active', () => {
+    const result = getRepairRequestDraftSessionState([
+      makeUserMessage('u1', 'Hủy tạo phiếu sửa chữa'),
     ])
 
     expect(result).toEqual({ status: 'inactive' })

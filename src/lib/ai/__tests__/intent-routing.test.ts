@@ -74,6 +74,18 @@ describe('routeChatIntent', () => {
         requestedTools: [...ALL_REPAIR_TOOLS],
       })
     })
+
+    it('does not preserve both tools for cancel phrases that overlap the draft-start phrases', () => {
+      const result = routeChatIntent({
+        messages: [makeUserMessage('Hủy tạo phiếu sửa chữa')],
+        requestedTools: [...ALL_REPAIR_TOOLS],
+      })
+
+      expect(result).toEqual({
+        kind: 'proceed',
+        requestedTools: ['repairSummary'],
+      })
+    })
   })
 
   // ──────────────────────────────────────────────────────
