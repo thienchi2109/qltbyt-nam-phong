@@ -4,11 +4,17 @@
 The system SHALL emit a structured `repairRequestDraft` assistant artifact from `/api/chat` only after route-owned orchestration confirms explicit draft intent, a single target equipment, and complete required draft fields.
 
 #### Scenario: Emit a repair-request draft after complete multi-turn input
-- **WHEN** the user enters an explicit draft-intent phrase such as `tạo phiếu sửa chữa`, `lập yêu cầu sửa chữa`, `soạn yêu cầu sửa chữa`, or `điền trước form sửa chữa`
+- **WHEN** the user enters an explicit draft-intent phrase such as `tạo phiếu sửa chữa`, `tạo phiếu yêu cầu sửa chữa thiết bị`, `lập yêu cầu sửa chữa`, `soạn yêu cầu sửa chữa`, or `điền trước form sửa chữa`
 - **AND** the active conversation resolves exactly one equipment target from `equipmentLookup`
 - **AND** the conversation provides both `mo_ta_su_co` and `hang_muc_sua_chua`
 - **THEN** `/api/chat` emits a `repairRequestDraft` artifact in the assistant stream
 - **AND** the emitted artifact is represented as `generateRepairRequestDraft` tool output
+
+#### Scenario: Explicit draft intent preserves equipment evidence lookup
+- **WHEN** the request includes both `equipmentLookup` and `repairSummary`
+- **AND** the latest user turn contains an explicit draft-intent phrase, including the built-in starter-chip text `Tạo phiếu yêu cầu sửa chữa thiết bị`
+- **THEN** the route keeps `equipmentLookup` available for the draft flow
+- **AND** the request is not collapsed into a `repairSummary`-only path before draft orchestration runs
 
 #### Scenario: Missing required draft fields
 - **WHEN** the user has active draft intent
@@ -31,6 +37,12 @@ The system SHALL maintain a repair-draft session across follow-up turns until th
 - **AND** the user replies with the missing details on a later turn without repeating the original create-intent phrase
 - **THEN** the route continues the same active draft session
 - **AND** the draft may be emitted once all guards pass
+
+#### Scenario: Non-draft repair workflow questions keep existing repair-summary routing
+- **WHEN** the latest user turn asks about repair-request status, backlog, or handling progress
+- **AND** the turn does not contain explicit draft-intent language
+- **THEN** the existing repair workflow routing may still prefer `repairSummary`
+- **AND** the route does not treat that turn as the start of a repair-draft session
 
 #### Scenario: Cancel an active draft session
 - **WHEN** the user says `thôi không tạo nữa`, `hủy tạo phiếu`, or `không cần tạo phiếu` during an active repair-draft session

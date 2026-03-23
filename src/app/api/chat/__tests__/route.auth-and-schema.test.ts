@@ -28,6 +28,7 @@ vi.mock('ai', async () => {
 })
 
 import { POST } from '../route'
+import { makeReadyStreamTextResult } from './stream-text-result-test-helpers'
 
 const VALID_MESSAGES = [
   {
@@ -51,9 +52,7 @@ describe('/api/chat auth + schema', () => {
 
     getChatModelMock.mockReturnValue({ model: 'google:gemini-2.5-flash', keyIndex: 0 })
     buildSystemPromptMock.mockReturnValue('SYSTEM_PROMPT_V1')
-    streamTextMock.mockReturnValue({
-      toUIMessageStreamResponse: () => new Response(null, { status: 200 }),
-    })
+    streamTextMock.mockReturnValue(makeReadyStreamTextResult())
   })
 
   it('returns 401 when session is missing', async () => {

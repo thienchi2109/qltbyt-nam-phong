@@ -62,6 +62,18 @@ describe('routeChatIntent', () => {
         requestedTools: ['repairSummary'],
       })
     })
+
+    it('keeps equipmentLookup available for explicit repair-draft start phrases', () => {
+      const result = routeChatIntent({
+        messages: [makeUserMessage('Tạo phiếu yêu cầu sửa chữa thiết bị')],
+        requestedTools: [...ALL_REPAIR_TOOLS],
+      })
+
+      expect(result).toEqual({
+        kind: 'proceed',
+        requestedTools: [...ALL_REPAIR_TOOLS],
+      })
+    })
   })
 
   // ──────────────────────────────────────────────────────

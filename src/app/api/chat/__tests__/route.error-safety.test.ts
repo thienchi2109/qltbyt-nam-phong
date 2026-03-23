@@ -38,7 +38,10 @@ vi.mock('ai', async () => {
   }
 })
 
+import { simulateReadableStream } from 'ai'
+
 import { POST } from '../route'
+import { makeReadyStreamTextResult } from './stream-text-result-test-helpers'
 
 const VALID_MESSAGES = [
   {
@@ -64,9 +67,7 @@ describe('/api/chat error safety — non-stream contract', () => {
     buildSystemPromptMock.mockReturnValue('SYSTEM_PROMPT_V1')
     checkUsageLimitsMock.mockReturnValue({ allowed: true })
     stepCountIsMock.mockReturnValue('STOP_WHEN_SENTINEL')
-    streamTextMock.mockReturnValue({
-      toUIMessageStreamResponse: () => new Response(null, { status: 200 }),
-    })
+    streamTextMock.mockReturnValue(makeReadyStreamTextResult())
   })
 
   it('returns text/plain for privileged user with tools but no facility (undefined)', async () => {
@@ -188,7 +189,14 @@ describe('/api/chat error safety — sanitization', () => {
   })
 
   it('keeps non-quota provider error parts on the stream path instead of failing preflight', async () => {
-    const toUIMessageStreamResponseMock = vi.fn(() => new Response(null, { status: 200 }))
+    const toUIMessageStreamMock = vi.fn(() =>
+      simulateReadableStream({
+        chunks: [
+          { type: 'start' },
+          { type: 'finish', finishReason: 'stop' },
+        ],
+      }),
+    )
 
     streamTextMock.mockReturnValue({
       fullStream: {
@@ -216,16 +224,17 @@ describe('/api/chat error safety — sanitization', () => {
           }
         },
       },
-      toUIMessageStreamResponse: toUIMessageStreamResponseMock,
+      toUIMessageStream: toUIMessageStreamMock,
+      steps: Promise.resolve([]),
     })
 
     const res = await POST(buildRequest({ messages: VALID_MESSAGES }) as never)
 
     expect(res.status).toBe(200)
-    expect(toUIMessageStreamResponseMock).toHaveBeenCalledOnce()
+    expect(toUIMessageStreamMock).toHaveBeenCalledOnce()
   })
 
-  it('passes onError callback to toUIMessageStreamResponse', async () => {
+  it('passes onError callback to toUIMessageStream', async () => {
     let capturedOnError: unknown = undefined
     streamTextMock.mockReturnValue({
       fullStream: {
@@ -246,10 +255,16 @@ describe('/api/chat error safety — sanitization', () => {
           }
         },
       },
-      toUIMessageStreamResponse: (opts?: { onError?: unknown }) => {
+      toUIMessageStream: (opts?: { onError?: unknown }) => {
         capturedOnError = opts?.onError
-        return new Response(null, { status: 200 })
+        return simulateReadableStream({
+          chunks: [
+            { type: 'start' },
+            { type: 'finish', finishReason: 'stop' },
+          ],
+        })
       },
+      steps: Promise.resolve([]),
     })
 
     await POST(buildRequest({ messages: VALID_MESSAGES }) as never)

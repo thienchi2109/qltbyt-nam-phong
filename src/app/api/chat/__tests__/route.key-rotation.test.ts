@@ -58,6 +58,8 @@ vi.mock('ai', async () => {
   }
 })
 
+import { simulateReadableStream } from 'ai'
+
 import { POST } from '../route'
 
 // ---------------------------------------------------------------------------
@@ -123,13 +125,19 @@ function makeStreamResult(
         }
       },
     },
-    toUIMessageStreamResponse: vi.fn((streamOptions?: { onError?: (error: unknown) => string }) => {
+    toUIMessageStream: vi.fn((streamOptions?: { onError?: (error: unknown) => string }) => {
       if (options?.responseError !== undefined) {
         streamOptions?.onError?.(options.responseError)
       }
 
-      return new Response(null, { status: 200 })
+      return simulateReadableStream({
+        chunks: [
+          { type: 'start' },
+          { type: 'finish', finishReason: 'stop' },
+        ],
+      })
     }),
+    steps: Promise.resolve([]),
   }
 }
 

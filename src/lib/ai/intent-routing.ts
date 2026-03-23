@@ -1,5 +1,6 @@
 import type { UIMessage } from 'ai'
 import { getLatestUserText } from './tools/equipment-lookup-identifiers'
+import { hasRepairRequestDraftStartIntent } from './draft/repair-request-draft-session'
 
 const EQUIPMENT_LOOKUP_TOOL = 'equipmentLookup'
 const REPAIR_SUMMARY_TOOL = 'repairSummary'
@@ -63,10 +64,16 @@ function classifyRepairIntent(
     return null
   }
 
+  if (hasRepairRequestDraftStartIntent(text)) {
+    return {
+      kind: 'proceed',
+      requestedTools,
+    }
+  }
+
   const mentionsRepairRequest = /\b(phieu|yeu cau|don|ticket)\b/.test(normalized)
   const mentionsRepairWorkflow =
     /\b(xu ly|tiep nhan|ton dong|dang mo|da dong|hoan thanh)\b/.test(normalized)
-  const mentionsEquipment = /\b(thiet bi|may)\b/.test(normalized)
   const mentionsEquipmentStatus =
     /\b(trang thai|tinh trang|cho sua chua|dang sua chua|hong)\b/.test(normalized) ||
     /\bbao nhieu thiet bi\b/.test(normalized)

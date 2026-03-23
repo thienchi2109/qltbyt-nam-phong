@@ -39,6 +39,7 @@ vi.mock('ai', async () => {
 })
 
 import { POST } from '../route'
+import { makeReadyStreamTextResult } from './stream-text-result-test-helpers'
 
 const VALID_MESSAGES = [
   {
@@ -67,9 +68,7 @@ describe('/api/chat tools allowlist policy', () => {
     buildSystemPromptMock.mockReturnValue('SYSTEM_PROMPT_V1')
     checkUsageLimitsMock.mockReturnValue({ allowed: true })
     stepCountIsMock.mockReturnValue('STOP_WHEN_SENTINEL')
-    streamTextMock.mockReturnValue({
-      toUIMessageStreamResponse: () => new Response(null, { status: 200 }),
-    })
+    streamTextMock.mockReturnValue(makeReadyStreamTextResult())
   })
 
   it('blocks unknown tool names', async () => {

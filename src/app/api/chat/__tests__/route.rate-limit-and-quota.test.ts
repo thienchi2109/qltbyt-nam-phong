@@ -46,6 +46,7 @@ vi.mock('ai', async () => {
 })
 
 import { POST } from '../route'
+import { makeReadyStreamTextResult } from './stream-text-result-test-helpers'
 
 function buildRequest(body: unknown) {
   return new Request('http://localhost/api/chat', {
@@ -85,9 +86,7 @@ describe('/api/chat rate limit and quota', () => {
           finishReason: 'stop',
         })
       }
-      return {
-        toUIMessageStreamResponse: () => new Response(null, { status: 200 }),
-      }
+      return makeReadyStreamTextResult()
     })
   })
 

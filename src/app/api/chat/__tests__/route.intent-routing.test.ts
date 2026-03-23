@@ -39,6 +39,7 @@ vi.mock('ai', async () => {
 })
 
 import { POST } from '../route'
+import { makeReadyStreamTextResult } from './stream-text-result-test-helpers'
 
 function buildRequest(body: unknown) {
   return new Request('http://localhost/api/chat', {
@@ -69,9 +70,7 @@ describe('/api/chat intent routing + clarification guard', () => {
     buildSystemPromptMock.mockReturnValue('SYSTEM_PROMPT_V1')
     checkUsageLimitsMock.mockReturnValue({ allowed: true })
     stepCountIsMock.mockReturnValue('STOP_WHEN_SENTINEL')
-    streamTextMock.mockReturnValue({
-      toUIMessageStreamResponse: () => new Response(null, { status: 200 }),
-    })
+    streamTextMock.mockReturnValue(makeReadyStreamTextResult())
   })
 
   it('routes equipment repair-status questions to equipmentLookup instead of repairSummary', async () => {

@@ -4,9 +4,9 @@
 - [ ] 1.3 Refactor: extract reusable stream assertion helpers and document the chunk contract
 
 ## 2. Draft Session Detection
-- [ ] 2.1 Red: add tests for explicit draft intent, multi-turn continuation, cancellation, and non-draft repair conversations
-- [ ] 2.2 Green: implement repair-draft session helpers with explicit start and cancel phrase lists
-- [ ] 2.3 Refactor: centralize phrase constants and keep matching conservative
+- [ ] 2.1 Red: add tests for explicit draft intent, multi-turn continuation, cancellation, non-draft repair conversations, and the shipped starter-chip phrase `Tạo phiếu yêu cầu sửa chữa thiết bị`
+- [ ] 2.2 Green: implement repair-draft session helpers with explicit start and cancel phrase lists plus shared helpers that `routeChatIntent()` can consult
+- [ ] 2.3 Refactor: centralize phrase constants and keep matching conservative across session detection, intent routing, and prompt-facing copy
 
 ## 3. Evidence Normalization
 - [ ] 3.1 Red: add tests for zero, one, and multiple `equipmentLookup` results plus accumulated `evidenceRefs`
@@ -19,8 +19,8 @@
 - [ ] 4.3 Refactor: move extraction prompt/schema helpers into a dedicated module
 
 ## 5. Route Orchestration
-- [ ] 5.1 Red: add end-to-end `/api/chat` tests for successful draft emission and for no emission when fields are missing or equipment is ambiguous
-- [ ] 5.2 Green: wire `buildRepairRequestDraft()` into the route wrapper and emit synthetic tool chunks on the success path
+- [ ] 5.1 Red: add end-to-end `/api/chat` tests for successful draft emission, for preserving `equipmentLookup` on explicit draft-intent turns, and for no emission when fields are missing or equipment is ambiguous
+- [ ] 5.2 Green: wire `buildRepairRequestDraft()` into the route wrapper, update repair-intent routing to preserve draft evidence collection, and emit synthetic tool chunks on the success path
 - [ ] 5.3 Refactor: keep `route.ts` thin by delegating all repair-draft logic to one orchestration helper
 
 ## 6. Prompt Contract Alignment
