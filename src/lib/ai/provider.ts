@@ -1,33 +1,45 @@
 import { createGoogleGenerativeAI } from '@ai-sdk/google'
+import { createGroq } from '@ai-sdk/groq'
 import type { LanguageModel } from 'ai'
 
 const DEFAULT_PROVIDER = 'google'
 const DEFAULT_MODEL = 'gemini-3-flash-preview'
 
+function getActiveProvider(): string {
+  return (process.env.AI_PROVIDER ?? DEFAULT_PROVIDER).toLowerCase()
+}
+
 // ---------------------------------------------------------------------------
 // API-key pool & round-robin rotation
 // ---------------------------------------------------------------------------
 
-function loadApiKeys(): string[] {
-  const pool = process.env.GOOGLE_GENERATIVE_AI_API_KEYS
-  if (pool) {
-    const keys = pool
+function loadApiKeys(provider: string): string[] {
+  const poolEnv =
+    provider === 'groq'
+      ? process.env.GROQ_API_KEYS
+      : process.env.GOOGLE_GENERATIVE_AI_API_KEYS
+
+  if (poolEnv) {
+    const keys = poolEnv
       .split(',')
       .map((k) => k.trim())
       .filter(Boolean)
     if (keys.length > 0) return keys
   }
 
-  // Fallback: single-key env var (read by @ai-sdk/google by default)
-  const single = process.env.GOOGLE_GENERATIVE_AI_API_KEY
-  if (single?.trim()) return [single.trim()]
+  const singleEnv =
+    provider === 'groq'
+      ? process.env.GROQ_API_KEY
+      : process.env.GOOGLE_GENERATIVE_AI_API_KEY
+
+  if (singleEnv?.trim()) return [singleEnv.trim()]
 
   return []
 }
 
 /** Visible for testing — do NOT use directly outside tests. */
 export const _internals = {
-  keys: loadApiKeys(),
+  keys: loadApiKeys(getActiveProvider()),
   currentIndex: 0,
   /** Set of indices whose quota is exhausted in the current window. */
   exhaustedIndices: new Set<number>(),
@@ -68,7 +80,7 @@ export interface ChatModelWithKeyIndex {
  * the correct key is marked as exhausted even under concurrent requests.
  */
 export function getChatModel(): ChatModelWithKeyIndex {
-  const provider = (process.env.AI_PROVIDER ?? DEFAULT_PROVIDER).toLowerCase()
+  const provider = getActiveProvider()
   const model = process.env.AI_MODEL ?? DEFAULT_MODEL
 
   switch (provider) {
@@ -80,6 +92,15 @@ export function getChatModel(): ChatModelWithKeyIndex {
       const google = createGoogleGenerativeAI(key ? { apiKey: key } : undefined)
       return {
         model: google(model as Parameters<typeof google>[0]),
+        keyIndex,
+      }
+    }
+    case 'groq': {
+      const keyIndex = _internals.currentIndex
+      const key = _internals.keys[keyIndex]
+      const groq = createGroq(key ? { apiKey: key } : undefined)
+      return {
+        model: groq(model as Parameters<typeof groq>[0]),
         keyIndex,
       }
     }

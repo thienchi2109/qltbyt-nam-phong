@@ -22,6 +22,22 @@ vi.mock('@ai-sdk/google', () => ({
   }),
 }))
 
+vi.mock('@ai-sdk/groq', () => ({
+  createGroq: vi.fn((opts?: { apiKey?: string }) => {
+    const provider = (modelId: string) => ({
+      __testModel: true,
+      modelId,
+      apiKey: opts?.apiKey ?? 'DEFAULT_ENV_KEY',
+    })
+    return provider
+  }),
+}))
+
+async function importFreshProvider() {
+  vi.resetModules()
+  return import('../provider')
+}
+
 describe('provider — API key rotation', () => {
   const ORIGINAL_ENV = { ...process.env }
 
@@ -64,6 +80,67 @@ describe('provider — API key rotation', () => {
 
     expect(m.apiKey).toBe('KEY_B')
     expect(keyIndex).toBe(1)
+  })
+
+  it('selects Groq when AI_PROVIDER=groq', async () => {
+    process.env.AI_PROVIDER = 'groq'
+    process.env.GROQ_API_KEYS = 'GROQ_A,GROQ_B'
+    process.env.GROQ_API_KEY = 'GROQ_SINGLE'
+
+    const { getChatModel: getGroqChatModel } = await importFreshProvider()
+    const { model, keyIndex } = getGroqChatModel()
+    const m = model as unknown as { apiKey: string; modelId: string }
+
+    expect(m.apiKey).toBe('GROQ_A')
+    expect(keyIndex).toBe(0)
+  })
+
+  it('prefers GROQ_API_KEYS over GROQ_API_KEY', async () => {
+    process.env.AI_PROVIDER = 'groq'
+    process.env.GROQ_API_KEYS = 'GROQ_POOL_A,GROQ_POOL_B'
+    process.env.GROQ_API_KEY = 'GROQ_SINGLE'
+
+    const { getChatModel: getGroqChatModel } = await importFreshProvider()
+    const { model } = getGroqChatModel()
+    const m = model as unknown as { apiKey: string }
+
+    expect(m.apiKey).toBe('GROQ_POOL_A')
+  })
+
+  it('keeps Groq key rotation inside the active pool', async () => {
+    process.env.AI_PROVIDER = 'groq'
+    process.env.GROQ_API_KEYS = 'GROQ_A,GROQ_B,GROQ_C'
+    process.env.GROQ_API_KEY = 'GROQ_SINGLE'
+
+    const {
+      getChatModel: getGroqChatModel,
+      handleProviderQuotaError: handleGroqProviderQuotaError,
+      _internals: groqInternals,
+    } = await importFreshProvider()
+
+    expect(getGroqChatModel().model).toBeDefined()
+    expect(handleGroqProviderQuotaError(0)).toBe(true)
+    expect(groqInternals.currentIndex).toBe(1)
+
+    const { model, keyIndex } = getGroqChatModel()
+    const m = model as unknown as { apiKey: string }
+
+    expect(m.apiKey).toBe('GROQ_B')
+    expect(keyIndex).toBe(1)
+  })
+
+  it('keeps Google behavior unchanged', async () => {
+    process.env.AI_PROVIDER = 'google'
+    process.env.GOOGLE_GENERATIVE_AI_API_KEYS = 'GOOGLE_A,GOOGLE_B'
+    process.env.GOOGLE_GENERATIVE_AI_API_KEY = 'GOOGLE_SINGLE'
+
+    const { getChatModel: getGoogleChatModel } = await importFreshProvider()
+    const { model, keyIndex } = getGoogleChatModel()
+    const m = model as unknown as { apiKey: string; modelId: string }
+
+    expect(m.apiKey).toBe('GOOGLE_A')
+    expect(m.modelId).toBe('gemini-3.1-flash-lite-preview')
+    expect(keyIndex).toBe(0)
   })
 
   // -------------------------------------------------------------------
@@ -171,5 +248,14 @@ describe('provider — API key rotation', () => {
   it('throws on unsupported provider', () => {
     process.env.AI_PROVIDER = 'openai'
     expect(() => getChatModel()).toThrow('Unsupported AI provider: openai')
+  })
+
+  it('throws explicitly for providers outside google and groq', async () => {
+    process.env.AI_PROVIDER = 'anthropic'
+
+    const { getChatModel: getUnsupportedChatModel } = await importFreshProvider()
+    expect(() => getUnsupportedChatModel()).toThrow(
+      'Unsupported AI provider: anthropic',
+    )
   })
 })
