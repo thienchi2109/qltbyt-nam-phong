@@ -139,4 +139,26 @@ describe('EquipmentDetailDialog tabs', () => {
 
     expect(await screen.findByText('Usage tab content')).toBeInTheDocument()
   })
+
+  it('enters edit mode and wires save button to the inline form', () => {
+    render(<EquipmentDetailDialog {...baseProps} />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Sửa thông tin' }))
+
+    expect(screen.getByRole('button', { name: 'Hủy' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Lưu thay đổi' })).toHaveAttribute(
+      'form',
+      'equipment-inline-edit-form'
+    )
+  })
+
+  it('calls onOpenChange(false) when close is clicked outside edit mode', () => {
+    const onOpenChange = vi.fn()
+
+    render(<EquipmentDetailDialog {...baseProps} onOpenChange={onOpenChange} />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Đóng' }))
+
+    expect(onOpenChange).toHaveBeenCalledWith(false)
+  })
 })
