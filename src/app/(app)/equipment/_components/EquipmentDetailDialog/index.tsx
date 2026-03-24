@@ -12,10 +12,8 @@
 
 import * as React from "react"
 import { zodResolver } from "@hookform/resolvers/zod"
-import { useForm, FormProvider } from "react-hook-form"
-import { Edit, Loader2, Printer, QrCode, Trash2 } from "lucide-react"
+import { useForm } from "react-hook-form"
 
-import { Button } from "@/components/ui/button"
 import {
   Dialog,
   DialogContent,
@@ -24,13 +22,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import type { Equipment } from "@/types/database"
 import { useEquipmentContext } from "../../_hooks/useEquipmentContext"
 
@@ -45,12 +36,8 @@ import { isEquipmentManagerRole } from "@/lib/rbac"
 import { useEquipmentHistory } from "./hooks/useEquipmentHistory"
 import { useEquipmentAttachments } from "./hooks/useEquipmentAttachments"
 import { useEquipmentUpdate } from "./hooks/useEquipmentUpdate"
-import { EquipmentDetailHistoryTab } from "./EquipmentDetailHistoryTab"
-import { EquipmentDetailUsageTab } from "./EquipmentDetailUsageTab"
-import { EquipmentDetailFilesTab } from "./EquipmentDetailFilesTab"
-import { EquipmentDetailDetailsTab } from "./EquipmentDetailDetailsTab"
-import { EquipmentDetailConfigTab } from "./EquipmentDetailConfigTab"
-import { EquipmentDetailEditForm } from "./EquipmentDetailEditForm"
+import { EquipmentDetailFooter } from "./EquipmentDetailFooter"
+import { EquipmentDetailTabs } from "./EquipmentDetailTabs"
 
 const DEFAULT_FORM_VALUES = {
   ma_thiet_bi: "",
@@ -270,173 +257,46 @@ export function EquipmentDetailDialog({
           <DialogTitle>Chi tiết thiết bị: {displayEquipment?.ten_thiet_bi}</DialogTitle>
           <DialogDescription>Mã thiết bị: {displayEquipment?.ma_thiet_bi}</DialogDescription>
         </DialogHeader>
-        <Tabs
-          value={currentTab}
-          onValueChange={setCurrentTab}
-          className="flex-grow flex flex-col overflow-hidden"
-        >
-          <div ref={tabsScrollRef} className="overflow-x-auto flex-shrink-0">
-            <TabsList className="w-max">
-              <TabsTrigger value="details">Thông tin chi tiết</TabsTrigger>
-              <TabsTrigger value="config">Cấu hình & Phụ kiện</TabsTrigger>
-              <TabsTrigger value="files">File đính kèm</TabsTrigger>
-              <TabsTrigger value="history">Lịch sử</TabsTrigger>
-              <TabsTrigger value="usage">Nhật ký sử dụng</TabsTrigger>
-            </TabsList>
-          </div>
-
-          <FormProvider {...editForm}>
-            {/* Details Tab - forceMount when editing to keep form in DOM for submit */}
-            <TabsContent
-              value="details"
-              className={`flex-grow overflow-hidden ${currentTab !== "details" && isEditingDetails ? "hidden" : ""}`}
-              forceMount={isEditingDetails ? true : undefined}
-            >
-              <EquipmentDetailDetailsTab
-                displayEquipment={displayEquipment!}
-                isEditing={isEditingDetails}
-              >
-                <EquipmentDetailEditForm
-                  formId="equipment-inline-edit-form"
-                  initialStatus={displayEquipment?.tinh_trang_hien_tai ?? null}
-                  onSubmit={onSubmitInlineEdit}
-                />
-              </EquipmentDetailDetailsTab>
-            </TabsContent>
-
-            {/* Config Tab */}
-            <TabsContent value="config" className="flex-grow overflow-hidden">
-              <EquipmentDetailConfigTab
-                displayEquipment={displayEquipment!}
-                isEditing={isEditingDetails}
-              />
-            </TabsContent>
-          </FormProvider>
-
-          {/* Files Tab */}
-          <TabsContent value="files" className="flex-grow overflow-hidden">
-            <EquipmentDetailFilesTab
-              attachments={attachments}
-              isLoading={isLoadingAttachments}
-              googleDriveFolderUrl={equipment?.google_drive_folder_url}
-              onAddAttachment={addAttachment}
-              onDeleteAttachment={deleteAttachment}
-              isAdding={isAddingAttachment}
-              isDeleting={isDeletingAttachment}
-            />
-          </TabsContent>
-
-          {/* History Tab */}
-          <TabsContent value="history" className="flex-grow overflow-hidden">
-            <EquipmentDetailHistoryTab history={history} isLoading={isLoadingHistory} />
-          </TabsContent>
-
-          {/* Usage Tab */}
-          <TabsContent value="usage" className="flex-grow overflow-hidden">
-            <EquipmentDetailUsageTab equipment={equipment} />
-          </TabsContent>
-        </Tabs>
+        <EquipmentDetailTabs
+          addAttachment={addAttachment}
+          attachments={attachments}
+          currentTab={currentTab}
+          deleteAttachment={deleteAttachment}
+          displayEquipment={displayEquipment}
+          editForm={editForm}
+          equipment={equipment}
+          history={history}
+          isAddingAttachment={isAddingAttachment}
+          isDeletingAttachment={isDeletingAttachment}
+          isEditingDetails={isEditingDetails}
+          isLoadingAttachments={isLoadingAttachments}
+          isLoadingHistory={isLoadingHistory}
+          onSubmitInlineEdit={onSubmitInlineEdit}
+          onTabChange={setCurrentTab}
+          tabsScrollRef={tabsScrollRef}
+        />
         <DialogFooter className="shrink-0 pt-4 border-t">
-          <TooltipProvider>
-            <div className="w-full flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-              <div className="flex items-center gap-2">
-                {canEdit &&
-                  (!isEditingDetails ? (
-                    <Tooltip delayDuration={200}>
-                      <TooltipTrigger asChild>
-                        <Button
-                          variant="outline"
-                          size="icon"
-                          onClick={() => {
-                            setIsEditingDetails(true)
-                          }}
-                        >
-                          <Edit className="h-4 w-4" />
-                          <span className="sr-only">Sửa thông tin</span>
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent>Sửa thông tin</TooltipContent>
-                    </Tooltip>
-                  ) : (
-                    <>
-                      <Button
-                        variant="outline"
-                        type="button"
-                        onClick={() => {
-                          if (displayEquipment) {
-                            editForm.reset(equipmentToFormValues(displayEquipment))
-                          }
-                          setIsEditingDetails(false)
-                        }}
-                        disabled={isUpdating}
-                      >
-                        Hủy
-                      </Button>
-                      <Button
-                        type="submit"
-                        form="equipment-inline-edit-form"
-                        disabled={isUpdating}
-                      >
-                        {isUpdating && (
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        )}
-                        Lưu thay đổi
-                      </Button>
-                    </>
-                  ))}
-              </div>
-              <div className="flex items-center gap-2">
-                {!isRegionalLeader && (
-                  <>
-                    <Tooltip delayDuration={200}>
-                      <TooltipTrigger asChild>
-                        <Button variant="outline" size="icon" onClick={() => onGenerateDeviceLabel(displayEquipment!)}>
-                          <QrCode className="h-4 w-4" />
-                          <span className="sr-only">Tạo nhãn thiết bị</span>
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent>Tạo nhãn thiết bị</TooltipContent>
-                    </Tooltip>
-
-                    <Tooltip delayDuration={200}>
-                      <TooltipTrigger asChild>
-                        <Button variant="outline" size="icon" onClick={() => onGenerateProfileSheet(displayEquipment!)}>
-                          <Printer className="h-4 w-4" />
-                          <span className="sr-only">In lý lịch</span>
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent>In lý lịch</TooltipContent>
-                    </Tooltip>
-                  </>
-                )}
-
-                <div className="w-px h-6 bg-border mx-1 hidden sm:block"></div>
-
-                {canDeleteEquipment && (
-                  <Tooltip delayDuration={200}>
-                    <TooltipTrigger asChild>
-                      <Button
-                        variant="outline"
-                        size="icon"
-                        className="text-destructive hover:bg-destructive hover:text-destructive-foreground border-destructive/30"
-                        onClick={() => openDeleteDialog(equipment, "detail_dialog")}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                        <span className="sr-only">Xóa thiết bị</span>
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>Xóa thiết bị</TooltipContent>
-                  </Tooltip>
-                )}
-
-                <Button variant="default" onClick={() => handleDialogOpenChange(false)}>
-                  Đóng
-                </Button>
-              </div>
-            </div>
-          </TooltipProvider>
+          <EquipmentDetailFooter
+            canDeleteEquipment={canDeleteEquipment}
+            canEdit={canEdit}
+            displayEquipment={displayEquipment}
+            isEditingDetails={isEditingDetails}
+            isRegionalLeader={isRegionalLeader}
+            isUpdating={isUpdating}
+            onCancelEditing={() => {
+              editForm.reset(equipmentToFormValues(displayEquipment))
+              setIsEditingDetails(false)
+            }}
+            onClose={() => handleDialogOpenChange(false)}
+            onDeleteEquipment={() => openDeleteDialog(equipment, "detail_dialog")}
+            onGenerateDeviceLabel={() => onGenerateDeviceLabel(displayEquipment)}
+            onGenerateProfileSheet={() => onGenerateProfileSheet(displayEquipment)}
+            onStartEditing={() => {
+              setIsEditingDetails(true)
+            }}
+          />
         </DialogFooter>
-      </DialogContent>
+      </DialogContent>
     </Dialog>
   )
 }
