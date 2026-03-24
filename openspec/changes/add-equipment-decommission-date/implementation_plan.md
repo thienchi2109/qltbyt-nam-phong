@@ -70,3 +70,16 @@ Run affected test suites for:
 5. Verify table default visibility and print output.
 6. Verify downloaded Excel template includes the new column and status/date validation guidance.
 7. Verify chronological check applies only when `ngay_dua_vao_su_dung` is full date (`YYYY-MM-DD`), not partial (`YYYY`/`YYYY-MM`).
+
+## Post-Implementation Maintainability Note
+
+- `react-doctor` reported non-blocking file-size warnings for:
+  - `src/app/(app)/equipment/_components/EquipmentDetailDialog/EquipmentDetailEditForm.tsx` (`444` lines)
+  - `src/app/(app)/equipment/_components/EquipmentDetailDialog/index.tsx` (`443` lines)
+  - `src/components/add-equipment-dialog.tsx` (`406` lines)
+- Recommended handling is a follow-up cleanup PR, not expansion of the feature PR scope.
+- Extraction priority:
+  1. `EquipmentDetailEditForm.tsx`: split into larger form-section components that share `useFormContext`.
+  2. `EquipmentDetailDialog/index.tsx`: extract form-state mapping/defaults and the action footer.
+  3. `add-equipment-dialog.tsx`: extract dialog data/mutation orchestration and a few grouped field sections.
+- Avoid over-fragmenting into many one-field components; split by responsibility to reduce file size without making navigation worse.

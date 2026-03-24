@@ -106,3 +106,17 @@ Minimum acceptance before implementation completion:
 - Future AI-focused change:
   - Update `ai_equipment_lookup` projection to include `ngay_ngung_su_dung`.
   - Add AI query guidance/examples for decommission-date questions.
+- Non-blocking maintainability cleanup:
+  - `react-doctor` flagged 3 large React files after implementation:
+    - `src/app/(app)/equipment/_components/EquipmentDetailDialog/EquipmentDetailEditForm.tsx` (`444` lines)
+    - `src/app/(app)/equipment/_components/EquipmentDetailDialog/index.tsx` (`443` lines)
+    - `src/components/add-equipment-dialog.tsx` (`406` lines)
+  - These warnings do not block the feature PR, but they are good extraction candidates for a follow-up refactor PR.
+  - Recommended extraction order:
+    1. `EquipmentDetailEditForm.tsx`
+    2. `EquipmentDetailDialog/index.tsx`
+    3. `add-equipment-dialog.tsx`
+  - Recommended extraction shape:
+    - Split `EquipmentDetailEditForm.tsx` by cohesive field groups that consume `useFormContext`, not by one-field-per-component.
+    - Split `EquipmentDetailDialog/index.tsx` by moving form-state mapping/defaults and the action footer into sibling files while keeping the dialog state orchestration local.
+    - Split `add-equipment-dialog.tsx` by extracting a data/mutation hook and a few larger field sections, not leaf components.
