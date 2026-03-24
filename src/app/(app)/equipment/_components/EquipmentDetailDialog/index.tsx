@@ -175,14 +175,14 @@ export function EquipmentDetailDialog({
       (user.role === "qltb_khoa" && user.khoa_phong === equipment?.khoa_phong_quan_ly))
   const canDeleteEquipment = isEquipmentManagerRole(user?.role)
 
-  if (!equipment) return null
+  if (!equipment || !displayEquipment) return null
 
   return (
     <Dialog open={open} onOpenChange={handleDialogOpenChange}>
       <DialogContent className="max-w-4xl h-[90vh] flex flex-col overflow-hidden">
         <DialogHeader>
-          <DialogTitle>Chi tiết thiết bị: {displayEquipment?.ten_thiet_bi}</DialogTitle>
-          <DialogDescription>Mã thiết bị: {displayEquipment?.ma_thiet_bi}</DialogDescription>
+          <DialogTitle>Chi tiết thiết bị: {displayEquipment.ten_thiet_bi}</DialogTitle>
+          <DialogDescription>Mã thiết bị: {displayEquipment.ma_thiet_bi}</DialogDescription>
         </DialogHeader>
         <EquipmentDetailTabs
           addAttachment={addAttachment}

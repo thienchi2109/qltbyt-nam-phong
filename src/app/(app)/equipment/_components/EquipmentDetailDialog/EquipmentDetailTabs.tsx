@@ -31,7 +31,7 @@ interface EquipmentDetailTabsProps {
   isLoadingHistory: boolean
   onSubmitInlineEdit: (values: EquipmentFormValues) => Promise<void>
   onTabChange: (value: string) => void
-  tabsScrollRef: React.RefObject<HTMLDivElement | null>
+  tabsScrollRef: React.MutableRefObject<HTMLDivElement | null>
 }
 
 export function EquipmentDetailTabs({
