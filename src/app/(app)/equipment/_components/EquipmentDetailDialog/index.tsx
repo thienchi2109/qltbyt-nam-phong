@@ -248,7 +248,6 @@ export function EquipmentDetailDialog({
           <EquipmentDetailFooter
             canDeleteEquipment={canDeleteEquipment}
             canEdit={canEdit}
-            displayEquipment={displayEquipment}
             isEditingDetails={isEditingDetails}
             isRegionalLeader={isRegionalLeader}
             isUpdating={isUpdating}

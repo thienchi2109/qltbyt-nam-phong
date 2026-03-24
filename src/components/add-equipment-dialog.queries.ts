@@ -6,6 +6,12 @@ export interface AddEquipmentTenantOption {
   name: string
 }
 
+interface AddEquipmentTenantListItem {
+  id: number
+  code?: string | null
+  name: string
+}
+
 export async function fetchDepartmentNames(): Promise<string[]> {
   const list = await callRpc<{ name: string }[]>({
     fn: "departments_list",
@@ -16,7 +22,7 @@ export async function fetchDepartmentNames(): Promise<string[]> {
 }
 
 export async function fetchTenantList(): Promise<AddEquipmentTenantOption[]> {
-  const list = await callRpc<any[]>({
+  const list = await callRpc<AddEquipmentTenantListItem[]>({
     fn: "tenant_list",
     args: {},
   })

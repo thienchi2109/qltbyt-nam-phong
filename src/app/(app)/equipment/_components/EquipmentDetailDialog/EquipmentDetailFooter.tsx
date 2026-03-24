@@ -10,12 +10,10 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
-import type { Equipment } from "@/types/database"
 
 interface EquipmentDetailFooterProps {
   canDeleteEquipment: boolean
   canEdit: boolean
-  displayEquipment: Equipment
   isEditingDetails: boolean
   isRegionalLeader: boolean
   isUpdating: boolean
@@ -30,7 +28,6 @@ interface EquipmentDetailFooterProps {
 export function EquipmentDetailFooter({
   canDeleteEquipment,
   canEdit,
-  displayEquipment,
   isEditingDetails,
   isRegionalLeader,
   isUpdating,
