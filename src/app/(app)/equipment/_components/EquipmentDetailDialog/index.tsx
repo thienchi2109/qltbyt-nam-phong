@@ -177,6 +177,60 @@ export function EquipmentDetailDialog({
 
   if (!equipment || !displayEquipment) return null
 
+  const handleTabChange = (value: string) => {
+    setCurrentTab(value)
+  }
+
+  const handleStartEditing = () => {
+    setIsEditingDetails(true)
+  }
+
+  const handleCancelEditing = () => {
+    editForm.reset(equipmentToFormValues(displayEquipment))
+    setIsEditingDetails(false)
+  }
+
+  const handleClose = () => {
+    handleDialogOpenChange(false)
+  }
+
+  const handleDeleteEquipment = () => {
+    openDeleteDialog(equipment, "detail_dialog")
+  }
+
+  const handleGenerateProfileSheetClick = () => {
+    onGenerateProfileSheet(displayEquipment)
+  }
+
+  const handleGenerateDeviceLabelClick = () => {
+    onGenerateDeviceLabel(displayEquipment)
+  }
+
+  const detailTabsProps = {
+    currentTab,
+    displayEquipment,
+    editForm,
+    isEditingDetails,
+    onSubmitInlineEdit,
+    onTabChange: handleTabChange,
+    tabsScrollRef,
+  }
+
+  const attachmentTabsProps = {
+    addAttachment,
+    attachments,
+    deleteAttachment,
+    googleDriveFolderUrl: equipment.google_drive_folder_url,
+    isAddingAttachment,
+    isDeletingAttachment,
+    isLoadingAttachments,
+  }
+
+  const historyTabsProps = {
+    history,
+    isLoadingHistory,
+  }
+
   return (
     <Dialog open={open} onOpenChange={handleDialogOpenChange}>
       <DialogContent className="max-w-4xl h-[90vh] flex flex-col overflow-hidden">
@@ -185,22 +239,10 @@ export function EquipmentDetailDialog({
           <DialogDescription>Mã thiết bị: {displayEquipment.ma_thiet_bi}</DialogDescription>
         </DialogHeader>
         <EquipmentDetailTabs
-          addAttachment={addAttachment}
-          attachments={attachments}
-          currentTab={currentTab}
-          deleteAttachment={deleteAttachment}
-          displayEquipment={displayEquipment}
-          editForm={editForm}
-          equipment={equipment}
-          history={history}
-          isAddingAttachment={isAddingAttachment}
-          isDeletingAttachment={isDeletingAttachment}
-          isEditingDetails={isEditingDetails}
-          isLoadingAttachments={isLoadingAttachments}
-          isLoadingHistory={isLoadingHistory}
-          onSubmitInlineEdit={onSubmitInlineEdit}
-          onTabChange={setCurrentTab}
-          tabsScrollRef={tabsScrollRef}
+          attachments={attachmentTabsProps}
+          detail={detailTabsProps}
+          history={historyTabsProps}
+          usageEquipment={equipment}
         />
         <DialogFooter className="shrink-0 pt-4 border-t">
           <EquipmentDetailFooter
@@ -210,17 +252,12 @@ export function EquipmentDetailDialog({
             isEditingDetails={isEditingDetails}
             isRegionalLeader={isRegionalLeader}
             isUpdating={isUpdating}
-            onCancelEditing={() => {
-              editForm.reset(equipmentToFormValues(displayEquipment))
-              setIsEditingDetails(false)
-            }}
-            onClose={() => handleDialogOpenChange(false)}
-            onDeleteEquipment={() => openDeleteDialog(equipment, "detail_dialog")}
-            onGenerateDeviceLabel={() => onGenerateDeviceLabel(displayEquipment)}
-            onGenerateProfileSheet={() => onGenerateProfileSheet(displayEquipment)}
-            onStartEditing={() => {
-              setIsEditingDetails(true)
-            }}
+            onCancelEditing={handleCancelEditing}
+            onClose={handleClose}
+            onDeleteEquipment={handleDeleteEquipment}
+            onGenerateDeviceLabel={handleGenerateDeviceLabelClick}
+            onGenerateProfileSheet={handleGenerateProfileSheetClick}
+            onStartEditing={handleStartEditing}
           />
         </DialogFooter>
       </DialogContent>

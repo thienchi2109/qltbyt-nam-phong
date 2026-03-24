@@ -15,50 +15,51 @@ import { EquipmentDetailFilesTab } from "./EquipmentDetailFilesTab"
 import { EquipmentDetailHistoryTab } from "./EquipmentDetailHistoryTab"
 import { EquipmentDetailUsageTab } from "./EquipmentDetailUsageTab"
 
-interface EquipmentDetailTabsProps {
+interface EquipmentDetailTabsAttachmentsProps {
   addAttachment: (params: { name: string; url: string }) => Promise<void>
   attachments: Attachment[]
-  currentTab: string
   deleteAttachment: (attachmentId: string) => Promise<void>
-  displayEquipment: Equipment
-  editForm: UseFormReturn<EquipmentFormValues>
-  equipment: Equipment
-  history: HistoryItem[]
+  googleDriveFolderUrl: Equipment["google_drive_folder_url"]
   isAddingAttachment: boolean
   isDeletingAttachment: boolean
-  isEditingDetails: boolean
   isLoadingAttachments: boolean
-  isLoadingHistory: boolean
+}
+
+interface EquipmentDetailTabsDetailProps {
+  currentTab: string
+  displayEquipment: Equipment
+  editForm: UseFormReturn<EquipmentFormValues>
+  isEditingDetails: boolean
   onSubmitInlineEdit: (values: EquipmentFormValues) => Promise<void>
   onTabChange: (value: string) => void
   tabsScrollRef: React.MutableRefObject<HTMLDivElement | null>
 }
 
+interface EquipmentDetailTabsHistoryProps {
+  history: HistoryItem[]
+  isLoadingHistory: boolean
+}
+
+interface EquipmentDetailTabsProps {
+  attachments: EquipmentDetailTabsAttachmentsProps
+  detail: EquipmentDetailTabsDetailProps
+  history: EquipmentDetailTabsHistoryProps
+  usageEquipment: Equipment
+}
+
 export function EquipmentDetailTabs({
-  addAttachment,
   attachments,
-  currentTab,
-  deleteAttachment,
-  displayEquipment,
-  editForm,
-  equipment,
+  detail,
   history,
-  isAddingAttachment,
-  isDeletingAttachment,
-  isEditingDetails,
-  isLoadingAttachments,
-  isLoadingHistory,
-  onSubmitInlineEdit,
-  onTabChange,
-  tabsScrollRef,
+  usageEquipment,
 }: EquipmentDetailTabsProps): React.ReactNode {
   return (
     <Tabs
-      value={currentTab}
-      onValueChange={onTabChange}
+      value={detail.currentTab}
+      onValueChange={detail.onTabChange}
       className="flex-grow flex flex-col overflow-hidden"
     >
-      <div ref={tabsScrollRef} className="overflow-x-auto flex-shrink-0">
+      <div ref={detail.tabsScrollRef} className="overflow-x-auto flex-shrink-0">
         <TabsList className="w-max">
           <TabsTrigger value="details">Thông tin chi tiết</TabsTrigger>
           <TabsTrigger value="config">Cấu hình & Phụ kiện</TabsTrigger>
@@ -68,50 +69,53 @@ export function EquipmentDetailTabs({
         </TabsList>
       </div>
 
-      <FormProvider {...editForm}>
+      <FormProvider {...detail.editForm}>
         <TabsContent
           value="details"
-          className={`flex-grow overflow-hidden ${currentTab !== "details" && isEditingDetails ? "hidden" : ""}`}
-          forceMount={isEditingDetails ? true : undefined}
+          className={`flex-grow overflow-hidden ${detail.currentTab !== "details" && detail.isEditingDetails ? "hidden" : ""}`}
+          forceMount={detail.isEditingDetails ? true : undefined}
         >
           <EquipmentDetailDetailsTab
-            displayEquipment={displayEquipment}
-            isEditing={isEditingDetails}
+            displayEquipment={detail.displayEquipment}
+            isEditing={detail.isEditingDetails}
           >
             <EquipmentDetailEditForm
               formId="equipment-inline-edit-form"
-              initialStatus={displayEquipment.tinh_trang_hien_tai ?? null}
-              onSubmit={onSubmitInlineEdit}
+              initialStatus={detail.displayEquipment.tinh_trang_hien_tai ?? null}
+              onSubmit={detail.onSubmitInlineEdit}
             />
           </EquipmentDetailDetailsTab>
         </TabsContent>
 
         <TabsContent value="config" className="flex-grow overflow-hidden">
           <EquipmentDetailConfigTab
-            displayEquipment={displayEquipment}
-            isEditing={isEditingDetails}
+            displayEquipment={detail.displayEquipment}
+            isEditing={detail.isEditingDetails}
           />
         </TabsContent>
       </FormProvider>
 
       <TabsContent value="files" className="flex-grow overflow-hidden">
         <EquipmentDetailFilesTab
-          attachments={attachments}
-          isLoading={isLoadingAttachments}
-          googleDriveFolderUrl={equipment.google_drive_folder_url}
-          onAddAttachment={addAttachment}
-          onDeleteAttachment={deleteAttachment}
-          isAdding={isAddingAttachment}
-          isDeleting={isDeletingAttachment}
+          attachments={attachments.attachments}
+          isLoading={attachments.isLoadingAttachments}
+          googleDriveFolderUrl={attachments.googleDriveFolderUrl}
+          onAddAttachment={attachments.addAttachment}
+          onDeleteAttachment={attachments.deleteAttachment}
+          isAdding={attachments.isAddingAttachment}
+          isDeleting={attachments.isDeletingAttachment}
         />
       </TabsContent>
 
       <TabsContent value="history" className="flex-grow overflow-hidden">
-        <EquipmentDetailHistoryTab history={history} isLoading={isLoadingHistory} />
+        <EquipmentDetailHistoryTab
+          history={history.history}
+          isLoading={history.isLoadingHistory}
+        />
       </TabsContent>
 
       <TabsContent value="usage" className="flex-grow overflow-hidden">
-        <EquipmentDetailUsageTab equipment={equipment} />
+        <EquipmentDetailUsageTab equipment={usageEquipment} />
       </TabsContent>
     </Tabs>
   )

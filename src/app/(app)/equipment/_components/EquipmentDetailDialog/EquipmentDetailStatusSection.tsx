@@ -15,8 +15,9 @@ import {
 } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 
-import { CLASSIFICATION_OPTIONS } from "./EquipmentDetailFormConstants"
 import type { EquipmentFormValues } from "./EquipmentDetailTypes"
+
+const CLASSIFICATION_OPTIONS = ["A", "B", "C", "D"] as const
 
 export function EquipmentDetailStatusSection() {
   const form = useFormContext<EquipmentFormValues>()
