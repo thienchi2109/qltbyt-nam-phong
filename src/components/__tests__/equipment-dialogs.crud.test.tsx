@@ -301,6 +301,92 @@ describe('Equipment Dialogs CRUD', () => {
         await screen.findByText('Ngày ngừng sử dụng phải sau hoặc bằng ngày đưa vào sử dụng')
       ).toBeInTheDocument()
     })
+
+    it('shows the current tenant as a read-only field', async () => {
+      mockUseSession.mockReturnValue({
+        data: { user: { role: 'admin', don_vi: 5 } },
+        status: 'authenticated',
+      })
+      mockCallRpc.mockImplementation(async ({ fn }) => {
+        if (fn === 'departments_list') {
+          return [{ name: 'Khoa Nội' }]
+        }
+        if (fn === 'tenant_list') {
+          return [{ id: 5, code: 'DV5', name: 'Đơn vị 5' }]
+        }
+        return []
+      })
+
+      render(
+        <AddEquipmentDialog open onOpenChange={vi.fn()} onSuccess={vi.fn()} />,
+        { wrapper: createWrapper() }
+      )
+
+      expect(await screen.findByDisplayValue('Đơn vị 5 (DV5)')).toBeDisabled()
+    })
+
+    it('fills the department field when a department badge is clicked', async () => {
+      mockUseSession.mockReturnValue({
+        data: { user: { role: 'admin', don_vi: 5 } },
+        status: 'authenticated',
+      })
+      mockCallRpc.mockImplementation(async ({ fn }) => {
+        if (fn === 'departments_list') {
+          return [{ name: 'Khoa Nội' }, { name: 'Khoa Ngoại' }]
+        }
+        if (fn === 'tenant_list') {
+          return [{ id: 5, code: 'DV5', name: 'Đơn vị 5' }]
+        }
+        return []
+      })
+
+      render(
+        <AddEquipmentDialog open onOpenChange={vi.fn()} onSuccess={vi.fn()} />,
+        { wrapper: createWrapper() }
+      )
+
+      fireEvent.click(await screen.findByText('Khoa Ngoại'))
+
+      expect(screen.getByLabelText(/Khoa\/Phòng quản lý/)).toHaveValue('Khoa Ngoại')
+    })
+
+    it('resets the form when the dialog closes and opens again', async () => {
+      mockUseSession.mockReturnValue({
+        data: { user: { role: 'admin', don_vi: 5 } },
+        status: 'authenticated',
+      })
+      mockCallRpc.mockImplementation(async ({ fn }) => {
+        if (fn === 'departments_list') {
+          return [{ name: 'Khoa Nội' }]
+        }
+        if (fn === 'tenant_list') {
+          return [{ id: 5, code: 'DV5', name: 'Đơn vị 5' }]
+        }
+        return []
+      })
+
+      const onOpenChange = vi.fn()
+      const view = render(
+        <AddEquipmentDialog open onOpenChange={onOpenChange} onSuccess={vi.fn()} />,
+        { wrapper: createWrapper() }
+      )
+
+      fireEvent.change(screen.getByLabelText('Tên thiết bị'), {
+        target: { value: 'Thiết bị tạm' },
+      })
+      expect(screen.getByLabelText('Tên thiết bị')).toHaveValue('Thiết bị tạm')
+
+      view.rerender(
+        <AddEquipmentDialog open={false} onOpenChange={onOpenChange} onSuccess={vi.fn()} />
+      )
+      view.rerender(
+        <AddEquipmentDialog open onOpenChange={onOpenChange} onSuccess={vi.fn()} />
+      )
+
+      await waitFor(() => {
+        expect(screen.getByLabelText('Tên thiết bị')).toHaveValue('')
+      })
+    })
   })
 
   describe('Update: EditEquipmentDialog', () => {
