@@ -46,6 +46,10 @@ interface AddEquipmentDialogProps {
   onSuccess: () => void
 }
 
+interface CreateEquipmentArgs {
+  p_payload: AddEquipmentFormValues
+}
+
 export function AddEquipmentDialog({
   open,
   onOpenChange,
@@ -54,7 +58,7 @@ export function AddEquipmentDialog({
   const { toast } = useToast()
   const queryClient = useQueryClient()
   const { data: session } = useSession()
-  const user = session?.user as any
+  const user = session?.user
   const isRegionalLeader = isRegionalLeaderRole(user?.role)
 
   const { data: departments = [] } = useQuery({
@@ -97,9 +101,9 @@ export function AddEquipmentDialog({
 
   const createMutation = useMutation({
     mutationFn: async (payload: AddEquipmentFormValues) => {
-      await callRpc<any>({
+      await callRpc<void, CreateEquipmentArgs>({
         fn: "equipment_create",
-        args: { p_payload: payload as any },
+        args: { p_payload: payload },
       })
     },
     onSuccess: () => {
@@ -115,11 +119,12 @@ export function AddEquipmentDialog({
       onOpenChange(false)
       form.reset()
     },
-    onError: (error: any) => {
+    onError: (error: unknown) => {
+      const message = error instanceof Error ? error.message : ""
       toast({
         variant: "destructive",
         title: "Lỗi",
-        description: `Không thể thêm thiết bị. ${error?.message || ""}`,
+        description: `Không thể thêm thiết bị. ${message}`,
       })
     },
   })
