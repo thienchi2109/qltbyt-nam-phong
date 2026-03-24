@@ -190,6 +190,22 @@ describe('Equipment Import Validation', () => {
       expect(result.errors[0]).toContain('Dòng 2')
       expect(result.errors[0]).toContain('Ngày ngừng sử dụng')
     })
+
+    it('should reject ngay_ngung_su_dung earlier than ngay_dua_vao_su_dung', () => {
+      const data: Partial<Equipment>[] = [{
+        khoa_phong_quan_ly: 'Khoa Nội',
+        nguoi_dang_truc_tiep_quan_ly: 'Nguyễn Văn A',
+        tinh_trang_hien_tai: 'Ngưng sử dụng',
+        vi_tri_lap_dat: 'Phòng 101',
+        ngay_dua_vao_su_dung: '2024-12-31',
+        ngay_ngung_su_dung: '2024-12-30',
+      }]
+
+      const result = validateEquipmentData(data, headerMapping)
+      expect(result.isValid).toBe(false)
+      expect(result.errors[0]).toContain('Dòng 2')
+      expect(result.errors[0]).toContain('sau hoặc bằng ngày đưa vào sử dụng')
+    })
   })
 
   describe('Whitespace Handling', () => {

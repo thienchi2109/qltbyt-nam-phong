@@ -21,7 +21,10 @@ import {
 } from "@/lib/date-utils"
 import type { Equipment } from "@/lib/data"
 import { equipmentStatusOptions } from "@/components/equipment/equipment-table-columns"
-import { DECOMMISSION_DATE_STATUS_ERROR_MESSAGE } from "@/components/equipment-decommission-form"
+import {
+  DECOMMISSION_DATE_CHRONOLOGICAL_ERROR_MESSAGE,
+  DECOMMISSION_DATE_STATUS_ERROR_MESSAGE,
+} from "@/components/equipment-decommission-form"
 import {
   useBulkImportState,
   BulkImportFileInput,
@@ -97,12 +100,19 @@ export const validateEquipmentData = (
 
     if (hasStopDateValue) {
       const normalizedFullDate = normalizeFullDateForImport(stopDateValue)
+      const normalizedUsageStartDate = normalizeFullDateForImport(item.ngay_dua_vao_su_dung).value
 
       if (status !== 'Ngưng sử dụng') {
         errors.push(`Dòng ${index + 2}: ${DECOMMISSION_DATE_STATUS_ERROR_MESSAGE}`)
         hasRowError = true
       } else if (normalizedFullDate.rejected || !normalizedFullDate.value) {
         errors.push(`Dòng ${index + 2}: Ngày ngừng sử dụng không hợp lệ. ${FULL_DATE_ERROR_MESSAGE}`)
+        hasRowError = true
+      } else if (
+        normalizedUsageStartDate &&
+        normalizedFullDate.value < normalizedUsageStartDate
+      ) {
+        errors.push(`Dòng ${index + 2}: ${DECOMMISSION_DATE_CHRONOLOGICAL_ERROR_MESSAGE}`)
         hasRowError = true
       } else {
         normalizedItem.ngay_ngung_su_dung = normalizedFullDate.value
