@@ -21,6 +21,7 @@ AS $function$
 DECLARE
   v_role TEXT := COALESCE(public._get_jwt_claim('app_role'), '');
   v_donvi BIGINT := NULLIF(public._get_jwt_claim('don_vi'), '')::BIGINT;
+  v_user_id BIGINT := NULLIF(public._get_jwt_claim('user_id'), '')::BIGINT;
   v_khoa_phong TEXT := COALESCE(p_payload->>'khoa_phong_quan_ly', NULL);
   v_status TEXT := NULLIF(TRIM(p_payload->>'tinh_trang_hien_tai'), '');
   v_ngay_dua_vao_su_dung TEXT := NULLIF(TRIM(p_payload->>'ngay_dua_vao_su_dung'), '');
@@ -35,6 +36,10 @@ BEGIN
     RAISE EXCEPTION 'Missing role claim' USING ERRCODE = '42501';
   END IF;
 
+  IF v_user_id IS NULL THEN
+    RAISE EXCEPTION 'Missing user_id claim' USING ERRCODE = '42501';
+  END IF;
+
   IF v_role NOT IN ('global','to_qltb','technician') THEN
     RAISE EXCEPTION 'Permission denied' USING ERRCODE = '42501';
   END IF;
@@ -46,7 +51,7 @@ BEGIN
   IF v_role = 'technician' THEN
     PERFORM 1
     FROM public.nhan_vien nv
-    WHERE nv.id = (public._get_jwt_claim('user_id'))::BIGINT
+    WHERE nv.id = v_user_id
       AND nv.khoa_phong = v_khoa_phong;
     IF NOT FOUND THEN
       RAISE EXCEPTION 'Technician department mismatch' USING ERRCODE = '42501';
@@ -169,6 +174,7 @@ AS $function$
 DECLARE
   v_role TEXT := lower(COALESCE(public._get_jwt_claim('app_role'), public._get_jwt_claim('role'), ''));
   v_donvi BIGINT := NULLIF(public._get_jwt_claim('don_vi'), '')::BIGINT;
+  v_user_id BIGINT := NULLIF(public._get_jwt_claim('user_id'), '')::BIGINT;
   v_khoa_phong_new TEXT := COALESCE(p_patch->>'khoa_phong_quan_ly', NULL);
   v_patch_status TEXT := NULLIF(TRIM(p_patch->>'tinh_trang_hien_tai'), '');
   v_valid_statuses TEXT[] := ARRAY[
@@ -182,6 +188,10 @@ DECLARE
 BEGIN
   IF v_role IS NULL OR v_role = '' THEN
     RAISE EXCEPTION 'Missing role claim' USING ERRCODE = '42501';
+  END IF;
+
+  IF v_user_id IS NULL THEN
+    RAISE EXCEPTION 'Missing user_id claim' USING ERRCODE = '42501';
   END IF;
 
   IF v_role IN ('regional_leader','user') THEN
@@ -217,7 +227,7 @@ BEGIN
   IF v_role = 'technician' AND v_khoa_phong_new IS NOT NULL THEN
     PERFORM 1
     FROM public.nhan_vien nv
-    WHERE nv.id = (public._get_jwt_claim('user_id'))::BIGINT
+    WHERE nv.id = v_user_id
       AND nv.khoa_phong = v_khoa_phong_new;
     IF NOT FOUND THEN
       RAISE EXCEPTION 'Technician department mismatch' USING ERRCODE = '42501';
