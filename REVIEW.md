@@ -222,6 +222,7 @@ Copy this into PR descriptions:
 
 ```markdown
 ### Review Checklist
+- [ ] Run `node scripts/npm-run.js run verify:no-explicit-any`
 - [ ] No `supabase.from()` or `supabase.rpc()` — all access via `callRpc()`
 - [ ] New RPC functions added to `ALLOWED_FUNCTIONS` whitelist
 - [ ] SQL: JWT claim NULL guards, `FOR UPDATE` locks, tenant isolation
@@ -232,3 +233,10 @@ Copy this into PR descriptions:
 - [ ] TanStack Query for all server data
 - [ ] Tests included for new functionality
 ```
+
+Recommended verification order for TS/React diffs:
+
+1. `node scripts/npm-run.js run verify:no-explicit-any`
+2. `node scripts/npm-run.js run typecheck`
+3. Run focused tests for the changed behavior
+4. `node scripts/npm-run.js npx react-doctor@latest . --verbose -y --project nextn --offline --diff main`

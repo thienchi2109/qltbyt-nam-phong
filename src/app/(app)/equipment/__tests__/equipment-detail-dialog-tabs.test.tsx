@@ -1,6 +1,7 @@
 import { render, screen, fireEvent } from '@testing-library/react'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import * as React from 'react'
+import type { Equipment } from '@/types/database'
 
 const mockOpenDeleteDialog = vi.fn()
 
@@ -74,20 +75,27 @@ vi.mock('../_components/EquipmentDetailDialog/hooks/useEquipmentUpdate', () => (
 
 // Import after mocks
 import { EquipmentDetailDialog } from '../_components/EquipmentDetailDialog'
+import type { UserSession } from '../_components/EquipmentDetailDialog/EquipmentDetailTypes'
 
 describe('EquipmentDetailDialog tabs', () => {
-  const equipment = {
+  const equipment: Equipment = {
     id: 1,
     ma_thiet_bi: 'EQ-001',
     ten_thiet_bi: 'Máy siêu âm',
     khoa_phong_quan_ly: 'Khoa Nội',
-  } as any
+  }
+
+  const user: UserSession = {
+    id: 1,
+    role: 'admin',
+    khoa_phong: null,
+  }
 
   const baseProps = {
     equipment,
     open: true,
     onOpenChange: vi.fn(),
-    user: { id: 1, role: 'admin' } as any,
+    user,
     isRegionalLeader: false,
     onGenerateProfileSheet: vi.fn(),
     onGenerateDeviceLabel: vi.fn(),

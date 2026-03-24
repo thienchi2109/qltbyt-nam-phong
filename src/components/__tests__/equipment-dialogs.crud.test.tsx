@@ -2,6 +2,7 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import * as React from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import type { Equipment } from '@/types/database'
 
 // Mocks
 const mockUseSession = vi.fn()
@@ -396,7 +397,7 @@ describe('Equipment Dialogs CRUD', () => {
       const onOpenChange = vi.fn()
       const onSuccess = vi.fn()
 
-      const equipment = {
+      const equipment: Equipment = {
         id: 1,
         ma_thiet_bi: 'EQ-001',
         ten_thiet_bi: 'Máy siêu âm',
@@ -404,7 +405,7 @@ describe('Equipment Dialogs CRUD', () => {
         khoa_phong_quan_ly: 'Khoa Tim',
         nguoi_dang_truc_tiep_quan_ly: 'Trần Văn B',
         tinh_trang_hien_tai: 'Hoạt động',
-      } as any
+      }
 
       render(
         <EditEquipmentDialog
@@ -448,7 +449,7 @@ describe('Equipment Dialogs CRUD', () => {
       const onOpenChange = vi.fn()
       const onSuccess = vi.fn()
 
-      const equipment = {
+      const equipment: Equipment = {
         id: 1,
         ma_thiet_bi: 'EQ-001',
         ten_thiet_bi: 'Máy siêu âm',
@@ -457,7 +458,7 @@ describe('Equipment Dialogs CRUD', () => {
         nguoi_dang_truc_tiep_quan_ly: 'Trần Văn B',
         tinh_trang_hien_tai: 'Ngưng sử dụng',
         ngay_ngung_su_dung: null,
-      } as any
+      }
 
       render(
         <EditEquipmentDialog
