@@ -22,6 +22,17 @@ node scripts/npm-run.js npx react-doctor@latest . --score --yes --project nextn 
 
 Do not rely on the default `react-doctor` script when you specifically need full-scan metrics.
 
+## Verification Order For TypeScript / React Diffs
+
+When a task changes `.ts` / `.tsx` files, run verification in this order before claiming success, committing, or opening/updating a PR:
+
+1. `node scripts/npm-run.js run verify:no-explicit-any`
+2. `node scripts/npm-run.js run typecheck`
+3. Focused tests for the changed behavior
+4. `node scripts/npm-run.js npx react-doctor@latest . --verbose -y --project nextn --offline --diff main`
+
+`verify:no-explicit-any` is diff-aware. It scans changed TypeScript files (committed branch diff, staged, unstaged, and untracked files) and fails on explicit `any` so REVIEW.md / CLAUDE.md type-safety violations are caught before review.
+
 ## Ralph Flow (Claude Code/Codex Execution)
 
 When running Ralph workflow, follow this exact loop:
@@ -32,7 +43,9 @@ When running Ralph workflow, follow this exact loop:
 2. Ensure git branch matches `prd.json.branchName`; if not, checkout/create from `main`.
 3. Pick the highest-priority story where `passes: false`.
 4. Implement **only that one story**.
-5. Run project quality checks (typecheck, lint, tests as applicable).
+5. Run project quality checks.
+   - For TypeScript / React diffs, run: `verify:no-explicit-any` → `typecheck` → focused tests → other checks as applicable.
+   - Do not skip the explicit-`any` gate just because `typecheck` or `react-doctor` is green.
 6. If checks pass:
    - Commit all related changes with: `feat: [Story ID] - [Story Title]`
    - Update `prd.json` to set that story `passes: true`
@@ -72,7 +85,9 @@ When running Ralph workflow, follow this exact loop:
 **MANDATORY WORKFLOW:**
 
 1. **File issues for remaining work** - Create issues for anything that needs follow-up
-2. **Run quality gates** (if code changed) - Tests, linters, builds
+2. **Run quality gates** (if code changed)
+   - For `.ts` / `.tsx` changes: `node scripts/npm-run.js run verify:no-explicit-any` before `typecheck`, tests, and `react-doctor`
+   - Then run the remaining tests/linters/builds required by the task
 3. **Update issue status** - Close finished work, update in-progress items
 4. **PUSH TO REMOTE** - This is MANDATORY:
    ```bash

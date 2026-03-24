@@ -9,6 +9,7 @@
     "start": "next start",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
+    "verify:no-explicit-any": "node scripts/check-no-explicit-any-in-diff.js",
     "test": "vitest",
     "test:run": "vitest run",
     "test:ui": "vitest --ui",
@@ -24,6 +25,7 @@
     "db:stats": "supabase inspect db db-stats --linked",
     "n": "node scripts/npm-run.js",
     "n:typecheck": "node scripts/npm-run.js run typecheck",
+    "n:verify:no-explicit-any": "node scripts/npm-run.js run verify:no-explicit-any",
     "n:build": "node scripts/npm-run.js run build",
     "n:lint": "node scripts/npm-run.js run lint",
     "n:test": "node scripts/npm-run.js run test:run"
