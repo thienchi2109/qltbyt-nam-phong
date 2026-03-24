@@ -153,6 +153,8 @@ END;
 $function$;
 
 GRANT EXECUTE ON FUNCTION public.equipment_create(jsonb) TO authenticated;
+REVOKE ALL ON FUNCTION public.equipment_create(jsonb) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.equipment_create(jsonb) FROM anon;
 
 CREATE OR REPLACE FUNCTION public.equipment_update(p_id bigint, p_patch jsonb)
 RETURNS boolean
@@ -334,5 +336,7 @@ END;
 $function$;
 
 GRANT EXECUTE ON FUNCTION public.equipment_update(bigint, jsonb) TO authenticated;
+REVOKE ALL ON FUNCTION public.equipment_update(bigint, jsonb) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.equipment_update(bigint, jsonb) FROM anon;
 
 COMMIT;

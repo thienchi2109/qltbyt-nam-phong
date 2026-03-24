@@ -32,7 +32,7 @@ import { type Equipment } from "@/types/database"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { callRpc } from "@/lib/rpc-client"
-import { normalizeDateForForm, normalizePartialDateForForm, formatPartialDateToDisplay, isValidPartialDate, PARTIAL_DATE_ERROR_MESSAGE } from "@/lib/date-utils"
+import { normalizeDateForForm, normalizePartialDateForForm, formatFullDateToDisplay, formatPartialDateToDisplay, isValidPartialDate, PARTIAL_DATE_ERROR_MESSAGE } from "@/lib/date-utils"
 import {
   FULL_DATE_ERROR_MESSAGE,
   isValidFullDate,
@@ -114,7 +114,7 @@ export function EditEquipmentDialog({ open, onOpenChange, onSuccess, equipment }
         // Partial date fields: convert ISO to Vietnamese format for display
         ngay_nhap: formatPartialDateToDisplay(equipment.ngay_nhap) || undefined,
         ngay_dua_vao_su_dung: formatPartialDateToDisplay(equipment.ngay_dua_vao_su_dung) || undefined,
-        ngay_ngung_su_dung: formatPartialDateToDisplay((equipment as Equipment & { ngay_ngung_su_dung?: string | null }).ngay_ngung_su_dung) || undefined,
+        ngay_ngung_su_dung: formatFullDateToDisplay((equipment as Equipment & { ngay_ngung_su_dung?: string | null }).ngay_ngung_su_dung) || undefined,
         han_bao_hanh: formatPartialDateToDisplay(equipment.han_bao_hanh) || undefined,
         nam_san_xuat: equipment.nam_san_xuat ?? undefined,
         gia_goc: equipment.gia_goc ?? undefined,

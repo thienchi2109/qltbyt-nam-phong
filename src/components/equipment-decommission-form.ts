@@ -132,5 +132,5 @@ export function useDecommissionDateAutofill<TFieldValues extends DecommissionDat
     }
 
     previousStatusRef.current = currentStatus ?? null
-  }, [currentDecommissionDate, currentStatus, setValue])
+  }, [currentDecommissionDate, currentStatus, initialStatus, setValue])
 }
