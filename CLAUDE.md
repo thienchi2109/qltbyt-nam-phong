@@ -147,6 +147,7 @@ Use this workflow whenever user requests Ralph flow or execution from `prd.json`
 3. Select highest-priority story with `passes: false`.
 4. Implement only that story.
 5. Run quality gates (typecheck/lint/test as required by project).
+   - For TypeScript / React diffs, run `verify:no-explicit-any` before `typecheck`.
 6. If green:
    - Commit all related changes with: `feat: [Story ID] - [Story Title]`
    - Set that story `passes: true` in `prd.json`
@@ -237,6 +238,7 @@ node scripts/run-cmd.js <command> [args...]
 
 # npm/npx specific helper
 node scripts/npm-run.js run typecheck    # Typecheck (REQUIRED before commits)
+node scripts/npm-run.js run verify:no-explicit-any   # Diff-aware explicit-any gate
 node scripts/npm-run.js run build        # Build with output
 node scripts/npm-run.js run lint         # Lint with output
 node scripts/npm-run.js run test:run     # Run tests
@@ -244,6 +246,7 @@ node scripts/npm-run.js npx <command>    # Any npx command
 
 # Shortcut scripts
 npm run n:typecheck   # Typecheck
+npm run n:verify:no-explicit-any   # Diff-aware explicit-any gate
 npm run n:build       # Build
 npm run n:lint        # Lint
 npm run n:test        # Tests
@@ -254,6 +257,17 @@ npm run n:test        # Tests
 - `scripts/npm-run.js` - Specialized helper for npm/npx commands
 
 **Why:** `.cmd` batch files and some `.exe` files don't return stdout in certain shell contexts (Claude Code's Bash tool). These helpers use Node's `child_process.execSync` to properly capture output.
+
+### Verification Order (MANDATORY for `.ts` / `.tsx` changes)
+
+Run verification in this order before claiming success, committing, or updating a PR:
+
+1. `node scripts/npm-run.js run verify:no-explicit-any`
+2. `node scripts/npm-run.js run typecheck`
+3. Focused tests for the changed behavior
+4. `node scripts/npm-run.js npx react-doctor@latest . --verbose -y --project nextn --offline --diff main`
+
+`verify:no-explicit-any` is diff-aware. It scans changed TypeScript files from the current branch diff plus staged, unstaged, and untracked files, and fails on explicit `any`. Do not rely on `typecheck` or `react-doctor` alone to catch this class of issue.
 
 ### React Doctor: True Full Scan (Non-Diff)
 
