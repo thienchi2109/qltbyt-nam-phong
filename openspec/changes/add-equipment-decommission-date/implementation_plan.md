@@ -24,7 +24,7 @@ Add `ngay_ngung_su_dung` (Ngày ngừng sử dụng) to equipment records and su
 - Enforce the cross-field and status/date rules in RPCs so UI, import, and future callers share one integrity boundary.
 
 ### 2. Types & Date Helpers
-- Add the field to `src/types/database.ts` and `src/lib/data.ts`.
+- Add the field to `src/types/database.ts`, `src/lib/data.ts`, and `src/app/(app)/equipment/types.ts`.
 - Add strict full-date helpers for form and import handling in `src/lib/date-utils.ts`:
   - `isValidFullDate`
   - `normalizeFullDateForForm`
@@ -36,7 +36,7 @@ Add `ngay_ngung_su_dung` (Ngày ngừng sử dụng) to equipment records and su
 ### 3. Import / Template / Export
 - Add the field to `EQUIPMENT_COLUMN_LABELS`, header mapping, export flow, and import parsing.
 - Add template validation guidance so the date column is only valid when status is `"Ngưng sử dụng"`.
-- Reject imported rows where status/date combinations are invalid.
+- Keep current client-side import UX fail-fast: report row-indexed validation errors and require users to fix the file before submission.
 
 ### 4. UI Forms / Detail / Print
 - Add the field to add/edit/detail forms.

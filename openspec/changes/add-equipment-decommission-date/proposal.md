@@ -5,6 +5,7 @@ Equipment lifecycle management currently lacks a formal "date of decommissioning
 - Add nullable `ngay_ngung_su_dung` (TEXT, strict full-date input stored as ISO `YYYY-MM-DD`) to `public.thiet_bi`.
 - Persist the field in equipment write RPCs: `equipment_create` and `equipment_update`.
 - Keep `equipment_bulk_import` structure unchanged (it already loops and calls `equipment_create` per row), while ensuring row-level errors expose new validation failures.
+- Keep current bulk-import UX fail-fast at file level: if client-side validation finds invalid rows, import is blocked until the file is corrected. Partial-success submission behavior is out of scope for this change.
 - Add strict helper contracts in `src/lib/date-utils.ts` for this field:
   - `isValidFullDate(value)` for strict `DD/MM/YYYY` (or ISO `YYYY-MM-DD`) validation.
   - `normalizeFullDateForForm(value)` for form transform to ISO `YYYY-MM-DD`.
@@ -33,7 +34,7 @@ Equipment lifecycle management currently lacks a formal "date of decommissioning
 - Affected specs: `equipment-catalog` (date fields, validation, import, forms)
 - Affected code:
   - **DB/RPC**: Supabase migration + `equipment_create` / `equipment_update` (and bulk-import behavior via existing `equipment_create` delegation)
-  - **Types**: `src/types/database.ts`, `src/lib/data.ts`
+  - **Types**: `src/types/database.ts`, `src/lib/data.ts`, `src/app/(app)/equipment/types.ts`
   - **Date utils**: `src/lib/date-utils.ts`
   - **Table**: `src/components/equipment/equipment-table-columns.tsx`, `src/app/(app)/equipment/_hooks/useEquipmentTable.ts`
   - **Import/Export**: `src/lib/excel-utils.ts`, `src/components/import-equipment-dialog.tsx`, `src/app/(app)/equipment/_hooks/useEquipmentExport.ts`

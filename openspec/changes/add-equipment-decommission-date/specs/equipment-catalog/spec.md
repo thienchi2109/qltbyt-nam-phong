@@ -115,7 +115,7 @@ The system SHALL support an optional `Ngày ngừng sử dụng` column in the e
 
 #### Scenario: Import mixed valid and invalid rows
 - **WHEN** an import file contains both valid rows and rows violating decommission-date rules
-- **THEN** the system reports row-indexed validation errors for invalid rows and preserves successful handling for valid rows
+- **THEN** the system reports row-indexed validation errors and blocks import until the invalid rows are corrected
 
 #### Scenario: Import template guides status/date dependency
 - **WHEN** a user downloads the equipment import template

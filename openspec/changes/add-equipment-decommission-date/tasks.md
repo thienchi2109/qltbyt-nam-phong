@@ -15,7 +15,7 @@
   - Chronological check only when `ngay_dua_vao_su_dung` is full ISO date.
 - [ ] 1.4 Implement `equipment_update` with the same rules, using effective values (existing row + patch) and allowing manual backfill for existing decommissioned records.
 - [ ] 1.5 Verify `equipment_bulk_import` behavior remains delegation-only (`equipment_create` per row) and row-level errors include new validation failures.
-- [ ] 1.6 Update TypeScript types: `src/types/database.ts` + `src/lib/data.ts` to include `ngay_ngung_su_dung`.
+- [ ] 1.6 Update TypeScript types: `src/types/database.ts`, `src/lib/data.ts`, and `src/app/(app)/equipment/types.ts` to include `ngay_ngung_su_dung`.
 
 ## 2. Date Validation Helpers
 - [ ] 2.1 Add failing unit tests for strict helpers (new test file under `src/lib/__tests__/`) covering:
@@ -44,7 +44,7 @@
   - Rejecting rows where `ngay_ngung_su_dung` is present but `tinh_trang_hien_tai` is not `"Ngưng sử dụng"`.
   - Rejecting partial or invalid dates for `ngay_ngung_su_dung`.
   - Accepting a valid row with decommissioned status and a valid full date.
-  - Returning row-indexed error messages for mixed valid/invalid batches.
+  - Returning row-indexed validation errors and blocking submission for mixed valid/invalid files.
 - [ ] 4.5 Add import validation that rejects rows where `ngay_ngung_su_dung` is present but `tinh_trang_hien_tai` is not `"Ngưng sử dụng"`.
 - [ ] 4.6 In `transformRow()` (`import-equipment-dialog.tsx`), add strict handling branch for `ngay_ngung_su_dung` before generic `dateFields` fallback so partial/permissive dates are rejected.
 

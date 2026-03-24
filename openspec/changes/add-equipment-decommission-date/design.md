@@ -28,6 +28,8 @@ The equipment module already tracks lifecycle-related dates such as `ngay_nhap`,
   - Rationale: the field should auto-fill only when the user changes status to `"Ngưng sử dụng"` in the current session, not when an existing legacy record simply loads with that status.
 - Decision: **Excel template validation is UX guidance only; import + RPC remain authoritative**.
   - Rationale: users can still paste data from external files or bypass template hints.
+- Decision: **Bulk import remains fail-fast at file level in the current UI flow**.
+  - Rationale: `useBulkImportState` currently blocks submission when validation errors exist; changing that generic behavior would expand scope beyond adding this field.
 - Decision: **AI is out of scope for now, but explicitly noted for a future follow-up**.
   - Rationale: current product need is equipment CRUD/import/display; AI lookup can be added in a focused subsequent change.
 
@@ -74,9 +76,11 @@ Auto-set MUST:
 - Transition-aware auto-set is slightly more complex than a naive `watch()` effect.
   - Mitigation: track prior status per session and document the non-backfill rule clearly.
 - Excel template custom validation improves usability but will not stop every malformed external file.
-  - Mitigation: reject invalid rows during import with a clear row-level error.
+  - Mitigation: surface row-indexed validation errors and block file submission until invalid rows are corrected.
 - Existing read RPCs and list payloads have mixed projection styles (`SELECT *` / explicit `jsonb_build_object` / `to_jsonb(tb.*)`).
   - Mitigation: include explicit regression checks for table/detail/export/import and avoid assuming every read path auto-includes the new field.
+- Equipment module types are split across shared and feature-local type files.
+  - Mitigation: update `src/types/database.ts`, `src/lib/data.ts`, and `src/app/(app)/equipment/types.ts` together.
 
 ## Migration Plan
 1. Add the nullable DB column.
