@@ -13,6 +13,7 @@ export interface Equipment {
   nam_san_xuat?: number | null;
   ngay_nhap?: string | null;
   ngay_dua_vao_su_dung?: string | null;
+  ngay_ngung_su_dung?: string | null;
   nguon_kinh_phi?: string | null;
   gia_goc?: number | null;
   nam_tinh_hao_mon?: number | null;

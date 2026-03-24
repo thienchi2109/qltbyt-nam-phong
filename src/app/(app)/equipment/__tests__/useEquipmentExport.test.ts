@@ -39,6 +39,7 @@ const mockEquipmentList = [
     don_vi: 5,
     khoa_phong_quan_ly: 'Khoa Nội',
     tinh_trang_hien_tai: 'Hoạt động',
+    ngay_ngung_su_dung: null,
     vi_tri_lap_dat: 'Phòng 101',
     nguoi_dang_truc_tiep_quan_ly: 'Nguyễn Văn A',
   },
@@ -51,6 +52,7 @@ const mockEquipmentList = [
     don_vi: 5,
     khoa_phong_quan_ly: 'Khoa Ngoại',
     tinh_trang_hien_tai: 'Chờ sửa chữa',
+    ngay_ngung_su_dung: '2024-12-31',
     vi_tri_lap_dat: 'Phòng 102',
     nguoi_dang_truc_tiep_quan_ly: 'Trần Thị B',
   },
@@ -223,6 +225,23 @@ describe('useEquipmentExport', () => {
       // Each row should have column labels as keys
       expect(formattedData[0]).toHaveProperty('Mã thiết bị')
       expect(formattedData[0]).toHaveProperty('Tên thiết bị')
+    })
+
+    it('should include Ngày ngừng sử dụng in the exported column set', async () => {
+      mockExportToExcel.mockResolvedValueOnce(undefined)
+
+      const { result } = renderHook(() => useEquipmentExport(createDefaultParams()))
+
+      await act(async () => {
+        await result.current.handleExportData()
+      })
+
+      const exportCall = mockExportToExcel.mock.calls[0]
+      const formattedData = exportCall[0]
+
+      expect(formattedData[0]).toHaveProperty('Ngày ngừng sử dụng')
+      expect(formattedData[1]).toHaveProperty('Ngày ngừng sử dụng')
+      expect(formattedData[1]['Ngày ngừng sử dụng']).toBe('2024-12-31')
     })
   })
 

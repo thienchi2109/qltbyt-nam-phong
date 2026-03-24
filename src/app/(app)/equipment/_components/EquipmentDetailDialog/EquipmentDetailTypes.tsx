@@ -6,6 +6,12 @@
 import * as React from "react"
 import { z } from "zod"
 import {
+  FULL_DATE_ERROR_MESSAGE,
+  isValidFullDate,
+  normalizeFullDateForForm,
+  validateDecommissionDateRules,
+} from "@/components/equipment-decommission-form"
+import {
   ArrowRightLeft,
   Calendar,
   CheckCircle,
@@ -43,6 +49,7 @@ export const equipmentFormSchema = z.object({
   nam_san_xuat: z.coerce.number().optional().nullable(),
   ngay_nhap: z.string().optional().nullable().refine(isValidPartialDate, PARTIAL_DATE_ERROR_MESSAGE).transform(normalizePartialDateForForm),
   ngay_dua_vao_su_dung: z.string().optional().nullable().refine(isValidPartialDate, PARTIAL_DATE_ERROR_MESSAGE).transform(normalizePartialDateForForm),
+  ngay_ngung_su_dung: z.string().optional().nullable().refine(isValidFullDate, FULL_DATE_ERROR_MESSAGE).transform(normalizeFullDateForForm),
   nguon_kinh_phi: z.string().optional().nullable(),
   gia_goc: z.coerce.number().optional().nullable(),
   han_bao_hanh: z.string().optional().nullable().refine(isValidPartialDate, PARTIAL_DATE_ERROR_MESSAGE).transform(normalizePartialDateForForm),
@@ -79,7 +86,7 @@ export const equipmentFormSchema = z.object({
   chu_ky_kd_dinh_ky: z.coerce.number().optional().nullable(),
   ngay_kd_tiep_theo: z.string().optional().nullable().transform(normalizeDateForForm),
   phan_loai_theo_nd98: z.enum(["A", "B", "C", "D"]).optional().nullable(),
-})
+}).superRefine(validateDecommissionDateRules)
 
 /**
  * Inferred type from equipment form schema (output after validation)

@@ -51,6 +51,7 @@ const EQUIPMENT_COLUMN_LABELS: Record<string, string> = {
   nguoi_dang_truc_tiep_quan_ly: 'Người sử dụng',
   khoa_phong_quan_ly: 'Khoa/phòng quản lý',
   tinh_trang_hien_tai: 'Tình trạng',
+  ngay_ngung_su_dung: 'Ngày ngừng sử dụng',
   ghi_chu: 'Ghi chú',
   chu_ky_bt_dinh_ky: 'Chu kỳ BT định kỳ (ngày)',
   ngay_bt_tiep_theo: 'Ngày BT tiếp theo',
@@ -587,6 +588,7 @@ export async function generateEquipmentImportTemplate(): Promise<Blob> {
     instructionsSheet.addRow(['5. LƯU Ý:'])
     instructionsSheet.getRow(notesStartRow).font = { bold: true, size: 12 }
     instructionsSheet.addRow(['   - Cột "Tình trạng" có dropdown để chọn giá trị'])
+    instructionsSheet.addRow(['   - Cột "Ngày ngừng sử dụng" chỉ hợp lệ khi Tình trạng = "Ngưng sử dụng"'])
     instructionsSheet.addRow(['   - Cột "Phân loại theo NĐ98" có dropdown để chọn giá trị'])
     instructionsSheet.addRow(['   - Không thay đổi tên các cột tiêu đề'])
     instructionsSheet.addRow(['   - Các cột có tiêu đề màu đỏ là bắt buộc'])

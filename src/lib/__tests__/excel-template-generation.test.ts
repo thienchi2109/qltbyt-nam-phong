@@ -56,6 +56,7 @@ const EXPECTED_HEADERS = [
   'Người sử dụng',
   'Khoa/phòng quản lý',
   'Tình trạng',
+  'Ngày ngừng sử dụng',
   'Ghi chú',
   'Chu kỳ BT định kỳ (ngày)',
   'Ngày BT tiếp theo',
@@ -387,6 +388,28 @@ describe('Excel Template Generation', () => {
         sheetText.includes('DATE')
 
       expect(hasDateGuidance).toBe(true)
+    })
+
+    it('should mention that Ngày ngừng sử dụng is only valid when Tình trạng is Ngưng sử dụng', () => {
+      if (initError) throw initError
+      let sheetText = ''
+
+      instructionsSheet.eachRow((row) => {
+        row.eachCell((cell) => {
+          sheetText += String(cell.value || '') + '\n'
+        })
+      })
+
+      const instructionLines = sheetText
+        .split('\n')
+        .map((line) => line.trim())
+        .filter(Boolean)
+
+      const hasConditionalGuidance = instructionLines.some(
+        (line) => line.includes('Ngày ngừng sử dụng') && line.includes('Ngưng sử dụng')
+      )
+
+      expect(hasConditionalGuidance).toBe(true)
     })
   })
 

@@ -67,6 +67,24 @@ import { callRpc } from '@/lib/rpc-client'
 
 const mockCallRpc = vi.mocked(callRpc)
 
+function fillRequiredAddFields() {
+  fireEvent.change(screen.getByLabelText('Mã thiết bị'), {
+    target: { value: 'EQ-100' },
+  })
+  fireEvent.change(screen.getByLabelText('Tên thiết bị'), {
+    target: { value: 'Máy xét nghiệm' },
+  })
+  fireEvent.change(screen.getByLabelText(/Vị trí lắp đặt/), {
+    target: { value: 'Phòng 101' },
+  })
+  fireEvent.change(screen.getByLabelText(/Khoa\/Phòng quản lý/), {
+    target: { value: 'Khoa Nội' },
+  })
+  fireEvent.change(screen.getByLabelText(/Người trực tiếp quản lý/), {
+    target: { value: 'Nguyễn Văn A' },
+  })
+}
+
 const createWrapper = () => {
   const queryClient = new QueryClient({
     defaultOptions: {
@@ -112,21 +130,7 @@ describe('Equipment Dialogs CRUD', () => {
         { wrapper: createWrapper() }
       )
 
-      fireEvent.change(screen.getByLabelText('Mã thiết bị'), {
-        target: { value: 'EQ-100' },
-      })
-      fireEvent.change(screen.getByLabelText('Tên thiết bị'), {
-        target: { value: 'Máy xét nghiệm' },
-      })
-      fireEvent.change(screen.getByLabelText(/Vị trí lắp đặt/), {
-        target: { value: 'Phòng 101' },
-      })
-      fireEvent.change(screen.getByLabelText(/Khoa\/Phòng quản lý/), {
-        target: { value: 'Khoa Nội' },
-      })
-      fireEvent.change(screen.getByLabelText(/Người trực tiếp quản lý/), {
-        target: { value: 'Nguyễn Văn A' },
-      })
+      fillRequiredAddFields()
 
       const statusSelect = screen.getByRole('combobox')
       fireEvent.change(statusSelect, { target: { value: 'Hoạt động' } })
@@ -179,6 +183,123 @@ describe('Equipment Dialogs CRUD', () => {
         )
         expect(createCalls).toHaveLength(0)
       })
+    })
+
+    it('auto-fills decommission date only after status transitions to Ngưng sử dụng', async () => {
+      const dateNowSpy = vi
+        .spyOn(Date, 'now')
+        .mockReturnValue(new Date('2026-03-24T17:30:00.000Z').getTime())
+
+      mockUseSession.mockReturnValue({
+        data: { user: { role: 'admin', don_vi: 5 } },
+        status: 'authenticated',
+      })
+      mockCallRpc.mockImplementation(async ({ fn }) => {
+        if (fn === 'departments_list') {
+          return [{ name: 'Khoa Nội' }]
+        }
+        if (fn === 'tenant_list') {
+          return [{ id: 5, code: 'DV5', name: 'Đơn vị 5' }]
+        }
+        return []
+      })
+
+      render(
+        <AddEquipmentDialog open onOpenChange={vi.fn()} onSuccess={vi.fn()} />,
+        { wrapper: createWrapper() }
+      )
+
+      const decommissionDateInput = screen.getByLabelText('Ngày ngừng sử dụng')
+      const statusSelect = screen.getByRole('combobox')
+
+      expect(decommissionDateInput).toHaveValue('')
+
+      fireEvent.change(statusSelect, { target: { value: 'Hoạt động' } })
+      expect(decommissionDateInput).toHaveValue('')
+
+      fireEvent.change(statusSelect, { target: { value: 'Ngưng sử dụng' } })
+      expect(decommissionDateInput).toHaveValue('25/03/2026')
+
+      dateNowSpy.mockRestore()
+    })
+
+    it('shows a status validation error when decommission date is entered for a non-decommissioned status', async () => {
+      mockUseSession.mockReturnValue({
+        data: { user: { role: 'admin', don_vi: 5 } },
+        status: 'authenticated',
+      })
+      mockCallRpc.mockImplementation(async ({ fn }) => {
+        if (fn === 'departments_list') {
+          return [{ name: 'Khoa Nội' }]
+        }
+        if (fn === 'tenant_list') {
+          return [{ id: 5, code: 'DV5', name: 'Đơn vị 5' }]
+        }
+        if (fn === 'equipment_create') {
+          return { id: 99 }
+        }
+        return []
+      })
+
+      render(
+        <AddEquipmentDialog open onOpenChange={vi.fn()} onSuccess={vi.fn()} />,
+        { wrapper: createWrapper() }
+      )
+
+      fillRequiredAddFields()
+      fireEvent.change(screen.getByRole('combobox'), {
+        target: { value: 'Hoạt động' },
+      })
+      fireEvent.change(screen.getByLabelText('Ngày ngừng sử dụng'), {
+        target: { value: '25/03/2026' },
+      })
+
+      fireEvent.click(screen.getByRole('button', { name: 'Lưu' }))
+
+      expect(
+        await screen.findByText('Ngày ngừng sử dụng chỉ được phép khi tình trạng là "Ngưng sử dụng"')
+      ).toBeInTheDocument()
+    })
+
+    it('shows a chronological validation error when decommission date is before a full usage date', async () => {
+      mockUseSession.mockReturnValue({
+        data: { user: { role: 'admin', don_vi: 5 } },
+        status: 'authenticated',
+      })
+      mockCallRpc.mockImplementation(async ({ fn }) => {
+        if (fn === 'departments_list') {
+          return [{ name: 'Khoa Nội' }]
+        }
+        if (fn === 'tenant_list') {
+          return [{ id: 5, code: 'DV5', name: 'Đơn vị 5' }]
+        }
+        if (fn === 'equipment_create') {
+          return { id: 99 }
+        }
+        return []
+      })
+
+      render(
+        <AddEquipmentDialog open onOpenChange={vi.fn()} onSuccess={vi.fn()} />,
+        { wrapper: createWrapper() }
+      )
+
+      fillRequiredAddFields()
+      fireEvent.change(screen.getByRole('combobox'), {
+        target: { value: 'Ngưng sử dụng' },
+      })
+      fireEvent.change(screen.getByLabelText('Ngày đưa vào sử dụng'), {
+        target: { value: '26/03/2026' },
+      })
+      fireEvent.change(screen.getByLabelText('Ngày ngừng sử dụng'), {
+        target: { value: '25/03/2026' },
+      })
+
+      fireEvent.click(screen.getByRole('button', { name: 'Lưu' }))
+
+      expect(
+        await screen.findByText('Ngày ngừng sử dụng phải sau hoặc bằng ngày đưa vào sử dụng')
+      ).toBeInTheDocument()
     })
   })
 
@@ -233,6 +354,61 @@ describe('Equipment Dialogs CRUD', () => {
 
       expect(onSuccess).toHaveBeenCalled()
       expect(onOpenChange).toHaveBeenCalledWith(false)
+    })
+
+    it('does not auto-fill on initial load and preserves a manual decommission date across status toggles', async () => {
+      mockCallRpc.mockResolvedValue({})
+
+      const onOpenChange = vi.fn()
+      const onSuccess = vi.fn()
+
+      const equipment = {
+        id: 1,
+        ma_thiet_bi: 'EQ-001',
+        ten_thiet_bi: 'Máy siêu âm',
+        vi_tri_lap_dat: 'Phòng 202',
+        khoa_phong_quan_ly: 'Khoa Tim',
+        nguoi_dang_truc_tiep_quan_ly: 'Trần Văn B',
+        tinh_trang_hien_tai: 'Ngưng sử dụng',
+        ngay_ngung_su_dung: null,
+      } as any
+
+      render(
+        <EditEquipmentDialog
+          open
+          onOpenChange={onOpenChange}
+          onSuccess={onSuccess}
+          equipment={equipment}
+        />,
+        { wrapper: createWrapper() }
+      )
+
+      const decommissionDateInput = await screen.findByLabelText('Ngày ngừng sử dụng')
+      expect(decommissionDateInput).toHaveValue('')
+
+      fireEvent.change(decommissionDateInput, {
+        target: { value: '24/03/2026' },
+      })
+
+      const statusSelect = screen.getAllByRole('combobox')[0]
+      fireEvent.change(statusSelect, { target: { value: 'Hoạt động' } })
+      fireEvent.change(statusSelect, { target: { value: 'Ngưng sử dụng' } })
+
+      expect(decommissionDateInput).toHaveValue('24/03/2026')
+
+      fireEvent.click(screen.getByRole('button', { name: 'Lưu thay đổi' }))
+
+      await waitFor(() => {
+        expect(mockCallRpc).toHaveBeenCalledWith({
+          fn: 'equipment_update',
+          args: {
+            p_id: 1,
+            p_patch: expect.objectContaining({
+              ngay_ngung_su_dung: '2026-03-24',
+            }),
+          },
+        })
+      })
     })
   })
 })

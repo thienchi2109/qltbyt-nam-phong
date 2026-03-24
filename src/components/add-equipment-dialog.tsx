@@ -36,6 +36,13 @@ import { Badge } from "@/components/ui/badge"
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query"
 import { callRpc } from "@/lib/rpc-client"
 import { normalizePartialDateForForm, isValidPartialDate, PARTIAL_DATE_ERROR_MESSAGE } from "@/lib/date-utils"
+import {
+  FULL_DATE_ERROR_MESSAGE,
+  isValidFullDate,
+  normalizeFullDateForForm,
+  useDecommissionDateAutofill,
+  validateDecommissionDateRules,
+} from "@/components/equipment-decommission-form"
 import { isGlobalRole, isRegionalLeaderRole } from "@/lib/rbac"
 
 const equipmentStatusOptions = [
@@ -59,6 +66,7 @@ const equipmentFormSchema = z.object({
   nam_san_xuat: z.coerce.number().optional().nullable(),
   ngay_nhap: z.string().optional().nullable().refine(isValidPartialDate, PARTIAL_DATE_ERROR_MESSAGE).transform(normalizePartialDateForForm),
   ngay_dua_vao_su_dung: z.string().optional().nullable().refine(isValidPartialDate, PARTIAL_DATE_ERROR_MESSAGE).transform(normalizePartialDateForForm),
+  ngay_ngung_su_dung: z.string().optional().nullable().refine(isValidFullDate, FULL_DATE_ERROR_MESSAGE).transform(normalizeFullDateForForm),
   nguon_kinh_phi: z.string().optional(),
   gia_goc: z.coerce.number().optional().nullable(),
   han_bao_hanh: z.string().optional().nullable().refine(isValidPartialDate, PARTIAL_DATE_ERROR_MESSAGE).transform(normalizePartialDateForForm),
@@ -69,7 +77,7 @@ const equipmentFormSchema = z.object({
   cau_hinh_thiet_bi: z.string().optional(),
   phu_kien_kem_theo: z.string().optional(),
   ghi_chu: z.string().optional(),
-});
+}).superRefine(validateDecommissionDateRules);
 
 type EquipmentFormValues = z.infer<typeof equipmentFormSchema>
 
@@ -131,6 +139,7 @@ export function AddEquipmentDialog({ open, onOpenChange, onSuccess }: AddEquipme
       nam_san_xuat: null,
       ngay_nhap: "",
       ngay_dua_vao_su_dung: "",
+      ngay_ngung_su_dung: "",
       nguon_kinh_phi: "",
       gia_goc: null,
       han_bao_hanh: "",
@@ -142,6 +151,12 @@ export function AddEquipmentDialog({ open, onOpenChange, onSuccess }: AddEquipme
       phu_kien_kem_theo: "",
       ghi_chu: "",
     },
+  })
+
+  useDecommissionDateAutofill({
+    control: form.control,
+    setValue: form.setValue,
+    initialStatus: null,
   })
 
   React.useEffect(() => {
@@ -278,6 +293,9 @@ export function AddEquipmentDialog({ open, onOpenChange, onSuccess }: AddEquipme
                         <FormItem><FormLabel>Ngày đưa vào sử dụng</FormLabel><FormControl><Input placeholder="DD/MM/YYYY hoặc MM/YYYY hoặc YYYY" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>
                     )} />
                 </div>
+                <FormField control={form.control} name="ngay_ngung_su_dung" render={({ field }) => (
+                    <FormItem><FormLabel>Ngày ngừng sử dụng</FormLabel><FormControl><Input placeholder="DD/MM/YYYY" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>
+                )} />
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <FormField control={form.control} name="nguon_kinh_phi" render={({ field }) => (

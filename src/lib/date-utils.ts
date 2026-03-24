@@ -10,6 +10,137 @@ export const SUSPICIOUS_YEAR_THRESHOLD = 1970
 export const SUSPICIOUS_DATE_WARNING =
   "Định dạng ngày có thể không chính xác. Vui lòng kiểm tra lại ngày đưa vào sử dụng của thiết bị"
 
+const FULL_DATE_VIETNAMESE_PATTERN = /^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/
+const FULL_DATE_ISO_PATTERN = /^(\d{4})-(\d{2})-(\d{2})$/
+
+function isValidCalendarDateParts(year: number, month: number, day: number): boolean {
+  const date = new Date(Date.UTC(year, month - 1, day))
+  return (
+    date.getUTCFullYear() === year &&
+    date.getUTCMonth() === month - 1 &&
+    date.getUTCDate() === day
+  )
+}
+
+function formatIsoFullDate(year: number, month: number, day: number): string {
+  return `${String(year).padStart(4, "0")}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`
+}
+
+function parseStrictFullDate(value: string | null | undefined): string | null {
+  if (!value) return null
+
+  const s = String(value).trim()
+  if (s === "") return null
+
+  const isoMatch = s.match(FULL_DATE_ISO_PATTERN)
+  if (isoMatch) {
+    const year = parseInt(isoMatch[1], 10)
+    const month = parseInt(isoMatch[2], 10)
+    const day = parseInt(isoMatch[3], 10)
+    return isValidCalendarDateParts(year, month, day)
+      ? formatIsoFullDate(year, month, day)
+      : null
+  }
+
+  const vietnameseMatch = s.match(FULL_DATE_VIETNAMESE_PATTERN)
+  if (vietnameseMatch) {
+    const day = parseInt(vietnameseMatch[1], 10)
+    const month = parseInt(vietnameseMatch[2], 10)
+    const year = parseInt(vietnameseMatch[3], 10)
+    return isValidCalendarDateParts(year, month, day)
+      ? formatIsoFullDate(year, month, day)
+      : null
+  }
+
+  return null
+}
+
+function normalizeExcelSerialToFullDate(value: number): NormalizeDateResult {
+  if (!Number.isFinite(value)) {
+    return { value: null, rejected: false }
+  }
+
+  const epoch = new Date(Date.UTC(1899, 11, 30))
+  const milliseconds = Math.round(value * 24 * 60 * 60 * 1000)
+  const date = new Date(epoch.getTime() + milliseconds)
+  const year = date.getUTCFullYear()
+
+  if (year < SUSPICIOUS_YEAR_THRESHOLD) {
+    return { value: null, rejected: true }
+  }
+
+  return {
+    value: formatIsoFullDate(year, date.getUTCMonth() + 1, date.getUTCDate()),
+    rejected: false,
+  }
+}
+
+/** Error message for invalid full date format (Vietnamese) */
+export const FULL_DATE_ERROR_MESSAGE =
+  "Định dạng ngày không hợp lệ. Sử dụng: DD/MM/YYYY"
+
+/**
+ * Validates full date input used by strict full-date fields.
+ * Empty values are allowed for optional form fields.
+ */
+export function isValidFullDate(value: string | null | undefined): boolean {
+  if (!value) return true
+  const s = String(value).trim()
+  if (s === "") return true
+  return parseStrictFullDate(s) !== null
+}
+
+/**
+ * Normalizes strict full-date form input to ISO storage format.
+ */
+export function normalizeFullDateForForm(value: string | null | undefined): string | null {
+  return parseStrictFullDate(value)
+}
+
+/**
+ * Normalizes strict full-date import input without permissive parser fallback.
+ */
+export function normalizeFullDateForImport(value: unknown): NormalizeDateResult {
+  if (value === undefined || value === null || value === "") {
+    return { value: null, rejected: false }
+  }
+
+  if (typeof value === "string") {
+    return { value: parseStrictFullDate(value), rejected: false }
+  }
+
+  if (typeof value === "number") {
+    return normalizeExcelSerialToFullDate(value)
+  }
+
+  return { value: null, rejected: false }
+}
+
+/**
+ * Formats strict full-date values for UI display.
+ * Supports ISO storage format and Vietnamese full-date input.
+ */
+export function formatFullDateToDisplay(value: string | null | undefined): string {
+  if (!value) return ""
+
+  const s = String(value).trim()
+  if (s === "") return ""
+
+  const isoMatch = s.match(FULL_DATE_ISO_PATTERN)
+  if (isoMatch) {
+    return `${isoMatch[3]}/${isoMatch[2]}/${isoMatch[1]}`
+  }
+
+  const vietnameseMatch = s.match(FULL_DATE_VIETNAMESE_PATTERN)
+  if (vietnameseMatch) {
+    const day = vietnameseMatch[1].padStart(2, "0")
+    const month = vietnameseMatch[2].padStart(2, "0")
+    return `${day}/${month}/${vietnameseMatch[3]}`
+  }
+
+  return s
+}
+
 /**
  * Detects suspicious dates with year < 1970 (likely Excel import errors)
  * Handles both YYYY-MM-DD (database format) and DD/MM/YYYY (user input)

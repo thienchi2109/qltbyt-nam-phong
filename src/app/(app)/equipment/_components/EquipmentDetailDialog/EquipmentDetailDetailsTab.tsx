@@ -23,6 +23,7 @@ import {
   getClassificationVariant,
 } from "@/components/equipment/equipment-table-columns"
 import {
+  formatFullDateToDisplay,
   isSuspiciousDate,
   SUSPICIOUS_DATE_WARNING,
   TEXT_DATE_FIELDS,
@@ -80,6 +81,13 @@ function FieldValue({
       return <div className="italic text-muted-foreground">Chưa có dữ liệu</div>
     }
     return <>{`${Number(value).toLocaleString()} đ`}</>
+  }
+
+  if (fieldKey === "ngay_ngung_su_dung") {
+    if (value === null || value === undefined || value === "") {
+      return <div className="italic text-muted-foreground">Chưa có dữ liệu</div>
+    }
+    return <>{formatFullDateToDisplay(String(value))}</>
   }
 
   // Text date fields with suspicious date warning

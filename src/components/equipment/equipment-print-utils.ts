@@ -12,6 +12,7 @@ import type { Equipment } from "@/types/database"
 import type { TenantBranding } from "@/hooks/use-tenant-branding"
 import { callRpc } from "@/lib/rpc-client"
 import { isGlobalRole } from "@/lib/rbac"
+import { formatFullDateToDisplay } from "@/lib/date-utils"
 
 export interface PrintContext {
   tenantBranding: TenantBranding | null | undefined
@@ -222,6 +223,9 @@ export async function generateProfileSheet(
                     </div>
                      <div class="form-section border-t-0">
                         <div class="flex items-baseline"><label class="whitespace-nowrap">17. Tình trạng thiết bị hiện tại:</label><input type="text" class="form-input-line ml-2" value="${formatValue(equipment.tinh_trang_hien_tai)}"></div>
+                    </div>
+                    <div class="form-section border-t-0">
+                        <div class="flex items-baseline"><label class="whitespace-nowrap">18. Ngày ngừng sử dụng:</label><input type="text" class="form-input-line ml-2" value="${formatValue(formatFullDateToDisplay(equipment.ngay_ngung_su_dung))}"></div>
                     </div>
                     <div class="signature-box">
                         <div class="flex">
