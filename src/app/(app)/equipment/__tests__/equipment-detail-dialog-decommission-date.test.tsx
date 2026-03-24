@@ -167,45 +167,47 @@ describe("EquipmentDetailDialog decommission date", () => {
       .spyOn(Date, "now")
       .mockReturnValue(new Date("2026-03-24T17:30:00.000Z").getTime())
 
-    render(
-      <EquipmentDetailDialog
-        {...baseProps}
-        equipment={{
-          id: 7,
-          ma_thiet_bi: "EQ-007",
-          ten_thiet_bi: "Infusion Pump",
-          khoa_phong_quan_ly: "ICU",
-          vi_tri_lap_dat: "P-02",
-          nguoi_dang_truc_tiep_quan_ly: "Trần Văn B",
-          tinh_trang_hien_tai: "Hoạt động",
-          ngay_ngung_su_dung: null,
-        } as Equipment}
-      />
-    )
+    try {
+      render(
+        <EquipmentDetailDialog
+          {...baseProps}
+          equipment={{
+            id: 7,
+            ma_thiet_bi: "EQ-007",
+            ten_thiet_bi: "Infusion Pump",
+            khoa_phong_quan_ly: "ICU",
+            vi_tri_lap_dat: "P-02",
+            nguoi_dang_truc_tiep_quan_ly: "Trần Văn B",
+            tinh_trang_hien_tai: "Hoạt động",
+            ngay_ngung_su_dung: null,
+          } as Equipment}
+        />
+      )
 
-    fireEvent.click(screen.getByRole("button", { name: "Sửa thông tin" }))
+      fireEvent.click(screen.getByRole("button", { name: "Sửa thông tin" }))
 
-    const decommissionDateInput = await screen.findByLabelText("Ngày ngừng sử dụng")
-    expect(decommissionDateInput).toHaveValue("")
+      const decommissionDateInput = await screen.findByLabelText("Ngày ngừng sử dụng")
+      expect(decommissionDateInput).toHaveValue("")
 
-    fireEvent.change(screen.getAllByRole("combobox")[0], {
-      target: { value: "Ngưng sử dụng" },
-    })
-
-    expect(decommissionDateInput).toHaveValue("25/03/2026")
-
-    fireEvent.click(screen.getByRole("button", { name: "Lưu thay đổi" }))
-
-    await waitFor(() => {
-      expect(mockUpdateEquipment).toHaveBeenCalledWith({
-        id: 7,
-        patch: expect.objectContaining({
-          tinh_trang_hien_tai: "Ngưng sử dụng",
-          ngay_ngung_su_dung: "2026-03-25",
-        }),
+      fireEvent.change(screen.getAllByRole("combobox")[0], {
+        target: { value: "Ngưng sử dụng" },
       })
-    })
 
-    dateNowSpy.mockRestore()
+      expect(decommissionDateInput).toHaveValue("25/03/2026")
+
+      fireEvent.click(screen.getByRole("button", { name: "Lưu thay đổi" }))
+
+      await waitFor(() => {
+        expect(mockUpdateEquipment).toHaveBeenCalledWith({
+          id: 7,
+          patch: expect.objectContaining({
+            tinh_trang_hien_tai: "Ngưng sử dụng",
+            ngay_ngung_su_dung: "2026-03-25",
+          }),
+        })
+      })
+    } finally {
+      dateNowSpy.mockRestore()
+    }
   })
 })

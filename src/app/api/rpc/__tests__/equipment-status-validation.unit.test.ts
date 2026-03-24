@@ -12,8 +12,6 @@
 
 import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 
-import { isValidFullDate } from '@/lib/date-utils'
-
 // Valid status values that should be accepted by the RPC
 const VALID_STATUSES = [
   'Hoạt động',
@@ -23,6 +21,8 @@ const VALID_STATUSES = [
   'Ngưng sử dụng',
   'Chưa có nhu cầu sử dụng',
 ] as const
+
+const RPC_FULL_DATE_ERROR_MESSAGE = 'Định dạng ngày không hợp lệ. Sử dụng: YYYY-MM-DD'
 
 // Invalid status values that should be rejected by the RPC
 const INVALID_STATUSES = [
@@ -132,9 +132,15 @@ function validateEquipmentStatus(payload: EquipmentPayload): {
     }
   }
 
+  if (decommissionDate && !isStrictIsoDate(decommissionDate)) {
+    return {
+      valid: false,
+      error: RPC_FULL_DATE_ERROR_MESSAGE,
+    }
+  }
+
   if (
     decommissionDate &&
-    isValidFullDate(decommissionDate) &&
     isStrictIsoDate(decommissionDate) &&
     isStrictIsoDate(commissionDate) &&
     decommissionDate < commissionDate
@@ -286,6 +292,19 @@ describe('Equipment RPC Status Validation', () => {
       }
 
       expect(validateEquipmentStatus(payload)).toEqual({ valid: true })
+    })
+
+    it('should reject invalid decommission date formats even when status is Ngưng sử dụng', () => {
+      const payload: EquipmentPayload = {
+        khoa_phong_quan_ly: 'Khoa Test',
+        tinh_trang_hien_tai: 'Ngưng sử dụng',
+        ngay_ngung_su_dung: '24/03/2025',
+      }
+
+      expect(validateEquipmentStatus(payload)).toEqual({
+        valid: false,
+        error: RPC_FULL_DATE_ERROR_MESSAGE,
+      })
     })
 
     it('should reject decommission date when status is not Ngưng sử dụng', () => {

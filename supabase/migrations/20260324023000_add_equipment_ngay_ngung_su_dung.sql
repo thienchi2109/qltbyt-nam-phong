@@ -63,7 +63,7 @@ BEGIN
     v_ngay_ngung_su_dung !~ '^\d{4}-\d{2}-\d{2}$'
     OR to_char(to_date(v_ngay_ngung_su_dung, 'YYYY-MM-DD'), 'YYYY-MM-DD') <> v_ngay_ngung_su_dung
   ) THEN
-    RAISE EXCEPTION 'Định dạng ngày không hợp lệ. Sử dụng: DD/MM/YYYY'
+    RAISE EXCEPTION 'Định dạng ngày không hợp lệ. Sử dụng: YYYY-MM-DD'
       USING ERRCODE = '22023';
   END IF;
 
@@ -186,7 +186,8 @@ BEGIN
     SELECT *
     INTO v_existing
     FROM public.thiet_bi
-    WHERE id = p_id AND don_vi = v_donvi;
+    WHERE id = p_id AND don_vi = v_donvi
+    FOR UPDATE;
 
     IF NOT FOUND THEN
       RAISE EXCEPTION 'Access denied for update' USING ERRCODE = '42501';
@@ -195,7 +196,8 @@ BEGIN
     SELECT *
     INTO v_existing
     FROM public.thiet_bi
-    WHERE id = p_id;
+    WHERE id = p_id
+    FOR UPDATE;
 
     IF NOT FOUND THEN
       RAISE EXCEPTION 'Equipment not found with ID: %', p_id;
@@ -243,7 +245,7 @@ BEGIN
     v_effective_ngay_ngung_su_dung !~ '^\d{4}-\d{2}-\d{2}$'
     OR to_char(to_date(v_effective_ngay_ngung_su_dung, 'YYYY-MM-DD'), 'YYYY-MM-DD') <> v_effective_ngay_ngung_su_dung
   ) THEN
-    RAISE EXCEPTION 'Định dạng ngày không hợp lệ. Sử dụng: DD/MM/YYYY'
+    RAISE EXCEPTION 'Định dạng ngày không hợp lệ. Sử dụng: YYYY-MM-DD'
       USING ERRCODE = '22023';
   END IF;
 
@@ -291,7 +293,7 @@ BEGIN
     khoa_phong_quan_ly = CASE WHEN p_patch ? 'khoa_phong_quan_ly' THEN NULLIF(p_patch->>'khoa_phong_quan_ly', '') ELSE khoa_phong_quan_ly END,
     vi_tri_lap_dat = CASE WHEN p_patch ? 'vi_tri_lap_dat' THEN NULLIF(p_patch->>'vi_tri_lap_dat', '') ELSE vi_tri_lap_dat END,
     nguoi_dang_truc_tiep_quan_ly = CASE WHEN p_patch ? 'nguoi_dang_truc_tiep_quan_ly' THEN NULLIF(p_patch->>'nguoi_dang_truc_tiep_quan_ly', '') ELSE nguoi_dang_truc_tiep_quan_ly END,
-    tinh_trang_hien_tai = CASE WHEN p_patch ? 'tinh_trang_hien_tai' THEN NULLIF(p_patch->>'tinh_trang_hien_tai', '') ELSE tinh_trang_hien_tai END,
+    tinh_trang_hien_tai = CASE WHEN p_patch ? 'tinh_trang_hien_tai' THEN v_patch_status ELSE tinh_trang_hien_tai END,
     ghi_chu = CASE WHEN p_patch ? 'ghi_chu' THEN NULLIF(p_patch->>'ghi_chu', '') ELSE ghi_chu END,
     chu_ky_bt_dinh_ky = CASE
       WHEN p_patch ? 'chu_ky_bt_dinh_ky' AND p_patch->>'chu_ky_bt_dinh_ky' <> '' THEN (p_patch->>'chu_ky_bt_dinh_ky')::INTEGER

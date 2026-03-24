@@ -40,7 +40,7 @@ import {
   type EquipmentStatus,
   type UserSession,
 } from "./EquipmentDetailTypes"
-import { formatPartialDateToDisplay } from "@/lib/date-utils"
+import { formatFullDateToDisplay, formatPartialDateToDisplay } from "@/lib/date-utils"
 import { isEquipmentManagerRole } from "@/lib/rbac"
 import { useEquipmentHistory } from "./hooks/useEquipmentHistory"
 import { useEquipmentAttachments } from "./hooks/useEquipmentAttachments"
@@ -112,7 +112,7 @@ function equipmentToFormValues(equipment: Equipment) {
     // Partial date fields: convert ISO to Vietnamese format for display in form
     ngay_nhap: formatPartialDateToDisplay(equipment.ngay_nhap) || null,
     ngay_dua_vao_su_dung: formatPartialDateToDisplay(equipment.ngay_dua_vao_su_dung) || null,
-    ngay_ngung_su_dung: formatPartialDateToDisplay((equipment as Equipment & { ngay_ngung_su_dung?: string | null }).ngay_ngung_su_dung) || null,
+    ngay_ngung_su_dung: formatFullDateToDisplay((equipment as Equipment & { ngay_ngung_su_dung?: string | null }).ngay_ngung_su_dung) || null,
     han_bao_hanh: formatPartialDateToDisplay(equipment.han_bao_hanh) || null,
     ngay_bt_tiep_theo: (equipment as Equipment & { ngay_bt_tiep_theo?: string }).ngay_bt_tiep_theo || null,
     ngay_hc_tiep_theo: (equipment as Equipment & { ngay_hc_tiep_theo?: string }).ngay_hc_tiep_theo || null,

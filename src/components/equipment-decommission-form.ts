@@ -1,7 +1,14 @@
 "use client"
 
 import * as React from "react"
-import { useWatch, type Control, type UseFormSetValue } from "react-hook-form"
+import {
+  useWatch,
+  type Control,
+  type FieldValues,
+  type Path,
+  type PathValue,
+  type UseFormSetValue,
+} from "react-hook-form"
 import { z } from "zod"
 import {
   FULL_DATE_ERROR_MESSAGE,
@@ -27,9 +34,14 @@ interface DecommissionDateValidationValues {
   ngay_ngung_su_dung?: string | null | undefined
 }
 
-interface UseDecommissionDateAutofillArgs {
-  control: Control<any>
-  setValue: UseFormSetValue<any>
+interface DecommissionDateFormValues extends FieldValues {
+  tinh_trang_hien_tai?: string | null | undefined
+  ngay_ngung_su_dung?: string | null | undefined
+}
+
+interface UseDecommissionDateAutofillArgs<TFieldValues extends DecommissionDateFormValues> {
+  control: Control<TFieldValues>
+  setValue: UseFormSetValue<TFieldValues>
   initialStatus?: string | null
 }
 
@@ -75,18 +87,18 @@ export function getTodayDateForDecommissionField(): string {
   return formatter.format(new Date(Date.now()))
 }
 
-export function useDecommissionDateAutofill({
+export function useDecommissionDateAutofill<TFieldValues extends DecommissionDateFormValues>({
   control,
   setValue,
   initialStatus = null,
-}: UseDecommissionDateAutofillArgs): void {
+}: UseDecommissionDateAutofillArgs<TFieldValues>): void {
   const currentStatus = useWatch({
     control,
-    name: "tinh_trang_hien_tai",
+    name: "tinh_trang_hien_tai" as Path<TFieldValues>,
   }) as string | null | undefined
   const currentDecommissionDate = useWatch({
     control,
-    name: "ngay_ngung_su_dung",
+    name: "ngay_ngung_su_dung" as Path<TFieldValues>,
   }) as string | null | undefined
   const previousStatusRef = React.useRef<string | null>(initialStatus)
 
@@ -109,10 +121,14 @@ export function useDecommissionDateAutofill({
       currentStatus === DECOMMISSIONED_STATUS &&
       !hasDateValue
     ) {
-      setValue("ngay_ngung_su_dung", getTodayDateForDecommissionField(), {
-        shouldDirty: true,
-        shouldValidate: true,
-      })
+      setValue(
+        "ngay_ngung_su_dung" as Path<TFieldValues>,
+        getTodayDateForDecommissionField() as PathValue<TFieldValues, Path<TFieldValues>>,
+        {
+          shouldDirty: true,
+          shouldValidate: true,
+        }
+      )
     }
 
     previousStatusRef.current = currentStatus ?? null

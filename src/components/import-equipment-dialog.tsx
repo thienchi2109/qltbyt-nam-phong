@@ -206,9 +206,6 @@ export function ImportEquipmentDialog({ open, onOpenChange, onSuccess }: ImportE
       if (key === 'ngay_ngung_su_dung') {
         const dateResult = normalizeFullDateForImport(rawVal)
         value = dateResult.value ?? rawVal
-        if (dateResult.rejected) {
-          rejectedDatesRef.current += 1
-        }
       } else if (dateFields.has(key)) {
         const dateResult = normalizeDateForImport(rawVal)
         value = dateResult.value

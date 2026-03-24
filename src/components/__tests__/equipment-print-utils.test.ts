@@ -36,4 +36,25 @@ describe('equipment-print-utils', () => {
     expect(writtenHtml).toContain('Ngày ngừng sử dụng')
     expect(writtenHtml).toContain('31/12/2024')
   })
+
+  it('escapes unexpected decommission-date strings before injecting profile sheet HTML', async () => {
+    await generateProfileSheet(
+      {
+        id: 1,
+        ma_thiet_bi: 'EQ-001',
+        ten_thiet_bi: 'Máy siêu âm',
+        khoa_phong_quan_ly: 'Khoa Nội',
+        ngay_ngung_su_dung: '\"><script>alert(1)</script>',
+      } as any,
+      {
+        tenantBranding: null,
+        userRole: 'to_qltb',
+        equipmentTenantId: 1,
+      }
+    )
+
+    const writtenHtml = (mockWindow.document.write as unknown as ReturnType<typeof vi.fn>).mock.calls[0][0]
+    expect(writtenHtml).not.toContain('<script>alert(1)</script>')
+    expect(writtenHtml).toContain('&quot;&gt;&lt;script&gt;alert(1)&lt;/script&gt;')
+  })
 })

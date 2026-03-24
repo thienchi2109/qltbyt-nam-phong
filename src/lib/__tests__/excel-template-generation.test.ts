@@ -400,8 +400,16 @@ describe('Excel Template Generation', () => {
         })
       })
 
-      expect(sheetText).toContain('Ngày ngừng sử dụng')
-      expect(sheetText).toContain('Ngưng sử dụng')
+      const instructionLines = sheetText
+        .split('\n')
+        .map((line) => line.trim())
+        .filter(Boolean)
+
+      const hasConditionalGuidance = instructionLines.some(
+        (line) => line.includes('Ngày ngừng sử dụng') && line.includes('Ngưng sử dụng')
+      )
+
+      expect(hasConditionalGuidance).toBe(true)
     })
   })
 

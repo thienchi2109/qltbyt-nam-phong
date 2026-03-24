@@ -987,6 +987,51 @@ describe('ImportEquipmentDialog', () => {
       expect(transformed.ngay_nhap).toBe('generic:2024-12-31')
     })
 
+    it('does not show the rejected-date warning for invalid ngay_ngung_su_dung values', async () => {
+      mockNormalizeFullDateForImport.mockReturnValue({ value: null, rejected: true })
+
+      const mockHandleFileChange = vi.fn(async () => {
+        const hookConfig = mockUseBulkImportState.mock.calls[0][0]
+        hookConfig.transformRow({ ngay_ngung_su_dung: 42 })
+      })
+
+      mockUseBulkImportState.mockImplementation(() => ({
+        state: {
+          status: 'idle',
+          selectedFile: null,
+          parsedData: [],
+          parseError: null,
+          validationErrors: [],
+        },
+        fileInputRef: { current: null },
+        handleFileChange: mockHandleFileChange,
+        resetState: vi.fn(),
+        setSubmitting: vi.fn(),
+        setSuccess: vi.fn(),
+        setSubmitError: vi.fn(),
+      }))
+
+      render(
+        <ImportEquipmentDialog
+          open={true}
+          onOpenChange={() => {}}
+          onSuccess={() => {}}
+        />
+      )
+
+      fireEvent.change(screen.getByTestId('file-input'), {
+        target: { files: [createMockFile()] },
+      })
+
+      await waitFor(() => {
+        expect(mockHandleFileChange).toHaveBeenCalledTimes(1)
+      })
+
+      expect(
+        screen.queryByText(/ngày có định dạng không hợp lệ \(trước năm 1970\) đã bị bỏ qua/i)
+      ).not.toBeInTheDocument()
+    })
+
     it('should pass validateData function to hook', () => {
       setupMockHookState()
 
