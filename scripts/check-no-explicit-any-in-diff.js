@@ -68,16 +68,20 @@ function runGit(args) {
       .split(/\r?\n/)
       .map((line) => line.trim())
       .filter(Boolean)
-  } catch {
-    return []
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error)
+    throw new Error(`git ${args.join(" ")} failed: ${message}`)
   }
 }
 
-function collectChangedTypeScriptFiles(baseRef = DEFAULT_BASE_REF) {
-  const committed = runGit(["diff", "--name-only", "--diff-filter=ACMR", `${baseRef}...HEAD`])
-  const unstaged = runGit(["diff", "--name-only", "--diff-filter=ACMR"])
-  const staged = runGit(["diff", "--cached", "--name-only", "--diff-filter=ACMR"])
-  const untracked = runGit(["ls-files", "--others", "--exclude-standard"])
+function collectChangedTypeScriptFiles(
+  baseRef = DEFAULT_BASE_REF,
+  { runGitImpl = runGit } = {}
+) {
+  const committed = runGitImpl(["diff", "--name-only", "--diff-filter=ACMR", `${baseRef}...HEAD`])
+  const unstaged = runGitImpl(["diff", "--name-only", "--diff-filter=ACMR"])
+  const staged = runGitImpl(["diff", "--cached", "--name-only", "--diff-filter=ACMR"])
+  const untracked = runGitImpl(["ls-files", "--others", "--exclude-standard"])
 
   return [...new Set([...committed, ...unstaged, ...staged, ...untracked])]
     .filter((filePath) => isTypeScriptFile(filePath) && !isIgnoredPath(filePath))
@@ -93,7 +97,16 @@ function scanFiles(filePaths) {
 }
 
 function main() {
-  const filePaths = collectChangedTypeScriptFiles(process.argv[2] || DEFAULT_BASE_REF)
+  let filePaths
+
+  try {
+    filePaths = collectChangedTypeScriptFiles(process.argv[2] || DEFAULT_BASE_REF)
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error)
+    console.error(`Unable to determine changed TypeScript files: ${message}`)
+    process.exitCode = 1
+    return
+  }
 
   if (filePaths.length === 0) {
     console.log("No changed TypeScript files to scan for explicit any.")
@@ -118,6 +131,7 @@ module.exports = {
   collectChangedTypeScriptFiles,
   findExplicitAnyViolations,
   formatViolations,
+  runGit,
   scanFiles,
 }
 

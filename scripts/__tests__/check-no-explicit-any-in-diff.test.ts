@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest"
 
 import {
+  collectChangedTypeScriptFiles,
   findExplicitAnyViolations,
   formatViolations,
 } from "../check-no-explicit-any-in-diff"
@@ -33,5 +34,15 @@ describe("check-no-explicit-any-in-diff", () => {
     `
 
     expect(findExplicitAnyViolations(source, "src/components/add-equipment-dialog.tsx")).toEqual([])
+  })
+
+  it("fails closed when git discovery cannot run", () => {
+    expect(() =>
+      collectChangedTypeScriptFiles("main", {
+        runGitImpl: () => {
+          throw new Error("git diff failed")
+        },
+      })
+    ).toThrow("git diff failed")
   })
 })
