@@ -19,6 +19,10 @@ The system SHALL store an optional decommission date ("Ngày ngừng sử dụng
 - **WHEN** a user enters a partial date (`MM/YYYY` or `YYYY`) for `ngay_ngung_su_dung`
 - **THEN** the form or import flow rejects the value with the error `Định dạng ngày không hợp lệ. Sử dụng: DD/MM/YYYY`
 
+#### Scenario: Invalid calendar date rejected
+- **WHEN** a user enters a malformed full date for `ngay_ngung_su_dung` (for example `32/01/2025`, `29/02/2025` on non-leap year, or month `13`)
+- **THEN** the form or import flow rejects the value with the error `Định dạng ngày không hợp lệ. Sử dụng: DD/MM/YYYY`
+
 ### Requirement: Decommission date status dependency
 The system SHALL only accept `ngay_ngung_su_dung` when `tinh_trang_hien_tai` is `"Ngưng sử dụng"`.
 
@@ -35,11 +39,11 @@ The system SHALL only accept `ngay_ngung_su_dung` when `tinh_trang_hien_tai` is 
 - **THEN** the system accepts the input
 
 ### Requirement: Cross-field date validation
-The system SHALL validate that `ngay_ngung_su_dung >= ngay_dua_vao_su_dung` when both values are present.
+The system SHALL validate that `ngay_ngung_su_dung >= ngay_dua_vao_su_dung` when both values are present and `ngay_dua_vao_su_dung` is a full date (`YYYY-MM-DD`).
 
 #### Scenario: Decommission date before commission date
 - **WHEN** a user enters `ngay_ngung_su_dung` earlier than `ngay_dua_vao_su_dung`
-- **THEN** the system rejects the input with the error `Ngày ngừng sử dụng phải sau ngày đưa vào sử dụng`
+- **THEN** the system rejects the input with the error `Ngày ngừng sử dụng phải sau hoặc bằng ngày đưa vào sử dụng`
 
 #### Scenario: Decommission date equals commission date
 - **WHEN** `ngay_ngung_su_dung` equals `ngay_dua_vao_su_dung`
@@ -49,8 +53,12 @@ The system SHALL validate that `ngay_ngung_su_dung >= ngay_dua_vao_su_dung` when
 - **WHEN** `ngay_dua_vao_su_dung` is empty and `ngay_ngung_su_dung` is provided
 - **THEN** the system accepts the value without cross-field comparison
 
+#### Scenario: Commission date is partial
+- **WHEN** `ngay_dua_vao_su_dung` is partial (`YYYY` or `YYYY-MM`) and `ngay_ngung_su_dung` is provided
+- **THEN** the system accepts the value without chronological comparison
+
 ### Requirement: Auto-set decommission date on status change
-The system SHALL auto-populate `ngay_ngung_su_dung` with today's date (UTC+7, `DD/MM/YYYY`) only when the user changes `tinh_trang_hien_tai` to `"Ngưng sử dụng"` during the current create/edit session and the field is currently empty.
+The system SHALL auto-populate `ngay_ngung_su_dung` with today's date (`DD/MM/YYYY`, timezone `Asia/Ho_Chi_Minh`) only when the user changes `tinh_trang_hien_tai` to `"Ngưng sử dụng"` during the current create/edit session and the field is currently empty.
 
 #### Scenario: Status changed to Ngưng sử dụng with empty decommission date
 - **WHEN** the user changes `tinh_trang_hien_tai` to `"Ngưng sử dụng"` during the current session and `ngay_ngung_su_dung` is empty
@@ -104,6 +112,10 @@ The system SHALL support an optional `Ngày ngừng sử dụng` column in the e
 #### Scenario: Import row with invalid status/date combination
 - **WHEN** an imported row contains `ngay_ngung_su_dung` but `tinh_trang_hien_tai` is not `"Ngưng sử dụng"`
 - **THEN** the system rejects that row with a clear row-level validation error
+
+#### Scenario: Import mixed valid and invalid rows
+- **WHEN** an import file contains both valid rows and rows violating decommission-date rules
+- **THEN** the system reports row-indexed validation errors for invalid rows and preserves successful handling for valid rows
 
 #### Scenario: Import template guides status/date dependency
 - **WHEN** a user downloads the equipment import template

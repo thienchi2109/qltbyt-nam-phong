@@ -31,6 +31,43 @@ The equipment module already tracks lifecycle-related dates such as `ngay_nhap`,
 - Decision: **AI is out of scope for now, but explicitly noted for a future follow-up**.
   - Rationale: current product need is equipment CRUD/import/display; AI lookup can be added in a focused subsequent change.
 
+## Helper Contracts (Strict Full-Date)
+- `isValidFullDate(value: string | null | undefined): boolean`
+  - Accept: `DD/MM/YYYY`, `DD-MM-YYYY`, or ISO `YYYY-MM-DD`.
+  - Reject: partial formats (`MM/YYYY`, `YYYY`) and permissive parser-only inputs.
+- `normalizeFullDateForForm(value: string | null | undefined): string | null`
+  - Input: strict user value.
+  - Output: ISO `YYYY-MM-DD` or `null` for empty.
+- `normalizeFullDateForImport(value: unknown): { value: string | null; rejected: boolean }`
+  - Accept only strict full-date representations and Excel serial dates that map to a full date.
+  - MUST NOT use generic `Date.parse` fallback.
+- `FULL_DATE_ERROR_MESSAGE`
+  - `Định dạng ngày không hợp lệ. Sử dụng: DD/MM/YYYY`
+
+## RPC Validation Contract
+Validation order for `equipment_create` and `equipment_update`:
+1. Extract normalized `ngay_ngung_su_dung` and effective status.
+2. If date has value and status is not `"Ngưng sử dụng"`: reject.
+3. If both dates exist:
+   - Compare only when `ngay_dua_vao_su_dung` is full-date ISO (`YYYY-MM-DD`).
+   - Skip chronological comparison for partial commission dates (`YYYY` or `YYYY-MM`) to avoid false negatives and preserve current partial-date capability.
+
+Recommended error text (consistent across layers):
+- Status dependency: `Ngày ngừng sử dụng chỉ được phép khi tình trạng là "Ngưng sử dụng"`.
+- Chronological rule: `Ngày ngừng sử dụng phải sau hoặc bằng ngày đưa vào sử dụng`.
+
+## Transition-aware Auto-set Contract
+Auto-set happens only when:
+- prior status in this form session is not `"Ngưng sử dụng"`,
+- current status becomes `"Ngưng sử dụng"`,
+- `ngay_ngung_su_dung` is currently empty.
+
+Auto-set MUST:
+- Use timezone `Asia/Ho_Chi_Minh`.
+- Set display value in `DD/MM/YYYY` (form input format).
+- Not trigger on initial load of an already decommissioned record.
+- Not overwrite user-entered value.
+
 ## Risks / Trade-offs
 - Validation now exists in more than one layer (form, import, RPC), so rules must stay synchronized.
   - Mitigation: use shared helper semantics and add explicit tests for import and RPC behavior.
@@ -38,6 +75,8 @@ The equipment module already tracks lifecycle-related dates such as `ngay_nhap`,
   - Mitigation: track prior status per session and document the non-backfill rule clearly.
 - Excel template custom validation improves usability but will not stop every malformed external file.
   - Mitigation: reject invalid rows during import with a clear row-level error.
+- Existing read RPCs and list payloads have mixed projection styles (`SELECT *` / explicit `jsonb_build_object` / `to_jsonb(tb.*)`).
+  - Mitigation: include explicit regression checks for table/detail/export/import and avoid assuming every read path auto-includes the new field.
 
 ## Migration Plan
 1. Add the nullable DB column.
@@ -46,5 +85,20 @@ The equipment module already tracks lifecycle-related dates such as `ngay_nhap`,
 4. Wire the field through import/export, forms, table/detail, and print output.
 5. Add verification coverage for form/import/RPC behavior.
 
+## Test Strategy (TDD-first)
+- Unit tests (logic-level):
+  - `src/lib/__tests__/*` for strict full-date helper behavior and invalid-input rejection.
+  - `src/app/api/rpc/__tests__/equipment-status-validation.unit.test.ts` for validation-contract parity.
+- Component/integration tests:
+  - `src/components/__tests__/import-equipment-validation.test.ts` for strict import rules and row-level errors.
+  - `src/components/__tests__/equipment-dialogs.crud.test.tsx` and detail-dialog tests for transition-aware auto-set and form validation.
+  - `src/app/(app)/equipment/__tests__/useEquipmentExport.test.ts` and `src/lib/__tests__/excel-template-generation.test.ts` for export/template regressions.
+
+Minimum acceptance before implementation completion:
+- New tests fail first, then pass after implementation.
+- No regression in existing equipment import/export/dialog suites.
+
 ## Follow-up Note
-- Future change: add `ngay_ngung_su_dung` to `ai_equipment_lookup` so users can query AI about equipment decommission dates.
+- Future AI-focused change:
+  - Update `ai_equipment_lookup` projection to include `ngay_ngung_su_dung`.
+  - Add AI query guidance/examples for decommission-date questions.

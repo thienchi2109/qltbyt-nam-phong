@@ -7,25 +7,31 @@ Add `ngay_ngung_su_dung` (Ngày ngừng sử dụng) to equipment records and su
 ## Confirmed Rules
 
 1. `ngay_ngung_su_dung` uses strict `DD/MM/YYYY` input and is stored as ISO `YYYY-MM-DD`.
-2. `ngay_ngung_su_dung >= ngay_dua_vao_su_dung` when both are present.
+2. `ngay_ngung_su_dung >= ngay_dua_vao_su_dung` only when `ngay_dua_vao_su_dung` is full date (`YYYY-MM-DD`).
 3. `ngay_ngung_su_dung` is only allowed when `tinh_trang_hien_tai = "Ngưng sử dụng"`.
-4. Auto-set uses Vietnam timezone and only fires when the user changes status to `"Ngưng sử dụng"` in the current session.
+4. Auto-set uses timezone `Asia/Ho_Chi_Minh` and only fires when the user changes status to `"Ngưng sử dụng"` in the current session.
 5. Existing decommissioned records with no date stay empty on load, but users may manually enter the date later.
 6. The equipment table hides this column by default.
 7. AI integration is out of scope for this change.
-8. Future follow-up: add `ngay_ngung_su_dung` to `ai_equipment_lookup`.
+8. Future follow-up: explicitly add `ngay_ngung_su_dung` to `ai_equipment_lookup` projection and AI prompts.
 
 ## Scope Summary
 
 ### 1. DB & RPC
 - Add nullable TEXT column `ngay_ngung_su_dung` to `public.thiet_bi`.
 - Update `equipment_create` and `equipment_update` to persist the field.
+- Keep `equipment_bulk_import` delegation pattern (calls `equipment_create`) and rely on new `equipment_create` validation for row-level enforcement.
 - Enforce the cross-field and status/date rules in RPCs so UI, import, and future callers share one integrity boundary.
 
 ### 2. Types & Date Helpers
 - Add the field to `src/types/database.ts` and `src/lib/data.ts`.
-- Add strict full-date helpers for form and import handling in `src/lib/date-utils.ts`.
-- Avoid the generic permissive import fallback for this field.
+- Add strict full-date helpers for form and import handling in `src/lib/date-utils.ts`:
+  - `isValidFullDate`
+  - `normalizeFullDateForForm`
+  - `normalizeFullDateForImport`
+  - `FULL_DATE_ERROR_MESSAGE`
+- Keep existing partial-date helpers unchanged for legacy fields.
+- Avoid generic permissive import fallback for this field.
 
 ### 3. Import / Template / Export
 - Add the field to `EQUIPMENT_COLUMN_LABELS`, header mapping, export flow, and import parsing.
@@ -63,3 +69,4 @@ Run affected test suites for:
 4. Verify save/import rejection when a non-`"Ngưng sử dụng"` record contains `ngay_ngung_su_dung`.
 5. Verify table default visibility and print output.
 6. Verify downloaded Excel template includes the new column and status/date validation guidance.
+7. Verify chronological check applies only when `ngay_dua_vao_su_dung` is full date (`YYYY-MM-DD`), not partial (`YYYY`/`YYYY-MM`).
