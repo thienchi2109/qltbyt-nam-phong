@@ -89,36 +89,38 @@ describe("EquipmentDetailEditForm", () => {
       .spyOn(Date, "now")
       .mockReturnValue(new Date("2026-03-24T17:30:00.000Z").getTime())
 
-    render(<FormHarness onSubmit={onSubmit} initialStatus="Hoạt động" />)
+    try {
+      render(<FormHarness onSubmit={onSubmit} initialStatus="Hoạt động" />)
 
-    const selects = screen.getAllByRole("combobox")
-    const statusSelect = selects[0]
-    const classificationSelect = selects[1]
-    const decommissionDateInput = screen.getByLabelText("Ngày ngừng sử dụng")
-    const form = document.getElementById("equipment-inline-edit-form")
+      const selects = screen.getAllByRole("combobox")
+      const statusSelect = selects[0]
+      const classificationSelect = selects[1]
+      const decommissionDateInput = screen.getByLabelText("Ngày ngừng sử dụng")
+      const form = document.getElementById("equipment-inline-edit-form")
 
-    expect(decommissionDateInput).toHaveValue("")
+      expect(decommissionDateInput).toHaveValue("")
 
-    fireEvent.change(statusSelect, { target: { value: "Ngưng sử dụng" } })
+      fireEvent.change(statusSelect, { target: { value: "Ngưng sử dụng" } })
 
-    await waitFor(() => {
-      expect(decommissionDateInput).toHaveValue("25/03/2026")
-    })
+      await waitFor(() => {
+        expect(decommissionDateInput).toHaveValue("25/03/2026")
+      })
 
-    fireEvent.change(classificationSelect, { target: { value: "A" } })
-    fireEvent.submit(form!)
+      fireEvent.change(classificationSelect, { target: { value: "A" } })
+      fireEvent.submit(form!)
 
-    await waitFor(() => {
-      expect(onSubmit).toHaveBeenCalled()
-      expect(onSubmit.mock.calls[0]?.[0]).toEqual(
-        expect.objectContaining({
-          tinh_trang_hien_tai: "Ngưng sử dụng",
-          ngay_ngung_su_dung: "2026-03-25",
-          phan_loai_theo_nd98: "A",
-        })
-      )
-    })
-
-    dateNowSpy.mockRestore()
+      await waitFor(() => {
+        expect(onSubmit).toHaveBeenCalled()
+        expect(onSubmit.mock.calls[0]?.[0]).toEqual(
+          expect.objectContaining({
+            tinh_trang_hien_tai: "Ngưng sử dụng",
+            ngay_ngung_su_dung: "2026-03-25",
+            phan_loai_theo_nd98: "A",
+          })
+        )
+      })
+    } finally {
+      dateNowSpy.mockRestore()
+    }
   })
 })
