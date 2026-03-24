@@ -987,6 +987,57 @@ describe('ImportEquipmentDialog', () => {
       expect(transformed.ngay_nhap).toBe('generic:2024-12-31')
     })
 
+    it('skips chronology validation when ngay_dua_vao_su_dung came from a partial raw date', () => {
+      mockNormalizeDateForImport.mockImplementation((val: unknown) => {
+        if (val === '2025') {
+          return { value: '2025-01-01', rejected: false }
+        }
+
+        if (val === '2024-12-31') {
+          return { value: '2024-12-31', rejected: false }
+        }
+
+        return { value: `generic:${String(val)}`, rejected: false }
+      })
+
+      mockNormalizeFullDateForImport.mockImplementation((val: unknown) => {
+        if (val === '2025') {
+          return { value: null, rejected: false }
+        }
+
+        if (val === '2024-12-31' || val === '2025-01-01') {
+          return { value: String(val), rejected: false }
+        }
+
+        return { value: `full:${String(val)}`, rejected: false }
+      })
+
+      setupMockHookState()
+
+      render(
+        <ImportEquipmentDialog
+          open={true}
+          onOpenChange={() => {}}
+          onSuccess={() => {}}
+        />
+      )
+
+      const hookConfig = mockUseBulkImportState.mock.calls[0][0]
+      const transformed = hookConfig.transformRow({
+        khoa_phong_quan_ly: 'Khoa Noi',
+        nguoi_dang_truc_tiep_quan_ly: 'Nguyen Van A',
+        tinh_trang_hien_tai: 'Ngưng sử dụng',
+        vi_tri_lap_dat: 'Phong 101',
+        ngay_dua_vao_su_dung: '2025',
+        ngay_ngung_su_dung: '2024-12-31',
+      })
+
+      const validation = hookConfig.validateData([transformed])
+
+      expect(validation.isValid).toBe(true)
+      expect(validation.errors).toEqual([])
+    })
+
     it('does not show the rejected-date warning for invalid ngay_ngung_su_dung values', async () => {
       mockNormalizeFullDateForImport.mockReturnValue({ value: null, rejected: true })
 

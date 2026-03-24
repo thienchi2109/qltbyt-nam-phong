@@ -46,6 +46,12 @@ export const REQUIRED_FIELDS = {
 
 // Valid status values - moved to module level to avoid recreation on each validation call
 const VALID_STATUSES: Set<string> = new Set(equipmentStatusOptions);
+const strictCommissionDateByRow = new WeakMap<Partial<Equipment>, string | null>()
+
+function getStrictImportFullDate(value: unknown): string | null {
+  const normalized = normalizeFullDateForImport(value)
+  return normalized.rejected ? null : normalized.value
+}
 
 // Validation function for equipment data
 export const validateEquipmentData = (
@@ -100,7 +106,9 @@ export const validateEquipmentData = (
 
     if (hasStopDateValue) {
       const normalizedFullDate = normalizeFullDateForImport(stopDateValue)
-      const normalizedUsageStartDate = normalizeFullDateForImport(item.ngay_dua_vao_su_dung).value
+      const normalizedUsageStartDate = strictCommissionDateByRow.has(item)
+        ? strictCommissionDateByRow.get(item) ?? null
+        : getStrictImportFullDate(item.ngay_dua_vao_su_dung)
 
       if (status !== 'Ngưng sử dụng') {
         errors.push(`Dòng ${index + 2}: ${DECOMMISSION_DATE_STATUS_ERROR_MESSAGE}`)
@@ -210,12 +218,20 @@ export function ImportEquipmentDialog({ open, onOpenChange, onSuccess }: ImportE
 
   const transformRow = React.useCallback((raw: Record<string, unknown>): Partial<Equipment> => {
     const newRow: Partial<Equipment> = {}
+    let strictUsageStartDate: string | null = null
 
     Object.entries(raw).forEach(([key, rawVal]) => {
       let value: unknown = rawVal
       if (key === 'ngay_ngung_su_dung') {
         const dateResult = normalizeFullDateForImport(rawVal)
         value = dateResult.value ?? rawVal
+      } else if (key === 'ngay_dua_vao_su_dung') {
+        strictUsageStartDate = getStrictImportFullDate(rawVal)
+        const dateResult = normalizeDateForImport(rawVal)
+        value = dateResult.value
+        if (dateResult.rejected) {
+          rejectedDatesRef.current += 1
+        }
       } else if (dateFields.has(key)) {
         const dateResult = normalizeDateForImport(rawVal)
         value = dateResult.value
@@ -234,6 +250,7 @@ export function ImportEquipmentDialog({ open, onOpenChange, onSuccess }: ImportE
       newRow[key as keyof Equipment] = value as never
     })
 
+    strictCommissionDateByRow.set(newRow, strictUsageStartDate)
     return newRow
   }, [])
 

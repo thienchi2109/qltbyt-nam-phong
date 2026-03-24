@@ -39,6 +39,10 @@ BEGIN
     RAISE EXCEPTION 'Permission denied' USING ERRCODE = '42501';
   END IF;
 
+  IF v_role <> 'global' AND v_donvi IS NULL THEN
+    RAISE EXCEPTION 'Missing don_vi claim' USING ERRCODE = '42501';
+  END IF;
+
   IF v_role = 'technician' THEN
     PERFORM 1
     FROM public.nhan_vien nv
@@ -182,6 +186,10 @@ BEGIN
 
   IF v_role IN ('regional_leader','user') THEN
     RAISE EXCEPTION 'Permission denied' USING ERRCODE = '42501';
+  END IF;
+
+  IF v_role <> 'global' AND v_donvi IS NULL THEN
+    RAISE EXCEPTION 'Missing don_vi claim' USING ERRCODE = '42501';
   END IF;
 
   IF v_role <> 'global' THEN
