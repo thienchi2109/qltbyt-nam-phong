@@ -27,18 +27,22 @@ vi.mock('@/lib/rpc-client', () => ({
   callRpc: (...args: unknown[]) => mockCallRpc(...args),
 }))
 
+const mockNormalizeDateForImport = vi.fn((val) => ({ value: `generic:${String(val)}`, rejected: false }))
+const mockNormalizeFullDateForImport = vi.fn((val) => ({ value: `full:${String(val)}`, rejected: false }))
 vi.mock('@/lib/date-utils', () => ({
-  normalizeDateForImport: vi.fn((val) => ({ value: val, rejected: false })),
+  normalizeDateForImport: (...args: unknown[]) => mockNormalizeDateForImport(...args),
+  normalizeFullDateForImport: (...args: unknown[]) => mockNormalizeFullDateForImport(...args),
+  FULL_DATE_ERROR_MESSAGE: 'Ngay ngung su dung khong hop le',
 }))
 
 vi.mock('@/components/equipment/equipment-table-columns', () => ({
   equipmentStatusOptions: [
-    'Hoat dong',
-    'Cho sua chua',
-    'Cho bao tri',
-    'Cho hieu chuan/kiem dinh',
-    'Ngung su dung',
-    'Chua co nhu cau su dung',
+    'Hoạt động',
+    'Chờ sửa chữa',
+    'Chờ bảo trì',
+    'Chờ hiệu chuẩn/kiểm định',
+    'Ngưng sử dụng',
+    'Chưa có nhu cầu sử dụng',
   ],
 }))
 
@@ -916,6 +920,27 @@ describe('ImportEquipmentDialog', () => {
             'Tên thiết bị': 'ten_thiet_bi',
             'Model': 'model',
             'Serial': 'serial',
+            'Ngày ngừng sử dụng': 'ngay_ngung_su_dung',
+          }),
+        })
+      )
+    })
+
+    it('should map Ngày ngừng sử dụng to ngay_ngung_su_dung', () => {
+      setupMockHookState()
+
+      render(
+        <ImportEquipmentDialog
+          open={true}
+          onOpenChange={() => {}}
+          onSuccess={() => {}}
+        />
+      )
+
+      expect(mockUseBulkImportState).toHaveBeenCalledWith(
+        expect.objectContaining({
+          headerMap: expect.objectContaining({
+            'Ngày ngừng sử dụng': 'ngay_ngung_su_dung',
           }),
         })
       )
@@ -937,6 +962,29 @@ describe('ImportEquipmentDialog', () => {
           transformRow: expect.any(Function),
         })
       )
+    })
+
+    it('should use the strict full-date helper for ngay_ngung_su_dung before the generic fallback', () => {
+      setupMockHookState()
+
+      render(
+        <ImportEquipmentDialog
+          open={true}
+          onOpenChange={() => {}}
+          onSuccess={() => {}}
+        />
+      )
+
+      const hookConfig = mockUseBulkImportState.mock.calls[0][0]
+      const transformed = hookConfig.transformRow({
+        ngay_nhap: '2024-12-31',
+        ngay_ngung_su_dung: '2024-12-31',
+      })
+
+      expect(mockNormalizeFullDateForImport).toHaveBeenCalledWith('2024-12-31')
+      expect(mockNormalizeDateForImport).toHaveBeenCalledWith('2024-12-31')
+      expect(transformed.ngay_ngung_su_dung).toBe('full:2024-12-31')
+      expect(transformed.ngay_nhap).toBe('generic:2024-12-31')
     })
 
     it('should pass validateData function to hook', () => {

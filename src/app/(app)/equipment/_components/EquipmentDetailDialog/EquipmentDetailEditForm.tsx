@@ -27,6 +27,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { useDecommissionDateAutofill } from "@/components/equipment-decommission-form"
 import { equipmentStatusOptions } from "@/components/equipment/equipment-table-columns"
 import type { EquipmentFormValues } from "./EquipmentDetailTypes"
 
@@ -34,14 +35,22 @@ const CLASSIFICATION_OPTIONS = ["A", "B", "C", "D"] as const
 
 export interface EquipmentDetailEditFormProps {
   formId: string
+  initialStatus?: string | null
   onSubmit: (values: EquipmentFormValues) => void
 }
 
 export function EquipmentDetailEditForm({
   formId,
+  initialStatus,
   onSubmit,
 }: EquipmentDetailEditFormProps): React.ReactNode {
   const form = useFormContext<EquipmentFormValues>()
+
+  useDecommissionDateAutofill({
+    control: form.control,
+    setValue: form.setValue,
+    initialStatus,
+  })
 
   return (
     <form
@@ -229,6 +238,23 @@ export function EquipmentDetailEditForm({
               )}
             />
           </div>
+          <FormField
+            control={form.control}
+            name="ngay_ngung_su_dung"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Ngày ngừng sử dụng</FormLabel>
+                <FormControl>
+                  <Input
+                    placeholder="DD/MM/YYYY"
+                    {...field}
+                    value={field.value ?? ""}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
 
           {/* Funding and Price */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

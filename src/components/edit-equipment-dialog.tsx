@@ -33,6 +33,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { callRpc } from "@/lib/rpc-client"
 import { normalizeDateForForm, normalizePartialDateForForm, formatPartialDateToDisplay, isValidPartialDate, PARTIAL_DATE_ERROR_MESSAGE } from "@/lib/date-utils"
+import {
+  FULL_DATE_ERROR_MESSAGE,
+  isValidFullDate,
+  normalizeFullDateForForm,
+  useDecommissionDateAutofill,
+  validateDecommissionDateRules,
+} from "@/components/equipment-decommission-form"
 import { equipmentStatusOptions } from "@/components/equipment/equipment-table-columns"
 
 const equipmentFormSchema = z.object({
@@ -46,6 +53,7 @@ const equipmentFormSchema = z.object({
   nam_san_xuat: z.coerce.number().optional().nullable(),
   ngay_nhap: z.string().optional().nullable().refine(isValidPartialDate, PARTIAL_DATE_ERROR_MESSAGE).transform(normalizePartialDateForForm),
   ngay_dua_vao_su_dung: z.string().optional().nullable().refine(isValidPartialDate, PARTIAL_DATE_ERROR_MESSAGE).transform(normalizePartialDateForForm),
+  ngay_ngung_su_dung: z.string().optional().nullable().refine(isValidFullDate, FULL_DATE_ERROR_MESSAGE).transform(normalizeFullDateForForm),
   nguon_kinh_phi: z.string().optional().nullable(),
   gia_goc: z.coerce.number().optional().nullable(),
   han_bao_hanh: z.string().optional().nullable().refine(isValidPartialDate, PARTIAL_DATE_ERROR_MESSAGE).transform(normalizePartialDateForForm),
@@ -64,7 +72,7 @@ const equipmentFormSchema = z.object({
   chu_ky_kd_dinh_ky: z.coerce.number().optional().nullable(),
   ngay_kd_tiep_theo: z.string().optional().nullable().transform(normalizeDateForForm),
   phan_loai_theo_nd98: z.enum(['A', 'B', 'C', 'D']).optional().nullable(),
-});
+}).superRefine(validateDecommissionDateRules);
 
 type EquipmentFormValues = z.infer<typeof equipmentFormSchema>
 
@@ -84,6 +92,12 @@ export function EditEquipmentDialog({ open, onOpenChange, onSuccess, equipment }
     defaultValues: {},
   })
 
+  useDecommissionDateAutofill({
+    control: form.control,
+    setValue: form.setValue,
+    initialStatus: equipment?.tinh_trang_hien_tai ?? null,
+  })
+
   React.useEffect(() => {
     if (equipment) {
       form.reset({
@@ -100,6 +114,7 @@ export function EditEquipmentDialog({ open, onOpenChange, onSuccess, equipment }
         // Partial date fields: convert ISO to Vietnamese format for display
         ngay_nhap: formatPartialDateToDisplay(equipment.ngay_nhap) || undefined,
         ngay_dua_vao_su_dung: formatPartialDateToDisplay(equipment.ngay_dua_vao_su_dung) || undefined,
+        ngay_ngung_su_dung: formatPartialDateToDisplay((equipment as Equipment & { ngay_ngung_su_dung?: string | null }).ngay_ngung_su_dung) || undefined,
         han_bao_hanh: formatPartialDateToDisplay(equipment.han_bao_hanh) || undefined,
         nam_san_xuat: equipment.nam_san_xuat ?? undefined,
         gia_goc: equipment.gia_goc ?? undefined,
@@ -203,6 +218,9 @@ export function EditEquipmentDialog({ open, onOpenChange, onSuccess, equipment }
                         <FormItem><FormLabel>Ngày đưa vào sử dụng</FormLabel><FormControl><Input placeholder="DD/MM/YYYY hoặc MM/YYYY hoặc YYYY" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>
                     )} />
                 </div>
+                <FormField control={form.control} name="ngay_ngung_su_dung" render={({ field }) => (
+                    <FormItem><FormLabel>Ngày ngừng sử dụng</FormLabel><FormControl><Input placeholder="DD/MM/YYYY" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>
+                )} />
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <FormField control={form.control} name="nguon_kinh_phi" render={({ field }) => (

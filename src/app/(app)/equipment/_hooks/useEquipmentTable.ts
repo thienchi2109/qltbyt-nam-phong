@@ -45,6 +45,7 @@ const DEFAULT_COLUMN_VISIBILITY: VisibilityState = {
   nguoi_dang_truc_tiep_quan_ly: true,
   khoa_phong_quan_ly: true,
   tinh_trang_hien_tai: true,
+  ngay_ngung_su_dung: false,
   ghi_chu: false,
   chu_ky_bt_dinh_ky: false,
   ngay_bt_tiep_theo: false,

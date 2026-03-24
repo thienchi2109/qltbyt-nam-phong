@@ -14,9 +14,14 @@ import {
 } from "@/components/ui/dialog"
 import { useToast } from "@/hooks/use-toast"
 import { callRpc } from "@/lib/rpc-client"
-import { normalizeDateForImport } from "@/lib/date-utils"
+import {
+  FULL_DATE_ERROR_MESSAGE,
+  normalizeDateForImport,
+  normalizeFullDateForImport,
+} from "@/lib/date-utils"
 import type { Equipment } from "@/lib/data"
 import { equipmentStatusOptions } from "@/components/equipment/equipment-table-columns"
+import { DECOMMISSION_DATE_STATUS_ERROR_MESSAGE } from "@/components/equipment-decommission-form"
 import {
   useBulkImportState,
   BulkImportFileInput,
@@ -48,6 +53,8 @@ export const validateEquipmentData = (
 
   data.forEach((item, index) => {
     const missingFields: string[] = [];
+    const normalizedItem: Partial<Equipment> = { ...item }
+    let hasRowError = false
 
     // Check each required field
     Object.entries(REQUIRED_FIELDS).forEach(([dbKey, displayName]) => {
@@ -58,23 +65,53 @@ export const validateEquipmentData = (
     });
 
     // Validate status value if provided
-    const status = item.tinh_trang_hien_tai;
+    const status =
+      typeof item.tinh_trang_hien_tai === "string"
+        ? item.tinh_trang_hien_tai.trim()
+        : item.tinh_trang_hien_tai;
+    if (typeof status === "string" && status !== "") {
+      normalizedItem.tinh_trang_hien_tai = status as Equipment["tinh_trang_hien_tai"]
+    }
     const hasInvalidStatus = Boolean(
       status &&
       typeof status === 'string' &&
-      status.trim() !== '' &&
-      !VALID_STATUSES.has(status.trim())
+      status !== '' &&
+      !VALID_STATUSES.has(status)
     )
     if (hasInvalidStatus) {
       errors.push(`Dòng ${index + 2}: Tình trạng "${status}" không hợp lệ. Phải là một trong: ${equipmentStatusOptions.join(', ')}`);
+      hasRowError = true
     }
 
     if (missingFields.length > 0) {
       errors.push(`Dòng ${index + 2}: Thiếu ${missingFields.join(', ')}`);
+      hasRowError = true
     }
 
-    if (missingFields.length === 0 && !hasInvalidStatus) {
-      validRecords.push(item)
+    const stopDateValue = (item as Partial<Equipment> & { ngay_ngung_su_dung?: unknown })
+      .ngay_ngung_su_dung
+    const hasStopDateValue =
+      stopDateValue !== undefined &&
+      stopDateValue !== null &&
+      !(typeof stopDateValue === 'string' && stopDateValue.trim() === '')
+
+    if (hasStopDateValue) {
+      const normalizedFullDate = normalizeFullDateForImport(stopDateValue)
+
+      if (status !== 'Ngưng sử dụng') {
+        errors.push(`Dòng ${index + 2}: ${DECOMMISSION_DATE_STATUS_ERROR_MESSAGE}`)
+        hasRowError = true
+      } else if (normalizedFullDate.rejected || !normalizedFullDate.value) {
+        errors.push(`Dòng ${index + 2}: Ngày ngừng sử dụng không hợp lệ. ${FULL_DATE_ERROR_MESSAGE}`)
+        hasRowError = true
+      } else {
+        normalizedItem.ngay_ngung_su_dung = normalizedFullDate.value
+        normalizedItem.tinh_trang_hien_tai = status as Equipment["tinh_trang_hien_tai"]
+      }
+    }
+
+    if (!hasRowError) {
+      validRecords.push(normalizedItem)
     }
   });
 
@@ -99,6 +136,7 @@ const headerToDbKeyMap: Record<string, string> = {
     'Năm sản xuất': 'nam_san_xuat',
     'Ngày nhập': 'ngay_nhap',
     'Ngày đưa vào sử dụng': 'ngay_dua_vao_su_dung',
+    'Ngày ngừng sử dụng': 'ngay_ngung_su_dung',
     'Nguồn kinh phí': 'nguon_kinh_phi',
     'Giá gốc': 'gia_goc',
     'Năm tính hao mòn': 'nam_tinh_hao_mon',
@@ -165,7 +203,13 @@ export function ImportEquipmentDialog({ open, onOpenChange, onSuccess }: ImportE
 
     Object.entries(raw).forEach(([key, rawVal]) => {
       let value: unknown = rawVal
-      if (dateFields.has(key)) {
+      if (key === 'ngay_ngung_su_dung') {
+        const dateResult = normalizeFullDateForImport(rawVal)
+        value = dateResult.value ?? rawVal
+        if (dateResult.rejected) {
+          rejectedDatesRef.current += 1
+        }
+      } else if (dateFields.has(key)) {
         const dateResult = normalizeDateForImport(rawVal)
         value = dateResult.value
         if (dateResult.rejected) {

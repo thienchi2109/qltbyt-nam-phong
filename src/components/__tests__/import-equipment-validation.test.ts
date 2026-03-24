@@ -21,6 +21,7 @@ type Equipment = {
   nguoi_dang_truc_tiep_quan_ly?: string
   tinh_trang_hien_tai?: string
   vi_tri_lap_dat?: string
+  ngay_ngung_su_dung?: string | null
   [key: string]: unknown
 }
 
@@ -155,6 +156,39 @@ describe('Equipment Import Validation', () => {
       expect(result.errors[0]).toContain('Chờ hiệu chuẩn/kiểm định')
       expect(result.errors[0]).toContain('Ngưng sử dụng')
       expect(result.errors[0]).toContain('Chưa có nhu cầu sử dụng')
+    })
+  })
+
+  describe('Ngừng sử dụng Date Rules', () => {
+    it('should reject ngay_ngung_su_dung when the status is not Ngưng sử dụng', () => {
+      const data: Partial<Equipment>[] = [{
+        khoa_phong_quan_ly: 'Khoa Nội',
+        nguoi_dang_truc_tiep_quan_ly: 'Nguyễn Văn A',
+        tinh_trang_hien_tai: 'Hoạt động',
+        vi_tri_lap_dat: 'Phòng 101',
+        ngay_ngung_su_dung: '2024-12-31',
+      }]
+
+      const result = validateEquipmentData(data, headerMapping)
+      expect(result.isValid).toBe(false)
+      expect(result.errors[0]).toContain('Dòng 2')
+      expect(result.errors[0]).toContain('Ngày ngừng sử dụng')
+      expect(result.errors[0]).toContain('Ngưng sử dụng')
+    })
+
+    it('should reject invalid ngay_ngung_su_dung values for Ngưng sử dụng equipment', () => {
+      const data: Partial<Equipment>[] = [{
+        khoa_phong_quan_ly: 'Khoa Nội',
+        nguoi_dang_truc_tiep_quan_ly: 'Nguyễn Văn A',
+        tinh_trang_hien_tai: 'Ngưng sử dụng',
+        vi_tri_lap_dat: 'Phòng 101',
+        ngay_ngung_su_dung: '31/13/2024',
+      }]
+
+      const result = validateEquipmentData(data, headerMapping)
+      expect(result.isValid).toBe(false)
+      expect(result.errors[0]).toContain('Dòng 2')
+      expect(result.errors[0]).toContain('Ngày ngừng sử dụng')
     })
   })
 

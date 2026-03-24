@@ -134,4 +134,10 @@ describe("useEquipmentTable row selection", () => {
       expect(result.current.table.getState().rowSelection).toEqual({})
     })
   })
+
+  it("hides ngay_ngung_su_dung by default", () => {
+    const { result } = renderSelectionHook()
+
+    expect(result.current.columnVisibility.ngay_ngung_su_dung).toBe(false)
+  })
 })

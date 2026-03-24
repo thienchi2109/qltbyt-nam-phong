@@ -12,6 +12,7 @@ export type Equipment = {
   nam_san_xuat: number;
   ngay_nhap: string;
   ngay_dua_vao_su_dung: string;
+  ngay_ngung_su_dung: string | null;
   nguon_kinh_phi: string;
   gia_goc: number;
   nam_tinh_hao_mon: number;

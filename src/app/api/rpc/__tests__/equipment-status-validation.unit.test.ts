@@ -12,6 +12,8 @@
 
 import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 
+import { isValidFullDate } from '@/lib/date-utils'
+
 // Valid status values that should be accepted by the RPC
 const VALID_STATUSES = [
   'Hoạt động',
@@ -56,6 +58,7 @@ interface EquipmentPayload {
   vi_tri_lap_dat?: string
   nguoi_dang_truc_tiep_quan_ly?: string
   tinh_trang_hien_tai?: string
+  ngay_ngung_su_dung?: string
   ghi_chu?: string
   chu_ky_bt_dinh_ky?: number
   ngay_bt_tiep_theo?: string
@@ -65,6 +68,28 @@ interface EquipmentPayload {
   ngay_kd_tiep_theo?: string
   phan_loai_theo_nd98?: string
   nguon_nhap?: string
+}
+
+function isStrictIsoDate(value: string | null | undefined): boolean {
+  if (!value) {
+    return false
+  }
+
+  const match = value.trim().match(/^(\d{4})-(\d{2})-(\d{2})$/)
+  if (!match) {
+    return false
+  }
+
+  const year = Number.parseInt(match[1], 10)
+  const month = Number.parseInt(match[2], 10)
+  const day = Number.parseInt(match[3], 10)
+  const date = new Date(Date.UTC(year, month - 1, day))
+
+  return (
+    date.getUTCFullYear() === year &&
+    date.getUTCMonth() === month - 1 &&
+    date.getUTCDate() === day
+  )
 }
 
 /**
@@ -77,9 +102,18 @@ function validateEquipmentStatus(payload: EquipmentPayload): {
 } {
   const validStatuses = new Set(VALID_STATUSES)
   const status = payload.tinh_trang_hien_tai?.trim()
+  const decommissionDate = payload.ngay_ngung_su_dung?.trim() || null
+  const commissionDate = payload.ngay_dua_vao_su_dung?.trim() || null
 
   // If status is null or empty (after trim), it's valid (not required at RPC level)
   if (!status || status === '') {
+    if (decommissionDate) {
+      return {
+        valid: false,
+        error: 'Ngày ngừng sử dụng chỉ được phép khi tình trạng là "Ngưng sử dụng"',
+      }
+    }
+
     return { valid: true }
   }
 
@@ -88,6 +122,26 @@ function validateEquipmentStatus(payload: EquipmentPayload): {
     return {
       valid: false,
       error: `Invalid status: ${status}. Must be one of: ${VALID_STATUSES.join(', ')}`,
+    }
+  }
+
+  if (decommissionDate && status !== 'Ngưng sử dụng') {
+    return {
+      valid: false,
+      error: 'Ngày ngừng sử dụng chỉ được phép khi tình trạng là "Ngưng sử dụng"',
+    }
+  }
+
+  if (
+    decommissionDate &&
+    isValidFullDate(decommissionDate) &&
+    isStrictIsoDate(decommissionDate) &&
+    isStrictIsoDate(commissionDate) &&
+    decommissionDate < commissionDate
+  ) {
+    return {
+      valid: false,
+      error: 'Ngày ngừng sử dụng phải sau hoặc bằng ngày đưa vào sử dụng',
     }
   }
 
@@ -220,6 +274,66 @@ describe('Equipment RPC Status Validation', () => {
 
       const result = validateEquipmentStatus(payload)
       expect(result.valid).toBe(false)
+    })
+  })
+
+  describe('Decommission Date Contract', () => {
+    it('should accept valid full date when status is Ngưng sử dụng', () => {
+      const payload: EquipmentPayload = {
+        khoa_phong_quan_ly: 'Khoa Test',
+        tinh_trang_hien_tai: 'Ngưng sử dụng',
+        ngay_ngung_su_dung: '2025-03-24',
+      }
+
+      expect(validateEquipmentStatus(payload)).toEqual({ valid: true })
+    })
+
+    it('should reject decommission date when status is not Ngưng sử dụng', () => {
+      const payload: EquipmentPayload = {
+        khoa_phong_quan_ly: 'Khoa Test',
+        tinh_trang_hien_tai: 'Hoạt động',
+        ngay_ngung_su_dung: '2025-03-24',
+      }
+
+      expect(validateEquipmentStatus(payload)).toEqual({
+        valid: false,
+        error: 'Ngày ngừng sử dụng chỉ được phép khi tình trạng là "Ngưng sử dụng"',
+      })
+    })
+
+    it('should reject when decommission date is before a full ISO commission date', () => {
+      const payload: EquipmentPayload = {
+        khoa_phong_quan_ly: 'Khoa Test',
+        tinh_trang_hien_tai: 'Ngưng sử dụng',
+        ngay_dua_vao_su_dung: '2025-03-24',
+        ngay_ngung_su_dung: '2025-03-23',
+      }
+
+      expect(validateEquipmentStatus(payload)).toEqual({
+        valid: false,
+        error: 'Ngày ngừng sử dụng phải sau hoặc bằng ngày đưa vào sử dụng',
+      })
+    })
+
+    it('should accept when commission date is partial', () => {
+      const payloads: EquipmentPayload[] = [
+        {
+          khoa_phong_quan_ly: 'Khoa Test',
+          tinh_trang_hien_tai: 'Ngưng sử dụng',
+          ngay_dua_vao_su_dung: '2025',
+          ngay_ngung_su_dung: '2025-03-23',
+        },
+        {
+          khoa_phong_quan_ly: 'Khoa Test',
+          tinh_trang_hien_tai: 'Ngưng sử dụng',
+          ngay_dua_vao_su_dung: '2025-03',
+          ngay_ngung_su_dung: '2025-03-23',
+        },
+      ]
+
+      payloads.forEach((payload) => {
+        expect(validateEquipmentStatus(payload)).toEqual({ valid: true })
+      })
     })
   })
 })

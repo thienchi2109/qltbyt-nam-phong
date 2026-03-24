@@ -13,7 +13,10 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { createSelectionColumn } from "@/components/ui/data-table-selection"
 import type { Equipment } from "@/types/database"
-import { formatPartialDateToDisplay } from "@/lib/date-utils"
+import {
+  formatFullDateToDisplay,
+  formatPartialDateToDisplay,
+} from "@/lib/date-utils"
 
 /** Partial date fields that should be formatted for display */
 const PARTIAL_DATE_FIELDS: Set<keyof Equipment> = new Set([
@@ -83,6 +86,7 @@ export const columnLabels: Record<string, string> = {
   nguoi_dang_truc_tiep_quan_ly: 'Người sử dụng',
   khoa_phong_quan_ly: 'Khoa/phòng quản lý',
   tinh_trang_hien_tai: 'Tình trạng',
+  ngay_ngung_su_dung: 'Ngày ngừng sử dụng',
   ghi_chu: 'Ghi chú',
   chu_ky_bt_dinh_ky: 'Chu kỳ BT định kỳ (ngày)',
   ngay_bt_tiep_theo: 'Ngày BT tiếp theo',
@@ -179,6 +183,14 @@ export function createEquipmentColumns(
             return <div className="text-right italic text-muted-foreground">Chưa có dữ liệu</div>
           }
           return <div className="text-right">{Number(value).toLocaleString()}đ</div>
+        }
+
+        if (key === 'ngay_ngung_su_dung') {
+          if (value === null || value === undefined || value === "") {
+            return <div className="italic text-muted-foreground">Chưa có dữ liệu</div>
+          }
+          const formatted = formatFullDateToDisplay(String(value))
+          return <div className="truncate max-w-xs">{formatted}</div>
         }
 
         // Format partial date fields (ngay_nhap, ngay_dua_vao_su_dung, han_bao_hanh)
