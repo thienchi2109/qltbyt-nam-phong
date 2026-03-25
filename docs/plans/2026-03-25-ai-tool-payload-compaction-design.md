@@ -18,10 +18,10 @@ This is a cross-tool platform fix, not a one-off patch for `categorySuggestion`.
 5. The app throws: `Request exceeds input size limit`
 
 ### Observed Root Cause
-- The chat route rejects requests when `JSON.stringify(messages).length` exceeds `AI_MAX_INPUT_CHARS` in [src/app/api/chat/route.ts](/root/qltbyt-nam-phong/src/app/api/chat/route.ts).
-- `categorySuggestion` currently maps to `ai_category_list`, which returns the full facility category catalog, including `mo_ta`, `tu_khoa`, and `parent_name`, aggregated as JSON in [supabase/migrations/20260314164300_add_ai_category_list_rpc.sql](/root/qltbyt-nam-phong/supabase/migrations/20260314164300_add_ai_category_list_rpc.sql).
-- The tool executor returns the RPC payload as-is in [src/lib/ai/tools/rpc-tool-executor.ts](/root/qltbyt-nam-phong/src/lib/ai/tools/rpc-tool-executor.ts).
-- The chat UI uses `useChat` with `DefaultChatTransport` in [src/components/assistant/AssistantPanel.tsx](/root/qltbyt-nam-phong/src/components/assistant/AssistantPanel.tsx), and the transport re-sends the full `messages` array on each turn.
+- The chat route rejects requests when `JSON.stringify(messages).length` exceeds `AI_MAX_INPUT_CHARS` in [src/app/api/chat/route.ts](../../src/app/api/chat/route.ts).
+- `categorySuggestion` currently maps to `ai_category_list`, which returns the full facility category catalog, including `mo_ta`, `tu_khoa`, and `parent_name`, aggregated as JSON in [supabase/migrations/20260314164300_add_ai_category_list_rpc.sql](../../supabase/migrations/20260314164300_add_ai_category_list_rpc.sql).
+- The tool executor returns the RPC payload as-is in [src/lib/ai/tools/rpc-tool-executor.ts](../../src/lib/ai/tools/rpc-tool-executor.ts).
+- The chat UI uses `useChat` with `DefaultChatTransport` in [src/components/assistant/AssistantPanel.tsx](../../src/components/assistant/AssistantPanel.tsx), and the transport re-sends the full `messages` array on each turn.
 - Tool outputs are persisted in `message.parts[*].output` and therefore remain part of the serialized history.
 
 ### Why This Will Recur
@@ -34,20 +34,24 @@ This is a cross-tool platform fix, not a one-off patch for `categorySuggestion`.
 
 ## 3. Decision
 
-Adopt a **three-layer payload safety architecture**:
+Adopt a **balanced payload safety architecture** that combines temporary mitigation with shared compaction infrastructure:
 
-1. **Tool contract layer**
-   - Tools return model-safe summaries, not raw database payloads.
-   - Large raw responses become UI artifacts addressed by reference.
+1. **Phase 0 mitigation layer**
+   - Raise the raw chat request budget from `40_000` to `120_000` characters as a temporary mitigation.
+   - This reduces immediate user-facing failures but does not replace compaction.
 
-2. **Transport compaction layer**
-   - Before `/api/chat` requests are sent, `messages` are compacted so model context contains summaries instead of full tool outputs.
+2. **Tool contract layer**
+   - Tools return normalized envelopes with `modelSummary`, `followUpContext`, and `uiArtifact`.
+   - Large raw responses are treated as artifacts, not resendable chat history.
 
-3. **Server guardrail layer**
-   - The chat route compacts and validates incoming history again before model execution.
-   - The server remains authoritative even if a client transport forgets to compact.
+3. **Transport compaction layer**
+   - Before `/api/chat` requests are sent, the transport compacts `messages` so model context contains summaries and follow-up context instead of full tool payloads.
 
-This is the default policy for all assistant tools.
+4. **Server guardrail layer**
+   - The chat route enforces both a raw request budget and a compacted model-context budget.
+   - The server compacts and validates incoming history again before model execution.
+
+This is the default policy for all assistant tools. Raising the limit is part of the design, but only as a mitigation step.
 
 ## 4. Design Principles
 
@@ -55,14 +59,16 @@ This is the default policy for all assistant tools.
 - `messages` sent to the model must contain only reasoning-grade context.
 - Raw lists, full result sets, and verbose structured payloads must not be kept in model-visible history.
 
-### 4.2. UI needs and model needs are different
+### 4.2. UI, follow-up workflows, and model needs are different
 - The UI may need detailed payloads to render cards, previews, and review workflows.
+- Follow-up orchestration may need compact machine-readable identifiers or evidence summaries.
 - The model usually needs only:
   - a short summary,
   - selected fields,
   - a count,
   - a top-k subset,
-  - or an artifact reference.
+  - follow-up-safe structured context,
+  - or artifact metadata.
 
 ### 4.3. No tool-specific exceptions
 - Payload control must live in shared infrastructure.
@@ -70,13 +76,24 @@ This is the default policy for all assistant tools.
 
 ### 4.4. Server-side enforcement is mandatory
 - Client-side compaction improves UX and request efficiency.
-- Server-side compaction prevents regressions, drift, and alternate client breakage.
+- Server-side compaction prevents regressions, drift, alternate client breakage, and oversized raw request abuse.
+
+### 4.5. Keep the wire contract stable in this phase
+- The AI SDK tool-part stream shape should remain stable.
+- Normalize payloads inside `message.parts[*].output` rather than redesigning the stream protocol during this fix.
 
 ## 5. Chosen Remediation Strategy
 
+### 5.0. Raise the raw input limit as temporary mitigation
+
+- Increase the raw request budget from `40_000` to `120_000` characters.
+- Introduce a separate compacted model-context budget of `40_000` characters.
+- Raw and compacted budgets must remain independent.
+- Raising the raw budget is a temporary mitigation step, not the primary fix.
+
 ### 5.1. Introduce a normalized tool output contract
 
-Every tool result should be transformed into a structure with two channels:
+Every tool result should be normalized inside the existing AI SDK tool-part shape:
 
 ```ts
 type ToolResponseEnvelope = {
@@ -86,27 +103,44 @@ type ToolResponseEnvelope = {
     itemCount?: number
     truncated?: boolean
   }
+  followUpContext?: Record<string, unknown>
   uiArtifact?: {
     artifactId: string
     kind: string
     metadata?: Record<string, unknown>
+    legacy?: boolean
   }
 }
 ```
 
 Rules:
+- The AI SDK wire-level part shape remains stable: `message.parts[*].output` carries `ToolResponseEnvelope`.
 - `modelSummary` is the only part eligible to flow back into model-visible `messages`.
-- `uiArtifact` points to the richer payload used for rendering or follow-up UI actions.
-- Full raw tool payloads must not be embedded directly into persistent chat history after execution.
+- `followUpContext` stores compact machine-readable context used by orchestration and follow-up flows.
+- `uiArtifact` points to the richer payload used for UI rendering.
+- Raw payload may exist only transiently long enough to hydrate the client-side artifact store and must be stripped before any history is resent.
+- Rich artifact payloads live in an in-memory `Map<artifactId, unknown>` scoped to the current `AssistantPanel` / chat session.
+- If the UI cannot resolve a referenced artifact, it must render a graceful "data no longer available" placeholder.
+- Full raw tool payloads must not be embedded directly into persistent or resendable chat history after execution.
 
 ### 5.2. Convert `categorySuggestion` from catalog dump to candidate retrieval
 
 `categorySuggestion` should stop returning the full category tree for a facility.
 
 New behavior:
+- `categorySuggestion` requires `device_name: string` in its input schema.
 - If the user has not provided a device name, the assistant asks for it first and does not call the tool.
-- When a device name is available, the tool receives the device name as input.
-- The server returns only top candidate categories needed for reasoning and explanation.
+- When a device name is available, the tool receives it as input and performs server-side candidate retrieval.
+- The server returns a deterministic, budget-aware ranked candidate set rather than the full category tree.
+- The model-visible fields are locked to:
+  - `ma_nhom`
+  - `ten_nhom`
+  - `parent_name`
+  - `phan_loai`
+  - optional `match_reason`
+  - optional `score` or `rank`
+- `top_k = 10` for model-visible candidates.
+- Heavy fields such as `mo_ta` and `tu_khoa` are limited to `top_3` when needed for reasoning, or moved to the artifact channel.
 - The model sees a compact candidate set, not the full facility catalog.
 
 This shifts the tool from:
@@ -123,11 +157,38 @@ Each tool definition should declare or inherit budgets such as:
 - maximum model-visible items
 - maximum model-visible bytes
 - allowed model-visible fields
+- allowed follow-up fields
 - artifact-eligible payload types
+
+Recommended shared shape:
+
+```ts
+type ReadOnlyToolDefinition = {
+  description: string
+  rpcFunction: string
+  inputSchema: z.ZodType<Record<string, unknown>>
+  modelBudget?: {
+    maxItems?: number
+    maxBytes?: number
+    modelVisibleFields?: string[]
+    followUpFields?: string[]
+  }
+  artifactKind?: string
+}
+```
+
+Recommended defaults:
+- `maxItems = 20`
+- `maxBytes = 4000`
+
+Shared request budgets:
+- `AI_MAX_RAW_INPUT_CHARS = 120_000`
+- `AI_MAX_COMPACTED_INPUT_CHARS = 40_000`
 
 If a tool output exceeds budget:
 - summarize it,
 - truncate it to top-k,
+- preserve only required `followUpContext`,
 - or move the raw payload to an artifact channel.
 
 Budget enforcement belongs in shared tool execution plumbing, not scattered across individual tools.
@@ -137,10 +198,12 @@ Budget enforcement belongs in shared tool execution plumbing, not scattered acro
 The chat transport should compact outgoing messages before they are serialized and sent to `/api/chat`.
 
 Compaction behavior should:
-- strip large `output` payloads from tool parts,
-- replace them with compact summaries,
+- use `prepareSendMessagesRequest` in `DefaultChatTransport`,
+- compact a copy of `messages` before serialization,
+- replace raw or legacy tool outputs with `modelSummary`, `followUpContext`, and `uiArtifact` metadata,
 - preserve enough metadata for continuity,
-- keep UI-only state outside model-visible history.
+- keep artifact-store state outside resendable history,
+- avoid rewriting `useChat` internal state as the primary mechanism.
 
 This lowers payload size early and prevents avoidable 400 responses.
 
@@ -149,22 +212,36 @@ This lowers payload size early and prevents avoidable 400 responses.
 The server must perform the same class of protection before converting UI messages to model messages.
 
 Server responsibilities:
-- compute size based on compacted history, not raw UI transcript,
+- retain an independent raw request budget,
+- compute model-context size based on compacted history, not raw UI transcript,
+- compact both legacy and current tool outputs,
 - reject malformed or non-compactable payloads,
 - log the largest contributing message parts,
-- keep the input limit as a safety rail rather than the first line of defense.
+- log whether legacy compaction was applied,
+- keep the compacted input limit as a safety rail rather than the first line of defense.
+
+Updated server order:
+1. Parse request
+2. Enforce raw request budget
+3. Validate schema and UI messages
+4. Compact validated `UIMessage[]`
+5. Enforce compacted model-context budget
+6. Convert to model messages
+7. Execute model
 
 ## 6. Cross-Tool Guardrail Policy
 
 The following rules should apply to every assistant tool:
 
-1. No tool may persist large raw query results directly in model-visible history.
+1. No tool may persist large raw query results directly in resendable or model-visible history.
 2. Every tool must produce a compact model-safe summary.
-3. Every large or rich output must be artifact-capable.
-4. Shared executor logic must enforce payload budgets.
-5. The transport must compact before sending.
-6. The server must compact again before model execution.
-7. Prompt instructions must not force premature broad retrieval when required user input is still missing.
+3. A tool may produce `followUpContext` when downstream logic needs compact structured evidence.
+4. Every large or rich output must be artifact-capable.
+5. No downstream flow may assume raw payloads survive in history; it must depend on `followUpContext` or artifact lookup.
+6. Shared executor logic must enforce payload budgets.
+7. The transport must compact before sending.
+8. The server must compact again before model execution.
+9. Prompt instructions must not force premature broad retrieval when required user input is still missing.
 
 If a new tool cannot satisfy these rules, it is not ready to ship.
 
@@ -178,6 +255,11 @@ to:
 - call the tool only after the minimum identifying input is available,
 - reason over top candidates returned by the server.
 
+Prompt and tool contract must stay aligned:
+- the prompt should no longer require pre-fetching the full category catalog,
+- the prompt may require the answer to cite `Mã nhóm + Tên nhóm`,
+- the tool contract must therefore keep `ma_nhom` model-visible.
+
 More generally:
 - prompts must not force broad retrieval before required disambiguation inputs are known,
 - because premature retrieval multiplies payload size and token waste.
@@ -185,41 +267,55 @@ More generally:
 ## 8. Observability Requirements
 
 To prevent recurrence, add structured telemetry for each assistant turn:
-- serialized raw message size
-- compacted message size
-- largest message part by byte size
-- tool name that produced the largest payload
-- whether artifact fallback was used
-- whether truncation occurred
+- `rawBytes`
+- `compactedBytes`
+- `largestPartBytes`
+- `largestToolName`
+- `artifactUsed`
+- `truncated`
+- `legacyCompactionApplied`
 - whether server-side compaction differed from client-side compaction
 
-These metrics should make payload regressions visible before users hit hard limits.
+These metrics should make payload regressions visible before users hit hard limits and make the Phase 0 mitigation observable.
 
 ## 9. Rollout Plan
 
-### Phase 1. Safety rails
-- Add shared compaction logic in the chat request path.
-- Add server-side logging for payload contributors.
-- Keep the existing input limit in place.
+### Phase 0. Temporary mitigation
+- Raise the raw request limit from `40_000` to `120_000`.
+- Keep telemetry on payload growth while compaction work lands.
+- Do not treat this phase as a sufficient fix.
+
+### Phase 1. Shared budgets and compaction scaffolding
+- Introduce separate raw and compacted input budgets.
+- Add client-side compaction in transport.
+- Add server-side compaction in the chat route.
+- Add structured logging for payload contributors and legacy compaction.
 
 ### Phase 2. Tool contract migration
-- Migrate large-output tools to the envelope pattern.
+- Migrate large-output tools to the envelope pattern with `modelSummary`, `followUpContext`, and `uiArtifact`.
+- Add the client-side per-chat artifact store.
 - Start with `categorySuggestion`, then audit all list- and summary-style tools.
+- Audit `equipmentLookup` carefully because downstream draft flows consume its evidence.
 
-### Phase 3. Prompt alignment
+### Phase 3. Prompt and tool alignment
 - Remove prompt instructions that force broad retrieval before required clarification.
 - Update prompt examples to favor ask-first, retrieve-second behavior.
+- Require `device_name` for `categorySuggestion`.
+- Keep `ma_nhom` available to the model because the prompt expects `Mã nhóm + Tên nhóm`.
 
 ### Phase 4. Hardening
 - Add tests for oversized tool payload histories.
-- Add regression tests ensuring follow-up turns stay under the input budget.
+- Add regression tests ensuring follow-up turns stay under the compacted input budget.
+- Add tests for legacy histories with no artifact-store entry.
 - Fail fast in development when a tool exceeds its declared model-visible budget.
 
 ## 10. Non-Goals
 
-- Raising `AI_MAX_INPUT_CHARS` as the primary fix
+- Treating a higher raw input limit as the primary or sufficient fix
 - Tool-specific hotfixes without shared compaction infrastructure
-- Preserving full raw tool payloads inside model-visible `messages`
+- Preserving full raw tool payloads inside resendable or model-visible `messages`
+- Shipping server-backed artifact persistence in this phase
+- Solving `categorySuggestion` ranking accuracy with a full hybrid-search rewrite as part of this payload-safety work
 - Relying on prompt wording alone as a safety boundary
 
 ## 11. Risks and Tradeoffs
@@ -236,6 +332,18 @@ Mitigation:
 - centralize compaction,
 - add tests for both rendered output and model-visible payload shape.
 
+### Risk: in-memory artifact store is lost on refresh or deploy
+Mitigation:
+- keep `modelSummary` and `followUpContext` in resendable history,
+- render a graceful placeholder when an artifact cannot be resolved,
+- consider server-backed artifact persistence only as a follow-up if product needs it.
+
+### Risk: higher raw input limit temporarily increases request bytes
+Mitigation:
+- separate raw and compacted budgets,
+- add telemetry for raw and compacted sizes,
+- prioritize compaction rollout immediately after the mitigation step.
+
 ### Risk: partial migration leaves old tools unsafe
 Mitigation:
 - place server-side compaction and budget enforcement in shared infrastructure first,
@@ -243,97 +351,76 @@ Mitigation:
 
 ## 12. Final Recommendation
 
-The durable fix is to treat large tool outputs as **artifacts**, not as **chat history**.
+The durable fix is to treat large tool outputs as **artifacts and compact follow-up context**, not as **resendable chat history**.
 
 Concretely:
-- compact tool outputs into model-safe summaries,
-- move large raw payloads behind artifact references,
-- compact history in both transport and server layers,
-- redesign `categorySuggestion` to return candidate matches only after the device name is known,
+- raise the raw request limit temporarily to reduce current failures,
+- split raw and compacted budgets,
+- normalize tool outputs into `modelSummary`, `followUpContext`, and `uiArtifact`,
+- keep rich artifact payloads in a per-chat client-side artifact store,
+- compact history in transport and again on the server,
+- redesign `categorySuggestion` to perform candidate retrieval only after `device_name` is known,
+- keep the AI SDK wire-level part shape stable in this phase,
 - and enforce payload budgets centrally for every tool.
 
-This addresses the current bug at its root and prevents the same failure pattern from resurfacing under other tool names.
+This addresses the current bug at its root, preserves downstream orchestration needs, and prevents the same failure pattern from resurfacing under other tool names.
 
-## 13. Review Findings — Open Decisions (2026-03-25)
+## 13. Locked Decisions (2026-03-25)
 
 > Codebase-verified review using GitNexus context/query/impact, grep, and direct file reads.
 > All root-cause claims in §2 were confirmed against the live codebase.
-> The following issues must be resolved before writing the implementation plan.
+> The design-blocking questions from the review are now resolved.
 
-### 13.1. Raw payload storage mechanism is unspecified
+### 13.1. Limit strategy
 
-**Gap:** `ToolResponseEnvelope.uiArtifact` holds an `artifactId` reference, but nothing describes where the raw payload lives at runtime. Without a concrete store, UI components cannot render rich tool outputs.
+- `40_000 -> 120_000` is accepted as a temporary raw-request mitigation.
+- A separate compacted model-context budget of `40_000` is required.
+- Raising the limit is part of the design, but explicitly not the primary fix.
 
-**Evidence:** `rpc-tool-executor.ts` (37 lines) currently returns `payload` directly with no transformation or caching.
+### 13.2. Tool output contract
 
-**Resolution:** Add a `rawPayload?: unknown` field to `ToolResponseEnvelope` that is explicitly excluded from `messages` serialization, OR define an in-memory artifact store (e.g., `Map<artifactId, unknown>` scoped to the chat session in React state) that UI components can read from.
+- The AI SDK wire-level tool part shape remains stable.
+- `message.parts[*].output` carries a normalized `ToolResponseEnvelope`.
+- The envelope contains `modelSummary`, optional `followUpContext`, and optional `uiArtifact`.
 
-### 13.2. Model-visible fields for `categorySuggestion` are unspecified
+### 13.3. Artifact storage
 
-**Gap:** §5.2 says "return only top candidate categories" but does not specify which fields from `ai_category_list` should be model-visible.
+- Rich artifact payloads are stored in a per-chat in-memory `Map<artifactId, unknown>` scoped to the current `AssistantPanel` session.
+- Missing artifact entries degrade gracefully in the UI; they do not block the conversation.
+- Server-backed artifact persistence is out of scope for this phase.
 
-**Evidence:** The SQL function returns 7 fields per row: `id`, `ma_nhom`, `ten_nhom`, `phan_loai`, `mo_ta`, `tu_khoa`, `parent_name`. The `mo_ta` and `tu_khoa` fields are the highest-volume contributors.
+### 13.4. `categorySuggestion` contract
 
-**Resolution:** Lock in model-visible fields: `{ ten_nhom, phan_loai, parent_name }` with `top_k = 10`. The remaining fields (`mo_ta`, `tu_khoa`, `id`, `ma_nhom`) go to the artifact channel only.
+- `device_name` is required in the tool input schema.
+- `top_k = 10` for model-visible candidates.
+- Model-visible candidate fields are:
+  - `ma_nhom`
+  - `ten_nhom`
+  - `parent_name`
+  - `phan_loai`
+  - optional `match_reason`
+  - optional `score` or `rank`
+- Heavy fields (`mo_ta`, `tu_khoa`) are limited to `top_3` when needed or moved to the artifact channel.
 
-### 13.3. Prompt-only enforcement for `categorySuggestion` — needs server-side gate
+### 13.5. Budget configuration
 
-**Gap:** §7 proposes prompt changes to "ask for device name first," but prompts are advisory. The model can still call `categorySuggestion` without a device name, bypassing the intended control.
+- Tool-level budgets live on shared tool definitions.
+- Recommended defaults are `maxItems = 20` and `maxBytes = 4000`.
+- Shared executor plumbing, not individual tools, is responsible for enforcement.
 
-**Evidence:** `registry.ts:109-113` defines `categorySuggestion` with `inputSchema: z.object({}).strict()` — no required `device_name` parameter.
+### 13.6. Compaction insertion points
 
-**Resolution:** Add a required `device_name` parameter to `categorySuggestion`'s `inputSchema`. If the model calls the tool without it, Zod validation rejects the call before RPC execution. This aligns with §4.4 ("Server-side enforcement is mandatory").
+- Client-side compaction happens in `prepareSendMessagesRequest`.
+- Server-side compaction happens after `validateUIMessages` and before `convertToModelMessages`.
+- A raw request budget remains in front of the compacted model-context budget.
 
-### 13.4. Budget configuration location is underspecified
+### 13.7. Backward compatibility
 
-**Gap:** §5.3 lists budget dimensions (max items, max bytes, allowed fields) but does not specify where these live. This blocks implementation.
+- Legacy tool outputs are compacted best-effort and marked as legacy when needed.
+- Existing chat history is not cleared on deploy.
+- The UI shows a "data no longer available" placeholder when an old artifact cannot be resolved.
 
-**Evidence:** `ReadOnlyToolDefinition` in `registry.ts` currently has only `description`, `rpcFunction`, `inputSchema` — no budget fields.
+### 13.8. Remaining work status
 
-**Resolution:** Extend `ReadOnlyToolDefinition`:
-
-```ts
-type ReadOnlyToolDefinition = {
-  description: string
-  rpcFunction: string
-  inputSchema: z.ZodType<Record<string, unknown>>
-  modelBudget?: {
-    maxItems?: number        // default: 20
-    maxBytes?: number        // default: 4000
-    modelVisibleFields?: string[]
-  }
-}
-```
-
-Budget enforcement goes in `executeRpcTool` or a new `compactToolOutput` wrapper called from `buildToolRegistry`.
-
-### 13.5. Observability logging target is unspecified
-
-**Gap:** §8 lists comprehensive telemetry fields but not where they go.
-
-**Evidence:** `route.ts` currently uses `console.info`/`console.error` with structured JSON fragments (e.g., `[chat] Model attempt start`).
-
-**Resolution:** Follow the existing pattern: emit structured JSON via `console.info('[chat:payload]', { rawBytes, compactedBytes, largestPart, toolName, artifactUsed, truncated })`. This is filterable in Vercel logs and requires no new infrastructure.
-
-### 13.6. Compaction insertion point in `route.ts` is unclear
-
-**Gap:** §5.5 says server-side compaction should happen "before converting UI messages to model messages," but does not specify where in the 347-line `route.ts` this sits.
-
-**Evidence:** The current execution order is:
-1. `chatRequestSchema.safeParse` (line 113)
-2. `calculateInputChars` size check (line 129-132)
-3. `validateUIMessages` (line 136)
-4. `convertToModelMessages` (line 211)
-
-**Resolution:** Insert compaction between steps 3 and 4. The updated flow:
-1. Parse → 2. Validate → 3. **Compact tool outputs in validated `UIMessage[]`** → 4. Size check on compacted messages → 5. Convert to model messages.
-
-Note: The size check (step 2→4) should move _after_ compaction so it measures the actual model-visible payload, not the raw UI transcript.
-
-### 13.7. No backward compatibility plan for in-flight chat sessions
-
-**Gap:** If a user has an active chat session with large tool outputs already embedded in `messages`, transport compaction could strip data that is still visible in the UI, causing confusion.
-
-**Evidence:** `AssistantPanel.tsx` uses `useChat` with `DefaultChatTransport`, which stores `messages` in React state. There is no versioning or migration mechanism for in-flight message history.
-
-**Resolution:** Adopt best-effort compaction — if a message part has a large `output` but no `artifactId`, compact it to a summary with a `[legacy]` marker. Do NOT clear chat history on deploy. The UI should gracefully degrade: if the artifact store has no entry for a referenced `artifactId`, render a "data no longer available" placeholder.
+- No design-blocking open decisions remain.
+- The remaining work is implementation detail: helper naming, deterministic ranking heuristics, telemetry wiring, and tests.
