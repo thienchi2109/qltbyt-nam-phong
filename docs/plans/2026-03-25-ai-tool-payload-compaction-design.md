@@ -253,3 +253,87 @@ Concretely:
 - and enforce payload budgets centrally for every tool.
 
 This addresses the current bug at its root and prevents the same failure pattern from resurfacing under other tool names.
+
+## 13. Review Findings — Open Decisions (2026-03-25)
+
+> Codebase-verified review using GitNexus context/query/impact, grep, and direct file reads.
+> All root-cause claims in §2 were confirmed against the live codebase.
+> The following issues must be resolved before writing the implementation plan.
+
+### 13.1. Raw payload storage mechanism is unspecified
+
+**Gap:** `ToolResponseEnvelope.uiArtifact` holds an `artifactId` reference, but nothing describes where the raw payload lives at runtime. Without a concrete store, UI components cannot render rich tool outputs.
+
+**Evidence:** `rpc-tool-executor.ts` (37 lines) currently returns `payload` directly with no transformation or caching.
+
+**Resolution:** Add a `rawPayload?: unknown` field to `ToolResponseEnvelope` that is explicitly excluded from `messages` serialization, OR define an in-memory artifact store (e.g., `Map<artifactId, unknown>` scoped to the chat session in React state) that UI components can read from.
+
+### 13.2. Model-visible fields for `categorySuggestion` are unspecified
+
+**Gap:** §5.2 says "return only top candidate categories" but does not specify which fields from `ai_category_list` should be model-visible.
+
+**Evidence:** The SQL function returns 7 fields per row: `id`, `ma_nhom`, `ten_nhom`, `phan_loai`, `mo_ta`, `tu_khoa`, `parent_name`. The `mo_ta` and `tu_khoa` fields are the highest-volume contributors.
+
+**Resolution:** Lock in model-visible fields: `{ ten_nhom, phan_loai, parent_name }` with `top_k = 10`. The remaining fields (`mo_ta`, `tu_khoa`, `id`, `ma_nhom`) go to the artifact channel only.
+
+### 13.3. Prompt-only enforcement for `categorySuggestion` — needs server-side gate
+
+**Gap:** §7 proposes prompt changes to "ask for device name first," but prompts are advisory. The model can still call `categorySuggestion` without a device name, bypassing the intended control.
+
+**Evidence:** `registry.ts:109-113` defines `categorySuggestion` with `inputSchema: z.object({}).strict()` — no required `device_name` parameter.
+
+**Resolution:** Add a required `device_name` parameter to `categorySuggestion`'s `inputSchema`. If the model calls the tool without it, Zod validation rejects the call before RPC execution. This aligns with §4.4 ("Server-side enforcement is mandatory").
+
+### 13.4. Budget configuration location is underspecified
+
+**Gap:** §5.3 lists budget dimensions (max items, max bytes, allowed fields) but does not specify where these live. This blocks implementation.
+
+**Evidence:** `ReadOnlyToolDefinition` in `registry.ts` currently has only `description`, `rpcFunction`, `inputSchema` — no budget fields.
+
+**Resolution:** Extend `ReadOnlyToolDefinition`:
+
+```ts
+type ReadOnlyToolDefinition = {
+  description: string
+  rpcFunction: string
+  inputSchema: z.ZodType<Record<string, unknown>>
+  modelBudget?: {
+    maxItems?: number        // default: 20
+    maxBytes?: number        // default: 4000
+    modelVisibleFields?: string[]
+  }
+}
+```
+
+Budget enforcement goes in `executeRpcTool` or a new `compactToolOutput` wrapper called from `buildToolRegistry`.
+
+### 13.5. Observability logging target is unspecified
+
+**Gap:** §8 lists comprehensive telemetry fields but not where they go.
+
+**Evidence:** `route.ts` currently uses `console.info`/`console.error` with structured JSON fragments (e.g., `[chat] Model attempt start`).
+
+**Resolution:** Follow the existing pattern: emit structured JSON via `console.info('[chat:payload]', { rawBytes, compactedBytes, largestPart, toolName, artifactUsed, truncated })`. This is filterable in Vercel logs and requires no new infrastructure.
+
+### 13.6. Compaction insertion point in `route.ts` is unclear
+
+**Gap:** §5.5 says server-side compaction should happen "before converting UI messages to model messages," but does not specify where in the 347-line `route.ts` this sits.
+
+**Evidence:** The current execution order is:
+1. `chatRequestSchema.safeParse` (line 113)
+2. `calculateInputChars` size check (line 129-132)
+3. `validateUIMessages` (line 136)
+4. `convertToModelMessages` (line 211)
+
+**Resolution:** Insert compaction between steps 3 and 4. The updated flow:
+1. Parse → 2. Validate → 3. **Compact tool outputs in validated `UIMessage[]`** → 4. Size check on compacted messages → 5. Convert to model messages.
+
+Note: The size check (step 2→4) should move _after_ compaction so it measures the actual model-visible payload, not the raw UI transcript.
+
+### 13.7. No backward compatibility plan for in-flight chat sessions
+
+**Gap:** If a user has an active chat session with large tool outputs already embedded in `messages`, transport compaction could strip data that is still visible in the UI, causing confusion.
+
+**Evidence:** `AssistantPanel.tsx` uses `useChat` with `DefaultChatTransport`, which stores `messages` in React state. There is no versioning or migration mechanism for in-flight message history.
+
+**Resolution:** Adopt best-effort compaction — if a message part has a large `output` but no `artifactId`, compact it to a summary with a `[legacy]` marker. Do NOT clear chat history on deploy. The UI should gracefully degrade: if the artifact store has no entry for a referenced `artifactId`, render a "data no longer available" placeholder.
