@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest'
 import {
   FULL_DATE_ERROR_MESSAGE,
   isValidFullDate,
+  normalizeDateForImport,
   normalizeFullDateForForm,
   normalizeFullDateForImport,
 } from '../date-utils'
@@ -65,6 +66,13 @@ describe('date-utils full-date helpers', () => {
       })
     })
 
+    it('normalizes Date objects returned by ExcelJS to ISO full dates', () => {
+      expect(normalizeFullDateForImport(new Date('2025-01-15T00:00:00.000Z'))).toEqual({
+        value: '2025-01-15',
+        rejected: false,
+      })
+    })
+
     it('rejects partial, parser-only, and invalid calendar inputs', () => {
       expect(normalizeFullDateForImport('2025')).toEqual({ value: null, rejected: false })
       expect(normalizeFullDateForImport('03/2025')).toEqual({ value: null, rejected: false })
@@ -76,6 +84,15 @@ describe('date-utils full-date helpers', () => {
 
     it('marks suspicious Excel serials as rejected', () => {
       expect(normalizeFullDateForImport(1)).toEqual({ value: null, rejected: true })
+    })
+  })
+
+  describe('normalizeDateForImport', () => {
+    it('normalizes Date objects returned by ExcelJS to ISO dates', () => {
+      expect(normalizeDateForImport(new Date('2025-01-15T00:00:00.000Z'))).toEqual({
+        value: '2025-01-15',
+        rejected: false,
+      })
     })
   })
 

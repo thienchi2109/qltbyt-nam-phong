@@ -75,6 +75,22 @@ function normalizeExcelSerialToFullDate(value: number): NormalizeDateResult {
   }
 }
 
+function normalizeDateObjectToFullDate(value: Date): NormalizeDateResult {
+  if (Number.isNaN(value.getTime())) {
+    return { value: null, rejected: false }
+  }
+
+  const year = value.getFullYear()
+  if (year < SUSPICIOUS_YEAR_THRESHOLD) {
+    return { value: null, rejected: true }
+  }
+
+  return {
+    value: formatIsoFullDate(year, value.getMonth() + 1, value.getDate()),
+    rejected: false,
+  }
+}
+
 /** Error message for invalid full date format (Vietnamese) */
 export const FULL_DATE_ERROR_MESSAGE =
   "Định dạng ngày không hợp lệ. Sử dụng: DD/MM/YYYY"
@@ -103,6 +119,10 @@ export function normalizeFullDateForForm(value: string | null | undefined): stri
 export function normalizeFullDateForImport(value: unknown): NormalizeDateResult {
   if (value === undefined || value === null || value === "") {
     return { value: null, rejected: false }
+  }
+
+  if (value instanceof Date) {
+    return normalizeDateObjectToFullDate(value)
   }
 
   if (typeof value === "string") {
@@ -199,6 +219,10 @@ export interface NormalizeDateResult {
 export function normalizeDateForImport(val: unknown): NormalizeDateResult {
   if (val === undefined || val === null || val === "") {
     return { value: null, rejected: false }
+  }
+
+  if (val instanceof Date) {
+    return normalizeDateObjectToFullDate(val)
   }
 
   // Handle string dates
