@@ -108,7 +108,6 @@ type ToolResponseEnvelope = {
     artifactId: string
     kind: string
     metadata?: Record<string, unknown>
-    legacy?: boolean
   }
 }
 ```
@@ -120,8 +119,29 @@ Rules:
 - `uiArtifact` points to the richer payload used for UI rendering.
 - Raw payload may exist only transiently long enough to hydrate the client-side artifact store and must be stripped before any history is resent.
 - Rich artifact payloads live in an in-memory `Map<artifactId, unknown>` scoped to the current `AssistantPanel` / chat session.
-- If the UI cannot resolve a referenced artifact, it must render a graceful "data no longer available" placeholder.
 - Full raw tool payloads must not be embedded directly into persistent or resendable chat history after execution.
+
+#### Draft-flow evidence contract (followUpContext-only)
+
+Draft builders (repair request, troubleshooting) read **only** `followUpContext` — never raw output, never `modelSummary`. Every draft-eligible tool must populate `followUpContext` with a fixed schema:
+
+```ts
+// equipmentLookup followUpContext
+{
+  equipment: Array<{
+    thiet_bi_id: number
+    ma_thiet_bi?: string
+    ten_thiet_bi?: string
+  }>
+}
+
+// repairSummary, maintenanceSummary, usageHistory, maintenancePlanLookup
+{
+  evidenceRef: string  // tool name, for evidence counting
+}
+```
+
+This enforces a clear contract between tool outputs and draft flows, with no coupling to raw RPC shape.
 
 ### 5.2. Convert `categorySuggestion` from catalog dump to candidate retrieval
 
@@ -143,6 +163,14 @@ New behavior:
 - Heavy fields such as `mo_ta` and `tu_khoa` are limited to `top_3` when needed for reasoning, or moved to the artifact channel.
 - The model sees a compact candidate set, not the full facility catalog.
 
+Ranking strategy — **FTS + trigram pre-filter** (model does reasoning):
+1. `plainto_tsquery('simple', device_name)` against the existing `fts` column on `nhom_thiet_bi`.
+2. If FTS returns fewer than `top_k`, supplement with `extensions.word_similarity(device_name, ten_nhom) > 0.3` matches.
+3. Merge, dedup, `LIMIT top_k`.
+4. The AI model receives the compact candidate set and reasons about the best matches.
+
+No vector embeddings — avoids server pressure and embedding pipeline dependency. The model's reasoning capability replaces server-side semantic ranking.
+
 This shifts the tool from:
 - `list all categories so the model can search client-side`
 
@@ -150,6 +178,10 @@ to:
 - `retrieve the best candidate categories for the provided device name`
 
 That change removes the current failure mode and reduces token/input waste.
+
+### 5.2.1. `departmentList` — envelope without `uiArtifact`
+
+`departmentList` shares the same pattern (empty input, full list) but payload is small (10-50 items, no heavy fields). Apply the full `ToolResponseEnvelope` for platform consistency, with `uiArtifact = undefined`. All data fits in `modelSummary` + `followUpContext`.
 
 ### 5.3. Add shared payload budgets for all tools
 
@@ -273,7 +305,6 @@ To prevent recurrence, add structured telemetry for each assistant turn:
 - `largestToolName`
 - `artifactUsed`
 - `truncated`
-- `legacyCompactionApplied`
 - whether server-side compaction differed from client-side compaction
 
 These metrics should make payload regressions visible before users hit hard limits and make the Phase 0 mitigation observable.
@@ -382,6 +413,8 @@ This addresses the current bug at its root, preserves downstream orchestration n
 - The AI SDK wire-level tool part shape remains stable.
 - `message.parts[*].output` carries a normalized `ToolResponseEnvelope`.
 - The envelope contains `modelSummary`, optional `followUpContext`, and optional `uiArtifact`.
+- `followUpContext` is **mandatory** for draft-eligible tools (`equipmentLookup`, `repairSummary`, `maintenanceSummary`, `maintenancePlanLookup`, `usageHistory`) with fixed schemas per tool.
+- Draft evidence collectors read **only** `followUpContext`, never raw output.
 
 ### 13.3. Artifact storage
 
@@ -393,6 +426,7 @@ This addresses the current bug at its root, preserves downstream orchestration n
 
 - `device_name` is required in the tool input schema.
 - `top_k = 10` for model-visible candidates.
+- Ranking method: FTS + trigram pre-filter. No vector embeddings. Model does semantic reasoning.
 - Model-visible candidate fields are:
   - `ma_nhom`
   - `ten_nhom`
@@ -401,6 +435,11 @@ This addresses the current bug at its root, preserves downstream orchestration n
   - optional `match_reason`
   - optional `score` or `rank`
 - Heavy fields (`mo_ta`, `tu_khoa`) are limited to `top_3` when needed or moved to the artifact channel.
+
+### 13.4.1. `departmentList` contract
+
+- Full `ToolResponseEnvelope` applied for platform consistency.
+- `uiArtifact = undefined` — payload is small enough to fit entirely in `modelSummary` + `followUpContext`.
 
 ### 13.5. Budget configuration
 
@@ -416,11 +455,13 @@ This addresses the current bug at its root, preserves downstream orchestration n
 
 ### 13.7. Backward compatibility
 
-- Legacy tool outputs are compacted best-effort and marked as legacy when needed.
-- Existing chat history is not cleared on deploy.
-- The UI shows a "data no longer available" placeholder when an old artifact cannot be resolved.
+- No active users exist yet — chat history is in-memory (`useChat` state), not persisted.
+- Deploying the envelope format is a clean slate.
+- Legacy handling (shape detection, `legacyCompactionApplied` flag, "data no longer available" placeholder) is **out of scope**.
+- These can be added later if server-backed persistence is introduced.
 
 ### 13.8. Remaining work status
 
 - No design-blocking open decisions remain.
-- The remaining work is implementation detail: helper naming, deterministic ranking heuristics, telemetry wiring, and tests.
+- All gap resolutions from the 2026-03-26 review are locked (see [gap resolutions](./2026-03-26-payload-compaction-gap-resolutions.md)).
+- The remaining work is implementation detail: helper naming, FTS + trigram SQL migration, `followUpContext` schema wiring, telemetry, and tests.
