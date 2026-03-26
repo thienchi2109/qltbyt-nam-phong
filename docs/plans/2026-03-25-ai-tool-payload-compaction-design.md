@@ -465,3 +465,96 @@ This addresses the current bug at its root, preserves downstream orchestration n
 - No design-blocking open decisions remain.
 - All gap resolutions from the 2026-03-26 review are locked (see [gap resolutions](./2026-03-26-payload-compaction-gap-resolutions.md)).
 - The remaining work is implementation detail: helper naming, FTS + trigram SQL migration, `followUpContext` schema wiring, telemetry, and tests.
+
+## 14. Deep Review #2 — Edge Cases & Dependency Decisions (2026-03-26)
+
+> Codebase-verified via GitNexus impact/context/query, grep across 15+ files, and AI SDK skill verification.
+> Focused on hidden dependencies and edge cases not covered in the first review.
+
+### 14.1. Draft evidence collector dual-path migration (CRITICAL)
+
+`collectRepairRequestDraftEvidence` reads raw `output.data` via two independent paths:
+- **History path**: `message.parts[*].output` from persisted messages
+- **Live-turn path**: `step.toolResults[*].output` from current `route.ts` execution
+
+Both paths must be updated atomically when migrating to `ToolResponseEnvelope`. If split across deploys, the repair draft flow silently produces `equipmentResolution = 'none'` and skips draft generation with no error.
+
+**Decision**: Atomic update (Option A). Chat history is in-memory — no backward compat needed.
+
+### 14.2. `categorySuggestion` prompt ↔ tool contract synchronization (CRITICAL)
+
+System prompt §5.3 (`system.ts:197-223`) directly contradicts the design:
+- Prompt says "BẮT BUỘC gọi categorySuggestion TRƯỚC" — model calls tool without asking for device name
+- Prompt references `mo_ta`, `tu_khoa` as model-visible reasoning fields — design removes them
+
+Incremental deployment in either direction causes tool errors:
+- Prompt first → model sends `device_name`, Zod strict rejects unknown field
+- Tool first → model calls with empty input, Zod rejects missing required `device_name`
+
+**Decision**: Atomic (Option A). Prompt + `inputSchema` + SQL migration must ship together in one batch.
+
+### 14.3. Client-side compaction hook — `prepareSendMessagesRequest`
+
+Verified from `node_modules/ai/docs/04-ai-sdk-ui/21-transport.mdx` via AI SDK skill.
+
+`DefaultChatTransport.prepareSendMessagesRequest({ id, messages, trigger, messageId })` is the official public API for intercepting messages before serialization. It returns `{ headers?, body }`.
+
+Current `AssistantPanel.tsx` uses `body()` which will be replaced by `prepareSendMessagesRequest`. The integration is:
+
+```ts
+new DefaultChatTransport({
+  api: "/api/chat",
+  prepareSendMessagesRequest: ({ id, messages }) => ({
+    body: {
+      id,
+      messages: compactToolOutputsForModel(messages),
+      selectedFacilityId: facilityRef.current,
+      selectedFacilityName: facilityNameRef.current,
+      requestedTools: REQUESTED_TOOLS,
+    },
+  }),
+})
+```
+
+**Decision**: Resolved. No custom transport class needed.
+
+### 14.4. `route.ts` step-to-evidence coupling
+
+`route.ts:286-296` passes `step.toolResults[*].output` directly to `maybeBuildRepairRequestDraftArtifact`. After envelope normalization, `output` becomes `ToolResponseEnvelope`, not raw RPC data. The evidence collector update must ship in the same commit.
+
+**Decision**: Ship in Batch 1 with §14.1.
+
+### 14.5. `pg_trgm` schema qualification
+
+`word_similarity()` must be called as `extensions.word_similarity()` because pg_trgm is installed in the extensions schema (Supabase default). Precedent: migration `20260319190000` already fixed this for `ai_equipment_lookup`.
+
+**Decision**: Schema-qualify in the new SQL migration. No design change needed.
+
+### 14.6. `TOOL_DISPLAY_NAMES` gap
+
+`AssistantToolExecutionCard.tsx` is missing Vietnamese display names for `categorySuggestion` and `departmentList`. Falls back to raw English tool name.
+
+**Decision**: Fix during Phase 2 tool migration. Minor UX issue.
+
+### 14.7. `generateTroubleshootingDraft` immunity
+
+This tool receives `evidence_refs: string[]` from the model, not raw output. Compaction does not affect it. Reasoning quality depends on `modelSummary` being sufficient, which is covered by §11 risk mitigation.
+
+**Decision**: No action required.
+
+### 14.8. Artifact UI rendering component
+
+No component currently renders tool output data (only status). If artifact-channel data needs interactive rendering, a new component must be built.
+
+**Decision**: Defer. Model text response is sufficient for Phases 1–3.
+
+### 14.9. Atomic batch ordering constraint
+
+Based on dependency analysis, changes must ship in these atomic groups:
+
+| Batch | Components | Constraint |
+|---|---|---|
+| **Batch 1** | `ToolResponseEnvelope` type + `compactToolOutput` + evidence collector update + `route.ts` step mapping | §14.1 + §14.4: tightly coupled, silent fail if split |
+| **Batch 2** | `categorySuggestion` SQL + `inputSchema` + `system.ts` prompt §5.3 | §14.2: prompt/tool/SQL must ship together |
+| **Batch 3** | Client transport (`prepareSendMessagesRequest`) + server compaction | Independent after Batch 1 |
+| **Batch 4** | Telemetry, display names, artifact store | Polish |
