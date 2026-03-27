@@ -50,8 +50,12 @@ Concrete schema for draft-eligible tools:
   - `legacyCompactionApplied` telemetry flag
   - Legacy shape detection logic
   - "Data no longer available" placeholder for old artifacts
+  - Dual-shape server compaction
+  - Protocol versioning / auto-clear on deploy
 
-These can be added later if persistence is introduced.
+If a stale internal test tab exists, manual refresh/reset is sufficient.
+
+These can be added later if persistence or real AI users are introduced.
 
 **Rationale:** YAGNI — no legacy data exists, no backward-compatibility code needed.
 
@@ -88,6 +92,37 @@ Excluded:
 
 **Rationale:** Platform-consistent without overhead. Small payloads don't need artifact offloading but should still follow the shared contract.
 
+## Resolution 5: Scope boundary — read-only / RPC tools only in Pass 1
+
+**Problem:** The original wording around `ToolResponseEnvelope` was broad enough to imply "all assistant tools", including draft-producing tools.
+
+**Decision:** Scope `ToolResponseEnvelope` to read-only / RPC tools only in Pass 1.
+
+- `generateTroubleshootingDraft` keeps its current raw `troubleshootingDraft` output.
+- Synthetic `generateRepairRequestDraft` keeps its current raw `repairRequestDraft` output.
+- Draft-producing tools are an explicit carve-out because current UI/session logic already depends on `output.kind`.
+- Pass 1 migration targets are only:
+  - `categorySuggestion`
+  - `departmentList`
+
+**Rationale:** Reduces blast radius and preserves the existing draft UI/session contract while still fixing the payload-resend failure class for read-only / RPC tools.
+
+## Resolution 6: Remaining RPC migration tracking — hard gate
+
+**Problem:** After Pass 1, the project still needs follow-up audits/migrations for the remaining read-only / RPC tools. Relying on memory is fragile.
+
+**Decision:** Add a hard registry/test gate for the exact migration-status map.
+
+- Every read-only / RPC tool must declare `migrationStatus` and budget metadata in the shared registry.
+- Tests lock the exact status map, not just field presence.
+- After Pass 1:
+  - `categorySuggestion` = `migrated`
+  - `departmentList` = `migrated`
+  - all other read-only / RPC tools = `pending`
+- Any new RPC tool or status change must update the registry manifest + tests, or CI fails.
+
+**Rationale:** This turns "remember to audit later" into an enforced workflow instead of a documentation-only reminder.
+
 ## Updated Design Decisions Summary
 
 | Gap | Resolution | Complexity |
@@ -96,6 +131,8 @@ Excluded:
 | Legacy history detection | Not applicable (no active users) | None — removes code |
 | categorySuggestion ranking | FTS + trigram pre-filter, model does reasoning | Medium — new SQL migration, update tool input schema |
 | departmentList consistency | Envelope, no uiArtifact | Low — mechanical change |
+| Pass 1 scope boundary | Read-only / RPC tools only; draft tools carved out | Low — prevents accidental overreach |
+| Remaining tool tracking | Hard registry/test gate locks exact status map | Low — small implementation, high process value |
 
 ## Impact on Original Design
 
@@ -103,3 +140,5 @@ Excluded:
 - §5.2 (categorySuggestion): **Clarified** — FTS + trigram pre-filter locked as ranking method.
 - §5.1 (Tool output contract): **Extended** — `followUpContext` schemas are now mandatory for draft-eligible tools.
 - §8 (Observability): **Reduced** — remove `legacyCompactionApplied` from telemetry requirements.
+- Pass 1 scope: **Narrowed** — envelope/compaction applies to read-only / RPC tools, not draft-producing tools.
+- Remaining migrations: **Operationalized** — exact migration-status map is locked by registry/tests.

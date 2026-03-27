@@ -4,7 +4,7 @@
 
 This document records the root cause of the assistant bug that throws `Request exceeds input size limit` after the user asks for category assignment suggestions, and it locks in the architectural fix direction.
 
-The chosen fix is to separate **UI-visible tool artifacts** from **model-visible chat context**. Raw tool payloads must no longer flow back into `messages` unchanged on subsequent turns. Instead, every tool response must be normalized into a compact model-safe summary plus an optional artifact reference for UI rendering.
+The chosen fix is to separate **UI-visible tool artifacts** from **model-visible chat context**. Raw tool payloads must no longer flow back into `messages` unchanged on subsequent turns. In this phase, every **read-only / RPC tool response** must be normalized into a compact model-safe summary plus an optional artifact reference for UI rendering. Draft-producing tools are an explicit carve-out.
 
 This is a cross-tool platform fix, not a one-off patch for `categorySuggestion`.
 
@@ -41,7 +41,7 @@ Adopt a **balanced payload safety architecture** that combines temporary mitigat
    - This reduces immediate user-facing failures but does not replace compaction.
 
 2. **Tool contract layer**
-   - Tools return normalized envelopes with `modelSummary`, `followUpContext`, and `uiArtifact`.
+   - Read-only / RPC tools return normalized envelopes with `modelSummary`, `followUpContext`, and `uiArtifact`.
    - Large raw responses are treated as artifacts, not resendable chat history.
 
 3. **Transport compaction layer**
@@ -51,7 +51,7 @@ Adopt a **balanced payload safety architecture** that combines temporary mitigat
    - The chat route enforces both a raw request budget and a compacted model-context budget.
    - The server compacts and validates incoming history again before model execution.
 
-This is the default policy for all assistant tools. Raising the limit is part of the design, but only as a mitigation step.
+This is the default policy for read-only / RPC assistant tools in this phase. Draft-producing tools are a deliberate carve-out because their raw output shape is already part of the UI/session contract. Raising the limit is part of the design, but only as a mitigation step.
 
 ## 4. Design Principles
 
@@ -71,8 +71,9 @@ This is the default policy for all assistant tools. Raising the limit is part of
   - or artifact metadata.
 
 ### 4.3. No tool-specific exceptions
-- Payload control must live in shared infrastructure.
-- A tool should not be able to bypass compaction merely because it uses a different RPC or output shape.
+- Payload control for read-only / RPC tools must live in shared infrastructure.
+- A read-only / RPC tool should not be able to bypass compaction merely because it uses a different RPC or output shape.
+- The only intentional carve-out in this phase is draft-producing tools whose raw output shape is already consumed directly by UI/session logic.
 
 ### 4.4. Server-side enforcement is mandatory
 - Client-side compaction improves UX and request efficiency.
@@ -91,9 +92,9 @@ This is the default policy for all assistant tools. Raising the limit is part of
 - Raw and compacted budgets must remain independent.
 - Raising the raw budget is a temporary mitigation step, not the primary fix.
 
-### 5.1. Introduce a normalized tool output contract
+### 5.1. Introduce a normalized tool output contract for read-only / RPC tools
 
-Every tool result should be normalized inside the existing AI SDK tool-part shape:
+Every read-only / RPC tool result should be normalized inside the existing AI SDK tool-part shape:
 
 ```ts
 type ToolResponseEnvelope = {
@@ -120,6 +121,7 @@ Rules:
 - Raw payload may exist only transiently long enough to hydrate the client-side artifact store and must be stripped before any history is resent.
 - Rich artifact payloads live in an in-memory `Map<artifactId, unknown>` scoped to the current `AssistantPanel` / chat session.
 - Full raw tool payloads must not be embedded directly into persistent or resendable chat history after execution.
+- Draft-producing tools (`generateTroubleshootingDraft`, synthetic `generateRepairRequestDraft`) do **not** use `ToolResponseEnvelope` in this phase. They keep their current raw draft artifact output because `output.kind` is already a UI/session contract.
 
 #### Draft-flow evidence contract (followUpContext-only)
 
@@ -183,7 +185,7 @@ That change removes the current failure mode and reduces token/input waste.
 
 `departmentList` shares the same pattern (empty input, full list) but payload is small (10-50 items, no heavy fields). Apply the full `ToolResponseEnvelope` for platform consistency, with `uiArtifact = undefined`. All data fits in `modelSummary` + `followUpContext`.
 
-### 5.3. Add shared payload budgets for all tools
+### 5.3. Add shared payload budgets for read-only / RPC tools
 
 Each tool definition should declare or inherit budgets such as:
 - maximum model-visible items
@@ -232,9 +234,10 @@ The chat transport should compact outgoing messages before they are serialized a
 Compaction behavior should:
 - use `prepareSendMessagesRequest` in `DefaultChatTransport`,
 - compact a copy of `messages` before serialization,
-- replace raw or legacy tool outputs with `modelSummary`, `followUpContext`, and `uiArtifact` metadata,
+- replace raw read-only / RPC tool outputs with `modelSummary`, `followUpContext`, and `uiArtifact` metadata,
 - preserve enough metadata for continuity,
 - keep artifact-store state outside resendable history,
+- leave draft-producing tool outputs unchanged,
 - avoid rewriting `useChat` internal state as the primary mechanism.
 
 This lowers payload size early and prevents avoidable 400 responses.
@@ -246,10 +249,10 @@ The server must perform the same class of protection before converting UI messag
 Server responsibilities:
 - retain an independent raw request budget,
 - compute model-context size based on compacted history, not raw UI transcript,
-- compact both legacy and current tool outputs,
+- compact current read-only / RPC tool outputs,
 - reject malformed or non-compactable payloads,
 - log the largest contributing message parts,
-- log whether legacy compaction was applied,
+- pass draft-producing tool outputs through unchanged,
 - keep the compacted input limit as a safety rail rather than the first line of defense.
 
 Updated server order:
@@ -263,7 +266,7 @@ Updated server order:
 
 ## 6. Cross-Tool Guardrail Policy
 
-The following rules should apply to every assistant tool:
+The following rules should apply to every read-only / RPC assistant tool:
 
 1. No tool may persist large raw query results directly in resendable or model-visible history.
 2. Every tool must produce a compact model-safe summary.
@@ -275,7 +278,9 @@ The following rules should apply to every assistant tool:
 8. The server must compact again before model execution.
 9. Prompt instructions must not force premature broad retrieval when required user input is still missing.
 
-If a new tool cannot satisfy these rules, it is not ready to ship.
+Draft-producing tools are an explicit carve-out in this phase: they keep raw draft artifact outputs and are not wrapped in `ToolResponseEnvelope`.
+
+If a new read-only / RPC tool cannot satisfy these rules, it is not ready to ship.
 
 ## 7. Prompt and Product Behavior Changes
 
@@ -318,15 +323,16 @@ These metrics should make payload regressions visible before users hit hard limi
 
 ### Phase 1. Shared budgets and compaction scaffolding
 - Introduce separate raw and compacted input budgets.
-- Add client-side compaction in transport.
-- Add server-side compaction in the chat route.
-- Add structured logging for payload contributors and legacy compaction.
+- Add client-side compaction in transport for read-only / RPC tools.
+- Add server-side compaction in the chat route for read-only / RPC tools.
+- Preserve current raw output shape for draft-producing tools.
+- Add structured logging for payload contributors.
 
 ### Phase 2. Tool contract migration
-- Migrate large-output tools to the envelope pattern with `modelSummary`, `followUpContext`, and `uiArtifact`.
-- Add the client-side per-chat artifact store.
-- Start with `categorySuggestion`, then audit all list- and summary-style tools.
+- Migrate `categorySuggestion` and `departmentList` to the envelope pattern with `modelSummary`, `followUpContext`, and `uiArtifact` (where needed).
+- Add the client-side per-chat artifact store only as needed for migrated read-only / RPC tools.
 - Audit `equipmentLookup` carefully because downstream draft flows consume its evidence.
+- Do **not** migrate draft-producing tools in this phase.
 
 ### Phase 3. Prompt and tool alignment
 - Remove prompt instructions that force broad retrieval before required clarification.
@@ -334,10 +340,14 @@ These metrics should make payload regressions visible before users hit hard limi
 - Require `device_name` for `categorySuggestion`.
 - Keep `ma_nhom` available to the model because the prompt expects `Mã nhóm + Tên nhóm`.
 
-### Phase 4. Hardening
+### Phase 4. Remaining RPC migration hardening
+- Add a hard registry/test gate so every read-only / RPC tool declares `migrationStatus` and budget metadata.
+- Lock the exact migration-status map in tests so new RPC tools cannot bypass audit.
+- Keep `categorySuggestion` and `departmentList` as the only `migrated` tools after Pass 1; all other RPC tools remain explicitly `pending` until audited.
+
+### Phase 5. Hardening
 - Add tests for oversized tool payload histories.
 - Add regression tests ensuring follow-up turns stay under the compacted input budget.
-- Add tests for legacy histories with no artifact-store entry.
 - Fail fast in development when a tool exceeds its declared model-visible budget.
 
 ## 10. Non-Goals
@@ -392,7 +402,7 @@ Concretely:
 - compact history in transport and again on the server,
 - redesign `categorySuggestion` to perform candidate retrieval only after `device_name` is known,
 - keep the AI SDK wire-level part shape stable in this phase,
-- and enforce payload budgets centrally for every tool.
+- and enforce payload budgets centrally for every read-only / RPC tool.
 
 This addresses the current bug at its root, preserves downstream orchestration needs, and prevents the same failure pattern from resurfacing under other tool names.
 
@@ -411,10 +421,11 @@ This addresses the current bug at its root, preserves downstream orchestration n
 ### 13.2. Tool output contract
 
 - The AI SDK wire-level tool part shape remains stable.
-- `message.parts[*].output` carries a normalized `ToolResponseEnvelope`.
+- `message.parts[*].output` carries a normalized `ToolResponseEnvelope` for read-only / RPC tools only.
 - The envelope contains `modelSummary`, optional `followUpContext`, and optional `uiArtifact`.
 - `followUpContext` is **mandatory** for draft-eligible tools (`equipmentLookup`, `repairSummary`, `maintenanceSummary`, `maintenancePlanLookup`, `usageHistory`) with fixed schemas per tool.
 - Draft evidence collectors read **only** `followUpContext`, never raw output.
+- Draft-producing tools (`generateTroubleshootingDraft`, synthetic `generateRepairRequestDraft`) are explicitly **out of scope** for envelope migration in this phase and keep raw draft artifact outputs.
 
 ### 13.3. Artifact storage
 
@@ -457,14 +468,17 @@ This addresses the current bug at its root, preserves downstream orchestration n
 
 - No active users exist yet — chat history is in-memory (`useChat` state), not persisted.
 - Deploying the envelope format is a clean slate.
-- Legacy handling (shape detection, `legacyCompactionApplied` flag, "data no longer available" placeholder) is **out of scope**.
-- These can be added later if server-backed persistence is introduced.
+- Legacy handling (shape detection, dual-shape compaction, protocol versioning, auto-clear on deploy) is **out of scope**.
+- If a stale internal test tab exists, manual refresh/reset is sufficient.
+- These can be added later if real users or server-backed persistence are introduced.
 
 ### 13.8. Remaining work status
 
 - No design-blocking open decisions remain.
 - All gap resolutions from the 2026-03-26 review are locked (see [gap resolutions](./2026-03-26-payload-compaction-gap-resolutions.md)).
-- The remaining work is implementation detail: helper naming, FTS + trigram SQL migration, `followUpContext` schema wiring, telemetry, and tests.
+- Pass 1 scope is locked to shared read-only / RPC compaction infrastructure plus `categorySuggestion` and `departmentList`.
+- Remaining RPC tools stay explicitly `pending` behind a hard registry/test gate until audited and migrated in later passes.
+- The remaining work is implementation detail: helper naming, FTS + trigram SQL migration, `followUpContext` schema wiring, telemetry, registry/test gate wiring, and tests.
 
 ## 14. Deep Review #2 — Edge Cases & Dependency Decisions (2026-03-26)
 
@@ -554,7 +568,8 @@ Based on dependency analysis, changes must ship in these atomic groups:
 
 | Batch | Components | Constraint |
 |---|---|---|
-| **Batch 1** | `ToolResponseEnvelope` type + `compactToolOutput` + evidence collector update + `route.ts` step mapping | §14.1 + §14.4: tightly coupled, silent fail if split |
-| **Batch 2** | `categorySuggestion` SQL + `inputSchema` + `system.ts` prompt §5.3 | §14.2: prompt/tool/SQL must ship together |
-| **Batch 3** | Client transport (`prepareSendMessagesRequest`) + server compaction | Independent after Batch 1 |
-| **Batch 4** | Telemetry, display names, artifact store | Polish |
+| **Batch 1** | Read-only / RPC `ToolResponseEnvelope` type + `compactToolOutput` + evidence collector update + `route.ts` step mapping + explicit draft-tool carve-out | §14.1 + §14.4: tightly coupled, silent fail if split |
+| **Batch 2** | `categorySuggestion` SQL + `inputSchema` + `system.ts` prompt §5.3 + `departmentList` envelope migration | §14.2: prompt/tool/SQL must ship together |
+| **Batch 3** | Client transport (`prepareSendMessagesRequest`) + server compaction for read-only / RPC tools | Independent after Batch 1 |
+| **Batch 4** | Hard registry/test gate for remaining RPC tools + backlog manifest | Prevents forgotten audits/migrations |
+| **Batch 5** | Telemetry, display names, artifact store | Polish |
