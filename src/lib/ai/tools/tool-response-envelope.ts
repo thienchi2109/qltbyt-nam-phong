@@ -5,6 +5,8 @@
  * are explicitly excluded — they keep their raw artifact output shape.
  */
 
+import { isRecord } from './type-guards'
+
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
@@ -16,16 +18,15 @@ export interface ModelSummary {
   truncated?: boolean
 }
 
-export interface UiArtifactRef {
-  artifactId: string
-  kind: string
-  metadata?: Record<string, unknown>
+export interface ToolResponseEnvelopeUiArtifact {
+  /** The original, uncompacted RPC payload — consumed by UI renderers. */
+  rawPayload: unknown
 }
 
 export interface ToolResponseEnvelope {
   modelSummary: ModelSummary
   followUpContext?: Record<string, unknown>
-  uiArtifact?: UiArtifactRef
+  uiArtifact?: ToolResponseEnvelopeUiArtifact
 }
 
 // ---------------------------------------------------------------------------
@@ -42,9 +43,6 @@ export const DRAFT_TOOL_NAMES_SET: ReadonlySet<string> = new Set([
 // Guards
 // ---------------------------------------------------------------------------
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value)
-}
 
 /**
  * Returns `true` when `output` looks like a `ToolResponseEnvelope`.

@@ -1,12 +1,7 @@
 import type { UIMessage } from 'ai'
 
-const VALID_REPAIR_REQUEST_DRAFT_EVIDENCE_REFS = new Set([
-  'equipmentLookup',
-  'repairSummary',
-  'maintenanceSummary',
-  'maintenancePlanLookup',
-  'usageHistory',
-])
+import { DRAFT_ELIGIBLE_TOOLS } from '@/lib/ai/tools/rpc-tool-executor'
+import { isRecord } from '@/lib/ai/tools/type-guards'
 
 export interface RepairRequestDraftEquipmentContext {
   thiet_bi_id: number
@@ -26,9 +21,6 @@ interface ToolResultLike {
   output: unknown
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value)
-}
 
 function readOptionalString(value: unknown): string | undefined {
   return typeof value === 'string' && value.trim() ? value.trim() : undefined
@@ -157,7 +149,7 @@ export function collectRepairRequestDraftEvidence({
 
   for (const result of toolResults) {
     if (
-      VALID_REPAIR_REQUEST_DRAFT_EVIDENCE_REFS.has(result.toolName) ||
+      DRAFT_ELIGIBLE_TOOLS.has(result.toolName) ||
       hasEvidenceRef(result.output)
     ) {
       evidenceRefs.add(result.toolName)

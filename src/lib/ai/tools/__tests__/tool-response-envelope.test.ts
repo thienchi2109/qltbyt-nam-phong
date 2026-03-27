@@ -34,7 +34,7 @@ describe('tool-response-envelope', () => {
 
     it('returns true for an envelope with uiArtifact', () => {
       const envelope = makeEnvelope({
-        uiArtifact: { artifactId: 'a1', kind: 'categoryList' },
+        uiArtifact: { rawPayload: { data: [], total: 0 } },
       })
       expect(isToolResponseEnvelope(envelope)).toBe(true)
     })
@@ -64,7 +64,7 @@ describe('tool-response-envelope', () => {
     it('strips uiArtifact from an envelope output', () => {
       const envelope = makeEnvelope({
         followUpContext: { evidenceRef: 'repairSummary' },
-        uiArtifact: { artifactId: 'a1', kind: 'categoryList' },
+        uiArtifact: { rawPayload: { data: [{ id: 1 }], total: 1 } },
       })
 
       const compacted = compactToolOutput('equipmentLookup', envelope)

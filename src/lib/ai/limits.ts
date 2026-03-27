@@ -19,6 +19,15 @@ export const AI_MAX_OUTPUT_TOKENS = readPositiveIntEnv(
 )
 export const AI_MAX_TOOL_STEPS = readPositiveIntEnv('AI_MAX_TOOL_STEPS', 5)
 export const AI_MAX_MESSAGES = readPositiveIntEnv('AI_MAX_MESSAGES', 40)
+/**
+ * Phase 0 mitigation (Batch 1): raised from 40K to 120K to stop
+ * "Request exceeds input size limit" errors caused by envelope-wrapped
+ * tool outputs being larger than raw outputs.
+ * Between Batch 1 and Batch 3 the effective hard limit is 120K.
+ * Once Batch 3 wires compaction, AI_MAX_COMPACTED_INPUT_CHARS (40K)
+ * becomes the steady-state ceiling and this raw budget only guards
+ * against malformed / oversized client payloads.
+ */
 export const AI_MAX_INPUT_CHARS = readPositiveIntEnv('AI_MAX_INPUT_CHARS', 120_000)
 /** Compacted model-context budget — enforced in Batch 3 (transport + server). */
 export const AI_MAX_COMPACTED_INPUT_CHARS = readPositiveIntEnv(

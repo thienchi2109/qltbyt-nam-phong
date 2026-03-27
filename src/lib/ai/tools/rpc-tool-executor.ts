@@ -1,4 +1,5 @@
 import type { ToolResponseEnvelope } from './tool-response-envelope'
+import { isRecord } from './type-guards'
 
 export interface RpcToolExecutionParams {
   request: Request
@@ -16,7 +17,7 @@ function buildRpcUrl(request: Request, rpcFunction: string): string {
 // Draft-eligible tools that must populate followUpContext
 // ---------------------------------------------------------------------------
 
-const DRAFT_ELIGIBLE_TOOLS = new Set([
+export const DRAFT_ELIGIBLE_TOOLS: ReadonlySet<string> = new Set([
   'equipmentLookup',
   'repairSummary',
   'maintenanceSummary',
@@ -34,9 +35,6 @@ interface EquipmentFollowUpRow {
   ten_thiet_bi?: string
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value)
-}
 
 function buildEquipmentFollowUp(
   payload: unknown,
@@ -131,6 +129,7 @@ export function wrapRpcResultAsEnvelope(
       ...(itemCount !== undefined && { itemCount }),
     },
     ...(followUpContext !== undefined && { followUpContext }),
+    uiArtifact: { rawPayload: payload },
   }
 }
 
