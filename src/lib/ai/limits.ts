@@ -19,7 +19,12 @@ export const AI_MAX_OUTPUT_TOKENS = readPositiveIntEnv(
 )
 export const AI_MAX_TOOL_STEPS = readPositiveIntEnv('AI_MAX_TOOL_STEPS', 5)
 export const AI_MAX_MESSAGES = readPositiveIntEnv('AI_MAX_MESSAGES', 40)
-export const AI_MAX_INPUT_CHARS = readPositiveIntEnv('AI_MAX_INPUT_CHARS', 40_000)
+export const AI_MAX_INPUT_CHARS = readPositiveIntEnv('AI_MAX_INPUT_CHARS', 120_000)
+/** Compacted model-context budget — enforced in Batch 3 (transport + server). */
+export const AI_MAX_COMPACTED_INPUT_CHARS = readPositiveIntEnv(
+  'AI_MAX_COMPACTED_INPUT_CHARS',
+  40_000,
+)
 
 export const AI_RATE_LIMIT_WINDOW_MS = readPositiveIntEnv(
   'AI_RATE_LIMIT_WINDOW_MS',

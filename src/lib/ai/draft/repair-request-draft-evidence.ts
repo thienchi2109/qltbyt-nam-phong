@@ -68,18 +68,40 @@ function normalizeEquipmentRow(
   }
 }
 
-function extractEquipmentMatchesFromOutput(
+function readFollowUpContext(output: unknown): Record<string, unknown> | null {
+  if (!isRecord(output)) {
+    return null
+  }
+
+  const ctx = output.followUpContext
+  if (!isRecord(ctx)) {
+    return null
+  }
+
+  return ctx
+}
+
+function extractEquipmentMatchesFromFollowUp(
   output: unknown,
 ): RepairRequestDraftEquipmentContext[] {
-  if (!isRecord(output) || !Array.isArray(output.data)) {
+  const ctx = readFollowUpContext(output)
+  if (!ctx || !Array.isArray(ctx.equipment)) {
     return []
   }
 
-  return output.data
+  return ctx.equipment
     .map(normalizeEquipmentRow)
     .filter(
       (item): item is RepairRequestDraftEquipmentContext => item !== null,
     )
+}
+
+function hasEvidenceRef(output: unknown): boolean {
+  const ctx = readFollowUpContext(output)
+  if (!ctx) {
+    return false
+  }
+  return typeof ctx.evidenceRef === 'string' && ctx.evidenceRef.trim().length > 0
 }
 
 function extractToolResultsFromMessages(messages: UIMessage[]): ToolResultLike[] {
@@ -134,7 +156,10 @@ export function collectRepairRequestDraftEvidence({
   ]
 
   for (const result of toolResults) {
-    if (VALID_REPAIR_REQUEST_DRAFT_EVIDENCE_REFS.has(result.toolName)) {
+    if (
+      VALID_REPAIR_REQUEST_DRAFT_EVIDENCE_REFS.has(result.toolName) ||
+      hasEvidenceRef(result.output)
+    ) {
       evidenceRefs.add(result.toolName)
     }
 
@@ -142,7 +167,7 @@ export function collectRepairRequestDraftEvidence({
       continue
     }
 
-    for (const match of extractEquipmentMatchesFromOutput(result.output)) {
+    for (const match of extractEquipmentMatchesFromFollowUp(result.output)) {
       if (!equipmentMatches.has(match.thiet_bi_id)) {
         equipmentMatches.set(match.thiet_bi_id, match)
       }

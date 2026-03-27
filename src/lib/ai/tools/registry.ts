@@ -259,6 +259,7 @@ export function buildToolRegistry({
         executeRpcTool({
           request,
           rpcFunction: rpcDef.rpcFunction,
+          toolName,
           args: {
             ...(toolName === 'equipmentLookup'
               ? normalizeEquipmentLookupArgs(input, equipmentLookupHints)
