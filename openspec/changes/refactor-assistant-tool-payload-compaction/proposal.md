@@ -14,6 +14,7 @@ The fix needs to be architectural, but the rollout must stay scoped. Pass 1 shou
 - Keep rollout clean-slate for the assistant chat feature: no backward-compatibility layer, no protocol versioning, no dual-shape compaction.
 - Add a hard registry/test gate so every read-only / RPC tool must declare migration metadata; pass 1 marks only `categorySuggestion` and `departmentList` as `migrated`, while all other RPC tools remain explicitly `pending`.
 - Defer `uiArtifact` client storage/rendering until a later pass.
+- Execute implementation under this single OpenSpec change, but split delivery into four reviewable batches so coupling stays visible and rollback/review remain manageable.
 
 ## Impact
 

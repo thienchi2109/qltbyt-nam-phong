@@ -86,6 +86,35 @@ There is also a live assistant-related change to preserve: `add-assistant-repair
 5. Add the hard registry/test gate for the remaining RPC tools.
 6. Validate the OpenSpec change and implementation-specific checks before merge.
 
+## Implementation Batching
+
+This change should stay as one OpenSpec proposal, but implementation should be split into four batches for tracking and review:
+
+1. **Batch 1: Foundations and compatibility**
+   - Shared read-only / RPC envelope types/helpers
+   - Explicit draft-tool carve-out
+   - Draft evidence compatibility via `followUpContext`
+   - Goal: prove compaction can exist without breaking the current draft flow
+
+2. **Batch 2: Pass-1 tool migrations**
+   - `categorySuggestion` prompt/schema/SQL migration
+   - `departmentList` envelope migration
+   - Goal: migrate the two pass-1 tools with the highest immediate value and clearest scope
+
+3. **Batch 3: Transport and server guardrails**
+   - Client transport compaction via `prepareSendMessagesRequest`
+   - Server-side compaction before `convertToModelMessages`
+   - Separate raw-request and compacted-context budgets
+   - Goal: enforce the payload-safety boundary across both request paths
+
+4. **Batch 4: Migration gate and polish**
+   - Hard registry/test gate for every read-only / RPC tool
+   - Remaining-tool backlog locked in tests
+   - Telemetry and lightweight UX/polish that support the new contract
+   - Goal: prevent future drift after pass 1 lands
+
+This split keeps code review focused while preserving a single coherent proposal and capability boundary.
+
 ## Open Questions
 
 - None at proposal time. Pass-1 product and rollout scope are already locked by the detailed design docs.
