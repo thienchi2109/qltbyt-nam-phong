@@ -4,7 +4,7 @@ import { getServerSession } from "next-auth"
 import { authOptions } from "@/auth/config"
 
 export async function POST(request: Request) {
-  const session: any = await getServerSession(authOptions as any)
+  const session = await getServerSession(authOptions)
   if (!session?.user?.id) return NextResponse.json({ ok: false }, { status: 401 })
 
   const body = await request.json().catch(() => ({}))
