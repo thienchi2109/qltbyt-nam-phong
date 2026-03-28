@@ -32,7 +32,7 @@ vi.mock('next-auth/react', () => ({
 }))
 
 // Import hooks under test after mocks
-import { useBulkDeleteEquipment, useDeleteEquipment, useRestoreEquipment, useUpdateEquipment } from '@/hooks/use-cached-equipment'
+import { equipmentKeys, useBulkDeleteEquipment, useDeleteEquipment, useRestoreEquipment, useUpdateEquipment } from '@/hooks/use-cached-equipment'
 
 // Test utilities
 const createQueryClient = () =>
@@ -362,6 +362,29 @@ describe('Equipment CRUD Mutations', () => {
       })
 
       expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['equipment_list'] })
+    })
+
+    it('invalidates the updated equipment detail cache when the RPC returns only a boolean', async () => {
+      mockCallRpc.mockResolvedValue(true)
+      const invalidateSpy = vi.spyOn(queryClient, 'invalidateQueries')
+      const setQueryDataSpy = vi.spyOn(queryClient, 'setQueryData')
+
+      const { result } = renderHook(() => useUpdateEquipment(), { wrapper: createWrapper(queryClient) })
+
+      act(() => {
+        result.current.mutate({
+          id: '1',
+          data: { ten_thiet_bi: 'Updated Equipment' },
+        })
+      })
+
+      await waitFor(() => {
+        expect(result.current.isSuccess).toBe(true)
+      })
+
+      expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['equipment'] })
+      expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: equipmentKeys.detail('1') })
+      expect(setQueryDataSpy).not.toHaveBeenCalled()
     })
   })
 

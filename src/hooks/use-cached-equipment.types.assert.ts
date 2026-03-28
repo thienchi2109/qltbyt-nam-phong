@@ -22,8 +22,8 @@ type _UseEquipmentDataIsEquipmentArray = Assert<IsEqual<UseEquipmentData, Equipm
 type _UseEquipmentDetailDataMatchesEquipment = Assert<
   IsEqual<UseEquipmentDetailData, Equipment | null | undefined>
 >
-type _UseUpdateEquipmentDataMatchesEquipment = Assert<
-  IsEqual<UseUpdateEquipmentData, Equipment | undefined>
+type _UseUpdateEquipmentDataMatchesVoid = Assert<
+  IsEqual<UseUpdateEquipmentData, void | undefined>
 >
 type _UseCreateEquipmentDataMatchesEquipment = Assert<
   IsEqual<UseCreateEquipmentData, Equipment | undefined>

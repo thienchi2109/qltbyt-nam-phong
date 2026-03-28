@@ -114,14 +114,13 @@ export function useUpdateEquipment() {
 
   return useMutation({
     mutationFn: async (params: { id: string; data: EquipmentPayload }) => {
-      const data = await callRpc<Equipment>({ fn: 'equipment_update', args: { p_id: Number(params.id), p_patch: params.data } })
-      return data
+      await callRpc<boolean>({ fn: 'equipment_update', args: { p_id: Number(params.id), p_patch: params.data } })
     },
-    onSuccess: (data) => {
+    onSuccess: (_result, params) => {
       // Invalidate and refetch equipment lists
       queryClient.invalidateQueries({ queryKey: ['equipment'] })
-      // Update specific equipment detail cache
-      queryClient.setQueryData(equipmentKeys.detail(String(data.id)), data)
+      // Refetch the edited equipment detail instead of writing an unknown boolean payload into cache
+      queryClient.invalidateQueries({ queryKey: equipmentKeys.detail(String(params.id)) })
       // Invalidate dashboard stats to update KPI cards
       queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] })
 
@@ -278,5 +277,3 @@ export function useBulkDeleteEquipment() {
     },
   })
 }
-
-
