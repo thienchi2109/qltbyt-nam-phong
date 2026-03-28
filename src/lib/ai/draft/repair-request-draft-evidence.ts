@@ -76,16 +76,26 @@ function readFollowUpContext(output: unknown): Record<string, unknown> | null {
 function extractEquipmentMatchesFromFollowUp(
   output: unknown,
 ): RepairRequestDraftEquipmentContext[] {
+  // New envelope path: followUpContext.equipment
   const ctx = readFollowUpContext(output)
-  if (!ctx || !Array.isArray(ctx.equipment)) {
-    return []
+  if (ctx && Array.isArray(ctx.equipment)) {
+    return ctx.equipment
+      .map(normalizeEquipmentRow)
+      .filter(
+        (item): item is RepairRequestDraftEquipmentContext => item !== null,
+      )
   }
 
-  return ctx.equipment
-    .map(normalizeEquipmentRow)
-    .filter(
-      (item): item is RepairRequestDraftEquipmentContext => item !== null,
-    )
+  // Backward-compat: pre-envelope history messages use { data: [...], total }
+  if (isRecord(output) && Array.isArray(output.data)) {
+    return output.data
+      .map(normalizeEquipmentRow)
+      .filter(
+        (item): item is RepairRequestDraftEquipmentContext => item !== null,
+      )
+  }
+
+  return []
 }
 
 function hasEvidenceRef(output: unknown): boolean {

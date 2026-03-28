@@ -156,10 +156,10 @@ describe('repair-request-draft evidence collection', () => {
     expect(result.evidenceRefs).toContain('maintenanceSummary')
   })
 
-  it('ignores output without followUpContext for equipment extraction', () => {
+  it('ignores envelope without followUpContext or data for equipment extraction', () => {
     const output = makeEnvelopeOutput({
       modelSummary: { summaryText: 'equipmentLookup: 1 result(s).' },
-      // No followUpContext — equipment extraction should return empty
+      // No followUpContext, no data — equipment extraction should return empty
     })
 
     const result = collectRepairRequestDraftEvidence({
@@ -169,5 +169,27 @@ describe('repair-request-draft evidence collection', () => {
 
     expect(result.equipmentResolution).toBe('none')
     expect(result.equipment).toBeNull()
+  })
+
+  it('falls back to output.data for pre-deployment history messages', () => {
+    // Old raw RPC format — no followUpContext, equipment in output.data
+    const oldFormatOutput = {
+      data: [
+        { thiet_bi_id: 99, ma_thiet_bi: 'TB-099', ten_thiet_bi: 'Máy cũ' },
+      ],
+      total: 1,
+    }
+
+    const result = collectRepairRequestDraftEvidence({
+      messages: [makeAssistantToolMessage('equipmentLookup', oldFormatOutput)],
+      steps: [],
+    })
+
+    expect(result.equipmentResolution).toBe('single')
+    expect(result.equipment).toEqual({
+      thiet_bi_id: 99,
+      ma_thiet_bi: 'TB-099',
+      ten_thiet_bi: 'Máy cũ',
+    })
   })
 })
