@@ -1,11 +1,67 @@
-export type RpcOptions<TArgs> = {
+type RpcArgs = Record<string, unknown> | undefined
+type ObjectShapedRpcArgs<TArgs> =
+  TArgs extends undefined ? undefined
+    : TArgs extends readonly unknown[] ? never
+      : TArgs extends object ? TArgs
+        : never
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null
+}
+
+function getRpcErrorPayload(data: unknown): unknown {
+  if (!isRecord(data)) {
+    return data
+  }
+  return data.error ?? data
+}
+
+function getRpcErrorMessage(fn: string, status: number, data: unknown): string {
+  const fallback = `RPC ${fn} failed (${status})`
+  const payload = getRpcErrorPayload(data)
+
+  if (typeof payload === 'string') {
+    return payload
+  }
+
+  if (isRecord(payload)) {
+    const message = payload.message
+    if (typeof message === 'string' && message) {
+      return message
+    }
+
+    const hint = payload.hint
+    if (typeof hint === 'string' && hint) {
+      return hint
+    }
+
+    const details = payload.details
+    if (typeof details === 'string' && details) {
+      return details
+    }
+  }
+
+  try {
+    const serialized = JSON.stringify(payload)
+    return serialized || fallback
+  } catch {
+    return fallback
+  }
+}
+
+export type RpcOptions<TArgs = RpcArgs> = {
   fn: string
-  args?: TArgs
+  args?: ObjectShapedRpcArgs<TArgs>
   headers?: Record<string, string>
   signal?: AbortSignal
 }
 
-export async function callRpc<TRes = unknown, TArgs = any>({ fn, args, headers, signal }: RpcOptions<TArgs>): Promise<TRes> {
+export async function callRpc<TRes = unknown, TArgs = RpcArgs>({
+  fn,
+  args,
+  headers,
+  signal,
+}: RpcOptions<TArgs>): Promise<TRes> {
   const res = await fetch(`/api/rpc/${encodeURIComponent(fn)}`, {
     method: 'POST',
     headers: {
@@ -19,12 +75,8 @@ export async function callRpc<TRes = unknown, TArgs = any>({ fn, args, headers, 
     let msg = `RPC ${fn} failed (${res.status})`
     try {
       const data = await res.json()
-      const err = (data && (data.error ?? data)) as any
-      if (typeof err === 'string') {
-        msg = err
-      } else if (err && typeof err === 'object') {
-        msg = err.message || err.hint || err.details || JSON.stringify(err)
-      }
+      const err = getRpcErrorPayload(data)
+      msg = getRpcErrorMessage(fn, res.status, data)
       try { console.error(`[rpc-client] ${fn} error ${res.status}:`, err) } catch {}
     } catch {}
     throw new Error(msg)
