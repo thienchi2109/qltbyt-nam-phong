@@ -3,8 +3,25 @@ import { createClient } from "@supabase/supabase-js"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/auth/config"
 
+type TenantRow = {
+  id: number
+  name: string | null
+  code: string | null
+}
+
+type MembershipRow = {
+  don_vi:
+    | {
+        id: number | null
+        name: string | null
+        code: string | null
+      }
+    | number
+    | null
+}
+
 export async function GET() {
-  const session: any = await getServerSession(authOptions as any)
+  const session = await getServerSession(authOptions)
   if (!session?.user?.id) return NextResponse.json({ memberships: [] })
 
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
@@ -22,7 +39,7 @@ export async function GET() {
       .or('active.is.null,active.eq.true')
       .order('name', { ascending: true })
     if (derr) return NextResponse.json({ memberships: [] })
-    const memberships = (all || []).map((row: any) => ({
+    const memberships = (all || []).map((row: TenantRow) => ({
       don_vi: row.id,
       name: row.name || '',
       code: row.code || ''
@@ -38,10 +55,14 @@ export async function GET() {
 
   if (error) return NextResponse.json({ memberships: [] })
 
-  const memberships = (data || []).map((row: any) => ({
-    don_vi: row.don_vi?.id || row.don_vi,
-    name: row.don_vi?.name || '',
-    code: row.don_vi?.code || ''
-  }))
+  const memberships = (data || []).map((row: MembershipRow) => {
+    const tenant = typeof row.don_vi === 'object' && row.don_vi !== null ? row.don_vi : null
+
+    return {
+      don_vi: tenant?.id || row.don_vi,
+      name: tenant?.name || '',
+      code: tenant?.code || ''
+    }
+  })
   return NextResponse.json({ memberships })
 }
