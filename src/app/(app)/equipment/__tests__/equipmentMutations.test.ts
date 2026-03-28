@@ -6,14 +6,14 @@ import { QueryClient, QueryClientProvider, useMutation, useQueryClient } from '@
 // Mock callRpc
 const mockCallRpc = vi.fn()
 vi.mock('@/lib/rpc-client', () => ({
-  callRpc: (args: any) => mockCallRpc(args),
+  callRpc: (args: unknown) => mockCallRpc(args),
 }))
 
 // Mock useToast
 const mockToast = vi.fn()
 vi.mock('@/hooks/use-toast', () => ({
   useToast: () => ({ toast: mockToast }),
-  toast: (args: any) => mockToast(args),
+  toast: (args: unknown) => mockToast(args),
 }))
 
 // Mock next-auth
@@ -828,3 +828,4 @@ describe('Equipment CRUD Mutations', () => {
     })
   })
 })
+
