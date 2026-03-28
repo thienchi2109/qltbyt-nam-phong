@@ -13,23 +13,38 @@ export const equipmentKeys = CacheKeys.equipment
 type EquipmentPayload = Record<string, unknown>
 type CacheScopeUser = Pick<User, 'role' | 'khoa_phong'>
 
-function isUserRole(role: string): role is UserRole {
-  return role in USER_ROLES
+function normalizeSessionRole(role: string | null | undefined): UserRole | null {
+  if (!role) return null
+
+  const normalized = role.trim().toLowerCase()
+  return normalized in USER_ROLES ? (normalized as UserRole) : null
 }
 
 function toCacheScopeUser(user: Session['user'] | null | undefined): CacheScopeUser | null {
-  if (!user || !isUserRole(user.role)) {
+  const role = normalizeSessionRole(user?.role)
+  if (!user || !role) {
     return null
   }
 
   return {
-    role: user.role,
+    role,
     khoa_phong: user.khoa_phong ?? undefined,
   }
 }
 
 function getErrorMessage(error: unknown, fallback: string): string {
-  return error instanceof Error && error.message ? error.message : fallback
+  if (error instanceof Error && error.message) {
+    return error.message
+  }
+
+  if (typeof error === 'object' && error !== null && 'message' in error) {
+    const message = (error as { message?: unknown }).message
+    if (typeof message === 'string' && message) {
+      return message
+    }
+  }
+
+  return fallback
 }
 
 // Phase 3: Enhanced equipment fetching with advanced caching
@@ -263,3 +278,5 @@ export function useBulkDeleteEquipment() {
     },
   })
 }
+
+

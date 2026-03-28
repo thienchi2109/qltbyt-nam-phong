@@ -32,7 +32,7 @@ vi.mock('next-auth/react', () => ({
 }))
 
 // Import hooks under test after mocks
-import { useBulkDeleteEquipment, useDeleteEquipment, useRestoreEquipment } from '@/hooks/use-cached-equipment'
+import { useBulkDeleteEquipment, useDeleteEquipment, useRestoreEquipment, useUpdateEquipment } from '@/hooks/use-cached-equipment'
 
 // Test utilities
 const createQueryClient = () =>
@@ -277,6 +277,31 @@ describe('Equipment CRUD Mutations', () => {
       })
 
       expect(result.current.error?.message).toBe('Equipment not found')
+    })
+
+    it('should surface plain-object rejection messages when update fails', async () => {
+      mockCallRpc.mockRejectedValue({ message: 'Permission denied' })
+
+      const { result } = renderHook(() => useUpdateEquipment(), { wrapper: createWrapper(queryClient) })
+
+      act(() => {
+        result.current.mutate({
+          id: '1',
+          data: { ten_thiet_bi: 'Test' },
+        })
+      })
+
+      await waitFor(() => {
+        expect(result.current.isError).toBe(true)
+      })
+
+      expect(mockToast).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: 'Lỗi',
+          description: 'Permission denied',
+          variant: 'destructive',
+        })
+      )
     })
 
     it('should handle tenant isolation error on update', async () => {
@@ -828,4 +853,6 @@ describe('Equipment CRUD Mutations', () => {
     })
   })
 })
+
+
 

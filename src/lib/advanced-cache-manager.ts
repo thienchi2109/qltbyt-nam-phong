@@ -222,9 +222,11 @@ export class CachePerformanceMonitor {
 }
 
 // Department-aware cache utilities
+type CacheScopeUser = Pick<User, 'role' | 'khoa_phong'>
+
 export const DepartmentCacheUtils = {
   // Get user's cache scope based on role and department
-  getUserCacheScope(user: Pick<User, 'role' | 'khoa_phong'> | null): {
+  getUserCacheScope(user: CacheScopeUser | null): {
     department?: string
     scope: 'global' | 'department' | 'none'
   } {
