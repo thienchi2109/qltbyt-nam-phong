@@ -2,7 +2,7 @@ import { createGoogleGenerativeAI } from '@ai-sdk/google'
 import type { LanguageModel } from 'ai'
 
 const DEFAULT_PROVIDER = 'google'
-const DEFAULT_MODEL = 'gemini-3-flash-preview'
+const DEFAULT_MODEL = 'gemini-3.1-flash-lite-preview'
 
 // ---------------------------------------------------------------------------
 // API-key pool & round-robin rotation
