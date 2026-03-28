@@ -33,6 +33,7 @@ import { useSession } from "next-auth/react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { taskTypes } from "@/lib/data"
 import { useQuery } from "@tanstack/react-query"
+import { fetchTenantList, findCurrentTenant } from "./add-equipment-dialog.queries"
 
 const planFormSchema = z.object({
   ten_ke_hoach: z.string().min(1, "Tên kế hoạch là bắt buộc."),
@@ -52,7 +53,7 @@ interface AddMaintenancePlanDialogProps {
 export function AddMaintenancePlanDialog({ open, onOpenChange, onSuccess }: AddMaintenancePlanDialogProps) {
   const { toast } = useToast()
   const { data: session } = useSession()
-  const user = session?.user as any // Cast NextAuth user to our User type
+  const user = session?.user
   const [isSubmitting, setIsSubmitting] = React.useState(false)
   
   // Detect global user (no facility restriction)
@@ -61,10 +62,7 @@ export function AddMaintenancePlanDialog({ open, onOpenChange, onSuccess }: AddM
   // Use TanStack Query for tenants with proper caching (same pattern as equipment dialog)
   const { data: tenantList = [], isLoading: tenantsLoading } = useQuery({
     queryKey: ['tenant_list'],
-    queryFn: async () => {
-      const list = await callRpc<any[]>({ fn: 'tenant_list', args: {} })
-      return (list || []).map(t => ({ id: t.id, code: t.code, name: t.name }))
-    },
+    queryFn: fetchTenantList,
     enabled: open && !isGlobalUser, // Only fetch when dialog is open and user is not global
     staleTime: 5 * 60 * 1000, // 5 minutes
     gcTime: 10 * 60 * 1000, // 10 minutes
@@ -74,10 +72,7 @@ export function AddMaintenancePlanDialog({ open, onOpenChange, onSuccess }: AddM
   // Find current user's tenant (same pattern as equipment dialog)
   const currentTenant = React.useMemo(() => {
     if (isGlobalUser) return null
-    const userDonVi = user?.don_vi
-    if (!userDonVi) return null
-    if (!tenantList.length) return null
-    return tenantList.find(t => t.id === Number(userDonVi)) || null
+    return findCurrentTenant(tenantList, user?.don_vi)
   }, [isGlobalUser, user?.don_vi, tenantList])
   
   // Robust display value for facility field
@@ -135,11 +130,12 @@ export function AddMaintenancePlanDialog({ open, onOpenChange, onSuccess }: AddM
         khoa_phong: "",
         loai_cong_viec: "Bảo trì",
       })
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : ""
       toast({
         variant: "destructive",
         title: "Lỗi",
-        description: "Không thể tạo kế hoạch. " + error.message,
+        description: `Không thể tạo kế hoạch. ${message}`,
       })
     } finally {
       setIsSubmitting(false)

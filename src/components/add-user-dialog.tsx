@@ -20,6 +20,7 @@ import { callRpc } from "@/lib/rpc-client"
 import { USER_ROLES, type UserRole } from "@/types/database"
 import { Badge } from "@/components/ui/badge"
 import { ScrollArea } from "@/components/ui/scroll-area"
+import { fetchTenantList, type AddEquipmentTenantOption } from "./add-equipment-dialog.queries"
 
 interface AddUserDialogProps {
   open: boolean
@@ -30,7 +31,7 @@ interface AddUserDialogProps {
 export function AddUserDialog({ open, onOpenChange, onSuccess }: AddUserDialogProps) {
   const { toast } = useToast()
   const [isLoading, setIsLoading] = React.useState(false)
-  const [tenants, setTenants] = React.useState<{ id: number; code: string; name: string }[]>([])
+  const [tenants, setTenants] = React.useState<AddEquipmentTenantOption[]>([])
   const [memberships, setMemberships] = React.useState<number[]>([])
   
   const [formData, setFormData] = React.useState({
@@ -56,10 +57,13 @@ export function AddUserDialog({ open, onOpenChange, onSuccess }: AddUserDialogPr
     const run = async () => {
       if (!open) return
       try {
-        const list = await callRpc<any[]>({ fn: 'tenant_list', args: {} })
-        setTenants((list || []).map(t => ({ id: t.id, code: t.code, name: t.name })))
-      } catch (e: any) {
-        toast({ variant: 'destructive', title: 'Lỗi tải danh sách đơn vị', description: e?.message || '' })
+        setTenants(await fetchTenantList())
+      } catch (error: unknown) {
+        toast({
+          variant: 'destructive',
+          title: 'Lỗi tải danh sách đơn vị',
+          description: error instanceof Error ? error.message : '',
+        })
       }
     }
     run()
@@ -101,12 +105,12 @@ export function AddUserDialog({ open, onOpenChange, onSuccess }: AddUserDialogPr
 
       onSuccess()
       onOpenChange(false)
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error creating user:', error)
       toast({
         variant: "destructive",
         title: "Lỗi",
-        description: error.message || "Có lỗi xảy ra khi tạo tài khoản."
+        description: error instanceof Error ? error.message : "Có lỗi xảy ra khi tạo tài khoản."
       })
     } finally {
       setIsLoading(false)
@@ -194,7 +198,8 @@ export function AddUserDialog({ open, onOpenChange, onSuccess }: AddUserDialogPr
                 <SelectContent>
                   {tenants.map(t => (
                     <SelectItem key={t.id} value={String(t.id)}>
-                      {t.name} ({t.code})
+                      {t.name}
+                      {t.code ? ` (${t.code})` : ''}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -249,4 +254,4 @@ export function AddUserDialog({ open, onOpenChange, onSuccess }: AddUserDialogPr
       </DialogContent>
     </Dialog>
   )
-} 
+}
