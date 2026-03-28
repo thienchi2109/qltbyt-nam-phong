@@ -2,11 +2,19 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { callRpc } from '@/lib/rpc-client'
 import { toast } from '@/hooks/use-toast'
 import {
+  type MaintenanceHistoryFilters,
   type MaintenanceKeyFilters,
   type MaintenancePlanListResponse,
   type MaintenancePlanMutationInput,
+  type MaintenanceScheduleFilters,
 } from './use-cached-maintenance.types'
-import { getMaintenanceErrorMessage } from './use-cached-maintenance.rpc'
+import {
+  defaultMaintenanceTaskListArgs,
+  fetchMaintenanceTaskList,
+  filterMaintenanceTasksByEquipmentId,
+  findMaintenanceTaskById,
+  getMaintenanceErrorMessage,
+} from './use-cached-maintenance.rpc'
 
 export type { MaintenancePlan, MaintenancePlanListResponse } from './use-cached-maintenance.types'
 
@@ -69,6 +77,47 @@ export function useMaintenancePlans(
     staleTime: 3 * 60 * 1000,
     gcTime: 15 * 60 * 1000,
     enabled: options?.enabled ?? true,
+  })
+}
+
+function useMaintenanceSchedules(filters?: MaintenanceScheduleFilters) {
+  return useQuery({
+    queryKey: maintenanceKeys.schedule(filters || {}),
+    queryFn: async () =>
+      fetchMaintenanceTaskList(callRpc, {
+        ...defaultMaintenanceTaskListArgs,
+        p_loai_cong_viec: filters?.loai_bao_tri ?? null,
+      }),
+    staleTime: 3 * 60 * 1000,
+    gcTime: 15 * 60 * 1000,
+  })
+}
+
+function useMaintenanceHistory(filters?: MaintenanceHistoryFilters) {
+  return useQuery({
+    queryKey: maintenanceKeys.list(filters || {}),
+    queryFn: async () => {
+      const data = await fetchMaintenanceTaskList(callRpc, defaultMaintenanceTaskListArgs)
+      return filterMaintenanceTasksByEquipmentId(data, filters?.thiet_bi_id)
+    },
+    staleTime: 5 * 60 * 1000,
+    gcTime: 20 * 60 * 1000,
+  })
+}
+
+function useMaintenanceDetail(id: string | null) {
+  return useQuery({
+    queryKey: maintenanceKeys.detail(id || ''),
+    queryFn: async () => {
+      if (!id) {
+        return null
+      }
+
+      const data = await fetchMaintenanceTaskList(callRpc, defaultMaintenanceTaskListArgs)
+      return findMaintenanceTaskById(data, id)
+    },
+    enabled: !!id,
+    staleTime: 2 * 60 * 1000,
   })
 }
 

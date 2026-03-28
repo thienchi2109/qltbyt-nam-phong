@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import type { MaintenanceTask } from '@/lib/data'
 import {
+  defaultMaintenanceTaskListArgs,
   fetchMaintenanceTaskList,
   filterMaintenanceTasksByEquipmentId,
   findMaintenanceTaskById,
@@ -37,21 +38,51 @@ function createTask(overrides: Partial<MaintenanceTask> = {}): MaintenanceTask {
   }
 }
 
-const maintenanceTaskListArgs = {
-  p_ke_hoach_id: null,
-  p_thiet_bi_id: null,
-  p_loai_cong_viec: null,
-  p_don_vi_thuc_hien: null,
-} as const
-
 describe('use-cached-maintenance.rpc', () => {
   it('normalizes null and empty task list payloads to empty arrays', async () => {
     const rpc = vi.fn()
       .mockResolvedValueOnce(null)
       .mockResolvedValueOnce([])
 
-    await expect(fetchMaintenanceTaskList(rpc, maintenanceTaskListArgs)).resolves.toEqual([])
-    await expect(fetchMaintenanceTaskList(rpc, maintenanceTaskListArgs)).resolves.toEqual([])
+    await expect(fetchMaintenanceTaskList(rpc, defaultMaintenanceTaskListArgs)).resolves.toEqual([])
+    await expect(fetchMaintenanceTaskList(rpc, defaultMaintenanceTaskListArgs)).resolves.toEqual([])
+  })
+
+  it('filters malformed maintenance task rows instead of blindly casting them', async () => {
+    const rpc = vi.fn().mockResolvedValueOnce([
+      createTask({ id: 1 }),
+      {
+        id: '2',
+        ke_hoach_id: 11,
+        thiet_bi_id: 22,
+        loai_cong_viec: 'Bảo trì',
+        diem_hieu_chuan: null,
+        don_vi_thuc_hien: null,
+        thang_1: 'oops',
+        thang_2: false,
+        thang_3: false,
+        thang_4: false,
+        thang_5: false,
+        thang_6: false,
+        thang_7: false,
+        thang_8: false,
+        thang_9: false,
+        thang_10: false,
+        thang_11: false,
+        thang_12: false,
+        ghi_chu: null,
+        thiet_bi: {
+          ma_thiet_bi: 'TB-002',
+          ten_thiet_bi: 'Máy B',
+          khoa_phong_quan_ly: null,
+        },
+      },
+      null,
+    ])
+
+    await expect(fetchMaintenanceTaskList(rpc, defaultMaintenanceTaskListArgs)).resolves.toEqual([
+      createTask({ id: 1 }),
+    ])
   })
 
   it('filters maintenance history rows by equipment id', () => {

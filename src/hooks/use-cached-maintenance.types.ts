@@ -32,3 +32,18 @@ export interface MaintenancePlanMutationInput {
   khoa_phong?: string | null
   nguoi_lap_ke_hoach?: string | null
 }
+
+export type MaintenanceScheduleFilters = MaintenanceKeyFilters & {
+  search?: string
+  phong_ban?: string
+  trang_thai?: string
+  loai_bao_tri?: string
+  dateFrom?: string
+  dateTo?: string
+}
+
+export type MaintenanceHistoryFilters = MaintenanceKeyFilters & {
+  thiet_bi_id?: string
+  dateFrom?: string
+  dateTo?: string
+}
