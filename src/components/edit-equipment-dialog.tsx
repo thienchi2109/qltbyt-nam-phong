@@ -31,7 +31,6 @@ import { useToast } from "@/hooks/use-toast"
 import { type Equipment } from "@/types/database"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
-import { callRpc } from "@/lib/rpc-client"
 import { normalizeDateForForm, normalizePartialDateForForm, formatFullDateToDisplay, formatPartialDateToDisplay, isValidPartialDate, PARTIAL_DATE_ERROR_MESSAGE } from "@/lib/date-utils"
 import {
   FULL_DATE_ERROR_MESSAGE,
@@ -41,6 +40,19 @@ import {
   validateDecommissionDateRules,
 } from "@/components/equipment-decommission-form"
 import { equipmentStatusOptions } from "@/components/equipment/equipment-table-columns"
+import { updateEquipmentRecord } from "./edit-equipment-dialog.rpc"
+
+const equipmentStatusEnum = z.enum(equipmentStatusOptions, { required_error: "Tình trạng hiện tại là bắt buộc" })
+
+type EquipmentStatusValue = z.infer<typeof equipmentStatusEnum>
+
+function isEquipmentStatusValue(value: string | null | undefined): value is EquipmentStatusValue {
+  return typeof value === "string" && equipmentStatusOptions.some((option) => option === value)
+}
+
+function normalizeEquipmentStatus(value: Equipment["tinh_trang_hien_tai"]): EquipmentStatusValue | "" {
+  return isEquipmentStatusValue(value) ? value : ""
+}
 
 const equipmentFormSchema = z.object({
   ma_thiet_bi: z.string().min(1, "Mã thiết bị là bắt buộc"),
@@ -60,7 +72,7 @@ const equipmentFormSchema = z.object({
   vi_tri_lap_dat: z.string().min(1, "Vị trí lắp đặt là bắt buộc").nullable().transform(val => val || ""),
   khoa_phong_quan_ly: z.string().min(1, "Khoa/Phòng quản lý là bắt buộc").nullable().transform(val => val || ""),
   nguoi_dang_truc_tiep_quan_ly: z.string().min(1, "Người trực tiếp quản lý (sử dụng) là bắt buộc").nullable().transform(val => val || ""),
-  tinh_trang_hien_tai: z.enum(equipmentStatusOptions, { required_error: "Tình trạng hiện tại là bắt buộc" }).nullable().transform(val => val || "" as any),
+  tinh_trang_hien_tai: equipmentStatusEnum.nullable().transform((value): EquipmentStatusValue | "" => value ?? ""),
   cau_hinh_thiet_bi: z.string().optional().nullable(),
   phu_kien_kem_theo: z.string().optional().nullable(),
   ghi_chu: z.string().optional().nullable(),
@@ -105,7 +117,7 @@ export function EditEquipmentDialog({ open, onOpenChange, onSuccess, equipment }
         vi_tri_lap_dat: equipment.vi_tri_lap_dat ?? "",
         khoa_phong_quan_ly: equipment.khoa_phong_quan_ly ?? "",
         nguoi_dang_truc_tiep_quan_ly: equipment.nguoi_dang_truc_tiep_quan_ly ?? "",
-        tinh_trang_hien_tai: (equipment.tinh_trang_hien_tai as any) ?? "",
+        tinh_trang_hien_tai: normalizeEquipmentStatus(equipment.tinh_trang_hien_tai),
         phan_loai_theo_nd98: (
           equipment.phan_loai_theo_nd98 && ['A','B','C','D'].includes(String(equipment.phan_loai_theo_nd98).toUpperCase())
             ? (String(equipment.phan_loai_theo_nd98).toUpperCase() as 'A'|'B'|'C'|'D')
@@ -127,7 +139,7 @@ export function EditEquipmentDialog({ open, onOpenChange, onSuccess, equipment }
 
   const updateMutation = useMutation({
     mutationFn: async (vars: { id: number; patch: EquipmentFormValues }) => {
-      await callRpc<any>({ fn: 'equipment_update', args: { p_id: vars.id, p_patch: vars.patch as any } })
+      await updateEquipmentRecord(vars.id, vars.patch)
     },
     onSuccess: () => {
       toast({ title: 'Thành công', description: 'Đã cập nhật thông tin thiết bị.' })
@@ -136,8 +148,12 @@ export function EditEquipmentDialog({ open, onOpenChange, onSuccess, equipment }
       onSuccess()
       onOpenChange(false)
     },
-    onError: (error: any) => {
-      toast({ variant: 'destructive', title: 'Lỗi', description: 'Không thể cập nhật thiết bị. ' + (error?.message || '') })
+    onError: (error: unknown) => {
+      toast({
+        variant: 'destructive',
+        title: 'Lỗi',
+        description: 'Không thể cập nhật thiết bị. ' + (error instanceof Error ? error.message : ''),
+      })
     },
   })
 
