@@ -23,9 +23,11 @@ export const dashboardStatsKeys = {
 
 type DashboardSessionUser = Session["user"]
 
-function getDashboardUserScope(user: DashboardSessionUser | undefined) {
+function getDashboardUserScope(
+  user: DashboardSessionUser | undefined,
+): { role: string | undefined; diaBanId: string | null } {
   return {
-    role: user?.role,
+    role: typeof user?.role === 'string' ? user.role : undefined,
     diaBanId: user?.dia_ban_id != null ? String(user.dia_ban_id) : null,
   }
 }
