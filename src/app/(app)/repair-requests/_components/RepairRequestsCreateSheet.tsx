@@ -23,11 +23,11 @@ import {
 } from "@/components/ui/sheet"
 import { Textarea } from "@/components/ui/textarea"
 import { cn } from "@/lib/utils"
-import { callRpc } from "@/lib/rpc-client"
 import { Calendar as CalendarIcon, Check, Loader2 } from "lucide-react"
 import { useMediaQuery } from "@/hooks/use-media-query"
 import { useRepairRequestsContext } from "../_hooks/useRepairRequestsContext"
 import type { EquipmentSelectItem, RepairUnit } from "../types"
+import { fetchRepairRequestEquipmentList } from "../repair-requests-equipment-rpc"
 
 function formatEquipmentLabel(equipment: Pick<EquipmentSelectItem, "ten_thiet_bi" | "ma_thiet_bi">) {
   return `${equipment.ten_thiet_bi} (${equipment.ma_thiet_bi})`
@@ -164,19 +164,9 @@ export function RepairRequestsCreateSheet() {
     const ctrl = new AbortController()
     const run = async () => {
       try {
-        const eq = await callRpc<any[]>({
-          fn: "equipment_list",
-          args: { p_q: q, p_sort: "ten_thiet_bi.asc", p_page: 1, p_page_size: 20 },
-        })
+        const eq = await fetchRepairRequestEquipmentList(q)
         if (ctrl.signal.aborted) return
-        setAllEquipment(
-          (eq || []).map((row: any) => ({
-            id: row.id,
-            ma_thiet_bi: row.ma_thiet_bi,
-            ten_thiet_bi: row.ten_thiet_bi,
-            khoa_phong_quan_ly: row.khoa_phong_quan_ly,
-          }))
-        )
+        setAllEquipment(eq || [])
         if (assistantDraft?.equipment?.thiet_bi_id && q === draftEquipmentLabel) {
           setHasDraftEquipmentLookupCompleted(true)
         }
