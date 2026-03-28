@@ -853,6 +853,3 @@ describe('Equipment CRUD Mutations', () => {
     })
   })
 })
-
-
-

@@ -10,6 +10,8 @@ import {
   type EquipmentAttentionRow,
 } from './use-dashboard-stats.types'
 
+export type { EquipmentAttention, EquipmentAttentionPage } from './use-dashboard-stats.types'
+
 // Query keys for dashboard statistics
 export const dashboardStatsKeys = {
   all: ['dashboard-stats'] as const,

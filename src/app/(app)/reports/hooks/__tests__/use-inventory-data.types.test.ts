@@ -158,6 +158,8 @@ describe('use-inventory-data.types', () => {
   it('detects RPC not-found errors for empty-transfer fallback', () => {
     expect(isRpcNotFoundError(new Error('RPC transfer_request_list_enhanced failed (404)'))).toBe(true)
     expect(isRpcNotFoundError(new Error('Function not found'))).toBe(true)
+    expect(isRpcNotFoundError({ message: 'RPC transfer_request_list_enhanced failed (404)' })).toBe(true)
+    expect(isRpcNotFoundError('Function not found')).toBe(true)
     expect(isRpcNotFoundError(new Error('Permission denied'))).toBe(false)
   })
 })

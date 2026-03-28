@@ -50,6 +50,22 @@ function getDateOnly(value: unknown): string | undefined {
   return raw ? raw.split('T')[0] : undefined
 }
 
+function getErrorMessage(value: unknown): string | undefined {
+  if (typeof value === 'string') {
+    return value
+  }
+
+  if (value instanceof Error) {
+    return value.message
+  }
+
+  if (!isRecord(value)) {
+    return undefined
+  }
+
+  return toStringValue(value.message)
+}
+
 function isWithinDateRange(value: unknown, fromDate: string, toDate: string): boolean {
   const dateOnly = getDateOnly(value)
   return !!dateOnly && dateOnly >= fromDate && dateOnly <= toDate
@@ -221,10 +237,6 @@ export function mapExportedInventoryItems(
 }
 
 export function isRpcNotFoundError(error: unknown): boolean {
-  if (!(error instanceof Error)) {
-    return false
-  }
-
-  const message = error.message.toLowerCase()
+  const message = getErrorMessage(error)?.toLowerCase() ?? ''
   return message.includes('404') || message.includes('not found')
 }
