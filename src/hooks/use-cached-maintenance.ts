@@ -4,17 +4,51 @@ import { callRpc } from '@/lib/rpc-client'
 import { toast } from '@/hooks/use-toast'
 import type { TaskType } from '@/lib/data'
 
+type MaintenanceKeyFilters = Record<string, unknown>
+type MaintenanceTaskRecord = Record<string, unknown> & {
+  id?: string | number | null
+  thiet_bi_id?: string | number | null
+}
+type MaintenanceTaskPayload = Record<string, unknown>
+type MaintenancePlanInput = {
+  ten_ke_hoach?: string
+  nam?: number | null
+  loai_cong_viec?: TaskType | null
+  khoa_phong?: string | null
+  nguoi_lap_ke_hoach?: string | null
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null
+}
+
+function getErrorMessage(error: unknown, fallback: string) {
+  if (error instanceof Error && error.message) {
+    return error.message
+  }
+
+  if (typeof error === 'string' && error) {
+    return error
+  }
+
+  if (isRecord(error) && typeof error.message === 'string' && error.message) {
+    return error.message
+  }
+
+  return fallback
+}
+
 // Query keys for caching
 export const maintenanceKeys = {
   all: ['maintenance'] as const,
   lists: () => [...maintenanceKeys.all, 'list'] as const,
-  list: (filters: Record<string, any>) => [...maintenanceKeys.lists(), { filters }] as const,
+  list: (filters: MaintenanceKeyFilters) => [...maintenanceKeys.lists(), { filters }] as const,
   details: () => [...maintenanceKeys.all, 'detail'] as const,
   detail: (id: string) => [...maintenanceKeys.details(), id] as const,
   schedules: () => [...maintenanceKeys.all, 'schedules'] as const,
-  schedule: (filters: Record<string, any>) => [...maintenanceKeys.schedules(), { filters }] as const,
+  schedule: (filters: MaintenanceKeyFilters) => [...maintenanceKeys.schedules(), { filters }] as const,
   plans: () => [...maintenanceKeys.all, 'plans'] as const,
-  plan: (filters: Record<string, any>) => [...maintenanceKeys.plans(), { filters }] as const,
+  plan: (filters: MaintenanceKeyFilters) => [...maintenanceKeys.plans(), { filters }] as const,
 }
 
 // TypeScript interface for paginated maintenance plan response
@@ -110,7 +144,7 @@ function useMaintenanceSchedules(filters?: {
     queryKey: maintenanceKeys.schedule(filters || {}),
     queryFn: async () => {
       // Use "with equipment" variant to embed equipment fields
-      const data = await callRpc<any[]>({
+      const data = await callRpc<MaintenanceTaskRecord[]>({
         fn: 'maintenance_tasks_list_with_equipment',
         args: {
           p_ke_hoach_id: null,
@@ -136,13 +170,13 @@ function useMaintenanceHistory(filters?: {
     queryKey: maintenanceKeys.list(filters || {}),
     queryFn: async () => {
       // Use tasks RPC and filter client-side as an interim implementation
-      const data = await callRpc<any[]>({
+      const data = await callRpc<MaintenanceTaskRecord[]>({
         fn: 'maintenance_tasks_list_with_equipment',
         args: { p_ke_hoach_id: null, p_thiet_bi_id: null, p_loai_cong_viec: null, p_don_vi_thuc_hien: null }
       })
       let items = (data ?? [])
       if (filters?.thiet_bi_id) {
-        items = items.filter((x: any) => String(x.thiet_bi_id) === String(filters.thiet_bi_id))
+        items = items.filter((x) => String(x.thiet_bi_id) === String(filters.thiet_bi_id))
       }
       // Date range filtering is skipped here due to schema variance; can be added with a dedicated RPC later
       return items
@@ -158,11 +192,11 @@ function useMaintenanceDetail(id: string | null) {
     queryKey: maintenanceKeys.detail(id || ''),
     queryFn: async () => {
       if (!id) return null
-      const data = await callRpc<any[]>({
+      const data = await callRpc<MaintenanceTaskRecord[]>({
         fn: 'maintenance_tasks_list_with_equipment',
         args: { p_ke_hoach_id: null, p_thiet_bi_id: null, p_loai_cong_viec: null, p_don_vi_thuc_hien: null }
       })
-      const item = (data || []).find((x: any) => String(x.id) === String(id))
+      const item = (data || []).find((x) => String(x.id) === String(id))
       return item ?? null
     },
     enabled: !!id,
@@ -175,7 +209,7 @@ export function useCreateMaintenancePlan() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: async (data: any) => {
+    mutationFn: async (data: MaintenancePlanInput) => {
       const id = await callRpc<number>({
         fn: 'maintenance_plan_create',
         args: {
@@ -199,10 +233,10 @@ export function useCreateMaintenancePlan() {
         description: "Tạo kế hoạch bảo trì thành công",
       })
     },
-    onError: (error: any) => {
+    onError: (error: unknown) => {
       toast({
         title: "Lỗi",
-        description: error.message || "Không thể tạo kế hoạch bảo trì",
+        description: getErrorMessage(error, "Không thể tạo kế hoạch bảo trì"),
         variant: "destructive",
       })
     },
@@ -214,7 +248,7 @@ export function useUpdateMaintenancePlan() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: async (params: { id: string; data: any }) => {
+    mutationFn: async (params: { id: string; data: MaintenancePlanInput }) => {
       await callRpc<void>({
         fn: 'maintenance_plan_update',
         args: {
@@ -238,10 +272,10 @@ export function useUpdateMaintenancePlan() {
         description: "Cập nhật kế hoạch bảo trì thành công",
       })
     },
-    onError: (error: any) => {
+    onError: (error: unknown) => {
       toast({
         title: "Lỗi",
-        description: error.message || "Không thể cập nhật kế hoạch bảo trì",
+        description: getErrorMessage(error, "Không thể cập nhật kế hoạch bảo trì"),
         variant: "destructive",
       })
     },
@@ -274,10 +308,10 @@ export function useApproveMaintenancePlan() {
         description: "Kế hoạch đã được duyệt.",
       })
     },
-    onError: (error: any) => {
+    onError: (error: unknown) => {
       toast({
         title: "Lỗi duyệt kế hoạch",
-        description: error.message || "Không thể duyệt kế hoạch",
+        description: getErrorMessage(error, "Không thể duyệt kế hoạch"),
         variant: "destructive",
       })
     },
@@ -311,10 +345,10 @@ export function useRejectMaintenancePlan() {
         description: "Kế hoạch đã được từ chối.",
       })
     },
-    onError: (error: any) => {
+    onError: (error: unknown) => {
       toast({
         title: "Lỗi từ chối kế hoạch",
-        description: error.message || "Không thể từ chối kế hoạch",
+        description: getErrorMessage(error, "Không thể từ chối kế hoạch"),
         variant: "destructive",
       })
     },
@@ -344,10 +378,10 @@ export function useDeleteMaintenancePlan() {
         description: "Kế hoạch đã được xóa thành công.",
       })
     },
-    onError: (error: any) => {
+    onError: (error: unknown) => {
       toast({
         title: "Lỗi xóa kế hoạch",
-        description: error.message || "Không thể xóa kế hoạch bảo trì",
+        description: getErrorMessage(error, "Không thể xóa kế hoạch bảo trì"),
         variant: "destructive",
       })
     },
@@ -359,8 +393,8 @@ function useCreateMaintenanceSchedule() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: async (data: any) => {
-      await callRpc<void>({ fn: 'maintenance_tasks_bulk_insert', args: { p_tasks: [data] } as any })
+    mutationFn: async (data: MaintenanceTaskPayload) => {
+      await callRpc<void>({ fn: 'maintenance_tasks_bulk_insert', args: { p_tasks: [data] } })
       return true
     },
     onSuccess: () => {
@@ -374,10 +408,10 @@ function useCreateMaintenanceSchedule() {
         description: "Tạo công việc bảo trì thành công",
       })
     },
-    onError: (error: any) => {
+    onError: (error: unknown) => {
       toast({
         title: "Lỗi",
-        description: error.message || "Không thể tạo công việc bảo trì",
+        description: getErrorMessage(error, "Không thể tạo công việc bảo trì"),
         variant: "destructive",
       })
     },
@@ -389,8 +423,8 @@ function useUpdateMaintenanceSchedule() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: async (params: { id: string; data: any }) => {
-      await callRpc<void>({ fn: 'maintenance_task_update', args: { p_id: Number(params.id), p_task: params.data } as any })
+    mutationFn: async (params: { id: string; data: MaintenanceTaskPayload }) => {
+      await callRpc<void>({ fn: 'maintenance_task_update', args: { p_id: Number(params.id), p_task: params.data } })
       return { id: Number(params.id), ...params.data }
     },
     onSuccess: (data) => {
@@ -398,7 +432,7 @@ function useUpdateMaintenanceSchedule() {
       queryClient.invalidateQueries({ queryKey: maintenanceKeys.schedules() })
       queryClient.invalidateQueries({ queryKey: maintenanceKeys.lists() })
       // Update specific maintenance detail cache
-      queryClient.setQueryData(maintenanceKeys.detail(data.id), data)
+      queryClient.setQueryData(maintenanceKeys.detail(String(data.id)), data)
       // Invalidate dashboard stats to update KPI cards
       queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] })
 
@@ -407,10 +441,10 @@ function useUpdateMaintenanceSchedule() {
         description: "Cập nhật công việc bảo trì thành công",
       })
     },
-    onError: (error: any) => {
+    onError: (error: unknown) => {
       toast({
         title: "Lỗi",
-        description: error.message || "Không thể cập nhật công việc bảo trì",
+        description: getErrorMessage(error, "Không thể cập nhật công việc bảo trì"),
         variant: "destructive",
       })
     },
@@ -430,7 +464,7 @@ function useCompleteMaintenance() {
       nguoi_thuc_hien: string
     }) => {
       // Minimal RPC mapping; adjust when a dedicated completion RPC for schedules is available
-      await callRpc<void>({ fn: 'maintenance_task_update', args: { p_id: Number(params.id), p_task: { ghi_chu: params.ghi_chu, ket_qua: params.ket_qua } } as any })
+      await callRpc<void>({ fn: 'maintenance_task_update', args: { p_id: Number(params.id), p_task: { ghi_chu: params.ghi_chu, ket_qua: params.ket_qua } } })
       return { id: Number(params.id) }
     },
     onSuccess: () => {
@@ -444,10 +478,10 @@ function useCompleteMaintenance() {
         description: "Hoàn thành bảo trì thành công",
       })
     },
-    onError: (error: any) => {
+    onError: (error: unknown) => {
       toast({
         title: "Lỗi",
-        description: error.message || "Không thể hoàn thành bảo trì",
+        description: getErrorMessage(error, "Không thể hoàn thành bảo trì"),
         variant: "destructive",
       })
     },
@@ -460,7 +494,7 @@ function useDeleteMaintenanceSchedule() {
 
   return useMutation({
     mutationFn: async (id: string) => {
-      await callRpc<void>({ fn: 'maintenance_tasks_delete', args: { p_ids: [Number(id)] } as any })
+      await callRpc<void>({ fn: 'maintenance_tasks_delete', args: { p_ids: [Number(id)] } })
     },
     onSuccess: () => {
       // Invalidate all maintenance queries
@@ -473,10 +507,10 @@ function useDeleteMaintenanceSchedule() {
         description: "Xóa công việc bảo trì thành công",
       })
     },
-    onError: (error: any) => {
+    onError: (error: unknown) => {
       toast({
         title: "Lỗi",
-        description: error.message || "Không thể xóa công việc bảo trì",
+        description: getErrorMessage(error, "Không thể xóa công việc bảo trì"),
         variant: "destructive",
       })
     },
