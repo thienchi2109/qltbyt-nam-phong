@@ -155,6 +155,50 @@ describe('use-inventory-data.types', () => {
     ])
   })
 
+  it('keeps pending liquidation rows on the transfer path when handover date is in range', () => {
+    expect(
+      mapExportedInventoryItems(
+        [
+          {
+            id: 13,
+            loai_hinh: 'thanh_ly',
+            trang_thai: 'cho_duyet',
+            ngay_ban_giao: '2026-03-18T09:00:00.000Z',
+            ngay_hoan_thanh: null,
+            created_at: '2026-03-10T09:00:00.000Z',
+            ly_do_luan_chuyen: 'Thanh ly cho duyet',
+            don_vi_nhan: 'Don vi xu ly',
+            thiet_bi: {
+              ma_thiet_bi: 'EQ-012',
+              ten_thiet_bi: 'Ventilator',
+              model: 'V1',
+              serial: 'SER-12',
+              khoa_phong_quan_ly: 'Khoa Cap cuu',
+            },
+          },
+        ],
+        '2026-03-01',
+        '2026-03-31'
+      )
+    ).toEqual([
+      {
+        id: 13,
+        ma_thiet_bi: 'EQ-012',
+        ten_thiet_bi: 'Ventilator',
+        model: 'V1',
+        serial: 'SER-12',
+        khoa_phong_quan_ly: 'Khoa Cap cuu',
+        ngay_nhap: '2026-03-18T09:00:00.000Z',
+        created_at: '2026-03-10T09:00:00.000Z',
+        type: 'export',
+        source: 'transfer_external',
+        quantity: 1,
+        reason: 'Thanh ly cho duyet',
+        destination: 'Don vi xu ly',
+      },
+    ])
+  })
+
   it('detects RPC not-found errors for empty-transfer fallback', () => {
     expect(isRpcNotFoundError(new Error('RPC transfer_request_list_enhanced failed (404)'))).toBe(true)
     expect(isRpcNotFoundError(new Error('Function not found'))).toBe(true)
