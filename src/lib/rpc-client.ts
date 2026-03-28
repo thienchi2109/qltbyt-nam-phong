@@ -1,9 +1,4 @@
 type RpcArgs = Record<string, unknown> | undefined
-type ObjectShapedRpcArgs<TArgs> =
-  TArgs extends undefined ? undefined
-    : TArgs extends readonly unknown[] ? never
-      : TArgs extends object ? TArgs
-        : never
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null
@@ -49,14 +44,14 @@ function getRpcErrorMessage(fn: string, status: number, data: unknown): string {
   }
 }
 
-export type RpcOptions<TArgs = RpcArgs> = {
+export type RpcOptions<TArgs extends RpcArgs = RpcArgs> = {
   fn: string
-  args?: ObjectShapedRpcArgs<TArgs>
+  args?: TArgs
   headers?: Record<string, string>
   signal?: AbortSignal
 }
 
-export async function callRpc<TRes = unknown, TArgs = RpcArgs>({
+export async function callRpc<TRes = unknown, TArgs extends RpcArgs = RpcArgs>({
   fn,
   args,
   headers,

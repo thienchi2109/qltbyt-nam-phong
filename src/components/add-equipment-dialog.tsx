@@ -46,7 +46,7 @@ interface AddEquipmentDialogProps {
   onSuccess: () => void
 }
 
-interface CreateEquipmentArgs {
+interface CreateEquipmentArgs extends Record<string, unknown> {
   p_payload: AddEquipmentFormValues
 }
 
