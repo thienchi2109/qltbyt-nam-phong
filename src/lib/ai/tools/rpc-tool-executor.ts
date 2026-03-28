@@ -171,7 +171,9 @@ export function wrapRpcResultAsEnvelope(
       ...(importantFields !== undefined && { importantFields }),
     },
     ...(followUpContext !== undefined && { followUpContext }),
-    uiArtifact: { rawPayload: payload },
+    ...(toolName !== 'departmentList' && {
+      uiArtifact: { rawPayload: payload },
+    }),
   }
 }
 

@@ -135,8 +135,8 @@ describe('system prompt module', () => {
     expect(prompt).toContain('metadata')
   })
 
-  it('prompt version is v2.4.0 after repair-draft orchestration guidance', () => {
-    expect(SYSTEM_PROMPT_VERSION).toBe('v2.4.0')
+  it('prompt version is v2.5.0 after Batch 2 envelope guidance updates', () => {
+    expect(SYSTEM_PROMPT_VERSION).toBe('v2.5.0')
   })
 
   it('includes § 10 troubleshooting drafts section', () => {
@@ -203,7 +203,7 @@ describe('system prompt module', () => {
     expect(prompt).toContain('`filters.status`')
     expect(prompt).toContain('`filters.department`')
     expect(prompt).toContain('`filters.location`')
-    expect(prompt).toContain('trường `total`')
+    expect(prompt).toContain('`modelSummary.itemCount`')
     expect(prompt).toContain('bao nhiêu thiết bị')
   })
 
@@ -243,5 +243,17 @@ describe('system prompt module', () => {
     expect(prompt).toContain('departmentList')
     expect(prompt).toContain('khoa/phòng')
     expect(prompt).toContain('KHÔNG tự thêm tiền tố')
+  })
+
+  it('requires asking for device_name before calling categorySuggestion', () => {
+    const prompt = buildSystemPrompt({
+      role: 'to_qltb',
+      userId: 'u1',
+      selectedFacilityId: 17,
+    })
+
+    expect(prompt).toContain('`device_name`')
+    expect(prompt).toContain('hỏi người dùng tên thiết bị trước')
+    expect(prompt).toContain('KHÔNG gọi `categorySuggestion` với input rỗng')
   })
 })

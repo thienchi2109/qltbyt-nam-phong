@@ -21,6 +21,10 @@ describe('System prompt envelope guidance (§4)', () => {
     expect(prompt).toContain('modelSummary.summaryText')
   })
 
+  it('mentions uiArtifact.rawPayload.data for detailed current-turn lists', () => {
+    expect(prompt).toContain('uiArtifact.rawPayload.data')
+  })
+
   it('warns model not to reference uiArtifact in answers', () => {
     expect(prompt).toContain('uiArtifact')
     // Should instruct NOT to reference it

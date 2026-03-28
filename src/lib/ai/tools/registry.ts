@@ -113,9 +113,13 @@ const READ_ONLY_TOOL_DEFINITIONS: Record<string, ReadOnlyToolDefinition> = {
   },
   categorySuggestion: {
     description:
-      'List all equipment categories for the current facility. Used when the user asks which category a device should be assigned to. The model reasons about semantic similarity between the device name and category names.',
-    rpcFunction: 'ai_category_list',
-    inputSchema: z.object({}).strict(),
+      'Suggest the best matching equipment categories for a provided device name. Call this only after the user has given `device_name`; the RPC returns a bounded candidate set instead of the full category catalog.',
+    rpcFunction: 'ai_category_suggestion',
+    inputSchema: z
+      .object({
+        device_name: z.string().trim().min(1).max(200),
+      })
+      .strict(),
     modelBudget: {
       maxItems: 10,
       modelVisibleFields: ['ma_nhom', 'ten_nhom', 'parent_name', 'phan_loai', 'match_reason'],
@@ -276,6 +280,10 @@ export function buildToolRegistry({
           args: {
             ...(toolName === 'equipmentLookup'
               ? normalizeEquipmentLookupArgs(input, equipmentLookupHints)
+              : toolName === 'categorySuggestion'
+                ? {
+                    p_device_name: input.device_name,
+                  }
               : input),
             p_don_vi: tenantId,
             p_user_id: userId,

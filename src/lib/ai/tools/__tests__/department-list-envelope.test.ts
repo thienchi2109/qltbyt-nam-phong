@@ -34,10 +34,9 @@ describe('departmentList envelope contract', () => {
     })
   })
 
-  it('uiArtifact carries rawPayload for UI rendering', () => {
+  it('does not include uiArtifact in the pass-1 envelope contract', () => {
     const envelope = wrapRpcResultAsEnvelope('departmentList', SAMPLE_DEPT_PAYLOAD)
-    expect(envelope.uiArtifact).toBeDefined()
-    expect(envelope.uiArtifact?.rawPayload).toEqual(SAMPLE_DEPT_PAYLOAD)
+    expect(envelope.uiArtifact).toBeUndefined()
   })
 
   it('compactToolOutput strips uiArtifact but keeps modelSummary', () => {
