@@ -18,6 +18,22 @@ describe('repair requests equipment rpc helpers', () => {
     vi.clearAllMocks()
   })
 
+  it('allows the deep-link preload path to request fifty equipment rows', async () => {
+    mocks.callRpc.mockResolvedValueOnce([])
+
+    await fetchRepairRequestEquipmentList(null, 50)
+
+    expect(mocks.callRpc).toHaveBeenCalledWith(
+      expect.objectContaining({
+        fn: 'equipment_list',
+        args: expect.objectContaining({
+          p_q: null,
+          p_page_size: 50,
+        }),
+      }),
+    )
+  })
+
   it('fetches a typed equipment list for suggestions and deep-link prefill', async () => {
     mocks.callRpc.mockResolvedValueOnce([
       {

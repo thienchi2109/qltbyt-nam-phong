@@ -65,7 +65,7 @@ export function useRepairRequestsDeepLink(
   React.useEffect(() => {
     const fetchInitialData = async () => {
       try {
-        const eq = await fetchRepairRequestEquipmentList(null)
+        const eq = await fetchRepairRequestEquipmentList(null, 50)
         setAllEquipment(eq || [])
       } catch (error: unknown) {
         toast({

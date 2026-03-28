@@ -1,10 +1,13 @@
 import { callRpc } from "@/lib/rpc-client"
 import type { EquipmentSelectItem } from "./types"
 
-export async function fetchRepairRequestEquipmentList(query: string | null) {
+export async function fetchRepairRequestEquipmentList(
+  query: string | null,
+  pageSize = 20,
+) {
   return callRpc<EquipmentSelectItem[]>({
     fn: "equipment_list",
-    args: { p_q: query, p_sort: "ten_thiet_bi.asc", p_page: 1, p_page_size: 20 },
+    args: { p_q: query, p_sort: "ten_thiet_bi.asc", p_page: 1, p_page_size: pageSize },
   })
 }
 
