@@ -1,31 +1,18 @@
 import { useQuery } from '@tanstack/react-query'
 import { callRpc } from '@/lib/rpc-client'
 import { format } from 'date-fns'
-import * as React from 'react'
+import {
+  type InventoryItem,
+  type InventorySummary,
+  isRpcNotFoundError,
+  mapDepartmentNames,
+  mapExportedInventoryItems,
+  mapFacilityIds,
+  mapImportedInventoryItems,
+  mapInventorySummary,
+} from './use-inventory-data.types'
 
-export interface InventoryItem {
-  id: number
-  ma_thiet_bi: string
-  ten_thiet_bi: string
-  model?: string
-  serial?: string
-  khoa_phong_quan_ly?: string
-  ngay_nhap: string
-  created_at: string
-  type: 'import' | 'export'
-  source: 'manual' | 'excel' | 'transfer_internal' | 'transfer_external' | 'liquidation'
-  quantity: number
-  value?: number
-  reason?: string
-  destination?: string
-}
-
-export interface InventorySummary {
-  totalImported: number
-  totalExported: number
-  currentStock: number
-  netChange: number
-}
+export type { InventoryItem, InventorySummary } from './use-inventory-data.types'
 
 interface DateRange {
   from: Date
@@ -36,7 +23,7 @@ interface DateRange {
 export const reportsKeys = {
   all: ['reports'] as const,
   inventory: () => [...reportsKeys.all, 'inventory'] as const,
-  inventoryData: (filters: Record<string, any>) => [...reportsKeys.inventory(), { filters }] as const,
+  inventoryData: (filters: Record<string, unknown>) => [...reportsKeys.inventory(), { filters }] as const,
 }
 
 export function useInventoryData(
@@ -54,11 +41,11 @@ export function useInventoryData(
   const { data: facilitiesData } = useQuery({
     queryKey: ['reports-facilities-list'],
     queryFn: async () => {
-      const result = await callRpc<any>({ 
+      const result = await callRpc<unknown>({
         fn: 'get_facilities_with_equipment_count', 
         args: {} 
       })
-      return Array.isArray(result) ? result.map((f: any) => f.id) : []
+      return mapFacilityIds(result)
     },
     enabled: isAllFacilities,
     staleTime: 5 * 60_000, // Cache for 5 minutes
@@ -88,7 +75,7 @@ export function useInventoryData(
         const facilitiesToQuery = facilitiesData || []
         
         // Call aggregate RPC for equipment stats
-        const aggregates = await callRpc<any>({
+        const aggregates = await callRpc<unknown>({
           fn: 'equipment_aggregates_for_reports',
           args: {
             p_don_vi_array: facilitiesToQuery.length > 0 ? facilitiesToQuery : null,
@@ -99,30 +86,25 @@ export function useInventoryData(
         })
         
         // Get departments across all facilities
-        const deptRows = await callRpc<{ name: string; count: number }[]>({ 
+        const deptRows = await callRpc<unknown>({
           fn: 'departments_list_for_facilities',
           args: { 
             p_don_vi_array: facilitiesToQuery.length > 0 ? facilitiesToQuery : null 
           }
         })
         
-        const summary: InventorySummary = {
-          totalImported: aggregates.totalImported || 0,
-          totalExported: aggregates.totalExported || 0,
-          currentStock: aggregates.currentStock || 0,
-          netChange: aggregates.netChange || 0,
-        }
+        const summary = mapInventorySummary(aggregates)
         
         return {
           data: [], // No detailed transactions in "all facilities" mode
           summary,
-          departments: (deptRows || []).map((r: any) => r.name).filter(Boolean),
+          departments: mapDepartmentNames(deptRows),
         }
       }
 
       // Single-facility detailed query (existing logic)
       // Fetch equipment via enhanced Reports RPC with explicit tenant + department parameter
-      const equipment = await callRpc<any[]>({
+      const equipment = await callRpc<unknown>({
         fn: 'equipment_list_for_reports',
         args: { 
           p_q: searchTerm || null, 
@@ -136,31 +118,12 @@ export function useInventoryData(
 
       // (debug removed)
 
-      const importedEquipment = (equipment || []).filter((item: any) => {
-        const created = (item.created_at || '').split('T')[0]
-        return created >= fromDate && created <= toDate
-      })
-
-      // Process imported equipment
-      const importedItems: InventoryItem[] = importedEquipment.map((item: any) => ({
-        id: item.id,
-        ma_thiet_bi: item.ma_thiet_bi,
-        ten_thiet_bi: item.ten_thiet_bi,
-        model: item.model,
-        serial: item.serial,
-        khoa_phong_quan_ly: item.khoa_phong_quan_ly,
-        ngay_nhap: item.created_at,
-        created_at: item.created_at,
-        type: 'import' as const,
-        source: (item.nguon_nhap === 'excel' ? 'excel' : 'manual') as 'manual' | 'excel',
-        quantity: 1,
-        value: item.gia_goc,
-      }))
+      const importedItems = mapImportedInventoryItems(equipment, fromDate, toDate)
 
       // Fetch transfers via enhanced RPC with explicit tenant parameter
-      let transfers: any[] = []
+      let transfers: unknown = []
       try {
-        transfers = await callRpc<any[]>({
+        transfers = await callRpc<unknown>({
           fn: 'transfer_request_list_enhanced',
           args: { 
             p_q: null, 
@@ -173,65 +136,16 @@ export function useInventoryData(
             p_khoa_phong: selectedDepartment !== 'all' ? selectedDepartment : null
           },
         })
-      } catch (e: any) {
+      } catch (error: unknown) {
         // If the RPC is not available (404) or temporarily failing, continue without transfers
-        if (e?.message?.includes('404') || e?.message?.toLowerCase?.().includes('not found')) {
+        if (isRpcNotFoundError(error)) {
           transfers = []
         } else {
-          throw e
+          throw error
         }
       }
 
-      const transferredEquipment = (transfers || []).filter((t: any) => {
-        if (!t.ngay_ban_giao) return false
-        const d = String(t.ngay_ban_giao).split('T')[0]
-        return d >= fromDate && d <= toDate
-      })
-
-      const liquidatedEquipment = (transfers || []).filter((t: any) => {
-        if (t.loai_hinh !== 'thanh_ly' || t.trang_thai !== 'hoan_thanh') return false
-        if (!t.ngay_hoan_thanh) return false
-        const d = String(t.ngay_hoan_thanh).split('T')[0]
-        return d >= fromDate && d <= toDate
-      })
-
-      const exportedFromTransfers: InventoryItem[] = transferredEquipment
-        .filter((transfer: any) => transfer.thiet_bi)
-        .map((transfer: any) => ({
-          id: transfer.id,
-          ma_thiet_bi: transfer.thiet_bi.ma_thiet_bi,
-          ten_thiet_bi: transfer.thiet_bi.ten_thiet_bi,
-          model: transfer.thiet_bi.model,
-          serial: transfer.thiet_bi.serial,
-          khoa_phong_quan_ly: transfer.thiet_bi.khoa_phong_quan_ly,
-          ngay_nhap: transfer.ngay_ban_giao,
-          created_at: transfer.created_at,
-          type: 'export' as const,
-          source: transfer.loai_hinh === 'noi_bo' ? ('transfer_internal' as const) : ('transfer_external' as const),
-          quantity: 1,
-          reason: transfer.ly_do_luan_chuyen,
-          destination: transfer.loai_hinh === 'noi_bo' ? transfer.khoa_phong_nhan : transfer.don_vi_nhan,
-        }))
-
-      const exportedFromLiquidation: InventoryItem[] = liquidatedEquipment
-        .filter((transfer: any) => transfer.thiet_bi)
-        .map((transfer: any) => ({
-          id: transfer.id,
-          ma_thiet_bi: transfer.thiet_bi.ma_thiet_bi,
-          ten_thiet_bi: transfer.thiet_bi.ten_thiet_bi,
-          model: transfer.thiet_bi.model,
-          serial: transfer.thiet_bi.serial,
-          khoa_phong_quan_ly: transfer.thiet_bi.khoa_phong_quan_ly,
-          ngay_nhap: transfer.ngay_hoan_thanh,
-          created_at: transfer.created_at,
-          type: 'export' as const,
-          source: 'liquidation' as const,
-          quantity: 1,
-          reason: transfer.ly_do_luan_chuyen,
-          destination: 'Thanh lý',
-        }))
-
-      const exportedItems = [...exportedFromTransfers, ...exportedFromLiquidation]
+      const exportedItems = mapExportedInventoryItems(transfers, fromDate, toDate)
 
       // Combine and filter data
       let allItems = [...importedItems, ...exportedItems]
@@ -273,16 +187,16 @@ export function useInventoryData(
       }
 
       // Departments via enhanced RPC with explicit tenant parameter
-      const deptRows = await callRpc<{ name: string; count: number }[]>({ 
+      const deptRows = await callRpc<unknown>({
         fn: 'departments_list_for_tenant',
         args: { p_don_vi: selectedDonVi }  // Explicit tenant parameter
       })
-      const uniqueDepts = (deptRows || []).map((r) => r.name).filter(Boolean)
+      const uniqueDepts = mapDepartmentNames(deptRows)
 
       return {
         data: allItems,
         summary,
-        departments: uniqueDepts as string[],
+        departments: uniqueDepts,
       }
     },
     enabled: effectiveTenantKey !== 'unset' && 
