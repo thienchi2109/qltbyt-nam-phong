@@ -1,4 +1,5 @@
 import { taskTypes, type MaintenanceTask, type TaskType } from '@/lib/data'
+import { getUnknownErrorMessage } from '@/lib/error-utils'
 
 type RpcCaller = <TResponse>(options: {
   fn: string
@@ -196,16 +197,5 @@ export function findMaintenanceTaskById(
 }
 
 export function getMaintenanceErrorMessage(error: unknown, fallback: string): string {
-  if (error instanceof Error && error.message) {
-    return error.message
-  }
-
-  if (isRecord(error)) {
-    const message = error.message
-    if (typeof message === 'string' && message) {
-      return message
-    }
-  }
-
-  return fallback
+  return getUnknownErrorMessage(error, fallback)
 }

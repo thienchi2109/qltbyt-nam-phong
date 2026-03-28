@@ -4,6 +4,7 @@ import { toast } from '@/hooks/use-toast'
 import { useSession } from 'next-auth/react'
 import type { Session } from 'next-auth'
 import { CacheKeys, CACHE_CONFIG, DepartmentCacheUtils } from '@/lib/advanced-cache-manager'
+import { getUnknownErrorMessage } from '@/lib/error-utils'
 import type { Equipment, User, UserRole } from '@/types/database'
 import { USER_ROLES } from '@/types/database'
 
@@ -30,21 +31,6 @@ function toCacheScopeUser(user: Session['user'] | null | undefined): CacheScopeU
     role,
     khoa_phong: user.khoa_phong ?? undefined,
   }
-}
-
-function getErrorMessage(error: unknown, fallback: string): string {
-  if (error instanceof Error && error.message) {
-    return error.message
-  }
-
-  if (typeof error === 'object' && error !== null && 'message' in error) {
-    const message = (error as { message?: unknown }).message
-    if (typeof message === 'string' && message) {
-      return message
-    }
-  }
-
-  return fallback
 }
 
 // Phase 3: Enhanced equipment fetching with advanced caching
@@ -132,7 +118,7 @@ export function useUpdateEquipment() {
     onError: (error: unknown) => {
       toast({
         title: "Lỗi",
-        description: getErrorMessage(error, "Không thể cập nhật thiết bị"),
+        description: getUnknownErrorMessage(error, "Không thể cập nhật thiết bị"),
         variant: "destructive",
       })
     },
@@ -162,7 +148,7 @@ export function useCreateEquipment() {
     onError: (error: unknown) => {
       toast({
         title: "Lỗi",
-        description: getErrorMessage(error, "Không thể thêm thiết bị"),
+        description: getUnknownErrorMessage(error, "Không thể thêm thiết bị"),
         variant: "destructive",
       })
     },
@@ -197,7 +183,7 @@ export function useDeleteEquipment() {
     onError: (error: unknown) => {
       toast({
         title: "Lỗi",
-        description: getErrorMessage(error, "Không thể xóa thiết bị"),
+        description: getUnknownErrorMessage(error, "Không thể xóa thiết bị"),
         variant: "destructive",
       })
     },
@@ -232,7 +218,7 @@ export function useRestoreEquipment() {
     onError: (error: unknown) => {
       toast({
         title: "Lỗi",
-        description: getErrorMessage(error, "Không thể khôi phục thiết bị"),
+        description: getUnknownErrorMessage(error, "Không thể khôi phục thiết bị"),
         variant: "destructive",
       })
     },
@@ -271,7 +257,7 @@ export function useBulkDeleteEquipment() {
     onError: (error: unknown) => {
       toast({
         title: "Lỗi",
-        description: getErrorMessage(error, "Không thể xóa hàng loạt thiết bị"),
+        description: getUnknownErrorMessage(error, "Không thể xóa hàng loạt thiết bị"),
         variant: "destructive",
       })
     },

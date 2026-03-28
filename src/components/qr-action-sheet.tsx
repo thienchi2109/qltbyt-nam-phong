@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { Eye, History, Wrench, Settings, X, Search, ClipboardList, AlertCircle, RotateCcw } from "lucide-react"
 import { callRpc } from "@/lib/rpc-client"
+import { getUnknownErrorMessage } from "@/lib/error-utils"
 import { useToast } from "@/hooks/use-toast"
 import type { Equipment } from "@/lib/data"
 
@@ -14,20 +15,6 @@ interface QRActionSheetProps {
   qrCode: string // Mã thiết bị từ QR code
   onClose: () => void
   onAction: (action: string, equipment?: Equipment) => void
-}
-
-function getRpcErrorMessage(error: unknown): string {
-  if (typeof error === "string") return error
-  if (error instanceof Error) return error.message
-  if (
-    error &&
-    typeof error === "object" &&
-    "message" in error &&
-    typeof error.message === "string"
-  ) {
-    return error.message
-  }
-  return ""
 }
 
 export function QRActionSheet({ qrCode, onClose, onAction }: QRActionSheetProps) {
@@ -60,7 +47,7 @@ export function QRActionSheet({ qrCode, onClose, onAction }: QRActionSheetProps)
       }
     } catch (err: unknown) {
       // Parse RPC error response
-      const errorMsg = getRpcErrorMessage(err)
+      const errorMsg = getUnknownErrorMessage(err)
 
       // Determine error type for better Vietnamese messaging
       if (errorMsg.includes('access denied') || errorMsg.includes('42501')) {

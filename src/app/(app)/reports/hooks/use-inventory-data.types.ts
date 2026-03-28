@@ -1,3 +1,5 @@
+import { getUnknownErrorMessage } from '@/lib/error-utils'
+
 export interface InventoryItem {
   id: number
   ma_thiet_bi: string
@@ -48,22 +50,6 @@ function toStringValue(value: unknown): string | undefined {
 function getDateOnly(value: unknown): string | undefined {
   const raw = toStringValue(value)
   return raw ? raw.split('T')[0] : undefined
-}
-
-function getErrorMessage(value: unknown): string | undefined {
-  if (typeof value === 'string') {
-    return value
-  }
-
-  if (value instanceof Error) {
-    return value.message
-  }
-
-  if (!isRecord(value)) {
-    return undefined
-  }
-
-  return toStringValue(value.message)
 }
 
 function isWithinDateRange(value: unknown, fromDate: string, toDate: string): boolean {
@@ -235,6 +221,6 @@ export function mapExportedInventoryItems(
 }
 
 export function isRpcNotFoundError(error: unknown): boolean {
-  const message = getErrorMessage(error)?.toLowerCase() ?? ''
+  const message = getUnknownErrorMessage(error).toLowerCase()
   return message.includes('404') || message.includes('not found')
 }
