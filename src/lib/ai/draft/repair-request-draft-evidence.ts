@@ -1,12 +1,7 @@
 import type { UIMessage } from 'ai'
 
-const VALID_REPAIR_REQUEST_DRAFT_EVIDENCE_REFS = new Set([
-  'equipmentLookup',
-  'repairSummary',
-  'maintenanceSummary',
-  'maintenancePlanLookup',
-  'usageHistory',
-])
+import { DRAFT_ELIGIBLE_TOOLS } from '@/lib/ai/tools/rpc-tool-executor'
+import { isRecord } from '@/lib/ai/tools/type-guards'
 
 export interface RepairRequestDraftEquipmentContext {
   thiet_bi_id: number
@@ -26,9 +21,6 @@ interface ToolResultLike {
   output: unknown
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value)
-}
 
 function readOptionalString(value: unknown): string | undefined {
   return typeof value === 'string' && value.trim() ? value.trim() : undefined
@@ -68,18 +60,50 @@ function normalizeEquipmentRow(
   }
 }
 
-function extractEquipmentMatchesFromOutput(
-  output: unknown,
-): RepairRequestDraftEquipmentContext[] {
-  if (!isRecord(output) || !Array.isArray(output.data)) {
-    return []
+function readFollowUpContext(output: unknown): Record<string, unknown> | null {
+  if (!isRecord(output)) {
+    return null
   }
 
-  return output.data
-    .map(normalizeEquipmentRow)
-    .filter(
-      (item): item is RepairRequestDraftEquipmentContext => item !== null,
-    )
+  const ctx = output.followUpContext
+  if (!isRecord(ctx)) {
+    return null
+  }
+
+  return ctx
+}
+
+function extractEquipmentMatchesFromFollowUp(
+  output: unknown,
+): RepairRequestDraftEquipmentContext[] {
+  // New envelope path: followUpContext.equipment
+  const ctx = readFollowUpContext(output)
+  if (ctx && Array.isArray(ctx.equipment)) {
+    return ctx.equipment
+      .map(normalizeEquipmentRow)
+      .filter(
+        (item): item is RepairRequestDraftEquipmentContext => item !== null,
+      )
+  }
+
+  // Backward-compat: pre-envelope history messages use { data: [...], total }
+  if (isRecord(output) && Array.isArray(output.data)) {
+    return output.data
+      .map(normalizeEquipmentRow)
+      .filter(
+        (item): item is RepairRequestDraftEquipmentContext => item !== null,
+      )
+  }
+
+  return []
+}
+
+function hasEvidenceRef(output: unknown): boolean {
+  const ctx = readFollowUpContext(output)
+  if (!ctx) {
+    return false
+  }
+  return typeof ctx.evidenceRef === 'string' && ctx.evidenceRef.trim().length > 0
 }
 
 function extractToolResultsFromMessages(messages: UIMessage[]): ToolResultLike[] {
@@ -134,7 +158,10 @@ export function collectRepairRequestDraftEvidence({
   ]
 
   for (const result of toolResults) {
-    if (VALID_REPAIR_REQUEST_DRAFT_EVIDENCE_REFS.has(result.toolName)) {
+    if (
+      DRAFT_ELIGIBLE_TOOLS.has(result.toolName) ||
+      hasEvidenceRef(result.output)
+    ) {
       evidenceRefs.add(result.toolName)
     }
 
@@ -142,7 +169,7 @@ export function collectRepairRequestDraftEvidence({
       continue
     }
 
-    for (const match of extractEquipmentMatchesFromOutput(result.output)) {
+    for (const match of extractEquipmentMatchesFromFollowUp(result.output)) {
       if (!equipmentMatches.has(match.thiet_bi_id)) {
         equipmentMatches.set(match.thiet_bi_id, match)
       }

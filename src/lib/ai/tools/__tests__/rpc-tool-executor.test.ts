@@ -24,17 +24,18 @@ describe('executeRpcTool', () => {
     vi.unstubAllGlobals()
   })
 
-  it('sends flat RPC params (not wrapped in args)', async () => {
+  it('sends flat RPC params (not wrapped in args) and returns envelope', async () => {
     fetchMock.mockResolvedValue(
-      new Response(JSON.stringify({ ok: true }), {
+      new Response(JSON.stringify({ data: [{ id: 1 }], total: 1 }), {
         status: 200,
         headers: { 'content-type': 'application/json' },
       }),
     )
 
-    await executeRpcTool({
+    const result = await executeRpcTool({
       request: buildRequest(),
       rpcFunction: 'equipment_list',
+      toolName: 'equipmentLookup',
       args: { p_don_vi: 2, query: 'monitor' },
     })
 
@@ -51,5 +52,10 @@ describe('executeRpcTool', () => {
 
     const headers = new Headers(init.headers)
     expect(headers.get('cookie')).toBe('next-auth.session-token=abc123')
+
+    // Verify envelope shape
+    expect(result).toHaveProperty('modelSummary')
+    expect(result.modelSummary.summaryText).toContain('equipmentLookup')
+    expect(result.modelSummary.itemCount).toBe(1)
   })
 })

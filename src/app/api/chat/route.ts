@@ -215,7 +215,7 @@ export async function POST(request: Request) {
   }
 
   const maxAttempts = getKeyPoolSize()
-  const configuredModel = process.env.AI_MODEL ?? 'gemini-3-flash-preview'
+  const configuredModel = process.env.AI_MODEL ?? 'gemini-3.1-flash-lite-preview'
 
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     let keyIndex = 0

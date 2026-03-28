@@ -49,14 +49,19 @@ describe('repair-request-draft orchestrator', () => {
             {
               toolName: 'equipmentLookup',
               output: {
-                data: [
-                  {
-                    thiet_bi_id: 42,
-                    ma_thiet_bi: 'TB-042',
-                    ten_thiet_bi: 'Máy thở ABC',
-                  },
-                ],
-                total: 1,
+                modelSummary: {
+                  summaryText: 'equipmentLookup: 1 result(s).',
+                  itemCount: 1,
+                },
+                followUpContext: {
+                  equipment: [
+                    {
+                      thiet_bi_id: 42,
+                      ma_thiet_bi: 'TB-042',
+                      ten_thiet_bi: 'Máy thở ABC',
+                    },
+                  ],
+                },
               },
             },
           ],
@@ -79,8 +84,16 @@ describe('repair-request-draft orchestrator', () => {
             {
               toolName: 'equipmentLookup',
               output: {
-                data: [{ thiet_bi_id: 1 }, { thiet_bi_id: 2 }],
-                total: 2,
+                modelSummary: {
+                  summaryText: 'equipmentLookup: 2 result(s).',
+                  itemCount: 2,
+                },
+                followUpContext: {
+                  equipment: [
+                    { thiet_bi_id: 1 },
+                    { thiet_bi_id: 2 },
+                  ],
+                },
               },
             },
           ],
@@ -113,8 +126,13 @@ describe('repair-request-draft orchestrator', () => {
             {
               toolName: 'equipmentLookup',
               output: {
-                data: [{ thiet_bi_id: 42 }],
-                total: 1,
+                modelSummary: {
+                  summaryText: 'equipmentLookup: 1 result(s).',
+                  itemCount: 1,
+                },
+                followUpContext: {
+                  equipment: [{ thiet_bi_id: 42 }],
+                },
               },
             },
           ],
