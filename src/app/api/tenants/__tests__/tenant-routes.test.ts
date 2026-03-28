@@ -75,6 +75,7 @@ function createClientForNonGlobalMemberships(
 
   return {
     eqMock,
+    selectMock,
   }
 }
 
@@ -165,7 +166,7 @@ describe("tenant routes", () => {
     getServerSessionMock.mockResolvedValue({
       user: { id: "7", role: "to_qltb" },
     })
-    const { eqMock } = createClientForNonGlobalMemberships([
+    const { eqMock, selectMock } = createClientForNonGlobalMemberships([
       { don_vi: { id: 17, name: "Khoa CNTT", code: "CNTT" } },
       { don_vi: { id: 18, name: null, code: null } },
     ])
@@ -180,6 +181,7 @@ describe("tenant routes", () => {
         { don_vi: 18, name: "", code: "" },
       ],
     })
+    expect(selectMock).toHaveBeenCalledWith("don_vi, don_vi:don_vi(id, name, code)")
     expect(eqMock).toHaveBeenCalledWith("user_id", "7")
   })
 
@@ -187,7 +189,7 @@ describe("tenant routes", () => {
     getServerSessionMock.mockResolvedValue({
       user: { id: "7", role: "technician" },
     })
-    const { eqMock } = createClientForNonGlobalMemberships([{ don_vi: 19 }])
+    const { eqMock, selectMock } = createClientForNonGlobalMemberships([{ don_vi: 19 }])
 
     const { GET } = await import("../memberships/route")
     const response = await GET()
@@ -196,6 +198,7 @@ describe("tenant routes", () => {
     await expect(response.json()).resolves.toEqual({
       memberships: [{ don_vi: 19, name: "", code: "" }],
     })
+    expect(selectMock).toHaveBeenCalledWith("don_vi, don_vi:don_vi(id, name, code)")
     expect(eqMock).toHaveBeenCalledWith("user_id", "7")
   })
 
