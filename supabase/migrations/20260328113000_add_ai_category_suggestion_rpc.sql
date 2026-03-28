@@ -95,7 +95,7 @@ BEGIN
       LEFT JOIN public.nhom_thiet_bi p ON p.id = n.parent_id
       WHERE (v_effective IS NULL OR n.don_vi_id = ANY(v_effective))
     ),
-    fts_matches AS (
+    all_fts_matches AS (
       SELECT
         sc.id,
         sc.ma_nhom,
@@ -106,7 +106,18 @@ BEGIN
         ts_rank_cd(sc.fts, plainto_tsquery('simple', v_device_name)) AS score
       FROM scoped_categories sc
       WHERE sc.fts @@ plainto_tsquery('simple', v_device_name)
-      ORDER BY score DESC, sc.ten_nhom ASC
+    ),
+    fts_matches AS (
+      SELECT
+        afm.id,
+        afm.ma_nhom,
+        afm.ten_nhom,
+        afm.phan_loai,
+        afm.parent_name,
+        afm.match_reason,
+        afm.score
+      FROM all_fts_matches afm
+      ORDER BY afm.score DESC, afm.ten_nhom ASC
       LIMIT v_top_k
     ),
     trigram_matches AS (
@@ -122,8 +133,8 @@ BEGIN
       WHERE extensions.word_similarity(lower(v_device_name), lower(COALESCE(sc.ten_nhom, ''))) > 0.3
         AND NOT EXISTS (
           SELECT 1
-          FROM fts_matches fm
-          WHERE fm.id = sc.id
+          FROM all_fts_matches afm
+          WHERE afm.id = sc.id
         )
       ORDER BY score DESC, sc.ten_nhom ASC
       LIMIT v_top_k

@@ -108,7 +108,7 @@ Expected: green for prompt and `departmentList` contract.
 ```bash
 node scripts/npm-run.js run verify:no-explicit-any
 node scripts/npm-run.js run typecheck
-node scripts/npm-run.js run test:run -- src/lib/ai/tools/__tests__/category-suggestion-envelope.test.ts src/lib/ai/tools/__tests__/category-suggestion-registry.test.ts src/lib/ai/tools/__tests__/department-list-envelope.test.ts src/lib/ai/prompts/__tests__/system-prompt-envelope.test.ts src/lib/ai/prompts/__tests__/system.test.ts src/app/api/chat/__tests__/route.tool-rpc-mapping.test.ts
+node scripts/npm-run.js run test:run -- src/lib/ai/tools/__tests__/category-suggestion-envelope.test.ts src/lib/ai/tools/__tests__/category-suggestion-registry.test.ts src/lib/ai/tools/__tests__/department-list-envelope.test.ts src/lib/ai/prompts/__tests__/system-prompt-envelope.test.ts src/lib/ai/prompts/__tests__/system.test.ts src/app/api/chat/__tests__/route.tool-rpc-mapping.test.ts src/app/api/rpc/__tests__/rpc-whitelist.unit.test.ts
 node scripts/npm-run.js npx react-doctor@latest . --verbose -y --project nextn --offline --diff main
 ```
 
