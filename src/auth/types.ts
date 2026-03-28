@@ -52,16 +52,18 @@ export function buildAuthUserFromRpcResult(authResult: AuthRpcUserRow): User {
 }
 
 export function applyAuthUserToJwt(token: JWT, user: AuthUserInput): JWT {
-  if (user.id) token.id = user.id
-  token.username = user.username ?? token.username
-  token.role = user.role ?? token.role
-  token.khoa_phong = user.khoa_phong ?? token.khoa_phong ?? null
-  token.full_name = user.full_name || user.name || token.full_name
-  token.auth_mode = user.auth_mode ?? token.auth_mode ?? null
-  token.don_vi = user.don_vi ?? token.don_vi ?? null
-  token.dia_ban_id = user.dia_ban_id ?? token.dia_ban_id ?? null
-  token.dia_ban_ma = user.dia_ban_ma ?? token.dia_ban_ma ?? null
-  return token
+  return {
+    ...token,
+    id: user.id || token.id,
+    username: user.username ?? token.username,
+    role: user.role ?? token.role,
+    khoa_phong: user.khoa_phong ?? token.khoa_phong ?? null,
+    full_name: user.full_name || user.name || token.full_name,
+    auth_mode: user.auth_mode ?? token.auth_mode ?? null,
+    don_vi: user.don_vi ?? token.don_vi ?? null,
+    dia_ban_id: user.dia_ban_id ?? token.dia_ban_id ?? null,
+    dia_ban_ma: user.dia_ban_ma ?? token.dia_ban_ma ?? null,
+  }
 }
 
 export function applyJwtProfileRefresh(
@@ -71,27 +73,31 @@ export function applyJwtProfileRefresh(
   resolvedDiaBan: number | null,
   resolvedDiaBanMa: string | null
 ): JWT {
-  token.don_vi = resolvedDonVi
-  token.khoa_phong = profile.khoa_phong || token.khoa_phong || null
-  token.full_name = profile.full_name || token.full_name
-  token.dia_ban_id = resolvedDiaBan ?? token.dia_ban_id ?? null
-  token.dia_ban_ma = resolvedDiaBanMa ?? token.dia_ban_ma ?? null
-  return token
+  return {
+    ...token,
+    don_vi: resolvedDonVi,
+    khoa_phong: profile.khoa_phong || token.khoa_phong || null,
+    full_name: profile.full_name || token.full_name,
+    dia_ban_id: resolvedDiaBan ?? token.dia_ban_id ?? null,
+    dia_ban_ma: resolvedDiaBanMa ?? token.dia_ban_ma ?? null,
+  }
 }
 
 export function applyJwtToSession(session: Session, token: JWT): Session {
-  session.user = {
-    ...session.user,
-    id: token.id ?? session.user.id,
-    username: token.username ?? "",
-    role: token.role ?? "",
-    khoa_phong: token.khoa_phong ?? null,
-    don_vi: token.don_vi ?? null,
-    current_don_vi: token.current_don_vi ?? null,
-    dia_ban_id: token.dia_ban_id ?? null,
-    dia_ban_ma: token.dia_ban_ma ?? null,
-    full_name: token.full_name || session.user.name || null,
+  return {
+    ...session,
+    user: {
+      ...session.user,
+      id: token.id ?? session.user.id,
+      username: token.username ?? "",
+      role: token.role ?? "",
+      khoa_phong: token.khoa_phong ?? null,
+      don_vi: token.don_vi ?? null,
+      current_don_vi: token.current_don_vi ?? null,
+      dia_ban_id: token.dia_ban_id ?? null,
+      dia_ban_ma: token.dia_ban_ma ?? null,
+      full_name: token.full_name || session.user.name || null,
+      auth_mode: token.auth_mode ?? null,
+    },
   }
-
-  return session
 }

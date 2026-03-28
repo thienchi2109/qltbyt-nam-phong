@@ -79,8 +79,10 @@ export const authOptions: NextAuthOptions = {
     async jwt({ token, user }) {
       // On sign-in, persist extra fields in the JWT
       if (user) {
-        applyAuthUserToJwt(token, user)
-        token.loginTime = Date.now() // Track when user logged in
+        token = {
+          ...applyAuthUserToJwt(token, user),
+          loginTime: Date.now(), // Track when user logged in
+        }
       }
 
       // Refresh user-derived fields on every JWT callback
@@ -103,7 +105,7 @@ export const authOptions: NextAuthOptions = {
                 const passwordChangedAt = new Date(profile.password_changed_at).getTime()
                 const tokenLoginTime = token.loginTime as number
                 if (passwordChangedAt > tokenLoginTime) {
-                  console.log("Password changed after login - invalidating token")
+                  console.warn("Password changed after login - invalidating token")
                   return {}
                 }
               }
@@ -144,7 +146,7 @@ export const authOptions: NextAuthOptions = {
                 }
               }
 
-              applyJwtProfileRefresh(token, profile, resolvedDonVi, resolvedDiaBan, resolvedDiaBanMa)
+              token = applyJwtProfileRefresh(token, profile, resolvedDonVi, resolvedDiaBan, resolvedDiaBanMa)
             }
           }
         } catch (e) {
