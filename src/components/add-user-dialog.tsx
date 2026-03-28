@@ -16,6 +16,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useToast } from "@/hooks/use-toast"
+import { getUnknownErrorMessage } from "@/lib/error-utils"
 import { callRpc } from "@/lib/rpc-client"
 import { USER_ROLES, type UserRole } from "@/types/database"
 import { Badge } from "@/components/ui/badge"
@@ -62,7 +63,7 @@ export function AddUserDialog({ open, onOpenChange, onSuccess }: AddUserDialogPr
         toast({
           variant: 'destructive',
           title: 'Lỗi tải danh sách đơn vị',
-          description: error instanceof Error ? error.message : '',
+          description: getUnknownErrorMessage(error),
         })
       }
     }
@@ -110,7 +111,7 @@ export function AddUserDialog({ open, onOpenChange, onSuccess }: AddUserDialogPr
       toast({
         variant: "destructive",
         title: "Lỗi",
-        description: error instanceof Error ? error.message : "Có lỗi xảy ra khi tạo tài khoản."
+        description: getUnknownErrorMessage(error, "Có lỗi xảy ra khi tạo tài khoản.")
       })
     } finally {
       setIsLoading(false)

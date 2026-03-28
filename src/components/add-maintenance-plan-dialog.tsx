@@ -27,6 +27,7 @@ import {
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { useToast } from "@/hooks/use-toast"
+import { getUnknownErrorMessage } from "@/lib/error-utils"
 import { callRpc } from "@/lib/rpc-client"
 import { isGlobalRole } from "@/lib/rbac"
 import { useSession } from "next-auth/react"
@@ -131,7 +132,7 @@ export function AddMaintenancePlanDialog({ open, onOpenChange, onSuccess }: AddM
         loai_cong_viec: "Bảo trì",
       })
     } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : ""
+      const message = getUnknownErrorMessage(error)
       toast({
         variant: "destructive",
         title: "Lỗi",
