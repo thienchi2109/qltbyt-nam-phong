@@ -1,6 +1,14 @@
-﻿import type { NextAuthOptions } from "next-auth"
+import type { NextAuthOptions } from "next-auth"
 import Credentials from "next-auth/providers/credentials"
 import { createClient } from "@supabase/supabase-js"
+import {
+  applyAuthUserToJwt,
+  applyJwtProfileRefresh,
+  applyJwtToSession,
+  buildAuthUserFromRpcResult,
+  type AuthProfileRow,
+  type AuthRpcUserRow,
+} from "./types"
 
 export const authOptions: NextAuthOptions = {
   session: {
@@ -41,40 +49,28 @@ export const authOptions: NextAuthOptions = {
 
           if (error) {
             console.error("RPC auth error:", error)
-            throw new Error('rpc_error')
+            throw new Error("rpc_error")
           }
 
           if (data && Array.isArray(data) && data.length > 0) {
-            const authResult = data[0] as any
+            const authResult = data[0] as AuthRpcUserRow
             if (authResult?.is_authenticated) {
-              // Map to NextAuth user object
-              return {
-                id: String(authResult.user_id),
-                name: authResult.full_name || authResult.username,
-                username: authResult.username,
-                role: authResult.role,
-                khoa_phong: authResult.khoa_phong || "",
-                full_name: authResult.full_name || "",
-                auth_mode: authResult.authentication_mode || "",
-                don_vi: authResult.don_vi ?? null,
-                dia_ban_id: authResult.dia_ban_id ?? null,
-                dia_ban_ma: authResult.dia_ban_ma ?? null,
-              } as any
+              return buildAuthUserFromRpcResult(authResult)
             }
 
-            if (authResult?.authentication_mode === 'tenant_inactive') {
-              console.warn('Login blocked because tenant is inactive', { username })
-              throw new Error('tenant_inactive')
+            if (authResult?.authentication_mode === "tenant_inactive") {
+              console.warn("Login blocked because tenant is inactive", { username })
+              throw new Error("tenant_inactive")
             }
           }
 
-          throw new Error('invalid_credentials')
+          throw new Error("invalid_credentials")
         } catch (e) {
           if (e instanceof Error) {
             throw e
           }
           console.error("Authorize exception:", e)
-          throw new Error('authorize_exception')
+          throw new Error("authorize_exception")
         }
       },
     }),
@@ -83,17 +79,8 @@ export const authOptions: NextAuthOptions = {
     async jwt({ token, user }) {
       // On sign-in, persist extra fields in the JWT
       if (user) {
-        const u = user as any
-        token.id = u.id
-        token.username = u.username
-        token.role = u.role
-        token.khoa_phong = u.khoa_phong
-        token.full_name = u.full_name || u.name
-        token.auth_mode = u.auth_mode
+        applyAuthUserToJwt(token, user)
         token.loginTime = Date.now() // Track when user logged in
-        ;(token as any).don_vi = u.don_vi ?? null
-        ;(token as any).dia_ban_id = u.dia_ban_id ?? null
-        ;(token as any).dia_ban_ma = u.dia_ban_ma ?? null
       }
 
       // Refresh user-derived fields on every JWT callback
@@ -104,68 +91,65 @@ export const authOptions: NextAuthOptions = {
           if (supabaseUrl && serviceKey) {
             const supabase = createClient(supabaseUrl, serviceKey)
             const { data, error } = await supabase
-              .from('nhan_vien')
-              .select('password_changed_at, current_don_vi, don_vi, khoa_phong, full_name, dia_ban_id')
-              .eq('id', token.id)
+              .from("nhan_vien")
+              .select("password_changed_at, current_don_vi, don_vi, khoa_phong, full_name, dia_ban_id")
+              .eq("id", token.id)
               .single()
 
             if (!error && data) {
+              const profile = data as AuthProfileRow
               // Password change invalidates session if changed after login
-              if (token.loginTime && data.password_changed_at) {
-                const passwordChangedAt = new Date(data.password_changed_at).getTime()
+              if (token.loginTime && profile.password_changed_at) {
+                const passwordChangedAt = new Date(profile.password_changed_at).getTime()
                 const tokenLoginTime = token.loginTime as number
                 if (passwordChangedAt > tokenLoginTime) {
-                  console.log('Password changed after login - invalidating token')
+                  console.log("Password changed after login - invalidating token")
                   return {}
                 }
               }
               // Keep JWT in sync with user profile for tenant-aware UI
-              const resolvedDonVi = data.current_don_vi || data.don_vi || null
-              ;(token as any).don_vi = resolvedDonVi
-              ;(token as any).khoa_phong = data.khoa_phong || (token as any).khoa_phong
-              token.full_name = (data as any).full_name || token.full_name
+              const resolvedDonVi = profile.current_don_vi || profile.don_vi || null
+              let resolvedDiaBan: number | null = profile.dia_ban_id ?? null
+              let resolvedDiaBanMa: string | null = token.dia_ban_ma ?? null
 
-              let resolvedDiaBan: number | null = (data as any).dia_ban_id ?? null
               if (!resolvedDiaBan && resolvedDonVi) {
                 try {
                   const { data: donViRows, error: donViError } = await supabase
-                    .from('don_vi')
-                    .select('dia_ban_id')
-                    .eq('id', resolvedDonVi)
+                    .from("don_vi")
+                    .select("dia_ban_id")
+                    .eq("id", resolvedDonVi)
                     .limit(1)
 
                   if (!donViError && donViRows && donViRows.length > 0) {
                     resolvedDiaBan = donViRows[0]?.dia_ban_id ?? null
                   }
                 } catch (donViLookupError) {
-                  console.error('Failed to resolve dia_ban from don_vi', donViLookupError)
+                  console.error("Failed to resolve dia_ban from don_vi", donViLookupError)
                 }
               }
 
-              let resolvedDiaBanMa: string | null = (token as any).dia_ban_ma ?? null
               if (resolvedDiaBan && !resolvedDiaBanMa) {
                 try {
                   const { data: diaBanRows, error: diaBanError } = await supabase
-                    .from('dia_ban')
-                    .select('ma_dia_ban')
-                    .eq('id', resolvedDiaBan)
+                    .from("dia_ban")
+                    .select("ma_dia_ban")
+                    .eq("id", resolvedDiaBan)
                     .limit(1)
 
                   if (!diaBanError && diaBanRows && diaBanRows.length > 0) {
                     resolvedDiaBanMa = diaBanRows[0]?.ma_dia_ban ?? null
                   }
                 } catch (diaBanLookupError) {
-                  console.error('Failed to resolve dia_ban metadata', diaBanLookupError)
+                  console.error("Failed to resolve dia_ban metadata", diaBanLookupError)
                 }
               }
 
-              ;(token as any).dia_ban_id = resolvedDiaBan ?? (token as any).dia_ban_id ?? null
-              ;(token as any).dia_ban_ma = resolvedDiaBanMa
+              applyJwtProfileRefresh(token, profile, resolvedDonVi, resolvedDiaBan, resolvedDiaBanMa)
             }
           }
         } catch (e) {
           // Log but don't break auth flow for database errors
-          console.error('Password change check failed:', e)
+          console.error("Password change check failed:", e)
         }
       }
 
@@ -173,17 +157,7 @@ export const authOptions: NextAuthOptions = {
     },
     async session({ session, token }) {
       // Expose custom fields to the client session
-      const s: any = session
-      s.user = s.user || {}
-      s.user.id = token.id
-      s.user.username = token.username
-      s.user.role = token.role
-      s.user.khoa_phong = token.khoa_phong
-      s.user.don_vi = (token as any).don_vi || null
-      s.user.dia_ban_id = (token as any).dia_ban_id || null
-      s.user.dia_ban_ma = (token as any).dia_ban_ma || null
-      s.user.full_name = token.full_name || s.user.name
-      return s
+      return applyJwtToSession(session, token)
     },
   },
 }
