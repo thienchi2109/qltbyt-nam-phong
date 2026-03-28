@@ -1,6 +1,14 @@
 import { useQuery } from '@tanstack/react-query'
 import { callRpc } from '@/lib/rpc-client'
 import { useSession } from 'next-auth/react'
+import type { Session } from 'next-auth'
+import {
+  mapEquipmentAttentionRows,
+  type EquipmentAttention,
+  type EquipmentAttentionPage,
+  type EquipmentAttentionPageResponse,
+  type EquipmentAttentionRow,
+} from './use-dashboard-stats.types'
 
 // Query keys for dashboard statistics
 export const dashboardStatsKeys = {
@@ -13,13 +21,23 @@ export const dashboardStatsKeys = {
   equipmentAttentionPaginated: (userRole?: string, diaBanId?: string | null, page?: number, pageSize?: number) => [...dashboardStatsKeys.all, 'equipment-attention', userRole, diaBanId, page, pageSize] as const,
 }
 
+type DashboardSessionUser = Session["user"]
+
+function getDashboardUserScope(user: DashboardSessionUser | undefined) {
+  return {
+    role: user?.role,
+    diaBanId: user?.dia_ban_id != null ? String(user.dia_ban_id) : null,
+  }
+}
+
 // Hook to get total equipment count (tenant-filtered)
 export function useTotalEquipment() {
   const { data: session } = useSession()
-  const user = session?.user as any
+  const user: DashboardSessionUser | undefined = session?.user
+  const scope = getDashboardUserScope(user)
   
   return useQuery({
-    queryKey: dashboardStatsKeys.totalEquipment(user?.role, user?.dia_ban_id),
+    queryKey: dashboardStatsKeys.totalEquipment(scope.role, scope.diaBanId),
     queryFn: async (): Promise<number> => {
       const data = await callRpc<number>({ fn: 'dashboard_equipment_total' })
       return data ?? 0
@@ -34,10 +52,11 @@ export function useTotalEquipment() {
 // Hook to get equipment needing maintenance/calibration count (tenant-filtered)
 export function useMaintenanceCount() {
   const { data: session } = useSession()
-  const user = session?.user as any
+  const user: DashboardSessionUser | undefined = session?.user
+  const scope = getDashboardUserScope(user)
   
   return useQuery({
-    queryKey: dashboardStatsKeys.maintenanceCount(user?.role, user?.dia_ban_id),
+    queryKey: dashboardStatsKeys.maintenanceCount(scope.role, scope.diaBanId),
     queryFn: async (): Promise<number> => {
       const data = await callRpc<number>({ fn: 'dashboard_maintenance_count' })
       return data ?? 0
@@ -60,10 +79,11 @@ export interface RepairRequestStats {
 // Hook to get repair request statistics (tenant-filtered)
 export function useRepairRequestStats() {
   const { data: session } = useSession()
-  const user = session?.user as any
+  const user: DashboardSessionUser | undefined = session?.user
+  const scope = getDashboardUserScope(user)
   
   return useQuery({
-    queryKey: dashboardStatsKeys.repairRequests(user?.role, user?.dia_ban_id),
+    queryKey: dashboardStatsKeys.repairRequests(scope.role, scope.diaBanId),
     queryFn: async (): Promise<RepairRequestStats> => {
       const data = await callRpc<RepairRequestStats>({ fn: 'dashboard_repair_request_stats' })
       return data ?? {
@@ -99,10 +119,11 @@ export interface MaintenancePlanStats {
 // Hook to get maintenance plan statistics (tenant-filtered)
 export function useMaintenancePlanStats() {
   const { data: session } = useSession()
-  const user = session?.user as any
+  const user: DashboardSessionUser | undefined = session?.user
+  const scope = getDashboardUserScope(user)
   
   return useQuery({
-    queryKey: dashboardStatsKeys.maintenancePlans(user?.role, user?.dia_ban_id),
+    queryKey: dashboardStatsKeys.maintenancePlans(scope.role, scope.diaBanId),
     queryFn: async (): Promise<MaintenancePlanStats> => {
       const data = await callRpc<MaintenancePlanStats>({ fn: 'dashboard_maintenance_plan_stats' })
       return data ?? {
@@ -119,43 +140,17 @@ export function useMaintenancePlanStats() {
   })
 }
 
-// Interface for equipment needing attention
-export interface EquipmentAttention {
-  id: number
-  ten_thiet_bi: string
-  ma_thiet_bi: string
-  model: string | null
-  tinh_trang_hien_tai: string
-  vi_tri_lap_dat: string | null
-  ngay_bt_tiep_theo: string | null
-}
-
-export interface EquipmentAttentionPage {
-  data: EquipmentAttention[]
-  total: number
-  page: number
-  pageSize: number
-  hasMore: boolean
-}
-
 // Hook to get equipment needing attention
 export function useEquipmentAttention() {
   const { data: session } = useSession()
-  const user = session?.user as any
+  const user: DashboardSessionUser | undefined = session?.user
+  const scope = getDashboardUserScope(user)
   
   return useQuery({
-    queryKey: dashboardStatsKeys.equipmentAttention(user?.role, user?.dia_ban_id),
+    queryKey: dashboardStatsKeys.equipmentAttention(scope.role, scope.diaBanId),
     queryFn: async (): Promise<EquipmentAttention[]> => {
-      const data = await callRpc<any[]>({ fn: 'equipment_attention_list', args: { p_limit: 5 } })
-      return (data as any[] || []).map((row: any) => ({
-        id: row.id,
-        ten_thiet_bi: row.ten_thiet_bi,
-        ma_thiet_bi: row.ma_thiet_bi,
-        model: row.model ?? null,
-        tinh_trang_hien_tai: row.tinh_trang_hien_tai,
-        vi_tri_lap_dat: row.vi_tri_lap_dat ?? null,
-        ngay_bt_tiep_theo: row.ngay_bt_tiep_theo ?? null,
-      }))
+      const data = await callRpc<EquipmentAttentionRow[]>({ fn: 'equipment_attention_list', args: { p_limit: 5 } })
+      return mapEquipmentAttentionRows(data)
     },
     staleTime: 2 * 60 * 1000, // 2 minutes
     gcTime: 10 * 60 * 1000, // 10 minutes
@@ -167,16 +162,17 @@ export function useEquipmentAttention() {
 // Hook to get equipment needing attention with pagination (default 10 per page)
 export function useEquipmentAttentionPaginated(options?: { page?: number; pageSize?: number; enabled?: boolean }) {
   const { data: session } = useSession()
-  const user = session?.user as any
+  const user: DashboardSessionUser | undefined = session?.user
+  const scope = getDashboardUserScope(user)
 
   const page = Math.max(1, options?.page ?? 1)
   const pageSize = Math.max(1, options?.pageSize ?? 10)
   const enabled = options?.enabled ?? true
 
   return useQuery({
-    queryKey: dashboardStatsKeys.equipmentAttentionPaginated(user?.role, user?.dia_ban_id, page, pageSize),
+    queryKey: dashboardStatsKeys.equipmentAttentionPaginated(scope.role, scope.diaBanId, page, pageSize),
     queryFn: async (): Promise<EquipmentAttentionPage> => {
-      const response = await callRpc<Partial<EquipmentAttentionPage>>({
+      const response = await callRpc<EquipmentAttentionPageResponse>({
         fn: 'equipment_attention_list_paginated',
         args: { p_page: page, p_page_size: pageSize }
       })
@@ -185,15 +181,7 @@ export function useEquipmentAttentionPaginated(options?: { page?: number; pageSi
       const normalizedPageSize = response?.pageSize ?? pageSize
       const total = response?.total ?? 0
 
-      const normalizedData = (response?.data ?? []).map((row) => ({
-        id: row.id,
-        ten_thiet_bi: row.ten_thiet_bi,
-        ma_thiet_bi: row.ma_thiet_bi,
-        model: row.model ?? null,
-        tinh_trang_hien_tai: row.tinh_trang_hien_tai,
-        vi_tri_lap_dat: row.vi_tri_lap_dat ?? null,
-        ngay_bt_tiep_theo: row.ngay_bt_tiep_theo ?? null,
-      }))
+      const normalizedData = mapEquipmentAttentionRows(response?.data)
 
       return {
         data: normalizedData,
