@@ -134,7 +134,12 @@ function buildImportantFields(
           (row: unknown): row is Record<string, unknown> =>
             isRecord(row) && typeof row.name === 'string',
         )
-        .map((row: Record<string, unknown>) => row.name as string),
+        .map((row: Record<string, unknown>) => ({
+          name: row.name as string,
+          ...(typeof row.equipment_count === 'number' && {
+            equipment_count: row.equipment_count,
+          }),
+        })),
     }
   }
 

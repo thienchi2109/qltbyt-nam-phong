@@ -30,7 +30,11 @@ describe('departmentList envelope contract', () => {
     const envelope = wrapRpcResultAsEnvelope('departmentList', SAMPLE_DEPT_PAYLOAD)
     expect(envelope.modelSummary.importantFields).toBeDefined()
     expect(envelope.modelSummary.importantFields).toEqual({
-      departments: ['Khoa Ngoại', 'Khoa Nội', 'Phòng Xét nghiệm'],
+      departments: [
+        { name: 'Khoa Ngoại', equipment_count: 12 },
+        { name: 'Khoa Nội', equipment_count: 8 },
+        { name: 'Phòng Xét nghiệm', equipment_count: 25 },
+      ],
     })
   })
 
@@ -72,9 +76,12 @@ describe('departmentList envelope contract', () => {
     }
     const envelope = wrapRpcResultAsEnvelope('departmentList', mixedPayload)
 
-    // Only non-empty strings should be included
+    // Only rows with a string name should be included, preserving count when numeric.
     expect(envelope.modelSummary.importantFields).toEqual({
-      departments: ['Khoa Ngoại', ''],
+      departments: [
+        { name: 'Khoa Ngoại', equipment_count: 12 },
+        { name: '', equipment_count: 1 },
+      ],
     })
   })
 })
