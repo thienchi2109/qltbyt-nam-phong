@@ -12,7 +12,7 @@ describe('AI tool → RPC mapping contract', () => {
     attachmentLookup: 'ai_attachment_metadata',
     deviceQuotaLookup: 'ai_device_quota_lookup',
     quotaComplianceSummary: 'ai_quota_compliance_summary',
-    categorySuggestion: 'ai_category_list',
+    categorySuggestion: 'ai_category_suggestion',
     departmentList: 'ai_department_list',
   }
 
@@ -35,7 +35,7 @@ describe('AI tool → RPC mapping contract', () => {
     attachmentLookup: 'ai_attachment_metadata',
     deviceQuotaLookup: 'ai_device_quota_lookup',
     quotaComplianceSummary: 'ai_quota_compliance_summary',
-    categorySuggestion: 'ai_category_list',
+    categorySuggestion: 'ai_category_suggestion',
     departmentList: 'ai_department_list',
   }))('tool "%s" maps to RPC "%s"', (tool, rpc) => {
     const mapping = getToolRpcMapping()

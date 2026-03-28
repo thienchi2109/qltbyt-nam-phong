@@ -83,7 +83,7 @@ const ALLOWED_FUNCTIONS = new Set<string>([
   'ai_attachment_metadata',
   'ai_device_quota_lookup',
   'ai_quota_compliance_summary',
-  'ai_category_list',
+  'ai_category_suggestion',
   'ai_department_list',
   // Tenants + Users
   'tenant_list',
@@ -172,6 +172,13 @@ const SUPABASE_JWT_CLOCK_SKEW_SECONDS = 60
 // Sensitive keys to redact from logs (case-insensitive matching)
 const SENSITIVE_KEYS = ['password', 'token', 'secret', 'mat_khau', 'p_password', 'api_key', 'apikey', 'authorization', 'credential']
 
+type RpcProxySessionUser = {
+  role?: unknown
+  don_vi?: unknown
+  dia_ban_id?: unknown
+  id?: unknown
+}
+
 function getEnv(name: string) {
   const v = process.env[name]
   if (!v) throw new Error(`${name} is not set`)
@@ -207,6 +214,24 @@ function sanitizeForLog(obj: unknown, depth = 0): unknown {
   return sanitized
 }
 
+function getSessionUser(
+  session: unknown,
+): RpcProxySessionUser | null {
+  if (!session || typeof session !== 'object' || !('user' in session)) {
+    return null
+  }
+
+  const user = session.user
+  if (!user || typeof user !== 'object') {
+    return null
+  }
+  return user as RpcProxySessionUser
+}
+
+function getErrorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : 'Unexpected error'
+}
+
 export async function POST(req: NextRequest, context: { params: Promise<{ fn: string }> }) {
   try {
     const { fn } = await context.params
@@ -238,7 +263,7 @@ export async function POST(req: NextRequest, context: { params: Promise<{ fn: st
     }
 
     // 4. Decode buffer to text and parse JSON
-    let rawBody: Record<string, unknown> = {}
+    let rawBody: unknown = {}
     try {
       const rawText = new TextDecoder().decode(buf)
       rawBody = rawText ? JSON.parse(rawText) : {}
@@ -247,19 +272,20 @@ export async function POST(req: NextRequest, context: { params: Promise<{ fn: st
     }
 
   // Pull claims from NextAuth session securely (no client headers trusted)
-  const session = await getServerSession(authOptions as any)
+  const session = await getServerSession(authOptions)
+  const sessionUser = getSessionUser(session)
 
   // SECURITY: Reject unauthenticated requests - do NOT mint JWT without valid session
-  if (!(session as any)?.user) {
+  if (!sessionUser) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  const rawRole = (session as any)?.user?.role ?? ''
+  const rawRole = sessionUser.role ?? ''
   const role = typeof rawRole === 'string' ? rawRole : String(rawRole)
   const roleLower = role.toLowerCase()
-  const donVi = (session as any)?.user?.don_vi ? String((session as any).user.don_vi) : ''
-  const diaBan = (session as any)?.user?.dia_ban_id ? String((session as any).user.dia_ban_id) : ''
-  const userId = (session as any)?.user?.id ? String((session as any).user.id) : ''
+  const donVi = sessionUser.don_vi ? String(sessionUser.don_vi) : ''
+  const diaBan = sessionUser.dia_ban_id ? String(sessionUser.dia_ban_id) : ''
+  const userId = sessionUser.id ? String(sessionUser.id) : ''
   // Normalize to expected app roles used by SQL. Always lowercase; treat 'admin' as 'global'.
   const appRole = roleLower === 'admin' ? 'global' : roleLower
   // (debug removed)
@@ -272,7 +298,7 @@ export async function POST(req: NextRequest, context: { params: Promise<{ fn: st
     const now = Math.floor(Date.now() / 1000)
     const issuedAt = now - SUPABASE_JWT_CLOCK_SKEW_SECONDS
     const expiresAt = now + 120 // 2 minutes from actual signing time
-    const claims: Record<string, any> = {
+    const claims: Record<string, string | number | null> = {
       role: 'authenticated',
       iat: issuedAt,
       exp: expiresAt,
@@ -285,16 +311,19 @@ export async function POST(req: NextRequest, context: { params: Promise<{ fn: st
 
     // Sanitize tenant parameter for non-global users to enforce isolation
     // EXCEPTION: regional_leader users can see multiple tenants, don't override p_don_vi
-    let body: any = (rawBody && typeof rawBody === 'object') ? { ...rawBody } : {}
+    let body: Record<string, unknown> =
+      rawBody && typeof rawBody === 'object' && !Array.isArray(rawBody)
+        ? { ...(rawBody as Record<string, unknown>) }
+        : {}
     if (appRole !== 'global' && appRole !== 'regional_leader') {
       try {
         if (Object.prototype.hasOwnProperty.call(body, 'p_don_vi')) {
           const dv = donVi && donVi !== '' ? (Number.isFinite(Number(donVi)) ? Number(donVi) : donVi) : null
-          ;(body as any).p_don_vi = dv
+          body.p_don_vi = dv
         }
         if (Object.prototype.hasOwnProperty.call(body, 'p_dia_ban')) {
           const db = diaBan && diaBan !== '' ? (Number.isFinite(Number(diaBan)) ? Number(diaBan) : diaBan) : null
-          ;(body as any).p_dia_ban = db
+          body.p_dia_ban = db
         }
       } catch {}
     }
@@ -330,10 +359,11 @@ export async function POST(req: NextRequest, context: { params: Promise<{ fn: st
       return NextResponse.json({ error: payload || 'RPC error' }, { status: res.status })
     }
     return NextResponse.json(payload)
-  } catch (err: any) {
+  } catch (err: unknown) {
     // SECURITY: Log only error message, not full stack trace or request details
-    console.error('RPC proxy error:', { message: err?.message || 'Unknown error' })
-    return NextResponse.json({ error: err?.message || 'Unexpected error' }, { status: 500 })
+    const message = getErrorMessage(err)
+    console.error('RPC proxy error:', { message })
+    return NextResponse.json({ error: message }, { status: 500 })
   }
 }
 

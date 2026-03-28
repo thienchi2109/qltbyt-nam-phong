@@ -115,6 +115,51 @@ function buildItemCount(payload: unknown): number | undefined {
   return undefined
 }
 
+// ---------------------------------------------------------------------------
+// Tool-specific importantFields builders
+// ---------------------------------------------------------------------------
+
+function buildImportantFields(
+  toolName: string,
+  payload: unknown,
+): Record<string, unknown> | undefined {
+  if (!isRecord(payload) || !Array.isArray(payload.data)) {
+    return undefined
+  }
+
+  if (toolName === 'departmentList') {
+    return {
+      departments: payload.data
+        .filter(
+          (row: unknown): row is Record<string, unknown> =>
+            isRecord(row) && typeof row.name === 'string',
+        )
+        .map((row: Record<string, unknown>) => ({
+          name: row.name as string,
+          ...(typeof row.equipment_count === 'number' && {
+            equipment_count: row.equipment_count,
+          }),
+        })),
+    }
+  }
+
+  if (toolName === 'categorySuggestion') {
+    return {
+      candidates: payload.data
+        .filter(isRecord)
+        .map((c: Record<string, unknown>) => ({
+          ma_nhom: c.ma_nhom,
+          ten_nhom: c.ten_nhom,
+          parent_name: c.parent_name,
+          phan_loai: c.phan_loai,
+          ...(c.match_reason !== undefined && { match_reason: c.match_reason }),
+        })),
+    }
+  }
+
+  return undefined
+}
+
 /** Exposed for tests only. */
 export function wrapRpcResultAsEnvelope(
   toolName: string,
@@ -122,14 +167,18 @@ export function wrapRpcResultAsEnvelope(
 ): ToolResponseEnvelope {
   const followUpContext = buildFollowUpContext(toolName, payload)
   const itemCount = buildItemCount(payload)
+  const importantFields = buildImportantFields(toolName, payload)
 
   return {
     modelSummary: {
       summaryText: buildModelSummaryText(toolName, payload),
       ...(itemCount !== undefined && { itemCount }),
+      ...(importantFields !== undefined && { importantFields }),
     },
     ...(followUpContext !== undefined && { followUpContext }),
-    uiArtifact: { rawPayload: payload },
+    ...(toolName !== 'departmentList' && {
+      uiArtifact: { rawPayload: payload },
+    }),
   }
 }
 

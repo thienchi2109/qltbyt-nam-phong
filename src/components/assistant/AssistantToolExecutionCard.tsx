@@ -11,6 +11,8 @@ import { cn } from "@/lib/utils"
  */
 const TOOL_DISPLAY_NAMES: Record<string, string> = {
     equipmentLookup: "Tra cứu thiết bị",
+    categorySuggestion: "Gợi ý danh mục thiết bị",
+    departmentList: "Danh sách khoa/phòng",
     maintenanceSummary: "Tổng hợp bảo trì",
     maintenancePlanLookup: "Tra cứu kế hoạch bảo trì",
     repairSummary: "Tổng hợp sửa chữa",

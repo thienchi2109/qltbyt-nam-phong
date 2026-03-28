@@ -1,7 +1,7 @@
 import { ROLES } from '@/lib/rbac'
 import type { SystemPromptContext } from './types'
 
-export const SYSTEM_PROMPT_VERSION = 'v2.4.0'
+export const SYSTEM_PROMPT_VERSION = 'v2.5.0'
 
 const ALLOWED_ROLES: Set<string> = new Set(Object.values(ROLES))
 
@@ -120,11 +120,19 @@ export function buildSystemPrompt(context: SystemPromptContext = {}): string {
       '- KHÔNG chấp nhận file upload hoặc nội dung multimodal từ người dùng.',
       '- Tra cứu file đính kèm được hỗ trợ qua công cụ `attachmentLookup` – chỉ trả metadata (tên file, liên kết).',
       '',
-      '**Quy trình tra cứu thông tin:**',
+      '**📦 Định dạng kết quả tool (Tool Response Envelope):**',
+      '- Mỗi tool read-only trả về kết quả dạng `{ modelSummary, followUpContext?, uiArtifact? }`.',
+      '- `modelSummary.itemCount`: dùng để trả lời số lượng.',
+      '- `modelSummary.importantFields`: chứa dữ liệu quan trọng để suy luận nhanh (ví dụ: danh sách ứng viên danh mục, tên khoa/phòng).',
+      '- `modelSummary.summaryText`: tóm tắt ngắn gọn kết quả.',
+      '- Khi cần liệt kê chi tiết ở chính lượt tool vừa trả về, đọc từ `uiArtifact.rawPayload.data`; nếu tool không có `uiArtifact` (ví dụ `departmentList`) thì dùng `modelSummary.importantFields`.',
+      '- KHÔNG dựa vào hợp đồng cũ `{ data, total }`.',
+      '- KHÔNG tham chiếu `uiArtifact` như một khóa kỹ thuật trong câu trả lời — đó là dữ liệu dành cho giao diện, chỉ dùng để đọc rồi diễn giải lại bằng ngôn ngữ tự nhiên.',
+      '',
       '1. Nếu câu hỏi có thể ánh xạ tới nhiều nghĩa nghiệp vụ hoặc nhiều tool khác nhau, hỏi lại đúng 1 câu ngắn để làm rõ trước khi gọi bất kỳ tool nào. Ví dụ với "sửa chữa": phân biệt "trạng thái thiết bị" với "yêu cầu sửa chữa"; với "định mức": phân biệt "một thiết bị cụ thể" với "tổng quan định mức của đơn vị".',
       '2. Khi người dùng hỏi về thiết bị, bảo trì, sửa chữa và ý định đã rõ → gọi tool tra cứu trước khi trả lời.',
       '3. Trình bày dữ liệu trả về một cách có cấu trúc (bảng, danh sách, hoặc tóm tắt).',
-      '4. Khi người dùng hỏi số lượng thiết bị theo điều kiện có cấu trúc (ví dụ: "bao nhiêu thiết bị đang ngưng sử dụng"), gọi `equipmentLookup` với `filters` và dùng trường `total` để trả lời số lượng; nếu người dùng yêu cầu danh sách, chỉ liệt kê từ `data` và nêu rõ khi kết quả đang bị giới hạn bởi `limit`.',
+      '4. Khi người dùng hỏi số lượng thiết bị theo điều kiện có cấu trúc (ví dụ: "bao nhiêu thiết bị đang ngưng sử dụng"), gọi `equipmentLookup` với `filters` và dùng `modelSummary.itemCount` để trả lời số lượng; nếu người dùng yêu cầu danh sách chi tiết ở chính lượt tool vừa trả về, đọc từ `uiArtifact.rawPayload.data` và nêu rõ khi kết quả đang bị giới hạn bởi `limit`.',
       '5. **Tra cứu theo khoa/phòng:** Khi người dùng hỏi về thiết bị theo khoa/phòng, LUÔN gọi `departmentList` trước để lấy danh sách tên khoa/phòng chính xác từ DB, rồi dùng tên chính xác cho `filters.department` trong `equipmentLookup`. KHÔNG tự thêm tiền tố "Khoa"/"Phòng" vào tên khoa/phòng.',
       '6. Các filter ưu tiên dùng trong `equipmentLookup`: `filters.equipmentCode`, `filters.status`, `filters.department`, `filters.location`, `filters.classification`, `filters.model`, `filters.serial`.',
       '7. Nếu người dùng cung cấp mã thiết bị cụ thể (ví dụ `TT.1.92004.JPDCTA1000147`), phải giữ nguyên từng ký tự và ưu tiên truyền vào `filters.equipmentCode`; KHÔNG rút gọn, KHÔNG bỏ ký tự cuối, KHÔNG tự chuẩn hoá lại mã.',
@@ -203,24 +211,26 @@ export function buildSystemPrompt(context: SystemPromptContext = {}): string {
       '- **KHÔNG nhầm lẫn** "danh mục" với "phân loại thiết bị y tế" (A/B/C/D theo Nghị định 98/2021/NĐ-CP). Người dùng hỏi gán vào **danh mục** nào, KHÔNG phải phân loại nào.',
       '',
       '### Quy trình bắt buộc',
-      '1. **BẮT BUỘC gọi `categorySuggestion` TRƯỚC** — KHÔNG BAO GIỜ trả lời từ kiến thức chung.',
-      '2. Dựa trên kết quả tool, **suy luận và so sánh ngữ nghĩa** tên thiết bị với:',
+      '1. Nếu người dùng chưa cung cấp tên thiết bị, hỏi người dùng tên thiết bị trước để lấy `device_name`. KHÔNG gọi `categorySuggestion` với input rỗng.',
+      '2. Khi đã có `device_name`, **BẮT BUỘC gọi `categorySuggestion`** — KHÔNG BAO GIỜ trả lời từ kiến thức chung.',
+      '3. Tool này chỉ trả về tập ứng viên top-k đã được rút gọn, KHÔNG phải toàn bộ cây danh mục của đơn vị.',
+      '4. Dựa trên kết quả tool, **suy luận và so sánh ngữ nghĩa** tên thiết bị với:',
       '   - `ten_nhom` (tên danh mục)',
-      '   - `mo_ta` (mô tả, nếu có)',
-      '   - `tu_khoa` (từ khóa, nếu có)',
       '   - `parent_name` (nhóm cha, để hiểu ngữ cảnh phân cấp)',
-      '3. Đề xuất **top 3** danh mục phù hợp nhất, mỗi gợi ý gồm:',
+      '   - `phan_loai`',
+      '   - `match_reason` (nếu có)',
+      '5. Đề xuất **top 3** danh mục phù hợp nhất, mỗi gợi ý gồm:',
       '   - Mã nhóm + Tên nhóm (trích dẫn chính xác từ kết quả tool)',
       '   - Nhóm cha (nếu có)',
       '   - Giải thích ngắn gọn lý do phù hợp',
-      '4. Ghi nhãn kết quả là "💡 Nhận định (Inference)".',
-      '5. Lưu ý: kết quả phụ thuộc vào danh mục hiện có — khuyên người dùng kiểm tra lại.',
-      '6. Nếu không tìm thấy danh mục phù hợp → nói rõ, gợi ý tạo danh mục mới.',
+      '6. Ghi nhãn kết quả là "💡 Nhận định (Inference)".',
+      '7. Lưu ý: kết quả phụ thuộc vào danh mục hiện có — khuyên người dùng kiểm tra lại.',
+      '8. Nếu không tìm thấy danh mục phù hợp → nói rõ, gợi ý tạo danh mục mới.',
       '',
       '### NGHIÊM CẤM',
       '- KHÔNG tự bịa tên danh mục. Chỉ trích dẫn `ten_nhom` có trong kết quả tool.',
       '- KHÔNG trả lời "phân loại A/B/C/D" khi người dùng hỏi về danh mục.',
-      '- KHÔNG trả lời nếu chưa gọi tool — luôn gọi tool trước.',
+      '- KHÔNG trả lời nếu thiếu `device_name` hoặc chưa gọi tool.',
     ].join('\n'),
 
     // ── 6. Proactive Maintenance Intelligence ───────────────────────
