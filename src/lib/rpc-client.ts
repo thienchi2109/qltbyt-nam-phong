@@ -11,9 +11,8 @@ function getRpcErrorPayload(data: unknown): unknown {
   return data.error ?? data
 }
 
-function getRpcErrorMessage(fn: string, status: number, data: unknown): string {
+function getRpcErrorMessage(fn: string, status: number, payload: unknown): string {
   const fallback = `RPC ${fn} failed (${status})`
-  const payload = getRpcErrorPayload(data)
 
   if (typeof payload === 'string') {
     return payload
@@ -71,7 +70,7 @@ export async function callRpc<TRes = unknown, TArgs extends RpcArgs = RpcArgs>({
     try {
       const data = await res.json()
       const err = getRpcErrorPayload(data)
-      msg = getRpcErrorMessage(fn, res.status, data)
+      msg = getRpcErrorMessage(fn, res.status, err)
       try { console.error(`[rpc-client] ${fn} error ${res.status}:`, err) } catch {}
     } catch {}
     throw new Error(msg)

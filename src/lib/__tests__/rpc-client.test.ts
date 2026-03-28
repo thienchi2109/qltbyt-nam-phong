@@ -89,6 +89,14 @@ describe('callRpc', () => {
     await expect(callRpc({ fn: 'broken' })).rejects.toThrow('details value')
   })
 
+  it('stringifies an unrecognized error object when no message, hint, or details exist', async () => {
+    global.fetch = vi.fn().mockResolvedValue(mockJsonResponse({
+      error: { code: 'ERR_UNKNOWN' },
+    }, { status: 422 })) as typeof fetch
+
+    await expect(callRpc({ fn: 'broken' })).rejects.toThrow('{"code":"ERR_UNKNOWN"}')
+  })
+
   it('falls back to the default message when the error body is invalid JSON', async () => {
     global.fetch = vi.fn().mockResolvedValue(mockInvalidJsonResponse({ status: 500 })) as typeof fetch
 
