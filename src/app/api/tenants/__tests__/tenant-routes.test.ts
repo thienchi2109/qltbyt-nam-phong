@@ -44,6 +44,36 @@ function createClientForMemberships(rows: Array<{ id: number; name: string; code
   })
 }
 
+function createClientForNonGlobalMemberships(
+  rows: Array<{
+    don_vi:
+      | {
+          id: number | null
+          name: string | null
+          code: string | null
+        }
+      | number
+      | null
+  }>
+) {
+  const eqMock = vi.fn().mockResolvedValue({ data: rows, error: null })
+  const selectMock = vi.fn(() => ({
+    eq: eqMock,
+  }))
+
+  createClientMock.mockReturnValue({
+    from: vi.fn((table: string) => {
+      if (table !== "user_don_vi_memberships") {
+        throw new Error(`Unexpected table: ${table}`)
+      }
+
+      return {
+        select: selectMock,
+      }
+    }),
+  })
+}
+
 function createClientForSwitch() {
   const updateEqMock = vi.fn().mockResolvedValue({ error: null })
   const donViSingleMock = vi.fn().mockResolvedValue({ data: { id: 17, active: true }, error: null })
@@ -125,6 +155,42 @@ describe("tenant routes", () => {
       "https://test.supabase.co",
       "test-anon-key",
     )
+  })
+
+  it("maps memberships for a non-global user when Supabase returns embedded tenant rows", async () => {
+    getServerSessionMock.mockResolvedValue({
+      user: { id: "7", role: "to_qltb" },
+    })
+    createClientForNonGlobalMemberships([
+      { don_vi: { id: 17, name: "Khoa CNTT", code: "CNTT" } },
+      { don_vi: { id: 18, name: null, code: null } },
+    ])
+
+    const { GET } = await import("../memberships/route")
+    const response = await GET()
+
+    expect(response.status).toBe(200)
+    await expect(response.json()).resolves.toEqual({
+      memberships: [
+        { don_vi: 17, name: "Khoa CNTT", code: "CNTT" },
+        { don_vi: 18, name: "", code: "" },
+      ],
+    })
+  })
+
+  it("maps memberships for a non-global user when Supabase returns scalar tenant ids", async () => {
+    getServerSessionMock.mockResolvedValue({
+      user: { id: "7", role: "technician" },
+    })
+    createClientForNonGlobalMemberships([{ don_vi: 19 }])
+
+    const { GET } = await import("../memberships/route")
+    const response = await GET()
+
+    expect(response.status).toBe(200)
+    await expect(response.json()).resolves.toEqual({
+      memberships: [{ don_vi: 19, name: "", code: "" }],
+    })
   })
 
   it("returns an empty memberships list when unauthenticated", async () => {
