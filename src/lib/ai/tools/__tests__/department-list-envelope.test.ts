@@ -64,7 +64,7 @@ describe('departmentList envelope contract', () => {
     })
   })
 
-  it('filters out non-string department names', () => {
+  it('keeps string department names and filters out non-string values', () => {
     const mixedPayload = {
       data: [
         { name: 'Khoa Ngoại', equipment_count: 12 },
@@ -76,7 +76,7 @@ describe('departmentList envelope contract', () => {
     }
     const envelope = wrapRpcResultAsEnvelope('departmentList', mixedPayload)
 
-    // Only rows with a string name should be included, preserving count when numeric.
+    // Rows are kept when `name` is any string value, including the empty string.
     expect(envelope.modelSummary.importantFields).toEqual({
       departments: [
         { name: 'Khoa Ngoại', equipment_count: 12 },
