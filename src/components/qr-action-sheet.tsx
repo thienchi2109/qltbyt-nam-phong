@@ -16,6 +16,20 @@ interface QRActionSheetProps {
   onAction: (action: string, equipment?: Equipment) => void
 }
 
+function getRpcErrorMessage(error: unknown): string {
+  if (typeof error === "string") return error
+  if (error instanceof Error) return error.message
+  if (
+    error &&
+    typeof error === "object" &&
+    "message" in error &&
+    typeof error.message === "string"
+  ) {
+    return error.message
+  }
+  return ""
+}
+
 export function QRActionSheet({ qrCode, onClose, onAction }: QRActionSheetProps) {
   const [equipment, setEquipment] = React.useState<Equipment | null>(null)
   const [loading, setLoading] = React.useState(true)
@@ -32,7 +46,7 @@ export function QRActionSheet({ qrCode, onClose, onAction }: QRActionSheetProps)
 
       // Use dedicated RPC for exact ma_thiet_bi lookup with tenant security
       const normalizedCode = qrCode.trim()
-      const result = await callRpc<any>({
+      const result = await callRpc<Equipment | null>({
         fn: 'equipment_get_by_code',
         args: { p_ma_thiet_bi: normalizedCode }
       })
@@ -44,9 +58,9 @@ export function QRActionSheet({ qrCode, onClose, onAction }: QRActionSheetProps)
       } else {
         setEquipment(result)
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       // Parse RPC error response
-      const errorMsg = err?.message || ''
+      const errorMsg = getRpcErrorMessage(err)
 
       // Determine error type for better Vietnamese messaging
       if (errorMsg.includes('access denied') || errorMsg.includes('42501')) {

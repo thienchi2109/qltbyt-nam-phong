@@ -104,11 +104,11 @@ describe('QRActionSheet', () => {
 
     it('should show loading state while fetching equipment', async () => {
       // Create a promise that we can control
-      let resolvePromise: (value: any) => void
-      const pendingPromise = new Promise((resolve) => {
+      let resolvePromise: (value: typeof mockEquipment) => void
+      const pendingPromise = new Promise<typeof mockEquipment>((resolve) => {
         resolvePromise = resolve
       })
-      mockCallRpc.mockReturnValueOnce(pendingPromise as any)
+      mockCallRpc.mockReturnValueOnce(pendingPromise)
 
       render(
         <QRActionSheet
@@ -256,6 +256,22 @@ describe('QRActionSheet', () => {
 
     it('should display network error when connection fails', async () => {
       mockCallRpc.mockRejectedValueOnce(new Error('Network request failed'))
+
+      render(
+        <QRActionSheet
+          qrCode="TB-001"
+          onClose={mockOnClose}
+          onAction={mockOnAction}
+        />
+      )
+
+      await waitFor(() => {
+        expect(screen.getByText('Lỗi kết nối mạng')).toBeInTheDocument()
+      })
+    })
+
+    it('should display network error when RPC rejects with a network string', async () => {
+      mockCallRpc.mockRejectedValueOnce('Network request failed')
 
       render(
         <QRActionSheet
