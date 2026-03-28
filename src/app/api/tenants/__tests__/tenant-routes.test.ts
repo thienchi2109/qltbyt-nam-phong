@@ -72,6 +72,10 @@ function createClientForNonGlobalMemberships(
       }
     }),
   })
+
+  return {
+    eqMock,
+  }
 }
 
 function createClientForSwitch() {
@@ -161,7 +165,7 @@ describe("tenant routes", () => {
     getServerSessionMock.mockResolvedValue({
       user: { id: "7", role: "to_qltb" },
     })
-    createClientForNonGlobalMemberships([
+    const { eqMock } = createClientForNonGlobalMemberships([
       { don_vi: { id: 17, name: "Khoa CNTT", code: "CNTT" } },
       { don_vi: { id: 18, name: null, code: null } },
     ])
@@ -176,13 +180,14 @@ describe("tenant routes", () => {
         { don_vi: 18, name: "", code: "" },
       ],
     })
+    expect(eqMock).toHaveBeenCalledWith("user_id", "7")
   })
 
   it("maps memberships for a non-global user when Supabase returns scalar tenant ids", async () => {
     getServerSessionMock.mockResolvedValue({
       user: { id: "7", role: "technician" },
     })
-    createClientForNonGlobalMemberships([{ don_vi: 19 }])
+    const { eqMock } = createClientForNonGlobalMemberships([{ don_vi: 19 }])
 
     const { GET } = await import("../memberships/route")
     const response = await GET()
@@ -191,6 +196,7 @@ describe("tenant routes", () => {
     await expect(response.json()).resolves.toEqual({
       memberships: [{ don_vi: 19, name: "", code: "" }],
     })
+    expect(eqMock).toHaveBeenCalledWith("user_id", "7")
   })
 
   it("returns an empty memberships list when unauthenticated", async () => {
