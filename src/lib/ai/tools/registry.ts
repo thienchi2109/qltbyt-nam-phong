@@ -12,6 +12,11 @@ type ReadOnlyToolDefinition = {
   description: string
   rpcFunction: string
   inputSchema: z.ZodType<Record<string, unknown>>
+  modelBudget?: {
+    maxItems?: number
+    maxBytes?: number
+    modelVisibleFields?: string[]
+  }
 }
 
 const READ_ONLY_TOOL_DEFINITIONS: Record<string, ReadOnlyToolDefinition> = {
@@ -111,12 +116,20 @@ const READ_ONLY_TOOL_DEFINITIONS: Record<string, ReadOnlyToolDefinition> = {
       'List all equipment categories for the current facility. Used when the user asks which category a device should be assigned to. The model reasons about semantic similarity between the device name and category names.',
     rpcFunction: 'ai_category_list',
     inputSchema: z.object({}).strict(),
+    modelBudget: {
+      maxItems: 10,
+      modelVisibleFields: ['ma_nhom', 'ten_nhom', 'parent_name', 'phan_loai', 'match_reason'],
+    },
   },
   departmentList: {
     description:
       'List all departments (khoa/phòng) with equipment in the current facility. Call this BEFORE filtering equipmentLookup by department to get exact department names from the database.',
     rpcFunction: 'ai_department_list',
     inputSchema: z.object({}).strict(),
+    modelBudget: {
+      maxItems: 50,
+      modelVisibleFields: ['name', 'equipment_count'],
+    },
   },
 }
 
