@@ -130,7 +130,7 @@ export function AddEquipmentDialog({
     },
   })
 
-  function onSubmit(values: AddEquipmentFormValues) {
+  async function onSubmit(values: AddEquipmentFormValues) {
     if (isRegionalLeader) {
       toast({
         variant: "destructive",
@@ -140,7 +140,7 @@ export function AddEquipmentDialog({
       return
     }
 
-    createMutation.mutate(values)
+    await createMutation.mutateAsync(values)
   }
 
   return (
