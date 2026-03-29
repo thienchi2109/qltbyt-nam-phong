@@ -158,6 +158,47 @@ describe('Equipment Dialogs CRUD', () => {
       expect(onOpenChange).toHaveBeenCalledWith(false)
     })
 
+    it('shows plain-object RPC errors instead of an empty add-equipment toast description', async () => {
+      mockUseSession.mockReturnValue({
+        data: { user: { role: 'admin', don_vi: 5 } },
+        status: 'authenticated',
+      })
+      mockCallRpc.mockImplementation(async ({ fn }) => {
+        if (fn === 'departments_list') {
+          return [{ name: 'Khoa Nội' }]
+        }
+        if (fn === 'tenant_list') {
+          return [{ id: 5, code: 'DV5', name: 'Đơn vị 5' }]
+        }
+        if (fn === 'equipment_create') {
+          throw { message: 'Permission denied' }
+        }
+        return []
+      })
+
+      render(
+        <AddEquipmentDialog open onOpenChange={vi.fn()} onSuccess={vi.fn()} />,
+        { wrapper: createWrapper() }
+      )
+
+      fillRequiredAddFields()
+      fireEvent.change(screen.getByRole('combobox'), {
+        target: { value: 'Hoạt động' },
+      })
+
+      fireEvent.click(screen.getByRole('button', { name: 'Lưu' }))
+
+      await waitFor(() => {
+        expect(mockToast).toHaveBeenCalledWith(
+          expect.objectContaining({
+            variant: 'destructive',
+            title: 'Lỗi',
+            description: 'Không thể thêm thiết bị. Permission denied',
+          })
+        )
+      })
+    })
+
     it('blocks create for regional leader', async () => {
       mockUseSession.mockReturnValue({
         data: { user: { role: 'regional_leader', don_vi: 5 } },

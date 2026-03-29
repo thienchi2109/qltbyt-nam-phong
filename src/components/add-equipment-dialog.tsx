@@ -20,6 +20,7 @@ import {
 import { Form } from "@/components/ui/form"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { useToast } from "@/hooks/use-toast"
+import { getUnknownErrorMessage } from "@/lib/error-utils"
 import { isRegionalLeaderRole } from "@/lib/rbac"
 import { callRpc } from "@/lib/rpc-client"
 
@@ -120,11 +121,11 @@ export function AddEquipmentDialog({
       form.reset()
     },
     onError: (error: unknown) => {
-      const message = error instanceof Error ? error.message : ""
+      const message = getUnknownErrorMessage(error)
       toast({
         variant: "destructive",
         title: "Lỗi",
-        description: `Không thể thêm thiết bị. ${message}`,
+        description: message ? `Không thể thêm thiết bị. ${message}` : "Không thể thêm thiết bị.",
       })
     },
   })
@@ -139,7 +140,11 @@ export function AddEquipmentDialog({
       return
     }
 
-    await createMutation.mutateAsync(values)
+    try {
+      await createMutation.mutateAsync(values)
+    } catch {
+      // The mutation toast is handled in onError; avoid leaking a rejected promise from submit.
+    }
   }
 
   return (

@@ -830,6 +830,42 @@ describe('ImportEquipmentDialog', () => {
       })
     })
 
+    it('should show plain-object RPC errors instead of an empty import toast description', async () => {
+      const { mockSetSubmitError } = setupMockHookState({
+        status: 'parsed',
+        selectedFile: createMockFile(),
+        parsedData: [createMockEquipment()],
+        parseError: null,
+        validationErrors: [],
+      })
+
+      mockCallRpc.mockRejectedValueOnce({ message: 'Permission denied' })
+
+      render(
+        <ImportEquipmentDialog
+          open={true}
+          onOpenChange={() => {}}
+          onSuccess={() => {}}
+        />
+      )
+
+      fireEvent.click(screen.getByTestId('submit-button'))
+
+      await waitFor(() => {
+        expect(mockToast).toHaveBeenCalledWith(
+          expect.objectContaining({
+            variant: 'destructive',
+            title: 'Lỗi',
+            description: 'Không thể nhập dữ liệu. Permission denied',
+          })
+        )
+      })
+
+      await waitFor(() => {
+        expect(mockSetSubmitError).toHaveBeenCalledWith('Permission denied')
+      })
+    })
+
     it('should not call RPC when parsed data is empty', async () => {
       setupMockHookState({
         status: 'parsed',
