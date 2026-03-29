@@ -33,7 +33,7 @@ export const CacheKeys = {
   equipment: {
     all: (userDepartment?: string) => 
       userDepartment ? ['equipment', 'dept', userDepartment] : ['equipment', 'all'],
-    list: (filters: Record<string, any>, userDepartment?: string) => [
+    list: (filters: Record<string, unknown>, userDepartment?: string) => [
       ...CacheKeys.equipment.all(userDepartment), 
       'list', 
       { filters, department: userDepartment }
@@ -50,7 +50,7 @@ export const CacheKeys = {
   repairRequests: {
     all: (userDepartment?: string) => 
       userDepartment ? ['repair-requests', 'dept', userDepartment] : ['repair-requests', 'all'],
-    list: (filters: Record<string, any>, userDepartment?: string) => [
+    list: (filters: Record<string, unknown>, userDepartment?: string) => [
       ...CacheKeys.repairRequests.all(userDepartment),
       'list',
       { filters, department: userDepartment }
@@ -222,9 +222,11 @@ export class CachePerformanceMonitor {
 }
 
 // Department-aware cache utilities
+type CacheScopeUser = Pick<User, 'role' | 'khoa_phong'>
+
 export const DepartmentCacheUtils = {
   // Get user's cache scope based on role and department
-  getUserCacheScope(user: User | null): {
+  getUserCacheScope(user: CacheScopeUser | null): {
     department?: string
     scope: 'global' | 'department' | 'none'
   } {

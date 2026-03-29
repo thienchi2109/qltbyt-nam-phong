@@ -2,10 +2,36 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { callRpc } from '@/lib/rpc-client'
 import { toast } from '@/hooks/use-toast'
 import { useSession } from 'next-auth/react'
+import type { Session } from 'next-auth'
 import { CacheKeys, CACHE_CONFIG, DepartmentCacheUtils } from '@/lib/advanced-cache-manager'
+import { getUnknownErrorMessage } from '@/lib/error-utils'
+import type { Equipment, User, UserRole } from '@/types/database'
+import { USER_ROLES } from '@/types/database'
 
 // Phase 3: Use advanced cache keys from cache manager
 export const equipmentKeys = CacheKeys.equipment
+
+type EquipmentPayload = Record<string, unknown>
+type CacheScopeUser = Pick<User, 'role' | 'khoa_phong'>
+
+function normalizeSessionRole(role: string | null | undefined): UserRole | null {
+  if (!role) return null
+
+  const normalized = role.trim().toLowerCase()
+  return Object.hasOwn(USER_ROLES, normalized) ? (normalized as UserRole) : null
+}
+
+function toCacheScopeUser(user: Session['user'] | null | undefined): CacheScopeUser | null {
+  const role = normalizeSessionRole(user?.role)
+  if (!user || !role) {
+    return null
+  }
+
+  return {
+    role,
+    khoa_phong: user.khoa_phong ?? undefined,
+  }
+}
 
 // Phase 3: Enhanced equipment fetching with advanced caching
 export function useEquipment(filters?: {
@@ -17,8 +43,8 @@ export function useEquipment(filters?: {
   const { data: session } = useSession()
   const user = session?.user
 
-  // Get user's cache scope using advanced cache manager (cast NextAuth user to our User type)
-  const cacheScope = DepartmentCacheUtils.getUserCacheScope(user as any)
+  // Get user's cache scope using advanced cache manager.
+  const cacheScope = DepartmentCacheUtils.getUserCacheScope(toCacheScopeUser(user))
   const userDepartment = cacheScope.scope === 'department' ? cacheScope.department : undefined
 
   // Performance monitoring
@@ -33,7 +59,7 @@ export function useEquipment(filters?: {
 
       // Map filters to search query; advanced filtering to be implemented in SQL as needed
       const search = filters?.search ?? null
-      const data = await callRpc<any[]>({
+      const data = await callRpc<Equipment[]>({
         fn: 'equipment_list',
         args: { p_q: search, p_sort: 'id.desc', p_page: 1, p_page_size: 200 },
       })
@@ -60,7 +86,7 @@ export function useEquipmentDetail(id: string | null) {
     queryKey: equipmentKeys.detail(id || ''),
     queryFn: async () => {
       if (!id) return null
-      const data = await callRpc<any>({ fn: 'equipment_get', args: { p_id: Number(id) } })
+      const data = await callRpc<Equipment | null>({ fn: 'equipment_get', args: { p_id: Number(id) } })
       return data
     },
     enabled: !!id,
@@ -73,15 +99,14 @@ export function useUpdateEquipment() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: async (params: { id: string; data: any }) => {
-      const data = await callRpc<any>({ fn: 'equipment_update', args: { p_id: Number(params.id), p_patch: params.data } })
-      return data
+    mutationFn: async (params: { id: string; data: EquipmentPayload }) => {
+      await callRpc<boolean>({ fn: 'equipment_update', args: { p_id: Number(params.id), p_patch: params.data } })
     },
-    onSuccess: (data) => {
+    onSuccess: (_result, params) => {
       // Invalidate and refetch equipment lists
       queryClient.invalidateQueries({ queryKey: ['equipment'] })
-      // Update specific equipment detail cache
-      queryClient.setQueryData(equipmentKeys.detail(data.id), data)
+      // Refetch the edited equipment detail instead of writing an unknown boolean payload into cache
+      queryClient.invalidateQueries({ queryKey: equipmentKeys.detail(String(params.id)) })
       // Invalidate dashboard stats to update KPI cards
       queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] })
 
@@ -90,10 +115,10 @@ export function useUpdateEquipment() {
         description: "Cập nhật thiết bị thành công",
       })
     },
-    onError: (error: any) => {
+    onError: (error: unknown) => {
       toast({
         title: "Lỗi",
-        description: error.message || "Không thể cập nhật thiết bị",
+        description: getUnknownErrorMessage(error, "Không thể cập nhật thiết bị"),
         variant: "destructive",
       })
     },
@@ -105,8 +130,8 @@ export function useCreateEquipment() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: async (data: any) => {
-      const newEquipment = await callRpc<any>({ fn: 'equipment_create', args: { p_payload: data } })
+    mutationFn: async (data: EquipmentPayload) => {
+      const newEquipment = await callRpc<Equipment>({ fn: 'equipment_create', args: { p_payload: data } })
       return newEquipment
     },
     onSuccess: () => {
@@ -120,10 +145,10 @@ export function useCreateEquipment() {
         description: "Thêm thiết bị thành công",
       })
     },
-    onError: (error: any) => {
+    onError: (error: unknown) => {
       toast({
         title: "Lỗi",
-        description: error.message || "Không thể thêm thiết bị",
+        description: getUnknownErrorMessage(error, "Không thể thêm thiết bị"),
         variant: "destructive",
       })
     },
@@ -155,15 +180,15 @@ export function useDeleteEquipment() {
         description: "Xóa thiết bị thành công",
       })
     },
-    onError: (error: any) => {
+    onError: (error: unknown) => {
       toast({
         title: "Lỗi",
-        description: error.message || "Không thể xóa thiết bị",
+        description: getUnknownErrorMessage(error, "Không thể xóa thiết bị"),
         variant: "destructive",
       })
     },
   })
-} 
+}
 
 // Restore equipment mutation
 export function useRestoreEquipment() {
@@ -190,10 +215,10 @@ export function useRestoreEquipment() {
         description: "Khôi phục thiết bị thành công",
       })
     },
-    onError: (error: any) => {
+    onError: (error: unknown) => {
       toast({
         title: "Lỗi",
-        description: error.message || "Không thể khôi phục thiết bị",
+        description: getUnknownErrorMessage(error, "Không thể khôi phục thiết bị"),
         variant: "destructive",
       })
     },
@@ -229,10 +254,10 @@ export function useBulkDeleteEquipment() {
         description: `Đã xóa ${deletedCount} thiết bị thành công`,
       })
     },
-    onError: (error: any) => {
+    onError: (error: unknown) => {
       toast({
         title: "Lỗi",
-        description: error.message || "Không thể xóa hàng loạt thiết bị",
+        description: getUnknownErrorMessage(error, "Không thể xóa hàng loạt thiết bị"),
         variant: "destructive",
       })
     },

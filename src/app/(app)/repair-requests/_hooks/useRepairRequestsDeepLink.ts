@@ -1,10 +1,13 @@
 "use client"
 
 import * as React from "react"
-import { callRpc } from "@/lib/rpc-client"
 import type { EquipmentSelectItem } from "../types"
 import type { RepairRequestDraftPayload } from "@/lib/ai/draft/repair-request-draft-schema"
 import type { UiFilters } from "@/lib/rr-prefs"
+import {
+  fetchRepairRequestEquipmentById,
+  fetchRepairRequestEquipmentList,
+} from "../repair-requests-equipment-rpc"
 
 // ── Types ────────────────────────────────────────────────────────
 
@@ -62,21 +65,13 @@ export function useRepairRequestsDeepLink(
   React.useEffect(() => {
     const fetchInitialData = async () => {
       try {
-        const eq = await callRpc<any[]>({
-          fn: 'equipment_list',
-          args: { p_q: null, p_sort: 'ten_thiet_bi.asc', p_page: 1, p_page_size: 50 },
-        })
-        setAllEquipment((eq || []).map((row: any) => ({
-          id: row.id,
-          ma_thiet_bi: row.ma_thiet_bi,
-          ten_thiet_bi: row.ten_thiet_bi,
-          khoa_phong_quan_ly: row.khoa_phong_quan_ly,
-        })))
-      } catch (error: any) {
+        const eq = await fetchRepairRequestEquipmentList(null, 50)
+        setAllEquipment(eq || [])
+      } catch (error: unknown) {
         toast({
           variant: 'destructive',
           title: 'Lỗi',
-          description: 'Không thể tải danh sách thiết bị. ' + (error?.message || ''),
+          description: 'Không thể tải danh sách thiết bị. ' + (error instanceof Error ? error.message : ''),
         })
       } finally {
         setHasLoadedEquipment(true)
@@ -127,15 +122,9 @@ export function useRepairRequestsDeepLink(
     const run = async () => {
       setIsEquipmentFetchPending(true)
       try {
-        const row: any = await callRpc({ fn: 'equipment_get', args: { p_id: idNum } })
+        const row = await fetchRepairRequestEquipmentById(idNum)
         if (row) {
-          const item: EquipmentSelectItem = {
-            id: row.id,
-            ma_thiet_bi: row.ma_thiet_bi,
-            ten_thiet_bi: row.ten_thiet_bi,
-            khoa_phong_quan_ly: row.khoa_phong_quan_ly,
-          }
-          setAllEquipment(prev => [item, ...prev.filter(x => x.id !== item.id)])
+          setAllEquipment(prev => [row, ...prev.filter(x => x.id !== row.id)])
         }
       } catch {
         // ignore; toast not necessary for deep link preselect

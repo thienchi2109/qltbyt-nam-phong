@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { Eye, History, Wrench, Settings, X, Search, ClipboardList, AlertCircle, RotateCcw } from "lucide-react"
 import { callRpc } from "@/lib/rpc-client"
+import { getUnknownErrorMessage } from "@/lib/error-utils"
 import { useToast } from "@/hooks/use-toast"
 import type { Equipment } from "@/lib/data"
 
@@ -32,7 +33,7 @@ export function QRActionSheet({ qrCode, onClose, onAction }: QRActionSheetProps)
 
       // Use dedicated RPC for exact ma_thiet_bi lookup with tenant security
       const normalizedCode = qrCode.trim()
-      const result = await callRpc<any>({
+      const result = await callRpc<Equipment | null>({
         fn: 'equipment_get_by_code',
         args: { p_ma_thiet_bi: normalizedCode }
       })
@@ -44,9 +45,9 @@ export function QRActionSheet({ qrCode, onClose, onAction }: QRActionSheetProps)
       } else {
         setEquipment(result)
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       // Parse RPC error response
-      const errorMsg = err?.message || ''
+      const errorMsg = getUnknownErrorMessage(err)
 
       // Determine error type for better Vietnamese messaging
       if (errorMsg.includes('access denied') || errorMsg.includes('42501')) {

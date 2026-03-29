@@ -7,7 +7,7 @@ import { EQUIPMENT_ATTENTION_STATUSES } from '@/lib/equipment-attention-preset'
 // Mock callRpc
 const mockCallRpc = vi.fn()
 vi.mock('@/lib/rpc-client', () => ({
-  callRpc: (args: any) => mockCallRpc(args),
+  callRpc: (args: unknown) => mockCallRpc(args),
 }))
 
 // Mock useActiveUsageLogs
@@ -706,3 +706,4 @@ describe('useEquipmentData', () => {
     })
   })
 })
+

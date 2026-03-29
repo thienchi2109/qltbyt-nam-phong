@@ -7,9 +7,22 @@ export interface AddEquipmentTenantOption {
 }
 
 interface AddEquipmentTenantListItem {
-  id: number
+  id: number | string
   code?: string | null
-  name: string
+  name: string | null
+}
+
+function isTenantListItem(value: unknown): value is AddEquipmentTenantListItem {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+    return false
+  }
+
+  const row = value as Record<string, unknown>
+  return (
+    (typeof row.id === "number" || typeof row.id === "string") &&
+    (typeof row.name === "string" || row.name === null) &&
+    (!("code" in row) || typeof row.code === "string" || row.code === null)
+  )
 }
 
 export async function fetchDepartmentNames(): Promise<string[]> {
@@ -22,16 +35,33 @@ export async function fetchDepartmentNames(): Promise<string[]> {
 }
 
 export async function fetchTenantList(): Promise<AddEquipmentTenantOption[]> {
-  const list = await callRpc<AddEquipmentTenantListItem[]>({
+  const list = await callRpc<unknown>({
     fn: "tenant_list",
     args: {},
   })
 
-  return (list || []).map((tenant) => ({
-    id: tenant.id,
-    code: tenant.code,
-    name: tenant.name,
-  }))
+  if (!Array.isArray(list)) {
+    return []
+  }
+
+  return list.flatMap((tenant) => {
+    if (!isTenantListItem(tenant) || !tenant.name?.trim()) {
+      return []
+    }
+
+    const id = Number(tenant.id)
+    if (!Number.isFinite(id)) {
+      return []
+    }
+
+    return [
+      {
+        id,
+        code: tenant.code ?? null,
+        name: tenant.name,
+      },
+    ]
+  })
 }
 
 export function findCurrentTenant(

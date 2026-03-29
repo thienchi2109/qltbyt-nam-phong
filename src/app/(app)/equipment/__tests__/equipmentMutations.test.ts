@@ -6,14 +6,14 @@ import { QueryClient, QueryClientProvider, useMutation, useQueryClient } from '@
 // Mock callRpc
 const mockCallRpc = vi.fn()
 vi.mock('@/lib/rpc-client', () => ({
-  callRpc: (args: any) => mockCallRpc(args),
+  callRpc: (args: unknown) => mockCallRpc(args),
 }))
 
 // Mock useToast
 const mockToast = vi.fn()
 vi.mock('@/hooks/use-toast', () => ({
   useToast: () => ({ toast: mockToast }),
-  toast: (args: any) => mockToast(args),
+  toast: (args: unknown) => mockToast(args),
 }))
 
 // Mock next-auth
@@ -32,7 +32,7 @@ vi.mock('next-auth/react', () => ({
 }))
 
 // Import hooks under test after mocks
-import { useBulkDeleteEquipment, useDeleteEquipment, useRestoreEquipment } from '@/hooks/use-cached-equipment'
+import { equipmentKeys, useBulkDeleteEquipment, useDeleteEquipment, useRestoreEquipment, useUpdateEquipment } from '@/hooks/use-cached-equipment'
 
 // Test utilities
 const createQueryClient = () =>
@@ -279,6 +279,31 @@ describe('Equipment CRUD Mutations', () => {
       expect(result.current.error?.message).toBe('Equipment not found')
     })
 
+    it('should surface plain-object rejection messages when update fails', async () => {
+      mockCallRpc.mockRejectedValue({ message: 'Permission denied' })
+
+      const { result } = renderHook(() => useUpdateEquipment(), { wrapper: createWrapper(queryClient) })
+
+      act(() => {
+        result.current.mutate({
+          id: '1',
+          data: { ten_thiet_bi: 'Test' },
+        })
+      })
+
+      await waitFor(() => {
+        expect(result.current.isError).toBe(true)
+      })
+
+      expect(mockToast).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: 'Lỗi',
+          description: 'Permission denied',
+          variant: 'destructive',
+        })
+      )
+    })
+
     it('should handle tenant isolation error on update', async () => {
       mockCallRpc.mockRejectedValue(new Error('Access denied for update'))
 
@@ -337,6 +362,29 @@ describe('Equipment CRUD Mutations', () => {
       })
 
       expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['equipment_list'] })
+    })
+
+    it('invalidates the updated equipment detail cache when the RPC returns only a boolean', async () => {
+      mockCallRpc.mockResolvedValue(true)
+      const invalidateSpy = vi.spyOn(queryClient, 'invalidateQueries')
+      const setQueryDataSpy = vi.spyOn(queryClient, 'setQueryData')
+
+      const { result } = renderHook(() => useUpdateEquipment(), { wrapper: createWrapper(queryClient) })
+
+      act(() => {
+        result.current.mutate({
+          id: '1',
+          data: { ten_thiet_bi: 'Updated Equipment' },
+        })
+      })
+
+      await waitFor(() => {
+        expect(result.current.isSuccess).toBe(true)
+      })
+
+      expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['equipment'] })
+      expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: equipmentKeys.detail('1') })
+      expect(setQueryDataSpy).not.toHaveBeenCalled()
     })
   })
 
