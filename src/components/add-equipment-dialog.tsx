@@ -130,7 +130,7 @@ export function AddEquipmentDialog({
     },
   })
 
-  async function onSubmit(values: AddEquipmentFormValues) {
+  function onSubmit(values: AddEquipmentFormValues) {
     if (isRegionalLeader) {
       toast({
         variant: "destructive",
@@ -140,11 +140,7 @@ export function AddEquipmentDialog({
       return
     }
 
-    try {
-      await createMutation.mutateAsync(values)
-    } catch {
-      // The mutation toast is handled in onError; avoid leaking a rejected promise from submit.
-    }
+    createMutation.mutate(values)
   }
 
   return (
