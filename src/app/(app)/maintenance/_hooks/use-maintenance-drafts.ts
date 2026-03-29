@@ -5,6 +5,7 @@ import { callRpc } from "@/lib/rpc-client"
 import { useToast } from "@/hooks/use-toast"
 import type { MaintenanceTask } from "@/lib/data"
 import type { MaintenancePlan } from "@/hooks/use-cached-maintenance"
+import { getUnknownErrorMessage } from "@/lib/error-utils"
 
 interface UseMaintenanceDraftsParams {
   selectedPlan: MaintenancePlan | null
@@ -21,6 +22,7 @@ export function useMaintenanceDrafts({
   const [draftTasks, setDraftTasks] = React.useState<MaintenanceTask[]>([])
   const [isSaving, setIsSaving] = React.useState(false)
   const [isLoading, setIsLoading] = React.useState(false)
+  const [loadedPlanId, setLoadedPlanId] = React.useState<number | null>(null)
   const fetchSequenceRef = React.useRef(0)
   const activeFetchSequenceRef = React.useRef(0)
 
@@ -40,20 +42,26 @@ export function useMaintenanceDrafts({
 
   // Sync drafts to localStorage
   React.useEffect(() => {
-    if (selectedPlan && hasChanges) {
+    if (!selectedPlan || loadedPlanId !== selectedPlan.id) {
+      return
+    }
+
+    if (hasChanges) {
       const cacheKey = getDraftCacheKey(selectedPlan.id)
       localStorage.setItem(cacheKey, JSON.stringify(draftTasks))
     }
-    if (selectedPlan && !hasChanges) {
+
+    if (!hasChanges) {
       const cacheKey = getDraftCacheKey(selectedPlan.id)
       localStorage.removeItem(cacheKey)
     }
-  }, [draftTasks, selectedPlan, hasChanges, getDraftCacheKey])
+  }, [draftTasks, selectedPlan, hasChanges, getDraftCacheKey, loadedPlanId])
 
   React.useEffect(() => {
     if (!selectedPlan) {
       invalidateActiveFetch()
       setIsLoading(false)
+      setLoadedPlanId(null)
       setTasks([])
       setDraftTasks([])
     }
@@ -88,6 +96,7 @@ export function useMaintenanceDrafts({
 
       const dbTasks = data || []
       setTasks(dbTasks)
+      setLoadedPlanId(plan.id)
 
       if (cachedDraft) {
         try {
@@ -112,7 +121,7 @@ export function useMaintenanceDrafts({
       if (isStaleFetch()) {
         return
       }
-      const message = error instanceof Error ? error.message : "Lỗi không xác định"
+      const message = getUnknownErrorMessage(error, "Lỗi không xác định")
       toast({ variant: "destructive", title: "Lỗi tải công việc", description: message })
       setTasks([])
       setDraftTasks([])
@@ -155,7 +164,7 @@ export function useMaintenanceDrafts({
       try {
         await callRpc<void>({ fn: 'maintenance_tasks_bulk_insert', args: { p_tasks: tasksToInsert } })
       } catch (e) {
-        const message = e instanceof Error ? e.message : "Lỗi không xác định"
+        const message = getUnknownErrorMessage(e, "Lỗi không xác định")
         toast({ variant: "destructive", title: "Lỗi thêm công việc mới", description: message, duration: 10000 })
         hasError = true
       }
@@ -166,7 +175,7 @@ export function useMaintenanceDrafts({
         try {
           await callRpc<void>({ fn: 'maintenance_task_update', args: { p_id: taskToUpdate.id, p_task: taskToUpdate } })
         } catch (e) {
-          const message = e instanceof Error ? e.message : "Lỗi không xác định"
+          const message = getUnknownErrorMessage(e, "Lỗi không xác định")
           toast({ variant: "destructive", title: `Lỗi cập nhật công việc ID ${taskToUpdate.id}`, description: message, duration: 10000 })
           hasError = true
           break
@@ -178,7 +187,7 @@ export function useMaintenanceDrafts({
       try {
         await callRpc<void>({ fn: 'maintenance_tasks_delete', args: { p_ids: idsToDelete } })
       } catch (e) {
-        const message = e instanceof Error ? e.message : "Lỗi không xác định"
+        const message = getUnknownErrorMessage(e, "Lỗi không xác định")
         toast({ variant: "destructive", title: "Lỗi xóa công việc cũ", description: message, duration: 10000 })
         hasError = true
       }

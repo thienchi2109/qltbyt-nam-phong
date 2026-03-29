@@ -1,11 +1,11 @@
 import { describe, expect, it, vi } from 'vitest'
 import type { MaintenanceTask } from '@/lib/data'
+import * as maintenanceRpc from '../use-cached-maintenance.rpc'
 import {
   defaultMaintenanceTaskListArgs,
   fetchMaintenanceTaskList,
   filterMaintenanceTasksByEquipmentId,
   findMaintenanceTaskById,
-  getMaintenanceErrorMessage,
 } from '../use-cached-maintenance.rpc'
 
 function createTask(overrides: Partial<MaintenanceTask> = {}): MaintenanceTask {
@@ -105,9 +105,7 @@ describe('use-cached-maintenance.rpc', () => {
     expect(findMaintenanceTaskById(tasks, '999')).toBeNull()
   })
 
-  it('extracts usable messages from unknown errors', () => {
-    expect(getMaintenanceErrorMessage(new Error('RPC failed'), 'fallback')).toBe('RPC failed')
-    expect(getMaintenanceErrorMessage({ message: 'Permission denied' }, 'fallback')).toBe('Permission denied')
-    expect(getMaintenanceErrorMessage({ detail: 'ignored' }, 'fallback')).toBe('fallback')
+  it('does not re-export a maintenance-specific error wrapper', () => {
+    expect('getMaintenanceErrorMessage' in maintenanceRpc).toBe(false)
   })
 })

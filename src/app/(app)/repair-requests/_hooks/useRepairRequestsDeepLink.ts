@@ -4,6 +4,7 @@ import * as React from "react"
 import type { EquipmentSelectItem } from "../types"
 import type { RepairRequestDraftPayload } from "@/lib/ai/draft/repair-request-draft-schema"
 import type { UiFilters } from "@/lib/rr-prefs"
+import { getUnknownErrorMessage } from "@/lib/error-utils"
 import {
   fetchRepairRequestEquipmentById,
   fetchRepairRequestEquipmentList,
@@ -68,10 +69,13 @@ export function useRepairRequestsDeepLink(
         const eq = await fetchRepairRequestEquipmentList(null, 50)
         setAllEquipment(eq || [])
       } catch (error: unknown) {
+        const errorMessage = getUnknownErrorMessage(error)
         toast({
           variant: 'destructive',
           title: 'Lỗi',
-          description: 'Không thể tải danh sách thiết bị. ' + (error instanceof Error ? error.message : ''),
+          description: errorMessage
+            ? `Không thể tải danh sách thiết bị. ${errorMessage}`
+            : 'Không thể tải danh sách thiết bị.',
         })
       } finally {
         setHasLoadedEquipment(true)

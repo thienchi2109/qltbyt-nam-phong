@@ -7,6 +7,7 @@ import { useQuery, useMutation, useQueryClient, keepPreviousData } from "@tansta
 import { ChevronDown } from "lucide-react"
 
 import { callRpc } from "@/lib/rpc-client"
+import { getUnknownErrorMessage } from "@/lib/error-utils"
 import { cn } from "@/lib/utils"
 import { isGlobalRole } from "@/lib/rbac"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -70,8 +71,7 @@ type PreparedTenant = {
 export function TenantsManagement() {
   const router = useRouter()
   const { data: session, status } = useSession()
-  const user = (session?.user || {}) as any
-  const isGlobal = isGlobalRole(user?.role)
+  const isGlobal = isGlobalRole(session?.user?.role)
   const { toast } = useToast()
   const qc = useQueryClient()
 
@@ -164,7 +164,7 @@ export function TenantsManagement() {
       toast({ title: "Đã cập nhật trạng thái" })
     },
     onError: (error: unknown) => {
-      const message = error instanceof Error ? error.message : "Không thể cập nhật trạng thái"
+      const message = getUnknownErrorMessage(error, "Không thể cập nhật trạng thái")
       toast({ variant: "destructive", title: "Lỗi", description: message })
     },
   })

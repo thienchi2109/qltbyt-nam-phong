@@ -6,6 +6,7 @@ import { useQueryClient } from "@tanstack/react-query"
 import { useSession } from "next-auth/react"
 import { useToast } from "@/hooks/use-toast"
 import { callRpc } from "@/lib/rpc-client"
+import { getUnknownErrorMessage } from "@/lib/error-utils"
 import { isEquipmentManagerRole, isRegionalLeaderRole } from "@/lib/rbac"
 import {
   maintenanceKeys,
@@ -332,7 +333,7 @@ export function MaintenanceProvider({
 
         await fetchPlanDetails(selectedPlan)
       } catch (error) {
-        const message = error instanceof Error ? error.message : "Lỗi không xác định"
+        const message = getUnknownErrorMessage(error, "Lỗi không xác định")
         toast({
           variant: "destructive",
           title: "Lỗi",

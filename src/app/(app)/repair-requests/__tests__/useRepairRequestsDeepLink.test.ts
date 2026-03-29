@@ -42,9 +42,15 @@ function createSearchParams(params: Record<string, string> = {}): URLSearchParam
 
 function createDefaultOptions(searchParams?: URLSearchParams) {
   const sp = searchParams || createSearchParams()
+  const router = { replace: mocks.routerReplace }
+  const queryClient = {
+    getQueryData: mocks.queryClientGetQueryData,
+    removeQueries: mocks.queryClientRemoveQueries,
+  }
+
   return {
     searchParams: sp,
-    router: { replace: mocks.routerReplace } as any,
+    router,
     pathname: '/repair-requests',
     toast: mocks.toast,
     uiFilters: { status: [], dateRange: null } as UiFilters,
@@ -52,10 +58,7 @@ function createDefaultOptions(searchParams?: URLSearchParams) {
     setUiFilters: vi.fn(),
     openCreateSheet: mocks.openCreateSheet,
     applyAssistantDraft: mocks.applyAssistantDraft,
-    queryClient: {
-      getQueryData: mocks.queryClientGetQueryData,
-      removeQueries: mocks.queryClientRemoveQueries,
-    } as any,
+    queryClient,
   }
 }
 
@@ -101,7 +104,7 @@ describe('useRepairRequestsDeepLink', () => {
   })
 
   it('toasts error when equipment list fetch fails', async () => {
-    mocks.callRpc.mockRejectedValueOnce(new Error('Network error'))
+    mocks.callRpc.mockRejectedValueOnce({ message: 'Network error' })
 
     const { result } = renderHook(() =>
       useRepairRequestsDeepLink(createDefaultOptions())
@@ -111,7 +114,10 @@ describe('useRepairRequestsDeepLink', () => {
       expect(result.current.hasLoadedEquipment).toBe(true)
     })
     expect(mocks.toast).toHaveBeenCalledWith(
-      expect.objectContaining({ variant: 'destructive' })
+      expect.objectContaining({
+        variant: 'destructive',
+        description: 'Không thể tải danh sách thiết bị. Network error',
+      })
     )
   })
 

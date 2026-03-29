@@ -1,5 +1,4 @@
 import { taskTypes, type MaintenanceTask, type TaskType } from '@/lib/data'
-import { getUnknownErrorMessage } from '@/lib/error-utils'
 
 type RpcCaller = <TResponse>(options: {
   fn: string
@@ -194,8 +193,4 @@ export function findMaintenanceTaskById(
   }
 
   return (tasks ?? []).find((task) => String(task.id) === String(id)) ?? null
-}
-
-export function getMaintenanceErrorMessage(error: unknown, fallback: string): string {
-  return getUnknownErrorMessage(error, fallback)
 }

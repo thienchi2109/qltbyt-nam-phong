@@ -13,6 +13,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { useToast } from "@/hooks/use-toast"
+import { getUnknownErrorMessage } from "@/lib/error-utils"
 import { callRpc } from "@/lib/rpc-client"
 import {
   FULL_DATE_ERROR_MESSAGE,
@@ -348,11 +349,11 @@ export function ImportEquipmentDialog({ open, onOpenChange, onSuccess }: ImportE
       onSuccess()
       handleClose()
     } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : ''
+      const errorMessage = getUnknownErrorMessage(error)
       toast({
         variant: "destructive",
         title: "Lỗi",
-        description: "Không thể nhập dữ liệu. " + errorMessage,
+        description: errorMessage ? `Không thể nhập dữ liệu. ${errorMessage}` : "Không thể nhập dữ liệu.",
       })
       setSubmitError(errorMessage)
     }

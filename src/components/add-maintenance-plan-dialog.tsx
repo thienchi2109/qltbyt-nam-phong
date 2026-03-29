@@ -136,7 +136,7 @@ export function AddMaintenancePlanDialog({ open, onOpenChange, onSuccess }: AddM
       toast({
         variant: "destructive",
         title: "Lỗi",
-        description: `Không thể tạo kế hoạch. ${message}`,
+        description: message ? `Không thể tạo kế hoạch. ${message}` : "Không thể tạo kế hoạch.",
       })
     } finally {
       setIsSubmitting(false)

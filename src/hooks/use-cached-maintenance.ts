@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { callRpc } from '@/lib/rpc-client'
+import { getUnknownErrorMessage } from '@/lib/error-utils'
 import { toast } from '@/hooks/use-toast'
 import {
   type MaintenanceHistoryFilters,
@@ -13,7 +14,6 @@ import {
   fetchMaintenanceTaskList,
   filterMaintenanceTasksByEquipmentId,
   findMaintenanceTaskById,
-  getMaintenanceErrorMessage,
 } from './use-cached-maintenance.rpc'
 
 export type { MaintenancePlan, MaintenancePlanListResponse } from './use-cached-maintenance.types'
@@ -150,7 +150,7 @@ export function useCreateMaintenancePlan() {
     onError: (error: unknown) => {
       toast({
         title: 'Lỗi',
-        description: getMaintenanceErrorMessage(error, 'Không thể tạo kế hoạch bảo trì'),
+        description: getUnknownErrorMessage(error, 'Không thể tạo kế hoạch bảo trì'),
         variant: 'destructive',
       })
     },
@@ -186,7 +186,7 @@ export function useUpdateMaintenancePlan() {
     onError: (error: unknown) => {
       toast({
         title: 'Lỗi',
-        description: getMaintenanceErrorMessage(error, 'Không thể cập nhật kế hoạch bảo trì'),
+        description: getUnknownErrorMessage(error, 'Không thể cập nhật kế hoạch bảo trì'),
         variant: 'destructive',
       })
     },
@@ -219,7 +219,7 @@ export function useApproveMaintenancePlan() {
     onError: (error: unknown) => {
       toast({
         title: 'Lỗi duyệt kế hoạch',
-        description: getMaintenanceErrorMessage(error, 'Không thể duyệt kế hoạch'),
+        description: getUnknownErrorMessage(error, 'Không thể duyệt kế hoạch'),
         variant: 'destructive',
       })
     },
@@ -253,7 +253,7 @@ export function useRejectMaintenancePlan() {
     onError: (error: unknown) => {
       toast({
         title: 'Lỗi từ chối kế hoạch',
-        description: getMaintenanceErrorMessage(error, 'Không thể từ chối kế hoạch'),
+        description: getUnknownErrorMessage(error, 'Không thể từ chối kế hoạch'),
         variant: 'destructive',
       })
     },
@@ -283,7 +283,7 @@ export function useDeleteMaintenancePlan() {
     onError: (error: unknown) => {
       toast({
         title: 'Lỗi xóa kế hoạch',
-        description: getMaintenanceErrorMessage(error, 'Không thể xóa kế hoạch bảo trì'),
+        description: getUnknownErrorMessage(error, 'Không thể xóa kế hoạch bảo trì'),
         variant: 'destructive',
       })
     },

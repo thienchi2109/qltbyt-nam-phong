@@ -1,5 +1,6 @@
 import type { RepairRequestWithEquipment } from "../types"
 import { buildRepairRequestSheetHtml } from "../request-sheet"
+import { getUnknownErrorMessage } from "@/lib/error-utils"
 
 /** External dependencies for UI handlers */
 export interface UIHandlersDeps {
@@ -43,10 +44,11 @@ export function useRepairRequestUIHandlers(
         newWindow.document.close()
       }
     } catch (error) {
+      const errorMessage = getUnknownErrorMessage(error, "Không thể tạo phiếu yêu cầu.")
       toast({
         variant: "destructive",
         title: "Lỗi",
-        description: error instanceof Error ? error.message : "Không thể tạo phiếu yêu cầu.",
+        description: errorMessage,
       })
     }
   }

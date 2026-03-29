@@ -192,6 +192,24 @@ describe("DeviceQuotaCategoryImportDialog", () => {
     })
   })
 
+  it("shows the plain-object parse error message when Excel parsing fails", async () => {
+    mockReadExcelFile.mockRejectedValueOnce({ message: "File bị hỏng" })
+
+    render(<DeviceQuotaCategoryImportDialog />)
+
+    const file = new File(["dummy"], "broken.xlsx", {
+      type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    })
+
+    fireEvent.change(screen.getByLabelText("Chọn file Excel"), {
+      target: { files: [file] },
+    })
+
+    await waitFor(() => {
+      expect(screen.getByText("File bị hỏng")).toBeInTheDocument()
+    })
+  })
+
   it("uses inserted quota count from dinh_muc_unified_import result in success message", async () => {
     mockReadExcelFile.mockResolvedValue({
       SheetNames: ["Sheet1"],
@@ -256,6 +274,58 @@ describe("DeviceQuotaCategoryImportDialog", () => {
         title: "Nhập thành công",
         description:
           "Đã thêm 2 danh mục và 1 định mức (1 lỗi). Quyết định định mức nhập đã được tạo tự động.",
+      })
+    )
+  })
+
+  it("shows the plain-object quota import error message in partial success toast", async () => {
+    mockReadExcelFile.mockResolvedValue({
+      SheetNames: ["Sheet1"],
+      Sheets: { Sheet1: {} },
+    } as Awaited<ReturnType<typeof readExcelFile>>)
+    mockWorksheetToJson.mockResolvedValue([
+      {
+        "Ma nhom": "DM010",
+        "Ten nhom": "Danh mục 10",
+        "Dinh muc": 12,
+        "Toi thieu": 3,
+      },
+    ])
+
+    mockCallRpc.mockRejectedValueOnce({ message: "Quota import failed" })
+
+    render(<DeviceQuotaCategoryImportDialog />)
+
+    const file = new File(["dummy"], "quota-failure.xlsx", {
+      type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    })
+
+    fireEvent.change(screen.getByLabelText("Chọn file Excel"), {
+      target: { files: [file] },
+    })
+
+    await waitFor(() => {
+      expect(screen.getByText(/sẵn sàng nhập/i)).toBeInTheDocument()
+    })
+
+    expect(capturedMutationOptions?.onSuccess).toBeTypeOf("function")
+
+    await act(async () => {
+      await capturedMutationOptions?.onSuccess?.({
+        success: true,
+        inserted: 1,
+        failed: 0,
+        total: 1,
+        details: [{ ma_nhom: "DM010", success: true }],
+      })
+    })
+
+    expect(mockToast).toHaveBeenCalledWith(
+      expect.objectContaining({
+        variant: "destructive",
+        title: "Định mức thất bại",
+        description:
+          "Đã thêm 1 danh mục nhưng nhập định mức thất bại: Quota import failed",
       })
     )
   })
