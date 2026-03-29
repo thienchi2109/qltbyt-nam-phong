@@ -157,6 +157,15 @@ describe('AssistantPanel', () => {
         )
     })
 
+    it('applies prepareSendMessagesRequest for payload compaction', () => {
+        render(<AssistantPanel isOpen={true} onClose={vi.fn()} />)
+
+        const transportArgs = mocks.defaultChatTransport.mock.calls[0]?.[0] as {
+            prepareSendMessagesRequest?: unknown
+        }
+        expect(typeof transportArgs?.prepareSendMessagesRequest).toBe('function')
+    })
+
     it('stores repair drafts and navigates to repair requests when apply is clicked', () => {
         mocks.useChatState.messages = [
             {

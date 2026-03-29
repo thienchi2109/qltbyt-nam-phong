@@ -23,12 +23,17 @@ vi.mock('@/lib/ai/prompts/system', () => ({
   buildSystemPrompt: (...args: unknown[]) => buildSystemPromptMock(...args),
 }))
 
-vi.mock('@/lib/ai/limits', () => ({
-  AI_MAX_OUTPUT_TOKENS: 111,
-  AI_MAX_TOOL_STEPS: 3,
-  AI_MAX_MESSAGES: 2,
-  AI_MAX_INPUT_CHARS: 120,
-}))
+vi.mock('@/lib/ai/limits', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/lib/ai/limits')>()
+  return {
+    ...actual,
+    AI_MAX_OUTPUT_TOKENS: 111,
+    AI_MAX_TOOL_STEPS: 3,
+    AI_MAX_MESSAGES: 2,
+    AI_MAX_INPUT_CHARS: 5000,
+    AI_MAX_COMPACTED_INPUT_CHARS: 1000,
+  }
+})
 
 vi.mock('@/lib/ai/usage-metering', () => ({
   checkUsageLimits: (...args: unknown[]) => checkUsageLimitsMock(...args),
@@ -107,7 +112,7 @@ describe('/api/chat limits', () => {
   })
 
   it('rejects requests exceeding input size limit', async () => {
-    const longText = 'x'.repeat(600)
+    const longText = 'x'.repeat(5500)
     const res = await POST(
       buildRequest({ messages: [buildMessage('m1', longText)] }) as never,
     )
@@ -116,5 +121,118 @@ describe('/api/chat limits', () => {
     expect(res.status).toBe(400)
     expect(text).toBe('Request exceeds input size limit')
     expect(streamTextMock).not.toHaveBeenCalled()
+  })
+
+  it('rejects requests that pass raw limit but exceed compacted context limit', async () => {
+    // Build a message with an envelope tool output that is small enough
+    // for raw budget (< 120 chars) but the compacted result still exceeds
+    // AI_MAX_COMPACTED_INPUT_CHARS (which we set to a small value for testing).
+    const envelopeOutput = {
+      modelSummary: { summaryText: 'x'.repeat(500), itemCount: 1 },
+      followUpContext: { data: 'y'.repeat(500) },
+    }
+    const messages = [
+      {
+        id: 'm1',
+        role: 'user',
+        parts: [{ type: 'text', text: 'Xin chao' }],
+      },
+      {
+        id: 'm2',
+        role: 'assistant',
+        parts: [
+          {
+            type: 'tool-equipmentLookup',
+            toolCallId: 'tc-1',
+            toolName: 'equipmentLookup',
+            state: 'output-available',
+            output: envelopeOutput,
+          },
+        ],
+      },
+    ]
+
+    const res = await POST(
+      buildRequest({ messages }) as never,
+    )
+    const text = await res.text()
+
+    expect(res.status).toBe(400)
+    expect(text).toBe('Request exceeds compacted context limit')
+    expect(streamTextMock).not.toHaveBeenCalled()
+  })
+
+  it('passes requests with large envelope payloads that compact under budget', async () => {
+    // Envelope with uiArtifact makes it large, but after compaction
+    // (stripping uiArtifact) it falls under the compacted budget.
+    const envelopeOutput = {
+      modelSummary: { summaryText: 'OK', itemCount: 1 },
+      followUpContext: { data: 'small' },
+      uiArtifact: { rawPayload: { big: 'x'.repeat(20) } },
+    }
+    const messages = [
+      {
+        id: 'm1',
+        role: 'user',
+        parts: [{ type: 'text', text: 'Hi' }],
+      },
+      {
+        id: 'm2',
+        role: 'assistant',
+        parts: [
+          {
+            type: 'tool-equipmentLookup',
+            toolCallId: 'tc-1',
+            toolName: 'equipmentLookup',
+            state: 'output-available',
+            output: envelopeOutput,
+          },
+        ],
+      },
+    ]
+
+    const res = await POST(
+      buildRequest({ messages }) as never,
+    )
+
+    expect(res.status).toBe(200)
+    expect(streamTextMock).toHaveBeenCalled()
+  })
+
+  it('draft tool outputs survive server compaction', async () => {
+    const draftOutput = {
+      kind: 'troubleshootingDraft',
+      draftOnly: true,
+      source: 'assistant',
+      steps: ['step1', 'step2'],
+    }
+    const messages = [
+      {
+        id: 'm1',
+        role: 'user',
+        parts: [{ type: 'text', text: 'Troubleshoot' }],
+      },
+      {
+        id: 'm2',
+        role: 'assistant',
+        parts: [
+          {
+            type: 'tool-generateTroubleshootingDraft',
+            toolCallId: 'tc-1',
+            toolName: 'generateTroubleshootingDraft',
+            state: 'output-available',
+            output: draftOutput,
+          },
+        ],
+      },
+    ]
+
+    const res = await POST(
+      buildRequest({ messages }) as never,
+    )
+
+    // Draft should pass through — not compacted, not rejected
+    expect(res.status).toBe(200)
+    expect(streamTextMock).toHaveBeenCalled()
   })
 })

@@ -13,13 +13,16 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/auth/config'
 import { chatRequestSchema } from '@/lib/ai/chat-request-schema'
 import { createChatUIStreamResponse, waitForStreamReady } from './chat-ui-stream'
+import { compactValidatedMessages } from './compact-validated-messages'
 import { maybeBuildRepairRequestDraftArtifact } from '@/lib/ai/draft/repair-request-draft-orchestrator'
 import { writeRepairRequestDraftToolResult } from '@/lib/ai/draft/repair-request-draft-ui-stream'
 import {
+  AI_MAX_COMPACTED_INPUT_CHARS,
   AI_MAX_INPUT_CHARS,
   AI_MAX_MESSAGES,
   AI_MAX_OUTPUT_TOKENS,
   AI_MAX_TOOL_STEPS,
+  calculateInputChars,
 } from '@/lib/ai/limits'
 import { getChatModel, getKeyPoolSize, handleProviderQuotaError } from '@/lib/ai/provider'
 import { buildSystemPrompt } from '@/lib/ai/prompts/system'
@@ -89,13 +92,7 @@ function toFacilityId(value: unknown): number | undefined {
   return undefined
 }
 
-function calculateInputChars(messages: unknown[]): number {
-  try {
-    return JSON.stringify(messages).length
-  } catch {
-    return Number.MAX_SAFE_INTEGER
-  }
-}
+
 
 export async function POST(request: Request) {
   const session = await getServerSession(authOptions)
@@ -138,6 +135,13 @@ export async function POST(request: Request) {
     })
   } catch {
     return plainError('Invalid messages payload', 400)
+  }
+
+  // Compact migrated read-only / RPC tool outputs before model execution.
+  // validatedMessages stays for originalMessages + draft orchestration.
+  const { compactedMessages, compactedChars } = compactValidatedMessages(validatedMessages)
+  if (compactedChars > AI_MAX_COMPACTED_INPUT_CHARS) {
+    return plainError('Request exceeds compacted context limit', 400)
   }
 
   const routedIntent = routeChatIntent({
@@ -208,7 +212,7 @@ export async function POST(request: Request) {
 
   let modelMessages: Awaited<ReturnType<typeof convertToModelMessages>>
   try {
-    modelMessages = await convertToModelMessages(validatedMessages)
+    modelMessages = await convertToModelMessages(compactedMessages)
   } catch (error) {
     console.error('[chat] Message conversion error:', error)
     return plainError(sanitizeErrorForClient(error), 500)
