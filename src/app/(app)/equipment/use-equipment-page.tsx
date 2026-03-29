@@ -153,20 +153,33 @@ export function useEquipmentPage(): UseEquipmentPageReturn {
     return auth.selectedDonVi
   }, [auth.isRegionalLeader, auth.selectedFacilityId, auth.selectedDonVi])
 
+  // Memoize filter params to prevent unnecessary re-renders
+  const filterParams = React.useMemo(() => ({
+    debouncedSearch: filters.debouncedSearch,
+    sortParam: filters.sortParam,
+    effectiveSelectedDonVi,
+    selectedDepartments: filters.selectedDepartments,
+    selectedUsers: filters.selectedUsers,
+    selectedLocations: filters.selectedLocations,
+    selectedStatuses: filters.selectedStatuses,
+    selectedClassifications: filters.selectedClassifications,
+    selectedFundingSources: filters.selectedFundingSources,
+  }), [
+    filters.debouncedSearch,
+    filters.sortParam,
+    effectiveSelectedDonVi,
+    filters.selectedDepartments,
+    filters.selectedUsers,
+    filters.selectedLocations,
+    filters.selectedStatuses,
+    filters.selectedClassifications,
+    filters.selectedFundingSources,
+  ])
+
   // Export hook - now with filter params for full data fetch
   const exports = useEquipmentExport({
     total: data.total,
-    filterParams: {
-      debouncedSearch: filters.debouncedSearch,
-      sortParam: filters.sortParam,
-      effectiveSelectedDonVi,
-      selectedDepartments: filters.selectedDepartments,
-      selectedUsers: filters.selectedUsers,
-      selectedLocations: filters.selectedLocations,
-      selectedStatuses: filters.selectedStatuses,
-      selectedClassifications: filters.selectedClassifications,
-      selectedFundingSources: filters.selectedFundingSources,
-    },
+    filterParams,
     tenantBranding: tenantBranding ?? undefined,
     userRole: auth.user?.role,
   })

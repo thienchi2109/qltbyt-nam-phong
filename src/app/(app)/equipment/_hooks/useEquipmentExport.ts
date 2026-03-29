@@ -53,6 +53,16 @@ export function useEquipmentExport(params: UseEquipmentExportParams): UseEquipme
   const { total, filterParams, tenantBranding, userRole } = params
   const { toast } = useToast()
   const [isExporting, setIsExporting] = React.useState(false)
+  const abortControllerRef = React.useRef<AbortController | null>(null)
+
+  // Cleanup on unmount: cancel any in-flight export
+  React.useEffect(() => {
+    return () => {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort()
+      }
+    }
+  }, [])
 
   const handleDownloadTemplate = React.useCallback(async () => {
     try {
@@ -142,7 +152,7 @@ export function useEquipmentExport(params: UseEquipmentExportParams): UseEquipme
   /**
    * Fetch all equipment matching current filters for export
    */
-  const fetchAllEquipmentForExport = React.useCallback(async (): Promise<Equipment[]> => {
+  const fetchAllEquipmentForExport = React.useCallback(async (signal?: AbortSignal): Promise<Equipment[]> => {
     const {
       debouncedSearch,
       sortParam,
@@ -170,6 +180,7 @@ export function useEquipmentExport(params: UseEquipmentExportParams): UseEquipme
         p_phan_loai_array: selectedClassifications.length > 0 ? selectedClassifications : null,
         p_nguon_kinh_phi_array: selectedFundingSources.length > 0 ? selectedFundingSources : null,
       },
+      signal,
     })
 
     return result?.data ?? []
@@ -186,6 +197,10 @@ export function useEquipmentExport(params: UseEquipmentExportParams): UseEquipme
       return
     }
 
+    // Calculate actual export count (capped at MAX_EXPORT_PAGE_SIZE)
+    const exportCount = Math.min(total, MAX_EXPORT_PAGE_SIZE)
+    const isCapped = total > MAX_EXPORT_PAGE_SIZE
+
     // Show confirmation toast with count and active filters
     const activeFilters = formatActiveFilters()
     const filterSummary = activeFilters.length > 0
@@ -194,26 +209,32 @@ export function useEquipmentExport(params: UseEquipmentExportParams): UseEquipme
 
     // Show warning for large datasets
     if (total > LARGE_DATASET_WARNING_THRESHOLD) {
+      const cappedWarning = isCapped 
+        ? `\n⚠️ Giới hạn tối đa ${MAX_EXPORT_PAGE_SIZE.toLocaleString("vi-VN")} thiết bị/lần. Tổng ${total.toLocaleString("vi-VN")} thiết bị sẽ chỉ xuất ${exportCount.toLocaleString("vi-VN")} đầu tiên.`
+        : ""
       toast({
         variant: "default",
         title: "⚠️ Danh sách lớn",
-        description: `Sẽ tải ${total.toLocaleString("vi-VN")} thiết bị. Quá trình này có thể mất vài giây.${filterSummary}`,
+        description: `Sẽ tải ${exportCount.toLocaleString("vi-VN")} thiết bị. Quá trình này có thể mất vài giây.${filterSummary}${cappedWarning}`,
         duration: 5000,
       })
     } else {
       toast({
         variant: "default",
         title: "📥 Chuẩn bị tải xuống",
-        description: `Sẽ tải ${total.toLocaleString("vi-VN")} thiết bị${filterSummary}`,
+        description: `Sẽ tải ${exportCount.toLocaleString("vi-VN")} thiết bị${filterSummary}`,
         duration: 3000,
       })
     }
 
     setIsExporting(true)
 
+    // Create AbortController for this export operation
+    abortControllerRef.current = new AbortController()
+
     try {
       // Fetch all data matching current filters
-      const dataToExport = await fetchAllEquipmentForExport()
+      const dataToExport = await fetchAllEquipmentForExport(abortControllerRef.current.signal)
 
       if (dataToExport.length === 0) {
         toast({
@@ -254,6 +275,11 @@ export function useEquipmentExport(params: UseEquipmentExportParams): UseEquipme
         description: `Đã tạo file ${fileName} với ${dataToExport.length.toLocaleString("vi-VN")} thiết bị`,
       })
     } catch (error) {
+      // Don't show error toast if the request was aborted (component unmounted)
+      if (error instanceof Error && error.name === 'AbortError') {
+        console.log("Export aborted - component unmounted")
+        return
+      }
       console.error("Error exporting data:", error)
       toast({
         variant: "destructive",
@@ -261,6 +287,7 @@ export function useEquipmentExport(params: UseEquipmentExportParams): UseEquipme
         description: "Không thể xuất dữ liệu. Vui lòng thử lại.",
       })
     } finally {
+      abortControllerRef.current = null
       setIsExporting(false)
     }
   }, [total, filterParams, formatActiveFilters, fetchAllEquipmentForExport, toast])
