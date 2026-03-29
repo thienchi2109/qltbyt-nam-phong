@@ -165,6 +165,7 @@ const EquipmentPageContent = React.memo(function EquipmentPageContent({
     isCardView,
     useTabletFilters,
     canBulkSelect,
+    isExporting,
 
     // Branding
     tenantBranding,
@@ -246,6 +247,7 @@ const EquipmentPageContent = React.memo(function EquipmentPageContent({
             useTabletFilters={useTabletFilters}
             isRegionalLeader={isRegionalLeader}
             hasFacilityFilter={hasFacilityFilter}
+            isExporting={isExporting}
             onOpenFilterSheet={() => setIsFilterSheetOpen(true)}
             onOpenColumnsDialog={openColumnsDialog}
             onDownloadTemplate={handleDownloadTemplate}
@@ -299,9 +301,9 @@ const EquipmentPageContent = React.memo(function EquipmentPageContent({
                 <button
                   onClick={handleExportData}
                   className="text-sm font-medium text-primary underline-offset-4 hover:underline disabled:text-muted-foreground disabled:no-underline disabled:cursor-not-allowed"
-                  disabled={table.getFilteredRowModel().rows.length === 0 || isLoading}
+                  disabled={table.getFilteredRowModel().rows.length === 0 || isLoading || isExporting}
                 >
-                  Tải về file Excel
+                  {isExporting ? "Đang tải..." : "Tải về file Excel"}
                 </button>
               ),
             }}

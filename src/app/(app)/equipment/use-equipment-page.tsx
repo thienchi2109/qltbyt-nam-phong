@@ -143,9 +143,43 @@ export function useEquipmentPage(): UseEquipmentPageReturn {
     selectedFacilityId: data.selectedFacilityId,
   })
 
-  // Export hook
+  // Effective don_vi for export (same logic as useEquipmentData)
+  const effectiveSelectedDonVi = React.useMemo(() => {
+    if (auth.isRegionalLeader) {
+      return auth.selectedFacilityId !== undefined && auth.selectedFacilityId !== null 
+        ? auth.selectedFacilityId 
+        : null
+    }
+    return auth.selectedDonVi
+  }, [auth.isRegionalLeader, auth.selectedFacilityId, auth.selectedDonVi])
+
+  // Memoize filter params to prevent unnecessary re-renders
+  const filterParams = React.useMemo(() => ({
+    debouncedSearch: filters.debouncedSearch,
+    sortParam: filters.sortParam,
+    effectiveSelectedDonVi,
+    selectedDepartments: filters.selectedDepartments,
+    selectedUsers: filters.selectedUsers,
+    selectedLocations: filters.selectedLocations,
+    selectedStatuses: filters.selectedStatuses,
+    selectedClassifications: filters.selectedClassifications,
+    selectedFundingSources: filters.selectedFundingSources,
+  }), [
+    filters.debouncedSearch,
+    filters.sortParam,
+    effectiveSelectedDonVi,
+    filters.selectedDepartments,
+    filters.selectedUsers,
+    filters.selectedLocations,
+    filters.selectedStatuses,
+    filters.selectedClassifications,
+    filters.selectedFundingSources,
+  ])
+
+  // Export hook - now with filter params for full data fetch
   const exports = useEquipmentExport({
-    data: data.data,
+    total: data.total,
+    filterParams,
     tenantBranding: tenantBranding ?? undefined,
     userRole: auth.user?.role,
   })
@@ -276,6 +310,7 @@ export function useEquipmentPage(): UseEquipmentPageReturn {
       isCardView: table.isCardView,
       useTabletFilters: table.useTabletFilters,
       canBulkSelect,
+      isExporting: exports.isExporting,
 
       // Branding
       tenantBranding: tenantBranding ?? undefined,

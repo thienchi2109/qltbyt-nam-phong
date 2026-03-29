@@ -50,6 +50,8 @@ export interface EquipmentToolbarProps {
   useTabletFilters: boolean
   isRegionalLeader: boolean
   hasFacilityFilter: boolean
+  /** Whether export is currently in progress */
+  isExporting?: boolean
   onOpenFilterSheet: () => void
   onOpenColumnsDialog: () => void
   onDownloadTemplate: () => void
@@ -75,6 +77,7 @@ export function EquipmentToolbar({
   useTabletFilters,
   isRegionalLeader,
   hasFacilityFilter,
+  isExporting = false,
   onOpenFilterSheet,
   onOpenColumnsDialog,
   onDownloadTemplate,
@@ -177,8 +180,8 @@ export function EquipmentToolbar({
                       <DropdownMenuItem onSelect={onDownloadTemplate}>
                         Tải Excel mẫu
                       </DropdownMenuItem>
-                      <DropdownMenuItem onSelect={onExportData}>
-                        Tải về dữ liệu
+                      <DropdownMenuItem onSelect={onExportData} disabled={isExporting}>
+                        {isExporting ? "Đang tải..." : "Tải về dữ liệu"}
                       </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
@@ -272,8 +275,8 @@ export function EquipmentToolbar({
                 <DropdownMenuItem onSelect={onDownloadTemplate}>
                   Tải Excel mẫu
                 </DropdownMenuItem>
-                <DropdownMenuItem onSelect={onExportData}>
-                  Tải về dữ liệu
+                <DropdownMenuItem onSelect={onExportData} disabled={isExporting}>
+                  {isExporting ? "Đang tải..." : "Tải về dữ liệu"}
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
