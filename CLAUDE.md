@@ -233,7 +233,7 @@ npm run lint         # ESLint
 On Windows, `npm` and `npx` commands don't return stdout properly. **Always use the helper scripts:**
 
 ```bash
-# Universal helper for ANY command (npm, npx, bd, etc.)
+# Universal helper for ANY command (npm, npx, git, etc.)
 node scripts/run-cmd.js <command> [args...]
 
 # npm/npx specific helper

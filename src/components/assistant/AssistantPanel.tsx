@@ -10,6 +10,7 @@ import { RotateCcw, X, AlertTriangle, RefreshCw } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useTenantSelection } from "@/contexts/TenantSelectionContext"
 import { parseErrorMessage } from "@/lib/ai/errors"
+import { compactUIMessages } from "@/lib/ai/compact-ui-messages"
 import { cn } from "@/lib/utils"
 
 import { AssistantComposer } from "./AssistantComposer"
@@ -67,6 +68,13 @@ export function AssistantPanel({ isOpen, onClose }: AssistantPanelProps) {
                     selectedFacilityId: facilityRef.current,
                     selectedFacilityName: facilityNameRef.current,
                     requestedTools: REQUESTED_TOOLS,
+                }),
+                prepareSendMessagesRequest: ({ id, messages, body }) => ({
+                    body: {
+                        ...body,
+                        id,
+                        messages: compactUIMessages(messages),
+                    },
                 }),
             }),
         [],
