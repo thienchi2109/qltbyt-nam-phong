@@ -180,20 +180,39 @@ export function mapExportedInventoryItems(
     }
 
     if (row.loai_hinh === 'thanh_ly') {
-      if (row.trang_thai === 'hoan_thanh' && isWithinDateRange(row.ngay_hoan_thanh, fromDate, toDate)) {
-        const completedAt = toStringValue(row.ngay_hoan_thanh)
-        if (!completedAt) {
+      if (row.trang_thai === 'hoan_thanh') {
+        if (isWithinDateRange(row.ngay_hoan_thanh, fromDate, toDate)) {
+          const completedAt = toStringValue(row.ngay_hoan_thanh)
+          if (!completedAt) {
+            continue
+          }
+
+          items.push({
+            ...baseItem,
+            ngay_nhap: completedAt,
+            source: 'liquidation',
+            destination: 'Thanh lý',
+          })
+        }
+
+        continue
+      }
+
+      if (isWithinDateRange(row.ngay_ban_giao, fromDate, toDate)) {
+        const handedOverAt = toStringValue(row.ngay_ban_giao)
+        if (!handedOverAt) {
           continue
         }
 
         items.push({
           ...baseItem,
-          ngay_nhap: completedAt,
+          ngay_nhap: handedOverAt,
           source: 'liquidation',
           destination: 'Thanh lý',
         })
-        continue
       }
+
+      continue
     }
 
     if (!isWithinDateRange(row.ngay_ban_giao, fromDate, toDate)) {
