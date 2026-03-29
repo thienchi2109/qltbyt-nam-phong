@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { useToast } from "@/hooks/use-toast"
+import { getUnknownErrorMessage } from "@/lib/error-utils"
 import { useDeviceQuotaChiTietContext } from "../_hooks/useDeviceQuotaChiTietContext"
 import { generateDeviceQuotaImportTemplate } from "@/lib/device-quota-excel"
 
@@ -97,7 +98,7 @@ export function DeviceQuotaChiTietToolbar() {
         description: "Đã tải xuống file mẫu định mức.",
       })
     } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : 'Lỗi không xác định'
+      const errorMessage = getUnknownErrorMessage(error, 'Lỗi không xác định')
       toast({
         variant: "destructive",
         title: "Lỗi tải xuống",

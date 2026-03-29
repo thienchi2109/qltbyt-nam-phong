@@ -28,6 +28,7 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import { useToast } from "@/hooks/use-toast"
 import { callRpc } from "@/lib/rpc-client"
 import { readExcelFile, worksheetToJson } from "@/lib/excel-utils"
+import { getUnknownErrorMessage } from "@/lib/error-utils"
 import { translateRpcError } from "@/lib/error-translations"
 import { refreshCategoryEmbeddings } from "@/lib/refresh-category-embeddings"
 import { toKeyedTexts } from "@/lib/list-key-utils"
@@ -131,7 +132,7 @@ export function DeviceQuotaCategoryImportDialog() {
       setStatus("parsed")
     } catch (error) {
       console.error("Failed to parse Excel file:", error)
-      setParseError(error instanceof Error ? error.message : "Loi doc file Excel")
+      setParseError(getUnknownErrorMessage(error, "Loi doc file Excel"))
       setStatus("error")
     }
   }

@@ -192,6 +192,24 @@ describe("DeviceQuotaCategoryImportDialog", () => {
     })
   })
 
+  it("shows the plain-object parse error message when Excel parsing fails", async () => {
+    mockReadExcelFile.mockRejectedValueOnce({ message: "File bị hỏng" })
+
+    render(<DeviceQuotaCategoryImportDialog />)
+
+    const file = new File(["dummy"], "broken.xlsx", {
+      type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    })
+
+    fireEvent.change(screen.getByLabelText("Chọn file Excel"), {
+      target: { files: [file] },
+    })
+
+    await waitFor(() => {
+      expect(screen.getByText("File bị hỏng")).toBeInTheDocument()
+    })
+  })
+
   it("uses inserted quota count from dinh_muc_unified_import result in success message", async () => {
     mockReadExcelFile.mockResolvedValue({
       SheetNames: ["Sheet1"],

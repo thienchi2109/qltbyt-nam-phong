@@ -1,9 +1,14 @@
 import React from 'react'
-import { render, screen } from '@testing-library/react'
+import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 import { DeviceQuotaChiTietToolbar } from '../_components/DeviceQuotaChiTietToolbar'
 import { useDeviceQuotaChiTietContext } from '../_hooks/useDeviceQuotaChiTietContext'
+
+const mocks = vi.hoisted(() => ({
+  toast: vi.fn(),
+  generateDeviceQuotaImportTemplate: vi.fn(),
+}))
 
 vi.mock('../_hooks/useDeviceQuotaChiTietContext', () => ({
   useDeviceQuotaChiTietContext: vi.fn(),
@@ -14,14 +19,15 @@ vi.mock('next/navigation', () => ({
 }))
 
 vi.mock('@/hooks/use-toast', () => ({
-  useToast: () => ({ toast: vi.fn() }),
+  useToast: () => ({ toast: mocks.toast }),
 }))
 
 vi.mock('@/lib/device-quota-excel', () => ({
-  generateDeviceQuotaImportTemplate: vi.fn(),
+  generateDeviceQuotaImportTemplate: mocks.generateDeviceQuotaImportTemplate,
 }))
 
 const mockUseContext = vi.mocked(useDeviceQuotaChiTietContext)
+const mockGenerateDeviceQuotaImportTemplate = vi.mocked(mocks.generateDeviceQuotaImportTemplate)
 
 function createMockContext(overrides: Record<string, unknown> = {}) {
   return {
@@ -38,7 +44,7 @@ function createMockContext(overrides: Record<string, unknown> = {}) {
     isCategoriesLoading: false,
     openImportDialog: vi.fn(),
     ...overrides,
-  } as any
+  } as ReturnType<typeof useDeviceQuotaChiTietContext>
 }
 
 describe('DeviceQuotaChiTietToolbar', () => {
@@ -89,6 +95,24 @@ describe('DeviceQuotaChiTietToolbar', () => {
 
       expect(screen.queryByRole('button', { name: /tải xuống file mẫu excel/i })).not.toBeInTheDocument()
       expect(screen.queryByRole('button', { name: /nhập định mức từ file excel/i })).not.toBeInTheDocument()
+    })
+  })
+
+  it('toasts the plain-object template download error message', async () => {
+    mockUseContext.mockReturnValue(createMockContext())
+    mockGenerateDeviceQuotaImportTemplate.mockRejectedValueOnce({ message: 'Không thể tạo biểu mẫu' })
+
+    render(<DeviceQuotaChiTietToolbar />)
+
+    fireEvent.click(screen.getByRole('button', { name: /tải xuống file mẫu excel/i }))
+
+    await waitFor(() => {
+      expect(mocks.toast).toHaveBeenCalledWith(
+        expect.objectContaining({
+          variant: 'destructive',
+          description: 'Không thể tạo file mẫu. Không thể tạo biểu mẫu',
+        })
+      )
     })
   })
 
