@@ -46,6 +46,7 @@ const mocks = vi.hoisted(() => {
     handleRejectPlan: vi.fn(),
     handleDeletePlan: vi.fn(),
     generatePlanForm: vi.fn(),
+    callRpc: vi.fn(),
     taskToDelete: null as MaintenanceTask | null,
   }
 })
@@ -77,6 +78,10 @@ vi.mock("@/hooks/use-toast", () => ({
   useToast: () => ({
     toast: mocks.toast,
   }),
+}))
+
+vi.mock("@/lib/rpc-client", () => ({
+  callRpc: mocks.callRpc,
 }))
 
 vi.mock("../_hooks/use-maintenance-drafts", () => ({
@@ -181,6 +186,7 @@ describe("MaintenanceContext - Extended Coverage", () => {
     mocks.setDraftTasksState([createTask(101), createTask(202), createTask(303)])
     mocks.setTasksState([createTask(101), createTask(202), createTask(303)])
     mocks.taskToDelete = null
+    mocks.callRpc.mockReset()
     vi.clearAllMocks()
   })
 
@@ -581,6 +587,48 @@ describe("MaintenanceContext - Extended Coverage", () => {
       })
 
       expect(result.current.isPlanApproved).toBe(false)
+    })
+  })
+
+  describe("Task completion", () => {
+    it("shows the plain-object completion error message in the destructive toast", async () => {
+      mocks.callRpc.mockRejectedValueOnce({ message: "Lỗi RPC hoàn thành" })
+
+      const approvedPlan: MaintenancePlan = {
+        id: 1,
+        ten_ke_hoach: "Kế hoạch đã duyệt",
+        nam: 2024,
+        trang_thai: "Đã duyệt",
+        loai_cong_viec: "Bảo trì",
+        don_vi_id: 1,
+        khoa_phong_id: null,
+        khoa_phong: null,
+        nguoi_lap_ke_hoach: "Test User",
+        ngay_phe_duyet: "2024-01-10T00:00:00Z",
+        nguoi_duyet: "Leader",
+        ly_do_khong_duyet: null,
+        created_at: "2024-01-01T00:00:00Z",
+        updated_at: "2024-01-10T00:00:00Z",
+      }
+
+      const wrapper = createWrapper({}, vi.fn())
+      const { result } = renderHook(() => useMaintenanceContext(), { wrapper })
+
+      act(() => {
+        result.current.setSelectedPlan(approvedPlan)
+      })
+
+      await act(async () => {
+        await result.current.handleMarkAsCompleted(createTask(101), 3)
+      })
+
+      expect(mocks.toast).toHaveBeenCalledWith(
+        expect.objectContaining({
+          variant: "destructive",
+          title: "Lỗi",
+          description: "Không thể ghi nhận hoàn thành. Lỗi RPC hoàn thành",
+        })
+      )
     })
   })
 })

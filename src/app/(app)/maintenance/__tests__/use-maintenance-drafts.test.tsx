@@ -225,7 +225,7 @@ describe("useMaintenanceDrafts", () => {
     })
 
     it("handles fetch error gracefully", async () => {
-      mocks.callRpc.mockRejectedValueOnce(new Error("Network error"))
+      mocks.callRpc.mockRejectedValueOnce({ message: "Network error" })
 
       const { result } = renderHook(() =>
         useMaintenanceDrafts({ selectedPlan: mockPlan })
@@ -244,6 +244,86 @@ describe("useMaintenanceDrafts", () => {
         expect.objectContaining({
           variant: "destructive",
           title: "Lỗi tải công việc",
+          description: "Network error",
+        })
+      )
+    })
+
+    it("does not delete the next plan cached draft before that plan loads", async () => {
+      const planATasks = [createTask(1)]
+      const nextPlan: MaintenancePlan = {
+        ...mockPlan,
+        id: 2,
+        ten_ke_hoach: "Plan B",
+      }
+      const nextPlanCachedDraft = JSON.stringify([
+        createTask(2, { ke_hoach_id: 2, ghi_chu: "B draft" }),
+      ])
+
+      mocks.callRpc.mockResolvedValueOnce(planATasks)
+
+      const { result, rerender } = renderHook(
+        ({ plan }) => useMaintenanceDrafts({ selectedPlan: plan }),
+        { initialProps: { plan: mockPlan as MaintenancePlan | null } }
+      )
+
+      await act(async () => {
+        await result.current.fetchTasks(mockPlan)
+      })
+
+      localStorageMock.setItem("maintenance_draft_2", nextPlanCachedDraft)
+
+      act(() => {
+        rerender({ plan: nextPlan })
+      })
+
+      expect(localStorageMock.removeItem).not.toHaveBeenCalledWith("maintenance_draft_2")
+      expect(localStorageMock.getItem("maintenance_draft_2")).toBe(nextPlanCachedDraft)
+    })
+  })
+
+  describe("saveAllChanges", () => {
+    it("shows plain-object update errors from changed tasks", async () => {
+      const originalTasks = [createTask(1)]
+      mocks.callRpc
+        .mockResolvedValueOnce(originalTasks)
+        .mockRejectedValueOnce({ message: "Cập nhật thất bại" })
+
+      const { result } = renderHook(() =>
+        useMaintenanceDrafts({ selectedPlan: mockPlan })
+      )
+
+      await act(async () => {
+        await result.current.fetchTasks(mockPlan)
+      })
+
+      act(() => {
+        result.current.setDraftTasks([
+          { ...createTask(1), ghi_chu: "Đã cập nhật" },
+        ])
+      })
+
+      await act(async () => {
+        await result.current.saveAllChanges()
+      })
+
+      expect(mocks.callRpc).toHaveBeenNthCalledWith(2, {
+        fn: "maintenance_task_update",
+        args: {
+          p_id: 1,
+          p_task: expect.objectContaining({
+            id: 1,
+            ghi_chu: "Đã cập nhật",
+          }),
+        },
+      })
+
+      expect(mocks.toast).toHaveBeenCalledWith(
+        expect.objectContaining({
+          variant: "destructive",
+          title: "Lỗi cập nhật công việc ID 1",
+          description: "Cập nhật thất bại",
+          duration: 10000,
         })
       )
     })
