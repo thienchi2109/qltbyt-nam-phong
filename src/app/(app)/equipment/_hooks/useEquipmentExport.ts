@@ -277,7 +277,7 @@ export function useEquipmentExport(params: UseEquipmentExportParams): UseEquipme
     } catch (error) {
       // Don't show error toast if the request was aborted (component unmounted)
       if (error instanceof Error && error.name === 'AbortError') {
-        console.log("Export aborted - component unmounted")
+        console.warn("Export aborted - component unmounted")
         return
       }
       console.error("Error exporting data:", error)
