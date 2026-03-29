@@ -192,7 +192,7 @@ export function DeviceQuotaCategoryImportDialog() {
           toast({
             variant: "destructive",
             title: "Định mức thất bại",
-            description: `Đã thêm ${result.inserted} danh mục nhưng nhập định mức thất bại: ${translateRpcError(quotaError instanceof Error ? quotaError.message : "Lỗi không xác định")}`,
+            description: `Đã thêm ${result.inserted} danh mục nhưng nhập định mức thất bại: ${translateRpcError(getUnknownErrorMessage(quotaError, "Lỗi không xác định"))}`,
           })
         }
       } else {
