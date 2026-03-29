@@ -92,8 +92,6 @@ function toFacilityId(value: unknown): number | undefined {
   return undefined
 }
 
-
-
 export async function POST(request: Request) {
   const session = await getServerSession(authOptions)
 
