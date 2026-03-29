@@ -6,7 +6,6 @@ import { format } from "date-fns"
 import { vi } from "date-fns/locale"
 import { Printer, Loader2, AlertCircle } from "lucide-react"
 
-import { getUnknownErrorMessage } from "@/lib/error-utils"
 import { callRpc } from "@/lib/rpc-client"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
@@ -117,7 +116,7 @@ export function DeviceQuotaComplianceReport({
           <div className="flex items-center gap-2 text-destructive">
             <AlertCircle className="h-5 w-5" />
             <p className="text-sm">
-              Không thể tải báo cáo: {getUnknownErrorMessage(error, "Lỗi không xác định")}
+              Không thể tải báo cáo: {error instanceof Error ? error.message : "Lỗi không xác định"}
             </p>
           </div>
         </CardContent>
