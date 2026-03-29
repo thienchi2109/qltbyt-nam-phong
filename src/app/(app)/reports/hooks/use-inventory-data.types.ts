@@ -180,18 +180,21 @@ export function mapExportedInventoryItems(
     }
 
     if (row.loai_hinh === 'thanh_ly') {
-      if (row.trang_thai === 'hoan_thanh' && isWithinDateRange(row.ngay_hoan_thanh, fromDate, toDate)) {
-        const completedAt = toStringValue(row.ngay_hoan_thanh)
-        if (!completedAt) {
-          continue
+      if (row.trang_thai === 'hoan_thanh') {
+        if (isWithinDateRange(row.ngay_hoan_thanh, fromDate, toDate)) {
+          const completedAt = toStringValue(row.ngay_hoan_thanh)
+          if (!completedAt) {
+            continue
+          }
+
+          items.push({
+            ...baseItem,
+            ngay_nhap: completedAt,
+            source: 'liquidation',
+            destination: 'Thanh lý',
+          })
         }
 
-        items.push({
-          ...baseItem,
-          ngay_nhap: completedAt,
-          source: 'liquidation',
-          destination: 'Thanh lý',
-        })
         continue
       }
 

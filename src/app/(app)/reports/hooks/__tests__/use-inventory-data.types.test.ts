@@ -312,6 +312,33 @@ describe('use-inventory-data.types', () => {
     ).toEqual([])
   })
 
+  it('skips completed liquidation rows when completion is out of range even if handover is in range', () => {
+    expect(
+      mapExportedInventoryItems(
+        [
+          {
+            id: 17,
+            loai_hinh: 'thanh_ly',
+            trang_thai: 'hoan_thanh',
+            ngay_ban_giao: '2026-03-18T09:00:00.000Z',
+            ngay_hoan_thanh: '2026-04-02T09:00:00.000Z',
+            created_at: '2026-03-12T09:00:00.000Z',
+            ly_do_luan_chuyen: 'Completion out of range',
+            thiet_bi: {
+              ma_thiet_bi: 'EQ-016',
+              ten_thiet_bi: 'Suction Pump',
+              model: 'S1',
+              serial: 'SER-16',
+              khoa_phong_quan_ly: 'Khoa Noi',
+            },
+          },
+        ],
+        '2026-03-01',
+        '2026-03-31'
+      )
+    ).toEqual([])
+  })
+
   it('detects RPC not-found errors for empty-transfer fallback', () => {
     expect(isRpcNotFoundError(new Error('RPC transfer_request_list_enhanced failed (404)'))).toBe(true)
     expect(isRpcNotFoundError(new Error('Function not found'))).toBe(true)
