@@ -12,9 +12,9 @@
 - [x] 2.5 Refactor: align ranking/budget helpers and tool display metadata without widening pass-1 scope beyond the two migrated tools
 
 ## 3. Batch 3: Transport and Server Guardrails
-- [ ] 3.1 Red: add `/api/chat` tests for separate raw-request vs compacted-context budgets and for follow-up turns that previously exceeded the raw history budget
-- [ ] 3.2 Green: wire `prepareSendMessagesRequest` into the client transport and compact validated read-only / RPC tool outputs again on the server before `convertToModelMessages`
-- [ ] 3.3 Refactor: keep route orchestration thin by delegating compaction and budget enforcement to focused helpers
+- [x] 3.1 Red: add `/api/chat` tests for separate raw-request vs compacted-context budgets and for follow-up turns that previously exceeded the raw history budget
+- [x] 3.2 Green: wire `prepareSendMessagesRequest` into the client transport and compact validated read-only / RPC tool outputs again on the server before `convertToModelMessages`
+- [x] 3.3 Refactor: keep route orchestration thin by delegating compaction and budget enforcement to focused helpers
 
 ## 4. Batch 4: Migration Gate and Final Verification
 - [ ] 4.1 Red: add contract tests that lock the exact `migrationStatus` map for all read-only / RPC tools
