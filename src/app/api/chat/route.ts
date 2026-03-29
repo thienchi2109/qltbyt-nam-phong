@@ -137,13 +137,6 @@ export async function POST(request: Request) {
     return plainError('Invalid messages payload', 400)
   }
 
-  // Compact migrated read-only / RPC tool outputs before model execution.
-  // validatedMessages stays for originalMessages + draft orchestration.
-  const { compactedMessages, compactedChars } = compactValidatedMessages(validatedMessages)
-  if (compactedChars > AI_MAX_COMPACTED_INPUT_CHARS) {
-    return plainError('Request exceeds compacted context limit', 400)
-  }
-
   const routedIntent = routeChatIntent({
     messages: validatedMessages,
     requestedTools,
@@ -152,6 +145,13 @@ export async function POST(request: Request) {
     return clarificationResponse(routedIntent.message, validatedMessages)
   }
   const effectiveRequestedTools = routedIntent.requestedTools
+
+  // Compact migrated read-only / RPC tool outputs only on the model-execution path.
+  // Clarification responses above should bypass this budget gate entirely.
+  const { compactedMessages, compactedChars } = compactValidatedMessages(validatedMessages)
+  if (compactedChars > AI_MAX_COMPACTED_INPUT_CHARS) {
+    return plainError('Request exceeds compacted context limit', 400)
+  }
 
   const role = typeof user.role === 'string' ? user.role : undefined
   const sessionFacilityId = toFacilityId(user.don_vi)

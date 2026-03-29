@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 const getServerSessionMock = vi.fn()
 const streamTextMock = vi.fn()
 const stepCountIsMock = vi.fn()
+const convertToModelMessagesMock = vi.fn()
 const getChatModelMock = vi.fn()
 const buildSystemPromptMock = vi.fn()
 const checkUsageLimitsMock = vi.fn()
@@ -47,6 +48,8 @@ vi.mock('ai', async () => {
     ...actual,
     streamText: (...args: unknown[]) => streamTextMock(...args),
     stepCountIs: (...args: unknown[]) => stepCountIsMock(...args),
+    convertToModelMessages: (...args: unknown[]) =>
+      convertToModelMessagesMock(...args),
   }
 })
 
@@ -80,6 +83,9 @@ describe('/api/chat limits', () => {
     buildSystemPromptMock.mockReturnValue('SYSTEM_PROMPT_V1')
     stepCountIsMock.mockReturnValue('STOP_WHEN_SENTINEL')
     checkUsageLimitsMock.mockReturnValue({ allowed: true })
+    convertToModelMessagesMock.mockResolvedValue([
+      { role: 'user', content: 'converted-message-sentinel' },
+    ])
     streamTextMock.mockReturnValue(makeReadyStreamTextResult())
   })
 
@@ -124,9 +130,6 @@ describe('/api/chat limits', () => {
   })
 
   it('rejects requests that pass raw limit but exceed compacted context limit', async () => {
-    // Build a message with an envelope tool output that is small enough
-    // for raw budget (< 120 chars) but the compacted result still exceeds
-    // AI_MAX_COMPACTED_INPUT_CHARS (which we set to a small value for testing).
     const envelopeOutput = {
       modelSummary: { summaryText: 'x'.repeat(500), itemCount: 1 },
       followUpContext: { data: 'y'.repeat(500) },
@@ -162,13 +165,53 @@ describe('/api/chat limits', () => {
     expect(streamTextMock).not.toHaveBeenCalled()
   })
 
+  it('returns clarification before compacted budget enforcement for ambiguous repair intents', async () => {
+    const messages = [
+      {
+        id: 'm1',
+        role: 'assistant',
+        parts: [
+          {
+            type: 'tool-equipmentLookup',
+            toolCallId: 'tc-1',
+            toolName: 'equipmentLookup',
+            state: 'output-available',
+            output: {
+              modelSummary: { summaryText: 'x'.repeat(500), itemCount: 1 },
+              followUpContext: { data: 'y'.repeat(500) },
+            },
+          },
+        ],
+      },
+      {
+        id: 'm2',
+        role: 'user',
+        parts: [{ type: 'text', text: 'Tình hình sửa chữa hiện tại thế nào?' }],
+      },
+    ]
+
+    const res = await POST(
+      buildRequest({
+        selectedFacilityId: 2,
+        messages,
+        requestedTools: ['equipmentLookup', 'repairSummary'],
+      }) as never,
+    )
+    const text = await res.text()
+
+    expect(res.status).toBe(200)
+    expect(res.headers.get('content-type')).toContain('text/event-stream')
+    expect(text).toContain('trạng thái thiết bị')
+    expect(text).toContain('yêu cầu sửa chữa')
+    expect(convertToModelMessagesMock).not.toHaveBeenCalled()
+    expect(streamTextMock).not.toHaveBeenCalled()
+  })
+
   it('passes requests with large envelope payloads that compact under budget', async () => {
-    // Envelope with uiArtifact makes it large, but after compaction
-    // (stripping uiArtifact) it falls under the compacted budget.
     const envelopeOutput = {
       modelSummary: { summaryText: 'OK', itemCount: 1 },
       followUpContext: { data: 'small' },
-      uiArtifact: { rawPayload: { big: 'x'.repeat(20) } },
+      uiArtifact: { rawPayload: { big: 'x'.repeat(2000) } },
     }
     const messages = [
       {
@@ -197,6 +240,16 @@ describe('/api/chat limits', () => {
 
     expect(res.status).toBe(200)
     expect(streamTextMock).toHaveBeenCalled()
+    expect(convertToModelMessagesMock).toHaveBeenCalledTimes(1)
+    const compactedMessages = convertToModelMessagesMock.mock.calls[0]?.[0] as Array<{
+      id: string
+      role: string
+      parts: Array<Record<string, unknown>>
+    }>
+    expect(compactedMessages?.[1]?.parts[0]?.output).toEqual({
+      modelSummary: { summaryText: 'OK', itemCount: 1 },
+      followUpContext: { data: 'small' },
+    })
   })
 
   it('draft tool outputs survive server compaction', async () => {
@@ -234,5 +287,11 @@ describe('/api/chat limits', () => {
     // Draft should pass through — not compacted, not rejected
     expect(res.status).toBe(200)
     expect(streamTextMock).toHaveBeenCalled()
+    const compactedMessages = convertToModelMessagesMock.mock.calls[0]?.[0] as Array<{
+      id: string
+      role: string
+      parts: Array<Record<string, unknown>>
+    }>
+    expect(compactedMessages?.[1]?.parts[0]?.output).toEqual(draftOutput)
   })
 })

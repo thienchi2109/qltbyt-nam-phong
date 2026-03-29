@@ -7,7 +7,7 @@ export default defineConfig({
     globals: true,
     setupFiles: ['./vitest.setup.ts'],
     include: ['**/*.{test,spec}.{ts,tsx}'],
-    exclude: ['**/node_modules/**', '**/dist/**', '**/build/**'],
+    exclude: ['**/node_modules/**', '**/dist/**', '**/build/**', '**/.worktrees/**'],
     typecheck: {
       tsconfig: './tsconfig.test.json',
     },
