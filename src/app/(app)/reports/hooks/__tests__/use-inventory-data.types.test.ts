@@ -155,7 +155,7 @@ describe('use-inventory-data.types', () => {
     ])
   })
 
-  it('keeps pending liquidation rows on the transfer path when handover date is in range', () => {
+  it('classifies pending liquidation rows as liquidation when handover date is in range', () => {
     expect(
       mapExportedInventoryItems(
         [
@@ -191,12 +191,128 @@ describe('use-inventory-data.types', () => {
         ngay_nhap: '2026-03-18T09:00:00.000Z',
         created_at: '2026-03-10T09:00:00.000Z',
         type: 'export',
-        source: 'transfer_external',
+        source: 'liquidation',
         quantity: 1,
         reason: 'Thanh ly cho duyet',
         destination: 'Don vi xu ly',
       },
     ])
+  })
+
+  it('maps completed liquidation rows by completion date when only completion date is in range', () => {
+    expect(
+      mapExportedInventoryItems(
+        [
+          {
+            id: 14,
+            loai_hinh: 'thanh_ly',
+            trang_thai: 'hoan_thanh',
+            ngay_ban_giao: '2026-02-28T09:00:00.000Z',
+            ngay_hoan_thanh: '2026-03-20T09:00:00.000Z',
+            created_at: '2026-03-10T09:00:00.000Z',
+            ly_do_luan_chuyen: 'Thanh ly da xong',
+            don_vi_nhan: 'Don vi xu ly',
+            thiet_bi: {
+              ma_thiet_bi: 'EQ-013',
+              ten_thiet_bi: 'Defibrillator',
+              model: 'D1',
+              serial: 'SER-13',
+              khoa_phong_quan_ly: 'Khoa Cap cuu',
+            },
+          },
+        ],
+        '2026-03-01',
+        '2026-03-31'
+      )
+    ).toEqual([
+      {
+        id: 14,
+        ma_thiet_bi: 'EQ-013',
+        ten_thiet_bi: 'Defibrillator',
+        model: 'D1',
+        serial: 'SER-13',
+        khoa_phong_quan_ly: 'Khoa Cap cuu',
+        ngay_nhap: '2026-03-20T09:00:00.000Z',
+        created_at: '2026-03-10T09:00:00.000Z',
+        type: 'export',
+        source: 'liquidation',
+        quantity: 1,
+        reason: 'Thanh ly da xong',
+        destination: 'Thanh lý',
+      },
+    ])
+  })
+
+  it('uses completion date and emits one row when both liquidation dates are in range', () => {
+    expect(
+      mapExportedInventoryItems(
+        [
+          {
+            id: 15,
+            loai_hinh: 'thanh_ly',
+            trang_thai: 'hoan_thanh',
+            ngay_ban_giao: '2026-03-05T09:00:00.000Z',
+            ngay_hoan_thanh: '2026-03-22T09:00:00.000Z',
+            created_at: '2026-03-10T09:00:00.000Z',
+            ly_do_luan_chuyen: 'Thanh ly da xong',
+            don_vi_nhan: 'Don vi xu ly',
+            thiet_bi: {
+              ma_thiet_bi: 'EQ-014',
+              ten_thiet_bi: 'ECG',
+              model: 'E1',
+              serial: 'SER-14',
+              khoa_phong_quan_ly: 'Khoa Tim mach',
+            },
+          },
+        ],
+        '2026-03-01',
+        '2026-03-31'
+      )
+    ).toEqual([
+      {
+        id: 15,
+        ma_thiet_bi: 'EQ-014',
+        ten_thiet_bi: 'ECG',
+        model: 'E1',
+        serial: 'SER-14',
+        khoa_phong_quan_ly: 'Khoa Tim mach',
+        ngay_nhap: '2026-03-22T09:00:00.000Z',
+        created_at: '2026-03-10T09:00:00.000Z',
+        type: 'export',
+        source: 'liquidation',
+        quantity: 1,
+        reason: 'Thanh ly da xong',
+        destination: 'Thanh lý',
+      },
+    ])
+  })
+
+  it('omits liquidation rows when both liquidation dates are out of range', () => {
+    expect(
+      mapExportedInventoryItems(
+        [
+          {
+            id: 16,
+            loai_hinh: 'thanh_ly',
+            trang_thai: 'hoan_thanh',
+            ngay_ban_giao: '2026-02-25T09:00:00.000Z',
+            ngay_hoan_thanh: '2026-02-28T09:00:00.000Z',
+            created_at: '2026-03-10T09:00:00.000Z',
+            ly_do_luan_chuyen: 'Thanh ly ngoai range',
+            don_vi_nhan: 'Don vi xu ly',
+            thiet_bi: {
+              ma_thiet_bi: 'EQ-015',
+              ten_thiet_bi: 'Infusion pump',
+              model: 'I1',
+              serial: 'SER-15',
+              khoa_phong_quan_ly: 'Khoa Noi',
+            },
+          },
+        ],
+        '2026-03-01',
+        '2026-03-31'
+      )
+    ).toEqual([])
   })
 
   it('detects RPC not-found errors for empty-transfer fallback', () => {
