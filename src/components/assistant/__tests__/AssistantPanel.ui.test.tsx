@@ -157,6 +157,112 @@ describe('AssistantPanel', () => {
         )
     })
 
+    it('applies prepareSendMessagesRequest for payload compaction', () => {
+        render(<AssistantPanel isOpen={true} onClose={vi.fn()} />)
+
+        const transportArgs = mocks.defaultChatTransport.mock.calls[0]?.[0] as {
+            prepareSendMessagesRequest?: unknown
+        }
+        expect(typeof transportArgs?.prepareSendMessagesRequest).toBe('function')
+    })
+
+    it('preserves transport body fields and compacts envelope tool outputs before send', () => {
+        render(<AssistantPanel isOpen={true} onClose={vi.fn()} />)
+
+        const transportArgs = mocks.defaultChatTransport.mock.calls[0]?.[0] as {
+            body?: () => Record<string, unknown>
+            prepareSendMessagesRequest?: (options: {
+                id: string
+                messages: Array<Record<string, unknown>>
+                body?: Record<string, unknown>
+                headers?: Record<string, string>
+                credentials?: RequestCredentials
+                api: string
+                requestMetadata?: unknown
+                trigger: 'submit-message' | 'regenerate-message'
+                messageId?: string
+            }) => { body: Record<string, unknown> }
+        }
+
+        const baseBody = transportArgs.body?.()
+        const requestMessages = [
+            {
+                id: 'u1',
+                role: 'user',
+                parts: [{ type: 'text', text: 'Tra cuu thiet bi' }],
+            },
+            {
+                id: 'a1',
+                role: 'assistant',
+                parts: [
+                    {
+                        type: 'tool-equipmentLookup',
+                        toolCallId: 'tc-1',
+                        toolName: 'equipmentLookup',
+                        state: 'output-available',
+                        output: {
+                            modelSummary: {
+                                summaryText: 'equipmentLookup: 1 result(s).',
+                                itemCount: 1,
+                            },
+                            followUpContext: {
+                                equipment: [{ thiet_bi_id: 42, ten_thiet_bi: 'May tho ABC' }],
+                            },
+                            uiArtifact: {
+                                rawPayload: {
+                                    data: [{ thiet_bi_id: 42, ten_thiet_bi: 'May tho ABC' }],
+                                    total: 1,
+                                },
+                            },
+                        },
+                    },
+                ],
+            },
+        ]
+
+        const prepared = transportArgs.prepareSendMessagesRequest?.({
+            id: 'chat-1',
+            messages: requestMessages,
+            body: baseBody,
+            headers: {},
+            credentials: 'same-origin',
+            api: '/api/chat',
+            requestMetadata: undefined,
+            trigger: 'submit-message',
+            messageId: 'u1',
+        })
+
+        expect(prepared?.body.selectedFacilityId).toBe(1)
+        expect(prepared?.body.selectedFacilityName).toBeNull()
+        expect(prepared?.body.requestedTools).toEqual(
+            expect.arrayContaining(['generateRepairRequestDraft']),
+        )
+        expect(prepared?.body.messages).toEqual([
+            requestMessages[0],
+            {
+                id: 'a1',
+                role: 'assistant',
+                parts: [
+                    {
+                        type: 'tool-equipmentLookup',
+                        toolCallId: 'tc-1',
+                        toolName: 'equipmentLookup',
+                        state: 'output-available',
+                        output: {
+                            modelSummary: {
+                                summaryText: 'equipmentLookup: 1 result(s).',
+                                itemCount: 1,
+                            },
+                            followUpContext: {
+                                equipment: [{ thiet_bi_id: 42, ten_thiet_bi: 'May tho ABC' }],
+                            },
+                        },
+                    },
+                ],
+            },
+        ])
+    })
+
     it('stores repair drafts and navigates to repair requests when apply is clicked', () => {
         mocks.useChatState.messages = [
             {

@@ -54,3 +54,20 @@ export const AI_DAILY_TENANT_QUOTA_REQUESTS = readPositiveIntEnv(
   'AI_DAILY_TENANT_QUOTA_REQUESTS',
   1_500,
 )
+
+// ---------------------------------------------------------------------------
+// Budget measurement
+// ---------------------------------------------------------------------------
+
+/**
+ * Estimates the character count of a serialized messages payload.
+ * Returns MAX_SAFE_INTEGER on serialization failure as a safe upper-bound.
+ */
+export function calculateInputChars(messages: unknown[]): number {
+  try {
+    return JSON.stringify(messages).length
+  } catch {
+    return Number.MAX_SAFE_INTEGER
+  }
+}
+
