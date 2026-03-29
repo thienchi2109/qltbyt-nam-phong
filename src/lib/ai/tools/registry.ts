@@ -8,10 +8,19 @@ import {
 } from '@/lib/ai/tools/equipment-lookup-identifiers'
 import { executeRpcTool } from '@/lib/ai/tools/rpc-tool-executor'
 
+// ---------------------------------------------------------------------------
+// Migration status: tracks which tools have been migrated to the envelope
+// contract. Only 'migrated' tools produce a ToolResponseEnvelope with
+// importantFields / modelBudget; 'pending' tools still return raw payloads.
+// ---------------------------------------------------------------------------
+
+export type MigrationStatus = 'migrated' | 'pending'
+
 type ReadOnlyToolDefinition = {
   description: string
   rpcFunction: string
   inputSchema: z.ZodType<Record<string, unknown>>
+  migrationStatus: MigrationStatus
   modelBudget?: {
     maxItems?: number
     maxBytes?: number
@@ -24,6 +33,7 @@ const READ_ONLY_TOOL_DEFINITIONS: Record<string, ReadOnlyToolDefinition> = {
     description:
       'Lookup equipment details using approved read-only RPC. Supports text search plus structured `filters` for exact `equipmentCode`, current status, department, location, classification, model, and serial; use the returned total for aggregate counts.',
     rpcFunction: 'ai_equipment_lookup',
+    migrationStatus: 'pending',
     inputSchema: z
       .object({
         query: z.string().trim().min(1).max(200).optional(),
@@ -47,6 +57,7 @@ const READ_ONLY_TOOL_DEFINITIONS: Record<string, ReadOnlyToolDefinition> = {
   maintenanceSummary: {
     description: 'Retrieve maintenance summary data via approved read-only RPC.',
     rpcFunction: 'ai_maintenance_summary',
+    migrationStatus: 'pending',
     inputSchema: z
       .object({
         fromDate: z.string().optional(),
@@ -58,6 +69,7 @@ const READ_ONLY_TOOL_DEFINITIONS: Record<string, ReadOnlyToolDefinition> = {
     description:
       'Lookup maintenance, calibration, and inspection plans for a specific equipment item.',
     rpcFunction: 'ai_maintenance_plan_lookup',
+    migrationStatus: 'pending',
     inputSchema: z
       .object({
         p_thiet_bi_id: z.number().int().positive(),
@@ -68,6 +80,7 @@ const READ_ONLY_TOOL_DEFINITIONS: Record<string, ReadOnlyToolDefinition> = {
   repairSummary: {
     description: 'Retrieve repair summary data via approved read-only RPC.',
     rpcFunction: 'ai_repair_summary',
+    migrationStatus: 'pending',
     inputSchema: z
       .object({
         status: z.string().trim().min(1).max(50).optional(),
@@ -78,6 +91,7 @@ const READ_ONLY_TOOL_DEFINITIONS: Record<string, ReadOnlyToolDefinition> = {
     description:
       'Retrieve usage summary evidence for a specific equipment item from usage logs.',
     rpcFunction: 'ai_usage_summary',
+    migrationStatus: 'pending',
     inputSchema: z
       .object({
         p_thiet_bi_id: z.number().int().positive(),
@@ -89,6 +103,7 @@ const READ_ONLY_TOOL_DEFINITIONS: Record<string, ReadOnlyToolDefinition> = {
     description:
       'Lookup attachment metadata (file names, access types, URLs) for a specific equipment item. Returns normalized access contract.',
     rpcFunction: 'ai_attachment_metadata',
+    migrationStatus: 'pending',
     inputSchema: z
       .object({
         p_thiet_bi_id: z.number().int().positive(),
@@ -99,6 +114,7 @@ const READ_ONLY_TOOL_DEFINITIONS: Record<string, ReadOnlyToolDefinition> = {
     description:
       'Check quota status for a specific equipment item against the active quota decision.',
     rpcFunction: 'ai_device_quota_lookup',
+    migrationStatus: 'pending',
     inputSchema: z
       .object({
         p_thiet_bi_id: z.number().int().positive(),
@@ -109,12 +125,14 @@ const READ_ONLY_TOOL_DEFINITIONS: Record<string, ReadOnlyToolDefinition> = {
     description:
       'Get facility-level device quota compliance overview from the active decision.',
     rpcFunction: 'ai_quota_compliance_summary',
+    migrationStatus: 'pending',
     inputSchema: z.object({}).strict(),
   },
   categorySuggestion: {
     description:
       'Suggest the best matching equipment categories for a provided device name. Call this only after the user has given `device_name`; the RPC returns a bounded candidate set instead of the full category catalog.',
     rpcFunction: 'ai_category_suggestion',
+    migrationStatus: 'migrated',
     inputSchema: z
       .object({
         device_name: z.string().trim().min(1).max(200),
@@ -129,6 +147,7 @@ const READ_ONLY_TOOL_DEFINITIONS: Record<string, ReadOnlyToolDefinition> = {
     description:
       'List all departments (khoa/phòng) with equipment in the current facility. Call this BEFORE filtering equipmentLookup by department to get exact department names from the database.',
     rpcFunction: 'ai_department_list',
+    migrationStatus: 'migrated',
     inputSchema: z.object({}).strict(),
     modelBudget: {
       maxItems: 50,
@@ -185,6 +204,33 @@ export function getToolRpcMapping(): Record<string, string> {
     Object.entries(READ_ONLY_TOOL_DEFINITIONS).map(([k, v]) => [k, v.rpcFunction]),
   )
 }
+
+/** Returns tool name → migrationStatus for contract-locking tests. */
+export function getMigrationStatusMap(): Record<string, MigrationStatus> {
+  return Object.fromEntries(
+    Object.entries(READ_ONLY_TOOL_DEFINITIONS).map(([k, v]) => [k, v.migrationStatus]),
+  )
+}
+
+/**
+ * Read-only tools that have NOT yet been migrated to the envelope contract.
+ * Listed explicitly so later audits and batch-migration scripts can iterate.
+ *
+ * Pending tools (pass 2+):
+ *   - equipmentLookup      — large payload, needs field-level compaction
+ *   - maintenanceSummary    — needs importantFields design
+ *   - maintenancePlanLookup — needs importantFields design
+ *   - repairSummary         — needs importantFields design
+ *   - usageHistory          — needs importantFields design
+ *   - attachmentLookup      — needs importantFields design
+ *   - deviceQuotaLookup     — needs importantFields design
+ *   - quotaComplianceSummary — needs importantFields design
+ */
+export const PENDING_TOOL_NAMES: ReadonlySet<string> = new Set(
+  Object.entries(READ_ONLY_TOOL_DEFINITIONS)
+    .filter(([, def]) => def.migrationStatus === 'pending')
+    .map(([name]) => name),
+)
 
 /** Exposed for contract-shape tests only. Do NOT import in production code. */
 export const READ_ONLY_TOOL_DEFINITIONS_FOR_TEST = READ_ONLY_TOOL_DEFINITIONS

@@ -17,11 +17,11 @@
 - [x] 3.3 Refactor: keep route orchestration thin by delegating compaction and budget enforcement to focused helpers
 
 ## 4. Batch 4: Migration Gate and Final Verification
-- [ ] 4.1 Red: add contract tests that lock the exact `migrationStatus` map for all read-only / RPC tools
-- [ ] 4.2 Green: require `migrationStatus` and budget metadata on every read-only / RPC tool definition, with only `categorySuggestion` and `departmentList` marked `migrated` in pass 1
-- [ ] 4.3 Refactor: document the remaining pending tools in registry-adjacent comments or helper constants so later audits cannot drift from the test gate
-- [ ] 4.4 Run `node scripts/npm-run.js run verify:no-explicit-any`
-- [ ] 4.5 Run `node scripts/npm-run.js run typecheck`
-- [ ] 4.6 Run focused assistant route/tool/draft tests
-- [ ] 4.7 Run `node scripts/npm-run.js npx react-doctor@latest . --verbose -y --project nextn --offline --diff main`
-- [ ] 4.8 Run `openspec validate refactor-assistant-tool-payload-compaction --strict`
+- [x] 4.1 Red: add contract tests that lock the exact `migrationStatus` map for all read-only / RPC tools
+- [x] 4.2 Green: require `migrationStatus` and budget metadata on every read-only / RPC tool definition, with only `categorySuggestion` and `departmentList` marked `migrated` in pass 1
+- [x] 4.3 Refactor: document the remaining pending tools in registry-adjacent comments or helper constants so later audits cannot drift from the test gate
+- [x] 4.4 Run `node scripts/npm-run.js run verify:no-explicit-any`
+- [x] 4.5 Run `node scripts/npm-run.js run typecheck`
+- [x] 4.6 Run focused assistant route/tool/draft tests
+- [x] 4.7 Run `node scripts/npm-run.js npx react-doctor@latest . --verbose -y --project nextn --offline --diff main`
+- [x] 4.8 Run `openspec validate refactor-assistant-tool-payload-compaction --strict`

@@ -28,6 +28,8 @@ vi.mock('@/lib/ai/limits', () => ({
   AI_MAX_TOOL_STEPS: 4,
   AI_MAX_MESSAGES: 20,
   AI_MAX_INPUT_CHARS: 20_000,
+  AI_MAX_COMPACTED_INPUT_CHARS: 10_000,
+  calculateInputChars: (messages: unknown[]) => JSON.stringify(messages).length,
 }))
 
 vi.mock('@/lib/ai/usage-metering', () => ({
