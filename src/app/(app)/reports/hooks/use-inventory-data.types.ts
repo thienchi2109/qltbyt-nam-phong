@@ -194,6 +194,22 @@ export function mapExportedInventoryItems(
         })
         continue
       }
+
+      if (isWithinDateRange(row.ngay_ban_giao, fromDate, toDate)) {
+        const handedOverAt = toStringValue(row.ngay_ban_giao)
+        if (!handedOverAt) {
+          continue
+        }
+
+        items.push({
+          ...baseItem,
+          ngay_nhap: handedOverAt,
+          source: 'liquidation',
+          destination: 'Thanh lý',
+        })
+      }
+
+      continue
     }
 
     if (!isWithinDateRange(row.ngay_ban_giao, fromDate, toDate)) {

@@ -194,9 +194,122 @@ describe('use-inventory-data.types', () => {
         source: 'liquidation',
         quantity: 1,
         reason: 'Thanh ly cho duyet',
-        destination: 'Don vi xu ly',
+        destination: 'Thanh lý',
       },
     ])
+  })
+
+  it('maps completed liquidation rows from the completion date', () => {
+    expect(
+      mapExportedInventoryItems(
+        [
+          {
+            id: 14,
+            loai_hinh: 'thanh_ly',
+            trang_thai: 'hoan_thanh',
+            ngay_ban_giao: '2026-03-02T09:00:00.000Z',
+            ngay_hoan_thanh: '2026-03-19T09:00:00.000Z',
+            created_at: '2026-03-08T09:00:00.000Z',
+            ly_do_luan_chuyen: 'Hoan thanh thanh ly',
+            thiet_bi: {
+              ma_thiet_bi: 'EQ-013',
+              ten_thiet_bi: 'Defibrillator',
+              model: 'D1',
+              serial: 'SER-13',
+              khoa_phong_quan_ly: 'Khoa Cap cuu',
+            },
+          },
+        ],
+        '2026-03-01',
+        '2026-03-31'
+      )
+    ).toEqual([
+      {
+        id: 14,
+        ma_thiet_bi: 'EQ-013',
+        ten_thiet_bi: 'Defibrillator',
+        model: 'D1',
+        serial: 'SER-13',
+        khoa_phong_quan_ly: 'Khoa Cap cuu',
+        ngay_nhap: '2026-03-19T09:00:00.000Z',
+        created_at: '2026-03-08T09:00:00.000Z',
+        type: 'export',
+        source: 'liquidation',
+        quantity: 1,
+        reason: 'Hoan thanh thanh ly',
+        destination: 'Thanh lý',
+      },
+    ])
+  })
+
+  it('emits exactly one liquidation row when both liquidation dates are in range', () => {
+    expect(
+      mapExportedInventoryItems(
+        [
+          {
+            id: 15,
+            loai_hinh: 'thanh_ly',
+            trang_thai: 'hoan_thanh',
+            ngay_ban_giao: '2026-03-10T09:00:00.000Z',
+            ngay_hoan_thanh: '2026-03-22T09:00:00.000Z',
+            created_at: '2026-03-09T09:00:00.000Z',
+            ly_do_luan_chuyen: 'Both dates in range',
+            thiet_bi: {
+              ma_thiet_bi: 'EQ-014',
+              ten_thiet_bi: 'Infusion Pump',
+              model: 'I1',
+              serial: 'SER-14',
+              khoa_phong_quan_ly: 'Khoa Noi',
+            },
+          },
+        ],
+        '2026-03-01',
+        '2026-03-31'
+      )
+    ).toEqual([
+      {
+        id: 15,
+        ma_thiet_bi: 'EQ-014',
+        ten_thiet_bi: 'Infusion Pump',
+        model: 'I1',
+        serial: 'SER-14',
+        khoa_phong_quan_ly: 'Khoa Noi',
+        ngay_nhap: '2026-03-22T09:00:00.000Z',
+        created_at: '2026-03-09T09:00:00.000Z',
+        type: 'export',
+        source: 'liquidation',
+        quantity: 1,
+        reason: 'Both dates in range',
+        destination: 'Thanh lý',
+      },
+    ])
+  })
+
+  it('skips liquidation rows when both dates are outside the range', () => {
+    expect(
+      mapExportedInventoryItems(
+        [
+          {
+            id: 16,
+            loai_hinh: 'thanh_ly',
+            trang_thai: 'hoan_thanh',
+            ngay_ban_giao: '2026-02-28T09:00:00.000Z',
+            ngay_hoan_thanh: '2026-04-01T09:00:00.000Z',
+            created_at: '2026-03-11T09:00:00.000Z',
+            ly_do_luan_chuyen: 'Out of range',
+            thiet_bi: {
+              ma_thiet_bi: 'EQ-015',
+              ten_thiet_bi: 'Bedside Monitor',
+              model: 'B1',
+              serial: 'SER-15',
+              khoa_phong_quan_ly: 'Khoa Noi',
+            },
+          },
+        ],
+        '2026-03-01',
+        '2026-03-31'
+      )
+    ).toEqual([])
   })
 
   it('detects RPC not-found errors for empty-transfer fallback', () => {
