@@ -16,11 +16,9 @@ vi.mock('@/hooks/use-toast', () => ({
 }))
 
 vi.mock('../use-cached-maintenance.rpc', async () => {
-  const actual = await vi.importActual<typeof import('../use-cached-maintenance.rpc')>(
+  return vi.importActual<typeof import('../use-cached-maintenance.rpc')>(
     '../use-cached-maintenance.rpc'
   )
-  const { getMaintenanceErrorMessage: _unused, ...rest } = actual
-  return rest
 })
 
 function createQueryClient() {

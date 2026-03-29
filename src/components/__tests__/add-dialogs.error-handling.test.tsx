@@ -140,4 +140,39 @@ describe("dialog unknown-error handling", () => {
       )
     })
   })
+
+  it("falls back to the base create-plan error message when the rejection has no message", async () => {
+    mocks.useSession.mockReturnValue({
+      data: {
+        user: {
+          role: "global",
+          username: "global_user",
+          full_name: "Global User",
+        },
+      },
+      status: "authenticated",
+    })
+    mocks.callRpc.mockRejectedValueOnce({ detail: "ignored" })
+
+    render(
+      <AddMaintenancePlanDialog open onOpenChange={vi.fn()} onSuccess={vi.fn()} />,
+      { wrapper: createWrapper() },
+    )
+
+    fireEvent.change(screen.getByLabelText("Tên kế hoạch"), {
+      target: { value: "Kế hoạch bảo trì năm 2026" },
+    })
+
+    fireEvent.click(screen.getByRole("button", { name: "Lưu kế hoạch" }))
+
+    await waitFor(() => {
+      expect(mocks.toast).toHaveBeenCalledWith(
+        expect.objectContaining({
+          variant: "destructive",
+          title: "Lỗi",
+          description: "Không thể tạo kế hoạch.",
+        }),
+      )
+    })
+  })
 })
