@@ -176,6 +176,8 @@ export interface UseEquipmentPageReturn {
   isCardView: boolean
   useTabletFilters: boolean
   canBulkSelect: boolean
+  /** Whether export is currently in progress */
+  isExporting: boolean
 
   // Branding
   tenantBranding: TenantBranding | undefined
