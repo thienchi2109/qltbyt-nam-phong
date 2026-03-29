@@ -14,7 +14,6 @@ import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
 import { useToast } from "@/hooks/use-toast"
-import { getUnknownErrorMessage } from "@/lib/error-utils"
 import { cn } from "@/lib/utils"
 import { InventoryCharts } from "./inventory-charts"
 import { InventoryTable } from "./inventory-table"
@@ -127,7 +126,7 @@ export function InventoryReportTab({
       toast({
         variant: "destructive",
         title: "Lỗi tải dữ liệu",
-        description: getUnknownErrorMessage(error, "Không thể tải dữ liệu báo cáo")
+        description: error instanceof Error ? error.message : "Không thể tải dữ liệu báo cáo"
       })
     }
   }, [error, toast])
