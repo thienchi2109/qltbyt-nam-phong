@@ -71,7 +71,7 @@ type PreparedTenant = {
 export function TenantsManagement() {
   const router = useRouter()
   const { data: session, status } = useSession()
-  const user = session?.user as { role?: string } | undefined
+  const user = session?.user
   const isGlobal = isGlobalRole(user?.role)
   const { toast } = useToast()
   const qc = useQueryClient()
