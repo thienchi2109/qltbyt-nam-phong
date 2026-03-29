@@ -18,7 +18,7 @@ function normalizeSessionRole(role: string | null | undefined): UserRole | null 
   if (!role) return null
 
   const normalized = role.trim().toLowerCase()
-  return normalized in USER_ROLES ? (normalized as UserRole) : null
+  return Object.hasOwn(USER_ROLES, normalized) ? (normalized as UserRole) : null
 }
 
 function toCacheScopeUser(user: Session['user'] | null | undefined): CacheScopeUser | null {

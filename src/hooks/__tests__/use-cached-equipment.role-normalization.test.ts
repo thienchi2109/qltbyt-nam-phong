@@ -1,9 +1,10 @@
 import { renderHook } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-const { mockGetUserCacheScope, mockUseQuery } = vi.hoisted(() => ({
+const { mockGetUserCacheScope, mockUseQuery, mockUseSession } = vi.hoisted(() => ({
   mockGetUserCacheScope: vi.fn(() => ({ scope: 'department' as const, department: 'Khoa Noi' })),
   mockUseQuery: vi.fn(() => ({ data: [], isLoading: false })),
+  mockUseSession: vi.fn(),
 }))
 
 vi.mock('@tanstack/react-query', async () => {
@@ -17,14 +18,7 @@ vi.mock('@tanstack/react-query', async () => {
 })
 
 vi.mock('next-auth/react', () => ({
-  useSession: () => ({
-    data: {
-      user: {
-        role: '  TO_QLTB  ',
-        khoa_phong: 'Khoa Noi',
-      },
-    },
-  }),
+  useSession: () => mockUseSession(),
 }))
 
 vi.mock('@/lib/advanced-cache-manager', async () => {
@@ -43,6 +37,14 @@ import { useEquipment } from '@/hooks/use-cached-equipment'
 describe('use-cached-equipment role normalization', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockUseSession.mockReturnValue({
+      data: {
+        user: {
+          role: '  TO_QLTB  ',
+          khoa_phong: 'Khoa Noi',
+        },
+      },
+    })
   })
 
   it('normalizes session role before passing it to the cache-scope adapter', () => {
@@ -53,5 +55,20 @@ describe('use-cached-equipment role normalization', () => {
         role: 'to_qltb',
       })
     )
+  })
+
+  it('rejects prototype-property role names instead of casting them as valid user roles', () => {
+    mockUseSession.mockReturnValue({
+      data: {
+        user: {
+          role: 'constructor',
+          khoa_phong: 'Khoa Noi',
+        },
+      },
+    })
+
+    renderHook(() => useEquipment())
+
+    expect(mockGetUserCacheScope).toHaveBeenCalledWith(null)
   })
 })

@@ -443,6 +443,46 @@ describe('Equipment Dialogs CRUD', () => {
       expect(onOpenChange).toHaveBeenCalledWith(false)
     })
 
+    it('shows plain-object RPC errors instead of an empty edit-equipment toast description', async () => {
+      mockCallRpc.mockRejectedValueOnce({ message: 'Permission denied' })
+
+      const equipment: Equipment = {
+        id: 1,
+        ma_thiet_bi: 'EQ-001',
+        ten_thiet_bi: 'Máy siêu âm',
+        vi_tri_lap_dat: 'Phòng 202',
+        khoa_phong_quan_ly: 'Khoa Tim',
+        nguoi_dang_truc_tiep_quan_ly: 'Trần Văn B',
+        tinh_trang_hien_tai: 'Hoạt động',
+      }
+
+      render(
+        <EditEquipmentDialog
+          open
+          onOpenChange={vi.fn()}
+          onSuccess={vi.fn()}
+          equipment={equipment}
+        />,
+        { wrapper: createWrapper() }
+      )
+
+      await waitFor(() => {
+        expect(screen.getByLabelText('Tên thiết bị')).toHaveValue('Máy siêu âm')
+      })
+
+      fireEvent.click(screen.getByRole('button', { name: 'Lưu thay đổi' }))
+
+      await waitFor(() => {
+        expect(mockToast).toHaveBeenCalledWith(
+          expect.objectContaining({
+            variant: 'destructive',
+            title: 'Lỗi',
+            description: 'Không thể cập nhật thiết bị. Permission denied',
+          })
+        )
+      })
+    })
+
     it('does not auto-fill on initial load and preserves a manual decommission date across status toggles', async () => {
       mockCallRpc.mockResolvedValue({})
 

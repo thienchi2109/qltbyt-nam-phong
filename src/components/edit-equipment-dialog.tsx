@@ -28,6 +28,7 @@ import { Input } from "@/components/ui/input"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Textarea } from "@/components/ui/textarea"
 import { useToast } from "@/hooks/use-toast"
+import { getUnknownErrorMessage } from "@/lib/error-utils"
 import { type Equipment } from "@/types/database"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
@@ -149,17 +150,22 @@ export function EditEquipmentDialog({ open, onOpenChange, onSuccess, equipment }
       onOpenChange(false)
     },
     onError: (error: unknown) => {
+      const message = getUnknownErrorMessage(error)
       toast({
         variant: 'destructive',
         title: 'Lỗi',
-        description: 'Không thể cập nhật thiết bị. ' + (error instanceof Error ? error.message : ''),
+        description: message ? `Không thể cập nhật thiết bị. ${message}` : 'Không thể cập nhật thiết bị.',
       })
     },
   })
 
   async function onSubmit(values: EquipmentFormValues) {
     if (!equipment) return;
-    await updateMutation.mutateAsync({ id: equipment.id, patch: values })
+    try {
+      await updateMutation.mutateAsync({ id: equipment.id, patch: values })
+    } catch {
+      // The mutation toast is handled in onError; avoid leaking a rejected promise from the submit handler.
+    }
   }
 
   return (
