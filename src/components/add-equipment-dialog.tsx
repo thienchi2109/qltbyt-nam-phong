@@ -140,7 +140,11 @@ export function AddEquipmentDialog({
       return
     }
 
-    await createMutation.mutateAsync(values)
+    try {
+      await createMutation.mutateAsync(values)
+    } catch {
+      // The mutation toast is handled in onError; avoid leaking a rejected promise from submit.
+    }
   }
 
   return (

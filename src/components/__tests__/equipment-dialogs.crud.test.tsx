@@ -86,25 +86,6 @@ function fillRequiredAddFields() {
   })
 }
 
-function suppressExpectedAddEquipmentRejection() {
-  const handler = (reason: unknown) => {
-    const message =
-      typeof reason === 'string'
-        ? reason
-        : typeof reason === 'object' && reason !== null && 'message' in reason
-          ? String((reason as { message?: unknown }).message ?? '')
-          : ''
-
-    if (message.includes('Permission denied')) {
-      return
-    }
-
-    throw reason
-  }
-
-  process.once('unhandledRejection', handler)
-}
-
 const createWrapper = () => {
   const queryClient = new QueryClient({
     defaultOptions: {
@@ -205,7 +186,6 @@ describe('Equipment Dialogs CRUD', () => {
         target: { value: 'Hoạt động' },
       })
 
-      suppressExpectedAddEquipmentRejection()
       fireEvent.click(screen.getByRole('button', { name: 'Lưu' }))
 
       await waitFor(() => {
