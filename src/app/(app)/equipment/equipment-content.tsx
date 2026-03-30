@@ -5,7 +5,7 @@ import type { ColumnDef, Table } from "@tanstack/react-table"
 import { flexRender } from "@tanstack/react-table"
 import { Loader2 } from "lucide-react"
 
-import { Card, CardContent, CardHeader } from "@/components/ui/card"
+import { Card, CardContent } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 import {
   Table as UITable,
@@ -55,20 +55,20 @@ export function EquipmentContent({
   // Loading skeleton
   if (isLoading) {
     return isCardView ? (
-      <div className="space-y-4">
-        {Array.from({ length: 5 }).map((_, i) => (
+      <div className="space-y-3">
+        {Array.from({ length: 6 }).map((_, i) => (
           <Card key={i}>
-            <CardHeader className="flex flex-row items-start justify-between pb-4">
-              <div>
-                <Skeleton className="h-5 w-48 mb-2" />
-                <Skeleton className="h-4 w-32" />
+            <CardContent className="p-3 space-y-2">
+              <div className="flex justify-between">
+                <Skeleton className="h-3 w-28" />
+                <Skeleton className="h-4 w-16 rounded-full" />
               </div>
-              <Skeleton className="h-8 w-8 rounded-md" />
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <Skeleton className="h-8 w-full" />
-              <Skeleton className="h-8 w-full" />
-              <Skeleton className="h-8 w-full" />
+              <Skeleton className="h-5 w-48" />
+              <Skeleton className="h-3 w-36" />
+              <div className="flex gap-2 pt-0.5">
+                <Skeleton className="h-8 flex-1 rounded-lg" />
+                <Skeleton className="h-8 flex-1 rounded-lg" />
+              </div>
             </CardContent>
           </Card>
         ))}
@@ -146,9 +146,9 @@ export function EquipmentContent({
                   {header.isPlaceholder
                     ? null
                     : flexRender(
-                        header.column.columnDef.header,
-                        header.getContext()
-                      )}
+                      header.column.columnDef.header,
+                      header.getContext()
+                    )}
                 </TableHead>
               ))}
             </TableRow>
