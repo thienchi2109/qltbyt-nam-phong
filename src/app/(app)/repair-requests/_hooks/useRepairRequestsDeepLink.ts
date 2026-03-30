@@ -42,6 +42,22 @@ function parseEquipmentIdParam(value: string | null) {
   return Number.isInteger(parsed) && parsed > 0 ? parsed : null
 }
 
+// ── Requested equipment resolution state ─────────────────────────
+
+type RequestedEquipmentPhase = 'idle' | 'pending' | 'resolved' | 'missing'
+
+interface RequestedEquipmentResolution {
+  equipmentId: number | null
+  phase: RequestedEquipmentPhase
+  equipment: EquipmentSelectItem | null
+}
+
+const IDLE_RESOLUTION: RequestedEquipmentResolution = {
+  equipmentId: null,
+  phase: 'idle',
+  equipment: null,
+}
+
 // ── Hook ─────────────────────────────────────────────────────────
 
 export function useRepairRequestsDeepLink(
@@ -63,6 +79,7 @@ export function useRepairRequestsDeepLink(
   const [allEquipment, setAllEquipment] = React.useState<EquipmentSelectItem[]>([])
   const [hasLoadedEquipment, setHasLoadedEquipment] = React.useState(false)
   const [isEquipmentFetchPending, setIsEquipmentFetchPending] = React.useState(false)
+  const [resolution, setResolution] = React.useState<RequestedEquipmentResolution>(IDLE_RESOLUTION)
   // Track the last processed status value to prevent render loops while still
   // allowing future deep-link navigations after the URL has been cleaned.
   const lastAppliedStatusRef = React.useRef<string | null>(null)
@@ -116,29 +133,49 @@ export function useRepairRequestsDeepLink(
   }, [searchParams])
 
   // Support preselect by equipmentId query param using equipment_get RPC.
-  // Guarded by lastFetchedEquipmentIdRef to prevent duplicate fetches when
-  // other effects trigger router.replace() (which changes searchParams).
+  // When action=create is also present, drives the resolution state machine.
   React.useEffect(() => {
     const idNum = parseEquipmentIdParam(searchParams.get('equipmentId'))
     if (idNum === null) return
 
-    // Skip only when a fetch for this same ID is already in flight;
-    // do NOT skip if the item was evicted from allEquipment by the
-    // initial equipment_list overwrite (which replaces the array).
+    const hasCreateAction = searchParams.get('action') === REPAIR_REQUEST_CREATE_ACTION
+
+    // Skip when fetch is in flight OR when resolution is already progressing
+    // (setResolution triggers re-render before async run() sets isEquipmentFetchPending)
     if (isEquipmentFetchPending && lastFetchedEquipmentIdRef.current === idNum) return
+    if (hasCreateAction && (resolution.phase === 'pending' || resolution.phase === 'resolved')) return
     const existing = allEquipment.find(eq => eq.id === idNum)
-    if (existing) return
+    if (existing) {
+      // Equipment already in list — mark as resolved for create-intent gating
+      if (hasCreateAction && resolution.phase !== 'resolved') {
+        setResolution({ equipmentId: idNum, phase: 'resolved', equipment: existing })
+      }
+      return
+    }
 
     lastFetchedEquipmentIdRef.current = idNum
+
+    // Set resolution to pending before fetch when create-intent is active
+    if (hasCreateAction && resolution.phase === 'idle') {
+      setResolution({ equipmentId: idNum, phase: 'pending', equipment: null })
+    }
+
     const run = async () => {
       setIsEquipmentFetchPending(true)
       try {
         const row = await fetchRepairRequestEquipmentById(idNum)
         if (row) {
           setAllEquipment(prev => [row, ...prev.filter(x => x.id !== row.id)])
+          if (hasCreateAction) {
+            setResolution({ equipmentId: idNum, phase: 'resolved', equipment: row })
+          }
+        } else if (hasCreateAction) {
+          setResolution({ equipmentId: idNum, phase: 'missing', equipment: null })
         }
       } catch {
-        // ignore; toast not necessary for deep link preselect
+        if (hasCreateAction) {
+          setResolution({ equipmentId: idNum, phase: 'missing', equipment: null })
+        }
       } finally {
         setIsEquipmentFetchPending(false)
       }
@@ -147,10 +184,13 @@ export function useRepairRequestsDeepLink(
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams, allEquipment])
 
-  // Handle action=create param with equipment pre-selection
+  // Handle action=create param with equipment pre-selection.
+  // For action=create&equipmentId, gates on terminal resolution state
+  // instead of coarse hasLoadedEquipment + isEquipmentFetchPending.
   React.useEffect(() => {
     if (searchParams.get('action') !== REPAIR_REQUEST_CREATE_ACTION) return
 
+    // Assistant-draft fast path — takes precedence over equipment resolution
     const cachedAssistantDraft = queryClient.getQueryData(["assistant-draft"])
     if (
       cachedAssistantDraft &&
@@ -174,14 +214,17 @@ export function useRepairRequestsDeepLink(
     const equipmentId = parseEquipmentIdParam(searchParams.get('equipmentId'))
 
     if (equipmentId) {
-      if (!hasLoadedEquipment || isEquipmentFetchPending) return
-      const equipment = allEquipment.find(eq => eq.id === equipmentId)
-      if (equipment) {
-        openCreateSheet(equipment)
+      // Gate on terminal resolution state
+      if (resolution.phase === 'idle' || resolution.phase === 'pending') return
+
+      if (resolution.phase === 'resolved' && resolution.equipment) {
+        openCreateSheet(resolution.equipment)
       } else {
+        // phase === 'missing' — graceful degradation
         openCreateSheet()
       }
     } else {
+      // No equipmentId — open immediately
       openCreateSheet()
     }
 
@@ -191,8 +234,10 @@ export function useRepairRequestsDeepLink(
     params.delete('status')
     const nextPath = params.size ? `${pathname}?${params.toString()}` : pathname
     router.replace(nextPath, { scroll: false })
+    // Reset resolution after consuming the intent
+    setResolution(IDLE_RESOLUTION)
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchParams, router, pathname, openCreateSheet, allEquipment, hasLoadedEquipment, isEquipmentFetchPending, queryClient, applyAssistantDraft])
+  }, [searchParams, router, pathname, openCreateSheet, resolution, queryClient, applyAssistantDraft])
 
   return { allEquipment, hasLoadedEquipment, isEquipmentFetchPending }
 }

@@ -249,4 +249,125 @@ describe('useRepairRequestsDeepLink', () => {
     expect(source).toContain('REPAIR_REQUEST_CREATE_ACTION')
     expect(source).not.toContain("searchParams.get('action') !== 'create'")
   })
+
+  // ── Race condition tests ────────────────────────────────────────
+  // These use deferred promises to control timing between equipment_list
+  // and equipment_get, exposing the race in the current implementation.
+
+  function createDeferred<T>() {
+    let resolve!: (value: T) => void
+    let reject!: (reason?: unknown) => void
+    const promise = new Promise<T>((res, rej) => { resolve = res; reject = rej })
+    return { promise, resolve, reject }
+  }
+
+  const VALID_EQUIPMENT = {
+    id: 42,
+    ma_thiet_bi: 'TB042',
+    ten_thiet_bi: 'Máy B',
+    khoa_phong_quan_ly: 'Khoa 2',
+  }
+
+  describe('race: equipment resolution timing', () => {
+    it('waits for targeted equipment_get before opening sheet when list settles first', async () => {
+      const equipmentGetDeferred = createDeferred<typeof VALID_EQUIPMENT | null>()
+
+      mocks.callRpc
+        .mockResolvedValueOnce([])              // equipment_list: resolves immediately
+        .mockReturnValueOnce(equipmentGetDeferred.promise) // equipment_get: deferred
+
+      const sp = createSearchParams({ action: 'create', equipmentId: '42' })
+      renderHook(() => useRepairRequestsDeepLink(createDefaultOptions(sp)))
+
+      // Wait for list to settle
+      await waitFor(() => {
+        expect(mocks.callRpc).toHaveBeenCalledTimes(2)
+      })
+
+      // Sheet must NOT have opened yet while equipment_get is still pending
+      expect(mocks.openCreateSheet).not.toHaveBeenCalled()
+
+      // Now resolve equipment_get
+      await act(async () => {
+        equipmentGetDeferred.resolve(VALID_EQUIPMENT)
+      })
+
+      // Sheet should now open WITH equipment
+      await waitFor(() => {
+        expect(mocks.openCreateSheet).toHaveBeenCalledWith(
+          expect.objectContaining({ id: 42, ma_thiet_bi: 'TB042' })
+        )
+      })
+      expect(mocks.routerReplace).toHaveBeenCalledWith('/repair-requests', { scroll: false })
+    })
+
+    it('opens with prefill when targeted equipment_get resolves before list is useful', async () => {
+      const listDeferred = createDeferred<Array<typeof VALID_EQUIPMENT>>()
+
+      mocks.callRpc
+        .mockReturnValueOnce(listDeferred.promise)        // equipment_list: deferred (slow)
+        .mockResolvedValueOnce(VALID_EQUIPMENT)            // equipment_get: resolves immediately
+
+      const sp = createSearchParams({ action: 'create', equipmentId: '42' })
+      renderHook(() => useRepairRequestsDeepLink(createDefaultOptions(sp)))
+
+      // equipment_get resolves quickly; sheet should open with prefill
+      await waitFor(() => {
+        expect(mocks.openCreateSheet).toHaveBeenCalledWith(
+          expect.objectContaining({ id: 42, ma_thiet_bi: 'TB042' })
+        )
+      })
+
+      // Cleanup: resolve the list to avoid dangling promise
+      await act(async () => {
+        listDeferred.resolve([])
+      })
+    })
+
+    it('opens blank sheet only after equipment_get reaches terminal missing state', async () => {
+      const equipmentGetDeferred = createDeferred<null>()
+
+      mocks.callRpc
+        .mockResolvedValueOnce([])                          // equipment_list: immediate
+        .mockReturnValueOnce(equipmentGetDeferred.promise)  // equipment_get: deferred
+
+      const sp = createSearchParams({ action: 'create', equipmentId: '999' })
+      renderHook(() => useRepairRequestsDeepLink(createDefaultOptions(sp)))
+
+      // Wait for list
+      await waitFor(() => {
+        expect(mocks.callRpc).toHaveBeenCalledTimes(2)
+      })
+
+      // Sheet must NOT open while equipment_get is pending
+      expect(mocks.openCreateSheet).not.toHaveBeenCalled()
+
+      // Resolve as missing
+      await act(async () => {
+        equipmentGetDeferred.resolve(null)
+      })
+
+      // Now sheet should open blank (graceful degradation)
+      await waitFor(() => {
+        expect(mocks.openCreateSheet).toHaveBeenCalledWith()
+      })
+      expect(mocks.routerReplace).toHaveBeenCalledWith('/repair-requests', { scroll: false })
+    })
+
+    it('does not delay action=create without equipmentId due to resolution gating', async () => {
+      mocks.callRpc.mockResolvedValueOnce([]) // equipment_list
+
+      const sp = createSearchParams({ action: 'create' })
+      renderHook(() => useRepairRequestsDeepLink(createDefaultOptions(sp)))
+
+      // Should open immediately — no equipment resolution gating
+      await waitFor(() => {
+        expect(mocks.openCreateSheet).toHaveBeenCalledWith()
+      })
+
+      // Only 1 RPC call (equipment_list), no equipment_get
+      expect(mocks.callRpc).toHaveBeenCalledTimes(1)
+      expect(mocks.routerReplace).toHaveBeenCalledWith('/repair-requests', { scroll: false })
+    })
+  })
 })
