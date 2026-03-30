@@ -122,7 +122,6 @@ export function EquipmentContent({
             key={row.original.id}
             equipment={row.original}
             onShowDetails={onShowDetails}
-            onEdit={onEdit}
           />
         ))}
       </div>

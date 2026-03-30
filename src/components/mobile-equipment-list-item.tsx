@@ -2,17 +2,14 @@
 
 import { Wrench, MapPin, Eye, AlertTriangle } from "lucide-react"
 import { useRouter } from "next/navigation"
-import { useSession } from "next-auth/react"
 
 import { type Equipment } from "@/types/database"
 import { Card } from "@/components/ui/card"
 import { MobileUsageActions } from "./mobile-usage-actions"
-import { isEquipmentManagerRole } from "@/lib/rbac"
 
 interface MobileEquipmentListItemProps {
   equipment: Equipment
   onShowDetails: (equipment: Equipment) => void
-  onEdit: (equipment: Equipment) => void
 }
 
 /**
@@ -46,16 +43,8 @@ const isOutOfService = (status: Equipment["tinh_trang_hien_tai"]) =>
 export function MobileEquipmentListItem({
   equipment,
   onShowDetails,
-  onEdit,
 }: MobileEquipmentListItemProps) {
   const router = useRouter()
-  const { data: session } = useSession()
-  const user = session?.user as any
-
-  const canEdit = !!user && (
-    isEquipmentManagerRole(user.role) ||
-    (user.role === 'qltb_khoa' && user.khoa_phong === equipment.khoa_phong_quan_ly)
-  )
 
   const status = equipment.tinh_trang_hien_tai
   const statusStyle = getStatusStyle(status)
