@@ -8,7 +8,21 @@ The current sink for Repair Requests create deep-links is `useRepairRequestsDeep
 
 Today, create-intent readiness is inferred from two coarse booleans: `hasLoadedEquipment` and `isEquipmentFetchPending`. That is not strong enough to express whether the specific requested `equipmentId` has actually reached a terminal state. A valid `equipmentId` can still be unresolved in `allEquipment` when the create effect runs, which allows the hook to call `openCreateSheet()` without equipment and then clean the URL.
 
-GitNexus was used for symbol context and impact, but its index is stale in this workspace (`Indexed commit: cb1847c`, `Current commit: 78e3fae`) and it still under-reports some TSX edges. The final bug analysis here is therefore based on GitNexus for blast radius plus direct source reading for control flow.
+GitNexus was used for initial symbol context but its index is stale (`Indexed commit: cb1847c`, `Current commit: 78e3fae`). A direct grep-based dependency trace confirms the following blast radius:
+
+**Production call graph:**
+- `useRepairRequestsDeepLink()` → **1 production caller**: `RepairRequestsPageClientInner` in `RepairRequestsPageClient.tsx` (L144)
+- `openCreateSheet()` → defined in `RepairRequestsContext.tsx` (L329) → consumed by `RepairRequestsPageClient` (passes to hook) and `RepairRequestsPageLayout` (toolbar buttons)
+- `fetchRepairRequestEquipmentById()` → only used inside the hook itself (L136)
+- `preSelectedEquipment` → set by `openCreateSheet` in context (L333) → consumed by `RepairRequestsCreateSheet` (L47, L139-142) for form prefill
+
+**Test coverage touching this change:**
+- `useRepairRequestsDeepLink.test.ts` — direct hook tests (primary target)
+- `RepairRequestsAssistantDraftHandoff.test.tsx` — assistant draft regression
+- `RepairRequestsCreateSheet.test.tsx` — prefill hydration assertions
+- `RepairRequestsCreateSheet.submission.test.tsx` — submission payload assertions (should stay untouched)
+
+**Blast radius assessment: LOW.** The change is entirely local to one hook with one production caller. No context API signature changes, no new props flowing through `RepairRequestsPageLayout`, and no submission-path modifications.
 
 ## Goals / Non-Goals
 

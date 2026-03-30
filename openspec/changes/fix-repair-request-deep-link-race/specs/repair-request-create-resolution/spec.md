@@ -32,6 +32,15 @@ If `action=create&equipmentId=<id>` references an invalid or unavailable equipme
 - **AND** once the requested equipment is determined to be unavailable, the create sheet opens without a preselected device
 - **AND** the URL cleanup happens after that terminal missing outcome.
 
+### Requirement: Create intent without equipmentId remains immediate
+When the create deep-link does not include an `equipmentId`, the system SHALL open the create sheet immediately without entering the equipment-resolution gating path.
+
+#### Scenario: action=create without equipmentId opens create sheet immediately
+- **WHEN** the user opens `/repair-requests?action=create` without any `equipmentId` parameter
+- **THEN** the create sheet opens immediately without waiting for any equipment resolution
+- **AND** the URL cleanup happens right after the sheet opens
+- **AND** the new equipment-resolution gating logic does not delay or block this flow.
+
 ### Requirement: Assistant draft handoff keeps precedence over equipment-resolution gating
 Assistant draft handoff SHALL continue to open the create sheet from cached assistant data without being blocked by the requested-equipment resolution guard.
 

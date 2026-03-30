@@ -28,8 +28,9 @@ This matters more now because the recently centralized create-intent contract ma
   - `src/app/(app)/repair-requests/__tests__/useRepairRequestsDeepLink.test.ts`
   - `src/app/(app)/repair-requests/__tests__/RepairRequestsAssistantDraftHandoff.test.tsx`
   - Potentially small supporting test utilities near Repair Requests hook tests
-- GitNexus impact for `useRepairRequestsDeepLink` is `LOW`:
-  - direct callers: `1`
-  - affected process: `RepairRequestsPageClientInner → Listener`
+- Blast radius is `LOW` (confirmed by direct grep-based dependency trace, see design.md):
+  - `useRepairRequestsDeepLink()` has 1 production caller: `RepairRequestsPageClientInner`
+  - `fetchRepairRequestEquipmentById` is only used inside the hook
+  - No context API or submission-path changes required
 - User-visible risk is medium despite low code-level blast radius, because every canonical "Báo sửa chữa" entry point now converges on this sink behavior.
 - No backend migration, RPC contract change, or source-surface navigation rewrite is expected.

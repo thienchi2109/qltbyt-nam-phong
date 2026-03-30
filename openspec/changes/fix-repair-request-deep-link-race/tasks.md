@@ -3,6 +3,7 @@
 - [ ] 1.1 Red: add a failing hook test where `action=create&equipmentId=<id>` is present, `equipment_list` settles first, the targeted `equipment_get` resolves later, and the sheet must not open blank before targeted resolution completes.
 - [ ] 1.2 Red: add a failing hook test where the targeted `equipment_get` resolves before any useful list state and the sheet still opens with the resolved equipment.
 - [ ] 1.3 Red: add or tighten a test proving invalid or unresolved `equipmentId` degrades gracefully only after the resolution path reaches a terminal state.
+- [ ] 1.4 Red: add a test proving `action=create` without `equipmentId` still opens the create sheet immediately and is not delayed by the new resolution gating logic.
 
 ## 2. Implement Terminal Resolution Gating
 
