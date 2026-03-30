@@ -8,6 +8,7 @@ Chúng ta cần một API điều hướng duy nhất cho "mở form tạo yêu 
 
 - Introduce a single shared helper/hook for opening the Repair Request create flow from anywhere in the app.
 - Standardize all existing create-repair entry points to use the same intent contract, including optional `equipmentId` preselection.
+- Standardize assistant draft handoff navigation to use the same create-intent API when opening the Repair Requests page from the assistant panel.
 - Keep the Repair Requests page as the single sink that resolves the deep-link, opens the create sheet, and applies equipment prefill.
 - Preserve direct deep-link behavior so refresh, copy/paste URL, and cross-page navigation still open the same create flow.
 - Remove per-surface URL string duplication for create-repair navigation in Dashboard, Equipment desktop/mobile, and QR scanner flows.
@@ -27,6 +28,7 @@ Chúng ta cần một API điều hướng duy nhất cho "mở form tạo yêu 
 - Affected code:
   - `src/components/equipment/equipment-actions-menu.tsx`
   - `src/components/mobile-equipment-list-item.tsx`
+  - `src/components/assistant/AssistantPanel.tsx`
   - `src/app/(app)/dashboard/page.tsx`
   - `src/app/(app)/qr-scanner/page.tsx`
   - `src/app/(app)/repair-requests/_components/RepairRequestsPageClient.tsx`

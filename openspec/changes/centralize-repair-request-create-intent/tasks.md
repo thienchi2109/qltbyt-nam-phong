@@ -10,6 +10,7 @@
 - [ ] 2.2 Refactor Equipment mobile repair actions to use the shared create intent API.
 - [ ] 2.3 Refactor Dashboard repair actions to use the shared create intent API.
 - [ ] 2.4 Refactor QR scanner repair actions to use the shared create intent API.
+- [ ] 2.5 Refactor AssistantPanel repair-draft handoff navigation to use the shared create intent API.
 
 ## 3. Repair Requests Sink Validation
 
@@ -21,7 +22,7 @@
 
 - [ ] 4.1 Add focused regression tests for at least one desktop source surface and one mobile source surface using the shared create intent.
 - [ ] 4.2 Add focused regression coverage for Dashboard and QR scanner create-repair entry points.
-- [ ] 4.3 Verify no existing create-form submission behavior changes as part of the navigation refactor.
+- [ ] 4.3 Verify no existing create-form submission behavior changes by keeping the create sheet submission path and `createMutation` payload assertions green in focused form tests.
 
 ## 5. Verification
 

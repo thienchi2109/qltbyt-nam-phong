@@ -1,6 +1,6 @@
 ## Context
 
-Luồng tạo yêu cầu sửa chữa hiện đi qua nhiều entry point khác nhau trong ứng dụng: Dashboard, Equipment desktop row actions, Equipment mobile cards, và QR scanner. Mỗi entry point đang tự dựng deep-link sang `/repair-requests`, dẫn đến drift trong contract điều hướng. Kết quả là cùng một hành động "Báo sửa chữa" nhưng có nơi mở create sheet ngay, có nơi chỉ điều hướng sang trang, và có nơi truyền `equipmentId` nhưng không dùng cùng một trigger để mở sheet.
+Luồng tạo yêu cầu sửa chữa hiện đi qua nhiều entry point khác nhau trong ứng dụng: Dashboard, Equipment desktop row actions, Equipment mobile cards, QR scanner, và AssistantPanel draft handoff. Mỗi entry point đang tự dựng deep-link sang `/repair-requests`, dẫn đến drift trong contract điều hướng. Kết quả là cùng một hành động "Báo sửa chữa" nhưng có nơi mở create sheet ngay, có nơi chỉ điều hướng sang trang, và có nơi truyền `equipmentId` nhưng không dùng cùng một trigger để mở sheet.
 
 Sink hiện tại của flow này đã tập trung tương đối tốt ở trang Repair Requests. `useRepairRequestsDeepLink()` đọc query params, resolve `equipmentId`, gọi `openCreateSheet()`, và `RepairRequestsCreateSheet` chịu trách nhiệm hydrate thiết bị được chọn vào form. Vì vậy vấn đề chính không nằm ở chỗ thiếu một sink tập trung, mà nằm ở chỗ các source đang không dùng cùng một contract để đi vào sink đó.
 
@@ -64,6 +64,7 @@ Mọi source mở form tạo yêu cầu sửa chữa sẽ dùng chung API mới,
 - Equipment mobile actions/cards
 - Dashboard repair actions
 - QR scanner repair actions
+- AssistantPanel draft handoff
 
 Dashboard hiện đang dùng đúng deep-link contract, nhưng vẫn phải chuyển sang API chung để loại bỏ duplication và ngăn drift trong tương lai. QR scanner và Equipment mobile đang là hai source dễ lệch nhất nên phải được gom cùng thay vì vá riêng lẻ.
 
@@ -92,6 +93,7 @@ Lý do:
 - [New helper location becomes ambiguous] → Đặt trong shared navigation-oriented module gần `src/lib` với tên bám domain để grep dễ và không phụ thuộc route-local code.
 - [Future entry points bypass helper and reintroduce drift] → Thêm test + OpenSpec requirement để helper trở thành path mặc định cho mọi create-repair navigation mới.
 - [Changing multiple high-traffic surfaces at once] → Giữ implementation nhỏ, không đổi UI copy, và xác minh focused trên Dashboard, Equipment desktop/mobile, QR scanner, và Repair Requests deep-link flow.
+- [Potential race between `equipmentId` resolution and `action=create` handling still leaves the sheet unprefilled] → Giữ risk này ngoài scope của change hiện tại, nhưng ghi nhận làm follow-up riêng sau khi source contract được chuẩn hóa. Khi các source như mobile và QR scanner bắt đầu gửi canonical contract, race này sẽ ảnh hưởng rộng hơn nếu chưa được xử lý.
 
 ## Migration Plan
 
@@ -109,3 +111,4 @@ Rollback:
 
 - Có cần expose cả pure helper và hook wrapper ngay từ đầu, hay chỉ helper là đủ cho current call sites?
 - Nếu `equipment_get` không resolve được từ canonical deep-link, ta có muốn thêm user-visible telemetry/toast trong change kế tiếp không?
+- Sau khi chuẩn hóa contract, có nên tách một follow-up change chuyên xử lý race condition giữa effect resolve `equipmentId` và effect `action=create` trong `useRepairRequestsDeepLink()` không?
