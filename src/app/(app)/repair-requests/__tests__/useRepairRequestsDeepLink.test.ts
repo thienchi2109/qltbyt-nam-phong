@@ -430,11 +430,10 @@ describe('useRepairRequestsDeepLink', () => {
 
       await act(async () => {
         firstEquipmentDeferred.resolve(VALID_EQUIPMENT)
+        await Promise.resolve()
       })
 
-      await waitFor(() => {
-        expect(mocks.openCreateSheet).not.toHaveBeenCalled()
-      })
+      expect(mocks.openCreateSheet).not.toHaveBeenCalled()
       expect(mocks.routerReplace).not.toHaveBeenCalled()
 
       await act(async () => {
