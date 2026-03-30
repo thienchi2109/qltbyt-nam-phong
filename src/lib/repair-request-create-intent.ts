@@ -16,3 +16,15 @@ export function buildRepairRequestCreateIntentHref(equipmentId?: number | null) 
 
   return `${REPAIR_REQUESTS_PATH}?${params.toString()}`
 }
+
+export function buildRepairRequestsByEquipmentHref(equipmentId: number) {
+  const params = new URLSearchParams()
+
+  if (isValidEquipmentId(equipmentId)) {
+    params.set("equipmentId", String(equipmentId))
+  }
+
+  return params.size
+    ? `${REPAIR_REQUESTS_PATH}?${params.toString()}`
+    : REPAIR_REQUESTS_PATH
+}

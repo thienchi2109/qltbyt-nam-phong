@@ -6,7 +6,10 @@ import { useRouter } from "next/navigation"
 
 import { type Equipment } from "@/types/database"
 import { Card } from "@/components/ui/card"
-import { buildRepairRequestCreateIntentHref } from "@/lib/repair-request-create-intent"
+import {
+  buildRepairRequestCreateIntentHref,
+  buildRepairRequestsByEquipmentHref,
+} from "@/lib/repair-request-create-intent"
 import { MobileUsageActions } from "./mobile-usage-actions"
 
 interface MobileEquipmentListItemProps {
@@ -19,6 +22,7 @@ interface MobileEquipmentActionButtonsProps {
   status: Equipment["tinh_trang_hien_tai"]
   outOfService: boolean
   onCreateRepairRequest: (equipmentId: number) => void
+  onViewRepairDetails: (equipmentId: number) => void
   onShowDetails: (equipment: Equipment) => void
 }
 
@@ -67,6 +71,13 @@ export function MobileEquipmentListItem({
   const handleCreateRepairRequest = React.useCallback(
     (equipmentId: number) => {
       router.push(buildRepairRequestCreateIntentHref(equipmentId))
+    },
+    [router],
+  )
+
+  const handleViewRepairDetails = React.useCallback(
+    (equipmentId: number) => {
+      router.push(buildRepairRequestsByEquipmentHref(equipmentId))
     },
     [router],
   )
@@ -124,6 +135,7 @@ export function MobileEquipmentListItem({
           status={status}
           outOfService={outOfService}
           onCreateRepairRequest={handleCreateRepairRequest}
+          onViewRepairDetails={handleViewRepairDetails}
           onShowDetails={onShowDetails}
         />
       </div>
@@ -143,6 +155,7 @@ function MobileEquipmentActionButtons({
   status,
   outOfService,
   onCreateRepairRequest,
+  onViewRepairDetails,
   onShowDetails,
 }: MobileEquipmentActionButtonsProps) {
   const buttonBase = "flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-[11px] font-bold transition-all active:scale-95 duration-150"
@@ -157,6 +170,10 @@ function MobileEquipmentActionButtons({
 
   const handleCreateRepairRequestClick = () => {
     onCreateRepairRequest(equipment.id)
+  }
+
+  const handleViewRepairDetailsClick = () => {
+    onViewRepairDetails(equipment.id)
   }
 
   // Ngưng sử dụng → "Xem chi tiết" only
@@ -194,7 +211,7 @@ function MobileEquipmentActionButtons({
         <button
           type="button"
           className={`${buttonBase} flex-[2] bg-destructive text-destructive-foreground hover:opacity-90`}
-          onClick={handleCreateRepairRequestClick}
+          onClick={handleViewRepairDetailsClick}
         >
           <AlertTriangle className="h-3.5 w-3.5" />
           Chi tiết sự cố

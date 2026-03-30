@@ -47,6 +47,11 @@ const equipment = {
   tinh_trang_hien_tai: "Hoạt động",
 } as const
 
+const waitingRepairEquipment = {
+  ...equipment,
+  tinh_trang_hien_tai: "Chờ sửa chữa",
+} as const
+
 describe("MobileEquipmentListItem", () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -70,6 +75,25 @@ describe("MobileEquipmentListItem", () => {
     fireEvent.click(screen.getByRole("button", { name: "Báo sửa chữa" }))
 
     expect(mocks.push).toHaveBeenCalledWith(
+      "/repair-requests?action=create&equipmentId=42",
+    )
+    expect(onShowDetails).not.toHaveBeenCalled()
+  })
+
+  it('routes "Chi tiết sự cố" to the equipment-filtered repair requests list without opening create intent', () => {
+    const onShowDetails = vi.fn()
+
+    render(
+      <MobileEquipmentListItem
+        equipment={waitingRepairEquipment}
+        onShowDetails={onShowDetails}
+      />,
+    )
+
+    fireEvent.click(screen.getByRole("button", { name: "Chi tiết sự cố" }))
+
+    expect(mocks.push).toHaveBeenCalledWith("/repair-requests?equipmentId=42")
+    expect(mocks.push).not.toHaveBeenCalledWith(
       "/repair-requests?action=create&equipmentId=42",
     )
     expect(onShowDetails).not.toHaveBeenCalled()

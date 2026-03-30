@@ -31,10 +31,11 @@ describe('repair request create-intent source adoption', () => {
     expect(source).not.toContain('/repair-requests?action=create&equipmentId=')
   })
 
-  it('mobile Equipment item uses the shared create-intent helper instead of a hardcoded repair href', () => {
+  it('mobile Equipment item uses shared repair-request helpers instead of hardcoded repair hrefs', () => {
     const source = readSource(sourceFiles[2])
 
     expect(source).toContain('buildRepairRequestCreateIntentHref')
+    expect(source).toContain('buildRepairRequestsByEquipmentHref')
     expect(source).not.toContain('/repair-requests?equipmentId=')
     expect(source).not.toContain('/repair-requests?action=create&equipmentId=')
   })
