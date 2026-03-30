@@ -180,7 +180,10 @@ export function useRepairRequestsDeepLink(
     lastFetchedEquipmentIdRef.current = idNum
 
     // Set resolution to pending before fetch when create-intent is active
-    if (hasCreateAction && resolution.equipmentId !== idNum) {
+    if (
+      hasCreateAction &&
+      (resolution.equipmentId !== idNum || resolution.phase === 'missing')
+    ) {
       setResolution({ equipmentId: idNum, phase: 'pending', equipment: null })
     }
 

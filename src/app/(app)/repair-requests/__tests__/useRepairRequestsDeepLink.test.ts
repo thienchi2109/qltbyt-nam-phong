@@ -514,6 +514,62 @@ describe('useRepairRequestsDeepLink', () => {
       })
     })
 
+    it('resets same-id missing resolution to pending before retrying create intent', async () => {
+      const retryEquipmentDeferred = createDeferred<typeof VALID_EQUIPMENT | null>()
+      const baseOpts = createDefaultOptions()
+
+      mocks.callRpc
+        .mockResolvedValueOnce([])
+        .mockResolvedValueOnce(null)
+        .mockReturnValueOnce(retryEquipmentDeferred.promise)
+
+      const { rerender } = renderHook(
+        ({ currentSearchParams }) => useRepairRequestsDeepLink({
+          ...baseOpts,
+          searchParams: currentSearchParams,
+        }),
+        {
+          initialProps: {
+            currentSearchParams: createSearchParams({ action: 'create', equipmentId: '42' }),
+          },
+        },
+      )
+
+      await waitFor(() => {
+        expect(mocks.openCreateSheet).toHaveBeenCalledWith()
+      })
+
+      mocks.openCreateSheet.mockClear()
+      mocks.routerReplace.mockClear()
+
+      act(() => {
+        rerender({ currentSearchParams: createSearchParams() })
+      })
+
+      act(() => {
+        rerender({
+          currentSearchParams: createSearchParams({ action: 'create', equipmentId: '42' }),
+        })
+      })
+
+      await waitFor(() => {
+        expect(mocks.callRpc).toHaveBeenCalledTimes(3)
+      })
+
+      expect(mocks.openCreateSheet).not.toHaveBeenCalled()
+      expect(mocks.routerReplace).not.toHaveBeenCalled()
+
+      await act(async () => {
+        retryEquipmentDeferred.resolve(VALID_EQUIPMENT)
+      })
+
+      await waitFor(() => {
+        expect(mocks.openCreateSheet).toHaveBeenCalledWith(
+          expect.objectContaining({ id: 42, ma_thiet_bi: 'TB042' })
+        )
+      })
+    })
+
     it('does not delay action=create without equipmentId due to resolution gating', async () => {
       mocks.callRpc.mockResolvedValueOnce([]) // equipment_list
 
