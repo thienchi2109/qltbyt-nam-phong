@@ -131,6 +131,7 @@ function renderActionButtons(
   if (outOfService) {
     return (
       <button
+        type="button"
         className={ghostBtn}
         onClick={() => onShowDetails(equipment)}
       >
@@ -145,6 +146,7 @@ function renderActionButtons(
     return (
       <>
         <button
+          type="button"
           className={`${buttonBase} flex-[2] bg-destructive text-destructive-foreground hover:opacity-90`}
           onClick={() => router.push(`/repair-requests?equipmentId=${equipment.id}`)}
         >
@@ -156,11 +158,12 @@ function renderActionButtons(
     )
   }
 
-  // Chờ bảo trì / Chờ hiệu chuẩn → "Lịch sử" + "Sử dụng"
+  // Chờ bảo trì / Chờ hiệu chuẩn → "Xem chi tiết" + "Sử dụng"
   if (status === "Chờ bảo trì" || status === "Chờ hiệu chuẩn/kiểm định") {
     return (
       <>
         <button
+          type="button"
           className={ghostBtn}
           onClick={() => onShowDetails(equipment)}
         >
@@ -176,6 +179,7 @@ function renderActionButtons(
   return (
     <>
       <button
+        type="button"
         className={ghostBtn}
         onClick={() => router.push(`/repair-requests?equipmentId=${equipment.id}`)}
       >
