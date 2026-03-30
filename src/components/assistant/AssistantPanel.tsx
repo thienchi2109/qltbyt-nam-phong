@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button"
 import { useTenantSelection } from "@/contexts/TenantSelectionContext"
 import { parseErrorMessage } from "@/lib/ai/errors"
 import { compactUIMessages } from "@/lib/ai/compact-ui-messages"
+import { buildRepairRequestCreateIntentHref } from "@/lib/repair-request-create-intent"
 import { cn } from "@/lib/utils"
 
 import { AssistantComposer } from "./AssistantComposer"
@@ -117,7 +118,7 @@ export function AssistantPanel({ isOpen, onClose }: AssistantPanelProps) {
         (draft: RepairRequestDraft | TroubleshootingDraft) => {
             if (draft.kind === "repairRequestDraft") {
                 queryClient.setQueryData(["assistant-draft"], draft)
-                router.push("/repair-requests?action=create")
+                router.push(buildRepairRequestCreateIntentHref())
             }
         },
         [queryClient, router],

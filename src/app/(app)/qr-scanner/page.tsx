@@ -9,6 +9,7 @@ import { QrCode, ArrowLeft, Camera, Smartphone } from "lucide-react"
 import Link from "next/link"
 import { useToast } from "@/hooks/use-toast"
 import { QRScannerErrorBoundary } from "@/components/qr-scanner-error-boundary"
+import { buildRepairRequestCreateIntentHref } from "@/lib/repair-request-create-intent"
 import type { Equipment } from "@/lib/data"
 
 // Dynamic imports to avoid SSR issues with camera components
@@ -106,7 +107,7 @@ export default function QRScannerPage() {
           
         case 'create-repair':
           if (equipment) {
-            router.push(`/repair-requests?equipmentId=${equipment.id}`)
+            router.push(buildRepairRequestCreateIntentHref(equipment.id))
           }
           break
           

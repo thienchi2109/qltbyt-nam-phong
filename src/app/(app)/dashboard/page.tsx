@@ -20,6 +20,7 @@ import { KPICards } from "@/components/dashboard/kpi-cards"
 import { DashboardTabs } from "@/components/dashboard/dashboard-tabs"
 import { QRScannerErrorBoundary } from "@/components/qr-scanner-error-boundary"
 import { useToast } from "@/hooks/use-toast"
+import { buildRepairRequestCreateIntentHref } from "@/lib/repair-request-create-intent"
 import { cn } from "@/lib/utils"
 import { isRegionalLeaderRole } from "@/lib/rbac"
 import type { Equipment } from "@/lib/data"
@@ -131,7 +132,7 @@ export default function Dashboard() {
         
       case 'create-repair':
         if (equipment) {
-          router.push(`/repair-requests?action=create&equipmentId=${equipment.id}`)
+          router.push(buildRepairRequestCreateIntentHref(equipment.id))
         }
         break
         
@@ -240,7 +241,7 @@ export default function Dashboard() {
           {!isRegionalLeader && (
             <>
               {/* Báo sửa chữa (New) */}
-              <Link href="/repair-requests?action=create" className="group">
+              <Link href={buildRepairRequestCreateIntentHref()} className="group">
                 <div className="flex flex-col items-center gap-3">
                   <div className="h-[72px] w-[72px] md:h-[88px] md:w-[88px] rounded-2xl bg-white shadow-[0_8px_30px_rgba(0,0,0,0.12)] flex items-center justify-center transition-transform group-active:scale-95">
                     <div className="h-11 w-11 md:h-14 md:w-14 rounded-xl bg-red-50 flex items-center justify-center">
