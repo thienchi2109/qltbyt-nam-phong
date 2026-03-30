@@ -324,6 +324,33 @@ describe('useRepairRequestsDeepLink', () => {
       })
     })
 
+    it('does not reopen the create sheet when the initial list settles after the intent is consumed', async () => {
+      const listDeferred = createDeferred<Array<typeof VALID_EQUIPMENT>>()
+
+      mocks.callRpc
+        .mockReturnValueOnce(listDeferred.promise)
+        .mockResolvedValueOnce(VALID_EQUIPMENT)
+
+      const sp = createSearchParams({ action: 'create', equipmentId: '42' })
+      const opts = createDefaultOptions(sp)
+      renderHook(() => useRepairRequestsDeepLink(opts))
+
+      await waitFor(() => {
+        expect(mocks.openCreateSheet).toHaveBeenCalledTimes(1)
+        expect(mocks.openCreateSheet).toHaveBeenCalledWith(
+          expect.objectContaining({ id: 42, ma_thiet_bi: 'TB042' })
+        )
+      })
+
+      await act(async () => {
+        listDeferred.resolve([VALID_EQUIPMENT])
+      })
+
+      await waitFor(() => {
+        expect(mocks.openCreateSheet).toHaveBeenCalledTimes(1)
+      })
+    })
+
     it('opens blank sheet only after equipment_get reaches terminal missing state', async () => {
       const equipmentGetDeferred = createDeferred<null>()
 

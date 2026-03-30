@@ -254,9 +254,7 @@ export function useRepairRequestsDeepLink(
     params.delete('status')
     const nextPath = params.size ? `${pathname}?${params.toString()}` : pathname
     router.replace(nextPath, { scroll: false })
-    // Reset resolution after consuming the intent
     activeCreateEquipmentIdRef.current = null
-    setResolution(IDLE_RESOLUTION)
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams, router, pathname, openCreateSheet, resolution, queryClient, applyAssistantDraft])
 
