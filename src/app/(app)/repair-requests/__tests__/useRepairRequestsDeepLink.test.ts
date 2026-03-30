@@ -451,6 +451,69 @@ describe('useRepairRequestsDeepLink', () => {
       expect(mocks.routerReplace).toHaveBeenCalledWith('/repair-requests', { scroll: false })
     })
 
+    it('keeps isEquipmentFetchPending true while a newer equipment fetch is still in flight', async () => {
+      const firstEquipmentDeferred = createDeferred<typeof VALID_EQUIPMENT | null>()
+      const secondEquipmentDeferred = createDeferred<{
+        id: 99
+        ma_thiet_bi: string
+        ten_thiet_bi: string
+        khoa_phong_quan_ly: string
+      } | null>()
+      const nextEquipment = {
+        id: 99 as const,
+        ma_thiet_bi: 'TB099',
+        ten_thiet_bi: 'Máy C',
+        khoa_phong_quan_ly: 'Khoa 3',
+      }
+      const baseOpts = createDefaultOptions()
+
+      mocks.callRpc
+        .mockResolvedValueOnce([])
+        .mockReturnValueOnce(firstEquipmentDeferred.promise)
+        .mockReturnValueOnce(secondEquipmentDeferred.promise)
+
+      const { result, rerender } = renderHook(
+        ({ currentSearchParams }) => useRepairRequestsDeepLink({
+          ...baseOpts,
+          searchParams: currentSearchParams,
+        }),
+        {
+          initialProps: {
+            currentSearchParams: createSearchParams({ action: 'create', equipmentId: '42' }),
+          },
+        },
+      )
+
+      await waitFor(() => {
+        expect(result.current.isEquipmentFetchPending).toBe(true)
+      })
+
+      act(() => {
+        rerender({
+          currentSearchParams: createSearchParams({ action: 'create', equipmentId: '99' }),
+        })
+      })
+
+      await waitFor(() => {
+        expect(mocks.callRpc).toHaveBeenCalledTimes(3)
+      })
+
+      await act(async () => {
+        firstEquipmentDeferred.resolve(VALID_EQUIPMENT)
+        await Promise.resolve()
+      })
+
+      expect(result.current.isEquipmentFetchPending).toBe(true)
+
+      await act(async () => {
+        secondEquipmentDeferred.resolve(nextEquipment)
+      })
+
+      await waitFor(() => {
+        expect(result.current.isEquipmentFetchPending).toBe(false)
+      })
+    })
+
     it('does not delay action=create without equipmentId due to resolution gating', async () => {
       mocks.callRpc.mockResolvedValueOnce([]) // equipment_list
 

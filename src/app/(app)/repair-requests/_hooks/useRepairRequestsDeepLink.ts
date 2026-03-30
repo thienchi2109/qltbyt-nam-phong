@@ -89,6 +89,20 @@ export function useRepairRequestsDeepLink(
   // Track the currently authoritative create-intent equipmentId so stale async
   // completions cannot consume a superseded deep link.
   const activeCreateEquipmentIdRef = React.useRef<number | null>(null)
+  const inFlightEquipmentFetchCountRef = React.useRef(0)
+
+  const incrementEquipmentFetchPending = () => {
+    inFlightEquipmentFetchCountRef.current += 1
+    setIsEquipmentFetchPending(true)
+  }
+
+  const decrementEquipmentFetchPending = () => {
+    inFlightEquipmentFetchCountRef.current = Math.max(
+      0,
+      inFlightEquipmentFetchCountRef.current - 1
+    )
+    setIsEquipmentFetchPending(inFlightEquipmentFetchCountRef.current > 0)
+  }
 
   // Initial load: fetch a small equipment list via RPC
   React.useEffect(() => {
@@ -171,7 +185,7 @@ export function useRepairRequestsDeepLink(
     }
 
     const run = async () => {
-      setIsEquipmentFetchPending(true)
+      incrementEquipmentFetchPending()
       try {
         const row = await fetchRepairRequestEquipmentById(idNum)
         if (row) {
@@ -190,7 +204,7 @@ export function useRepairRequestsDeepLink(
           setResolution({ equipmentId: idNum, phase: 'missing', equipment: null })
         }
       } finally {
-        setIsEquipmentFetchPending(false)
+        decrementEquipmentFetchPending()
       }
     }
     run()
