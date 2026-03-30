@@ -143,7 +143,11 @@ export function useRepairRequestsDeepLink(
     // Skip when fetch is in flight OR when resolution is already progressing
     // (setResolution triggers re-render before async run() sets isEquipmentFetchPending)
     if (isEquipmentFetchPending && lastFetchedEquipmentIdRef.current === idNum) return
-    if (hasCreateAction && (resolution.phase === 'pending' || resolution.phase === 'resolved')) return
+    if (
+      hasCreateAction &&
+      resolution.equipmentId === idNum &&
+      (resolution.phase === 'pending' || resolution.phase === 'resolved')
+    ) return
     const existing = allEquipment.find(eq => eq.id === idNum)
     if (existing) {
       // Equipment already in list — mark as resolved for create-intent gating
