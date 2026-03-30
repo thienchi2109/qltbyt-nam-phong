@@ -124,8 +124,8 @@ export function MobileEquipmentListItem({
 /**
  * Renders context-aware action buttons based on equipment status:
  * - Hoạt động: "Báo sửa chữa" + "Sử dụng"
- * - Chờ sửa chữa: "Chi tiết sự cố" (prominent) + disabled play
- * - Chờ bảo trì / Chờ hiệu chuẩn: "Lịch sử" + "Sử dụng"
+ * - Chờ sửa chữa: "Chi tiết sự cố" (prominent) + usage action
+ * - Chờ bảo trì / Chờ hiệu chuẩn: "Xem chi tiết" + "Sử dụng"
  * - Ngưng sử dụng / Chưa có nhu cầu: "Xem chi tiết" only
  */
 function renderActionButtons(
@@ -137,7 +137,6 @@ function renderActionButtons(
 ) {
   const buttonBase = "flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-[11px] font-bold transition-all active:scale-95 duration-150"
   const ghostBtn = `${buttonBase} bg-muted/60 hover:bg-muted text-muted-foreground`
-  const primaryBtn = `${buttonBase} bg-primary text-primary-foreground hover:opacity-90 shadow-sm`
 
   // Ngưng sử dụng → "Xem chi tiết" only
   if (outOfService) {
