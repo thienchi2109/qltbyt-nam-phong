@@ -151,7 +151,7 @@ export function useRepairRequestsDeepLink(
     const existing = allEquipment.find(eq => eq.id === idNum)
     if (existing) {
       // Equipment already in list — mark as resolved for create-intent gating
-      if (hasCreateAction && resolution.phase !== 'resolved') {
+      if (hasCreateAction) {
         setResolution({ equipmentId: idNum, phase: 'resolved', equipment: existing })
       }
       return
