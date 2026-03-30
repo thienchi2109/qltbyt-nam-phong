@@ -5,6 +5,7 @@ import type { EquipmentSelectItem } from "../types"
 import type { RepairRequestDraftPayload } from "@/lib/ai/draft/repair-request-draft-schema"
 import type { UiFilters } from "@/lib/rr-prefs"
 import { getUnknownErrorMessage } from "@/lib/error-utils"
+import { REPAIR_REQUEST_CREATE_ACTION } from "@/lib/repair-request-create-intent"
 import {
   fetchRepairRequestEquipmentById,
   fetchRepairRequestEquipmentList,
@@ -148,7 +149,7 @@ export function useRepairRequestsDeepLink(
 
   // Handle action=create param with equipment pre-selection
   React.useEffect(() => {
-    if (searchParams.get('action') !== 'create') return
+    if (searchParams.get('action') !== REPAIR_REQUEST_CREATE_ACTION) return
 
     const cachedAssistantDraft = queryClient.getQueryData(["assistant-draft"])
     if (

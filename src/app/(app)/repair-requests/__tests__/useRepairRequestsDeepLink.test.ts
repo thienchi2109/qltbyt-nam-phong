@@ -13,6 +13,8 @@
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { renderHook, waitFor, act } from '@testing-library/react'
+import { readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
 
 // ── Hoisted mocks ─────────────────────────────────────────────────
 const mocks = vi.hoisted(() => ({
@@ -236,5 +238,15 @@ describe('useRepairRequestsDeepLink', () => {
       expect.objectContaining({ id: 999 })
     )
     expect(mocks.routerReplace).toHaveBeenCalledWith('/repair-requests', { scroll: false })
+  })
+
+  it('reuses the shared create-action constant instead of hardcoding the action value', () => {
+    const source = readFileSync(
+      resolve(process.cwd(), 'src/app/(app)/repair-requests/_hooks/useRepairRequestsDeepLink.ts'),
+      'utf8',
+    )
+
+    expect(source).toContain('REPAIR_REQUEST_CREATE_ACTION')
+    expect(source).not.toContain("searchParams.get('action') !== 'create'")
   })
 })
