@@ -28,7 +28,6 @@ export interface EquipmentContentProps {
   table: Table<Equipment>
   columns: ColumnDef<Equipment>[]
   onShowDetails: (equipment: Equipment) => void
-  onEdit: (equipment: Equipment | null) => void
 }
 
 export function EquipmentContent({
@@ -41,7 +40,6 @@ export function EquipmentContent({
   table,
   columns,
   onShowDetails,
-  onEdit,
 }: EquipmentContentProps) {
   // Global users and regional leaders must select a tenant/facility first
   if ((isGlobal || isRegionalLeader) && !shouldFetchEquipment) {

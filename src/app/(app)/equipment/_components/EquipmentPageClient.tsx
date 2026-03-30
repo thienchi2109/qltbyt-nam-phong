@@ -277,7 +277,6 @@ const EquipmentPageContent = React.memo(function EquipmentPageContent({
               table={table}
               columns={columns}
               onShowDetails={(eq) => openDetailDialog(eq)}
-              onEdit={(eq) => eq && openEditDialog(eq)}
             />
           </div>
         </CardContent>
