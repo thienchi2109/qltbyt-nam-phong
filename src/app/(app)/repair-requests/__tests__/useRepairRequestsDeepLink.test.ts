@@ -182,4 +182,59 @@ describe('useRepairRequestsDeepLink', () => {
       expect(setUiFiltersState).toHaveBeenCalledTimes(2)
     })
   })
+
+  it('opens the create sheet and cleans the URL for action=create without equipmentId', async () => {
+    const sp = createSearchParams({ action: 'create' })
+
+    renderHook(() => useRepairRequestsDeepLink(createDefaultOptions(sp)))
+
+    await waitFor(() => {
+      expect(mocks.openCreateSheet).toHaveBeenCalledWith()
+    })
+    expect(mocks.routerReplace).toHaveBeenCalledWith('/repair-requests', { scroll: false })
+  })
+
+  it('opens the create sheet with the resolved equipment for action=create and valid equipmentId', async () => {
+    mocks.callRpc
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce({
+        id: 42,
+        ma_thiet_bi: 'TB042',
+        ten_thiet_bi: 'Máy B',
+        khoa_phong_quan_ly: 'Khoa 2',
+      })
+
+    const sp = createSearchParams({ action: 'create', equipmentId: '42' })
+
+    renderHook(() => useRepairRequestsDeepLink(createDefaultOptions(sp)))
+
+    await waitFor(() => {
+      expect(mocks.openCreateSheet).toHaveBeenCalledWith(
+        expect.objectContaining({
+          id: 42,
+          ma_thiet_bi: 'TB042',
+          ten_thiet_bi: 'Máy B',
+        })
+      )
+    })
+    expect(mocks.routerReplace).toHaveBeenCalledWith('/repair-requests', { scroll: false })
+  })
+
+  it('degrades gracefully when action=create has an unresolved equipmentId', async () => {
+    mocks.callRpc
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce(null)
+
+    const sp = createSearchParams({ action: 'create', equipmentId: '999' })
+
+    renderHook(() => useRepairRequestsDeepLink(createDefaultOptions(sp)))
+
+    await waitFor(() => {
+      expect(mocks.openCreateSheet).toHaveBeenCalledWith()
+    })
+    expect(mocks.openCreateSheet).not.toHaveBeenCalledWith(
+      expect.objectContaining({ id: 999 })
+    )
+    expect(mocks.routerReplace).toHaveBeenCalledWith('/repair-requests', { scroll: false })
+  })
 })

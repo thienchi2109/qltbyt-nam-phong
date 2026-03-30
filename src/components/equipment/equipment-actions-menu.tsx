@@ -23,6 +23,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { useEquipmentContext } from "@/app/(app)/equipment/_hooks/useEquipmentContext"
+import { buildRepairRequestCreateIntentHref } from "@/lib/repair-request-create-intent"
 import { isEquipmentManagerRole } from "@/lib/rbac"
 import type { Equipment, UsageLog } from "@/types/database"
 
@@ -87,7 +88,7 @@ export function EquipmentActionsMenu({
 
   const handleCreateRepairRequest = React.useCallback(() => {
     if (isGlobal || isRegionalLeader) return
-    router.push(`/repair-requests?action=create&equipmentId=${equipment.id}`)
+    router.push(buildRepairRequestCreateIntentHref(equipment.id))
   }, [router, equipment.id, isGlobal, isRegionalLeader])
 
   return (

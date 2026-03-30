@@ -1,14 +1,24 @@
 "use client"
 
+import * as React from "react"
 import { Wrench, MapPin, Eye, AlertTriangle } from "lucide-react"
 import { useRouter } from "next/navigation"
 
 import { type Equipment } from "@/types/database"
 import { Card } from "@/components/ui/card"
+import { buildRepairRequestCreateIntentHref } from "@/lib/repair-request-create-intent"
 import { MobileUsageActions } from "./mobile-usage-actions"
 
 interface MobileEquipmentListItemProps {
   equipment: Equipment
+  onShowDetails: (equipment: Equipment) => void
+}
+
+interface MobileEquipmentActionButtonsProps {
+  equipment: Equipment
+  status: Equipment["tinh_trang_hien_tai"]
+  outOfService: boolean
+  onCreateRepairRequest: (equipmentId: number) => void
   onShowDetails: (equipment: Equipment) => void
 }
 
@@ -53,6 +63,13 @@ export function MobileEquipmentListItem({
   const handleCardClick = () => {
     onShowDetails(equipment)
   }
+
+  const handleCreateRepairRequest = React.useCallback(
+    (equipmentId: number) => {
+      router.push(buildRepairRequestCreateIntentHref(equipmentId))
+    },
+    [router],
+  )
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.currentTarget !== e.target) return
@@ -102,9 +119,13 @@ export function MobileEquipmentListItem({
         </div>
 
         {/* Row 4: Action Buttons */}
-        <div className="flex gap-2 pt-0.5" onClick={(e) => e.stopPropagation()}>
-          {renderActionButtons(equipment, status, outOfService, router, onShowDetails)}
-        </div>
+        <MobileEquipmentActionButtons
+          equipment={equipment}
+          status={status}
+          outOfService={outOfService}
+          onCreateRepairRequest={handleCreateRepairRequest}
+          onShowDetails={onShowDetails}
+        />
       </div>
     </Card>
   )
@@ -117,51 +138,82 @@ export function MobileEquipmentListItem({
  * - Chờ bảo trì / Chờ hiệu chuẩn: "Xem chi tiết" + "Sử dụng"
  * - Ngưng sử dụng / Chưa có nhu cầu: "Xem chi tiết" only
  */
-function renderActionButtons(
-  equipment: Equipment,
-  status: Equipment["tinh_trang_hien_tai"],
-  outOfService: boolean,
-  router: ReturnType<typeof useRouter>,
-  onShowDetails: (equipment: Equipment) => void,
-) {
+function MobileEquipmentActionButtons({
+  equipment,
+  status,
+  outOfService,
+  onCreateRepairRequest,
+  onShowDetails,
+}: MobileEquipmentActionButtonsProps) {
   const buttonBase = "flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-[11px] font-bold transition-all active:scale-95 duration-150"
   const ghostBtn = `${buttonBase} bg-muted/60 hover:bg-muted text-muted-foreground`
+  const handleActionGroupClick = (event: React.MouseEvent<HTMLDivElement>) => {
+    event.stopPropagation()
+  }
+
+  const handleActionGroupKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
+    event.stopPropagation()
+  }
+
+  const handleCreateRepairRequestClick = () => {
+    onCreateRepairRequest(equipment.id)
+  }
 
   // Ngưng sử dụng → "Xem chi tiết" only
   if (outOfService) {
     return (
-      <button
-        type="button"
-        className={ghostBtn}
-        onClick={() => onShowDetails(equipment)}
+      <div
+        className="flex gap-2 pt-0.5"
+        role="group"
+        aria-label={`Hành động cho ${equipment.ten_thiet_bi}`}
+        onClick={handleActionGroupClick}
+        onKeyDown={handleActionGroupKeyDown}
       >
-        <Eye className="h-3.5 w-3.5" />
-        Xem chi tiết
-      </button>
+        <button
+          type="button"
+          className={ghostBtn}
+          onClick={() => onShowDetails(equipment)}
+        >
+          <Eye className="h-3.5 w-3.5" />
+          Xem chi tiết
+        </button>
+      </div>
     )
   }
 
   // Chờ sửa chữa → "Chi tiết sự cố" (red) + disabled play
   if (status === "Chờ sửa chữa") {
     return (
-      <>
+      <div
+        className="flex gap-2 pt-0.5"
+        role="group"
+        aria-label={`Hành động cho ${equipment.ten_thiet_bi}`}
+        onClick={handleActionGroupClick}
+        onKeyDown={handleActionGroupKeyDown}
+      >
         <button
           type="button"
           className={`${buttonBase} flex-[2] bg-destructive text-destructive-foreground hover:opacity-90`}
-          onClick={() => router.push(`/repair-requests?equipmentId=${equipment.id}`)}
+          onClick={handleCreateRepairRequestClick}
         >
           <AlertTriangle className="h-3.5 w-3.5" />
           Chi tiết sự cố
         </button>
         <MobileUsageActions equipment={equipment} className="flex-1 h-auto py-2 text-[11px]" />
-      </>
+      </div>
     )
   }
 
   // Chờ bảo trì / Chờ hiệu chuẩn → "Xem chi tiết" + "Sử dụng"
   if (status === "Chờ bảo trì" || status === "Chờ hiệu chuẩn/kiểm định") {
     return (
-      <>
+      <div
+        className="flex gap-2 pt-0.5"
+        role="group"
+        aria-label={`Hành động cho ${equipment.ten_thiet_bi}`}
+        onClick={handleActionGroupClick}
+        onKeyDown={handleActionGroupKeyDown}
+      >
         <button
           type="button"
           className={ghostBtn}
@@ -171,22 +223,28 @@ function renderActionButtons(
           Xem chi tiết
         </button>
         <MobileUsageActions equipment={equipment} className="flex-1 h-auto py-2 text-[11px]" />
-      </>
+      </div>
     )
   }
 
   // Default (Hoạt động) → "Báo sửa chữa" + "Sử dụng"
   return (
-    <>
+    <div
+      className="flex gap-2 pt-0.5"
+      role="group"
+      aria-label={`Hành động cho ${equipment.ten_thiet_bi}`}
+      onClick={handleActionGroupClick}
+      onKeyDown={handleActionGroupKeyDown}
+    >
       <button
         type="button"
         className={ghostBtn}
-        onClick={() => router.push(`/repair-requests?equipmentId=${equipment.id}`)}
+        onClick={handleCreateRepairRequestClick}
       >
         <Wrench className="h-3.5 w-3.5" />
         Báo sửa chữa
       </button>
       <MobileUsageActions equipment={equipment} className="flex-1 h-auto py-2 text-[11px]" />
-    </>
+    </div>
   )
 }

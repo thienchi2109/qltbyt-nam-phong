@@ -34,6 +34,13 @@ export interface UseRepairRequestsDeepLinkReturn {
   isEquipmentFetchPending: boolean
 }
 
+function parseEquipmentIdParam(value: string | null) {
+  if (!value) return null
+
+  const parsed = Number(value)
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : null
+}
+
 // ── Hook ─────────────────────────────────────────────────────────
 
 export function useRepairRequestsDeepLink(
@@ -111,9 +118,8 @@ export function useRepairRequestsDeepLink(
   // Guarded by lastFetchedEquipmentIdRef to prevent duplicate fetches when
   // other effects trigger router.replace() (which changes searchParams).
   React.useEffect(() => {
-    const equipmentId = searchParams.get('equipmentId')
-    if (!equipmentId) return
-    const idNum = Number(equipmentId)
+    const idNum = parseEquipmentIdParam(searchParams.get('equipmentId'))
+    if (idNum === null) return
 
     // Skip only when a fetch for this same ID is already in flight;
     // do NOT skip if the item was evicted from allEquipment by the
@@ -164,12 +170,11 @@ export function useRepairRequestsDeepLink(
       return
     }
 
-    const equipmentId = searchParams.get('equipmentId')
+    const equipmentId = parseEquipmentIdParam(searchParams.get('equipmentId'))
 
     if (equipmentId) {
       if (!hasLoadedEquipment || isEquipmentFetchPending) return
-      const idNum = Number(equipmentId)
-      const equipment = allEquipment.find(eq => eq.id === idNum)
+      const equipment = allEquipment.find(eq => eq.id === equipmentId)
       if (equipment) {
         openCreateSheet(equipment)
       } else {
