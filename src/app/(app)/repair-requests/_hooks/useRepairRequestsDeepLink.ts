@@ -221,7 +221,11 @@ export function useRepairRequestsDeepLink(
       // Gate on terminal resolution state
       if (resolution.phase === 'idle' || resolution.phase === 'pending') return
 
-      if (resolution.phase === 'resolved' && resolution.equipment) {
+      if (
+        resolution.phase === 'resolved' &&
+        resolution.equipment &&
+        resolution.equipmentId === equipmentId
+      ) {
         openCreateSheet(resolution.equipment)
       } else {
         // phase === 'missing' — graceful degradation
