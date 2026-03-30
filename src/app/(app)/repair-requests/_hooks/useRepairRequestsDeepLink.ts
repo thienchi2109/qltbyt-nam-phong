@@ -86,6 +86,9 @@ export function useRepairRequestsDeepLink(
   // Track the last fetched equipmentId to prevent duplicate equipment_get calls
   // when router.replace() from status cleanup triggers a searchParams change.
   const lastFetchedEquipmentIdRef = React.useRef<number | null>(null)
+  // Track the currently authoritative create-intent equipmentId so stale async
+  // completions cannot consume a superseded deep link.
+  const activeCreateEquipmentIdRef = React.useRef<number | null>(null)
 
   // Initial load: fetch a small equipment list via RPC
   React.useEffect(() => {
@@ -139,6 +142,9 @@ export function useRepairRequestsDeepLink(
     if (idNum === null) return
 
     const hasCreateAction = searchParams.get('action') === REPAIR_REQUEST_CREATE_ACTION
+    if (hasCreateAction) {
+      activeCreateEquipmentIdRef.current = idNum
+    }
 
     // Skip when fetch is in flight OR when resolution is already progressing
     // (setResolution triggers re-render before async run() sets isEquipmentFetchPending)
@@ -160,7 +166,7 @@ export function useRepairRequestsDeepLink(
     lastFetchedEquipmentIdRef.current = idNum
 
     // Set resolution to pending before fetch when create-intent is active
-    if (hasCreateAction && resolution.phase === 'idle') {
+    if (hasCreateAction && resolution.equipmentId !== idNum) {
       setResolution({ equipmentId: idNum, phase: 'pending', equipment: null })
     }
 
@@ -171,13 +177,16 @@ export function useRepairRequestsDeepLink(
         if (row) {
           setAllEquipment(prev => [row, ...prev.filter(x => x.id !== row.id)])
           if (hasCreateAction) {
+            if (activeCreateEquipmentIdRef.current !== idNum) return
             setResolution({ equipmentId: idNum, phase: 'resolved', equipment: row })
           }
         } else if (hasCreateAction) {
+          if (activeCreateEquipmentIdRef.current !== idNum) return
           setResolution({ equipmentId: idNum, phase: 'missing', equipment: null })
         }
       } catch {
         if (hasCreateAction) {
+          if (activeCreateEquipmentIdRef.current !== idNum) return
           setResolution({ equipmentId: idNum, phase: 'missing', equipment: null })
         }
       } finally {
@@ -218,7 +227,10 @@ export function useRepairRequestsDeepLink(
     const equipmentId = parseEquipmentIdParam(searchParams.get('equipmentId'))
 
     if (equipmentId) {
-      // Gate on terminal resolution state
+      // Ignore stale resolutions from superseded equipmentId requests.
+      if (resolution.equipmentId !== equipmentId) return
+
+      // Gate on terminal resolution state for the current equipmentId only.
       if (resolution.phase === 'idle' || resolution.phase === 'pending') return
 
       if (
@@ -243,6 +255,7 @@ export function useRepairRequestsDeepLink(
     const nextPath = params.size ? `${pathname}?${params.toString()}` : pathname
     router.replace(nextPath, { scroll: false })
     // Reset resolution after consuming the intent
+    activeCreateEquipmentIdRef.current = null
     setResolution(IDLE_RESOLUTION)
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams, router, pathname, openCreateSheet, resolution, queryClient, applyAssistantDraft])

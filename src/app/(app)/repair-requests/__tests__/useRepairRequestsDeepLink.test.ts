@@ -354,6 +354,77 @@ describe('useRepairRequestsDeepLink', () => {
       expect(mocks.routerReplace).toHaveBeenCalledWith('/repair-requests', { scroll: false })
     })
 
+    it('waits for the latest equipmentId when the URL changes mid-flight', async () => {
+      const firstEquipmentDeferred = createDeferred<typeof VALID_EQUIPMENT | null>()
+      const secondEquipmentDeferred = createDeferred<{
+        id: 99
+        ma_thiet_bi: string
+        ten_thiet_bi: string
+        khoa_phong_quan_ly: string
+      } | null>()
+      const nextEquipment = {
+        id: 99 as const,
+        ma_thiet_bi: 'TB099',
+        ten_thiet_bi: 'Máy C',
+        khoa_phong_quan_ly: 'Khoa 3',
+      }
+      const baseOpts = createDefaultOptions()
+
+      mocks.callRpc
+        .mockResolvedValueOnce([])
+        .mockReturnValueOnce(firstEquipmentDeferred.promise)
+        .mockReturnValueOnce(secondEquipmentDeferred.promise)
+
+      const { rerender } = renderHook(
+        ({ currentSearchParams }) => useRepairRequestsDeepLink({
+          ...baseOpts,
+          searchParams: currentSearchParams,
+        }),
+        {
+          initialProps: {
+            currentSearchParams: createSearchParams({ action: 'create', equipmentId: '42' }),
+          },
+        },
+      )
+
+      await waitFor(() => {
+        expect(mocks.callRpc).toHaveBeenCalledTimes(2)
+      })
+
+      act(() => {
+        rerender({
+          currentSearchParams: createSearchParams({ action: 'create', equipmentId: '99' }),
+        })
+      })
+
+      await waitFor(() => {
+        expect(mocks.callRpc).toHaveBeenCalledTimes(3)
+      })
+
+      await act(async () => {
+        firstEquipmentDeferred.resolve(VALID_EQUIPMENT)
+      })
+
+      await waitFor(() => {
+        expect(mocks.openCreateSheet).not.toHaveBeenCalled()
+      })
+      expect(mocks.routerReplace).not.toHaveBeenCalled()
+
+      await act(async () => {
+        secondEquipmentDeferred.resolve(nextEquipment)
+      })
+
+      await waitFor(() => {
+        expect(mocks.openCreateSheet).toHaveBeenCalledWith(
+          expect.objectContaining({ id: 99, ma_thiet_bi: 'TB099' })
+        )
+      })
+      expect(mocks.openCreateSheet).not.toHaveBeenCalledWith(
+        expect.objectContaining({ id: 42 })
+      )
+      expect(mocks.routerReplace).toHaveBeenCalledWith('/repair-requests', { scroll: false })
+    })
+
     it('does not delay action=create without equipmentId due to resolution gating', async () => {
       mocks.callRpc.mockResolvedValueOnce([]) // equipment_list
 
