@@ -1,28 +1,26 @@
 ## 1. Shared Create Intent API
 
-- [ ] 1.1 Add a shared repair-request create intent helper that returns the canonical create deep-link with optional `equipmentId`.
-- [ ] 1.2 Add focused tests proving the helper generates the same contract for no-equipment and with-equipment entry cases.
-- [ ] 1.3 If needed for component ergonomics, add a thin shared navigation wrapper that delegates to the canonical helper instead of duplicating route strings.
+- [ ] 1.1 Red: add focused tests proving the shared helper generates the canonical create contract for no-equipment and with-equipment entry cases.
+- [ ] 1.2 Green: implement the shared repair-request create intent helper that returns the canonical deep-link with optional `equipmentId`.
+- [ ] 1.3 Refactor: if needed for component ergonomics, add a thin shared navigation wrapper that delegates to the canonical helper without reintroducing route-string duplication.
 
 ## 2. Source Surface Adoption
 
-- [ ] 2.1 Refactor Equipment desktop repair actions to use the shared create intent API.
-- [ ] 2.2 Refactor Equipment mobile repair actions to use the shared create intent API.
-- [ ] 2.3 Refactor Dashboard repair actions to use the shared create intent API.
-- [ ] 2.4 Refactor QR scanner repair actions to use the shared create intent API.
-- [ ] 2.5 Refactor AssistantPanel repair-draft handoff navigation to use the shared create intent API.
+- [ ] 2.1 Red: add or tighten source-surface tests that expect Equipment desktop/mobile, Dashboard, QR scanner, and AssistantPanel to navigate through the shared create intent API.
+- [ ] 2.2 Green: refactor Equipment desktop/mobile, Dashboard, QR scanner, and AssistantPanel to use the shared create intent API.
+- [ ] 2.3 Refactor: remove remaining hardcoded create-repair route strings from source surfaces and keep call sites grep-friendly around the shared helper/hook.
 
 ## 3. Repair Requests Sink Validation
 
-- [ ] 3.1 Confirm `useRepairRequestsDeepLink` accepts the canonical create contract and still opens the create sheet.
-- [ ] 3.2 Add or tighten tests for `action=create` with and without `equipmentId`.
-- [ ] 3.3 Add or tighten tests that verify equipment prefill reaches the create sheet when the deep-link resolves successfully.
+- [ ] 3.1 Red: add or tighten deep-link tests for `action=create` with no `equipmentId`, with a valid `equipmentId`, and with an invalid `equipmentId`.
+- [ ] 3.2 Green: confirm and adjust `useRepairRequestsDeepLink` so it accepts the canonical create contract and still opens the create sheet while preserving graceful degradation.
+- [ ] 3.3 Refactor: keep deep-link parsing and create-sheet opening logic isolated and readable without changing form submission semantics.
 
-## 4. Regression Coverage
+## 4. Submission And Regression Safety
 
-- [ ] 4.1 Add focused regression tests for at least one desktop source surface and one mobile source surface using the shared create intent.
-- [ ] 4.2 Add focused regression coverage for Dashboard and QR scanner create-repair entry points.
-- [ ] 4.3 Verify no existing create-form submission behavior changes by keeping the create sheet submission path and `createMutation` payload assertions green in focused form tests.
+- [ ] 4.1 Red: keep or add focused create-sheet submission tests that assert the existing `createMutation` payload and submission path remain unchanged after the navigation refactor.
+- [ ] 4.2 Green: make the source/sink navigation refactor pass while keeping the create-form submission assertions green.
+- [ ] 4.3 Refactor: remove redundant fixtures or setup duplication across helper, deep-link, source-surface, and create-sheet submission tests.
 
 ## 5. Verification
 
