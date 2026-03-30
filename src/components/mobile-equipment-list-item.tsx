@@ -1,6 +1,6 @@
 "use client"
 
-import { Wrench, MapPin, Eye, History, AlertTriangle } from "lucide-react"
+import { Wrench, MapPin, Eye, AlertTriangle } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { useSession } from "next-auth/react"
 
@@ -176,8 +176,8 @@ function renderActionButtons(
           className={ghostBtn}
           onClick={() => onShowDetails(equipment)}
         >
-          <History className="h-3.5 w-3.5" />
-          Lịch sử
+          <Eye className="h-3.5 w-3.5" />
+          Xem chi tiết
         </button>
         <MobileUsageActions equipment={equipment} className="flex-1 h-auto py-2 text-[11px]" />
       </>
