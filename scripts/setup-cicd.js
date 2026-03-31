@@ -96,7 +96,7 @@ async function setupCICD() {
     if (localVars.includes(varName)) {
       log(`✅ ${varName} (.env.local)`, colors.green);
     } else {
-      log(`❌ ${varName} (missing from both environments)`, colors.red);
+      log(`❌ ${varName} (missing from .env.local)`, colors.red);
       allGood = false;
     }
   });

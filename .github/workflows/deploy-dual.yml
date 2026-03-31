@@ -16,11 +16,16 @@ jobs:
     steps:
       - name: 📥 Checkout code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
 
-      - name: 📡 Fetch verify base ref
+      - name: 📡 Determine verify base ref
         run: |
-          BASE_REF="${{ github.event.pull_request.base.ref || 'main' }}"
-          git fetch --no-tags --depth=1 origin "${BASE_REF}:refs/remotes/origin/${BASE_REF}"
+          if git rev-parse --verify HEAD^ >/dev/null 2>&1; then
+            echo "EXPLICIT_ANY_BASE=HEAD^" >> "$GITHUB_ENV"
+          else
+            echo "EXPLICIT_ANY_BASE=HEAD" >> "$GITHUB_ENV"
+          fi
 
       - name: 📦 Setup Node.js
         uses: actions/setup-node@v4
@@ -33,8 +38,6 @@ jobs:
 
       - name: 🔎 Verify changed TypeScript files
         run: node scripts/npm-run.js run verify:no-explicit-any
-        env:
-          EXPLICIT_ANY_BASE: origin/${{ github.event.pull_request.base.ref || 'main' }}
 
       - name: 🔍 Type check
         run: npm run typecheck
