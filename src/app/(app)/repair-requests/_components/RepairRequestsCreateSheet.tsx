@@ -23,24 +23,15 @@ import {
 } from "@/components/ui/sheet"
 import { Textarea } from "@/components/ui/textarea"
 import { cn } from "@/lib/utils"
-import { Calendar as CalendarIcon, Check, Loader2 } from "lucide-react"
+import { Calendar as CalendarIcon } from "lucide-react"
 import { useMediaQuery } from "@/hooks/use-media-query"
 import { useRepairRequestsContext } from "../_hooks/useRepairRequestsContext"
 import type { EquipmentSelectItem, RepairUnit } from "../types"
 import { fetchRepairRequestEquipmentList } from "../repair-requests-equipment-rpc"
-
-function formatEquipmentLabel(equipment: Pick<EquipmentSelectItem, "ten_thiet_bi" | "ma_thiet_bi">) {
-  return `${equipment.ten_thiet_bi} (${equipment.ma_thiet_bi})`
-}
-
-function parseDraftDate(value: string) {
-  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
-    const [year, month, day] = value.split("-").map(Number)
-    return new Date(year, month - 1, day)
-  }
-
-  return new Date(value)
-}
+import { RepairRequestsCreateSheetActions } from "./RepairRequestsCreateSheetActions"
+import { RepairRequestsCreateSheetAlerts } from "./RepairRequestsCreateSheetAlerts"
+import { RepairRequestsEquipmentSearchField } from "./RepairRequestsEquipmentSearchField"
+import { formatEquipmentLabel, parseDraftDate } from "./repair-request-create-sheet-utils"
 
 export function RepairRequestsCreateSheet() {
   const {
@@ -240,64 +231,19 @@ export function RepairRequestsCreateSheet() {
           <SheetDescription>Điền thông tin bên dưới để gửi yêu cầu mới.</SheetDescription>
         </SheetHeaderUI>
         <div className={cn("mt-4", isSheetMobile ? "px-4 overflow-y-auto h-[calc(90vh-80px)]" : "")}>
-          {assistantDraft && (
-            <div className="mb-4 rounded-md border border-blue-200 bg-blue-50 p-3 text-sm text-blue-800 dark:border-blue-800 dark:bg-blue-950 dark:text-blue-200">
-              📝 Được điền sẵn từ AI trợ lý. Vui lòng kiểm tra kỹ trước khi gửi.
-            </div>
-          )}
-          {unresolvedDraftEquipment && (
-            <div className="mb-4 rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-200">
-              ⚠️ Thiết bị trong bản nháp không tìm thấy ở cơ sở hiện tại. Vui lòng chọn thiết bị thủ công.
-            </div>
-          )}
+          <RepairRequestsCreateSheetAlerts
+            hasAssistantDraft={Boolean(assistantDraft)}
+            showUnresolvedDraftEquipment={unresolvedDraftEquipment}
+          />
           <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="search-equipment">Thiết bị</Label>
-              <div className="relative">
-                <Input
-                  id="search-equipment"
-                  placeholder="Nhập tên hoặc mã để tìm kiếm..."
-                  value={searchQuery}
-                  onChange={handleSearchChange}
-                  autoComplete="off"
-                  required
-                />
-                {filteredEquipment.length > 0 && (
-                  <div className="absolute z-10 w-full mt-1 bg-popover border rounded-md shadow-lg max-h-60 overflow-y-auto">
-                    <div className="p-1">
-                      {filteredEquipment.map((equipment) => (
-                        <div
-                          key={equipment.id}
-                          className="text-sm mobile-interactive hover:bg-accent rounded-sm cursor-pointer touch-target-sm"
-                          onClick={() => handleSelectEquipment(equipment)}
-                        >
-                          <div className="font-medium">{equipment.ten_thiet_bi}</div>
-                          <div className="text-xs text-muted-foreground">
-                            {equipment.ma_thiet_bi}
-                            {equipment.khoa_phong_quan_ly && (
-                              <span className="ml-2 text-blue-600">• {equipment.khoa_phong_quan_ly}</span>
-                            )}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-                {shouldShowNoResults && (
-                  <div className="absolute z-10 w-full mt-1 bg-popover border rounded-md shadow-lg p-3">
-                    <div className="text-sm text-muted-foreground text-center">
-                      Không tìm thấy kết quả phù hợp
-                    </div>
-                  </div>
-                )}
-              </div>
-              {selectedEquipment && (
-                <p className="text-xs text-muted-foreground flex items-center gap-1.5 pt-1">
-                  <Check className="h-3.5 w-3.5 text-green-600" />
-                  <span>Đã chọn: {selectedEquipment.ten_thiet_bi} ({selectedEquipment.ma_thiet_bi})</span>
-                </p>
-              )}
-            </div>
+            <RepairRequestsEquipmentSearchField
+              searchQuery={searchQuery}
+              selectedEquipment={selectedEquipment}
+              filteredEquipment={filteredEquipment}
+              shouldShowNoResults={shouldShowNoResults}
+              onSearchChange={handleSearchChange}
+              onSelectEquipment={handleSelectEquipment}
+            />
             <div className="space-y-2">
               <Label htmlFor="issue">Mô tả sự cố</Label>
               <Textarea
@@ -376,24 +322,10 @@ export function RepairRequestsCreateSheet() {
               </div>
             )}
 
-            <div className="flex gap-3 pt-2">
-              <Button
-                type="button"
-                variant="outline"
-                className="flex-1 touch-target"
-                onClick={closeAllDialogs}
-              >
-                Hủy
-              </Button>
-              <Button
-                type="submit"
-                className="flex-1 touch-target"
-                disabled={createMutation.isPending}
-              >
-                {createMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                {createMutation.isPending ? "Đang gửi..." : "Gửi yêu cầu"}
-              </Button>
-            </div>
+            <RepairRequestsCreateSheetActions
+              isSubmitting={createMutation.isPending}
+              onCancel={closeAllDialogs}
+            />
           </form>
         </div>
       </SheetContent>

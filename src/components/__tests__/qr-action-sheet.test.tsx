@@ -373,6 +373,26 @@ describe('QRActionSheet', () => {
   })
 
   describe('Close Behavior', () => {
+    it('should expose an accessible close button label in the header', async () => {
+      mockCallRpc.mockResolvedValueOnce(mockEquipment)
+
+      render(
+        <QRActionSheet
+          qrCode="TB-001"
+          onClose={mockOnClose}
+          onAction={mockOnAction}
+        />
+      )
+
+      await waitFor(() => {
+        expect(screen.getByText('Máy siêu âm')).toBeInTheDocument()
+      })
+
+      expect(
+        screen.getByRole('button', { name: 'Đóng bảng hành động QR' })
+      ).toBeInTheDocument()
+    })
+
     it('should call onClose when close button is clicked', async () => {
       mockCallRpc.mockResolvedValueOnce(mockEquipment)
 
@@ -389,16 +409,7 @@ describe('QRActionSheet', () => {
         expect(screen.getByText('Máy siêu âm')).toBeInTheDocument()
       })
 
-      // Find close button (X icon button in header)
-      const closeButtons = screen.getAllByRole('button')
-      const closeButton = closeButtons.find(btn =>
-        btn.querySelector('svg') && btn.getAttribute('variant') !== 'default'
-      )
-
-      // Assert the button exists - test should fail if not found
-      expect(closeButton).toBeDefined()
-
-      fireEvent.click(closeButton!)
+      fireEvent.click(screen.getByRole('button', { name: 'Đóng bảng hành động QR' }))
       expect(mockOnClose).toHaveBeenCalled()
     })
   })

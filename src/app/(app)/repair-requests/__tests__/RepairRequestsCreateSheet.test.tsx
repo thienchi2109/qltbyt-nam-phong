@@ -354,6 +354,41 @@ describe('RepairRequestsCreateSheet assistant draft hydration', () => {
     })
   })
 
+  it('renders equipment suggestions as semantic buttons before selection', async () => {
+    mocks.callRpc.mockImplementation(({ args }: { args: { p_q?: string } }) => {
+      if (args.p_q === 'Máy siêu âm') {
+        return Promise.resolve([
+          {
+            id: 202,
+            ma_thiet_bi: 'TB-202',
+            ten_thiet_bi: 'Máy siêu âm B',
+            khoa_phong_quan_ly: 'CDHA',
+          },
+        ])
+      }
+
+      return Promise.resolve([])
+    })
+
+    render(<RepairRequestsCreateSheet />)
+
+    fireEvent.change(screen.getByLabelText('Thiết bị'), {
+      target: { value: 'Máy siêu âm' },
+    })
+
+    const suggestionButton = await screen.findByRole('button', {
+      name: /Máy siêu âm B/i,
+    })
+
+    suggestionButton.focus()
+    expect(suggestionButton).toHaveFocus()
+    fireEvent.click(suggestionButton)
+
+    await waitFor(() => {
+      expect(screen.getByLabelText('Thiết bị')).toHaveValue('Máy siêu âm B (TB-202)')
+    })
+  })
+
   it('does not depend on searchQuery in the hydration effect dependency list', () => {
     const source = readFileSync(
       resolve(process.cwd(), 'src/app/(app)/repair-requests/_components/RepairRequestsCreateSheet.tsx'),
