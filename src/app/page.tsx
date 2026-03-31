@@ -88,12 +88,13 @@ export default function LoginPage() {
 
             {/* Username */}
             <div className="space-y-2">
-              <label className="flex items-center gap-2 text-sm font-semibold text-muted-foreground">
+              <label htmlFor="login-username" className="flex items-center gap-2 text-sm font-semibold text-muted-foreground">
                 <User className="h-3.5 w-3.5" />
                 {t("login.username") || "Tên đăng nhập"}
               </label>
               <div className="recessed-input bg-muted rounded-xl px-4 py-3 transition-all duration-200">
                 <input
+                  id="login-username"
                   type="text"
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
@@ -107,12 +108,13 @@ export default function LoginPage() {
 
             {/* Password */}
             <div className="space-y-2">
-              <label className="flex items-center gap-2 text-sm font-semibold text-muted-foreground">
+              <label htmlFor="login-password" className="flex items-center gap-2 text-sm font-semibold text-muted-foreground">
                 <Lock className="h-3.5 w-3.5" />
                 {t("login.password") || "Mật khẩu"}
               </label>
               <div className="recessed-input bg-muted rounded-xl px-4 py-3 transition-all duration-200">
                 <input
+                  id="login-password"
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
