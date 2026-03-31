@@ -9,7 +9,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { render, screen, waitFor, fireEvent } from '@testing-library/react'
+import { act, render, screen, waitFor, fireEvent } from '@testing-library/react'
 import * as React from 'react'
 
 // Mock the rpc-client module
@@ -78,12 +78,20 @@ const mockEquipment = {
 describe('QRActionSheet', () => {
   const mockOnClose = vi.fn()
   const mockOnAction = vi.fn()
+  let consoleErrorSpy: ReturnType<typeof vi.spyOn>
 
   beforeEach(() => {
     vi.clearAllMocks()
+    consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
   })
 
   afterEach(() => {
+    const actWarnings = consoleErrorSpy.mock.calls
+      .map(([firstArg]) => String(firstArg))
+      .filter(message => message.includes('not wrapped in act'))
+
+    expect(actWarnings).toHaveLength(0)
+    consoleErrorSpy.mockRestore()
     vi.resetAllMocks()
   })
 
@@ -100,6 +108,10 @@ describe('QRActionSheet', () => {
       )
 
       expect(screen.getByText('TB-001')).toBeInTheDocument()
+
+      await waitFor(() => {
+        expect(screen.getByText('Máy siêu âm')).toBeInTheDocument()
+      })
     })
 
     it('should show loading state while fetching equipment', async () => {
@@ -120,8 +132,14 @@ describe('QRActionSheet', () => {
 
       expect(screen.getByText('Đang tìm kiếm thiết bị...')).toBeInTheDocument()
 
-      // Cleanup
-      resolvePromise!(mockEquipment)
+      await act(async () => {
+        resolvePromise!(mockEquipment)
+        await pendingPromise
+      })
+
+      await waitFor(() => {
+        expect(screen.getByText('Máy siêu âm')).toBeInTheDocument()
+      })
     })
 
     it('should display equipment details after successful fetch', async () => {
@@ -141,6 +159,29 @@ describe('QRActionSheet', () => {
 
       expect(screen.getByText('SU-500 • GE Healthcare')).toBeInTheDocument()
       expect(screen.getByText('Hoạt động')).toBeInTheDocument()
+    })
+
+    it('should display a zero original price instead of falling back to N/A', async () => {
+      mockCallRpc.mockResolvedValueOnce({
+        ...mockEquipment,
+        gia_goc: 0,
+      })
+
+      render(
+        <QRActionSheet
+          qrCode="TB-001"
+          onClose={mockOnClose}
+          onAction={mockOnAction}
+        />
+      )
+
+      await waitFor(() => {
+        expect(screen.getByText('Giá gốc:')).toBeInTheDocument()
+      })
+
+      const originalPriceRow = screen.getByText('Giá gốc:').closest('div')
+      expect(originalPriceRow).toHaveTextContent(/0\s*₫/)
+      expect(originalPriceRow).not.toHaveTextContent('N/A')
     })
 
     it('should display error message when equipment not found', async () => {
@@ -373,6 +414,26 @@ describe('QRActionSheet', () => {
   })
 
   describe('Close Behavior', () => {
+    it('should expose an accessible close button label in the header', async () => {
+      mockCallRpc.mockResolvedValueOnce(mockEquipment)
+
+      render(
+        <QRActionSheet
+          qrCode="TB-001"
+          onClose={mockOnClose}
+          onAction={mockOnAction}
+        />
+      )
+
+      await waitFor(() => {
+        expect(screen.getByText('Máy siêu âm')).toBeInTheDocument()
+      })
+
+      expect(
+        screen.getByRole('button', { name: 'Đóng bảng hành động QR' })
+      ).toBeInTheDocument()
+    })
+
     it('should call onClose when close button is clicked', async () => {
       mockCallRpc.mockResolvedValueOnce(mockEquipment)
 
@@ -389,16 +450,7 @@ describe('QRActionSheet', () => {
         expect(screen.getByText('Máy siêu âm')).toBeInTheDocument()
       })
 
-      // Find close button (X icon button in header)
-      const closeButtons = screen.getAllByRole('button')
-      const closeButton = closeButtons.find(btn =>
-        btn.querySelector('svg') && btn.getAttribute('variant') !== 'default'
-      )
-
-      // Assert the button exists - test should fail if not found
-      expect(closeButton).toBeDefined()
-
-      fireEvent.click(closeButton!)
+      fireEvent.click(screen.getByRole('button', { name: 'Đóng bảng hành động QR' }))
       expect(mockOnClose).toHaveBeenCalled()
     })
   })

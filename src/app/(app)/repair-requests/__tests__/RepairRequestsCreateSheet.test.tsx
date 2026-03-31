@@ -198,6 +198,29 @@ describe('RepairRequestsCreateSheet assistant draft hydration', () => {
     })
   })
 
+  it('ignores invalid draft dates instead of normalizing them to another calendar day', async () => {
+    mocks.callRpc.mockResolvedValue([])
+
+    setAssistantDraft({
+      equipment: {},
+      formData: {
+        mo_ta_su_co: 'Lỗi màn hình',
+        hang_muc_sua_chua: 'Kiểm tra hiển thị',
+        ngay_mong_muon_hoan_thanh: '2026-02-31',
+      },
+      missingFields: [],
+      reviewNotes: [],
+    })
+
+    render(<RepairRequestsCreateSheet />)
+
+    await waitFor(() => {
+      expect(screen.getByText('Chọn ngày')).toBeInTheDocument()
+    })
+
+    expect(screen.queryByText('03/03/2026')).not.toBeInTheDocument()
+  })
+
   it('preserves manual non-equipment field edits after draft lookup resolves as unresolved', async () => {
     let releaseLookup: (() => void) | null = null
 
@@ -351,6 +374,41 @@ describe('RepairRequestsCreateSheet assistant draft hydration', () => {
 
     await waitFor(() => {
       expect(screen.queryByText('⚠️ Thiết bị trong bản nháp không tìm thấy ở cơ sở hiện tại. Vui lòng chọn thiết bị thủ công.')).not.toBeInTheDocument()
+    })
+  })
+
+  it('renders equipment suggestions as semantic buttons before selection', async () => {
+    mocks.callRpc.mockImplementation(({ args }: { args: { p_q?: string } }) => {
+      if (args.p_q === 'Máy siêu âm') {
+        return Promise.resolve([
+          {
+            id: 202,
+            ma_thiet_bi: 'TB-202',
+            ten_thiet_bi: 'Máy siêu âm B',
+            khoa_phong_quan_ly: 'CDHA',
+          },
+        ])
+      }
+
+      return Promise.resolve([])
+    })
+
+    render(<RepairRequestsCreateSheet />)
+
+    fireEvent.change(screen.getByLabelText('Thiết bị'), {
+      target: { value: 'Máy siêu âm' },
+    })
+
+    const suggestionButton = await screen.findByRole('button', {
+      name: /Máy siêu âm B/i,
+    })
+
+    suggestionButton.focus()
+    expect(suggestionButton).toHaveFocus()
+    fireEvent.click(suggestionButton)
+
+    await waitFor(() => {
+      expect(screen.getByLabelText('Thiết bị')).toHaveValue('Máy siêu âm B (TB-202)')
     })
   })
 
