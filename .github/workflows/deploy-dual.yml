@@ -20,6 +20,11 @@ jobs:
       - name: 📥 Checkout code
         uses: actions/checkout@v4
 
+      - name: 📡 Fetch verify base ref
+        run: |
+          BASE_REF="${{ github.event.pull_request.base.ref || 'main' }}"
+          git fetch --no-tags --depth=1 origin "${BASE_REF}:refs/remotes/origin/${BASE_REF}"
+
       - name: 📦 Setup Node.js
         uses: actions/setup-node@v4
         with:
@@ -31,6 +36,8 @@ jobs:
 
       - name: 🔎 Verify changed TypeScript files
         run: node scripts/npm-run.js run verify:no-explicit-any
+        env:
+          EXPLICIT_ANY_BASE: origin/${{ github.event.pull_request.base.ref || 'main' }}
 
       - name: 🔍 Type check
         run: npm run typecheck
