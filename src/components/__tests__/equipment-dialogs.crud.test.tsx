@@ -614,5 +614,41 @@ describe('Equipment Dialogs CRUD', () => {
         expect.objectContaining({ fn: 'equipment_update' })
       )
     })
+
+    it('still requires status selection when the persisted status is missing', async () => {
+      const equipment: Equipment = {
+        id: 3,
+        ma_thiet_bi: 'EQ-003',
+        ten_thiet_bi: 'Ventilator',
+        vi_tri_lap_dat: 'Phòng 202',
+        khoa_phong_quan_ly: 'ICU',
+        nguoi_dang_truc_tiep_quan_ly: 'Phạm Văn D',
+        tinh_trang_hien_tai: null,
+      }
+
+      render(
+        <EditEquipmentDialog
+          open
+          onOpenChange={vi.fn()}
+          onSuccess={vi.fn()}
+          equipment={equipment}
+        />,
+        { wrapper: createWrapper() }
+      )
+
+      await waitFor(() => {
+        expect(screen.getByLabelText('Tên thiết bị')).toHaveValue('Ventilator')
+      })
+
+      fireEvent.click(screen.getByRole('button', { name: 'Lưu thay đổi' }))
+
+      await waitFor(() => {
+        expect(screen.getByText('Tình trạng hiện tại là bắt buộc')).toBeInTheDocument()
+      })
+
+      expect(mockCallRpc).not.toHaveBeenCalledWith(
+        expect.objectContaining({ fn: 'equipment_update' })
+      )
+    })
   })
 })
