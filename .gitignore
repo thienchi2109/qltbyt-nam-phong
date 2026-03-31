@@ -82,7 +82,10 @@ supabase/logs/
 # Local IDE/Agent directories
 .claude/
 .factory/
-.github/
+.github/*
+!.github/copilot-instructions.md
+!.github/workflows/
+!.github/workflows/*.yml
 .cursor/
 .idx/
 qltbyt-nam-phong-firebase-adminsdk-fbsvc-56766361a6.json

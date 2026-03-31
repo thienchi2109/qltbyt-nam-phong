@@ -29,11 +29,11 @@ jobs:
       - name: 📥 Install dependencies
         run: npm ci
 
+      - name: 🔎 Verify changed TypeScript files
+        run: node scripts/npm-run.js run verify:no-explicit-any
+
       - name: 🔍 Type check
         run: npm run typecheck
-
-      - name: 🧹 Lint code
-        run: npm run lint
 
       - name: 🔨 Build for Vercel
         run: npm run build:vercel

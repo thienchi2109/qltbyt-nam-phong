@@ -1,0 +1,40 @@
+name: 🧹 Lint Baseline Tracking
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 2 * * 1-5'
+
+env:
+  NODE_VERSION: '18'
+  BASELINE_ISSUE_URL: 'https://github.com/thienchi2109/qltbyt-nam-phong/issues/140'
+
+jobs:
+  lint-baseline:
+    name: 🧾 Full Repo Lint Baseline
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 📦 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: 📥 Install dependencies
+        run: npm ci
+
+      - name: 📝 Explain baseline tracking
+        run: |
+          echo "## 🧹 Lint Baseline Tracking" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "This workflow runs full-repo \`npm run lint\` to track known baseline debt." >> "$GITHUB_STEP_SUMMARY"
+          echo "PR workflows no longer use full-repo lint as a merge gate while issue #140 remains open." >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "Track cleanup here: $BASELINE_ISSUE_URL" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: 🧹 Run full-repo lint baseline
+        run: npm run lint
