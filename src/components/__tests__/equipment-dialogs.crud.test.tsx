@@ -432,6 +432,108 @@ describe('Equipment Dialogs CRUD', () => {
   })
 
   describe('Update: EditEquipmentDialog', () => {
+    it('resets dirty form values when the same equipment record is reopened', async () => {
+      const equipment: Equipment = {
+        id: 4,
+        ma_thiet_bi: 'EQ-004',
+        ten_thiet_bi: 'Máy điện tim',
+        vi_tri_lap_dat: 'Phòng 301',
+        khoa_phong_quan_ly: 'Khoa Tim mạch',
+        nguoi_dang_truc_tiep_quan_ly: 'Ngô Văn E',
+        tinh_trang_hien_tai: 'Hoạt động',
+      }
+
+      const view = render(
+        <EditEquipmentDialog
+          open
+          onOpenChange={vi.fn()}
+          onSuccess={vi.fn()}
+          equipment={equipment}
+        />,
+        { wrapper: createWrapper() }
+      )
+
+      const nameInput = await screen.findByLabelText('Tên thiết bị')
+      expect(nameInput).toHaveValue('Máy điện tim')
+
+      fireEvent.change(nameInput, {
+        target: { value: 'Thiết bị đã sửa tạm' },
+      })
+      expect(nameInput).toHaveValue('Thiết bị đã sửa tạm')
+
+      view.rerender(
+        <EditEquipmentDialog
+          open={false}
+          onOpenChange={vi.fn()}
+          onSuccess={vi.fn()}
+          equipment={equipment}
+        />
+      )
+      view.rerender(
+        <EditEquipmentDialog
+          open
+          onOpenChange={vi.fn()}
+          onSuccess={vi.fn()}
+          equipment={equipment}
+        />
+      )
+
+      await waitFor(() => {
+        expect(screen.getByLabelText('Tên thiết bị')).toHaveValue('Máy điện tim')
+      })
+    })
+
+    it('clears stale form values when reopened without an equipment record', async () => {
+      const equipment: Equipment = {
+        id: 5,
+        ma_thiet_bi: 'EQ-005',
+        ten_thiet_bi: 'Máy thở',
+        vi_tri_lap_dat: 'Phòng 401',
+        khoa_phong_quan_ly: 'ICU',
+        nguoi_dang_truc_tiep_quan_ly: 'Đỗ Văn F',
+        tinh_trang_hien_tai: 'Hoạt động',
+      }
+
+      const view = render(
+        <EditEquipmentDialog
+          open
+          onOpenChange={vi.fn()}
+          onSuccess={vi.fn()}
+          equipment={equipment}
+        />,
+        { wrapper: createWrapper() }
+      )
+
+      const nameInput = await screen.findByLabelText('Tên thiết bị')
+      expect(nameInput).toHaveValue('Máy thở')
+
+      fireEvent.change(nameInput, {
+        target: { value: 'Giá trị bẩn' },
+      })
+      expect(nameInput).toHaveValue('Giá trị bẩn')
+
+      view.rerender(
+        <EditEquipmentDialog
+          open={false}
+          onOpenChange={vi.fn()}
+          onSuccess={vi.fn()}
+          equipment={null}
+        />
+      )
+      view.rerender(
+        <EditEquipmentDialog
+          open
+          onOpenChange={vi.fn()}
+          onSuccess={vi.fn()}
+          equipment={null}
+        />
+      )
+
+      await waitFor(() => {
+        expect(screen.getByLabelText('Tên thiết bị')).toHaveValue('')
+      })
+    })
+
     it('submits update patch and closes on success', async () => {
       mockCallRpc.mockResolvedValue({})
 

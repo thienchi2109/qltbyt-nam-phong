@@ -62,10 +62,13 @@ export function EditEquipmentDialog({ open, onOpenChange, onSuccess, equipment }
   })
 
   React.useEffect(() => {
-    if (equipment) {
-      form.reset(equipmentToFormValues(equipment))
+    if (!open) {
+      form.reset(equipmentToFormValues(null))
+      return
     }
-  }, [equipment, form])
+
+    form.reset(equipmentToFormValues(equipment))
+  }, [equipment, form, open])
 
   const { updateEquipment, isPending } = useEquipmentEditUpdate({
     successMessage: "Đã cập nhật thông tin thiết bị.",

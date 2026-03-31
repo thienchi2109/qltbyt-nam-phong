@@ -43,7 +43,13 @@ function normalizeEquipmentStatus(
     : null
 }
 
-export function equipmentToFormValues(equipment: Equipment): EquipmentFormValues {
+export function equipmentToFormValues(
+  equipment: Equipment | null | undefined
+): EquipmentFormValues {
+  if (!equipment) {
+    return { ...DEFAULT_EQUIPMENT_FORM_VALUES }
+  }
+
   const classification = equipment.phan_loai_theo_nd98
   const normalizedClassification =
     classification && ["A", "B", "C", "D"].includes(String(classification).toUpperCase())

@@ -56,4 +56,11 @@ describe("EquipmentDetailFormDefaults", () => {
 
     expect(result.tinh_trang_hien_tai).toBeNull()
   })
+
+  it("returns a fresh empty-state payload when no equipment record is provided", () => {
+    const result = equipmentToFormValues(null)
+
+    expect(result).toEqual(DEFAULT_EQUIPMENT_FORM_VALUES)
+    expect(result).not.toBe(DEFAULT_EQUIPMENT_FORM_VALUES)
+  })
 })
