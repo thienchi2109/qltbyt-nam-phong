@@ -27,7 +27,6 @@ export function LoginIllustrationPanel() {
                         width={512}
                         height={512}
                         className="w-full h-full object-contain opacity-90 transition-transform duration-500 group-hover:scale-105"
-                        priority
                     />
 
                     {/* Floating IoT Status Badge */}
