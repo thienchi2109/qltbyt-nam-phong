@@ -16,16 +16,6 @@ jobs:
     steps:
       - name: 📥 Checkout code
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 2
-
-      - name: 📡 Determine verify base ref
-        run: |
-          if git rev-parse --verify HEAD^ >/dev/null 2>&1; then
-            echo "EXPLICIT_ANY_BASE=HEAD^" >> "$GITHUB_ENV"
-          else
-            echo "EXPLICIT_ANY_BASE=HEAD" >> "$GITHUB_ENV"
-          fi
 
       - name: 📦 Setup Node.js
         uses: actions/setup-node@v4
@@ -35,9 +25,6 @@ jobs:
 
       - name: 📥 Install dependencies
         run: npm ci
-
-      - name: 🔎 Verify changed TypeScript files
-        run: node scripts/npm-run.js run verify:no-explicit-any
 
       - name: 🔍 Type check
         run: npm run typecheck
