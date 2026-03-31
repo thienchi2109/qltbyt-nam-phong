@@ -57,7 +57,7 @@ export function QRActionSheetEquipmentDetails({
         <div className="flex justify-between">
           <span className="text-muted-foreground">Giá gốc:</span>
           <span className="font-semibold">
-            {equipment.gia_goc ? formatCurrency(equipment.gia_goc) : "N/A"}
+            {equipment.gia_goc != null ? formatCurrency(equipment.gia_goc) : "N/A"}
           </span>
         </div>
       </div>

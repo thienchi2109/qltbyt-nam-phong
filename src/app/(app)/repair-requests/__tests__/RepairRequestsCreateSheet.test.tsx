@@ -198,6 +198,29 @@ describe('RepairRequestsCreateSheet assistant draft hydration', () => {
     })
   })
 
+  it('ignores invalid draft dates instead of normalizing them to another calendar day', async () => {
+    mocks.callRpc.mockResolvedValue([])
+
+    setAssistantDraft({
+      equipment: {},
+      formData: {
+        mo_ta_su_co: 'Lỗi màn hình',
+        hang_muc_sua_chua: 'Kiểm tra hiển thị',
+        ngay_mong_muon_hoan_thanh: '2026-02-31',
+      },
+      missingFields: [],
+      reviewNotes: [],
+    })
+
+    render(<RepairRequestsCreateSheet />)
+
+    await waitFor(() => {
+      expect(screen.getByText('Chọn ngày')).toBeInTheDocument()
+    })
+
+    expect(screen.queryByText('03/03/2026')).not.toBeInTheDocument()
+  })
+
   it('preserves manual non-equipment field edits after draft lookup resolves as unresolved', async () => {
     let releaseLookup: (() => void) | null = null
 

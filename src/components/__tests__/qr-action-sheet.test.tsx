@@ -161,6 +161,29 @@ describe('QRActionSheet', () => {
       expect(screen.getByText('Hoạt động')).toBeInTheDocument()
     })
 
+    it('should display a zero original price instead of falling back to N/A', async () => {
+      mockCallRpc.mockResolvedValueOnce({
+        ...mockEquipment,
+        gia_goc: 0,
+      })
+
+      render(
+        <QRActionSheet
+          qrCode="TB-001"
+          onClose={mockOnClose}
+          onAction={mockOnAction}
+        />
+      )
+
+      await waitFor(() => {
+        expect(screen.getByText('Giá gốc:')).toBeInTheDocument()
+      })
+
+      const originalPriceRow = screen.getByText('Giá gốc:').closest('div')
+      expect(originalPriceRow).toHaveTextContent(/0\s*₫/)
+      expect(originalPriceRow).not.toHaveTextContent('N/A')
+    })
+
     it('should display error message when equipment not found', async () => {
       mockCallRpc.mockResolvedValueOnce(null)
 
