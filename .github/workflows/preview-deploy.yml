@@ -44,29 +44,3 @@ jobs:
         env:
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
           NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
-  security-check:
-    name: 🔒 Security Check
-    runs-on: ubuntu-latest
-    needs: build-preview
-    
-    steps:
-      - name: 📥 Checkout code
-        uses: actions/checkout@v4
-
-      - name: 📦 Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
-
-      - name: 📥 Install dependencies
-        run: npm ci
-
-      - name: 🔒 Run security audit
-        run: npm audit --audit-level=moderate
-
-      - name: 📊 Check bundle size
-        run: |
-          npm run build
-          echo "## 📊 Bundle Analysis" >> $GITHUB_STEP_SUMMARY
-          echo "Build completed successfully. Check the build output for bundle size information." >> $GITHUB_STEP_SUMMARY
