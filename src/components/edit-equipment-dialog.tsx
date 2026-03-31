@@ -3,7 +3,6 @@
 import * as React from "react"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
-import { z } from "zod"
 import { Loader2 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
@@ -27,77 +26,28 @@ import { RequiredFormLabel } from "@/components/ui/required-form-label"
 import { Input } from "@/components/ui/input"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Textarea } from "@/components/ui/textarea"
-import { useToast } from "@/hooks/use-toast"
-import { getUnknownErrorMessage } from "@/lib/error-utils"
 import { type Equipment } from "@/types/database"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { useMutation, useQueryClient } from "@tanstack/react-query"
-import { normalizeDateForForm, normalizePartialDateForForm, formatFullDateToDisplay, formatPartialDateToDisplay, isValidPartialDate, PARTIAL_DATE_ERROR_MESSAGE } from "@/lib/date-utils"
-import {
-  FULL_DATE_ERROR_MESSAGE,
-  isValidFullDate,
-  normalizeFullDateForForm,
-  useDecommissionDateAutofill,
-  validateDecommissionDateRules,
-} from "@/components/equipment-decommission-form"
+import { useQueryClient } from "@tanstack/react-query"
+import { useDecommissionDateAutofill } from "@/components/equipment-decommission-form"
 import { equipmentStatusOptions } from "@/components/equipment/equipment-table-columns"
-import { updateEquipmentRecord } from "./edit-equipment-dialog.rpc"
-
-const equipmentStatusEnum = z.enum(equipmentStatusOptions, { required_error: "Tình trạng hiện tại là bắt buộc" })
-
-type EquipmentStatusValue = z.infer<typeof equipmentStatusEnum>
-
-function isEquipmentStatusValue(value: string | null | undefined): value is EquipmentStatusValue {
-  return typeof value === "string" && equipmentStatusOptions.some((option) => option === value)
-}
-
-function normalizeEquipmentStatus(value: Equipment["tinh_trang_hien_tai"]): EquipmentStatusValue | "" {
-  return isEquipmentStatusValue(value) ? value : ""
-}
-
-const equipmentFormSchema = z.object({
-  ma_thiet_bi: z.string().min(1, "Mã thiết bị là bắt buộc"),
-  ten_thiet_bi: z.string().min(1, "Tên thiết bị là bắt buộc"),
-  model: z.string().optional().nullable(),
-  serial: z.string().optional().nullable(),
-  so_luu_hanh: z.string().optional().nullable(),
-  hang_san_xuat: z.string().optional().nullable(),
-  noi_san_xuat: z.string().optional().nullable(),
-  nam_san_xuat: z.coerce.number().optional().nullable(),
-  ngay_nhap: z.string().optional().nullable().refine(isValidPartialDate, PARTIAL_DATE_ERROR_MESSAGE).transform(normalizePartialDateForForm),
-  ngay_dua_vao_su_dung: z.string().optional().nullable().refine(isValidPartialDate, PARTIAL_DATE_ERROR_MESSAGE).transform(normalizePartialDateForForm),
-  ngay_ngung_su_dung: z.string().optional().nullable().refine(isValidFullDate, FULL_DATE_ERROR_MESSAGE).transform(normalizeFullDateForForm),
-  nguon_kinh_phi: z.string().optional().nullable(),
-  gia_goc: z.coerce.number().optional().nullable(),
-  han_bao_hanh: z.string().optional().nullable().refine(isValidPartialDate, PARTIAL_DATE_ERROR_MESSAGE).transform(normalizePartialDateForForm),
-  vi_tri_lap_dat: z.string().min(1, "Vị trí lắp đặt là bắt buộc").nullable().transform(val => val || ""),
-  khoa_phong_quan_ly: z.string().min(1, "Khoa/Phòng quản lý là bắt buộc").nullable().transform(val => val || ""),
-  nguoi_dang_truc_tiep_quan_ly: z.string().min(1, "Người trực tiếp quản lý (sử dụng) là bắt buộc").nullable().transform(val => val || ""),
-  tinh_trang_hien_tai: equipmentStatusEnum.nullable().transform((value): EquipmentStatusValue | "" => value ?? ""),
-  cau_hinh_thiet_bi: z.string().optional().nullable(),
-  phu_kien_kem_theo: z.string().optional().nullable(),
-  ghi_chu: z.string().optional().nullable(),
-  // Maintenance cycles and next dates
-  chu_ky_bt_dinh_ky: z.coerce.number().optional().nullable(),
-  ngay_bt_tiep_theo: z.string().optional().nullable().transform(normalizeDateForForm),
-  chu_ky_hc_dinh_ky: z.coerce.number().optional().nullable(),
-  ngay_hc_tiep_theo: z.string().optional().nullable().transform(normalizeDateForForm),
-  chu_ky_kd_dinh_ky: z.coerce.number().optional().nullable(),
-  ngay_kd_tiep_theo: z.string().optional().nullable().transform(normalizeDateForForm),
-  phan_loai_theo_nd98: z.enum(['A', 'B', 'C', 'D']).optional().nullable(),
-}).superRefine(validateDecommissionDateRules);
-
-type EquipmentFormValues = z.infer<typeof equipmentFormSchema>
+import {
+  equipmentToFormValues,
+} from "@/components/equipment-edit/EquipmentEditFormDefaults"
+import {
+  equipmentFormSchema,
+  type EquipmentFormValues,
+} from "@/components/equipment-edit/EquipmentEditTypes"
+import { useEquipmentEditUpdate } from "@/components/equipment-edit/useEquipmentEditUpdate"
 
 interface EditEquipmentDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   onSuccess: () => void
-  equipment: Equipment | null;
+  equipment: Equipment | null
 }
 
 export function EditEquipmentDialog({ open, onOpenChange, onSuccess, equipment }: EditEquipmentDialogProps) {
-  const { toast } = useToast()
   const queryClient = useQueryClient()
 
   const form = useForm<EquipmentFormValues>({
@@ -113,56 +63,23 @@ export function EditEquipmentDialog({ open, onOpenChange, onSuccess, equipment }
 
   React.useEffect(() => {
     if (equipment) {
-      form.reset({
-        ...equipment,
-        vi_tri_lap_dat: equipment.vi_tri_lap_dat ?? "",
-        khoa_phong_quan_ly: equipment.khoa_phong_quan_ly ?? "",
-        nguoi_dang_truc_tiep_quan_ly: equipment.nguoi_dang_truc_tiep_quan_ly ?? "",
-        tinh_trang_hien_tai: normalizeEquipmentStatus(equipment.tinh_trang_hien_tai),
-        phan_loai_theo_nd98: (
-          equipment.phan_loai_theo_nd98 && ['A','B','C','D'].includes(String(equipment.phan_loai_theo_nd98).toUpperCase())
-            ? (String(equipment.phan_loai_theo_nd98).toUpperCase() as 'A'|'B'|'C'|'D')
-            : null
-        ),
-        // Partial date fields: convert ISO to Vietnamese format for display
-        ngay_nhap: formatPartialDateToDisplay(equipment.ngay_nhap) || undefined,
-        ngay_dua_vao_su_dung: formatPartialDateToDisplay(equipment.ngay_dua_vao_su_dung) || undefined,
-        ngay_ngung_su_dung: formatFullDateToDisplay((equipment as Equipment & { ngay_ngung_su_dung?: string | null }).ngay_ngung_su_dung) || undefined,
-        han_bao_hanh: formatPartialDateToDisplay(equipment.han_bao_hanh) || undefined,
-        nam_san_xuat: equipment.nam_san_xuat ?? undefined,
-        gia_goc: equipment.gia_goc ?? undefined,
-        chu_ky_bt_dinh_ky: equipment.chu_ky_bt_dinh_ky ?? undefined,
-        chu_ky_hc_dinh_ky: equipment.chu_ky_hc_dinh_ky ?? undefined,
-        chu_ky_kd_dinh_ky: equipment.chu_ky_kd_dinh_ky ?? undefined,
-      });
+      form.reset(equipmentToFormValues(equipment))
     }
-  }, [equipment, form]);
+  }, [equipment, form])
 
-  const updateMutation = useMutation({
-    mutationFn: async (vars: { id: number; patch: EquipmentFormValues }) => {
-      await updateEquipmentRecord(vars.id, vars.patch)
-    },
+  const { updateEquipment, isPending } = useEquipmentEditUpdate({
+    successMessage: "Đã cập nhật thông tin thiết bị.",
     onSuccess: () => {
-      toast({ title: 'Thành công', description: 'Đã cập nhật thông tin thiết bị.' })
-      // Invalidate the equipment list so the page refreshes with fresh data
-      queryClient.invalidateQueries({ queryKey: ['equipment_list'] })
+      queryClient.invalidateQueries({ queryKey: ["equipment_list"] })
       onSuccess()
       onOpenChange(false)
-    },
-    onError: (error: unknown) => {
-      const message = getUnknownErrorMessage(error)
-      toast({
-        variant: 'destructive',
-        title: 'Lỗi',
-        description: message ? `Không thể cập nhật thiết bị. ${message}` : 'Không thể cập nhật thiết bị.',
-      })
     },
   })
 
   async function onSubmit(values: EquipmentFormValues) {
-    if (!equipment) return;
+    if (!equipment) return
     try {
-      await updateMutation.mutateAsync({ id: equipment.id, patch: values })
+      await updateEquipment({ id: equipment.id, patch: values })
     } catch {
       // The mutation toast is handled in onError; avoid leaking a rejected promise from the submit handler.
     }
@@ -328,11 +245,11 @@ export function EditEquipmentDialog({ open, onOpenChange, onSuccess, equipment }
               </div>
             </ScrollArea>
             <DialogFooter className="pt-6">
-              <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={updateMutation.isPending}>
+              <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={isPending}>
                 Hủy
               </Button>
-              <Button type="submit" disabled={updateMutation.isPending}>
-                {updateMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              <Button type="submit" disabled={isPending}>
+                {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 Lưu thay đổi
               </Button>
             </DialogFooter>

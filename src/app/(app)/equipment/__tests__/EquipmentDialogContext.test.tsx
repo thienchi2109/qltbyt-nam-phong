@@ -2,6 +2,7 @@ import { renderHook, act } from '@testing-library/react'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import * as React from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import type { Equipment, UsageLog } from '../types'
 
 // Mock next-auth
 vi.mock('next-auth/react', () => ({
@@ -77,7 +78,7 @@ describe('EquipmentDialogContext', () => {
         wrapper: createWrapper(),
       })
 
-      expect(result.current.dialogState.editingEquipment).toBeNull()
+      expect('editingEquipment' in result.current.dialogState).toBe(false)
       expect(result.current.dialogState.detailEquipment).toBeNull()
       expect(result.current.dialogState.startUsageEquipment).toBeNull()
       expect(result.current.dialogState.endUsageLog).toBeNull()
@@ -171,36 +172,14 @@ describe('EquipmentDialogContext', () => {
     })
   })
 
-  describe('Edit Dialog', () => {
-    const mockEquipment = {
-      id: 1,
-      ten_thiet_bi: 'Test Equipment',
-      don_vi: 5,
-    } as any
-
-    it('should open edit dialog with equipment', () => {
+  describe('Legacy Edit Dialog Removal', () => {
+    it('does not expose openEditDialog or closeEditDialog on the /equipment page context', () => {
       const { result } = renderHook(() => useEquipmentContext(), {
         wrapper: createWrapper(),
       })
 
-      act(() => {
-        result.current.openEditDialog(mockEquipment)
-      })
-
-      expect(result.current.dialogState.editingEquipment).toEqual(mockEquipment)
-    })
-
-    it('should close edit dialog and clear equipment', () => {
-      const { result } = renderHook(() => useEquipmentContext(), {
-        wrapper: createWrapper(),
-      })
-
-      act(() => {
-        result.current.openEditDialog(mockEquipment)
-        result.current.closeEditDialog()
-      })
-
-      expect(result.current.dialogState.editingEquipment).toBeNull()
+      expect('openEditDialog' in result.current).toBe(false)
+      expect('closeEditDialog' in result.current).toBe(false)
     })
   })
 
@@ -209,7 +188,7 @@ describe('EquipmentDialogContext', () => {
       id: 2,
       ten_thiet_bi: 'Detail Equipment',
       don_vi: 5,
-    } as any
+    } as Equipment
 
     it('should open detail dialog with equipment', () => {
       const { result } = renderHook(() => useEquipmentContext(), {
@@ -240,8 +219,12 @@ describe('EquipmentDialogContext', () => {
   })
 
   describe('Usage Dialogs', () => {
-    const mockEquipment = { id: 3, ten_thiet_bi: 'Usage Equipment' } as any
-    const mockUsageLog = { id: 10, equipment_id: 3, start_time: new Date().toISOString() } as any
+    const mockEquipment = { id: 3, ten_thiet_bi: 'Usage Equipment' } as Equipment
+    const mockUsageLog = {
+      id: 10,
+      equipment_id: 3,
+      start_time: new Date().toISOString(),
+    } as UsageLog
 
     it('should open start usage dialog with equipment', () => {
       const { result } = renderHook(() => useEquipmentContext(), {
@@ -303,7 +286,7 @@ describe('EquipmentDialogContext', () => {
       id: 4,
       ten_thiet_bi: 'Delete Equipment',
       don_vi: 5,
-    } as any
+    } as Equipment
 
     it('should open delete dialog with equipment and source', () => {
       const { result } = renderHook(() => useEquipmentContext(), {
@@ -339,7 +322,7 @@ describe('EquipmentDialogContext', () => {
   })
 
   describe('Close All Dialogs', () => {
-    const mockEquipment = { id: 1, ten_thiet_bi: 'Test' } as any
+    const mockEquipment = { id: 1, ten_thiet_bi: 'Test' } as Equipment
 
     it('should close all dialogs and clear all equipment', () => {
       const { result } = renderHook(() => useEquipmentContext(), {
@@ -349,14 +332,12 @@ describe('EquipmentDialogContext', () => {
       // Open multiple dialogs
       act(() => {
         result.current.openAddDialog()
-        result.current.openEditDialog(mockEquipment)
         result.current.openColumnsDialog()
         result.current.openDeleteDialog(mockEquipment, 'actions_menu')
       })
 
       expect(result.current.dialogState.isAddOpen).toBe(true)
       expect(result.current.dialogState.isColumnsOpen).toBe(true)
-      expect(result.current.dialogState.editingEquipment).toEqual(mockEquipment)
       expect(result.current.dialogState.isDeleteOpen).toBe(true)
       expect(result.current.dialogState.deleteTarget).toEqual(mockEquipment)
       expect(result.current.dialogState.deleteSource).toBe('actions_menu')
@@ -372,7 +353,6 @@ describe('EquipmentDialogContext', () => {
       expect(result.current.dialogState.isDetailOpen).toBe(false)
       expect(result.current.dialogState.isStartUsageOpen).toBe(false)
       expect(result.current.dialogState.isEndUsageOpen).toBe(false)
-      expect(result.current.dialogState.editingEquipment).toBeNull()
       expect(result.current.dialogState.detailEquipment).toBeNull()
       expect(result.current.dialogState.isDeleteOpen).toBe(false)
       expect(result.current.dialogState.deleteTarget).toBeNull()

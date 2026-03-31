@@ -36,7 +36,6 @@ export interface DialogState {
   isStartUsageOpen: boolean
   isEndUsageOpen: boolean
   isDeleteOpen: boolean
-  editingEquipment: Equipment | null
   detailEquipment: Equipment | null
   startUsageEquipment: Equipment | null
   endUsageLog: UsageLog | null
@@ -57,7 +56,6 @@ export interface EquipmentDialogContextValue {
   openAddDialog: () => void
   openImportDialog: () => void
   openColumnsDialog: () => void
-  openEditDialog: (equipment: Equipment) => void
   openDetailDialog: (equipment: Equipment) => void
   openStartUsageDialog: (equipment: Equipment) => void
   openEndUsageDialog: (usageLog: UsageLog) => void
@@ -65,7 +63,6 @@ export interface EquipmentDialogContextValue {
   closeAddDialog: () => void
   closeImportDialog: () => void
   closeColumnsDialog: () => void
-  closeEditDialog: () => void
   closeDetailDialog: () => void
   closeStartUsageDialog: () => void
   closeEndUsageDialog: () => void
@@ -112,7 +109,6 @@ export function EquipmentDialogProvider({
     isStartUsageOpen: false,
     isEndUsageOpen: false,
     isDeleteOpen: false,
-    editingEquipment: null,
     detailEquipment: null,
     startUsageEquipment: null,
     endUsageLog: null,
@@ -151,10 +147,6 @@ export function EquipmentDialogProvider({
 
   const openColumnsDialog = React.useCallback(() => {
     setDialogState((prev) => ({ ...prev, isColumnsOpen: true }))
-  }, [])
-
-  const openEditDialog = React.useCallback((equipment: Equipment) => {
-    setDialogState((prev) => ({ ...prev, editingEquipment: equipment }))
   }, [])
 
   const openDetailDialog = React.useCallback((equipment: Equipment) => {
@@ -203,10 +195,6 @@ export function EquipmentDialogProvider({
     setDialogState((prev) => ({ ...prev, isColumnsOpen: false }))
   }, [])
 
-  const closeEditDialog = React.useCallback(() => {
-    setDialogState((prev) => ({ ...prev, editingEquipment: null }))
-  }, [])
-
   const closeDetailDialog = React.useCallback(() => {
     setDialogState((prev) => ({
       ...prev,
@@ -247,7 +235,6 @@ export function EquipmentDialogProvider({
       isStartUsageOpen: false,
       isEndUsageOpen: false,
       isDeleteOpen: false,
-      editingEquipment: null,
       detailEquipment: null,
       startUsageEquipment: null,
       endUsageLog: null,
@@ -265,7 +252,6 @@ export function EquipmentDialogProvider({
       openAddDialog,
       openImportDialog,
       openColumnsDialog,
-      openEditDialog,
       openDetailDialog,
       openStartUsageDialog,
       openEndUsageDialog,
@@ -273,7 +259,6 @@ export function EquipmentDialogProvider({
       closeAddDialog,
       closeImportDialog,
       closeColumnsDialog,
-      closeEditDialog,
       closeDetailDialog,
       closeStartUsageDialog,
       closeEndUsageDialog,
@@ -289,7 +274,6 @@ export function EquipmentDialogProvider({
       openAddDialog,
       openImportDialog,
       openColumnsDialog,
-      openEditDialog,
       openDetailDialog,
       openStartUsageDialog,
       openEndUsageDialog,
@@ -297,7 +281,6 @@ export function EquipmentDialogProvider({
       closeAddDialog,
       closeImportDialog,
       closeColumnsDialog,
-      closeEditDialog,
       closeDetailDialog,
       closeStartUsageDialog,
       closeEndUsageDialog,
