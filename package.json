@@ -6,6 +6,8 @@
     "dev": "node --max-old-space-size=4096 ./node_modules/next/dist/bin/next dev --turbopack",
     "dev-https": "node --max-old-space-size=4096 ./node_modules/next/dist/bin/next dev --turbopack -p 9002 --experimental-https",
     "build": "next build",
+    "vercel:pull": "vercel pull --yes --environment=preview",
+    "vercel:build": "vercel build --yes",
     "start": "next start",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",

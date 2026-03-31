@@ -1,9 +1,7 @@
-name: 🚀 Vercel Deployment
+name: 🚦 Main Branch CI
 
 on:
   push:
-    branches: [ main ]
-  pull_request:
     branches: [ main ]
   workflow_dispatch:
 
@@ -11,9 +9,8 @@ env:
   NODE_VERSION: '18'
 
 jobs:
-  # Build and test job
   build-and-test:
-    name: 🔨 Build & Test
+    name: 🔨 Main Branch Build & Test
     runs-on: ubuntu-latest
     
     steps:
@@ -47,52 +44,3 @@ jobs:
         env:
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
           NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
-
-  # Deploy to Vercel
-  deploy-vercel:
-    name: 🌐 Deploy to Vercel
-    runs-on: ubuntu-latest
-    needs: build-and-test
-    if: github.ref == 'refs/heads/main'
-    
-    steps:
-      - name: 📥 Checkout code
-        uses: actions/checkout@v4
-
-      - name: 🚀 Deploy to Vercel
-        uses: amondnet/vercel-action@v25
-        with:
-          vercel-token: ${{ secrets.VERCEL_TOKEN }}
-          vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
-          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
-          vercel-args: '--prod'
-
-  # Deployment status notification
-  notify-vercel:
-    name: 📢 Notify Deployment Status
-    runs-on: ubuntu-latest
-    needs: [deploy-vercel]
-    if: always() && github.ref == 'refs/heads/main'
-    
-    steps:
-      - name: 📊 Check deployment results
-        run: |
-          echo "Vercel deployment: ${{ needs.deploy-vercel.result }}"
-          
-          if [[ "${{ needs.deploy-vercel.result }}" == "success" ]]; then
-            echo "✅ Vercel deployment successful!"
-            echo "DEPLOYMENT_STATUS=success" >> $GITHUB_ENV
-          else
-            echo "❌ Vercel deployment failed"
-            echo "DEPLOYMENT_STATUS=failed" >> $GITHUB_ENV
-          fi
-
-      - name: 📝 Create deployment summary
-        run: |
-          echo "## 🚀 Deployment Summary" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "| Platform | Status | Result |" >> $GITHUB_STEP_SUMMARY
-          echo "|----------|--------|--------|" >> $GITHUB_STEP_SUMMARY
-          echo "| Vercel | ${{ needs.deploy-vercel.result }} | ${{ needs.deploy-vercel.result == 'success' && '✅ Success' || '❌ Failed' }} |" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Overall Status:** ${{ env.DEPLOYMENT_STATUS }}" >> $GITHUB_STEP_SUMMARY

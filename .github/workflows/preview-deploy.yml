@@ -1,4 +1,4 @@
-name: 🔍 Preview Deployment
+name: 🔍 Preview Checks
 
 on:
   pull_request:
@@ -9,9 +9,8 @@ env:
   NODE_VERSION: '18'
 
 jobs:
-  # Build and test for preview
   build-preview:
-    name: 🔨 Build Preview
+    name: 🔨 Preview Build & Test
     runs-on: ubuntu-latest
     
     steps:
@@ -45,69 +44,6 @@ jobs:
         env:
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
           NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
-
-  # Deploy preview to Vercel
-  deploy-vercel-preview:
-    name: 🌐 Deploy Vercel Preview
-    runs-on: ubuntu-latest
-    needs: build-preview
-    
-    steps:
-      - name: 📥 Checkout code
-        uses: actions/checkout@v4
-
-      - name: 🚀 Deploy preview to Vercel
-        uses: amondnet/vercel-action@v25
-        id: vercel-preview
-        with:
-          vercel-token: ${{ secrets.VERCEL_TOKEN }}
-          vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
-          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
-          github-comment: true
-
-      - name: 📝 Comment preview URL
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const { data: comments } = await github.rest.issues.listComments({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: context.issue.number,
-            });
-
-            const botComment = comments.find(comment => 
-              comment.user.type === 'Bot' && 
-              comment.body.includes('🔍 Preview Deployment')
-            );
-
-            const commentBody = `## 🔍 Preview Deployment
-
-            ✅ **Preview deployment successful!**
-
-            | Platform | Status | URL |
-            |----------|--------|-----|
-            | Vercel Preview | ✅ Success | ${{ steps.vercel-preview.outputs.preview-url }} |
-
-            ---
-            *This comment will be updated with each new commit.*`;
-
-            if (botComment) {
-              await github.rest.issues.updateComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                comment_id: botComment.id,
-                body: commentBody
-              });
-            } else {
-              await github.rest.issues.createComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                issue_number: context.issue.number,
-                body: commentBody
-              });
-            }
-
-  # Security check for preview
   security-check:
     name: 🔒 Security Check
     runs-on: ubuntu-latest
