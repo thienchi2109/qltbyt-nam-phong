@@ -9,7 +9,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { render, screen, waitFor, fireEvent } from '@testing-library/react'
+import { act, render, screen, waitFor, fireEvent } from '@testing-library/react'
 import * as React from 'react'
 
 // Mock the rpc-client module
@@ -78,12 +78,20 @@ const mockEquipment = {
 describe('QRActionSheet', () => {
   const mockOnClose = vi.fn()
   const mockOnAction = vi.fn()
+  let consoleErrorSpy: ReturnType<typeof vi.spyOn>
 
   beforeEach(() => {
     vi.clearAllMocks()
+    consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
   })
 
   afterEach(() => {
+    const actWarnings = consoleErrorSpy.mock.calls
+      .map(([firstArg]) => String(firstArg))
+      .filter(message => message.includes('not wrapped in act'))
+
+    expect(actWarnings).toHaveLength(0)
+    consoleErrorSpy.mockRestore()
     vi.resetAllMocks()
   })
 
@@ -100,6 +108,10 @@ describe('QRActionSheet', () => {
       )
 
       expect(screen.getByText('TB-001')).toBeInTheDocument()
+
+      await waitFor(() => {
+        expect(screen.getByText('Máy siêu âm')).toBeInTheDocument()
+      })
     })
 
     it('should show loading state while fetching equipment', async () => {
@@ -120,8 +132,14 @@ describe('QRActionSheet', () => {
 
       expect(screen.getByText('Đang tìm kiếm thiết bị...')).toBeInTheDocument()
 
-      // Cleanup
-      resolvePromise!(mockEquipment)
+      await act(async () => {
+        resolvePromise!(mockEquipment)
+        await pendingPromise
+      })
+
+      await waitFor(() => {
+        expect(screen.getByText('Máy siêu âm')).toBeInTheDocument()
+      })
     })
 
     it('should display equipment details after successful fetch', async () => {

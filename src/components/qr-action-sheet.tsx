@@ -17,7 +17,7 @@ import type { QRActionKey, QRErrorType } from "./qr-action-sheet-config"
 interface QRActionSheetProps {
   qrCode: string // Mã thiết bị từ QR code
   onClose: () => void
-  onAction: (action: string, equipment?: Equipment) => void
+  onAction: (action: QRActionKey, equipment?: Equipment) => void
 }
 
 export function QRActionSheet({ qrCode, onClose, onAction }: QRActionSheetProps) {
@@ -93,7 +93,7 @@ export function QRActionSheet({ qrCode, onClose, onAction }: QRActionSheetProps)
   }, [equipment, onAction, toast])
 
   return (
-      <Sheet open={true} onOpenChange={onClose}>
+    <Sheet open={true} onOpenChange={onClose}>
       <SheetContent side="bottom" className="h-[90vh] overflow-y-auto">
         <SheetHeader className="space-y-4">
           <div className="flex items-center justify-between">
