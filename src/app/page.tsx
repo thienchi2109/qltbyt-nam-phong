@@ -19,15 +19,6 @@ export default function LoginPage() {
     setMounted(true)
   }, [])
 
-  // Safe Base64 encode for Unicode characters
-  const safeBase64Encode = (str: string): string => {
-    try {
-      return btoa(unescape(encodeURIComponent(str)))
-    } catch (_error) {
-      return btoa(str)
-    }
-  }
-
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
     setError("")
