@@ -88,8 +88,6 @@ jobs:
             |----------|--------|-----|
             | Vercel Preview | ✅ Success | ${{ steps.vercel-preview.outputs.preview-url }} |
 
-            **Note:** Cloudflare Workers preview is not automatically deployed for pull requests to conserve resources. You can manually test Cloudflare Workers deployment by running \`npm run cf:preview\` locally.
-
             ---
             *This comment will be updated with each new commit.*`;
 

@@ -1,4 +1,4 @@
-name: 🚀 Dual Platform Deployment
+name: 🚀 Vercel Deployment
 
 on:
   push:
@@ -43,7 +43,7 @@ jobs:
         run: npm run typecheck
 
       - name: 🔨 Build for Vercel
-        run: npm run build:vercel
+        run: npm run build
         env:
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
           NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
@@ -67,63 +67,23 @@ jobs:
           vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
           vercel-args: '--prod'
 
-  # Deploy to Cloudflare Workers
-  deploy-cloudflare:
-    name: ⚡ Deploy to Cloudflare Workers
-    runs-on: ubuntu-latest
-    needs: build-and-test
-    if: github.ref == 'refs/heads/main'
-    
-    steps:
-      - name: 📥 Checkout code
-        uses: actions/checkout@v4
-
-      - name: 📦 Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
-
-      - name: 📥 Install dependencies
-        run: npm ci
-
-      - name: 🔨 Build for Cloudflare Workers
-        run: npm run build:cloudflare
-        env:
-          CLOUDFLARE_WORKERS: true
-          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
-          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
-
-      - name: 🚀 Deploy to Cloudflare Pages
-        uses: cloudflare/pages-action@v1
-        with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          projectName: quan-ly-tbyt-supabase
-          directory: .vercel/output/static
-          gitHubToken: ${{ secrets.GITHUB_TOKEN }}
-
   # Deployment status notification
-  notify-deployment:
+  notify-vercel:
     name: 📢 Notify Deployment Status
     runs-on: ubuntu-latest
-    needs: [deploy-vercel, deploy-cloudflare]
+    needs: [deploy-vercel]
     if: always() && github.ref == 'refs/heads/main'
     
     steps:
       - name: 📊 Check deployment results
         run: |
           echo "Vercel deployment: ${{ needs.deploy-vercel.result }}"
-          echo "Cloudflare deployment: ${{ needs.deploy-cloudflare.result }}"
           
-          if [[ "${{ needs.deploy-vercel.result }}" == "success" && "${{ needs.deploy-cloudflare.result }}" == "success" ]]; then
-            echo "✅ Both deployments successful!"
+          if [[ "${{ needs.deploy-vercel.result }}" == "success" ]]; then
+            echo "✅ Vercel deployment successful!"
             echo "DEPLOYMENT_STATUS=success" >> $GITHUB_ENV
-          elif [[ "${{ needs.deploy-vercel.result }}" == "success" || "${{ needs.deploy-cloudflare.result }}" == "success" ]]; then
-            echo "⚠️ Partial deployment success"
-            echo "DEPLOYMENT_STATUS=partial" >> $GITHUB_ENV
           else
-            echo "❌ Both deployments failed"
+            echo "❌ Vercel deployment failed"
             echo "DEPLOYMENT_STATUS=failed" >> $GITHUB_ENV
           fi
 
@@ -134,6 +94,5 @@ jobs:
           echo "| Platform | Status | Result |" >> $GITHUB_STEP_SUMMARY
           echo "|----------|--------|--------|" >> $GITHUB_STEP_SUMMARY
           echo "| Vercel | ${{ needs.deploy-vercel.result }} | ${{ needs.deploy-vercel.result == 'success' && '✅ Success' || '❌ Failed' }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| Cloudflare Workers | ${{ needs.deploy-cloudflare.result }} | ${{ needs.deploy-cloudflare.result == 'success' && '✅ Success' || '❌ Failed' }} |" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Overall Status:** ${{ env.DEPLOYMENT_STATUS }}" >> $GITHUB_STEP_SUMMARY
