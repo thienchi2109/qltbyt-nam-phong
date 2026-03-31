@@ -12,44 +12,50 @@ interface QRActionSheetErrorStateProps {
   onClose: () => void
 }
 
+function getErrorPalette(errorType: NonNullable<QRErrorType>) {
+  switch (errorType) {
+    case "access_denied":
+      return {
+        iconBg: "bg-orange-100",
+        iconText: "text-orange-600",
+        titleText: "text-orange-900",
+        bodyText: "text-orange-600",
+        title: "Không có quyền truy cập",
+      }
+    case "network":
+      return {
+        iconBg: "bg-yellow-100",
+        iconText: "text-yellow-600",
+        titleText: "text-yellow-900",
+        bodyText: "text-yellow-600",
+        title: "Lỗi kết nối mạng",
+      }
+    case "server_error":
+      return {
+        iconBg: "bg-red-100",
+        iconText: "text-red-600",
+        titleText: "text-red-900",
+        bodyText: "text-red-600",
+        title: "Lỗi hệ thống",
+      }
+    case "not_found":
+      return {
+        iconBg: "bg-red-100",
+        iconText: "text-red-600",
+        titleText: "text-red-900",
+        bodyText: "text-red-600",
+        title: "Không tìm thấy thiết bị",
+      }
+  }
+}
+
 export function QRActionSheetErrorState({
   error,
   errorType,
   onRetry,
   onClose,
 }: QRActionSheetErrorStateProps) {
-  const palette =
-    errorType === "access_denied"
-      ? {
-          iconBg: "bg-orange-100",
-          iconText: "text-orange-600",
-          titleText: "text-orange-900",
-          bodyText: "text-orange-600",
-          title: "Không có quyền truy cập",
-        }
-      : errorType === "network"
-        ? {
-            iconBg: "bg-yellow-100",
-            iconText: "text-yellow-600",
-            titleText: "text-yellow-900",
-            bodyText: "text-yellow-600",
-            title: "Lỗi kết nối mạng",
-          }
-        : errorType === "server_error"
-          ? {
-              iconBg: "bg-red-100",
-              iconText: "text-red-600",
-              titleText: "text-red-900",
-              bodyText: "text-red-600",
-              title: "Lỗi hệ thống",
-            }
-          : {
-              iconBg: "bg-red-100",
-              iconText: "text-red-600",
-              titleText: "text-red-900",
-              bodyText: "text-red-600",
-              title: "Không tìm thấy thiết bị",
-            }
+  const palette = getErrorPalette(errorType)
 
   return (
     <div className="text-center py-8">
