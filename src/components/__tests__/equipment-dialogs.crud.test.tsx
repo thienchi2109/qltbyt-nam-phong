@@ -578,5 +578,41 @@ describe('Equipment Dialogs CRUD', () => {
         })
       })
     })
+
+    it('requires the user to choose a supported status when the persisted value is invalid', async () => {
+      const equipment: Equipment = {
+        id: 2,
+        ma_thiet_bi: 'EQ-002',
+        ten_thiet_bi: 'Monitor',
+        vi_tri_lap_dat: 'Phòng 201',
+        khoa_phong_quan_ly: 'Khoa Cấp cứu',
+        nguoi_dang_truc_tiep_quan_ly: 'Lê Văn C',
+        tinh_trang_hien_tai: 'Trạng thái cũ không hợp lệ',
+      }
+
+      render(
+        <EditEquipmentDialog
+          open
+          onOpenChange={vi.fn()}
+          onSuccess={vi.fn()}
+          equipment={equipment}
+        />,
+        { wrapper: createWrapper() }
+      )
+
+      await waitFor(() => {
+        expect(screen.getByLabelText('Tên thiết bị')).toHaveValue('Monitor')
+      })
+
+      fireEvent.click(screen.getByRole('button', { name: 'Lưu thay đổi' }))
+
+      await waitFor(() => {
+        expect(screen.getByText('Tình trạng hiện tại là bắt buộc')).toBeInTheDocument()
+      })
+
+      expect(mockCallRpc).not.toHaveBeenCalledWith(
+        expect.objectContaining({ fn: 'equipment_update' })
+      )
+    })
   })
 })

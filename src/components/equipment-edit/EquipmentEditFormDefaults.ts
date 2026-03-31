@@ -1,4 +1,5 @@
 import { formatFullDateToDisplay, formatPartialDateToDisplay } from "@/lib/date-utils"
+import { equipmentStatusOptions } from "@/components/equipment/equipment-table-columns"
 import type { Equipment } from "@/types/database"
 
 import type { EquipmentFormValues, EquipmentStatus } from "./EquipmentEditTypes"
@@ -34,6 +35,14 @@ export const DEFAULT_EQUIPMENT_FORM_VALUES: EquipmentFormValues = {
   phan_loai_theo_nd98: null,
 }
 
+function normalizeEquipmentStatus(
+  value: Equipment["tinh_trang_hien_tai"]
+): EquipmentStatus | null {
+  return typeof value === "string" && equipmentStatusOptions.includes(value as EquipmentStatus)
+    ? (value as EquipmentStatus)
+    : null
+}
+
 export function equipmentToFormValues(equipment: Equipment): EquipmentFormValues {
   const classification = equipment.phan_loai_theo_nd98
   const normalizedClassification =
@@ -47,7 +56,7 @@ export function equipmentToFormValues(equipment: Equipment): EquipmentFormValues
     vi_tri_lap_dat: equipment.vi_tri_lap_dat || "",
     khoa_phong_quan_ly: equipment.khoa_phong_quan_ly || "",
     nguoi_dang_truc_tiep_quan_ly: equipment.nguoi_dang_truc_tiep_quan_ly || "",
-    tinh_trang_hien_tai: (equipment.tinh_trang_hien_tai as EquipmentStatus) || null,
+    tinh_trang_hien_tai: normalizeEquipmentStatus(equipment.tinh_trang_hien_tai),
     model: equipment.model || null,
     serial: equipment.serial || null,
     hang_san_xuat: equipment.hang_san_xuat || null,
