@@ -2,7 +2,7 @@ import type { EquipmentSelectItem } from "../types"
 
 export function formatEquipmentLabel(
   equipment: Pick<EquipmentSelectItem, "ten_thiet_bi" | "ma_thiet_bi">
-) {
+): string {
   return `${equipment.ten_thiet_bi} (${equipment.ma_thiet_bi})`
 }
 
