@@ -2,13 +2,13 @@
 
 import { useState, useEffect } from "react"
 import { signIn } from "next-auth/react"
-import { User, Lock, Globe, ChevronDown } from "lucide-react"
+import { User, Lock } from "lucide-react"
 import { Logo } from "@/components/icons"
 import { useLanguage } from "@/contexts/language-context"
 import { LoginIllustrationPanel } from "./_components/LoginIllustrationPanel"
 
 export default function LoginPage() {
-  const { currentLanguage, setLanguage, t } = useLanguage()
+  const { t } = useLanguage()
   const [username, setUsername] = useState("")
   const [password, setPassword] = useState("")
   const [isLoading, setIsLoading] = useState(false)
@@ -52,12 +52,7 @@ export default function LoginPage() {
     }
   }
 
-  const toggleLanguage = () => {
-    const newLang = currentLanguage.code === 'en'
-      ? { code: 'vi' as const, name: 'Tiếng Việt' }
-      : { code: 'en' as const, name: 'English' }
-    setLanguage(newLang)
-  }
+
 
   return (
     <main className="flex min-h-screen">
@@ -112,15 +107,10 @@ export default function LoginPage() {
 
             {/* Password */}
             <div className="space-y-2">
-              <div className="flex justify-between items-center">
-                <label className="flex items-center gap-2 text-sm font-semibold text-muted-foreground">
-                  <Lock className="h-3.5 w-3.5" />
-                  {t("login.password") || "Mật khẩu"}
-                </label>
-                <a className="text-xs font-semibold text-primary hover:underline transition-all cursor-pointer">
-                  {t("login.forgotPassword") || "Quên mật khẩu?"}
-                </a>
-              </div>
+              <label className="flex items-center gap-2 text-sm font-semibold text-muted-foreground">
+                <Lock className="h-3.5 w-3.5" />
+                {t("login.password") || "Mật khẩu"}
+              </label>
               <div className="recessed-input bg-muted rounded-xl px-4 py-3 transition-all duration-200">
                 <input
                   type="password"
@@ -134,16 +124,7 @@ export default function LoginPage() {
               </div>
             </div>
 
-            {/* Remember Me */}
-            <label className="flex items-center gap-3 cursor-pointer group">
-              <input
-                type="checkbox"
-                className="w-5 h-5 rounded-lg border-border text-primary focus:ring-primary/20 transition-all cursor-pointer"
-              />
-              <span className="text-sm text-muted-foreground group-hover:text-foreground transition-colors">
-                {t("login.rememberMe") || "Duy trì đăng nhập"}
-              </span>
-            </label>
+
 
             {/* CTA Button */}
             <button
@@ -165,17 +146,7 @@ export default function LoginPage() {
             </button>
           </form>
 
-          {/* Language Toggle */}
-          <div className="flex justify-center pt-4">
-            <button
-              onClick={toggleLanguage}
-              className="flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors bg-muted px-4 py-2 rounded-full"
-            >
-              <Globe className="h-4 w-4" />
-              {currentLanguage.code === 'en' ? 'English' : 'Tiếng Việt'}
-              <ChevronDown className="h-4 w-4" />
-            </button>
-          </div>
+
         </div>
 
         {/* Footer */}
