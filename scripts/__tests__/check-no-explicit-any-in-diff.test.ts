@@ -45,4 +45,24 @@ describe("check-no-explicit-any-in-diff", () => {
       })
     ).toThrow("git diff failed")
   })
+
+  it("falls back to two-dot diff when merge-base diff is unavailable", () => {
+    const changedFile = "scripts/__tests__/check-no-explicit-any-in-diff.test.ts"
+
+    const runGitImpl = (args: string[]) => {
+      const command = args.join(" ")
+
+      if (command === "diff --name-only --diff-filter=ACMR origin/main...HEAD") {
+        throw new Error("no merge base in shallow clone")
+      }
+
+      if (command === "diff --name-only --diff-filter=ACMR origin/main..HEAD") {
+        return [changedFile]
+      }
+
+      return []
+    }
+
+    expect(collectChangedTypeScriptFiles("origin/main", { runGitImpl })).toEqual([changedFile])
+  })
 })

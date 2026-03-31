@@ -74,11 +74,23 @@ function runGit(args) {
   }
 }
 
+function getCommittedChangedFiles(baseRef, runGitImpl) {
+  try {
+    return runGitImpl(["diff", "--name-only", "--diff-filter=ACMR", `${baseRef}...HEAD`])
+  } catch (error) {
+    if (!baseRef) {
+      throw error
+    }
+
+    return runGitImpl(["diff", "--name-only", "--diff-filter=ACMR", `${baseRef}..HEAD`])
+  }
+}
+
 function collectChangedTypeScriptFiles(
   baseRef = DEFAULT_BASE_REF,
   { runGitImpl = runGit } = {}
 ) {
-  const committed = runGitImpl(["diff", "--name-only", "--diff-filter=ACMR", `${baseRef}...HEAD`])
+  const committed = getCommittedChangedFiles(baseRef, runGitImpl)
   const unstaged = runGitImpl(["diff", "--name-only", "--diff-filter=ACMR"])
   const staged = runGitImpl(["diff", "--cached", "--name-only", "--diff-filter=ACMR"])
   const untracked = runGitImpl(["ls-files", "--others", "--exclude-standard"])
@@ -131,6 +143,7 @@ module.exports = {
   collectChangedTypeScriptFiles,
   findExplicitAnyViolations,
   formatViolations,
+  getCommittedChangedFiles,
   runGit,
   scanFiles,
 }
