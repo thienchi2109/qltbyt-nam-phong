@@ -31,7 +31,7 @@ import { fetchRepairRequestEquipmentList } from "../repair-requests-equipment-rp
 import { RepairRequestsCreateSheetActions } from "./RepairRequestsCreateSheetActions"
 import { RepairRequestsCreateSheetAlerts } from "./RepairRequestsCreateSheetAlerts"
 import { RepairRequestsEquipmentSearchField } from "./RepairRequestsEquipmentSearchField"
-import { formatEquipmentLabel, parseDraftDate } from "./repair-request-create-sheet-utils"
+import { formatEquipmentLabel, parseDraftDate } from "./RepairRequestsCreateSheetUtils"
 
 export function RepairRequestsCreateSheet() {
   const {
