@@ -26,7 +26,7 @@ export function LoginIllustrationPanel() {
                         alt="Hình minh họa quản lý thiết bị y tế thông minh"
                         width={512}
                         height={512}
-                        className="w-full h-full object-contain opacity-90 transition-transform duration-500 group-hover:scale-105"
+                        className="w-full h-full object-contain mix-blend-lighten opacity-90 transition-transform duration-500 group-hover:scale-105"
                     />
 
                     {/* Floating IoT Status Badge */}
