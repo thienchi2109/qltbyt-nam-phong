@@ -106,7 +106,6 @@ const EquipmentPageContent = React.memo(function EquipmentPageContent({
     openImportDialog,
     openColumnsDialog,
     openDetailDialog,
-    openEditDialog,
   } = useEquipmentContext()
 
   const {

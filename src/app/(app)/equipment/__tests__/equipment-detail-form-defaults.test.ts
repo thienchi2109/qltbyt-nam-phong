@@ -45,4 +45,22 @@ describe("EquipmentDetailFormDefaults", () => {
     expect(result.chu_ky_hc_dinh_ky).toBe(0)
     expect(result.chu_ky_kd_dinh_ky).toBe(0)
   })
+
+  it("drops persisted status values that are outside the supported equipment status list", () => {
+    const result = equipmentToFormValues({
+      id: 2,
+      ma_thiet_bi: "EQ-002",
+      ten_thiet_bi: "Monitor",
+      tinh_trang_hien_tai: "Trạng thái cũ không hợp lệ",
+    } as Equipment)
+
+    expect(result.tinh_trang_hien_tai).toBeNull()
+  })
+
+  it("returns a fresh empty-state payload when no equipment record is provided", () => {
+    const result = equipmentToFormValues(null)
+
+    expect(result).toEqual(DEFAULT_EQUIPMENT_FORM_VALUES)
+    expect(result).not.toBe(DEFAULT_EQUIPMENT_FORM_VALUES)
+  })
 })

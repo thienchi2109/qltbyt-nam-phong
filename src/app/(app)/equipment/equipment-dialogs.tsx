@@ -4,7 +4,6 @@ import * as React from "react"
 
 import { AddEquipmentDialog } from "@/components/add-equipment-dialog"
 import { ImportEquipmentDialog } from "@/components/import-equipment-dialog"
-import { EditEquipmentDialog } from "@/components/edit-equipment-dialog"
 import { EquipmentDetailDialog } from "./_components/EquipmentDetailDialog"
 import { EquipmentDeleteDialog } from "./_components/EquipmentDeleteDialog"
 import { StartUsageDialog } from "@/components/start-usage-dialog"
@@ -36,27 +35,11 @@ export const EquipmentDialogs = React.memo(function EquipmentDialogs({
     dialogState,
     closeAddDialog,
     closeImportDialog,
-    closeEditDialog,
     closeDetailDialog,
     closeStartUsageDialog,
     closeEndUsageDialog,
     onDataMutationSuccess,
   } = useEquipmentContext()
-
-  // Handlers for dialog close with state cleanup
-  const handleEditClose = React.useCallback(
-    (open: boolean) => {
-      if (!open) {
-        closeEditDialog()
-      }
-    },
-    [closeEditDialog]
-  )
-
-  const handleEditSuccess = React.useCallback(() => {
-    closeEditDialog()
-    onDataMutationSuccess()
-  }, [closeEditDialog, onDataMutationSuccess])
 
   const handleStartUsageClose = React.useCallback(
     (open: boolean) => {
@@ -88,13 +71,6 @@ export const EquipmentDialogs = React.memo(function EquipmentDialogs({
         open={dialogState.isImportOpen}
         onOpenChange={(open) => !open && closeImportDialog()}
         onSuccess={onDataMutationSuccess}
-      />
-
-      <EditEquipmentDialog
-        open={!!dialogState.editingEquipment}
-        onOpenChange={handleEditClose}
-        onSuccess={handleEditSuccess}
-        equipment={dialogState.editingEquipment}
       />
 
       <EquipmentDetailDialog

@@ -432,6 +432,108 @@ describe('Equipment Dialogs CRUD', () => {
   })
 
   describe('Update: EditEquipmentDialog', () => {
+    it('resets dirty form values when the same equipment record is reopened', async () => {
+      const equipment: Equipment = {
+        id: 4,
+        ma_thiet_bi: 'EQ-004',
+        ten_thiet_bi: 'Máy điện tim',
+        vi_tri_lap_dat: 'Phòng 301',
+        khoa_phong_quan_ly: 'Khoa Tim mạch',
+        nguoi_dang_truc_tiep_quan_ly: 'Ngô Văn E',
+        tinh_trang_hien_tai: 'Hoạt động',
+      }
+
+      const view = render(
+        <EditEquipmentDialog
+          open
+          onOpenChange={vi.fn()}
+          onSuccess={vi.fn()}
+          equipment={equipment}
+        />,
+        { wrapper: createWrapper() }
+      )
+
+      const nameInput = await screen.findByLabelText('Tên thiết bị')
+      expect(nameInput).toHaveValue('Máy điện tim')
+
+      fireEvent.change(nameInput, {
+        target: { value: 'Thiết bị đã sửa tạm' },
+      })
+      expect(nameInput).toHaveValue('Thiết bị đã sửa tạm')
+
+      view.rerender(
+        <EditEquipmentDialog
+          open={false}
+          onOpenChange={vi.fn()}
+          onSuccess={vi.fn()}
+          equipment={equipment}
+        />
+      )
+      view.rerender(
+        <EditEquipmentDialog
+          open
+          onOpenChange={vi.fn()}
+          onSuccess={vi.fn()}
+          equipment={equipment}
+        />
+      )
+
+      await waitFor(() => {
+        expect(screen.getByLabelText('Tên thiết bị')).toHaveValue('Máy điện tim')
+      })
+    })
+
+    it('clears stale form values when reopened without an equipment record', async () => {
+      const equipment: Equipment = {
+        id: 5,
+        ma_thiet_bi: 'EQ-005',
+        ten_thiet_bi: 'Máy thở',
+        vi_tri_lap_dat: 'Phòng 401',
+        khoa_phong_quan_ly: 'ICU',
+        nguoi_dang_truc_tiep_quan_ly: 'Đỗ Văn F',
+        tinh_trang_hien_tai: 'Hoạt động',
+      }
+
+      const view = render(
+        <EditEquipmentDialog
+          open
+          onOpenChange={vi.fn()}
+          onSuccess={vi.fn()}
+          equipment={equipment}
+        />,
+        { wrapper: createWrapper() }
+      )
+
+      const nameInput = await screen.findByLabelText('Tên thiết bị')
+      expect(nameInput).toHaveValue('Máy thở')
+
+      fireEvent.change(nameInput, {
+        target: { value: 'Giá trị bẩn' },
+      })
+      expect(nameInput).toHaveValue('Giá trị bẩn')
+
+      view.rerender(
+        <EditEquipmentDialog
+          open={false}
+          onOpenChange={vi.fn()}
+          onSuccess={vi.fn()}
+          equipment={null}
+        />
+      )
+      view.rerender(
+        <EditEquipmentDialog
+          open
+          onOpenChange={vi.fn()}
+          onSuccess={vi.fn()}
+          equipment={null}
+        />
+      )
+
+      await waitFor(() => {
+        expect(screen.getByLabelText('Tên thiết bị')).toHaveValue('')
+      })
+    })
+
     it('submits update patch and closes on success', async () => {
       mockCallRpc.mockResolvedValue({})
 
@@ -577,6 +679,78 @@ describe('Equipment Dialogs CRUD', () => {
           },
         })
       })
+    })
+
+    it('requires the user to choose a supported status when the persisted value is invalid', async () => {
+      const equipment: Equipment = {
+        id: 2,
+        ma_thiet_bi: 'EQ-002',
+        ten_thiet_bi: 'Monitor',
+        vi_tri_lap_dat: 'Phòng 201',
+        khoa_phong_quan_ly: 'Khoa Cấp cứu',
+        nguoi_dang_truc_tiep_quan_ly: 'Lê Văn C',
+        tinh_trang_hien_tai: 'Trạng thái cũ không hợp lệ',
+      }
+
+      render(
+        <EditEquipmentDialog
+          open
+          onOpenChange={vi.fn()}
+          onSuccess={vi.fn()}
+          equipment={equipment}
+        />,
+        { wrapper: createWrapper() }
+      )
+
+      await waitFor(() => {
+        expect(screen.getByLabelText('Tên thiết bị')).toHaveValue('Monitor')
+      })
+
+      fireEvent.click(screen.getByRole('button', { name: 'Lưu thay đổi' }))
+
+      await waitFor(() => {
+        expect(screen.getByText('Tình trạng hiện tại là bắt buộc')).toBeInTheDocument()
+      })
+
+      expect(mockCallRpc).not.toHaveBeenCalledWith(
+        expect.objectContaining({ fn: 'equipment_update' })
+      )
+    })
+
+    it('still requires status selection when the persisted status is missing', async () => {
+      const equipment: Equipment = {
+        id: 3,
+        ma_thiet_bi: 'EQ-003',
+        ten_thiet_bi: 'Ventilator',
+        vi_tri_lap_dat: 'Phòng 202',
+        khoa_phong_quan_ly: 'ICU',
+        nguoi_dang_truc_tiep_quan_ly: 'Phạm Văn D',
+        tinh_trang_hien_tai: null,
+      }
+
+      render(
+        <EditEquipmentDialog
+          open
+          onOpenChange={vi.fn()}
+          onSuccess={vi.fn()}
+          equipment={equipment}
+        />,
+        { wrapper: createWrapper() }
+      )
+
+      await waitFor(() => {
+        expect(screen.getByLabelText('Tên thiết bị')).toHaveValue('Ventilator')
+      })
+
+      fireEvent.click(screen.getByRole('button', { name: 'Lưu thay đổi' }))
+
+      await waitFor(() => {
+        expect(screen.getByText('Tình trạng hiện tại là bắt buộc')).toBeInTheDocument()
+      })
+
+      expect(mockCallRpc).not.toHaveBeenCalledWith(
+        expect.objectContaining({ fn: 'equipment_update' })
+      )
     })
   })
 })
