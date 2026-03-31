@@ -12,7 +12,7 @@ The system SHALL use `EquipmentDetailDialog` as the only details and edit surfac
 - **WHEN** a permitted user saves equipment changes from inline edit mode on the `Equipments` page
 - **THEN** the detail dialog remains the active surface for that record
 - **AND** the page refreshes the active equipment-list data for the current tenant
-- **AND** the visible detail payload reflects the saved values until refetch completes
+- **AND** the open detail surface continues showing the saved user-visible values until refetch completes
 
 ### Requirement: Equipments page dialog orchestration excludes the legacy standalone edit path
 The system SHALL not mount or route `/equipment` page dialog state through the standalone `EditEquipmentDialog`.
@@ -34,7 +34,7 @@ The system SHALL keep one shared validation, normalization, and update contract 
 - **WHEN** a field such as `so_luu_hanh` or `ngay_ngung_su_dung` is edited from the `Equipments` page detail dialog or a remaining legacy edit surface
 - **THEN** the same schema, default-value mapping, and RPC update contract are applied
 
-#### Scenario: Page-only consolidation does not migrate external routes
-- **WHEN** `dashboard` or `qr-scanner` opens the remaining standalone edit dialog during this change window
-- **THEN** those routes keep their current edit entrypoints unchanged
-- **AND** their migrations remain tracked separately from the `Equipments` page consolidation
+#### Scenario: Shared update contract keeps route-specific refresh behavior separate
+- **WHEN** the shared equipment edit contract is used by multiple routes during the transition period
+- **THEN** validation, normalization, and update behavior remain shared
+- **AND** route-specific cache invalidation remains owned by each consuming route

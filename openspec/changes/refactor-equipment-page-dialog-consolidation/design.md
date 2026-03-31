@@ -33,14 +33,17 @@ GitNexus impact for the relevant update symbols is `HIGH`, but inbound React com
   - Shared concerns:
     - validation schema and inferred form types
     - `equipment -> form values` normalization/defaults
-    - update mutation / toast / invalidation contract boundaries
+    - update mutation primitive and toast contract
   - Route-specific concerns remain local:
     - detail dialog tab orchestration and optimistic display state
+    - cache invalidation and refetch behavior
     - dashboard / QR scanner entrypoint UX
+  - The shared contract must live outside `src/app/(app)/equipment` so `dashboard` and `qr-scanner` do not inherit route-local internals while they still depend on `EditEquipmentDialog`.
 
 - Decision: Keep invalidation semantics aligned with the active equipment catalog data source
   - The `Equipments` page uses `equipment_list_enhanced`.
   - Consolidation must not keep page behavior dependent on legacy `equipment_list` invalidation.
+  - This change does not require `dashboard` or `qr-scanner` to adopt the `/equipment` invalidation path; they keep their existing refresh behavior until their follow-up migrations land.
 
 ## Risks / Trade-offs
 - Pending equipment changes may touch the same field lists and tests
@@ -52,14 +55,18 @@ GitNexus impact for the relevant update symbols is `HIGH`, but inbound React com
 - Shared-contract extraction may tempt a larger refactor
   - Mitigation: keep the extraction limited to schema/default/update concerns; do not redesign all dialog UI in this change.
 
+- Detail dialog can temporarily display merged patch values instead of canonical server output until refetch completes
+  - Mitigation: keep the risk explicit in tests and preserve the current user-visible behavior of not forcing the dialog to close/reopen after save.
+
 ## Migration Plan
-1. Add failing tests for `Equipments` page dialog orchestration and shared edit contracts.
-2. Extract shared schema/default/update modules used by both detail and legacy dialogs.
-3. Rewire `EquipmentDetailDialog` and `EditEquipmentDialog` to the shared contract.
-4. Remove `EditEquipmentDialog` mounting and page-only legacy edit state from the equipment catalog route.
-5. Run project verification in the required order for TS/React diffs.
-6. Leave `dashboard` and `qr-scanner` route migrations to follow-up issues `#183` and `#182`.
-7. Leave final legacy-dialog retirement and cleanup to refactor issue `#184`.
+1. Audit current symbol references and route dependencies before any production edits.
+2. Add failing tests for `Equipments` page dialog orchestration and shared edit contracts.
+3. Extract shared schema/default/update modules used by both detail and legacy dialogs.
+4. Rewire `EquipmentDetailDialog` and `EditEquipmentDialog` to the shared contract.
+5. Remove `EditEquipmentDialog` mounting and page-only legacy edit state from the equipment catalog route.
+6. Run project verification in the required order for TS/React diffs.
+7. Leave `dashboard` and `qr-scanner` route migrations to follow-up issues `#183` and `#182`.
+8. Leave final legacy-dialog retirement and cleanup to refactor issue `#184`.
 
 ## Open Questions
 - None for proposal scope. External-route migration is intentionally deferred to follow-up issues.

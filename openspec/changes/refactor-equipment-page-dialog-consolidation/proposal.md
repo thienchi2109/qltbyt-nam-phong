@@ -11,12 +11,14 @@ Both change sets require equipment edit fields to stay aligned across detail and
 - Make `EquipmentDetailDialog` the only detail and edit surface mounted by the `Equipments` page.
 - Remove page-specific `EditEquipmentDialog` orchestration from the equipment page dialog tree and context state.
 - Extract a shared equipment edit contract for schema, default-value mapping, and update mutation behavior so `EquipmentDetailDialog` and any remaining legacy consumers stay aligned.
+- Keep the shared edit contract route-agnostic by placing it outside `src/app/(app)/equipment` and treating cache invalidation as an injected route-level concern rather than part of the shared mutation primitive.
 - Keep the scope limited to the `Equipments` page. Dashboard and QR scanner migrations are explicitly deferred to follow-up issues:
   - `#183` Dashboard migration
   - `#182` QR scanner migration
 - Track the final cleanup pass in a separate refactor follow-up:
   - `#184` retire the legacy `EditEquipmentDialog` after route migrations land
 - Drive implementation with TDD:
+  - audit dependencies first,
   - write failing page-orchestration tests first,
   - write failing shared-contract tests first,
   - then implement the minimum consolidation to make those tests pass.
@@ -39,4 +41,5 @@ Both change sets require equipment edit fields to stay aligned across detail and
   - GitNexus reports `HIGH` upstream risk for `useEquipmentUpdate`, `updateEquipmentRecord`, and `equipmentToFormValues`
   - `dashboard` and `qr-scanner` still import `EditEquipmentDialog`, so this change must not remove the legacy component outright
   - full legacy-dialog retirement remains intentionally deferred until `#183`, `#182`, and `#184`
+  - `/equipment` invalidation must move toward `equipment_list_enhanced` without forcing legacy routes to adopt the same refresh path in this change
   - pending `equipment-catalog` changes that add fields to both dialog families must be kept compatible with the extracted shared contract
