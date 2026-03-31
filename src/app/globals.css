@@ -532,6 +532,20 @@
   }
 }
 
+/* Sign-in page utility classes */
+.bg-teal-split {
+  background: linear-gradient(135deg, #004F4F 0%, #008080 100%);
+}
+
+.bg-cta-gradient {
+  background: linear-gradient(135deg, #006565 0%, #008080 100%);
+}
+
+.recessed-input:focus-within {
+  background-color: #ffffff;
+  box-shadow: 0 0 0 2px #006565;
+}
+
 /* Custom animations for glassmorphism login page */
 @keyframes float {
   0%, 100% { transform: translateY(0px); }
