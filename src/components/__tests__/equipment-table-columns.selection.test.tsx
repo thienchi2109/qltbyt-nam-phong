@@ -4,72 +4,12 @@ import type { ColumnDef } from "@tanstack/react-table"
 import { describe, expect, it, vi } from "vitest"
 
 import { createEquipmentColumns } from "@/components/equipment/equipment-table-columns"
+import { TooltipTestProvider } from "@/test-utils/tooltip-mock"
 import type { Equipment } from "@/types/database"
 
-vi.mock("@/components/ui/tooltip", () => {
-  const TooltipContext = React.createContext<
-    { open: boolean; setOpen: (open: boolean) => void } | null
-  >(null)
-
-  const TooltipProvider = ({ children }: { children: React.ReactNode }) => <>{children}</>
-
-  const Tooltip = ({ children }: { children: React.ReactNode }) => {
-    const [open, setOpen] = React.useState(false)
-
-    return <TooltipContext.Provider value={{ open, setOpen }}>{children}</TooltipContext.Provider>
-  }
-
-  const TooltipTrigger = React.forwardRef<
-    HTMLSpanElement,
-    React.HTMLAttributes<HTMLSpanElement> & { asChild?: boolean }
-  >(({ asChild, children, onBlur, onFocus, onMouseEnter, onMouseLeave, ...props }, ref) => {
-    const context = React.useContext(TooltipContext)
-    const child = React.Children.only(children) as React.ReactElement
-
-    const handleOpen = (handler?: React.EventHandler<React.SyntheticEvent>) => {
-      return (event: React.SyntheticEvent) => {
-        handler?.(event)
-        context?.setOpen(true)
-      }
-    }
-
-    const handleClose = (handler?: React.EventHandler<React.SyntheticEvent>) => {
-      return (event: React.SyntheticEvent) => {
-        handler?.(event)
-        context?.setOpen(false)
-      }
-    }
-
-    const triggerProps = {
-      ...props,
-      ref,
-      "data-tooltip-trigger": true,
-      onMouseEnter: handleOpen(onMouseEnter),
-      onFocus: handleOpen(onFocus),
-      onMouseLeave: handleClose(onMouseLeave),
-      onBlur: handleClose(onBlur),
-    }
-
-    if (asChild && React.isValidElement(child)) {
-      return React.cloneElement(child, triggerProps)
-    }
-
-    return <span {...triggerProps}>{children}</span>
-  })
-
-  const TooltipContent = ({ children }: { children: React.ReactNode }) => {
-    const context = React.useContext(TooltipContext)
-    if (!context?.open) return null
-
-    return <div role="tooltip">{children}</div>
-  }
-
-  return {
-    Tooltip,
-    TooltipContent,
-    TooltipProvider,
-    TooltipTrigger,
-  }
+vi.mock("@/components/ui/tooltip", async () => {
+  const { tooltipMockModule } = await import("@/test-utils/tooltip-mock")
+  return tooltipMockModule
 })
 
 describe("createEquipmentColumns bulk selection config", () => {
@@ -92,7 +32,11 @@ describe("createEquipmentColumns bulk selection config", () => {
       },
     } as EquipmentCellContext)
 
-    return render(<div data-testid="equipment-cell">{node}</div>)
+    return render(
+      <TooltipTestProvider>
+        <div data-testid="equipment-cell">{node}</div>
+      </TooltipTestProvider>
+    )
   }
 
   it("prepends selection column when canBulkSelect=true", () => {

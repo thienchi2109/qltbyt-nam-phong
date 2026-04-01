@@ -26,8 +26,8 @@ const PARTIAL_DATE_FIELDS: Set<keyof Equipment> = new Set([
   "han_bao_hanh",
 ])
 
-const EQUIPMENT_CODE_WIDTH_CLASS = "block w-[10rem] max-w-[10rem]"
-const EQUIPMENT_NAME_WIDTH_CLASS = "block w-[18rem] max-w-[18rem]"
+const EQUIPMENT_CODE_WIDTH_CLASS = "block max-w-[10rem]"
+const EQUIPMENT_NAME_WIDTH_CLASS = "block max-w-[18rem]"
 
 /**
  * Returns badge variant based on equipment status.
