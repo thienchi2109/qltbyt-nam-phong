@@ -30,7 +30,6 @@ const TooltipTrigger = React.forwardRef<
   React.HTMLAttributes<HTMLSpanElement> & { asChild?: boolean }
 >(({ asChild, children, onBlur, onFocus, onMouseEnter, onMouseLeave, ...props }, ref) => {
   const context = React.useContext(TooltipContext)
-  const child = React.Children.only(children) as React.ReactElement
 
   const handleOpen = (handler?: React.EventHandler<React.SyntheticEvent>) => {
     return (event: React.SyntheticEvent) => {
@@ -56,8 +55,12 @@ const TooltipTrigger = React.forwardRef<
     onBlur: handleClose(onBlur),
   }
 
-  if (asChild && React.isValidElement(child)) {
-    return React.cloneElement(child, triggerProps)
+  if (asChild) {
+    const child = React.Children.only(children) as React.ReactElement
+
+    if (React.isValidElement(child)) {
+      return React.cloneElement(child, triggerProps)
+    }
   }
 
   return <span {...triggerProps}>{children}</span>
