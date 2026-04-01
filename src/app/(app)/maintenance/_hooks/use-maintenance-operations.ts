@@ -69,8 +69,8 @@ export function useMaintenanceOperations({
 
     approvePlan(
       {
-        id: planToApprove.id,
-        nguoi_duyet: user?.full_name || user?.username || ''
+        p_id: planToApprove.id,
+        p_nguoi_duyet: user?.full_name || user?.username || ''
       },
       {
         onSuccess: () => {

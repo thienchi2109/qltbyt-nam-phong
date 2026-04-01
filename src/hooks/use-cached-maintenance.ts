@@ -3,6 +3,7 @@ import { callRpc } from '@/lib/rpc-client'
 import { normalizeRpcError } from '@/lib/error-utils'
 import { toast } from '@/hooks/use-toast'
 import {
+  type ApproveMaintenancePlanArgs,
   type MaintenanceHistoryFilters,
   type MaintenanceKeyFilters,
   type MaintenancePlanListResponse,
@@ -197,15 +198,15 @@ export function useApproveMaintenancePlan() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: async (params: { id: number; nguoi_duyet: string }) => {
+    mutationFn: async (params: ApproveMaintenancePlanArgs) => {
       await callRpc<void>({
         fn: 'maintenance_plan_approve',
         args: {
-          p_id: params.id,
-          p_nguoi_duyet: params.nguoi_duyet,
+          p_id: params.p_id,
+          p_nguoi_duyet: params.p_nguoi_duyet,
         },
       })
-      return params.id
+      return params.p_id
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: maintenanceKeys.plans() })
