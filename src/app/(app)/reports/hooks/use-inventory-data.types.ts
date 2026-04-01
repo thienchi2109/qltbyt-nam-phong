@@ -1,4 +1,71 @@
 import { getUnknownErrorMessage } from '@/lib/error-utils'
+import { isRecord, toNumber, toStringValue, isWithinDateRange } from '@/lib/rpc-normalize'
+
+/** Row shape returned by get_facilities_with_equipment_count */
+export interface FacilityRow {
+  id: number
+  [key: string]: unknown
+}
+
+/** Row shape returned by equipment_aggregates_for_reports */
+export interface EquipmentAggregateRow {
+  totalImported?: number
+  totalExported?: number
+  currentStock?: number
+  netChange?: number
+  [key: string]: unknown
+}
+
+/** Row shape returned by departments_list_for_facilities / departments_list_for_tenant */
+export interface DepartmentRow {
+  name: string
+  [key: string]: unknown
+}
+
+/** Row shape returned by equipment_list_for_reports */
+export interface EquipmentReportRow {
+  id: number
+  ma_thiet_bi: string
+  ten_thiet_bi: string
+  model?: string
+  serial?: string
+  khoa_phong_quan_ly?: string
+  created_at: string
+  nguon_nhap?: string
+  gia_goc?: number
+  [key: string]: unknown
+}
+
+/** Row shape returned by transfer_request_list_enhanced */
+export interface TransferReportRow {
+  id: number
+  loai_hinh: string
+  trang_thai?: string
+  created_at: string
+  ngay_ban_giao?: string
+  ngay_hoan_thanh?: string
+  ly_do_luan_chuyen?: string
+  khoa_phong_nhan?: string
+  don_vi_nhan?: string
+  thiet_bi: {
+    ma_thiet_bi: string
+    ten_thiet_bi: string
+    model?: string
+    serial?: string
+    khoa_phong_quan_ly?: string
+  }
+  [key: string]: unknown
+}
+
+/** Typed filter interface for inventory query keys */
+export interface InventoryDataFilters {
+  dateRange: { from: string; to: string }
+  selectedDepartment: string
+  searchTerm: string
+  tenant: string
+  isMultiFacility: boolean
+}
+
 
 export interface InventoryItem {
   id: number
@@ -22,39 +89,6 @@ export interface InventorySummary {
   totalExported: number
   currentStock: number
   netChange: number
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value)
-}
-
-function toNumber(value: unknown): number | undefined {
-  if (typeof value === 'number' && Number.isFinite(value)) {
-    return value
-  }
-
-  if (typeof value === 'string' && value.trim() !== '') {
-    const parsed = Number(value)
-    if (Number.isFinite(parsed)) {
-      return parsed
-    }
-  }
-
-  return undefined
-}
-
-function toStringValue(value: unknown): string | undefined {
-  return typeof value === 'string' && value.length > 0 ? value : undefined
-}
-
-function getDateOnly(value: unknown): string | undefined {
-  const raw = toStringValue(value)
-  return raw ? raw.split('T')[0] : undefined
-}
-
-function isWithinDateRange(value: unknown, fromDate: string, toDate: string): boolean {
-  const dateOnly = getDateOnly(value)
-  return !!dateOnly && dateOnly >= fromDate && dateOnly <= toDate
 }
 
 export function mapFacilityIds(value: unknown): number[] {

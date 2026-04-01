@@ -1,13 +1,15 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { callRpc } from '@/lib/rpc-client'
-import { getUnknownErrorMessage } from '@/lib/error-utils'
+import { normalizeRpcError } from '@/lib/error-utils'
 import { toast } from '@/hooks/use-toast'
 import {
+  type ApproveMaintenancePlanArgs,
   type MaintenanceHistoryFilters,
   type MaintenanceKeyFilters,
   type MaintenancePlanListResponse,
   type MaintenancePlanMutationInput,
   type MaintenanceScheduleFilters,
+  type RejectMaintenancePlanArgs,
 } from './use-cached-maintenance.types'
 import {
   defaultMaintenanceTaskListArgs,
@@ -45,7 +47,7 @@ export function useMaintenancePlans(
 
   return useQuery<MaintenancePlanListResponse>({
     queryKey: maintenanceKeys.plan({
-      search: search ?? null,
+      search: search ?? undefined,
       facilityId: facilityId ?? null,
       page,
       pageSize,
@@ -150,7 +152,7 @@ export function useCreateMaintenancePlan() {
     onError: (error: unknown) => {
       toast({
         title: 'Lỗi',
-        description: getUnknownErrorMessage(error, 'Không thể tạo kế hoạch bảo trì'),
+        description: normalizeRpcError(error, 'Không thể tạo kế hoạch bảo trì'),
         variant: 'destructive',
       })
     },
@@ -186,7 +188,7 @@ export function useUpdateMaintenancePlan() {
     onError: (error: unknown) => {
       toast({
         title: 'Lỗi',
-        description: getUnknownErrorMessage(error, 'Không thể cập nhật kế hoạch bảo trì'),
+        description: normalizeRpcError(error, 'Không thể cập nhật kế hoạch bảo trì'),
         variant: 'destructive',
       })
     },
@@ -197,15 +199,15 @@ export function useApproveMaintenancePlan() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: async (params: { id: number; nguoi_duyet: string }) => {
+    mutationFn: async (params: ApproveMaintenancePlanArgs) => {
       await callRpc<void>({
         fn: 'maintenance_plan_approve',
         args: {
-          p_id: params.id,
-          p_nguoi_duyet: params.nguoi_duyet,
+          p_id: params.p_id,
+          p_nguoi_duyet: params.p_nguoi_duyet,
         },
       })
-      return params.id
+      return params.p_id
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: maintenanceKeys.plans() })
@@ -219,7 +221,7 @@ export function useApproveMaintenancePlan() {
     onError: (error: unknown) => {
       toast({
         title: 'Lỗi duyệt kế hoạch',
-        description: getUnknownErrorMessage(error, 'Không thể duyệt kế hoạch'),
+        description: normalizeRpcError(error, 'Không thể duyệt kế hoạch'),
         variant: 'destructive',
       })
     },
@@ -230,16 +232,16 @@ export function useRejectMaintenancePlan() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: async (params: { id: number; nguoi_duyet: string; ly_do: string }) => {
+    mutationFn: async (params: RejectMaintenancePlanArgs) => {
       await callRpc<void>({
         fn: 'maintenance_plan_reject',
         args: {
-          p_id: params.id,
-          p_nguoi_duyet: params.nguoi_duyet,
-          p_ly_do: params.ly_do,
+          p_id: params.p_id,
+          p_nguoi_duyet: params.p_nguoi_duyet,
+          p_ly_do: params.p_ly_do,
         },
       })
-      return params.id
+      return params.p_id
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: maintenanceKeys.plans() })
@@ -253,7 +255,7 @@ export function useRejectMaintenancePlan() {
     onError: (error: unknown) => {
       toast({
         title: 'Lỗi từ chối kế hoạch',
-        description: getUnknownErrorMessage(error, 'Không thể từ chối kế hoạch'),
+        description: normalizeRpcError(error, 'Không thể từ chối kế hoạch'),
         variant: 'destructive',
       })
     },
@@ -283,7 +285,7 @@ export function useDeleteMaintenancePlan() {
     onError: (error: unknown) => {
       toast({
         title: 'Lỗi xóa kế hoạch',
-        description: getUnknownErrorMessage(error, 'Không thể xóa kế hoạch bảo trì'),
+        description: normalizeRpcError(error, 'Không thể xóa kế hoạch bảo trì'),
         variant: 'destructive',
       })
     },

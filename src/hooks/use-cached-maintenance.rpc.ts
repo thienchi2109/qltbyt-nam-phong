@@ -1,4 +1,5 @@
 import { taskTypes, type MaintenanceTask, type TaskType } from '@/lib/data'
+import { isRecord, toNullableNumber, toNullableString } from '@/lib/rpc-normalize'
 
 type RpcCaller = <TResponse>(options: {
   fn: string
@@ -17,31 +18,6 @@ export const defaultMaintenanceTaskListArgs: MaintenanceTaskListArgs = {
   p_thiet_bi_id: null,
   p_loai_cong_viec: null,
   p_don_vi_thuc_hien: null,
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value)
-}
-
-function toNumber(value: unknown): number | null {
-  if (typeof value === 'number' && Number.isFinite(value)) {
-    return value
-  }
-
-  if (typeof value === 'string' && value.trim()) {
-    const parsed = Number(value)
-    return Number.isFinite(parsed) ? parsed : null
-  }
-
-  return null
-}
-
-function toNullableNumber(value: unknown): number | null {
-  return value == null ? null : toNumber(value)
-}
-
-function toNullableString(value: unknown): string | null {
-  return typeof value === 'string' ? value : null
 }
 
 function isTaskType(value: unknown): value is TaskType {
@@ -78,8 +54,8 @@ function normalizeMaintenanceTask(value: unknown): MaintenanceTask | null {
     return null
   }
 
-  const id = toNumber(value.id)
-  const keHoachId = toNumber(value.ke_hoach_id)
+  const id = toNullableNumber(value.id)
+  const keHoachId = toNullableNumber(value.ke_hoach_id)
   const thang_1 = value.thang_1
   const thang_2 = value.thang_2
   const thang_3 = value.thang_3

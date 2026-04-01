@@ -1,6 +1,11 @@
 import type { TaskType } from '@/lib/data'
 
-export type MaintenanceKeyFilters = Record<string, unknown>
+export interface MaintenanceKeyFilters {
+  search?: string
+  facilityId?: number | null
+  page?: number
+  pageSize?: number
+}
 
 export interface MaintenancePlanListResponse {
   data: MaintenancePlan[]
@@ -34,7 +39,6 @@ export interface MaintenancePlanMutationInput {
 }
 
 export type MaintenanceScheduleFilters = MaintenanceKeyFilters & {
-  search?: string
   phong_ban?: string
   trang_thai?: string
   loai_bao_tri?: string
@@ -46,4 +50,17 @@ export type MaintenanceHistoryFilters = MaintenanceKeyFilters & {
   thiet_bi_id?: string
   dateFrom?: string
   dateTo?: string
+}
+
+/** RPC request args for approve_maintenance_plan */
+export interface ApproveMaintenancePlanArgs {
+  p_id: number
+  p_nguoi_duyet: string
+}
+
+/** RPC request args for reject_maintenance_plan */
+export interface RejectMaintenancePlanArgs {
+  p_id: number
+  p_nguoi_duyet: string
+  p_ly_do: string
 }

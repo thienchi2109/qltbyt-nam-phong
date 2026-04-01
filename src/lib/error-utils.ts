@@ -17,3 +17,7 @@ export function getUnknownErrorMessage(error: unknown, fallback = ''): string {
 
   return fallback
 }
+
+export function normalizeRpcError(error: unknown, fallbackMessage: string): string {
+  return getUnknownErrorMessage(error, fallbackMessage)
+}
