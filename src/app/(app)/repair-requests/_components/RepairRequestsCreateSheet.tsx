@@ -208,8 +208,15 @@ export function RepairRequestsCreateSheet() {
   }
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const nextQuery = e.target.value
+    const nextTrimmedQuery = nextQuery.trim()
+    const selectedLabel = selectedEquipment
+      ? `${selectedEquipment.ten_thiet_bi} (${selectedEquipment.ma_thiet_bi})`
+      : ""
+
     hasUserEditedSearchRef.current = true
-    setSearchQuery(e.target.value)
+    setSearchQuery(nextQuery)
+    setIsSearchPending(Boolean(nextTrimmedQuery) && nextTrimmedQuery !== selectedLabel)
     if (selectedEquipment) {
       setSelectedEquipment(null)
     }

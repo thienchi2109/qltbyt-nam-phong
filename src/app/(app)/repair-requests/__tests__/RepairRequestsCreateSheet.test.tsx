@@ -609,4 +609,31 @@ describe('RepairRequestsCreateSheet equipment search debounce', () => {
 
     expect(screen.getByText('Không tìm thấy kết quả phù hợp')).toBeInTheDocument()
   })
+
+  it('hides stale suggestions immediately on input change before effect tick', async () => {
+    mocks.callRpc.mockResolvedValue([
+      {
+        id: 202,
+        ma_thiet_bi: 'TB-202',
+        ten_thiet_bi: 'Máy siêu âm B',
+        khoa_phong_quan_ly: 'CDHA',
+      },
+    ])
+
+    render(<RepairRequestsCreateSheet />)
+
+    const equipmentInput = screen.getByLabelText('Thiết bị')
+
+    fireEvent.change(equipmentInput, { target: { value: 'Máy siêu âm' } })
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(300)
+      await Promise.resolve()
+    })
+    expect(screen.getByText('Máy siêu âm B')).toBeInTheDocument()
+
+    fireEvent.change(equipmentInput, { target: { value: 'Máy X-quang' } })
+
+    expect(screen.queryByText('Máy siêu âm B')).not.toBeInTheDocument()
+    expect(screen.queryByText('Không tìm thấy kết quả phù hợp')).not.toBeInTheDocument()
+  })
 })
