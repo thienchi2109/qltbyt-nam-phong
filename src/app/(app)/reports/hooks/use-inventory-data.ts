@@ -4,6 +4,12 @@ import { format } from 'date-fns'
 import {
   type InventoryItem,
   type InventorySummary,
+  type InventoryDataFilters,
+  type FacilityRow,
+  type EquipmentAggregateRow,
+  type DepartmentRow,
+  type EquipmentReportRow,
+  type TransferReportRow,
   isRpcNotFoundError,
   mapDepartmentNames,
   mapExportedInventoryItems,
@@ -23,7 +29,7 @@ interface DateRange {
 export const reportsKeys = {
   all: ['reports'] as const,
   inventory: () => [...reportsKeys.all, 'inventory'] as const,
-  inventoryData: (filters: Record<string, unknown>) => [...reportsKeys.inventory(), { filters }] as const,
+  inventoryData: (filters: InventoryDataFilters) => [...reportsKeys.inventory(), { filters }] as const,
 }
 
 export function useInventoryData(
@@ -41,7 +47,7 @@ export function useInventoryData(
   const { data: facilitiesData } = useQuery({
     queryKey: ['reports-facilities-list'],
     queryFn: async () => {
-      const result = await callRpc<unknown>({
+      const result = await callRpc<FacilityRow[]>({
         fn: 'get_facilities_with_equipment_count', 
         args: {} 
       })
@@ -75,7 +81,7 @@ export function useInventoryData(
         const facilitiesToQuery = facilitiesData || []
         
         // Call aggregate RPC for equipment stats
-        const aggregates = await callRpc<unknown>({
+        const aggregates = await callRpc<EquipmentAggregateRow>({
           fn: 'equipment_aggregates_for_reports',
           args: {
             p_don_vi_array: facilitiesToQuery.length > 0 ? facilitiesToQuery : null,
@@ -86,7 +92,7 @@ export function useInventoryData(
         })
         
         // Get departments across all facilities
-        const deptRows = await callRpc<unknown>({
+        const deptRows = await callRpc<DepartmentRow[]>({
           fn: 'departments_list_for_facilities',
           args: { 
             p_don_vi_array: facilitiesToQuery.length > 0 ? facilitiesToQuery : null 
@@ -104,7 +110,7 @@ export function useInventoryData(
 
       // Single-facility detailed query (existing logic)
       // Fetch equipment via enhanced Reports RPC with explicit tenant + department parameter
-      const equipment = await callRpc<unknown>({
+      const equipment = await callRpc<EquipmentReportRow[]>({
         fn: 'equipment_list_for_reports',
         args: { 
           p_q: searchTerm || null, 
@@ -121,9 +127,9 @@ export function useInventoryData(
       const importedItems = mapImportedInventoryItems(equipment, fromDate, toDate)
 
       // Fetch transfers via enhanced RPC with explicit tenant parameter
-      let transfers: unknown = []
+      let transfers: TransferReportRow[] = []
       try {
-        transfers = await callRpc<unknown>({
+        transfers = await callRpc<TransferReportRow[]>({
           fn: 'transfer_request_list_enhanced',
           args: { 
             p_q: null, 
@@ -187,7 +193,7 @@ export function useInventoryData(
       }
 
       // Departments via enhanced RPC with explicit tenant parameter
-      const deptRows = await callRpc<unknown>({
+      const deptRows = await callRpc<DepartmentRow[]>({
         fn: 'departments_list_for_tenant',
         args: { p_don_vi: selectedDonVi }  // Explicit tenant parameter
       })
