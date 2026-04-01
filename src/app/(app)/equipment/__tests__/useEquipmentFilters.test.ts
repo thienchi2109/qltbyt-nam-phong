@@ -1,5 +1,6 @@
 import { renderHook, act } from '@testing-library/react'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
+import * as React from 'react'
 import { useEquipmentFilters } from '../_hooks/useEquipmentFilters'
 
 // Mock the debounce hook
@@ -7,34 +8,54 @@ vi.mock('@/hooks/use-debounce', () => ({
   useSearchDebounce: (value: string) => value, // Return immediately for tests
 }))
 
+// Mock next-auth/react (required by EquipmentFilterProvider)
+vi.mock('next-auth/react', () => ({
+  useSession: () => ({
+    data: { user: { id: 1, name: 'Test', role: 'user' } },
+    status: 'authenticated' as const,
+  }),
+}))
+
+// Import EquipmentFilterProvider for wrapper
+import { EquipmentFilterProvider } from '@/contexts/EquipmentFilterContext'
+
+// Wrapper that provides the required context
+function createWrapper() {
+  return function Wrapper({ children }: { children: React.ReactNode }) {
+    return React.createElement(EquipmentFilterProvider, null, children)
+  }
+}
+
 describe('useEquipmentFilters', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    // Clear sessionStorage between tests
+    sessionStorage.clear()
   })
 
   describe('Initial State', () => {
     it('should initialize with empty search term', () => {
-      const { result } = renderHook(() => useEquipmentFilters())
+      const { result } = renderHook(() => useEquipmentFilters(), { wrapper: createWrapper() })
       expect(result.current.searchTerm).toBe('')
     })
 
     it('should initialize with empty sorting', () => {
-      const { result } = renderHook(() => useEquipmentFilters())
+      const { result } = renderHook(() => useEquipmentFilters(), { wrapper: createWrapper() })
       expect(result.current.sorting).toEqual([])
     })
 
     it('should initialize with empty column filters', () => {
-      const { result } = renderHook(() => useEquipmentFilters())
+      const { result } = renderHook(() => useEquipmentFilters(), { wrapper: createWrapper() })
       expect(result.current.columnFilters).toEqual([])
     })
 
     it('should default sortParam to id.asc when no sorting', () => {
-      const { result } = renderHook(() => useEquipmentFilters())
+      const { result } = renderHook(() => useEquipmentFilters(), { wrapper: createWrapper() })
       expect(result.current.sortParam).toBe('id.asc')
     })
 
     it('should initialize all selected filter arrays as empty', () => {
-      const { result } = renderHook(() => useEquipmentFilters())
+      const { result } = renderHook(() => useEquipmentFilters(), { wrapper: createWrapper() })
       expect(result.current.selectedDepartments).toEqual([])
       expect(result.current.selectedUsers).toEqual([])
       expect(result.current.selectedLocations).toEqual([])
@@ -45,7 +66,7 @@ describe('useEquipmentFilters', () => {
 
   describe('Search Functionality', () => {
     it('should update searchTerm when setSearchTerm is called', () => {
-      const { result } = renderHook(() => useEquipmentFilters())
+      const { result } = renderHook(() => useEquipmentFilters(), { wrapper: createWrapper() })
 
       act(() => {
         result.current.setSearchTerm('test search')
@@ -55,7 +76,7 @@ describe('useEquipmentFilters', () => {
     })
 
     it('should provide debouncedSearch value', () => {
-      const { result } = renderHook(() => useEquipmentFilters())
+      const { result } = renderHook(() => useEquipmentFilters(), { wrapper: createWrapper() })
 
       act(() => {
         result.current.setSearchTerm('debounced test')
@@ -68,7 +89,7 @@ describe('useEquipmentFilters', () => {
 
   describe('Sorting Functionality', () => {
     it('should update sorting state', () => {
-      const { result } = renderHook(() => useEquipmentFilters())
+      const { result } = renderHook(() => useEquipmentFilters(), { wrapper: createWrapper() })
 
       act(() => {
         result.current.setSorting([{ id: 'name', desc: false }])
@@ -78,7 +99,7 @@ describe('useEquipmentFilters', () => {
     })
 
     it('should generate correct sortParam for ascending', () => {
-      const { result } = renderHook(() => useEquipmentFilters())
+      const { result } = renderHook(() => useEquipmentFilters(), { wrapper: createWrapper() })
 
       act(() => {
         result.current.setSorting([{ id: 'ten_thiet_bi', desc: false }])
@@ -88,7 +109,7 @@ describe('useEquipmentFilters', () => {
     })
 
     it('should generate correct sortParam for descending', () => {
-      const { result } = renderHook(() => useEquipmentFilters())
+      const { result } = renderHook(() => useEquipmentFilters(), { wrapper: createWrapper() })
 
       act(() => {
         result.current.setSorting([{ id: 'ngay_mua', desc: true }])
@@ -98,7 +119,7 @@ describe('useEquipmentFilters', () => {
     })
 
     it('should use first sort column when multiple exist', () => {
-      const { result } = renderHook(() => useEquipmentFilters())
+      const { result } = renderHook(() => useEquipmentFilters(), { wrapper: createWrapper() })
 
       act(() => {
         result.current.setSorting([
@@ -113,7 +134,7 @@ describe('useEquipmentFilters', () => {
 
   describe('Column Filters', () => {
     it('should update column filters', () => {
-      const { result } = renderHook(() => useEquipmentFilters())
+      const { result } = renderHook(() => useEquipmentFilters(), { wrapper: createWrapper() })
 
       const filters = [
         { id: 'tinh_trang_hien_tai', value: ['Đang hoạt động'] },
@@ -127,7 +148,7 @@ describe('useEquipmentFilters', () => {
     })
 
     it('should extract selectedStatuses from column filters', () => {
-      const { result } = renderHook(() => useEquipmentFilters())
+      const { result } = renderHook(() => useEquipmentFilters(), { wrapper: createWrapper() })
 
       act(() => {
         result.current.setColumnFilters([
@@ -139,7 +160,7 @@ describe('useEquipmentFilters', () => {
     })
 
     it('should extract selectedDepartments from column filters', () => {
-      const { result } = renderHook(() => useEquipmentFilters())
+      const { result } = renderHook(() => useEquipmentFilters(), { wrapper: createWrapper() })
 
       act(() => {
         result.current.setColumnFilters([
@@ -151,7 +172,7 @@ describe('useEquipmentFilters', () => {
     })
 
     it('should extract selectedUsers from column filters', () => {
-      const { result } = renderHook(() => useEquipmentFilters())
+      const { result } = renderHook(() => useEquipmentFilters(), { wrapper: createWrapper() })
 
       act(() => {
         result.current.setColumnFilters([
@@ -163,7 +184,7 @@ describe('useEquipmentFilters', () => {
     })
 
     it('should extract selectedClassifications from column filters', () => {
-      const { result } = renderHook(() => useEquipmentFilters())
+      const { result } = renderHook(() => useEquipmentFilters(), { wrapper: createWrapper() })
 
       act(() => {
         result.current.setColumnFilters([
@@ -175,7 +196,7 @@ describe('useEquipmentFilters', () => {
     })
 
     it('should handle multiple filter types simultaneously', () => {
-      const { result } = renderHook(() => useEquipmentFilters())
+      const { result } = renderHook(() => useEquipmentFilters(), { wrapper: createWrapper() })
 
       act(() => {
         result.current.setColumnFilters([
@@ -191,7 +212,7 @@ describe('useEquipmentFilters', () => {
     })
 
     it('should return empty array for non-existent filter', () => {
-      const { result } = renderHook(() => useEquipmentFilters())
+      const { result } = renderHook(() => useEquipmentFilters(), { wrapper: createWrapper() })
 
       act(() => {
         result.current.setColumnFilters([
@@ -206,7 +227,7 @@ describe('useEquipmentFilters', () => {
 
   describe('Reset Functionality', () => {
     it('should reset all filters when resetFilters is called', () => {
-      const { result } = renderHook(() => useEquipmentFilters())
+      const { result } = renderHook(() => useEquipmentFilters(), { wrapper: createWrapper() })
 
       // Set some values first
       act(() => {
@@ -231,7 +252,7 @@ describe('useEquipmentFilters', () => {
 
   describe('Memoization', () => {
     it('should maintain stable references for setters', () => {
-      const { result, rerender } = renderHook(() => useEquipmentFilters())
+      const { result, rerender } = renderHook(() => useEquipmentFilters(), { wrapper: createWrapper() })
 
       const initialSetSearchTerm = result.current.setSearchTerm
       const initialSetSorting = result.current.setSorting

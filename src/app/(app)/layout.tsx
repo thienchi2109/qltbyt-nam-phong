@@ -53,6 +53,7 @@ import { HelpButton } from "@/components/onboarding/HelpButton"
 import { USER_ROLES } from "@/types/database"
 import { callRpc } from "@/lib/rpc-client"
 import { TenantSelectionProvider } from "@/contexts/TenantSelectionContext"
+import { EquipmentFilterProvider } from "@/contexts/EquipmentFilterContext"
 import dynamic from "next/dynamic"
 // Tenant switcher removed in favor of per-page tenant filters
 
@@ -74,7 +75,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const [isChangePasswordOpen, setIsChangePasswordOpen] = React.useState(false)
   const [isAssistantOpen, setIsAssistantOpen] = React.useState(false)
   const { data: session, status } = useSession()
-  const user = session?.user as any
+  const user = session?.user as { role?: string; full_name?: string; username?: string; khoa_phong?: string } | undefined
   const branding = useTenantBranding()
 
   // Header notification counts (tenant-scoped via RPC)
@@ -155,6 +156,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   return (
     <TenantSelectionProvider>
+    <EquipmentFilterProvider>
       <>
         <ChangePasswordDialog
           open={isChangePasswordOpen}
@@ -366,6 +368,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           </div>
         </div>
       </>
+    </EquipmentFilterProvider>
     </TenantSelectionProvider>
   )
 }
