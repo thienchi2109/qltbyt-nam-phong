@@ -1,42 +1,38 @@
 ## Context
-The Equipments page already truncates generic cell text, but the desktop table still feels unstable on smaller desktop screens because the primary long-text columns do not have strong width contracts. The user-approved UX direction is:
-- `Mã thiết bị`: never wrap; truncate + tooltip
-- `Tên thiết bị`: allow up to two lines; clamp + tooltip
-- hide `Serial` earlier on narrower desktop widths
+The Equipments page already truncates generic cell text, and the user wants to keep that simple single-line behavior rather than introduce wrapping or multi-line clamping. The approved scope is therefore a minimal UX improvement: preserve the current single-line truncation behavior for long `Mã thiết bị` and `Tên thiết bị` values, add tooltip/focus affordances so users can inspect the complete value when needed, and apply bounded widths so those two columns do not stretch the table disproportionately.
 
 ## Goals / Non-Goals
 - Goals:
-  - Reduce unnecessary horizontal scrolling on smaller desktop screens.
+  - Improve discoverability of full long-text values without changing the current table interaction model.
+  - Reduce width domination from long `Mã thiết bị` and `Tên thiết bị` values.
   - Preserve quick scanability of the equipment list.
   - Keep full values accessible for pointer and keyboard users.
   - Keep the change localized to the Equipments desktop datatable path.
 - Non-Goals:
-  - Rebuild the entire table layout system.
-  - Introduce card view changes.
+  - Change breakpoint-based column visibility behavior.
+  - Introduce wrapping or two-line clamping.
   - Redesign unrelated equipment columns or mobile behaviors.
 
 ## Decisions
-- Decision: Treat `ma_thiet_bi` and `ten_thiet_bi` as special-case columns instead of relying on the generic text-cell renderer.
-  - Rationale: the UX requirements differ materially between one-line identifiers and two-line human-readable names.
-- Decision: Favor bounded widths plus truncation/clamping over free wrapping.
-  - Rationale: unlimited wrapping would reduce horizontal scrolling at the cost of very tall rows and poorer row-by-row scanning.
-- Decision: Hide `serial` earlier on narrower desktop widths before further compressing the two primary columns.
-  - Rationale: `serial` is lower-priority than the equipment code and name in routine browsing.
+- Decision: Keep `ma_thiet_bi` and `ten_thiet_bi` on the current single-line truncated presentation and add full-text affordances.
+  - Rationale: this is the cleanest and lowest-risk change that matches the approved UX direction.
+- Decision: Add bounded width contracts for `ma_thiet_bi` and `ten_thiet_bi` instead of introducing wrapping.
+  - Rationale: fixed widths keep the table cleaner and prevent long values from pushing adjacent columns away while preserving scanability.
 - Decision: Reuse or extend the shared truncated-text primitive where it helps, but avoid broad table-wide changes in shared UI that could affect unrelated screens.
   - Rationale: the issue is localized to Equipments and should stay low-risk.
+- Decision: Leave current responsive auto-hide rules untouched.
+  - Rationale: current column reduction on narrower desktops is already acceptable; the remaining concern is full-text inspection.
 
 ## Risks / Trade-offs
-- Shared table primitives can create unintended regressions if changed too broadly.
-  - Mitigation: keep the width and overflow rules primarily in the Equipments column/render path.
-- Two-line clamp increases row height compared with a one-line table.
-  - Mitigation: limit it to `Tên thiết bị` only and keep the maximum at two lines.
-- Responsive auto-hide can conflict with user column preferences.
-  - Mitigation: preserve the existing snapshot/restore behavior in `useEquipmentTable`.
+- Shared text-overflow primitives can create unintended regressions if changed too broadly.
+  - Mitigation: keep the behavior primarily in the Equipments column/render path or make the shared primitive change strictly additive.
+- Width contracts that are too aggressive could over-truncate common values.
+  - Mitigation: choose moderate fixed/max widths that preserve normal readability while limiting outliers.
 
 ## Migration Plan
 1. Update the proposal-backed implementation path only for the Equipments desktop datatable.
-2. Validate responsive behavior around narrower desktop widths.
-3. Keep column toggles and row actions unchanged.
+2. Validate that long name/code cells reveal full text on hover/focus.
+3. Validate that the bounded widths reduce over-expansion without altering column toggles, responsive behavior, or row actions.
 
 ## Open Questions
-- Should future follow-up work introduce a second lower-priority column hide on very constrained desktop widths, or is earlier `serial` hiding sufficient for this iteration?
+- If bounded single-line truncation still feels cramped in practice, should a later follow-up revisit selective two-line clamping for `Tên thiết bị`?
