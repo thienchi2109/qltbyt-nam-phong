@@ -508,4 +508,49 @@ describe('RepairRequestsCreateSheet equipment search debounce', () => {
       }),
     )
   })
+
+  it('clears stale suggestions when latest equipment search fails', async () => {
+    mocks.callRpc
+      .mockResolvedValueOnce([
+        {
+          id: 202,
+          ma_thiet_bi: 'TB-202',
+          ten_thiet_bi: 'Máy siêu âm B',
+          khoa_phong_quan_ly: 'CDHA',
+        },
+      ])
+      .mockRejectedValueOnce(new Error('network error'))
+
+    render(<RepairRequestsCreateSheet />)
+
+    const equipmentInput = screen.getByLabelText('Thiết bị')
+
+    fireEvent.change(equipmentInput, { target: { value: 'Máy siêu âm' } })
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(300)
+      await Promise.resolve()
+    })
+
+    expect(screen.getByText('Máy siêu âm B')).toBeInTheDocument()
+
+    fireEvent.change(equipmentInput, { target: { value: 'Máy X-quang' } })
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(300)
+      await Promise.resolve()
+    })
+
+    expect(mocks.callRpc).toHaveBeenCalledTimes(2)
+    expect(mocks.callRpc).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        fn: 'equipment_list',
+        args: expect.objectContaining({ p_q: 'Máy X-quang' }),
+      }),
+    )
+
+    await act(async () => {
+      await Promise.resolve()
+    })
+    expect(screen.queryByText('Máy siêu âm B')).not.toBeInTheDocument()
+    expect(screen.getByText('Không tìm thấy kết quả phù hợp')).toBeInTheDocument()
+  })
 })

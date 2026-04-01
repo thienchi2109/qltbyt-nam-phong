@@ -165,6 +165,7 @@ export function RepairRequestsCreateSheet() {
         }
       } catch (e) {
         if (ctrl.signal.aborted) return
+        setAllEquipment([])
       }
     }
     const timeoutId = window.setTimeout(run, REPAIR_REQUEST_EQUIPMENT_SEARCH_DEBOUNCE_MS)
