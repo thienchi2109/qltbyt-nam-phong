@@ -7,9 +7,9 @@ Issue reference:
 ## What Changes
 - Keep the current Equipments desktop responsive column-visibility behavior unchanged.
 - Preserve the existing single-line truncated rendering for long `Mã thiết bị` and `Tên thiết bị` values.
-- Add full-text tooltip/focus affordances for long `Mã thiết bị` and `Tên thiết bị` values so users can inspect the complete value without changing the current interaction model.
+- Add explicit tooltip behavior for long `Mã thiết bị` and `Tên thiết bị` values so users can inspect the complete value on pointer hover and keyboard focus, instead of relying on truncation alone.
 - Add bounded width contracts for `Mã thiết bị` and `Tên thiết bị` so those columns cannot stretch disproportionately and push the remaining columns too far to the right.
-- Keep the scope limited to the Equipments desktop datatable path and shared text-overflow primitives used by that path.
+- Keep the scope limited to the Equipments desktop datatable path. Avoid shared table-primitive changes; prefer equipment-local render helpers or strictly additive tooltip reuse only if it cannot affect unrelated tables.
 - Preserve existing row click behavior, action-menu behavior, sorting, and column-toggle behavior.
 - Drive implementation with strict TDD:
   - audit dependencies first,
@@ -23,10 +23,10 @@ Issue reference:
 - Affected specs: `equipment-catalog`
 - Affected code:
   - `src/components/equipment/equipment-table-columns.tsx`
+  - `src/app/(app)/equipment/_hooks/useEquipmentTable.ts`
   - `src/app/(app)/equipment/equipment-content.tsx`
-  - `src/components/ui/truncated-text.tsx`
-  - `src/components/ui/table.tsx`
-  - equipment page / table regression tests
+  - focused `useEquipmentTable` responsive regression tests
+  - focused `EquipmentContent` interaction regression tests
 - Dependency review:
   - GitNexus reports `CRITICAL` upstream risk for `createEquipmentColumns`, but the effective caller chain is localized to `useEquipmentPage` and `EquipmentPageClient`.
   - Existing pending `equipment-catalog` changes (`add-equipment-so-luu-hanh`, `add-equipment-decommission-date`, `refactor-equipment-page-dialog-consolidation`) must remain compatible with any table-column rendering adjustments.
