@@ -12,6 +12,7 @@ import { ArrowUpDown } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { createSelectionColumn } from "@/components/ui/data-table-selection"
+import { TruncatedText } from "@/components/ui/truncated-text"
 import type { Equipment } from "@/types/database"
 import {
   formatFullDateToDisplay,
@@ -24,6 +25,9 @@ const PARTIAL_DATE_FIELDS: Set<keyof Equipment> = new Set([
   "ngay_dua_vao_su_dung",
   "han_bao_hanh",
 ])
+
+const EQUIPMENT_CODE_WIDTH_CLASS = "block max-w-[10rem]"
+const EQUIPMENT_NAME_WIDTH_CLASS = "block max-w-[18rem]"
 
 /**
  * Returns badge variant based on equipment status.
@@ -204,6 +208,27 @@ export function createEquipmentColumns(
 
         if (value === null || value === undefined || value === "") {
           return <div className="italic text-muted-foreground">Chưa có dữ liệu</div>
+        }
+
+        if (key === "ma_thiet_bi") {
+          return (
+            <TruncatedText
+              text={String(value)}
+              className={EQUIPMENT_CODE_WIDTH_CLASS}
+              focusable
+            />
+          )
+        }
+
+        if (key === "ten_thiet_bi") {
+          return (
+            <TruncatedText
+              text={String(value)}
+              className={EQUIPMENT_NAME_WIDTH_CLASS}
+              tooltipMaxWidth="max-w-md"
+              focusable
+            />
+          )
         }
 
         return <div className="truncate max-w-xs">{String(value)}</div>

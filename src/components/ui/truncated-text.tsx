@@ -21,6 +21,8 @@ interface TruncatedTextProps {
     align?: "start" | "center" | "end"
     /** Max width for the tooltip content */
     tooltipMaxWidth?: string
+    /** Make the truncated text keyboard-focusable so tooltip also opens on focus */
+    focusable?: boolean
 }
 
 /**
@@ -34,11 +36,15 @@ export function TruncatedText({
     side = "top",
     align = "start",
     tooltipMaxWidth = "max-w-xs",
+    focusable = false,
 }: TruncatedTextProps) {
     return (
         <Tooltip>
             <TooltipTrigger asChild>
-                <Component className={cn("truncate cursor-default", className)}>
+                <Component
+                    className={cn("truncate cursor-default", className)}
+                    tabIndex={focusable ? 0 : undefined}
+                >
                     {text}
                 </Component>
             </TooltipTrigger>
