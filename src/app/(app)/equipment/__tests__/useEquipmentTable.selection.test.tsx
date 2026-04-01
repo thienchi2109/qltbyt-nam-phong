@@ -6,13 +6,31 @@ import { describe, expect, it, vi } from "vitest"
 import { useEquipmentTable } from "../_hooks/useEquipmentTable"
 import type { Equipment } from "@/types/database"
 
+const MEDIA_QUERIES = {
+  mediumScreen: "(min-width: 768px) and (max-width: 1800px)",
+}
+
+const mediaQueryState = vi.hoisted(() => ({
+  responses: {} as Record<string, boolean>,
+  useMediaQuery: vi.fn((query: string) => false),
+  useIsMobile: vi.fn(() => false),
+}))
+
 vi.mock("@/hooks/use-media-query", () => ({
-  useMediaQuery: () => false,
+  useMediaQuery: (query: string) => mediaQueryState.useMediaQuery(query),
 }))
 
 vi.mock("@/hooks/use-mobile", () => ({
-  useIsMobile: () => false,
+  useIsMobile: () => mediaQueryState.useIsMobile(),
 }))
+
+beforeEach(() => {
+  mediaQueryState.responses = {}
+  mediaQueryState.useMediaQuery.mockImplementation(
+    (query: string) => mediaQueryState.responses[query] ?? false
+  )
+  mediaQueryState.useIsMobile.mockReturnValue(false)
+})
 
 function createEquipment(id: number): Equipment {
   return {
@@ -57,6 +75,10 @@ function renderSelectionHook() {
       selectedFacilityId: 5,
     })
   })
+}
+
+function setMediaQueryResponses(responses: Record<string, boolean>) {
+  mediaQueryState.responses = responses
 }
 
 describe("useEquipmentTable row selection", () => {
@@ -139,5 +161,60 @@ describe("useEquipmentTable row selection", () => {
     const { result } = renderSelectionHook()
 
     expect(result.current.columnVisibility.ngay_ngung_su_dung).toBe(false)
+  })
+})
+
+describe("useEquipmentTable responsive visibility", () => {
+  it("auto-hides the desktop-only columns on 768px-1800px screens", async () => {
+    setMediaQueryResponses({
+      [MEDIA_QUERIES.mediumScreen]: true,
+    })
+
+    const { result } = renderSelectionHook()
+
+    await waitFor(() => {
+      expect(result.current.columnVisibility.serial).toBe(false)
+      expect(result.current.columnVisibility.phan_loai_theo_nd98).toBe(false)
+      expect(result.current.columnVisibility.so_luu_hanh).toBe(false)
+    })
+  })
+
+  it("restores prior visibility after leaving the 768px-1800px range", async () => {
+    setMediaQueryResponses({})
+
+    const { result, rerender } = renderSelectionHook()
+
+    act(() => {
+      result.current.setColumnVisibility((prev) => ({
+        ...prev,
+        serial: false,
+        phan_loai_theo_nd98: true,
+        so_luu_hanh: false,
+      }))
+    })
+
+    act(() => {
+      setMediaQueryResponses({
+        [MEDIA_QUERIES.mediumScreen]: true,
+      })
+      rerender()
+    })
+
+    await waitFor(() => {
+      expect(result.current.columnVisibility.serial).toBe(false)
+      expect(result.current.columnVisibility.phan_loai_theo_nd98).toBe(false)
+      expect(result.current.columnVisibility.so_luu_hanh).toBe(false)
+    })
+
+    act(() => {
+      setMediaQueryResponses({})
+      rerender()
+    })
+
+    await waitFor(() => {
+      expect(result.current.columnVisibility.serial).toBe(false)
+      expect(result.current.columnVisibility.phan_loai_theo_nd98).toBe(true)
+      expect(result.current.columnVisibility.so_luu_hanh).toBe(false)
+    })
   })
 })
