@@ -43,8 +43,9 @@ export interface EquipmentFilterContextValue {
 export const EQUIPMENT_FILTER_STORAGE_KEY_PREFIX = "eq_filters"
 
 /** Build a tenant-scoped storage key. `null` = "all", `undefined` = no tenant yet. */
-function buildStorageKey(tenantId: number | null | undefined): string {
-  const suffix = tenantId == null ? "_all" : `_${tenantId}`
+function buildStorageKey(tenantId: number | null | undefined): string | null {
+  if (tenantId === undefined) return null
+  const suffix = tenantId === null ? "_all" : `_${tenantId}`
   return `${EQUIPMENT_FILTER_STORAGE_KEY_PREFIX}${suffix}`
 }
 
@@ -141,11 +142,14 @@ export function EquipmentFilterProvider({
   )
 
   // Track previous storage key for tenant-change detection
-  const prevStorageKeyRef = React.useRef(storageKey)
+  const prevStorageKeyRef = React.useRef<string | null>(storageKey)
   const skipPersistRef = React.useRef(false)
 
   // Hydrate from sessionStorage on mount
-  const initial = React.useMemo(() => readStoredFilters(storageKey), []) // eslint-disable-line react-hooks/exhaustive-deps
+  const initial = React.useMemo(
+    () => (storageKey ? readStoredFilters(storageKey) : null),
+    [] // eslint-disable-line react-hooks/exhaustive-deps
+  )
 
   // Search state
   const [searchTerm, setSearchTerm] = React.useState(
@@ -167,7 +171,7 @@ export function EquipmentFilterProvider({
   React.useEffect(() => {
     if (prevStorageKeyRef.current !== storageKey) {
       prevStorageKeyRef.current = storageKey
-      const newInitial = readStoredFilters(storageKey)
+      const newInitial = storageKey ? readStoredFilters(storageKey) : null
       skipPersistRef.current = true
       setSearchTerm(newInitial?.searchTerm ?? "")
       setSorting(newInitial?.sorting ?? [])
@@ -179,6 +183,13 @@ export function EquipmentFilterProvider({
   React.useEffect(() => {
     if (skipPersistRef.current) {
       skipPersistRef.current = false
+      return
+    }
+    if (!storageKey) return
+    const isEmpty =
+      searchTerm === "" && sorting.length === 0 && columnFilters.length === 0
+    if (isEmpty) {
+      clearStoredFilters(storageKey)
       return
     }
     writeStoredFilters(storageKey, { searchTerm, sorting, columnFilters })
@@ -195,7 +206,8 @@ export function EquipmentFilterProvider({
   const getArrayFilter = React.useCallback(
     (id: string): string[] => {
       const entry = (columnFilters || []).find((f) => f.id === id)
-      return (entry?.value as string[] | undefined) || []
+      if (!Array.isArray(entry?.value)) return []
+      return entry.value.filter((value): value is string => typeof value === "string")
     },
     [columnFilters]
   )
@@ -228,10 +240,13 @@ export function EquipmentFilterProvider({
 
   // Reset all filters + clear storage
   const resetFilters = React.useCallback(() => {
+    skipPersistRef.current = true
     setColumnFilters([])
     setSearchTerm("")
     setSorting([])
-    clearStoredFilters(storageKey)
+    if (storageKey) {
+      clearStoredFilters(storageKey)
+    }
   }, [storageKey])
 
   // Memoized context value (rerender-memo best practice)

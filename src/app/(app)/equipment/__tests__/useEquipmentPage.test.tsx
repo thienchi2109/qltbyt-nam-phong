@@ -141,27 +141,27 @@ vi.mock("@/lib/rbac", () => ({
   isEquipmentManagerRole: () => false,
 }))
 
-vi.mock("../_hooks/useEquipmentAuth", () => ({
+vi.mock("@/app/(app)/equipment/_hooks/useEquipmentAuth", () => ({
   useEquipmentAuth: () => state.auth,
 }))
 
-vi.mock("../_hooks/useEquipmentFilters", () => ({
+vi.mock("@/app/(app)/equipment/_hooks/useEquipmentFilters", () => ({
   useEquipmentFilters: () => state.filters,
 }))
 
-vi.mock("../_hooks/useEquipmentData", () => ({
+vi.mock("@/app/(app)/equipment/_hooks/useEquipmentData", () => ({
   useEquipmentData: () => state.data,
 }))
 
-vi.mock("../_hooks/useEquipmentTable", () => ({
+vi.mock("@/app/(app)/equipment/_hooks/useEquipmentTable", () => ({
   useEquipmentTable: () => state.table,
 }))
 
-vi.mock("../_hooks/useEquipmentExport", () => ({
+vi.mock("@/app/(app)/equipment/_hooks/useEquipmentExport", () => ({
   useEquipmentExport: () => state.exports,
 }))
 
-vi.mock("../_hooks/useEquipmentRouteSync", () => ({
+vi.mock("@/app/(app)/equipment/_hooks/useEquipmentRouteSync", () => ({
   useEquipmentRouteSync: () => ({
     router: { push: mocks.push, replace: mocks.replace },
     pendingAction: null,
@@ -169,7 +169,7 @@ vi.mock("../_hooks/useEquipmentRouteSync", () => ({
   }),
 }))
 
-import { useEquipmentPage } from "../use-equipment-page"
+import { useEquipmentPage } from "@/app/(app)/equipment/use-equipment-page"
 
 function createAuthState(overrides?: Partial<AuthState>): AuthState {
   return {

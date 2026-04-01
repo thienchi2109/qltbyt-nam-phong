@@ -191,6 +191,42 @@ describe('EquipmentFilterContext — Cycle 1: Creation + Hydration', () => {
 
     expect(writesToTenant99.map((entry) => entry.searchTerm)).not.toContain('tenant-42')
   })
+
+  it('treats unresolved tenant state separately from explicit all-facilities selection', async () => {
+    const allTenantKey = `${EQUIPMENT_FILTER_STORAGE_KEY_PREFIX}_all`
+    mockSelectedFacilityId.current = undefined
+
+    mockSessionStorage.setItem(
+      allTenantKey,
+      JSON.stringify({ searchTerm: 'all-facilities', sorting: [], columnFilters: [] })
+    )
+
+    const { result, rerender } = renderHook(() => useEquipmentFilterContext(), {
+      wrapper: createWrapper(),
+    })
+
+    expect(result.current.searchTerm).toBe('')
+
+    mockSessionStorage.setItem.mockClear()
+
+    act(() => {
+      result.current.setSearchTerm('draft-before-selection')
+    })
+
+    const writesToAllBeforeSelection = mockSessionStorage.setItem.mock.calls.filter(
+      (call: [string, string]) => call[0] === allTenantKey
+    )
+    expect(writesToAllBeforeSelection).toHaveLength(0)
+
+    act(() => {
+      mockSelectedFacilityId.current = null
+    })
+    rerender()
+
+    await waitFor(() => {
+      expect(result.current.searchTerm).toBe('all-facilities')
+    })
+  })
 })
 
 // =============================================================================
@@ -292,6 +328,33 @@ describe('EquipmentFilterContext — Cycle 3: Reset', () => {
     expect(result.current.searchTerm).toBe('')
     expect(result.current.columnFilters).toEqual([])
     expect(mockSessionStorage.removeItem).toHaveBeenCalledWith(TEST_STORAGE_KEY)
+  })
+
+  it('resetFilters does not recreate empty storage payload after clearing', async () => {
+    const { result } = renderHook(() => useEquipmentFilterContext(), {
+      wrapper: createWrapper(),
+    })
+
+    act(() => {
+      result.current.setSearchTerm('persist-me')
+    })
+
+    mockSessionStorage.setItem.mockClear()
+    mockSessionStorage.removeItem.mockClear()
+
+    act(() => {
+      result.current.resetFilters()
+    })
+
+    await waitFor(() => {
+      expect(result.current.searchTerm).toBe('')
+    })
+
+    expect(mockSessionStorage.removeItem).toHaveBeenCalledWith(TEST_STORAGE_KEY)
+    const recreatedWrites = mockSessionStorage.setItem.mock.calls.filter(
+      (call: [string, string]) => call[0] === TEST_STORAGE_KEY
+    )
+    expect(recreatedWrites).toHaveLength(0)
   })
 
   it('resetFilters returns all memoized filter arrays to empty', () => {
@@ -423,6 +486,20 @@ describe('EquipmentFilterContext — Cycle 5: Memoized Filter Arrays', () => {
     expect(result.current.selectedStatuses).toEqual([])
     expect(result.current.selectedClassifications).toEqual([])
     expect(result.current.selectedFundingSources).toEqual([])
+  })
+
+  it('ignores malformed non-array filter payloads when deriving selected filters', () => {
+    const { result } = renderHook(() => useEquipmentFilterContext(), {
+      wrapper: createWrapper(),
+    })
+
+    act(() => {
+      result.current.setColumnFilters([
+        { id: 'khoa_phong_quan_ly', value: 'not-an-array' as unknown as string[] },
+      ])
+    })
+
+    expect(result.current.selectedDepartments).toEqual([])
   })
 
   it('provides stable sortParam derived from sorting state', () => {
