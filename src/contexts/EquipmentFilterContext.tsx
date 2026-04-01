@@ -142,6 +142,7 @@ export function EquipmentFilterProvider({
 
   // Track previous storage key for tenant-change detection
   const prevStorageKeyRef = React.useRef(storageKey)
+  const skipPersistRef = React.useRef(false)
 
   // Hydrate from sessionStorage on mount
   const initial = React.useMemo(() => readStoredFilters(storageKey), []) // eslint-disable-line react-hooks/exhaustive-deps
@@ -167,6 +168,7 @@ export function EquipmentFilterProvider({
     if (prevStorageKeyRef.current !== storageKey) {
       prevStorageKeyRef.current = storageKey
       const newInitial = readStoredFilters(storageKey)
+      skipPersistRef.current = true
       setSearchTerm(newInitial?.searchTerm ?? "")
       setSorting(newInitial?.sorting ?? [])
       setColumnFilters(newInitial?.columnFilters ?? [])
@@ -175,6 +177,10 @@ export function EquipmentFilterProvider({
 
   // Persist to sessionStorage on change
   React.useEffect(() => {
+    if (skipPersistRef.current) {
+      skipPersistRef.current = false
+      return
+    }
     writeStoredFilters(storageKey, { searchTerm, sorting, columnFilters })
   }, [storageKey, searchTerm, sorting, columnFilters])
 

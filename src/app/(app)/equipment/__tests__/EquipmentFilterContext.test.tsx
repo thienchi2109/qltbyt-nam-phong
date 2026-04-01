@@ -11,7 +11,7 @@
  * TDD Cycle 5: Memoized filter arrays
  */
 
-import { renderHook, act } from '@testing-library/react'
+import { renderHook, act, waitFor } from '@testing-library/react'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import * as React from 'react'
 import type { ColumnFiltersState, SortingState } from '@tanstack/react-table'
@@ -35,7 +35,7 @@ const mockSessionStorage = (() => {
   }
 })()
 
-Object.defineProperty(window, 'sessionStorage', {
+Object.defineProperty(globalThis, 'sessionStorage', {
   value: mockSessionStorage,
   writable: true,
 })
@@ -153,6 +153,43 @@ describe('EquipmentFilterContext — Cycle 1: Creation + Hydration', () => {
 
     // Facility 42 has no stored data → defaults
     expect(result.current.searchTerm).toBe('')
+  })
+
+  it('rehydrates from the new tenant key without writing stale previous-tenant state', async () => {
+    const tenant42Key = `${EQUIPMENT_FILTER_STORAGE_KEY_PREFIX}_42`
+    const tenant99Key = `${EQUIPMENT_FILTER_STORAGE_KEY_PREFIX}_99`
+
+    mockSessionStorage.setItem(
+      tenant42Key,
+      JSON.stringify({ searchTerm: 'tenant-42', sorting: [], columnFilters: [] })
+    )
+    mockSessionStorage.setItem(
+      tenant99Key,
+      JSON.stringify({ searchTerm: 'tenant-99', sorting: [], columnFilters: [] })
+    )
+
+    const { result, rerender } = renderHook(() => useEquipmentFilterContext(), {
+      wrapper: createWrapper(),
+    })
+
+    expect(result.current.searchTerm).toBe('tenant-42')
+
+    mockSessionStorage.setItem.mockClear()
+
+    act(() => {
+      mockSelectedFacilityId.current = 99
+    })
+    rerender()
+
+    await waitFor(() => {
+      expect(result.current.searchTerm).toBe('tenant-99')
+    })
+
+    const writesToTenant99 = mockSessionStorage.setItem.mock.calls
+      .filter((call: [string, string]) => call[0] === tenant99Key)
+      .map((call: [string, string]) => JSON.parse(call[1]) as { searchTerm?: string })
+
+    expect(writesToTenant99.map((entry) => entry.searchTerm)).not.toContain('tenant-42')
   })
 })
 
