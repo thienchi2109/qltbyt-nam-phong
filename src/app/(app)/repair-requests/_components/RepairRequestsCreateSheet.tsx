@@ -61,6 +61,7 @@ export function RepairRequestsCreateSheet() {
   const [repairUnit, setRepairUnit] = React.useState<RepairUnit>("noi_bo")
   const [externalCompanyName, setExternalCompanyName] = React.useState("")
   const [allEquipment, setAllEquipment] = React.useState<EquipmentSelectItem[]>([])
+  const [isSearchPending, setIsSearchPending] = React.useState(false)
   const [unresolvedDraftEquipment, setUnresolvedDraftEquipment] = React.useState(false)
   const [hasDraftEquipmentLookupCompleted, setHasDraftEquipmentLookupCompleted] = React.useState(false)
   const [hasSeededDraftEquipmentLookup, setHasSeededDraftEquipmentLookup] = React.useState(false)
@@ -152,20 +153,26 @@ export function RepairRequestsCreateSheet() {
       ? `${selectedEquipment.ten_thiet_bi} (${selectedEquipment.ma_thiet_bi})`
       : ""
     const q = searchQuery?.trim()
-    if (!q || (label && q === label)) return
+    if (!q || (label && q === label)) {
+      setIsSearchPending(false)
+      return
+    }
 
     const ctrl = new AbortController()
+    setIsSearchPending(true)
     const run = async () => {
       try {
         const eq = await fetchRepairRequestEquipmentList(q, 20, ctrl.signal)
         if (ctrl.signal.aborted) return
         setAllEquipment(eq || [])
+        setIsSearchPending(false)
         if (assistantDraft?.equipment?.thiet_bi_id && q === draftEquipmentLabel) {
           setHasDraftEquipmentLookupCompleted(true)
         }
       } catch (e) {
         if (ctrl.signal.aborted) return
         setAllEquipment([])
+        setIsSearchPending(false)
       }
     }
     const timeoutId = window.setTimeout(run, REPAIR_REQUEST_EQUIPMENT_SEARCH_DEBOUNCE_MS)
@@ -177,19 +184,21 @@ export function RepairRequestsCreateSheet() {
 
   const filteredEquipment = React.useMemo(() => {
     if (!searchQuery) return []
+    if (isSearchPending) return []
     if (selectedEquipment && searchQuery === `${selectedEquipment.ten_thiet_bi} (${selectedEquipment.ma_thiet_bi})`) {
       return []
     }
     return allEquipment
-  }, [searchQuery, allEquipment, selectedEquipment])
+  }, [searchQuery, isSearchPending, allEquipment, selectedEquipment])
 
   const shouldShowNoResults = React.useMemo(() => {
     if (!searchQuery) return false
+    if (isSearchPending) return false
     if (selectedEquipment && searchQuery === `${selectedEquipment.ten_thiet_bi} (${selectedEquipment.ma_thiet_bi})`) {
       return false
     }
     return filteredEquipment.length === 0
-  }, [searchQuery, selectedEquipment, filteredEquipment])
+  }, [searchQuery, isSearchPending, selectedEquipment, filteredEquipment])
 
   const handleSelectEquipment = (equipment: EquipmentSelectItem) => {
     setSelectedEquipment(equipment)
