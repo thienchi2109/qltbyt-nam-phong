@@ -9,6 +9,7 @@ import {
   type MaintenancePlanListResponse,
   type MaintenancePlanMutationInput,
   type MaintenanceScheduleFilters,
+  type RejectMaintenancePlanArgs,
 } from './use-cached-maintenance.types'
 import {
   defaultMaintenanceTaskListArgs,
@@ -231,16 +232,16 @@ export function useRejectMaintenancePlan() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: async (params: { id: number; nguoi_duyet: string; ly_do: string }) => {
+    mutationFn: async (params: RejectMaintenancePlanArgs) => {
       await callRpc<void>({
         fn: 'maintenance_plan_reject',
         args: {
-          p_id: params.id,
-          p_nguoi_duyet: params.nguoi_duyet,
-          p_ly_do: params.ly_do,
+          p_id: params.p_id,
+          p_nguoi_duyet: params.p_nguoi_duyet,
+          p_ly_do: params.p_ly_do,
         },
       })
-      return params.id
+      return params.p_id
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: maintenanceKeys.plans() })
