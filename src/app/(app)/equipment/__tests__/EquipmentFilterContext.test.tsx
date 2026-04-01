@@ -7,12 +7,12 @@
  * TDD Cycle 1: Context creation + hydration
  * TDD Cycle 2: Persistence on filter change
  * TDD Cycle 3: Reset + clear on tenant change
- * TDD Cycle 4: Logout cleanup
- * TDD Cycle 5: SSR safety + error handling
+ * TDD Cycle 4: Logout cleanup (via clearAllEquipmentFilters)
+ * TDD Cycle 5: Memoized filter arrays
  */
 
 import { renderHook, act } from '@testing-library/react'
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 import * as React from 'react'
 import type { ColumnFiltersState, SortingState } from '@tanstack/react-table'
 
@@ -40,37 +40,39 @@ Object.defineProperty(window, 'sessionStorage', {
   writable: true,
 })
 
-// Mock next-auth/react
-const mockUseSession = vi.fn()
-vi.mock('next-auth/react', () => ({
-  useSession: () => mockUseSession(),
+// Mock TenantSelectionContext (EquipmentFilterProvider now uses useTenantSelection)
+const mockSelectedFacilityId = { current: 42 as number | null | undefined }
+vi.mock('@/contexts/TenantSelectionContext', () => ({
+  useTenantSelection: () => ({
+    selectedFacilityId: mockSelectedFacilityId.current,
+    setSelectedFacilityId: vi.fn(),
+    facilities: [],
+    showSelector: false,
+    isLoading: false,
+    shouldFetchData: true,
+  }),
+  TenantSelectionProvider: ({ children }: { children: React.ReactNode }) => children,
 }))
 
 // Import after mocking
 import {
   EquipmentFilterProvider,
   useEquipmentFilterContext,
-  EQUIPMENT_FILTER_STORAGE_KEY,
+  EQUIPMENT_FILTER_STORAGE_KEY_PREFIX,
+  clearAllEquipmentFilters,
 } from '@/contexts/EquipmentFilterContext'
 
 // =============================================================================
 // Helpers
 // =============================================================================
 
+/** Storage key for the test tenant (facilityId=42) */
+const TEST_STORAGE_KEY = `${EQUIPMENT_FILTER_STORAGE_KEY_PREFIX}_42`
+
 function createWrapper() {
   return function Wrapper({ children }: { children: React.ReactNode }) {
     return <EquipmentFilterProvider>{children}</EquipmentFilterProvider>
   }
-}
-
-function createSessionMock(status: 'authenticated' | 'unauthenticated' | 'loading') {
-  if (status === 'authenticated') {
-    return {
-      data: { user: { id: 1, name: 'Test User', role: 'user' } },
-      status: 'authenticated' as const,
-    }
-  }
-  return { data: null, status }
 }
 
 // =============================================================================
@@ -82,8 +84,7 @@ describe('EquipmentFilterContext — Cycle 1: Creation + Hydration', () => {
     vi.clearAllMocks()
     mockSessionStorage.clear()
     mockSessionStorage._reset()
-    mockSessionStorage.getItem.mockReturnValue(null)
-    mockUseSession.mockReturnValue(createSessionMock('authenticated'))
+    mockSelectedFacilityId.current = 42
   })
 
   it('provides default filter state when no sessionStorage data exists', () => {
@@ -97,7 +98,7 @@ describe('EquipmentFilterContext — Cycle 1: Creation + Hydration', () => {
     expect(result.current.debouncedSearch).toBeDefined()
   })
 
-  it('hydrates filter state from sessionStorage on mount', () => {
+  it('hydrates filter state from tenant-scoped sessionStorage on mount', () => {
     const stored: { searchTerm: string; sorting: SortingState; columnFilters: ColumnFiltersState } = {
       searchTerm: 'máy thở',
       sorting: [{ id: 'ten_thiet_bi', desc: false }],
@@ -105,7 +106,7 @@ describe('EquipmentFilterContext — Cycle 1: Creation + Hydration', () => {
         { id: 'tinh_trang_hien_tai', value: ['active'] },
       ],
     }
-    mockSessionStorage.getItem.mockReturnValue(JSON.stringify(stored))
+    mockSessionStorage.setItem(TEST_STORAGE_KEY, JSON.stringify(stored))
 
     const { result } = renderHook(() => useEquipmentFilterContext(), {
       wrapper: createWrapper(),
@@ -119,7 +120,7 @@ describe('EquipmentFilterContext — Cycle 1: Creation + Hydration', () => {
   })
 
   it('handles corrupted sessionStorage data gracefully', () => {
-    mockSessionStorage.getItem.mockReturnValue('{{invalid json}}}')
+    mockSessionStorage.setItem(TEST_STORAGE_KEY, '{{invalid json}}}')
 
     const { result } = renderHook(() => useEquipmentFilterContext(), {
       wrapper: createWrapper(),
@@ -140,6 +141,19 @@ describe('EquipmentFilterContext — Cycle 1: Creation + Hydration', () => {
 
     consoleSpy.mockRestore()
   })
+
+  it('uses tenant-scoped storage key (not global)', () => {
+    const stored = { searchTerm: 'test', sorting: [], columnFilters: [] }
+    // Put data under wrong key — should NOT be hydrated
+    mockSessionStorage.setItem(`${EQUIPMENT_FILTER_STORAGE_KEY_PREFIX}_99`, JSON.stringify(stored))
+
+    const { result } = renderHook(() => useEquipmentFilterContext(), {
+      wrapper: createWrapper(),
+    })
+
+    // Facility 42 has no stored data → defaults
+    expect(result.current.searchTerm).toBe('')
+  })
 })
 
 // =============================================================================
@@ -151,11 +165,10 @@ describe('EquipmentFilterContext — Cycle 2: Persistence', () => {
     vi.clearAllMocks()
     mockSessionStorage.clear()
     mockSessionStorage._reset()
-    mockSessionStorage.getItem.mockReturnValue(null)
-    mockUseSession.mockReturnValue(createSessionMock('authenticated'))
+    mockSelectedFacilityId.current = 42
   })
 
-  it('persists columnFilters to sessionStorage when changed', () => {
+  it('persists columnFilters to tenant-scoped sessionStorage', () => {
     const { result } = renderHook(() => useEquipmentFilterContext(), {
       wrapper: createWrapper(),
     })
@@ -166,9 +179,11 @@ describe('EquipmentFilterContext — Cycle 2: Persistence', () => {
       ])
     })
 
-    const stored = JSON.parse(
-      mockSessionStorage.setItem.mock.calls.at(-1)?.[1] ?? '{}'
+    // Find the last setItem call with the correct key
+    const calls = mockSessionStorage.setItem.mock.calls.filter(
+      (c: [string, string]) => c[0] === TEST_STORAGE_KEY
     )
+    const stored = JSON.parse(calls.at(-1)?.[1] ?? '{}')
     expect(stored.columnFilters).toEqual([
       { id: 'khoa_phong_quan_ly', value: ['Khoa Nội'] },
     ])
@@ -183,9 +198,10 @@ describe('EquipmentFilterContext — Cycle 2: Persistence', () => {
       result.current.setSearchTerm('monitor')
     })
 
-    const stored = JSON.parse(
-      mockSessionStorage.setItem.mock.calls.at(-1)?.[1] ?? '{}'
+    const calls = mockSessionStorage.setItem.mock.calls.filter(
+      (c: [string, string]) => c[0] === TEST_STORAGE_KEY
     )
+    const stored = JSON.parse(calls.at(-1)?.[1] ?? '{}')
     expect(stored.searchTerm).toBe('monitor')
   })
 
@@ -198,9 +214,10 @@ describe('EquipmentFilterContext — Cycle 2: Persistence', () => {
       result.current.setSorting([{ id: 'ten_thiet_bi', desc: true }])
     })
 
-    const stored = JSON.parse(
-      mockSessionStorage.setItem.mock.calls.at(-1)?.[1] ?? '{}'
+    const calls = mockSessionStorage.setItem.mock.calls.filter(
+      (c: [string, string]) => c[0] === TEST_STORAGE_KEY
     )
+    const stored = JSON.parse(calls.at(-1)?.[1] ?? '{}')
     expect(stored.sorting).toEqual([{ id: 'ten_thiet_bi', desc: true }])
   })
 })
@@ -214,11 +231,10 @@ describe('EquipmentFilterContext — Cycle 3: Reset', () => {
     vi.clearAllMocks()
     mockSessionStorage.clear()
     mockSessionStorage._reset()
-    mockSessionStorage.getItem.mockReturnValue(null)
-    mockUseSession.mockReturnValue(createSessionMock('authenticated'))
+    mockSelectedFacilityId.current = 42
   })
 
-  it('resetFilters clears state AND sessionStorage', () => {
+  it('resetFilters clears state AND sessionStorage for current tenant', () => {
     const { result } = renderHook(() => useEquipmentFilterContext(), {
       wrapper: createWrapper(),
     })
@@ -238,9 +254,7 @@ describe('EquipmentFilterContext — Cycle 3: Reset', () => {
 
     expect(result.current.searchTerm).toBe('')
     expect(result.current.columnFilters).toEqual([])
-    expect(mockSessionStorage.removeItem).toHaveBeenCalledWith(
-      EQUIPMENT_FILTER_STORAGE_KEY
-    )
+    expect(mockSessionStorage.removeItem).toHaveBeenCalledWith(TEST_STORAGE_KEY)
   })
 
   it('resetFilters returns all memoized filter arrays to empty', () => {
@@ -272,7 +286,7 @@ describe('EquipmentFilterContext — Cycle 3: Reset', () => {
 })
 
 // =============================================================================
-// TDD Cycle 4: Logout cleanup
+// TDD Cycle 4: Logout cleanup (clearAllEquipmentFilters)
 // =============================================================================
 
 describe('EquipmentFilterContext — Cycle 4: Logout Cleanup', () => {
@@ -280,28 +294,43 @@ describe('EquipmentFilterContext — Cycle 4: Logout Cleanup', () => {
     vi.clearAllMocks()
     mockSessionStorage.clear()
     mockSessionStorage._reset()
-    mockSessionStorage.getItem.mockReturnValue(null)
+    mockSelectedFacilityId.current = 42
   })
 
-  it('clears sessionStorage when auth status changes to unauthenticated', () => {
-    // Start authenticated
-    mockUseSession.mockReturnValue(createSessionMock('authenticated'))
+  it('clearAllEquipmentFilters removes all tenant-scoped eq_filters keys', () => {
+    // Simulate multiple tenants' stored filters
+    mockSessionStorage.setItem(
+      `${EQUIPMENT_FILTER_STORAGE_KEY_PREFIX}_42`,
+      JSON.stringify({ searchTerm: 'a', sorting: [], columnFilters: [] })
+    )
+    mockSessionStorage.setItem(
+      `${EQUIPMENT_FILTER_STORAGE_KEY_PREFIX}_99`,
+      JSON.stringify({ searchTerm: 'b', sorting: [], columnFilters: [] })
+    )
+    mockSessionStorage.setItem(
+      `${EQUIPMENT_FILTER_STORAGE_KEY_PREFIX}_all`,
+      JSON.stringify({ searchTerm: 'c', sorting: [], columnFilters: [] })
+    )
+    // Other unrelated key should be preserved
+    mockSessionStorage.setItem('selectedFacilityId', '42')
 
-    const { result, rerender } = renderHook(() => useEquipmentFilterContext(), {
-      wrapper: createWrapper(),
-    })
+    vi.clearAllMocks() // clear setItem/removeItem call counts
 
-    // Set some filters
-    act(() => {
-      result.current.setSearchTerm('test filter')
-    })
+    clearAllEquipmentFilters()
 
-    // Simulate logout
-    mockUseSession.mockReturnValue(createSessionMock('unauthenticated'))
-    rerender()
-
+    // All eq_filters keys removed
     expect(mockSessionStorage.removeItem).toHaveBeenCalledWith(
-      EQUIPMENT_FILTER_STORAGE_KEY
+      `${EQUIPMENT_FILTER_STORAGE_KEY_PREFIX}_42`
+    )
+    expect(mockSessionStorage.removeItem).toHaveBeenCalledWith(
+      `${EQUIPMENT_FILTER_STORAGE_KEY_PREFIX}_99`
+    )
+    expect(mockSessionStorage.removeItem).toHaveBeenCalledWith(
+      `${EQUIPMENT_FILTER_STORAGE_KEY_PREFIX}_all`
+    )
+    // Unrelated key NOT removed
+    expect(mockSessionStorage.removeItem).not.toHaveBeenCalledWith(
+      'selectedFacilityId'
     )
   })
 })
@@ -315,8 +344,7 @@ describe('EquipmentFilterContext — Cycle 5: Memoized Filter Arrays', () => {
     vi.clearAllMocks()
     mockSessionStorage.clear()
     mockSessionStorage._reset()
-    mockSessionStorage.getItem.mockReturnValue(null)
-    mockUseSession.mockReturnValue(createSessionMock('authenticated'))
+    mockSelectedFacilityId.current = 42
   })
 
   it('extracts selectedDepartments from columnFilters', () => {

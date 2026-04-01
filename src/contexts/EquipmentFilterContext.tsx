@@ -1,9 +1,9 @@
 "use client"
 
 import * as React from "react"
-import { useSession } from "next-auth/react"
 import type { ColumnFiltersState, SortingState } from "@tanstack/react-table"
 import { useSearchDebounce } from "@/hooks/use-debounce"
+import { useTenantSelection } from "@/contexts/TenantSelectionContext"
 
 // =============================================================================
 // Types
@@ -40,7 +40,13 @@ export interface EquipmentFilterContextValue {
 // Constants
 // =============================================================================
 
-export const EQUIPMENT_FILTER_STORAGE_KEY = "eq_filters"
+export const EQUIPMENT_FILTER_STORAGE_KEY_PREFIX = "eq_filters"
+
+/** Build a tenant-scoped storage key. `null` = "all", `undefined` = no tenant yet. */
+function buildStorageKey(tenantId: number | null | undefined): string {
+  const suffix = tenantId == null ? "_all" : `_${tenantId}`
+  return `${EQUIPMENT_FILTER_STORAGE_KEY_PREFIX}${suffix}`
+}
 
 // =============================================================================
 // Storage helpers (SSR-safe)
@@ -52,10 +58,10 @@ interface StoredFilterState {
   columnFilters: ColumnFiltersState
 }
 
-function readStoredFilters(): StoredFilterState | null {
+function readStoredFilters(key: string): StoredFilterState | null {
   if (typeof window === "undefined") return null
   try {
-    const stored = sessionStorage.getItem(EQUIPMENT_FILTER_STORAGE_KEY)
+    const stored = sessionStorage.getItem(key)
     if (!stored) return null
     const parsed = JSON.parse(stored) as StoredFilterState
     // Basic shape validation
@@ -72,22 +78,39 @@ function readStoredFilters(): StoredFilterState | null {
   }
 }
 
-function writeStoredFilters(state: StoredFilterState): void {
+function writeStoredFilters(key: string, state: StoredFilterState): void {
   if (typeof window === "undefined") return
   try {
-    sessionStorage.setItem(
-      EQUIPMENT_FILTER_STORAGE_KEY,
-      JSON.stringify(state)
-    )
+    sessionStorage.setItem(key, JSON.stringify(state))
   } catch {
     // Ignore storage errors (quota, etc.)
   }
 }
 
-function clearStoredFilters(): void {
+function clearStoredFilters(key: string): void {
   if (typeof window === "undefined") return
   try {
-    sessionStorage.removeItem(EQUIPMENT_FILTER_STORAGE_KEY)
+    sessionStorage.removeItem(key)
+  } catch {
+    // Ignore storage errors
+  }
+}
+
+/**
+ * Clear ALL tenant-scoped eq_filters keys from sessionStorage.
+ * Called on logout from AppLayout (before provider unmounts).
+ */
+export function clearAllEquipmentFilters(): void {
+  if (typeof window === "undefined") return
+  try {
+    const keysToRemove: string[] = []
+    for (let i = 0; i < sessionStorage.length; i++) {
+      const k = sessionStorage.key(i)
+      if (k?.startsWith(EQUIPMENT_FILTER_STORAGE_KEY_PREFIX)) {
+        keysToRemove.push(k)
+      }
+    }
+    keysToRemove.forEach((k) => sessionStorage.removeItem(k))
   } catch {
     // Ignore storage errors
   }
@@ -109,10 +132,19 @@ export function EquipmentFilterProvider({
 }: {
   children: React.ReactNode
 }) {
-  const { status } = useSession()
+  const { selectedFacilityId } = useTenantSelection()
+
+  // Build tenant-scoped storage key
+  const storageKey = React.useMemo(
+    () => buildStorageKey(selectedFacilityId),
+    [selectedFacilityId]
+  )
+
+  // Track previous storage key for tenant-change detection
+  const prevStorageKeyRef = React.useRef(storageKey)
 
   // Hydrate from sessionStorage on mount
-  const initial = React.useMemo(() => readStoredFilters(), [])
+  const initial = React.useMemo(() => readStoredFilters(storageKey), []) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Search state
   const [searchTerm, setSearchTerm] = React.useState(
@@ -130,17 +162,21 @@ export function EquipmentFilterProvider({
     initial?.columnFilters ?? []
   )
 
+  // Reset filters + hydrate from new tenant's storage when tenant changes
+  React.useEffect(() => {
+    if (prevStorageKeyRef.current !== storageKey) {
+      prevStorageKeyRef.current = storageKey
+      const newInitial = readStoredFilters(storageKey)
+      setSearchTerm(newInitial?.searchTerm ?? "")
+      setSorting(newInitial?.sorting ?? [])
+      setColumnFilters(newInitial?.columnFilters ?? [])
+    }
+  }, [storageKey])
+
   // Persist to sessionStorage on change
   React.useEffect(() => {
-    writeStoredFilters({ searchTerm, sorting, columnFilters })
-  }, [searchTerm, sorting, columnFilters])
-
-  // Clear sessionStorage on logout
-  React.useEffect(() => {
-    if (status === "unauthenticated") {
-      clearStoredFilters()
-    }
-  }, [status])
+    writeStoredFilters(storageKey, { searchTerm, sorting, columnFilters })
+  }, [storageKey, searchTerm, sorting, columnFilters])
 
   // Memoized sort parameter for queries
   const sortParam = React.useMemo(() => {
@@ -189,8 +225,8 @@ export function EquipmentFilterProvider({
     setColumnFilters([])
     setSearchTerm("")
     setSorting([])
-    clearStoredFilters()
-  }, [])
+    clearStoredFilters(storageKey)
+  }, [storageKey])
 
   // Memoized context value (rerender-memo best practice)
   const value = React.useMemo<EquipmentFilterContextValue>(

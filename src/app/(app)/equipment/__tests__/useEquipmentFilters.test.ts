@@ -9,11 +9,16 @@ vi.mock('@/hooks/use-debounce', () => ({
 }))
 
 // Mock next-auth/react (required by EquipmentFilterProvider)
-vi.mock('next-auth/react', () => ({
-  useSession: () => ({
-    data: { user: { id: 1, name: 'Test', role: 'user' } },
-    status: 'authenticated' as const,
+vi.mock('@/contexts/TenantSelectionContext', () => ({
+  useTenantSelection: () => ({
+    selectedFacilityId: 42,
+    setSelectedFacilityId: vi.fn(),
+    facilities: [],
+    showSelector: false,
+    isLoading: false,
+    shouldFetchData: true,
   }),
+  TenantSelectionProvider: ({ children }: { children: React.ReactNode }) => children,
 }))
 
 // Import EquipmentFilterProvider for wrapper
