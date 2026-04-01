@@ -3,7 +3,7 @@ import { resolve } from 'node:path'
 
 import * as React from 'react'
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 
 const mocks = vi.hoisted(() => ({
   callRpc: vi.fn(),
@@ -259,6 +259,14 @@ describe('RepairRequestsCreateSheet assistant draft hydration', () => {
 
     expect(screen.getByLabelText('Mô tả sự cố')).toHaveValue('Người dùng đã sửa mô tả')
 
+    await waitFor(() => {
+      expect(mocks.callRpc).toHaveBeenCalledWith(
+        expect.objectContaining({
+          args: expect.objectContaining({ p_q: 'Máy siêu âm A (TB-001)' }),
+        }),
+      )
+    })
+
     releaseLookup?.()
 
     await waitFor(() => {
@@ -424,5 +432,80 @@ describe('RepairRequestsCreateSheet assistant draft hydration', () => {
 
     expect(hydrationEffectDependencies).toBeDefined()
     expect(hydrationEffectDependencies).not.toContain('searchQuery')
+  })
+})
+
+describe('RepairRequestsCreateSheet equipment search debounce', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    vi.useFakeTimers()
+    contextValue.dialogState.isCreateOpen = true
+    contextValue.dialogState.preSelectedEquipment = null
+    setAssistantDraft(null)
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  it('does not call equipment_list immediately on keystroke and only calls after debounce window', async () => {
+    mocks.callRpc.mockResolvedValue([
+      {
+        id: 202,
+        ma_thiet_bi: 'TB-202',
+        ten_thiet_bi: 'Máy siêu âm B',
+        khoa_phong_quan_ly: 'CDHA',
+      },
+    ])
+
+    render(<RepairRequestsCreateSheet />)
+
+    fireEvent.change(screen.getByLabelText('Thiết bị'), {
+      target: { value: 'Máy siêu âm' },
+    })
+
+    expect(mocks.callRpc).not.toHaveBeenCalled()
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(299)
+    })
+    expect(mocks.callRpc).not.toHaveBeenCalled()
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1)
+      await Promise.resolve()
+    })
+    expect(mocks.callRpc).toHaveBeenCalledTimes(1)
+
+    expect(mocks.callRpc).toHaveBeenCalledWith(
+      expect.objectContaining({
+        fn: 'equipment_list',
+        args: expect.objectContaining({ p_q: 'Máy siêu âm' }),
+      }),
+    )
+  })
+
+  it('coalesces rapid typing into a single call for the latest query', async () => {
+    mocks.callRpc.mockResolvedValue([])
+
+    render(<RepairRequestsCreateSheet />)
+
+    const equipmentInput = screen.getByLabelText('Thiết bị')
+    fireEvent.change(equipmentInput, { target: { value: 'M' } })
+    fireEvent.change(equipmentInput, { target: { value: 'Má' } })
+    fireEvent.change(equipmentInput, { target: { value: 'Máy' } })
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(300)
+      await Promise.resolve()
+    })
+    expect(mocks.callRpc).toHaveBeenCalledTimes(1)
+
+    expect(mocks.callRpc).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        fn: 'equipment_list',
+        args: expect.objectContaining({ p_q: 'Máy' }),
+      }),
+    )
   })
 })

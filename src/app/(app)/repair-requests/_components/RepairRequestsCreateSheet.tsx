@@ -33,6 +33,8 @@ import { RepairRequestsCreateSheetAlerts } from "./RepairRequestsCreateSheetAler
 import { RepairRequestsEquipmentSearchField } from "./RepairRequestsEquipmentSearchField"
 import { formatEquipmentLabel, parseDraftDate } from "./RepairRequestsCreateSheetUtils"
 
+const REPAIR_REQUEST_EQUIPMENT_SEARCH_DEBOUNCE_MS = 300
+
 export function RepairRequestsCreateSheet() {
   const {
     dialogState: { isCreateOpen, preSelectedEquipment },
@@ -155,18 +157,21 @@ export function RepairRequestsCreateSheet() {
     const ctrl = new AbortController()
     const run = async () => {
       try {
-        const eq = await fetchRepairRequestEquipmentList(q)
+        const eq = await fetchRepairRequestEquipmentList(q, 20, ctrl.signal)
         if (ctrl.signal.aborted) return
         setAllEquipment(eq || [])
         if (assistantDraft?.equipment?.thiet_bi_id && q === draftEquipmentLabel) {
           setHasDraftEquipmentLookupCompleted(true)
         }
       } catch (e) {
-        // Silent fail for suggestions
+        if (ctrl.signal.aborted) return
       }
     }
-    run()
-    return () => ctrl.abort()
+    const timeoutId = window.setTimeout(run, REPAIR_REQUEST_EQUIPMENT_SEARCH_DEBOUNCE_MS)
+    return () => {
+      ctrl.abort()
+      window.clearTimeout(timeoutId)
+    }
   }, [assistantDraft, draftEquipmentLabel, searchQuery, selectedEquipment])
 
   const filteredEquipment = React.useMemo(() => {
