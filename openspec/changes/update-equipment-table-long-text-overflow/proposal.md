@@ -11,6 +11,12 @@ Issue reference:
 - Add bounded width contracts for `Mã thiết bị` and `Tên thiết bị` so those columns cannot stretch disproportionately and push the remaining columns too far to the right.
 - Keep the scope limited to the Equipments desktop datatable path and shared text-overflow primitives used by that path.
 - Preserve existing row click behavior, action-menu behavior, sorting, and column-toggle behavior.
+- Drive implementation with strict TDD:
+  - audit dependencies first,
+  - write focused failing tests for tooltip/focus access and width-bounded truncation first,
+  - confirm the tests fail for the intended reason,
+  - implement the minimum code to make them pass,
+  - then refactor while keeping the focused tests green.
 - Verify the change with focused UI regression coverage plus the required TypeScript / React verification sequence before implementation lands.
 
 ## Impact

@@ -22,6 +22,8 @@ The Equipments page already truncates generic cell text, and the user wants to k
   - Rationale: the issue is localized to Equipments and should stay low-risk.
 - Decision: Leave current responsive auto-hide rules untouched.
   - Rationale: current column reduction on narrower desktops is already acceptable; the remaining concern is full-text inspection.
+- Decision: Execute the implementation in strict TDD order.
+  - Rationale: this change is small but UI-regression-prone; failing tests first are the cleanest way to pin the intended hover/focus and bounded-width behavior before touching render code.
 
 ## Risks / Trade-offs
 - Shared text-overflow primitives can create unintended regressions if changed too broadly.
@@ -33,6 +35,19 @@ The Equipments page already truncates generic cell text, and the user wants to k
 1. Update the proposal-backed implementation path only for the Equipments desktop datatable.
 2. Validate that long name/code cells reveal full text on hover/focus.
 3. Validate that the bounded widths reduce over-expansion without altering column toggles, responsive behavior, or row actions.
+
+## TDD Plan
+1. RED:
+   - add focused tests for `ma_thiet_bi` and `ten_thiet_bi` truncated rendering, tooltip/focus access, and bounded-width expectations
+   - add a regression assertion for unchanged responsive visibility
+2. VERIFY RED:
+   - run the focused tests and confirm they fail for the intended missing behavior
+3. GREEN:
+   - implement the minimum rendering and width-bound changes needed to satisfy the tests
+4. VERIFY GREEN:
+   - rerun focused tests, then complete `verify:no-explicit-any`, `typecheck`, and `react-doctor`
+5. REFACTOR:
+   - only after green, consolidate any duplicated renderer/tooltip logic while keeping tests green
 
 ## Open Questions
 - If bounded single-line truncation still feels cramped in practice, should a later follow-up revisit selective two-line clamping for `Tên thiết bị`?
