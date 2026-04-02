@@ -81,7 +81,7 @@ export function useTransferDetailDialogData({
     return () => {
       cancelled = true
     }
-  }, [open, toast, transfer, transferId])
+  }, [open, toast, transferId])
 
   return {
     history,

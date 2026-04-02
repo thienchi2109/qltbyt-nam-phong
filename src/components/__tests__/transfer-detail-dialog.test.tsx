@@ -221,4 +221,38 @@ describe("TransferDetailDialog related people", () => {
     expect(screen.queryByText("Người yêu cầu:")).not.toBeInTheDocument()
     expect(screen.getByText("Người duyệt:")).toBeInTheDocument()
   })
+
+  it("does not refetch transfer detail when the parent re-renders with the same transfer id", async () => {
+    mockCallRpc.mockImplementation(async ({ fn }) => {
+      if (fn === "transfer_request_get") {
+        return makeTransferRow()
+      }
+      if (fn === "transfer_history_list") {
+        return []
+      }
+      throw new Error(`Unexpected RPC: ${fn}`)
+    })
+
+    const { rerender } = render(
+      <TransferDetailDialog open onOpenChange={vi.fn()} transfer={makeTransferRow()} />,
+    )
+
+    await waitFor(() => {
+      expect(
+        mockCallRpc.mock.calls.filter(([call]) => call.fn === "transfer_request_get"),
+      ).toHaveLength(1)
+    })
+
+    rerender(
+      <TransferDetailDialog
+        open
+        onOpenChange={vi.fn()}
+        transfer={makeTransferRow({ updated_at: "2026-04-03T00:00:00.000Z" })}
+      />,
+    )
+
+    expect(
+      mockCallRpc.mock.calls.filter(([call]) => call.fn === "transfer_request_get"),
+    ).toHaveLength(1)
+  })
 })
