@@ -1,6 +1,8 @@
 import * as React from "react"
+import { useQuery } from "@tanstack/react-query"
 
 import { useToast } from "@/hooks/use-toast"
+import { getUnknownErrorMessage } from "@/lib/error-utils"
 import { callRpc } from "@/lib/rpc-client"
 import type { TransferHistory, TransferRequest } from "@/types/database"
 
@@ -9,84 +11,83 @@ interface UseTransferDetailDialogDataParams {
   transfer: TransferRequest | null
 }
 
+const transferDetailDialogQueryKeys = {
+  detail: (transferId: number | null) => ["transfer_request_get", { id: transferId }] as const,
+  history: (transferId: number | null) =>
+    ["transfer_history_list", { yeu_cau_id: transferId }] as const,
+}
+
 export function useTransferDetailDialogData({
   open,
   transfer,
 }: UseTransferDetailDialogDataParams) {
   const { toast } = useToast()
-  const [history, setHistory] = React.useState<TransferHistory[]>([])
-  const [isLoadingHistory, setIsLoadingHistory] = React.useState(false)
-  const [resolvedTransfer, setResolvedTransfer] = React.useState<TransferRequest | null>(null)
   const transferId = transfer?.id ?? null
+  const isEnabled = open && transferId !== null
+
+  const transferDetailQuery = useQuery({
+    queryKey: transferDetailDialogQueryKeys.detail(transferId),
+    queryFn: ({ signal }) =>
+      callRpc<TransferRequest | null>({
+        fn: "transfer_request_get",
+        args: { p_id: transferId! },
+        signal,
+      }),
+    enabled: isEnabled,
+    staleTime: 30_000,
+    refetchOnWindowFocus: false,
+  })
+
+  const historyQuery = useQuery({
+    queryKey: transferDetailDialogQueryKeys.history(transferId),
+    queryFn: async ({ signal }) => {
+      const data = await callRpc<TransferHistory[]>({
+        fn: "transfer_history_list",
+        args: { p_yeu_cau_id: transferId! },
+        signal,
+      })
+
+      return data || []
+    },
+    enabled: isEnabled,
+    staleTime: 30_000,
+    refetchOnWindowFocus: false,
+  })
 
   React.useEffect(() => {
-    if (!open || transferId === null) {
+    if (!transferDetailQuery.error) {
       return
     }
 
-    let cancelled = false
+    toast({
+      variant: "destructive",
+      title: "Lỗi tải chi tiết",
+      description: getUnknownErrorMessage(
+        transferDetailQuery.error,
+        "Không thể tải chi tiết yêu cầu.",
+      ),
+    })
+  }, [toast, transferDetailQuery.error, transferDetailQuery.errorUpdatedAt])
 
-    const fetchTransferDetail = async () => {
-      try {
-        const data = await callRpc<TransferRequest | null>({
-          fn: "transfer_request_get",
-          args: { p_id: transferId },
-        })
-
-        if (!cancelled && data) {
-          setResolvedTransfer(data)
-        }
-      } catch (error: unknown) {
-        if (cancelled) return
-
-        toast({
-          variant: "destructive",
-          title: "Lỗi tải chi tiết",
-          description: error instanceof Error ? error.message : "Không thể tải chi tiết yêu cầu.",
-        })
-      }
+  React.useEffect(() => {
+    if (!historyQuery.error) {
+      return
     }
 
-    const fetchHistory = async () => {
-      setIsLoadingHistory(true)
-      try {
-        const data = await callRpc<TransferHistory[]>({
-          fn: "transfer_history_list",
-          args: { p_yeu_cau_id: transferId },
-        })
-
-        if (!cancelled) {
-          setHistory(data || [])
-        }
-      } catch (error: unknown) {
-        if (cancelled) return
-
-        toast({
-          variant: "destructive",
-          title: "Lỗi tải lịch sử",
-          description: error instanceof Error ? error.message : "Không thể tải lịch sử thay đổi.",
-        })
-      } finally {
-        if (!cancelled) {
-          setIsLoadingHistory(false)
-        }
-      }
-    }
-
-    setResolvedTransfer(null)
-    setHistory([])
-    void fetchTransferDetail()
-    void fetchHistory()
-
-    return () => {
-      cancelled = true
-    }
-  }, [open, toast, transferId])
+    toast({
+      variant: "destructive",
+      title: "Lỗi tải lịch sử",
+      description: getUnknownErrorMessage(
+        historyQuery.error,
+        "Không thể tải lịch sử thay đổi.",
+      ),
+    })
+  }, [toast, historyQuery.error, historyQuery.errorUpdatedAt])
 
   return {
-    history,
-    isLoadingHistory,
-    resolvedTransfer,
+    history: historyQuery.data ?? [],
+    isLoadingHistory: historyQuery.isLoading,
+    resolvedTransfer: transferDetailQuery.data ?? null,
     transferId,
   }
 }
