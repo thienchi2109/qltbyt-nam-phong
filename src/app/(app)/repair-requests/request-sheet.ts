@@ -53,7 +53,7 @@ function buildPage1(
             </div>
 
             <!-- Section I: Thông tin thiết bị -->
-            <section style="margin-bottom: 36px;">
+            <section style="margin-bottom: 24px;">
                 <div class="section-header">
                     <div class="section-bullet"></div>
                     <h3 class="section-title">I. THÔNG TIN THIẾT BỊ</h3>
@@ -98,7 +98,7 @@ function buildPage1(
             </section>
 
             <!-- Date & Signatures I -->
-            <div style="margin-top: 28px; margin-bottom: 40px;">
+            <div style="margin-top: 24px; margin-bottom: 24px;">
                 ${buildDateLine(day, month, year)}
                 <div class="signature-row">
                     <div class="signature-col">
@@ -144,7 +144,7 @@ function buildPage1(
                     <div class="opinion-underline dotted-gold"></div>
                 </div>
 
-                <div class="signature-row" style="margin-top: 36px;">
+                <div class="signature-row" style="margin-top: 24px;">
                     <div class="signature-col">
                         <span class="sig-title">Tổ Quản lý TBYT</span>
                         <div class="sig-line"></div>
@@ -172,7 +172,7 @@ function buildPage2(
   return `
     <div class="a4-page page-break">
         <!-- Navy Header (compact for Page 2) -->
-        <header class="header-banner" style="padding: 28px 40px 24px;">
+        <header class="header-banner">
             <div class="header-logo-circle">
                 <img src="${logoUrl}" alt="Logo"
                      onerror="this.onerror=null;this.src='${LOGO_FALLBACK}';">
@@ -184,7 +184,7 @@ function buildPage2(
         <!-- Content Body -->
         <div class="content-body">
             <!-- Section III -->
-            <section style="margin-bottom: 36px;">
+            <section style="margin-bottom: 24px;">
                 <div class="section-header">
                     <div class="section-bullet"></div>
                     <h3 class="section-title">III. KẾT QUẢ, TÌNH TRẠNG THIẾT BỊ SAU KHI XỬ LÝ</h3>

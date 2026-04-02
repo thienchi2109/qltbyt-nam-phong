@@ -28,9 +28,9 @@ body {
 
 /* ── Header Banner ── */
 .header-banner {
-    background-color: #436084;
+    background-color: transparent;
     width: 100%;
-    padding: 16px 40px;
+    padding: 16px 40px 8px;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -40,13 +40,10 @@ body {
 .header-logo-circle {
     width: 76px;
     height: 76px;
-    background: #ffffff;
-    border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
-    margin-bottom: 12px;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    margin-bottom: 8px;
 }
 
 .header-logo-circle img {
@@ -56,26 +53,26 @@ body {
 }
 
 .header-org-name {
-    color: #ffffff;
+    color: #1B3A5C;
     font-weight: 700;
-    font-size: 15px;
-    letter-spacing: 0.1em;
-    margin-bottom: 8px;
+    font-size: 14px;
+    letter-spacing: 0.05em;
+    margin-bottom: 4px;
 }
 
 .header-gold-line {
     width: 180px;
     height: 1px;
     background: #C8A951;
-    opacity: 0.6;
-    margin-bottom: 12px;
+    opacity: 0.8;
+    margin-bottom: 8px;
 }
 
 .header-title {
-    color: #ffffff;
+    color: #1B3A5C;
     font-weight: 700;
-    font-size: 20px;
-    letter-spacing: 0.2em;
+    font-size: 19px;
+    letter-spacing: 0.05em;
     text-transform: uppercase;
     white-space: nowrap;
 }
@@ -84,14 +81,14 @@ body {
     width: 280px;
     height: 1px;
     background: #C8A951;
-    opacity: 0.4;
-    margin-top: 16px;
+    opacity: 0.8;
+    margin-top: 10px;
 }
 
 /* ── Content Body ── */
 .content-body {
     flex: 1;
-    padding: 40px 60px;
+    padding: 24px 60px 40px;
     color: #436084;
 }
 
@@ -99,7 +96,7 @@ body {
 .dept-row {
     display: flex;
     align-items: flex-end;
-    margin-bottom: 36px;
+    margin-bottom: 24px;
     gap: 10px;
 }
 
