@@ -53,7 +53,7 @@ const ALLOWED_FUNCTIONS = new Set<string>([
   'transfer_request_update_status',
   'transfer_request_delete',
   'transfer_request_complete',
-  'transfer_history_list',
+  'transfer_change_history_list',
   'transfer_request_external_pending_returns',
   'get_transfer_request_facilities',
   // Transfers - Data Grid

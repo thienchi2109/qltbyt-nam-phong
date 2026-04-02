@@ -144,7 +144,7 @@ describe("TransferDetailDialog related people", () => {
           nguoi_duyet: approver,
         })
       }
-      if (fn === "transfer_history_list") {
+      if (fn === "transfer_change_history_list") {
         return []
       }
       throw new Error(`Unexpected RPC: ${fn}`)
@@ -187,7 +187,7 @@ describe("TransferDetailDialog related people", () => {
           ngay_duyet: undefined,
         })
       }
-      if (fn === "transfer_history_list") {
+      if (fn === "transfer_change_history_list") {
         return []
       }
       throw new Error(`Unexpected RPC: ${fn}`)
@@ -226,7 +226,7 @@ describe("TransferDetailDialog related people", () => {
           nguoi_duyet: approver,
         })
       }
-      if (fn === "transfer_history_list") {
+      if (fn === "transfer_change_history_list") {
         return []
       }
       throw new Error(`Unexpected RPC: ${fn}`)
@@ -254,7 +254,7 @@ describe("TransferDetailDialog related people", () => {
       if (fn === "transfer_request_get") {
         return makeTransferRow()
       }
-      if (fn === "transfer_history_list") {
+      if (fn === "transfer_change_history_list") {
         return []
       }
       throw new Error(`Unexpected RPC: ${fn}`)
@@ -289,7 +289,7 @@ describe("TransferDetailDialog related people", () => {
       if (fn === "transfer_request_get") {
         return makeTransferRow()
       }
-      if (fn === "transfer_history_list") {
+      if (fn === "transfer_change_history_list") {
         return []
       }
       throw new Error(`Unexpected RPC: ${fn}`)
@@ -307,7 +307,7 @@ describe("TransferDetailDialog related people", () => {
         mockCallRpc.mock.calls.filter(([call]) => call.fn === "transfer_request_get"),
       ).toHaveLength(1)
       expect(
-        mockCallRpc.mock.calls.filter(([call]) => call.fn === "transfer_history_list"),
+        mockCallRpc.mock.calls.filter(([call]) => call.fn === "transfer_change_history_list"),
       ).toHaveLength(1)
     })
 
@@ -319,7 +319,7 @@ describe("TransferDetailDialog related people", () => {
         mockCallRpc.mock.calls.filter(([call]) => call.fn === "transfer_request_get"),
       ).toHaveLength(1)
       expect(
-        mockCallRpc.mock.calls.filter(([call]) => call.fn === "transfer_history_list"),
+        mockCallRpc.mock.calls.filter(([call]) => call.fn === "transfer_change_history_list"),
       ).toHaveLength(1)
     })
   })
@@ -344,7 +344,7 @@ describe("TransferDetailDialog related people", () => {
       if (fn === "transfer_request_get") {
         return new Promise(() => undefined)
       }
-      if (fn === "transfer_history_list") {
+      if (fn === "transfer_change_history_list") {
         return Promise.resolve([])
       }
       throw new Error(`Unexpected RPC: ${fn}`)
@@ -366,5 +366,37 @@ describe("TransferDetailDialog related people", () => {
 
     expect(screen.getByText("Đã duyệt")).toBeInTheDocument()
     expect(screen.queryByText("Chờ duyệt")).not.toBeInTheDocument()
+  })
+  it("renders transfer request action label and actor from change history contract", async () => {
+    const transferRequestCreateLabel = "Tạo yêu cầu luân chuyển"
+
+    mockCallRpc.mockImplementation(async ({ fn }) => {
+      if (fn === "transfer_request_get") {
+        return makeTransferRow()
+      }
+      if (fn === "transfer_change_history_list") {
+        return [
+          {
+            id: 1,
+            action_type: "transfer_request_create",
+            admin_username: "nva",
+            admin_full_name: "Nguyễn Văn A",
+            action_details: null,
+            created_at: "2026-04-02T00:00:00.000Z",
+          },
+        ]
+      }
+      throw new Error(`Unexpected RPC: ${fn}`)
+    })
+
+    render(
+      <TransferDetailDialog open onOpenChange={vi.fn()} transfer={makeTransferRow()} />,
+      { wrapper: createWrapper() },
+    )
+
+    await waitFor(() => {
+      expect(screen.getByText(transferRequestCreateLabel)).toBeInTheDocument()
+      expect(screen.getByText(/Thực hiện bởi: Nguyễn Văn A/)).toBeInTheDocument()
+    })
   })
 })
