@@ -11,33 +11,10 @@ export type RepairRequestSheetBranding = {
 
 const formatValue = (value: unknown) => (value ?? '')
 
-const LOGO_FALLBACK = "https://placehold.co/70x70/ebeeef/ebeeef?text=Logo"
+const LOGO_FALLBACK = "https://placehold.co/58x58/ebeeef/ebeeef?text=Logo"
 
 function buildDateLine(day: string, month: string, year: string): string {
   return `<div class="date-line">Cần Thơ, ngày ${day} tháng ${month} năm ${year}</div>`
-}
-
-function buildSignatureBlock(
-  leftTitle: string,
-  rightTitle: string,
-  rightName: string,
-  extraHeight?: string,
-): string {
-  const h = extraHeight ?? '80px'
-  return `
-    <div class="signature-row">
-        <div class="signature-col">
-            <span class="font-bold">${leftTitle}</span>
-            <span class="signature-subtitle">(Ký và ghi rõ họ tên)</span>
-            <div class="signature-space" style="height: ${h};"></div>
-        </div>
-        <div class="signature-col">
-            <span class="font-bold">${rightTitle}</span>
-            <span class="signature-subtitle">(Ký và ghi rõ họ tên)</span>
-            <div class="signature-space" style="height: ${h};"></div>
-            ${rightName ? `<span class="signature-name">${rightName}</span>` : ''}
-        </div>
-    </div>`
 }
 
 /* ── Page 1: Phiếu đề nghị ── */
@@ -55,106 +32,128 @@ function buildPage1(
 
   return `
     <div class="a4-page">
-        <!-- Mã phiếu (top-right) -->
-        <div style="text-align: right; font-style: italic; font-size: 13px; margin-bottom: 4px;">
-            Mã phiếu: ___________
-        </div>
+        <!-- Navy Header Banner -->
+        <header class="header-banner">
+            <div class="header-logo-circle">
+                <img src="${logoUrl}" alt="Logo"
+                     onerror="this.onerror=null;this.src='${LOGO_FALLBACK}';">
+            </div>
+            <div class="header-org-name">${organizationName}</div>
+            <div class="header-gold-line"></div>
+            <h1 class="header-title">PHIẾU ĐỀ NGHỊ SỬA CHỮA THIẾT BỊ</h1>
+            <div class="header-gold-line-bottom"></div>
+        </header>
 
-        <!-- Header Table -->
-        <div class="grid-border mb-neg">
-            <div class="grid-row" style="grid-template-columns: 100px 1fr; align-items: center;">
-                <div class="cell text-center cell-border-r" style="justify-content: center;">
-                    <img src="${logoUrl}" alt="Logo" class="logo-img"
-                         onerror="this.onerror=null;this.src='${LOGO_FALLBACK}';">
+        <!-- Content Body -->
+        <div class="content-body">
+            <!-- Department -->
+            <div class="dept-row">
+                <span class="dept-label">Khoa/Phòng đề nghị:</span>
+                <div class="dept-value">${formatValue(eq.khoa_phong_quan_ly)}</div>
+            </div>
+
+            <!-- Section I: Thông tin thiết bị -->
+            <section style="margin-bottom: 36px;">
+                <div class="section-header">
+                    <div class="section-bullet"></div>
+                    <h3 class="section-title">I. THÔNG TIN THIẾT BỊ</h3>
                 </div>
-                <div class="cell text-center" style="flex-direction: column; justify-content: center;">
-                    <div class="title-org uppercase">${organizationName}</div>
-                    <div class="title-main uppercase">PHIẾU ĐỀ NGHỊ SỬA CHỮA THIẾT BỊ</div>
+
+                <div class="field-row">
+                    <span class="field-label">Tên thiết bị:</span>
+                    <div class="field-value dotted-gold">${formatValue(eq.ten_thiet_bi)}</div>
                 </div>
-            </div>
-        </div>
 
-        <!-- Department -->
-        <div class="grid-border mb-6">
-            <div class="grid-row grid-row-dept">
-                <div class="cell cell-label">Khoa/Phòng đề nghị:</div>
-                <div class="cell cell-value uppercase">${formatValue(eq.khoa_phong_quan_ly)}</div>
-            </div>
-        </div>
+                <div class="info-strip">
+                    <div class="info-cell">
+                        <span class="info-label">Mã TB:</span>
+                        <span>${formatValue(eq.ma_thiet_bi)}</span>
+                    </div>
+                    <div class="info-cell">
+                        <span class="info-label">Model:</span>
+                        <span>${formatValue(eq.model)}</span>
+                    </div>
+                    <div class="info-cell">
+                        <span class="info-label">Serial N⁰:</span>
+                        <span>${formatValue(eq.serial)}</span>
+                    </div>
+                </div>
 
-        <!-- Section I Header -->
-        <div class="mb-neg">
-            <div class="grid-border-t grid-border-l grid-border-r">
-                <div class="section-title">I. THÔNG TIN THIẾT BỊ</div>
-            </div>
-        </div>
+                <div>
+                    <label style="display: block; font-weight: 700; margin-bottom: 8px;">Mô tả sự cố của thiết bị:</label>
+                    <div class="text-block">${formatValue(request.mo_ta_su_co)}</div>
+                </div>
 
-        <!-- Section I Data Grid -->
-        <div class="grid-border">
-            <div class="grid-row grid-row-2col">
-                <div class="cell cell-label cell-border-b">Tên thiết bị</div>
-                <div class="cell cell-value cell-border-b">${formatValue(eq.ten_thiet_bi)}</div>
-            </div>
-            <div class="grid-row grid-row-6col">
-                <div class="cell cell-label cell-border-b cell-border-r">Mã TB</div>
-                <div class="cell cell-value cell-border-b cell-border-r">${formatValue(eq.ma_thiet_bi)}</div>
-                <div class="cell cell-label cell-border-b cell-border-r">Model</div>
-                <div class="cell cell-value cell-border-b cell-border-r">${formatValue(eq.model)}</div>
-                <div class="cell cell-label cell-border-b cell-border-r">Serial N⁰</div>
-                <div class="cell cell-value cell-border-b">${formatValue(eq.serial)}</div>
-            </div>
-            <div class="grid-row grid-row-2col">
-                <div class="cell cell-label cell-border-b cell-tall">Mô tả sự cố của thiết bị</div>
-                <div class="cell cell-value cell-border-b cell-tall">${formatValue(request.mo_ta_su_co)}</div>
-            </div>
-            <div class="grid-row grid-row-2col">
-                <div class="cell cell-label cell-border-b cell-tall">Các hạng mục yêu cầu sửa chữa</div>
-                <div class="cell cell-value cell-border-b cell-tall">${formatValue(request.hang_muc_sua_chua)}</div>
-            </div>
-            <div class="grid-row grid-row-2col">
-                <div class="cell cell-label">Ngày mong muốn hoàn thành</div>
-                <div class="cell cell-value">${completionDate}</div>
-            </div>
-        </div>
+                <div>
+                    <label style="display: block; font-weight: 700; margin-bottom: 8px;">Các hạng mục yêu cầu sửa chữa:</label>
+                    <div class="text-block">${formatValue(request.hang_muc_sua_chua)}</div>
+                </div>
 
-        <!-- Date & Signatures I -->
-        <div class="mt-8">
-            ${buildDateLine(day, month, year)}
-            ${buildSignatureBlock('Lãnh đạo Khoa/phòng', 'Người đề nghị', String(formatValue(request.nguoi_yeu_cau)))}
-        </div>
+                <div class="completion-row">
+                    <span class="completion-label">Ngày mong muốn hoàn thành (nếu có):</span>
+                    <div class="completion-value dotted-gold">${completionDate}</div>
+                </div>
+            </section>
 
-        <!-- Section II Header -->
-        <div class="mt-6 mb-neg">
-            <div class="grid-border-t grid-border-l grid-border-r">
-                <div class="section-title-dark">II. BỘ PHẬN SỬA CHỮA</div>
-            </div>
-        </div>
-
-        <!-- Section II Data Grid -->
-        <div class="grid-border">
-            <div class="grid-row grid-row-2col">
-                <div class="cell cell-label cell-border-b">Đánh giá</div>
-                <div class="cell cell-value cell-border-b">
-                    <div class="checkbox-group">
-                        <label class="checkbox-label">
-                            <span class="checkbox-box">${isNoiBo ? 'X' : ''}</span>
-                            Tự sửa chữa được
-                        </label>
-                        <label class="checkbox-label">
-                            <span class="checkbox-box">${isThueNgoai ? 'X' : ''}</span>
-                            Không tự sửa chữa được
-                        </label>
+            <!-- Date & Signatures I -->
+            <div style="margin-top: 28px; margin-bottom: 40px;">
+                ${buildDateLine(day, month, year)}
+                <div class="signature-row">
+                    <div class="signature-col">
+                        <span class="sig-title">Lãnh đạo Khoa/phòng</span>
+                        <div class="sig-line"></div>
+                    </div>
+                    <div class="signature-col">
+                        <span class="sig-title" style="margin-bottom: 16px;">Người đề nghị</span>
+                        <div class="sig-signed">(Đã ký)</div>
+                        <span class="sig-name">${formatValue(request.nguoi_yeu_cau)}</span>
                     </div>
                 </div>
             </div>
-            <div class="grid-row grid-row-2col">
-                <div class="cell cell-label cell-tall">Ý kiến Tổ Quản lý TBYT</div>
-                <div class="cell cell-value cell-tall">${tbytOpinion}</div>
-            </div>
-        </div>
 
-        <!-- Signatures II -->
-        ${buildSignatureBlock('Tổ Quản lý TBYT', 'Người sửa chữa', '', '96px')}
+            <!-- Gold Divider -->
+            <div class="gold-divider"></div>
+
+            <!-- Section II: Bộ phận sửa chữa -->
+            <section>
+                <div class="section-header">
+                    <div class="section-bullet"></div>
+                    <h3 class="section-title">II. BỘ PHẬN SỬA CHỮA</h3>
+                </div>
+
+                <div class="checkbox-row">
+                    <label class="checkbox-item">
+                        <div class="checkbox-box">
+                            ${isNoiBo ? '<div class="checkbox-fill"></div>' : ''}
+                        </div>
+                        <span>Tự sửa chữa được</span>
+                    </label>
+                    <label class="checkbox-item">
+                        <div class="checkbox-box">
+                            ${isThueNgoai ? '<div class="checkbox-fill"></div>' : ''}
+                        </div>
+                        <span>Không tự sửa chữa được</span>
+                    </label>
+                </div>
+
+                <div class="opinion-row">
+                    <span class="opinion-label">Ý kiến của Tổ Quản lý TBYT:</span>
+                    <span class="opinion-value">${tbytOpinion}</span>
+                    <div class="opinion-underline dotted-gold"></div>
+                </div>
+
+                <div class="signature-row" style="margin-top: 36px;">
+                    <div class="signature-col">
+                        <span class="sig-title">Tổ Quản lý TBYT</span>
+                        <div class="sig-line"></div>
+                    </div>
+                    <div class="signature-col">
+                        <span class="sig-title">Người sửa chữa</span>
+                        <div class="sig-line"></div>
+                    </div>
+                </div>
+            </section>
+        </div>
     </div>`
 }
 
@@ -170,37 +169,45 @@ function buildPage2(
 
   return `
     <div class="a4-page page-break">
-        <!-- Header -->
-        <div class="grid-border mb-6">
-            <div class="grid-row" style="grid-template-columns: 100px 1fr; align-items: center;">
-                <div class="cell text-center cell-border-r" style="justify-content: center;">
-                    <img src="${logoUrl}" alt="Logo" class="logo-img"
-                         onerror="this.onerror=null;this.src='${LOGO_FALLBACK}';">
+        <!-- Navy Header (compact for Page 2) -->
+        <header class="header-banner" style="padding: 28px 40px 24px;">
+            <div class="header-logo-circle">
+                <img src="${logoUrl}" alt="Logo"
+                     onerror="this.onerror=null;this.src='${LOGO_FALLBACK}';">
+            </div>
+            <div class="header-org-name">${organizationName}</div>
+            <div class="header-gold-line-bottom" style="margin-top: 12px;"></div>
+        </header>
+
+        <!-- Content Body -->
+        <div class="content-body">
+            <!-- Section III -->
+            <section style="margin-bottom: 36px;">
+                <div class="section-header">
+                    <div class="section-bullet"></div>
+                    <h3 class="section-title">III. KẾT QUẢ, TÌNH TRẠNG THIẾT BỊ SAU KHI XỬ LÝ</h3>
                 </div>
-                <div class="cell text-center" style="flex-direction: column; justify-content: center;">
-                    <div class="title-org uppercase">${organizationName}</div>
+
+                <textarea class="result-area" rows="6">${request.ket_qua_sua_chua || request.ly_do_khong_hoan_thanh || ''}</textarea>
+            </section>
+
+            <!-- Date & Signatures -->
+            <div style="margin-top: 28px;">
+                ${buildDateLine(day, month, year)}
+                <div class="signature-row">
+                    <div class="signature-col">
+                        <span class="sig-title">Tổ Quản lý TBYT</span>
+                        <span style="font-style: italic; font-size: 12px; color: #5a6061; margin-top: -64px; margin-bottom: 52px;">(Ký, ghi rõ họ, tên)</span>
+                        <div class="sig-line"></div>
+                    </div>
+                    <div class="signature-col">
+                        <span class="sig-title" style="margin-bottom: 16px;">Người đề nghị</span>
+                        <span style="font-style: italic; font-size: 12px; color: #5a6061; margin-top: -64px; margin-bottom: 8px;">(Ký, ghi rõ họ, tên)</span>
+                        <div class="sig-signed">(Đã ký)</div>
+                        <span class="sig-name">${formatValue(request.nguoi_yeu_cau)}</span>
+                    </div>
                 </div>
             </div>
-        </div>
-
-        <!-- Section III Header -->
-        <div class="mb-neg">
-            <div class="grid-border-t grid-border-l grid-border-r">
-                <div class="section-title">III. KẾT QUẢ, TÌNH TRẠNG THIẾT BỊ SAU KHI XỬ LÝ</div>
-            </div>
-        </div>
-
-        <!-- Section III Content -->
-        <div class="grid-border">
-            <div class="cell cell-value" style="padding: 12px;">
-                <textarea class="result-textarea" rows="5">${request.ket_qua_sua_chua || request.ly_do_khong_hoan_thanh || ''}</textarea>
-            </div>
-        </div>
-
-        <!-- Date & Signatures -->
-        <div class="mt-8">
-            ${buildDateLine(day, month, year)}
-            ${buildSignatureBlock('Tổ Quản lý TBYT', 'Người đề nghị', String(formatValue(request.nguoi_yeu_cau)))}
         </div>
     </div>`
 }

@@ -1,6 +1,6 @@
 /**
- * CSS styles for the Repair Request Sheet (Structured Grid Layout).
- * Extracted from request-sheet.ts for maintainability.
+ * CSS styles for the Repair Request Sheet (Elegant Dual-Tone Layout).
+ * Navy header (#1B3A5C) + Gold accents (#C8A951) + Times New Roman.
  */
 export const REPAIR_SHEET_STYLES = `
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -8,113 +8,220 @@ export const REPAIR_SHEET_STYLES = `
 body {
     font-family: 'Times New Roman', Times, serif;
     font-size: 14px;
-    color: #2d3335;
+    color: #1B3A5C;
     line-height: 1.4;
-    background-color: #d4dbdd;
+    background-color: #f4f3f2;
 }
 
-/* ── A4 Page Container ── */
+/* ── A4 Page ── */
 .a4-page {
     width: 210mm;
-    padding: 15mm 20mm;
-    margin: 20px auto;
     background: #ffffff;
-    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-    position: relative;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.15);
+    margin: 20px auto;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
 }
 
 .page-break { page-break-before: always; }
 
-/* ── Grid Table System ── */
-.grid-border { border: 1px solid #000; }
-.grid-border-t { border-top: 1px solid #000; }
-.grid-border-b { border-bottom: 1px solid #000; }
-.grid-border-l { border-left: 1px solid #000; }
-.grid-border-r { border-right: 1px solid #000; }
-
-.grid-row {
-    display: grid;
+/* ── Header Banner ── */
+.header-banner {
+    background-color: #1B3A5C;
     width: 100%;
+    padding: 36px 40px 32px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
 }
 
-.grid-row-2col { grid-template-columns: 200px 1fr; }
-.grid-row-6col { grid-template-columns: 60px minmax(0, 1fr) 60px minmax(0, 1fr) 70px minmax(0, 1fr); }
-.grid-row-header { grid-template-columns: 100px 1fr 150px; }
-.grid-row-dept { grid-template-columns: 30% 70%; }
-
-/* ── Cell Styles ── */
-.cell {
-    padding: 8px 10px;
-    font-size: 14px;
+.header-logo-circle {
+    width: 72px;
+    height: 72px;
+    background: #ffffff;
+    border-radius: 50%;
     display: flex;
     align-items: center;
-}
-
-.cell-label {
-    background-color: #ebeeef;
-    font-weight: 700;
-    font-size: 14px;
-    border-right: 1px solid #000;
-}
-
-.cell-value {
-    background-color: #fff;
-    font-size: 14px;
-}
-
-.cell-border-b { border-bottom: 1px solid #000; }
-.cell-border-r { border-right: 1px solid #000; }
-
-.cell-tall { min-height: 56px; }
-
-/* ── Typography ── */
-.text-center { text-align: center; }
-.text-right { text-align: right; }
-.font-bold { font-weight: 700; }
-.italic { font-style: italic; }
-.uppercase { text-transform: uppercase; }
-.tracking-wide { letter-spacing: 0.08em; }
-
-.title-org { font-size: 16px; font-weight: 700; line-height: 1.3; }
-.title-main { font-size: 20px; font-weight: 700; letter-spacing: 0.05em; margin-top: 6px; white-space: nowrap; }
-.section-title {
-    font-size: 18px;
-    font-weight: 700;
-    text-transform: uppercase;
-    color: #3a5f94;
-    padding: 8px 10px;
-}
-.section-title-dark {
-    font-size: 16px;
-    font-weight: 700;
-    text-transform: uppercase;
-    color: #2d3335;
-    padding: 8px 10px;
-}
-
-/* ── Checkbox ── */
-.checkbox-box {
-    display: inline-flex;
-    align-items: center;
     justify-content: center;
-    width: 16px;
-    height: 16px;
-    border: 1px solid #000;
+    margin-bottom: 20px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.header-logo-circle img {
+    width: 58px;
+    height: 58px;
+    object-fit: contain;
+}
+
+.header-org-name {
+    color: #ffffff;
     font-weight: 700;
-    font-size: 12px;
-    margin-right: 6px;
+    font-size: 16px;
+    letter-spacing: 0.1em;
+    margin-bottom: 10px;
+}
+
+.header-gold-line {
+    width: 180px;
+    height: 1px;
+    background: #C8A951;
+    opacity: 0.6;
+    margin-bottom: 14px;
+}
+
+.header-title {
+    color: #ffffff;
+    font-weight: 700;
+    font-size: 22px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    white-space: nowrap;
+}
+
+.header-gold-line-bottom {
+    width: 280px;
+    height: 1px;
+    background: #C8A951;
+    opacity: 0.4;
+    margin-top: 24px;
+}
+
+/* ── Content Body ── */
+.content-body {
+    flex: 1;
+    padding: 40px 60px;
+    color: #1B3A5C;
+}
+
+/* ── Department Field ── */
+.dept-row {
+    display: flex;
+    align-items: flex-end;
+    margin-bottom: 36px;
+    gap: 10px;
+}
+
+.dept-row .dept-label { font-weight: 700; white-space: nowrap; }
+
+.dept-row .dept-value {
+    flex: 1;
+    border-bottom: 1px solid #C8A951;
+    padding-bottom: 3px;
+    font-weight: 700;
+    font-size: 16px;
+    text-transform: uppercase;
+}
+
+/* ── Section Title ── */
+.section-header {
+    display: flex;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.section-bullet {
+    width: 8px;
+    height: 8px;
+    background: #1B3A5C;
+    margin-right: 10px;
     flex-shrink: 0;
 }
 
-.checkbox-group {
-    display: flex;
-    align-items: center;
-    gap: 32px;
+.section-title {
+    font-size: 17px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
 }
 
-.checkbox-label {
+/* ── Dotted Gold Underline ── */
+.dotted-gold {
+    background-image: linear-gradient(to right, #C8A951 33%, transparent 0%);
+    background-position: bottom;
+    background-size: 3px 1px;
+    background-repeat: repeat-x;
+}
+
+/* ── Field with Label + Dotted Value ── */
+.field-row {
+    display: flex;
+    align-items: flex-end;
+    gap: 8px;
+    margin-bottom: 20px;
+}
+
+.field-row .field-label { font-weight: 700; white-space: nowrap; }
+
+.field-row .field-value {
+    flex: 1;
+    padding-bottom: 3px;
+    font-style: italic;
+}
+
+/* ── 3-Column Info Strip ── */
+.info-strip {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    border-top: 1px solid rgba(200, 169, 81, 0.15);
+    border-bottom: 1px solid rgba(200, 169, 81, 0.15);
+    padding: 12px 0;
+    margin-bottom: 20px;
+}
+
+.info-strip .info-cell {
     display: flex;
     align-items: center;
+    justify-content: center;
+    padding: 0 14px;
+    font-size: 13px;
+}
+
+.info-strip .info-cell:not(:last-child) {
+    border-right: 1px solid rgba(27, 58, 92, 0.2);
+}
+
+.info-strip .info-cell .info-label {
+    font-weight: 700;
+    margin-right: 6px;
+}
+
+/* ── Text Area Block ── */
+.text-block {
+    width: 100%;
+    background-color: #F0F4F8;
+    padding: 14px 16px;
+    min-height: 56px;
+    font-style: italic;
+    border-left: 2px solid rgba(27, 58, 92, 0.3);
+    margin-bottom: 20px;
+}
+
+/* ── Completion Date ── */
+.completion-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 8px;
+}
+
+.completion-row .completion-label { font-weight: 700; white-space: nowrap; }
+
+.completion-row .completion-value {
+    width: 150px;
+    padding-bottom: 3px;
+    display: flex;
+    align-items: flex-end;
+    padding-left: 8px;
+}
+
+/* ── Date Line ── */
+.date-line {
+    text-align: right;
+    font-style: italic;
+    margin-bottom: 28px;
+    font-size: 14px;
 }
 
 /* ── Signature ── */
@@ -122,7 +229,7 @@ body {
     display: grid;
     grid-template-columns: 1fr 1fr;
     text-align: center;
-    margin-top: 32px;
+    margin-top: 0;
 }
 
 .signature-col {
@@ -131,45 +238,93 @@ body {
     align-items: center;
 }
 
-.signature-space { height: 80px; }
-.signature-name { font-weight: 700; font-size: 14px; }
-.signature-subtitle { font-style: italic; font-size: 12px; color: #5a6061; }
-
-/* ── Date Line ── */
-.date-line {
-    text-align: right;
-    font-style: italic;
-    margin-bottom: 16px;
-    font-size: 14px;
+.sig-title {
+    font-weight: 700;
+    text-transform: uppercase;
+    font-size: 13px;
+    margin-bottom: 72px;
 }
 
-/* ── Textarea (Page 2) ── */
-.result-textarea {
+.sig-line {
+    width: 120px;
+    height: 1px;
+    background: rgba(27, 58, 92, 0.1);
+}
+
+.sig-name { font-weight: 700; font-size: 14px; color: #1B3A5C; }
+.sig-signed { font-style: italic; color: rgba(200, 169, 81, 0.5); height: 56px; display: flex; align-items: center; justify-content: center; }
+
+/* ── Gold Divider ── */
+.gold-divider {
     width: 100%;
-    min-height: 120px;
-    border: 1px solid #000;
-    padding: 10px;
+    height: 1px;
+    background: rgba(200, 169, 81, 0.3);
+    margin: 28px 0;
+}
+
+/* ── Checkbox ── */
+.checkbox-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 20px;
+    padding: 0 16px;
+}
+
+.checkbox-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.checkbox-box {
+    width: 18px;
+    height: 18px;
+    border: 2px solid #C8A951;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.checkbox-fill {
+    width: 12px;
+    height: 12px;
+    background: #1B3A5C;
+}
+
+/* ── Opinion Field ── */
+.opinion-row {
+    margin-bottom: 28px;
+}
+
+.opinion-row .opinion-label { font-weight: 700; margin-right: 8px; }
+.opinion-row .opinion-value { font-style: italic; }
+.opinion-underline {
+    width: 100%;
+    height: 3px;
+    margin-top: 8px;
+}
+
+/* ── Result Textarea (Page 2) ── */
+.result-area {
+    width: 100%;
+    background-color: #F0F4F8;
+    padding: 14px 16px;
+    min-height: 140px;
+    font-style: italic;
+    border-left: 2px solid rgba(27, 58, 92, 0.3);
     font-family: inherit;
     font-size: 14px;
+    border-top: none;
+    border-right: none;
+    border-bottom: none;
     resize: none;
     outline: none;
-    background: #fff;
+    color: #1B3A5C;
 }
 
-/* ── Utility ── */
-.mb-neg { margin-bottom: -1px; }
-.mt-8 { margin-top: 32px; }
-.mt-6 { margin-top: 24px; }
-.mb-6 { margin-bottom: 24px; }
-
-/* ── Logo ── */
-.logo-img {
-    width: 70px;
-    height: 70px;
-    object-fit: contain;
-}
-
-/* ── Print Styles ── */
+/* ── Print ── */
 @media print {
     body {
         background: white;
@@ -178,9 +333,7 @@ body {
     }
     .a4-page {
         width: 210mm !important;
-        height: 297mm !important;
         margin: 0 !important;
-        padding: 15mm 20mm !important;
         box-shadow: none !important;
     }
     .page-break { page-break-before: always !important; }
