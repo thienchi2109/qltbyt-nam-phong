@@ -1,5 +1,6 @@
 import * as React from 'react'
 import { render, screen } from '@testing-library/react'
+import '@testing-library/jest-dom/vitest'
 import { describe, expect, it, vi } from 'vitest'
 
 vi.mock('ai', () => ({
@@ -173,6 +174,22 @@ describe('AssistantMessageList', () => {
             <AssistantMessageList
                 messages={messages as never}
                 status="streaming"
+                onApplyDraft={vi.fn()}
+            />,
+        )
+
+        expect(screen.getByTestId('assistant-thinking-container')).toBeInTheDocument()
+    })
+
+    it('shows thinking indicator when status is submitted', () => {
+        const messages = [
+            makeMessage('user', [{ type: 'text', text: 'Xin chào' }]),
+        ]
+
+        render(
+            <AssistantMessageList
+                messages={messages as never}
+                status="submitted"
                 onApplyDraft={vi.fn()}
             />,
         )
