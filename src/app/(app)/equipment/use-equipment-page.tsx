@@ -190,7 +190,7 @@ export function useEquipmentPage(): UseEquipmentPageReturn {
   // Filter sheet state (not a dialog - stays here)
   const [isFilterSheetOpen, setIsFilterSheetOpen] = React.useState(false)
 
-  // Tenant change effect: clear filters + show toast
+  // Tenant change effect: keep tenant-scoped filter state and show toast
   // Track by effectiveTenantKey which now uses context's selectedFacilityId
   const prevEffectiveTenantKeyRef = React.useRef(auth.effectiveTenantKey)
   React.useEffect(() => {
@@ -198,7 +198,6 @@ export function useEquipmentPage(): UseEquipmentPageReturn {
     if (prevEffectiveTenantKeyRef.current === auth.effectiveTenantKey) return
 
     prevEffectiveTenantKeyRef.current = auth.effectiveTenantKey
-    filters.resetFilters()
 
     // Show toast for tenant change
     if (auth.selectedDonVi !== null) {
@@ -212,7 +211,7 @@ export function useEquipmentPage(): UseEquipmentPageReturn {
         description: `Hiển thị thiết bị thuộc ${tenantName}`,
       })
     }
-  }, [auth.effectiveTenantKey, auth.showSelector, auth.selectedDonVi, filters.resetFilters, data.tenantOptions, toast])
+  }, [auth.effectiveTenantKey, auth.showSelector, auth.selectedDonVi, data.tenantOptions, toast])
 
   // Facility clear handler - simplified (sheet now managed by TenantSelector)
   const handleFacilityClear = React.useCallback(() => {
