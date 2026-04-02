@@ -11,7 +11,7 @@ Replace the stale `transfer_history_list` RPC (queries non-existent `lich_su_lua
 New RPC `transfer_change_history_list(p_entity_id BIGINT)` querying `audit_logs`.
 
 > [!IMPORTANT]
-> SQL updated to match project conventions from latest migration `transfer_request_get`:
+> SQL follows project conventions from latest migration `transfer_request_get`:
 > - Uses `public._get_jwt_claim()` helper (not raw `current_setting`)
 > - Uses `JSONB` (not `json`)
 > - Tenant isolation via `allowed_don_vi_for_session_safe()`
@@ -96,19 +96,12 @@ BEGIN
 END;
 $$;
 
--- Drop stale function that references non-existent lich_su_luan_chuyen
-DROP FUNCTION IF EXISTS public.transfer_history_list(BIGINT);
+-- Drop stale function (runtime signature is INTEGER, not BIGINT)
+DROP FUNCTION IF EXISTS public.transfer_history_list(INTEGER);
 
 GRANT EXECUTE ON FUNCTION public.transfer_change_history_list TO authenticated;
 REVOKE EXECUTE ON FUNCTION public.transfer_change_history_list FROM PUBLIC;
 ```
-
-**Security compliance** (per knowledge items):
-- ✅ `SECURITY DEFINER` + `SET search_path = public, pg_temp`
-- ✅ JWT claim guards (`app_role`, `user_id`)
-- ✅ `GRANT authenticated` / `REVOKE PUBLIC`
-- ✅ No ILIKE needed (exact match on `entity_id`)
-- ✅ JOIN on `nhan_vien` to get `full_name` for actor display
 
 ---
 
@@ -142,13 +135,29 @@ Replace `TransferHistory` interface (lines 175-187):
 
 ---
 
-### Frontend — Data Hook
+### Frontend — Data Hook + Query Keys (TanStack Query)
 
 #### [MODIFY] [transfer-detail-dialog.data.ts](file:///d:/qltbyt-nam-phong/src/components/transfer-detail-dialog.data.ts)
 
-- Change query key from `transfer_history_list` → `transfer_change_history_list`
-- Change `callRpc` fn name and generic type
-- Replace `TransferHistory` import with `TransferChangeHistory`
+> [!IMPORTANT]
+> Query key factory pattern (`transferDetailDialogQueryKeys`) is the single source of truth for both the `useQuery` call **and** cache invalidation in `useTransferActions` (line 65: `queryClient.invalidateQueries({ queryKey: transferDetailDialogQueryKeys.historyRoot })`). Renaming the key here automatically propagates to all consumers.
+
+```diff
+ export const transferDetailDialogQueryKeys = {
+   detailRoot: ["transfer_request_get"] as const,
+   detail: (transferId: number | null) =>
+     [...transferDetailDialogQueryKeys.detailRoot, { id: transferId }] as const,
+-  historyRoot: ["transfer_history_list"] as const,
++  historyRoot: ["transfer_change_history_list"] as const,
+   history: (transferId: number | null) =>
+-    [...transferDetailDialogQueryKeys.historyRoot, { yeu_cau_id: transferId }] as const,
++    [...transferDetailDialogQueryKeys.historyRoot, { p_entity_id: transferId }] as const,
+ }
+```
+
+- Change `callRpc` fn: `"transfer_history_list"` → `"transfer_change_history_list"`
+- Change args: `{ p_yeu_cau_id: transferId! }` → `{ p_entity_id: transferId! }`
+- Change generic: `callRpc<TransferHistory[]>` → `callRpc<TransferChangeHistory[]>`
 
 ---
 
@@ -157,10 +166,22 @@ Replace `TransferHistory` interface (lines 175-187):
 #### [MODIFY] [transfer-detail-dialog.tsx](file:///d:/qltbyt-nam-phong/src/components/transfer-detail-dialog.tsx)
 
 Update "Lịch sử thay đổi" section (lines 276-317) to render new fields:
-- `item.action_type` → mapped via `ACTION_TYPE_LABELS` from `use-audit-logs.ts`
+- `item.action_type` → mapped via Vietnamese labels
 - `item.admin_full_name` → actor display
 - `item.created_at` → timestamp
 - `item.action_details` → optional details display
+
+#### [MODIFY] [use-audit-logs.ts](file:///d:/qltbyt-nam-phong/src/hooks/use-audit-logs.ts)
+
+Add missing `ACTION_TYPE_LABELS` entries for transfer request actions:
+
+```diff
+   // Transfer Management
+   'transfer_create': 'Tạo yêu cầu chuyển giao',
+   'transfer_update': 'Cập nhật yêu cầu chuyển giao',
++  'transfer_request_create': 'Tạo yêu cầu luân chuyển',
++  'transfer_request_update': 'Cập nhật yêu cầu luân chuyển',
+```
 
 ---
 
@@ -177,37 +198,43 @@ Update "Lịch sử thay đổi" section (lines 276-317) to render new fields:
 
 ## TDD Verification Plan
 
-Following Red-Green-Refactor cycle. Test command:
+Following Red-Green-Refactor cycle. Test commands:
 
 ```bash
 npx vitest --reporter=verbose --run -- src/components/__tests__/transfer-detail-dialog.test.tsx
+npx vitest --reporter=verbose --run -- src/hooks/__tests__/useTransferActions.test.tsx
 ```
 
-### Cycle 1: RED — Data hook calls new RPC
+### Cycle 1: RED — Data hook calls new RPC + param name
 
-Update existing test in `transfer-detail-dialog.test.tsx` to assert `callRpc` is called with `fn: 'transfer_change_history_list'` instead of `'transfer_history_list'`.
+Update test in `transfer-detail-dialog.test.tsx`:
+- Assert `callRpc` with `fn: 'transfer_change_history_list'` and `args: { p_entity_id: ... }`
 
-→ **Verify RED**: test fails because code still calls old RPC name.
+→ **Verify RED**: fails (code still calls old RPC name + old param).
 
-→ **GREEN**: Update `transfer-detail-dialog.data.ts` to call new RPC.
+→ **GREEN**: Update `transfer-detail-dialog.data.ts` (query keys, RPC name, args, type).
 
-→ **Verify GREEN**: test passes.
+→ **Verify GREEN**: passes.
 
 ### Cycle 2: RED — History renders `action_type` label + actor name
 
-Add test asserting that when history data is returned with `{ action_type: 'transfer_request_create', admin_full_name: 'Nguyễn Văn A', created_at: '...' }`, the dialog renders the Vietnamese label ("Tạo yêu cầu chuyển giao") and the actor name.
+Add test asserting that when history data is `{ action_type: 'transfer_request_create', admin_full_name: 'Nguyễn Văn A', created_at: '...' }`, the dialog renders the Vietnamese label and actor name.
 
-→ **Verify RED**: test fails because UI still renders `item.hanh_dong`.
+→ **Verify RED**: fails (UI still renders `item.hanh_dong`).
 
-→ **GREEN**: Update `TransferChangeHistory` type in `database.ts`, update `transfer-detail-dialog.tsx` rendering.
+→ **GREEN**: Update `TransferChangeHistory` type, `transfer-detail-dialog.tsx` rendering, add `ACTION_TYPE_LABELS` entries.
 
-→ **Verify GREEN**: test passes.
+→ **Verify GREEN**: passes.
 
-### Cycle 3: RED — History renders empty state correctly with new contract
+### Cycle 3: RED — `useTransferActions` invalidation key sync
 
-Verify existing test for empty history (`"Chưa có lịch sử thay đổi"`) still passes after refactor.
+Update `useTransferActions.test.tsx` line 138:
+```diff
+-      queryKey: ["transfer_history_list"],
++      queryKey: ["transfer_change_history_list"],
+```
 
-→ This is a regression guard — should stay GREEN immediately.
+→ **Verify GREEN** immediately — no code change needed since `useTransferActions` imports `transferDetailDialogQueryKeys.historyRoot` (already updated in Cycle 1).
 
 ### Cycle 4: RPC Whitelist + SQL Migration
 
