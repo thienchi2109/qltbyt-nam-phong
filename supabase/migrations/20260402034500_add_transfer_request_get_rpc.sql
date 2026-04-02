@@ -1,3 +1,8 @@
+-- Add transfer_request_get RPC for Transfers detail dialog
+-- Fixes missing requester/approver user objects in TransferDetailDialog when list rows only
+-- carry actor IDs, by returning a single transfer detail payload with related user summaries.
+-- Also enforces mandatory JWT claim guards and tenant-scoped access for this read path.
+
 BEGIN;
 
 CREATE OR REPLACE FUNCTION public.transfer_request_get(p_id INT)
@@ -8,6 +13,8 @@ SET search_path = public, pg_temp
 AS $$
 DECLARE
   v_role TEXT := lower(COALESCE(public._get_jwt_claim('app_role'), public._get_jwt_claim('role'), ''));
+  v_user_id TEXT := NULLIF(COALESCE(public._get_jwt_claim('user_id'), public._get_jwt_claim('sub')), '');
+  v_don_vi BIGINT := NULLIF(public._get_jwt_claim('don_vi'), '')::BIGINT;
   v_is_global BOOLEAN := false;
   v_allowed BIGINT[] := NULL;
   v_result JSONB;
@@ -16,12 +23,24 @@ BEGIN
     RETURN NULL;
   END IF;
 
+  IF v_role IS NULL OR v_role = '' THEN
+    RAISE EXCEPTION 'Missing role claim' USING ERRCODE = '42501';
+  END IF;
+
+  IF v_user_id IS NULL THEN
+    RAISE EXCEPTION 'Missing user_id claim' USING ERRCODE = '42501';
+  END IF;
+
   v_is_global := v_role IN ('global', 'admin');
+
+  IF NOT v_is_global AND v_don_vi IS NULL THEN
+    RAISE EXCEPTION 'Missing don_vi claim' USING ERRCODE = '42501';
+  END IF;
 
   IF NOT v_is_global THEN
     v_allowed := public.allowed_don_vi_for_session_safe();
 
-    IF v_allowed IS NULL OR array_length(v_allowed, 1) IS NULL THEN
+    IF array_length(v_allowed, 1) IS NULL THEN
       RETURN NULL;
     END IF;
   END IF;
@@ -105,8 +124,7 @@ BEGIN
     AND (
       v_is_global
       OR (
-        v_allowed IS NOT NULL
-        AND array_length(v_allowed, 1) IS NOT NULL
+        array_length(v_allowed, 1) IS NOT NULL
         AND tb.don_vi = ANY(v_allowed)
       )
     )

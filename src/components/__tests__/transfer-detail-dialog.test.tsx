@@ -1,3 +1,4 @@
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { render, screen, waitFor } from "@testing-library/react"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import * as React from "react"
@@ -39,9 +40,30 @@ vi.mock("@/components/transfers/TransferStatusProgress", () => ({
 }))
 
 import { callRpc } from "@/lib/rpc-client"
+import { transferDetailDialogQueryKeys } from "@/components/transfer-detail-dialog.data"
 import { TransferDetailDialog } from "../transfer-detail-dialog"
 
 const mockCallRpc = vi.mocked(callRpc)
+
+function createQueryClient() {
+  return new QueryClient({
+    defaultOptions: {
+      queries: {
+        retry: false,
+        gcTime: 0,
+      },
+      mutations: {
+        retry: false,
+      },
+    },
+  })
+}
+
+function createWrapper(queryClient = createQueryClient()) {
+  return function Wrapper({ children }: { children: React.ReactNode }) {
+    return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+  }
+}
 
 function makeUser(overrides: Partial<UserSummary>): UserSummary {
   return {
@@ -134,13 +156,16 @@ describe("TransferDetailDialog related people", () => {
         onOpenChange={vi.fn()}
         transfer={makeTransferRow({ nguoi_yeu_cau: undefined, nguoi_duyet: undefined })}
       />,
+      { wrapper: createWrapper() },
     )
 
     await waitFor(() => {
-      expect(mockCallRpc).toHaveBeenCalledWith({
-        fn: "transfer_request_get",
-        args: { p_id: 11 },
-      })
+      expect(mockCallRpc).toHaveBeenCalledWith(
+        expect.objectContaining({
+          fn: "transfer_request_get",
+          args: { p_id: 11 },
+        }),
+      )
     })
 
     await waitFor(() => {
@@ -181,6 +206,7 @@ describe("TransferDetailDialog related people", () => {
           ngay_hoan_thanh: undefined,
         })}
       />,
+      { wrapper: createWrapper() },
     )
 
     await waitFor(() => {
@@ -212,6 +238,7 @@ describe("TransferDetailDialog related people", () => {
         onOpenChange={vi.fn()}
         transfer={makeTransferRow({ nguoi_yeu_cau: undefined, nguoi_duyet: undefined })}
       />,
+      { wrapper: createWrapper() },
     )
 
     await waitFor(() => {
@@ -220,5 +247,124 @@ describe("TransferDetailDialog related people", () => {
 
     expect(screen.queryByText("Người yêu cầu:")).not.toBeInTheDocument()
     expect(screen.getByText("Người duyệt:")).toBeInTheDocument()
+  })
+
+  it("does not refetch transfer detail when the parent re-renders with the same transfer id", async () => {
+    mockCallRpc.mockImplementation(async ({ fn }) => {
+      if (fn === "transfer_request_get") {
+        return makeTransferRow()
+      }
+      if (fn === "transfer_history_list") {
+        return []
+      }
+      throw new Error(`Unexpected RPC: ${fn}`)
+    })
+
+    const { rerender } = render(
+      <TransferDetailDialog open onOpenChange={vi.fn()} transfer={makeTransferRow()} />,
+      { wrapper: createWrapper() },
+    )
+
+    await waitFor(() => {
+      expect(
+        mockCallRpc.mock.calls.filter(([call]) => call.fn === "transfer_request_get"),
+      ).toHaveLength(1)
+    })
+
+    rerender(
+      <TransferDetailDialog
+        open
+        onOpenChange={vi.fn()}
+        transfer={makeTransferRow({ updated_at: "2026-04-03T00:00:00.000Z" })}
+      />,
+    )
+
+    expect(
+      mockCallRpc.mock.calls.filter(([call]) => call.fn === "transfer_request_get"),
+    ).toHaveLength(1)
+  })
+
+  it("reuses cached transfer detail and history when reopening the same transfer id", async () => {
+    mockCallRpc.mockImplementation(async ({ fn }) => {
+      if (fn === "transfer_request_get") {
+        return makeTransferRow()
+      }
+      if (fn === "transfer_history_list") {
+        return []
+      }
+      throw new Error(`Unexpected RPC: ${fn}`)
+    })
+
+    const transfer = makeTransferRow({ nguoi_yeu_cau: undefined, nguoi_duyet: undefined })
+
+    const { rerender } = render(
+      <TransferDetailDialog open onOpenChange={vi.fn()} transfer={transfer} />,
+      { wrapper: createWrapper() },
+    )
+
+    await waitFor(() => {
+      expect(
+        mockCallRpc.mock.calls.filter(([call]) => call.fn === "transfer_request_get"),
+      ).toHaveLength(1)
+      expect(
+        mockCallRpc.mock.calls.filter(([call]) => call.fn === "transfer_history_list"),
+      ).toHaveLength(1)
+    })
+
+    rerender(<TransferDetailDialog open={false} onOpenChange={vi.fn()} transfer={transfer} />)
+    rerender(<TransferDetailDialog open onOpenChange={vi.fn()} transfer={transfer} />)
+
+    await waitFor(() => {
+      expect(
+        mockCallRpc.mock.calls.filter(([call]) => call.fn === "transfer_request_get"),
+      ).toHaveLength(1)
+      expect(
+        mockCallRpc.mock.calls.filter(([call]) => call.fn === "transfer_history_list"),
+      ).toHaveLength(1)
+    })
+  })
+
+  it("prefers the fresher list-row transfer over stale cached detail while refetch is in flight", async () => {
+    const queryClient = createQueryClient()
+    const staleCachedTransfer = makeTransferRow({
+      trang_thai: "cho_duyet",
+      updated_at: "2026-04-02T00:00:00.000Z",
+      nguoi_yeu_cau: undefined,
+      nguoi_duyet: undefined,
+      nguoi_duyet_id: undefined,
+      ngay_duyet: undefined,
+    })
+
+    queryClient.setQueryData(
+      transferDetailDialogQueryKeys.detail(staleCachedTransfer.id),
+      staleCachedTransfer,
+    )
+
+    mockCallRpc.mockImplementation(({ fn }) => {
+      if (fn === "transfer_request_get") {
+        return new Promise(() => undefined)
+      }
+      if (fn === "transfer_history_list") {
+        return Promise.resolve([])
+      }
+      throw new Error(`Unexpected RPC: ${fn}`)
+    })
+
+    render(
+      <TransferDetailDialog
+        open
+        onOpenChange={vi.fn()}
+        transfer={makeTransferRow({
+          trang_thai: "da_duyet",
+          updated_at: "2026-04-03T00:00:00.000Z",
+          nguoi_yeu_cau: undefined,
+          nguoi_duyet: undefined,
+        })}
+      />,
+      { wrapper: createWrapper(queryClient) },
+    )
+
+    expect(screen.getByText("Đã duyệt")).toBeInTheDocument()
+    expect(screen.queryByText("Chờ duyệt")).not.toBeInTheDocument()
   })
 })

@@ -3,6 +3,7 @@ import * as React from "react"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { useSession } from "next-auth/react"
 import { useToast } from "@/hooks/use-toast"
+import { transferDetailDialogQueryKeys } from "@/components/transfer-detail-dialog.data"
 import { callRpc } from "@/lib/rpc-client"
 import { isEquipmentManagerRole, isRegionalLeaderRole } from "@/lib/rbac"
 import { transferDataGridKeys } from "@/hooks/useTransferDataGrid"
@@ -60,6 +61,8 @@ export function useTransferActions(): UseTransferActionsReturn {
     // Invalidate both table view and kanban view query keys
     queryClient.invalidateQueries({ queryKey: transferDataGridKeys.all })
     queryClient.invalidateQueries({ queryKey: transferKanbanKeys.all })
+    queryClient.invalidateQueries({ queryKey: transferDetailDialogQueryKeys.detailRoot })
+    queryClient.invalidateQueries({ queryKey: transferDetailDialogQueryKeys.historyRoot })
   }, [queryClient])
 
   // mapToTransferRequest - converts TransferListItem to TransferRequest
