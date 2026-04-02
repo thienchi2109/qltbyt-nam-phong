@@ -55,9 +55,14 @@ function buildPage1(
 
   return `
     <div class="a4-page">
+        <!-- Mã phiếu (top-right) -->
+        <div style="text-align: right; font-style: italic; font-size: 13px; margin-bottom: 4px;">
+            Mã phiếu: ___________
+        </div>
+
         <!-- Header Table -->
         <div class="grid-border mb-neg">
-            <div class="grid-row grid-row-header" style="align-items: center;">
+            <div class="grid-row" style="grid-template-columns: 100px 1fr; align-items: center;">
                 <div class="cell text-center cell-border-r" style="justify-content: center;">
                     <img src="${logoUrl}" alt="Logo" class="logo-img"
                          onerror="this.onerror=null;this.src='${LOGO_FALLBACK}';">
@@ -65,9 +70,6 @@ function buildPage1(
                 <div class="cell text-center" style="flex-direction: column; justify-content: center;">
                     <div class="title-org uppercase">${organizationName}</div>
                     <div class="title-main uppercase">PHIẾU ĐỀ NGHỊ SỬA CHỮA THIẾT BỊ</div>
-                </div>
-                <div class="cell cell-border-l italic" style="font-size: 13px;">
-                    Mã phiếu: ___________
                 </div>
             </div>
         </div>
@@ -82,7 +84,7 @@ function buildPage1(
 
         <!-- Section I Header -->
         <div class="mb-neg">
-            <div class="grid-border-t grid-border-l grid-border-r text-center">
+            <div class="grid-border-t grid-border-l grid-border-r">
                 <div class="section-title">I. THÔNG TIN THIẾT BỊ</div>
             </div>
         </div>
@@ -93,7 +95,7 @@ function buildPage1(
                 <div class="cell cell-label cell-border-b">Tên thiết bị</div>
                 <div class="cell cell-value cell-border-b">${formatValue(eq.ten_thiet_bi)}</div>
             </div>
-            <div class="grid-row grid-row-6col">
+            <div class="grid-row" style="grid-template-columns: 80px 1fr 80px 1fr 80px 1fr;">
                 <div class="cell cell-label cell-border-b cell-border-r">Mã TB</div>
                 <div class="cell cell-value cell-border-b cell-border-r">${formatValue(eq.ma_thiet_bi)}</div>
                 <div class="cell cell-label cell-border-b cell-border-r">Model</div>
