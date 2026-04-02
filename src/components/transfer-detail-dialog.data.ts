@@ -11,10 +11,13 @@ interface UseTransferDetailDialogDataParams {
   transfer: TransferRequest | null
 }
 
-const transferDetailDialogQueryKeys = {
-  detail: (transferId: number | null) => ["transfer_request_get", { id: transferId }] as const,
+export const transferDetailDialogQueryKeys = {
+  detailRoot: ["transfer_request_get"] as const,
+  detail: (transferId: number | null) =>
+    [...transferDetailDialogQueryKeys.detailRoot, { id: transferId }] as const,
+  historyRoot: ["transfer_history_list"] as const,
   history: (transferId: number | null) =>
-    ["transfer_history_list", { yeu_cau_id: transferId }] as const,
+    [...transferDetailDialogQueryKeys.historyRoot, { yeu_cau_id: transferId }] as const,
 }
 
 export function useTransferDetailDialogData({

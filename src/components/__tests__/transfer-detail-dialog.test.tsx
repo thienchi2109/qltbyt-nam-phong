@@ -40,12 +40,13 @@ vi.mock("@/components/transfers/TransferStatusProgress", () => ({
 }))
 
 import { callRpc } from "@/lib/rpc-client"
+import { transferDetailDialogQueryKeys } from "@/components/transfer-detail-dialog.data"
 import { TransferDetailDialog } from "../transfer-detail-dialog"
 
 const mockCallRpc = vi.mocked(callRpc)
 
-function createWrapper() {
-  const queryClient = new QueryClient({
+function createQueryClient() {
+  return new QueryClient({
     defaultOptions: {
       queries: {
         retry: false,
@@ -56,7 +57,9 @@ function createWrapper() {
       },
     },
   })
+}
 
+function createWrapper(queryClient = createQueryClient()) {
   return function Wrapper({ children }: { children: React.ReactNode }) {
     return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
   }
@@ -319,5 +322,49 @@ describe("TransferDetailDialog related people", () => {
         mockCallRpc.mock.calls.filter(([call]) => call.fn === "transfer_history_list"),
       ).toHaveLength(1)
     })
+  })
+
+  it("prefers the fresher list-row transfer over stale cached detail while refetch is in flight", async () => {
+    const queryClient = createQueryClient()
+    const staleCachedTransfer = makeTransferRow({
+      trang_thai: "cho_duyet",
+      updated_at: "2026-04-02T00:00:00.000Z",
+      nguoi_yeu_cau: undefined,
+      nguoi_duyet: undefined,
+      nguoi_duyet_id: undefined,
+      ngay_duyet: undefined,
+    })
+
+    queryClient.setQueryData(
+      transferDetailDialogQueryKeys.detail(staleCachedTransfer.id),
+      staleCachedTransfer,
+    )
+
+    mockCallRpc.mockImplementation(({ fn }) => {
+      if (fn === "transfer_request_get") {
+        return new Promise(() => undefined)
+      }
+      if (fn === "transfer_history_list") {
+        return Promise.resolve([])
+      }
+      throw new Error(`Unexpected RPC: ${fn}`)
+    })
+
+    render(
+      <TransferDetailDialog
+        open
+        onOpenChange={vi.fn()}
+        transfer={makeTransferRow({
+          trang_thai: "da_duyet",
+          updated_at: "2026-04-03T00:00:00.000Z",
+          nguoi_yeu_cau: undefined,
+          nguoi_duyet: undefined,
+        })}
+      />,
+      { wrapper: createWrapper(queryClient) },
+    )
+
+    expect(screen.getByText("Đã duyệt")).toBeInTheDocument()
+    expect(screen.queryByText("Chờ duyệt")).not.toBeInTheDocument()
   })
 })

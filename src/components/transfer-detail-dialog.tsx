@@ -34,6 +34,14 @@ export function TransferDetailDialog({ open, onOpenChange, transfer }: TransferD
     transfer,
   })
 
+  const getTransferFreshness = (value: TransferRequest | null | undefined) => {
+    const timestamp = value?.updated_at ?? value?.created_at
+    if (!timestamp) return Number.NEGATIVE_INFINITY
+
+    const parsed = new Date(timestamp).getTime()
+    return Number.isNaN(parsed) ? Number.NEGATIVE_INFINITY : parsed
+  }
+
   const getStatusVariant = (status: string) => {
     switch (status) {
       case 'cho_duyet': return 'secondary'
@@ -49,7 +57,11 @@ export function TransferDetailDialog({ open, onOpenChange, transfer }: TransferD
     return new Date(dateString).toLocaleString('vi-VN')
   }
 
-  const displayTransfer = resolvedTransfer?.id === transferId ? resolvedTransfer : transfer
+  const displayTransfer =
+    resolvedTransfer?.id === transferId &&
+    getTransferFreshness(resolvedTransfer) >= getTransferFreshness(transfer)
+      ? resolvedTransfer
+      : transfer
 
   if (!displayTransfer) return null
 
