@@ -1,6 +1,6 @@
 /**
  * CSS styles for the Repair Request Sheet (Elegant Dual-Tone Layout).
- * Navy header (#1B3A5C) + Gold accents (#C8A951) + Times New Roman.
+ * Navy header (#436084) + Gold accents (#C8A951) + Times New Roman.
  */
 export const REPAIR_SHEET_STYLES = `
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -8,7 +8,7 @@ export const REPAIR_SHEET_STYLES = `
 body {
     font-family: 'Times New Roman', Times, serif;
     font-size: 14px;
-    color: #1B3A5C;
+    color: #436084;
     line-height: 1.4;
     background-color: #f4f3f2;
 }
@@ -28,9 +28,9 @@ body {
 
 /* ── Header Banner ── */
 .header-banner {
-    background-color: #1B3A5C;
+    background-color: #436084;
     width: 100%;
-    padding: 36px 40px 32px;
+    padding: 16px 40px;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -38,29 +38,29 @@ body {
 }
 
 .header-logo-circle {
-    width: 72px;
-    height: 72px;
+    width: 56px;
+    height: 56px;
     background: #ffffff;
     border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
-    margin-bottom: 20px;
+    margin-bottom: 12px;
     box-shadow: 0 1px 3px rgba(0,0,0,0.1);
 }
 
 .header-logo-circle img {
-    width: 58px;
-    height: 58px;
+    width: 44px;
+    height: 44px;
     object-fit: contain;
 }
 
 .header-org-name {
     color: #ffffff;
     font-weight: 700;
-    font-size: 16px;
+    font-size: 15px;
     letter-spacing: 0.1em;
-    margin-bottom: 10px;
+    margin-bottom: 8px;
 }
 
 .header-gold-line {
@@ -68,13 +68,13 @@ body {
     height: 1px;
     background: #C8A951;
     opacity: 0.6;
-    margin-bottom: 14px;
+    margin-bottom: 12px;
 }
 
 .header-title {
     color: #ffffff;
     font-weight: 700;
-    font-size: 22px;
+    font-size: 20px;
     letter-spacing: 0.2em;
     text-transform: uppercase;
     white-space: nowrap;
@@ -85,14 +85,14 @@ body {
     height: 1px;
     background: #C8A951;
     opacity: 0.4;
-    margin-top: 24px;
+    margin-top: 16px;
 }
 
 /* ── Content Body ── */
 .content-body {
     flex: 1;
     padding: 40px 60px;
-    color: #1B3A5C;
+    color: #436084;
 }
 
 /* ── Department Field ── */
@@ -124,7 +124,7 @@ body {
 .section-bullet {
     width: 8px;
     height: 8px;
-    background: #1B3A5C;
+    background: #436084;
     margin-right: 10px;
     flex-shrink: 0;
 }
@@ -251,7 +251,7 @@ body {
     background: rgba(27, 58, 92, 0.1);
 }
 
-.sig-name { font-weight: 700; font-size: 14px; color: #1B3A5C; }
+.sig-name { font-weight: 700; font-size: 14px; color: #436084; }
 .sig-signed { font-style: italic; color: rgba(200, 169, 81, 0.5); height: 56px; display: flex; align-items: center; justify-content: center; }
 
 /* ── Gold Divider ── */
@@ -290,7 +290,7 @@ body {
 .checkbox-fill {
     width: 12px;
     height: 12px;
-    background: #1B3A5C;
+    background: #436084;
 }
 
 /* ── Opinion Field ── */
@@ -321,7 +321,7 @@ body {
     border-bottom: none;
     resize: none;
     outline: none;
-    color: #1B3A5C;
+    color: #436084;
 }
 
 /* ── Print ── */

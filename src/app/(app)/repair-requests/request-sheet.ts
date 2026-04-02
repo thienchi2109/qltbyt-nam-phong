@@ -105,7 +105,7 @@ function buildPage1(
                     </div>
                     <div class="signature-col">
                         <span class="sig-title" style="margin-bottom: 16px;">Người đề nghị</span>
-                        <div class="sig-signed">(Đã ký)</div>
+                        <div style="height: 56px;"></div>
                         <span class="sig-name">${formatValue(request.nguoi_yeu_cau)}</span>
                     </div>
                 </div>
@@ -194,16 +194,16 @@ function buildPage2(
             <!-- Date & Signatures -->
             <div style="margin-top: 28px;">
                 ${buildDateLine(day, month, year)}
-                <div class="signature-row">
+                <div class="signature-row" style="margin-top: 16px;">
                     <div class="signature-col">
-                        <span class="sig-title">Tổ Quản lý TBYT</span>
-                        <span style="font-style: italic; font-size: 12px; color: #5a6061; margin-top: -64px; margin-bottom: 52px;">(Ký, ghi rõ họ, tên)</span>
+                        <span class="sig-title" style="margin-bottom: 4px;">Tổ Quản lý TBYT</span>
+                        <span style="font-style: italic; font-size: 12px; color: #5a6061; margin-bottom: 48px;">(Ký, ghi rõ họ, tên)</span>
                         <div class="sig-line"></div>
                     </div>
                     <div class="signature-col">
-                        <span class="sig-title" style="margin-bottom: 16px;">Người đề nghị</span>
-                        <span style="font-style: italic; font-size: 12px; color: #5a6061; margin-top: -64px; margin-bottom: 8px;">(Ký, ghi rõ họ, tên)</span>
-                        <div class="sig-signed">(Đã ký)</div>
+                        <span class="sig-title" style="margin-bottom: 4px;">Người đề nghị</span>
+                        <span style="font-style: italic; font-size: 12px; color: #5a6061;">(Ký, ghi rõ họ, tên)</span>
+                        <div style="height: 48px;"></div>
                         <span class="sig-name">${formatValue(request.nguoi_yeu_cau)}</span>
                     </div>
                 </div>
