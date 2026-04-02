@@ -38,8 +38,8 @@ body {
 }
 
 .header-logo-circle {
-    width: 56px;
-    height: 56px;
+    width: 76px;
+    height: 76px;
     background: #ffffff;
     border-radius: 50%;
     display: flex;
@@ -50,8 +50,8 @@ body {
 }
 
 .header-logo-circle img {
-    width: 44px;
-    height: 44px;
+    width: 60px;
+    height: 60px;
     object-fit: contain;
 }
 
@@ -209,11 +209,23 @@ body {
 .completion-row .completion-label { font-weight: 700; white-space: nowrap; }
 
 .completion-row .completion-value {
-    width: 150px;
+    width: 160px;
     padding-bottom: 3px;
     display: flex;
     align-items: flex-end;
     padding-left: 8px;
+}
+
+.date-input {
+    background: transparent;
+    border: none;
+    outline: none;
+    font-family: inherit;
+    font-size: 14px;
+    color: inherit;
+    font-style: italic;
+    width: 100%;
+    cursor: pointer;
 }
 
 /* ── Date Line ── */
@@ -339,5 +351,6 @@ body {
     .page-break { page-break-before: always !important; }
     .no-print { display: none !important; }
     .a4-page + .a4-page { margin-top: 0 !important; }
+    .date-input::-webkit-calendar-picker-indicator { display: none !important; }
 }
 `

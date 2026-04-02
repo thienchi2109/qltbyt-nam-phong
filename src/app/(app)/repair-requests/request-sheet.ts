@@ -23,11 +23,11 @@ function buildPage1(
   request: RepairRequestWithEquipment,
   branding: RepairRequestSheetBranding,
   date: { day: string; month: string; year: string },
-  derived: { isNoiBo: boolean; isThueNgoai: string | false; tbytOpinion: string; completionDate: string },
+  derived: { isNoiBo: boolean; isThueNgoai: string | false; tbytOpinion: string; completionDateValue: string },
 ): string {
   const { organizationName, logoUrl } = branding
   const { day, month, year } = date
-  const { isNoiBo, isThueNgoai, tbytOpinion, completionDate } = derived
+  const { isNoiBo, isThueNgoai, tbytOpinion, completionDateValue } = derived
   const eq = request.thiet_bi!
 
   return `
@@ -91,7 +91,9 @@ function buildPage1(
 
                 <div class="completion-row">
                     <span class="completion-label">Ngày mong muốn hoàn thành (nếu có):</span>
-                    <div class="completion-value dotted-gold">${completionDate}</div>
+                    <div class="completion-value dotted-gold">
+                        <input type="date" class="date-input" value="${completionDateValue}">
+                    </div>
                 </div>
             </section>
 
@@ -239,8 +241,8 @@ export function buildRepairRequestSheetHtml(
       : isThueNgoai
         ? `Thuê đơn vị ${request.ten_don_vi_thue} sửa chữa`
         : '',
-    completionDate: request.ngay_mong_muon_hoan_thanh
-      ? format(parseISO(request.ngay_mong_muon_hoan_thanh), 'dd/MM/yyyy')
+    completionDateValue: request.ngay_mong_muon_hoan_thanh
+      ? format(parseISO(request.ngay_mong_muon_hoan_thanh), 'yyyy-MM-dd')
       : '',
   }
 
