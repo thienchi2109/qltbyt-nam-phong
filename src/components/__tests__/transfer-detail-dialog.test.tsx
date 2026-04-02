@@ -415,6 +415,8 @@ describe("TransferDetailDialog related people", () => {
             action_details: {
               ma_yeu_cau: "LC-0011",
               trang_thai: "da_duyet",
+              loai_hinh: "noi_bo",
+              thiet_bi_id: 101,
             },
             created_at: "2026-04-02T00:00:00.000Z",
           },
@@ -433,6 +435,9 @@ describe("TransferDetailDialog related people", () => {
       expect(screen.getByText("Đã duyệt")).toBeInTheDocument()
       expect(screen.getByText("Mã yêu cầu")).toBeInTheDocument()
       expect(screen.getByText("Trạng thái")).toBeInTheDocument()
+      expect(screen.queryByText("Loại hình")).not.toBeInTheDocument()
+      expect(screen.queryByText("thiet bi id")).not.toBeInTheDocument()
+      expect(screen.queryByText("101")).not.toBeInTheDocument()
       expect(screen.queryByText('{"ma_yeu_cau":"LC-0011","trang_thai":"da_duyet"}')).not.toBeInTheDocument()
     })
   })

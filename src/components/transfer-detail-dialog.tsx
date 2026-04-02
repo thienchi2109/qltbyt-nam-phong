@@ -36,7 +36,6 @@ const TRANSFER_HISTORY_ACTION_LABELS: Record<string, string> = {
 const TRANSFER_HISTORY_DETAILS_LABELS: Record<string, string> = {
   ma_yeu_cau: "Mã yêu cầu",
   trang_thai: "Trạng thái",
-  loai_hinh: "Loại hình",
   ly_do_luan_chuyen: "Lý do luân chuyển",
   khoa_phong_hien_tai: "Khoa/phòng hiện tại",
   khoa_phong_nhan: "Khoa/phòng nhận",
@@ -44,6 +43,11 @@ const TRANSFER_HISTORY_DETAILS_LABELS: Record<string, string> = {
   nguoi_lien_he: "Người liên hệ",
   so_dien_thoai: "Số điện thoại",
 }
+
+const TRANSFER_HISTORY_DETAILS_HIDDEN_KEYS = new Set<string>([
+  "loai_hinh",
+  "thiet_bi_id",
+])
 
 function formatHistoryDetailValue(value: unknown): string {
   if (typeof value === "string") {
@@ -66,7 +70,12 @@ function getTransferHistoryDetailRows(actionDetails: Record<string, unknown> | n
 }> {
   if (!actionDetails) return []
   return Object.entries(actionDetails)
-    .filter(([, value]) => value !== null && value !== "")
+    .filter(
+      ([key, value]) =>
+        !TRANSFER_HISTORY_DETAILS_HIDDEN_KEYS.has(key) &&
+        value !== null &&
+        value !== "",
+    )
     .map(([key, value]) => ({
       key,
       label: TRANSFER_HISTORY_DETAILS_LABELS[key] ?? key.replaceAll("_", " "),
