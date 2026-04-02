@@ -328,7 +328,7 @@ export function TransferDetailDialog({ open, onOpenChange, transfer }: TransferD
               ) : (
                 <div className="space-y-3">
                   {history.map((item) => (
-                    <div key={item.id} className="flex gap-3 p-3 bg-muted rounded-md">
+                    <div key={item.id} className="flex gap-3 rounded-md border bg-muted/40 p-3">
                       <div className="flex-shrink-0 w-2 h-2 rounded-full bg-primary mt-2"></div>
                       <div className="flex-grow space-y-1">
                         <div className="flex items-center justify-between">
@@ -339,15 +339,23 @@ export function TransferDetailDialog({ open, onOpenChange, transfer }: TransferD
                             {formatDateTime(item.created_at)}
                           </span>
                         </div>
-                        {getTransferHistoryDetailRows(item.action_details).length > 0 && (
-                          <div className="space-y-1 text-xs text-muted-foreground">
-                            {getTransferHistoryDetailRows(item.action_details).map((detail) => (
-                              <p key={detail.key}>
-                                <span className="font-medium">{detail.label}:</span> {detail.value}
-                              </p>
-                            ))}
-                          </div>
-                        )}
+                        {(() => {
+                          const detailRows = getTransferHistoryDetailRows(item.action_details)
+                          if (detailRows.length === 0) return null
+
+                          return (
+                            <div className="mt-2 rounded-md border bg-background/60 p-2">
+                              <div className="grid grid-cols-1 gap-x-4 gap-y-1 md:grid-cols-2">
+                                {detailRows.map((detail) => (
+                                  <div key={detail.key} className="min-w-0 text-xs">
+                                    <p className="text-muted-foreground">{detail.label}</p>
+                                    <p className="truncate font-medium text-foreground">{detail.value}</p>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )
+                        })()}
                         {item.admin_full_name && (
                           <p className="text-xs text-muted-foreground">
                             Thực hiện bởi: {item.admin_full_name}

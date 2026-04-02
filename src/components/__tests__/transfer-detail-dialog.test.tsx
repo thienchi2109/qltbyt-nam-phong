@@ -431,6 +431,8 @@ describe("TransferDetailDialog related people", () => {
     await waitFor(() => {
       expect(screen.getByText("LC-0011")).toBeInTheDocument()
       expect(screen.getByText("Đã duyệt")).toBeInTheDocument()
+      expect(screen.getByText("Mã yêu cầu")).toBeInTheDocument()
+      expect(screen.getByText("Trạng thái")).toBeInTheDocument()
       expect(screen.queryByText('{"ma_yeu_cau":"LC-0011","trang_thai":"da_duyet"}')).not.toBeInTheDocument()
     })
   })
