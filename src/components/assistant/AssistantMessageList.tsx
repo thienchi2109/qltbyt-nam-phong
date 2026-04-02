@@ -54,13 +54,14 @@ export function AssistantMessageList({
         userScrolledUp.current = !isNearBottom
     }, [])
 
-    // Determine if thinking indicator should show
+    const isSubmitted = status === "submitted"
     const isStreaming = status === "streaming"
     const lastMessage = messages[messages.length - 1]
     const showThinking =
-        isStreaming &&
-        lastMessage?.role === "assistant" &&
-        !lastMessage.parts.some((p) => p.type === "text")
+        isSubmitted ||
+        (isStreaming &&
+            lastMessage?.role === "assistant" &&
+            !lastMessage.parts.some((p) => p.type === "text"))
 
     return (
         <div
