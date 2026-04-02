@@ -34,14 +34,15 @@ function buildPage1(
     <div class="a4-page">
         <!-- Navy Header Banner -->
         <header class="header-banner">
-            <div class="header-logo-circle">
+            <div class="header-logo-container">
                 <img src="${logoUrl}" alt="Logo"
                      onerror="this.onerror=null;this.src='${LOGO_FALLBACK}';">
             </div>
-            <div class="header-org-name">${organizationName}</div>
-            <div class="header-gold-line"></div>
-            <h1 class="header-title">PHIẾU ĐỀ NGHỊ SỬA CHỮA THIẾT BỊ</h1>
-            <div class="header-gold-line-bottom"></div>
+            <div class="header-text-container">
+                <div class="header-org-name">${organizationName}</div>
+                <h1 class="header-title">PHIẾU ĐỀ NGHỊ SỬA CHỮA THIẾT BỊ</h1>
+                <div class="header-gold-line-bottom"></div>
+            </div>
         </header>
 
         <!-- Content Body -->
@@ -173,12 +174,14 @@ function buildPage2(
     <div class="a4-page page-break">
         <!-- Navy Header (compact for Page 2) -->
         <header class="header-banner">
-            <div class="header-logo-circle">
+            <div class="header-logo-container">
                 <img src="${logoUrl}" alt="Logo"
                      onerror="this.onerror=null;this.src='${LOGO_FALLBACK}';">
             </div>
-            <div class="header-org-name">${organizationName}</div>
-            <div class="header-gold-line-bottom" style="margin-top: 12px;"></div>
+            <div class="header-text-container">
+                <div class="header-org-name" style="font-size: 16px;">${organizationName}</div>
+                <div class="header-gold-line-bottom" style="margin-top: 6px;"></div>
+            </div>
         </header>
 
         <!-- Content Body -->

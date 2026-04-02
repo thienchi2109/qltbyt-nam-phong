@@ -30,26 +30,29 @@ body {
 .header-banner {
     background-color: transparent;
     width: 100%;
-    padding: 16px 40px 8px;
+    padding: 24px 60px 4px;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 20px;
+}
+
+.header-logo-container {
+    flex-shrink: 0;
+}
+
+.header-logo-container img {
+    width: 90px;
+    height: 90px;
+    object-fit: contain;
+}
+
+.header-text-container {
+    flex: 1;
     display: flex;
     flex-direction: column;
     align-items: center;
-    text-align: center;
-}
-
-.header-logo-circle {
-    width: 76px;
-    height: 76px;
-    display: flex;
-    align-items: center;
     justify-content: center;
-    margin-bottom: 8px;
-}
-
-.header-logo-circle img {
-    width: 60px;
-    height: 60px;
-    object-fit: contain;
 }
 
 .header-org-name {
@@ -58,14 +61,7 @@ body {
     font-size: 14px;
     letter-spacing: 0.05em;
     margin-bottom: 4px;
-}
-
-.header-gold-line {
-    width: 180px;
-    height: 1px;
-    background: #C8A951;
-    opacity: 0.8;
-    margin-bottom: 8px;
+    text-transform: uppercase;
 }
 
 .header-title {
@@ -78,17 +74,18 @@ body {
 }
 
 .header-gold-line-bottom {
-    width: 280px;
+    width: 100%;
+    max-width: 320px;
     height: 1px;
     background: #C8A951;
     opacity: 0.8;
-    margin-top: 10px;
+    margin-top: 6px;
 }
 
 /* ── Content Body ── */
 .content-body {
     flex: 1;
-    padding: 24px 60px 40px;
+    padding: 16px 60px 40px;
     color: #436084;
 }
 
