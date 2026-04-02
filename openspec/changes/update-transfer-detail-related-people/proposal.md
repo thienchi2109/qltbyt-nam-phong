@@ -6,20 +6,20 @@ This change restores the intended detail-dialog behavior for requester and appro
 
 ## What Changes
 
-- Add a dedicated transfer-detail read path for the Transfers detail dialog so requester and approver user objects are resolved independently of list-row payload shape.
-- Ensure the transfer-detail payload includes nested `nguoi_yeu_cau` and `nguoi_duyet` objects whenever the corresponding IDs exist and the referenced users can be resolved.
+- Add a dedicated transfer-detail read path, `transfer_request_get(p_id)`, for the Transfers detail dialog so requester and approver user objects are resolved independently of list-row payload shape.
+- Ensure the `transfer_request_get(p_id)` payload returns a single transfer detail record with nullable nested `nguoi_yeu_cau` and `nguoi_duyet` objects whenever the corresponding IDs exist and the referenced users can be resolved.
 - Update the Transfers detail dialog to use the detail read path for `Người liên quan` instead of relying on list-row mapping alone.
 - Preserve current behavior for non-people sections of the dialog and keep `Lịch sử thay đổi` out of scope for this proposal.
 - Add focused verification for transfer requests in multiple statuses to prove requester and approver render consistently.
-- Execute delivery in strict test-first order: write failing regression tests for the detail dialog behavior before adding the new detail read path, then implement the minimal code to make those tests pass, then refactor without changing behavior.
+- Execute delivery in strict test-first order: write failing regression tests for the row-open-to-dialog flow and related null-handling behavior before adding `transfer_request_get(p_id)`, then implement the minimal code to make those tests pass, then refactor without changing behavior.
 
 ## Capabilities
 
 ### New Capabilities
-- `transfers`: Defines the detail-dialog related-people contract for requester and approver.
+- None.
 
 ### Modified Capabilities
-- None.
+- `transfers`: Extends the existing Transfers detail-dialog contract so requester and approver are resolved through `transfer_request_get(p_id)` instead of depending on list-row enrichment.
 
 ## Impact
 

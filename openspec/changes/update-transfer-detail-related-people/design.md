@@ -24,17 +24,27 @@ The separate `Lịch sử thay đổi` bug is out of scope for this change and m
 
 Use a dedicated transfer-detail read path for the dialog instead of enriching `transfer_request_list`.
 
-This keeps the list contract optimized for rows and avoids coupling all transfer surfaces to dialog-only user data. The detail read path should return the base transfer record plus nested `nguoi_yeu_cau` and `nguoi_duyet` user objects when resolvable.
+This keeps the list contract optimized for rows and avoids coupling all transfer surfaces to dialog-only user data. The detail read path will be `public.transfer_request_get(p_id int)`, following the existing `_get` naming pattern already used by `equipment_get` and `repair_request_get`.
+
+The `transfer_request_get(p_id)` contract should accept:
+- `p_id: int`
+
+The `transfer_request_get(p_id)` contract should return:
+- a single transfer detail record shaped for `TransferRequest`
+- nested `nguoi_yeu_cau` and `nguoi_duyet` user objects when resolvable
+- `null` for `nguoi_yeu_cau` or `nguoi_duyet` when the referenced user cannot be resolved
+
+Frontend callers should treat this as the authoritative detail payload for `Người liên quan`. List and kanban row DTOs remain lightweight and should continue to carry only row-safe fields.
 
 ## TDD Delivery Plan
 
 1. RED
-   - Add focused failing tests for the dialog behavior:
-     - completed or approved transfer shows requester and approver after detail resolution
+   - Add focused failing tests at the row-open seam and dialog render boundary:
+     - opening detail from a list row with IDs only calls `transfer_request_get(p_id)` and renders requester and approver after detail resolution
      - pending transfer shows requester only when approver is absent
-     - list-row payload with IDs only still resolves related people through the detail read path
+     - unresolved requester or approver user references do not crash the dialog and only render resolvable rows
 2. GREEN
-   - Add the minimal detail read path and wire the dialog to it.
+   - Add the minimal `transfer_request_get(p_id)` read path and wire the detail-open flow to it.
    - Keep all non-people sections unchanged.
 3. REFACTOR
    - Simplify type boundaries between list rows and detail payloads.
@@ -42,7 +52,11 @@ This keeps the list contract optimized for rows and avoids coupling all transfer
 
 ## Testing Strategy
 
-- Prefer dialog-level tests over broad page tests so the regression is isolated.
-- Mock the detail RPC contract directly and assert visible user-facing names.
+- Prefer focused interaction tests that span `list row -> open detail -> transfer_request_get(p_id) -> dialog render` instead of isolated dialog-only tests, because the existing regression starts before the dialog receives resolved user objects.
+- Keep dialog-level rendering tests for null-handling states once the detail payload has been resolved.
+- Mock the `transfer_request_get(p_id)` contract directly with:
+  - request args: `{ p_id: number }`
+  - response: `TransferRequest | null` with nullable nested `nguoi_yeu_cau` and `nguoi_duyet`
+- Assert visible user-facing names and the absence of empty related-person rows.
 - Verify the RED phase by running only the new focused tests and confirming failure for the expected reason before implementation.
 - After GREEN, run the same focused tests plus required typecheck and repository verification gates.
