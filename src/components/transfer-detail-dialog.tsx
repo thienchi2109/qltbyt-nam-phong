@@ -28,6 +28,11 @@ interface TransferDetailDialogProps {
   transfer: TransferRequest | null
 }
 
+const TRANSFER_HISTORY_ACTION_LABELS: Record<string, string> = {
+  transfer_request_create: "Tạo yêu cầu luân chuyển",
+  transfer_request_update: "Cập nhật yêu cầu luân chuyển",
+}
+
 export function TransferDetailDialog({ open, onOpenChange, transfer }: TransferDetailDialogProps) {
   const { history, isLoadingHistory, resolvedTransfer, transferId } = useTransferDetailDialogData({
     open,
@@ -286,29 +291,22 @@ export function TransferDetailDialog({ open, onOpenChange, transfer }: TransferD
                       <div className="flex-shrink-0 w-2 h-2 rounded-full bg-primary mt-2"></div>
                       <div className="flex-grow space-y-1">
                         <div className="flex items-center justify-between">
-                          <span className="font-medium text-sm">{item.hanh_dong}</span>
+                          <span className="font-medium text-sm">
+                            {TRANSFER_HISTORY_ACTION_LABELS[item.action_type] ?? item.action_type}
+                          </span>
                           <span className="text-xs text-muted-foreground">
-                            {formatDateTime(item.thoi_gian)}
+                            {formatDateTime(item.created_at)}
                           </span>
                         </div>
-                        {item.mo_ta && (
-                          <p className="text-sm text-muted-foreground">{item.mo_ta}</p>
-                        )}
-                        {item.nguoi_thuc_hien && (
-                          <p className="text-xs text-muted-foreground">
-                            Thực hiện bởi: {item.nguoi_thuc_hien.full_name}
+                        {item.action_details && (
+                          <p className="text-sm text-muted-foreground break-all">
+                            {JSON.stringify(item.action_details)}
                           </p>
                         )}
-                        {item.trang_thai_cu && item.trang_thai_moi && (
-                          <div className="flex items-center gap-2 text-xs">
-                            <Badge variant="outline" className="text-xs">
-                              {TRANSFER_STATUSES[item.trang_thai_cu as keyof typeof TRANSFER_STATUSES]}
-                            </Badge>
-                            <span>→</span>
-                            <Badge variant="outline" className="text-xs">
-                              {TRANSFER_STATUSES[item.trang_thai_moi as keyof typeof TRANSFER_STATUSES]}
-                            </Badge>
-                          </div>
+                        {item.admin_full_name && (
+                          <p className="text-xs text-muted-foreground">
+                            Thực hiện bởi: {item.admin_full_name}
+                          </p>
                         )}
                       </div>
                     </div>

@@ -172,18 +172,13 @@ export interface TransferRequest {
   updated_by_user?: UserSummary | null;
 }
 
-export interface TransferHistory {
+export interface TransferChangeHistory {
   id: number;
-  yeu_cau_id: number;
-  trang_thai_cu?: string;
-  trang_thai_moi: string;
-  hanh_dong: string;
-  mo_ta?: string;
-  nguoi_thuc_hien_id?: number;
-  thoi_gian: string;
-  
-  // Relations
-  nguoi_thuc_hien?: UserSummary | null;
+  action_type: string;
+  admin_username: string;
+  admin_full_name: string;
+  action_details: Record<string, unknown> | null;
+  created_at: string;
 }
 
 // Constants for transfer system

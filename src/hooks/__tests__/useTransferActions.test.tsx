@@ -135,7 +135,7 @@ describe("useTransferActions", () => {
         queryKey: ["transfer_request_get"],
       })
       expect(invalidateSpy).toHaveBeenCalledWith({
-        queryKey: ["transfer_history_list"],
+        queryKey: ["transfer_change_history_list"],
       })
     })
   })

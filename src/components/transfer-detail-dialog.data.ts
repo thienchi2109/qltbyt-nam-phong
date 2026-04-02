@@ -4,7 +4,7 @@ import { useQuery } from "@tanstack/react-query"
 import { useToast } from "@/hooks/use-toast"
 import { getUnknownErrorMessage } from "@/lib/error-utils"
 import { callRpc } from "@/lib/rpc-client"
-import type { TransferHistory, TransferRequest } from "@/types/database"
+import type { TransferChangeHistory, TransferRequest } from "@/types/database"
 
 interface UseTransferDetailDialogDataParams {
   open: boolean
@@ -15,9 +15,9 @@ export const transferDetailDialogQueryKeys = {
   detailRoot: ["transfer_request_get"] as const,
   detail: (transferId: number | null) =>
     [...transferDetailDialogQueryKeys.detailRoot, { id: transferId }] as const,
-  historyRoot: ["transfer_history_list"] as const,
+  historyRoot: ["transfer_change_history_list"] as const,
   history: (transferId: number | null) =>
-    [...transferDetailDialogQueryKeys.historyRoot, { yeu_cau_id: transferId }] as const,
+    [...transferDetailDialogQueryKeys.historyRoot, { p_entity_id: transferId }] as const,
 }
 
 export function useTransferDetailDialogData({
@@ -44,9 +44,9 @@ export function useTransferDetailDialogData({
   const historyQuery = useQuery({
     queryKey: transferDetailDialogQueryKeys.history(transferId),
     queryFn: async ({ signal }) => {
-      const data = await callRpc<TransferHistory[]>({
-        fn: "transfer_history_list",
-        args: { p_yeu_cau_id: transferId! },
+      const data = await callRpc<TransferChangeHistory[]>({
+        fn: "transfer_change_history_list",
+        args: { p_entity_id: transferId! },
         signal,
       })
 
