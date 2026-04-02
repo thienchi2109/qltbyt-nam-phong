@@ -481,43 +481,52 @@ END IF;
 After applying any migration, run `get_advisors(security)` via Supabase MCP to catch regressions.
 
 <!-- gitnexus:start -->
-# GitNexus — Code Intelligence (CLI)
+# GitNexus — Code Intelligence (MCP + CLI)
 
-This project is indexed by GitNexus as **qltbyt-nam-phong-new** (2936 symbols, 6710 relationships, 178 execution flows). Use the GitNexus **CLI** (not MCP) to understand code, assess impact, and navigate safely.
+This repo is indexed by GitNexus. In Codex, prefer the **GitNexus MCP server** for day-to-day discovery and impact analysis. Use the **CLI** for repository/index operations such as `analyze`, `status`, `list`, `clean`, `serve`, and `wiki`.
 
-> **GitNexus MCP is NOT available in Antigravity.** Use CLI commands via terminal instead.
+## Preferred Workflow
 
-## CLI Binary
+- In Codex, use GitNexus **MCP** first for `query`, `context`, `impact`, `detect_changes`, `rename`, and `cypher`.
+- Use GitNexus **CLI** when you need to refresh or inspect the index itself.
+- If MCP is unavailable or appears stale/incomplete, fall back to CLI plus `rg` and direct code reads, and state that fallback explicitly.
 
-On this machine, `npx gitnexus` is intercepted by a batch wrapper. Use the local binary directly:
+## Why MCP Over CLI
 
-```powershell
-# Alias for convenience (set GN in your session)
-$GN_NODE = "C:\Users\PC\AppData\Local\Programs\gitnexus-node20\node-v20.20.1-win-x64\node.exe"
-$GN_CLI  = "C:\Users\PC\AppData\Local\Programs\GitNexus\gitnexus\dist\cli\index.js"
+- MCP lets Codex call GitNexus tools directly during the task instead of relying on manual terminal steps.
+- MCP responses are structured for the agent, so impact/context analysis is easier to consume reliably than shell text parsing.
+- MCP can serve all indexed repos from the global GitNexus registry without per-project reconfiguration.
+- CLI remains the right tool for indexing and repo maintenance.
 
-# Run any gitnexus command:
-& $GN_NODE $GN_CLI <command> [args] --repo qltbyt-nam-phong-new
-```
+## MCP Tools Quick Reference
 
-## Commands Quick Reference
+| Tool | When to use | What to expect |
+|------|-------------|----------------|
+| `query` | Start exploration from a concept or feature name | Process-grouped search results and related definitions |
+| `context` | Understand one symbol deeply | Callers, callees, file location, and process participation |
+| `impact` | Before editing any symbol | Blast radius with risk/depth grouping |
+| `detect_changes` | Assess current diff impact | Changed lines mapped to affected processes |
+| `rename` | Coordinate a symbol rename safely | Graph-aware rename guidance across files |
+| `cypher` | Advanced graph inspection | Read-only custom graph queries |
+
+## CLI Commands Quick Reference
 
 | Command | When to use | Example |
 |---------|-------------|---------|
-| `query "<concept>"` | Find code by concept | `query "soft delete equipment" --repo qltbyt-nam-phong-new` |
-| `context "<symbol>"` | 360° view: callers, callees, processes | `context "useEquipmentTable" --repo qltbyt-nam-phong-new` |
-| `impact "<symbol>"` | Blast radius before editing | `impact "useEquipmentTable" --repo qltbyt-nam-phong-new` |
-| `cypher "<query>"` | Custom graph queries (read-only) | `cypher "MATCH (n) RETURN n LIMIT 10" --repo qltbyt-nam-phong-new` |
-| `analyze` | Re-index after code changes | Run from repo root |
-| `status` | Check index freshness | Run from repo root |
-| `list` | List all indexed repos | — |
+| `analyze` | Index or refresh the current repo | `gitnexus analyze` |
+| `status` | Check index freshness | `gitnexus status` |
+| `list` | List indexed repos | `gitnexus list` |
+| `clean` | Remove the current repo index | `gitnexus clean` |
+| `serve` | Start local backend for web UI | `gitnexus serve` |
+| `wiki` | Generate repo wiki from the graph | `gitnexus wiki` |
 
 ## Always Do
 
-- **MUST run `impact` before editing any symbol.** Report blast radius (direct callers, processes, risk level) to the user.
+- **MUST run `impact` before editing any symbol.** Report blast radius, direct callers, processes, and risk level to the user.
 - **MUST warn the user** if impact analysis returns HIGH or CRITICAL risk before proceeding.
-- When exploring unfamiliar code, use `query` to find execution flows grouped by process.
-- When you need full context on a symbol, use `context` for callers/callees/process participation.
+- When exploring unfamiliar code, start with `query`.
+- When you need full symbol-level understanding, use `context`.
+- When working from an existing diff, use `detect_changes` to understand affected flows.
 
 ## Impact Risk Levels
 
@@ -529,15 +538,14 @@ $GN_CLI  = "C:\Users\PC\AppData\Local\Programs\GitNexus\gitnexus\dist\cli\index.
 
 ## Keeping the Index Fresh
 
-```powershell
-# Re-index after committing code changes (run from repo root)
-& $GN_NODE $GN_CLI analyze
+```bash
+gitnexus status
+gitnexus analyze
 ```
 
 ## Important Notes
 
-- `--repo qltbyt-nam-phong-new` is **required** when multiple repos are indexed
-- GitNexus indexes TypeScript/JavaScript symbols well but **does not index SQL function names** — use grep for SQL RPC functions
-- `cypher` queries are **read-only** (no CREATE/DELETE/SET)
+- If multiple repos are indexed, pass the repo name explicitly in MCP/CLI when needed.
+- GitNexus indexes TypeScript/JavaScript symbols well but **does not index SQL function names**; use grep for SQL RPC functions.
+- `cypher` queries are **read-only**; do not use write operations.
 <!-- gitnexus:end -->
-
