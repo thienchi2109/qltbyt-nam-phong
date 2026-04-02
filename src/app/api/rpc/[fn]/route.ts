@@ -47,6 +47,7 @@ const ALLOWED_FUNCTIONS = new Set<string>([
   // Transfers
   'transfer_request_list',
   'transfer_request_list_enhanced',
+  'transfer_request_get',
   'transfer_request_create',
   'transfer_request_update',
   'transfer_request_update_status',
@@ -366,4 +367,3 @@ export async function POST(req: NextRequest, context: { params: Promise<{ fn: st
     return NextResponse.json({ error: message }, { status: 500 })
   }
 }
-

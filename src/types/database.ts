@@ -55,6 +55,8 @@ export interface User {
   created_at: string;
 }
 
+export type UserSummary = Pick<User, 'id' | 'username' | 'full_name' | 'role' | 'khoa_phong' | 'created_at'>
+
 export const USER_ROLES = {
   // Canonical roles
   global: 'Quản trị hệ thống',
@@ -113,6 +115,7 @@ export interface TransferRequest {
   id: number;
   ma_yeu_cau: string;
   thiet_bi_id: number;
+  equipment_is_deleted?: boolean | null;
   loai_hinh: 'noi_bo' | 'ben_ngoai' | 'thanh_ly';
   trang_thai: 'cho_duyet' | 'da_duyet' | 'dang_luan_chuyen' | 'da_ban_giao' | 'hoan_thanh';
   
@@ -161,11 +164,12 @@ export interface TransferRequest {
     tinh_trang?: string | null;
     facility_name?: string | null;
     facility_id?: number | null;
+    is_deleted?: boolean | null;
   } | null;
-  nguoi_yeu_cau?: User;
-  nguoi_duyet?: User;
-  created_by_user?: User;
-  updated_by_user?: User;
+  nguoi_yeu_cau?: UserSummary | null;
+  nguoi_duyet?: UserSummary | null;
+  created_by_user?: UserSummary | null;
+  updated_by_user?: UserSummary | null;
 }
 
 export interface TransferHistory {
@@ -179,7 +183,7 @@ export interface TransferHistory {
   thoi_gian: string;
   
   // Relations
-  nguoi_thuc_hien?: User;
+  nguoi_thuc_hien?: UserSummary | null;
 }
 
 // Constants for transfer system
