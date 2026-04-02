@@ -33,6 +33,47 @@ const TRANSFER_HISTORY_ACTION_LABELS: Record<string, string> = {
   transfer_request_update: "Cập nhật yêu cầu luân chuyển",
 }
 
+const TRANSFER_HISTORY_DETAILS_LABELS: Record<string, string> = {
+  ma_yeu_cau: "Mã yêu cầu",
+  trang_thai: "Trạng thái",
+  loai_hinh: "Loại hình",
+  ly_do_luan_chuyen: "Lý do luân chuyển",
+  khoa_phong_hien_tai: "Khoa/phòng hiện tại",
+  khoa_phong_nhan: "Khoa/phòng nhận",
+  don_vi_nhan: "Đơn vị nhận",
+  nguoi_lien_he: "Người liên hệ",
+  so_dien_thoai: "Số điện thoại",
+}
+
+function formatHistoryDetailValue(value: unknown): string {
+  if (typeof value === "string") {
+    const transferStatusLabel = TRANSFER_STATUSES[value as keyof typeof TRANSFER_STATUSES]
+    return transferStatusLabel ?? value
+  }
+  if (typeof value === "number" || typeof value === "boolean") {
+    return String(value)
+  }
+  if (Array.isArray(value)) {
+    return value.map(formatHistoryDetailValue).join(", ")
+  }
+  return "—"
+}
+
+function getTransferHistoryDetailRows(actionDetails: Record<string, unknown> | null): Array<{
+  key: string
+  label: string
+  value: string
+}> {
+  if (!actionDetails) return []
+  return Object.entries(actionDetails)
+    .filter(([, value]) => value !== null && value !== "")
+    .map(([key, value]) => ({
+      key,
+      label: TRANSFER_HISTORY_DETAILS_LABELS[key] ?? key.replaceAll("_", " "),
+      value: formatHistoryDetailValue(value),
+    }))
+}
+
 export function TransferDetailDialog({ open, onOpenChange, transfer }: TransferDetailDialogProps) {
   const { history, isLoadingHistory, resolvedTransfer, transferId } = useTransferDetailDialogData({
     open,
@@ -298,10 +339,14 @@ export function TransferDetailDialog({ open, onOpenChange, transfer }: TransferD
                             {formatDateTime(item.created_at)}
                           </span>
                         </div>
-                        {item.action_details && (
-                          <p className="text-sm text-muted-foreground break-all">
-                            {JSON.stringify(item.action_details)}
-                          </p>
+                        {getTransferHistoryDetailRows(item.action_details).length > 0 && (
+                          <div className="space-y-1 text-xs text-muted-foreground">
+                            {getTransferHistoryDetailRows(item.action_details).map((detail) => (
+                              <p key={detail.key}>
+                                <span className="font-medium">{detail.label}:</span> {detail.value}
+                              </p>
+                            ))}
+                          </div>
                         )}
                         {item.admin_full_name && (
                           <p className="text-xs text-muted-foreground">
