@@ -16,7 +16,6 @@ body {
 /* ── A4 Page Container ── */
 .a4-page {
     width: 210mm;
-    min-height: 297mm;
     padding: 15mm 20mm;
     margin: 20px auto;
     background: #ffffff;
@@ -39,7 +38,7 @@ body {
 }
 
 .grid-row-2col { grid-template-columns: 200px 1fr; }
-.grid-row-6col { grid-template-columns: 100px 1fr 100px 1fr 100px 1fr; }
+.grid-row-6col { grid-template-columns: 60px minmax(0, 1fr) 60px minmax(0, 1fr) 70px minmax(0, 1fr); }
 .grid-row-header { grid-template-columns: 100px 1fr 150px; }
 .grid-row-dept { grid-template-columns: 30% 70%; }
 
@@ -186,5 +185,6 @@ body {
     }
     .page-break { page-break-before: always !important; }
     .no-print { display: none !important; }
+    .a4-page + .a4-page { margin-top: 0 !important; }
 }
 `

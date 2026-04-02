@@ -95,7 +95,7 @@ function buildPage1(
                 <div class="cell cell-label cell-border-b">Tên thiết bị</div>
                 <div class="cell cell-value cell-border-b">${formatValue(eq.ten_thiet_bi)}</div>
             </div>
-            <div class="grid-row" style="grid-template-columns: 80px 1fr 80px 1fr 80px 1fr;">
+            <div class="grid-row grid-row-6col">
                 <div class="cell cell-label cell-border-b cell-border-r">Mã TB</div>
                 <div class="cell cell-value cell-border-b cell-border-r">${formatValue(eq.ma_thiet_bi)}</div>
                 <div class="cell cell-label cell-border-b cell-border-r">Model</div>
