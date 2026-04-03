@@ -112,6 +112,57 @@ Invoke `context-engineering` skill for: agent systems, token optimization (>70%)
 
 ---
 
+## Basic Memory Convention
+
+Use Basic Memory as durable project memory for this repository. Do not treat it as a complete or automatic record of all prior chats.
+
+### What to Save
+
+- Final decisions that affect implementation or operations
+- Non-obvious debugging conclusions
+- Durable workflow rules and repo-specific gotchas
+- Deploy, rollback, migration, or environment notes that future sessions will need
+
+### What Not to Save
+
+- Temporary brainstorming
+- Repeated status updates
+- Facts already captured clearly in code, tests, migrations, or canonical docs
+- Sensitive secrets, tokens, or raw credentials
+
+### Session Rule
+
+When a session produces durable context, save one concise Basic Memory note near the end of the session rather than many small notes.
+
+### Required Note Shape
+
+```md
+# [Short title]
+
+## Context
+- Task or feature area
+- Why this mattered
+
+## Decision / Finding
+- What was decided or discovered
+
+## Evidence
+- Files, commands, logs, PRs, issues, or docs that support it
+
+## Actionable Follow-up
+- What future agents should do or avoid
+
+## Metadata
+- Date: YYYY-MM-DD
+- Confidence: high | medium | low
+```
+
+### Retrieval Rule
+
+Before re-investigating a non-trivial problem, check whether relevant Basic Memory notes already exist. If memory conflicts with the current codebase, trust the codebase and update the memory note.
+
+---
+
 ## Required Commands
 
 | Command | When to Use |

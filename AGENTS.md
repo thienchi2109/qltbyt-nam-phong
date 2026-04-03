@@ -121,6 +121,46 @@ IMPORTANT: Use `edit_file` over `str_replace` or full file writes. It works with
 - For any task that creates or modifies SQL migration files/DDL for Supabase/Postgres, you MUST invoke the `supabase-best-practices` skill first (or `supabase-postgres-best-practices` if that is the available skill name in the session).
 - If a required skill is unavailable in the current session, state that explicitly and proceed with the closest available fallback guidance.
 
+## Basic Memory Session Convention
+
+Basic Memory is the durable memory layer for this repo. It is not a complete or automatic transcript of every Codex/Claude chat.
+
+- Treat Basic Memory as curated project memory, not raw chat history.
+- Write a memory note when a session produces a durable decision, a non-obvious debugging finding, a workflow rule, a deploy/recovery step, or a repo-specific gotcha that should survive the current context window.
+- Do not write a memory note for temporary brainstorming, duplicate status chatter, or information already captured clearly in code, tests, migrations, `progress.txt`, PRs, or existing docs.
+- At session end, prefer one concise summary note instead of many fragmented notes.
+- If a note contains assumptions, mark them explicitly as assumptions.
+- If a previous memory might now be stale, create/update a note that says what changed and on what date instead of silently contradicting it.
+
+### Memory Note Template
+
+Use this structure when saving a session note to Basic Memory:
+
+```md
+# [Short title]
+
+## Context
+- Task or feature area
+- Why this mattered
+
+## Decision / Finding
+- What was decided or discovered
+
+## Evidence
+- Files, commands, logs, PRs, issues, or docs that support it
+
+## Actionable Follow-up
+- What future agents should do or avoid
+
+## Metadata
+- Date: YYYY-MM-DD
+- Confidence: high | medium | low
+```
+
+### Retrieval Rule
+
+At the start of any non-trivial task, check whether relevant Basic Memory notes exist before re-deriving prior decisions. If memory and code disagree, trust the current code and update memory.
+
 ## ⚠️ Role Normalization (`admin` = `global`)
 
 The RPC proxy (`/api/rpc/[fn]`) auto-normalizes `admin` → `global` before signing JWT. **Outside the proxy** (standalone API routes, Edge Functions, server utilities), the NextAuth session still contains the raw `admin` role.
