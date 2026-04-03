@@ -11,10 +11,6 @@ vi.mock("@/components/import-equipment-dialog", () => ({
   ImportEquipmentDialog: () => <div data-testid="import-dialog" />,
 }))
 
-vi.mock("@/components/edit-equipment-dialog", () => ({
-  EditEquipmentDialog: () => <div data-testid="edit-dialog" />,
-}))
-
 vi.mock("../_components/EquipmentDetailDialog", () => ({
   EquipmentDetailDialog: () => <div data-testid="detail-dialog" />,
 }))
@@ -43,7 +39,6 @@ vi.mock("../_hooks/useEquipmentContext", () => ({
       isStartUsageOpen: false,
       isEndUsageOpen: false,
       isDeleteOpen: false,
-      editingEquipment: { id: 15, ten_thiet_bi: "Legacy edit" },
       detailEquipment: { id: 15, ten_thiet_bi: "Legacy edit" },
       startUsageEquipment: null,
       endUsageLog: null,
@@ -55,7 +50,6 @@ vi.mock("../_hooks/useEquipmentContext", () => ({
     closeDetailDialog: vi.fn(),
     closeStartUsageDialog: vi.fn(),
     closeEndUsageDialog: vi.fn(),
-    closeEditDialog: vi.fn(),
     closeDeleteDialog: vi.fn(),
     onDataMutationSuccess: vi.fn(),
   }),
@@ -64,7 +58,7 @@ vi.mock("../_hooks/useEquipmentContext", () => ({
 import { EquipmentDialogs } from "../equipment-dialogs"
 
 describe("EquipmentDialogs page consolidation", () => {
-  it("does not mount the legacy EditEquipmentDialog on the /equipment page", () => {
+  it("mounts only the canonical dialog host tree on the /equipment page", () => {
     render(
       <EquipmentDialogs
         onGenerateProfileSheet={vi.fn(async () => {})}
@@ -73,7 +67,9 @@ describe("EquipmentDialogs page consolidation", () => {
       />
     )
 
-    expect(screen.queryByTestId("edit-dialog")).not.toBeInTheDocument()
     expect(screen.getByTestId("detail-dialog")).toBeInTheDocument()
+    expect(screen.getByTestId("delete-dialog")).toBeInTheDocument()
+    expect(screen.getByTestId("add-dialog")).toBeInTheDocument()
+    expect(screen.getByTestId("import-dialog")).toBeInTheDocument()
   })
 })

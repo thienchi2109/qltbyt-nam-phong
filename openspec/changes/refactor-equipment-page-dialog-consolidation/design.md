@@ -17,8 +17,8 @@ GitNexus impact for the relevant update symbols is `HIGH`, but inbound React com
 - Non-Goals:
   - migrate `dashboard` to `EquipmentDetailDialog`
   - migrate `qr-scanner` to `EquipmentDetailDialog`
-  - delete `EditEquipmentDialog` from the codebase in this change
-  - change non-`/equipment` route UX in the same release
+  - redesign the canonical `/equipment?highlight={id}` route handoff adopted later by PR `#208`
+  - change non-`/equipment` route UX beyond that route handoff
 
 ## Decisions
 - Decision: Consolidate the `Equipments` page on `EquipmentDetailDialog`
@@ -26,8 +26,8 @@ GitNexus impact for the relevant update symbols is `HIGH`, but inbound React com
   - Removing the page-level legacy edit mount is the narrowest way to eliminate dead path behavior on this route.
 
 - Decision: Keep `EditEquipmentDialog` alive temporarily, but only as a downstream consumer of a shared edit contract
-  - This avoids widening scope into `dashboard` and `qr-scanner`.
-  - It also prevents active equipment-field changes from drifting between detail and legacy edit flows while follow-up migrations remain open.
+  - This was the transitional state needed before `dashboard` and `qr-scanner` migrated away in PR `#208`.
+  - Follow-up cleanup issue `#184` removes the legacy dialog after that migration lands.
 
 - Decision: Extract shared edit contracts into route-agnostic modules before removing page-level legacy orchestration
   - Shared concerns:
@@ -66,7 +66,7 @@ GitNexus impact for the relevant update symbols is `HIGH`, but inbound React com
 5. Remove `EditEquipmentDialog` mounting and page-only legacy edit state from the equipment catalog route.
 6. Run project verification in the required order for TS/React diffs.
 7. Leave `dashboard` and `qr-scanner` route migrations to follow-up issues `#183` and `#182`.
-8. Leave final legacy-dialog retirement and cleanup to refactor issue `#184`.
+8. After those migrations land, remove the remaining legacy dialog shell and compatibility residue in refactor issue `#184`.
 
 ## Open Questions
-- None for proposal scope. External-route migration is intentionally deferred to follow-up issues.
+- None for proposal scope. The deferred external-route migration has since landed in PR `#208`; only the final `#184` cleanup remains afterward.

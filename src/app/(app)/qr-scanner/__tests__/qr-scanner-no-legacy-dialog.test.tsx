@@ -8,7 +8,7 @@
 
 import "@testing-library/jest-dom"
 import { describe, it, expect, vi, beforeEach } from "vitest"
-import { render, screen, fireEvent, act, waitFor } from "@testing-library/react"
+import { render, screen, fireEvent, waitFor } from "@testing-library/react"
 import * as React from "react"
 
 // ============================================
@@ -51,7 +51,18 @@ vi.mock("@/components/qr-scanner-error-boundary", () => ({
 }))
 
 vi.mock("@/components/qr-scanner-camera", () => ({
-    QRScannerCamera: () => <div data-testid="qr-camera" />,
+    QRScannerCamera: ({
+        onScanSuccess,
+    }: {
+        onScanSuccess: (value: string) => void
+    }) => (
+        <button
+            data-testid="qr-camera"
+            onClick={() => onScanSuccess("TB-001")}
+        >
+            Simulate scan success
+        </button>
+    ),
 }))
 
 // Mock QRActionSheet: always render action buttons for testing
@@ -70,13 +81,14 @@ vi.mock("@/components/qr-action-sheet", () => ({
             >
                 Update Status
             </button>
+            <button
+                data-testid="trigger-update-status-missing"
+                onClick={() => onAction("update-status")}
+            >
+                Missing Equipment
+            </button>
         </div>
     ),
-}))
-
-// Spy: if legacy dialog is still imported, it will render this
-vi.mock("@/components/edit-equipment-dialog", () => ({
-    EditEquipmentDialog: () => <div data-testid="legacy-edit-dialog" />,
 }))
 
 vi.mock("@/lib/repair-request-create-intent", () => ({
@@ -97,36 +109,34 @@ import QRScannerPage from "../page"
 describe("QR Scanner: no legacy EditEquipmentDialog", () => {
     beforeEach(() => {
         vi.clearAllMocks()
-    })
-
-    it("does not render EditEquipmentDialog component", async () => {
-        await act(async () => {
-            render(<QRScannerPage />)
+        vi.stubGlobal("navigator", {
+            mediaDevices: {
+                getUserMedia: vi.fn(),
+            },
         })
-
-        // Legacy dialog should NEVER appear anywhere in the DOM
-        expect(screen.queryByTestId("legacy-edit-dialog")).not.toBeInTheDocument()
     })
 
     it("navigates to /equipment?highlight={id} on update-status action", async () => {
-        // We can't easily trigger the full scan flow through dynamic mocks,
-        // so we directly test that the source code does NOT contain
-        // setEditingEquipment and DOES contain router.push for update-status.
-        // This is a structural assertion supplementing the render test above.
-        const fs = await import("fs")
-        const path = await import("path")
-        const pageSource = fs.readFileSync(
-            path.resolve(__dirname, "../page.tsx"),
-            "utf-8"
-        )
+        render(<QRScannerPage />)
 
-        // Must NOT call setEditingEquipment
-        expect(pageSource).not.toContain("setEditingEquipment")
+        fireEvent.click(screen.getByRole("button", { name: /bắt đầu quét/i }))
+        fireEvent.click(await screen.findByTestId("qr-camera"))
+        fireEvent.click(await screen.findByTestId("trigger-update-status"))
 
-        // Must NOT import EditEquipmentDialog
-        expect(pageSource).not.toContain("edit-equipment-dialog")
+        await waitFor(() => {
+            expect(mockPush).toHaveBeenCalledWith("/equipment?highlight=42")
+        })
+    })
 
-        // Must navigate via router.push for update-status
-        expect(pageSource).toContain("router.push(`/equipment?highlight=")
+    it("does not navigate when update-status is triggered without equipment", async () => {
+        render(<QRScannerPage />)
+
+        fireEvent.click(screen.getByRole("button", { name: /bắt đầu quét/i }))
+        fireEvent.click(await screen.findByTestId("qr-camera"))
+        fireEvent.click(await screen.findByTestId("trigger-update-status-missing"))
+
+        await waitFor(() => {
+            expect(mockPush).not.toHaveBeenCalled()
+        })
     })
 })

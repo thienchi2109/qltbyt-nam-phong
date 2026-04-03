@@ -65,8 +65,8 @@ vi.mock('../_components/EquipmentDetailDialog/hooks/useEquipmentAttachments', ()
 }))
 
 const mockUpdateEquipment = vi.fn()
-vi.mock('../_components/EquipmentDetailDialog/hooks/useEquipmentUpdate', () => ({
-  useEquipmentUpdate: () => ({
+vi.mock('@/components/equipment-edit/useEquipmentEditUpdate', () => ({
+  useEquipmentEditUpdate: () => ({
     updateEquipment: mockUpdateEquipment,
     isPending: false,
     error: null,

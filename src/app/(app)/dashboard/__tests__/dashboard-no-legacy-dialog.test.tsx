@@ -6,10 +6,10 @@
  * for the 'update-status' action.
  */
 
-import "@testing-library/jest-dom"
-import { describe, it, expect, vi, beforeEach } from "vitest"
-import { render, screen, act } from "@testing-library/react"
 import * as React from "react"
+import "@testing-library/jest-dom"
+import { fireEvent, render, screen, waitFor } from "@testing-library/react"
+import { describe, it, expect, vi, beforeEach } from "vitest"
 
 // ============================================
 // Mocks
@@ -63,15 +63,43 @@ vi.mock("@/components/qr-scanner-error-boundary", () => ({
 }))
 
 vi.mock("@/components/qr-scanner-camera", () => ({
-    QRScannerCamera: () => <div data-testid="qr-camera" />,
+    QRScannerCamera: ({
+        onScanSuccess,
+    }: {
+        onScanSuccess: (value: string) => void
+    }) => (
+        <button
+            data-testid="qr-camera"
+            onClick={() => onScanSuccess("TB-001")}
+        >
+            Simulate scan success
+        </button>
+    ),
 }))
 
 vi.mock("@/components/qr-action-sheet", () => ({
-    QRActionSheet: () => <div data-testid="qr-action-sheet" />,
-}))
-
-vi.mock("@/components/edit-equipment-dialog", () => ({
-    EditEquipmentDialog: () => <div data-testid="legacy-edit-dialog" />,
+    QRActionSheet: ({
+        onAction,
+    }: {
+        onAction: (action: string, equipment?: Record<string, unknown>) => void
+    }) => (
+        <div data-testid="qr-action-sheet">
+            <button
+                data-testid="trigger-update-status"
+                onClick={() =>
+                    onAction("update-status", { id: 42, ten_thiet_bi: "Test Device" })
+                }
+            >
+                Update Status
+            </button>
+            <button
+                data-testid="trigger-update-status-missing"
+                onClick={() => onAction("update-status")}
+            >
+                Missing Equipment
+            </button>
+        </div>
+    ),
 }))
 
 vi.mock("@/components/ui/calendar-widget", () => ({
@@ -99,7 +127,7 @@ vi.mock("@/lib/rbac", () => ({
 // Import after mocks
 // ============================================
 
-import Dashboard from "../page"
+import Dashboard from "@/app/(app)/dashboard/page"
 
 // ============================================
 // Tests
@@ -108,31 +136,34 @@ import Dashboard from "../page"
 describe("Dashboard: no legacy EditEquipmentDialog", () => {
     beforeEach(() => {
         vi.clearAllMocks()
-    })
-
-    it("does not render EditEquipmentDialog component", async () => {
-        await act(async () => {
-            render(<Dashboard />)
+        vi.stubGlobal("navigator", {
+            mediaDevices: {
+                getUserMedia: vi.fn(),
+            },
         })
-
-        expect(screen.queryByTestId("legacy-edit-dialog")).not.toBeInTheDocument()
     })
 
-    it("source does not import EditEquipmentDialog and uses router.push for update-status", async () => {
-        const fs = await import("fs")
-        const path = await import("path")
-        const pageSource = fs.readFileSync(
-            path.resolve(__dirname, "../page.tsx"),
-            "utf-8"
-        )
+    it("navigates to /equipment?highlight={id} on update-status action", async () => {
+        render(<Dashboard />)
 
-        // Must NOT call setEditingEquipment
-        expect(pageSource).not.toContain("setEditingEquipment")
+        fireEvent.click(screen.getByRole("button", { name: /quét mã qr/i }))
+        fireEvent.click(await screen.findByTestId("qr-camera"))
+        fireEvent.click(await screen.findByTestId("trigger-update-status"))
 
-        // Must NOT import EditEquipmentDialog
-        expect(pageSource).not.toContain("edit-equipment-dialog")
+        await waitFor(() => {
+            expect(mockPush).toHaveBeenCalledWith("/equipment?highlight=42")
+        })
+    })
 
-        // Must navigate via router.push for update-status
-        expect(pageSource).toContain("router.push(`/equipment?highlight=")
+    it("does not navigate when update-status is triggered without equipment", async () => {
+        render(<Dashboard />)
+
+        fireEvent.click(screen.getByRole("button", { name: /quét mã qr/i }))
+        fireEvent.click(await screen.findByTestId("qr-camera"))
+        fireEvent.click(await screen.findByTestId("trigger-update-status-missing"))
+
+        await waitFor(() => {
+            expect(mockPush).not.toHaveBeenCalled()
+        })
     })
 })
