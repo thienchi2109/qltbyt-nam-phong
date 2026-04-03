@@ -27,14 +27,14 @@ The system SHALL not mount or route `/equipment` page dialog state through the s
 - **THEN** the route invalidates the active `equipment_list_enhanced` catalog data contract
 - **AND** it does not depend on the legacy `equipment_list` refresh path
 
-### Requirement: Shared equipment edit contract while legacy consumers remain
-The system SHALL keep one shared validation, normalization, and update contract for equipment edit flows while `EditEquipmentDialog` still exists on non-`/equipment` routes.
+### Requirement: Shared equipment edit contract across canonical consumers
+The system SHALL keep one shared validation, normalization, and update contract for equipment edit flows even after route-specific legacy shells are removed.
 
 #### Scenario: Shared field behavior stays aligned
-- **WHEN** a field such as `so_luu_hanh` or `ngay_ngung_su_dung` is edited from the `Equipments` page detail dialog or a remaining legacy edit surface
+- **WHEN** a field such as `so_luu_hanh` or `ngay_ngung_su_dung` is edited from the `Equipments` page detail dialog or any later canonical consumer
 - **THEN** the same schema, default-value mapping, and RPC update contract are applied
 
 #### Scenario: Shared update contract keeps route-specific refresh behavior separate
-- **WHEN** the shared equipment edit contract is used by multiple routes during the transition period
+- **WHEN** the shared equipment edit contract is used by multiple routes
 - **THEN** validation, normalization, and update behavior remain shared
 - **AND** route-specific cache invalidation remains owned by each consuming route

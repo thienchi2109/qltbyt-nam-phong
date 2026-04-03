@@ -107,10 +107,10 @@ vi.mock("../_components/EquipmentDetailDialog/hooks/useEquipmentAttachments", ()
   }),
 }))
 
-vi.mock("../_components/EquipmentDetailDialog/hooks/useEquipmentUpdate", () => ({
-  useEquipmentUpdate: ({ onSuccess }: { onSuccess?: (patch: unknown) => void }) => ({
+vi.mock("@/components/equipment-edit/useEquipmentEditUpdate", () => ({
+  useEquipmentEditUpdate: ({ onSuccess }: { onSuccess?: (patch: unknown) => void }) => ({
     updateEquipment: async (payload: unknown) => {
-      mockUpdateEquipment(payload)
+      await mockUpdateEquipment(payload)
       onSuccess?.((payload as { patch: unknown }).patch)
     },
     isPending: false,
@@ -209,5 +209,95 @@ describe("EquipmentDetailDialog decommission date", () => {
     } finally {
       dateNowSpy.mockRestore()
     }
+  })
+
+  it("resets dirty form values when the same equipment record is reopened", async () => {
+    const equipment = {
+      id: 9,
+      ma_thiet_bi: "EQ-009",
+      ten_thiet_bi: "Monitor theo dõi",
+      khoa_phong_quan_ly: "ICU",
+      vi_tri_lap_dat: "P-03",
+      nguoi_dang_truc_tiep_quan_ly: "Lê Văn C",
+      tinh_trang_hien_tai: "Hoạt động",
+    } as Equipment
+
+    const view = render(
+      <EquipmentDetailDialog
+        {...baseProps}
+        equipment={equipment}
+      />
+    )
+
+    fireEvent.click(screen.getByRole("button", { name: "Sửa thông tin" }))
+
+    const nameInput = await screen.findByLabelText("Tên thiết bị")
+    expect(nameInput).toHaveValue("Monitor theo dõi")
+
+    fireEvent.change(nameInput, { target: { value: "Giá trị chỉnh tạm" } })
+    expect(nameInput).toHaveValue("Giá trị chỉnh tạm")
+
+    view.rerender(
+      <EquipmentDetailDialog
+        {...baseProps}
+        equipment={equipment}
+        open={false}
+      />
+    )
+
+    view.rerender(
+      <EquipmentDetailDialog
+        {...baseProps}
+        equipment={equipment}
+        open
+      />
+    )
+
+    const reopenEditButton = screen.queryByRole("button", { name: "Sửa thông tin" })
+    if (reopenEditButton) {
+      fireEvent.click(reopenEditButton)
+    }
+
+    await waitFor(() => {
+      expect(screen.getByLabelText("Tên thiết bị")).toHaveValue("Monitor theo dõi")
+    })
+  })
+
+  it("does not leak a rejected submit promise when inline update fails", async () => {
+    mockUpdateEquipment.mockRejectedValueOnce(new Error("Permission denied"))
+
+    render(
+      <EquipmentDetailDialog
+        {...baseProps}
+        equipment={{
+          id: 12,
+          ma_thiet_bi: "EQ-012",
+          ten_thiet_bi: "Máy thở",
+          khoa_phong_quan_ly: "ICU",
+          vi_tri_lap_dat: "P-04",
+          nguoi_dang_truc_tiep_quan_ly: "Phạm Văn D",
+          tinh_trang_hien_tai: "Hoạt động",
+        } as Equipment}
+      />
+    )
+
+    fireEvent.click(screen.getByRole("button", { name: "Sửa thông tin" }))
+
+    await screen.findByLabelText("Tên thiết bị")
+
+    const submitPromise = Promise.resolve().then(() => {
+      fireEvent.click(screen.getByRole("button", { name: "Lưu thay đổi" }))
+    })
+
+    await expect(submitPromise).resolves.toBeUndefined()
+    await waitFor(() => {
+      expect(mockUpdateEquipment).toHaveBeenCalledWith({
+        id: 12,
+        patch: expect.objectContaining({
+          ten_thiet_bi: "Máy thở",
+        }),
+      })
+    })
+    expect(baseProps.onEquipmentUpdated).not.toHaveBeenCalled()
   })
 })

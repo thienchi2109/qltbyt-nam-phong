@@ -1,6 +1,8 @@
 import * as React from "react"
 import { fireEvent, render } from "@testing-library/react"
 import { beforeEach, describe, expect, it, vi } from "vitest"
+import type { Equipment } from "@/types/database"
+import type { EquipmentDetailDialogProps } from "../_components/EquipmentDetailDialog"
 
 const { mockOpenDeleteDialog } = vi.hoisted(() => ({
   mockOpenDeleteDialog: vi.fn(),
@@ -75,8 +77,8 @@ vi.mock("../_components/EquipmentDetailDialog/hooks/useEquipmentAttachments", ()
   }),
 }))
 
-vi.mock("../_components/EquipmentDetailDialog/hooks/useEquipmentUpdate", () => ({
-  useEquipmentUpdate: () => ({
+vi.mock("@/components/equipment-edit/useEquipmentEditUpdate", () => ({
+  useEquipmentEditUpdate: () => ({
     updateEquipment: vi.fn(),
     isPending: false,
   }),
@@ -96,13 +98,13 @@ describe("EquipmentDetailDialog delete RBAC", () => {
     ma_thiet_bi: "EQ-042",
     ten_thiet_bi: "Monitor",
     khoa_phong_quan_ly: "ICU",
-  } as any
+  } as Equipment
 
-  const baseProps = {
+  const baseProps: EquipmentDetailDialogProps = {
     equipment,
     open: true,
     onOpenChange: vi.fn(),
-    user: null as any,
+    user: null,
     isRegionalLeader: false,
     onGenerateProfileSheet: vi.fn(),
     onGenerateDeviceLabel: vi.fn(),
@@ -121,10 +123,7 @@ describe("EquipmentDetailDialog delete RBAC", () => {
 
   it("shows delete button for equipment manager role", () => {
     const { container } = render(
-      <EquipmentDetailDialog
-        {...baseProps}
-        user={{ id: 1, role: "to_qltb", khoa_phong: "ICU" } as any}
-      />
+      <EquipmentDetailDialog {...baseProps} user={{ id: 1, role: "to_qltb", khoa_phong: "ICU" }} />
     )
 
     const deleteButton = container.querySelector('button[class*="border-destructive/30"]')
@@ -133,10 +132,7 @@ describe("EquipmentDetailDialog delete RBAC", () => {
 
   it("hides delete button for qltb_khoa even when department matches", () => {
     const { container } = render(
-      <EquipmentDetailDialog
-        {...baseProps}
-        user={{ id: 2, role: "qltb_khoa", khoa_phong: "ICU" } as any}
-      />
+      <EquipmentDetailDialog {...baseProps} user={{ id: 2, role: "qltb_khoa", khoa_phong: "ICU" }} />
     )
 
     const deleteButton = container.querySelector('button[class*="border-destructive/30"]')
@@ -145,10 +141,7 @@ describe("EquipmentDetailDialog delete RBAC", () => {
 
   it("calls openDeleteDialog with detail source when delete button is clicked", () => {
     const { container } = render(
-      <EquipmentDetailDialog
-        {...baseProps}
-        user={{ id: 1, role: "to_qltb", khoa_phong: "ICU" } as any}
-      />
+      <EquipmentDetailDialog {...baseProps} user={{ id: 1, role: "to_qltb", khoa_phong: "ICU" }} />
     )
 
     const deleteButton = container.querySelector('button[class*="border-destructive/30"]')

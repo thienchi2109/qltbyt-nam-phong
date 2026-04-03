@@ -1,8 +1,9 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import * as React from 'react'
+import * as fs from 'node:fs'
+import { fileURLToPath } from 'node:url'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import type { Equipment } from '@/types/database'
 
 // Mocks
 const mockUseSession = vi.fn()
@@ -63,10 +64,14 @@ vi.mock('@/components/ui/select', () => ({
 
 // Imports after mocks
 import { AddEquipmentDialog } from '../add-equipment-dialog'
-import { EditEquipmentDialog } from '../edit-equipment-dialog'
 import { callRpc } from '@/lib/rpc-client'
 
 const mockCallRpc = vi.mocked(callRpc)
+
+const resolveTestFilePath = (relativePath: string) => {
+  const url = new URL(relativePath, import.meta.url)
+  return url.protocol === 'file:' ? fileURLToPath(url) : fileURLToPath(new URL(`file://${url.pathname}`))
+}
 
 function fillRequiredAddFields() {
   fireEvent.change(screen.getByLabelText('Mã thiết bị'), {
@@ -102,6 +107,11 @@ const createWrapper = () => {
 describe('Equipment Dialogs CRUD', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+  })
+
+  it('does not keep the legacy edit-equipment-dialog shell or RPC helper on disk', () => {
+    expect(fs.existsSync(resolveTestFilePath('../edit-equipment-dialog.tsx'))).toBe(false)
+    expect(fs.existsSync(resolveTestFilePath('../edit-equipment-dialog.rpc.ts'))).toBe(false)
   })
 
   describe('Create: AddEquipmentDialog', () => {
@@ -431,326 +441,4 @@ describe('Equipment Dialogs CRUD', () => {
     })
   })
 
-  describe('Update: EditEquipmentDialog', () => {
-    it('resets dirty form values when the same equipment record is reopened', async () => {
-      const equipment: Equipment = {
-        id: 4,
-        ma_thiet_bi: 'EQ-004',
-        ten_thiet_bi: 'Máy điện tim',
-        vi_tri_lap_dat: 'Phòng 301',
-        khoa_phong_quan_ly: 'Khoa Tim mạch',
-        nguoi_dang_truc_tiep_quan_ly: 'Ngô Văn E',
-        tinh_trang_hien_tai: 'Hoạt động',
-      }
-
-      const view = render(
-        <EditEquipmentDialog
-          open
-          onOpenChange={vi.fn()}
-          onSuccess={vi.fn()}
-          equipment={equipment}
-        />,
-        { wrapper: createWrapper() }
-      )
-
-      const nameInput = await screen.findByLabelText('Tên thiết bị')
-      expect(nameInput).toHaveValue('Máy điện tim')
-
-      fireEvent.change(nameInput, {
-        target: { value: 'Thiết bị đã sửa tạm' },
-      })
-      expect(nameInput).toHaveValue('Thiết bị đã sửa tạm')
-
-      view.rerender(
-        <EditEquipmentDialog
-          open={false}
-          onOpenChange={vi.fn()}
-          onSuccess={vi.fn()}
-          equipment={equipment}
-        />
-      )
-      view.rerender(
-        <EditEquipmentDialog
-          open
-          onOpenChange={vi.fn()}
-          onSuccess={vi.fn()}
-          equipment={equipment}
-        />
-      )
-
-      await waitFor(() => {
-        expect(screen.getByLabelText('Tên thiết bị')).toHaveValue('Máy điện tim')
-      })
-    })
-
-    it('clears stale form values when reopened without an equipment record', async () => {
-      const equipment: Equipment = {
-        id: 5,
-        ma_thiet_bi: 'EQ-005',
-        ten_thiet_bi: 'Máy thở',
-        vi_tri_lap_dat: 'Phòng 401',
-        khoa_phong_quan_ly: 'ICU',
-        nguoi_dang_truc_tiep_quan_ly: 'Đỗ Văn F',
-        tinh_trang_hien_tai: 'Hoạt động',
-      }
-
-      const view = render(
-        <EditEquipmentDialog
-          open
-          onOpenChange={vi.fn()}
-          onSuccess={vi.fn()}
-          equipment={equipment}
-        />,
-        { wrapper: createWrapper() }
-      )
-
-      const nameInput = await screen.findByLabelText('Tên thiết bị')
-      expect(nameInput).toHaveValue('Máy thở')
-
-      fireEvent.change(nameInput, {
-        target: { value: 'Giá trị bẩn' },
-      })
-      expect(nameInput).toHaveValue('Giá trị bẩn')
-
-      view.rerender(
-        <EditEquipmentDialog
-          open={false}
-          onOpenChange={vi.fn()}
-          onSuccess={vi.fn()}
-          equipment={null}
-        />
-      )
-      view.rerender(
-        <EditEquipmentDialog
-          open
-          onOpenChange={vi.fn()}
-          onSuccess={vi.fn()}
-          equipment={null}
-        />
-      )
-
-      await waitFor(() => {
-        expect(screen.getByLabelText('Tên thiết bị')).toHaveValue('')
-      })
-    })
-
-    it('submits update patch and closes on success', async () => {
-      mockCallRpc.mockResolvedValue({})
-
-      const onOpenChange = vi.fn()
-      const onSuccess = vi.fn()
-
-      const equipment: Equipment = {
-        id: 1,
-        ma_thiet_bi: 'EQ-001',
-        ten_thiet_bi: 'Máy siêu âm',
-        vi_tri_lap_dat: 'Phòng 202',
-        khoa_phong_quan_ly: 'Khoa Tim',
-        nguoi_dang_truc_tiep_quan_ly: 'Trần Văn B',
-        tinh_trang_hien_tai: 'Hoạt động',
-      }
-
-      render(
-        <EditEquipmentDialog
-          open
-          onOpenChange={onOpenChange}
-          onSuccess={onSuccess}
-          equipment={equipment}
-        />,
-        { wrapper: createWrapper() }
-      )
-
-      await waitFor(() => {
-        expect(screen.getByLabelText('Tên thiết bị')).toHaveValue('Máy siêu âm')
-      })
-
-      fireEvent.change(screen.getByLabelText('Tên thiết bị'), {
-        target: { value: 'Máy siêu âm A' },
-      })
-
-      fireEvent.click(screen.getByRole('button', { name: 'Lưu thay đổi' }))
-
-      await waitFor(() => {
-        expect(mockCallRpc).toHaveBeenCalledWith({
-          fn: 'equipment_update',
-          args: {
-            p_id: 1,
-            p_patch: expect.objectContaining({
-              ten_thiet_bi: 'Máy siêu âm A',
-            }),
-          },
-        })
-      })
-
-      expect(onSuccess).toHaveBeenCalled()
-      expect(onOpenChange).toHaveBeenCalledWith(false)
-    })
-
-    it('shows plain-object RPC errors instead of an empty edit-equipment toast description', async () => {
-      mockCallRpc.mockRejectedValueOnce({ message: 'Permission denied' })
-
-      const equipment: Equipment = {
-        id: 1,
-        ma_thiet_bi: 'EQ-001',
-        ten_thiet_bi: 'Máy siêu âm',
-        vi_tri_lap_dat: 'Phòng 202',
-        khoa_phong_quan_ly: 'Khoa Tim',
-        nguoi_dang_truc_tiep_quan_ly: 'Trần Văn B',
-        tinh_trang_hien_tai: 'Hoạt động',
-      }
-
-      render(
-        <EditEquipmentDialog
-          open
-          onOpenChange={vi.fn()}
-          onSuccess={vi.fn()}
-          equipment={equipment}
-        />,
-        { wrapper: createWrapper() }
-      )
-
-      await waitFor(() => {
-        expect(screen.getByLabelText('Tên thiết bị')).toHaveValue('Máy siêu âm')
-      })
-
-      fireEvent.click(screen.getByRole('button', { name: 'Lưu thay đổi' }))
-
-      await waitFor(() => {
-        expect(mockToast).toHaveBeenCalledWith(
-          expect.objectContaining({
-            variant: 'destructive',
-            title: 'Lỗi',
-            description: 'Không thể cập nhật thiết bị. Permission denied',
-          })
-        )
-      })
-    })
-
-    it('does not auto-fill on initial load and preserves a manual decommission date across status toggles', async () => {
-      mockCallRpc.mockResolvedValue({})
-
-      const onOpenChange = vi.fn()
-      const onSuccess = vi.fn()
-
-      const equipment: Equipment = {
-        id: 1,
-        ma_thiet_bi: 'EQ-001',
-        ten_thiet_bi: 'Máy siêu âm',
-        vi_tri_lap_dat: 'Phòng 202',
-        khoa_phong_quan_ly: 'Khoa Tim',
-        nguoi_dang_truc_tiep_quan_ly: 'Trần Văn B',
-        tinh_trang_hien_tai: 'Ngưng sử dụng',
-        ngay_ngung_su_dung: null,
-      }
-
-      render(
-        <EditEquipmentDialog
-          open
-          onOpenChange={onOpenChange}
-          onSuccess={onSuccess}
-          equipment={equipment}
-        />,
-        { wrapper: createWrapper() }
-      )
-
-      const decommissionDateInput = await screen.findByLabelText('Ngày ngừng sử dụng')
-      expect(decommissionDateInput).toHaveValue('')
-
-      fireEvent.change(decommissionDateInput, {
-        target: { value: '24/03/2026' },
-      })
-
-      const statusSelect = screen.getAllByRole('combobox')[0]
-      fireEvent.change(statusSelect, { target: { value: 'Hoạt động' } })
-      fireEvent.change(statusSelect, { target: { value: 'Ngưng sử dụng' } })
-
-      expect(decommissionDateInput).toHaveValue('24/03/2026')
-
-      fireEvent.click(screen.getByRole('button', { name: 'Lưu thay đổi' }))
-
-      await waitFor(() => {
-        expect(mockCallRpc).toHaveBeenCalledWith({
-          fn: 'equipment_update',
-          args: {
-            p_id: 1,
-            p_patch: expect.objectContaining({
-              ngay_ngung_su_dung: '2026-03-24',
-            }),
-          },
-        })
-      })
-    })
-
-    it('requires the user to choose a supported status when the persisted value is invalid', async () => {
-      const equipment: Equipment = {
-        id: 2,
-        ma_thiet_bi: 'EQ-002',
-        ten_thiet_bi: 'Monitor',
-        vi_tri_lap_dat: 'Phòng 201',
-        khoa_phong_quan_ly: 'Khoa Cấp cứu',
-        nguoi_dang_truc_tiep_quan_ly: 'Lê Văn C',
-        tinh_trang_hien_tai: 'Trạng thái cũ không hợp lệ',
-      }
-
-      render(
-        <EditEquipmentDialog
-          open
-          onOpenChange={vi.fn()}
-          onSuccess={vi.fn()}
-          equipment={equipment}
-        />,
-        { wrapper: createWrapper() }
-      )
-
-      await waitFor(() => {
-        expect(screen.getByLabelText('Tên thiết bị')).toHaveValue('Monitor')
-      })
-
-      fireEvent.click(screen.getByRole('button', { name: 'Lưu thay đổi' }))
-
-      await waitFor(() => {
-        expect(screen.getByText('Tình trạng hiện tại là bắt buộc')).toBeInTheDocument()
-      })
-
-      expect(mockCallRpc).not.toHaveBeenCalledWith(
-        expect.objectContaining({ fn: 'equipment_update' })
-      )
-    })
-
-    it('still requires status selection when the persisted status is missing', async () => {
-      const equipment: Equipment = {
-        id: 3,
-        ma_thiet_bi: 'EQ-003',
-        ten_thiet_bi: 'Ventilator',
-        vi_tri_lap_dat: 'Phòng 202',
-        khoa_phong_quan_ly: 'ICU',
-        nguoi_dang_truc_tiep_quan_ly: 'Phạm Văn D',
-        tinh_trang_hien_tai: null,
-      }
-
-      render(
-        <EditEquipmentDialog
-          open
-          onOpenChange={vi.fn()}
-          onSuccess={vi.fn()}
-          equipment={equipment}
-        />,
-        { wrapper: createWrapper() }
-      )
-
-      await waitFor(() => {
-        expect(screen.getByLabelText('Tên thiết bị')).toHaveValue('Ventilator')
-      })
-
-      fireEvent.click(screen.getByRole('button', { name: 'Lưu thay đổi' }))
-
-      await waitFor(() => {
-        expect(screen.getByText('Tình trạng hiện tại là bắt buộc')).toBeInTheDocument()
-      })
-
-      expect(mockCallRpc).not.toHaveBeenCalledWith(
-        expect.objectContaining({ fn: 'equipment_update' })
-      )
-    })
-  })
 })

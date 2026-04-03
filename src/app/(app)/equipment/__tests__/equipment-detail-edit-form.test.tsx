@@ -34,12 +34,12 @@ vi.mock("@/components/ui/select", () => ({
   ),
 }))
 
-import { DEFAULT_EQUIPMENT_FORM_VALUES } from "../_components/EquipmentDetailDialog/EquipmentDetailFormDefaults"
 import { EquipmentDetailEditForm } from "../_components/EquipmentDetailDialog/EquipmentDetailEditForm"
 import {
   equipmentFormSchema,
   type EquipmentFormValues,
 } from "../_components/EquipmentDetailDialog/EquipmentDetailTypes"
+import { DEFAULT_EQUIPMENT_FORM_VALUES } from "@/components/equipment-edit/EquipmentEditFormDefaults"
 
 function FormHarness({
   initialStatus = "Hoạt động",

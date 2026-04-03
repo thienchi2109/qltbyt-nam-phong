@@ -256,7 +256,7 @@ describe("useMaintenanceOperations", () => {
       })
 
       expect(mocks.approveMutate).toHaveBeenCalledWith(
-        { id: 1, nguoi_duyet: "Test User" },
+        { p_id: 1, p_nguoi_duyet: "Test User" },
         expect.any(Object)
       )
     })
@@ -348,9 +348,9 @@ describe("useMaintenanceOperations", () => {
 
       expect(mocks.rejectMutate).toHaveBeenCalledWith(
         {
-          id: 1,
-          nguoi_duyet: "Test User",
-          ly_do: "Không đủ điều kiện",
+          p_id: 1,
+          p_nguoi_duyet: "Test User",
+          p_ly_do: "Không đủ điều kiện",
         },
         expect.any(Object)
       )
@@ -558,7 +558,7 @@ describe("useMaintenanceOperations", () => {
       })
 
       expect(mocks.approveMutate).toHaveBeenCalledWith(
-        { id: 1, nguoi_duyet: "testuser" },
+        { p_id: 1, p_nguoi_duyet: "testuser" },
         expect.any(Object)
       )
     })
@@ -585,7 +585,7 @@ describe("useMaintenanceOperations", () => {
       })
 
       expect(mocks.approveMutate).toHaveBeenCalledWith(
-        { id: 1, nguoi_duyet: "" },
+        { p_id: 1, p_nguoi_duyet: "" },
         expect.any(Object)
       )
     })

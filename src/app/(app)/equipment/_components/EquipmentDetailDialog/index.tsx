@@ -31,14 +31,14 @@ import {
   type UserSession,
 } from "./EquipmentDetailTypes"
 import { isEquipmentManagerRole } from "@/lib/rbac"
-import { useEquipmentHistory } from "./hooks/useEquipmentHistory"
-import { useEquipmentAttachments } from "./hooks/useEquipmentAttachments"
-import { useEquipmentUpdate } from "./hooks/useEquipmentUpdate"
-import { EquipmentDetailFooter } from "./EquipmentDetailFooter"
 import {
   DEFAULT_EQUIPMENT_FORM_VALUES,
   equipmentToFormValues,
-} from "./EquipmentDetailFormDefaults"
+} from "@/components/equipment-edit/EquipmentEditFormDefaults"
+import { useEquipmentEditUpdate } from "@/components/equipment-edit/useEquipmentEditUpdate"
+import { useEquipmentHistory } from "./hooks/useEquipmentHistory"
+import { useEquipmentAttachments } from "./hooks/useEquipmentAttachments"
+import { EquipmentDetailFooter } from "./EquipmentDetailFooter"
 import { EquipmentDetailTabs } from "./EquipmentDetailTabs"
 
 export interface EquipmentDetailDialogProps {
@@ -101,11 +101,11 @@ export function EquipmentDetailDialog({
   // Reset form only when equipment ID changes (new equipment loaded)
   // This prevents form reset when toggling edit mode, preserving user edits after save
   React.useEffect(() => {
-    if (equipment && equipment.id !== prevEquipmentIdRef.current) {
+    if (open && equipment && equipment.id !== prevEquipmentIdRef.current) {
       prevEquipmentIdRef.current = equipment.id
       editForm.reset(equipmentToFormValues(equipment))
     }
-  }, [equipment, editForm])
+  }, [equipment, editForm, open])
 
   // Custom hooks for data fetching and mutations
   const { history, isLoading: isLoadingHistory } = useEquipmentHistory({
@@ -125,7 +125,7 @@ export function EquipmentDetailDialog({
     enabled: open,
   })
 
-  const { updateEquipment, isPending: isUpdating } = useEquipmentUpdate({
+  const { updateEquipment, isPending: isUpdating } = useEquipmentEditUpdate({
     onSuccess: (savedPatch) => {
       setSavedValues((prev) => ({ ...prev, ...savedPatch }))
       setIsEditingDetails(false)
@@ -136,7 +136,11 @@ export function EquipmentDetailDialog({
   // Handlers
   const onSubmitInlineEdit = async (values: EquipmentFormValues): Promise<void> => {
     if (!equipment) return
-    await updateEquipment({ id: equipment.id, patch: values })
+    try {
+      await updateEquipment({ id: equipment.id, patch: values })
+    } catch {
+      // The mutation toast already reports the failure; keep submit handlers from leaking rejections.
+    }
   }
 
   const handleDialogOpenChange = React.useCallback(
@@ -263,4 +267,3 @@ export function EquipmentDetailDialog({
     </Dialog>
   )
 }
-
