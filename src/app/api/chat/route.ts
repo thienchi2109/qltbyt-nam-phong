@@ -35,7 +35,7 @@ import { isProviderQuotaError, sanitizeErrorForClient } from '@/lib/ai/errors'
 import { isPrivilegedRole, ROLES } from '@/lib/rbac'
 
 export const runtime = 'nodejs'
-export const maxDuration = 30
+export const maxDuration = 60
 
 function plainError(message: string, status: number) {
   return new Response(message, {
