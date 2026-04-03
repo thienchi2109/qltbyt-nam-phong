@@ -161,6 +161,7 @@ When a session produces durable context, save one concise Basic Memory note near
 
 Before re-investigating a non-trivial problem, check whether relevant Basic Memory notes already exist. If memory conflicts with the current codebase, trust the codebase and update the memory note.
 
+
 ---
 
 ## Required Commands
@@ -231,18 +232,7 @@ Use this workflow whenever user requests Ralph flow or execution from `prd.json`
 **File Editing:** `mcp__filesystem-with-morph__edit_file` (NEVER full rewrites)
 **Docs:** Context7 MCP for library documentation (including Supabase docs)
 
-## GKG Known Issue (2026-02-27)
 
-In this environment, GitLab Knowledge Graph (GKG) can miss many `.tsx` React component definitions even after re-indexing.
-
-Required workflow when symbols are unexpectedly missing:
-1. Re-index once.
-2. Re-run definition search for the exact symbol.
-3. If still missing, treat GKG as incomplete for that symbol and switch to fallback:
-   - `warpgrep` for semantic discovery
-   - `rg` for exact definition/usage checks
-   - direct file reads for final verification
-4. Explicitly state in handoff/response that fallback was used due incomplete GKG results.
 
 <!-- SUPABASE-CLI:START -->
 ## Supabase CLI + MCP (Hybrid Approach)
@@ -530,6 +520,58 @@ END IF;
 ### Post-Migration Verification
 
 After applying any migration, run `get_advisors(security)` via Supabase MCP to catch regressions.
+
+## 🔗 Combined Workflow: GitNexus + Basic Memory
+
+These two MCP servers complement each other. Use them together for maximum effectiveness:
+
+| MCP Server | Answers | Persistence |
+|------------|---------|-------------|
+| **GitNexus** | WHERE is the code, WHAT calls what, impact blast radius | Ephemeral (per-query, reflects current code) |
+| **Basic Memory** | WHY a decision was made, historical findings, gotchas | Persistent (survives across sessions) |
+
+### Standard Session Loop
+
+```
+1. START OF SESSION
+   basic-memory: search("feature area")
+   → Retrieve prior decisions, known gotchas, architectural constraints
+
+2. DISCOVERY / IMPACT ANALYSIS
+   gitnexus: query("symbol or feature")
+   gitnexus: impact("target symbol")
+   → Real-time code graph, blast radius, direct callers
+
+3. IMPLEMENT
+   Write code using both contexts combined
+
+4. END OF SESSION
+   basic-memory: write_note(...)
+   → Save durable decisions, non-obvious findings, environment gotchas
+   → Skip ephemeral brainstorming; trust code/tests for obvious facts
+```
+
+### Pattern: Investigate Before Changing
+
+```
+# Step 1 — Recall prior context (Basic Memory)
+basic-memory search("repairRequest") → "Tách file vì vượt 350 lines (2026-04-01)"
+
+# Step 2 — Find current impact (GitNexus)
+gitnexus impact("RepairRequestSheet") → d=1: 3 callers, d=2: 8 indirect
+
+# Step 3 — Implement with full context
+# Step 4 — Save new findings back to Basic Memory
+```
+
+### When to Write a Memory Note
+
+Write a note when you discover or decide something that a **future agent cannot easily re-derive from code alone**:
+- ✅ Architectural trade-off (why X over Y)
+- ✅ Non-obvious bug root cause
+- ✅ Environment / deploy gotcha
+- ✅ Workflow rule change
+- ❌ Anything already obvious from code/tests/migrations/PRs
 
 <!-- gitnexus:start -->
 # GitNexus — Code Intelligence (MCP + CLI)
