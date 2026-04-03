@@ -1,8 +1,8 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import * as React from 'react'
-import { existsSync } from 'node:fs'
-import { resolve } from 'node:path'
+import * as fs from 'node:fs'
+import { fileURLToPath } from 'node:url'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 
 // Mocks
@@ -68,6 +68,11 @@ import { callRpc } from '@/lib/rpc-client'
 
 const mockCallRpc = vi.mocked(callRpc)
 
+const resolveTestFilePath = (relativePath: string) => {
+  const url = new URL(relativePath, import.meta.url)
+  return url.protocol === 'file:' ? fileURLToPath(url) : fileURLToPath(new URL(`file://${url.pathname}`))
+}
+
 function fillRequiredAddFields() {
   fireEvent.change(screen.getByLabelText('Mã thiết bị'), {
     target: { value: 'EQ-100' },
@@ -105,12 +110,8 @@ describe('Equipment Dialogs CRUD', () => {
   })
 
   it('does not keep the legacy edit-equipment-dialog shell or RPC helper on disk', () => {
-    expect(
-      existsSync(resolve(__dirname, '../edit-equipment-dialog.tsx'))
-    ).toBe(false)
-    expect(
-      existsSync(resolve(__dirname, '../edit-equipment-dialog.rpc.ts'))
-    ).toBe(false)
+    expect(fs.existsSync(resolveTestFilePath('../edit-equipment-dialog.tsx'))).toBe(false)
+    expect(fs.existsSync(resolveTestFilePath('../edit-equipment-dialog.rpc.ts'))).toBe(false)
   })
 
   describe('Create: AddEquipmentDialog', () => {

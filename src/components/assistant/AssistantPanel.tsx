@@ -52,7 +52,7 @@ const REQUESTED_TOOLS = [
  * Design spec §4.2.
  */
 export function AssistantPanel({ isOpen, onClose }: AssistantPanelProps) {
-    const { selectedFacilityId, facilities } = useTenantSelection()
+    const { selectedFacilityId, facilities = [] } = useTenantSelection()
     const [input, setInput] = React.useState("")
 
     const facilityRef = React.useRef(selectedFacilityId)
