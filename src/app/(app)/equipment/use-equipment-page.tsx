@@ -100,7 +100,10 @@ export function useEquipmentPage(): UseEquipmentPageReturn {
   })
 
   // Route sync hook - defined before renderActions which uses routeSync.router
-  const routeSync = useEquipmentRouteSync({ data: data.data })
+  const routeSync = useEquipmentRouteSync({
+    data: data.data,
+    isDataReady: data.shouldFetchData && !data.isLoading,
+  })
 
   // Render actions helper (needed for columns)
   // EquipmentActionsMenu now consumes dialog actions from context directly
@@ -146,8 +149,8 @@ export function useEquipmentPage(): UseEquipmentPageReturn {
   // Effective don_vi for export (same logic as useEquipmentData)
   const effectiveSelectedDonVi = React.useMemo(() => {
     if (auth.isRegionalLeader) {
-      return auth.selectedFacilityId !== undefined && auth.selectedFacilityId !== null 
-        ? auth.selectedFacilityId 
+      return auth.selectedFacilityId !== undefined && auth.selectedFacilityId !== null
+        ? auth.selectedFacilityId
         : null
     }
     return auth.selectedDonVi
@@ -249,6 +252,7 @@ export function useEquipmentPage(): UseEquipmentPageReturn {
       router: routeSync.router,
       pendingAction: routeSync.pendingAction,
       clearPendingAction: routeSync.clearPendingAction,
+      isFetchingHighlight: routeSync.isFetchingHighlight,
 
       // Data
       data: data.data,
@@ -319,6 +323,7 @@ export function useEquipmentPage(): UseEquipmentPageReturn {
       routeSync.router,
       routeSync.pendingAction,
       routeSync.clearPendingAction,
+      routeSync.isFetchingHighlight,
       data,
       table,
       columns,
