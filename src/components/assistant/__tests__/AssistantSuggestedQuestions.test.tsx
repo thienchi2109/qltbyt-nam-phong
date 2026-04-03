@@ -9,6 +9,13 @@ import { STARTER_PROMPT_GROUPS, PINNED_PROMPTS } from '@/lib/ai/prompts/starter-
 const ALL_RANDOM_SUGGESTIONS = STARTER_PROMPT_GROUPS.flatMap((g) => g.suggestions)
 
 describe('AssistantSuggestedQuestions', () => {
+    it('does not expose placeholder equipment starter prompts that encourage ambiguous lookups', () => {
+        expect(ALL_RANDOM_SUGGESTIONS).not.toContain('Tra cứu thông tin thiết bị X')
+        expect(ALL_RANDOM_SUGGESTIONS).not.toContain('Lịch bảo trì, hiệu chuẩn năm nay của thiết bị X')
+        expect(ALL_RANDOM_SUGGESTIONS).not.toContain('Lịch sử sử dụng thiết bị X')
+        expect(ALL_RANDOM_SUGGESTIONS).not.toContain('Tài liệu đính kèm của thiết bị X')
+    })
+
     it('renders exactly 5 chips: 2 pinned + 3 random', async () => {
         render(<AssistantSuggestedQuestions onSelect={vi.fn()} isReady={true} />)
 

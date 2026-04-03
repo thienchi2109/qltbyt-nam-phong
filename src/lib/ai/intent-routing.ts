@@ -13,6 +13,9 @@ const REPAIR_INTENT_CLARIFICATION =
 const QUOTA_INTENT_CLARIFICATION =
   'Anh/chị muốn kiểm tra định mức cho một thiết bị cụ thể hay xem tổng quan định mức của đơn vị?'
 
+const EQUIPMENT_LOOKUP_CLARIFICATION =
+  'Anh/chị muốn tra cứu thiết bị nào? Vui lòng cung cấp tên thiết bị cụ thể, mã thiết bị, model hoặc số serial trước khi tôi tra cứu.'
+
 export type ChatIntentRoutingResult =
   | {
       kind: 'proceed'
@@ -43,6 +46,11 @@ export function routeChatIntent({
   const quotaDecision = classifyQuotaIntent(latestUserText, requestedTools)
   if (quotaDecision) {
     return quotaDecision
+  }
+
+  const equipmentLookupDecision = classifyEquipmentLookupIntent(latestUserText, requestedTools)
+  if (equipmentLookupDecision) {
+    return equipmentLookupDecision
   }
 
   return { kind: 'proceed', requestedTools }
@@ -144,6 +152,33 @@ function classifyQuotaIntent(
   }
 }
 
+function classifyEquipmentLookupIntent(
+  text: string,
+  requestedTools: string[],
+): ChatIntentRoutingResult | null {
+  if (!requestedTools.includes(EQUIPMENT_LOOKUP_TOOL)) {
+    return null
+  }
+
+  const normalized = normalizeIntentText(text)
+  const mentionsLookupIntent =
+    /\b(tra cuu|tim|xem|kiem tra|thong tin|chi tiet|ho so)\b/.test(normalized)
+  const mentionsEquipment = /\b(thiet bi|may)\b/.test(normalized)
+
+  if (!mentionsLookupIntent || !mentionsEquipment) {
+    return null
+  }
+
+  if (hasEquipmentIdentifier(text) || hasSpecificEquipmentDescriptor(normalized)) {
+    return null
+  }
+
+  return {
+    kind: 'clarify',
+    message: EQUIPMENT_LOOKUP_CLARIFICATION,
+  }
+}
+
 function normalizeIntentText(text: string): string {
   return text
     .normalize('NFD')
@@ -155,6 +190,37 @@ function normalizeIntentText(text: string): string {
 }
 
 const EQUIPMENT_IDENTIFIER_RE = /\b[A-Za-z]{1,8}(?:[._-][A-Za-z0-9]{2,}){1,}\b/g
+const GENERIC_EQUIPMENT_LOOKUP_TOKENS = new Set([
+  'tra',
+  'cuu',
+  'thong',
+  'tin',
+  'xem',
+  'tim',
+  'kiem',
+  'tra',
+  'chi',
+  'tiet',
+  'ho',
+  'so',
+  'thiet',
+  'bi',
+  'may',
+  'toi',
+  'giup',
+  'cho',
+  'voi',
+  'mot',
+  'moi',
+  'nay',
+  'kia',
+  'do',
+  'nao',
+  'can',
+  'muon',
+  'x',
+  'xxx',
+])
 
 function hasEquipmentIdentifier(text: string): boolean {
   for (const [token] of text.matchAll(EQUIPMENT_IDENTIFIER_RE)) {
@@ -163,6 +229,14 @@ function hasEquipmentIdentifier(text: string): boolean {
     }
   }
   return false
+}
+
+function hasSpecificEquipmentDescriptor(normalizedText: string): boolean {
+  const meaningfulTokens = normalizedText
+    .split(/\s+/)
+    .filter(token => token.length > 1 && !GENERIC_EQUIPMENT_LOOKUP_TOKENS.has(token))
+
+  return meaningfulTokens.length > 0
 }
 
 function removeTool(requestedTools: string[], toolName: string): string[] {

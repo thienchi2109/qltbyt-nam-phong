@@ -144,6 +144,23 @@ describe('/api/chat intent routing + clarification guard', () => {
     expect(text).toContain('tổng quan định mức của đơn vị')
   })
 
+  it('asks for a concrete equipment identifier before calling equipmentLookup on ambiguous device lookup prompts', async () => {
+    const res = await POST(
+      buildRequest({
+        selectedFacilityId: 17,
+        messages: buildMessages('Tra cứu thông tin thiết bị X'),
+        requestedTools: ['equipmentLookup'],
+      }) as never,
+    )
+    const text = await res.text()
+
+    expect(res.status).toBe(200)
+    expect(streamTextMock).not.toHaveBeenCalled()
+    expect(text).toContain('thiết bị nào')
+    expect(text).toContain('mã thiết bị')
+    expect(text).toContain('serial')
+  })
+
   it('returns clarification instead of 400 when privileged user has no facility and intent is ambiguous', async () => {
     getServerSessionMock.mockResolvedValue({
       user: { id: 'u1', role: 'admin', don_vi: undefined },

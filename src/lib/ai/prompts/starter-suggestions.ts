@@ -24,7 +24,7 @@ export const STARTER_PROMPT_GROUPS: readonly StarterPromptGroup[] = [
     groupKey: 'equipment',
     label: 'Thiết bị',
     suggestions: [
-      'Tra cứu thông tin thiết bị X',
+      'Tra cứu một thiết bị cụ thể',
       'Thiết bị nào sắp đến hạn bảo trì?',
       'Tình trạng sửa chữa thiết bị gần đây',
     ],
@@ -43,9 +43,9 @@ export const STARTER_PROMPT_GROUPS: readonly StarterPromptGroup[] = [
     groupKey: 'maintenance',
     label: 'Bảo trì & Sử dụng',
     suggestions: [
-      'Lịch bảo trì, hiệu chuẩn năm nay của thiết bị X',
-      'Lịch sử sử dụng thiết bị X',
-      'Tài liệu đính kèm của thiết bị X',
+      'Lịch bảo trì, hiệu chuẩn của một thiết bị cụ thể',
+      'Lịch sử sử dụng của một thiết bị cụ thể',
+      'Tài liệu đính kèm của một thiết bị cụ thể',
     ],
   },
 ] as const
