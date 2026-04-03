@@ -179,6 +179,58 @@ describe("useEquipmentRouteSync", () => {
     expect(nav.replace).toHaveBeenCalledWith("/equipment", { scroll: false })
   })
 
+  it("clears a stale pending action when RPC fallback returns not found", async () => {
+    const previousEquipment = { id: 7, ten_thiet_bi: "X-quang" } as Equipment
+
+    nav.searchParams = new URLSearchParams("highlight=7")
+    const { result, rerender } = renderHook(() =>
+      useEquipmentRouteSync({ data: [previousEquipment], isDataReady: true })
+    )
+
+    await waitFor(() => {
+      expect(result.current.pendingAction).toEqual({
+        type: "openDetail",
+        equipment: previousEquipment,
+        highlightId: 7,
+      })
+    })
+
+    mockCallRpc.mockResolvedValueOnce(null)
+    nav.searchParams = new URLSearchParams("highlight=42")
+    rerender()
+
+    await waitFor(() => {
+      expect(mockToast).toHaveBeenCalled()
+      expect(result.current.pendingAction).toBeNull()
+    })
+  })
+
+  it("clears a stale pending action when RPC fallback throws", async () => {
+    const previousEquipment = { id: 7, ten_thiet_bi: "X-quang" } as Equipment
+
+    nav.searchParams = new URLSearchParams("highlight=7")
+    const { result, rerender } = renderHook(() =>
+      useEquipmentRouteSync({ data: [previousEquipment], isDataReady: true })
+    )
+
+    await waitFor(() => {
+      expect(result.current.pendingAction).toEqual({
+        type: "openDetail",
+        equipment: previousEquipment,
+        highlightId: 7,
+      })
+    })
+
+    mockCallRpc.mockRejectedValueOnce(new Error("boom"))
+    nav.searchParams = new URLSearchParams("highlight=42")
+    rerender()
+
+    await waitFor(() => {
+      expect(mockToast).toHaveBeenCalled()
+      expect(result.current.pendingAction).toBeNull()
+    })
+  })
+
   it("does not call RPC when equipment IS in data slice", async () => {
     const equipment = { id: 42, ten_thiet_bi: "CT Scanner" } as Equipment
     nav.searchParams = new URLSearchParams("highlight=42")

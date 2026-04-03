@@ -169,6 +169,7 @@ export function useEquipmentRouteSync(
             if (highlightRequestRef.current !== requestId) return
 
             if (!fetched) {
+              setPendingAction(null)
               toast({
                 variant: "destructive",
                 title: "Không tìm thấy thiết bị",
@@ -184,6 +185,7 @@ export function useEquipmentRouteSync(
             })
           } catch {
             if (highlightRequestRef.current !== requestId) return
+            setPendingAction(null)
             toast({
               variant: "destructive",
               title: "Lỗi tải thiết bị",
