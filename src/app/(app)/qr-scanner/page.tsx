@@ -3,19 +3,19 @@
 import * as React from "react"
 import { useRouter } from "next/navigation"
 import dynamic from "next/dynamic"
+import Link from "next/link"
+import { QrCode, ArrowLeft, Camera, Smartphone } from "lucide-react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { QrCode, ArrowLeft, Camera, Smartphone } from "lucide-react"
-import Link from "next/link"
-import { useToast } from "@/hooks/use-toast"
 import { QRScannerErrorBoundary } from "@/components/qr-scanner-error-boundary"
+import { useToast } from "@/hooks/use-toast"
 import { buildRepairRequestCreateIntentHref } from "@/lib/repair-request-create-intent"
 import type { Equipment } from "@/lib/data"
 
 // Dynamic imports to avoid SSR issues with camera components
 const QRScannerCamera = dynamic(
   () => import("@/components/qr-scanner-camera").then(mod => ({ default: mod.QRScannerCamera })),
-  { 
+  {
     ssr: false,
     loading: () => <div className="flex items-center justify-center h-screen">Đang tải camera...</div>
   }
@@ -23,16 +23,12 @@ const QRScannerCamera = dynamic(
 
 const QRActionSheet = dynamic(
   () => import("@/components/qr-action-sheet").then(mod => ({ default: mod.QRActionSheet })),
-  { 
+  {
     ssr: false,
     loading: () => <div>Đang tải...</div>
   }
 )
 
-const EditEquipmentDialog = dynamic(
-  () => import("@/components/edit-equipment-dialog").then(mod => ({ default: mod.EditEquipmentDialog })),
-  { ssr: false }
-)
 
 export default function QRScannerPage() {
   const router = useRouter()
@@ -40,7 +36,6 @@ export default function QRScannerPage() {
   const [isCameraActive, setIsCameraActive] = React.useState(false)
   const [scannedCode, setScannedCode] = React.useState<string>("")
   const [showActionSheet, setShowActionSheet] = React.useState(false)
-  const [editingEquipment, setEditingEquipment] = React.useState<Equipment | null>(null)
 
   const handleStartScanning = () => {
     // Check if we're in browser environment
@@ -70,7 +65,7 @@ export default function QRScannerPage() {
     setScannedCode(result)
     setIsCameraActive(false)
     setShowActionSheet(true)
-    
+
     toast({
       title: "Quét thành công!",
       description: `Đã quét mã: ${result}`,
@@ -92,31 +87,31 @@ export default function QRScannerPage() {
             router.push(`/equipment?highlight=${equipment.id}&tab=usage`)
           }
           break
-          
+
         case 'view-details':
           if (equipment) {
             router.push(`/equipment?highlight=${equipment.id}`)
           }
           break
-          
+
         case 'view-history':
           if (equipment) {
             router.push(`/equipment?highlight=${equipment.id}&tab=history`)
           }
           break
-          
+
         case 'create-repair':
           if (equipment) {
             router.push(buildRepairRequestCreateIntentHref(equipment.id))
           }
           break
-          
+
         case 'update-status':
           if (equipment) {
-            setEditingEquipment(equipment)
+            router.push(`/equipment?highlight=${equipment.id}`)
           }
           break
-          
+
         default:
           toast({
             variant: "destructive",
@@ -161,25 +156,7 @@ export default function QRScannerPage() {
         />
       )}
 
-      {/* Edit Equipment Dialog */}
-      {editingEquipment && (
-        <EditEquipmentDialog
-          open={!!editingEquipment}
-          onOpenChange={(open) => {
-            if (!open) {
-              setEditingEquipment(null)
-            }
-          }}
-          onSuccess={() => {
-            setEditingEquipment(null)
-            toast({
-              title: "Thành công",
-              description: "Đã cập nhật thông tin thiết bị."
-            })
-          }}
-          equipment={editingEquipment}
-        />
-      )}
+
 
       {/* Main Content */}
       <div className="container mx-auto py-8">
@@ -219,7 +196,7 @@ export default function QRScannerPage() {
                         </p>
                       </div>
                     </div>
-                    
+
                     <div className="flex items-start gap-3">
                       <div className="h-2 w-2 rounded-full bg-primary mt-2 flex-shrink-0"></div>
                       <div>
@@ -229,7 +206,7 @@ export default function QRScannerPage() {
                         </p>
                       </div>
                     </div>
-                    
+
                     <div className="flex items-start gap-3">
                       <div className="h-2 w-2 rounded-full bg-primary mt-2 flex-shrink-0"></div>
                       <div>
@@ -239,7 +216,7 @@ export default function QRScannerPage() {
                         </p>
                       </div>
                     </div>
-                    
+
                     <div className="flex items-start gap-3">
                       <div className="h-2 w-2 rounded-full bg-primary mt-2 flex-shrink-0"></div>
                       <div>
@@ -249,7 +226,7 @@ export default function QRScannerPage() {
                         </p>
                       </div>
                     </div>
-                    
+
                     <div className="flex items-start gap-3">
                       <div className="h-2 w-2 rounded-full bg-primary mt-2 flex-shrink-0"></div>
                       <div>
@@ -280,7 +257,7 @@ export default function QRScannerPage() {
                   </div>
                 </div>
               </div>
-              
+
               <div className="text-center pt-4">
                 <Button asChild variant="outline" className="touch-target">
                   <Link href="/dashboard">

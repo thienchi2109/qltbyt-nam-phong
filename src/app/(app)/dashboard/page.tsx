@@ -29,7 +29,7 @@ import type { Equipment } from "@/lib/data"
 // Dynamic imports for QR scanner components (avoid SSR issues)
 const QRScannerCamera = dynamic(
   () => import("@/components/qr-scanner-camera").then(mod => ({ default: mod.QRScannerCamera })),
-  { 
+  {
     ssr: false,
     loading: () => <div className="fixed inset-0 z-50 bg-black flex items-center justify-center text-white">Đang tải camera...</div>
   }
@@ -40,10 +40,6 @@ const QRActionSheet = dynamic(
   { ssr: false }
 )
 
-const EditEquipmentDialog = dynamic(
-  () => import("@/components/edit-equipment-dialog").then(mod => ({ default: mod.EditEquipmentDialog })),
-  { ssr: false }
-)
 
 export default function Dashboard() {
   // useDashboardRealtimeSync()
@@ -56,7 +52,7 @@ export default function Dashboard() {
   const [isCameraActive, setIsCameraActive] = React.useState(false)
   const [scannedCode, setScannedCode] = React.useState<string>("")
   const [showActionSheet, setShowActionSheet] = React.useState(false)
-  const [editingEquipment, setEditingEquipment] = React.useState<Equipment | null>(null)
+
 
   // Check if user is regional leader
   const isRegionalLeader = isRegionalLeaderRole(user?.role)
@@ -96,7 +92,7 @@ export default function Dashboard() {
     setScannedCode(result)
     setIsCameraActive(false)
     setShowActionSheet(true)
-    
+
     toast({
       title: "Quét thành công!",
       description: `Đã quét mã: ${result}`,
@@ -117,31 +113,31 @@ export default function Dashboard() {
           router.push(`/equipment?highlight=${equipment.id}&tab=usage`)
         }
         break
-        
+
       case 'view-details':
         if (equipment) {
           router.push(`/equipment?highlight=${equipment.id}`)
         }
         break
-        
+
       case 'view-history':
         if (equipment) {
           router.push(`/equipment?highlight=${equipment.id}&tab=history`)
         }
         break
-        
+
       case 'create-repair':
         if (equipment) {
           router.push(buildRepairRequestCreateIntentHref(equipment.id))
         }
         break
-        
+
       case 'update-status':
         if (equipment) {
-          setEditingEquipment(equipment)
+          router.push(`/equipment?highlight=${equipment.id}`)
         }
         break
-        
+
       default:
         toast({
           variant: "destructive",
@@ -178,25 +174,6 @@ export default function Dashboard() {
         />
       )}
 
-      {/* Edit Equipment Dialog */}
-      {editingEquipment && (
-        <EditEquipmentDialog
-          open={!!editingEquipment}
-          onOpenChange={(open) => {
-            if (!open) {
-              setEditingEquipment(null)
-            }
-          }}
-          onSuccess={() => {
-            setEditingEquipment(null)
-            toast({
-              title: "Thành công",
-              description: "Đã cập nhật thông tin thiết bị."
-            })
-          }}
-          equipment={editingEquipment}
-        />
-      )}
 
       {/* Welcome Banner */}
       <Card data-tour="welcome-banner" className="overflow-hidden border-none shadow-[0_4px_20px_-4px_rgba(0,0,0,0.1)] bg-white rounded-3xl">
