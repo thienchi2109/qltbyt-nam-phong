@@ -212,6 +212,8 @@ export async function POST(request: Request) {
   const equipmentLookupHints = extractEquipmentLookupHints(validatedMessages)
 
   const usageContext = { userId: usageUserId, tenantId: selectedFacilityId }
+  const shouldAttemptRepairRequestDraft =
+    effectiveRequestedTools.includes('generateRepairRequestDraft')
   const tools =
     effectiveRequestedTools.length > 0 && selectedFacilityId !== undefined
       ? buildToolRegistry({
@@ -302,6 +304,10 @@ export async function POST(request: Request) {
         originalMessages: validatedMessages,
         onError: handleStreamError,
         onAfterBaseStream: async writer => {
+          if (!shouldAttemptRepairRequestDraft) {
+            return
+          }
+
           try {
             const steps = await result.steps
             const repairDraftArtifact = await maybeBuildRepairRequestDraftArtifact({

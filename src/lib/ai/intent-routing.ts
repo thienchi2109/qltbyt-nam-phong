@@ -170,6 +170,12 @@ function classifyEquipmentLookupIntent(
   }
 
   if (hasEquipmentIdentifier(text) || hasSpecificEquipmentDescriptor(normalized)) {
+    if (shouldNarrowToEquipmentLookup(normalized, requestedTools)) {
+      return {
+        kind: 'proceed',
+        requestedTools: keepOnlyTool(requestedTools, EQUIPMENT_LOOKUP_TOOL),
+      }
+    }
     return null
   }
 
@@ -239,6 +245,38 @@ function hasSpecificEquipmentDescriptor(normalizedText: string): boolean {
   return meaningfulTokens.length > 0
 }
 
+function shouldNarrowToEquipmentLookup(
+  normalizedText: string,
+  requestedTools: string[],
+): boolean {
+  if (!requestedTools.includes(EQUIPMENT_LOOKUP_TOOL)) {
+    return false
+  }
+
+  const mentionsLookupIntent =
+    /\b(tra cuu|tim|xem|kiem tra|thong tin|chi tiet|ho so)\b/.test(normalizedText)
+  const mentionsMaintenance =
+    /\b(bao tri|hieu chuan|ke hoach bao tri|den han)\b/.test(normalizedText)
+  const mentionsRepair =
+    /\b(sua chua|phieu sua chua|yeu cau sua chua|hong|su co)\b/.test(normalizedText)
+  const mentionsUsage = /\b(lich su su dung|su dung)\b/.test(normalizedText)
+  const mentionsAttachment = /\b(tai lieu|dinh kem|file|huong dan)\b/.test(normalizedText)
+  const mentionsQuota = /\b(dinh muc|quota)\b/.test(normalizedText)
+
+  return (
+    mentionsLookupIntent &&
+    !mentionsMaintenance &&
+    !mentionsRepair &&
+    !mentionsUsage &&
+    !mentionsAttachment &&
+    !mentionsQuota
+  )
+}
+
 function removeTool(requestedTools: string[], toolName: string): string[] {
   return requestedTools.filter(requestedTool => requestedTool !== toolName)
+}
+
+function keepOnlyTool(requestedTools: string[], toolName: string): string[] {
+  return requestedTools.filter(requestedTool => requestedTool === toolName)
 }

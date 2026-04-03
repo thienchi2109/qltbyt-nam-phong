@@ -161,6 +161,36 @@ describe('/api/chat intent routing + clarification guard', () => {
     expect(text).toContain('serial')
   })
 
+  it('narrows tool exposure to equipmentLookup for specific device info lookups', async () => {
+    const res = await POST(
+      buildRequest({
+        selectedFacilityId: 17,
+        messages: buildMessages('Tra cứu thông tin thiết bị monitor CMS8000'),
+        requestedTools: [
+          'equipmentLookup',
+          'maintenanceSummary',
+          'repairSummary',
+          'usageHistory',
+          'attachmentLookup',
+          'deviceQuotaLookup',
+        ],
+      }) as never,
+    )
+
+    expect(res.status).toBe(200)
+    expect(streamTextMock).toHaveBeenCalledOnce()
+
+    const streamArgs = streamTextMock.mock.calls[0]?.[0] as {
+      tools?: Record<string, unknown>
+    }
+    expect(streamArgs.tools).toHaveProperty('equipmentLookup')
+    expect(streamArgs.tools).not.toHaveProperty('maintenanceSummary')
+    expect(streamArgs.tools).not.toHaveProperty('repairSummary')
+    expect(streamArgs.tools).not.toHaveProperty('usageHistory')
+    expect(streamArgs.tools).not.toHaveProperty('attachmentLookup')
+    expect(streamArgs.tools).not.toHaveProperty('deviceQuotaLookup')
+  })
+
   it('returns clarification instead of 400 when privileged user has no facility and intent is ambiguous', async () => {
     getServerSessionMock.mockResolvedValue({
       user: { id: 'u1', role: 'admin', don_vi: undefined },

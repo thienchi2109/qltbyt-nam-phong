@@ -268,4 +268,42 @@ describe('/api/chat repair-request draft orchestration', () => {
     expect(generateObjectMock).not.toHaveBeenCalled()
     expect(getToolChunks(payload)).toEqual([])
   })
+
+  it('skips repair-request draft orchestration entirely when the request did not ask for a draft', async () => {
+    streamTextMock.mockReturnValue(
+      makeReadyStreamTextResult({
+        steps: [
+          {
+            toolResults: [
+              {
+                toolName: 'equipmentLookup',
+                output: {
+                  modelSummary: {
+                    summaryText: 'equipmentLookup: 1 result(s).',
+                    itemCount: 1,
+                  },
+                  followUpContext: {
+                    equipment: [{ thiet_bi_id: 42 }],
+                  },
+                },
+              },
+            ],
+          },
+        ],
+      }),
+    )
+
+    const res = await POST(
+      buildRequest({
+        selectedFacilityId: 17,
+        messages: buildMessages('Tra cứu thông tin thiết bị monitor CMS8000'),
+        requestedTools: ['equipmentLookup'],
+      }) as never,
+    )
+    const payload = await res.text()
+
+    expect(res.status).toBe(200)
+    expect(generateObjectMock).not.toHaveBeenCalled()
+    expect(getToolChunks(payload)).toEqual([])
+  })
 })
