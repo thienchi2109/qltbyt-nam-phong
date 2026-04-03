@@ -37,13 +37,13 @@ vi.mock("next-auth/react", () => ({
 vi.mock("next/dynamic", () => ({
     __esModule: true,
     default: (
-        loader: () => Promise<{ default: React.ComponentType<any> }>,
-        _opts?: any
+        loader: () => Promise<{ default: React.ComponentType<Record<string, unknown>> }>,
+        _opts?: Record<string, unknown>
     ) => {
         const LazyWrapper = React.lazy(
-            () => loader() as Promise<{ default: React.ComponentType<any> }>
+            () => loader() as Promise<{ default: React.ComponentType<Record<string, unknown>> }>
         )
-        const DynamicStub = (props: any) => (
+        const DynamicStub = (props: Record<string, unknown>) => (
             <React.Suspense fallback={null}>
                 <LazyWrapper {...props} />
             </React.Suspense>
