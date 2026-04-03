@@ -9,6 +9,7 @@ import type { Equipment } from "../types"
 
 export interface UseEquipmentRouteSyncParams {
   data: Equipment[]
+  isDataReady: boolean
 }
 
 export interface RouteAction {
@@ -41,7 +42,7 @@ function buildCleanUrl(pathname: string, searchParams: URLSearchParams): string 
 export function useEquipmentRouteSync(
   params: UseEquipmentRouteSyncParams
 ): UseEquipmentRouteSyncReturn {
-  const { data } = params
+  const { data, isDataReady } = params
 
   const router = useRouter()
   const pathname = usePathname()
@@ -56,6 +57,9 @@ export function useEquipmentRouteSync(
 
   // Track if we've processed the current URL params to prevent re-runs
   const processedParamsRef = React.useRef<string | null>(null)
+
+  // Track in-flight highlight requests so stale responses cannot win races
+  const highlightRequestRef = React.useRef(0)
 
   // Track scroll timer to prevent it from being cleared on URL change
   const scrollTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -102,9 +106,17 @@ export function useEquipmentRouteSync(
       return
     }
 
-    // Handle "highlight" action - wait for data to be loaded
-    if (highlightParam && data.length > 0) {
+    // Handle "highlight" action once the list request has settled
+    if (highlightParam && isDataReady) {
       const highlightId = Number(highlightParam)
+      const cleanUrl = buildCleanUrl(pathname, searchParams)
+
+      if (!Number.isFinite(highlightId)) {
+        processedParamsRef.current = paramsKey
+        router.replace(cleanUrl, { scroll: false })
+        return
+      }
+
       const equipmentToHighlight = data.find((eq) => eq.id === highlightId)
 
       if (equipmentToHighlight) {
@@ -130,53 +142,52 @@ export function useEquipmentRouteSync(
           scrollTimerRef.current = null
         }, 300)
 
-        router.replace(buildCleanUrl(pathname, searchParams), { scroll: false })
+        router.replace(cleanUrl, { scroll: false })
       } else {
         // Issue #209: Equipment not in current paginated slice — fetch via RPC
         processedParamsRef.current = paramsKey
-        const abortKey = paramsKey
+        const requestId = ++highlightRequestRef.current
         setIsFetchingHighlight(true)
 
-        callRpc<Equipment | null>({
-          fn: "equipment_get",
-          args: { p_id: highlightId },
-        })
-          .then((fetched) => {
-            // Abort guard: skip if params changed while we were fetching
-            if (processedParamsRef.current !== abortKey) return
+        void (async () => {
+          try {
+            const fetched = await callRpc<Equipment | null>({
+              fn: "equipment_get",
+              args: { p_id: highlightId },
+            })
 
-            if (fetched) {
-              setPendingAction({
-                type: "openDetail",
-                equipment: fetched,
-                highlightId,
-              })
-            } else {
+            if (highlightRequestRef.current !== requestId) return
+
+            if (!fetched) {
               toast({
                 variant: "destructive",
                 title: "Không tìm thấy thiết bị",
                 description: `Thiết bị với ID ${highlightId} không tồn tại hoặc bạn không có quyền truy cập.`,
               })
+              return
             }
-          })
-          .catch(() => {
-            if (processedParamsRef.current !== abortKey) return
 
+            setPendingAction({
+              type: "openDetail",
+              equipment: fetched,
+              highlightId,
+            })
+          } catch {
+            if (highlightRequestRef.current !== requestId) return
             toast({
               variant: "destructive",
               title: "Lỗi tải thiết bị",
               description: "Không thể tải thông tin thiết bị. Vui lòng thử lại.",
             })
-          })
-          .finally(() => {
-            if (processedParamsRef.current !== abortKey) return
+          } finally {
+            if (highlightRequestRef.current !== requestId) return
+            router.replace(cleanUrl, { scroll: false })
             setIsFetchingHighlight(false)
-          })
-
-        router.replace(buildCleanUrl(pathname, searchParams), { scroll: false })
+          }
+        })()
       }
     }
-  }, [searchParams, router, pathname, data, toast])
+  }, [searchParams, router, pathname, data, toast, isDataReady])
 
   const clearPendingAction = React.useCallback(() => {
     setPendingAction(null)

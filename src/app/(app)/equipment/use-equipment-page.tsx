@@ -100,7 +100,10 @@ export function useEquipmentPage(): UseEquipmentPageReturn {
   })
 
   // Route sync hook - defined before renderActions which uses routeSync.router
-  const routeSync = useEquipmentRouteSync({ data: data.data })
+  const routeSync = useEquipmentRouteSync({
+    data: data.data,
+    isDataReady: !data.isLoading,
+  })
 
   // Render actions helper (needed for columns)
   // EquipmentActionsMenu now consumes dialog actions from context directly
@@ -320,6 +323,7 @@ export function useEquipmentPage(): UseEquipmentPageReturn {
       routeSync.router,
       routeSync.pendingAction,
       routeSync.clearPendingAction,
+      routeSync.isFetchingHighlight,
       data,
       table,
       columns,

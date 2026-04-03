@@ -2,13 +2,17 @@ import { renderHook, waitFor } from "@testing-library/react"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
 import { EQUIPMENT_ATTENTION_ACTION } from "@/lib/equipment-attention-preset"
+import type { Equipment } from "@/app/(app)/equipment/types"
 import { useEquipmentRouteSync } from "../_hooks/useEquipmentRouteSync"
-import type { Equipment } from "../types"
 
 const nav = vi.hoisted(() => ({
   pathname: "/equipment",
   searchParams: new URLSearchParams(),
-  replace: vi.fn(),
+  replace: vi.fn((url: string) => {
+    const nextUrl = new URL(url, "https://example.test")
+    nav.pathname = nextUrl.pathname
+    nav.searchParams = new URLSearchParams(nextUrl.search)
+  }),
   push: vi.fn(),
 }))
 
@@ -52,7 +56,9 @@ describe("useEquipmentRouteSync", () => {
   it("creates pending preset action and cleans transient params for attention-status", async () => {
     nav.searchParams = new URLSearchParams(`action=${EQUIPMENT_ATTENTION_ACTION}&page=2&q=abc`)
 
-    const { result } = renderHook(() => useEquipmentRouteSync({ data: [] }))
+    const { result } = renderHook(() =>
+      useEquipmentRouteSync({ data: [], isDataReady: true })
+    )
 
     await waitFor(() => {
       expect(result.current.pendingAction).toEqual({ type: "applyAttentionStatusPreset" })
@@ -64,7 +70,9 @@ describe("useEquipmentRouteSync", () => {
   it("keeps existing add action behavior", async () => {
     nav.searchParams = new URLSearchParams("action=add&tab=list")
 
-    const { result } = renderHook(() => useEquipmentRouteSync({ data: [] }))
+    const { result } = renderHook(() =>
+      useEquipmentRouteSync({ data: [], isDataReady: true })
+    )
 
     await waitFor(() => {
       expect(result.current.pendingAction).toEqual({ type: "openAdd" })
@@ -77,7 +85,9 @@ describe("useEquipmentRouteSync", () => {
     const equipment = { id: 123, ten_thiet_bi: "X-quang" } as Equipment
     nav.searchParams = new URLSearchParams("highlight=123&view=card&page=4")
 
-    const { result } = renderHook(() => useEquipmentRouteSync({ data: [equipment] }))
+    const { result } = renderHook(() =>
+      useEquipmentRouteSync({ data: [equipment], isDataReady: true })
+    )
 
     await waitFor(() => {
       expect(result.current.pendingAction?.type).toBe("openDetail")
@@ -101,7 +111,34 @@ describe("useEquipmentRouteSync", () => {
     const otherEquipment = { id: 999, ten_thiet_bi: "MRI" } as Equipment
     nav.searchParams = new URLSearchParams("highlight=42")
 
-    const { result } = renderHook(() => useEquipmentRouteSync({ data: [otherEquipment] }))
+    const { result } = renderHook(() =>
+      useEquipmentRouteSync({ data: [otherEquipment], isDataReady: true })
+    )
+
+    await waitFor(() => {
+      expect(result.current.pendingAction?.type).toBe("openDetail")
+    })
+
+    expect(mockCallRpc).toHaveBeenCalledWith({
+      fn: "equipment_get",
+      args: { p_id: 42 },
+    })
+    expect(result.current.pendingAction).toEqual({
+      type: "openDetail",
+      equipment: fetchedEquipment,
+      highlightId: 42,
+    })
+    expect(nav.replace).toHaveBeenCalledWith("/equipment", { scroll: false })
+  })
+
+  it("fetches equipment via RPC when the settled data slice is empty", async () => {
+    const fetchedEquipment = { id: 42, ten_thiet_bi: "CT Scanner" }
+    mockCallRpc.mockResolvedValueOnce(fetchedEquipment)
+    nav.searchParams = new URLSearchParams("highlight=42")
+
+    const { result } = renderHook(() =>
+      useEquipmentRouteSync({ data: [], isDataReady: true })
+    )
 
     await waitFor(() => {
       expect(result.current.pendingAction?.type).toBe("openDetail")
@@ -125,7 +162,9 @@ describe("useEquipmentRouteSync", () => {
     const otherEquipment = { id: 999, ten_thiet_bi: "MRI" } as Equipment
     nav.searchParams = new URLSearchParams("highlight=42")
 
-    const { result } = renderHook(() => useEquipmentRouteSync({ data: [otherEquipment] }))
+    const { result } = renderHook(() =>
+      useEquipmentRouteSync({ data: [otherEquipment], isDataReady: true })
+    )
 
     await waitFor(() => {
       expect(mockToast).toHaveBeenCalled()
@@ -144,7 +183,9 @@ describe("useEquipmentRouteSync", () => {
     const equipment = { id: 42, ten_thiet_bi: "CT Scanner" } as Equipment
     nav.searchParams = new URLSearchParams("highlight=42")
 
-    const { result } = renderHook(() => useEquipmentRouteSync({ data: [equipment] }))
+    const { result } = renderHook(() =>
+      useEquipmentRouteSync({ data: [equipment], isDataReady: true })
+    )
 
     await waitFor(() => {
       expect(result.current.pendingAction?.type).toBe("openDetail")
@@ -169,7 +210,9 @@ describe("useEquipmentRouteSync", () => {
     const otherEquipment = { id: 999, ten_thiet_bi: "MRI" } as Equipment
     nav.searchParams = new URLSearchParams("highlight=42")
 
-    const { result } = renderHook(() => useEquipmentRouteSync({ data: [otherEquipment] }))
+    const { result } = renderHook(() =>
+      useEquipmentRouteSync({ data: [otherEquipment], isDataReady: true })
+    )
 
     // Should be fetching
     await waitFor(() => {
