@@ -229,4 +229,42 @@ describe("useEquipmentRouteSync", () => {
 
     expect(result.current.pendingAction?.type).toBe("openDetail")
   })
+
+  it("cancels stale highlight fallback when the user navigates to add action", async () => {
+    let resolveRpc: (value: unknown) => void
+    mockCallRpc.mockReturnValueOnce(
+      new Promise((resolve) => {
+        resolveRpc = resolve
+      })
+    )
+
+    const otherEquipment = { id: 999, ten_thiet_bi: "MRI" } as Equipment
+    nav.searchParams = new URLSearchParams("highlight=42")
+
+    const { result, rerender } = renderHook(() =>
+      useEquipmentRouteSync({ data: [otherEquipment], isDataReady: true })
+    )
+
+    await waitFor(() => {
+      expect(result.current.isFetchingHighlight).toBe(true)
+    })
+
+    nav.searchParams = new URLSearchParams("action=add&tab=list")
+    rerender()
+
+    await waitFor(() => {
+      expect(result.current.pendingAction).toEqual({ type: "openAdd" })
+    })
+
+    resolveRpc!({ id: 42, ten_thiet_bi: "CT Scanner" })
+
+    await waitFor(() => {
+      expect(result.current.pendingAction).toEqual({ type: "openAdd" })
+      expect(result.current.isFetchingHighlight).toBe(false)
+    })
+
+    expect(nav.replace).toHaveBeenCalledWith("/equipment?tab=list", { scroll: false })
+    expect(nav.searchParams.get("tab")).toBe("list")
+    expect(nav.searchParams.get("highlight")).toBeNull()
+  })
 })

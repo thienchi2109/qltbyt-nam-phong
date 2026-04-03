@@ -64,6 +64,11 @@ export function useEquipmentRouteSync(
   // Track scroll timer to prevent it from being cleared on URL change
   const scrollTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null)
 
+  const cancelInFlightHighlightRequest = React.useCallback(() => {
+    highlightRequestRef.current += 1
+    setIsFetchingHighlight(false)
+  }, [])
+
   // Cleanup scroll timer on unmount only
   React.useEffect(() => {
     return () => {
@@ -86,12 +91,14 @@ export function useEquipmentRouteSync(
 
     // Reset ref when params are cleared so repeat navigation works
     if (!actionParam && !highlightParam) {
+      cancelInFlightHighlightRequest()
       processedParamsRef.current = null
       return
     }
 
     // Handle "add" action
     if (actionParam === "add") {
+      cancelInFlightHighlightRequest()
       processedParamsRef.current = paramsKey
       setPendingAction({ type: "openAdd" })
       router.replace(buildCleanUrl(pathname, searchParams), { scroll: false })
@@ -100,6 +107,7 @@ export function useEquipmentRouteSync(
 
     // Handle status preset action from dashboard attention redirect
     if (actionParam === EQUIPMENT_ATTENTION_ACTION) {
+      cancelInFlightHighlightRequest()
       processedParamsRef.current = paramsKey
       setPendingAction({ type: "applyAttentionStatusPreset" })
       router.replace(buildCleanUrl(pathname, searchParams), { scroll: false })
@@ -112,6 +120,7 @@ export function useEquipmentRouteSync(
       const cleanUrl = buildCleanUrl(pathname, searchParams)
 
       if (!Number.isFinite(highlightId)) {
+        cancelInFlightHighlightRequest()
         processedParamsRef.current = paramsKey
         router.replace(cleanUrl, { scroll: false })
         return
@@ -120,6 +129,7 @@ export function useEquipmentRouteSync(
       const equipmentToHighlight = data.find((eq) => eq.id === highlightId)
 
       if (equipmentToHighlight) {
+        cancelInFlightHighlightRequest()
         processedParamsRef.current = paramsKey
         setPendingAction({
           type: "openDetail",
@@ -180,14 +190,15 @@ export function useEquipmentRouteSync(
               description: "Không thể tải thông tin thiết bị. Vui lòng thử lại.",
             })
           } finally {
-            if (highlightRequestRef.current !== requestId) return
-            router.replace(cleanUrl, { scroll: false })
-            setIsFetchingHighlight(false)
+            if (highlightRequestRef.current === requestId) {
+              router.replace(cleanUrl, { scroll: false })
+              setIsFetchingHighlight(false)
+            }
           }
         })()
       }
     }
-  }, [searchParams, router, pathname, data, toast, isDataReady])
+  }, [searchParams, router, pathname, data, toast, isDataReady, cancelInFlightHighlightRequest])
 
   const clearPendingAction = React.useCallback(() => {
     setPendingAction(null)
