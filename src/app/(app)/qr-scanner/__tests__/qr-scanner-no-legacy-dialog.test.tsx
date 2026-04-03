@@ -81,6 +81,12 @@ vi.mock("@/components/qr-action-sheet", () => ({
             >
                 Update Status
             </button>
+            <button
+                data-testid="trigger-update-status-missing"
+                onClick={() => onAction("update-status")}
+            >
+                Missing Equipment
+            </button>
         </div>
     ),
 }))
@@ -119,6 +125,18 @@ describe("QR Scanner: no legacy EditEquipmentDialog", () => {
 
         await waitFor(() => {
             expect(mockPush).toHaveBeenCalledWith("/equipment?highlight=42")
+        })
+    })
+
+    it("does not navigate when update-status is triggered without equipment", async () => {
+        render(<QRScannerPage />)
+
+        fireEvent.click(screen.getByRole("button", { name: /bắt đầu quét/i }))
+        fireEvent.click(await screen.findByTestId("qr-camera"))
+        fireEvent.click(await screen.findByTestId("trigger-update-status-missing"))
+
+        await waitFor(() => {
+            expect(mockPush).not.toHaveBeenCalled()
         })
     })
 })

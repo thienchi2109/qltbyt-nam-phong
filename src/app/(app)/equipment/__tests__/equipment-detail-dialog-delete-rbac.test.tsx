@@ -100,7 +100,7 @@ describe("EquipmentDetailDialog delete RBAC", () => {
     khoa_phong_quan_ly: "ICU",
   } as Equipment
 
-  const baseProps: Omit<EquipmentDetailDialogProps, "equipment"> = {
+  const baseProps: EquipmentDetailDialogProps = {
     equipment,
     open: true,
     onOpenChange: vi.fn(),
