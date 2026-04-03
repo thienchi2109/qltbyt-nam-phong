@@ -74,11 +74,6 @@ vi.mock("@/components/qr-action-sheet", () => ({
     ),
 }))
 
-// Spy: if legacy dialog is still imported, it will render this
-vi.mock("@/components/edit-equipment-dialog", () => ({
-    EditEquipmentDialog: () => <div data-testid="legacy-edit-dialog" />,
-}))
-
 vi.mock("@/lib/repair-request-create-intent", () => ({
     buildRepairRequestCreateIntentHref: (id?: number) =>
         `/repair-requests?equipmentId=${id}`,
@@ -97,15 +92,6 @@ import QRScannerPage from "../page"
 describe("QR Scanner: no legacy EditEquipmentDialog", () => {
     beforeEach(() => {
         vi.clearAllMocks()
-    })
-
-    it("does not render EditEquipmentDialog component", async () => {
-        await act(async () => {
-            render(<QRScannerPage />)
-        })
-
-        // Legacy dialog should NEVER appear anywhere in the DOM
-        expect(screen.queryByTestId("legacy-edit-dialog")).not.toBeInTheDocument()
     })
 
     it("navigates to /equipment?highlight={id} on update-status action", async () => {

@@ -1,13 +1,30 @@
+import { readFileSync } from "node:fs"
+import { resolve } from "node:path"
 import { describe, expect, it } from "vitest"
 
 import type { Equipment } from "@/types/database"
-
 import {
   DEFAULT_EQUIPMENT_FORM_VALUES,
   equipmentToFormValues,
-} from "../_components/EquipmentDetailDialog/EquipmentDetailFormDefaults"
+} from "@/components/equipment-edit/EquipmentEditFormDefaults"
+
+const detailDialogSource = readFileSync(
+  resolve(process.cwd(), "src/app/(app)/equipment/_components/EquipmentDetailDialog/index.tsx"),
+  "utf8"
+)
 
 describe("EquipmentDetailFormDefaults", () => {
+  it("imports the shared defaults and update hook directly", () => {
+    expect(detailDialogSource).toContain(
+      'from "@/components/equipment-edit/useEquipmentEditUpdate"'
+    )
+    expect(detailDialogSource).toContain(
+      'from "@/components/equipment-edit/EquipmentEditFormDefaults"'
+    )
+    expect(detailDialogSource).not.toContain("./hooks/useEquipmentUpdate")
+    expect(detailDialogSource).not.toContain("./EquipmentDetailFormDefaults")
+  })
+
   it("keeps the expected empty-state defaults for the detail form", () => {
     expect(DEFAULT_EQUIPMENT_FORM_VALUES.ma_thiet_bi).toBe("")
     expect(DEFAULT_EQUIPMENT_FORM_VALUES.ten_thiet_bi).toBe("")
