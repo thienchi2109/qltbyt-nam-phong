@@ -64,6 +64,24 @@ function clarificationResponse(message: string, originalMessages: UIMessage[]) {
 
 const ALLOWED_CHAT_ROLES = new Set<string>(Object.values(ROLES))
 
+function normalizeGoogleModelId(modelId: string): string {
+  return modelId.startsWith('google:') ? modelId.slice('google:'.length) : modelId
+}
+
+function getGoogleProviderOptions(modelId: string): { google?: GoogleLanguageModelOptions } {
+  const normalizedModelId = normalizeGoogleModelId(modelId)
+
+  if (!normalizedModelId.startsWith('gemini-')) {
+    return {}
+  }
+
+  return {
+    google: {
+      thinkingConfig: { thinkingLevel: 'medium' },
+    } satisfies GoogleLanguageModelOptions,
+  }
+}
+
 function hasAllowedChatRole(value: unknown): boolean {
   if (typeof value !== 'string') {
     return false
@@ -224,6 +242,9 @@ export async function POST(request: Request) {
 
     try {
       const chatModel = getChatModel()
+      const resolvedModelId =
+        process.env.AI_MODEL ??
+        (typeof chatModel.model === 'string' ? chatModel.model : configuredModel)
       keyIndex = chatModel.keyIndex
       console.info('[chat] Model attempt start', {
         attempt,
@@ -231,11 +252,7 @@ export async function POST(request: Request) {
         keyIndex,
         model: configuredModel,
       })
-      const googleProviderOptions = {
-        google: {
-          thinkingConfig: { thinkingLevel: 'medium' },
-        } satisfies GoogleLanguageModelOptions,
-      }
+      const googleProviderOptions = getGoogleProviderOptions(resolvedModelId)
 
       const result = streamText({
         model: chatModel.model,

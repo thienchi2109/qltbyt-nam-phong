@@ -104,6 +104,48 @@ describe('/api/chat limits', () => {
     expect(streamTextArgs?.stopWhen).toBe('STOP_WHEN_SENTINEL')
   })
 
+  it('omits thinkingConfig for gemma models that do not support thinking levels', async () => {
+    getChatModelMock.mockReturnValue({ model: 'google:gemma-4-26b-a4b-it', keyIndex: 0 })
+
+    const res = await POST(
+      buildRequest({ messages: [buildMessage('m1')] }) as never,
+    )
+
+    expect(res.status).toBe(200)
+    const streamTextArgs = streamTextMock.mock.calls[0]?.[0] as {
+      providerOptions?: {
+        google?: {
+          thinkingConfig?: unknown
+        }
+      }
+    }
+
+    expect(streamTextArgs?.providerOptions?.google?.thinkingConfig).toBeUndefined()
+  })
+
+  it('keeps thinkingConfig for gemini models that support thinking levels', async () => {
+    getChatModelMock.mockReturnValue({ model: 'google:gemini-2.5-flash', keyIndex: 0 })
+
+    const res = await POST(
+      buildRequest({ messages: [buildMessage('m1')] }) as never,
+    )
+
+    expect(res.status).toBe(200)
+    const streamTextArgs = streamTextMock.mock.calls[0]?.[0] as {
+      providerOptions?: {
+        google?: {
+          thinkingConfig?: {
+            thinkingLevel?: string
+          }
+        }
+      }
+    }
+
+    expect(streamTextArgs?.providerOptions?.google?.thinkingConfig).toEqual({
+      thinkingLevel: 'medium',
+    })
+  })
+
   it('rejects requests exceeding message count limit', async () => {
     const res = await POST(
       buildRequest({
