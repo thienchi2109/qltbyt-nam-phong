@@ -116,6 +116,8 @@ export interface UseEquipmentPageReturn {
   router: ReturnType<typeof useRouter>
   pendingAction: RouteAction | null
   clearPendingAction: () => void
+  /** True while fetching equipment via RPC fallback (not in current data slice) */
+  isFetchingHighlight: boolean
 
   // Data
   data: Equipment[]

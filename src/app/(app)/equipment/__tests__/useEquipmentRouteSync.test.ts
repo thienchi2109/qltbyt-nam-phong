@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 
 import { EQUIPMENT_ATTENTION_ACTION } from "@/lib/equipment-attention-preset"
 import { useEquipmentRouteSync } from "../_hooks/useEquipmentRouteSync"
+import type { Equipment } from "../types"
 
 const nav = vi.hoisted(() => ({
   pathname: "/equipment",
@@ -11,6 +12,9 @@ const nav = vi.hoisted(() => ({
   push: vi.fn(),
 }))
 
+const mockCallRpc = vi.hoisted(() => vi.fn())
+const mockToast = vi.hoisted(() => vi.fn())
+
 vi.mock("next/navigation", () => ({
   useRouter: () => ({
     replace: nav.replace,
@@ -18,6 +22,14 @@ vi.mock("next/navigation", () => ({
   }),
   usePathname: () => nav.pathname,
   useSearchParams: () => nav.searchParams,
+}))
+
+vi.mock("@/lib/rpc-client", () => ({
+  callRpc: mockCallRpc,
+}))
+
+vi.mock("@/hooks/use-toast", () => ({
+  useToast: () => ({ toast: mockToast }),
 }))
 
 describe("useEquipmentRouteSync", () => {
@@ -62,7 +74,7 @@ describe("useEquipmentRouteSync", () => {
   })
 
   it("keeps highlight action behavior and preserves non-transient params", async () => {
-    const equipment = { id: 123, ten_thiet_bi: "X-quang" } as any
+    const equipment = { id: 123, ten_thiet_bi: "X-quang" } as Equipment
     nav.searchParams = new URLSearchParams("highlight=123&view=card&page=4")
 
     const { result } = renderHook(() => useEquipmentRouteSync({ data: [equipment] }))
@@ -77,5 +89,101 @@ describe("useEquipmentRouteSync", () => {
       highlightId: 123,
     })
     expect(nav.replace).toHaveBeenCalledWith("/equipment?view=card&page=4", { scroll: false })
+  })
+
+  // --- Issue #209: RPC Fallback Tests ---
+
+  it("fetches equipment via RPC when highlight target is not in data slice", async () => {
+    const fetchedEquipment = { id: 42, ten_thiet_bi: "CT Scanner" }
+    mockCallRpc.mockResolvedValueOnce(fetchedEquipment)
+
+    // data has items but NOT the highlighted one
+    const otherEquipment = { id: 999, ten_thiet_bi: "MRI" } as Equipment
+    nav.searchParams = new URLSearchParams("highlight=42")
+
+    const { result } = renderHook(() => useEquipmentRouteSync({ data: [otherEquipment] }))
+
+    await waitFor(() => {
+      expect(result.current.pendingAction?.type).toBe("openDetail")
+    })
+
+    expect(mockCallRpc).toHaveBeenCalledWith({
+      fn: "equipment_get",
+      args: { p_id: 42 },
+    })
+    expect(result.current.pendingAction).toEqual({
+      type: "openDetail",
+      equipment: fetchedEquipment,
+      highlightId: 42,
+    })
+    expect(nav.replace).toHaveBeenCalledWith("/equipment", { scroll: false })
+  })
+
+  it("shows toast when RPC fallback also fails to find equipment", async () => {
+    mockCallRpc.mockResolvedValueOnce(null)
+
+    const otherEquipment = { id: 999, ten_thiet_bi: "MRI" } as Equipment
+    nav.searchParams = new URLSearchParams("highlight=42")
+
+    const { result } = renderHook(() => useEquipmentRouteSync({ data: [otherEquipment] }))
+
+    await waitFor(() => {
+      expect(mockToast).toHaveBeenCalled()
+    })
+
+    expect(mockToast).toHaveBeenCalledWith(
+      expect.objectContaining({
+        variant: "destructive",
+      })
+    )
+    expect(result.current.pendingAction).toBeNull()
+    expect(nav.replace).toHaveBeenCalledWith("/equipment", { scroll: false })
+  })
+
+  it("does not call RPC when equipment IS in data slice", async () => {
+    const equipment = { id: 42, ten_thiet_bi: "CT Scanner" } as Equipment
+    nav.searchParams = new URLSearchParams("highlight=42")
+
+    const { result } = renderHook(() => useEquipmentRouteSync({ data: [equipment] }))
+
+    await waitFor(() => {
+      expect(result.current.pendingAction?.type).toBe("openDetail")
+    })
+
+    expect(mockCallRpc).not.toHaveBeenCalled()
+    expect(result.current.pendingAction).toEqual({
+      type: "openDetail",
+      equipment,
+      highlightId: 42,
+    })
+  })
+
+  it("exposes isFetchingHighlight during RPC fallback call", async () => {
+    let resolveRpc: (value: unknown) => void
+    mockCallRpc.mockReturnValueOnce(
+      new Promise((resolve) => {
+        resolveRpc = resolve
+      })
+    )
+
+    const otherEquipment = { id: 999, ten_thiet_bi: "MRI" } as Equipment
+    nav.searchParams = new URLSearchParams("highlight=42")
+
+    const { result } = renderHook(() => useEquipmentRouteSync({ data: [otherEquipment] }))
+
+    // Should be fetching
+    await waitFor(() => {
+      expect(result.current.isFetchingHighlight).toBe(true)
+    })
+
+    // Resolve the RPC
+    resolveRpc!({ id: 42, ten_thiet_bi: "CT Scanner" })
+
+    // Should stop fetching
+    await waitFor(() => {
+      expect(result.current.isFetchingHighlight).toBe(false)
+    })
+
+    expect(result.current.pendingAction?.type).toBe("openDetail")
   })
 })

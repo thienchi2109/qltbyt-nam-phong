@@ -3,6 +3,8 @@
 import * as React from "react"
 import { useRouter, useSearchParams, usePathname } from "next/navigation"
 import { EQUIPMENT_ATTENTION_ACTION } from "@/lib/equipment-attention-preset"
+import { callRpc } from "@/lib/rpc-client"
+import { useToast } from "@/hooks/use-toast"
 import type { Equipment } from "../types"
 
 export interface UseEquipmentRouteSyncParams {
@@ -21,6 +23,8 @@ export interface UseEquipmentRouteSyncReturn {
   pendingAction: RouteAction | null
   /** Call this after handling the action to clear it */
   clearPendingAction: () => void
+  /** True while fetching equipment via RPC fallback (not in current data slice) */
+  isFetchingHighlight: boolean
 }
 
 /**
@@ -42,9 +46,13 @@ export function useEquipmentRouteSync(
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
+  const { toast } = useToast()
 
   // Track pending action for consumer to handle
   const [pendingAction, setPendingAction] = React.useState<RouteAction | null>(null)
+
+  // Track RPC fallback loading state
+  const [isFetchingHighlight, setIsFetchingHighlight] = React.useState(false)
 
   // Track if we've processed the current URL params to prevent re-runs
   const processedParamsRef = React.useRef<string | null>(null)
@@ -113,7 +121,6 @@ export function useEquipmentRouteSync(
         }
 
         // Schedule scroll before URL replace to prevent timer being cleared
-        // Use ref to store timer so it persists across effect re-runs
         scrollTimerRef.current = setTimeout(() => {
           const selector = `[data-equipment-id="${CSS.escape(highlightParam)}"]`
           const element = document.querySelector(selector)
@@ -123,11 +130,53 @@ export function useEquipmentRouteSync(
           scrollTimerRef.current = null
         }, 300)
 
-        // Replace URL after setting up the scroll timer (preserves other params)
+        router.replace(buildCleanUrl(pathname, searchParams), { scroll: false })
+      } else {
+        // Issue #209: Equipment not in current paginated slice — fetch via RPC
+        processedParamsRef.current = paramsKey
+        const abortKey = paramsKey
+        setIsFetchingHighlight(true)
+
+        callRpc<Equipment | null>({
+          fn: "equipment_get",
+          args: { p_id: highlightId },
+        })
+          .then((fetched) => {
+            // Abort guard: skip if params changed while we were fetching
+            if (processedParamsRef.current !== abortKey) return
+
+            if (fetched) {
+              setPendingAction({
+                type: "openDetail",
+                equipment: fetched,
+                highlightId,
+              })
+            } else {
+              toast({
+                variant: "destructive",
+                title: "Không tìm thấy thiết bị",
+                description: `Thiết bị với ID ${highlightId} không tồn tại hoặc bạn không có quyền truy cập.`,
+              })
+            }
+          })
+          .catch(() => {
+            if (processedParamsRef.current !== abortKey) return
+
+            toast({
+              variant: "destructive",
+              title: "Lỗi tải thiết bị",
+              description: "Không thể tải thông tin thiết bị. Vui lòng thử lại.",
+            })
+          })
+          .finally(() => {
+            if (processedParamsRef.current !== abortKey) return
+            setIsFetchingHighlight(false)
+          })
+
         router.replace(buildCleanUrl(pathname, searchParams), { scroll: false })
       }
     }
-  }, [searchParams, router, pathname, data])
+  }, [searchParams, router, pathname, data, toast])
 
   const clearPendingAction = React.useCallback(() => {
     setPendingAction(null)
@@ -138,7 +187,8 @@ export function useEquipmentRouteSync(
       router,
       pendingAction,
       clearPendingAction,
+      isFetchingHighlight,
     }),
-    [router, pendingAction, clearPendingAction]
+    [router, pendingAction, clearPendingAction, isFetchingHighlight]
   )
 }

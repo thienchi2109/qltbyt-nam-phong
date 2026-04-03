@@ -146,8 +146,8 @@ export function useEquipmentPage(): UseEquipmentPageReturn {
   // Effective don_vi for export (same logic as useEquipmentData)
   const effectiveSelectedDonVi = React.useMemo(() => {
     if (auth.isRegionalLeader) {
-      return auth.selectedFacilityId !== undefined && auth.selectedFacilityId !== null 
-        ? auth.selectedFacilityId 
+      return auth.selectedFacilityId !== undefined && auth.selectedFacilityId !== null
+        ? auth.selectedFacilityId
         : null
     }
     return auth.selectedDonVi
@@ -249,6 +249,7 @@ export function useEquipmentPage(): UseEquipmentPageReturn {
       router: routeSync.router,
       pendingAction: routeSync.pendingAction,
       clearPendingAction: routeSync.clearPendingAction,
+      isFetchingHighlight: routeSync.isFetchingHighlight,
 
       // Data
       data: data.data,
