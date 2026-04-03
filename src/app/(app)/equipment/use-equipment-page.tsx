@@ -102,7 +102,7 @@ export function useEquipmentPage(): UseEquipmentPageReturn {
   // Route sync hook - defined before renderActions which uses routeSync.router
   const routeSync = useEquipmentRouteSync({
     data: data.data,
-    isDataReady: !data.isLoading,
+    isDataReady: data.shouldFetchData && !data.isLoading,
   })
 
   // Render actions helper (needed for columns)

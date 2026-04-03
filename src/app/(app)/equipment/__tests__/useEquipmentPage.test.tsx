@@ -19,6 +19,7 @@ const mocks = vi.hoisted(() => ({
   handleExportData: vi.fn(),
   handleGenerateProfileSheet: vi.fn(),
   handleGenerateDeviceLabel: vi.fn(),
+  useEquipmentRouteSync: vi.fn(),
 }))
 
 type AuthState = {
@@ -162,11 +163,15 @@ vi.mock("@/app/(app)/equipment/_hooks/useEquipmentExport", () => ({
 }))
 
 vi.mock("@/app/(app)/equipment/_hooks/useEquipmentRouteSync", () => ({
-  useEquipmentRouteSync: () => ({
-    router: { push: mocks.push, replace: mocks.replace },
-    pendingAction: null,
-    clearPendingAction: mocks.clearPendingAction,
-  }),
+  useEquipmentRouteSync: (args: unknown) => {
+    mocks.useEquipmentRouteSync(args)
+    return {
+      router: { push: mocks.push, replace: mocks.replace },
+      pendingAction: null,
+      clearPendingAction: mocks.clearPendingAction,
+      isFetchingHighlight: false,
+    }
+  },
 }))
 
 import { useEquipmentPage } from "@/app/(app)/equipment/use-equipment-page"
@@ -317,5 +322,21 @@ describe('useEquipmentPage tenant switching', () => {
     })
 
     expect(mocks.resetFilters).not.toHaveBeenCalled()
+  })
+
+  it('does not mark route sync data as ready when the equipment query is disabled', () => {
+    state.data = createDataState({
+      isLoading: false,
+      shouldFetchData: false,
+    })
+
+    renderHook(() => useEquipmentPage())
+
+    expect(mocks.useEquipmentRouteSync).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: [],
+        isDataReady: false,
+      })
+    )
   })
 })
