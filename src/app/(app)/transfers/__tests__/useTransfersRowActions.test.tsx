@@ -181,7 +181,7 @@ describe("useTransfersRowActions", () => {
     expect(result.current.isDeleteDialogOpen).toBe(false)
   })
 
-  it("keeps delete dialog state when confirmDelete fails", async () => {
+  it("keeps delete dialog state when confirmDelete fails without rejecting", async () => {
     confirmDelete.mockRejectedValueOnce(new Error("delete failed"))
     const { result } = renderRowActionsHook()
 
@@ -189,9 +189,11 @@ describe("useTransfersRowActions", () => {
       result.current.handleOpenDeleteDialog(item)
     })
 
-    await act(async () => {
-      await result.current.handleConfirmDelete().catch(() => undefined)
-    })
+    await expect(
+      act(async () => {
+        await result.current.handleConfirmDelete()
+      }),
+    ).resolves.toBeUndefined()
 
     expect(confirmDelete).toHaveBeenCalledWith(item)
     expect(result.current.deletingTransfer).toEqual(item)

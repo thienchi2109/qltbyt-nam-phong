@@ -167,4 +167,20 @@ describe("TransfersDialogs", () => {
 
     expect(onConfirmDelete).toHaveBeenCalledTimes(1)
   })
+
+  it("does not auto-close the delete dialog before the async confirm resolves", () => {
+    const onConfirmDelete = vi.fn(() => new Promise(() => undefined))
+    const onDeleteDialogOpenChange = vi.fn()
+
+    renderDialogs({
+      deleteDialogOpen: true,
+      onConfirmDelete,
+      onDeleteDialogOpenChange,
+    })
+
+    fireEvent.click(screen.getByRole("button", { name: "Xóa" }))
+
+    expect(onConfirmDelete).toHaveBeenCalledTimes(1)
+    expect(onDeleteDialogOpenChange).not.toHaveBeenCalledWith(false)
+  })
 })

@@ -9,7 +9,6 @@ import { TransferDetailDialog } from "@/components/transfer-detail-dialog"
 import { FilterModal, type FilterModalValue } from "@/components/transfers/FilterModal"
 import {
   AlertDialog,
-  AlertDialogAction,
   AlertDialogCancel,
   AlertDialogContent,
   AlertDialogDescription,
@@ -17,6 +16,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
+import { Button } from "@/components/ui/button"
 import type { TransferRequest } from "@/types/database"
 
 type FilterModalVariant = "dialog" | "sheet"
@@ -123,12 +123,13 @@ export function TransfersDialogs({
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Hủy</AlertDialogCancel>
-            <AlertDialogAction
+            <Button
+              type="button"
+              variant="destructive"
               onClick={onConfirmDelete}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               Xóa
-            </AlertDialogAction>
+            </Button>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
