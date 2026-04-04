@@ -20,6 +20,7 @@ import { AddTransferDialog } from "@/components/add-transfer-dialog"
 import { EditTransferDialog } from "@/components/edit-transfer-dialog"
 import { HandoverPreviewDialog } from "@/components/handover-preview-dialog"
 import { OverdueTransfersAlert } from "@/components/overdue-transfers-alert"
+import { KpiStatusBar, TRANSFER_STATUS_CONFIGS } from "@/components/kpi"
 import { DataTablePagination } from "@/components/shared/DataTablePagination"
 import { TransferDetailDialog } from "@/components/transfer-detail-dialog"
 import { TransferCard } from "@/components/transfers/TransferCard"
@@ -230,6 +231,8 @@ function TransfersPageContent({ user }: TransfersPageContentProps) {
 
   const {
     data: statusCounts,
+    isLoading: isCountsLoading,
+    isError: isCountsError,
   } = useTransferCounts(countsFilters, {
     enabled: shouldFetchData,
   })
@@ -479,6 +482,13 @@ function TransfersPageContent({ user }: TransfersPageContentProps) {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <KpiStatusBar
+        configs={TRANSFER_STATUS_CONFIGS}
+        counts={statusCounts?.columnCounts}
+        loading={isCountsLoading}
+        error={isCountsError}
+      />
 
       <Card>
         <CardHeader className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">

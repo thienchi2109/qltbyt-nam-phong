@@ -1,8 +1,7 @@
 "use client"
 
-import { CheckCircle2, AlertTriangle, XCircle, Layers } from "lucide-react"
-import { Card, CardContent } from "@/components/ui/card"
-import { Skeleton } from "@/components/ui/skeleton"
+import * as React from "react"
+import { DEVICE_QUOTA_CONFIGS, KpiStatusBar } from "@/components/kpi"
 import { useDeviceQuotaDashboardContext } from "../_hooks/useDeviceQuotaDashboardContext"
 
 /**
@@ -19,119 +18,25 @@ import { useDeviceQuotaDashboardContext } from "../_hooks/useDeviceQuotaDashboar
 export function DeviceQuotaComplianceCards() {
   const { complianceSummary, isLoading, isError } = useDeviceQuotaDashboardContext()
 
-  if (isError) {
-    return (
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <Card className="border-destructive">
-          <CardContent className="pt-6">
-            <p className="text-sm text-destructive">Không thể tải dữ liệu</p>
-          </CardContent>
-        </Card>
-      </div>
-    )
-  }
+  const counts = React.useMemo(() => {
+    if (!complianceSummary) return undefined
+
+    return {
+      dat: complianceSummary.dat_count,
+      thieu: complianceSummary.thieu_count,
+      vuot: complianceSummary.vuot_count,
+    }
+  }, [complianceSummary])
 
   return (
-    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-      {/* Total Categories */}
-      <Card>
-        <CardContent className="pt-6">
-          {isLoading ? (
-            <div className="flex items-center gap-3">
-              <Skeleton className="h-8 w-8 rounded-full" />
-              <div className="flex-1">
-                <Skeleton className="h-8 w-16 mb-1" />
-                <Skeleton className="h-4 w-24" />
-              </div>
-            </div>
-          ) : (
-            <div className="flex items-center gap-3">
-              <Layers className="h-8 w-8 text-blue-500 shrink-0" />
-              <div>
-                <p className="text-2xl font-bold">
-                  {complianceSummary?.total_categories || 0}
-                </p>
-                <p className="text-sm text-muted-foreground">Tổng danh mục</p>
-              </div>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Compliant */}
-      <Card>
-        <CardContent className="pt-6">
-          {isLoading ? (
-            <div className="flex items-center gap-3">
-              <Skeleton className="h-8 w-8 rounded-full" />
-              <div className="flex-1">
-                <Skeleton className="h-8 w-16 mb-1" />
-                <Skeleton className="h-4 w-24" />
-              </div>
-            </div>
-          ) : (
-            <div className="flex items-center gap-3">
-              <CheckCircle2 className="h-8 w-8 text-green-500 shrink-0" />
-              <div>
-                <p className="text-2xl font-bold">
-                  {complianceSummary?.dat_count || 0}
-                </p>
-                <p className="text-sm text-muted-foreground">Đạt định mức</p>
-              </div>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Under Quota */}
-      <Card>
-        <CardContent className="pt-6">
-          {isLoading ? (
-            <div className="flex items-center gap-3">
-              <Skeleton className="h-8 w-8 rounded-full" />
-              <div className="flex-1">
-                <Skeleton className="h-8 w-16 mb-1" />
-                <Skeleton className="h-4 w-24" />
-              </div>
-            </div>
-          ) : (
-            <div className="flex items-center gap-3">
-              <XCircle className="h-8 w-8 text-red-500 shrink-0" />
-              <div>
-                <p className="text-2xl font-bold">
-                  {complianceSummary?.thieu_count || 0}
-                </p>
-                <p className="text-sm text-muted-foreground">Thiếu định mức</p>
-              </div>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Over Quota */}
-      <Card>
-        <CardContent className="pt-6">
-          {isLoading ? (
-            <div className="flex items-center gap-3">
-              <Skeleton className="h-8 w-8 rounded-full" />
-              <div className="flex-1">
-                <Skeleton className="h-8 w-16 mb-1" />
-                <Skeleton className="h-4 w-24" />
-              </div>
-            </div>
-          ) : (
-            <div className="flex items-center gap-3">
-              <AlertTriangle className="h-8 w-8 text-amber-500 shrink-0" />
-              <div>
-                <p className="text-2xl font-bold">
-                  {complianceSummary?.vuot_count || 0}
-                </p>
-                <p className="text-sm text-muted-foreground">Vượt định mức</p>
-              </div>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-    </div>
+    <KpiStatusBar
+      configs={DEVICE_QUOTA_CONFIGS}
+      counts={counts}
+      loading={isLoading}
+      error={isError}
+      showTotal
+      totalLabel="Tổng danh mục"
+      totalOverride={complianceSummary?.total_categories}
+    />
   )
 }
