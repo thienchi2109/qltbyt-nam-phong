@@ -104,12 +104,9 @@ export function useTransfersRowActions({
   const handleConfirmDelete = React.useCallback(async () => {
     if (!deletingTransfer) return
 
-    try {
-      await confirmDelete(deletingTransfer)
-    } finally {
-      setIsDeleteDialogOpen(false)
-      setDeletingTransfer(null)
-    }
+    await confirmDelete(deletingTransfer)
+    setIsDeleteDialogOpen(false)
+    setDeletingTransfer(null)
   }, [confirmDelete, deletingTransfer])
 
   const handleGenerateHandoverSheet = React.useCallback(

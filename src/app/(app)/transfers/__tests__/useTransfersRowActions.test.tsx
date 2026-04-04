@@ -181,6 +181,23 @@ describe("useTransfersRowActions", () => {
     expect(result.current.isDeleteDialogOpen).toBe(false)
   })
 
+  it("keeps delete dialog state when confirmDelete fails", async () => {
+    confirmDelete.mockRejectedValueOnce(new Error("delete failed"))
+    const { result } = renderRowActionsHook()
+
+    act(() => {
+      result.current.handleOpenDeleteDialog(item)
+    })
+
+    await act(async () => {
+      await result.current.handleConfirmDelete().catch(() => undefined)
+    })
+
+    expect(confirmDelete).toHaveBeenCalledWith(item)
+    expect(result.current.deletingTransfer).toEqual(item)
+    expect(result.current.isDeleteDialogOpen).toBe(true)
+  })
+
   it("toasts an error when generating a handover sheet without equipment", () => {
     mapToTransferRequest.mockReturnValueOnce(makeTransferRequest({ thiet_bi: null }))
 

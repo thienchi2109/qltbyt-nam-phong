@@ -20,7 +20,7 @@ interface UseTransferActionsReturn {
   completeTransfer: (item: TransferListItem) => void
 
   // CRUD actions
-  confirmDelete: (item: TransferListItem) => void
+  confirmDelete: (item: TransferListItem) => Promise<void>
 
   // Permission checks
   canEditTransfer: (item: TransferListItem) => boolean
@@ -339,8 +339,8 @@ export function useTransferActions(): UseTransferActionsReturn {
   )
 
   const confirmDelete = React.useCallback(
-    (item: TransferListItem) => {
-      deleteMutation.mutate(item)
+    async (item: TransferListItem) => {
+      await deleteMutation.mutateAsync(item)
     },
     [deleteMutation]
   )
