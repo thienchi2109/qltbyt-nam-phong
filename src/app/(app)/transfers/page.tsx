@@ -483,6 +483,7 @@ function TransfersPageContent({ user }: TransfersPageContentProps) {
         </AlertDialogContent>
       </AlertDialog>
 
+      <div className="space-y-6">
       {/* Page title - outside container, above KPI cards */}
       <div className="flex items-center justify-between gap-3">
         <h1 className="text-xl md:text-2xl font-semibold">Luân chuyển thiết bị</h1>
@@ -667,6 +668,7 @@ function TransfersPageContent({ user }: TransfersPageContentProps) {
           </CardFooter>
         )}
       </Card>
+      </div>
     </>
   )
 }

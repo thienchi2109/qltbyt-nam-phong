@@ -34,7 +34,7 @@ const EQUIPMENT_NAME_WIDTH_CLASS = "block max-w-[18rem]"
  */
 export function getStatusVariant(
   status: Equipment["tinh_trang_hien_tai"]
-): "default" | "secondary" | "destructive" | "outline" {
+): "default" | "secondary" | "destructive" | "outline" | "muted" {
   switch (status) {
     case "Hoạt động":
       return "default"
@@ -44,6 +44,7 @@ export function getStatusVariant(
     case "Chờ sửa chữa":
       return "destructive"
     case "Ngưng sử dụng":
+      return "muted"
     case "Chưa có nhu cầu sử dụng":
       return "outline"
     default:
