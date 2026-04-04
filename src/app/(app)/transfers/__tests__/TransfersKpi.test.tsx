@@ -1,7 +1,7 @@
 import * as React from "react"
 import "@testing-library/jest-dom"
 import { beforeEach, describe, expect, it, vi } from "vitest"
-import { render, screen } from "@testing-library/react"
+import { fireEvent, render, screen } from "@testing-library/react"
 
 const mockColumnCounts = {
   cho_duyet: 2,
@@ -30,6 +30,8 @@ const mocks = vi.hoisted(() => ({
   useServerPagination: vi.fn(),
   useIsMobile: vi.fn(),
   KpiStatusBar: vi.fn(),
+  OverdueTransfersAlert: vi.fn(),
+  TransferDetailDialog: vi.fn(),
 }))
 
 vi.mock("next-auth/react", () => ({
@@ -102,7 +104,7 @@ vi.mock("@/components/handover-preview-dialog", () => ({
 }))
 
 vi.mock("@/components/overdue-transfers-alert", () => ({
-  OverdueTransfersAlert: () => null,
+  OverdueTransfersAlert: (props: unknown) => mocks.OverdueTransfersAlert(props),
 }))
 
 vi.mock("@/components/shared/DataTablePagination", () => ({
@@ -110,7 +112,7 @@ vi.mock("@/components/shared/DataTablePagination", () => ({
 }))
 
 vi.mock("@/components/transfer-detail-dialog", () => ({
-  TransferDetailDialog: () => null,
+  TransferDetailDialog: (props: unknown) => mocks.TransferDetailDialog(props),
 }))
 
 vi.mock("@/components/transfers/TransferCard", () => ({
@@ -253,6 +255,40 @@ describe("Transfers KPI", () => {
 
     mocks.useIsMobile.mockReturnValue(false)
 
+    mocks.OverdueTransfersAlert.mockImplementation(
+      ({ onViewTransfer }: { onViewTransfer: (transfer: Record<string, unknown>) => void }) => (
+        <button
+          type="button"
+          data-testid="overdue-transfer-action"
+          onClick={() =>
+            onViewTransfer({
+              id: 88,
+              ma_yeu_cau: "LC-0088",
+              thiet_bi_id: 22,
+              loai_hinh: "noi_bo",
+              trang_thai: "cho_duyet",
+              nguoi_yeu_cau_id: 1,
+              ly_do_luan_chuyen: "Điều phối",
+              created_at: "2026-04-01T00:00:00.000Z",
+              updated_at: "2026-04-01T00:00:00.000Z",
+              created_by: 1,
+              updated_by: 1,
+              thiet_bi: null,
+            })
+          }
+        >
+          Open overdue transfer
+        </button>
+      ),
+    )
+
+    mocks.TransferDetailDialog.mockImplementation(
+      ({ open, transfer }: { open?: boolean; transfer?: { ma_yeu_cau?: string } | null }) =>
+        open ? (
+          <div data-testid="transfer-detail-dialog">{transfer?.ma_yeu_cau ?? "missing-transfer"}</div>
+        ) : null,
+    )
+
     mocks.KpiStatusBar.mockImplementation(
       ({ counts, loading, error }: { counts?: unknown; loading?: boolean; error?: boolean }) => (
         <div
@@ -337,5 +373,30 @@ describe("Transfers KPI", () => {
         error: true,
       }),
     )
+  })
+
+  it("renders tenant placeholder when facility selection is required", () => {
+    mocks.useTenantSelection.mockReturnValue({
+      selectedFacilityId: null,
+      setSelectedFacilityId: vi.fn(),
+      facilities: [],
+      showSelector: true,
+      shouldFetchData: false,
+    })
+
+    render(<TransfersPage />)
+
+    expect(screen.getByTestId("tenant-selector")).toBeInTheDocument()
+    expect(screen.getByTestId("tenant-placeholder")).toBeInTheDocument()
+    expect(screen.queryByTestId("transfers-table-view")).not.toBeInTheDocument()
+    expect(screen.queryByTestId("transfers-kanban-view")).not.toBeInTheDocument()
+  })
+
+  it("opens the detail dialog when the overdue alert requests transfer details", () => {
+    render(<TransfersPage />)
+
+    fireEvent.click(screen.getByTestId("overdue-transfer-action"))
+
+    expect(screen.getByTestId("transfer-detail-dialog")).toHaveTextContent("LC-0088")
   })
 })
