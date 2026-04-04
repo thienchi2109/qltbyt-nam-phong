@@ -9,6 +9,7 @@ import * as React from 'react'
 import "@testing-library/jest-dom"
 import { render, screen } from '@testing-library/react'
 import type { Table } from '@tanstack/react-table'
+import type { RepairStatus } from '@/components/kpi'
 import { RepairRequestsPageLayout } from '../_components/RepairRequestsPageLayout'
 import type { RepairRequestWithEquipment } from '../types'
 import type { RepairRequestColumnOptions } from '../_components/RepairRequestsColumns'
@@ -18,32 +19,31 @@ vi.mock('@/components/repair-request-alert', () => ({
   RepairRequestAlert: () => null,
 }))
 
-vi.mock('@/components/kpi', () => ({
-  KpiStatusBar: ({ configs, counts, loading }: {
-    configs: Array<{ key: string; label: string }>;
-    counts: Record<string, number> | undefined;
-    loading: boolean;
-  }) => {
-    const total = counts ? Object.values(counts).reduce((s, v) => s + (v || 0), 0) : 0
-    return (
-      <div data-testid="kpi-status-bar">
-        <div data-testid="kpi-total" data-value={total}>Tổng: {total}</div>
-        {configs.map((c: { key: string; label: string }) => (
-          <div key={c.key} data-testid={`kpi-${c.key}`} data-value={counts?.[c.key] ?? 0}>
-            {c.label}: {counts?.[c.key] ?? 0}
-          </div>
-        ))}
-        {loading && <div data-testid="kpi-loading">loading</div>}
-      </div>
-    )
-  },
-  REPAIR_STATUS_CONFIGS: [
-    { key: 'Chờ xử lý', label: 'Chờ xử lý', tone: 'warning' },
-    { key: 'Đã duyệt', label: 'Đã duyệt', tone: 'muted' },
-    { key: 'Hoàn thành', label: 'Hoàn thành', tone: 'success' },
-    { key: 'Không HT', label: 'Không HT', tone: 'danger' },
-  ],
-}))
+vi.mock('@/components/kpi', async () => {
+  const actual = await vi.importActual<typeof import('@/components/kpi')>('@/components/kpi')
+
+  return {
+    ...actual,
+    KpiStatusBar: ({ configs, counts, loading }: {
+      configs: Array<{ key: string; label: string }>;
+      counts: Record<string, number> | undefined;
+      loading: boolean;
+    }) => {
+      const total = counts ? Object.values(counts).reduce((s, v) => s + (v || 0), 0) : 0
+      return (
+        <div data-testid="kpi-status-bar">
+          <div data-testid="kpi-total" data-value={total}>Tổng: {total}</div>
+          {configs.map((c: { key: string; label: string }) => (
+            <div key={c.key} data-testid={`kpi-${c.key}`} data-value={counts?.[c.key] ?? 0}>
+              {c.label}: {counts?.[c.key] ?? 0}
+            </div>
+          ))}
+          {loading && <div data-testid="kpi-loading">loading</div>}
+        </div>
+      )
+    },
+  }
+})
 
 vi.mock('../_components/RepairRequestsCreateSheet', () => ({
   RepairRequestsCreateSheet: () => <div data-testid="create-sheet">create-sheet</div>,
@@ -81,7 +81,7 @@ vi.mock('@/components/shared/TenantSelector', () => ({
 const defaultProps = {
   selectedFacilityName: null,
   isRegionalLeader: false,
-  statusCounts: { 'Chờ xử lý': 3, 'Đã duyệt': 2, 'Hoàn thành': 5, 'Không HT': 0 } as Record<string, number> | undefined,
+  statusCounts: { 'Chờ xử lý': 3, 'Đã duyệt': 2, 'Hoàn thành': 5, 'Không HT': 0 } as Record<RepairStatus, number> | undefined,
   statusCountsLoading: false,
   requests: [],
   searchTerm: '',

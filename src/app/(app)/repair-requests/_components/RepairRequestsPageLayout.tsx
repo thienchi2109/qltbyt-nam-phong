@@ -12,6 +12,7 @@ import {
 import { Building2, PlusCircle } from "lucide-react"
 import { parseISO } from "date-fns"
 import { KpiStatusBar, REPAIR_STATUS_CONFIGS } from "@/components/kpi"
+import type { RepairStatus } from "@/components/kpi"
 import { RepairRequestAlert } from "@/components/repair-request-alert"
 import { TenantSelector } from "@/components/shared/TenantSelector"
 import { DataTablePagination } from "@/components/shared/DataTablePagination"
@@ -34,7 +35,7 @@ interface RepairRequestsPageLayoutProps {
   isRegionalLeader: boolean
 
   // Summary
-  statusCounts: Record<string, number> | undefined
+  statusCounts: Record<RepairStatus, number> | undefined
   statusCountsLoading: boolean
 
   // Requests data

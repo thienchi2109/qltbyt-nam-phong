@@ -1,3 +1,4 @@
+import * as React from "react"
 import { CheckCircle, FileEdit, XCircle } from "lucide-react"
 import type { StatusConfig } from "../types"
 

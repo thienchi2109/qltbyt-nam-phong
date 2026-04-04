@@ -1,3 +1,4 @@
+import * as React from "react"
 import { CheckCheck, CheckCircle, Clock, XCircle } from "lucide-react"
 import type { StatusConfig } from "../types"
 

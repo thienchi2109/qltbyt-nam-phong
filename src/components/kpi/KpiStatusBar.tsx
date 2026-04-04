@@ -32,7 +32,7 @@ export function KpiStatusBar<TStatus extends string>({
   showTotal = true,
   totalLabel = "Tổng",
   totalOverride,
-}: KpiStatusBarProps<TStatus>) {
+}: Readonly<KpiStatusBarProps<TStatus>>): React.JSX.Element {
   const total = React.useMemo(() => {
     if (totalOverride !== undefined) return totalOverride
     if (!counts) return 0

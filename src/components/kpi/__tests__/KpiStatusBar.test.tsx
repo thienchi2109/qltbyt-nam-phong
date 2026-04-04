@@ -1,8 +1,8 @@
 import * as React from "react"
 import { render, screen } from "@testing-library/react"
 import { describe, it, expect, vi } from "vitest"
-import { KpiStatusBar } from "../KpiStatusBar"
-import type { StatusConfig } from "../types"
+import { KpiStatusBar } from "@/components/kpi/KpiStatusBar"
+import type { StatusConfig } from "@/components/kpi/types"
 
 // Mock StatCard to inspect props without rendering full UI
 vi.mock("@/components/ui/stat-card", () => ({
