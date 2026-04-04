@@ -199,4 +199,100 @@ describe("useMaintenancePlanCounts", () => {
     expect(query?.options.staleTime).toBe(30_000)
     expect(query?.options.gcTime).toBe(10 * 60 * 1000)
   })
+
+  it("surfaces RPC failures without crashing", async () => {
+    mocks.callRpc.mockRejectedValueOnce(new Error("rpc fail"))
+
+    const queryClient = new QueryClient({
+      defaultOptions: {
+        queries: {
+          retry: false,
+        },
+      },
+    })
+
+    const { result } = renderHook(() => useMaintenancePlanCounts(), {
+      wrapper: createWrapper(queryClient),
+    })
+
+    await waitFor(() => expect(result.current.isError).toBe(true))
+
+    expect(result.current.isLoading).toBe(false)
+    expect(result.current.counts).toBeUndefined()
+  })
+
+  it("keeps facility-scoped cache entries isolated", async () => {
+    mocks.callRpc
+      .mockResolvedValueOnce({
+        "Bản nháp": 1,
+        "Đã duyệt": 2,
+        "Không duyệt": 3,
+      })
+      .mockResolvedValueOnce({
+        "Bản nháp": 4,
+        "Đã duyệt": 5,
+        "Không duyệt": 6,
+      })
+
+    const queryClient = new QueryClient({
+      defaultOptions: {
+        queries: {
+          retry: false,
+        },
+      },
+    })
+
+    const wrapper = createWrapper(queryClient)
+
+    const facilityOne = renderHook(() => useMaintenancePlanCounts({ facilityId: 1 }), {
+      wrapper,
+    })
+
+    await waitFor(() =>
+      expect(facilityOne.result.current.counts).toEqual({
+        "Bản nháp": 1,
+        "Đã duyệt": 2,
+        "Không duyệt": 3,
+      })
+    )
+
+    const facilityTwo = renderHook(() => useMaintenancePlanCounts({ facilityId: 2 }), {
+      wrapper,
+    })
+
+    await waitFor(() =>
+      expect(facilityTwo.result.current.counts).toEqual({
+        "Bản nháp": 4,
+        "Đã duyệt": 5,
+        "Không duyệt": 6,
+      })
+    )
+
+    expect(mocks.callRpc).toHaveBeenNthCalledWith(1, {
+      fn: "maintenance_plan_status_counts",
+      args: { p_don_vi: 1 },
+    })
+    expect(mocks.callRpc).toHaveBeenNthCalledWith(2, {
+      fn: "maintenance_plan_status_counts",
+      args: { p_don_vi: 2 },
+    })
+
+    const facilityOneQuery = queryClient.getQueryCache().find({
+      queryKey: maintenanceKeys.planStatusCounts({ facilityId: 1, search: undefined }),
+    })
+    const facilityTwoQuery = queryClient.getQueryCache().find({
+      queryKey: maintenanceKeys.planStatusCounts({ facilityId: 2, search: undefined }),
+    })
+
+    expect(facilityOneQuery?.state.data).toEqual({
+      "Bản nháp": 1,
+      "Đã duyệt": 2,
+      "Không duyệt": 3,
+    })
+    expect(facilityTwoQuery?.state.data).toEqual({
+      "Bản nháp": 4,
+      "Đã duyệt": 5,
+      "Không duyệt": 6,
+    })
+  })
 })

@@ -5,13 +5,21 @@ import { maintenanceKeys } from "@/hooks/use-cached-maintenance"
 
 export type MaintenancePlanStatusCounts = Record<MaintenanceStatus, number>
 
-interface UseMaintenancePlanCountsOptions {
+export interface UseMaintenancePlanCountsOptions {
   facilityId?: number | null
   search?: string
   enabled?: boolean
 }
 
-export function useMaintenancePlanCounts(options: UseMaintenancePlanCountsOptions = {}) {
+export interface UseMaintenancePlanCountsResult {
+  counts?: MaintenancePlanStatusCounts
+  isLoading: boolean
+  isError: boolean
+}
+
+export function useMaintenancePlanCounts(
+  options: UseMaintenancePlanCountsOptions = {},
+): UseMaintenancePlanCountsResult {
   const { facilityId, search, enabled = true } = options
 
   const { data, isLoading, isError } = useQuery<MaintenancePlanStatusCounts | null>({

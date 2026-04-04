@@ -124,8 +124,7 @@ BEGIN
         kh.don_vi = p_don_vi
       ELSE
         -- No specific facility: show all facilities user can access
-        -- Global users see all, regional leaders see their region
-        v_role = 'global' OR kh.don_vi = ANY(v_allowed_don_vi)
+        kh.don_vi = ANY(v_allowed_don_vi)
     END
   );
 
@@ -139,7 +138,7 @@ GRANT EXECUTE ON FUNCTION public.maintenance_plan_status_counts(BIGINT, TEXT) TO
 REVOKE EXECUTE ON FUNCTION public.maintenance_plan_status_counts(BIGINT, TEXT) FROM PUBLIC;
 
 COMMENT ON FUNCTION public.maintenance_plan_status_counts(BIGINT, TEXT) IS
-'Returns status distribution counts for maintenance plans, scoped by tenant security.
+$$Returns status distribution counts for maintenance plans, scoped by tenant security.
 
 PARAMETERS:
 - p_don_vi: Facility filter (NULL = all accessible facilities)
@@ -155,6 +154,6 @@ SECURITY:
 - ILIKE patterns sanitized via _sanitize_ilike_pattern()
 
 PATTERN: Matches maintenance_plan_list tenant scoping (migration 20251013093831)
-ISSUE: #214 — KPI Status Cards Batch 3';
+ISSUE: #214 — KPI Status Cards Batch 3$$;
 
 COMMIT;
