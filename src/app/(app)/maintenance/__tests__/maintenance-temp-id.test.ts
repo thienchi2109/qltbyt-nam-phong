@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { getNextMaintenanceTempTaskId } from "../_components/MaintenanceContext"
+import { getNextMaintenanceTempTaskId } from "../_components/MaintenanceContextHelpers"
 
 describe("getNextMaintenanceTempTaskId", () => {
   it("returns -2 when there are no temporary IDs", () => {
