@@ -372,9 +372,20 @@ gitnexus status
 gitnexus analyze
 ```
 
+If the repo already has embeddings, preserve them on refreshes:
+
+```bash
+gitnexus analyze --embeddings
+```
+
+If the repo is already up to date and you are enabling embeddings for the first time, run `gitnexus analyze --force --embeddings`.
+
 ## Important Notes
 
 - If multiple repos are indexed, pass the repo name explicitly in MCP/CLI when needed.
 - GitNexus indexes TypeScript/JavaScript symbols well but **does not index SQL function names**; use grep for SQL RPC functions.
 - `cypher` queries are **read-only**; do not use write operations.
+- Check `.gitnexus/meta.json` after analyze. `stats.embeddings > 0` means embeddings are present.
+- Running `gitnexus analyze` without `--embeddings` will drop existing embeddings.
+
 <!-- gitnexus:end -->
