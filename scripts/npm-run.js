@@ -49,15 +49,32 @@ const isWindows = process.platform === 'win32';
 const executable = isWindows ? `${command}.cmd` : command;
 
 // Spawn the process with inherited stdio for real-time output
-const child = spawn(executable, commandArgs, {
-  cwd: process.cwd(),
-  stdio: 'inherit',
-  shell: isWindows,
-  env: {
-    ...process.env,
-    FORCE_COLOR: '1', // Preserve colors in output
-  },
-});
+let child;
+if (isWindows) {
+  // DEP0190: Passing args to a child process with shell option true can lead to security vulnerabilities
+  // We format as a single string to avoid the deprecation warning
+  const argString = commandArgs.map(a => a.includes(' ') ? `"${a.replace(/"/g, '\\"')}"` : a).join(' ');
+  const fullCommand = argString ? `${executable} ${argString}` : executable;
+  child = spawn(fullCommand, [], {
+    cwd: process.cwd(),
+    stdio: 'inherit',
+    shell: true,
+    env: {
+      ...process.env,
+      FORCE_COLOR: '1', // Preserve colors in output
+    },
+  });
+} else {
+  child = spawn(executable, commandArgs, {
+    cwd: process.cwd(),
+    stdio: 'inherit',
+    shell: false,
+    env: {
+      ...process.env,
+      FORCE_COLOR: '1', // Preserve colors in output
+    },
+  });
+}
 
 child.on('error', (err) => {
   console.error(`Failed to start ${command}:`, err.message);
