@@ -121,7 +121,7 @@ export function RepairRequestsPageLayout({
       <RepairRequestAlert requests={requests} />
 
       <div className="space-y-6">
-        {/* Header + Create Button */}
+        {/* Header */}
         <div className="flex items-center justify-between gap-3">
           <div>
             <h1 className="text-xl md:text-2xl font-semibold">Yêu cầu sửa chữa</h1>
@@ -129,13 +129,6 @@ export function RepairRequestsPageLayout({
               <p className="text-sm text-muted-foreground">{selectedFacilityName}</p>
             ) : null}
           </div>
-          {!isRegionalLeader ? (
-            <div className="hidden md:flex items-center gap-2">
-              <Button onClick={() => openCreateSheet()} className="touch-target">
-                <PlusCircle className="mr-2 h-4 w-4" /> Tạo yêu cầu
-              </Button>
-            </div>
-          ) : null}
         </div>
 
         {/* Summary */}
@@ -163,18 +156,27 @@ export function RepairRequestsPageLayout({
         <div className="grid grid-cols-1 gap-4">
           <div className="w-full">
             <Card className="overflow-hidden">
-              <CardHeader>
-                <CardTitle className="heading-responsive-h2">Tổng hợp các yêu cầu sửa chữa thiết bị</CardTitle>
-                <CardDescription className="body-responsive-sm">
-                  Tất cả các yêu cầu sửa chữa đã được ghi nhận.
-                </CardDescription>
+              <CardHeader className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                <div>
+                  <CardTitle className="heading-responsive-h2">Tổng hợp các yêu cầu sửa chữa thiết bị</CardTitle>
+                  <CardDescription className="body-responsive-sm">
+                    Tất cả các yêu cầu sửa chữa đã được ghi nhận.
+                  </CardDescription>
+                </div>
 
-                {/* Tenant selector from shared context */}
-                {showFacilityFilter ? (
-                  <div className="mt-4">
+                <div className="flex items-center gap-2">
+                  {/* Tenant selector from shared context */}
+                  {showFacilityFilter ? (
                     <TenantSelector />
-                  </div>
-                ) : null}
+                  ) : null}
+
+                  {/* Create button — inside container */}
+                  {!isRegionalLeader ? (
+                    <Button onClick={() => openCreateSheet()} className="hidden md:flex touch-target">
+                      <PlusCircle className="mr-2 h-4 w-4" /> Tạo yêu cầu
+                    </Button>
+                  ) : null}
+                </div>
               </CardHeader>
               <CardContent className="p-3 md:p-6 gap-3 md:gap-4">
                 <RepairRequestsToolbar

@@ -265,13 +265,18 @@ describe("Transfers KPI", () => {
     )
   })
 
-  it("renders KpiStatusBar above Card", () => {
+  it("renders page title above KpiStatusBar and card content", () => {
     render(<TransfersPage />)
 
+    const pageTitle = screen.getByText("Luân chuyển thiết bị")
     const kpiBar = screen.getByTestId("transfers-kpi-bar")
-    const cardTitle = screen.getByText("Luân chuyển thiết bị")
+    const cardTitle = screen.getByText("Theo dõi và xử lý yêu cầu luân chuyển theo từng loại hình")
 
+    expect(pageTitle).toBeInTheDocument()
     expect(kpiBar).toBeInTheDocument()
+    expect(
+      Boolean(pageTitle.compareDocumentPosition(kpiBar) & Node.DOCUMENT_POSITION_FOLLOWING),
+    ).toBe(true)
     expect(
       Boolean(kpiBar.compareDocumentPosition(cardTitle) & Node.DOCUMENT_POSITION_FOLLOWING),
     ).toBe(true)

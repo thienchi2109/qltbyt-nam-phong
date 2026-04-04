@@ -84,13 +84,16 @@ export function MaintenancePageDesktopContent({
   const editingTaskId = ctx.taskEditing.editingTaskId
 
   return (
-    <>
+    <div className="space-y-6">
+      <div className="flex items-center justify-between gap-3">
+        <h1 className="text-xl font-semibold md:text-2xl">Kế hoạch bảo trì</h1>
+      </div>
+
       <KpiStatusBar
         configs={MAINTENANCE_STATUS_CONFIGS}
         counts={statusCounts}
         loading={isCountsLoading}
         error={isCountsError}
-        className="mb-4"
       />
       <Tabs value={ctx.activeTab} onValueChange={ctx.setActiveTab}>
         <div className="flex justify-between items-center">
@@ -211,6 +214,6 @@ export function MaintenancePageDesktopContent({
           </Card>
         </TabsContent>
       </Tabs>
-    </>
+    </div>
   )
 }
