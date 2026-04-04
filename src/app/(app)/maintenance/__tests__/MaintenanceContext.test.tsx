@@ -201,11 +201,14 @@ function createWrapper(
 
 describe("MaintenanceContext", () => {
   beforeEach(() => {
+    vi.clearAllMocks()
+    mocks.invalidateQueries.mockReset()
+    mocks.invalidateQueries.mockResolvedValue(undefined)
+    mocks.getQueriesData.mockReset()
+    mocks.getQueriesData.mockReturnValue([])
     mocks.setHasChangesState(true)
     mocks.setDraftTasksState([createTask(101), createTask(202), createTask(303)])
     mocks.setTasksState([createTask(101), createTask(202), createTask(303)])
-    mocks.getQueriesData.mockReturnValue([])
-    vi.clearAllMocks()
   })
 
   it("applies bulk unit assignment by selected task IDs", () => {
