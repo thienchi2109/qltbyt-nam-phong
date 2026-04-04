@@ -201,11 +201,14 @@ function createWrapper(
 
 describe("MaintenanceContext", () => {
   beforeEach(() => {
+    vi.clearAllMocks()
+    mocks.invalidateQueries.mockReset()
+    mocks.invalidateQueries.mockResolvedValue(undefined)
+    mocks.getQueriesData.mockReset()
+    mocks.getQueriesData.mockReturnValue([])
     mocks.setHasChangesState(true)
     mocks.setDraftTasksState([createTask(101), createTask(202), createTask(303)])
     mocks.setTasksState([createTask(101), createTask(202), createTask(303)])
-    mocks.getQueriesData.mockReturnValue([])
-    vi.clearAllMocks()
   })
 
   it("applies bulk unit assignment by selected task IDs", () => {
@@ -271,6 +274,9 @@ describe("MaintenanceContext", () => {
     expect(mocks.invalidateQueries).toHaveBeenCalledWith({
       queryKey: maintenanceKeys.plans(),
     })
+    expect(mocks.invalidateQueries).toHaveBeenCalledWith({
+      queryKey: maintenanceKeys.planStatusCounts(),
+    })
   })
 
   it("re-syncs selected plan from refreshed plan cache on mutation success", async () => {
@@ -305,6 +311,50 @@ describe("MaintenanceContext", () => {
 
     await waitFor(() => {
       expect(result.current.selectedPlan?.ten_ke_hoach).toBe("Kế hoạch đã cập nhật")
+      expect(result.current.selectedPlan?.trang_thai).toBe("Đã duyệt")
+    })
+  })
+
+  it("re-syncs selected plan even when counts invalidation fails", async () => {
+    mocks.invalidateQueries.mockImplementation(({ queryKey }: { queryKey: readonly unknown[] }) => {
+      if (JSON.stringify(queryKey) === JSON.stringify(maintenanceKeys.planStatusCounts())) {
+        return Promise.reject(new Error("counts refetch failed"))
+      }
+
+      return Promise.resolve()
+    })
+
+    const wrapper = createWrapper({}, vi.fn())
+    const { result } = renderHook(() => useMaintenanceContext(), { wrapper })
+
+    const stalePlan = createPlan()
+    const refreshedPlan = createPlan({
+      ten_ke_hoach: "Kế hoạch đồng bộ lại",
+      trang_thai: "Đã duyệt",
+    })
+
+    mocks.getQueriesData.mockReturnValue([
+      [
+        ["maintenance", "plans", { filters: { page: 1 } }],
+        {
+          data: [refreshedPlan],
+          total: 1,
+          page: 1,
+          pageSize: 50,
+        },
+      ],
+    ])
+
+    act(() => {
+      result.current.setSelectedPlan(stalePlan)
+    })
+
+    act(() => {
+      result.current.onPlanMutationSuccess()
+    })
+
+    await waitFor(() => {
+      expect(result.current.selectedPlan?.ten_ke_hoach).toBe("Kế hoạch đồng bộ lại")
       expect(result.current.selectedPlan?.trang_thai).toBe("Đã duyệt")
     })
   })

@@ -15,6 +15,7 @@ import { useIsMobile } from "@/hooks/use-mobile"
 import { callRpc } from "@/lib/rpc-client"
 import { isGlobalRole, isRegionalLeaderRole } from "@/lib/rbac"
 import { useMaintenancePlans } from "@/hooks/use-cached-maintenance"
+import { useMaintenancePlanCounts } from "@/hooks/useMaintenancePlanCounts"
 import type { FacilityOption } from "@/types/tenant"
 import { useFeatureFlag } from "@/lib/feature-flags"
 import { useSearchDebounce } from "@/hooks/use-debounce"
@@ -59,6 +60,11 @@ export function MaintenancePageClient() {
     page: currentPage,
     pageSize,
   })
+  const { counts: statusCounts, isLoading: isCountsLoading, isError: isCountsError } =
+    useMaintenancePlanCounts({
+      facilityId: selectedFacilityId,
+      search: debouncedPlanSearch || undefined,
+    })
 
   const plans = React.useMemo(() => paginatedResponse?.data ?? [], [paginatedResponse?.data])
   const totalCount = paginatedResponse?.total ?? 0
@@ -273,6 +279,9 @@ export function MaintenancePageClient() {
       <>
         <MaintenanceDialogs />
         <MobileMaintenanceLayout
+          statusCounts={statusCounts}
+          isCountsLoading={isCountsLoading}
+          isCountsError={isCountsError}
           plans={plans}
           isLoadingPlans={isLoadingPlans}
           planSearchTerm={planSearchTerm}
@@ -304,6 +313,9 @@ export function MaintenancePageClient() {
     <>
       <MaintenanceDialogs />
       <MaintenancePageDesktopContent
+        statusCounts={statusCounts}
+        isCountsLoading={isCountsLoading}
+        isCountsError={isCountsError}
         showFacilityFilter={showFacilityFilter}
         facilities={facilities}
         selectedFacilityId={selectedFacilityId}

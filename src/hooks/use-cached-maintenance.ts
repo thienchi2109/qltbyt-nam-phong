@@ -30,6 +30,10 @@ export const maintenanceKeys = {
   schedule: (filters: MaintenanceKeyFilters) => [...maintenanceKeys.schedules(), { filters }] as const,
   plans: () => [...maintenanceKeys.all, 'plans'] as const,
   plan: (filters: MaintenanceKeyFilters) => [...maintenanceKeys.plans(), { filters }] as const,
+  planStatusCounts: (filters?: { facilityId?: number | null; search?: string }) =>
+    filters
+      ? [...maintenanceKeys.all, 'plan-status-counts', { filters }] as const
+      : [...maintenanceKeys.all, 'plan-status-counts'] as const,
 }
 
 export function useMaintenancePlans(
@@ -142,6 +146,7 @@ export function useCreateMaintenancePlan() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: maintenanceKeys.plans() })
+      queryClient.invalidateQueries({ queryKey: maintenanceKeys.planStatusCounts() })
       queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] })
 
       toast({
@@ -178,6 +183,7 @@ export function useUpdateMaintenancePlan() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: maintenanceKeys.plans() })
+      queryClient.invalidateQueries({ queryKey: maintenanceKeys.planStatusCounts() })
       queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] })
 
       toast({
@@ -211,6 +217,7 @@ export function useApproveMaintenancePlan() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: maintenanceKeys.plans() })
+      queryClient.invalidateQueries({ queryKey: maintenanceKeys.planStatusCounts() })
       queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] })
 
       toast({
@@ -245,6 +252,7 @@ export function useRejectMaintenancePlan() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: maintenanceKeys.plans() })
+      queryClient.invalidateQueries({ queryKey: maintenanceKeys.planStatusCounts() })
       queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] })
 
       toast({
@@ -275,6 +283,7 @@ export function useDeleteMaintenancePlan() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: maintenanceKeys.plans() })
+      queryClient.invalidateQueries({ queryKey: maintenanceKeys.planStatusCounts() })
       queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] })
 
       toast({

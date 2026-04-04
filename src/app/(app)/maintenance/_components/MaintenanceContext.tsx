@@ -420,6 +420,8 @@ export function MaintenanceProvider({
   )
 
   const onPlanMutationSuccess = React.useCallback(() => {
+    void queryClient.invalidateQueries({ queryKey: maintenanceKeys.planStatusCounts() })
+
     void queryClient
       .invalidateQueries({ queryKey: maintenanceKeys.plans() })
       .then(() => {
