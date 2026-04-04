@@ -5,8 +5,6 @@ import type { RowSelectionState } from "@tanstack/react-table"
 import { useQueryClient } from "@tanstack/react-query"
 import { useSession } from "next-auth/react"
 import { useToast } from "@/hooks/use-toast"
-import { callRpc } from "@/lib/rpc-client"
-import { getUnknownErrorMessage } from "@/lib/error-utils"
 import { isEquipmentManagerRole, isRegionalLeaderRole } from "@/lib/rbac"
 import {
   maintenanceKeys,
@@ -17,16 +15,14 @@ import type { Equipment, MaintenanceTask } from "@/lib/data"
 import { useMaintenanceOperations } from "../_hooks/use-maintenance-operations"
 import { useMaintenancePrint } from "../_hooks/use-maintenance-print"
 import { useMaintenanceDrafts } from "../_hooks/use-maintenance-drafts"
+import { useMaintenanceCompletion } from "../_hooks/use-maintenance-completion"
 import { useTaskEditing } from "./task-editing"
 import {
-  buildCompletionStatus,
   findPlanInCachedResponses,
   getNextMaintenanceTempTaskId,
-  getSelectedTaskIds,
 } from "./MaintenanceContextHelpers"
 import type {
   AuthUser,
-  CompletionStatusEntry,
   DialogState,
   MaintenanceContextValue,
 } from "./maintenance-context.types"
@@ -67,14 +63,6 @@ export function MaintenanceProvider({
     isConfirmingCancel: false,
     isConfirmingBulkDelete: false,
   })
-
-  const [completionStatus, setCompletionStatus] = React.useState<Record<string, CompletionStatusEntry>>({})
-  const [isCompletingTask, setIsCompletingTask] = React.useState<string | null>(null)
-  const resetCompletionStatus = React.useCallback(() => {
-    setCompletionStatus((previousStatus) =>
-      Object.keys(previousStatus).length === 0 ? previousStatus : {}
-    )
-  }, [])
 
   const isPlanApproved = selectedPlan?.trang_thai === "Đã duyệt"
 
@@ -224,20 +212,37 @@ export function MaintenanceProvider({
 
   const fetchPlanDetails = React.useCallback(
     async (plan: MaintenancePlan) => {
-      resetCompletionStatus()
       await fetchTasks(plan)
     },
-    [fetchTasks, resetCompletionStatus]
+    [fetchTasks]
   )
 
-  React.useEffect(() => {
-    if (!selectedPlan || selectedPlan.trang_thai !== "Đã duyệt") {
-      resetCompletionStatus()
-      return
-    }
-
-    setCompletionStatus(buildCompletionStatus(tasks))
-  }, [selectedPlan, tasks, resetCompletionStatus])
+  const completion = useMaintenanceCompletion({
+    selectedPlan,
+    user,
+    canCompleteTask,
+    tasks,
+    fetchPlanDetails,
+    draftTasks,
+    setDraftTasks,
+    taskRowSelection,
+    setTaskRowSelection,
+    taskToDelete,
+    setTaskToDelete,
+    setIsBulkScheduleOpen,
+    setIsConfirmingBulkDelete,
+    toast,
+  })
+  const {
+    completionStatus,
+    isCompletingTask,
+    selectedTaskRowsCount,
+    handleMarkAsCompleted,
+    handleBulkScheduleApply,
+    handleBulkAssignUnit,
+    confirmDeleteSingleTask,
+    confirmDeleteSelectedTasks,
+  } = completion
 
   const handleCancelAllChanges = React.useCallback(() => {
     const nextPlan = pendingPlanSelection
@@ -254,63 +259,6 @@ export function MaintenanceProvider({
   const handleSaveAllChanges = React.useCallback(async () => {
     await saveAllChanges()
   }, [saveAllChanges])
-
-  const handleMarkAsCompleted = React.useCallback(
-    async (task: MaintenanceTask, month: number) => {
-      if (!selectedPlan || !user || !canCompleteTask) {
-        toast({
-          variant: "destructive",
-          title: "Không có quyền",
-          description: "Bạn không có quyền thực hiện hành động này.",
-        })
-        return
-      }
-
-      const completionKey = `${task.id}-${month}`
-      if (completionStatus[completionKey] || isCompletingTask) {
-        return
-      }
-
-      setIsCompletingTask(completionKey)
-
-      try {
-        await callRpc<void>({
-          fn: "maintenance_task_complete",
-          args: { p_task_id: task.id, p_month: month },
-        })
-
-        toast({
-          title: "Ghi nhận thành công",
-          description: `Đã ghi nhận hoàn thành ${selectedPlan.loai_cong_viec} cho thiết bị tháng ${month}.`,
-        })
-
-        setCompletionStatus((prev) => ({
-          ...prev,
-          [completionKey]: { historyId: 0 },
-        }))
-
-        await fetchPlanDetails(selectedPlan)
-      } catch (error) {
-        const message = getUnknownErrorMessage(error, "Lỗi không xác định")
-        toast({
-          variant: "destructive",
-          title: "Lỗi",
-          description: `Không thể ghi nhận hoàn thành. ${message}`,
-        })
-      } finally {
-        setIsCompletingTask(null)
-      }
-    },
-    [
-      selectedPlan,
-      user,
-      canCompleteTask,
-      completionStatus,
-      isCompletingTask,
-      toast,
-      fetchPlanDetails,
-    ]
-  )
 
   const handleSelectPlan = React.useCallback(
     (plan: MaintenancePlan) => {
@@ -400,71 +348,6 @@ export function MaintenanceProvider({
         // Keep existing selected plan when refresh fails.
       })
   }, [queryClient])
-
-  const selectedTaskIds = React.useMemo(() => getSelectedTaskIds(taskRowSelection), [taskRowSelection])
-  const selectedTaskIdSet = React.useMemo(() => new Set(selectedTaskIds), [selectedTaskIds])
-  const selectedTaskRowsCount = selectedTaskIds.length
-
-  const handleBulkScheduleApply = React.useCallback(
-    (months: Record<string, boolean>) => {
-      if (selectedTaskIds.length === 0) {
-        return
-      }
-
-      setDraftTasks((currentDrafts) =>
-        currentDrafts.map((task) =>
-          selectedTaskIdSet.has(task.id)
-            ? { ...task, ...months }
-            : task
-        )
-      )
-
-      setIsBulkScheduleOpen(false)
-      toast({ title: "Đã áp dụng lịch", description: "Lịch trình đã được cập nhật vào bản nháp." })
-    },
-    [selectedTaskIds.length, selectedTaskIdSet, setDraftTasks, setIsBulkScheduleOpen, toast]
-  )
-
-  const handleBulkAssignUnit = React.useCallback(
-    (unit: string | null) => {
-      if (selectedTaskIds.length === 0) {
-        return
-      }
-
-      setDraftTasks((currentDrafts) =>
-        currentDrafts.map((task) =>
-          selectedTaskIdSet.has(task.id)
-            ? { ...task, don_vi_thuc_hien: unit }
-            : task
-        )
-      )
-
-      toast({ title: "Đã gán đơn vị", description: "Đã cập nhật đơn vị thực hiện vào bản nháp." })
-    },
-    [selectedTaskIds.length, selectedTaskIdSet, setDraftTasks, toast]
-  )
-
-  const confirmDeleteSingleTask = React.useCallback(() => {
-    const toDelete = taskToDelete
-    if (!toDelete) {
-      return
-    }
-
-    setDraftTasks((currentDrafts) => currentDrafts.filter((task) => task.id !== toDelete.id))
-    setTaskToDelete(null)
-    toast({ title: "Đã xóa khỏi bản nháp" })
-  }, [taskToDelete, setTaskToDelete, setDraftTasks, toast])
-
-  const confirmDeleteSelectedTasks = React.useCallback(() => {
-    if (selectedTaskIds.length === 0) {
-      return
-    }
-
-    setDraftTasks((currentDrafts) => currentDrafts.filter((task) => !selectedTaskIdSet.has(task.id)))
-    setTaskRowSelection({})
-    setIsConfirmingBulkDelete(false)
-    toast({ title: "Đã xóa khỏi bản nháp", description: `Đã xóa ${selectedTaskIds.length} công việc.` })
-  }, [selectedTaskIds.length, selectedTaskIdSet, setDraftTasks, setTaskRowSelection, setIsConfirmingBulkDelete, toast])
 
   const value: MaintenanceContextValue = React.useMemo(
     () => ({
