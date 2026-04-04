@@ -1,7 +1,10 @@
 "use client"
 
 import * as React from "react"
+import { KpiStatusBar } from "@/components/kpi"
+import { MAINTENANCE_STATUS_CONFIGS } from "@/components/kpi/configs/maintenance"
 import type { MaintenancePlan } from "@/hooks/use-cached-maintenance"
+import type { MaintenancePlanStatusCounts } from "@/hooks/useMaintenancePlanCounts"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
@@ -30,6 +33,9 @@ import { MaintenanceMobilePlanCards } from "./maintenance-mobile-plan-cards"
 import { MaintenanceMobileTasksPanel } from "./maintenance-mobile-tasks-panel"
 
 export interface MobileMaintenanceLayoutProps {
+  statusCounts?: MaintenancePlanStatusCounts
+  isCountsLoading?: boolean
+  isCountsError?: boolean
   plans: MaintenancePlan[]
   isLoadingPlans: boolean
   planSearchTerm: string
@@ -55,6 +61,9 @@ export interface MobileMaintenanceLayoutProps {
 }
 
 export function MobileMaintenanceLayout({
+  statusCounts,
+  isCountsLoading,
+  isCountsError,
   plans,
   isLoadingPlans,
   planSearchTerm,
@@ -185,6 +194,15 @@ export function MobileMaintenanceLayout({
               </div>
             )}
           </div>
+
+          <KpiStatusBar
+            configs={MAINTENANCE_STATUS_CONFIGS}
+            counts={statusCounts}
+            loading={isCountsLoading}
+            error={isCountsError}
+            showTotal={false}
+            className="gap-2"
+          />
 
           <div className="grid grid-cols-2 gap-2 rounded-full bg-muted/80 p-1">
             <Button

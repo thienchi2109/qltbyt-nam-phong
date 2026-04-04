@@ -75,6 +75,7 @@ const ALLOWED_FUNCTIONS = new Set<string>([
   'maintenance_stats_enhanced',
   'maintenance_stats_for_reports',
   'get_maintenance_report_data',
+  'maintenance_plan_status_counts',
   // AI Assistant (read-only)
   'ai_equipment_lookup',
   'ai_maintenance_plan_lookup',

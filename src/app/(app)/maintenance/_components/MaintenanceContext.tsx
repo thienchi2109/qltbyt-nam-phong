@@ -420,8 +420,10 @@ export function MaintenanceProvider({
   )
 
   const onPlanMutationSuccess = React.useCallback(() => {
-    void queryClient
-      .invalidateQueries({ queryKey: maintenanceKeys.plans() })
+    void Promise.all([
+      queryClient.invalidateQueries({ queryKey: maintenanceKeys.plans() }),
+      queryClient.invalidateQueries({ queryKey: maintenanceKeys.planStatusCounts() }),
+    ])
       .then(() => {
         setSelectedPlan((currentSelectedPlan) => {
           if (!currentSelectedPlan) {
