@@ -232,6 +232,7 @@ function TransfersPageContent({ user }: TransfersPageContentProps) {
   const {
     data: statusCounts,
     isLoading: isCountsLoading,
+    isError: isCountsError,
   } = useTransferCounts(countsFilters, {
     enabled: shouldFetchData,
   })
@@ -486,6 +487,7 @@ function TransfersPageContent({ user }: TransfersPageContentProps) {
         configs={TRANSFER_STATUS_CONFIGS}
         counts={statusCounts?.columnCounts}
         loading={isCountsLoading}
+        error={isCountsError}
       />
 
       <Card>

@@ -234,6 +234,7 @@ describe("Transfers KPI", () => {
         columnCounts: mockColumnCounts,
       },
       isLoading: false,
+      isError: false,
     })
 
     mocks.useTransferActions.mockReturnValue({
@@ -253,11 +254,12 @@ describe("Transfers KPI", () => {
     mocks.useIsMobile.mockReturnValue(false)
 
     mocks.KpiStatusBar.mockImplementation(
-      ({ counts, loading }: { counts?: unknown; loading?: boolean }) => (
+      ({ counts, loading, error }: { counts?: unknown; loading?: boolean; error?: boolean }) => (
         <div
           data-testid="transfers-kpi-bar"
           data-counts={JSON.stringify(counts ?? null)}
           data-loading={String(Boolean(loading))}
+          data-error={String(Boolean(error))}
         />
       ),
     )
@@ -304,6 +306,7 @@ describe("Transfers KPI", () => {
     mocks.useTransferCounts.mockReturnValue({
       data: undefined,
       isLoading: false,
+      isError: false,
     })
 
     render(<TransfersPage />)
@@ -311,6 +314,22 @@ describe("Transfers KPI", () => {
     expect(mocks.KpiStatusBar.mock.calls[0][0]).toEqual(
       expect.objectContaining({
         counts: undefined,
+      }),
+    )
+  })
+
+  it("passes error state when transfer counts query fails", () => {
+    mocks.useTransferCounts.mockReturnValue({
+      data: undefined,
+      isLoading: false,
+      isError: true,
+    })
+
+    render(<TransfersPage />)
+
+    expect(mocks.KpiStatusBar.mock.calls[0][0]).toEqual(
+      expect.objectContaining({
+        error: true,
       }),
     )
   })
