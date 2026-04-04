@@ -66,6 +66,7 @@ export function KpiStatusBar<TStatus extends string>({
           value={total}
           icon={<Layers className="h-5 w-5" />}
           tone="default"
+          loading={loading}
         />
       ) : null}
 

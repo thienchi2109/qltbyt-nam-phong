@@ -84,9 +84,10 @@ describe("KpiStatusBar", () => {
     expect(totalCard).toHaveAttribute("data-value", "42")
   })
 
-  it("passes loading=true to status cards", () => {
+  it("passes loading=true to total and status cards", () => {
     render(<KpiStatusBar configs={TEST_CONFIGS} counts={TEST_COUNTS} loading />)
 
+    expect(screen.getByTestId("stat-card-Tổng")).toHaveAttribute("data-loading", "true")
     // Status cards should be loading
     expect(screen.getByTestId("stat-card-Pending")).toHaveAttribute("data-loading", "true")
     expect(screen.getByTestId("stat-card-Approved")).toHaveAttribute("data-loading", "true")
