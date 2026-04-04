@@ -11,7 +11,8 @@ import {
 } from "@/components/ui/card"
 import { Building2, PlusCircle } from "lucide-react"
 import { parseISO } from "date-fns"
-import { SummaryBar, type SummaryItem } from "@/components/summary/summary-bar"
+import { KpiStatusBar, REPAIR_STATUS_CONFIGS } from "@/components/kpi"
+import type { RepairStatus } from "@/components/kpi"
 import { RepairRequestAlert } from "@/components/repair-request-alert"
 import { TenantSelector } from "@/components/shared/TenantSelector"
 import { DataTablePagination } from "@/components/shared/DataTablePagination"
@@ -34,7 +35,7 @@ interface RepairRequestsPageLayoutProps {
   isRegionalLeader: boolean
 
   // Summary
-  summaryItems: SummaryItem[]
+  statusCounts: Record<RepairStatus, number> | undefined
   statusCountsLoading: boolean
 
   // Requests data
@@ -86,7 +87,7 @@ interface RepairRequestsPageLayoutProps {
 export function RepairRequestsPageLayout({
   selectedFacilityName,
   isRegionalLeader,
-  summaryItems,
+  statusCounts,
   statusCountsLoading,
   requests,
   searchTerm,
@@ -138,7 +139,11 @@ export function RepairRequestsPageLayout({
         </div>
 
         {/* Summary */}
-        <SummaryBar items={summaryItems} loading={statusCountsLoading} />
+        <KpiStatusBar
+          configs={REPAIR_STATUS_CONFIGS}
+          counts={statusCounts}
+          loading={statusCountsLoading}
+        />
 
         {/* Create Sheet */}
         {!isRegionalLeader ? <RepairRequestsCreateSheet /> : null}

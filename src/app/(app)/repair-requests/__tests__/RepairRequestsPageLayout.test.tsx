@@ -6,26 +6,44 @@
  */
 import { describe, it, expect, vi } from 'vitest'
 import * as React from 'react'
+import "@testing-library/jest-dom"
 import { render, screen } from '@testing-library/react'
+import type { Table } from '@tanstack/react-table'
+import type { RepairStatus } from '@/components/kpi'
 import { RepairRequestsPageLayout } from '../_components/RepairRequestsPageLayout'
+import type { RepairRequestWithEquipment } from '../types'
+import type { RepairRequestColumnOptions } from '../_components/RepairRequestsColumns'
 
 // ── Mock child components ──────────────────────────────────────────────
 vi.mock('@/components/repair-request-alert', () => ({
   RepairRequestAlert: () => null,
 }))
 
-vi.mock('@/components/summary/summary-bar', () => ({
-  SummaryBar: ({ items, loading }: { items: Array<{ key: string; label: string; value: number }>; loading: boolean }) => (
-    <div data-testid="summary-bar">
-      {items.map((item) => (
-        <div key={item.key} data-testid={`kpi-${item.key}`} data-value={item.value}>
-          {item.label}: {item.value}
+vi.mock('@/components/kpi', async () => {
+  const actual = await vi.importActual<typeof import('@/components/kpi')>('@/components/kpi')
+
+  return {
+    ...actual,
+    KpiStatusBar: ({ configs, counts, loading }: {
+      configs: Array<{ key: string; label: string }>;
+      counts: Record<string, number> | undefined;
+      loading: boolean;
+    }) => {
+      const total = counts ? Object.values(counts).reduce((s, v) => s + (v || 0), 0) : 0
+      return (
+        <div data-testid="kpi-status-bar">
+          <div data-testid="kpi-total" data-value={total}>Tổng: {total}</div>
+          {configs.map((c: { key: string; label: string }) => (
+            <div key={c.key} data-testid={`kpi-${c.key}`} data-value={counts?.[c.key] ?? 0}>
+              {c.label}: {counts?.[c.key] ?? 0}
+            </div>
+          ))}
+          {loading && <div data-testid="kpi-loading">loading</div>}
         </div>
-      ))}
-      {loading ? <div data-testid="summary-loading">loading</div> : null}
-    </div>
-  ),
-}))
+      )
+    },
+  }
+})
 
 vi.mock('../_components/RepairRequestsCreateSheet', () => ({
   RepairRequestsCreateSheet: () => <div data-testid="create-sheet">create-sheet</div>,
@@ -63,9 +81,7 @@ vi.mock('@/components/shared/TenantSelector', () => ({
 const defaultProps = {
   selectedFacilityName: null,
   isRegionalLeader: false,
-  summaryItems: [
-    { key: 'total', label: 'Tổng', value: 10, tone: 'default' as const },
-  ],
+  statusCounts: { 'Chờ xử lý': 3, 'Đã duyệt': 2, 'Hoàn thành': 5, 'Không HT': 0 } as Record<RepairStatus, number> | undefined,
   statusCountsLoading: false,
   requests: [],
   searchTerm: '',
@@ -85,7 +101,7 @@ const defaultProps = {
     getRowModel: () => ({ rows: [] }),
     getState: () => ({ columnFilters: [] }),
     resetColumnFilters: vi.fn(),
-  } as any,
+  } as unknown as Table<RepairRequestWithEquipment>,
   tableKey: 'all_0',
   isMobile: false,
   shouldFetchData: true,
@@ -96,7 +112,7 @@ const defaultProps = {
     pagination: { pageIndex: 0, pageSize: 20 },
     setPagination: vi.fn(),
   },
-  columnOptions: {} as any,
+  columnOptions: {} as RepairRequestColumnOptions,
   setRequestToView: vi.fn(),
   openCreateSheet: vi.fn(),
 }
@@ -136,11 +152,9 @@ describe('RepairRequestsPageLayout', () => {
     expect(screen.getByTestId('pagination')).toBeInTheDocument()
   })
 
-  it('renders SummaryBar with provided items', () => {
-    const items = [
-      { key: 'total', label: 'Tổng', value: 42, tone: 'default' as const },
-    ]
-    render(<RepairRequestsPageLayout {...defaultProps} summaryItems={items} />)
+  it('renders KpiStatusBar with provided counts', () => {
+    const counts = { 'Chờ xử lý': 10, 'Đã duyệt': 5, 'Hoàn thành': 20, 'Không HT': 7 }
+    render(<RepairRequestsPageLayout {...defaultProps} statusCounts={counts} />)
     expect(screen.getByTestId('kpi-total')).toHaveAttribute('data-value', '42')
   })
 })

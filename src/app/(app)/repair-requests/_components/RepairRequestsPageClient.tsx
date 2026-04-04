@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import type { ColumnFiltersState, SortingState } from "@tanstack/react-table"
+import type { ColumnFiltersState, SortingState, VisibilityState, Updater } from "@tanstack/react-table"
 import {
   getCoreRowModel,
   getFacetedRowModel,
@@ -34,7 +34,7 @@ import type { FilterModalValue } from "./RepairRequestsFilterModal"
 import type { RepairRequestWithEquipment } from "../types"
 import { useRepairRequestsData } from "../_hooks/useRepairRequestsData"
 import { useRepairRequestsDeepLink } from "../_hooks/useRepairRequestsDeepLink"
-import { useRepairRequestsSummary } from "../_hooks/useRepairRequestsSummary"
+
 import { useRepairRequestShortcuts } from "../_hooks/useRepairRequestShortcuts"
 import { useRepairRequestsContext } from "../_hooks/useRepairRequestsContext"
 import { useRepairRequestUIHandlers } from "../_hooks/useRepairRequestUIHandlers"
@@ -211,14 +211,14 @@ function RepairRequestsPageClientInner() {
     pageCount,
     manualPagination: true,
     onSortingChange: setSorting,
-    onColumnFiltersChange: (updater) => {
-      const next = typeof updater === 'function' ? (updater as any)(columnFilters) : updater
+    onColumnFiltersChange: (updater: Updater<ColumnFiltersState>) => {
+      const next = typeof updater === 'function' ? updater(columnFilters) : updater
       setColumnFilters(next)
     },
     onGlobalFilterChange: (value: string) => setSearchTerm(value),
     onPaginationChange: repairPagination.setPagination,
-    onColumnVisibilityChange: (updater) => {
-      const next = typeof updater === 'function' ? (updater as any)(columnVisibility) : updater
+    onColumnVisibilityChange: (updater: Updater<VisibilityState>) => {
+      const next = typeof updater === 'function' ? updater(columnVisibility) : updater
       setColumnVisibilityState(next)
       setColumnVisibility(next)
     },
@@ -238,13 +238,7 @@ function RepairRequestsPageClientInner() {
     isRegionalLeader
   })
 
-  // KPI summary items
-  const { summaryItems } = useRepairRequestsSummary({
-    statusCounts,
-    uiFilters,
-    setUiFiltersState,
-    setUiFilters,
-  })
+
 
   // Toolbar handlers
   const handleClearFilters = React.useCallback(() => {
@@ -300,7 +294,7 @@ function RepairRequestsPageClientInner() {
         <RepairRequestsPageLayout
           selectedFacilityName={selectedFacilityName}
           isRegionalLeader={isRegionalLeader}
-          summaryItems={summaryItems}
+          statusCounts={statusCounts}
           statusCountsLoading={statusCountsLoading}
           requests={requests}
           searchTerm={searchTerm}
