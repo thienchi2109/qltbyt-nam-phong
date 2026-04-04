@@ -64,13 +64,13 @@ BEGIN
 
   v_allowed_don_vi := public.allowed_don_vi_for_session_safe();
 
-  IF v_allowed_don_vi IS NULL OR array_length(v_allowed_don_vi, 1) IS NULL THEN
+  IF NOT v_is_global AND (v_allowed_don_vi IS NULL OR array_length(v_allowed_don_vi, 1) IS NULL) THEN
     RETURN jsonb_build_object(
       'Bản nháp', 0, 'Đã duyệt', 0, 'Không duyệt', 0
     );
   END IF;
 
-  IF p_don_vi IS NOT NULL AND NOT (p_don_vi = ANY(v_allowed_don_vi)) THEN
+  IF NOT v_is_global AND p_don_vi IS NOT NULL AND NOT (p_don_vi = ANY(v_allowed_don_vi)) THEN
     RAISE EXCEPTION 'Access denied to facility %', p_don_vi
       USING ERRCODE = '42501',
             HINT = 'You do not have permission to access this facility';
@@ -163,7 +163,7 @@ BEGIN
 
   v_allowed_don_vi := public.allowed_don_vi_for_session_safe();
 
-  IF v_allowed_don_vi IS NULL OR array_length(v_allowed_don_vi, 1) IS NULL THEN
+  IF NOT v_is_global AND (v_allowed_don_vi IS NULL OR array_length(v_allowed_don_vi, 1) IS NULL) THEN
     RETURN jsonb_build_object(
       'data', '[]'::jsonb,
       'total', 0,
@@ -176,7 +176,7 @@ BEGIN
   v_page_size := LEAST(200, GREATEST(1, COALESCE(p_page_size, 50)));
   v_offset := (v_page - 1) * v_page_size;
 
-  IF p_don_vi IS NOT NULL AND NOT (p_don_vi = ANY(v_allowed_don_vi)) THEN
+  IF NOT v_is_global AND p_don_vi IS NOT NULL AND NOT (p_don_vi = ANY(v_allowed_don_vi)) THEN
     RAISE EXCEPTION 'Access denied to facility %', p_don_vi
       USING ERRCODE = '42501',
             HINT = 'You do not have permission to access this facility';
