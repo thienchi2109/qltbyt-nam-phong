@@ -1,18 +1,3 @@
--- ============================================
--- Patch: Restore global visibility for maintenance plan RPCs
--- Date: 2026-04-04 11:00 UTC
--- Issue: #214 follow-up after PR review
--- ============================================
--- Fixes a regression introduced in Batch 3 where global users no longer
--- saw maintenance plans with don_vi IS NULL. Global-created plans can
--- legitimately have don_vi = NULL because the RPC proxy signs global JWTs
--- with don_vi = null and maintenance_plan_create persists that claim.
---
--- This patch restores the previous semantics:
--- - explicit p_don_vi filter => exact facility match
--- - no p_don_vi filter => global sees all rows, others stay tenant-scoped
--- ============================================
-
 BEGIN;
 
 CREATE OR REPLACE FUNCTION public.maintenance_plan_status_counts(
