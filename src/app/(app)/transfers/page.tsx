@@ -483,6 +483,11 @@ function TransfersPageContent({ user }: TransfersPageContentProps) {
         </AlertDialogContent>
       </AlertDialog>
 
+      {/* Page title - outside container, above KPI cards */}
+      <div className="flex items-center justify-between gap-3">
+        <h1 className="text-xl md:text-2xl font-semibold">Luân chuyển thiết bị</h1>
+      </div>
+
       <KpiStatusBar
         configs={TRANSFER_STATUS_CONFIGS}
         counts={statusCounts?.columnCounts}
@@ -493,10 +498,7 @@ function TransfersPageContent({ user }: TransfersPageContentProps) {
       <Card>
         <CardHeader className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div>
-            <CardTitle>Luân chuyển thiết bị</CardTitle>
-            <CardDescription>
-              Theo dõi và xử lý yêu cầu luân chuyển theo từng loại hình
-            </CardDescription>
+            <CardTitle>Theo dõi và xử lý yêu cầu luân chuyển theo từng loại hình</CardTitle>
           </div>
           <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-row sm:items-center sm:gap-2">
             <div className="hidden sm:block">
