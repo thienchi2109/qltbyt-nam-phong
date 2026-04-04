@@ -27,6 +27,7 @@ import { useTransfersViewMode } from "@/components/transfers/TransfersViewToggle
 import { getColumnsForType } from "@/components/transfers/columnDefinitions"
 import type { FilterModalValue } from "@/components/transfers/FilterModal"
 import type { FilterChipsValue } from "@/components/transfers/FilterChips"
+import { isGlobalRole } from "@/lib/rbac"
 import type { TransferRequest } from "@/types/database"
 import type {
   TransferListFilters,
@@ -83,6 +84,22 @@ export function toDateFilterValue(value: Date | null | undefined): string | unde
   return `${year}-${month}-${day}`
 }
 
+export function normalizeTransferUserRole(
+  role: string | null | undefined,
+): TransferUserRole | undefined {
+  if (isGlobalRole(role)) return "global"
+
+  switch (role) {
+    case "regional_leader":
+    case "to_qltb":
+    case "technician":
+    case "user":
+      return role
+    default:
+      return undefined
+  }
+}
+
 export function useTransfersPageController(
   user: TransfersPageUser,
 ): TransfersPageControllerResult {
@@ -98,7 +115,7 @@ export function useTransfersPageController(
     shouldFetchData,
   } = useTenantSelection()
 
-  const userRole = user?.role as TransferUserRole | undefined
+  const userRole = normalizeTransferUserRole(user?.role)
   const effectiveTenantKey = selectedFacilityId ?? user?.don_vi ?? "none"
 
   const [activeTab, setActiveTab] = useTransferTypeTab("noi_bo")
