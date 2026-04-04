@@ -77,54 +77,56 @@ export function TransfersPageContent({ user }: TransfersPageContentProps) {
 
       <OverdueTransfersAlert onViewTransfer={controller.openTransferFromAlert} />
 
-      <div className="flex items-center justify-between gap-3">
-        <h1 className="text-xl font-semibold md:text-2xl">Luân chuyển thiết bị</h1>
+      <div className="space-y-6">
+        <div className="flex items-center justify-between gap-3">
+          <h1 className="text-xl font-semibold md:text-2xl">Luân chuyển thiết bị</h1>
+        </div>
+
+        <KpiStatusBar
+          configs={TRANSFER_STATUS_CONFIGS}
+          counts={controller.transferCounts?.columnCounts}
+          loading={controller.isCountsLoading}
+          error={controller.isCountsError}
+        />
+
+        <TransfersPagePanel
+          activeTab={controller.activeTab}
+          onTabChange={controller.setActiveTab}
+          transferCounts={controller.transferCounts}
+          totalCount={controller.totalCount}
+          showFacilityFilter={controller.showFacilityFilter}
+          activeFilterCount={controller.filtersState.activeFilterCount}
+          onOpenFilterModal={() => controller.filtersState.setIsFilterModalOpen(true)}
+          onOpenAddDialog={() => controller.setIsAddDialogOpen(true)}
+          isRegionalLeader={controller.isRegionalLeader}
+          filterChipsValue={controller.filterChipsValue}
+          onRemoveFilter={controller.filtersState.handleRemoveFilter}
+          onClearAllFilters={controller.filtersState.handleClearAllFilters}
+          searchTerm={controller.filtersState.searchTerm}
+          onSearchTermChange={controller.filtersState.setSearchTerm}
+          onClearSearch={controller.filtersState.clearSearch}
+          viewMode={controller.viewMode}
+          shouldFetchData={controller.shouldFetchData}
+          isListLoading={controller.isListLoading}
+          isListFetching={controller.isListFetching}
+          tableData={controller.tableData}
+          referenceDate={controller.referenceDate}
+          onViewTransfer={controller.rowActions.handleViewDetail}
+          RowActions={controller.rowActions.RowActions}
+          renderRowActions={controller.rowActions.renderRowActions}
+          filters={controller.filters}
+          userRole={controller.userRole}
+          columns={controller.columns}
+          sorting={controller.sorting}
+          onSortingChange={controller.setSorting}
+          pagination={controller.transferPagination.pagination}
+          onPaginationChange={controller.transferPagination.setPagination}
+          pageCount={controller.transferPagination.pageCount}
+          table={controller.table}
+          transferEntity={TRANSFER_ENTITY}
+          transferDisplayFormat={transferDisplayFormat}
+        />
       </div>
-
-      <KpiStatusBar
-        configs={TRANSFER_STATUS_CONFIGS}
-        counts={controller.transferCounts?.columnCounts}
-        loading={controller.isCountsLoading}
-        error={controller.isCountsError}
-      />
-
-      <TransfersPagePanel
-        activeTab={controller.activeTab}
-        onTabChange={controller.setActiveTab}
-        transferCounts={controller.transferCounts}
-        totalCount={controller.totalCount}
-        showFacilityFilter={controller.showFacilityFilter}
-        activeFilterCount={controller.filtersState.activeFilterCount}
-        onOpenFilterModal={() => controller.filtersState.setIsFilterModalOpen(true)}
-        onOpenAddDialog={() => controller.setIsAddDialogOpen(true)}
-        isRegionalLeader={controller.isRegionalLeader}
-        filterChipsValue={controller.filterChipsValue}
-        onRemoveFilter={controller.filtersState.handleRemoveFilter}
-        onClearAllFilters={controller.filtersState.handleClearAllFilters}
-        searchTerm={controller.filtersState.searchTerm}
-        onSearchTermChange={controller.filtersState.setSearchTerm}
-        onClearSearch={controller.filtersState.clearSearch}
-        viewMode={controller.viewMode}
-        shouldFetchData={controller.shouldFetchData}
-        isListLoading={controller.isListLoading}
-        isListFetching={controller.isListFetching}
-        tableData={controller.tableData}
-        referenceDate={controller.referenceDate}
-        onViewTransfer={controller.rowActions.handleViewDetail}
-        RowActions={controller.rowActions.RowActions}
-        renderRowActions={controller.rowActions.renderRowActions}
-        filters={controller.filters}
-        userRole={controller.userRole}
-        columns={controller.columns}
-        sorting={controller.sorting}
-        onSortingChange={controller.setSorting}
-        pagination={controller.transferPagination.pagination}
-        onPaginationChange={controller.transferPagination.setPagination}
-        pageCount={controller.transferPagination.pageCount}
-        table={controller.table}
-        transferEntity={TRANSFER_ENTITY}
-        transferDisplayFormat={transferDisplayFormat}
-      />
     </>
   )
 }
