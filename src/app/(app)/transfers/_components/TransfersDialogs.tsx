@@ -21,7 +21,7 @@ import type { TransferRequest } from "@/types/database"
 
 type FilterModalVariant = "dialog" | "sheet"
 
-export interface TransfersDialogsProps {
+export type TransfersDialogsProps = Readonly<{
   isAddDialogOpen: boolean
   onAddDialogOpenChange: (open: boolean) => void
   onAddSuccess: () => void
@@ -43,7 +43,7 @@ export interface TransfersDialogsProps {
   filterValue: FilterModalValue
   onFilterChange: (value: FilterModalValue) => void
   filterVariant: FilterModalVariant
-}
+}>
 
 export function TransfersDialogs({
   isAddDialogOpen,

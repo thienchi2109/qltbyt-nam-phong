@@ -42,9 +42,9 @@ function transferDisplayFormat(ctx: DisplayContext) {
   )
 }
 
-interface TransfersPageContentProps {
+type TransfersPageContentProps = Readonly<{
   user: TransfersPageUser
-}
+}>
 
 export function TransfersPageContent({ user }: TransfersPageContentProps) {
   const controller = useTransfersPageController(user)

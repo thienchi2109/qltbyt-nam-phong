@@ -31,9 +31,9 @@ import type {
   TransferType,
 } from "@/types/transfers-data-grid"
 
-type TransferUserRole = "global" | "regional_leader" | "to_qltb" | "technician" | "user"
+import type { TransferUserRole } from "./TransfersTypes"
 
-interface TransfersPagePanelProps {
+type TransfersPagePanelProps = Readonly<{
   activeTab: TransferType
   onTabChange: (tab: TransferType) => void
   transferCounts: TransferCountsResponse | undefined
@@ -69,7 +69,7 @@ interface TransfersPagePanelProps {
   table: ReactTable<TransferListItem>
   transferEntity: { singular: string }
   transferDisplayFormat: (ctx: DisplayContext) => React.ReactNode
-}
+}>
 
 function getTransferTypeCounts(
   activeTab: TransferType,

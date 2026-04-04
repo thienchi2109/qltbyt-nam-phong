@@ -31,15 +31,13 @@ import type { TransferRequest } from "@/types/database"
 import type {
   TransferListFilters,
   TransferListItem,
-  TransferStatus,
 } from "@/types/transfers-data-grid"
 
+import type { TransferUserRole } from "./TransfersTypes"
 import { useTransfersFilters } from "./useTransfersFilters"
 import { useTransfersRowActions } from "./useTransfersRowActions"
 
 export type TransfersPageUser = NonNullable<ReturnType<typeof useSession>["data"]>["user"]
-
-type TransferUserRole = "global" | "regional_leader" | "to_qltb" | "technician" | "user"
 
 export interface TransfersPageControllerResult {
   activeTab: ReturnType<typeof useTransferTypeTab>[0]
@@ -75,9 +73,14 @@ export interface TransfersPageControllerResult {
   transferPagination: ReturnType<typeof useServerPagination>
 }
 
-function toDateFilterValue(value: Date | null | undefined): string | undefined {
+export function toDateFilterValue(value: Date | null | undefined): string | undefined {
   if (!value) return undefined
-  return value.toISOString().split("T")[0]
+
+  const year = value.getFullYear()
+  const month = String(value.getMonth() + 1).padStart(2, "0")
+  const day = String(value.getDate()).padStart(2, "0")
+
+  return `${year}-${month}-${day}`
 }
 
 export function useTransfersPageController(
@@ -278,7 +281,7 @@ export function useTransfersPageController(
     (transfer: TransferRequest) => {
       rowActions.openDetailTransfer(transfer)
     },
-    [rowActions],
+    [rowActions.openDetailTransfer],
   )
 
   return {
