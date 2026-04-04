@@ -251,7 +251,7 @@ export function TransfersPagePanel({
         </TransferTypeTabs>
       </CardContent>
 
-      {viewMode === "table" && (
+      {viewMode === "table" && shouldFetchData && (
         <CardFooter className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <DataTablePagination
             table={table}

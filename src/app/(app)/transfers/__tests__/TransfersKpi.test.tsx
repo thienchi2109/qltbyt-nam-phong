@@ -390,6 +390,7 @@ describe("Transfers KPI", () => {
     expect(screen.getByTestId("tenant-placeholder")).toBeInTheDocument()
     expect(screen.queryByTestId("transfers-table-view")).not.toBeInTheDocument()
     expect(screen.queryByTestId("transfers-kanban-view")).not.toBeInTheDocument()
+    expect(screen.queryByTestId("transfer-pagination")).not.toBeInTheDocument()
   })
 
   it("opens the detail dialog when the overdue alert requests transfer details", () => {
