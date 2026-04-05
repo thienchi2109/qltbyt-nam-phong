@@ -34,9 +34,10 @@ export const RepairRequestsDetailView = React.memo(function RepairRequestsDetail
     userDiaBanId: user?.dia_ban_id,
     hasUser: !!user,
   })
-  const historyEntries = historyQuery.data
-    ? mapRepairRequestHistoryEntries(historyQuery.data)
-    : []
+  const historyEntries = React.useMemo(
+    () => historyQuery.data ? mapRepairRequestHistoryEntries(historyQuery.data) : [],
+    [historyQuery.data],
+  )
   const historyErrorMessage = historyQuery.error instanceof Error ? historyQuery.error.message : null
 
   if (!requestToView) return null

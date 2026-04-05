@@ -100,7 +100,14 @@ describe("ChangeHistoryTab", () => {
 
     render(<ChangeHistoryTab entries={entries} isLoading={false} />)
 
-    expect(screen.getByText("Bước 1")).toBeInTheDocument()
-    expect(screen.getByText("Bước 2")).toBeInTheDocument()
+    const step1 = screen.getByText("Bước 1")
+    const step2 = screen.getByText("Bước 2")
+    expect(step1).toBeInTheDocument()
+    expect(step2).toBeInTheDocument()
+
+    // Verify DOM order: step1 must precede step2
+    // DOCUMENT_POSITION_FOLLOWING (4) means step2 comes after step1
+    // eslint-disable-next-line no-bitwise
+    expect(step1.compareDocumentPosition(step2) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
   })
 })
