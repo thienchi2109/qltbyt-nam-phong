@@ -61,7 +61,7 @@ vi.mock("@/components/ui/sheet", () => ({
 vi.mock("@/components/ui/button", () => ({
   Button: ({
     children,
-    type = "button",
+    type,
     disabled,
     className,
     ...props
@@ -125,5 +125,11 @@ describe("RepairRequestsCreateSheet shell", () => {
     expect(sheetContent.className).toContain("sm:max-w-lg")
     expect(sheetContent.className).toContain("p-0")
     expect(sheetContent.className).not.toContain("h-[90vh]")
+  })
+
+  it("marks the calendar trigger as a non-submit button inside the form", () => {
+    render(<RepairRequestsCreateSheet />)
+
+    expect(screen.getByRole("button", { name: /chọn ngày/i })).toHaveAttribute("type", "button")
   })
 })
