@@ -251,7 +251,21 @@ v_user_id := current_setting('request.jwt.claims', true)::json->>'user_id';
 IF v_role IS NULL OR v_role = '' THEN
   RAISE EXCEPTION 'Missing role claim' USING errcode = '42501';
 END IF;
+IF v_user_id IS NULL THEN
+  RAISE EXCEPTION 'Missing user_id claim' USING errcode = '42501';
+END IF;
 ```
+
+**Do not cargo-cult a direct `v_don_vi` guard into every tenant RPC.**
+
+- For single-tenant roles (`to_qltb`, `qltb_khoa`, `technician`, `user`), an outer `IF NOT v_is_global AND v_don_vi IS NULL THEN ...` guard is correct and should remain explicit.
+- For multi-tenant read roles like `regional_leader`, `don_vi` may be legitimately NULL because scope is derived from `dia_ban`. In those cases:
+  - validate `v_role` and `v_user_id`
+  - normalize `admin -> global` if needed
+  - call the approved helper (`allowed_don_vi_for_session()`) to enforce role-specific scope
+  - document this choice in the migration so reviewers do not "fix" it back to a broken direct `don_vi` guard
+
+When in doubt, compare against the nearest existing detail/list RPC for the same module and preserve the same access contract instead of applying a generic three-guard pattern.
 
 ### Post-Migration Verification
 
