@@ -301,6 +301,35 @@ describe("useMaintenanceCompletion", () => {
     expect(mocks.toast).toHaveBeenCalledWith(expect.objectContaining({ title: "Đã xóa khỏi bản nháp" }))
   })
 
+  it("clears deleted task from row selection to prevent stale count", () => {
+    const taskToDelete = makeTask(202)
+    const setTaskRowSelection = vi.fn()
+    const { result } = renderHook(makeWrapper({
+      taskToDelete,
+      taskRowSelection: {
+        [toMaintenanceTaskRowId(101)]: true,
+        [toMaintenanceTaskRowId(202)]: true,
+        [toMaintenanceTaskRowId(303)]: true,
+      },
+      setTaskRowSelection,
+    }))
+
+    act(() => { result.current.confirmDeleteSingleTask() })
+
+    // Should remove the deleted task's row key from selection
+    expect(setTaskRowSelection).toHaveBeenCalledTimes(1)
+    const updater = setTaskRowSelection.mock.calls[0][0]
+    const prevSelection = {
+      [toMaintenanceTaskRowId(101)]: true,
+      [toMaintenanceTaskRowId(202)]: true,
+      [toMaintenanceTaskRowId(303)]: true,
+    }
+    const newSelection = typeof updater === "function" ? updater(prevSelection) : updater
+    expect(newSelection).not.toHaveProperty(toMaintenanceTaskRowId(202))
+    expect(newSelection).toHaveProperty(toMaintenanceTaskRowId(101))
+    expect(newSelection).toHaveProperty(toMaintenanceTaskRowId(303))
+  })
+
   // --- confirmDeleteSelectedTasks ---
 
   it("is a no-op when no tasks are selected for bulk delete", () => {

@@ -8,6 +8,7 @@ import type { AuthUser, CompletionStatusEntry } from "../_components/maintenance
 import { callRpc } from "@/lib/rpc-client"
 import { getUnknownErrorMessage } from "@/lib/error-utils"
 import { buildCompletionStatus, getSelectedTaskIds } from "../_components/MaintenanceContextHelpers"
+import { toMaintenanceTaskRowId } from "../_components/maintenance-task-row-id"
 
 interface UseMaintenanceCompletionOptions {
   selectedPlan: MaintenancePlan | null
@@ -44,6 +45,7 @@ export function useMaintenanceCompletion({
 }: UseMaintenanceCompletionOptions) {
   const [localCompletionStatus, setCompletionStatus] = React.useState<Record<string, CompletionStatusEntry>>({})
   const [isCompletingTask, setIsCompletingTask] = React.useState<string | null>(null)
+  const inFlightKeysRef = React.useRef(new Set<string>())
 
   // Seed from tasks data so already-completed months are reflected immediately
   const seededStatus = React.useMemo(() => buildCompletionStatus(tasks), [tasks])
@@ -68,10 +70,11 @@ export function useMaintenanceCompletion({
       }
 
       const completionKey = `${task.id}-${month}`
-      if (completionStatus[completionKey] || isCompletingTask) {
+      if (completionStatus[completionKey] || inFlightKeysRef.current.has(completionKey)) {
         return
       }
 
+      inFlightKeysRef.current.add(completionKey)
       setIsCompletingTask(completionKey)
 
       try {
@@ -109,10 +112,14 @@ export function useMaintenanceCompletion({
           description: `Không thể ghi nhận hoàn thành. ${message}`,
         })
       } finally {
-        setIsCompletingTask(null)
+        inFlightKeysRef.current.delete(completionKey)
+        setIsCompletingTask(inFlightKeysRef.current.size > 0
+          ? [...inFlightKeysRef.current][0] ?? null
+          : null
+        )
       }
     },
-    [selectedPlan, user, canCompleteTask, completionStatus, isCompletingTask, toast, fetchPlanDetails]
+    [selectedPlan, user, canCompleteTask, completionStatus, toast, fetchPlanDetails]
   )
 
   const handleBulkScheduleApply = React.useCallback(
@@ -150,9 +157,19 @@ export function useMaintenanceCompletion({
     if (!taskToDelete) return
 
     setDraftTasks((currentDrafts) => currentDrafts.filter((task) => task.id !== taskToDelete.id))
+
+    // Clear deleted task from row selection to prevent stale count
+    const deletedRowKey = toMaintenanceTaskRowId(taskToDelete.id)
+    setTaskRowSelection((prev) => {
+      if (!(deletedRowKey in prev)) return prev
+      const next = { ...prev }
+      delete next[deletedRowKey]
+      return next
+    })
+
     setTaskToDelete(null)
     toast({ title: "Đã xóa khỏi bản nháp" })
-  }, [taskToDelete, setTaskToDelete, setDraftTasks, toast])
+  }, [taskToDelete, setTaskToDelete, setDraftTasks, setTaskRowSelection, toast])
 
   const confirmDeleteSelectedTasks = React.useCallback(() => {
     if (selectedTaskIds.length === 0) return
