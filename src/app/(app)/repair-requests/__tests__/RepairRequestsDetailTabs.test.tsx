@@ -101,7 +101,7 @@ describe("RepairRequestsDetailTabs", () => {
   it("renders the details tab by default", () => {
     renderDetailTabs()
 
-    expect(screen.getByRole("tab", { name: "Details" })).toHaveAttribute("data-state", "active")
+    expect(screen.getByRole("tab", { name: "Chi tiết" })).toHaveAttribute("data-state", "active")
     expect(screen.getByTestId("detail-content")).toHaveTextContent("detail for Test Device")
     expect(screen.queryByTestId("history-tab")).not.toBeInTheDocument()
   })
@@ -111,9 +111,9 @@ describe("RepairRequestsDetailTabs", () => {
 
     renderDetailTabs({ isLoadingHistory: true })
 
-    await user.click(screen.getByRole("tab", { name: "History" }))
+    await user.click(screen.getByRole("tab", { name: "Lịch sử" }))
 
-    expect(screen.getByRole("tab", { name: "History" })).toHaveAttribute("data-state", "active")
+    expect(screen.getByRole("tab", { name: "Lịch sử" })).toHaveAttribute("data-state", "active")
     expect(screen.getByTestId("history-tab")).toHaveTextContent("history count 1 / loading true")
     expect(screen.queryByTestId("detail-content")).not.toBeInTheDocument()
   })
@@ -127,7 +127,7 @@ describe("RepairRequestsDetailTabs", () => {
       historyErrorMessage: "RPC repair_request_change_history_list failed (500)",
     })
 
-    await user.click(screen.getByRole("tab", { name: "History" }))
+    await user.click(screen.getByRole("tab", { name: "Lịch sử" }))
 
     expect(screen.getByRole("alert")).toHaveTextContent("Không thể tải lịch sử thay đổi")
     expect(screen.getByRole("alert")).toHaveTextContent(
