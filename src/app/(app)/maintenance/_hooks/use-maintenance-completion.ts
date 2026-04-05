@@ -44,7 +44,7 @@ export function useMaintenanceCompletion({
   toast,
 }: UseMaintenanceCompletionOptions) {
   const [localCompletionStatus, setCompletionStatus] = React.useState<Record<string, CompletionStatusEntry>>({})
-  const [isCompletingTask, setIsCompletingTask] = React.useState<string | null>(null)
+  const [isCompletingTask, setIsCompletingTask] = React.useState<Set<string>>(new Set())
   const inFlightKeysRef = React.useRef(new Set<string>())
 
   // Clear stale optimistic entries when switching plans (matches original useEffect behavior)
@@ -78,7 +78,7 @@ export function useMaintenanceCompletion({
       }
 
       inFlightKeysRef.current.add(completionKey)
-      setIsCompletingTask(completionKey)
+      setIsCompletingTask(new Set(inFlightKeysRef.current))
 
       try {
         await callRpc<void>({
@@ -122,10 +122,7 @@ export function useMaintenanceCompletion({
         })
       } finally {
         inFlightKeysRef.current.delete(completionKey)
-        setIsCompletingTask(inFlightKeysRef.current.size > 0
-          ? [...inFlightKeysRef.current][0] ?? null
-          : null
-        )
+        setIsCompletingTask(new Set(inFlightKeysRef.current))
       }
     },
     [selectedPlan, user, canCompleteTask, completionStatus, toast, fetchPlanDetails]

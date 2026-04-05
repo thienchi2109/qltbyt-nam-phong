@@ -31,7 +31,7 @@ export interface MaintenanceMobileTaskCardProps {
   onToggleExpansion: () => void
   isPlanApproved: boolean
   canCompleteTask: boolean
-  isCompletingTask: string | null
+  isCompletingTask: Set<string>
   taskEditing: {
     editingTaskId: number | null
     editingTaskData: Partial<MaintenanceTask> | null
@@ -159,7 +159,7 @@ export const MaintenanceMobileTaskCard = React.memo(function MaintenanceMobileTa
 
                     const completionKey = `${completionKeyPrefix}${month}`
                     const isCompleted = Boolean((task as Record<string, unknown>)[`thang_${month}_hoan_thanh`])
-                    const isUpdating = isCompletingTask === completionKey
+                    const isUpdating = isCompletingTask.has(completionKey)
 
                     return (
                       <Button

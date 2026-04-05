@@ -275,7 +275,7 @@ export function useTaskColumns(options: TaskColumnOptions): ColumnDef<Maintenanc
           const isCompletedFromDB = !!row.original[completionFieldName];
 
           const completionKey = `${row.original.id}-${month}`;
-          const isUpdating = isCompletingTask === completionKey;
+          const isUpdating = isCompletingTask.has(completionKey);
 
           if (isUpdating) {
             return (

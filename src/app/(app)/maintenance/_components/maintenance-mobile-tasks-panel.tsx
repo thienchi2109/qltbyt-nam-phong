@@ -27,7 +27,7 @@ interface MaintenanceMobileTasksPanelProps {
   isLoadingTasks: boolean
   isPlanApproved: boolean
   canCompleteTask: boolean
-  isCompletingTask: string | null
+  isCompletingTask: Set<string>
   taskEditing: {
     editingTaskId: number | null
     editingTaskData: Partial<MaintenanceTask> | null
