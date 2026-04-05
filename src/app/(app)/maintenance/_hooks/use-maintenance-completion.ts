@@ -83,7 +83,17 @@ export function useMaintenanceCompletion({
           [completionKey]: { historyId: 0 },
         }))
 
-        await fetchPlanDetails(selectedPlan)
+        try {
+          await fetchPlanDetails(selectedPlan)
+        } catch {
+          // Rollback completion key so user can retry
+          setCompletionStatus((prev) => {
+            const next = { ...prev }
+            delete next[completionKey]
+            return next
+          })
+          throw new Error("Không thể tải lại dữ liệu kế hoạch")
+        }
       } catch (error) {
         const message = getUnknownErrorMessage(error, "Lỗi không xác định")
         toast({

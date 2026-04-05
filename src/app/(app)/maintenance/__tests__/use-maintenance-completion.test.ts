@@ -179,6 +179,35 @@ describe("useMaintenanceCompletion", () => {
     )
   })
 
+  it("rolls back completionStatus when fetchPlanDetails fails after RPC success (no stuck state)", async () => {
+    mocks.fetchPlanDetails.mockRejectedValueOnce(new Error("Network error"))
+    const plan = makePlan()
+    const { result } = renderHook(makeWrapper({ selectedPlan: plan }))
+
+    // First call: RPC succeeds but fetchPlanDetails fails
+    await act(async () => {
+      await result.current.handleMarkAsCompleted(makeTask(7), 4)
+    })
+
+    expect(mocks.callRpc).toHaveBeenCalledTimes(1)
+    // Should toast error
+    expect(mocks.toast).toHaveBeenCalledWith(
+      expect.objectContaining({ variant: "destructive", title: "Lỗi" })
+    )
+
+    // Key should NOT be stuck in completionStatus → retry must be possible
+    mocks.callRpc.mockClear()
+    mocks.toast.mockClear()
+    mocks.fetchPlanDetails.mockResolvedValueOnce(undefined)
+
+    await act(async () => {
+      await result.current.handleMarkAsCompleted(makeTask(7), 4)
+    })
+
+    // Second call should go through (not be silently ignored)
+    expect(mocks.callRpc).toHaveBeenCalledTimes(1)
+  })
+
   // --- handleBulkScheduleApply ---
 
   it("is a no-op when no tasks are selected", () => {
