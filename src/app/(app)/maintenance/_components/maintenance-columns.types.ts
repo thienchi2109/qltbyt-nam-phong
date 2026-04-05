@@ -14,7 +14,7 @@ export interface TableMeta {
   completionStatus: Record<string, { historyId: number }>
   isLoadingCompletion: boolean
   handleMarkAsCompleted: (task: MaintenanceTask, month: number) => void
-  isCompletingTask: string | null
+  isCompletingTask: Set<string>
   canCompleteTask: boolean
 }
 
@@ -41,7 +41,7 @@ export interface TaskColumnOptions {
   isPlanApproved: boolean
   canCompleteTask: boolean
   handleMarkAsCompleted: (task: MaintenanceTask, month: number) => void
-  isCompletingTask: string | null
+  isCompletingTask: Set<string>
   completionStatus: Record<string, { historyId: number }>
   isLoadingCompletion: boolean
   selectedPlan: MaintenancePlan | null

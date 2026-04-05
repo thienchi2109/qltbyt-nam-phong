@@ -55,7 +55,7 @@ export interface MaintenanceContextValue {
 
   completionStatus: Record<string, CompletionStatusEntry>
   isLoadingCompletion: boolean
-  isCompletingTask: string | null
+  isCompletingTask: Set<string>
   handleMarkAsCompleted: (task: MaintenanceTask, month: number) => Promise<void>
 
   operations: ReturnType<typeof useMaintenanceOperations>
