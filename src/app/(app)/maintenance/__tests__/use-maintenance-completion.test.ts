@@ -83,7 +83,7 @@ function makeWrapper(
       draftTasks: mocks.getDraftTasks(),
       setDraftTasks: mocks.setDraftTasks,
       taskRowSelection: options.taskRowSelection ?? {},
-      setTaskRowSelection: options.setTaskRowSelection ?? vi.fn(),
+      setTaskRowSelection: (options.setTaskRowSelection ?? vi.fn()) as React.Dispatch<React.SetStateAction<RowSelectionState>>,
       taskToDelete: options.taskToDelete ?? null,
       setTaskToDelete: mocks.setTaskToDelete,
       setIsBulkScheduleOpen: mocks.setIsBulkScheduleOpen,
