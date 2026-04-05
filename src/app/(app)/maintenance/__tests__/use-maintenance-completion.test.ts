@@ -208,6 +208,27 @@ describe("useMaintenanceCompletion", () => {
     expect(mocks.callRpc).toHaveBeenCalledTimes(1)
   })
 
+  // --- completionStatus seeded from tasks ---
+
+  it("seeds completionStatus from tasks so already-completed months are blocked", async () => {
+    // Task with thang_3_hoan_thanh = true and ngay_hoan_thanh_3 set → already completed
+    const completedTask = makeTask(7, {
+      thang_3_hoan_thanh: true,
+      ngay_hoan_thanh_3: "2026-03-15",
+    } as Partial<MaintenanceTask>)
+
+    const { result } = renderHook(
+      makeWrapper({ selectedPlan: makePlan(), tasks: [completedTask] })
+    )
+
+    // Attempting to mark the same task-month should be a no-op (already seeded)
+    await act(async () => {
+      await result.current.handleMarkAsCompleted(completedTask, 3)
+    })
+
+    expect(mocks.callRpc).not.toHaveBeenCalled()
+  })
+
   // --- handleBulkScheduleApply ---
 
   it("is a no-op when no tasks are selected", () => {

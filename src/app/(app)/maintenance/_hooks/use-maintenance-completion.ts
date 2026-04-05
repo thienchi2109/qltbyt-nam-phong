@@ -7,7 +7,7 @@ import type { MaintenanceTask } from "@/lib/data"
 import type { AuthUser, CompletionStatusEntry } from "../_components/maintenance-context.types"
 import { callRpc } from "@/lib/rpc-client"
 import { getUnknownErrorMessage } from "@/lib/error-utils"
-import { getSelectedTaskIds } from "../_components/MaintenanceContextHelpers"
+import { buildCompletionStatus, getSelectedTaskIds } from "../_components/MaintenanceContextHelpers"
 
 interface UseMaintenanceCompletionOptions {
   selectedPlan: MaintenancePlan | null
@@ -30,7 +30,7 @@ export function useMaintenanceCompletion({
   selectedPlan,
   user,
   canCompleteTask,
-  tasks: _tasks,
+  tasks,
   fetchPlanDetails,
   draftTasks,
   setDraftTasks,
@@ -42,8 +42,15 @@ export function useMaintenanceCompletion({
   setIsConfirmingBulkDelete,
   toast,
 }: UseMaintenanceCompletionOptions) {
-  const [completionStatus, setCompletionStatus] = React.useState<Record<string, CompletionStatusEntry>>({})
+  const [localCompletionStatus, setCompletionStatus] = React.useState<Record<string, CompletionStatusEntry>>({})
   const [isCompletingTask, setIsCompletingTask] = React.useState<string | null>(null)
+
+  // Seed from tasks data so already-completed months are reflected immediately
+  const seededStatus = React.useMemo(() => buildCompletionStatus(tasks), [tasks])
+  const completionStatus = React.useMemo(
+    () => ({ ...seededStatus, ...localCompletionStatus }),
+    [seededStatus, localCompletionStatus]
+  )
 
   const selectedTaskIds = React.useMemo(() => getSelectedTaskIds(taskRowSelection), [taskRowSelection])
   const selectedTaskIdSet = React.useMemo(() => new Set(selectedTaskIds), [selectedTaskIds])
