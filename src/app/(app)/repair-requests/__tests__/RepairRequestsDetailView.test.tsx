@@ -58,16 +58,26 @@ vi.mock("../_components/RepairRequestsDetailTabs", () => ({
     request,
     historyEntries,
     isLoadingHistory,
+    isHistoryError,
+    historyErrorMessage,
   }: {
     request: RepairRequestWithEquipment
     historyEntries: ChangeHistoryEntry[]
     isLoadingHistory: boolean
+    isHistoryError: boolean
+    historyErrorMessage: string | null
   }) => {
-    mockDetailTabs({ request, historyEntries, isLoadingHistory })
+    mockDetailTabs({
+      request,
+      historyEntries,
+      isLoadingHistory,
+      isHistoryError,
+      historyErrorMessage,
+    })
     return (
       <div data-testid="detail-tabs">
         tabs for {request.thiet_bi?.ten_thiet_bi ?? "unknown"} / {historyEntries.length} /{" "}
-        {String(isLoadingHistory)}
+        {String(isLoadingHistory)} / {String(isHistoryError)} / {historyErrorMessage ?? "none"}
       </div>
     )
   },
@@ -128,6 +138,8 @@ describe("RepairRequestsDetailView", () => {
     mockUseRepairRequestHistory.mockReturnValue({
       data: mockHistory,
       isLoading: false,
+      isError: false,
+      error: null,
     })
     mockMapRepairRequestHistoryEntries.mockReturnValue(mappedEntries)
   })
@@ -147,7 +159,9 @@ describe("RepairRequestsDetailView", () => {
     expect(
       screen.getByText("Thông tin chi tiết và lịch sử của yêu cầu sửa chữa thiết bị"),
     ).toBeInTheDocument()
-    expect(screen.getByTestId("detail-tabs")).toHaveTextContent("tabs for Test Device / 1 / false")
+    expect(screen.getByTestId("detail-tabs")).toHaveTextContent(
+      "tabs for Test Device / 1 / false / false / none",
+    )
 
     const dialogEl = screen.getByRole("dialog")
     expect(dialogEl.className).toContain("inset-y-0")
@@ -168,6 +182,28 @@ describe("RepairRequestsDetailView", () => {
       request: mockRequest,
       historyEntries: mappedEntries,
       isLoadingHistory: false,
+      isHistoryError: false,
+      historyErrorMessage: null,
+    })
+  })
+
+  it("forwards query errors to the tabs instead of coercing them to an empty history state", () => {
+    mockUseRepairRequestHistory.mockReturnValue({
+      data: undefined,
+      isLoading: false,
+      isError: true,
+      error: new Error("RPC repair_request_change_history_list failed (500)"),
+    })
+
+    render(<RepairRequestsDetailView requestToView={mockRequest} onClose={vi.fn()} />)
+
+    expect(mockMapRepairRequestHistoryEntries).not.toHaveBeenCalled()
+    expect(mockDetailTabs).toHaveBeenCalledWith({
+      request: mockRequest,
+      historyEntries: [],
+      isLoadingHistory: false,
+      isHistoryError: true,
+      historyErrorMessage: "RPC repair_request_change_history_list failed (500)",
     })
   })
 

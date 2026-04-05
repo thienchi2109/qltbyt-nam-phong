@@ -3,6 +3,7 @@
 import * as React from "react"
 
 import { ChangeHistoryTab } from "@/components/change-history/ChangeHistoryTab"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import type { ChangeHistoryEntry } from "@/components/change-history/ChangeHistoryTypes"
@@ -14,12 +15,16 @@ interface RepairRequestsDetailTabsProps {
   request: RepairRequestWithEquipment
   historyEntries: ChangeHistoryEntry[]
   isLoadingHistory: boolean
+  isHistoryError: boolean
+  historyErrorMessage: string | null
 }
 
 export function RepairRequestsDetailTabs({
   request,
   historyEntries,
   isLoadingHistory,
+  isHistoryError,
+  historyErrorMessage,
 }: RepairRequestsDetailTabsProps) {
   return (
     <Tabs defaultValue="details" className="flex min-h-0 flex-1 flex-col">
@@ -38,7 +43,18 @@ export function RepairRequestsDetailTabs({
 
       <TabsContent value="history" className="mt-0 min-h-0 flex-1 overflow-hidden px-4">
         <ScrollArea className="h-full">
-          <ChangeHistoryTab entries={historyEntries} isLoading={isLoadingHistory} />
+          {isHistoryError ? (
+            <div className="py-4">
+              <Alert variant="destructive">
+                <AlertTitle>Không thể tải lịch sử thay đổi</AlertTitle>
+                <AlertDescription>
+                  {historyErrorMessage ?? "Đã xảy ra lỗi khi tải dữ liệu lịch sử."}
+                </AlertDescription>
+              </Alert>
+            </div>
+          ) : (
+            <ChangeHistoryTab entries={historyEntries} isLoading={isLoadingHistory} />
+          )}
         </ScrollArea>
       </TabsContent>
     </Tabs>

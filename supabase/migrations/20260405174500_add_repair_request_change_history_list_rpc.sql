@@ -14,7 +14,6 @@ DECLARE
   v_jwt_claims JSONB := COALESCE(current_setting('request.jwt.claims', true), '{}')::jsonb;
   v_role TEXT;
   v_user_id TEXT;
-  v_don_vi BIGINT;
   v_is_global BOOLEAN := FALSE;
   v_allowed BIGINT[] := NULL;
   v_request_don_vi BIGINT;
@@ -29,8 +28,6 @@ BEGIN
     ''
   ));
   v_user_id := NULLIF(COALESCE(v_jwt_claims->>'user_id', v_jwt_claims->>'sub'), '');
-  v_don_vi := NULLIF(v_jwt_claims->>'don_vi', '')::BIGINT;
-
   IF v_role = '' THEN
     RAISE EXCEPTION 'Missing role claim' USING ERRCODE = '42501';
   END IF;
@@ -43,10 +40,6 @@ BEGIN
     v_role := 'global';
   END IF;
   v_is_global := (v_role = 'global');
-
-  IF NOT v_is_global AND v_don_vi IS NULL THEN
-    RAISE EXCEPTION 'Missing don_vi claim' USING ERRCODE = '42501';
-  END IF;
 
   SELECT tb.don_vi
   INTO v_request_don_vi

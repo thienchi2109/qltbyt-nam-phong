@@ -30,6 +30,12 @@ vi.mock("@/components/change-history/ChangeHistoryTab", () => ({
   ),
 }))
 
+vi.mock("@/components/ui/alert", () => ({
+  Alert: ({ children }: { children: React.ReactNode }) => <div role="alert">{children}</div>,
+  AlertTitle: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+  AlertDescription: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+}))
+
 const mockRequest: RepairRequestWithEquipment = {
   id: 1,
   thiet_bi_id: 100,
@@ -75,6 +81,8 @@ describe("RepairRequestsDetailTabs", () => {
         request={mockRequest}
         historyEntries={historyEntries}
         isLoadingHistory={false}
+        isHistoryError={false}
+        historyErrorMessage={null}
       />,
     )
 
@@ -91,6 +99,8 @@ describe("RepairRequestsDetailTabs", () => {
         request={mockRequest}
         historyEntries={historyEntries}
         isLoadingHistory={true}
+        isHistoryError={false}
+        historyErrorMessage={null}
       />,
     )
 
@@ -99,5 +109,27 @@ describe("RepairRequestsDetailTabs", () => {
     expect(screen.getByRole("tab", { name: "History" })).toHaveAttribute("data-state", "active")
     expect(screen.getByTestId("history-tab")).toHaveTextContent("history count 1 / loading true")
     expect(screen.queryByTestId("detail-content")).not.toBeInTheDocument()
+  })
+
+  it("shows an error alert instead of the empty history state when the query fails", async () => {
+    const user = userEvent.setup()
+
+    render(
+      <RepairRequestsDetailTabs
+        request={mockRequest}
+        historyEntries={[]}
+        isLoadingHistory={false}
+        isHistoryError={true}
+        historyErrorMessage="RPC repair_request_change_history_list failed (500)"
+      />,
+    )
+
+    await user.click(screen.getByRole("tab", { name: "History" }))
+
+    expect(screen.getByRole("alert")).toHaveTextContent("Không thể tải lịch sử thay đổi")
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "RPC repair_request_change_history_list failed (500)",
+    )
+    expect(screen.queryByTestId("history-tab")).not.toBeInTheDocument()
   })
 })

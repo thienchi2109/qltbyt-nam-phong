@@ -34,7 +34,10 @@ export const RepairRequestsDetailView = React.memo(function RepairRequestsDetail
     userDiaBanId: user?.dia_ban_id,
     hasUser: !!user,
   })
-  const historyEntries = mapRepairRequestHistoryEntries(historyQuery.data ?? [])
+  const historyEntries = historyQuery.data
+    ? mapRepairRequestHistoryEntries(historyQuery.data)
+    : []
+  const historyErrorMessage = historyQuery.error instanceof Error ? historyQuery.error.message : null
 
   if (!requestToView) return null
 
@@ -52,6 +55,8 @@ export const RepairRequestsDetailView = React.memo(function RepairRequestsDetail
             request={requestToView}
             historyEntries={historyEntries}
             isLoadingHistory={historyQuery.isLoading}
+            isHistoryError={historyQuery.isError}
+            historyErrorMessage={historyErrorMessage}
           />
           <div className="p-4 border-t flex justify-end">
             <Button variant="outline" onClick={onClose}>

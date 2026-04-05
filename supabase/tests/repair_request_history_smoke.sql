@@ -217,3 +217,49 @@ BEGIN
     RAISE EXCEPTION 'Missing-claims test did not complete as expected';
   END IF;
 END $$;
+
+-- 6) Regional leader without don_vi should still read history via dia_ban scope
+DO $$
+DECLARE
+  v_request_id INT;
+  v_region_id BIGINT;
+  v_rows JSONB;
+BEGIN
+  SELECT ycss.id, dv.dia_ban_id
+  INTO v_request_id, v_region_id
+  FROM public.yeu_cau_sua_chua ycss
+  JOIN public.thiet_bi tb ON tb.id = ycss.thiet_bi_id
+  JOIN public.don_vi dv ON dv.id = tb.don_vi
+  JOIN public.audit_logs al
+    ON al.entity_type = 'repair_request'
+   AND al.entity_id = ycss.id
+  WHERE dv.active = true
+    AND dv.dia_ban_id IS NOT NULL
+  LIMIT 1;
+
+  IF v_request_id IS NULL OR v_region_id IS NULL THEN
+    RAISE NOTICE 'SKIP: no regional-leader scoped repair request with audit history found';
+    RETURN;
+  END IF;
+
+  PERFORM set_config(
+    'request.jwt.claims',
+    json_build_object(
+      'app_role', 'regional_leader',
+      'user_id', '42',
+      'don_vi', null,
+      'dia_ban', v_region_id::text
+    )::text,
+    true
+  );
+
+  SELECT COALESCE(jsonb_agg(row_data), '[]'::jsonb)
+  INTO v_rows
+  FROM public.repair_request_change_history_list(v_request_id) AS row_data;
+
+  IF jsonb_array_length(v_rows) = 0 THEN
+    RAISE EXCEPTION 'Expected at least one repair history row for regional_leader in-scope access';
+  END IF;
+
+  RAISE NOTICE 'OK: regional_leader can read in-scope repair history without don_vi claim';
+END $$;
