@@ -1,7 +1,0 @@
-
-> nextn@0.1.0 typecheck
-> tsc --noEmit
-
-src/app/(app)/maintenance/_components/maintenance-mobile-tasks-panel.tsx(192,15): error TS2322: Type 'string | null' is not assignable to type 'Set<string>'.
-  Type 'null' is not assignable to type 'Set<string>'.
-src/app/(app)/maintenance/_components/mobile-maintenance-layout.tsx(258,15): error TS2322: Type 'Set<string>' is not assignable to type 'string'.
