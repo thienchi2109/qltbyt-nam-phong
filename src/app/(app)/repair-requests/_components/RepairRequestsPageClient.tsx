@@ -287,7 +287,6 @@ function RepairRequestsPageClientInner() {
 
         <RepairRequestsDetailView
           requestToView={dialogState.requestToView}
-          isMobile={isMobile}
           onClose={closeAllDialogs}
         />
 

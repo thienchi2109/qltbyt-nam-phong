@@ -37,6 +37,15 @@ export type RepairRequestWithEquipment = {
   } | null
 }
 
+export interface RepairRequestChangeHistory {
+  id: number
+  action_type: string
+  admin_username: string
+  admin_full_name: string | null
+  action_details: Record<string, unknown> | null
+  created_at: string
+}
+
 /**
  * Authenticated user type from NextAuth session
  * (matches module augmentation in src/types/next-auth.d.ts)

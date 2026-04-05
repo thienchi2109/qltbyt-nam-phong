@@ -1,5 +1,6 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { render, screen, waitFor } from "@testing-library/react"
+import userEvent from "@testing-library/user-event"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import * as React from "react"
 
@@ -322,6 +323,10 @@ describe("TransferDetailDialog related people", () => {
         mockCallRpc.mock.calls.filter(([call]) => call.fn === "transfer_change_history_list"),
       ).toHaveLength(1)
     })
+
+    expect(screen.getByRole("tab", { name: "Tổng quan" })).toBeInTheDocument()
+    expect(screen.getByRole("tab", { name: "Lịch sử" })).toBeInTheDocument()
+    expect(screen.getByRole("tab", { name: "Tiến trình" })).toBeInTheDocument()
   })
 
   it("prefers the fresher list-row transfer over stale cached detail while refetch is in flight", async () => {
@@ -394,13 +399,15 @@ describe("TransferDetailDialog related people", () => {
       { wrapper: createWrapper() },
     )
 
+    await userEvent.click(screen.getByRole("tab", { name: "Lịch sử" }))
+
     await waitFor(() => {
       expect(screen.getByText(transferRequestCreateLabel)).toBeInTheDocument()
-      expect(screen.getByText(/Thực hiện bởi: Nguyễn Văn A/)).toBeInTheDocument()
+      expect(screen.getByText("Nguyễn Văn A")).toBeInTheDocument()
     })
   })
 
-  it("renders action details as readable labeled rows instead of raw json", async () => {
+  it("moves history content into the Lịch sử tab and keeps overview focused on transfer details", async () => {
     mockCallRpc.mockImplementation(async ({ fn }) => {
       if (fn === "transfer_request_get") {
         return makeTransferRow()
@@ -430,8 +437,13 @@ describe("TransferDetailDialog related people", () => {
       { wrapper: createWrapper() },
     )
 
+    expect(screen.queryByText("Mã yêu cầu")).not.toBeInTheDocument()
+    expect(screen.queryByText("Nguyễn Văn A")).not.toBeInTheDocument()
+    expect(screen.getByText("Thông tin cơ bản")).toBeInTheDocument()
+
+    await userEvent.click(screen.getByRole("tab", { name: "Lịch sử" }))
+
     await waitFor(() => {
-      expect(screen.getByText("LC-0011")).toBeInTheDocument()
       expect(screen.getByText("Đã duyệt")).toBeInTheDocument()
       expect(screen.getByText("Mã yêu cầu")).toBeInTheDocument()
       expect(screen.getByText("Trạng thái")).toBeInTheDocument()

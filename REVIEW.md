@@ -43,14 +43,14 @@ Every new RPC function requires:
 3. `GRANT EXECUTE ON FUNCTION ... TO authenticated`
 4. `REVOKE EXECUTE ON FUNCTION ... FROM PUBLIC`
 5. JWT claim extraction and NULL guards (see SQL Migrations below)
-6. Tenant isolation enforcement — non-global users MUST be restricted by `v_don_vi`
+6. Tenant isolation enforcement — non-global users MUST be restricted by the correct scope primitive for their role set (`v_don_vi` for single-tenant roles, approved helper arrays such as `allowed_don_vi_for_session()` for multi-tenant read roles like `regional_leader`)
 
 ### JWT Claim Guards
 
 Every RPC function that writes data or returns tenant-scoped data must include:
 
 ```sql
--- All three guards are mandatory:
+-- Always mandatory:
 IF v_role IS NULL OR v_role = '' THEN
   RAISE EXCEPTION 'Missing role claim' USING errcode = '42501';
 END IF;
@@ -58,13 +58,26 @@ END IF;
 IF v_user_id IS NULL THEN
   RAISE EXCEPTION 'Missing user_id claim' USING errcode = '42501';
 END IF;
+```
 
+Then choose the third guard that matches the access model:
+
+```sql
+-- Single-tenant roles: direct don_vi guard is mandatory
 IF NOT v_is_global AND v_don_vi IS NULL THEN
   RAISE EXCEPTION 'Missing don_vi claim' USING errcode = '42501';
 END IF;
 ```
 
-Without these, a malformed JWT silently produces NULL values that bypass tenant checks and defeat audit trails.
+```sql
+-- Multi-tenant read roles (for example regional_leader): do NOT add an outer
+-- don_vi guard that would reject valid dia_ban-scoped sessions. Instead,
+-- validate role + user_id, normalize admin/global, then call the approved
+-- helper that enforces the role-specific scope contract.
+v_allowed := public.allowed_don_vi_for_session();
+```
+
+Without these, a malformed JWT silently produces NULL values that bypass tenant checks and defeat audit trails. The important rule is not "always guard don_vi"; it is "always guard the claim shape that the role model actually requires."
 
 ### Role Enforcement
 
@@ -94,7 +107,8 @@ Frontend role checks (`src/lib/rbac.ts`) are for UI only. Always verify the corr
 
 - [ ] `SECURITY DEFINER SET search_path TO 'public', 'pg_temp'`
 - [ ] `GRANT EXECUTE ... TO authenticated` + `REVOKE ... FROM PUBLIC`
-- [ ] NULL guards for `v_role`, `v_user_id`, `v_don_vi` (see JWT Claim Guards above)
+- [ ] NULL guards for `v_role` and `v_user_id`
+- [ ] Third scope guard matches the role model: direct `v_don_vi` guard for single-tenant roles, or approved helper path for multi-tenant roles like `regional_leader`
 - [ ] `regional_leader` blocked from write operations
 - [ ] `FOR UPDATE` lock on rows that will be modified (prevents TOCTOU races)
 - [ ] Never uses `to_jsonb(entire_row)` on tables with sensitive columns (`nhan_vien` has passwords)
@@ -107,7 +121,7 @@ Frontend role checks (`src/lib/rbac.ts`) are for UI only. Always verify the corr
 
 **Empty-string CASE corruption:** `p_data ? 'field'` is true when `{"field": ""}` is sent. If the CASE branches assume a meaningful value, they corrupt dependent fields. Guard: `p_data ? 'field' AND nullif(p_data->>'field', '') IS NOT NULL`.
 
-**NULL tenant bypass:** `NOT v_is_global AND v_don_vi IS NOT NULL AND ...` silently skips the check when `v_don_vi` is NULL. Fix: fail early if non-global user has NULL `v_don_vi`.
+**NULL tenant bypass:** `NOT v_is_global AND v_don_vi IS NOT NULL AND ...` silently skips the check when `v_don_vi` is NULL. Fix: fail early if the role model truly requires `don_vi`, or route through the approved helper when the role is multi-tenant (`regional_leader` via `dia_ban`).
 
 ---
 
