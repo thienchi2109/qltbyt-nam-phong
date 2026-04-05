@@ -190,9 +190,9 @@ describe("useMaintenanceCompletion", () => {
     })
 
     expect(mocks.callRpc).toHaveBeenCalledTimes(1)
-    // Should toast error
+    // Should toast warning about refresh failure
     expect(mocks.toast).toHaveBeenCalledWith(
-      expect.objectContaining({ variant: "destructive", title: "Lỗi" })
+      expect.objectContaining({ variant: "destructive", title: "Cảnh báo" })
     )
 
     // Key should NOT be stuck in completionStatus → retry must be possible
@@ -227,6 +227,35 @@ describe("useMaintenanceCompletion", () => {
     })
 
     expect(mocks.callRpc).not.toHaveBeenCalled()
+  })
+
+  // --- localCompletionStatus reset on plan change ---
+
+  it("clears stale local completion entries when selectedPlan changes", async () => {
+    const plan1 = makePlan({ id: 100 })
+    const plan2 = makePlan({ id: 200 })
+    const task = makeTask(7)
+
+    const { result, rerender } = renderHook(
+      ({ selectedPlan }: { selectedPlan: MaintenancePlan }) => makeWrapper({ selectedPlan, tasks: [task] })(),
+      { initialProps: { selectedPlan: plan1 } }
+    )
+
+    // Complete a task on plan1
+    await act(async () => {
+      await result.current.handleMarkAsCompleted(task, 5)
+    })
+    expect(mocks.callRpc).toHaveBeenCalledTimes(1)
+
+    // Switch to plan2 — stale entries should clear
+    mocks.callRpc.mockClear()
+    rerender({ selectedPlan: plan2 })
+
+    // Same task-month should be completable again (not blocked by stale entry)
+    await act(async () => {
+      await result.current.handleMarkAsCompleted(task, 5)
+    })
+    expect(mocks.callRpc).toHaveBeenCalledTimes(1)
   })
 
   // --- handleBulkScheduleApply ---

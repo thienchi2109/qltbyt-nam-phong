@@ -47,6 +47,9 @@ export function useMaintenanceCompletion({
   const [isCompletingTask, setIsCompletingTask] = React.useState<string | null>(null)
   const inFlightKeysRef = React.useRef(new Set<string>())
 
+  // Clear stale optimistic entries when switching plans (matches original useEffect behavior)
+  React.useEffect(() => { setCompletionStatus({}) }, [selectedPlan])
+
   // Seed from tasks data so already-completed months are reflected immediately
   const seededStatus = React.useMemo(() => buildCompletionStatus(tasks), [tasks])
   const completionStatus = React.useMemo(
@@ -95,14 +98,20 @@ export function useMaintenanceCompletion({
 
         try {
           await fetchPlanDetails(selectedPlan)
-        } catch {
+        } catch (error) {
           // Rollback completion key so user can retry
           setCompletionStatus((prev) => {
             const next = { ...prev }
             delete next[completionKey]
             return next
           })
-          throw new Error("Không thể tải lại dữ liệu kế hoạch")
+          const details = getUnknownErrorMessage(error, "Không rõ lỗi")
+          toast({
+            variant: "destructive",
+            title: "Cảnh báo",
+            description: `Hoàn thành đã được ghi nhận nhưng không thể tải lại dữ liệu kế hoạch. Vui lòng làm mới trang. Chi tiết: ${details}`,
+          })
+          return
         }
       } catch (error) {
         const message = getUnknownErrorMessage(error, "Lỗi không xác định")
