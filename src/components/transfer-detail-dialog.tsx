@@ -71,9 +71,9 @@ export function TransferDetailDialog({
 
         <Tabs defaultValue="overview" className="mt-4">
           <TabsList>
-            <TabsTrigger value="overview">Overview</TabsTrigger>
-            <TabsTrigger value="history">History</TabsTrigger>
-            <TabsTrigger value="progress">Progress</TabsTrigger>
+            <TabsTrigger value="overview">Tổng quan</TabsTrigger>
+            <TabsTrigger value="history">Lịch sử</TabsTrigger>
+            <TabsTrigger value="progress">Tiến trình</TabsTrigger>
           </TabsList>
 
           <TabsContent value="overview">

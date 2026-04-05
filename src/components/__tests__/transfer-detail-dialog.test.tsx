@@ -323,9 +323,9 @@ describe("TransferDetailDialog related people", () => {
       ).toHaveLength(1)
     })
 
-    expect(screen.getByRole("tab", { name: "Overview" })).toBeInTheDocument()
-    expect(screen.getByRole("tab", { name: "History" })).toBeInTheDocument()
-    expect(screen.getByRole("tab", { name: "Progress" })).toBeInTheDocument()
+    expect(screen.getByRole("tab", { name: "Tổng quan" })).toBeInTheDocument()
+    expect(screen.getByRole("tab", { name: "Lịch sử" })).toBeInTheDocument()
+    expect(screen.getByRole("tab", { name: "Tiến trình" })).toBeInTheDocument()
   })
 
   it("prefers the fresher list-row transfer over stale cached detail while refetch is in flight", async () => {
@@ -398,7 +398,7 @@ describe("TransferDetailDialog related people", () => {
       { wrapper: createWrapper() },
     )
 
-    fireEvent.mouseDown(screen.getByRole("tab", { name: "History" }))
+    fireEvent.mouseDown(screen.getByRole("tab", { name: "Lịch sử" }))
 
     await waitFor(() => {
       expect(screen.getByText(transferRequestCreateLabel)).toBeInTheDocument()
@@ -406,7 +406,7 @@ describe("TransferDetailDialog related people", () => {
     })
   })
 
-  it("moves history content into the History tab and keeps overview focused on transfer details", async () => {
+  it("moves history content into the Lịch sử tab and keeps overview focused on transfer details", async () => {
     mockCallRpc.mockImplementation(async ({ fn }) => {
       if (fn === "transfer_request_get") {
         return makeTransferRow()
@@ -440,7 +440,7 @@ describe("TransferDetailDialog related people", () => {
     expect(screen.queryByText("Nguyễn Văn A")).not.toBeInTheDocument()
     expect(screen.getByText("Thông tin cơ bản")).toBeInTheDocument()
 
-    fireEvent.mouseDown(screen.getByRole("tab", { name: "History" }))
+    fireEvent.mouseDown(screen.getByRole("tab", { name: "Lịch sử" }))
 
     await waitFor(() => {
       expect(screen.getByText("Đã duyệt")).toBeInTheDocument()
