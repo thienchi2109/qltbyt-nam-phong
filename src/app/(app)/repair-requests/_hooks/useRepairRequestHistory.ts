@@ -19,6 +19,8 @@ interface UseRepairRequestHistoryOptions {
   userRole: string | undefined
   userDiaBanId: ScopeValue
   hasUser: boolean
+  /** When false, the query is disabled regardless of other conditions. Defaults to true. */
+  enabled?: boolean
 }
 
 export const repairRequestHistoryQueryKeys = {
@@ -41,8 +43,9 @@ export function useRepairRequestHistory({
   userRole,
   userDiaBanId,
   hasUser,
+  enabled: callerEnabled = true,
 }: UseRepairRequestHistoryOptions) {
-  const enabled = hasUser && requestId !== null
+  const enabled = hasUser && requestId !== null && callerEnabled
 
   return useQuery<RepairRequestChangeHistory[]>({
     queryKey:

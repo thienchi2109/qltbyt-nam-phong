@@ -74,17 +74,32 @@ const historyEntries: ChangeHistoryEntry[] = [
   },
 ]
 
-describe("RepairRequestsDetailTabs", () => {
-  it("renders the details tab by default", () => {
-    render(
+function renderDetailTabs(
+  overrides: Partial<React.ComponentProps<typeof RepairRequestsDetailTabs>> = {},
+) {
+  function TestHarness() {
+    const [activeTab, setActiveTab] = React.useState(overrides.activeTab ?? "details")
+
+    return (
       <RepairRequestsDetailTabs
         request={mockRequest}
         historyEntries={historyEntries}
         isLoadingHistory={false}
         isHistoryError={false}
         historyErrorMessage={null}
-      />,
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
+        {...overrides}
+      />
     )
+  }
+
+  return render(<TestHarness />)
+}
+
+describe("RepairRequestsDetailTabs", () => {
+  it("renders the details tab by default", () => {
+    renderDetailTabs()
 
     expect(screen.getByRole("tab", { name: "Details" })).toHaveAttribute("data-state", "active")
     expect(screen.getByTestId("detail-content")).toHaveTextContent("detail for Test Device")
@@ -94,15 +109,7 @@ describe("RepairRequestsDetailTabs", () => {
   it("switches to the history tab with user-event", async () => {
     const user = userEvent.setup()
 
-    render(
-      <RepairRequestsDetailTabs
-        request={mockRequest}
-        historyEntries={historyEntries}
-        isLoadingHistory={true}
-        isHistoryError={false}
-        historyErrorMessage={null}
-      />,
-    )
+    renderDetailTabs({ isLoadingHistory: true })
 
     await user.click(screen.getByRole("tab", { name: "History" }))
 
@@ -114,15 +121,11 @@ describe("RepairRequestsDetailTabs", () => {
   it("shows an error alert instead of the empty history state when the query fails", async () => {
     const user = userEvent.setup()
 
-    render(
-      <RepairRequestsDetailTabs
-        request={mockRequest}
-        historyEntries={[]}
-        isLoadingHistory={false}
-        isHistoryError={true}
-        historyErrorMessage="RPC repair_request_change_history_list failed (500)"
-      />,
-    )
+    renderDetailTabs({
+      historyEntries: [],
+      isHistoryError: true,
+      historyErrorMessage: "RPC repair_request_change_history_list failed (500)",
+    })
 
     await user.click(screen.getByRole("tab", { name: "History" }))
 

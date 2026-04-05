@@ -2,9 +2,9 @@
  * TDD RED phase: Tests for the unified RepairRequestsDetailView shell.
  */
 import * as React from "react"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { render, screen } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
-import { beforeEach, describe, expect, it, vi } from "vitest"
 
 import type { ChangeHistoryEntry } from "@/components/change-history/ChangeHistoryTypes"
 
@@ -60,12 +60,14 @@ vi.mock("../_components/RepairRequestsDetailTabs", () => ({
     isLoadingHistory,
     isHistoryError,
     historyErrorMessage,
+    activeTab,
   }: {
     request: RepairRequestWithEquipment
     historyEntries: ChangeHistoryEntry[]
     isLoadingHistory: boolean
     isHistoryError: boolean
     historyErrorMessage: string | null
+    activeTab: string
   }) => {
     mockDetailTabs({
       request,
@@ -73,11 +75,13 @@ vi.mock("../_components/RepairRequestsDetailTabs", () => ({
       isLoadingHistory,
       isHistoryError,
       historyErrorMessage,
+      activeTab,
     })
     return (
       <div data-testid="detail-tabs">
         tabs for {request.thiet_bi?.ten_thiet_bi ?? "unknown"} / {historyEntries.length} /{" "}
-        {String(isLoadingHistory)} / {String(isHistoryError)} / {historyErrorMessage ?? "none"}
+        {String(isLoadingHistory)} / {String(isHistoryError)} / {historyErrorMessage ?? "none"} /{" "}
+        {activeTab}
       </div>
     )
   },
@@ -133,8 +137,11 @@ const mockRequest: RepairRequestWithEquipment = {
 }
 
 describe("RepairRequestsDetailView", () => {
+  let consoleErrorSpy: ReturnType<typeof vi.spyOn>
+
   beforeEach(() => {
     vi.clearAllMocks()
+    consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {})
     mockUseRepairRequestHistory.mockReturnValue({
       data: mockHistory,
       isLoading: false,
@@ -142,6 +149,10 @@ describe("RepairRequestsDetailView", () => {
       error: null,
     })
     mockMapRepairRequestHistoryEntries.mockReturnValue(mappedEntries)
+  })
+
+  afterEach(() => {
+    consoleErrorSpy.mockRestore()
   })
 
   it("renders nothing when requestToView is null", () => {
@@ -160,7 +171,7 @@ describe("RepairRequestsDetailView", () => {
       screen.getByText("Thông tin chi tiết và lịch sử của yêu cầu sửa chữa thiết bị"),
     ).toBeInTheDocument()
     expect(screen.getByTestId("detail-tabs")).toHaveTextContent(
-      "tabs for Test Device / 1 / false / false / none",
+      "tabs for Test Device / 1 / false / false / none / details",
     )
 
     const dialogEl = screen.getByRole("dialog")
@@ -176,6 +187,7 @@ describe("RepairRequestsDetailView", () => {
       userRole: "to_qltb",
       userDiaBanId: 20,
       hasUser: true,
+      enabled: false,
     })
     expect(mockMapRepairRequestHistoryEntries).toHaveBeenCalledWith(mockHistory)
     expect(mockDetailTabs).toHaveBeenCalledWith({
@@ -184,10 +196,11 @@ describe("RepairRequestsDetailView", () => {
       isLoadingHistory: false,
       isHistoryError: false,
       historyErrorMessage: null,
+      activeTab: "details",
     })
   })
 
-  it("forwards query errors to the tabs instead of coercing them to an empty history state", () => {
+  it("replaces raw RPC errors with a friendly Vietnamese message and logs the original error", () => {
     mockUseRepairRequestHistory.mockReturnValue({
       data: undefined,
       isLoading: false,
@@ -203,8 +216,16 @@ describe("RepairRequestsDetailView", () => {
       historyEntries: [],
       isLoadingHistory: false,
       isHistoryError: true,
-      historyErrorMessage: "RPC repair_request_change_history_list failed (500)",
+      historyErrorMessage: "Không thể tải lịch sử thay đổi lúc này. Vui lòng thử lại sau.",
+      activeTab: "details",
     })
+    expect(consoleErrorSpy).toHaveBeenCalledWith(
+      "[RepairRequestsDetailView] Failed to load repair request history:",
+      expect.objectContaining({
+        requestId: 1,
+        error: expect.any(Error),
+      }),
+    )
   })
 
   it("calls onClose when the close button is clicked", async () => {

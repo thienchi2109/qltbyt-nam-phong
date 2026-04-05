@@ -17,6 +17,8 @@ interface RepairRequestsDetailTabsProps {
   isLoadingHistory: boolean
   isHistoryError: boolean
   historyErrorMessage: string | null
+  activeTab: string
+  onTabChange: (tab: string) => void
 }
 
 export function RepairRequestsDetailTabs({
@@ -25,9 +27,11 @@ export function RepairRequestsDetailTabs({
   isLoadingHistory,
   isHistoryError,
   historyErrorMessage,
+  activeTab,
+  onTabChange,
 }: RepairRequestsDetailTabsProps) {
   return (
-    <Tabs defaultValue="details" className="flex min-h-0 flex-1 flex-col">
+    <Tabs value={activeTab} onValueChange={onTabChange} className="flex min-h-0 flex-1 flex-col">
       <div className="border-b px-4 py-3">
         <TabsList>
           <TabsTrigger value="details">Details</TabsTrigger>
