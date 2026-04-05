@@ -7,9 +7,9 @@ import {
   SheetDescription,
   SheetTitle,
 } from "@/components/ui/sheet"
-import { mapRepairRequestHistoryEntries } from "../_lib/repairRequestHistoryAdapter"
-import { useRepairRequestHistory } from "../_hooks/useRepairRequestHistory"
-import type { RepairRequestWithEquipment } from "../types"
+import { mapRepairRequestHistoryEntries } from "@/app/(app)/repair-requests/_lib/repairRequestHistoryAdapter"
+import { useRepairRequestHistory } from "@/app/(app)/repair-requests/_hooks/useRepairRequestHistory"
+import type { RepairRequestWithEquipment } from "@/app/(app)/repair-requests/types"
 import { RepairRequestsDetailTabs } from "./RepairRequestsDetailTabs"
 
 interface RepairRequestsDetailViewProps {

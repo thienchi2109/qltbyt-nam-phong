@@ -8,7 +8,7 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import type { ChangeHistoryEntry } from "@/components/change-history/ChangeHistoryTypes"
 
-import type { RepairRequestWithEquipment } from "../types"
+import type { RepairRequestWithEquipment } from "@/app/(app)/repair-requests/types"
 import { RepairRequestsDetailContent } from "./RepairRequestsDetailContent"
 
 interface RepairRequestsDetailTabsProps {

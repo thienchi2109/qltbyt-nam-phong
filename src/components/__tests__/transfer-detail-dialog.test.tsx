@@ -1,5 +1,6 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
-import { fireEvent, render, screen, waitFor } from "@testing-library/react"
+import { render, screen, waitFor } from "@testing-library/react"
+import userEvent from "@testing-library/user-event"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import * as React from "react"
 
@@ -398,7 +399,7 @@ describe("TransferDetailDialog related people", () => {
       { wrapper: createWrapper() },
     )
 
-    fireEvent.mouseDown(screen.getByRole("tab", { name: "Lịch sử" }))
+    await userEvent.click(screen.getByRole("tab", { name: "Lịch sử" }))
 
     await waitFor(() => {
       expect(screen.getByText(transferRequestCreateLabel)).toBeInTheDocument()
@@ -440,7 +441,7 @@ describe("TransferDetailDialog related people", () => {
     expect(screen.queryByText("Nguyễn Văn A")).not.toBeInTheDocument()
     expect(screen.getByText("Thông tin cơ bản")).toBeInTheDocument()
 
-    fireEvent.mouseDown(screen.getByRole("tab", { name: "Lịch sử" }))
+    await userEvent.click(screen.getByRole("tab", { name: "Lịch sử" }))
 
     await waitFor(() => {
       expect(screen.getByText("Đã duyệt")).toBeInTheDocument()

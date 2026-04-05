@@ -20,9 +20,9 @@ import { TransferStatusProgress } from "@/components/transfers/TransferStatusPro
 import type { TransferRequest } from "@/types/database"
 
 interface TransferDetailDialogProps {
-  open: boolean
-  onOpenChange: (open: boolean) => void
-  transfer: TransferRequest | null
+  readonly open: boolean
+  readonly onOpenChange: (open: boolean) => void
+  readonly transfer: TransferRequest | null
 }
 
 function getTransferFreshness(value: TransferRequest | null | undefined) {
