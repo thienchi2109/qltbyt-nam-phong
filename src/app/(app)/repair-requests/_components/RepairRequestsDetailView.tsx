@@ -43,6 +43,10 @@ export const RepairRequestsDetailView = React.memo(function RepairRequestsDetail
   onClose,
 }: RepairRequestsDetailViewProps) {
   const [activeTab, setActiveTab] = React.useState("details")
+
+  // Reset to details tab when viewing a different request
+  React.useEffect(() => { setActiveTab("details") }, [requestToView?.id])
+
   const { data: session } = useSession()
   const user = session?.user
   const effectiveTenantKey = user?.don_vi ?? user?.current_don_vi ?? "none"
