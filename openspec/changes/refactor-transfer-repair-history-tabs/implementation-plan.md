@@ -392,6 +392,7 @@ Add failing coverage for:
 - `Details` tab continues to show the current detail content
 - `History` tab renders loading, empty, and populated states through the shared `ChangeHistoryTab`
 - history tab does not crash when the hook returns no actor name or no detail rows
+- **Use `@testing-library/user-event` to simulate user clicks when switching tabs**
 
 Mock `useRepairRequestHistory()` in the detail-tab tests so the view tests stay focused on composition, not RPC behavior.
 
