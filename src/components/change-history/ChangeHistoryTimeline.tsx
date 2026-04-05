@@ -47,8 +47,11 @@ export function ChangeHistoryTimeline({ entries }: ChangeHistoryTimelineProps) {
             {/* Detail rows */}
             {entry.details.length > 0 ? (
               <div className="mt-2 p-3 rounded-md bg-muted/50 border">
-                {entry.details.map((detail, idx) => (
-                  <div key={idx} className="flex items-baseline gap-2 text-sm">
+                {entry.details.map((detail) => (
+                  <div
+                    key={`${entry.id}-${detail.label}-${detail.value}`}
+                    className="flex items-baseline gap-2 text-sm"
+                  >
                     <span className="text-muted-foreground shrink-0">
                       {detail.label}
                     </span>

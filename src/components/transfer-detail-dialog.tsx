@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { Calendar, Clock, User, Package, MapPin, Phone, Building } from "lucide-react"
+import { Package } from "lucide-react"
 
 import {
   Dialog,
@@ -10,17 +10,14 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import { Badge } from "@/components/ui/badge"
-import { Separator } from "@/components/ui/separator"
 import { ScrollArea } from "@/components/ui/scroll-area"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { ChangeHistoryTab } from "@/components/change-history/ChangeHistoryTab"
 import { useTransferDetailDialogData } from "@/components/transfer-detail-dialog.data"
+import { mapTransferHistoryEntries } from "@/components/transfer-detail-history-adapter"
+import { TransferDetailOverview } from "@/components/transfer-detail-overview"
 import { TransferStatusProgress } from "@/components/transfers/TransferStatusProgress"
-import { 
-  TRANSFER_TYPES, 
-  TRANSFER_STATUSES,
-  TRANSFER_PURPOSES,
-  type TransferRequest
-} from "@/types/database"
+import type { TransferRequest } from "@/types/database"
 
 interface TransferDetailDialogProps {
   open: boolean
@@ -28,89 +25,23 @@ interface TransferDetailDialogProps {
   transfer: TransferRequest | null
 }
 
-const TRANSFER_HISTORY_ACTION_LABELS: Record<string, string> = {
-  transfer_request_create: "Tạo yêu cầu luân chuyển",
-  transfer_request_update: "Cập nhật yêu cầu luân chuyển",
+function getTransferFreshness(value: TransferRequest | null | undefined) {
+  const timestamp = value?.updated_at ?? value?.created_at
+  if (!timestamp) return Number.NEGATIVE_INFINITY
+
+  const parsed = new Date(timestamp).getTime()
+  return Number.isNaN(parsed) ? Number.NEGATIVE_INFINITY : parsed
 }
 
-const TRANSFER_HISTORY_DETAILS_LABELS: Record<string, string> = {
-  ma_yeu_cau: "Mã yêu cầu",
-  trang_thai: "Trạng thái",
-  ly_do_luan_chuyen: "Lý do luân chuyển",
-  khoa_phong_hien_tai: "Khoa/phòng hiện tại",
-  khoa_phong_nhan: "Khoa/phòng nhận",
-  don_vi_nhan: "Đơn vị nhận",
-  nguoi_lien_he: "Người liên hệ",
-  so_dien_thoai: "Số điện thoại",
-}
-
-const TRANSFER_HISTORY_DETAILS_HIDDEN_KEYS = new Set<string>([
-  "loai_hinh",
-  "thiet_bi_id",
-])
-
-function formatHistoryDetailValue(value: unknown): string {
-  if (typeof value === "string") {
-    const transferStatusLabel = TRANSFER_STATUSES[value as keyof typeof TRANSFER_STATUSES]
-    return transferStatusLabel ?? value
-  }
-  if (typeof value === "number" || typeof value === "boolean") {
-    return String(value)
-  }
-  if (Array.isArray(value)) {
-    return value.map(formatHistoryDetailValue).join(", ")
-  }
-  return "—"
-}
-
-function getTransferHistoryDetailRows(actionDetails: Record<string, unknown> | null): Array<{
-  key: string
-  label: string
-  value: string
-}> {
-  if (!actionDetails) return []
-  return Object.entries(actionDetails)
-    .filter(
-      ([key, value]) =>
-        !TRANSFER_HISTORY_DETAILS_HIDDEN_KEYS.has(key) &&
-        value !== null &&
-        value !== "",
-    )
-    .map(([key, value]) => ({
-      key,
-      label: TRANSFER_HISTORY_DETAILS_LABELS[key] ?? key.replaceAll("_", " "),
-      value: formatHistoryDetailValue(value),
-    }))
-}
-
-export function TransferDetailDialog({ open, onOpenChange, transfer }: TransferDetailDialogProps) {
+export function TransferDetailDialog({
+  open,
+  onOpenChange,
+  transfer,
+}: TransferDetailDialogProps) {
   const { history, isLoadingHistory, resolvedTransfer, transferId } = useTransferDetailDialogData({
     open,
     transfer,
   })
-
-  const getTransferFreshness = (value: TransferRequest | null | undefined) => {
-    const timestamp = value?.updated_at ?? value?.created_at
-    if (!timestamp) return Number.NEGATIVE_INFINITY
-
-    const parsed = new Date(timestamp).getTime()
-    return Number.isNaN(parsed) ? Number.NEGATIVE_INFINITY : parsed
-  }
-
-  const getStatusVariant = (status: string) => {
-    switch (status) {
-      case 'cho_duyet': return 'secondary'
-      case 'da_duyet': return 'default'
-      case 'dang_luan_chuyen': return 'destructive'
-      case 'hoan_thanh': return 'default'
-      default: return 'secondary'
-    }
-  }
-
-  const formatDateTime = (dateString: string | null) => {
-    if (!dateString) return 'Chưa có'
-    return new Date(dateString).toLocaleString('vi-VN')
-  }
 
   const displayTransfer =
     resolvedTransfer?.id === transferId &&
@@ -118,11 +49,16 @@ export function TransferDetailDialog({ open, onOpenChange, transfer }: TransferD
       ? resolvedTransfer
       : transfer
 
+  const historyEntries = React.useMemo(
+    () => mapTransferHistoryEntries(history),
+    [history],
+  )
+
   if (!displayTransfer) return null
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[90vh]">
+      <DialogContent className="max-h-[90vh] max-w-4xl">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Package className="h-5 w-5" />
@@ -133,263 +69,36 @@ export function TransferDetailDialog({ open, onOpenChange, transfer }: TransferD
           </DialogDescription>
         </DialogHeader>
 
-        <ScrollArea className="max-h-[calc(90vh-120px)] mt-4">
-          <div className="space-y-6 pr-4">
-            {/* Basic Information */}
-            <div className="space-y-4">
-              <h3 className="text-lg font-semibold">Thông tin cơ bản</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2">
-                    <Package className="h-4 w-4 text-muted-foreground" />
-                    <span className="font-medium">Thiết bị:</span>
-                  </div>
-                  <div className="ml-6">
-                    <p className="font-medium">{displayTransfer.thiet_bi?.ten_thiet_bi}</p>
-                    <p className="text-sm text-muted-foreground">
-                      {displayTransfer.thiet_bi?.ma_thiet_bi}
-                      {displayTransfer.thiet_bi?.model && ` • Model: ${displayTransfer.thiet_bi.model}`}
-                    </p>
-                  </div>
-                </div>
+        <Tabs defaultValue="overview" className="mt-4">
+          <TabsList>
+            <TabsTrigger value="overview">Overview</TabsTrigger>
+            <TabsTrigger value="history">History</TabsTrigger>
+            <TabsTrigger value="progress">Progress</TabsTrigger>
+          </TabsList>
 
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2">
-                    <Badge variant={displayTransfer.loai_hinh === 'noi_bo' ? 'default' : 'secondary'}>
-                      {TRANSFER_TYPES[displayTransfer.loai_hinh]}
-                    </Badge>
-                    <Badge variant={getStatusVariant(displayTransfer.trang_thai)}>
-                      {TRANSFER_STATUSES[displayTransfer.trang_thai]}
-                    </Badge>
-                  </div>
-                </div>
-              </div>
-            </div>
+          <TabsContent value="overview">
+            <ScrollArea className="max-h-[calc(90vh-180px)]">
+              <TransferDetailOverview transfer={displayTransfer} />
+            </ScrollArea>
+          </TabsContent>
 
-            <Separator />
+          <TabsContent value="history">
+            <ScrollArea className="max-h-[calc(90vh-180px)]">
+              <ChangeHistoryTab entries={historyEntries} isLoading={isLoadingHistory} />
+            </ScrollArea>
+          </TabsContent>
 
-            {/* Transfer Details */}
-            <div className="space-y-4">
-              <h3 className="text-lg font-semibold">Chi tiết luân chuyển</h3>
-              
-              {displayTransfer.loai_hinh === 'noi_bo' ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-2">
-                      <MapPin className="h-4 w-4 text-muted-foreground" />
-                      <span className="font-medium">Từ khoa/phòng:</span>
-                    </div>
-                    <p className="ml-6">{displayTransfer.khoa_phong_hien_tai}</p>
-                  </div>
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-2">
-                      <MapPin className="h-4 w-4 text-muted-foreground" />
-                      <span className="font-medium">Đến khoa/phòng:</span>
-                    </div>
-                    <p className="ml-6">{displayTransfer.khoa_phong_nhan}</p>
-                  </div>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <span className="font-medium">Mục đích:</span>
-                      <p className="text-sm">{displayTransfer.muc_dich ? TRANSFER_PURPOSES[displayTransfer.muc_dich] : 'Chưa xác định'}</p>
-                    </div>
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-2">
-                        <Building className="h-4 w-4 text-muted-foreground" />
-                        <span className="font-medium">Đơn vị nhận:</span>
-                      </div>
-                      <p className="ml-6">{displayTransfer.don_vi_nhan}</p>
-                    </div>
-                  </div>
-                  
-                  {displayTransfer.dia_chi_don_vi && (
-                    <div className="space-y-2">
-                      <span className="font-medium">Địa chỉ:</span>
-                      <p className="text-sm">{displayTransfer.dia_chi_don_vi}</p>
-                    </div>
-                  )}
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {displayTransfer.nguoi_lien_he && (
-                      <div className="space-y-2">
-                        <div className="flex items-center gap-2">
-                          <User className="h-4 w-4 text-muted-foreground" />
-                          <span className="font-medium">Người liên hệ:</span>
-                        </div>
-                        <p className="ml-6">{displayTransfer.nguoi_lien_he}</p>
-                      </div>
-                    )}
-                    {displayTransfer.so_dien_thoai && (
-                      <div className="space-y-2">
-                        <div className="flex items-center gap-2">
-                          <Phone className="h-4 w-4 text-muted-foreground" />
-                          <span className="font-medium">Số điện thoại:</span>
-                        </div>
-                        <p className="ml-6">{displayTransfer.so_dien_thoai}</p>
-                      </div>
-                    )}
-                  </div>
-                  
-                  {displayTransfer.ngay_du_kien_tra && (
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-2">
-                        <Calendar className="h-4 w-4 text-muted-foreground" />
-                        <span className="font-medium">Ngày dự kiến trả về:</span>
-                      </div>
-                      <p className="ml-6">{new Date(displayTransfer.ngay_du_kien_tra).toLocaleDateString('vi-VN')}</p>
-                    </div>
-                  )}
-                </div>
-              )}
-              
-              <div className="space-y-2">
-                <span className="font-medium">Lý do luân chuyển:</span>
-                <p className="text-sm bg-muted p-3 rounded-md">{displayTransfer.ly_do_luan_chuyen}</p>
-              </div>
-            </div>
-
-            <Separator />
-
-            {/* Timeline */}
-            <div className="space-y-4">
-              <h3 className="text-lg font-semibold">Thời gian thực hiện</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2">
-                    <Clock className="h-4 w-4 text-muted-foreground" />
-                    <span className="font-medium">Ngày tạo:</span>
-                  </div>
-                  <p className="ml-6">{formatDateTime(displayTransfer.created_at)}</p>
-                </div>
-                
-                {displayTransfer.ngay_duyet && (
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-2">
-                      <Clock className="h-4 w-4 text-muted-foreground" />
-                      <span className="font-medium">Ngày duyệt:</span>
-                    </div>
-                    <p className="ml-6">{formatDateTime(displayTransfer.ngay_duyet)}</p>
-                  </div>
-                )}
-                
-                {displayTransfer.ngay_ban_giao && (
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-2">
-                      <Clock className="h-4 w-4 text-muted-foreground" />
-                      <span className="font-medium">Ngày bàn giao:</span>
-                    </div>
-                    <p className="ml-6">{formatDateTime(displayTransfer.ngay_ban_giao)}</p>
-                  </div>
-                )}
-                
-                {displayTransfer.ngay_hoan_thanh && (
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-2">
-                      <Clock className="h-4 w-4 text-muted-foreground" />
-                      <span className="font-medium">Ngày hoàn thành:</span>
-                    </div>
-                    <p className="ml-6">{formatDateTime(displayTransfer.ngay_hoan_thanh)}</p>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            <Separator />
-
-            {/* People Involved */}
-            <div className="space-y-4">
-              <h3 className="text-lg font-semibold">Người liên quan</h3>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                {displayTransfer.nguoi_yeu_cau && (
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-2">
-                      <User className="h-4 w-4 text-muted-foreground" />
-                      <span className="font-medium">Người yêu cầu:</span>
-                    </div>
-                    <p className="ml-6">{displayTransfer.nguoi_yeu_cau.full_name}</p>
-                  </div>
-                )}
-                
-                {displayTransfer.nguoi_duyet && (
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-2">
-                      <User className="h-4 w-4 text-muted-foreground" />
-                      <span className="font-medium">Người duyệt:</span>
-                    </div>
-                    <p className="ml-6">{displayTransfer.nguoi_duyet.full_name}</p>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            <Separator />
-
-            {/* History */}
-            <div className="space-y-4">
-              <h3 className="text-lg font-semibold">Lịch sử thay đổi</h3>
-              {isLoadingHistory ? (
-                <p className="text-sm text-muted-foreground">Đang tải lịch sử...</p>
-              ) : history.length === 0 ? (
-                <p className="text-sm text-muted-foreground">Chưa có lịch sử thay đổi</p>
-              ) : (
-                <div className="space-y-3">
-                  {history.map((item) => (
-                    <div key={item.id} className="flex gap-3 rounded-md border bg-muted/40 p-3">
-                      <div className="flex-shrink-0 w-2 h-2 rounded-full bg-primary mt-2"></div>
-                      <div className="flex-grow space-y-1">
-                        <div className="flex items-center justify-between">
-                          <span className="font-medium text-sm">
-                            {TRANSFER_HISTORY_ACTION_LABELS[item.action_type] ?? item.action_type}
-                          </span>
-                          <span className="text-xs text-muted-foreground">
-                            {formatDateTime(item.created_at)}
-                          </span>
-                        </div>
-                        {(() => {
-                          const detailRows = getTransferHistoryDetailRows(item.action_details)
-                          if (detailRows.length === 0) return null
-
-                          return (
-                            <div className="mt-2 rounded-md border bg-background/60 p-2">
-                              <div className="grid grid-cols-1 gap-x-4 gap-y-1 md:grid-cols-2">
-                                {detailRows.map((detail) => (
-                                  <div key={detail.key} className="min-w-0 text-xs">
-                                    <p className="text-muted-foreground">{detail.label}</p>
-                                    <p className="truncate font-medium text-foreground">{detail.value}</p>
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-                          )
-                        })()}
-                        {item.admin_full_name && (
-                          <p className="text-xs text-muted-foreground">
-                            Thực hiện bởi: {item.admin_full_name}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            <Separator />
-
-            {/* Status Progress */}
-            <div className="space-y-4">
-              <h3 className="text-lg font-semibold">Tiến trình xử lý</h3>
+          <TabsContent value="progress">
+            <div className="py-4">
+              <h3 className="mb-4 text-lg font-semibold">Tiến trình xử lý</h3>
               <TransferStatusProgress
                 type={displayTransfer.loai_hinh}
                 currentStatus={displayTransfer.trang_thai}
                 className="py-2"
               />
             </div>
-          </div>
-        </ScrollArea>
+          </TabsContent>
+        </Tabs>
       </DialogContent>
     </Dialog>
   )

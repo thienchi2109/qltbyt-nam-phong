@@ -8,13 +8,17 @@ import React from "react"
 
 import { Skeleton } from "@/components/ui/skeleton"
 
-const SKELETON_COUNT = 3
+const SKELETON_IDS = [
+  "change-history-skeleton-1",
+  "change-history-skeleton-2",
+  "change-history-skeleton-3",
+] as const
 
 export function ChangeHistoryLoadingState() {
   return (
     <div className="flex flex-col gap-4 py-4 pr-4">
-      {Array.from({ length: SKELETON_COUNT }, (_, i) => (
-        <div key={i} data-testid="change-history-skeleton" className="flex flex-col gap-2">
+      {SKELETON_IDS.map((skeletonId) => (
+        <div key={skeletonId} data-testid="change-history-skeleton" className="flex flex-col gap-2">
           <Skeleton className="h-4 w-1/3" />
           <Skeleton className="h-16 w-full" />
         </div>
