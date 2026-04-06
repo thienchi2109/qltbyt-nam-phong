@@ -1,3 +1,41 @@
+# Normalize text files consistently across platforms.
+* text=auto
 
-# Use bd merge for beads JSONL files
+# Keep source, config, and docs files on LF in the working tree.
+.gitattributes text eol=lf
+.gitignore text eol=lf
+*.ts text eol=lf
+*.tsx text eol=lf
+*.js text eol=lf
+*.jsx text eol=lf
+*.mjs text eol=lf
+*.cjs text eol=lf
+*.json text eol=lf
+*.md text eol=lf
+*.css text eol=lf
+*.scss text eol=lf
+*.html text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+*.sql text eol=lf
+*.sh text eol=lf
+*.txt text eol=lf
+
+# Keep Windows-native scripts on CRLF.
+*.ps1 text eol=crlf
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+# Mark common binary assets so Git never tries text normalization.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.webp binary
+*.ico binary
+*.pdf binary
+*.woff binary
+*.woff2 binary
+
+# Use bd merge for beads JSONL files.
 .beads/issues.jsonl merge=beads
