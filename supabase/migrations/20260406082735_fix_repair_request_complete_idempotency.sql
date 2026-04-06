@@ -68,7 +68,7 @@ BEGIN
   END IF;
 
   -- Idempotency guard: reject if already in terminal state
-  IF v_locked.trang_thai IN ('Hoàn thành', 'Không HT') THEN
+  IF v_locked.ngay_hoan_thanh IS NOT NULL OR v_locked.trang_thai IN ('Hoàn thành', 'Không HT') THEN
     RAISE EXCEPTION 'Không thể hoàn thành lại yêu cầu đã hoàn thành' USING errcode = '22023';
   END IF;
 
