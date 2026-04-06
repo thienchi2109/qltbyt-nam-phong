@@ -14,6 +14,10 @@ import {
 
 interface TransferDetailOverviewProps {
   transfer: TransferRequest
+  relatedPeople?: {
+    requesterName: string | null
+    approverName: string | null
+  }
 }
 
 function getStatusVariant(status: string) {
@@ -36,7 +40,13 @@ function formatDateTime(dateString: string | null | undefined) {
   return new Date(dateString).toLocaleString("vi-VN")
 }
 
-export function TransferDetailOverview({ transfer }: TransferDetailOverviewProps) {
+export function TransferDetailOverview({
+  transfer,
+  relatedPeople,
+}: TransferDetailOverviewProps) {
+  const requesterName = relatedPeople?.requesterName ?? transfer.nguoi_yeu_cau?.full_name ?? null
+  const approverName = relatedPeople?.approverName ?? transfer.nguoi_duyet?.full_name ?? null
+
   return (
     <div className="space-y-6 pr-4">
       <div className="space-y-4">
@@ -207,23 +217,23 @@ export function TransferDetailOverview({ transfer }: TransferDetailOverviewProps
       <div className="space-y-4">
         <h3 className="text-lg font-semibold">Người liên quan</h3>
         <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-          {transfer.nguoi_yeu_cau ? (
+          {requesterName ? (
             <div className="space-y-2">
               <div className="flex items-center gap-2">
                 <User className="h-4 w-4 text-muted-foreground" />
                 <span className="font-medium">Người yêu cầu:</span>
               </div>
-              <p className="ml-6">{transfer.nguoi_yeu_cau.full_name}</p>
+              <p className="ml-6">{requesterName}</p>
             </div>
           ) : null}
 
-          {transfer.nguoi_duyet ? (
+          {approverName ? (
             <div className="space-y-2">
               <div className="flex items-center gap-2">
                 <User className="h-4 w-4 text-muted-foreground" />
                 <span className="font-medium">Người duyệt:</span>
               </div>
-              <p className="ml-6">{transfer.nguoi_duyet.full_name}</p>
+              <p className="ml-6">{approverName}</p>
             </div>
           ) : null}
         </div>

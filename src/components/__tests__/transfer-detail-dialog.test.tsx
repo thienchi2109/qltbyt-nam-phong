@@ -277,6 +277,62 @@ describe("TransferDetailDialog related people", () => {
     expect(screen.getByText("Người duyệt:")).toBeInTheDocument()
   })
 
+  it("derives related people from audit-log history for YCLC-20260121-14 when the detail payload has ids but no nested users", async () => {
+    mockCallRpc.mockImplementation(async ({ fn }) => {
+      if (fn === "transfer_request_get") {
+        return makeTransferRow({
+          id: 13,
+          ma_yeu_cau: "YCLC-20260121-14",
+          trang_thai: "hoan_thanh",
+          nguoi_yeu_cau_id: 28,
+          nguoi_duyet_id: 28,
+          nguoi_yeu_cau: undefined,
+          nguoi_duyet: undefined,
+        })
+      }
+      if (fn === "transfer_change_history_list") {
+        return [
+          {
+            id: 313,
+            action_type: "transfer_request_create",
+            admin_username: "nndu",
+            admin_full_name: "Nguyễn Ngọc Du",
+            action_details: {
+              nguoi_yeu_cau_id: 28,
+              khoa_phong_hien_tai: "Nội 2",
+              khoa_phong_nhan: "Nội thận",
+            },
+            created_at: "2026-01-21T03:06:51.493Z",
+          },
+        ]
+      }
+      throw new Error(`Unexpected RPC: ${fn}`)
+    })
+
+    render(
+      <TransferDetailDialog
+        open
+        onOpenChange={vi.fn()}
+        transfer={makeTransferRow({
+          id: 13,
+          ma_yeu_cau: "YCLC-20260121-14",
+          trang_thai: "hoan_thanh",
+          nguoi_yeu_cau_id: 28,
+          nguoi_duyet_id: 28,
+          nguoi_yeu_cau: undefined,
+          nguoi_duyet: undefined,
+        })}
+      />,
+      { wrapper: createWrapper() },
+    )
+
+    await waitFor(() => {
+      expect(screen.getByText("Người yêu cầu:")).toBeInTheDocument()
+      expect(screen.getByText("Người duyệt:")).toBeInTheDocument()
+      expect(screen.getAllByText("Nguyễn Ngọc Du")).toHaveLength(2)
+    })
+  })
+
   it("does not refetch transfer detail when the parent re-renders with the same transfer id", async () => {
     mockCallRpc.mockImplementation(async ({ fn }) => {
       if (fn === "transfer_request_get") {

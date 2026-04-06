@@ -14,7 +14,10 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { ChangeHistoryTab } from "@/components/change-history/ChangeHistoryTab"
 import { useTransferDetailDialogData } from "@/components/transfer-detail-dialog.data"
-import { mapTransferHistoryEntries } from "@/components/transfer-detail-history-adapter"
+import {
+  mapTransferHistoryEntries,
+  resolveTransferRelatedPeople,
+} from "@/components/transfer-detail-history-adapter"
 import { TransferDetailOverview } from "@/components/transfer-detail-overview"
 import { TransferStatusProgress } from "@/components/transfers/TransferStatusProgress"
 import type { TransferRequest } from "@/types/database"
@@ -104,6 +107,11 @@ export function TransferDetailDialog({
     [history],
   )
 
+  const relatedPeople = React.useMemo(
+    () => resolveTransferRelatedPeople(history, displayTransfer),
+    [displayTransfer, history],
+  )
+
   if (!displayTransfer) return null
 
   return (
@@ -128,7 +136,7 @@ export function TransferDetailDialog({
 
           <TabsContent value="overview" className="min-h-0 flex-1 overflow-hidden">
             <ScrollArea className="h-full pr-4">
-              <TransferDetailOverview transfer={displayTransfer} />
+              <TransferDetailOverview transfer={displayTransfer} relatedPeople={relatedPeople} />
             </ScrollArea>
           </TabsContent>
 

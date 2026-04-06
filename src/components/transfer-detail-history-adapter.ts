@@ -1,5 +1,9 @@
 import type { ChangeHistoryEntry } from "@/components/change-history/ChangeHistoryTypes"
-import { TRANSFER_STATUSES, type TransferChangeHistory } from "@/types/database"
+import {
+  TRANSFER_STATUSES,
+  type TransferChangeHistory,
+  type TransferRequest,
+} from "@/types/database"
 
 const TRANSFER_HISTORY_ACTION_LABELS: Record<string, string> = {
   transfer_request_create: "Tạo yêu cầu luân chuyển",
@@ -54,6 +58,49 @@ function getTransferHistoryDetails(
     }))
 }
 
+function normalizeNonEmptyString(value: string | null | undefined): string | null {
+  if (!value) return null
+
+  const trimmed = value.trim()
+  return trimmed.length > 0 ? trimmed : null
+}
+
+function getHistoryActorName(entry: Pick<TransferChangeHistory, "admin_full_name" | "admin_username">) {
+  return normalizeNonEmptyString(entry.admin_full_name) ??
+    normalizeNonEmptyString(entry.admin_username)
+}
+
+function getHistoryStatus(actionDetails: Record<string, unknown> | null): string | null {
+  const status = actionDetails?.trang_thai
+  return typeof status === "string" ? normalizeNonEmptyString(status) : null
+}
+
+function findHistoryActor(
+  history: TransferChangeHistory[],
+  predicate: (entry: TransferChangeHistory) => boolean,
+) {
+  for (const entry of history) {
+    if (!predicate(entry)) {
+      continue
+    }
+
+    const actorName = getHistoryActorName(entry)
+    if (actorName) {
+      return actorName
+    }
+  }
+
+  return null
+}
+
+function hasMatchingRequesterAndApproverIds(
+  transfer: Pick<TransferRequest, "nguoi_yeu_cau_id" | "nguoi_duyet_id">,
+) {
+  return transfer.nguoi_yeu_cau_id != null &&
+    transfer.nguoi_duyet_id != null &&
+    transfer.nguoi_yeu_cau_id === transfer.nguoi_duyet_id
+}
+
 export function mapTransferHistoryEntries(
   history: TransferChangeHistory[],
 ): ChangeHistoryEntry[] {
@@ -64,4 +111,47 @@ export function mapTransferHistoryEntries(
     actorName: item.admin_full_name || null,
     details: getTransferHistoryDetails(item.action_details),
   }))
+}
+
+export function resolveTransferRelatedPeople(
+  history: TransferChangeHistory[],
+  transfer:
+    | Pick<
+        TransferRequest,
+        "nguoi_yeu_cau_id" | "nguoi_duyet_id" | "nguoi_yeu_cau" | "nguoi_duyet"
+      >
+    | null,
+) {
+  if (!transfer) {
+    return {
+      requesterName: null,
+      approverName: null,
+    }
+  }
+
+  let requesterName =
+    findHistoryActor(history, (entry) => entry.action_type === "transfer_request_create") ??
+    normalizeNonEmptyString(transfer.nguoi_yeu_cau?.full_name)
+
+  let approverName =
+    findHistoryActor(history, (entry) => {
+      if (
+        entry.action_type !== "transfer_request_update" &&
+        entry.action_type !== "transfer_request_update_status"
+      ) {
+        return false
+      }
+
+      return getHistoryStatus(entry.action_details) === "da_duyet"
+    }) ?? normalizeNonEmptyString(transfer.nguoi_duyet?.full_name)
+
+  if (hasMatchingRequesterAndApproverIds(transfer)) {
+    requesterName ??= approverName
+    approverName ??= requesterName
+  }
+
+  return {
+    requesterName,
+    approverName,
+  }
 }
