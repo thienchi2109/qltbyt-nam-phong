@@ -433,6 +433,7 @@ describe("TransferDetailDialog related people", () => {
     })
 
     expect(screen.getByTestId("dialog-content")).toHaveClass(
+      "h-[90vh]",
       "max-h-[90vh]",
       "max-w-4xl",
       "overflow-hidden",
@@ -440,7 +441,7 @@ describe("TransferDetailDialog related people", () => {
       "flex-col",
     )
     expect(screen.getByRole("tablist").parentElement).toHaveClass("flex", "min-h-0", "flex-1", "flex-col")
-    expect(screen.getByRole("tabpanel")).toHaveClass("min-h-0", "flex-1", "overflow-hidden")
+    expect(screen.getByRole("tabpanel")).toHaveClass("mt-0", "min-h-0", "flex-1", "overflow-hidden")
     expect(screen.getByTestId("scroll-area")).toHaveClass("h-full")
   })
 
