@@ -10,6 +10,25 @@ const REPAIR_HISTORY_ACTION_LABELS: Record<string, string> = {
   repair_request_delete: "Xóa yêu cầu sửa chữa",
 }
 
+const REPAIR_COMPLETE_ACTION_LABELS: Record<string, string> = {
+  "Hoàn thành": "Hoàn thành sửa chữa",
+  "Không HT": "Không hoàn thành sửa chữa",
+}
+
+function resolveRepairActionLabel(
+  actionType: string,
+  actionDetails: Record<string, unknown> | null,
+): string {
+  if (actionType === "repair_request_complete") {
+    const status =
+      typeof actionDetails?.trang_thai === "string" ? actionDetails.trang_thai : null
+    if (status && status in REPAIR_COMPLETE_ACTION_LABELS) {
+      return REPAIR_COMPLETE_ACTION_LABELS[status]
+    }
+  }
+  return REPAIR_HISTORY_ACTION_LABELS[actionType] ?? actionType
+}
+
 const REPAIR_HISTORY_DETAILS_LABELS: Record<string, string> = {
   trang_thai: "Trạng thái",
   mo_ta_su_co: "Mô tả sự cố",
@@ -66,7 +85,7 @@ export function mapRepairRequestHistoryEntries(
   return history.map((item) => ({
     id: String(item.id),
     occurredAt: item.created_at,
-    actionLabel: REPAIR_HISTORY_ACTION_LABELS[item.action_type] ?? item.action_type,
+    actionLabel: resolveRepairActionLabel(item.action_type, item.action_details),
     actorName: item.admin_full_name || null,
     details: getRepairHistoryDetails(item.action_details),
   }))

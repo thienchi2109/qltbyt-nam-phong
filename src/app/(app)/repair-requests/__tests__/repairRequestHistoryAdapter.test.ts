@@ -56,4 +56,33 @@ describe("mapRepairRequestHistoryEntries", () => {
       },
     ])
   })
+
+  it("distinguishes Hoàn thành from Không HT for repair_request_complete", () => {
+    // Given
+    const entries = [
+      {
+        id: 20,
+        action_type: "repair_request_complete",
+        admin_username: "nva",
+        admin_full_name: "Nguyễn Văn A",
+        action_details: { trang_thai: "Hoàn thành", ket_qua_sua_chua: "Đã thay linh kiện" },
+        created_at: "2026-04-06T05:00:00.000Z",
+      },
+      {
+        id: 21,
+        action_type: "repair_request_complete",
+        admin_username: "nva",
+        admin_full_name: "Nguyễn Văn A",
+        action_details: { trang_thai: "Không HT", ly_do_khong_hoan_thanh: "Hết linh kiện" },
+        created_at: "2026-04-06T06:00:00.000Z",
+      },
+    ]
+
+    // When
+    const result = mapRepairRequestHistoryEntries(entries)
+
+    // Then
+    expect(result[0].actionLabel).toBe("Hoàn thành sửa chữa")
+    expect(result[1].actionLabel).toBe("Không hoàn thành sửa chữa")
+  })
 })

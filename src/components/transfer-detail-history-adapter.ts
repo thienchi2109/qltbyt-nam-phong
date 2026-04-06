@@ -12,6 +12,26 @@ const TRANSFER_HISTORY_ACTION_LABELS: Record<string, string> = {
   transfer_request_complete: "Hoàn thành luân chuyển",
 }
 
+const TRANSFER_STATUS_ACTION_LABELS: Record<string, string> = {
+  da_duyet: "Yêu cầu đã được duyệt",
+  dang_luan_chuyen: "Đang luân chuyển",
+  da_ban_giao: "Đã bàn giao",
+}
+
+function resolveTransferActionLabel(
+  actionType: string,
+  actionDetails: Record<string, unknown> | null,
+): string {
+  if (actionType === "transfer_request_update_status") {
+    const status =
+      typeof actionDetails?.trang_thai === "string" ? actionDetails.trang_thai : null
+    if (status && status in TRANSFER_STATUS_ACTION_LABELS) {
+      return TRANSFER_STATUS_ACTION_LABELS[status]
+    }
+  }
+  return TRANSFER_HISTORY_ACTION_LABELS[actionType] ?? actionType
+}
+
 const TRANSFER_HISTORY_DETAILS_LABELS: Record<string, string> = {
   ma_yeu_cau: "Mã yêu cầu",
   trang_thai: "Trạng thái",
@@ -113,7 +133,7 @@ export function mapTransferHistoryEntries(
   return history.map((item) => ({
     id: String(item.id),
     occurredAt: item.created_at,
-    actionLabel: TRANSFER_HISTORY_ACTION_LABELS[item.action_type] ?? item.action_type,
+    actionLabel: resolveTransferActionLabel(item.action_type, item.action_details),
     actorName: item.admin_full_name || null,
     details: getTransferHistoryDetails(item.action_details),
   }))
