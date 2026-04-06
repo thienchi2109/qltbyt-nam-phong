@@ -72,7 +72,7 @@ BEGIN
     RAISE EXCEPTION 'Không thể hoàn thành lại yêu cầu đã hoàn thành' USING errcode = '22023';
   END IF;
 
-  IF p_completion IS NOT NULL THEN
+  IF p_completion IS NOT NULL AND trim(p_completion) <> '' THEN
     v_status := 'Hoàn thành';
   ELSE
     v_status := 'Không HT';
