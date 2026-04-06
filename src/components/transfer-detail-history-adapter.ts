@@ -8,6 +8,8 @@ import {
 const TRANSFER_HISTORY_ACTION_LABELS: Record<string, string> = {
   transfer_request_create: "Tạo yêu cầu luân chuyển",
   transfer_request_update: "Cập nhật yêu cầu luân chuyển",
+  transfer_request_update_status: "Cập nhật trạng thái yêu cầu luân chuyển",
+  transfer_request_complete: "Hoàn thành luân chuyển",
 }
 
 const TRANSFER_HISTORY_DETAILS_LABELS: Record<string, string> = {
@@ -19,6 +21,10 @@ const TRANSFER_HISTORY_DETAILS_LABELS: Record<string, string> = {
   don_vi_nhan: "Đơn vị nhận",
   nguoi_lien_he: "Người liên hệ",
   so_dien_thoai: "Số điện thoại",
+  ngay_duyet: "Ngày duyệt",
+  ngay_ban_giao: "Ngày bàn giao",
+  ngay_hoan_thanh: "Ngày hoàn thành",
+  ngay_hoan_tra: "Ngày hoàn trả",
 }
 
 const TRANSFER_HISTORY_DETAILS_HIDDEN_KEYS = new Set<string>([
