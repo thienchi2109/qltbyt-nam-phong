@@ -37,6 +37,9 @@ export function useTransferDetailDialogData({
         signal,
       }),
     enabled: isEnabled,
+    // The detail surface is authoritative for related people, so reopening the dialog
+    // must refresh even when a same-id cache entry is still "fresh".
+    refetchOnMount: "always",
     staleTime: 30_000,
     refetchOnWindowFocus: false,
   })

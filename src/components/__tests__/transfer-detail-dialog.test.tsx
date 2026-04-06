@@ -336,6 +336,77 @@ describe("TransferDetailDialog related people", () => {
     expect(screen.getByRole("tab", { name: "Tiến trình" })).toBeInTheDocument()
   })
 
+  it("refetches detail on open when a fresh same-id cache entry is missing related people", async () => {
+    const queryClient = createQueryClient()
+    const requester = makeUser({ id: 24, full_name: "Lê Diệu Hiền - Trưởng phòng VT-TBYT" })
+    const approver = makeUser({
+      id: 24,
+      full_name: "Lê Diệu Hiền - Trưởng phòng VT-TBYT",
+      role: "to_qltb",
+    })
+
+    queryClient.setQueryData(
+      transferDetailDialogQueryKeys.detail(35),
+      makeTransferRow({
+        id: 35,
+        ma_yeu_cau: "YCLC-20260331-36",
+        trang_thai: "hoan_thanh",
+        nguoi_yeu_cau_id: requester.id,
+        nguoi_duyet_id: approver.id,
+        nguoi_yeu_cau: undefined,
+        nguoi_duyet: undefined,
+      }),
+    )
+
+    mockCallRpc.mockImplementation(async ({ fn }) => {
+      if (fn === "transfer_request_get") {
+        return makeTransferRow({
+          id: 35,
+          ma_yeu_cau: "YCLC-20260331-36",
+          trang_thai: "hoan_thanh",
+          nguoi_yeu_cau_id: requester.id,
+          nguoi_duyet_id: approver.id,
+          nguoi_yeu_cau: requester,
+          nguoi_duyet: approver,
+        })
+      }
+      if (fn === "transfer_change_history_list") {
+        return []
+      }
+      throw new Error(`Unexpected RPC: ${fn}`)
+    })
+
+    render(
+      <TransferDetailDialog
+        open
+        onOpenChange={vi.fn()}
+        transfer={makeTransferRow({
+          id: 35,
+          ma_yeu_cau: "YCLC-20260331-36",
+          trang_thai: "hoan_thanh",
+          nguoi_yeu_cau_id: requester.id,
+          nguoi_duyet_id: approver.id,
+          nguoi_yeu_cau: undefined,
+          nguoi_duyet: undefined,
+        })}
+      />,
+      { wrapper: createWrapper(queryClient) },
+    )
+
+    await waitFor(() => {
+      expect(mockCallRpc).toHaveBeenCalledWith(
+        expect.objectContaining({
+          fn: "transfer_request_get",
+          args: { p_id: 35 },
+        }),
+      )
+    })
+
+    await waitFor(() => {
+      expect(screen.getAllByText("Lê Diệu Hiền - Trưởng phòng VT-TBYT")).toHaveLength(2)
+    })
+  })
+
   it("prefers the fresher list-row transfer over stale cached detail while refetch is in flight", async () => {
     const queryClient = createQueryClient()
     const staleCachedTransfer = makeTransferRow({
