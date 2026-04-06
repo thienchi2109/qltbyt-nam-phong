@@ -243,6 +243,14 @@ BEGIN
     RAISE EXCEPTION 'repair_request_approve audit nguoi_duyet mismatch';
   END IF;
 
+  IF COALESCE(v_audit_details->>'ngay_duyet', '') = '' THEN
+    RAISE EXCEPTION 'repair_request_approve audit ngay_duyet missing';
+  END IF;
+
+  IF (v_audit_details->>'ngay_duyet')::timestamptz IS DISTINCT FROM v_request.ngay_duyet THEN
+    RAISE EXCEPTION 'repair_request_approve audit ngay_duyet mismatch';
+  END IF;
+
   IF v_audit_details->>'don_vi_thuc_hien' IS DISTINCT FROM v_request.don_vi_thuc_hien THEN
     RAISE EXCEPTION 'repair_request_approve audit don_vi_thuc_hien mismatch';
   END IF;
@@ -597,7 +605,180 @@ BEGIN
   RAISE NOTICE 'OK: repair_request_complete rejects second completion';
 END $$;
 
--- 5) delete path expects repair_request_delete audit row with persisted pre-delete state
+-- 5) approve path should reject requests that already reached a terminal state
+DO $$
+DECLARE
+  v_tenant bigint;
+  v_user_id bigint;
+  v_thiet_bi_id bigint;
+  v_request_id bigint;
+  v_code text := 'RR-LIFECYCLE-REAPP-' || to_char(clock_timestamp(), 'YYYYMMDDHH24MISSMS');
+  v_request public.yeu_cau_sua_chua%ROWTYPE;
+  v_first_approved_at timestamptz;
+  v_second_approved_at timestamptz;
+  v_equipment_status_before text;
+  v_equipment_status_after text;
+  v_approve_logs_before bigint;
+  v_approve_logs_after bigint;
+  v_history_rows_before bigint;
+  v_history_rows_after bigint;
+  v_error_raised boolean := false;
+BEGIN
+  SELECT id
+  INTO v_tenant
+  FROM public.don_vi
+  WHERE active = true
+  ORDER BY id
+  LIMIT 1;
+
+  IF v_tenant IS NULL THEN
+    RAISE EXCEPTION 'No active tenant found for approve-after-complete smoke fixture';
+  END IF;
+
+  INSERT INTO public.nhan_vien(username, password, full_name, role, don_vi, current_don_vi)
+  VALUES (
+    'repair_reapprove_smoke_' || to_char(clock_timestamp(), 'YYYYMMDDHH24MISSMS'),
+    'smoke-password',
+    'Repair Reapprove Smoke',
+    'to_qltb',
+    v_tenant,
+    v_tenant
+  )
+  RETURNING id INTO v_user_id;
+
+  INSERT INTO public.thiet_bi(ma_thiet_bi, ten_thiet_bi, don_vi)
+  VALUES (v_code, 'Repair lifecycle approve-after-complete smoke', v_tenant)
+  RETURNING id INTO v_thiet_bi_id;
+
+  PERFORM set_config(
+    'request.jwt.claims',
+    json_build_object(
+      'app_role', 'to_qltb',
+      'role', 'authenticated',
+      'user_id', v_user_id::text,
+      'sub', v_user_id::text,
+      'don_vi', v_tenant::text
+    )::text,
+    true
+  );
+
+  v_request_id := public.repair_request_create(
+    v_thiet_bi_id::integer,
+    'Mô tả để duyệt lại',
+    'Hạng mục để duyệt lại',
+    DATE '2026-04-25',
+    'Người yêu cầu smoke',
+    'noi_bo',
+    NULL
+  );
+
+  PERFORM public.repair_request_approve(
+    v_request_id::integer,
+    'Người duyệt smoke',
+    'noi_bo',
+    NULL
+  );
+
+  PERFORM public.repair_request_complete(
+    v_request_id::integer,
+    'Hoàn thành smoke',
+    NULL
+  );
+
+  SELECT *
+  INTO v_request
+  FROM public.yeu_cau_sua_chua
+  WHERE id = v_request_id;
+
+  v_first_approved_at := v_request.ngay_duyet;
+
+  SELECT tb.tinh_trang_hien_tai
+  INTO v_equipment_status_before
+  FROM public.thiet_bi tb
+  WHERE tb.id = v_thiet_bi_id;
+
+  SELECT COUNT(*)
+  INTO v_approve_logs_before
+  FROM public.audit_logs al
+  WHERE al.entity_type = 'repair_request'
+    AND al.entity_id = v_request_id
+    AND al.action_type = 'repair_request_approve';
+
+  SELECT COUNT(*)
+  INTO v_history_rows_before
+  FROM public.lich_su_thiet_bi ls
+  WHERE ls.yeu_cau_id = v_request_id
+    AND ls.mo_ta = 'Duyệt yêu cầu sửa chữa';
+
+  BEGIN
+    PERFORM public.repair_request_approve(
+      v_request_id::integer,
+      'Người duyệt lại smoke',
+      'noi_bo',
+      NULL
+    );
+  EXCEPTION
+    WHEN SQLSTATE '22023' THEN
+      v_error_raised := true;
+  END;
+
+  IF NOT v_error_raised THEN
+    RAISE EXCEPTION 'Expected repair_request_approve to reject requests already in a terminal state';
+  END IF;
+
+  SELECT *
+  INTO v_request
+  FROM public.yeu_cau_sua_chua
+  WHERE id = v_request_id;
+
+  v_second_approved_at := v_request.ngay_duyet;
+
+  SELECT tb.tinh_trang_hien_tai
+  INTO v_equipment_status_after
+  FROM public.thiet_bi tb
+  WHERE tb.id = v_thiet_bi_id;
+
+  SELECT COUNT(*)
+  INTO v_approve_logs_after
+  FROM public.audit_logs al
+  WHERE al.entity_type = 'repair_request'
+    AND al.entity_id = v_request_id
+    AND al.action_type = 'repair_request_approve';
+
+  SELECT COUNT(*)
+  INTO v_history_rows_after
+  FROM public.lich_su_thiet_bi ls
+  WHERE ls.yeu_cau_id = v_request_id
+    AND ls.mo_ta = 'Duyệt yêu cầu sửa chữa';
+
+  IF v_request.trang_thai IS DISTINCT FROM 'Hoàn thành' THEN
+    RAISE EXCEPTION 'Expected approve-after-complete path to preserve Hoàn thành status, found %', v_request.trang_thai;
+  END IF;
+
+  IF v_second_approved_at IS DISTINCT FROM v_first_approved_at THEN
+    RAISE EXCEPTION 'Expected approve-after-complete path to preserve ngay_duyet %, found %', v_first_approved_at::text, v_second_approved_at::text;
+  END IF;
+
+  IF v_equipment_status_before IS DISTINCT FROM 'Hoạt động' THEN
+    RAISE EXCEPTION 'Setup failed: completed repair should leave equipment in Hoạt động, found %', v_equipment_status_before;
+  END IF;
+
+  IF v_equipment_status_after IS DISTINCT FROM v_equipment_status_before THEN
+    RAISE EXCEPTION 'Expected approve-after-complete path to preserve equipment status %, found %', v_equipment_status_before, v_equipment_status_after;
+  END IF;
+
+  IF v_approve_logs_after IS DISTINCT FROM v_approve_logs_before THEN
+    RAISE EXCEPTION 'Expected approve-after-complete path to preserve approve audit count %, found %', v_approve_logs_before, v_approve_logs_after;
+  END IF;
+
+  IF v_history_rows_after IS DISTINCT FROM v_history_rows_before THEN
+    RAISE EXCEPTION 'Expected approve-after-complete path to preserve approve history row count %, found %', v_history_rows_before, v_history_rows_after;
+  END IF;
+
+  RAISE NOTICE 'OK: repair_request_approve rejects terminal-state requests';
+END $$;
+
+-- 6) delete path expects repair_request_delete audit row with persisted pre-delete state
 DO $$
 DECLARE
   v_tenant bigint;
@@ -730,7 +911,7 @@ BEGIN
   RAISE NOTICE 'OK: repair_request_delete audit smoke passed';
 END $$;
 
--- 6) update path should fail closed when audit_log returns FALSE
+-- 7) update path should fail closed when audit_log returns FALSE
 CREATE OR REPLACE FUNCTION public.audit_log(
   p_action_type text,
   p_entity_type text DEFAULT NULL::text,
@@ -847,7 +1028,7 @@ BEGIN
   RAISE NOTICE 'OK: repair_request_update fails closed when audit_log returns FALSE';
 END $$;
 
--- 7) approve path should fail closed when audit_log returns FALSE
+-- 8) approve path should fail closed when audit_log returns FALSE
 DO $$
 DECLARE
   v_tenant bigint;

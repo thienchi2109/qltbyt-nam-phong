@@ -173,6 +173,10 @@ BEGIN
     RAISE EXCEPTION 'Không có quyền trên thiết bị thuộc đơn vị khác' USING errcode = '42501';
   END IF;
 
+  IF v_locked.trang_thai IS DISTINCT FROM 'Chờ xử lý' THEN
+    RAISE EXCEPTION 'Chỉ có thể duyệt yêu cầu ở trạng thái Chờ xử lý' USING errcode = '22023';
+  END IF;
+
   UPDATE public.yeu_cau_sua_chua
   SET trang_thai = 'Đã duyệt',
       ngay_duyet = now(),
@@ -198,6 +202,7 @@ BEGIN
     'Duyệt yêu cầu sửa chữa',
     jsonb_build_object(
       'nguoi_duyet', v_req.nguoi_duyet,
+      'ngay_duyet', v_req.ngay_duyet,
       'don_vi_thuc_hien', v_req.don_vi_thuc_hien,
       'ten_don_vi_thue', v_req.ten_don_vi_thue
     ),
@@ -212,6 +217,7 @@ BEGIN
     jsonb_build_object(
       'trang_thai', v_req.trang_thai,
       'nguoi_duyet', v_req.nguoi_duyet,
+      'ngay_duyet', v_req.ngay_duyet,
       'don_vi_thuc_hien', v_req.don_vi_thuc_hien,
       'ten_don_vi_thue', v_req.ten_don_vi_thue
     )

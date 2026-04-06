@@ -726,4 +726,129 @@ BEGIN
   RAISE NOTICE 'OK: second completion rejected without duplicate side effects';
 END $$;
 
+-- 7) transfer_request_complete should fail closed when audit_log returns FALSE
+CREATE OR REPLACE FUNCTION public.audit_log(
+  p_action_type text,
+  p_entity_type text DEFAULT NULL::text,
+  p_entity_id bigint DEFAULT NULL::bigint,
+  p_entity_label text DEFAULT NULL::text,
+  p_action_details jsonb DEFAULT NULL::jsonb
+) RETURNS boolean
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $function$
+BEGIN
+  RETURN FALSE;
+END;
+$function$;
+
+DO $$
+DECLARE
+  v_ctx _transfer_lifecycle_ctx%ROWTYPE;
+  v_request_id bigint;
+  v_req public.yeu_cau_luan_chuyen%ROWTYPE;
+  v_history_rows bigint;
+  v_audit_count bigint;
+  v_equipment_room text;
+  v_error_raised boolean := false;
+BEGIN
+  SELECT *
+  INTO v_ctx
+  FROM _transfer_lifecycle_ctx
+  LIMIT 1;
+
+  PERFORM set_config(
+    'request.jwt.claims',
+    json_build_object(
+      'app_role', 'to_qltb',
+      'role', 'authenticated',
+      'user_id', v_ctx.user_id::text,
+      'sub', v_ctx.user_id::text,
+      'don_vi', v_ctx.tenant_id::text
+    )::text,
+    true
+  );
+
+  UPDATE public.thiet_bi
+  SET khoa_phong_quan_ly = 'Khoa Cu Fail Closed ' || v_ctx.suffix
+  WHERE id = v_ctx.equipment_id;
+
+  v_request_id := public.transfer_request_create(
+    jsonb_build_object(
+      'thiet_bi_id', v_ctx.equipment_id,
+      'loai_hinh', 'noi_bo',
+      'ly_do_luan_chuyen', 'Smoke fail closed ' || v_ctx.suffix,
+      'khoa_phong_hien_tai', 'Khoa Cu Fail Closed ' || v_ctx.suffix,
+      'khoa_phong_nhan', 'Khoa Moi Fail Closed ' || v_ctx.suffix
+    )
+  );
+
+  UPDATE public.yeu_cau_luan_chuyen
+  SET trang_thai = 'da_ban_giao',
+      ngay_duyet = clock_timestamp(),
+      ngay_ban_giao = clock_timestamp(),
+      nguoi_duyet_id = v_ctx.user_id
+  WHERE id = v_request_id;
+
+  BEGIN
+    PERFORM public.transfer_request_complete(
+      v_request_id::int,
+      '{}'::jsonb
+    );
+  EXCEPTION
+    WHEN OTHERS THEN
+      v_error_raised := true;
+  END;
+
+  IF NOT v_error_raised THEN
+    RAISE EXCEPTION 'Expected transfer_request_complete to fail closed when audit_log returns FALSE';
+  END IF;
+
+  SELECT *
+  INTO v_req
+  FROM public.yeu_cau_luan_chuyen
+  WHERE id = v_request_id;
+
+  SELECT khoa_phong_quan_ly
+  INTO v_equipment_room
+  FROM public.thiet_bi
+  WHERE id = v_ctx.equipment_id;
+
+  SELECT COUNT(*)
+  INTO v_history_rows
+  FROM public.lich_su_thiet_bi ls
+  WHERE ls.thiet_bi_id = v_ctx.equipment_id
+    AND ls.chi_tiet->>'yeu_cau_id' = v_request_id::text;
+
+  SELECT COUNT(*)
+  INTO v_audit_count
+  FROM public.audit_logs al
+  WHERE al.entity_type = 'transfer_request'
+    AND al.entity_id = v_request_id
+    AND al.action_type = 'transfer_request_complete';
+
+  IF v_req.trang_thai IS DISTINCT FROM 'da_ban_giao' THEN
+    RAISE EXCEPTION 'Expected fail-closed path to preserve da_ban_giao status, found %', v_req.trang_thai;
+  END IF;
+
+  IF v_req.ngay_hoan_thanh IS NOT NULL THEN
+    RAISE EXCEPTION 'Expected fail-closed path to preserve NULL ngay_hoan_thanh';
+  END IF;
+
+  IF v_equipment_room IS DISTINCT FROM 'Khoa Cu Fail Closed ' || v_ctx.suffix THEN
+    RAISE EXCEPTION 'Expected fail-closed path to preserve equipment room, found %', v_equipment_room;
+  END IF;
+
+  IF v_history_rows <> 0 THEN
+    RAISE EXCEPTION 'Expected fail-closed path to avoid lich_su_thiet_bi rows, found %', v_history_rows;
+  END IF;
+
+  IF v_audit_count <> 0 THEN
+    RAISE EXCEPTION 'Expected fail-closed path to avoid transfer_request_complete audit rows, found %', v_audit_count;
+  END IF;
+
+  RAISE NOTICE 'OK: transfer_request_complete fails closed when audit_log returns FALSE';
+END $$;
+
 ROLLBACK;
