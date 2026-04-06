@@ -61,6 +61,10 @@ BEGIN
     RAISE EXCEPTION 'Không có quyền trên yêu cầu thuộc đơn vị khác' USING errcode = '42501';
   END IF;
 
+  IF p_status IS NULL THEN
+    RAISE EXCEPTION 'p_status is required' USING errcode = '22023';
+  END IF;
+
   IF v_req.trang_thai = 'hoan_thanh' AND p_status <> 'hoan_thanh' THEN
     RAISE EXCEPTION 'Không thể thay đổi trạng thái của yêu cầu đã hoàn thành' USING errcode = '22023';
   END IF;
@@ -81,7 +85,7 @@ BEGIN
 
   IF p_status = 'da_duyet' THEN
     UPDATE public.yeu_cau_luan_chuyen
-    SET nguoi_duyet_id = COALESCE(NULLIF(p_payload->>'nguoi_duyet_id', '')::bigint, nguoi_duyet_id),
+    SET nguoi_duyet_id = v_user_id,
         ngay_duyet = COALESCE((p_payload->>'ngay_duyet')::timestamptz, ngay_duyet, now()),
         updated_by = v_user_id,
         updated_at = now()
@@ -103,7 +107,7 @@ BEGIN
   WHERE t.id = p_id;
 
   IF p_status IN ('da_duyet', 'dang_luan_chuyen', 'da_ban_giao') THEN
-    PERFORM public.audit_log(
+    IF NOT public.audit_log(
       'transfer_request_update_status',
       'transfer_request',
       v_req.id,
@@ -117,7 +121,9 @@ BEGIN
         'ngay_duyet', v_req.ngay_duyet,
         'ngay_ban_giao', v_req.ngay_ban_giao
       )
-    );
+    ) THEN
+      RAISE EXCEPTION 'audit_log failed for transfer_request %', v_req.id;
+    END IF;
   END IF;
 END;
 $function$;
@@ -190,7 +196,7 @@ BEGIN
     RAISE EXCEPTION 'Không thể hoàn tất lại yêu cầu đã hoàn tất' USING errcode = '22023';
   END IF;
 
-  IF p_completion IS NOT NULL THEN
+  IF p_completion IS NOT NULL AND trim(p_completion) <> '' THEN
     v_status := 'Hoàn thành';
   ELSE
     v_status := 'Không HT';
@@ -223,7 +229,7 @@ BEGIN
     p_id
   );
 
-  PERFORM public.audit_log(
+  IF NOT public.audit_log(
     'repair_request_complete',
     'repair_request',
     p_id,
@@ -233,7 +239,9 @@ BEGIN
       'ket_qua_sua_chua', v_req.ket_qua_sua_chua,
       'ly_do_khong_hoan_thanh', v_req.ly_do_khong_hoan_thanh
     )
-  );
+  ) THEN
+    RAISE EXCEPTION 'audit_log failed for repair_request %', p_id;
+  END IF;
 END;
 $function$;
 
@@ -295,7 +303,7 @@ BEGIN
     RAISE EXCEPTION 'Không có quyền trên thiết bị thuộc đơn vị khác' USING errcode = '42501';
   END IF;
 
-  PERFORM public.audit_log(
+  IF NOT public.audit_log(
     'repair_request_delete',
     'repair_request',
     p_id,
@@ -304,7 +312,9 @@ BEGIN
       'thiet_bi_id', v_locked.thiet_bi_id,
       'trang_thai', v_locked.trang_thai
     )
-  );
+  ) THEN
+    RAISE EXCEPTION 'audit_log failed for repair_request %', p_id;
+  END IF;
 
   DELETE FROM public.yeu_cau_sua_chua
   WHERE id = p_id;
