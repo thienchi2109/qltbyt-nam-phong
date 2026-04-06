@@ -4,6 +4,8 @@
 -- Mirrors the guard already applied to transfer_request_complete in
 -- migration 20260406054000_fix_transfer_request_complete_idempotency.sql.
 
+BEGIN;
+
 CREATE OR REPLACE FUNCTION public.repair_request_complete(
   p_id integer,
   p_completion text,
@@ -103,7 +105,7 @@ BEGIN
     p_id
   );
 
-  PERFORM public.audit_log(
+  IF NOT public.audit_log(
     'repair_request_complete',
     'repair_request',
     p_id,
@@ -113,6 +115,13 @@ BEGIN
       'ket_qua_sua_chua', v_req.ket_qua_sua_chua,
       'ly_do_khong_hoan_thanh', v_req.ly_do_khong_hoan_thanh
     )
-  );
+  ) THEN
+    RAISE EXCEPTION 'audit_log failed for repair_request %', p_id;
+  END IF;
 END;
 $function$;
+
+GRANT EXECUTE ON FUNCTION public.repair_request_complete(integer, text, text) TO authenticated;
+REVOKE EXECUTE ON FUNCTION public.repair_request_complete(integer, text, text) FROM PUBLIC;
+
+COMMIT;
