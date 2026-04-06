@@ -372,6 +372,53 @@ describe("TransferDetailDialog related people", () => {
     expect(screen.getByText("Đã duyệt")).toBeInTheDocument()
     expect(screen.queryByText("Chờ duyệt")).not.toBeInTheDocument()
   })
+
+  it("keeps requester and approver from cached detail while preferring fresher list-row status", async () => {
+    const queryClient = createQueryClient()
+    const requester = makeUser({ id: 101, full_name: "Nguyễn Văn Cache" })
+    const approver = makeUser({ id: 202, full_name: "Trần Thị Cache", role: "to_qltb" })
+    const staleCachedTransfer = makeTransferRow({
+      trang_thai: "cho_duyet",
+      updated_at: "2026-04-02T00:00:00.000Z",
+      nguoi_yeu_cau: requester,
+      nguoi_duyet: approver,
+    })
+
+    queryClient.setQueryData(
+      transferDetailDialogQueryKeys.detail(staleCachedTransfer.id),
+      staleCachedTransfer,
+    )
+
+    mockCallRpc.mockImplementation(({ fn }) => {
+      if (fn === "transfer_request_get") {
+        return new Promise(() => undefined)
+      }
+      if (fn === "transfer_change_history_list") {
+        return Promise.resolve([])
+      }
+      throw new Error(`Unexpected RPC: ${fn}`)
+    })
+
+    render(
+      <TransferDetailDialog
+        open
+        onOpenChange={vi.fn()}
+        transfer={makeTransferRow({
+          trang_thai: "da_duyet",
+          updated_at: "2026-04-03T00:00:00.000Z",
+          nguoi_yeu_cau: undefined,
+          nguoi_duyet: undefined,
+        })}
+      />,
+      { wrapper: createWrapper(queryClient) },
+    )
+
+    expect(screen.getByText("Đã duyệt")).toBeInTheDocument()
+    expect(screen.queryByText("Chờ duyệt")).not.toBeInTheDocument()
+    expect(screen.getByText("Nguyễn Văn Cache")).toBeInTheDocument()
+    expect(screen.getByText("Trần Thị Cache")).toBeInTheDocument()
+  })
+
   it("renders transfer request action label and actor from change history contract", async () => {
     const transferRequestCreateLabel = "Tạo yêu cầu luân chuyển"
 

@@ -33,6 +33,33 @@ function getTransferFreshness(value: TransferRequest | null | undefined) {
   return Number.isNaN(parsed) ? Number.NEGATIVE_INFINITY : parsed
 }
 
+function resolveDisplayTransfer(
+  transfer: TransferRequest | null,
+  resolvedTransfer: TransferRequest | null,
+  transferId: number | null,
+): TransferRequest | null {
+  const isSameTransfer = resolvedTransfer?.id === transferId
+  const baseTransfer =
+    isSameTransfer &&
+    getTransferFreshness(resolvedTransfer) >= getTransferFreshness(transfer)
+      ? resolvedTransfer
+      : transfer
+
+  if (!baseTransfer) {
+    return null
+  }
+
+  if (!isSameTransfer || !resolvedTransfer) {
+    return baseTransfer
+  }
+
+  return {
+    ...baseTransfer,
+    nguoi_yeu_cau: resolvedTransfer.nguoi_yeu_cau ?? baseTransfer.nguoi_yeu_cau,
+    nguoi_duyet: resolvedTransfer.nguoi_duyet ?? baseTransfer.nguoi_duyet,
+  }
+}
+
 export function TransferDetailDialog({
   open,
   onOpenChange,
@@ -43,11 +70,10 @@ export function TransferDetailDialog({
     transfer,
   })
 
-  const displayTransfer =
-    resolvedTransfer?.id === transferId &&
-    getTransferFreshness(resolvedTransfer) >= getTransferFreshness(transfer)
-      ? resolvedTransfer
-      : transfer
+  const displayTransfer = React.useMemo(
+    () => resolveDisplayTransfer(transfer, resolvedTransfer, transferId),
+    [resolvedTransfer, transfer, transferId],
+  )
 
   const historyEntries = React.useMemo(
     () => mapTransferHistoryEntries(history),
