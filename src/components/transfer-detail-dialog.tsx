@@ -108,8 +108,8 @@ export function TransferDetailDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[90vh] max-w-4xl">
-        <DialogHeader>
+      <DialogContent className="max-h-[90vh] max-w-4xl overflow-hidden flex flex-col">
+        <DialogHeader className="shrink-0">
           <DialogTitle className="flex items-center gap-2">
             <Package className="h-5 w-5" />
             Chi tiết yêu cầu luân chuyển - {displayTransfer.ma_yeu_cau}
@@ -119,34 +119,36 @@ export function TransferDetailDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <Tabs defaultValue="overview" className="mt-4">
-          <TabsList>
+        <Tabs defaultValue="overview" className="mt-4 flex min-h-0 flex-1 flex-col">
+          <TabsList className="shrink-0 self-start">
             <TabsTrigger value="overview">Tổng quan</TabsTrigger>
             <TabsTrigger value="history">Lịch sử</TabsTrigger>
             <TabsTrigger value="progress">Tiến trình</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="overview">
-            <ScrollArea className="max-h-[calc(90vh-180px)]">
+          <TabsContent value="overview" className="min-h-0 flex-1 overflow-hidden">
+            <ScrollArea className="h-full pr-4">
               <TransferDetailOverview transfer={displayTransfer} />
             </ScrollArea>
           </TabsContent>
 
-          <TabsContent value="history">
-            <ScrollArea className="max-h-[calc(90vh-180px)]">
+          <TabsContent value="history" className="min-h-0 flex-1 overflow-hidden">
+            <ScrollArea className="h-full pr-4">
               <ChangeHistoryTab entries={historyEntries} isLoading={isLoadingHistory} />
             </ScrollArea>
           </TabsContent>
 
-          <TabsContent value="progress">
-            <div className="py-4">
+          <TabsContent value="progress" className="min-h-0 flex-1 overflow-hidden">
+            <ScrollArea className="h-full pr-4">
+              <div className="py-4">
               <h3 className="mb-4 text-lg font-semibold">Tiến trình xử lý</h3>
               <TransferStatusProgress
                 type={displayTransfer.loai_hinh}
                 currentStatus={displayTransfer.trang_thai}
                 className="py-2"
               />
-            </div>
+              </div>
+            </ScrollArea>
           </TabsContent>
         </Tabs>
       </DialogContent>

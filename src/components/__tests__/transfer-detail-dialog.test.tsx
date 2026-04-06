@@ -18,7 +18,17 @@ vi.mock("@/hooks/use-toast", () => ({
 vi.mock("@/components/ui/dialog", () => ({
   Dialog: ({ open, children }: { open: boolean; children: React.ReactNode }) =>
     open ? <div data-testid="dialog">{children}</div> : null,
-  DialogContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+  DialogContent: ({
+    children,
+    className,
+  }: {
+    children: React.ReactNode
+    className?: string
+  }) => (
+    <div data-testid="dialog-content" className={className}>
+      {children}
+    </div>
+  ),
   DialogHeader: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
   DialogTitle: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
   DialogDescription: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
@@ -33,7 +43,17 @@ vi.mock("@/components/ui/separator", () => ({
 }))
 
 vi.mock("@/components/ui/scroll-area", () => ({
-  ScrollArea: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+  ScrollArea: ({
+    children,
+    className,
+  }: {
+    children: React.ReactNode
+    className?: string
+  }) => (
+    <div data-testid="scroll-area" className={className}>
+      {children}
+    </div>
+  ),
 }))
 
 vi.mock("@/components/transfers/TransferStatusProgress", () => ({
@@ -334,6 +354,38 @@ describe("TransferDetailDialog related people", () => {
     expect(screen.getByRole("tab", { name: "Tổng quan" })).toBeInTheDocument()
     expect(screen.getByRole("tab", { name: "Lịch sử" })).toBeInTheDocument()
     expect(screen.getByRole("tab", { name: "Tiến trình" })).toBeInTheDocument()
+  })
+
+  it("uses a constrained flex layout so overview content remains scrollable inside the dialog", async () => {
+    mockCallRpc.mockImplementation(async ({ fn }) => {
+      if (fn === "transfer_request_get") {
+        return makeTransferRow()
+      }
+      if (fn === "transfer_change_history_list") {
+        return []
+      }
+      throw new Error(`Unexpected RPC: ${fn}`)
+    })
+
+    render(
+      <TransferDetailDialog open onOpenChange={vi.fn()} transfer={makeTransferRow()} />,
+      { wrapper: createWrapper() },
+    )
+
+    await waitFor(() => {
+      expect(screen.getByTestId("dialog-content")).toBeInTheDocument()
+    })
+
+    expect(screen.getByTestId("dialog-content")).toHaveClass(
+      "max-h-[90vh]",
+      "max-w-4xl",
+      "overflow-hidden",
+      "flex",
+      "flex-col",
+    )
+    expect(screen.getByRole("tablist").parentElement).toHaveClass("flex", "min-h-0", "flex-1", "flex-col")
+    expect(screen.getByRole("tabpanel")).toHaveClass("min-h-0", "flex-1", "overflow-hidden")
+    expect(screen.getByTestId("scroll-area")).toHaveClass("h-full")
   })
 
   it("refetches detail on open when a fresh same-id cache entry is missing related people", async () => {
