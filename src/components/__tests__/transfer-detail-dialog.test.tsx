@@ -182,6 +182,7 @@ describe("TransferDetailDialog related people", () => {
       if (fn === "transfer_request_get") {
         return makeTransferRow({
           trang_thai: "cho_duyet",
+          nguoi_yeu_cau_id: requester.id,
           nguoi_yeu_cau: requester,
           nguoi_duyet_id: undefined,
           nguoi_duyet: undefined,
@@ -200,6 +201,7 @@ describe("TransferDetailDialog related people", () => {
         onOpenChange={vi.fn()}
         transfer={makeTransferRow({
           trang_thai: "cho_duyet",
+          nguoi_yeu_cau_id: requester.id,
           nguoi_duyet_id: undefined,
           nguoi_yeu_cau: undefined,
           nguoi_duyet: undefined,
@@ -223,6 +225,7 @@ describe("TransferDetailDialog related people", () => {
     mockCallRpc.mockImplementation(async ({ fn }) => {
       if (fn === "transfer_request_get") {
         return makeTransferRow({
+          nguoi_duyet_id: approver.id,
           nguoi_yeu_cau: undefined,
           nguoi_duyet: approver,
         })
@@ -237,7 +240,11 @@ describe("TransferDetailDialog related people", () => {
       <TransferDetailDialog
         open
         onOpenChange={vi.fn()}
-        transfer={makeTransferRow({ nguoi_yeu_cau: undefined, nguoi_duyet: undefined })}
+        transfer={makeTransferRow({
+          nguoi_yeu_cau: undefined,
+          nguoi_duyet_id: approver.id,
+          nguoi_duyet: undefined,
+        })}
       />,
       { wrapper: createWrapper() },
     )
@@ -380,6 +387,8 @@ describe("TransferDetailDialog related people", () => {
     const staleCachedTransfer = makeTransferRow({
       trang_thai: "cho_duyet",
       updated_at: "2026-04-02T00:00:00.000Z",
+      nguoi_yeu_cau_id: requester.id,
+      nguoi_duyet_id: approver.id,
       nguoi_yeu_cau: requester,
       nguoi_duyet: approver,
     })
@@ -406,6 +415,8 @@ describe("TransferDetailDialog related people", () => {
         transfer={makeTransferRow({
           trang_thai: "da_duyet",
           updated_at: "2026-04-03T00:00:00.000Z",
+          nguoi_yeu_cau_id: requester.id,
+          nguoi_duyet_id: approver.id,
           nguoi_yeu_cau: undefined,
           nguoi_duyet: undefined,
         })}
@@ -417,6 +428,57 @@ describe("TransferDetailDialog related people", () => {
     expect(screen.queryByText("Chờ duyệt")).not.toBeInTheDocument()
     expect(screen.getByText("Nguyễn Văn Cache")).toBeInTheDocument()
     expect(screen.getByText("Trần Thị Cache")).toBeInTheDocument()
+  })
+
+  it("does not overlay stale cached approver when fresher list-row clears approver id", async () => {
+    const queryClient = createQueryClient()
+    const requester = makeUser({ id: 101, full_name: "Nguyễn Văn Cache" })
+    const approver = makeUser({ id: 202, full_name: "Trần Thị Cache", role: "to_qltb" })
+    const staleCachedTransfer = makeTransferRow({
+      trang_thai: "da_duyet",
+      updated_at: "2026-04-02T00:00:00.000Z",
+      nguoi_yeu_cau_id: requester.id,
+      nguoi_duyet_id: approver.id,
+      nguoi_yeu_cau: requester,
+      nguoi_duyet: approver,
+    })
+
+    queryClient.setQueryData(
+      transferDetailDialogQueryKeys.detail(staleCachedTransfer.id),
+      staleCachedTransfer,
+    )
+
+    mockCallRpc.mockImplementation(({ fn }) => {
+      if (fn === "transfer_request_get") {
+        return new Promise(() => undefined)
+      }
+      if (fn === "transfer_change_history_list") {
+        return Promise.resolve([])
+      }
+      throw new Error(`Unexpected RPC: ${fn}`)
+    })
+
+    render(
+      <TransferDetailDialog
+        open
+        onOpenChange={vi.fn()}
+        transfer={makeTransferRow({
+          trang_thai: "cho_duyet",
+          updated_at: "2026-04-03T00:00:00.000Z",
+          nguoi_yeu_cau_id: requester.id,
+          nguoi_duyet_id: undefined,
+          nguoi_yeu_cau: undefined,
+          nguoi_duyet: undefined,
+          ngay_duyet: undefined,
+          ngay_hoan_thanh: undefined,
+        })}
+      />,
+      { wrapper: createWrapper(queryClient) },
+    )
+
+    expect(screen.getByText("Nguyễn Văn Cache")).toBeInTheDocument()
+    expect(screen.queryByText("Trần Thị Cache")).not.toBeInTheDocument()
+    expect(screen.queryByText("Người duyệt:")).not.toBeInTheDocument()
   })
 
   it("renders transfer request action label and actor from change history contract", async () => {

@@ -33,6 +33,22 @@ function getTransferFreshness(value: TransferRequest | null | undefined) {
   return Number.isNaN(parsed) ? Number.NEGATIVE_INFINITY : parsed
 }
 
+function resolveRelatedPerson<T extends { id: number }>(
+  currentPersonId: number | null | undefined,
+  basePerson: T | null | undefined,
+  resolvedPerson: T | null | undefined,
+): T | undefined {
+  if (resolvedPerson && currentPersonId === resolvedPerson.id) {
+    return resolvedPerson
+  }
+
+  if (basePerson && currentPersonId === basePerson.id) {
+    return basePerson
+  }
+
+  return undefined
+}
+
 function resolveDisplayTransfer(
   transfer: TransferRequest | null,
   resolvedTransfer: TransferRequest | null,
@@ -55,8 +71,16 @@ function resolveDisplayTransfer(
 
   return {
     ...baseTransfer,
-    nguoi_yeu_cau: resolvedTransfer.nguoi_yeu_cau ?? baseTransfer.nguoi_yeu_cau,
-    nguoi_duyet: resolvedTransfer.nguoi_duyet ?? baseTransfer.nguoi_duyet,
+    nguoi_yeu_cau: resolveRelatedPerson(
+      baseTransfer.nguoi_yeu_cau_id,
+      baseTransfer.nguoi_yeu_cau,
+      resolvedTransfer.nguoi_yeu_cau,
+    ),
+    nguoi_duyet: resolveRelatedPerson(
+      baseTransfer.nguoi_duyet_id,
+      baseTransfer.nguoi_duyet,
+      resolvedTransfer.nguoi_duyet,
+    ),
   }
 }
 
