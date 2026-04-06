@@ -353,7 +353,81 @@ BEGIN
   RAISE NOTICE 'OK: update_status rejects hoan_thanh';
 END $$;
 
--- 4) RED/GREEN target: transfer_request_complete should log completion and preserve side effects
+-- 4) RED/GREEN target: transfer_request_update_status should reject unsupported statuses explicitly
+DO $$
+DECLARE
+  v_ctx _transfer_lifecycle_ctx%ROWTYPE;
+  v_request_id bigint;
+  v_req public.yeu_cau_luan_chuyen%ROWTYPE;
+  v_error_raised boolean := false;
+  v_status_logs bigint;
+BEGIN
+  SELECT *
+  INTO v_ctx
+  FROM _transfer_lifecycle_ctx
+  LIMIT 1;
+
+  PERFORM set_config(
+    'request.jwt.claims',
+    json_build_object(
+      'app_role', 'to_qltb',
+      'role', 'authenticated',
+      'user_id', v_ctx.user_id::text,
+      'sub', v_ctx.user_id::text,
+      'don_vi', v_ctx.tenant_id::text
+    )::text,
+    true
+  );
+
+  v_request_id := public.transfer_request_create(
+    jsonb_build_object(
+      'thiet_bi_id', v_ctx.equipment_id,
+      'loai_hinh', 'noi_bo',
+      'ly_do_luan_chuyen', 'Smoke invalid status ' || v_ctx.suffix,
+      'khoa_phong_hien_tai', 'Khoa Invalid Tu ' || v_ctx.suffix,
+      'khoa_phong_nhan', 'Khoa Invalid Den ' || v_ctx.suffix
+    )
+  );
+
+  BEGIN
+    PERFORM public.transfer_request_update_status(
+      v_request_id::int,
+      'khong_hop_le',
+      '{}'::jsonb
+    );
+  EXCEPTION
+    WHEN SQLSTATE '22023' THEN
+      v_error_raised := true;
+  END;
+
+  IF NOT v_error_raised THEN
+    RAISE EXCEPTION 'Expected transfer_request_update_status to reject unsupported status with SQLSTATE 22023';
+  END IF;
+
+  SELECT *
+  INTO v_req
+  FROM public.yeu_cau_luan_chuyen
+  WHERE id = v_request_id;
+
+  IF v_req.trang_thai IS DISTINCT FROM 'cho_duyet' THEN
+    RAISE EXCEPTION 'Expected unsupported status path to preserve cho_duyet, found %', v_req.trang_thai;
+  END IF;
+
+  SELECT COUNT(*)
+  INTO v_status_logs
+  FROM public.audit_logs al
+  WHERE al.entity_type = 'transfer_request'
+    AND al.entity_id = v_request_id
+    AND al.action_type = 'transfer_request_update_status';
+
+  IF v_status_logs <> 0 THEN
+    RAISE EXCEPTION 'Expected no transfer_request_update_status audit row for unsupported status';
+  END IF;
+
+  RAISE NOTICE 'OK: update_status rejects unsupported status explicitly';
+END $$;
+
+-- 5) RED/GREEN target: transfer_request_complete should log completion and preserve side effects
 DO $$
 DECLARE
   v_ctx _transfer_lifecycle_ctx%ROWTYPE;
@@ -511,7 +585,7 @@ BEGIN
   RAISE NOTICE 'OK: completion audit row recorded';
 END $$;
 
--- 5) RED/GREEN target: transfer_request_complete should reject a second completion
+-- 6) RED/GREEN target: transfer_request_complete should reject a second completion
 DO $$
 DECLARE
   v_ctx _transfer_lifecycle_ctx%ROWTYPE;
@@ -581,6 +655,14 @@ BEGIN
   FROM public.lich_su_thiet_bi ls
   WHERE ls.thiet_bi_id = v_ctx.equipment_id
     AND ls.chi_tiet->>'yeu_cau_id' = v_request_id::text;
+
+  IF v_completion_logs_before < 1 THEN
+    RAISE EXCEPTION 'Setup failed: first transfer_request_complete should create at least one audit row';
+  END IF;
+
+  IF v_history_rows_before < 1 THEN
+    RAISE EXCEPTION 'Setup failed: first transfer_request_complete should create at least one equipment history row';
+  END IF;
 
   BEGIN
     PERFORM public.transfer_request_complete(

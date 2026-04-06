@@ -428,7 +428,176 @@ BEGIN
   RAISE NOTICE 'OK: repair_request_complete audit smoke passed';
 END $$;
 
--- 4) delete path expects repair_request_delete audit row with persisted pre-delete state
+-- 4) complete path should reject a second completion without duplicate side effects
+DO $$
+DECLARE
+  v_tenant bigint;
+  v_user_id bigint;
+  v_thiet_bi_id bigint;
+  v_request_id bigint;
+  v_code text := 'RR-LIFECYCLE-RECOMP-' || to_char(clock_timestamp(), 'YYYYMMDDHH24MISSMS');
+  v_request public.yeu_cau_sua_chua%ROWTYPE;
+  v_first_completed_at timestamptz;
+  v_second_completed_at timestamptz;
+  v_completion_logs_before bigint;
+  v_completion_logs_after bigint;
+  v_history_rows_before bigint;
+  v_history_rows_after bigint;
+  v_error_raised boolean := false;
+BEGIN
+  SELECT id
+  INTO v_tenant
+  FROM public.don_vi
+  WHERE active = true
+  ORDER BY id
+  LIMIT 1;
+
+  IF v_tenant IS NULL THEN
+    RAISE EXCEPTION 'No active tenant found for double-complete smoke fixture';
+  END IF;
+
+  INSERT INTO public.nhan_vien(username, password, full_name, role, don_vi, current_don_vi)
+  VALUES (
+    'repair_recomplete_smoke_' || to_char(clock_timestamp(), 'YYYYMMDDHH24MISSMS'),
+    'smoke-password',
+    'Repair Recomplete Smoke',
+    'to_qltb',
+    v_tenant,
+    v_tenant
+  )
+  RETURNING id INTO v_user_id;
+
+  INSERT INTO public.thiet_bi(ma_thiet_bi, ten_thiet_bi, don_vi)
+  VALUES (v_code, 'Repair lifecycle double-complete smoke', v_tenant)
+  RETURNING id INTO v_thiet_bi_id;
+
+  PERFORM set_config(
+    'request.jwt.claims',
+    json_build_object(
+      'app_role', 'to_qltb',
+      'role', 'authenticated',
+      'user_id', v_user_id::text,
+      'sub', v_user_id::text,
+      'don_vi', v_tenant::text
+    )::text,
+    true
+  );
+
+  v_request_id := public.repair_request_create(
+    v_thiet_bi_id::integer,
+    'Mô tả double complete',
+    'Hạng mục double complete',
+    DATE '2026-04-25',
+    'Người yêu cầu smoke',
+    'noi_bo',
+    NULL
+  );
+
+  PERFORM public.repair_request_approve(
+    v_request_id::integer,
+    'Người duyệt smoke',
+    'noi_bo',
+    NULL
+  );
+
+  PERFORM public.repair_request_complete(
+    v_request_id::integer,
+    'Đã sửa lần một',
+    NULL
+  );
+
+  SELECT *
+  INTO v_request
+  FROM public.yeu_cau_sua_chua
+  WHERE id = v_request_id;
+
+  v_first_completed_at := v_request.ngay_hoan_thanh;
+
+  SELECT COUNT(*)
+  INTO v_completion_logs_before
+  FROM public.audit_logs al
+  WHERE al.entity_type = 'repair_request'
+    AND al.entity_id = v_request_id
+    AND al.action_type = 'repair_request_complete';
+
+  SELECT COUNT(*)
+  INTO v_history_rows_before
+  FROM public.lich_su_thiet_bi ls
+  WHERE ls.yeu_cau_id = v_request_id
+    AND ls.mo_ta = 'Yêu cầu sửa chữa cập nhật trạng thái';
+
+  IF v_completion_logs_before < 1 THEN
+    RAISE EXCEPTION 'Setup failed: first repair_request_complete should create at least one audit row';
+  END IF;
+
+  IF v_history_rows_before < 1 THEN
+    RAISE EXCEPTION 'Setup failed: first repair_request_complete should create at least one equipment history row';
+  END IF;
+
+  BEGIN
+    PERFORM public.repair_request_complete(
+      v_request_id::integer,
+      'Không được ghi đè',
+      NULL
+    );
+  EXCEPTION
+    WHEN SQLSTATE '22023' THEN
+      v_error_raised := true;
+  END;
+
+  IF NOT v_error_raised THEN
+    RAISE EXCEPTION 'Expected repair_request_complete to reject a second completion';
+  END IF;
+
+  SELECT *
+  INTO v_request
+  FROM public.yeu_cau_sua_chua
+  WHERE id = v_request_id;
+
+  v_second_completed_at := v_request.ngay_hoan_thanh;
+
+  SELECT COUNT(*)
+  INTO v_completion_logs_after
+  FROM public.audit_logs al
+  WHERE al.entity_type = 'repair_request'
+    AND al.entity_id = v_request_id
+    AND al.action_type = 'repair_request_complete';
+
+  SELECT COUNT(*)
+  INTO v_history_rows_after
+  FROM public.lich_su_thiet_bi ls
+  WHERE ls.yeu_cau_id = v_request_id
+    AND ls.mo_ta = 'Yêu cầu sửa chữa cập nhật trạng thái';
+
+  IF v_request.trang_thai IS DISTINCT FROM 'Hoàn thành' THEN
+    RAISE EXCEPTION 'Expected second repair completion attempt to preserve Hoàn thành status, found %', v_request.trang_thai;
+  END IF;
+
+  IF v_second_completed_at IS DISTINCT FROM v_first_completed_at THEN
+    RAISE EXCEPTION
+      'Expected second repair completion attempt to preserve ngay_hoan_thanh %, found %',
+      v_first_completed_at::text,
+      v_second_completed_at::text;
+  END IF;
+
+  IF v_completion_logs_after IS DISTINCT FROM v_completion_logs_before THEN
+    RAISE EXCEPTION
+      'Expected second repair completion attempt to preserve completion audit count %, found %',
+      v_completion_logs_before,
+      v_completion_logs_after;
+  END IF;
+
+  IF v_history_rows_after IS DISTINCT FROM v_history_rows_before THEN
+    RAISE EXCEPTION
+      'Expected second repair completion attempt to preserve equipment history row count %, found %',
+      v_history_rows_before,
+      v_history_rows_after;
+  END IF;
+
+  RAISE NOTICE 'OK: repair_request_complete rejects second completion';
+END $$;
+
+-- 5) delete path expects repair_request_delete audit row with persisted pre-delete state
 DO $$
 DECLARE
   v_tenant bigint;
