@@ -16,6 +16,7 @@ DECLARE
   v_request public.yeu_cau_sua_chua%ROWTYPE;
   v_audit_count bigint;
   v_audit_details jsonb;
+  v_history_id bigint;
   v_history_details jsonb;
 BEGIN
   SELECT id
@@ -120,13 +121,17 @@ BEGIN
     RAISE EXCEPTION 'repair_request_update audit ten_don_vi_thue mismatch';
   END IF;
 
-  SELECT COALESCE(ls.chi_tiet, '{}'::jsonb)
-  INTO v_history_details
+  SELECT ls.id, COALESCE(ls.chi_tiet, '{}'::jsonb)
+  INTO v_history_id, v_history_details
   FROM public.lich_su_thiet_bi ls
   WHERE ls.yeu_cau_id = v_request_id
     AND ls.mo_ta = 'Cập nhật nội dung yêu cầu sửa chữa'
   ORDER BY ls.id DESC
   LIMIT 1;
+
+  IF v_history_id IS NULL THEN
+    RAISE EXCEPTION 'repair_request_update should append equipment history row';
+  END IF;
 
   IF v_history_details->>'ten_don_vi_thue' IS DISTINCT FROM v_request.ten_don_vi_thue THEN
     RAISE EXCEPTION 'repair_request_update equipment history ten_don_vi_thue mismatch';
@@ -147,6 +152,7 @@ DECLARE
   v_audit_count bigint;
   v_audit_details jsonb;
   v_equipment_status text;
+  v_history_id bigint;
   v_history_details jsonb;
 BEGIN
   SELECT id
@@ -258,13 +264,17 @@ BEGIN
     RAISE EXCEPTION 'repair_request_approve should set equipment status to Chờ sửa chữa';
   END IF;
 
-  SELECT COALESCE(ls.chi_tiet, '{}'::jsonb)
-  INTO v_history_details
+  SELECT ls.id, COALESCE(ls.chi_tiet, '{}'::jsonb)
+  INTO v_history_id, v_history_details
   FROM public.lich_su_thiet_bi ls
   WHERE ls.yeu_cau_id = v_request_id
     AND ls.mo_ta = 'Duyệt yêu cầu sửa chữa'
   ORDER BY ls.id DESC
   LIMIT 1;
+
+  IF v_history_id IS NULL THEN
+    RAISE EXCEPTION 'repair_request_approve should append equipment history row';
+  END IF;
 
   IF v_history_details->>'ten_don_vi_thue' IS DISTINCT FROM v_request.ten_don_vi_thue THEN
     RAISE EXCEPTION 'repair_request_approve equipment history ten_don_vi_thue mismatch';
@@ -285,6 +295,7 @@ DECLARE
   v_audit_count bigint;
   v_audit_details jsonb;
   v_equipment_status text;
+  v_history_id bigint;
   v_history_details jsonb;
 BEGIN
   SELECT id
@@ -394,13 +405,17 @@ BEGIN
     RAISE EXCEPTION 'repair_request_complete should restore equipment status to Hoạt động';
   END IF;
 
-  SELECT COALESCE(ls.chi_tiet, '{}'::jsonb)
-  INTO v_history_details
+  SELECT ls.id, COALESCE(ls.chi_tiet, '{}'::jsonb)
+  INTO v_history_id, v_history_details
   FROM public.lich_su_thiet_bi ls
   WHERE ls.yeu_cau_id = v_request_id
     AND ls.mo_ta = 'Yêu cầu sửa chữa cập nhật trạng thái'
   ORDER BY ls.id DESC
   LIMIT 1;
+
+  IF v_history_id IS NULL THEN
+    RAISE EXCEPTION 'repair_request_complete should append equipment history row';
+  END IF;
 
   IF v_history_details->>'ket_qua' IS DISTINCT FROM v_request.ket_qua_sua_chua THEN
     RAISE EXCEPTION 'repair_request_complete equipment history ket_qua mismatch';
@@ -425,6 +440,7 @@ DECLARE
   v_remaining bigint;
   v_audit_count bigint;
   v_audit_details jsonb;
+  v_history_id bigint;
   v_history_details jsonb;
 BEGIN
   SELECT id
@@ -526,13 +542,17 @@ BEGIN
     RAISE EXCEPTION 'repair_request_delete audit trang_thai mismatch';
   END IF;
 
-  SELECT COALESCE(ls.chi_tiet, '{}'::jsonb)
-  INTO v_history_details
+  SELECT ls.id, COALESCE(ls.chi_tiet, '{}'::jsonb)
+  INTO v_history_id, v_history_details
   FROM public.lich_su_thiet_bi ls
   WHERE ls.thiet_bi_id = v_thiet_bi_id
     AND ls.mo_ta = 'Xóa yêu cầu sửa chữa'
   ORDER BY ls.id DESC
   LIMIT 1;
+
+  IF v_history_id IS NULL THEN
+    RAISE EXCEPTION 'repair_request_delete should append equipment history row';
+  END IF;
 
   IF (v_history_details->>'yeu_cau_id')::bigint IS DISTINCT FROM v_request_id THEN
     RAISE EXCEPTION 'repair_request_delete equipment history yeu_cau_id mismatch';

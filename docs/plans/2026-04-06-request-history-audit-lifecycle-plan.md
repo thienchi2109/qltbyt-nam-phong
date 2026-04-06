@@ -63,7 +63,7 @@ git commit -m "test: add failing repair lifecycle audit smoke coverage"
 ### Task 2: Instrument repair lifecycle RPCs to write audit logs
 
 **Files:**
-- Create: `supabase/migrations/20260406110000_add_repair_request_lifecycle_audit_logs.sql`
+- Create: `supabase/migrations/20260406052451_add_repair_request_lifecycle_audit_logs.sql`
 - Reference: `supabase/migrations/20260405174500_add_repair_request_change_history_list_rpc.sql`
 - Reference: `supabase/migrations/2025-09-29/20250925_audit_logs_v2_entities_and_helper.sql`
 - Reference: live `repair_request_create(...)` definition from `pg_get_functiondef(...)`
@@ -233,7 +233,7 @@ Expected: no new security regressions caused by the function replacements.
 - [ ] **Step 14: Commit the repair-side DB changes**
 
 ```bash
-git add supabase/migrations/20260406110000_add_repair_request_lifecycle_audit_logs.sql supabase/tests/repair_request_lifecycle_audit_smoke.sql
+git add supabase/migrations/20260406052451_add_repair_request_lifecycle_audit_logs.sql supabase/tests/repair_request_lifecycle_audit_smoke.sql
 git commit -m "feat: add repair request lifecycle audit logs"
 ```
 
@@ -284,7 +284,7 @@ git commit -m "test: add failing transfer lifecycle audit smoke coverage"
 ### Task 4: Instrument transfer lifecycle RPCs to write audit logs
 
 **Files:**
-- Create: `supabase/migrations/20260406113000_add_transfer_request_lifecycle_audit_logs.sql`
+- Create: `supabase/migrations/20260406052546_add_transfer_request_lifecycle_audit_logs.sql`
 - Modify later for UI mapping: `src/components/transfer-detail-history-adapter.ts`
 - Reference: live `transfer_request_update(...)` definition from `pg_get_functiondef(...)`
 
@@ -437,7 +437,7 @@ Expected: no new security regressions caused by the function replacements.
 - [ ] **Step 13: Commit the transfer-side DB changes**
 
 ```bash
-git add supabase/migrations/20260406113000_add_transfer_request_lifecycle_audit_logs.sql supabase/tests/transfer_request_lifecycle_audit_smoke.sql
+git add supabase/migrations/20260406052546_add_transfer_request_lifecycle_audit_logs.sql supabase/tests/transfer_request_lifecycle_audit_smoke.sql
 git commit -m "feat: add transfer lifecycle audit logs"
 ```
 

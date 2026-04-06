@@ -511,4 +511,137 @@ BEGIN
   RAISE NOTICE 'OK: completion audit row recorded';
 END $$;
 
+-- 5) RED/GREEN target: transfer_request_complete should reject a second completion
+DO $$
+DECLARE
+  v_ctx _transfer_lifecycle_ctx%ROWTYPE;
+  v_request_id bigint;
+  v_req public.yeu_cau_luan_chuyen%ROWTYPE;
+  v_first_completed_at timestamptz;
+  v_second_completed_at timestamptz;
+  v_completion_logs_before bigint;
+  v_completion_logs_after bigint;
+  v_history_rows_before bigint;
+  v_history_rows_after bigint;
+  v_error_raised boolean := false;
+BEGIN
+  SELECT *
+  INTO v_ctx
+  FROM _transfer_lifecycle_ctx
+  LIMIT 1;
+
+  PERFORM set_config(
+    'request.jwt.claims',
+    json_build_object(
+      'app_role', 'to_qltb',
+      'role', 'authenticated',
+      'user_id', v_ctx.user_id::text,
+      'sub', v_ctx.user_id::text,
+      'don_vi', v_ctx.tenant_id::text
+    )::text,
+    true
+  );
+
+  v_request_id := public.transfer_request_create(
+    jsonb_build_object(
+      'thiet_bi_id', v_ctx.equipment_id,
+      'loai_hinh', 'noi_bo',
+      'ly_do_luan_chuyen', 'Smoke double complete ' || v_ctx.suffix,
+      'khoa_phong_hien_tai', 'Khoa Double Complete Tu ' || v_ctx.suffix,
+      'khoa_phong_nhan', 'Khoa Double Complete Den ' || v_ctx.suffix
+    )
+  );
+
+  UPDATE public.yeu_cau_luan_chuyen
+  SET trang_thai = 'da_ban_giao',
+      ngay_duyet = clock_timestamp(),
+      ngay_ban_giao = clock_timestamp(),
+      nguoi_duyet_id = v_ctx.user_id
+  WHERE id = v_request_id;
+
+  PERFORM public.transfer_request_complete(
+    v_request_id::int,
+    '{}'::jsonb
+  );
+
+  SELECT ngay_hoan_thanh
+  INTO v_first_completed_at
+  FROM public.yeu_cau_luan_chuyen
+  WHERE id = v_request_id;
+
+  SELECT COUNT(*)
+  INTO v_completion_logs_before
+  FROM public.audit_logs al
+  WHERE al.entity_type = 'transfer_request'
+    AND al.entity_id = v_request_id
+    AND al.action_type = 'transfer_request_complete';
+
+  SELECT COUNT(*)
+  INTO v_history_rows_before
+  FROM public.lich_su_thiet_bi ls
+  WHERE ls.thiet_bi_id = v_ctx.equipment_id
+    AND ls.chi_tiet->>'yeu_cau_id' = v_request_id::text;
+
+  BEGIN
+    PERFORM public.transfer_request_complete(
+      v_request_id::int,
+      '{}'::jsonb
+    );
+  EXCEPTION
+    WHEN SQLSTATE '22023' THEN
+      v_error_raised := true;
+  END;
+
+  IF NOT v_error_raised THEN
+    RAISE EXCEPTION 'Expected transfer_request_complete to reject a second completion';
+  END IF;
+
+  SELECT *
+  INTO v_req
+  FROM public.yeu_cau_luan_chuyen
+  WHERE id = v_request_id;
+
+  v_second_completed_at := v_req.ngay_hoan_thanh;
+
+  SELECT COUNT(*)
+  INTO v_completion_logs_after
+  FROM public.audit_logs al
+  WHERE al.entity_type = 'transfer_request'
+    AND al.entity_id = v_request_id
+    AND al.action_type = 'transfer_request_complete';
+
+  SELECT COUNT(*)
+  INTO v_history_rows_after
+  FROM public.lich_su_thiet_bi ls
+  WHERE ls.thiet_bi_id = v_ctx.equipment_id
+    AND ls.chi_tiet->>'yeu_cau_id' = v_request_id::text;
+
+  IF v_req.trang_thai IS DISTINCT FROM 'hoan_thanh' THEN
+    RAISE EXCEPTION 'Expected second completion attempt to preserve hoan_thanh status, found %', v_req.trang_thai;
+  END IF;
+
+  IF v_second_completed_at IS DISTINCT FROM v_first_completed_at THEN
+    RAISE EXCEPTION
+      'Expected second completion attempt to preserve ngay_hoan_thanh %, found %',
+      v_first_completed_at::text,
+      v_second_completed_at::text;
+  END IF;
+
+  IF v_completion_logs_after IS DISTINCT FROM v_completion_logs_before THEN
+    RAISE EXCEPTION
+      'Expected second completion attempt to preserve completion audit count %, found %',
+      v_completion_logs_before,
+      v_completion_logs_after;
+  END IF;
+
+  IF v_history_rows_after IS DISTINCT FROM v_history_rows_before THEN
+    RAISE EXCEPTION
+      'Expected second completion attempt to preserve equipment history row count %, found %',
+      v_history_rows_before,
+      v_history_rows_after;
+  END IF;
+
+  RAISE NOTICE 'OK: second completion rejected without duplicate side effects';
+END $$;
+
 ROLLBACK;
