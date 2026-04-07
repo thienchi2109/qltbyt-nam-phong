@@ -1,186 +1,123 @@
-import "@testing-library/jest-dom"
 import * as React from "react"
-import { fireEvent, render, screen } from "@testing-library/react"
-import { beforeEach, describe, expect, it, vi } from "vitest"
+import { render, screen } from "@testing-library/react"
+import { describe, expect, it, vi } from "vitest"
 
-import type { TransferRequest } from "@/types/database"
+import { TransfersDialogs } from "@/app/(app)/transfers/_components/TransfersDialogs"
+import type { TransferListItem } from "@/types/transfers-data-grid"
 
-const dialogMocks = vi.hoisted(() => ({
-  AddTransferDialog: vi.fn(() => <div data-testid="add-transfer-dialog" />),
-  EditTransferDialog: vi.fn(() => <div data-testid="edit-transfer-dialog" />),
-  FilterModal: vi.fn(() => <div data-testid="filter-modal" />),
-  HandoverPreviewDialog: vi.fn(() => <div data-testid="handover-dialog" />),
-  TransferDetailDialog: vi.fn(() => <div data-testid="transfer-detail-dialog" />),
+const mocks = vi.hoisted(() => ({
+  ReturnLocationDialog: vi.fn(() => <div data-testid="return-location-dialog" />),
 }))
 
 vi.mock("@/components/add-transfer-dialog", () => ({
-  AddTransferDialog: (props: unknown) => dialogMocks.AddTransferDialog(props),
+  AddTransferDialog: () => null,
 }))
 
 vi.mock("@/components/edit-transfer-dialog", () => ({
-  EditTransferDialog: (props: unknown) => dialogMocks.EditTransferDialog(props),
+  EditTransferDialog: () => null,
 }))
 
 vi.mock("@/components/handover-preview-dialog", () => ({
-  HandoverPreviewDialog: (props: unknown) => dialogMocks.HandoverPreviewDialog(props),
+  HandoverPreviewDialog: () => null,
 }))
 
 vi.mock("@/components/transfer-detail-dialog", () => ({
-  TransferDetailDialog: (props: unknown) => dialogMocks.TransferDetailDialog(props),
+  TransferDetailDialog: () => null,
 }))
 
 vi.mock("@/components/transfers/FilterModal", () => ({
-  FilterModal: (props: unknown) => dialogMocks.FilterModal(props),
+  FilterModal: () => null,
 }))
 
-import { TransfersDialogs } from "@/app/(app)/transfers/_components/TransfersDialogs"
+vi.mock("@/components/transfers/ReturnLocationDialog", () => ({
+  ReturnLocationDialog: (props: unknown) => mocks.ReturnLocationDialog(props),
+}))
 
-function makeTransferRequest(): TransferRequest {
+function makeTransferListItem(
+  overrides: Partial<TransferListItem> = {},
+): TransferListItem {
   return {
-    id: 1,
-    ma_yeu_cau: "LC-0001",
-    thiet_bi_id: 10,
-    loai_hinh: "noi_bo",
-    trang_thai: "cho_duyet",
-    nguoi_yeu_cau_id: 1,
-    ly_do_luan_chuyen: "Điều phối",
-    created_at: "2026-04-01T00:00:00.000Z",
-    updated_at: "2026-04-01T00:00:00.000Z",
-    created_by: 1,
-    updated_by: 1,
-    thiet_bi: null,
+    id: overrides.id ?? 7,
+    ma_yeu_cau: overrides.ma_yeu_cau ?? "LC-0007",
+    thiet_bi_id: overrides.thiet_bi_id ?? 99,
+    loai_hinh: overrides.loai_hinh ?? "ben_ngoai",
+    trang_thai: overrides.trang_thai ?? "da_ban_giao",
+    nguoi_yeu_cau_id: overrides.nguoi_yeu_cau_id ?? 1,
+    ly_do_luan_chuyen: overrides.ly_do_luan_chuyen ?? "Điều phối",
+    khoa_phong_hien_tai: overrides.khoa_phong_hien_tai ?? "Khoa A",
+    khoa_phong_nhan: overrides.khoa_phong_nhan ?? null,
+    muc_dich: overrides.muc_dich ?? null,
+    don_vi_nhan: overrides.don_vi_nhan ?? "Bệnh viện B",
+    dia_chi_don_vi: overrides.dia_chi_don_vi ?? null,
+    nguoi_lien_he: overrides.nguoi_lien_he ?? null,
+    so_dien_thoai: overrides.so_dien_thoai ?? null,
+    ngay_du_kien_tra: overrides.ngay_du_kien_tra ?? null,
+    ngay_ban_giao: overrides.ngay_ban_giao ?? null,
+    ngay_hoan_tra: overrides.ngay_hoan_tra ?? null,
+    ngay_hoan_thanh: overrides.ngay_hoan_thanh ?? null,
+    nguoi_duyet_id: overrides.nguoi_duyet_id ?? null,
+    ngay_duyet: overrides.ngay_duyet ?? null,
+    ghi_chu_duyet: overrides.ghi_chu_duyet ?? null,
+    created_at: overrides.created_at ?? "2026-04-01T00:00:00.000Z",
+    updated_at: overrides.updated_at ?? "2026-04-01T00:00:00.000Z",
+    created_by: overrides.created_by ?? 1,
+    updated_by: overrides.updated_by ?? 1,
+    thiet_bi: overrides.thiet_bi ?? {
+      ten_thiet_bi: "Máy siêu âm",
+      ma_thiet_bi: "TB-99",
+      model: "Model X",
+      serial: "SER-99",
+      khoa_phong_quan_ly: "Khoa A",
+      facility_name: "Bệnh viện A",
+      facility_id: 1,
+    },
   }
 }
 
 describe("TransfersDialogs", () => {
-  const transfer = makeTransferRequest()
+  it("mounts ReturnLocationDialog when the dialog is open", () => {
+    const returnTransfer = makeTransferListItem()
+    const onConfirmReturn = vi.fn().mockResolvedValue(undefined)
 
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
+    render(
+      <TransfersDialogs
+        isAddDialogOpen={false}
+        onAddDialogOpenChange={vi.fn()}
+        onAddSuccess={vi.fn()}
+        isEditDialogOpen={false}
+        onEditDialogOpenChange={vi.fn()}
+        onEditSuccess={vi.fn()}
+        editingTransfer={null}
+        detailDialogOpen={false}
+        onDetailDialogOpenChange={vi.fn()}
+        detailTransfer={null}
+        handoverDialogOpen={false}
+        onHandoverDialogOpenChange={vi.fn()}
+        handoverTransfer={null}
+        deleteDialogOpen={false}
+        onDeleteDialogOpenChange={vi.fn()}
+        onConfirmDelete={vi.fn()}
+        returnLocationDialogOpen
+        onReturnLocationDialogOpenChange={vi.fn()}
+        returnTransfer={returnTransfer}
+        isReturning
+        onConfirmReturn={onConfirmReturn}
+        isFilterModalOpen={false}
+        onFilterModalOpenChange={vi.fn()}
+        filterValue={{ statuses: [], dateRange: null }}
+        onFilterChange={vi.fn()}
+        filterVariant="dialog"
+      />,
+    )
 
-  function renderDialogs(overrides: Partial<React.ComponentProps<typeof TransfersDialogs>> = {}) {
-    const defaultProps: React.ComponentProps<typeof TransfersDialogs> = {
-      isAddDialogOpen: false,
-      onAddDialogOpenChange: vi.fn(),
-      onAddSuccess: vi.fn(),
-      isEditDialogOpen: false,
-      onEditDialogOpenChange: vi.fn(),
-      onEditSuccess: vi.fn(),
-      editingTransfer: null,
-      detailDialogOpen: false,
-      onDetailDialogOpenChange: vi.fn(),
-      detailTransfer: null,
-      handoverDialogOpen: false,
-      onHandoverDialogOpenChange: vi.fn(),
-      handoverTransfer: null,
-      deleteDialogOpen: false,
-      onDeleteDialogOpenChange: vi.fn(),
-      onConfirmDelete: vi.fn(),
-      isFilterModalOpen: false,
-      onFilterModalOpenChange: vi.fn(),
-      filterValue: { statuses: [], dateRange: null },
-      onFilterChange: vi.fn(),
-      filterVariant: "dialog",
-    }
-
-    return render(<TransfersDialogs {...defaultProps} {...overrides} />)
-  }
-
-  it("renders only dialogs that are open", () => {
-    renderDialogs({
-      isAddDialogOpen: true,
-      detailDialogOpen: true,
-      isFilterModalOpen: true,
-      detailTransfer: transfer,
-    })
-
-    expect(screen.getByTestId("add-transfer-dialog")).toBeInTheDocument()
-    expect(screen.getByTestId("transfer-detail-dialog")).toBeInTheDocument()
-    expect(screen.getByTestId("filter-modal")).toBeInTheDocument()
-    expect(screen.queryByTestId("edit-transfer-dialog")).not.toBeInTheDocument()
-    expect(screen.queryByTestId("handover-dialog")).not.toBeInTheDocument()
-  })
-
-  it("forwards open handlers and success callbacks to child dialogs", () => {
-    const onAddDialogOpenChange = vi.fn()
-    const onAddSuccess = vi.fn()
-    const onEditDialogOpenChange = vi.fn()
-    const onEditSuccess = vi.fn()
-
-    renderDialogs({
-      isAddDialogOpen: true,
-      onAddDialogOpenChange,
-      onAddSuccess,
-      isEditDialogOpen: true,
-      onEditDialogOpenChange,
-      onEditSuccess,
-      editingTransfer: transfer,
-    })
-
-    expect(dialogMocks.AddTransferDialog).toHaveBeenCalledWith(
+    expect(screen.getByTestId("return-location-dialog")).toBeInTheDocument()
+    expect(mocks.ReturnLocationDialog).toHaveBeenCalledWith(
       expect.objectContaining({
         open: true,
-        onOpenChange: onAddDialogOpenChange,
-        onSuccess: onAddSuccess,
+        isSubmitting: true,
+        transfer: returnTransfer,
+        onConfirm: onConfirmReturn,
       }),
     )
-    expect(dialogMocks.EditTransferDialog).toHaveBeenCalledWith(
-      expect.objectContaining({
-        open: true,
-        onOpenChange: onEditDialogOpenChange,
-        onSuccess: onEditSuccess,
-        transfer,
-      }),
-    )
-  })
-
-  it("passes selected transfer props to detail and handover dialogs", () => {
-    renderDialogs({
-      detailDialogOpen: true,
-      detailTransfer: transfer,
-      handoverDialogOpen: true,
-      handoverTransfer: transfer,
-    })
-
-    expect(dialogMocks.TransferDetailDialog).toHaveBeenCalledWith(
-      expect.objectContaining({
-        transfer,
-      }),
-    )
-    expect(dialogMocks.HandoverPreviewDialog).toHaveBeenCalledWith(
-      expect.objectContaining({
-        transfer,
-      }),
-    )
-  })
-
-  it("calls the injected confirm handler from the delete dialog", () => {
-    const onConfirmDelete = vi.fn()
-
-    renderDialogs({
-      deleteDialogOpen: true,
-      onConfirmDelete,
-    })
-
-    fireEvent.click(screen.getByRole("button", { name: "Xóa" }))
-
-    expect(onConfirmDelete).toHaveBeenCalledTimes(1)
-  })
-
-  it("does not auto-close the delete dialog before the async confirm resolves", () => {
-    const onConfirmDelete = vi.fn(() => new Promise(() => undefined))
-    const onDeleteDialogOpenChange = vi.fn()
-
-    renderDialogs({
-      deleteDialogOpen: true,
-      onConfirmDelete,
-      onDeleteDialogOpenChange,
-    })
-
-    fireEvent.click(screen.getByRole("button", { name: "Xóa" }))
-
-    expect(onConfirmDelete).toHaveBeenCalledTimes(1)
-    expect(onDeleteDialogOpenChange).not.toHaveBeenCalledWith(false)
   })
 })

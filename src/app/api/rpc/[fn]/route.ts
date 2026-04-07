@@ -57,6 +57,7 @@ const ALLOWED_FUNCTIONS = new Set<string>([
   'transfer_change_history_list',
   'transfer_request_external_pending_returns',
   'get_transfer_request_facilities',
+  'get_equipment_location_suggestions',
   // Transfers - Data Grid
   'transfer_request_counts',
   // Maintenance

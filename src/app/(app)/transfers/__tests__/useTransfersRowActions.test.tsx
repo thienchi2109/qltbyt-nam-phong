@@ -109,12 +109,14 @@ describe("useTransfersRowActions", () => {
 
   let confirmDelete: ReturnType<typeof vi.fn>
   let mapToTransferRequest: ReturnType<typeof vi.fn>
+  let returnFromExternal: ReturnType<typeof vi.fn>
   let toast: ReturnType<typeof vi.fn>
 
   beforeEach(() => {
     vi.clearAllMocks()
     confirmDelete = vi.fn().mockResolvedValue(undefined)
     mapToTransferRequest = vi.fn(() => mappedTransfer)
+    returnFromExternal = vi.fn().mockResolvedValue(undefined)
     toast = vi.fn()
   })
 
@@ -127,7 +129,7 @@ describe("useTransfersRowActions", () => {
         approveTransfer: vi.fn(),
         startTransfer: vi.fn(),
         handoverToExternal: vi.fn(),
-        returnFromExternal: vi.fn(),
+        returnFromExternal,
         completeTransfer: vi.fn(),
         confirmDelete,
         canEditTransfer: vi.fn(() => true),
@@ -230,6 +232,53 @@ describe("useTransfersRowActions", () => {
     expect(result.current.isHandoverDialogOpen).toBe(true)
   })
 
+  it("opens the return location dialog instead of firing the mutation immediately", () => {
+    const { result } = renderRowActionsHook()
+
+    act(() => {
+      result.current.handleOpenReturnDialog(item)
+    })
+
+    expect(returnFromExternal).not.toHaveBeenCalled()
+    expect(result.current.returnTransfer).toEqual(item)
+    expect(result.current.isReturnLocationDialogOpen).toBe(true)
+  })
+
+  it("confirms return with vi_tri_hoan_tra and closes the dialog", async () => {
+    const { result } = renderRowActionsHook()
+
+    act(() => {
+      result.current.handleOpenReturnDialog(item)
+    })
+
+    await act(async () => {
+      await result.current.handleConfirmReturn("Phòng 501")
+    })
+
+    expect(returnFromExternal).toHaveBeenCalledWith(item, "Phòng 501")
+    expect(result.current.returnTransfer).toBeNull()
+    expect(result.current.isReturnLocationDialogOpen).toBe(false)
+  })
+
+  it("keeps the return dialog open when returnFromExternal fails", async () => {
+    returnFromExternal.mockRejectedValueOnce(new Error("return failed"))
+    const { result } = renderRowActionsHook()
+
+    act(() => {
+      result.current.handleOpenReturnDialog(item)
+    })
+
+    await expect(
+      act(async () => {
+        await result.current.handleConfirmReturn("Phòng 501")
+      }),
+    ).resolves.toBeUndefined()
+
+    expect(returnFromExternal).toHaveBeenCalledWith(item, "Phòng 501")
+    expect(result.current.returnTransfer).toEqual(item)
+    expect(result.current.isReturnLocationDialogOpen).toBe(true)
+  })
+
   it("renders TransferRowActions with permissions and handlers", () => {
     const { result } = renderRowActionsHook()
     const RowActions = result.current.RowActions
@@ -247,6 +296,7 @@ describe("useTransfersRowActions", () => {
         userKhoaPhong: "Khoa A",
         onEdit: result.current.handleEditTransfer,
         onDelete: result.current.handleOpenDeleteDialog,
+        onReturn: result.current.handleOpenReturnDialog,
       }),
     )
   })

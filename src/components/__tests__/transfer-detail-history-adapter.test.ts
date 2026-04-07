@@ -56,6 +56,8 @@ describe("mapTransferHistoryEntries", () => {
         action_details: {
           trang_thai: "hoan_thanh",
           ngay_hoan_thanh: "2026-04-04T05:06:07.000Z",
+          vi_tri_truoc_do: "Đang luân chuyển bên ngoài",
+          vi_tri_hoan_tra_moi: "Phòng 501",
         },
         created_at: "2026-04-04T00:00:00.000Z",
       },
@@ -80,6 +82,8 @@ describe("mapTransferHistoryEntries", () => {
         details: [
           { label: "Trạng thái", value: "Hoàn thành" },
           { label: "Ngày hoàn thành", value: "2026-04-04T05:06:07.000Z" },
+          { label: "Vị trí trước đó", value: "Đang luân chuyển bên ngoài" },
+          { label: "Vị trí hoàn trả mới", value: "Phòng 501" },
         ],
       },
     ])

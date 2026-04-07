@@ -139,4 +139,37 @@ describe("useTransferActions", () => {
       })
     })
   })
+
+  it("sends vi_tri_hoan_tra when returning equipment from external transfer", async () => {
+    mockCallRpc.mockResolvedValue(undefined)
+
+    const queryClient = createQueryClient()
+    const { result } = renderHook(() => useTransferActions(), {
+      wrapper: createWrapper(queryClient),
+    })
+
+    await act(async () => {
+      await result.current.returnFromExternal(
+        makeTransferListItem({
+          id: 19,
+          loai_hinh: "ben_ngoai",
+          trang_thai: "da_ban_giao",
+        }),
+        "Phòng 501",
+      )
+    })
+
+    await waitFor(() => {
+      expect(mockCallRpc).toHaveBeenCalledWith({
+        fn: "transfer_request_complete",
+        args: {
+          p_id: 19,
+          p_payload: expect.objectContaining({
+            vi_tri_hoan_tra: "Phòng 501",
+            ngay_hoan_tra: expect.any(String),
+          }),
+        },
+      })
+    })
+  })
 })
