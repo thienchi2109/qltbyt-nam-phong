@@ -177,6 +177,59 @@ BEGIN
 END $$;
 
 ----------------------------------------------------------------------
+-- 2a) External handover rejects skipped da_duyet -> da_ban_giao
+----------------------------------------------------------------------
+DO $$
+DECLARE
+  v_ctx _ext_loc_ctx%ROWTYPE;
+  v_request_id bigint;
+  v_error_raised boolean := false;
+BEGIN
+  SELECT * INTO v_ctx FROM _ext_loc_ctx LIMIT 1;
+
+  PERFORM set_config('request.jwt.claims', json_build_object(
+    'app_role', 'to_qltb', 'role', 'authenticated',
+    'user_id', v_ctx.user_id::text, 'sub', v_ctx.user_id::text,
+    'don_vi', v_ctx.tenant_id::text
+  )::text, true);
+
+  v_request_id := public.transfer_request_create(jsonb_build_object(
+    'thiet_bi_id', v_ctx.equipment_id,
+    'loai_hinh', 'ben_ngoai',
+    'ly_do_luan_chuyen', 'Smoke invalid handover state ' || v_ctx.suffix,
+    'khoa_phong_hien_tai', 'Khoa Noi ' || v_ctx.suffix,
+    'don_vi_nhan', 'BV Ngoai 2A ' || v_ctx.suffix,
+    'nguoi_lien_he', 'Nguyen Van B1',
+    'so_dien_thoai', '0900000010'
+  ));
+
+  PERFORM public.transfer_request_update_status(
+    v_request_id::int,
+    'da_duyet',
+    jsonb_build_object(
+      'nguoi_duyet_id', v_ctx.user_id::text,
+      'ngay_duyet', clock_timestamp()
+    )
+  );
+
+  BEGIN
+    PERFORM public.transfer_request_update_status(
+      v_request_id::int,
+      'da_ban_giao',
+      jsonb_build_object('ngay_ban_giao', clock_timestamp())
+    );
+  EXCEPTION
+    WHEN SQLSTATE '22023' THEN v_error_raised := true;
+  END;
+
+  IF NOT v_error_raised THEN
+    RAISE EXCEPTION 'Test 2a FAIL: expected transfer_request_update_status to reject da_duyet -> da_ban_giao';
+  END IF;
+
+  RAISE NOTICE 'OK 2a: ben_ngoai handover rejects skipped da_duyet -> da_ban_giao';
+END $$;
+
+----------------------------------------------------------------------
 -- 2b) External completion requires da_ban_giao
 ----------------------------------------------------------------------
 DO $$

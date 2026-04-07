@@ -16,7 +16,7 @@ interface UseTransferActionsReturn {
   approveTransfer: (item: TransferListItem) => void
   startTransfer: (item: TransferListItem) => void
   handoverToExternal: (item: TransferListItem) => void
-  returnFromExternal: (item: TransferListItem, viTriHoanTra: string) => void
+  returnFromExternal: (item: TransferListItem, viTriHoanTra: string) => Promise<void>
   completeTransfer: (item: TransferListItem) => void
 
   // CRUD actions
@@ -323,12 +323,12 @@ export function useTransferActions(): UseTransferActionsReturn {
   )
 
   const returnFromExternal = React.useCallback(
-    (item: TransferListItem, viTriHoanTra: string) => {
+    async (item: TransferListItem, viTriHoanTra: string) => {
       if (isRegionalLeader) {
         notifyRegionalLeaderRestricted()
         return
       }
-      returnMutation.mutate({ item, viTriHoanTra })
+      await returnMutation.mutateAsync({ item, viTriHoanTra })
     },
     [isRegionalLeader, notifyRegionalLeaderRestricted, returnMutation]
   )

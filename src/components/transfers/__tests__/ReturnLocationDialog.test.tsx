@@ -29,11 +29,26 @@ function createQueryClient() {
 function renderWithClient(ui: React.ReactElement) {
   const queryClient = createQueryClient()
 
-  return render(
-    <QueryClientProvider client={queryClient}>
-      {ui}
-    </QueryClientProvider>,
-  )
+  return {
+    queryClient,
+    ...render(
+      <QueryClientProvider client={queryClient}>
+        {ui}
+      </QueryClientProvider>,
+    ),
+  }
+}
+
+function createDeferredPromise() {
+  let resolve!: () => void
+  let reject!: (error: Error) => void
+
+  const promise = new Promise<void>((resolvePromise, rejectPromise) => {
+    resolve = resolvePromise
+    reject = rejectPromise
+  })
+
+  return { promise, resolve, reject }
 }
 
 function makeTransferListItem(
@@ -101,9 +116,10 @@ describe("ReturnLocationDialog", () => {
     renderWithClient(
       <ReturnLocationDialog
         open
+        isSubmitting={false}
         onOpenChange={vi.fn()}
         transfer={makeTransferListItem({ id: 17 })}
-        onConfirm={vi.fn()}
+        onConfirm={vi.fn().mockResolvedValue(undefined)}
       />,
     )
 
@@ -126,9 +142,10 @@ describe("ReturnLocationDialog", () => {
     renderWithClient(
       <ReturnLocationDialog
         open
+        isSubmitting={false}
         onOpenChange={vi.fn()}
         transfer={makeTransferListItem()}
-        onConfirm={onConfirm}
+        onConfirm={onConfirm.mockResolvedValue(undefined)}
       />,
     )
 
@@ -146,9 +163,10 @@ describe("ReturnLocationDialog", () => {
     renderWithClient(
       <ReturnLocationDialog
         open
+        isSubmitting={false}
         onOpenChange={vi.fn()}
         transfer={makeTransferListItem()}
-        onConfirm={onConfirm}
+        onConfirm={onConfirm.mockResolvedValue(undefined)}
       />,
     )
 
@@ -172,9 +190,10 @@ describe("ReturnLocationDialog", () => {
     renderWithClient(
       <ReturnLocationDialog
         open
+        isSubmitting={false}
         onOpenChange={vi.fn()}
         transfer={makeTransferListItem()}
-        onConfirm={onConfirm}
+        onConfirm={onConfirm.mockResolvedValue(undefined)}
       />,
     )
 
@@ -194,9 +213,10 @@ describe("ReturnLocationDialog", () => {
     renderWithClient(
       <ReturnLocationDialog
         open
+        isSubmitting={false}
         onOpenChange={vi.fn()}
         transfer={makeTransferListItem()}
-        onConfirm={onConfirm}
+        onConfirm={onConfirm.mockResolvedValue(undefined)}
       />,
     )
 
@@ -205,6 +225,81 @@ describe("ReturnLocationDialog", () => {
 
     await waitFor(() => {
       expect(onConfirm).toHaveBeenCalledWith("Phòng 501")
+    })
+  })
+
+  it("disables form controls while the return mutation is pending", async () => {
+    mockCallRpc.mockResolvedValueOnce([{ vi_tri: "Phòng 501" }])
+    const user = userEvent.setup()
+    const deferred = createDeferredPromise()
+    const onConfirm = vi.fn(() => deferred.promise)
+
+    const { queryClient, rerender } = renderWithClient(
+      <ReturnLocationDialog
+        open
+        isSubmitting={false}
+        onOpenChange={vi.fn()}
+        transfer={makeTransferListItem()}
+        onConfirm={onConfirm}
+      />,
+    )
+
+    await user.type(await screen.findByLabelText("Vị trí hoàn trả"), "Phòng 777")
+    await user.click(screen.getByRole("button", { name: "Xác nhận hoàn trả" }))
+
+    expect(onConfirm).toHaveBeenCalledWith("Phòng 777")
+
+    rerender(
+      <QueryClientProvider client={queryClient}>
+        <ReturnLocationDialog
+          open
+          isSubmitting
+          onOpenChange={vi.fn()}
+          transfer={makeTransferListItem()}
+          onConfirm={onConfirm}
+        />
+      </QueryClientProvider>,
+    )
+
+    expect(screen.getByLabelText("Vị trí hoàn trả")).toBeDisabled()
+    expect(screen.getByRole("button", { name: "Xác nhận hoàn trả" })).toBeDisabled()
+    expect(screen.getByRole("button", { name: "Hủy" })).toBeDisabled()
+
+    deferred.resolve()
+  })
+
+  it("resets the form when the selected transfer changes while open", async () => {
+    mockCallRpc.mockResolvedValue([])
+    const user = userEvent.setup()
+
+    const { queryClient, rerender } = renderWithClient(
+      <ReturnLocationDialog
+        open
+        isSubmitting={false}
+        onOpenChange={vi.fn()}
+        transfer={makeTransferListItem({ id: 7 })}
+        onConfirm={vi.fn().mockResolvedValue(undefined)}
+      />,
+    )
+
+    const input = await screen.findByLabelText("Vị trí hoàn trả")
+    await user.type(input, "Phòng 701")
+    expect(input).toHaveValue("Phòng 701")
+
+    rerender(
+      <QueryClientProvider client={queryClient}>
+        <ReturnLocationDialog
+          open
+          isSubmitting={false}
+          onOpenChange={vi.fn()}
+          transfer={makeTransferListItem({ id: 8 })}
+          onConfirm={vi.fn().mockResolvedValue(undefined)}
+        />
+      </QueryClientProvider>,
+    )
+
+    await waitFor(() => {
+      expect(screen.getByLabelText("Vị trí hoàn trả")).toHaveValue("")
     })
   })
 })

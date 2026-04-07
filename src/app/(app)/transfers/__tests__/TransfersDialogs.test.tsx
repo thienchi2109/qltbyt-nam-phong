@@ -77,7 +77,7 @@ function makeTransferListItem(
 describe("TransfersDialogs", () => {
   it("mounts ReturnLocationDialog when the dialog is open", () => {
     const returnTransfer = makeTransferListItem()
-    const onConfirmReturn = vi.fn()
+    const onConfirmReturn = vi.fn().mockResolvedValue(undefined)
 
     render(
       <TransfersDialogs
@@ -100,6 +100,7 @@ describe("TransfersDialogs", () => {
         returnLocationDialogOpen
         onReturnLocationDialogOpenChange={vi.fn()}
         returnTransfer={returnTransfer}
+        isReturning
         onConfirmReturn={onConfirmReturn}
         isFilterModalOpen={false}
         onFilterModalOpenChange={vi.fn()}
@@ -113,6 +114,7 @@ describe("TransfersDialogs", () => {
     expect(mocks.ReturnLocationDialog).toHaveBeenCalledWith(
       expect.objectContaining({
         open: true,
+        isSubmitting: true,
         transfer: returnTransfer,
         onConfirm: onConfirmReturn,
       }),

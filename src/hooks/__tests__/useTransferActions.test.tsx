@@ -149,7 +149,7 @@ describe("useTransferActions", () => {
     })
 
     await act(async () => {
-      result.current.returnFromExternal(
+      await result.current.returnFromExternal(
         makeTransferListItem({
           id: 19,
           loai_hinh: "ben_ngoai",

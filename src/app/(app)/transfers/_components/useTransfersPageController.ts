@@ -59,6 +59,7 @@ export interface TransfersPageControllerResult {
   viewMode: "table" | "kanban"
   userRole: TransferUserRole | undefined
   isRegionalLeader: boolean
+  isReturning: boolean
   showFacilityFilter: boolean
   shouldFetchData: boolean
   tableData: TransferListItem[]
@@ -222,6 +223,7 @@ export function useTransfersPageController(
     mapToTransferRequest,
     isRegionalLeader,
     isTransferCoreRole,
+    isReturning,
   } = useTransferActions()
 
   const rowActions = useTransfersRowActions({
@@ -320,6 +322,7 @@ export function useTransfersPageController(
     viewMode,
     userRole,
     isRegionalLeader,
+    isReturning,
     showFacilityFilter,
     shouldFetchData,
     tableData,

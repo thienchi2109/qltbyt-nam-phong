@@ -116,7 +116,7 @@ describe("useTransfersRowActions", () => {
     vi.clearAllMocks()
     confirmDelete = vi.fn().mockResolvedValue(undefined)
     mapToTransferRequest = vi.fn(() => mappedTransfer)
-    returnFromExternal = vi.fn()
+    returnFromExternal = vi.fn().mockResolvedValue(undefined)
     toast = vi.fn()
   })
 
@@ -244,20 +244,39 @@ describe("useTransfersRowActions", () => {
     expect(result.current.isReturnLocationDialogOpen).toBe(true)
   })
 
-  it("confirms return with vi_tri_hoan_tra and closes the dialog", () => {
+  it("confirms return with vi_tri_hoan_tra and closes the dialog", async () => {
     const { result } = renderRowActionsHook()
 
     act(() => {
       result.current.handleOpenReturnDialog(item)
     })
 
-    act(() => {
-      result.current.handleConfirmReturn("Phòng 501")
+    await act(async () => {
+      await result.current.handleConfirmReturn("Phòng 501")
     })
 
     expect(returnFromExternal).toHaveBeenCalledWith(item, "Phòng 501")
     expect(result.current.returnTransfer).toBeNull()
     expect(result.current.isReturnLocationDialogOpen).toBe(false)
+  })
+
+  it("keeps the return dialog open when returnFromExternal fails", async () => {
+    returnFromExternal.mockRejectedValueOnce(new Error("return failed"))
+    const { result } = renderRowActionsHook()
+
+    act(() => {
+      result.current.handleOpenReturnDialog(item)
+    })
+
+    await expect(
+      act(async () => {
+        await result.current.handleConfirmReturn("Phòng 501")
+      }),
+    ).resolves.toBeUndefined()
+
+    expect(returnFromExternal).toHaveBeenCalledWith(item, "Phòng 501")
+    expect(result.current.returnTransfer).toEqual(item)
+    expect(result.current.isReturnLocationDialogOpen).toBe(true)
   })
 
   it("renders TransferRowActions with permissions and handlers", () => {

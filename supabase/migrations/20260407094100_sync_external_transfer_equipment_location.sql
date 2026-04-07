@@ -94,23 +94,19 @@ BEGIN
     RAISE EXCEPTION 'Trạng thái không hợp lệ: %', p_status USING errcode = '22023';
   END IF;
 
-  -- Forward-only guard: prevent status rollback and duplicate side effects.
-  -- Ordinals: cho_duyet=0, da_duyet=1, dang_luan_chuyen=2, da_ban_giao=3
-  IF (
-    CASE v_req.trang_thai
-      WHEN 'cho_duyet'        THEN 0
-      WHEN 'da_duyet'         THEN 1
-      WHEN 'dang_luan_chuyen' THEN 2
-      WHEN 'da_ban_giao'      THEN 3
-      ELSE -1
-    END
-  ) >= (
-    CASE p_status
-      WHEN 'da_duyet'         THEN 1
-      WHEN 'dang_luan_chuyen' THEN 2
-      WHEN 'da_ban_giao'      THEN 3
-      ELSE 99
-    END
+  -- Transition matrix: reject skipped or type-incompatible jumps.
+  IF NOT (
+    (v_req.trang_thai = 'cho_duyet' AND p_status = 'da_duyet')
+    OR (
+      v_req.loai_hinh IN ('noi_bo', 'ben_ngoai')
+      AND v_req.trang_thai = 'da_duyet'
+      AND p_status = 'dang_luan_chuyen'
+    )
+    OR (
+      v_req.loai_hinh = 'ben_ngoai'
+      AND v_req.trang_thai = 'dang_luan_chuyen'
+      AND p_status = 'da_ban_giao'
+    )
   ) THEN
     RAISE EXCEPTION 'Không thể chuyển từ % sang %', v_req.trang_thai, p_status
       USING errcode = '22023';

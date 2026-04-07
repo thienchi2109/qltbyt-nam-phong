@@ -68,6 +68,7 @@ export function TransfersPageContent({ user }: TransfersPageContentProps) {
         returnLocationDialogOpen={controller.rowActions.isReturnLocationDialogOpen}
         onReturnLocationDialogOpenChange={controller.rowActions.setIsReturnLocationDialogOpen}
         returnTransfer={controller.rowActions.returnTransfer}
+        isReturning={controller.isReturning}
         onConfirmReturn={controller.rowActions.handleConfirmReturn}
         deleteDialogOpen={controller.rowActions.isDeleteDialogOpen}
         onDeleteDialogOpenChange={controller.rowActions.setIsDeleteDialogOpen}

@@ -16,7 +16,7 @@ export interface UseTransfersRowActionsOptions {
   approveTransfer: (item: TransferListItem) => void
   startTransfer: (item: TransferListItem) => void
   handoverToExternal: (item: TransferListItem) => void
-  returnFromExternal: (item: TransferListItem, viTriHoanTra: string) => void
+  returnFromExternal: (item: TransferListItem, viTriHoanTra: string) => Promise<void>
   completeTransfer: (item: TransferListItem) => void
   confirmDelete: (item: TransferListItem) => Promise<void> | void
   canEditTransfer: (item: TransferListItem) => boolean
@@ -50,7 +50,7 @@ export interface UseTransfersRowActionsResult {
   handleViewDetail: (item: TransferListItem) => void
   handleOpenDeleteDialog: (item: TransferListItem) => void
   handleOpenReturnDialog: (item: TransferListItem) => void
-  handleConfirmReturn: (viTriHoanTra: string) => void
+  handleConfirmReturn: (viTriHoanTra: string) => Promise<void>
   handleConfirmDelete: () => Promise<void>
   handleGenerateHandoverSheet: (item: TransferListItem) => void
   renderRowActions: (item: TransferListItem) => React.ReactNode
@@ -114,21 +114,26 @@ export function useTransfersRowActions({
   }, [])
 
   const handleConfirmReturn = React.useCallback(
-    (viTriHoanTra: string) => {
+    async (viTriHoanTra: string) => {
       if (!returnTransfer) return
 
-      returnFromExternal(returnTransfer, viTriHoanTra)
-      setReturnTransfer(null)
-      setIsReturnLocationDialogOpen(false)
+      try {
+        await returnFromExternal(returnTransfer, viTriHoanTra)
+        setReturnTransfer(null)
+        setIsReturnLocationDialogOpen(false)
+      } catch {
+        // Mutation onError already surfaces the failure; keep the dialog open.
+      }
     },
     [returnFromExternal, returnTransfer],
   )
 
   React.useEffect(() => {
-    if (!isReturnLocationDialogOpen) {
+    // Reset returnTransfer when the dialog is closed via cancel or overlay click.
+    if (!isReturnLocationDialogOpen && returnTransfer) {
       setReturnTransfer(null)
     }
-  }, [isReturnLocationDialogOpen])
+  }, [isReturnLocationDialogOpen, returnTransfer])
 
   const handleConfirmDelete = React.useCallback(async () => {
     if (!deletingTransfer) return

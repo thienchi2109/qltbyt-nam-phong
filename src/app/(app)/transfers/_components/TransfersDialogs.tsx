@@ -40,7 +40,8 @@ export type TransfersDialogsProps = Readonly<{
   returnLocationDialogOpen: boolean
   onReturnLocationDialogOpenChange: (open: boolean) => void
   returnTransfer: TransferListItem | null
-  onConfirmReturn: (viTriHoanTra: string) => void
+  isReturning: boolean
+  onConfirmReturn: (viTriHoanTra: string) => Promise<void>
   deleteDialogOpen: boolean
   onDeleteDialogOpenChange: (open: boolean) => void
   onConfirmDelete: () => void | Promise<void>
@@ -68,6 +69,7 @@ export function TransfersDialogs({
   returnLocationDialogOpen,
   onReturnLocationDialogOpenChange,
   returnTransfer,
+  isReturning,
   onConfirmReturn,
   deleteDialogOpen,
   onDeleteDialogOpenChange,
@@ -116,6 +118,7 @@ export function TransfersDialogs({
       {returnLocationDialogOpen && (
         <ReturnLocationDialog
           open={returnLocationDialogOpen}
+          isSubmitting={isReturning}
           onOpenChange={onReturnLocationDialogOpenChange}
           transfer={returnTransfer}
           onConfirm={onConfirmReturn}

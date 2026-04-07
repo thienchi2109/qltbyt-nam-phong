@@ -23,9 +23,10 @@ type LocationSuggestion = {
 
 type ReturnLocationDialogProps = Readonly<{
   open: boolean
+  isSubmitting: boolean
   onOpenChange: (open: boolean) => void
   transfer: TransferListItem | null
-  onConfirm: (viTriHoanTra: string) => void
+  onConfirm: (viTriHoanTra: string) => Promise<void>
 }>
 
 const FORBIDDEN_RETURN_LOCATION = "Đang luân chuyển bên ngoài"
@@ -48,6 +49,7 @@ function getValidationMessage(value: string): string | null {
 
 export function ReturnLocationDialog({
   open,
+  isSubmitting,
   onOpenChange,
   transfer,
   onConfirm,
@@ -60,7 +62,12 @@ export function ReturnLocationDialog({
       setLocation("")
       setValidationMessage(null)
     }
-  }, [open, transfer?.id])
+  }, [open])
+
+  React.useEffect(() => {
+    setLocation("")
+    setValidationMessage(null)
+  }, [transfer?.id])
 
   const suggestionsQuery = useQuery({
     queryKey: ["equipment-location-suggestions", transfer?.id],
@@ -105,7 +112,7 @@ export function ReturnLocationDialog({
     [],
   )
 
-  const handleConfirm = React.useCallback(() => {
+  const handleConfirm = React.useCallback(async () => {
     const normalizedLocation = normalizeLocationValue(location)
     const nextValidationMessage = getValidationMessage(normalizedLocation)
 
@@ -114,7 +121,11 @@ export function ReturnLocationDialog({
       return
     }
 
-    onConfirm(normalizedLocation)
+    try {
+      await onConfirm(normalizedLocation)
+    } catch {
+      // Parent mutation already surfaces errors; keep the dialog state intact for retry.
+    }
   }, [location, onConfirm])
 
   return (
@@ -135,6 +146,7 @@ export function ReturnLocationDialog({
               value={location}
               onChange={handleLocationChange}
               placeholder="Nhập vị trí hoàn trả"
+              disabled={isSubmitting}
               aria-invalid={validationMessage ? "true" : "false"}
               aria-describedby={validationMessage ? "return-location-error" : undefined}
             />
@@ -157,6 +169,7 @@ export function ReturnLocationDialog({
                     type="button"
                     variant="outline"
                     size="sm"
+                    disabled={isSubmitting}
                     onClick={() => handleSelectSuggestion(suggestion)}
                   >
                     {suggestion}
@@ -172,10 +185,15 @@ export function ReturnLocationDialog({
         </div>
 
         <DialogFooter>
-          <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+          <Button
+            type="button"
+            variant="outline"
+            disabled={isSubmitting}
+            onClick={() => onOpenChange(false)}
+          >
             Hủy
           </Button>
-          <Button type="button" onClick={handleConfirm}>
+          <Button type="button" disabled={isSubmitting} onClick={() => void handleConfirm()}>
             Xác nhận hoàn trả
           </Button>
         </DialogFooter>
