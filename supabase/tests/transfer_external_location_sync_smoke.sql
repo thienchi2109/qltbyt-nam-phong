@@ -14,6 +14,41 @@ CREATE TEMP TABLE _ext_loc_ctx (
   equipment_id_other bigint NOT NULL
 ) ON COMMIT DROP;
 
+CREATE OR REPLACE FUNCTION pg_temp._ext_loc_move_request(
+  p_request_id integer,
+  p_user_id bigint,
+  p_target_status text
+) RETURNS void
+LANGUAGE plpgsql
+AS $$
+BEGIN
+  PERFORM public.transfer_request_update_status(
+    p_request_id,
+    'da_duyet',
+    jsonb_build_object(
+      'nguoi_duyet_id', p_user_id::text,
+      'ngay_duyet', clock_timestamp()
+    )
+  );
+
+  IF p_target_status IN ('dang_luan_chuyen', 'da_ban_giao') THEN
+    PERFORM public.transfer_request_update_status(
+      p_request_id,
+      'dang_luan_chuyen',
+      jsonb_build_object('ngay_ban_giao', clock_timestamp())
+    );
+  END IF;
+
+  IF p_target_status = 'da_ban_giao' THEN
+    PERFORM public.transfer_request_update_status(
+      p_request_id,
+      'da_ban_giao',
+      jsonb_build_object('ngay_ban_giao', clock_timestamp())
+    );
+  END IF;
+END;
+$$;
+
 DO $$
 DECLARE
   v_suffix text := to_char(clock_timestamp(), 'YYYYMMDDHH24MISSMS');
@@ -90,14 +125,7 @@ BEGIN
     'so_dien_thoai', '0900000000'
   ));
 
-  PERFORM public.transfer_request_update_status(
-    v_request_id::int, 'da_duyet',
-    jsonb_build_object('nguoi_duyet_id', v_ctx.user_id::text, 'ngay_duyet', clock_timestamp())
-  );
-
-  PERFORM public.transfer_request_update_status(
-    v_request_id::int, 'dang_luan_chuyen', '{}'::jsonb
-  );
+  PERFORM pg_temp._ext_loc_move_request(v_request_id::int, v_ctx.user_id, 'dang_luan_chuyen');
 
   SELECT vi_tri_lap_dat INTO v_vi_tri
   FROM public.thiet_bi WHERE id = v_ctx.equipment_id;
@@ -136,15 +164,7 @@ BEGIN
     'so_dien_thoai', '0900000001'
   ));
 
-  PERFORM public.transfer_request_update_status(
-    v_request_id::int, 'da_duyet',
-    jsonb_build_object('nguoi_duyet_id', v_ctx.user_id::text, 'ngay_duyet', clock_timestamp())
-  );
-  PERFORM public.transfer_request_update_status(v_request_id::int, 'dang_luan_chuyen', '{}'::jsonb);
-  PERFORM public.transfer_request_update_status(
-    v_request_id::int, 'da_ban_giao',
-    jsonb_build_object('ngay_ban_giao', clock_timestamp())
-  );
+  PERFORM pg_temp._ext_loc_move_request(v_request_id::int, v_ctx.user_id, 'da_ban_giao');
 
   SELECT vi_tri_lap_dat INTO v_vi_tri
   FROM public.thiet_bi WHERE id = v_ctx.equipment_id;
@@ -154,6 +174,51 @@ BEGIN
   END IF;
 
   RAISE NOTICE 'OK 2: da_ban_giao preserves fixed location';
+END $$;
+
+----------------------------------------------------------------------
+-- 2b) External completion requires da_ban_giao
+----------------------------------------------------------------------
+DO $$
+DECLARE
+  v_ctx _ext_loc_ctx%ROWTYPE;
+  v_request_id bigint;
+  v_error_raised boolean := false;
+BEGIN
+  SELECT * INTO v_ctx FROM _ext_loc_ctx LIMIT 1;
+
+  PERFORM set_config('request.jwt.claims', json_build_object(
+    'app_role', 'to_qltb', 'role', 'authenticated',
+    'user_id', v_ctx.user_id::text, 'sub', v_ctx.user_id::text,
+    'don_vi', v_ctx.tenant_id::text
+  )::text, true);
+
+  v_request_id := public.transfer_request_create(jsonb_build_object(
+    'thiet_bi_id', v_ctx.equipment_id,
+    'loai_hinh', 'ben_ngoai',
+    'ly_do_luan_chuyen', 'Smoke invalid complete state ' || v_ctx.suffix,
+    'khoa_phong_hien_tai', 'Khoa Noi ' || v_ctx.suffix,
+    'don_vi_nhan', 'BV Ngoai 2B ' || v_ctx.suffix,
+    'nguoi_lien_he', 'Nguyen Van B2',
+    'so_dien_thoai', '0900000011'
+  ));
+
+  PERFORM pg_temp._ext_loc_move_request(v_request_id::int, v_ctx.user_id, 'dang_luan_chuyen');
+
+  BEGIN
+    PERFORM public.transfer_request_complete(
+      v_request_id::int,
+      jsonb_build_object('vi_tri_hoan_tra', 'Phong 202')
+    );
+  EXCEPTION
+    WHEN SQLSTATE '22023' THEN v_error_raised := true;
+  END;
+
+  IF NOT v_error_raised THEN
+    RAISE EXCEPTION 'Test 2b FAIL: expected transfer_request_complete to reject ben_ngoai completion before da_ban_giao';
+  END IF;
+
+  RAISE NOTICE 'OK 2b: ben_ngoai completion requires da_ban_giao';
 END $$;
 
 ----------------------------------------------------------------------
@@ -183,12 +248,7 @@ BEGIN
     'so_dien_thoai', '0900000002'
   ));
 
-  UPDATE public.yeu_cau_luan_chuyen
-  SET trang_thai = 'da_ban_giao',
-      ngay_duyet = clock_timestamp(),
-      ngay_ban_giao = clock_timestamp(),
-      nguoi_duyet_id = v_ctx.user_id
-  WHERE id = v_request_id;
+  PERFORM pg_temp._ext_loc_move_request(v_request_id::int, v_ctx.user_id, 'da_ban_giao');
 
   BEGIN
     PERFORM public.transfer_request_complete(v_request_id::int, '{}'::jsonb);
@@ -230,12 +290,7 @@ BEGIN
     'so_dien_thoai', '0900000003'
   ));
 
-  UPDATE public.yeu_cau_luan_chuyen
-  SET trang_thai = 'da_ban_giao',
-      ngay_duyet = clock_timestamp(),
-      ngay_ban_giao = clock_timestamp(),
-      nguoi_duyet_id = v_ctx.user_id
-  WHERE id = v_request_id;
+  PERFORM pg_temp._ext_loc_move_request(v_request_id::int, v_ctx.user_id, 'da_ban_giao');
 
   BEGIN
     PERFORM public.transfer_request_complete(
@@ -280,12 +335,7 @@ BEGIN
     'so_dien_thoai', '0900000004'
   ));
 
-  UPDATE public.yeu_cau_luan_chuyen
-  SET trang_thai = 'da_ban_giao',
-      ngay_duyet = clock_timestamp(),
-      ngay_ban_giao = clock_timestamp(),
-      nguoi_duyet_id = v_ctx.user_id
-  WHERE id = v_request_id;
+  PERFORM pg_temp._ext_loc_move_request(v_request_id::int, v_ctx.user_id, 'da_ban_giao');
 
   PERFORM public.transfer_request_complete(
     v_request_id::int,
@@ -333,12 +383,7 @@ BEGIN
     'so_dien_thoai', '0900000005'
   ));
 
-  UPDATE public.yeu_cau_luan_chuyen
-  SET trang_thai = 'da_ban_giao',
-      ngay_duyet = clock_timestamp(),
-      ngay_ban_giao = clock_timestamp(),
-      nguoi_duyet_id = v_ctx.user_id
-  WHERE id = v_request_id;
+  PERFORM pg_temp._ext_loc_move_request(v_request_id::int, v_ctx.user_id, 'da_ban_giao');
 
   PERFORM public.transfer_request_complete(
     v_request_id::int,
@@ -401,12 +446,7 @@ BEGIN
     'khoa_phong_nhan', 'Khoa Nhan Internal ' || v_ctx.suffix
   ));
 
-  UPDATE public.yeu_cau_luan_chuyen
-  SET trang_thai = 'da_ban_giao',
-      ngay_duyet = clock_timestamp(),
-      ngay_ban_giao = clock_timestamp(),
-      nguoi_duyet_id = v_ctx.user_id
-  WHERE id = v_request_id;
+  PERFORM pg_temp._ext_loc_move_request(v_request_id::int, v_ctx.user_id, 'dang_luan_chuyen');
 
   -- Internal complete should NOT require vi_tri_hoan_tra
   PERFORM public.transfer_request_complete(v_request_id::int, '{}'::jsonb);

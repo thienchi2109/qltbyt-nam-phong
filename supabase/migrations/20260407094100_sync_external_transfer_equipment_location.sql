@@ -5,6 +5,15 @@
 
 BEGIN;
 
+-- Rollback notes:
+-- 1. Re-apply the previous function bodies from
+--    20260406082000_fix_request_lifecycle_review_followups.sql and
+--    20260406115000_fix_transfer_request_complete_audit_fail_closed.sql.
+-- 2. Drop public.get_equipment_location_suggestions(integer, integer) and
+--    restore the prior GRANT/REVOKE state if this feature must be removed.
+-- 3. This migration mutates thiet_bi.vi_tri_lap_dat for external transfers;
+--    restoring historical locations requires domain-specific data repair.
+
 ----------------------------------------------------------------------
 -- 1. transfer_request_update_status — add external location sync
 ----------------------------------------------------------------------
@@ -22,6 +31,7 @@ DECLARE
   v_role text;
   v_is_global boolean := false;
   v_don_vi text;
+  v_user_id_text text;
   v_user_id bigint;
   v_req record;
 BEGIN
@@ -29,7 +39,11 @@ BEGIN
   v_role := lower(coalesce(nullif(v_claims->>'app_role', ''), nullif(v_claims->>'role', '')));
   v_is_global := v_role in ('global', 'admin');
   v_don_vi := nullif(v_claims->>'don_vi', '');
-  v_user_id := nullif(v_claims->>'user_id', '')::bigint;
+  v_user_id_text := nullif(v_claims->>'user_id', '');
+  v_user_id := CASE
+    WHEN v_user_id_text ~ '^[0-9]+$' THEN v_user_id_text::bigint
+    ELSE NULL
+  END;
 
   IF v_role IS NULL OR v_role = '' THEN
     RAISE EXCEPTION 'Missing role claim in JWT' USING errcode = '42501';
@@ -180,6 +194,7 @@ DECLARE
   v_role text;
   v_is_global boolean := false;
   v_don_vi text;
+  v_user_id_text text;
   v_user_id bigint;
   v_req record;
   v_mo_ta text;
@@ -191,7 +206,11 @@ BEGIN
   v_role := lower(coalesce(nullif(v_claims->>'app_role', ''), nullif(v_claims->>'role', '')));
   v_is_global := v_role in ('global', 'admin');
   v_don_vi := nullif(v_claims->>'don_vi', '');
-  v_user_id := nullif(v_claims->>'user_id', '')::bigint;
+  v_user_id_text := nullif(v_claims->>'user_id', '');
+  v_user_id := CASE
+    WHEN v_user_id_text ~ '^[0-9]+$' THEN v_user_id_text::bigint
+    ELSE NULL
+  END;
 
   IF v_role IS NULL OR v_role = '' THEN
     RAISE EXCEPTION 'Missing role claim in JWT' USING errcode = '42501';
@@ -228,6 +247,17 @@ BEGIN
 
   IF v_req.trang_thai = 'hoan_thanh' THEN
     RAISE EXCEPTION 'Không thể hoàn thành lại yêu cầu đã hoàn thành' USING errcode = '22023';
+  END IF;
+
+  IF (
+    (v_req.loai_hinh = 'noi_bo' AND v_req.trang_thai <> 'dang_luan_chuyen')
+    OR (v_req.loai_hinh = 'ben_ngoai' AND v_req.trang_thai <> 'da_ban_giao')
+    OR (v_req.loai_hinh = 'thanh_ly' AND v_req.trang_thai <> 'da_duyet')
+  ) THEN
+    RAISE EXCEPTION 'Không thể hoàn thành yêu cầu % từ trạng thái %',
+      v_req.loai_hinh,
+      v_req.trang_thai
+      USING errcode = '22023';
   END IF;
 
   -- External transfer return: validate and apply return location
@@ -344,7 +374,8 @@ REVOKE EXECUTE ON FUNCTION public.transfer_request_complete(integer, jsonb) FROM
 -- 3. get_equipment_location_suggestions — new RPC
 ----------------------------------------------------------------------
 CREATE OR REPLACE FUNCTION public.get_equipment_location_suggestions(
-  p_transfer_request_id integer
+  p_transfer_request_id integer,
+  p_limit integer DEFAULT 20
 ) RETURNS TABLE(vi_tri text)
 LANGUAGE plpgsql STABLE
 SECURITY DEFINER
@@ -355,15 +386,21 @@ DECLARE
   v_role text;
   v_is_global boolean := false;
   v_don_vi text;
+  v_user_id_text text;
   v_user_id bigint;
   v_khoa_phong text;
   v_tb_don_vi bigint;
+  v_effective_limit integer := greatest(1, least(coalesce(p_limit, 20), 100));
 BEGIN
   v_claims := coalesce(current_setting('request.jwt.claims', true), '{}')::jsonb;
   v_role := lower(coalesce(nullif(v_claims->>'app_role', ''), nullif(v_claims->>'role', '')));
   v_is_global := v_role in ('global', 'admin');
   v_don_vi := nullif(v_claims->>'don_vi', '');
-  v_user_id := nullif(v_claims->>'user_id', '')::bigint;
+  v_user_id_text := nullif(v_claims->>'user_id', '');
+  v_user_id := CASE
+    WHEN v_user_id_text ~ '^[0-9]+$' THEN v_user_id_text::bigint
+    ELSE NULL
+  END;
 
   IF v_role IS NULL OR v_role = '' THEN
     RAISE EXCEPTION 'Missing role claim in JWT' USING errcode = '42501';
@@ -402,11 +439,12 @@ BEGIN
     AND tb2.vi_tri_lap_dat <> ''
     AND tb2.vi_tri_lap_dat <> 'Đang luân chuyển bên ngoài'
     AND tb2.is_deleted = false
-  ORDER BY 1;
+  ORDER BY 1
+  LIMIT v_effective_limit;
 END;
 $function$;
 
-GRANT EXECUTE ON FUNCTION public.get_equipment_location_suggestions(integer) TO authenticated;
-REVOKE EXECUTE ON FUNCTION public.get_equipment_location_suggestions(integer) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.get_equipment_location_suggestions(integer, integer) TO authenticated;
+REVOKE EXECUTE ON FUNCTION public.get_equipment_location_suggestions(integer, integer) FROM PUBLIC;
 
 COMMIT;
