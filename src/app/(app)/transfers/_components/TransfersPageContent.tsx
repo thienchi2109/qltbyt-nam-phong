@@ -65,6 +65,10 @@ export function TransfersPageContent({ user }: TransfersPageContentProps) {
         handoverDialogOpen={controller.rowActions.isHandoverDialogOpen}
         onHandoverDialogOpenChange={controller.rowActions.setIsHandoverDialogOpen}
         handoverTransfer={controller.rowActions.handoverTransfer}
+        returnLocationDialogOpen={controller.rowActions.isReturnLocationDialogOpen}
+        onReturnLocationDialogOpenChange={controller.rowActions.setIsReturnLocationDialogOpen}
+        returnTransfer={controller.rowActions.returnTransfer}
+        onConfirmReturn={controller.rowActions.handleConfirmReturn}
         deleteDialogOpen={controller.rowActions.isDeleteDialogOpen}
         onDeleteDialogOpenChange={controller.rowActions.setIsDeleteDialogOpen}
         onConfirmDelete={controller.rowActions.handleConfirmDelete}

@@ -45,6 +45,8 @@ const TRANSFER_HISTORY_DETAILS_LABELS: Record<string, string> = {
   ngay_ban_giao: "Ngày bàn giao",
   ngay_hoan_thanh: "Ngày hoàn thành",
   ngay_hoan_tra: "Ngày hoàn trả",
+  vi_tri_truoc_do: "Vị trí trước đó",
+  vi_tri_hoan_tra_moi: "Vị trí hoàn trả mới",
 }
 
 const TRANSFER_HISTORY_DETAILS_HIDDEN_KEYS = new Set<string>([

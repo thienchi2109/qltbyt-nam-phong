@@ -16,7 +16,7 @@ interface UseTransferActionsReturn {
   approveTransfer: (item: TransferListItem) => void
   startTransfer: (item: TransferListItem) => void
   handoverToExternal: (item: TransferListItem) => void
-  returnFromExternal: (item: TransferListItem) => void
+  returnFromExternal: (item: TransferListItem, viTriHoanTra: string) => void
   completeTransfer: (item: TransferListItem) => void
 
   // CRUD actions
@@ -218,10 +218,16 @@ export function useTransferActions(): UseTransferActionsReturn {
 
   // Return from external mutation
   const returnMutation = useMutation({
-    mutationFn: async (item: TransferListItem) => {
+    mutationFn: async ({ item, viTriHoanTra }: ReturnMutationInput) => {
       await callRpc({
         fn: "transfer_request_complete",
-        args: { p_id: item.id, p_payload: { ngay_hoan_tra: new Date().toISOString() } },
+        args: {
+          p_id: item.id,
+          p_payload: {
+            ngay_hoan_tra: new Date().toISOString(),
+            vi_tri_hoan_tra: viTriHoanTra,
+          },
+        },
       })
     },
     onSuccess: () => {
@@ -317,12 +323,12 @@ export function useTransferActions(): UseTransferActionsReturn {
   )
 
   const returnFromExternal = React.useCallback(
-    (item: TransferListItem) => {
+    (item: TransferListItem, viTriHoanTra: string) => {
       if (isRegionalLeader) {
         notifyRegionalLeaderRestricted()
         return
       }
-      returnMutation.mutate(item)
+      returnMutation.mutate({ item, viTriHoanTra })
     },
     [isRegionalLeader, notifyRegionalLeaderRestricted, returnMutation]
   )
@@ -365,3 +371,7 @@ export function useTransferActions(): UseTransferActionsReturn {
     isDeleting: deleteMutation.isPending,
   }
 }
+  type ReturnMutationInput = {
+    item: TransferListItem
+    viTriHoanTra: string
+  }

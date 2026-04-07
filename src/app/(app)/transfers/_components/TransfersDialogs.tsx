@@ -7,6 +7,7 @@ import { EditTransferDialog } from "@/components/edit-transfer-dialog"
 import { HandoverPreviewDialog } from "@/components/handover-preview-dialog"
 import { TransferDetailDialog } from "@/components/transfer-detail-dialog"
 import { FilterModal, type FilterModalValue } from "@/components/transfers/FilterModal"
+import { ReturnLocationDialog } from "@/components/transfers/ReturnLocationDialog"
 import {
   AlertDialog,
   AlertDialogCancel,
@@ -18,6 +19,7 @@ import {
 } from "@/components/ui/alert-dialog"
 import { Button } from "@/components/ui/button"
 import type { TransferRequest } from "@/types/database"
+import type { TransferListItem } from "@/types/transfers-data-grid"
 
 type FilterModalVariant = "dialog" | "sheet"
 
@@ -35,6 +37,10 @@ export type TransfersDialogsProps = Readonly<{
   handoverDialogOpen: boolean
   onHandoverDialogOpenChange: (open: boolean) => void
   handoverTransfer: TransferRequest | null
+  returnLocationDialogOpen: boolean
+  onReturnLocationDialogOpenChange: (open: boolean) => void
+  returnTransfer: TransferListItem | null
+  onConfirmReturn: (viTriHoanTra: string) => void
   deleteDialogOpen: boolean
   onDeleteDialogOpenChange: (open: boolean) => void
   onConfirmDelete: () => void | Promise<void>
@@ -59,6 +65,10 @@ export function TransfersDialogs({
   handoverDialogOpen,
   onHandoverDialogOpenChange,
   handoverTransfer,
+  returnLocationDialogOpen,
+  onReturnLocationDialogOpenChange,
+  returnTransfer,
+  onConfirmReturn,
   deleteDialogOpen,
   onDeleteDialogOpenChange,
   onConfirmDelete,
@@ -100,6 +110,15 @@ export function TransfersDialogs({
           open={handoverDialogOpen}
           onOpenChange={onHandoverDialogOpenChange}
           transfer={handoverTransfer}
+        />
+      )}
+
+      {returnLocationDialogOpen && (
+        <ReturnLocationDialog
+          open={returnLocationDialogOpen}
+          onOpenChange={onReturnLocationDialogOpenChange}
+          transfer={returnTransfer}
+          onConfirm={onConfirmReturn}
         />
       )}
 

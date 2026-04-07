@@ -16,7 +16,7 @@ export interface UseTransfersRowActionsOptions {
   approveTransfer: (item: TransferListItem) => void
   startTransfer: (item: TransferListItem) => void
   handoverToExternal: (item: TransferListItem) => void
-  returnFromExternal: (item: TransferListItem) => void
+  returnFromExternal: (item: TransferListItem, viTriHoanTra: string) => void
   completeTransfer: (item: TransferListItem) => void
   confirmDelete: (item: TransferListItem) => Promise<void> | void
   canEditTransfer: (item: TransferListItem) => boolean
@@ -38,6 +38,9 @@ export interface UseTransfersRowActionsResult {
   isHandoverDialogOpen: boolean
   setIsHandoverDialogOpen: React.Dispatch<React.SetStateAction<boolean>>
   handoverTransfer: TransferRequest | null
+  isReturnLocationDialogOpen: boolean
+  setIsReturnLocationDialogOpen: React.Dispatch<React.SetStateAction<boolean>>
+  returnTransfer: TransferListItem | null
   isDeleteDialogOpen: boolean
   setIsDeleteDialogOpen: React.Dispatch<React.SetStateAction<boolean>>
   deletingTransfer: TransferListItem | null
@@ -46,6 +49,8 @@ export interface UseTransfersRowActionsResult {
   handleEditTransfer: (item: TransferListItem) => void
   handleViewDetail: (item: TransferListItem) => void
   handleOpenDeleteDialog: (item: TransferListItem) => void
+  handleOpenReturnDialog: (item: TransferListItem) => void
+  handleConfirmReturn: (viTriHoanTra: string) => void
   handleConfirmDelete: () => Promise<void>
   handleGenerateHandoverSheet: (item: TransferListItem) => void
   renderRowActions: (item: TransferListItem) => React.ReactNode
@@ -72,6 +77,8 @@ export function useTransfersRowActions({
   const [detailTransfer, setDetailTransfer] = React.useState<TransferRequest | null>(null)
   const [isHandoverDialogOpen, setIsHandoverDialogOpen] = React.useState(false)
   const [handoverTransfer, setHandoverTransfer] = React.useState<TransferRequest | null>(null)
+  const [isReturnLocationDialogOpen, setIsReturnLocationDialogOpen] = React.useState(false)
+  const [returnTransfer, setReturnTransfer] = React.useState<TransferListItem | null>(null)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = React.useState(false)
   const [deletingTransfer, setDeletingTransfer] = React.useState<TransferListItem | null>(null)
 
@@ -100,6 +107,28 @@ export function useTransfersRowActions({
     setDeletingTransfer(item)
     setIsDeleteDialogOpen(true)
   }, [])
+
+  const handleOpenReturnDialog = React.useCallback((item: TransferListItem) => {
+    setReturnTransfer(item)
+    setIsReturnLocationDialogOpen(true)
+  }, [])
+
+  const handleConfirmReturn = React.useCallback(
+    (viTriHoanTra: string) => {
+      if (!returnTransfer) return
+
+      returnFromExternal(returnTransfer, viTriHoanTra)
+      setReturnTransfer(null)
+      setIsReturnLocationDialogOpen(false)
+    },
+    [returnFromExternal, returnTransfer],
+  )
+
+  React.useEffect(() => {
+    if (!isReturnLocationDialogOpen) {
+      setReturnTransfer(null)
+    }
+  }, [isReturnLocationDialogOpen])
 
   const handleConfirmDelete = React.useCallback(async () => {
     if (!deletingTransfer) return
@@ -146,7 +175,7 @@ export function useTransfersRowActions({
         onApprove={approveTransfer}
         onStart={startTransfer}
         onHandover={handoverToExternal}
-        onReturn={returnFromExternal}
+        onReturn={handleOpenReturnDialog}
         onComplete={completeTransfer}
         onGenerateHandoverSheet={handleGenerateHandoverSheet}
       />
@@ -159,9 +188,9 @@ export function useTransfersRowActions({
       handleEditTransfer,
       handleGenerateHandoverSheet,
       handleOpenDeleteDialog,
+      handleOpenReturnDialog,
       handoverToExternal,
       isTransferCoreRole,
-      returnFromExternal,
       startTransfer,
       userKhoaPhong,
       userRole,
@@ -183,6 +212,9 @@ export function useTransfersRowActions({
     isHandoverDialogOpen,
     setIsHandoverDialogOpen,
     handoverTransfer,
+    isReturnLocationDialogOpen,
+    setIsReturnLocationDialogOpen,
+    returnTransfer,
     isDeleteDialogOpen,
     setIsDeleteDialogOpen,
     deletingTransfer,
@@ -191,6 +223,8 @@ export function useTransfersRowActions({
     handleEditTransfer,
     handleViewDetail,
     handleOpenDeleteDialog,
+    handleOpenReturnDialog,
+    handleConfirmReturn,
     handleConfirmDelete,
     handleGenerateHandoverSheet,
     renderRowActions,
