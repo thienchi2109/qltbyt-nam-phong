@@ -80,6 +80,28 @@ BEGIN
     RAISE EXCEPTION 'Trạng thái không hợp lệ: %', p_status USING errcode = '22023';
   END IF;
 
+  -- Forward-only guard: prevent status rollback and duplicate side effects.
+  -- Ordinals: cho_duyet=0, da_duyet=1, dang_luan_chuyen=2, da_ban_giao=3
+  IF (
+    CASE v_req.trang_thai
+      WHEN 'cho_duyet'        THEN 0
+      WHEN 'da_duyet'         THEN 1
+      WHEN 'dang_luan_chuyen' THEN 2
+      WHEN 'da_ban_giao'      THEN 3
+      ELSE -1
+    END
+  ) >= (
+    CASE p_status
+      WHEN 'da_duyet'         THEN 1
+      WHEN 'dang_luan_chuyen' THEN 2
+      WHEN 'da_ban_giao'      THEN 3
+      ELSE 99
+    END
+  ) THEN
+    RAISE EXCEPTION 'Không thể chuyển từ % sang %', v_req.trang_thai, p_status
+      USING errcode = '22023';
+  END IF;
+
   UPDATE public.yeu_cau_luan_chuyen
   SET trang_thai = p_status,
       updated_by = v_user_id,
@@ -208,26 +230,26 @@ BEGIN
     RAISE EXCEPTION 'Không thể hoàn thành lại yêu cầu đã hoàn thành' USING errcode = '22023';
   END IF;
 
-  -- External transfer return: validate and apply return location if provided.
-  -- Backward-compatible: callers that omit vi_tri_hoan_tra still complete
-  -- successfully; the location update is simply skipped.
+  -- External transfer return: validate and apply return location
   IF v_req.loai_hinh = 'ben_ngoai' THEN
     v_vi_tri_hoan_tra := NULLIF(BTRIM(p_payload->>'vi_tri_hoan_tra'), '');
+
+    IF v_vi_tri_hoan_tra IS NULL THEN
+      RAISE EXCEPTION 'Thiếu vi_tri_hoan_tra cho hoàn trả bên ngoài' USING errcode = '22023';
+    END IF;
 
     IF v_vi_tri_hoan_tra = 'Đang luân chuyển bên ngoài' THEN
       RAISE EXCEPTION 'Vị trí hoàn trả không được là "Đang luân chuyển bên ngoài"' USING errcode = '22023';
     END IF;
 
-    IF v_vi_tri_hoan_tra IS NOT NULL THEN
-      -- Capture previous location before update
-      SELECT vi_tri_lap_dat INTO v_vi_tri_truoc_do
-      FROM public.thiet_bi WHERE id = v_req.thiet_bi_id;
+    -- Capture previous location before update
+    SELECT vi_tri_lap_dat INTO v_vi_tri_truoc_do
+    FROM public.thiet_bi WHERE id = v_req.thiet_bi_id;
 
-      -- Update equipment location to the return location
-      UPDATE public.thiet_bi
-      SET vi_tri_lap_dat = v_vi_tri_hoan_tra
-      WHERE id = v_req.thiet_bi_id;
-    END IF;
+    -- Update equipment location to the return location
+    UPDATE public.thiet_bi
+    SET vi_tri_lap_dat = v_vi_tri_hoan_tra
+    WHERE id = v_req.thiet_bi_id;
   END IF;
 
   UPDATE public.yeu_cau_luan_chuyen
@@ -367,7 +389,7 @@ BEGIN
     RAISE EXCEPTION 'Yêu cầu không tồn tại';
   END IF;
 
-  IF NOT v_is_global AND v_tb_don_vi IS DISTINCT FROM v_don_vi::bigint THEN
+  IF NOT v_is_global AND v_tb_don_vi::text IS DISTINCT FROM v_don_vi THEN
     RAISE EXCEPTION 'Không có quyền trên yêu cầu thuộc đơn vị khác' USING errcode = '42501';
   END IF;
 

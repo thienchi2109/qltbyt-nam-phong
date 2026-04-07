@@ -157,15 +157,13 @@ BEGIN
 END $$;
 
 ----------------------------------------------------------------------
--- 3) Missing vi_tri_hoan_tra: completion succeeds (backward compat), location unchanged
+-- 3) Return rejects missing vi_tri_hoan_tra
 ----------------------------------------------------------------------
 DO $$
 DECLARE
   v_ctx _ext_loc_ctx%ROWTYPE;
   v_request_id bigint;
-  v_vi_tri_before text;
-  v_vi_tri_after text;
-  v_req record;
+  v_error_raised boolean := false;
 BEGIN
   SELECT * INTO v_ctx FROM _ext_loc_ctx LIMIT 1;
 
@@ -192,27 +190,17 @@ BEGIN
       nguoi_duyet_id = v_ctx.user_id
   WHERE id = v_request_id;
 
-  SELECT vi_tri_lap_dat INTO v_vi_tri_before
-  FROM public.thiet_bi WHERE id = v_ctx.equipment_id;
+  BEGIN
+    PERFORM public.transfer_request_complete(v_request_id::int, '{}'::jsonb);
+  EXCEPTION
+    WHEN SQLSTATE '22023' THEN v_error_raised := true;
+  END;
 
-  -- Complete without vi_tri_hoan_tra — should NOT raise exception
-  PERFORM public.transfer_request_complete(v_request_id::int, '{}'::jsonb);
-
-  SELECT vi_tri_lap_dat INTO v_vi_tri_after
-  FROM public.thiet_bi WHERE id = v_ctx.equipment_id;
-
-  SELECT trang_thai INTO v_req
-  FROM public.yeu_cau_luan_chuyen WHERE id = v_request_id;
-
-  IF v_req.trang_thai IS DISTINCT FROM 'hoan_thanh' THEN
-    RAISE EXCEPTION 'Test 3 FAIL: expected hoan_thanh, got %', v_req.trang_thai;
+  IF NOT v_error_raised THEN
+    RAISE EXCEPTION 'Test 3 FAIL: expected transfer_request_complete to reject missing vi_tri_hoan_tra for ben_ngoai';
   END IF;
 
-  IF v_vi_tri_after IS DISTINCT FROM v_vi_tri_before THEN
-    RAISE EXCEPTION 'Test 3 FAIL: expected location unchanged (%), got %', v_vi_tri_before, v_vi_tri_after;
-  END IF;
-
-  RAISE NOTICE 'OK 3: missing vi_tri_hoan_tra completes without location change (backward compat)';
+  RAISE NOTICE 'OK 3: return rejects missing vi_tri_hoan_tra';
 END $$;
 
 ----------------------------------------------------------------------
