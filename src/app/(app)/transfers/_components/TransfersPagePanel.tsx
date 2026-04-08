@@ -17,6 +17,7 @@ import { TransferCard } from "@/components/transfers/TransferCard"
 import { FilterChips, type FilterChipsValue } from "@/components/transfers/FilterChips"
 import { TransferTypeTabs } from "@/components/transfers/TransferTypeTabs"
 import { TransfersKanbanView } from "@/components/transfers/TransfersKanbanView"
+import { TransfersSearchParamsBoundary } from "@/components/transfers/TransfersSearchParamsBoundary"
 import { TransfersTableView } from "@/components/transfers/TransfersTableView"
 import { TransfersTenantSelectionPlaceholder } from "@/components/transfers/TransfersTenantSelectionPlaceholder"
 import { TransfersViewToggle } from "@/components/transfers/TransfersViewToggle"
@@ -164,91 +165,93 @@ export function TransfersPagePanel({
       </CardHeader>
 
       <CardContent className="space-y-4">
-        <TransferTypeTabs
-          activeTab={activeTab}
-          onTabChange={onTabChange}
-          counts={transferTypeCounts}
-        >
-          <div className="flex flex-col gap-3">
-            <FilterChips
-              value={filterChipsValue}
-              onRemove={onRemoveFilter}
-              onClearAll={onClearAllFilters}
-            />
+        <TransfersSearchParamsBoundary>
+          <TransferTypeTabs
+            activeTab={activeTab}
+            onTabChange={onTabChange}
+            counts={transferTypeCounts}
+          >
+            <div className="flex flex-col gap-3">
+              <FilterChips
+                value={filterChipsValue}
+                onRemove={onRemoveFilter}
+                onClearAll={onClearAllFilters}
+              />
 
-            <SearchInput
-              placeholder="Tìm kiếm mã yêu cầu, thiết bị, lý do..."
-              value={searchTerm}
-              onChange={onSearchTermChange}
-              onClear={onClearSearch}
-              showSearchIcon={true}
-              className="w-full max-w-sm"
-            />
+              <SearchInput
+                placeholder="Tìm kiếm mã yêu cầu, thiết bị, lý do..."
+                value={searchTerm}
+                onChange={onSearchTermChange}
+                onClear={onClearSearch}
+                showSearchIcon={true}
+                className="w-full max-w-sm"
+              />
 
-            {viewMode === "kanban" ? (
-              shouldFetchData ? (
-                <TransfersKanbanView
-                  filters={filters}
-                  onViewTransfer={onViewTransfer}
-                  renderRowActions={renderRowActions}
-                  statusCounts={transferCounts?.columnCounts}
-                  userRole={userRole}
-                />
+              {viewMode === "kanban" ? (
+                shouldFetchData ? (
+                  <TransfersKanbanView
+                    filters={filters}
+                    onViewTransfer={onViewTransfer}
+                    renderRowActions={renderRowActions}
+                    statusCounts={transferCounts?.columnCounts}
+                    userRole={userRole}
+                  />
+                ) : (
+                  <TransfersTenantSelectionPlaceholder />
+                )
+              ) : shouldFetchData ? (
+                <>
+                  <div className="space-y-3 lg:hidden">
+                    {isListLoading ? (
+                      <div className="flex min-h-[200px] items-center justify-center rounded-lg border border-dashed">
+                        <div className="flex flex-col items-center gap-2 text-sm text-muted-foreground">
+                          <Loader2 className="h-6 w-6 animate-spin" />
+                          Đang tải dữ liệu...
+                        </div>
+                      </div>
+                    ) : tableData.length > 0 ? (
+                      tableData.map((item) => (
+                        <TransferCard
+                          key={item.id}
+                          transfer={item}
+                          referenceDate={referenceDate}
+                          onClick={() => onViewTransfer(item)}
+                          actions={<RowActions item={item} />}
+                        />
+                      ))
+                    ) : (
+                      <div className="rounded-lg border border-dashed py-12 text-center text-sm text-muted-foreground">
+                        Không có dữ liệu phù hợp.
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="hidden lg:block">
+                    <TransfersTableView
+                      data={tableData}
+                      columns={columns}
+                      sorting={sorting}
+                      onSortingChange={onSortingChange}
+                      pagination={pagination}
+                      onPaginationChange={onPaginationChange}
+                      pageCount={pageCount}
+                      isLoading={isListLoading}
+                      onRowClick={onViewTransfer}
+                    />
+                  </div>
+                </>
               ) : (
                 <TransfersTenantSelectionPlaceholder />
-              )
-            ) : shouldFetchData ? (
-              <>
-                <div className="space-y-3 lg:hidden">
-                  {isListLoading ? (
-                    <div className="flex min-h-[200px] items-center justify-center rounded-lg border border-dashed">
-                      <div className="flex flex-col items-center gap-2 text-sm text-muted-foreground">
-                        <Loader2 className="h-6 w-6 animate-spin" />
-                        Đang tải dữ liệu...
-                      </div>
-                    </div>
-                  ) : tableData.length > 0 ? (
-                    tableData.map((item) => (
-                      <TransferCard
-                        key={item.id}
-                        transfer={item}
-                        referenceDate={referenceDate}
-                        onClick={() => onViewTransfer(item)}
-                        actions={<RowActions item={item} />}
-                      />
-                    ))
-                  ) : (
-                    <div className="rounded-lg border border-dashed py-12 text-center text-sm text-muted-foreground">
-                      Không có dữ liệu phù hợp.
-                    </div>
-                  )}
-                </div>
+              )}
 
-                <div className="hidden lg:block">
-                  <TransfersTableView
-                    data={tableData}
-                    columns={columns}
-                    sorting={sorting}
-                    onSortingChange={onSortingChange}
-                    pagination={pagination}
-                    onPaginationChange={onPaginationChange}
-                    pageCount={pageCount}
-                    isLoading={isListLoading}
-                    onRowClick={onViewTransfer}
-                  />
+              {isListFetching && !isListLoading && (
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <Loader2 className="h-4 w-4 animate-spin" /> Đang đồng bộ dữ liệu...
                 </div>
-              </>
-            ) : (
-              <TransfersTenantSelectionPlaceholder />
-            )}
-
-            {isListFetching && !isListLoading && (
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Loader2 className="h-4 w-4 animate-spin" /> Đang đồng bộ dữ liệu...
-              </div>
-            )}
-          </div>
-        </TransferTypeTabs>
+              )}
+            </div>
+          </TransferTypeTabs>
+        </TransfersSearchParamsBoundary>
       </CardContent>
 
       {viewMode === "table" && shouldFetchData && (

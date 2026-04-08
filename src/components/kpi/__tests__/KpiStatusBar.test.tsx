@@ -1,6 +1,7 @@
 import * as React from "react"
 import { render, screen } from "@testing-library/react"
 import { describe, it, expect, vi } from "vitest"
+import "@/components/kpi/index.exports.assertions"
 import { KpiStatusBar } from "@/components/kpi/KpiStatusBar"
 import type { StatusConfig } from "@/components/kpi/types"
 

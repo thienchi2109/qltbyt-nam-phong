@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { useRouter, useSearchParams } from "next/navigation"
+import { useRouter } from "next/navigation"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
 import type { TransferType } from "@/types/transfers-data-grid"
@@ -120,35 +120,48 @@ export function TransferTypeTabs({
 export function useTransferTypeTab(
   defaultTab: TransferType = 'noi_bo'
 ): [TransferType, (tab: TransferType) => void] {
-  const searchParams = useSearchParams()
   const router = useRouter()
+  const readTabFromLocation = React.useCallback(() => {
+    if (typeof window === "undefined") {
+      return defaultTab
+    }
 
-  // Initialize from URL or use default
-  const initialTab = React.useMemo(() => {
-    const tabParam = searchParams?.get('tab')
-    if (tabParam === 'noi_bo' || tabParam === 'ben_ngoai' || tabParam === 'thanh_ly') {
+    const tabParam = new URLSearchParams(window.location.search).get("tab")
+    if (tabParam === "noi_bo" || tabParam === "ben_ngoai" || tabParam === "thanh_ly") {
       return tabParam
     }
+
     return defaultTab
-  }, [searchParams, defaultTab])
+  }, [defaultTab])
 
-  const [activeTab, setActiveTab] = React.useState<TransferType>(initialTab)
+  const [activeTab, setActiveTab] = React.useState<TransferType>(() => readTabFromLocation())
 
-  // Sync state when URL changes (browser back/forward)
   React.useEffect(() => {
-    const tabParam = searchParams?.get('tab')
-    if (tabParam === 'noi_bo' || tabParam === 'ben_ngoai' || tabParam === 'thanh_ly') {
-      setActiveTab(tabParam)
+    if (typeof window === "undefined") {
+      return undefined
     }
-  }, [searchParams])
+
+    const syncTabFromLocation = () => {
+      setActiveTab(readTabFromLocation())
+    }
+
+    syncTabFromLocation()
+    window.addEventListener("popstate", syncTabFromLocation)
+
+    return () => {
+      window.removeEventListener("popstate", syncTabFromLocation)
+    }
+  }, [readTabFromLocation])
 
   const handleSetTab = React.useCallback((tab: TransferType) => {
     setActiveTab(tab)
-    // Update URL
-    const params = new URLSearchParams(searchParams?.toString())
+
+    const params = new URLSearchParams(
+      typeof window === "undefined" ? "" : window.location.search,
+    )
     params.set('tab', tab)
     router.push(`?${params.toString()}`, { scroll: false })
-  }, [router, searchParams])
+  }, [router])
 
   return [activeTab, handleSetTab]
 }
@@ -156,6 +169,6 @@ export function useTransferTypeTab(
 /**
  * Get transfer type config by value
  */
-export function getTransferTypeConfig(type: TransferType) {
+function getTransferTypeConfig(type: TransferType) {
   return TRANSFER_TYPE_CONFIGS.find(config => config.value === type)
 }

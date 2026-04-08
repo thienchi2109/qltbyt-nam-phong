@@ -10,7 +10,7 @@ interface PageTransitionWrapperProps {
   enableGPUAcceleration?: boolean
 }
 
-export function PageTransitionWrapper({ 
+function PageTransitionWrapper({ 
   children, 
   className,
   enableGPUAcceleration = true 
@@ -62,7 +62,7 @@ export function MainContentTransition({ children, className }: PageTransitionWra
 }
 
 // Specialized wrapper for modal content
-export function ModalTransition({ children, className }: PageTransitionWrapperProps) {
+function ModalTransition({ children, className }: PageTransitionWrapperProps) {
   return (
     <PageTransitionWrapper 
       className={cn('modal-transition-wrapper', className)}
@@ -81,7 +81,7 @@ interface LoadingTransitionProps {
   className?: string
 }
 
-export function LoadingTransition({ 
+function LoadingTransition({ 
   isLoading, 
   children, 
   fallback,
