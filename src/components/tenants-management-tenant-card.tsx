@@ -7,33 +7,15 @@ import { ChevronDown } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import {
+  LOWER_LEVEL_ORDER,
+  ROLE_LABELS,
+  type TenantGroups,
+  type TenantHierarchyRow,
+  type TenantHierarchyUser,
+} from "@/components/tenants-management-shared"
 import { cn } from "@/lib/utils"
 import type { TenantRow } from "@/components/edit-tenant-dialog"
-
-type TenantUserRole = "to_qltb" | "qltb_khoa" | "technician" | "user"
-
-type TenantHierarchyUser = {
-  id: number
-  username: string
-  full_name: string
-  role: string
-  khoa_phong?: string | null
-  current_don_vi?: number | null
-  created_at?: string | null
-}
-
-type TenantHierarchyRow = TenantRow & {
-  users: TenantHierarchyUser[]
-}
-
-const ROLE_LABELS: Record<TenantUserRole, string> = {
-  to_qltb: "Tổ QLTB",
-  qltb_khoa: "QLTB Khoa/Phòng",
-  technician: "Kỹ thuật viên",
-  user: "Nhân viên",
-}
-
-const LOWER_LEVEL_ORDER: TenantUserRole[] = ["qltb_khoa", "technician", "user"]
 
 const STATUS_CLASSES = {
   active: "border border-emerald-300 bg-emerald-100 text-emerald-700",
@@ -42,7 +24,7 @@ const STATUS_CLASSES = {
 
 type TenantsManagementTenantCardProps = Readonly<{
   tenant: TenantHierarchyRow
-  groups: Record<TenantUserRole, TenantHierarchyUser[]>
+  groups: TenantGroups
   hasLowerLevels: boolean
   isExpanded: boolean
   isToggling: boolean

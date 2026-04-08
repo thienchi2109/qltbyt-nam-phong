@@ -14,30 +14,16 @@ import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { AddTenantDialog } from "@/components/add-tenant-dialog"
 import { EditTenantDialog, type TenantRow } from "@/components/edit-tenant-dialog"
+import {
+  LOWER_LEVEL_ORDER,
+  type TenantGroups,
+  type TenantHierarchyRow,
+  type TenantHierarchyUser,
+  type TenantUserRole,
+} from "@/components/tenants-management-shared"
 import { TenantsManagementTenantCard } from "@/components/tenants-management-tenant-card"
 import { useToast } from "@/hooks/use-toast"
 import { useSearchDebounce } from "@/hooks/use-debounce"
-
-const ROLE_LABELS = {
-  to_qltb: "Tổ QLTB",
-  qltb_khoa: "QLTB Khoa/Phòng",
-  technician: "Kỹ thuật viên",
-  user: "Nhân viên",
-} as const
-
-type TenantUserRole = keyof typeof ROLE_LABELS
-
-const LOWER_LEVEL_ORDER: TenantUserRole[] = ["qltb_khoa", "technician", "user"]
-
-interface TenantHierarchyUser {
-  id: number
-  username: string
-  full_name: string
-  role: string
-  khoa_phong?: string | null
-  current_don_vi?: number | null
-  created_at?: string | null
-}
 
 interface RawTenantHierarchyRow {
   tenant_id: number
@@ -50,13 +36,9 @@ interface RawTenantHierarchyRow {
   users: TenantHierarchyUser[] | null
 }
 
-type TenantHierarchyRow = TenantRow & {
-  users: TenantHierarchyUser[]
-}
-
 type PreparedTenant = {
   tenant: TenantHierarchyRow
-  groups: Record<TenantUserRole, TenantHierarchyUser[]>
+  groups: TenantGroups
   hasLowerLevels: boolean
 }
 
@@ -110,7 +92,7 @@ export function TenantsManagement() {
 
   const preparedTenants = React.useMemo<PreparedTenant[]>(() => {
     return rows.map((tenant) => {
-      const groups: Record<TenantUserRole, TenantHierarchyUser[]> = {
+      const groups: TenantGroups = {
         to_qltb: [],
         qltb_khoa: [],
         technician: [],
