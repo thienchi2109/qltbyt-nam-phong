@@ -13,7 +13,12 @@ export function TransfersSearchParamsBoundary({
   return (
     <React.Suspense
       fallback={
-        <div className="flex min-h-[50vh] items-center justify-center">
+        <div
+          className="flex min-h-[50vh] items-center justify-center"
+          role="status"
+          aria-label="Đang tải bộ lọc điều chuyển"
+          aria-live="polite"
+        >
           <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
         </div>
       }

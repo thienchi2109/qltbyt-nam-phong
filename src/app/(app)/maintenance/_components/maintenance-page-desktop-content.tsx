@@ -1,12 +1,12 @@
 "use client"
 
 import * as React from "react"
+
 import type { ColumnDef, Table } from "@tanstack/react-table"
+import { FileText, Loader2, PlusCircle, Save, Undo2 } from "lucide-react"
+
 import { KpiStatusBar } from "@/components/kpi"
 import { MAINTENANCE_STATUS_CONFIGS } from "@/components/kpi/configs/maintenance"
-import type { MaintenancePlan } from "@/hooks/use-cached-maintenance"
-import type { MaintenancePlanStatusCounts } from "@/hooks/useMaintenancePlanCounts"
-import type { MaintenanceTask } from "@/lib/data"
 import { Button } from "@/components/ui/button"
 import {
   Card,
@@ -16,11 +16,15 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { FileText, Loader2, PlusCircle, Save, Undo2 } from "lucide-react"
+
 import { PlanFiltersBar } from "./plan-filters-bar"
 import { PlansTable } from "./plans-table"
 import { TasksTable } from "./tasks-table"
 import { useMaintenanceContext } from "../_hooks/useMaintenanceContext"
+
+import type { MaintenancePlan } from "@/hooks/use-cached-maintenance"
+import type { MaintenancePlanStatusCounts } from "@/hooks/useMaintenancePlanCounts"
+import type { MaintenanceTask } from "@/lib/data"
 
 interface MaintenancePageDesktopContentProps {
   statusCounts?: MaintenancePlanStatusCounts
