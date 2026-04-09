@@ -1,7 +1,28 @@
 {
   "ignore": {
     "files": [
-      "src/app/(app)/repair-requests/_components/RepairRequestsPageClient.tsx"
+      "src/app/(app)/repair-requests/_components/RepairRequestsPageClient.tsx",
+      "public/firebase-messaging-sw.js",
+      "scripts/build-cloudflare.js",
+      "scripts/device-quota/backfill-category-embeddings.ts",
+      "scripts/generate-sample-nhom-thiet-bi.ts",
+      "scripts/run-cmd.js",
+      "scripts/setup-cicd.js",
+      "src/app/(app)/maintenance/_components/maintenance-context.types.assert.ts",
+      "src/app/(app)/repair-requests/auth-user.types.assert.ts",
+      "src/app/(app)/reports/hooks/use-inventory-data.types.assert.ts",
+      "src/auth/next-auth-typing.types.assert.ts",
+      "src/components/shared/DataTablePagination/data-table-pagination-index.typecheck.ts",
+      "src/hooks/use-cached-equipment.types.assert.ts",
+      "src/hooks/use-cached-maintenance.types.assert.ts",
+      "src/lib/rpc-client.types.assert.ts",
+      "src/sw.ts",
+      "supabase/functions/_shared/cors.ts",
+      "supabase/functions/_shared/google-auth.ts",
+      "supabase/functions/audit-cleanup/index.ts",
+      "supabase/functions/embed-device-name/index.ts",
+      "supabase/functions/save-fcm-token/index.ts",
+      "supabase/functions/send-push-notification/index.ts"
     ]
   }
 }
