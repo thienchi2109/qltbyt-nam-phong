@@ -2,6 +2,39 @@ import { useQuery, UseQueryOptions } from '@tanstack/react-query'
 import { useSession } from 'next-auth/react'
 import { isGlobalRole } from '@/lib/rbac'
 
+type AuditActionDetailValue =
+  | string
+  | number
+  | boolean
+  | null
+  | AuditActionDetailValue[]
+  | { [key: string]: AuditActionDetailValue }
+
+export type AuditActionDetails = Record<string, AuditActionDetailValue>
+type AuditLogErrorResponse = { error?: string }
+type AuditLogEntityType =
+  | 'device'
+  | 'repair_request'
+  | 'transfer_request'
+  | 'maintenance_plan'
+  | 'user'
+type AuditLogListResponse = AuditLogEntry[] | AuditLogErrorResponse
+type AuditLogStatsResponse = AuditLogStats[] | AuditLogErrorResponse
+type AuditLogSummaryResponse = AuditLogSummary[] | AuditLogErrorResponse
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null
+}
+
+function hasErrorMessage(value: unknown): value is { error: string } {
+  return isRecord(value) && typeof value.error === 'string'
+}
+
+function getDetailString(details: AuditActionDetails, key: string): string | null {
+  const value = details[key]
+  return typeof value === 'string' ? value : null
+}
+
 // Types for audit logs
 export interface AuditLogEntry {
   id: number
@@ -12,12 +45,12 @@ export interface AuditLogEntry {
   target_user_id: number | null
   target_username: string | null
   target_full_name: string | null
-  action_details: Record<string, any> | null
+  action_details: AuditActionDetails | null
   ip_address: string | null
   user_agent: string | null
   created_at: string
   // New entity fields
-  entity_type?: 'device' | 'repair_request' | 'transfer_request' | 'maintenance_plan' | 'user' | null
+  entity_type?: AuditLogEntityType | null
   entity_id?: number | null
   entity_label?: string | null
   total_count: number
@@ -43,7 +76,7 @@ export interface AuditLogFilters {
   offset?: number
   user_id?: number | null
   // entity filters (v2)
-  entity_type?: 'device' | 'repair_request' | 'transfer_request' | 'maintenance_plan' | 'user' | null
+  entity_type?: AuditLogEntityType | null
   entity_id?: number | null
   text_search?: string | null
   action_type?: string | null
@@ -53,7 +86,7 @@ export interface AuditLogFilters {
 }
 
 // RPC call function
-async function callAuditLogsRPC<T>(functionName: string, params: any = {}): Promise<T> {
+async function callAuditLogsRPC<T>(functionName: string, params: Record<string, unknown> = {}): Promise<T> {
   const response = await fetch(`/api/rpc/${functionName}`, {
     method: 'POST',
     headers: {
@@ -78,12 +111,12 @@ export function useAuditLogs(
   const { data: session } = useSession()
   
   // Only global users can access audit logs
-  const isGlobalUser = isGlobalRole((session?.user as any)?.role)
+  const isGlobalUser = isGlobalRole(session?.user?.role)
 
   return useQuery<AuditLogEntry[], Error>({
     queryKey: ['audit-logs', filters],
     queryFn: async () => {
-      const result = await callAuditLogsRPC<any>('audit_logs_list_v2', {
+      const result = await callAuditLogsRPC<AuditLogListResponse>('audit_logs_list_v2', {
         p_limit: filters.limit || 50,
         p_offset: filters.offset || 0,
         p_user_id: filters.user_id,
@@ -97,11 +130,11 @@ export function useAuditLogs(
       
       // Handle different response formats
       if (Array.isArray(result)) {
-        return result as AuditLogEntry[]
-      } else if (result && typeof result === 'object' && result.error) {
+        return result
+      } else if (hasErrorMessage(result)) {
         throw new Error(result.error)
       } else {
-        return [] as AuditLogEntry[]
+        return []
       }
     },
     enabled: !!session && isGlobalUser,
@@ -122,12 +155,12 @@ export function useAuditLogsStats(
 ) {
   const { data: session } = useSession()
   
-  const isGlobalUser = isGlobalRole((session?.user as any)?.role)
+  const isGlobalUser = isGlobalRole(session?.user?.role)
 
   return useQuery<AuditLogStats[], Error>({
     queryKey: ['audit-logs-stats', filters],
     queryFn: async () => {
-      const result = await callAuditLogsRPC<any>('audit_logs_stats', {
+      const result = await callAuditLogsRPC<AuditLogStatsResponse>('audit_logs_stats', {
         p_date_from: filters.date_from,
         p_date_to: filters.date_to,
         p_don_vi: filters.don_vi,
@@ -135,11 +168,11 @@ export function useAuditLogsStats(
       
       // Handle different response formats
       if (Array.isArray(result)) {
-        return result as AuditLogStats[]
-      } else if (result && typeof result === 'object' && result.error) {
+        return result
+      } else if (hasErrorMessage(result)) {
         throw new Error(result.error)
       } else {
-        return [] as AuditLogStats[]
+        return []
       }
     },
     enabled: !!session && isGlobalUser,
@@ -155,20 +188,20 @@ export function useAuditLogsRecentSummary(
 ) {
   const { data: session } = useSession()
   
-  const isGlobalUser = isGlobalRole((session?.user as any)?.role)
+  const isGlobalUser = isGlobalRole(session?.user?.role)
 
   return useQuery<AuditLogSummary[], Error>({
     queryKey: ['audit-logs-recent-summary'],
     queryFn: async () => {
-      const result = await callAuditLogsRPC<any>('audit_logs_recent_summary')
+      const result = await callAuditLogsRPC<AuditLogSummaryResponse>('audit_logs_recent_summary')
       
       // Handle different response formats
       if (Array.isArray(result)) {
-        return result as AuditLogSummary[]
-      } else if (result && typeof result === 'object' && result.error) {
+        return result
+      } else if (hasErrorMessage(result)) {
         throw new Error(result.error)
       } else {
-        return [] as AuditLogSummary[]
+        return []
       }
     },
     enabled: !!session && isGlobalUser,
@@ -242,26 +275,37 @@ export function getActionTypeLabel(actionType: string): string {
 }
 
 // Format action details for display
-export function formatActionDetails(actionType: string, details: Record<string, any> | null): string {
+export function formatActionDetails(actionType: string, details: AuditActionDetails | null): string {
   if (!details) return ''
   
   switch (actionType) {
     case 'equipment_create':
     case 'equipment_update':
-      return details.equipment_name ? `Thiết bị: ${details.equipment_name}` : ''
+      return getDetailString(details, 'equipment_name')
+        ? `Thiết bị: ${getDetailString(details, 'equipment_name')}`
+        : ''
     case 'USER_UPDATE':
-      return details.username ? `Người dùng: ${details.username}` : ''
+      return getDetailString(details, 'username')
+        ? `Người dùng: ${getDetailString(details, 'username')}`
+        : ''
     case 'maintenance_plan_create':
     case 'maintenance_plan_update':
-      return details.plan_name ? `Kế hoạch: ${details.plan_name}` : ''
+      return getDetailString(details, 'plan_name')
+        ? `Kế hoạch: ${getDetailString(details, 'plan_name')}`
+        : ''
     case 'transfer_create':
     case 'transfer_update':
-      return details.equipment_name ? `TB: ${details.equipment_name}` : ''
+      return getDetailString(details, 'equipment_name')
+        ? `TB: ${getDetailString(details, 'equipment_name')}`
+        : ''
     default:
       // Try to extract meaningful info from details
-      if (typeof details === 'string') return details
-      if (details.description) return details.description
-      if (details.message) return details.message
+      const description = getDetailString(details, 'description')
+      if (description) return description
+
+      const message = getDetailString(details, 'message')
+      if (message) return message
+
       return ''
   }
 }
