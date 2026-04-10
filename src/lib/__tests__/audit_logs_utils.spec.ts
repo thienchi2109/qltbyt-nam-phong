@@ -18,6 +18,10 @@ describe('Activity Logs utilities', () => {
     expect(text).toContain('Máy siêu âm A1')
   })
 
+  it('keeps legacy string details visible', () => {
+    expect(formatActionDetails('login_failed', 'Sai mật khẩu 3 lần')).toBe('Sai mật khẩu 3 lần')
+  })
+
   it('AuditLogEntry type includes entity fields (compile-time)', () => {
     const row: AuditLogEntry = {
       id: 1,
@@ -28,7 +32,7 @@ describe('Activity Logs utilities', () => {
       target_user_id: null,
       target_username: null,
       target_full_name: null,
-      action_details: { a: 1 },
+      action_details: 'Legacy audit payload',
       ip_address: null,
       user_agent: null,
       created_at: new Date().toISOString(),

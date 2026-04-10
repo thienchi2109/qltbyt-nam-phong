@@ -3,9 +3,11 @@
  * This ensures Recharts is only loaded when actually needed for chart rendering
  */
 
+type RechartsModule = typeof import('recharts')
+
 // Type definitions for Recharts (to avoid importing the full library)
 export interface ChartData {
-  [key: string]: any
+  [key: string]: unknown
 }
 
 export interface ChartProps {
@@ -20,23 +22,24 @@ export interface ChartProps {
   }
 }
 
-export interface RechartsComponents {
-  LineChart: any
-  BarChart: any
-  AreaChart: any
-  PieChart: any
-  ResponsiveContainer: any
-  XAxis: any
-  YAxis: any
-  CartesianGrid: any
-  Tooltip: any
-  Legend: any
-  Line: any
-  Bar: any
-  Area: any
-  Pie: any
-  Cell: any
-}
+export type RechartsComponents = Pick<
+  RechartsModule,
+  | 'LineChart'
+  | 'BarChart'
+  | 'AreaChart'
+  | 'PieChart'
+  | 'ResponsiveContainer'
+  | 'XAxis'
+  | 'YAxis'
+  | 'CartesianGrid'
+  | 'Tooltip'
+  | 'Legend'
+  | 'Line'
+  | 'Bar'
+  | 'Area'
+  | 'Pie'
+  | 'Cell'
+>
 
 /**
  * Dynamically import Recharts library only when needed
@@ -153,7 +156,7 @@ export function formatChartPercentage(value: number, total: number): string {
 /**
  * Generate chart data with proper formatting
  */
-export function processChartData<T extends Record<string, any>>(
+export function processChartData<T extends Record<string, unknown>>(
   data: T[],
   keyField: keyof T,
   valueField: keyof T,
