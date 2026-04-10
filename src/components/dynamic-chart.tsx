@@ -1,8 +1,12 @@
 "use client"
 
 import * as React from "react"
-import type { TooltipProps } from "recharts"
-import { loadChartsLibrary, type ChartData, type RechartsComponents } from "@/lib/chart-utils"
+import {
+  loadChartsLibrary,
+  type ChartData,
+  type ChartTooltipProps,
+  type RechartsComponents,
+} from "@/lib/chart-utils"
 import { ChartLoadingFallback, ChartErrorFallback } from "@/components/chart-fallbacks"
 import { buildPieSliceCells } from "@/lib/runtime-list-keys"
 
@@ -152,7 +156,7 @@ interface BarChartProps {
   showTooltip?: boolean
   showLegend?: boolean
   xAxisAngle?: number
-  customTooltip?: React.FC<TooltipProps<number, string>>
+  customTooltip?: React.FC<ChartTooltipProps<number, string>>
   margin?: {
     top?: number
     right?: number

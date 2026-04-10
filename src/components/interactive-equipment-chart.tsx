@@ -3,6 +3,7 @@
 import * as React from "react"
 import { Filter, BarChart3, MapPin, Building2, X } from "lucide-react"
 import { DynamicBarChart } from "@/components/dynamic-chart"
+import type { ChartTooltipProps } from "@/lib/chart-utils"
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -25,18 +26,22 @@ interface InteractiveEquipmentChartProps {
   effectiveTenantKey?: string
 }
 
-type TooltipPayloadEntry = {
-  dataKey?: unknown
-  name?: unknown
-  color?: string
-  value?: number
-}
+type TooltipPayloadEntry = NonNullable<ChartTooltipProps<number, string>['payload']>[number]
 
 // Custom tooltip component — memoized to avoid re-computing keyed entries on unchanged payload
-const CustomTooltip = React.memo(function CustomTooltip({ active, payload, label }: any) {
-  if (active && payload && payload.length) {
-    const total = payload.reduce((sum: number, entry: any) => sum + entry.value, 0)
-    const keyedPayload = buildKeyedTooltipEntries<TooltipPayloadEntry>(payload as TooltipPayloadEntry[])
+const CustomTooltip = React.memo(function CustomTooltip({
+  active,
+  payload,
+  label,
+}: ChartTooltipProps<number, string>) {
+  const tooltipEntries = payload ?? []
+
+  if (active && tooltipEntries.length > 0) {
+    const total = tooltipEntries.reduce(
+      (sum, entry) => sum + (typeof entry.value === 'number' ? entry.value : 0),
+      0,
+    )
+    const keyedPayload = buildKeyedTooltipEntries<TooltipPayloadEntry>(tooltipEntries)
     
     return (
       <div className="bg-background border rounded-lg shadow-lg p-3 min-w-[200px]">
