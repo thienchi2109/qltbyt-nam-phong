@@ -5,6 +5,9 @@
 
 type RechartsModule = typeof import('recharts')
 
+export type ChartTooltipProps<TValue extends number | string, TName extends string> =
+  import('recharts').TooltipProps<TValue, TName>
+
 // Type definitions for Recharts (to avoid importing the full library)
 export interface ChartData {
   [key: string]: unknown
