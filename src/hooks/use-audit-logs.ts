@@ -1,5 +1,6 @@
 import { useQuery, UseQueryOptions } from '@tanstack/react-query'
 import { useSession } from 'next-auth/react'
+import { callRpc } from '@/lib/rpc-client'
 import { isGlobalRole } from '@/lib/rbac'
 
 type AuditActionDetailValue =
@@ -11,24 +12,13 @@ type AuditActionDetailValue =
   | { [key: string]: AuditActionDetailValue }
 
 export type AuditActionDetails = Record<string, AuditActionDetailValue>
-type AuditLogErrorResponse = { error?: string }
+export type AuditActionDetailsInput = AuditActionDetails | string
 type AuditLogEntityType =
   | 'device'
   | 'repair_request'
   | 'transfer_request'
   | 'maintenance_plan'
   | 'user'
-type AuditLogListResponse = AuditLogEntry[] | AuditLogErrorResponse
-type AuditLogStatsResponse = AuditLogStats[] | AuditLogErrorResponse
-type AuditLogSummaryResponse = AuditLogSummary[] | AuditLogErrorResponse
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null
-}
-
-function hasErrorMessage(value: unknown): value is { error: string } {
-  return isRecord(value) && typeof value.error === 'string'
-}
 
 function getDetailString(details: AuditActionDetails, key: string): string | null {
   const value = details[key]
@@ -45,7 +35,7 @@ export interface AuditLogEntry {
   target_user_id: number | null
   target_username: string | null
   target_full_name: string | null
-  action_details: AuditActionDetails | null
+  action_details: AuditActionDetailsInput | null
   ip_address: string | null
   user_agent: string | null
   created_at: string
@@ -85,24 +75,6 @@ export interface AuditLogFilters {
   don_vi?: string | null
 }
 
-// RPC call function
-async function callAuditLogsRPC<T>(functionName: string, params: Record<string, unknown> = {}): Promise<T> {
-  const response = await fetch(`/api/rpc/${functionName}`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(params),
-  })
-
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({ error: 'Network error' }))
-    throw new Error(error.error || `Failed to call ${functionName}`)
-  }
-
-  return response.json()
-}
-
 // Hook to fetch audit logs list
 export function useAuditLogs(
   filters: AuditLogFilters = {},
@@ -116,26 +88,20 @@ export function useAuditLogs(
   return useQuery<AuditLogEntry[], Error>({
     queryKey: ['audit-logs', filters],
     queryFn: async () => {
-      const result = await callAuditLogsRPC<AuditLogListResponse>('audit_logs_list_v2', {
-        p_limit: filters.limit || 50,
-        p_offset: filters.offset || 0,
-        p_user_id: filters.user_id,
-        p_entity_type: filters.entity_type || null,
-        p_entity_id: filters.entity_id || null,
-        p_action_type: filters.action_type,
-        p_text_search: filters.text_search || null,
-        p_date_from: filters.date_from,
-        p_date_to: filters.date_to,
+      return callRpc<AuditLogEntry[]>({
+        fn: 'audit_logs_list_v2',
+        args: {
+          p_limit: filters.limit || 50,
+          p_offset: filters.offset || 0,
+          p_user_id: filters.user_id,
+          p_entity_type: filters.entity_type || null,
+          p_entity_id: filters.entity_id || null,
+          p_action_type: filters.action_type,
+          p_text_search: filters.text_search || null,
+          p_date_from: filters.date_from,
+          p_date_to: filters.date_to,
+        },
       })
-      
-      // Handle different response formats
-      if (Array.isArray(result)) {
-        return result
-      } else if (hasErrorMessage(result)) {
-        throw new Error(result.error)
-      } else {
-        return []
-      }
     },
     enabled: !!session && isGlobalUser,
     staleTime: 30 * 1000, // 30 seconds
@@ -160,20 +126,14 @@ export function useAuditLogsStats(
   return useQuery<AuditLogStats[], Error>({
     queryKey: ['audit-logs-stats', filters],
     queryFn: async () => {
-      const result = await callAuditLogsRPC<AuditLogStatsResponse>('audit_logs_stats', {
-        p_date_from: filters.date_from,
-        p_date_to: filters.date_to,
-        p_don_vi: filters.don_vi,
+      return callRpc<AuditLogStats[]>({
+        fn: 'audit_logs_stats',
+        args: {
+          p_date_from: filters.date_from,
+          p_date_to: filters.date_to,
+          p_don_vi: filters.don_vi,
+        },
       })
-      
-      // Handle different response formats
-      if (Array.isArray(result)) {
-        return result
-      } else if (hasErrorMessage(result)) {
-        throw new Error(result.error)
-      } else {
-        return []
-      }
     },
     enabled: !!session && isGlobalUser,
     staleTime: 2 * 60 * 1000, // 2 minutes
@@ -193,16 +153,9 @@ export function useAuditLogsRecentSummary(
   return useQuery<AuditLogSummary[], Error>({
     queryKey: ['audit-logs-recent-summary'],
     queryFn: async () => {
-      const result = await callAuditLogsRPC<AuditLogSummaryResponse>('audit_logs_recent_summary')
-      
-      // Handle different response formats
-      if (Array.isArray(result)) {
-        return result
-      } else if (hasErrorMessage(result)) {
-        throw new Error(result.error)
-      } else {
-        return []
-      }
+      return callRpc<AuditLogSummary[]>({
+        fn: 'audit_logs_recent_summary',
+      })
     },
     enabled: !!session && isGlobalUser,
     staleTime: 1 * 60 * 1000, // 1 minute
@@ -275,9 +228,10 @@ export function getActionTypeLabel(actionType: string): string {
 }
 
 // Format action details for display
-export function formatActionDetails(actionType: string, details: AuditActionDetails | null): string {
+export function formatActionDetails(actionType: string, details: AuditActionDetailsInput | null): string {
   if (!details) return ''
-  
+  if (typeof details === 'string') return details
+
   switch (actionType) {
     case 'equipment_create':
     case 'equipment_update':
@@ -298,7 +252,7 @@ export function formatActionDetails(actionType: string, details: AuditActionDeta
       return getDetailString(details, 'equipment_name')
         ? `TB: ${getDetailString(details, 'equipment_name')}`
         : ''
-    default:
+    default: {
       // Try to extract meaningful info from details
       const description = getDetailString(details, 'description')
       if (description) return description
@@ -307,5 +261,6 @@ export function formatActionDetails(actionType: string, details: AuditActionDeta
       if (message) return message
 
       return ''
+    }
   }
 }
