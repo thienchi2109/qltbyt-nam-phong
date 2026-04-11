@@ -38,8 +38,35 @@ interface ExportReportDialogProps {
   usageAnalytics?: { overview: UsageOverview; daily: DailyUsageItem[] }
 }
 
-export function ExportReportDialog({
-  open,
+type ExportReportDialogContentProps = Omit<ExportReportDialogProps, "open"> & {
+  defaultFileName: string
+}
+
+function buildDefaultFileName(dateRange: ExportReportDateRange): string {
+  const fromDate = format(dateRange.from, "dd-MM-yyyy")
+  const toDate = format(dateRange.to, "dd-MM-yyyy")
+  return `BaoCao_TongHop_ThietBi_${fromDate}_${toDate}`
+}
+
+export function ExportReportDialog(props: ExportReportDialogProps) {
+  const { open, onOpenChange, ...contentProps } = props
+  const defaultFileName = buildDefaultFileName(props.dateRange)
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      {open ? (
+        <ExportReportDialogContent
+          key={defaultFileName}
+          {...contentProps}
+          defaultFileName={defaultFileName}
+          onOpenChange={onOpenChange}
+        />
+      ) : null}
+    </Dialog>
+  )
+}
+
+function ExportReportDialogContent({
   onOpenChange,
   data,
   summary,
@@ -48,22 +75,16 @@ export function ExportReportDialog({
   distribution,
   maintenanceStats,
   usageAnalytics,
-}: ExportReportDialogProps) {
+  defaultFileName,
+}: ExportReportDialogContentProps) {
   const { toast } = useToast()
   const [isExporting, setIsExporting] = React.useState(false)
-  const [fileName, setFileName] = React.useState("")
-
-  // Generate default filename
-  React.useEffect(() => {
-    if (open) {
-      const fromDate = format(dateRange.from, "dd-MM-yyyy")
-      const toDate = format(dateRange.to, "dd-MM-yyyy")
-      const defaultName = `BaoCao_TongHop_ThietBi_${fromDate}_${toDate}`
-      setFileName(defaultName)
-    }
-  }, [open, dateRange])
+  const [hasFileName, setHasFileName] = React.useState(true)
+  const fileNameInputRef = React.useRef<HTMLInputElement>(null)
 
   const handleExport = async () => {
+    const fileName = fileNameInputRef.current?.value ?? defaultFileName
+
     setIsExporting(true)
     try {
       await createMultiSheetExcel(
@@ -98,8 +119,7 @@ export function ExportReportDialog({
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px]">
+    <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <FileSpreadsheet className="h-5 w-5" />
@@ -147,8 +167,9 @@ export function ExportReportDialog({
             <Label htmlFor="filename">Tên file</Label>
             <Input
               id="filename"
-              value={fileName}
-              onChange={(e) => setFileName(e.target.value)}
+              ref={fileNameInputRef}
+              defaultValue={defaultFileName}
+              onChange={(e) => setHasFileName(e.target.value.trim().length > 0)}
               placeholder="Nhập tên file..."
             />
             <p className="text-xs text-muted-foreground">File sẽ được lưu với định dạng .xlsx</p>
@@ -159,13 +180,12 @@ export function ExportReportDialog({
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isExporting}>
             Hủy
           </Button>
-          <Button onClick={handleExport} disabled={isExporting || !fileName.trim()}>
+          <Button onClick={handleExport} disabled={isExporting || !hasFileName}>
             {isExporting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             <Download className="mr-2 h-4 w-4" />
             {isExporting ? "Đang xuất..." : "Xuất Excel"}
           </Button>
         </DialogFooter>
-      </DialogContent>
-    </Dialog>
+    </DialogContent>
   )
 }
