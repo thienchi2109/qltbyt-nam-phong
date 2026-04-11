@@ -1,6 +1,6 @@
 import React from "react"
-import { render, screen, waitFor } from "@testing-library/react"
-import { beforeEach, describe, expect, it, vi } from "vitest"
+import { fireEvent, render, screen, waitFor } from "@testing-library/react"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 import { CalendarWidget } from "../calendar-widget"
 
@@ -35,6 +35,10 @@ describe("CalendarWidget", () => {
   beforeEach(() => {
     mockToast.mockReset()
     mockUseCalendarData.mockReset()
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
   })
 
   it("renders the calendar header and summary counts from hook data", async () => {
@@ -111,6 +115,49 @@ describe("CalendarWidget", () => {
           description: "RPC failed",
         })
       )
+    })
+  })
+
+  it("handles swipe gestures even when the touch starts at clientX 0", async () => {
+    mockUseCalendarData.mockReturnValue({
+      data: {
+        departments: [],
+        events: [],
+        stats: {
+          total: 0,
+          completed: 0,
+          pending: 0,
+          byType: {},
+        },
+      },
+      error: null,
+      isLoading: false,
+    })
+
+    const { container } = render(<CalendarWidget />)
+
+    await waitFor(() => {
+      expect(mockUseCalendarData).toHaveBeenCalled()
+    })
+
+    const [initialYear, initialMonth] = mockUseCalendarData.mock.calls[0] ?? []
+    const swipeSurface = container.querySelector('[class*="md:pt-0"]')
+
+    expect(swipeSurface).not.toBeNull()
+
+    fireEvent.touchStart(swipeSurface!, {
+      targetTouches: [{ clientX: 0 }],
+    })
+    fireEvent.touchMove(swipeSurface!, {
+      targetTouches: [{ clientX: 100 }],
+    })
+    fireEvent.touchEnd(swipeSurface!)
+
+    const expectedMonth = initialMonth === 1 ? 12 : initialMonth - 1
+    const expectedYear = initialMonth === 1 ? initialYear - 1 : initialYear
+
+    await waitFor(() => {
+      expect(mockUseCalendarData).toHaveBeenLastCalledWith(expectedYear, expectedMonth)
     })
   })
 })

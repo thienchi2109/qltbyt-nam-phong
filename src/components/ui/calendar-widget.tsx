@@ -71,7 +71,7 @@ function useCalendarSwipeNavigation({
 
   return {
     onTouchEnd: () => {
-      if (!touchStart || !touchEnd) {
+      if (touchStart === null || touchEnd === null) {
         return
       }
 

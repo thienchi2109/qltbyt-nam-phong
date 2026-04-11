@@ -20,9 +20,10 @@ export interface RecentActivity {
  */
 export function useRecentActivities(limit = 15) {
   const { data: session } = useSession()
+  const userId = session?.user?.id ? String(session.user.id) : 'anonymous'
 
   return useQuery<RecentActivity[]>({
-    queryKey: ['dashboard-recent-activities', limit],
+    queryKey: ['dashboard-recent-activities', userId, limit],
     queryFn: () =>
       callRpc<RecentActivity[]>({
         fn: 'dashboard_recent_activities',

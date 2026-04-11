@@ -16,6 +16,8 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import { ScrollArea } from "@/components/ui/scroll-area"
+import { useToast } from "@/hooks/use-toast"
+import { ChangeHistoryErrorState } from "@/components/change-history/ChangeHistoryErrorState"
 import { ChangeHistoryTimeline } from "@/components/change-history/ChangeHistoryTimeline"
 import { ChangeHistoryLoadingState } from "@/components/change-history/ChangeHistoryLoadingState"
 import { ChangeHistoryEmptyState } from "@/components/change-history/ChangeHistoryEmptyState"
@@ -70,12 +72,26 @@ interface RecentActivitiesCardProps {
 }
 
 export function RecentActivitiesCard({ className }: RecentActivitiesCardProps) {
-  const { data, isLoading } = useRecentActivities(15)
+  const { toast } = useToast()
+  const { data, error, isError, isLoading } = useRecentActivities(15)
 
   const entries = React.useMemo(
     () => (data ? toChangeHistoryEntries(data) : []),
     [data],
   )
+
+  React.useEffect(() => {
+    if (!isError || !error) {
+      return
+    }
+
+    console.error("RecentActivitiesCard: failed to load recent activities", error)
+    toast({
+      variant: "destructive",
+      title: "Lỗi tải dữ liệu",
+      description: error.message || "Không thể tải hoạt động gần đây.",
+    })
+  }, [error, isError, toast])
 
   return (
     <Card className={className}>
@@ -98,6 +114,11 @@ export function RecentActivitiesCard({ className }: RecentActivitiesCardProps) {
       <CardContent className="md:p-8 md:pt-0">
         {isLoading ? (
           <ChangeHistoryLoadingState />
+        ) : isError ? (
+          <ChangeHistoryErrorState
+            title="Không thể tải hoạt động gần đây"
+            description="Vui lòng thử lại sau."
+          />
         ) : entries.length === 0 ? (
           <ChangeHistoryEmptyState />
         ) : (

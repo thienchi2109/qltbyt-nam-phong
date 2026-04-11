@@ -22,11 +22,17 @@ vi.mock("next-auth/react", () => ({
 
 // Mock RPC client — controls what data the hook returns
 const mockCallRpc = vi.fn()
+const mockToast = vi.fn()
 vi.mock("@/lib/rpc-client", () => ({
   callRpc: (...args: unknown[]) => mockCallRpc(...args),
 }))
+vi.mock("@/hooks/use-toast", () => ({
+  useToast: () => ({
+    toast: mockToast,
+  }),
+}))
 
-import { RecentActivitiesCard } from "../RecentActivitiesCard"
+import { RecentActivitiesCard } from "@/components/dashboard/RecentActivitiesCard"
 import type { RecentActivity } from "@/hooks/use-recent-activities"
 
 // ---------------------------------------------------------------------------
@@ -78,6 +84,7 @@ const sampleActivities: RecentActivity[] = [
 describe("RecentActivitiesCard", () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockToast.mockReset()
   })
 
   it("renders card header with title", async () => {
@@ -147,5 +154,31 @@ describe("RecentActivitiesCard", () => {
       const relativeTimestamps = screen.getAllByText(/trước/i)
       expect(relativeTimestamps.length).toBeGreaterThanOrEqual(1)
     })
+  })
+
+  it("shows an error state and toast when the RPC fails", async () => {
+    const consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {})
+    mockCallRpc.mockRejectedValue(new Error("RPC failed"))
+
+    render(<RecentActivitiesCard />, { wrapper: createWrapper() })
+
+    await waitFor(() => {
+      expect(mockToast).toHaveBeenCalledWith(
+        expect.objectContaining({
+          variant: "destructive",
+          title: "Lỗi tải dữ liệu",
+          description: "RPC failed",
+        }),
+      )
+    })
+
+    expect(screen.getByText(/không thể tải hoạt động gần đây/i)).toBeInTheDocument()
+    expect(screen.queryByText(/chưa có lịch sử/i)).not.toBeInTheDocument()
+    expect(consoleErrorSpy).toHaveBeenCalledWith(
+      "RecentActivitiesCard: failed to load recent activities",
+      expect.any(Error),
+    )
+
+    consoleErrorSpy.mockRestore()
   })
 })

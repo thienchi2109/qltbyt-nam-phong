@@ -19,7 +19,7 @@ vi.mock("next-auth/react", () => ({
   useSession: mocks.useSession,
 }))
 
-import { useRecentActivities } from "../use-recent-activities"
+import { useRecentActivities } from "@/hooks/use-recent-activities"
 
 describe("useRecentActivities", () => {
   beforeEach(() => {
@@ -38,7 +38,7 @@ describe("useRecentActivities", () => {
 
     expect(mocks.useQuery).toHaveBeenCalledWith(
       expect.objectContaining({
-        queryKey: ["dashboard-recent-activities", 7],
+        queryKey: ["dashboard-recent-activities", "1", 7],
         enabled: true,
       }),
     )
@@ -64,7 +64,7 @@ describe("useRecentActivities", () => {
 
     expect(mocks.useQuery).toHaveBeenCalledWith(
       expect.objectContaining({
-        queryKey: ["dashboard-recent-activities", 15],
+        queryKey: ["dashboard-recent-activities", "anonymous", 15],
         enabled: false,
       }),
     )
