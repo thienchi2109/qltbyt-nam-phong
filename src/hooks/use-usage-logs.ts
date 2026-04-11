@@ -1,16 +1,25 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { callRpc } from '@/lib/rpc-client'
 import { toast } from '@/hooks/use-toast'
+import { normalizeRpcError } from '@/lib/error-utils'
 import { type UsageLog } from '@/types/database'
+
+type UsageLogListFilters = Record<string, unknown>
+type UsageLogEquipmentKeyOptions = {
+  limit?: number
+  daysBack?: number
+  includeActive?: boolean
+  offset?: number
+}
 
 // Query keys for caching
 export const usageLogKeys = {
   all: ['usage-logs'] as const,
   lists: () => [...usageLogKeys.all, 'list'] as const,
-  list: (filters: Record<string, any>) => [...usageLogKeys.lists(), { filters }] as const,
+  list: (filters: UsageLogListFilters) => [...usageLogKeys.lists(), { filters }] as const,
   details: () => [...usageLogKeys.all, 'detail'] as const,
   detail: (id: string) => [...usageLogKeys.details(), id] as const,
-  equipment: (equipmentId: string, options?: Record<string, any>) => 
+  equipment: (equipmentId: string, options?: UsageLogEquipmentKeyOptions) => 
     [...usageLogKeys.all, 'equipment', equipmentId, options] as const,
   active: (tenantKey?: string | number) => [...usageLogKeys.all, 'active', tenantKey] as const,
 }
@@ -170,11 +179,11 @@ export function useStartUsageSession() {
         description: "Đã bắt đầu phiên sử dụng thiết bị."
       })
     },
-    onError: (error: any) => {
+    onError: (error: unknown) => {
       toast({
         variant: "destructive",
         title: "Lỗi",
-        description: error.message || "Không thể bắt đầu phiên sử dụng."
+        description: normalizeRpcError(error, "Không thể bắt đầu phiên sử dụng.")
       })
     }
   })
@@ -211,11 +220,11 @@ export function useEndUsageSession() {
         description: "Đã kết thúc phiên sử dụng thiết bị."
       })
     },
-    onError: (error: any) => {
+    onError: (error: unknown) => {
       toast({
         variant: "destructive",
         title: "Lỗi",
-        description: error.message || "Không thể kết thúc phiên sử dụng."
+        description: normalizeRpcError(error, "Không thể kết thúc phiên sử dụng.")
       })
     }
   })
@@ -243,11 +252,11 @@ export function useDeleteUsageLog() {
         description: "Đã xóa bản ghi sử dụng."
       })
     },
-    onError: (error: any) => {
+    onError: (error: unknown) => {
       toast({
         variant: "destructive",
         title: "Lỗi",
-        description: error.message || "Không thể xóa bản ghi sử dụng."
+        description: normalizeRpcError(error, "Không thể xóa bản ghi sử dụng.")
       })
     }
   })
