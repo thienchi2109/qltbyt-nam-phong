@@ -34,8 +34,6 @@ type CompleteRepairRequestParams = {
   id: string
   ket_qua?: string
   ghi_chu?: string
-  chi_phi?: number
-  nguoi_xu_ly: string
 }
 
 function toNullableString(value: unknown): string | null {

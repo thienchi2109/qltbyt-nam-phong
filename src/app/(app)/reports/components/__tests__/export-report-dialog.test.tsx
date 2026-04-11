@@ -165,4 +165,87 @@ describe('ExportReportDialog', () => {
       { 'Khoa/Phòng': 'Khoa B', 'Nhập': 1, 'Xuất': 0, 'Tổng': 1 },
     ])
   })
+
+  it('keeps the khac status in distribution export sheets', async () => {
+    mockCreateMultiSheetExcel.mockResolvedValueOnce(undefined)
+
+    render(
+      <ExportReportDialog
+        open
+        onOpenChange={vi.fn()}
+        data={[]}
+        summary={{
+          totalImported: 0,
+          totalExported: 0,
+          currentStock: 10,
+          netChange: 0,
+        }}
+        dateRange={{
+          from: new Date('2026-01-01T00:00:00.000Z'),
+          to: new Date('2026-01-31T00:00:00.000Z'),
+        }}
+        department="all"
+        distribution={{
+          totalEquipment: 10,
+          departments: ['Khoa A'],
+          locations: ['Kho A'],
+          byDepartment: [
+            {
+              name: 'Khoa A',
+              total: 10,
+              hoat_dong: 4,
+              cho_sua_chua: 2,
+              cho_bao_tri: 1,
+              cho_hieu_chuan: 1,
+              ngung_su_dung: 1,
+              chua_co_nhu_cau: 0,
+              khac: 1,
+            },
+          ],
+          byLocation: [
+            {
+              name: 'Kho A',
+              total: 10,
+              hoat_dong: 4,
+              cho_sua_chua: 2,
+              cho_bao_tri: 1,
+              cho_hieu_chuan: 1,
+              ngung_su_dung: 1,
+              chua_co_nhu_cau: 0,
+              khac: 1,
+            },
+          ],
+        }}
+      />
+    )
+
+    fireEvent.click(await screen.findByRole('button', { name: /xuất excel/i }))
+
+    await waitFor(() => {
+      expect(mockCreateMultiSheetExcel).toHaveBeenCalled()
+    })
+
+    const [sheets] = mockCreateMultiSheetExcel.mock.calls[0] as [Array<{ name: string; data: unknown }>, string]
+    const overviewSheet = sheets.find((sheet) => sheet.name === 'Phân bố trạng thái')
+    const byDepartmentSheet = sheets.find((sheet) => sheet.name === 'Trạng thái theo khoa')
+
+    expect(overviewSheet?.data).toEqual(
+      expect.arrayContaining([
+        { 'Trạng thái': 'Khác', 'Số lượng': 1, 'Tỷ lệ (%)': 10 },
+      ])
+    )
+    expect(byDepartmentSheet?.data).toEqual([
+      {
+        'Khoa/Phòng': 'Khoa A',
+        'Hoạt động': 4,
+        'Chờ sửa chữa': 2,
+        'Chờ bảo trì': 1,
+        'Chờ HC/KĐ': 1,
+        'Ngừng sử dụng': 1,
+        'Chưa có nhu cầu': 0,
+        'Khác': 1,
+        'Tổng': 10,
+      },
+    ])
+  })
 })

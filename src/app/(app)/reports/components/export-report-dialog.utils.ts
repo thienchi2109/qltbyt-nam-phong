@@ -178,9 +178,10 @@ function buildDistributionSheets(distribution?: EquipmentDistributionData): Expo
       acc.cho_hieu_chuan += department.cho_hieu_chuan || 0
       acc.ngung_su_dung += department.ngung_su_dung || 0
       acc.chua_co_nhu_cau += department.chua_co_nhu_cau || 0
+      acc.khac += department.khac || 0
       return acc
     },
-    { hoat_dong: 0, cho_sua_chua: 0, cho_bao_tri: 0, cho_hieu_chuan: 0, ngung_su_dung: 0, chua_co_nhu_cau: 0 },
+    { hoat_dong: 0, cho_sua_chua: 0, cho_bao_tri: 0, cho_hieu_chuan: 0, ngung_su_dung: 0, chua_co_nhu_cau: 0, khac: 0 },
   )
 
   sheets.push({
@@ -192,6 +193,7 @@ function buildDistributionSheets(distribution?: EquipmentDistributionData): Expo
       { "Trạng thái": mapStatusLabel("cho_hieu_chuan"), "Số lượng": totals.cho_hieu_chuan, "Tỷ lệ (%)": pct(totals.cho_hieu_chuan, total) },
       { "Trạng thái": mapStatusLabel("ngung_su_dung"), "Số lượng": totals.ngung_su_dung, "Tỷ lệ (%)": pct(totals.ngung_su_dung, total) },
       { "Trạng thái": mapStatusLabel("chua_co_nhu_cau"), "Số lượng": totals.chua_co_nhu_cau, "Tỷ lệ (%)": pct(totals.chua_co_nhu_cau, total) },
+      { "Trạng thái": mapStatusLabel("khac"), "Số lượng": totals.khac, "Tỷ lệ (%)": pct(totals.khac, total) },
     ],
     type: "json",
     columnWidths: [28, 12, 12],
@@ -208,10 +210,11 @@ function buildDistributionSheets(distribution?: EquipmentDistributionData): Expo
         "Chờ HC/KĐ": department.cho_hieu_chuan,
         "Ngừng sử dụng": department.ngung_su_dung,
         "Chưa có nhu cầu": department.chua_co_nhu_cau,
+        "Khác": department.khac || 0,
         "Tổng": department.total,
       })),
       type: "json",
-      columnWidths: [28, 12, 14, 12, 12, 14, 16, 10],
+      columnWidths: [28, 12, 14, 12, 12, 14, 16, 10, 10],
     })
   }
 
@@ -226,10 +229,11 @@ function buildDistributionSheets(distribution?: EquipmentDistributionData): Expo
         "Chờ HC/KĐ": location.cho_hieu_chuan,
         "Ngừng sử dụng": location.ngung_su_dung,
         "Chưa có nhu cầu": location.chua_co_nhu_cau,
+        "Khác": location.khac || 0,
         "Tổng": location.total,
       })),
       type: "json",
-      columnWidths: [24, 12, 14, 12, 12, 14, 16, 10],
+      columnWidths: [24, 12, 14, 12, 12, 14, 16, 10, 10],
     })
   }
 
