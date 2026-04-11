@@ -87,4 +87,82 @@ describe('ExportReportDialog', () => {
       })
     })
   })
+
+  it('keeps transaction statistics sorted by total descending in the export payload', async () => {
+    mockCreateMultiSheetExcel.mockResolvedValueOnce(undefined)
+
+    render(
+      <ExportReportDialog
+        open
+        onOpenChange={vi.fn()}
+        data={[
+          {
+            ngay_nhap: '2026-01-02',
+            ma_thiet_bi: 'TB-001',
+            ten_thiet_bi: 'Máy đo',
+            model: null,
+            serial: null,
+            khoa_phong_quan_ly: 'Khoa A',
+            type: 'import',
+            source: 'manual',
+            reason: null,
+            destination: null,
+            value: null,
+          },
+          {
+            ngay_nhap: '2026-01-03',
+            ma_thiet_bi: 'TB-002',
+            ten_thiet_bi: 'Máy siêu âm',
+            model: null,
+            serial: null,
+            khoa_phong_quan_ly: 'Khoa B',
+            type: 'import',
+            source: 'manual',
+            reason: null,
+            destination: null,
+            value: null,
+          },
+          {
+            ngay_nhap: '2026-01-04',
+            ma_thiet_bi: 'TB-003',
+            ten_thiet_bi: 'Máy thở',
+            model: null,
+            serial: null,
+            khoa_phong_quan_ly: 'Khoa A',
+            type: 'export',
+            source: 'manual',
+            reason: 'Điều chuyển',
+            destination: 'Kho B',
+            value: null,
+          },
+        ]}
+        summary={{
+          totalImported: 2,
+          totalExported: 1,
+          currentStock: 1,
+          netChange: 1,
+        }}
+        dateRange={{
+          from: new Date('2026-01-01T00:00:00.000Z'),
+          to: new Date('2026-01-31T00:00:00.000Z'),
+        }}
+        department="all"
+      />
+    )
+
+    fireEvent.click(await screen.findByRole('button', { name: /xuất excel/i }))
+
+    await waitFor(() => {
+      expect(mockCreateMultiSheetExcel).toHaveBeenCalled()
+    })
+
+    const [sheets] = mockCreateMultiSheetExcel.mock.calls[0] as [Array<{ name: string; data: unknown }>, string]
+    const statsSheet = sheets.find((sheet) => sheet.name === 'Thống kê giao dịch')
+
+    expect(statsSheet).toBeDefined()
+    expect(statsSheet?.data).toEqual([
+      { 'Khoa/Phòng': 'Khoa A', 'Nhập': 1, 'Xuất': 1, 'Tổng': 2 },
+      { 'Khoa/Phòng': 'Khoa B', 'Nhập': 1, 'Xuất': 0, 'Tổng': 1 },
+    ])
+  })
 })

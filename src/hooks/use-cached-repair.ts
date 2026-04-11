@@ -1,7 +1,8 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { supabase } from '@/lib/supabase'
 import { toast } from '@/hooks/use-toast'
 import { normalizeRpcError } from '@/lib/error-utils'
+import { callRpc } from '@/lib/rpc-client'
+import type { RepairRequestWithEquipment } from '@/app/(app)/repair-requests/types'
 
 export interface RepairRequestFilters {
   search?: string
@@ -13,9 +14,72 @@ export interface RepairRequestFilters {
 }
 
 type RepairRequestMutationInput = Record<string, unknown>
+type RepairRequestRecord = RepairRequestWithEquipment & Record<string, unknown>
+type RepairRequestListResponse = {
+  data: RepairRequestRecord[]
+  total: number
+  page: number
+  pageSize: number
+}
+type RepairRequestDetailRecord = Record<string, unknown> | null
 type UpdateRepairRequestParams = {
   id: string
   data: RepairRequestMutationInput
+}
+type AssignRepairRequestParams = {
+  id: string
+  nguoi_xu_ly: string
+}
+type CompleteRepairRequestParams = {
+  id: string
+  ket_qua?: string
+  ghi_chu?: string
+  chi_phi?: number
+  nguoi_xu_ly: string
+}
+
+function toNullableString(value: unknown): string | null {
+  if (typeof value !== 'string') {
+    return null
+  }
+  const normalized = value.trim()
+  return normalized ? normalized : null
+}
+
+function toRequiredString(value: unknown, fieldName: string): string {
+  const normalized = toNullableString(value)
+  if (!normalized) {
+    throw new Error(`Thiếu trường ${fieldName}`)
+  }
+  return normalized
+}
+
+function toIntegerId(value: unknown, fieldName: string): number {
+  const parsed = typeof value === 'number' ? value : Number(value)
+  if (!Number.isInteger(parsed) || parsed <= 0) {
+    throw new Error(`ID không hợp lệ cho ${fieldName}`)
+  }
+  return parsed
+}
+
+function applyLegacyRepairFilters(
+  rows: RepairRequestRecord[],
+  filters?: RepairRequestFilters
+): RepairRequestRecord[] {
+  return rows.filter((row) => {
+    if (filters?.phong_ban && row.thiet_bi?.khoa_phong_quan_ly !== filters.phong_ban) {
+      return false
+    }
+
+    if (filters?.muc_do_uu_tien) {
+      const priority = row.muc_do_uu_tien
+      if (typeof priority !== 'string' || priority !== filters.muc_do_uu_tien) {
+        return false
+      }
+    }
+
+    return true
+  })
 }
 
 // Query keys for caching
@@ -32,40 +96,21 @@ export function useRepairRequests(filters?: RepairRequestFilters) {
   return useQuery({
     queryKey: repairKeys.list(filters || {}),
     queryFn: async () => {
-      if (!supabase) {
-        throw new Error('Supabase client not initialized')
-      }
+      const response = await callRpc<RepairRequestListResponse>({
+        fn: 'repair_request_list',
+        args: {
+          p_q: filters?.search || null,
+          p_status: filters?.trang_thai || null,
+          p_page: 1,
+          p_page_size: 1000,
+          p_don_vi: null,
+          p_date_from: filters?.dateFrom || null,
+          p_date_to: filters?.dateTo || null,
+          p_statuses: null,
+        },
+      })
 
-      let query = supabase
-        .from('yeu_cau_sua_chua')
-        .select(`
-          *,
-          thiet_bi:thiet_bi(ma_thiet_bi, ten_thiet_bi, phong_ban:phong_ban(ten_phong_ban)),
-          nguoi_yeu_cau:profiles!yeu_cau_sua_chua_nguoi_yeu_cau_fkey(ho_ten),
-          nguoi_xu_ly:profiles!yeu_cau_sua_chua_nguoi_xu_ly_fkey(ho_ten)
-        `)
-
-      // Apply filters
-      if (filters?.search) {
-        query = query.or(`mo_ta_su_co.ilike.%${filters.search}%,ghi_chu.ilike.%${filters.search}%`)
-      }
-      if (filters?.trang_thai) {
-        query = query.eq('trang_thai', filters.trang_thai)
-      }
-      if (filters?.muc_do_uu_tien) {
-        query = query.eq('muc_do_uu_tien', filters.muc_do_uu_tien)
-      }
-      if (filters?.dateFrom) {
-        query = query.gte('created_at', filters.dateFrom)
-      }
-      if (filters?.dateTo) {
-        query = query.lte('created_at', filters.dateTo)
-      }
-
-      const { data, error } = await query.order('created_at', { ascending: false })
-
-      if (error) throw error
-      return data
+      return applyLegacyRepairFilters(response.data ?? [], filters)
     },
     staleTime: 2 * 60 * 1000, // 2 minutes
     gcTime: 10 * 60 * 1000, // 10 minutes
@@ -78,23 +123,13 @@ export function useRepairRequestDetail(id: string | null) {
     queryKey: repairKeys.detail(id || ''),
     queryFn: async () => {
       if (!id) return null
-      if (!supabase) {
-        throw new Error('Supabase client not initialized')
-      }
-      
-      const { data, error } = await supabase
-        .from('yeu_cau_sua_chua')
-        .select(`
-          *,
-          thiet_bi:thiet_bi(*),
-          nguoi_yeu_cau:profiles!yeu_cau_sua_chua_nguoi_yeu_cau_fkey(*),
-          nguoi_xu_ly:profiles!yeu_cau_sua_chua_nguoi_xu_ly_fkey(*)
-        `)
-        .eq('id', id)
-        .single()
 
-      if (error) throw error
-      return data
+      return callRpc<RepairRequestDetailRecord>({
+        fn: 'repair_request_get',
+        args: {
+          p_id: toIntegerId(id, 'id'),
+        },
+      })
     },
     enabled: !!id,
     staleTime: 1 * 60 * 1000, // 1 minute
@@ -107,18 +142,18 @@ export function useCreateRepairRequest() {
 
   return useMutation({
     mutationFn: async (data: RepairRequestMutationInput) => {
-      if (!supabase) {
-        throw new Error('Supabase client not initialized')
-      }
-
-      const { data: newRepair, error } = await supabase
-        .from('yeu_cau_sua_chua')
-        .insert(data)
-        .select()
-        .single()
-
-      if (error) throw error
-      return newRepair
+      return callRpc<number>({
+        fn: 'repair_request_create',
+        args: {
+          p_thiet_bi_id: toIntegerId(data.thiet_bi_id, 'thiet_bi_id'),
+          p_mo_ta_su_co: toRequiredString(data.mo_ta_su_co, 'mo_ta_su_co'),
+          p_hang_muc_sua_chua: toNullableString(data.hang_muc_sua_chua),
+          p_ngay_mong_muon_hoan_thanh: toNullableString(data.ngay_mong_muon_hoan_thanh),
+          p_nguoi_yeu_cau: toNullableString(data.nguoi_yeu_cau),
+          p_don_vi_thuc_hien: toNullableString(data.don_vi_thuc_hien),
+          p_ten_don_vi_thue: toNullableString(data.ten_don_vi_thue),
+        },
+      })
     },
     onSuccess: () => {
       // Invalidate all repair queries
@@ -147,25 +182,23 @@ export function useUpdateRepairRequest() {
 
   return useMutation({
     mutationFn: async (params: UpdateRepairRequestParams) => {
-      if (!supabase) {
-        throw new Error('Supabase client not initialized')
-      }
-
-      const { data, error } = await supabase
-        .from('yeu_cau_sua_chua')
-        .update(params.data)
-        .eq('id', params.id)
-        .select()
-        .single()
-
-      if (error) throw error
-      return data
+      await callRpc<void>({
+        fn: 'repair_request_update',
+        args: {
+          p_id: toIntegerId(params.id, 'id'),
+          p_mo_ta_su_co: toRequiredString(params.data.mo_ta_su_co, 'mo_ta_su_co'),
+          p_hang_muc_sua_chua: toNullableString(params.data.hang_muc_sua_chua),
+          p_ngay_mong_muon_hoan_thanh: toNullableString(params.data.ngay_mong_muon_hoan_thanh),
+          p_don_vi_thuc_hien: toNullableString(params.data.don_vi_thuc_hien),
+          p_ten_don_vi_thue: toNullableString(params.data.ten_don_vi_thue),
+        },
+      })
     },
-    onSuccess: (data) => {
+    onSuccess: (_data, variables) => {
       // Invalidate repair queries
       queryClient.invalidateQueries({ queryKey: repairKeys.lists() })
       // Update specific repair detail cache
-      queryClient.setQueryData(repairKeys.detail(data.id), data)
+      queryClient.invalidateQueries({ queryKey: repairKeys.detail(variables.id) })
       // Invalidate dashboard stats to update KPI cards
       queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] })
 
@@ -189,24 +222,16 @@ export function useAssignRepairRequest() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: async (params: { id: string; nguoi_xu_ly: string }) => {
-      if (!supabase) {
-        throw new Error('Supabase client not initialized')
-      }
-
-      const { data, error } = await supabase
-        .from('yeu_cau_sua_chua')
-        .update({
-          trang_thai: 'dang_xu_ly',
-          nguoi_xu_ly: params.nguoi_xu_ly,
-          ngay_bat_dau_xu_ly: new Date().toISOString()
-        })
-        .eq('id', params.id)
-        .select()
-        .single()
-
-      if (error) throw error
-      return data
+    mutationFn: async (params: AssignRepairRequestParams) => {
+      await callRpc<void>({
+        fn: 'repair_request_approve',
+        args: {
+          p_id: toIntegerId(params.id, 'id'),
+          p_nguoi_duyet: toRequiredString(params.nguoi_xu_ly, 'nguoi_xu_ly'),
+          p_don_vi_thuc_hien: 'noi_bo',
+          p_ten_don_vi_thue: null,
+        },
+      })
     },
     onSuccess: () => {
       // Invalidate repair queries
@@ -232,33 +257,15 @@ export function useCompleteRepairRequest() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: async (params: { 
-      id: string
-      ket_qua?: string
-      ghi_chu?: string
-      chi_phi?: number
-      nguoi_xu_ly: string
-    }) => {
-      if (!supabase) {
-        throw new Error('Supabase client not initialized')
-      }
-
-      const { data, error } = await supabase
-        .from('yeu_cau_sua_chua')
-        .update({
-          trang_thai: 'hoan_thanh',
-          ngay_hoan_thanh: new Date().toISOString(),
-          ket_qua: params.ket_qua,
-          ghi_chu: params.ghi_chu,
-          chi_phi: params.chi_phi,
-          nguoi_xu_ly: params.nguoi_xu_ly
-        })
-        .eq('id', params.id)
-        .select()
-        .single()
-
-      if (error) throw error
-      return data
+    mutationFn: async (params: CompleteRepairRequestParams) => {
+      await callRpc<void>({
+        fn: 'repair_request_complete',
+        args: {
+          p_id: toIntegerId(params.id, 'id'),
+          p_completion: toNullableString(params.ket_qua),
+          p_reason: toNullableString(params.ghi_chu),
+        },
+      })
     },
     onSuccess: () => {
       // Invalidate repair queries
@@ -285,16 +292,12 @@ export function useDeleteRepairRequest() {
 
   return useMutation({
     mutationFn: async (id: string) => {
-      if (!supabase) {
-        throw new Error('Supabase client not initialized')
-      }
-
-      const { error } = await supabase
-        .from('yeu_cau_sua_chua')
-        .delete()
-        .eq('id', id)
-
-      if (error) throw error
+      await callRpc<void>({
+        fn: 'repair_request_delete',
+        args: {
+          p_id: toIntegerId(id, 'id'),
+        },
+      })
     },
     onSuccess: () => {
       // Invalidate all repair queries
