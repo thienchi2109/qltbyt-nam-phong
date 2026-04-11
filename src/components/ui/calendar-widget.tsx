@@ -325,11 +325,11 @@ function CalendarWidgetImpl({
         </div>
 
         {/* Desktop: Enhanced statistics cards with glassmorphism */}
-        <div className="hidden xl:grid grid-cols-4 gap-4">
-          <div className="bg-gradient-to-br from-blue-50 to-blue-100/50 backdrop-blur-sm rounded-xl p-4 border border-blue-200/50 hover:shadow-md transition-shadow">
+        <div className="hidden xl:grid grid-cols-2 gap-3">
+          <div className="bg-gradient-to-br from-blue-50 to-blue-100/50 backdrop-blur-sm rounded-xl p-3 border border-blue-200/50 hover:shadow-md transition-shadow">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-3xl font-bold text-blue-600">{filteredStats.total}</p>
+                <p className="text-2xl font-bold text-blue-600">{filteredStats.total}</p>
                 <p className="text-sm text-blue-600/80 mt-1">Tổng công việc</p>
               </div>
               <div className="p-3 bg-blue-500/20 rounded-xl">
@@ -338,10 +338,10 @@ function CalendarWidgetImpl({
             </div>
           </div>
           
-          <div className="bg-gradient-to-br from-green-50 to-green-100/50 backdrop-blur-sm rounded-xl p-4 border border-green-200/50 hover:shadow-md transition-shadow">
+          <div className="bg-gradient-to-br from-green-50 to-green-100/50 backdrop-blur-sm rounded-xl p-3 border border-green-200/50 hover:shadow-md transition-shadow">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-3xl font-bold text-green-600">{filteredStats.completed}</p>
+                <p className="text-2xl font-bold text-green-600">{filteredStats.completed}</p>
                 <p className="text-sm text-green-600/80 mt-1">Đã hoàn thành</p>
               </div>
               <div className="p-3 bg-green-500/20 rounded-xl">
@@ -350,10 +350,10 @@ function CalendarWidgetImpl({
             </div>
           </div>
 
-          <div className="bg-gradient-to-br from-orange-50 to-orange-100/50 backdrop-blur-sm rounded-xl p-4 border border-orange-200/50 hover:shadow-md transition-shadow">
+          <div className="bg-gradient-to-br from-orange-50 to-orange-100/50 backdrop-blur-sm rounded-xl p-3 border border-orange-200/50 hover:shadow-md transition-shadow">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-3xl font-bold text-orange-600">{filteredStats.pending}</p>
+                <p className="text-2xl font-bold text-orange-600">{filteredStats.pending}</p>
                 <p className="text-sm text-orange-600/80 mt-1">Chưa hoàn thành</p>
               </div>
               <div className="p-3 bg-orange-500/20 rounded-xl">
@@ -362,7 +362,7 @@ function CalendarWidgetImpl({
             </div>
           </div>
 
-          <div className="bg-gradient-to-br from-purple-50 to-purple-100/50 backdrop-blur-sm rounded-xl p-4 border border-purple-200/50 hover:shadow-md transition-shadow">
+          <div className="bg-gradient-to-br from-purple-50 to-purple-100/50 backdrop-blur-sm rounded-xl p-3 border border-purple-200/50 hover:shadow-md transition-shadow">
             <div>
               <p className="text-sm text-purple-600/80 mb-2">Loại công việc</p>
               {Object.keys(filteredStats.byType).length > 0 ? (
@@ -607,7 +607,7 @@ function CalendarWidgetImpl({
                       <DialogTrigger asChild>
                         <Button
                           variant="ghost"
-                          className={`h-24 p-2 flex flex-col items-center justify-center relative rounded-xl transition-all duration-200 ${
+                          className={`h-16 p-1.5 flex flex-col items-center justify-center relative rounded-xl transition-all duration-200 ${
                             !isCurrentMonth ? 'text-gray-400' : 'text-gray-900'
                           } ${isToday ? 'bg-gradient-to-br from-blue-500 to-purple-600 text-white shadow-lg scale-105' : 'hover:bg-gray-100 hover:shadow-md'}`}
                           onClick={() => setSelectedDate(day)}
