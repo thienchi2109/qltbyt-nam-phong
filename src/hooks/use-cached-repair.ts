@@ -2,25 +2,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from '@/hooks/use-toast'
 import { normalizeRpcError } from '@/lib/error-utils'
 import { callRpc } from '@/lib/rpc-client'
-import type { RepairRequestWithEquipment } from '@/app/(app)/repair-requests/types'
-
-export interface RepairRequestFilters {
-  search?: string
-  trang_thai?: string
-  phong_ban?: string
-  muc_do_uu_tien?: string
-  dateFrom?: string
-  dateTo?: string
-}
 
 type RepairRequestMutationInput = Record<string, unknown>
-type RepairRequestRecord = RepairRequestWithEquipment & Record<string, unknown>
-type RepairRequestListResponse = {
-  data: RepairRequestRecord[]
-  total: number
-  page: number
-  pageSize: number
-}
 type RepairRequestDetailRecord = Record<string, unknown> | null
 type UpdateRepairRequestParams = {
   id: string
@@ -60,59 +43,12 @@ function toIntegerId(value: unknown, fieldName: string): number {
   return parsed
 }
 
-function applyLegacyRepairFilters(
-  rows: RepairRequestRecord[],
-  filters?: RepairRequestFilters
-): RepairRequestRecord[] {
-  return rows.filter((row) => {
-    if (filters?.phong_ban && row.thiet_bi?.khoa_phong_quan_ly !== filters.phong_ban) {
-      return false
-    }
-
-    if (filters?.muc_do_uu_tien) {
-      const priority = row.muc_do_uu_tien
-      if (typeof priority !== 'string' || priority !== filters.muc_do_uu_tien) {
-        return false
-      }
-    }
-
-    return true
-  })
-}
-
 // Query keys for caching
 export const repairKeys = {
   all: ['repair'] as const,
   lists: () => [...repairKeys.all, 'list'] as const,
-  list: (filters: RepairRequestFilters) => [...repairKeys.lists(), { filters }] as const,
   details: () => [...repairKeys.all, 'detail'] as const,
   detail: (id: string) => [...repairKeys.details(), id] as const,
-}
-
-// Fetch repair requests with filters
-export function useRepairRequests(filters?: RepairRequestFilters) {
-  return useQuery({
-    queryKey: repairKeys.list(filters || {}),
-    queryFn: async () => {
-      const response = await callRpc<RepairRequestListResponse>({
-        fn: 'repair_request_list',
-        args: {
-          p_q: filters?.search || null,
-          p_status: filters?.trang_thai || null,
-          p_page: 1,
-          p_page_size: 1000,
-          p_don_vi: null,
-          p_date_from: filters?.dateFrom || null,
-          p_date_to: filters?.dateTo || null,
-          p_statuses: null,
-        },
-      })
-
-      return applyLegacyRepairFilters(response.data ?? [], filters)
-    },
-    staleTime: 2 * 60 * 1000, // 2 minutes
-    gcTime: 10 * 60 * 1000, // 10 minutes
-  })
 }
 
 // Fetch single repair request details
