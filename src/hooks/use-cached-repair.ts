@@ -1,25 +1,34 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { toast } from '@/hooks/use-toast'
+import { normalizeRpcError } from '@/lib/error-utils'
 
-// Query keys for caching
-export const repairKeys = {
-  all: ['repair'] as const,
-  lists: () => [...repairKeys.all, 'list'] as const,
-  list: (filters: Record<string, any>) => [...repairKeys.lists(), { filters }] as const,
-  details: () => [...repairKeys.all, 'detail'] as const,
-  detail: (id: string) => [...repairKeys.details(), id] as const,
-}
-
-// Fetch repair requests with filters
-export function useRepairRequests(filters?: {
+export interface RepairRequestFilters {
   search?: string
   trang_thai?: string
   phong_ban?: string
   muc_do_uu_tien?: string
   dateFrom?: string
   dateTo?: string
-}) {
+}
+
+type RepairRequestMutationInput = Record<string, unknown>
+type UpdateRepairRequestParams = {
+  id: string
+  data: RepairRequestMutationInput
+}
+
+// Query keys for caching
+export const repairKeys = {
+  all: ['repair'] as const,
+  lists: () => [...repairKeys.all, 'list'] as const,
+  list: (filters: RepairRequestFilters) => [...repairKeys.lists(), { filters }] as const,
+  details: () => [...repairKeys.all, 'detail'] as const,
+  detail: (id: string) => [...repairKeys.details(), id] as const,
+}
+
+// Fetch repair requests with filters
+export function useRepairRequests(filters?: RepairRequestFilters) {
   return useQuery({
     queryKey: repairKeys.list(filters || {}),
     queryFn: async () => {
@@ -97,7 +106,7 @@ export function useCreateRepairRequest() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: async (data: any) => {
+    mutationFn: async (data: RepairRequestMutationInput) => {
       if (!supabase) {
         throw new Error('Supabase client not initialized')
       }
@@ -122,10 +131,10 @@ export function useCreateRepairRequest() {
         description: "Tạo yêu cầu sửa chữa thành công",
       })
     },
-    onError: (error: any) => {
+    onError: (error: unknown) => {
       toast({
         title: "Lỗi",
-        description: error.message || "Không thể tạo yêu cầu sửa chữa",
+        description: normalizeRpcError(error, "Không thể tạo yêu cầu sửa chữa"),
         variant: "destructive",
       })
     },
@@ -137,7 +146,7 @@ export function useUpdateRepairRequest() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: async (params: { id: string; data: any }) => {
+    mutationFn: async (params: UpdateRepairRequestParams) => {
       if (!supabase) {
         throw new Error('Supabase client not initialized')
       }
@@ -165,10 +174,10 @@ export function useUpdateRepairRequest() {
         description: "Cập nhật yêu cầu sửa chữa thành công",
       })
     },
-    onError: (error: any) => {
+    onError: (error: unknown) => {
       toast({
         title: "Lỗi",
-        description: error.message || "Không thể cập nhật yêu cầu sửa chữa",
+        description: normalizeRpcError(error, "Không thể cập nhật yêu cầu sửa chữa"),
         variant: "destructive",
       })
     },
@@ -208,10 +217,10 @@ export function useAssignRepairRequest() {
         description: "Phân công sửa chữa thành công",
       })
     },
-    onError: (error: any) => {
+    onError: (error: unknown) => {
       toast({
         title: "Lỗi",
-        description: error.message || "Không thể phân công sửa chữa",
+        description: normalizeRpcError(error, "Không thể phân công sửa chữa"),
         variant: "destructive",
       })
     },
@@ -260,10 +269,10 @@ export function useCompleteRepairRequest() {
         description: "Hoàn thành sửa chữa thành công",
       })
     },
-    onError: (error: any) => {
+    onError: (error: unknown) => {
       toast({
         title: "Lỗi",
-        description: error.message || "Không thể hoàn thành sửa chữa",
+        description: normalizeRpcError(error, "Không thể hoàn thành sửa chữa"),
         variant: "destructive",
       })
     },
@@ -298,10 +307,10 @@ export function useDeleteRepairRequest() {
         description: "Xóa yêu cầu sửa chữa thành công",
       })
     },
-    onError: (error: any) => {
+    onError: (error: unknown) => {
       toast({
         title: "Lỗi",
-        description: error.message || "Không thể xóa yêu cầu sửa chữa",
+        description: normalizeRpcError(error, "Không thể xóa yêu cầu sửa chữa"),
         variant: "destructive",
       })
     },

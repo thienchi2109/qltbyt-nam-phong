@@ -5,6 +5,7 @@ import { Download, FileSpreadsheet, Loader2 } from "lucide-react"
 import { format } from "date-fns"
 import { vi } from "date-fns/locale"
 import { createMultiSheetExcel } from "@/lib/excel-utils"
+import { getUnknownErrorMessage } from "@/lib/error-utils"
 
 import {
   Dialog,
@@ -42,6 +43,31 @@ interface ExportReportDialogProps {
   usageAnalytics?: { overview: UsageOverview; daily: DailyUsageItem[] }
 }
 
+type ExportArrayCell = string | number
+type ExportArrayRow = ExportArrayCell[]
+type ExportJsonValue = string | number | null
+type ExportJsonRow = Record<string, ExportJsonValue>
+type ExportJsonSheet = {
+  name: string
+  data: ExportJsonRow[]
+  type: "json"
+  columnWidths?: number[]
+}
+type ExportArraySheet = {
+  name: string
+  data: ExportArrayRow[]
+  type: "array"
+  columnWidths?: number[]
+}
+type ExportSheet = ExportJsonSheet | ExportArraySheet
+
+type StatisticsRow = Record<string, ExportJsonValue> & {
+  "Khoa/Phòng": string
+  "Nhập": number
+  "Xuất": number
+  "Tổng": number
+}
+
 export function ExportReportDialog({
   open,
   onOpenChange,
@@ -71,7 +97,7 @@ export function ExportReportDialog({
     setIsExporting(true)
     try {
       // Prepare summary sheet (array of arrays)
-      const summaryData: (string | number)[][] = [
+      const summaryData: ExportArrayRow[] = [
         ["BÁO CÁO TỔNG HỢP THIẾT BỊ"],
         [""],
         ["Thời gian:", `${format(dateRange.from, "dd/MM/yyyy")} - ${format(dateRange.to, "dd/MM/yyyy")}`],
@@ -105,8 +131,8 @@ export function ExportReportDialog({
       const statsData = generateStatistics(data)
 
       // Status distribution sheets (optional)
-      const statusSheets: Array<{ name: string; data: any[] | any[][]; type: 'json' | 'array'; columnWidths?: number[] }> = []
-      const extraSheets: Array<{ name: string; data: any[] | any[][]; type: 'json' | 'array'; columnWidths?: number[] }> = []
+      const statusSheets: ExportSheet[] = []
+      const extraSheets: ExportSheet[] = []
 
       if (distribution) {
         const total = distribution.totalEquipment || 0
@@ -247,12 +273,12 @@ export function ExportReportDialog({
       })
 
       onOpenChange(false)
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Export error:', error)
       toast({
         variant: "destructive",
         title: "Lỗi xuất báo cáo",
-        description: error?.message || "Không thể xuất báo cáo",
+        description: getUnknownErrorMessage(error, "Không thể xuất báo cáo"),
       })
     } finally {
       setIsExporting(false)
@@ -285,7 +311,7 @@ export function ExportReportDialog({
 
   const pct = (n: number, total: number) => (total > 0 ? Math.round((n * 1000) / total) / 10 : 0)
 
-  const generateStatistics = (rows: InventoryItem[]) => {
+  const generateStatistics = (rows: InventoryItem[]): StatisticsRow[] => {
     const deptStats = new Map<string, { nhap: number; xuat: number; tong: number }>()
     rows.forEach(item => {
       const dept = item.khoa_phong_quan_ly || "Chưa phân loại"
@@ -302,7 +328,7 @@ export function ExportReportDialog({
       "Nhập": s.nhap,
       "Xuất": s.xuat,
       "Tổng": s.tong,
-    })).sort((a, b) => b["Tổng"] - a["Tổng"]) as any[]
+    })).sort((a, b) => b["Tổng"] - a["Tổng"])
   }
 
   return (
