@@ -22,6 +22,7 @@ import { useSearchDebounce } from "@/hooks/use-debounce"
 
 import { useMaintenanceContext } from "../_hooks/useMaintenanceContext"
 import { useMaintenanceDeepLink } from "../_hooks/use-maintenance-deep-link"
+import { useMaintenancePlanListControls } from "../_hooks/use-maintenance-plan-list-controls"
 import { useSelectedPlanSync } from "../_hooks/use-selected-plan-sync"
 import { MobileMaintenanceLayout } from "./mobile-maintenance-layout"
 import { usePlanColumns, useTaskColumns } from "./maintenance-columns"
@@ -36,13 +37,24 @@ export function MaintenancePageClient() {
   const mobileMaintenanceEnabled = useFeatureFlag("mobile-maintenance-redesign")
   const shouldUseMobileMaintenance = isMobile && mobileMaintenanceEnabled
 
-  const [planSearchTerm, setPlanSearchTerm] = React.useState("")
+  const {
+    planSearchTerm,
+    handlePlanSearchChange,
+    handleClearSearch,
+    selectedFacilityId,
+    handleFacilityChange,
+    currentPage,
+    setCurrentPage,
+    pageSize,
+    handlePageSizeChange,
+    isMobileFilterSheetOpen,
+    handleMobileFilterSheetOpenChange,
+    pendingFacilityFilter,
+    setPendingFacilityFilter,
+    handleMobileFilterApply,
+    handleMobileFilterClear,
+  } = useMaintenancePlanListControls()
   const debouncedPlanSearch = useSearchDebounce(planSearchTerm)
-  const [selectedFacilityId, setSelectedFacilityId] = React.useState<number | null>(null)
-  const [currentPage, setCurrentPage] = React.useState(1)
-  const [pageSize, setPageSize] = React.useState(50)
-  const [isMobileFilterSheetOpen, setIsMobileFilterSheetOpen] = React.useState(false)
-  const [pendingFacilityFilter, setPendingFacilityFilter] = React.useState<number | null>(null)
   const [expandedTaskIds, setExpandedTaskIds] = React.useState<Record<number, boolean>>({})
 
   const [planSorting, setPlanSorting] = React.useState<SortingState>([])
@@ -130,38 +142,10 @@ export function MaintenancePageClient() {
   })
 
   React.useEffect(() => {
-    setCurrentPage(1)
-  }, [selectedFacilityId, debouncedPlanSearch])
-
-  React.useEffect(() => {
-    if (isMobileFilterSheetOpen) {
-      setPendingFacilityFilter(selectedFacilityId ?? null)
-    }
-  }, [isMobileFilterSheetOpen, selectedFacilityId])
-
-  React.useEffect(() => {
     if (ctx.selectedPlan?.id) {
       setExpandedTaskIds({})
     }
   }, [ctx.selectedPlan?.id])
-
-  const handleMobileFilterApply = React.useCallback(() => {
-    setSelectedFacilityId(pendingFacilityFilter ?? null)
-    setCurrentPage(1)
-    setIsMobileFilterSheetOpen(false)
-  }, [pendingFacilityFilter])
-
-  const handleMobileFilterClear = React.useCallback(() => {
-    setPendingFacilityFilter(null)
-    setSelectedFacilityId(null)
-    setCurrentPage(1)
-    setIsMobileFilterSheetOpen(false)
-  }, [])
-
-  const handlePageSizeChange = React.useCallback((size: number) => {
-    setPageSize(size)
-    setCurrentPage(1)
-  }, [])
 
   const toggleTaskExpansion = React.useCallback((taskId: number) => {
     setExpandedTaskIds((prev) => ({
@@ -285,8 +269,8 @@ export function MaintenancePageClient() {
           plans={plans}
           isLoadingPlans={isLoadingPlans}
           planSearchTerm={planSearchTerm}
-          setPlanSearchTerm={setPlanSearchTerm}
-          onClearSearch={() => setPlanSearchTerm("")}
+          setPlanSearchTerm={handlePlanSearchChange}
+          onClearSearch={handleClearSearch}
           totalPages={totalPages}
           totalCount={totalCount}
           currentPage={currentPage}
@@ -296,7 +280,7 @@ export function MaintenancePageClient() {
           selectedFacilityId={selectedFacilityId}
           isLoadingFacilities={isLoadingFacilities}
           isMobileFilterSheetOpen={isMobileFilterSheetOpen}
-          setIsMobileFilterSheetOpen={setIsMobileFilterSheetOpen}
+          setIsMobileFilterSheetOpen={handleMobileFilterSheetOpenChange}
           pendingFacilityFilter={pendingFacilityFilter}
           setPendingFacilityFilter={setPendingFacilityFilter}
           handleMobileFilterApply={handleMobileFilterApply}
@@ -319,11 +303,11 @@ export function MaintenancePageClient() {
         showFacilityFilter={showFacilityFilter}
         facilities={facilities}
         selectedFacilityId={selectedFacilityId}
-        onFacilityChange={setSelectedFacilityId}
+        onFacilityChange={handleFacilityChange}
         isLoadingFacilities={isLoadingFacilities}
         totalCount={totalCount}
         planSearchTerm={planSearchTerm}
-        onPlanSearchChange={setPlanSearchTerm}
+        onPlanSearchChange={handlePlanSearchChange}
         isMobile={isMobile}
         mobilePlanCards={legacyMobileCards}
         planTable={planTable}
