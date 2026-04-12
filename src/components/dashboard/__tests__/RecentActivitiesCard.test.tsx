@@ -4,7 +4,7 @@
  * @module components/dashboard/__tests__/RecentActivitiesCard.test
  */
 import React from "react"
-import { render, screen, waitFor } from "@testing-library/react"
+import { act, render, screen, waitFor } from "@testing-library/react"
 import { describe, expect, it, vi, beforeEach } from "vitest"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 
@@ -52,6 +52,14 @@ function createWrapper() {
       </QueryClientProvider>
     )
   }
+}
+
+function createQueryClient() {
+  return new QueryClient({
+    defaultOptions: {
+      queries: { retry: false, gcTime: 0 },
+    },
+  })
 }
 
 const sampleActivities: RecentActivity[] = [
@@ -194,6 +202,45 @@ describe("RecentActivitiesCard", () => {
       expect(screen.getAllByText("Bảo trì").length).toBeGreaterThanOrEqual(1)
       expect(screen.getAllByText("Khác").length).toBeGreaterThanOrEqual(1)
     })
+  })
+
+  it("falls back to all activities immediately when the selected category disappears", async () => {
+    const user = (await import("@testing-library/user-event")).default.setup()
+    const queryClient = createQueryClient()
+    const wrapper = ({ children }: { children: React.ReactNode }) => (
+      <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+    )
+
+    mockCallRpc.mockResolvedValue(sampleActivities)
+    render(<RecentActivitiesCard />, { wrapper })
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "Sửa chữa" })).toBeInTheDocument()
+    })
+
+    await user.click(screen.getByRole("button", { name: "Sửa chữa" }))
+
+    expect(screen.getByText(/Tạo yêu cầu sửa chữa/)).toBeInTheDocument()
+    expect(
+      screen.queryByText(/Hoàn thành luân chuyển/)
+    ).not.toBeInTheDocument()
+
+    act(() => {
+      queryClient.setQueryData(
+        ["dashboard-recent-activities", "anonymous", 15],
+        [sampleActivities[1], sampleActivities[2], sampleActivities[3]],
+      )
+    })
+
+    await waitFor(() => {
+      expect(screen.getByText(/Hoàn thành luân chuyển/)).toBeInTheDocument()
+      expect(screen.getByText(/Tạo kế hoạch bảo trì/)).toBeInTheDocument()
+      expect(screen.getByText(/Hành động lạ/)).toBeInTheDocument()
+    })
+
+    expect(
+      screen.queryByText(/Tạo yêu cầu sửa chữa/)
+    ).not.toBeInTheDocument()
   })
 
   it("renders entity labels in detail rows", async () => {

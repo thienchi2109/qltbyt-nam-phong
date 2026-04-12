@@ -175,23 +175,18 @@ export function RecentActivitiesCard({ className }: RecentActivitiesCardProps) {
     )
   }, [activities])
 
+  const effectiveCategory =
+    selectedCategory === "all" || availableCategories.includes(selectedCategory)
+      ? selectedCategory
+      : "all"
+
   const filteredActivities = React.useMemo(() => {
-    if (selectedCategory === "all") {
+    if (effectiveCategory === "all") {
       return activities
     }
 
-    return activities.filter((activity) => activity.category === selectedCategory)
-  }, [activities, selectedCategory])
-
-  React.useEffect(() => {
-    if (selectedCategory === "all") {
-      return
-    }
-
-    if (!availableCategories.includes(selectedCategory)) {
-      setSelectedCategory("all")
-    }
-  }, [availableCategories, selectedCategory])
+    return activities.filter((activity) => activity.category === effectiveCategory)
+  }, [activities, effectiveCategory])
 
   React.useEffect(() => {
     if (!isError || !error) {
@@ -240,7 +235,7 @@ export function RecentActivitiesCard({ className }: RecentActivitiesCardProps) {
               <Button
                 type="button"
                 size="sm"
-                variant={selectedCategory === "all" ? "default" : "outline"}
+                variant={effectiveCategory === "all" ? "default" : "outline"}
                 onClick={() => setSelectedCategory("all")}
               >
                 Tất cả
@@ -250,9 +245,7 @@ export function RecentActivitiesCard({ className }: RecentActivitiesCardProps) {
                   key={category}
                   type="button"
                   size="sm"
-                  variant={
-                    selectedCategory === category ? "default" : "outline"
-                  }
+                  variant={effectiveCategory === category ? "default" : "outline"}
                   onClick={() => setSelectedCategory(category)}
                 >
                   {CATEGORY_CONFIG[category].label}
