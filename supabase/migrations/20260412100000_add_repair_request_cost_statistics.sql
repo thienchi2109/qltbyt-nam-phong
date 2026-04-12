@@ -186,6 +186,7 @@ DECLARE
   v_allowed bigint[] := NULL;
   v_limit integer := greatest(coalesce(p_page_size, 50), 1);
   v_offset integer := greatest((coalesce(p_page, 1) - 1) * v_limit, 0);
+  v_page integer := (v_offset / v_limit)::integer + 1;
   v_total bigint := 0;
   v_data jsonb := '[]'::jsonb;
   v_statuses text[] := NULL;
@@ -213,13 +214,13 @@ BEGIN
   ELSE
     v_allowed := public.allowed_don_vi_for_session();
     IF v_allowed IS NULL OR array_length(v_allowed, 1) IS NULL THEN
-      RETURN jsonb_build_object('data', '[]'::jsonb, 'total', 0, 'page', p_page, 'pageSize', p_page_size);
+      RETURN jsonb_build_object('data', '[]'::jsonb, 'total', 0, 'page', v_page, 'pageSize', v_limit);
     END IF;
     IF p_don_vi IS NOT NULL THEN
       IF p_don_vi = ANY(v_allowed) THEN
         v_effective_donvi := p_don_vi;
       ELSE
-        RETURN jsonb_build_object('data', '[]'::jsonb, 'total', 0, 'page', p_page, 'pageSize', p_page_size);
+        RETURN jsonb_build_object('data', '[]'::jsonb, 'total', 0, 'page', v_page, 'pageSize', v_limit);
       END IF;
     END IF;
   END IF;
@@ -298,7 +299,7 @@ BEGIN
     LIMIT v_limit
   ) subq;
 
-  RETURN jsonb_build_object('data', v_data, 'total', v_total, 'page', p_page, 'pageSize', p_page_size);
+  RETURN jsonb_build_object('data', v_data, 'total', v_total, 'page', v_page, 'pageSize', v_limit);
 END;
 $function$;
 
@@ -393,7 +394,7 @@ BEGIN
       coalesce(nullif(trim(tb.ten_thiet_bi), ''), tb.ma_thiet_bi, 'Không xác định') AS equipment_name,
       tb.don_vi AS facility_id,
       coalesce(dv.name, 'Không xác định') AS facility_name,
-      coalesce(yc.ngay_yeu_cau, yc.ngay_duyet, yc.ngay_hoan_thanh, clock_timestamp()) AS reference_timestamp,
+      coalesce(yc.ngay_yeu_cau, yc.ngay_duyet, yc.ngay_hoan_thanh) AS reference_timestamp,
       (lower(coalesce(yc.trang_thai, '')) LIKE '%hoàn thành%' OR lower(coalesce(yc.trang_thai, '')) LIKE '%hoan thanh%') AS is_completed
     FROM public.yeu_cau_sua_chua yc
     INNER JOIN public.thiet_bi tb ON yc.thiet_bi_id = tb.id
@@ -416,7 +417,8 @@ BEGIN
       reference_timestamp,
       is_completed
     FROM repair_data_raw
-    WHERE reference_timestamp::date BETWEEN p_date_from AND p_date_to
+    WHERE reference_timestamp IS NOT NULL
+      AND (reference_timestamp AT TIME ZONE 'Asia/Ho_Chi_Minh')::date BETWEEN p_date_from AND p_date_to
   ),
   repair_summary AS (
     SELECT
@@ -482,21 +484,21 @@ BEGIN
   ),
   repair_frequency AS (
     SELECT
-      to_char(date_trunc('month', reference_timestamp), 'YYYY-MM') AS period,
+      to_char(date_trunc('month', reference_timestamp AT TIME ZONE 'Asia/Ho_Chi_Minh'), 'YYYY-MM') AS period,
       count(*)::integer AS total,
       count(*) FILTER (WHERE is_completed)::integer AS completed
     FROM repair_data
-    GROUP BY date_trunc('month', reference_timestamp)
+    GROUP BY date_trunc('month', reference_timestamp AT TIME ZONE 'Asia/Ho_Chi_Minh')
   ),
   repair_cost_by_month AS (
     SELECT
-      to_char(date_trunc('month', reference_timestamp), 'YYYY-MM') AS period,
+      to_char(date_trunc('month', reference_timestamp AT TIME ZONE 'Asia/Ho_Chi_Minh'), 'YYYY-MM') AS period,
       coalesce(sum(chi_phi_sua_chua) FILTER (WHERE is_completed), 0) AS total_cost,
       avg(chi_phi_sua_chua) FILTER (WHERE is_completed AND chi_phi_sua_chua IS NOT NULL) AS average_cost,
       count(*) FILTER (WHERE is_completed AND chi_phi_sua_chua IS NOT NULL)::integer AS cost_recorded_count,
       count(*) FILTER (WHERE is_completed AND chi_phi_sua_chua IS NULL)::integer AS cost_missing_count
     FROM repair_data
-    GROUP BY date_trunc('month', reference_timestamp)
+    GROUP BY date_trunc('month', reference_timestamp AT TIME ZONE 'Asia/Ho_Chi_Minh')
   ),
   repair_cost_by_facility AS (
     SELECT
@@ -554,8 +556,8 @@ BEGIN
       coalesce(nullif(trim(rd.mo_ta_su_co), ''), 'Không có mô tả') AS issue,
       coalesce(rd.trang_thai, 'Không xác định') AS status,
       rd.chi_phi_sua_chua,
-      to_char(reference_timestamp, 'YYYY-MM-DD"T"HH24:MI:SS') AS requested_date,
-      CASE WHEN rd.ngay_hoan_thanh IS NOT NULL THEN to_char(rd.ngay_hoan_thanh, 'YYYY-MM-DD"T"HH24:MI:SS') ELSE NULL END AS completed_date
+      to_char(reference_timestamp AT TIME ZONE 'Asia/Ho_Chi_Minh', 'YYYY-MM-DD"T"HH24:MI:SS') AS requested_date,
+      CASE WHEN rd.ngay_hoan_thanh IS NOT NULL THEN to_char(rd.ngay_hoan_thanh AT TIME ZONE 'Asia/Ho_Chi_Minh', 'YYYY-MM-DD"T"HH24:MI:SS') ELSE NULL END AS completed_date
     FROM repair_data rd
     ORDER BY reference_timestamp DESC
     LIMIT 20
@@ -768,7 +770,8 @@ BEGIN
       LEFT JOIN public.thiet_bi tb ON yc.thiet_bi_id = tb.id
       WHERE (v_effective IS NULL OR tb.don_vi = ANY(v_effective))
         AND (p_khoa_phong IS NULL OR tb.khoa_phong_quan_ly = p_khoa_phong)
-        AND coalesce(yc.ngay_yeu_cau, yc.ngay_duyet, yc.ngay_hoan_thanh)::date BETWEEN v_from AND v_to
+        AND coalesce(yc.ngay_yeu_cau, yc.ngay_duyet, yc.ngay_hoan_thanh) IS NOT NULL
+        AND (coalesce(yc.ngay_yeu_cau, yc.ngay_duyet, yc.ngay_hoan_thanh) AT TIME ZONE 'Asia/Ho_Chi_Minh')::date BETWEEN v_from AND v_to
     ),
     'maintenance_summary', (
       SELECT jsonb_build_object(

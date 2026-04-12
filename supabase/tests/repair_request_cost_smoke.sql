@@ -358,6 +358,7 @@ DECLARE
   v_zero_request_id bigint;
   v_positive_request_id bigint;
   v_list jsonb;
+  v_pagination jsonb;
   v_detail jsonb;
   v_report jsonb;
   v_stats jsonb;
@@ -410,6 +411,22 @@ BEGIN
       AND (row_data->>'chi_phi_sua_chua')::numeric = 1234567
   ) THEN
     RAISE EXCEPTION 'repair_request_list should include positive chi_phi_sua_chua row, got %', v_list;
+  END IF;
+
+  v_pagination := public.repair_request_list(
+    p_q => NULL,
+    p_status => NULL,
+    p_page => 0,
+    p_page_size => 0,
+    p_don_vi => v_tenant,
+    p_date_from => CURRENT_DATE - 1,
+    p_date_to => CURRENT_DATE + 1,
+    p_statuses => ARRAY['Hoàn thành']::text[]
+  );
+
+  IF (v_pagination->>'page')::integer IS DISTINCT FROM 1
+     OR (v_pagination->>'pageSize')::integer IS DISTINCT FROM 1 THEN
+    RAISE EXCEPTION 'repair_request_list should return normalized pagination metadata page=1 pageSize=1, got %', v_pagination;
   END IF;
 
   v_detail := public.repair_request_get(v_positive_request_id::integer);
