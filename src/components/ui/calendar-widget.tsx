@@ -139,6 +139,20 @@ function CalendarWidgetImpl({
 
   const swipeHandlers = useCalendarSwipeNavigation({ onNextMonth, onPrevMonth })
 
+  let calendarContent: React.ReactNode = (
+    <CalendarWidgetGrid
+      calendarDays={calendarDays}
+      currentDate={currentDate}
+      getEventsForDate={getEventsForDate}
+    />
+  )
+
+  if (isLoading) {
+    calendarContent = <CalendarGridSkeleton />
+  } else if (error && !data) {
+    calendarContent = <CalendarWidgetErrorState />
+  }
+
   return (
     <Card className={className}>
       <CardHeader className="pb-4 md:p-8 md:pb-6">
@@ -161,17 +175,7 @@ function CalendarWidgetImpl({
           onToday={onToday}
         />
 
-        {isLoading ? (
-          <CalendarGridSkeleton />
-        ) : error && !data ? (
-          <CalendarWidgetErrorState />
-        ) : (
-          <CalendarWidgetGrid
-            calendarDays={calendarDays}
-            currentDate={currentDate}
-            getEventsForDate={getEventsForDate}
-          />
-        )}
+        {calendarContent}
       </CardContent>
     </Card>
   )
