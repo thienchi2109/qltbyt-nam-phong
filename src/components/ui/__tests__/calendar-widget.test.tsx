@@ -98,7 +98,7 @@ describe("CalendarWidget", () => {
     expect(screen.getAllByText("Đã hoàn thành").length).toBeGreaterThan(0)
   })
 
-  it("shows a destructive toast when data loading fails", async () => {
+  it("shows an inline alert instead of a toast when data loading fails", async () => {
     mockUseCalendarData.mockReturnValue({
       data: undefined,
       error: new Error("RPC failed"),
@@ -107,15 +107,51 @@ describe("CalendarWidget", () => {
 
     render(<CalendarWidget />)
 
-    await waitFor(() => {
-      expect(mockToast).toHaveBeenCalledWith(
-        expect.objectContaining({
-          variant: "destructive",
-          title: "Lỗi tải dữ liệu",
-          description: "RPC failed",
-        })
-      )
+    expect(await screen.findByRole("alert")).toHaveTextContent("Không thể tải lịch bảo trì")
+    expect(screen.getByText("Vui lòng thử lại sau.")).toBeInTheDocument()
+    expect(mockToast).not.toHaveBeenCalled()
+  })
+
+  it("keeps rendering cached events when a background refetch fails", async () => {
+    mockUseCalendarData.mockReturnValue({
+      data: {
+        departments: ["Khoa A"],
+        events: [
+          {
+            id: 1,
+            title: "Bảo trì máy siêu âm",
+            type: "Bảo trì",
+            date: new Date("2026-04-11T00:00:00.000Z"),
+            equipmentCode: "TB-001",
+            equipmentName: "Máy siêu âm",
+            department: "Khoa A",
+            isCompleted: false,
+            planName: "Kế hoạch 1",
+            planId: 10,
+            taskId: 100,
+          },
+        ],
+        stats: {
+          total: 1,
+          completed: 0,
+          pending: 1,
+          byType: {
+            "Bảo trì": 1,
+          },
+        },
+      },
+      error: new Error("Background refetch failed"),
+      isLoading: false,
     })
+
+    render(<CalendarWidget />)
+
+    await waitFor(() => {
+      expect(screen.getAllByText("Bảo trì máy siêu âm").length).toBeGreaterThan(0)
+    })
+
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument()
+    expect(mockToast).not.toHaveBeenCalled()
   })
 
   it("handles swipe gestures even when the touch starts at clientX 0", async () => {

@@ -14,19 +14,22 @@ import {
 
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { useCalendarData, type CalendarEvent, type CalendarStats } from "@/hooks/use-calendar-data"
-import { useToast } from "@/hooks/use-toast"
 import type { TaskType } from "@/lib/data"
 
-import { CalendarWidgetGrid } from "./calendar-widget/CalendarWidgetGrid"
-import { CalendarWidgetHeader, CalendarWidgetMonthControls } from "./calendar-widget/CalendarWidgetHeader"
-import { CalendarWidgetStats } from "./calendar-widget/CalendarWidgetStats"
+import { CalendarWidgetGrid } from "@/components/ui/calendar-widget/CalendarWidgetGrid"
+import {
+  CalendarWidgetHeader,
+  CalendarWidgetMonthControls,
+} from "@/components/ui/calendar-widget/CalendarWidgetHeader"
+import { CalendarWidgetStats } from "@/components/ui/calendar-widget/CalendarWidgetStats"
 import {
   CalendarGridSkeleton,
   CalendarSkeleton,
+  CalendarWidgetErrorState,
   EMPTY_CALENDAR_STATS,
   type CalendarWidgetImplProps,
   type CalendarWidgetProps,
-} from "./calendar-widget/CalendarWidgetShared"
+} from "@/components/ui/calendar-widget/CalendarWidgetShared"
 
 let initialClientCalendarDate: Date | null = null
 const EMPTY_SUBSCRIBE = () => () => {}
@@ -103,7 +106,6 @@ function CalendarWidgetImpl({
   onToday,
 }: CalendarWidgetImplProps) {
   const [selectedDepartment, setSelectedDepartment] = React.useState("all")
-  const { toast } = useToast()
 
   const monthStart = startOfMonth(currentDate)
   const monthEnd = endOfMonth(currentDate)
@@ -117,16 +119,6 @@ function CalendarWidgetImpl({
 
   const events = data?.events ?? []
   const departments = data?.departments ?? []
-
-  React.useEffect(() => {
-    if (error) {
-      toast({
-        variant: "destructive",
-        title: "Lỗi tải dữ liệu",
-        description: error.message || "Không thể tải lịch bảo trì.",
-      })
-    }
-  }, [error, toast])
 
   const filteredEvents = React.useMemo(() => {
     if (selectedDepartment === "all") {
@@ -146,6 +138,20 @@ function CalendarWidgetImpl({
   )
 
   const swipeHandlers = useCalendarSwipeNavigation({ onNextMonth, onPrevMonth })
+
+  let calendarContent: React.ReactNode = (
+    <CalendarWidgetGrid
+      calendarDays={calendarDays}
+      currentDate={currentDate}
+      getEventsForDate={getEventsForDate}
+    />
+  )
+
+  if (isLoading) {
+    calendarContent = <CalendarGridSkeleton />
+  } else if (error && !data) {
+    calendarContent = <CalendarWidgetErrorState />
+  }
 
   return (
     <Card className={className}>
@@ -169,15 +175,7 @@ function CalendarWidgetImpl({
           onToday={onToday}
         />
 
-        {isLoading ? (
-          <CalendarGridSkeleton />
-        ) : (
-          <CalendarWidgetGrid
-            calendarDays={calendarDays}
-            currentDate={currentDate}
-            getEventsForDate={getEventsForDate}
-          />
-        )}
+        {calendarContent}
       </CardContent>
     </Card>
   )

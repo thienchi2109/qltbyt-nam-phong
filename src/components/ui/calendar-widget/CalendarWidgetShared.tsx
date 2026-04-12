@@ -123,6 +123,19 @@ export function CalendarGridSkeleton() {
   )
 }
 
+export function CalendarWidgetErrorState(): React.JSX.Element {
+  return (
+    <div
+      role="alert"
+      className="flex flex-col items-center justify-center py-12 text-center text-destructive"
+    >
+      <CalendarIcon className="mb-3 h-8 w-8" />
+      <p className="font-semibold">Không thể tải lịch bảo trì</p>
+      <p className="mt-1 text-sm text-muted-foreground">Vui lòng thử lại sau.</p>
+    </div>
+  )
+}
+
 export function CalendarSkeleton({ className }: CalendarWidgetProps) {
   return (
     <Card className={className}>
