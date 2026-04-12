@@ -16,6 +16,7 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import { CalendarWidget } from "@/components/ui/calendar-widget"
+import { RecentActivitiesCard } from "@/components/dashboard/RecentActivitiesCard"
 import { KPICards } from "@/components/dashboard/kpi-cards"
 import { DashboardTabs } from "@/components/dashboard/dashboard-tabs"
 import { QRScannerErrorBoundary } from "@/components/qr-scanner-error-boundary"
@@ -269,9 +270,10 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* Calendar Widget */}
-      <div data-tour="calendar-widget" className="grid gap-4 md:gap-8 md:mt-8">
+      {/* Calendar + Recent Activities */}
+      <div data-tour="calendar-widget" className="grid gap-4 md:gap-8 md:mt-8 xl:grid-cols-2">
         <CalendarWidget />
+        <RecentActivitiesCard />
       </div>
 
       {/* Unified Tabbed Dashboard Cards */}

@@ -36,6 +36,13 @@ describe('RPC proxy whitelist', () => {
     await expect(res.json()).resolves.toEqual({ error: 'Content-Length header required' })
   })
 
+  it('allows dashboard_recent_activities through whitelist checks', async () => {
+    const res = await invokeRpcProxy('dashboard_recent_activities')
+
+    expect(res.status).toBe(411)
+    await expect(res.json()).resolves.toEqual({ error: 'Content-Length header required' })
+  })
+
   it.each([
     'ai_equipment_lookup',
     'ai_maintenance_summary',

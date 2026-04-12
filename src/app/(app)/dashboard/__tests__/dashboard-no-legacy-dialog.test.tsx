@@ -114,6 +114,10 @@ vi.mock("@/components/dashboard/dashboard-tabs", () => ({
     DashboardTabs: () => <div data-testid="dashboard-tabs" />,
 }))
 
+vi.mock("@/components/dashboard/RecentActivitiesCard", () => ({
+    RecentActivitiesCard: () => <div data-testid="recent-activities-card" />,
+}))
+
 vi.mock("@/lib/repair-request-create-intent", () => ({
     buildRepairRequestCreateIntentHref: (id?: number) =>
         `/repair-requests?equipmentId=${id}`,
@@ -153,6 +157,13 @@ describe("Dashboard: no legacy EditEquipmentDialog", () => {
         await waitFor(() => {
             expect(mockPush).toHaveBeenCalledWith("/equipment?highlight=42")
         })
+    })
+
+    it("renders recent activities card alongside the calendar widget", () => {
+        render(<Dashboard />)
+
+        expect(screen.getByTestId("calendar-widget")).toBeInTheDocument()
+        expect(screen.getByTestId("recent-activities-card")).toBeInTheDocument()
     })
 
     it("does not navigate when update-status is triggered without equipment", async () => {

@@ -6,16 +6,28 @@
  */
 
 import React from "react"
-import { format, parseISO } from "date-fns"
+import { format, parseISO, formatDistanceToNow } from "date-fns"
 import { vi } from "date-fns/locale"
 
 import type { ChangeHistoryEntry } from "./ChangeHistoryTypes"
 
 interface ChangeHistoryTimelineProps {
   entries: ChangeHistoryEntry[]
+  /** 'absolute' renders dd/MM/yyyy HH:mm (default). 'relative' renders "5 phút trước". */
+  timeFormat?: "absolute" | "relative"
 }
 
-export function ChangeHistoryTimeline({ entries }: ChangeHistoryTimelineProps) {
+function formatTimestamp(iso: string, mode: "absolute" | "relative"): string {
+  if (mode === "relative") {
+    return formatDistanceToNow(parseISO(iso), { addSuffix: true, locale: vi })
+  }
+  return format(parseISO(iso), "dd/MM/yyyy HH:mm", { locale: vi })
+}
+
+export function ChangeHistoryTimeline({
+  entries,
+  timeFormat = "absolute",
+}: ChangeHistoryTimelineProps) {
   return (
     <div className="relative pl-6 py-4 pr-4">
       {/* Vertical timeline line */}
@@ -31,9 +43,7 @@ export function ChangeHistoryTimeline({ entries }: ChangeHistoryTimelineProps) {
             <div className="flex flex-col gap-0.5">
               <p className="font-semibold text-sm">{entry.actionLabel}</p>
               <p className="text-xs text-muted-foreground">
-                {format(parseISO(entry.occurredAt), "dd/MM/yyyy HH:mm", {
-                  locale: vi,
-                })}
+                {formatTimestamp(entry.occurredAt, timeFormat)}
               </p>
             </div>
 
@@ -66,3 +76,4 @@ export function ChangeHistoryTimeline({ entries }: ChangeHistoryTimelineProps) {
     </div>
   )
 }
+
