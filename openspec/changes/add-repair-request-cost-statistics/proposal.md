@@ -4,7 +4,7 @@ Repair requests currently do not store repair cost, so maintenance reports and e
 GitHub Issue #237 asks for an MVP that stores repair cost on `yeu_cau_sua_chua` and exposes it to statistics. Product clarification: the cost is optional, collected when the user is about to mark a request `Hoàn thành`, and blank cost means unknown (`NULL`), not zero.
 
 ## What Changes
-- Add nullable `chi_phi_sua_chua numeric(14,2)` on `public.yeu_cau_sua_chua` with default `0` for future omitted inserts while leaving existing rows `NULL`.
+- Add nullable `chi_phi_sua_chua numeric(14,2)` on `public.yeu_cau_sua_chua` with no default so omitted values stay `NULL`.
 - Extend `repair_request_complete` to accept optional `p_chi_phi_sua_chua` for the `Hoàn thành` path.
 - Keep create, update, and approve dialogs free of the cost field.
 - Show optional "Tổng chi phí sửa chữa" in the completion dialog as a friendly recommendation for reporting and analysis.

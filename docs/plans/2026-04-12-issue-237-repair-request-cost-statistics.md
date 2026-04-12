@@ -15,7 +15,7 @@
 - Do not add the cost field to create, update, or approve dialogs.
 - Show optional "Tổng chi phí sửa chữa" only in the completion dialog when the user is about to mark a request `Hoàn thành`.
 - Blank UI input sends SQL `NULL`; explicit `0` sends numeric `0`.
-- DB column is nullable and has default `0` for future omitted inserts, but existing rows must remain `NULL`.
+- DB column is nullable and has no default, so omitted and existing repair costs remain `NULL`.
 - No DB backfill for already completed repair requests.
 
 ---
@@ -49,7 +49,7 @@ Change ID: `add-repair-request-cost-statistics`
 - [ ] **Step 1: Write the failing smoke test**
 
 Cover these cases:
-- `public.yeu_cau_sua_chua` has `chi_phi_sua_chua numeric(14,2) NULL DEFAULT 0`.
+- `public.yeu_cau_sua_chua` has `chi_phi_sua_chua numeric(14,2) NULL` with no default.
 - Existing rows created before the migration remain `NULL`.
 - Completing with `p_chi_phi_sua_chua := NULL` stores `NULL`.
 - Completing with `p_chi_phi_sua_chua := 0` stores `0`.
@@ -85,7 +85,7 @@ ALTER TABLE public.yeu_cau_sua_chua
   ADD COLUMN IF NOT EXISTS chi_phi_sua_chua numeric(14,2) NULL;
 
 ALTER TABLE public.yeu_cau_sua_chua
-  ALTER COLUMN chi_phi_sua_chua SET DEFAULT 0;
+  ALTER COLUMN chi_phi_sua_chua DROP DEFAULT;
 
 ALTER TABLE public.yeu_cau_sua_chua
   ADD CONSTRAINT yeu_cau_sua_chua_chi_phi_sua_chua_non_negative

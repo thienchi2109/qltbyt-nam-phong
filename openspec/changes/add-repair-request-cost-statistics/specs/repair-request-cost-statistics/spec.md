@@ -21,13 +21,13 @@ The system SHALL allow users to optionally enter `Tổng chi phí sửa chữa` 
 - **THEN** the system stores `chi_phi_sua_chua` as the numeric value `0`.
 
 ### Requirement: Repair cost storage contract
-The system SHALL store repair cost on `public.yeu_cau_sua_chua.chi_phi_sua_chua` as a nullable numeric value with a default of `0` for future omitted inserts, while leaving existing repair requests without synthetic backfilled costs.
+The system SHALL store repair cost on `public.yeu_cau_sua_chua.chi_phi_sua_chua` as a nullable numeric value with no default, leaving omitted and existing repair costs as `NULL`.
 
 #### Scenario: Existing repair requests remain unbackfilled
 - **GIVEN** repair request rows exist before the cost migration is applied
 - **WHEN** the migration adds `chi_phi_sua_chua`
 - **THEN** existing rows keep `chi_phi_sua_chua` as `NULL`
-- **AND** new rows that omit the column receive the DB default `0`.
+- **AND** new rows that omit the column keep `chi_phi_sua_chua` as `NULL`.
 
 #### Scenario: Negative repair cost is rejected
 - **GIVEN** a user completes a repair request

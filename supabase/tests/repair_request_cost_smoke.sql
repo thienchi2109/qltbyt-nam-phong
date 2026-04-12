@@ -71,7 +71,8 @@ BEGIN
 END;
 $$;
 
--- 1) Schema contract: nullable numeric(14,2), default 0, non-negative constraint.
+-- 1) Schema contract: nullable numeric(14,2), no default, non-negative constraint.
+-- No-backfill is covered by the migration DDL order: ADD COLUMN without default, then DROP DEFAULT.
 DO $$
 DECLARE
   v_data_type text;
@@ -100,8 +101,8 @@ BEGIN
     RAISE EXCEPTION 'Expected chi_phi_sua_chua to be nullable';
   END IF;
 
-  IF position('0' in coalesce(v_default, '')) = 0 THEN
-    RAISE EXCEPTION 'Expected chi_phi_sua_chua default 0, got %', v_default;
+  IF v_default IS NOT NULL THEN
+    RAISE EXCEPTION 'Expected chi_phi_sua_chua to have no default, got %', v_default;
   END IF;
 
   SELECT count(*)
@@ -150,6 +151,14 @@ BEGIN
   v_null_request_id := pg_temp._rr_cost_create_approved_request(v_tenant, v_user_id, v_suffix || '-NULL');
   v_zero_request_id := pg_temp._rr_cost_create_approved_request(v_tenant, v_user_id, v_suffix || '-ZERO');
   v_positive_request_id := pg_temp._rr_cost_create_approved_request(v_tenant, v_user_id, v_suffix || '-POS');
+
+  SELECT chi_phi_sua_chua INTO v_cost
+  FROM public.yeu_cau_sua_chua
+  WHERE id = v_null_request_id;
+
+  IF v_cost IS NOT NULL THEN
+    RAISE EXCEPTION 'Expected omitted request cost to stay NULL before completion, got %', v_cost;
+  END IF;
 
   PERFORM pg_temp._rr_cost_set_claims('to_qltb', v_user_id, v_tenant);
 

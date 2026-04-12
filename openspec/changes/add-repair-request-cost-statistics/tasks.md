@@ -1,9 +1,9 @@
 ## 1. Backend Batch
-- [x] 1.1 Add SQL smoke test for `chi_phi_sua_chua` schema, default, null semantics, and no backfill.
+- [x] 1.1 Add SQL smoke test for `chi_phi_sua_chua` schema, no-default contract, null semantics, and no backfill.
 - [x] 1.2 Add SQL smoke test for `repair_request_complete` storing `NULL`, `0`, and positive cost values.
 - [x] 1.3 Add SQL smoke test for negative cost rejection and terminal-state idempotency.
 - [x] 1.4 Add SQL smoke test for missing JWT claims and wrong-tenant write rejection.
-- [x] 1.5 Create migration adding `yeu_cau_sua_chua.chi_phi_sua_chua numeric(14,2) NULL`, then setting default `0`.
+- [x] 1.5 Create migration adding `yeu_cau_sua_chua.chi_phi_sua_chua numeric(14,2) NULL` with no default.
 - [x] 1.6 Add non-negative check constraint allowing `NULL`.
 - [x] 1.7 Recreate `repair_request_complete` with `p_chi_phi_sua_chua numeric DEFAULT NULL`.
 - [x] 1.8 Preserve hardened lifecycle RPC security: `SECURITY DEFINER`, `SET search_path`, role/user guards, tenant guard, row locks, `admin`/`global` handling, and regional write restriction.

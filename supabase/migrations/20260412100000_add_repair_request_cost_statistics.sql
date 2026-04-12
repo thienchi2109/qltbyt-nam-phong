@@ -1,5 +1,8 @@
 -- Issue #237: add optional repair-request cost capture and statistics.
 -- Prepared for review only; do not apply automatically from the agent session.
+-- Rollback note: this forward-only migration replaces several RPC bodies. If rollback
+-- is required, restore those bodies from their previous migrations and drop the
+-- repair-cost constraint/column only before any production cost data exists.
 
 BEGIN;
 
@@ -7,7 +10,7 @@ ALTER TABLE public.yeu_cau_sua_chua
   ADD COLUMN IF NOT EXISTS chi_phi_sua_chua numeric(14,2) NULL;
 
 ALTER TABLE public.yeu_cau_sua_chua
-  ALTER COLUMN chi_phi_sua_chua SET DEFAULT 0;
+  ALTER COLUMN chi_phi_sua_chua DROP DEFAULT;
 
 DO $$
 BEGIN
@@ -319,6 +322,8 @@ DECLARE
   v_allowed bigint[];
   v_effective bigint[];
   v_result jsonb;
+  v_from_year integer := extract(year from p_date_from)::integer;
+  v_to_year integer := extract(year from p_date_to)::integer;
 BEGIN
   v_role := lower(coalesce(public._get_jwt_claim('app_role'), public._get_jwt_claim('role'), ''));
   v_user_id := nullif(public._get_jwt_claim('user_id'), '');
@@ -449,7 +454,7 @@ BEGIN
     FROM public.ke_hoach_bao_tri kh
     LEFT JOIN public.cong_viec_bao_tri cv ON kh.id = cv.ke_hoach_id
     WHERE (v_effective IS NULL OR kh.don_vi = ANY(v_effective))
-      AND kh.nam = extract(year from p_date_from)
+      AND kh.nam BETWEEN v_from_year AND v_to_year
       AND kh.trang_thai = 'Đã duyệt'
   ),
   maintenance_summary AS (
