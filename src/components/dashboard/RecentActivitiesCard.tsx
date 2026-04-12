@@ -8,6 +8,8 @@
 
 import React from "react"
 import { Activity } from "lucide-react"
+import { formatDistanceToNow, parseISO } from "date-fns"
+import { vi } from "date-fns/locale"
 
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -18,16 +20,14 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { useToast } from "@/hooks/use-toast"
 import { ChangeHistoryErrorState } from "@/components/change-history/ChangeHistoryErrorState"
 import { ChangeHistoryLoadingState } from "@/components/change-history/ChangeHistoryLoadingState"
 import { ChangeHistoryEmptyState } from "@/components/change-history/ChangeHistoryEmptyState"
+import { useToast } from "@/hooks/use-toast"
 import {
   useRecentActivities,
   type RecentActivity,
 } from "@/hooks/use-recent-activities"
-import { formatDistanceToNow, parseISO } from "date-fns"
-import { vi } from "date-fns/locale"
 
 /** Icon mapping for action types */
 const ACTION_ICONS: Record<string, string> = {
