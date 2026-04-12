@@ -86,7 +86,6 @@ export function MaintenancePageClient() {
   const {
     data: facilities = [],
     isLoading: isLoadingFacilities,
-    error: facilitiesError,
   } = useQuery<Array<{ id: number; name: string }>>({
     queryKey: ["maintenance", "facilities", ctx.user?.role ?? null],
     queryFn: async () => {
@@ -104,12 +103,6 @@ export function MaintenancePageClient() {
     staleTime: 5 * 60 * 1000,
     gcTime: 15 * 60 * 1000,
   })
-
-  React.useEffect(() => {
-    if (facilitiesError) {
-      console.error("[Maintenance] Failed to fetch facilities:", facilitiesError)
-    }
-  }, [facilitiesError])
 
   const activeMobileFilterCount = React.useMemo(() => {
     let count = 0
