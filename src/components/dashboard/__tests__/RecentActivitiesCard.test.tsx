@@ -4,7 +4,7 @@
  * @module components/dashboard/__tests__/RecentActivitiesCard.test
  */
 import React from "react"
-import { render, screen, waitFor } from "@testing-library/react"
+import { act, render, screen, waitFor } from "@testing-library/react"
 import { describe, expect, it, vi, beforeEach } from "vitest"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 
@@ -54,6 +54,14 @@ function createWrapper() {
   }
 }
 
+function createQueryClient() {
+  return new QueryClient({
+    defaultOptions: {
+      queries: { retry: false, gcTime: 0 },
+    },
+  })
+}
+
 const sampleActivities: RecentActivity[] = [
   {
     activity_id: 101,
@@ -74,6 +82,26 @@ const sampleActivities: RecentActivity[] = [
     actor_name: "Trần Văn B",
     facility_name: null,
     occurred_at: new Date(Date.now() - 60 * 60_000).toISOString(),
+  },
+  {
+    activity_id: 103,
+    action_type: "maintenance_plan_create",
+    action_label: "Tạo kế hoạch bảo trì",
+    entity_type: "maintenance_plan",
+    entity_label: "KHBT-20260410-003",
+    actor_name: "Lê Văn C",
+    facility_name: "Bệnh viện Quận 3",
+    occurred_at: new Date(Date.now() - 2 * 60 * 60_000).toISOString(),
+  },
+  {
+    activity_id: 104,
+    action_type: "mystery_action",
+    action_label: "Hành động lạ",
+    entity_type: null,
+    entity_label: "UNK-01",
+    actor_name: "System",
+    facility_name: null,
+    occurred_at: new Date(Date.now() - 3 * 60 * 60_000).toISOString(),
   },
 ]
 
@@ -123,6 +151,96 @@ describe("RecentActivitiesCard", () => {
     // Actor names
     expect(screen.getByText("Nguyễn Văn A")).toBeInTheDocument()
     expect(screen.getByText("Trần Văn B")).toBeInTheDocument()
+  })
+
+  it("renders only category chips that have data", async () => {
+    mockCallRpc.mockResolvedValue(sampleActivities)
+    render(<RecentActivitiesCard />, { wrapper: createWrapper() })
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "Tất cả" })).toBeInTheDocument()
+      expect(screen.getByRole("button", { name: "Sửa chữa" })).toBeInTheDocument()
+      expect(screen.getByRole("button", { name: "Luân chuyển" })).toBeInTheDocument()
+      expect(screen.getByRole("button", { name: "Bảo trì" })).toBeInTheDocument()
+      expect(screen.getByRole("button", { name: "Khác" })).toBeInTheDocument()
+    })
+
+    expect(
+      screen.queryByRole("button", { name: "Thiết bị" })
+    ).not.toBeInTheDocument()
+  })
+
+  it("filters timeline entries when a category chip is selected", async () => {
+    const user = (await import("@testing-library/user-event")).default.setup()
+
+    mockCallRpc.mockResolvedValue(sampleActivities)
+    render(<RecentActivitiesCard />, { wrapper: createWrapper() })
+
+    await waitFor(() => {
+      expect(screen.getByText(/Tạo yêu cầu sửa chữa/)).toBeInTheDocument()
+      expect(screen.getByText(/Hoàn thành luân chuyển/)).toBeInTheDocument()
+    })
+
+    await user.click(screen.getByRole("button", { name: "Sửa chữa" }))
+
+    expect(screen.getByText(/Tạo yêu cầu sửa chữa/)).toBeInTheDocument()
+    expect(
+      screen.queryByText(/Hoàn thành luân chuyển/)
+    ).not.toBeInTheDocument()
+    expect(
+      screen.queryByText(/Tạo kế hoạch bảo trì/)
+    ).not.toBeInTheDocument()
+  })
+
+  it("shows category badges and falls back unknown actions to Khác", async () => {
+    mockCallRpc.mockResolvedValue(sampleActivities)
+    render(<RecentActivitiesCard />, { wrapper: createWrapper() })
+
+    await waitFor(() => {
+      expect(screen.getAllByText("Sửa chữa").length).toBeGreaterThanOrEqual(1)
+      expect(screen.getAllByText("Luân chuyển").length).toBeGreaterThanOrEqual(1)
+      expect(screen.getAllByText("Bảo trì").length).toBeGreaterThanOrEqual(1)
+      expect(screen.getAllByText("Khác").length).toBeGreaterThanOrEqual(1)
+    })
+  })
+
+  it("falls back to all activities immediately when the selected category disappears", async () => {
+    const user = (await import("@testing-library/user-event")).default.setup()
+    const queryClient = createQueryClient()
+    const wrapper = ({ children }: { children: React.ReactNode }) => (
+      <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+    )
+
+    mockCallRpc.mockResolvedValue(sampleActivities)
+    render(<RecentActivitiesCard />, { wrapper })
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "Sửa chữa" })).toBeInTheDocument()
+    })
+
+    await user.click(screen.getByRole("button", { name: "Sửa chữa" }))
+
+    expect(screen.getByText(/Tạo yêu cầu sửa chữa/)).toBeInTheDocument()
+    expect(
+      screen.queryByText(/Hoàn thành luân chuyển/)
+    ).not.toBeInTheDocument()
+
+    act(() => {
+      queryClient.setQueryData(
+        ["dashboard-recent-activities", "anonymous", 15],
+        [sampleActivities[1], sampleActivities[2], sampleActivities[3]],
+      )
+    })
+
+    await waitFor(() => {
+      expect(screen.getByText(/Hoàn thành luân chuyển/)).toBeInTheDocument()
+      expect(screen.getByText(/Tạo kế hoạch bảo trì/)).toBeInTheDocument()
+      expect(screen.getByText(/Hành động lạ/)).toBeInTheDocument()
+    })
+
+    expect(
+      screen.queryByText(/Tạo yêu cầu sửa chữa/)
+    ).not.toBeInTheDocument()
   })
 
   it("renders entity labels in detail rows", async () => {
