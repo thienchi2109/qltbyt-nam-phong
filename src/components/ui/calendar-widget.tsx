@@ -16,9 +16,12 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { useCalendarData, type CalendarEvent, type CalendarStats } from "@/hooks/use-calendar-data"
 import type { TaskType } from "@/lib/data"
 
-import { CalendarWidgetGrid } from "./calendar-widget/CalendarWidgetGrid"
-import { CalendarWidgetHeader, CalendarWidgetMonthControls } from "./calendar-widget/CalendarWidgetHeader"
-import { CalendarWidgetStats } from "./calendar-widget/CalendarWidgetStats"
+import { CalendarWidgetGrid } from "@/components/ui/calendar-widget/CalendarWidgetGrid"
+import {
+  CalendarWidgetHeader,
+  CalendarWidgetMonthControls,
+} from "@/components/ui/calendar-widget/CalendarWidgetHeader"
+import { CalendarWidgetStats } from "@/components/ui/calendar-widget/CalendarWidgetStats"
 import {
   CalendarGridSkeleton,
   CalendarSkeleton,
@@ -26,7 +29,7 @@ import {
   EMPTY_CALENDAR_STATS,
   type CalendarWidgetImplProps,
   type CalendarWidgetProps,
-} from "./calendar-widget/CalendarWidgetShared"
+} from "@/components/ui/calendar-widget/CalendarWidgetShared"
 
 let initialClientCalendarDate: Date | null = null
 const EMPTY_SUBSCRIBE = () => () => {}
@@ -160,7 +163,7 @@ function CalendarWidgetImpl({
 
         {isLoading ? (
           <CalendarGridSkeleton />
-        ) : error ? (
+        ) : error && !data ? (
           <CalendarWidgetErrorState />
         ) : (
           <CalendarWidgetGrid

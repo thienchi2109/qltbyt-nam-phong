@@ -123,7 +123,7 @@ export function CalendarGridSkeleton() {
   )
 }
 
-export function CalendarWidgetErrorState() {
+export function CalendarWidgetErrorState(): React.JSX.Element {
   return (
     <div
       role="alert"

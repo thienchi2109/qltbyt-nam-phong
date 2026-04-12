@@ -112,6 +112,48 @@ describe("CalendarWidget", () => {
     expect(mockToast).not.toHaveBeenCalled()
   })
 
+  it("keeps rendering cached events when a background refetch fails", async () => {
+    mockUseCalendarData.mockReturnValue({
+      data: {
+        departments: ["Khoa A"],
+        events: [
+          {
+            id: 1,
+            title: "Bảo trì máy siêu âm",
+            type: "Bảo trì",
+            date: new Date("2026-04-11T00:00:00.000Z"),
+            equipmentCode: "TB-001",
+            equipmentName: "Máy siêu âm",
+            department: "Khoa A",
+            isCompleted: false,
+            planName: "Kế hoạch 1",
+            planId: 10,
+            taskId: 100,
+          },
+        ],
+        stats: {
+          total: 1,
+          completed: 0,
+          pending: 1,
+          byType: {
+            "Bảo trì": 1,
+          },
+        },
+      },
+      error: new Error("Background refetch failed"),
+      isLoading: false,
+    })
+
+    render(<CalendarWidget />)
+
+    await waitFor(() => {
+      expect(screen.getAllByText("Bảo trì máy siêu âm").length).toBeGreaterThan(0)
+    })
+
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument()
+    expect(mockToast).not.toHaveBeenCalled()
+  })
+
   it("handles swipe gestures even when the touch starts at clientX 0", async () => {
     mockUseCalendarData.mockReturnValue({
       data: {
