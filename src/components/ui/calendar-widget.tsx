@@ -14,7 +14,6 @@ import {
 
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { useCalendarData, type CalendarEvent, type CalendarStats } from "@/hooks/use-calendar-data"
-import { useToast } from "@/hooks/use-toast"
 import type { TaskType } from "@/lib/data"
 
 import { CalendarWidgetGrid } from "./calendar-widget/CalendarWidgetGrid"
@@ -23,6 +22,7 @@ import { CalendarWidgetStats } from "./calendar-widget/CalendarWidgetStats"
 import {
   CalendarGridSkeleton,
   CalendarSkeleton,
+  CalendarWidgetErrorState,
   EMPTY_CALENDAR_STATS,
   type CalendarWidgetImplProps,
   type CalendarWidgetProps,
@@ -103,7 +103,6 @@ function CalendarWidgetImpl({
   onToday,
 }: CalendarWidgetImplProps) {
   const [selectedDepartment, setSelectedDepartment] = React.useState("all")
-  const { toast } = useToast()
 
   const monthStart = startOfMonth(currentDate)
   const monthEnd = endOfMonth(currentDate)
@@ -117,16 +116,6 @@ function CalendarWidgetImpl({
 
   const events = data?.events ?? []
   const departments = data?.departments ?? []
-
-  React.useEffect(() => {
-    if (error) {
-      toast({
-        variant: "destructive",
-        title: "Lỗi tải dữ liệu",
-        description: error.message || "Không thể tải lịch bảo trì.",
-      })
-    }
-  }, [error, toast])
 
   const filteredEvents = React.useMemo(() => {
     if (selectedDepartment === "all") {
@@ -171,6 +160,8 @@ function CalendarWidgetImpl({
 
         {isLoading ? (
           <CalendarGridSkeleton />
+        ) : error ? (
+          <CalendarWidgetErrorState />
         ) : (
           <CalendarWidgetGrid
             calendarDays={calendarDays}

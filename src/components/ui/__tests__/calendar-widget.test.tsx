@@ -98,7 +98,7 @@ describe("CalendarWidget", () => {
     expect(screen.getAllByText("Đã hoàn thành").length).toBeGreaterThan(0)
   })
 
-  it("shows a destructive toast when data loading fails", async () => {
+  it("shows an inline alert instead of a toast when data loading fails", async () => {
     mockUseCalendarData.mockReturnValue({
       data: undefined,
       error: new Error("RPC failed"),
@@ -107,15 +107,9 @@ describe("CalendarWidget", () => {
 
     render(<CalendarWidget />)
 
-    await waitFor(() => {
-      expect(mockToast).toHaveBeenCalledWith(
-        expect.objectContaining({
-          variant: "destructive",
-          title: "Lỗi tải dữ liệu",
-          description: "RPC failed",
-        })
-      )
-    })
+    expect(await screen.findByRole("alert")).toHaveTextContent("Không thể tải lịch bảo trì")
+    expect(screen.getByText("Vui lòng thử lại sau.")).toBeInTheDocument()
+    expect(mockToast).not.toHaveBeenCalled()
   })
 
   it("handles swipe gestures even when the touch starts at clientX 0", async () => {
