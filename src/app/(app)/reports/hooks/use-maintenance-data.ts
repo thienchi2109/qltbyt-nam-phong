@@ -36,6 +36,10 @@ interface MaintenanceReportData {
     repairCompletionRate: number
     totalMaintenancePlanned: number
     maintenanceCompletionRate: number
+    totalRepairCost: number
+    averageCompletedRepairCost: number
+    costRecordedCount: number
+    costMissingCount: number
   }
   charts: {
     repairStatusDistribution: Array<{
@@ -57,7 +61,7 @@ interface MaintenanceReportData {
 // Query keys for maintenance reports caching
 export const maintenanceReportKeys = {
   all: ['maintenance-reports'] as const,
-  data: (filters: Record<string, any>) => [...maintenanceReportKeys.all, { filters }] as const,
+  data: (filters: Record<string, unknown>) => [...maintenanceReportKeys.all, { filters }] as const,
 }
 
 // Default date range is the current year
@@ -97,6 +101,10 @@ export function useMaintenanceReportData(
           repairCompletionRate: 0,
           totalMaintenancePlanned: 0,
           maintenanceCompletionRate: 0,
+          totalRepairCost: 0,
+          averageCompletedRepairCost: 0,
+          costRecordedCount: 0,
+          costMissingCount: 0,
         },
         charts: {
           repairStatusDistribution: [],

@@ -22,6 +22,7 @@ export type RepairRequestWithEquipment = {
   ngay_hoan_thanh: string | null
   nguoi_duyet: string | null
   nguoi_xac_nhan: string | null
+  chi_phi_sua_chua: number | null
   don_vi_thuc_hien: RepairUnit | null
   ten_don_vi_thue: string | null
   ket_qua_sua_chua: string | null

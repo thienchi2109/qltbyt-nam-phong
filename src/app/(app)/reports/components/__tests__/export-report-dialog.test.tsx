@@ -248,4 +248,63 @@ describe('ExportReportDialog', () => {
       },
     ])
   })
+
+  it('adds repair cost summary rows to the maintenance export sheet without removing existing rows', async () => {
+    mockCreateMultiSheetExcel.mockResolvedValueOnce(undefined)
+
+    render(
+      <ExportReportDialog
+        open
+        onOpenChange={vi.fn()}
+        data={[]}
+        summary={{
+          totalImported: 0,
+          totalExported: 0,
+          currentStock: 0,
+          netChange: 0,
+        }}
+        dateRange={{
+          from: new Date('2026-01-01T00:00:00.000Z'),
+          to: new Date('2026-01-31T00:00:00.000Z'),
+        }}
+        department="all"
+        maintenanceStats={{
+          repair_summary: {
+            total_requests: 5,
+            completed: 3,
+            pending: 1,
+            in_progress: 1,
+            total_cost: 3500000,
+            average_completed_cost: 1750000,
+            cost_recorded_count: 2,
+            cost_missing_count: 1,
+          },
+          maintenance_summary: {
+            total_plans: 2,
+            total_tasks: 10,
+            completed_tasks: 6,
+          },
+        }}
+      />
+    )
+
+    fireEvent.click(await screen.findByRole('button', { name: /xuất excel/i }))
+
+    await waitFor(() => {
+      expect(mockCreateMultiSheetExcel).toHaveBeenCalled()
+    })
+
+    const [sheets] = mockCreateMultiSheetExcel.mock.calls[0] as [Array<{ name: string; data: Array<Record<string, unknown>> }>, string]
+    const maintenanceSheet = sheets.find((sheet) => sheet.name === 'Sửa chữa - Tổng quan')
+
+    expect(maintenanceSheet?.data).toEqual(
+      expect.arrayContaining([
+        { 'Chỉ số': 'Tổng YC sửa chữa', 'Giá trị': 5 },
+        { 'Chỉ số': 'Tổng chi phí sửa chữa', 'Giá trị': 3500000 },
+        { 'Chỉ số': 'Chi phí TB ca hoàn thành', 'Giá trị': 1750000 },
+        { 'Chỉ số': 'Có ghi nhận chi phí', 'Giá trị': 2 },
+        { 'Chỉ số': 'Thiếu chi phí', 'Giá trị': 1 },
+      ])
+    )
+  })
 })

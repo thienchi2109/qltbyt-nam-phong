@@ -7,6 +7,10 @@ export interface MaintenanceStats {
     completed: number
     pending: number
     in_progress: number
+    total_cost: number
+    average_completed_cost: number
+    cost_recorded_count: number
+    cost_missing_count: number
   }
   maintenance_summary: {
     total_plans: number
@@ -45,7 +49,16 @@ export function useMaintenanceStats(
       } catch (e) {
         // Graceful fallback to zeros to keep UI/export stable if RPC fails
         return {
-          repair_summary: { total_requests: 0, completed: 0, pending: 0, in_progress: 0 },
+          repair_summary: {
+            total_requests: 0,
+            completed: 0,
+            pending: 0,
+            in_progress: 0,
+            total_cost: 0,
+            average_completed_cost: 0,
+            cost_recorded_count: 0,
+            cost_missing_count: 0,
+          },
           maintenance_summary: { total_plans: 0, total_tasks: 0, completed_tasks: 0 },
         }
       }
