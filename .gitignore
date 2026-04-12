@@ -81,6 +81,7 @@ supabase/logs/
 
 # Local IDE/Agent directories
 .claude/
+.serena/
 .factory/
 .github/*
 !.github/copilot-instructions.md
