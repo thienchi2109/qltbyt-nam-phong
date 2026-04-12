@@ -1,4 +1,5 @@
 const REPAIR_COST_ERROR_MESSAGE = "Chi phí sửa chữa không hợp lệ"
+const THOUSANDS_GROUPED_PATTERN = /^[0-9]{1,3}([.\s])[0-9]{3}(?:\1[0-9]{3})*$/
 
 function isAsciiDigits(value: string) {
   return /^[0-9]+$/.test(value)
@@ -9,6 +10,10 @@ function normalizeRepairCostRawValue(input: string) {
 
   if (!trimmed) {
     return ""
+  }
+
+  if (!isAsciiDigits(trimmed) && !THOUSANDS_GROUPED_PATTERN.test(trimmed)) {
+    throw new Error(REPAIR_COST_ERROR_MESSAGE)
   }
 
   const normalized = trimmed.replace(/[.\s]/g, "")

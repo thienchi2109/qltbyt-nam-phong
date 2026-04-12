@@ -188,12 +188,14 @@ export function RepairRequestsDetailContent({ request }: RepairRequestsDetailCon
             </div>
           )}
 
-          <div className="space-y-2">
-            <Label className="text-sm font-medium text-muted-foreground">Tổng chi phí sửa chữa</Label>
-            <div className="text-sm">
-              {formatRepairCostDisplay(request.chi_phi_sua_chua)}
+          {request.trang_thai === 'Hoàn thành' && (
+            <div className="space-y-2">
+              <Label className="text-sm font-medium text-muted-foreground">Tổng chi phí sửa chữa</Label>
+              <div className="text-sm">
+                {formatRepairCostDisplay(request.chi_phi_sua_chua)}
+              </div>
             </div>
-          </div>
+          )}
 
           {request.ly_do_khong_hoan_thanh && (
             <div className="space-y-2">

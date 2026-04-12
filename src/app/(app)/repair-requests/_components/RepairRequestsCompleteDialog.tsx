@@ -19,6 +19,8 @@ import { Loader2 } from "lucide-react"
 import { formatRepairCostInput, parseRepairCostInput } from "../repairRequestCost"
 import { useRepairRequestsContext } from "../_hooks/useRepairRequestsContext"
 
+const MAX_REPAIR_COST_INPUT_LENGTH = new Intl.NumberFormat("vi-VN").format(Number.MAX_SAFE_INTEGER).length
+
 interface CompleteDialogFormProps {
   requestId: number
   completionType: "Hoàn thành" | "Không HT"
@@ -49,7 +51,18 @@ function CompleteDialogForm({
       return
     }
 
-    setRepairCostInput(formatRepairCostInput(Number(digitsOnly)))
+    try {
+      const parsedValue = parseRepairCostInput(digitsOnly)
+
+      if (parsedValue === null) {
+        setRepairCostInput("")
+        return
+      }
+
+      setRepairCostInput(formatRepairCostInput(parsedValue))
+    } catch {
+      return
+    }
   }
 
   const handleConfirm = () => {
@@ -91,6 +104,7 @@ function CompleteDialogForm({
                 inputMode="numeric"
                 autoComplete="off"
                 disabled={isPending}
+                maxLength={MAX_REPAIR_COST_INPUT_LENGTH}
               />
               <p className="text-xs text-muted-foreground">
                 Khuyến nghị nhập tổng chi phí để phục vụ thống kê và phân tích.

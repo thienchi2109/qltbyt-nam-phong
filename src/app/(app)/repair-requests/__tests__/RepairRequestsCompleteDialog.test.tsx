@@ -1,5 +1,5 @@
 import * as React from "react"
-import { render, screen } from "@testing-library/react"
+import { fireEvent, render, screen } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { describe, expect, it, vi } from "vitest"
 
@@ -154,6 +154,19 @@ describe("RepairRequestsCompleteDialog", () => {
       }),
       expect.any(Object)
     )
+  })
+
+  it("ignores oversized repair-cost input instead of crashing the dialog", async () => {
+    setupContext()
+
+    render(<RepairRequestsCompleteDialog />)
+
+    const costInput = screen.getByLabelText("Tổng chi phí sửa chữa")
+
+    expect(() => {
+      fireEvent.change(costInput, { target: { value: "99999999999999999" } })
+    }).not.toThrow()
+    expect(costInput).toHaveValue("")
   })
 
   it("hides the repair cost field for Không HT", () => {

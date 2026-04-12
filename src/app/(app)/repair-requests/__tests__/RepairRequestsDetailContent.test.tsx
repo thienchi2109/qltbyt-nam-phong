@@ -67,4 +67,21 @@ describe("RepairRequestsDetailContent", () => {
     expect(screen.getByText("Tổng chi phí sửa chữa")).toBeInTheDocument()
     expect(screen.getByText("Chưa ghi nhận")).toBeInTheDocument()
   })
+
+  it("hides the repair cost row for không hoàn thành requests", () => {
+    render(
+      <RepairRequestsDetailContent
+        request={{
+          ...baseRequest,
+          trang_thai: "Không HT",
+          ket_qua_sua_chua: null,
+          ly_do_khong_hoan_thanh: "Không tìm được linh kiện thay thế",
+          chi_phi_sua_chua: 500000,
+        } as RepairRequestWithEquipment}
+      />
+    )
+
+    expect(screen.queryByText("Tổng chi phí sửa chữa")).not.toBeInTheDocument()
+    expect(screen.getByText("Lý do không hoàn thành")).toBeInTheDocument()
+  })
 })

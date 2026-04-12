@@ -27,6 +27,11 @@ describe("repairRequestCost", () => {
     expect(() => parseRepairCostInput("abc")).toThrow("Chi phí sửa chữa không hợp lệ")
   })
 
+  it("rejects malformed thousands separators", () => {
+    expect(() => parseRepairCostInput("1.23")).toThrow("Chi phí sửa chữa không hợp lệ")
+    expect(() => parseRepairCostInput("1234.567")).toThrow("Chi phí sửa chữa không hợp lệ")
+  })
+
   it('formats 1234567 for input display as "1.234.567"', () => {
     expect(formatRepairCostInput(1234567)).toBe("1.234.567")
   })
