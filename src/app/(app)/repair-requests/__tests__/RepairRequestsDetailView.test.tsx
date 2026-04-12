@@ -121,6 +121,7 @@ const mockRequest: RepairRequestWithEquipment = {
   ngay_hoan_thanh: null,
   nguoi_duyet: null,
   nguoi_xac_nhan: null,
+  chi_phi_sua_chua: null,
   don_vi_thuc_hien: "noi_bo",
   ten_don_vi_thue: null,
   ket_qua_sua_chua: null,

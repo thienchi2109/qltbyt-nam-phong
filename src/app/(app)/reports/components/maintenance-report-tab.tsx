@@ -69,6 +69,10 @@ export function MaintenanceReportTab({
     repairCompletionRate: parseNumericValue(summary?.repairCompletionRate),
     totalMaintenancePlanned: parseNumericValue(summary?.totalMaintenancePlanned),
     maintenanceCompletionRate: parseNumericValue(summary?.maintenanceCompletionRate),
+    totalRepairCost: parseNumericValue(summary?.totalRepairCost),
+    averageCompletedRepairCost: parseNumericValue(summary?.averageCompletedRepairCost),
+    costRecordedCount: parseNumericValue(summary?.costRecordedCount),
+    costMissingCount: parseNumericValue(summary?.costMissingCount),
   }), [summary])
 
   const maintenancePlanData = React.useMemo(() => {
@@ -204,6 +208,65 @@ export function MaintenanceReportTab({
           <CardContent>
             {isLoading ? <Skeleton className="h-8 w-16" /> : <div className="text-2xl font-bold">{normalizedSummary.maintenanceCompletionRate.toFixed(1)}%</div>}
             <p className="text-xs text-muted-foreground">So với kế hoạch</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Tổng chi phí sửa chữa</CardTitle>
+            <Wrench className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            {isLoading ? (
+              <Skeleton className="h-8 w-16" />
+            ) : (
+              <div className="text-2xl font-bold">{numberFormatter.format(normalizedSummary.totalRepairCost)} đ</div>
+            )}
+            <p className="text-xs text-muted-foreground">Tổng chi phí sửa chữa trong kỳ</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Chi phí TB ca hoàn thành</CardTitle>
+            <CheckCircle className="h-4 w-4 text-green-500" />
+          </CardHeader>
+          <CardContent>
+            {isLoading ? (
+              <Skeleton className="h-8 w-16" />
+            ) : (
+              <div className="text-2xl font-bold">{numberFormatter.format(normalizedSummary.averageCompletedRepairCost)} đ</div>
+            )}
+            <p className="text-xs text-muted-foreground">Trung bình trên các ca có ghi nhận chi phí</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Có ghi nhận chi phí</CardTitle>
+            <CheckCircle className="h-4 w-4 text-emerald-500" />
+          </CardHeader>
+          <CardContent>
+            {isLoading ? (
+              <Skeleton className="h-8 w-16" />
+            ) : (
+              <div className="text-2xl font-bold">{numberFormatter.format(normalizedSummary.costRecordedCount)}</div>
+            )}
+            <p className="text-xs text-muted-foreground">{numberFormatter.format(normalizedSummary.costRecordedCount)} ca hoàn thành đã ghi nhận</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Thiếu chi phí</CardTitle>
+            <Clock className="h-4 w-4 text-amber-500" />
+          </CardHeader>
+          <CardContent>
+            {isLoading ? (
+              <Skeleton className="h-8 w-16" />
+            ) : (
+              <div className="text-2xl font-bold">{numberFormatter.format(normalizedSummary.costMissingCount)}</div>
+            )}
+            <p className="text-xs text-muted-foreground">{numberFormatter.format(normalizedSummary.costMissingCount)} ca hoàn thành chưa ghi nhận</p>
           </CardContent>
         </Card>
       </div>

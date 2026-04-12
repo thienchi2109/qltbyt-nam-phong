@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge"
 import { Label } from "@/components/ui/label"
 import { format, parseISO } from "date-fns"
 import { vi } from 'date-fns/locale'
+import { formatRepairCostDisplay } from "../repairRequestCost"
 import type { RepairRequestWithEquipment } from "../types"
 import { getStatusVariant } from "../utils"
 import { RepairRequestsProcessStepper } from "./RepairRequestsProcessStepper"
@@ -186,6 +187,13 @@ export function RepairRequestsDetailContent({ request }: RepairRequestsDetailCon
               </div>
             </div>
           )}
+
+          <div className="space-y-2">
+            <Label className="text-sm font-medium text-muted-foreground">Tổng chi phí sửa chữa</Label>
+            <div className="text-sm">
+              {formatRepairCostDisplay(request.chi_phi_sua_chua)}
+            </div>
+          </div>
 
           {request.ly_do_khong_hoan_thanh && (
             <div className="space-y-2">

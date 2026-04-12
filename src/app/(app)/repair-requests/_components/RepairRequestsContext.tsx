@@ -214,6 +214,7 @@ function useCompleteMutation(
       id: number
       completion: string | null
       reason: string | null
+      repairCost: number | null
     }) => {
       return callRpc({
         fn: 'repair_request_complete',
@@ -221,6 +222,7 @@ function useCompleteMutation(
           p_id: data.id,
           p_completion: data.completion,
           p_reason: data.reason,
+          p_chi_phi_sua_chua: data.repairCost,
         }
       })
     },
