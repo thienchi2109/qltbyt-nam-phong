@@ -16,12 +16,14 @@ import { useToast } from "@/hooks/use-toast"
 import { callRpc } from "@/lib/rpc-client"
 import { isRegionalLeaderRole } from "@/lib/rbac"
 import { useSession } from "next-auth/react"
-import { useSearchDebounce } from "@/hooks/use-debounce"
+import {
+  useTransferDepartments,
+  useTransferEquipmentSearch,
+} from "@/components/transfer-dialog.data"
 import {
   buildCreateTransferPayload,
   createEmptyTransferDialogFormData,
   getTransferDialogErrorMessage,
-  mapEquipmentSearchResults,
   normalizeSessionUserId,
   type TransferEquipmentOption,
 } from "@/components/transfer-dialog.shared"
@@ -32,10 +34,6 @@ import {
   TransferReasonField,
   TransferTypeField,
 } from "@/components/transfer-dialog.form-sections"
-
-type EquipmentListEnhancedResponse = {
-  data?: unknown[] | null
-}
 
 interface AddTransferDialogProps {
   open: boolean
@@ -49,12 +47,8 @@ export function AddTransferDialog({ open, onOpenChange, onSuccess }: AddTransfer
   const currentUserId = normalizeSessionUserId(session?.user)
   const isRegionalLeader = isRegionalLeaderRole(session?.user?.role)
   const [isLoading, setIsLoading] = React.useState(false)
-  const [equipmentResults, setEquipmentResults] = React.useState<TransferEquipmentOption[]>([])
-  const [isEquipmentLoading, setIsEquipmentLoading] = React.useState(false)
   const [searchTerm, setSearchTerm] = React.useState("")
-  const debouncedSearch = useSearchDebounce(searchTerm)
   const [selectedEquipment, setSelectedEquipment] = React.useState<TransferEquipmentOption | null>(null)
-  const [departments, setDepartments] = React.useState<string[]>([])
   const [formData, setFormData] = React.useState(createEmptyTransferDialogFormData)
 
   const resetForm = React.useCallback(() => {
@@ -66,101 +60,30 @@ export function AddTransferDialog({ open, onOpenChange, onSuccess }: AddTransfer
   React.useEffect(() => {
     if (!open) {
       resetForm()
-      setEquipmentResults([])
       return
     }
+  }, [open, resetForm])
 
-    if (departments.length === 0) {
-      (async () => {
-        try {
-          const deps = await callRpc<{ name: string }[]>({ fn: "departments_list", args: {} })
-          setDepartments((deps || []).map((department) => department.name).filter(Boolean))
-        } catch (error: unknown) {
-          toast({
-            variant: "destructive",
-            title: "Lỗi tải danh sách khoa phòng",
-            description: getTransferDialogErrorMessage(
-              error,
-              "Không thể tải danh sách khoa phòng.",
-            ),
-          })
-        }
-      })()
-    }
-  }, [open, departments.length, resetForm, toast])
-
-  const trimmedDebouncedSearch = (debouncedSearch ?? "").trim()
+  const { departments, isLoadingDepartments } = useTransferDepartments({ open })
   const selectedValueLabel = selectedEquipment
     ? `${selectedEquipment.ten_thiet_bi} (${selectedEquipment.ma_thiet_bi})`
     : ""
-
-  React.useEffect(() => {
-    if (!open) {
-      return
-    }
-
-    if (trimmedDebouncedSearch.length < 2) {
-      setEquipmentResults([])
-      setIsEquipmentLoading(false)
-      return
-    }
-
-    let isMounted = true
-    const controller = new AbortController()
-
-    setIsEquipmentLoading(true)
-    setEquipmentResults([])
-
-    ;(async () => {
-      try {
-        const result = await callRpc<EquipmentListEnhancedResponse>({
-          fn: "equipment_list_enhanced",
-          args: {
-            p_q: trimmedDebouncedSearch,
-            p_sort: "ten_thiet_bi.asc",
-            p_page: 1,
-            p_page_size: 20,
-          },
-          signal: controller.signal,
-        })
-
-        if (!isMounted) {
-          return
-        }
-
-        const rows = Array.isArray(result?.data) ? result.data : []
-        setEquipmentResults(mapEquipmentSearchResults(rows))
-      } catch (error: unknown) {
-        if (!isMounted) {
-          return
-        }
-        if (error instanceof DOMException && error.name === "AbortError") {
-          return
-        }
-
-        toast({
-          variant: "destructive",
-          title: "Lỗi tìm kiếm thiết bị",
-          description: getTransferDialogErrorMessage(
-            error,
-            "Không thể tải danh sách thiết bị.",
-          ),
-        })
-      } finally {
-        if (isMounted) {
-          setIsEquipmentLoading(false)
-        }
-      }
-    })()
-
-    return () => {
-      isMounted = false
-      controller.abort()
-    }
-  }, [open, trimmedDebouncedSearch, toast])
+  const isSelectedValueActive = Boolean(
+    selectedEquipment && searchTerm.trim() === selectedValueLabel,
+  )
+  const {
+    equipmentResults,
+    isEquipmentLoading,
+    trimmedSearch,
+  } = useTransferEquipmentSearch({
+    open,
+    canSearch: true,
+    searchTerm,
+    skipSearch: isSelectedValueActive,
+  })
 
   const filteredEquipment = React.useMemo(() => {
-    if (trimmedDebouncedSearch.length < 2) {
+    if (trimmedSearch.length < 2) {
       return [] as TransferEquipmentOption[]
     }
 
@@ -169,15 +92,14 @@ export function AddTransferDialog({ open, onOpenChange, onSuccess }: AddTransfer
     }
 
     return equipmentResults
-  }, [equipmentResults, trimmedDebouncedSearch, searchTerm, selectedEquipment, selectedValueLabel])
+  }, [equipmentResults, trimmedSearch, searchTerm, selectedEquipment, selectedValueLabel])
 
-  const isSelectedValueActive = Boolean(selectedEquipment && searchTerm === selectedValueLabel)
   const showResultsDropdown =
-    trimmedDebouncedSearch.length >= 2 && !isEquipmentLoading && filteredEquipment.length > 0
+    trimmedSearch.length >= 2 && !isEquipmentLoading && filteredEquipment.length > 0
   const showNoResults =
-    trimmedDebouncedSearch.length >= 2 && !isEquipmentLoading && filteredEquipment.length === 0 && !isSelectedValueActive
+    trimmedSearch.length >= 2 && !isEquipmentLoading && filteredEquipment.length === 0 && !isSelectedValueActive
   const showMinCharsHint =
-    trimmedDebouncedSearch.length > 0 && trimmedDebouncedSearch.length < 2
+    trimmedSearch.length > 0 && trimmedSearch.length < 2
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchTerm(e.target.value)
@@ -288,7 +210,7 @@ export function AddTransferDialog({ open, onOpenChange, onSuccess }: AddTransfer
               disabled={isLoading}
               required
               searchTerm={searchTerm}
-              trimmedSearch={trimmedDebouncedSearch}
+              trimmedSearch={trimmedSearch}
               selectedEquipment={selectedEquipment}
               isEquipmentLoading={isEquipmentLoading}
               showResultsDropdown={showResultsDropdown}
@@ -315,7 +237,7 @@ export function AddTransferDialog({ open, onOpenChange, onSuccess }: AddTransfer
             {formData.loai_hinh === 'noi_bo' && (
               <TransferInternalSelectFields
                 departments={departments}
-                disabled={isLoading}
+                disabled={isLoading || isLoadingDepartments}
                 formData={formData}
                 setFormData={setFormData}
                 lockCurrentDepartment={Boolean(selectedEquipment)}
