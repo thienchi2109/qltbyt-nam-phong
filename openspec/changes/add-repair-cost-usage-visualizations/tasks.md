@@ -1,8 +1,8 @@
 ## 1. SQL / Data Contract
-- [ ] 1.1 Add failing SQL smoke coverage for top repair-cost sorting, valid usage-hour aggregation, invalid/open usage-log exclusion, cumulative-vs-range mode, sparse-data counts, tenant scoping, and usage-log seed equipment IDs that fit `nhat_ky_su_dung.thiet_bi_id integer`.
-- [ ] 1.2 Extend `get_maintenance_report_data(date,date,bigint)` to return `topEquipmentRepairCosts` sorted by completed repair cost descending.
-- [ ] 1.3 Extend the same RPC without changing its signature to return `charts.repairUsageCostCorrelation.period` and `charts.repairUsageCostCorrelation.cumulative`, each with `points` and `dataQuality`.
-- [ ] 1.4 Preserve JWT guards, `admin`/`global` handling, regional scope, `SECURITY DEFINER`, and `SET search_path = public, pg_temp`, using `tb.don_vi = ANY(v_effective)` for equipment tenant scoping and documenting the `nhat_ky_su_dung.thiet_bi_id` integer to `thiet_bi.id` bigint join.
+- [ ] 1.1 Add failing SQL smoke coverage for top repair-cost sorting, valid usage-hour aggregation, invalid/open usage-log exclusion, cumulative-vs-range mode, sparse-data counts, tenant scoping, live schema assumptions, and usage-log seed equipment IDs that fit `nhat_ky_su_dung.thiet_bi_id integer`.
+- [ ] 1.2 Extend the latest `get_maintenance_report_data(date,date,bigint)` body from live Supabase MCP / `20260412100000_add_repair_request_cost_statistics.sql` to return `topEquipmentRepairCosts` sorted by completed repair cost descending, preserving all existing payload keys and empty/default return payloads.
+- [ ] 1.3 Extend the same RPC without changing its signature to return `charts.repairUsageCostCorrelation.period` and `charts.repairUsageCostCorrelation.cumulative`, each with `points` and `dataQuality`, using explicit scoped-equipment, usage, period-cost, cumulative-cost, point, and quality CTEs.
+- [ ] 1.4 Preserve JWT guards, `admin`/`global` handling, regional scope, `SECURITY DEFINER`, `SET search_path = public, pg_temp`, `GRANT`/`REVOKE`, existing live ACL posture unless explicitly hardened, and `COMMENT ON FUNCTION`, using `tb.don_vi = ANY(v_effective)` for equipment tenant scoping and documenting the `nhat_ky_su_dung.thiet_bi_id` integer to `thiet_bi.id` bigint join without casting the indexed usage-log column.
 - [ ] 1.5 Run the focused SQL smoke test and confirm it passes.
 
 ## 2. TypeScript Contract
