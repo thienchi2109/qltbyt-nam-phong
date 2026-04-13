@@ -415,12 +415,9 @@ describe("Transfers KPI", () => {
     render(<TransfersPage />)
 
     expect(mocks.TransfersTableView).toHaveBeenCalled()
-    expect(mocks.TransfersTableView.mock.calls[0]?.[0]).not.toEqual(
-      expect.objectContaining({
-        sorting: expect.anything(),
-        onSortingChange: expect.any(Function),
-      }),
-    )
+    const tableProps = mocks.TransfersTableView.mock.calls[0]?.[0] as Record<string, unknown>
+    expect(tableProps).not.toHaveProperty("sorting")
+    expect(tableProps).not.toHaveProperty("onSortingChange")
   })
 
   it("propagates the selected date range into transfer list filters", () => {
@@ -432,8 +429,8 @@ describe("Transfers KPI", () => {
       statusFilter: [],
       setStatusFilter: vi.fn(),
       dateRange: {
-        from: new Date("2026-04-02T00:00:00.000Z"),
-        to: new Date("2026-04-05T00:00:00.000Z"),
+        from: new Date(2026, 3, 2),
+        to: new Date(2026, 3, 5),
       },
       setDateRange: vi.fn(),
       isFilterModalOpen: false,
