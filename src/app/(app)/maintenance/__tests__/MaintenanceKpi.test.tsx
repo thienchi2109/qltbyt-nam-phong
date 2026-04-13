@@ -187,11 +187,11 @@ function createMaintenanceContext() {
   }
 }
 
-function expectLastPlanRequest(request: MaintenancePlanRequest) {
+function expectLastPlanRequest(request: MaintenancePlanRequest): Promise<void> {
   return waitFor(() => expect(mocks.useMaintenancePlans).toHaveBeenLastCalledWith(request))
 }
 
-function expectPlanRequestMissing(request: MaintenancePlanRequest) {
+function expectPlanRequestMissing(request: MaintenancePlanRequest): void {
   expect(mocks.useMaintenancePlans).not.toHaveBeenCalledWith(request)
 }
 
@@ -271,6 +271,24 @@ describe("Maintenance KPI integration", () => {
     await expectLastPlanRequest({ search: undefined, facilityId: null, page: 3, pageSize: 50 })
 
     await user.click(screen.getByRole("button", { name: "set-search" }))
+
+    expectPlanRequestMissing({ search: "ngoai tim", facilityId: null, page: 3, pageSize: 50 })
+    await expectLastPlanRequest({ search: "ngoai tim", facilityId: null, page: 1, pageSize: 50 })
+  })
+
+  it("resets plan pagination when debounced search settles after page navigation", async () => {
+    let debouncedPlanSearch = ""
+    mocks.useSearchDebounce.mockImplementation(() => debouncedPlanSearch)
+
+    const user = userEvent.setup()
+    const { rerender } = render(<MaintenancePageClient />)
+
+    await user.click(screen.getByRole("button", { name: "set-search" }))
+    await user.click(screen.getByRole("button", { name: "set-page-3" }))
+    await expectLastPlanRequest({ search: undefined, facilityId: null, page: 3, pageSize: 50 })
+
+    debouncedPlanSearch = "ngoai tim"
+    rerender(<MaintenancePageClient />)
 
     expectPlanRequestMissing({ search: "ngoai tim", facilityId: null, page: 3, pageSize: 50 })
     await expectLastPlanRequest({ search: "ngoai tim", facilityId: null, page: 1, pageSize: 50 })

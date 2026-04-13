@@ -18,7 +18,6 @@ import { useMaintenancePlans } from "@/hooks/use-cached-maintenance"
 import { useMaintenancePlanCounts } from "@/hooks/useMaintenancePlanCounts"
 import type { FacilityOption } from "@/types/tenant"
 import { useFeatureFlag } from "@/lib/feature-flags"
-import { useSearchDebounce } from "@/hooks/use-debounce"
 
 import { useMaintenanceContext } from "../_hooks/useMaintenanceContext"
 import { useMaintenanceDeepLink } from "../_hooks/use-maintenance-deep-link"
@@ -39,6 +38,7 @@ export function MaintenancePageClient() {
 
   const {
     planSearchTerm,
+    debouncedPlanSearch,
     handlePlanSearchChange,
     handleClearSearch,
     selectedFacilityId,
@@ -54,7 +54,6 @@ export function MaintenancePageClient() {
     handleMobileFilterApply,
     handleMobileFilterClear,
   } = useMaintenancePlanListControls()
-  const debouncedPlanSearch = useSearchDebounce(planSearchTerm)
   const [expandedTaskIds, setExpandedTaskIds] = React.useState<Record<number, boolean>>({})
 
   const [planSorting, setPlanSorting] = React.useState<SortingState>([])
