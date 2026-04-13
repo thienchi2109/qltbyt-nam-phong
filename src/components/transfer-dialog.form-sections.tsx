@@ -17,6 +17,18 @@ import type { TransferDialogFormData } from "@/components/transfer-dialog.shared
 
 type SetFormData = React.Dispatch<React.SetStateAction<TransferDialogFormData>>
 
+function updateCurrentDepartmentFields(
+  previous: TransferDialogFormData,
+  currentDepartment: string,
+): TransferDialogFormData {
+  return {
+    ...previous,
+    khoa_phong_hien_tai: currentDepartment,
+    khoa_phong_nhan:
+      previous.khoa_phong_nhan === currentDepartment ? "" : previous.khoa_phong_nhan,
+  }
+}
+
 export function toLocalDateInputValue(date: Date): string {
   const year = date.getFullYear()
   const month = String(date.getMonth() + 1).padStart(2, "0")
@@ -93,7 +105,7 @@ export function TransferInternalSelectFields({
         <Select
           value={formData.khoa_phong_hien_tai}
           onValueChange={(value) =>
-            setFormData((previous) => ({ ...previous, khoa_phong_hien_tai: value }))
+            setFormData((previous) => updateCurrentDepartmentFields(previous, value))
           }
           disabled={lockCurrentDepartment || disabled}
         >
@@ -154,13 +166,13 @@ export function TransferInternalInputFields({
           id="current_dept"
           value={formData.khoa_phong_hien_tai}
           onChange={(event) =>
-            setFormData((previous) => ({
-              ...previous,
-              khoa_phong_hien_tai: event.target.value,
-            }))
+            setFormData((previous) =>
+              updateCurrentDepartmentFields(previous, event.target.value),
+            )
           }
           placeholder="Khoa/phòng hiện tại quản lý"
           disabled={disabled}
+          required
         />
       </div>
       <div className="grid gap-2">
