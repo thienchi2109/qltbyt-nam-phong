@@ -7,7 +7,7 @@ The system SHALL show the top equipment by completed repair cost in the maintena
 - **GIVEN** completed repair requests with recorded `chi_phi_sua_chua` values exist within the selected report date range
 - **WHEN** the user opens `/reports` and selects the `Bảo trì / Sửa chữa` tab
 - **THEN** the system shows the top 10 equipment sorted by total completed repair cost descending
-- **AND** each item exposes the equipment name, total repair cost, completed repair count, and cost-recorded count.
+- **AND** each item exposes the equipment name, equipment code, total repair cost, completed repair count, and cost-recorded count.
 
 #### Scenario: No recorded repair costs exist
 - **GIVEN** no completed repair request in the selected report date range has a non-null `chi_phi_sua_chua`
@@ -22,6 +22,7 @@ The system SHALL visualize the relationship between completed usage duration and
 - **WHEN** the user opens the maintenance repair report
 - **THEN** the system shows a correlation chart where usage duration is calculated from `nhat_ky_su_dung.thoi_gian_ket_thuc - nhat_ky_su_dung.thoi_gian_bat_dau`
 - **AND** the chart excludes open usage logs and usage logs whose end time is not greater than start time.
+- **AND** each plotted equipment point exposes the equipment name and equipment code.
 
 #### Scenario: Correlation data is insufficient
 - **GIVEN** fewer than three equipment have both positive completed usage duration and recorded completed repair cost in scope

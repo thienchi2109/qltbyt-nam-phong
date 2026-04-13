@@ -14,7 +14,7 @@
 
 **Files:**
 - Create: `supabase/tests/repair_cost_usage_visualizations_smoke.sql`
-- Create: `supabase/migrations/20260413143000_add_repair_cost_usage_visualizations.sql`
+- Create: `supabase/migrations/[timestamp]_add_repair_cost_usage_visualizations.sql`
 - Reference: `supabase/migrations/20260412100000_add_repair_request_cost_statistics.sql`
 - Reference: `openspec/changes/add-repair-cost-usage-visualizations/specs/repair-request-cost-statistics/spec.md`
 
@@ -26,6 +26,8 @@ Create `supabase/tests/repair_cost_usage_visualizations_smoke.sql`. Wrap it in `
 - One invalid usage log where end time is before start time.
 - One same-tenant completed repair with `chi_phi_sua_chua IS NULL`.
 - One other-tenant equipment with usage and cost that must not appear under the first tenant.
+
+When seeding `thiet_bi` rows for this test, keep equipment IDs inside the signed integer range because `nhat_ky_su_dung.thiet_bi_id` is `integer` while `thiet_bi.id` and `yeu_cau_sua_chua.thiet_bi_id` are `bigint`. Prefer normal sequence-generated IDs or explicit IDs no greater than `2147483647`.
 
 Assert:
 - `get_maintenance_report_data(...) -> 'topEquipmentRepairCosts'` exists and is sorted by `totalRepairCost DESC`.
@@ -75,7 +77,7 @@ If `SUPABASE_DB_URL` is not available, use Supabase MCP to execute the test SQL 
 
 - [ ] **Step 3: Add the migration**
 
-Create `supabase/migrations/20260413143000_add_repair_cost_usage_visualizations.sql` with `CREATE OR REPLACE FUNCTION public.get_maintenance_report_data(p_date_from date, p_date_to date, p_don_vi bigint DEFAULT NULL)`.
+Create `supabase/migrations/[timestamp]_add_repair_cost_usage_visualizations.sql` with the actual migration timestamp at creation time and `CREATE OR REPLACE FUNCTION public.get_maintenance_report_data(p_date_from date, p_date_to date, p_don_vi bigint DEFAULT NULL)`.
 
 Preserve from the existing RPC:
 - `LANGUAGE plpgsql`
@@ -85,6 +87,14 @@ Preserve from the existing RPC:
 - `admin` -> `global` handling
 - `allowed_don_vi_for_session_safe()` tenant scoping
 - Existing summary, charts, `topEquipmentRepairs`, and `recentRepairHistory` payloads
+
+Preserve equipment tenant scoping by using the actual tenant column:
+
+```sql
+tb.don_vi = ANY(v_effective)
+```
+
+Do not use `tb.don_vi_id`; that column does not exist on `thiet_bi`.
 
 Add these payloads:
 
@@ -123,6 +133,20 @@ sum(extract(epoch from (nk.thoi_gian_ket_thuc - nk.thoi_gian_bat_dau)) / 3600)
   )
 ```
 
+In those CTEs, join usage through equipment with an explicit cast or equivalent condition:
+
+```sql
+nk.thiet_bi_id::bigint = tb.id
+```
+
+Add a nearby SQL comment explaining that `nhat_ky_su_dung.thiet_bi_id` is `integer` while `thiet_bi.id` is `bigint`.
+
+Project equipment code explicitly in the new cost and correlation CTEs:
+
+```sql
+tb.ma_thiet_bi AS equipment_code
+```
+
 For period mode, restrict usage start date and repair reference date to `p_date_from..p_date_to`. For cumulative mode, restrict both to `<= p_date_to`.
 
 - [ ] **Step 4: Run SQL smoke test and verify GREEN**
@@ -144,7 +168,7 @@ Expected: no new advisor item attributable to `get_maintenance_report_data`. Exi
 - [ ] **Step 6: Commit SQL batch**
 
 ```bash
-git add supabase/migrations/20260413143000_add_repair_cost_usage_visualizations.sql supabase/tests/repair_cost_usage_visualizations_smoke.sql
+git add supabase/migrations/*_add_repair_cost_usage_visualizations.sql supabase/tests/repair_cost_usage_visualizations_smoke.sql
 git commit -m "feat: add repair cost usage report data"
 ```
 
@@ -231,6 +255,7 @@ git commit -m "feat: type repair cost usage report data"
 ## Chunk 3: UI Visualizations
 
 **Files:**
+- Modify: `src/lib/chart-utils.ts`
 - Modify: `src/components/dynamic-chart.tsx`
 - Modify: `src/app/(app)/reports/components/maintenance-report-tab.tsx`
 - Create: `src/app/(app)/reports/components/maintenance-report-cost-charts.tsx`
@@ -245,6 +270,8 @@ Add tests for:
 - Shows insufficient-data state when `equipmentWithBoth < 3`.
 - Switching cumulative mode changes the displayed dataset label/count while keeping top-cost ranking period-scoped.
 
+If the test file mocks `@/components/dynamic-chart`, extend the mock to include `DynamicScatterChart` alongside the existing `DynamicBarChart`, `DynamicLineChart`, and `DynamicPieChart` mocks.
+
 Run:
 
 ```bash
@@ -253,9 +280,13 @@ node scripts/npm-run.js run test:run -- src/app/'(app)'/reports/components/__tes
 
 Expected: FAIL because the UI components do not exist yet.
 
-- [ ] **Step 2: Add chart support only if missing**
+- [ ] **Step 2: Add chart support**
 
-Check whether `src/components/dynamic-chart.tsx` already exports a scatter chart wrapper. If not, add `DynamicScatterChart` using the existing `DynamicChart` loader and Recharts components.
+Update the dynamic chart loader stack for scatter support:
+- In `src/lib/chart-utils.ts`, add `ScatterChart`, `Scatter`, and `ZAxis` to the `RechartsComponents` type.
+- In `src/lib/chart-utils.ts`, return `ScatterChart`, `Scatter`, and `ZAxis` from `loadChartsLibrary()`.
+- In `src/components/dynamic-chart.tsx`, add `DynamicScatterChart` using the existing `DynamicChart` loader and Recharts components.
+- Keep this additive; `dynamic-chart.tsx` remains below the 450-line ceiling after one scatter wrapper. If more chart types are added later, extract chart wrappers into focused files first.
 
 Keep the prop surface minimal:
 
@@ -328,7 +359,7 @@ Expected: PASS.
 - [ ] **Step 7: Commit UI batch**
 
 ```bash
-git add src/components/dynamic-chart.tsx src/app/'(app)'/reports/components/maintenance-report-tab.tsx src/app/'(app)'/reports/components/maintenance-report-cost-charts.tsx src/app/'(app)'/reports/components/maintenance-report-formatters.ts src/app/'(app)'/reports/components/__tests__/maintenance-report-tab.test.tsx
+git add src/lib/chart-utils.ts src/components/dynamic-chart.tsx src/app/'(app)'/reports/components/maintenance-report-tab.tsx src/app/'(app)'/reports/components/maintenance-report-cost-charts.tsx src/app/'(app)'/reports/components/maintenance-report-formatters.ts src/app/'(app)'/reports/components/__tests__/maintenance-report-tab.test.tsx
 git commit -m "feat: show repair cost usage visualizations"
 ```
 

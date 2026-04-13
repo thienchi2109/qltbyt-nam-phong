@@ -1,8 +1,8 @@
 ## 1. SQL / Data Contract
-- [ ] 1.1 Add failing SQL smoke coverage for top repair-cost sorting, valid usage-hour aggregation, invalid/open usage-log exclusion, cumulative-vs-range mode, sparse-data counts, and tenant scoping.
+- [ ] 1.1 Add failing SQL smoke coverage for top repair-cost sorting, valid usage-hour aggregation, invalid/open usage-log exclusion, cumulative-vs-range mode, sparse-data counts, tenant scoping, and usage-log seed equipment IDs that fit `nhat_ky_su_dung.thiet_bi_id integer`.
 - [ ] 1.2 Extend `get_maintenance_report_data(date,date,bigint)` to return `topEquipmentRepairCosts` sorted by completed repair cost descending.
 - [ ] 1.3 Extend the same RPC without changing its signature to return `charts.repairUsageCostCorrelation.period` and `charts.repairUsageCostCorrelation.cumulative`, each with `points` and `dataQuality`.
-- [ ] 1.4 Preserve JWT guards, `admin`/`global` handling, regional scope, `SECURITY DEFINER`, and `SET search_path = public, pg_temp`.
+- [ ] 1.4 Preserve JWT guards, `admin`/`global` handling, regional scope, `SECURITY DEFINER`, and `SET search_path = public, pg_temp`, using `tb.don_vi = ANY(v_effective)` for equipment tenant scoping and documenting the `nhat_ky_su_dung.thiet_bi_id` integer to `thiet_bi.id` bigint join.
 - [ ] 1.5 Run the focused SQL smoke test and confirm it passes.
 
 ## 2. TypeScript Contract
@@ -12,8 +12,8 @@
 - [ ] 2.4 Run the focused hook/report contract tests and confirm they pass.
 
 ## 3. UI
-- [ ] 3.1 Add failing component tests for the Top 10 repair-cost chart, usage-cost correlation chart, cumulative toggle, and insufficient-data state.
-- [ ] 3.2 Extract new chart/formatting helpers from `maintenance-report-tab.tsx` into focused report component files before adding chart UI.
+- [ ] 3.1 Add failing component tests for the Top 10 repair-cost chart, usage-cost correlation chart, cumulative toggle, insufficient-data state, and `DynamicScatterChart` test mock wiring.
+- [ ] 3.2 Add scatter support in `src/lib/chart-utils.ts` and `src/components/dynamic-chart.tsx`, then extract new chart/formatting helpers from `maintenance-report-tab.tsx` into focused report component files before adding chart UI.
 - [ ] 3.3 Render a horizontal bar chart for “Top 10 thiết bị có chi phí sửa chữa cao nhất”.
 - [ ] 3.4 Render a scatter/bubble chart for “Giờ sử dụng và chi phí sửa chữa” only when the data-quality threshold is met.
 - [ ] 3.5 Render a data-quality empty state when fewer than three equipment have both positive usage hours and recorded repair cost.
