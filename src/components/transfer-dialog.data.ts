@@ -125,6 +125,7 @@ export function useTransferEquipmentSearch({
       return mapEquipmentSearchResults(rows)
     },
     enabled: isEnabled,
+    retry: false,
     staleTime: 30_000,
     refetchOnMount: false,
     refetchOnWindowFocus: false,
