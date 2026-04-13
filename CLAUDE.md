@@ -176,6 +176,16 @@ Before re-investigating a non-trivial problem, check whether relevant Basic Memo
 | `/prd` | Create or update a PRD before Ralph execution |
 | `/ralph` | Convert PRD markdown to `prd.json` for Ralph |
 
+## Additional Skill Guidance
+
+- The global skill `karpathy-coding-heuristics` is installed in this environment.
+- For non-trivial coding, refactoring, and code review tasks, explicitly consider invoking `karpathy-coding-heuristics` to keep the work aligned with Andrej Karpathy's core heuristics:
+  - surface meaningful assumptions before implementation
+  - prefer the simplest sufficient solution
+  - keep changes surgical and tightly scoped
+  - define concrete verification before claiming success
+- Treat `karpathy-coding-heuristics` as a supporting heuristic layer. It does not override repo-specific rules, security constraints, or stricter required skills such as `next-best-practices`, `vercel-react-best-practices`, debugging, TDD, or verification workflows.
+
 ## Ralph Flow (Claude Code/Codex Execution Contract)
 
 Use this workflow whenever user requests Ralph flow or execution from `prd.json`.

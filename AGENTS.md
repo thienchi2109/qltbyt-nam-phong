@@ -115,6 +115,8 @@ IMPORTANT: Use `edit_file` over `str_replace` or full file writes. It works with
 
 ## Skill Enforcement
 
+- The global skill `karpathy-coding-heuristics` is available in this environment. For non-trivial coding, refactoring, and code review tasks, explicitly consider invoking it to preserve Andrej Karpathy's core heuristics: surface meaningful assumptions, prefer the simplest sufficient design, keep diffs surgical, and define concrete verification before claiming success.
+- Treat `karpathy-coding-heuristics` as a heuristic overlay, not a replacement for stricter required workflows. User instructions, repo instructions, and mandatory skills/checks still take precedence.
 - For any task that generates or materially edits TypeScript/React code (`.ts`, `.tsx`, React components, hooks, client/server UI logic), you MUST invoke the `react-best-practices` skill first (or `vercel-react-best-practices` if that is the available skill name in the session).
 - For any task that generates or materially edits Next.js code or framework behavior (App Router routes/layouts/pages, route handlers, metadata, error boundaries, middleware/proxy, RSC boundaries, async request APIs, image/font/script/bundling), you MUST invoke the `next-best-practices` skill first.
 - For Next.js tasks that also involve substantial React component logic, invoke both skills in this order: `next-best-practices` then `react-best-practices` (or `vercel-react-best-practices`).
