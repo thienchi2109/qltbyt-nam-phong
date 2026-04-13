@@ -42,7 +42,7 @@ export function TransferDialogEquipmentSearch({
 }: TransferDialogEquipmentSearchProps) {
   return (
     <div className="grid gap-2">
-      <Label htmlFor="equipment">Thiết bị *</Label>
+      <Label htmlFor="equipment">Thiết bị{required ? " *" : ""}</Label>
       <div className="relative">
         <Input
           id="equipment"
@@ -73,9 +73,10 @@ export function TransferDialogEquipmentSearch({
               <div className="absolute z-10 mt-1 max-h-60 w-full overflow-y-auto rounded-md border bg-popover shadow-lg">
                 <div className="p-1">
                   {filteredEquipment.map((equipment) => (
-                    <div
+                    <button
+                      type="button"
                       key={equipment.id}
-                      className="cursor-pointer rounded-sm p-2 text-sm hover:bg-accent"
+                      className="w-full rounded-sm p-2 text-left text-sm hover:bg-accent focus:bg-accent focus:outline-none"
                       onClick={() => onSelectEquipment(equipment)}
                     >
                       <div className="font-medium">
@@ -85,7 +86,7 @@ export function TransferDialogEquipmentSearch({
                         {equipment.model && `Model: ${equipment.model}`}
                         {equipment.khoa_phong_quan_ly && ` • ${equipment.khoa_phong_quan_ly}`}
                       </div>
-                    </div>
+                    </button>
                   ))}
                 </div>
               </div>
