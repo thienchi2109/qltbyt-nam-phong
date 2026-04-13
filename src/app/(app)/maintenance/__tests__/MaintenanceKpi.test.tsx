@@ -287,6 +287,7 @@ describe("Maintenance KPI integration", () => {
     await user.click(screen.getByRole("button", { name: "set-page-3" }))
     await expectLastPlanRequest({ search: undefined, facilityId: null, page: 3, pageSize: 50 })
 
+    // Simulate the mocked debounce value settling after the user navigated.
     debouncedPlanSearch = "ngoai tim"
     rerender(<MaintenancePageClient />)
 
