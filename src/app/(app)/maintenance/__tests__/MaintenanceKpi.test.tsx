@@ -1,12 +1,20 @@
 import * as React from "react"
 import "@testing-library/jest-dom"
 import { fireEvent, render, screen, waitFor } from "@testing-library/react"
+import userEvent from "@testing-library/user-event"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
 const mockCounts = {
   "Bản nháp": 2,
   "Đã duyệt": 3,
   "Không duyệt": 1,
+}
+
+type MaintenancePlanRequest = {
+  search: string | undefined
+  facilityId: number | null
+  page: number
+  pageSize: number
 }
 
 const mocks = vi.hoisted(() => ({
@@ -91,12 +99,14 @@ vi.mock("../_components/maintenance-page-desktop-content", () => ({
     isCountsError,
     onFacilityChange,
     onPlanSearchChange,
+    onPageChange,
   }: {
     statusCounts?: Record<string, number>
     isCountsLoading?: boolean
     isCountsError?: boolean
     onFacilityChange: (facilityId: number | null) => void
     onPlanSearchChange: (value: string) => void
+    onPageChange: (page: number) => void
   }) => (
     <div
       data-testid="desktop-layout"
@@ -109,6 +119,9 @@ vi.mock("../_components/maintenance-page-desktop-content", () => ({
       </button>
       <button type="button" onClick={() => onPlanSearchChange("ngoai tim")}>
         set-search
+      </button>
+      <button type="button" onClick={() => onPageChange(3)}>
+        set-page-3
       </button>
     </div>
   ),
@@ -174,6 +187,14 @@ function createMaintenanceContext() {
   }
 }
 
+function expectLastPlanRequest(request: MaintenancePlanRequest): Promise<void> {
+  return waitFor(() => expect(mocks.useMaintenancePlans).toHaveBeenLastCalledWith(request))
+}
+
+function expectPlanRequestMissing(request: MaintenancePlanRequest): void {
+  expect(mocks.useMaintenancePlans).not.toHaveBeenCalledWith(request)
+}
+
 describe("Maintenance KPI integration", () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -227,6 +248,51 @@ describe("Maintenance KPI integration", () => {
         search: "ngoai tim",
       })
     )
+  })
+
+  it("resets plan pagination before applying a facility filter", async () => {
+    const user = userEvent.setup()
+    render(<MaintenancePageClient />)
+
+    await user.click(screen.getByRole("button", { name: "set-page-3" }))
+    await expectLastPlanRequest({ search: undefined, facilityId: null, page: 3, pageSize: 50 })
+
+    await user.click(screen.getByRole("button", { name: "set-facility" }))
+
+    expectPlanRequestMissing({ search: undefined, facilityId: 7, page: 3, pageSize: 50 })
+    await expectLastPlanRequest({ search: undefined, facilityId: 7, page: 1, pageSize: 50 })
+  })
+
+  it("resets plan pagination before applying debounced search", async () => {
+    const user = userEvent.setup()
+    render(<MaintenancePageClient />)
+
+    await user.click(screen.getByRole("button", { name: "set-page-3" }))
+    await expectLastPlanRequest({ search: undefined, facilityId: null, page: 3, pageSize: 50 })
+
+    await user.click(screen.getByRole("button", { name: "set-search" }))
+
+    expectPlanRequestMissing({ search: "ngoai tim", facilityId: null, page: 3, pageSize: 50 })
+    await expectLastPlanRequest({ search: "ngoai tim", facilityId: null, page: 1, pageSize: 50 })
+  })
+
+  it("resets plan pagination when debounced search settles after page navigation", async () => {
+    let debouncedPlanSearch = ""
+    mocks.useSearchDebounce.mockImplementation(() => debouncedPlanSearch)
+
+    const user = userEvent.setup()
+    const { rerender } = render(<MaintenancePageClient />)
+
+    await user.click(screen.getByRole("button", { name: "set-search" }))
+    await user.click(screen.getByRole("button", { name: "set-page-3" }))
+    await expectLastPlanRequest({ search: undefined, facilityId: null, page: 3, pageSize: 50 })
+
+    // Simulate the mocked debounce value settling after the user navigated.
+    debouncedPlanSearch = "ngoai tim"
+    rerender(<MaintenancePageClient />)
+
+    expectPlanRequestMissing({ search: "ngoai tim", facilityId: null, page: 3, pageSize: 50 })
+    await expectLastPlanRequest({ search: "ngoai tim", facilityId: null, page: 1, pageSize: 50 })
   })
 
   it("passes loading state to desktop layout", () => {
