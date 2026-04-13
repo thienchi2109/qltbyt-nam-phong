@@ -34,12 +34,16 @@ The system SHALL visualize the relationship between completed usage duration and
 - **GIVEN** the maintenance repair report has a selected date range
 - **WHEN** the user switches from period mode to cumulative mode
 - **THEN** the correlation chart uses completed usage duration and completed repair costs through the selected end date
+- **AND** usage intervals whose `thoi_gian_ket_thuc` is after the selected end date are excluded from the cumulative dataset
 - **AND** the top repair cost equipment chart remains scoped to the selected report date range.
 
 #### Scenario: Report payload supports scope switching
 - **GIVEN** the maintenance repair report requests `get_maintenance_report_data(date,date,bigint)`
 - **WHEN** the RPC returns repair usage-cost correlation data
-- **THEN** the payload includes separate period and cumulative correlation datasets
+- **THEN** the payload includes `topEquipmentRepairCosts`
+- **AND** the payload includes separate `charts.repairUsageCostCorrelation.period` and `charts.repairUsageCostCorrelation.cumulative` datasets
+- **AND** each correlation scope includes `points` and `dataQuality`
+- **AND** correlation point and data-quality keys use camelCase names for the TypeScript report contract
 - **AND** the RPC signature remains compatible with existing callers.
 
 ### Requirement: Repair cost usage visualization scoping

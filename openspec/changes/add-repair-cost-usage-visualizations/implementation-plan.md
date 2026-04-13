@@ -58,8 +58,10 @@ Assert:
 - `charts.repairUsageCostCorrelation.period.points` includes only valid completed usage intervals within the selected date range.
 - `charts.repairUsageCostCorrelation.cumulative.points` includes valid completed usage/cost through `p_date_to`.
 - Period mode excludes a usage interval that starts before `p_date_from`, while cumulative mode includes it if it ends before or on `p_date_to`.
+- A usage interval that starts before or on `p_date_to` but ends after `p_date_to` is excluded from cumulative mode.
 - Open usage logs and invalid intervals are excluded from `totalUsageHours`.
 - Completed repair requests with `chi_phi_sua_chua IS NULL` contribute to `completedRepairRequests` but not `costRecordedCount` or the average cost numerator/denominator.
+- Correlation points and `dataQuality` objects expose camelCase JSON keys, not snake_case keys from SQL CTE columns.
 - `dataQuality.equipmentWithUsage`, `dataQuality.equipmentWithRepairCost`, and `dataQuality.equipmentWithBoth` are present.
 - Other-tenant seeded rows are excluded for non-global claims, and a `global`/`admin` claim with `p_don_vi` still scopes to the selected facility.
 - Existing payload keys remain present: `summary`, `charts.repairStatusDistribution`, `charts.maintenancePlanVsActual`, `charts.repairFrequencyByMonth`, `charts.repairCostByMonth`, `charts.repairCostByFacility`, `topEquipmentRepairs`, and `recentRepairHistory`.
@@ -268,12 +270,14 @@ period_usage_by_equipment AS (
   SELECT equipment_id, equipment_name, equipment_code, sum(usage_hours) AS total_usage_hours
   FROM usage_data_raw
   WHERE (thoi_gian_bat_dau AT TIME ZONE 'Asia/Ho_Chi_Minh')::date BETWEEN p_date_from AND p_date_to
+    AND (thoi_gian_ket_thuc AT TIME ZONE 'Asia/Ho_Chi_Minh')::date <= p_date_to
   GROUP BY equipment_id, equipment_name, equipment_code
 ),
 cumulative_usage_by_equipment AS (
   SELECT equipment_id, equipment_name, equipment_code, sum(usage_hours) AS total_usage_hours
   FROM usage_data_raw
   WHERE (thoi_gian_bat_dau AT TIME ZONE 'Asia/Ho_Chi_Minh')::date <= p_date_to
+    AND (thoi_gian_ket_thuc AT TIME ZONE 'Asia/Ho_Chi_Minh')::date <= p_date_to
   GROUP BY equipment_id, equipment_name, equipment_code
 )
 ```
@@ -384,12 +388,50 @@ Add `topEquipmentRepairCosts` as a root-level key, and add `repairUsageCostCorre
 ),
 'repairUsageCostCorrelation', jsonb_build_object(
   'period', jsonb_build_object(
-    'points', coalesce((SELECT jsonb_agg(to_jsonb(p) ORDER BY p.total_repair_cost DESC, p.equipment_name) FROM period_correlation_points p), '[]'::jsonb),
-    'dataQuality', (SELECT to_jsonb(q) FROM period_correlation_quality q)
+    'points', coalesce((
+      SELECT jsonb_agg(jsonb_build_object(
+        'equipmentId', p.equipment_id,
+        'equipmentName', p.equipment_name,
+        'equipmentCode', p.equipment_code,
+        'totalUsageHours', p.total_usage_hours,
+        'totalRepairCost', p.total_repair_cost,
+        'completedRepairRequests', p.completed_repair_requests,
+        'costRecordedCount', p.cost_recorded_count,
+        'costPerUsageHour', p.cost_per_usage_hour
+      ) ORDER BY p.total_repair_cost DESC, p.equipment_name)
+      FROM period_correlation_points p
+    ), '[]'::jsonb),
+    'dataQuality', coalesce((
+      SELECT jsonb_build_object(
+        'equipmentWithUsage', q.equipment_with_usage,
+        'equipmentWithRepairCost', q.equipment_with_repair_cost,
+        'equipmentWithBoth', q.equipment_with_both
+      )
+      FROM period_correlation_quality q
+    ), jsonb_build_object('equipmentWithUsage', 0, 'equipmentWithRepairCost', 0, 'equipmentWithBoth', 0))
   ),
   'cumulative', jsonb_build_object(
-    'points', coalesce((SELECT jsonb_agg(to_jsonb(c) ORDER BY c.total_repair_cost DESC, c.equipment_name) FROM cumulative_correlation_points c), '[]'::jsonb),
-    'dataQuality', (SELECT to_jsonb(q) FROM cumulative_correlation_quality q)
+    'points', coalesce((
+      SELECT jsonb_agg(jsonb_build_object(
+        'equipmentId', c.equipment_id,
+        'equipmentName', c.equipment_name,
+        'equipmentCode', c.equipment_code,
+        'totalUsageHours', c.total_usage_hours,
+        'totalRepairCost', c.total_repair_cost,
+        'completedRepairRequests', c.completed_repair_requests,
+        'costRecordedCount', c.cost_recorded_count,
+        'costPerUsageHour', c.cost_per_usage_hour
+      ) ORDER BY c.total_repair_cost DESC, c.equipment_name)
+      FROM cumulative_correlation_points c
+    ), '[]'::jsonb),
+    'dataQuality', coalesce((
+      SELECT jsonb_build_object(
+        'equipmentWithUsage', q.equipment_with_usage,
+        'equipmentWithRepairCost', q.equipment_with_repair_cost,
+        'equipmentWithBoth', q.equipment_with_both
+      )
+      FROM cumulative_correlation_quality q
+    ), jsonb_build_object('equipmentWithUsage', 0, 'equipmentWithRepairCost', 0, 'equipmentWithBoth', 0))
   )
 )
 ```
@@ -418,7 +460,7 @@ Project equipment code explicitly in the new cost and correlation CTEs. If using
 tb.ma_thiet_bi AS equipment_code
 ```
 
-For period mode, restrict usage start date and repair reference date to `p_date_from..p_date_to`. For cumulative mode, restrict both to `<= p_date_to`.
+For period mode, restrict usage start date and repair reference date to `p_date_from..p_date_to`, and exclude any usage interval ending after `p_date_to`. For cumulative mode, restrict repair reference date, usage start date, and usage end date to `<= p_date_to`.
 
 Index/performance requirements:
 - Live DB confirms `idx_nhat_ky_su_dung_thiet_bi_bat_dau ON public.nhat_ky_su_dung (thiet_bi_id, thoi_gian_bat_dau)` already exists; do not add a duplicate or renamed equivalent.
@@ -475,11 +517,13 @@ git commit -m "feat: add repair cost usage report data"
 
 **Files:**
 - Modify: `src/app/(app)/reports/hooks/use-maintenance-data.ts`
+- Create: `src/app/(app)/reports/hooks/use-maintenance-data.types.ts`
+- Create: `src/app/(app)/reports/hooks/use-maintenance-data.types.assert.ts`
 - Test: `src/app/(app)/reports/components/__tests__/maintenance-report-tab.test.tsx`
 
-- [ ] **Step 1: Add failing contract expectations**
+- [ ] **Step 1: Add failing compile-time contract expectations**
 
-Update the focused report test fixture so it expects:
+Add `src/app/(app)/reports/hooks/use-maintenance-data.types.assert.ts` following the existing `use-inventory-data.types.assert.ts` pattern. Assert that the report hook and component-facing types expose:
 - `topEquipmentRepairCosts`
 - `charts.repairUsageCostCorrelation.period.points`
 - `charts.repairUsageCostCorrelation.period.dataQuality`
@@ -489,17 +533,19 @@ Update the focused report test fixture so it expects:
 Run:
 
 ```bash
-node scripts/npm-run.js run test:run -- src/app/'(app)'/reports/components/__tests__/maintenance-report-tab.test.tsx
+node scripts/npm-run.js run typecheck
 ```
 
-Expected: FAIL because the hook types/defaults do not expose the new fields yet.
+Expected: FAIL because the exported maintenance report types/defaults do not expose the new fields yet. Do not rely on `maintenance-report-tab.test.tsx` for the RED contract step; that test mocks `useMaintenanceReportData`, so adding fixture fields alone will not prove the hook contract changed.
 
-- [ ] **Step 2: Update the hook types and defaults**
+- [ ] **Step 2: Update exported hook types and defaults**
 
-In `src/app/(app)/reports/hooks/use-maintenance-data.ts`, add interfaces:
+Create `src/app/(app)/reports/hooks/use-maintenance-data.types.ts` and move/export the shared report data interfaces needed by both the hook and the new chart component. In `src/app/(app)/reports/hooks/use-maintenance-data.ts`, import those types and extend `MaintenanceReportData` plus the fallback result. Keep `topEquipmentRepairs` unchanged.
+
+Include these exported interfaces:
 
 ```ts
-interface TopEquipmentRepairCostEntry {
+export interface TopEquipmentRepairCostEntry {
   equipmentId: number
   equipmentName: string
   equipmentCode?: string | null
@@ -509,7 +555,7 @@ interface TopEquipmentRepairCostEntry {
   costRecordedCount: number
 }
 
-interface RepairUsageCostCorrelationPoint {
+export interface RepairUsageCostCorrelationPoint {
   equipmentId: number
   equipmentName: string
   equipmentCode?: string | null
@@ -520,26 +566,26 @@ interface RepairUsageCostCorrelationPoint {
   costPerUsageHour: number
 }
 
-interface RepairUsageCostDataQuality {
+export interface RepairUsageCostDataQuality {
   equipmentWithUsage: number
   equipmentWithRepairCost: number
   equipmentWithBoth: number
 }
 
-interface RepairUsageCostCorrelationScope {
+export interface RepairUsageCostCorrelationScope {
   points: RepairUsageCostCorrelationPoint[]
   dataQuality: RepairUsageCostDataQuality
 }
 ```
 
-Extend `MaintenanceReportData` and the fallback result. Keep `topEquipmentRepairs` unchanged.
+Use the exported types from `maintenance-report-cost-charts.tsx`; do not duplicate interface definitions in the component.
 
 - [ ] **Step 3: Run contract tests and verify GREEN**
 
 Run:
 
 ```bash
-node scripts/npm-run.js run test:run -- src/app/'(app)'/reports/components/__tests__/maintenance-report-tab.test.tsx
+node scripts/npm-run.js run typecheck
 ```
 
 Expected: PASS.
@@ -547,7 +593,7 @@ Expected: PASS.
 - [ ] **Step 4: Commit TypeScript contract batch**
 
 ```bash
-git add src/app/'(app)'/reports/hooks/use-maintenance-data.ts src/app/'(app)'/reports/components/__tests__/maintenance-report-tab.test.tsx
+git add src/app/'(app)'/reports/hooks/use-maintenance-data.ts src/app/'(app)'/reports/hooks/use-maintenance-data.types.ts src/app/'(app)'/reports/hooks/use-maintenance-data.types.assert.ts src/app/'(app)'/reports/components/__tests__/maintenance-report-tab.test.tsx
 git commit -m "feat: type repair cost usage report data"
 ```
 
