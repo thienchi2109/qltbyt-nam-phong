@@ -4,9 +4,7 @@ import {
   flexRender,
   getCoreRowModel,
   getPaginationRowModel,
-  getSortedRowModel,
   useReactTable,
-  type SortingState,
 } from '@tanstack/react-table'
 import { Loader2 } from 'lucide-react'
 import {
@@ -22,8 +20,6 @@ import type { TransferListItem } from '@/types/transfers-data-grid'
 interface TransfersTableViewProps {
   data: TransferListItem[]
   columns: ColumnDef<TransferListItem>[]
-  sorting: SortingState
-  onSortingChange: OnChangeFn<SortingState>
   pagination: PaginationState
   onPaginationChange: OnChangeFn<PaginationState>
   pageCount: number
@@ -34,8 +30,6 @@ interface TransfersTableViewProps {
 export function TransfersTableView({
   data,
   columns,
-  sorting,
-  onSortingChange,
   pagination,
   onPaginationChange,
   pageCount,
@@ -45,11 +39,9 @@ export function TransfersTableView({
   const table = useReactTable({
     data,
     columns,
-    state: { sorting, pagination },
-    onSortingChange,
+    state: { pagination },
     onPaginationChange,
     getCoreRowModel: getCoreRowModel(),
-    getSortedRowModel: getSortedRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
     manualPagination: true,
     pageCount,

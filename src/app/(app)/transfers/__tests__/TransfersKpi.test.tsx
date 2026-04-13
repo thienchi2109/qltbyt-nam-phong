@@ -27,11 +27,13 @@ const mocks = vi.hoisted(() => ({
   useTransferCounts: vi.fn(),
   useTransferActions: vi.fn(),
   useTransferSearch: vi.fn(),
+  useTransfersFilters: vi.fn(),
   useServerPagination: vi.fn(),
   useIsMobile: vi.fn(),
   KpiStatusBar: vi.fn(),
   OverdueTransfersAlert: vi.fn(),
   TransferDetailDialog: vi.fn(),
+  TransfersTableView: vi.fn(),
 }))
 
 vi.mock("next-auth/react", () => ({
@@ -76,6 +78,10 @@ vi.mock("@/hooks/useTransferActions", () => ({
 
 vi.mock("@/hooks/useTransferSearch", () => ({
   useTransferSearch: () => mocks.useTransferSearch(),
+}))
+
+vi.mock("@/app/(app)/transfers/_components/useTransfersFilters", () => ({
+  useTransfersFilters: () => mocks.useTransfersFilters(),
 }))
 
 vi.mock("@/hooks/useTransferDataGrid", () => ({
@@ -151,7 +157,10 @@ vi.mock("@/components/shared/TenantSelector", () => ({
 }))
 
 vi.mock("@/components/transfers/TransfersTableView", () => ({
-  TransfersTableView: () => <div data-testid="transfers-table-view" />,
+  TransfersTableView: (props: unknown) => {
+    mocks.TransfersTableView(props)
+    return <div data-testid="transfers-table-view" />
+  },
 }))
 
 vi.mock("@/components/transfers/TransfersKanbanView", () => ({
@@ -214,11 +223,20 @@ describe("Transfers KPI", () => {
       pageCount: 1,
     })
 
-    mocks.useTransferSearch.mockReturnValue({
+    mocks.useTransfersFilters.mockReturnValue({
       searchTerm: "",
       setSearchTerm: vi.fn(),
       debouncedSearch: "",
       clearSearch: vi.fn(),
+      statusFilter: [],
+      setStatusFilter: vi.fn(),
+      dateRange: null,
+      setDateRange: vi.fn(),
+      isFilterModalOpen: false,
+      setIsFilterModalOpen: vi.fn(),
+      handleClearAllFilters: vi.fn(),
+      handleRemoveFilter: vi.fn(),
+      activeFilterCount: 0,
     })
 
     mocks.useTransferList.mockReturnValue({
@@ -391,6 +409,48 @@ describe("Transfers KPI", () => {
     expect(screen.queryByTestId("transfers-table-view")).not.toBeInTheDocument()
     expect(screen.queryByTestId("transfers-kanban-view")).not.toBeInTheDocument()
     expect(screen.queryByTestId("transfer-pagination")).not.toBeInTheDocument()
+  })
+
+  it("does not pass interactive sorting props to the desktop transfers table", () => {
+    render(<TransfersPage />)
+
+    expect(mocks.TransfersTableView).toHaveBeenCalled()
+    const tableProps = mocks.TransfersTableView.mock.calls[0]?.[0] as Record<string, unknown>
+    expect(tableProps).not.toHaveProperty("sorting")
+    expect(tableProps).not.toHaveProperty("onSortingChange")
+  })
+
+  it("propagates the selected date range into transfer list filters", () => {
+    mocks.useTransfersFilters.mockReturnValue({
+      searchTerm: "",
+      setSearchTerm: vi.fn(),
+      debouncedSearch: "",
+      clearSearch: vi.fn(),
+      statusFilter: [],
+      setStatusFilter: vi.fn(),
+      dateRange: {
+        from: new Date(2026, 3, 2),
+        to: new Date(2026, 3, 5),
+      },
+      setDateRange: vi.fn(),
+      isFilterModalOpen: false,
+      setIsFilterModalOpen: vi.fn(),
+      handleClearAllFilters: vi.fn(),
+      handleRemoveFilter: vi.fn(),
+      activeFilterCount: 1,
+    })
+
+    render(<TransfersPage />)
+
+    expect(mocks.useTransferList).toHaveBeenCalledWith(
+      expect.objectContaining({
+        dateFrom: "2026-04-02",
+        dateTo: "2026-04-05",
+      }),
+      expect.objectContaining({
+        enabled: true,
+      }),
+    )
   })
 
   it("opens the detail dialog when the overdue alert requests transfer details", () => {
