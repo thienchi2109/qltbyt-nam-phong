@@ -64,7 +64,13 @@ export function AddTransferDialog({ open, onOpenChange, onSuccess }: AddTransfer
     }
   }, [open, resetForm])
 
-  const { departments } = useTransferDepartments({ open })
+  const { departments, isLoadingDepartments } = useTransferDepartments({ open })
+  const selectedValueLabel = selectedEquipment
+    ? `${selectedEquipment.ten_thiet_bi} (${selectedEquipment.ma_thiet_bi})`
+    : ""
+  const isSelectedValueActive = Boolean(
+    selectedEquipment && searchTerm.trim() === selectedValueLabel,
+  )
   const {
     equipmentResults,
     isEquipmentLoading,
@@ -73,10 +79,8 @@ export function AddTransferDialog({ open, onOpenChange, onSuccess }: AddTransfer
     open,
     canSearch: true,
     searchTerm,
+    skipSearch: isSelectedValueActive,
   })
-  const selectedValueLabel = selectedEquipment
-    ? `${selectedEquipment.ten_thiet_bi} (${selectedEquipment.ma_thiet_bi})`
-    : ""
 
   const filteredEquipment = React.useMemo(() => {
     if (trimmedSearch.length < 2) {
@@ -90,7 +94,6 @@ export function AddTransferDialog({ open, onOpenChange, onSuccess }: AddTransfer
     return equipmentResults
   }, [equipmentResults, trimmedSearch, searchTerm, selectedEquipment, selectedValueLabel])
 
-  const isSelectedValueActive = Boolean(selectedEquipment && searchTerm === selectedValueLabel)
   const showResultsDropdown =
     trimmedSearch.length >= 2 && !isEquipmentLoading && filteredEquipment.length > 0
   const showNoResults =
@@ -234,7 +237,7 @@ export function AddTransferDialog({ open, onOpenChange, onSuccess }: AddTransfer
             {formData.loai_hinh === 'noi_bo' && (
               <TransferInternalSelectFields
                 departments={departments}
-                disabled={isLoading}
+                disabled={isLoading || isLoadingDepartments}
                 formData={formData}
                 setFormData={setFormData}
                 lockCurrentDepartment={Boolean(selectedEquipment)}

@@ -91,7 +91,7 @@ describe("transfer-dialog.data", () => {
 
     const { rerender } = renderHook(
       ({ open, canSearch, searchTerm }) =>
-        useTransferEquipmentSearch({ open, canSearch, searchTerm }),
+        useTransferEquipmentSearch({ open, canSearch, searchTerm, skipSearch: false }),
       {
         initialProps: {
           open: false,
@@ -130,6 +130,7 @@ describe("transfer-dialog.data", () => {
           open: true,
           canSearch: true,
           searchTerm: " Máy ",
+          skipSearch: false,
         }),
       {
         wrapper,
@@ -172,6 +173,7 @@ describe("transfer-dialog.data", () => {
           open: true,
           canSearch: true,
           searchTerm: "Máy",
+          skipSearch: false,
         }),
       {
         wrapper,
@@ -190,6 +192,7 @@ describe("transfer-dialog.data", () => {
 
     unmount()
     mocks.toast.mockClear()
+    mocks.callRpc.mockClear()
     mocks.callRpc.mockRejectedValueOnce(new DOMException("aborted", "AbortError"))
 
     renderHook(
@@ -198,6 +201,7 @@ describe("transfer-dialog.data", () => {
           open: true,
           canSearch: true,
           searchTerm: "Máy",
+          skipSearch: false,
         }),
       {
         wrapper: createWrapper(createTestQueryClient()),
@@ -205,9 +209,29 @@ describe("transfer-dialog.data", () => {
     )
 
     await waitFor(() => {
-      expect(mocks.callRpc).toHaveBeenCalled()
+      expect(mocks.callRpc).toHaveBeenCalledTimes(1)
     })
 
     expect(mocks.toast).not.toHaveBeenCalled()
+  })
+
+  it("does not search when the input is only mirroring the selected equipment label", async () => {
+    const queryClient = createTestQueryClient()
+    const wrapper = createWrapper(queryClient)
+
+    renderHook(
+      () =>
+        useTransferEquipmentSearch({
+          open: true,
+          canSearch: true,
+          searchTerm: "Máy siêu âm (TB-11)",
+          skipSearch: true,
+        }),
+      { wrapper },
+    )
+
+    await waitFor(() => {
+      expect(mocks.callRpc).not.toHaveBeenCalled()
+    })
   })
 })

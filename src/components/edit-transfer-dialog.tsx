@@ -81,6 +81,9 @@ export function EditTransferDialog({ open, onOpenChange, onSuccess, transfer }: 
   const selectedValueLabel = selectedEquipment
     ? `${selectedEquipment.ten_thiet_bi} (${selectedEquipment.ma_thiet_bi})`
     : ""
+  const isSelectedValueActive = Boolean(
+    selectedEquipment && searchTerm.trim() === selectedValueLabel,
+  )
 
   const canSearchEquipment = Boolean(canEdit && !isRegionalLeader)
   const {
@@ -91,6 +94,7 @@ export function EditTransferDialog({ open, onOpenChange, onSuccess, transfer }: 
     open,
     canSearch: canSearchEquipment,
     searchTerm,
+    skipSearch: isSelectedValueActive,
   })
 
   const filteredEquipment = React.useMemo(() => {
@@ -105,7 +109,6 @@ export function EditTransferDialog({ open, onOpenChange, onSuccess, transfer }: 
     return equipmentResults
   }, [equipmentResults, trimmedSearch, searchTerm, selectedEquipment, selectedValueLabel])
 
-  const isSelectedValueActive = Boolean(selectedEquipment && searchTerm === selectedValueLabel)
   const showResultsDropdown =
     canSearchEquipment &&
     trimmedSearch.length >= 2 &&

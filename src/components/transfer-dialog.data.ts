@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { useQuery, useQueryClient } from "@tanstack/react-query"
+import { useQuery } from "@tanstack/react-query"
 
 import { useSearchDebounce } from "@/hooks/use-debounce"
 import { useToast } from "@/hooks/use-toast"
@@ -13,6 +13,28 @@ import {
 
 type EquipmentListEnhancedResponse = {
   data?: unknown[] | null
+}
+
+type TransferDepartmentsParams = {
+  open: boolean
+}
+
+type TransferEquipmentSearchParams = {
+  open: boolean
+  canSearch: boolean
+  searchTerm: string
+  skipSearch: boolean
+}
+
+export type TransferDepartmentsResult = {
+  departments: string[]
+  isLoadingDepartments: boolean
+}
+
+export type TransferEquipmentSearchResult = {
+  equipmentResults: ReturnType<typeof mapEquipmentSearchResults>
+  isEquipmentLoading: boolean
+  trimmedSearch: string
 }
 
 function isAbortError(error: unknown): boolean {
@@ -41,7 +63,9 @@ export const transferDialogQueryKeys = {
     ["equipment_list_enhanced", "transfer-dialog", { q: searchTerm }] as const,
 }
 
-export function useTransferDepartments({ open }: { open: boolean }) {
+export function useTransferDepartments({
+  open,
+}: TransferDepartmentsParams): TransferDepartmentsResult {
   const { toast } = useToast()
   const query = useQuery({
     queryKey: transferDialogQueryKeys.departments,
@@ -76,31 +100,16 @@ export function useTransferEquipmentSearch({
   open,
   canSearch,
   searchTerm,
-}: {
-  open: boolean
-  canSearch: boolean
-  searchTerm: string
-}) {
+  skipSearch,
+}: TransferEquipmentSearchParams): TransferEquipmentSearchResult {
   const { toast } = useToast()
-  const queryClient = useQueryClient()
   const debouncedSearch = useSearchDebounce(searchTerm)
   const trimmedSearch = (debouncedSearch ?? "").trim()
-  const isEnabled = open && canSearch && trimmedSearch.length >= 2
-  const queryKey = transferDialogQueryKeys.equipmentSearch(trimmedSearch)
+  const isEnabled = open && canSearch && trimmedSearch.length >= 2 && !skipSearch
 
   const query = useQuery({
-    queryKey,
+    queryKey: transferDialogQueryKeys.equipmentSearch(trimmedSearch),
     queryFn: async ({ signal }) => {
-      const cachedResults = queryClient.getQueryData<ReturnType<typeof mapEquipmentSearchResults>>(queryKey)
-      const cachedState = queryClient.getQueryState(queryKey)
-      if (
-        cachedResults &&
-        cachedState?.dataUpdatedAt &&
-        Date.now() - cachedState.dataUpdatedAt < 30_000
-      ) {
-        return cachedResults
-      }
-
       const result = await callRpc<EquipmentListEnhancedResponse>({
         fn: "equipment_list_enhanced",
         args: {

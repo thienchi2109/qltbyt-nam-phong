@@ -2,6 +2,7 @@ import * as React from "react"
 import "@testing-library/jest-dom"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { render, screen, waitFor } from "@testing-library/react"
+import userEvent from "@testing-library/user-event"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
 import { AddTransferDialog } from "@/components/add-transfer-dialog"
@@ -140,6 +141,41 @@ describe("transfer dialog data fetching", () => {
     })
 
     expect(mocks.callRpc).toHaveBeenCalledTimes(1)
+  })
+
+  it("disables internal department selects while departments are still loading", async () => {
+    let resolveDepartments: ((value: { name: string }[]) => void) | null = null
+    mocks.callRpc.mockImplementation(({ fn }: { fn: string }) => {
+      if (fn === "departments_list") {
+        return new Promise<{ name: string }[]>((resolve) => {
+          resolveDepartments = resolve
+        })
+      }
+
+      return Promise.resolve([])
+    })
+
+    const user = userEvent.setup()
+    const queryClient = createTestQueryClient()
+
+    render(
+      <AddTransferDialog open onOpenChange={vi.fn()} onSuccess={vi.fn()} />,
+      { wrapper: createWrapper(queryClient) },
+    )
+
+    const [typeSelect] = screen.getAllByRole("combobox")
+    await user.selectOptions(typeSelect, "noi_bo")
+
+    const selects = screen.getAllByRole("combobox")
+    expect(selects[1]).toBeDisabled()
+    expect(selects[2]).toBeDisabled()
+
+    resolveDepartments?.([{ name: "Khoa A" }, { name: "Khoa B" }])
+
+    await waitFor(() => {
+      expect(selects[1]).not.toBeDisabled()
+      expect(selects[2]).not.toBeDisabled()
+    })
   })
 
 })
