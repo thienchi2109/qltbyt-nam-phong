@@ -122,8 +122,6 @@ export function TransfersPageContent({ user }: TransfersPageContentProps) {
           filters={controller.filters}
           userRole={controller.userRole}
           columns={controller.columns}
-          sorting={controller.sorting}
-          onSortingChange={controller.setSorting}
           pagination={controller.transferPagination.pagination}
           onPaginationChange={controller.transferPagination.setPagination}
           pageCount={controller.transferPagination.pageCount}

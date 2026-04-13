@@ -129,13 +129,11 @@ const createCommonColumns = (options: TransferColumnOptions): ColumnDef<Transfer
     accessorFn: (row) => row.thiet_bi?.ten_thiet_bi ?? "",
     header: "Thiết bị",
     cell: ({ row }) => renderEquipment(row.original),
-    enableSorting: true,
     size: 260,
   },
   {
     accessorKey: "ly_do_luan_chuyen",
     header: "Lý do",
-    enableSorting: true,
     cell: ({ row }) => (
       <p className="max-w-xs text-sm leading-5 text-muted-foreground">
         {row.original.ly_do_luan_chuyen || EMPTY_PLACEHOLDER}
@@ -145,8 +143,6 @@ const createCommonColumns = (options: TransferColumnOptions): ColumnDef<Transfer
   {
     accessorKey: "created_at",
     header: "Ngày tạo",
-    enableSorting: true,
-    sortingFn: "datetime",
     cell: ({ row }) => (
       <span className="text-sm text-muted-foreground">
         {formatDate(row.original.created_at, true)}
@@ -158,7 +154,6 @@ const createCommonColumns = (options: TransferColumnOptions): ColumnDef<Transfer
 const createStatusColumn = (): ColumnDef<TransferListItem> => ({
   accessorKey: "trang_thai",
   header: "Trạng thái",
-  enableSorting: true,
   cell: ({ row }) => renderStatusBadge(row.original.trang_thai),
 })
 
@@ -297,8 +292,6 @@ const createLiquidationColumns = (): ColumnDef<TransferListItem>[] => [
   {
     accessorKey: "ngay_hoan_thanh",
     header: "Ngày hoàn tất",
-    enableSorting: true,
-    sortingFn: "datetime",
     cell: ({ row }) => (
       <span className="text-sm text-muted-foreground">
         {formatDate(row.original.ngay_hoan_thanh, false)}

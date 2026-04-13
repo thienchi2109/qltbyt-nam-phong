@@ -3,9 +3,7 @@
 import * as React from "react"
 import type {
   ColumnDef,
-  OnChangeFn,
   PaginationState,
-  SortingState,
   Table as ReactTable,
 } from "@tanstack/react-table"
 import { Filter, Loader2, PlusCircle } from "lucide-react"
@@ -62,10 +60,8 @@ type TransfersPagePanelProps = Readonly<{
   filters: TransferListFilters
   userRole?: TransferUserRole
   columns: ColumnDef<TransferListItem>[]
-  sorting: SortingState
-  onSortingChange: OnChangeFn<SortingState>
   pagination: PaginationState
-  onPaginationChange: OnChangeFn<PaginationState>
+  onPaginationChange: (updater: PaginationState | ((old: PaginationState) => PaginationState)) => void
   pageCount: number
   table: ReactTable<TransferListItem>
   transferEntity: { singular: string }
@@ -114,8 +110,6 @@ export function TransfersPagePanel({
   filters,
   userRole,
   columns,
-  sorting,
-  onSortingChange,
   pagination,
   onPaginationChange,
   pageCount,
@@ -230,8 +224,6 @@ export function TransfersPagePanel({
                     <TransfersTableView
                       data={tableData}
                       columns={columns}
-                      sorting={sorting}
-                      onSortingChange={onSortingChange}
                       pagination={pagination}
                       onPaginationChange={onPaginationChange}
                       pageCount={pageCount}

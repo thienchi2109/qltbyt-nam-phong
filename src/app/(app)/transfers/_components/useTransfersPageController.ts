@@ -4,10 +4,8 @@ import * as React from "react"
 import {
   getCoreRowModel,
   getPaginationRowModel,
-  getSortedRowModel,
   useReactTable,
   type Table,
-  type SortingState,
 } from "@tanstack/react-table"
 import { useQueryClient } from "@tanstack/react-query"
 import { useSession } from "next-auth/react"
@@ -68,8 +66,6 @@ export interface TransfersPageControllerResult {
   totalCount: number
   referenceDate: Date
   filters: TransferListFilters
-  sorting: SortingState
-  setSorting: React.Dispatch<React.SetStateAction<SortingState>>
   columns: ReturnType<typeof getColumnsForType>
   table: Table<TransferListItem>
   transferPagination: ReturnType<typeof useServerPagination>
@@ -123,9 +119,6 @@ export function useTransfersPageController(
   const filtersState = useTransfersFilters({ activeTab })
   const [isAddDialogOpen, setIsAddDialogOpen] = React.useState(false)
   const [totalCount, setTotalCount] = React.useState(0)
-  const [sorting, setSorting] = React.useState<SortingState>([
-    { id: "created_at", desc: true },
-  ])
 
   const invalidateTransferQueries = React.useCallback(() => {
     queryClient.invalidateQueries({ queryKey: transferDataGridKeys.all })
@@ -257,11 +250,9 @@ export function useTransfersPageController(
   const table = useReactTable({
     data: tableData,
     columns,
-    state: { sorting, pagination: transferPagination.pagination },
-    onSortingChange: setSorting,
+    state: { pagination: transferPagination.pagination },
     onPaginationChange: transferPagination.setPagination,
     getCoreRowModel: getCoreRowModel(),
-    getSortedRowModel: getSortedRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
     manualPagination: true,
     pageCount: transferPagination.pageCount,
@@ -331,8 +322,6 @@ export function useTransfersPageController(
     totalCount,
     referenceDate,
     filters,
-    sorting,
-    setSorting,
     columns,
     table,
     transferPagination,
