@@ -9,6 +9,23 @@ export interface RepairFrequencyPoint {
   completed: number
 }
 
+export interface RepairCostByMonthPoint {
+  period: string
+  totalCost: number
+  averageCost: number
+  costRecordedCount: number
+  costMissingCount: number
+}
+
+export interface RepairCostByFacilityPoint {
+  facilityId: number | null
+  facilityName: string
+  totalCost: number
+  averageCost: number
+  costRecordedCount: number
+  costMissingCount: number
+}
+
 export interface TopEquipmentRepairEntry {
   equipmentId: number
   equipmentName: string
@@ -86,6 +103,8 @@ export interface MaintenanceReportData {
       actual: number
     }>
     repairFrequencyByMonth: RepairFrequencyPoint[]
+    repairCostByMonth: RepairCostByMonthPoint[]
+    repairCostByFacility: RepairCostByFacilityPoint[]
     repairUsageCostCorrelation: RepairUsageCostCorrelation
   }
   topEquipmentRepairs: TopEquipmentRepairEntry[]
@@ -119,6 +138,8 @@ export const defaultMaintenanceReportData: MaintenanceReportData = {
     repairStatusDistribution: [],
     maintenancePlanVsActual: [],
     repairFrequencyByMonth: [],
+    repairCostByMonth: [],
+    repairCostByFacility: [],
     repairUsageCostCorrelation: {
       period: createDefaultRepairUsageCostCorrelationScope(),
       cumulative: createDefaultRepairUsageCostCorrelationScope(),
@@ -129,8 +150,14 @@ export const defaultMaintenanceReportData: MaintenanceReportData = {
   recentRepairHistory: [],
 }
 
+type DeepPartial<T> = T extends readonly unknown[]
+  ? T
+  : T extends object
+    ? { [P in keyof T]?: DeepPartial<T[P]> }
+    : T
+
 export function mergeMaintenanceReportData(
-  report: Partial<MaintenanceReportData> | null | undefined
+  report: DeepPartial<MaintenanceReportData> | null | undefined
 ): MaintenanceReportData {
   const nextCharts = report?.charts
   const nextCorrelation = nextCharts?.repairUsageCostCorrelation
@@ -151,6 +178,10 @@ export function mergeMaintenanceReportData(
         nextCharts?.maintenancePlanVsActual ?? defaultMaintenanceReportData.charts.maintenancePlanVsActual,
       repairFrequencyByMonth:
         nextCharts?.repairFrequencyByMonth ?? defaultMaintenanceReportData.charts.repairFrequencyByMonth,
+      repairCostByMonth:
+        nextCharts?.repairCostByMonth ?? defaultMaintenanceReportData.charts.repairCostByMonth,
+      repairCostByFacility:
+        nextCharts?.repairCostByFacility ?? defaultMaintenanceReportData.charts.repairCostByFacility,
       repairUsageCostCorrelation: {
         period: {
           ...defaultMaintenanceReportData.charts.repairUsageCostCorrelation.period,

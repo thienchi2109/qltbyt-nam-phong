@@ -142,12 +142,10 @@ export function DynamicLineChart({
   )
 }
 
-interface BarChartProps {
+interface BarChartBaseProps {
   data: ChartData[]
   height?: number
   xAxisKey: string
-  yAxisKey?: string
-  layout?: 'horizontal' | 'vertical'
   bars: Array<{
     key: string
     color: string
@@ -167,6 +165,10 @@ interface BarChartProps {
   }
 }
 
+type BarChartProps =
+  | (BarChartBaseProps & { layout?: 'horizontal'; yAxisKey?: string })
+  | (BarChartBaseProps & { layout: 'vertical'; yAxisKey: string })
+
 export function DynamicBarChart({
   data,
   height = 300,
@@ -182,6 +184,11 @@ export function DynamicBarChart({
   margin,
 }: BarChartProps) {
   const isVertical = layout === 'vertical'
+  const verticalYAxisKey = yAxisKey
+
+  if (isVertical && !verticalYAxisKey) {
+    throw new Error('DynamicBarChart requires yAxisKey when layout is vertical')
+  }
 
   return (
     <DynamicChart height={height}>
@@ -201,7 +208,7 @@ export function DynamicBarChart({
             {isVertical ? (
               <>
                 <XAxis type="number" />
-                <YAxis dataKey={yAxisKey ?? xAxisKey} type="category" width={180} />
+                <YAxis dataKey={verticalYAxisKey} type="category" width={180} />
               </>
             ) : (
               <>
