@@ -31,15 +31,18 @@ export type RechartsComponents = Pick<
   | 'BarChart'
   | 'AreaChart'
   | 'PieChart'
+  | 'ScatterChart'
   | 'ResponsiveContainer'
   | 'XAxis'
   | 'YAxis'
+  | 'ZAxis'
   | 'CartesianGrid'
   | 'Tooltip'
   | 'Legend'
   | 'Line'
   | 'Bar'
   | 'Area'
+  | 'Scatter'
   | 'Pie'
   | 'Cell'
 >
@@ -57,15 +60,18 @@ export async function loadChartsLibrary(): Promise<RechartsComponents> {
       BarChart: recharts.BarChart,
       AreaChart: recharts.AreaChart,
       PieChart: recharts.PieChart,
+      ScatterChart: recharts.ScatterChart,
       ResponsiveContainer: recharts.ResponsiveContainer,
       XAxis: recharts.XAxis,
       YAxis: recharts.YAxis,
+      ZAxis: recharts.ZAxis,
       CartesianGrid: recharts.CartesianGrid,
       Tooltip: recharts.Tooltip,
       Legend: recharts.Legend,
       Line: recharts.Line,
       Bar: recharts.Bar,
       Area: recharts.Area,
+      Scatter: recharts.Scatter,
       Pie: recharts.Pie,
       Cell: recharts.Cell,
     }

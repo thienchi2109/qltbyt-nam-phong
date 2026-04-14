@@ -142,7 +142,7 @@ export function DynamicLineChart({
   )
 }
 
-interface BarChartProps {
+interface BarChartBaseProps {
   data: ChartData[]
   height?: number
   xAxisKey: string
@@ -165,10 +165,16 @@ interface BarChartProps {
   }
 }
 
+type BarChartProps =
+  | (BarChartBaseProps & { layout?: 'horizontal'; yAxisKey?: string })
+  | (BarChartBaseProps & { layout: 'vertical'; yAxisKey: string })
+
 export function DynamicBarChart({
   data,
   height = 300,
   xAxisKey,
+  yAxisKey,
+  layout = 'horizontal',
   bars,
   showGrid = true,
   showTooltip = true,
@@ -177,11 +183,19 @@ export function DynamicBarChart({
   customTooltip,
   margin,
 }: BarChartProps) {
+  const isVertical = layout === 'vertical'
+  const verticalYAxisKey = yAxisKey
+
+  if (isVertical && !verticalYAxisKey) {
+    throw new Error('DynamicBarChart requires yAxisKey when layout is vertical')
+  }
+
   return (
     <DynamicChart height={height}>
       {({ BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer }) => (
         <ResponsiveContainer width="100%" height={height}>
           <BarChart
+            layout={isVertical ? 'vertical' : undefined}
             data={data}
             margin={margin || {
               top: 20,
@@ -191,14 +205,23 @@ export function DynamicBarChart({
             }}
           >
             {showGrid && <CartesianGrid strokeDasharray="3 3" />}
-            <XAxis
-              dataKey={xAxisKey}
-              angle={xAxisAngle}
-              textAnchor={xAxisAngle !== 0 ? "end" : "middle"}
-              height={xAxisAngle !== 0 ? 100 : undefined}
-              interval={0}
-            />
-            <YAxis />
+            {isVertical ? (
+              <>
+                <XAxis type="number" />
+                <YAxis dataKey={verticalYAxisKey} type="category" width={180} />
+              </>
+            ) : (
+              <>
+                <XAxis
+                  dataKey={xAxisKey}
+                  angle={xAxisAngle}
+                  textAnchor={xAxisAngle !== 0 ? "end" : "middle"}
+                  height={xAxisAngle !== 0 ? 100 : undefined}
+                  interval={0}
+                />
+                <YAxis />
+              </>
+            )}
             {showTooltip && (customTooltip ? <Tooltip content={customTooltip} /> : <Tooltip />)}
             {showLegend && <Legend />}
             {bars.map(bar => (
@@ -211,6 +234,66 @@ export function DynamicBarChart({
               />
             ))}
           </BarChart>
+        </ResponsiveContainer>
+      )}
+    </DynamicChart>
+  )
+}
+
+interface ScatterChartProps<TData extends object> {
+  data: TData[]
+  height?: number
+  xAxisKey: string
+  yAxisKey: string
+  zAxisKey?: string
+  scatterName?: string
+  fill?: string
+  showGrid?: boolean
+  showTooltip?: boolean
+  showLegend?: boolean
+  margin?: {
+    top?: number
+    right?: number
+    bottom?: number
+    left?: number
+  }
+}
+
+export function DynamicScatterChart<TData extends object>({
+  data,
+  height = 300,
+  xAxisKey,
+  yAxisKey,
+  zAxisKey,
+  scatterName,
+  fill = 'hsl(var(--chart-1))',
+  showGrid = true,
+  showTooltip = true,
+  showLegend = true,
+  margin,
+}: ScatterChartProps<TData>) {
+  return (
+    <DynamicChart height={height}>
+      {({ ScatterChart, Scatter, XAxis, YAxis, ZAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer }) => (
+        <ResponsiveContainer width="100%" height={height}>
+          <ScatterChart
+            margin={
+              margin || {
+                top: 20,
+                right: 30,
+                left: 20,
+                bottom: 5,
+              }
+            }
+          >
+            {showGrid && <CartesianGrid strokeDasharray="3 3" />}
+            <XAxis dataKey={xAxisKey} type="number" />
+            <YAxis dataKey={yAxisKey} type="number" />
+            {zAxisKey ? <ZAxis dataKey={zAxisKey} range={[100, 320]} /> : null}
+            {showTooltip && <Tooltip cursor={{ strokeDasharray: '3 3' }} />}
+            {showLegend && <Legend />}
+            <Scatter data={data} fill={fill} name={scatterName || yAxisKey} />
+          </ScatterChart>
         </ResponsiveContainer>
       )}
     </DynamicChart>

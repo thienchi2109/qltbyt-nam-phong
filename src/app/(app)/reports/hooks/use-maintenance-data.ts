@@ -1,62 +1,14 @@
 import { useQuery } from '@tanstack/react-query'
 import { callRpc } from '@/lib/rpc-client'
 import { format, startOfYear, endOfYear } from 'date-fns'
+import {
+  defaultMaintenanceReportData,
+  type DateRange,
+  mergeMaintenanceReportData,
+  type MaintenanceReportData,
+} from './use-maintenance-data.types'
 
-interface DateRange {
-  from: Date
-  to: Date
-}
-
-interface RepairFrequencyPoint {
-  period: string
-  total: number
-  completed: number
-}
-
-interface TopEquipmentRepairEntry {
-  equipmentId: number
-  equipmentName: string
-  totalRequests: number
-  latestStatus: string
-  latestCompletedDate?: string | null
-}
-
-interface RecentRepairHistoryEntry {
-  id: number
-  equipmentName: string
-  issue: string
-  status: string
-  requestedDate: string
-  completedDate?: string | null
-}
-
-interface MaintenanceReportData {
-  summary: {
-    totalRepairs: number
-    repairCompletionRate: number
-    totalMaintenancePlanned: number
-    maintenanceCompletionRate: number
-    totalRepairCost: number
-    averageCompletedRepairCost: number
-    costRecordedCount: number
-    costMissingCount: number
-  }
-  charts: {
-    repairStatusDistribution: Array<{
-      name: string
-      value: number
-      color: string
-    }>
-    maintenancePlanVsActual: Array<{
-      name: string
-      planned: number
-      actual: number
-    }>
-    repairFrequencyByMonth?: RepairFrequencyPoint[]
-  }
-  topEquipmentRepairs?: TopEquipmentRepairEntry[]
-  recentRepairHistory?: RecentRepairHistoryEntry[]
-}
+export { defaultMaintenanceReportData } from './use-maintenance-data.types'
 
 // Query keys for maintenance reports caching
 export const maintenanceReportKeys = {
@@ -95,25 +47,7 @@ export function useMaintenanceReportData(
         }
       })
 
-      return result || {
-        summary: {
-          totalRepairs: 0,
-          repairCompletionRate: 0,
-          totalMaintenancePlanned: 0,
-          maintenanceCompletionRate: 0,
-          totalRepairCost: 0,
-          averageCompletedRepairCost: 0,
-          costRecordedCount: 0,
-          costMissingCount: 0,
-        },
-        charts: {
-          repairStatusDistribution: [],
-          maintenancePlanVsActual: [],
-          repairFrequencyByMonth: []
-        },
-        topEquipmentRepairs: [],
-        recentRepairHistory: []
-      }
+      return mergeMaintenanceReportData(result)
     },
     enabled: (effectiveTenantKey ?? 'auto') !== 'unset',  // ✅ Gate for global users
     staleTime: 30 * 1000,

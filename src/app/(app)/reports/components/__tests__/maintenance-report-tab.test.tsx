@@ -53,6 +53,7 @@ vi.mock("@/components/dynamic-chart", () => ({
   DynamicBarChart: () => <div data-testid="bar-chart" />,
   DynamicLineChart: () => <div data-testid="line-chart" />,
   DynamicPieChart: () => <div data-testid="pie-chart" />,
+  DynamicScatterChart: () => <div data-testid="scatter-chart" />,
 }))
 
 import { MaintenanceReportTab } from "../maintenance-report-tab"
@@ -76,8 +77,27 @@ describe("MaintenanceReportTab", () => {
           repairStatusDistribution: [],
           maintenancePlanVsActual: [],
           repairFrequencyByMonth: [],
+          repairUsageCostCorrelation: {
+            period: {
+              points: [],
+              dataQuality: {
+                equipmentWithUsage: 0,
+                equipmentWithRepairCost: 0,
+                equipmentWithBoth: 0,
+              },
+            },
+            cumulative: {
+              points: [],
+              dataQuality: {
+                equipmentWithUsage: 0,
+                equipmentWithRepairCost: 0,
+                equipmentWithBoth: 0,
+              },
+            },
+          },
         },
         topEquipmentRepairs: [],
+        topEquipmentRepairCosts: [],
         recentRepairHistory: [],
       },
       isLoading: false,
