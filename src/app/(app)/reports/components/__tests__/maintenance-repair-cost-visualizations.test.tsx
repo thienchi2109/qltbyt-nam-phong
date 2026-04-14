@@ -1,7 +1,7 @@
 import * as React from 'react'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const mockDynamicBarChart = vi.fn(() => <div data-testid="repair-cost-bar-chart" />)
 const mockDynamicScatterChart = vi.fn(() => <div data-testid="repair-usage-cost-scatter" />)
@@ -38,6 +38,10 @@ vi.mock('@/components/dynamic-chart', () => ({
 import { MaintenanceRepairCostVisualizations } from '../maintenance-repair-cost-visualizations'
 
 describe('MaintenanceRepairCostVisualizations', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
   const topEquipmentRepairCosts = [
     {
       equipmentId: 1,

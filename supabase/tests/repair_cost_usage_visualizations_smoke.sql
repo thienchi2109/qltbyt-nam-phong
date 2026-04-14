@@ -273,7 +273,7 @@ BEGIN
     (
       v_equipment_a,
       (v_date_from - 2)::timestamp + interval '10 hours',
-      (v_date_from - 1)::timestamp + interval '13 hours',
+      (v_date_from - 2)::timestamp + interval '13 hours',
       'hoan_thanh',
       'Valid cumulative-only usage A'
     ),

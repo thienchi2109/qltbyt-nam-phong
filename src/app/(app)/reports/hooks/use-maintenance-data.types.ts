@@ -45,7 +45,6 @@ export interface RepairUsageCostCorrelationPoint {
   totalRepairCost: number
   completedRepairRequests: number
   costRecordedCount: number
-  [key: string]: unknown
 }
 
 export interface RepairUsageCostCorrelationDataQuality {
@@ -94,13 +93,15 @@ export interface MaintenanceReportData {
   recentRepairHistory: RecentRepairHistoryEntry[]
 }
 
-const defaultRepairUsageCostCorrelationScope: RepairUsageCostCorrelationScope = {
-  points: [],
-  dataQuality: {
-    equipmentWithUsage: 0,
-    equipmentWithRepairCost: 0,
-    equipmentWithBoth: 0,
-  },
+function createDefaultRepairUsageCostCorrelationScope(): RepairUsageCostCorrelationScope {
+  return {
+    points: [],
+    dataQuality: {
+      equipmentWithUsage: 0,
+      equipmentWithRepairCost: 0,
+      equipmentWithBoth: 0,
+    },
+  }
 }
 
 export const defaultMaintenanceReportData: MaintenanceReportData = {
@@ -119,8 +120,8 @@ export const defaultMaintenanceReportData: MaintenanceReportData = {
     maintenancePlanVsActual: [],
     repairFrequencyByMonth: [],
     repairUsageCostCorrelation: {
-      period: defaultRepairUsageCostCorrelationScope,
-      cumulative: defaultRepairUsageCostCorrelationScope,
+      period: createDefaultRepairUsageCostCorrelationScope(),
+      cumulative: createDefaultRepairUsageCostCorrelationScope(),
     },
   },
   topEquipmentRepairs: [],

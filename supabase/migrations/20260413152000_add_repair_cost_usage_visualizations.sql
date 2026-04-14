@@ -1,5 +1,9 @@
 -- Issue #256: add repair cost usage visualizations to the maintenance report RPC.
 -- Prepared for review only; do not apply automatically from the agent session.
+--
+-- Rollback: restore the previous get_maintenance_report_data definition from
+-- supabase/migrations/20260412100000_add_repair_request_cost_statistics.sql
+-- if the new visualization payload needs to be removed.
 
 BEGIN;
 

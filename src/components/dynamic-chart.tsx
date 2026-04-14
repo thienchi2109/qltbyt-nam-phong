@@ -233,8 +233,8 @@ export function DynamicBarChart({
   )
 }
 
-interface ScatterChartProps {
-  data: ChartData[]
+interface ScatterChartProps<TData extends object> {
+  data: TData[]
   height?: number
   xAxisKey: string
   yAxisKey: string
@@ -252,7 +252,7 @@ interface ScatterChartProps {
   }
 }
 
-export function DynamicScatterChart({
+export function DynamicScatterChart<TData extends object>({
   data,
   height = 300,
   xAxisKey,
@@ -264,7 +264,7 @@ export function DynamicScatterChart({
   showTooltip = true,
   showLegend = true,
   margin,
-}: ScatterChartProps) {
+}: ScatterChartProps<TData>) {
   return (
     <DynamicChart height={height}>
       {({ ScatterChart, Scatter, XAxis, YAxis, ZAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer }) => (
