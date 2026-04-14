@@ -49,10 +49,12 @@ describe("maintenance-report-utils", () => {
     expect(
       buildRepairTrendChartData([
         { period: "2026-01", total: "9", completed: "7" },
+        { period: "2026-13", total: "4", completed: "3" },
         { period: "unknown", total: "bad", completed: 2 },
       ])
     ).toEqual([
       { period: "thg 1 2026", totalRequests: 9, completedRequests: 7 },
+      { period: "2026-13", totalRequests: 4, completedRequests: 3 },
       { period: "unknown", totalRequests: 0, completedRequests: 2 },
     ])
 

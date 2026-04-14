@@ -6,6 +6,31 @@ const mockDynamicBarChart = vi.fn(() => <div data-testid="bar-chart" />)
 const mockDynamicLineChart = vi.fn(() => <div data-testid="line-chart" />)
 const mockDynamicPieChart = vi.fn(() => <div data-testid="pie-chart" />)
 
+vi.mock("@/components/ui/button", () => ({
+  Button: ({
+    children,
+    onClick,
+  }: {
+    children: React.ReactNode
+    onClick?: () => void
+  }) => (
+    <button type="button" onClick={onClick}>
+      {children}
+    </button>
+  ),
+}))
+
+vi.mock("@/components/ui/calendar", () => ({
+  Calendar: ({ onSelect }: { onSelect?: (range?: { from?: Date; to?: Date }) => void }) => (
+    <button
+      type="button"
+      onClick={() => onSelect?.({ from: new Date("2026-04-14T00:00:00.000Z") })}
+    >
+      Select start date
+    </button>
+  ),
+}))
+
 vi.mock("@/components/ui/card", () => ({
   Card: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
   CardContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
@@ -16,6 +41,12 @@ vi.mock("@/components/ui/card", () => ({
 
 vi.mock("@/components/ui/skeleton", () => ({
   Skeleton: () => <div data-testid="skeleton" />,
+}))
+
+vi.mock("@/components/ui/popover", () => ({
+  Popover: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+  PopoverContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+  PopoverTrigger: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
 }))
 
 vi.mock("@/components/ui/table", () => ({
@@ -37,6 +68,7 @@ vi.mock("@/components/dynamic-chart", () => ({
   DynamicPieChart: (props: unknown) => mockDynamicPieChart(props),
 }))
 
+import { MaintenanceReportDateFilter } from "../maintenance-report-date-filter"
 import { MaintenanceReportPlanChart } from "../maintenance-report-plan-chart"
 import { MaintenanceReportRepairCharts } from "../maintenance-report-repair-charts"
 import { MaintenanceReportRepairTables } from "../maintenance-report-repair-tables"
@@ -44,6 +76,27 @@ import { MaintenanceReportRepairTables } from "../maintenance-report-repair-tabl
 describe("maintenance report sections", () => {
   beforeEach(() => {
     vi.clearAllMocks()
+  })
+
+  it("formats a single selected date with the Vietnamese locale and preserves it as a one-day range", () => {
+    const onDateRangeChange = vi.fn()
+    const selectedDate = new Date("2026-04-14T00:00:00.000Z")
+
+    render(
+      <MaintenanceReportDateFilter
+        dateRange={{ from: selectedDate }}
+        onDateRangeChange={onDateRangeChange}
+      />
+    )
+
+    expect(screen.getByText("Thg 4 14, 2026")).toBeInTheDocument()
+
+    screen.getByRole("button", { name: "Select start date" }).click()
+
+    expect(onDateRangeChange).toHaveBeenCalledWith({
+      from: selectedDate,
+      to: selectedDate,
+    })
   })
 
   it("renders repair chart cards and forwards chart data", () => {

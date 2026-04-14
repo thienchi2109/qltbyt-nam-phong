@@ -11,6 +11,7 @@ import type {
 
 type MaintenanceSummary = MaintenanceReportData["summary"]
 type MaintenanceSummaryInput = Partial<Record<keyof MaintenanceSummary, unknown>> | null | undefined
+const REPAIR_FREQUENCY_PERIOD_PATTERN = /^(\d{4})-(\d{2})$/
 
 export interface RepairTrendChartPoint extends ChartData {
   period: string
@@ -78,16 +79,28 @@ export function buildRepairTrendChartData(
   }> = []
 ): RepairTrendChartPoint[] {
   return repairFrequency.map(({ period, total, completed }) => {
-    const [year, month] = period.split("-")
-    const parsed = new Date(Number(year), Number(month) - 1)
-    const label = Number.isNaN(parsed.getTime()) ? period : format(parsed, "MMM yyyy", { locale: vi })
-
     return {
-      period: label,
+      period: formatRepairFrequencyPeriod(period),
       totalRequests: parseMaintenanceReportNumber(total),
       completedRequests: parseMaintenanceReportNumber(completed),
     }
   })
+}
+
+function formatRepairFrequencyPeriod(period: string): string {
+  const match = REPAIR_FREQUENCY_PERIOD_PATTERN.exec(period)
+  if (!match) {
+    return period
+  }
+
+  const year = Number(match[1])
+  const month = Number(match[2])
+  if (!Number.isInteger(year) || month < 1 || month > 12) {
+    return period
+  }
+
+  const parsed = new Date(year, month - 1, 1)
+  return Number.isNaN(parsed.getTime()) ? period : format(parsed, "MMM yyyy", { locale: vi })
 }
 
 export function buildTopEquipmentRepairRows(

@@ -11,18 +11,23 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import type { DateRange } from "../hooks/use-maintenance-data.types"
 
+interface MaintenanceReportDateFilterRange {
+  from?: Date
+  to?: Date
+}
+
 interface MaintenanceReportDateFilterProps {
-  dateRange: DateRange
+  dateRange: MaintenanceReportDateFilterRange
   onDateRangeChange: (dateRange: DateRange) => void
 }
 
-function getDateRangeLabel(dateRange: DateRange): React.ReactNode {
+function getDateRangeLabel(dateRange: MaintenanceReportDateFilterRange): React.ReactNode {
   if (!dateRange.from) {
     return <span>Chọn khoảng ngày</span>
   }
 
   if (!dateRange.to) {
-    return format(dateRange.from, "LLL dd, y")
+    return format(dateRange.from, "LLL dd, y", { locale: vi })
   }
 
   return (
@@ -60,12 +65,12 @@ export function MaintenanceReportDateFilter({
               initialFocus
               mode="range"
               defaultMonth={dateRange.from}
-              selected={dateRange}
+              selected={{ from: dateRange.from, to: dateRange.to }}
               onSelect={(range) =>
-                range &&
+                range?.from &&
                 onDateRangeChange({
-                  from: range.from || new Date(),
-                  to: range.to || new Date(),
+                  from: range.from,
+                  to: range.to ?? range.from,
                 })
               }
               numberOfMonths={2}
