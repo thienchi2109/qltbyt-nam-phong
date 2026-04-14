@@ -47,12 +47,18 @@ Tạo smoke test SQL mới (theo pattern `supabase/tests/*_smoke.sql`) trước 
   5. `usage_session_end` pass khi có trạng thái kết thúc và ghi đúng cột mới.
   6. Cả 2 overload `usage_log_list` trả về 2 field mới trong JSON.
   7. Assert `usage_session_end` có function-level `search_path=public, pg_temp`.
+  8. Assert backfill: bản ghi legacy có `tinh_trang_thiet_bi` → `tinh_trang_ban_dau` được populate.
+  9. Assert backfill: bản ghi `trang_thai='hoan_thanh'` → `tinh_trang_ket_thuc` được populate.
+  10. Assert JSON response của `usage_session_start` chứa field `tinh_trang_ban_dau`.
+  11. Assert JSON response của `usage_session_end` chứa field `tinh_trang_ket_thuc`.
 
 ## Phase 2 — DB implementation (GREEN)
 
 Tạo migration mới:
 
 - `supabase/migrations/YYYYMMDDHHMMSS_usage_log_split_status_columns.sql`
+
+> **Migration hygiene**: Toàn bộ nội dung phải bọc trong `BEGIN; ... COMMIT;`.
 
 Nội dung chính:
 
@@ -67,22 +73,31 @@ Nội dung chính:
 3. **RPC updates**
    - `usage_session_start(...)`
      - Thêm param mới `p_tinh_trang_ban_dau`.
-     - Validate non-empty.
-     - Ghi `tinh_trang_ban_dau`.
+     - Validate non-empty (`RAISE EXCEPTION` khi null/empty).
+     - Ghi `tinh_trang_ban_dau` trong INSERT.
+     - Thêm `'tinh_trang_ban_dau', nk.tinh_trang_ban_dau` vào `jsonb_build_object` response.
    - `usage_session_end(...)`
      - Thêm param mới `p_tinh_trang_ket_thuc`.
      - Validate non-empty.
-     - Ghi `tinh_trang_ket_thuc`.
+     - Ghi `tinh_trang_ket_thuc` trong UPDATE.
+     - Thêm `'tinh_trang_ket_thuc', nk.tinh_trang_ket_thuc` vào `jsonb_build_object` response.
      - **MUST** khai báo `SET search_path = public, pg_temp` ở DDL header (không chỉ `set_config` trong body).
    - `usage_log_list` overload 8-param.
    - `usage_log_list` overload 7-param (legacy search/report path).
      - Cả 2 overload phải project thêm 2 field mới.
 
-4. **Security and pattern compliance**
+4. **Signature strategy (REVOKE/DROP)**
+   - Param mới có `DEFAULT NULL` → `CREATE OR REPLACE` giữ nguyên signature, **không tạo overload mới**.
+   - Vì signature không đổi → không cần `REVOKE` + `DROP` old signature.
+   - `GRANT EXECUTE` giữ nguyên chữ ký cũ (param list không thay đổi khi dùng DEFAULT).
+
+5. **Security and pattern compliance**
    - `SECURITY DEFINER` + function-level `SET search_path = public, pg_temp`.
    - Giữ pattern tenant guard hiện tại (`allowed_don_vi_for_session`, role checks).
    - Với overload có query text, tiếp tục dùng `_sanitize_ilike_pattern`.
    - Cập nhật `GRANT EXECUTE` đúng chữ ký mới.
+
+> **Lưu ý data type**: Cột legacy `tinh_trang_thiet_bi` là `varchar`, cột mới là `text`. Tương đương trong PostgreSQL, không ảnh hưởng runtime.
 
 ## Phase 3 — Frontend tests first (RED)
 
@@ -133,17 +148,17 @@ Tạo/cập nhật test fail trước khi sửa UI:
      - Header bảng đổi thành 2 cột tình trạng.
    - `src/components/usage-log-print.tsx`:
      - Bảng in + CSV thêm 2 cột tình trạng.
-     - File hiện 526 lines (>450), cần tách trước khi thêm logic mới.
+     - File hiện 491 lines (>350), cần tách trước khi thêm logic mới.
 
 ## Refactor requirement (file ceiling)
 
-Do `usage-log-print.tsx` đang vượt ceiling:
+Do `usage-log-print.tsx` đang vượt ceiling (491 lines > 350 project max):
 
-- Tách trước các khối lớn sang file mới có prefix module:
-  - `src/components/UsageLogPrintHtmlBuilder.ts`
-  - `src/components/UsageLogPrintCsvBuilder.ts`
+- Tách trước các khối lớn sang file mới (kebab-case theo project convention):
+  - `src/components/usage-log-print-html-builder.ts`
+  - `src/components/usage-log-print-csv-builder.ts`
 
-Mục tiêu: đưa file chính xuống dưới 450 lines trước khi mở rộng cột.
+Mục tiêu: đưa file chính xuống dưới 350 lines trước khi mở rộng cột.
 
 ## Danh sách file dự kiến thay đổi
 
@@ -157,8 +172,8 @@ src/components/end-usage-dialog.tsx
 src/components/usage-history-tab.tsx
 src/components/log-template.tsx
 src/components/usage-log-print.tsx
-src/components/UsageLogPrintHtmlBuilder.ts        (new)
-src/components/UsageLogPrintCsvBuilder.ts         (new)
+src/components/usage-log-print-html-builder.ts    (new)
+src/components/usage-log-print-csv-builder.ts     (new)
 src/components/__tests__/start-usage-dialog.validation.test.tsx    (new)
 src/components/__tests__/end-usage-dialog.validation.test.tsx      (new)
 src/components/__tests__/usage-log-print.columns.test.tsx          (new)
@@ -180,4 +195,4 @@ Sau thay đổi DDL, chạy thêm:
 
 ## Trạng thái
 
-Plan đã được nâng cấp theo review và đang chờ bạn duyệt trước khi implementation.
+Plan đã được nâng cấp theo review lần 2 (2026-04-14). Tất cả gap từ review đã được lấp đầy.
