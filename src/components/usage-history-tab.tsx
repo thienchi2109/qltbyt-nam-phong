@@ -55,7 +55,7 @@ export function UsageHistoryTab({ equipment }: UsageHistoryTabProps) {
   const [isEndDialogOpen, setIsEndDialogOpen] = React.useState(false)
   const [selectedUsageLog, setSelectedUsageLog] = React.useState<UsageLog | null>(null)
   const [loadMoreOffset, setLoadMoreOffset] = React.useState(0)
-  const [allUsageLogs, setAllUsageLogs] = React.useState<UsageLog[]>([])
+  const [loadedUsageLogPages, setLoadedUsageLogPages] = React.useState<Record<number, UsageLog[]>>({})
 
   // Initial load - recent usage logs (last 3 months, 50 records)
   const { data: recentUsageLogs, isLoading } = useEquipmentUsageLogs(equipment.id.toString(), {
@@ -73,19 +73,36 @@ export function UsageHistoryTab({ equipment }: UsageHistoryTabProps) {
     }
   )
 
-  // Combine recent and additional usage logs
+  // Append each loaded page without dropping previously appended pages.
   React.useEffect(() => {
-    const combined = [...(recentUsageLogs || [])]
-    if (moreUsageLogs && moreUsageLogs.length > 0) {
-      // Add more logs, avoiding duplicates based on ID
-      const existingIds = new Set(combined.map(log => log.id))
-      const newLogs = moreUsageLogs.filter(log => !existingIds.has(log.id))
-      combined.push(...newLogs)
+    if (!moreUsageLogs || moreUsageLogs.length === 0) {
+      return
     }
-    setAllUsageLogs(combined)
-  }, [recentUsageLogs, moreUsageLogs])
 
-  const usageLogs = allUsageLogs
+    setLoadedUsageLogPages((previousPages) => {
+      const existingLogs = previousPages[equipment.id] || []
+      const existingIds = new Set(existingLogs.map((log) => log.id))
+      const newLogs = moreUsageLogs.filter((log) => !existingIds.has(log.id))
+
+      if (newLogs.length === 0) {
+        return previousPages
+      }
+
+      return {
+        ...previousPages,
+        [equipment.id]: [...existingLogs, ...newLogs],
+      }
+    })
+  }, [equipment.id, moreUsageLogs])
+
+  const usageLogs = React.useMemo(() => {
+    const recentLogs = recentUsageLogs || []
+    const loadedLogs = loadedUsageLogPages[equipment.id] || []
+    const existingIds = new Set(recentLogs.map((log) => log.id))
+    const uniqueLoadedLogs = loadedLogs.filter((log) => !existingIds.has(log.id))
+
+    return [...recentLogs, ...uniqueLoadedLogs]
+  }, [equipment.id, loadedUsageLogPages, recentUsageLogs])
   const deleteUsageLogMutation = useDeleteUsageLog()
 
   // Find active usage session for current user
@@ -225,7 +242,12 @@ export function UsageHistoryTab({ equipment }: UsageHistoryTabProps) {
                       {canDeleteUsageLogs && log.trang_thai === 'hoan_thanh' && (
                         <AlertDialog>
                           <AlertDialogTrigger asChild>
-                            <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-8 w-8 p-0"
+                              aria-label={`Xóa nhật ký sử dụng ${log.id}`}
+                            >
                               <Trash2 className="h-4 w-4" />
                             </Button>
                           </AlertDialogTrigger>
@@ -340,7 +362,12 @@ export function UsageHistoryTab({ equipment }: UsageHistoryTabProps) {
                         {log.trang_thai === 'hoan_thanh' && (
                           <AlertDialog>
                             <AlertDialogTrigger asChild>
-                              <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-8 w-8 p-0"
+                                aria-label={`Xóa nhật ký sử dụng ${log.id}`}
+                              >
                                 <Trash2 className="h-4 w-4" />
                               </Button>
                             </AlertDialogTrigger>

@@ -34,9 +34,16 @@ export function escapeHtml(str: string | null | undefined): string {
 export function escapeUrl(url: string | null | undefined): string {
   if (url == null) return ""
   const trimmed = String(url).trim()
-  if (trimmed.startsWith("http://") || trimmed.startsWith("https://") || trimmed.startsWith("data:")) {
+
+  if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
     return escapeHtml(trimmed)
   }
+
+  const safeDataImagePattern = /^data:image\/(?:png|jpeg|jpg|gif|webp);base64,[a-z0-9+/]+=*$/i
+  if (safeDataImagePattern.test(trimmed)) {
+    return escapeHtml(trimmed)
+  }
+
   return ""
 }
 

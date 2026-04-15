@@ -100,4 +100,18 @@ describe("usage log print builders", () => {
       process.env.TZ = originalTz
     }
   })
+
+  it("rejects unsafe non-image data URIs for the printed tenant logo", () => {
+    const html = buildUsageLogPrintHtml({
+      equipment,
+      filteredLogs: usageLogs,
+      tenantName: "QLTBYT",
+      tenantLogoUrl: "data:text/html;base64,PHNjcmlwdD5hbGVydCgxKTwvc2NyaXB0Pg==",
+      dateFrom: "",
+      dateTo: "",
+      now: new Date("2026-04-15T03:00:00Z"),
+    })
+
+    expect(html).toContain('<img src="" alt="Logo"')
+  })
 })

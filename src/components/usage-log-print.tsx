@@ -90,8 +90,9 @@ export function UsageLogPrint({ equipment }: UsageLogPrintProps) {
     const printWindow = window.open('', '_blank')
 
     if (printWindow) {
-      // Use modern approach to avoid deprecated document.write
-      printWindow.document.documentElement.innerHTML = printContent
+      printWindow.document.open()
+      printWindow.document.write(printContent)
+      printWindow.document.close()
       printWindow.focus()
       printWindow.print()
       printWindow.close()

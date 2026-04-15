@@ -112,6 +112,7 @@ describe("UsageHistoryTab split status", () => {
 
     expect(screen.getByRole("columnheader", { name: "Tình trạng ban đầu" })).toBeInTheDocument()
     expect(screen.getByRole("columnheader", { name: "Tình trạng kết thúc" })).toBeInTheDocument()
+    expect(screen.getByRole("button", { name: "Xóa nhật ký sử dụng 1" })).toBeInTheDocument()
     expect(screen.getByText("Tốt")).toBeInTheDocument()
     expect(screen.getByText("Cần theo dõi")).toBeInTheDocument()
     expect(screen.getAllByText("Fallback legacy")).toHaveLength(2)
