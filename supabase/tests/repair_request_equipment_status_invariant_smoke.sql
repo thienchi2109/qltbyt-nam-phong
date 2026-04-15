@@ -396,4 +396,92 @@ BEGIN
   RAISE NOTICE 'OK: failed repair delete restores latest completed status';
 END $$;
 
+-- 5) Deleting requests in FIFO order must still restore the original equipment
+-- status carried by the repair cluster, not the intermediate Chờ sửa chữa state.
+DO $$
+DECLARE
+  v_suffix text := to_char(clock_timestamp(), 'YYYYMMDDHH24MISSMS');
+  v_tenant bigint;
+  v_user_id bigint;
+  v_equipment_id bigint;
+  v_request_a bigint;
+  v_request_b bigint;
+  v_status_after_delete_a text;
+  v_status_after_delete_b text;
+BEGIN
+  INSERT INTO public.don_vi(name, active)
+  VALUES ('Repair status fifo tenant ' || v_suffix, true)
+  RETURNING id INTO v_tenant;
+
+  INSERT INTO public.nhan_vien(username, password, full_name, role, don_vi, current_don_vi)
+  VALUES (
+    'repair_status_fifo_' || v_suffix,
+    'smoke-password',
+    'Repair Status FIFO',
+    'to_qltb',
+    v_tenant,
+    v_tenant
+  )
+  RETURNING id INTO v_user_id;
+
+  INSERT INTO public.thiet_bi(ma_thiet_bi, ten_thiet_bi, don_vi, tinh_trang_hien_tai)
+  VALUES (
+    'RR-FIFO-' || v_suffix,
+    'Repair status fifo equipment ' || v_suffix,
+    v_tenant,
+    'Hoạt động'
+  )
+  RETURNING id INTO v_equipment_id;
+
+  PERFORM pg_temp._rr_status_set_claims('to_qltb', v_user_id, v_tenant);
+
+  v_request_a := public.repair_request_create(
+    v_equipment_id::integer,
+    'FIFO request A',
+    'FIFO scope A',
+    CURRENT_DATE + 7,
+    'Requester A',
+    'noi_bo',
+    NULL
+  );
+
+  v_request_b := public.repair_request_create(
+    v_equipment_id::integer,
+    'FIFO request B',
+    'FIFO scope B',
+    CURRENT_DATE + 8,
+    'Requester B',
+    'noi_bo',
+    NULL
+  );
+
+  PERFORM public.repair_request_delete(v_request_a::integer);
+
+  SELECT tb.tinh_trang_hien_tai
+  INTO v_status_after_delete_a
+  FROM public.thiet_bi tb
+  WHERE tb.id = v_equipment_id;
+
+  IF v_status_after_delete_a IS DISTINCT FROM 'Chờ sửa chữa' THEN
+    RAISE EXCEPTION
+      'Invariant failed: deleting request A first should keep Chờ sửa chữa while request B survives, got %',
+      v_status_after_delete_a;
+  END IF;
+
+  PERFORM public.repair_request_delete(v_request_b::integer);
+
+  SELECT tb.tinh_trang_hien_tai
+  INTO v_status_after_delete_b
+  FROM public.thiet_bi tb
+  WHERE tb.id = v_equipment_id;
+
+  IF v_status_after_delete_b IS DISTINCT FROM 'Hoạt động' THEN
+    RAISE EXCEPTION
+      'Invariant failed: deleting requests in FIFO order should restore Hoạt động, got %',
+      v_status_after_delete_b;
+  END IF;
+
+  RAISE NOTICE 'OK: FIFO delete order restores original equipment status';
+END $$;
+
 ROLLBACK;

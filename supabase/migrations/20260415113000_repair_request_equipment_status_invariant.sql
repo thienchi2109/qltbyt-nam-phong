@@ -104,6 +104,7 @@ DECLARE
   v_user_id bigint;
   v_don_vi bigint;
   v_tb record;
+  v_snapshot_status text;
 BEGIN
   v_claims := coalesce(current_setting('request.jwt.claims', true), '{}'::text)::jsonb;
   v_role := lower(coalesce(nullif(v_claims->>'app_role', ''), nullif(v_claims->>'role', '')));
@@ -142,6 +143,21 @@ BEGIN
     RAISE EXCEPTION 'Không có quyền trên thiết bị thuộc đơn vị khác' USING errcode = '42501';
   END IF;
 
+  v_snapshot_status := v_tb.tinh_trang_hien_tai;
+
+  IF v_tb.tinh_trang_hien_tai = 'Chờ sửa chữa' THEN
+    SELECT ycss.tinh_trang_thiet_bi_truoc_yeu_cau
+    INTO v_snapshot_status
+    FROM public.yeu_cau_sua_chua ycss
+    WHERE ycss.thiet_bi_id = p_thiet_bi_id
+      AND ycss.tinh_trang_thiet_bi_truoc_yeu_cau IS NOT NULL
+      AND ycss.tinh_trang_thiet_bi_truoc_yeu_cau <> 'Chờ sửa chữa'
+    ORDER BY ycss.id ASC
+    LIMIT 1;
+
+    v_snapshot_status := coalesce(v_snapshot_status, v_tb.tinh_trang_hien_tai);
+  END IF;
+
   INSERT INTO public.yeu_cau_sua_chua(
     thiet_bi_id,
     mo_ta_su_co,
@@ -162,7 +178,7 @@ BEGIN
     'Chờ xử lý',
     p_don_vi_thuc_hien,
     p_ten_don_vi_thue,
-    v_tb.tinh_trang_hien_tai
+    v_snapshot_status
   )
   RETURNING id INTO v_id;
 

@@ -79,10 +79,10 @@ This prevents over-correcting `delete` to always restore `Hoạt động`.
 - [ ] **Step 4: Add the pre-request snapshot restore case**
 
 In the same smoke file, add a third test that:
-- inserts equipment with a non-default status such as `Chờ bảo trì`
+- inserts equipment with a non-default status such as `Ngưng sử dụng`
 - creates a repair request for that equipment
 - deletes the only request
-- expects the equipment status to return to `Chờ bảo trì`
+- expects the equipment status to return to `Ngưng sử dụng`
 
 This is the forward-looking guard that prevents future variants of the same bug on non-`Hoạt động` equipment.
 
