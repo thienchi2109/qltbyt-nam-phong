@@ -69,6 +69,10 @@ DECLARE
 BEGIN
   v_is_global := v_role in ('global', 'admin');
 
+  if v_role is null or v_role = '' then
+    raise exception 'Missing role claim' using errcode = '42501';
+  end if;
+
   if p_thiet_bi_id is null then
     raise exception 'Equipment ID is required' using errcode = '22023';
   end if;
