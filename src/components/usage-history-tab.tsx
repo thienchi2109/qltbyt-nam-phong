@@ -42,6 +42,19 @@ interface UsageHistoryTabProps {
   equipment: Pick<Equipment, 'id' | 'ten_thiet_bi' | 'ma_thiet_bi'> & Partial<Equipment>
 }
 
+function getUsageLogPageSignature(logs: UsageLog[]) {
+  return logs.map((log) => [
+    log.id,
+    log.updated_at,
+    log.trang_thai,
+    log.thoi_gian_ket_thuc ?? "",
+    log.tinh_trang_ban_dau ?? "",
+    log.tinh_trang_ket_thuc ?? "",
+    log.tinh_trang_thiet_bi ?? "",
+    log.ghi_chu ?? "",
+  ].join(":")).join("|")
+}
+
 export function UsageHistoryTab({ equipment }: UsageHistoryTabProps) {
   const { data: session } = useSession()
   const user = session?.user as SessionUser | undefined
@@ -55,7 +68,7 @@ export function UsageHistoryTab({ equipment }: UsageHistoryTabProps) {
   const [isEndDialogOpen, setIsEndDialogOpen] = React.useState(false)
   const [selectedUsageLog, setSelectedUsageLog] = React.useState<UsageLog | null>(null)
   const [loadMoreOffset, setLoadMoreOffset] = React.useState(0)
-  const [loadedUsageLogPages, setLoadedUsageLogPages] = React.useState<Record<number, UsageLog[]>>({})
+  const [loadedUsageLogPages, setLoadedUsageLogPages] = React.useState<Record<number, Record<number, UsageLog[]>>>({})
 
   // Initial load - recent usage logs (last 3 months, 50 records)
   const { data: recentUsageLogs, isLoading } = useEquipmentUsageLogs(equipment.id.toString(), {
@@ -73,31 +86,34 @@ export function UsageHistoryTab({ equipment }: UsageHistoryTabProps) {
     }
   )
 
-  // Append each loaded page without dropping previously appended pages.
+  // Keep each loaded page by offset so refetches can replace stale rows.
   React.useEffect(() => {
-    if (!moreUsageLogs || moreUsageLogs.length === 0) {
+    if (!moreUsageLogs || loadMoreOffset === 0) {
       return
     }
 
     setLoadedUsageLogPages((previousPages) => {
-      const existingLogs = previousPages[equipment.id] || []
-      const existingIds = new Set(existingLogs.map((log) => log.id))
-      const newLogs = moreUsageLogs.filter((log) => !existingIds.has(log.id))
-
-      if (newLogs.length === 0) {
+      const equipmentPages = previousPages[equipment.id] || {}
+      const currentPage = equipmentPages[loadMoreOffset]
+      if (currentPage && getUsageLogPageSignature(currentPage) === getUsageLogPageSignature(moreUsageLogs)) {
         return previousPages
       }
 
       return {
         ...previousPages,
-        [equipment.id]: [...existingLogs, ...newLogs],
+        [equipment.id]: {
+          ...equipmentPages,
+          [loadMoreOffset]: moreUsageLogs,
+        },
       }
     })
-  }, [equipment.id, moreUsageLogs])
+  }, [equipment.id, loadMoreOffset, moreUsageLogs])
 
   const usageLogs = React.useMemo(() => {
     const recentLogs = recentUsageLogs || []
-    const loadedLogs = loadedUsageLogPages[equipment.id] || []
+    const loadedLogs = Object.entries(loadedUsageLogPages[equipment.id] || {})
+      .sort(([leftOffset], [rightOffset]) => Number(leftOffset) - Number(rightOffset))
+      .flatMap(([, logs]) => logs)
     const existingIds = new Set(recentLogs.map((log) => log.id))
     const uniqueLoadedLogs = loadedLogs.filter((log) => !existingIds.has(log.id))
 
@@ -137,6 +153,30 @@ export function UsageHistoryTab({ equipment }: UsageHistoryTabProps) {
   const handleDeleteUsageLog = async (id: number) => {
     try {
       await deleteUsageLogMutation.mutateAsync(id)
+      setLoadedUsageLogPages((previousPages) => {
+        const equipmentPages = previousPages[equipment.id]
+        if (!equipmentPages) {
+          return previousPages
+        }
+
+        let removed = false
+        const nextEquipmentPages = Object.fromEntries(
+          Object.entries(equipmentPages).map(([offset, logs]) => {
+            const nextLogs = logs.filter((log) => log.id !== id)
+            removed ||= nextLogs.length !== logs.length
+            return [offset, nextLogs]
+          })
+        )
+
+        if (!removed) {
+          return previousPages
+        }
+
+        return {
+          ...previousPages,
+          [equipment.id]: nextEquipmentPages,
+        }
+      })
     } catch (error) {
       // Error handling is done in the mutation
     }

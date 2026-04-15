@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import { beforeEach, describe, expect, it, vi } from "vitest"
-import { act, fireEvent, render, screen } from "@testing-library/react"
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react"
 
 const mocks = vi.hoisted(() => ({
   useSession: vi.fn(),
@@ -38,7 +38,7 @@ vi.mock("../end-usage-dialog", () => ({
 
 import { UsageHistoryTab } from "../usage-history-tab"
 
-function createUsageLog(id: number) {
+function createUsageLog(id: number, overrides: Record<string, unknown> = {}) {
   return {
     id,
     thoi_gian_bat_dau: `2026-03-${String((id % 28) + 1).padStart(2, "0")}T08:00:00Z`,
@@ -52,6 +52,7 @@ function createUsageLog(id: number) {
       ten_thiet_bi: "Test Equipment",
       ma_thiet_bi: "TB-001",
     },
+    ...overrides,
   }
 }
 
@@ -106,5 +107,47 @@ describe("UsageHistoryTab load more", () => {
 
     const lastOffset = mocks.useEquipmentUsageLogsMore.mock.calls.at(-1)?.[1]
     expect(lastOffset).toBe(150)
+  })
+
+  it("removes deleted historical logs from accumulated pages", async () => {
+    const deleteUsageLog = vi.fn().mockResolvedValue(undefined)
+    const historicalLog = createUsageLog(51, {
+      trang_thai: "hoan_thanh",
+      thoi_gian_ket_thuc: "2026-03-24T09:00:00Z",
+      nguoi_su_dung: {
+        full_name: "Loaded User 51",
+      },
+    })
+
+    mocks.useEquipmentUsageLogsMore.mockImplementation((_equipmentId: string, offset: number) => ({
+      data: offset > 0 ? [historicalLog] : EMPTY_MORE_USAGE_LOGS,
+      isLoading: false,
+      isFetching: false,
+      offset,
+    }))
+    mocks.useDeleteUsageLog.mockReturnValue({
+      mutateAsync: deleteUsageLog,
+      isPending: false,
+    })
+
+    render(
+      <UsageHistoryTab
+        equipment={{ id: 42, ten_thiet_bi: "Test Equipment", ma_thiet_bi: "TB-001" }}
+      />
+    )
+
+    fireEvent.click(await screen.findByRole("button", { name: "Tải thêm lịch sử" }))
+
+    expect(await screen.findByText("Loaded User 51")).toBeTruthy()
+
+    fireEvent.click(screen.getByRole("button", { name: "Xóa nhật ký sử dụng 51" }))
+    fireEvent.click(await screen.findByRole("button", { name: "Xóa" }))
+
+    await waitFor(() => {
+      expect(deleteUsageLog).toHaveBeenCalledWith(51)
+    })
+    await waitFor(() => {
+      expect(screen.queryByText("Loaded User 51")).toBeNull()
+    })
   })
 })
