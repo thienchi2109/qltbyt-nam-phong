@@ -155,6 +155,7 @@ export function useStartUsageSession() {
       thiet_bi_id: number
       nguoi_su_dung_id: number
       tinh_trang_thiet_bi?: string
+      tinh_trang_ban_dau?: string
       ghi_chu?: string
     }) => {
       const result = await callRpc<UsageLog>({
@@ -164,6 +165,7 @@ export function useStartUsageSession() {
           p_nguoi_su_dung_id: data.nguoi_su_dung_id,
           p_tinh_trang_thiet_bi: data.tinh_trang_thiet_bi ?? null,
           p_ghi_chu: data.ghi_chu ?? null,
+          p_tinh_trang_ban_dau: data.tinh_trang_ban_dau ?? null,
         },
       })
 
@@ -197,6 +199,7 @@ export function useEndUsageSession() {
     mutationFn: async (data: {
       id: number
       tinh_trang_thiet_bi?: string
+      tinh_trang_ket_thuc?: string
       ghi_chu?: string
     }) => {
       const result = await callRpc<UsageLog>({
@@ -205,6 +208,7 @@ export function useEndUsageSession() {
           p_usage_log_id: data.id,
           p_tinh_trang_thiet_bi: data.tinh_trang_thiet_bi ?? null,
           p_ghi_chu: data.ghi_chu ?? null,
+          p_tinh_trang_ket_thuc: data.tinh_trang_ket_thuc ?? null,
         },
       })
 

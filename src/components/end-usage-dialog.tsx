@@ -25,17 +25,11 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form"
+import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
 import { useEndUsageSession } from "@/hooks/use-usage-logs"
 import { useSession } from "next-auth/react"
-import { type UsageLog } from "@/types/database"
+import { type SessionUser, type UsageLog } from "@/types/database"
 import { isRegionalLeaderRole } from "@/lib/rbac"
 
 const equipmentStatusOptions = [
@@ -48,7 +42,7 @@ const equipmentStatusOptions = [
 ] as const
 
 const endUsageSchema = z.object({
-  tinh_trang_thiet_bi: z.string().optional(),
+  tinh_trang_ket_thuc: z.string().trim().min(1, "Vui lòng nhập tình trạng kết thúc"),
   ghi_chu: z.string().optional(),
 })
 
@@ -66,13 +60,14 @@ export function EndUsageDialog({
   usageLog,
 }: EndUsageDialogProps) {
   const { data: session } = useSession()
-  const isRegionalLeader = isRegionalLeaderRole((session?.user as any)?.role)
+  const user = session?.user as SessionUser | undefined
+  const isRegionalLeader = isRegionalLeaderRole(user?.role)
   const endUsageMutation = useEndUsageSession()
 
   const form = useForm<EndUsageFormData>({
     resolver: zodResolver(endUsageSchema),
     defaultValues: {
-      tinh_trang_thiet_bi: usageLog?.tinh_trang_thiet_bi || "",
+      tinh_trang_ket_thuc: usageLog?.tinh_trang_ket_thuc ?? usageLog?.tinh_trang_thiet_bi ?? "",
       ghi_chu: usageLog?.ghi_chu || "",
     },
   })
@@ -80,7 +75,7 @@ export function EndUsageDialog({
   React.useEffect(() => {
     if (usageLog && open) {
       form.reset({
-        tinh_trang_thiet_bi: usageLog.tinh_trang_thiet_bi || "",
+        tinh_trang_ket_thuc: usageLog.tinh_trang_ket_thuc ?? usageLog.tinh_trang_thiet_bi ?? "",
         ghi_chu: usageLog.ghi_chu || "",
       })
     }
@@ -95,7 +90,8 @@ export function EndUsageDialog({
     try {
       await endUsageMutation.mutateAsync({
         id: usageLog.id,
-        tinh_trang_thiet_bi: data.tinh_trang_thiet_bi,
+        tinh_trang_thiet_bi: data.tinh_trang_ket_thuc,
+        tinh_trang_ket_thuc: data.tinh_trang_ket_thuc,
         ghi_chu: data.ghi_chu,
       })
       
@@ -137,28 +133,28 @@ export function EndUsageDialog({
             {/* Usage Info */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 bg-muted/50 rounded-lg">
               <div>
-                <label className="text-sm font-medium text-muted-foreground">Mã thiết bị</label>
+                <p className="text-sm font-medium text-muted-foreground">Mã thiết bị</p>
                 <p className="text-sm font-mono">{usageLog?.thiet_bi?.ma_thiet_bi}</p>
               </div>
               <div>
-                <label className="text-sm font-medium text-muted-foreground">Người sử dụng</label>
+                <p className="text-sm font-medium text-muted-foreground">Người sử dụng</p>
                 <p className="text-sm">{usageLog?.nguoi_su_dung?.full_name}</p>
               </div>
               <div>
-                <label className="text-sm font-medium text-muted-foreground">Thời gian bắt đầu</label>
+                <p className="text-sm font-medium text-muted-foreground">Thời gian bắt đầu</p>
                 <p className="text-sm">
                   {usageLog && format(new Date(usageLog.thoi_gian_bat_dau), "dd/MM/yyyy HH:mm", { locale: vi })}
                 </p>
               </div>
               <div>
-                <label className="text-sm font-medium text-muted-foreground">Thời gian kết thúc</label>
+                <p className="text-sm font-medium text-muted-foreground">Thời gian kết thúc</p>
                 <p className="text-sm">{format(new Date(), "dd/MM/yyyy HH:mm", { locale: vi })}</p>
               </div>
               <div className="col-span-1 sm:col-span-2">
-                <label className="text-sm font-medium text-muted-foreground flex items-center gap-1">
+                <p className="text-sm font-medium text-muted-foreground flex items-center gap-1">
                   <Clock className="h-4 w-4" />
                   Thời gian sử dụng
-                </label>
+                </p>
                 <p className="text-sm font-medium text-primary">{formatDuration(usageDuration)}</p>
               </div>
             </div>
@@ -166,24 +162,22 @@ export function EndUsageDialog({
             {/* Equipment Status */}
             <FormField
               control={form.control}
-              name="tinh_trang_thiet_bi"
+              name="tinh_trang_ket_thuc"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Tình trạng thiết bị sau khi sử dụng</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value}>
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Chọn tình trạng thiết bị" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {equipmentStatusOptions.map((status) => (
-                        <SelectItem key={status} value={status}>
-                          {status}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <FormLabel>Tình trạng kết thúc</FormLabel>
+                  <FormControl>
+                    <Input
+                      {...field}
+                      list="end-usage-status-options"
+                      placeholder="Nhập tình trạng thiết bị sau khi sử dụng"
+                    />
+                  </FormControl>
+                  <datalist id="end-usage-status-options">
+                    {equipmentStatusOptions.map((status) => (
+                      <option key={status} value={status} />
+                    ))}
+                  </datalist>
                   <FormMessage />
                 </FormItem>
               )}

@@ -32,7 +32,8 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { useEquipmentUsageLogs, useEquipmentUsageLogsMore, useDeleteUsageLog } from "@/hooks/use-usage-logs"
 import { useSession } from "next-auth/react"
 import { useIsMobile } from "@/hooks/use-mobile"
-import { type Equipment, type UsageLog, USAGE_STATUS } from "@/types/database"
+import { getUsageLogFinalStatus, getUsageLogInitialStatus } from "@/lib/usage-log-status"
+import { type Equipment, type SessionUser, type UsageLog, USAGE_STATUS } from "@/types/database"
 import { isGlobalRole } from "@/lib/rbac"
 import { EndUsageDialog } from "./end-usage-dialog"
 import { UsageLogPrint } from "./usage-log-print"
@@ -41,12 +42,25 @@ interface UsageHistoryTabProps {
   equipment: Pick<Equipment, 'id' | 'ten_thiet_bi' | 'ma_thiet_bi'> & Partial<Equipment>
 }
 
+function getUsageLogPageSignature(logs: UsageLog[]) {
+  return logs.map((log) => [
+    log.id,
+    log.updated_at,
+    log.trang_thai,
+    log.thoi_gian_ket_thuc ?? "",
+    log.tinh_trang_ban_dau ?? "",
+    log.tinh_trang_ket_thuc ?? "",
+    log.tinh_trang_thiet_bi ?? "",
+    log.ghi_chu ?? "",
+  ].join(":")).join("|")
+}
+
 export function UsageHistoryTab({ equipment }: UsageHistoryTabProps) {
   const { data: session } = useSession()
-  const user = session?.user as any
+  const user = session?.user as SessionUser | undefined
   const canDeleteUsageLogs = isGlobalRole(user?.role)
   const userId = React.useMemo(() => {
-    const uid = (user?.id as any)
+    const uid = user?.id
     const n = typeof uid === 'string' ? Number(uid) : uid
     return Number.isFinite(n) ? (n as number) : null
   }, [user?.id])
@@ -54,7 +68,7 @@ export function UsageHistoryTab({ equipment }: UsageHistoryTabProps) {
   const [isEndDialogOpen, setIsEndDialogOpen] = React.useState(false)
   const [selectedUsageLog, setSelectedUsageLog] = React.useState<UsageLog | null>(null)
   const [loadMoreOffset, setLoadMoreOffset] = React.useState(0)
-  const [allUsageLogs, setAllUsageLogs] = React.useState<UsageLog[]>([])
+  const [loadedUsageLogPages, setLoadedUsageLogPages] = React.useState<Record<number, Record<number, UsageLog[]>>>({})
 
   // Initial load - recent usage logs (last 3 months, 50 records)
   const { data: recentUsageLogs, isLoading } = useEquipmentUsageLogs(equipment.id.toString(), {
@@ -72,19 +86,39 @@ export function UsageHistoryTab({ equipment }: UsageHistoryTabProps) {
     }
   )
 
-  // Combine recent and additional usage logs
+  // Keep each loaded page by offset so refetches can replace stale rows.
   React.useEffect(() => {
-    const combined = [...(recentUsageLogs || [])]
-    if (moreUsageLogs && moreUsageLogs.length > 0) {
-      // Add more logs, avoiding duplicates based on ID
-      const existingIds = new Set(combined.map(log => log.id))
-      const newLogs = moreUsageLogs.filter(log => !existingIds.has(log.id))
-      combined.push(...newLogs)
+    if (!moreUsageLogs || loadMoreOffset === 0) {
+      return
     }
-    setAllUsageLogs(combined)
-  }, [recentUsageLogs, moreUsageLogs])
 
-  const usageLogs = allUsageLogs
+    setLoadedUsageLogPages((previousPages) => {
+      const equipmentPages = previousPages[equipment.id] || {}
+      const currentPage = equipmentPages[loadMoreOffset]
+      if (currentPage && getUsageLogPageSignature(currentPage) === getUsageLogPageSignature(moreUsageLogs)) {
+        return previousPages
+      }
+
+      return {
+        ...previousPages,
+        [equipment.id]: {
+          ...equipmentPages,
+          [loadMoreOffset]: moreUsageLogs,
+        },
+      }
+    })
+  }, [equipment.id, loadMoreOffset, moreUsageLogs])
+
+  const usageLogs = React.useMemo(() => {
+    const recentLogs = recentUsageLogs || []
+    const loadedLogs = Object.entries(loadedUsageLogPages[equipment.id] || {})
+      .sort(([leftOffset], [rightOffset]) => Number(leftOffset) - Number(rightOffset))
+      .flatMap(([, logs]) => logs)
+    const existingIds = new Set(recentLogs.map((log) => log.id))
+    const uniqueLoadedLogs = loadedLogs.filter((log) => !existingIds.has(log.id))
+
+    return [...recentLogs, ...uniqueLoadedLogs]
+  }, [equipment.id, loadedUsageLogPages, recentUsageLogs])
   const deleteUsageLogMutation = useDeleteUsageLog()
 
   // Find active usage session for current user
@@ -119,6 +153,30 @@ export function UsageHistoryTab({ equipment }: UsageHistoryTabProps) {
   const handleDeleteUsageLog = async (id: number) => {
     try {
       await deleteUsageLogMutation.mutateAsync(id)
+      setLoadedUsageLogPages((previousPages) => {
+        const equipmentPages = previousPages[equipment.id]
+        if (!equipmentPages) {
+          return previousPages
+        }
+
+        let removed = false
+        const nextEquipmentPages = Object.fromEntries(
+          Object.entries(equipmentPages).map(([offset, logs]) => {
+            const nextLogs = logs.filter((log) => log.id !== id)
+            removed ||= nextLogs.length !== logs.length
+            return [offset, nextLogs]
+          })
+        )
+
+        if (!removed) {
+          return previousPages
+        }
+
+        return {
+          ...previousPages,
+          [equipment.id]: nextEquipmentPages,
+        }
+      })
     } catch (error) {
       // Error handling is done in the mutation
     }
@@ -224,7 +282,12 @@ export function UsageHistoryTab({ equipment }: UsageHistoryTabProps) {
                       {canDeleteUsageLogs && log.trang_thai === 'hoan_thanh' && (
                         <AlertDialog>
                           <AlertDialogTrigger asChild>
-                            <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-8 w-8 p-0"
+                              aria-label={`Xóa nhật ký sử dụng ${log.id}`}
+                            >
                               <Trash2 className="h-4 w-4" />
                             </Button>
                           </AlertDialogTrigger>
@@ -268,12 +331,15 @@ export function UsageHistoryTab({ equipment }: UsageHistoryTabProps) {
                       </span>
                     </div>
                     
-                    {log.tinh_trang_thiet_bi && (
-                      <div>
-                        <span className="text-muted-foreground">Tình trạng: </span>
-                        <span>{log.tinh_trang_thiet_bi}</span>
-                      </div>
-                    )}
+                    <div>
+                      <span className="text-muted-foreground">Tình trạng ban đầu: </span>
+                      <span>{getUsageLogInitialStatus(log) || '-'}</span>
+                    </div>
+
+                    <div>
+                      <span className="text-muted-foreground">Tình trạng kết thúc: </span>
+                      <span>{getUsageLogFinalStatus(log) || '-'}</span>
+                    </div>
                     
                     {log.ghi_chu && (
                       <div className="flex gap-2">
@@ -296,7 +362,8 @@ export function UsageHistoryTab({ equipment }: UsageHistoryTabProps) {
                   <TableHead>Thời gian bắt đầu</TableHead>
                   <TableHead>Thời gian kết thúc</TableHead>
                   <TableHead>Thời lượng</TableHead>
-                  <TableHead>Tình trạng TB</TableHead>
+                  <TableHead>Tình trạng ban đầu</TableHead>
+                  <TableHead>Tình trạng kết thúc</TableHead>
                   <TableHead>Trạng thái</TableHead>
                   <TableHead>Ghi chú</TableHead>
                   {canDeleteUsageLogs && <TableHead className="w-[50px]"></TableHead>}
@@ -320,7 +387,8 @@ export function UsageHistoryTab({ equipment }: UsageHistoryTabProps) {
                     <TableCell>
                       {formatDuration(log.thoi_gian_bat_dau, log.thoi_gian_ket_thuc)}
                     </TableCell>
-                    <TableCell>{log.tinh_trang_thiet_bi || '-'}</TableCell>
+                    <TableCell>{getUsageLogInitialStatus(log) || '-'}</TableCell>
+                    <TableCell>{getUsageLogFinalStatus(log) || '-'}</TableCell>
                     <TableCell>
                       <Badge variant={log.trang_thai === 'dang_su_dung' ? 'default' : 'secondary'}>
                         {USAGE_STATUS[log.trang_thai]}
@@ -334,7 +402,12 @@ export function UsageHistoryTab({ equipment }: UsageHistoryTabProps) {
                         {log.trang_thai === 'hoan_thanh' && (
                           <AlertDialog>
                             <AlertDialogTrigger asChild>
-                              <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-8 w-8 p-0"
+                                aria-label={`Xóa nhật ký sử dụng ${log.id}`}
+                              >
                                 <Trash2 className="h-4 w-4" />
                               </Button>
                             </AlertDialogTrigger>

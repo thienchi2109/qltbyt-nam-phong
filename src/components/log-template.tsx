@@ -6,6 +6,8 @@ import { FormBrandingHeader } from "@/components/form-branding-header"
 interface UsageLogEntry {
   dateTime?: string
   user?: string
+  initialCondition?: string
+  finalCondition?: string
   condition?: string
   note?: string
 }
@@ -35,7 +37,7 @@ export function LogTemplate({
   serial = "",
   usageLogs = EMPTY_USAGE_LOGS
 }: LogTemplateProps) {
-  const formatValue = (value: any) => {
+  const formatValue = (value: unknown) => {
     if (value === null || value === undefined || value === '') {
       return ''
     }
@@ -49,8 +51,11 @@ export function LogTemplate({
       return `log-${dateTime || "unknown"}-${user || "unknown"}`
     }
 
-    const condition = formatValue(log.condition)
-    if (condition) return `condition-${condition}`
+    const initialCondition = formatValue(log.initialCondition ?? log.condition)
+    if (initialCondition) return `condition-${initialCondition}`
+
+    const finalCondition = formatValue(log.finalCondition ?? log.condition)
+    if (finalCondition) return `final-condition-${finalCondition}`
 
     const note = formatValue(log.note)
     if (note) return `note-${note}`
@@ -95,9 +100,10 @@ export function LogTemplate({
                   className="mb-2"
                 />
                 <div className="flex items-baseline justify-center mt-1">
-                  <label className="font-bold whitespace-nowrap">KHOA/PHÒNG:</label>
+                  <label className="font-bold whitespace-nowrap" htmlFor="log-template-department">KHOA/PHÒNG:</label>
                   <div className="w-1/2 ml-2">
                     <input 
+                      id="log-template-department"
                       type="text" 
                       className="form-input-line"
                       defaultValue={formatValue(department)}
@@ -115,16 +121,18 @@ export function LogTemplate({
           {/* Info Section */}
           <section className="space-y-2 mb-4">
             <div className="flex items-baseline">
-              <label className="whitespace-nowrap w-40">Người quản lý thiết bị:</label>
+              <label className="whitespace-nowrap w-40" htmlFor="log-template-device-manager">Người quản lý thiết bị:</label>
               <input 
+                id="log-template-device-manager"
                 type="text" 
                 className="form-input-line ml-2"
                 defaultValue={formatValue(deviceManager)}
               />
             </div>
             <div className="flex items-baseline">
-              <label className="whitespace-nowrap w-40">Tên thiết bị:</label>
+              <label className="whitespace-nowrap w-40" htmlFor="log-template-device-name">Tên thiết bị:</label>
               <input 
+                id="log-template-device-name"
                 type="text" 
                 className="form-input-line ml-2"
                 defaultValue={formatValue(deviceName)}
@@ -132,24 +140,27 @@ export function LogTemplate({
             </div>
             <div className="grid grid-cols-3 gap-x-8">
               <div className="flex items-baseline">
-                <label className="whitespace-nowrap">Mã thiết bị:</label>
+                <label className="whitespace-nowrap" htmlFor="log-template-device-code">Mã thiết bị:</label>
                 <input 
+                  id="log-template-device-code"
                   type="text" 
                   className="form-input-line ml-2"
                   defaultValue={formatValue(deviceCode)}
                 />
               </div>
               <div className="flex items-baseline">
-                <label className="whitespace-nowrap">Model:</label>
+                <label className="whitespace-nowrap" htmlFor="log-template-model">Model:</label>
                 <input 
+                  id="log-template-model"
                   type="text" 
                   className="form-input-line ml-2"
                   defaultValue={formatValue(model)}
                 />
               </div>
               <div className="flex items-baseline">
-                <label className="whitespace-nowrap">Serial N⁰:</label>
+                <label className="whitespace-nowrap" htmlFor="log-template-serial">Serial N⁰:</label>
                 <input 
+                  id="log-template-serial"
                   type="text" 
                   className="form-input-line ml-2"
                   defaultValue={formatValue(serial)}
@@ -163,10 +174,11 @@ export function LogTemplate({
             <table className="w-full data-table">
               <thead className="font-bold">
                 <tr>
-                  <th className="w-1/4">Ngày, giờ sử dụng</th>
-                  <th className="w-1/4">Người sử dụng</th>
-                  <th className="w-1/4">Tình trạng thiết bị</th>
-                  <th className="w-1/4">Ghi chú</th>
+                  <th style={{ width: "18%" }}>Ngày, giờ sử dụng</th>
+                  <th style={{ width: "18%" }}>Người sử dụng</th>
+                  <th style={{ width: "16%" }}>Tình trạng bắt đầu</th>
+                  <th style={{ width: "16%" }}>Tình trạng kết thúc</th>
+                  <th style={{ width: "32%" }}>Ghi chú</th>
                 </tr>
               </thead>
               <tbody>
@@ -174,7 +186,8 @@ export function LogTemplate({
                   <tr key={log._rowKey}>
                     <td>{formatValue(log.dateTime) || (index === 0 ? '\u00A0' : '')}</td>
                     <td>{formatValue(log.user)}</td>
-                    <td>{formatValue(log.condition)}</td>
+                    <td>{formatValue(log.initialCondition ?? log.condition)}</td>
+                    <td>{formatValue(log.finalCondition ?? log.condition)}</td>
                     <td>{formatValue(log.note)}</td>
                   </tr>
                 ))}
