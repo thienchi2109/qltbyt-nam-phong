@@ -199,7 +199,7 @@ BEGIN
     v_id
   );
 
-  PERFORM public.audit_log(
+  IF NOT public.audit_log(
     'repair_request_create',
     'repair_request',
     v_id,
@@ -208,7 +208,9 @@ BEGIN
       'thiet_bi_id', p_thiet_bi_id,
       'mo_ta_su_co', p_mo_ta_su_co
     )
-  );
+  ) THEN
+    RAISE EXCEPTION 'audit_log failed for repair_request %', v_id;
+  END IF;
 
   RETURN v_id;
 END;
