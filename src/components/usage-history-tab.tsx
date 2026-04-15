@@ -32,7 +32,8 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { useEquipmentUsageLogs, useEquipmentUsageLogsMore, useDeleteUsageLog } from "@/hooks/use-usage-logs"
 import { useSession } from "next-auth/react"
 import { useIsMobile } from "@/hooks/use-mobile"
-import { type Equipment, type UsageLog, USAGE_STATUS } from "@/types/database"
+import { getUsageLogFinalStatus, getUsageLogInitialStatus } from "@/lib/usage-log-status"
+import { type Equipment, type SessionUser, type UsageLog, USAGE_STATUS } from "@/types/database"
 import { isGlobalRole } from "@/lib/rbac"
 import { EndUsageDialog } from "./end-usage-dialog"
 import { UsageLogPrint } from "./usage-log-print"
@@ -43,10 +44,10 @@ interface UsageHistoryTabProps {
 
 export function UsageHistoryTab({ equipment }: UsageHistoryTabProps) {
   const { data: session } = useSession()
-  const user = session?.user as any
+  const user = session?.user as SessionUser | undefined
   const canDeleteUsageLogs = isGlobalRole(user?.role)
   const userId = React.useMemo(() => {
-    const uid = (user?.id as any)
+    const uid = user?.id
     const n = typeof uid === 'string' ? Number(uid) : uid
     return Number.isFinite(n) ? (n as number) : null
   }, [user?.id])
@@ -268,12 +269,15 @@ export function UsageHistoryTab({ equipment }: UsageHistoryTabProps) {
                       </span>
                     </div>
                     
-                    {log.tinh_trang_thiet_bi && (
-                      <div>
-                        <span className="text-muted-foreground">Tình trạng: </span>
-                        <span>{log.tinh_trang_thiet_bi}</span>
-                      </div>
-                    )}
+                    <div>
+                      <span className="text-muted-foreground">Tình trạng ban đầu: </span>
+                      <span>{getUsageLogInitialStatus(log) || '-'}</span>
+                    </div>
+
+                    <div>
+                      <span className="text-muted-foreground">Tình trạng kết thúc: </span>
+                      <span>{getUsageLogFinalStatus(log) || '-'}</span>
+                    </div>
                     
                     {log.ghi_chu && (
                       <div className="flex gap-2">
@@ -296,7 +300,8 @@ export function UsageHistoryTab({ equipment }: UsageHistoryTabProps) {
                   <TableHead>Thời gian bắt đầu</TableHead>
                   <TableHead>Thời gian kết thúc</TableHead>
                   <TableHead>Thời lượng</TableHead>
-                  <TableHead>Tình trạng TB</TableHead>
+                  <TableHead>Tình trạng ban đầu</TableHead>
+                  <TableHead>Tình trạng kết thúc</TableHead>
                   <TableHead>Trạng thái</TableHead>
                   <TableHead>Ghi chú</TableHead>
                   {canDeleteUsageLogs && <TableHead className="w-[50px]"></TableHead>}
@@ -320,7 +325,8 @@ export function UsageHistoryTab({ equipment }: UsageHistoryTabProps) {
                     <TableCell>
                       {formatDuration(log.thoi_gian_bat_dau, log.thoi_gian_ket_thuc)}
                     </TableCell>
-                    <TableCell>{log.tinh_trang_thiet_bi || '-'}</TableCell>
+                    <TableCell>{getUsageLogInitialStatus(log) || '-'}</TableCell>
+                    <TableCell>{getUsageLogFinalStatus(log) || '-'}</TableCell>
                     <TableCell>
                       <Badge variant={log.trang_thai === 'dang_su_dung' ? 'default' : 'secondary'}>
                         {USAGE_STATUS[log.trang_thai]}

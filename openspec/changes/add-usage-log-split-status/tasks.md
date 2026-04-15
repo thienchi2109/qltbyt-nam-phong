@@ -49,32 +49,34 @@ Start this batch only after Batch 1 migration is deployed. The pre-requisite ref
 
 ### 4. Pre-requisite Refactor
 
-- [ ] 4.1 Extract HTML builder from `usage-log-print.tsx` into `usage-log-print-html-builder.ts` (file is 491 lines, exceeds 350-line ceiling).
-- [ ] 4.2 Extract CSV builder from `usage-log-print.tsx` into `usage-log-print-csv-builder.ts`.
-- [ ] 4.3 Verify `usage-log-print.tsx` is under 350 lines after extraction; run `typecheck` and focused tests.
+- [x] 4.1 Extract HTML builder from `usage-log-print.tsx` into `usage-log-print-html-builder.ts` (file is 491 lines, exceeds 350-line ceiling).
+- [x] 4.2 Extract CSV builder from `usage-log-print.tsx` into `usage-log-print-csv-builder.ts`.
+- [x] 4.3 Verify `usage-log-print.tsx` is under 350 lines after extraction; run `typecheck` and focused tests.
 
 ### 5. Frontend Tests (RED)
 
-- [ ] 5.1 Create `start-usage-dialog.validation.test.tsx`: block submit when missing initial status; allow when valid.
-- [ ] 5.2 Create `end-usage-dialog.validation.test.tsx`: block submit when missing final status; allow when valid.
-- [ ] 5.3 Create `usage-log-print.columns.test.tsx`: print HTML + CSV include 2 status columns.
-- [ ] 5.4 Run focused tests and confirm RED.
+- [x] 5.1 Create `start-usage-dialog.validation.test.tsx`: block submit when missing initial status; allow when valid.
+- [x] 5.2 Create `end-usage-dialog.validation.test.tsx`: block submit when missing final status; allow when valid.
+- [x] 5.3 Create `usage-log-print.columns.test.tsx`: print HTML + CSV include 2 status columns.
+- [x] 5.4 Run focused tests and confirm RED.
 
 ### 6. Frontend Implementation (GREEN)
 
-- [ ] 6.1 Update `database.ts` types: add `tinh_trang_ban_dau?: string | null` and `tinh_trang_ket_thuc?: string | null`.
-- [ ] 6.2 Update `use-usage-logs.ts`: mutation payloads and response parsing for start/end.
-- [ ] 6.3 Update `start-usage-dialog.tsx`: new `tinh_trang_ban_dau` field (free-text + datalist), Zod validation.
-- [ ] 6.4 Update `end-usage-dialog.tsx`: new `tinh_trang_ket_thuc` field (required), Zod validation.
-- [ ] 6.5 Update `usage-history-tab.tsx`: display split status with legacy fallback.
-- [ ] 6.6 Update `usage-log-print.tsx` + extracted builders: 2 status columns in print table and CSV.
-- [ ] 6.7 Run focused tests and confirm GREEN.
+- [x] 6.1 Update `database.ts` types: add `tinh_trang_ban_dau?: string | null` and `tinh_trang_ket_thuc?: string | null`.
+- [x] 6.2 Update `use-usage-logs.ts`: mutation payloads and response parsing for start/end.
+- [x] 6.3 Update `start-usage-dialog.tsx`: new `tinh_trang_ban_dau` field (free-text + datalist), Zod validation.
+- [x] 6.4 Update `end-usage-dialog.tsx`: new `tinh_trang_ket_thuc` field (required), Zod validation.
+- [x] 6.5 Update `usage-history-tab.tsx`: display split status with legacy fallback.
+- [x] 6.6 Update `usage-log-print.tsx` + extracted builders: 2 status columns in print table and CSV.
+- [x] 6.7 Run focused tests and confirm GREEN.
 
 ### 7. Frontend Verification
 
-- [ ] 7.1 Run `node scripts/npm-run.js run verify:no-explicit-any`
-- [ ] 7.2 Run `node scripts/npm-run.js run typecheck`
-- [ ] 7.3 Run focused tests: `npm test -- --testPathPattern="usage|print"`
-- [ ] 7.4 Run `node scripts/npm-run.js npx react-doctor@latest . --verbose -y --project nextn --offline --diff main`
-- [ ] 7.5 Run `openspec validate add-usage-log-split-status --strict`
-- [ ] 7.6 Commit: `feat: add split status UI for usage log sessions`
+- [x] 7.1 Run `node scripts/npm-run.js run verify:no-explicit-any`
+- [x] 7.2 Run `node scripts/npm-run.js run typecheck`
+- [x] 7.3 Run focused tests: `npm test -- --testPathPattern="usage|print"`
+  Note: used exact targeted Vitest files covering hooks, dialogs, usage history, print/export, log-template, and fallback helper.
+- [x] 7.4 Run `node scripts/npm-run.js npx react-doctor@latest . --verbose -y --project nextn --offline --diff main`
+  Note: React Doctor score `99/100`; residual warnings are one `styled-jsx` false positive on `log-template.tsx` and one non-blocking file-length suggestion for `usage-history-tab.tsx`.
+- [x] 7.5 Run `openspec validate add-usage-log-split-status --strict`
+- [x] 7.6 Commit: `feat: add split status UI for usage log sessions`

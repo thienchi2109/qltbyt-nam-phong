@@ -93,6 +93,8 @@ export interface UsageLog {
   thoi_gian_bat_dau: string;
   thoi_gian_ket_thuc?: string;
   tinh_trang_thiet_bi?: string;
+  tinh_trang_ban_dau?: string | null;
+  tinh_trang_ket_thuc?: string | null;
   ghi_chu?: string;
   trang_thai: 'dang_su_dung' | 'hoan_thanh';
   created_at: string;

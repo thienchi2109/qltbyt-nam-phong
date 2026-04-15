@@ -1,9 +1,8 @@
 "use client"
 
 import React from "react"
-import { format, differenceInMinutes } from "date-fns"
-import { vi } from "date-fns/locale"
-import { Printer, Download, Calendar, Filter } from "lucide-react"
+import { format } from "date-fns"
+import { Printer, Download } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -26,7 +25,8 @@ import {
 } from "@/components/ui/select"
 import { useEquipmentUsageLogs } from "@/hooks/use-usage-logs"
 import { useTenantBranding } from "@/hooks/use-tenant-branding"
-import { type Equipment, type UsageLog } from "@/types/database"
+import { buildUsageLogCsv, buildUsageLogPrintHtml } from "@/components/usage-log-print-builders"
+import { type Equipment } from "@/types/database"
 
 interface UsageLogPrintProps {
   equipment: Pick<Equipment, 'id' | 'ten_thiet_bi' | 'ma_thiet_bi'> & Partial<Equipment>
@@ -38,34 +38,6 @@ const STATUS_FILTER_OPTIONS = [
   { value: 'hoan_thanh', label: 'Hoàn thành' },
   { value: 'dang_su_dung', label: 'Đang sử dụng' },
 ] as const
-
-/**
- * Escapes HTML special characters to prevent XSS attacks.
- * Used when interpolating user-supplied data into HTML template strings.
- */
-function escapeHtml(str: string | null | undefined): string {
-  if (str == null) return ''
-  return String(str)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;')
-}
-
-/**
- * Escapes a URL for safe use in HTML attributes.
- * Only allows http, https, and data URLs to prevent javascript: injection.
- */
-function escapeUrl(url: string | null | undefined): string {
-  if (url == null) return ''
-  const trimmed = String(url).trim()
-  // Only allow safe URL protocols
-  if (trimmed.startsWith('http://') || trimmed.startsWith('https://') || trimmed.startsWith('data:')) {
-    return escapeHtml(trimmed)
-  }
-  return ''
-}
 
 export function UsageLogPrint({ equipment }: UsageLogPrintProps) {
   const [isDialogOpen, setIsDialogOpen] = React.useState(false)
@@ -104,22 +76,16 @@ export function UsageLogPrint({ equipment }: UsageLogPrintProps) {
     })
   }, [usageLogs, dateFrom, dateTo, statusFilter])
 
-  const formatDuration = (startTime: string, endTime?: string) => {
-    const start = new Date(startTime)
-    const end = endTime ? new Date(endTime) : new Date()
-    const minutes = differenceInMinutes(end, start)
-    
-    const hours = Math.floor(minutes / 60)
-    const mins = minutes % 60
-    
-    if (hours > 0) {
-      return `${hours} giờ ${mins} phút`
-    }
-    return `${mins} phút`
-  }
-
   const handlePrint = () => {
-    const printContent = generatePrintContent()
+    const printContent = buildUsageLogPrintHtml({
+      equipment,
+      filteredLogs,
+      tenantName,
+      tenantLogoUrl,
+      dateFrom,
+      dateTo,
+      now: new Date(),
+    })
     const printWindow = window.open('', '_blank')
 
     if (printWindow) {
@@ -134,7 +100,11 @@ export function UsageLogPrint({ equipment }: UsageLogPrintProps) {
   }
 
   const handleExport = () => {
-    const csvContent = generateCSVContent()
+    const csvContent = buildUsageLogCsv({
+      equipment,
+      filteredLogs,
+      now: new Date(),
+    })
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
     const link = document.createElement('a')
     
@@ -149,301 +119,6 @@ export function UsageLogPrint({ equipment }: UsageLogPrintProps) {
     }
     
     setIsDialogOpen(false)
-  }
-
-  const generatePrintContent = () => {
-    const currentDate = format(new Date(), 'dd/MM/yyyy HH:mm', { locale: vi })
-    const dateRange = dateFrom || dateTo 
-      ? `(${dateFrom ? format(new Date(dateFrom), 'dd/MM/yyyy', { locale: vi }) : '...'} - ${dateTo ? format(new Date(dateTo), 'dd/MM/yyyy', { locale: vi }) : '...'})`
-      : ''
-
-    return `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <meta charset="utf-8">
-        <title>Nhật ký sử dụng thiết bị - ${escapeHtml(equipment.ten_thiet_bi)}</title>
-        <style>
-          @page {
-            size: A4 landscape;
-            margin: 1cm;
-          }
-          
-          body {
-            font-family: 'Times New Roman', serif;
-            font-size: 13px;
-            line-height: 1.4;
-            margin: 0;
-            padding: 0;
-            color: #000;
-          }
-          
-          .header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 20px;
-            border-bottom: 2px solid #000;
-            padding-bottom: 10px;
-          }
-
-          .header-content {
-            flex-grow: 1;
-            text-align: center;
-          }
-
-          .header-logo {
-            width: 80px;
-            height: 80px;
-          }
-
-          .header-spacer {
-            width: 80px;
-            height: 80px;
-          }
-
-          /* Print footer styles */
-          .print-footer {
-            position: fixed;
-            bottom: 1cm;
-            left: 2cm;
-            right: 2cm;
-            width: calc(100% - 4cm);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            font-size: 11px;
-          }
-
-          .content-body {
-            padding-bottom: 30px; /* Space for footer */
-          }
-          
-          .header h1 {
-            font-size: 20px;
-            font-weight: bold;
-            margin: 0 0 5px 0;
-            text-transform: uppercase;
-          }
-          
-          .header h2 {
-            font-size: 18px;
-            margin: 0 0 5px 0;
-          }
-          
-          .equipment-info {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 20px;
-            margin-bottom: 20px;
-            padding: 10px;
-            border: 1px solid #ccc;
-            background-color: #f9f9f9;
-          }
-          
-          .info-item {
-            display: flex;
-            margin-bottom: 5px;
-          }
-          
-          .info-label {
-            font-weight: bold;
-            min-width: 120px;
-          }
-          
-          .data-table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-bottom: 20px;
-          }
-          
-          .data-table th,
-          .data-table td {
-            border: 1px solid #000;
-            padding: 6px 4px;
-            text-align: left;
-            vertical-align: top;
-            font-size: 13px;
-          }
-          
-          .data-table th {
-            background-color: #f0f0f0;
-            font-weight: bold;
-            text-align: center;
-          }
-          
-          .data-table td:nth-child(1) { width: 6%; } /* STT */
-          .data-table td:nth-child(2) { width: 20%; } /* Người sử dụng */
-          .data-table td:nth-child(3) { width: 15%; } /* Thời gian bắt đầu */
-          .data-table td:nth-child(4) { width: 15%; } /* Thời gian kết thúc */
-          .data-table td:nth-child(5) { width: 10%; } /* Thời lượng */
-          .data-table td:nth-child(6) { width: 14%; } /* Trạng thái */
-          .data-table td:nth-child(7) { width: 12%; } /* Ghi chú */
-          
-          .footer {
-            margin-top: 30px;
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 50px;
-          }
-          
-          .signature-section {
-            text-align: center;
-          }
-          
-          .signature-title {
-            font-weight: bold;
-            margin-bottom: 50px;
-          }
-          
-          .signature-line {
-            border-top: 1px solid #000;
-            margin-top: 50px;
-            padding-top: 5px;
-          }
-          
-          .print-info {
-            font-size: 11px;
-            color: #666;
-            text-align: right;
-            margin-top: 20px;
-          }
-          
-          .status-completed { color: #059669; }
-          .status-active { color: #dc2626; font-weight: bold; }
-        </style>
-      </head>
-      <body>
-        <div class="content-body">
-        <div class="header">
-          <img src="${escapeUrl(tenantLogoUrl)}" alt="Logo" class="header-logo" onerror="this.onerror=null;this.style.display='none';">
-          <div class="header-content">
-            <h2 style="font-size: 14px; font-weight: bold; margin: 0 0 5px 0; text-transform: uppercase;">${escapeHtml(tenantName)}</h2>
-            <h1>NHẬT KÝ SỬ DỤNG THIẾT BỊ</h1>
-            <h2>${escapeHtml(equipment.ten_thiet_bi)}</h2>
-            <div>Mã thiết bị: ${escapeHtml(equipment.ma_thiet_bi)} ${dateRange}</div>
-          </div>
-          <div class="header-spacer"></div>
-        </div>
-        
-        <div class="equipment-info">
-          <div>
-            <div class="info-item">
-              <span class="info-label">Tên thiết bị:</span>
-              <span>${escapeHtml(equipment.ten_thiet_bi)}</span>
-            </div>
-            <div class="info-item">
-              <span class="info-label">Mã thiết bị:</span>
-              <span>${escapeHtml(equipment.ma_thiet_bi)}</span>
-            </div>
-            <div class="info-item">
-              <span class="info-label">Khoa/Phòng:</span>
-              <span>${escapeHtml(equipment.khoa_phong_quan_ly) || 'Chưa xác định'}</span>
-            </div>
-          </div>
-          <div>
-            <div class="info-item">
-              <span class="info-label">Hãng sản xuất:</span>
-              <span>${escapeHtml(equipment.hang_san_xuat) || 'Chưa có thông tin'}</span>
-            </div>
-            <div class="info-item">
-              <span class="info-label">Model:</span>
-              <span>${escapeHtml(equipment.model) || 'Chưa có thông tin'}</span>
-            </div>
-            <div class="info-item">
-              <span class="info-label">Tình trạng hiện tại:</span>
-              <span>${escapeHtml(equipment.tinh_trang_hien_tai) || 'Chưa xác định'}</span>
-            </div>
-          </div>
-        </div>
-        
-        <table class="data-table">
-          <thead>
-            <tr>
-              <th>STT</th>
-              <th>Người sử dụng</th>
-              <th>Thời gian bắt đầu</th>
-              <th>Thời gian kết thúc</th>
-              <th>Thời lượng</th>
-              <th>Trạng thái</th>
-              <th>Ghi chú</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${filteredLogs.map((log, index) => `
-              <tr>
-                <td style="text-align: center;">${index + 1}</td>
-                <td>${escapeHtml(log.nguoi_su_dung?.full_name) || 'Không xác định'}</td>
-                <td>${format(new Date(log.thoi_gian_bat_dau), 'dd/MM/yyyy HH:mm', { locale: vi })}</td>
-                <td>${log.thoi_gian_ket_thuc ? format(new Date(log.thoi_gian_ket_thuc), 'dd/MM/yyyy HH:mm', { locale: vi }) : '-'}</td>
-                <td>${formatDuration(log.thoi_gian_bat_dau, log.thoi_gian_ket_thuc)}</td>
-                <td class="${log.trang_thai === 'dang_su_dung' ? 'status-active' : 'status-completed'}">
-                  ${log.trang_thai === 'dang_su_dung' ? 'Đang sử dụng' : 'Hoàn thành'}
-                </td>
-                <td>${escapeHtml(log.ghi_chu) || '-'}</td>
-              </tr>
-            `).join('')}
-          </tbody>
-        </table>
-        
-        <div class="footer">
-          <div class="signature-section">
-            <div class="signature-title">Người lập báo cáo</div>
-            <div class="signature-line">Ký tên</div>
-          </div>
-          <div class="signature-section">
-            <div class="signature-title">Phụ trách thiết bị</div>
-            <div class="signature-line">Ký tên</div>
-          </div>
-        </div>
-        
-        <div class="print-info">
-          In ngày: ${currentDate} | Tổng số bản ghi: ${filteredLogs.length}
-        </div>
-        </div>
-      </body>
-      </html>
-    `
-  }
-
-  const generateCSVContent = () => {
-    const headers = [
-      'STT',
-      'Người sử dụng',
-      'Khoa/Phòng',
-      'Thời gian bắt đầu',
-      'Thời gian kết thúc',
-      'Thời lượng (phút)',
-      'Tình trạng thiết bị',
-      'Trạng thái',
-      'Ghi chú'
-    ]
-
-    const rows = filteredLogs.map((log, index) => [
-      index + 1,
-      log.nguoi_su_dung?.full_name || 'Không xác định',
-      log.nguoi_su_dung?.khoa_phong || '',
-      format(new Date(log.thoi_gian_bat_dau), 'dd/MM/yyyy HH:mm', { locale: vi }),
-      log.thoi_gian_ket_thuc ? format(new Date(log.thoi_gian_ket_thuc), 'dd/MM/yyyy HH:mm', { locale: vi }) : '',
-      differenceInMinutes(
-        log.thoi_gian_ket_thuc ? new Date(log.thoi_gian_ket_thuc) : new Date(),
-        new Date(log.thoi_gian_bat_dau)
-      ),
-      log.tinh_trang_thiet_bi || '',
-      log.trang_thai === 'dang_su_dung' ? 'Đang sử dụng' : 'Hoàn thành',
-      log.ghi_chu || ''
-    ])
-
-    const csvContent = [
-      `"Nhật ký sử dụng thiết bị: ${equipment.ten_thiet_bi}"`,
-      `"Mã thiết bị: ${equipment.ma_thiet_bi}"`,
-      `"Xuất ngày: ${format(new Date(), 'dd/MM/yyyy HH:mm', { locale: vi })}"`,
-      '',
-      headers.map(h => `"${h}"`).join(','),
-      ...rows.map(row => row.map(cell => `"${cell}"`).join(','))
-    ].join('\n')
-
-    return '\uFEFF' + csvContent // Add BOM for UTF-8
   }
 
   return (

@@ -12,19 +12,22 @@ const mockData = {
     {
       dateTime: "08:30 - 12/07/2025",
       user: "BS. Nguyễn Thị Bình",
-      condition: "Tốt",
+      initialCondition: "Tốt",
+      finalCondition: "Tốt",
       note: "Xét nghiệm máu thường quy"
     },
     {
       dateTime: "14:00 - 12/07/2025",
       user: "KTV. Trần Văn Cường",
-      condition: "Tốt",
+      initialCondition: "Tốt",
+      finalCondition: "Theo dõi thêm",
       note: "Xét nghiệm nước tiểu"
     },
     {
       dateTime: "09:15 - 13/07/2025",
       user: "BS. Lê Thị Dung",
-      condition: "Tốt",
+      initialCondition: "Ổn định",
+      finalCondition: "Ổn định",
       note: "Quan sát tế bào"
     }
   ]
