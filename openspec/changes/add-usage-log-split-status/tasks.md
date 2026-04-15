@@ -4,7 +4,7 @@ Backend is fully backward-compatible. Old frontend continues working after backe
 
 ### 1. SQL Smoke Tests (RED)
 
-- [ ] 1.1 Create `supabase/tests/usage_log_split_status_smoke.sql` with assertions:
+- [x] 1.1 Create `supabase/tests/usage_log_split_status_smoke.sql` with assertions:
   - Columns `tinh_trang_ban_dau`, `tinh_trang_ket_thuc` exist.
   - `usage_session_start` fails when `p_tinh_trang_ban_dau = ''` (empty string).
   - `usage_session_start` succeeds and writes `tinh_trang_ban_dau`.
@@ -19,23 +19,26 @@ Backend is fully backward-compatible. Old frontend continues working after backe
   - Backward compat: `usage_session_start` with `p_tinh_trang_ban_dau = NULL` (old caller) does NOT raise exception.
   - Admin role: `usage_session_end` tenant guard treats `admin` same as `global`.
 - [ ] 1.2 Run smoke test and confirm RED (expected: fail because columns/params don't exist yet).
+  Note: skipped after backend implementation was already in place; later GREEN smoke run was executed against the applied migration instead.
 
 ### 2. Migration (GREEN)
 
-- [ ] 2.1 Create `supabase/migrations/YYYYMMDDHHMMSS_usage_log_split_status_columns.sql` with:
+- [x] 2.1 Create `supabase/migrations/YYYYMMDDHHMMSS_usage_log_split_status_columns.sql` with:
   - `ALTER TABLE` adding 2 new columns.
   - Backfill from `tinh_trang_thiet_bi` (approximation for historical data).
   - Updated `usage_session_start` with new param, validation (skip when NULL, raise when empty), INSERT writing both new + legacy columns, and response.
   - Updated `usage_session_end` with new param, validation, UPDATE, response, DDL-level `SET search_path`, and fixed admin role guard (`NOT v_is_global`).
   - Updated both `usage_log_list` overloads projecting 2 new fields.
   - Proper `GRANT EXECUTE` statements.
-- [ ] 2.2 Run smoke test and confirm GREEN.
-- [ ] 2.3 Run `supabase-get_advisors(type='security')` to verify no regressions.
+- [x] 2.2 Run smoke test and confirm GREEN.
+- [x] 2.3 Run `supabase-get_advisors(type='security')` to verify no regressions.
+  Note: advisor output still contains pre-existing repo-wide findings, but no new lint was introduced for the split-status migration/functions.
 
 ### 3. Backend Verification
 
-- [ ] 3.1 All SQL smoke tests pass.
+- [x] 3.1 All SQL smoke tests pass.
 - [ ] 3.2 Security advisors clean.
+  Note: not clean at project level because the Supabase advisor still reports pre-existing issues outside this change; verification confirmed no new regression tied to the applied migration.
 - [ ] 3.3 Commit: `feat: add usage log split status columns and RPC updates`
 
 ---
