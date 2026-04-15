@@ -3,6 +3,7 @@ import { vi } from "date-fns/locale"
 
 import {
   type BuildUsageLogCsvArgs,
+  escapeCsvCell,
   getPrintableFinalStatus,
   getPrintableInitialStatus,
 } from "@/components/usage-log-print-builder-utils"
@@ -39,12 +40,12 @@ export function buildUsageLogCsv({
   ])
 
   const csvContent = [
-    `"Nhật ký sử dụng thiết bị: ${equipment.ten_thiet_bi}"`,
-    `"Mã thiết bị: ${equipment.ma_thiet_bi}"`,
-    `"Xuất ngày: ${format(now, "dd/MM/yyyy HH:mm", { locale: vi })}"`,
+    escapeCsvCell(`Nhật ký sử dụng thiết bị: ${equipment.ten_thiet_bi}`),
+    escapeCsvCell(`Mã thiết bị: ${equipment.ma_thiet_bi}`),
+    escapeCsvCell(`Xuất ngày: ${format(now, "dd/MM/yyyy HH:mm", { locale: vi })}`),
     "",
-    headers.map((header) => `"${header}"`).join(","),
-    ...rows.map((row) => row.map((cell) => `"${cell}"`).join(",")),
+    headers.map((header) => escapeCsvCell(header)).join(","),
+    ...rows.map((row) => row.map((cell) => escapeCsvCell(cell)).join(",")),
   ].join("\n")
 
   return `\uFEFF${csvContent}`

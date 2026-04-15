@@ -62,4 +62,42 @@ describe("usage log print builders", () => {
     expect(csv).toContain("Tốt")
     expect(csv).toContain("Fallback legacy")
   })
+
+  it("escapes CSV quotes and neutralizes spreadsheet formulas in free-text cells", () => {
+    const csv = buildUsageLogCsv({
+      equipment,
+      filteredLogs: [
+        {
+          ...usageLogs[0],
+          tinh_trang_ban_dau: 'Kiểm tra "ABC"',
+          ghi_chu: '=1+1 "quoted"',
+        },
+      ],
+      now: new Date("2026-04-15T03:00:00Z"),
+    })
+
+    expect(csv).toContain(`"Kiểm tra ""ABC"""`)
+    expect(csv).toContain(`"'=1+1 ""quoted"""`)
+  })
+
+  it("formats date-only print ranges without UTC day shifts", () => {
+    const originalTz = process.env.TZ
+    process.env.TZ = "America/Los_Angeles"
+
+    try {
+      const html = buildUsageLogPrintHtml({
+        equipment,
+        filteredLogs: usageLogs,
+        tenantName: "QLTBYT",
+        tenantLogoUrl: "https://example.com/logo.png",
+        dateFrom: "2026-04-15",
+        dateTo: "2026-04-16",
+        now: new Date("2026-04-15T03:00:00Z"),
+      })
+
+      expect(html).toContain("(15/04/2026 - 16/04/2026)")
+    } finally {
+      process.env.TZ = originalTz
+    }
+  })
 })

@@ -5,6 +5,7 @@ import {
   type BuildUsageLogPrintHtmlArgs,
   escapeHtml,
   escapeUrl,
+  formatDateInputForPrint,
   formatUsageDuration,
   getPrintableFinalStatus,
   getPrintableInitialStatus,
@@ -21,7 +22,7 @@ export function buildUsageLogPrintHtml({
 }: BuildUsageLogPrintHtmlArgs): string {
   const currentDate = format(now, "dd/MM/yyyy HH:mm", { locale: vi })
   const dateRange = dateFrom || dateTo
-    ? `(${dateFrom ? format(new Date(dateFrom), "dd/MM/yyyy", { locale: vi }) : "..."} - ${dateTo ? format(new Date(dateTo), "dd/MM/yyyy", { locale: vi }) : "..."})`
+    ? `(${dateFrom ? formatDateInputForPrint(dateFrom) : "..."} - ${dateTo ? formatDateInputForPrint(dateTo) : "..."})`
     : ""
 
   return `

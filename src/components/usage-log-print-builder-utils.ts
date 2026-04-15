@@ -40,6 +40,22 @@ export function escapeUrl(url: string | null | undefined): string {
   return ""
 }
 
+export function escapeCsvCell(value: unknown): string {
+  const raw = value == null ? "" : String(value)
+  const sanitized = /^[=+\-@]/.test(raw) ? `'${raw}` : raw
+  return `"${sanitized.replace(/"/g, '""')}"`
+}
+
+export function parseDateInputAsLocalDate(dateString: string): Date {
+  const [year, month, day] = dateString.split("-").map(Number)
+  return new Date(year, month - 1, day)
+}
+
+export function formatDateInputForPrint(dateString: string): string {
+  const [year, month, day] = dateString.split("-")
+  return `${day}/${month}/${year}`
+}
+
 export function formatUsageDuration(startTime: string, endTime?: string, now = new Date()) {
   const start = new Date(startTime)
   const end = endTime ? new Date(endTime) : now

@@ -25,6 +25,7 @@ import {
 } from "@/components/ui/select"
 import { useEquipmentUsageLogs } from "@/hooks/use-usage-logs"
 import { useTenantBranding } from "@/hooks/use-tenant-branding"
+import { parseDateInputAsLocalDate } from "@/components/usage-log-print-builder-utils"
 import { buildUsageLogCsv, buildUsageLogPrintHtml } from "@/components/usage-log-print-builders"
 import { type Equipment } from "@/types/database"
 
@@ -55,9 +56,9 @@ export function UsageLogPrint({ equipment }: UsageLogPrintProps) {
     if (!usageLogs) return []
 
     // Pre-calculate date boundaries to avoid creating Date objects in loop
-    const fromDate = dateFrom ? new Date(dateFrom) : null
+    const fromDate = dateFrom ? parseDateInputAsLocalDate(dateFrom) : null
     const toDate = dateTo ? (() => {
-      const date = new Date(dateTo)
+      const date = parseDateInputAsLocalDate(dateTo)
       date.setHours(23, 59, 59, 999) // End of day
       return date
     })() : null
