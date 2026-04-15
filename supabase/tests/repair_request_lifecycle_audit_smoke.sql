@@ -787,11 +787,13 @@ DECLARE
   v_request_id bigint;
   v_code text := 'RR-LIFECYCLE-DEL-' || to_char(clock_timestamp(), 'YYYYMMDDHH24MISSMS');
   v_expected_status text;
+  v_expected_equipment_status text := 'Ngưng sử dụng';
   v_remaining bigint;
   v_audit_count bigint;
   v_audit_details jsonb;
   v_history_id bigint;
   v_history_details jsonb;
+  v_equipment_status_after_delete text;
 BEGIN
   SELECT id
   INTO v_tenant
@@ -815,8 +817,8 @@ BEGIN
   )
   RETURNING id INTO v_user_id;
 
-  INSERT INTO public.thiet_bi(ma_thiet_bi, ten_thiet_bi, don_vi)
-  VALUES (v_code, 'Repair lifecycle delete smoke', v_tenant)
+  INSERT INTO public.thiet_bi(ma_thiet_bi, ten_thiet_bi, don_vi, tinh_trang_hien_tai)
+  VALUES (v_code, 'Repair lifecycle delete smoke', v_tenant, v_expected_equipment_status)
   RETURNING id INTO v_thiet_bi_id;
 
   PERFORM set_config(
@@ -906,6 +908,18 @@ BEGIN
 
   IF (v_history_details->>'yeu_cau_id')::bigint IS DISTINCT FROM v_request_id THEN
     RAISE EXCEPTION 'repair_request_delete equipment history yeu_cau_id mismatch';
+  END IF;
+
+  SELECT tb.tinh_trang_hien_tai
+  INTO v_equipment_status_after_delete
+  FROM public.thiet_bi tb
+  WHERE tb.id = v_thiet_bi_id;
+
+  IF v_equipment_status_after_delete IS DISTINCT FROM v_expected_equipment_status THEN
+    RAISE EXCEPTION
+      'repair_request_delete should restore equipment status %, found %',
+      v_expected_equipment_status,
+      v_equipment_status_after_delete;
   END IF;
 
   RAISE NOTICE 'OK: repair_request_delete audit smoke passed';
