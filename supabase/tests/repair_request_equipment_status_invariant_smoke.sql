@@ -681,4 +681,105 @@ BEGIN
   RAISE NOTICE 'OK: legacy NULL-snapshot delete does not leave phantom Chờ sửa chữa';
 END $$;
 
+-- 8) A follow-up request created after a failed repair must not capture the
+-- intermediate Chờ sửa chữa status as its restore snapshot.
+DO $$
+DECLARE
+  v_suffix text := to_char(clock_timestamp(), 'YYYYMMDDHH24MISSMS');
+  v_tenant bigint;
+  v_user_id bigint;
+  v_equipment_id bigint;
+  v_request_a bigint;
+  v_request_b bigint;
+  v_snapshot_b text;
+  v_status_after_delete_b text;
+BEGIN
+  INSERT INTO public.don_vi(name, active)
+  VALUES ('Repair status failed followup tenant ' || v_suffix, true)
+  RETURNING id INTO v_tenant;
+
+  INSERT INTO public.nhan_vien(username, password, full_name, role, don_vi, current_don_vi)
+  VALUES (
+    'repair_status_failed_followup_' || v_suffix,
+    'smoke-password',
+    'Repair Status Failed Followup',
+    'to_qltb',
+    v_tenant,
+    v_tenant
+  )
+  RETURNING id INTO v_user_id;
+
+  INSERT INTO public.thiet_bi(ma_thiet_bi, ten_thiet_bi, don_vi, tinh_trang_hien_tai)
+  VALUES (
+    'RR-FAILED-FOLLOWUP-' || v_suffix,
+    'Repair status failed followup equipment ' || v_suffix,
+    v_tenant,
+    'Ngưng sử dụng'
+  )
+  RETURNING id INTO v_equipment_id;
+
+  PERFORM pg_temp._rr_status_set_claims('to_qltb', v_user_id, v_tenant);
+
+  v_request_a := public.repair_request_create(
+    v_equipment_id::integer,
+    'Failed request A',
+    'Failed followup scope A',
+    CURRENT_DATE + 7,
+    'Requester A',
+    'noi_bo',
+    NULL
+  );
+
+  PERFORM public.repair_request_approve(
+    v_request_a::integer,
+    'Approver A',
+    'noi_bo',
+    NULL
+  );
+
+  PERFORM public.repair_request_complete(
+    v_request_a::integer,
+    NULL,
+    'Không sửa được',
+    NULL
+  );
+
+  v_request_b := public.repair_request_create(
+    v_equipment_id::integer,
+    'Follow-up request B after failed request A',
+    'Failed followup scope B',
+    CURRENT_DATE + 8,
+    'Requester B',
+    'noi_bo',
+    NULL
+  );
+
+  SELECT ycss.tinh_trang_thiet_bi_truoc_yeu_cau
+  INTO v_snapshot_b
+  FROM public.yeu_cau_sua_chua ycss
+  WHERE ycss.id = v_request_b;
+
+  IF v_snapshot_b IS DISTINCT FROM 'Ngưng sử dụng' THEN
+    RAISE EXCEPTION
+      'Invariant failed: follow-up request after failed repair should inherit Ngưng sử dụng, got %',
+      v_snapshot_b;
+  END IF;
+
+  PERFORM public.repair_request_delete(v_request_a::integer);
+  PERFORM public.repair_request_delete(v_request_b::integer);
+
+  SELECT tb.tinh_trang_hien_tai
+  INTO v_status_after_delete_b
+  FROM public.thiet_bi tb
+  WHERE tb.id = v_equipment_id;
+
+  IF v_status_after_delete_b IS DISTINCT FROM 'Ngưng sử dụng' THEN
+    RAISE EXCEPTION
+      'Invariant failed: deleting failed repair follow-up cluster should restore Ngưng sử dụng, got %',
+      v_status_after_delete_b;
+  END IF;
+
+  RAISE NOTICE 'OK: failed repair follow-up does not capture phantom Chờ sửa chữa';
+END $$;
+
 ROLLBACK;
