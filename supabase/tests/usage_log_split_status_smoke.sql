@@ -338,7 +338,6 @@ END $$;
 DO $$
 DECLARE
   v_tenant bigint;
-  v_other_tenant bigint;
   v_user_id bigint;
   v_thiet_bi_id bigint;
   v_code text := 'UL-SPLIT-END-ADM-' || to_char(clock_timestamp(), 'YYYYMMDDHH24MISSMS');
@@ -349,17 +348,6 @@ BEGIN
   SELECT id INTO v_tenant
   FROM public.don_vi WHERE active = true
   ORDER BY id LIMIT 1;
-
-  -- Pick a different tenant for the admin user to prove cross-tenant access
-  SELECT id INTO v_other_tenant
-  FROM public.don_vi WHERE active = true AND id <> v_tenant
-  ORDER BY id LIMIT 1;
-
-  IF v_other_tenant IS NULL THEN
-    INSERT INTO public.don_vi(name, active)
-    VALUES ('Smoke split admin tenant ' || to_char(clock_timestamp(), 'YYYYMMDDHH24MISSMS'), true)
-    RETURNING id INTO v_other_tenant;
-  END IF;
 
   INSERT INTO public.nhan_vien(username, password, full_name, role, don_vi, current_don_vi)
   VALUES (v_code, 'smoke', 'Split End Admin', 'to_qltb', v_tenant, v_tenant)
@@ -383,11 +371,11 @@ BEGIN
   );
   v_log_id := (v_start_result->>'id')::bigint;
 
-  -- Switch to admin role (different tenant) — should still be able to end session
+  -- Switch to raw admin role without don_vi. This must still pass so the SQL
+  -- function does not depend on proxy-side admin -> global normalization.
   PERFORM set_config('request.jwt.claims', json_build_object(
     'app_role', 'admin', 'role', 'authenticated',
-    'user_id', v_user_id::text, 'sub', v_user_id::text,
-    'don_vi', v_other_tenant::text
+    'user_id', v_user_id::text, 'sub', v_user_id::text
   )::text, true);
 
   v_end_result := public.usage_session_end(
