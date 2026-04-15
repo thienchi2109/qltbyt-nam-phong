@@ -975,8 +975,8 @@ BEGIN
   )
   RETURNING id INTO v_user_id;
 
-  INSERT INTO public.thiet_bi(ma_thiet_bi, ten_thiet_bi, don_vi)
-  VALUES (v_code, 'Repair lifecycle update fail-closed smoke', v_tenant)
+  INSERT INTO public.thiet_bi(ma_thiet_bi, ten_thiet_bi, don_vi, tinh_trang_hien_tai)
+  VALUES (v_code, 'Repair lifecycle update fail-closed smoke', v_tenant, 'Hoạt động')
   RETURNING id INTO v_thiet_bi_id;
 
   PERFORM set_config(
@@ -991,15 +991,29 @@ BEGIN
     true
   );
 
-  v_request_id := public.repair_request_create(
-    v_thiet_bi_id::integer,
+  INSERT INTO public.yeu_cau_sua_chua(
+    thiet_bi_id,
+    mo_ta_su_co,
+    hang_muc_sua_chua,
+    ngay_mong_muon_hoan_thanh,
+    nguoi_yeu_cau,
+    trang_thai,
+    don_vi_thuc_hien,
+    ten_don_vi_thue,
+    tinh_trang_thiet_bi_truoc_yeu_cau
+  )
+  VALUES (
+    v_thiet_bi_id,
     'Mô tả fail-closed',
     'Hạng mục fail-closed',
     current_date + 1,
     'Người yêu cầu smoke',
+    'Chờ xử lý',
     'noi_bo',
-    NULL
-  );
+    NULL,
+    'Hoạt động'
+  )
+  RETURNING id INTO v_request_id;
 
   BEGIN
     PERFORM public.repair_request_update(
@@ -1076,8 +1090,8 @@ BEGIN
   )
   RETURNING id INTO v_user_id;
 
-  INSERT INTO public.thiet_bi(ma_thiet_bi, ten_thiet_bi, don_vi)
-  VALUES (v_code, 'Repair lifecycle approve fail-closed smoke', v_tenant)
+  INSERT INTO public.thiet_bi(ma_thiet_bi, ten_thiet_bi, don_vi, tinh_trang_hien_tai)
+  VALUES (v_code, 'Repair lifecycle approve fail-closed smoke', v_tenant, 'Hoạt động')
   RETURNING id INTO v_thiet_bi_id;
 
   PERFORM set_config(
@@ -1092,15 +1106,29 @@ BEGIN
     true
   );
 
-  v_request_id := public.repair_request_create(
-    v_thiet_bi_id::integer,
+  INSERT INTO public.yeu_cau_sua_chua(
+    thiet_bi_id,
+    mo_ta_su_co,
+    hang_muc_sua_chua,
+    ngay_mong_muon_hoan_thanh,
+    nguoi_yeu_cau,
+    trang_thai,
+    don_vi_thuc_hien,
+    ten_don_vi_thue,
+    tinh_trang_thiet_bi_truoc_yeu_cau
+  )
+  VALUES (
+    v_thiet_bi_id,
     'Mô tả approve fail-closed',
     'Hạng mục approve fail-closed',
     current_date + 1,
     'Người yêu cầu smoke',
+    'Chờ xử lý',
     'noi_bo',
-    NULL
-  );
+    NULL,
+    'Hoạt động'
+  )
+  RETURNING id INTO v_request_id;
 
   BEGIN
     PERFORM public.repair_request_approve(
