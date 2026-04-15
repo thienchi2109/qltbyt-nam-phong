@@ -484,4 +484,201 @@ BEGIN
   RAISE NOTICE 'OK: FIFO delete order restores original equipment status';
 END $$;
 
+-- 6) A new repair cluster must inherit the baseline from the current open
+-- cluster, not from an older completed repair cycle on the same equipment.
+DO $$
+DECLARE
+  v_suffix text := to_char(clock_timestamp(), 'YYYYMMDDHH24MISSMS');
+  v_tenant bigint;
+  v_user_id bigint;
+  v_equipment_id bigint;
+  v_old_request bigint;
+  v_request_a bigint;
+  v_request_b bigint;
+  v_snapshot_b text;
+  v_status_after_delete_b text;
+BEGIN
+  INSERT INTO public.don_vi(name, active)
+  VALUES ('Repair status cluster tenant ' || v_suffix, true)
+  RETURNING id INTO v_tenant;
+
+  INSERT INTO public.nhan_vien(username, password, full_name, role, don_vi, current_don_vi)
+  VALUES (
+    'repair_status_cluster_' || v_suffix,
+    'smoke-password',
+    'Repair Status Cluster',
+    'to_qltb',
+    v_tenant,
+    v_tenant
+  )
+  RETURNING id INTO v_user_id;
+
+  INSERT INTO public.thiet_bi(ma_thiet_bi, ten_thiet_bi, don_vi, tinh_trang_hien_tai)
+  VALUES (
+    'RR-CLUSTER-' || v_suffix,
+    'Repair status cluster equipment ' || v_suffix,
+    v_tenant,
+    'Hoạt động'
+  )
+  RETURNING id INTO v_equipment_id;
+
+  PERFORM pg_temp._rr_status_set_claims('to_qltb', v_user_id, v_tenant);
+
+  v_old_request := public.repair_request_create(
+    v_equipment_id::integer,
+    'Old cluster request',
+    'Old cluster scope',
+    CURRENT_DATE + 1,
+    'Requester old',
+    'noi_bo',
+    NULL
+  );
+
+  PERFORM public.repair_request_approve(
+    v_old_request::integer,
+    'Approver old',
+    'noi_bo',
+    NULL
+  );
+
+  PERFORM public.repair_request_complete(
+    v_old_request::integer,
+    'Old cluster completed',
+    NULL,
+    NULL
+  );
+
+  UPDATE public.thiet_bi
+  SET tinh_trang_hien_tai = 'Ngưng sử dụng'
+  WHERE id = v_equipment_id;
+
+  v_request_a := public.repair_request_create(
+    v_equipment_id::integer,
+    'Current cluster A',
+    'Current cluster scope A',
+    CURRENT_DATE + 2,
+    'Requester A',
+    'noi_bo',
+    NULL
+  );
+
+  v_request_b := public.repair_request_create(
+    v_equipment_id::integer,
+    'Current cluster B',
+    'Current cluster scope B',
+    CURRENT_DATE + 3,
+    'Requester B',
+    'noi_bo',
+    NULL
+  );
+
+  SELECT ycss.tinh_trang_thiet_bi_truoc_yeu_cau
+  INTO v_snapshot_b
+  FROM public.yeu_cau_sua_chua ycss
+  WHERE ycss.id = v_request_b;
+
+  IF v_snapshot_b IS DISTINCT FROM 'Ngưng sử dụng' THEN
+    RAISE EXCEPTION
+      'Invariant failed: current cluster request B should inherit Ngưng sử dụng, got %',
+      v_snapshot_b;
+  END IF;
+
+  PERFORM public.repair_request_delete(v_old_request::integer);
+  PERFORM public.repair_request_delete(v_request_a::integer);
+  PERFORM public.repair_request_delete(v_request_b::integer);
+
+  SELECT tb.tinh_trang_hien_tai
+  INTO v_status_after_delete_b
+  FROM public.thiet_bi tb
+  WHERE tb.id = v_equipment_id;
+
+  IF v_status_after_delete_b IS DISTINCT FROM 'Ngưng sử dụng' THEN
+    RAISE EXCEPTION
+      'Invariant failed: deleting the current cluster should restore Ngưng sử dụng, got %',
+      v_status_after_delete_b;
+  END IF;
+
+  RAISE NOTICE 'OK: current repair cluster does not inherit stale historical baseline';
+END $$;
+
+-- 7) Deleting a legacy request with NULL snapshot must not leave the device in
+-- a phantom Chờ sửa chữa state once no repair requests remain.
+DO $$
+DECLARE
+  v_suffix text := to_char(clock_timestamp(), 'YYYYMMDDHH24MISSMS');
+  v_tenant bigint;
+  v_user_id bigint;
+  v_equipment_id bigint;
+  v_request_id bigint;
+  v_status_after_delete text;
+BEGIN
+  INSERT INTO public.don_vi(name, active)
+  VALUES ('Repair status legacy tenant ' || v_suffix, true)
+  RETURNING id INTO v_tenant;
+
+  INSERT INTO public.nhan_vien(username, password, full_name, role, don_vi, current_don_vi)
+  VALUES (
+    'repair_status_legacy_' || v_suffix,
+    'smoke-password',
+    'Repair Status Legacy',
+    'to_qltb',
+    v_tenant,
+    v_tenant
+  )
+  RETURNING id INTO v_user_id;
+
+  INSERT INTO public.thiet_bi(ma_thiet_bi, ten_thiet_bi, don_vi, tinh_trang_hien_tai)
+  VALUES (
+    'RR-LEGACY-' || v_suffix,
+    'Repair status legacy equipment ' || v_suffix,
+    v_tenant,
+    'Hoạt động'
+  )
+  RETURNING id INTO v_equipment_id;
+
+  UPDATE public.thiet_bi
+  SET tinh_trang_hien_tai = 'Chờ sửa chữa'
+  WHERE id = v_equipment_id;
+
+  INSERT INTO public.yeu_cau_sua_chua(
+    thiet_bi_id,
+    mo_ta_su_co,
+    hang_muc_sua_chua,
+    ngay_mong_muon_hoan_thanh,
+    nguoi_yeu_cau,
+    trang_thai,
+    don_vi_thuc_hien,
+    ten_don_vi_thue,
+    tinh_trang_thiet_bi_truoc_yeu_cau
+  )
+  VALUES (
+    v_equipment_id,
+    'Legacy request without snapshot',
+    'Legacy scope without snapshot',
+    CURRENT_DATE + 7,
+    'Requester legacy',
+    'Chờ xử lý',
+    'noi_bo',
+    NULL,
+    NULL
+  )
+  RETURNING id INTO v_request_id;
+
+  PERFORM pg_temp._rr_status_set_claims('to_qltb', v_user_id, v_tenant);
+  PERFORM public.repair_request_delete(v_request_id::integer);
+
+  SELECT tb.tinh_trang_hien_tai
+  INTO v_status_after_delete
+  FROM public.thiet_bi tb
+  WHERE tb.id = v_equipment_id;
+
+  IF v_status_after_delete IS DISTINCT FROM 'Hoạt động' THEN
+    RAISE EXCEPTION
+      'Invariant failed: deleting legacy NULL-snapshot request should restore Hoạt động, got %',
+      v_status_after_delete;
+  END IF;
+
+  RAISE NOTICE 'OK: legacy NULL-snapshot delete does not leave phantom Chờ sửa chữa';
+END $$;
+
 ROLLBACK;
