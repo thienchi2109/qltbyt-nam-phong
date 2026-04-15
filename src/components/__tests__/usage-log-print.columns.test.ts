@@ -114,4 +114,21 @@ describe("usage log print builders", () => {
 
     expect(html).toContain('<img src="" alt="Logo"')
   })
+
+  it("escapes manipulated date range values in print HTML", () => {
+    const html = buildUsageLogPrintHtml({
+      equipment,
+      filteredLogs: usageLogs,
+      tenantName: "QLTBYT",
+      tenantLogoUrl: "https://example.com/logo.png",
+      dateFrom: "2026-04-15<script>",
+      dateTo: "2026-04-16<img src=x onerror=alert(1)>",
+      now: new Date("2026-04-15T03:00:00Z"),
+    })
+
+    expect(html).not.toContain("<script>")
+    expect(html).not.toContain("<img src=x onerror=alert(1)>")
+    expect(html).toContain("15&lt;script&gt;/04/2026")
+    expect(html).toContain("16&lt;img src=x onerror=alert(1)&gt;/04/2026")
+  })
 })

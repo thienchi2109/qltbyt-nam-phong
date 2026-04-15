@@ -21,8 +21,10 @@ export function buildUsageLogPrintHtml({
   now,
 }: BuildUsageLogPrintHtmlArgs): string {
   const currentDate = format(now, "dd/MM/yyyy HH:mm", { locale: vi })
+  const printableDateFrom = dateFrom ? escapeHtml(formatDateInputForPrint(dateFrom)) : "..."
+  const printableDateTo = dateTo ? escapeHtml(formatDateInputForPrint(dateTo)) : "..."
   const dateRange = dateFrom || dateTo
-    ? `(${dateFrom ? formatDateInputForPrint(dateFrom) : "..."} - ${dateTo ? formatDateInputForPrint(dateTo) : "..."})`
+    ? `(${printableDateFrom} - ${printableDateTo})`
     : ""
 
   return `
