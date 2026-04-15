@@ -265,11 +265,15 @@ BEGIN
   INTO v_proconfig
   FROM pg_catalog.pg_proc p
   JOIN pg_catalog.pg_namespace n ON n.oid = p.pronamespace
-  WHERE n.nspname = 'public' AND p.proname = 'usage_session_end'
+  WHERE n.nspname = 'public'
+    AND p.proname = 'usage_session_end'
+    AND pg_get_function_identity_arguments(p.oid) = 'p_usage_log_id bigint, p_tinh_trang_thiet_bi text, p_ghi_chu text, p_don_vi bigint, p_tinh_trang_ket_thuc text'
   LIMIT 1;
 
   IF v_proconfig IS NULL OR NOT EXISTS (
-    SELECT 1 FROM unnest(v_proconfig) c WHERE c ILIKE '%search_path%'
+    SELECT 1
+    FROM unnest(COALESCE(v_proconfig, ARRAY[]::text[])) AS c
+    WHERE lower(c) = 'search_path=public, pg_temp'
   ) THEN
     RAISE EXCEPTION 'usage_session_end missing DDL-level search_path, proconfig = %', v_proconfig;
   END IF;
@@ -277,7 +281,60 @@ BEGIN
   RAISE NOTICE 'OK: usage_session_end happy path + DDL search_path passed';
 END $$;
 
--- 6) usage_session_end: admin role should bypass tenant guard (same as global)
+-- 6) usage_session_end: empty string rejected
+DO $$
+DECLARE
+  v_tenant bigint;
+  v_user_id bigint;
+  v_thiet_bi_id bigint;
+  v_code text := 'UL-SPLIT-END-VAL-' || to_char(clock_timestamp(), 'YYYYMMDDHH24MISSMS');
+  v_start_result jsonb;
+  v_log_id bigint;
+  v_error_raised boolean := false;
+BEGIN
+  SELECT id INTO v_tenant
+  FROM public.don_vi WHERE active = true
+  ORDER BY id LIMIT 1;
+
+  INSERT INTO public.nhan_vien(username, password, full_name, role, don_vi, current_don_vi)
+  VALUES (v_code, 'smoke', 'Split End Val', 'to_qltb', v_tenant, v_tenant)
+  RETURNING id INTO v_user_id;
+
+  INSERT INTO public.thiet_bi(ma_thiet_bi, ten_thiet_bi, don_vi)
+  VALUES (v_code, 'Split end validation', v_tenant)
+  RETURNING id INTO v_thiet_bi_id;
+
+  PERFORM set_config('request.jwt.claims', json_build_object(
+    'app_role', 'to_qltb', 'role', 'authenticated',
+    'user_id', v_user_id::text, 'sub', v_user_id::text,
+    'don_vi', v_tenant::text
+  )::text, true);
+
+  v_start_result := public.usage_session_start(
+    p_thiet_bi_id := v_thiet_bi_id,
+    p_nguoi_su_dung_id := v_user_id,
+    p_tinh_trang_ban_dau := 'Tốt'
+  );
+  v_log_id := (v_start_result->>'id')::bigint;
+
+  BEGIN
+    PERFORM public.usage_session_end(
+      p_usage_log_id := v_log_id,
+      p_tinh_trang_ket_thuc := ''
+    );
+  EXCEPTION
+    WHEN SQLSTATE '22023' THEN
+      v_error_raised := true;
+  END;
+
+  IF NOT v_error_raised THEN
+    RAISE EXCEPTION 'Expected empty p_tinh_trang_ket_thuc to raise 22023';
+  END IF;
+
+  RAISE NOTICE 'OK: usage_session_end empty string rejected';
+END $$;
+
+-- 7) usage_session_end: admin role should bypass tenant guard (same as global)
 DO $$
 DECLARE
   v_tenant bigint;
@@ -298,9 +355,10 @@ BEGIN
   FROM public.don_vi WHERE active = true AND id <> v_tenant
   ORDER BY id LIMIT 1;
 
-  -- If only one tenant exists, use same tenant (still tests admin path)
   IF v_other_tenant IS NULL THEN
-    v_other_tenant := v_tenant;
+    INSERT INTO public.don_vi(name, active)
+    VALUES ('Smoke split admin tenant ' || to_char(clock_timestamp(), 'YYYYMMDDHH24MISSMS'), true)
+    RETURNING id INTO v_other_tenant;
   END IF;
 
   INSERT INTO public.nhan_vien(username, password, full_name, role, don_vi, current_don_vi)
@@ -345,7 +403,7 @@ BEGIN
   RAISE NOTICE 'OK: usage_session_end admin role guard bypass passed';
 END $$;
 
--- 7) usage_log_list: both overloads return tinh_trang_ban_dau + tinh_trang_ket_thuc
+-- 8) usage_log_list: both overloads return tinh_trang_ban_dau + tinh_trang_ket_thuc
 DO $$
 DECLARE
   v_tenant bigint;

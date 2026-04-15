@@ -1,6 +1,18 @@
 -- Migration: usage_log_split_status_columns
 -- Purpose: Split tinh_trang_thiet_bi into tinh_trang_ban_dau + tinh_trang_ket_thuc
 -- Security fixes: usage_session_end DDL search_path + admin role guard
+-- Rollback note (forward-only): restore prior RPC bodies from
+--   - 20260219032645_fix_workflow_guard_security_and_race.sql (usage_session_start)
+--   - 20250927_usage_log_rpcs.sql (usage_session_end)
+--   - 20260213100500_equipment_soft_delete_historical_read_policy.sql
+--     plus 20260216141000_fix_report_and_historical_rpc_security_and_types.sql
+--     (usage_log_list hardening)
+-- Reverse the function definitions before touching the split-status columns.
+-- Dropping tinh_trang_ban_dau / tinh_trang_ket_thuc, or removing legacy
+-- tinh_trang_thiet_bi, is only safe before production data is written into the
+-- new columns.
+
+BEGIN;
 
 -- =============================================================================
 -- 1. Schema: add new columns
@@ -216,6 +228,14 @@ BEGIN
     raise exception 'Permission denied' using errcode = '42501';
   end if;
 
+  if v_role is null or v_role = '' then
+    raise exception 'Missing role claim' using errcode = '42501';
+  end if;
+
+  if v_user_id is null then
+    raise exception 'Missing user_id claim' using errcode = '42501';
+  end if;
+
   select nk.*, tb.don_vi as equipment_don_vi
   into rec
   from public.nhat_ky_su_dung nk
@@ -324,8 +344,6 @@ DECLARE
 BEGIN
   v_is_global := v_role IN ('global', 'admin');
 
-  PERFORM set_config('search_path', 'public', true);
-
   IF p_trang_thai IS NOT NULL AND p_trang_thai NOT IN ('dang_su_dung', 'hoan_thanh') THEN
     RAISE EXCEPTION 'Invalid status filter' USING ERRCODE = '22023';
   END IF;
@@ -406,3 +424,9 @@ $function$;
 GRANT EXECUTE ON FUNCTION public.usage_session_start(bigint, bigint, text, text, bigint, text) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.usage_session_end(bigint, text, text, bigint, text) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.usage_log_list(bigint, text, boolean, timestamptz, timestamptz, integer, integer, bigint) TO authenticated;
+
+REVOKE EXECUTE ON FUNCTION public.usage_session_start(bigint, bigint, text, text, bigint, text) FROM PUBLIC;
+REVOKE EXECUTE ON FUNCTION public.usage_session_end(bigint, text, text, bigint, text) FROM PUBLIC;
+REVOKE EXECUTE ON FUNCTION public.usage_log_list(bigint, text, boolean, timestamptz, timestamptz, integer, integer, bigint) FROM PUBLIC;
+
+COMMIT;
