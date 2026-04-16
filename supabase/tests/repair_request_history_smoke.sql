@@ -1,26 +1,42 @@
 -- supabase/tests/repair_request_history_smoke.sql
 -- Purpose: smoke-test repair_request_change_history_list after the migration is applied.
 -- How to run (psql): \i supabase/tests/repair_request_history_smoke.sql
--- Note: this script intentionally relies on existing repair-request audit data.
+-- Note: this script intentionally relies on existing repair-request domain history data.
 
--- 1) Authorized tenant should read at least one history row
+-- 1) Authorized tenant should read the full repair-request lifecycle timeline
 DO $$
 DECLARE
   v_request_id INT;
   v_owner_don_vi BIGINT;
   v_rows JSONB;
+  v_action_types TEXT[];
 BEGIN
   SELECT ycss.id, tb.don_vi
   INTO v_request_id, v_owner_don_vi
   FROM public.yeu_cau_sua_chua ycss
   JOIN public.thiet_bi tb ON tb.id = ycss.thiet_bi_id
-  JOIN public.audit_logs al
-    ON al.entity_type = 'repair_request'
-   AND al.entity_id = ycss.id
+  WHERE EXISTS (
+    SELECT 1
+    FROM public.lich_su_thiet_bi ls_create
+    WHERE ls_create.yeu_cau_id = ycss.id
+      AND ls_create.mo_ta = 'Tạo yêu cầu sửa chữa'
+  )
+    AND EXISTS (
+      SELECT 1
+      FROM public.lich_su_thiet_bi ls_approve
+      WHERE ls_approve.yeu_cau_id = ycss.id
+        AND ls_approve.mo_ta = 'Duyệt yêu cầu sửa chữa'
+    )
+    AND EXISTS (
+      SELECT 1
+      FROM public.lich_su_thiet_bi ls_complete
+      WHERE ls_complete.yeu_cau_id = ycss.id
+        AND ls_complete.mo_ta = 'Yêu cầu sửa chữa cập nhật trạng thái'
+    )
   LIMIT 1;
 
   IF v_request_id IS NULL OR v_owner_don_vi IS NULL THEN
-    RAISE NOTICE 'SKIP: no repair request with audit history found';
+    RAISE NOTICE 'SKIP: no repair request with complete equipment-history lifecycle found';
     RETURN;
   END IF;
 
@@ -38,11 +54,32 @@ BEGIN
   INTO v_rows
   FROM public.repair_request_change_history_list(v_request_id) AS row_data;
 
-  IF jsonb_array_length(v_rows) = 0 THEN
-    RAISE EXCEPTION 'Expected at least one repair history row for authorized tenant';
+  IF jsonb_array_length(v_rows) < 3 THEN
+    RAISE EXCEPTION 'Expected at least three repair history rows for authorized tenant, got %',
+      jsonb_array_length(v_rows);
   END IF;
 
-  RAISE NOTICE 'OK: authorized tenant can read repair history';
+  IF NOT (
+    v_rows @> '[{"action_type":"repair_request_create"}]'::jsonb
+    AND v_rows @> '[{"action_type":"repair_request_approve"}]'::jsonb
+    AND v_rows @> '[{"action_type":"repair_request_complete"}]'::jsonb
+  ) THEN
+    RAISE EXCEPTION 'Expected create/approve/complete lifecycle entries, got %', v_rows;
+  END IF;
+
+  SELECT array_agg(action_type ORDER BY created_at DESC, id DESC)
+  INTO v_action_types
+  FROM public.repair_request_change_history_list(v_request_id);
+
+  IF v_action_types[1:3] IS DISTINCT FROM ARRAY[
+    'repair_request_complete',
+    'repair_request_approve',
+    'repair_request_create'
+  ] THEN
+    RAISE EXCEPTION 'Expected timeline order complete -> approve -> create, got %', v_action_types;
+  END IF;
+
+  RAISE NOTICE 'OK: authorized tenant can read repair lifecycle timeline';
 END $$;
 
 -- 2) Wrong tenant should raise 42501
@@ -57,9 +94,24 @@ BEGIN
   INTO v_request_id, v_owner_don_vi
   FROM public.yeu_cau_sua_chua ycss
   JOIN public.thiet_bi tb ON tb.id = ycss.thiet_bi_id
-  JOIN public.audit_logs al
-    ON al.entity_type = 'repair_request'
-   AND al.entity_id = ycss.id
+  WHERE EXISTS (
+    SELECT 1
+    FROM public.lich_su_thiet_bi ls_create
+    WHERE ls_create.yeu_cau_id = ycss.id
+      AND ls_create.mo_ta = 'Tạo yêu cầu sửa chữa'
+  )
+    AND EXISTS (
+      SELECT 1
+      FROM public.lich_su_thiet_bi ls_approve
+      WHERE ls_approve.yeu_cau_id = ycss.id
+        AND ls_approve.mo_ta = 'Duyệt yêu cầu sửa chữa'
+    )
+    AND EXISTS (
+      SELECT 1
+      FROM public.lich_su_thiet_bi ls_complete
+      WHERE ls_complete.yeu_cau_id = ycss.id
+        AND ls_complete.mo_ta = 'Yêu cầu sửa chữa cập nhật trạng thái'
+    )
   LIMIT 1;
 
   SELECT dv.id
@@ -111,13 +163,28 @@ BEGIN
   SELECT ycss.id
   INTO v_request_id
   FROM public.yeu_cau_sua_chua ycss
-  JOIN public.audit_logs al
-    ON al.entity_type = 'repair_request'
-   AND al.entity_id = ycss.id
+  WHERE EXISTS (
+    SELECT 1
+    FROM public.lich_su_thiet_bi ls_create
+    WHERE ls_create.yeu_cau_id = ycss.id
+      AND ls_create.mo_ta = 'Tạo yêu cầu sửa chữa'
+  )
+    AND EXISTS (
+      SELECT 1
+      FROM public.lich_su_thiet_bi ls_approve
+      WHERE ls_approve.yeu_cau_id = ycss.id
+        AND ls_approve.mo_ta = 'Duyệt yêu cầu sửa chữa'
+    )
+    AND EXISTS (
+      SELECT 1
+      FROM public.lich_su_thiet_bi ls_complete
+      WHERE ls_complete.yeu_cau_id = ycss.id
+        AND ls_complete.mo_ta = 'Yêu cầu sửa chữa cập nhật trạng thái'
+    )
   LIMIT 1;
 
   IF v_request_id IS NULL THEN
-    RAISE NOTICE 'SKIP: no repair request with audit history found';
+    RAISE NOTICE 'SKIP: no repair request with complete equipment-history lifecycle found';
     RETURN;
   END IF;
 
@@ -134,8 +201,8 @@ BEGIN
   INTO v_rows
   FROM public.repair_request_change_history_list(v_request_id) AS row_data;
 
-  IF jsonb_array_length(v_rows) = 0 THEN
-    RAISE EXCEPTION 'Expected at least one repair history row for global user';
+  IF jsonb_array_length(v_rows) < 3 THEN
+    RAISE EXCEPTION 'Expected at least three repair history rows for global user';
   END IF;
 
   RAISE NOTICE 'OK: global user can read repair history';
@@ -150,13 +217,28 @@ BEGIN
   SELECT ycss.id
   INTO v_request_id
   FROM public.yeu_cau_sua_chua ycss
-  JOIN public.audit_logs al
-    ON al.entity_type = 'repair_request'
-   AND al.entity_id = ycss.id
+  WHERE EXISTS (
+    SELECT 1
+    FROM public.lich_su_thiet_bi ls_create
+    WHERE ls_create.yeu_cau_id = ycss.id
+      AND ls_create.mo_ta = 'Tạo yêu cầu sửa chữa'
+  )
+    AND EXISTS (
+      SELECT 1
+      FROM public.lich_su_thiet_bi ls_approve
+      WHERE ls_approve.yeu_cau_id = ycss.id
+        AND ls_approve.mo_ta = 'Duyệt yêu cầu sửa chữa'
+    )
+    AND EXISTS (
+      SELECT 1
+      FROM public.lich_su_thiet_bi ls_complete
+      WHERE ls_complete.yeu_cau_id = ycss.id
+        AND ls_complete.mo_ta = 'Yêu cầu sửa chữa cập nhật trạng thái'
+    )
   LIMIT 1;
 
   IF v_request_id IS NULL THEN
-    RAISE NOTICE 'SKIP: no repair request with audit history found';
+    RAISE NOTICE 'SKIP: no repair request with complete equipment-history lifecycle found';
     RETURN;
   END IF;
 
@@ -173,8 +255,8 @@ BEGIN
   INTO v_rows
   FROM public.repair_request_change_history_list(v_request_id) AS row_data;
 
-  IF jsonb_array_length(v_rows) = 0 THEN
-    RAISE EXCEPTION 'Expected at least one repair history row for admin user';
+  IF jsonb_array_length(v_rows) < 3 THEN
+    RAISE EXCEPTION 'Expected at least three repair history rows for admin user';
   END IF;
 
   RAISE NOTICE 'OK: admin user can read repair history';
@@ -189,13 +271,28 @@ BEGIN
   SELECT ycss.id
   INTO v_request_id
   FROM public.yeu_cau_sua_chua ycss
-  JOIN public.audit_logs al
-    ON al.entity_type = 'repair_request'
-   AND al.entity_id = ycss.id
+  WHERE EXISTS (
+    SELECT 1
+    FROM public.lich_su_thiet_bi ls_create
+    WHERE ls_create.yeu_cau_id = ycss.id
+      AND ls_create.mo_ta = 'Tạo yêu cầu sửa chữa'
+  )
+    AND EXISTS (
+      SELECT 1
+      FROM public.lich_su_thiet_bi ls_approve
+      WHERE ls_approve.yeu_cau_id = ycss.id
+        AND ls_approve.mo_ta = 'Duyệt yêu cầu sửa chữa'
+    )
+    AND EXISTS (
+      SELECT 1
+      FROM public.lich_su_thiet_bi ls_complete
+      WHERE ls_complete.yeu_cau_id = ycss.id
+        AND ls_complete.mo_ta = 'Yêu cầu sửa chữa cập nhật trạng thái'
+    )
   LIMIT 1;
 
   IF v_request_id IS NULL THEN
-    RAISE NOTICE 'SKIP: no repair request with audit history found';
+    RAISE NOTICE 'SKIP: no repair request with complete equipment-history lifecycle found';
     RETURN;
   END IF;
 
@@ -230,15 +327,30 @@ BEGIN
   FROM public.yeu_cau_sua_chua ycss
   JOIN public.thiet_bi tb ON tb.id = ycss.thiet_bi_id
   JOIN public.don_vi dv ON dv.id = tb.don_vi
-  JOIN public.audit_logs al
-    ON al.entity_type = 'repair_request'
-   AND al.entity_id = ycss.id
   WHERE dv.active = true
     AND dv.dia_ban_id IS NOT NULL
+    AND EXISTS (
+      SELECT 1
+      FROM public.lich_su_thiet_bi ls_create
+      WHERE ls_create.yeu_cau_id = ycss.id
+        AND ls_create.mo_ta = 'Tạo yêu cầu sửa chữa'
+    )
+    AND EXISTS (
+      SELECT 1
+      FROM public.lich_su_thiet_bi ls_approve
+      WHERE ls_approve.yeu_cau_id = ycss.id
+        AND ls_approve.mo_ta = 'Duyệt yêu cầu sửa chữa'
+    )
+    AND EXISTS (
+      SELECT 1
+      FROM public.lich_su_thiet_bi ls_complete
+      WHERE ls_complete.yeu_cau_id = ycss.id
+        AND ls_complete.mo_ta = 'Yêu cầu sửa chữa cập nhật trạng thái'
+    )
   LIMIT 1;
 
   IF v_request_id IS NULL OR v_region_id IS NULL THEN
-    RAISE NOTICE 'SKIP: no regional-leader scoped repair request with audit history found';
+    RAISE NOTICE 'SKIP: no regional-leader scoped repair request with complete equipment-history lifecycle found';
     RETURN;
   END IF;
 
@@ -257,8 +369,8 @@ BEGIN
   INTO v_rows
   FROM public.repair_request_change_history_list(v_request_id) AS row_data;
 
-  IF jsonb_array_length(v_rows) = 0 THEN
-    RAISE EXCEPTION 'Expected at least one repair history row for regional_leader in-scope access';
+  IF jsonb_array_length(v_rows) < 3 THEN
+    RAISE EXCEPTION 'Expected at least three repair history rows for regional_leader in-scope access';
   END IF;
 
   RAISE NOTICE 'OK: regional_leader can read in-scope repair history without don_vi claim';

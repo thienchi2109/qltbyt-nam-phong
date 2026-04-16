@@ -85,4 +85,78 @@ describe("mapRepairRequestHistoryEntries", () => {
     expect(result[0].actionLabel).toBe("Hoàn thành sửa chữa")
     expect(result[1].actionLabel).toBe("Không hoàn thành sửa chữa")
   })
+
+  it("preserves a legacy repair lifecycle timeline when only domain history has the full sequence", () => {
+    const entries = [
+      {
+        id: 28,
+        action_type: "repair_request_complete",
+        admin_username: "system",
+        admin_full_name: null,
+        action_details: {
+          trang_thai: "Hoàn thành",
+          ket_qua_sua_chua: "thay pin cmos. Máy hoạt động được . Đang theo dõi.",
+        },
+        created_at: "2026-03-21T08:37:04.720432Z",
+      },
+      {
+        id: 27,
+        action_type: "repair_request_approve",
+        admin_username: "system",
+        admin_full_name: "Nguyễn Ngọc Du",
+        action_details: {
+          nguoi_duyet: "Nguyễn Ngọc Du",
+          trang_thai: "Đã duyệt",
+        },
+        created_at: "2026-03-21T08:36:39.517454Z",
+      },
+      {
+        id: 26,
+        action_type: "repair_request_create",
+        admin_username: "system",
+        admin_full_name: "Nguyễn Ngọc Du",
+        action_details: {
+          trang_thai: "Chờ xử lý",
+          nguoi_yeu_cau: "Nguyễn Ngọc Du",
+        },
+        created_at: "2026-03-21T08:36:34.593532Z",
+      },
+    ]
+
+    expect(mapRepairRequestHistoryEntries(entries)).toEqual([
+      {
+        id: "28",
+        occurredAt: "2026-03-21T08:37:04.720432Z",
+        actionLabel: "Hoàn thành sửa chữa",
+        actorName: null,
+        details: [
+          { label: "Trạng thái", value: "Hoàn thành" },
+          {
+            label: "Kết quả sửa chữa",
+            value: "thay pin cmos. Máy hoạt động được . Đang theo dõi.",
+          },
+        ],
+      },
+      {
+        id: "27",
+        occurredAt: "2026-03-21T08:36:39.517454Z",
+        actionLabel: "Phê duyệt sửa chữa",
+        actorName: "Nguyễn Ngọc Du",
+        details: [
+          { label: "Người duyệt", value: "Nguyễn Ngọc Du" },
+          { label: "Trạng thái", value: "Đã duyệt" },
+        ],
+      },
+      {
+        id: "26",
+        occurredAt: "2026-03-21T08:36:34.593532Z",
+        actionLabel: "Tạo yêu cầu sửa chữa",
+        actorName: "Nguyễn Ngọc Du",
+        details: [
+          { label: "Trạng thái", value: "Chờ xử lý" },
+          { label: "Người yêu cầu", value: "Nguyễn Ngọc Du" },
+        ],
+      },
+    ])
+  })
 })
