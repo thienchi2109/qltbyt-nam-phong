@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { render, screen, waitFor } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { beforeEach, describe, expect, it, vi } from "vitest"
+import type { TransferRequest } from "@/types/database"
 
 const mocks = vi.hoisted(() => ({
   callRpc: vi.fn(),
@@ -70,6 +71,7 @@ vi.mock("@/components/ui/select", () => ({
 }))
 
 import { AddTransferDialog } from "@/components/add-transfer-dialog"
+import { EditTransferDialog } from "@/components/edit-transfer-dialog"
 
 function createWrapper() {
   const queryClient = new QueryClient({
@@ -81,6 +83,36 @@ function createWrapper() {
 
   return function Wrapper({ children }: { children: React.ReactNode }) {
     return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+  }
+}
+
+function createTransfer(
+  overrides: Partial<TransferRequest> = {},
+): TransferRequest {
+  return {
+    id: overrides.id ?? 7,
+    ma_yeu_cau: overrides.ma_yeu_cau ?? "LC-0007",
+    thiet_bi_id: overrides.thiet_bi_id ?? 11,
+    loai_hinh: overrides.loai_hinh ?? "ben_ngoai",
+    trang_thai: overrides.trang_thai ?? "cho_duyet",
+    nguoi_yeu_cau_id: overrides.nguoi_yeu_cau_id ?? 42,
+    ly_do_luan_chuyen: overrides.ly_do_luan_chuyen ?? "Điều phối",
+    khoa_phong_hien_tai: overrides.khoa_phong_hien_tai ?? "Khoa A",
+    khoa_phong_nhan: overrides.khoa_phong_nhan ?? "",
+    muc_dich: overrides.muc_dich ?? "sua_chua",
+    don_vi_nhan: overrides.don_vi_nhan ?? "Bệnh viện B",
+    dia_chi_don_vi: overrides.dia_chi_don_vi ?? "12 Nguyễn Trãi",
+    nguoi_lien_he: overrides.nguoi_lien_he ?? "Nguyễn Văn B",
+    so_dien_thoai: overrides.so_dien_thoai ?? "0900000000",
+    ngay_du_kien_tra: overrides.ngay_du_kien_tra ?? "2026-05-01",
+    created_at: overrides.created_at ?? "2026-04-01T00:00:00.000Z",
+    updated_at: overrides.updated_at ?? "2026-04-01T00:00:00.000Z",
+    thiet_bi: overrides.thiet_bi ?? {
+      id: 11,
+      ma_thiet_bi: "TB-11",
+      ten_thiet_bi: "Máy siêu âm",
+      khoa_phong_quan_ly: "Khoa A",
+    },
   }
 }
 
@@ -168,6 +200,97 @@ describe("AddTransferDialog payload shaping", () => {
             ly_do_luan_chuyen: "Điều phối",
             nguoi_yeu_cau_id: 42,
             created_by: 42,
+            updated_by: 42,
+            khoa_phong_hien_tai: "Khoa A",
+            khoa_phong_nhan: "Khoa B",
+            muc_dich: null,
+            don_vi_nhan: null,
+            dia_chi_don_vi: null,
+            nguoi_lien_he: null,
+            so_dien_thoai: null,
+            ngay_du_kien_tra: null,
+          },
+        },
+      })
+    })
+
+    expect(onSuccess).toHaveBeenCalled()
+    expect(onOpenChange).toHaveBeenCalledWith(false)
+  })
+})
+
+describe("EditTransferDialog payload shaping", () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+
+    mocks.useSession.mockReturnValue({
+      data: {
+        user: {
+          id: "42",
+          role: "to_qltb",
+        },
+      },
+      status: "authenticated",
+    })
+  })
+
+  it("drops stale external fields after switching from external to internal transfer", async () => {
+    mocks.callRpc.mockImplementation(async ({ fn }: { fn: string }) => {
+      if (fn === "equipment_list_enhanced") {
+        return {
+          data: [
+            {
+              id: 11,
+              ma_thiet_bi: "TB-11",
+              ten_thiet_bi: "Máy siêu âm",
+              khoa_phong_quan_ly: "Khoa A",
+            },
+          ],
+        }
+      }
+
+      if (fn === "transfer_request_update") {
+        return { id: 7 }
+      }
+
+      return []
+    })
+
+    const user = userEvent.setup()
+    const onOpenChange = vi.fn()
+    const onSuccess = vi.fn()
+
+    render(
+      <EditTransferDialog
+        open
+        onOpenChange={onOpenChange}
+        onSuccess={onSuccess}
+        transfer={createTransfer()}
+      />,
+      { wrapper: createWrapper() },
+    )
+
+    let selects = screen.getAllByRole("combobox")
+    await user.selectOptions(selects[0], "noi_bo")
+
+    await user.clear(screen.getByLabelText("Khoa/Phòng hiện tại *"))
+    await user.type(screen.getByLabelText("Khoa/Phòng hiện tại *"), "Khoa A")
+    await user.clear(screen.getByLabelText("Khoa/Phòng nhận *"))
+    await user.type(screen.getByLabelText("Khoa/Phòng nhận *"), "Khoa B")
+    await user.clear(screen.getByLabelText(/Lý do/))
+    await user.type(screen.getByLabelText(/Lý do/), " Điều phối nội bộ ")
+
+    await user.click(screen.getByRole("button", { name: "Cập nhật" }))
+
+    await waitFor(() => {
+      expect(mocks.callRpc).toHaveBeenCalledWith({
+        fn: "transfer_request_update",
+        args: {
+          p_id: 7,
+          p_data: {
+            thiet_bi_id: 11,
+            loai_hinh: "noi_bo",
+            ly_do_luan_chuyen: "Điều phối nội bộ",
             updated_by: 42,
             khoa_phong_hien_tai: "Khoa A",
             khoa_phong_nhan: "Khoa B",

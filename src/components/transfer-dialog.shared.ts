@@ -19,6 +19,26 @@ export type TransferEquipmentOption = Pick<
   "id" | "ma_thiet_bi" | "ten_thiet_bi" | "model" | "serial" | "khoa_phong_quan_ly"
 >
 
+export type TransferDialogState = {
+  formData: TransferDialogFormData
+  searchTerm: string
+  selectedEquipment: TransferEquipmentOption | null
+  isSubmitting: boolean
+}
+
+type TransferDialogFormDataUpdate =
+  | TransferDialogFormData
+  | ((previous: TransferDialogFormData) => TransferDialogFormData)
+
+type TransferDialogStateAction =
+  | { type: "RESET" }
+  | { type: "LOAD_TRANSFER"; transfer: TransferRequest }
+  | { type: "FORM_DATA_CHANGED"; value: TransferDialogFormDataUpdate }
+  | { type: "SEARCH_CHANGED"; value: string }
+  | { type: "EQUIPMENT_SELECTED"; equipment: TransferEquipmentOption }
+  | { type: "SUBMIT_STARTED" }
+  | { type: "SUBMIT_FINISHED" }
+
 type TransferDialogPayload = {
   thiet_bi_id: number
   loai_hinh: TransferType
@@ -151,6 +171,15 @@ export function createEmptyTransferDialogFormData(): TransferDialogFormData {
   return { ...EMPTY_FORM_DATA }
 }
 
+export function createEmptyTransferDialogState(): TransferDialogState {
+  return {
+    formData: createEmptyTransferDialogFormData(),
+    searchTerm: "",
+    selectedEquipment: null,
+    isSubmitting: false,
+  }
+}
+
 export function normalizeSessionUserId(user: { id?: unknown } | null | undefined): number | null {
   const rawId = user?.id
 
@@ -254,6 +283,93 @@ export function getSelectedEquipmentFromTransfer(
     model: equipment.model ?? undefined,
     serial: (equipment.serial ?? equipment.serial_number) ?? undefined,
     khoa_phong_quan_ly: equipment.khoa_phong_quan_ly ?? undefined,
+  }
+}
+
+export function createTransferDialogStateFromTransfer(
+  transfer: TransferRequest,
+): TransferDialogState {
+  const selectedEquipment = getSelectedEquipmentFromTransfer(transfer)
+
+  return {
+    formData: createTransferDialogFormDataFromTransfer(transfer),
+    searchTerm: selectedEquipment
+      ? `${selectedEquipment.ten_thiet_bi} (${selectedEquipment.ma_thiet_bi})`
+      : "",
+    selectedEquipment,
+    isSubmitting: false,
+  }
+}
+
+function updateTransferDialogFormData(
+  previous: TransferDialogFormData,
+  value: TransferDialogFormDataUpdate,
+): TransferDialogFormData {
+  return typeof value === "function" ? value(previous) : value
+}
+
+export function transferDialogStateReducer(
+  state: TransferDialogState,
+  action: TransferDialogStateAction,
+): TransferDialogState {
+  switch (action.type) {
+    case "RESET":
+      return createEmptyTransferDialogState()
+    case "LOAD_TRANSFER":
+      return createTransferDialogStateFromTransfer(action.transfer)
+    case "FORM_DATA_CHANGED":
+      return {
+        ...state,
+        formData: updateTransferDialogFormData(state.formData, action.value),
+      }
+    case "SEARCH_CHANGED": {
+      const selectedValueLabel = state.selectedEquipment
+        ? `${state.selectedEquipment.ten_thiet_bi} (${state.selectedEquipment.ma_thiet_bi})`
+        : ""
+      const shouldClearSelectedEquipment =
+        state.selectedEquipment !== null && action.value !== selectedValueLabel
+
+      if (!shouldClearSelectedEquipment) {
+        return {
+          ...state,
+          searchTerm: action.value,
+        }
+      }
+
+      return {
+        ...state,
+        searchTerm: action.value,
+        selectedEquipment: null,
+        formData: {
+          ...state.formData,
+          thiet_bi_id: 0,
+          khoa_phong_hien_tai: "",
+        },
+      }
+    }
+    case "EQUIPMENT_SELECTED":
+      return {
+        ...state,
+        searchTerm: `${action.equipment.ten_thiet_bi} (${action.equipment.ma_thiet_bi})`,
+        selectedEquipment: action.equipment,
+        formData: {
+          ...state.formData,
+          thiet_bi_id: action.equipment.id,
+          khoa_phong_hien_tai: action.equipment.khoa_phong_quan_ly || "",
+        },
+      }
+    case "SUBMIT_STARTED":
+      return {
+        ...state,
+        isSubmitting: true,
+      }
+    case "SUBMIT_FINISHED":
+      return {
+        ...state,
+        isSubmitting: false,
+      }
+    default:
+      return state
   }
 }
 

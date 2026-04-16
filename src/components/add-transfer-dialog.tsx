@@ -23,8 +23,10 @@ import {
 import {
   buildCreateTransferPayload,
   createEmptyTransferDialogFormData,
+  createEmptyTransferDialogState,
   getTransferDialogErrorMessage,
   normalizeSessionUserId,
+  transferDialogStateReducer,
   type TransferEquipmentOption,
 } from "@/components/transfer-dialog.shared"
 import { TransferDialogEquipmentSearch } from "@/components/transfer-dialog.equipment-search"
@@ -46,23 +48,24 @@ export function AddTransferDialog({ open, onOpenChange, onSuccess }: AddTransfer
   const { data: session } = useSession()
   const currentUserId = normalizeSessionUserId(session?.user)
   const isRegionalLeader = isRegionalLeaderRole(session?.user?.role)
-  const [isLoading, setIsLoading] = React.useState(false)
-  const [searchTerm, setSearchTerm] = React.useState("")
-  const [selectedEquipment, setSelectedEquipment] = React.useState<TransferEquipmentOption | null>(null)
-  const [formData, setFormData] = React.useState(createEmptyTransferDialogFormData)
+  const [state, dispatch] = React.useReducer(
+    transferDialogStateReducer,
+    undefined,
+    createEmptyTransferDialogState,
+  )
+  const { formData, isSubmitting: isLoading, searchTerm, selectedEquipment } = state
 
-  const resetForm = React.useCallback(() => {
-    setFormData(createEmptyTransferDialogFormData())
-    setSelectedEquipment(null)
-    setSearchTerm("")
+  const setFormData = React.useCallback<
+    React.Dispatch<React.SetStateAction<ReturnType<typeof createEmptyTransferDialogFormData>>>
+  >((value) => {
+    dispatch({ type: "FORM_DATA_CHANGED", value })
   }, [])
 
   React.useEffect(() => {
     if (!open) {
-      resetForm()
-      return
+      dispatch({ type: "RESET" })
     }
-  }, [open, resetForm])
+  }, [open])
 
   const { departments, isLoadingDepartments } = useTransferDepartments({ open })
   const selectedValueLabel = selectedEquipment
@@ -102,25 +105,11 @@ export function AddTransferDialog({ open, onOpenChange, onSuccess }: AddTransfer
     trimmedSearch.length > 0 && trimmedSearch.length < 2
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setSearchTerm(e.target.value)
-    if (selectedEquipment) {
-      setSelectedEquipment(null)
-      setFormData((prev) => ({
-        ...prev,
-        thiet_bi_id: 0,
-        khoa_phong_hien_tai: "",
-      }))
-    }
+    dispatch({ type: "SEARCH_CHANGED", value: e.target.value })
   }
 
   const handleSelectEquipment = (equipment: TransferEquipmentOption) => {
-    setSelectedEquipment(equipment)
-    setSearchTerm(`${equipment.ten_thiet_bi} (${equipment.ma_thiet_bi})`)
-    setFormData((prev) => ({
-      ...prev,
-      thiet_bi_id: equipment.id,
-      khoa_phong_hien_tai: equipment.khoa_phong_quan_ly || "",
-    }))
+    dispatch({ type: "EQUIPMENT_SELECTED", equipment })
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -166,7 +155,7 @@ export function AddTransferDialog({ open, onOpenChange, onSuccess }: AddTransfer
 
     // Thanh lý không cần validate thêm vì đã có default values
 
-    setIsLoading(true)
+    dispatch({ type: "SUBMIT_STARTED" })
 
     try {
       const payload = buildCreateTransferPayload({ formData, currentUserId })
@@ -191,7 +180,7 @@ export function AddTransferDialog({ open, onOpenChange, onSuccess }: AddTransfer
         ),
       })
     } finally {
-      setIsLoading(false)
+      dispatch({ type: "SUBMIT_FINISHED" })
     }
   }
 

@@ -21,10 +21,10 @@ import { useTransferEquipmentSearch } from "@/components/transfer-dialog.data"
 import {
   buildUpdateTransferPayload,
   createEmptyTransferDialogFormData,
-  createTransferDialogFormDataFromTransfer,
-  getSelectedEquipmentFromTransfer,
+  createEmptyTransferDialogState,
   getTransferDialogErrorMessage,
   normalizeSessionUserId,
+  transferDialogStateReducer,
   type TransferEquipmentOption,
 } from "@/components/transfer-dialog.shared"
 import { TransferDialogEquipmentSearch } from "@/components/transfer-dialog.equipment-search"
@@ -47,36 +47,32 @@ export function EditTransferDialog({ open, onOpenChange, onSuccess, transfer }: 
   const { data: session } = useSession()
   const currentUserId = normalizeSessionUserId(session?.user)
   const isRegionalLeader = isRegionalLeaderRole(session?.user?.role)
-  const [isLoading, setIsLoading] = React.useState(false)
-  const [searchTerm, setSearchTerm] = React.useState("")
-  const [selectedEquipment, setSelectedEquipment] = React.useState<TransferEquipmentOption | null>(null)
-  const [formData, setFormData] = React.useState(createEmptyTransferDialogFormData)
+  const [state, dispatch] = React.useReducer(
+    transferDialogStateReducer,
+    undefined,
+    createEmptyTransferDialogState,
+  )
+  const { formData, isSubmitting: isLoading, searchTerm, selectedEquipment } = state
+
+  const setFormData = React.useCallback<
+    React.Dispatch<React.SetStateAction<ReturnType<typeof createEmptyTransferDialogFormData>>>
+  >((value) => {
+    dispatch({ type: "FORM_DATA_CHANGED", value })
+  }, [])
 
   // Check if editing is allowed based on status
   const canEdit = Boolean(
     transfer && (transfer.trang_thai === 'cho_duyet' || transfer.trang_thai === 'da_duyet')
   )
 
-  const resetForm = React.useCallback(() => {
-    setFormData(createEmptyTransferDialogFormData())
-    setSelectedEquipment(null)
-    setSearchTerm("")
-  }, [])
-
   // Load transfer data when dialog opens
   React.useEffect(() => {
     if (open && transfer) {
-      setFormData(createTransferDialogFormDataFromTransfer(transfer))
-
-      const equipment = getSelectedEquipmentFromTransfer(transfer)
-      setSelectedEquipment(equipment)
-      if (equipment) {
-        setSearchTerm(`${equipment.ten_thiet_bi} (${equipment.ma_thiet_bi})`)
-      }
+      dispatch({ type: "LOAD_TRANSFER", transfer })
     } else if (!open) {
-      resetForm()
+      dispatch({ type: "RESET" })
     }
-  }, [open, transfer, resetForm])
+  }, [open, transfer])
 
   const selectedValueLabel = selectedEquipment
     ? `${selectedEquipment.ten_thiet_bi} (${selectedEquipment.ma_thiet_bi})`
@@ -131,15 +127,7 @@ export function EditTransferDialog({ open, onOpenChange, onSuccess, transfer }: 
     }
 
     const value = e.target.value
-    setSearchTerm(value)
-    if (selectedEquipment && value !== selectedValueLabel) {
-      setSelectedEquipment(null)
-      setFormData((prev) => ({
-        ...prev,
-        thiet_bi_id: 0,
-        khoa_phong_hien_tai: "",
-      }))
-    }
+    dispatch({ type: "SEARCH_CHANGED", value })
   }
 
   const handleSelectEquipment = (equipment: TransferEquipmentOption) => {
@@ -147,13 +135,7 @@ export function EditTransferDialog({ open, onOpenChange, onSuccess, transfer }: 
       return
     }
 
-    setSelectedEquipment(equipment)
-    setSearchTerm(`${equipment.ten_thiet_bi} (${equipment.ma_thiet_bi})`)
-    setFormData((prev) => ({
-      ...prev,
-      thiet_bi_id: equipment.id,
-      khoa_phong_hien_tai: equipment.khoa_phong_quan_ly || "",
-    }))
+    dispatch({ type: "EQUIPMENT_SELECTED", equipment })
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -206,7 +188,7 @@ export function EditTransferDialog({ open, onOpenChange, onSuccess, transfer }: 
       return
     }
 
-    setIsLoading(true)
+    dispatch({ type: "SUBMIT_STARTED" })
 
     try {
       const payload = buildUpdateTransferPayload({ formData, currentUserId })
@@ -229,7 +211,7 @@ export function EditTransferDialog({ open, onOpenChange, onSuccess, transfer }: 
         ),
       })
     } finally {
-      setIsLoading(false)
+      dispatch({ type: "SUBMIT_FINISHED" })
     }
   }
 
