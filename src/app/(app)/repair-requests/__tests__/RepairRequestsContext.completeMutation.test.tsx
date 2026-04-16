@@ -51,6 +51,28 @@ function createWrapper(queryClient: QueryClient) {
 }
 
 function MutationHarness() {
+  return (
+    <MutationHarnessWithPayload
+      payload={{
+        id: 99,
+        completion: "Đã sửa xong",
+        reason: null,
+        repairCost: 1234567,
+      }}
+    />
+  )
+}
+
+function MutationHarnessWithPayload({
+  payload,
+}: {
+  payload: {
+    id: number
+    completion: string | null
+    reason: string | null
+    repairCost: number | null
+  }
+}) {
   const context = React.useContext(RepairRequestsContext)
   const hasTriggeredRef = React.useRef(false)
 
@@ -61,13 +83,8 @@ function MutationHarness() {
 
     hasTriggeredRef.current = true
 
-    context.completeMutation.mutate({
-      id: 99,
-      completion: "Đã sửa xong",
-      reason: null,
-      repairCost: 1234567,
-    })
-  }, [context])
+    context.completeMutation.mutate(payload)
+  }, [context, payload])
 
   return null
 }
@@ -103,6 +120,40 @@ describe("RepairRequestsContext complete mutation", () => {
           p_chi_phi_sua_chua: 1234567,
         },
       })
+    })
+  })
+
+  it("rejects blank completion before calling RPC", async () => {
+    const queryClient = new QueryClient({
+      defaultOptions: {
+        queries: { retry: false, gcTime: 0 },
+        mutations: { retry: false },
+      },
+    })
+
+    render(
+      <RepairRequestsProvider>
+        <MutationHarnessWithPayload
+          payload={{
+            id: 99,
+            completion: "   ",
+            reason: null,
+            repairCost: null,
+          }}
+        />
+      </RepairRequestsProvider>,
+      { wrapper: createWrapper(queryClient) }
+    )
+
+    await waitFor(() => {
+      expect(mockCallRpc).not.toHaveBeenCalled()
+      expect(mockToast).toHaveBeenCalledWith(
+        expect.objectContaining({
+          variant: "destructive",
+          title: "Lỗi cập nhật yêu cầu",
+          description: "Phải nhập kết quả sửa chữa hoặc lý do không hoàn thành",
+        })
+      )
     })
   })
 })

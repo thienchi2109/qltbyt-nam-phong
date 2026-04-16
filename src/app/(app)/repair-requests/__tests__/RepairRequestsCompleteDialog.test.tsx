@@ -1,7 +1,7 @@
 import * as React from "react"
 import { fireEvent, render, screen } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
-import { describe, expect, it, vi } from "vitest"
+import { beforeEach, describe, expect, it, vi } from "vitest"
 
 import { RepairRequestsCompleteDialog } from "../_components/RepairRequestsCompleteDialog"
 import type { RepairRequestWithEquipment } from "../types"
@@ -109,6 +109,70 @@ function setupContext(overrides?: Partial<ReturnType<typeof mockContext.useRepai
 }
 
 describe("RepairRequestsCompleteDialog", () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it("keeps Hoàn thành disabled for blank or whitespace-only repair results", async () => {
+    const user = userEvent.setup()
+    setupContext()
+
+    render(<RepairRequestsCompleteDialog />)
+
+    const confirmButton = screen.getByRole("button", { name: "Xác nhận hoàn thành" })
+    expect(confirmButton).toBeDisabled()
+
+    await user.type(screen.getByLabelText("Kết quả sửa chữa"), "   ")
+    expect(confirmButton).toBeDisabled()
+
+    await user.click(confirmButton)
+    expect(mockMutate).not.toHaveBeenCalled()
+  })
+
+  it("enables Hoàn thành after a non-empty repair result and submits a trimmed payload", async () => {
+    const user = userEvent.setup()
+    setupContext()
+
+    render(<RepairRequestsCompleteDialog />)
+
+    await user.type(screen.getByLabelText("Kết quả sửa chữa"), "  Đã thay bộ nguồn  ")
+    const confirmButton = screen.getByRole("button", { name: "Xác nhận hoàn thành" })
+
+    expect(confirmButton).toBeEnabled()
+
+    await user.click(confirmButton)
+
+    expect(mockMutate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: 7,
+        completion: "Đã thay bộ nguồn",
+        reason: null,
+      }),
+      { onSuccess: mockCloseAllDialogs }
+    )
+  })
+
+  it("keeps Không HT disabled for blank or whitespace-only reasons", async () => {
+    const user = userEvent.setup()
+    setupContext({
+      dialogState: {
+        requestToComplete,
+        completionType: "Không HT",
+      },
+    })
+
+    render(<RepairRequestsCompleteDialog />)
+
+    const confirmButton = screen.getByRole("button", { name: "Xác nhận không hoàn thành" })
+    expect(confirmButton).toBeDisabled()
+
+    await user.type(screen.getByLabelText("Lý do không hoàn thành"), "   ")
+    expect(confirmButton).toBeDisabled()
+
+    await user.click(confirmButton)
+    expect(mockMutate).not.toHaveBeenCalled()
+  })
+
   it("shows the optional repair cost field for Hoàn thành and submits a parsed numeric payload", async () => {
     const user = userEvent.setup()
     setupContext()

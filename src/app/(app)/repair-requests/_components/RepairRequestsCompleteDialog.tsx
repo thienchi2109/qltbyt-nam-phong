@@ -42,6 +42,9 @@ function CompleteDialogForm({
   const [completionResult, setCompletionResult] = React.useState("")
   const [nonCompletionReason, setNonCompletionReason] = React.useState("")
   const [repairCostInput, setRepairCostInput] = React.useState("")
+  const activeCompletionText =
+    completionType === "Hoàn thành" ? completionResult : nonCompletionReason
+  const isConfirmDisabled = isPending || activeCompletionText.trim().length === 0
 
   const handleRepairCostChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const digitsOnly = event.target.value.replace(/\D/g, "")
@@ -129,7 +132,7 @@ function CompleteDialogForm({
         <Button variant="outline" onClick={onCancel} disabled={isPending}>
           Hủy
         </Button>
-        <Button onClick={handleConfirm} disabled={isPending}>
+        <Button onClick={handleConfirm} disabled={isConfirmDisabled}>
           {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
           {completionType === "Hoàn thành" ? "Xác nhận hoàn thành" : "Xác nhận không hoàn thành"}
         </Button>

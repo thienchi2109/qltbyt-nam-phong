@@ -216,12 +216,19 @@ function useCompleteMutation(
       reason: string | null
       repairCost: number | null
     }) => {
+      const completion = data.completion?.trim() ?? ""
+      const reason = data.reason?.trim() ?? ""
+
+      if (completion.length === 0 && reason.length === 0) {
+        throw new Error("Phải nhập kết quả sửa chữa hoặc lý do không hoàn thành")
+      }
+
       return callRpc({
         fn: 'repair_request_complete',
         args: {
           p_id: data.id,
-          p_completion: data.completion,
-          p_reason: data.reason,
+          p_completion: completion.length > 0 ? completion : null,
+          p_reason: reason.length > 0 ? reason : null,
           p_chi_phi_sua_chua: data.repairCost,
         }
       })
