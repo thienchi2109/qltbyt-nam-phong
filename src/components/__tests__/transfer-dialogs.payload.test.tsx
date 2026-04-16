@@ -308,4 +308,92 @@ describe("EditTransferDialog payload shaping", () => {
     expect(onSuccess).toHaveBeenCalled()
     expect(onOpenChange).toHaveBeenCalledWith(false)
   })
+
+  it("keeps the dialog state intact and re-enables submit after a failed update", async () => {
+    mocks.callRpc.mockImplementation(async ({ fn }: { fn: string }) => {
+      if (fn === "equipment_list_enhanced") {
+        return {
+          data: [
+            {
+              id: 11,
+              ma_thiet_bi: "TB-11",
+              ten_thiet_bi: "Máy siêu âm",
+              khoa_phong_quan_ly: "Khoa A",
+            },
+          ],
+        }
+      }
+
+      if (fn === "transfer_request_update") {
+        throw new Error("Update failed")
+      }
+
+      return []
+    })
+
+    const user = userEvent.setup()
+    const onOpenChange = vi.fn()
+    const onSuccess = vi.fn()
+
+    render(
+      <EditTransferDialog
+        open
+        onOpenChange={onOpenChange}
+        onSuccess={onSuccess}
+        transfer={createTransfer()}
+      />,
+      { wrapper: createWrapper() },
+    )
+
+    let selects = screen.getAllByRole("combobox")
+    await user.selectOptions(selects[0], "noi_bo")
+
+    const currentDepartmentInput = screen.getByLabelText("Khoa/Phòng hiện tại *")
+    const receivingDepartmentInput = screen.getByLabelText("Khoa/Phòng nhận *")
+    const reasonInput = screen.getByLabelText(/Lý do/)
+
+    await user.clear(currentDepartmentInput)
+    await user.type(currentDepartmentInput, "Khoa A")
+    await user.clear(receivingDepartmentInput)
+    await user.type(receivingDepartmentInput, "Khoa B")
+    await user.clear(reasonInput)
+    await user.type(reasonInput, " Điều phối lỗi ")
+
+    const submitButton = screen.getByRole("button", { name: "Cập nhật" })
+    await user.click(submitButton)
+
+    await waitFor(() => {
+      expect(mocks.callRpc).toHaveBeenCalledWith({
+        fn: "transfer_request_update",
+        args: {
+          p_id: 7,
+          p_data: {
+            thiet_bi_id: 11,
+            loai_hinh: "noi_bo",
+            ly_do_luan_chuyen: "Điều phối lỗi",
+            updated_by: 42,
+            khoa_phong_hien_tai: "Khoa A",
+            khoa_phong_nhan: "Khoa B",
+            muc_dich: null,
+            don_vi_nhan: null,
+            dia_chi_don_vi: null,
+            nguoi_lien_he: null,
+            so_dien_thoai: null,
+            ngay_du_kien_tra: null,
+          },
+        },
+      })
+    })
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "Cập nhật" })).toBeEnabled()
+    })
+
+    expect(screen.getByTestId("dialog")).toBeInTheDocument()
+    expect(onOpenChange).not.toHaveBeenCalledWith(false)
+    expect(onSuccess).not.toHaveBeenCalled()
+    expect(currentDepartmentInput).toHaveValue("Khoa A")
+    expect(receivingDepartmentInput).toHaveValue("Khoa B")
+    expect(reasonInput).toHaveValue(" Điều phối lỗi ")
+  })
 })
