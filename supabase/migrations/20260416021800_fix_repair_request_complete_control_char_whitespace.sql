@@ -1,8 +1,10 @@
 -- Follow-up to 20260416015100_fix_repair_request_complete_empty_payload.sql.
 -- Forward-only migration: do not roll back by editing/deleting applied history.
--- If rollback is ever required before first production write of this follow-up,
--- restore public.repair_request_complete(...) from
--- 20260416015100_fix_repair_request_complete_empty_payload.sql.
+-- Do not restore public.repair_request_complete(...) from
+-- 20260416015100_fix_repair_request_complete_empty_payload.sql, because that
+-- earlier body validates with trim() but persists raw padded text.
+-- If this follow-up ever needs to be reverted, ship a new forward-only
+-- migration with an explicit replacement body instead of reusing the older one.
 -- Normalize all leading/trailing whitespace in repair_request_complete terminal
 -- payloads before validation so tabs/newlines cannot bypass the empty-payload
 -- guard, and persisted completion/reason text is stored trimmed.
