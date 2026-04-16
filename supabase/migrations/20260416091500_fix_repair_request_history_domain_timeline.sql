@@ -96,11 +96,20 @@ BEGIN
       END AS action_type,
       CASE ls.mo_ta
         WHEN 'Tạo yêu cầu sửa chữa' THEN
-          NULLIF(BTRIM(COALESCE(req.nguoi_yeu_cau, ls.chi_tiet->>'nguoi_yeu_cau')), '')
+          COALESCE(
+            NULLIF(BTRIM(req.nguoi_yeu_cau), ''),
+            NULLIF(BTRIM(ls.chi_tiet->>'nguoi_yeu_cau'), '')
+          )
         WHEN 'Duyệt yêu cầu sửa chữa' THEN
-          NULLIF(BTRIM(COALESCE(ls.chi_tiet->>'nguoi_duyet', req.nguoi_duyet)), '')
+          COALESCE(
+            NULLIF(BTRIM(ls.chi_tiet->>'nguoi_duyet'), ''),
+            NULLIF(BTRIM(req.nguoi_duyet), '')
+          )
         WHEN 'Yêu cầu sửa chữa cập nhật trạng thái' THEN
-          NULLIF(BTRIM(COALESCE(ls.chi_tiet->>'nguoi_xac_nhan', req.nguoi_xac_nhan)), '')
+          COALESCE(
+            NULLIF(BTRIM(ls.chi_tiet->>'nguoi_xac_nhan'), ''),
+            NULLIF(BTRIM(req.nguoi_xac_nhan), '')
+          )
         ELSE NULL
       END AS admin_full_name,
       CASE ls.mo_ta
@@ -109,7 +118,10 @@ BEGIN
             (COALESCE(ls.chi_tiet, '{}'::jsonb) - 'hang_muc')
             || jsonb_build_object(
               'hang_muc_sua_chua', NULLIF(ls.chi_tiet->>'hang_muc', ''),
-              'nguoi_yeu_cau', NULLIF(COALESCE(req.nguoi_yeu_cau, ls.chi_tiet->>'nguoi_yeu_cau'), ''),
+              'nguoi_yeu_cau', COALESCE(
+                NULLIF(BTRIM(req.nguoi_yeu_cau), ''),
+                NULLIF(BTRIM(ls.chi_tiet->>'nguoi_yeu_cau'), '')
+              ),
               'trang_thai', 'Chờ xử lý'
             )
           )
@@ -124,7 +136,10 @@ BEGIN
           jsonb_strip_nulls(
             COALESCE(ls.chi_tiet, '{}'::jsonb)
             || jsonb_build_object(
-              'nguoi_duyet', NULLIF(COALESCE(ls.chi_tiet->>'nguoi_duyet', req.nguoi_duyet), ''),
+              'nguoi_duyet', COALESCE(
+                NULLIF(BTRIM(ls.chi_tiet->>'nguoi_duyet'), ''),
+                NULLIF(BTRIM(req.nguoi_duyet), '')
+              ),
               'trang_thai', 'Đã duyệt'
             )
           )
