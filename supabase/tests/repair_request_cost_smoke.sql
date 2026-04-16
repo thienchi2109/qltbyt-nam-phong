@@ -471,4 +471,60 @@ BEGIN
   RAISE NOTICE 'OK: repair cost list/detail/report payloads passed';
 END $$;
 
+-- 6) Empty completion payload must raise and leave the request approved.
+DO $$
+DECLARE
+  v_suffix text := to_char(clock_timestamp(), 'YYYYMMDDHH24MISSMS');
+  v_tenant bigint;
+  v_user_id bigint;
+  v_request_id bigint;
+  v_status text;
+  v_completed_at timestamptz;
+  v_completion text;
+  v_reason text;
+BEGIN
+  INSERT INTO public.don_vi(name, active)
+  VALUES ('Repair empty smoke tenant ' || v_suffix, true)
+  RETURNING id INTO v_tenant;
+
+  INSERT INTO public.nhan_vien(username, password, full_name, role, don_vi, current_don_vi)
+  VALUES (
+    'repair_empty_smoke_' || v_suffix,
+    'smoke-password',
+    'Repair Empty Smoke',
+    'to_qltb',
+    v_tenant,
+    v_tenant
+  )
+  RETURNING id INTO v_user_id;
+
+  v_request_id := pg_temp._rr_cost_create_approved_request(v_tenant, v_user_id, v_suffix);
+  PERFORM pg_temp._rr_cost_set_claims('to_qltb', v_user_id, v_tenant);
+
+  BEGIN
+    PERFORM public.repair_request_complete(v_request_id::integer, '   ', NULL, NULL);
+    RAISE EXCEPTION 'Expected whitespace-only completion to raise';
+  EXCEPTION WHEN OTHERS THEN
+    IF SQLSTATE <> '22023' THEN
+      RAISE EXCEPTION 'Expected SQLSTATE 22023 for whitespace completion, got [%] %', SQLSTATE, SQLERRM;
+    END IF;
+  END;
+
+  SELECT trang_thai, ngay_hoan_thanh, ket_qua_sua_chua, ly_do_khong_hoan_thanh
+  INTO v_status, v_completed_at, v_completion, v_reason
+  FROM public.yeu_cau_sua_chua
+  WHERE id = v_request_id;
+
+  IF v_status <> 'Đã duyệt'
+     OR v_completed_at IS NOT NULL
+     OR v_completion IS NOT NULL
+     OR v_reason IS NOT NULL THEN
+    RAISE EXCEPTION
+      'Blank completion must not mutate request; got status=%, completed_at=%, completion=%, reason=%',
+      v_status, v_completed_at, v_completion, v_reason;
+  END IF;
+
+  RAISE NOTICE 'OK: empty completion payload guard passed';
+END $$;
+
 ROLLBACK;
