@@ -4,6 +4,9 @@
 -- Forward-only migration: if the timeline contract needs to change again,
 -- ship a new migration that replaces this function body instead of editing
 -- applied history.
+-- Previous audit-log-backed implementation of
+-- public.repair_request_change_history_list(INT) lives in
+-- 20260405174500_add_repair_request_change_history_list_rpc.sql.
 
 BEGIN;
 

@@ -67,9 +67,14 @@ BEGIN
     RAISE EXCEPTION 'Expected create/approve/complete lifecycle entries, got %', v_rows;
   END IF;
 
-  SELECT array_agg(action_type ORDER BY created_at DESC, id DESC)
+  SELECT array_agg(
+    row_data->>'action_type'
+    ORDER BY
+      (row_data->>'created_at')::timestamptz DESC,
+      (row_data->>'id')::bigint DESC
+  )
   INTO v_action_types
-  FROM public.repair_request_change_history_list(v_request_id);
+  FROM public.repair_request_change_history_list(v_request_id) AS row_data;
 
   IF v_action_types[1:3] IS DISTINCT FROM ARRAY[
     'repair_request_complete',
