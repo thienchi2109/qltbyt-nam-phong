@@ -136,7 +136,7 @@ describe("RepairRequestsContext complete mutation", () => {
         <MutationHarnessWithPayload
           payload={{
             id: 99,
-            completion: "",
+            completion: "   ",
             reason: null,
             repairCost: null,
           }}
