@@ -78,4 +78,8 @@ describe('query_database guardrails contract', () => {
   it('rejects dollar-quoted strings instead of trying to parse them', () => {
     expectSqlError("select $$'$$ || set_config('app.current_facility_id', '2', true)", 'invalid_statement')
   })
+
+  it('rejects PostgreSQL E-strings instead of parsing backslash escapes', () => {
+    expectSqlError("select E'x\\'' from public.thiet_bi", 'invalid_statement')
+  })
 })

@@ -40,6 +40,7 @@ const KNOWN_FORBIDDEN_SCHEMAS = [
 
 const FORBIDDEN_FUNCTIONS = ['set_config'] as const
 const DOLLAR_QUOTED_STRING_PATTERN = /\$[A-Za-z_][\w$]*\$|\$\$/
+const ESCAPE_STRING_PATTERN = /\bE\s*'/i
 const FORBIDDEN_KEYWORD_PATTERN = new RegExp(
   String.raw`\b(?:${FORBIDDEN_KEYWORDS.join('|')})\b`,
   'i',
@@ -134,6 +135,15 @@ function assertNoDollarQuotedStrings(sql: string) {
   }
 }
 
+function assertNoEscapeStrings(sql: string) {
+  if (ESCAPE_STRING_PATTERN.test(sql)) {
+    throw new AssistantSqlError(
+      'invalid_statement',
+      'PostgreSQL escape strings are not allowed.',
+    )
+  }
+}
+
 function assertSingleStatement(normalized: string, masked: string) {
   const semicolonCount = countSemicolons(masked)
   if (semicolonCount > 1 || (semicolonCount === 1 && !normalized.endsWith(';'))) {
@@ -200,6 +210,7 @@ function assertNoForbiddenFunctions(maskedStatement: string) {
 
 export function validateAssistantSql(sql: string): ValidatedAssistantSql {
   assertNoDollarQuotedStrings(sql)
+  assertNoEscapeStrings(sql)
 
   const commentText = normalizeWhitespace(extractCommentText(sql))
   const withoutComments = stripComments(sql)

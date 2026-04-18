@@ -48,10 +48,19 @@ async function expectAssistantSqlError(
   } catch (error) {
     expect(error).toBeInstanceOf(AssistantSqlError)
     expect((error as AssistantSqlError).code).toBe(code)
+    return
   }
+
+  throw new Error(`Expected AssistantSqlError with code '${code}'`)
 }
 
 describe('query_database executor contract', () => {
+  it('fails the assertion helper when no assistant SQL error is thrown', async () => {
+    await expect(
+      expectAssistantSqlError(async () => undefined, 'scope_required'),
+    ).rejects.toThrow('Expected AssistantSqlError')
+  })
+
   it('applies transaction-local settings for timeout, search_path, and facility scope', async () => {
     const { db, settings, statements } = createDb([{ equipment_id: 1 }])
 
