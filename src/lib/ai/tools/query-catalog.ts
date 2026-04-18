@@ -2,17 +2,29 @@ import { z } from 'zod'
 
 export type MigrationStatus = 'migrated' | 'pending'
 
-export type QueryCatalogEntry = {
+export interface QueryCatalogModelBudget {
+  maxItems?: number
+  maxBytes?: number
+  modelVisibleFields?: string[]
+}
+
+interface BaseQueryCatalogEntry {
   description: string
   rpcFunction: string
   inputSchema: z.ZodType<Record<string, unknown>>
-  migrationStatus: MigrationStatus
-  modelBudget?: {
-    maxItems?: number
-    maxBytes?: number
-    modelVisibleFields?: string[]
-  }
 }
+
+interface MigratedQueryCatalogEntry extends BaseQueryCatalogEntry {
+  migrationStatus: 'migrated'
+  modelBudget: QueryCatalogModelBudget
+}
+
+interface PendingQueryCatalogEntry extends BaseQueryCatalogEntry {
+  migrationStatus: 'pending'
+  modelBudget?: QueryCatalogModelBudget
+}
+
+export type QueryCatalogEntry = MigratedQueryCatalogEntry | PendingQueryCatalogEntry
 
 export const QUERY_CATALOG = {
   equipmentLookup: {

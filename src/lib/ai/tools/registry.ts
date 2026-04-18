@@ -17,6 +17,8 @@ import {
 } from '@/lib/ai/tools/query-catalog'
 import { executeRpcTool } from '@/lib/ai/tools/rpc-tool-executor'
 
+export type { MigrationStatus } from '@/lib/ai/tools/query-catalog'
+
 // ============================================
 // Draft Tool Definitions (non-RPC, advisory-only)
 // ============================================

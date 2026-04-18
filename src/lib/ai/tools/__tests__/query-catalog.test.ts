@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest'
 
+import {
+  QUERY_CATALOG,
+  getQueryCatalogMigrationStatusMap,
+  getQueryCatalogToolRpcMapping,
+} from '@/lib/ai/tools/query-catalog'
+
 const EXPECTED_TOOL_NAMES = [
   'attachmentLookup',
   'categorySuggestion',
@@ -40,27 +46,21 @@ const EXPECTED_MIGRATION_STATUS: Record<string, 'migrated' | 'pending'> = {
 }
 
 describe('query catalog', () => {
-  it('exports the exact curated read-only tool names', async () => {
-    const { QUERY_CATALOG } = await import('../query-catalog')
-
-    expect(Object.keys(QUERY_CATALOG).sort()).toEqual(EXPECTED_TOOL_NAMES)
+  it('exports the exact curated read-only tool names', () => {
+    expect(Object.keys(QUERY_CATALOG).sort((a, b) => a.localeCompare(b))).toEqual(
+      EXPECTED_TOOL_NAMES,
+    )
   })
 
-  it('exports the exact tool to RPC mapping', async () => {
-    const { getQueryCatalogToolRpcMapping } = await import('../query-catalog')
-
+  it('exports the exact tool to RPC mapping', () => {
     expect(getQueryCatalogToolRpcMapping()).toEqual(EXPECTED_RPC_MAPPING)
   })
 
-  it('exports the exact migration status map', async () => {
-    const { getQueryCatalogMigrationStatusMap } = await import('../query-catalog')
-
+  it('exports the exact migration status map', () => {
     expect(getQueryCatalogMigrationStatusMap()).toEqual(EXPECTED_MIGRATION_STATUS)
   })
 
-  it('marks migrated tools with a model budget', async () => {
-    const { QUERY_CATALOG } = await import('../query-catalog')
-
+  it('marks migrated tools with a model budget', () => {
     const migratedToolNames = Object.entries(EXPECTED_MIGRATION_STATUS)
       .filter(([, status]) => status === 'migrated')
       .map(([name]) => name)
