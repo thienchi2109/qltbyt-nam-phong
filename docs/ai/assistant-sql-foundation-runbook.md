@@ -34,6 +34,7 @@ begin
 end
 $$;
 
+grant ai_query_reader to ai_query_tool;
 grant connect on database postgres to ai_query_tool;
 
 alter role ai_query_tool set default_transaction_read_only = on;
