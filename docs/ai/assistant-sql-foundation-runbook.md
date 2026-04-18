@@ -16,13 +16,23 @@ The migration does **not** create a passworded login role, because credentials m
 
 ## Manual Role Provisioning
 
-After the migration is applied to the target Supabase project, create the passworded login role manually in SQL editor or via a privileged database session:
+After the migration is applied to the target Supabase project, create the passworded login role manually from a privileged database session. On hosted Supabase, that means using the SQL editor or a direct `psql`/admin session with enough privileges to run `CREATE ROLE`; do not try to create this role through `service_role` or an app-facing API.
 
 ```sql
-create role ai_query_tool
-  login
-  password 'REPLACE_WITH_A_LONG_RANDOM_PASSWORD'
-  in role ai_query_reader;
+do $$
+begin
+  if not exists (
+    select 1
+    from pg_roles
+    where rolname = 'ai_query_tool'
+  ) then
+    create role ai_query_tool
+      login
+      password 'REPLACE_WITH_A_LONG_RANDOM_PASSWORD'
+      in role ai_query_reader;
+  end if;
+end
+$$;
 
 grant connect on database postgres to ai_query_tool;
 
@@ -35,19 +45,21 @@ alter role ai_query_tool set search_path = ai_readonly, pg_catalog;
 Notes:
 - keep `ai_query_tool` dedicated to assistant SQL only
 - never reuse `service_role`, `anon`, or app-user credentials
+- store the password in the team secret manager and rotate it there before updating `AI_DATABASE_URL`
 - runtime code should still issue `SET LOCAL search_path = ai_readonly, pg_catalog` per transaction as defense in depth
 
 ## Environment Contract
 
-Set `AI_DATABASE_URL` to the Supabase transaction-pooler URL for `ai_query_tool`:
+Set `AI_DATABASE_URL` to the exact Supabase transaction-pooler connection string shown in the project dashboard (`Connect` -> `Transaction pooler`), then swap in the dedicated `ai_query_tool` credentials:
 
 ```text
-postgresql://ai_query_tool:<PASSWORD>@db.<project-ref>.supabase.co:6543/postgres?sslmode=require
+postgresql://ai_query_tool:<PASSWORD>@<transaction-pooler-host>:6543/postgres?sslmode=require
 ```
 
 Use:
 - transaction pooler (`:6543`) for serverless runtime
 - SSL required
+- copy the exact hostname/username format from the Supabase dashboard instead of assuming a single pooler host pattern
 - prepared statements disabled in the future executor (`prepare: false`)
 
 ## Local Verification

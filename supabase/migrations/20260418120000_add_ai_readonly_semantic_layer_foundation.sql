@@ -8,6 +8,21 @@
 --   - passworded login role creation
 --   - runtime SQL executor rollout
 --   - audit plumbing
+--
+-- Rollback (forward-only strategy):
+--   Safe only before any production data or assistant traffic has exercised
+--   this semantic layer, and before any dependent passworded login role is
+--   created from `ai_query_reader`.
+--   Reverse in that window with:
+--     DROP VIEW IF EXISTS ai_readonly.quota_facts;
+--     DROP VIEW IF EXISTS ai_readonly.usage_facts;
+--     DROP VIEW IF EXISTS ai_readonly.repair_facts;
+--     DROP VIEW IF EXISTS ai_readonly.maintenance_facts;
+--     DROP VIEW IF EXISTS ai_readonly.equipment_search;
+--     DROP FUNCTION IF EXISTS ai_readonly.require_single_facility_scope();
+--     DROP FUNCTION IF EXISTS ai_readonly.current_facility_id();
+--     DROP SCHEMA IF EXISTS ai_readonly;
+--     DROP ROLE IF EXISTS ai_query_reader;
 
 BEGIN;
 
@@ -132,6 +147,7 @@ SELECT
 FROM public.cong_viec_bao_tri cv
 JOIN public.ke_hoach_bao_tri kh
   ON kh.id = cv.ke_hoach_id
+ AND kh.don_vi = ai_readonly.require_single_facility_scope()
 JOIN public.thiet_bi tb
   ON tb.id = cv.thiet_bi_id
 WHERE tb.is_deleted = false

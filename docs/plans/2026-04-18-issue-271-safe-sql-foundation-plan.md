@@ -2,40 +2,40 @@
 
 ## Summary
 - Repo state: local branch `plan/issue-271-safe-sql-foundation` already exists and currently points at the same commit as `main` / `origin/main` (`8496584`); this plan assumes implementation starts from that base.
-- Current production-safe assistant path is `[chat route](/root/qltbyt-nam-phong/src/app/api/chat/route.ts:113) -> [tool registry](/root/qltbyt-nam-phong/src/lib/ai/tools/registry.ts:150) -> [RPC executor](/root/qltbyt-nam-phong/src/lib/ai/tools/rpc-tool-executor.ts:189) -> [RPC proxy](/root/qltbyt-nam-phong/src/app/api/rpc/[fn]/route.ts:239) -> SQL RPCs`. That path already enforces auth, facility selection, JWT claim injection, allowlists, quotas, and error sanitization.
+- Current production-safe assistant path is `[chat route](src/app/api/chat/route.ts#L113) -> [tool registry](src/lib/ai/tools/registry.ts#L150) -> [RPC executor](src/lib/ai/tools/rpc-tool-executor.ts#L189) -> [RPC proxy](src/app/api/rpc/[fn]/route.ts#L239) -> SQL RPCs`. That path already enforces auth, facility selection, JWT claim injection, allowlists, quotas, and error sanitization.
 - Scope split is clear from GitHub: `#271` is pre-rollout foundation only; `#272` is runtime `query_database` rollout; `#273` is planner/router hardening. `#271` should therefore land a dormant end-to-end SQL foundation, but must not register `query_database` in `/api/chat` yet.
 - Explicit reconciliation with the repo’s RPC-only rule: keep RPC-only as the default app-data rule. The new SQL path is a narrow server-only assistant exception that can read only `ai_readonly` views through a dedicated read-only DB identity. Curated tools stay on the existing RPC path. Any audit write for the SQL path stays on the existing JWT/RPC boundary instead of the read-only DB role.
 
 ## Repo Reconnaissance
 - Required docs align on the same baseline: assistant reads must remain tenant-safe, server-enforced, and read-only. Relevant references were `docs/PRD-Vercel-AI-SDK.md`, `tasks/prd-vercel-ai-sdk-strategic-spec.md`, `openspec/project.md`, and `docs/RBAC.md`.
-- The repo already contains an earlier design document for `query_database` at [docs/plans/2026-03-24-ai-query-database-refactor-plan.md](/root/qltbyt-nam-phong/docs/plans/2026-03-24-ai-query-database-refactor-plan.md:1), but that document mixes foundation and rollout. Issue `#271` should take only the foundation pieces and leave runtime registration to `#272`.
+- The repo already contains an earlier design document for `query_database` at [docs/plans/2026-03-24-ai-query-database-refactor-plan.md](docs/plans/2026-03-24-ai-query-database-refactor-plan.md#L1), but that document mixes foundation and rollout. Issue `#271` should take only the foundation pieces and leave runtime registration to `#272`.
 - Existing assistant query-catalog extraction was merged in PR `#274`, which intentionally split follow-up work into `#271`, `#272`, `#273`, and kept charts separate in `#270`.
 - Current assistant safety seams to preserve:
-  - auth/session gate in [src/app/api/chat/route.ts](/root/qltbyt-nam-phong/src/app/api/chat/route.ts:113)
-  - RBAC normalization in [src/lib/rbac.ts](/root/qltbyt-nam-phong/src/lib/rbac.ts:75)
-  - facility selection model in [src/contexts/TenantSelectionContext.tsx](/root/qltbyt-nam-phong/src/contexts/TenantSelectionContext.tsx:29)
-  - RPC whitelist/JWT signing in [src/app/api/rpc/[fn]/route.ts](/root/qltbyt-nam-phong/src/app/api/rpc/[fn]/route.ts:239)
+  - auth/session gate in [src/app/api/chat/route.ts](src/app/api/chat/route.ts#L113)
+  - RBAC normalization in [src/lib/rbac.ts](src/lib/rbac.ts#L75)
+  - facility selection model in [src/contexts/TenantSelectionContext.tsx](src/contexts/TenantSelectionContext.tsx#L29)
+  - RPC whitelist/JWT signing in [src/app/api/rpc/[fn]/route.ts](src/app/api/rpc/[fn]/route.ts#L239)
   - audit helper `public.audit_log(...)` in `supabase/migrations/2025-09-29/20250925_audit_logs_v2_entities_and_helper.sql`
 
 ## GitNexus Blast Radius
 
 ### Exact Files / Modules / Migrations / Tests Likely Affected
 - Assistant orchestration:
-  - [src/app/api/chat/route.ts](/root/qltbyt-nam-phong/src/app/api/chat/route.ts:113)
-  - [src/lib/ai/prompts/system.ts](/root/qltbyt-nam-phong/src/lib/ai/prompts/system.ts:37)
-  - [src/components/assistant/AssistantPanel.tsx](/root/qltbyt-nam-phong/src/components/assistant/AssistantPanel.tsx:30)
+  - [src/app/api/chat/route.ts](src/app/api/chat/route.ts#L113)
+  - [src/lib/ai/prompts/system.ts](src/lib/ai/prompts/system.ts#L37)
+  - [src/components/assistant/AssistantPanel.tsx](src/components/assistant/AssistantPanel.tsx#L30)
 - Assistant tool boundary:
-  - [src/lib/ai/tools/registry.ts](/root/qltbyt-nam-phong/src/lib/ai/tools/registry.ts:150)
-  - [src/lib/ai/tools/rpc-tool-executor.ts](/root/qltbyt-nam-phong/src/lib/ai/tools/rpc-tool-executor.ts:189)
+  - [src/lib/ai/tools/registry.ts](src/lib/ai/tools/registry.ts#L150)
+  - [src/lib/ai/tools/rpc-tool-executor.ts](src/lib/ai/tools/rpc-tool-executor.ts#L189)
   - new `src/lib/ai/sql/*` modules for dormant SQL foundation
 - Auth / RBAC / scope:
-  - [src/lib/rbac.ts](/root/qltbyt-nam-phong/src/lib/rbac.ts:75)
-  - [src/contexts/TenantSelectionContext.tsx](/root/qltbyt-nam-phong/src/contexts/TenantSelectionContext.tsx:29)
-  - [src/auth/config.ts](/root/qltbyt-nam-phong/src/auth/config.ts:78)
+  - [src/lib/rbac.ts](src/lib/rbac.ts#L75)
+  - [src/contexts/TenantSelectionContext.tsx](src/contexts/TenantSelectionContext.tsx#L29)
+  - [src/auth/config.ts](src/auth/config.ts#L78)
 - RPC boundary / audit reuse:
-  - [src/app/api/rpc/[fn]/route.ts](/root/qltbyt-nam-phong/src/app/api/rpc/[fn]/route.ts:239)
-  - [src/hooks/use-audit-logs.ts](/root/qltbyt-nam-phong/src/hooks/use-audit-logs.ts:1)
-  - [src/lib/rpc-client.ts](/root/qltbyt-nam-phong/src/lib/rpc-client.ts:1)
+  - [src/app/api/rpc/[fn]/route.ts](src/app/api/rpc/[fn]/route.ts#L239)
+  - [src/hooks/use-audit-logs.ts](src/hooks/use-audit-logs.ts#L1)
+  - [src/lib/rpc-client.ts](src/lib/rpc-client.ts#L1)
 - Likely new migrations:
   - one migration for `ai_readonly` schema/helpers/views/privileges
   - one migration for assistant SQL audit RPC wrapper or related observability support
@@ -47,17 +47,17 @@
   - `20250927_regional_leader_schema_foundation.sql`
   - `2025-09-29/20250925_audit_logs_v2_entities_and_helper.sql`
 - Tests likely affected:
-  - [src/app/api/chat/__tests__/route.tools-allowlist.test.ts](/root/qltbyt-nam-phong/src/app/api/chat/__tests__/route.tools-allowlist.test.ts:1)
-  - [src/app/api/chat/__tests__/route.tenant-policy.test.ts](/root/qltbyt-nam-phong/src/app/api/chat/__tests__/route.tenant-policy.test.ts:1)
-  - [src/app/api/rpc/__tests__/rpc-whitelist.unit.test.ts](/root/qltbyt-nam-phong/src/app/api/rpc/__tests__/rpc-whitelist.unit.test.ts:1)
-  - [src/lib/ai/tools/__tests__/rpc-tool-executor.test.ts](/root/qltbyt-nam-phong/src/lib/ai/tools/__tests__/rpc-tool-executor.test.ts:1)
+  - [src/app/api/chat/__tests__/route.tools-allowlist.test.ts](src/app/api/chat/__tests__/route.tools-allowlist.test.ts#L1)
+  - [src/app/api/chat/__tests__/route.tenant-policy.test.ts](src/app/api/chat/__tests__/route.tenant-policy.test.ts#L1)
+  - [src/app/api/rpc/__tests__/rpc-whitelist.unit.test.ts](src/app/api/rpc/__tests__/rpc-whitelist.unit.test.ts#L1)
+  - [src/lib/ai/tools/__tests__/rpc-tool-executor.test.ts](src/lib/ai/tools/__tests__/rpc-tool-executor.test.ts#L1)
   - new `src/lib/ai/sql/__tests__/*`
   - new `supabase/tests/assistant_sql_foundation_smoke.sql`
 
 ### Upstream / Downstream Dependencies
 - GitNexus upstream impact on `buildToolRegistry` is low and direct only from chat route. That means the current tool-registration surface is concentrated and safe to keep unchanged in `#271`.
 - GitNexus upstream impact on `executeRpcTool` is also low and limited to `registry.ts` and then chat route. That confirms the existing curated tool path can remain untouched while the dormant SQL path is built separately.
-- GitNexus upstream impact on `isPrivilegedRole` shows it is shared by both [chat route](/root/qltbyt-nam-phong/src/app/api/chat/route.ts:177) and [TenantSelectionProvider](/root/qltbyt-nam-phong/src/contexts/TenantSelectionContext.tsx:35). Any single-facility scope contract should therefore reuse current role resolution instead of inventing a parallel privilege model.
+- GitNexus upstream impact on `isPrivilegedRole` shows it is shared by both [chat route](src/app/api/chat/route.ts#L177) and [TenantSelectionProvider](src/contexts/TenantSelectionContext.tsx#L35). Any single-facility scope contract should therefore reuse current role resolution instead of inventing a parallel privilege model.
 - SQL function names are not indexed by GitNexus in this repo; SQL blast radius must continue to use grep/manual review for migrations and smoke tests.
 
 ### Trust Boundaries And Security-Sensitive Integration Points
@@ -68,8 +68,8 @@
 - `isGlobalRole()` / `isPrivilegedRole()` remain mandatory for admin/global normalization; direct string checks against `'global'` would be a regression.
 
 ### Existing Abstractions To Reuse Instead Of Bypassing
-- Reuse current facility-selection semantics from [src/app/api/chat/route.ts](/root/qltbyt-nam-phong/src/app/api/chat/route.ts:172) for privileged vs local roles.
-- Reuse `sanitizeErrorForClient()` from [src/lib/ai/errors.ts](/root/qltbyt-nam-phong/src/lib/ai/errors.ts:101) for surfaced SQL path failures.
+- Reuse current facility-selection semantics from [src/app/api/chat/route.ts](src/app/api/chat/route.ts#L172) for privileged vs local roles.
+- Reuse `sanitizeErrorForClient()` from [src/lib/ai/errors.ts](src/lib/ai/errors.ts#L101) for surfaced SQL path failures.
 - Reuse query-catalog as the source of truth for curated tools; `#271` should not merge SQL capability into catalog metadata yet unless needed for dormant contract tests.
 - Reuse `public.allowed_don_vi_for_session()` / `allowed_don_vi_for_session_safe()` patterns as the model for future richer scope, but keep `#271` single-facility only.
 - Reuse audit-log UI/read paths rather than adding dedicated assistant-observability UI in this issue.
@@ -83,11 +83,11 @@
 
 ## Phase 0: Discovery / Invariants
 - Target files:
-  - [src/app/api/chat/route.ts](/root/qltbyt-nam-phong/src/app/api/chat/route.ts:113)
-  - [src/app/api/rpc/[fn]/route.ts](/root/qltbyt-nam-phong/src/app/api/rpc/[fn]/route.ts:239)
-  - [src/lib/rbac.ts](/root/qltbyt-nam-phong/src/lib/rbac.ts:75)
-  - [src/contexts/TenantSelectionContext.tsx](/root/qltbyt-nam-phong/src/contexts/TenantSelectionContext.tsx:29)
-  - [docs/plans/2026-03-24-ai-query-database-refactor-plan.md](/root/qltbyt-nam-phong/docs/plans/2026-03-24-ai-query-database-refactor-plan.md:1)
+  - [src/app/api/chat/route.ts](src/app/api/chat/route.ts#L113)
+  - [src/app/api/rpc/[fn]/route.ts](src/app/api/rpc/[fn]/route.ts#L239)
+  - [src/lib/rbac.ts](src/lib/rbac.ts#L75)
+  - [src/contexts/TenantSelectionContext.tsx](src/contexts/TenantSelectionContext.tsx#L29)
+  - [docs/plans/2026-03-24-ai-query-database-refactor-plan.md](docs/plans/2026-03-24-ai-query-database-refactor-plan.md#L1)
 - Test strategy:
   - Add a red regression test proving `#271` does not expose `query_database` in `/api/chat`.
   - Add a red regression test proving the RPC proxy allowlist still excludes any direct SQL execution entrypoint.
@@ -102,9 +102,9 @@
   - new `src/lib/ai/sql/__tests__/query-database-guard.test.ts`
   - new `src/lib/ai/sql/__tests__/query-database-executor.test.ts`
   - new `src/lib/ai/sql/__tests__/query-database-audit.test.ts`
-  - [src/app/api/chat/__tests__/route.tools-allowlist.test.ts](/root/qltbyt-nam-phong/src/app/api/chat/__tests__/route.tools-allowlist.test.ts:1)
-  - [src/app/api/chat/__tests__/route.tenant-policy.test.ts](/root/qltbyt-nam-phong/src/app/api/chat/__tests__/route.tenant-policy.test.ts:1)
-  - [src/app/api/rpc/__tests__/rpc-whitelist.unit.test.ts](/root/qltbyt-nam-phong/src/app/api/rpc/__tests__/rpc-whitelist.unit.test.ts:1)
+  - [src/app/api/chat/__tests__/route.tools-allowlist.test.ts](src/app/api/chat/__tests__/route.tools-allowlist.test.ts#L1)
+  - [src/app/api/chat/__tests__/route.tenant-policy.test.ts](src/app/api/chat/__tests__/route.tenant-policy.test.ts#L1)
+  - [src/app/api/rpc/__tests__/rpc-whitelist.unit.test.ts](src/app/api/rpc/__tests__/rpc-whitelist.unit.test.ts#L1)
   - new `supabase/tests/assistant_sql_foundation_smoke.sql`
 - Test strategy:
   - Write failing tests first for:
@@ -186,10 +186,10 @@
 
 ## Phase 4: Scoped Server Contract
 - Target files:
-  - extract shared scope resolution from [src/app/api/chat/route.ts](/root/qltbyt-nam-phong/src/app/api/chat/route.ts:172)
+  - extract shared scope resolution from [src/app/api/chat/route.ts](src/app/api/chat/route.ts#L172)
   - small shared helper module in `src/lib/ai/` or `src/lib/ai/sql/`
 - Test strategy:
-  - preserve existing [route.tenant-policy.test.ts](/root/qltbyt-nam-phong/src/app/api/chat/__tests__/route.tenant-policy.test.ts:1)
+  - preserve existing [route.tenant-policy.test.ts](src/app/api/chat/__tests__/route.tenant-policy.test.ts#L1)
   - add unit tests for:
     - local roles use session `don_vi`
     - privileged roles require selected facility
@@ -208,9 +208,9 @@
 ## Phase 5: Audit / Observability
 - Target files:
   - one new migration for assistant SQL audit wrapper or helper RPC
-  - [src/app/api/rpc/[fn]/route.ts](/root/qltbyt-nam-phong/src/app/api/rpc/[fn]/route.ts:239)
+  - [src/app/api/rpc/[fn]/route.ts](src/app/api/rpc/[fn]/route.ts#L239)
   - new server helper for audit writes
-  - [src/hooks/use-audit-logs.ts](/root/qltbyt-nam-phong/src/hooks/use-audit-logs.ts:1) for label/entity typing
+  - [src/hooks/use-audit-logs.ts](src/hooks/use-audit-logs.ts#L1) for label/entity typing
 - Test strategy:
   - red tests for:
     - sanitized SQL audit payload
