@@ -95,6 +95,7 @@ export function resolveAssistantScope({
   const rawRole = typeof user.role === 'string' ? user.role : undefined
   const normalizedRole = normalizeAssistantRole(rawRole)
   const sessionFacilityId = toFacilityId(user.don_vi)
+  const normalizedRequestedFacilityId = toFacilityId(requestedFacilityId)
   const promptUserId = toUserId(user.id)
   const usageUserId = promptUserId ?? 'unknown-session'
   const privileged = isPrivilegedRole(rawRole)
@@ -102,12 +103,12 @@ export function resolveAssistantScope({
   let facilitySource: AssistantSqlFacilitySource = 'session'
 
   if (privileged) {
-    if (requireFacilityScope && requestedFacilityId === undefined) {
+    if (requireFacilityScope && normalizedRequestedFacilityId === undefined) {
       return { ok: false, message: facilityRequiredMessage }
     }
 
-    if (requestedFacilityId !== undefined) {
-      selectedFacilityId = requestedFacilityId
+    if (normalizedRequestedFacilityId !== undefined) {
+      selectedFacilityId = normalizedRequestedFacilityId
       facilitySource = 'selected'
     }
   }
@@ -124,7 +125,7 @@ export function resolveAssistantScope({
           facilitySource,
           normalizedRole,
           rawRole,
-          requestedFacilityId,
+          requestedFacilityId: normalizedRequestedFacilityId,
           sessionFacilityId,
           userId: usageUserId,
         }

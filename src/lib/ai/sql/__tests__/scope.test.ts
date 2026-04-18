@@ -65,6 +65,19 @@ describe('AssistantSqlScope resolver', () => {
     )
   })
 
+  it('rejects invalid privileged selected facility overrides before tool execution', () => {
+    const result = resolveAssistantScope({
+      user: { id: 'u1', role: 'global', don_vi: null },
+      requestedFacilityId: Number.NaN,
+      requireFacilityScope: true,
+    })
+
+    expect(result).toEqual({
+      ok: false,
+      message: FACILITY_REQUIRED_MESSAGE,
+    })
+  })
+
   it('normalizes raw admin sessions to global semantics without losing raw role', () => {
     const result = resolveAssistantScope({
       user: { id: 'u1', role: 'admin', don_vi: null },
