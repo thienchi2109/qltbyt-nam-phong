@@ -82,4 +82,17 @@ describe('query_database guardrails contract', () => {
   it('rejects PostgreSQL E-strings instead of parsing backslash escapes', () => {
     expectSqlError("select E'x\\'' from public.thiet_bi", 'invalid_statement')
   })
+
+  it('does not reject plain string literals that contain E-quote text', () => {
+    expect(
+      validateAssistantSql(
+        "select 'contains E'' marker' as note from ai_readonly.equipment_search",
+      ),
+    ).toEqual({
+      statement:
+        "select 'contains E'' marker' as note from ai_readonly.equipment_search",
+      sqlShape:
+        "select 'contains E'' marker' as note from ai_readonly.equipment_search",
+    })
+  })
 })

@@ -40,7 +40,6 @@ const KNOWN_FORBIDDEN_SCHEMAS = [
 
 const FORBIDDEN_FUNCTIONS = ['set_config'] as const
 const DOLLAR_QUOTED_STRING_PATTERN = /\$[A-Za-z_][\w$]*\$|\$\$/
-const ESCAPE_STRING_PATTERN = /\bE\s*'/i
 const FORBIDDEN_KEYWORD_PATTERN = new RegExp(
   String.raw`\b(?:${FORBIDDEN_KEYWORDS.join('|')})\b`,
   'i',
@@ -126,6 +125,52 @@ function countSemicolons(sql: string): number {
   return (sql.match(/;/g) ?? []).length
 }
 
+function isIdentifierChar(char: string | undefined): boolean {
+  return char !== undefined && /[A-Za-z0-9_$]/.test(char)
+}
+
+function hasEscapeStringOutsideQuotedText(sql: string): boolean {
+  let quote: "'" | '"' | null = null
+
+  for (let index = 0; index < sql.length; index += 1) {
+    const char = sql[index]
+    const next = sql[index + 1]
+
+    if (quote === null) {
+      if (char === "'" || char === '"') {
+        quote = char
+        continue
+      }
+
+      if (
+        (char === 'E' || char === 'e') &&
+        !isIdentifierChar(sql[index - 1])
+      ) {
+        let nextNonSpaceIndex = index + 1
+        while (/\s/.test(sql[nextNonSpaceIndex] ?? '')) {
+          nextNonSpaceIndex += 1
+        }
+
+        if (sql[nextNonSpaceIndex] === "'") {
+          return true
+        }
+      }
+
+      continue
+    }
+
+    if (char === quote) {
+      if (quote === "'" && next === "'") {
+        index += 1
+        continue
+      }
+      quote = null
+    }
+  }
+
+  return false
+}
+
 function assertNoDollarQuotedStrings(sql: string) {
   if (DOLLAR_QUOTED_STRING_PATTERN.test(sql)) {
     throw new AssistantSqlError(
@@ -136,7 +181,7 @@ function assertNoDollarQuotedStrings(sql: string) {
 }
 
 function assertNoEscapeStrings(sql: string) {
-  if (ESCAPE_STRING_PATTERN.test(sql)) {
+  if (hasEscapeStringOutsideQuotedText(sql)) {
     throw new AssistantSqlError(
       'invalid_statement',
       'PostgreSQL escape strings are not allowed.',
@@ -210,7 +255,6 @@ function assertNoForbiddenFunctions(maskedStatement: string) {
 
 export function validateAssistantSql(sql: string): ValidatedAssistantSql {
   assertNoDollarQuotedStrings(sql)
-  assertNoEscapeStrings(sql)
 
   const commentText = normalizeWhitespace(extractCommentText(sql))
   const withoutComments = stripComments(sql)
@@ -222,6 +266,7 @@ export function validateAssistantSql(sql: string): ValidatedAssistantSql {
   }
 
   assertSingleStatement(normalized, masked)
+  assertNoEscapeStrings(withoutComments)
 
   const statement = withoutTrailingSemicolon(normalized)
 
