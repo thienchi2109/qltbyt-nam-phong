@@ -11,8 +11,8 @@ const scope: AssistantSqlScope = {
   facilitySource: 'session',
   normalizedRole: 'technician',
   rawRole: 'technician',
+  requestedFacilityId: undefined,
   sessionFacilityId: 2,
-  selectedFacilityId: undefined,
   userId: 'u1',
 }
 
@@ -43,7 +43,6 @@ async function expectAssistantSqlError(
   action: () => Promise<unknown>,
   code: string,
 ) {
-  await expect(action()).rejects.toBeInstanceOf(AssistantSqlError)
   try {
     await action()
   } catch (error) {

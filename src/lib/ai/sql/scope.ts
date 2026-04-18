@@ -12,7 +12,7 @@ export interface AssistantSqlScope {
   facilitySource: AssistantSqlFacilitySource
   normalizedRole?: Role
   rawRole?: string
-  selectedFacilityId?: number
+  requestedFacilityId?: number
   sessionFacilityId?: number
   userId: string
 }
@@ -109,8 +109,6 @@ export function resolveAssistantScope({
     if (requestedFacilityId !== undefined) {
       selectedFacilityId = requestedFacilityId
       facilitySource = 'selected'
-    } else {
-      selectedFacilityId = undefined
     }
   }
 
@@ -126,7 +124,7 @@ export function resolveAssistantScope({
           facilitySource,
           normalizedRole,
           rawRole,
-          selectedFacilityId: requestedFacilityId,
+          requestedFacilityId,
           sessionFacilityId,
           userId: usageUserId,
         }
@@ -139,4 +137,3 @@ export function resolveAssistantScope({
     usageUserId,
   }
 }
-

@@ -25,7 +25,9 @@ const FORBIDDEN_KEYWORDS = [
   'vacuum',
 ] as const
 
-const FORBIDDEN_SCHEMAS = [
+const ALLOWED_SCHEMA = 'ai_readonly'
+
+const KNOWN_FORBIDDEN_SCHEMAS = [
   'auth',
   'extensions',
   'graphql_public',
@@ -37,10 +39,40 @@ const FORBIDDEN_SCHEMAS = [
 ] as const
 
 const FORBIDDEN_FUNCTIONS = ['set_config'] as const
+const DOLLAR_QUOTED_STRING_PATTERN = /\$[A-Za-z_][\w$]*\$|\$\$/
+const FORBIDDEN_KEYWORD_PATTERN = new RegExp(
+  String.raw`\b(?:${FORBIDDEN_KEYWORDS.join('|')})\b`,
+  'i',
+)
+const FORBIDDEN_FUNCTION_PATTERN = new RegExp(
+  String.raw`\b(?:${FORBIDDEN_FUNCTIONS.join('|')})\s*\(`,
+  'i',
+)
+const KNOWN_FORBIDDEN_SCHEMA_PATTERN = new RegExp(
+  String.raw`\b(?:${KNOWN_FORBIDDEN_SCHEMAS.join('|')})\s*\.`,
+  'i',
+)
+const TABLE_REFERENCE_SCHEMA_PATTERN =
+  /\b(?:from|join)\s+([A-Za-z_][\w$]*)\s*\./gi
+const FUNCTION_SCHEMA_PATTERN = /\b([A-Za-z_][\w$]*)\s*\.\s*[A-Za-z_][\w$]*\s*\(/gi
 
 export interface ValidatedAssistantSql {
   statement: string
   sqlShape: string
+}
+
+function extractCommentText(sql: string): string {
+  const comments: string[] = []
+
+  for (const match of sql.matchAll(/\/\*([\s\S]*?)\*\//g)) {
+    comments.push(match[1] ?? '')
+  }
+
+  for (const match of sql.matchAll(/--([^\n\r]*)/g)) {
+    comments.push(match[1] ?? '')
+  }
+
+  return comments.join(' ')
 }
 
 function stripComments(sql: string): string {
@@ -93,6 +125,15 @@ function countSemicolons(sql: string): number {
   return (sql.match(/;/g) ?? []).length
 }
 
+function assertNoDollarQuotedStrings(sql: string) {
+  if (DOLLAR_QUOTED_STRING_PATTERN.test(sql)) {
+    throw new AssistantSqlError(
+      'invalid_statement',
+      'Dollar-quoted strings are not allowed.',
+    )
+  }
+}
+
 function assertSingleStatement(normalized: string, masked: string) {
   const semicolonCount = countSemicolons(masked)
   if (semicolonCount > 1 || (semicolonCount === 1 && !normalized.endsWith(';'))) {
@@ -113,21 +154,33 @@ function assertSelectOnly(statement: string) {
 }
 
 function assertNoForbiddenKeywords(maskedStatement: string) {
-  for (const keyword of FORBIDDEN_KEYWORDS) {
-    const keywordPattern = new RegExp(`\\b${keyword}\\b`, 'i')
-    if (keywordPattern.test(maskedStatement)) {
-      throw new AssistantSqlError(
-        'forbidden_keyword',
-        'Forbidden SQL keyword detected.',
-      )
-    }
+  if (FORBIDDEN_KEYWORD_PATTERN.test(maskedStatement)) {
+    throw new AssistantSqlError(
+      'forbidden_keyword',
+      'Forbidden SQL keyword detected.',
+    )
   }
 }
 
 function assertNoForbiddenSchemas(maskedStatement: string) {
-  for (const schema of FORBIDDEN_SCHEMAS) {
-    const schemaPattern = new RegExp(`\\b${schema}\\s*\\.`, 'i')
-    if (schemaPattern.test(maskedStatement)) {
+  if (KNOWN_FORBIDDEN_SCHEMA_PATTERN.test(maskedStatement)) {
+    throw new AssistantSqlError(
+      'forbidden_schema',
+      'Only the ai_readonly schema is queryable.',
+    )
+  }
+
+  for (const match of maskedStatement.matchAll(TABLE_REFERENCE_SCHEMA_PATTERN)) {
+    if (match[1]?.toLowerCase() !== ALLOWED_SCHEMA) {
+      throw new AssistantSqlError(
+        'forbidden_schema',
+        'Only the ai_readonly schema is queryable.',
+      )
+    }
+  }
+
+  for (const match of maskedStatement.matchAll(FUNCTION_SCHEMA_PATTERN)) {
+    if (match[1]?.toLowerCase() !== ALLOWED_SCHEMA) {
       throw new AssistantSqlError(
         'forbidden_schema',
         'Only the ai_readonly schema is queryable.',
@@ -137,22 +190,21 @@ function assertNoForbiddenSchemas(maskedStatement: string) {
 }
 
 function assertNoForbiddenFunctions(maskedStatement: string) {
-  for (const functionName of FORBIDDEN_FUNCTIONS) {
-    const functionPattern = new RegExp(`\\b${functionName}\\s*\\(`, 'i')
-    if (functionPattern.test(maskedStatement)) {
-      throw new AssistantSqlError(
-        'forbidden_function',
-        'Forbidden SQL function detected.',
-      )
-    }
+  if (FORBIDDEN_FUNCTION_PATTERN.test(maskedStatement)) {
+    throw new AssistantSqlError(
+      'forbidden_function',
+      'Forbidden SQL function detected.',
+    )
   }
 }
 
 export function validateAssistantSql(sql: string): ValidatedAssistantSql {
+  assertNoDollarQuotedStrings(sql)
+
+  const commentText = normalizeWhitespace(extractCommentText(sql))
   const withoutComments = stripComments(sql)
   const normalized = normalizeWhitespace(withoutComments)
   const masked = normalizeWhitespace(maskQuotedText(withoutComments))
-  const maskedForForbiddenScan = normalizeWhitespace(maskQuotedText(sql))
 
   if (!normalized) {
     throw new AssistantSqlError('invalid_statement', 'SQL is required.')
@@ -163,9 +215,12 @@ export function validateAssistantSql(sql: string): ValidatedAssistantSql {
   const statement = withoutTrailingSemicolon(normalized)
 
   assertSelectOnly(statement)
-  assertNoForbiddenFunctions(maskedForForbiddenScan)
-  assertNoForbiddenKeywords(maskedForForbiddenScan)
-  assertNoForbiddenSchemas(maskedForForbiddenScan)
+  assertNoForbiddenFunctions(commentText)
+  assertNoForbiddenKeywords(commentText)
+  assertNoForbiddenSchemas(commentText)
+  assertNoForbiddenFunctions(masked)
+  assertNoForbiddenKeywords(masked)
+  assertNoForbiddenSchemas(masked)
 
   return {
     statement,

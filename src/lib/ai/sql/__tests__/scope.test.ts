@@ -23,8 +23,8 @@ describe('AssistantSqlScope resolver', () => {
         facilitySource: 'session',
         normalizedRole: 'technician',
         rawRole: 'technician',
+        requestedFacilityId: 999,
         sessionFacilityId: 2,
-        selectedFacilityId: 999,
         userId: 'u1',
       },
     })
@@ -58,7 +58,7 @@ describe('AssistantSqlScope resolver', () => {
           effectiveFacilityId: 7,
           facilitySource: 'selected',
           normalizedRole: 'regional_leader',
-          selectedFacilityId: 7,
+          requestedFacilityId: 7,
           userId: 'u1',
         }),
       }),
@@ -98,6 +98,30 @@ describe('AssistantSqlScope resolver', () => {
       usageUserId: 'u1',
       selectedFacilityId: undefined,
       assistantSqlScope: undefined,
+    })
+  })
+
+  it('keeps the session facility for privileged no-tool chat when one exists', () => {
+    const result = resolveAssistantScope({
+      user: { id: 'u1', role: 'admin', don_vi: 3 },
+      requestedFacilityId: undefined,
+      requireFacilityScope: false,
+    })
+
+    expect(result).toEqual({
+      ok: true,
+      promptUserId: 'u1',
+      usageUserId: 'u1',
+      selectedFacilityId: 3,
+      assistantSqlScope: {
+        effectiveFacilityId: 3,
+        facilitySource: 'session',
+        normalizedRole: 'global',
+        rawRole: 'admin',
+        requestedFacilityId: undefined,
+        sessionFacilityId: 3,
+        userId: 'u1',
+      },
     })
   })
 })

@@ -53,7 +53,7 @@ function wrapTransaction(tx: PostgresTransaction): AssistantSqlTransaction {
 export function getAssistantSqlDb(): AssistantSqlDb {
   return {
     begin: async callback => {
-      const [result] = await getClient().begin(async tx => [
+      const [result] = await getClient().begin('read only', async tx => [
         await callback(wrapTransaction(tx)),
       ])
       return result

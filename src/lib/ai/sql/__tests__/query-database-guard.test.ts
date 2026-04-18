@@ -4,7 +4,6 @@ import { AssistantSqlError } from '../errors'
 import { validateAssistantSql } from '../guardrails'
 
 function expectSqlError(sql: string, code: string) {
-  expect(() => validateAssistantSql(sql)).toThrow(AssistantSqlError)
   try {
     validateAssistantSql(sql)
   } catch (error) {
@@ -21,6 +20,19 @@ describe('query_database guardrails contract', () => {
     expect(validateAssistantSql(' select equipment_id from ai_readonly.equipment_search; ')).toEqual({
       statement: 'select equipment_id from ai_readonly.equipment_search',
       sqlShape: 'select equipment_id from ai_readonly.equipment_search',
+    })
+  })
+
+  it('allows table aliases while enforcing ai_readonly table references', () => {
+    expect(
+      validateAssistantSql(
+        'select equipment.equipment_id from ai_readonly.equipment_search equipment',
+      ),
+    ).toEqual({
+      statement:
+        'select equipment.equipment_id from ai_readonly.equipment_search equipment',
+      sqlShape:
+        'select equipment.equipment_id from ai_readonly.equipment_search equipment',
     })
   })
 
@@ -49,12 +61,21 @@ describe('query_database guardrails contract', () => {
   it('rejects forbidden schema access outside ai_readonly', () => {
     expectSqlError('select id from public.thiet_bi', 'forbidden_schema')
     expectSqlError('select id from auth.users', 'forbidden_schema')
+    expectSqlError('select id from some_other_schema.equipment', 'forbidden_schema')
     expectSqlError('select pg_catalog.set_config(\'app.current_facility_id\', \'2\', true)', 'forbidden_function')
   })
 
   it('rejects comment-obfuscated mutation attempts', () => {
     expectSqlError('select 1 /* hidden update public.users */', 'forbidden_keyword')
+    expectSqlError(
+      "select * from ai_readonly.equipment_search --'\nwhere set_config('app.current_facility_id', '2', true) is not null",
+      'forbidden_function',
+    )
     expectSqlError('with x as (delete from ai_readonly.equipment_search returning *) select * from x', 'forbidden_keyword')
     expectSqlError('select 1 where set_config(\'app.current_facility_id\', \'2\', true) is not null', 'forbidden_function')
+  })
+
+  it('rejects dollar-quoted strings instead of trying to parse them', () => {
+    expectSqlError("select $$'$$ || set_config('app.current_facility_id', '2', true)", 'invalid_statement')
   })
 })

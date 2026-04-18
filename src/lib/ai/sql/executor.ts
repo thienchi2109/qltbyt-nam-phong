@@ -1,6 +1,11 @@
 import { Buffer } from 'node:buffer'
 
-import { ASSISTANT_SQL_MAX_PAYLOAD_BYTES, ASSISTANT_SQL_MAX_ROWS, ASSISTANT_SQL_SEARCH_PATH, ASSISTANT_SQL_STATEMENT_TIMEOUT_MS } from './constants'
+import {
+  ASSISTANT_SQL_MAX_PAYLOAD_BYTES,
+  ASSISTANT_SQL_MAX_ROWS,
+  ASSISTANT_SQL_SEARCH_PATH,
+  ASSISTANT_SQL_STATEMENT_TIMEOUT_MS,
+} from './constants'
 import { getAssistantSqlDb } from './client'
 import { AssistantSqlError, isAssistantSqlError } from './errors'
 import { validateAssistantSql } from './guardrails'
@@ -67,6 +72,29 @@ function buildLimitedStatement(statement: string, maxRows: number): string {
   return `select * from (${statement}) as assistant_sql_result limit ${maxRows + 1}`
 }
 
+function measurePayloadBytes(
+  rows: Array<Record<string, unknown>>,
+  maxPayloadBytes: number,
+): number {
+  let payloadBytes = Buffer.byteLength('[', 'utf8')
+
+  for (const [index, row] of rows.entries()) {
+    if (index > 0) {
+      payloadBytes += Buffer.byteLength(',', 'utf8')
+    }
+
+    payloadBytes += Buffer.byteLength(JSON.stringify(row), 'utf8')
+    if (payloadBytes + Buffer.byteLength(']', 'utf8') > maxPayloadBytes) {
+      throw new AssistantSqlError(
+        'payload_limit_exceeded',
+        'Assistant SQL query returned too much data.',
+      )
+    }
+  }
+
+  return payloadBytes + Buffer.byteLength(']', 'utf8')
+}
+
 async function applyTransactionSettings(
   tx: AssistantSqlTransaction,
   scope: AssistantSqlScope,
@@ -101,13 +129,7 @@ export async function executeAssistantSql({
       )
     }
 
-    const payloadBytes = Buffer.byteLength(JSON.stringify(rows), 'utf8')
-    if (payloadBytes > maxPayloadBytes) {
-      throw new AssistantSqlError(
-        'payload_limit_exceeded',
-        'Assistant SQL query returned too much data.',
-      )
-    }
+    const payloadBytes = measurePayloadBytes(rows, maxPayloadBytes)
 
     return {
       payloadBytes,
