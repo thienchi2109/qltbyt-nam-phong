@@ -188,7 +188,6 @@ AS
 SELECT
   nk.id AS usage_log_id,
   nk.thiet_bi_id AS equipment_id,
-  nk.nguoi_su_dung_id,
   nk.thoi_gian_bat_dau,
   nk.thoi_gian_ket_thuc,
   nk.trang_thai,
@@ -289,7 +288,7 @@ COMMENT ON VIEW ai_readonly.repair_facts IS
 'Facility-scoped repair request facts for assistant SQL.';
 
 COMMENT ON VIEW ai_readonly.usage_facts IS
-'Facility-scoped equipment usage log facts for assistant SQL.';
+'Facility-scoped equipment usage log facts for assistant SQL, excluding raw user identifiers.';
 
 COMMENT ON VIEW ai_readonly.quota_facts IS
 'Facility-scoped equipment-to-quota semantic surface for assistant SQL.';
@@ -297,13 +296,17 @@ COMMENT ON VIEW ai_readonly.quota_facts IS
 GRANT USAGE ON SCHEMA ai_readonly TO ai_query_reader;
 GRANT EXECUTE ON FUNCTION ai_readonly.current_facility_id() TO ai_query_reader;
 GRANT EXECUTE ON FUNCTION ai_readonly.require_single_facility_scope() TO ai_query_reader;
-GRANT SELECT ON ALL TABLES IN SCHEMA ai_readonly TO ai_query_reader;
+GRANT SELECT ON TABLE ai_readonly.equipment_search TO ai_query_reader;
+GRANT SELECT ON TABLE ai_readonly.maintenance_facts TO ai_query_reader;
+GRANT SELECT ON TABLE ai_readonly.repair_facts TO ai_query_reader;
+GRANT SELECT ON TABLE ai_readonly.usage_facts TO ai_query_reader;
+GRANT SELECT ON TABLE ai_readonly.quota_facts TO ai_query_reader;
 
 ALTER DEFAULT PRIVILEGES IN SCHEMA ai_readonly
-  GRANT SELECT ON TABLES TO ai_query_reader;
+  REVOKE ALL ON TABLES FROM PUBLIC;
 
 ALTER DEFAULT PRIVILEGES IN SCHEMA ai_readonly
-  GRANT EXECUTE ON FUNCTIONS TO ai_query_reader;
+  REVOKE EXECUTE ON FUNCTIONS FROM PUBLIC;
 
 REVOKE ALL ON ALL TABLES IN SCHEMA ai_readonly FROM PUBLIC;
 REVOKE ALL ON ALL FUNCTIONS IN SCHEMA ai_readonly FROM PUBLIC;

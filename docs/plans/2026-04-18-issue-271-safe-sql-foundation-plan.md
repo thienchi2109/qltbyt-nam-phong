@@ -253,6 +253,10 @@
 - Forbidden statements / multi-statement rejection:
   - `select 1; select 2`
   - `set ...`
+  - `select set_config('app.current_facility_id', '2', true)`
+  - `select pg_catalog.set_config('app.current_facility_id', '2', true)`
+  - `with scope_override as (select pg_catalog.set_config('app.current_facility_id', '2', true)) select * from ai_readonly.equipment_search`
+  - `select 1 where set_config('app.current_facility_id', '2', true) is not null`
   - `copy`
   - `explain analyze`
   - `with x as (delete ...)`
