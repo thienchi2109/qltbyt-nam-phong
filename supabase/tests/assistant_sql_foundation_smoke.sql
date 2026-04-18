@@ -1,0 +1,7 @@
+-- Local/DB-admin verification artifact for Issue #271.
+-- Do not wire this file into CI; it requires a linked Supabase database and
+-- a dedicated assistant SQL identity that does not exist yet in Batch 1.
+--
+-- Batch 1 placeholder only:
+--   - keep the filename and local-only contract stable
+--   - future batches will fill this with semantic-layer and privilege checks
