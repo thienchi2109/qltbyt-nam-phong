@@ -133,4 +133,27 @@ describe('/api/chat tenant policy', () => {
     }
     expect(streamArgs?.tools).toHaveProperty('equipmentLookup')
   })
+
+  it('treats raw admin session role as privileged for facility-scoped tool execution', async () => {
+    getServerSessionMock.mockResolvedValue({
+      user: { id: 'u1', role: 'admin', don_vi: null },
+    })
+
+    const res = await POST(
+      buildRequest({
+        messages: VALID_MESSAGES,
+        requestedTools: ['equipmentLookup'],
+        selectedFacilityId: 11,
+      }) as never,
+    )
+
+    expect(res.status).toBe(200)
+    expect(buildSystemPromptMock).toHaveBeenCalledWith(
+      expect.objectContaining({ role: 'admin', selectedFacilityId: 11 }),
+    )
+    const streamArgs = streamTextMock.mock.calls[0]?.[0] as {
+      tools?: Record<string, unknown>
+    }
+    expect(streamArgs?.tools).toHaveProperty('equipmentLookup')
+  })
 })

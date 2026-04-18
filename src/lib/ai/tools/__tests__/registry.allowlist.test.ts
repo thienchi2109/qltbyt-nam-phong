@@ -16,4 +16,11 @@ describe('registry allowlist contract', () => {
       message: 'Unknown tool requested: query_database',
     })
   })
+
+  it('rejects queryDatabase before runtime rollout exists', () => {
+    expect(validateRequestedTools(['queryDatabase'])).toEqual({
+      ok: false,
+      message: 'Unknown tool requested: queryDatabase',
+    })
+  })
 })
