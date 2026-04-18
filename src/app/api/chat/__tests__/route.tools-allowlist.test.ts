@@ -85,6 +85,34 @@ describe('/api/chat tools allowlist policy', () => {
     expect(streamTextMock).not.toHaveBeenCalled()
   })
 
+  it('blocks query_database before rollout', async () => {
+    const res = await POST(
+      buildRequest({
+        messages: VALID_MESSAGES,
+        requestedTools: ['query_database'],
+      }) as never,
+    )
+    const text = await res.text()
+
+    expect(res.status).toBe(400)
+    expect(text).toBe('Unknown tool requested: query_database')
+    expect(streamTextMock).not.toHaveBeenCalled()
+  })
+
+  it('blocks queryDatabase before rollout', async () => {
+    const res = await POST(
+      buildRequest({
+        messages: VALID_MESSAGES,
+        requestedTools: ['queryDatabase'],
+      }) as never,
+    )
+    const text = await res.text()
+
+    expect(res.status).toBe(400)
+    expect(text).toBe('Unknown tool requested: queryDatabase')
+    expect(streamTextMock).not.toHaveBeenCalled()
+  })
+
   it('blocks known tools that are not in the v1 allowlist', async () => {
     const res = await POST(
       buildRequest({

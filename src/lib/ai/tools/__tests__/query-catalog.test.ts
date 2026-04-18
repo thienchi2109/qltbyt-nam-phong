@@ -56,6 +56,14 @@ describe('query catalog', () => {
     expect(getQueryCatalogToolRpcMapping()).toEqual(EXPECTED_RPC_MAPPING)
   })
 
+  it('does not define query_database rollout artifacts in the current catalog', () => {
+    const catalogToolNames = Object.keys(QUERY_CATALOG)
+
+    expect(catalogToolNames).not.toContain('query_database')
+    expect(catalogToolNames).not.toContain('queryDatabase')
+    expect(Object.values(getQueryCatalogToolRpcMapping())).not.toContain('ai_query_database')
+  })
+
   it('exports the exact migration status map', () => {
     expect(getQueryCatalogMigrationStatusMap()).toEqual(EXPECTED_MIGRATION_STATUS)
   })

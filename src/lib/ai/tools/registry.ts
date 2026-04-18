@@ -61,6 +61,11 @@ const ALLOWED_TOOL_NAMES = new Set([
   ...DRAFT_TOOL_NAMES,
 ])
 
+/** Exposed for contract tests only. Do NOT import in production code. */
+export function getAllowedToolNamesForTest(): string[] {
+  return [...ALLOWED_TOOL_NAMES].sort()
+}
+
 /** Returns tool name → RPC function mapping for contract-locking tests. */
 export function getToolRpcMapping(): Record<string, string> {
   return getQueryCatalogToolRpcMapping()

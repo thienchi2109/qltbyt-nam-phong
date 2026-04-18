@@ -68,6 +68,12 @@ describe('RPC proxy whitelist', () => {
     await expect(res.json()).resolves.toEqual({ error: 'Function not allowed' })
   })
 
+  it('rejects ai_query_database before any SQL runtime path is introduced', async () => {
+    const res = await invokeRpcProxy('ai_query_database')
+    expect(res.status).toBe(403)
+    await expect(res.json()).resolves.toEqual({ error: 'Function not allowed' })
+  })
+
   it('allows dinh_muc_unified_import through whitelist checks', async () => {
     const res = await invokeRpcProxy('dinh_muc_unified_import')
 

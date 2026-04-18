@@ -26,6 +26,14 @@ describe('AI tool → RPC mapping contract', () => {
     expect(Object.keys(mapping)).toHaveLength(Object.keys(EXPECTED_MAPPING).length)
   })
 
+  it('does not expose query_database or ai_query_database in the RPC mapping', () => {
+    const mapping = getToolRpcMapping()
+
+    expect(mapping).not.toHaveProperty('query_database')
+    expect(mapping).not.toHaveProperty('queryDatabase')
+    expect(Object.values(mapping)).not.toContain('ai_query_database')
+  })
+
   it.each(Object.entries({
     equipmentLookup: 'ai_equipment_lookup',
     maintenanceSummary: 'ai_maintenance_summary',
