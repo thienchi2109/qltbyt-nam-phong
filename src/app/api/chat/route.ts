@@ -28,11 +28,12 @@ import { getChatModel, getKeyPoolSize, handleProviderQuotaError } from '@/lib/ai
 import { buildSystemPrompt } from '@/lib/ai/prompts/system'
 import type { SystemPromptContext } from '@/lib/ai/prompts/types'
 import { routeChatIntent } from '@/lib/ai/intent-routing'
+import { resolveAssistantScope } from '@/lib/ai/sql/scope'
 import { extractEquipmentLookupHints } from '@/lib/ai/tools/equipment-lookup-identifiers'
 import { buildToolRegistry, validateRequestedTools } from '@/lib/ai/tools/registry'
 import { checkUsageLimits, confirmUsage, recordUsage } from '@/lib/ai/usage-metering'
 import { isProviderQuotaError, sanitizeErrorForClient } from '@/lib/ai/errors'
-import { isPrivilegedRole, ROLES } from '@/lib/rbac'
+import { ROLES } from '@/lib/rbac'
 
 export const runtime = 'nodejs'
 export const maxDuration = 60
@@ -88,26 +89,6 @@ function hasAllowedChatRole(value: unknown): boolean {
   }
 
   return ALLOWED_CHAT_ROLES.has(value.trim().toLowerCase())
-}
-
-function toFacilityId(value: unknown): number | undefined {
-  if (typeof value === 'number' && Number.isFinite(value)) {
-    return value
-  }
-
-  if (typeof value === 'string') {
-    const trimmed = value.trim()
-    if (!trimmed) {
-      return undefined
-    }
-
-    const parsed = Number(trimmed)
-    if (Number.isFinite(parsed)) {
-      return parsed
-    }
-  }
-
-  return undefined
 }
 
 export async function POST(request: Request) {
@@ -170,30 +151,19 @@ export async function POST(request: Request) {
   }
 
   const role = typeof user.role === 'string' ? user.role : undefined
-  const sessionFacilityId = toFacilityId(user.don_vi)
-  const requestedFacilityId = parsedRequest.data.selectedFacilityId
-  let selectedFacilityId = sessionFacilityId
-
-  if (isPrivilegedRole(role)) {
-    if (effectiveRequestedTools.length > 0 && requestedFacilityId === undefined) {
-      return plainError(
-        'Anh/chị vui lòng chọn cơ sở y tế tại bộ lọc đơn vị trên thanh điều hướng (phía trên bên trái màn hình) trước khi sử dụng trợ lý tra cứu.',
-        400,
-      )
-    }
-    if (requestedFacilityId !== undefined) {
-      selectedFacilityId = requestedFacilityId
-    }
+  const scopeResolution = resolveAssistantScope({
+    user,
+    requestedFacilityId: parsedRequest.data.selectedFacilityId,
+    requireFacilityScope: effectiveRequestedTools.length > 0,
+  })
+  if (!scopeResolution.ok) {
+    return plainError(scopeResolution.message, 400)
   }
-
-  if (effectiveRequestedTools.length > 0 && selectedFacilityId === undefined) {
-    return plainError('Unable to resolve facility context for tool execution.', 400)
-  }
-  const promptUserId =
-    typeof user.id === 'string' || typeof user.id === 'number'
-      ? String(user.id)
-      : undefined
-  const usageUserId = promptUserId ?? 'unknown-session'
+  const {
+    promptUserId,
+    selectedFacilityId,
+    usageUserId,
+  } = scopeResolution
   const usageLimit = checkUsageLimits({
     userId: usageUserId,
     tenantId: selectedFacilityId,
