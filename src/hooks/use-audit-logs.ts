@@ -14,6 +14,7 @@ type AuditActionDetailValue =
 export type AuditActionDetails = Record<string, AuditActionDetailValue>
 export type AuditActionDetailsInput = AuditActionDetails | string
 type AuditLogEntityType =
+  | 'assistant_sql'
   | 'device'
   | 'repair_request'
   | 'transfer_request'
@@ -220,6 +221,7 @@ export const ACTION_TYPE_LABELS: Record<string, string> = {
   'tenant_create': 'Tạo đơn vị mới',
   'tenant_update': 'Cập nhật thông tin đơn vị',
   'tenant_delete': 'Xóa đơn vị',
+  'assistant_query_database': 'Truy vấn SQL trợ lý',
 }
 
 // Get Vietnamese label for action type
@@ -252,6 +254,14 @@ export function formatActionDetails(actionType: string, details: AuditActionDeta
       return getDetailString(details, 'equipment_name')
         ? `TB: ${getDetailString(details, 'equipment_name')}`
         : ''
+    case 'assistant_query_database': {
+      const status = getDetailString(details, 'status')
+      const sqlShape = getDetailString(details, 'sql_shape')
+      if (status && sqlShape) {
+        return `query_database ${status}: ${sqlShape}`
+      }
+      return sqlShape ? `query_database: ${sqlShape}` : ''
+    }
     default: {
       // Try to extract meaningful info from details
       const description = getDetailString(details, 'description')

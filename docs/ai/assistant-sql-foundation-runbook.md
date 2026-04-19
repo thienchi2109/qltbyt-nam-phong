@@ -78,11 +78,23 @@ That smoke script verifies:
 - missing `app.current_facility_id` fails closed
 - semantic views are queryable when a facility scope is injected
 
+After applying `20260419023000_add_assistant_sql_audit_rpc.sql`, run the audit smoke:
+
+```bash
+psql "$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 -f supabase/tests/assistant_sql_audit_smoke.sql
+```
+
+That smoke script verifies:
+- missing JWT claims fail closed
+- successful `query_database` audit rows include scope, latency, row count, and payload size
+- failed `query_database` audit rows include scope, latency, and error class
+- local roles cannot write audit rows for another effective facility
+
 ## Rollout Boundary
 
 This foundation remains dormant until later batches:
 - no runtime `query_database` registration in `/api/chat`
 - no planner selection changes
-- no audit-execution path yet
+- the audit RPC is only supporting groundwork and does not execute SQL
 
 Those steps belong to later implementation batches and should not be mixed into the migration rollout.

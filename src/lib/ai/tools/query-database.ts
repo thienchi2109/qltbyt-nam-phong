@@ -2,7 +2,11 @@ import { tool, type Tool } from 'ai'
 import { z } from 'zod'
 
 import { ASSISTANT_SQL_TOOL_NAME } from '@/lib/ai/sql/constants'
-import { executeAssistantSql, type AssistantSqlResult } from '@/lib/ai/sql/executor'
+import {
+  executeAuditedAssistantSql,
+  type ExecuteAuditedAssistantSqlParams,
+} from '@/lib/ai/sql/audited-executor'
+import type { AssistantSqlResult } from '@/lib/ai/sql/executor'
 import type { AssistantSqlScope } from '@/lib/ai/sql/scope'
 
 export { ASSISTANT_SQL_TOOL_NAME as QUERY_DATABASE_TOOL_NAME }
@@ -23,15 +27,14 @@ interface QueryDatabaseToolOutput {
 }
 
 export interface QueryDatabaseToolParams {
-  execute?: (params: {
-    scope: AssistantSqlScope
-    sql: string
-  }) => Promise<AssistantSqlResult>
+  execute?: ExecuteAuditedAssistantSqlParams['execute']
+  request: Request
   scope: AssistantSqlScope
 }
 
 export function queryDatabaseTool({
-  execute = executeAssistantSql,
+  execute,
+  request,
   scope,
 }: QueryDatabaseToolParams): Tool<QueryDatabaseToolInput, QueryDatabaseToolOutput> {
   return tool<QueryDatabaseToolInput, QueryDatabaseToolOutput>({
@@ -42,7 +45,12 @@ export function queryDatabaseTool({
       reasoning,
       sql,
     }: QueryDatabaseToolInput): Promise<QueryDatabaseToolOutput> => {
-      const result = await execute({ scope, sql })
+      const result = await executeAuditedAssistantSql({
+        execute,
+        request,
+        scope,
+        sql,
+      })
 
       return {
         reasoning,
