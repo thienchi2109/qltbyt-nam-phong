@@ -65,6 +65,16 @@ function buildMessages(text: string) {
   ]
 }
 
+function postChatWithTools(text: string, requestedTools: string[]) {
+  return POST(
+    buildRequest({
+      selectedFacilityId: 17,
+      messages: buildMessages(text),
+      requestedTools,
+    }) as never,
+  )
+}
+
 const FULL_PANEL_TOOLS = [
   'equipmentLookup',
   'maintenanceSummary',
@@ -140,20 +150,15 @@ describe('/api/chat intent routing + clarification guard', () => {
   })
 
   it('asks a clarification question for mixed repair and quota prompts before calling tools', async () => {
-    const res = await POST(
-      buildRequest({
-        selectedFacilityId: 17,
-        messages: buildMessages(
-          'Có bao nhiêu phiếu sửa chữa và thiết bị vượt định mức trong đơn vị hiện tại?',
-        ),
-        requestedTools: [
-          'equipmentLookup',
-          'repairSummary',
-          'deviceQuotaLookup',
-          'quotaComplianceSummary',
-          'query_database',
-        ],
-      }) as never,
+    const res = await postChatWithTools(
+      'Có bao nhiêu phiếu sửa chữa và thiết bị vượt định mức trong đơn vị hiện tại?',
+      [
+        'equipmentLookup',
+        'repairSummary',
+        'deviceQuotaLookup',
+        'quotaComplianceSummary',
+        'query_database',
+      ],
     )
     const text = await res.text()
 
@@ -166,14 +171,9 @@ describe('/api/chat intent routing + clarification guard', () => {
   })
 
   it('preserves explicit repair-draft starts when quota words are also present', async () => {
-    const res = await POST(
-      buildRequest({
-        selectedFacilityId: 17,
-        messages: buildMessages(
-          'Tạo phiếu yêu cầu sửa chữa thiết bị máy thở ABC đang vượt định mức',
-        ),
-        requestedTools: FULL_PANEL_TOOLS,
-      }) as never,
+    const res = await postChatWithTools(
+      'Tạo phiếu yêu cầu sửa chữa thiết bị máy thở ABC đang vượt định mức',
+      FULL_PANEL_TOOLS,
     )
 
     expect(res.status).toBe(200)
@@ -242,12 +242,9 @@ describe('/api/chat intent routing + clarification guard', () => {
   })
 
   it('keeps clear repair prompts on curated tools when the panel sends the full tool list', async () => {
-    const res = await POST(
-      buildRequest({
-        selectedFacilityId: 17,
-        messages: buildMessages('Có bao nhiêu phiếu sửa chữa đang chờ xử lý?'),
-        requestedTools: FULL_PANEL_TOOLS,
-      }) as never,
+    const res = await postChatWithTools(
+      'Có bao nhiêu phiếu sửa chữa đang chờ xử lý?',
+      FULL_PANEL_TOOLS,
     )
 
     expect(res.status).toBe(200)
