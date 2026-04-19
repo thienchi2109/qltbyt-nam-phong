@@ -160,6 +160,7 @@ export async function POST(request: Request) {
     return plainError(scopeResolution.message, 400)
   }
   const {
+    assistantSqlScope,
     promptUserId,
     selectedFacilityId,
     usageUserId,
@@ -187,6 +188,7 @@ export async function POST(request: Request) {
   const tools =
     effectiveRequestedTools.length > 0 && selectedFacilityId !== undefined
       ? buildToolRegistry({
+          assistantSqlScope,
           request,
           tenantId: selectedFacilityId,
           userId: usageUserId,

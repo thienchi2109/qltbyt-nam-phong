@@ -1,10 +1,13 @@
 import { tool, type ToolSet } from 'ai'
 
 import { generateTroubleshootingDraft } from '@/lib/ai/draft/troubleshooting-tool'
+import { ASSISTANT_SQL_TOOL_NAME } from '@/lib/ai/sql/constants'
+import type { AssistantSqlScope } from '@/lib/ai/sql/scope'
 import {
   type EquipmentLookupHints,
   normalizeEquipmentLookupArgs,
 } from '@/lib/ai/tools/equipment-lookup-identifiers'
+import { queryDatabaseTool } from '@/lib/ai/tools/query-database'
 import {
   QUERY_CATALOG,
   QUERY_CATALOG_PENDING_TOOL_NAMES,
@@ -59,6 +62,7 @@ const KNOWN_BUT_BLOCKED_TOOLS = new Set(['systemDiagnostics'])
 const ALLOWED_TOOL_NAMES = new Set([
   ...QUERY_CATALOG_TOOL_NAMES,
   ...DRAFT_TOOL_NAMES,
+  ASSISTANT_SQL_TOOL_NAME,
 ])
 
 /** Exposed for contract tests only. Do NOT import in production code. */
@@ -101,6 +105,7 @@ const KNOWN_TOOL_NAMES = new Set([
   ...QUERY_CATALOG_TOOL_NAMES,
   ...KNOWN_BUT_BLOCKED_TOOLS,
   ...DRAFT_TOOL_NAMES,
+  ASSISTANT_SQL_TOOL_NAME,
 ])
 
 function normalizeToolNames(toolNames: string[]): string[] {
@@ -145,6 +150,7 @@ export function validateRequestedTools(
 }
 
 export interface BuildToolRegistryParams {
+  assistantSqlScope?: AssistantSqlScope
   request: Request
   tenantId: number
   userId: string
@@ -153,6 +159,7 @@ export interface BuildToolRegistryParams {
 }
 
 export function buildToolRegistry({
+  assistantSqlScope,
   request,
   tenantId,
   userId,
@@ -166,6 +173,16 @@ export function buildToolRegistry({
   const tools: ToolSet = {}
 
   for (const toolName of allowedRequestedTools) {
+    if (toolName === ASSISTANT_SQL_TOOL_NAME) {
+      if (assistantSqlScope) {
+        tools[toolName] = queryDatabaseTool({
+          request,
+          scope: assistantSqlScope,
+        })
+      }
+      continue
+    }
+
     // Draft tools: wire directly (no RPC proxy)
     const draftDef = DRAFT_TOOL_DEFINITIONS[toolName]
     if (draftDef) {

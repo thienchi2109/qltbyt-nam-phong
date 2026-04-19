@@ -37,6 +37,7 @@ const REQUESTED_TOOLS = [
     "attachmentLookup",
     "deviceQuotaLookup",
     "quotaComplianceSummary",
+    "query_database",
     "generateTroubleshootingDraft",
     "generateRepairRequestDraft",
     "categorySuggestion",
