@@ -34,25 +34,29 @@ export function routeChatIntent({
   messages: UIMessage[]
   requestedTools: string[]
 }): ChatIntentRoutingResult {
+  const nonSqlRequestedTools = holdBackQueryDatabase(requestedTools)
   const latestUserText = getLatestUserText(messages)
   if (!latestUserText) {
     return {
       kind: 'proceed',
-      requestedTools: holdBackQueryDatabase(requestedTools),
+      requestedTools: nonSqlRequestedTools,
     }
   }
 
-  const repairDecision = classifyRepairIntent(latestUserText, requestedTools)
+  const repairDecision = classifyRepairIntent(latestUserText, nonSqlRequestedTools)
   if (repairDecision) {
     return repairDecision
   }
 
-  const quotaDecision = classifyQuotaIntent(latestUserText, requestedTools)
+  const quotaDecision = classifyQuotaIntent(latestUserText, nonSqlRequestedTools)
   if (quotaDecision) {
     return quotaDecision
   }
 
-  const equipmentLookupDecision = classifyEquipmentLookupIntent(latestUserText, requestedTools)
+  const equipmentLookupDecision = classifyEquipmentLookupIntent(
+    latestUserText,
+    nonSqlRequestedTools,
+  )
   if (equipmentLookupDecision) {
     return equipmentLookupDecision
   }
@@ -225,7 +229,7 @@ function classifyAssistantSqlReportingIntent(
       normalized,
     )
   const mentionsSpecificItem =
-    /\b(ma thiet bi|serial|model|chi tiet|thiet bi nay|may nay|mot thiet bi cu the)\b/.test(
+    /\b(ma thiet bi|serial|model|thiet bi nay|may nay|mot thiet bi cu the)\b/.test(
       normalized,
     )
 
@@ -316,6 +320,10 @@ function shouldNarrowToEquipmentLookup(
   const mentionsUsage = /\b(lich su su dung|su dung)\b/.test(normalizedText)
   const mentionsAttachment = /\b(tai lieu|dinh kem|file|huong dan)\b/.test(normalizedText)
   const mentionsQuota = /\b(dinh muc|quota)\b/.test(normalizedText)
+  const mentionsReporting =
+    /\b(bao cao|thong ke|tong hop|phan bo|top|xep hang|xu huong|ty le)\b/.test(
+      normalizedText,
+    )
 
   return (
     mentionsLookupIntent &&
@@ -323,7 +331,8 @@ function shouldNarrowToEquipmentLookup(
     !mentionsRepair &&
     !mentionsUsage &&
     !mentionsAttachment &&
-    !mentionsQuota
+    !mentionsQuota &&
+    !mentionsReporting
   )
 }
 

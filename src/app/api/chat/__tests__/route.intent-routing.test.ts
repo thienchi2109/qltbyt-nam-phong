@@ -120,6 +120,7 @@ describe('/api/chat intent routing + clarification guard', () => {
     }
     expect(streamArgs.tools).toHaveProperty('repairSummary')
     expect(streamArgs.tools).not.toHaveProperty('equipmentLookup')
+    expect(streamArgs.tools).not.toHaveProperty('query_database')
   })
 
   it('asks a clarification question before calling tools for ambiguous repair intents', async () => {
@@ -153,6 +154,26 @@ describe('/api/chat intent routing + clarification guard', () => {
     expect(streamTextMock).not.toHaveBeenCalled()
     expect(text).toContain('một thiết bị cụ thể')
     expect(text).toContain('tổng quan định mức của đơn vị')
+  })
+
+  it('keeps query_database out of quota-summary routing decisions', async () => {
+    const res = await POST(
+      buildRequest({
+        selectedFacilityId: 17,
+        messages: buildMessages('Tổng quan định mức của đơn vị hiện tại thế nào?'),
+        requestedTools: ['deviceQuotaLookup', 'quotaComplianceSummary', 'query_database'],
+      }) as never,
+    )
+
+    expect(res.status).toBe(200)
+    expect(streamTextMock).toHaveBeenCalledOnce()
+
+    const streamArgs = streamTextMock.mock.calls[0]?.[0] as {
+      tools?: Record<string, unknown>
+    }
+    expect(streamArgs.tools).toHaveProperty('quotaComplianceSummary')
+    expect(streamArgs.tools).not.toHaveProperty('deviceQuotaLookup')
+    expect(streamArgs.tools).not.toHaveProperty('query_database')
   })
 
   it('asks for a concrete equipment identifier before calling equipmentLookup on ambiguous device lookup prompts', async () => {
@@ -230,6 +251,36 @@ describe('/api/chat intent routing + clarification guard', () => {
         selectedFacilityId: 17,
         messages: buildMessages(
           'Báo cáo tổng hợp số lượng thiết bị theo trạng thái của đơn vị hiện tại',
+        ),
+        requestedTools: [
+          'equipmentLookup',
+          'maintenanceSummary',
+          'repairSummary',
+          'usageHistory',
+          'query_database',
+        ],
+      }) as never,
+    )
+
+    expect(res.status).toBe(200)
+    expect(streamTextMock).toHaveBeenCalledOnce()
+
+    const streamArgs = streamTextMock.mock.calls[0]?.[0] as {
+      tools?: Record<string, unknown>
+    }
+    expect(streamArgs.tools).toHaveProperty('query_database')
+    expect(streamArgs.tools).not.toHaveProperty('equipmentLookup')
+    expect(streamArgs.tools).not.toHaveProperty('maintenanceSummary')
+    expect(streamArgs.tools).not.toHaveProperty('repairSummary')
+    expect(streamArgs.tools).not.toHaveProperty('usageHistory')
+  })
+
+  it('routes detailed reporting prompts with chi tiết to query_database only', async () => {
+    const res = await POST(
+      buildRequest({
+        selectedFacilityId: 17,
+        messages: buildMessages(
+          'Báo cáo chi tiết tình trạng thiết bị theo khoa trong đơn vị hiện tại',
         ),
         requestedTools: [
           'equipmentLookup',

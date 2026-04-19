@@ -236,6 +236,37 @@ describe('routeChatIntent', () => {
       })
     })
 
+    it('strips query_database from repair-summary routing decisions', () => {
+      const result = routeChatIntent({
+        messages: [makeUserMessage('Có bao nhiêu phiếu sửa chữa đang chờ xử lý?')],
+        requestedTools: [...ALL_CHAT_TOOLS],
+      })
+
+      expect(result).toEqual({
+        kind: 'proceed',
+        requestedTools: ALL_CHAT_TOOLS.filter(
+          toolName =>
+            toolName !== 'equipmentLookup' && toolName !== 'query_database',
+        ),
+      })
+    })
+
+    it('routes detailed reporting prompts with chi tiết to query_database when they are not specific-item lookups', () => {
+      const result = routeChatIntent({
+        messages: [
+          makeUserMessage(
+            'Báo cáo chi tiết tình trạng thiết bị theo khoa trong đơn vị hiện tại',
+          ),
+        ],
+        requestedTools: [...ALL_CHAT_TOOLS],
+      })
+
+      expect(result).toEqual({
+        kind: 'proceed',
+        requestedTools: ['query_database'],
+      })
+    })
+
     it('holds query_database out of generic prompts when the request is not a reporting fallback', () => {
       const result = routeChatIntent({
         messages: [makeUserMessage('Xin chào, bạn giúp được gì?')],
