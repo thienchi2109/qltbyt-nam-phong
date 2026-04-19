@@ -14,7 +14,7 @@ Vietnamese Medical Equipment Management System (Hệ thống quản lý thiết 
 - Client data: TanStack Query v5 for all server state
 - Dates: date-fns with vi locale; VN timezone handling (Asia/Ho_Chi_Minh)
 - PWA: next-pwa (enabled in prod)
-- Deployment: Dual (Vercel + Cloudflare Pages/Workers); Node runtime where needed
+- Deployment: Vercel; Node runtime where needed
 
 ## Project Conventions
 
@@ -82,7 +82,7 @@ Vietnamese Medical Equipment Management System (Hệ thống quản lý thiết 
 ## External Dependencies
 - Supabase (PostgreSQL, PostgREST RPC)
 - NextAuth (authentication)
-- Vercel (preferred) and Cloudflare (dual deploy); Workers/Pages for edge/static as applicable
+- Vercel
 - next-pwa (service worker in prod)
 - TanStack Query, Radix UI, Tailwind CSS, date-fns, lucide-react
 - Utilities: QR code generation/scanning, Excel export helpers (where used)

@@ -3,7 +3,6 @@
     "files": [
       "src/app/(app)/repair-requests/_components/RepairRequestsPageClient.tsx",
       "public/firebase-messaging-sw.js",
-      "scripts/build-cloudflare.js",
       "scripts/device-quota/backfill-category-embeddings.ts",
       "scripts/generate-sample-nhom-thiet-bi.ts",
       "scripts/run-cmd.js",
