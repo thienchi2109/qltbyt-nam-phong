@@ -83,7 +83,6 @@ describe('query_database audit contract', () => {
         sql_shape: 'select equipment_id from ai_readonly.equipment_search',
         status: 'success',
         tool_path: 'query_database',
-        user_id: 'u1',
       },
     })
   })
@@ -125,7 +124,6 @@ describe('query_database audit contract', () => {
         sql_shape: 'select pg_sleep(10)',
         status: 'failure',
         tool_path: 'query_database',
-        user_id: 'u1',
       },
     })
   })
@@ -146,6 +144,27 @@ describe('query_database audit contract', () => {
           writeAudit,
         }),
       'audit_error',
+    )
+  })
+
+  it('preserves execution errors when failure audit writing fails', async () => {
+    const execute = vi.fn(async () => {
+      throw new AssistantSqlError('timeout', 'Assistant SQL query timed out.')
+    })
+    const writeAudit = vi.fn<AssistantSqlAuditWriter>(async () => {
+      throw new Error('audit write failed')
+    })
+
+    await expectAssistantSqlError(
+      () =>
+        executeAuditedAssistantSql({
+          execute,
+          request,
+          scope,
+          sql: 'select pg_sleep(10)',
+          writeAudit,
+        }),
+      'timeout',
     )
   })
 })

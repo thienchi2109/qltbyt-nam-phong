@@ -7,6 +7,9 @@
 --   - applying this migration in the current implementation session
 --   - registering query_database in /api/chat
 --   - adding ai_query_database execution RPCs
+--
+-- Rollback:
+--   DROP FUNCTION IF EXISTS public.assistant_query_database_audit_log(text, text, text, integer, integer, integer, bigint, text, text, bigint, bigint, text);
 
 BEGIN;
 
@@ -73,7 +76,7 @@ BEGIN
       USING ERRCODE = '22023';
   END IF;
 
-  IF p_status NOT IN ('success', 'failure') THEN
+  IF p_status IS NULL OR p_status NOT IN ('success', 'failure') THEN
     RAISE EXCEPTION 'Invalid assistant SQL audit status'
       USING ERRCODE = '22023';
   END IF;
@@ -88,7 +91,7 @@ BEGIN
       USING ERRCODE = '42501';
   END IF;
 
-  IF p_facility_source NOT IN ('selected', 'session') THEN
+  IF p_facility_source IS NULL OR p_facility_source NOT IN ('selected', 'session') THEN
     RAISE EXCEPTION 'Invalid assistant SQL facility source'
       USING ERRCODE = '22023';
   END IF;

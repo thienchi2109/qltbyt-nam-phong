@@ -86,8 +86,8 @@ psql "$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 -f supabase/tests/assistant_sql_audit
 
 That smoke script verifies:
 - missing JWT claims fail closed
-- successful `query_database` audit rows include scope, latency, row count, and payload size
-- failed `query_database` audit rows include scope, latency, and error class
+- successful `query_database` audit rows include effective facility scope, latency, and row count
+- failed `query_database` audit rows include error class and a null row count
 - local roles cannot write audit rows for another effective facility
 
 ## Rollout Boundary

@@ -24,7 +24,6 @@ export interface AssistantSqlAuditDetails {
   sql_shape: string
   status: AssistantSqlAuditStatus
   tool_path: typeof ASSISTANT_SQL_TOOL_NAME
-  user_id: string
 }
 
 export interface AssistantSqlAuditEvent {
@@ -100,7 +99,6 @@ function buildAuditDetails({
     sql_shape: getAuditSqlShape(sql, result),
     status,
     tool_path: ASSISTANT_SQL_TOOL_NAME,
-    user_id: scope.userId,
   }
 }
 
@@ -193,16 +191,20 @@ export async function executeAuditedAssistantSql({
       throw error
     }
 
-    await writeAuditOrThrow(writeAudit, {
-      request,
-      details: buildAuditDetails({
-        errorClass: getErrorClass(error),
-        latencyMs: Date.now() - startedAt,
-        scope,
-        sql,
-        status: 'failure',
-      }),
-    })
+    try {
+      await writeAuditOrThrow(writeAudit, {
+        request,
+        details: buildAuditDetails({
+          errorClass: getErrorClass(error),
+          latencyMs: Date.now() - startedAt,
+          scope,
+          sql,
+          status: 'failure',
+        }),
+      })
+    } catch {
+      // Preserve the original SQL execution error for callers.
+    }
     throw error
   }
 }

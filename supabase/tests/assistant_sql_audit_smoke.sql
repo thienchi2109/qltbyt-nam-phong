@@ -186,6 +186,16 @@ BEGIN
   ORDER BY id
   LIMIT 1;
 
+  IF v_facility_id IS NULL THEN
+    RAISE NOTICE 'SKIP: no active facilities exist, so mismatch check cannot run';
+    RETURN;
+  END IF;
+
+  IF v_user_id IS NULL THEN
+    RAISE NOTICE 'SKIP: no nhan_vien rows exist, so mismatch check cannot run';
+    RETURN;
+  END IF;
+
   IF v_other_facility_id IS NULL THEN
     RAISE NOTICE 'SKIP: only one active facility exists, so mismatch check cannot run';
     RETURN;
