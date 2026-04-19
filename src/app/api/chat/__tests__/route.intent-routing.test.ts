@@ -241,25 +241,6 @@ describe('/api/chat intent routing + clarification guard', () => {
     expect(streamArgs.tools).not.toHaveProperty('query_database')
   })
 
-  it('keeps clear repair prompts on curated tools when the panel sends the full tool list', async () => {
-    const res = await postChatWithTools(
-      'Có bao nhiêu phiếu sửa chữa đang chờ xử lý?',
-      FULL_PANEL_TOOLS,
-    )
-
-    expect(res.status).toBe(200)
-    expect(streamTextMock).toHaveBeenCalledOnce()
-
-    const streamArgs = streamTextMock.mock.calls[0]?.[0] as {
-      tools?: Record<string, unknown>
-    }
-    expect(streamArgs.tools).toHaveProperty('repairSummary')
-    expect(streamArgs.tools).toHaveProperty('maintenanceSummary')
-    expect(streamArgs.tools).toHaveProperty('quotaComplianceSummary')
-    expect(streamArgs.tools).not.toHaveProperty('equipmentLookup')
-    expect(streamArgs.tools).not.toHaveProperty('query_database')
-  })
-
   it('asks for a concrete equipment identifier before calling equipmentLookup on ambiguous device lookup prompts', async () => {
     const res = await POST(
       buildRequest({

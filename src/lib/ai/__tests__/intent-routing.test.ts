@@ -98,33 +98,28 @@ describe('routeChatIntent', () => {
       })
     })
 
-    it('keeps clear repair-summary prompts on curated routing and out of SQL fallback', () => {
-      const result = routeText('Có bao nhiêu phiếu sửa chữa đang chờ xử lý?', [
-        ...ALL_CHAT_TOOLS,
-      ])
+    it.each([
+      {
+        text: 'Có bao nhiêu phiếu sửa chữa đang chờ xử lý?',
+        removedTools: ['equipmentLookup', 'query_database'],
+      },
+      {
+        text: 'Tổng quan định mức của đơn vị hiện tại thế nào?',
+        removedTools: ['deviceQuotaLookup', 'query_database'],
+      },
+    ])(
+      'keeps clear curated prompt "$text" out of SQL fallback',
+      ({ text, removedTools }) => {
+        const result = routeText(text, [...ALL_CHAT_TOOLS])
 
-      expect(result).toEqual({
-        kind: 'proceed',
-        requestedTools: ALL_CHAT_TOOLS.filter(
-          toolName =>
-            toolName !== 'equipmentLookup' && toolName !== 'query_database',
-        ),
-      })
-    })
-
-    it('keeps clear quota-summary prompts on curated routing and out of SQL fallback', () => {
-      const result = routeText('Tổng quan định mức của đơn vị hiện tại thế nào?', [
-        ...ALL_CHAT_TOOLS,
-      ])
-
-      expect(result).toEqual({
-        kind: 'proceed',
-        requestedTools: ALL_CHAT_TOOLS.filter(
-          toolName =>
-            toolName !== 'deviceQuotaLookup' && toolName !== 'query_database',
-        ),
-      })
-    })
+        expect(result).toEqual({
+          kind: 'proceed',
+          requestedTools: ALL_CHAT_TOOLS.filter(
+            toolName => !removedTools.includes(toolName),
+          ),
+        })
+      },
+    )
 
     it('keeps generic non-reporting prompts on the fail-closed non-SQL path', () => {
       const result = routeText('Xin chào, bạn giúp được gì?', [...ALL_CHAT_TOOLS])
