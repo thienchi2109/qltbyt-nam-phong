@@ -1,4 +1,5 @@
 export type AssistantSqlErrorCode =
+  | 'audit_error'
   | 'configuration_error'
   | 'execution_error'
   | 'forbidden_function'
@@ -23,4 +24,3 @@ export class AssistantSqlError extends Error {
 export function isAssistantSqlError(error: unknown): error is AssistantSqlError {
   return error instanceof AssistantSqlError
 }
-

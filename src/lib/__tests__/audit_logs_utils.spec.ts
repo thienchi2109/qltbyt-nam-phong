@@ -8,6 +8,7 @@ describe('Activity Logs utilities', () => {
     expect(getActionTypeLabel('maintenance_plan_create')).toBe(ACTION_TYPE_LABELS.maintenance_plan_create)
     expect(getActionTypeLabel('equipment_restore')).toBe(ACTION_TYPE_LABELS.equipment_restore)
     expect(getActionTypeLabel('equipment_bulk_delete')).toBe(ACTION_TYPE_LABELS.equipment_bulk_delete)
+    expect(getActionTypeLabel('assistant_query_database')).toBe(ACTION_TYPE_LABELS.assistant_query_database)
     expect(getActionTypeLabel('non_existing_key')).toBe('non_existing_key')
   })
 
@@ -20,6 +21,16 @@ describe('Activity Logs utilities', () => {
 
   it('keeps legacy string details visible', () => {
     expect(formatActionDetails('login_failed', 'Sai mật khẩu 3 lần')).toBe('Sai mật khẩu 3 lần')
+  })
+
+  it('formats query_database audit details', () => {
+    const text = formatActionDetails('assistant_query_database', {
+      status: 'failure',
+      sql_shape: 'select pg_sleep(10)',
+      error_class: 'timeout',
+    })
+
+    expect(text).toBe('query_database failure: select pg_sleep(10)')
   })
 
   it('AuditLogEntry type includes entity fields (compile-time)', () => {
@@ -37,11 +48,10 @@ describe('Activity Logs utilities', () => {
       user_agent: null,
       created_at: new Date().toISOString(),
       total_count: 1,
-      entity_type: 'repair_request',
+      entity_type: 'assistant_sql',
       entity_id: 123,
       entity_label: 'YC-123',
     }
-    expect(row.entity_type).toBe('repair_request')
+    expect(row.entity_type).toBe('assistant_sql')
   })
 })
-

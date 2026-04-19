@@ -74,6 +74,14 @@ describe('RPC proxy whitelist', () => {
     await expect(res.json()).resolves.toEqual({ error: 'Function not allowed' })
   })
 
+  it('allows assistant_query_database_audit_log through whitelist checks', async () => {
+    const res = await invokeRpcProxy('assistant_query_database_audit_log')
+
+    // Whitelist check passed; next guard is missing Content-Length.
+    expect(res.status).toBe(411)
+    await expect(res.json()).resolves.toEqual({ error: 'Content-Length header required' })
+  })
+
   it('allows dinh_muc_unified_import through whitelist checks', async () => {
     const res = await invokeRpcProxy('dinh_muc_unified_import')
 
