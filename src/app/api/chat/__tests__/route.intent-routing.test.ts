@@ -65,6 +65,32 @@ function buildMessages(text: string) {
   ]
 }
 
+function postChatWithTools(text: string, requestedTools: string[]) {
+  return POST(
+    buildRequest({
+      selectedFacilityId: 17,
+      messages: buildMessages(text),
+      requestedTools,
+    }) as never,
+  )
+}
+
+const FULL_PANEL_TOOLS = [
+  'equipmentLookup',
+  'maintenanceSummary',
+  'maintenancePlanLookup',
+  'repairSummary',
+  'usageHistory',
+  'attachmentLookup',
+  'deviceQuotaLookup',
+  'quotaComplianceSummary',
+  'query_database',
+  'generateTroubleshootingDraft',
+  'generateRepairRequestDraft',
+  'categorySuggestion',
+  'departmentList',
+]
+
 describe('/api/chat intent routing + clarification guard', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -121,6 +147,45 @@ describe('/api/chat intent routing + clarification guard', () => {
     expect(streamArgs.tools).toHaveProperty('repairSummary')
     expect(streamArgs.tools).not.toHaveProperty('equipmentLookup')
     expect(streamArgs.tools).not.toHaveProperty('query_database')
+  })
+
+  it('asks a clarification question for mixed repair and quota prompts before calling tools', async () => {
+    const res = await postChatWithTools(
+      'Có bao nhiêu phiếu sửa chữa và thiết bị vượt định mức trong đơn vị hiện tại?',
+      [
+        'equipmentLookup',
+        'repairSummary',
+        'deviceQuotaLookup',
+        'quotaComplianceSummary',
+        'query_database',
+      ],
+    )
+    const text = await res.text()
+
+    expect(res.status).toBe(200)
+    expect(res.headers.get('content-type')).toContain('text/event-stream')
+    expect(streamTextMock).not.toHaveBeenCalled()
+    expect(text).toContain('ý chính')
+    expect(text).toContain('sửa chữa')
+    expect(text).toContain('định mức')
+  })
+
+  it('preserves explicit repair-draft starts when quota words are also present', async () => {
+    const res = await postChatWithTools(
+      'Tạo phiếu yêu cầu sửa chữa thiết bị máy thở ABC đang vượt định mức',
+      FULL_PANEL_TOOLS,
+    )
+
+    expect(res.status).toBe(200)
+    expect(streamTextMock).toHaveBeenCalledOnce()
+
+    const streamArgs = streamTextMock.mock.calls[0]?.[0] as {
+      tools?: Record<string, unknown>
+    }
+    expect(streamArgs.tools).toHaveProperty('equipmentLookup')
+    expect(streamArgs.tools).toHaveProperty('repairSummary')
+    expect(streamArgs.tools).not.toHaveProperty('query_database')
+    expect(streamArgs.tools).not.toHaveProperty('generateRepairRequestDraft')
   })
 
   it('asks a clarification question before calling tools for ambiguous repair intents', async () => {

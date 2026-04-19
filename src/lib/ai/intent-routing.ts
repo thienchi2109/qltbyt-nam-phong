@@ -2,11 +2,19 @@ import type { UIMessage } from 'ai'
 import { ASSISTANT_SQL_TOOL_NAME } from './sql/constants'
 import { getLatestUserText } from './tools/equipment-lookup-identifiers'
 import { hasRepairRequestDraftStartIntent } from './draft/repair-request-draft-session'
+import {
+  getQueryCatalogToolsByRoutingGroup,
+  type QueryCatalogToolName,
+} from './tools/query-catalog'
 
-const EQUIPMENT_LOOKUP_TOOL = 'equipmentLookup'
-const REPAIR_SUMMARY_TOOL = 'repairSummary'
-const DEVICE_QUOTA_LOOKUP_TOOL = 'deviceQuotaLookup'
-const QUOTA_COMPLIANCE_SUMMARY_TOOL = 'quotaComplianceSummary'
+const EQUIPMENT_LOOKUP_TOOL: QueryCatalogToolName = 'equipmentLookup'
+const REPAIR_SUMMARY_TOOL: QueryCatalogToolName = 'repairSummary'
+const DEVICE_QUOTA_LOOKUP_TOOL: QueryCatalogToolName = 'deviceQuotaLookup'
+const QUOTA_COMPLIANCE_SUMMARY_TOOL: QueryCatalogToolName =
+  'quotaComplianceSummary'
+
+const REPAIR_ROUTING_TOOLS = getQueryCatalogToolsByRoutingGroup('repair')
+const QUOTA_ROUTING_TOOLS = getQueryCatalogToolsByRoutingGroup('quota')
 
 const REPAIR_INTENT_CLARIFICATION =
   'Anh/chị muốn xem trạng thái thiết bị hay tình trạng các yêu cầu sửa chữa/phiếu sửa chữa?'
@@ -16,6 +24,9 @@ const QUOTA_INTENT_CLARIFICATION =
 
 const EQUIPMENT_LOOKUP_CLARIFICATION =
   'Anh/chị muốn tra cứu thiết bị nào? Vui lòng cung cấp tên thiết bị cụ thể, mã thiết bị, model hoặc số serial trước khi tôi tra cứu.'
+
+const MIXED_CURATED_INTENT_CLARIFICATION =
+  'Anh/chị muốn ưu tiên ý chính nào: sửa chữa, định mức, hay tra cứu thiết bị? Vui lòng chọn một nội dung trước để tôi dùng đúng công cụ.'
 
 export type ChatIntentRoutingResult =
   | {
@@ -44,21 +55,27 @@ export function routeChatIntent({
   }
 
   const repairDecision = classifyRepairIntent(latestUserText, nonSqlRequestedTools)
-  if (repairDecision) {
+  if (hasRepairRequestDraftStartIntent(latestUserText) && repairDecision) {
     return repairDecision
   }
 
-  const quotaDecision = classifyQuotaIntent(latestUserText, nonSqlRequestedTools)
-  if (quotaDecision) {
-    return quotaDecision
+  const curatedDecisions = [
+    buildCuratedDecision(repairDecision),
+    buildCuratedDecision(classifyQuotaIntent(latestUserText, nonSqlRequestedTools)),
+    buildCuratedDecision(
+      classifyEquipmentLookupIntent(latestUserText, nonSqlRequestedTools),
+    ),
+  ].filter((decision): decision is CuratedRoutingDecision => decision !== null)
+
+  if (curatedDecisions.length > 1) {
+    return {
+      kind: 'clarify',
+      message: MIXED_CURATED_INTENT_CLARIFICATION,
+    }
   }
 
-  const equipmentLookupDecision = classifyEquipmentLookupIntent(
-    latestUserText,
-    nonSqlRequestedTools,
-  )
-  if (equipmentLookupDecision) {
-    return equipmentLookupDecision
+  if (curatedDecisions.length === 1) {
+    return curatedDecisions[0].result
   }
 
   const sqlReportingDecision = classifyAssistantSqlReportingIntent(
@@ -75,14 +92,21 @@ export function routeChatIntent({
   }
 }
 
+interface CuratedRoutingDecision {
+  result: ChatIntentRoutingResult
+}
+
+function buildCuratedDecision(
+  result: ChatIntentRoutingResult | null,
+): CuratedRoutingDecision | null {
+  return result ? { result } : null
+}
+
 function classifyRepairIntent(
   text: string,
   requestedTools: string[],
 ): ChatIntentRoutingResult | null {
-  if (
-    !requestedTools.includes(EQUIPMENT_LOOKUP_TOOL) ||
-    !requestedTools.includes(REPAIR_SUMMARY_TOOL)
-  ) {
+  if (!hasAllRequestedTools(requestedTools, REPAIR_ROUTING_TOOLS)) {
     return null
   }
 
@@ -129,10 +153,7 @@ function classifyQuotaIntent(
   text: string,
   requestedTools: string[],
 ): ChatIntentRoutingResult | null {
-  if (
-    !requestedTools.includes(DEVICE_QUOTA_LOOKUP_TOOL) ||
-    !requestedTools.includes(QUOTA_COMPLIANCE_SUMMARY_TOOL)
-  ) {
+  if (!hasAllRequestedTools(requestedTools, QUOTA_ROUTING_TOOLS)) {
     return null
   }
 
@@ -338,6 +359,13 @@ function shouldNarrowToEquipmentLookup(
 
 function removeTool(requestedTools: string[], toolName: string): string[] {
   return requestedTools.filter(requestedTool => requestedTool !== toolName)
+}
+
+function hasAllRequestedTools(
+  requestedTools: string[],
+  requiredTools: readonly string[],
+): boolean {
+  return requiredTools.every(toolName => requestedTools.includes(toolName))
 }
 
 function keepOnlyTool(requestedTools: string[], toolName: string): string[] {

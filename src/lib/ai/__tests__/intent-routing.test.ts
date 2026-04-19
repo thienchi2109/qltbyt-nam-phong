@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import type { UIMessage } from 'ai'
 import { routeChatIntent } from '../intent-routing'
+import {
+  QUERY_CATALOG,
+  getQueryCatalogToolsByRoutingGroup,
+} from '../tools/query-catalog'
 
 function makeUserMessage(text: string): UIMessage {
   return {
@@ -8,6 +12,13 @@ function makeUserMessage(text: string): UIMessage {
     role: 'user',
     parts: [{ type: 'text' as const, text }],
   } as UIMessage
+}
+
+function routeText(text: string, requestedTools: string[]) {
+  return routeChatIntent({
+    messages: [makeUserMessage(text)],
+    requestedTools,
+  })
 }
 
 const ALL_REPAIR_TOOLS = ['equipmentLookup', 'repairSummary']
@@ -23,8 +34,105 @@ const ALL_CHAT_TOOLS = [
   'quotaComplianceSummary',
   'query_database',
 ]
+const FULL_PANEL_TOOLS = [
+  ...ALL_CHAT_TOOLS,
+  'generateTroubleshootingDraft',
+  'generateRepairRequestDraft',
+  'categorySuggestion',
+  'departmentList',
+]
 
 describe('routeChatIntent', () => {
+  describe('Issue #273 — catalog-backed curated routing metadata', () => {
+    it('declares routing intent metadata for ambiguous curated tool pairs', () => {
+      expect(QUERY_CATALOG.equipmentLookup.routingIntents).toEqual(
+        expect.arrayContaining([
+          { group: 'repair', role: 'equipment-status' },
+          { group: 'equipmentLookup', role: 'specific-item' },
+        ]),
+      )
+      expect(QUERY_CATALOG.repairSummary.routingIntents).toEqual([
+        { group: 'repair', role: 'workflow-summary' },
+      ])
+      expect(QUERY_CATALOG.deviceQuotaLookup.routingIntents).toEqual([
+        { group: 'quota', role: 'specific-item' },
+      ])
+      expect(QUERY_CATALOG.quotaComplianceSummary.routingIntents).toEqual([
+        { group: 'quota', role: 'facility-summary' },
+      ])
+    })
+
+    it('exposes query catalog tool names by routing group', () => {
+      expect(getQueryCatalogToolsByRoutingGroup('repair')).toEqual([
+        'equipmentLookup',
+        'repairSummary',
+      ])
+      expect(getQueryCatalogToolsByRoutingGroup('quota')).toEqual([
+        'deviceQuotaLookup',
+        'quotaComplianceSummary',
+      ])
+    })
+  })
+
+  describe('Issue #273 — curated precedence hardening', () => {
+    it('clarifies mixed repair and quota prompts instead of choosing a hard-coded family', () => {
+      const result = routeText(
+        'Có bao nhiêu phiếu sửa chữa và thiết bị vượt định mức trong đơn vị hiện tại?',
+        [...ALL_CHAT_TOOLS],
+      )
+
+      expect(result.kind).toBe('clarify')
+    })
+
+    it('preserves explicit repair-draft starts even when quota words are present', () => {
+      const result = routeText(
+        'Tạo phiếu yêu cầu sửa chữa thiết bị máy thở ABC đang vượt định mức',
+        [...FULL_PANEL_TOOLS],
+      )
+
+      expect(result).toEqual({
+        kind: 'proceed',
+        requestedTools: FULL_PANEL_TOOLS.filter(
+          toolName => toolName !== 'query_database',
+        ),
+      })
+    })
+
+    it.each([
+      {
+        text: 'Có bao nhiêu phiếu sửa chữa đang chờ xử lý?',
+        removedTools: ['equipmentLookup', 'query_database'],
+      },
+      {
+        text: 'Tổng quan định mức của đơn vị hiện tại thế nào?',
+        removedTools: ['deviceQuotaLookup', 'query_database'],
+      },
+    ])(
+      'keeps clear curated prompt "$text" out of SQL fallback',
+      ({ text, removedTools }) => {
+        const result = routeText(text, [...ALL_CHAT_TOOLS])
+
+        expect(result).toEqual({
+          kind: 'proceed',
+          requestedTools: ALL_CHAT_TOOLS.filter(
+            toolName => !removedTools.includes(toolName),
+          ),
+        })
+      },
+    )
+
+    it('keeps generic non-reporting prompts on the fail-closed non-SQL path', () => {
+      const result = routeText('Xin chào, bạn giúp được gì?', [...ALL_CHAT_TOOLS])
+
+      expect(result).toEqual({
+        kind: 'proceed',
+        requestedTools: ALL_CHAT_TOOLS.filter(
+          toolName => toolName !== 'query_database',
+        ),
+      })
+    })
+  })
+
   // ──────────────────────────────────────────────────────
   // V1: repair router should NOT drop repairSummary when
   //     the question is about a device's repair history
