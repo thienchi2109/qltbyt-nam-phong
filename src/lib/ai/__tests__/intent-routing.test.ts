@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { UIMessage } from 'ai'
 import { routeChatIntent } from '../intent-routing'
+import * as queryCatalog from '../tools/query-catalog'
 
 function makeUserMessage(text: string): UIMessage {
   return {
@@ -25,6 +26,107 @@ const ALL_CHAT_TOOLS = [
 ]
 
 describe('routeChatIntent', () => {
+  describe('Issue #273 — catalog-backed curated routing metadata', () => {
+    it('declares routing intent metadata for ambiguous curated tool pairs', () => {
+      expect(queryCatalog.QUERY_CATALOG.equipmentLookup.routingIntents).toEqual(
+        expect.arrayContaining([
+          { group: 'repair', role: 'equipment-status' },
+          { group: 'equipmentLookup', role: 'specific-item' },
+        ]),
+      )
+      expect(queryCatalog.QUERY_CATALOG.repairSummary.routingIntents).toEqual([
+        { group: 'repair', role: 'workflow-summary' },
+      ])
+      expect(queryCatalog.QUERY_CATALOG.deviceQuotaLookup.routingIntents).toEqual([
+        { group: 'quota', role: 'specific-item' },
+      ])
+      expect(
+        queryCatalog.QUERY_CATALOG.quotaComplianceSummary.routingIntents,
+      ).toEqual([{ group: 'quota', role: 'facility-summary' }])
+    })
+
+    it('exposes query catalog tool names by routing group', () => {
+      const getToolsByRoutingGroup = (
+        queryCatalog as Record<string, unknown>
+      ).getQueryCatalogToolsByRoutingGroup
+
+      expect(getToolsByRoutingGroup).toBeTypeOf('function')
+      if (typeof getToolsByRoutingGroup !== 'function') {
+        return
+      }
+
+      expect(getToolsByRoutingGroup('repair')).toEqual([
+        'equipmentLookup',
+        'repairSummary',
+      ])
+      expect(getToolsByRoutingGroup('quota')).toEqual([
+        'deviceQuotaLookup',
+        'quotaComplianceSummary',
+      ])
+    })
+  })
+
+  describe('Issue #273 — curated precedence hardening', () => {
+    it('clarifies mixed repair and quota prompts instead of choosing a hard-coded family', () => {
+      const result = routeChatIntent({
+        messages: [
+          makeUserMessage(
+            'Có bao nhiêu phiếu sửa chữa và thiết bị vượt định mức trong đơn vị hiện tại?',
+          ),
+        ],
+        requestedTools: [...ALL_CHAT_TOOLS],
+      })
+
+      expect(result.kind).toBe('clarify')
+    })
+
+    it('keeps clear repair-summary prompts on curated routing and out of SQL fallback', () => {
+      const result = routeChatIntent({
+        messages: [makeUserMessage('Có bao nhiêu phiếu sửa chữa đang chờ xử lý?')],
+        requestedTools: [...ALL_CHAT_TOOLS],
+      })
+
+      expect(result).toEqual({
+        kind: 'proceed',
+        requestedTools: ALL_CHAT_TOOLS.filter(
+          toolName =>
+            toolName !== 'equipmentLookup' && toolName !== 'query_database',
+        ),
+      })
+    })
+
+    it('keeps clear quota-summary prompts on curated routing and out of SQL fallback', () => {
+      const result = routeChatIntent({
+        messages: [
+          makeUserMessage('Tổng quan định mức của đơn vị hiện tại thế nào?'),
+        ],
+        requestedTools: [...ALL_CHAT_TOOLS],
+      })
+
+      expect(result).toEqual({
+        kind: 'proceed',
+        requestedTools: ALL_CHAT_TOOLS.filter(
+          toolName =>
+            toolName !== 'deviceQuotaLookup' && toolName !== 'query_database',
+        ),
+      })
+    })
+
+    it('keeps generic non-reporting prompts on the fail-closed non-SQL path', () => {
+      const result = routeChatIntent({
+        messages: [makeUserMessage('Xin chào, bạn giúp được gì?')],
+        requestedTools: [...ALL_CHAT_TOOLS],
+      })
+
+      expect(result).toEqual({
+        kind: 'proceed',
+        requestedTools: ALL_CHAT_TOOLS.filter(
+          toolName => toolName !== 'query_database',
+        ),
+      })
+    })
+  })
+
   // ──────────────────────────────────────────────────────
   // V1: repair router should NOT drop repairSummary when
   //     the question is about a device's repair history

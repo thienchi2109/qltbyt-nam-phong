@@ -8,10 +8,24 @@ export interface QueryCatalogModelBudget {
   modelVisibleFields?: string[]
 }
 
+export type QueryCatalogRoutingGroup = 'repair' | 'quota' | 'equipmentLookup'
+
+export type QueryCatalogRoutingRole =
+  | 'equipment-status'
+  | 'workflow-summary'
+  | 'specific-item'
+  | 'facility-summary'
+
+export interface QueryCatalogRoutingIntent {
+  group: QueryCatalogRoutingGroup
+  role: QueryCatalogRoutingRole
+}
+
 interface BaseQueryCatalogEntry {
   description: string
   rpcFunction: string
   inputSchema: z.ZodType<Record<string, unknown>>
+  routingIntents?: QueryCatalogRoutingIntent[]
 }
 
 interface MigratedQueryCatalogEntry extends BaseQueryCatalogEntry {
@@ -32,6 +46,10 @@ export const QUERY_CATALOG = {
       'Lookup equipment details using approved read-only RPC. Supports text search plus structured `filters` for exact `equipmentCode`, current status, department, location, classification, model, and serial; use the returned total for aggregate counts.',
     rpcFunction: 'ai_equipment_lookup',
     migrationStatus: 'pending',
+    routingIntents: [
+      { group: 'repair', role: 'equipment-status' },
+      { group: 'equipmentLookup', role: 'specific-item' },
+    ],
     inputSchema: z
       .object({
         query: z.string().trim().min(1).max(200).optional(),
@@ -79,6 +97,7 @@ export const QUERY_CATALOG = {
     description: 'Retrieve repair summary data via approved read-only RPC.',
     rpcFunction: 'ai_repair_summary',
     migrationStatus: 'pending',
+    routingIntents: [{ group: 'repair', role: 'workflow-summary' }],
     inputSchema: z
       .object({
         status: z.string().trim().min(1).max(50).optional(),
@@ -113,6 +132,7 @@ export const QUERY_CATALOG = {
       'Check quota status for a specific equipment item against the active quota decision.',
     rpcFunction: 'ai_device_quota_lookup',
     migrationStatus: 'pending',
+    routingIntents: [{ group: 'quota', role: 'specific-item' }],
     inputSchema: z
       .object({
         p_thiet_bi_id: z.number().int().positive(),
@@ -124,6 +144,7 @@ export const QUERY_CATALOG = {
       'Get facility-level device quota compliance overview from the active decision.',
     rpcFunction: 'ai_quota_compliance_summary',
     migrationStatus: 'pending',
+    routingIntents: [{ group: 'quota', role: 'facility-summary' }],
     inputSchema: z.object({}).strict(),
   },
   categorySuggestion: {
@@ -159,6 +180,17 @@ export type QueryCatalogToolName = keyof typeof QUERY_CATALOG
 export const QUERY_CATALOG_TOOL_NAMES = Object.keys(QUERY_CATALOG) as QueryCatalogToolName[]
 
 export const QUERY_CATALOG_TOOL_NAME_SET: ReadonlySet<string> = new Set(QUERY_CATALOG_TOOL_NAMES)
+
+export function getQueryCatalogToolsByRoutingGroup(
+  group: QueryCatalogRoutingGroup,
+): QueryCatalogToolName[] {
+  return QUERY_CATALOG_TOOL_NAMES.filter(toolName => {
+    const entry: QueryCatalogEntry = QUERY_CATALOG[toolName]
+    return entry.routingIntents?.some(
+      routingIntent => routingIntent.group === group,
+    )
+  })
+}
 
 export function getQueryCatalogToolRpcMapping(): Record<string, string> {
   return Object.fromEntries(Object.entries(QUERY_CATALOG).map(([k, v]) => [k, v.rpcFunction]))
