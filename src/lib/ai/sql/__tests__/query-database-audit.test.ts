@@ -128,6 +128,30 @@ describe('query_database audit contract', () => {
     })
   })
 
+  it('truncates successful audit sql_shape to the RPC limit', async () => {
+    const longSqlShape = `select ${'equipment_id, '.repeat(100)}ten_benh_vien from ai_readonly.equipment_search`
+    const execute = vi.fn(async (): Promise<AssistantSqlResult> => {
+      return {
+        ...successResult,
+        sqlShape: longSqlShape,
+      }
+    })
+    const writeAudit = vi.fn<AssistantSqlAuditWriter>(async () => undefined)
+
+    await executeAuditedAssistantSql({
+      execute,
+      request,
+      scope,
+      sql: longSqlShape,
+      writeAudit,
+    })
+
+    expect(writeAudit).toHaveBeenCalledOnce()
+    const event = writeAudit.mock.calls[0]?.[0]
+    expect(event?.details.sql_shape).toHaveLength(1_000)
+    expect(event?.details.sql_shape).toBe(longSqlShape.slice(0, 1_000))
+  })
+
   it('fails closed when audit writing fails', async () => {
     const execute = vi.fn(async () => successResult)
     const writeAudit = vi.fn<AssistantSqlAuditWriter>(async () => {

@@ -63,11 +63,8 @@ function getErrorClass(error: unknown): string {
 }
 
 function getAuditSqlShape(sql: string, result?: AssistantSqlResult): string {
-  if (result !== undefined) {
-    return result.sqlShape
-  }
-
-  return sql.replace(/\s+/g, ' ').trim().slice(0, 1_000)
+  const sqlShape = result?.sqlShape ?? sql
+  return sqlShape.replace(/\s+/g, ' ').trim().slice(0, 1_000)
 }
 
 function buildAuditDetails({
