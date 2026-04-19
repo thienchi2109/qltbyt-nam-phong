@@ -112,9 +112,9 @@ Invoke `context-engineering` skill for: agent systems, token optimization (>70%)
 
 ---
 
-## Basic Memory Convention
+## Memori MCP Convention
 
-Use Basic Memory as durable project memory for this repository. Do not treat it as a complete or automatic record of all prior chats.
+Use Memori MCP as durable project memory for this repository. Do not treat it as a complete or automatic record of all prior chats.
 
 ### What to Save
 
@@ -132,7 +132,7 @@ Use Basic Memory as durable project memory for this repository. Do not treat it 
 
 ### Session Rule
 
-When a session produces durable context, save one concise Basic Memory note near the end of the session rather than many small notes.
+When a session produces durable context, save one concise Memori MCP summary near the end of the session rather than many small notes.
 
 ### Required Note Shape
 
@@ -159,7 +159,7 @@ When a session produces durable context, save one concise Basic Memory note near
 
 ### Retrieval Rule
 
-Before re-investigating a non-trivial problem, check whether relevant Basic Memory notes already exist. If memory conflicts with the current codebase, trust the codebase and update the memory note.
+Before re-investigating a non-trivial problem, use Memori MCP `recall` to check whether relevant memory already exists. If memory conflicts with the current codebase, trust the codebase and update the memory note.
 
 
 ---
@@ -531,13 +531,13 @@ END IF;
 
 After applying any migration, run `get_advisors(security)` via Supabase MCP to catch regressions.
 
-## 🔗 Combined Workflow: Code Review Graph + GitNexus + Basic Memory
+## 🔗 Combined Workflow: Code Review Graph + GitNexus + Memori MCP
 
 These tools complement each other. Use them together while prioritizing token-efficient codebase reading:
 
 | Tool | Answers | Persistence |
 |------|---------|-------------|
-| **Basic Memory** | WHY a decision was made, historical findings, gotchas | Persistent (survives across sessions) |
+| **Memori MCP** | WHY a decision was made, historical findings, gotchas | Persistent (survives across sessions) |
 | **Code Review Graph** | WHERE to start reading, changed-file impact, compact codebase/review context | Ephemeral (per-query, reflects current code) |
 | **GitNexus** | WHAT calls what, precise symbol/process relationships, required impact blast radius | Ephemeral (per-query, reflects current code) |
 
@@ -545,7 +545,7 @@ These tools complement each other. Use them together while prioritizing token-ef
 
 ```
 1. START OF SESSION
-   basic-memory: search("feature area")
+   memori: recall("feature area")
    → Retrieve prior decisions, known gotchas, architectural constraints
 
 2. TOKEN-EFFICIENT CODEBASE READING
@@ -562,7 +562,7 @@ These tools complement each other. Use them together while prioritizing token-ef
    Write code using the narrowed context
 
 5. END OF SESSION
-   basic-memory: write_note(...)
+   memori: advanced_augmentation(...)
    → Save durable decisions, non-obvious findings, environment gotchas
    → Skip ephemeral brainstorming; trust code/tests for obvious facts
 ```
@@ -570,8 +570,8 @@ These tools complement each other. Use them together while prioritizing token-ef
 ### Pattern: Investigate Before Changing
 
 ```
-# Step 1 — Recall prior context (Basic Memory)
-basic-memory search("repairRequest") → "Tách file vì vượt 350 lines (2026-04-01)"
+# Step 1 — Recall prior context (Memori MCP)
+memori recall("repairRequest") → "Tách file vì vượt 350 lines (2026-04-01)"
 
 # Step 2 — Read codebase cheaply first (Code Review Graph)
 code-review-graph get_minimal_context_tool("repair request sheet flow")
@@ -581,7 +581,7 @@ code-review-graph query_graph_tool("repair request sheet", detail_level="minimal
 gitnexus impact("RepairRequestSheet") → d=1: 3 callers, d=2: 8 indirect
 
 # Step 4 — Implement with narrowed context
-# Step 5 — Save new findings back to Basic Memory
+# Step 5 — Save new findings back to Memori MCP
 ```
 
 ### When to Write a Memory Note

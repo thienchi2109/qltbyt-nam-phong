@@ -123,20 +123,20 @@ IMPORTANT: Use `edit_file` over `str_replace` or full file writes. It works with
 - For any task that creates or modifies SQL migration files/DDL for Supabase/Postgres, you MUST invoke the `supabase-best-practices` skill first (or `supabase-postgres-best-practices` if that is the available skill name in the session).
 - If a required skill is unavailable in the current session, state that explicitly and proceed with the closest available fallback guidance.
 
-## Basic Memory Session Convention
+## Memori MCP Session Convention
 
-Basic Memory is the durable memory layer for this repo. It is not a complete or automatic transcript of every Codex/Claude chat.
+Memori MCP is the durable memory layer for this repo. It is not a complete or automatic transcript of every Codex/Claude chat.
 
-- Treat Basic Memory as curated project memory, not raw chat history.
+- Treat Memori MCP as curated project memory, not raw chat history.
 - Write a memory note when a session produces a durable decision, a non-obvious debugging finding, a workflow rule, a deploy/recovery step, or a repo-specific gotcha that should survive the current context window.
 - Do not write a memory note for temporary brainstorming, duplicate status chatter, or information already captured clearly in code, tests, migrations, `progress.txt`, PRs, or existing docs.
-- At session end, prefer one concise summary note instead of many fragmented notes.
+- At session end, prefer one concise summary via Memori MCP instead of many fragmented notes.
 - If a note contains assumptions, mark them explicitly as assumptions.
 - If a previous memory might now be stale, create/update a note that says what changed and on what date instead of silently contradicting it.
 
 ### Memory Note Template
 
-Use this structure when saving a session note to Basic Memory:
+Use this structure when saving durable session context to Memori MCP:
 
 ```md
 # [Short title]
@@ -161,7 +161,7 @@ Use this structure when saving a session note to Basic Memory:
 
 ### Retrieval Rule
 
-At the start of any non-trivial task, check whether relevant Basic Memory notes exist before re-deriving prior decisions. If memory and code disagree, trust the current code and update memory.
+At the start of any non-trivial task, use Memori MCP `recall` to check for relevant notes before re-deriving prior decisions. If memory and code disagree, trust the current code and update memory.
 
 
 ## ⚠️ Role Normalization (`admin` = `global`)
@@ -273,13 +273,13 @@ When in doubt, compare against the nearest existing detail/list RPC for the same
 
 After applying any migration, run `get_advisors(security)` via Supabase MCP to catch regressions.
 
-## 🔗 Combined Workflow: Code Review Graph + GitNexus + Basic Memory
+## 🔗 Combined Workflow: Code Review Graph + GitNexus + Memori MCP
 
 These tools complement each other. Use them together while prioritizing token-efficient codebase reading:
 
 | Tool | Answers | Persistence |
 |------|---------|-------------|
-| **Basic Memory** | WHY a decision was made, historical findings, gotchas | Persistent (survives across sessions) |
+| **Memori MCP** | WHY a decision was made, historical findings, gotchas | Persistent (survives across sessions) |
 | **Code Review Graph** | WHERE to start reading, changed-file impact, compact codebase/review context | Ephemeral (per-query, reflects current code) |
 | **GitNexus** | WHAT calls what, precise symbol/process relationships, required impact blast radius | Ephemeral (per-query, reflects current code) |
 
@@ -287,7 +287,7 @@ These tools complement each other. Use them together while prioritizing token-ef
 
 ```
 1. START OF SESSION
-   basic-memory: search("feature area")
+   memori: recall("feature area")
    → Retrieve prior decisions, known gotchas, architectural constraints
 
 2. TOKEN-EFFICIENT CODEBASE READING
@@ -304,7 +304,7 @@ These tools complement each other. Use them together while prioritizing token-ef
    Write code using the narrowed context
 
 5. END OF SESSION
-   basic-memory: write_note(...)
+   memori: advanced_augmentation(...)
    → Save durable decisions, non-obvious findings, environment gotchas
    → Skip ephemeral brainstorming; trust code/tests for obvious facts
 ```
@@ -312,8 +312,8 @@ These tools complement each other. Use them together while prioritizing token-ef
 ### Pattern: Investigate Before Changing
 
 ```
-# Step 1 — Recall prior context (Basic Memory)
-basic-memory search("repairRequest") → "Tách file vì vượt 350 lines (2026-04-01)"
+# Step 1 — Recall prior context (Memori MCP)
+memori recall("repairRequest") → "Tách file vì vượt 350 lines (2026-04-01)"
 
 # Step 2 — Read codebase cheaply first (Code Review Graph)
 code-review-graph get_minimal_context_tool("repair request sheet flow")
@@ -323,7 +323,7 @@ code-review-graph query_graph_tool("repair request sheet", detail_level="minimal
 gitnexus impact("RepairRequestSheet") → d=1: 3 callers, d=2: 8 indirect
 
 # Step 4 — Implement with narrowed context
-# Step 5 — Save new findings back to Basic Memory
+# Step 5 — Save new findings back to Memori MCP
 ```
 
 ### When to Write a Memory Note
