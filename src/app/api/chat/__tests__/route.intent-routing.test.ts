@@ -65,6 +65,22 @@ function buildMessages(text: string) {
   ]
 }
 
+const FULL_PANEL_TOOLS = [
+  'equipmentLookup',
+  'maintenanceSummary',
+  'maintenancePlanLookup',
+  'repairSummary',
+  'usageHistory',
+  'attachmentLookup',
+  'deviceQuotaLookup',
+  'quotaComplianceSummary',
+  'query_database',
+  'generateTroubleshootingDraft',
+  'generateRepairRequestDraft',
+  'categorySuggestion',
+  'departmentList',
+]
+
 describe('/api/chat intent routing + clarification guard', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -149,6 +165,29 @@ describe('/api/chat intent routing + clarification guard', () => {
     expect(text).toContain('định mức')
   })
 
+  it('preserves explicit repair-draft starts when quota words are also present', async () => {
+    const res = await POST(
+      buildRequest({
+        selectedFacilityId: 17,
+        messages: buildMessages(
+          'Tạo phiếu yêu cầu sửa chữa thiết bị máy thở ABC đang vượt định mức',
+        ),
+        requestedTools: FULL_PANEL_TOOLS,
+      }) as never,
+    )
+
+    expect(res.status).toBe(200)
+    expect(streamTextMock).toHaveBeenCalledOnce()
+
+    const streamArgs = streamTextMock.mock.calls[0]?.[0] as {
+      tools?: Record<string, unknown>
+    }
+    expect(streamArgs.tools).toHaveProperty('equipmentLookup')
+    expect(streamArgs.tools).toHaveProperty('repairSummary')
+    expect(streamArgs.tools).not.toHaveProperty('query_database')
+    expect(streamArgs.tools).not.toHaveProperty('generateRepairRequestDraft')
+  })
+
   it('asks a clarification question before calling tools for ambiguous repair intents', async () => {
     const res = await POST(
       buildRequest({
@@ -207,17 +246,7 @@ describe('/api/chat intent routing + clarification guard', () => {
       buildRequest({
         selectedFacilityId: 17,
         messages: buildMessages('Có bao nhiêu phiếu sửa chữa đang chờ xử lý?'),
-        requestedTools: [
-          'equipmentLookup',
-          'maintenanceSummary',
-          'maintenancePlanLookup',
-          'repairSummary',
-          'usageHistory',
-          'attachmentLookup',
-          'deviceQuotaLookup',
-          'quotaComplianceSummary',
-          'query_database',
-        ],
+        requestedTools: FULL_PANEL_TOOLS,
       }) as never,
     )
 

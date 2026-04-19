@@ -24,6 +24,13 @@ const ALL_CHAT_TOOLS = [
   'quotaComplianceSummary',
   'query_database',
 ]
+const FULL_PANEL_TOOLS = [
+  ...ALL_CHAT_TOOLS,
+  'generateTroubleshootingDraft',
+  'generateRepairRequestDraft',
+  'categorySuggestion',
+  'departmentList',
+]
 
 describe('routeChatIntent', () => {
   describe('Issue #273 — catalog-backed curated routing metadata', () => {
@@ -78,6 +85,24 @@ describe('routeChatIntent', () => {
       })
 
       expect(result.kind).toBe('clarify')
+    })
+
+    it('preserves explicit repair-draft starts even when quota words are present', () => {
+      const result = routeChatIntent({
+        messages: [
+          makeUserMessage(
+            'Tạo phiếu yêu cầu sửa chữa thiết bị máy thở ABC đang vượt định mức',
+          ),
+        ],
+        requestedTools: [...FULL_PANEL_TOOLS],
+      })
+
+      expect(result).toEqual({
+        kind: 'proceed',
+        requestedTools: FULL_PANEL_TOOLS.filter(
+          toolName => toolName !== 'query_database',
+        ),
+      })
     })
 
     it('keeps clear repair-summary prompts on curated routing and out of SQL fallback', () => {

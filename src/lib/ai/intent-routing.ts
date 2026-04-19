@@ -54,8 +54,13 @@ export function routeChatIntent({
     }
   }
 
+  const repairDecision = classifyRepairIntent(latestUserText, nonSqlRequestedTools)
+  if (hasRepairRequestDraftStartIntent(latestUserText) && repairDecision) {
+    return repairDecision
+  }
+
   const curatedDecisions = [
-    buildCuratedDecision(classifyRepairIntent(latestUserText, nonSqlRequestedTools)),
+    buildCuratedDecision(repairDecision),
     buildCuratedDecision(classifyQuotaIntent(latestUserText, nonSqlRequestedTools)),
     buildCuratedDecision(
       classifyEquipmentLookupIntent(latestUserText, nonSqlRequestedTools),
