@@ -583,6 +583,53 @@ Write a note when you discover or decide something that a **future agent cannot 
 - ✅ Workflow rule change
 - ❌ Anything already obvious from code/tests/migrations/PRs
 
+## GitNexus + Code Review Graph Token Strategy
+
+Use GitNexus and Code Review Graph with distinct responsibilities to avoid duplicate token spend.
+
+### Tool Responsibilities
+
+| Task | Use first | Why |
+|------|-----------|-----|
+| Find where an unfamiliar feature is handled | GitNexus `query` | Process/symbol discovery with small result sets |
+| Plan edits to a specific symbol | GitNexus `impact` | Precise caller/importer/process blast radius |
+| Understand one selected symbol | GitNexus `context` | Symbol-level callers, callees, and process participation |
+| Review an existing diff or PR | Code Review Graph `get_minimal_context_tool` | Compact change-aware context |
+| Assess changed-file blast radius | Code Review Graph `detect_changes_tool` | Diff-to-impact mapping without broad source dumps |
+| Investigate only the riskiest changed symbols | GitNexus `impact` / `context` | Focused follow-up after Code Review Graph triage |
+
+### Token-Saving Defaults
+
+GitNexus:
+- `query`: use small limits (`limit=3`, `max_symbols=5`) and `include_content=false`.
+- `context`: start with `include_content=false`; request source only when direct file reads are insufficient.
+- `impact`: prefer `maxDepth=2` and `includeTests=false` unless test blast radius is explicitly needed.
+- `cypher`: use only when `query`, `context`, and `impact` cannot answer the structural question.
+
+Code Review Graph:
+- Start review/diff tasks with `get_minimal_context_tool`.
+- Use `detect_changes_tool` with `detail_level="minimal"` and `include_source=false` by default.
+- Use `get_review_context_tool` with `detail_level="minimal"` and `include_source=false` before escalating to source snippets.
+- Use `query_graph_tool` / `semantic_search_nodes_tool` with `detail_level="minimal"` and small limits.
+
+### Combined Workflow
+
+For unfamiliar feature discovery or symbol-level change planning:
+
+1. Start with GitNexus `query` using small limits and `include_content=false`.
+2. Use GitNexus `context` only for the selected symbol.
+3. Run GitNexus `impact` before non-trivial edits.
+4. Read source files directly after narrowing the target files/symbols.
+
+For existing diffs, PR review, or final handoff:
+
+1. Start with Code Review Graph `get_minimal_context_tool`.
+2. Use Code Review Graph `detect_changes_tool` with `detail_level="minimal"` and `include_source=false`.
+3. Use GitNexus `impact` only for the highest-risk changed symbols.
+4. Request MCP source snippets only when direct file reads are insufficient.
+
+Avoid calling both MCPs for the same broad discovery question. Use Code Review Graph for change-aware review context; use GitNexus for precise symbol/process/caller impact.
+
 <!-- gitnexus:start -->
 # GitNexus — Code Intelligence (MCP + CLI)
 
