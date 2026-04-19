@@ -11,7 +11,7 @@ A comprehensive web application for managing medical equipment, built with moder
 - **Authentication**: NextAuth v4 with JWT strategy
 - **UI Framework**: Radix UI + TailwindCSS
 - **State Management**: TanStack Query (React Query) v5.81.5
-- **Deployment**: Supports Vercel and Cloudflare Pages
+- **Deployment**: Vercel
 
 ## 📋 Core Features
 
@@ -118,16 +118,14 @@ npm run dev-https    # Start dev server with HTTPS
 
 # Building
 npm run build        # Standard Next.js build
-npm run build:vercel # Build for Vercel
-npm run build:cloudflare # Build for Cloudflare Pages
+npm run vercel:build # Build with Vercel CLI
 
 # Production
 npm start            # Start production server
-npm run start:cloudflare # Start on Cloudflare
 
 # Deployment
-npm run deploy:cloudflare # Deploy to Cloudflare Pages
-npm run deploy:dual       # Deploy to both platforms
+npm run vercel:pull  # Pull Vercel project settings
+npm run vercel:build # Validate Vercel output locally
 
 # Development Tools
 npm run lint         # ESLint
@@ -190,15 +188,10 @@ public/
 
 ## 🌐 Deployment
 
-### Vercel (Recommended)
+### Vercel
 1. Connect repository to Vercel
 2. Configure environment variables
 3. Deploy automatically on push
-
-### Cloudflare Pages
-1. Build with `npm run build:cloudflare`
-2. Deploy with `npm run deploy:cloudflare`
-3. Configure environment variables in Cloudflare dashboard
 
 ## 📱 PWA Support
 

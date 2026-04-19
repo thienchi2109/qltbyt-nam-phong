@@ -269,7 +269,7 @@ Use CLI for schema operations, MCP for SQL execution.
 
 **Stack:** Next.js 15 (App Router) • React 18 • TypeScript (strict) • Supabase (PostgreSQL) • NextAuth v4 • TanStack Query v5 • Tailwind + Radix UI
 
-**Deploy:** Vercel (primary) • Cloudflare Pages (edge)
+**Deploy:** Vercel
 
 ## Commands
 

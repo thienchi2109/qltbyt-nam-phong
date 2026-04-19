@@ -19,16 +19,7 @@ const nextConfig: NextConfig = {
   eslint: {
     ignoreDuringBuilds: true,
   },
-  // Cloudflare Workers compatibility
-  experimental: {
-    // Enable experimental features for better Cloudflare Workers support
-  },
-  // Output configuration for dual deployment
-  output: process.env.CLOUDFLARE_WORKERS ? 'export' : undefined,
-  trailingSlash: process.env.CLOUDFLARE_WORKERS ? true : false,
-  // Image configuration with Cloudflare Workers compatibility
   images: {
-    unoptimized: process.env.CLOUDFLARE_WORKERS ? true : false,
     remotePatterns: [
       {
         protocol: 'https',

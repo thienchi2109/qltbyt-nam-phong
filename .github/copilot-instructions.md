@@ -112,7 +112,7 @@ Global Rules for Code Modification Agent
 - **USE** `@tanstack/react-query` for all data fetching
 - **MEMOIZE** expensive computations and heavy charts
 - **IMPLEMENT** loading states for all async operations
-- **DEFER** image loading (unoptimized for Cloudflare Workers)
+- **DEFER** image loading where possible and document exceptions
 - **CACHE** tenant lists and frequently accessed data
 
 ## UI/UX Consistency
@@ -137,11 +137,11 @@ Global Rules for Code Modification Agent
 
 ## Deployment & Build Rules
 
-### Dual Deployment Compatibility
-- **CHECK** feature compatibility with both Vercel and Cloudflare Workers
-- **ADD** `export const runtime = 'nodejs'` when using Node-specific APIs
-- **AVOID** Node.js-only packages when possible
-- **TEST** with `CLOUDFLARE_WORKERS` flag when modifying build logic
+### Vercel Deployment Compatibility
+- **CHECK** feature compatibility with the Vercel production build
+- **ADD** `export const runtime = 'nodejs'` when using Node-specific APIs in route handlers
+- **AVOID** packages that cannot run in the selected Next.js runtime
+- **TEST** with `npm run build` or `npm run vercel:build` when modifying build logic
 
 ### Environment Variables
 - **NEVER** commit secrets to repository
