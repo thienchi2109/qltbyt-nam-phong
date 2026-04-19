@@ -12,6 +12,17 @@ function makeUserMessage(text: string): UIMessage {
 
 const ALL_REPAIR_TOOLS = ['equipmentLookup', 'repairSummary']
 const ALL_QUOTA_TOOLS = ['deviceQuotaLookup', 'quotaComplianceSummary']
+const ALL_CHAT_TOOLS = [
+  'equipmentLookup',
+  'maintenanceSummary',
+  'maintenancePlanLookup',
+  'repairSummary',
+  'usageHistory',
+  'attachmentLookup',
+  'deviceQuotaLookup',
+  'quotaComplianceSummary',
+  'query_database',
+]
 
 describe('routeChatIntent', () => {
   // ──────────────────────────────────────────────────────
@@ -196,6 +207,87 @@ describe('routeChatIntent', () => {
       expect(result).toEqual({
         kind: 'proceed',
         requestedTools: [...ALL_REPAIR_TOOLS],
+      })
+    })
+  })
+
+  describe('Issue #272 — query_database curated-first fallback', () => {
+    it('routes narrow reporting prompts to query_database when curated tools do not match', () => {
+      const result = routeChatIntent({
+        messages: [makeUserMessage('Báo cáo tổng hợp số lượng thiết bị theo trạng thái của đơn vị hiện tại')],
+        requestedTools: [...ALL_CHAT_TOOLS],
+      })
+
+      expect(result).toEqual({
+        kind: 'proceed',
+        requestedTools: ['query_database'],
+      })
+    })
+
+    it('keeps curated lookup prompts off the SQL fallback path', () => {
+      const result = routeChatIntent({
+        messages: [makeUserMessage('Tra cứu thông tin thiết bị monitor CMS8000')],
+        requestedTools: [...ALL_CHAT_TOOLS],
+      })
+
+      expect(result).toEqual({
+        kind: 'proceed',
+        requestedTools: ['equipmentLookup'],
+      })
+    })
+
+    it('strips query_database from repair-summary routing decisions', () => {
+      const result = routeChatIntent({
+        messages: [makeUserMessage('Có bao nhiêu phiếu sửa chữa đang chờ xử lý?')],
+        requestedTools: [...ALL_CHAT_TOOLS],
+      })
+
+      expect(result).toEqual({
+        kind: 'proceed',
+        requestedTools: ALL_CHAT_TOOLS.filter(
+          toolName =>
+            toolName !== 'equipmentLookup' && toolName !== 'query_database',
+        ),
+      })
+    })
+
+    it('routes detailed reporting prompts with chi tiết to query_database when they are not specific-item lookups', () => {
+      const result = routeChatIntent({
+        messages: [
+          makeUserMessage(
+            'Báo cáo chi tiết tình trạng thiết bị theo khoa trong đơn vị hiện tại',
+          ),
+        ],
+        requestedTools: [...ALL_CHAT_TOOLS],
+      })
+
+      expect(result).toEqual({
+        kind: 'proceed',
+        requestedTools: ['query_database'],
+      })
+    })
+
+    it('holds query_database out of generic prompts when the request is not a reporting fallback', () => {
+      const result = routeChatIntent({
+        messages: [makeUserMessage('Xin chào, bạn giúp được gì?')],
+        requestedTools: [...ALL_CHAT_TOOLS],
+      })
+
+      expect(result).toEqual({
+        kind: 'proceed',
+        requestedTools: ALL_CHAT_TOOLS.filter(toolName => toolName !== 'query_database'),
+      })
+    })
+
+    it('keeps query_database available when it is the only explicitly requested tool', () => {
+      const result = routeChatIntent({
+        messages: [makeUserMessage('Xin chào')],
+        requestedTools: ['query_database'],
+      })
+
+      expect(result).toEqual({
+        kind: 'proceed',
+        requestedTools: ['query_database'],
       })
     })
   })

@@ -1,5 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
+vi.mock('server-only', () => ({}))
+
 const getServerSessionMock = vi.fn()
 const streamTextMock = vi.fn()
 const stepCountIsMock = vi.fn()
@@ -85,18 +87,21 @@ describe('/api/chat tools allowlist policy', () => {
     expect(streamTextMock).not.toHaveBeenCalled()
   })
 
-  it('blocks query_database before rollout', async () => {
+  it('allows query_database when it is explicitly requested for the rollout path', async () => {
     const res = await POST(
       buildRequest({
         messages: VALID_MESSAGES,
         requestedTools: ['query_database'],
       }) as never,
     )
-    const text = await res.text()
 
-    expect(res.status).toBe(400)
-    expect(text).toBe('Unknown tool requested: query_database')
-    expect(streamTextMock).not.toHaveBeenCalled()
+    expect(res.status).toBe(200)
+    expect(streamTextMock).toHaveBeenCalledOnce()
+
+    const streamArgs = streamTextMock.mock.calls[0]?.[0] as {
+      tools?: Record<string, unknown>
+    }
+    expect(streamArgs.tools).toHaveProperty('query_database')
   })
 
   it('blocks queryDatabase before rollout', async () => {

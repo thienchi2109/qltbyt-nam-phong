@@ -1,4 +1,5 @@
 import type { UIMessage } from 'ai'
+import { ASSISTANT_SQL_TOOL_NAME } from './sql/constants'
 import { getLatestUserText } from './tools/equipment-lookup-identifiers'
 import { hasRepairRequestDraftStartIntent } from './draft/repair-request-draft-session'
 
@@ -33,27 +34,45 @@ export function routeChatIntent({
   messages: UIMessage[]
   requestedTools: string[]
 }): ChatIntentRoutingResult {
+  const nonSqlRequestedTools = holdBackQueryDatabase(requestedTools)
   const latestUserText = getLatestUserText(messages)
   if (!latestUserText) {
-    return { kind: 'proceed', requestedTools }
+    return {
+      kind: 'proceed',
+      requestedTools: nonSqlRequestedTools,
+    }
   }
 
-  const repairDecision = classifyRepairIntent(latestUserText, requestedTools)
+  const repairDecision = classifyRepairIntent(latestUserText, nonSqlRequestedTools)
   if (repairDecision) {
     return repairDecision
   }
 
-  const quotaDecision = classifyQuotaIntent(latestUserText, requestedTools)
+  const quotaDecision = classifyQuotaIntent(latestUserText, nonSqlRequestedTools)
   if (quotaDecision) {
     return quotaDecision
   }
 
-  const equipmentLookupDecision = classifyEquipmentLookupIntent(latestUserText, requestedTools)
+  const equipmentLookupDecision = classifyEquipmentLookupIntent(
+    latestUserText,
+    nonSqlRequestedTools,
+  )
   if (equipmentLookupDecision) {
     return equipmentLookupDecision
   }
 
-  return { kind: 'proceed', requestedTools }
+  const sqlReportingDecision = classifyAssistantSqlReportingIntent(
+    latestUserText,
+    requestedTools,
+  )
+  if (sqlReportingDecision) {
+    return sqlReportingDecision
+  }
+
+  return {
+    kind: 'proceed',
+    requestedTools: holdBackQueryDatabase(requestedTools),
+  }
 }
 
 function classifyRepairIntent(
@@ -185,6 +204,45 @@ function classifyEquipmentLookupIntent(
   }
 }
 
+function classifyAssistantSqlReportingIntent(
+  text: string,
+  requestedTools: string[],
+): ChatIntentRoutingResult | null {
+  if (
+    !requestedTools.includes(ASSISTANT_SQL_TOOL_NAME) ||
+    requestedTools.every(toolName => toolName === ASSISTANT_SQL_TOOL_NAME)
+  ) {
+    return null
+  }
+
+  if (hasEquipmentIdentifier(text)) {
+    return null
+  }
+
+  const normalized = normalizeIntentText(text)
+  const mentionsReportingIntent =
+    /\b(bao cao|thong ke|tong hop|phan bo|top|xep hang|xu huong|ty le)\b/.test(
+      normalized,
+    )
+  const mentionsReportingSubject =
+    /\b(thiet bi|bao tri|hieu chuan|kiem dinh|sua chua|su dung|dinh muc|trang thai|don vi|co so|khoa|phong)\b/.test(
+      normalized,
+    )
+  const mentionsSpecificItem =
+    /\b(ma thiet bi|serial|model|thiet bi nay|may nay|mot thiet bi cu the)\b/.test(
+      normalized,
+    )
+
+  if (!mentionsReportingIntent || !mentionsReportingSubject || mentionsSpecificItem) {
+    return null
+  }
+
+  return {
+    kind: 'proceed',
+    requestedTools: [ASSISTANT_SQL_TOOL_NAME],
+  }
+}
+
 function normalizeIntentText(text: string): string {
   return text
     .normalize('NFD')
@@ -262,6 +320,10 @@ function shouldNarrowToEquipmentLookup(
   const mentionsUsage = /\b(lich su su dung|su dung)\b/.test(normalizedText)
   const mentionsAttachment = /\b(tai lieu|dinh kem|file|huong dan)\b/.test(normalizedText)
   const mentionsQuota = /\b(dinh muc|quota)\b/.test(normalizedText)
+  const mentionsReporting =
+    /\b(bao cao|thong ke|tong hop|phan bo|top|xep hang|xu huong|ty le)\b/.test(
+      normalizedText,
+    )
 
   return (
     mentionsLookupIntent &&
@@ -269,7 +331,8 @@ function shouldNarrowToEquipmentLookup(
     !mentionsRepair &&
     !mentionsUsage &&
     !mentionsAttachment &&
-    !mentionsQuota
+    !mentionsQuota &&
+    !mentionsReporting
   )
 }
 
@@ -279,4 +342,15 @@ function removeTool(requestedTools: string[], toolName: string): string[] {
 
 function keepOnlyTool(requestedTools: string[], toolName: string): string[] {
   return requestedTools.filter(requestedTool => requestedTool === toolName)
+}
+
+function holdBackQueryDatabase(requestedTools: string[]): string[] {
+  if (
+    !requestedTools.includes(ASSISTANT_SQL_TOOL_NAME) ||
+    requestedTools.every(toolName => toolName === ASSISTANT_SQL_TOOL_NAME)
+  ) {
+    return requestedTools
+  }
+
+  return removeTool(requestedTools, ASSISTANT_SQL_TOOL_NAME)
 }

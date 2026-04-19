@@ -1,19 +1,21 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
+
+vi.mock('server-only', () => ({}))
 
 import { getAllowedToolNamesForTest, validateRequestedTools } from '../registry'
 
 describe('registry allowlist contract', () => {
-  it('does not expose query_database in the current assistant allowlist', () => {
+  it('exposes query_database in the assistant allowlist', () => {
     const allowedToolNames = getAllowedToolNamesForTest()
 
-    expect(allowedToolNames).not.toContain('query_database')
+    expect(allowedToolNames).toContain('query_database')
     expect(allowedToolNames).not.toContain('queryDatabase')
   })
 
-  it('rejects query_database before runtime rollout exists', () => {
+  it('accepts query_database for the runtime rollout', () => {
     expect(validateRequestedTools(['query_database'])).toEqual({
-      ok: false,
-      message: 'Unknown tool requested: query_database',
+      ok: true,
+      requestedTools: ['query_database'],
     })
   })
 

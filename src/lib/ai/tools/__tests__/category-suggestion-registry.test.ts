@@ -3,6 +3,8 @@ import path from 'node:path'
 
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
+vi.mock('server-only', () => ({}))
+
 const executeRpcToolMock = vi.fn()
 
 vi.mock('@/lib/ai/tools/rpc-tool-executor', () => ({
