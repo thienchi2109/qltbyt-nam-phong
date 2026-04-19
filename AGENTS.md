@@ -273,14 +273,15 @@ When in doubt, compare against the nearest existing detail/list RPC for the same
 
 After applying any migration, run `get_advisors(security)` via Supabase MCP to catch regressions.
 
-## 🔗 Combined Workflow: GitNexus + Basic Memory
+## 🔗 Combined Workflow: Code Review Graph + GitNexus + Basic Memory
 
-These two MCP servers complement each other. Use them together for maximum effectiveness:
+These tools complement each other. Use them together while prioritizing token-efficient codebase reading:
 
-| MCP Server | Answers | Persistence |
-|------------|---------|-------------|
-| **GitNexus** | WHERE is the code, WHAT calls what, impact blast radius | Ephemeral (per-query, reflects current code) |
+| Tool | Answers | Persistence |
+|------|---------|-------------|
 | **Basic Memory** | WHY a decision was made, historical findings, gotchas | Persistent (survives across sessions) |
+| **Code Review Graph** | WHERE to start reading, changed-file impact, compact codebase/review context | Ephemeral (per-query, reflects current code) |
+| **GitNexus** | WHAT calls what, precise symbol/process relationships, required impact blast radius | Ephemeral (per-query, reflects current code) |
 
 ### Standard Session Loop
 
@@ -289,15 +290,20 @@ These two MCP servers complement each other. Use them together for maximum effec
    basic-memory: search("feature area")
    → Retrieve prior decisions, known gotchas, architectural constraints
 
-2. DISCOVERY / IMPACT ANALYSIS
-   gitnexus: query("symbol or feature")
+2. TOKEN-EFFICIENT CODEBASE READING
+   code-review-graph: get_minimal_context_tool(task)
+   code-review-graph: query_graph_tool(..., detail_level="minimal")
+   → Compact first-pass map of relevant files/symbols
+
+3. PRECISE SYMBOL / IMPACT ANALYSIS
+   gitnexus: context("selected symbol")
    gitnexus: impact("target symbol")
-   → Real-time code graph, blast radius, direct callers
+   → Exact callers, callees, processes, and required blast radius before edits
 
-3. IMPLEMENT
-   Write code using both contexts combined
+4. IMPLEMENT
+   Write code using the narrowed context
 
-4. END OF SESSION
+5. END OF SESSION
    basic-memory: write_note(...)
    → Save durable decisions, non-obvious findings, environment gotchas
    → Skip ephemeral brainstorming; trust code/tests for obvious facts
@@ -309,11 +315,15 @@ These two MCP servers complement each other. Use them together for maximum effec
 # Step 1 — Recall prior context (Basic Memory)
 basic-memory search("repairRequest") → "Tách file vì vượt 350 lines (2026-04-01)"
 
-# Step 2 — Find current impact (GitNexus)
+# Step 2 — Read codebase cheaply first (Code Review Graph)
+code-review-graph get_minimal_context_tool("repair request sheet flow")
+code-review-graph query_graph_tool("repair request sheet", detail_level="minimal")
+
+# Step 3 — Find precise current impact only after narrowing (GitNexus)
 gitnexus impact("RepairRequestSheet") → d=1: 3 callers, d=2: 8 indirect
 
-# Step 3 — Implement with full context
-# Step 4 — Save new findings back to Basic Memory
+# Step 4 — Implement with narrowed context
+# Step 5 — Save new findings back to Basic Memory
 ```
 
 ### When to Write a Memory Note
@@ -327,41 +337,45 @@ Write a note when you discover or decide something that a **future agent cannot 
 
 ## GitNexus + Code Review Graph Token Strategy
 
-Use GitNexus and Code Review Graph with distinct responsibilities to avoid duplicate token spend.
+Primary goal: minimize tokens when reading and understanding the codebase. Use Code Review Graph as the first-pass codebase reader, then use GitNexus only for precise symbol/process relationships and required impact analysis before edits.
 
 ### Tool Responsibilities
 
 | Task | Use first | Why |
 |------|-----------|-----|
-| Find where an unfamiliar feature is handled | GitNexus `query` | Process/symbol discovery with small result sets |
-| Plan edits to a specific symbol | GitNexus `impact` | Precise caller/importer/process blast radius |
-| Understand one selected symbol | GitNexus `context` | Symbol-level callers, callees, and process participation |
+| Broad codebase reading or unfamiliar feature discovery | Code Review Graph `get_minimal_context_tool` / `query_graph_tool` | Cheapest first-pass map of relevant files and areas |
 | Review an existing diff or PR | Code Review Graph `get_minimal_context_tool` | Compact change-aware context |
 | Assess changed-file blast radius | Code Review Graph `detect_changes_tool` | Diff-to-impact mapping without broad source dumps |
+| Need exact callers, callees, or process participation for one symbol | GitNexus `context` | Precise symbol-level relationship graph |
+| Plan edits to a narrowed symbol | GitNexus `impact` | Required caller/importer/process blast radius before non-trivial edits |
 | Investigate only the riskiest changed symbols | GitNexus `impact` / `context` | Focused follow-up after Code Review Graph triage |
 
 ### Token-Saving Defaults
 
+Code Review Graph:
+- Use Code Review Graph first for broad codebase reading, architecture discovery, unfamiliar features, and existing diffs.
+- Keep outputs minimal: `detail_level="minimal"`, `include_source=false`, and small limits unless the narrowed context is insufficient.
+- Use `query_graph_tool` / `semantic_search_nodes_tool` with `detail_level="minimal"` and `limit<=5` for codebase reading.
+- Start review/diff tasks with `get_minimal_context_tool`.
+- Use `detect_changes_tool` with `detail_level="minimal"` and `include_source=false` by default.
+- Use `get_review_context_tool` with `detail_level="minimal"` and `include_source=false` before escalating to source snippets.
+
 GitNexus:
-- `query`: use small limits (`limit=3`, `max_symbols=5`) and `include_content=false`.
+- Use GitNexus after Code Review Graph has narrowed the area, or when exact symbol/process relationships are required.
+- `query`: use small limits (`limit=2-3`, `max_symbols=3-5`) and `include_content=false`.
 - `context`: start with `include_content=false`; request source only when direct file reads are insufficient.
 - `impact`: prefer `maxDepth=2` and `includeTests=false` unless test blast radius is explicitly needed.
 - `cypher`: use only when `query`, `context`, and `impact` cannot answer the structural question.
 
-Code Review Graph:
-- Start review/diff tasks with `get_minimal_context_tool`.
-- Use `detect_changes_tool` with `detail_level="minimal"` and `include_source=false` by default.
-- Use `get_review_context_tool` with `detail_level="minimal"` and `include_source=false` before escalating to source snippets.
-- Use `query_graph_tool` / `semantic_search_nodes_tool` with `detail_level="minimal"` and small limits.
-
 ### Combined Workflow
 
-For unfamiliar feature discovery or symbol-level change planning:
+For broad codebase reading or unfamiliar feature discovery:
 
-1. Start with GitNexus `query` using small limits and `include_content=false`.
-2. Use GitNexus `context` only for the selected symbol.
-3. Run GitNexus `impact` before non-trivial edits.
-4. Read source files directly after narrowing the target files/symbols.
+1. Start with Code Review Graph `get_minimal_context_tool` for the task.
+2. Use Code Review Graph `query_graph_tool` or `semantic_search_nodes_tool` with minimal detail and small limits.
+3. Read source files directly only after Code Review Graph narrows the target files/symbols.
+4. Use GitNexus `query` / `context` only when exact process, caller, or callee relationships are needed.
+5. Run GitNexus `impact` before non-trivial edits to the selected symbol.
 
 For existing diffs, PR review, or final handoff:
 
@@ -370,16 +384,16 @@ For existing diffs, PR review, or final handoff:
 3. Use GitNexus `impact` only for the highest-risk changed symbols.
 4. Request MCP source snippets only when direct file reads are insufficient.
 
-Avoid calling both MCPs for the same broad discovery question. Use Code Review Graph for change-aware review context; use GitNexus for precise symbol/process/caller impact.
+Avoid calling both MCPs for the same broad discovery question. Do not use GitNexus as the default broad codebase reader; use Code Review Graph first to conserve tokens, then use GitNexus surgically for precise symbol/process/caller impact.
 
 <!-- gitnexus:start -->
 # GitNexus — Code Intelligence (MCP + CLI)
 
-This repo is indexed by GitNexus. In Codex, prefer the **GitNexus MCP server** for day-to-day discovery and impact analysis. Use the **CLI** for repository/index operations such as `analyze`, `status`, `list`, `clean`, `serve`, and `wiki`.
+This repo is indexed by GitNexus. In Codex, use Code Review Graph first for broad, token-efficient codebase reading, then use the **GitNexus MCP server** for precise symbol/process discovery and required impact analysis. Use the **CLI** for repository/index operations such as `analyze`, `status`, `list`, `clean`, `serve`, and `wiki`.
 
 ## Preferred Workflow
 
-- In Codex, use GitNexus **MCP** first for `query`, `context`, `impact`, `detect_changes`, `rename`, and `cypher`.
+- In Codex, use Code Review Graph first for broad codebase reading and diff triage; use GitNexus **MCP** for precise `query`, `context`, `impact`, `rename`, and `cypher` after the target is narrowed.
 - Use GitNexus **CLI** when you need to refresh or inspect the index itself.
 - If MCP is unavailable or appears stale/incomplete, fall back to CLI plus `rg` and direct code reads, and state that fallback explicitly.
 
