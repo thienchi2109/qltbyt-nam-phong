@@ -5,25 +5,15 @@ import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import { MainContentTransition } from "@/components/page-transition-wrapper"
 import {
-  Bell,
   HardHat,
   Home,
-  LineChart,
-  ListOrdered,
   LogOut,
   Package,
   QrCode,
-  Settings,
   User,
-  Users,
-  Wrench,
   Menu,
   Copyright,
   KeyRound,
-  ArrowLeftRight,
-  BarChart3,
-  Activity,
-  Calculator,
 } from "lucide-react"
 
 import {
@@ -51,10 +41,12 @@ import { RealtimeStatus } from "@/components/realtime-status"
 import { MobileFooterNav } from "@/components/mobile-footer-nav"
 import { HelpButton } from "@/components/onboarding/HelpButton"
 import { USER_ROLES } from "@/types/database"
-import { callRpc } from "@/lib/rpc-client"
 import { TenantSelectionProvider } from "@/contexts/TenantSelectionContext"
 import { EquipmentFilterProvider, clearAllEquipmentFilters } from "@/contexts/EquipmentFilterContext"
 import dynamic from "next/dynamic"
+import { AppSidebarNav } from "@/components/app-sidebar-nav"
+import { getAppNavigationItems } from "@/components/app-navigation"
+import { useAppNotificationCounts } from "@/hooks/useAppNotificationCounts"
 // Tenant switcher removed in favor of per-page tenant filters
 
 // Lazy-load assistant components (bundle-dynamic-imports)
@@ -77,31 +69,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const { data: session, status } = useSession()
   const user = session?.user as { role?: string; full_name?: string; username?: string; khoa_phong?: string } | undefined
   const branding = useTenantBranding()
-
-  // Header notification counts (tenant-scoped via RPC)
-  const [repairCount, setRepairCount] = React.useState<number>(0)
-  const [transferCount, setTransferCount] = React.useState<number>(0)
-
-  React.useEffect(() => {
-    let cancelled = false
-    const fetchSummary = async () => {
-      try {
-        if (!user) return
-        const summary = await callRpc<{ pending_repairs: number; pending_transfers: number }, { p_don_vi?: number | null }>({
-          fn: 'header_notifications_summary',
-          args: { p_don_vi: null },
-        })
-        if (!cancelled) {
-          setRepairCount(summary?.pending_repairs || 0)
-          setTransferCount(summary?.pending_transfers || 0)
-        }
-      } catch (err) {
-        console.error('Header notifications error:', err)
-      }
-    }
-    fetchSummary()
-    return () => { cancelled = true }
-  }, [user])
+  const { counts: notificationCounts } = useAppNotificationCounts({ enabled: Boolean(user) })
 
   // Tour attribute mapping for Driver.js sidebar navigation tour
   const tourAttributes: Record<string, string> = {
@@ -117,24 +85,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   // Dynamic nav items based on user role
   const navItems = React.useMemo(() => {
-    const baseItems = [
-      { href: "/dashboard", icon: Home, label: "Tổng quan" },
-      { href: "/equipment", icon: Package, label: "Thiết bị" },
-      { href: "/repair-requests", icon: Wrench, label: "Yêu cầu sửa chữa" },
-      { href: "/maintenance", icon: HardHat, label: "Bảo trì" },
-      { href: "/transfers", icon: ArrowLeftRight, label: "Luân chuyển" },
-      { href: "/device-quota", icon: Calculator, label: "Định mức" },
-      { href: "/reports", icon: BarChart3, label: "Báo cáo" },
-      { href: "/qr-scanner", icon: QrCode, label: "Quét QR" },
-    ]
-
-    // Add admin/global-only pages
-    if (isGlobalRole(user?.role)) {
-      baseItems.push({ href: "/users", icon: Users, label: "Người dùng" })
-      baseItems.push({ href: "/activity-logs", icon: Activity, label: "Nhật ký hoạt động" })
-    }
-
-    return baseItems
+    return getAppNavigationItems(user?.role)
   }, [user?.role])
 
   React.useEffect(() => {
@@ -183,30 +134,14 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 </Link>
               </div>
               <div className="flex-1 overflow-auto py-4">
-                <nav className={cn("grid items-start text-sm font-medium gap-1", isSidebarOpen ? "px-3" : "justify-items-center")}>
-                  {navItems.map(({ href, icon: Icon, label }) => (
-                    <Link
-                      key={label}
-                      href={href}
-                      className={cn(
-                        "flex items-center rounded-xl py-2.5 transition-all duration-200",
-                        pathname === href || pathname.startsWith(href)
-                          ? "bg-gradient-to-r from-primary to-primary/90 text-white font-semibold shadow-lg shadow-primary/25"
-                          : "text-slate-600 hover:bg-slate-50 hover:text-primary",
-                        isSidebarOpen ? "px-3 gap-3" : "h-11 w-11 justify-center"
-                      )}
-                      title={!isSidebarOpen ? label : ""}
-                      aria-label={label}
-                      data-tour={tourAttributes[href]}
-                    >
-                      <Icon className={cn(
-                        "h-5 w-5 transition-colors",
-                        pathname === href || pathname.startsWith(href) ? "text-white" : "text-slate-500"
-                      )} />
-                      {isSidebarOpen && <span>{label}</span>}
-                    </Link>
-                  ))}
-                </nav>
+                <AppSidebarNav
+                  items={navItems}
+                  pathname={pathname}
+                  isSidebarOpen={isSidebarOpen}
+                  notificationCounts={notificationCounts}
+                  tourAttributes={tourAttributes}
+                  className={cn("px-3", !isSidebarOpen && "justify-items-center px-0")}
+                />
               </div>
             </div>
           </div>
@@ -239,27 +174,15 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                       <span className="text-center heading-responsive-h3">QUẢN LÝ TBYT - CDC</span>
                     </Link>
                   </div>
-                  <nav className="grid gap-1 body-responsive font-medium p-3">
-                    {navItems.map(({ href, icon: Icon, label }) => (
-                      <Link
-                        key={label}
-                        href={href}
-                        className={cn(
-                          "flex items-center gap-3 rounded-xl mobile-interactive transition-all duration-200 touch-target px-3 py-2.5",
-                          pathname === href || pathname.startsWith(href)
-                            ? "bg-gradient-to-r from-primary to-primary/90 text-white font-semibold shadow-lg shadow-primary/25"
-                            : "text-slate-600 hover:bg-slate-50 hover:text-primary"
-                        )}
-                        onClick={() => setIsMobileSheetOpen(false)}
-                      >
-                        <Icon className={cn(
-                          "h-5 w-5",
-                          pathname === href || pathname.startsWith(href) ? "text-white" : "text-slate-500"
-                        )} />
-                        {label}
-                      </Link>
-                    ))}
-                  </nav>
+                  <AppSidebarNav
+                    items={navItems}
+                    pathname={pathname}
+                    isSidebarOpen
+                    notificationCounts={notificationCounts}
+                    variant="sheet"
+                    className="p-3"
+                    onNavigate={() => setIsMobileSheetOpen(false)}
+                  />
                 </SheetContent>
               </Sheet>
               <Button
@@ -301,8 +224,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
               {/* Notification Bell */}
               <NotificationBellDialog
-                repairCount={repairCount}
-                transferCount={transferCount}
+                repairCount={notificationCounts.repair}
+                transferCount={notificationCounts.transfer}
+                maintenanceCount={notificationCounts.maintenance}
               />
 
               <DropdownMenu>
@@ -351,7 +275,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             </main>
 
             {/* Mobile Footer Navigation - replaces offcanvas sidebar on mobile */}
-            <MobileFooterNav />
+            <MobileFooterNav notificationCounts={notificationCounts} />
 
             {/* AI Assistant FAB + Panel */}
             <AssistantTriggerButton
