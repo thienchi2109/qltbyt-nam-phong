@@ -178,7 +178,7 @@ describe("AppLayoutShell", () => {
     )
   })
 
-  it("clears equipment filters when the session becomes unauthenticated", () => {
+  it("redirects through signOut when the session becomes unauthenticated", () => {
     const sessionState = {
       data: { user: { id: "u1" } },
       status: "authenticated",
@@ -217,7 +217,56 @@ describe("AppLayoutShell", () => {
     )
 
     expect(mocks.clearAllEquipmentFilters).toHaveBeenCalledTimes(1)
-    expect(mocks.signOut).not.toHaveBeenCalled()
+    expect(mocks.signOut).toHaveBeenCalledWith({ callbackUrl: "/" })
+    expect(mocks.clearAllEquipmentFilters.mock.invocationCallOrder[0]).toBeLessThan(
+      mocks.signOut.mock.invocationCallOrder[0]
+    )
+  })
+
+  it("does not trigger signOut twice for the same session-exit path", async () => {
+    const user = userEvent.setup()
+
+    const sessionState = {
+      data: { user: { id: "u1" } },
+      status: "authenticated",
+    }
+    mocks.useSession.mockImplementation(() => sessionState)
+
+    const { rerender } = render(
+      <AppLayoutShell
+        user={{
+          role: "global",
+          full_name: "Test User",
+          username: "tester",
+          khoa_phong: "IT",
+        }}
+      >
+        <div>Child Content</div>
+      </AppLayoutShell>
+    )
+
+    await user.click(screen.getByRole("button", { name: /đăng xuất/i }))
+
+    expect(mocks.signOut).toHaveBeenCalledTimes(1)
+
+    sessionState.data = null
+    sessionState.status = "unauthenticated"
+
+    rerender(
+      <AppLayoutShell
+        user={{
+          role: "global",
+          full_name: "Test User",
+          username: "tester",
+          khoa_phong: "IT",
+        }}
+      >
+        <div>Child Content</div>
+      </AppLayoutShell>
+    )
+
+    expect(mocks.clearAllEquipmentFilters).toHaveBeenCalledTimes(1)
+    expect(mocks.signOut).toHaveBeenCalledTimes(1)
   })
 
   it("keeps a header skeleton while tenant branding is loading", () => {

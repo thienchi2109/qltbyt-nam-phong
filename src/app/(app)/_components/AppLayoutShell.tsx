@@ -61,6 +61,7 @@ type AppLayoutShellProps = {
 export function AppLayoutShell({ children, user }: AppLayoutShellProps) {
   const pathname = usePathname()
   const { status } = useSession()
+  const hasHandledSessionExitRef = React.useRef(false)
   const [isSidebarOpen, setSidebarOpen] = React.useState(true)
   const [isMobileSheetOpen, setIsMobileSheetOpen] = React.useState(false)
   const [isChangePasswordOpen, setIsChangePasswordOpen] = React.useState(false)
@@ -83,16 +84,30 @@ export function AppLayoutShell({ children, user }: AppLayoutShellProps) {
     return getAppNavigationItems(user.role)
   }, [user.role])
 
-  const handleSignOut = React.useCallback(() => {
+  const redirectToSignedOutHome = React.useCallback(() => {
+    if (hasHandledSessionExitRef.current) {
+      return
+    }
+
+    hasHandledSessionExitRef.current = true
     clearAllEquipmentFilters()
     void signOut({ callbackUrl: "/" })
   }, [])
 
+  const handleSignOut = React.useCallback(() => {
+    redirectToSignedOutHome()
+  }, [redirectToSignedOutHome])
+
   React.useEffect(() => {
     if (status === "unauthenticated") {
-      clearAllEquipmentFilters()
+      redirectToSignedOutHome()
+      return
     }
-  }, [status])
+
+    if (status === "authenticated") {
+      hasHandledSessionExitRef.current = false
+    }
+  }, [redirectToSignedOutHome, status])
 
   return (
     <TenantSelectionProvider>
