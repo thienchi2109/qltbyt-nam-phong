@@ -7,6 +7,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 const mocks = vi.hoisted(() => ({
   clearAllEquipmentFilters: vi.fn(),
   signOut: vi.fn(),
+  useSession: vi.fn(),
   usePathname: vi.fn(),
   useTenantBranding: vi.fn(),
   useAppNotificationCounts: vi.fn(),
@@ -18,6 +19,7 @@ vi.mock("next/navigation", () => ({
 
 vi.mock("next-auth/react", () => ({
   signOut: (...args: unknown[]) => mocks.signOut(...args),
+  useSession: () => mocks.useSession(),
 }))
 
 vi.mock("next/dynamic", () => ({
@@ -133,6 +135,10 @@ import { AppLayoutShell } from "@/app/(app)/_components/AppLayoutShell"
 describe("AppLayoutShell", () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mocks.useSession.mockReturnValue({
+      data: { user: { id: "u1" } },
+      status: "authenticated",
+    })
     mocks.usePathname.mockReturnValue("/dashboard")
     mocks.useTenantBranding.mockReturnValue({
       isLoading: false,
@@ -170,5 +176,70 @@ describe("AppLayoutShell", () => {
     expect(mocks.clearAllEquipmentFilters.mock.invocationCallOrder[0]).toBeLessThan(
       mocks.signOut.mock.invocationCallOrder[0]
     )
+  })
+
+  it("clears equipment filters when the session becomes unauthenticated", () => {
+    const sessionState = {
+      data: { user: { id: "u1" } },
+      status: "authenticated",
+    }
+    mocks.useSession.mockImplementation(() => sessionState)
+
+    const { rerender } = render(
+      <AppLayoutShell
+        user={{
+          role: "global",
+          full_name: "Test User",
+          username: "tester",
+          khoa_phong: "IT",
+        }}
+      >
+        <div>Child Content</div>
+      </AppLayoutShell>
+    )
+
+    vi.clearAllMocks()
+
+    sessionState.data = null
+    sessionState.status = "unauthenticated"
+
+    rerender(
+      <AppLayoutShell
+        user={{
+          role: "global",
+          full_name: "Test User",
+          username: "tester",
+          khoa_phong: "IT",
+        }}
+      >
+        <div>Child Content</div>
+      </AppLayoutShell>
+    )
+
+    expect(mocks.clearAllEquipmentFilters).toHaveBeenCalledTimes(1)
+    expect(mocks.signOut).not.toHaveBeenCalled()
+  })
+
+  it("keeps a header skeleton while tenant branding is loading", () => {
+    mocks.useTenantBranding.mockReturnValue({
+      isLoading: true,
+      data: null,
+    })
+
+    render(
+      <AppLayoutShell
+        user={{
+          role: "global",
+          full_name: "Test User",
+          username: "tester",
+          khoa_phong: "IT",
+        }}
+      >
+        <div>Child Content</div>
+      </AppLayoutShell>
+    )
+
+    expect(screen.getAllByTestId("skeleton")).toHaveLength(3)
+    expect(screen.queryByText("CVMEMS")).not.toBeInTheDocument()
   })
 })

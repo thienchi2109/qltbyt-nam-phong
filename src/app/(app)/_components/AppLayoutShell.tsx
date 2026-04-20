@@ -3,7 +3,7 @@
 import * as React from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { signOut } from "next-auth/react"
+import { signOut, useSession } from "next-auth/react"
 import dynamic from "next/dynamic"
 import { Copyright, KeyRound, LogOut, Menu, User } from "lucide-react"
 
@@ -60,6 +60,7 @@ type AppLayoutShellProps = {
 
 export function AppLayoutShell({ children, user }: AppLayoutShellProps) {
   const pathname = usePathname()
+  const { status } = useSession()
   const [isSidebarOpen, setSidebarOpen] = React.useState(true)
   const [isMobileSheetOpen, setIsMobileSheetOpen] = React.useState(false)
   const [isChangePasswordOpen, setIsChangePasswordOpen] = React.useState(false)
@@ -86,6 +87,12 @@ export function AppLayoutShell({ children, user }: AppLayoutShellProps) {
     clearAllEquipmentFilters()
     void signOut({ callbackUrl: "/" })
   }, [])
+
+  React.useEffect(() => {
+    if (status === "unauthenticated") {
+      clearAllEquipmentFilters()
+    }
+  }, [status])
 
   return (
     <TenantSelectionProvider>
@@ -180,10 +187,14 @@ export function AppLayoutShell({ children, user }: AppLayoutShellProps) {
                     ) : (
                       <TenantLogo src={branding.data?.logo_url ?? null} name={branding.data?.name ?? null} size={28} />
                     )}
-                    <TenantName
-                      name={branding.data?.name ?? null}
-                      className="max-w-[calc(100vw-120px)] truncate text-sm sm:max-w-[400px] sm:text-base md:max-w-none lg:text-lg"
-                    />
+                    {branding.isLoading ? (
+                      <Skeleton className="h-5 w-48" />
+                    ) : (
+                      <TenantName
+                        name={branding.data?.name ?? null}
+                        className="max-w-[calc(100vw-120px)] truncate text-sm sm:max-w-[400px] sm:text-base md:max-w-none lg:text-lg"
+                      />
+                    )}
                   </div>
                 </div>
 

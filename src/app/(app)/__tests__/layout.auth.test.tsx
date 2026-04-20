@@ -39,7 +39,7 @@ vi.mock("@/app/(app)/_components/AppLayoutShell", () => ({
   }) => mocks.shell(props),
 }))
 
-import AppLayout from "../layout"
+import AppLayout from "@/app/(app)/layout"
 import { authOptions } from "@/auth/config"
 
 describe("AppLayout auth gate", () => {
