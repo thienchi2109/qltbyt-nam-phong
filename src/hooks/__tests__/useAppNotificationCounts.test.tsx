@@ -1,3 +1,5 @@
+import * as React from "react"
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { renderHook, waitFor } from "@testing-library/react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
@@ -12,6 +14,12 @@ vi.mock("@/lib/rpc-client", () => ({
 }))
 
 import { useAppNotificationCounts } from "../useAppNotificationCounts"
+
+function createWrapper(queryClient: QueryClient) {
+  return function Wrapper({ children }: Readonly<{ children: React.ReactNode }>) {
+    return React.createElement(QueryClientProvider, { client: queryClient }, children)
+  }
+}
 
 describe("useAppNotificationCounts", () => {
   beforeEach(() => {
@@ -36,7 +44,17 @@ describe("useAppNotificationCounts", () => {
         "Không duyệt": 1,
       })
 
-    const { result } = renderHook(() => useAppNotificationCounts({ enabled: true }))
+    const queryClient = new QueryClient({
+      defaultOptions: {
+        queries: {
+          retry: false,
+        },
+      },
+    })
+
+    const { result } = renderHook(() => useAppNotificationCounts({ enabled: true }), {
+      wrapper: createWrapper(queryClient),
+    })
 
     await waitFor(() =>
       expect(result.current.counts).toEqual({
@@ -46,14 +64,22 @@ describe("useAppNotificationCounts", () => {
       })
     )
 
-    expect(mocks.callRpc).toHaveBeenNthCalledWith(1, {
-      fn: "header_notifications_summary",
-      args: { p_don_vi: null },
-    })
-    expect(mocks.callRpc).toHaveBeenNthCalledWith(2, {
-      fn: "maintenance_plan_status_counts",
-      args: {},
-    })
+    const [headerCall, maintenanceCall] = mocks.callRpc.mock.calls.map(([call]) => call)
+
+    expect(headerCall).toEqual(
+      expect.objectContaining({
+        fn: "header_notifications_summary",
+        signal: expect.any(AbortSignal),
+      })
+    )
+    expect(headerCall).not.toHaveProperty("args")
+    expect(maintenanceCall).toEqual(
+      expect.objectContaining({
+        fn: "maintenance_plan_status_counts",
+        args: {},
+        signal: expect.any(AbortSignal),
+      })
+    )
     expect(result.current.isLoading).toBe(false)
   })
 
@@ -65,7 +91,17 @@ describe("useAppNotificationCounts", () => {
       })
       .mockRejectedValueOnce(new Error("unstable maintenance counts"))
 
-    const { result } = renderHook(() => useAppNotificationCounts({ enabled: true }))
+    const queryClient = new QueryClient({
+      defaultOptions: {
+        queries: {
+          retry: false,
+        },
+      },
+    })
+
+    const { result } = renderHook(() => useAppNotificationCounts({ enabled: true }), {
+      wrapper: createWrapper(queryClient),
+    })
 
     await waitFor(() =>
       expect(result.current.counts).toEqual({
@@ -83,7 +119,17 @@ describe("useAppNotificationCounts", () => {
   })
 
   it("does not fetch when disabled", async () => {
-    const { result } = renderHook(() => useAppNotificationCounts({ enabled: false }))
+    const queryClient = new QueryClient({
+      defaultOptions: {
+        queries: {
+          retry: false,
+        },
+      },
+    })
+
+    const { result } = renderHook(() => useAppNotificationCounts({ enabled: false }), {
+      wrapper: createWrapper(queryClient),
+    })
 
     await waitFor(() => expect(result.current.isLoading).toBe(false))
 
@@ -93,5 +139,45 @@ describe("useAppNotificationCounts", () => {
       transfer: 0,
       maintenance: 0,
     })
+  })
+
+  it("dedupes concurrent consumers through the shared query cache", async () => {
+    mocks.callRpc
+      .mockResolvedValueOnce({
+        pending_repairs: 6,
+        pending_transfers: 1,
+      })
+      .mockResolvedValueOnce({
+        "Đã duyệt": 2,
+      })
+
+    const queryClient = new QueryClient({
+      defaultOptions: {
+        queries: {
+          retry: false,
+        },
+      },
+    })
+
+    const wrapper = createWrapper(queryClient)
+    const firstHook = renderHook(() => useAppNotificationCounts({ enabled: true }), { wrapper })
+    const secondHook = renderHook(() => useAppNotificationCounts({ enabled: true }), { wrapper })
+
+    await waitFor(() =>
+      expect(firstHook.result.current.counts).toEqual({
+        repair: 6,
+        transfer: 1,
+        maintenance: 2,
+      })
+    )
+    await waitFor(() =>
+      expect(secondHook.result.current.counts).toEqual({
+        repair: 6,
+        transfer: 1,
+        maintenance: 2,
+      })
+    )
+
+    expect(mocks.callRpc).toHaveBeenCalledTimes(2)
   })
 })

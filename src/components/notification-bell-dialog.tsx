@@ -32,6 +32,9 @@ export function NotificationBellDialog({
   maintenanceCount: maintenanceCountProp = 0,
 }: NotificationBellDialogProps) {
   const [isOpen, setIsOpen] = React.useState(false);
+  const handleDetailClick = React.useCallback(() => {
+    setIsOpen(false)
+  }, [])
 
   // Support either direct counts or fallback to array-based counting for backward compatibility
   const repairCount =
@@ -93,7 +96,7 @@ export function NotificationBellDialog({
                       Có {repairCount} yêu cầu sửa chữa đang chờ xử lý hoặc đã được duyệt.
                     </p>
                     <Button variant="link" className="p-0 h-auto text-sm" asChild>
-                      <Link href="/repair-requests">Xem chi tiết →</Link>
+                      <Link href="/repair-requests" onClick={handleDetailClick}>Xem chi tiết →</Link>
                     </Button>
                   </div>
                 </section>
@@ -110,7 +113,7 @@ export function NotificationBellDialog({
                       Có {transferCount} yêu cầu luân chuyển đang chờ duyệt hoặc đã được duyệt.
                     </p>
                     <Button variant="link" className="p-0 h-auto text-sm" asChild>
-                      <Link href="/transfers">Xem chi tiết →</Link>
+                      <Link href="/transfers" onClick={handleDetailClick}>Xem chi tiết →</Link>
                     </Button>
                   </div>
                 </section>
@@ -127,7 +130,7 @@ export function NotificationBellDialog({
                       Có {maintenanceCount} kế hoạch bảo trì đã được duyệt đang chờ triển khai.
                     </p>
                     <Button variant="link" className="p-0 h-auto text-sm" asChild>
-                      <Link href="/maintenance">Xem chi tiết →</Link>
+                      <Link href="/maintenance" onClick={handleDetailClick}>Xem chi tiết →</Link>
                     </Button>
                   </div>
                 </section>

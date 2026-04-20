@@ -7,6 +7,8 @@ import { cn } from "@/lib/utils"
 import { AppNotificationBadge } from "./app-notification-badge"
 import { isAppNavItemActive, type AppNavItem } from "./app-navigation"
 
+const EMPTY_TOUR_ATTRIBUTES: Record<string, string> = {}
+
 interface AppSidebarNavProps {
   items: AppNavItem[]
   pathname: string
@@ -23,7 +25,7 @@ export function AppSidebarNav({
   pathname,
   isSidebarOpen,
   notificationCounts,
-  tourAttributes = {},
+  tourAttributes = EMPTY_TOUR_ATTRIBUTES,
   variant = "sidebar",
   className,
   onNavigate,

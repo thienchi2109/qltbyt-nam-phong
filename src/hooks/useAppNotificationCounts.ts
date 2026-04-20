@@ -1,6 +1,6 @@
 "use client"
 
-import * as React from "react"
+import { useQuery } from "@tanstack/react-query"
 
 import { callRpc } from "@/lib/rpc-client"
 import {
@@ -29,39 +29,26 @@ interface UseAppNotificationCountsResult {
   isLoading: boolean
 }
 
+const APP_NOTIFICATION_COUNTS_QUERY_KEY = ["app-notification-counts"] as const
+
 export function useAppNotificationCounts(
   options: UseAppNotificationCountsOptions = {}
 ): UseAppNotificationCountsResult {
   const { enabled = true } = options
-  const [counts, setCounts] = React.useState<AppNotificationCounts>(EMPTY_APP_NOTIFICATION_COUNTS)
-  const [isLoading, setIsLoading] = React.useState<boolean>(enabled)
-
-  React.useEffect(() => {
-    if (!enabled) {
-      setCounts(EMPTY_APP_NOTIFICATION_COUNTS)
-      setIsLoading(false)
-      return
-    }
-
-    let cancelled = false
-
-    const fetchCounts = async () => {
-      setIsLoading(true)
-
+  const { data, isLoading } = useQuery<AppNotificationCounts>({
+    queryKey: APP_NOTIFICATION_COUNTS_QUERY_KEY,
+    queryFn: async ({ signal }) => {
       const [headerSummaryResult, maintenanceCountsResult] = await Promise.allSettled([
-        callRpc<HeaderNotificationsSummary, { p_don_vi?: number | null }>({
+        callRpc<HeaderNotificationsSummary>({
           fn: "header_notifications_summary",
-          args: { p_don_vi: null },
+          signal,
         }),
         callRpc<MaintenancePlanStatusCounts | null, Record<string, never>>({
           fn: "maintenance_plan_status_counts",
           args: {},
+          signal,
         }),
       ])
-
-      if (cancelled) {
-        return
-      }
 
       if (headerSummaryResult.status === "rejected") {
         console.error("Header notifications error:", headerSummaryResult.reason)
@@ -71,7 +58,7 @@ export function useAppNotificationCounts(
         console.error("Maintenance notification counts error:", maintenanceCountsResult.reason)
       }
 
-      const nextCounts: AppNotificationCounts = {
+      return {
         repair:
           headerSummaryResult.status === "fulfilled"
             ? normalizeNotificationCount(headerSummaryResult.value?.pending_repairs)
@@ -85,20 +72,14 @@ export function useAppNotificationCounts(
             ? normalizeNotificationCount(maintenanceCountsResult.value?.["Đã duyệt"])
             : 0,
       }
-
-      setCounts(nextCounts)
-      setIsLoading(false)
-    }
-
-    void fetchCounts()
-
-    return () => {
-      cancelled = true
-    }
-  }, [enabled])
+    },
+    enabled,
+    staleTime: 30_000,
+    gcTime: 10 * 60 * 1000,
+  })
 
   return {
-    counts,
-    isLoading,
+    counts: enabled ? (data ?? EMPTY_APP_NOTIFICATION_COUNTS) : EMPTY_APP_NOTIFICATION_COUNTS,
+    isLoading: enabled ? isLoading : false,
   }
 }

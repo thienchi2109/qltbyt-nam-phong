@@ -17,7 +17,7 @@ vi.mock("next-auth/react", () => ({
   useSession: () => mocks.useSession(),
 }))
 
-import { MobileFooterNav } from "../mobile-footer-nav"
+import { MobileFooterNav } from "@/components/mobile-footer-nav"
 
 describe("MobileFooterNav", () => {
   beforeEach(() => {
@@ -51,6 +51,8 @@ describe("MobileFooterNav", () => {
     expect(repairLink).not.toBeNull()
     expect(within(repairLink!).getByText("2")).toBeInTheDocument()
     expect(within(moreButton).getByText("9+")).toBeInTheDocument()
+    expect(moreButton).toHaveClass("relative")
+    expect(moreButton).toHaveAttribute("aria-expanded", "false")
 
     await user.click(moreButton)
 
@@ -61,5 +63,6 @@ describe("MobileFooterNav", () => {
     expect(maintenanceLink).not.toBeNull()
     expect(within(transferLink!).getByText("4")).toBeInTheDocument()
     expect(within(maintenanceLink!).getByText("8")).toBeInTheDocument()
+    expect(moreButton).toHaveAttribute("aria-expanded", "true")
   })
 })

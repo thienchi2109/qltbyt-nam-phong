@@ -1,13 +1,19 @@
 import * as React from "react"
 import "@testing-library/jest-dom"
-import { render, screen, within } from "@testing-library/react"
+import { render, screen, waitFor, within } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
-import { NotificationBellDialog } from "../notification-bell-dialog"
+import { NotificationBellDialog } from "@/components/notification-bell-dialog"
 
 describe("NotificationBellDialog", () => {
   beforeEach(() => {
+    class ResizeObserverMock {
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    }
+
     Object.defineProperty(window, "matchMedia", {
       writable: true,
       value: vi.fn().mockImplementation(() => ({
@@ -20,6 +26,14 @@ describe("NotificationBellDialog", () => {
         removeEventListener: vi.fn(),
         dispatchEvent: vi.fn(),
       })),
+    })
+    Object.defineProperty(window, "ResizeObserver", {
+      writable: true,
+      value: ResizeObserverMock,
+    })
+    Object.defineProperty(globalThis, "ResizeObserver", {
+      writable: true,
+      value: ResizeObserverMock,
     })
   })
 
@@ -61,5 +75,26 @@ describe("NotificationBellDialog", () => {
     )
 
     expect(screen.getByText("9+")).toBeInTheDocument()
+  })
+
+  it("closes the dialog after clicking a detail link", async () => {
+    const user = userEvent.setup()
+
+    render(
+      <NotificationBellDialog
+        repairCount={2}
+        transferCount={0}
+        maintenanceCount={0}
+      />
+    )
+
+    await user.click(screen.getByRole("button", { name: /mở thông báo/i }))
+    expect(screen.getByText("Thông báo và Cảnh báo (2)")).toBeInTheDocument()
+
+    await user.click(screen.getByRole("link", { name: "Xem chi tiết →" }))
+
+    await waitFor(() =>
+      expect(screen.queryByText("Thông báo và Cảnh báo (2)")).not.toBeInTheDocument()
+    )
   })
 })

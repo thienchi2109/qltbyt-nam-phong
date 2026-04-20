@@ -96,13 +96,12 @@ export function MobileFooterNav({
             <Button
               variant="ghost"
               className={cn(
-                "flex flex-col items-center justify-center gap-1 rounded-xl mx-1 py-2 transition-all duration-200 touch-target h-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
+                "relative flex flex-col items-center justify-center gap-1 rounded-xl mx-1 py-2 transition-all duration-200 touch-target h-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
                 isMoreActive
                   ? "bg-gradient-to-br from-primary to-primary/90 text-white shadow-lg shadow-primary/20"
                   : "text-slate-600 hover:bg-slate-50 active:bg-slate-100"
               )}
               aria-label="Thêm tùy chọn"
-              aria-expanded="false"
             >
               <MoreHorizontal className={cn(
                 "h-5 w-5 transition-colors",
