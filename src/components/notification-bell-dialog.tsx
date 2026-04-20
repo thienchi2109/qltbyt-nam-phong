@@ -1,7 +1,8 @@
 "use client"
 
 import * as React from "react"
-import { Bell, ArrowLeftRight, Wrench } from "lucide-react"
+import Link from "next/link"
+import { Bell, ArrowLeftRight, HardHat, Wrench } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -11,15 +12,16 @@ import {
   DialogTrigger,
   DialogDescription,
 } from "@/components/ui/dialog"
-import { Badge } from "@/components/ui/badge"
 import { ScrollArea } from "@/components/ui/scroll-area"
+import { AppNotificationBadge } from "@/components/app-notification-badge"
 
 interface NotificationBellDialogProps {
-  allRepairRequests?: any;
-  allTransferRequests?: any;
+  allRepairRequests?: Array<{ trang_thai?: string }>;
+  allTransferRequests?: Array<{ trang_thai?: string }>;
   // Optional direct counts (preferred). When provided, component won't re-count from arrays
   repairCount?: number;
   transferCount?: number;
+  maintenanceCount?: number;
 }
 
 export function NotificationBellDialog({
@@ -27,6 +29,7 @@ export function NotificationBellDialog({
   allTransferRequests,
   repairCount: repairCountProp,
   transferCount: transferCountProp,
+  maintenanceCount: maintenanceCountProp = 0,
 }: NotificationBellDialogProps) {
   const [isOpen, setIsOpen] = React.useState(false);
 
@@ -34,18 +37,21 @@ export function NotificationBellDialog({
   const repairCount =
     typeof repairCountProp === 'number'
       ? repairCountProp
-      : (allRepairRequests?.filter((req: any) =>
+      : (allRepairRequests?.filter((req) =>
           req.trang_thai === 'Chờ xử lý' || req.trang_thai === 'Đã duyệt'
         )?.length || 0);
   
   const transferCount =
     typeof transferCountProp === 'number'
       ? transferCountProp
-      : (allTransferRequests?.filter((req: any) =>
+      : (allTransferRequests?.filter((req) =>
           req.trang_thai === 'cho_duyet' || req.trang_thai === 'da_duyet'
         )?.length || 0);
-  
-  const totalAlertsCount = repairCount + transferCount;
+
+  const maintenanceCount =
+    typeof maintenanceCountProp === "number" ? maintenanceCountProp : 0
+
+  const totalAlertsCount = repairCount + transferCount + maintenanceCount;
 
   
 
@@ -54,14 +60,11 @@ export function NotificationBellDialog({
       <DialogTrigger asChild>
         <Button variant="ghost" size="icon" className="relative rounded-full">
           <Bell className="h-5 w-5" />
-          {totalAlertsCount > 0 && (
-            <Badge
-              variant="destructive"
-              className="absolute -top-1 -right-1 h-4 w-4 min-w-[1rem] p-0.5 text-xs flex items-center justify-center rounded-full"
-            >
-              {totalAlertsCount > 9 ? "9+" : totalAlertsCount}
-            </Badge>
-          )}
+          <AppNotificationBadge
+            count={totalAlertsCount}
+            mode="floating"
+            className="-right-1 -top-1 h-4 min-w-[1rem] px-1 text-xs"
+          />
           <span className="sr-only">Mở thông báo</span>
         </Button>
       </DialogTrigger>
@@ -90,7 +93,7 @@ export function NotificationBellDialog({
                       Có {repairCount} yêu cầu sửa chữa đang chờ xử lý hoặc đã được duyệt.
                     </p>
                     <Button variant="link" className="p-0 h-auto text-sm" asChild>
-                      <a href="/repair-requests">Xem chi tiết →</a>
+                      <Link href="/repair-requests">Xem chi tiết →</Link>
                     </Button>
                   </div>
                 </section>
@@ -107,7 +110,24 @@ export function NotificationBellDialog({
                       Có {transferCount} yêu cầu luân chuyển đang chờ duyệt hoặc đã được duyệt.
                     </p>
                     <Button variant="link" className="p-0 h-auto text-sm" asChild>
-                      <a href="/transfers">Xem chi tiết →</a>
+                      <Link href="/transfers">Xem chi tiết →</Link>
+                    </Button>
+                  </div>
+                </section>
+              )}
+
+              {maintenanceCount > 0 && (
+                <section>
+                  <h3 className="text-md font-semibold mb-2 flex items-center">
+                    <HardHat className="h-4 w-4 mr-2 text-emerald-600" />
+                    Yêu cầu Bảo trì ({maintenanceCount})
+                  </h3>
+                  <div className="p-3 border rounded-md">
+                    <p className="text-sm text-muted-foreground">
+                      Có {maintenanceCount} kế hoạch bảo trì đã được duyệt đang chờ triển khai.
+                    </p>
+                    <Button variant="link" className="p-0 h-auto text-sm" asChild>
+                      <Link href="/maintenance">Xem chi tiết →</Link>
                     </Button>
                   </div>
                 </section>

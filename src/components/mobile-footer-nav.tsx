@@ -4,17 +4,7 @@ import * as React from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import {
-  Home,
-  Package,
-  Wrench,
-  ArrowLeftRight,
   MoreHorizontal,
-  HardHat,
-  BarChart3,
-  QrCode,
-  Users,
-  Activity,
-  Calculator,
 } from "lucide-react"
 
 import {
@@ -24,87 +14,79 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
 import { useSession } from "next-auth/react"
+import {
+  EMPTY_APP_NOTIFICATION_COUNTS,
+  sumNotificationBadgeCounts,
+  type AppNotificationCounts,
+} from "@/lib/app-notification-counts"
 import { cn } from "@/lib/utils"
-import { isGlobalRole } from "@/lib/rbac"
 
-export function MobileFooterNav() {
+import { AppNotificationBadge } from "./app-notification-badge"
+import {
+  getMobileFooterMainNavItems,
+  getMobileFooterMoreNavItems,
+  isAppNavItemActive,
+} from "./app-navigation"
+
+interface MobileFooterNavProps {
+  notificationCounts?: AppNotificationCounts
+}
+
+export function MobileFooterNav({
+  notificationCounts = EMPTY_APP_NOTIFICATION_COUNTS,
+}: Readonly<MobileFooterNavProps>) {
   const pathname = usePathname()
   const { data: session } = useSession()
-  const user = session?.user as any
+  const user = session?.user as { role?: string } | undefined
 
-  // Primary navigation items for footer tabs
-  const mainNavItems = [
-    { href: "/dashboard", icon: Home, label: "Tổng quan" },
-    { href: "/equipment", icon: Package, label: "Thiết bị" },
-    { href: "/repair-requests", icon: Wrench, label: "Sửa chữa" },
-  ]
-
-  // Secondary navigation items for "More" dropdown
-  const moreNavItems = React.useMemo(() => {
-    const baseItems = [
-      { href: "/transfers", icon: ArrowLeftRight, label: "Luân chuyển" },
-      { href: "/maintenance", icon: HardHat, label: "Bảo trì" },
-      { href: "/device-quota", icon: Calculator, label: "Định mức" },
-      { href: "/reports", icon: BarChart3, label: "Báo cáo" },
-      { href: "/qr-scanner", icon: QrCode, label: "Quét QR" },
-    ]
-
-    // Add admin-only items with role-based permissions
-  if (isGlobalRole(user?.role)) {
-      baseItems.push({ href: "/users", icon: Users, label: "Người dùng" })
-      baseItems.push({ href: "/activity-logs", icon: Activity, label: "Nhật ký hoạt động" })
-    }
-
-    return baseItems
-  }, [user?.role])
+  const mainNavItems = React.useMemo(() => getMobileFooterMainNavItems(user?.role), [user?.role])
+  const moreNavItems = React.useMemo(() => getMobileFooterMoreNavItems(user?.role), [user?.role])
 
   // Check if any item in "More" dropdown is active
   const isMoreActive = React.useMemo(() => {
-    return moreNavItems.some(item =>
-      pathname === item.href || pathname.startsWith(item.href + '/')
-    )
+    return moreNavItems.some((item) => isAppNavItemActive(pathname, item.href))
   }, [pathname, moreNavItems])
 
-  // Enhanced active state detection for better UX
-  const isItemActive = React.useCallback((href: string) => {
-    if (href === "/dashboard") {
-      return pathname === href
-    }
-    return pathname === href || pathname.startsWith(href + '/')
-  }, [pathname])
+  const moreBadgeCount = React.useMemo(
+    () =>
+      sumNotificationBadgeCounts(
+        moreNavItems
+          .map((item) => item.badgeKey)
+          .filter((badgeKey): badgeKey is keyof AppNotificationCounts => Boolean(badgeKey)),
+        notificationCounts
+      ),
+    [moreNavItems, notificationCounts]
+  )
 
   return (
     <div className="fixed bottom-0 left-0 right-0 mobile-footer-z border-t border-slate-200 bg-white shadow-[0_-2px_10px_rgba(0,0,0,0.08)] md:hidden lg:hidden">
-      <nav
-        className="grid h-16 grid-cols-4 items-center px-2"
-        role="navigation"
-        aria-label="Điều hướng chính"
-      >
-        {mainNavItems.map(({ href, icon: Icon, label }) => {
-          const isActive = isItemActive(href)
+      <nav className="grid h-16 grid-cols-4 items-center px-2" aria-label="Điều hướng chính">
+        {mainNavItems.map(({ href, icon: Icon, label, mobileLabel, badgeKey }) => {
+          const isActive = isAppNavItemActive(pathname, href)
+          const badgeCount = badgeKey ? notificationCounts[badgeKey] : 0
           return (
             <Link
-              key={label}
+              key={href}
               href={href}
               className={cn(
-                "flex flex-col items-center justify-center gap-1 rounded-xl mx-1 py-2 transition-all duration-200 touch-target focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
+                "relative flex flex-col items-center justify-center gap-1 rounded-xl mx-1 py-2 transition-all duration-200 touch-target focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
                 isActive
                   ? "bg-gradient-to-br from-primary to-primary/90 text-white shadow-lg shadow-primary/20"
                   : "text-slate-600 hover:bg-slate-50 active:bg-slate-100"
               )}
-              aria-label={label}
+              aria-label={mobileLabel ?? label}
               aria-current={isActive ? "page" : undefined}
             >
               <Icon className={cn(
                 "h-5 w-5 transition-colors",
                 isActive ? "text-white" : "text-slate-500"
               )} />
+              <AppNotificationBadge count={badgeCount} active={isActive} mode="floating" />
               <span className={cn(
                 "text-xs font-medium transition-colors",
                 isActive ? "text-white" : "text-slate-600"
-              )}>{label}</span>
+              )}>{mobileLabel ?? label}</span>
             </Link>
           )
         })}
@@ -126,6 +108,7 @@ export function MobileFooterNav() {
                 "h-5 w-5 transition-colors",
                 isMoreActive ? "text-white" : "text-slate-500"
               )} />
+              <AppNotificationBadge count={moreBadgeCount} active={isMoreActive} mode="floating" />
               <span className={cn(
                 "text-xs font-medium transition-colors",
                 isMoreActive ? "text-white" : "text-slate-600"
@@ -137,8 +120,9 @@ export function MobileFooterNav() {
             className="mb-3 min-w-[200px] bg-white border border-slate-200 shadow-xl rounded-xl p-2"
             sideOffset={12}
           >
-            {moreNavItems.map(({ href, icon: Icon, label }) => {
-              const isActive = isItemActive(href)
+            {moreNavItems.map(({ href, icon: Icon, label, mobileLabel, badgeKey }) => {
+              const isActive = isAppNavItemActive(pathname, href)
+              const badgeCount = badgeKey ? notificationCounts[badgeKey] : 0
               return (
                 <DropdownMenuItem key={label} asChild>
                   <Link
@@ -155,7 +139,8 @@ export function MobileFooterNav() {
                       "h-5 w-5 transition-colors",
                       isActive ? "text-white" : "text-slate-500"
                     )} />
-                    <span className="text-sm">{label}</span>
+                    <span className="text-sm">{mobileLabel ?? label}</span>
+                    <AppNotificationBadge count={badgeCount} active={isActive} />
                   </Link>
                 </DropdownMenuItem>
               )
