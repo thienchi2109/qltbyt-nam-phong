@@ -64,13 +64,6 @@ const equipmentDisplayFormat = (ctx: DisplayContext) => {
 export function EquipmentPageClient() {
   const pageState = useEquipmentPage()
 
-  // Redirect unauthenticated users via useEffect to avoid side effects during render
-  React.useEffect(() => {
-    if (pageState.status === "unauthenticated") {
-      pageState.router.push("/")
-    }
-  }, [pageState.status, pageState.router])
-
   // Show loading state
   if (pageState.status === "loading") {
     return (
@@ -83,7 +76,7 @@ export function EquipmentPageClient() {
     )
   }
 
-  // Show nothing while redirecting unauthenticated users
+  // The page wrapper owns unauthenticated access; keep this as a defensive fallback.
   if (pageState.status === "unauthenticated") {
     return null
   }
