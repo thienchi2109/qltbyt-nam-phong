@@ -83,7 +83,7 @@ describe("ReportsPage auth gate", () => {
     state.shouldFetchData = false
   })
 
-it("shows the loading skeleton without redirecting unauthenticated users", () => {
+  it("shows the loading skeleton without redirecting unauthenticated users", () => {
     state.sessionStatus = "unauthenticated"
     state.sessionData = null
 
