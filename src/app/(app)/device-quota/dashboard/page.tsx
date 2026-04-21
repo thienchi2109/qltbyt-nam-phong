@@ -1,10 +1,10 @@
 "use client"
 
 import * as React from "react"
-import { useSession } from "next-auth/react"
-import { useRouter } from "next/navigation"
-import { Loader2, FileText } from "lucide-react"
+import { FileText } from "lucide-react"
 
+import { AuthenticatedPageBoundary } from "@/app/(app)/_components/AuthenticatedPageBoundary"
+import { AuthenticatedPageSpinnerFallback } from "@/app/(app)/_components/AuthenticatedPageFallbacks"
 import { DeviceQuotaDashboardProvider } from "./_components/DeviceQuotaDashboardContext"
 import { DeviceQuotaComplianceCards } from "./_components/DeviceQuotaComplianceCards"
 import { DeviceQuotaUnassignedAlert } from "./_components/DeviceQuotaUnassignedAlert"
@@ -29,31 +29,14 @@ import { Button } from "@/components/ui/button"
  * Pattern: Context provider wraps all child components
  */
 export default function DeviceQuotaDashboardPage() {
-  const { status } = useSession()
-  const router = useRouter()
-
-  React.useEffect(() => {
-    if (status === "unauthenticated") {
-      router.push("/")
-    }
-  }, [status, router])
-
-  if (status === "loading") {
-    return (
-      <div className="flex min-h-[50vh] items-center justify-center">
-        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-      </div>
-    )
-  }
-
-  if (status === "unauthenticated") {
-    return null
-  }
-
   return (
-    <DeviceQuotaDashboardProvider>
-      <DeviceQuotaDashboardPageContent />
-    </DeviceQuotaDashboardProvider>
+    <AuthenticatedPageBoundary fallback={<AuthenticatedPageSpinnerFallback />}>
+      {() => (
+        <DeviceQuotaDashboardProvider>
+          <DeviceQuotaDashboardPageContent />
+        </DeviceQuotaDashboardProvider>
+      )}
+    </AuthenticatedPageBoundary>
   )
 }
 
