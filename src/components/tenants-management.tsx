@@ -1,7 +1,6 @@
 ﻿"use client"
 
 import * as React from "react"
-import { useRouter } from "next/navigation"
 import { useSession } from "next-auth/react"
 import { useQuery, useMutation, useQueryClient, keepPreviousData } from "@tanstack/react-query"
 
@@ -43,7 +42,6 @@ type PreparedTenant = {
 }
 
 export function TenantsManagement() {
-  const router = useRouter()
   const { data: session, status } = useSession()
   const isGlobal = isGlobalRole(session?.user?.role)
   const { toast } = useToast()
@@ -56,10 +54,6 @@ export function TenantsManagement() {
   const [expandedTenants, setExpandedTenants] = React.useState<Record<number, boolean>>({})
 
   const collator = React.useMemo(() => new Intl.Collator("vi", { sensitivity: "base", usage: "sort" }), [])
-
-  React.useEffect(() => {
-    if (status === "unauthenticated") router.push("/")
-  }, [status, router])
 
   const query = useQuery<{ rows: TenantHierarchyRow[] }>({
     queryKey: ["don_vi", { q: debouncedQ }],
@@ -86,6 +80,7 @@ export function TenantsManagement() {
     staleTime: 60_000,
     gcTime: 300_000,
     refetchOnWindowFocus: false,
+    enabled: status === "authenticated" && isGlobal,
   })
 
   const rows = query.data?.rows || []

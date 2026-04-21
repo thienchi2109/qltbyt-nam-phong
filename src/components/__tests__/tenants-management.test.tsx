@@ -151,4 +151,19 @@ describe("TenantsManagement", () => {
       )
     })
   })
+
+  it("does not redirect unauthenticated users from the shared tenants management component", () => {
+    const push = vi.fn()
+    mocks.useRouter.mockReturnValue({ push })
+    mocks.useSession.mockReturnValue({
+      data: null,
+      status: "unauthenticated",
+    })
+
+    render(<TenantsManagement />, { wrapper: createWrapper() })
+
+    expect(screen.getByText("Không có quyền truy cập")).toBeInTheDocument()
+    expect(push).not.toHaveBeenCalled()
+    expect(mocks.callRpc).not.toHaveBeenCalled()
+  })
 })
