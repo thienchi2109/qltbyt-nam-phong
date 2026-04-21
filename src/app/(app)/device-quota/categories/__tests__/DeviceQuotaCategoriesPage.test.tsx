@@ -56,6 +56,22 @@ describe('DeviceQuotaCategoriesPage', () => {
     vi.clearAllMocks()
   })
 
+  it('shows the restricted access state for authenticated users without category management permission', () => {
+    mockUseSession.mockReturnValue({
+      data: { user: { role: 'user', don_vi: '1' } },
+      status: 'authenticated',
+    })
+
+    render(<DeviceQuotaCategoriesPage />, { wrapper: createWrapper() })
+
+    expect(screen.getByText('Truy cập bị hạn chế')).toBeInTheDocument()
+    expect(
+      screen.getByText(/chỉ dành cho quản trị viên hoặc bộ phận quản lý thiết bị/i)
+    ).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Tạo danh mục' })).not.toBeInTheDocument()
+    expect(mockCallRpc).not.toHaveBeenCalled()
+  })
+
   it('renders toolbar and empty tree when authorized', async () => {
     mockUseSession.mockReturnValue({
       data: { user: { role: 'admin', don_vi: '1' } },

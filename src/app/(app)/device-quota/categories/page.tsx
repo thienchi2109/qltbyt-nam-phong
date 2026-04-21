@@ -1,10 +1,11 @@
 "use client"
 
 import * as React from "react"
-import { useSession } from "next-auth/react"
-import { useRouter } from "next/navigation"
-import { AlertTriangle, Loader2, Shield } from "lucide-react"
+import type { Session } from "next-auth"
+import { AlertTriangle, Shield } from "lucide-react"
 
+import { AuthenticatedPageBoundary } from "@/app/(app)/_components/AuthenticatedPageBoundary"
+import { AuthenticatedPageSpinnerFallback } from "@/app/(app)/_components/AuthenticatedPageFallbacks"
 import { Card, CardContent } from "@/components/ui/card"
 import { isEquipmentManagerRole } from "@/lib/rbac"
 import { DeviceQuotaCategoryProvider } from "./_components/DeviceQuotaCategoryContext"
@@ -15,24 +16,21 @@ import { DeviceQuotaCategoryDeleteDialog } from "./_components/DeviceQuotaCatego
 import { DeviceQuotaCategoryImportDialog } from "./_components/DeviceQuotaCategoryImportDialog"
 
 export default function DeviceQuotaCategoriesPage() {
-  const { data: session, status } = useSession()
-  const router = useRouter()
+  return (
+    <AuthenticatedPageBoundary fallback={<AuthenticatedPageSpinnerFallback />}>
+      {(user) => <DeviceQuotaCategoriesPageContent user={user} />}
+    </AuthenticatedPageBoundary>
+  )
+}
 
-  React.useEffect(() => {
-    if (status === "unauthenticated") {
-      router.push("/")
-    }
-  }, [status, router])
+type DeviceQuotaCategoriesPageContentProps = {
+  user: Session["user"]
+}
 
-  if (status === "loading" || status === "unauthenticated") {
-    return (
-      <div className="flex min-h-[50vh] items-center justify-center">
-        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-      </div>
-    )
-  }
-
-  const userRole = (session?.user as { role?: string } | undefined)?.role
+function DeviceQuotaCategoriesPageContent({
+  user,
+}: DeviceQuotaCategoriesPageContentProps) {
+  const userRole = user.role
   const canManageCategories = isEquipmentManagerRole(userRole)
 
   if (!canManageCategories) {
