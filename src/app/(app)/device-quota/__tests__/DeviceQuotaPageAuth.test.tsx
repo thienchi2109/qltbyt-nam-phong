@@ -3,8 +3,10 @@ import "@testing-library/jest-dom"
 import { render, screen } from "@testing-library/react"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
-const mockUseSession = vi.fn()
-const mockRouterPush = vi.fn()
+const { mockUseSession, mockRouterPush } = vi.hoisted(() => ({
+  mockUseSession: vi.fn(),
+  mockRouterPush: vi.fn(),
+}))
 
 vi.mock("next-auth/react", () => ({
   useSession: () => mockUseSession(),
