@@ -1,22 +1,18 @@
 "use client"
 
 import * as React from "react"
-import { Loader2 } from "lucide-react"
 
 import { AuthenticatedPageBoundary } from "@/app/(app)/_components/AuthenticatedPageBoundary"
+import { AuthenticatedPageSpinnerFallback } from "@/app/(app)/_components/AuthenticatedPageFallbacks"
 import { TransfersPageContent } from "./_components/TransfersPageContent"
 
 function TransfersSearchParamsFallback() {
-  return (
-    <div className="flex min-h-[50vh] items-center justify-center">
-      <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-    </div>
-  )
+  return <AuthenticatedPageSpinnerFallback />
 }
 
 export default function TransfersPage() {
   return (
-    <AuthenticatedPageBoundary fallback={<TransfersSearchParamsFallback />}>
+    <AuthenticatedPageBoundary fallback={<AuthenticatedPageSpinnerFallback />}>
       {(user) => (
         <React.Suspense fallback={<TransfersSearchParamsFallback />}>
           <TransfersPageContent user={user} />

@@ -7,6 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Skeleton } from "@/components/ui/skeleton"
 import { TenantSelector } from "@/components/shared/TenantSelector"
 import { AuthenticatedPageBoundary } from "@/app/(app)/_components/AuthenticatedPageBoundary"
+import { AuthenticatedPageSkeletonFallback } from "@/app/(app)/_components/AuthenticatedPageFallbacks"
 import { TenantSelectionTip } from "./components/tenant-selection-tip"
 import { useTenantSelection } from "@/contexts/TenantSelectionContext"
 
@@ -72,7 +73,7 @@ function TabSkeleton() {
 
 export default function ReportsPage() {
   return (
-    <AuthenticatedPageBoundary fallback={<ReportsPageAuthFallback />}>
+    <AuthenticatedPageBoundary fallback={<AuthenticatedPageSkeletonFallback />}>
       {(user) => <ReportsPageContent user={user} />}
     </AuthenticatedPageBoundary>
   )
@@ -110,8 +111,8 @@ function ReportsPageContent({ user }: ReportsPageContentProps) {
     if (selectedFacilityId !== undefined) {
       return selectedFacilityId === null ? "all" : String(selectedFacilityId)
     }
-    return user?.don_vi ? String(user.don_vi) : "none"
-  }, [selectedFacilityId, user?.don_vi])
+    return user.don_vi ? String(user.don_vi) : "none"
+  }, [selectedFacilityId, user.don_vi])
 
   return (
     <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
@@ -177,17 +178,6 @@ function ReportsPageContent({ user }: ReportsPageContentProps) {
           </>
         ) : null}
       </Tabs>
-    </div>
-  )
-}
-
-function ReportsPageAuthFallback() {
-  return (
-    <div className="flex items-center justify-center min-h-[50vh]">
-      <div className="text-center space-y-2">
-        <Skeleton className="h-8 w-32 mx-auto" />
-        <Skeleton className="h-4 w-48 mx-auto" />
-      </div>
     </div>
   )
 }

@@ -37,9 +37,9 @@ describe("TransfersPage auth wrapper", () => {
       data: null,
     })
 
-    const { container } = render(<TransfersPage />)
+    render(<TransfersPage />)
 
-    expect(container.querySelector(".animate-spin")).toBeInTheDocument()
+    expect(screen.getByTestId("authenticated-page-spinner-fallback")).toBeInTheDocument()
     expect(screen.queryByTestId("transfers-page-content")).not.toBeInTheDocument()
     expect(mocks.push).not.toHaveBeenCalled()
   })
