@@ -80,6 +80,7 @@ export function TenantsManagement() {
     staleTime: 60_000,
     gcTime: 300_000,
     refetchOnWindowFocus: false,
+    enabled: status === "authenticated" && isGlobal,
   })
 
   const rows = query.data?.rows || []

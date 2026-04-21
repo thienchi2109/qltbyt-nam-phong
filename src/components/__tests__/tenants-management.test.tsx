@@ -164,5 +164,6 @@ describe("TenantsManagement", () => {
 
     expect(screen.getByText("Không có quyền truy cập")).toBeInTheDocument()
     expect(push).not.toHaveBeenCalled()
+    expect(mocks.callRpc).not.toHaveBeenCalled()
   })
 })
