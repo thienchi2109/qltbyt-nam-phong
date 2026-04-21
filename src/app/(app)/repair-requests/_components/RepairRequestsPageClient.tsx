@@ -328,14 +328,8 @@ function RepairRequestsPageClientInner() {
 
 export default function RepairRequestsPageClient() {
   const { status } = useSession()
-  const router = useRouter()
 
-  // Handle unauthenticated redirect in useEffect (not during render)
-  React.useEffect(() => {
-    if (status === "unauthenticated") router.push("/")
-  }, [status, router])
-
-  // Show loading state for both loading and unauthenticated (while redirecting)
+  // The page wrapper owns unauthenticated access; keep the skeleton as a defensive fallback.
   if (status === "loading" || status === "unauthenticated") {
     return (
       <div className="flex items-center justify-center min-h-[50vh]">
