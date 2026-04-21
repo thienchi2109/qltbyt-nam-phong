@@ -1,5 +1,5 @@
 import * as React from "react"
-import { render, screen, waitFor } from "@testing-library/react"
+import { render, screen } from "@testing-library/react"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
 const state = vi.hoisted(() => ({
@@ -83,16 +83,14 @@ describe("ReportsPage auth gate", () => {
     state.shouldFetchData = false
   })
 
-  it("shows loading skeleton while redirecting unauthenticated users", async () => {
+  it("shows the loading skeleton without redirecting unauthenticated users", () => {
     state.sessionStatus = "unauthenticated"
     state.sessionData = null
 
     render(<ReportsPage />)
 
     expect(screen.getAllByTestId("skeleton").length).toBeGreaterThan(0)
-    await waitFor(() => {
-      expect(mocks.push).toHaveBeenCalledWith("/")
-    })
+    expect(mocks.push).not.toHaveBeenCalled()
   })
 
   it("does not read tenant selection when user is unauthenticated", () => {

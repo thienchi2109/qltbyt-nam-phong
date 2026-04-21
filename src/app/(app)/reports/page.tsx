@@ -1,12 +1,13 @@
 "use client"
 
 import * as React from "react"
-import { useSession } from "next-auth/react"
-import { useRouter } from "next/navigation"
+import type { Session } from "next-auth"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Skeleton } from "@/components/ui/skeleton"
 import { TenantSelector } from "@/components/shared/TenantSelector"
+import { AuthenticatedPageBoundary } from "@/app/(app)/_components/AuthenticatedPageBoundary"
+import { AuthenticatedPageSkeletonFallback } from "@/app/(app)/_components/AuthenticatedPageFallbacks"
 import { TenantSelectionTip } from "./components/tenant-selection-tip"
 import { useTenantSelection } from "@/contexts/TenantSelectionContext"
 
@@ -71,31 +72,15 @@ function TabSkeleton() {
 }
 
 export default function ReportsPage() {
-  const router = useRouter()
-  const { data: session, status } = useSession()
-
-  React.useEffect(() => {
-    if (status === "unauthenticated") {
-      router.push("/")
-    }
-  }, [status, router])
-
-  if (status === "loading" || status === "unauthenticated" || !session?.user) {
-    return (
-      <div className="flex items-center justify-center min-h-[50vh]">
-        <div className="text-center space-y-2">
-          <Skeleton className="h-8 w-32 mx-auto" />
-          <Skeleton className="h-4 w-48 mx-auto" />
-        </div>
-      </div>
-    )
-  }
-
-  return <ReportsPageContent user={session.user} />
+  return (
+    <AuthenticatedPageBoundary fallback={<AuthenticatedPageSkeletonFallback />}>
+      {(user) => <ReportsPageContent user={user} />}
+    </AuthenticatedPageBoundary>
+  )
 }
 
 interface ReportsPageContentProps {
-  user: NonNullable<ReturnType<typeof useSession>["data"]>["user"]
+  user: Session["user"]
 }
 
 function ReportsPageContent({ user }: ReportsPageContentProps) {
@@ -126,8 +111,8 @@ function ReportsPageContent({ user }: ReportsPageContentProps) {
     if (selectedFacilityId !== undefined) {
       return selectedFacilityId === null ? "all" : String(selectedFacilityId)
     }
-    return user?.don_vi ? String(user.don_vi) : "none"
-  }, [selectedFacilityId, user?.don_vi])
+    return user.don_vi ? String(user.don_vi) : "none"
+  }, [selectedFacilityId, user.don_vi])
 
   return (
     <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
