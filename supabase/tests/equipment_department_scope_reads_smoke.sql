@@ -107,7 +107,7 @@ BEGIN
       'user_id', '1',
       'sub', '1',
       'don_vi', v_tenant::text,
-      'khoa_phong', E' \u00A0NỘI\nTHẬN\t  TIẾT   NIỆU '
+      'khoa_phong', ' ' || chr(160) || E'NỘI\nTHẬN\t  - TIẾT   NIỆU '
     )::text,
     true
   );
@@ -296,15 +296,63 @@ BEGIN
     RAISE EXCEPTION 'departments_list_for_tenant should fail closed for blank khoa_phong claim, got %', v_count;
   END IF;
 
+  SELECT COUNT(*)
+  INTO v_count
+  FROM public.equipment_users_list_for_tenant(p_don_vi => v_tenant);
+
+  IF v_count <> 0 THEN
+    RAISE EXCEPTION 'equipment_users_list_for_tenant should fail closed for blank khoa_phong claim, got %', v_count;
+  END IF;
+
+  SELECT COUNT(*)
+  INTO v_count
+  FROM public.equipment_locations_list_for_tenant(p_don_vi => v_tenant);
+
+  IF v_count <> 0 THEN
+    RAISE EXCEPTION 'equipment_locations_list_for_tenant should fail closed for blank khoa_phong claim, got %', v_count;
+  END IF;
+
+  SELECT COUNT(*)
+  INTO v_count
+  FROM public.equipment_classifications_list_for_tenant(p_don_vi => v_tenant);
+
+  IF v_count <> 0 THEN
+    RAISE EXCEPTION 'equipment_classifications_list_for_tenant should fail closed for blank khoa_phong claim, got %', v_count;
+  END IF;
+
+  SELECT COUNT(*)
+  INTO v_count
+  FROM public.equipment_statuses_list_for_tenant(p_don_vi => v_tenant);
+
+  IF v_count <> 0 THEN
+    RAISE EXCEPTION 'equipment_statuses_list_for_tenant should fail closed for blank khoa_phong claim, got %', v_count;
+  END IF;
+
+  SELECT COUNT(*)
+  INTO v_count
+  FROM public.equipment_funding_sources_list_for_tenant(p_don_vi => v_tenant);
+
+  IF v_count <> 0 THEN
+    RAISE EXCEPTION 'equipment_funding_sources_list_for_tenant should fail closed for blank khoa_phong claim, got %', v_count;
+  END IF;
+
   v_failed := false;
+  v_sqlstate := NULL;
+  v_sqlerrm := NULL;
   BEGIN
     PERFORM public.equipment_get(v_allowed_id);
   EXCEPTION WHEN OTHERS THEN
     v_failed := true;
+    v_sqlstate := SQLSTATE;
+    v_sqlerrm := SQLERRM;
   END;
 
   IF NOT v_failed THEN
     RAISE EXCEPTION 'equipment_get should deny when role user has blank khoa_phong claim';
+  END IF;
+
+  IF v_sqlstate IS DISTINCT FROM '42501' THEN
+    RAISE EXCEPTION 'equipment_get blank khoa_phong deny should use 42501, got % (%)', v_sqlstate, v_sqlerrm;
   END IF;
 
   PERFORM set_config(
@@ -320,14 +368,22 @@ BEGIN
   );
 
   v_failed := false;
+  v_sqlstate := NULL;
+  v_sqlerrm := NULL;
   BEGIN
     PERFORM public.equipment_get_by_code('SMK-DEP-ALLOW-' || v_suffix);
   EXCEPTION WHEN OTHERS THEN
     v_failed := true;
+    v_sqlstate := SQLSTATE;
+    v_sqlerrm := SQLERRM;
   END;
 
   IF NOT v_failed THEN
     RAISE EXCEPTION 'equipment_get_by_code should deny when role user is missing khoa_phong claim';
+  END IF;
+
+  IF v_sqlstate IS DISTINCT FROM '42501' THEN
+    RAISE EXCEPTION 'equipment_get_by_code missing khoa_phong deny should use 42501, got % (%)', v_sqlstate, v_sqlerrm;
   END IF;
 
   PERFORM set_config(

@@ -6,6 +6,11 @@
 -- - Patch against the deployed RPC shapes verified via Supabase MCP.
 -- - Preserve existing tenant guards and non-user return/error contracts.
 -- - Do not change equipment_count_enhanced in this batch.
+-- Rollback:
+-- - Forward-only. Restore the prior read-family RPC bodies in a new
+--   timestamped migration if this batch must be reverted.
+-- - Drop public._normalize_department_scope(text) only after no remaining
+--   function body references it.
 
 BEGIN;
 
@@ -25,7 +30,7 @@ BEGIN
   v_normalized := replace(v_normalized, E'\r', ' ');
   v_normalized := replace(v_normalized, E'\n', ' ');
   v_normalized := replace(v_normalized, E'\t', ' ');
-  v_normalized := regexp_replace(v_normalized, '[[:punct:]]+', ' ', 'g');
+  v_normalized := regexp_replace(v_normalized, '[-]+', ' ', 'g');
   v_normalized := regexp_replace(v_normalized, '\s+', ' ', 'g');
   v_normalized := lower(trim(v_normalized));
 
@@ -478,6 +483,10 @@ BEGIN
     RETURN;
   END IF;
 
+  IF v_role = 'admin' THEN
+    v_role := 'global';
+  END IF;
+
   v_allowed := public.allowed_don_vi_for_session_safe();
 
   IF v_role = 'global' THEN
@@ -487,6 +496,10 @@ BEGIN
       v_effective := NULL;
     END IF;
   ELSE
+    IF v_allowed IS NULL OR array_length(v_allowed, 1) IS NULL THEN
+      RETURN;
+    END IF;
+
     IF p_don_vi IS NOT NULL THEN
       IF v_allowed IS NULL OR NOT (p_don_vi = ANY(v_allowed)) THEN
         RAISE EXCEPTION 'Access denied for tenant %', p_don_vi USING ERRCODE = '42501';
@@ -547,6 +560,10 @@ BEGIN
     RETURN;
   END IF;
 
+  IF v_role = 'admin' THEN
+    v_role := 'global';
+  END IF;
+
   v_allowed := public.allowed_don_vi_for_session_safe();
 
   IF v_role = 'global' THEN
@@ -556,6 +573,10 @@ BEGIN
       v_effective := NULL;
     END IF;
   ELSE
+    IF v_allowed IS NULL OR array_length(v_allowed, 1) IS NULL THEN
+      RETURN;
+    END IF;
+
     IF p_don_vi IS NOT NULL THEN
       IF v_allowed IS NULL OR NOT (p_don_vi = ANY(v_allowed)) THEN
         RAISE EXCEPTION 'Access denied for tenant %', p_don_vi USING ERRCODE = '42501';
@@ -616,6 +637,10 @@ BEGIN
     RETURN;
   END IF;
 
+  IF v_role = 'admin' THEN
+    v_role := 'global';
+  END IF;
+
   v_allowed := public.allowed_don_vi_for_session_safe();
 
   IF v_role = 'global' THEN
@@ -625,6 +650,10 @@ BEGIN
       v_effective := NULL;
     END IF;
   ELSE
+    IF v_allowed IS NULL OR array_length(v_allowed, 1) IS NULL THEN
+      RETURN;
+    END IF;
+
     IF p_don_vi IS NOT NULL THEN
       IF v_allowed IS NULL OR NOT (p_don_vi = ANY(v_allowed)) THEN
         RAISE EXCEPTION 'Access denied for tenant %', p_don_vi USING ERRCODE = '42501';
@@ -685,6 +714,10 @@ BEGIN
     RETURN;
   END IF;
 
+  IF v_role = 'admin' THEN
+    v_role := 'global';
+  END IF;
+
   v_allowed := public.allowed_don_vi_for_session_safe();
 
   IF v_role = 'global' THEN
@@ -694,6 +727,10 @@ BEGIN
       v_effective := NULL;
     END IF;
   ELSE
+    IF v_allowed IS NULL OR array_length(v_allowed, 1) IS NULL THEN
+      RETURN;
+    END IF;
+
     IF p_don_vi IS NOT NULL THEN
       IF v_allowed IS NULL OR NOT (p_don_vi = ANY(v_allowed)) THEN
         RAISE EXCEPTION 'Access denied for tenant %', p_don_vi USING ERRCODE = '42501';
@@ -754,6 +791,10 @@ BEGIN
     RETURN;
   END IF;
 
+  IF v_role = 'admin' THEN
+    v_role := 'global';
+  END IF;
+
   v_allowed := public.allowed_don_vi_for_session_safe();
 
   IF v_role = 'global' THEN
@@ -763,6 +804,10 @@ BEGIN
       v_effective := NULL;
     END IF;
   ELSE
+    IF v_allowed IS NULL OR array_length(v_allowed, 1) IS NULL THEN
+      RETURN;
+    END IF;
+
     IF p_don_vi IS NOT NULL THEN
       IF v_allowed IS NULL OR NOT (p_don_vi = ANY(v_allowed)) THEN
         RAISE EXCEPTION 'Access denied for tenant %', p_don_vi USING ERRCODE = '42501';
@@ -823,6 +868,10 @@ BEGIN
     RETURN;
   END IF;
 
+  IF v_role = 'admin' THEN
+    v_role := 'global';
+  END IF;
+
   v_allowed := public.allowed_don_vi_for_session_safe();
 
   IF v_role = 'global' THEN
@@ -832,7 +881,7 @@ BEGIN
       v_effective := NULL;
     END IF;
   ELSE
-    IF v_allowed IS NULL OR array_length(v_allowed, 1) = 0 THEN
+    IF v_allowed IS NULL OR array_length(v_allowed, 1) IS NULL THEN
       RETURN;
     END IF;
 

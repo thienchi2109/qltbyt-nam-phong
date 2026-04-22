@@ -13,7 +13,7 @@
 ## Scope and constraints
 
 - Only role `user` gets the new department prefilter.
-- Match policy is strict normalized equality only: trim, lowercase, normalize tabs/newlines/NBSP to spaces, collapse repeated whitespace.
+- Match policy is strict normalized equality only: trim, lowercase, normalize tabs/newlines/NBSP to spaces, normalize hyphen separators to spaces, collapse repeated whitespace.
 - Do not reuse `src/lib/department-utils.ts` for enforcement.
 - List and filter-option RPCs fail closed to empty results.
 - Single-item reads and mutations fail closed with deny/not-found behavior, not blank fallbacks.
@@ -28,7 +28,7 @@
 
 - Create: `supabase/tests/equipment_department_scope_reads_smoke.sql`
 - Create: `supabase/tests/equipment_department_scope_workflow_guards_smoke.sql`
-- Create: `supabase/migrations/20260422110000_add_user_department_scope_prefilter.sql`
+- Create: `supabase/migrations/20260422123000_add_user_department_scope_reads.sql`
 - Modify: `src/app/(app)/repair-requests/__tests__/useRepairRequestsDeepLink.test.ts`
 - Modify: `src/components/__tests__/qr-action-sheet.test.tsx`
 - Modify: `src/app/(app)/repair-requests/_hooks/useRepairRequestsDeepLink.ts`
@@ -111,7 +111,7 @@ Not allowed:
 ### Task 2: Implement the minimal SQL read-side scope
 
 **Files:**
-- Create: `supabase/migrations/20260422110000_add_user_department_scope_prefilter.sql`
+- Create: `supabase/migrations/20260422123000_add_user_department_scope_reads.sql`
 - Read: `supabase/migrations/20260213095000_equipment_soft_delete_active_reads.sql`
 - Read: `supabase/migrations/20260218203500_fix_ilike_sanitization_equipment_list.sql`
 - Read: `supabase/migrations/20260219150500_fix_audit_spoofing_and_search_path.sql`
@@ -143,8 +143,8 @@ Implementation rules:
 
 Run:
 Run via Supabase MCP:
-- load `supabase/migrations/20260422110000_add_user_department_scope_prefilter.sql`
-- apply with `apply_migration(name: "add_user_department_scope_prefilter", query: <file contents>)`
+- load `supabase/migrations/20260422123000_add_user_department_scope_reads.sql`
+- apply with `apply_migration(name: "add_user_department_scope_reads", query: <file contents>)`
 
 Expected:
 - Migration applies cleanly.
@@ -179,7 +179,7 @@ Expected:
 - [ ] **Step 9: Commit the read-scope slice**
 
 ```bash
-git add supabase/tests/equipment_department_scope_reads_smoke.sql supabase/migrations/20260422110000_add_user_department_scope_prefilter.sql
+git add supabase/tests/equipment_department_scope_reads_smoke.sql supabase/migrations/20260422123000_add_user_department_scope_reads.sql
 git commit -m "feat: add user department scope to equipment read RPCs"
 ```
 
@@ -210,18 +210,17 @@ Also assert no write side effects remain on deny:
 
 - [ ] **Step 11: Run the new workflow smoke test and verify RED**
 
-Run:
-```bash
-docker exec -i supabase_db_qltbyt-nam-phong psql -U postgres -d postgres -v ON_ERROR_STOP=1 -f - < supabase/tests/equipment_department_scope_workflow_guards_smoke.sql
-```
+Run via Supabase MCP:
+- load `supabase/tests/equipment_department_scope_workflow_guards_smoke.sql`
+- execute with `execute_sql(query: <file contents>)`
 
 Expected:
 - FAIL because the workflow RPCs currently stop at tenant scope.
 
-### Task 4: Implement the minimal mutation guard changes
+### Task 4: Implement the minimal mutation guard changes in a new migration
 
 **Files:**
-- Modify: `supabase/migrations/20260422110000_add_user_department_scope_prefilter.sql`
+- Create: `supabase/migrations/<next_timestamp>_add_user_department_scope_workflow_guards.sql`
 - Read: `supabase/migrations/20260415125328_fix_repair_request_snapshot_cluster_and_legacy_nulls.sql`
 - Read: `supabase/migrations/20260219032645_fix_workflow_guard_security_and_race.sql`
 - Read: `supabase/migrations/2025-09-29/20250927_regional_leader_phase4.sql`
@@ -251,32 +250,31 @@ Rules:
 
 - [ ] **Step 15: Apply the updated migration**
 
-Run:
-```bash
-node scripts/npm-run.js run db:push
-```
+Run via Supabase MCP:
+- load `supabase/migrations/<next_timestamp>_add_user_department_scope_workflow_guards.sql`
+- apply with `apply_migration(name: "add_user_department_scope_workflow_guards", query: <file contents>)`
 
 Expected:
 - Migration applies cleanly.
 
 - [ ] **Step 16: Re-run the workflow smoke test and verify GREEN**
 
-Run:
-```bash
-docker exec -i supabase_db_qltbyt-nam-phong psql -U postgres -d postgres -v ON_ERROR_STOP=1 -f - < supabase/tests/equipment_department_scope_workflow_guards_smoke.sql
-```
+Run via Supabase MCP:
+- load `supabase/tests/equipment_department_scope_workflow_guards_smoke.sql`
+- execute with `execute_sql(query: <file contents>)`
 
 Expected:
 - PASS
 
 - [ ] **Step 17: Re-run existing adjacent workflow smokes to catch regression**
 
-Run:
-```bash
-docker exec -i supabase_db_qltbyt-nam-phong psql -U postgres -d postgres -v ON_ERROR_STOP=1 -f - < supabase/tests/equipment_soft_delete_workflow_guards_smoke.sql
-docker exec -i supabase_db_qltbyt-nam-phong psql -U postgres -d postgres -v ON_ERROR_STOP=1 -f - < supabase/tests/repair_request_lifecycle_audit_smoke.sql
-docker exec -i supabase_db_qltbyt-nam-phong psql -U postgres -d postgres -v ON_ERROR_STOP=1 -f - < supabase/tests/transfer_request_lifecycle_audit_smoke.sql
-```
+Run via Supabase MCP:
+- load `supabase/tests/equipment_soft_delete_workflow_guards_smoke.sql`
+- execute with `execute_sql(query: <file contents>)`
+- load `supabase/tests/repair_request_lifecycle_audit_smoke.sql`
+- execute with `execute_sql(query: <file contents>)`
+- load `supabase/tests/transfer_request_lifecycle_audit_smoke.sql`
+- execute with `execute_sql(query: <file contents>)`
 
 Expected:
 - PASS
@@ -284,7 +282,7 @@ Expected:
 - [ ] **Step 18: Commit the workflow-guard slice**
 
 ```bash
-git add supabase/tests/equipment_department_scope_workflow_guards_smoke.sql supabase/migrations/20260422110000_add_user_department_scope_prefilter.sql
+git add supabase/tests/equipment_department_scope_workflow_guards_smoke.sql supabase/migrations/<next_timestamp>_add_user_department_scope_workflow_guards.sql
 git commit -m "feat: add user department scope to equipment workflow RPCs"
 ```
 
@@ -405,15 +403,15 @@ git commit -m "feat: tighten user department deep-link and QR access behavior"
 
 - [ ] **Step 30: Re-run the new SQL read smoke**
 
-```bash
-docker exec -i supabase_db_qltbyt-nam-phong psql -U postgres -d postgres -v ON_ERROR_STOP=1 -f - < supabase/tests/equipment_department_scope_reads_smoke.sql
-```
+Run via Supabase MCP:
+- load `supabase/tests/equipment_department_scope_reads_smoke.sql`
+- execute with `execute_sql(query: <file contents>)`
 
 - [ ] **Step 31: Re-run the new SQL workflow smoke**
 
-```bash
-docker exec -i supabase_db_qltbyt-nam-phong psql -U postgres -d postgres -v ON_ERROR_STOP=1 -f - < supabase/tests/equipment_department_scope_workflow_guards_smoke.sql
-```
+Run via Supabase MCP:
+- load `supabase/tests/equipment_department_scope_workflow_guards_smoke.sql`
+- execute with `execute_sql(query: <file contents>)`
 
 - [ ] **Step 32: Run the focused Vitest suites**
 
@@ -446,7 +444,7 @@ Expected:
 - [ ] **Step 36: Final commit if any verification-only fixes were required**
 
 ```bash
-git add supabase/migrations/20260422110000_add_user_department_scope_prefilter.sql supabase/tests/equipment_department_scope_reads_smoke.sql supabase/tests/equipment_department_scope_workflow_guards_smoke.sql 'src/app/(app)/repair-requests/__tests__/useRepairRequestsDeepLink.test.ts' 'src/app/(app)/repair-requests/_hooks/useRepairRequestsDeepLink.ts' src/components/__tests__/qr-action-sheet.test.tsx
+git add supabase/migrations/20260422123000_add_user_department_scope_reads.sql supabase/migrations/<next_timestamp>_add_user_department_scope_workflow_guards.sql supabase/tests/equipment_department_scope_reads_smoke.sql supabase/tests/equipment_department_scope_workflow_guards_smoke.sql 'src/app/(app)/repair-requests/__tests__/useRepairRequestsDeepLink.test.ts' 'src/app/(app)/repair-requests/_hooks/useRepairRequestsDeepLink.ts' src/components/__tests__/qr-action-sheet.test.tsx
 git commit -m "feat: enforce user department server prefilter"
 ```
 

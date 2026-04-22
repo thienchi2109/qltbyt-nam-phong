@@ -138,6 +138,7 @@ Minimum cases to lock:
 At least one fixture pair must prove:
 - trim is ignored
 - case is ignored
+- hyphen separators normalize deterministically
 - repeated internal whitespace collapses
 
 Do not add fuzzy, substring, or accent-insensitive matching expectations.
@@ -154,7 +155,7 @@ Expected:
 ### Task 2: Implement the minimal forward-only migration
 
 **Files:**
-- Create: `supabase/migrations/20260422xxxxxx_add_user_department_scope_reads.sql`
+- Create: `supabase/migrations/20260422123000_add_user_department_scope_reads.sql`
 - Read: `supabase/migrations/20260213095000_equipment_soft_delete_active_reads.sql`
 - Read: `supabase/migrations/20260218203500_fix_ilike_sanitization_equipment_list.sql`
 - Read: `supabase/migrations/20260219150500_fix_audit_spoofing_and_search_path.sql`
@@ -164,6 +165,7 @@ Expected:
 Implementation contract:
 - return `NULL` for null/blank input
 - normalize tabs/newlines/NBSP to spaces
+- normalize hyphen separators to spaces
 - trim outer whitespace
 - lowercase
 - collapse repeated whitespace to single spaces
@@ -200,7 +202,7 @@ Concrete patch rules by deployed function family:
 - [ ] **Step 7: Apply the migration**
 
 Run via Supabase MCP:
-- load the contents of `supabase/migrations/20260422xxxxxx_add_user_department_scope_reads.sql`
+- load the contents of `supabase/migrations/20260422123000_add_user_department_scope_reads.sql`
 - apply them with `apply_migration(name: "add_user_department_scope_reads", query: <file contents>)`
 
 Expected:
@@ -254,7 +256,7 @@ Not allowed:
 - [ ] **Step 12: Commit only the `#301` slice**
 
 ```bash
-git add supabase/tests/equipment_department_scope_reads_smoke.sql supabase/migrations/20260422xxxxxx_add_user_department_scope_reads.sql
+git add supabase/tests/equipment_department_scope_reads_smoke.sql supabase/migrations/20260422123000_add_user_department_scope_reads.sql
 git commit -m "feat: [#301] add user department prefilter for equipment reads"
 ```
 
