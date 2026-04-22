@@ -145,15 +145,15 @@ BEGIN
     RAISE EXCEPTION 'equipment_list_enhanced returned wrong scoped row for role user';
   END IF;
 
-  SELECT public.equipment_get(v_allowed_id)
-  INTO v_rec;
+  SELECT (public.equipment_get(v_allowed_id)).id
+  INTO v_rec.id;
 
   IF v_rec.id IS DISTINCT FROM v_allowed_id THEN
     RAISE EXCEPTION 'equipment_get should return the same-department equipment for role user';
   END IF;
 
-  SELECT public.equipment_get_by_code('SMK-DEP-ALLOW-' || v_suffix)
-  INTO v_rec;
+  SELECT (public.equipment_get_by_code('SMK-DEP-ALLOW-' || v_suffix)).id
+  INTO v_rec.id;
 
   IF v_rec.id IS DISTINCT FROM v_allowed_id THEN
     RAISE EXCEPTION 'equipment_get_by_code should return the same-department equipment for role user';
@@ -389,7 +389,7 @@ BEGIN
   PERFORM set_config(
     'request.jwt.claims',
     json_build_object(
-      'app_role', 'admin',
+      'app_role', 'global',
       'role', 'authenticated',
       'user_id', '1',
       'sub', '1',
@@ -398,8 +398,8 @@ BEGIN
     true
   );
 
-  SELECT public.equipment_get(v_blocked_id)
-  INTO v_rec;
+  SELECT (public.equipment_get(v_blocked_id)).id
+  INTO v_rec.id;
 
   IF v_rec.id IS DISTINCT FROM v_blocked_id THEN
     RAISE EXCEPTION 'Non-user admin/global control should preserve current access behavior';
