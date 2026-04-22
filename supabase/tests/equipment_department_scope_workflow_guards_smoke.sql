@@ -636,6 +636,14 @@ BEGIN
     RAISE EXCEPTION 'Blank-claim maintenance deny should not persist task rows';
   END IF;
 
+  IF position('missing role claim in jwt' in lower(pg_get_functiondef('public.maintenance_tasks_bulk_insert(jsonb)'::regprocedure))) = 0 THEN
+    RAISE EXCEPTION 'Expected maintenance_tasks_bulk_insert to guard missing role claim';
+  END IF;
+
+  IF position('v_user_id is null' in lower(pg_get_functiondef('public.maintenance_tasks_bulk_insert(jsonb)'::regprocedure))) = 0 THEN
+    RAISE EXCEPTION 'Expected maintenance_tasks_bulk_insert to guard missing user_id claim';
+  END IF;
+
   RAISE NOTICE 'OK: equipment department workflow guard smoke setup completed';
 END $$;
 
