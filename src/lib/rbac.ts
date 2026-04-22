@@ -112,9 +112,9 @@ export function isEquipmentManagerRole(role: string | null | undefined): boolean
 export function canAccessDeviceQuotaModule(role: string | null | undefined): boolean {
   const normalized = normalizeRole(role)
 
-  return normalized !== ROLES.USER
-    && normalized !== ROLES.QLTB_KHOA
-    && normalized !== ROLES.TECHNICIAN
+  return isGlobalRole(role)
+    || normalized === ROLES.REGIONAL_LEADER
+    || normalized === ROLES.TO_QLTB
 }
 
 /**
