@@ -916,4 +916,41 @@ BEGIN
 END;
 $function$;
 
+GRANT EXECUTE ON FUNCTION public._normalize_department_scope(text) TO authenticated;
+REVOKE EXECUTE ON FUNCTION public._normalize_department_scope(text) FROM PUBLIC;
+
+GRANT EXECUTE ON FUNCTION public.equipment_get(bigint) TO authenticated;
+REVOKE EXECUTE ON FUNCTION public.equipment_get(bigint) FROM PUBLIC;
+
+GRANT EXECUTE ON FUNCTION public.equipment_get_by_code(text) TO authenticated;
+REVOKE EXECUTE ON FUNCTION public.equipment_get_by_code(text) FROM PUBLIC;
+
+GRANT EXECUTE ON FUNCTION public.equipment_list(text, text, integer, integer, bigint) TO authenticated;
+REVOKE EXECUTE ON FUNCTION public.equipment_list(text, text, integer, integer, bigint) FROM PUBLIC;
+
+GRANT EXECUTE ON FUNCTION public.equipment_list_enhanced(
+  text, text, integer, integer, bigint, text, text[], text, text[], text, text[], text, text[], text, text[], text, text[]
+) TO authenticated;
+REVOKE EXECUTE ON FUNCTION public.equipment_list_enhanced(
+  text, text, integer, integer, bigint, text, text[], text, text[], text, text[], text, text[], text, text[], text, text[]
+) FROM PUBLIC;
+
+GRANT EXECUTE ON FUNCTION public.departments_list_for_tenant(bigint) TO authenticated;
+REVOKE EXECUTE ON FUNCTION public.departments_list_for_tenant(bigint) FROM PUBLIC;
+
+GRANT EXECUTE ON FUNCTION public.equipment_users_list_for_tenant(bigint) TO authenticated;
+REVOKE EXECUTE ON FUNCTION public.equipment_users_list_for_tenant(bigint) FROM PUBLIC;
+
+GRANT EXECUTE ON FUNCTION public.equipment_locations_list_for_tenant(bigint) TO authenticated;
+REVOKE EXECUTE ON FUNCTION public.equipment_locations_list_for_tenant(bigint) FROM PUBLIC;
+
+GRANT EXECUTE ON FUNCTION public.equipment_classifications_list_for_tenant(bigint) TO authenticated;
+REVOKE EXECUTE ON FUNCTION public.equipment_classifications_list_for_tenant(bigint) FROM PUBLIC;
+
+GRANT EXECUTE ON FUNCTION public.equipment_statuses_list_for_tenant(bigint) TO authenticated;
+REVOKE EXECUTE ON FUNCTION public.equipment_statuses_list_for_tenant(bigint) FROM PUBLIC;
+
+GRANT EXECUTE ON FUNCTION public.equipment_funding_sources_list_for_tenant(bigint) TO authenticated;
+REVOKE EXECUTE ON FUNCTION public.equipment_funding_sources_list_for_tenant(bigint) FROM PUBLIC;
+
 COMMIT;
