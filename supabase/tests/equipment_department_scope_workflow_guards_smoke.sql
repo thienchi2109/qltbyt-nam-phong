@@ -386,6 +386,46 @@ BEGIN
     RAISE EXCEPTION 'Cross-department maintenance deny should not persist task rows';
   END IF;
 
+  v_failed := false;
+  v_sqlstate := NULL;
+  v_sqlerrm := NULL;
+  BEGIN
+    PERFORM public.maintenance_tasks_bulk_insert(
+      jsonb_build_array(
+        jsonb_build_object(
+          'ke_hoach_id', v_plan_id,
+          'loai_cong_viec', 'kiem_tra',
+          'diem_hieu_chuan', 'Smoke null-equipment maintenance ' || v_suffix,
+          'don_vi_thuc_hien', 'noi_bo',
+          'thang_5', true,
+          'ghi_chu', 'Smoke null-equipment maintenance ' || v_suffix
+        )
+      )
+    );
+  EXCEPTION WHEN OTHERS THEN
+    v_failed := true;
+    v_sqlstate := SQLSTATE;
+    v_sqlerrm := SQLERRM;
+  END;
+
+  IF NOT v_failed THEN
+    RAISE EXCEPTION 'Expected maintenance_tasks_bulk_insert to deny unscoped NULL-equipment role user tasks';
+  END IF;
+
+  IF v_sqlstate IS DISTINCT FROM '42501' THEN
+    RAISE EXCEPTION 'Expected NULL-equipment maintenance task to deny with 42501, got % (%)', v_sqlstate, v_sqlerrm;
+  END IF;
+
+  SELECT COUNT(*)
+  INTO v_count
+  FROM public.cong_viec_bao_tri
+  WHERE thiet_bi_id IS NULL
+    AND ghi_chu = 'Smoke null-equipment maintenance ' || v_suffix;
+
+  IF v_count <> 0 THEN
+    RAISE EXCEPTION 'NULL-equipment maintenance deny should not persist task rows';
+  END IF;
+
   PERFORM set_config(
     'request.jwt.claims',
     json_build_object(

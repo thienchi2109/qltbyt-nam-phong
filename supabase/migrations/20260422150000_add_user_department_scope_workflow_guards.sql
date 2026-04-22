@@ -297,14 +297,21 @@ SECURITY DEFINER
 SET search_path = public, pg_temp
 AS $$
 DECLARE
-  v_role TEXT := lower(COALESCE(public._get_jwt_claim('app_role'), public._get_jwt_claim('role'), ''));
-  v_user_id BIGINT := NULLIF(public._get_jwt_claim('user_id'), '')::BIGINT;
+  v_role TEXT;
+  v_is_global BOOLEAN := false;
+  v_user_id BIGINT;
   v_allowed BIGINT[] := NULL;
   v_department_scope TEXT := NULL;
   v_item JSONB;
+  v_ke_hoach_id BIGINT;
   v_thiet_bi_id BIGINT;
+  v_plan_scope TEXT;
   v_equipment_scope TEXT;
 BEGIN
+  v_role := lower(COALESCE(NULLIF(public._get_jwt_claim('app_role'), ''), NULLIF(public._get_jwt_claim('role'), '')));
+  v_is_global := v_role IN ('global', 'admin');
+  v_user_id := NULLIF(public._get_jwt_claim('user_id'), '')::BIGINT;
+
   IF v_role IS NULL OR v_role = '' THEN
     RAISE EXCEPTION 'Missing role claim in JWT' USING ERRCODE = '42501';
   END IF;
@@ -317,7 +324,7 @@ BEGIN
     RAISE EXCEPTION 'Permission denied' USING ERRCODE = '42501';
   END IF;
 
-  IF v_role <> 'global' THEN
+  IF NOT v_is_global THEN
     v_allowed := public.allowed_don_vi_for_session();
     IF v_allowed IS NULL OR array_length(v_allowed, 1) IS NULL THEN
       RAISE EXCEPTION 'Không có quyền thêm công việc bảo trì' USING ERRCODE = '42501';
@@ -336,9 +343,26 @@ BEGIN
   END IF;
 
   FOR v_item IN SELECT value FROM jsonb_array_elements(p_tasks) AS value LOOP
+    v_ke_hoach_id := NULLIF(v_item->>'ke_hoach_id', '')::BIGINT;
     v_thiet_bi_id := NULLIF(v_item->>'thiet_bi_id', '')::BIGINT;
 
-    IF v_role <> 'global' AND v_thiet_bi_id IS NOT NULL THEN
+    IF NOT v_is_global AND v_thiet_bi_id IS NULL THEN
+      SELECT public._normalize_department_scope(kh.khoa_phong)
+      INTO v_plan_scope
+      FROM public.ke_hoach_bao_tri kh
+      WHERE kh.id = v_ke_hoach_id
+        AND kh.don_vi = ANY(v_allowed);
+
+      IF NOT FOUND THEN
+        RAISE EXCEPTION 'Không có quyền thêm công việc bảo trì' USING ERRCODE = '42501';
+      END IF;
+
+      IF v_role = 'user' AND v_plan_scope IS DISTINCT FROM v_department_scope THEN
+        RAISE EXCEPTION 'Không có quyền thêm công việc bảo trì cho khoa/phòng khác' USING ERRCODE = '42501';
+      END IF;
+    END IF;
+
+    IF NOT v_is_global AND v_thiet_bi_id IS NOT NULL THEN
       SELECT public._normalize_department_scope(tb.khoa_phong_quan_ly)
       INTO v_equipment_scope
       FROM public.thiet_bi tb
