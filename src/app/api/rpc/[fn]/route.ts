@@ -16,6 +16,7 @@ type RpcProxySessionUser = {
   role?: unknown
   don_vi?: unknown
   dia_ban_id?: unknown
+  khoa_phong?: unknown
   id?: unknown
 }
 
@@ -125,6 +126,7 @@ export async function POST(req: NextRequest, context: { params: Promise<{ fn: st
   const roleLower = role.toLowerCase()
   const donVi = sessionUser.don_vi ? String(sessionUser.don_vi) : ''
   const diaBan = sessionUser.dia_ban_id ? String(sessionUser.dia_ban_id) : ''
+  const khoaPhong = sessionUser.khoa_phong ? String(sessionUser.khoa_phong) : ''
   const userId = sessionUser.id ? String(sessionUser.id) : ''
   // Normalize to expected app roles used by SQL. Always lowercase; treat 'admin' as 'global'.
   const appRole = roleLower === 'admin' ? 'global' : roleLower
@@ -147,6 +149,7 @@ export async function POST(req: NextRequest, context: { params: Promise<{ fn: st
       don_vi: donVi || null,  // Convert empty string to null for global users
       user_id: userId,
       dia_ban: diaBan || null,  // Convert empty string to null
+      khoa_phong: khoaPhong || null,
     }
 
     // Sanitize tenant parameter for non-global users to enforce isolation
