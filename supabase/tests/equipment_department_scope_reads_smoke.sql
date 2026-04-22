@@ -45,7 +45,7 @@ BEGIN
     'SMK-DEP-ALLOW-' || v_suffix,
     'Smoke Department Allowed ' || v_suffix,
     v_tenant,
-    '  Khoa   Noi  Tong Hop  ',
+    '  Nội thận - Tiết niệu  ',
     'Hoat dong',
     'User Allowed ' || v_suffix,
     'Room Allowed ' || v_suffix,
@@ -107,7 +107,7 @@ BEGIN
       'user_id', '1',
       'sub', '1',
       'don_vi', v_tenant::text,
-      'khoa_phong', E' \u00A0KHOA\nNOI\t  TONG   HOP '
+      'khoa_phong', E' \u00A0NỘI\nTHẬN\t  TIẾT   NIỆU '
     )::text,
     true
   );

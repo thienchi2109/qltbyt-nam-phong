@@ -25,6 +25,7 @@ BEGIN
   v_normalized := replace(v_normalized, E'\r', ' ');
   v_normalized := replace(v_normalized, E'\n', ' ');
   v_normalized := replace(v_normalized, E'\t', ' ');
+  v_normalized := regexp_replace(v_normalized, '[[:punct:]]+', ' ', 'g');
   v_normalized := regexp_replace(v_normalized, '\s+', ' ', 'g');
   v_normalized := lower(trim(v_normalized));
 
