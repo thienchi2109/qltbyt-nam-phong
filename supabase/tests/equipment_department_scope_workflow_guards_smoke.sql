@@ -9,6 +9,7 @@ DECLARE
   v_suffix text := to_char(clock_timestamp(), 'YYYYMMDDHH24MISSMS');
   v_tenant bigint;
   v_plan_id bigint;
+  v_blocked_plan_id bigint;
   v_user_id bigint;
   v_allowed_equipment bigint;
   v_blocked_equipment bigint;
@@ -21,19 +22,49 @@ DECLARE
   v_count bigint;
   v_status text;
 BEGIN
-  SELECT kh.id
-  INTO v_plan_id
-  FROM public.ke_hoach_bao_tri kh
-  ORDER BY kh.id
-  LIMIT 1;
-
-  IF v_plan_id IS NULL THEN
-    RAISE EXCEPTION 'Setup failed: no ke_hoach_bao_tri row found for maintenance workflow smoke test';
-  END IF;
-
   INSERT INTO public.don_vi(name, active)
   VALUES ('Smoke Workflow Department Tenant ' || v_suffix, true)
   RETURNING id INTO v_tenant;
+
+  INSERT INTO public.ke_hoach_bao_tri(
+    ten_ke_hoach,
+    nam,
+    loai_cong_viec,
+    khoa_phong,
+    nguoi_lap_ke_hoach,
+    trang_thai,
+    don_vi
+  )
+  VALUES (
+    'Smoke Workflow Allowed Plan ' || v_suffix,
+    EXTRACT(YEAR FROM current_date)::integer,
+    'kiem_tra',
+    'Nội thận - Tiết niệu',
+    'Workflow Department Smoke',
+    'Bản nháp',
+    v_tenant
+  )
+  RETURNING id INTO v_plan_id;
+
+  INSERT INTO public.ke_hoach_bao_tri(
+    ten_ke_hoach,
+    nam,
+    loai_cong_viec,
+    khoa_phong,
+    nguoi_lap_ke_hoach,
+    trang_thai,
+    don_vi
+  )
+  VALUES (
+    'Smoke Workflow Blocked Plan ' || v_suffix,
+    EXTRACT(YEAR FROM current_date)::integer,
+    'kiem_tra',
+    'Khoa Ngoai ' || v_suffix,
+    'Workflow Department Smoke',
+    'Bản nháp',
+    v_tenant
+  )
+  RETURNING id INTO v_blocked_plan_id;
 
   INSERT INTO public.nhan_vien(username, password, full_name, role, don_vi, current_don_vi)
   VALUES (
@@ -393,7 +424,7 @@ BEGIN
     PERFORM public.maintenance_tasks_bulk_insert(
       jsonb_build_array(
         jsonb_build_object(
-          'ke_hoach_id', v_plan_id,
+          'ke_hoach_id', v_blocked_plan_id,
           'loai_cong_viec', 'kiem_tra',
           'diem_hieu_chuan', 'Smoke null-equipment maintenance ' || v_suffix,
           'don_vi_thuc_hien', 'noi_bo',
@@ -409,7 +440,7 @@ BEGIN
   END;
 
   IF NOT v_failed THEN
-    RAISE EXCEPTION 'Expected maintenance_tasks_bulk_insert to deny unscoped NULL-equipment role user tasks';
+    RAISE EXCEPTION 'Expected maintenance_tasks_bulk_insert to deny out-of-department NULL-equipment role user tasks';
   END IF;
 
   IF v_sqlstate IS DISTINCT FROM '42501' THEN
