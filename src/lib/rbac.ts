@@ -104,6 +104,20 @@ export function isEquipmentManagerRole(role: string | null | undefined): boolean
 }
 
 /**
+ * Device quota module access check.
+ *
+ * Use for: top-level device quota navigation and route entry gating.
+ * Restricted roles should not see the module entry point or access it directly.
+ */
+export function canAccessDeviceQuotaModule(role: string | null | undefined): boolean {
+  const normalized = normalizeRole(role)
+
+  return isGlobalRole(role)
+    || normalized === ROLES.REGIONAL_LEADER
+    || normalized === ROLES.TO_QLTB
+}
+
+/**
  * Department-scoped role check.
  *
  * Use for: determining if user needs khoa_phong filtering.

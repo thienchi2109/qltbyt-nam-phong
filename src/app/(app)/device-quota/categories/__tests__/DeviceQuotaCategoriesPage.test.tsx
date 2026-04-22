@@ -58,7 +58,7 @@ describe('DeviceQuotaCategoriesPage', () => {
 
   it('shows the restricted access state for authenticated users without category management permission', () => {
     mockUseSession.mockReturnValue({
-      data: { user: { role: 'user', don_vi: '1' } },
+      data: { user: { role: 'regional_leader', don_vi: '1' } },
       status: 'authenticated',
     })
 

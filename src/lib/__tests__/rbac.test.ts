@@ -1,4 +1,5 @@
 import {
+  canAccessDeviceQuotaModule,
   isGlobalRole,
   isRegionalLeaderRole,
   isEquipmentManagerRole,
@@ -12,6 +13,7 @@ describe('RBAC Utilities', () => {
 
   it('should fail closed for null/undefined', () => {
     nullishValues.forEach(value => {
+      expect(canAccessDeviceQuotaModule(value)).toBe(false)
       expect(isGlobalRole(value)).toBe(false)
       expect(isRegionalLeaderRole(value)).toBe(false)
       expect(isEquipmentManagerRole(value)).toBe(false)
@@ -23,6 +25,7 @@ describe('RBAC Utilities', () => {
   it('should return false for empty or whitespace-only strings', () => {
     const values = ['', '   ', '\n', '\t']
     values.forEach(value => {
+      expect(canAccessDeviceQuotaModule(value)).toBe(false)
       expect(isGlobalRole(value)).toBe(false)
       expect(isRegionalLeaderRole(value)).toBe(false)
       expect(isEquipmentManagerRole(value)).toBe(false)
@@ -32,6 +35,9 @@ describe('RBAC Utilities', () => {
   })
 
   it('should handle case-insensitivity and whitespace', () => {
+    expect(canAccessDeviceQuotaModule(' Admin ')).toBe(true)
+    expect(canAccessDeviceQuotaModule(' regional_leader ')).toBe(true)
+    expect(canAccessDeviceQuotaModule('  To_QLTB ')).toBe(true)
     expect(isGlobalRole(' GLOBAL ')).toBe(true)
     expect(isGlobalRole('Admin')).toBe(true)
     expect(isEquipmentManagerRole('  To_QLTB ')).toBe(true)
@@ -120,6 +126,7 @@ describe('RBAC Utilities', () => {
   it('should return false for unknown roles', () => {
     const values = ['super_admin', 'unknown', 'manager']
     values.forEach(value => {
+      expect(canAccessDeviceQuotaModule(value)).toBe(false)
       expect(isGlobalRole(value)).toBe(false)
       expect(isRegionalLeaderRole(value)).toBe(false)
       expect(isEquipmentManagerRole(value)).toBe(false)
@@ -143,6 +150,19 @@ describe('RBAC Utilities', () => {
 
     denied.forEach(role => {
       expect(isPrivilegedRole(role)).toBe(false)
+    })
+  })
+
+  it('should identify device quota module access correctly', () => {
+    const allowed = [ROLES.GLOBAL, ROLES.ADMIN, ROLES.REGIONAL_LEADER, ROLES.TO_QLTB]
+    const denied = [ROLES.TECHNICIAN, ROLES.QLTB_KHOA, ROLES.USER]
+
+    allowed.forEach(role => {
+      expect(canAccessDeviceQuotaModule(role)).toBe(true)
+    })
+
+    denied.forEach(role => {
+      expect(canAccessDeviceQuotaModule(role)).toBe(false)
     })
   })
 })
