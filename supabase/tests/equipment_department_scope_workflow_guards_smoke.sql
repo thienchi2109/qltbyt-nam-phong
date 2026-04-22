@@ -490,6 +490,103 @@ BEGIN
     json_build_object(
       'app_role', 'user',
       'role', 'authenticated',
+      'don_vi', v_tenant::text,
+      'khoa_phong', 'nội thận - tiết niệu'
+    )::text,
+    true
+  );
+
+  v_failed := false;
+  v_sqlstate := NULL;
+  v_sqlerrm := NULL;
+  BEGIN
+    PERFORM public.transfer_request_create(
+      jsonb_build_object(
+        'thiet_bi_id', v_allowed_equipment,
+        'loai_hinh', 'noi_bo',
+        'ly_do_luan_chuyen', 'Smoke missing-user-id transfer ' || v_suffix,
+        'khoa_phong_hien_tai', 'Nội thận - Tiết niệu',
+        'khoa_phong_nhan', 'Khoa Missing User ' || v_suffix
+      )
+    );
+  EXCEPTION WHEN OTHERS THEN
+    v_failed := true;
+    v_sqlstate := SQLSTATE;
+    v_sqlerrm := SQLERRM;
+  END;
+
+  IF NOT v_failed THEN
+    RAISE EXCEPTION 'Expected transfer_request_create to fail closed for missing user_id claim';
+  END IF;
+
+  IF v_sqlstate IS DISTINCT FROM '42501' THEN
+    RAISE EXCEPTION 'Expected missing-user transfer_request_create to deny with 42501, got % (%)', v_sqlstate, v_sqlerrm;
+  END IF;
+
+  SELECT COUNT(*)
+  INTO v_count
+  FROM public.yeu_cau_luan_chuyen
+  WHERE thiet_bi_id = v_allowed_equipment
+    AND ly_do_luan_chuyen = 'Smoke missing-user-id transfer ' || v_suffix;
+
+  IF v_count <> 0 THEN
+    RAISE EXCEPTION 'Missing-user transfer deny should not persist request rows';
+  END IF;
+
+  PERFORM set_config(
+    'request.jwt.claims',
+    json_build_object(
+      'app_role', 'user',
+      'role', 'authenticated',
+      'user_id', v_user_id::text,
+      'sub', v_user_id::text,
+      'khoa_phong', 'nội thận - tiết niệu'
+    )::text,
+    true
+  );
+
+  v_failed := false;
+  v_sqlstate := NULL;
+  v_sqlerrm := NULL;
+  BEGIN
+    PERFORM public.transfer_request_create(
+      jsonb_build_object(
+        'thiet_bi_id', v_allowed_equipment,
+        'loai_hinh', 'noi_bo',
+        'ly_do_luan_chuyen', 'Smoke missing-don-vi transfer ' || v_suffix,
+        'khoa_phong_hien_tai', 'Nội thận - Tiết niệu',
+        'khoa_phong_nhan', 'Khoa Missing Tenant ' || v_suffix
+      )
+    );
+  EXCEPTION WHEN OTHERS THEN
+    v_failed := true;
+    v_sqlstate := SQLSTATE;
+    v_sqlerrm := SQLERRM;
+  END;
+
+  IF NOT v_failed THEN
+    RAISE EXCEPTION 'Expected transfer_request_create to fail closed for missing don_vi claim';
+  END IF;
+
+  IF v_sqlstate IS DISTINCT FROM '42501' THEN
+    RAISE EXCEPTION 'Expected missing-don-vi transfer_request_create to deny with 42501, got % (%)', v_sqlstate, v_sqlerrm;
+  END IF;
+
+  SELECT COUNT(*)
+  INTO v_count
+  FROM public.yeu_cau_luan_chuyen
+  WHERE thiet_bi_id = v_allowed_equipment
+    AND ly_do_luan_chuyen = 'Smoke missing-don-vi transfer ' || v_suffix;
+
+  IF v_count <> 0 THEN
+    RAISE EXCEPTION 'Missing-don-vi transfer deny should not persist request rows';
+  END IF;
+
+  PERFORM set_config(
+    'request.jwt.claims',
+    json_build_object(
+      'app_role', 'user',
+      'role', 'authenticated',
       'user_id', v_user_id::text,
       'sub', v_user_id::text,
       'don_vi', v_tenant::text,

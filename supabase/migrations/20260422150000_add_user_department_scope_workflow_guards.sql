@@ -195,8 +195,16 @@ BEGIN
     RAISE EXCEPTION 'Missing role claim in JWT' USING errcode = '42501';
   END IF;
 
+  IF v_user_id IS NULL THEN
+    RAISE EXCEPTION 'Missing user_id claim in JWT' USING errcode = '42501';
+  END IF;
+
   IF v_role = 'regional_leader' THEN
     RAISE EXCEPTION 'Regional leaders have read-only access to transfers' USING errcode = '42501';
+  END IF;
+
+  IF NOT v_is_global AND v_don_vi IS NULL THEN
+    RAISE EXCEPTION 'Missing don_vi claim for non-global role %', v_role USING errcode = '42501';
   END IF;
 
   IF v_role = 'user' THEN
@@ -214,7 +222,7 @@ BEGIN
     RAISE EXCEPTION 'Thiết bị không tồn tại' USING errcode = 'P0002';
   END IF;
 
-  IF NOT v_is_global AND v_don_vi IS NOT NULL AND v_tb.don_vi::text IS DISTINCT FROM v_don_vi THEN
+  IF NOT v_is_global AND v_tb.don_vi::text IS DISTINCT FROM v_don_vi THEN
     RAISE EXCEPTION 'Không có quyền trên thiết bị thuộc đơn vị khác' USING errcode = '42501';
   END IF;
 
@@ -265,13 +273,15 @@ BEGIN
   )
   RETURNING id INTO v_id;
 
-  PERFORM public.audit_log(
+  IF NOT public.audit_log(
     'transfer_request_create',
     'transfer_request',
     v_id,
     NULL,
     p_data - 'created_by' - 'updated_by' - 'nguoi_yeu_cau_id'
-  );
+  ) THEN
+    RAISE EXCEPTION 'audit_log failed for transfer_request %', v_id;
+  END IF;
 
   RETURN v_id;
 END;
@@ -369,5 +379,6 @@ END;
 $$;
 
 GRANT EXECUTE ON FUNCTION public.maintenance_tasks_bulk_insert(JSONB) TO authenticated;
+REVOKE EXECUTE ON FUNCTION public.maintenance_tasks_bulk_insert(JSONB) FROM PUBLIC;
 
 COMMIT;
