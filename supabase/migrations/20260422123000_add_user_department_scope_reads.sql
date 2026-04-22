@@ -50,12 +50,17 @@ SET search_path TO 'public', 'pg_temp'
 AS $function$
 DECLARE
   v_role TEXT := lower(COALESCE(public._get_jwt_claim('app_role'), public._get_jwt_claim('role'), ''));
+  v_user_id TEXT := NULLIF(public._get_jwt_claim('user_id'), '');
   v_allowed BIGINT[] := public.allowed_don_vi_for_session();
   v_department_scope TEXT;
   rec public.thiet_bi;
 BEGIN
   IF v_role = 'admin' THEN
     v_role := 'global';
+  END IF;
+
+  IF v_role = '' OR v_user_id IS NULL THEN
+    RAISE EXCEPTION 'Missing required JWT claims' USING ERRCODE = '42501';
   END IF;
 
   IF v_role = 'user' THEN
@@ -103,12 +108,17 @@ SET search_path TO 'public', 'pg_temp'
 AS $function$
 DECLARE
   v_role TEXT := lower(coalesce(public._get_jwt_claim('app_role'), public._get_jwt_claim('role'), ''));
+  v_user_id TEXT := NULLIF(public._get_jwt_claim('user_id'), '');
   v_allowed BIGINT[] := public.allowed_don_vi_for_session();
   v_department_scope TEXT;
   rec public.thiet_bi;
 BEGIN
   IF v_role = 'admin' THEN
     v_role := 'global';
+  END IF;
+
+  IF v_role = '' OR v_user_id IS NULL THEN
+    RAISE EXCEPTION 'Missing required JWT claims' USING ERRCODE = '42501';
   END IF;
 
   IF v_role = 'user' THEN
@@ -169,6 +179,7 @@ SET search_path TO 'public', 'pg_temp'
 AS $function$
 DECLARE
   v_role TEXT := lower(COALESCE(public._get_jwt_claim('app_role'), public._get_jwt_claim('role'), ''));
+  v_user_id TEXT := NULLIF(public._get_jwt_claim('user_id'), '');
   v_allowed BIGINT[] := public.allowed_don_vi_for_session();
   v_effective BIGINT[] := NULL;
   v_department_scope TEXT;
@@ -180,6 +191,10 @@ DECLARE
 BEGIN
   IF v_role = 'admin' THEN
     v_role := 'global';
+  END IF;
+
+  IF v_role = '' OR v_user_id IS NULL THEN
+    RAISE EXCEPTION 'Missing required JWT claims' USING ERRCODE = '42501';
   END IF;
 
   IF v_role = 'user' THEN
@@ -274,6 +289,7 @@ SET search_path TO 'public', 'pg_temp'
 AS $function$
 DECLARE
   v_role TEXT := '';
+  v_user_id TEXT := NULL;
   v_claim_donvi BIGINT := NULL;
   v_allowed_don_vi BIGINT[];
   v_effective_donvi BIGINT := NULL;
@@ -299,7 +315,16 @@ BEGIN
     v_jwt_claims ->>'role',
     ''
   );
+  v_user_id := NULLIF(v_jwt_claims ->>'user_id', '');
   v_claim_donvi := NULLIF(v_jwt_claims ->>'don_vi', '')::BIGINT;
+
+  IF lower(v_role) = 'admin' THEN
+    v_role := 'global';
+  END IF;
+
+  IF v_role = '' OR v_user_id IS NULL THEN
+    RAISE EXCEPTION 'Missing required JWT claims' USING ERRCODE = '42501';
+  END IF;
 
   IF lower(v_role) = 'user' THEN
     v_department_scope := public._normalize_department_scope(v_jwt_claims ->>'khoa_phong');
@@ -462,6 +487,7 @@ SET search_path TO 'public', 'pg_temp'
 AS $function$
 DECLARE
   v_role TEXT;
+  v_user_id TEXT;
   v_allowed BIGINT[];
   v_effective BIGINT[];
   v_department_scope TEXT;
@@ -470,7 +496,7 @@ BEGIN
   BEGIN
     v_jwt_claims := current_setting('request.jwt.claims', true)::jsonb;
   EXCEPTION WHEN OTHERS THEN
-    RETURN;
+    v_jwt_claims := NULL;
   END;
 
   v_role := lower(COALESCE(
@@ -478,13 +504,14 @@ BEGIN
     v_jwt_claims ->> 'role',
     ''
   ));
-
-  IF v_role = '' THEN
-    RETURN;
-  END IF;
+  v_user_id := NULLIF(v_jwt_claims ->> 'user_id', '');
 
   IF v_role = 'admin' THEN
     v_role := 'global';
+  END IF;
+
+  IF v_role = '' OR v_user_id IS NULL THEN
+    RAISE EXCEPTION 'Missing required JWT claims' USING ERRCODE = '42501';
   END IF;
 
   v_allowed := public.allowed_don_vi_for_session_safe();
@@ -539,6 +566,7 @@ SET search_path TO 'public', 'pg_temp'
 AS $function$
 DECLARE
   v_role TEXT;
+  v_user_id TEXT;
   v_allowed BIGINT[];
   v_effective BIGINT[];
   v_department_scope TEXT;
@@ -547,7 +575,7 @@ BEGIN
   BEGIN
     v_jwt_claims := current_setting('request.jwt.claims', true)::jsonb;
   EXCEPTION WHEN OTHERS THEN
-    RETURN;
+    v_jwt_claims := NULL;
   END;
 
   v_role := lower(COALESCE(
@@ -555,13 +583,14 @@ BEGIN
     v_jwt_claims ->> 'role',
     ''
   ));
-
-  IF v_role = '' THEN
-    RETURN;
-  END IF;
+  v_user_id := NULLIF(v_jwt_claims ->> 'user_id', '');
 
   IF v_role = 'admin' THEN
     v_role := 'global';
+  END IF;
+
+  IF v_role = '' OR v_user_id IS NULL THEN
+    RAISE EXCEPTION 'Missing required JWT claims' USING ERRCODE = '42501';
   END IF;
 
   v_allowed := public.allowed_don_vi_for_session_safe();
@@ -616,6 +645,7 @@ SET search_path TO 'public', 'pg_temp'
 AS $function$
 DECLARE
   v_role TEXT;
+  v_user_id TEXT;
   v_allowed BIGINT[];
   v_effective BIGINT[];
   v_department_scope TEXT;
@@ -624,7 +654,7 @@ BEGIN
   BEGIN
     v_jwt_claims := current_setting('request.jwt.claims', true)::jsonb;
   EXCEPTION WHEN OTHERS THEN
-    RETURN;
+    v_jwt_claims := NULL;
   END;
 
   v_role := lower(COALESCE(
@@ -632,13 +662,14 @@ BEGIN
     v_jwt_claims ->> 'role',
     ''
   ));
-
-  IF v_role = '' THEN
-    RETURN;
-  END IF;
+  v_user_id := NULLIF(v_jwt_claims ->> 'user_id', '');
 
   IF v_role = 'admin' THEN
     v_role := 'global';
+  END IF;
+
+  IF v_role = '' OR v_user_id IS NULL THEN
+    RAISE EXCEPTION 'Missing required JWT claims' USING ERRCODE = '42501';
   END IF;
 
   v_allowed := public.allowed_don_vi_for_session_safe();
@@ -693,6 +724,7 @@ SET search_path TO 'public', 'pg_temp'
 AS $function$
 DECLARE
   v_role TEXT;
+  v_user_id TEXT;
   v_allowed BIGINT[];
   v_effective BIGINT[];
   v_department_scope TEXT;
@@ -701,7 +733,7 @@ BEGIN
   BEGIN
     v_jwt_claims := current_setting('request.jwt.claims', true)::jsonb;
   EXCEPTION WHEN OTHERS THEN
-    RETURN;
+    v_jwt_claims := NULL;
   END;
 
   v_role := lower(COALESCE(
@@ -709,13 +741,14 @@ BEGIN
     v_jwt_claims ->> 'role',
     ''
   ));
-
-  IF v_role = '' THEN
-    RETURN;
-  END IF;
+  v_user_id := NULLIF(v_jwt_claims ->> 'user_id', '');
 
   IF v_role = 'admin' THEN
     v_role := 'global';
+  END IF;
+
+  IF v_role = '' OR v_user_id IS NULL THEN
+    RAISE EXCEPTION 'Missing required JWT claims' USING ERRCODE = '42501';
   END IF;
 
   v_allowed := public.allowed_don_vi_for_session_safe();
@@ -770,6 +803,7 @@ SET search_path TO 'public', 'pg_temp'
 AS $function$
 DECLARE
   v_role TEXT;
+  v_user_id TEXT;
   v_allowed BIGINT[];
   v_effective BIGINT[];
   v_department_scope TEXT;
@@ -778,7 +812,7 @@ BEGIN
   BEGIN
     v_jwt_claims := current_setting('request.jwt.claims', true)::jsonb;
   EXCEPTION WHEN OTHERS THEN
-    RETURN;
+    v_jwt_claims := NULL;
   END;
 
   v_role := lower(COALESCE(
@@ -786,13 +820,14 @@ BEGIN
     v_jwt_claims ->> 'role',
     ''
   ));
-
-  IF v_role = '' THEN
-    RETURN;
-  END IF;
+  v_user_id := NULLIF(v_jwt_claims ->> 'user_id', '');
 
   IF v_role = 'admin' THEN
     v_role := 'global';
+  END IF;
+
+  IF v_role = '' OR v_user_id IS NULL THEN
+    RAISE EXCEPTION 'Missing required JWT claims' USING ERRCODE = '42501';
   END IF;
 
   v_allowed := public.allowed_don_vi_for_session_safe();
@@ -847,6 +882,7 @@ SET search_path TO 'public', 'pg_temp'
 AS $function$
 DECLARE
   v_role TEXT;
+  v_user_id TEXT;
   v_allowed BIGINT[];
   v_effective BIGINT[];
   v_department_scope TEXT;
@@ -855,7 +891,7 @@ BEGIN
   BEGIN
     v_jwt_claims := current_setting('request.jwt.claims', true)::jsonb;
   EXCEPTION WHEN OTHERS THEN
-    RETURN;
+    v_jwt_claims := NULL;
   END;
 
   v_role := lower(COALESCE(
@@ -863,13 +899,14 @@ BEGIN
     v_jwt_claims ->> 'role',
     ''
   ));
-
-  IF v_role = '' THEN
-    RETURN;
-  END IF;
+  v_user_id := NULLIF(v_jwt_claims ->> 'user_id', '');
 
   IF v_role = 'admin' THEN
     v_role := 'global';
+  END IF;
+
+  IF v_role = '' OR v_user_id IS NULL THEN
+    RAISE EXCEPTION 'Missing required JWT claims' USING ERRCODE = '42501';
   END IF;
 
   v_allowed := public.allowed_don_vi_for_session_safe();

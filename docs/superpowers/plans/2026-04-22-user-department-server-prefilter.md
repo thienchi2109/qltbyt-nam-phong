@@ -57,12 +57,12 @@
 - `supabase/migrations/20260415125328_fix_repair_request_snapshot_cluster_and_legacy_nulls.sql`
 - `supabase/migrations/20260219032645_fix_workflow_guard_security_and_race.sql`
 - Existing frontend behavior to replace:
-- [useRepairRequestsDeepLink.ts](/root/qltbyt-nam-phong/src/app/(app)/repair-requests/_hooks/useRepairRequestsDeepLink.ts:217)
+- `src/app/(app)/repair-requests/_hooks/useRepairRequestsDeepLink.ts`
 - Existing tests that currently lock the wrong behavior:
-- [useRepairRequestsDeepLink.test.ts](/root/qltbyt-nam-phong/src/app/(app)/repair-requests/__tests__/useRepairRequestsDeepLink.test.ts:225)
-- [useRepairRequestsDeepLink.test.ts](/root/qltbyt-nam-phong/src/app/(app)/repair-requests/__tests__/useRepairRequestsDeepLink.test.ts:354)
+- `src/app/(app)/repair-requests/__tests__/useRepairRequestsDeepLink.test.ts`
+- `src/app/(app)/repair-requests/__tests__/useRepairRequestsDeepLink.test.ts`
 - Existing QR access-denied coverage to extend:
-- [qr-action-sheet.test.tsx](/root/qltbyt-nam-phong/src/components/__tests__/qr-action-sheet.test.tsx:264)
+- `src/components/__tests__/qr-action-sheet.test.tsx`
 
 ## Chunk 1: SQL Read Scope
 
