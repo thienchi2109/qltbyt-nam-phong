@@ -12,7 +12,7 @@ import {
   type LucideIcon,
 } from "lucide-react"
 
-import { isGlobalRole } from "@/lib/rbac"
+import { canAccessDeviceQuotaModule, isGlobalRole } from "@/lib/rbac"
 import type { AppNotificationBadgeKey } from "@/lib/app-notification-counts"
 
 export interface AppNavItem {
@@ -23,6 +23,7 @@ export interface AppNavItem {
   mobileSection: "main" | "more"
   badgeKey?: AppNotificationBadgeKey
   requiresGlobal?: boolean
+  requiresDeviceQuotaAccess?: boolean
 }
 
 const APP_NAV_ITEMS: AppNavItem[] = [
@@ -50,7 +51,13 @@ const APP_NAV_ITEMS: AppNavItem[] = [
     mobileSection: "more",
     badgeKey: "maintenance",
   },
-  { href: "/device-quota", icon: Calculator, label: "Định mức", mobileSection: "more" },
+  {
+    href: "/device-quota",
+    icon: Calculator,
+    label: "Định mức",
+    mobileSection: "more",
+    requiresDeviceQuotaAccess: true,
+  },
   { href: "/reports", icon: BarChart3, label: "Báo cáo", mobileSection: "more" },
   { href: "/qr-scanner", icon: QrCode, label: "Quét QR", mobileSection: "more" },
   { href: "/users", icon: Users, label: "Người dùng", mobileSection: "more", requiresGlobal: true },
@@ -64,7 +71,17 @@ const APP_NAV_ITEMS: AppNavItem[] = [
 ]
 
 export function getAppNavigationItems(role?: string): AppNavItem[] {
-  return APP_NAV_ITEMS.filter((item) => !item.requiresGlobal || isGlobalRole(role))
+  return APP_NAV_ITEMS.filter((item) => {
+    if (item.requiresGlobal && !isGlobalRole(role)) {
+      return false
+    }
+
+    if (item.requiresDeviceQuotaAccess && !canAccessDeviceQuotaModule(role)) {
+      return false
+    }
+
+    return true
+  })
 }
 
 export function getMobileFooterMainNavItems(role?: string): AppNavItem[] {
