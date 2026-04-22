@@ -1,43 +1,29 @@
 'use client'
 
-import React from 'react'
-import { useSession } from 'next-auth/react'
-import { useRouter } from 'next/navigation'
-import { Activity, Shield, AlertTriangle } from 'lucide-react'
+import * as React from 'react'
+import type { Session } from 'next-auth'
+import { Activity, AlertTriangle, Shield } from 'lucide-react'
 
+import { AuthenticatedPageBoundary } from '@/app/(app)/_components/AuthenticatedPageBoundary'
+import { AuthenticatedPageSpinnerFallback } from '@/app/(app)/_components/AuthenticatedPageFallbacks'
 import { ActivityLogsViewer } from '@/components/activity-logs/activity-logs-viewer'
 import { Card, CardContent } from '@/components/ui/card'
 import { isGlobalRole } from '@/lib/rbac'
 
 export default function ActivityLogsPage() {
-  const { data: session, status } = useSession()
+  return (
+    <AuthenticatedPageBoundary fallback={<AuthenticatedPageSpinnerFallback />}>
+      {(user) => <ActivityLogsPageContent user={user} />}
+    </AuthenticatedPageBoundary>
+  )
+}
 
-  const router = useRouter()
+type ActivityLogsPageContentProps = {
+  user: Session['user']
+}
 
-  React.useEffect(() => {
-    if (status !== 'loading' && !session) {
-      router.replace('/auth/signin')
-    }
-  }, [status, session, router])
-
-  // Redirect if not authenticated
-  if (status === 'loading') {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Đang tải...</p>
-        </div>
-      </div>
-    )
-  }
-
-  if (!session) {
-    return null
-  }
-
-  // Check if user is global admin
-  const isGlobalUser = isGlobalRole((session.user as any)?.role)
+function ActivityLogsPageContent({ user }: ActivityLogsPageContentProps) {
+  const isGlobalUser = isGlobalRole(user.role)
 
   if (!isGlobalUser) {
     return (
@@ -95,7 +81,7 @@ export default function ActivityLogsPage() {
             <span>Chỉ dành cho quản trị viên hệ thống</span>
           </div>
           <div className="text-sm text-gray-500">
-            Phiên của bạn: {(session.user as any)?.username || 'N/A'}
+            Phiên của bạn: {user.username || 'N/A'}
           </div>
         </div>
       </div>
