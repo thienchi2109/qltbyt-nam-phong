@@ -49,6 +49,7 @@ describe('RPC proxy JWT signing', () => {
         role: 'to_qltb',
         don_vi: 17,
         dia_ban_id: 10,
+        khoa_phong: 'ICU',
       },
     })
 
@@ -90,6 +91,7 @@ describe('RPC proxy JWT signing', () => {
       don_vi: '17',
       user_id: '31',
       dia_ban: '10',
+      khoa_phong: 'ICU',
       sub: '31',
     })
     const now = Math.floor(Date.now() / 1000)
