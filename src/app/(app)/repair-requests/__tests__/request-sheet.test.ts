@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest"
 
 import { buildRepairRequestSheetHtml } from "../request-sheet"
+import { REPAIR_SHEET_STYLES } from "../request-sheet-styles"
 import type { RepairRequestWithEquipment } from "../types"
 
 const request: RepairRequestWithEquipment = {
@@ -81,5 +82,15 @@ describe("buildRepairRequestSheetHtml", () => {
 
     expect(requesterSection).toContain('<div class="sig-line"></div>')
     expect(requesterSection).not.toContain('class="sig-name"')
+  })
+
+  it("centers the department name in the department field", () => {
+    const deptValueBlock = REPAIR_SHEET_STYLES.slice(
+      REPAIR_SHEET_STYLES.indexOf(".dept-row .dept-value"),
+      REPAIR_SHEET_STYLES.indexOf("/* ── Section Title ── */")
+    )
+
+    expect(deptValueBlock).toContain(".dept-row .dept-value")
+    expect(deptValueBlock).toContain("text-align: center;")
   })
 })
