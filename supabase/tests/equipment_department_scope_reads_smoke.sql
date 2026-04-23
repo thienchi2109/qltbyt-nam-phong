@@ -20,6 +20,7 @@ DECLARE
   v_sqlstate text;
   v_sqlerrm text;
   v_names text[];
+  v_proconfig text[];
 BEGIN
   INSERT INTO public.don_vi(name, active)
   VALUES ('Smoke Department Scope Tenant ' || v_suffix, true)
@@ -415,6 +416,19 @@ BEGIN
 
   IF COALESCE((v_payload->>'total')::integer, 0) <> 2 THEN
     RAISE EXCEPTION 'Admin/global control should still see both same-tenant rows, got %', v_payload->>'total';
+  END IF;
+
+  SELECT p.proconfig
+  INTO v_proconfig
+  FROM pg_proc p
+  JOIN pg_namespace n ON n.oid = p.pronamespace
+  WHERE n.nspname = 'public'
+    AND p.proname = '_normalize_department_scope'
+  LIMIT 1;
+
+  IF v_proconfig IS NULL
+     OR array_position(v_proconfig, 'search_path=public, pg_temp') IS NULL THEN
+    RAISE EXCEPTION '_normalize_department_scope must pin search_path to public, pg_temp';
   END IF;
 
   RAISE NOTICE 'OK: equipment department scope read smoke checks passed';
