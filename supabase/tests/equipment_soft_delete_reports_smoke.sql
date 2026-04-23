@@ -12,12 +12,19 @@ DECLARE
   v_loc text := 'SMK-RPT-LOC-' || v_suffix;
   v_tenant_main bigint;
   v_tenant_other bigint;
+  v_tenant_user bigint;
   v_list_count bigint;
   v_count_enhanced bigint;
   v_dept_count bigint;
   v_agg jsonb;
   v_status jsonb;
   v_legacy_total bigint;
+  v_user_prefix text := 'SMK-RPT-USER-' || v_suffix;
+  v_user_allowed_display text := 'Nội thận - Tiết niệu ' || v_suffix;
+  v_user_allowed_claim text := 'nội thận tiết niệu ' || v_suffix;
+  v_user_blocked_display text := 'ICU Blocked ' || v_suffix;
+  v_user_department_options bigint;
+  v_user_department_count bigint;
 BEGIN
   INSERT INTO public.don_vi(name, active)
   VALUES ('Smoke Report Main ' || v_suffix, true)
@@ -26,6 +33,10 @@ BEGIN
   INSERT INTO public.don_vi(name, active)
   VALUES ('Smoke Report Other ' || v_suffix, true)
   RETURNING id INTO v_tenant_other;
+
+  INSERT INTO public.don_vi(name, active)
+  VALUES ('Smoke Report User Scope ' || v_suffix, true)
+  RETURNING id INTO v_tenant_user;
 
   INSERT INTO public.thiet_bi (
     ma_thiet_bi,
@@ -40,6 +51,42 @@ BEGIN
     'Smoke report active equipment',
     v_tenant_main,
     v_dept,
+    v_loc,
+    'Hoạt động',
+    false
+  );
+
+  INSERT INTO public.thiet_bi (
+    ma_thiet_bi,
+    ten_thiet_bi,
+    don_vi,
+    khoa_phong_quan_ly,
+    vi_tri_lap_dat,
+    tinh_trang_hien_tai,
+    is_deleted
+  ) VALUES (
+    v_user_prefix || '-ALLOWED',
+    'Smoke report scoped allowed equipment',
+    v_tenant_user,
+    v_user_allowed_display,
+    v_loc,
+    'Hoạt động',
+    false
+  );
+
+  INSERT INTO public.thiet_bi (
+    ma_thiet_bi,
+    ten_thiet_bi,
+    don_vi,
+    khoa_phong_quan_ly,
+    vi_tri_lap_dat,
+    tinh_trang_hien_tai,
+    is_deleted
+  ) VALUES (
+    v_user_prefix || '-BLOCKED',
+    'Smoke report scoped blocked equipment',
+    v_tenant_user,
+    v_user_blocked_display,
     v_loc,
     'Hoạt động',
     false
@@ -232,6 +279,138 @@ BEGIN
       'admin scope check for equipment_count_enhanced expected 1, got %',
       v_count_enhanced;
   END IF;
+
+  -- role=user should inherit the same normalized khoa/phong scope contract as
+  -- departments_list_for_tenant, including fail-closed behavior for blank scope.
+  PERFORM set_config(
+    'request.jwt.claims',
+    json_build_object(
+      'app_role', 'user',
+      'role', 'authenticated',
+      'user_id', '2',
+      'sub', '2',
+      'don_vi', v_tenant_user,
+      'khoa_phong', v_user_allowed_claim
+    )::text,
+    true
+  );
+
+  SELECT COUNT(*)
+  INTO v_user_department_options
+  FROM public.departments_list_for_tenant(p_don_vi => v_tenant_user);
+
+  IF v_user_department_options <> 1 THEN
+    RAISE EXCEPTION
+      'user scope departments_list_for_tenant expected 1 visible department, got %',
+      v_user_department_options;
+  END IF;
+
+  SELECT (d->>'count')::bigint
+  INTO v_user_department_count
+  FROM public.departments_list_for_tenant(p_don_vi => v_tenant_user) AS d
+  WHERE d->>'name' = v_user_allowed_display;
+
+  IF COALESCE(v_user_department_count, 0) <> 1 THEN
+    RAISE EXCEPTION
+      'user scope departments_list_for_tenant expected allowed department count 1, got %',
+      COALESCE(v_user_department_count, 0);
+  END IF;
+
+  SELECT public.equipment_count_enhanced(
+    p_statuses => NULL,
+    p_q => v_user_prefix,
+    p_don_vi => v_tenant_user,
+    p_khoa_phong => NULL
+  )
+  INTO v_count_enhanced;
+
+  IF v_count_enhanced <> 1 THEN
+    RAISE EXCEPTION
+      'user scope equipment_count_enhanced with NULL department expected 1, got %',
+      v_count_enhanced;
+  END IF;
+
+  SELECT public.equipment_count_enhanced(
+    p_statuses => NULL,
+    p_q => v_user_prefix,
+    p_don_vi => v_tenant_user,
+    p_khoa_phong => v_user_allowed_display
+  )
+  INTO v_count_enhanced;
+
+  IF v_count_enhanced <> 1 THEN
+    RAISE EXCEPTION
+      'user scope equipment_count_enhanced with matching department expected 1, got %',
+      v_count_enhanced;
+  END IF;
+
+  SELECT public.equipment_count_enhanced(
+    p_statuses => NULL,
+    p_q => v_user_prefix,
+    p_don_vi => v_tenant_user,
+    p_khoa_phong => v_user_blocked_display
+  )
+  INTO v_count_enhanced;
+
+  IF v_count_enhanced <> 0 THEN
+    RAISE EXCEPTION
+      'user scope equipment_count_enhanced with blocked department expected 0, got %',
+      v_count_enhanced;
+  END IF;
+
+  PERFORM set_config(
+    'request.jwt.claims',
+    json_build_object(
+      'app_role', 'user',
+      'role', 'authenticated',
+      'user_id', '2',
+      'sub', '2',
+      'don_vi', v_tenant_user,
+      'khoa_phong', ''
+    )::text,
+    true
+  );
+
+  SELECT public.equipment_count_enhanced(
+    p_statuses => NULL,
+    p_q => v_user_prefix,
+    p_don_vi => v_tenant_user,
+    p_khoa_phong => NULL
+  )
+  INTO v_count_enhanced;
+
+  IF v_count_enhanced <> 0 THEN
+    RAISE EXCEPTION
+      'user scope equipment_count_enhanced with blank claim expected 0, got %',
+      v_count_enhanced;
+  END IF;
+
+  PERFORM set_config(
+    'request.jwt.claims',
+    json_build_object(
+      'app_role', 'auditor',
+      'role', 'authenticated',
+      'user_id', '3',
+      'sub', '3',
+      'don_vi', v_tenant_user
+    )::text,
+    true
+  );
+
+  BEGIN
+    PERFORM public.equipment_count_enhanced(
+      p_statuses => NULL,
+      p_q => v_user_prefix,
+      p_don_vi => v_tenant_user,
+      p_khoa_phong => NULL
+    );
+
+    RAISE EXCEPTION
+      'unsupported role should have raised 42501 for equipment_count_enhanced';
+  EXCEPTION
+    WHEN SQLSTATE '42501' THEN
+      NULL;
+  END;
 
   RAISE NOTICE 'OK: equipment report soft-delete smoke checks passed';
 END $$;
