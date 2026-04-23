@@ -50,13 +50,18 @@ interface RequestedEquipmentResolution {
   equipmentId: number | null
   phase: RequestedEquipmentPhase
   equipment: EquipmentSelectItem | null
+  failureMessage: string | null
 }
 
 const IDLE_RESOLUTION: RequestedEquipmentResolution = {
   equipmentId: null,
   phase: 'idle',
   equipment: null,
+  failureMessage: null,
 }
+
+const CREATE_INTENT_FAILURE_DESCRIPTION =
+  'Không thể mở phiếu sửa chữa cho thiết bị này.'
 
 // ── Hook ─────────────────────────────────────────────────────────
 
@@ -156,9 +161,6 @@ export function useRepairRequestsDeepLink(
     if (idNum === null) return
 
     const hasCreateAction = searchParams.get('action') === REPAIR_REQUEST_CREATE_ACTION
-    if (hasCreateAction) {
-      activeCreateEquipmentIdRef.current = idNum
-    }
 
     // Skip when fetch is in flight OR when resolution is already progressing
     // (setResolution triggers re-render before async run() sets isEquipmentFetchPending)
@@ -166,14 +168,15 @@ export function useRepairRequestsDeepLink(
     if (
       hasCreateAction &&
       resolution.equipmentId === idNum &&
-      (resolution.phase === 'pending' || resolution.phase === 'resolved')
+      (resolution.phase === 'pending' ||
+        resolution.phase === 'resolved' ||
+        resolution.phase === 'missing')
     ) return
+    if (hasCreateAction) {
+      activeCreateEquipmentIdRef.current = idNum
+    }
     const existing = allEquipment.find(eq => eq.id === idNum)
-    if (existing) {
-      // Equipment already in list — mark as resolved for create-intent gating
-      if (hasCreateAction) {
-        setResolution({ equipmentId: idNum, phase: 'resolved', equipment: existing })
-      }
+    if (existing && !hasCreateAction) {
       return
     }
 
@@ -184,7 +187,12 @@ export function useRepairRequestsDeepLink(
       hasCreateAction &&
       (resolution.equipmentId !== idNum || resolution.phase === 'missing')
     ) {
-      setResolution({ equipmentId: idNum, phase: 'pending', equipment: null })
+      setResolution({
+        equipmentId: idNum,
+        phase: 'pending',
+        equipment: null,
+        failureMessage: null,
+      })
     }
 
     const run = async () => {
@@ -195,16 +203,31 @@ export function useRepairRequestsDeepLink(
           setAllEquipment(prev => [row, ...prev.filter(x => x.id !== row.id)])
           if (hasCreateAction) {
             if (activeCreateEquipmentIdRef.current !== idNum) return
-            setResolution({ equipmentId: idNum, phase: 'resolved', equipment: row })
+            setResolution({
+              equipmentId: idNum,
+              phase: 'resolved',
+              equipment: row,
+              failureMessage: null,
+            })
           }
         } else if (hasCreateAction) {
           if (activeCreateEquipmentIdRef.current !== idNum) return
-          setResolution({ equipmentId: idNum, phase: 'missing', equipment: null })
+          setResolution({
+            equipmentId: idNum,
+            phase: 'missing',
+            equipment: null,
+            failureMessage: null,
+          })
         }
-      } catch {
+      } catch (error: unknown) {
         if (hasCreateAction) {
           if (activeCreateEquipmentIdRef.current !== idNum) return
-          setResolution({ equipmentId: idNum, phase: 'missing', equipment: null })
+          setResolution({
+            equipmentId: idNum,
+            phase: 'missing',
+            equipment: null,
+            failureMessage: getUnknownErrorMessage(error),
+          })
         }
       } finally {
         decrementEquipmentFetchPending()
@@ -218,11 +241,47 @@ export function useRepairRequestsDeepLink(
   // For action=create&equipmentId, gates on terminal resolution state
   // instead of coarse hasLoadedEquipment + isEquipmentFetchPending.
   React.useEffect(() => {
-    if (searchParams.get('action') !== REPAIR_REQUEST_CREATE_ACTION) return
+    if (searchParams.get('action') !== REPAIR_REQUEST_CREATE_ACTION) {
+      if (resolution.phase === 'missing') {
+        setResolution(IDLE_RESOLUTION)
+      }
+      return
+    }
+
+    const cleanCreateIntentUrl = (): void => {
+      const params = new URLSearchParams(searchParams.toString())
+      params.delete('action')
+      params.delete('equipmentId')
+      params.delete('status')
+      const nextPath = params.size ? `${pathname}?${params.toString()}` : pathname
+      router.replace(nextPath, { scroll: false })
+    }
+
+    const denyCreateIntent = (message: string | null): void => {
+      toast({
+        variant: 'destructive',
+        title: 'Lỗi',
+        description: message
+          ? `${CREATE_INTENT_FAILURE_DESCRIPTION} ${message}`
+          : CREATE_INTENT_FAILURE_DESCRIPTION,
+      })
+      cleanCreateIntentUrl()
+      activeCreateEquipmentIdRef.current = null
+    }
+
+    const equipmentIdParam = searchParams.get('equipmentId')
+    const hasEquipmentIdParam = equipmentIdParam !== null
+    const equipmentId = parseEquipmentIdParam(equipmentIdParam)
+
+    if (hasEquipmentIdParam && equipmentId === null) {
+      denyCreateIntent(null)
+      return
+    }
 
     // Assistant-draft fast path — takes precedence over equipment resolution
     const cachedAssistantDraft = queryClient.getQueryData(["assistant-draft"])
     if (
+      !hasEquipmentIdParam &&
       cachedAssistantDraft &&
       typeof cachedAssistantDraft === "object" &&
       "equipment" in cachedAssistantDraft &&
@@ -232,16 +291,9 @@ export function useRepairRequestsDeepLink(
       openCreateSheet()
       queryClient.removeQueries({ queryKey: ["assistant-draft"] })
 
-      const params = new URLSearchParams(searchParams.toString())
-      params.delete('action')
-      params.delete('equipmentId')
-      params.delete('status')
-      const nextPath = params.size ? `${pathname}?${params.toString()}` : pathname
-      router.replace(nextPath, { scroll: false })
+      cleanCreateIntentUrl()
       return
     }
-
-    const equipmentId = parseEquipmentIdParam(searchParams.get('equipmentId'))
 
     if (equipmentId) {
       // Ignore stale resolutions from superseded equipmentId requests.
@@ -257,23 +309,18 @@ export function useRepairRequestsDeepLink(
       ) {
         openCreateSheet(resolution.equipment)
       } else {
-        // phase === 'missing' — graceful degradation
-        openCreateSheet()
+        denyCreateIntent(resolution.failureMessage)
+        return
       }
     } else {
       // No equipmentId — open immediately
       openCreateSheet()
     }
 
-    const params = new URLSearchParams(searchParams.toString())
-    params.delete('action')
-    params.delete('equipmentId')
-    params.delete('status')
-    const nextPath = params.size ? `${pathname}?${params.toString()}` : pathname
-    router.replace(nextPath, { scroll: false })
+    cleanCreateIntentUrl()
     activeCreateEquipmentIdRef.current = null
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchParams, router, pathname, openCreateSheet, resolution, queryClient, applyAssistantDraft])
+  }, [searchParams, router, pathname, openCreateSheet, resolution, queryClient, applyAssistantDraft, toast])
 
   return { allEquipment, hasLoadedEquipment, isEquipmentFetchPending }
 }
