@@ -183,6 +183,7 @@ DECLARE
   v_req public.yeu_cau_luan_chuyen%ROWTYPE;
   v_log record;
   v_handover_at timestamptz := clock_timestamp();
+  v_approved_at timestamptz := clock_timestamp();
 BEGIN
   SELECT *
   INTO v_ctx
@@ -213,7 +214,16 @@ BEGIN
 
   PERFORM public.transfer_request_update_status(
     v_request_id::int,
-    'da_ban_giao',
+    'da_duyet',
+    jsonb_build_object(
+      'nguoi_duyet_id', v_ctx.user_id::text,
+      'ngay_duyet', v_approved_at
+    )
+  );
+
+  PERFORM public.transfer_request_update_status(
+    v_request_id::int,
+    'dang_luan_chuyen',
     jsonb_build_object(
       'ngay_ban_giao', v_handover_at
     )
@@ -240,8 +250,8 @@ BEGIN
     RAISE EXCEPTION 'Expected transfer_request_update_status audit row for in-progress transition';
   END IF;
 
-  IF v_req.trang_thai IS DISTINCT FROM 'da_ban_giao' THEN
-    RAISE EXCEPTION 'Setup failed: expected persisted status da_ban_giao, got %', v_req.trang_thai;
+  IF v_req.trang_thai IS DISTINCT FROM 'dang_luan_chuyen' THEN
+    RAISE EXCEPTION 'Setup failed: expected persisted status dang_luan_chuyen, got %', v_req.trang_thai;
   END IF;
 
   IF v_log.entity_label IS DISTINCT FROM v_req.ma_yeu_cau THEN
@@ -465,7 +475,7 @@ BEGIN
   );
 
   UPDATE public.yeu_cau_luan_chuyen
-  SET trang_thai = 'da_ban_giao',
+  SET trang_thai = 'dang_luan_chuyen',
       ngay_duyet = clock_timestamp(),
       ngay_ban_giao = clock_timestamp(),
       nguoi_duyet_id = v_ctx.user_id
@@ -627,7 +637,7 @@ BEGIN
   );
 
   UPDATE public.yeu_cau_luan_chuyen
-  SET trang_thai = 'da_ban_giao',
+  SET trang_thai = 'dang_luan_chuyen',
       ngay_duyet = clock_timestamp(),
       ngay_ban_giao = clock_timestamp(),
       nguoi_duyet_id = v_ctx.user_id
@@ -768,7 +778,7 @@ BEGIN
   );
 
   UPDATE public.yeu_cau_luan_chuyen
-  SET trang_thai = 'da_ban_giao',
+  SET trang_thai = 'dang_luan_chuyen',
       ngay_duyet = clock_timestamp(),
       ngay_ban_giao = clock_timestamp(),
       nguoi_duyet_id = v_ctx.user_id
@@ -867,8 +877,8 @@ BEGIN
     AND al.entity_id = v_request_id
     AND al.action_type = 'transfer_request_complete';
 
-  IF v_req.trang_thai IS DISTINCT FROM 'da_ban_giao' THEN
-    RAISE EXCEPTION 'Expected fail-closed path to preserve da_ban_giao status, found %', v_req.trang_thai;
+  IF v_req.trang_thai IS DISTINCT FROM 'dang_luan_chuyen' THEN
+    RAISE EXCEPTION 'Expected fail-closed path to preserve dang_luan_chuyen status, found %', v_req.trang_thai;
   END IF;
 
   IF v_req.ngay_hoan_thanh IS NOT NULL THEN
