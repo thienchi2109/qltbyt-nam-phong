@@ -659,6 +659,63 @@ BEGIN
   PERFORM set_config(
     'request.jwt.claims',
     json_build_object(
+      'app_role', 'user',
+      'role', 'authenticated',
+      'sub', '2',
+      'don_vi', v_tenant_user,
+      'khoa_phong', v_user_allowed_claim
+    )::text,
+    true
+  );
+
+  v_failed := false;
+  v_sqlstate := NULL;
+  BEGIN
+    PERFORM public.equipment_list_for_reports(
+      p_q => v_user_prefix,
+      p_sort => 'id.asc',
+      p_page => 1,
+      p_page_size => 50,
+      p_don_vi => v_tenant_user,
+      p_khoa_phong => NULL
+    );
+  EXCEPTION WHEN OTHERS THEN
+    v_failed := true;
+    v_sqlstate := SQLSTATE;
+  END;
+
+  IF NOT v_failed OR v_sqlstate IS DISTINCT FROM '42501' THEN
+    RAISE EXCEPTION
+      'missing user_id claim should deny equipment_list_for_reports with 42501, got failed=% sqlstate=%',
+      v_failed,
+      v_sqlstate;
+  END IF;
+
+  v_failed := false;
+  v_sqlstate := NULL;
+  BEGIN
+    PERFORM public.transfer_request_list_enhanced(
+      p_q => v_user_prefix,
+      p_page => 1,
+      p_page_size => 50,
+      p_don_vi => v_tenant_user,
+      p_khoa_phong => NULL
+    );
+  EXCEPTION WHEN OTHERS THEN
+    v_failed := true;
+    v_sqlstate := SQLSTATE;
+  END;
+
+  IF NOT v_failed OR v_sqlstate IS DISTINCT FROM '42501' THEN
+    RAISE EXCEPTION
+      'missing user_id claim should deny transfer_request_list_enhanced with 42501, got failed=% sqlstate=%',
+      v_failed,
+      v_sqlstate;
+  END IF;
+
+  PERFORM set_config(
+    'request.jwt.claims',
+    json_build_object(
       'app_role', 'auditor',
       'role', 'authenticated',
       'user_id', '3',

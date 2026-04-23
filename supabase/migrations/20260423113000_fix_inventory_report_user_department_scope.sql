@@ -36,6 +36,7 @@ SET search_path TO 'public', 'pg_temp'
 AS $function$
 DECLARE
   v_role text;
+  v_user_id text;
   v_allowed bigint[];
   v_effective_donvi bigint;
   v_sort_col text;
@@ -47,10 +48,11 @@ DECLARE
   v_requested_department_scope text;
 BEGIN
   v_role := lower(COALESCE(public._get_jwt_claim('app_role'), public._get_jwt_claim('role'), ''));
+  v_user_id := NULLIF(public._get_jwt_claim('user_id'), '');
   v_allowed := public.allowed_don_vi_for_session_safe();
 
-  IF v_role = '' THEN
-    RAISE EXCEPTION 'Missing role claim' USING ERRCODE = '42501';
+  IF v_role = '' OR v_user_id IS NULL THEN
+    RAISE EXCEPTION 'Missing required JWT claims' USING ERRCODE = '42501';
   END IF;
 
   IF v_role IN ('global', 'admin') THEN
@@ -152,6 +154,7 @@ SET search_path TO 'public', 'pg_temp'
 AS $function$
 DECLARE
   v_role text;
+  v_user_id text;
   v_is_global boolean := false;
   v_allowed bigint[];
   v_effective_donvi bigint;
@@ -163,12 +166,13 @@ DECLARE
   v_requested_department_scope text;
 BEGIN
   v_role := lower(COALESCE(public._get_jwt_claim('app_role'), public._get_jwt_claim('role'), ''));
+  v_user_id := NULLIF(public._get_jwt_claim('user_id'), '');
   v_is_global := v_role IN ('global', 'admin');
   v_allowed := public.allowed_don_vi_for_session_safe();
   v_sanitized_q := public._sanitize_ilike_pattern(p_q);
 
-  IF v_role = '' THEN
-    RAISE EXCEPTION 'Missing role claim' USING ERRCODE = '42501';
+  IF v_role = '' OR v_user_id IS NULL THEN
+    RAISE EXCEPTION 'Missing required JWT claims' USING ERRCODE = '42501';
   END IF;
 
   IF v_is_global THEN
