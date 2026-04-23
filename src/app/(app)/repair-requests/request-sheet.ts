@@ -23,12 +23,13 @@ function buildPage1(
   request: RepairRequestWithEquipment,
   branding: RepairRequestSheetBranding,
   date: { day: string; month: string; year: string },
-  derived: { isNoiBo: boolean; isThueNgoai: string | false; tbytOpinion: string; completionDateValue: string },
+  derived: { completionDateValue: string },
 ): string {
   const { organizationName, logoUrl } = branding
   const { day, month, year } = date
-  const { isNoiBo, isThueNgoai, tbytOpinion, completionDateValue } = derived
+  const { completionDateValue } = derived
   const eq = request.thiet_bi!
+  const requesterName = formatValue(request.nguoi_yeu_cau)
 
   return `
     <div class="a4-page">
@@ -53,11 +54,11 @@ function buildPage1(
                 <div class="dept-value">${formatValue(eq.khoa_phong_quan_ly)}</div>
             </div>
 
-            <!-- Section I: Thông tin thiết bị -->
+            <!-- Section 1: Thông tin thiết bị -->
             <section style="margin-bottom: 24px;">
                 <div class="section-header">
                     <div class="section-bullet"></div>
-                    <h3 class="section-title">I. THÔNG TIN THIẾT BỊ</h3>
+                    <h3 class="section-title">1. THÔNG TIN THIẾT BỊ</h3>
                 </div>
 
                 <div class="field-row">
@@ -78,6 +79,14 @@ function buildPage1(
                         <span class="info-label">Serial N⁰:</span>
                         <span>${formatValue(eq.serial)}</span>
                     </div>
+                </div>
+            </section>
+
+            <!-- Section 2: Đề nghị sửa chữa -->
+            <section style="margin-bottom: 24px;">
+                <div class="section-header">
+                    <div class="section-bullet"></div>
+                    <h3 class="section-title">2. ĐỀ NGHỊ SỬA CHỮA</h3>
                 </div>
 
                 <div>
@@ -101,115 +110,30 @@ function buildPage1(
             <!-- Date & Signatures I -->
             <div style="margin-top: 24px; margin-bottom: 24px;">
                 ${buildDateLine(day, month, year)}
-                <div class="signature-row">
-                    <div class="signature-col">
-                        <span class="sig-title">Lãnh đạo Khoa/phòng</span>
-                        <div class="sig-line"></div>
-                    </div>
-                    <div class="signature-col">
-                        <span class="sig-title" style="margin-bottom: 16px;">Người đề nghị</span>
-                        <div style="height: 56px;"></div>
-                        <span class="sig-name">${formatValue(request.nguoi_yeu_cau)}</span>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Gold Divider -->
-            <div class="gold-divider"></div>
-
-            <!-- Section II: Bộ phận sửa chữa -->
-            <section>
-                <div class="section-header">
-                    <div class="section-bullet"></div>
-                    <h3 class="section-title">II. BỘ PHẬN SỬA CHỮA</h3>
-                </div>
-
-                <div class="checkbox-row">
-                    <label class="checkbox-item">
-                        <div class="checkbox-box">
-                            ${isNoiBo ? '<div class="checkbox-fill"></div>' : ''}
+                <div class="signature-layout">
+                    <div class="signature-row signature-row-top">
+                        <div class="signature-col">
+                            <span class="sig-title">PHÒNG VT-TBYT</span>
+                            <div class="sig-space"></div>
+                            <div class="sig-line"></div>
                         </div>
-                        <span>Tự sửa chữa được</span>
-                    </label>
-                    <label class="checkbox-item">
-                        <div class="checkbox-box">
-                            ${isThueNgoai ? '<div class="checkbox-fill"></div>' : ''}
+                        <div class="signature-col">
+                            <span class="sig-title">LÃNH ĐẠO KHOA/PHÒNG</span>
+                            <div class="sig-space"></div>
+                            <div class="sig-line"></div>
                         </div>
-                        <span>Không tự sửa chữa được</span>
-                    </label>
-                </div>
-
-                <div class="opinion-row">
-                    <span class="opinion-label">Ý kiến của Tổ Quản lý TBYT:</span>
-                    <span class="opinion-value">${tbytOpinion}</span>
-                    <div class="opinion-underline dotted-gold"></div>
-                </div>
-
-                <div class="signature-row" style="margin-top: 24px;">
-                    <div class="signature-col">
-                        <span class="sig-title">Tổ Quản lý TBYT</span>
-                        <div class="sig-line"></div>
+                        <div class="signature-col">
+                            <span class="sig-title">NGƯỜI ĐỀ NGHỊ</span>
+                            <div class="sig-space"></div>
+                            ${requesterName ? `<span class="sig-name">${requesterName}</span>` : '<div class="sig-line"></div>'}
+                        </div>
                     </div>
-                    <div class="signature-col">
-                        <span class="sig-title">Người sửa chữa</span>
-                        <div class="sig-line"></div>
-                    </div>
-                </div>
-            </section>
-        </div>
-    </div>`
-}
-
-/* ── Page 2: Kết quả xử lý ── */
-
-function buildPage2(
-  request: RepairRequestWithEquipment,
-  branding: RepairRequestSheetBranding,
-  date: { day: string; month: string; year: string },
-): string {
-  const { organizationName, logoUrl } = branding
-  const { day, month, year } = date
-
-  return `
-    <div class="a4-page page-break">
-        <!-- Navy Header (compact for Page 2) -->
-        <header class="header-banner">
-            <div class="header-logo-container">
-                <img src="${logoUrl}" alt="Logo"
-                     onerror="this.onerror=null;this.src='${LOGO_FALLBACK}';">
-            </div>
-            <div class="header-text-container">
-                <div class="header-org-name" style="font-size: 16px;">${organizationName}</div>
-                <div class="header-gold-line-bottom" style="margin-top: 6px;"></div>
-            </div>
-        </header>
-
-        <!-- Content Body -->
-        <div class="content-body">
-            <!-- Section III -->
-            <section style="margin-bottom: 24px;">
-                <div class="section-header">
-                    <div class="section-bullet"></div>
-                    <h3 class="section-title">III. KẾT QUẢ, TÌNH TRẠNG THIẾT BỊ SAU KHI XỬ LÝ</h3>
-                </div>
-
-                <textarea class="result-area" rows="6">${request.ket_qua_sua_chua || request.ly_do_khong_hoan_thanh || ''}</textarea>
-            </section>
-
-            <!-- Date & Signatures -->
-            <div style="margin-top: 28px;">
-                ${buildDateLine(day, month, year)}
-                <div class="signature-row" style="margin-top: 16px;">
-                    <div class="signature-col">
-                        <span class="sig-title" style="margin-bottom: 4px;">Tổ Quản lý TBYT</span>
-                        <span style="font-style: italic; font-size: 12px; color: #5a6061; margin-bottom: 48px;">(Ký, ghi rõ họ, tên)</span>
-                        <div class="sig-line"></div>
-                    </div>
-                    <div class="signature-col">
-                        <span class="sig-title" style="margin-bottom: 4px;">Người đề nghị</span>
-                        <span style="font-style: italic; font-size: 12px; color: #5a6061;">(Ký, ghi rõ họ, tên)</span>
-                        <div style="height: 48px;"></div>
-                        <span class="sig-name">${formatValue(request.nguoi_yeu_cau)}</span>
+                    <div class="signature-row signature-row-bottom">
+                        <div class="signature-col">
+                            <span class="sig-title">BAN GIÁM ĐỐC</span>
+                            <div class="sig-space"></div>
+                            <div class="sig-line"></div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -234,16 +158,7 @@ export function buildRepairRequestSheetHtml(
     year: format(requestDate, 'yyyy'),
   }
 
-  const isNoiBo = request.don_vi_thuc_hien === 'noi_bo'
-  const isThueNgoai = request.don_vi_thuc_hien === 'thue_ngoai' && (request.ten_don_vi_thue ?? false)
   const derived = {
-    isNoiBo,
-    isThueNgoai,
-    tbytOpinion: isNoiBo
-      ? 'Tự sửa chữa nội bộ'
-      : isThueNgoai
-        ? `Thuê đơn vị ${request.ten_don_vi_thue} sửa chữa`
-        : '',
     completionDateValue: request.ngay_mong_muon_hoan_thanh
       ? format(parseISO(request.ngay_mong_muon_hoan_thanh), 'yyyy-MM-dd')
       : '',
@@ -260,7 +175,6 @@ export function buildRepairRequestSheetHtml(
 </head>
 <body>
     ${buildPage1(request, branding, date, derived)}
-    ${buildPage2(request, branding, date)}
 </body>
 </html>
   `
