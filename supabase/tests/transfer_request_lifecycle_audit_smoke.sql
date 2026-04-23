@@ -183,6 +183,7 @@ DECLARE
   v_req public.yeu_cau_luan_chuyen%ROWTYPE;
   v_log record;
   v_handover_at timestamptz := clock_timestamp();
+  v_approved_at timestamptz := clock_timestamp();
 BEGIN
   SELECT *
   INTO v_ctx
@@ -213,7 +214,16 @@ BEGIN
 
   PERFORM public.transfer_request_update_status(
     v_request_id::int,
-    'da_ban_giao',
+    'da_duyet',
+    jsonb_build_object(
+      'nguoi_duyet_id', v_ctx.user_id::text,
+      'ngay_duyet', v_approved_at
+    )
+  );
+
+  PERFORM public.transfer_request_update_status(
+    v_request_id::int,
+    'dang_luan_chuyen',
     jsonb_build_object(
       'ngay_ban_giao', v_handover_at
     )
@@ -240,8 +250,8 @@ BEGIN
     RAISE EXCEPTION 'Expected transfer_request_update_status audit row for in-progress transition';
   END IF;
 
-  IF v_req.trang_thai IS DISTINCT FROM 'da_ban_giao' THEN
-    RAISE EXCEPTION 'Setup failed: expected persisted status da_ban_giao, got %', v_req.trang_thai;
+  IF v_req.trang_thai IS DISTINCT FROM 'dang_luan_chuyen' THEN
+    RAISE EXCEPTION 'Setup failed: expected persisted status dang_luan_chuyen, got %', v_req.trang_thai;
   END IF;
 
   IF v_log.entity_label IS DISTINCT FROM v_req.ma_yeu_cau THEN
@@ -465,7 +475,7 @@ BEGIN
   );
 
   UPDATE public.yeu_cau_luan_chuyen
-  SET trang_thai = 'da_ban_giao',
+  SET trang_thai = 'dang_luan_chuyen',
       ngay_duyet = clock_timestamp(),
       ngay_ban_giao = clock_timestamp(),
       nguoi_duyet_id = v_ctx.user_id
@@ -627,7 +637,7 @@ BEGIN
   );
 
   UPDATE public.yeu_cau_luan_chuyen
-  SET trang_thai = 'da_ban_giao',
+  SET trang_thai = 'dang_luan_chuyen',
       ngay_duyet = clock_timestamp(),
       ngay_ban_giao = clock_timestamp(),
       nguoi_duyet_id = v_ctx.user_id
@@ -727,6 +737,57 @@ BEGIN
 END $$;
 
 -- 7) transfer_request_complete should fail closed when audit_log returns FALSE
+CREATE TEMP TABLE _transfer_complete_fail_closed_ctx (
+  request_id bigint NOT NULL
+) ON COMMIT DROP;
+
+DO $$
+DECLARE
+  v_ctx _transfer_lifecycle_ctx%ROWTYPE;
+  v_request_id bigint;
+BEGIN
+  SELECT *
+  INTO v_ctx
+  FROM _transfer_lifecycle_ctx
+  LIMIT 1;
+
+  PERFORM set_config(
+    'request.jwt.claims',
+    json_build_object(
+      'app_role', 'to_qltb',
+      'role', 'authenticated',
+      'user_id', v_ctx.user_id::text,
+      'sub', v_ctx.user_id::text,
+      'don_vi', v_ctx.tenant_id::text
+    )::text,
+    true
+  );
+
+  UPDATE public.thiet_bi
+  SET khoa_phong_quan_ly = 'Khoa Cu Fail Closed ' || v_ctx.suffix
+  WHERE id = v_ctx.equipment_id;
+
+  v_request_id := public.transfer_request_create(
+    jsonb_build_object(
+      'thiet_bi_id', v_ctx.equipment_id,
+      'loai_hinh', 'noi_bo',
+      'ly_do_luan_chuyen', 'Smoke fail closed ' || v_ctx.suffix,
+      'khoa_phong_hien_tai', 'Khoa Cu Fail Closed ' || v_ctx.suffix,
+      'khoa_phong_nhan', 'Khoa Moi Fail Closed ' || v_ctx.suffix
+    )
+  );
+
+  UPDATE public.yeu_cau_luan_chuyen
+  SET trang_thai = 'dang_luan_chuyen',
+      ngay_duyet = clock_timestamp(),
+      ngay_ban_giao = clock_timestamp(),
+      nguoi_duyet_id = v_ctx.user_id
+  WHERE id = v_request_id;
+
+  INSERT INTO _transfer_complete_fail_closed_ctx(request_id)
+  VALUES (v_request_id);
+END $$;
+
 CREATE OR REPLACE FUNCTION public.audit_log(
   p_action_type text,
   p_entity_type text DEFAULT NULL::text,
@@ -770,26 +831,14 @@ BEGIN
     true
   );
 
-  UPDATE public.thiet_bi
-  SET khoa_phong_quan_ly = 'Khoa Cu Fail Closed ' || v_ctx.suffix
-  WHERE id = v_ctx.equipment_id;
+  SELECT request_id
+  INTO v_request_id
+  FROM _transfer_complete_fail_closed_ctx
+  LIMIT 1;
 
-  v_request_id := public.transfer_request_create(
-    jsonb_build_object(
-      'thiet_bi_id', v_ctx.equipment_id,
-      'loai_hinh', 'noi_bo',
-      'ly_do_luan_chuyen', 'Smoke fail closed ' || v_ctx.suffix,
-      'khoa_phong_hien_tai', 'Khoa Cu Fail Closed ' || v_ctx.suffix,
-      'khoa_phong_nhan', 'Khoa Moi Fail Closed ' || v_ctx.suffix
-    )
-  );
-
-  UPDATE public.yeu_cau_luan_chuyen
-  SET trang_thai = 'da_ban_giao',
-      ngay_duyet = clock_timestamp(),
-      ngay_ban_giao = clock_timestamp(),
-      nguoi_duyet_id = v_ctx.user_id
-  WHERE id = v_request_id;
+  IF v_request_id IS NULL THEN
+    RAISE EXCEPTION 'Setup failed: no transfer request found for complete fail-closed smoke';
+  END IF;
 
   BEGIN
     PERFORM public.transfer_request_complete(
@@ -828,8 +877,8 @@ BEGIN
     AND al.entity_id = v_request_id
     AND al.action_type = 'transfer_request_complete';
 
-  IF v_req.trang_thai IS DISTINCT FROM 'da_ban_giao' THEN
-    RAISE EXCEPTION 'Expected fail-closed path to preserve da_ban_giao status, found %', v_req.trang_thai;
+  IF v_req.trang_thai IS DISTINCT FROM 'dang_luan_chuyen' THEN
+    RAISE EXCEPTION 'Expected fail-closed path to preserve dang_luan_chuyen status, found %', v_req.trang_thai;
   END IF;
 
   IF v_req.ngay_hoan_thanh IS NOT NULL THEN
@@ -849,6 +898,62 @@ BEGIN
   END IF;
 
   RAISE NOTICE 'OK: transfer_request_complete fails closed when audit_log returns FALSE';
+END $$;
+
+-- 8) transfer_request_create should fail closed when audit_log returns FALSE
+DO $$
+DECLARE
+  v_ctx _transfer_lifecycle_ctx%ROWTYPE;
+  v_request_count bigint;
+  v_error_raised boolean := false;
+BEGIN
+  SELECT *
+  INTO v_ctx
+  FROM _transfer_lifecycle_ctx
+  LIMIT 1;
+
+  PERFORM set_config(
+    'request.jwt.claims',
+    json_build_object(
+      'app_role', 'to_qltb',
+      'role', 'authenticated',
+      'user_id', v_ctx.user_id::text,
+      'sub', v_ctx.user_id::text,
+      'don_vi', v_ctx.tenant_id::text
+    )::text,
+    true
+  );
+
+  BEGIN
+    PERFORM public.transfer_request_create(
+      jsonb_build_object(
+        'thiet_bi_id', v_ctx.equipment_id,
+        'loai_hinh', 'noi_bo',
+        'ly_do_luan_chuyen', 'Smoke create fail closed ' || v_ctx.suffix,
+        'khoa_phong_hien_tai', 'Khoa Cu Fail Closed ' || v_ctx.suffix,
+        'khoa_phong_nhan', 'Khoa Create Fail Closed ' || v_ctx.suffix
+      )
+    );
+  EXCEPTION
+    WHEN OTHERS THEN
+      v_error_raised := true;
+  END;
+
+  IF NOT v_error_raised THEN
+    RAISE EXCEPTION 'Expected transfer_request_create to fail closed when audit_log returns FALSE';
+  END IF;
+
+  SELECT COUNT(*)
+  INTO v_request_count
+  FROM public.yeu_cau_luan_chuyen
+  WHERE thiet_bi_id = v_ctx.equipment_id
+    AND ly_do_luan_chuyen = 'Smoke create fail closed ' || v_ctx.suffix;
+
+  IF v_request_count <> 0 THEN
+    RAISE EXCEPTION 'transfer_request_create fail-closed path should not persist request rows';
+  END IF;
+
+  RAISE NOTICE 'OK: transfer_request_create fails closed when audit_log returns FALSE';
 END $$;
 
 ROLLBACK;
