@@ -70,15 +70,23 @@ BEGIN
         RETURN 0;
       END IF;
     END IF;
-  ELSE
+  ELSIF v_role IN ('to_qltb', 'qltb_khoa', 'technician', 'user') THEN
     v_effective_donvi := NULLIF(public._get_jwt_claim('don_vi'), '')::bigint;
     IF v_effective_donvi IS NULL THEN
       RAISE EXCEPTION 'Missing don_vi claim for role %', v_role USING ERRCODE = '42501';
     END IF;
 
+    IF v_allowed IS NULL
+       OR array_length(v_allowed, 1) IS NULL
+       OR NOT (v_effective_donvi = ANY(v_allowed)) THEN
+      RAISE EXCEPTION 'Access denied for role %', v_role USING ERRCODE = '42501';
+    END IF;
+
     IF p_don_vi IS NOT NULL AND p_don_vi <> v_effective_donvi THEN
       RAISE EXCEPTION 'Access denied for facility %', p_don_vi USING ERRCODE = '42501';
     END IF;
+  ELSE
+    RAISE EXCEPTION 'Access denied for role %', v_role USING ERRCODE = '42501';
   END IF;
 
   IF v_role = 'user' THEN
@@ -119,5 +127,6 @@ END;
 $function$;
 
 GRANT EXECUTE ON FUNCTION public.equipment_count_enhanced(TEXT[], TEXT, BIGINT, TEXT) TO authenticated;
+REVOKE EXECUTE ON FUNCTION public.equipment_count_enhanced(TEXT[], TEXT, BIGINT, TEXT) FROM PUBLIC;
 
 COMMIT;

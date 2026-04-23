@@ -385,6 +385,33 @@ BEGIN
       v_count_enhanced;
   END IF;
 
+  PERFORM set_config(
+    'request.jwt.claims',
+    json_build_object(
+      'app_role', 'auditor',
+      'role', 'authenticated',
+      'user_id', '3',
+      'sub', '3',
+      'don_vi', v_tenant_user
+    )::text,
+    true
+  );
+
+  BEGIN
+    PERFORM public.equipment_count_enhanced(
+      p_statuses => NULL,
+      p_q => v_user_prefix,
+      p_don_vi => v_tenant_user,
+      p_khoa_phong => NULL
+    );
+
+    RAISE EXCEPTION
+      'unsupported role should have raised 42501 for equipment_count_enhanced';
+  EXCEPTION
+    WHEN SQLSTATE '42501' THEN
+      NULL;
+  END;
+
   RAISE NOTICE 'OK: equipment report soft-delete smoke checks passed';
 END $$;
 
