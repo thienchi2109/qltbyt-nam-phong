@@ -87,6 +87,53 @@ export function registerUseRepairRequestsDeepLinkRaceCases(deps: DeepLinkRaceCas
       })
     })
 
+    it('requires equipment_get even when targeted equipment is already cached from the list', async () => {
+      const equipmentGetDeferred = createDeferred<typeof VALID_EQUIPMENT | null>()
+      const baseOpts = createDefaultOptions()
+
+      mocks.callRpc
+        .mockResolvedValueOnce([VALID_EQUIPMENT])
+        .mockReturnValueOnce(equipmentGetDeferred.promise)
+
+      const { result, rerender } = renderHook(
+        ({ currentSearchParams }) => useRepairRequestsDeepLink({
+          ...baseOpts,
+          searchParams: currentSearchParams,
+        }),
+        {
+          initialProps: {
+            currentSearchParams: createSearchParams(),
+          },
+        },
+      )
+
+      await waitFor(() => {
+        expect(result.current.hasLoadedEquipment).toBe(true)
+      })
+      expect(mocks.callRpc).toHaveBeenCalledTimes(1)
+
+      act(() => {
+        rerender({
+          currentSearchParams: createSearchParams({ action: 'create', equipmentId: '42' }),
+        })
+      })
+
+      await waitFor(() => {
+        expect(mocks.callRpc).toHaveBeenCalledTimes(2)
+      })
+      expect(mocks.openCreateSheet).not.toHaveBeenCalled()
+
+      await act(async () => {
+        equipmentGetDeferred.resolve(VALID_EQUIPMENT)
+      })
+
+      await waitFor(() => {
+        expect(mocks.openCreateSheet).toHaveBeenCalledWith(
+          expect.objectContaining({ id: 42, ma_thiet_bi: 'TB042' })
+        )
+      })
+    })
+
     it('does not reopen the create sheet when the initial list settles after the intent is consumed', async () => {
       const listDeferred = createDeferred<Array<typeof VALID_EQUIPMENT>>()
 

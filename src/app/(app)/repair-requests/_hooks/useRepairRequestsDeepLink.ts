@@ -176,16 +176,7 @@ export function useRepairRequestsDeepLink(
       activeCreateEquipmentIdRef.current = idNum
     }
     const existing = allEquipment.find(eq => eq.id === idNum)
-    if (existing) {
-      // Equipment already in list — mark as resolved for create-intent gating
-      if (hasCreateAction) {
-        setResolution({
-          equipmentId: idNum,
-          phase: 'resolved',
-          equipment: existing,
-          failureMessage: null,
-        })
-      }
+    if (existing && !hasCreateAction) {
       return
     }
 
@@ -257,7 +248,7 @@ export function useRepairRequestsDeepLink(
       return
     }
 
-    const cleanCreateIntentUrl = () => {
+    const cleanCreateIntentUrl = (): void => {
       const params = new URLSearchParams(searchParams.toString())
       params.delete('action')
       params.delete('equipmentId')
@@ -266,7 +257,7 @@ export function useRepairRequestsDeepLink(
       router.replace(nextPath, { scroll: false })
     }
 
-    const denyCreateIntent = (message: string | null) => {
+    const denyCreateIntent = (message: string | null): void => {
       toast({
         variant: 'destructive',
         title: 'Lỗi',
