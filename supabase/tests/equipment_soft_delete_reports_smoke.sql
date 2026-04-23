@@ -23,8 +23,13 @@ DECLARE
   v_user_allowed_display text := 'Nội thận - Tiết niệu ' || v_suffix;
   v_user_allowed_claim text := 'nội thận tiết niệu ' || v_suffix;
   v_user_blocked_display text := 'ICU Blocked ' || v_suffix;
+  v_user_allowed_id bigint;
+  v_user_blocked_id bigint;
   v_user_department_options bigint;
   v_user_department_count bigint;
+  v_user_blocked_rows bigint;
+  v_transfer_count bigint;
+  v_transfer_blocked_rows bigint;
 BEGIN
   INSERT INTO public.don_vi(name, active)
   VALUES ('Smoke Report Main ' || v_suffix, true)
@@ -72,7 +77,8 @@ BEGIN
     v_loc,
     'Hoạt động',
     false
-  );
+  )
+  RETURNING id INTO v_user_allowed_id;
 
   INSERT INTO public.thiet_bi (
     ma_thiet_bi,
@@ -90,6 +96,49 @@ BEGIN
     v_loc,
     'Hoạt động',
     false
+  )
+  RETURNING id INTO v_user_blocked_id;
+
+  INSERT INTO public.yeu_cau_luan_chuyen(
+    ma_yeu_cau,
+    thiet_bi_id,
+    loai_hinh,
+    trang_thai,
+    ly_do_luan_chuyen,
+    khoa_phong_hien_tai,
+    khoa_phong_nhan,
+    created_at
+  )
+  VALUES (
+    'YCLC-' || v_user_prefix || '-ALLOWED',
+    v_user_allowed_id,
+    'noi_bo',
+    'cho_duyet',
+    v_user_prefix || '-allowed-transfer',
+    v_user_allowed_display,
+    'Khoa Nhan ' || v_suffix,
+    now()
+  );
+
+  INSERT INTO public.yeu_cau_luan_chuyen(
+    ma_yeu_cau,
+    thiet_bi_id,
+    loai_hinh,
+    trang_thai,
+    ly_do_luan_chuyen,
+    khoa_phong_hien_tai,
+    khoa_phong_nhan,
+    created_at
+  )
+  VALUES (
+    'YCLC-' || v_user_prefix || '-BLOCKED',
+    v_user_blocked_id,
+    'noi_bo',
+    'cho_duyet',
+    v_user_prefix || '-blocked-transfer',
+    v_user_blocked_display,
+    'Khoa Nhan ' || v_suffix,
+    now()
   );
 
   INSERT INTO public.thiet_bi (
@@ -316,6 +365,138 @@ BEGIN
       COALESCE(v_user_department_count, 0);
   END IF;
 
+  SELECT COUNT(*)
+  INTO v_list_count
+  FROM public.equipment_list_for_reports(
+    p_q => v_user_prefix,
+    p_sort => 'id.asc',
+    p_page => 1,
+    p_page_size => 50,
+    p_don_vi => v_tenant_user,
+    p_khoa_phong => NULL
+  );
+
+  IF v_list_count <> 1 THEN
+    RAISE EXCEPTION
+      'user scope equipment_list_for_reports with NULL department expected 1 row, got %',
+      v_list_count;
+  END IF;
+
+  SELECT COUNT(*)
+  INTO v_user_blocked_rows
+  FROM public.equipment_list_for_reports(
+    p_q => v_user_prefix,
+    p_sort => 'id.asc',
+    p_page => 1,
+    p_page_size => 50,
+    p_don_vi => v_tenant_user,
+    p_khoa_phong => NULL
+  ) tb
+  WHERE tb.id = v_user_blocked_id;
+
+  IF v_user_blocked_rows <> 0 THEN
+    RAISE EXCEPTION
+      'user scope equipment_list_for_reports leaked blocked department row when p_khoa_phong is NULL';
+  END IF;
+
+  SELECT COUNT(*)
+  INTO v_list_count
+  FROM public.equipment_list_for_reports(
+    p_q => v_user_prefix,
+    p_sort => 'id.asc',
+    p_page => 1,
+    p_page_size => 50,
+    p_don_vi => v_tenant_user,
+    p_khoa_phong => v_user_allowed_claim
+  );
+
+  IF v_list_count <> 1 THEN
+    RAISE EXCEPTION
+      'user scope equipment_list_for_reports with normalized matching department expected 1 row, got %',
+      v_list_count;
+  END IF;
+
+  SELECT COUNT(*)
+  INTO v_list_count
+  FROM public.equipment_list_for_reports(
+    p_q => v_user_prefix,
+    p_sort => 'id.asc',
+    p_page => 1,
+    p_page_size => 50,
+    p_don_vi => v_tenant_user,
+    p_khoa_phong => v_user_blocked_display
+  );
+
+  IF v_list_count <> 0 THEN
+    RAISE EXCEPTION
+      'user scope equipment_list_for_reports with blocked department expected 0 rows, got %',
+      v_list_count;
+  END IF;
+
+  SELECT COUNT(*)
+  INTO v_transfer_count
+  FROM public.transfer_request_list_enhanced(
+    p_q => v_user_prefix,
+    p_page => 1,
+    p_page_size => 50,
+    p_don_vi => v_tenant_user,
+    p_khoa_phong => NULL
+  ) AS t;
+
+  IF v_transfer_count <> 1 THEN
+    RAISE EXCEPTION
+      'user scope transfer_request_list_enhanced with NULL department expected 1 row, got %',
+      v_transfer_count;
+  END IF;
+
+  SELECT COUNT(*)
+  INTO v_transfer_blocked_rows
+  FROM public.transfer_request_list_enhanced(
+    p_q => v_user_prefix,
+    p_page => 1,
+    p_page_size => 50,
+    p_don_vi => v_tenant_user,
+    p_khoa_phong => NULL
+  ) AS t
+  WHERE COALESCE((t->'thiet_bi'->>'id')::bigint, -1) = v_user_blocked_id;
+
+  IF v_transfer_blocked_rows <> 0 THEN
+    RAISE EXCEPTION
+      'user scope transfer_request_list_enhanced leaked blocked department row when p_khoa_phong is NULL';
+  END IF;
+
+  SELECT COUNT(*)
+  INTO v_transfer_count
+  FROM public.transfer_request_list_enhanced(
+    p_q => v_user_prefix,
+    p_page => 1,
+    p_page_size => 50,
+    p_don_vi => v_tenant_user,
+    p_khoa_phong => v_user_allowed_claim
+  ) AS t;
+
+  IF v_transfer_count <> 1 THEN
+    RAISE EXCEPTION
+      'user scope transfer_request_list_enhanced with normalized matching department expected 1 row, got %',
+      v_transfer_count;
+  END IF;
+
+  SELECT COUNT(*)
+  INTO v_transfer_count
+  FROM public.transfer_request_list_enhanced(
+    p_q => v_user_prefix,
+    p_page => 1,
+    p_page_size => 50,
+    p_don_vi => v_tenant_user,
+    p_khoa_phong => v_user_blocked_display
+  ) AS t;
+
+  IF v_transfer_count <> 0 THEN
+    RAISE EXCEPTION
+      'user scope transfer_request_list_enhanced with blocked department expected 0 rows, got %',
+      v_transfer_count;
+  END IF;
+
   SELECT public.equipment_count_enhanced(
     p_statuses => NULL,
     p_q => v_user_prefix,
@@ -383,6 +564,39 @@ BEGIN
     RAISE EXCEPTION
       'user scope equipment_count_enhanced with blank claim expected 0, got %',
       v_count_enhanced;
+  END IF;
+
+  SELECT COUNT(*)
+  INTO v_list_count
+  FROM public.equipment_list_for_reports(
+    p_q => v_user_prefix,
+    p_sort => 'id.asc',
+    p_page => 1,
+    p_page_size => 50,
+    p_don_vi => v_tenant_user,
+    p_khoa_phong => NULL
+  );
+
+  IF v_list_count <> 0 THEN
+    RAISE EXCEPTION
+      'user scope equipment_list_for_reports with blank claim expected 0 rows, got %',
+      v_list_count;
+  END IF;
+
+  SELECT COUNT(*)
+  INTO v_transfer_count
+  FROM public.transfer_request_list_enhanced(
+    p_q => v_user_prefix,
+    p_page => 1,
+    p_page_size => 50,
+    p_don_vi => v_tenant_user,
+    p_khoa_phong => NULL
+  ) AS t;
+
+  IF v_transfer_count <> 0 THEN
+    RAISE EXCEPTION
+      'user scope transfer_request_list_enhanced with blank claim expected 0 rows, got %',
+      v_transfer_count;
   END IF;
 
   PERFORM set_config(
