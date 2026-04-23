@@ -49,6 +49,10 @@ BEGIN
   v_role := lower(COALESCE(public._get_jwt_claim('app_role'), public._get_jwt_claim('role'), ''));
   v_allowed := public.allowed_don_vi_for_session_safe();
 
+  IF v_role = '' THEN
+    RAISE EXCEPTION 'Missing role claim' USING ERRCODE = '42501';
+  END IF;
+
   IF v_role IN ('global', 'admin') THEN
     v_effective_donvi := p_don_vi;
   ELSIF v_role = 'regional_leader' THEN
@@ -162,6 +166,10 @@ BEGIN
   v_is_global := v_role IN ('global', 'admin');
   v_allowed := public.allowed_don_vi_for_session_safe();
   v_sanitized_q := public._sanitize_ilike_pattern(p_q);
+
+  IF v_role = '' THEN
+    RAISE EXCEPTION 'Missing role claim' USING ERRCODE = '42501';
+  END IF;
 
   IF v_is_global THEN
     IF p_don_vi IS NOT NULL THEN
