@@ -61,4 +61,25 @@ describe("buildRepairRequestSheetHtml", () => {
     expect(bottomRow).toBeGreaterThan(topRowEnd)
     expect(html).toContain("Nguyễn Văn A")
   })
+
+  it("renders a signature line fallback when requester name is missing", () => {
+    const html = buildRepairRequestSheetHtml(
+      {
+        ...request,
+        nguoi_yeu_cau: null,
+      },
+      {
+        organizationName: "CDC Cần Thơ",
+        logoUrl: "https://example.com/logo.png",
+      }
+    )
+
+    const requesterSection = html.slice(
+      html.indexOf("NGƯỜI ĐỀ NGHỊ"),
+      html.indexOf("BAN GIÁM ĐỐC")
+    )
+
+    expect(requesterSection).toContain('<div class="sig-line"></div>')
+    expect(requesterSection).not.toContain('class="sig-name"')
+  })
 })

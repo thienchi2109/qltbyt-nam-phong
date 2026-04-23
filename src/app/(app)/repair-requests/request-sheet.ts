@@ -29,6 +29,7 @@ function buildPage1(
   const { day, month, year } = date
   const { completionDateValue } = derived
   const eq = request.thiet_bi!
+  const requesterName = formatValue(request.nguoi_yeu_cau)
 
   return `
     <div class="a4-page">
@@ -124,7 +125,7 @@ function buildPage1(
                         <div class="signature-col">
                             <span class="sig-title">NGƯỜI ĐỀ NGHỊ</span>
                             <div class="sig-space"></div>
-                            <span class="sig-name">${formatValue(request.nguoi_yeu_cau)}</span>
+                            ${requesterName ? `<span class="sig-name">${requesterName}</span>` : '<div class="sig-line"></div>'}
                         </div>
                     </div>
                     <div class="signature-row signature-row-bottom">
