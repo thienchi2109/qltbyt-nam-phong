@@ -24,8 +24,6 @@ body {
     flex-direction: column;
 }
 
-.page-break { page-break-before: always; }
-
 /* ── Header Banner ── */
 .header-banner {
     background-color: transparent;
@@ -231,11 +229,26 @@ body {
 }
 
 /* ── Signature ── */
+.signature-layout {
+    display: flex;
+    flex-direction: column;
+    gap: 28px;
+}
+
 .signature-row {
     display: grid;
-    grid-template-columns: 1fr 1fr;
     text-align: center;
     margin-top: 0;
+}
+
+.signature-row-top {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 20px;
+}
+
+.signature-row-bottom {
+    grid-template-columns: 1fr;
+    justify-items: center;
 }
 
 .signature-col {
@@ -248,7 +261,11 @@ body {
     font-weight: 700;
     text-transform: uppercase;
     font-size: 13px;
-    margin-bottom: 72px;
+    margin-bottom: 16px;
+}
+
+.sig-space {
+    height: 56px;
 }
 
 .sig-line {
@@ -258,77 +275,6 @@ body {
 }
 
 .sig-name { font-weight: 700; font-size: 14px; color: #436084; }
-.sig-signed { font-style: italic; color: rgba(200, 169, 81, 0.5); height: 56px; display: flex; align-items: center; justify-content: center; }
-
-/* ── Gold Divider ── */
-.gold-divider {
-    width: 100%;
-    height: 1px;
-    background: rgba(200, 169, 81, 0.3);
-    margin: 28px 0;
-}
-
-/* ── Checkbox ── */
-.checkbox-row {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 16px;
-    margin-bottom: 20px;
-    padding: 0 16px;
-}
-
-.checkbox-item {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-}
-
-.checkbox-box {
-    width: 18px;
-    height: 18px;
-    border: 2px solid #C8A951;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-shrink: 0;
-}
-
-.checkbox-fill {
-    width: 12px;
-    height: 12px;
-    background: #436084;
-}
-
-/* ── Opinion Field ── */
-.opinion-row {
-    margin-bottom: 28px;
-}
-
-.opinion-row .opinion-label { font-weight: 700; margin-right: 8px; }
-.opinion-row .opinion-value { font-style: italic; }
-.opinion-underline {
-    width: 100%;
-    height: 3px;
-    margin-top: 8px;
-}
-
-/* ── Result Textarea (Page 2) ── */
-.result-area {
-    width: 100%;
-    background-color: #F0F4F8;
-    padding: 14px 16px;
-    min-height: 140px;
-    font-style: italic;
-    border-left: 2px solid rgba(27, 58, 92, 0.3);
-    font-family: inherit;
-    font-size: 14px;
-    border-top: none;
-    border-right: none;
-    border-bottom: none;
-    resize: none;
-    outline: none;
-    color: #436084;
-}
 
 /* ── Print ── */
 @media print {
@@ -342,7 +288,6 @@ body {
         margin: 0 !important;
         box-shadow: none !important;
     }
-    .page-break { page-break-before: always !important; }
     .no-print { display: none !important; }
     .a4-page + .a4-page { margin-top: 0 !important; }
     .date-input::-webkit-calendar-picker-indicator { display: none !important; }
