@@ -64,7 +64,7 @@ export function getChatModel(): ChatModelWithKeyIndex {
 
   switch (config.provider) {
     case 'gateway': {
-      const gateway = createGateway({ apiKey: process.env.AI_GATEWAY_API_KEY })
+      const gateway = createGateway({ apiKey: process.env.AI_GATEWAY_API_KEY?.trim() })
       return {
         model: gateway(config.model as Parameters<typeof gateway>[0]),
         keyIndex: 0,

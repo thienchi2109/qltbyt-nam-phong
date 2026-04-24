@@ -213,6 +213,17 @@ describe('provider — API key rotation', () => {
     expect(keyIndex).toBe(0)
   })
 
+  it('trims the gateway API key before constructing the provider', () => {
+    process.env.AI_DEFAULT_CHAT_PROVIDER = 'gateway'
+    process.env.AI_DEFAULT_CHAT_MODEL = 'openai/gpt-5.2'
+    process.env.AI_GATEWAY_API_KEY = ' GATEWAY_KEY\n'
+
+    const { model } = getChatModel()
+    const m = model as unknown as { apiKey: string }
+
+    expect(m.apiKey).toBe('GATEWAY_KEY')
+  })
+
   it('reports a single non-rotating key slot for gateway mode', () => {
     process.env.AI_DEFAULT_CHAT_PROVIDER = 'gateway'
     process.env.AI_DEFAULT_CHAT_MODEL = 'openai/gpt-5.2'

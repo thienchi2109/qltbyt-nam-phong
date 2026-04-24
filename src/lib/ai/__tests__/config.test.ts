@@ -51,6 +51,34 @@ describe('AI default chat config resolver', () => {
     })
   })
 
+  it('keeps legacy AI_MODEL-only config in direct Google mode', () => {
+    expect(
+      resolveDefaultChatConfig(
+        env({
+          AI_MODEL: 'gemini-3.1-flash-lite-preview',
+        }),
+      ),
+    ).toEqual({
+      capability: 'default_chat',
+      provider: 'google',
+      model: 'gemini-3.1-flash-lite-preview',
+    })
+  })
+
+  it('uses an unprefixed Google model default when only legacy provider is set', () => {
+    expect(
+      resolveDefaultChatConfig(
+        env({
+          AI_PROVIDER: 'google',
+        }),
+      ),
+    ).toEqual({
+      capability: 'default_chat',
+      provider: 'google',
+      model: 'gemini-3.1-flash-lite-preview',
+    })
+  })
+
   it('rejects gateway model ids without a provider prefix', () => {
     expect(() =>
       resolveDefaultChatConfig(

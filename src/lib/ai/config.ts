@@ -8,7 +8,8 @@ export interface ResolvedDefaultChatConfig {
 }
 
 const DEFAULT_PROVIDER: AiProviderTransport = 'gateway'
-const DEFAULT_MODEL = 'google/gemini-3.1-flash-lite-preview'
+const DEFAULT_GATEWAY_MODEL = 'google/gemini-3.1-flash-lite-preview'
+const DEFAULT_GOOGLE_MODEL = 'gemini-3.1-flash-lite-preview'
 
 function readEnv(env: NodeJS.ProcessEnv, key: string): string | undefined {
   const value = env[key]?.trim()
@@ -20,12 +21,24 @@ function hasProviderPrefix(model: string): boolean {
 }
 
 export function resolveDefaultChatProvider(env: NodeJS.ProcessEnv = process.env): string {
-  return (readEnv(env, 'AI_DEFAULT_CHAT_PROVIDER') ?? readEnv(env, 'AI_PROVIDER') ?? DEFAULT_PROVIDER)
+  const explicitProvider = readEnv(env, 'AI_DEFAULT_CHAT_PROVIDER') ?? readEnv(env, 'AI_PROVIDER')
+  if (explicitProvider) return explicitProvider.toLowerCase()
+
+  // Preserve legacy deployments that only configured AI_MODEL under the old
+  // implicit Google provider contract.
+  if (readEnv(env, 'AI_MODEL') && !readEnv(env, 'AI_DEFAULT_CHAT_MODEL')) {
+    return 'google'
+  }
+
+  return DEFAULT_PROVIDER
     .toLowerCase()
 }
 
-function resolveModel(env: NodeJS.ProcessEnv): string {
-  return readEnv(env, 'AI_DEFAULT_CHAT_MODEL') ?? readEnv(env, 'AI_MODEL') ?? DEFAULT_MODEL
+function resolveModel(env: NodeJS.ProcessEnv, provider: string): string {
+  const explicitModel = readEnv(env, 'AI_DEFAULT_CHAT_MODEL') ?? readEnv(env, 'AI_MODEL')
+  if (explicitModel) return explicitModel
+
+  return provider === 'google' ? DEFAULT_GOOGLE_MODEL : DEFAULT_GATEWAY_MODEL
 }
 
 export function loadGoogleApiKeys(env: NodeJS.ProcessEnv = process.env): string[] {
@@ -46,7 +59,7 @@ export function resolveDefaultChatConfig(
   env: NodeJS.ProcessEnv = process.env,
 ): ResolvedDefaultChatConfig {
   const provider = resolveDefaultChatProvider(env)
-  const model = resolveModel(env)
+  const model = resolveModel(env, provider)
 
   if (provider === 'gateway') {
     if (!hasProviderPrefix(model)) {
