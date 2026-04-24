@@ -489,6 +489,14 @@ QUERY REVIEW CHECKLIST
 
 ## SQL Migration Safety Rules (MANDATORY)
 
+### Migration Source Order
+
+Before creating, renaming, or applying a Supabase migration, compare the new filename timestamp against all existing local migrations that touch the same tables, functions, triggers, policies, or grants. The local migration filename order is the source of truth for fresh DB/reset behavior.
+
+- A migration that `CREATE OR REPLACE`s an existing function MUST sort after the latest local migration that also redefines that function.
+- Do not name a local migration only to match a Supabase MCP-applied live version if that places it before existing local migrations that can overwrite it.
+- If a bad-order migration has already been applied via MCP, fix the repo by adding/renaming to a correctly ordered local migration and apply a new idempotent superseding migration. Do not keep the bad-order local file and do not manually edit `supabase_migrations.schema_migrations` unless the team explicitly approves a metadata repair.
+
 ### LIKE/ILIKE Sanitization
 
 **NEVER concatenate user input directly into LIKE/ILIKE patterns.** Always use `_sanitize_ilike_pattern()`:
