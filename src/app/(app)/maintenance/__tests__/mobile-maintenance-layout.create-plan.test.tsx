@@ -6,10 +6,12 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 const mocks = vi.hoisted(() => ({
   context: {
     user: { role: "global" },
+    isAuthLoading: false,
     activeTab: "plans",
     setActiveTab: vi.fn(),
     selectedPlan: null,
     canManagePlans: true,
+    canCreatePlans: false,
     setIsAddPlanDialogOpen: vi.fn(),
     handleSelectPlan: vi.fn(),
     operations: {
@@ -80,11 +82,14 @@ describe("MobileMaintenanceLayout create-plan entry points", () => {
     vi.clearAllMocks()
     mocks.context.user.role = "global"
     mocks.context.canManagePlans = true
+    mocks.context.canCreatePlans = false
     mocks.context.activeTab = "plans"
     mocks.lastPlanCardsProps = null
   })
 
-  it("hides create-plan controls for global/admin users", () => {
+  it.each(["global", "admin"])("hides create-plan controls for %s users", (role) => {
+    mocks.context.user.role = role
+
     renderMobileLayout()
 
     expect(screen.queryByRole("button", { name: "Tạo kế hoạch mới" })).not.toBeInTheDocument()
@@ -93,6 +98,7 @@ describe("MobileMaintenanceLayout create-plan entry points", () => {
 
   it("keeps create-plan controls available for non-global maintenance managers", () => {
     mocks.context.user.role = "to_qltb"
+    mocks.context.canCreatePlans = true
 
     renderMobileLayout()
 

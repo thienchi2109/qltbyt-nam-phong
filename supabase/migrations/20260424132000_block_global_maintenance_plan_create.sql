@@ -1,5 +1,7 @@
 -- 20260424132000_block_global_maintenance_plan_create.sql
 -- Purpose: Block global/admin users from creating tenantless maintenance plans.
+-- Rollback: restore the previous RPC body from
+-- supabase/migrations/20260424120000_enforce_maintenance_write_role_guards.sql.
 
 BEGIN;
 

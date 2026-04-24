@@ -5,7 +5,7 @@ import type { RowSelectionState } from "@tanstack/react-table"
 import { useQueryClient } from "@tanstack/react-query"
 import { useSession } from "next-auth/react"
 import { useToast } from "@/hooks/use-toast"
-import { isEquipmentManagerRole, isRegionalLeaderRole } from "@/lib/rbac"
+import { isEquipmentManagerRole, isGlobalRole, isRegionalLeaderRole } from "@/lib/rbac"
 import type { MaintenancePlan } from "@/hooks/use-cached-maintenance"
 import { useMaintenanceOperations } from "../_hooks/use-maintenance-operations"
 import { useMaintenancePrint } from "../_hooks/use-maintenance-print"
@@ -35,11 +35,13 @@ export function MaintenanceProvider({
 }: MaintenanceProviderProps) {
   const { toast } = useToast()
   const queryClient = useQueryClient()
-  const { data: session } = useSession()
+  const { data: session, status: sessionStatus } = useSession()
   const user: AuthUser | null = session?.user ?? null
 
+  const isAuthLoading = sessionStatus === "loading"
   const isRegionalLeader = isRegionalLeaderRole(user?.role)
   const canManagePlans = isEquipmentManagerRole(user?.role)
+  const canCreatePlans = canManagePlans && !isGlobalRole(user?.role) && !isRegionalLeader
   const canCompleteTask = !isRegionalLeader && isEquipmentManagerRole(user?.role)
 
   const [selectedPlan, setSelectedPlan] = React.useState<MaintenancePlan | null>(null)
@@ -220,8 +222,10 @@ export function MaintenanceProvider({
   const value: MaintenanceContextValue = React.useMemo(
     () => ({
       user,
+      isAuthLoading,
       isRegionalLeader,
       canManagePlans,
+      canCreatePlans,
       canCompleteTask,
 
       selectedPlan,
@@ -275,8 +279,10 @@ export function MaintenanceProvider({
     }),
     [
       user,
+      isAuthLoading,
       isRegionalLeader,
       canManagePlans,
+      canCreatePlans,
       canCompleteTask,
       selectedPlan,
       activeTab,

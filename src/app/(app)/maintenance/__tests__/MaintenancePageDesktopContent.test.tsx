@@ -6,10 +6,12 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 const mockContext = vi.hoisted(() => ({
   value: {
     user: { role: "to_qltb" },
+    isAuthLoading: false,
     activeTab: "plans",
     setActiveTab: vi.fn(),
     selectedPlan: null,
     canManagePlans: true,
+    canCreatePlans: true,
     setIsAddPlanDialogOpen: vi.fn(),
     handleSelectPlan: vi.fn(),
     isRegionalLeader: false,
@@ -94,6 +96,7 @@ describe("MaintenancePageDesktopContent", () => {
   beforeEach(() => {
     mockContext.value.user.role = "to_qltb"
     mockContext.value.canManagePlans = true
+    mockContext.value.canCreatePlans = true
     vi.clearAllMocks()
   })
 
@@ -118,8 +121,9 @@ describe("MaintenancePageDesktopContent", () => {
     expect(screen.getByRole("button", { name: "Tạo kế hoạch mới" })).toBeInTheDocument()
   })
 
-  it("hides the create-plan action for global/admin users", () => {
-    mockContext.value.user.role = "admin"
+  it.each(["admin", "global"])("hides the create-plan action for %s users", (role) => {
+    mockContext.value.user.role = role
+    mockContext.value.canCreatePlans = false
 
     renderDesktopContent()
 

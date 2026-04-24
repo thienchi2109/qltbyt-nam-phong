@@ -23,8 +23,10 @@ export interface CompletionStatusEntry {
 
 export interface MaintenanceContextValue {
   user: AuthUser | null
+  isAuthLoading: boolean
   isRegionalLeader: boolean
   canManagePlans: boolean
+  canCreatePlans: boolean
   canCompleteTask: boolean
 
   selectedPlan: MaintenancePlan | null

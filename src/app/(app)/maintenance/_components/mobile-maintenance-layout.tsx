@@ -17,7 +17,6 @@ import { MAINTENANCE_STATUS_CONFIGS } from "@/components/kpi/configs/maintenance
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
-import { isGlobalRole } from "@/lib/rbac"
 import {
   Sheet,
   SheetClose,
@@ -89,7 +88,6 @@ export function MobileMaintenanceLayout({
   toggleTaskExpansion,
 }: MobileMaintenanceLayoutProps) {
   const ctx = useMaintenanceContext()
-  const canCreatePlans = ctx.canManagePlans && !isGlobalRole(ctx.user?.role)
 
   const months = React.useMemo(() => Array.from({ length: 12 }, (_, index) => index + 1), [])
   const planTabActive = ctx.activeTab === "plans"
@@ -238,7 +236,7 @@ export function MobileMaintenanceLayout({
               isLoadingPlans={isLoadingPlans}
               showFacilityFilter={showFacilityFilter}
               canManagePlans={ctx.canManagePlans}
-              canCreatePlans={canCreatePlans}
+              canCreatePlans={ctx.canCreatePlans}
               onOpenAddPlanDialog={() => ctx.setIsAddPlanDialogOpen(true)}
               onSelectPlan={ctx.handleSelectPlan}
               onSetTasksTab={() => ctx.setActiveTab("tasks")}
@@ -273,7 +271,7 @@ export function MobileMaintenanceLayout({
         </div>
       </main>
 
-      {canCreatePlans && !ctx.isRegionalLeader && (
+      {ctx.canCreatePlans && (
         <Button
           onClick={() => ctx.setIsAddPlanDialogOpen(true)}
           className="fixed right-4 z-50 h-14 w-14 rounded-full shadow-xl transition-transform active:scale-95"

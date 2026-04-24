@@ -39,6 +39,7 @@ describe("useMaintenanceDeepLink create action", () => {
         isLoadingPlans: false,
         setIsAddPlanDialogOpen,
         canCreatePlans: false,
+        isCreatePermissionLoading: false,
         setSelectedPlan: vi.fn(),
         setActiveTab: vi.fn(),
       })
@@ -57,10 +58,39 @@ describe("useMaintenanceDeepLink create action", () => {
         isLoadingPlans: false,
         setIsAddPlanDialogOpen,
         canCreatePlans: true,
+        isCreatePermissionLoading: false,
         setSelectedPlan: vi.fn(),
         setActiveTab: vi.fn(),
       })
     )
+
+    await waitFor(() => expect(setIsAddPlanDialogOpen).toHaveBeenCalledWith(true))
+    expect(mocks.replace).toHaveBeenCalledWith("/maintenance", { scroll: false })
+  })
+
+  it("waits to consume the create action while create permission is loading", async () => {
+    const setIsAddPlanDialogOpen = vi.fn()
+    let isCreatePermissionLoading = true
+    let canCreatePlans = false
+
+    const { rerender } = renderHook(() =>
+      useMaintenanceDeepLink({
+        plans: [],
+        isLoadingPlans: false,
+        setIsAddPlanDialogOpen,
+        canCreatePlans,
+        isCreatePermissionLoading,
+        setSelectedPlan: vi.fn(),
+        setActiveTab: vi.fn(),
+      })
+    )
+
+    expect(setIsAddPlanDialogOpen).not.toHaveBeenCalled()
+    expect(mocks.replace).not.toHaveBeenCalled()
+
+    isCreatePermissionLoading = false
+    canCreatePlans = true
+    rerender()
 
     await waitFor(() => expect(setIsAddPlanDialogOpen).toHaveBeenCalledWith(true))
     expect(mocks.replace).toHaveBeenCalledWith("/maintenance", { scroll: false })

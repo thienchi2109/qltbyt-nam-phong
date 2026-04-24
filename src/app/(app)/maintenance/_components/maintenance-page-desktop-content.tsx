@@ -16,7 +16,6 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { isGlobalRole } from "@/lib/rbac"
 
 import { PlanFiltersBar } from "./plan-filters-bar"
 import { PlansTable } from "./plans-table"
@@ -87,7 +86,6 @@ export function MaintenancePageDesktopContent({
 }: MaintenancePageDesktopContentProps) {
   const ctx = useMaintenanceContext()
   const editingTaskId = ctx.taskEditing.editingTaskId
-  const canCreatePlans = ctx.canManagePlans && !isGlobalRole(ctx.user?.role)
 
   return (
     <div className="space-y-6">
@@ -117,7 +115,7 @@ export function MaintenancePageDesktopContent({
                   Quản lý các kế hoạch bảo trì, hiệu chuẩn, kiểm định. Nhấp vào một hàng để xem chi tiết.
                 </CardDescription>
               </div>
-              {canCreatePlans && (
+              {ctx.canCreatePlans && (
                 <Button size="sm" className="h-8 gap-1 ml-auto" onClick={() => ctx.setIsAddPlanDialogOpen(true)}>
                   <PlusCircle className="h-3.5 w-3.5" />
                   <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">Tạo kế hoạch mới</span>
