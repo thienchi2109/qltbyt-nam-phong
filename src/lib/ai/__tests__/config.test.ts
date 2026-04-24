@@ -79,6 +79,34 @@ describe('AI default chat config resolver', () => {
     })
   })
 
+  it('keeps legacy single Google API key config in direct Google mode', () => {
+    expect(
+      resolveDefaultChatConfig(
+        env({
+          GOOGLE_GENERATIVE_AI_API_KEY: 'google-key',
+        }),
+      ),
+    ).toEqual({
+      capability: 'default_chat',
+      provider: 'google',
+      model: 'gemini-3.1-flash-lite-preview',
+    })
+  })
+
+  it('keeps legacy pooled Google API key config in direct Google mode', () => {
+    expect(
+      resolveDefaultChatConfig(
+        env({
+          GOOGLE_GENERATIVE_AI_API_KEYS: 'google-key-a,google-key-b',
+        }),
+      ),
+    ).toEqual({
+      capability: 'default_chat',
+      provider: 'google',
+      model: 'gemini-3.1-flash-lite-preview',
+    })
+  })
+
   it('rejects gateway model ids without a provider prefix', () => {
     expect(() =>
       resolveDefaultChatConfig(

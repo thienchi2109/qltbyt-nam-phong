@@ -30,6 +30,12 @@ export function resolveDefaultChatProvider(env: NodeJS.ProcessEnv = process.env)
     return 'google'
   }
 
+  // Preserve the old minimal setup where a deployment only provided Google API
+  // key env vars and relied on the implicit Google provider.
+  if (loadGoogleApiKeys(env).length > 0 && !readEnv(env, 'AI_DEFAULT_CHAT_MODEL')) {
+    return 'google'
+  }
+
   return DEFAULT_PROVIDER
     .toLowerCase()
 }
