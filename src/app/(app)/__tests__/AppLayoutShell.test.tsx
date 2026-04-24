@@ -9,6 +9,7 @@ const mocks = vi.hoisted(() => ({
   signOut: vi.fn(),
   useSession: vi.fn(),
   usePathname: vi.fn(),
+  useTenantSelection: vi.fn(),
   useTenantBranding: vi.fn(),
   useAppNotificationCounts: vi.fn(),
 }))
@@ -30,6 +31,7 @@ vi.mock("next/dynamic", () => ({
 
 vi.mock("@/contexts/TenantSelectionContext", () => ({
   TenantSelectionProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+  useTenantSelection: () => mocks.useTenantSelection(),
 }))
 
 vi.mock("@/contexts/EquipmentFilterContext", () => ({
@@ -140,6 +142,10 @@ describe("AppLayoutShell", () => {
       status: "authenticated",
     })
     mocks.usePathname.mockReturnValue("/dashboard")
+    mocks.useTenantSelection.mockReturnValue({
+      selectedFacilityId: null,
+      shouldFetchData: true,
+    })
     mocks.useTenantBranding.mockReturnValue({
       isLoading: false,
       data: { name: "CDC", logo_url: null },
@@ -150,6 +156,31 @@ describe("AppLayoutShell", () => {
         transfer: 0,
         maintenance: 0,
       },
+    })
+  })
+
+  it("scopes notification counts to the selected facility", () => {
+    mocks.useTenantSelection.mockReturnValue({
+      selectedFacilityId: 21,
+      shouldFetchData: true,
+    })
+
+    render(
+      <AppLayoutShell
+        user={{
+          role: "global",
+          full_name: "Test User",
+          username: "tester",
+          khoa_phong: "IT",
+        }}
+      >
+        <div>Child Content</div>
+      </AppLayoutShell>
+    )
+
+    expect(mocks.useAppNotificationCounts).toHaveBeenCalledWith({
+      enabled: true,
+      facilityId: 21,
     })
   })
 
