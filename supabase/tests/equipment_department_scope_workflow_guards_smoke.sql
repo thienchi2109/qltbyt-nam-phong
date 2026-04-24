@@ -192,28 +192,45 @@ BEGIN
     RAISE EXCEPTION 'transfer_request_create should persist exactly 1 allowed row, got %', v_count;
   END IF;
 
-  PERFORM public.maintenance_tasks_bulk_insert(
-    jsonb_build_array(
-      jsonb_build_object(
-        'ke_hoach_id', v_plan_id,
-        'thiet_bi_id', v_allowed_equipment,
-        'loai_cong_viec', 'kiem_tra',
-        'diem_hieu_chuan', 'Smoke allowed maintenance ' || v_suffix,
-        'don_vi_thuc_hien', 'noi_bo',
-        'thang_1', true,
-        'ghi_chu', 'Smoke allowed maintenance ' || v_suffix
+  v_failed := false;
+  v_sqlstate := NULL;
+  v_sqlerrm := NULL;
+  BEGIN
+    PERFORM public.maintenance_tasks_bulk_insert(
+      jsonb_build_array(
+        jsonb_build_object(
+          'ke_hoach_id', v_plan_id,
+          'thiet_bi_id', v_allowed_equipment,
+          'loai_cong_viec', 'kiem_tra',
+          'diem_hieu_chuan', 'Smoke same-department user maintenance ' || v_suffix,
+          'don_vi_thuc_hien', 'noi_bo',
+          'thang_1', true,
+          'ghi_chu', 'Smoke same-department user maintenance ' || v_suffix
+        )
       )
-    )
-  );
+    );
+  EXCEPTION WHEN OTHERS THEN
+    v_failed := true;
+    v_sqlstate := SQLSTATE;
+    v_sqlerrm := SQLERRM;
+  END;
+
+  IF NOT v_failed THEN
+    RAISE EXCEPTION 'Expected maintenance_tasks_bulk_insert to deny role user maintenance writes';
+  END IF;
+
+  IF v_sqlstate IS DISTINCT FROM '42501' THEN
+    RAISE EXCEPTION 'Expected role user maintenance_tasks_bulk_insert deny with 42501, got % (%)', v_sqlstate, v_sqlerrm;
+  END IF;
 
   SELECT COUNT(*)
   INTO v_count
   FROM public.cong_viec_bao_tri
   WHERE thiet_bi_id = v_allowed_equipment
-    AND ghi_chu = 'Smoke allowed maintenance ' || v_suffix;
+    AND ghi_chu = 'Smoke same-department user maintenance ' || v_suffix;
 
-  IF v_count <> 1 THEN
-    RAISE EXCEPTION 'maintenance_tasks_bulk_insert should persist exactly 1 allowed row, got %', v_count;
+  IF v_count <> 0 THEN
+    RAISE EXCEPTION 'Role user maintenance deny should not persist task rows';
   END IF;
 
   PERFORM set_config(
@@ -707,12 +724,12 @@ BEGIN
     RAISE EXCEPTION 'Blank-claim maintenance deny should not persist task rows';
   END IF;
 
-  IF position('missing role claim in jwt' in lower(pg_get_functiondef('public.maintenance_tasks_bulk_insert(jsonb)'::regprocedure))) = 0 THEN
-    RAISE EXCEPTION 'Expected maintenance_tasks_bulk_insert to guard missing role claim';
+  IF position('missing role claim in jwt' in lower(pg_get_functiondef('public._assert_maintenance_write_allowed()'::regprocedure))) = 0 THEN
+    RAISE EXCEPTION 'Expected maintenance write helper to guard missing role claim';
   END IF;
 
-  IF position('v_user_id is null' in lower(pg_get_functiondef('public.maintenance_tasks_bulk_insert(jsonb)'::regprocedure))) = 0 THEN
-    RAISE EXCEPTION 'Expected maintenance_tasks_bulk_insert to guard missing user_id claim';
+  IF position('missing user_id claim in jwt' in lower(pg_get_functiondef('public._assert_maintenance_write_allowed()'::regprocedure))) = 0 THEN
+    RAISE EXCEPTION 'Expected maintenance write helper to guard missing user_id claim';
   END IF;
 
   RAISE NOTICE 'OK: equipment department workflow guard smoke setup completed';
