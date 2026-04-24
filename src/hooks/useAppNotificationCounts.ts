@@ -22,6 +22,7 @@ interface MaintenancePlanStatusCounts {
 
 interface UseAppNotificationCountsOptions {
   enabled?: boolean
+  facilityId?: number | null | undefined
 }
 
 interface UseAppNotificationCountsResult {
@@ -34,18 +35,22 @@ const APP_NOTIFICATION_COUNTS_QUERY_KEY = ["app-notification-counts"] as const
 export function useAppNotificationCounts(
   options: UseAppNotificationCountsOptions = {}
 ): UseAppNotificationCountsResult {
-  const { enabled = true } = options
+  const { enabled = true, facilityId } = options
+  const facilityScopeKey = typeof facilityId === "number" ? facilityId : null
   const { data, isLoading } = useQuery<AppNotificationCounts>({
-    queryKey: APP_NOTIFICATION_COUNTS_QUERY_KEY,
+    queryKey: [...APP_NOTIFICATION_COUNTS_QUERY_KEY, { facilityScope: facilityScopeKey }],
     queryFn: async ({ signal }) => {
+      const scopedArgs = typeof facilityId === "number" ? { p_don_vi: facilityId } : undefined
+      const maintenanceArgs = scopedArgs ?? {}
       const [headerSummaryResult, maintenanceCountsResult] = await Promise.allSettled([
         callRpc<HeaderNotificationsSummary>({
           fn: "header_notifications_summary",
+          ...(scopedArgs ? { args: scopedArgs } : {}),
           signal,
         }),
-        callRpc<MaintenancePlanStatusCounts | null, Record<string, never>>({
+        callRpc<MaintenancePlanStatusCounts | null, Record<string, number>>({
           fn: "maintenance_plan_status_counts",
-          args: {},
+          args: maintenanceArgs,
           signal,
         }),
       ])

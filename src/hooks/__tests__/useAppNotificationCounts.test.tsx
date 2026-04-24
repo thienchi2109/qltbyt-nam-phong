@@ -83,6 +83,55 @@ describe("useAppNotificationCounts", () => {
     expect(result.current.isLoading).toBe(false)
   })
 
+  it("passes selected facility scope to notification count RPCs", async () => {
+    mocks.callRpc
+      .mockResolvedValueOnce({
+        pending_repairs: 7,
+        pending_transfers: 0,
+      })
+      .mockResolvedValueOnce({
+        "Đã duyệt": 1,
+      })
+
+    const queryClient = new QueryClient({
+      defaultOptions: {
+        queries: {
+          retry: false,
+        },
+      },
+    })
+
+    const { result } = renderHook(
+      () => useAppNotificationCounts({ enabled: true, facilityId: 21 }),
+      { wrapper: createWrapper(queryClient) }
+    )
+
+    await waitFor(() =>
+      expect(result.current.counts).toEqual({
+        repair: 7,
+        transfer: 0,
+        maintenance: 1,
+      })
+    )
+
+    const [headerCall, maintenanceCall] = mocks.callRpc.mock.calls.map(([call]) => call)
+
+    expect(headerCall).toEqual(
+      expect.objectContaining({
+        fn: "header_notifications_summary",
+        args: { p_don_vi: 21 },
+        signal: expect.any(AbortSignal),
+      })
+    )
+    expect(maintenanceCall).toEqual(
+      expect.objectContaining({
+        fn: "maintenance_plan_status_counts",
+        args: { p_don_vi: 21 },
+        signal: expect.any(AbortSignal),
+      })
+    )
+  })
+
   it("falls back maintenance to zero when maintenance counts fail", async () => {
     mocks.callRpc
       .mockResolvedValueOnce({

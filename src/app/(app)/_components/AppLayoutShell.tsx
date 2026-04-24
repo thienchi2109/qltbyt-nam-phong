@@ -31,7 +31,7 @@ import { RealtimeStatus } from "@/components/realtime-status"
 import { MobileFooterNav } from "@/components/mobile-footer-nav"
 import { HelpButton } from "@/components/onboarding/HelpButton"
 import { USER_ROLES } from "@/types/database"
-import { TenantSelectionProvider } from "@/contexts/TenantSelectionContext"
+import { TenantSelectionProvider, useTenantSelection } from "@/contexts/TenantSelectionContext"
 import { EquipmentFilterProvider, clearAllEquipmentFilters } from "@/contexts/EquipmentFilterContext"
 import { AppSidebarNav } from "@/components/app-sidebar-nav"
 import { getAppNavigationItems } from "@/components/app-navigation"
@@ -59,15 +59,29 @@ type AppLayoutShellProps = {
 }
 
 export function AppLayoutShell({ children, user }: AppLayoutShellProps) {
+  return (
+    <TenantSelectionProvider>
+      <EquipmentFilterProvider>
+        <AppLayoutShellContent user={user}>{children}</AppLayoutShellContent>
+      </EquipmentFilterProvider>
+    </TenantSelectionProvider>
+  )
+}
+
+function AppLayoutShellContent({ children, user }: AppLayoutShellProps) {
   const pathname = usePathname()
   const { status } = useSession()
+  const { selectedFacilityId, shouldFetchData } = useTenantSelection()
   const hasHandledSessionExitRef = React.useRef(false)
   const [isSidebarOpen, setSidebarOpen] = React.useState(true)
   const [isMobileSheetOpen, setIsMobileSheetOpen] = React.useState(false)
   const [isChangePasswordOpen, setIsChangePasswordOpen] = React.useState(false)
   const [isAssistantOpen, setIsAssistantOpen] = React.useState(false)
   const branding = useTenantBranding()
-  const { counts: notificationCounts } = useAppNotificationCounts({ enabled: true })
+  const { counts: notificationCounts } = useAppNotificationCounts({
+    enabled: shouldFetchData,
+    facilityId: selectedFacilityId,
+  })
 
   const tourAttributes: Record<string, string> = {
     "/dashboard": "sidebar-nav-dashboard",
@@ -110,9 +124,7 @@ export function AppLayoutShell({ children, user }: AppLayoutShellProps) {
   }, [redirectToSignedOutHome, status])
 
   return (
-    <TenantSelectionProvider>
-      <EquipmentFilterProvider>
-        <>
+    <>
           <ChangePasswordDialog
             open={isChangePasswordOpen}
             onOpenChange={setIsChangePasswordOpen}
@@ -283,8 +295,6 @@ export function AppLayoutShell({ children, user }: AppLayoutShellProps) {
               </footer>
             </div>
           </div>
-        </>
-      </EquipmentFilterProvider>
-    </TenantSelectionProvider>
+    </>
   )
 }
