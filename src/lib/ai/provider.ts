@@ -1,28 +1,19 @@
 import { createGoogleGenerativeAI } from '@ai-sdk/google'
-import type { LanguageModel } from 'ai'
+import { createGateway, type LanguageModel } from 'ai'
 
-const DEFAULT_PROVIDER = 'google'
-const DEFAULT_MODEL = 'gemini-3.1-flash-lite-preview'
+import {
+  assertDefaultChatCredentials,
+  resolveDefaultChatProvider,
+  loadGoogleApiKeys,
+  resolveDefaultChatConfig,
+} from './config'
 
 // ---------------------------------------------------------------------------
 // API-key pool & round-robin rotation
 // ---------------------------------------------------------------------------
 
 function loadApiKeys(): string[] {
-  const pool = process.env.GOOGLE_GENERATIVE_AI_API_KEYS
-  if (pool) {
-    const keys = pool
-      .split(',')
-      .map((k) => k.trim())
-      .filter(Boolean)
-    if (keys.length > 0) return keys
-  }
-
-  // Fallback: single-key env var (read by @ai-sdk/google by default)
-  const single = process.env.GOOGLE_GENERATIVE_AI_API_KEY
-  if (single?.trim()) return [single.trim()]
-
-  return []
+  return loadGoogleApiKeys()
 }
 
 /** Visible for testing — do NOT use directly outside tests. */
@@ -68,10 +59,17 @@ export interface ChatModelWithKeyIndex {
  * the correct key is marked as exhausted even under concurrent requests.
  */
 export function getChatModel(): ChatModelWithKeyIndex {
-  const provider = (process.env.AI_PROVIDER ?? DEFAULT_PROVIDER).toLowerCase()
-  const model = process.env.AI_MODEL ?? DEFAULT_MODEL
+  const config = resolveDefaultChatConfig()
+  assertDefaultChatCredentials(config)
 
-  switch (provider) {
+  switch (config.provider) {
+    case 'gateway': {
+      const gateway = createGateway({ apiKey: process.env.AI_GATEWAY_API_KEY })
+      return {
+        model: gateway(config.model as Parameters<typeof gateway>[0]),
+        keyIndex: 0,
+      }
+    }
     case 'google': {
       const keyIndex = _internals.currentIndex
       const key = _internals.keys[keyIndex]
@@ -79,12 +77,10 @@ export function getChatModel(): ChatModelWithKeyIndex {
       // Otherwise fall through to the default (reads GOOGLE_GENERATIVE_AI_API_KEY).
       const google = createGoogleGenerativeAI(key ? { apiKey: key } : undefined)
       return {
-        model: google(model as Parameters<typeof google>[0]),
+        model: google(config.model as Parameters<typeof google>[0]),
         keyIndex,
       }
     }
-    default:
-      throw new Error(`Unsupported AI provider: ${provider}`)
   }
 }
 
@@ -98,6 +94,8 @@ export function getChatModel(): ChatModelWithKeyIndex {
  *          pool are exhausted (caller should surface the quota error to the user).
  */
 export function handleProviderQuotaError(failedKeyIndex: number): boolean {
+  if (resolveDefaultChatProvider() === 'gateway') return false
+
   maybeResetExhausted()
 
   const { keys, exhaustedIndices } = _internals
@@ -131,5 +129,7 @@ export function handleProviderQuotaError(failedKeyIndex: number): boolean {
  * Used by the route to cap retry attempts.
  */
 export function getKeyPoolSize(): number {
+  if (resolveDefaultChatProvider() === 'gateway') return 1
+
   return _internals.keys.length
 }
