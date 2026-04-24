@@ -11,6 +11,8 @@ interface UseMaintenanceDeepLinkOptions {
   isLoadingPlans: boolean
   /** Open the "create plan" dialog */
   setIsAddPlanDialogOpen: (open: boolean) => void
+  /** Whether the current user may open tenant plan creation */
+  canCreatePlans: boolean
   /** Select a plan (navigates context to that plan) */
   setSelectedPlan: (plan: MaintenancePlan) => void
   /** Switch the active tab */
@@ -32,6 +34,7 @@ export function useMaintenanceDeepLink({
   plans,
   isLoadingPlans,
   setIsAddPlanDialogOpen,
+  canCreatePlans,
   setSelectedPlan,
   setActiveTab,
 }: UseMaintenanceDeepLinkOptions) {
@@ -57,7 +60,9 @@ export function useMaintenanceDeepLink({
 
       if (actionParam === "create") {
         lastHandledKeyRef.current = searchParamsKey
-        setIsAddPlanDialogOpen(true)
+        if (canCreatePlans) {
+          setIsAddPlanDialogOpen(true)
+        }
         router.replace(pathname, { scroll: false })
         return
       }
@@ -122,6 +127,7 @@ export function useMaintenanceDeepLink({
     plans,
     isLoadingPlans,
     setIsAddPlanDialogOpen,
+    canCreatePlans,
     setSelectedPlan,
     setActiveTab,
     toast,

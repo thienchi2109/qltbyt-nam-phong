@@ -81,6 +81,7 @@ export function MaintenancePageClient() {
   const totalCount = paginatedResponse?.total ?? 0
   const totalPages = Math.ceil(totalCount / pageSize)
   const showFacilityFilter = isGlobalRole(ctx.user?.role) || isRegionalLeaderRole(ctx.user?.role)
+  const canCreatePlans = ctx.canManagePlans && !isGlobalRole(ctx.user?.role)
 
   const {
     data: facilities = [],
@@ -122,6 +123,7 @@ export function MaintenancePageClient() {
     plans,
     isLoadingPlans,
     setIsAddPlanDialogOpen,
+    canCreatePlans,
     setSelectedPlan,
     setActiveTab,
   })

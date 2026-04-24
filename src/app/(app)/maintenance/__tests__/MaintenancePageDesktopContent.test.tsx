@@ -1,14 +1,11 @@
 import * as React from "react"
 import "@testing-library/jest-dom"
 import { render, screen } from "@testing-library/react"
-import { describe, expect, it, vi } from "vitest"
+import { beforeEach, describe, expect, it, vi } from "vitest"
 
-vi.mock("@/components/kpi", () => ({
-  KpiStatusBar: () => <div data-testid="maintenance-kpi-bar" />,
-}))
-
-vi.mock("../_hooks/useMaintenanceContext", () => ({
-  useMaintenanceContext: () => ({
+const mockContext = vi.hoisted(() => ({
+  value: {
+    user: { role: "to_qltb" },
     activeTab: "plans",
     setActiveTab: vi.fn(),
     selectedPlan: null,
@@ -36,7 +33,15 @@ vi.mock("../_hooks/useMaintenanceContext", () => ({
     taskEditing: {
       editingTaskId: null,
     },
-  }),
+  },
+}))
+
+vi.mock("@/components/kpi", () => ({
+  KpiStatusBar: () => <div data-testid="maintenance-kpi-bar" />,
+}))
+
+vi.mock("../_hooks/useMaintenanceContext", () => ({
+  useMaintenanceContext: () => mockContext.value,
 }))
 
 vi.mock("../_components/plan-filters-bar", () => ({
@@ -53,37 +58,47 @@ vi.mock("../_components/tasks-table", () => ({
 
 import { MaintenancePageDesktopContent } from "../_components/maintenance-page-desktop-content"
 
+function renderDesktopContent() {
+  return render(
+    <MaintenancePageDesktopContent
+      statusCounts={{ "Bản nháp": 1 }}
+      isCountsLoading={false}
+      isCountsError={false}
+      showFacilityFilter={false}
+      facilities={[]}
+      selectedFacilityId={null}
+      onFacilityChange={vi.fn()}
+      isLoadingFacilities={false}
+      totalCount={0}
+      planSearchTerm=""
+      onPlanSearchChange={vi.fn()}
+      isMobile={false}
+      mobilePlanCards={null}
+      planTable={{} as never}
+      planColumns={[]}
+      currentPage={1}
+      totalPages={1}
+      pageSize={10}
+      plans={[]}
+      isLoadingPlans={false}
+      onPageChange={vi.fn()}
+      onPageSizeChange={vi.fn()}
+      isFiltered={false}
+      taskTable={{} as never}
+      taskColumns={[]}
+    />,
+  )
+}
+
 describe("MaintenancePageDesktopContent", () => {
+  beforeEach(() => {
+    mockContext.value.user.role = "to_qltb"
+    mockContext.value.canManagePlans = true
+    vi.clearAllMocks()
+  })
+
   it("renders page title above KpiStatusBar and content card", () => {
-    render(
-      <MaintenancePageDesktopContent
-        statusCounts={{ "Bản nháp": 1 }}
-        isCountsLoading={false}
-        isCountsError={false}
-        showFacilityFilter={false}
-        facilities={[]}
-        selectedFacilityId={null}
-        onFacilityChange={vi.fn()}
-        isLoadingFacilities={false}
-        totalCount={0}
-        planSearchTerm=""
-        onPlanSearchChange={vi.fn()}
-        isMobile={false}
-        mobilePlanCards={null}
-        planTable={{} as never}
-        planColumns={[]}
-        currentPage={1}
-        totalPages={1}
-        pageSize={10}
-        plans={[]}
-        isLoadingPlans={false}
-        onPageChange={vi.fn()}
-        onPageSizeChange={vi.fn()}
-        isFiltered={false}
-        taskTable={{} as never}
-        taskColumns={[]}
-      />,
-    )
+    renderDesktopContent()
 
     const pageTitle = screen.getByRole("heading", { name: "Kế hoạch bảo trì" })
     const kpiBar = screen.getByTestId("maintenance-kpi-bar")
@@ -95,5 +110,19 @@ describe("MaintenancePageDesktopContent", () => {
     expect(
       Boolean(kpiBar.compareDocumentPosition(cardTitle) & Node.DOCUMENT_POSITION_FOLLOWING),
     ).toBe(true)
+  })
+
+  it("shows the create-plan action for non-global maintenance managers", () => {
+    renderDesktopContent()
+
+    expect(screen.getByRole("button", { name: "Tạo kế hoạch mới" })).toBeInTheDocument()
+  })
+
+  it("hides the create-plan action for global/admin users", () => {
+    mockContext.value.user.role = "admin"
+
+    renderDesktopContent()
+
+    expect(screen.queryByRole("button", { name: "Tạo kế hoạch mới" })).not.toBeInTheDocument()
   })
 })
