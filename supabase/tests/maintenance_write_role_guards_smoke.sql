@@ -14,11 +14,14 @@ DECLARE
   v_plan_id bigint;
   v_other_plan_id bigint;
   v_admin_plan_id bigint;
+  v_admin_plan_don_vi bigint;
   v_task_id bigint;
   v_other_task_id bigint;
+  v_other_equipment_id bigint;
+  v_mismatched_task_id bigint;
   v_count bigint;
   v_failed boolean;
-  v_sqlstate text;
+  v_denied_role text;
 BEGIN
   INSERT INTO public.dia_ban(ma_dia_ban, ten_dia_ban, active)
   VALUES ('SMK-MW-' || v_suffix, 'Smoke Maintenance Write Region ' || v_suffix, true)
@@ -106,6 +109,37 @@ BEGIN
     RAISE EXCEPTION 'Expected to_qltb maintenance_plan_create to return a plan id';
   END IF;
 
+  INSERT INTO public.thiet_bi(ma_thiet_bi, ten_thiet_bi, don_vi, khoa_phong_quan_ly, tinh_trang_hien_tai, is_deleted)
+  VALUES (
+    'SMK-MW-OTHER-EQ-' || v_suffix,
+    'Smoke Maintenance Other Equipment ' || v_suffix,
+    v_other_tenant,
+    'Smoke Other Department',
+    'Hoat dong',
+    false
+  )
+  RETURNING id INTO v_other_equipment_id;
+
+  INSERT INTO public.cong_viec_bao_tri(
+    ke_hoach_id,
+    thiet_bi_id,
+    loai_cong_viec,
+    diem_hieu_chuan,
+    don_vi_thuc_hien,
+    thang_1,
+    ghi_chu
+  )
+  VALUES (
+    v_plan_id,
+    v_other_equipment_id,
+    'kiem_tra',
+    'Smoke mismatched equipment task ' || v_suffix,
+    'noi_bo',
+    true,
+    'Smoke mismatched equipment task ' || v_suffix
+  )
+  RETURNING id INTO v_mismatched_task_id;
+
   PERFORM public.maintenance_plan_update(
     v_plan_id,
     'Smoke Maintenance Updated Plan ' || v_suffix,
@@ -179,6 +213,15 @@ BEGIN
     RAISE EXCEPTION 'Expected admin maintenance_plan_create without don_vi claim to remain allowed';
   END IF;
 
+  SELECT don_vi
+  INTO v_admin_plan_don_vi
+  FROM public.ke_hoach_bao_tri
+  WHERE id = v_admin_plan_id;
+
+  IF v_admin_plan_don_vi IS NOT NULL THEN
+    RAISE EXCEPTION 'Expected admin-created plan without don_vi claim to persist NULL don_vi, got %', v_admin_plan_don_vi;
+  END IF;
+
   PERFORM public.maintenance_plan_delete(v_admin_plan_id);
 
   SELECT count(*)
@@ -190,13 +233,13 @@ BEGIN
     RAISE EXCEPTION 'Expected admin maintenance_plan_delete to remove admin-created plan';
   END IF;
 
-  FOREACH v_sqlstate IN ARRAY ARRAY['user', 'regional_leader'] LOOP
+  FOREACH v_denied_role IN ARRAY ARRAY['user', 'regional_leader'] LOOP
     PERFORM set_config(
       'request.jwt.claims',
       CASE
-        WHEN v_sqlstate = 'regional_leader' THEN
+        WHEN v_denied_role = 'regional_leader' THEN
           json_build_object(
-            'app_role', v_sqlstate,
+            'app_role', v_denied_role,
             'role', 'authenticated',
             'user_id', v_user_id::text,
             'sub', v_user_id::text,
@@ -204,7 +247,7 @@ BEGIN
           )::text
         ELSE
           json_build_object(
-            'app_role', v_sqlstate,
+            'app_role', v_denied_role,
             'role', 'authenticated',
             'user_id', v_user_id::text,
             'sub', v_user_id::text,
@@ -217,7 +260,7 @@ BEGIN
     v_failed := false;
     BEGIN
       PERFORM public.maintenance_plan_create(
-        'Smoke denied plan ' || v_sqlstate || ' ' || v_suffix,
+        'Smoke denied plan ' || v_denied_role || ' ' || v_suffix,
         EXTRACT(YEAR FROM current_date)::integer,
         'kiem_tra',
         'Smoke Denied Department',
@@ -226,18 +269,18 @@ BEGIN
     EXCEPTION WHEN OTHERS THEN
       v_failed := true;
       IF SQLSTATE IS DISTINCT FROM '42501' THEN
-        RAISE EXCEPTION 'Expected maintenance_plan_create for % to deny with 42501, got %', v_sqlstate, SQLSTATE;
+        RAISE EXCEPTION 'Expected maintenance_plan_create for % to deny with 42501, got %', v_denied_role, SQLSTATE;
       END IF;
     END;
     IF NOT v_failed THEN
-      RAISE EXCEPTION 'Expected maintenance_plan_create for % to deny with 42501', v_sqlstate;
+      RAISE EXCEPTION 'Expected maintenance_plan_create for % to deny with 42501', v_denied_role;
     END IF;
 
     v_failed := false;
     BEGIN
       PERFORM public.maintenance_plan_update(
         v_plan_id,
-        'Smoke denied update ' || v_sqlstate || ' ' || v_suffix,
+        'Smoke denied update ' || v_denied_role || ' ' || v_suffix,
         EXTRACT(YEAR FROM current_date)::integer,
         'bao_tri',
         'Smoke Denied Department'
@@ -245,11 +288,11 @@ BEGIN
     EXCEPTION WHEN OTHERS THEN
       v_failed := true;
       IF SQLSTATE IS DISTINCT FROM '42501' THEN
-        RAISE EXCEPTION 'Expected maintenance_plan_update for % to deny with 42501, got %', v_sqlstate, SQLSTATE;
+        RAISE EXCEPTION 'Expected maintenance_plan_update for % to deny with 42501, got %', v_denied_role, SQLSTATE;
       END IF;
     END;
     IF NOT v_failed THEN
-      RAISE EXCEPTION 'Expected maintenance_plan_update for % to deny with 42501', v_sqlstate;
+      RAISE EXCEPTION 'Expected maintenance_plan_update for % to deny with 42501', v_denied_role;
     END IF;
 
     v_failed := false;
@@ -258,11 +301,11 @@ BEGIN
     EXCEPTION WHEN OTHERS THEN
       v_failed := true;
       IF SQLSTATE IS DISTINCT FROM '42501' THEN
-        RAISE EXCEPTION 'Expected maintenance_plan_approve for % to deny with 42501, got %', v_sqlstate, SQLSTATE;
+        RAISE EXCEPTION 'Expected maintenance_plan_approve for % to deny with 42501, got %', v_denied_role, SQLSTATE;
       END IF;
     END;
     IF NOT v_failed THEN
-      RAISE EXCEPTION 'Expected maintenance_plan_approve for % to deny with 42501', v_sqlstate;
+      RAISE EXCEPTION 'Expected maintenance_plan_approve for % to deny with 42501', v_denied_role;
     END IF;
 
     v_failed := false;
@@ -271,11 +314,11 @@ BEGIN
     EXCEPTION WHEN OTHERS THEN
       v_failed := true;
       IF SQLSTATE IS DISTINCT FROM '42501' THEN
-        RAISE EXCEPTION 'Expected maintenance_plan_reject for % to deny with 42501, got %', v_sqlstate, SQLSTATE;
+        RAISE EXCEPTION 'Expected maintenance_plan_reject for % to deny with 42501, got %', v_denied_role, SQLSTATE;
       END IF;
     END;
     IF NOT v_failed THEN
-      RAISE EXCEPTION 'Expected maintenance_plan_reject for % to deny with 42501', v_sqlstate;
+      RAISE EXCEPTION 'Expected maintenance_plan_reject for % to deny with 42501', v_denied_role;
     END IF;
 
     v_failed := false;
@@ -285,37 +328,37 @@ BEGIN
           jsonb_build_object(
             'ke_hoach_id', v_plan_id,
             'loai_cong_viec', 'kiem_tra',
-            'diem_hieu_chuan', 'Smoke denied task ' || v_sqlstate || ' ' || v_suffix,
+            'diem_hieu_chuan', 'Smoke denied task ' || v_denied_role || ' ' || v_suffix,
             'don_vi_thuc_hien', 'noi_bo',
             'thang_3', true,
-            'ghi_chu', 'Smoke denied task ' || v_sqlstate || ' ' || v_suffix
+            'ghi_chu', 'Smoke denied task ' || v_denied_role || ' ' || v_suffix
           )
         )
       );
     EXCEPTION WHEN OTHERS THEN
       v_failed := true;
       IF SQLSTATE IS DISTINCT FROM '42501' THEN
-        RAISE EXCEPTION 'Expected maintenance_tasks_bulk_insert for % to deny with 42501, got %', v_sqlstate, SQLSTATE;
+        RAISE EXCEPTION 'Expected maintenance_tasks_bulk_insert for % to deny with 42501, got %', v_denied_role, SQLSTATE;
       END IF;
     END;
     IF NOT v_failed THEN
-      RAISE EXCEPTION 'Expected maintenance_tasks_bulk_insert for % to deny with 42501', v_sqlstate;
+      RAISE EXCEPTION 'Expected maintenance_tasks_bulk_insert for % to deny with 42501', v_denied_role;
     END IF;
 
     v_failed := false;
     BEGIN
       PERFORM public.maintenance_task_update(
         v_other_task_id,
-        jsonb_build_object('ghi_chu', 'Smoke denied update task ' || v_sqlstate || ' ' || v_suffix)
+        jsonb_build_object('ghi_chu', 'Smoke denied update task ' || v_denied_role || ' ' || v_suffix)
       );
     EXCEPTION WHEN OTHERS THEN
       v_failed := true;
       IF SQLSTATE IS DISTINCT FROM '42501' THEN
-        RAISE EXCEPTION 'Expected maintenance_task_update for % to deny with 42501, got %', v_sqlstate, SQLSTATE;
+        RAISE EXCEPTION 'Expected maintenance_task_update for % to deny with 42501, got %', v_denied_role, SQLSTATE;
       END IF;
     END;
     IF NOT v_failed THEN
-      RAISE EXCEPTION 'Expected maintenance_task_update for % to deny with 42501', v_sqlstate;
+      RAISE EXCEPTION 'Expected maintenance_task_update for % to deny with 42501', v_denied_role;
     END IF;
 
     v_failed := false;
@@ -324,11 +367,11 @@ BEGIN
     EXCEPTION WHEN OTHERS THEN
       v_failed := true;
       IF SQLSTATE IS DISTINCT FROM '42501' THEN
-        RAISE EXCEPTION 'Expected maintenance_task_complete for % to deny with 42501, got %', v_sqlstate, SQLSTATE;
+        RAISE EXCEPTION 'Expected maintenance_task_complete for % to deny with 42501, got %', v_denied_role, SQLSTATE;
       END IF;
     END;
     IF NOT v_failed THEN
-      RAISE EXCEPTION 'Expected maintenance_task_complete for % to deny with 42501', v_sqlstate;
+      RAISE EXCEPTION 'Expected maintenance_task_complete for % to deny with 42501', v_denied_role;
     END IF;
 
     v_failed := false;
@@ -337,11 +380,11 @@ BEGIN
     EXCEPTION WHEN OTHERS THEN
       v_failed := true;
       IF SQLSTATE IS DISTINCT FROM '42501' THEN
-        RAISE EXCEPTION 'Expected maintenance_tasks_delete for % to deny with 42501, got %', v_sqlstate, SQLSTATE;
+        RAISE EXCEPTION 'Expected maintenance_tasks_delete for % to deny with 42501, got %', v_denied_role, SQLSTATE;
       END IF;
     END;
     IF NOT v_failed THEN
-      RAISE EXCEPTION 'Expected maintenance_tasks_delete for % to deny with 42501', v_sqlstate;
+      RAISE EXCEPTION 'Expected maintenance_tasks_delete for % to deny with 42501', v_denied_role;
     END IF;
 
     v_failed := false;
@@ -350,11 +393,11 @@ BEGIN
     EXCEPTION WHEN OTHERS THEN
       v_failed := true;
       IF SQLSTATE IS DISTINCT FROM '42501' THEN
-        RAISE EXCEPTION 'Expected maintenance_plan_delete for % to deny with 42501, got %', v_sqlstate, SQLSTATE;
+        RAISE EXCEPTION 'Expected maintenance_plan_delete for % to deny with 42501, got %', v_denied_role, SQLSTATE;
       END IF;
     END;
     IF NOT v_failed THEN
-      RAISE EXCEPTION 'Expected maintenance_plan_delete for % to deny with 42501', v_sqlstate;
+      RAISE EXCEPTION 'Expected maintenance_plan_delete for % to deny with 42501', v_denied_role;
     END IF;
   END LOOP;
 
@@ -416,6 +459,19 @@ BEGIN
   END;
   IF NOT v_failed THEN
     RAISE EXCEPTION 'Expected cross-tenant maintenance_tasks_delete to deny with 42501';
+  END IF;
+
+  v_failed := false;
+  BEGIN
+    PERFORM public.maintenance_tasks_delete(ARRAY[v_mismatched_task_id]);
+  EXCEPTION WHEN OTHERS THEN
+    v_failed := true;
+    IF SQLSTATE IS DISTINCT FROM '42501' THEN
+      RAISE EXCEPTION 'Expected mismatched-equipment maintenance_tasks_delete to deny with 42501, got %', SQLSTATE;
+    END IF;
+  END;
+  IF NOT v_failed THEN
+    RAISE EXCEPTION 'Expected mismatched-equipment maintenance_tasks_delete to deny with 42501';
   END IF;
 
   RAISE NOTICE 'OK: maintenance write role guard smoke completed';

@@ -141,7 +141,7 @@ BEGIN
   SET ten_ke_hoach = COALESCE(p_ten_ke_hoach, ten_ke_hoach),
       nam = COALESCE(p_nam, nam),
       loai_cong_viec = COALESCE(p_loai_cong_viec, loai_cong_viec),
-      khoa_phong = NULLIF(p_khoa_phong, '')
+      khoa_phong = COALESCE(NULLIF(p_khoa_phong, ''), khoa_phong)
   WHERE id = p_id;
 END;
 $$;
@@ -482,14 +482,16 @@ BEGIN
   EXECUTE format('UPDATE public.cong_viec_bao_tri SET %I = true, %I = $1, updated_at = $1 WHERE id = $2', v_month_col, v_month_date_col)
     USING v_date, p_task_id;
 
-  INSERT INTO public.lich_su_thiet_bi(thiet_bi_id, loai_su_kien, mo_ta, chi_tiet, ngay_thuc_hien)
-  VALUES (
-    v_task.thiet_bi_id,
-    v_task.loai_cong_viec,
-    format('Hoàn thành %s tháng %s/%s theo kế hoạch "%s"', v_task.loai_cong_viec, p_month, v_plan.nam, v_plan.ten_ke_hoach),
-    jsonb_build_object('cong_viec_id', p_task_id, 'thang', p_month, 'ten_ke_hoach', v_plan.ten_ke_hoach, 'khoa_phong', v_plan.khoa_phong, 'nam', v_plan.nam),
-    v_date
-  );
+  IF v_task.thiet_bi_id IS NOT NULL THEN
+    INSERT INTO public.lich_su_thiet_bi(thiet_bi_id, loai_su_kien, mo_ta, chi_tiet, ngay_thuc_hien)
+    VALUES (
+      v_task.thiet_bi_id,
+      v_task.loai_cong_viec,
+      format('Hoàn thành %s tháng %s/%s theo kế hoạch "%s"', v_task.loai_cong_viec, p_month, v_plan.nam, v_plan.ten_ke_hoach),
+      jsonb_build_object('cong_viec_id', p_task_id, 'thang', p_month, 'ten_ke_hoach', v_plan.ten_ke_hoach, 'khoa_phong', v_plan.khoa_phong, 'nam', v_plan.nam),
+      v_date
+    );
+  END IF;
 END;
 $$;
 
@@ -510,12 +512,32 @@ BEGIN
   END IF;
 
   IF NOT v_guard.is_global THEN
+    PERFORM 1
+    FROM public.cong_viec_bao_tri cv
+    JOIN public.ke_hoach_bao_tri kh ON kh.id = cv.ke_hoach_id
+    WHERE cv.id = ANY(p_ids)
+    FOR UPDATE OF cv, kh;
+
+    PERFORM 1
+    FROM public.cong_viec_bao_tri cv
+    JOIN public.thiet_bi tb ON tb.id = cv.thiet_bi_id
+    WHERE cv.id = ANY(p_ids)
+    FOR UPDATE OF tb;
+
     SELECT count(*)
     INTO v_denied_count
     FROM public.cong_viec_bao_tri cv
     JOIN public.ke_hoach_bao_tri kh ON kh.id = cv.ke_hoach_id
+    LEFT JOIN public.thiet_bi tb ON tb.id = cv.thiet_bi_id
     WHERE cv.id = ANY(p_ids)
-      AND (kh.don_vi IS NULL OR NOT kh.don_vi = ANY(v_guard.allowed_don_vi));
+      AND (
+        kh.don_vi IS NULL
+        OR NOT kh.don_vi = ANY(v_guard.allowed_don_vi)
+        OR (
+          cv.thiet_bi_id IS NOT NULL
+          AND (tb.id IS NULL OR tb.don_vi IS NULL OR NOT tb.don_vi = ANY(v_guard.allowed_don_vi))
+        )
+      );
 
     IF v_denied_count > 0 THEN
       RAISE EXCEPTION 'Không có quyền xóa công việc bảo trì thuộc đơn vị khác' USING ERRCODE = '42501';
