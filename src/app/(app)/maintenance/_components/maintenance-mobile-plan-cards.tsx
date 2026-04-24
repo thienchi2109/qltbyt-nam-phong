@@ -24,6 +24,7 @@ interface MaintenanceMobilePlanCardsProps {
   isLoadingPlans: boolean
   showFacilityFilter: boolean
   canManagePlans: boolean
+  canCreatePlans: boolean
   onOpenAddPlanDialog: () => void
   onSelectPlan: (plan: MaintenancePlan) => void
   onSetTasksTab: () => void
@@ -38,6 +39,7 @@ export function MaintenanceMobilePlanCards({
   isLoadingPlans,
   showFacilityFilter,
   canManagePlans,
+  canCreatePlans,
   onOpenAddPlanDialog,
   onSelectPlan,
   onSetTasksTab,
@@ -79,7 +81,7 @@ export function MaintenanceMobilePlanCards({
               Hãy tạo kế hoạch mới hoặc điều chỉnh bộ lọc để xem dữ liệu phù hợp.
             </p>
           </div>
-          {canManagePlans && (
+          {canCreatePlans && (
             <Button onClick={onOpenAddPlanDialog} className="h-11 px-6">
               <PlusCircle className="mr-2 h-4 w-4" />
               Tạo kế hoạch mới

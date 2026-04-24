@@ -236,6 +236,7 @@ export function MobileMaintenanceLayout({
               isLoadingPlans={isLoadingPlans}
               showFacilityFilter={showFacilityFilter}
               canManagePlans={ctx.canManagePlans}
+              canCreatePlans={ctx.canCreatePlans}
               onOpenAddPlanDialog={() => ctx.setIsAddPlanDialogOpen(true)}
               onSelectPlan={ctx.handleSelectPlan}
               onSetTasksTab={() => ctx.setActiveTab("tasks")}
@@ -270,7 +271,7 @@ export function MobileMaintenanceLayout({
         </div>
       </main>
 
-      {ctx.canManagePlans && !ctx.isRegionalLeader && (
+      {ctx.canCreatePlans && (
         <Button
           onClick={() => ctx.setIsAddPlanDialogOpen(true)}
           className="fixed right-4 z-50 h-14 w-14 rounded-full shadow-xl transition-transform active:scale-95"

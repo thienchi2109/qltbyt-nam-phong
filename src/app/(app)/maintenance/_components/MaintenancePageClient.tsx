@@ -122,6 +122,8 @@ export function MaintenancePageClient() {
     plans,
     isLoadingPlans,
     setIsAddPlanDialogOpen,
+    canCreatePlans: ctx.canCreatePlans,
+    isCreatePermissionLoading: ctx.isAuthLoading,
     setSelectedPlan,
     setActiveTab,
   })

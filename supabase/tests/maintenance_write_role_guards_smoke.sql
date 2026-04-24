@@ -13,8 +13,6 @@ DECLARE
   v_user_id bigint;
   v_plan_id bigint;
   v_other_plan_id bigint;
-  v_admin_plan_id bigint;
-  v_admin_plan_don_vi bigint;
   v_task_id bigint;
   v_other_task_id bigint;
   v_other_equipment_id bigint;
@@ -190,48 +188,37 @@ BEGIN
     RAISE EXCEPTION 'Expected to_qltb maintenance_tasks_delete to remove allowed task';
   END IF;
 
-  PERFORM set_config(
-    'request.jwt.claims',
-    json_build_object(
-      'app_role', 'admin',
-      'role', 'authenticated',
-      'user_id', v_user_id::text,
-      'sub', v_user_id::text
-    )::text,
-    true
-  );
+  FOREACH v_denied_role IN ARRAY ARRAY['admin', 'global'] LOOP
+    PERFORM set_config(
+      'request.jwt.claims',
+      json_build_object(
+        'app_role', v_denied_role,
+        'role', 'authenticated',
+        'user_id', v_user_id::text,
+        'sub', v_user_id::text
+      )::text,
+      true
+    );
 
-  v_admin_plan_id := public.maintenance_plan_create(
-    'Smoke Maintenance Admin Plan ' || v_suffix,
-    EXTRACT(YEAR FROM current_date)::integer,
-    'kiem_tra',
-    'Smoke Admin Department',
-    'Maintenance Write Smoke Admin'
-  );
-
-  IF v_admin_plan_id IS NULL THEN
-    RAISE EXCEPTION 'Expected admin maintenance_plan_create without don_vi claim to remain allowed';
-  END IF;
-
-  SELECT don_vi
-  INTO v_admin_plan_don_vi
-  FROM public.ke_hoach_bao_tri
-  WHERE id = v_admin_plan_id;
-
-  IF v_admin_plan_don_vi IS NOT NULL THEN
-    RAISE EXCEPTION 'Expected admin-created plan without don_vi claim to persist NULL don_vi, got %', v_admin_plan_don_vi;
-  END IF;
-
-  PERFORM public.maintenance_plan_delete(v_admin_plan_id);
-
-  SELECT count(*)
-  INTO v_count
-  FROM public.ke_hoach_bao_tri
-  WHERE id = v_admin_plan_id;
-
-  IF v_count <> 0 THEN
-    RAISE EXCEPTION 'Expected admin maintenance_plan_delete to remove admin-created plan';
-  END IF;
+    v_failed := false;
+    BEGIN
+      PERFORM public.maintenance_plan_create(
+        'Smoke global denied plan ' || v_denied_role || ' ' || v_suffix,
+        EXTRACT(YEAR FROM current_date)::integer,
+        'kiem_tra',
+        'Smoke Global Denied Department',
+        'Maintenance Write Smoke Global'
+      );
+    EXCEPTION WHEN OTHERS THEN
+      v_failed := true;
+      IF SQLSTATE IS DISTINCT FROM '42501' THEN
+        RAISE EXCEPTION 'Expected maintenance_plan_create for % to deny with 42501, got %', v_denied_role, SQLSTATE;
+      END IF;
+    END;
+    IF NOT v_failed THEN
+      RAISE EXCEPTION 'Expected maintenance_plan_create for % to deny with 42501', v_denied_role;
+    END IF;
+  END LOOP;
 
   FOREACH v_denied_role IN ARRAY ARRAY['user', 'regional_leader'] LOOP
     PERFORM set_config(
