@@ -18,6 +18,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 // Mock setup — hoisted above all imports
 // ---------------------------------------------------------------------------
 
+vi.mock('server-only', () => ({}))
+
 const getServerSessionMock = vi.fn()
 const streamTextMock = vi.fn()
 const stepCountIsMock = vi.fn()

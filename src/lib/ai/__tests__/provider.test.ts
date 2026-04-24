@@ -22,6 +22,18 @@ vi.mock('@ai-sdk/google', () => ({
   }),
 }))
 
+vi.mock('ai', () => ({
+  createGateway: vi.fn((opts?: { apiKey?: string }) => {
+    const provider = (modelId: string) => ({
+      __testModel: true,
+      transport: 'gateway',
+      modelId,
+      apiKey: opts?.apiKey ?? 'DEFAULT_GATEWAY_KEY',
+    })
+    return provider
+  }),
+}))
+
 describe('provider — API key rotation', () => {
   const ORIGINAL_ENV = { ...process.env }
 
@@ -170,6 +182,54 @@ describe('provider — API key rotation', () => {
 
   it('throws on unsupported provider', () => {
     process.env.AI_PROVIDER = 'openai'
-    expect(() => getChatModel()).toThrow('Unsupported AI provider: openai')
+    expect(() => getChatModel()).toThrow('Unsupported direct AI provider: openai')
+  })
+
+  it('keeps key pool sizing available when model construction would reject config', () => {
+    process.env.AI_PROVIDER = 'openai'
+
+    expect(getKeyPoolSize()).toBe(3)
+  })
+
+  // -------------------------------------------------------------------
+  // Gateway provider contract
+  // -------------------------------------------------------------------
+
+  it('returns a gateway model for provider-prefixed default chat config', () => {
+    process.env.AI_DEFAULT_CHAT_PROVIDER = 'gateway'
+    process.env.AI_DEFAULT_CHAT_MODEL = 'mistral/mistral-large-3'
+    process.env.AI_GATEWAY_API_KEY = 'GATEWAY_KEY'
+
+    const { model, keyIndex } = getChatModel()
+    const m = model as unknown as {
+      apiKey: string
+      modelId: string
+      transport: string
+    }
+
+    expect(m.transport).toBe('gateway')
+    expect(m.apiKey).toBe('GATEWAY_KEY')
+    expect(m.modelId).toBe('mistral/mistral-large-3')
+    expect(keyIndex).toBe(0)
+  })
+
+  it('trims the gateway API key before constructing the provider', () => {
+    process.env.AI_DEFAULT_CHAT_PROVIDER = 'gateway'
+    process.env.AI_DEFAULT_CHAT_MODEL = 'openai/gpt-5.2'
+    process.env.AI_GATEWAY_API_KEY = ' GATEWAY_KEY\n'
+
+    const { model } = getChatModel()
+    const m = model as unknown as { apiKey: string }
+
+    expect(m.apiKey).toBe('GATEWAY_KEY')
+  })
+
+  it('reports a single non-rotating key slot for gateway mode', () => {
+    process.env.AI_DEFAULT_CHAT_PROVIDER = 'gateway'
+    process.env.AI_DEFAULT_CHAT_MODEL = 'openai/gpt-5.2'
+    process.env.AI_GATEWAY_API_KEY = 'GATEWAY_KEY'
+
+    expect(getKeyPoolSize()).toBe(1)
+    expect(handleProviderQuotaError(0)).toBe(false)
   })
 })
