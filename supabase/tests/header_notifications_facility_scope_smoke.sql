@@ -18,6 +18,7 @@ DECLARE
   v_global_scoped jsonb;
   v_regional_all jsonb;
   v_regional_scoped jsonb;
+  v_function_def text;
 BEGIN
   PERFORM set_config(
     'request.jwt.claims',
@@ -122,6 +123,16 @@ BEGIN
 
   IF (v_regional_scoped->>'pending_repairs')::integer <> 2 THEN
     RAISE EXCEPTION 'regional scoped repair badge should count facility A only, got %', v_regional_scoped;
+  END IF;
+
+  v_function_def := pg_get_functiondef('public.header_notifications_summary(bigint)'::regprocedure);
+
+  IF v_function_def LIKE '%LEFT JOIN public.thiet_bi%' THEN
+    RAISE EXCEPTION 'header_notifications_summary should not use LEFT JOIN for equipment-scoped badge counts';
+  END IF;
+
+  IF v_function_def NOT LIKE '%INNER JOIN public.thiet_bi%' THEN
+    RAISE EXCEPTION 'header_notifications_summary should require matching equipment rows';
   END IF;
 
   RAISE NOTICE 'OK: header notification facility scope smoke passed';

@@ -22,7 +22,7 @@ interface MaintenancePlanStatusCounts {
 
 interface UseAppNotificationCountsOptions {
   enabled?: boolean
-  facilityId?: number | null
+  facilityId?: number | null | undefined
 }
 
 interface UseAppNotificationCountsResult {
@@ -36,7 +36,7 @@ export function useAppNotificationCounts(
   options: UseAppNotificationCountsOptions = {}
 ): UseAppNotificationCountsResult {
   const { enabled = true, facilityId } = options
-  const facilityScopeKey = facilityId === undefined ? "session" : (facilityId ?? "all")
+  const facilityScopeKey = typeof facilityId === "number" ? facilityId : null
   const { data, isLoading } = useQuery<AppNotificationCounts>({
     queryKey: [...APP_NOTIFICATION_COUNTS_QUERY_KEY, { facilityScope: facilityScopeKey }],
     queryFn: async ({ signal }) => {
