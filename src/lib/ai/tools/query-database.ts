@@ -2,6 +2,7 @@ import { tool, type Tool } from 'ai'
 import { z } from 'zod'
 
 import { ASSISTANT_SQL_TOOL_NAME } from '@/lib/ai/sql/constants'
+import { QUERY_DATABASE_TOOL_DESCRIPTION } from '@/lib/ai/sql/schema-cheatsheet'
 import {
   executeAuditedAssistantSql,
   type ExecuteAuditedAssistantSqlParams,
@@ -38,8 +39,7 @@ export function queryDatabaseTool({
   scope,
 }: QueryDatabaseToolParams): Tool<QueryDatabaseToolInput, QueryDatabaseToolOutput> {
   return tool<QueryDatabaseToolInput, QueryDatabaseToolOutput>({
-    description:
-      'Run one read-only SQL query against the ai_readonly semantic layer for the server-injected facility scope.',
+    description: QUERY_DATABASE_TOOL_DESCRIPTION,
     inputSchema: queryDatabaseInputSchema,
     execute: async ({
       reasoning,
