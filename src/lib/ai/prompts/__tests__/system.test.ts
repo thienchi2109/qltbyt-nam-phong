@@ -3,6 +3,7 @@ import path from 'node:path'
 
 import { describe, expect, it } from 'vitest'
 
+import { AI_READONLY_FORBIDDEN_REFERENCES } from '@/lib/ai/sql/schema-cheatsheet'
 import { SYSTEM_PROMPT_VERSION, buildSystemPrompt } from '../system'
 
 describe('system prompt module', () => {
@@ -152,9 +153,10 @@ describe('system prompt module', () => {
     expect(prompt).toContain('usage_facts')
     expect(prompt).toContain('quota_facts')
     expect(prompt).toContain('khoa_phong_quan_ly')
-    expect(prompt).toContain('thiet_bi')
-    expect(prompt).toContain('khoa_phong')
-    expect(prompt).toContain('set_config')
+    expect(prompt).toContain('KHÔNG dùng raw schema/tên')
+    for (const ref of AI_READONLY_FORBIDDEN_REFERENCES) {
+      expect(prompt).toContain(ref)
+    }
   })
 
   it('includes § 10 troubleshooting drafts section', () => {

@@ -1,11 +1,11 @@
-type AiReadonlyViewName =
+export type AiReadonlyViewName =
   | 'equipment_search'
   | 'maintenance_facts'
   | 'repair_facts'
   | 'usage_facts'
   | 'quota_facts'
 
-type AiReadonlySchema = Record<AiReadonlyViewName, readonly string[]>
+export type AiReadonlySchema = Record<AiReadonlyViewName, readonly string[]>
 
 export const AI_READONLY_SCHEMA: AiReadonlySchema = {
   equipment_search: [

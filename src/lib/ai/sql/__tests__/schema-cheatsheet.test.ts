@@ -9,6 +9,8 @@ import {
   QUERY_DATABASE_TOOL_DESCRIPTION,
 } from '../schema-cheatsheet'
 
+const QUERY_DATABASE_TOOL_DESCRIPTION_BYTE_BUDGET = 2600
+
 describe('query_database schema cheatsheet contract', () => {
   it('exports the canonical ai_readonly view names', () => {
     expect(AI_READONLY_VIEW_NAMES).toEqual([
@@ -152,6 +154,9 @@ describe('query_database schema cheatsheet contract', () => {
   })
 
   it('stays within the documented byte budget', () => {
-    expect(Buffer.byteLength(QUERY_DATABASE_TOOL_DESCRIPTION, 'utf8')).toBeLessThanOrEqual(2600)
+    // Keep the tool description compact enough for the model-facing tool payload.
+    expect(Buffer.byteLength(QUERY_DATABASE_TOOL_DESCRIPTION, 'utf8')).toBeLessThanOrEqual(
+      QUERY_DATABASE_TOOL_DESCRIPTION_BYTE_BUDGET,
+    )
   })
 })

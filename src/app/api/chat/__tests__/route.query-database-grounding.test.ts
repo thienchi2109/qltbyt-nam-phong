@@ -36,7 +36,10 @@ vi.mock('ai', async () => {
 })
 
 import { POST } from '../route'
-import { QUERY_DATABASE_TOOL_DESCRIPTION } from '@/lib/ai/sql/schema-cheatsheet'
+import {
+  AI_READONLY_FORBIDDEN_REFERENCES,
+  QUERY_DATABASE_TOOL_DESCRIPTION,
+} from '@/lib/ai/sql/schema-cheatsheet'
 import { makeChatModel, makeReadyStreamTextResult } from './stream-text-result-test-helpers'
 
 function buildRequest(body: unknown) {
@@ -89,9 +92,10 @@ describe('/api/chat query_database grounding payload', () => {
     expect(streamTextArgs.system).toContain('usage_facts')
     expect(streamTextArgs.system).toContain('quota_facts')
     expect(streamTextArgs.system).toContain('khoa_phong_quan_ly')
-    expect(streamTextArgs.system).toContain('thiet_bi')
-    expect(streamTextArgs.system).toContain('khoa_phong')
-    expect(streamTextArgs.system).toContain('set_config')
+    expect(streamTextArgs.system).toContain('KHÔNG dùng raw schema/tên')
+    for (const ref of AI_READONLY_FORBIDDEN_REFERENCES) {
+      expect(streamTextArgs.system).toContain(ref)
+    }
 
     expect(streamTextArgs.tools?.query_database?.description).toBe(
       QUERY_DATABASE_TOOL_DESCRIPTION,
