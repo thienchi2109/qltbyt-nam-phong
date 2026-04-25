@@ -1,5 +1,26 @@
 import { simulateReadableStream } from 'ai'
 
+export function makeChatModel(
+  model: string,
+  providerOptions?: unknown,
+) {
+  const isGatewayModel = model.startsWith('google/') || model.startsWith('openai/')
+  const resolvedModel = model.startsWith('google:')
+    ? model.slice('google:'.length)
+    : model
+
+  return {
+    model,
+    keyIndex: 0,
+    config: {
+      capability: 'default_chat' as const,
+      provider: isGatewayModel ? 'gateway' as const : 'google' as const,
+      model: resolvedModel,
+    },
+    providerOptions,
+  }
+}
+
 export function makeReadyStreamTextResult(options?: {
   uiChunks?: Array<Record<string, unknown>>
   steps?: Array<{
@@ -50,4 +71,3 @@ export function parseSseJsonChunks(payload: string): Array<Record<string, unknow
     .filter(line => line && line !== '[DONE]')
     .map(line => JSON.parse(line) as Record<string, unknown>)
 }
-

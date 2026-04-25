@@ -1,5 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
+vi.mock('server-only', () => ({}))
+
 const getServerSessionMock = vi.fn()
 const streamTextMock = vi.fn()
 const stepCountIsMock = vi.fn()
@@ -39,7 +41,10 @@ vi.mock('ai', async () => {
 })
 
 import { POST } from '../route'
-import { makeReadyStreamTextResult } from './stream-text-result-test-helpers'
+import {
+  makeChatModel,
+  makeReadyStreamTextResult,
+} from './stream-text-result-test-helpers'
 
 const VALID_MESSAGES = [
   {
@@ -64,7 +69,7 @@ describe('/api/chat attachmentLookup tool', () => {
     getServerSessionMock.mockResolvedValue({
       user: { id: 'u1', role: 'to_qltb', don_vi: 2 },
     })
-    getChatModelMock.mockReturnValue({ model: 'google:gemini-3-flash-preview', keyIndex: 0 })
+    getChatModelMock.mockReturnValue(makeChatModel('google:gemini-3-flash-preview'))
     buildSystemPromptMock.mockReturnValue('SYSTEM_PROMPT_V1')
     checkUsageLimitsMock.mockReturnValue({ allowed: true })
     stepCountIsMock.mockReturnValue('STOP_WHEN_SENTINEL')

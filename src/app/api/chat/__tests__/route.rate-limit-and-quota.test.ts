@@ -1,5 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
+vi.mock('server-only', () => ({}))
+
 const getServerSessionMock = vi.fn()
 const streamTextMock = vi.fn()
 const stepCountIsMock = vi.fn()
@@ -48,7 +50,10 @@ vi.mock('ai', async () => {
 })
 
 import { POST } from '../route'
-import { makeReadyStreamTextResult } from './stream-text-result-test-helpers'
+import {
+  makeChatModel,
+  makeReadyStreamTextResult,
+} from './stream-text-result-test-helpers'
 
 function buildRequest(body: unknown) {
   return new Request('http://localhost/api/chat', {
@@ -73,7 +78,7 @@ describe('/api/chat rate limit and quota', () => {
     getServerSessionMock.mockResolvedValue({
       user: { id: 'u1', role: 'admin', don_vi: 2 },
     })
-    getChatModelMock.mockReturnValue({ model: 'google:gemini-2.5-flash', keyIndex: 0 })
+    getChatModelMock.mockReturnValue(makeChatModel('google:gemini-2.5-flash'))
     buildSystemPromptMock.mockReturnValue('SYSTEM_PROMPT_V1')
     stepCountIsMock.mockReturnValue('STOP_WHEN_SENTINEL')
     checkUsageLimitsMock.mockReturnValue({ allowed: true })
