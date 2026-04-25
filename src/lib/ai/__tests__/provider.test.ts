@@ -22,6 +22,20 @@ vi.mock('@ai-sdk/google', () => ({
   }),
 }))
 
+vi.mock('@ai-sdk/openai-compatible', () => ({
+  createOpenAICompatible: vi.fn((opts?: { apiKey?: string; baseURL?: string; name?: string }) => {
+    const provider = (modelId: string) => ({
+      __testModel: true,
+      transport: 'openai-compatible',
+      providerName: opts?.name ?? 'openai-compatible',
+      modelId,
+      apiKey: opts?.apiKey ?? 'DEFAULT_OPENAI_COMPATIBLE_KEY',
+      baseURL: opts?.baseURL ?? 'https://example.invalid/v1',
+    })
+    return provider
+  }),
+}))
+
 vi.mock('ai', () => ({
   createGateway: vi.fn((opts?: { apiKey?: string }) => {
     const provider = (modelId: string) => ({
@@ -185,10 +199,11 @@ describe('provider — API key rotation', () => {
     expect(() => getChatModel()).toThrow('Unsupported direct AI provider: openai')
   })
 
-  it('keeps key pool sizing available when model construction would reject config', () => {
+  it('treats unsupported direct providers as non-rotating while config validation fails elsewhere', () => {
     process.env.AI_PROVIDER = 'openai'
 
-    expect(getKeyPoolSize()).toBe(3)
+    expect(getKeyPoolSize()).toBe(1)
+    expect(handleProviderQuotaError(0)).toBe(false)
   })
 
   // -------------------------------------------------------------------
@@ -228,6 +243,41 @@ describe('provider — API key rotation', () => {
     process.env.AI_DEFAULT_CHAT_PROVIDER = 'gateway'
     process.env.AI_DEFAULT_CHAT_MODEL = 'openai/gpt-5.2'
     process.env.AI_GATEWAY_API_KEY = 'GATEWAY_KEY'
+
+    expect(getKeyPoolSize()).toBe(1)
+    expect(handleProviderQuotaError(0)).toBe(false)
+  })
+
+  it('returns an openai-compatible model for a custom base URL provider', () => {
+    process.env.AI_DEFAULT_CHAT_PROVIDER = 'openai-compatible'
+    process.env.AI_DEFAULT_CHAT_MODEL = 'qwen3.5-plus-2026-04-20'
+    process.env.AI_OPENAI_COMPATIBLE_BASE_URL =
+      'https://dashscope-intl.aliyuncs.com/compatible-mode/v1'
+    process.env.AI_OPENAI_COMPATIBLE_API_KEY = 'DASHSCOPE_KEY'
+
+    const { model, keyIndex } = getChatModel()
+    const m = model as unknown as {
+      apiKey: string
+      baseURL: string
+      modelId: string
+      transport: string
+      providerName: string
+    }
+
+    expect(m.transport).toBe('openai-compatible')
+    expect(m.providerName).toBe('openai-compatible')
+    expect(m.apiKey).toBe('DASHSCOPE_KEY')
+    expect(m.baseURL).toBe('https://dashscope-intl.aliyuncs.com/compatible-mode/v1')
+    expect(m.modelId).toBe('qwen3.5-plus-2026-04-20')
+    expect(keyIndex).toBe(0)
+  })
+
+  it('reports a single non-rotating key slot for openai-compatible mode', () => {
+    process.env.AI_DEFAULT_CHAT_PROVIDER = 'openai-compatible'
+    process.env.AI_DEFAULT_CHAT_MODEL = 'qwen3.5-plus-2026-04-20'
+    process.env.AI_OPENAI_COMPATIBLE_BASE_URL =
+      'https://dashscope-intl.aliyuncs.com/compatible-mode/v1'
+    process.env.AI_OPENAI_COMPATIBLE_API_KEY = 'DASHSCOPE_KEY'
 
     expect(getKeyPoolSize()).toBe(1)
     expect(handleProviderQuotaError(0)).toBe(false)
