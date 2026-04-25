@@ -36,6 +36,20 @@ describe('AI default chat config resolver', () => {
     })
   })
 
+  it('defaults to gateway when only a provider-prefixed AI_DEFAULT_CHAT_MODEL is configured', () => {
+    expect(
+      resolveDefaultChatConfig(
+        env({
+          AI_DEFAULT_CHAT_MODEL: 'openai/gpt-5.2',
+        }),
+      ),
+    ).toEqual({
+      capability: 'default_chat',
+      provider: 'gateway',
+      model: 'openai/gpt-5.2',
+    })
+  })
+
   it('falls back to legacy Google provider and model env vars', () => {
     expect(
       resolveDefaultChatConfig(
