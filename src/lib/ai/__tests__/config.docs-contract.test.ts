@@ -14,7 +14,8 @@ describe('AI config docs contract', () => {
     expect(envExample).toContain('AI_MODEL=gemini-3.1-flash-lite-preview')
     expect(envExample).toContain('GOOGLE_GENERATIVE_AI_API_KEY=')
     expect(envExample).toContain('GOOGLE_GENERATIVE_AI_API_KEYS=')
-    expect(envExample).not.toContain('AI_BASE_URL=')
+    expect(envExample).toContain('AI_OPENAI_COMPATIBLE_BASE_URL=')
+    expect(envExample).toContain('AI_OPENAI_COMPATIBLE_API_KEY=')
   })
 
   it('provides a runbook for switching providers by env and redeploy', () => {
@@ -32,7 +33,9 @@ describe('AI config docs contract', () => {
     expect(runbook).toContain('mistral/')
     expect(runbook).toContain('GOOGLE_GENERATIVE_AI_API_KEYS')
     expect(runbook).toContain('redeploy')
-    expect(runbook).not.toContain('AI_BASE_URL')
+    expect(runbook).toContain('AI_OPENAI_COMPATIBLE_BASE_URL')
+    expect(runbook).toContain('AI_OPENAI_COMPATIBLE_API_KEY')
+    expect(runbook).toContain('DashScope')
     expect(runbook).toContain(
       'AI_DEFAULT_CHAT_MODEL must be a provider-prefixed model id when provider is gateway',
     )

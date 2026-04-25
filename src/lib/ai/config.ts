@@ -1,5 +1,5 @@
 export type AiChatCapability = 'default_chat'
-export type AiProviderTransport = 'gateway' | 'google'
+export type AiProviderTransport = 'gateway' | 'google' | 'openai-compatible'
 
 export interface ResolvedDefaultChatConfig {
   capability: AiChatCapability
@@ -14,6 +14,18 @@ const DEFAULT_GOOGLE_MODEL = 'gemini-3.1-flash-lite-preview'
 function readEnv(env: NodeJS.ProcessEnv, key: string): string | undefined {
   const value = env[key]?.trim()
   return value ? value : undefined
+}
+
+export function readOpenAICompatibleBaseUrl(
+  env: NodeJS.ProcessEnv = process.env,
+): string | undefined {
+  return readEnv(env, 'AI_OPENAI_COMPATIBLE_BASE_URL')
+}
+
+export function readOpenAICompatibleApiKey(
+  env: NodeJS.ProcessEnv = process.env,
+): string | undefined {
+  return readEnv(env, 'AI_OPENAI_COMPATIBLE_API_KEY')
 }
 
 function hasProviderPrefix(model: string): boolean {
@@ -89,6 +101,14 @@ export function resolveDefaultChatConfig(
     }
   }
 
+  if (provider === 'openai-compatible') {
+    return {
+      capability: 'default_chat',
+      provider,
+      model,
+    }
+  }
+
   throw new Error(
     `Unsupported direct AI provider: ${provider}. Use AI_DEFAULT_CHAT_PROVIDER=gateway with a provider-prefixed model id.`,
   )
@@ -106,5 +126,13 @@ export function assertDefaultChatCredentials(
     throw new Error(
       'GOOGLE_GENERATIVE_AI_API_KEY or GOOGLE_GENERATIVE_AI_API_KEYS is required for direct Google mode',
     )
+  }
+
+  if (config.provider === 'openai-compatible' && !readOpenAICompatibleBaseUrl(env)) {
+    throw new Error('AI_OPENAI_COMPATIBLE_BASE_URL is required for openai-compatible mode')
+  }
+
+  if (config.provider === 'openai-compatible' && !readOpenAICompatibleApiKey(env)) {
+    throw new Error('AI_OPENAI_COMPATIBLE_API_KEY is required for openai-compatible mode')
   }
 }

@@ -65,6 +65,23 @@ describe('AI default chat config resolver', () => {
     })
   })
 
+  it('supports an explicit openai-compatible provider with a custom base URL', () => {
+    expect(
+      resolveDefaultChatConfig(
+        env({
+          AI_DEFAULT_CHAT_PROVIDER: 'openai-compatible',
+          AI_DEFAULT_CHAT_MODEL: 'qwen3.5-plus-2026-04-20',
+          AI_OPENAI_COMPATIBLE_BASE_URL:
+            'https://dashscope-intl.aliyuncs.com/compatible-mode/v1',
+        }),
+      ),
+    ).toEqual({
+      capability: 'default_chat',
+      provider: 'openai-compatible',
+      model: 'qwen3.5-plus-2026-04-20',
+    })
+  })
+
   it('keeps legacy AI_MODEL-only config in direct Google mode', () => {
     expect(
       resolveDefaultChatConfig(
@@ -166,6 +183,33 @@ describe('AI default chat config resolver', () => {
 
     expect(() => assertDefaultChatCredentials(config, env())).toThrow(
       'GOOGLE_GENERATIVE_AI_API_KEY or GOOGLE_GENERATIVE_AI_API_KEYS is required for direct Google mode',
+    )
+  })
+
+  it('requires a base URL in openai-compatible mode', () => {
+    const config = resolveDefaultChatConfig(
+      env({
+        AI_DEFAULT_CHAT_PROVIDER: 'openai-compatible',
+        AI_DEFAULT_CHAT_MODEL: 'qwen3.5-plus-2026-04-20',
+      }),
+    )
+
+    expect(() => assertDefaultChatCredentials(config, env())).toThrow(
+      'AI_OPENAI_COMPATIBLE_BASE_URL is required for openai-compatible mode',
+    )
+  })
+
+  it('requires an API key in openai-compatible mode', () => {
+    const envVars = env({
+      AI_DEFAULT_CHAT_PROVIDER: 'openai-compatible',
+      AI_DEFAULT_CHAT_MODEL: 'qwen3.5-plus-2026-04-20',
+      AI_OPENAI_COMPATIBLE_BASE_URL:
+        'https://dashscope-intl.aliyuncs.com/compatible-mode/v1',
+    })
+    const config = resolveDefaultChatConfig(envVars)
+
+    expect(() => assertDefaultChatCredentials(config, envVars)).toThrow(
+      'AI_OPENAI_COMPATIBLE_API_KEY is required for openai-compatible mode',
     )
   })
 

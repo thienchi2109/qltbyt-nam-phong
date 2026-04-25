@@ -1,9 +1,12 @@
 import { createGoogleGenerativeAI } from '@ai-sdk/google'
+import { createOpenAICompatible } from '@ai-sdk/openai-compatible'
 import { createGateway, type LanguageModel } from 'ai'
 
 import {
   assertDefaultChatCredentials,
   type ResolvedDefaultChatConfig,
+  readOpenAICompatibleApiKey,
+  readOpenAICompatibleBaseUrl,
   resolveDefaultChatProvider,
   loadGoogleApiKeys,
   resolveDefaultChatConfig,
@@ -92,6 +95,24 @@ export function getChatModel(): ChatModelWithKeyIndex {
         keyIndex,
       }
     }
+    case 'openai-compatible': {
+      const apiKey = readOpenAICompatibleApiKey()
+      const baseURL = readOpenAICompatibleBaseUrl()
+      if (!apiKey || !baseURL) {
+        throw new Error('OpenAI-compatible credentials should have been validated before use')
+      }
+      const openAICompatible = createOpenAICompatible({
+        name: 'openai-compatible',
+        apiKey,
+        baseURL,
+      })
+      return {
+        model: openAICompatible(config.model as Parameters<typeof openAICompatible>[0]),
+        config,
+        providerOptions: resolveDefaultChatProviderOptions(config),
+        keyIndex: 0,
+      }
+    }
   }
 }
 
@@ -105,7 +126,8 @@ export function getChatModel(): ChatModelWithKeyIndex {
  *          pool are exhausted (caller should surface the quota error to the user).
  */
 export function handleProviderQuotaError(failedKeyIndex: number): boolean {
-  if (resolveDefaultChatProvider() === 'gateway') return false
+  const provider = resolveDefaultChatProvider()
+  if (provider !== 'google') return false
 
   maybeResetExhausted()
 
@@ -140,7 +162,7 @@ export function handleProviderQuotaError(failedKeyIndex: number): boolean {
  * Used by the route to cap retry attempts.
  */
 export function getKeyPoolSize(): number {
-  if (resolveDefaultChatProvider() === 'gateway') return 1
+  if (resolveDefaultChatProvider() !== 'google') return 1
 
   return _internals.keys.length
 }
