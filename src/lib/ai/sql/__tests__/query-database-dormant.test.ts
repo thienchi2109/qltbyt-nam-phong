@@ -10,6 +10,7 @@ vi.mock('@/lib/ai/sql/audited-executor', () => ({
 }))
 
 import { POST as rpcPost } from '@/app/api/rpc/[fn]/route'
+import { QUERY_DATABASE_TOOL_DESCRIPTION } from '@/lib/ai/sql/schema-cheatsheet'
 import { QUERY_DATABASE_TOOL_NAME } from '@/lib/ai/tools/query-database'
 import { buildToolRegistry, getAllowedToolNamesForTest, getToolRpcMapping, validateRequestedTools } from '@/lib/ai/tools/registry'
 import type { AssistantSqlScope } from '@/lib/ai/sql/scope'
@@ -74,6 +75,33 @@ describe('query_database runtime rollout contract', () => {
       sql: 'select total from ai_readonly.reporting_summary',
       execute: undefined,
     })
+  })
+
+  it('exposes the canonical schema-grounded description', () => {
+    const scope: AssistantSqlScope = {
+      effectiveFacilityId: 17,
+      facilitySource: 'selected',
+      normalizedRole: 'global',
+      rawRole: 'admin',
+      requestedFacilityId: 17,
+      sessionFacilityId: undefined,
+      userId: 'u-admin',
+    }
+    const request = new Request('http://localhost/api/chat', { method: 'POST' })
+
+    const registry = buildToolRegistry({
+      request,
+      tenantId: 17,
+      userId: 'u-admin',
+      requestedTools: ['query_database'],
+      assistantSqlScope: scope,
+    })
+
+    const queryDatabaseTool = registry.query_database as unknown as {
+      description?: string
+    }
+
+    expect(queryDatabaseTool.description).toBe(QUERY_DATABASE_TOOL_DESCRIPTION)
   })
 
   it('does not expose SQL execution through the RPC proxy mapping', async () => {

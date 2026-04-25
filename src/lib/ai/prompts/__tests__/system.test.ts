@@ -135,8 +135,26 @@ describe('system prompt module', () => {
     expect(prompt).toContain('metadata')
   })
 
-  it('prompt version is v2.5.0 after Batch 2 envelope guidance updates', () => {
-    expect(SYSTEM_PROMPT_VERSION).toBe('v2.5.0')
+  it('prompt version is v2.5.1 after query_database grounding updates', () => {
+    expect(SYSTEM_PROMPT_VERSION).toBe('v2.5.1')
+  })
+
+  it('grounds query_database to the ai_readonly semantic surface', () => {
+    const prompt = buildSystemPrompt({
+      role: 'admin',
+      userId: 'u1',
+      selectedFacilityId: 2,
+    })
+
+    expect(prompt).toContain('equipment_search')
+    expect(prompt).toContain('maintenance_facts')
+    expect(prompt).toContain('repair_facts')
+    expect(prompt).toContain('usage_facts')
+    expect(prompt).toContain('quota_facts')
+    expect(prompt).toContain('khoa_phong_quan_ly')
+    expect(prompt).toContain('thiet_bi')
+    expect(prompt).toContain('khoa_phong')
+    expect(prompt).toContain('set_config')
   })
 
   it('includes § 10 troubleshooting drafts section', () => {

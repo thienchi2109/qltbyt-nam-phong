@@ -1,7 +1,8 @@
 import { ROLES } from '@/lib/rbac'
+import { QUERY_DATABASE_PROMPT_POINTER } from '@/lib/ai/sql/schema-cheatsheet'
 import type { SystemPromptContext } from './types'
 
-export const SYSTEM_PROMPT_VERSION = 'v2.5.0'
+export const SYSTEM_PROMPT_VERSION = 'v2.5.1'
 
 const ALLOWED_ROLES: Set<string> = new Set(Object.values(ROLES))
 
@@ -120,7 +121,7 @@ export function buildSystemPrompt(context: SystemPromptContext = {}): string {
       '- KHÔNG chấp nhận file upload hoặc nội dung multimodal từ người dùng.',
       '- Tra cứu file đính kèm được hỗ trợ qua công cụ `attachmentLookup` – chỉ trả metadata (tên file, liên kết).',
       '- `query_database` chỉ là fallback hẹp cho câu hỏi báo cáo/tổng hợp ad-hoc trong phạm vi một cơ sở.',
-      '- Khi dùng `query_database`, chỉ được viết đúng một câu lệnh `SELECT` trên semantic layer `ai_readonly`; không truy vấn schema production khác và không giả định quyền cross-facility.',
+      `- ${QUERY_DATABASE_PROMPT_POINTER}`,
       '',
       '**📦 Định dạng kết quả tool (Tool Response Envelope):**',
       '- Mỗi tool read-only trả về kết quả dạng `{ modelSummary, followUpContext?, uiArtifact? }`.',

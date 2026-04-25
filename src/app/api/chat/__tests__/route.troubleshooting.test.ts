@@ -1,4 +1,6 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
+
+vi.mock('server-only', () => ({}))
 
 import {
   troubleshootingDraftSchema,
@@ -246,8 +248,8 @@ describe('troubleshooting draft safety', () => {
     }
   })
 
-  it('system prompt version is v2.5.0', () => {
-    expect(SYSTEM_PROMPT_VERSION).toBe('v2.5.0')
+  it('system prompt version is v2.5.1', () => {
+    expect(SYSTEM_PROMPT_VERSION).toBe('v2.5.1')
   })
 
   it('prompt labels troubleshooting output as Draft/Inference, never Fact', () => {
