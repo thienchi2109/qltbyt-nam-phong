@@ -78,6 +78,7 @@ export function resolveDefaultChatConfig(
 ): ResolvedDefaultChatConfig {
   const provider = resolveDefaultChatProvider(env)
   const model = resolveModel(env, provider)
+  const explicitModel = readEnv(env, 'AI_DEFAULT_CHAT_MODEL') ?? readEnv(env, 'AI_MODEL')
 
   if (provider === 'gateway') {
     if (!hasProviderPrefix(model)) {
@@ -102,10 +103,14 @@ export function resolveDefaultChatConfig(
   }
 
   if (provider === 'openai-compatible') {
+    if (!explicitModel) {
+      throw new Error('AI_DEFAULT_CHAT_MODEL or AI_MODEL is required for openai-compatible mode')
+    }
+
     return {
       capability: 'default_chat',
       provider,
-      model,
+      model: explicitModel,
     }
   }
 

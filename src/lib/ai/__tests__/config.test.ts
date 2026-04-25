@@ -213,6 +213,18 @@ describe('AI default chat config resolver', () => {
     )
   })
 
+  it('requires an explicit model in openai-compatible mode instead of falling back to the gateway default', () => {
+    expect(() =>
+      resolveDefaultChatConfig(
+        env({
+          AI_DEFAULT_CHAT_PROVIDER: 'openai-compatible',
+          AI_OPENAI_COMPATIBLE_BASE_URL:
+            'https://dashscope-intl.aliyuncs.com/compatible-mode/v1',
+        }),
+      ),
+    ).toThrow('AI_DEFAULT_CHAT_MODEL or AI_MODEL is required for openai-compatible mode')
+  })
+
   it('loads comma-separated Google keys before the single-key fallback', () => {
     expect(
       loadGoogleApiKeys(
