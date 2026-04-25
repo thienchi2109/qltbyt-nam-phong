@@ -1,6 +1,6 @@
 import type { LanguageModel, UIMessage } from 'ai'
-import type { GoogleLanguageModelOptions } from '@ai-sdk/google'
 
+import type { DefaultChatProviderOptions } from '../provider-options'
 import { buildRepairRequestDraft } from './repair-request-draft-tool'
 import { collectRepairRequestDraftEvidence } from './repair-request-draft-evidence'
 import {
@@ -27,9 +27,7 @@ export async function maybeBuildRepairRequestDraftArtifact({
   model: LanguageModel
   messages: UIMessage[]
   steps: Array<{ toolResults: Array<{ toolName: string; output: unknown }> }>
-  providerOptions?: {
-    google?: GoogleLanguageModelOptions
-  }
+  providerOptions?: DefaultChatProviderOptions
 }): Promise<RepairRequestDraftOrchestrationResult | null> {
   const session = getRepairRequestDraftSessionState(messages)
   if (session.status !== 'active' || session.startMessageIndex === undefined) {
@@ -67,4 +65,3 @@ export async function maybeBuildRepairRequestDraftArtifact({
     output: buildRepairRequestDraft(input),
   }
 }
-

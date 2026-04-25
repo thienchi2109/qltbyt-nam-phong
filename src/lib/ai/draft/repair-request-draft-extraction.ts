@@ -1,8 +1,8 @@
 import type { LanguageModel, UIMessage } from 'ai'
 import { generateObject } from 'ai'
-import type { GoogleLanguageModelOptions } from '@ai-sdk/google'
 import { z } from 'zod'
 
+import type { DefaultChatProviderOptions } from '../provider-options'
 import type { RepairRequestDraftEquipmentContext } from './repair-request-draft-evidence'
 import type { RepairRequestDraftInput } from './repair-request-draft-tool'
 
@@ -151,9 +151,7 @@ export async function extractRepairRequestDraftFields({
   model: LanguageModel
   messages: UIMessage[]
   equipment: RepairRequestDraftEquipmentContext
-  providerOptions?: {
-    google?: GoogleLanguageModelOptions
-  }
+  providerOptions?: DefaultChatProviderOptions
 }): Promise<RepairRequestDraftExtractionResult> {
   const conversationTranscript =
     buildRepairRequestDraftConversationTranscript(messages)

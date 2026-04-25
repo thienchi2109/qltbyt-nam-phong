@@ -3,10 +3,15 @@ import { createGateway, type LanguageModel } from 'ai'
 
 import {
   assertDefaultChatCredentials,
+  type ResolvedDefaultChatConfig,
   resolveDefaultChatProvider,
   loadGoogleApiKeys,
   resolveDefaultChatConfig,
 } from './config'
+import {
+  resolveDefaultChatProviderOptions,
+  type DefaultChatProviderOptions,
+} from './provider-options'
 
 // ---------------------------------------------------------------------------
 // API-key pool & round-robin rotation
@@ -47,6 +52,8 @@ function maybeResetExhausted(): void {
 
 export interface ChatModelWithKeyIndex {
   model: LanguageModel
+  config: ResolvedDefaultChatConfig
+  providerOptions?: DefaultChatProviderOptions
   /** The pool index of the API key bound to this model instance. */
   keyIndex: number
 }
@@ -67,6 +74,8 @@ export function getChatModel(): ChatModelWithKeyIndex {
       const gateway = createGateway({ apiKey: process.env.AI_GATEWAY_API_KEY?.trim() })
       return {
         model: gateway(config.model as Parameters<typeof gateway>[0]),
+        config,
+        providerOptions: resolveDefaultChatProviderOptions(config),
         keyIndex: 0,
       }
     }
@@ -78,6 +87,8 @@ export function getChatModel(): ChatModelWithKeyIndex {
       const google = createGoogleGenerativeAI(key ? { apiKey: key } : undefined)
       return {
         model: google(config.model as Parameters<typeof google>[0]),
+        config,
+        providerOptions: resolveDefaultChatProviderOptions(config),
         keyIndex,
       }
     }
