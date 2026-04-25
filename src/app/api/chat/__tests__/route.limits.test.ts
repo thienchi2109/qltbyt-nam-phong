@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 const getServerSessionMock = vi.fn()
 const streamTextMock = vi.fn()
@@ -9,6 +9,27 @@ const buildSystemPromptMock = vi.fn()
 const checkUsageLimitsMock = vi.fn()
 const recordUsageMock = vi.fn()
 const confirmUsageMock = vi.fn()
+
+const ORIGINAL_ENV = { ...process.env }
+
+function mockChatModelResult(model: string, providerOptions?: unknown) {
+  const provider = model.startsWith('google/') || model.startsWith('openai/')
+    ? 'gateway'
+    : 'google'
+
+  return {
+    model,
+    keyIndex: 0,
+    config: {
+      capability: 'default_chat',
+      provider,
+      model,
+    },
+    providerOptions,
+  }
+}
+
+vi.mock('server-only', () => ({}))
 
 vi.mock('next-auth', () => ({
   getServerSession: (...args: unknown[]) => getServerSessionMock(...args),
@@ -74,12 +95,19 @@ function buildMessage(id: string, text = 'Xin chao') {
 
 describe('/api/chat limits', () => {
   beforeEach(() => {
+    process.env = { ...ORIGINAL_ENV }
     vi.clearAllMocks()
 
     getServerSessionMock.mockResolvedValue({
       user: { id: 'u1', role: 'admin', don_vi: 2 },
     })
-    getChatModelMock.mockReturnValue({ model: 'google:gemini-2.5-flash', keyIndex: 0 })
+    getChatModelMock.mockReturnValue(
+      mockChatModelResult('gemini-2.5-flash', {
+        google: {
+          thinkingConfig: { thinkingLevel: 'medium' },
+        },
+      }),
+    )
     buildSystemPromptMock.mockReturnValue('SYSTEM_PROMPT_V1')
     stepCountIsMock.mockReturnValue('STOP_WHEN_SENTINEL')
     checkUsageLimitsMock.mockReturnValue({ allowed: true })
@@ -87,6 +115,10 @@ describe('/api/chat limits', () => {
       { role: 'user', content: 'converted-message-sentinel' },
     ])
     streamTextMock.mockReturnValue(makeReadyStreamTextResult())
+  })
+
+  afterEach(() => {
+    process.env = { ...ORIGINAL_ENV }
   })
 
   it('applies maxOutputTokens and stopWhen guardrails to streamText', async () => {
@@ -105,7 +137,9 @@ describe('/api/chat limits', () => {
   })
 
   it('omits thinkingConfig for gemma models that do not support thinking levels', async () => {
-    getChatModelMock.mockReturnValue({ model: 'google:gemma-4-26b-a4b-it', keyIndex: 0 })
+    getChatModelMock.mockReturnValue(
+      mockChatModelResult('gemma-4-26b-a4b-it'),
+    )
 
     const res = await POST(
       buildRequest({ messages: [buildMessage('m1')] }) as never,
@@ -124,7 +158,79 @@ describe('/api/chat limits', () => {
   })
 
   it('keeps thinkingConfig for gemini models that support thinking levels', async () => {
-    getChatModelMock.mockReturnValue({ model: 'google:gemini-2.5-flash', keyIndex: 0 })
+    getChatModelMock.mockReturnValue(
+      mockChatModelResult('gemini-2.5-flash', {
+        google: {
+          thinkingConfig: { thinkingLevel: 'medium' },
+        },
+      }),
+    )
+
+    const res = await POST(
+      buildRequest({ messages: [buildMessage('m1')] }) as never,
+    )
+
+    expect(res.status).toBe(200)
+    const streamTextArgs = streamTextMock.mock.calls[0]?.[0] as {
+      providerOptions?: {
+        google?: {
+          thinkingConfig?: {
+            thinkingLevel?: string
+          }
+        }
+      }
+    }
+
+    expect(streamTextArgs?.providerOptions?.google?.thinkingConfig).toEqual({
+      thinkingLevel: 'medium',
+    })
+  })
+
+  it('uses resolved Gateway provider options instead of legacy AI_MODEL for non-Google models', async () => {
+    process.env.AI_MODEL = 'gemini-3.1-flash-lite-preview'
+    getChatModelMock.mockReturnValue({
+      model: 'gateway-openai-model',
+      keyIndex: 0,
+      config: {
+        capability: 'default_chat',
+        provider: 'gateway',
+        model: 'openai/gpt-5.2',
+      },
+      providerOptions: undefined,
+    })
+
+    const res = await POST(
+      buildRequest({ messages: [buildMessage('m1')] }) as never,
+    )
+
+    expect(res.status).toBe(200)
+    const streamTextArgs = streamTextMock.mock.calls[0]?.[0] as {
+      providerOptions?: {
+        google?: {
+          thinkingConfig?: unknown
+        }
+      }
+    }
+
+    expect(streamTextArgs?.providerOptions?.google?.thinkingConfig).toBeUndefined()
+  })
+
+  it('uses resolved Gateway Google provider options even when legacy AI_MODEL is non-Google', async () => {
+    process.env.AI_MODEL = 'openai/gpt-5.2'
+    getChatModelMock.mockReturnValue({
+      model: 'gateway-google-model',
+      keyIndex: 0,
+      config: {
+        capability: 'default_chat',
+        provider: 'gateway',
+        model: 'google/gemini-3.1-flash-lite-preview',
+      },
+      providerOptions: {
+        google: {
+          thinkingConfig: { thinkingLevel: 'medium' },
+        },
+      },
+    })
 
     const res = await POST(
       buildRequest({ messages: [buildMessage('m1')] }) as never,

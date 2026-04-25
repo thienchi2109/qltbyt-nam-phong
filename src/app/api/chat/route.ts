@@ -7,7 +7,6 @@ import {
   type UIMessage,
   validateUIMessages,
 } from 'ai'
-import type { GoogleLanguageModelOptions } from '@ai-sdk/google'
 import { getServerSession } from 'next-auth'
 
 import { authOptions } from '@/auth/config'
@@ -64,24 +63,6 @@ function clarificationResponse(message: string, originalMessages: UIMessage[]) {
 }
 
 const ALLOWED_CHAT_ROLES = new Set<string>(Object.values(ROLES))
-
-function normalizeGoogleModelId(modelId: string): string {
-  return modelId.startsWith('google:') ? modelId.slice('google:'.length) : modelId
-}
-
-function getGoogleProviderOptions(modelId: string): { google?: GoogleLanguageModelOptions } {
-  const normalizedModelId = normalizeGoogleModelId(modelId)
-
-  if (!normalizedModelId.startsWith('gemini-')) {
-    return {}
-  }
-
-  return {
-    google: {
-      thinkingConfig: { thinkingLevel: 'medium' },
-    } satisfies GoogleLanguageModelOptions,
-  }
-}
 
 function hasAllowedChatRole(value: unknown): boolean {
   if (typeof value !== 'string') {
@@ -209,24 +190,21 @@ export async function POST(request: Request) {
   }
 
   const maxAttempts = getKeyPoolSize()
-  const configuredModel = process.env.AI_MODEL ?? 'gemini-3.1-flash-lite-preview'
 
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     let keyIndex = 0
+    let configuredModel = 'unknown'
 
     try {
       const chatModel = getChatModel()
-      const resolvedModelId =
-        process.env.AI_MODEL ??
-        (typeof chatModel.model === 'string' ? chatModel.model : configuredModel)
       keyIndex = chatModel.keyIndex
+      configuredModel = chatModel.config.model
       console.info('[chat] Model attempt start', {
         attempt,
         maxAttempts,
         keyIndex,
         model: configuredModel,
       })
-      const googleProviderOptions = getGoogleProviderOptions(resolvedModelId)
 
       const result = streamText({
         model: chatModel.model,
@@ -235,7 +213,7 @@ export async function POST(request: Request) {
         stopWhen: stepCountIs(AI_MAX_TOOL_STEPS),
         messages: modelMessages,
         tools,
-        providerOptions: googleProviderOptions,
+        providerOptions: chatModel.providerOptions,
         onFinish({ usage, finishReason }) {
           // Only increment daily quotas after a successful completion.
           if (finishReason !== 'error') {
@@ -291,7 +269,7 @@ export async function POST(request: Request) {
                   output: toolResult.output,
                 })),
               })),
-              providerOptions: googleProviderOptions,
+              providerOptions: chatModel.providerOptions,
             })
 
             if (repairDraftArtifact) {

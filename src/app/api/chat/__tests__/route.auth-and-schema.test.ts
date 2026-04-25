@@ -1,5 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
+vi.mock('server-only', () => ({}))
+
 const getServerSessionMock = vi.fn()
 const streamTextMock = vi.fn()
 const getChatModelMock = vi.fn()
@@ -28,7 +30,10 @@ vi.mock('ai', async () => {
 })
 
 import { POST } from '../route'
-import { makeReadyStreamTextResult } from './stream-text-result-test-helpers'
+import {
+  makeChatModel,
+  makeReadyStreamTextResult,
+} from './stream-text-result-test-helpers'
 
 const VALID_MESSAGES = [
   {
@@ -50,7 +55,7 @@ describe('/api/chat auth + schema', () => {
   beforeEach(() => {
     vi.clearAllMocks()
 
-    getChatModelMock.mockReturnValue({ model: 'google:gemini-2.5-flash', keyIndex: 0 })
+    getChatModelMock.mockReturnValue(makeChatModel('google:gemini-2.5-flash'))
     buildSystemPromptMock.mockReturnValue('SYSTEM_PROMPT_V1')
     streamTextMock.mockReturnValue(makeReadyStreamTextResult())
   })

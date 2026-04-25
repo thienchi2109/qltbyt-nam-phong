@@ -10,6 +10,8 @@ const recordUsageMock = vi.fn()
 const confirmUsageMock = vi.fn()
 const generateObjectMock = vi.fn()
 
+vi.mock('server-only', () => ({}))
+
 vi.mock('next-auth', () => ({
   getServerSession: (...args: unknown[]) => getServerSessionMock(...args),
 }))
@@ -64,6 +66,23 @@ function buildMessages(text: string) {
   ]
 }
 
+function makeChatModel(model: string) {
+  return {
+    model,
+    keyIndex: 0,
+    config: {
+      capability: 'default_chat',
+      provider: 'google',
+      model,
+    },
+    providerOptions: {
+      google: {
+        thinkingConfig: { thinkingLevel: 'medium' },
+      },
+    },
+  }
+}
+
 function getToolChunks(payload: string) {
   return parseSseJsonChunks(payload).filter(
     chunk =>
@@ -79,7 +98,7 @@ describe('/api/chat repair-request draft orchestration', () => {
     getServerSessionMock.mockResolvedValue({
       user: { id: 'u1', role: 'to_qltb', don_vi: 17 },
     })
-    getChatModelMock.mockReturnValue({ model: 'google:gemini-2.5-flash', keyIndex: 0 })
+    getChatModelMock.mockReturnValue(makeChatModel('gemini-2.5-flash'))
     buildSystemPromptMock.mockReturnValue('SYSTEM_PROMPT_V1')
     checkUsageLimitsMock.mockReturnValue({ allowed: true })
     stepCountIsMock.mockReturnValue('STOP_WHEN_SENTINEL')
