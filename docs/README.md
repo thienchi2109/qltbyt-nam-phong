@@ -7,6 +7,7 @@ This directory contains technical documentation, architectural decisions, and im
 ### Architecture & Design
 - [Transfers Kanban Scalability Plan (Deferred)](./transfers-kanban-scalability-plan.md) - Performance and UX improvements for handling 100+ transfer requests
 - [Default Chat Config Runbook](./ai/default-chat-config-runbook.md) - Env-based AI provider/model switching for the primary chat flow
+- [Playbook Rollback AI Provider Trên Vercel](./ai/vercel-ai-provider-rollback-playbook.vi.md) - Hai bộ lệnh Vercel CLI để rollback về Google trực tiếp hoặc Google qua gateway
 
 ### Audits & Reports
 - [Explicit `any` Audit Report (2026-03-28)](./explicit-any-audit-2026-03-28.md) - Full-repo `explicit any` inventory, root-cause analysis, and low-risk remediation shortlist
