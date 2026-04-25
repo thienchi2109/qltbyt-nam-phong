@@ -50,4 +50,18 @@ describe('default chat provider options', () => {
       },
     })
   })
+
+  it('normalizes a google-prefixed model id in direct Google mode', () => {
+    expect(
+      resolveDefaultChatProviderOptions({
+        capability: 'default_chat',
+        provider: 'google',
+        model: 'google/gemini-3.1-flash-lite-preview',
+      }),
+    ).toEqual({
+      google: {
+        thinkingConfig: { thinkingLevel: 'medium' },
+      },
+    })
+  })
 })

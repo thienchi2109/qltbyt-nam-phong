@@ -5,13 +5,17 @@ import type { ResolvedDefaultChatConfig } from './config'
 
 export type DefaultChatProviderOptions = ProviderOptions
 
+function stripGooglePrefix(model: string): string {
+  return model.startsWith('google/') ? model.slice('google/'.length) : model
+}
+
 function normalizeGoogleModelId(config: ResolvedDefaultChatConfig): string | null {
   if (config.provider === 'google') {
-    return config.model
+    return stripGooglePrefix(config.model)
   }
 
   if (config.model.startsWith('google/')) {
-    return config.model.slice('google/'.length)
+    return stripGooglePrefix(config.model)
   }
 
   return null
