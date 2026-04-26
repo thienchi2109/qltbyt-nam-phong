@@ -409,6 +409,35 @@ const { data } = useQuery({
 
 **Project ID**: cdthersvldpnlbvpufrr
 
+## Supabase CLI vs MCP (MANDATORY)
+
+**All database operations MUST go through Supabase MCP (project `cdthersvldpnlbvpufrr`). Agents MUST NOT invoke the Supabase CLI for DB-touching operations.** The CLI binary may be installed locally for human developers; that is not permission for agents to use it.
+
+**Forbidden for agents** (do NOT run, even via `npx`, `npm run`, scripts, or shell pipelines):
+
+- `supabase db push` / `supabase db pull` / `supabase db reset` / `supabase db diff` / `supabase db dump`
+- `supabase migration new` / `supabase migration up` / `supabase migration repair` / `supabase migration squash`
+- `supabase link` / `supabase login` / `supabase projects ...` / `supabase secrets ...`
+- `supabase functions deploy` / `supabase functions delete`
+- `supabase inspect db ...`
+- The npm script aliases: `npm run db:push`, `npm run db:pull`, `npm run db:diff`, `npm run db:migration`, `npm run db:stats` (and any future `db:*` script that wraps the CLI)
+
+**Use Supabase MCP instead**:
+
+- Apply migrations → `apply_migration` (MCP)
+- Run SQL / inspect schema → `execute_sql`, `list_tables`, `list_extensions`, `list_migrations` (MCP)
+- Generate types → `generate_typescript_types` (MCP)
+- Post-migration safety → `get_advisors(security)` and `get_advisors(performance)` (MCP)
+- Edge Functions → `deploy_edge_function`, `list_edge_functions` (MCP)
+- Logs / debugging → `get_logs` (MCP)
+
+**Allowed local-only CLI work** (read-only, no live DB side effects, only when explicitly required by the task):
+
+- `supabase --version` for environment checks
+- `supabase start` / `supabase stop` / `supabase status` for a fully local dev stack only when the user explicitly asks for it
+
+If a task seems to require a forbidden CLI command, STOP and ask the user — there is almost always an MCP equivalent. Never "fall back" to the CLI silently.
+
 ## Conventions
 
 - **Imports:** `@/*` alias, order: React → 3rd-party → `@/components` → `@/lib`
