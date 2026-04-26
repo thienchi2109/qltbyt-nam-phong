@@ -63,16 +63,21 @@ notify_telegram() {
 
 notify_failure() {
   local code="$1" stage="$2"
-  local tail_log
-  tail_log="$(tail -n 5 "$LOG_FILE" 2>/dev/null | sed 's/[<>]//g' || true)"
+  # Truncate stage so the alert stays readable in chat. Full detail is
+  # always available in $LOG_FILE.
+  local stage_short
+  if (( ${#stage} > 100 )); then
+    stage_short="${stage:0:97}..."
+  else
+    stage_short="$stage"
+  fi
+  local ts
+  ts="$(date -u '+%Y-%m-%d %H:%M UTC')"
   notify_telegram "$(cat <<EOF
 ❌ ${SCRIPT_NAME} FAILED
 Host: ${HOSTNAME_SHORT}
-Run : ${RUN_ID}
-Stage: ${stage}
-Exit: ${code}
-Last log:
-${tail_log}
+Stage: ${stage_short}
+Exit: ${code} · ${ts}
 EOF
 )"
 }
@@ -133,7 +138,8 @@ preflight() {
   fi
 
   if ! timeout 5 psql "$DATABASE_URL" -c 'SELECT 1' >/dev/null 2>&1; then
-    die 13 "database unreachable: $(mask_url "$DATABASE_URL")"
+    log "preflight: db connect failed for $(mask_url "$DATABASE_URL")"
+    die 13 "database unreachable"
   fi
 
   log "preflight OK"
@@ -159,7 +165,8 @@ run_backup() {
   # Streaming pipeline. pipefail (set above) makes either-side failure visible.
   if ! pg_dump -Fc --no-owner --no-privileges "${schema_args[@]}" "$DATABASE_URL" \
        | rclone rcat --retries 3 --retries-sleep 30s "$remote_path"; then
-    die 20 "pg_dump | rclone rcat failed (target=${remote_path})"
+    log "dump|upload failed for ${remote_path}"
+    die 20 "pg_dump or upload failed"
   fi
 
   local size_bytes
@@ -167,7 +174,8 @@ run_backup() {
                 | grep -oE '"bytes":[[:space:]]*[0-9]+' \
                 | grep -oE '[0-9]+' || echo 0)"
   if (( size_bytes < 1024 )); then
-    die 21 "uploaded size suspicious: ${size_bytes} bytes (target=${remote_path})"
+    log "size sanity failed at ${remote_path}"
+    die 21 "uploaded size too small: ${size_bytes}B"
   fi
 
   local size_human
