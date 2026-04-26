@@ -1,3 +1,42 @@
 ## Codebase Patterns
 
+- AI provider/model selection lives behind a single resolver in `src/lib/ai/config.ts`. Production callers must consume `getChatModel()`, `getKeyPoolSize()`, and `handleProviderQuotaError(keyIndex)` from `src/lib/ai/provider.ts`. The chat route (`src/app/api/chat/route.ts`) holds zero direct `process.env.AI_*` reads and zero `@ai-sdk/*` provider-factory imports — keep it that way.
+- Non-rotating transports (`gateway`, `openai-compatible`) MUST report `getKeyPoolSize() === 1`, `handleProviderQuotaError() === false`, and never mutate the Google rotation pool's `_internals.exhaustedIndices` / `_internals.firstExhaustedAt`. Tests pinning this contract live in `src/lib/ai/__tests__/provider.test.ts` under "Closeout invariants".
+- `readEnv()` in `src/lib/ai/config.ts` trims values, so whitespace-only env vars are treated as missing. Closeout tests in `src/lib/ai/__tests__/config.test.ts` ("Closeout fail-fast invariants") pin this for `AI_DEFAULT_CHAT_PROVIDER`, `AI_GATEWAY_API_KEY`, `AI_OPENAI_COMPATIBLE_API_KEY`, and `AI_OPENAI_COMPATIBLE_BASE_URL`.
+
 ## Progress Log
+
+## 2026-04-26 - Issue #327 Story 1 (Audit & blast-radius)
+- Used GitNexus + code-review-graph + ripgrep to confirm AI provider/model centralization.
+- Findings:
+  - `route.ts` has zero direct AI env reads / no `@ai-sdk/*` factory imports — passes AC1 cleanly.
+  - All AI config helpers are only consumed inside `src/lib/ai/` and their tests.
+  - `provider.ts:77` reads `process.env.AI_GATEWAY_API_KEY` inline — minor symmetry issue vs openai-compatible helpers; tracked as follow-up Issue #334 (out of #327 scope per "no new runtime behavior" rule).
+  - `src/lib/ai/sql/client.ts` (`AI_DATABASE_URL`) and `src/lib/ai/limits.ts` (rate-limit knobs) read env directly, but both are out of #315 scope.
+- Tools: gitnexus index re-confirmed fresh at main HEAD `76562f8` before audit.
+- Learnings: GitNexus call graph occasionally misses cross-module export references; cross-validate with grep when verifying centralization claims.
+---
+
+## 2026-04-26 - Issue #327 Story 2 (Quota semantics regression)
+- Added 6 closeout-invariant tests in `src/lib/ai/__tests__/provider.test.ts`:
+  - Gateway / openai-compatible quota errors do NOT mutate `_internals.exhaustedIndices` or `_internals.firstExhaustedAt`.
+  - Gateway / openai-compatible report `getKeyPoolSize() === 1` even when stray `GOOGLE_GENERATIVE_AI_API_KEYS` is present (env-mixing protection).
+  - `getChatModel()` returns `keyIndex: 0` for gateway / openai-compatible regardless of `_internals.currentIndex`.
+- File line count after edit: 371 (well under 450 ceiling).
+- Verification: focused vitest 26/26 green.
+---
+
+## 2026-04-26 - Issue #327 Story 3 (Fail-fast config error coverage)
+- Added 6 closeout-invariant tests in `src/lib/ai/__tests__/config.test.ts`:
+  - Whitespace-only `AI_DEFAULT_CHAT_PROVIDER` falls back to gateway default.
+  - Whitespace-only `AI_GATEWAY_API_KEY`, `AI_OPENAI_COMPATIBLE_API_KEY`, `AI_OPENAI_COMPATIBLE_BASE_URL` all throw fail-fast errors.
+  - Unsupported provider rejection works via `AI_DEFAULT_CHAT_PROVIDER`, not just legacy `AI_PROVIDER`.
+  - Provider name is normalized to lowercase before validation (`GATEWAY` → `gateway`).
+- File line count after edit: 333 (under 450 ceiling).
+- Verification: focused vitest 23/23 green.
+- Full gate run on branch `issue-327-ai-config-closeout`:
+  - `verify:no-explicit-any`: pass
+  - `typecheck`: pass
+  - 6 focused vitest files (config, config.docs-contract, provider, provider-options, route.key-rotation, route.limits): 81/81 pass
+  - `react-doctor --diff main`: 100/100
+---

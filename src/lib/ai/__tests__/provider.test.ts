@@ -282,4 +282,90 @@ describe('provider — API key rotation', () => {
     expect(getKeyPoolSize()).toBe(1)
     expect(handleProviderQuotaError(0)).toBe(false)
   })
+
+  // -------------------------------------------------------------------
+  // Closeout invariants (Issue #327 / #315 Batch 4)
+  //
+  // These tests pin the contract that gateway and openai-compatible
+  // transports MUST behave as non-rotating, single-slot providers and
+  // MUST NOT mutate the Google rotation pool's internal state.
+  // -------------------------------------------------------------------
+
+  it('keeps key-pool internals untouched after a gateway quota error', () => {
+    process.env.AI_DEFAULT_CHAT_PROVIDER = 'gateway'
+    process.env.AI_DEFAULT_CHAT_MODEL = 'openai/gpt-5.2'
+    process.env.AI_GATEWAY_API_KEY = 'GATEWAY_KEY'
+
+    const exhaustedSnapshot = new Set(_internals.exhaustedIndices)
+    const firstExhaustedSnapshot = _internals.firstExhaustedAt
+
+    expect(handleProviderQuotaError(0)).toBe(false)
+
+    expect(_internals.exhaustedIndices).toEqual(exhaustedSnapshot)
+    expect(_internals.firstExhaustedAt).toBe(firstExhaustedSnapshot)
+  })
+
+  it('keeps key-pool internals untouched after an openai-compatible quota error', () => {
+    process.env.AI_DEFAULT_CHAT_PROVIDER = 'openai-compatible'
+    process.env.AI_DEFAULT_CHAT_MODEL = 'qwen3.5-plus-2026-04-20'
+    process.env.AI_OPENAI_COMPATIBLE_BASE_URL =
+      'https://dashscope-intl.aliyuncs.com/compatible-mode/v1'
+    process.env.AI_OPENAI_COMPATIBLE_API_KEY = 'DASHSCOPE_KEY'
+
+    const exhaustedSnapshot = new Set(_internals.exhaustedIndices)
+    const firstExhaustedSnapshot = _internals.firstExhaustedAt
+
+    expect(handleProviderQuotaError(0)).toBe(false)
+
+    expect(_internals.exhaustedIndices).toEqual(exhaustedSnapshot)
+    expect(_internals.firstExhaustedAt).toBe(firstExhaustedSnapshot)
+  })
+
+  it('reports a single key slot for gateway mode even when stray Google pool env vars are present', () => {
+    // Defends against accidental env mixing: a deployment that switches to
+    // gateway must not be mis-sized as a multi-key Google pool just because
+    // legacy GOOGLE_GENERATIVE_AI_API_KEYS is still defined in the same env.
+    process.env.AI_DEFAULT_CHAT_PROVIDER = 'gateway'
+    process.env.AI_DEFAULT_CHAT_MODEL = 'openai/gpt-5.2'
+    process.env.AI_GATEWAY_API_KEY = 'GATEWAY_KEY'
+    process.env.GOOGLE_GENERATIVE_AI_API_KEYS = 'STRAY_A,STRAY_B,STRAY_C'
+
+    expect(getKeyPoolSize()).toBe(1)
+  })
+
+  it('reports a single key slot for openai-compatible mode even when stray Google pool env vars are present', () => {
+    process.env.AI_DEFAULT_CHAT_PROVIDER = 'openai-compatible'
+    process.env.AI_DEFAULT_CHAT_MODEL = 'qwen3.5-plus-2026-04-20'
+    process.env.AI_OPENAI_COMPATIBLE_BASE_URL =
+      'https://dashscope-intl.aliyuncs.com/compatible-mode/v1'
+    process.env.AI_OPENAI_COMPATIBLE_API_KEY = 'DASHSCOPE_KEY'
+    process.env.GOOGLE_GENERATIVE_AI_API_KEYS = 'STRAY_A,STRAY_B'
+
+    expect(getKeyPoolSize()).toBe(1)
+  })
+
+  it('returns keyIndex 0 from getChatModel in gateway mode regardless of pool currentIndex', () => {
+    // The Google pool tracks currentIndex across requests. Switching to gateway
+    // must report a fresh, non-pooled key slot (0) rather than leaking the
+    // Google pool position.
+    process.env.AI_DEFAULT_CHAT_PROVIDER = 'gateway'
+    process.env.AI_DEFAULT_CHAT_MODEL = 'openai/gpt-5.2'
+    process.env.AI_GATEWAY_API_KEY = 'GATEWAY_KEY'
+    _internals.currentIndex = 2 // simulate prior Google pool activity
+
+    const { keyIndex } = getChatModel()
+    expect(keyIndex).toBe(0)
+  })
+
+  it('returns keyIndex 0 from getChatModel in openai-compatible mode regardless of pool currentIndex', () => {
+    process.env.AI_DEFAULT_CHAT_PROVIDER = 'openai-compatible'
+    process.env.AI_DEFAULT_CHAT_MODEL = 'qwen3.5-plus-2026-04-20'
+    process.env.AI_OPENAI_COMPATIBLE_BASE_URL =
+      'https://dashscope-intl.aliyuncs.com/compatible-mode/v1'
+    process.env.AI_OPENAI_COMPATIBLE_API_KEY = 'DASHSCOPE_KEY'
+    _internals.currentIndex = 2
+
+    const { keyIndex } = getChatModel()
+    expect(keyIndex).toBe(0)
+  })
 })

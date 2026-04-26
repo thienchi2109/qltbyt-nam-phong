@@ -235,4 +235,99 @@ describe('AI default chat config resolver', () => {
       ),
     ).toEqual(['KEY_A', 'KEY_B'])
   })
+
+  // -------------------------------------------------------------------
+  // Closeout fail-fast invariants (Issue #327 / #315 Batch 4)
+  //
+  // These tests pin the contract that whitespace-only env values are
+  // treated as missing — preventing accidental "blank string" deployments
+  // from silently passing credential validation.
+  // -------------------------------------------------------------------
+
+  it('treats whitespace-only AI_DEFAULT_CHAT_PROVIDER as missing and falls back to gateway default', () => {
+    expect(
+      resolveDefaultChatConfig(
+        env({
+          AI_DEFAULT_CHAT_PROVIDER: '   ',
+        }),
+      ),
+    ).toEqual({
+      capability: 'default_chat',
+      provider: 'gateway',
+      model: 'google/gemini-3.1-flash-lite-preview',
+    })
+  })
+
+  it('treats whitespace-only AI_GATEWAY_API_KEY as missing in gateway mode', () => {
+    const config = resolveDefaultChatConfig(
+      env({
+        AI_DEFAULT_CHAT_PROVIDER: 'gateway',
+        AI_DEFAULT_CHAT_MODEL: 'openai/gpt-5.2',
+      }),
+    )
+
+    expect(() =>
+      assertDefaultChatCredentials(
+        config,
+        env({
+          AI_GATEWAY_API_KEY: '   ',
+        }),
+      ),
+    ).toThrow('AI_GATEWAY_API_KEY is required for AI gateway mode')
+  })
+
+  it('treats whitespace-only AI_OPENAI_COMPATIBLE_API_KEY as missing in openai-compatible mode', () => {
+    const envVars = env({
+      AI_DEFAULT_CHAT_PROVIDER: 'openai-compatible',
+      AI_DEFAULT_CHAT_MODEL: 'qwen3.5-plus-2026-04-20',
+      AI_OPENAI_COMPATIBLE_BASE_URL:
+        'https://dashscope-intl.aliyuncs.com/compatible-mode/v1',
+      AI_OPENAI_COMPATIBLE_API_KEY: '   ',
+    })
+    const config = resolveDefaultChatConfig(envVars)
+
+    expect(() => assertDefaultChatCredentials(config, envVars)).toThrow(
+      'AI_OPENAI_COMPATIBLE_API_KEY is required for openai-compatible mode',
+    )
+  })
+
+  it('treats whitespace-only AI_OPENAI_COMPATIBLE_BASE_URL as missing in openai-compatible mode', () => {
+    const envVars = env({
+      AI_DEFAULT_CHAT_PROVIDER: 'openai-compatible',
+      AI_DEFAULT_CHAT_MODEL: 'qwen3.5-plus-2026-04-20',
+      AI_OPENAI_COMPATIBLE_BASE_URL: '   ',
+      AI_OPENAI_COMPATIBLE_API_KEY: 'DASHSCOPE_KEY',
+    })
+    const config = resolveDefaultChatConfig(envVars)
+
+    expect(() => assertDefaultChatCredentials(config, envVars)).toThrow(
+      'AI_OPENAI_COMPATIBLE_BASE_URL is required for openai-compatible mode',
+    )
+  })
+
+  it('rejects unsupported direct provider supplied via AI_DEFAULT_CHAT_PROVIDER, not just legacy AI_PROVIDER', () => {
+    expect(() =>
+      resolveDefaultChatConfig(
+        env({
+          AI_DEFAULT_CHAT_PROVIDER: 'anthropic',
+          AI_DEFAULT_CHAT_MODEL: 'claude-3.5-sonnet',
+        }),
+      ),
+    ).toThrow('Unsupported direct AI provider: anthropic. Use AI_DEFAULT_CHAT_PROVIDER=gateway')
+  })
+
+  it('normalizes the provider name to lowercase before validation', () => {
+    expect(
+      resolveDefaultChatConfig(
+        env({
+          AI_DEFAULT_CHAT_PROVIDER: 'GATEWAY',
+          AI_DEFAULT_CHAT_MODEL: 'openai/gpt-5.2',
+        }),
+      ),
+    ).toEqual({
+      capability: 'default_chat',
+      provider: 'gateway',
+      model: 'openai/gpt-5.2',
+    })
+  })
 })
