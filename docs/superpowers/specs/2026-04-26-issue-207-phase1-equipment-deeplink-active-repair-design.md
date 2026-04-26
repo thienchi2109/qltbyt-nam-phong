@@ -212,12 +212,23 @@ REVOKE EXECUTE ON FUNCTION public.repair_request_active_for_equipment(INT) FROM 
 Design points:
 
 - **CTE merge** — single scan of `yeu_cau_sua_chua` rows for the equipment; `counted` and the top-1 row read from the same materialised CTE. Half the work of a naive `count(*) + select … limit 1` pair.
-- **Tenant guard** mirrors `repair_request_get` exactly (same `allowed_don_vi_for_session()` helper, same `global` / `admin` short-circuit).
+- **Tenant guard** mirrors `repair_request_get` exactly (same `allowed_don_vi_for_session()` helper, same `global` / `admin` short-circuit). **Department scope (role=`user`) is intentionally *not* added here** — see "Department scope decision" below.
 - **Active definition** = `'Chờ xử lý' OR 'Đã duyệt'`, the canonical convention used in `src/components/repair-request-alert.tsx` and `src/components/notification-bell-dialog.tsx`.
 - **Tie-break**: `ORDER BY COALESCE(ngay_duyet, ngay_yeu_cau) DESC, id DESC`. Deterministic; reflects "most recent state change" since the table has no `updated_at`.
 - **Soft-delete safety**: `COALESCE(tb.is_deleted, false) = false` aligns with the existing soft-delete read policy (`supabase/migrations/20260213100500_equipment_soft_delete_historical_read_policy.sql`).
 - **Empty contract**: `{active_count: 0, request: null}` rather than 404; lets the frontend branch cleanly without try/catch noise.
 - **Output shape** intentionally matches one row from `repair_request_list` so the caller can pass it straight into `RepairRequestsDetailView` (typed as `RepairRequestWithEquipment`).
+
+### Department scope decision (role=`user`)
+
+Recent migrations (`20260422123000_add_user_department_scope_reads.sql`, `20260422150000_add_user_department_scope_workflow_guards.sql`) introduced fail-closed `khoa_phong` (department) scope checks for role=`user`, applied to `equipment_get` / `equipment_list_enhanced` / area & attention summaries / `repair_request_create` / `transfer_request_create` / maintenance plan tasks. The `repair_request_get` and `repair_request_list` read RPCs were **not** updated in that batch and remain tenant-only-scoped.
+
+**Phase 1 decision**: the new `repair_request_active_for_equipment` RPC mirrors the current behaviour of `repair_request_get` (tenant-only scope) for two reasons:
+
+1. UI flow is already protected: a role=`user` cannot reach `EquipmentDetailDialog` for out-of-scope equipment because `equipment_list_enhanced` and `equipment_get` already apply the dept-scope filter. The button therefore never renders for out-of-scope equipment in normal flow.
+2. Adding dept-scope to one read RPC in isolation creates inconsistency within the `repair_request_*` read family. A family-wide fix is the right shape and should be tracked as its own issue with consolidated smoke tests.
+
+**Follow-up issue (out of scope here)**: add fail-closed dept-scope guard to `repair_request_get`, `repair_request_list`, and `repair_request_active_for_equipment` together, matching the pattern of `equipment_get` from `20260422123000_add_user_department_scope_reads.sql`. Defense-in-depth against direct RPC calls bypassing the equipment-level filter.
 
 ### Index coverage
 
@@ -478,5 +489,6 @@ None at design time. Implementation may surface a small choice between "extend t
 
 - **#207-Phase-2** — same shared module for active transfer requests.
 - **#207-Phase-3** — same shared module for active maintenance / calibration / inspection contexts.
+- **Repair-request read-family dept-scope guard** — separate issue to add fail-closed `khoa_phong` scope check for role=`user` to `repair_request_get`, `repair_request_list`, and `repair_request_active_for_equipment` in one batch (see "Department scope decision" above).
 - **Bookmarkable URL for view sheet** — extend `useRepairRequestsDeepLink` to consume `action=view&requestId=X` and open the detail view on the repair-requests page.
 - **Realtime sync** — out of scope until the broader app gains realtime infrastructure.
