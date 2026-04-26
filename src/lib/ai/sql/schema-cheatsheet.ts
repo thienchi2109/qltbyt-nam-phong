@@ -159,17 +159,21 @@ export const QUERY_DATABASE_TOOL_DESCRIPTION = [
   'Scope is already injected for one facility, so do not call set_config and do not assume cross-facility access.',
   `Allowed relations: ${formatSchemaSurface()}.`,
   'Department/khoa is the text column khoa_phong_quan_ly on these views; there is no separate khoa_phong table in ai_readonly.',
+  'If the user asks for direct manager, direct user, personal owner, or direct custodian counts, use nguoi_dang_truc_tiep_quan_ly and do not substitute khoa_phong_quan_ly.',
+  'Use khoa_phong_quan_ly only when the user explicitly asks for department, khoa, phong, or the managing unit.',
   'Common equipment reporting dimensions include khoa_phong_quan_ly, nguoi_dang_truc_tiep_quan_ly, vi_tri_lap_dat, phan_loai_theo_nd98, hang_san_xuat, noi_san_xuat, nguon_nhap, nguon_kinh_phi, nam_san_xuat, and gia_goc.',
   'For equipment date reporting, prefer the normalized buckets ngay_nhap_date/year/month/quarter, ngay_dua_vao_su_dung_date/year/month/quarter, and ngay_ngung_su_dung_date/year/month/quarter instead of parsing raw text inside SQL.',
   `Never use raw relations or schemas: ${AI_READONLY_FORBIDDEN_REFERENCES.join(', ')}.`,
-  'Example 1: SELECT khoa_phong_quan_ly, COUNT(*) AS so_luong FROM ai_readonly.equipment_search GROUP BY khoa_phong_quan_ly ORDER BY so_luong DESC;',
-  'Example 2: SELECT nguoi_dang_truc_tiep_quan_ly, COUNT(*) AS so_luong FROM ai_readonly.equipment_search GROUP BY nguoi_dang_truc_tiep_quan_ly ORDER BY so_luong DESC;',
+  'Example 1: SELECT nguoi_dang_truc_tiep_quan_ly, COUNT(*) AS so_luong FROM ai_readonly.equipment_search GROUP BY nguoi_dang_truc_tiep_quan_ly ORDER BY so_luong DESC;',
+  'Example 2: SELECT khoa_phong_quan_ly, COUNT(*) AS so_luong FROM ai_readonly.equipment_search GROUP BY khoa_phong_quan_ly ORDER BY so_luong DESC;',
   'Example 3: SELECT ngay_dua_vao_su_dung_year, COUNT(*) AS so_luong FROM ai_readonly.equipment_search GROUP BY ngay_dua_vao_su_dung_year ORDER BY ngay_dua_vao_su_dung_year;',
 ].join(' ')
 
 export const QUERY_DATABASE_PROMPT_POINTER = [
   `Khi dùng \`query_database\`: chỉ viết đúng một câu \`SELECT\` trên các view ${AI_READONLY_VIEW_NAMES.join(', ')}.`,
   'Khoa/phòng nằm ở cột `khoa_phong_quan_ly`.',
+  'Nếu người dùng hỏi theo `người quản lý trực tiếp`, `người sử dụng`, `người phụ trách`, hoặc cá nhân trực tiếp quản lý thiết bị, PHẢI dùng cột `nguoi_dang_truc_tiep_quan_ly` và KHÔNG thay bằng `khoa_phong_quan_ly`.',
+  'Chỉ dùng `khoa_phong_quan_ly` khi người dùng hỏi rõ theo khoa, phòng, hoặc đơn vị quản lý.',
   'Các chiều thống kê thiết bị phổ biến đã được công bố trong `equipment_search`, bao gồm `nguoi_dang_truc_tiep_quan_ly`, `vi_tri_lap_dat`, `phan_loai_theo_nd98`, `hang_san_xuat`, `noi_san_xuat`, `nguon_nhap`, `nguon_kinh_phi`, `nam_san_xuat`, `gia_goc`.',
   'Với câu hỏi theo ngày/tháng/quý/năm, ưu tiên dùng các cột chuẩn hóa như `ngay_nhap_date`, `ngay_nhap_year`, `ngay_nhap_month`, `ngay_nhap_quarter`, `ngay_dua_vao_su_dung_date`, `ngay_dua_vao_su_dung_year`, `ngay_dua_vao_su_dung_month`, `ngay_dua_vao_su_dung_quarter`, `ngay_ngung_su_dung_date`, `ngay_ngung_su_dung_year`, `ngay_ngung_su_dung_month`, `ngay_ngung_su_dung_quarter`.',
   `KHÔNG dùng raw schema/tên như ${AI_READONLY_FORBIDDEN_REFERENCES.join(', ')}.`,

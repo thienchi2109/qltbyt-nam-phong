@@ -119,5 +119,11 @@ describe('/api/chat query_database grounding payload', () => {
     expect(streamTextArgs.tools?.query_database?.description).toContain(
       'GROUP BY nguoi_dang_truc_tiep_quan_ly',
     )
+    expect(streamTextArgs.tools?.query_database?.description).toContain(
+      'use nguoi_dang_truc_tiep_quan_ly and do not substitute khoa_phong_quan_ly',
+    )
+    expect(streamTextArgs.system).toContain(
+      'PHẢI dùng cột `nguoi_dang_truc_tiep_quan_ly` và KHÔNG thay bằng `khoa_phong_quan_ly`',
+    )
   })
 })

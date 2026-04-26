@@ -2,7 +2,7 @@ import { ROLES } from '@/lib/rbac'
 import { QUERY_DATABASE_PROMPT_POINTER } from '@/lib/ai/sql/schema-cheatsheet'
 import type { SystemPromptContext } from './types'
 
-export const SYSTEM_PROMPT_VERSION = 'v2.6.0'
+export const SYSTEM_PROMPT_VERSION = 'v2.6.1'
 
 const ALLOWED_ROLES: Set<string> = new Set(Object.values(ROLES))
 

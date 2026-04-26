@@ -9,7 +9,7 @@ import {
   QUERY_DATABASE_TOOL_DESCRIPTION,
 } from '../schema-cheatsheet'
 
-const QUERY_DATABASE_TOOL_DESCRIPTION_BYTE_BUDGET = 3600
+const QUERY_DATABASE_TOOL_DESCRIPTION_BYTE_BUDGET = 3900
 
 describe('query_database schema cheatsheet contract', () => {
   it('exports the canonical ai_readonly view names', () => {
@@ -174,13 +174,22 @@ describe('query_database schema cheatsheet contract', () => {
 
   it('contains reporting-safe ai_readonly SELECT examples', () => {
     expect(QUERY_DATABASE_TOOL_DESCRIPTION).toContain(
-      'SELECT khoa_phong_quan_ly, COUNT(*) AS so_luong FROM ai_readonly.equipment_search',
-    )
-    expect(QUERY_DATABASE_TOOL_DESCRIPTION).toContain(
       'SELECT nguoi_dang_truc_tiep_quan_ly, COUNT(*) AS so_luong FROM ai_readonly.equipment_search',
     )
     expect(QUERY_DATABASE_TOOL_DESCRIPTION).toContain(
+      'SELECT khoa_phong_quan_ly, COUNT(*) AS so_luong FROM ai_readonly.equipment_search',
+    )
+    expect(QUERY_DATABASE_TOOL_DESCRIPTION).toContain(
       'SELECT ngay_dua_vao_su_dung_year, COUNT(*) AS so_luong FROM ai_readonly.equipment_search',
+    )
+  })
+
+  it('maps personal-manager wording to the direct-manager column explicitly', () => {
+    expect(QUERY_DATABASE_TOOL_DESCRIPTION).toContain(
+      'use nguoi_dang_truc_tiep_quan_ly and do not substitute khoa_phong_quan_ly',
+    )
+    expect(QUERY_DATABASE_TOOL_DESCRIPTION).toContain(
+      'Use khoa_phong_quan_ly only when the user explicitly asks for department, khoa, phong, or the managing unit.',
     )
   })
 
