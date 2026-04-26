@@ -128,11 +128,13 @@ export function useUpdateRepairRequest() {
         },
       })
     },
-    onSuccess: (_data, variables) => {
-      // Invalidate repair queries
-      queryClient.invalidateQueries({ queryKey: repairKeys.lists() })
-      // Update specific repair detail cache
-      queryClient.invalidateQueries({ queryKey: repairKeys.detail(variables.id) })
+    onSuccess: (_data, _variables) => {
+      // Invalidate the entire repair query family so any subscriber under
+      // repairKeys.all (lists, detail(id), and future sub-keys such as
+      // active(equipmentId)) refetches fresh data after an update. This aligns
+      // useUpdateRepairRequest with create/approve/complete/delete mutations,
+      // which all invalidate the same prefix.
+      queryClient.invalidateQueries({ queryKey: repairKeys.all })
       // Invalidate dashboard stats to update KPI cards
       queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] })
 
