@@ -3,12 +3,86 @@ import { describe, expect, it } from 'vitest'
 import {
   assertDefaultChatCredentials,
   loadGoogleApiKeys,
+  readAIGatewayApiKey,
+  readOpenAICompatibleApiKey,
+  readOpenAICompatibleBaseUrl,
   resolveDefaultChatConfig,
 } from '../config'
 
 function env(overrides: NodeJS.ProcessEnv = {}): NodeJS.ProcessEnv {
   return { ...overrides }
 }
+
+// ---------------------------------------------------------------------------
+// AI env readers (symmetry) — Issue #334
+//
+// Pin the contract that all three env readers share identical behavior:
+//   - return the trimmed value when set
+//   - return undefined when the env var is missing
+//   - return undefined when the env var is whitespace-only
+//
+// Without this symmetry, the gateway branch in provider.ts had to read the
+// env var inline via `process.env.AI_GATEWAY_API_KEY?.trim()`, while
+// openai-compatible already used dedicated readers — an asymmetry tracked
+// by Issue #334.
+// ---------------------------------------------------------------------------
+
+describe('AI env readers (symmetry)', () => {
+  describe('readAIGatewayApiKey', () => {
+    it('returns the trimmed AI_GATEWAY_API_KEY when set', () => {
+      expect(readAIGatewayApiKey(env({ AI_GATEWAY_API_KEY: ' GATEWAY_KEY\n' }))).toBe(
+        'GATEWAY_KEY',
+      )
+    })
+
+    it('returns undefined when AI_GATEWAY_API_KEY is missing', () => {
+      expect(readAIGatewayApiKey(env())).toBeUndefined()
+    })
+
+    it('returns undefined when AI_GATEWAY_API_KEY is whitespace-only', () => {
+      expect(readAIGatewayApiKey(env({ AI_GATEWAY_API_KEY: '   ' }))).toBeUndefined()
+    })
+  })
+
+  describe('readOpenAICompatibleApiKey', () => {
+    it('returns the trimmed AI_OPENAI_COMPATIBLE_API_KEY when set', () => {
+      expect(
+        readOpenAICompatibleApiKey(env({ AI_OPENAI_COMPATIBLE_API_KEY: ' DASHSCOPE_KEY\t' })),
+      ).toBe('DASHSCOPE_KEY')
+    })
+
+    it('returns undefined when AI_OPENAI_COMPATIBLE_API_KEY is missing', () => {
+      expect(readOpenAICompatibleApiKey(env())).toBeUndefined()
+    })
+
+    it('returns undefined when AI_OPENAI_COMPATIBLE_API_KEY is whitespace-only', () => {
+      expect(readOpenAICompatibleApiKey(env({ AI_OPENAI_COMPATIBLE_API_KEY: '   ' }))).toBeUndefined()
+    })
+  })
+
+  describe('readOpenAICompatibleBaseUrl', () => {
+    it('returns the trimmed AI_OPENAI_COMPATIBLE_BASE_URL when set', () => {
+      expect(
+        readOpenAICompatibleBaseUrl(
+          env({
+            AI_OPENAI_COMPATIBLE_BASE_URL:
+              ' https://dashscope-intl.aliyuncs.com/compatible-mode/v1\n',
+          }),
+        ),
+      ).toBe('https://dashscope-intl.aliyuncs.com/compatible-mode/v1')
+    })
+
+    it('returns undefined when AI_OPENAI_COMPATIBLE_BASE_URL is missing', () => {
+      expect(readOpenAICompatibleBaseUrl(env())).toBeUndefined()
+    })
+
+    it('returns undefined when AI_OPENAI_COMPATIBLE_BASE_URL is whitespace-only', () => {
+      expect(
+        readOpenAICompatibleBaseUrl(env({ AI_OPENAI_COMPATIBLE_BASE_URL: '   ' })),
+      ).toBeUndefined()
+    })
+  })
+})
 
 describe('AI default chat config resolver', () => {
   it('uses gateway and the hard default model when no env is configured', () => {

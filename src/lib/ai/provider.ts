@@ -5,6 +5,7 @@ import { createGateway, type LanguageModel } from 'ai'
 import {
   assertDefaultChatCredentials,
   type ResolvedDefaultChatConfig,
+  readAIGatewayApiKey,
   readOpenAICompatibleApiKey,
   readOpenAICompatibleBaseUrl,
   resolveDefaultChatProvider,
@@ -74,7 +75,7 @@ export function getChatModel(): ChatModelWithKeyIndex {
 
   switch (config.provider) {
     case 'gateway': {
-      const gateway = createGateway({ apiKey: process.env.AI_GATEWAY_API_KEY?.trim() })
+      const gateway = createGateway({ apiKey: readAIGatewayApiKey() })
       return {
         model: gateway(config.model as Parameters<typeof gateway>[0]),
         config,
