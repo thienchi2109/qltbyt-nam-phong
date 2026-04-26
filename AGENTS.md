@@ -1,5 +1,58 @@
 # Agent Instructions
 
+## Context-Mode Routing (MANDATORY)
+
+The `context-mode` MCP server is configured globally for this repo. Its tools (`ctx_execute`, `ctx_batch_execute`, `ctx_execute_file`, `ctx_index`, `ctx_search`, `ctx_fetch_and_index`) protect the agent context window from flooding. A single unrouted command can dump 56 KB into context and waste the entire session — these rules are NOT optional.
+
+### Think in Code
+
+When you need to analyze, count, filter, compare, search, parse, transform, or process data: **write code** that does the work via `ctx_execute(language, code)` and `console.log()` only the answer. Do NOT read raw data into context to process mentally. Program the analysis, don't compute it in reasoning. Use Node.js built-ins only (`fs`, `path`, `child_process`), `try/catch`, null-safe.
+
+### BLOCKED in Bash — never retry
+
+- `curl` / `wget` → use `ctx_fetch_and_index(url, source)` or `ctx_execute("javascript", "const r = await fetch(...)")`.
+- Inline HTTP calls (`fetch('http`, `requests.get(`, `http.get(`, `http.request(`) → run inside `ctx_execute`.
+- WebFetch is denied entirely → use `ctx_fetch_and_index` then `ctx_search`.
+
+### Bash redirected when output >20 lines
+
+Bash is ONLY for short-output ops: `git`, `mkdir`, `rm`, `mv`, `cd`, `ls`, `npm install`, `pip install`. For everything else (test runners, `gh`, `git log`/`git diff`, build output, large grep, `react-doctor`, `vitest run`):
+
+- `ctx_batch_execute(commands, queries)` — primary tool. ONE call replaces 30+. Each command: `{label: "descriptive header", command: "..."}`. Labels become FTS5 chunk titles.
+- `ctx_execute(language: "shell", code: "...", intent: "what you want from the output")` — single command, sandbox, only stdout enters context.
+
+For the `verify:no-explicit-any` → `typecheck` → focused vitest → `react-doctor` chain, gather them all in **one** `ctx_batch_execute` so failures are searchable via `ctx_search`.
+
+### Read / Grep redirected for analysis
+
+- Reading a file to **edit** it → `read` is correct (Edit needs content in context).
+- Reading to **analyze, explore, summarize** → `ctx_execute_file(path, language, code)`. Only your printed summary enters context.
+- Large grep results → `ctx_execute(language: "shell", code: "rg ...")` and print only counts/snippets.
+
+### Tool selection hierarchy
+
+1. **GATHER**: `ctx_batch_execute` — runs all commands, auto-indexes output, returns search results.
+2. **FOLLOW-UP**: `ctx_search(queries: [...])` — query indexed content. Pass ALL questions in one call.
+3. **PROCESSING**: `ctx_execute` / `ctx_execute_file` — sandbox execution.
+4. **WEB**: `ctx_fetch_and_index(url, source)` then `ctx_search`.
+5. **INDEX**: `ctx_index(content, source)` — store content for later search.
+
+### Output constraints
+
+- Keep responses concise. Write artifacts (code, configs, PRDs) to FILES, not inline. Return only: file path + 1-line description.
+- Use descriptive `source` labels when indexing so future `ctx_search(source: "...")` works.
+
+### ctx commands
+
+| Command | Action |
+|---------|--------|
+| `ctx stats` | Call `ctx_stats` and display verbatim. |
+| `ctx doctor` | Call `ctx_doctor`, run returned shell command, display as checklist. |
+| `ctx upgrade` | Call `ctx_upgrade`, run returned shell command, display as checklist. |
+| `ctx purge` | Call `ctx_purge` with `confirm: true`. Warn before wiping the knowledge base. |
+
+After `/clear` or `/compact`: knowledge base and session stats are preserved. Use `ctx purge` to start fresh.
+
 ## React Doctor: True Full Scan (Non-Diff)
 
 React Doctor can auto-switch to diff-only scanning in non-interactive runs. When you need a true full-repo scan, force `diff: false` temporarily:

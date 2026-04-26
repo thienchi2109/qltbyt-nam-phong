@@ -28,6 +28,12 @@ export function readOpenAICompatibleApiKey(
   return readEnv(env, 'AI_OPENAI_COMPATIBLE_API_KEY')
 }
 
+export function readAIGatewayApiKey(
+  env: NodeJS.ProcessEnv = process.env,
+): string | undefined {
+  return readEnv(env, 'AI_GATEWAY_API_KEY')
+}
+
 function hasProviderPrefix(model: string): boolean {
   return /^[a-z0-9][a-z0-9-]*\/.+$/i.test(model)
 }
@@ -123,7 +129,7 @@ export function assertDefaultChatCredentials(
   config: ResolvedDefaultChatConfig,
   env: NodeJS.ProcessEnv = process.env,
 ): void {
-  if (config.provider === 'gateway' && !readEnv(env, 'AI_GATEWAY_API_KEY')) {
+  if (config.provider === 'gateway' && !readAIGatewayApiKey(env)) {
     throw new Error('AI_GATEWAY_API_KEY is required for AI gateway mode')
   }
 

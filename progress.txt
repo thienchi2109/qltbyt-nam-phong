@@ -26,6 +26,21 @@
 - Verification: focused vitest 26/26 green.
 ---
 
+## 2026-04-26 - Issue #334 (Extract readAIGatewayApiKey for env-reader symmetry)
+- Added `readAIGatewayApiKey(env)` export in `src/lib/ai/config.ts`, placed next to `readOpenAICompatibleApiKey` so the three AI env readers form a symmetric trio.
+- `assertDefaultChatCredentials()` now uses `readAIGatewayApiKey(env)` instead of inline `readEnv(env, 'AI_GATEWAY_API_KEY')`.
+- `src/lib/ai/provider.ts` gateway branch now calls `readAIGatewayApiKey()` instead of `process.env.AI_GATEWAY_API_KEY?.trim()`. Side effect: a whitespace-only `AI_GATEWAY_API_KEY` is now treated as `undefined` at the factory site (consistent with `assertDefaultChatCredentials` invariant — it would have failed validation anyway, so no production behavior change).
+- TDD: added 9 symmetry unit tests in `src/lib/ai/__tests__/config.test.ts` covering each of `readAIGatewayApiKey`, `readOpenAICompatibleApiKey`, `readOpenAICompatibleBaseUrl` (trims set value / undefined when missing / undefined when whitespace-only). RED confirmed missing export, GREEN after extraction.
+- Verification on branch `issue-334-extract-ai-gateway-reader`:
+  - `verify:no-explicit-any`: pass
+  - `typecheck`: pass
+  - 6 focused vitest files: 90/90 pass (was 81/81 — +9 new tests)
+  - `react-doctor --diff main`: 100/100
+- Learnings:
+  - All AI env readers should funnel through `readEnv()` (which trims and treats whitespace-only as missing) so closeout invariants stay consistent across both validation and factory sites.
+  - When extracting helper symmetry, write the helper-level unit tests for the existing helpers too — turns a one-sided refactor into a true symmetry contract.
+---
+
 ## 2026-04-26 - Issue #327 Story 3 (Fail-fast config error coverage)
 - Added 6 closeout-invariant tests in `src/lib/ai/__tests__/config.test.ts`:
   - Whitespace-only `AI_DEFAULT_CHAT_PROVIDER` falls back to gateway default.
