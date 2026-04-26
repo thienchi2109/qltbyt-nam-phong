@@ -375,6 +375,39 @@ describe('/api/chat intent routing + clarification guard', () => {
     expect(streamArgs.tools).not.toHaveProperty('usageHistory')
   })
 
+  it.each([
+    'Thống kê thiết bị theo người sử dụng trong đơn vị hiện tại',
+    'Thống kê thiết bị theo vị trí lắp đặt trong đơn vị hiện tại',
+    'Thống kê thiết bị theo phân loại NĐ98 trong đơn vị hiện tại',
+    'Thống kê thiết bị theo năm đưa vào sử dụng trong đơn vị hiện tại',
+  ])('routes wide equipment reporting prompt "%s" to query_database only', async text => {
+    const res = await POST(
+      buildRequest({
+        selectedFacilityId: 17,
+        messages: buildMessages(text),
+        requestedTools: [
+          'equipmentLookup',
+          'maintenanceSummary',
+          'repairSummary',
+          'usageHistory',
+          'query_database',
+        ],
+      }) as never,
+    )
+
+    expect(res.status).toBe(200)
+    expect(streamTextMock).toHaveBeenCalledOnce()
+
+    const streamArgs = streamTextMock.mock.calls[0]?.[0] as {
+      tools?: Record<string, unknown>
+    }
+    expect(streamArgs.tools).toHaveProperty('query_database')
+    expect(streamArgs.tools).not.toHaveProperty('equipmentLookup')
+    expect(streamArgs.tools).not.toHaveProperty('maintenanceSummary')
+    expect(streamArgs.tools).not.toHaveProperty('repairSummary')
+    expect(streamArgs.tools).not.toHaveProperty('usageHistory')
+  })
+
   it('fails closed for query_database when a privileged user has not selected a facility', async () => {
     getServerSessionMock.mockResolvedValue({
       user: { id: 'u1', role: 'admin', don_vi: undefined },

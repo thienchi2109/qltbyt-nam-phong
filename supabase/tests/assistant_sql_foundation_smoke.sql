@@ -111,3 +111,118 @@ BEGIN
 
   RAISE NOTICE 'OK: ai_readonly views are queryable with app.current_facility_id=%', v_facility_id;
 END $$;
+
+-- 5) Equipment reporting surface should expose governed wide dimensions.
+DO $$
+DECLARE
+  v_missing text[];
+BEGIN
+  SELECT array_remove(array[
+    CASE
+      WHEN NOT EXISTS (
+        SELECT 1
+        FROM information_schema.columns
+        WHERE table_schema = 'ai_readonly'
+          AND table_name = 'equipment_search'
+          AND column_name = 'nguoi_dang_truc_tiep_quan_ly'
+      ) THEN 'equipment_search.nguoi_dang_truc_tiep_quan_ly'
+    END,
+    CASE
+      WHEN NOT EXISTS (
+        SELECT 1
+        FROM information_schema.columns
+        WHERE table_schema = 'ai_readonly'
+          AND table_name = 'equipment_search'
+          AND column_name = 'vi_tri_lap_dat'
+      ) THEN 'equipment_search.vi_tri_lap_dat'
+    END,
+    CASE
+      WHEN NOT EXISTS (
+        SELECT 1
+        FROM information_schema.columns
+        WHERE table_schema = 'ai_readonly'
+          AND table_name = 'equipment_search'
+          AND column_name = 'phan_loai_theo_nd98'
+      ) THEN 'equipment_search.phan_loai_theo_nd98'
+    END,
+    CASE
+      WHEN NOT EXISTS (
+        SELECT 1
+        FROM information_schema.columns
+        WHERE table_schema = 'ai_readonly'
+          AND table_name = 'equipment_search'
+          AND column_name = 'ngay_dua_vao_su_dung_date'
+      ) THEN 'equipment_search.ngay_dua_vao_su_dung_date'
+    END,
+    CASE
+      WHEN NOT EXISTS (
+        SELECT 1
+        FROM information_schema.columns
+        WHERE table_schema = 'ai_readonly'
+          AND table_name = 'equipment_search'
+          AND column_name = 'ngay_dua_vao_su_dung_year'
+      ) THEN 'equipment_search.ngay_dua_vao_su_dung_year'
+    END,
+    CASE
+      WHEN NOT EXISTS (
+        SELECT 1
+        FROM information_schema.columns
+        WHERE table_schema = 'ai_readonly'
+          AND table_name = 'equipment_search'
+          AND column_name = 'ngay_dua_vao_su_dung_month'
+      ) THEN 'equipment_search.ngay_dua_vao_su_dung_month'
+    END,
+    CASE
+      WHEN NOT EXISTS (
+        SELECT 1
+        FROM information_schema.columns
+        WHERE table_schema = 'ai_readonly'
+          AND table_name = 'equipment_search'
+          AND column_name = 'ngay_dua_vao_su_dung_quarter'
+      ) THEN 'equipment_search.ngay_dua_vao_su_dung_quarter'
+    END
+  ], NULL)
+  INTO v_missing;
+
+  IF coalesce(array_length(v_missing, 1), 0) > 0 THEN
+    RAISE EXCEPTION 'Missing wide equipment reporting columns: %', array_to_string(v_missing, ', ');
+  END IF;
+
+  RAISE NOTICE 'OK: equipment_search exposes wide reporting dimensions';
+END $$;
+
+-- 6) With a real facility scope, the wide reporting dimensions should support grouping.
+DO $$
+DECLARE
+  v_facility_id bigint;
+  v_count bigint;
+BEGIN
+  SELECT id
+  INTO v_facility_id
+  FROM public.don_vi
+  WHERE active = true
+  ORDER BY id
+  LIMIT 1;
+
+  IF v_facility_id IS NULL THEN
+    RAISE EXCEPTION 'Cannot run grouping smoke: no active don_vi rows found';
+  END IF;
+
+  PERFORM set_config('app.current_facility_id', v_facility_id::text, true);
+
+  SELECT count(*) INTO v_count
+  FROM (
+    SELECT nguoi_dang_truc_tiep_quan_ly, COUNT(*) AS so_luong
+    FROM ai_readonly.equipment_search
+    GROUP BY nguoi_dang_truc_tiep_quan_ly
+  ) grouped_manager;
+
+  SELECT count(*) INTO v_count
+  FROM (
+    SELECT ngay_dua_vao_su_dung_year, COUNT(*) AS so_luong
+    FROM ai_readonly.equipment_search
+    GROUP BY ngay_dua_vao_su_dung_year
+  ) grouped_usage_year;
+
+  RAISE NOTICE 'OK: equipment_search wide reporting dimensions support grouping';
+END $$;
