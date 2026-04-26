@@ -28,7 +28,7 @@ The CREATE flow is **navigation-based** by design (the form needs a full page). 
 |---|---|
 | Trigger UX | Button/link next to status field in Equipment Detail (read-mode only) |
 | Multiple-active tie-break | Open most-recently-updated record + warning banner inside the sheet |
-| Sheet mode | Full-action — reuse `RepairRequestsDetailView` unchanged |
+| Sheet mode | Read/detail parity — reuse `RepairRequestsDetailView` unchanged for detail + history view (no action surface; mutations live in the existing row dropdown on `/repair-requests`) |
 | Backend resolver | New dedicated RPC `repair_request_active_for_equipment` |
 | RBAC | Visible to any user who can open Equipment Detail; tenant guard enforced server-side |
 | Empty state (status says "Chờ sửa chữa" but no active record) | Hide button entirely (Phase 1) |
@@ -40,7 +40,7 @@ The CREATE flow is **navigation-based** by design (the form needs a full page). 
 1. From Equipment Detail of an equipment with status `"Chờ sửa chữa"`, the user can open the **currently active repair request** in a side sheet.
 2. Resolution is **status-driven** and uses the **active** record (`trang_thai IN ('Chờ xử lý','Đã duyệt')`), never an arbitrary historical one.
 3. Multi-active and zero-active situations are handled deterministically.
-4. The side sheet reuses `RepairRequestsDetailView` so behaviour is identical to opening from `/repair-requests`.
+4. The side sheet reuses `RepairRequestsDetailView` so detail + history rendering is identical to the existing repair-requests page; mutations are not surfaced inside the sheet for Phase 1.
 5. New shared module is extensible to transfers/maintenance follow-ups without breaking Phase 1.
 6. No N+1 queries; no race conditions; no measurable regressions on equipment route bundle/runtime.
 
@@ -212,7 +212,7 @@ REVOKE EXECUTE ON FUNCTION public.repair_request_active_for_equipment(INT) FROM 
 Design points:
 
 - **CTE merge** — single scan of `yeu_cau_sua_chua` rows for the equipment; `counted` and the top-1 row read from the same materialised CTE. Half the work of a naive `count(*) + select … limit 1` pair.
-- **Tenant guard** mirrors `repair_request_get` exactly (same `allowed_don_vi_for_session()` helper, same `global` / `admin` short-circuit). **Department scope (role=`user`) is intentionally *not* added here** — see "Department scope decision" below.
+- **Tenant guard** mirrors `repair_request_list` exactly (same `_get_jwt_claim('app_role'/'role')` extraction, `allowed_don_vi_for_session()` helper, `global` / `admin` short-circuit, missing-claim 42501 raise, and `SET search_path = public, pg_temp`). **NOTE**: live `repair_request_get(p_id)` is currently `LANGUAGE sql SECURITY DEFINER` with no `search_path`, no JWT claim extraction, and no tenant guard — a known security gap that diverged from migration `20250927_regional_leader_phase4.sql`. Do **not** treat `repair_request_get` as the template here. Closing that gap is tracked under issue #342 (family-wide guard). **Department scope (role=`user`) is intentionally *not* added here** — see "Department scope decision" below.
 - **Active definition** = `'Chờ xử lý' OR 'Đã duyệt'`, the canonical convention used in `src/components/repair-request-alert.tsx` and `src/components/notification-bell-dialog.tsx`.
 - **Tie-break**: `ORDER BY COALESCE(ngay_duyet, ngay_yeu_cau) DESC, id DESC`. Deterministic; reflects "most recent state change" since the table has no `updated_at`.
 - **Soft-delete safety**: `COALESCE(tb.is_deleted, false) = false` aligns with the existing soft-delete read policy (`supabase/migrations/20260213100500_equipment_soft_delete_historical_read_policy.sql`).
@@ -221,18 +221,33 @@ Design points:
 
 ### Department scope decision (role=`user`)
 
-Recent migrations (`20260422123000_add_user_department_scope_reads.sql`, `20260422150000_add_user_department_scope_workflow_guards.sql`) introduced fail-closed `khoa_phong` (department) scope checks for role=`user`, applied to `equipment_get` / `equipment_list_enhanced` / area & attention summaries / `repair_request_create` / `transfer_request_create` / maintenance plan tasks. The `repair_request_get` and `repair_request_list` read RPCs were **not** updated in that batch and remain tenant-only-scoped.
+Recent migrations (`20260422123000_add_user_department_scope_reads.sql`, `20260422150000_add_user_department_scope_workflow_guards.sql`) introduced fail-closed `khoa_phong` (department) scope checks for role=`user`, applied to `equipment_get` / `equipment_list_enhanced` / area & attention summaries / `repair_request_create` / `transfer_request_create` / maintenance plan tasks.
 
-**Phase 1 decision**: the new `repair_request_active_for_equipment` RPC mirrors the current behaviour of `repair_request_get` (tenant-only scope) for two reasons:
+The state of the `repair_request_*` read family on the live database (verified via Supabase MCP `execute_sql`):
+
+- `repair_request_list` — has the proper tenant guard (`_get_jwt_claim` + `allowed_don_vi_for_session`) and `SET search_path = public, pg_temp`. **No** dept-scope guard yet.
+- `repair_request_get` — `LANGUAGE sql SECURITY DEFINER` with **no `search_path`, no tenant guard, no JWT claim extraction**. The hardened plpgsql version from migration `20250927_regional_leader_phase4.sql` is no longer the live definition; it appears to have been overwritten by a later (probably regional-leader-rollback) migration. This is a real security regression that pre-dates this work.
+- `repair_request_active_for_equipment` — does not exist yet; this spec introduces it.
+
+**Phase 1 decision**: the new `repair_request_active_for_equipment` RPC adopts the `repair_request_list` tenant-guard shape (which is correct), and explicitly does **not** depend on `repair_request_get` for its security model. Department scope is **not** added in Phase 1 for two reasons:
 
 1. UI flow is already protected: a role=`user` cannot reach `EquipmentDetailDialog` for out-of-scope equipment because `equipment_list_enhanced` and `equipment_get` already apply the dept-scope filter. The button therefore never renders for out-of-scope equipment in normal flow.
 2. Adding dept-scope to one read RPC in isolation creates inconsistency within the `repair_request_*` read family. A family-wide fix is the right shape and should be tracked as its own issue with consolidated smoke tests.
 
-**Follow-up issue (out of scope here)**: add fail-closed dept-scope guard to `repair_request_get`, `repair_request_list`, and `repair_request_active_for_equipment` together, matching the pattern of `equipment_get` from `20260422123000_add_user_department_scope_reads.sql`. Defense-in-depth against direct RPC calls bypassing the equipment-level filter.
+**Follow-up issue (out of scope here)**: #342 — restore tenant guard on `repair_request_get` (LANGUAGE plpgsql + `_get_jwt_claim` + `allowed_don_vi_for_session` + `SET search_path`) **and** add fail-closed dept-scope guard to `repair_request_get`, `repair_request_list`, and `repair_request_active_for_equipment` together, matching the pattern of `equipment_get` from `20260422123000_add_user_department_scope_reads.sql`. Defense-in-depth against direct RPC calls bypassing the equipment-level filter.
 
 ### Index coverage
 
-Existing indexes on `yeu_cau_sua_chua` already cover this access pattern: `idx_yeu_cau_sua_chua_thiet_bi_id`, `idx_yeu_cau_sua_chua_trang_thai`, and the composite `idx_yeu_cau_sua_chua_equipment_status`. The implementation step verifies the composite is `(thiet_bi_id, trang_thai)`; if not, a small composite index is added in the same migration.
+Live indexes on `yeu_cau_sua_chua` (verified via Supabase MCP `pg_indexes`): `idx_yeu_cau_sua_chua_thiet_bi_id (thiet_bi_id)`, `idx_yeu_cau_sua_chua_trang_thai (trang_thai)`, `idx_yeu_cau_sua_chua_status_date (trang_thai, ngay_yeu_cau)`, plus PK and other column indexes. There is **no** composite `(thiet_bi_id, trang_thai)` index; earlier migrations that defined `idx_yeu_cau_sua_chua_equipment_status` are not present on the live DB.
+
+Acceptance: the same migration that introduces `repair_request_active_for_equipment` adds:
+
+```sql
+CREATE INDEX IF NOT EXISTS idx_yeu_cau_sua_chua_thiet_bi_status
+  ON public.yeu_cau_sua_chua (thiet_bi_id, trang_thai);
+```
+
+Justification: the resolver query filters on `(r.thiet_bi_id = X AND r.trang_thai IN (...))` for every Equipment Detail open of a "Chờ sửa chữa" device. The single-column `(thiet_bi_id)` index is sufficient at current cardinality (a few historical repair rows per equipment), but the composite removes the post-fetch filter and keeps cost flat as repair history grows. Cost: <1 KB index per few hundred rows. Naming aligns with existing `idx_yeu_cau_sua_chua_*` convention.
 
 ### Allowed-functions registration
 
@@ -282,7 +297,7 @@ export function useResolveActiveRepair(opts: {
 
 ### Cache invalidation contract
 
-`repair_request_active_for_equipment` queries are scoped under the same `repairKeys.all` prefix that `src/hooks/use-cached-repair.ts` already invalidates after every CRUD mutation. To opt in without changing every call site, `repairKeys` gains:
+`repair_request_active_for_equipment` queries are scoped under the same `repairKeys.all` prefix that `src/hooks/use-cached-repair.ts` uses. `repairKeys` gains an `active` sub-key:
 
 ```ts
 export const repairKeys = {
@@ -293,7 +308,9 @@ export const repairKeys = {
 }
 ```
 
-The resolver's `queryKey` becomes `repairKeys.active(equipmentId)`. Existing `invalidateQueries({ queryKey: repairKeys.all })` calls cover it for free.
+The resolver's `queryKey` becomes `repairKeys.active(equipmentId)`. Existing mutations that invalidate `repairKeys.all` (`useCreateRepairRequest`, `useAssignRepairRequest`, `useCompleteRepairRequest`, `useDeleteRepairRequest`) cover it for free.
+
+**Existing-mutation alignment (in scope for Phase 1)**: `useUpdateRepairRequest` in `src/hooks/use-cached-repair.ts` currently invalidates only `repairKeys.lists()` and `repairKeys.detail(id)` — not `repairKeys.all`. This was an outlier before this work; if a user edits a repair request elsewhere, the active resolver should refetch so a subsequently opened side sheet shows fresh data. Phase 1 patches `useUpdateRepairRequest` to invalidate `repairKeys.all`, aligning it with the rest of the family. The change is one line and is covered by the existing repair-requests test suite.
 
 ### Behaviour matrix
 
@@ -339,7 +356,7 @@ interface LinkedRequestContextValue {
 Two effects ensure consistency:
 
 1. **Auto-close when Equipment Detail closes** — the Provider subscribes to `EquipmentDialogContext` and calls `close()` whenever `dialogState.isDetailOpen` flips to `false`. Prevents a stranded sheet when the user dismisses Equipment Detail.
-2. **Auto-close when active record disappears** — the Provider observes the resolver result; if the sheet is open and the resolver refetches with `active_count: 0` (e.g., user just completed the request from inside the sheet), it calls `close()` and emits a `toast({title: "Yêu cầu đã được hoàn thành"})`.
+2. **Auto-close when active record disappears** — the Provider observes the resolver result; if the sheet is open and the resolver refetches with `active_count: 0`, it calls `close()` and emits a `toast({title: "Yêu cầu đã được hoàn thành"})`. This refetch is **always triggered externally to the sheet** in Phase 1 (mutations originate elsewhere, e.g., `/repair-requests` page in the same SPA session, or a refocus that revalidates the cache). The sheet itself surfaces no mutation actions — see the "read/detail parity" decision.
 
 ## Race-condition & N+1 safeguards
 
@@ -350,7 +367,7 @@ Two effects ensure consistency:
 | Switch from Equipment A's detail to B's before A's resolver responds | Each equipmentId has its own `queryKey`; the Provider only reads the cache for the current `equipmentId`. A's response lands in A's cache and is never read by B's UI. |
 | Close Equipment Detail while resolver is in flight | `useQuery({ signal })` cancels via `AbortSignal` on unmount; `callRpc` already threads `signal` through to fetch. |
 | Rapid double-click on the button | TanStack Query single-flight dedupes identical query keys to one in-flight request. |
-| Mutate request in another component while sheet is open | Mutations call `invalidateQueries({ queryKey: repairKeys.all })` (existing). The resolver refetches, the sheet's auto-close effect kicks in if the request is no longer active. |
+| Mutate request in another component while sheet is open | Mutations call `invalidateQueries({ queryKey: repairKeys.all })` (existing for create/approve/complete/delete; this spec aligns `useUpdateRepairRequest` to do the same). The resolver refetches, the sheet's auto-close effect kicks in if the request is no longer active. The sheet itself never originates a mutation in Phase 1. |
 | Sheet open when Equipment Detail is dismissed | Provider's auto-close effect tied to `dialogState.isDetailOpen`. |
 | Resolver returns an id that has been deleted between fetch and open | `RepairRequestsDetailView` already has `SAFE_HISTORY_ERROR_MESSAGE` for downstream history failures; the detail view itself shows the snapshot from the resolver payload, so a transient deletion does not crash. |
 
@@ -435,7 +452,8 @@ Each test wraps both providers and stubs both `equipment_history_list` and `repa
 - **Happy path**: open Equipment Detail of a "Chờ sửa chữa" equipment with one active request; resolver resolves; button appears in the status section; `userEvent.click(button)` opens the side sheet; assert sheet content includes the request's description.
 - **Status mismatch**: open Equipment Detail with status "Hoạt động" → button never appears; resolver mock not called.
 - **Switch-equipment race**: open Detail of equipment 1 (status "Chờ sửa chữa"); before the resolver mock resolves, swap the dialog to equipment 2 (also "Chờ sửa chữa"). Flush both promises. Assert the visible button corresponds to equipment 2's resolver result and never shows equipment 1's data. Verify with `vi.spyOn(callRpc)` that two calls happened with the correct equipment IDs.
-- **Mutation auto-close**: open the side sheet; trigger a `repair_request_complete` mutation via the test harness; assert the sheet closes and a "Yêu cầu đã được hoàn thành" toast appears.
+- **External-mutation auto-close**: open the side sheet; **outside** the sheet, fire `useCompleteRepairRequest()` against the same `requestId` via the test harness (the sheet renders no action surface, so the mutation must originate from elsewhere). Update the resolver mock to return `{ active_count: 0, request: null }` on the next call. Assert the sheet closes and a "Yêu cầu đã được hoàn thành" toast appears.
+- **Update mutation alignment**: render the same external mutation flow with `useUpdateRepairRequest()`; assert the resolver query (`repairKeys.active(equipmentId)`) is invalidated and refetches. Pre-existing tests for `useUpdateRepairRequest` continue to pass after widening its invalidation to `repairKeys.all`.
 - **Equipment Detail dismissal closes the sheet**: open the side sheet; close Equipment Detail via `userEvent.click(closeButton)`; assert the side sheet is unmounted.
 - **N+1 guard**: render `EquipmentTable` with 50 rows where 10 are "Chờ sửa chữa"; assert `callRpc` for `repair_request_active_for_equipment` is **never** called (no resolver fires for list rows).
 
@@ -449,7 +467,7 @@ Each test wraps both providers and stubs both `equipment_history_list` and `repa
 
 ### Layer 6 — backend smoke tests
 
-`supabase/tests/repair_request_active_for_equipment_smoke.sql` covering the six scenarios listed in §3.5.
+`supabase/tests/repair_request_active_for_equipment_smoke.sql` covering the six scenarios listed under "Backend → Smoke tests".
 
 ### Verification gates (Ralph contract)
 
