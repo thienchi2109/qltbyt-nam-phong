@@ -88,6 +88,7 @@ supabase/logs/
 !.github/workflows/
 !.github/workflows/*.yml
 .cursor/
+.devin/
 .idx/
 qltbyt-nam-phong-firebase-adminsdk-fbsvc-56766361a6.json
 VAPID_key.md
