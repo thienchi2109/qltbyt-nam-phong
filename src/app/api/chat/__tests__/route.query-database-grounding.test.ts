@@ -92,6 +92,13 @@ describe('/api/chat query_database grounding payload', () => {
     expect(streamTextArgs.system).toContain('usage_facts')
     expect(streamTextArgs.system).toContain('quota_facts')
     expect(streamTextArgs.system).toContain('khoa_phong_quan_ly')
+    expect(streamTextArgs.system).toContain('nguoi_dang_truc_tiep_quan_ly')
+    expect(streamTextArgs.system).toContain('vi_tri_lap_dat')
+    expect(streamTextArgs.system).toContain('phan_loai_theo_nd98')
+    expect(streamTextArgs.system).toContain('ngay_dua_vao_su_dung_date')
+    expect(streamTextArgs.system).toContain('ngay_dua_vao_su_dung_year')
+    expect(streamTextArgs.system).toContain('ngay_dua_vao_su_dung_month')
+    expect(streamTextArgs.system).toContain('ngay_dua_vao_su_dung_quarter')
     expect(streamTextArgs.system).toContain('KHÔNG dùng raw schema/tên')
     for (const ref of AI_READONLY_FORBIDDEN_REFERENCES) {
       expect(streamTextArgs.system).toContain(ref)
@@ -102,6 +109,15 @@ describe('/api/chat query_database grounding payload', () => {
     )
     expect(streamTextArgs.tools?.query_database?.description).toContain(
       'ai_readonly.equipment_search',
+    )
+    expect(streamTextArgs.tools?.query_database?.description).toContain(
+      'nguoi_dang_truc_tiep_quan_ly',
+    )
+    expect(streamTextArgs.tools?.query_database?.description).toContain(
+      'ngay_dua_vao_su_dung_year',
+    )
+    expect(streamTextArgs.tools?.query_database?.description).toContain(
+      'GROUP BY nguoi_dang_truc_tiep_quan_ly',
     )
   })
 })

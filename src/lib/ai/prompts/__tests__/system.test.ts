@@ -136,8 +136,8 @@ describe('system prompt module', () => {
     expect(prompt).toContain('metadata')
   })
 
-  it('prompt version is v2.5.1 after query_database grounding updates', () => {
-    expect(SYSTEM_PROMPT_VERSION).toBe('v2.5.1')
+  it('prompt version is v2.6.0 after wide equipment reporting grounding updates', () => {
+    expect(SYSTEM_PROMPT_VERSION).toBe('v2.6.0')
   })
 
   it('grounds query_database to the ai_readonly semantic surface', () => {
@@ -153,6 +153,11 @@ describe('system prompt module', () => {
     expect(prompt).toContain('usage_facts')
     expect(prompt).toContain('quota_facts')
     expect(prompt).toContain('khoa_phong_quan_ly')
+    expect(prompt).toContain('nguoi_dang_truc_tiep_quan_ly')
+    expect(prompt).toContain('vi_tri_lap_dat')
+    expect(prompt).toContain('phan_loai_theo_nd98')
+    expect(prompt).toContain('ngay_dua_vao_su_dung_date')
+    expect(prompt).toContain('ngay_dua_vao_su_dung_year')
     expect(prompt).toContain('KHÔNG dùng raw schema/tên')
     for (const ref of AI_READONLY_FORBIDDEN_REFERENCES) {
       expect(prompt).toContain(ref)
