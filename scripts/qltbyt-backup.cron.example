@@ -1,0 +1,28 @@
+# qltbyt-backup: daily Supabase Postgres dump → Google Drive.
+#
+# Install:
+#   sudo install -m 0644 scripts/qltbyt-backup.cron.example \
+#                        /etc/cron.d/qltbyt-backup
+#   sudo systemctl reload cron        # Debian/Ubuntu
+#
+# Setup runbook   : docs/runbooks/db-backup-setup.md
+# Restore runbook : docs/runbooks/db-restore.md
+# Script          : /usr/local/bin/qltbyt-backup
+#                   (installed from scripts/backup-db.sh)
+#
+# Schedule notes:
+#   - 02:00 ICT = 19:00 UTC. Vietnam is UTC+7 with no DST.
+#   - Cron `m h dom mon dow` is interpreted in the SYSTEM timezone of the
+#     VPS. The line below uses UTC; if your VPS is set to Asia/Ho_Chi_Minh,
+#     change `0 19` → `0 2` instead.
+#   - `MAILTO=""` disables cron's own email (we have Telegram).
+#   - stderr is redirected into the log file because the script logs to it
+#     too; this catches stray output before the script's own logging
+#     starts (e.g. permission errors on the lock file).
+
+SHELL=/bin/bash
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+MAILTO=""
+
+# m  h dom mon dow user  command
+0 19 *   *   *   root  /usr/local/bin/qltbyt-backup >>/var/log/qltbyt-backup.log 2>&1

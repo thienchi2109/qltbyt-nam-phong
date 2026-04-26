@@ -282,6 +282,33 @@ const filtered = isGlobalRole(role) ? allItems : items.filter(...)
 
 If a task seems to require a forbidden CLI command, STOP and ask the user — there is almost always an MCP equivalent. Never "fall back" to the CLI silently.
 
+## Database Backup
+
+Daily Supabase Postgres dump → Google Drive (rclone) is operated by a
+Linux VPS cron job. Source of truth lives in this repo; the live VPS is
+a deployed copy.
+
+| Concern | Path |
+|---|---|
+| Script | `scripts/backup-db.sh` |
+| Env template | `scripts/backup-db.env.example` |
+| Cron template | `scripts/qltbyt-backup.cron.example` |
+| One-time setup | `docs/runbooks/db-backup-setup.md` |
+| Recovery | `docs/runbooks/db-restore.md` |
+
+**Agent rules**:
+
+- Do NOT modify the production cron schedule, env file, or rclone
+  config on the live VPS without explicit user approval.
+- Do NOT commit a filled-in `.env` file. Only `backup-db.env.example`
+  belongs in git.
+- Recovery decisions (what dump to restore, what scope) are
+  human-only. An agent may help inspect dumps and prepare commands,
+  but a user must approve before any `pg_restore` runs against
+  production.
+- For ad-hoc DB operations during recovery, follow the existing
+  "Supabase CLI vs MCP" rule: use Supabase MCP, not the CLI.
+
 ## SQL Code Generation Checklist
 **Project ID**: cdthersvldpnlbvpufrr (Supabase MCP)
 Before finalizing any data-access code, verify each item:
