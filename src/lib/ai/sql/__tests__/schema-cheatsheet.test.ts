@@ -9,7 +9,7 @@ import {
   QUERY_DATABASE_TOOL_DESCRIPTION,
 } from '../schema-cheatsheet'
 
-const QUERY_DATABASE_TOOL_DESCRIPTION_BYTE_BUDGET = 2600
+const QUERY_DATABASE_TOOL_DESCRIPTION_BYTE_BUDGET = 3600
 
 describe('query_database schema cheatsheet contract', () => {
   it('exports the canonical ai_readonly view names', () => {
@@ -29,15 +29,43 @@ describe('query_database schema cheatsheet contract', () => {
       'ten_thiet_bi',
       'model',
       'serial',
+      'hang_san_xuat',
+      'noi_san_xuat',
+      'nam_san_xuat',
       'so_luu_hanh',
+      'nguon_nhap',
+      'nguon_kinh_phi',
+      'gia_goc',
+      'nam_tinh_hao_mon',
+      'ty_le_hao_mon',
+      'han_bao_hanh',
       'phan_loai_theo_nd98',
       'nhom_thiet_bi_id',
       'tinh_trang_hien_tai',
       'khoa_phong_quan_ly',
+      'nguoi_dang_truc_tiep_quan_ly',
       'vi_tri_lap_dat',
+      'chu_ky_bt_dinh_ky',
       'ngay_bt_tiep_theo',
+      'chu_ky_hc_dinh_ky',
       'ngay_hc_tiep_theo',
+      'chu_ky_kd_dinh_ky',
       'ngay_kd_tiep_theo',
+      'ngay_nhap_raw',
+      'ngay_nhap_date',
+      'ngay_nhap_year',
+      'ngay_nhap_month',
+      'ngay_nhap_quarter',
+      'ngay_dua_vao_su_dung_raw',
+      'ngay_dua_vao_su_dung_date',
+      'ngay_dua_vao_su_dung_year',
+      'ngay_dua_vao_su_dung_month',
+      'ngay_dua_vao_su_dung_quarter',
+      'ngay_ngung_su_dung_raw',
+      'ngay_ngung_su_dung_date',
+      'ngay_ngung_su_dung_year',
+      'ngay_ngung_su_dung_month',
+      'ngay_ngung_su_dung_quarter',
       'facility_id',
       'facility_code',
       'facility_name',
@@ -144,17 +172,21 @@ describe('query_database schema cheatsheet contract', () => {
     }
   })
 
-  it('contains two ai_readonly SELECT examples', () => {
+  it('contains reporting-safe ai_readonly SELECT examples', () => {
     expect(QUERY_DATABASE_TOOL_DESCRIPTION).toContain(
       'SELECT khoa_phong_quan_ly, COUNT(*) AS so_luong FROM ai_readonly.equipment_search',
     )
     expect(QUERY_DATABASE_TOOL_DESCRIPTION).toContain(
-      'SELECT ma_thiet_bi, ten_thiet_bi, ngay_bt_tiep_theo FROM ai_readonly.equipment_search',
+      'SELECT nguoi_dang_truc_tiep_quan_ly, COUNT(*) AS so_luong FROM ai_readonly.equipment_search',
+    )
+    expect(QUERY_DATABASE_TOOL_DESCRIPTION).toContain(
+      'SELECT ngay_dua_vao_su_dung_year, COUNT(*) AS so_luong FROM ai_readonly.equipment_search',
     )
   })
 
   it('stays within the documented byte budget', () => {
-    // Keep the tool description compact enough for the model-facing tool payload.
+    // Wide reporting-safe grounding is allowed a slightly larger budget than the
+    // original narrow surface, but still needs a hard cap for tool payload size.
     expect(Buffer.byteLength(QUERY_DATABASE_TOOL_DESCRIPTION, 'utf8')).toBeLessThanOrEqual(
       QUERY_DATABASE_TOOL_DESCRIPTION_BYTE_BUDGET,
     )
