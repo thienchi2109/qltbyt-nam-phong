@@ -9,7 +9,7 @@ import { Card } from "@/components/ui/card"
 import {
   buildRepairRequestCreateIntentHref,
   buildRepairRequestsByEquipmentHref,
-} from "@/lib/repair-request-create-intent"
+} from "@/lib/repair-request-deep-link"
 import { MobileUsageActions } from "./mobile-usage-actions"
 
 interface MobileEquipmentListItemProps {
