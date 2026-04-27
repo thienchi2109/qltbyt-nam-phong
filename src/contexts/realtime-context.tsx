@@ -82,7 +82,7 @@ export function RealtimeProvider({ children }: RealtimeProviderProps) {
   }
 
   // Handle database changes
-  const handleDatabaseChange = (payload: RealtimePostgresChangesPayload<any>) => {
+  const handleDatabaseChange = (payload: RealtimePostgresChangesPayload<Record<string, unknown>>) => {
     const { table, eventType, new: newRecord, old: oldRecord } = payload
     
     console.log(`[Realtime] ${eventType} on ${table}:`, { newRecord, oldRecord })
@@ -102,7 +102,7 @@ export function RealtimeProvider({ children }: RealtimeProviderProps) {
         // Repair request changes — also invalidate equipment because active_repair_request_id
         // is derived from yeu_cau_sua_chua (LATERAL JOIN in equipment_list_enhanced).
         debouncedInvalidate(repairKeys.all) // ['repair'] - invalidates all repair queries
-        debouncedInvalidate(equipmentKeys.all) // ['equipment'] - active_repair_request_id may change
+        debouncedInvalidate(['equipment']) // active_repair_request_id derived from yeu_cau_sua_chua
         debouncedInvalidate(dashboardStatsKeys.all) // ['dashboard-stats']
         debouncedInvalidate(['reports'])
         break
