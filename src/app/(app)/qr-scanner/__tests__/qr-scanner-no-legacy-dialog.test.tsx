@@ -91,7 +91,7 @@ vi.mock("@/components/qr-action-sheet", () => ({
     ),
 }))
 
-vi.mock("@/lib/repair-request-create-intent", () => ({
+vi.mock("@/lib/repair-request-deep-link", () => ({
     buildRepairRequestCreateIntentHref: (id?: number) =>
         `/repair-requests?equipmentId=${id}`,
 }))

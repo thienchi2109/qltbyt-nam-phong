@@ -23,7 +23,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { useEquipmentContext } from "@/app/(app)/equipment/_hooks/useEquipmentContext"
-import { buildRepairRequestCreateIntentHref } from "@/lib/repair-request-create-intent"
+import { buildRepairRequestCreateIntentHref } from "@/lib/repair-request-deep-link"
 import { isEquipmentManagerRole } from "@/lib/rbac"
 import type { Equipment, UsageLog } from "@/types/database"
 

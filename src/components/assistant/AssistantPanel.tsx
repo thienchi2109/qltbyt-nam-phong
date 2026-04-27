@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button"
 import { useTenantSelection } from "@/contexts/TenantSelectionContext"
 import { parseErrorMessage } from "@/lib/ai/errors"
 import { compactUIMessages } from "@/lib/ai/compact-ui-messages"
-import { buildRepairRequestCreateIntentHref } from "@/lib/repair-request-create-intent"
+import { buildRepairRequestCreateIntentHref } from "@/lib/repair-request-deep-link"
 import { cn } from "@/lib/utils"
 
 import { AssistantComposer } from "./AssistantComposer"

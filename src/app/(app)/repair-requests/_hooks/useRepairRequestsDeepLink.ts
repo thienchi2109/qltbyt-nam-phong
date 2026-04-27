@@ -5,7 +5,7 @@ import type { EquipmentSelectItem } from "../types"
 import type { RepairRequestDraftPayload } from "@/lib/ai/draft/repair-request-draft-schema"
 import type { UiFilters } from "@/lib/rr-prefs"
 import { getUnknownErrorMessage } from "@/lib/error-utils"
-import { REPAIR_REQUEST_CREATE_ACTION } from "@/lib/repair-request-create-intent"
+import { REPAIR_REQUEST_CREATE_ACTION } from "@/lib/repair-request-deep-link"
 import {
   fetchRepairRequestEquipmentById,
   fetchRepairRequestEquipmentList,

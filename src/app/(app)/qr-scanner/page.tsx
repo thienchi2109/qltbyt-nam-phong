@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button"
 import { QRScannerErrorBoundary } from "@/components/qr-scanner-error-boundary"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { useToast } from "@/hooks/use-toast"
-import { buildRepairRequestCreateIntentHref } from "@/lib/repair-request-create-intent"
+import { buildRepairRequestCreateIntentHref } from "@/lib/repair-request-deep-link"
 import type { Equipment } from "@/lib/data"
 
 // Dynamic imports to avoid SSR issues with camera components
