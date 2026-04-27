@@ -140,3 +140,67 @@ No `// eslint-disable`. Tests are contracts. Helper invocation: `node scripts/np
 - One PR open at a time (this branch). Do **not** start the next PR until the previous is merged to `main`.
 - After each merge, append a `## Progress Log` entry to `progress.txt` per Ralph contract (Codebase Patterns first, Progress Log appends).
 - If blocked, stop and report; do not skip slices.
+
+---
+
+## Memori checkpoint protocol (MANDATORY for #338)
+
+Per session policy: **save a Memori MCP note via `advanced_augmentation` at every checkpoint** so progress survives context compaction, session restarts, and fresh-agent handoff. Memori is durable progress control; `progress.txt` and PR descriptions are the immutable audit trail.
+
+### Checkpoint trigger matrix
+
+| # | Trigger | Note title pattern | Required content |
+|---|---------|---------------------|--------------------|
+| 1 | **PR branch created + first commit pushed** | `#338 PR-Xx start: <branch>` | Branch name; tasks in scope; first commit SHA; verification gates planned |
+| 2 | **PR opened on GitHub** | `#338 PR-Xx open: <url>` | PR URL; tasks completed in branch; verify-gate results; reviewer asks (if any) |
+| 3 | **PR merged to main** | `#338 PR-Xx merged: <merge SHA>` | Merge SHA on main; commits range merged; tasks ticked; `progress.txt` entry; next PR to start |
+| 4 | **Blocker hit** (verify fail, smoke red, review push-back, infra issue) | `#338 PR-Xx blocked: <one-line reason>` | What blocked; reproduce command/log; current branch HEAD; proposed resolution; whether human input needed |
+| 5 | **Session-end mid-PR** (compact, /clear, manual stop) | `#338 PR-Xx WIP: <branch> @ <HEAD>` | Branch + HEAD SHA; last completed task/step; next step verbatim; uncommitted-files list (must be empty — commit before save) |
+
+### Note shape (REQUIRED — follow `CLAUDE.md` Memori convention)
+
+```md
+# #338 PR-Xx <state>: <slug>
+
+## Context
+- Issue #338 Phase 1 deep-link active repair. Slice PR-Xx of 5.
+- Source plan: docs/superpowers/plans/2026-04-26-issue-207-phase1-equipment-deeplink-active-repair.md (d27b8bb)
+- Slices doc: docs/superpowers/plans/2026-04-27-issue-338-execution-slices.md (e431b33)
+
+## Decision / Finding
+- <what was just achieved or decided at this checkpoint>
+
+## Evidence
+- Branch: <name>
+- HEAD: <SHA short>
+- Tasks ticked: <X.Y, X.Z>
+- Commits: <SHA1..SHA2>
+- Verify gates: verify:no-explicit-any=<pass|fail>, typecheck=<pass|fail>, test:run=<pass|fail>[, react-doctor=...]
+- PR: <url or N/A>
+
+## Actionable Follow-up
+- Next: <exact next step verbatim, e.g., "Open PR-1a draft" / "Start PR-1b Task 1.3 Step 1.3.1">
+- Avoid: <known traps for next agent>
+
+## Metadata
+- Date: <YYYY-MM-DD>
+- Confidence: high
+```
+
+### Rules
+
+1. **One save per checkpoint, never silent.** Skipping a checkpoint = breaking progress control.
+2. **Commit before save.** A WIP/session-end note with uncommitted files is invalid; always `git status` and commit (or stash with note) first.
+3. **Trust file > memory.** If a memori note conflicts with `git log` / `progress.txt` / PR state, trust the repo and update the note via a fresh checkpoint save.
+4. **Recall at fresh-session start.** Before resuming work, call `memori.recall` with query `Issue #338 PR progress` to find the most recent checkpoint.
+5. **No silent merges.** A merged PR without a corresponding checkpoint #3 note is treated as not-completed by future agents.
+
+### Fresh-session resume sequence
+
+```text
+1. memori.recall("Issue #338 PR progress")           # find latest checkpoint
+2. git fetch origin && git log --oneline -10         # verify checkpoint matches main
+3. cat progress.txt                                   # confirm Progress Log entries
+4. cat docs/superpowers/plans/2026-04-27-issue-338-execution-slices.md  # re-read slicing
+5. resume from "Actionable Follow-up: Next" of latest checkpoint
+```
