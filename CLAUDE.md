@@ -543,6 +543,10 @@ QUERY REVIEW CHECKLIST
 [ ] Caching flagged: read-heavy queries noted as cache candidates if appropriate
 [ ] Query log verified: no duplicate/repetitive queries for a single request
 
+## Equipment list — N+1 prevention (revised 2026-04-27)
+
+Per-row indicators that depend on aggregated business state (e.g., "this equipment has an active repair request") MUST be backed by **aggregate columns on `equipment_list_enhanced`**, never by per-row resolver RPCs. The implementation pattern is exemplified by `LinkedRequestRowIndicator`, which reads `equipment.active_repair_request_id` from the row data and renders synchronously without firing any RPC. Adoption test `src/lib/__tests__/repair-request-deep-link.adoption.test.ts` enforces that the indicator does not call `callRpc` or `useResolveActiveRepair`. The resolver hook `useResolveActiveRepair` is reserved for the click-time fetch in `LinkedRequestSheetHost`, where there is at most one in flight at a time.
+
 ## SQL Migration Safety Rules (MANDATORY)
 
 ### Migration Source Order
