@@ -28,3 +28,22 @@ export function buildRepairRequestsByEquipmentHref(equipmentId: number) {
     ? `${REPAIR_REQUESTS_PATH}?${params.toString()}`
     : REPAIR_REQUESTS_PATH
 }
+
+export const REPAIR_REQUEST_VIEW_ACTION = "view"
+
+export function buildActiveRepairRequestQueryKey(equipmentId: number | null) {
+  return ["repair_request_active_for_equipment", { equipmentId }] as const
+}
+
+export function buildRepairRequestViewHref(requestId: number) {
+  if (!isValidEquipmentId(requestId)) {
+    return REPAIR_REQUESTS_PATH
+  }
+
+  const params = new URLSearchParams({
+    action: REPAIR_REQUEST_VIEW_ACTION,
+    requestId: String(requestId),
+  })
+
+  return `${REPAIR_REQUESTS_PATH}?${params.toString()}`
+}
