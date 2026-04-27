@@ -63,15 +63,14 @@ main
 
 ## Verification gates per PR (mandatory)
 
-All TS/TSX-touching PRs run **in this exact order** before merge:
+All TS/TSX-touching PRs run **in this exact order** before merge (per `CLAUDE.md`):
 
 1. `node scripts/npm-run.js run verify:no-explicit-any`
 2. `node scripts/npm-run.js run typecheck`
 3. `node scripts/npm-run.js run test:run -- <focused-paths>` (per-task focused tests defined in plan)
-
-PR-3 additionally runs:
-
 4. `node scripts/npm-run.js npx react-doctor@latest . --verbose -y --project nextn --offline --diff main`
+
+> **Correction (2026-04-27):** an earlier draft of this section said gate 4 ran on PR-3 only. That was wrong — `CLAUDE.md` makes all four gates mandatory for any `.ts`/`.tsx` change. Pre-existing warnings on lines a PR did not touch are acceptable; new findings on changed lines block merge.
 
 **DB-touching PRs (PR-1b only):**
 - All DDL via Supabase MCP `apply_migration` (project `cdthersvldpnlbvpufrr`). **Never** Supabase CLI.
@@ -95,9 +94,9 @@ Each PR opened against `main` must include:
 - [ ] verify:no-explicit-any green
 - [ ] typecheck green
 - [ ] focused test:run green: <list test files>
+- [ ] react-doctor --diff main green (or: only pre-existing warnings on lines this PR did not touch)
 - [ ] (PR-1b only) smoke SQL passes 6/6 scenarios on live DB
-- [ ] (PR-3 only) react-doctor --diff main green
-- [ ] Manual browser verification (PR-3 only): button visible iff `tinh_trang_hien_tai === 'Chờ sửa chữa'` AND active request exists; sheet opens read-only `RepairRequestsDetailView`; auto-close on equipment change
+- [ ] (PR-3 only) Manual browser verification: button visible iff `tinh_trang_hien_tai === 'Chờ sửa chữa'` AND active request exists; sheet opens read-only `RepairRequestsDetailView`; auto-close on equipment change
 
 ## Deploy-safety reasoning
 <why this slice ships safely without lighting up the feature; PR-3 explains rollback strategy>
