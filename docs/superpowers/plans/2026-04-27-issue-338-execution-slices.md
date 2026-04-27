@@ -1,9 +1,29 @@
 # Issue #338 — Execution Slices (5 PRs, deploy-independent)
 
-**Date:** 2026-04-27
-**Source plan:** `docs/superpowers/plans/2026-04-26-issue-207-phase1-equipment-deeplink-active-repair.md` (commit `d27b8bb`)
-**Source spec:** `docs/superpowers/specs/2026-04-26-issue-207-phase1-equipment-deeplink-active-repair-design.md` (commits `9a1c1c1 → 1144fb4 → 30c25e2 → af37131`)
+**Date:** 2026-04-27 (revised same day after PR-2a merge to pivot to in-row icon)
+**Source plan:** `docs/superpowers/plans/2026-04-26-issue-207-phase1-equipment-deeplink-active-repair.md` (revision header added 2026-04-27)
+**Source spec:** `docs/superpowers/specs/2026-04-26-issue-207-phase1-equipment-deeplink-active-repair-design.md` (revision history added 2026-04-27)
 **Pre-applied (already on `main`):** commit `66bb762` (`useUpdateRepairRequest` invalidation alignment + invalidation contract test). **Not part of any slice below.** Restore from `66bb762` if missing.
+
+## Revision history
+
+### 2026-04-27 — Pivot to in-row icon (PR-2b slim + PR-3 split)
+
+After PR-1a, PR-1b, PR-2a all merged to `main`, the strategy pivoted from "chip in `EquipmentDetailDialog`" to "icon in equipment list rows". Throw-away cost was ~80 LOC of unbuilt `LinkedRequestButton` plan; PR-1a/1b/2a deliverables (helper rename, RPC, composite index, provider, resolver hook, types, strings, test-utils) all reused fully.
+
+**Changes vs original 5-slice plan:**
+
+- PR-1a: **MERGED** as planned. No change.
+- PR-1b: **MERGED** as planned. No change.
+- PR-2a: **MERGED** as planned. No change.
+- PR-2b: **SLIMMED** — drops `LinkedRequestButton` (Task 2.4 removed). Ships only adapter + SheetHost + barrel. ~250 LOC instead of ~450.
+- ~~PR-3 (single)~~: **SPLIT** into PR-3a (backend) + PR-3b (frontend).
+  - PR-3a: extend `equipment_list_enhanced` with `active_repair_request_id` column + `equipment_list_enhanced_active_repair_smoke.sql` + RealtimeProvider cross-cache invalidation + `Equipment` type update.
+  - PR-3b: `LinkedRequestRowIndicator` component + provider hoist + sheet host mount + wire into `equipment-table-columns` and `mobile-equipment-list-item` + integration tests + adoption test inversion + `CLAUDE.md` update.
+
+Total slice count stays at 5; PR-3 becomes PR-3a + PR-3b. Merge order changes only at the tail (see "Merge order" below). The deploy-independence guarantee survives unchanged.
+
+---
 
 > This document is **execution metadata only**. The TDD steps, file lists, exact code blocks, and acceptance criteria stay in the source plan. Each PR below executes a contiguous range of tasks from the plan; all per-task verification gates listed in the plan are **mandatory** for the PR they belong to.
 
@@ -21,17 +41,18 @@ The umbrella plan is one feature delivered in 3 chunks. Slicing into 5 smaller P
 
 ## Slice → Task mapping
 
-| PR | Branch | Plan tasks | Scope (one line) | LOC est. | Deploy-safe? | User-visible? |
-|----|--------|-----------|-------------------|----------|--------------|---------------|
-| **PR-1a** | `feat/338-1a-helper-rename` | 1.1, 1.2 | Rename `repair-request-create-intent` → `repair-request-deep-link` + 3 new exports + update 8 importers + rename adoption test | ~150 | ✅ Yes — pure refactor, all old exports preserved | ❌ No |
-| **PR-1b** | `feat/338-1b-rpc-active-for-equipment` | 1.3, 1.4 | New RPC `repair_request_active_for_equipment` + composite index migration + smoke SQL (6 scenarios, integral to Task 1.3 TDD via SQL smoke) + RPC whitelist (Task 1.4) | ~250 (incl. SQL) | ✅ Yes — RPC unused by UI; index additive | ❌ No |
-| **PR-2a** | `feat/338-2a-linked-request-core` | 2.1, 2.2, 2.3 | Package foundations: `types.ts`, `strings.ts`, `useActiveRepairRequest` resolver hook, `LinkedRequestContext` + unit tests | ~350 | ✅ Yes — package not imported anywhere; tree-shakable | ❌ No |
-| **PR-2b** | `feat/338-2b-linked-request-shell` | 2.4, 2.5, 2.6, 2.7 | `LinkedRequestButton`, `repairRequestSheetAdapter`, `LinkedRequestSheetHost`, barrel `index.ts` + unit tests | ~450 | ✅ Yes — same as 2a (still no imports) | ❌ No |
-| **PR-3** | `feat/338-3-equipment-integration` | 3.1, 3.2, 3.3, 3.4, 3.5, 3.6, 3.7 | Mount `LinkedRequestProvider` on page client, place `LinkedRequestSheetHost`, render button in `EquipmentDetailStatusSection`, 7 integration tests (incl. race + N+1 guard), adoption-test extension, `CLAUDE.md` N+1 rule, final verification gates and ship | ~250 | ⚠️ Lights up feature — revert PR to disable | ✅ Yes |
+| PR | Branch | Plan tasks | Scope (one line) | LOC est. | Deploy-safe? | User-visible? | Status |
+|----|--------|-----------|-------------------|----------|--------------|---------------|---|
+| **PR-1a** | `feat/338-1a-helper-rename` | 1.1, 1.2 | Rename `repair-request-create-intent` → `repair-request-deep-link` + 3 new exports + update 8 importers + rename adoption test | ~150 | ✅ Yes — pure refactor, all old exports preserved | ❌ No | ✅ MERGED `f1c7489` |
+| **PR-1b** | `feat/338-1b-rpc-active-for-equipment` | 1.3, 1.4 | New RPC `repair_request_active_for_equipment` + composite index migration + smoke SQL + RPC whitelist | ~250 (incl. SQL) | ✅ Yes — RPC unused by UI; index additive | ❌ No | ✅ MERGED |
+| **PR-2a** | `feat/338-2a-linked-request-core` | 2.1, 2.2, 2.3 | Package foundations: `types.ts`, `strings.ts`, `useResolveActiveRepair` resolver hook, `LinkedRequestContext` + unit tests + test-utils | ~350 | ✅ Yes — package not imported anywhere; tree-shakable | ❌ No | ✅ MERGED `6739109` |
+| **PR-2b (revised)** | `feat/338-2b-linked-request-shell` | ~~2.4~~, 2.5, 2.6, 2.7 | `repairRequestSheetAdapter`, `LinkedRequestSheetHost`, barrel `index.ts` (no `LinkedRequestButton` export) + unit tests | ~250 | ✅ Yes — package not imported anywhere; tree-shakable | ❌ No | ⏳ Up next |
+| **PR-3a** (NEW) | `feat/338-3a-list-enhanced-active-repair` | 3.0a, 3.0b, 3.0c | Migration extending `equipment_list_enhanced` with `active_repair_request_id` (LATERAL JOIN, reuses PR-1b's composite index) + `equipment_list_enhanced_active_repair_smoke.sql` (6 scenarios) + RealtimeProvider extension (invalidate `equipmentKeys.all` + `repairKeys.all`) + `Equipment` type update + staleTime tighten | ~400 (incl. SQL) | ✅ Yes — column additive in JSONB; type field optional; UI not yet using it | ❌ No | 📅 Planned |
+| **PR-3b** (NEW) | `feat/338-3b-row-icon-integration` | 3.1, 3.2, 3.3, 3.4, 3.5, 3.6, 3.7, 3.8, 3.9 | `LinkedRequestRowIndicator` component + tests + provider hoist (`EquipmentPageClient`) + `LinkedRequestSheetHost` mount + wire into `equipment-table-columns.tsx` + `mobile-equipment-list-item.tsx` + 8-scenario integration test + adoption-test inversion + `CLAUDE.md` update + final gates | ~400 | ⚠️ Lights up feature — revert PR to disable | ✅ Yes | 📅 Planned |
 
-**Total** ≈ 1450 LOC across 5 PRs (matches plan estimate of "18 TDD tasks": Chunk 1=4, Chunk 2=7, Chunk 3=7).
+**Total** ≈ 1500 LOC across 6 (originally 5) PRs. The PR count change is one extra PR (PR-3a / PR-3b) for safer deploy independence between backend column extension and frontend wiring.
 
-> **Correction (2026-04-27, post PR-1a merge):** an earlier draft of this table listed Tasks `1.3, 1.4, 1.5` for PR-1b and `3.1–3.6` for PR-3. The plan actually has 4 tasks in Chunk 1 (Task 1.3 already includes the SQL smoke as TDD) and 7 tasks in Chunk 3 (3.7 = final verification gates and ship). Mapping is now task-numbering accurate.
+> **Note**: the original "PR-3 single" row is replaced. Original wording referenced Tasks `3.1–3.7` rendering button in `EquipmentDetailStatusSection`. After 2026-04-27 pivot, those tasks no longer exist — see `2026-04-26-issue-207-phase1-equipment-deeplink-active-repair.md` "Chunk 3 (revised 2026-04-27)" for the new task list.
 
 ---
 
@@ -40,24 +61,31 @@ The umbrella plan is one feature delivered in 3 chunks. Slicing into 5 smaller P
 ```
 main
  │
- ├── PR-1a ──▶ merge ──▶ main'
- │                         │
- │                         ├── PR-1b ──▶ merge ──▶ main''
- │                         │                          │
- │                         │                          ├── PR-2a ──▶ merge ──▶ main'''
- │                         │                          │                         │
- │                         │                          │                         ├── PR-2b ──▶ merge ──▶ main''''
- │                         │                          │                         │                          │
- │                         │                          │                         │                          └── PR-3 ──▶ merge ──▶ feature live
+ ├── PR-1a   ──▶ merge ──▶ main' (✅ DONE: f1c7489)
+ │                            │
+ │                            ├── PR-1b   ──▶ merge ──▶ main'' (✅ DONE)
+ │                            │                            │
+ │                            │                            ├── PR-2a   ──▶ merge ──▶ main''' (✅ DONE: 6739109)
+ │                            │                            │                            │
+ │                            │                            │                            ├── PR-2b   ──▶ merge ──▶ main'''' (⏳ NEXT)
+ │                            │                            │                            │                            │
+ │                            │                            │                            │                            ├── PR-3a ──▶ merge ──▶ main''''' (📅 backend ready)
+ │                            │                            │                            │                            │                            │
+ │                            │                            │                            │                            │                            └── PR-3b ──▶ merge ──▶ feature live
 ```
 
-**Hard dependencies:**
+**Hard dependencies (revised 2026-04-27):**
 - PR-1a → unblocks PR-2a (resolver hook + adapter import from `@/lib/repair-request-deep-link`)
-- PR-1b → unblocks PR-2a (resolver hook calls `repair_request_active_for_equipment` via `callRpc`)
-- PR-2a → unblocks PR-2b (button consumes `LinkedRequestContext`, host wires resolver into provider)
-- PR-2b → unblocks PR-3 (page imports the barrel)
+- PR-1b → unblocks PR-2a (resolver hook calls `repair_request_active_for_equipment` via `callRpc`); also enables PR-3a (composite index reused by `equipment_list_enhanced` LATERAL)
+- PR-2a → unblocks PR-2b (host wires resolver into provider)
+- PR-2b → unblocks PR-3b (page imports the barrel)
+- PR-3a → unblocks PR-3b (frontend reads `equipment.active_repair_request_id` from list response and depends on `Equipment` type update)
 
 **Independence between PR-1a and PR-1b:** none of PR-1a's files overlap with PR-1b's. They can be authored in parallel and merged in either order; the doc fixes order PR-1a → PR-1b only because PR-1b's smoke-test prep is easier once helper renames are settled.
+
+**PR-3a deploy-safety**: the new column on `equipment_list_enhanced` is additive in the JSONB output. Frontend consumers (`useEquipmentData`, `transfer-dialog.data`, etc.) ignore unknown keys and stay green. RealtimeProvider extension fires invalidations on a key (`equipmentKeys.all`) that already exists; no consumer breaks.
+
+**PR-3b deploy-safety**: once `LinkedRequestRowIndicator` is added but the indicator's gating predicate (`active_repair_request_id != null`) is false for all rows during early rollout (because PR-3a wasn't yet deployed), the icon never renders and the page behaves as before. If PR-3a ships first (recommended), the icon renders normally.
 
 **Rebase discipline:** rebase each PR onto `main` immediately after the previous merge. No long-lived branches.
 
@@ -74,9 +102,10 @@ All TS/TSX-touching PRs run **in this exact order** before merge (per `CLAUDE.md
 
 > **Correction (2026-04-27):** an earlier draft of this section said gate 4 ran on PR-3 only. That was wrong — `CLAUDE.md` makes all four gates mandatory for any `.ts`/`.tsx` change. Pre-existing warnings on lines a PR did not touch are acceptable; new findings on changed lines block merge.
 
-**DB-touching PRs (PR-1b only):**
+**DB-touching PRs (PR-1b + PR-3a):**
 - All DDL via Supabase MCP `apply_migration` (project `cdthersvldpnlbvpufrr`). **Never** Supabase CLI.
 - All smoke SQL via Supabase MCP `execute_sql`. Smoke must pass all 6 scenarios from the plan before opening the PR.
+- PR-3a additionally requires `generate_typescript_types` from MCP and a typecheck on the regenerated types in the same commit chain as the `Equipment` type update.
 
 ---
 

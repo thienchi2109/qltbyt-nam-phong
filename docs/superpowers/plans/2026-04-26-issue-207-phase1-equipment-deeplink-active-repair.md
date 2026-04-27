@@ -1,8 +1,24 @@
-# Issue #207 Phase 1 — Equipment Detail deep-link to active repair request — Implementation Plan
+# Issue #207 Phase 1 — Equipment list deep-link to active repair request — Implementation Plan
 
 > **For agentic workers:** REQUIRED: Use superpowers:subagent-driven-development (if subagents available) or superpowers:executing-plans to implement this plan. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** From Equipment Detail of an equipment whose status is `"Chờ sửa chữa"`, expose a button that opens the **active** repair request (`trang_thai IN ('Chờ xử lý','Đã duyệt')`) in a side sheet, without leaving the Equipments page.
+## Revision history
+
+### 2026-04-27 — Pivot to in-row icon
+
+**What changed**: trigger source moved from a chip inside `EquipmentDetailDialog` to a `Wrench` icon in equipment list rows (desktop table + mobile cards). See `2026-04-26-issue-207-phase1-equipment-deeplink-active-repair-design.md` "Revision history" for the full design rationale.
+
+**Impact on this plan**:
+
+- Chunk 1 (Tasks 1.1–1.5): UNCHANGED — fully merged via PR-1a + PR-1b.
+- Chunk 2 (Tasks 2.1–2.7): Tasks 2.1, 2.2, 2.3 merged via PR-2a. Task 2.4 (LinkedRequestButton) **REMOVED** — content stubbed below. Tasks 2.5, 2.6, 2.7 still apply for PR-2b.
+- Chunk 3 (Tasks 3.1–3.7): **REPLACED** with new tasks for the in-row icon path. See "Chunk 3 (revised)" below. Old Chunk 3 wording preserved only in git history.
+
+The design doc + slices doc + this revision header are the source of truth from 2026-04-27 onward. Where this plan body still uses pre-pivot language ("button", "in dialog", "EquipmentDetailStatusSection"), defer to the spec's revision sections and the rewritten Chunk 3 below.
+
+---
+
+**Goal:** From the equipment list (desktop or mobile), when an equipment row has status `"Chờ sửa chữa"` AND an active repair request, expose an inline `Wrench` icon next to the status badge that opens the **active** repair request (`trang_thai IN ('Chờ xử lý','Đã duyệt')`) in a side sheet, without leaving the Equipments page.
 
 **Architecture:** Introduce a shared module `src/components/equipment-linked-request/` (Provider + Button + SheetHost + adapter + resolver hook) so Phase 2/3 (transfers, maintenance) can plug in new resolvers without re-architecting. New backend RPC `repair_request_active_for_equipment(p_thiet_bi_id INT) RETURNS JSONB` resolves the active record per equipment with the `repair_request_list`-style tenant guard. The side sheet reuses `RepairRequestsDetailView` unchanged via a `next/dynamic` adapter so equipment route bundle stays clean. Read/detail parity only — mutations are not surfaced inside the sheet for Phase 1.
 
@@ -1252,13 +1268,20 @@ EOF
 )"
 ```
 
-### Task 2.4 — `LinkedRequestButton` (TDD with `user-event`)
+### Task 2.4 — `LinkedRequestButton` (REMOVED 2026-04-27)
 
-**Files:**
-- Create: `src/components/equipment-linked-request/__tests__/LinkedRequestButton.test.tsx`
-- Create: `src/components/equipment-linked-request/LinkedRequestButton.tsx`
+The original Task 2.4 instructed creating `LinkedRequestButton.tsx` (chip in `EquipmentDetailStatusSection`) and a 6-test suite. **This task is removed by the 2026-04-27 pivot**: the trigger is now a row icon (`LinkedRequestRowIndicator`) created in revised Chunk 3 below.
 
-`LinkedRequestButton` is the trigger that lives inside `EquipmentDetailStatusSection`. It accepts `kind` and `equipment` (`Equipment` type from `@/types/database`). It runs `useResolveActiveRepair` gated by `equipment.tinh_trang_hien_tai === 'Chờ sửa chữa'`, and hides itself when the resolver returns 0 or errors.
+PR-2b therefore does **not** include any `LinkedRequestButton.tsx` work. PR-2b ships only Tasks 2.5 (`repairRequestSheetAdapter`), 2.6 (`LinkedRequestSheetHost`), and 2.7 (barrel).
+
+The `index.ts` barrel (Task 2.7) is updated to export `LinkedRequestSheetHost` only — no `LinkedRequestButton` export. `LinkedRequestRowIndicator` will be added to the barrel in Chunk 3B (PR-3b).
+
+Original Task 2.4 content preserved below for git-history reference; **do not implement it**.
+
+<details>
+<summary>Original Task 2.4 (DO NOT IMPLEMENT — kept for history)</summary>
+
+`LinkedRequestButton` was the trigger that lived inside `EquipmentDetailStatusSection`. It accepted `kind` and `equipment` (`Equipment` type from `@/types/database`). It ran `useResolveActiveRepair` gated by `equipment.tinh_trang_hien_tai === 'Chờ sửa chữa'`, and hid itself when the resolver returned 0 or errored.
 
 - [ ] **Step 2.4.1: Write the failing tests.** Use `userEvent` for clicks; mock `callRpc` and `useLinkedRequest` to assert behaviour.
 
@@ -1499,6 +1522,20 @@ Generated with [Devin](https://cli.devin.ai/docs)
 Co-Authored-By: Devin <158243242+devin-ai-integration[bot]@users.noreply.github.com>
 EOF
 )"
+```
+
+  </details>
+
+### Task 2.4 update — Barrel export skips LinkedRequestButton
+
+The original Task 2.7 (barrel) listed `LinkedRequestButton` as an export. Updated barrel content (committed as part of PR-2b's Task 2.7):
+
+```ts
+export { LinkedRequestProvider, useLinkedRequest } from './LinkedRequestContext'
+export type { LinkedRequestContextValue } from './LinkedRequestContext'
+export { LinkedRequestSheetHost } from './LinkedRequestSheetHost'
+export type { LinkedRequestKind, LinkedRequestState, ActiveRepairResult } from './types'
+// LinkedRequestRowIndicator added in Chunk 3B (PR-3b).
 ```
 
 ### Task 2.5 — `repairRequestSheetAdapter` (read/detail parity wrapper)
@@ -1902,11 +1939,543 @@ EOF
 
 ---
 
+## Chunk 3 (revised 2026-04-27): Backend extension + in-row icon integration
+
+This chunk lights up the feature for users via the **in-row icon** path. Backend `equipment_list_enhanced` is extended with `active_repair_request_id`, RealtimeProvider is extended for cross-cache invalidation, and a new `LinkedRequestRowIndicator` is wired into the desktop and mobile equipment list rows. Integration tests then prove the cross-component contract holds — race-free, no N+1, auto-close behaviour intact.
+
+This chunk is split into two PRs (per slices doc `2026-04-27-issue-338-execution-slices.md`):
+
+- **Chunk 3A → PR-3a**: Tasks 3.0a, 3.0b, 3.0c — backend migration + smoke + RealtimeProvider extension. **No UI change.** Deploy-safe because the column is additive.
+- **Chunk 3B → PR-3b**: Tasks 3.1, 3.2, 3.3, 3.4, 3.5, 3.6, 3.7 — `LinkedRequestRowIndicator`, provider hoist, row wiring, integration tests, adoption test inversion, `CLAUDE.md` update, final verification. Lights up the feature.
+
+**Files in Chunk 3A (PR-3a):**
+- Create: `supabase/migrations/<ts>_extend_equipment_list_enhanced_active_repair.sql`
+- Create: `supabase/tests/equipment_list_enhanced_active_repair_smoke.sql`
+- Modify: `src/contexts/realtime-context.tsx`
+- Modify: `src/types/database.ts` (or wherever `Equipment` type is generated/declared)
+- Modify: `src/hooks/use-cached-equipment.ts` (tighten staleTime when LinkedRequestProvider mounted — minimal change)
+
+**Files in Chunk 3B (PR-3b):**
+- Create: `src/components/equipment-linked-request/__tests__/LinkedRequestRowIndicator.test.tsx`
+- Create: `src/components/equipment-linked-request/LinkedRequestRowIndicator.tsx`
+- Modify: `src/components/equipment-linked-request/index.ts` (export indicator)
+- Modify: `src/app/(app)/equipment/_components/EquipmentPageClient.tsx` (provider hoist)
+- Modify: `src/app/(app)/equipment/equipment-dialogs.tsx` (mount SheetHost)
+- Modify: `src/components/equipment/equipment-table-columns.tsx` (inject indicator next to status badge)
+- Modify: `src/components/mobile-equipment-list-item.tsx` (same)
+- Create: `src/app/(app)/equipment/__tests__/EquipmentRowLinkedRequest.integration.test.tsx`
+- Modify: `src/lib/__tests__/repair-request-deep-link.adoption.test.ts`
+- Modify: `CLAUDE.md`
+
+### Task 3.0a — Migration: extend `equipment_list_enhanced` with `active_repair_request_id` (PR-3a)
+
+**Files:**
+- Create: `supabase/migrations/<ts>_extend_equipment_list_enhanced_active_repair.sql`
+
+The migration uses Supabase MCP `apply_migration` (DO NOT use Supabase CLI). It adds a single LATERAL JOIN to the existing `equipment_list_enhanced` function and projects `active_repair_request_id` into the JSONB row. The function's tenant guard, RBAC scope, search_path, and SECURITY DEFINER preamble are preserved verbatim — only the JSONB projection and the new LATERAL join are added.
+
+- [ ] **Step 3.0a.1: Inspect current `equipment_list_enhanced` definition via MCP.** Use Supabase MCP `execute_sql`:
+
+```sql
+SELECT pg_get_functiondef(oid)
+FROM pg_proc
+WHERE proname = 'equipment_list_enhanced'
+  AND pronamespace = 'public'::regnamespace;
+```
+
+Save the full body — the migration replaces it via `CREATE OR REPLACE FUNCTION` with **only** the JSONB projection extended.
+
+- [ ] **Step 3.0a.2: Author the migration.** Pattern (timestamp via Supabase MCP convention):
+
+```sql
+BEGIN;
+
+-- 1) New LATERAL helper subquery.
+-- 2) JSONB row gains: 'active_repair_request_id', ar.active_id
+-- The composite index idx_yeu_cau_sua_chua_thiet_bi_status (added in PR-1b)
+-- already supports this query — single index seek per row.
+
+CREATE OR REPLACE FUNCTION public.equipment_list_enhanced(
+  /* ... preserved parameter list verbatim ... */
+)
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+/* ... preserved guard preamble verbatim ... */
+
+  RETURN (
+    SELECT jsonb_build_object(
+      'data',
+      COALESCE(jsonb_agg(
+        jsonb_build_object(
+          /* ... existing keys preserved verbatim ... */,
+          'active_repair_request_id', ar.active_id
+        )
+        ORDER BY tb.id
+      ), '[]'::jsonb),
+      'total', total_count,
+      'page', p_page,
+      'pageSize', p_page_size
+    )
+    FROM filtered_equipment fe
+    JOIN public.thiet_bi tb ON tb.id = fe.id
+    LEFT JOIN LATERAL (
+      SELECT r.id AS active_id
+      FROM public.yeu_cau_sua_chua r
+      WHERE r.thiet_bi_id = tb.id
+        AND r.trang_thai IN ('Chờ xử lý', 'Đã duyệt')
+      ORDER BY r.ngay_yeu_cau DESC, r.id DESC
+      LIMIT 1
+    ) ar ON TRUE
+  );
+END;
+$$;
+
+COMMIT;
+```
+
+The `CREATE OR REPLACE` keeps the same `oid`, leaves grants/RLS untouched, and is reversible by re-running the prior version.
+
+- [ ] **Step 3.0a.3: Apply via MCP.**
+
+```
+apply_migration({ name: 'extend_equipment_list_enhanced_active_repair', body: <the SQL above> })
+```
+
+- [ ] **Step 3.0a.4: Smoke (next task).**
+
+### Task 3.0b — Smoke SQL: `equipment_list_enhanced_active_repair_smoke.sql` (PR-3a)
+
+**Files:**
+- Create: `supabase/tests/equipment_list_enhanced_active_repair_smoke.sql`
+
+Six scenarios (matches spec Layer 6 #2):
+
+```sql
+-- A) No history → active_repair_request_id IS NULL.
+-- B) Completed-only history → active_repair_request_id IS NULL.
+-- C) Single Chờ xử lý request → matches the request id.
+-- D) Multi-active across Chờ xử lý + Đã duyệt → returns latest by ngay_yeu_cau (tiebreak id DESC).
+-- E) Soft-deleted equipment → row excluded from list.
+-- F) Cross-tenant → row excluded by tenant guard, no active_repair_request_id leak.
+```
+
+Run via Supabase MCP `execute_sql` against project `cdthersvldpnlbvpufrr`. All six scenarios must report `OK` before merging PR-3a.
+
+- [ ] **Step 3.0b.1: Author the smoke SQL** with named scenario blocks and inline assertions (`PERFORM` + `ASSERT` pattern).
+- [ ] **Step 3.0b.2: Execute via MCP, observe all 6 OK.**
+- [ ] **Step 3.0b.3: Commit the SQL file (and the migration file from 3.0a).**
+
+```bash
+git add supabase/migrations/<ts>_extend_equipment_list_enhanced_active_repair.sql \
+        supabase/tests/equipment_list_enhanced_active_repair_smoke.sql
+git commit -m "$(cat <<'EOF'
+feat(db): extend equipment_list_enhanced with active_repair_request_id
+
+LATERAL JOIN to yeu_cau_sua_chua filtered by (thiet_bi_id, trang_thai
+IN ('Chờ xử lý','Đã duyệt')); returns id of latest active request or
+null. Drives the in-row icon for #338. Smoke SQL covers 6 scenarios
+including soft-delete + cross-tenant isolation. Phase 1 of #338 PR-3a.
+
+Generated with [Devin](https://cli.devin.ai/docs)
+
+Co-Authored-By: Devin <158243242+devin-ai-integration[bot]@users.noreply.github.com>
+EOF
+)"
+```
+
+### Task 3.0c — RealtimeProvider extension + Equipment type + staleTime (PR-3a)
+
+**Files:**
+- Modify: `src/contexts/realtime-context.tsx`
+- Modify: `src/types/database.ts` (or generated types output)
+- Modify: `src/hooks/use-cached-equipment.ts`
+
+- [ ] **Step 3.0c.1: Run Supabase MCP `generate_typescript_types`** and update the generated `Equipment` type to include `active_repair_request_id?: number | null`. If types are hand-maintained, edit the file directly.
+- [ ] **Step 3.0c.2: Extend `RealtimeProvider`'s `handleDatabaseChange`** so events on `yeu_cau_sua_chua` debounce-invalidate **both** `repairKeys.all` and `equipmentKeys.all`. Write the extension as a single `debouncedInvalidate` call with both keys (the existing helper accepts an array).
+- [ ] **Step 3.0c.3: Tighten `equipment_list_enhanced` `staleTime` to `15_000`** (was `60_000` if so). This is intentionally route-scoped via the `LinkedRequestProvider` consumer — until the provider mounts, the existing equipment list query keeps its longer staleTime. Implement by adding a `staleTime` argument to the consumer hook only on the equipment route.
+- [ ] **Step 3.0c.4: Add a small unit test** at `src/contexts/__tests__/realtime-context.invalidation.test.tsx` (or extend the nearest existing realtime test) that fires a fake `yeu_cau_sua_chua` change and asserts both query keys are invalidated.
+- [ ] **Step 3.0c.5: Run gates.**
+
+```bash
+node scripts/npm-run.js run verify:no-explicit-any
+node scripts/npm-run.js run typecheck
+node scripts/npm-run.js run test:run -- src/contexts/__tests__/realtime-context.invalidation.test.tsx
+```
+
+- [ ] **Step 3.0c.6: Commit.**
+
+```bash
+git add src/contexts/realtime-context.tsx src/types/database.ts src/hooks/use-cached-equipment.ts \
+        src/contexts/__tests__/realtime-context.invalidation.test.tsx
+git commit -m "$(cat <<'EOF'
+feat(realtime,equipment): cross-cache invalidation + active_repair_request_id type
+
+RealtimeProvider now invalidates both repairKeys.all and equipmentKeys.all
+on yeu_cau_sua_chua events. Equipment type gains
+active_repair_request_id?: number | null. Equipment list staleTime
+tightened to 15s when LinkedRequestProvider is mounted. Phase 1 of #338 PR-3a.
+
+Generated with [Devin](https://cli.devin.ai/docs)
+
+Co-Authored-By: Devin <158243242+devin-ai-integration[bot]@users.noreply.github.com>
+EOF
+)"
+```
+
+### Task 3.1 — `LinkedRequestRowIndicator` component (PR-3b, TDD)
+
+**Files:**
+- Create: `src/components/equipment-linked-request/__tests__/LinkedRequestRowIndicator.test.tsx`
+- Create: `src/components/equipment-linked-request/LinkedRequestRowIndicator.tsx`
+
+The indicator is a small `<button>` wrapping a Wrench icon (lucide-react). It does **not** call `useResolveActiveRepair` or any RPC — render is purely a function of the `equipment` prop. Tooltip "Xem phiếu yêu cầu sửa chữa" appears on desktop hover/focus only.
+
+- [ ] **Step 3.1.1: Write the failing test file.** See spec §"Layer 3" for the full test list. Mock `callRpc` with `vi.fn()` and assert it is **never called**.
+- [ ] **Step 3.1.2: Run the tests, observe failure** (component does not exist).
+- [ ] **Step 3.1.3: Implement.**
+
+```tsx
+'use client'
+
+import * as React from 'react'
+import { Wrench } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip'
+import { useLinkedRequest } from './LinkedRequestContext'
+import { STRINGS } from './strings'
+import type { Equipment } from '@/types/database'
+
+interface LinkedRequestRowIndicatorProps {
+  equipment: Pick<Equipment, 'id' | 'ma_thiet_bi' | 'tinh_trang_hien_tai' | 'active_repair_request_id'>
+}
+
+const TRIGGER_STATUS = 'Chờ sửa chữa' as const
+
+export function LinkedRequestRowIndicator({ equipment }: LinkedRequestRowIndicatorProps) {
+  const { openRepair } = useLinkedRequest()
+
+  const visible =
+    equipment.tinh_trang_hien_tai === TRIGGER_STATUS &&
+    equipment.active_repair_request_id != null
+
+  if (!visible) return null
+
+  const ariaLabel = STRINGS.rowIndicatorAriaLabel(equipment.ma_thiet_bi)
+
+  return (
+    <TooltipProvider delayDuration={300} disableHoverableContent>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="ml-1 h-6 w-6 text-amber-500 hover:text-amber-600"
+            aria-label={ariaLabel}
+            onClick={(e) => {
+              e.stopPropagation()
+              openRepair(equipment.id)
+            }}
+          >
+            <Wrench className="h-4 w-4" aria-hidden="true" />
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent side="top">
+          {STRINGS.rowIndicatorTooltip}
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  )
+}
+```
+
+- [ ] **Step 3.1.4: Update `strings.ts`** (added in PR-2a):
+
+```ts
+// Append to STRINGS:
+rowIndicatorTooltip: 'Xem phiếu yêu cầu sửa chữa',
+rowIndicatorAriaLabel: (maThietBi: string) =>
+  `Xem yêu cầu sửa chữa hiện tại của thiết bị ${maThietBi}`,
+```
+
+- [ ] **Step 3.1.5: Re-run tests, observe pass. Run gates.**
+
+```bash
+node scripts/npm-run.js run test:run -- src/components/equipment-linked-request/__tests__/LinkedRequestRowIndicator.test.tsx
+node scripts/npm-run.js run verify:no-explicit-any
+node scripts/npm-run.js run typecheck
+```
+
+- [ ] **Step 3.1.6: Commit.**
+
+```bash
+git add src/components/equipment-linked-request/LinkedRequestRowIndicator.tsx \
+        src/components/equipment-linked-request/__tests__/LinkedRequestRowIndicator.test.tsx \
+        src/components/equipment-linked-request/strings.ts
+git commit -m "$(cat <<'EOF'
+feat(equipment-linked-request): add LinkedRequestRowIndicator
+
+Synchronous row icon (Wrench) gated on tinh_trang_hien_tai === 'Chờ sửa
+chữa' AND active_repair_request_id != null. Click → openRepair via
+LinkedRequestProvider. Never calls callRpc. Phase 1 of #338 PR-3b.
+
+Generated with [Devin](https://cli.devin.ai/docs)
+
+Co-Authored-By: Devin <158243242+devin-ai-integration[bot]@users.noreply.github.com>
+EOF
+)"
+```
+
+### Task 3.2 — Hoist `LinkedRequestProvider` to `EquipmentPageClient` root (PR-3b)
+
+**File:**
+- Modify: `src/app/(app)/equipment/_components/EquipmentPageClient.tsx`
+
+The provider must wrap **both** the table tree and the dialog tree. Place it inside `EquipmentDialogProvider`.
+
+- [ ] **Step 3.2.1: Add the import.**
+
+```tsx
+import { LinkedRequestProvider } from '@/components/equipment-linked-request'
+```
+
+- [ ] **Step 3.2.2: Wrap the tree.**
+
+```tsx
+return (
+  <EquipmentDialogProvider effectiveTenantKey={pageState.effectiveTenantKey}>
+    <LinkedRequestProvider>
+      <EquipmentPageContent pageState={pageState} />
+    </LinkedRequestProvider>
+  </EquipmentDialogProvider>
+)
+```
+
+- [ ] **Step 3.2.3: Run typecheck + equipment test suite.** Existing tests must stay green (provider wrap is transparent).
+- [ ] **Step 3.2.4: Commit.**
+
+### Task 3.3 — Mount `LinkedRequestSheetHost` next to dialogs (PR-3b)
+
+**File:**
+- Modify: `src/app/(app)/equipment/equipment-dialogs.tsx`
+
+- [ ] **Step 3.3.1: Add the import** alongside the other dialog imports.
+
+```tsx
+import { LinkedRequestSheetHost } from '@/components/equipment-linked-request'
+```
+
+- [ ] **Step 3.3.2: Render `<LinkedRequestSheetHost />` as a sibling of `<EquipmentDetailDialog />`** in the existing returned fragment.
+- [ ] **Step 3.3.3: Run typecheck + equipment test suite.** Existing tests must stay green.
+- [ ] **Step 3.3.4: Commit.**
+
+### Task 3.4 — Wire `LinkedRequestRowIndicator` into desktop table columns (PR-3b)
+
+**File:**
+- Modify: `src/components/equipment/equipment-table-columns.tsx`
+
+- [ ] **Step 3.4.1: Add the import.**
+
+```tsx
+import { LinkedRequestRowIndicator } from '@/components/equipment-linked-request'
+```
+
+- [ ] **Step 3.4.2: Update the `tinh_trang_hien_tai` cell renderer.** Find the existing branch that renders `<Badge variant={getStatusVariant(...)}>{statusValue}</Badge>` and wrap it in a flex container with the indicator:
+
+```tsx
+if (key === 'tinh_trang_hien_tai') {
+  const statusValue = value as Equipment["tinh_trang_hien_tai"]
+  if (!statusValue) {
+    return <div className="italic text-muted-foreground">Chưa có dữ liệu</div>
+  }
+  return (
+    <div className="inline-flex items-center gap-1">
+      <Badge variant={getStatusVariant(statusValue)}>
+        {statusValue}
+      </Badge>
+      <LinkedRequestRowIndicator equipment={row.original} />
+    </div>
+  )
+}
+```
+
+- [ ] **Step 3.4.3: Run focused test:** the existing `equipment-table-columns.selection.test.tsx` should stay green.
+- [ ] **Step 3.4.4: Commit.**
+
+### Task 3.5 — Wire `LinkedRequestRowIndicator` into mobile equipment list (PR-3b)
+
+**File:**
+- Modify: `src/components/mobile-equipment-list-item.tsx`
+
+- [ ] **Step 3.5.1: Add the import.**
+- [ ] **Step 3.5.2: Find the status badge rendering** in the mobile card. Inject the indicator next to it (same flex pattern as Task 3.4).
+- [ ] **Step 3.5.3: Run the existing `mobile-equipment-list-item.test.tsx` — should stay green.**
+- [ ] **Step 3.5.4: Commit Tasks 3.2 / 3.3 / 3.4 / 3.5 together** as a single "wire indicator" commit since they form one user-visible change:
+
+```bash
+git add 'src/app/(app)/equipment/_components/EquipmentPageClient.tsx' \
+        'src/app/(app)/equipment/equipment-dialogs.tsx' \
+        'src/components/equipment/equipment-table-columns.tsx' \
+        'src/components/mobile-equipment-list-item.tsx'
+git commit -m "$(cat <<'EOF'
+feat(equipment): wire LinkedRequestRowIndicator into table + mobile list
+
+Provider hoisted to EquipmentPageClient root; SheetHost mounted next
+to EquipmentDetailDialog; indicator inline with the status badge in
+desktop equipment-table-columns and mobile-equipment-list-item.
+Lights up #338 in-row UX. Phase 1 of #338 PR-3b.
+
+Generated with [Devin](https://cli.devin.ai/docs)
+
+Co-Authored-By: Devin <158243242+devin-ai-integration[bot]@users.noreply.github.com>
+EOF
+)"
+```
+
+### Task 3.6 — Integration tests (PR-3b, TDD — written first)
+
+**File:**
+- Create: `src/app/(app)/equipment/__tests__/EquipmentRowLinkedRequest.integration.test.tsx`
+
+Eight scenarios per spec §"Layer 4 (revised)". Use `userEvent.setup()`, real `LinkedRequestProvider`, real `LinkedRequestSheetHost`, mocked `callRpc` and lazy adapter (next/dynamic stub same as in PR-2b's host test).
+
+- [ ] **Step 3.6.1: Author the test file.** Use the PR-2b host test as a starting point for the next/dynamic + adapter mock setup.
+- [ ] **Step 3.6.2: Run the integration tests** — expect green on first run since Tasks 3.1–3.5 each had focused tests already.
+
+```bash
+node scripts/npm-run.js run test:run -- 'src/app/(app)/equipment/__tests__/EquipmentRowLinkedRequest.integration.test.tsx'
+```
+
+Expected: 8/8 pass. If switch-row race is flaky, raise the staggered timeouts; **do not** weaken assertions.
+
+- [ ] **Step 3.6.3: Run gates.**
+- [ ] **Step 3.6.4: Commit.**
+
+### Task 3.7 — Adoption test inversion (PR-3b)
+
+**File:**
+- Modify: `src/lib/__tests__/repair-request-deep-link.adoption.test.ts`
+
+Per spec §"Layer 5 (revised — inverted)":
+
+- [ ] **Step 3.7.1: Append new test cases:**
+
+```ts
+import { describe, expect, it } from 'vitest'
+import * as fs from 'node:fs'
+import * as path from 'node:path'
+
+const REPO_ROOT = path.resolve(__dirname, '../../..')
+const read = (rel: string) => fs.readFileSync(path.join(REPO_ROOT, rel), 'utf8')
+
+describe('equipment-linked-request: in-row indicator adoption', () => {
+  it('LinkedRequestRowIndicator IS imported by equipment-table-columns', () => {
+    const src = read('src/components/equipment/equipment-table-columns.tsx')
+    expect(src).toMatch(/LinkedRequestRowIndicator/)
+    expect(src).toMatch(/equipment-linked-request/)
+  })
+
+  it('LinkedRequestRowIndicator IS imported by mobile-equipment-list-item', () => {
+    const src = read('src/components/mobile-equipment-list-item.tsx')
+    expect(src).toMatch(/LinkedRequestRowIndicator/)
+  })
+
+  it('LinkedRequestRowIndicator is NOT imported by equipment-actions-menu', () => {
+    const src = read('src/components/equipment/equipment-actions-menu.tsx')
+    expect(src).not.toMatch(/LinkedRequestRowIndicator/)
+  })
+
+  it('LinkedRequestRowIndicator does NOT call callRpc or useResolveActiveRepair', () => {
+    const src = read(
+      'src/components/equipment-linked-request/LinkedRequestRowIndicator.tsx',
+    )
+    expect(src).not.toMatch(/callRpc\(/)
+    expect(src).not.toMatch(/useResolveActiveRepair\(/)
+  })
+
+  it('LinkedRequestButton is gone from the codebase', () => {
+    const root = path.join(REPO_ROOT, 'src')
+    const found: string[] = []
+    function walk(dir: string) {
+      for (const ent of fs.readdirSync(dir, { withFileTypes: true })) {
+        const full = path.join(dir, ent.name)
+        if (ent.isDirectory()) walk(full)
+        else if (ent.name.endsWith('.tsx') || ent.name.endsWith('.ts')) {
+          if (fs.readFileSync(full, 'utf8').includes('LinkedRequestButton')) found.push(full)
+        }
+      }
+    }
+    walk(root)
+    // Permitted: this adoption test file itself, plan/spec doc references, and `__tests__/strings.test.ts` if it asserts the absence.
+    const offenders = found.filter((f) => !f.includes('__tests__') && !f.endsWith('.adoption.test.ts'))
+    expect(offenders).toEqual([])
+  })
+})
+```
+
+- [ ] **Step 3.7.2: Run the test, observe pass.**
+- [ ] **Step 3.7.3: Commit.**
+
+### Task 3.8 — `CLAUDE.md` N+1 rule update (PR-3b)
+
+**File:**
+- Modify: `CLAUDE.md`
+
+- [ ] **Step 3.8.1: Replace (or add) the Equipment N+1 rule** with the **revised** wording:
+
+```markdown
+## Equipment list — N+1 prevention (revised 2026-04-27)
+
+Per-row indicators that depend on aggregated business state (e.g., "this equipment has an active repair request") MUST be backed by **aggregate columns on `equipment_list_enhanced`**, never by per-row resolver RPCs. The implementation pattern is exemplified by `LinkedRequestRowIndicator`, which reads `equipment.active_repair_request_id` from the row data and renders synchronously without firing any RPC. Adoption test `src/lib/__tests__/repair-request-deep-link.adoption.test.ts` enforces that the indicator does not call `callRpc` or `useResolveActiveRepair`. The resolver hook `useResolveActiveRepair` is reserved for the click-time fetch in `LinkedRequestSheetHost`, where there is at most one in flight at a time.
+```
+
+- [ ] **Step 3.8.2: Commit.**
+
+### Task 3.9 — Final verification + ship (PR-3b)
+
+- [ ] **Step 3.9.1**: `node scripts/npm-run.js run verify:no-explicit-any` — green.
+- [ ] **Step 3.9.2**: `node scripts/npm-run.js run typecheck` — green.
+- [ ] **Step 3.9.3**: Touched test suites in one shot:
+
+```bash
+node scripts/npm-run.js run test:run -- \
+  src/lib/__tests__/repair-request-deep-link.test.ts \
+  src/lib/__tests__/repair-request-deep-link.adoption.test.ts \
+  src/hooks/__tests__/use-cached-repair.invalidation.test.ts \
+  src/contexts/__tests__/realtime-context.invalidation.test.tsx \
+  src/components/equipment-linked-request/ \
+  'src/app/(app)/equipment/__tests__/EquipmentRowLinkedRequest.integration.test.tsx'
+```
+
+- [ ] **Step 3.9.4**: `node scripts/npm-run.js npx react-doctor@latest . --verbose -y --project nextn --offline --diff main` — 100/100 vs main; pre-existing warnings on lines this PR did not touch are acceptable.
+- [ ] **Step 3.9.5**: Open PR-3b. PR description follows the template in the slices doc.
+
+### End of revised Chunk 3 — definition of done
+
+- [ ] PR-3a merged: `equipment_list_enhanced` extended with `active_repair_request_id`; smoke SQL 6/6 OK; RealtimeProvider extended; `Equipment` type updated.
+- [ ] PR-3b merged: `LinkedRequestRowIndicator` component + tests; provider hoisted; SheetHost mounted; indicator wired into desktop + mobile rows; integration tests 8/8 green; adoption test inverted; `CLAUDE.md` updated.
+- [ ] All four verification gates green on PR-3b.
+- [ ] Manual browser verification: open `/equipment` filtered to `tinh_trang = 'Chờ sửa chữa'` rows; confirm icon appears next to status badge for rows with an active request, hidden otherwise; click → side sheet opens with read-only `RepairRequestsDetailView`; close repair via mutation on `/repair-requests` → icon disappears (within ~15s) and (if sheet still open) sheet auto-closes with toast.
+- [ ] Issue #338 closed by PR-3b's merge commit.
+
+<details>
+<summary>Original Chunk 3 (DO NOT IMPLEMENT — preserved for git-history reference)</summary>
+
+The text below is the pre-pivot Chunk 3 wording. It described mounting `LinkedRequestProvider`, `LinkedRequestSheetHost`, and `LinkedRequestButton` in `EquipmentDetailDialog`. **Replaced by the chunk above as of 2026-04-27.**
+
 ## Chunk 3: Integration — wire into Equipment page, integration tests, adoption test, N+1 guard, final verification
 
 This chunk lights up the feature for users. Provider is mounted at the page level, the sheet host becomes a sibling of `EquipmentDetailDialog`, and the button appears in the status section. Integration tests then prove the cross-component contract holds — race-free, no N+1, auto-close behaviour intact.
 
-**Files in this chunk:**
+**Files in this chunk (original):**
 - Modify: `src/app/(app)/equipment/_components/EquipmentPageClient.tsx`
 - Modify: `src/app/(app)/equipment/equipment-dialogs.tsx`
 - Modify: `src/app/(app)/equipment/_components/EquipmentDetailDialog/EquipmentDetailStatusSection.tsx`
@@ -2815,6 +3384,8 @@ EOF
 - [ ] Plan checkboxes above are all ticked in the implementation history (commit messages).
 
 ---
+
+  </details>
 
 ## Cross-cutting reminders
 
