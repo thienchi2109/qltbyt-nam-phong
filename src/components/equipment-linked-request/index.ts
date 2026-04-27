@@ -8,7 +8,9 @@
  * `LinkedRequestRowIndicator`, added in PR-3b.
  */
 
-export { LinkedRequestProvider, useLinkedRequest } from './LinkedRequestContext'
+export { LinkedRequestProvider, useLinkedRequest, Context } from './LinkedRequestContext'
 export type { LinkedRequestContextValue } from './LinkedRequestContext'
 export { LinkedRequestSheetHost } from './LinkedRequestSheetHost'
+export { LinkedRequestRowIndicator } from './LinkedRequestRowIndicator'
+export { useIsLinkedRequestActive } from './useIsLinkedRequestActive'
 export type { LinkedRequestKind, LinkedRequestState, ActiveRepairResult } from './types'

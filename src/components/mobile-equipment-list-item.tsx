@@ -5,6 +5,7 @@ import { Wrench, MapPin, Eye, AlertTriangle } from "lucide-react"
 import { useRouter } from "next/navigation"
 
 import { type Equipment } from "@/types/database"
+import { LinkedRequestRowIndicator } from "@/components/equipment-linked-request"
 import { Card } from "@/components/ui/card"
 import {
   buildRepairRequestCreateIntentHref,
@@ -111,6 +112,11 @@ export function MobileEquipmentListItem({
               <span className={`text-[10px] font-semibold uppercase tracking-tight ${statusStyle.text}`}>
                 {status}
               </span>
+              <LinkedRequestRowIndicator
+                equipmentId={equipment.id}
+                tinh_trang_hien_tai={equipment.tinh_trang_hien_tai}
+                active_repair_request_id={equipment.active_repair_request_id}
+              />
             </div>
           )}
         </div>

@@ -14,6 +14,7 @@ import { Badge } from "@/components/ui/badge"
 import { createSelectionColumn } from "@/components/ui/data-table-selection"
 import { TruncatedText } from "@/components/ui/truncated-text"
 import type { Equipment } from "@/types/database"
+import { LinkedRequestRowIndicator } from "@/components/equipment-linked-request"
 import {
   formatFullDateToDisplay,
   formatPartialDateToDisplay,
@@ -164,10 +165,18 @@ export function createEquipmentColumns(
           if (!statusValue) {
             return <div className="italic text-muted-foreground">Chưa có dữ liệu</div>
           }
+          const equipment = row.original
           return (
-            <Badge variant={getStatusVariant(statusValue)}>
-              {statusValue}
-            </Badge>
+            <div className="flex items-center gap-1.5">
+              <Badge variant={getStatusVariant(statusValue)}>
+                {statusValue}
+              </Badge>
+              <LinkedRequestRowIndicator
+                equipmentId={equipment.id}
+                tinh_trang_hien_tai={equipment.tinh_trang_hien_tai}
+                active_repair_request_id={equipment.active_repair_request_id}
+              />
+            </div>
           )
         }
 

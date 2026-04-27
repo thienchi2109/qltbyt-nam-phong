@@ -10,7 +10,7 @@ export interface LinkedRequestContextValue {
   close: () => void
 }
 
-const Context = React.createContext<LinkedRequestContextValue | null>(null)
+export const Context = React.createContext<LinkedRequestContextValue | null>(null)
 
 const CLOSED_STATE: LinkedRequestState = {
   open: false,

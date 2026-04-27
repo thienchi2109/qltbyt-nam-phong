@@ -10,6 +10,7 @@ import { StartUsageDialog } from "@/components/start-usage-dialog"
 import { EndUsageDialog } from "@/components/end-usage-dialog"
 import type { Equipment } from "@/types/database"
 import type { TenantBranding } from "@/hooks/use-tenant-branding"
+import { LinkedRequestSheetHost } from "@/components/equipment-linked-request"
 import { useEquipmentContext } from "./_hooks/useEquipmentContext"
 
 // ============================================
@@ -97,6 +98,8 @@ export const EquipmentDialogs = React.memo(function EquipmentDialogs({
         onOpenChange={handleEndUsageClose}
         usageLog={dialogState.endUsageLog}
       />
+
+      <LinkedRequestSheetHost />
     </>
   )
 })
