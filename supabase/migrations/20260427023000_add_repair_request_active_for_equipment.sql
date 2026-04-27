@@ -37,7 +37,23 @@ BEGIN
 
   WITH active AS (
     SELECT
-      r.*,
+      r.id,
+      r.thiet_bi_id,
+      r.ngay_yeu_cau,
+      r.trang_thai,
+      r.mo_ta_su_co,
+      r.hang_muc_sua_chua,
+      r.ngay_mong_muon_hoan_thanh,
+      r.nguoi_yeu_cau,
+      r.ngay_duyet,
+      r.ngay_hoan_thanh,
+      r.nguoi_duyet,
+      r.nguoi_xac_nhan,
+      r.don_vi_thuc_hien,
+      r.ten_don_vi_thue,
+      r.ket_qua_sua_chua,
+      r.ly_do_khong_hoan_thanh,
+      r.chi_phi_sua_chua,
       tb.ten_thiet_bi,
       tb.ma_thiet_bi,
       tb.model,
@@ -88,7 +104,9 @@ BEGIN
             'facility_id', a.thiet_bi_don_vi
           )
         )
-        FROM active a LIMIT 1
+        FROM active a
+        ORDER BY COALESCE(a.ngay_duyet, a.ngay_yeu_cau) DESC, a.id DESC
+        LIMIT 1
       ) END
     )
   INTO v_request
