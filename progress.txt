@@ -72,3 +72,20 @@
   - When authoring meta-docs that mirror CLAUDE.md verify rules, copy verbatim (don't paraphrase) — paraphrasing introduced the "PR-3 only" bug for react-doctor.
   - Memori checkpoint protocol works as intended for granular progress tracking; user audit (react-doctor) caught a missed gate quickly.
 ---
+
+## 2026-04-27 - Issue #338 PR-1b (Phase 1 RPC + index migration + smoke + whitelist) MERGED
+- Slice 2 of 5 per docs/superpowers/plans/2026-04-27-issue-338-execution-slices.md.
+- Merged via `gh pr merge 345 --merge --admin --delete-branch`. Merge SHA on main: 8a34188.
+- Branch commits (now in main): 7110e34 (docs BEGIN/COMMIT convention) → 2cbee78 (RPC migration + smoke SQL initial) → 8e76249 (bot-review fix: explicit column list + outer ORDER BY) → b4a5f79 (whitelist).
+- Live DB write: applied migration `add_repair_request_active_for_equipment` via Supabase MCP (auto-version 20260427023000) on project cdthersvldpnlbvpufrr. Function `public.repair_request_active_for_equipment(integer) RETURNS jsonb` lives, SECURITY DEFINER, search_path=public+pg_temp, GRANT EXECUTE TO authenticated, REVOKE FROM PUBLIC. Composite btree index `idx_yeu_cau_sua_chua_thiet_bi_status (thiet_bi_id, trang_thai)` lives.
+- Smoke 6/6 PASS via TDD-via-SQL-smoke (RED before apply → GREEN after apply). Verification proof: PR #345 issuecomment-4324064203.
+- Verify gates pre-merge on Task 1.4: verify:no-explicit-any pass, typecheck pass (0 errors), focused test:run on src/lib/__tests__/repair-request-deep-link*.test.ts 12/12 pass (5 adoption + 7 unit), react-doctor --diff main 100/100 (1 changed source file, no issues).
+- Bot review pass (4 reviewers: Codex/Devin/cubic/CodeRabbit). 5 inline findings: 4 valid + addressed (line 91 LIMIT 1 ordering by 3-bot consensus + line 56 r.* CodeRabbit Major), 1 deferred-then-resolved (line 102 whitelist landed in Task 1.4 commit b4a5f79).
+- Doc updates persisted on main: plan + spec now have BEGIN/COMMIT migration wrapping convention + explicit column list + outer ORDER BY. Slices doc has corrected slice→task mapping (PR-1b=1.3+1.4 not 1.3+1.4+1.5; PR-3=3.1-3.7 not 3.1-3.6).
+- Learnings:
+  - Open ready-for-review (NOT draft) for review-gated PRs; use do-not-merge label + sticky comment with checklist instead of draft state. Draft state suppresses CodeRabbit/cubic/Devin Review bots.
+  - When 3 bots independently spot the same line, treat as P1 — fix without debate.
+  - Cross-check new migrations against last 15-30 supabase/migrations/ files for security/perf conventions BEFORE applying. Caught the missing BEGIN/COMMIT wrapper this session via 14/15 recent-migration sample.
+  - apply_migration auto-aligns version timestamp with latest if file timestamp < latest live — file shows 20260427023000 even though I picked it manually.
+  - GitHub Actions billing block continues to fail Preview Build & Test for all PRs until user resolves billing; merge with --admin per-PR until then.
+---
