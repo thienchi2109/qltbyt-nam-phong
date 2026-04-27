@@ -74,18 +74,24 @@ import {
 } from '../repair-request-deep-link'
 
 describe('repair-request-deep-link :: active resolver query key', () => {
-  it('returns a stable tuple keyed by equipmentId', () => {
-    expect(buildActiveRepairRequestQueryKey(7)).toEqual([
-      'repair_request_active_for_equipment',
-      { equipmentId: 7 },
-    ])
+  it('returns a stable tuple prefixed by repairKeys.all so mutations invalidate it', () => {
+    expect(buildActiveRepairRequestQueryKey(7)).toEqual(['repair', 'active', 7])
   })
 
   it('encodes a null equipmentId verbatim so callers can disable the query without losing key shape', () => {
     expect(buildActiveRepairRequestQueryKey(null)).toEqual([
-      'repair_request_active_for_equipment',
-      { equipmentId: null },
+      'repair',
+      'active',
+      null,
     ])
+  })
+
+  it('keeps the leading "repair" element identical to repairKeys.all to preserve the invalidation contract', () => {
+    // repairKeys.all is `['repair'] as const` in src/hooks/use-cached-repair.ts.
+    // Mutations call invalidateQueries({ queryKey: ['repair'] }), which prefix-matches
+    // any tuple whose first element is exactly 'repair'.
+    expect(buildActiveRepairRequestQueryKey(7)[0]).toBe('repair')
+    expect(buildActiveRepairRequestQueryKey(null)[0]).toBe('repair')
   })
 })
 
@@ -120,8 +126,16 @@ Expected: 4 new tests fail; the existing tests for `buildRepairRequestCreateInte
 
 export const REPAIR_REQUEST_VIEW_ACTION = 'view'
 
+/**
+ * Canonical TanStack Query key for the active repair request resolver.
+ *
+ * Shape: `["repair", "active", equipmentId]`. The leading `"repair"` element
+ * is intentional — it matches `repairKeys.all` from `@/hooks/use-cached-repair`
+ * so that mutations invalidating `repairKeys.all` (create/update/assign/
+ * complete/delete) automatically invalidate this query family by prefix.
+ */
 export function buildActiveRepairRequestQueryKey(equipmentId: number | null) {
-  return ['repair_request_active_for_equipment', { equipmentId }] as const
+  return ['repair', 'active', equipmentId] as const
 }
 
 export function buildRepairRequestViewHref(requestId: number) {
