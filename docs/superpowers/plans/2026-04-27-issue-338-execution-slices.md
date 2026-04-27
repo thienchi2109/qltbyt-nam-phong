@@ -24,12 +24,14 @@ The umbrella plan is one feature delivered in 3 chunks. Slicing into 5 smaller P
 | PR | Branch | Plan tasks | Scope (one line) | LOC est. | Deploy-safe? | User-visible? |
 |----|--------|-----------|-------------------|----------|--------------|---------------|
 | **PR-1a** | `feat/338-1a-helper-rename` | 1.1, 1.2 | Rename `repair-request-create-intent` → `repair-request-deep-link` + 3 new exports + update 8 importers + rename adoption test | ~150 | ✅ Yes — pure refactor, all old exports preserved | ❌ No |
-| **PR-1b** | `feat/338-1b-rpc-active-for-equipment` | 1.3, 1.4, 1.5 | New RPC `repair_request_active_for_equipment` + composite index migration + smoke SQL (6 scenarios) + RPC whitelist | ~250 (incl. SQL) | ✅ Yes — RPC unused by UI; index additive | ❌ No |
+| **PR-1b** | `feat/338-1b-rpc-active-for-equipment` | 1.3, 1.4 | New RPC `repair_request_active_for_equipment` + composite index migration + smoke SQL (6 scenarios, integral to Task 1.3 TDD via SQL smoke) + RPC whitelist (Task 1.4) | ~250 (incl. SQL) | ✅ Yes — RPC unused by UI; index additive | ❌ No |
 | **PR-2a** | `feat/338-2a-linked-request-core` | 2.1, 2.2, 2.3 | Package foundations: `types.ts`, `strings.ts`, `useActiveRepairRequest` resolver hook, `LinkedRequestContext` + unit tests | ~350 | ✅ Yes — package not imported anywhere; tree-shakable | ❌ No |
 | **PR-2b** | `feat/338-2b-linked-request-shell` | 2.4, 2.5, 2.6, 2.7 | `LinkedRequestButton`, `repairRequestSheetAdapter`, `LinkedRequestSheetHost`, barrel `index.ts` + unit tests | ~450 | ✅ Yes — same as 2a (still no imports) | ❌ No |
-| **PR-3** | `feat/338-3-equipment-integration` | 3.1, 3.2, 3.3, 3.4, 3.5, 3.6 | Mount `LinkedRequestProvider` on page client, place `LinkedRequestSheetHost`, render button in `EquipmentDetailStatusSection`, 7 integration tests (incl. race + N+1 guard), adoption-test extension, `CLAUDE.md` N+1 rule | ~250 | ⚠️ Lights up feature — revert PR to disable | ✅ Yes |
+| **PR-3** | `feat/338-3-equipment-integration` | 3.1, 3.2, 3.3, 3.4, 3.5, 3.6, 3.7 | Mount `LinkedRequestProvider` on page client, place `LinkedRequestSheetHost`, render button in `EquipmentDetailStatusSection`, 7 integration tests (incl. race + N+1 guard), adoption-test extension, `CLAUDE.md` N+1 rule, final verification gates and ship | ~250 | ⚠️ Lights up feature — revert PR to disable | ✅ Yes |
 
-**Total** ≈ 1450 LOC across 5 PRs (matches plan estimate of "3 chunks / 18 TDD tasks").
+**Total** ≈ 1450 LOC across 5 PRs (matches plan estimate of "18 TDD tasks": Chunk 1=4, Chunk 2=7, Chunk 3=7).
+
+> **Correction (2026-04-27, post PR-1a merge):** an earlier draft of this table listed Tasks `1.3, 1.4, 1.5` for PR-1b and `3.1–3.6` for PR-3. The plan actually has 4 tasks in Chunk 1 (Task 1.3 already includes the SQL smoke as TDD) and 7 tasks in Chunk 3 (3.7 = final verification gates and ship). Mapping is now task-numbering accurate.
 
 ---
 
