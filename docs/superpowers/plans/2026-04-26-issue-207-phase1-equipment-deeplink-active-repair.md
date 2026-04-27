@@ -446,6 +446,10 @@ The full file is reproduced below for convenience. Do not paraphrase.
 ```sql
 -- supabase/migrations/<timestamp>_add_repair_request_active_for_equipment.sql
 -- Issue #338 (umbrella #207): introduce active-repair resolver per equipment.
+-- Rollback: DROP FUNCTION public.repair_request_active_for_equipment(INT);
+--           DROP INDEX IF EXISTS public.idx_yeu_cau_sua_chua_thiet_bi_status;
+
+BEGIN;
 
 CREATE OR REPLACE FUNCTION public.repair_request_active_for_equipment(
   p_thiet_bi_id INT
@@ -545,6 +549,8 @@ REVOKE EXECUTE ON FUNCTION public.repair_request_active_for_equipment(INT) FROM 
 
 CREATE INDEX IF NOT EXISTS idx_yeu_cau_sua_chua_thiet_bi_status
   ON public.yeu_cau_sua_chua (thiet_bi_id, trang_thai);
+
+COMMIT;
 ```
 
 - [ ] **Step 1.3.4: Apply the migration via Supabase MCP `apply_migration`** (project `cdthersvldpnlbvpufrr`). Pass the migration name (without timestamp) and the full SQL body. Expected: success without errors.

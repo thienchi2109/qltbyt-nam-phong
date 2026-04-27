@@ -496,7 +496,8 @@ Stories implemented in this order; each one starts red and ends green before the
 ## Migration & rollback
 
 - Forward migration: new file under `supabase/migrations/<timestamp>_add_repair_request_active_for_equipment.sql`. Applied via Supabase MCP `apply_migration` (no CLI per CLAUDE.md).
-- Rollback: `DROP FUNCTION public.repair_request_active_for_equipment(INT);`. RPC is read-only and additive, so a drop is safe at any point; no data state to unwind.
+- **Transaction shape:** wrap the migration body in `BEGIN; ... COMMIT;` so the function and the composite index land atomically (matches the convention used by 14/15 of the most recent migrations from `20260416114022` onward — verified 2026-04-27 against `supabase/migrations/`). Plain `CREATE INDEX` is permitted inside a transaction; do **not** use `CONCURRENTLY` here because it forbids the surrounding transaction.
+- Rollback (manual, after deploy): `DROP INDEX IF EXISTS public.idx_yeu_cau_sua_chua_thiet_bi_status; DROP FUNCTION public.repair_request_active_for_equipment(INT);`. RPC is read-only and additive, so the drop is safe at any point; no data state to unwind. The full rollback statement is also embedded as a header comment in the migration file for in-situ reference.
 - Frontend rollback: revert the FE PR. The orphan RPC, allowed-functions entry, and helper additions are all inert without the UI consumers and can be removed in a follow-up cleanup if desired.
 
 ## Open questions
