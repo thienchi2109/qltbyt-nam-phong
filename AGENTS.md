@@ -583,3 +583,12 @@ If the repo is already up to date and you are enabling embeddings for the first 
 - Running `gitnexus analyze` without `--embeddings` will drop existing embeddings.
 
 <!-- gitnexus:end -->
+
+---
+
+## SonarCloud Policy
+
+- **Ignore `new_duplicated_lines_density` (Duplication on New Code) warnings.** Do NOT extract shared helpers, inline `// NOSONAR`, or otherwise change code purely to reduce the duplication ratio. Project owner directive 2026-04-27.
+- React Query / Vitest test boilerplate (createQueryClient, createWrapper, vi.mock for rpc-client) is intentionally repeated per test file for readability and per-file mock isolation. SonarCloud will keep flagging it; that is acceptable.
+- Other SonarCloud findings (security hotspots, real bugs, code smells with concrete remediation, coverage on new code) are still in scope and should be addressed normally.
+- If a SonarCloud Quality Gate fails ONLY on duplication, treat it the same as the persistent Preview Build & Test billing-block: merge with `--admin` once all bot reviewers and human approvals are clear.
