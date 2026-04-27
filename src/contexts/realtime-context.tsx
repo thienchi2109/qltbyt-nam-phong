@@ -99,8 +99,10 @@ export function RealtimeProvider({ children }: RealtimeProviderProps) {
         break
 
       case 'yeu_cau_sua_chua':
-        // Repair request changes
+        // Repair request changes — also invalidate equipment because active_repair_request_id
+        // is derived from yeu_cau_sua_chua (LATERAL JOIN in equipment_list_enhanced).
         debouncedInvalidate(repairKeys.all) // ['repair'] - invalidates all repair queries
+        debouncedInvalidate(equipmentKeys.all) // ['equipment'] - active_repair_request_id may change
         debouncedInvalidate(dashboardStatsKeys.all) // ['dashboard-stats']
         debouncedInvalidate(['reports'])
         break

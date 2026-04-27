@@ -4,6 +4,7 @@ import * as React from "react"
 import { useQuery, useQueryClient, keepPreviousData } from "@tanstack/react-query"
 import { callRpc } from "@/lib/rpc-client"
 import { useActiveUsageLogs } from "@/hooks/use-usage-logs"
+import { useIsLinkedRequestActive } from "@/components/equipment-linked-request/useIsLinkedRequestActive"
 import type { Equipment } from "../types"
 import type { FilterBottomSheetData, FacilityOption, EquipmentListResponse } from "../types"
 
@@ -97,6 +98,7 @@ export function useEquipmentData(params: UseEquipmentDataParams): UseEquipmentDa
   } = params
 
   const queryClient = useQueryClient()
+  const isLinkedRequestActive = useIsLinkedRequestActive()
 
   // Computed: should we fetch data based on tenant/facility selection
   // For regional_leader, require facility selection before fetching
@@ -188,7 +190,9 @@ export function useEquipmentData(params: UseEquipmentDataParams): UseEquipmentDa
       return result
     },
     placeholderData: keepPreviousData,
-    staleTime: 120_000,
+    // Tighten staleTime when linked-request feature is active so the Wrench
+    // icon appears/disappears quickly after repair request changes.
+    staleTime: isLinkedRequestActive ? 15_000 : 120_000,
     gcTime: 10 * 60_000,
     refetchOnWindowFocus: false,
   })
