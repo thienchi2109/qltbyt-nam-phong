@@ -80,8 +80,12 @@ src/components/equipment-linked-request/  (new shared package)
 ```ts
 export const REPAIR_REQUEST_VIEW_ACTION = 'view'
 
+// Shape: ['repair', 'active', equipmentId]. Leading 'repair' element matches
+// repairKeys.all from @/hooks/use-cached-repair so existing mutation
+// invalidations subsume this query family by prefix-match (TanStack Query v5
+// compares array elements element-wise via Object.is).
 export function buildActiveRepairRequestQueryKey(equipmentId: number | null) {
-  return ['repair_request_active_for_equipment', { equipmentId }] as const
+  return ['repair', 'active', equipmentId] as const
 }
 
 // Phase 1: not consumed by route sync yet, but stable for future bookmarkable URL story.
@@ -422,7 +426,7 @@ All tests are written before the implementation per Ralph contract. Tools: `vite
 `src/lib/__tests__/repair-request-deep-link.test.ts`
 
 - `buildRepairRequestCreateIntentHref` — back-compat with renamed file (existing assertions preserved).
-- `buildActiveRepairRequestQueryKey` — shape `['repair_request_active_for_equipment', { equipmentId }]`; null equipmentId case.
+- `buildActiveRepairRequestQueryKey` — shape `['repair', 'active', equipmentId]` (prefix-match against `repairKeys.all`); null equipmentId case + leading-prefix invariant.
 - `buildRepairRequestViewHref` — query string format, integer requestId only.
 
 `src/components/equipment-linked-request/__tests__/strings.test.ts`

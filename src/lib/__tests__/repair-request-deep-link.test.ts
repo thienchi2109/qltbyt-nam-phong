@@ -32,18 +32,25 @@ describe('buildRepairRequestsByEquipmentHref', () => {
 })
 
 describe('repair-request-deep-link :: active resolver query key', () => {
-  it('returns a stable tuple keyed by equipmentId', () => {
-    expect(buildActiveRepairRequestQueryKey(7)).toEqual([
-      'repair_request_active_for_equipment',
-      { equipmentId: 7 },
-    ])
+  it('returns a stable tuple prefixed by repairKeys.all so mutations invalidate it', () => {
+    expect(buildActiveRepairRequestQueryKey(7)).toEqual(['repair', 'active', 7])
   })
 
   it('encodes a null equipmentId verbatim so callers can disable the query without losing key shape', () => {
     expect(buildActiveRepairRequestQueryKey(null)).toEqual([
-      'repair_request_active_for_equipment',
-      { equipmentId: null },
+      'repair',
+      'active',
+      null,
     ])
+  })
+
+  it('keeps the leading "repair" element identical to repairKeys.all to preserve the invalidation contract', () => {
+    // repairKeys.all is `['repair'] as const` in src/hooks/use-cached-repair.ts.
+    // Mutations call invalidateQueries({ queryKey: ['repair'] }), which prefix-matches
+    // any tuple whose first element is exactly 'repair'. Hard-pin the prefix here so
+    // a regression in either file is caught by this test family alone.
+    expect(buildActiveRepairRequestQueryKey(7)[0]).toBe('repair')
+    expect(buildActiveRepairRequestQueryKey(null)[0]).toBe('repair')
   })
 })
 

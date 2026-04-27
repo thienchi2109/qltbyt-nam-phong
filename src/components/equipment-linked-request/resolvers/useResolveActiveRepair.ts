@@ -13,8 +13,16 @@ export type UseResolveActiveRepairOptions = {
  * the dedicated RPC. Caller is responsible for status-gating; this hook only
  * checks the trivial `equipmentId != null` precondition.
  *
- * Mutations elsewhere (create/update/assign/complete/delete) all invalidate
- * `repairKeys.all`, which subsumes this query's key.
+ * Cache invalidation contract: the query key is built by
+ * `buildActiveRepairRequestQueryKey`, which returns `["repair", "active", id]`.
+ * That tuple is prefix-matched by `repairKeys.all = ["repair"]`, so the five
+ * existing repair mutations (create, update, assign, complete, delete) which
+ * call `invalidateQueries({ queryKey: repairKeys.all })` automatically
+ * invalidate this hook's cache without any per-key wiring. The contract is
+ * pinned by the prefix tests in
+ * `src/lib/__tests__/repair-request-deep-link.test.ts` and the mutation
+ * invalidation suite in
+ * `src/hooks/__tests__/use-cached-repair.invalidation.test.ts`.
  */
 export function useResolveActiveRepair(opts: UseResolveActiveRepairOptions) {
   return useQuery<ActiveRepairResult>({
