@@ -5,7 +5,11 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { getCoreRowModel, useReactTable } from "@tanstack/react-table"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
-import { LinkedRequestProvider, LinkedRequestSheetHost } from "@/components/equipment-linked-request"
+import {
+  LinkedRequestProvider,
+  LinkedRequestSheetHost,
+  useLinkedRequest,
+} from "@/components/equipment-linked-request"
 import { createEquipmentColumns } from "@/components/equipment/equipment-table-columns"
 import { MobileEquipmentListItem } from "@/components/mobile-equipment-list-item"
 import type { Equipment } from "@/types/database"
@@ -124,6 +128,26 @@ function renderLinkedRequestHarness(
       </QueryClientProvider>,
     ),
   }
+}
+
+function ProgrammaticOpenHarness({
+  equipment,
+  openEquipmentId,
+  onShowDetails = vi.fn(),
+}: {
+  equipment: Equipment
+  openEquipmentId: number | null
+  onShowDetails?: (equipment: Equipment) => void
+}) {
+  const linked = useLinkedRequest()
+
+  React.useEffect(() => {
+    if (openEquipmentId !== null) {
+      linked.openRepair(openEquipmentId)
+    }
+  }, [linked, openEquipmentId])
+
+  return <DesktopHarness equipment={equipment} onShowDetails={onShowDetails} />
 }
 
 describe("equipment row linked request integration", () => {
@@ -297,5 +321,47 @@ describe("equipment row linked request integration", () => {
     })
 
     expect(await screen.findByTestId("adapter-request-id")).toHaveTextContent("8002")
+  })
+
+  it("switches to the next equipment request without stale bleed when the sheet stays open", async () => {
+    mockCallRpc
+      .mockResolvedValueOnce({
+        active_count: 1,
+        request: { id: 7001, thiet_bi_id: 501 },
+      })
+      .mockResolvedValueOnce({
+        active_count: 1,
+        request: { id: 8002, thiet_bi_id: 502 },
+      })
+
+    const secondEquipment: Equipment = {
+      ...baseEquipment,
+      id: 502,
+      ma_thiet_bi: "TB-502",
+      active_repair_request_id: 8002,
+    }
+
+    const view = renderLinkedRequestHarness(
+      <ProgrammaticOpenHarness equipment={baseEquipment} openEquipmentId={501} />,
+    )
+
+    expect(await screen.findByTestId("adapter-request-id")).toHaveTextContent("7001")
+
+    view.rerender(
+      <QueryClientProvider client={view.client}>
+        <LinkedRequestProvider>
+          <ProgrammaticOpenHarness equipment={secondEquipment} openEquipmentId={502} />
+          <LinkedRequestSheetHost />
+        </LinkedRequestProvider>
+      </QueryClientProvider>,
+    )
+
+    await waitFor(() => {
+      expect(screen.getByTestId("adapter-request-id")).toHaveTextContent("8002")
+    })
+    expect(mockCallRpc).toHaveBeenNthCalledWith(2, expect.objectContaining({
+      fn: "repair_request_active_for_equipment",
+      args: { p_thiet_bi_id: 502 },
+    }))
   })
 })
