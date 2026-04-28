@@ -10,5 +10,6 @@
 export { LinkedRequestProvider, useLinkedRequest } from './LinkedRequestContext'
 export type { LinkedRequestContextValue } from './LinkedRequestContext'
 export { LinkedRequestRowIndicator } from './LinkedRequestRowIndicator'
+export { LinkedRequestSheetShell } from './LinkedRequestSheetShell'
 export { LinkedRequestSheetHost } from './LinkedRequestSheetHost'
 export type { LinkedRequestKind, LinkedRequestState, ActiveRepairResult } from './types'

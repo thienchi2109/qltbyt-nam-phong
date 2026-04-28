@@ -531,6 +531,8 @@ git pull --rebase && git push
 
 Per-row indicators that depend on aggregated business state must be backed by aggregate columns on `equipment_list_enhanced`, never by per-row resolver RPCs. `LinkedRequestRowIndicator` is the reference pattern: it reads `equipment.active_repair_request_id` from row data and renders synchronously without calling `callRpc` or `useResolveActiveRepair`. The resolver hook is reserved for click-time fetches in `LinkedRequestSheetHost`, where only one linked request can be open at a time.
 
+For linked-request side sheets, the host owns the modal/sheet shell. Loading, error, and resolved states must render inside the same shared shell (`LinkedRequestSheetShell`) so first-open transitions do not unmount one sheet and mount another. Embedded detail views such as `RepairRequestsDetailView` must support content-only rendering when used inside that host-owned shell.
+
 ## SQL Code Generation Checklist
 
 Before finalizing any data-access code, verify each item:

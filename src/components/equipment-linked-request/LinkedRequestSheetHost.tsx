@@ -3,16 +3,12 @@
 import * as React from 'react'
 import dynamic from 'next/dynamic'
 import { Button } from '@/components/ui/button'
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetTitle,
-} from '@/components/ui/sheet'
+import { SheetDescription, SheetTitle } from '@/components/ui/sheet'
 import { toast } from '@/hooks/use-toast'
 import { useLinkedRequest } from './LinkedRequestContext'
 import { useResolveActiveRepair } from './resolvers/useResolveActiveRepair'
 import type { RepairRequestSheetAdapterProps } from './adapters/repairRequestSheetAdapter'
+import { LinkedRequestSheetShell } from './LinkedRequestSheetShell'
 import { STRINGS } from './strings'
 
 const RepairRequestSheetAdapter = dynamic<RepairRequestSheetAdapterProps>(
@@ -94,10 +90,8 @@ export function LinkedRequestSheetHost() {
     )
 
   return (
-    <Sheet open={enabled} onOpenChange={(open) => !open && close()}>
-      <SheetContent side="right" className="w-full sm:max-w-xl md:max-w-2xl lg:max-w-3xl p-0">
-        {content}
-      </SheetContent>
-    </Sheet>
+    <LinkedRequestSheetShell open={enabled} onClose={close}>
+      {content}
+    </LinkedRequestSheetShell>
   )
 }
