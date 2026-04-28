@@ -29,6 +29,9 @@ readonly LOCK_FILE="${BACKUP_LOCK_FILE:-/var/run/qltbyt-backup.lock}"
 readonly HOSTNAME_SHORT="$(hostname -s 2>/dev/null || echo unknown)"
 readonly RUN_ID="$(date -u +%Y%m%dT%H%M%SZ)-$$"
 
+BACKUP_REMOTE_PATH=""
+BACKUP_SIZE_HUMAN=""
+
 # ─── Logging helpers ────────────────────────────────────────────────────
 # Log to file if writable, else stderr. Never fail because of logging.
 log() {
@@ -92,6 +95,7 @@ notify_success() {
 die() {
   local code="$1"; shift
   local msg="$*"
+  DIE_NOTIFIED=1
   log "FATAL($code): $msg"
   notify_failure "$code" "$msg"
   exit "$code"
@@ -163,10 +167,23 @@ run_backup() {
   log "START dump → ${remote_path}"
 
   # Streaming pipeline. pipefail (set above) makes either-side failure visible.
+  local pipe_status=()
   if ! pg_dump -Fc --no-owner --no-privileges "${schema_args[@]}" "$DATABASE_URL" \
        | rclone rcat --retries 3 --retries-sleep 30s "$remote_path"; then
+    pipe_status=("${PIPESTATUS[@]}")
+    local pg_dump_rc="${pipe_status[0]:-1}"
+    local rclone_rc="${pipe_status[1]:-1}"
     log "dump|upload failed for ${remote_path}"
-    die 20 "pg_dump or upload failed"
+    log "pipeline rc: pg_dump=${pg_dump_rc} rclone=${rclone_rc}"
+    if (( rclone_rc != 0 && ( pg_dump_rc == 0 || pg_dump_rc == 141 ) )); then
+      die 20 "upload failed (rclone=${rclone_rc}, pg_dump=${pg_dump_rc})"
+    elif (( pg_dump_rc != 0 && rclone_rc != 0 )); then
+      die 20 "pg_dump and upload failed (pg_dump=${pg_dump_rc}, rclone=${rclone_rc})"
+    elif (( pg_dump_rc != 0 )); then
+      die 20 "pg_dump failed (rc=${pg_dump_rc})"
+    else
+      die 20 "upload failed (rclone=${rclone_rc})"
+    fi
   fi
 
   local size_bytes
@@ -181,7 +198,8 @@ run_backup() {
   local size_human
   size_human="$(numfmt --to=iec --suffix=B "$size_bytes" 2>/dev/null || echo "${size_bytes}B")"
   log "OK upload size=${size_bytes} (${size_human})"
-  printf '%s|%s\n' "$remote_path" "$size_human"
+  BACKUP_REMOTE_PATH="$remote_path"
+  BACKUP_SIZE_HUMAN="$size_human"
 }
 
 # ─── Stage: rotate (non-fatal on failure) ───────────────────────────────
@@ -206,15 +224,12 @@ main() {
   load_env
   preflight
 
-  local result remote_path size_human
-  result="$(run_backup)"
-  remote_path="${result%|*}"
-  size_human="${result##*|}"
+  run_backup
 
   rotate
 
-  notify_success "$size_human"
-  log "DONE ${remote_path} ${size_human}"
+  notify_success "$BACKUP_SIZE_HUMAN"
+  log "DONE ${BACKUP_REMOTE_PATH} ${BACKUP_SIZE_HUMAN}"
 }
 
 main "$@"
