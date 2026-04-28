@@ -184,3 +184,49 @@
   - For `equipment_list_enhanced`, preserve explicit JSON payload construction when adding computed columns so the API contract is reviewable and avoids wildcard leakage.
   - Realtime invalidation for active repair status belongs on `yeu_cau_sua_chua` changes and must invalidate `['equipment_list_enhanced']` so PR-3b UI can stay deploy-safe without per-row RPC calls.
 ---
+
+## 2026-04-28 - Issue #338 PR-3b (Phase 1 in-row wrench icon + linked-request provider decouple) MERGED
+- Slice PR-3b per docs/superpowers/plans/2026-04-27-issue-338-execution-slices.md. This landed the final Phase 1 UI slice and closed Issue #338.
+- Merged via `gh pr merge 351 --squash --admin --delete-branch`. Merge SHA on main: `9857210`.
+- Scope stayed inside PR-3b:
+  - added `LinkedRequestRowIndicator` for equipment desktop rows and mobile cards
+  - removed `LinkedRequestProvider` coupling to `EquipmentDialogContext`
+  - hoisted provider / mounted `LinkedRequestSheetHost` in the equipment page flow
+  - added integration coverage for desktop/mobile icon-to-sheet behavior
+  - hardened adoption rules so row indicator stays aggregate-data-only and does not introduce per-row RPC/N+1 behavior
+- Review fixes merged before land:
+  - import regrouping in `EquipmentPageClient.tsx` and `equipment-dialogs.tsx`
+  - adoption test cleanup in `repair-request-deep-link.adoption.test.ts`
+  - `readonly` props tightening in `LinkedRequestRowIndicator.tsx`
+  - Sonar harness follow-up: keyboard handler added to the test wrapper `div role=\"button\"` to satisfy `typescript:S1082`
+- Files added/changed on main:
+  - `src/components/equipment-linked-request/LinkedRequestRowIndicator.tsx`
+  - `src/components/equipment-linked-request/__tests__/LinkedRequestRowIndicator.test.tsx`
+  - `src/components/equipment-linked-request/LinkedRequestContext.tsx`
+  - `src/components/equipment-linked-request/__tests__/LinkedRequestContext.test.tsx`
+  - `src/app/(app)/equipment/_components/EquipmentPageClient.tsx`
+  - `src/app/(app)/equipment/equipment-dialogs.tsx`
+  - `src/components/equipment/equipment-table-columns.tsx`
+  - `src/components/mobile-equipment-list-item.tsx`
+  - `src/app/(app)/equipment/__tests__/EquipmentRowLinkedRequest.integration.test.tsx`
+  - `src/app/(app)/equipment/__tests__/equipment-content.desktop-interactions.test.tsx`
+  - `src/app/(app)/equipment/__tests__/equipment-dialogs.page-consolidation.test.tsx`
+  - `src/components/__tests__/mobile-equipment-list-item.test.tsx`
+  - `src/lib/__tests__/repair-request-deep-link.adoption.test.ts`
+  - `CLAUDE.md`
+- Verification before merge:
+  - `verify:no-explicit-any`: pass
+  - `typecheck`: pass
+  - focused Vitest suite for linked-request desktop/mobile/provider/adoption coverage: pass
+  - `react-doctor --diff main`: 100/100
+  - `git diff --check`: pass
+- Review/bot closeout:
+  - all review threads resolved before merge
+  - SonarCloud passed after the keyboard-handler harness fix
+  - CodeRabbit / Devin / cubic / GitGuardian / Vercel all passed by merge time
+  - `Preview Build & Test` still failed with the known preview/billing-noise baseline; merged with `--admin`
+- Learnings:
+  - Row-level “open active repair” affordances must stay fully data-driven from `equipment_list_enhanced`; do not reintroduce resolver or RPC work per row.
+  - When a test harness adds click behavior to a visible non-interactive wrapper, add the matching keyboard handler so lint/Sonar semantics stay aligned with accessibility expectations.
+  - Phase 1 for Issue #338 is complete only after PR-2b, PR-3a, and PR-3b are all on `main`; `Closes #338` on the final PR is the clean tracker closeout path.
+---
