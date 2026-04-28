@@ -17,6 +17,7 @@ interface RepairRequestsDetailViewProps {
   onClose: () => void
   contentHeader?: React.ReactNode
   footerContent?: React.ReactNode
+  renderSheetShell?: boolean
 }
 
 const SAFE_HISTORY_ERROR_MESSAGE = "Không thể tải lịch sử thay đổi lúc này. Vui lòng thử lại sau."
@@ -45,6 +46,7 @@ export const RepairRequestsDetailView = React.memo(function RepairRequestsDetail
   onClose,
   contentHeader,
   footerContent,
+  renderSheetShell = true,
 }: RepairRequestsDetailViewProps) {
   const hasFooterContent = footerContent !== null && footerContent !== undefined
   const [activeTab, setActiveTab] = React.useState("details")
@@ -83,39 +85,47 @@ export const RepairRequestsDetailView = React.memo(function RepairRequestsDetail
 
   if (!requestToView) return null
 
+  const content = (
+    <div className="flex h-full flex-col">
+      <div className="p-4 border-b">
+        <SheetTitle>Chi tiết yêu cầu sửa chữa</SheetTitle>
+        <SheetDescription>
+          Thông tin chi tiết và lịch sử của yêu cầu sửa chữa thiết bị
+        </SheetDescription>
+      </div>
+      {contentHeader}
+      <RepairRequestsDetailTabs
+        request={requestToView}
+        historyEntries={historyEntries}
+        isLoadingHistory={historyQuery.isLoading}
+        isHistoryError={historyQuery.isError}
+        historyErrorMessage={historyErrorMessage}
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
+      />
+      <div
+        className={
+          hasFooterContent
+            ? "p-4 border-t flex items-center justify-between gap-3"
+            : "p-4 border-t flex justify-end"
+        }
+      >
+        {hasFooterContent ? <div className="min-w-0">{footerContent}</div> : null}
+        <Button variant="outline" onClick={onClose}>
+          Đóng
+        </Button>
+      </div>
+    </div>
+  )
+
+  if (!renderSheetShell) {
+    return content
+  }
+
   return (
     <Sheet open={!!requestToView} onOpenChange={(open) => !open && onClose()}>
       <SheetContent side="right" className="w-full sm:max-w-xl md:max-w-2xl lg:max-w-3xl p-0">
-        <div className="flex h-full flex-col">
-          <div className="p-4 border-b">
-            <SheetTitle>Chi tiết yêu cầu sửa chữa</SheetTitle>
-            <SheetDescription>
-              Thông tin chi tiết và lịch sử của yêu cầu sửa chữa thiết bị
-            </SheetDescription>
-          </div>
-          {contentHeader}
-          <RepairRequestsDetailTabs
-            request={requestToView}
-            historyEntries={historyEntries}
-            isLoadingHistory={historyQuery.isLoading}
-            isHistoryError={historyQuery.isError}
-            historyErrorMessage={historyErrorMessage}
-            activeTab={activeTab}
-            onTabChange={setActiveTab}
-          />
-          <div
-            className={
-              hasFooterContent
-                ? "p-4 border-t flex items-center justify-between gap-3"
-                : "p-4 border-t flex justify-end"
-            }
-          >
-            {hasFooterContent ? <div className="min-w-0">{footerContent}</div> : null}
-            <Button variant="outline" onClick={onClose}>
-              Đóng
-            </Button>
-          </div>
-        </div>
+        {content}
       </SheetContent>
     </Sheet>
   )

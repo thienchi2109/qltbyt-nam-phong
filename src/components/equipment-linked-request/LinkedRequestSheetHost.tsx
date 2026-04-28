@@ -20,7 +20,7 @@ const RepairRequestSheetAdapter = dynamic<RepairRequestSheetAdapterProps>(
   { ssr: false },
 )
 
-function LinkedRequestResolverSheet({
+function LinkedRequestResolverContent({
   state,
   onClose,
 }: {
@@ -30,25 +30,21 @@ function LinkedRequestResolverSheet({
   const isError = state === 'error'
 
   return (
-    <Sheet open onOpenChange={(open) => !open && onClose()}>
-      <SheetContent side="right" className="w-full sm:max-w-md p-0">
-        <div className="flex h-full flex-col">
-          <div className="p-4 border-b" role={isError ? 'alert' : 'status'} aria-live="polite">
-            <SheetTitle>
-              {isError ? STRINGS.resolveErrorTitle : STRINGS.resolveLoadingTitle}
-            </SheetTitle>
-            <SheetDescription>
-              {isError ? STRINGS.resolveErrorDescription : STRINGS.resolveLoadingDescription}
-            </SheetDescription>
-          </div>
-          <div className="mt-auto p-4 border-t flex justify-end">
-            <Button variant="outline" onClick={onClose}>
-              Đóng
-            </Button>
-          </div>
-        </div>
-      </SheetContent>
-    </Sheet>
+    <div className="flex h-full flex-col">
+      <div className="p-4 border-b" role={isError ? 'alert' : 'status'} aria-live="polite">
+        <SheetTitle>
+          {isError ? STRINGS.resolveErrorTitle : STRINGS.resolveLoadingTitle}
+        </SheetTitle>
+        <SheetDescription>
+          {isError ? STRINGS.resolveErrorDescription : STRINGS.resolveLoadingDescription}
+        </SheetDescription>
+      </div>
+      <div className="mt-auto p-4 border-t flex justify-end">
+        <Button variant="outline" onClick={onClose}>
+          Đóng
+        </Button>
+      </div>
+    </div>
   )
 }
 
@@ -79,23 +75,29 @@ export function LinkedRequestSheetHost() {
     }
   }, [enabled, data, close])
 
-  if (!enabled || !data || data.active_count === 0 || !data.request) {
-    if (enabled && query.isError) {
-      return <LinkedRequestResolverSheet state="error" onClose={close} />
-    }
-
-    if (enabled && (query.isLoading || !data)) {
-      return <LinkedRequestResolverSheet state="loading" onClose={close} />
-    }
-
+  if (!enabled) {
     return null
   }
 
+  const content =
+    query.isError ? (
+      <LinkedRequestResolverContent state="error" onClose={close} />
+    ) : !data || data.active_count === 0 || !data.request ? (
+      <LinkedRequestResolverContent state="loading" onClose={close} />
+    ) : (
+      <RepairRequestSheetAdapter
+        request={data.request}
+        activeCount={data.active_count}
+        onClose={close}
+        renderSheetShell={false}
+      />
+    )
+
   return (
-    <RepairRequestSheetAdapter
-      request={data.request}
-      activeCount={data.active_count}
-      onClose={close}
-    />
+    <Sheet open={enabled} onOpenChange={(open) => !open && close()}>
+      <SheetContent side="right" className="w-full sm:max-w-xl md:max-w-2xl lg:max-w-3xl p-0">
+        {content}
+      </SheetContent>
+    </Sheet>
   )
 }

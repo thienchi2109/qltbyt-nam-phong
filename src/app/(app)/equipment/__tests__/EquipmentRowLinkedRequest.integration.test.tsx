@@ -246,6 +246,7 @@ describe("equipment row linked request integration", () => {
     }))
     expect(onShowDetails).not.toHaveBeenCalled()
 
+    await user.click(await screen.findByRole("button", { name: "close linked request" }))
     await user.click(screen.getByText("TB-501"))
     expect(onShowDetails).toHaveBeenCalledWith(baseEquipment)
   })

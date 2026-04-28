@@ -12,6 +12,7 @@ export interface RepairRequestSheetAdapterProps {
   request: RepairRequestWithEquipment
   activeCount: number
   onClose: () => void
+  renderSheetShell?: boolean
 }
 
 /**
@@ -27,6 +28,7 @@ export default function RepairRequestSheetAdapter({
   request,
   activeCount,
   onClose,
+  renderSheetShell = true,
 }: RepairRequestSheetAdapterProps) {
   const showMultiActiveAlert = activeCount > 1
   const openInRepairRequestsHref = buildRepairRequestsByEquipmentHref(request.thiet_bi_id)
@@ -50,6 +52,7 @@ export default function RepairRequestSheetAdapter({
       onClose={onClose}
       contentHeader={contentHeader}
       footerContent={footerContent}
+      renderSheetShell={renderSheetShell}
     />
   )
 }

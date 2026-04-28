@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const mockCallRpc = vi.fn()
 const mockToast = vi.fn()
+let sheetInstanceCounter = 0
 
 vi.mock('@/lib/rpc-client', () => ({
   callRpc: (...args: unknown[]) => mockCallRpc(...args),
@@ -12,6 +13,46 @@ vi.mock('@/lib/rpc-client', () => ({
 
 vi.mock('@/hooks/use-toast', () => ({
   toast: (args: unknown) => mockToast(args),
+}))
+
+vi.mock('@/components/ui/sheet', () => ({
+  Sheet: ({
+    open,
+    children,
+  }: {
+    open: boolean
+    onOpenChange?: (open: boolean) => void
+    children: React.ReactNode
+  }) => {
+    const instanceId = React.useRef(++sheetInstanceCounter)
+    if (!open) return null
+
+    return (
+      <div data-testid="sheet-root" data-sheet-instance={String(instanceId.current)}>
+        {children}
+      </div>
+    )
+  },
+  SheetContent: ({
+    children,
+    ...props
+  }: React.HTMLAttributes<HTMLDivElement> & { children: React.ReactNode }) => (
+    <div data-testid="sheet-content" {...props}>
+      {children}
+    </div>
+  ),
+  SheetTitle: ({
+    children,
+    ...props
+  }: React.HTMLAttributes<HTMLHeadingElement> & { children: React.ReactNode }) => (
+    <h2 {...props}>{children}</h2>
+  ),
+  SheetDescription: ({
+    children,
+    ...props
+  }: React.HTMLAttributes<HTMLParagraphElement> & { children: React.ReactNode }) => (
+    <p {...props}>{children}</p>
+  ),
 }))
 
 // Stub the lazy adapter to a synchronous component so we can read its props.
@@ -124,6 +165,7 @@ describe('LinkedRequestSheetHost', () => {
     vi.clearAllMocks()
     mockCallRpc.mockReset()
     mockToast.mockReset()
+    sheetInstanceCounter = 0
   })
 
   it('renders nothing when state is closed', () => {
@@ -181,5 +223,31 @@ describe('LinkedRequestSheetHost', () => {
       expect(mockToast).toHaveBeenCalledWith({ title: 'Yêu cầu đã được hoàn thành' })
     })
     expect(screen.queryByTestId('adapter-stub')).toBeNull()
+  })
+
+  it('keeps the same sheet shell mounted while first-open loading resolves to detail', async () => {
+    let resolveActiveRepair: ((value: unknown) => void) | null = null
+    mockCallRpc.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          resolveActiveRepair = resolve
+        }),
+    )
+
+    renderHost({ equipmentId: 11 })
+
+    expect(await screen.findByText('Đang mở yêu cầu sửa chữa')).toBeInTheDocument()
+    const initialSheetInstance = screen.getByTestId('sheet-root').getAttribute('data-sheet-instance')
+
+    resolveActiveRepair?.({
+      active_count: 1,
+      request: { id: 555, thiet_bi_id: 11 },
+    })
+
+    expect(await screen.findByTestId('adapter-stub')).toBeInTheDocument()
+    expect(screen.getByTestId('sheet-root')).toHaveAttribute(
+      'data-sheet-instance',
+      initialSheetInstance,
+    )
   })
 })
