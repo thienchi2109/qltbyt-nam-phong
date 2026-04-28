@@ -40,6 +40,7 @@ export interface Equipment {
   // tenant/organization
   don_vi?: number | null;
   google_drive_folder_url?: string | null;
+  active_repair_request_id?: number | null;
   // metadata
   created_at?: string;
   updated_at?: string;

@@ -20,6 +20,7 @@ vi.mock('@/hooks/use-usage-logs', () => ({
 
 // Import after mocking
 import { useEquipmentData } from '../_hooks/useEquipmentData'
+import type { Equipment } from '@/types/database'
 import type { UseEquipmentDataParams } from '../_hooks/useEquipmentData'
 
 // Default params for tests - now includes context values that were previously from useFacilityFilter
@@ -120,6 +121,40 @@ describe('useEquipmentData', () => {
 
       expect(result.current.data).toEqual(mockEquipment)
       expect(result.current.total).toBe(2)
+    })
+
+    it('should preserve active repair request id returned by equipment_list_enhanced', async () => {
+      const mockEquipment = [
+        {
+          id: 1,
+          ma_thiet_bi: 'EQ-001',
+          ten_thiet_bi: 'Test Equipment 1',
+          active_repair_request_id: 33801,
+        } satisfies Equipment,
+        {
+          id: 2,
+          ma_thiet_bi: 'EQ-002',
+          ten_thiet_bi: 'Test Equipment 2',
+          active_repair_request_id: null,
+        } satisfies Equipment,
+      ]
+      mockCallRpc.mockImplementation(({ fn }: { fn: string }) => {
+        if (fn === 'equipment_list_enhanced') {
+          return Promise.resolve({ data: mockEquipment, total: 2 })
+        }
+        return Promise.resolve([])
+      })
+
+      const { result } = renderHook(() => useEquipmentData(createDefaultParams()), {
+        wrapper: createWrapper(),
+      })
+
+      await waitFor(() => {
+        expect(result.current.isLoading).toBe(false)
+      })
+
+      expect(result.current.data[0]?.active_repair_request_id).toBe(33801)
+      expect(result.current.data[1]?.active_repair_request_id).toBeNull()
     })
 
     it('should reflect active-only server contract (deleted fixtures excluded upstream)', async () => {
@@ -706,4 +741,3 @@ describe('useEquipmentData', () => {
     })
   })
 })
-

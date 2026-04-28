@@ -82,7 +82,7 @@ export function RealtimeProvider({ children }: RealtimeProviderProps) {
   }
 
   // Handle database changes
-  const handleDatabaseChange = (payload: RealtimePostgresChangesPayload<any>) => {
+  const handleDatabaseChange = (payload: RealtimePostgresChangesPayload<Record<string, unknown>>) => {
     const { table, eventType, new: newRecord, old: oldRecord } = payload
     
     console.log(`[Realtime] ${eventType} on ${table}:`, { newRecord, oldRecord })
@@ -99,8 +99,10 @@ export function RealtimeProvider({ children }: RealtimeProviderProps) {
         break
 
       case 'yeu_cau_sua_chua':
-        // Repair request changes
+        // Repair request changes also affect equipment_list_enhanced.active_repair_request_id.
         debouncedInvalidate(repairKeys.all) // ['repair'] - invalidates all repair queries
+        debouncedInvalidate(['equipment_list_enhanced'])
+        debouncedInvalidate(['equipment'])
         debouncedInvalidate(dashboardStatsKeys.all) // ['dashboard-stats']
         debouncedInvalidate(['reports'])
         break
