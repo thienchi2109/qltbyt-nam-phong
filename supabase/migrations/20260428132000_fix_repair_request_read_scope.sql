@@ -1,7 +1,11 @@
 -- Issue #342: restore tenant guard on repair_request_get and add
 -- role=user fail-closed department scope across repair_request_get,
 -- repair_request_list, and repair_request_active_for_equipment.
--- Rollback: restore the prior function definitions if needed.
+-- Rollback source-of-truth:
+-- - repair_request_get: supabase/migrations/2025-09-15/20250915_ops_rpcs.sql
+--   and supabase/migrations/2025-09-29/20250927_regional_leader_phase4.sql
+-- - repair_request_list: supabase/migrations/20260216141000_fix_report_and_historical_rpc_security_and_types.sql
+-- - repair_request_active_for_equipment: supabase/migrations/20260427023000_add_repair_request_active_for_equipment.sql
 
 BEGIN;
 

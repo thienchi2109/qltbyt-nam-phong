@@ -7,7 +7,7 @@ vi.mock('@/lib/rpc-client', () => ({
   callRpc: (...args: unknown[]) => mockCallRpc(...args),
 }))
 
-import { repairKeys, useRepairRequestDetail } from '../use-cached-repair'
+import { repairKeys, useRepairRequestDetail } from '@/hooks/use-cached-repair'
 import {
   createReactQueryWrapper,
   createTestQueryClient,
