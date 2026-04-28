@@ -29,11 +29,23 @@ function renderIndicator(
   equipment: Pick<Equipment, 'id' | 'ma_thiet_bi' | 'tinh_trang_hien_tai' | 'active_repair_request_id'> = baseEquipment,
   onParentClick = vi.fn(),
 ) {
+  const handleParentKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault()
+      onParentClick()
+    }
+  }
+
   return {
     onParentClick,
     ...render(
       <LinkedRequestProvider>
-        <div role="button" tabIndex={0} onClick={onParentClick}>
+        <div
+          role="button"
+          tabIndex={0}
+          onClick={onParentClick}
+          onKeyDown={handleParentKeyDown}
+        >
           parent
           <LinkedRequestRowIndicator equipment={equipment} />
         </div>
