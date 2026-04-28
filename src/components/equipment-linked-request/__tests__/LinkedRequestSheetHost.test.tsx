@@ -152,6 +152,24 @@ describe('LinkedRequestSheetHost', () => {
     expect(screen.getByTestId('adapter-active-count').textContent).toBe('3')
   })
 
+  it('renders an explicit loading sheet while resolving the active repair request', async () => {
+    mockCallRpc.mockImplementationOnce(() => new Promise(() => {}))
+
+    renderHost({ equipmentId: 11 })
+
+    expect(await screen.findByText('Đang mở yêu cầu sửa chữa')).toBeInTheDocument()
+    expect(screen.getByText('Vui lòng chờ trong giây lát.')).toBeInTheDocument()
+  })
+
+  it('renders an explicit error sheet when the active repair resolver fails', async () => {
+    mockCallRpc.mockRejectedValueOnce(new Error('RPC failed'))
+
+    renderHost({ equipmentId: 11 })
+
+    expect(await screen.findByText('Không thể mở yêu cầu sửa chữa')).toBeInTheDocument()
+    expect(screen.getByText('Vui lòng thử lại từ danh sách thiết bị.')).toBeInTheDocument()
+  })
+
   it('auto-closes and toasts when resolver returns active_count: 0 while open', async () => {
     mockCallRpc.mockResolvedValueOnce({ active_count: 0, request: null })
     renderHost({ equipmentId: 11 })

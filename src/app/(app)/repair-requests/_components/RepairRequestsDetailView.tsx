@@ -15,6 +15,8 @@ import { RepairRequestsDetailTabs } from "./RepairRequestsDetailTabs"
 interface RepairRequestsDetailViewProps {
   requestToView: RepairRequestWithEquipment | null
   onClose: () => void
+  contentHeader?: React.ReactNode
+  footerContent?: React.ReactNode
 }
 
 const SAFE_HISTORY_ERROR_MESSAGE = "Không thể tải lịch sử thay đổi lúc này. Vui lòng thử lại sau."
@@ -41,6 +43,8 @@ function getSafeHistoryErrorMessage(error: unknown) {
 export const RepairRequestsDetailView = React.memo(function RepairRequestsDetailView({
   requestToView,
   onClose,
+  contentHeader,
+  footerContent,
 }: RepairRequestsDetailViewProps) {
   const [activeTab, setActiveTab] = React.useState("details")
 
@@ -88,6 +92,7 @@ export const RepairRequestsDetailView = React.memo(function RepairRequestsDetail
               Thông tin chi tiết và lịch sử của yêu cầu sửa chữa thiết bị
             </SheetDescription>
           </div>
+          {contentHeader}
           <RepairRequestsDetailTabs
             request={requestToView}
             historyEntries={historyEntries}
@@ -97,7 +102,14 @@ export const RepairRequestsDetailView = React.memo(function RepairRequestsDetail
             activeTab={activeTab}
             onTabChange={setActiveTab}
           />
-          <div className="p-4 border-t flex justify-end">
+          <div
+            className={
+              footerContent
+                ? "p-4 border-t flex items-center justify-between gap-3"
+                : "p-4 border-t flex justify-end"
+            }
+          >
+            {footerContent ? <div className="min-w-0">{footerContent}</div> : null}
             <Button variant="outline" onClick={onClose}>
               Đóng
             </Button>

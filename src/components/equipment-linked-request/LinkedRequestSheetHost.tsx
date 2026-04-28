@@ -2,6 +2,13 @@
 
 import * as React from 'react'
 import dynamic from 'next/dynamic'
+import { Button } from '@/components/ui/button'
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetTitle,
+} from '@/components/ui/sheet'
 import { toast } from '@/hooks/use-toast'
 import { useLinkedRequest } from './LinkedRequestContext'
 import { useResolveActiveRepair } from './resolvers/useResolveActiveRepair'
@@ -12,6 +19,38 @@ const RepairRequestSheetAdapter = dynamic<RepairRequestSheetAdapterProps>(
   () => import('./adapters/repairRequestSheetAdapter'),
   { ssr: false },
 )
+
+function LinkedRequestResolverSheet({
+  state,
+  onClose,
+}: {
+  state: 'loading' | 'error'
+  onClose: () => void
+}) {
+  const isError = state === 'error'
+
+  return (
+    <Sheet open onOpenChange={(open) => !open && onClose()}>
+      <SheetContent side="right" className="w-full sm:max-w-md p-0">
+        <div className="flex h-full flex-col">
+          <div className="p-4 border-b" role={isError ? 'alert' : 'status'} aria-live="polite">
+            <SheetTitle>
+              {isError ? STRINGS.resolveErrorTitle : STRINGS.resolveLoadingTitle}
+            </SheetTitle>
+            <SheetDescription>
+              {isError ? STRINGS.resolveErrorDescription : STRINGS.resolveLoadingDescription}
+            </SheetDescription>
+          </div>
+          <div className="mt-auto p-4 border-t flex justify-end">
+            <Button variant="outline" onClick={onClose}>
+              Đóng
+            </Button>
+          </div>
+        </div>
+      </SheetContent>
+    </Sheet>
+  )
+}
 
 /**
  * Mounts the active-request side sheet at page level (sibling of
@@ -41,6 +80,14 @@ export function LinkedRequestSheetHost() {
   }, [enabled, data, close])
 
   if (!enabled || !data || data.active_count === 0 || !data.request) {
+    if (enabled && query.isError) {
+      return <LinkedRequestResolverSheet state="error" onClose={close} />
+    }
+
+    if (enabled && (query.isLoading || !data)) {
+      return <LinkedRequestResolverSheet state="loading" onClose={close} />
+    }
+
     return null
   }
 

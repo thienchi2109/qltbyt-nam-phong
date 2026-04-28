@@ -1,11 +1,12 @@
 'use client'
 
 import * as React from 'react'
+import Link from 'next/link'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { buildRepairRequestsByEquipmentHref } from '@/lib/repair-request-deep-link'
 import { RepairRequestsDetailView } from '@/app/(app)/repair-requests/_components/RepairRequestsDetailView'
 import type { RepairRequestWithEquipment } from '@/app/(app)/repair-requests/types'
-import { STRINGS } from '../strings'
+import { STRINGS } from '@/components/equipment-linked-request/strings'
 
 export interface RepairRequestSheetAdapterProps {
   request: RepairRequestWithEquipment
@@ -29,23 +30,26 @@ export default function RepairRequestSheetAdapter({
 }: RepairRequestSheetAdapterProps) {
   const showMultiActiveAlert = activeCount > 1
   const openInRepairRequestsHref = buildRepairRequestsByEquipmentHref(request.thiet_bi_id)
+  const contentHeader = showMultiActiveAlert ? (
+    <Alert role="alert" variant="destructive" className="mx-4 mt-3">
+      <AlertDescription>{STRINGS.multiActiveAlert(activeCount)}</AlertDescription>
+    </Alert>
+  ) : null
+  const footerContent = (
+    <Link
+      href={openInRepairRequestsHref}
+      className="text-sm font-medium text-primary underline-offset-4 hover:underline"
+    >
+      {STRINGS.footerOpenInRepairRequests}
+    </Link>
+  )
 
   return (
-    <>
-      {showMultiActiveAlert ? (
-        <Alert role="alert" variant="destructive" className="mx-4 mt-3">
-          <AlertDescription>{STRINGS.multiActiveAlert(activeCount)}</AlertDescription>
-        </Alert>
-      ) : null}
-      <RepairRequestsDetailView requestToView={request} onClose={onClose} />
-      <div className="px-4 pb-4 -mt-1">
-        <a
-          href={openInRepairRequestsHref}
-          className="text-sm font-medium text-primary underline-offset-4 hover:underline"
-        >
-          {STRINGS.footerOpenInRepairRequests}
-        </a>
-      </div>
-    </>
+    <RepairRequestsDetailView
+      requestToView={request}
+      onClose={onClose}
+      contentHeader={contentHeader}
+      footerContent={footerContent}
+    />
   )
 }
