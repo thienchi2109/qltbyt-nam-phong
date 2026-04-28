@@ -1,20 +1,16 @@
--- Historical mirror of live-applied migration version 20260427231232.
--- Source: closed PR #348 for Issue #338 PR-3a.
+-- Issue #338 PR-3a follow-up: reassert equipment_list_enhanced contract.
 --
--- Important:
--- - This version already exists in Supabase schema_migrations.
--- - Do NOT apply this migration again via Supabase MCP.
--- - If reviewers find a behavioral bug in this already-live function,
---   fix it with a new forward-only superseding migration instead of editing
---   this historical mirror to pretend live ran different SQL.
+-- This supersedes already-live migration version 20260427231232 after review
+-- found two contract gaps in that historical version:
+-- - payload used wildcard row serialization, silently expanding with future thiet_bi columns
+-- - SECURITY DEFINER grants were not explicitly restricted to authenticated
 --
--- Reason: Issue #338 Phase 1 adds active_repair_request_id to each equipment
--- row so PR-3b can display an in-row Wrench icon without per-row RPC calls.
--- The LATERAL lookup reuses idx_yeu_cau_sua_chua_thiet_bi_status from PR-1b.
+-- Do NOT apply this migration before PR review approval. When approved, apply
+-- it via Supabase MCP apply_migration and then run the smoke SQL in
+-- supabase/tests/equipment_list_enhanced_active_repair_smoke.sql.
 --
--- Rollback pointer: restore the previous equipment_list_enhanced body from
--- supabase/migrations/20260422123000_add_user_department_scope_reads.sql,
--- then re-apply later local migrations that supersede this function.
+-- Rollback: re-apply the previous function body from
+-- supabase/migrations/20260427231232_extend_equipment_list_enhanced_active_repair.sql.
 
 BEGIN;
 
@@ -215,7 +211,43 @@ BEGIN
 
   EXECUTE format(
     'SELECT COALESCE(jsonb_agg(t), ''[]''::jsonb) FROM (
-       SELECT (to_jsonb(tb.*) || jsonb_build_object(
+       SELECT (jsonb_build_object(
+         ''ma_thiet_bi'', tb.ma_thiet_bi,
+         ''ten_thiet_bi'', tb.ten_thiet_bi,
+         ''model'', tb.model,
+         ''serial'', tb.serial,
+         ''cau_hinh_thiet_bi'', tb.cau_hinh_thiet_bi,
+         ''phu_kien_kem_theo'', tb.phu_kien_kem_theo,
+         ''hang_san_xuat'', tb.hang_san_xuat,
+         ''noi_san_xuat'', tb.noi_san_xuat,
+         ''nam_san_xuat'', tb.nam_san_xuat,
+         ''ngay_nhap'', tb.ngay_nhap,
+         ''ngay_dua_vao_su_dung'', tb.ngay_dua_vao_su_dung,
+         ''nguon_kinh_phi'', tb.nguon_kinh_phi,
+         ''gia_goc'', tb.gia_goc,
+         ''nam_tinh_hao_mon'', tb.nam_tinh_hao_mon,
+         ''ty_le_hao_mon'', tb.ty_le_hao_mon,
+         ''han_bao_hanh'', tb.han_bao_hanh,
+         ''vi_tri_lap_dat'', tb.vi_tri_lap_dat,
+         ''nguoi_dang_truc_tiep_quan_ly'', tb.nguoi_dang_truc_tiep_quan_ly,
+         ''khoa_phong_quan_ly'', tb.khoa_phong_quan_ly,
+         ''tinh_trang_hien_tai'', tb.tinh_trang_hien_tai,
+         ''ghi_chu'', tb.ghi_chu,
+         ''chu_ky_bt_dinh_ky'', tb.chu_ky_bt_dinh_ky,
+         ''ngay_bt_tiep_theo'', tb.ngay_bt_tiep_theo,
+         ''chu_ky_hc_dinh_ky'', tb.chu_ky_hc_dinh_ky,
+         ''ngay_hc_tiep_theo'', tb.ngay_hc_tiep_theo,
+         ''chu_ky_kd_dinh_ky'', tb.chu_ky_kd_dinh_ky,
+         ''ngay_kd_tiep_theo'', tb.ngay_kd_tiep_theo,
+         ''phan_loai_theo_nd98'', tb.phan_loai_theo_nd98,
+         ''id'', tb.id,
+         ''created_at'', tb.created_at,
+         ''don_vi'', tb.don_vi,
+         ''nguon_nhap'', tb.nguon_nhap,
+         ''so_luu_hanh'', tb.so_luu_hanh,
+         ''nhom_thiet_bi_id'', tb.nhom_thiet_bi_id,
+         ''is_deleted'', tb.is_deleted,
+         ''ngay_ngung_su_dung'', tb.ngay_ngung_su_dung,
          ''google_drive_folder_url'', dv.google_drive_folder_url,
          ''don_vi_name'', dv.name,
          ''active_repair_request_id'', ar.active_id
@@ -245,5 +277,45 @@ BEGIN
   );
 END;
 $function$;
+
+REVOKE EXECUTE ON FUNCTION public.equipment_list_enhanced(
+  text,
+  text,
+  integer,
+  integer,
+  bigint,
+  text,
+  text[],
+  text,
+  text[],
+  text,
+  text[],
+  text,
+  text[],
+  text,
+  text[],
+  text,
+  text[]
+) FROM PUBLIC, anon;
+
+GRANT EXECUTE ON FUNCTION public.equipment_list_enhanced(
+  text,
+  text,
+  integer,
+  integer,
+  bigint,
+  text,
+  text[],
+  text,
+  text[],
+  text,
+  text[],
+  text,
+  text[],
+  text,
+  text[],
+  text,
+  text[]
+) TO authenticated;
 
 COMMIT;
