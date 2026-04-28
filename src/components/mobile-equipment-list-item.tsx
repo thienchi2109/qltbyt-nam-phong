@@ -5,6 +5,7 @@ import { Wrench, MapPin, Eye, AlertTriangle } from "lucide-react"
 import { useRouter } from "next/navigation"
 
 import { type Equipment } from "@/types/database"
+import { LinkedRequestRowIndicator } from "@/components/equipment-linked-request"
 import { Card } from "@/components/ui/card"
 import {
   buildRepairRequestCreateIntentHref,
@@ -106,11 +107,14 @@ export function MobileEquipmentListItem({
             {equipment.ma_thiet_bi}
           </span>
           {status && (
-            <div className={`flex items-center gap-1.5 px-2 py-0.5 rounded-full ${statusStyle.bg}`}>
-              <span className={`w-1.5 h-1.5 rounded-full ${statusStyle.dot}`} />
-              <span className={`text-[10px] font-semibold uppercase tracking-tight ${statusStyle.text}`}>
-                {status}
-              </span>
+            <div className="flex items-center gap-1">
+              <div className={`flex items-center gap-1.5 px-2 py-0.5 rounded-full ${statusStyle.bg}`}>
+                <span className={`w-1.5 h-1.5 rounded-full ${statusStyle.dot}`} />
+                <span className={`text-[10px] font-semibold uppercase tracking-tight ${statusStyle.text}`}>
+                  {status}
+                </span>
+              </div>
+              <LinkedRequestRowIndicator equipment={equipment} />
             </div>
           )}
         </div>

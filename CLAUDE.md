@@ -527,6 +527,9 @@ git pull --rebase && git push
 
 1. Security 2. Data Integrity 3. Type Safety 4. Performance 5. Maintainability
 
+## Equipment List N+1 Prevention
+
+Per-row indicators that depend on aggregated business state must be backed by aggregate columns on `equipment_list_enhanced`, never by per-row resolver RPCs. `LinkedRequestRowIndicator` is the reference pattern: it reads `equipment.active_repair_request_id` from row data and renders synchronously without calling `callRpc` or `useResolveActiveRepair`. The resolver hook is reserved for click-time fetches in `LinkedRequestSheetHost`, where only one linked request can be open at a time.
 
 ## SQL Code Generation Checklist
 

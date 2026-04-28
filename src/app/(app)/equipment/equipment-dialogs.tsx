@@ -3,13 +3,14 @@
 import * as React from "react"
 
 import { AddEquipmentDialog } from "@/components/add-equipment-dialog"
+import { LinkedRequestSheetHost } from "@/components/equipment-linked-request"
 import { ImportEquipmentDialog } from "@/components/import-equipment-dialog"
-import { EquipmentDetailDialog } from "./_components/EquipmentDetailDialog"
-import { EquipmentDeleteDialog } from "./_components/EquipmentDeleteDialog"
 import { StartUsageDialog } from "@/components/start-usage-dialog"
 import { EndUsageDialog } from "@/components/end-usage-dialog"
 import type { Equipment } from "@/types/database"
 import type { TenantBranding } from "@/hooks/use-tenant-branding"
+import { EquipmentDetailDialog } from "./_components/EquipmentDetailDialog"
+import { EquipmentDeleteDialog } from "./_components/EquipmentDeleteDialog"
 import { useEquipmentContext } from "./_hooks/useEquipmentContext"
 
 // ============================================
@@ -83,6 +84,8 @@ export const EquipmentDialogs = React.memo(function EquipmentDialogs({
         onGenerateDeviceLabel={onGenerateDeviceLabel}
         onEquipmentUpdated={onDataMutationSuccess}
       />
+
+      <LinkedRequestSheetHost />
 
       <EquipmentDeleteDialog />
 

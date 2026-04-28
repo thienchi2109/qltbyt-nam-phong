@@ -1,6 +1,9 @@
 import * as React from "react"
-import { fireEvent, render, screen } from "@testing-library/react"
+import { render, screen } from "@testing-library/react"
+import userEvent from "@testing-library/user-event"
 import { beforeEach, describe, expect, it, vi } from "vitest"
+
+import { LinkedRequestProvider } from "@/components/equipment-linked-request"
 
 const mocks = vi.hoisted(() => ({
   push: vi.fn(),
@@ -58,21 +61,24 @@ describe("MobileEquipmentListItem", () => {
     vi.stubGlobal("React", React)
   })
 
-  it("renders a grouped action region and keeps action clicks from bubbling to the card", () => {
+  it("renders a grouped action region and keeps action clicks from bubbling to the card", async () => {
+    const user = userEvent.setup()
     const onShowDetails = vi.fn()
 
     render(
-      <MobileEquipmentListItem
-        equipment={equipment}
-        onShowDetails={onShowDetails}
-      />,
+      <LinkedRequestProvider>
+        <MobileEquipmentListItem
+          equipment={equipment}
+          onShowDetails={onShowDetails}
+        />
+      </LinkedRequestProvider>,
     )
 
     expect(
       screen.getByRole("group", { name: "Hành động cho Máy X-quang" }),
     ).toBeInTheDocument()
 
-    fireEvent.click(screen.getByRole("button", { name: "Báo sửa chữa" }))
+    await user.click(screen.getByRole("button", { name: "Báo sửa chữa" }))
 
     expect(mocks.push).toHaveBeenCalledWith(
       "/repair-requests?action=create&equipmentId=42",
@@ -80,22 +86,46 @@ describe("MobileEquipmentListItem", () => {
     expect(onShowDetails).not.toHaveBeenCalled()
   })
 
-  it('routes "Chi tiết sự cố" to the equipment-filtered repair requests list without opening create intent', () => {
+  it('routes "Chi tiết sự cố" to the equipment-filtered repair requests list without opening create intent', async () => {
+    const user = userEvent.setup()
     const onShowDetails = vi.fn()
 
     render(
-      <MobileEquipmentListItem
-        equipment={waitingRepairEquipment}
-        onShowDetails={onShowDetails}
-      />,
+      <LinkedRequestProvider>
+        <MobileEquipmentListItem
+          equipment={waitingRepairEquipment}
+          onShowDetails={onShowDetails}
+        />
+      </LinkedRequestProvider>,
     )
 
-    fireEvent.click(screen.getByRole("button", { name: "Chi tiết sự cố" }))
+    await user.click(screen.getByRole("button", { name: "Chi tiết sự cố" }))
 
     expect(mocks.push).toHaveBeenCalledWith("/repair-requests?equipmentId=42")
     expect(mocks.push).not.toHaveBeenCalledWith(
       "/repair-requests?action=create&equipmentId=42",
     )
     expect(onShowDetails).not.toHaveBeenCalled()
+  })
+
+  it("opens linked repair from the wrench icon without opening the mobile card", async () => {
+    const user = userEvent.setup()
+    const onShowDetails = vi.fn()
+
+    render(
+      <LinkedRequestProvider>
+        <MobileEquipmentListItem
+          equipment={{ ...waitingRepairEquipment, active_repair_request_id: 9001 }}
+          onShowDetails={onShowDetails}
+        />
+      </LinkedRequestProvider>,
+    )
+
+    await user.click(screen.getByRole("button", {
+      name: "Xem yêu cầu sửa chữa hiện tại của thiết bị TB-042",
+    }))
+
+    expect(onShowDetails).not.toHaveBeenCalled()
+    expect(mocks.push).not.toHaveBeenCalled()
   })
 })

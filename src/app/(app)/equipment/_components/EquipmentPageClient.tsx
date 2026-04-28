@@ -20,6 +20,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Skeleton } from "@/components/ui/skeleton"
 import { FilterBottomSheet } from "@/components/equipment/filter-bottom-sheet"
+import { LinkedRequestProvider } from "@/components/equipment-linked-request"
 import { DataTablePagination } from "@/components/shared/DataTablePagination"
 import type { DisplayContext } from "@/components/shared/DataTablePagination/types"
 import { EquipmentToolbar } from "@/components/equipment/equipment-toolbar"
@@ -83,7 +84,9 @@ export function EquipmentPageClient() {
 
   return (
     <EquipmentDialogProvider effectiveTenantKey={pageState.effectiveTenantKey}>
-      <EquipmentPageContent pageState={pageState} />
+      <LinkedRequestProvider>
+        <EquipmentPageContent pageState={pageState} />
+      </LinkedRequestProvider>
     </EquipmentDialogProvider>
   )
 }

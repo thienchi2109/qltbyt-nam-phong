@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs'
+import { readFileSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
 
 import { describe, expect, it } from 'vitest'
@@ -53,5 +53,53 @@ describe('repair request create-intent source adoption', () => {
 
     expect(source).toContain('buildRepairRequestCreateIntentHref')
     expect(source).not.toContain('/repair-requests?action=create')
+  })
+})
+
+describe('equipment-linked-request row indicator adoption', () => {
+  it('imports LinkedRequestRowIndicator only from equipment row surfaces', () => {
+    const desktopSource = readSource('src/components/equipment/equipment-table-columns.tsx')
+    const mobileSource = readSource('src/components/mobile-equipment-list-item.tsx')
+    const actionsMenuSource = readSource('src/components/equipment/equipment-actions-menu.tsx')
+
+    expect(desktopSource).toContain('LinkedRequestRowIndicator')
+    expect(desktopSource).toContain('@/components/equipment-linked-request')
+    expect(mobileSource).toContain('LinkedRequestRowIndicator')
+    expect(actionsMenuSource).not.toContain('LinkedRequestRowIndicator')
+  })
+
+  it('keeps LinkedRequestRowIndicator synchronous and free of per-row RPC resolution', () => {
+    const source = readSource(
+      'src/components/equipment-linked-request/LinkedRequestRowIndicator.tsx',
+    )
+
+    expect(source).not.toMatch(/callRpc\(/)
+    expect(source).not.toMatch(/useResolveActiveRepair\(/)
+  })
+
+  it('does not reintroduce the removed LinkedRequestButton production component', () => {
+    const offenders: string[] = []
+
+    function walk(dir: string) {
+      for (const entry of readdirSync(join(process.cwd(), dir), { withFileTypes: true })) {
+        const relPath = join(dir, entry.name)
+        if (entry.isDirectory()) {
+          walk(relPath)
+          continue
+        }
+
+        if (!entry.name.endsWith('.ts') && !entry.name.endsWith('.tsx')) continue
+        if (relPath.includes('__tests__')) continue
+
+        const source = readSource(relPath)
+        if (source.includes('LinkedRequestButton')) {
+          offenders.push(relPath)
+        }
+      }
+    }
+
+    walk('src')
+
+    expect(offenders).toEqual([])
   })
 })
