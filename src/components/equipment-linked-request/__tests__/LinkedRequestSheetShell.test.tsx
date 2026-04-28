@@ -19,13 +19,14 @@ vi.mock('@/components/ui/sheet', () => ({
     if (!open) return null
 
     return (
-      <div
+      <button
+        type="button"
         data-testid="sheet-root"
         data-sheet-instance={String(instanceId.current)}
         onClick={() => onOpenChange?.(false)}
       >
         {children}
-      </div>
+      </button>
     )
   },
   SheetContent: ({
@@ -38,7 +39,7 @@ vi.mock('@/components/ui/sheet', () => ({
   ),
 }))
 
-import { LinkedRequestSheetShell } from '../LinkedRequestSheetShell'
+import { LinkedRequestSheetShell } from '@/components/equipment-linked-request/LinkedRequestSheetShell'
 
 describe('LinkedRequestSheetShell', () => {
   beforeEach(() => {
@@ -84,7 +85,7 @@ describe('LinkedRequestSheetShell', () => {
 
     const initialInstanceId = screen
       .getByTestId('sheet-root')
-      .getAttribute('data-sheet-instance')
+      .dataset.sheetInstance
 
     rerender(
       <LinkedRequestSheetShell open={true} onClose={vi.fn()}>
@@ -93,10 +94,7 @@ describe('LinkedRequestSheetShell', () => {
     )
 
     expect(screen.getByText('resolved content')).toBeInTheDocument()
-    expect(screen.getByTestId('sheet-root')).toHaveAttribute(
-      'data-sheet-instance',
-      initialInstanceId,
-    )
+    expect(screen.getByTestId('sheet-root').dataset.sheetInstance).toBe(initialInstanceId)
   })
 
   it('renders nothing when closed', () => {
