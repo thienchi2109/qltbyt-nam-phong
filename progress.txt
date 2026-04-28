@@ -142,3 +142,45 @@
   - For `ReactNode` props that affect layout branching, use explicit nullish checks instead of truthiness checks.
   - CodeRabbit top-level summary comments can remain informational even after all inline threads are resolved; thread count is the authoritative closeout signal.
 ---
+
+## 2026-04-28 - Issue #338 PR-3a (Phase 1 active-repair equipment-list backend + realtime) MERGED
+- Slice PR-3a per docs/superpowers/plans/2026-04-27-issue-338-execution-slices.md.
+- Merged via `gh pr merge 350 --squash --admin --delete-branch`. Merge SHA on main: `d8d61ea`.
+- Important migration recovery context:
+  - Closed PR #348 had already applied live migration version `20260427231232 / extend_equipment_list_enhanced_active_repair`, but that branch was closed and never merged.
+  - PR #350 restores repo source-of-truth by adding `supabase/migrations/20260427231232_extend_equipment_list_enhanced_active_repair.sql` as a historical mirror. Do not rewrite this file semantically.
+  - Reviewer fixes were added as a forward-only migration: `supabase/migrations/20260428040500_fix_equipment_list_enhanced_active_repair_contract.sql`.
+  - The follow-up migration was applied through Supabase MCP after review/user approval; live recorded version `20260428051730 / fix_equipment_list_enhanced_active_repair_contract`.
+- Live DB contract after follow-up apply:
+  - `public.equipment_list_enhanced` includes `active_repair_request_id`.
+  - Function remains `SECURITY DEFINER` with `search_path=public, pg_temp`.
+  - Row serialization uses explicit `jsonb_build_object`; no `to_jsonb(tb.*)` wildcard serialization.
+  - Routine privileges are `authenticated`, `postgres`, and `service_role`; `PUBLIC`/`anon` no longer have `EXECUTE`.
+- Files added/changed on main:
+  - `src/types/database.ts`
+  - `src/contexts/realtime-context.tsx`
+  - `src/contexts/__tests__/realtime-context.invalidation.test.tsx`
+  - `src/app/(app)/equipment/__tests__/useEquipmentData.test.ts`
+  - `supabase/migrations/20260427231232_extend_equipment_list_enhanced_active_repair.sql`
+  - `supabase/migrations/20260428040500_fix_equipment_list_enhanced_active_repair_contract.sql`
+  - `supabase/tests/equipment_list_enhanced_active_repair_smoke.sql`
+- Verification before merge / apply:
+  - Supabase MCP smoke SQL passed on live DB after follow-up apply; transaction rolled back.
+  - Live contract SQL confirmed `SECURITY DEFINER`, `search_path=public, pg_temp`, explicit JSON build, no `to_jsonb(tb.*)`, and expected routine privileges.
+  - Supabase security/performance advisors rerun; remaining findings were existing broad DB lints, not a new blocker for this PR contract.
+  - `verify:no-explicit-any`: pass
+  - `typecheck`: pass
+  - focused Vitest: 27/27 pass for realtime invalidation and equipment data tests
+  - `react-doctor --diff main`: 100/100
+  - `git diff --check`: pass
+- Review/bot closeout:
+  - Review threads ended at 0 unresolved.
+  - Cubic passed after the follow-up migration.
+  - GitGuardian and Vercel Preview Comments passed.
+  - `SonarCloud Code Analysis` failed only on duplication-on-new-code, ignored per repo policy.
+  - `Preview Build & Test` failed with the known preview/billing-noise baseline; merged with `--admin`.
+- Learnings:
+  - If a migration was already applied live by a closed PR, restore the exact local historical mirror for source-of-truth and use later forward-only migrations for any reviewer fixes.
+  - For `equipment_list_enhanced`, preserve explicit JSON payload construction when adding computed columns so the API contract is reviewable and avoids wildcard leakage.
+  - Realtime invalidation for active repair status belongs on `yeu_cau_sua_chua` changes and must invalidate `['equipment_list_enhanced']` so PR-3b UI can stay deploy-safe without per-row RPC calls.
+---
