@@ -106,5 +106,39 @@
   - code-review-graph `get_impact_radius_tool` is the formal "deploy-safe" proof; grep is a weaker signal. Use the graph after every commit-set on a deploy-independent slice.
   - When bot flags compound concern ("X AND Y"), use gitnexus query to surface ALL related subsystems (here: RealtimeProvider) — don't just resolve the visible-in-diff vector.
   - Project owner directive recorded mid-cycle: ignore SonarCloud duplication metric (AGENTS.md). Future PRs do not need to extract test boilerplate just for that metric.
-  - Test boilerplate extraction (createTestQueryClient + createReactQueryWrapper in src/test-utils/react-query.ts) is now available for future test files; adopt where convenient, but DO NOT refactor existing test files solely for dedup (out of scope, breaks contracts).
+- Test boilerplate extraction (createTestQueryClient + createReactQueryWrapper in src/test-utils/react-query.ts) is now available for future test files; adopt where convenient, but DO NOT refactor existing test files solely for dedup (out of scope, breaks contracts).
+---
+
+## 2026-04-28 - Issue #338 PR-2b (Phase 1 linked-request shell: adapter + SheetHost + barrel) MERGED
+- Slice 4 of 5 per docs/superpowers/plans/2026-04-27-issue-338-execution-slices.md.
+- Merged via `gh pr merge 347 --merge --admin --delete-branch`. Merge SHA on main: `3f27594`.
+- Branch commits (now in main): `c282f74` (initial PR-2b shell) → `cb604a5` (portal/slot fix + loading/error sheet + next/link + alias import + tests) → `a51d945` (nullish footerContent handling + alias cleanup in host test).
+- Scope stayed strictly inside PR-2b: `RepairRequestSheetAdapter`, `LinkedRequestSheetHost`, barrel export, and related tests. No PR-3a/3b list/icon work was reintroduced.
+- Main functional fix from review: the adapter’s multi-active alert and `/repair-requests` footer link were originally rendered as siblings around `RepairRequestsDetailView`, outside the Radix `SheetPortal`. `RepairRequestsDetailView` now exposes `contentHeader` / `footerContent` slots so those elements render inside `SheetContent`.
+- Follow-up review fixes after `cb604a5`:
+  - `RepairRequestsDetailView` now uses an explicit nullish check for `footerContent`, preserving valid `ReactNode` values like `0`.
+  - `LinkedRequestSheetHost` shows explicit loading and error sheets while `useResolveActiveRepair` is pending/failed instead of falling through to `null`.
+  - Host test imports/mocks were normalized to `@/*` aliases.
+- Files added on main:
+  - `src/components/equipment-linked-request/LinkedRequestSheetHost.tsx`
+  - `src/components/equipment-linked-request/adapters/repairRequestSheetAdapter.tsx`
+  - `src/components/equipment-linked-request/index.ts`
+  - `src/components/equipment-linked-request/__tests__/LinkedRequestSheetHost.test.tsx`
+  - `src/components/equipment-linked-request/__tests__/repairRequestSheetAdapter.test.tsx`
+- Verify gates before merge:
+  - `verify:no-explicit-any`: pass
+  - `typecheck`: pass
+  - focused Vitest:
+    - 12/12 pass for adapter/detail-view/host review-fix suite
+    - regression added for `footerContent={0}`
+  - `react-doctor --diff main`: 100/100
+- Review/bot closeout:
+  - PR threads ended at 8/8 resolved, 0 unresolved.
+  - CodeRabbit / Devin / cubic / GitGuardian / Vercel all passed by merge time.
+  - `SonarCloud Code Analysis` still failed on duplication-only; per repo policy, ignored.
+  - `🔨 Preview Build & Test` still failed due to the known billing-block baseline; merged with `--admin`.
+- Learnings:
+  - When extending a shared Radix sheet/dialog from an external adapter, add slots on the shared detail component instead of rendering sibling elements around a portaled subtree.
+  - For `ReactNode` props that affect layout branching, use explicit nullish checks instead of truthiness checks.
+  - CodeRabbit top-level summary comments can remain informational even after all inline threads are resolved; thread count is the authoritative closeout signal.
 ---
