@@ -30,6 +30,7 @@ import { useEquipmentPage } from "../use-equipment-page"
 import { EquipmentContent } from "../equipment-content"
 import { EquipmentDialogs } from "../equipment-dialogs"
 import { EquipmentDialogProvider } from "./EquipmentDialogContext"
+import { LinkedRequestProvider } from "@/components/equipment-linked-request"
 import { EquipmentColumnsDialog } from "./EquipmentColumnsDialog"
 import { EquipmentBulkDeleteBar } from "./EquipmentBulkDeleteBar"
 import { useEquipmentContext } from "../_hooks/useEquipmentContext"
@@ -83,7 +84,9 @@ export function EquipmentPageClient() {
 
   return (
     <EquipmentDialogProvider effectiveTenantKey={pageState.effectiveTenantKey}>
-      <EquipmentPageContent pageState={pageState} />
+      <LinkedRequestProvider>
+        <EquipmentPageContent pageState={pageState} />
+      </LinkedRequestProvider>
     </EquipmentDialogProvider>
   )
 }

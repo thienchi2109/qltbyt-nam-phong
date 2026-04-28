@@ -27,6 +27,10 @@ vi.mock("@/components/end-usage-dialog", () => ({
   EndUsageDialog: () => <div data-testid="end-usage-dialog" />,
 }))
 
+vi.mock("@/components/equipment-linked-request", () => ({
+  LinkedRequestSheetHost: () => <div data-testid="linked-request-sheet-host" />,
+}))
+
 vi.mock("../_hooks/useEquipmentContext", () => ({
   useEquipmentContext: () => ({
     user: { id: 1, role: "to_qltb" },
@@ -71,5 +75,6 @@ describe("EquipmentDialogs page consolidation", () => {
     expect(screen.getByTestId("delete-dialog")).toBeInTheDocument()
     expect(screen.getByTestId("add-dialog")).toBeInTheDocument()
     expect(screen.getByTestId("import-dialog")).toBeInTheDocument()
+    expect(screen.getByTestId("linked-request-sheet-host")).toBeInTheDocument()
   })
 })

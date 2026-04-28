@@ -11,6 +11,7 @@ import type { ColumnDef } from "@tanstack/react-table"
 import { ArrowUpDown } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
+import { LinkedRequestRowIndicator } from "@/components/equipment-linked-request"
 import { createSelectionColumn } from "@/components/ui/data-table-selection"
 import { TruncatedText } from "@/components/ui/truncated-text"
 import type { Equipment } from "@/types/database"
@@ -165,9 +166,12 @@ export function createEquipmentColumns(
             return <div className="italic text-muted-foreground">Chưa có dữ liệu</div>
           }
           return (
-            <Badge variant={getStatusVariant(statusValue)}>
-              {statusValue}
-            </Badge>
+            <div className="inline-flex items-center gap-1">
+              <Badge variant={getStatusVariant(statusValue)}>
+                {statusValue}
+              </Badge>
+              <LinkedRequestRowIndicator equipment={row.original} />
+            </div>
           )
         }
 

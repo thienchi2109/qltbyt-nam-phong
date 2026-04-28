@@ -1,8 +1,10 @@
 import * as React from "react"
 import { fireEvent, render, screen, within } from "@testing-library/react"
+import userEvent from "@testing-library/user-event"
 import { getCoreRowModel, useReactTable } from "@tanstack/react-table"
 import { describe, expect, it, vi } from "vitest"
 
+import { LinkedRequestProvider } from "@/components/equipment-linked-request"
 import { createEquipmentColumns } from "@/components/equipment/equipment-table-columns"
 import type { Equipment } from "@/types/database"
 import { EquipmentContent } from "../equipment-content"
@@ -34,17 +36,19 @@ function EquipmentContentHarness({
   })
 
   return (
-    <EquipmentContent
-      isGlobal={false}
-      isRegionalLeader={false}
-      shouldFetchEquipment={true}
-      isLoading={false}
-      isFetching={false}
-      isCardView={false}
-      table={table}
-      columns={columns}
-      onShowDetails={onShowDetails}
-    />
+    <LinkedRequestProvider>
+      <EquipmentContent
+        isGlobal={false}
+        isRegionalLeader={false}
+        shouldFetchEquipment={true}
+        isLoading={false}
+        isFetching={false}
+        isCardView={false}
+        table={table}
+        columns={columns}
+        onShowDetails={onShowDetails}
+      />
+    </LinkedRequestProvider>
   )
 }
 
@@ -81,5 +85,28 @@ describe("EquipmentContent desktop interactions", () => {
     fireEvent.mouseEnter(nameCell)
     fireEvent.focus(nameCell)
     expect(screen.getByRole("tooltip")).toHaveTextContent(equipment.ten_thiet_bi)
+  })
+
+  it("opens the linked request from the wrench icon without opening equipment details", async () => {
+    const user = userEvent.setup()
+    const equipment: Equipment = {
+      id: 102,
+      ma_thiet_bi: "TB-102",
+      ten_thiet_bi: "Máy siêu âm",
+      tinh_trang_hien_tai: "Chờ sửa chữa",
+      active_repair_request_id: 9001,
+    }
+    const onShowDetails = vi.fn()
+
+    render(<EquipmentContentHarness equipment={equipment} onShowDetails={onShowDetails} />)
+
+    await user.click(screen.getByRole("button", {
+      name: "Xem yêu cầu sửa chữa hiện tại của thiết bị TB-102",
+    }))
+
+    expect(onShowDetails).not.toHaveBeenCalled()
+
+    await user.click(within(screen.getByRole("table")).getByText(equipment.ma_thiet_bi))
+    expect(onShowDetails).toHaveBeenCalledWith(equipment)
   })
 })

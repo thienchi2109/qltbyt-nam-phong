@@ -12,4 +12,7 @@ export const STRINGS = {
   resolveLoadingDescription: 'Vui lòng chờ trong giây lát.',
   resolveErrorTitle: 'Không thể mở yêu cầu sửa chữa',
   resolveErrorDescription: 'Vui lòng thử lại từ danh sách thiết bị.',
+  rowIndicatorTooltip: 'Xem phiếu yêu cầu sửa chữa',
+  rowIndicatorAriaLabel: (maThietBi: string) =>
+    `Xem yêu cầu sửa chữa hiện tại của thiết bị ${maThietBi}`,
 } as const

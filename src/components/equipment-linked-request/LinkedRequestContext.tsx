@@ -1,7 +1,6 @@
 'use client'
 
 import * as React from 'react'
-import { EquipmentDialogContext } from '@/app/(app)/equipment/_components/EquipmentDialogContext'
 import type { LinkedRequestKind, LinkedRequestState } from './types'
 
 export interface LinkedRequestContextValue {
@@ -35,18 +34,6 @@ export function LinkedRequestProvider({ children }: { children: React.ReactNode 
   const close = React.useCallback(() => {
     setState((prev) => (prev.open ? CLOSED_STATE : prev))
   }, [])
-
-  // Auto-close when the parent Equipment Detail dialog closes.
-  // Subscribing via an effect keeps the provider usable outside the equipment
-  // page (the EquipmentDialogContext is `null` there); we just skip the effect.
-  const equipmentDialog = React.useContext(EquipmentDialogContext)
-  const isDetailOpen = equipmentDialog?.dialogState.isDetailOpen ?? false
-
-  React.useEffect(() => {
-    if (!isDetailOpen) {
-      setState((prev) => (prev.open ? CLOSED_STATE : prev))
-    }
-  }, [isDetailOpen])
 
   const value = React.useMemo<LinkedRequestContextValue>(
     () => ({ state, openRepair, close }),
