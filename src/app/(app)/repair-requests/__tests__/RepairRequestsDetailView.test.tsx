@@ -2,6 +2,7 @@
  * TDD RED phase: Tests for the unified RepairRequestsDetailView shell.
  */
 import * as React from "react"
+import Link from "next/link"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { render, screen } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
@@ -199,6 +200,30 @@ describe("RepairRequestsDetailView", () => {
       historyErrorMessage: null,
       activeTab: "details",
     })
+  })
+
+  it("renders extension content inside the dialog portal", () => {
+    render(
+      <RepairRequestsDetailView
+        requestToView={mockRequest}
+        onClose={vi.fn()}
+        contentHeader={<div data-testid="linked-request-header">Header extension</div>}
+        footerContent={<Link href="/repair-requests?equipmentId=100">Footer extension</Link>}
+      />,
+    )
+
+    const dialogEl = screen.getByRole("dialog")
+    expect(dialogEl).toContainElement(screen.getByTestId("linked-request-header"))
+    expect(dialogEl).toContainElement(screen.getByRole("link", { name: "Footer extension" }))
+  })
+
+  it("renders footerContent when it is zero", () => {
+    render(
+      <RepairRequestsDetailView requestToView={mockRequest} onClose={vi.fn()} footerContent={0} />,
+    )
+
+    const dialogEl = screen.getByRole("dialog")
+    expect(dialogEl).toHaveTextContent("0")
   })
 
   it("replaces raw RPC errors with a friendly Vietnamese message and logs the original error", () => {

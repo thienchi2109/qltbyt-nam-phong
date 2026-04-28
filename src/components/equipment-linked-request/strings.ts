@@ -8,4 +8,8 @@ export const STRINGS = {
     `Phát hiện ${count} yêu cầu active. Đang hiển thị bản cập nhật mới nhất. Để xem tất cả, mở danh sách trên trang Yêu cầu sửa chữa.`,
   footerOpenInRepairRequests: 'Mở trong trang Yêu cầu sửa chữa',
   autoCloseToastTitle: 'Yêu cầu đã được hoàn thành',
+  resolveLoadingTitle: 'Đang mở yêu cầu sửa chữa',
+  resolveLoadingDescription: 'Vui lòng chờ trong giây lát.',
+  resolveErrorTitle: 'Không thể mở yêu cầu sửa chữa',
+  resolveErrorDescription: 'Vui lòng thử lại từ danh sách thiết bị.',
 } as const
