@@ -15,7 +15,7 @@ import { useLinkedRequest } from './LinkedRequestContext'
 import { STRINGS } from './strings'
 
 interface LinkedRequestRowIndicatorProps {
-  equipment: Pick<
+  readonly equipment: Pick<
     Equipment,
     'id' | 'ma_thiet_bi' | 'tinh_trang_hien_tai' | 'active_repair_request_id'
   >
