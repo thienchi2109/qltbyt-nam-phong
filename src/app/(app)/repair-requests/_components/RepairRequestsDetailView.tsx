@@ -46,6 +46,7 @@ export const RepairRequestsDetailView = React.memo(function RepairRequestsDetail
   contentHeader,
   footerContent,
 }: RepairRequestsDetailViewProps) {
+  const hasFooterContent = footerContent !== null && footerContent !== undefined
   const [activeTab, setActiveTab] = React.useState("details")
 
   // Reset to details tab when viewing a different request
@@ -104,12 +105,12 @@ export const RepairRequestsDetailView = React.memo(function RepairRequestsDetail
           />
           <div
             className={
-              footerContent
+              hasFooterContent
                 ? "p-4 border-t flex items-center justify-between gap-3"
                 : "p-4 border-t flex justify-end"
             }
           >
-            {footerContent ? <div className="min-w-0">{footerContent}</div> : null}
+            {hasFooterContent ? <div className="min-w-0">{footerContent}</div> : null}
             <Button variant="outline" onClick={onClose}>
               Đóng
             </Button>

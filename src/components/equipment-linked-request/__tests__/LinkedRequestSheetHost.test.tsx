@@ -15,7 +15,7 @@ vi.mock('@/hooks/use-toast', () => ({
 }))
 
 // Stub the lazy adapter to a synchronous component so we can read its props.
-vi.mock('../adapters/repairRequestSheetAdapter', () => ({
+vi.mock('@/components/equipment-linked-request/adapters/repairRequestSheetAdapter', () => ({
   default: ({ request, activeCount, onClose }: {
     request: { id: number }
     activeCount: number
@@ -49,9 +49,12 @@ vi.mock('next/dynamic', () => ({
   },
 }))
 
-import { LinkedRequestProvider, useLinkedRequest } from '../LinkedRequestContext'
-import { LinkedRequestSheetHost } from '../LinkedRequestSheetHost'
 import { EquipmentDialogContext } from '@/app/(app)/equipment/_components/EquipmentDialogContext'
+import {
+  LinkedRequestProvider,
+  useLinkedRequest,
+} from '@/components/equipment-linked-request/LinkedRequestContext'
+import { LinkedRequestSheetHost } from '@/components/equipment-linked-request/LinkedRequestSheetHost'
 
 function makeEquipmentDialogStub(isDetailOpen = true) {
   return {

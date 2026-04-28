@@ -217,6 +217,15 @@ describe("RepairRequestsDetailView", () => {
     expect(dialogEl).toContainElement(screen.getByRole("link", { name: "Footer extension" }))
   })
 
+  it("renders footerContent when it is zero", () => {
+    render(
+      <RepairRequestsDetailView requestToView={mockRequest} onClose={vi.fn()} footerContent={0} />,
+    )
+
+    const dialogEl = screen.getByRole("dialog")
+    expect(dialogEl).toHaveTextContent("0")
+  })
+
   it("replaces raw RPC errors with a friendly Vietnamese message and logs the original error", () => {
     mockUseRepairRequestHistory.mockReturnValue({
       data: undefined,
