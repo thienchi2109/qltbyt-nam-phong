@@ -9,6 +9,7 @@ const sourceFiles = [
   'src/components/mobile-equipment-list-item.tsx',
   'src/app/(app)/qr-scanner/page.tsx',
   'src/components/assistant/AssistantPanel.tsx',
+  'src/components/equipment-linked-request/adapters/repairRequestSheetAdapter.tsx',
 ] as const
 
 function readSource(filePath: string) {
@@ -53,6 +54,14 @@ describe('repair request create-intent source adoption', () => {
 
     expect(source).toContain('buildRepairRequestCreateIntentHref')
     expect(source).not.toContain('/repair-requests?action=create')
+  })
+
+  it('RepairRequestSheetAdapter uses shared repair-request helpers instead of hardcoded view hrefs', () => {
+    const source = readSource(sourceFiles[5])
+
+    expect(source).toContain('buildRepairRequestViewHref')
+    expect(source).toContain('buildRepairRequestsByEquipmentHref')
+    expect(source).not.toContain('/repair-requests?action=view&requestId=')
   })
 })
 

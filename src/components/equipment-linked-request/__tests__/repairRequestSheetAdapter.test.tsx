@@ -39,6 +39,16 @@ const mockRequest = {
 } as RepairRequestWithEquipment
 
 describe('RepairRequestSheetAdapter', () => {
+  it('uses the direct repair-request view deep link when exactly one active request exists', () => {
+    render(<RepairRequestSheetAdapter request={mockRequest} activeCount={1} onClose={vi.fn()} />)
+
+    const dialog = screen.getByRole('dialog')
+    expect(
+      within(dialog).getByRole('link', { name: STRINGS.footerOpenInRepairRequests }),
+    ).toHaveAttribute('href', '/repair-requests?action=view&requestId=9001')
+    expect(within(dialog).queryByRole('alert')).not.toBeInTheDocument()
+  })
+
   it('injects the multi-active alert and repair-requests link into the detail sheet slots', () => {
     render(<RepairRequestSheetAdapter request={mockRequest} activeCount={3} onClose={vi.fn()} />)
 

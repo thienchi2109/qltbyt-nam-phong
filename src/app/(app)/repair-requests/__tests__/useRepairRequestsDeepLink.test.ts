@@ -21,16 +21,22 @@ const mocks = vi.hoisted(() => ({
   callRpc: vi.fn(),
   toast: vi.fn(),
   openCreateSheet: vi.fn(),
+  openViewDialog: vi.fn(),
   applyAssistantDraft: vi.fn(),
   routerReplace: vi.fn(),
   searchParamsGet: vi.fn() as ReturnType<typeof vi.fn>,
   searchParamsToString: vi.fn().mockReturnValue(''),
   queryClientGetQueryData: vi.fn(),
   queryClientRemoveQueries: vi.fn(),
+  useRepairRequestsContext: vi.fn(),
 }))
 
 vi.mock('@/lib/rpc-client', () => ({
   callRpc: mocks.callRpc,
+}))
+
+vi.mock('../_hooks/useRepairRequestsContext', () => ({
+  useRepairRequestsContext: () => mocks.useRepairRequestsContext(),
 }))
 
 // ── Import AFTER mocks ────────────────────────────────────────────
@@ -72,6 +78,10 @@ describe('useRepairRequestsDeepLink', () => {
     vi.clearAllMocks()
     mocks.callRpc.mockResolvedValue([])
     mocks.queryClientGetQueryData.mockReturnValue(undefined)
+    mocks.useRepairRequestsContext.mockReturnValue({
+      dialogState: { requestToView: null },
+      openViewDialog: mocks.openViewDialog,
+    })
   })
 
   afterEach(() => {
@@ -287,14 +297,257 @@ describe('useRepairRequestsDeepLink', () => {
     expect(mocks.routerReplace).toHaveBeenCalledWith('/repair-requests', { scroll: false })
   })
 
+  it('opens the detail sheet for action=view and a valid requestId without cleaning the URL on open', async () => {
+    mocks.callRpc
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce({
+        id: 77,
+        thiet_bi_id: 42,
+        ngay_yeu_cau: '2026-04-28',
+        trang_thai: 'Chờ xử lý',
+        mo_ta_su_co: 'Mất nguồn',
+        hang_muc_sua_chua: null,
+        ngay_mong_muon_hoan_thanh: null,
+        nguoi_yeu_cau: 'Nguyen Van A',
+        ngay_duyet: null,
+        ngay_hoan_thanh: null,
+        nguoi_duyet: null,
+        nguoi_xac_nhan: null,
+        chi_phi_sua_chua: null,
+        don_vi_thuc_hien: null,
+        ten_don_vi_thue: null,
+        ket_qua_sua_chua: null,
+        ly_do_khong_hoan_thanh: null,
+      })
+      .mockResolvedValueOnce({
+        id: 42,
+        ma_thiet_bi: 'TB042',
+        ten_thiet_bi: 'Máy B',
+        model: 'Model X',
+        serial: 'SER-42',
+        khoa_phong_quan_ly: 'Khoa 2',
+        don_vi: 9,
+      })
+
+    const sp = createSearchParams({ action: 'view', requestId: '77', foo: 'bar' })
+
+    renderHook(() => useRepairRequestsDeepLink(createDefaultOptions(sp)))
+
+    await waitFor(() => {
+      expect(mocks.openViewDialog).toHaveBeenCalledWith(
+        expect.objectContaining({
+          id: 77,
+          thiet_bi_id: 42,
+          thiet_bi: expect.objectContaining({
+            ma_thiet_bi: 'TB042',
+            model: 'Model X',
+            serial: 'SER-42',
+            khoa_phong_quan_ly: 'Khoa 2',
+            facility_id: 9,
+          }),
+        }),
+      )
+    })
+    expect(mocks.routerReplace).not.toHaveBeenCalled()
+  })
+
+  it('toasts and cleans only action/requestId when action=view has an invalid requestId', async () => {
+    const sp = createSearchParams({ action: 'view', requestId: 'abc', foo: 'bar' })
+
+    renderHook(() => useRepairRequestsDeepLink(createDefaultOptions(sp)))
+
+    await waitFor(() => {
+      expect(mocks.toast).toHaveBeenCalledWith(
+        expect.objectContaining({
+          variant: 'destructive',
+          title: 'Lỗi',
+          description: expect.stringContaining('Không thể mở chi tiết yêu cầu sửa chữa'),
+        }),
+      )
+    })
+    expect(mocks.openViewDialog).not.toHaveBeenCalled()
+    expect(mocks.routerReplace).toHaveBeenCalledWith('/repair-requests?foo=bar', { scroll: false })
+  })
+
+  it('toasts and cleans only action/requestId when action=view cannot resolve the request', async () => {
+    mocks.callRpc
+      .mockResolvedValueOnce([])
+      .mockRejectedValueOnce(new Error('Yêu cầu sửa chữa không tồn tại hoặc bạn không có quyền truy cập'))
+
+    const sp = createSearchParams({ action: 'view', requestId: '999', foo: 'bar' })
+
+    renderHook(() => useRepairRequestsDeepLink(createDefaultOptions(sp)))
+
+    await waitFor(() => {
+      expect(mocks.toast).toHaveBeenCalledWith(
+        expect.objectContaining({
+          variant: 'destructive',
+          title: 'Lỗi',
+          description: expect.stringContaining('Không thể mở chi tiết yêu cầu sửa chữa'),
+        }),
+      )
+    })
+    expect(mocks.openViewDialog).not.toHaveBeenCalled()
+    expect(mocks.routerReplace).toHaveBeenCalledWith('/repair-requests?foo=bar', { scroll: false })
+  })
+
+  it('opens the detail sheet with thiet_bi null when equipment_get is denied after request resolution', async () => {
+    mocks.callRpc
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce({
+        id: 77,
+        thiet_bi_id: 42,
+        ngay_yeu_cau: '2026-04-28',
+        trang_thai: 'Chờ xử lý',
+        mo_ta_su_co: 'Mất nguồn',
+        hang_muc_sua_chua: null,
+        ngay_mong_muon_hoan_thanh: null,
+        nguoi_yeu_cau: 'Nguyen Van A',
+        ngay_duyet: null,
+        ngay_hoan_thanh: null,
+        nguoi_duyet: null,
+        nguoi_xac_nhan: null,
+        chi_phi_sua_chua: null,
+        don_vi_thuc_hien: null,
+        ten_don_vi_thue: null,
+        ket_qua_sua_chua: null,
+        ly_do_khong_hoan_thanh: null,
+      })
+      .mockRejectedValueOnce(new Error('Equipment not found or access denied'))
+
+    const sp = createSearchParams({ action: 'view', requestId: '77', foo: 'bar' })
+
+    renderHook(() => useRepairRequestsDeepLink(createDefaultOptions(sp)))
+
+    await waitFor(() => {
+      expect(mocks.openViewDialog).toHaveBeenCalledWith(
+        expect.objectContaining({
+          id: 77,
+          thiet_bi_id: 42,
+          thiet_bi: null,
+        }),
+      )
+    })
+    expect(mocks.toast).not.toHaveBeenCalledWith(
+      expect.objectContaining({
+        description: expect.stringContaining('Không thể mở chi tiết yêu cầu sửa chữa'),
+      }),
+    )
+    expect(mocks.routerReplace).not.toHaveBeenCalled()
+  })
+
+  it('cleans only action/requestId after the URL-driven detail sheet closes', async () => {
+    mocks.callRpc
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce({
+        id: 77,
+        thiet_bi_id: 42,
+        ngay_yeu_cau: '2026-04-28',
+        trang_thai: 'Chờ xử lý',
+        mo_ta_su_co: 'Mất nguồn',
+        hang_muc_sua_chua: null,
+        ngay_mong_muon_hoan_thanh: null,
+        nguoi_yeu_cau: 'Nguyen Van A',
+        ngay_duyet: null,
+        ngay_hoan_thanh: null,
+        nguoi_duyet: null,
+        nguoi_xac_nhan: null,
+        chi_phi_sua_chua: null,
+        don_vi_thuc_hien: null,
+        ten_don_vi_thue: null,
+        ket_qua_sua_chua: null,
+        ly_do_khong_hoan_thanh: null,
+      })
+      .mockResolvedValueOnce({
+        id: 42,
+        ma_thiet_bi: 'TB042',
+        ten_thiet_bi: 'Máy B',
+        model: 'Model X',
+        serial: 'SER-42',
+        khoa_phong_quan_ly: 'Khoa 2',
+        don_vi: 9,
+      })
+
+    const baseOpts = createDefaultOptions()
+    const requestToView = {
+      id: 77,
+      thiet_bi_id: 42,
+      ngay_yeu_cau: '2026-04-28',
+      trang_thai: 'Chờ xử lý',
+      mo_ta_su_co: 'Mất nguồn',
+      hang_muc_sua_chua: null,
+      ngay_mong_muon_hoan_thanh: null,
+      nguoi_yeu_cau: 'Nguyen Van A',
+      ngay_duyet: null,
+      ngay_hoan_thanh: null,
+      nguoi_duyet: null,
+      nguoi_xac_nhan: null,
+      chi_phi_sua_chua: null,
+      don_vi_thuc_hien: null,
+      ten_don_vi_thue: null,
+      ket_qua_sua_chua: null,
+      ly_do_khong_hoan_thanh: null,
+      thiet_bi: {
+        ma_thiet_bi: 'TB042',
+        ten_thiet_bi: 'Máy B',
+        model: 'Model X',
+        serial: 'SER-42',
+        khoa_phong_quan_ly: 'Khoa 2',
+        facility_name: null,
+        facility_id: 9,
+      },
+    }
+
+    const { rerender } = renderHook(
+      ({ currentSearchParams }) => useRepairRequestsDeepLink({
+        ...baseOpts,
+        searchParams: currentSearchParams,
+      }),
+      {
+        initialProps: {
+          currentSearchParams: createSearchParams({ action: 'view', requestId: '77', foo: 'bar' }),
+        },
+      },
+    )
+
+    await waitFor(() => {
+      expect(mocks.openViewDialog).toHaveBeenCalled()
+    })
+    expect(mocks.routerReplace).not.toHaveBeenCalled()
+
+    mocks.useRepairRequestsContext.mockReturnValue({
+      dialogState: { requestToView },
+      openViewDialog: mocks.openViewDialog,
+    })
+
+    rerender({ currentSearchParams: createSearchParams({ action: 'view', requestId: '77', foo: 'bar' }) })
+
+    mocks.useRepairRequestsContext.mockReturnValue({
+      dialogState: { requestToView: null },
+      openViewDialog: mocks.openViewDialog,
+    })
+
+    rerender({ currentSearchParams: createSearchParams({ action: 'view', requestId: '77', foo: 'bar' }) })
+
+    await waitFor(() => {
+      expect(mocks.routerReplace).toHaveBeenCalledWith('/repair-requests?foo=bar', { scroll: false })
+    })
+  })
+
   it('reuses the shared create-action constant instead of hardcoding the action value', () => {
     const source = readFileSync(
       resolve(process.cwd(), 'src/app/(app)/repair-requests/_hooks/useRepairRequestsDeepLink.ts'),
       'utf8',
     )
+    const viewSource = readFileSync(
+      resolve(process.cwd(), 'src/app/(app)/repair-requests/_hooks/useRepairRequestsDeepLinkView.ts'),
+      'utf8',
+    )
 
     expect(source).toContain('REPAIR_REQUEST_CREATE_ACTION')
     expect(source).not.toContain("searchParams.get('action') !== 'create'")
+    expect(viewSource).toContain('REPAIR_REQUEST_VIEW_ACTION')
+    expect(viewSource).not.toContain("searchParams.get('action') === 'view'")
   })
 
   registerUseRepairRequestsDeepLinkRaceCases({

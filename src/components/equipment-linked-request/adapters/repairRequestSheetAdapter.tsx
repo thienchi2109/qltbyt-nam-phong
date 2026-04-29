@@ -3,7 +3,10 @@
 import * as React from 'react'
 import Link from 'next/link'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { buildRepairRequestsByEquipmentHref } from '@/lib/repair-request-deep-link'
+import {
+  buildRepairRequestViewHref,
+  buildRepairRequestsByEquipmentHref,
+} from '@/lib/repair-request-deep-link'
 import { RepairRequestsDetailView } from '@/app/(app)/repair-requests/_components/RepairRequestsDetailView'
 import type { RepairRequestWithEquipment } from '@/app/(app)/repair-requests/types'
 import { STRINGS } from '@/components/equipment-linked-request/strings'
@@ -31,7 +34,9 @@ export default function RepairRequestSheetAdapter({
   renderSheetShell = true,
 }: RepairRequestSheetAdapterProps) {
   const showMultiActiveAlert = activeCount > 1
-  const openInRepairRequestsHref = buildRepairRequestsByEquipmentHref(request.thiet_bi_id)
+  const openInRepairRequestsHref = showMultiActiveAlert
+    ? buildRepairRequestsByEquipmentHref(request.thiet_bi_id)
+    : buildRepairRequestViewHref(request.id)
   const contentHeader = showMultiActiveAlert ? (
     <Alert role="alert" variant="destructive" className="mx-4 mt-3">
       <AlertDescription>{STRINGS.multiActiveAlert(activeCount)}</AlertDescription>

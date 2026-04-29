@@ -10,6 +10,9 @@ import {
   fetchRepairRequestEquipmentById,
   fetchRepairRequestEquipmentList,
 } from "../repair-requests-equipment-rpc"
+import {
+  useRepairRequestViewDeepLink,
+} from "./useRepairRequestsDeepLinkView"
 
 // ── Types ────────────────────────────────────────────────────────
 
@@ -236,6 +239,13 @@ export function useRepairRequestsDeepLink(
     run()
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams, allEquipment])
+
+  useRepairRequestViewDeepLink({
+    searchParams,
+    pathname,
+    router,
+    toast,
+  })
 
   // Handle action=create param with equipment pre-selection.
   // For action=create&equipmentId, gates on terminal resolution state
