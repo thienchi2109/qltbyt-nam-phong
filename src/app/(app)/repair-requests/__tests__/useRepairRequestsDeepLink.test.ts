@@ -391,6 +391,51 @@ describe('useRepairRequestsDeepLink', () => {
     expect(mocks.routerReplace).toHaveBeenCalledWith('/repair-requests?foo=bar', { scroll: false })
   })
 
+  it('opens the detail sheet with thiet_bi null when equipment_get is denied after request resolution', async () => {
+    mocks.callRpc
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce({
+        id: 77,
+        thiet_bi_id: 42,
+        ngay_yeu_cau: '2026-04-28',
+        trang_thai: 'Chờ xử lý',
+        mo_ta_su_co: 'Mất nguồn',
+        hang_muc_sua_chua: null,
+        ngay_mong_muon_hoan_thanh: null,
+        nguoi_yeu_cau: 'Nguyen Van A',
+        ngay_duyet: null,
+        ngay_hoan_thanh: null,
+        nguoi_duyet: null,
+        nguoi_xac_nhan: null,
+        chi_phi_sua_chua: null,
+        don_vi_thuc_hien: null,
+        ten_don_vi_thue: null,
+        ket_qua_sua_chua: null,
+        ly_do_khong_hoan_thanh: null,
+      })
+      .mockRejectedValueOnce(new Error('Equipment not found or access denied'))
+
+    const sp = createSearchParams({ action: 'view', requestId: '77', foo: 'bar' })
+
+    renderHook(() => useRepairRequestsDeepLink(createDefaultOptions(sp)))
+
+    await waitFor(() => {
+      expect(mocks.openViewDialog).toHaveBeenCalledWith(
+        expect.objectContaining({
+          id: 77,
+          thiet_bi_id: 42,
+          thiet_bi: null,
+        }),
+      )
+    })
+    expect(mocks.toast).not.toHaveBeenCalledWith(
+      expect.objectContaining({
+        description: expect.stringContaining('Không thể mở chi tiết yêu cầu sửa chữa'),
+      }),
+    )
+    expect(mocks.routerReplace).not.toHaveBeenCalled()
+  })
+
   it('cleans only action/requestId after the URL-driven detail sheet closes', async () => {
     mocks.callRpc
       .mockResolvedValueOnce([])

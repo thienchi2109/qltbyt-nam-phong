@@ -61,24 +61,29 @@ export async function resolveRepairRequestView(
 
   if (!request) return null
 
-  const equipment = await callRpc<EquipmentDetailRecord | null>({
-    fn: "equipment_get",
-    args: { p_id: request.thiet_bi_id },
-  })
-
-  if (!equipment) return null
+  let equipment: EquipmentDetailRecord | null = null
+  try {
+    equipment = await callRpc<EquipmentDetailRecord | null>({
+      fn: "equipment_get",
+      args: { p_id: request.thiet_bi_id },
+    })
+  } catch {
+    equipment = null
+  }
 
   return {
     ...request,
-    thiet_bi: {
-      ten_thiet_bi: equipment.ten_thiet_bi ?? "",
-      ma_thiet_bi: equipment.ma_thiet_bi ?? "",
-      model: toNullableString(equipment.model),
-      serial: toNullableString(equipment.serial),
-      khoa_phong_quan_ly: toNullableString(equipment.khoa_phong_quan_ly),
-      facility_name: null,
-      facility_id: toNullableNumber(equipment.don_vi),
-    },
+    thiet_bi: equipment
+      ? {
+          ten_thiet_bi: equipment.ten_thiet_bi ?? "",
+          ma_thiet_bi: equipment.ma_thiet_bi ?? "",
+          model: toNullableString(equipment.model),
+          serial: toNullableString(equipment.serial),
+          khoa_phong_quan_ly: toNullableString(equipment.khoa_phong_quan_ly),
+          facility_name: null,
+          facility_id: toNullableNumber(equipment.don_vi),
+        }
+      : null,
   }
 }
 
