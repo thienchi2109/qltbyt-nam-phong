@@ -48,7 +48,6 @@ export interface EquipmentToolbarProps {
   fundingSources: string[]
   isMobile: boolean
   useTabletFilters: boolean
-  isRegionalLeader: boolean
   canCreateEquipment: boolean
   hasFacilityFilter: boolean
   /** Whether export is currently in progress */
@@ -76,7 +75,6 @@ export function EquipmentToolbar({
   fundingSources,
   isMobile,
   useTabletFilters,
-  isRegionalLeader,
   canCreateEquipment,
   hasFacilityFilter,
   isExporting = false,

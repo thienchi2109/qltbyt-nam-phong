@@ -248,7 +248,6 @@ const EquipmentPageContent = React.memo(function EquipmentPageContent({
             fundingSources={fundingSources}
             isMobile={isMobile}
             useTabletFilters={useTabletFilters}
-            isRegionalLeader={isRegionalLeader}
             canCreateEquipment={canCreateEquipment}
             hasFacilityFilter={hasFacilityFilter}
             isExporting={isExporting}

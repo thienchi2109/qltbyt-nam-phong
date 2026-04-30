@@ -107,7 +107,6 @@ describe('EquipmentToolbar with shared filters', () => {
         fundingSources: ['Ngân sách'],
         isMobile: false,
         useTabletFilters: false,
-        isRegionalLeader: false,
         canCreateEquipment: true,
         hasFacilityFilter: false,
         onOpenFilterSheet: vi.fn(),
