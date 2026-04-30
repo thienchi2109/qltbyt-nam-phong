@@ -21,7 +21,7 @@ import { Form } from "@/components/ui/form"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { useToast } from "@/hooks/use-toast"
 import { getUnknownErrorMessage } from "@/lib/error-utils"
-import { isRegionalLeaderRole } from "@/lib/rbac"
+import { isRegionalLeaderRole, ROLES } from "@/lib/rbac"
 import { callRpc } from "@/lib/rpc-client"
 
 import {
@@ -131,11 +131,14 @@ export function AddEquipmentDialog({
   })
 
   async function onSubmit(values: AddEquipmentFormValues) {
-    if (isRegionalLeader) {
+    if (isRegionalLeader || user?.role === ROLES.USER) {
       toast({
         variant: "destructive",
         title: "Không có quyền",
-        description: "Tài khoản khu vực chỉ được phép xem dữ liệu thiết bị.",
+        description:
+          user?.role === ROLES.USER
+            ? "Tài khoản người dùng không được phép thêm thiết bị."
+            : "Tài khoản khu vực chỉ được phép xem dữ liệu thiết bị.",
       })
       return
     }

@@ -9,6 +9,20 @@ import * as React from 'react'
 import { describe, it, expect, vi } from 'vitest'
 import "@testing-library/jest-dom"
 import { render, screen, fireEvent } from '@testing-library/react'
+import type { Table } from '@tanstack/react-table'
+import type { Equipment } from '@/types/database'
+
+type DropdownStateProps = {
+    open?: boolean
+    setOpen?: React.Dispatch<React.SetStateAction<boolean>>
+}
+
+type DropdownChildProps = DropdownStateProps & Record<string, unknown>
+
+type DropdownWithChildrenProps = DropdownStateProps & {
+    children: React.ReactNode
+}
+
 /**
  * Mock dynamic imports (QR scanner components) to avoid SSR issues in tests
  */
@@ -21,36 +35,37 @@ vi.mock('next/dynamic', () => ({
  */
 vi.mock('@/components/ui/dropdown-menu', () => {
     return {
-        DropdownMenu: ({ children }: any) => {
+        DropdownMenu: ({ children }: { children: React.ReactNode }) => {
             const [open, setOpen] = React.useState(false)
             return (
                 <div data-testid="dropdown-menu">
-                    {React.Children.map(children, (child: any) =>
+                    {React.Children.map(children, (child) =>
                         React.isValidElement(child)
-                            ? React.cloneElement(child as React.ReactElement<any>, { open, setOpen })
+                            ? React.cloneElement(child as React.ReactElement<DropdownChildProps>, { open, setOpen })
                             : child
                     )}
                 </div>
             )
         },
-        DropdownMenuTrigger: ({ children, asChild, open, setOpen, ...rest }: any) => {
+        DropdownMenuTrigger: ({ children, asChild, open, setOpen, ...rest }: DropdownWithChildrenProps & { asChild?: boolean }) => {
             const handleClick = () => setOpen?.(!open)
             if (asChild && React.isValidElement(children)) {
-                return React.cloneElement(children as React.ReactElement<any>, {
+                const childElement = children as React.ReactElement<{ onClick?: (...args: unknown[]) => void }>
+                return React.cloneElement(childElement, {
                     ...rest,
-                    onClick: (...args: any[]) => {
+                    onClick: (...args: unknown[]) => {
                         handleClick()
-                            ; (children as any).props?.onClick?.(...args)
+                            ; childElement.props.onClick?.(...args)
                     },
                 })
             }
             return <button {...rest} onClick={handleClick}>{children}</button>
         },
-        DropdownMenuContent: ({ children, open, ...rest }: any) => {
+        DropdownMenuContent: ({ children, open, ...rest }: DropdownWithChildrenProps) => {
             if (!open) return null
             return <div data-testid="dropdown-content" {...rest}>{children}</div>
         },
-        DropdownMenuItem: ({ children, onSelect, ...rest }: any) => (
+        DropdownMenuItem: ({ children, onSelect, ...rest }: { children: React.ReactNode; onSelect?: () => void } & Record<string, unknown>) => (
             <button {...rest} onClick={onSelect}>{children}</button>
         ),
     }
@@ -75,7 +90,7 @@ function createMockTable() {
         getAllColumns: () => [],
         getState: () => ({ columnFilters: [] }),
     }
-    return table as any
+    return table as unknown as Table<Equipment>
 }
 
 describe('EquipmentToolbar with shared filters', () => {
@@ -93,6 +108,7 @@ describe('EquipmentToolbar with shared filters', () => {
         isMobile: false,
         useTabletFilters: false,
         isRegionalLeader: false,
+        canCreateEquipment: true,
         hasFacilityFilter: false,
         onOpenFilterSheet: vi.fn(),
         onOpenColumnsDialog: vi.fn(),
@@ -134,4 +150,11 @@ describe('EquipmentToolbar with shared filters', () => {
 
         expect(screen.getByText('Xóa tất cả')).toBeInTheDocument()
     })
+
+    it('hides add actions when create permission is disabled', () => {
+        render(<EquipmentToolbar {...baseProps} canCreateEquipment={false} />)
+
+        expect(screen.queryByText('Thêm thiết bị')).not.toBeInTheDocument()
+    })
+
 })

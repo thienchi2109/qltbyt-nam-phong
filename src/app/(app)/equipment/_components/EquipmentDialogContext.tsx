@@ -3,7 +3,7 @@
 import * as React from "react"
 import { useQueryClient } from "@tanstack/react-query"
 import { useSession } from "next-auth/react"
-import { isGlobalRole, isRegionalLeaderRole } from "@/lib/rbac"
+import { isGlobalRole, isRegionalLeaderRole, ROLES } from "@/lib/rbac"
 import type { Equipment, UsageLog, SessionUser } from "../types"
 
 // ============================================
@@ -99,6 +99,7 @@ export function EquipmentDialogProvider({
   // Computed permissions
   const isGlobal = isGlobalRole(user?.role)
   const isRegionalLeader = isRegionalLeaderRole(user?.role)
+  const isUserRole = user?.role?.toLowerCase().trim() === ROLES.USER
 
   // Dialog state
   const [dialogState, setDialogState] = React.useState<DialogState>({
@@ -138,12 +139,18 @@ export function EquipmentDialogProvider({
 
   // Dialog open actions
   const openAddDialog = React.useCallback(() => {
+    if (isUserRole) {
+      return
+    }
     setDialogState((prev) => ({ ...prev, isAddOpen: true }))
-  }, [])
+  }, [isUserRole])
 
   const openImportDialog = React.useCallback(() => {
+    if (isUserRole) {
+      return
+    }
     setDialogState((prev) => ({ ...prev, isImportOpen: true }))
-  }, [])
+  }, [isUserRole])
 
   const openColumnsDialog = React.useCallback(() => {
     setDialogState((prev) => ({ ...prev, isColumnsOpen: true }))

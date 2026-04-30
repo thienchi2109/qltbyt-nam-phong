@@ -4,19 +4,11 @@ import * as React from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import type { Equipment, UsageLog } from '../types'
 
+const mockUseSession = vi.fn()
+
 // Mock next-auth
 vi.mock('next-auth/react', () => ({
-  useSession: () => ({
-    data: {
-      user: {
-        id: 1,
-        role: 'user',
-        don_vi: 5,
-        name: 'Test User',
-      },
-    },
-    status: 'authenticated',
-  }),
+  useSession: () => mockUseSession(),
 }))
 
 // Mock query client
@@ -57,6 +49,17 @@ const createWrapper = () => {
 describe('EquipmentDialogContext', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockUseSession.mockReturnValue({
+      data: {
+        user: {
+          id: 1,
+          role: 'admin',
+          don_vi: 5,
+          name: 'Test User',
+        },
+      },
+      status: 'authenticated',
+    })
   })
 
   describe('Initial State', () => {
@@ -101,6 +104,30 @@ describe('EquipmentDialogContext', () => {
       expect(result.current.dialogState.isAddOpen).toBe(true)
     })
 
+    it('does not open add dialog for role user', () => {
+      mockUseSession.mockReturnValue({
+        data: {
+          user: {
+            id: 1,
+            role: 'user',
+            don_vi: 5,
+            name: 'Test User',
+          },
+        },
+        status: 'authenticated',
+      })
+
+      const { result } = renderHook(() => useEquipmentContext(), {
+        wrapper: createWrapper(),
+      })
+
+      act(() => {
+        result.current.openAddDialog()
+      })
+
+      expect(result.current.dialogState.isAddOpen).toBe(false)
+    })
+
     it('should close add dialog', () => {
       const { result } = renderHook(() => useEquipmentContext(), {
         wrapper: createWrapper(),
@@ -129,6 +156,30 @@ describe('EquipmentDialogContext', () => {
       })
 
       expect(result.current.dialogState.isImportOpen).toBe(true)
+    })
+
+    it('does not open import dialog for role user', () => {
+      mockUseSession.mockReturnValue({
+        data: {
+          user: {
+            id: 1,
+            role: 'user',
+            don_vi: 5,
+            name: 'Test User',
+          },
+        },
+        status: 'authenticated',
+      })
+
+      const { result } = renderHook(() => useEquipmentContext(), {
+        wrapper: createWrapper(),
+      })
+
+      act(() => {
+        result.current.openImportDialog()
+      })
+
+      expect(result.current.dialogState.isImportOpen).toBe(false)
     })
 
     it('should close import dialog', () => {
@@ -388,7 +439,7 @@ describe('EquipmentDialogContext', () => {
         wrapper: createWrapper(),
       })
 
-      expect(result.current.isGlobal).toBe(false)
+      expect(result.current.isGlobal).toBe(true)
       expect(result.current.isRegionalLeader).toBe(false)
     })
   })

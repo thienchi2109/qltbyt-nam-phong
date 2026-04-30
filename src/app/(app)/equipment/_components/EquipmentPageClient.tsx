@@ -26,6 +26,7 @@ import type { DisplayContext } from "@/components/shared/DataTablePagination/typ
 import { EquipmentToolbar } from "@/components/equipment/equipment-toolbar"
 import { TenantSelector } from "@/components/shared/TenantSelector"
 import { applyAttentionStatusPresetFilters } from "@/lib/equipment-attention-preset"
+import { ROLES } from "@/lib/rbac"
 
 import { useEquipmentPage } from "../use-equipment-page"
 import { EquipmentContent } from "../equipment-content"
@@ -102,9 +103,11 @@ const EquipmentPageContent = React.memo(function EquipmentPageContent({
     openImportDialog,
     openColumnsDialog,
     openDetailDialog,
+    user: dialogUser,
   } = useEquipmentContext()
 
   const {
+    user,
     // Session/Auth
     isGlobal,
     isRegionalLeader,
@@ -165,6 +168,11 @@ const EquipmentPageContent = React.memo(function EquipmentPageContent({
     // Branding
     tenantBranding,
   } = pageState
+
+  const canCreateEquipment = React.useMemo(() => {
+    const role = (dialogUser?.role ?? user?.role ?? "").toLowerCase().trim()
+    return role !== ROLES.USER && !isRegionalLeader
+  }, [dialogUser?.role, user?.role, isRegionalLeader])
 
   // Handle route sync pending actions using context
   React.useEffect(() => {
@@ -241,6 +249,7 @@ const EquipmentPageContent = React.memo(function EquipmentPageContent({
             isMobile={isMobile}
             useTabletFilters={useTabletFilters}
             isRegionalLeader={isRegionalLeader}
+            canCreateEquipment={canCreateEquipment}
             hasFacilityFilter={hasFacilityFilter}
             isExporting={isExporting}
             onOpenFilterSheet={() => setIsFilterSheetOpen(true)}
@@ -306,7 +315,7 @@ const EquipmentPageContent = React.memo(function EquipmentPageContent({
       </Card>
 
       {/* Floating Add Button - Mobile only */}
-      {!isRegionalLeader ? (
+      {canCreateEquipment ? (
         <div className="fixed bottom-20 right-6 md:hidden z-[100]">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
