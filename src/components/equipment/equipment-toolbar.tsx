@@ -242,7 +242,7 @@ export function EquipmentToolbar({
 
           {/* Right: actions */}
           <div className="order-3 w-full md:order-2 md:w-auto flex items-center gap-2 justify-between md:justify-end">
-            {canCreateEquipment && !isRegionalLeader && (
+            {canCreateEquipment && (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button size="sm" className="hidden md:flex h-8 gap-1 touch-target-sm md:h-8">
