@@ -31,60 +31,31 @@ DialogOverlay.displayName = DialogPrimitive.Overlay.displayName
 
 const DialogContent = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Content>,
-  React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content>
->(({ className, children, ...props }, ref) => {
-  // Mobile-specific crash prevention
-  const [isMobile, setIsMobile] = React.useState<boolean | undefined>(undefined)
-  
-  React.useEffect(() => {
-    const checkMobile = () => {
-      try {
-        setIsMobile(window.matchMedia('(max-width: 767px)').matches)
-      } catch (e) {
-        // Fallback for environments without matchMedia
-        setIsMobile(false)
-      }
-    }
-    
-    checkMobile()
-    
-    const mediaQuery = window.matchMedia('(max-width: 767px)')
-    const handleChange = (e: MediaQueryListEvent) => {
-      try {
-        setIsMobile(e.matches)
-      } catch (error) {
-        // Prevent mobile browser crashes during viewport changes
-      }
-    }
-    
-    mediaQuery.addEventListener('change', handleChange)
-    return () => {
-      try {
-        mediaQuery.removeEventListener('change', handleChange)
-      } catch (e) {
-        // Silent cleanup
-      }
-    }
-  }, [])
-  
-  // Mobile-safe animation classes - disable problematic animations on mobile
-  const animationClasses = isMobile 
-    ? "fixed left-[50%] top-[50%] grid w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 border bg-background p-6 shadow-lg sm:rounded-lg"
-    : "fixed left-[50%] top-[50%] grid w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 border bg-background p-6 shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%] sm:rounded-lg"
-  
+  React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content> & {
+    showCloseButton?: boolean
+    closeLabel?: string
+  }
+>(({ className, children, showCloseButton = true, closeLabel = "Close", ...props }, ref) => {
+  // Mobile-safe animation classes: base mobile layout uses no enter/exit animations.
+  // Desktop and larger screens opt into the richer transition set.
+  const contentClasses =
+    "fixed left-[50%] top-[50%] grid w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 border bg-background p-6 shadow-lg sm:rounded-lg md:duration-200 md:data-[state=open]:animate-in md:data-[state=closed]:animate-out md:data-[state=closed]:fade-out-0 md:data-[state=open]:fade-in-0 md:data-[state=closed]:zoom-out-95 md:data-[state=open]:zoom-in-95 md:data-[state=closed]:slide-out-to-left-1/2 md:data-[state=closed]:slide-out-to-top-[48%] md:data-[state=open]:slide-in-from-left-1/2 md:data-[state=open]:slide-in-from-top-[48%]"
+
   return (
     <DialogPortal>
       <DialogOverlay />
       <DialogPrimitive.Content
         ref={ref}
-        className={cn("z-[1000]", animationClasses, className)}
+        className={cn("z-[1000]", contentClasses, className)}
         {...props}
       >
         {children}
-        <DialogPrimitive.Close className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground">
-          <X className="h-4 w-4" />
-          <span className="sr-only">Close</span>
-        </DialogPrimitive.Close>
+        {showCloseButton ? (
+          <DialogPrimitive.Close className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground">
+            <X className="h-4 w-4" />
+            <span className="sr-only">{closeLabel}</span>
+          </DialogPrimitive.Close>
+        ) : null}
       </DialogPrimitive.Content>
     </DialogPortal>
   )

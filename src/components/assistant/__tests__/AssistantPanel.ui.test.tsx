@@ -65,14 +65,17 @@ vi.mock('@/components/ui/dialog', () => ({
     DialogContent: ({
         children,
         className,
+        showCloseButton,
         ...props
     }: {
         children: React.ReactNode
         className?: string
+        showCloseButton?: boolean
     } & Record<string, unknown>) => (
         <div
             data-testid="assistant-dialog-content"
             className={className}
+            data-show-close-button={String(showCloseButton)}
             {...props}
         >
             {children}
@@ -167,6 +170,13 @@ describe('AssistantPanel', () => {
         const panel = screen.getByTestId('assistant-panel')
         expect(panel.className).toContain('max-w-4xl')
         expect(panel.className).toContain('h-[90vh]')
+    })
+
+    it('suppresses the DialogContent built-in close button to avoid duplicate X controls', () => {
+        render(<AssistantPanel isOpen={true} onClose={vi.fn()} />)
+
+        const panel = screen.getByTestId('assistant-panel')
+        expect(panel).toHaveAttribute('data-show-close-button', 'false')
     })
 
     it('requests the repair draft tool in chat transport', () => {

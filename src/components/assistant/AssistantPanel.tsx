@@ -137,6 +137,7 @@ export function AssistantPanel({ isOpen, onClose }: AssistantPanelProps) {
         <Dialog open={isOpen} onOpenChange={(open) => (!open ? onClose() : null)}>
             <DialogContent
                 data-testid="assistant-panel"
+                showCloseButton={false}
                 className={cn(
                     "max-w-4xl h-[90vh] flex flex-col overflow-hidden p-0",
                     "bg-[hsl(var(--assistant-bg))] backdrop-blur-xl",

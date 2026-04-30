@@ -48,6 +48,7 @@ const GROUPED_REPORT_DIMENSIONS = [
 ] as const
 
 const COUNT_KEYS = ['so_luong', 'count', 'total'] as const
+const FOLLOW_UP_ROWS_LIMIT = 10
 
 function isRecordRow(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
@@ -173,6 +174,14 @@ function buildQueryDatabaseEnvelope(
           chartTitle: chartArtifact.title,
         },
       }),
+    },
+    followUpContext: {
+      queryResult: {
+        reasoning,
+        rowCount,
+        rows: rows.slice(0, FOLLOW_UP_ROWS_LIMIT),
+        truncated: rowCount > FOLLOW_UP_ROWS_LIMIT,
+      },
     },
     uiArtifact: { rawPayload },
   }

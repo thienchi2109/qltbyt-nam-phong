@@ -15,8 +15,8 @@ Use these tiers for shared primitives:
 | Primitive | Overlay | Content | Notes |
 |---|---|---|---|
 | `Tooltip` | n/a | `z-50` | Informational only, not a blocking layer |
-| `AssistantTriggerButton` | n/a | `z-[997]` | FAB below AssistantPanel, above page content. Mobile: `bottom-[calc(4rem+1rem)]` to clear footer nav |
-| `AssistantPanel` | `z-[998]` | `z-[998]` | Chat panel below Dialog so dialogs from chat stay on top |
+| `AssistantTriggerButton` | n/a | `z-[997]` | FAB below `AssistantPanel` / `Dialog` content, above page content. Mobile: `bottom-[calc(4rem+1rem)]` to clear footer nav |
+| `AssistantPanel` | `z-[999]` | `z-[1000]` | Assistant now renders via the shared `Dialog` primitive and inherits its overlay/content tiers |
 | `Dialog` | `z-[999]` | `z-[1000]` | Base modal layer |
 | `DropdownMenu` | n/a | `z-[1001]` | Menu above dialog content |
 | `Sheet` | `z-[1002]` | `z-[1002]` | Side panels above dialogs |
@@ -35,10 +35,11 @@ Use these tiers for shared primitives:
 ## Required Tests
 
 - `src/components/ui/__tests__/alert-dialog-z-index.test.tsx`
+- `src/components/ui/__tests__/dialog-z-index.test.tsx`
 - `src/components/assistant/__tests__/assistant-trigger-z-index.test.tsx`
 
 When modifying overlay tiers, run:
 
 ```bash
-npm.cmd run test -- src/components/ui/__tests__/alert-dialog-z-index.test.tsx src/components/assistant/__tests__/assistant-trigger-z-index.test.tsx
+npm.cmd run test -- src/components/ui/__tests__/dialog-z-index.test.tsx src/components/ui/__tests__/alert-dialog-z-index.test.tsx src/components/assistant/__tests__/assistant-trigger-z-index.test.tsx
 ```

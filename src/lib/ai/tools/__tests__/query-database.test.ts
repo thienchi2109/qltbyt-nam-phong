@@ -44,6 +44,17 @@ describe('queryDatabaseTool', () => {
       modelSummary: {
         itemCount: 2,
       },
+      followUpContext: {
+        queryResult: {
+          reasoning: 'Thống kê số lượng thiết bị theo khoa trong đơn vị hiện tại',
+          rowCount: 2,
+          rows: [
+            { khoa_phong_quan_ly: 'ICU', so_luong: 12 },
+            { khoa_phong_quan_ly: 'Xét nghiệm', so_luong: 7 },
+          ],
+          truncated: false,
+        },
+      },
       uiArtifact: {
         rawPayload: {
           kind: 'reportChart',
@@ -129,6 +140,39 @@ describe('queryDatabaseTool', () => {
             ],
           },
         },
+      },
+    })
+  })
+
+  it('keeps compact follow-up query rows for later multi-turn reasoning', async () => {
+    const execute = vi.fn().mockResolvedValue({
+      rowCount: 12,
+      rows: Array.from({ length: 12 }, (_, index) => ({
+        khoa_phong_quan_ly: `Khoa ${index + 1}`,
+        so_luong: index + 1,
+      })),
+    })
+
+    const toolDef = queryDatabaseTool({
+      execute,
+      request: buildRequest(),
+      scope: { tenantId: 17, userId: 'u1' },
+    })
+
+    const result = await toolDef.execute?.({
+      reasoning: 'Liệt kê số lượng thiết bị theo khoa',
+      sql: 'SELECT khoa_phong_quan_ly, COUNT(*) AS so_luong FROM ai_readonly.equipment_search GROUP BY khoa_phong_quan_ly ORDER BY so_luong DESC',
+    })
+
+    expect(result?.followUpContext).toEqual({
+      queryResult: {
+        reasoning: 'Liệt kê số lượng thiết bị theo khoa',
+        rowCount: 12,
+        rows: Array.from({ length: 10 }, (_, index) => ({
+          khoa_phong_quan_ly: `Khoa ${index + 1}`,
+          so_luong: index + 1,
+        })),
+        truncated: true,
       },
     })
   })
