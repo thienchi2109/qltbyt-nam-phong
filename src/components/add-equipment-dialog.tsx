@@ -61,6 +61,7 @@ export function AddEquipmentDialog({
   const { data: session } = useSession()
   const user = session?.user
   const isRegionalLeader = isRegionalLeaderRole(user?.role)
+  const isUserRole = user?.role?.toLowerCase().trim() === ROLES.USER
 
   const { data: departments = [] } = useQuery({
     queryKey: ["departments_list"],
@@ -131,12 +132,12 @@ export function AddEquipmentDialog({
   })
 
   async function onSubmit(values: AddEquipmentFormValues) {
-    if (isRegionalLeader || user?.role === ROLES.USER) {
+    if (isRegionalLeader || isUserRole) {
       toast({
         variant: "destructive",
         title: "Không có quyền",
         description:
-          user?.role === ROLES.USER
+          isUserRole
             ? "Tài khoản người dùng không được phép thêm thiết bị."
             : "Tài khoản khu vực chỉ được phép xem dữ liệu thiết bị.",
       })
@@ -178,7 +179,10 @@ export function AddEquipmentDialog({
               >
                 Hủy
               </Button>
-              <Button type="submit" disabled={createMutation.isPending || isRegionalLeader}>
+              <Button
+                type="submit"
+                disabled={createMutation.isPending || isRegionalLeader || isUserRole}
+              >
                 {createMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 Lưu
               </Button>

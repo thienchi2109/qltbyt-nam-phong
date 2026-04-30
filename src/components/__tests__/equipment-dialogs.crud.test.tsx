@@ -260,6 +260,8 @@ describe('Equipment Dialogs CRUD', () => {
         { wrapper: createWrapper() }
       )
 
+      expect(screen.getByRole('button', { name: 'Lưu' })).toBeDisabled()
+
       fillRequiredAddFields()
       fireEvent.change(screen.getByRole('combobox'), {
         target: { value: 'Hoạt động' },
