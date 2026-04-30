@@ -29,6 +29,49 @@ export interface ToolResponseEnvelope {
   uiArtifact?: ToolResponseEnvelopeUiArtifact
 }
 
+export type ReportChartType = 'bar' | 'line' | 'pie'
+
+interface ReportChartBase {
+  type: ReportChartType
+  data: Array<Record<string, unknown>>
+}
+
+export interface ReportChartBarConfig extends ReportChartBase {
+  type: 'bar'
+  xKey: string
+  yKey: string
+}
+
+export interface ReportChartLineConfig extends ReportChartBase {
+  type: 'line'
+  xKey: string
+  yKey: string
+}
+
+export interface ReportChartPieConfig extends ReportChartBase {
+  type: 'pie'
+  labelKey: string
+  valueKey: string
+  innerRadius?: number
+}
+
+export type ReportChartConfig =
+  | ReportChartBarConfig
+  | ReportChartLineConfig
+  | ReportChartPieConfig
+
+export interface ReportChartArtifact {
+  kind: 'reportChart'
+  version: 1
+  title?: string
+  description?: string
+  chart: ReportChartConfig
+  table?: {
+    columns: string[]
+    rows: Array<Record<string, unknown>>
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Draft-tool carve-out
 // ---------------------------------------------------------------------------
@@ -62,6 +105,37 @@ export function isToolResponseEnvelope(
   }
 
   return typeof summary.summaryText === 'string'
+}
+
+export function isReportChartArtifact(
+  payload: unknown,
+): payload is ReportChartArtifact {
+  if (!isRecord(payload)) {
+    return false
+  }
+
+  if (payload.kind !== 'reportChart' || payload.version !== 1) {
+    return false
+  }
+
+  const chart = payload.chart
+  if (!isRecord(chart) || !Array.isArray(chart.data)) {
+    return false
+  }
+
+  if (chart.type === 'bar' || chart.type === 'line') {
+    return typeof chart.xKey === 'string' && typeof chart.yKey === 'string'
+  }
+
+  if (chart.type === 'pie') {
+    return (
+      typeof chart.labelKey === 'string' &&
+      typeof chart.valueKey === 'string' &&
+      (chart.innerRadius === undefined || typeof chart.innerRadius === 'number')
+    )
+  }
+
+  return false
 }
 
 // ---------------------------------------------------------------------------

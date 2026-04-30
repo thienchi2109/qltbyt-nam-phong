@@ -59,6 +59,30 @@ vi.mock('next/navigation', () => ({
     }),
 }))
 
+vi.mock('@/components/ui/dialog', () => ({
+    Dialog: ({ open, children }: { open: boolean; children: React.ReactNode }) =>
+        open ? <div data-testid="assistant-dialog">{children}</div> : null,
+    DialogContent: ({
+        children,
+        className,
+        ...props
+    }: {
+        children: React.ReactNode
+        className?: string
+    } & Record<string, unknown>) => (
+        <div
+            data-testid="assistant-dialog-content"
+            className={className}
+            {...props}
+        >
+            {children}
+        </div>
+    ),
+    DialogHeader: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+    DialogTitle: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+    DialogDescription: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+}))
+
 // Mock TenantSelectionContext
 vi.mock('@/contexts/TenantSelectionContext', () => ({
     useTenantSelection: () => ({
@@ -135,6 +159,14 @@ describe('AssistantPanel', () => {
 
         const panel = screen.getByTestId('assistant-panel')
         expect(panel.className).toContain('z-[998]')
+    })
+
+    it('renders inside a wide dialog shell for chart-friendly layout', () => {
+        render(<AssistantPanel isOpen={true} onClose={vi.fn()} />)
+
+        const panel = screen.getByTestId('assistant-panel')
+        expect(panel.className).toContain('max-w-4xl')
+        expect(panel.className).toContain('h-[90vh]')
     })
 
     it('requests the repair draft tool in chat transport', () => {
