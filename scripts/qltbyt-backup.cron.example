@@ -11,10 +11,10 @@
 #                   (installed from scripts/backup-db.sh)
 #
 # Schedule notes:
-#   - 02:00 ICT = 19:00 UTC. Vietnam is UTC+7 with no DST.
+#   - 22:00 ICT = 15:00 UTC. Vietnam is UTC+7 with no DST.
 #   - Cron `m h dom mon dow` is interpreted in the SYSTEM timezone of the
 #     VPS. The line below uses UTC; if your VPS is set to Asia/Ho_Chi_Minh,
-#     change `0 19` → `0 2` instead.
+#     change `0 15` → `0 22` instead.
 #   - `MAILTO=""` disables cron's own email (we have Telegram).
 #   - stderr is redirected into the log file because the script logs to it
 #     too; this catches stray output before the script's own logging
@@ -25,4 +25,4 @@ PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 MAILTO=""
 
 # m  h dom mon dow user  command
-0 19 *   *   *   root  /usr/local/bin/qltbyt-backup >>/var/log/qltbyt-backup.log 2>&1
+0 15 *   *   *   root  /usr/local/bin/qltbyt-backup >>/var/log/qltbyt-backup.log 2>&1
