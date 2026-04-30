@@ -138,7 +138,7 @@ export function AssistantPanel({ isOpen, onClose }: AssistantPanelProps) {
             <DialogContent
                 data-testid="assistant-panel"
                 className={cn(
-                    "z-[998] max-w-4xl h-[90vh] flex flex-col overflow-hidden p-0",
+                    "max-w-4xl h-[90vh] flex flex-col overflow-hidden p-0",
                     "bg-[hsl(var(--assistant-bg))] backdrop-blur-xl",
                     "border border-[hsl(var(--assistant-border))]",
                 )}

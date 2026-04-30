@@ -97,4 +97,39 @@ describe('queryDatabaseTool', () => {
       },
     })
   })
+
+  it('accepts stringified SQL count values when building report charts', async () => {
+    const execute = vi.fn().mockResolvedValue({
+      rowCount: 2,
+      rows: [
+        { khoa_phong_quan_ly: 'ICU', so_luong: '12' },
+        { khoa_phong_quan_ly: 'Xét nghiệm', so_luong: '7' },
+      ],
+    })
+
+    const toolDef = queryDatabaseTool({
+      execute,
+      request: buildRequest(),
+      scope: { tenantId: 17, userId: 'u1' },
+    })
+
+    const result = await toolDef.execute?.({
+      reasoning: 'Thống kê số lượng thiết bị theo khoa trong đơn vị hiện tại',
+      sql: 'SELECT khoa_phong_quan_ly, COUNT(*) AS so_luong FROM ai_readonly.equipment_search GROUP BY khoa_phong_quan_ly ORDER BY so_luong DESC',
+    })
+
+    expect(result).toMatchObject({
+      uiArtifact: {
+        rawPayload: {
+          kind: 'reportChart',
+          chart: {
+            data: [
+              { khoa_phong_quan_ly: 'ICU', so_luong: 12 },
+              { khoa_phong_quan_ly: 'Xét nghiệm', so_luong: 7 },
+            ],
+          },
+        },
+      },
+    })
+  })
 })

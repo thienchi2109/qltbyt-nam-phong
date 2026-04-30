@@ -12,7 +12,6 @@ import type {
   ReportChartArtifact,
   ToolResponseEnvelope,
 } from '@/lib/ai/tools/tool-response-envelope'
-import { isReportChartArtifact } from '@/lib/ai/tools/tool-response-envelope'
 
 export { ASSISTANT_SQL_TOOL_NAME as QUERY_DATABASE_TOOL_NAME }
 
@@ -58,11 +57,24 @@ function isNumericValue(value: unknown): value is number {
   return typeof value === 'number' && Number.isFinite(value)
 }
 
+function parseCountValue(value: unknown): number | null {
+  if (isNumericValue(value)) {
+    return value
+  }
+
+  if (typeof value === 'string' && value.trim().length > 0) {
+    const parsed = Number(value)
+    return Number.isFinite(parsed) ? parsed : null
+  }
+
+  return null
+}
+
 function findCountKey(
   rows: Array<Record<string, unknown>>,
 ): string | undefined {
   return COUNT_KEYS.find((candidate) =>
-    rows.every((row) => isNumericValue(row[candidate])),
+    rows.every((row) => parseCountValue(row[candidate]) !== null),
   )
 }
 
@@ -78,8 +90,20 @@ function buildReportChartArtifact(
     return undefined
   }
 
+  const normalizedRows = rows.map((row) => {
+    const parsedCount = parseCountValue(row[countKey])
+    if (parsedCount === null) {
+      return row
+    }
+
+    return {
+      ...row,
+      [countKey]: parsedCount,
+    }
+  })
+
   for (const dimension of GROUPED_REPORT_DIMENSIONS) {
-    const matchesDimension = rows.every((row) => {
+    const matchesDimension = normalizedRows.every((row) => {
       const label = row[dimension.key]
       return (
         (typeof label === 'string' && label.trim().length > 0) ||
@@ -96,8 +120,8 @@ function buildReportChartArtifact(
       version: 1 as const,
       title: dimension.title,
       table: {
-        columns: Object.keys(rows[0] ?? {}),
-        rows,
+        columns: Object.keys(normalizedRows[0] ?? {}),
+        rows: normalizedRows,
       },
     }
 
@@ -108,7 +132,7 @@ function buildReportChartArtifact(
           type: 'pie',
           labelKey: dimension.key,
           valueKey: countKey,
-          data: rows,
+          data: normalizedRows,
           innerRadius: 56,
         },
       }
@@ -116,13 +140,13 @@ function buildReportChartArtifact(
 
     return {
       ...base,
-      chart: {
-        type: 'bar',
-        xKey: dimension.key,
-        yKey: countKey,
-        data: rows,
-      },
-    }
+        chart: {
+          type: 'bar',
+          xKey: dimension.key,
+          yKey: countKey,
+          data: normalizedRows,
+        },
+      }
   }
 
   return undefined
@@ -181,14 +205,6 @@ export function queryDatabaseTool({
 
       const rows = result.rows.filter(isRecordRow)
       const envelope = buildQueryDatabaseEnvelope(reasoning, result.rowCount, rows)
-
-      if (
-        envelope.uiArtifact &&
-        isReportChartArtifact(envelope.uiArtifact.rawPayload)
-      ) {
-        return envelope
-      }
-
       return envelope
     },
   })

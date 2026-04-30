@@ -62,4 +62,33 @@ describe('AssistantReportChartCard', () => {
 
     expect(screen.getByTestId('dynamic-pie-chart')).toBeInTheDocument()
   })
+
+  it('renders duplicate rows and object cells without key collisions or object coercion', () => {
+    render(
+      <AssistantReportChartCard
+        artifact={{
+          kind: 'reportChart',
+          version: 1,
+          title: 'Số lượng thiết bị theo khoa',
+          chart: {
+            type: 'bar',
+            xKey: 'khoa_phong_quan_ly',
+            yKey: 'so_luong',
+            data: [{ khoa_phong_quan_ly: 'ICU', so_luong: 12 }],
+          },
+          table: {
+            columns: ['khoa_phong_quan_ly', 'so_luong', 'meta'],
+            rows: [
+              { khoa_phong_quan_ly: 'ICU', so_luong: 12, meta: { source: 'A' } },
+              { khoa_phong_quan_ly: 'ICU', so_luong: 12, meta: { source: 'A' } },
+            ],
+          },
+        }}
+      />,
+    )
+
+    expect(screen.getAllByText('ICU')).toHaveLength(2)
+    expect(screen.getAllByText('{"source":"A"}')).toHaveLength(2)
+    expect(screen.queryByText('[object Object]')).not.toBeInTheDocument()
+  })
 })

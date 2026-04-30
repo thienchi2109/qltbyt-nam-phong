@@ -154,11 +154,11 @@ describe('AssistantPanel', () => {
         expect(screen.getByText(/kết quả mang tính tham khảo/i)).toBeInTheDocument()
     })
 
-    it('has z-[998] layering per contract', () => {
+    it('keeps dialog content above the default overlay layer', () => {
         render(<AssistantPanel isOpen={true} onClose={vi.fn()} />)
 
         const panel = screen.getByTestId('assistant-panel')
-        expect(panel.className).toContain('z-[998]')
+        expect(panel.className).not.toContain('z-[998]')
     })
 
     it('renders inside a wide dialog shell for chart-friendly layout', () => {

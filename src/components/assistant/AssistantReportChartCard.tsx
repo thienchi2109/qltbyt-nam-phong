@@ -22,9 +22,43 @@ const PIE_COLORS = [
   "hsl(var(--chart-5))",
 ]
 
+function formatCellValue(value: unknown): string {
+  if (value === null || value === undefined) {
+    return ""
+  }
+
+  if (typeof value === "object") {
+    return JSON.stringify(value)
+  }
+
+  return String(value)
+}
+
 export function AssistantReportChartCard({
   artifact,
 }: AssistantReportChartCardProps) {
+  const tableRows = React.useMemo(() => {
+    if (!artifact.table) {
+      return []
+    }
+
+    const table = artifact.table
+    const seenRowKeys = new Map<string, number>()
+
+    return table.rows.map((row) => {
+      const baseKey = table.columns
+        .map((column) => formatCellValue(row[column]))
+        .join("::")
+      const seenCount = (seenRowKeys.get(baseKey) ?? 0) + 1
+      seenRowKeys.set(baseKey, seenCount)
+
+      return {
+        row,
+        rowKey: seenCount === 1 ? baseKey : `${baseKey}::${seenCount}`,
+      }
+    })
+  }, [artifact.table])
+
   return (
     <div
       data-testid="assistant-report-chart-card"
@@ -92,21 +126,15 @@ export function AssistantReportChartCard({
                 </tr>
               </thead>
               <tbody>
-                {artifact.table.rows.map((row) => {
-                  const rowKey = artifact.table?.columns
-                    .map((column) => String(row[column] ?? ""))
-                    .join("::")
-
-                  return (
+                {tableRows.map(({ row, rowKey }) => (
                   <tr key={rowKey} className="border-b border-border/30 last:border-0">
                     {artifact.table?.columns.map((column) => (
                       <td key={`${rowKey}-${column}`} className="px-2 py-1 text-foreground">
-                        {String(row[column] ?? "")}
+                        {formatCellValue(row[column])}
                       </td>
                     ))}
                   </tr>
-                  )
-                })}
+                ))}
               </tbody>
             </table>
           </div>
