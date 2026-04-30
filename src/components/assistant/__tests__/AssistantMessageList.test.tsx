@@ -8,6 +8,12 @@ vi.mock('ai', () => ({
     getToolName: (part: { type: string }) => part.type.replace('tool-', ''),
 }))
 
+vi.mock('../AssistantReportChartCard', () => ({
+    AssistantReportChartCard: ({ artifact }: { artifact: { title?: string } }) => (
+        <div data-testid="assistant-report-chart-card">{artifact.title ?? 'chart'}</div>
+    ),
+}))
+
 import { AssistantMessageList } from '../AssistantMessageList'
 
 /** Helper to build a minimal UIMessage-like object. */
@@ -80,6 +86,52 @@ describe('AssistantMessageList', () => {
         )
 
         expect(screen.getByTestId('tool-execution-card')).toBeInTheDocument()
+    })
+
+    it('renders an inline chart card for reportChart artifacts', () => {
+        const messages = [
+            makeMessage('assistant', [
+                {
+                    type: 'tool-query_database',
+                    toolCallId: 'tc-chart',
+                    toolName: 'query_database',
+                    state: 'output-available',
+                    output: {
+                        modelSummary: {
+                            summaryText: 'Đã tổng hợp số lượng thiết bị theo khoa.',
+                            itemCount: 2,
+                        },
+                        uiArtifact: {
+                            rawPayload: {
+                                kind: 'reportChart',
+                                version: 1,
+                                title: 'Số lượng thiết bị theo khoa',
+                                chart: {
+                                    type: 'bar',
+                                    xKey: 'khoa_phong_quan_ly',
+                                    yKey: 'so_luong',
+                                    data: [
+                                        { khoa_phong_quan_ly: 'ICU', so_luong: 12 },
+                                        { khoa_phong_quan_ly: 'Xét nghiệm', so_luong: 7 },
+                                    ],
+                                },
+                            },
+                        },
+                    },
+                },
+            ]),
+        ]
+
+        render(
+            <AssistantMessageList
+                messages={messages as never}
+                status="ready"
+                onApplyDraft={vi.fn()}
+            />,
+        )
+
+        expect(screen.getByTestId('assistant-report-chart-card')).toBeInTheDocument()
+        expect(screen.getByText('Số lượng thiết bị theo khoa')).toBeInTheDocument()
     })
 
     it('renders tool execution card with spinner for executing state', () => {

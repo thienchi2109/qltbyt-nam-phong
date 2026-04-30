@@ -6,9 +6,14 @@ import type { UIMessage } from "ai"
 import { Sparkles } from "lucide-react"
 
 import { cn } from "@/lib/utils"
+import {
+    isReportChartArtifact,
+    isToolResponseEnvelope,
+} from "@/lib/ai/tools/tool-response-envelope"
 
 import { AssistantDraftCard } from "./AssistantDraftCard"
 import { AssistantMarkdownRenderer } from "./AssistantMarkdownRenderer"
+import { AssistantReportChartCard } from "./AssistantReportChartCard"
 import { AssistantThinkingIndicator } from "./AssistantThinkingIndicator"
 import { AssistantToolExecutionCard } from "./AssistantToolExecutionCard"
 import type { RepairRequestDraft } from "@/lib/ai/draft/repair-request-draft-schema"
@@ -120,12 +125,19 @@ function MessageBubble({
                     isUser ? "max-w-[85%] ml-12" : "max-w-[88%] mr-12",
                 )}
             >
-                {message.parts.map((part, idx) => {
+                {message.parts.map((part) => {
+                    const partKey =
+                        part.type === "text"
+                            ? `${message.id}-text-${part.text}`
+                            : isToolUIPart(part)
+                              ? part.toolCallId
+                              : `${message.id}-${part.type}`
+
                     // Text part
                     if (part.type === "text") {
                         return (
                             <div
-                                key={`${message.id}-${idx}`}
+                                key={partKey}
                                 className={cn(
                                     "px-3.5 py-2.5 text-sm leading-relaxed",
                                     isUser
@@ -162,7 +174,7 @@ function MessageBubble({
                             ) {
                                 return (
                                     <AssistantDraftCard
-                                        key={part.toolCallId}
+                                        key={partKey}
                                         draft={output as DraftPayload}
                                         onApplyDraft={onApplyDraft}
                                     />
@@ -170,12 +182,25 @@ function MessageBubble({
                             }
                         }
 
+                        const envelope = isToolResponseEnvelope(part.output)
+                            ? part.output
+                            : null
+                        const reportChart =
+                            envelope?.uiArtifact &&
+                            isReportChartArtifact(envelope.uiArtifact.rawPayload)
+                                ? envelope.uiArtifact.rawPayload
+                                : null
+
                         return (
-                            <AssistantToolExecutionCard
-                                key={part.toolCallId}
-                                toolName={toolName}
-                                state={part.state}
-                            />
+                            <React.Fragment key={partKey}>
+                                <AssistantToolExecutionCard
+                                    toolName={toolName}
+                                    state={part.state}
+                                />
+                                {reportChart ? (
+                                    <AssistantReportChartCard artifact={reportChart} />
+                                ) : null}
+                            </React.Fragment>
                         )
                     }
 

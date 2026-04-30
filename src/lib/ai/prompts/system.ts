@@ -128,7 +128,7 @@ export function buildSystemPrompt(context: SystemPromptContext = {}): string {
       '- `modelSummary.itemCount`: dùng để trả lời số lượng.',
       '- `modelSummary.importantFields`: chứa dữ liệu quan trọng để suy luận nhanh (ví dụ: danh sách ứng viên danh mục, tên khoa/phòng).',
       '- `modelSummary.summaryText`: tóm tắt ngắn gọn kết quả.',
-      '- Khi cần liệt kê chi tiết ở chính lượt tool vừa trả về, đọc từ `uiArtifact.rawPayload.data`; nếu tool không có `uiArtifact` (ví dụ `departmentList`) thì dùng `modelSummary.importantFields`.',
+      '- Khi cần liệt kê chi tiết ở chính lượt tool vừa trả về: với list payload thì đọc từ `uiArtifact.rawPayload.data`; với grouped aggregate có `reportChart` thì đọc từ `chart.data` hoặc `table.rows`; nếu tool không có `uiArtifact` (ví dụ `departmentList`) thì dùng `modelSummary.importantFields`.',
       '- KHÔNG dựa vào hợp đồng cũ `{ data, total }`.',
       '- KHÔNG tham chiếu `uiArtifact` như một khóa kỹ thuật trong câu trả lời — đó là dữ liệu dành cho giao diện, chỉ dùng để đọc rồi diễn giải lại bằng ngôn ngữ tự nhiên.',
       '',

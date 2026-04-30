@@ -25,6 +25,11 @@ describe('System prompt envelope guidance (§4)', () => {
     expect(prompt).toContain('uiArtifact.rawPayload.data')
   })
 
+  it('mentions reportChart guidance for grouped aggregates in the current turn', () => {
+    expect(prompt).toContain('reportChart')
+    expect(prompt).toMatch(/chart\.data|table\.rows/)
+  })
+
   it('warns model not to reference uiArtifact in answers', () => {
     expect(prompt).toContain('uiArtifact')
     // Should instruct NOT to reference it
