@@ -48,7 +48,7 @@ export interface EquipmentToolbarProps {
   fundingSources: string[]
   isMobile: boolean
   useTabletFilters: boolean
-  isRegionalLeader: boolean
+  canCreateEquipment: boolean
   hasFacilityFilter: boolean
   /** Whether export is currently in progress */
   isExporting?: boolean
@@ -75,7 +75,7 @@ export function EquipmentToolbar({
   fundingSources,
   isMobile,
   useTabletFilters,
-  isRegionalLeader,
+  canCreateEquipment,
   hasFacilityFilter,
   isExporting = false,
   onOpenFilterSheet,
@@ -240,7 +240,7 @@ export function EquipmentToolbar({
 
           {/* Right: actions */}
           <div className="order-3 w-full md:order-2 md:w-auto flex items-center gap-2 justify-between md:justify-end">
-            {!isRegionalLeader && (
+            {canCreateEquipment && (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button size="sm" className="hidden md:flex h-8 gap-1 touch-target-sm md:h-8">

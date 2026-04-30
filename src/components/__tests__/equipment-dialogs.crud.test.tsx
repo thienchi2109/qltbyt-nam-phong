@@ -237,6 +237,46 @@ describe('Equipment Dialogs CRUD', () => {
       })
     })
 
+    it('blocks create for role user even if the dialog is opened directly', async () => {
+      mockUseSession.mockReturnValue({
+        data: { user: { role: 'user', don_vi: 5 } },
+        status: 'authenticated',
+      })
+      mockCallRpc.mockImplementation(async ({ fn }) => {
+        if (fn === 'departments_list') {
+          return [{ name: 'Khoa Nội' }]
+        }
+        if (fn === 'tenant_list') {
+          return [{ id: 5, code: 'DV5', name: 'Đơn vị 5' }]
+        }
+        if (fn === 'equipment_create') {
+          return { id: 99 }
+        }
+        return []
+      })
+
+      render(
+        <AddEquipmentDialog open onOpenChange={vi.fn()} onSuccess={vi.fn()} />,
+        { wrapper: createWrapper() }
+      )
+
+      expect(screen.getByRole('button', { name: 'Lưu' })).toBeDisabled()
+
+      fillRequiredAddFields()
+      fireEvent.change(screen.getByRole('combobox'), {
+        target: { value: 'Hoạt động' },
+      })
+
+      fireEvent.click(screen.getByRole('button', { name: 'Lưu' }))
+
+      await waitFor(() => {
+        const createCalls = mockCallRpc.mock.calls.filter(
+          ([args]) => (args as { fn?: string })?.fn === 'equipment_create'
+        )
+        expect(createCalls).toHaveLength(0)
+      })
+    })
+
     it('auto-fills decommission date only after status transitions to Ngưng sử dụng', async () => {
       const dateNowSpy = vi
         .spyOn(Date, 'now')
