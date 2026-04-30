@@ -205,16 +205,19 @@ export function queryDatabaseTool({
       reasoning,
       sql,
     }: QueryDatabaseToolInput): Promise<ToolResponseEnvelope> => {
-      const result = await executeAuditedAssistantSql({
-        execute,
-        request,
-        scope,
-        sql,
-      })
+      try {
+        const result = await executeAuditedAssistantSql({
+          execute,
+          request,
+          scope,
+          sql,
+        })
 
-      const rows = result.rows.filter(isRecordRow)
-      const envelope = buildQueryDatabaseEnvelope(reasoning, result.rowCount, rows)
-      return envelope
+        const rows = result.rows.filter(isRecordRow)
+        return buildQueryDatabaseEnvelope(reasoning, result.rowCount, rows)
+      } catch (error) {
+        throw new Error('query_database execution failed', { cause: error })
+      }
     },
   })
 }

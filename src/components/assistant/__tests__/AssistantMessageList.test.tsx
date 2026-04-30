@@ -1,7 +1,7 @@
 import * as React from 'react'
 import { render, screen } from '@testing-library/react'
 import '@testing-library/jest-dom/vitest'
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('ai', () => ({
     isToolUIPart: (part: { type: string }) => part.type.startsWith('tool-'),
@@ -13,6 +13,8 @@ vi.mock('../AssistantReportChartCard', () => ({
         <div data-testid="assistant-report-chart-card">{artifact.title ?? 'chart'}</div>
     ),
 }))
+
+const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
 
 import { AssistantMessageList } from '../AssistantMessageList'
 
@@ -26,6 +28,10 @@ function makeMessage(
 }
 
 describe('AssistantMessageList', () => {
+    beforeEach(() => {
+        consoleErrorSpy.mockClear()
+    })
+
     it('renders user text messages right-aligned', () => {
         const messages = [
             makeMessage('user', [{ type: 'text', text: 'Xin chào!' }]),
@@ -247,5 +253,28 @@ describe('AssistantMessageList', () => {
         )
 
         expect(screen.getByTestId('assistant-thinking-container')).toBeInTheDocument()
+    })
+
+    it('uses unique fallback keys for repeated non-text non-tool part types', () => {
+        const messages = [
+            makeMessage('assistant', [
+                { type: 'source', sourceId: 's1' },
+                { type: 'source', sourceId: 's2' },
+            ]),
+        ]
+
+        render(
+            <AssistantMessageList
+                messages={messages as never}
+                status="ready"
+                onApplyDraft={vi.fn()}
+            />,
+        )
+
+        const duplicateKeyWarnings = consoleErrorSpy.mock.calls.filter(([message]) =>
+            typeof message === 'string' && message.includes('Encountered two children with the same key'),
+        )
+
+        expect(duplicateKeyWarnings).toHaveLength(0)
     })
 })

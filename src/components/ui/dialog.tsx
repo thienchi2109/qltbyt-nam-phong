@@ -29,12 +29,15 @@ const DialogOverlay = React.forwardRef<
 ))
 DialogOverlay.displayName = DialogPrimitive.Overlay.displayName
 
+export interface DialogContentProps
+  extends React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content> {
+  showCloseButton?: boolean
+  closeLabel?: string
+}
+
 const DialogContent = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Content>,
-  React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content> & {
-    showCloseButton?: boolean
-    closeLabel?: string
-  }
+  DialogContentProps
 >(({ className, children, showCloseButton = true, closeLabel = "Close", ...props }, ref) => {
   // Mobile-safe animation classes: base mobile layout uses no enter/exit animations.
   // Desktop and larger screens opt into the richer transition set.

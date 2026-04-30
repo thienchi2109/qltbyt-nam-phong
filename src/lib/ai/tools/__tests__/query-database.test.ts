@@ -62,6 +62,7 @@ describe('queryDatabaseTool', () => {
           chart: {
             type: 'bar',
             xKey: 'khoa_phong_quan_ly',
+            yKey: 'so_luong',
             data: [
               { khoa_phong_quan_ly: 'ICU', so_luong: 12 },
               { khoa_phong_quan_ly: 'Xét nghiệm', so_luong: 7 },
@@ -99,6 +100,8 @@ describe('queryDatabaseTool', () => {
           version: 1,
           chart: {
             type: 'pie',
+            labelKey: 'tinh_trang_hien_tai',
+            valueKey: 'so_luong',
             data: [
               { tinh_trang_hien_tai: 'Hoạt động', so_luong: 21 },
               { tinh_trang_hien_tai: 'Ngưng sử dụng', so_luong: 4 },
@@ -174,6 +177,67 @@ describe('queryDatabaseTool', () => {
         })),
         truncated: true,
       },
+    })
+  })
+
+  it('falls back to raw payload when rows are not eligible for chart rendering', async () => {
+    const execute = vi.fn().mockResolvedValue({
+      rowCount: 2,
+      rows: [
+        { ten_thiet_bi: 'Máy thở', khoa_phong_quan_ly: 'ICU' },
+        { ten_thiet_bi: 'Monitor', khoa_phong_quan_ly: 'ICU' },
+      ],
+    })
+
+    const toolDef = queryDatabaseTool({
+      execute,
+      request: buildRequest(),
+      scope: { tenantId: 17, userId: 'u1' },
+    })
+
+    const result = await toolDef.execute?.({
+      reasoning: 'Liệt kê thiết bị trong khoa ICU',
+      sql: "SELECT ten_thiet_bi, khoa_phong_quan_ly FROM ai_readonly.equipment_search WHERE khoa_phong_quan_ly = 'ICU'",
+    })
+
+    expect(result).toMatchObject({
+      uiArtifact: {
+        rawPayload: {
+          data: [
+            { ten_thiet_bi: 'Máy thở', khoa_phong_quan_ly: 'ICU' },
+            { ten_thiet_bi: 'Monitor', khoa_phong_quan_ly: 'ICU' },
+          ],
+          rowCount: 2,
+          reasoning: 'Liệt kê thiết bị trong khoa ICU',
+        },
+      },
+      followUpContext: {
+        queryResult: {
+          rowCount: 2,
+          truncated: false,
+        },
+      },
+    })
+  })
+
+  it('wraps execution failures with query_database context', async () => {
+    const underlyingError = new Error('permission denied')
+    const execute = vi.fn().mockRejectedValue(underlyingError)
+
+    const toolDef = queryDatabaseTool({
+      execute,
+      request: buildRequest(),
+      scope: { tenantId: 17, userId: 'u1' },
+    })
+
+    await expect(
+      toolDef.execute?.({
+        reasoning: 'Thử truy vấn lỗi',
+        sql: 'SELECT * FROM forbidden_table',
+      }),
+    ).rejects.toMatchObject({
+      message: 'query_database execution failed',
+      cause: underlyingError,
     })
   })
 })

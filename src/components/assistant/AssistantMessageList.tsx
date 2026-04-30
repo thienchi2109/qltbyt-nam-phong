@@ -128,13 +128,13 @@ function MessageBubble({
                 {(() => {
                     let textPartOrdinal = 0
 
-                    return message.parts.map((part) => {
+                    return message.parts.map((part, partIndex) => {
                         const partKey =
                             part.type === "text"
                                 ? `${message.id}-text-${textPartOrdinal++}`
                                 : isToolUIPart(part)
                                   ? part.toolCallId
-                                  : `${message.id}-${part.type}`
+                                  : `${message.id}-${part.type}-${partIndex}`
 
                         // Text part
                         if (part.type === "text") {
