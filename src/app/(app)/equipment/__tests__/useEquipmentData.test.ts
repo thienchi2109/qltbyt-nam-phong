@@ -517,11 +517,13 @@ describe('useEquipmentData', () => {
     })
 
     it('should not fetch tenant list for non-global users', async () => {
-      renderHook(() => useEquipmentData(createDefaultParams({ isGlobal: false })), {
+      const { result } = renderHook(() => useEquipmentData(createDefaultParams({ isGlobal: false })), {
         wrapper: createWrapper(),
       })
 
-      await new Promise((r) => setTimeout(r, 100))
+      await waitFor(() => {
+        expect(result.current.isLoading).toBe(false)
+      })
 
       expect(mockCallRpc).not.toHaveBeenCalledWith(
         expect.objectContaining({ fn: 'tenant_list' })
