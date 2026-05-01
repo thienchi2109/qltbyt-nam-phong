@@ -126,7 +126,6 @@ export function useDashboardKpiSummary() {
       const data = await callRpc<Partial<DashboardKpiSummary>>({ fn: 'dashboard_kpi_summary' })
       return normalizeDashboardKpiSummary(data)
     },
-    enabled: Boolean(user),
     staleTime: 2 * 60 * 1000,
     gcTime: 10 * 60 * 1000,
     refetchOnWindowFocus: false,

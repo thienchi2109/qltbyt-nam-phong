@@ -4,16 +4,14 @@ import { render, screen, waitFor } from "@testing-library/react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 const mockCallRpc = vi.fn()
+const mockUseSession = vi.fn()
 
 vi.mock("@/lib/rpc-client", () => ({
   callRpc: (...args: unknown[]) => mockCallRpc(...args),
 }))
 
 vi.mock("next-auth/react", () => ({
-  useSession: () => ({
-    data: { user: { id: "42", role: "global", dia_ban_id: null } },
-    status: "authenticated",
-  }),
+  useSession: () => mockUseSession(),
 }))
 
 import { KPICards } from "@/components/dashboard/kpi-cards"
@@ -35,6 +33,10 @@ describe("KPICards", () => {
   beforeEach(() => {
     vi.clearAllMocks()
     vi.stubGlobal("React", React)
+    mockUseSession.mockReturnValue({
+      data: { user: { id: "42", role: "global", dia_ban_id: null } },
+      status: "authenticated",
+    })
     mockCallRpc.mockResolvedValue({
       totalEquipment: 12,
       maintenanceCount: 3,
@@ -68,6 +70,22 @@ describe("KPICards", () => {
     })
 
     expect(mockCallRpc).toHaveBeenCalledTimes(1)
+    expect(mockCallRpc).toHaveBeenCalledWith({
+      fn: "dashboard_kpi_summary",
+    })
+  })
+
+  it("shows loading state instead of zero KPI values while session is resolving", () => {
+    mockUseSession.mockReturnValue({
+      data: null,
+      status: "loading",
+    })
+    mockCallRpc.mockReturnValue(new Promise(() => undefined))
+
+    render(<KPICards />, { wrapper: createWrapper() })
+
+    expect(screen.queryByLabelText("0 thiết bị")).not.toBeInTheDocument()
+    expect(screen.queryByLabelText("0 thiết bị cần bảo trì")).not.toBeInTheDocument()
     expect(mockCallRpc).toHaveBeenCalledWith({
       fn: "dashboard_kpi_summary",
     })
