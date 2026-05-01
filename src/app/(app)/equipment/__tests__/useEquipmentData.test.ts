@@ -74,18 +74,8 @@ describe('useEquipmentData', () => {
           return Promise.resolve({ data: [], total: 0 })
         case 'tenant_list':
           return Promise.resolve([])
-        case 'departments_list_for_tenant':
-          return Promise.resolve([])
-        case 'equipment_users_list_for_tenant':
-          return Promise.resolve([])
-        case 'equipment_locations_list_for_tenant':
-          return Promise.resolve([])
-        case 'equipment_statuses_list_for_tenant':
-          return Promise.resolve([])
-        case 'equipment_classifications_list_for_tenant':
-          return Promise.resolve([])
-        case 'equipment_funding_sources_list_for_tenant':
-          return Promise.resolve([])
+        case 'equipment_filter_buckets':
+          return Promise.resolve({})
         case 'get_facilities_with_equipment_count':
           return Promise.resolve([])
         default:
@@ -337,14 +327,71 @@ describe('useEquipmentData', () => {
   })
 
   describe('Filter Options Queries', () => {
-    it('should fetch departments for tenant', async () => {
+    it('should fetch all filter option buckets with a single RPC', async () => {
+      mockCallRpc.mockImplementation(({ fn }: { fn: string }) => {
+        if (fn === 'equipment_list_enhanced') {
+          return Promise.resolve({ data: [], total: 0 })
+        }
+        if (fn === 'equipment_filter_buckets') {
+          return Promise.resolve({
+            department: [{ name: 'Khoa A', count: 5 }],
+            user: [{ name: 'Nguyen Van A', count: 3 }],
+            location: [{ name: 'Phong 101', count: 2 }],
+            status: [{ name: 'Hoat dong', count: 10 }],
+            classification: [{ name: 'Loai B', count: 7 }],
+            fundingSource: [{ name: 'Ngân sách nhà nước', count: 4 }],
+          })
+        }
+        return Promise.resolve([])
+      })
+
+      const { result } = renderHook(() => useEquipmentData(createDefaultParams()), {
+        wrapper: createWrapper(),
+      })
+
+      await waitFor(() => {
+        expect(result.current.filterData.department).toEqual([
+          { id: 'Khoa A', label: 'Khoa A', count: 5 },
+        ])
+      })
+
+      expect(result.current.departments).toEqual(['Khoa A'])
+      expect(result.current.users).toEqual(['Nguyen Van A'])
+      expect(result.current.locations).toEqual(['Phong 101'])
+      expect(result.current.statuses).toEqual(['Hoat dong'])
+      expect(result.current.classifications).toEqual(['Loai B'])
+      expect(result.current.fundingSources).toEqual(['Ngân sách nhà nước'])
+
+      expect(mockCallRpc).toHaveBeenCalledWith(
+        expect.objectContaining({
+          fn: 'equipment_filter_buckets',
+          args: expect.objectContaining({ p_don_vi: 5 }),
+        })
+      )
+
+      const facetRpcNames = [
+        'departments_list_for_tenant',
+        'equipment_users_list_for_tenant',
+        'equipment_locations_list_for_tenant',
+        'equipment_statuses_list_for_tenant',
+        'equipment_classifications_list_for_tenant',
+        'equipment_funding_sources_list_for_tenant',
+      ]
+      const calledFacetRpcs = mockCallRpc.mock.calls
+        .map((call) => call[0].fn)
+        .filter((fn) => facetRpcNames.includes(fn))
+
+      expect(calledFacetRpcs).toEqual([])
+    })
+
+    it('should expose department buckets for tenant', async () => {
       const mockDepartments = [
         { name: 'Khoa Noi', count: 10 },
         { name: 'Khoa Ngoai', count: 5 },
       ]
       mockCallRpc.mockImplementation(({ fn }: { fn: string }) => {
-        if (fn === 'departments_list_for_tenant') {
-          return Promise.resolve(mockDepartments)
+        if (fn === 'equipment_filter_buckets') {
+          return Promise.resolve({ department: mockDepartments })
         }
         if (fn === 'equipment_list_enhanced') {
           return Promise.resolve({ data: [], total: 0 })
@@ -361,14 +408,14 @@ describe('useEquipmentData', () => {
       })
     })
 
-    it('should fetch users for tenant', async () => {
+    it('should expose user buckets for tenant', async () => {
       const mockUsers = [
         { name: 'Nguyen Van A', count: 3 },
         { name: 'Tran Thi B', count: 2 },
       ]
       mockCallRpc.mockImplementation(({ fn }: { fn: string }) => {
-        if (fn === 'equipment_users_list_for_tenant') {
-          return Promise.resolve(mockUsers)
+        if (fn === 'equipment_filter_buckets') {
+          return Promise.resolve({ user: mockUsers })
         }
         if (fn === 'equipment_list_enhanced') {
           return Promise.resolve({ data: [], total: 0 })
@@ -385,14 +432,14 @@ describe('useEquipmentData', () => {
       })
     })
 
-    it('should fetch statuses for tenant', async () => {
+    it('should expose status buckets for tenant', async () => {
       const mockStatuses = [
         { name: 'Hoat dong', count: 50 },
         { name: 'Cho sua chua', count: 10 },
       ]
       mockCallRpc.mockImplementation(({ fn }: { fn: string }) => {
-        if (fn === 'equipment_statuses_list_for_tenant') {
-          return Promise.resolve(mockStatuses)
+        if (fn === 'equipment_filter_buckets') {
+          return Promise.resolve({ status: mockStatuses })
         }
         if (fn === 'equipment_list_enhanced') {
           return Promise.resolve({ data: [], total: 0 })
@@ -414,12 +461,12 @@ describe('useEquipmentData', () => {
         switch (fn) {
           case 'equipment_list_enhanced':
             return Promise.resolve({ data: [], total: 0 })
-          case 'departments_list_for_tenant':
-            return Promise.resolve([{ name: 'Khoa A', count: 5 }])
-          case 'equipment_statuses_list_for_tenant':
-            return Promise.resolve([{ name: 'Hoat dong', count: 10 }])
-          case 'equipment_locations_list_for_tenant':
-            return Promise.resolve([{ name: 'Phong 101', count: 3 }])
+          case 'equipment_filter_buckets':
+            return Promise.resolve({
+              department: [{ name: 'Khoa A', count: 5 }],
+              status: [{ name: 'Hoat dong', count: 10 }],
+              location: [{ name: 'Phong 101', count: 3 }],
+            })
           default:
             return Promise.resolve([])
         }
@@ -470,11 +517,13 @@ describe('useEquipmentData', () => {
     })
 
     it('should not fetch tenant list for non-global users', async () => {
-      renderHook(() => useEquipmentData(createDefaultParams({ isGlobal: false })), {
+      const { result } = renderHook(() => useEquipmentData(createDefaultParams({ isGlobal: false })), {
         wrapper: createWrapper(),
       })
 
-      await new Promise((r) => setTimeout(r, 100))
+      await waitFor(() => {
+        expect(result.current.isLoading).toBe(false)
+      })
 
       expect(mockCallRpc).not.toHaveBeenCalledWith(
         expect.objectContaining({ fn: 'tenant_list' })
@@ -696,14 +745,14 @@ describe('useEquipmentData', () => {
   })
 
   describe('Funding Source Filter', () => {
-    it('should fetch funding sources for tenant', async () => {
+    it('should expose funding source buckets for tenant', async () => {
       const mockFundingSources = [
         { name: 'Ngân sách nhà nước', count: 42 },
         { name: 'Chưa có', count: 15 },
       ]
       mockCallRpc.mockImplementation(({ fn }: { fn: string }) => {
-        if (fn === 'equipment_funding_sources_list_for_tenant') {
-          return Promise.resolve(mockFundingSources)
+        if (fn === 'equipment_filter_buckets') {
+          return Promise.resolve({ fundingSource: mockFundingSources })
         }
         if (fn === 'equipment_list_enhanced') {
           return Promise.resolve({ data: [], total: 0 })

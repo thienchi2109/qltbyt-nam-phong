@@ -70,6 +70,23 @@ export interface UseEquipmentDataReturn {
   invalidateEquipmentForCurrentTenant: () => void
 }
 
+type FilterBucketItem = { name: string; count: number }
+
+type EquipmentFilterBucketsResponse = Partial<{
+  department: FilterBucketItem[]
+  user: FilterBucketItem[]
+  location: FilterBucketItem[]
+  status: FilterBucketItem[]
+  classification: FilterBucketItem[]
+  fundingSource: FilterBucketItem[]
+}>
+
+const EMPTY_FILTER_BUCKET: FilterBucketItem[] = []
+
+function normalizeBucket(data: EquipmentFilterBucketsResponse | undefined, key: keyof EquipmentFilterBucketsResponse) {
+  return data?.[key] ?? EMPTY_FILTER_BUCKET
+}
+
 export function useEquipmentData(params: UseEquipmentDataParams): UseEquipmentDataReturn {
   const {
     isGlobal,
@@ -214,126 +231,36 @@ export function useEquipmentData(params: UseEquipmentDataParams): UseEquipmentDa
 
   const isFetching = isEqFetching
 
-  // Filter options queries - updated with role/diaBan in query key
-  const { data: departmentsData } = useQuery<{ name: string; count: number }[]>({
-    queryKey: ["departments_list_for_tenant", { tenant: effectiveTenantKey, role: userRole, diaBan: userDiaBanId, donVi: effectiveSelectedDonVi }],
+  // Filter buckets are bundled into one RPC to avoid six parallel cold-start calls.
+  const { data: filterBucketsData } = useQuery<EquipmentFilterBucketsResponse>({
+    queryKey: ["equipment_filter_buckets", { tenant: effectiveTenantKey, role: userRole, diaBan: userDiaBanId, donVi: effectiveSelectedDonVi }],
     queryFn: async ({ signal }) => {
-      const result = await callRpc<{ name: string; count: number }[]>({
-        fn: "departments_list_for_tenant",
+      const result = await callRpc<EquipmentFilterBucketsResponse>({
+        fn: "equipment_filter_buckets",
         args: { p_don_vi: effectiveSelectedDonVi },
         signal,
       })
-      return result || []
+      return result ?? {}
     },
     enabled: shouldFetchData,
     staleTime: 300_000,
     gcTime: 10 * 60_000,
     refetchOnWindowFocus: false,
   })
-  const departments = React.useMemo(
-    () => (departmentsData || []).map((x) => x.name).filter(Boolean),
-    [departmentsData]
-  )
 
-  const { data: usersData } = useQuery<{ name: string; count: number }[]>({
-    queryKey: ["equipment_users_list_for_tenant", { tenant: effectiveTenantKey, role: userRole, diaBan: userDiaBanId, donVi: effectiveSelectedDonVi }],
-    queryFn: async ({ signal }) => {
-      const result = await callRpc<{ name: string; count: number }[]>({
-        fn: "equipment_users_list_for_tenant",
-        args: { p_don_vi: effectiveSelectedDonVi },
-        signal,
-      })
-      return result || []
-    },
-    enabled: shouldFetchData,
-    staleTime: 300_000,
-    gcTime: 10 * 60_000,
-    refetchOnWindowFocus: false,
-  })
-  const users = React.useMemo(
-    () => (usersData || []).map((x) => x.name).filter(Boolean),
-    [usersData]
-  )
+  const departmentsData = normalizeBucket(filterBucketsData, "department")
+  const usersData = normalizeBucket(filterBucketsData, "user")
+  const locationsData = normalizeBucket(filterBucketsData, "location")
+  const classificationsData = normalizeBucket(filterBucketsData, "classification")
+  const statusesData = normalizeBucket(filterBucketsData, "status")
+  const fundingSourcesData = normalizeBucket(filterBucketsData, "fundingSource")
 
-  const { data: locationsData } = useQuery<{ name: string; count: number }[]>({
-    queryKey: ["equipment_locations_list_for_tenant", { tenant: effectiveTenantKey, role: userRole, diaBan: userDiaBanId, donVi: effectiveSelectedDonVi }],
-    queryFn: async ({ signal }) => {
-      const result = await callRpc<{ name: string; count: number }[]>({
-        fn: "equipment_locations_list_for_tenant",
-        args: { p_don_vi: effectiveSelectedDonVi },
-        signal,
-      })
-      return result || []
-    },
-    enabled: shouldFetchData,
-    staleTime: 300_000,
-    gcTime: 10 * 60_000,
-    refetchOnWindowFocus: false,
-  })
-  const locations = React.useMemo(
-    () => (locationsData || []).map((x) => x.name).filter(Boolean),
-    [locationsData]
-  )
-
-  const { data: classificationsData } = useQuery<{ name: string; count: number }[]>({
-    queryKey: ["equipment_classifications_list_for_tenant", { tenant: effectiveTenantKey, role: userRole, diaBan: userDiaBanId, donVi: effectiveSelectedDonVi }],
-    queryFn: async ({ signal }) => {
-      const result = await callRpc<{ name: string; count: number }[]>({
-        fn: "equipment_classifications_list_for_tenant",
-        args: { p_don_vi: effectiveSelectedDonVi },
-        signal,
-      })
-      return result || []
-    },
-    enabled: shouldFetchData,
-    staleTime: 300_000,
-    gcTime: 10 * 60_000,
-    refetchOnWindowFocus: false,
-  })
-  const classifications = React.useMemo(
-    () => (classificationsData || []).map((x) => x.name).filter(Boolean),
-    [classificationsData]
-  )
-
-  const { data: statusesData } = useQuery<{ name: string; count: number }[]>({
-    queryKey: ["equipment_statuses_list_for_tenant", { tenant: effectiveTenantKey, role: userRole, diaBan: userDiaBanId, donVi: effectiveSelectedDonVi }],
-    queryFn: async ({ signal }) => {
-      const result = await callRpc<{ name: string; count: number }[]>({
-        fn: "equipment_statuses_list_for_tenant",
-        args: { p_don_vi: effectiveSelectedDonVi },
-        signal,
-      })
-      return result || []
-    },
-    enabled: shouldFetchData,
-    staleTime: 300_000,
-    gcTime: 10 * 60_000,
-    refetchOnWindowFocus: false,
-  })
-  const statuses = React.useMemo(
-    () => (statusesData || []).map((x) => x.name).filter(Boolean),
-    [statusesData]
-  )
-
-  const { data: fundingSourcesData } = useQuery<{ name: string; count: number }[]>({
-    queryKey: ["equipment_funding_sources_list_for_tenant", { tenant: effectiveTenantKey, role: userRole, diaBan: userDiaBanId, donVi: effectiveSelectedDonVi }],
-    queryFn: async ({ signal }) => {
-      const result = await callRpc<{ name: string; count: number }[]>({
-        fn: "equipment_funding_sources_list_for_tenant",
-        args: { p_don_vi: effectiveSelectedDonVi },
-        signal,
-      })
-      return result || []
-    },
-    enabled: shouldFetchData,
-    staleTime: 300_000,
-    gcTime: 10 * 60_000,
-    refetchOnWindowFocus: false,
-  })
-  const fundingSources = React.useMemo(
-    () => (fundingSourcesData || []).map((x) => x.name).filter(Boolean),
-    [fundingSourcesData]
-  )
+  const departments = React.useMemo(() => departmentsData.map((x) => x.name).filter(Boolean), [departmentsData])
+  const users = React.useMemo(() => usersData.map((x) => x.name).filter(Boolean), [usersData])
+  const locations = React.useMemo(() => locationsData.map((x) => x.name).filter(Boolean), [locationsData])
+  const classifications = React.useMemo(() => classificationsData.map((x) => x.name).filter(Boolean), [classificationsData])
+  const statuses = React.useMemo(() => statusesData.map((x) => x.name).filter(Boolean), [statusesData])
+  const fundingSources = React.useMemo(() => fundingSourcesData.map((x) => x.name).filter(Boolean), [fundingSourcesData])
 
   // Filter data for bottom sheet
   const filterData: FilterBottomSheetData = React.useMemo(
