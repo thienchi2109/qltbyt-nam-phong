@@ -59,6 +59,33 @@ vi.mock('next/navigation', () => ({
     }),
 }))
 
+vi.mock('@/components/ui/dialog', () => ({
+    Dialog: ({ open, children }: { open: boolean; children: React.ReactNode }) =>
+        open ? <div data-testid="assistant-dialog">{children}</div> : null,
+    DialogContent: ({
+        children,
+        className,
+        showCloseButton,
+        ...props
+    }: {
+        children: React.ReactNode
+        className?: string
+        showCloseButton?: boolean
+    } & Record<string, unknown>) => (
+        <div
+            data-testid="assistant-dialog-content"
+            className={className}
+            data-show-close-button={String(showCloseButton)}
+            {...props}
+        >
+            {children}
+        </div>
+    ),
+    DialogHeader: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+    DialogTitle: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+    DialogDescription: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+}))
+
 // Mock TenantSelectionContext
 vi.mock('@/contexts/TenantSelectionContext', () => ({
     useTenantSelection: () => ({
@@ -130,11 +157,26 @@ describe('AssistantPanel', () => {
         expect(screen.getByText(/kết quả mang tính tham khảo/i)).toBeInTheDocument()
     })
 
-    it('has z-[998] layering per contract', () => {
+    it('keeps dialog content above the default overlay layer', () => {
         render(<AssistantPanel isOpen={true} onClose={vi.fn()} />)
 
         const panel = screen.getByTestId('assistant-panel')
-        expect(panel.className).toContain('z-[998]')
+        expect(panel.className).not.toContain('z-[998]')
+    })
+
+    it('renders inside a wide dialog shell for chart-friendly layout', () => {
+        render(<AssistantPanel isOpen={true} onClose={vi.fn()} />)
+
+        const panel = screen.getByTestId('assistant-panel')
+        expect(panel.className).toContain('max-w-4xl')
+        expect(panel.className).toContain('h-[90vh]')
+    })
+
+    it('suppresses the DialogContent built-in close button to avoid duplicate X controls', () => {
+        render(<AssistantPanel isOpen={true} onClose={vi.fn()} />)
+
+        const panel = screen.getByTestId('assistant-panel')
+        expect(panel).toHaveAttribute('data-show-close-button', 'false')
     })
 
     it('requests the repair draft tool in chat transport', () => {

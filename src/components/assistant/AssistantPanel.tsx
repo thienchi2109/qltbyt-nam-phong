@@ -8,6 +8,13 @@ import { useRouter } from "next/navigation"
 import { RotateCcw, X, AlertTriangle, RefreshCw } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogHeader,
+    DialogTitle,
+} from "@/components/ui/dialog"
 import { useTenantSelection } from "@/contexts/TenantSelectionContext"
 import { parseErrorMessage } from "@/lib/ai/errors"
 import { compactUIMessages } from "@/lib/ai/compact-ui-messages"
@@ -48,8 +55,7 @@ const REQUESTED_TOOLS = [
  * Main assistant chat panel container.
  *
  * Orchestrates useChat from AI SDK v6, renders header/message-area/composer.
- * Desktop: floating 420×680px popover above the FAB.
- * Mobile: uses MobileBottomSheet wrapper.
+ * Uses a large dialog shell so chart content has enough room on both desktop and mobile.
  * Design spec §4.2.
  */
 export function AssistantPanel({ isOpen, onClose }: AssistantPanelProps) {
@@ -128,111 +134,110 @@ export function AssistantPanel({ isOpen, onClose }: AssistantPanelProps) {
     if (!isOpen) return null
 
     return (
-        <div
-            data-testid="assistant-panel"
-            className={cn(
-                "fixed z-[998]",
-                "right-6 bottom-[calc(env(safe-area-inset-bottom,0px)+5rem)]",
-                "w-[420px] h-[min(680px,calc(100vh-8rem))]",
-                "flex flex-col",
-                "bg-[hsl(var(--assistant-bg))] backdrop-blur-xl",
-                "border border-[hsl(var(--assistant-border))]",
-                "rounded-2xl shadow-2xl",
-                "assistant-panel-enter",
-                "max-md:inset-2 max-md:w-auto max-md:h-auto max-md:rounded-2xl",
-            )}
-        >
-            {/* Header */}
-            <div className="flex items-center justify-between px-4 py-3 border-b border-[hsl(var(--assistant-border))] shrink-0">
-                <div className="flex items-center gap-2">
-                    <div
-                        data-testid="assistant-status-dot"
-                        className="w-1.5 h-1.5 rounded-full bg-[hsl(var(--assistant-status-online))] animate-pulse"
-                    />
-                    <h2 className="text-sm font-semibold text-foreground leading-snug">
-                        Trợ lý ảo CVMEMS
-                    </h2>
-                </div>
+        <Dialog open={isOpen} onOpenChange={(open) => (!open ? onClose() : null)}>
+            <DialogContent
+                data-testid="assistant-panel"
+                showCloseButton={false}
+                className={cn(
+                    "max-w-4xl h-[90vh] flex flex-col overflow-hidden p-0",
+                    "bg-[hsl(var(--assistant-bg))] backdrop-blur-xl",
+                    "border border-[hsl(var(--assistant-border))]",
+                )}
+            >
+                <DialogHeader className="border-b border-[hsl(var(--assistant-border))] px-4 py-3 text-left">
+                    <div className="flex items-center justify-between gap-3">
+                        <div className="flex items-center gap-2">
+                            <div
+                                data-testid="assistant-status-dot"
+                                className="w-1.5 h-1.5 rounded-full bg-[hsl(var(--assistant-status-online))] animate-pulse"
+                            />
+                            <div>
+                                <DialogTitle className="text-sm font-semibold text-foreground leading-snug">
+                                    Trợ lý ảo CVMEMS
+                                </DialogTitle>
+                                <DialogDescription className="text-xs text-muted-foreground">
+                                    Không gian mở rộng để xem biểu đồ và bảng dữ liệu trong hội thoại.
+                                </DialogDescription>
+                            </div>
+                        </div>
 
-                <div className="flex items-center gap-1">
-                    <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={handleReset}
-                        className="h-8 w-8"
-                        aria-label="Đặt lại cuộc trò chuyện"
-                    >
-                        <RotateCcw className="h-4 w-4" />
-                    </Button>
-                    <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={onClose}
-                        className="h-8 w-8"
-                        aria-label="Đóng"
-                    >
-                        <X className="h-4 w-4" />
-                    </Button>
-                </div>
-            </div>
-
-            {/* Message area */}
-            {messages.length === 0 ? (
-                <div className="flex-1 overflow-y-auto px-4 py-3">
-                    <AssistantEmptyState
-                        onSuggestionClick={handleSuggestionClick}
-                        isReady={isReady}
-                    />
-                </div>
-            ) : (
-                <AssistantMessageList
-                    messages={messages}
-                    status={status}
-                    onApplyDraft={handleApplyDraft}
-                />
-            )}
-
-            {/* Error banner */}
-            {error && (
-                <div
-                    data-testid="assistant-error-banner"
-                    className="mx-3 mb-2 px-3 py-2.5 rounded-lg bg-destructive/10 border border-destructive/20 flex items-start gap-2 shrink-0"
-                >
-                    <AlertTriangle className="h-4 w-4 text-destructive shrink-0 mt-0.5" />
-                    <div className="flex-1 min-w-0">
-                        <p className="text-sm text-destructive leading-snug">
-                            {parseErrorMessage(error.message)}
-                        </p>
+                        <div className="flex items-center gap-1 pr-8">
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={handleReset}
+                                className="h-8 w-8"
+                                aria-label="Đặt lại cuộc trò chuyện"
+                            >
+                                <RotateCcw className="h-4 w-4" />
+                            </Button>
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={onClose}
+                                className="h-8 w-8"
+                                aria-label="Đóng"
+                            >
+                                <X className="h-4 w-4" />
+                            </Button>
+                        </div>
                     </div>
-                    <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => regenerate()}
-                        className="shrink-0 h-7 px-2 text-xs text-destructive hover:text-destructive"
-                        aria-label="Thử lại"
+                </DialogHeader>
+
+                {messages.length === 0 ? (
+                    <div className="flex-1 overflow-y-auto px-4 py-3">
+                        <AssistantEmptyState
+                            onSuggestionClick={handleSuggestionClick}
+                            isReady={isReady}
+                        />
+                    </div>
+                ) : (
+                    <AssistantMessageList
+                        messages={messages}
+                        status={status}
+                        onApplyDraft={handleApplyDraft}
+                    />
+                )}
+
+                {error && (
+                    <div
+                        data-testid="assistant-error-banner"
+                        className="mx-3 mb-2 px-3 py-2.5 rounded-lg bg-destructive/10 border border-destructive/20 flex items-start gap-2 shrink-0"
                     >
-                        <RefreshCw className="h-3 w-3 mr-1" />
-                        Thử lại
-                    </Button>
+                        <AlertTriangle className="h-4 w-4 text-destructive shrink-0 mt-0.5" />
+                        <div className="flex-1 min-w-0">
+                            <p className="text-sm text-destructive leading-snug">
+                                {parseErrorMessage(error.message)}
+                            </p>
+                        </div>
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => regenerate()}
+                            className="shrink-0 h-7 px-2 text-xs text-destructive hover:text-destructive"
+                            aria-label="Thử lại"
+                        >
+                            <RefreshCw className="h-3 w-3 mr-1" />
+                            Thử lại
+                        </Button>
+                    </div>
+                )}
+
+                <AssistantComposer
+                    input={input}
+                    onInputChange={setInput}
+                    onSend={handleSend}
+                    onStop={() => stop()}
+                    isStreaming={isStreaming}
+                    isReady={isReady}
+                />
+
+                <div className="px-4 pb-3 shrink-0">
+                    <p className="text-[11px] text-muted-foreground text-center leading-relaxed tracking-wide">
+                        Kết quả mang tính tham khảo, cần được xác nhận bởi người dùng.
+                    </p>
                 </div>
-            )}
-
-            {/* Composer */}
-            <AssistantComposer
-                input={input}
-                onInputChange={setInput}
-                onSend={handleSend}
-                onStop={() => stop()}
-                isStreaming={isStreaming}
-                isReady={isReady}
-            />
-
-            {/* Disclaimer */}
-            <div className="px-4 pb-3 shrink-0">
-                <p className="text-[11px] text-muted-foreground text-center leading-relaxed tracking-wide">
-                    Kết quả mang tính tham khảo, cần được xác nhận bởi người dùng.
-                </p>
-            </div>
-        </div>
+            </DialogContent>
+        </Dialog>
     )
 }

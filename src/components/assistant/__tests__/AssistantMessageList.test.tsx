@@ -1,12 +1,20 @@
 import * as React from 'react'
 import { render, screen } from '@testing-library/react'
 import '@testing-library/jest-dom/vitest'
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('ai', () => ({
     isToolUIPart: (part: { type: string }) => part.type.startsWith('tool-'),
     getToolName: (part: { type: string }) => part.type.replace('tool-', ''),
 }))
+
+vi.mock('../AssistantReportChartCard', () => ({
+    AssistantReportChartCard: ({ artifact }: { artifact: { title?: string } }) => (
+        <div data-testid="assistant-report-chart-card">{artifact.title ?? 'chart'}</div>
+    ),
+}))
+
+const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
 
 import { AssistantMessageList } from '../AssistantMessageList'
 
@@ -20,6 +28,10 @@ function makeMessage(
 }
 
 describe('AssistantMessageList', () => {
+    beforeEach(() => {
+        consoleErrorSpy.mockClear()
+    })
+
     it('renders user text messages right-aligned', () => {
         const messages = [
             makeMessage('user', [{ type: 'text', text: 'Xin chào!' }]),
@@ -80,6 +92,52 @@ describe('AssistantMessageList', () => {
         )
 
         expect(screen.getByTestId('tool-execution-card')).toBeInTheDocument()
+    })
+
+    it('renders an inline chart card for reportChart artifacts', () => {
+        const messages = [
+            makeMessage('assistant', [
+                {
+                    type: 'tool-query_database',
+                    toolCallId: 'tc-chart',
+                    toolName: 'query_database',
+                    state: 'output-available',
+                    output: {
+                        modelSummary: {
+                            summaryText: 'Đã tổng hợp số lượng thiết bị theo khoa.',
+                            itemCount: 2,
+                        },
+                        uiArtifact: {
+                            rawPayload: {
+                                kind: 'reportChart',
+                                version: 1,
+                                title: 'Số lượng thiết bị theo khoa',
+                                chart: {
+                                    type: 'bar',
+                                    xKey: 'khoa_phong_quan_ly',
+                                    yKey: 'so_luong',
+                                    data: [
+                                        { khoa_phong_quan_ly: 'ICU', so_luong: 12 },
+                                        { khoa_phong_quan_ly: 'Xét nghiệm', so_luong: 7 },
+                                    ],
+                                },
+                            },
+                        },
+                    },
+                },
+            ]),
+        ]
+
+        render(
+            <AssistantMessageList
+                messages={messages as never}
+                status="ready"
+                onApplyDraft={vi.fn()}
+            />,
+        )
+
+        expect(screen.getByTestId('assistant-report-chart-card')).toBeInTheDocument()
+        expect(screen.getByText('Số lượng thiết bị theo khoa')).toBeInTheDocument()
     })
 
     it('renders tool execution card with spinner for executing state', () => {
@@ -195,5 +253,28 @@ describe('AssistantMessageList', () => {
         )
 
         expect(screen.getByTestId('assistant-thinking-container')).toBeInTheDocument()
+    })
+
+    it('uses unique fallback keys for repeated non-text non-tool part types', () => {
+        const messages = [
+            makeMessage('assistant', [
+                { type: 'source', sourceId: 's1' },
+                { type: 'source', sourceId: 's2' },
+            ]),
+        ]
+
+        render(
+            <AssistantMessageList
+                messages={messages as never}
+                status="ready"
+                onApplyDraft={vi.fn()}
+            />,
+        )
+
+        const duplicateKeyWarnings = consoleErrorSpy.mock.calls.filter(([message]) =>
+            typeof message === 'string' && message.includes('Encountered two children with the same key'),
+        )
+
+        expect(duplicateKeyWarnings).toHaveLength(0)
     })
 })

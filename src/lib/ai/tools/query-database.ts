@@ -7,8 +7,11 @@ import {
   executeAuditedAssistantSql,
   type ExecuteAuditedAssistantSqlParams,
 } from '@/lib/ai/sql/audited-executor'
-import type { AssistantSqlResult } from '@/lib/ai/sql/executor'
 import type { AssistantSqlScope } from '@/lib/ai/sql/scope'
+import type {
+  ReportChartArtifact,
+  ToolResponseEnvelope,
+} from '@/lib/ai/tools/tool-response-envelope'
 
 export { ASSISTANT_SQL_TOOL_NAME as QUERY_DATABASE_TOOL_NAME }
 
@@ -21,10 +24,167 @@ const queryDatabaseInputSchema = z
 
 type QueryDatabaseToolInput = z.infer<typeof queryDatabaseInputSchema>
 
-interface QueryDatabaseToolOutput {
-  reasoning: string
-  rowCount: number
-  rows: Array<Record<string, unknown>>
+const GROUPED_REPORT_DIMENSIONS = [
+  {
+    key: 'khoa_phong_quan_ly',
+    title: 'Số lượng thiết bị theo khoa',
+    chartType: 'bar' as const,
+  },
+  {
+    key: 'vi_tri_lap_dat',
+    title: 'Số lượng thiết bị theo vị trí lắp đặt',
+    chartType: 'bar' as const,
+  },
+  {
+    key: 'nguoi_dang_truc_tiep_quan_ly',
+    title: 'Số lượng thiết bị theo người quản lý trực tiếp',
+    chartType: 'bar' as const,
+  },
+  {
+    key: 'tinh_trang_hien_tai',
+    title: 'Tỷ lệ tình trạng thiết bị',
+    chartType: 'pie' as const,
+  },
+] as const
+
+const COUNT_KEYS = ['so_luong', 'count', 'total'] as const
+const FOLLOW_UP_ROWS_LIMIT = 10
+
+function isRecordRow(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
+}
+
+function isNumericValue(value: unknown): value is number {
+  return typeof value === 'number' && Number.isFinite(value)
+}
+
+function parseCountValue(value: unknown): number | null {
+  if (isNumericValue(value)) {
+    return value
+  }
+
+  if (typeof value === 'string' && value.trim().length > 0) {
+    const parsed = Number(value)
+    return Number.isFinite(parsed) ? parsed : null
+  }
+
+  return null
+}
+
+function findCountKey(
+  rows: Array<Record<string, unknown>>,
+): string | undefined {
+  return COUNT_KEYS.find((candidate) =>
+    rows.every((row) => parseCountValue(row[candidate]) !== null),
+  )
+}
+
+function buildReportChartArtifact(
+  rows: Array<Record<string, unknown>>,
+): ReportChartArtifact | undefined {
+  if (rows.length === 0 || rows.length > 20) {
+    return undefined
+  }
+
+  const countKey = findCountKey(rows)
+  if (!countKey) {
+    return undefined
+  }
+
+  const normalizedRows = rows.map((row) => {
+    const parsedCount = parseCountValue(row[countKey])
+    if (parsedCount === null) {
+      return row
+    }
+
+    return {
+      ...row,
+      [countKey]: parsedCount,
+    }
+  })
+
+  for (const dimension of GROUPED_REPORT_DIMENSIONS) {
+    const matchesDimension = normalizedRows.every((row) => {
+      const label = row[dimension.key]
+      return (
+        (typeof label === 'string' && label.trim().length > 0) ||
+        typeof label === 'number'
+      )
+    })
+
+    if (!matchesDimension) {
+      continue
+    }
+
+    const base = {
+      kind: 'reportChart' as const,
+      version: 1 as const,
+      title: dimension.title,
+      table: {
+        columns: Object.keys(normalizedRows[0] ?? {}),
+        rows: normalizedRows,
+      },
+    }
+
+    if (dimension.chartType === 'pie') {
+      return {
+        ...base,
+        chart: {
+          type: 'pie',
+          labelKey: dimension.key,
+          valueKey: countKey,
+          data: normalizedRows,
+          innerRadius: 56,
+        },
+      }
+    }
+
+    return {
+      ...base,
+        chart: {
+          type: 'bar',
+          xKey: dimension.key,
+          yKey: countKey,
+          data: normalizedRows,
+        },
+      }
+  }
+
+  return undefined
+}
+
+function buildQueryDatabaseEnvelope(
+  reasoning: string,
+  rowCount: number,
+  rows: Array<Record<string, unknown>>,
+): ToolResponseEnvelope {
+  const chartArtifact = buildReportChartArtifact(rows)
+  const rawPayload = chartArtifact ?? {
+    data: rows,
+    rowCount,
+    reasoning,
+  }
+
+  return {
+    modelSummary: {
+      summaryText: `query_database: ${rowCount} row(s).`,
+      itemCount: rowCount,
+      ...(chartArtifact && {
+        importantFields: {
+          chartTitle: chartArtifact.title,
+        },
+      }),
+    },
+    followUpContext: {
+      queryResult: {
+        reasoning,
+        rowCount,
+        rows: rows.slice(0, FOLLOW_UP_ROWS_LIMIT),
+        truncated: rowCount > FOLLOW_UP_ROWS_LIMIT,
+      },
+    },
+    uiArtifact: { rawPayload },
+  }
 }
 
 export interface QueryDatabaseToolParams {
@@ -37,25 +197,26 @@ export function queryDatabaseTool({
   execute,
   request,
   scope,
-}: QueryDatabaseToolParams): Tool<QueryDatabaseToolInput, QueryDatabaseToolOutput> {
-  return tool<QueryDatabaseToolInput, QueryDatabaseToolOutput>({
+}: QueryDatabaseToolParams): Tool<QueryDatabaseToolInput, ToolResponseEnvelope> {
+  return tool<QueryDatabaseToolInput, ToolResponseEnvelope>({
     description: QUERY_DATABASE_TOOL_DESCRIPTION,
     inputSchema: queryDatabaseInputSchema,
     execute: async ({
       reasoning,
       sql,
-    }: QueryDatabaseToolInput): Promise<QueryDatabaseToolOutput> => {
-      const result = await executeAuditedAssistantSql({
-        execute,
-        request,
-        scope,
-        sql,
-      })
+    }: QueryDatabaseToolInput): Promise<ToolResponseEnvelope> => {
+      try {
+        const result = await executeAuditedAssistantSql({
+          execute,
+          request,
+          scope,
+          sql,
+        })
 
-      return {
-        reasoning,
-        rowCount: result.rowCount,
-        rows: result.rows,
+        const rows = result.rows.filter(isRecordRow)
+        return buildQueryDatabaseEnvelope(reasoning, result.rowCount, rows)
+      } catch (error) {
+        throw new Error('query_database execution failed', { cause: error })
       }
     },
   })
