@@ -15,6 +15,8 @@ export type { EquipmentAttention, EquipmentAttentionPage } from './use-dashboard
 // Query keys for dashboard statistics
 export const dashboardStatsKeys = {
   all: ['dashboard-stats'] as const,
+  kpiSummaryRoot: () => [...dashboardStatsKeys.all, 'kpi-summary'] as const,
+  kpiSummary: (userRole?: string, diaBanId?: string | null) => [...dashboardStatsKeys.kpiSummaryRoot(), userRole, diaBanId] as const,
   totalEquipment: (userRole?: string, diaBanId?: string | null) => [...dashboardStatsKeys.all, 'total-equipment', userRole, diaBanId] as const,
   maintenanceCount: (userRole?: string, diaBanId?: string | null) => [...dashboardStatsKeys.all, 'maintenance-count', userRole, diaBanId] as const,
   repairRequests: (userRole?: string, diaBanId?: string | null) => [...dashboardStatsKeys.all, 'repair-requests', userRole, diaBanId] as const,
@@ -36,40 +38,14 @@ function getDashboardUserScope(
 
 // Hook to get total equipment count (tenant-filtered)
 export function useTotalEquipment() {
-  const { data: session } = useSession()
-  const user: DashboardSessionUser | undefined = session?.user
-  const scope = getDashboardUserScope(user)
-  
-  return useQuery({
-    queryKey: dashboardStatsKeys.totalEquipment(scope.role, scope.diaBanId),
-    queryFn: async (): Promise<number> => {
-      const data = await callRpc<number>({ fn: 'dashboard_equipment_total' })
-      return data ?? 0
-    },
-    staleTime: 2 * 60 * 1000, // 2 minutes - equipment count changes less frequently
-    gcTime: 10 * 60 * 1000, // 10 minutes
-    refetchOnWindowFocus: true,
-    refetchInterval: 5 * 60 * 1000, // Refetch every 5 minutes
-  })
+  const query = useDashboardKpiSummary()
+  return { ...query, data: query.data?.totalEquipment ?? (query.data ? 0 : undefined) }
 }
 
 // Hook to get equipment needing maintenance/calibration count (tenant-filtered)
 export function useMaintenanceCount() {
-  const { data: session } = useSession()
-  const user: DashboardSessionUser | undefined = session?.user
-  const scope = getDashboardUserScope(user)
-  
-  return useQuery({
-    queryKey: dashboardStatsKeys.maintenanceCount(scope.role, scope.diaBanId),
-    queryFn: async (): Promise<number> => {
-      const data = await callRpc<number>({ fn: 'dashboard_maintenance_count' })
-      return data ?? 0
-    },
-    staleTime: 2 * 60 * 1000, // 2 minutes
-    gcTime: 10 * 60 * 1000, // 10 minutes
-    refetchOnWindowFocus: true,
-    refetchInterval: 5 * 60 * 1000, // Refetch every 5 minutes
-  })
+  const query = useDashboardKpiSummary()
+  return { ...query, data: query.data?.maintenanceCount ?? (query.data ? 0 : undefined) }
 }
 
 // Interface for repair request statistics
@@ -82,26 +58,8 @@ export interface RepairRequestStats {
 
 // Hook to get repair request statistics (tenant-filtered)
 export function useRepairRequestStats() {
-  const { data: session } = useSession()
-  const user: DashboardSessionUser | undefined = session?.user
-  const scope = getDashboardUserScope(user)
-  
-  return useQuery({
-    queryKey: dashboardStatsKeys.repairRequests(scope.role, scope.diaBanId),
-    queryFn: async (): Promise<RepairRequestStats> => {
-      const data = await callRpc<RepairRequestStats>({ fn: 'dashboard_repair_request_stats' })
-      return data ?? {
-        total: 0,
-        pending: 0,
-        approved: 0,
-        completed: 0
-      }
-    },
-    staleTime: 1 * 60 * 1000, // 1 minute - repair requests change more frequently
-    gcTime: 5 * 60 * 1000, // 5 minutes
-    refetchOnWindowFocus: true,
-    refetchInterval: 3 * 60 * 1000, // Refetch every 3 minutes
-  })
+  const query = useDashboardKpiSummary()
+  return { ...query, data: query.data?.repairRequests ?? (query.data ? EMPTY_REPAIR_REQUEST_STATS : undefined) }
 }
 
 // Interface for maintenance plan statistics
@@ -120,28 +78,65 @@ export interface MaintenancePlanStats {
   }>
 }
 
-// Hook to get maintenance plan statistics (tenant-filtered)
-export function useMaintenancePlanStats() {
+export interface DashboardKpiSummary {
+  totalEquipment: number
+  maintenanceCount: number
+  repairRequests: RepairRequestStats
+  maintenancePlans: MaintenancePlanStats
+}
+
+const EMPTY_REPAIR_REQUEST_STATS: RepairRequestStats = {
+  total: 0,
+  pending: 0,
+  approved: 0,
+  completed: 0,
+}
+
+const EMPTY_MAINTENANCE_PLAN_STATS: MaintenancePlanStats = {
+  total: 0,
+  draft: 0,
+  approved: 0,
+  plans: [],
+}
+
+function normalizeDashboardKpiSummary(data: Partial<DashboardKpiSummary> | null | undefined): DashboardKpiSummary {
+  return {
+    totalEquipment: data?.totalEquipment ?? 0,
+    maintenanceCount: data?.maintenanceCount ?? 0,
+    repairRequests: {
+      ...EMPTY_REPAIR_REQUEST_STATS,
+      ...(data?.repairRequests ?? {}),
+    },
+    maintenancePlans: {
+      ...EMPTY_MAINTENANCE_PLAN_STATS,
+      ...(data?.maintenancePlans ?? {}),
+      plans: data?.maintenancePlans?.plans ?? [],
+    },
+  }
+}
+
+export function useDashboardKpiSummary() {
   const { data: session } = useSession()
   const user: DashboardSessionUser | undefined = session?.user
   const scope = getDashboardUserScope(user)
-  
+
   return useQuery({
-    queryKey: dashboardStatsKeys.maintenancePlans(scope.role, scope.diaBanId),
-    queryFn: async (): Promise<MaintenancePlanStats> => {
-      const data = await callRpc<MaintenancePlanStats>({ fn: 'dashboard_maintenance_plan_stats' })
-      return data ?? {
-        total: 0,
-        draft: 0,
-        approved: 0,
-        plans: []
-      }
+    queryKey: dashboardStatsKeys.kpiSummary(scope.role, scope.diaBanId),
+    queryFn: async (): Promise<DashboardKpiSummary> => {
+      const data = await callRpc<Partial<DashboardKpiSummary>>({ fn: 'dashboard_kpi_summary' })
+      return normalizeDashboardKpiSummary(data)
     },
-    staleTime: 3 * 60 * 1000, // 3 minutes - maintenance plans change less frequently
-    gcTime: 10 * 60 * 1000, // 10 minutes
-    refetchOnWindowFocus: true,
-    refetchInterval: 5 * 60 * 1000, // Refetch every 5 minutes
+    enabled: Boolean(user),
+    staleTime: 2 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
+    refetchOnWindowFocus: false,
   })
+}
+
+// Hook to get maintenance plan statistics (tenant-filtered)
+export function useMaintenancePlanStats() {
+  const query = useDashboardKpiSummary()
+  return { ...query, data: query.data?.maintenancePlans ?? (query.data ? EMPTY_MAINTENANCE_PLAN_STATS : undefined) }
 }
 
 // Hook to get equipment needing attention

@@ -146,6 +146,28 @@ export function useEquipmentPage(): UseEquipmentPageReturn {
     selectedFacilityId: data.selectedFacilityId,
   })
 
+  const resetPaginationForFilterChange = React.useCallback(() => {
+    table.setPagination((current) =>
+      current.pageIndex === 0 ? current : { ...current, pageIndex: 0 }
+    )
+  }, [table.setPagination])
+
+  const setSearchTermAndReset = React.useCallback<React.Dispatch<React.SetStateAction<string>>>(
+    (value) => {
+      resetPaginationForFilterChange()
+      filters.setSearchTerm(value)
+    },
+    [filters.setSearchTerm, resetPaginationForFilterChange]
+  )
+
+  const setColumnFiltersAndReset = React.useCallback<React.Dispatch<React.SetStateAction<typeof filters.columnFilters>>>(
+    (value) => {
+      resetPaginationForFilterChange()
+      filters.setColumnFilters(value)
+    },
+    [filters.setColumnFilters, resetPaginationForFilterChange]
+  )
+
   // Effective don_vi for export (same logic as useEquipmentData)
   const effectiveSelectedDonVi = React.useMemo(() => {
     if (auth.isRegionalLeader) {
@@ -272,9 +294,9 @@ export function useEquipmentPage(): UseEquipmentPageReturn {
 
       // Filters
       searchTerm: filters.searchTerm,
-      setSearchTerm: filters.setSearchTerm,
+      setSearchTerm: setSearchTermAndReset,
       columnFilters: filters.columnFilters,
-      setColumnFilters: filters.setColumnFilters,
+      setColumnFilters: setColumnFiltersAndReset,
       isFiltered: table.isFiltered,
 
       // Filter options
@@ -328,6 +350,8 @@ export function useEquipmentPage(): UseEquipmentPageReturn {
       table,
       columns,
       filters,
+      setSearchTermAndReset,
+      setColumnFiltersAndReset,
       hasFacilityFilter,
       handleFacilityClear,
       isFilterSheetOpen,

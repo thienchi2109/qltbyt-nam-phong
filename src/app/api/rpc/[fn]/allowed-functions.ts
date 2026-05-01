@@ -27,6 +27,7 @@ export const ALLOWED_FUNCTIONS = new Set<string>([
   'equipment_classifications_list_for_tenant',
   'equipment_statuses_list_for_tenant',
   'equipment_funding_sources_list_for_tenant',
+  'equipment_filter_buckets',
   'equipment_bulk_import',
   // Repairs
   'repair_request_list',
@@ -73,6 +74,7 @@ export const ALLOWED_FUNCTIONS = new Set<string>([
   'maintenance_stats_for_reports',
   'get_maintenance_report_data',
   'maintenance_plan_status_counts',
+  'dashboard_kpi_summary',
   // AI Assistant (read-only)
   'ai_equipment_lookup',
   'ai_maintenance_plan_lookup',

@@ -339,4 +339,25 @@ describe('useEquipmentPage tenant switching', () => {
       })
     )
   })
+
+  it('resets pagination in the same action when filters change', () => {
+    const { result } = renderHook(() => useEquipmentPage())
+
+    act(() => {
+      result.current.setColumnFilters([{ id: 'tinh_trang_hien_tai', value: ['Chờ sửa chữa'] }])
+    })
+
+    expect(mocks.setPagination).toHaveBeenCalledWith(expect.any(Function))
+
+    const resetUpdater = mocks.setPagination.mock.calls[0][0] as (
+      value: { pageIndex: number; pageSize: number }
+    ) => { pageIndex: number; pageSize: number }
+    expect(resetUpdater({ pageIndex: 3, pageSize: 20 })).toEqual({
+      pageIndex: 0,
+      pageSize: 20,
+    })
+    expect(mocks.setColumnFilters).toHaveBeenCalledWith([
+      { id: 'tinh_trang_hien_tai', value: ['Chờ sửa chữa'] },
+    ])
+  })
 })
