@@ -35,16 +35,13 @@ export function registerUseRepairRequestsDeepLinkRaceCases(deps: DeepLinkRaceCas
     it('waits for targeted equipment_get before opening sheet when list settles first', async () => {
       const equipmentGetDeferred = createDeferred<typeof VALID_EQUIPMENT | null>()
 
-      mocks.callRpc
-        .mockResolvedValueOnce([])              // equipment_list: resolves immediately
-        .mockReturnValueOnce(equipmentGetDeferred.promise) // equipment_get: deferred
+      mocks.callRpc.mockReturnValueOnce(equipmentGetDeferred.promise)
 
       const sp = createSearchParams({ action: 'create', equipmentId: '42' })
       renderHook(() => useRepairRequestsDeepLink(createDefaultOptions(sp)))
 
-      // Wait for list to settle
       await waitFor(() => {
-        expect(mocks.callRpc).toHaveBeenCalledTimes(2)
+        expect(mocks.callRpc).toHaveBeenCalledTimes(1)
       })
 
       // Sheet must NOT have opened yet while equipment_get is still pending
@@ -64,36 +61,25 @@ export function registerUseRepairRequestsDeepLinkRaceCases(deps: DeepLinkRaceCas
       expect(mocks.routerReplace).toHaveBeenCalledWith('/repair-requests', { scroll: false })
     })
 
-    it('opens with prefill when targeted equipment_get resolves before list is useful', async () => {
-      const listDeferred = createDeferred<Array<typeof VALID_EQUIPMENT>>()
-
-      mocks.callRpc
-        .mockReturnValueOnce(listDeferred.promise)        // equipment_list: deferred (slow)
-        .mockResolvedValueOnce(VALID_EQUIPMENT)            // equipment_get: resolves immediately
+    it('opens with prefill when targeted equipment_get resolves', async () => {
+      mocks.callRpc.mockResolvedValueOnce(VALID_EQUIPMENT)
 
       const sp = createSearchParams({ action: 'create', equipmentId: '42' })
       renderHook(() => useRepairRequestsDeepLink(createDefaultOptions(sp)))
 
-      // equipment_get resolves quickly; sheet should open with prefill
       await waitFor(() => {
         expect(mocks.openCreateSheet).toHaveBeenCalledWith(
           expect.objectContaining({ id: 42, ma_thiet_bi: 'TB042' })
         )
       })
-
-      // Cleanup: resolve the list to avoid dangling promise
-      await act(async () => {
-        listDeferred.resolve([])
-      })
+      expect(mocks.callRpc).toHaveBeenCalledTimes(1)
     })
 
-    it('requires equipment_get even when targeted equipment is already cached from the list', async () => {
+    it('requires equipment_get when navigating from a plain page load to create intent', async () => {
       const equipmentGetDeferred = createDeferred<typeof VALID_EQUIPMENT | null>()
       const baseOpts = createDefaultOptions()
 
-      mocks.callRpc
-        .mockResolvedValueOnce([VALID_EQUIPMENT])
-        .mockReturnValueOnce(equipmentGetDeferred.promise)
+      mocks.callRpc.mockReturnValueOnce(equipmentGetDeferred.promise)
 
       const { result, rerender } = renderHook(
         ({ currentSearchParams }) => useRepairRequestsDeepLink({
@@ -107,10 +93,8 @@ export function registerUseRepairRequestsDeepLinkRaceCases(deps: DeepLinkRaceCas
         },
       )
 
-      await waitFor(() => {
-        expect(result.current.hasLoadedEquipment).toBe(true)
-      })
-      expect(mocks.callRpc).toHaveBeenCalledTimes(1)
+      expect(result.current.hasLoadedEquipment).toBe(true)
+      expect(mocks.callRpc).not.toHaveBeenCalled()
 
       act(() => {
         rerender({
@@ -119,7 +103,7 @@ export function registerUseRepairRequestsDeepLinkRaceCases(deps: DeepLinkRaceCas
       })
 
       await waitFor(() => {
-        expect(mocks.callRpc).toHaveBeenCalledTimes(2)
+        expect(mocks.callRpc).toHaveBeenCalledTimes(1)
       })
       expect(mocks.openCreateSheet).not.toHaveBeenCalled()
 
@@ -134,16 +118,12 @@ export function registerUseRepairRequestsDeepLinkRaceCases(deps: DeepLinkRaceCas
       })
     })
 
-    it('does not reopen the create sheet when the initial list settles after the intent is consumed', async () => {
-      const listDeferred = createDeferred<Array<typeof VALID_EQUIPMENT>>()
-
-      mocks.callRpc
-        .mockReturnValueOnce(listDeferred.promise)
-        .mockResolvedValueOnce(VALID_EQUIPMENT)
+    it('does not reopen the create sheet after the intent is consumed', async () => {
+      mocks.callRpc.mockResolvedValueOnce(VALID_EQUIPMENT)
 
       const sp = createSearchParams({ action: 'create', equipmentId: '42' })
       const opts = createDefaultOptions(sp)
-      renderHook(() => useRepairRequestsDeepLink(opts))
+      const { rerender } = renderHook(() => useRepairRequestsDeepLink(opts))
 
       await waitFor(() => {
         expect(mocks.openCreateSheet).toHaveBeenCalledTimes(1)
@@ -152,9 +132,7 @@ export function registerUseRepairRequestsDeepLinkRaceCases(deps: DeepLinkRaceCas
         )
       })
 
-      await act(async () => {
-        listDeferred.resolve([VALID_EQUIPMENT])
-      })
+      rerender()
 
       await waitFor(() => {
         expect(mocks.openCreateSheet).toHaveBeenCalledTimes(1)
@@ -164,16 +142,13 @@ export function registerUseRepairRequestsDeepLinkRaceCases(deps: DeepLinkRaceCas
     it('does not open a blank sheet after equipment_get reaches terminal missing state', async () => {
       const equipmentGetDeferred = createDeferred<null>()
 
-      mocks.callRpc
-        .mockResolvedValueOnce([])                          // equipment_list: immediate
-        .mockReturnValueOnce(equipmentGetDeferred.promise)  // equipment_get: deferred
+      mocks.callRpc.mockReturnValueOnce(equipmentGetDeferred.promise)
 
       const sp = createSearchParams({ action: 'create', equipmentId: '999' })
       renderHook(() => useRepairRequestsDeepLink(createDefaultOptions(sp)))
 
-      // Wait for list
       await waitFor(() => {
-        expect(mocks.callRpc).toHaveBeenCalledTimes(2)
+        expect(mocks.callRpc).toHaveBeenCalledTimes(1)
       })
 
       // Sheet must NOT open while equipment_get is pending
@@ -214,7 +189,6 @@ export function registerUseRepairRequestsDeepLinkRaceCases(deps: DeepLinkRaceCas
       const baseOpts = createDefaultOptions()
 
       mocks.callRpc
-        .mockResolvedValueOnce([])
         .mockReturnValueOnce(firstEquipmentDeferred.promise)
         .mockReturnValueOnce(secondEquipmentDeferred.promise)
 
@@ -231,7 +205,7 @@ export function registerUseRepairRequestsDeepLinkRaceCases(deps: DeepLinkRaceCas
       )
 
       await waitFor(() => {
-        expect(mocks.callRpc).toHaveBeenCalledTimes(2)
+        expect(mocks.callRpc).toHaveBeenCalledTimes(1)
       })
 
       act(() => {
@@ -241,7 +215,7 @@ export function registerUseRepairRequestsDeepLinkRaceCases(deps: DeepLinkRaceCas
       })
 
       await waitFor(() => {
-        expect(mocks.callRpc).toHaveBeenCalledTimes(3)
+        expect(mocks.callRpc).toHaveBeenCalledTimes(2)
       })
 
       await act(async () => {
@@ -284,7 +258,6 @@ export function registerUseRepairRequestsDeepLinkRaceCases(deps: DeepLinkRaceCas
       const baseOpts = createDefaultOptions()
 
       mocks.callRpc
-        .mockResolvedValueOnce([])
         .mockReturnValueOnce(firstEquipmentDeferred.promise)
         .mockReturnValueOnce(secondEquipmentDeferred.promise)
 
@@ -311,7 +284,7 @@ export function registerUseRepairRequestsDeepLinkRaceCases(deps: DeepLinkRaceCas
       })
 
       await waitFor(() => {
-        expect(mocks.callRpc).toHaveBeenCalledTimes(3)
+        expect(mocks.callRpc).toHaveBeenCalledTimes(2)
       })
 
       await act(async () => {

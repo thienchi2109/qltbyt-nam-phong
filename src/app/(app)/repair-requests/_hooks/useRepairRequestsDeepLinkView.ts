@@ -21,6 +21,8 @@ type EquipmentDetailRecord = {
   don_vi?: number | null
 }
 
+type RepairRequestEquipment = RepairRequestWithEquipment["thiet_bi"]
+
 function toPositiveInt(value: string | null) {
   if (!value) return null
 
@@ -34,6 +36,37 @@ function toNullableString(value: unknown) {
 
 function toNullableNumber(value: unknown) {
   return typeof value === "number" && Number.isFinite(value) ? value : null
+}
+
+function mapEquipmentRecord(equipment: EquipmentDetailRecord): RepairRequestEquipment {
+  return {
+    ten_thiet_bi: equipment.ten_thiet_bi ?? "",
+    ma_thiet_bi: equipment.ma_thiet_bi ?? "",
+    model: toNullableString(equipment.model),
+    serial: toNullableString(equipment.serial),
+    khoa_phong_quan_ly: toNullableString(equipment.khoa_phong_quan_ly),
+    facility_name: null,
+    facility_id: toNullableNumber(equipment.don_vi),
+  }
+}
+
+function mapEmbeddedEquipment(value: unknown): RepairRequestEquipment {
+  if (!value || typeof value !== "object") return null
+
+  const equipment = value as Record<string, unknown>
+  const maThietBi = toNullableString(equipment.ma_thiet_bi)
+  const tenThietBi = toNullableString(equipment.ten_thiet_bi)
+  if (maThietBi === null && tenThietBi === null) return null
+
+  return {
+    ten_thiet_bi: tenThietBi ?? "",
+    ma_thiet_bi: maThietBi ?? "",
+    model: toNullableString(equipment.model),
+    serial: toNullableString(equipment.serial),
+    khoa_phong_quan_ly: toNullableString(equipment.khoa_phong_quan_ly),
+    facility_name: toNullableString(equipment.facility_name),
+    facility_id: toNullableNumber(equipment.facility_id) ?? toNullableNumber(equipment.don_vi),
+  }
 }
 
 export function parseRepairRequestIdParam(value: string | null) {
@@ -61,6 +94,14 @@ export async function resolveRepairRequestView(
 
   if (!request) return null
 
+  const embeddedEquipment = mapEmbeddedEquipment(request.thiet_bi)
+  if (embeddedEquipment) {
+    return {
+      ...request,
+      thiet_bi: embeddedEquipment,
+    }
+  }
+
   let equipment: EquipmentDetailRecord | null = null
   try {
     equipment = await callRpc<EquipmentDetailRecord | null>({
@@ -73,17 +114,7 @@ export async function resolveRepairRequestView(
 
   return {
     ...request,
-    thiet_bi: equipment
-      ? {
-          ten_thiet_bi: equipment.ten_thiet_bi ?? "",
-          ma_thiet_bi: equipment.ma_thiet_bi ?? "",
-          model: toNullableString(equipment.model),
-          serial: toNullableString(equipment.serial),
-          khoa_phong_quan_ly: toNullableString(equipment.khoa_phong_quan_ly),
-          facility_name: null,
-          facility_id: toNullableNumber(equipment.don_vi),
-        }
-      : null,
+    thiet_bi: equipment ? mapEquipmentRecord(equipment) : null,
   }
 }
 

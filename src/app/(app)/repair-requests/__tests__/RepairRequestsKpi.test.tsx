@@ -19,6 +19,8 @@ const mocks = vi.hoisted(() => ({
   useQuery: vi.fn(),
   useQueryClient: vi.fn(),
   toast: vi.fn(),
+  tableMount: vi.fn(),
+  tableUnmount: vi.fn(),
 }))
 
 // ── Module mocks ───────────────────────────────────────────────────────
@@ -125,7 +127,14 @@ vi.mock('../_components/RepairRequestsCreateSheet', () => ({
 }))
 
 vi.mock('../_components/RepairRequestsTable', () => ({
-  RepairRequestsTable: () => <div data-testid="repair-table">table</div>,
+  RepairRequestsTable: () => {
+    React.useEffect(() => {
+      mocks.tableMount()
+      return () => mocks.tableUnmount()
+    }, [])
+
+    return <div data-testid="repair-table">table</div>
+  },
 }))
 
 vi.mock('../_components/RepairRequestsToolbar', () => ({
@@ -200,7 +209,7 @@ vi.mock('@tanstack/react-query', () => ({
 
     if (key === 'repair_request_list') {
       return {
-        data: options.enabled ? { data: [], total: 0, page: 1, pageSize: 20 } : undefined,
+        data: options.enabled ? { data: mockListData, total: mockListData.length, page: 1, pageSize: 20 } : undefined,
         isLoading: false,
         isFetching: false,
         refetch: vi.fn(),
@@ -216,6 +225,7 @@ vi.mock('@tanstack/react-query', () => ({
 
 // ── Shared test state ──────────────────────────────────────────────────
 let mockStatusCounts: Record<string, number> | undefined
+let mockListData: Array<{ id: number }>
 
 // Import component AFTER mocks
 import RepairRequestsPageClient from '../_components/RepairRequestsPageClient'
@@ -277,6 +287,7 @@ describe('RepairRequests KPI Cards', () => {
       'Hoàn thành': 5,
       'Không HT': 1,
     }
+    mockListData = []
     mocks.callRpc.mockResolvedValue([])
   })
 
@@ -356,6 +367,27 @@ describe('RepairRequests KPI Cards', () => {
       )
       expect(listCall).toBeDefined()
       expect(listCall!.enabled).toBe(true)
+    })
+
+    it('should not remount the table when only row count changes', async () => {
+      setupTenantUser()
+      let view: ReturnType<typeof render> | undefined
+
+      await act(async () => {
+        view = render(<RepairRequestsPageClient />)
+      })
+
+      expect(mocks.tableMount).toHaveBeenCalledTimes(1)
+      expect(mocks.tableUnmount).not.toHaveBeenCalled()
+
+      mockListData = [{ id: 1 }]
+
+      await act(async () => {
+        view!.rerender(<RepairRequestsPageClient />)
+      })
+
+      expect(mocks.tableMount).toHaveBeenCalledTimes(1)
+      expect(mocks.tableUnmount).not.toHaveBeenCalled()
     })
   })
 

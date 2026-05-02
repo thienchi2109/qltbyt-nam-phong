@@ -6,10 +6,7 @@ import type { RepairRequestDraftPayload } from "@/lib/ai/draft/repair-request-dr
 import type { UiFilters } from "@/lib/rr-prefs"
 import { getUnknownErrorMessage } from "@/lib/error-utils"
 import { REPAIR_REQUEST_CREATE_ACTION } from "@/lib/repair-request-deep-link"
-import {
-  fetchRepairRequestEquipmentById,
-  fetchRepairRequestEquipmentList,
-} from "../repair-requests-equipment-rpc"
+import { fetchRepairRequestEquipmentById } from "../repair-requests-equipment-rpc"
 import {
   useRepairRequestViewDeepLink,
 } from "./useRepairRequestsDeepLinkView"
@@ -85,7 +82,7 @@ export function useRepairRequestsDeepLink(
   } = opts
 
   const [allEquipment, setAllEquipment] = React.useState<EquipmentSelectItem[]>([])
-  const [hasLoadedEquipment, setHasLoadedEquipment] = React.useState(false)
+  const hasLoadedEquipment = true
   const [isEquipmentFetchPending, setIsEquipmentFetchPending] = React.useState(false)
   const [resolution, setResolution] = React.useState<RequestedEquipmentResolution>(IDLE_RESOLUTION)
   // Track the last processed status value to prevent render loops while still
@@ -111,29 +108,6 @@ export function useRepairRequestsDeepLink(
     )
     setIsEquipmentFetchPending(inFlightEquipmentFetchCountRef.current > 0)
   }
-
-  // Initial load: fetch a small equipment list via RPC
-  React.useEffect(() => {
-    const fetchInitialData = async () => {
-      try {
-        const eq = await fetchRepairRequestEquipmentList(null, 50)
-        setAllEquipment(eq || [])
-      } catch (error: unknown) {
-        const errorMessage = getUnknownErrorMessage(error)
-        toast({
-          variant: 'destructive',
-          title: 'Lỗi',
-          description: errorMessage
-            ? `Không thể tải danh sách thiết bị. ${errorMessage}`
-            : 'Không thể tải danh sách thiết bị.',
-        })
-      } finally {
-        setHasLoadedEquipment(true)
-      }
-    }
-    fetchInitialData()
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [toast])
 
   // Handle ?status=X deep-link — separate effect to avoid competing with
   // equipmentId fetch or action=create URL cleanup.
