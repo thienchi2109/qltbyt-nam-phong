@@ -37,6 +37,7 @@ type JwtHasDiaBanMa = Pick<JWT, "dia_ban_ma"> extends { dia_ban_ma?: string | nu
 type JwtHasFullName = Pick<JWT, "full_name"> extends { full_name?: string | null } ? true : false
 type JwtHasAuthMode = Pick<JWT, "auth_mode"> extends { auth_mode?: string | null } ? true : false
 type JwtHasLoginTime = Pick<JWT, "loginTime"> extends { loginTime?: number } ? true : false
+type JwtHasLastRefreshAt = Pick<JWT, "lastRefreshAt"> extends { lastRefreshAt?: number } ? true : false
 
 type _userHasId = Assert<UserHasId>
 type _userHasUsername = Assert<UserHasUsername>
@@ -71,3 +72,4 @@ type _jwtHasDiaBanMa = Assert<JwtHasDiaBanMa>
 type _jwtHasFullName = Assert<JwtHasFullName>
 type _jwtHasAuthMode = Assert<JwtHasAuthMode>
 type _jwtHasLoginTime = Assert<JwtHasLoginTime>
+type _jwtHasLastRefreshAt = Assert<JwtHasLastRefreshAt>

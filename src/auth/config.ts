@@ -10,6 +10,18 @@ import {
   type AuthRpcUserRow,
 } from "./types"
 
+// Cooldown for the per-request profile refresh in the jwt callback.
+// Without this gate the callback issues 1-3 Supabase SELECTs on every
+// invocation (page render, getServerSession call, useSession poll, …),
+// which scales with traffic, not with auth-state changes. See issue #365.
+//
+// Trade-off: out-of-band invalidations (password change, tenant deactivation)
+// are visible only after the cooldown elapses or after an explicit
+// `trigger === 'update'` (e.g. tenant switch). 60s is intentionally short
+// enough to keep the password-change story acceptable while cutting DB
+// load to ~1 fetch / minute / active session.
+const PROFILE_REFRESH_INTERVAL_MS = 60_000
+
 export const authOptions: NextAuthOptions = {
   session: {
     strategy: "jwt",
@@ -76,83 +88,103 @@ export const authOptions: NextAuthOptions = {
     }),
   ],
   callbacks: {
-    async jwt({ token, user }) {
+    async jwt({ token, user, trigger }) {
+      const now = Date.now()
+
       // On sign-in, persist extra fields in the JWT
       if (user) {
         token = {
           ...applyAuthUserToJwt(token, user),
-          loginTime: Date.now(), // Track when user logged in
+          loginTime: now, // Track when user logged in
         }
       }
 
-      // Refresh user-derived fields on every JWT callback
-      if (token.id) {
-        try {
-          const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-          const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-          if (supabaseUrl && serviceKey) {
-            const supabase = createClient(supabaseUrl, serviceKey)
-            const { data, error } = await supabase
-              .from("nhan_vien")
-              .select("password_changed_at, current_don_vi, don_vi, khoa_phong, full_name, dia_ban_id")
-              .eq("id", token.id)
-              .single()
+      if (!token.id) {
+        return token
+      }
 
-            if (!error && data) {
-              const profile = data as AuthProfileRow
-              // Password change invalidates session if changed after login
-              if (token.loginTime && profile.password_changed_at) {
-                const passwordChangedAt = new Date(profile.password_changed_at).getTime()
-                const tokenLoginTime = token.loginTime as number
-                if (passwordChangedAt > tokenLoginTime) {
-                  console.warn("Password changed after login - invalidating token")
-                  return {}
-                }
+      // Cooldown: skip the per-request profile fetch if we refreshed recently.
+      // Force a refresh when NextAuth indicates an explicit update (e.g.
+      // tenant switch via session.update()).
+      const lastRefreshAt = typeof token.lastRefreshAt === "number" ? token.lastRefreshAt : null
+      const isExplicitUpdate = trigger === "update" || Boolean(user)
+      if (
+        !isExplicitUpdate &&
+        lastRefreshAt !== null &&
+        now - lastRefreshAt < PROFILE_REFRESH_INTERVAL_MS
+      ) {
+        return token
+      }
+
+      // Refresh user-derived fields
+      try {
+        const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+        const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+        if (supabaseUrl && serviceKey) {
+          const supabase = createClient(supabaseUrl, serviceKey)
+          const { data, error } = await supabase
+            .from("nhan_vien")
+            .select("password_changed_at, current_don_vi, don_vi, khoa_phong, full_name, dia_ban_id")
+            .eq("id", token.id)
+            .single()
+
+          if (!error && data) {
+            const profile = data as AuthProfileRow
+            // Password change invalidates session if changed after login
+            if (token.loginTime && profile.password_changed_at) {
+              const passwordChangedAt = new Date(profile.password_changed_at).getTime()
+              const tokenLoginTime = token.loginTime as number
+              if (passwordChangedAt > tokenLoginTime) {
+                console.warn("Password changed after login - invalidating token")
+                return {}
               }
-              // Keep JWT in sync with user profile for tenant-aware UI
-              const resolvedDonVi = profile.current_don_vi || profile.don_vi || null
-              let resolvedDiaBan: number | null = profile.dia_ban_id ?? null
-              let resolvedDiaBanMa: string | null = token.dia_ban_ma ?? null
-
-              if (!resolvedDiaBan && resolvedDonVi) {
-                try {
-                  const { data: donViRows, error: donViError } = await supabase
-                    .from("don_vi")
-                    .select("dia_ban_id")
-                    .eq("id", resolvedDonVi)
-                    .limit(1)
-
-                  if (!donViError && donViRows && donViRows.length > 0) {
-                    resolvedDiaBan = donViRows[0]?.dia_ban_id ?? null
-                  }
-                } catch (donViLookupError) {
-                  console.error("Failed to resolve dia_ban from don_vi", donViLookupError)
-                }
-              }
-
-              if (resolvedDiaBan && !resolvedDiaBanMa) {
-                try {
-                  const { data: diaBanRows, error: diaBanError } = await supabase
-                    .from("dia_ban")
-                    .select("ma_dia_ban")
-                    .eq("id", resolvedDiaBan)
-                    .limit(1)
-
-                  if (!diaBanError && diaBanRows && diaBanRows.length > 0) {
-                    resolvedDiaBanMa = diaBanRows[0]?.ma_dia_ban ?? null
-                  }
-                } catch (diaBanLookupError) {
-                  console.error("Failed to resolve dia_ban metadata", diaBanLookupError)
-                }
-              }
-
-              token = applyJwtProfileRefresh(token, profile, resolvedDonVi, resolvedDiaBan, resolvedDiaBanMa)
             }
+            // Keep JWT in sync with user profile for tenant-aware UI
+            const resolvedDonVi = profile.current_don_vi || profile.don_vi || null
+            let resolvedDiaBan: number | null = profile.dia_ban_id ?? null
+            let resolvedDiaBanMa: string | null = token.dia_ban_ma ?? null
+
+            if (!resolvedDiaBan && resolvedDonVi) {
+              try {
+                const { data: donViRows, error: donViError } = await supabase
+                  .from("don_vi")
+                  .select("dia_ban_id")
+                  .eq("id", resolvedDonVi)
+                  .limit(1)
+
+                if (!donViError && donViRows && donViRows.length > 0) {
+                  resolvedDiaBan = donViRows[0]?.dia_ban_id ?? null
+                }
+              } catch (donViLookupError) {
+                console.error("Failed to resolve dia_ban from don_vi", donViLookupError)
+              }
+            }
+
+            if (resolvedDiaBan && !resolvedDiaBanMa) {
+              try {
+                const { data: diaBanRows, error: diaBanError } = await supabase
+                  .from("dia_ban")
+                  .select("ma_dia_ban")
+                  .eq("id", resolvedDiaBan)
+                  .limit(1)
+
+                if (!diaBanError && diaBanRows && diaBanRows.length > 0) {
+                  resolvedDiaBanMa = diaBanRows[0]?.ma_dia_ban ?? null
+                }
+              } catch (diaBanLookupError) {
+                console.error("Failed to resolve dia_ban metadata", diaBanLookupError)
+              }
+            }
+
+            token = applyJwtProfileRefresh(token, profile, resolvedDonVi, resolvedDiaBan, resolvedDiaBanMa)
+            // Stamp lastRefreshAt only on a successful refresh so transient
+            // failures do not extend the cooldown beyond what they should.
+            token.lastRefreshAt = now
           }
-        } catch (e) {
-          // Log but don't break auth flow for database errors
-          console.error("Password change check failed:", e)
         }
+      } catch (e) {
+        // Log but don't break auth flow for database errors
+        console.error("Password change check failed:", e)
       }
 
       return token
