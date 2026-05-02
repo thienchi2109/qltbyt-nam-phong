@@ -184,7 +184,7 @@ export function useTransfersPageController(
     () =>
       JSON.stringify({
         q: filters.q ?? null,
-        types: [...(filters.types ?? [])].sort(),
+        types: [...(filters.types ?? [])].sort((left, right) => left.localeCompare(right)),
         facilityId: filters.facilityId ?? null,
         dateFrom: filters.dateFrom ?? null,
         dateTo: filters.dateTo ?? null,
