@@ -558,6 +558,34 @@ describe("Transfers KPI", () => {
     expect(mocks.useTransferCounts).not.toHaveBeenCalled()
   })
 
+  it("does not seed kanban initial data from a fetching page-data placeholder", () => {
+    mocks.rawViewMode = "kanban"
+    mocks.useTransferPageData.mockReturnValue({
+      data: {
+        list: null,
+        counts: {
+          totalCount: 20,
+          columnCounts: mockColumnCounts,
+        },
+        kanban: {
+          totalCount: 20,
+          columns: {},
+        },
+      },
+      isLoading: false,
+      isFetching: true,
+      isError: false,
+    })
+
+    render(<TransfersPage />)
+
+    expect(mocks.TransfersKanbanView).toHaveBeenCalledWith(
+      expect.objectContaining({
+        initialData: null,
+      }),
+    )
+  })
+
   it("propagates the selected date range into the combined page-data filters", () => {
     mocks.useTransfersFilters.mockReturnValue({
       searchTerm: "",

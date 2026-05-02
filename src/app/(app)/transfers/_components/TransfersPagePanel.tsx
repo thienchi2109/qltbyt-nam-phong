@@ -191,7 +191,7 @@ export function TransfersPagePanel({
                     onViewTransfer={onViewTransfer}
                     renderRowActions={renderRowActions}
                     statusCounts={transferCounts?.columnCounts}
-                    initialData={kanbanData}
+                    initialData={isListFetching ? null : kanbanData}
                     userRole={userRole}
                   />
                 ) : (
