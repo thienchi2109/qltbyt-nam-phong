@@ -37,7 +37,6 @@ export function registerUseRepairRequestsDeepLinkRetryCases(deps: DeepLinkRetryC
       const baseOpts = createDefaultOptions()
 
       mocks.callRpc
-        .mockResolvedValueOnce([])
         .mockResolvedValueOnce(null)
         .mockReturnValueOnce(retryEquipmentDeferred.promise)
 
@@ -79,7 +78,7 @@ export function registerUseRepairRequestsDeepLinkRetryCases(deps: DeepLinkRetryC
       })
 
       await waitFor(() => {
-        expect(mocks.callRpc).toHaveBeenCalledTimes(3)
+        expect(mocks.callRpc).toHaveBeenCalledTimes(2)
       })
 
       expect(mocks.openCreateSheet).not.toHaveBeenCalled()
@@ -97,8 +96,6 @@ export function registerUseRepairRequestsDeepLinkRetryCases(deps: DeepLinkRetryC
     })
 
     it('does not delay action=create without equipmentId due to resolution gating', async () => {
-      mocks.callRpc.mockResolvedValueOnce([]) // equipment_list
-
       const sp = createSearchParams({ action: 'create' })
       renderHook(() => useRepairRequestsDeepLink(createDefaultOptions(sp)))
 
@@ -107,8 +104,7 @@ export function registerUseRepairRequestsDeepLinkRetryCases(deps: DeepLinkRetryC
         expect(mocks.openCreateSheet).toHaveBeenCalledWith()
       })
 
-      // Only 1 RPC call (equipment_list), no equipment_get
-      expect(mocks.callRpc).toHaveBeenCalledTimes(1)
+      expect(mocks.callRpc).not.toHaveBeenCalled()
       expect(mocks.routerReplace).toHaveBeenCalledWith('/repair-requests', { scroll: false })
     })
   })

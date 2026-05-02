@@ -3,7 +3,7 @@
  * Tests for useRepairRequestsDeepLink hook.
  *
  * Verifies:
- * - Equipment list fetch on mount
+ * - No eager equipment list fetch on mount
  * - Deep-link: ?equipmentId=X triggers equipment_get RPC
  * - Deep-link: ?status=X preselects status filter
  * - Deep-link: ?action=create opens create sheet
@@ -101,46 +101,31 @@ describe('useRepairRequestsDeepLink', () => {
     })
   })
 
-  it('fetches equipment list on mount', async () => {
-    mocks.callRpc.mockResolvedValueOnce([
-      { id: 1, ma_thiet_bi: 'TB001', ten_thiet_bi: 'Máy A', khoa_phong_quan_ly: 'Khoa 1' },
-    ])
-
+  it('does not fetch equipment options on plain page mount', () => {
     const { result } = renderHook(() =>
       useRepairRequestsDeepLink(createDefaultOptions())
     )
 
-    await waitFor(() => {
-      expect(result.current.hasLoadedEquipment).toBe(true)
-    })
-    expect(result.current.allEquipment).toHaveLength(1)
-    expect(result.current.allEquipment[0].ma_thiet_bi).toBe('TB001')
+    expect(result.current.hasLoadedEquipment).toBe(true)
+    expect(result.current.allEquipment).toEqual([])
+    expect(mocks.callRpc).not.toHaveBeenCalled()
   })
 
-  it('toasts error when equipment list fetch fails', async () => {
-    mocks.callRpc.mockRejectedValueOnce({ message: 'Network error' })
+  it('does not toast equipment option errors on plain page mount', () => {
+    mocks.callRpc.mockRejectedValue({ message: 'Network error' })
 
-    const { result } = renderHook(() =>
+    renderHook(() =>
       useRepairRequestsDeepLink(createDefaultOptions())
     )
 
-    await waitFor(() => {
-      expect(result.current.hasLoadedEquipment).toBe(true)
-    })
-    expect(mocks.toast).toHaveBeenCalledWith(
-      expect.objectContaining({
-        variant: 'destructive',
-        description: 'Không thể tải danh sách thiết bị. Network error',
-      })
-    )
+    expect(mocks.callRpc).not.toHaveBeenCalled()
+    expect(mocks.toast).not.toHaveBeenCalled()
   })
 
   it('fetches equipment by ID for deep-link preselect', async () => {
-    mocks.callRpc
-      .mockResolvedValueOnce([]) // equipment_list
-      .mockResolvedValueOnce({   // equipment_get
-        id: 42, ma_thiet_bi: 'TB042', ten_thiet_bi: 'Máy B', khoa_phong_quan_ly: 'Khoa 2',
-      })
+    mocks.callRpc.mockResolvedValueOnce({
+      id: 42, ma_thiet_bi: 'TB042', ten_thiet_bi: 'Máy B', khoa_phong_quan_ly: 'Khoa 2',
+    })
 
     const sp = createSearchParams({ equipmentId: '42' })
     const { result } = renderHook(() =>
@@ -150,6 +135,12 @@ describe('useRepairRequestsDeepLink', () => {
     await waitFor(() => {
       expect(result.current.allEquipment.some(eq => eq.id === 42)).toBe(true)
     })
+    expect(mocks.callRpc).toHaveBeenCalledWith(
+      expect.objectContaining({
+        fn: 'equipment_get',
+        args: { p_id: 42 },
+      }),
+    )
   })
 
   it('preselects status filter from URL param', () => {
@@ -209,14 +200,12 @@ describe('useRepairRequestsDeepLink', () => {
   })
 
   it('opens the create sheet with the resolved equipment for action=create and valid equipmentId', async () => {
-    mocks.callRpc
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce({
-        id: 42,
-        ma_thiet_bi: 'TB042',
-        ten_thiet_bi: 'Máy B',
-        khoa_phong_quan_ly: 'Khoa 2',
-      })
+    mocks.callRpc.mockResolvedValueOnce({
+      id: 42,
+      ma_thiet_bi: 'TB042',
+      ten_thiet_bi: 'Máy B',
+      khoa_phong_quan_ly: 'Khoa 2',
+    })
 
     const sp = createSearchParams({ action: 'create', equipmentId: '42' })
 
@@ -235,9 +224,7 @@ describe('useRepairRequestsDeepLink', () => {
   })
 
   it('does not open the create sheet when action=create has an unresolved equipmentId', async () => {
-    mocks.callRpc
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce(null)
+    mocks.callRpc.mockResolvedValueOnce(null)
 
     const sp = createSearchParams({ action: 'create', equipmentId: '999' })
 
@@ -257,9 +244,7 @@ describe('useRepairRequestsDeepLink', () => {
   })
 
   it('does not open the create sheet when equipment_get denies access', async () => {
-    mocks.callRpc
-      .mockResolvedValueOnce([])
-      .mockRejectedValueOnce({ message: 'Equipment not found or access denied' })
+    mocks.callRpc.mockRejectedValueOnce({ message: 'Equipment not found or access denied' })
 
     const sp = createSearchParams({ action: 'create', equipmentId: '999' })
 
@@ -293,13 +278,12 @@ describe('useRepairRequestsDeepLink', () => {
       )
     })
     expect(mocks.openCreateSheet).not.toHaveBeenCalled()
-    expect(mocks.callRpc).toHaveBeenCalledTimes(1)
+    expect(mocks.callRpc).not.toHaveBeenCalled()
     expect(mocks.routerReplace).toHaveBeenCalledWith('/repair-requests', { scroll: false })
   })
 
   it('opens the detail sheet for action=view and a valid requestId without cleaning the URL on open', async () => {
     mocks.callRpc
-      .mockResolvedValueOnce([])
       .mockResolvedValueOnce({
         id: 77,
         thiet_bi_id: 42,
@@ -351,6 +335,56 @@ describe('useRepairRequestsDeepLink', () => {
     expect(mocks.routerReplace).not.toHaveBeenCalled()
   })
 
+  it('does not fetch equipment_get for action=view when repair_request_get already includes equipment', async () => {
+    mocks.callRpc.mockResolvedValueOnce({
+      id: 77,
+      thiet_bi_id: 42,
+      ngay_yeu_cau: '2026-04-28',
+      trang_thai: 'Chờ xử lý',
+      mo_ta_su_co: 'Mất nguồn',
+      hang_muc_sua_chua: null,
+      ngay_mong_muon_hoan_thanh: null,
+      nguoi_yeu_cau: 'Nguyen Van A',
+      ngay_duyet: null,
+      ngay_hoan_thanh: null,
+      nguoi_duyet: null,
+      nguoi_xac_nhan: null,
+      chi_phi_sua_chua: null,
+      don_vi_thuc_hien: null,
+      ten_don_vi_thue: null,
+      ket_qua_sua_chua: null,
+      ly_do_khong_hoan_thanh: null,
+      thiet_bi: {
+        ma_thiet_bi: 'TB042',
+        ten_thiet_bi: 'Máy B',
+        model: 'Model X',
+        serial: 'SER-42',
+        khoa_phong_quan_ly: 'Khoa 2',
+        facility_id: 9,
+      },
+    })
+
+    const sp = createSearchParams({ action: 'view', requestId: '77' })
+
+    renderHook(() => useRepairRequestsDeepLink(createDefaultOptions(sp)))
+
+    await waitFor(() => {
+      expect(mocks.openViewDialog).toHaveBeenCalledWith(
+        expect.objectContaining({
+          id: 77,
+          thiet_bi: expect.objectContaining({
+            ma_thiet_bi: 'TB042',
+            facility_id: 9,
+          }),
+        }),
+      )
+    })
+    expect(mocks.callRpc).toHaveBeenCalledTimes(1)
+    expect(mocks.callRpc).not.toHaveBeenCalledWith(
+      expect.objectContaining({ fn: 'equipment_get' }),
+    )
+  })
+
   it('toasts and cleans only action/requestId when action=view has an invalid requestId', async () => {
     const sp = createSearchParams({ action: 'view', requestId: 'abc', foo: 'bar' })
 
@@ -370,9 +404,7 @@ describe('useRepairRequestsDeepLink', () => {
   })
 
   it('toasts and cleans only action/requestId when action=view cannot resolve the request', async () => {
-    mocks.callRpc
-      .mockResolvedValueOnce([])
-      .mockRejectedValueOnce(new Error('Yêu cầu sửa chữa không tồn tại hoặc bạn không có quyền truy cập'))
+    mocks.callRpc.mockRejectedValueOnce(new Error('Yêu cầu sửa chữa không tồn tại hoặc bạn không có quyền truy cập'))
 
     const sp = createSearchParams({ action: 'view', requestId: '999', foo: 'bar' })
 
@@ -393,7 +425,6 @@ describe('useRepairRequestsDeepLink', () => {
 
   it('opens the detail sheet with thiet_bi null when equipment_get is denied after request resolution', async () => {
     mocks.callRpc
-      .mockResolvedValueOnce([])
       .mockResolvedValueOnce({
         id: 77,
         thiet_bi_id: 42,
@@ -438,7 +469,6 @@ describe('useRepairRequestsDeepLink', () => {
 
   it('cleans only action/requestId after the URL-driven detail sheet closes', async () => {
     mocks.callRpc
-      .mockResolvedValueOnce([])
       .mockResolvedValueOnce({
         id: 77,
         thiet_bi_id: 42,

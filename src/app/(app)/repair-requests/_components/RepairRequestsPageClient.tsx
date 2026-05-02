@@ -191,10 +191,10 @@ function RepairRequestsPageClientInner() {
   const columns = useRepairRequestColumns(columnOptions)
   const tableData = requests;
 
-  // Stable key for table to force remount on filter changes
+  // Keep the table subtree stable across pagination/filter result-size changes.
   const tableKey = React.useMemo(() => {
-    return `${selectedFacilityId || 'all'}_${tableData.length}`;
-  }, [selectedFacilityId, tableData.length]);
+    return `${selectedFacilityId ?? 'all'}`;
+  }, [selectedFacilityId]);
 
   const pageCount = repairPagination.pageCount
 
