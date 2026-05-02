@@ -86,7 +86,7 @@ SUPABASE_JWT_SECRET=your_supabase_jwt_secret
 # NextAuth Configuration
 AUTH_SECRET=your_nextauth_secret_key
 NEXTAUTH_SECRET=your_nextauth_secret_key
-AUTH_MIDDLEWARE_ENABLED=true
+AUTH_MIDDLEWARE_ENABLED=true   # Non-production only. Ignored in production (route protection always on).
 
 # Optional Feature Flags
 NEXT_PUBLIC_AUTH_LEGACY_BRIDGE=false
