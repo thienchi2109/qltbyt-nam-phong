@@ -50,61 +50,26 @@ function KanbanColumnWithInfiniteScroll({
   renderRowActions: (item: TransferListItem) => React.ReactNode
   referenceDate: Date
 }) {
-  const [infiniteScrollEnabled, setInfiniteScrollEnabled] = React.useState(false)
-
-  // Track if we've done the initial fetch after enabling infinite scroll
-  const didInitialFetchRef = React.useRef(false)
-
-  // Create a stable key from filters to detect changes
-  const filtersKey = React.useMemo(() => JSON.stringify(filters), [filters])
-
-  // Reset infinite scroll state when filters change (prevents auto-fetching after filter change)
-  React.useEffect(() => {
-    setInfiniteScrollEnabled(false)
-    didInitialFetchRef.current = false
-  }, [filtersKey])
-
-  // Infinite scroll for this specific column (disabled until user scrolls near bottom)
+  // Keep the query disabled until the column asks for more rows; manual fetch starts at page 2.
   const {
     data: infiniteData,
     fetchNextPage,
     hasNextPage,
     isFetchingNextPage,
-  } = useTransferColumnInfiniteScroll(filters, status, infiniteScrollEnabled)
-
-  // One-time fetch when infinite scroll is first enabled
-  // This handles the case where user scrolls, we enable the query, but fetchNextPage
-  // wasn't called because hasNextPage was undefined during the initial scroll trigger
-  React.useEffect(() => {
-    if (
-      infiniteScrollEnabled &&
-      hasNextPage &&
-      !isFetchingNextPage &&
-      !didInitialFetchRef.current
-    ) {
-      didInitialFetchRef.current = true
-      fetchNextPage()
-    }
-  }, [infiniteScrollEnabled, hasNextPage, isFetchingNextPage, fetchNextPage])
+  } = useTransferColumnInfiniteScroll(filters, status, false)
 
   // Merge initial kanban data with infinite scroll pages
-  const { tasks, hasMore, isLoadingMore } = useMergedColumnData(
+  const { tasks, hasMore } = useMergedColumnData(
     initialTasks,
     infiniteData?.pages,
     false
   )
 
   const handleLoadMore = React.useCallback(() => {
-    // Enable infinite scroll on first trigger (loads page 2)
-    if (!infiniteScrollEnabled) {
-      setInfiniteScrollEnabled(true)
-      return // useEffect above will handle the fetch once query is enabled
-    }
-
-    if (hasNextPage && !isFetchingNextPage) {
+    if (!isFetchingNextPage && hasNextPage !== false) {
       fetchNextPage()
     }
-  }, [infiniteScrollEnabled, hasNextPage, isFetchingNextPage, fetchNextPage])
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage])
 
   return (
     <TransfersKanbanColumn
