@@ -37,7 +37,8 @@ export function LoginForm() {
       // Success: NextAuth session established; no legacy bridge writes
       // Redirect to dashboard
       window.location.href = "/dashboard"
-    } catch (_err) {
+    } catch (err) {
+      console.error("Unexpected login error", { error: err })
       setError(t("login.error") || "Tên đăng nhập hoặc mật khẩu không đúng")
       setIsLoading(false)
     }

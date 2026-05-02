@@ -19,7 +19,7 @@ vi.mock("next/navigation", () => ({
   redirect: (path: string) => mocks.redirect(path),
 }))
 
-vi.mock("@/app/_components/login-form", () => ({
+vi.mock("@/app/_components/LoginForm", () => ({
   LoginForm: () => mocks.loginForm(),
 }))
 

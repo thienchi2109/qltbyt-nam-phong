@@ -4,7 +4,7 @@ import { getServerSession } from "next-auth"
 import { redirect } from "next/navigation"
 
 import { authOptions } from "@/auth/config"
-import { LoginForm } from "./_components/login-form"
+import { LoginForm } from "@/app/_components/LoginForm"
 
 export const metadata: Metadata = {
   title: "Đăng nhập | CVMEMS",
