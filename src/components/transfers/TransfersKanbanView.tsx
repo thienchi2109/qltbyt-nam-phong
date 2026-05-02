@@ -131,46 +131,9 @@ export function TransfersKanbanView({
 }: TransfersKanbanViewProps) {
   const [showCompleted, setShowCompleted] = React.useState(false)
 
-  if (initialData && !showCompleted) {
-    return (
-      <TransfersKanbanBoard
-        data={initialData}
-        filters={filters}
-        isFetching={false}
-        isLoading={false}
-        onViewTransfer={onViewTransfer}
-        renderRowActions={renderRowActions}
-        setShowCompleted={setShowCompleted}
-        showCompleted={showCompleted}
-      />
-    )
-  }
-
-  return (
-    <FetchedTransfersKanbanBoard
-      filters={filters}
-      onViewTransfer={onViewTransfer}
-      renderRowActions={renderRowActions}
-      setShowCompleted={setShowCompleted}
-      showCompleted={showCompleted}
-      userRole={userRole}
-    />
-  )
-}
-
-function FetchedTransfersKanbanBoard({
-  filters,
-  onViewTransfer,
-  renderRowActions,
-  setShowCompleted,
-  showCompleted,
-  userRole,
-}: Pick<TransfersKanbanViewProps, "filters" | "onViewTransfer" | "renderRowActions" | "userRole"> & {
-  setShowCompleted: React.Dispatch<React.SetStateAction<boolean>>
-  showCompleted: boolean
-}) {
   const { data, isLoading, isFetching } = useTransfersKanban(filters, {
     excludeCompleted: !showCompleted,
+    initialData: !showCompleted ? initialData : null,
     perColumnLimit: 30,
     userRole,
   })

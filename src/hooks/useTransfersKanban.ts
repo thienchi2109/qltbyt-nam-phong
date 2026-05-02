@@ -19,6 +19,7 @@ export const transferKanbanKeys = {
 
 interface UseTransfersKanbanOptions {
   excludeCompleted?: boolean
+  initialData?: TransferKanbanResponse | null
   perColumnLimit?: number
   /**
    * For global/regional users who can access multiple tenants:
@@ -39,7 +40,7 @@ export function useTransfersKanban(
   filters: TransferListFilters,
   options: UseTransfersKanbanOptions = {}
 ) {
-  const { excludeCompleted = true, perColumnLimit = 30, userRole } = options
+  const { excludeCompleted = true, initialData, perColumnLimit = 30, userRole } = options
 
   // Multi-tenant users must select a specific tenant before fetching
   const isMultiTenantUser = isGlobalRole(userRole) || isRegionalLeaderRole(userRole)
@@ -71,6 +72,7 @@ export function useTransfersKanban(
     staleTime: 30000, // 30 seconds
     refetchInterval: 60000, // Poll every 60 seconds
     gcTime: 5 * 60 * 1000, // Garbage collect after 5 minutes of inactivity
+    initialData: initialData ?? undefined,
     // Require types AND (single-tenant user OR multi-tenant user with facility selected)
     enabled: !!filters.types && filters.types.length > 0 && shouldFetch,
   })
