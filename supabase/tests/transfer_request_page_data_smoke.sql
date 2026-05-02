@@ -134,6 +134,46 @@ BEGIN
 END $$;
 
 DO $$
+DECLARE
+  v_page jsonb;
+BEGIN
+  PERFORM set_config(
+    'request.jwt.claims',
+    json_build_object(
+      'app_role', 'global',
+      'role', 'global',
+      'user_id', 'transfer-page-data-smoke',
+      'sub', 'transfer-page-data-smoke'
+    )::text,
+    true
+  );
+
+  v_page := public.transfer_request_page_data(
+    NULL,
+    ARRAY['cho_duyet'],
+    ARRAY['noi_bo'],
+    2,
+    10,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    'table',
+    30,
+    false,
+    false
+  );
+
+  IF NOT (v_page ? 'counts') OR v_page->'counts' IS DISTINCT FROM 'null'::jsonb THEN
+    RAISE EXCEPTION 'Counts should be null when p_include_counts is false';
+  END IF;
+
+  IF NOT (v_page ? 'list') OR jsonb_typeof(v_page->'list') IS DISTINCT FROM 'object' THEN
+    RAISE EXCEPTION 'Table page data should still include list when counts are skipped';
+  END IF;
+END $$;
+
+DO $$
 BEGIN
   PERFORM set_config('request.jwt.claims', '{}'::text, true);
 
