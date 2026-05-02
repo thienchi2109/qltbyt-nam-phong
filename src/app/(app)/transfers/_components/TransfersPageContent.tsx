@@ -120,6 +120,7 @@ export function TransfersPageContent({ user }: TransfersPageContentProps) {
           RowActions={controller.rowActions.RowActions}
           renderRowActions={controller.rowActions.renderRowActions}
           filters={controller.filters}
+          kanbanData={controller.kanbanData}
           userRole={controller.userRole}
           columns={controller.columns}
           pagination={controller.transferPagination.pagination}

@@ -95,6 +95,13 @@ export interface TransferCountsResponse {
   columnCounts: TransferStatusCounts
 }
 
+export interface TransferPageDataResponse {
+  viewMode: ViewMode
+  list: TransferListResponse | null
+  counts: TransferCountsResponse | null
+  kanban: TransferKanbanResponse | null
+}
+
 // Zod schema for equipment info validation
 export const TransferEquipmentInfoSchema = z.object({
   ten_thiet_bi: z.string().nullable(),
@@ -156,6 +163,24 @@ export const TransferKanbanResponseSchema = z.object({
     TransferKanbanColumnDataSchema
   ),
   totalCount: z.number().int().nonnegative(),
+})
+
+export const TransferCountsResponseSchema = z.object({
+  totalCount: z.number().int().nonnegative(),
+  columnCounts: z.object({
+    cho_duyet: z.number().int().nonnegative(),
+    da_duyet: z.number().int().nonnegative(),
+    dang_luan_chuyen: z.number().int().nonnegative(),
+    da_ban_giao: z.number().int().nonnegative(),
+    hoan_thanh: z.number().int().nonnegative(),
+  }),
+})
+
+export const TransferPageDataResponseSchema = z.object({
+  viewMode: z.enum(['table', 'kanban']),
+  list: TransferTableModeResponseSchema.nullable(),
+  counts: TransferCountsResponseSchema.nullable(),
+  kanban: TransferKanbanResponseSchema.nullable(),
 })
 
 // TypeScript types inferred from Zod schemas

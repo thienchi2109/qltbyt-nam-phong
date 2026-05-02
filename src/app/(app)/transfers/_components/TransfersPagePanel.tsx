@@ -25,6 +25,7 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/componen
 import type { DisplayContext } from "@/components/shared/DataTablePagination/types"
 import type {
   TransferCountsResponse,
+  TransferKanbanResponse,
   TransferListFilters,
   TransferListItem,
   TransferType,
@@ -35,7 +36,7 @@ import type { TransferUserRole } from "./TransfersTypes"
 type TransfersPagePanelProps = Readonly<{
   activeTab: TransferType
   onTabChange: (tab: TransferType) => void
-  transferCounts: TransferCountsResponse | undefined
+  transferCounts: TransferCountsResponse | null | undefined
   totalCount: number
   showFacilityFilter: boolean
   activeFilterCount: number
@@ -58,6 +59,7 @@ type TransfersPagePanelProps = Readonly<{
   RowActions: (props: { item: TransferListItem }) => React.ReactNode
   renderRowActions: (item: TransferListItem) => React.ReactNode
   filters: TransferListFilters
+  kanbanData?: TransferKanbanResponse | null
   userRole?: TransferUserRole
   columns: ColumnDef<TransferListItem>[]
   pagination: PaginationState
@@ -70,7 +72,7 @@ type TransfersPagePanelProps = Readonly<{
 
 function getTransferTypeCounts(
   activeTab: TransferType,
-  transferCounts: TransferCountsResponse | undefined,
+  transferCounts: TransferCountsResponse | null | undefined,
   totalCount: number,
 ) {
   const activeCount = transferCounts?.totalCount ?? totalCount
@@ -108,6 +110,7 @@ export function TransfersPagePanel({
   RowActions,
   renderRowActions,
   filters,
+  kanbanData,
   userRole,
   columns,
   pagination,
@@ -188,6 +191,7 @@ export function TransfersPagePanel({
                     onViewTransfer={onViewTransfer}
                     renderRowActions={renderRowActions}
                     statusCounts={transferCounts?.columnCounts}
+                    initialData={kanbanData}
                     userRole={userRole}
                   />
                 ) : (

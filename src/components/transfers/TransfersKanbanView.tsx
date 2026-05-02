@@ -13,6 +13,7 @@ import type {
   TransferListItem,
   TransferStatusCounts,
   TransferStatus,
+  TransferKanbanResponse,
 } from '@/types/transfers-data-grid'
 import { ACTIVE_TRANSFER_STATUSES, TRANSFER_STATUS_LABELS } from '@/types/transfers-data-grid'
 
@@ -21,6 +22,7 @@ interface TransfersKanbanViewProps {
   onViewTransfer: (item: TransferListItem) => void
   renderRowActions: (item: TransferListItem) => React.ReactNode
   statusCounts: TransferStatusCounts | undefined
+  initialData?: TransferKanbanResponse | null
   /**
    * User role - determines if tenant selection is required before loading.
    * Global and regional_leader users must select a facility first.
@@ -124,39 +126,99 @@ export function TransfersKanbanView({
   onViewTransfer,
   renderRowActions,
   statusCounts,
+  initialData,
   userRole,
 }: TransfersKanbanViewProps) {
   const [showCompleted, setShowCompleted] = React.useState(false)
-  // Mobile: track selected status tab
-  const [mobileSelectedStatus, setMobileSelectedStatus] = React.useState<TransferStatus>('cho_duyet')
 
-  // Reference date for overdue calculation, refreshes every minute
-  const [referenceDate, setReferenceDate] = React.useState(() => new Date())
-  React.useEffect(() => {
-    const interval = setInterval(() => {
-      setReferenceDate(new Date())
-    }, 60_000) // Refresh every minute
-    return () => clearInterval(interval)
-  }, [])
+  if (initialData && !showCompleted) {
+    return (
+      <TransfersKanbanBoard
+        data={initialData}
+        filters={filters}
+        isFetching={false}
+        isLoading={false}
+        onViewTransfer={onViewTransfer}
+        renderRowActions={renderRowActions}
+        setShowCompleted={setShowCompleted}
+        showCompleted={showCompleted}
+      />
+    )
+  }
 
-  // Initial kanban load (30 items per column)
-  // NOTE: Tenant selection check is handled by parent (page.tsx)
-  // This component assumes data fetching is already authorized
+  return (
+    <FetchedTransfersKanbanBoard
+      filters={filters}
+      onViewTransfer={onViewTransfer}
+      renderRowActions={renderRowActions}
+      setShowCompleted={setShowCompleted}
+      showCompleted={showCompleted}
+      userRole={userRole}
+    />
+  )
+}
+
+function FetchedTransfersKanbanBoard({
+  filters,
+  onViewTransfer,
+  renderRowActions,
+  setShowCompleted,
+  showCompleted,
+  userRole,
+}: Pick<TransfersKanbanViewProps, "filters" | "onViewTransfer" | "renderRowActions" | "userRole"> & {
+  setShowCompleted: React.Dispatch<React.SetStateAction<boolean>>
+  showCompleted: boolean
+}) {
   const { data, isLoading, isFetching } = useTransfersKanban(filters, {
     excludeCompleted: !showCompleted,
     perColumnLimit: 30,
     userRole,
   })
 
-  const columns = data?.columns || {}
+  return (
+    <TransfersKanbanBoard
+      data={data}
+      filters={filters}
+      isFetching={isFetching}
+      isLoading={isLoading}
+      onViewTransfer={onViewTransfer}
+      renderRowActions={renderRowActions}
+      setShowCompleted={setShowCompleted}
+      showCompleted={showCompleted}
+    />
+  )
+}
 
-  // Columns to display
+function TransfersKanbanBoard({
+  data,
+  filters,
+  isFetching,
+  isLoading,
+  onViewTransfer,
+  renderRowActions,
+  setShowCompleted,
+  showCompleted,
+}: Pick<TransfersKanbanViewProps, "filters" | "onViewTransfer" | "renderRowActions"> & {
+  data: TransferKanbanResponse | undefined
+  isFetching: boolean
+  isLoading: boolean
+  setShowCompleted: React.Dispatch<React.SetStateAction<boolean>>
+  showCompleted: boolean
+}) {
+  const [mobileSelectedStatus, setMobileSelectedStatus] = React.useState<TransferStatus>('cho_duyet')
+  const [referenceDate, setReferenceDate] = React.useState(() => new Date())
+  React.useEffect(() => {
+    const interval = setInterval(() => {
+      setReferenceDate(new Date())
+    }, 60_000)
+    return () => clearInterval(interval)
+  }, [])
+
+  const columns = data?.columns || {}
   const activeColumns: TransferStatus[] = ACTIVE_TRANSFER_STATUSES
   const allColumns = showCompleted
     ? ([...activeColumns, 'hoan_thanh'] as TransferStatus[])
     : activeColumns
-
-  // Mobile navigation helpers
   const currentMobileIndex = allColumns.indexOf(mobileSelectedStatus)
   const canGoPrev = currentMobileIndex > 0
   const canGoNext = currentMobileIndex < allColumns.length - 1
@@ -173,7 +235,6 @@ export function TransfersKanbanView({
     }
   }, [canGoNext, allColumns, currentMobileIndex])
 
-  // Reset mobile selection if current status is no longer in columns
   React.useEffect(() => {
     if (!allColumns.includes(mobileSelectedStatus)) {
       setMobileSelectedStatus(allColumns[0])
@@ -193,7 +254,6 @@ export function TransfersKanbanView({
 
   return (
     <div className="flex flex-col gap-4">
-      {/* Header: Show Completed toggle */}
       <div className="flex justify-end">
         <Button
           variant="outline"
@@ -204,15 +264,13 @@ export function TransfersKanbanView({
         </Button>
       </div>
 
-      {/* Mobile: Status tabs with swipe navigation */}
       <div className="lg:hidden">
-        {/* Status tab bar */}
         <div className="flex items-center gap-1 mb-3 overflow-x-auto pb-2 -mx-1 px-1">
           {allColumns.map((status) => {
             const columnData = columns[status] ?? { tasks: [], total: 0 }
             const count = columnData.total || 0
             const isActive = status === mobileSelectedStatus
-            
+
             return (
               <button
                 key={status}
@@ -239,9 +297,7 @@ export function TransfersKanbanView({
           })}
         </div>
 
-        {/* Navigation arrows + single column */}
         <div className="relative">
-          {/* Left arrow */}
           <button
             onClick={goToPrevColumn}
             disabled={!canGoPrev}
@@ -256,7 +312,6 @@ export function TransfersKanbanView({
             <ChevronLeft className="h-4 w-4" />
           </button>
 
-          {/* Right arrow */}
           <button
             onClick={goToNextColumn}
             disabled={!canGoNext}
@@ -271,7 +326,6 @@ export function TransfersKanbanView({
             <ChevronRight className="h-4 w-4" />
           </button>
 
-          {/* Single column for mobile - full width */}
           <div className="min-h-[calc(100vh-380px)]">
             {(() => {
               const columnData = columns[mobileSelectedStatus] ?? { tasks: [], total: 0, hasMore: false }
@@ -290,7 +344,6 @@ export function TransfersKanbanView({
             })()}
           </div>
 
-          {/* Dot indicators */}
           <div className="flex justify-center gap-1.5 mt-3">
             {allColumns.map((status, index) => (
               <button
@@ -309,13 +362,10 @@ export function TransfersKanbanView({
         </div>
       </div>
 
-      {/* Desktop: Horizontal kanban columns */}
       <div className="hidden lg:flex gap-3 overflow-x-auto pb-4 h-[calc(100vh-300px)]" style={{
         WebkitOverflowScrolling: 'touch'
       }}>
         {allColumns.map((status) => {
-          // Handle empty columns: Backend may omit statuses with 0 items
-          // Provide defaults to ensure all columns render correctly
           const columnData = columns[status] ?? { tasks: [], total: 0, hasMore: false }
           const initialTasks = columnData.tasks || []
           const initialTotal = columnData.total || 0
@@ -335,7 +385,6 @@ export function TransfersKanbanView({
         })}
       </div>
 
-      {/* Fetching indicator */}
       {isFetching && !isLoading && (
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <Loader2 className="h-4 w-4 animate-spin" />

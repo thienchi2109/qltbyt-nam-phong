@@ -17,8 +17,7 @@ import { useToast } from "@/hooks/use-toast"
 import { useTransferActions } from "@/hooks/useTransferActions"
 import {
   transferDataGridKeys,
-  useTransferCounts,
-  useTransferList,
+  useTransferPageData,
 } from "@/hooks/useTransferDataGrid"
 import { useTransferTypeTab } from "@/components/transfers/TransferTypeTabs"
 import { useTransfersViewMode } from "@/components/transfers/TransfersViewToggle"
@@ -30,6 +29,8 @@ import type { TransferRequest } from "@/types/database"
 import type {
   TransferListFilters,
   TransferListItem,
+  TransferCountsResponse,
+  TransferKanbanResponse,
 } from "@/types/transfers-data-grid"
 
 import type { TransferUserRole } from "./TransfersTypes"
@@ -41,7 +42,8 @@ export type TransfersPageUser = NonNullable<ReturnType<typeof useSession>["data"
 export interface TransfersPageControllerResult {
   activeTab: ReturnType<typeof useTransferTypeTab>[0]
   setActiveTab: ReturnType<typeof useTransferTypeTab>[1]
-  transferCounts: ReturnType<typeof useTransferCounts>["data"]
+  transferCounts: TransferCountsResponse | null | undefined
+  kanbanData: TransferKanbanResponse | null | undefined
   isCountsLoading: boolean
   isCountsError: boolean
   filtersState: ReturnType<typeof useTransfersFilters>
@@ -178,31 +180,26 @@ export function useTransfersPageController(
     ],
   )
 
-  const countsFilters = React.useMemo(() => {
-    const { statuses: _statuses, page: _page, pageSize: _pageSize, ...rest } = filters
-    return rest
-  }, [filters])
-
   const {
-    data: transferList,
-    isLoading: isListLoading,
-    isFetching: isListFetching,
-  } = useTransferList(filters, {
+    data: transferPageData,
+    isLoading: isPageDataLoading,
+    isFetching: isPageDataFetching,
+    isError: isPageDataError,
+  } = useTransferPageData(filters, {
+    viewMode,
+    excludeCompleted: viewMode === "kanban",
+    perColumnLimit: 30,
     placeholderData: (previous) => previous,
     enabled: shouldFetchData,
   })
 
-  const {
-    data: transferCounts,
-    isLoading: isCountsLoading,
-    isError: isCountsError,
-  } = useTransferCounts(countsFilters, {
-    enabled: shouldFetchData,
-  })
+  const transferList = transferPageData?.list
+  const transferCounts = transferPageData?.counts
+  const kanbanData = transferPageData?.kanban
 
   React.useEffect(() => {
-    setTotalCount(transferList?.total ?? 0)
-  }, [transferList?.total])
+    setTotalCount(transferList?.total ?? kanbanData?.totalCount ?? transferCounts?.totalCount ?? 0)
+  }, [kanbanData?.totalCount, transferCounts?.totalCount, transferList?.total])
 
   const {
     approveTransfer,
@@ -298,8 +295,9 @@ export function useTransfersPageController(
     activeTab,
     setActiveTab,
     transferCounts,
-    isCountsLoading,
-    isCountsError,
+    kanbanData,
+    isCountsLoading: isPageDataLoading,
+    isCountsError: isPageDataError,
     filtersState,
     filterChipsValue,
     filterModalValue,
@@ -317,8 +315,8 @@ export function useTransfersPageController(
     showFacilityFilter,
     shouldFetchData,
     tableData,
-    isListLoading,
-    isListFetching,
+    isListLoading: isPageDataLoading,
+    isListFetching: isPageDataFetching,
     totalCount,
     referenceDate,
     filters,

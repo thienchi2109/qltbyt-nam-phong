@@ -23,6 +23,8 @@ const mocks = vi.hoisted(() => ({
   useRouter: vi.fn(),
   useQueryClient: vi.fn(),
   useTenantSelection: vi.fn(),
+  rawViewMode: "table" as "table" | "kanban",
+  useTransferPageData: vi.fn(),
   useTransferList: vi.fn(),
   useTransferCounts: vi.fn(),
   useTransferActions: vi.fn(),
@@ -34,6 +36,7 @@ const mocks = vi.hoisted(() => ({
   OverdueTransfersAlert: vi.fn(),
   TransferDetailDialog: vi.fn(),
   TransfersTableView: vi.fn(),
+  TransfersKanbanView: vi.fn(),
 }))
 
 vi.mock("next-auth/react", () => ({
@@ -85,6 +88,7 @@ vi.mock("@/app/(app)/transfers/_components/useTransfersFilters", () => ({
 }))
 
 vi.mock("@/hooks/useTransferDataGrid", () => ({
+  useTransferPageData: (...args: unknown[]) => mocks.useTransferPageData(...args),
   useTransferList: (...args: unknown[]) => mocks.useTransferList(...args),
   useTransferCounts: (...args: unknown[]) => mocks.useTransferCounts(...args),
   transferDataGridKeys: {
@@ -164,12 +168,15 @@ vi.mock("@/components/transfers/TransfersTableView", () => ({
 }))
 
 vi.mock("@/components/transfers/TransfersKanbanView", () => ({
-  TransfersKanbanView: () => <div data-testid="transfers-kanban-view" />,
+  TransfersKanbanView: (props: unknown) => {
+    mocks.TransfersKanbanView(props)
+    return <div data-testid="transfers-kanban-view" />
+  },
 }))
 
 vi.mock("@/components/transfers/TransfersViewToggle", () => ({
   TransfersViewToggle: () => <div data-testid="transfers-view-toggle" />,
-  useTransfersViewMode: () => ["table", vi.fn()],
+  useTransfersViewMode: () => [mocks.rawViewMode, vi.fn()],
 }))
 
 vi.mock("@/components/transfers/TransfersTenantSelectionPlaceholder", () => ({
@@ -181,6 +188,7 @@ import TransfersPage from "@/app/(app)/transfers/page"
 describe("Transfers KPI", () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mocks.rawViewMode = "table"
 
     mocks.useSession.mockReturnValue({
       data: {
@@ -237,6 +245,25 @@ describe("Transfers KPI", () => {
       handleClearAllFilters: vi.fn(),
       handleRemoveFilter: vi.fn(),
       activeFilterCount: 0,
+    })
+
+    mocks.useTransferPageData.mockReturnValue({
+      data: {
+        list: {
+          data: [],
+          total: 20,
+          page: 1,
+          pageSize: 10,
+        },
+        counts: {
+          totalCount: 20,
+          columnCounts: mockColumnCounts,
+        },
+        kanban: null,
+      },
+      isLoading: false,
+      isFetching: false,
+      isError: false,
     })
 
     mocks.useTransferList.mockReturnValue({
@@ -347,9 +374,11 @@ describe("Transfers KPI", () => {
   })
 
   it("passes loading state", () => {
-    mocks.useTransferCounts.mockReturnValue({
+    mocks.useTransferPageData.mockReturnValue({
       data: undefined,
       isLoading: true,
+      isFetching: false,
+      isError: false,
     })
 
     render(<TransfersPage />)
@@ -362,9 +391,19 @@ describe("Transfers KPI", () => {
   })
 
   it("handles undefined statusCounts", () => {
-    mocks.useTransferCounts.mockReturnValue({
-      data: undefined,
+    mocks.useTransferPageData.mockReturnValue({
+      data: {
+        list: {
+          data: [],
+          total: 0,
+          page: 1,
+          pageSize: 10,
+        },
+        counts: undefined,
+        kanban: null,
+      },
       isLoading: false,
+      isFetching: false,
       isError: false,
     })
 
@@ -378,9 +417,10 @@ describe("Transfers KPI", () => {
   })
 
   it("passes error state when transfer counts query fails", () => {
-    mocks.useTransferCounts.mockReturnValue({
+    mocks.useTransferPageData.mockReturnValue({
       data: undefined,
       isLoading: false,
+      isFetching: false,
       isError: true,
     })
 
@@ -420,7 +460,66 @@ describe("Transfers KPI", () => {
     expect(tableProps).not.toHaveProperty("onSortingChange")
   })
 
-  it("propagates the selected date range into transfer list filters", () => {
+  it("uses the combined page-data query instead of separate list and count queries", () => {
+    render(<TransfersPage />)
+
+    expect(mocks.useTransferPageData).toHaveBeenCalledWith(
+      expect.objectContaining({
+        types: ["noi_bo"],
+        page: 1,
+        pageSize: 10,
+      }),
+      expect.objectContaining({
+        viewMode: "table",
+        enabled: true,
+      }),
+    )
+    expect(mocks.useTransferList).not.toHaveBeenCalled()
+    expect(mocks.useTransferCounts).not.toHaveBeenCalled()
+  })
+
+  it("does not fire the table list query when kanban is the active view", () => {
+    mocks.rawViewMode = "kanban"
+    mocks.useTransferPageData.mockReturnValue({
+      data: {
+        list: null,
+        counts: {
+          totalCount: 20,
+          columnCounts: mockColumnCounts,
+        },
+        kanban: {
+          totalCount: 20,
+          columns: {},
+        },
+      },
+      isLoading: false,
+      isFetching: false,
+      isError: false,
+    })
+
+    render(<TransfersPage />)
+
+    expect(screen.getByTestId("transfers-kanban-view")).toBeInTheDocument()
+    expect(mocks.TransfersKanbanView).toHaveBeenCalledWith(
+      expect.objectContaining({
+        initialData: {
+          totalCount: 20,
+          columns: {},
+        },
+      }),
+    )
+    expect(mocks.useTransferPageData).toHaveBeenCalledWith(
+      expect.any(Object),
+      expect.objectContaining({
+        viewMode: "kanban",
+        enabled: true,
+      }),
+    )
+    expect(mocks.useTransferList).not.toHaveBeenCalled()
+    expect(mocks.useTransferCounts).not.toHaveBeenCalled()
+  })
+
+  it("propagates the selected date range into the combined page-data filters", () => {
     mocks.useTransfersFilters.mockReturnValue({
       searchTerm: "",
       setSearchTerm: vi.fn(),
@@ -442,12 +541,13 @@ describe("Transfers KPI", () => {
 
     render(<TransfersPage />)
 
-    expect(mocks.useTransferList).toHaveBeenCalledWith(
+    expect(mocks.useTransferPageData).toHaveBeenCalledWith(
       expect.objectContaining({
         dateFrom: "2026-04-02",
         dateTo: "2026-04-05",
       }),
       expect.objectContaining({
+        viewMode: "table",
         enabled: true,
       }),
     )
