@@ -472,10 +472,49 @@ describe("Transfers KPI", () => {
       expect.objectContaining({
         viewMode: "table",
         enabled: true,
+        includeCounts: true,
       }),
     )
     expect(mocks.useTransferList).not.toHaveBeenCalled()
     expect(mocks.useTransferCounts).not.toHaveBeenCalled()
+  })
+
+  it("skips page-invariant counts when only table pagination changes", () => {
+    mocks.useServerPagination
+      .mockReturnValueOnce({
+        page: 1,
+        pageSize: 10,
+        pagination: {
+          pageIndex: 0,
+          pageSize: 10,
+        },
+        setPagination: vi.fn(),
+        pageCount: 2,
+      })
+      .mockReturnValueOnce({
+        page: 2,
+        pageSize: 10,
+        pagination: {
+          pageIndex: 1,
+          pageSize: 10,
+        },
+        setPagination: vi.fn(),
+        pageCount: 2,
+      })
+
+    const { rerender } = render(<TransfersPage />)
+    rerender(<TransfersPage />)
+
+    expect(mocks.useTransferPageData).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({ page: 1, pageSize: 10 }),
+      expect.objectContaining({ includeCounts: true }),
+    )
+    expect(mocks.useTransferPageData).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({ page: 2, pageSize: 10 }),
+      expect.objectContaining({ includeCounts: false }),
+    )
   })
 
   it("does not fire the table list query when kanban is the active view", () => {

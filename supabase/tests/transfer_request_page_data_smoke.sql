@@ -58,15 +58,19 @@ BEGIN
     NULL
   );
 
-  IF v_page->>'viewMode' <> 'table' THEN
+  IF v_page->>'viewMode' IS DISTINCT FROM 'table' THEN
     RAISE EXCEPTION 'Expected table viewMode, got %', v_page->>'viewMode';
   END IF;
 
-  IF v_page->'list' <> v_old_list THEN
+  IF NOT (v_page ? 'list') OR v_page->'list' IS DISTINCT FROM v_old_list THEN
     RAISE EXCEPTION 'Combined page list does not match transfer_request_list';
   END IF;
 
-  IF v_page->'counts'->'columnCounts' <> v_old_counts THEN
+  IF NOT (v_page ? 'counts') OR NOT (v_page->'counts' ? 'columnCounts') THEN
+    RAISE EXCEPTION 'Combined page counts payload is missing columnCounts';
+  END IF;
+
+  IF v_page->'counts'->'columnCounts' IS DISTINCT FROM v_old_counts THEN
     RAISE EXCEPTION 'Combined page counts do not match transfer_request_counts';
   END IF;
 
@@ -77,7 +81,7 @@ BEGIN
     COALESCE((v_old_counts->>'da_ban_giao')::integer, 0) +
     COALESCE((v_old_counts->>'hoan_thanh')::integer, 0);
 
-  IF COALESCE((v_page->'counts'->>'totalCount')::integer, -1) <> v_total_count THEN
+  IF COALESCE((v_page->'counts'->>'totalCount')::integer, -1) IS DISTINCT FROM v_total_count THEN
     RAISE EXCEPTION 'Combined page totalCount mismatch';
   END IF;
 END $$;
@@ -112,15 +116,19 @@ BEGIN
     true
   );
 
-  IF v_page->>'viewMode' <> 'kanban' THEN
+  IF v_page->>'viewMode' IS DISTINCT FROM 'kanban' THEN
     RAISE EXCEPTION 'Expected kanban viewMode, got %', v_page->>'viewMode';
   END IF;
 
-  IF v_page->'list' <> 'null'::jsonb THEN
+  IF NOT (v_page ? 'list') OR v_page->'list' IS DISTINCT FROM 'null'::jsonb THEN
     RAISE EXCEPTION 'Kanban page data should not include table list payload';
   END IF;
 
-  IF jsonb_typeof(v_page->'kanban'->'columns') <> 'object' THEN
+  IF NOT (v_page ? 'kanban') OR NOT (v_page->'kanban' ? 'columns') THEN
+    RAISE EXCEPTION 'Kanban page data should include kanban.columns';
+  END IF;
+
+  IF jsonb_typeof(v_page->'kanban'->'columns') IS DISTINCT FROM 'object' THEN
     RAISE EXCEPTION 'Kanban page data should include columns object';
   END IF;
 END $$;

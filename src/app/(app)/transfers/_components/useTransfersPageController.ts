@@ -180,6 +180,36 @@ export function useTransfersPageController(
     ],
   )
 
+  const countsFilterKey = React.useMemo(
+    () =>
+      JSON.stringify({
+        q: filters.q ?? null,
+        types: [...(filters.types ?? [])].sort(),
+        facilityId: filters.facilityId ?? null,
+        dateFrom: filters.dateFrom ?? null,
+        dateTo: filters.dateTo ?? null,
+        assigneeIds: [...(filters.assigneeIds ?? [])].sort((a, b) => a - b),
+        role: filters._role ?? null,
+        diaBan: filters._diaBan ?? null,
+        tenantKey: filters._tenantKey ?? null,
+      }),
+    [
+      filters._diaBan,
+      filters._role,
+      filters._tenantKey,
+      filters.assigneeIds,
+      filters.dateFrom,
+      filters.dateTo,
+      filters.facilityId,
+      filters.q,
+      filters.types,
+    ],
+  )
+  const lastCountsFilterKeyRef = React.useRef<string | null>(null)
+  const [cachedTransferCounts, setCachedTransferCounts] =
+    React.useState<TransferCountsResponse | null>(null)
+  const includeCounts = lastCountsFilterKeyRef.current !== countsFilterKey
+
   const {
     data: transferPageData,
     isLoading: isPageDataLoading,
@@ -188,14 +218,23 @@ export function useTransfersPageController(
   } = useTransferPageData(filters, {
     viewMode,
     excludeCompleted: viewMode === "kanban",
+    includeCounts,
     perColumnLimit: 30,
     placeholderData: (previous) => previous,
     enabled: shouldFetchData,
   })
 
   const transferList = transferPageData?.list
-  const transferCounts = transferPageData?.counts
+  const latestTransferCounts = transferPageData?.counts
+  const transferCounts = latestTransferCounts ?? cachedTransferCounts
   const kanbanData = transferPageData?.kanban
+
+  React.useEffect(() => {
+    if (!latestTransferCounts) return
+
+    lastCountsFilterKeyRef.current = countsFilterKey
+    setCachedTransferCounts(latestTransferCounts)
+  }, [countsFilterKey, latestTransferCounts])
 
   React.useEffect(() => {
     setTotalCount(transferList?.total ?? kanbanData?.totalCount ?? transferCounts?.totalCount ?? 0)

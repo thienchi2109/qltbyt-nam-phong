@@ -90,7 +90,53 @@ describe("useTransferPageData", () => {
         p_view_mode: "table",
         p_per_column_limit: 30,
         p_exclude_completed: false,
+        p_include_counts: true,
       },
+      signal: expect.any(AbortSignal),
+    })
+  })
+
+  it("can skip counts when only page data is needed", async () => {
+    mocks.callRpc.mockResolvedValueOnce({
+      viewMode: "table",
+      list: {
+        data: [],
+        total: 20,
+        page: 2,
+        pageSize: 20,
+      },
+      counts: null,
+      kanban: null,
+    })
+
+    const queryClient = new QueryClient({
+      defaultOptions: {
+        queries: {
+          retry: false,
+        },
+      },
+    })
+
+    const { result } = renderHook(
+      () =>
+        useTransferPageData(
+          {
+            types: ["noi_bo"],
+            page: 2,
+            pageSize: 20,
+          },
+          { viewMode: "table", enabled: true, includeCounts: false },
+        ),
+      { wrapper: createWrapper(queryClient) },
+    )
+
+    await waitFor(() => expect(result.current.data?.counts).toBeNull())
+
+    expect(mocks.callRpc).toHaveBeenCalledWith({
+      fn: "transfer_request_page_data",
+      args: expect.objectContaining({
+        p_include_counts: false,
+      }),
       signal: expect.any(AbortSignal),
     })
   })

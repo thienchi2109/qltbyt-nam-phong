@@ -31,6 +31,7 @@ type TransferPageDataQueryOptions = Omit<
   viewMode: ViewMode
   perColumnLimit?: number
   excludeCompleted?: boolean
+  includeCounts?: boolean
 }
 
 const sanitizeFilters = (filters: TransferListFilters = {}) => {
@@ -150,6 +151,7 @@ const fetchTransferPageData = async (
   viewMode: ViewMode,
   perColumnLimit: number,
   excludeCompleted: boolean,
+  includeCounts: boolean,
   signal?: AbortSignal,
 ): Promise<TransferPageDataResponse> => {
   const sanitized = sanitizeFilters(filters)
@@ -168,6 +170,7 @@ const fetchTransferPageData = async (
       p_view_mode: viewMode,
       p_per_column_limit: perColumnLimit,
       p_exclude_completed: excludeCompleted,
+      p_include_counts: includeCounts,
     },
     signal,
   })
@@ -184,7 +187,12 @@ export const transferDataGridKeys = {
     [...transferDataGridKeys.all, 'counts', sanitizeFilters(filters)] as const,
   pageData: (
     filters: TransferListFilters,
-    options: { viewMode: ViewMode; perColumnLimit: number; excludeCompleted: boolean },
+    options: {
+      viewMode: ViewMode
+      perColumnLimit: number
+      excludeCompleted: boolean
+      includeCounts: boolean
+    },
   ) => [...transferDataGridKeys.all, 'page-data', sanitizeFilters(filters), options] as const,
 }
 
@@ -236,6 +244,7 @@ export const useTransferPageData = (
     viewMode,
     perColumnLimit = 30,
     excludeCompleted = false,
+    includeCounts = true,
     ...queryOptions
   } = options
 
@@ -244,9 +253,10 @@ export const useTransferPageData = (
       viewMode,
       perColumnLimit,
       excludeCompleted,
+      includeCounts,
     }),
     queryFn: ({ signal }) =>
-      fetchTransferPageData(filters, viewMode, perColumnLimit, excludeCompleted, signal),
+      fetchTransferPageData(filters, viewMode, perColumnLimit, excludeCompleted, includeCounts, signal),
     staleTime: 30_000,
     gcTime: 5 * 60_000,
     refetchOnWindowFocus: false,

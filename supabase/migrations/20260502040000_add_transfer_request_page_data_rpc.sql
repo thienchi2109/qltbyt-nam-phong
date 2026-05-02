@@ -13,7 +13,8 @@ CREATE OR REPLACE FUNCTION public.transfer_request_page_data(
   p_assignee_ids bigint[] DEFAULT NULL::bigint[],
   p_view_mode text DEFAULT 'table'::text,
   p_per_column_limit integer DEFAULT 30,
-  p_exclude_completed boolean DEFAULT false
+  p_exclude_completed boolean DEFAULT false,
+  p_include_counts boolean DEFAULT true
 )
 RETURNS jsonb
 LANGUAGE plpgsql
@@ -44,32 +45,34 @@ BEGIN
 
   p_per_column_limit := LEAST(GREATEST(COALESCE(p_per_column_limit, 30), 1), 100);
 
-  v_counts_raw := public.transfer_request_counts(
-    p_q,
-    p_don_vi,
-    p_date_from,
-    p_date_to,
-    p_types,
-    p_assignee_ids
-  );
+  IF p_include_counts THEN
+    v_counts_raw := public.transfer_request_counts(
+      p_q,
+      p_don_vi,
+      p_date_from,
+      p_date_to,
+      p_types,
+      p_assignee_ids
+    );
 
-  v_total_count :=
-    COALESCE((v_counts_raw->>'cho_duyet')::bigint, 0) +
-    COALESCE((v_counts_raw->>'da_duyet')::bigint, 0) +
-    COALESCE((v_counts_raw->>'dang_luan_chuyen')::bigint, 0) +
-    COALESCE((v_counts_raw->>'da_ban_giao')::bigint, 0) +
-    COALESCE((v_counts_raw->>'hoan_thanh')::bigint, 0);
+    v_total_count :=
+      COALESCE((v_counts_raw->>'cho_duyet')::bigint, 0) +
+      COALESCE((v_counts_raw->>'da_duyet')::bigint, 0) +
+      COALESCE((v_counts_raw->>'dang_luan_chuyen')::bigint, 0) +
+      COALESCE((v_counts_raw->>'da_ban_giao')::bigint, 0) +
+      COALESCE((v_counts_raw->>'hoan_thanh')::bigint, 0);
 
-  v_counts := jsonb_build_object(
-    'totalCount', v_total_count,
-    'columnCounts', jsonb_build_object(
-      'cho_duyet', COALESCE((v_counts_raw->>'cho_duyet')::integer, 0),
-      'da_duyet', COALESCE((v_counts_raw->>'da_duyet')::integer, 0),
-      'dang_luan_chuyen', COALESCE((v_counts_raw->>'dang_luan_chuyen')::integer, 0),
-      'da_ban_giao', COALESCE((v_counts_raw->>'da_ban_giao')::integer, 0),
-      'hoan_thanh', COALESCE((v_counts_raw->>'hoan_thanh')::integer, 0)
-    )
-  );
+    v_counts := jsonb_build_object(
+      'totalCount', v_total_count,
+      'columnCounts', jsonb_build_object(
+        'cho_duyet', COALESCE((v_counts_raw->>'cho_duyet')::integer, 0),
+        'da_duyet', COALESCE((v_counts_raw->>'da_duyet')::integer, 0),
+        'dang_luan_chuyen', COALESCE((v_counts_raw->>'dang_luan_chuyen')::integer, 0),
+        'da_ban_giao', COALESCE((v_counts_raw->>'da_ban_giao')::integer, 0),
+        'hoan_thanh', COALESCE((v_counts_raw->>'hoan_thanh')::integer, 0)
+      )
+    );
+  END IF;
 
   IF v_view_mode = 'kanban' THEN
     v_kanban := public.transfer_request_list(
@@ -124,6 +127,7 @@ GRANT EXECUTE ON FUNCTION public.transfer_request_page_data(
   bigint[],
   text,
   integer,
+  boolean,
   boolean
 ) TO authenticated;
 
@@ -139,5 +143,6 @@ REVOKE EXECUTE ON FUNCTION public.transfer_request_page_data(
   bigint[],
   text,
   integer,
+  boolean,
   boolean
 ) FROM PUBLIC;
