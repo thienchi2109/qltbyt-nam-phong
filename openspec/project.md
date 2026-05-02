@@ -77,7 +77,7 @@ Vietnamese Medical Equipment Management System (Hệ thống quản lý thiết 
 - No RLS; all checks in RPC and API proxy level
 - Type safety mandatory; do not bypass with `@ts-ignore`
 - Package manager: `npm` only (no pnpm/yarn)
-- Environment variables required: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_JWT_SECRET`, `AUTH_SECRET`, `NEXTAUTH_SECRET`, `AUTH_MIDDLEWARE_ENABLED`
+- Environment variables required: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_JWT_SECRET`, `AUTH_SECRET`, `NEXTAUTH_SECRET`. `AUTH_MIDDLEWARE_ENABLED` is optional and only honored outside production (production always enforces middleware regardless of this flag).
 
 ## External Dependencies
 - Supabase (PostgreSQL, PostgREST RPC)
