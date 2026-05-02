@@ -43,6 +43,7 @@ export const ALLOWED_FUNCTIONS = new Set<string>([
   'repair_request_active_for_equipment',
   // Transfers
   'transfer_request_list',
+  'transfer_request_page_data',
   'transfer_request_list_enhanced',
   'transfer_request_get',
   'transfer_request_create',
