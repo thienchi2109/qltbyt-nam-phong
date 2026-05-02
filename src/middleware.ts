@@ -43,11 +43,20 @@ export default ENABLED ? withAuth(
 
 export const config = {
   matcher: [
-  // Protect all routes under /(app) but exclude API auth and static assets
-  "/(app)/(.*)",
-  // Exclusions handled implicitly by NextAuth; avoid matching:
-  // - /api/auth
-  // - /_next/static, /_next/image
-  // - /favicon.ico, /assets
+    /*
+     * Protect every request path EXCEPT:
+     *  - "/"                              the public login page
+     *  - "/api/*"                         API routes handle auth themselves
+     *  - "/_next/static", "/_next/image"  Next.js internals
+     *  - "/favicon.ico", "/manifest.json" static metadata
+     *  - "/assets/*"                      public assets
+     *
+     * Next.js route groups like "(app)" are file-system only and do NOT
+     * appear in request URLs, so a matcher like "/(app)/(.*)" never matches
+     * real routes such as /dashboard or /equipment. Use path-based exclusion
+     * via a negative-lookahead so every new page under src/app/(app)/** is
+     * covered automatically.
+     */
+    "/((?!api|_next/static|_next/image|favicon\\.ico|manifest\\.json|assets|$).*)",
   ],
 }

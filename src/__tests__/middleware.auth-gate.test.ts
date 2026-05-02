@@ -95,12 +95,56 @@ describe("auth middleware kill switch", () => {
     expect(consoleWarnSpy).not.toHaveBeenCalled()
   })
 
-  it("exposes a stable matcher config that protects /(app)/*", async () => {
-    vi.stubEnv("NODE_ENV", "production")
+  describe("matcher config", () => {
+    async function loadMatcher() {
+      vi.stubEnv("NODE_ENV", "production")
+      const mod = await loadMiddleware()
+      const matcher = Array.isArray(mod.config.matcher)
+        ? mod.config.matcher
+        : [mod.config.matcher]
+      const regexes = matcher.map(
+        (pattern: string) => new RegExp(`^${pattern}$`),
+      )
+      return (pathname: string) => regexes.some((re) => re.test(pathname))
+    }
 
-    const mod = await loadMiddleware()
+    // Real URLs (route groups like (app) do NOT appear in the URL path,
+    // so the previous "/(app)/(.*)" matcher was ineffective for these).
+    const protectedPaths = [
+      "/dashboard",
+      "/equipment",
+      "/equipment/123",
+      "/repair-requests",
+      "/repair-requests/new",
+      "/maintenance",
+      "/transfers",
+      "/device-quota",
+      "/reports",
+      "/qr-scanner",
+      "/activity-logs",
+      "/tenants",
+      "/users",
+    ]
 
-    expect(mod.config).toBeDefined()
-    expect(mod.config.matcher).toEqual(expect.arrayContaining(["/(app)/(.*)"]))
+    const publicPaths = [
+      "/",
+      "/api/auth/callback/credentials",
+      "/api/rpc/foo",
+      "/_next/static/chunks/main.js",
+      "/_next/image",
+      "/favicon.ico",
+      "/manifest.json",
+      "/assets/logo.svg",
+    ]
+
+    it.each(protectedPaths)("matcher includes protected path %s", async (p) => {
+      const matches = await loadMatcher()
+      expect(matches(p)).toBe(true)
+    })
+
+    it.each(publicPaths)("matcher excludes public path %s", async (p) => {
+      const matches = await loadMatcher()
+      expect(matches(p)).toBe(false)
+    })
   })
 })
