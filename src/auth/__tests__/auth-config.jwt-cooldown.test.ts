@@ -19,6 +19,21 @@ const profileRowDefault: ProfileRow = {
   dia_ban_id: 9,
 }
 
+type QueryResult = { data: unknown; error: unknown }
+type Resolver = () => Promise<QueryResult>
+
+// Build the chain `from(table).select().eq(...).single|limit(...)` from a
+// single async resolver so the deepest user code sits at one level of nesting
+// instead of four. Tests configure responses through `supabaseState` below.
+function buildChain(resolver: Resolver, method: "single" | "limit") {
+  const terminal = vi.fn(resolver)
+  return {
+    select: () => ({
+      eq: () => ({ [method]: terminal }),
+    }),
+  }
+}
+
 const supabaseState = vi.hoisted(() => ({
   fromCalls: [] as string[],
   profileRow: null as unknown,
@@ -28,50 +43,34 @@ const supabaseState = vi.hoisted(() => ({
   diaBanError: null as unknown,
 }))
 
+const resolvers = vi.hoisted(() => ({
+  nhanVien: async () => ({
+    data: supabaseState.profileRow,
+    error: supabaseState.profileRow ? null : { message: "no row" },
+  }),
+  donVi: async () => ({
+    data: supabaseState.donViError ? null : supabaseState.donViRows,
+    error: supabaseState.donViError,
+  }),
+  diaBan: async () => ({
+    data: supabaseState.diaBanError ? null : supabaseState.diaBanMaRows,
+    error: supabaseState.diaBanError,
+  }),
+  unknownLimit: async () => ({ data: [], error: null }),
+  unknownSingle: async () => ({ data: null, error: null }),
+}))
+
 const supabaseClient = vi.hoisted(() => ({
   from: vi.fn((table: string) => {
     supabaseState.fromCalls.push(table)
-    if (table === "nhan_vien") {
-      return {
-        select: () => ({
-          eq: () => ({
-            single: vi.fn(async () => ({
-              data: supabaseState.profileRow,
-              error: supabaseState.profileRow ? null : { message: "no row" },
-            })),
-          }),
-        }),
-      }
-    }
-    if (table === "don_vi") {
-      return {
-        select: () => ({
-          eq: () => ({
-            limit: vi.fn(async () => ({
-              data: supabaseState.donViError ? null : supabaseState.donViRows,
-              error: supabaseState.donViError,
-            })),
-          }),
-        }),
-      }
-    }
-    if (table === "dia_ban") {
-      return {
-        select: () => ({
-          eq: () => ({
-            limit: vi.fn(async () => ({
-              data: supabaseState.diaBanError ? null : supabaseState.diaBanMaRows,
-              error: supabaseState.diaBanError,
-            })),
-          }),
-        }),
-      }
-    }
+    if (table === "nhan_vien") return buildChain(resolvers.nhanVien, "single")
+    if (table === "don_vi") return buildChain(resolvers.donVi, "limit")
+    if (table === "dia_ban") return buildChain(resolvers.diaBan, "limit")
     return {
       select: () => ({
         eq: () => ({
-          limit: vi.fn(async () => ({ data: [], error: null })),
-          single: vi.fn(async () => ({ data: null, error: null })),
+          limit: vi.fn(resolvers.unknownLimit),
+          single: vi.fn(resolvers.unknownSingle),
         }),
       }),
     }
