@@ -1,3 +1,13 @@
+-- Issue #371 Phase 2: collapse JWT profile refresh reads into one RPC.
+--
+-- Do NOT apply this migration before PR review approval. When approved, apply
+-- it via Supabase MCP apply_migration and then run the smoke SQL in
+-- supabase/tests/session_profile_for_jwt_smoke.sql.
+--
+-- Rollback: ship a new forward-only migration that drops
+-- public.get_session_profile_for_jwt(bigint), then deploy the matching app
+-- rollback that restores the previous jwt callback refresh path.
+
 CREATE OR REPLACE FUNCTION public.get_session_profile_for_jwt(p_user_id bigint)
 RETURNS TABLE (
   password_changed_at timestamptz,

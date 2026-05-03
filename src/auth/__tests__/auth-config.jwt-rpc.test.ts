@@ -244,4 +244,17 @@ describe("authOptions.jwt session profile RPC refresh", () => {
       })
     ).rejects.toThrow("NEXT_PUBLIC_SUPABASE_ANON_KEY is not configured")
   })
+
+  it("fails closed when token role is malformed", async () => {
+    await expect(
+      runJwt({
+        token: {
+          ...baseToken,
+          role: {} as unknown as string,
+          loginTime: Date.now() - 5 * 60_000,
+          lastRefreshAt: Date.now() - 5 * 60_000,
+        },
+      })
+    ).rejects.toThrow("JWT app_role is not configured")
+  })
 })

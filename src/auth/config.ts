@@ -42,8 +42,11 @@ function requireRefreshEnv(name: "NEXT_PUBLIC_SUPABASE_URL" | "NEXT_PUBLIC_SUPAB
 }
 
 function normalizeSessionProfileAppRole(role: unknown): string {
-  const rawRole = typeof role === "string" ? role : role == null ? "" : String(role)
-  const normalizedRole = rawRole.trim().toLowerCase()
+  if (typeof role !== "string") {
+    return ""
+  }
+
+  const normalizedRole = role.trim().toLowerCase()
   return normalizedRole === "admin" ? "global" : normalizedRole
 }
 
