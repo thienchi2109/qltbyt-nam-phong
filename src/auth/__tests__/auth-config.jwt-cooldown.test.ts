@@ -22,7 +22,10 @@ const profileRowDefault: ProfileRow = {
 const supabaseState = vi.hoisted(() => ({
   fromCalls: [] as string[],
   profileRow: null as unknown,
+  donViRows: [] as unknown[],
+  donViError: null as unknown,
   diaBanMaRows: [] as unknown[],
+  diaBanError: null as unknown,
 }))
 
 const supabaseClient = vi.hoisted(() => ({
@@ -40,13 +43,25 @@ const supabaseClient = vi.hoisted(() => ({
         }),
       }
     }
+    if (table === "don_vi") {
+      return {
+        select: () => ({
+          eq: () => ({
+            limit: vi.fn(async () => ({
+              data: supabaseState.donViError ? null : supabaseState.donViRows,
+              error: supabaseState.donViError,
+            })),
+          }),
+        }),
+      }
+    }
     if (table === "dia_ban") {
       return {
         select: () => ({
           eq: () => ({
             limit: vi.fn(async () => ({
-              data: supabaseState.diaBanMaRows,
-              error: null,
+              data: supabaseState.diaBanError ? null : supabaseState.diaBanMaRows,
+              error: supabaseState.diaBanError,
             })),
           }),
         }),
@@ -104,7 +119,10 @@ describe("authOptions.jwt cooldown + trigger gate", () => {
     vi.stubEnv("SUPABASE_SERVICE_ROLE_KEY", "test-service-role-key")
     supabaseState.fromCalls = []
     supabaseState.profileRow = { ...profileRowDefault }
+    supabaseState.donViRows = [{ dia_ban_id: 9 }]
+    supabaseState.donViError = null
     supabaseState.diaBanMaRows = [{ ma_dia_ban: "HN-01" }]
+    supabaseState.diaBanError = null
     supabaseClient.from.mockClear()
   })
 
@@ -231,5 +249,68 @@ describe("authOptions.jwt cooldown + trigger gate", () => {
       id: "42",
       lastRefreshAt: now - 5 * 60_000, // still the old value
     })
+  })
+
+  it("logs and skips lastRefreshAt stamp when don_vi secondary lookup returns an error", async () => {
+    const now = Date.now()
+    // Primary row forces the don_vi lookup: dia_ban_id null but don_vi set
+    supabaseState.profileRow = {
+      ...profileRowDefault,
+      dia_ban_id: null,
+      current_don_vi: 17,
+      don_vi: 17,
+    }
+    supabaseState.donViError = { message: "don_vi table boom" }
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {})
+    const prevRefresh = now - 5 * 60_000
+
+    const token = {
+      ...baseToken,
+      dia_ban_id: null,
+      loginTime: now - 60 * 60_000,
+      lastRefreshAt: prevRefresh,
+    }
+
+    const result = await runJwt({ token })
+
+    expect(supabaseState.fromCalls).toContain("don_vi")
+    expect(warnSpy).toHaveBeenCalled()
+    const logged = warnSpy.mock.calls
+      .map((args) => args.map((a) => (typeof a === "string" ? a : JSON.stringify(a))).join(" "))
+      .join("\n")
+    expect(logged).toMatch(/don_vi/)
+    expect(result).toMatchObject({
+      id: "42",
+      lastRefreshAt: prevRefresh, // not advanced
+    })
+    warnSpy.mockRestore()
+  })
+
+  it("logs and skips lastRefreshAt stamp when dia_ban secondary lookup returns an error", async () => {
+    const now = Date.now()
+    supabaseState.diaBanError = { message: "dia_ban table boom" }
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {})
+    const prevRefresh = now - 5 * 60_000
+
+    const token = {
+      ...baseToken,
+      dia_ban_ma: null, // ensure the dia_ban lookup runs
+      loginTime: now - 60 * 60_000,
+      lastRefreshAt: prevRefresh,
+    }
+
+    const result = await runJwt({ token })
+
+    expect(supabaseState.fromCalls).toContain("dia_ban")
+    expect(warnSpy).toHaveBeenCalled()
+    const logged = warnSpy.mock.calls
+      .map((args) => args.map((a) => (typeof a === "string" ? a : JSON.stringify(a))).join(" "))
+      .join("\n")
+    expect(logged).toMatch(/dia_ban/)
+    expect(result).toMatchObject({
+      id: "42",
+      lastRefreshAt: prevRefresh, // not advanced
+    })
+    warnSpy.mockRestore()
   })
 })

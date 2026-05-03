@@ -143,6 +143,12 @@ export const authOptions: NextAuthOptions = {
             const resolvedDonVi = profile.current_don_vi || profile.don_vi || null
             let resolvedDiaBan: number | null = profile.dia_ban_id ?? null
             let resolvedDiaBanMa: string | null = token.dia_ban_ma ?? null
+            // Supabase v2 returns `{ data, error }` rather than throwing for
+            // failed table reads, so we must inspect `error` explicitly and
+            // only stamp lastRefreshAt when every required lookup succeeded.
+            // Otherwise a transient secondary failure would be frozen in
+            // for the entire cooldown window.
+            let secondaryLookupsOk = true
 
             if (!resolvedDiaBan && resolvedDonVi) {
               try {
@@ -152,11 +158,18 @@ export const authOptions: NextAuthOptions = {
                   .eq("id", resolvedDonVi)
                   .limit(1)
 
-                if (!donViError && donViRows && donViRows.length > 0) {
+                if (donViError) {
+                  console.warn("[jwt] don_vi lookup returned error", {
+                    message: donViError.message,
+                    don_vi: resolvedDonVi,
+                  })
+                  secondaryLookupsOk = false
+                } else if (donViRows && donViRows.length > 0) {
                   resolvedDiaBan = donViRows[0]?.dia_ban_id ?? null
                 }
               } catch (donViLookupError) {
-                console.error("Failed to resolve dia_ban from don_vi", donViLookupError)
+                console.error("[jwt] don_vi lookup threw", donViLookupError)
+                secondaryLookupsOk = false
               }
             }
 
@@ -168,18 +181,28 @@ export const authOptions: NextAuthOptions = {
                   .eq("id", resolvedDiaBan)
                   .limit(1)
 
-                if (!diaBanError && diaBanRows && diaBanRows.length > 0) {
+                if (diaBanError) {
+                  console.warn("[jwt] dia_ban lookup returned error", {
+                    message: diaBanError.message,
+                    dia_ban_id: resolvedDiaBan,
+                  })
+                  secondaryLookupsOk = false
+                } else if (diaBanRows && diaBanRows.length > 0) {
                   resolvedDiaBanMa = diaBanRows[0]?.ma_dia_ban ?? null
                 }
               } catch (diaBanLookupError) {
-                console.error("Failed to resolve dia_ban metadata", diaBanLookupError)
+                console.error("[jwt] dia_ban lookup threw", diaBanLookupError)
+                secondaryLookupsOk = false
               }
             }
 
             token = applyJwtProfileRefresh(token, profile, resolvedDonVi, resolvedDiaBan, resolvedDiaBanMa)
-            // Stamp lastRefreshAt only on a successful refresh so transient
-            // failures do not extend the cooldown beyond what they should.
-            token.lastRefreshAt = now
+            // Stamp lastRefreshAt only when every required lookup succeeded
+            // so transient failures do not extend the cooldown beyond what
+            // they should. A failing primary fetch never reaches this line.
+            if (secondaryLookupsOk) {
+              token.lastRefreshAt = now
+            }
           }
         }
       } catch (e) {
