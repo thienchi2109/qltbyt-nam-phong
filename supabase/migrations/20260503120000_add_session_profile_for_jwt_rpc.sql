@@ -15,6 +15,7 @@ SET search_path = public, pg_temp
 AS $$
 DECLARE
   v_claims jsonb;
+  v_claim_app_role_text text;
   v_claim_user_id bigint;
   v_claim_user_id_text text;
 BEGIN
@@ -23,7 +24,12 @@ BEGIN
   END IF;
 
   v_claims := COALESCE(NULLIF(current_setting('request.jwt.claims', true), ''), '{}')::jsonb;
+  v_claim_app_role_text := NULLIF(v_claims->>'app_role', '');
   v_claim_user_id_text := NULLIF(v_claims->>'user_id', '');
+
+  IF v_claim_app_role_text IS NULL THEN
+    RAISE EXCEPTION 'Forbidden session profile access' USING errcode = '42501';
+  END IF;
 
   IF v_claim_user_id_text IS NULL OR v_claim_user_id_text !~ '^[0-9]+$' THEN
     RAISE EXCEPTION 'Forbidden session profile access' USING errcode = '42501';

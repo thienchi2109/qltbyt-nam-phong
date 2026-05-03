@@ -18,7 +18,7 @@ BEGIN
 
   PERFORM set_config(
     'request.jwt.claims',
-    jsonb_build_object('role', 'authenticated', 'user_id', v_user_id::text)::text,
+    jsonb_build_object('role', 'authenticated', 'app_role', 'to_qltb', 'user_id', v_user_id::text)::text,
     true
   );
 
@@ -44,7 +44,29 @@ BEGIN
 
   PERFORM set_config(
     'request.jwt.claims',
-    jsonb_build_object('role', 'authenticated', 'user_id', (v_user_id + 1)::text)::text,
+    jsonb_build_object('role', 'authenticated', 'user_id', v_user_id::text)::text,
+    true
+  );
+  BEGIN
+    PERFORM * FROM public.get_session_profile_for_jwt(v_user_id);
+    RAISE EXCEPTION 'Expected missing app_role claim to be denied with 42501';
+  EXCEPTION WHEN OTHERS THEN
+    GET STACKED DIAGNOSTICS v_sqlstate = RETURNED_SQLSTATE;
+    IF v_sqlstate <> '42501' THEN
+      RAISE EXCEPTION 'Expected missing app_role claim to deny with 42501, got %', v_sqlstate;
+    END IF;
+  END;
+
+  PERFORM set_config(
+    'request.jwt.claims',
+    jsonb_build_object(
+      'role',
+      'authenticated',
+      'app_role',
+      'to_qltb',
+      'user_id',
+      (v_user_id + 1)::text
+    )::text,
     true
   );
   BEGIN
@@ -59,7 +81,7 @@ BEGIN
 
   PERFORM set_config(
     'request.jwt.claims',
-    jsonb_build_object('role', 'authenticated', 'user_id', 'not-a-number')::text,
+    jsonb_build_object('role', 'authenticated', 'app_role', 'to_qltb', 'user_id', 'not-a-number')::text,
     true
   );
   BEGIN

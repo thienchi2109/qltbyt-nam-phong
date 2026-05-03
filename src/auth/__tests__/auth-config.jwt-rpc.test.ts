@@ -136,7 +136,7 @@ describe("authOptions.jwt session profile RPC refresh", () => {
     expect(supabaseState.rpcCalls).toEqual([
       {
         fn: "get_session_profile_for_jwt",
-        args: { p_user_id: 42 },
+        args: { p_user_id: "42" },
       },
     ])
     expect(supabaseClient.from).not.toHaveBeenCalled()
@@ -191,9 +191,57 @@ describe("authOptions.jwt session profile RPC refresh", () => {
         exp: nowSeconds + 120,
         sub: "42",
         user_id: "42",
+        app_role: "to_qltb",
       },
       "test-jwt-secret",
       { algorithm: "HS256" }
     )
+  })
+
+  it("normalizes admin app_role before signing the refresh JWT", async () => {
+    await runJwt({
+      token: {
+        ...baseToken,
+        role: "admin",
+        loginTime: Date.now() - 5 * 60_000,
+        lastRefreshAt: Date.now() - 5 * 60_000,
+      },
+    })
+
+    expect(jwt.sign).toHaveBeenCalledWith(
+      expect.objectContaining({
+        app_role: "global",
+      }),
+      "test-jwt-secret",
+      { algorithm: "HS256" }
+    )
+  })
+
+  it("fails closed when refresh JWT env is missing", async () => {
+    vi.stubEnv("SUPABASE_JWT_SECRET", "")
+
+    await expect(
+      runJwt({
+        token: {
+          ...baseToken,
+          loginTime: Date.now() - 5 * 60_000,
+          lastRefreshAt: Date.now() - 5 * 60_000,
+        },
+      })
+    ).rejects.toThrow("SUPABASE_JWT_SECRET is not configured")
+  })
+
+  it("fails closed when refresh anon key is missing", async () => {
+    vi.stubEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY", "")
+
+    await expect(
+      runJwt({
+        token: {
+          ...baseToken,
+          loginTime: Date.now() - 5 * 60_000,
+          lastRefreshAt: Date.now() - 5 * 60_000,
+        },
+      })
+    ).rejects.toThrow("NEXT_PUBLIC_SUPABASE_ANON_KEY is not configured")
   })
 })

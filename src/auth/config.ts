@@ -25,12 +25,30 @@ const SUPABASE_JWT_CLOCK_SKEW_SECONDS = 60
 // load to ~1 fetch / minute / active session.
 const PROFILE_REFRESH_INTERVAL_MS = 60_000
 
-function buildSessionProfileJwt(userId: string): string {
-  const secret = process.env.SUPABASE_JWT_SECRET
-  if (!secret) {
-    throw new Error("SUPABASE_JWT_SECRET is not configured")
+class AuthRefreshConfigError extends Error {
+  constructor(message: string) {
+    super(message)
+    this.name = "AuthRefreshConfigError"
+  }
+}
+
+function requireRefreshEnv(name: "NEXT_PUBLIC_SUPABASE_URL" | "NEXT_PUBLIC_SUPABASE_ANON_KEY" | "SUPABASE_JWT_SECRET"): string {
+  const value = process.env[name]
+  if (!value) {
+    throw new AuthRefreshConfigError(`${name} is not configured`)
   }
 
+  return value
+}
+
+function normalizeSessionProfileAppRole(role: unknown): string {
+  const rawRole = typeof role === "string" ? role : role == null ? "" : String(role)
+  const normalizedRole = rawRole.trim().toLowerCase()
+  return normalizedRole === "admin" ? "global" : normalizedRole
+}
+
+function buildSessionProfileJwt(userId: string, appRole: string): string {
+  const secret = requireRefreshEnv("SUPABASE_JWT_SECRET")
   const now = Math.floor(Date.now() / 1000)
   return jwt.sign(
     {
@@ -39,6 +57,7 @@ function buildSessionProfileJwt(userId: string): string {
       exp: now + 120,
       sub: userId,
       user_id: userId,
+      app_role: appRole,
     },
     secret,
     { algorithm: "HS256" }
@@ -149,44 +168,51 @@ export const authOptions: NextAuthOptions = {
 
       // Refresh user-derived fields
       try {
-        const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-        const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-        if (supabaseUrl && anonKey) {
-          const sessionProfileJwt = buildSessionProfileJwt(String(token.id))
-          const supabase = createClient(supabaseUrl, anonKey, {
-            global: {
-              headers: {
-                Authorization: `Bearer ${sessionProfileJwt}`,
-              },
+        const supabaseUrl = requireRefreshEnv("NEXT_PUBLIC_SUPABASE_URL")
+        const anonKey = requireRefreshEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY")
+        const appRole = normalizeSessionProfileAppRole(token.role)
+        if (!appRole) {
+          throw new AuthRefreshConfigError("JWT app_role is not configured")
+        }
+
+        const userId = String(token.id)
+        const sessionProfileJwt = buildSessionProfileJwt(userId, appRole)
+        const supabase = createClient(supabaseUrl, anonKey, {
+          global: {
+            headers: {
+              Authorization: `Bearer ${sessionProfileJwt}`,
             },
-          })
-          const { data, error } = await supabase
-            .rpc("get_session_profile_for_jwt", { p_user_id: Number(token.id) })
+          },
+        })
+        const { data, error } = await supabase
+          .rpc("get_session_profile_for_jwt", { p_user_id: userId })
 
-          if (!error && data) {
-            const profile = firstProfileRow(data)
-            if (!profile) {
-              return token
-            }
-            // Password change invalidates session if changed after login
-            if (token.loginTime && profile.password_changed_at) {
-              const passwordChangedAt = new Date(profile.password_changed_at).getTime()
-              const tokenLoginTime = token.loginTime as number
-              if (passwordChangedAt > tokenLoginTime) {
-                console.warn("Password changed after login - invalidating token")
-                return {}
-              }
-            }
-            // Keep JWT in sync with user profile for tenant-aware UI
-            const resolvedDonVi = profile.current_don_vi || profile.don_vi || null
-            let resolvedDiaBan: number | null = profile.dia_ban_id ?? null
-            const resolvedDiaBanMa = profile.ma_dia_ban ?? token.dia_ban_ma ?? null
-
-            token = applyJwtProfileRefresh(token, profile, resolvedDonVi, resolvedDiaBan, resolvedDiaBanMa)
-            token.lastRefreshAt = now
+        if (!error && data) {
+          const profile = firstProfileRow(data)
+          if (!profile) {
+            return token
           }
+          // Password change invalidates session if changed after login
+          if (token.loginTime && profile.password_changed_at) {
+            const passwordChangedAt = new Date(profile.password_changed_at).getTime()
+            const tokenLoginTime = token.loginTime as number
+            if (passwordChangedAt > tokenLoginTime) {
+              console.warn("Password changed after login - invalidating token")
+              return {}
+            }
+          }
+          // Keep JWT in sync with user profile for tenant-aware UI
+          const resolvedDonVi = profile.current_don_vi || profile.don_vi || null
+          const resolvedDiaBan: number | null = profile.dia_ban_id ?? null
+          const resolvedDiaBanMa = profile.ma_dia_ban ?? token.dia_ban_ma ?? null
+
+          token = applyJwtProfileRefresh(token, profile, resolvedDonVi, resolvedDiaBan, resolvedDiaBanMa)
+          token.lastRefreshAt = now
         }
       } catch (e) {
+        if (e instanceof AuthRefreshConfigError) {
+          throw e
+        }
         // Log but don't break auth flow for database errors
         console.error("Password change check failed:", e)
       }

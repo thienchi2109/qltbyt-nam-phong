@@ -104,7 +104,7 @@ describe("authOptions.jwt cooldown + trigger gate", () => {
       user: { ...baseToken } as JwtArgs["user"],
     })
 
-    expect(supabaseClient.rpc).toHaveBeenCalledWith("get_session_profile_for_jwt", { p_user_id: 42 })
+    expect(supabaseClient.rpc).toHaveBeenCalledWith("get_session_profile_for_jwt", { p_user_id: "42" })
     expect(supabaseClient.from).not.toHaveBeenCalled()
     expect(result).toMatchObject({
       id: "42",
