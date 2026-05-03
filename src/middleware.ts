@@ -21,9 +21,9 @@ if (IS_PRODUCTION && FLAG_DISABLES) {
 
 export default ENABLED ? withAuth(
   function middleware(req) {
-    // If no token (unauthenticated), redirect to custom sign-in page '/'
+    // If no valid user id (unauthenticated), redirect to custom sign-in page '/'
     // @ts-ignore - token added by withAuth
-    if (!req.nextauth?.token) {
+    if (!req.nextauth?.token?.id) {
       const url = req.nextUrl.clone()
       url.pathname = "/"
       url.searchParams.set("callbackUrl", req.nextUrl.pathname + req.nextUrl.search)
@@ -33,7 +33,7 @@ export default ENABLED ? withAuth(
   },
   {
     callbacks: {
-      authorized: ({ token }) => !!token,
+      authorized: ({ token }) => Boolean(token?.id),
     },
     pages: {
       signIn: "/",

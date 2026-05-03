@@ -95,6 +95,23 @@ describe("auth middleware kill switch", () => {
     expect(consoleWarnSpy).not.toHaveBeenCalled()
   })
 
+  it("authorizes only tokens with a user id", async () => {
+    vi.stubEnv("NODE_ENV", "production")
+
+    await loadMiddleware()
+
+    const options = withAuthMock.mock.calls[0]?.[1] as {
+      callbacks?: {
+        authorized?: (args: { token: { id?: string } | null }) => boolean
+      }
+    }
+    const authorized = options.callbacks?.authorized
+
+    expect(authorized?.({ token: { id: "42" } })).toBe(true)
+    expect(authorized?.({ token: {} })).toBe(false)
+    expect(authorized?.({ token: null })).toBe(false)
+  })
+
   describe("matcher config", () => {
     async function loadMatcher() {
       vi.stubEnv("NODE_ENV", "production")

@@ -13,7 +13,7 @@ type AppLayoutProps = {
 export default async function AppLayout({ children }: AppLayoutProps) {
   const session = await getServerSession(authOptions)
 
-  if (!session?.user) {
+  if (!session?.user?.id) {
     redirect("/")
   }
 

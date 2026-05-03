@@ -60,6 +60,7 @@ describe("AppLayout auth gate", () => {
   it("renders the app shell for authenticated users", async () => {
     mocks.getServerSession.mockResolvedValue({
       user: {
+        id: "1",
         role: "global",
         full_name: "Authenticated User",
         username: "auth-user",
@@ -73,5 +74,20 @@ describe("AppLayout auth gate", () => {
     expect(mocks.redirect).not.toHaveBeenCalled()
     expect(screen.getByTestId("shell-user")).toHaveTextContent("Authenticated User")
     expect(screen.getByTestId("shell-children")).toHaveTextContent("Protected Child")
+  })
+
+  it("redirects sessions with a user shell but no user id", async () => {
+    mocks.getServerSession.mockResolvedValue({
+      user: {
+        role: "",
+        full_name: null,
+        username: "",
+      },
+    })
+
+    await expect(AppLayout({ children: <div>Child</div> })).rejects.toThrow("NEXT_REDIRECT:/")
+
+    expect(mocks.redirect).toHaveBeenCalledWith("/")
+    expect(mocks.shell).not.toHaveBeenCalled()
   })
 })

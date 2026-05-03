@@ -66,4 +66,18 @@ describe("LoginPage authenticated redirect", () => {
     expect(mocks.redirect).not.toHaveBeenCalled()
     expect(screen.getByTestId("login-form")).toBeInTheDocument()
   })
+
+  it("renders the login form when the session user is missing an id", async () => {
+    mocks.getServerSession.mockResolvedValue({
+      user: {
+        username: "",
+        role: "",
+      },
+    })
+
+    render(await LoginPage())
+
+    expect(mocks.redirect).not.toHaveBeenCalled()
+    expect(screen.getByTestId("login-form")).toBeInTheDocument()
+  })
 })
