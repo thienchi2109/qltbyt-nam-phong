@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
-// Build a chainable Supabase mock that records every .from() call.
+// Build a Supabase mock that records profile refresh RPC calls.
 type ProfileRow = {
   password_changed_at: string | null
   current_don_vi: number | null
@@ -8,6 +8,7 @@ type ProfileRow = {
   khoa_phong: string | null
   full_name: string | null
   dia_ban_id: number | null
+  ma_dia_ban: string | null
 }
 
 const profileRowDefault: ProfileRow = {
@@ -17,64 +18,31 @@ const profileRowDefault: ProfileRow = {
   khoa_phong: "KT",
   full_name: "Nguyen Quang Minh",
   dia_ban_id: 9,
-}
-
-type QueryResult = { data: unknown; error: unknown }
-type Resolver = () => Promise<QueryResult>
-
-// Build the chain `from(table).select().eq(...).single|limit(...)` from a
-// single async resolver so the deepest user code sits at one level of nesting
-// instead of four. Tests configure responses through `supabaseState` below.
-function buildChain(resolver: Resolver, method: "single" | "limit") {
-  const terminal = vi.fn(resolver)
-  return {
-    select: () => ({
-      eq: () => ({ [method]: terminal }),
-    }),
-  }
+  ma_dia_ban: "HN-01",
 }
 
 const supabaseState = vi.hoisted(() => ({
   fromCalls: [] as string[],
-  profileRow: null as unknown,
-  donViRows: [] as unknown[],
-  donViError: null as unknown,
-  diaBanMaRows: [] as unknown[],
-  diaBanError: null as unknown,
-}))
-
-const resolvers = vi.hoisted(() => ({
-  nhanVien: async () => ({
-    data: supabaseState.profileRow,
-    error: supabaseState.profileRow ? null : { message: "no row" },
-  }),
-  donVi: async () => ({
-    data: supabaseState.donViError ? null : supabaseState.donViRows,
-    error: supabaseState.donViError,
-  }),
-  diaBan: async () => ({
-    data: supabaseState.diaBanError ? null : supabaseState.diaBanMaRows,
-    error: supabaseState.diaBanError,
-  }),
-  unknownLimit: async () => ({ data: [], error: null }),
-  unknownSingle: async () => ({ data: null, error: null }),
+  rpcRows: [] as unknown[],
+  rpcError: null as unknown,
 }))
 
 const supabaseClient = vi.hoisted(() => ({
   from: vi.fn((table: string) => {
     supabaseState.fromCalls.push(table)
-    if (table === "nhan_vien") return buildChain(resolvers.nhanVien, "single")
-    if (table === "don_vi") return buildChain(resolvers.donVi, "limit")
-    if (table === "dia_ban") return buildChain(resolvers.diaBan, "limit")
     return {
       select: () => ({
         eq: () => ({
-          limit: vi.fn(resolvers.unknownLimit),
-          single: vi.fn(resolvers.unknownSingle),
+          limit: vi.fn(async () => ({ data: [], error: { message: `unexpected ${table}` } })),
+          single: vi.fn(async () => ({ data: null, error: { message: `unexpected ${table}` } })),
         }),
       }),
     }
   }),
+  rpc: vi.fn(async () => ({
+    data: supabaseState.rpcError ? null : supabaseState.rpcRows,
+    error: supabaseState.rpcError,
+  })),
 }))
 
 vi.mock("@supabase/supabase-js", () => ({
@@ -115,14 +83,14 @@ describe("authOptions.jwt cooldown + trigger gate", () => {
     vi.useFakeTimers()
     vi.setSystemTime(new Date("2026-05-02T12:00:00Z"))
     vi.stubEnv("NEXT_PUBLIC_SUPABASE_URL", "https://example.supabase.co")
+    vi.stubEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY", "test-anon-key")
     vi.stubEnv("SUPABASE_SERVICE_ROLE_KEY", "test-service-role-key")
+    vi.stubEnv("SUPABASE_JWT_SECRET", "test-jwt-secret")
     supabaseState.fromCalls = []
-    supabaseState.profileRow = { ...profileRowDefault }
-    supabaseState.donViRows = [{ dia_ban_id: 9 }]
-    supabaseState.donViError = null
-    supabaseState.diaBanMaRows = [{ ma_dia_ban: "HN-01" }]
-    supabaseState.diaBanError = null
+    supabaseState.rpcRows = [{ ...profileRowDefault }]
+    supabaseState.rpcError = null
     supabaseClient.from.mockClear()
+    supabaseClient.rpc.mockClear()
   })
 
   afterEach(() => {
@@ -136,7 +104,8 @@ describe("authOptions.jwt cooldown + trigger gate", () => {
       user: { ...baseToken } as JwtArgs["user"],
     })
 
-    expect(supabaseState.fromCalls).toContain("nhan_vien")
+    expect(supabaseClient.rpc).toHaveBeenCalledWith("get_session_profile_for_jwt", { p_user_id: 42 })
+    expect(supabaseClient.from).not.toHaveBeenCalled()
     expect(result).toMatchObject({
       id: "42",
       username: "nqminh",
@@ -158,7 +127,7 @@ describe("authOptions.jwt cooldown + trigger gate", () => {
 
     const result = await runJwt({ token })
 
-    expect(supabaseClient.from).not.toHaveBeenCalled()
+    expect(supabaseClient.rpc).not.toHaveBeenCalled()
     expect(supabaseState.fromCalls).toEqual([])
     expect(result).toMatchObject({
       id: "42",
@@ -176,18 +145,18 @@ describe("authOptions.jwt cooldown + trigger gate", () => {
 
     const result = await runJwt({ token })
 
-    expect(supabaseClient.from).toHaveBeenCalled()
-    expect(supabaseState.fromCalls).toContain("nhan_vien")
+    expect(supabaseClient.rpc).toHaveBeenCalled()
+    expect(supabaseClient.from).not.toHaveBeenCalled()
     expect(result).toMatchObject({ lastRefreshAt: now })
   })
 
   it("force-refreshes when trigger === 'update' even within cooldown", async () => {
     const now = Date.now()
-    supabaseState.profileRow = {
+    supabaseState.rpcRows = [{
       ...profileRowDefault,
       current_don_vi: 99,
       don_vi: 99,
-    }
+    }]
     const token = {
       ...baseToken,
       loginTime: now - 10_000,
@@ -196,7 +165,7 @@ describe("authOptions.jwt cooldown + trigger gate", () => {
 
     const result = await runJwt({ token, trigger: "update" })
 
-    expect(supabaseClient.from).toHaveBeenCalled()
+    expect(supabaseClient.rpc).toHaveBeenCalled()
     expect(result).toMatchObject({
       don_vi: 99,
       lastRefreshAt: now,
@@ -206,6 +175,7 @@ describe("authOptions.jwt cooldown + trigger gate", () => {
   it("returns the token untouched when token has no id (anonymous)", async () => {
     const result = await runJwt({ token: { name: "anon" } as JwtArgs["token"] })
 
+    expect(supabaseClient.rpc).not.toHaveBeenCalled()
     expect(supabaseClient.from).not.toHaveBeenCalled()
     expect(result).toEqual({ name: "anon" })
   })
@@ -214,10 +184,10 @@ describe("authOptions.jwt cooldown + trigger gate", () => {
     const now = Date.now()
     const loginTime = now - 60 * 60_000 // 1h ago
     const passwordChangedAt = new Date(now - 5 * 60_000).toISOString() // 5min ago
-    supabaseState.profileRow = {
+    supabaseState.rpcRows = [{
       ...profileRowDefault,
       password_changed_at: passwordChangedAt,
-    }
+    }]
 
     const token = {
       ...baseToken,
@@ -227,13 +197,14 @@ describe("authOptions.jwt cooldown + trigger gate", () => {
 
     const result = await runJwt({ token })
 
-    expect(supabaseClient.from).toHaveBeenCalled()
+    expect(supabaseClient.rpc).toHaveBeenCalled()
     expect(result).toEqual({})
   })
 
   it("does not advance lastRefreshAt when the profile fetch fails", async () => {
     const now = Date.now()
-    supabaseState.profileRow = null // forces error path
+    supabaseState.rpcRows = []
+    supabaseState.rpcError = { message: "no row" }
 
     const token = {
       ...baseToken,
@@ -243,73 +214,10 @@ describe("authOptions.jwt cooldown + trigger gate", () => {
 
     const result = await runJwt({ token })
 
-    expect(supabaseClient.from).toHaveBeenCalled()
+    expect(supabaseClient.rpc).toHaveBeenCalled()
     expect(result).toMatchObject({
       id: "42",
       lastRefreshAt: now - 5 * 60_000, // still the old value
     })
-  })
-
-  it("logs and skips lastRefreshAt stamp when don_vi secondary lookup returns an error", async () => {
-    const now = Date.now()
-    // Primary row forces the don_vi lookup: dia_ban_id null but don_vi set
-    supabaseState.profileRow = {
-      ...profileRowDefault,
-      dia_ban_id: null,
-      current_don_vi: 17,
-      don_vi: 17,
-    }
-    supabaseState.donViError = { message: "don_vi table boom" }
-    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {})
-    const prevRefresh = now - 5 * 60_000
-
-    const token = {
-      ...baseToken,
-      dia_ban_id: null,
-      loginTime: now - 60 * 60_000,
-      lastRefreshAt: prevRefresh,
-    }
-
-    const result = await runJwt({ token })
-
-    expect(supabaseState.fromCalls).toContain("don_vi")
-    expect(warnSpy).toHaveBeenCalled()
-    const logged = warnSpy.mock.calls
-      .map((args) => args.map((a) => (typeof a === "string" ? a : JSON.stringify(a))).join(" "))
-      .join("\n")
-    expect(logged).toMatch(/don_vi/)
-    expect(result).toMatchObject({
-      id: "42",
-      lastRefreshAt: prevRefresh, // not advanced
-    })
-    warnSpy.mockRestore()
-  })
-
-  it("logs and skips lastRefreshAt stamp when dia_ban secondary lookup returns an error", async () => {
-    const now = Date.now()
-    supabaseState.diaBanError = { message: "dia_ban table boom" }
-    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {})
-    const prevRefresh = now - 5 * 60_000
-
-    const token = {
-      ...baseToken,
-      dia_ban_ma: null, // ensure the dia_ban lookup runs
-      loginTime: now - 60 * 60_000,
-      lastRefreshAt: prevRefresh,
-    }
-
-    const result = await runJwt({ token })
-
-    expect(supabaseState.fromCalls).toContain("dia_ban")
-    expect(warnSpy).toHaveBeenCalled()
-    const logged = warnSpy.mock.calls
-      .map((args) => args.map((a) => (typeof a === "string" ? a : JSON.stringify(a))).join(" "))
-      .join("\n")
-    expect(logged).toMatch(/dia_ban/)
-    expect(result).toMatchObject({
-      id: "42",
-      lastRefreshAt: prevRefresh, // not advanced
-    })
-    warnSpy.mockRestore()
   })
 })
