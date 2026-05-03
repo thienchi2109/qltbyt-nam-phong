@@ -30,8 +30,16 @@
   - Keep DB writes server-side only; client never calls PostgREST audit function directly.
   - Signout reason propagation:
     - User-initiated and forced-password-change flows set `pending_signout_reason` via `session.update(...)` before `signOut()`.
+    - Call order is strict: `await session.update(...)` (and optional `await getSession()` readback in UI flow) before `signOut()`.
+    - In JWT invalidation path (`password_changed_at > loginTime`), preserve reason field (`pending_signout_reason`) instead of returning a fully empty token object.
     - `events.signOut` reads token reason and falls back to `session_expired` if missing.
+    - Guard against signout probe noise: if `events.signOut` receives neither identity (`token.sub/user_id`) nor pending reason, skip DB sink emit.
   - This removes the unauthenticated `session_expired` endpoint problem and removes custom idempotency endpoint scope.
+  - Trade-off accepted: `session.update(...)` before `signOut()` can trigger one extra JWT refresh/RPC; keep as-is unless telemetry shows material noise.
+  - Cross-tab behavior is expected: non-initiating tabs can emit `session_expired`; correlate with `token_invalidated_password_change` window for forensic linkage.
+  - Request correlation strategy:
+    - `authorize` path reads `x-request-id` from credentials `authorize(..., req)` context.
+    - `jwt`/`events` paths try `headers().get('x-request-id')`; if unavailable in callback context, store `request_id = null` (explicit fallback, no fake ids).
   - `LoginForm.tsx` stays UX-only.
 
 ## API / Data Contract Changes
@@ -66,17 +74,23 @@
 3. RED: `events.signIn`/`events.signOut` emission tests:
    - `events.signIn` emits `login_success` with lowercased username and no secrets.
    - `events.signOut` emits exactly one signout event with mapped reason or `session_expired` fallback.
+   - probe/no-session signout with empty token/session does not emit DB sink event.
 4. RED: `auth-config.jwt-cooldown.test.ts`:
    - `token_invalidated_password_change`, `profile_refresh_failed` emitted correctly.
+   - password-change invalidation preserves `pending_signout_reason` field.
    - DB sink down still does not break auth flow (best-effort guarantee).
 5. RED: signout dedup tests in `AppLayoutShell.test.tsx` (+ new focused tests if needed):
    - user menu signout => one `signout/user_initiated`.
    - session-expired path => one `forced_signout/session_expired`.
    - password-change flow => one `forced_signout/forced_password_change`, no ghost `session_expired`.
-6. RED: correlation tests:
-   - request carries `x-request-id` => event includes it.
-   - missing header => `request_id` is `null`.
-7. GREEN:
+6. RED: `session.update(...) -> events.signOut` propagation chain:
+   - `session.update({ pending_signout_reason: 'X' })` persists reason into token.
+   - `events.signOut` reads same reason and maps event correctly.
+   - `signOut()` is called only after `session.update` Promise resolves.
+7. RED: correlation tests:
+   - `authorize(..., req)` with `x-request-id` => emitted event includes request id.
+   - callback context without accessible headers => `request_id` is `null`.
+8. GREEN:
    - implement shared logger + server-only sink.
    - wire `authorize`, `jwt`, `events.signIn`, `events.signOut`.
    - implement pending-reason propagation via `session.update(...)` before `signOut()` in user-triggered flows.
@@ -94,8 +108,10 @@
 3. Focused auth/signout tests
 4. `node scripts/npm-run.js npx react-doctor@latest . --verbose -y --project nextn --offline --diff main`
 
+## Constraints
+- Migration apply path for execution phase must use Supabase MCP (`apply_migration`), not Supabase CLI.
+
 ## Assumptions
 - Migration name follows ordered timestamp convention: `YYYYMMDDHHMMSS_auth_audit_log_*.sql`.
 - Correlation fields are optional when headers are unavailable.
 - If retention DDL increases risk/scope, a follow-up issue is opened and linked in PR before merge.
-- Migration apply path for execution phase must use Supabase MCP (`apply_migration`), not Supabase CLI.
