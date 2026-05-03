@@ -250,3 +250,82 @@ Plan chưa đề cập, dễ rơi vào edge case khi GREEN.
 
 ## Recommendation
 Chỉ R3-1 và R3-4 là blocker thiết kế. Sửa hai dòng quyết định (token preservation + request_id capture method) là plan có thể đi RED. Còn lại bổ sung notes trong Decision notes hoặc Assumptions là đủ.
+
+---
+
+# Round 4 — Re-review sau commit `7c06b9f`
+
+- Plan version reviewed: commit `7c06b9f docs(plan): apply round-3 review for issue 366`
+- Date: 2026-05-03
+
+## Đã giải quyết từ Round 3
+- **R3-1**: preserve `pending_signout_reason` khi invalidate token (§34) + RED test §80.
+- **R3-2**: strict `await session.update(...)` trước `signOut()` (§33) + RED test §89.
+- **R3-3**: trade-off 1 RPC extra được ghi nhận (§38).
+- **R3-4**: request_id capture path — `authorize(..., req)` cho login, `headers()` fallback null cho jwt/events (§40–42) + RED test §91–92.
+- **R3-5**: cross-tab behavior documented, forensic correlation qua `token_invalidated_password_change` window (§39).
+- **R3-6**: propagation chain test `session.update → events.signOut` — Step 6 §86–89.
+- **R3-7**: probe guard: skip DB sink nếu neither identity nor pending reason (§36) + test §77.
+- **R3-8**: migration apply upgraded lên Constraints (§111–112).
+
+Plan đã stable. Các mục dưới đây là polish-level; không có blocker.
+
+## Gap polish
+
+### R4-1. Thiếu type augmentation cho `pending_signout_reason`
+Repo có file `src/types/next-auth.d.ts` augment `JWT` interface:
+```ts
+declare module "next-auth/jwt" {
+  interface JWT extends DefaultJWT, Partial<NextAuthUserFields> {
+    loginTime?: number
+    lastRefreshAt?: number
+  }
+}
+```
+`session.update({ pending_signout_reason: 'X' })` + `events.signOut({ token })` đọc `token.pending_signout_reason` sẽ fail typecheck nếu không thêm field này. Developer sẽ bị cám dỗ `(token as any)` → `verify:no-explicit-any` chặn.
+
+Plan cần thêm bullet vào Step 0 (§46) hoặc Step 8 GREEN:
+> Augment `src/types/next-auth.d.ts` JWT/Session with `pending_signout_reason?: 'user_initiated' | 'forced_password_change'`.
+
+### R4-2. IP / user-agent capture mechanism chưa được document
+§49 có schema cột `ip_address inet`, `user_agent text`; §53 metadata taxonomy có `user_agent_family`. Nhưng Decision notes §40–42 chỉ cover `request_id`, không nói IP/UA lấy từ đâu.
+
+Tương tự request_id:
+- `authorize(credentials, req)`: đọc `req.headers['x-forwarded-for']`, `req.headers['user-agent']`.
+- `jwt` / `events.*`: `headers()` fallback null.
+
+Thêm 1–2 dòng trong Decision notes để symmetry với §40–42.
+
+### R4-3. Thiếu test cho full chain "password change → invalidated token giữ reason → events.signOut emit đúng"
+Step 4 §80 chỉ assert token shape sau invalidate ("preserves `pending_signout_reason` field"). Step 6 §86–89 chỉ cover happy path propagation. Missing: chain test kết hợp invalidation + reason propagation, đúng đường của R3-1 bug.
+
+Đề xuất thêm bullet vào Step 6 hoặc Step 5:
+> flow: `session.update(pending='forced_password_change')` + `password_changed_at > loginTime` → token sau jwt callback là `{ pending_signout_reason: 'forced_password_change' }` → `events.signOut` emit `forced_signout/forced_password_change` (không bị fallback session_expired).
+
+### R4-4. `session_duration_ms` contract chưa locked
+§53 liệt kê `session_duration_ms` trong metadata soft taxonomy nhưng không nói emit ở event nào. Logical: chỉ `events.signOut` có `loginTime` trong token → có thể tính `now - loginTime`. Nên:
+- Lock trong Decision notes: "`events.signOut` computes `session_duration_ms = now - token.loginTime` when `loginTime` present."
+- Thêm assertion trong Step 3 test §76 (hoặc Step 6).
+
+Nếu không, soft taxonomy có mục không ai populate → noise trong contract.
+
+### R4-5. LoginForm surface mapping cho `reason_code` mới
+§15: "LoginForm.tsx stays UX-only." Nhưng `authorize` mới throw thêm `config_error`. Hiện LoginForm hiển thị message dựa vào `error.type` từ NextAuth signin — `config_error` sẽ fallback về generic message, làm người dùng bối rối trong dev env.
+
+Không blocker; note:
+> LoginForm may need follow-up to map `config_error` → user-facing Vietnamese message. Out of scope unless tests reveal gap.
+
+Plan §15 đã có cụm "remains UX-only unless tests reveal gap" — đủ, chỉ cần chốt `config_error` là một trigger cụ thể để reviewer không bỏ sót.
+
+### R4-6. Header nguồn cho request_id
+§42: "try `headers().get('x-request-id')`". Vercel prod set `x-vercel-id` (format `iad1::sfo1::xxx-ts-hash`), không phải `x-request-id`. Nếu repo deploy trên Vercel và không có reverse proxy/middleware tự set `x-request-id`, production sẽ luôn fallback null.
+
+Khuyến nghị thứ tự đọc: `x-request-id` → `x-vercel-id` → null. Thêm vào Decision notes. Hoặc ghi nhận "production có thể luôn null cho đến khi middleware set header chuẩn" như trade-off.
+
+## Mức độ ưu tiên
+- **Nên thêm trước RED**: R4-1 (typecheck sẽ block khi viết test nếu thiếu augmentation).
+- **Document trong cùng commit refine**: R4-2, R4-4, R4-6.
+- **Optional polish**: R4-3 (strong-nicer test), R4-5 (follow-up hint).
+
+## Recommendation
+Plan đã sẵn sàng đi RED. R4-1 là thao tác kỹ thuật phải làm bằng mọi giá (kể cả không note vào plan thì dev GREEN cũng phải tự augment). Còn R4-2..R4-6 là polish mà có thể defer vào quá trình GREEN mà không làm sai thiết kế. Nếu bạn muốn plan tự-đủ (self-contained), áp các note này; nếu không, có thể đóng review ở đây.
