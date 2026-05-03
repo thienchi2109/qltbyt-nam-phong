@@ -162,3 +162,91 @@ Free-form dễ drift. Soft-contract bằng cách liệt kê các key dự kiến
 
 ## Recommendation
 Chốt ngả A hay B → cập nhật §27 + §40. Các mục R2-4..R2-8 có thể gộp chung commit refine kế tiếp.
+
+---
+
+# Round 3 — Re-review sau commit `2ce77b1`
+
+- Plan version reviewed: commit `2ce77b1 docs(plan): apply round-2 review for issue 366`
+- Date: 2026-05-03
+
+## Đã giải quyết từ Round 2
+- **R2-1**: chọn ngả B (NextAuth `events.signOut`); custom signout-intent endpoint bị loại (§27, §31–34).
+- **R2-2**: `source` enum đối xứng `authorize | jwt_callback | events_signin | events_signout` (§43).
+- **R2-3**: idempotency endpoint không còn cần (theo R2-1).
+- **R2-4**: retention quyết tại GREEN, có path defer + link issue trước merge (§54–56).
+- **R2-5**: bổ sung Step 3 RED cho `events.signIn`/`events.signOut` (§66–68).
+- **R2-6**: UX delay/redirect cho password-change toast (§83).
+- **R2-7**: migration apply via Supabase MCP (§101).
+- **R2-8**: metadata soft taxonomy (§45).
+
+## Gap mới do mechanism `session.update + events.signOut` introduce
+
+### R3-1. Token invalidation clobbers `pending_signout_reason` (CRITICAL)
+Sequence dự kiến cho forced password change:
+1. Dialog gọi `session.update({ pending_signout_reason: 'forced_password_change' })`.
+2. JWT callback fire với `trigger === 'update'`, force-refresh profile (`src/auth/config.ts:165, 195–203`).
+3. Profile-refresh path detect `password_changed_at > loginTime` → return `{}` (`src/auth/config.ts:267–268`). **`pending_signout_reason` bị xoá sạch.**
+4. `signOut()` → `events.signOut` đọc token rỗng → fallback `session_expired`. ❌
+
+Test §75 "no ghost `session_expired`" sẽ fail. Phải xử lý:
+- **Option 1:** giữ `pending_signout_reason` trong token bị invalidate: `return { pending_signout_reason: token.pending_signout_reason }` thay vì `{}`.
+- **Option 2:** trong dialog, gọi `signOut()` luôn không qua `session.update`; truyền reason qua `signOut({ redirect: false })` rồi tự navigate `/?reason=forced_password_change` — nhưng `events.signOut` không đọc được callbackUrl.
+- **Option 3:** dialog set một short-lived HttpOnly cookie `auth_signout_reason` qua một route nhỏ trước khi `signOut()`; `events.signOut` đọc cookie qua `cookies()` từ `next/headers`. Cần kiểm chứng cookies được expose trong events callback context.
+
+Khuyến nghị Option 1 (đơn giản nhất, chỉ ~3 dòng code). Plan cần nói rõ.
+
+### R3-2. Race giữa `session.update()` Promise và `signOut()`
+`session.update()` resolve khi JWT callback hoàn tất + cookie flush. Nếu dialog code không `await` đầy đủ rồi gọi `signOut()` ngay, có race: token mới chưa kịp set cookie thì cookie bị `signOut` xoá.
+
+Plan §82 chỉ nói "set `pending_signout_reason` via `session.update(...)` before `signOut()`." Lock tighter:
+- Phải `await session.update(...)`.
+- Recommend thêm bước verify (e.g. `await getSession()`) trước `signOut()`.
+- RED test §75 nên mock `session.update` trả về Promise và assert `signOut` chỉ được gọi sau khi resolved.
+
+### R3-3. Extra DB RPC + telemetry mỗi lần signout do `trigger='update'`
+`session.update({ pending_signout_reason })` chạy qua jwt callback → force-refresh profile (1 extra RPC `get_session_profile_for_jwt`) + emit `jwt_refresh_forced_update_trigger`, dù chỉ inject một field UI-only. Cost = 1 RPC/signout, chấp nhận được nhưng:
+- Plan nên ghi rõ trade-off này trong §29–35 (decision notes), tránh ngạc nhiên ở GREEN.
+- Hoặc gate: trong jwt callback, nếu update payload **chỉ** chứa `pending_signout_reason`, skip profile refresh. Phức tạp hơn — chỉ làm nếu telemetry/RPC noise đủ lớn.
+
+Khuyến nghị: ghi nhận chi phí, không tối ưu sớm.
+
+### R3-4. `request_id` capture path trong NextAuth callbacks chưa rõ
+§77–78 test correlation header. NextAuth v4 callbacks (`jwt`, `events.signIn`, `events.signOut`) không nhận `req` trực tiếp. Hai options:
+- Đọc `headers().get('x-request-id')` từ `next/headers` trong logger helper. Phải verify hoạt động trong NextAuth callback context (nó chạy trong route handler stack).
+- Generate UUID fallback trong logger nếu header context không khả dụng.
+
+Plan cần chốt cách hiện thực + test verify. Hiện đang nói "fallback null" (§99) nhưng implementation path chưa cụ thể. Nếu thực tế header không reach được callback, mọi event sẽ luôn `request_id = null` và test §77 sẽ fail → blocker GREEN.
+
+### R3-5. Cross-tab forced password change emit `session_expired`, không phải `forced_password_change`
+Khi tab A đổi mật khẩu thành công và bị forced signout với `forced_password_change`, các tab B/C khác sẽ:
+- Lần next request → jwt callback detect password_changed_at > loginTime → token invalidate.
+- AppLayoutShell thấy `unauthenticated` → gọi `signOut()` (không qua dialog) → `events.signOut` không có `pending_signout_reason` → emit `forced_signout/session_expired`.
+
+By design OK, nhưng forensic correlation phải dựa vào `token_invalidated_password_change` event (1 lần, từ jwt callback) + `password_changed_at` timestamp + chuỗi `session_expired` events trong window. Plan nên document hành vi này (1 dòng trong Decision notes) để reviewer/forensics biết model dữ liệu là đủ.
+
+### R3-6. Thiếu RED test cho contract `session.update → events.signOut`
+Đây là backbone của mechanism mới. Test phải khẳng định:
+- `session.update({ pending_signout_reason: 'X' })` → token sau callback có `pending_signout_reason: 'X'`.
+- `events.signOut` đọc đúng reason từ token và emit `signout|forced_signout` với reason map đúng.
+- Token không mang reason → emit `session_expired`.
+
+Step 3 (§66–68) chỉ test isolated, chưa cover propagation chain.
+
+### R3-7. `events.signOut` trên probe unauthenticated
+NextAuth fire `events.signOut` cả khi client gọi `/api/auth/signout` không có session hợp lệ. Tránh log flood:
+- Test: probe call → 1 event `forced_signout/session_expired` với `user_id=null` (acceptable nhưng phải predictable).
+- Hoặc skip emit khi token rỗng và không có session — quyết tùy quan điểm forensic.
+
+Plan chưa đề cập, dễ rơi vào edge case khi GREEN.
+
+### R3-8. Migration apply path: assumption hay constraint?
+§101 đặt ở Assumptions. Theo CLAUDE.md ("Supabase CLI vs MCP MANDATORY"), đây là **constraint** cho agent, không phải assumption. Đổi tone hoặc move lên một mục `## Constraints` riêng để agent thực thi không skip.
+
+## Mức độ ưu tiên
+- **Phải fix trước RED**: R3-1 (lỗi bug thật trong logic), R3-4 (nếu sai approach thì test §77–78 không pass).
+- **Nên lock cùng phase**: R3-2 (race), R3-6 (test backbone).
+- **Document, không cần code**: R3-3, R3-5, R3-7, R3-8.
+
+## Recommendation
+Chỉ R3-1 và R3-4 là blocker thiết kế. Sửa hai dòng quyết định (token preservation + request_id capture method) là plan có thể đi RED. Còn lại bổ sung notes trong Decision notes hoặc Assumptions là đủ.
