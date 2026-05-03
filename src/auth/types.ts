@@ -21,6 +21,7 @@ export interface AuthProfileRow {
   khoa_phong: string | null
   full_name: string | null
   dia_ban_id: number | null
+  ma_dia_ban: string | null
 }
 
 export interface AuthUserInput {

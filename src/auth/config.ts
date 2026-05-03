@@ -1,6 +1,7 @@
 import type { NextAuthOptions } from "next-auth"
 import Credentials from "next-auth/providers/credentials"
 import { createClient } from "@supabase/supabase-js"
+import jwt from "jsonwebtoken"
 import {
   applyAuthUserToJwt,
   applyJwtProfileRefresh,
@@ -9,6 +10,8 @@ import {
   type AuthProfileRow,
   type AuthRpcUserRow,
 } from "./types"
+
+const SUPABASE_JWT_CLOCK_SKEW_SECONDS = 60
 
 // Cooldown for the per-request profile refresh in the jwt callback.
 // Without this gate the callback issues 1-3 Supabase SELECTs on every
@@ -21,6 +24,56 @@ import {
 // enough to keep the password-change story acceptable while cutting DB
 // load to ~1 fetch / minute / active session.
 const PROFILE_REFRESH_INTERVAL_MS = 60_000
+
+class AuthRefreshConfigError extends Error {
+  constructor(message: string) {
+    super(message)
+    this.name = "AuthRefreshConfigError"
+  }
+}
+
+function requireRefreshEnv(name: "NEXT_PUBLIC_SUPABASE_URL" | "NEXT_PUBLIC_SUPABASE_ANON_KEY" | "SUPABASE_JWT_SECRET"): string {
+  const value = process.env[name]
+  if (!value) {
+    throw new AuthRefreshConfigError(`${name} is not configured`)
+  }
+
+  return value
+}
+
+function normalizeSessionProfileAppRole(role: unknown): string {
+  if (typeof role !== "string") {
+    return ""
+  }
+
+  const normalizedRole = role.trim().toLowerCase()
+  return normalizedRole === "admin" ? "global" : normalizedRole
+}
+
+function buildSessionProfileJwt(userId: string, appRole: string): string {
+  const secret = requireRefreshEnv("SUPABASE_JWT_SECRET")
+  const now = Math.floor(Date.now() / 1000)
+  return jwt.sign(
+    {
+      role: "authenticated",
+      iat: now - SUPABASE_JWT_CLOCK_SKEW_SECONDS,
+      exp: now + 120,
+      sub: userId,
+      user_id: userId,
+      app_role: appRole,
+    },
+    secret,
+    { algorithm: "HS256" }
+  )
+}
+
+function firstProfileRow(data: unknown): AuthProfileRow | null {
+  if (Array.isArray(data)) {
+    return (data[0] as AuthProfileRow | undefined) ?? null
+  }
+
+  return (data as AuthProfileRow | null) ?? null
+}
 
 export const authOptions: NextAuthOptions = {
   session: {
@@ -118,94 +171,51 @@ export const authOptions: NextAuthOptions = {
 
       // Refresh user-derived fields
       try {
-        const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-        const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-        if (supabaseUrl && serviceKey) {
-          const supabase = createClient(supabaseUrl, serviceKey)
-          const { data, error } = await supabase
-            .from("nhan_vien")
-            .select("password_changed_at, current_don_vi, don_vi, khoa_phong, full_name, dia_ban_id")
-            .eq("id", token.id)
-            .single()
+        const supabaseUrl = requireRefreshEnv("NEXT_PUBLIC_SUPABASE_URL")
+        const anonKey = requireRefreshEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY")
+        const appRole = normalizeSessionProfileAppRole(token.role)
+        if (!appRole) {
+          throw new AuthRefreshConfigError("JWT app_role is not configured")
+        }
 
-          if (!error && data) {
-            const profile = data as AuthProfileRow
-            // Password change invalidates session if changed after login
-            if (token.loginTime && profile.password_changed_at) {
-              const passwordChangedAt = new Date(profile.password_changed_at).getTime()
-              const tokenLoginTime = token.loginTime as number
-              if (passwordChangedAt > tokenLoginTime) {
-                console.warn("Password changed after login - invalidating token")
-                return {}
-              }
-            }
-            // Keep JWT in sync with user profile for tenant-aware UI
-            const resolvedDonVi = profile.current_don_vi || profile.don_vi || null
-            let resolvedDiaBan: number | null = profile.dia_ban_id ?? null
-            let resolvedDiaBanMa: string | null = token.dia_ban_ma ?? null
-            // Supabase v2 returns `{ data, error }` rather than throwing for
-            // failed table reads, so we must inspect `error` explicitly and
-            // only stamp lastRefreshAt when every required lookup succeeded.
-            // Otherwise a transient secondary failure would be frozen in
-            // for the entire cooldown window.
-            let secondaryLookupsOk = true
+        const userId = String(token.id)
+        const sessionProfileJwt = buildSessionProfileJwt(userId, appRole)
+        const supabase = createClient(supabaseUrl, anonKey, {
+          global: {
+            headers: {
+              Authorization: `Bearer ${sessionProfileJwt}`,
+            },
+          },
+        })
+        const { data, error } = await supabase
+          .rpc("get_session_profile_for_jwt", { p_user_id: userId })
 
-            if (!resolvedDiaBan && resolvedDonVi) {
-              try {
-                const { data: donViRows, error: donViError } = await supabase
-                  .from("don_vi")
-                  .select("dia_ban_id")
-                  .eq("id", resolvedDonVi)
-                  .limit(1)
-
-                if (donViError) {
-                  console.warn("[jwt] don_vi lookup returned error", {
-                    message: donViError.message,
-                    don_vi: resolvedDonVi,
-                  })
-                  secondaryLookupsOk = false
-                } else if (donViRows && donViRows.length > 0) {
-                  resolvedDiaBan = donViRows[0]?.dia_ban_id ?? null
-                }
-              } catch (donViLookupError) {
-                console.error("[jwt] don_vi lookup threw", donViLookupError)
-                secondaryLookupsOk = false
-              }
-            }
-
-            if (resolvedDiaBan && !resolvedDiaBanMa) {
-              try {
-                const { data: diaBanRows, error: diaBanError } = await supabase
-                  .from("dia_ban")
-                  .select("ma_dia_ban")
-                  .eq("id", resolvedDiaBan)
-                  .limit(1)
-
-                if (diaBanError) {
-                  console.warn("[jwt] dia_ban lookup returned error", {
-                    message: diaBanError.message,
-                    dia_ban_id: resolvedDiaBan,
-                  })
-                  secondaryLookupsOk = false
-                } else if (diaBanRows && diaBanRows.length > 0) {
-                  resolvedDiaBanMa = diaBanRows[0]?.ma_dia_ban ?? null
-                }
-              } catch (diaBanLookupError) {
-                console.error("[jwt] dia_ban lookup threw", diaBanLookupError)
-                secondaryLookupsOk = false
-              }
-            }
-
-            token = applyJwtProfileRefresh(token, profile, resolvedDonVi, resolvedDiaBan, resolvedDiaBanMa)
-            // Stamp lastRefreshAt only when every required lookup succeeded
-            // so transient failures do not extend the cooldown beyond what
-            // they should. A failing primary fetch never reaches this line.
-            if (secondaryLookupsOk) {
-              token.lastRefreshAt = now
+        if (!error && data) {
+          const profile = firstProfileRow(data)
+          if (!profile) {
+            return token
+          }
+          // Password change invalidates session if changed after login
+          if (token.loginTime && profile.password_changed_at) {
+            const passwordChangedAt = new Date(profile.password_changed_at).getTime()
+            const tokenLoginTime = token.loginTime as number
+            if (passwordChangedAt > tokenLoginTime) {
+              console.warn("Password changed after login - invalidating token")
+              return {}
             }
           }
+          // Keep JWT in sync with user profile for tenant-aware UI
+          const resolvedDonVi = profile.current_don_vi || profile.don_vi || null
+          const resolvedDiaBan: number | null = profile.dia_ban_id ?? null
+          const resolvedDiaBanMa = profile.ma_dia_ban ?? token.dia_ban_ma ?? null
+
+          token = applyJwtProfileRefresh(token, profile, resolvedDonVi, resolvedDiaBan, resolvedDiaBanMa)
+          token.lastRefreshAt = now
         }
       } catch (e) {
+        if (e instanceof AuthRefreshConfigError) {
+          throw e
+        }
         // Log but don't break auth flow for database errors
         console.error("Password change check failed:", e)
       }
