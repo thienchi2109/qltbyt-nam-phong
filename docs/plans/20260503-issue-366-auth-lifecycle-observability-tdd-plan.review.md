@@ -101,3 +101,64 @@ Plan map được 7, còn hai dòng cần ghi chú rõ:
 
 ## Summary
 Plan chắc về khung TDD và tách bảng, nhưng cần bổ sung: emission channel matrix, siết grant chỉ `service_role`, dedup reason signout, index + retention, refactor sanitizer thành `src/lib/log-sanitizer.ts`, và dời `login_success/signout` sang NextAuth `events.*` để bỏ client wiring. Nếu giải quyết 5 gap ở mục 1–5 trước khi viết test, RED step sẽ ổn định và không phải sửa ngược schema ở GREEN.
+
+---
+
+# Round 2 — Re-review sau commit `eb963ab`
+
+- Plan version reviewed: commit `eb963ab docs(plan): refine issue 366 auth observability tdd plan`
+- Date: 2026-05-03
+
+## Đã giải quyết từ Round 1
+- **Emission channel matrix** (plan §21–32) + idempotency key note.
+- **Grant `service_role` only**, revoke PUBLIC, không grant `authenticated` (§45).
+- **Dedup password-change** test "no ghost `session_expired`" (§66).
+- **BRIN + btree indexes** (§46–48); retention có path follow-up.
+- **Sanitizer extraction step 0** sang `src/lib/log-sanitizer.ts` (§35).
+- **`events.signIn` cho `login_success`**, `LoginForm.tsx` UX-only (§25, §32).
+- **Config error → `login_failure + config_error`** (§59); `dia_ban` stale noted (§77).
+- **`ip_address inet`, `user_agent text`** (§38); CHECK enum cho `source` + `reason_code` (§40–41).
+- **DB sink down không vỡ auth** (§62); correlation fallback (§67–69).
+- **`unknown` + narrow, no any** (§79).
+
+## Gap mới / còn sót
+
+### R2-1. `session_expired` không có identity để gọi signout-intent endpoint (quan trọng)
+Plan nói "client intent + server-side write endpoint **before** `signOut()`" (§27). Vấn đề: `session_expired` phát hiện passive trong `AppLayoutShell.useEffect` khi `status === "unauthenticated"` — lúc đó cookie session có thể đã chết → client không còn auth để gọi endpoint. Hai đường:
+
+- **A. Endpoint chấp nhận unauthenticated cho `session_expired`** → spoof vector (ai cũng POST log flood được).
+- **B. Dùng NextAuth `events.signOut`** — fire server-side với `token` còn truy cập được ngay trước khi bị xoá; client chỉ cần `signOut({ callbackUrl: "/?reason=..." })` để truyền reason.
+
+**Khuyến nghị B**: gộp `events.signIn` + `events.signOut` thành cặp đối xứng, bỏ custom endpoint. Idempotency tự nhiên nhờ NextAuth debounce. Nếu giữ A, cần rate-limit + không cho phép user-controlled `user_id` trong payload unauthenticated.
+
+### R2-2. `source` enum bất đối xứng
+§40: `authorize | jwt_callback | events_signin | signout_intent`. Nếu chọn ngả B ở R2-1 thì thêm `events_signout`. Nếu giữ A, bỏ `events_signin` cho đối xứng, hoặc document vì sao bất đối xứng.
+
+### R2-3. Idempotency key chưa có cơ chế cụ thể
+§31 nhắc idempotency cho signout-intent nhưng không nói sinh ở đâu, lưu ở đâu, scope thế nào:
+- Client-generated `crypto.randomUUID()` per click? Server dedup bằng gì (unique constraint / TTL cache)?
+- Nếu chọn B ở R2-1, mục này biến mất.
+
+Chốt một câu trong plan.
+
+### R2-4. Retention "follow-up issue before implementation completes" còn mơ hồ
+§50: lock hơn → "quyết định tại GREEN; nếu defer, mở issue + link trong PR description **trước khi merge**." Nếu không, dễ trôi thành tech debt câm.
+
+### R2-5. Thiếu RED test cho `login_success` emission
+Step 2 (§56–59) chỉ cover failure cases. Thêm bullet: `events.signIn` handler emit `login_success` với `user_id`, `username` lowercased, không chứa password/token.
+
+### R2-6. UX của forced signout sau đổi mật khẩu
+§73: "immediate signout." User cần thấy toast "Đã đổi mật khẩu thành công" trước khi bị kick. Thêm AC: delay ~1.5–2s sau toast rồi `signOut()`, hoặc toast nằm trên trang `/?reason=forced_password_change` sau redirect.
+
+### R2-7. Migration apply channel chưa nhắc
+Repo rule (CLAUDE.md "Supabase CLI vs MCP"): agent phải dùng Supabase MCP `apply_migration`, không CLI. Thêm một dòng trong §88 assumptions để người thực thi không quên.
+
+### R2-8. `metadata jsonb` không có key taxonomy
+Free-form dễ drift. Soft-contract bằng cách liệt kê các key dự kiến: `attempt_count`, `failed_rpc_code`, `session_duration_ms`, `previous_don_vi`, `user_agent_family`. Không CHECK, chỉ document → tránh dump PII mới sau này.
+
+## Rủi ro residual
+- Ngả A (signout-intent endpoint): R2-1 + R2-3 là rủi ro thiết kế thật sự, phải decide trước RED.
+- Ngả B (events.signOut): R2-2 + R2-3 biến mất; chỉ còn R2-1 ghi chú nhỏ + R2-4..R2-8 là polish.
+
+## Recommendation
+Chốt ngả A hay B → cập nhật §27 + §40. Các mục R2-4..R2-8 có thể gộp chung commit refine kế tiếp.
