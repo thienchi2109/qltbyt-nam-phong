@@ -99,9 +99,12 @@ function getRefreshClientCall() {
 }
 
 describe("authOptions.jwt session profile RPC refresh", () => {
+  let consoleInfoSpy: ReturnType<typeof vi.spyOn>
+
   beforeEach(() => {
     vi.useFakeTimers()
     vi.setSystemTime(new Date("2026-05-02T12:00:00Z"))
+    consoleInfoSpy = vi.spyOn(console, "info").mockImplementation(() => undefined)
     vi.stubEnv("NEXT_PUBLIC_SUPABASE_URL", "https://example.supabase.co")
     vi.stubEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY", "test-anon-key")
     vi.stubEnv("SUPABASE_SERVICE_ROLE_KEY", "test-service-role-key")
@@ -119,6 +122,7 @@ describe("authOptions.jwt session profile RPC refresh", () => {
   afterEach(() => {
     vi.useRealTimers()
     vi.unstubAllEnvs()
+    consoleInfoSpy.mockRestore()
   })
 
   it("refreshes profile with one RPC and no table SELECT chain", async () => {

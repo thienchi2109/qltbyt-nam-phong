@@ -45,6 +45,18 @@ const supabaseClient = vi.hoisted(() => ({
   })),
 }))
 
+type AuthJwtTelemetryLog = {
+  scope: string
+  event: string
+  userId?: string
+  trigger?: string
+  refreshReason?: string
+  invalidatedReason?: string
+  username?: string
+  full_name?: string
+  password?: string
+}
+
 vi.mock("@supabase/supabase-js", () => ({
   createClient: vi.fn(() => supabaseClient),
 }))
@@ -78,10 +90,22 @@ async function runJwt(args: Partial<JwtArgs> & Pick<JwtArgs, "token">) {
   } as JwtArgs)
 }
 
+function authJwtTelemetryLogs(infoSpy: ReturnType<typeof vi.spyOn>): AuthJwtTelemetryLog[] {
+  return infoSpy.mock.calls
+    .map(([message]) => (typeof message === "string" ? message : ""))
+    .filter((message) => message.includes("\"scope\":\"auth.jwt\""))
+    .map((message) => JSON.parse(message) as AuthJwtTelemetryLog)
+}
+
 describe("authOptions.jwt cooldown + trigger gate", () => {
+  let consoleInfoSpy: ReturnType<typeof vi.spyOn>
+  let consoleWarnSpy: ReturnType<typeof vi.spyOn>
+
   beforeEach(() => {
     vi.useFakeTimers()
     vi.setSystemTime(new Date("2026-05-02T12:00:00Z"))
+    consoleInfoSpy = vi.spyOn(console, "info").mockImplementation(() => undefined)
+    consoleWarnSpy = vi.spyOn(console, "warn").mockImplementation(() => undefined)
     vi.stubEnv("NEXT_PUBLIC_SUPABASE_URL", "https://example.supabase.co")
     vi.stubEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY", "test-anon-key")
     vi.stubEnv("SUPABASE_SERVICE_ROLE_KEY", "test-service-role-key")
@@ -96,6 +120,8 @@ describe("authOptions.jwt cooldown + trigger gate", () => {
   afterEach(() => {
     vi.useRealTimers()
     vi.unstubAllEnvs()
+    consoleInfoSpy.mockRestore()
+    consoleWarnSpy.mockRestore()
   })
 
   it("fetches profile on sign-in and stamps lastRefreshAt + loginTime", async () => {
@@ -219,5 +245,84 @@ describe("authOptions.jwt cooldown + trigger gate", () => {
       id: "42",
       lastRefreshAt: now - 5 * 60_000, // still the old value
     })
+  })
+
+  it("keeps steady-session profile refreshes at or below 0.05 RPC calls per jwt callback", async () => {
+    const callbackCount = 40
+    let token: JwtArgs["token"] = {
+      ...baseToken,
+      loginTime: Date.now() - 10 * 60_000,
+      lastRefreshAt: Date.now(),
+    }
+
+    for (let index = 0; index < callbackCount; index += 1) {
+      token = await runJwt({ token }) as JwtArgs["token"]
+      vi.advanceTimersByTime(2_000)
+    }
+
+    const logs = authJwtTelemetryLogs(consoleInfoSpy)
+    const jwtCallbackCount = logs.filter((log) => log.event === "jwt_callback_invoked").length
+    const refreshAttemptCount = logs.filter((log) => log.event === "jwt_refresh_attempted").length
+
+    expect(jwtCallbackCount).toBe(callbackCount)
+    expect(refreshAttemptCount).toBe(1)
+    expect(refreshAttemptCount / jwtCallbackCount).toBeLessThanOrEqual(0.05)
+    expect(supabaseClient.rpc).toHaveBeenCalledTimes(refreshAttemptCount)
+  })
+
+  it("emits prod-safe telemetry for cooldown skip, forced refresh, and password-change invalidation", async () => {
+    const now = Date.now()
+    await runJwt({
+      token: {
+        ...baseToken,
+        loginTime: now - 10_000,
+        lastRefreshAt: now - 10_000,
+      },
+    })
+
+    await runJwt({
+      token: {
+        ...baseToken,
+        loginTime: now - 10_000,
+        lastRefreshAt: now - 10_000,
+      },
+      trigger: "update",
+    })
+
+    supabaseState.rpcRows = [{
+      ...profileRowDefault,
+      password_changed_at: new Date(now - 5_000).toISOString(),
+    }]
+    await runJwt({
+      token: {
+        ...baseToken,
+        loginTime: now - 10_000,
+        lastRefreshAt: now - 5 * 60_000,
+      },
+    })
+
+    const logs = authJwtTelemetryLogs(consoleInfoSpy)
+    expect(logs).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          event: "jwt_refresh_skipped_cooldown",
+          userId: "42",
+          refreshReason: "cooldown",
+        }),
+        expect.objectContaining({
+          event: "jwt_refresh_forced_update_trigger",
+          userId: "42",
+          trigger: "update",
+          refreshReason: "update_trigger",
+        }),
+        expect.objectContaining({
+          event: "jwt_token_invalidated_password_change",
+          userId: "42",
+          invalidatedReason: "password_changed_after_login",
+        }),
+      ])
+    )
+    expect(JSON.stringify(logs)).not.toContain("nqminh")
+    expect(JSON.stringify(logs)).not.toContain("Nguyen Quang Minh")
   })
 })

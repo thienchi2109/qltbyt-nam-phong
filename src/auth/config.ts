@@ -2,6 +2,7 @@ import type { NextAuthOptions } from "next-auth"
 import Credentials from "next-auth/providers/credentials"
 import { createClient } from "@supabase/supabase-js"
 import jwt from "jsonwebtoken"
+import { emitAuthJwtTelemetry } from "@/auth/telemetry"
 import {
   applyAuthUserToJwt,
   applyJwtProfileRefresh,
@@ -156,17 +157,49 @@ export const authOptions: NextAuthOptions = {
         return token
       }
 
+      const userId = String(token.id)
       // Cooldown: skip the per-request profile fetch if we refreshed recently.
       // Force a refresh when NextAuth indicates an explicit update (e.g.
       // tenant switch via session.update()).
       const lastRefreshAt = typeof token.lastRefreshAt === "number" ? token.lastRefreshAt : null
       const isExplicitUpdate = trigger === "update" || Boolean(user)
+      const refreshReason = user
+        ? "sign_in"
+        : trigger === "update"
+          ? "update_trigger"
+          : "interval_elapsed"
+
+      emitAuthJwtTelemetry("jwt_callback_invoked", {
+        userId,
+        trigger,
+        hasLastRefreshAt: lastRefreshAt !== null,
+        refreshDue: isExplicitUpdate || lastRefreshAt === null || now - lastRefreshAt >= PROFILE_REFRESH_INTERVAL_MS,
+        refreshReason,
+      })
+
       if (
         !isExplicitUpdate &&
         lastRefreshAt !== null &&
         now - lastRefreshAt < PROFILE_REFRESH_INTERVAL_MS
       ) {
+        emitAuthJwtTelemetry("jwt_refresh_skipped_cooldown", {
+          userId,
+          trigger,
+          hasLastRefreshAt: true,
+          refreshDue: false,
+          refreshReason: "cooldown",
+        })
         return token
+      }
+
+      if (trigger === "update") {
+        emitAuthJwtTelemetry("jwt_refresh_forced_update_trigger", {
+          userId,
+          trigger,
+          hasLastRefreshAt: lastRefreshAt !== null,
+          refreshDue: true,
+          refreshReason: "update_trigger",
+        })
       }
 
       // Refresh user-derived fields
@@ -178,7 +211,6 @@ export const authOptions: NextAuthOptions = {
           throw new AuthRefreshConfigError("JWT app_role is not configured")
         }
 
-        const userId = String(token.id)
         const sessionProfileJwt = buildSessionProfileJwt(userId, appRole)
         const supabase = createClient(supabaseUrl, anonKey, {
           global: {
@@ -187,12 +219,36 @@ export const authOptions: NextAuthOptions = {
             },
           },
         })
+        emitAuthJwtTelemetry("jwt_refresh_attempted", {
+          userId,
+          trigger,
+          hasLastRefreshAt: lastRefreshAt !== null,
+          refreshDue: true,
+          refreshReason,
+        })
         const { data, error } = await supabase
           .rpc("get_session_profile_for_jwt", { p_user_id: userId })
+
+        if (error) {
+          emitAuthJwtTelemetry("jwt_refresh_failed", {
+            userId,
+            trigger,
+            hasLastRefreshAt: lastRefreshAt !== null,
+            refreshDue: true,
+            refreshReason,
+          })
+        }
 
         if (!error && data) {
           const profile = firstProfileRow(data)
           if (!profile) {
+            emitAuthJwtTelemetry("jwt_refresh_failed", {
+              userId,
+              trigger,
+              hasLastRefreshAt: lastRefreshAt !== null,
+              refreshDue: true,
+              refreshReason,
+            })
             return token
           }
           // Password change invalidates session if changed after login
@@ -200,6 +256,14 @@ export const authOptions: NextAuthOptions = {
             const passwordChangedAt = new Date(profile.password_changed_at).getTime()
             const tokenLoginTime = token.loginTime as number
             if (passwordChangedAt > tokenLoginTime) {
+              emitAuthJwtTelemetry("jwt_token_invalidated_password_change", {
+                userId,
+                trigger,
+                hasLastRefreshAt: lastRefreshAt !== null,
+                refreshDue: true,
+                refreshReason,
+                invalidatedReason: "password_changed_after_login",
+              })
               console.warn("Password changed after login - invalidating token")
               return {}
             }
@@ -211,8 +275,22 @@ export const authOptions: NextAuthOptions = {
 
           token = applyJwtProfileRefresh(token, profile, resolvedDonVi, resolvedDiaBan, resolvedDiaBanMa)
           token.lastRefreshAt = now
+          emitAuthJwtTelemetry("jwt_refresh_succeeded", {
+            userId,
+            trigger,
+            hasLastRefreshAt: lastRefreshAt !== null,
+            refreshDue: true,
+            refreshReason,
+          })
         }
       } catch (e) {
+        emitAuthJwtTelemetry("jwt_refresh_failed", {
+          userId,
+          trigger,
+          hasLastRefreshAt: lastRefreshAt !== null,
+          refreshDue: true,
+          refreshReason,
+        })
         if (e instanceof AuthRefreshConfigError) {
           throw e
         }
