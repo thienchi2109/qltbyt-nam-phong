@@ -2,6 +2,7 @@ import type { NextAuthOptions } from "next-auth"
 import Credentials from "next-auth/providers/credentials"
 import { createClient } from "@supabase/supabase-js"
 import jwt from "jsonwebtoken"
+import { emitAuthJwtTelemetry } from "@/auth/telemetry"
 import {
   applyAuthUserToJwt,
   applyJwtProfileRefresh,
@@ -10,7 +11,6 @@ import {
   type AuthProfileRow,
   type AuthRpcUserRow,
 } from "./types"
-import { emitAuthJwtTelemetry } from "./telemetry"
 
 const SUPABASE_JWT_CLOCK_SKEW_SECONDS = 60
 

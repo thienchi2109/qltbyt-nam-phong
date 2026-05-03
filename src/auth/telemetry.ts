@@ -16,7 +16,7 @@ export type AuthJwtTelemetryContext = {
   invalidatedReason?: "password_changed_after_login"
 }
 
-export function emitAuthJwtTelemetry(event: AuthJwtTelemetryEvent, context: AuthJwtTelemetryContext = {}) {
+export function emitAuthJwtTelemetry(event: AuthJwtTelemetryEvent, context: AuthJwtTelemetryContext = {}): void {
   try {
     console.info(JSON.stringify({
       scope: "auth.jwt",
