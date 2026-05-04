@@ -168,6 +168,22 @@ BEGIN
         AND ngay_mong_muon_hoan_thanh IS NOT NULL
         AND ngay_mong_muon_hoan_thanh <= v_today + 7
     ),
+    aggregated AS (
+      SELECT
+        count(*) FILTER (WHERE trang_thai = 'Chờ xử lý') AS cnt_cho_xu_ly,
+        count(*) FILTER (WHERE trang_thai = 'Đã duyệt') AS cnt_da_duyet,
+        count(*) FILTER (WHERE trang_thai = 'Hoàn thành') AS cnt_hoan_thanh,
+        count(*) FILTER (WHERE trang_thai = 'Không HT') AS cnt_khong_ht
+      FROM filtered
+    ),
+    due_aggregated AS (
+      SELECT
+        count(*) AS total_count,
+        count(*) FILTER (WHERE days_difference < 0) AS overdue_count,
+        count(*) FILTER (WHERE days_difference = 0) AS due_today_count,
+        count(*) FILTER (WHERE days_difference BETWEEN 1 AND 7) AS due_soon_count
+      FROM due_items
+    ),
     ranked_items AS (
       SELECT *
       FROM due_items
@@ -176,16 +192,16 @@ BEGIN
     )
     SELECT jsonb_build_object(
       'counts', jsonb_build_object(
-        'Chờ xử lý', COALESCE((SELECT count(*) FROM filtered WHERE trang_thai = 'Chờ xử lý'), 0),
-        'Đã duyệt', COALESCE((SELECT count(*) FROM filtered WHERE trang_thai = 'Đã duyệt'), 0),
-        'Hoàn thành', COALESCE((SELECT count(*) FROM filtered WHERE trang_thai = 'Hoàn thành'), 0),
-        'Không HT', COALESCE((SELECT count(*) FROM filtered WHERE trang_thai = 'Không HT'), 0)
+        'Chờ xử lý', COALESCE(aggregated.cnt_cho_xu_ly, 0),
+        'Đã duyệt', COALESCE(aggregated.cnt_da_duyet, 0),
+        'Hoàn thành', COALESCE(aggregated.cnt_hoan_thanh, 0),
+        'Không HT', COALESCE(aggregated.cnt_khong_ht, 0)
       ),
       'overdue_summary', jsonb_build_object(
-        'total', COALESCE((SELECT count(*) FROM due_items), 0),
-        'overdue', COALESCE((SELECT count(*) FROM due_items WHERE days_difference < 0), 0),
-        'due_today', COALESCE((SELECT count(*) FROM due_items WHERE days_difference = 0), 0),
-        'due_soon', COALESCE((SELECT count(*) FROM due_items WHERE days_difference BETWEEN 1 AND 7), 0),
+        'total', COALESCE(due_aggregated.total_count, 0),
+        'overdue', COALESCE(due_aggregated.overdue_count, 0),
+        'due_today', COALESCE(due_aggregated.due_today_count, 0),
+        'due_soon', COALESCE(due_aggregated.due_soon_count, 0),
         'items', COALESCE((
           SELECT jsonb_agg(
             jsonb_build_object(
@@ -223,6 +239,7 @@ BEGIN
         ), '[]'::jsonb)
       )
     )
+    FROM aggregated, due_aggregated
   );
 END;
 $function$;

@@ -139,7 +139,7 @@ Update 2026-05-04: after implementation review, the chosen path is to keep `repa
      - shared-family invalidation in `src/hooks/use-cached-repair.ts`
    - If `repairKeys.all` does not cover the new key shape, the implementation must add explicit invalidation.
 
-4. **RED — SQL spec / smoke checklist** `supabase/tests/repair_request_status_counts_overdue_summary_smoke.spec.sql`
+4. **RED — SQL smoke test** `supabase/tests/repair_request_status_counts_overdue_summary_smoke.sql`
    - Roles: global, regional_leader, to_qltb (same dia_ban), user (department scope), cross-tenant isolation.
    - Date boundaries: today, today−1, today+7, today+8, NULL `ngay_mong_muon_hoan_thanh`.
    - Status filter: only `Chờ xử lý` + `Đã duyệt` qualify; `Hoàn thành` / `Không HT` excluded.
@@ -201,7 +201,7 @@ For the TypeScript / React diff after the focused tests are green:
 
 For the SQL migration when explicitly authorized to apply it:
 
-- Run an executable version of `supabase/tests/repair_request_status_counts_overdue_summary_smoke.spec.sql` via MCP `execute_sql` once the migration is explicitly approved for apply.
+- Run `supabase/tests/repair_request_status_counts_overdue_summary_smoke.sql` via MCP `execute_sql` once the migration is explicitly approved for apply.
 - Post-migration: `get_advisors(security)` and `get_advisors(performance)`.
 
 ### Risks & Considerations
