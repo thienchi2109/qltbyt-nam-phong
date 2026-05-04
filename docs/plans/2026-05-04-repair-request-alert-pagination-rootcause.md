@@ -79,7 +79,7 @@ ORDER BY r.ngay_mong_muon_hoan_thanh ASC
 LIMIT 50
 ```
 
-**Security/scoping**: must mirror `repair_request_list` exactly (`SECURITY DEFINER`, role check via `_get_jwt_claim('app_role')`, `allowed_don_vi_for_session()`, `_normalize_department_scope` for `role='user'`, sanitize ILIKE for `p_q`). See `supabase/migrations/20260428132000_fix_repair_request_read_scope.sql:91-165` as the canonical pattern.
+**Security/scoping**: must mirror `repair_request_list` exactly (`SECURITY DEFINER`, role check via `_get_jwt_claim('app_role')`, `allowed_don_vi_for_session()`, `_normalize_department_scope` for `role='user'`, sanitize ILIKE for `p_q`). See `supabase/migrations/20260428132000_fix_repair_request_read_scope.sql:91-165` as the canonical pattern. Do **not** mirror `repair_request_status_counts` for access control: use it only as a reference for the `count(*) FILTER (...)` aggregation shape.
 
 **Frontend changes**:
 
@@ -115,50 +115,91 @@ Hit `repair_request_list` with `p_page_size = 1000` just for the alert.
 
 ## 5. Recommended Path: Option A
 
-### Implementation Outline
+### Implementation Outline (TDD order)
 
-1. **Migration** `supabase/migrations/<date>_add_repair_request_overdue_summary.sql`
-   - `CREATE FUNCTION public.repair_request_overdue_summary(p_q text, p_don_vi bigint, p_date_from date, p_date_to date) RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, pg_temp`.
-   - Mirror guard structure of `repair_request_list` (role check, allowed_don_vi, department scope, ILIKE sanitize, VN timezone for date range filter).
-   - Compute counts via `WITH base AS (...)` + `count(*) FILTER (WHERE ...)` pattern (cf. `repair_request_status_counts`).
-   - Return the JSON shape from §4 Option A.
-   - `GRANT EXECUTE ... TO authenticated; REVOKE FROM PUBLIC;`
-   - Apply via Supabase MCP `apply_migration` (per AGENTS.md the Supabase CLI is forbidden for agents).
+1. **RED — frontend hook tests** `src/app/(app)/repair-requests/__tests__/useRepairRequestsData.test.ts`
+   - Add expectations for a third query `repair_request_overdue_summary`.
+   - Verify its query key includes tenant / role / diaBan / facility / search / date filters but deliberately excludes `page` / `pageSize`.
+   - Verify `enabled = hasUser && shouldFetchData`.
+   - Verify the hook return shape grows to include `overdueSummary` and `overdueLoading`.
 
-2. **Smoke test** `supabase/tests/repair_request_overdue_summary_smoke.sql`
+2. **RED — page / alert regression tests**
+   - Extend `src/app/(app)/repair-requests/__tests__/RepairRequestsKpi.test.tsx` or add a focused alert test file.
+   - Prove the invariant that changing pagination does **not** change the banner summary.
+   - Prove search / facility / date filter changes **do** flow into the summary query key.
+   - Cover the `shouldFetchData = false` case so no summary query fires before a global user selects a facility.
+
+3. **RED — invalidation tests**
+   - Update repair-request mutation tests so create / edit / approve / complete / delete all invalidate the new summary query.
+   - Cover both invalidation paths in the repo:
+     - explicit invalidation in `src/app/(app)/repair-requests/_components/RepairRequestsContext.tsx`
+     - shared-family invalidation in `src/hooks/use-cached-repair.ts`
+   - If `repairKeys.all` does not cover the new key shape, the implementation must add explicit invalidation.
+
+4. **RED — SQL smoke test** `supabase/tests/repair_request_overdue_summary_smoke.sql`
    - Roles: global, regional_leader, to_qltb (same dia_ban), user (department scope), cross-tenant isolation.
    - Date boundaries: today, today−1, today+7, today+8, NULL `ngay_mong_muon_hoan_thanh`.
    - Status filter: only `Chờ xử lý` + `Đã duyệt` qualify; `Hoàn thành` / `Không HT` excluded.
    - Combined with `p_q`, `p_don_vi`, `p_date_from/to`.
 
-3. **Frontend hook** `src/app/(app)/repair-requests/_hooks/useRepairRequestsData.ts`
+5. **GREEN — migration** `supabase/migrations/<date>_add_repair_request_overdue_summary.sql`
+   - `CREATE FUNCTION public.repair_request_overdue_summary(p_q text, p_don_vi bigint, p_date_from date, p_date_to date) RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, pg_temp`.
+   - Mirror the live guard structure of `repair_request_list`, including:
+     - non-empty `role` guard
+     - non-empty `user_id` guard
+     - `admin` treated the same as `global`
+     - `allowed_don_vi_for_session()` enforcement for non-global roles
+     - `_normalize_department_scope(...)` enforcement for `role = 'user'`
+     - `_sanitize_ilike_pattern(p_q)` instead of raw ILIKE concatenation
+   - Use `repair_request_status_counts` only as a reference for `WITH base AS (...)` + `count(*) FILTER (...)`.
+   - Return the JSON shape from §4 Option A.
+   - `GRANT EXECUTE ... TO authenticated; REVOKE FROM PUBLIC;`
+   - Do **not** apply the migration until explicitly requested.
+
+6. **GREEN — proxy allow-list**
+   - Add `repair_request_overdue_summary` to `src/app/api/rpc/[fn]/allowed-functions.ts`.
+
+7. **GREEN — frontend hook** `src/app/(app)/repair-requests/_hooks/useRepairRequestsData.ts`
    - Add typed `OverdueSummary` interface in `src/app/(app)/repair-requests/types.ts`.
    - Add `useQuery` for `repair_request_overdue_summary`, `staleTime: 30_000`, `enabled: hasUser && shouldFetchData`.
    - Extend hook return to `{ ..., overdueSummary, overdueLoading }`.
 
-4. **Component** `src/components/repair-request-alert.tsx`
+8. **GREEN — component** `src/components/repair-request-alert.tsx`
    - Replace `requests` prop with `summary` + `isLoading`.
    - Remove client-side `useMemo` filter; render `summary.total` in title and `summary.items` in accordion content.
    - Loading and empty states (`summary?.total === 0` → return null; loading → return null or a small skeleton).
 
-5. **Wiring**
+9. **GREEN — wiring**
    - `RepairRequestsPageLayout`: drop `requests` prop, accept `overdueSummary` + `overdueLoading`.
    - `RepairRequestsPageClient`: pass `overdueSummary` from the hook.
 
-6. **Mutation invalidations**
-   - In repair-request create/edit/approve/complete/delete dialogs, add `queryClient.invalidateQueries({ queryKey: ['repair_request_overdue_summary'] })` next to the existing `repair_request_list` and `repair_request_status_counts` invalidations.
+10. **GREEN — mutation invalidations**
+   - In repair-request create / edit / approve / complete / delete flows, ensure `repair_request_overdue_summary` is invalidated alongside the existing repair queries.
+   - Keep the invalidation strategy consistent with the final query key choice: if the new summary key sits outside `repairKeys.all`, invalidate it explicitly.
+
+11. **REFACTOR**
+   - Keep type extraction and prop cleanup small and local after the RED tests have gone green.
 
 ### Verification (per AGENTS.md)
 
-For the TypeScript / React diff:
+For TDD execution:
+
+1. Run the new / updated focused tests first and confirm they fail for the intended reason.
+2. Implement the smallest slice required to make them pass.
+3. Re-run the same focused tests before moving to wider verification.
+
+For the TypeScript / React diff after the focused tests are green:
 
 1. `node scripts/npm-run.js run verify:no-explicit-any`
 2. `node scripts/npm-run.js run typecheck`
-3. Focused vitest on `RepairRequestAlert` (new test: banner shows correct count when `summary.total > items.length`, when only single-page data is available, etc.)
+3. Focused vitest on:
+   - `useRepairRequestsData`
+   - repair-request alert / page regression coverage
+   - repair-request mutation invalidation coverage
 4. `node scripts/npm-run.js npx react-doctor@latest . --verbose -y --project nextn --offline --diff main`
 5. Manual UI: paginate page 1 / 2 / 3 → banner count must NOT change; change search/date/facility filter → banner updates accordingly.
 
-For the SQL migration:
+For the SQL migration when explicitly authorized to apply it:
 
 - Run `supabase/tests/repair_request_overdue_summary_smoke.sql` via MCP `execute_sql`.
 - Post-migration: `get_advisors(security)` and `get_advisors(performance)`.
@@ -166,9 +207,10 @@ For the SQL migration:
 ### Risks & Considerations
 
 - **RBAC parity** — biggest risk. The new RPC must reproduce every guard `repair_request_list` has (issue #342 was a regression here once already). Smoke tests must cover it.
+- **Proxy allow-list** — easy to miss. Without adding the RPC name to `allowed-functions.ts`, frontend code will fail even if the SQL is correct.
 - **Timezone alignment** — server uses `Asia/Ho_Chi_Minh`; current frontend uses `startOfDay(new Date())` in browser local TZ. Recommend computing `days_difference` server-side and rendering `summary.items[*].days_difference` instead of recomputing on the client.
-- **Cache invalidation** — must be added to every repair-request mutation site, or the banner becomes stale after status changes.
-- **Performance** — verify there is an index supporting `(ngay_mong_muon_hoan_thanh, trang_thai)`; if not, add a partial index on `trang_thai IN ('Chờ xử lý','Đã duyệt')` in the same migration.
+- **Cache invalidation** — must be added to every repair-request mutation site and matched to the actual query-key family, or the banner becomes stale after status changes.
+- **Performance** — current live indexes do not yet prove that a due-date-specific index is required. Verify behavior first; only add a partial index on `ngay_mong_muon_hoan_thanh` for `trang_thai IN ('Chờ xử lý','Đã duyệt')` if explain/advisors show the need.
 - **Filter semantics** — recommend the alert respect the full UI filter bar (search/date/facility) so users see exactly the alert that matches the list they're filtering. Diverging from this would be surprising.
 
 ## 6. Acceptance Criteria
@@ -177,6 +219,7 @@ For the SQL migration:
 - Pagination controls have no effect on the badge count or the accordion items.
 - Filter bar (search, facility, date range) updates the banner consistently with the table.
 - All RBAC roles (global, regional_leader, to_qltb, user with department scope) see exactly the rows they are allowed to see.
+- `repair_request_overdue_summary` is reachable through the RPC proxy allow-list.
 - No regression to existing tests; new smoke tests pass.
 - `verify:no-explicit-any`, `typecheck`, focused vitest, and `react-doctor --diff main` all green.
 
