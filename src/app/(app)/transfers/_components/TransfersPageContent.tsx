@@ -99,11 +99,13 @@ export function TransfersPageContent({ user }: TransfersPageContentProps) {
           onTabChange={controller.setActiveTab}
           transferCounts={controller.transferCounts}
           totalCount={controller.totalCount}
-          showFacilityFilter={controller.showFacilityFilter}
+          permissions={{
+            showFacilityFilter: controller.showFacilityFilter,
+            isRegionalLeader: controller.isRegionalLeader,
+          }}
           activeFilterCount={controller.filtersState.activeFilterCount}
           onOpenFilterModal={() => controller.filtersState.setIsFilterModalOpen(true)}
           onOpenAddDialog={() => controller.setIsAddDialogOpen(true)}
-          isRegionalLeader={controller.isRegionalLeader}
           filterChipsValue={controller.filterChipsValue}
           onRemoveFilter={controller.filtersState.handleRemoveFilter}
           onClearAllFilters={controller.filtersState.handleClearAllFilters}
@@ -111,9 +113,11 @@ export function TransfersPageContent({ user }: TransfersPageContentProps) {
           onSearchTermChange={controller.filtersState.setSearchTerm}
           onClearSearch={controller.filtersState.clearSearch}
           viewMode={controller.viewMode}
-          shouldFetchData={controller.shouldFetchData}
-          isListLoading={controller.isListLoading}
-          isListFetching={controller.isListFetching}
+          dataState={{
+            shouldFetch: controller.shouldFetchData,
+            isLoading: controller.isListLoading,
+            isFetching: controller.isListFetching,
+          }}
           tableData={controller.tableData}
           referenceDate={controller.referenceDate}
           onViewTransfer={controller.rowActions.handleViewDetail}

@@ -33,16 +33,26 @@ import type {
 
 import type { TransferUserRole } from "./TransfersTypes"
 
+export type TransfersPagePanelPermissions = Readonly<{
+  showFacilityFilter: boolean
+  isRegionalLeader: boolean
+}>
+
+export type TransfersPagePanelDataState = Readonly<{
+  shouldFetch: boolean
+  isLoading: boolean
+  isFetching: boolean
+}>
+
 type TransfersPagePanelProps = Readonly<{
   activeTab: TransferType
   onTabChange: (tab: TransferType) => void
   transferCounts: TransferCountsResponse | null | undefined
   totalCount: number
-  showFacilityFilter: boolean
+  permissions: TransfersPagePanelPermissions
   activeFilterCount: number
   onOpenFilterModal: () => void
   onOpenAddDialog: () => void
-  isRegionalLeader: boolean
   filterChipsValue: FilterChipsValue
   onRemoveFilter: (key: keyof FilterChipsValue, subkey?: string) => void
   onClearAllFilters: () => void
@@ -50,9 +60,7 @@ type TransfersPagePanelProps = Readonly<{
   onSearchTermChange: (value: string) => void
   onClearSearch: () => void
   viewMode: "table" | "kanban"
-  shouldFetchData: boolean
-  isListLoading: boolean
-  isListFetching: boolean
+  dataState: TransfersPagePanelDataState
   tableData: TransferListItem[]
   referenceDate: Date
   onViewTransfer: (item: TransferListItem) => void
@@ -89,11 +97,10 @@ export function TransfersPagePanel({
   onTabChange,
   transferCounts,
   totalCount,
-  showFacilityFilter,
+  permissions,
   activeFilterCount,
   onOpenFilterModal,
   onOpenAddDialog,
-  isRegionalLeader,
   filterChipsValue,
   onRemoveFilter,
   onClearAllFilters,
@@ -101,9 +108,7 @@ export function TransfersPagePanel({
   onSearchTermChange,
   onClearSearch,
   viewMode,
-  shouldFetchData,
-  isListLoading,
-  isListFetching,
+  dataState,
   tableData,
   referenceDate,
   onViewTransfer,
@@ -120,6 +125,8 @@ export function TransfersPagePanel({
   transferEntity,
   transferDisplayFormat,
 }: TransfersPagePanelProps) {
+  const { showFacilityFilter, isRegionalLeader } = permissions
+  const { shouldFetch, isLoading: isListLoading, isFetching: isListFetching } = dataState
   const transferTypeCounts = getTransferTypeCounts(activeTab, transferCounts, totalCount)
 
   return (
@@ -185,7 +192,7 @@ export function TransfersPagePanel({
               />
 
               {viewMode === "kanban" ? (
-                shouldFetchData ? (
+                shouldFetch ? (
                   <TransfersKanbanView
                     filters={filters}
                     onViewTransfer={onViewTransfer}
@@ -197,7 +204,7 @@ export function TransfersPagePanel({
                 ) : (
                   <TransfersTenantSelectionPlaceholder />
                 )
-              ) : shouldFetchData ? (
+              ) : shouldFetch ? (
                 <>
                   <div className="space-y-3 lg:hidden">
                     {isListLoading ? (
@@ -250,7 +257,7 @@ export function TransfersPagePanel({
         </TransfersSearchParamsBoundary>
       </CardContent>
 
-      {viewMode === "table" && shouldFetchData && (
+      {viewMode === "table" && shouldFetch && (
         <CardFooter className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <DataTablePagination
             table={table}
