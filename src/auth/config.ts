@@ -310,6 +310,8 @@ export const authOptions: NextAuthOptions = {
 
       if (pendingSignoutReason) {
         token.pending_signout_reason = pendingSignoutReason
+      } else if (trigger === "update" && "pending_signout_reason" in token) {
+        delete token.pending_signout_reason
       }
 
       if (!token.id) {

@@ -286,6 +286,23 @@ describe("authOptions.jwt cooldown + trigger gate", () => {
     })
   })
 
+  it("clears stale pending_signout_reason when a later session.update omits it", async () => {
+    const now = Date.now()
+
+    const result = await runJwt({
+      token: {
+        ...baseToken,
+        loginTime: now - 10_000,
+        lastRefreshAt: now - 10_000,
+        pending_signout_reason: "user_initiated",
+      } as JwtArgs["token"],
+      trigger: "update",
+      session: {} as JwtArgs["session"],
+    })
+
+    expect(result).not.toHaveProperty("pending_signout_reason")
+  })
+
   it("preserves pending_signout_reason when update-trigger invalidation would otherwise empty the token", async () => {
     const now = Date.now()
     supabaseState.rpcRows = [{
