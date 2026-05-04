@@ -1,5 +1,6 @@
 import type { DefaultSession } from "next-auth"
 import type { DefaultJWT } from "next-auth/jwt"
+import type { AuthPendingSignoutReason } from "@/auth/logging"
 
 type NextAuthUserFields = {
   id: string
@@ -18,6 +19,7 @@ declare module "next-auth" {
   interface User extends NextAuthUserFields {}
 
   interface Session {
+    pending_signout_reason?: AuthPendingSignoutReason | null
     user: NextAuthUserFields & DefaultSession["user"]
   }
 }
@@ -26,5 +28,6 @@ declare module "next-auth/jwt" {
   interface JWT extends DefaultJWT, Partial<NextAuthUserFields> {
     loginTime?: number
     lastRefreshAt?: number
+    pending_signout_reason?: AuthPendingSignoutReason | null
   }
 }

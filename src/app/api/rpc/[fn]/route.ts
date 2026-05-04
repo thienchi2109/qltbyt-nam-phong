@@ -4,13 +4,11 @@ import jwt from 'jsonwebtoken'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '../../../../auth/config'
 import { ALLOWED_FUNCTIONS } from './allowed-functions'
+import { sanitizeForLog } from '@/lib/log-sanitizer'
 
 // SECURITY: Maximum request body size (2MB) to prevent DoS via memory exhaustion
 const MAX_BODY_SIZE = 2 * 1024 * 1024
 const SUPABASE_JWT_CLOCK_SKEW_SECONDS = 60
-
-// Sensitive keys to redact from logs (case-insensitive matching)
-const SENSITIVE_KEYS = ['password', 'token', 'secret', 'mat_khau', 'p_password', 'api_key', 'apikey', 'authorization', 'credential']
 
 type RpcProxySessionUser = {
   role?: unknown
@@ -24,35 +22,6 @@ function getEnv(name: string) {
   const v = process.env[name]
   if (!v) throw new Error(`${name} is not set`)
   return v
-}
-
-// SECURITY: Recursively sanitize objects for logging to prevent PII/credential exposure
-// Handles nested objects and arrays at any depth
-function sanitizeForLog(obj: unknown, depth = 0): unknown {
-  // Prevent infinite recursion on deeply nested or circular structures
-  if (depth > 10) return '[MAX_DEPTH]'
-
-  if (obj === null || obj === undefined) return obj
-  if (typeof obj !== 'object') return obj
-
-  // Handle arrays
-  if (Array.isArray(obj)) {
-    return obj.map(item => sanitizeForLog(item, depth + 1))
-  }
-
-  // Handle objects
-  const sanitized: Record<string, unknown> = {}
-  for (const [key, value] of Object.entries(obj as Record<string, unknown>)) {
-    const keyLower = key.toLowerCase()
-    if (SENSITIVE_KEYS.some(sk => keyLower.includes(sk))) {
-      sanitized[key] = '[REDACTED]'
-    } else if (typeof value === 'object' && value !== null) {
-      sanitized[key] = sanitizeForLog(value, depth + 1)
-    } else {
-      sanitized[key] = value
-    }
-  }
-  return sanitized
 }
 
 function getSessionUser(
@@ -194,10 +163,19 @@ export async function POST(req: NextRequest, context: { params: Promise<{ fn: st
     const isJson = res.headers.get('content-type')?.includes('application/json')
     const payload = isJson ? JSON.parse(text || 'null') : text
     if (!res.ok) {
+      const sanitizedPayload = sanitizeForLog(payload)
+      const sanitizedErrorMessage =
+        sanitizedPayload && typeof sanitizedPayload === 'object'
+          ? (
+              ('message' in sanitizedPayload && typeof sanitizedPayload.message === 'string' && sanitizedPayload.message)
+              || ('hint' in sanitizedPayload && typeof sanitizedPayload.hint === 'string' && sanitizedPayload.hint)
+              || 'RPC failed'
+            )
+          : 'RPC failed'
       // SECURITY: Sanitize logs to prevent PII/credential exposure
       console.error(`Supabase RPC error for ${fn}:`, {
         status: res.status,
-        error: typeof payload === 'object' ? (payload?.message || payload?.hint || 'RPC failed') : 'RPC failed',
+        error: sanitizedErrorMessage,
       })
       return NextResponse.json({ error: payload || 'RPC error' }, { status: res.status })
     }
