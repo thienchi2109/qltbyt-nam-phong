@@ -188,17 +188,23 @@ BEGIN
     (v_equipment_b, 'Region peer due today ' || v_suffix, 'Scope B', v_today, 'Chờ xử lý', 'Requester B', now()),
     (v_equipment_c, 'Cross tenant due today ' || v_suffix, 'Scope C', v_today, 'Chờ xử lý', 'Requester C', now());
 
-  -- global: sees all 10 rows, summary excludes due+8/null/completed/failed.
+  -- global with explicit facility filter: isolate the new fixture rows on facility A.
   PERFORM pg_temp._rr_counts_set_claims('global', v_global_user, NULL, NULL, NULL);
-  SELECT public.repair_request_status_counts() INTO v_result;
-  PERFORM pg_temp._rr_assert_eq_int('global count cho_xu_ly', (v_result->'counts'->>'Chờ xử lý')::integer, 7);
+  SELECT public.repair_request_status_counts(p_don_vi := v_facility_a) INTO v_result;
+  PERFORM pg_temp._rr_assert_eq_int('global count cho_xu_ly', (v_result->'counts'->>'Chờ xử lý')::integer, 5);
   PERFORM pg_temp._rr_assert_eq_int('global count da_duyet', (v_result->'counts'->>'Đã duyệt')::integer, 1);
   PERFORM pg_temp._rr_assert_eq_int('global count hoan_thanh', (v_result->'counts'->>'Hoàn thành')::integer, 1);
   PERFORM pg_temp._rr_assert_eq_int('global count khong_ht', (v_result->'counts'->>'Không HT')::integer, 1);
-  PERFORM pg_temp._rr_assert_eq_int('global overdue total', (v_result->'overdue_summary'->>'total')::integer, 6);
+  PERFORM pg_temp._rr_assert_eq_int('global overdue total', (v_result->'overdue_summary'->>'total')::integer, 4);
   PERFORM pg_temp._rr_assert_eq_int('global overdue overdue', (v_result->'overdue_summary'->>'overdue')::integer, 1);
-  PERFORM pg_temp._rr_assert_eq_int('global overdue today', (v_result->'overdue_summary'->>'due_today')::integer, 4);
+  PERFORM pg_temp._rr_assert_eq_int('global overdue today', (v_result->'overdue_summary'->>'due_today')::integer, 2);
   PERFORM pg_temp._rr_assert_eq_int('global overdue soon', (v_result->'overdue_summary'->>'due_soon')::integer, 1);
+
+  -- global can also isolate facility C, proving the cross-tenant fixture is reachable
+  -- only when explicitly selected.
+  SELECT public.repair_request_status_counts(p_don_vi := v_facility_c) INTO v_result;
+  PERFORM pg_temp._rr_assert_eq_int('global facility C cho_xu_ly', (v_result->'counts'->>'Chờ xử lý')::integer, 1);
+  PERFORM pg_temp._rr_assert_eq_int('global facility C overdue total', (v_result->'overdue_summary'->>'total')::integer, 1);
 
   -- regional leader: sees facilities A + B, not C.
   PERFORM pg_temp._rr_counts_set_claims('regional_leader', v_regional_user, v_facility_a, v_region_1, NULL);
