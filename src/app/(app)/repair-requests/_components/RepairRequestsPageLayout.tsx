@@ -22,7 +22,10 @@ import { RepairRequestsToolbar } from "./RepairRequestsToolbar"
 import { RepairRequestsTable } from "./RepairRequestsTable"
 import { RepairRequestsMobileList } from "./RepairRequestsMobileList"
 import { renderActions, type RepairRequestColumnOptions } from "./RepairRequestsColumns"
-import type { RepairRequestWithEquipment } from "../types"
+import type {
+  RepairRequestOverdueSummary,
+  RepairRequestWithEquipment,
+} from "../types"
 import type {
   UiFilters as UiFiltersPrefs,
 } from "@/lib/rr-prefs"
@@ -37,6 +40,8 @@ interface RepairRequestsPageLayoutProps {
   // Summary
   statusCounts: Record<RepairStatus, number> | undefined
   statusCountsLoading: boolean
+  overdueSummary: RepairRequestOverdueSummary | undefined
+  overdueLoading: boolean
 
   // Requests data
   requests: RepairRequestWithEquipment[]
@@ -89,6 +94,8 @@ export function RepairRequestsPageLayout({
   isRegionalLeader,
   statusCounts,
   statusCountsLoading,
+  overdueSummary,
+  overdueLoading,
   requests,
   searchTerm,
   onSearchChange,
@@ -118,7 +125,7 @@ export function RepairRequestsPageLayout({
   return (
     <>
       {/* Repair Request Alert */}
-      <RepairRequestAlert requests={requests} />
+      <RepairRequestAlert summary={overdueSummary} isLoading={overdueLoading} />
 
       <div className="space-y-6">
         {/* Header */}

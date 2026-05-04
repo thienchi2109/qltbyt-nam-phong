@@ -4,13 +4,24 @@ import * as React from "react"
 import { useQuery } from "@tanstack/react-query"
 import { callRpc } from "@/lib/rpc-client"
 import { useServerPagination } from "@/hooks/useServerPagination"
-import type { RepairRequestWithEquipment } from "../types"
+import type {
+  RepairRequestPageMetrics,
+  RepairRequestOverdueSummary,
+  RepairRequestStatusCounts,
+  RepairRequestWithEquipment,
+} from "../types"
 import type { UiFilters as UiFiltersPrefs } from "@/lib/rr-prefs"
 
 // ── Types ────────────────────────────────────────────────────────
 
 const STATUSES = ['Chờ xử lý', 'Đã duyệt', 'Hoàn thành', 'Không HT'] as const
 type Status = typeof STATUSES[number]
+
+function isRepairRequestPageMetrics(
+  value: RepairRequestPageMetrics | RepairRequestStatusCounts | undefined
+): value is RepairRequestPageMetrics {
+  return Boolean(value) && typeof value === "object" && "counts" in value
+}
 
 export interface UseRepairRequestsDataOptions {
   debouncedSearch: string
@@ -30,6 +41,8 @@ export interface UseRepairRequestsDataReturn {
   refetchRequests: () => void
   statusCounts: Record<Status, number> | undefined
   statusCountsLoading: boolean
+  overdueSummary: RepairRequestOverdueSummary | undefined
+  overdueLoading: boolean
   totalRequests: number
   repairPagination: ReturnType<typeof useServerPagination>
 }
@@ -118,9 +131,11 @@ export function useRepairRequestsData(
     setTotalRequests(serverTotal)
   }, [repairRequestsRes?.total])
 
-  // Status counts query (always fires for authenticated users)
-  const { data: statusCounts, isLoading: statusCountsLoading } = useQuery<
-    Record<Status, number>
+  // Status counts query (always fires for authenticated users).
+  // Accept both the new page-metrics payload and the legacy flat counts shape
+  // so app deploys remain compatible until the SQL migration is applied.
+  const { data: pageMetrics, isLoading: statusCountsLoading } = useQuery<
+    RepairRequestPageMetrics | RepairRequestStatusCounts
   >({
     queryKey: ['repair_request_status_counts', {
       tenant: effectiveTenantKey,
@@ -132,7 +147,7 @@ export function useRepairRequestsData(
       dateTo: uiFilters.dateRange?.to || null,
     }],
     queryFn: async () => {
-      const res = await callRpc<Record<Status, number>>({
+      return callRpc<RepairRequestPageMetrics>({
         fn: 'repair_request_status_counts',
         args: {
           p_q: debouncedSearch || null,
@@ -141,11 +156,17 @@ export function useRepairRequestsData(
           p_date_to: uiFilters.dateRange?.to || null,
         },
       })
-      return res as Record<Status, number>
     },
     staleTime: 30_000,
     enabled: hasUser,
   })
+  const statusCounts: Record<Status, number> | undefined = isRepairRequestPageMetrics(pageMetrics)
+    ? pageMetrics.counts
+    : pageMetrics
+  const overdueSummary: RepairRequestOverdueSummary | undefined = isRepairRequestPageMetrics(pageMetrics)
+    ? pageMetrics.overdue_summary
+    : undefined
+  const overdueLoading = statusCountsLoading
 
   return {
     requests,
@@ -154,6 +175,8 @@ export function useRepairRequestsData(
     refetchRequests,
     statusCounts,
     statusCountsLoading,
+    overdueSummary,
+    overdueLoading,
     totalRequests,
     repairPagination,
   }

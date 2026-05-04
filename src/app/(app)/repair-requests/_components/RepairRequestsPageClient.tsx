@@ -121,6 +121,8 @@ function RepairRequestsPageClientInner() {
     isFetching,
     statusCounts,
     statusCountsLoading,
+    overdueSummary,
+    overdueLoading,
     totalRequests,
     repairPagination,
   } = useRepairRequestsData({
@@ -295,6 +297,8 @@ function RepairRequestsPageClientInner() {
           isRegionalLeader={isRegionalLeader}
           statusCounts={statusCounts}
           statusCountsLoading={statusCountsLoading}
+          overdueSummary={overdueSummary}
+          overdueLoading={overdueLoading}
           requests={requests}
           searchTerm={searchTerm}
           onSearchChange={setSearchTerm}

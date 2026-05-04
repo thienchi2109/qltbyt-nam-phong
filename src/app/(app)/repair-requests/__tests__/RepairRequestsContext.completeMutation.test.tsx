@@ -123,6 +123,41 @@ describe("RepairRequestsContext complete mutation", () => {
     })
   })
 
+  it("invalidates the shared page metrics query after a successful complete mutation", async () => {
+    const queryClient = new QueryClient({
+      defaultOptions: {
+        queries: { retry: false, gcTime: 0 },
+        mutations: { retry: false },
+      },
+    })
+    const invalidateSpy = vi.spyOn(queryClient, "invalidateQueries")
+
+    render(
+      <RepairRequestsProvider>
+        <MutationHarness />
+      </RepairRequestsProvider>,
+      { wrapper: createWrapper(queryClient) }
+    )
+
+    await waitFor(() => {
+      expect(mockCallRpc).toHaveBeenCalledWith({
+        fn: "repair_request_complete",
+        args: {
+          p_id: 99,
+          p_completion: "Đã sửa xong",
+          p_reason: null,
+          p_chi_phi_sua_chua: 1234567,
+        },
+      })
+    })
+
+    await waitFor(() => {
+      expect(invalidateSpy).toHaveBeenCalledWith({
+        queryKey: ["repair_request_status_counts"],
+      })
+    })
+  })
+
   it("rejects blank completion before calling RPC", async () => {
     const queryClient = new QueryClient({
       defaultOptions: {

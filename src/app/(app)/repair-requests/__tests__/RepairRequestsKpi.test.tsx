@@ -5,6 +5,7 @@
  * - KPI status counts query fires for authenticated users regardless of tenant selection
  * - KPI total is computed from status counts (not from gated table query)
  * - Table/list query stays gated by shouldFetchData
+ * - repair_request_status_counts stays page-independent and carries overdue summary
  * - Placeholder is shown when no tenant is selected for privileged users
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest'
@@ -202,7 +203,12 @@ vi.mock('@tanstack/react-query', () => ({
 
     if (key === 'repair_request_status_counts') {
       return {
-        data: options.enabled ? mockStatusCounts : undefined,
+        data: options.enabled
+          ? {
+              counts: mockStatusCounts,
+              overdue_summary: mockOverdueSummary,
+            }
+          : undefined,
         isLoading: false,
       }
     }
@@ -226,6 +232,15 @@ vi.mock('@tanstack/react-query', () => ({
 // ── Shared test state ──────────────────────────────────────────────────
 let mockStatusCounts: Record<string, number> | undefined
 let mockListData: Array<{ id: number }>
+let mockOverdueSummary:
+  | {
+      total: number
+      overdue: number
+      due_today: number
+      due_soon: number
+      items: Array<{ id: number }>
+    }
+  | undefined
 
 // Import component AFTER mocks
 import RepairRequestsPageClient from '../_components/RepairRequestsPageClient'
@@ -288,6 +303,13 @@ describe('RepairRequests KPI Cards', () => {
       'Không HT': 1,
     }
     mockListData = []
+    mockOverdueSummary = {
+      total: 4,
+      overdue: 1,
+      due_today: 1,
+      due_soon: 2,
+      items: [{ id: 1 }],
+    }
     mocks.callRpc.mockResolvedValue([])
   })
 
@@ -328,6 +350,7 @@ describe('RepairRequests KPI Cards', () => {
 
     it('should show 0 total when statusCounts is undefined', async () => {
       mockStatusCounts = undefined
+      mockOverdueSummary = undefined
       setupGlobalUser({ shouldFetchData: false })
       await renderRepairRequestsPageClient()
 
@@ -367,6 +390,43 @@ describe('RepairRequests KPI Cards', () => {
       )
       expect(listCall).toBeDefined()
       expect(listCall!.enabled).toBe(true)
+    })
+
+    it('should keep status counts enabled even when shouldFetchData is false', async () => {
+      setupGlobalUser({ shouldFetchData: false })
+      await renderRepairRequestsPageClient()
+
+      const countsCall = mockUseQueryCalls.find(
+        (c) => (c.queryKey[0] as string) === 'repair_request_status_counts'
+      )
+      expect(countsCall).toBeDefined()
+      expect(countsCall!.enabled).toBe(true)
+    })
+
+    it('should keep status counts enabled when shouldFetchData is true', async () => {
+      setupTenantUser()
+      await renderRepairRequestsPageClient()
+
+      const countsCall = mockUseQueryCalls.find(
+        (c) => (c.queryKey[0] as string) === 'repair_request_status_counts'
+      )
+      expect(countsCall).toBeDefined()
+      expect(countsCall!.enabled).toBe(true)
+    })
+
+    it('should keep page and pageSize out of the status counts query key', async () => {
+      setupTenantUser()
+      await renderRepairRequestsPageClient()
+
+      const countsCall = mockUseQueryCalls.find(
+        (c) => (c.queryKey[0] as string) === 'repair_request_status_counts'
+      )
+      expect(countsCall).toBeDefined()
+
+      const params = countsCall!.queryKey[1] as Record<string, unknown>
+      expect(params.page).toBeUndefined()
+      expect(params.pageSize).toBeUndefined()
+      expect(params.facilityId).toBe(1)
     })
 
     it('should not remount the table when only row count changes', async () => {
@@ -409,6 +469,16 @@ describe('RepairRequests KPI Cards', () => {
       // Toolbar is always visible (contains search/filters for tenant selection)
       expect(screen.queryByTestId('repair-table')).not.toBeInTheDocument()
       expect(screen.queryByTestId('pagination')).not.toBeInTheDocument()
+    })
+
+    it('should not require a second summary query before a global user selects a facility', async () => {
+      setupGlobalUser({ shouldFetchData: false })
+      await renderRepairRequestsPageClient()
+
+      const extraSummaryCall = mockUseQueryCalls.find(
+        (c) => (c.queryKey[0] as string) === 'repair_request_overdue_summary'
+      )
+      expect(extraSummaryCall).toBeUndefined()
     })
 
     it('should show table and pagination when shouldFetchData is true', async () => {

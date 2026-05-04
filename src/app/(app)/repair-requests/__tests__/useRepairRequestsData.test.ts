@@ -3,13 +3,14 @@
  * Tests for useRepairRequestsData hook.
  *
  * Verifies:
- * - Hook returns expected shape (requests, pagination, KPI counts)
+ * - Hook returns expected shape (requests, pagination, KPI counts, overdue summary)
  * - repair_request_list query enabled = !!user && shouldFetchData
  * - repair_request_status_counts query enabled = !!user (always for auth user)
+ * - repair_request_status_counts also carries overdue summary and ignores pagination
  * - totalRequests syncs from query result
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { renderHook, act } from '@testing-library/react'
+import { renderHook } from '@testing-library/react'
 
 // ── Hoisted mocks ─────────────────────────────────────────────────
 const mocks = vi.hoisted(() => ({
@@ -18,6 +19,18 @@ const mocks = vi.hoisted(() => ({
 
 // Track useQuery calls to inspect queryKey and enabled
 let capturedQueries: Array<{ queryKey: unknown[]; enabled: boolean }> = []
+let mockStatusCountsPayload:
+  | {
+      counts: { 'Chờ xử lý': number; 'Đã duyệt': number; 'Hoàn thành': number; 'Không HT': number }
+      overdue_summary: {
+        total: number
+        overdue: number
+        due_today: number
+        due_soon: number
+        items: Array<{ id: number; days_difference: number }>
+      }
+    }
+  | { 'Chờ xử lý': number; 'Đã duyệt': number; 'Hoàn thành': number; 'Không HT': number }
 
 vi.mock('@tanstack/react-query', () => ({
   useQuery: (options: { queryKey: unknown[]; enabled: boolean }) => {
@@ -37,7 +50,7 @@ vi.mock('@tanstack/react-query', () => ({
 
     if (key === 'repair_request_status_counts') {
       return {
-        data: { 'Chờ xử lý': 5, 'Đã duyệt': 3, 'Hoàn thành': 10, 'Không HT': 2 },
+        data: options.enabled ? mockStatusCountsPayload : undefined,
         isLoading: false,
       }
     }
@@ -83,6 +96,16 @@ describe('useRepairRequestsData', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     capturedQueries = []
+    mockStatusCountsPayload = {
+      counts: { 'Chờ xử lý': 5, 'Đã duyệt': 3, 'Hoàn thành': 10, 'Không HT': 2 },
+      overdue_summary: {
+        total: 5,
+        overdue: 2,
+        due_today: 1,
+        due_soon: 2,
+        items: [{ id: 99, days_difference: -1 }],
+      },
+    }
   })
 
   it('returns expected shape', () => {
@@ -93,8 +116,15 @@ describe('useRepairRequestsData', () => {
       isLoading: expect.any(Boolean),
       isFetching: expect.any(Boolean),
       refetchRequests: expect.any(Function),
-      statusCounts: expect.any(Object),
+      statusCounts: expect.objectContaining({
+        'Chờ xử lý': 5,
+      }),
       statusCountsLoading: expect.any(Boolean),
+      overdueSummary: expect.objectContaining({
+        total: 5,
+        overdue: 2,
+      }),
+      overdueLoading: expect.any(Boolean),
       totalRequests: expect.any(Number),
       repairPagination: expect.objectContaining({
         page: expect.any(Number),
@@ -149,6 +179,33 @@ describe('useRepairRequestsData', () => {
     expect(countsCall!.enabled).toBe(true)
   })
 
+  it('exposes overdue summary from the status counts payload', () => {
+    const { result } = renderHook(() => useRepairRequestsData(defaultArgs))
+    expect(result.current.overdueSummary).toMatchObject({
+      total: 5,
+      overdue: 2,
+    })
+  })
+
+  it('falls back to the legacy flat status-counts payload before the migration is applied', () => {
+    mockStatusCountsPayload = {
+      'Chờ xử lý': 7,
+      'Đã duyệt': 4,
+      'Hoàn thành': 8,
+      'Không HT': 1,
+    }
+
+    const { result } = renderHook(() => useRepairRequestsData(defaultArgs))
+
+    expect(result.current.statusCounts).toEqual({
+      'Chờ xử lý': 7,
+      'Đã duyệt': 4,
+      'Hoàn thành': 8,
+      'Không HT': 1,
+    })
+    expect(result.current.overdueSummary).toBeUndefined()
+  })
+
   it('disables status counts query when no user', () => {
     renderHook(() =>
       useRepairRequestsData({ ...defaultArgs, hasUser: false })
@@ -172,5 +229,19 @@ describe('useRepairRequestsData', () => {
     const { result } = renderHook(() => useRepairRequestsData(defaultArgs))
 
     expect(result.current.requests).toEqual([{ id: 1 }])
+  })
+
+  it('keeps pagination out of the status counts query key', () => {
+    renderHook(() => useRepairRequestsData(defaultArgs))
+
+    const countsCall = capturedQueries.find(
+      (c) => (c.queryKey[0] as string) === 'repair_request_status_counts'
+    )
+    expect(countsCall).toBeDefined()
+
+    const params = countsCall!.queryKey[1] as Record<string, unknown>
+    expect(params.page).toBeUndefined()
+    expect(params.pageSize).toBeUndefined()
+    expect(params.facilityId).toBeNull()
   })
 })
