@@ -83,6 +83,7 @@ describe('use-cached-repair :: cache-invalidation contract', () => {
     // The fix: useUpdateRepairRequest must invalidate the family prefix so any
     // sub-key (e.g. repairKeys.active(equipmentId)) is refetched.
     expect(allInvalidations).toContainEqual(repairKeys.all)
+    expect(allInvalidations).toContainEqual(['repair_request_overdue_summary'])
 
     // Dashboard KPI invalidation is also part of the contract.
     expect(allInvalidations).toContainEqual(['dashboard-stats'])
@@ -111,6 +112,7 @@ describe('use-cached-repair :: cache-invalidation contract', () => {
 
     const allInvalidations = invalidateSpy.mock.calls.map((call) => call[0]?.queryKey)
     expect(allInvalidations).toContainEqual(repairKeys.all)
+    expect(allInvalidations).toContainEqual(['repair_request_overdue_summary'])
   })
 
   it('useAssignRepairRequest invalidates the repairKeys.all family on success', async () => {
@@ -133,6 +135,7 @@ describe('use-cached-repair :: cache-invalidation contract', () => {
 
     const allInvalidations = invalidateSpy.mock.calls.map((call) => call[0]?.queryKey)
     expect(allInvalidations).toContainEqual(repairKeys.all)
+    expect(allInvalidations).toContainEqual(['repair_request_overdue_summary'])
   })
 
   it('useCompleteRepairRequest invalidates the repairKeys.all family on success', async () => {
@@ -155,6 +158,7 @@ describe('use-cached-repair :: cache-invalidation contract', () => {
 
     const allInvalidations = invalidateSpy.mock.calls.map((call) => call[0]?.queryKey)
     expect(allInvalidations).toContainEqual(repairKeys.all)
+    expect(allInvalidations).toContainEqual(['repair_request_overdue_summary'])
   })
 
   it('useDeleteRepairRequest invalidates the repairKeys.all family on success', async () => {
@@ -177,5 +181,6 @@ describe('use-cached-repair :: cache-invalidation contract', () => {
 
     const allInvalidations = invalidateSpy.mock.calls.map((call) => call[0]?.queryKey)
     expect(allInvalidations).toContainEqual(repairKeys.all)
+    expect(allInvalidations).toContainEqual(['repair_request_overdue_summary'])
   })
 })

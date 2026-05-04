@@ -4,7 +4,10 @@ import * as React from "react"
 import { useQuery } from "@tanstack/react-query"
 import { callRpc } from "@/lib/rpc-client"
 import { useServerPagination } from "@/hooks/useServerPagination"
-import type { RepairRequestWithEquipment } from "../types"
+import type {
+  RepairRequestOverdueSummary,
+  RepairRequestWithEquipment,
+} from "../types"
 import type { UiFilters as UiFiltersPrefs } from "@/lib/rr-prefs"
 
 // ── Types ────────────────────────────────────────────────────────
@@ -30,6 +33,8 @@ export interface UseRepairRequestsDataReturn {
   refetchRequests: () => void
   statusCounts: Record<Status, number> | undefined
   statusCountsLoading: boolean
+  overdueSummary: RepairRequestOverdueSummary | undefined
+  overdueLoading: boolean
   totalRequests: number
   repairPagination: ReturnType<typeof useServerPagination>
 }
@@ -147,6 +152,34 @@ export function useRepairRequestsData(
     enabled: hasUser,
   })
 
+  const { data: overdueSummary, isLoading: overdueLoading } = useQuery<RepairRequestOverdueSummary>({
+    queryKey: ['repair_request_overdue_summary', {
+      tenant: effectiveTenantKey,
+      role: userRole,
+      diaBan: userDiaBanId,
+      facilityId: selectedFacilityId ?? null,
+      search: debouncedSearch || null,
+      dateFrom: uiFilters.dateRange?.from || null,
+      dateTo: uiFilters.dateRange?.to || null,
+    }],
+    queryFn: async ({ signal }: { signal: AbortSignal }) => {
+      return callRpc<RepairRequestOverdueSummary>({
+        fn: 'repair_request_overdue_summary',
+        args: {
+          p_q: debouncedSearch || null,
+          p_don_vi: selectedFacilityId ?? null,
+          p_date_from: uiFilters.dateRange?.from || null,
+          p_date_to: uiFilters.dateRange?.to || null,
+        },
+        signal,
+      })
+    },
+    enabled: hasUser && shouldFetchData,
+    staleTime: 30_000,
+    gcTime: 5 * 60_000,
+    refetchOnWindowFocus: false,
+  })
+
   return {
     requests,
     isLoading,
@@ -154,6 +187,8 @@ export function useRepairRequestsData(
     refetchRequests,
     statusCounts,
     statusCountsLoading,
+    overdueSummary,
+    overdueLoading,
     totalRequests,
     repairPagination,
   }

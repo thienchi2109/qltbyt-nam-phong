@@ -5,6 +5,7 @@
  * - KPI status counts query fires for authenticated users regardless of tenant selection
  * - KPI total is computed from status counts (not from gated table query)
  * - Table/list query stays gated by shouldFetchData
+ * - Overdue summary query stays gated by shouldFetchData and ignores pagination
  * - Placeholder is shown when no tenant is selected for privileged users
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest'
@@ -216,6 +217,13 @@ vi.mock('@tanstack/react-query', () => ({
       }
     }
 
+    if (key === 'repair_request_overdue_summary') {
+      return {
+        data: options.enabled ? mockOverdueSummary : undefined,
+        isLoading: false,
+      }
+    }
+
     return { data: undefined, isLoading: false, isFetching: false }
   },
   useQueryClient: () => ({
@@ -226,6 +234,15 @@ vi.mock('@tanstack/react-query', () => ({
 // ── Shared test state ──────────────────────────────────────────────────
 let mockStatusCounts: Record<string, number> | undefined
 let mockListData: Array<{ id: number }>
+let mockOverdueSummary:
+  | {
+      total: number
+      overdue: number
+      due_today: number
+      due_soon: number
+      items: Array<{ id: number }>
+    }
+  | undefined
 
 // Import component AFTER mocks
 import RepairRequestsPageClient from '../_components/RepairRequestsPageClient'
@@ -288,6 +305,13 @@ describe('RepairRequests KPI Cards', () => {
       'Không HT': 1,
     }
     mockListData = []
+    mockOverdueSummary = {
+      total: 4,
+      overdue: 1,
+      due_today: 1,
+      due_soon: 2,
+      items: [{ id: 1 }],
+    }
     mocks.callRpc.mockResolvedValue([])
   })
 
@@ -369,6 +393,43 @@ describe('RepairRequests KPI Cards', () => {
       expect(listCall!.enabled).toBe(true)
     })
 
+    it('should disable overdue summary query when shouldFetchData is false', async () => {
+      setupGlobalUser({ shouldFetchData: false })
+      await renderRepairRequestsPageClient()
+
+      const summaryCall = mockUseQueryCalls.find(
+        (c) => (c.queryKey[0] as string) === 'repair_request_overdue_summary'
+      )
+      expect(summaryCall).toBeDefined()
+      expect(summaryCall!.enabled).toBe(false)
+    })
+
+    it('should enable overdue summary query when shouldFetchData is true', async () => {
+      setupTenantUser()
+      await renderRepairRequestsPageClient()
+
+      const summaryCall = mockUseQueryCalls.find(
+        (c) => (c.queryKey[0] as string) === 'repair_request_overdue_summary'
+      )
+      expect(summaryCall).toBeDefined()
+      expect(summaryCall!.enabled).toBe(true)
+    })
+
+    it('should keep page and pageSize out of the overdue summary query key', async () => {
+      setupTenantUser()
+      await renderRepairRequestsPageClient()
+
+      const summaryCall = mockUseQueryCalls.find(
+        (c) => (c.queryKey[0] as string) === 'repair_request_overdue_summary'
+      )
+      expect(summaryCall).toBeDefined()
+
+      const params = summaryCall!.queryKey[1] as Record<string, unknown>
+      expect(params.page).toBeUndefined()
+      expect(params.pageSize).toBeUndefined()
+      expect(params.facilityId).toBe(1)
+    })
+
     it('should not remount the table when only row count changes', async () => {
       setupTenantUser()
       let view: ReturnType<typeof render> | undefined
@@ -409,6 +470,17 @@ describe('RepairRequests KPI Cards', () => {
       // Toolbar is always visible (contains search/filters for tenant selection)
       expect(screen.queryByTestId('repair-table')).not.toBeInTheDocument()
       expect(screen.queryByTestId('pagination')).not.toBeInTheDocument()
+    })
+
+    it('should not fetch overdue summary before a global user selects a facility', async () => {
+      setupGlobalUser({ shouldFetchData: false })
+      await renderRepairRequestsPageClient()
+
+      const summaryCall = mockUseQueryCalls.find(
+        (c) => (c.queryKey[0] as string) === 'repair_request_overdue_summary'
+      )
+      expect(summaryCall).toBeDefined()
+      expect(summaryCall!.enabled).toBe(false)
     })
 
     it('should show table and pagination when shouldFetchData is true', async () => {

@@ -38,6 +38,18 @@ export type RepairRequestWithEquipment = {
   } | null
 }
 
+export type RepairRequestOverdueItem = RepairRequestWithEquipment & {
+  days_difference: number
+}
+
+export interface RepairRequestOverdueSummary {
+  total: number
+  overdue: number
+  due_today: number
+  due_soon: number
+  items: RepairRequestOverdueItem[]
+}
+
 export interface RepairRequestChangeHistory {
   id: number
   action_type: string

@@ -92,6 +92,7 @@ export function useCreateRepairRequest() {
     onSuccess: () => {
       // Invalidate all repair queries
       queryClient.invalidateQueries({ queryKey: repairKeys.all })
+      queryClient.invalidateQueries({ queryKey: ['repair_request_overdue_summary'] })
       // Invalidate dashboard stats to update KPI cards
       queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] })
 
@@ -135,6 +136,7 @@ export function useUpdateRepairRequest() {
       // useUpdateRepairRequest with create/approve/complete/delete mutations,
       // which all invalidate the same prefix.
       queryClient.invalidateQueries({ queryKey: repairKeys.all })
+      queryClient.invalidateQueries({ queryKey: ['repair_request_overdue_summary'] })
       // Invalidate dashboard stats to update KPI cards
       queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] })
 
@@ -172,6 +174,7 @@ export function useAssignRepairRequest() {
     onSuccess: () => {
       // Invalidate repair queries
       queryClient.invalidateQueries({ queryKey: repairKeys.all })
+      queryClient.invalidateQueries({ queryKey: ['repair_request_overdue_summary'] })
       
       toast({
         title: "Thành công",
@@ -206,6 +209,7 @@ export function useCompleteRepairRequest() {
     onSuccess: () => {
       // Invalidate repair queries
       queryClient.invalidateQueries({ queryKey: repairKeys.all })
+      queryClient.invalidateQueries({ queryKey: ['repair_request_overdue_summary'] })
       
       toast({
         title: "Thành công",
@@ -238,6 +242,7 @@ export function useDeleteRepairRequest() {
     onSuccess: () => {
       // Invalidate all repair queries
       queryClient.invalidateQueries({ queryKey: repairKeys.all })
+      queryClient.invalidateQueries({ queryKey: ['repair_request_overdue_summary'] })
       // Invalidate dashboard stats to update KPI cards
       queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] })
 

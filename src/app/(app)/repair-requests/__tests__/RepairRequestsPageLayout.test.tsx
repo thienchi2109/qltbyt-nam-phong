@@ -83,6 +83,8 @@ const defaultProps = {
   isRegionalLeader: false,
   statusCounts: { 'Chờ xử lý': 3, 'Đã duyệt': 2, 'Hoàn thành': 5, 'Không HT': 0 } as Record<RepairStatus, number> | undefined,
   statusCountsLoading: false,
+  overdueSummary: undefined,
+  overdueLoading: false,
   requests: [],
   searchTerm: '',
   onSearchChange: vi.fn(),

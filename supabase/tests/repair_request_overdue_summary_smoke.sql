@@ -1,0 +1,41 @@
+-- Smoke test for public.repair_request_overdue_summary.
+-- Run only after the migration is explicitly applied.
+--
+-- Coverage goals:
+-- 1. RBAC parity with repair_request_list for:
+--    - global
+--    - regional_leader
+--    - to_qltb
+--    - user with department scope
+--    - cross-tenant isolation
+-- 2. Date boundaries:
+--    - overdue (< today)
+--    - due today
+--    - due in 7 days
+--    - due in 8 days (excluded)
+--    - NULL due date (excluded)
+-- 3. Status boundaries:
+--    - include 'Chờ xử lý', 'Đã duyệt'
+--    - exclude 'Hoàn thành', 'Không HT'
+-- 4. Filter parity:
+--    - p_q
+--    - p_don_vi
+--    - p_date_from
+--    - p_date_to
+--
+-- Expected contract:
+--   select public.repair_request_overdue_summary(
+--     p_q := null,
+--     p_don_vi := null,
+--     p_date_from := null,
+--     p_date_to := null
+--   );
+--
+-- Expected JSON shape:
+-- {
+--   "total": 0,
+--   "overdue": 0,
+--   "due_today": 0,
+--   "due_soon": 0,
+--   "items": []
+-- }
