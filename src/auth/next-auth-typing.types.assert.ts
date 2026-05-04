@@ -1,5 +1,6 @@
 import type { Session, User } from "next-auth"
 import type { JWT } from "next-auth/jwt"
+import type { AuthPendingSignoutReason } from "@/types/auth"
 
 type Assert<T extends true> = T
 
@@ -25,6 +26,7 @@ type SessionUserHasDiaBanId = Pick<SessionUser, "dia_ban_id"> extends { dia_ban_
 type SessionUserHasDiaBanMa = Pick<SessionUser, "dia_ban_ma"> extends { dia_ban_ma?: string | null } ? true : false
 type SessionUserHasFullName = Pick<SessionUser, "full_name"> extends { full_name?: string | null } ? true : false
 type SessionUserHasAuthMode = Pick<SessionUser, "auth_mode"> extends { auth_mode?: string | null } ? true : false
+type SessionHasPendingSignoutReason = Pick<Session, "pending_signout_reason"> extends { pending_signout_reason?: AuthPendingSignoutReason | null } ? true : false
 
 type JwtHasId = Pick<JWT, "id"> extends { id?: string } ? true : false
 type JwtHasUsername = Pick<JWT, "username"> extends { username?: string } ? true : false
@@ -38,6 +40,7 @@ type JwtHasFullName = Pick<JWT, "full_name"> extends { full_name?: string | null
 type JwtHasAuthMode = Pick<JWT, "auth_mode"> extends { auth_mode?: string | null } ? true : false
 type JwtHasLoginTime = Pick<JWT, "loginTime"> extends { loginTime?: number } ? true : false
 type JwtHasLastRefreshAt = Pick<JWT, "lastRefreshAt"> extends { lastRefreshAt?: number } ? true : false
+type JwtHasPendingSignoutReason = Pick<JWT, "pending_signout_reason"> extends { pending_signout_reason?: AuthPendingSignoutReason | null } ? true : false
 
 type _userHasId = Assert<UserHasId>
 type _userHasUsername = Assert<UserHasUsername>
@@ -60,6 +63,7 @@ type _sessionUserHasDiaBanId = Assert<SessionUserHasDiaBanId>
 type _sessionUserHasDiaBanMa = Assert<SessionUserHasDiaBanMa>
 type _sessionUserHasFullName = Assert<SessionUserHasFullName>
 type _sessionUserHasAuthMode = Assert<SessionUserHasAuthMode>
+type _sessionHasPendingSignoutReason = Assert<SessionHasPendingSignoutReason>
 
 type _jwtHasId = Assert<JwtHasId>
 type _jwtHasUsername = Assert<JwtHasUsername>
@@ -73,3 +77,4 @@ type _jwtHasFullName = Assert<JwtHasFullName>
 type _jwtHasAuthMode = Assert<JwtHasAuthMode>
 type _jwtHasLoginTime = Assert<JwtHasLoginTime>
 type _jwtHasLastRefreshAt = Assert<JwtHasLastRefreshAt>
+type _jwtHasPendingSignoutReason = Assert<JwtHasPendingSignoutReason>
