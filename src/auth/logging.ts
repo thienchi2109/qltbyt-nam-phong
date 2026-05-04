@@ -19,7 +19,7 @@ export type AuthLogSource =
   | "events_signin"
   | "events_signout"
 
-type AuthLifecycleLogInput = {
+export type AuthLifecycleLogInput = {
   event?: AuthLifecycleEvent
   source: AuthLogSource
   reason_code?: AuthLifecycleReasonCode
@@ -29,7 +29,7 @@ type AuthLifecycleLogInput = {
   metadata?: Record<string, unknown>
 }
 
-type AuthLifecycleLogPayload = {
+export type AuthLifecycleLogPayload = {
   scope: "auth.lifecycle"
   ts: string
   event: AuthLifecycleEvent
