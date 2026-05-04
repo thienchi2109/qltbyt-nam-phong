@@ -179,6 +179,35 @@ describe("authOptions authorize + auth lifecycle events", () => {
     ])
   })
 
+  it("emits authorize_exception for unexpected runtime errors before rethrowing", async () => {
+    const runtimeError = new Error("database exploded")
+    supabaseClient.rpc.mockImplementationOnce(async () => {
+      throw runtimeError
+    })
+
+    const authorize = getAuthorizeHandler()
+
+    await expect(authorize({
+      username: "NQMinh",
+      password: "secret",
+    }, buildAuthorizeRequest())).rejects.toThrow("database exploded")
+
+    expect(authLifecycleLogs(consoleInfoSpy)).toEqual([
+      expect.objectContaining({
+        event: "login_failure",
+        source: "authorize",
+        reason_code: "authorize_exception",
+        username: "nqminh",
+        request_id: "req-123",
+        ip_address: "203.0.113.1",
+        user_agent: "VitestBrowser/1.0",
+        metadata: expect.objectContaining({
+          error_message: "database exploded",
+        }),
+      }),
+    ])
+  })
+
   it("emits login_success from events.signIn with lowercased username and no secrets", async () => {
     const signInEvent = getSignInEventHandler()
 

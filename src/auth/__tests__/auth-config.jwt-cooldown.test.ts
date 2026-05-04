@@ -308,6 +308,9 @@ describe("authOptions.jwt cooldown + trigger gate", () => {
     expect(result).toMatchObject({
       pending_signout_reason: "forced_password_change",
     })
+    expect(result).not.toHaveProperty("id")
+    expect(result).not.toHaveProperty("username")
+    expect(result).not.toHaveProperty("role")
 
     expect(authLifecycleLogs(consoleInfoSpy)).toEqual(
       expect.arrayContaining([

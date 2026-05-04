@@ -268,17 +268,26 @@ export const authOptions: NextAuthOptions = {
           })
           throw new Error("invalid_credentials")
         } catch (e) {
-          if (e instanceof Error) {
+          if (
+            e instanceof Error &&
+            (e.message === "rpc_error" || e.message === "tenant_inactive" || e.message === "invalid_credentials")
+          ) {
             throw e
           }
+
           console.error("Authorize exception:", e)
           emitAuthLifecycleLog({
             source: "authorize",
             reason_code: "authorize_exception",
             username: normalizedUsername,
             ...requestContext,
+            metadata: e instanceof Error
+              ? {
+                  error_message: e.message,
+                }
+              : undefined,
           })
-          throw new Error("authorize_exception")
+          throw e instanceof Error ? e : new Error("authorize_exception")
         }
       },
     }),
@@ -457,7 +466,6 @@ export const authOptions: NextAuthOptions = {
               console.warn("Password changed after login - invalidating token")
               return signoutReason
                 ? {
-                    ...token,
                     pending_signout_reason: signoutReason,
                   }
                 : {}
