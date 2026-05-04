@@ -26,11 +26,19 @@ readonly SCRIPT_NAME="qltbyt-backup"
 readonly ENV_FILE="${BACKUP_ENV_FILE:-/etc/qltbyt-backup/.env}"
 readonly LOG_FILE="${BACKUP_LOG_FILE:-/var/log/qltbyt-backup.log}"
 readonly LOCK_FILE="${BACKUP_LOCK_FILE:-/var/run/qltbyt-backup.lock}"
+readonly DETAIL_DIR_DEFAULT="/var/log/qltbyt-backup"
 readonly HOSTNAME_SHORT="$(hostname -s 2>/dev/null || echo unknown)"
 readonly RUN_ID="$(date -u +%Y%m%dT%H%M%SZ)-$$"
 
 BACKUP_REMOTE_PATH=""
 BACKUP_SIZE_HUMAN=""
+BACKUP_DETAIL_DIR=""
+FAIL_REMOTE_PATH=""
+FAIL_PG_DUMP_RC=""
+FAIL_RCLONE_RC=""
+FAIL_RCLONE_STDERR_SUMMARY=""
+FAIL_RCLONE_STDERR_FILE=""
+FAIL_PG_DUMP_STDERR_FILE=""
 
 # ─── Logging helpers ────────────────────────────────────────────────────
 # Log to file if writable, else stderr. Never fail because of logging.
@@ -47,6 +55,31 @@ log() {
 # Strip user:password out of a postgres URL before logging it.
 mask_url() {
   sed -E 's#(://[^:/?#]+:)[^@]+(@)#\1***\2#' <<<"${1:-}"
+}
+
+ensure_detail_dir() {
+  if [[ -z "$BACKUP_DETAIL_DIR" ]]; then
+    BACKUP_DETAIL_DIR="$DETAIL_DIR_DEFAULT"
+  fi
+  mkdir -p "$BACKUP_DETAIL_DIR" || die 10 "cannot create detail log dir: $BACKUP_DETAIL_DIR"
+}
+
+publish_detail_log() {
+  local src="$1" latest_name="$2"
+  ensure_detail_dir
+  if [[ -f "$src" ]]; then
+    cat "$src" >"${BACKUP_DETAIL_DIR}/${latest_name}"
+  fi
+}
+
+stderr_excerpt() {
+  local file="$1"
+  if [[ ! -s "$file" ]]; then
+    echo "no stderr captured"
+    return 0
+  fi
+
+  tail -n 5 "$file" | tr '\n' ' ' | sed -E 's/[[:space:]]+/ /g; s/^ //; s/ $//'
 }
 
 # ─── Telegram notify (non-fatal) ────────────────────────────────────────
@@ -76,11 +109,19 @@ notify_failure() {
   fi
   local ts
   ts="$(date -u '+%Y-%m-%d %H:%M UTC')"
+  local remote_line="" rc_line="" stderr_line="" detail_line=""
+  [[ -n "$FAIL_REMOTE_PATH" ]] && remote_line=$'\n'"Remote: ${FAIL_REMOTE_PATH}"
+  if [[ -n "$FAIL_PG_DUMP_RC" || -n "$FAIL_RCLONE_RC" ]]; then
+    rc_line=$'\n'"RCs: pg_dump=${FAIL_PG_DUMP_RC:-?} rclone=${FAIL_RCLONE_RC:-?}"
+  fi
+  [[ -n "$FAIL_RCLONE_STDERR_SUMMARY" ]] && stderr_line=$'\n'"stderr: ${FAIL_RCLONE_STDERR_SUMMARY}"
+  [[ -n "$FAIL_RCLONE_STDERR_FILE" ]] && detail_line=$'\n'"Detail: ${FAIL_RCLONE_STDERR_FILE}"
+
   notify_telegram "$(cat <<EOF
 ❌ ${SCRIPT_NAME} FAILED
 Host: ${HOSTNAME_SHORT}
 Stage: ${stage_short}
-Exit: ${code} · ${ts}
+Exit: ${code} · ${ts}${remote_line}${rc_line}${stderr_line}${detail_line}
 EOF
 )"
 }
@@ -126,6 +167,7 @@ load_env() {
   : "${RETAIN_DAYS:=7}"
   : "${DUMP_SCHEMAS:=public,auth,storage,supabase_migrations}"
   : "${TG_HEARTBEAT:=0}"
+  : "${BACKUP_DETAIL_DIR:=$DETAIL_DIR_DEFAULT}"
   log "env loaded (db=$(mask_url "$DATABASE_URL") remote=$RCLONE_REMOTE retain=${RETAIN_DAYS}d schemas=$DUMP_SCHEMAS)"
 }
 
@@ -164,17 +206,37 @@ run_backup() {
     [[ -n "$s" ]] && schema_args+=("--schema=$s")
   done
 
+  ensure_detail_dir
+  local pg_dump_stderr_file="${BACKUP_DETAIL_DIR}/${RUN_ID}-pg_dump.stderr.log"
+  local rclone_stderr_file="${BACKUP_DETAIL_DIR}/${RUN_ID}-rclone-upload.stderr.log"
+  : >"$pg_dump_stderr_file"
+  : >"$rclone_stderr_file"
+
   log "START dump → ${remote_path}"
 
   # Streaming pipeline. pipefail (set above) makes either-side failure visible.
   local pipe_status=()
-  if ! pg_dump -Fc --no-owner --no-privileges "${schema_args[@]}" "$DATABASE_URL" \
-       | rclone rcat --retries 3 --retries-sleep 30s "$remote_path"; then
+  if ! pg_dump -Fc --no-owner --no-privileges "${schema_args[@]}" "$DATABASE_URL" 2>"$pg_dump_stderr_file" \
+       | rclone rcat --retries 3 --retries-sleep 30s "$remote_path" 2>"$rclone_stderr_file"; then
     pipe_status=("${PIPESTATUS[@]}")
     local pg_dump_rc="${pipe_status[0]:-1}"
     local rclone_rc="${pipe_status[1]:-1}"
+    local rclone_stderr_tail
+    rclone_stderr_tail="$(stderr_excerpt "$rclone_stderr_file")"
+
+    publish_detail_log "$pg_dump_stderr_file" "latest-pg_dump.stderr.log"
+    publish_detail_log "$rclone_stderr_file" "latest-rclone-upload.stderr.log"
+
+    FAIL_REMOTE_PATH="$remote_path"
+    FAIL_PG_DUMP_RC="$pg_dump_rc"
+    FAIL_RCLONE_RC="$rclone_rc"
+    FAIL_RCLONE_STDERR_SUMMARY="$rclone_stderr_tail"
+    FAIL_RCLONE_STDERR_FILE="$rclone_stderr_file"
+    FAIL_PG_DUMP_STDERR_FILE="$pg_dump_stderr_file"
+
     log "dump|upload failed for ${remote_path}"
     log "pipeline rc: pg_dump=${pg_dump_rc} rclone=${rclone_rc}"
+    log "rclone stderr tail: ${rclone_stderr_tail}"
     if (( rclone_rc != 0 && ( pg_dump_rc == 0 || pg_dump_rc == 141 ) )); then
       die 20 "upload failed (rclone=${rclone_rc}, pg_dump=${pg_dump_rc})"
     elif (( pg_dump_rc != 0 && rclone_rc != 0 )); then
@@ -185,6 +247,9 @@ run_backup() {
       die 20 "upload failed (rclone=${rclone_rc})"
     fi
   fi
+
+  publish_detail_log "$pg_dump_stderr_file" "latest-pg_dump.stderr.log"
+  publish_detail_log "$rclone_stderr_file" "latest-rclone-upload.stderr.log"
 
   local size_bytes
   size_bytes="$(rclone size --json "$remote_path" 2>/dev/null \
