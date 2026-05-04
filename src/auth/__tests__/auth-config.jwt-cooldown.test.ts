@@ -45,6 +45,10 @@ const supabaseClient = vi.hoisted(() => ({
   })),
 }))
 
+const requestHeadersState = vi.hoisted(() => ({
+  values: new Map<string, string>(),
+}))
+
 type AuthJwtTelemetryLog = {
   scope: string
   event: string
@@ -57,8 +61,30 @@ type AuthJwtTelemetryLog = {
   password?: string
 }
 
+type AuthLifecycleLog = {
+  scope: string
+  event: string
+  source: string
+  signout_reason?: string
+  user_id?: string
+  username?: string
+  tenant_id?: string
+  request_id?: string | null
+  ip_address?: string | null
+  user_agent?: string | null
+  metadata?: Record<string, unknown>
+}
+
 vi.mock("@supabase/supabase-js", () => ({
   createClient: vi.fn(() => supabaseClient),
+}))
+
+vi.mock("next/headers", () => ({
+  headers: () => ({
+    get(name: string) {
+      return requestHeadersState.values.get(name.toLowerCase()) ?? null
+    },
+  }),
 }))
 
 import { authOptions } from "@/auth/config"
@@ -97,6 +123,13 @@ function authJwtTelemetryLogs(infoSpy: ReturnType<typeof vi.spyOn>): AuthJwtTele
     .map((message) => JSON.parse(message) as AuthJwtTelemetryLog)
 }
 
+function authLifecycleLogs(infoSpy: ReturnType<typeof vi.spyOn>): AuthLifecycleLog[] {
+  return infoSpy.mock.calls
+    .map(([message]) => (typeof message === "string" ? message : ""))
+    .filter((message) => message.includes("\"scope\":\"auth.lifecycle\""))
+    .map((message) => JSON.parse(message) as AuthLifecycleLog)
+}
+
 describe("authOptions.jwt cooldown + trigger gate", () => {
   let consoleInfoSpy: ReturnType<typeof vi.spyOn>
   let consoleWarnSpy: ReturnType<typeof vi.spyOn>
@@ -110,6 +143,11 @@ describe("authOptions.jwt cooldown + trigger gate", () => {
     vi.stubEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY", "test-anon-key")
     vi.stubEnv("SUPABASE_SERVICE_ROLE_KEY", "test-service-role-key")
     vi.stubEnv("SUPABASE_JWT_SECRET", "test-jwt-secret")
+    requestHeadersState.values = new Map([
+      ["x-request-id", "jwt-req-42"],
+      ["x-forwarded-for", "198.51.100.9"],
+      ["user-agent", "VitestJwt/1.0"],
+    ])
     supabaseState.fromCalls = []
     supabaseState.rpcRows = [{ ...profileRowDefault }]
     supabaseState.rpcError = null
@@ -224,7 +262,91 @@ describe("authOptions.jwt cooldown + trigger gate", () => {
     const result = await runJwt({ token })
 
     expect(supabaseClient.rpc).toHaveBeenCalled()
-    expect(result).toEqual({})
+    expect(result).toEqual({
+      loginTime,
+    })
+  })
+
+  it("persists pending_signout_reason from session.update payloads into the JWT", async () => {
+    const now = Date.now()
+
+    const result = await runJwt({
+      token: {
+        ...baseToken,
+        loginTime: now - 10_000,
+        lastRefreshAt: now - 10_000,
+      },
+      trigger: "update",
+      session: {
+        pending_signout_reason: "user_initiated",
+      } as JwtArgs["session"],
+    })
+
+    expect(result).toMatchObject({
+      id: "42",
+      pending_signout_reason: "user_initiated",
+    })
+  })
+
+  it("clears stale pending_signout_reason when a later session.update omits it", async () => {
+    const now = Date.now()
+
+    const result = await runJwt({
+      token: {
+        ...baseToken,
+        loginTime: now - 10_000,
+        lastRefreshAt: now - 10_000,
+        pending_signout_reason: "user_initiated",
+      } as JwtArgs["token"],
+      trigger: "update",
+      session: {} as JwtArgs["session"],
+    })
+
+    expect(result).not.toHaveProperty("pending_signout_reason")
+  })
+
+  it("preserves pending_signout_reason when update-trigger invalidation would otherwise empty the token", async () => {
+    const now = Date.now()
+    supabaseState.rpcRows = [{
+      ...profileRowDefault,
+      password_changed_at: new Date(now - 5_000).toISOString(),
+    }]
+
+    const result = await runJwt({
+      token: {
+        ...baseToken,
+        loginTime: now - 10_000,
+        lastRefreshAt: now - 10_000,
+      },
+      trigger: "update",
+      session: {
+        pending_signout_reason: "forced_password_change",
+      } as JwtArgs["session"],
+    })
+
+    expect(result).toMatchObject({
+      loginTime: now - 10_000,
+      pending_signout_reason: "forced_password_change",
+    })
+    expect(result).not.toHaveProperty("id")
+    expect(result).not.toHaveProperty("username")
+    expect(result).not.toHaveProperty("role")
+
+    expect(authLifecycleLogs(consoleInfoSpy)).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          event: "token_invalidated_password_change",
+          source: "jwt_callback",
+          user_id: "42",
+          username: "nqminh",
+          tenant_id: "17",
+          signout_reason: "forced_password_change",
+          request_id: "jwt-req-42",
+          ip_address: "198.51.100.9",
+          user_agent: "VitestJwt/1.0",
+        }),
+      ])
+    )
   })
 
   it("does not advance lastRefreshAt when the profile fetch fails", async () => {
@@ -245,6 +367,35 @@ describe("authOptions.jwt cooldown + trigger gate", () => {
       id: "42",
       lastRefreshAt: now - 5 * 60_000, // still the old value
     })
+  })
+
+  it("emits profile_refresh_failed lifecycle log when the profile RPC fails", async () => {
+    const now = Date.now()
+    supabaseState.rpcRows = []
+    supabaseState.rpcError = { message: "rpc boom" }
+
+    await runJwt({
+      token: {
+        ...baseToken,
+        loginTime: now - 5 * 60_000,
+        lastRefreshAt: now - 5 * 60_000,
+      },
+    })
+
+    expect(authLifecycleLogs(consoleInfoSpy)).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          event: "profile_refresh_failed",
+          source: "jwt_callback",
+          user_id: "42",
+          username: "nqminh",
+          tenant_id: "17",
+          request_id: "jwt-req-42",
+          ip_address: "198.51.100.9",
+          user_agent: "VitestJwt/1.0",
+        }),
+      ])
+    )
   })
 
   it("keeps steady-session profile refreshes at or below 0.05 RPC calls per jwt callback", async () => {

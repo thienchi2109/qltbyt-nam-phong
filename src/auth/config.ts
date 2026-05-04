@@ -1,8 +1,11 @@
 import type { NextAuthOptions } from "next-auth"
+import { headers } from "next/headers"
 import Credentials from "next-auth/providers/credentials"
 import { createClient } from "@supabase/supabase-js"
 import jwt from "jsonwebtoken"
+import { emitAuthLifecycleLog } from "@/auth/logging"
 import { emitAuthJwtTelemetry } from "@/auth/telemetry"
+import type { AuthPendingSignoutReason } from "@/types/auth"
 import {
   applyAuthUserToJwt,
   applyJwtProfileRefresh,
@@ -31,6 +34,113 @@ class AuthRefreshConfigError extends Error {
     super(message)
     this.name = "AuthRefreshConfigError"
   }
+}
+
+type AuthRequestContext = {
+  request_id: string | null
+  ip_address: string | null
+  user_agent: string | null
+}
+
+type HeaderGetter = {
+  get(name: string): string | null
+}
+
+function normalizeUsernameForLog(value: unknown): string | undefined {
+  if (typeof value !== "string") {
+    return undefined
+  }
+
+  const normalized = value.trim().toLowerCase()
+  return normalized.length > 0 ? normalized : undefined
+}
+
+function coerceTenantId(value: unknown): string | undefined {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return String(value)
+  }
+
+  if (typeof value === "string") {
+    const normalized = value.trim()
+    return normalized.length > 0 ? normalized : undefined
+  }
+
+  return undefined
+}
+
+function readRequestContext(getHeader: (name: string) => string | null): AuthRequestContext {
+  const forwardedFor = getHeader("x-forwarded-for")
+  const requestId = getHeader("x-request-id") ?? getHeader("x-vercel-id")
+  const ipAddress = forwardedFor?.split(",")[0]?.trim() || null
+  const userAgent = getHeader("user-agent")
+
+  return {
+    request_id: requestId,
+    ip_address: ipAddress,
+    user_agent: userAgent,
+  }
+}
+
+function toHeaderGetter(rawHeaders: unknown): HeaderGetter | null {
+  if (!rawHeaders) {
+    return null
+  }
+
+  const maybeHeaderGetter = rawHeaders as { get?: unknown }
+  if (typeof rawHeaders === "object" && rawHeaders !== null && typeof maybeHeaderGetter.get === "function") {
+    const getHeader = (name: string) => (maybeHeaderGetter.get as (this: unknown, headerName: string) => unknown).call(rawHeaders, name)
+    return {
+      get(name: string) {
+        const value = getHeader(name)
+        return typeof value === "string" ? value : null
+      },
+    }
+  }
+
+  if (typeof rawHeaders === "object" && rawHeaders !== null) {
+    const headerMap = rawHeaders as Record<string, string | string[] | undefined>
+    return {
+      get(name: string) {
+        const value = headerMap[name] ?? headerMap[name.toLowerCase()]
+        if (Array.isArray(value)) {
+          return value[0] ?? null
+        }
+        return typeof value === "string" ? value : null
+      },
+    }
+  }
+
+  return null
+}
+
+function readAuthorizeRequestContext(req?: { headers?: unknown } | null): AuthRequestContext {
+  const headerGetter = toHeaderGetter(req?.headers)
+  if (!headerGetter) {
+    return {
+      request_id: null,
+      ip_address: null,
+      user_agent: null,
+    }
+  }
+
+  return readRequestContext((name) => headerGetter.get(name))
+}
+
+async function readRuntimeRequestContext(): Promise<AuthRequestContext> {
+  try {
+    const runtimeHeaders = await headers()
+    return readRequestContext((name) => runtimeHeaders.get(name))
+  } catch {
+    return {
+      request_id: null,
+      ip_address: null,
+      user_agent: null,
+    }
+  }
+}
+
+function isPendingSignoutReason(value: unknown): value is AuthPendingSignoutReason {
+  return value === "user_initiated" || value === "session_expired" || value === "forced_password_change"
 }
 
 function requireRefreshEnv(name: "NEXT_PUBLIC_SUPABASE_URL" | "NEXT_PUBLIC_SUPABASE_ANON_KEY" | "SUPABASE_JWT_SECRET"): string {
@@ -92,9 +202,11 @@ export const authOptions: NextAuthOptions = {
         username: { label: "Username", type: "text" },
         password: { label: "Password", type: "password" },
       },
-      async authorize(credentials) {
+      async authorize(credentials, req) {
         const username = credentials?.username?.toString().trim()
         const password = credentials?.password?.toString() || ""
+        const requestContext = readAuthorizeRequestContext(req)
+        const normalizedUsername = normalizeUsernameForLog(username)
 
         if (!username || !password) return null
 
@@ -102,6 +214,12 @@ export const authOptions: NextAuthOptions = {
         const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
         if (!supabaseUrl || !serviceKey) {
           console.error("Supabase env not configured")
+          emitAuthLifecycleLog({
+            source: "authorize",
+            reason_code: "config_error",
+            username: normalizedUsername,
+            ...requestContext,
+          })
           return null
         }
 
@@ -115,6 +233,12 @@ export const authOptions: NextAuthOptions = {
 
           if (error) {
             console.error("RPC auth error:", error)
+            emitAuthLifecycleLog({
+              source: "authorize",
+              reason_code: "rpc_error",
+              username: normalizedUsername,
+              ...requestContext,
+            })
             throw new Error("rpc_error")
           }
 
@@ -126,24 +250,55 @@ export const authOptions: NextAuthOptions = {
 
             if (authResult?.authentication_mode === "tenant_inactive") {
               console.warn("Login blocked because tenant is inactive", { username })
+              emitAuthLifecycleLog({
+                source: "authorize",
+                reason_code: "tenant_inactive",
+                username: normalizedUsername,
+                ...requestContext,
+              })
               throw new Error("tenant_inactive")
             }
           }
 
+          emitAuthLifecycleLog({
+            source: "authorize",
+            reason_code: "invalid_credentials",
+            username: normalizedUsername,
+            ...requestContext,
+          })
           throw new Error("invalid_credentials")
         } catch (e) {
-          if (e instanceof Error) {
+          if (
+            e instanceof Error &&
+            (e.message === "rpc_error" || e.message === "tenant_inactive" || e.message === "invalid_credentials")
+          ) {
             throw e
           }
+
           console.error("Authorize exception:", e)
-          throw new Error("authorize_exception")
+          emitAuthLifecycleLog({
+            source: "authorize",
+            reason_code: "authorize_exception",
+            username: normalizedUsername,
+            ...requestContext,
+            metadata: e instanceof Error
+              ? {
+                  error_message: e.message,
+                }
+              : undefined,
+          })
+          throw e instanceof Error ? e : new Error("authorize_exception")
         }
       },
     }),
   ],
   callbacks: {
-    async jwt({ token, user, trigger }) {
+    async jwt({ token, user, trigger, session }) {
       const now = Date.now()
+      const requestContext = await readRuntimeRequestContext()
+      const pendingSignoutReason = isPendingSignoutReason(session?.pending_signout_reason)
+        ? session.pending_signout_reason
+        : undefined
 
       // On sign-in, persist extra fields in the JWT
       if (user) {
@@ -151,6 +306,12 @@ export const authOptions: NextAuthOptions = {
           ...applyAuthUserToJwt(token, user),
           loginTime: now, // Track when user logged in
         }
+      }
+
+      if (pendingSignoutReason) {
+        token.pending_signout_reason = pendingSignoutReason
+      } else if (trigger === "update" && "pending_signout_reason" in token) {
+        delete token.pending_signout_reason
       }
 
       if (!token.id) {
@@ -230,6 +391,18 @@ export const authOptions: NextAuthOptions = {
           .rpc("get_session_profile_for_jwt", { p_user_id: userId })
 
         if (error) {
+          emitAuthLifecycleLog({
+            event: "profile_refresh_failed",
+            source: "jwt_callback",
+            user_id: userId,
+            username: normalizeUsernameForLog(token.username),
+            tenant_id: coerceTenantId(token.don_vi),
+            ...requestContext,
+            metadata: {
+              trigger,
+              refreshReason,
+            },
+          })
           emitAuthJwtTelemetry("jwt_refresh_failed", {
             userId,
             trigger,
@@ -242,6 +415,18 @@ export const authOptions: NextAuthOptions = {
         if (!error && data) {
           const profile = firstProfileRow(data)
           if (!profile) {
+            emitAuthLifecycleLog({
+              event: "profile_refresh_failed",
+              source: "jwt_callback",
+              user_id: userId,
+              username: normalizeUsernameForLog(token.username),
+              tenant_id: coerceTenantId(token.don_vi),
+              ...requestContext,
+              metadata: {
+                trigger,
+                refreshReason,
+              },
+            })
             emitAuthJwtTelemetry("jwt_refresh_failed", {
               userId,
               trigger,
@@ -256,6 +441,22 @@ export const authOptions: NextAuthOptions = {
             const passwordChangedAt = new Date(profile.password_changed_at).getTime()
             const tokenLoginTime = token.loginTime as number
             if (passwordChangedAt > tokenLoginTime) {
+              const signoutReason = isPendingSignoutReason(token.pending_signout_reason)
+                ? token.pending_signout_reason
+                : undefined
+              emitAuthLifecycleLog({
+                event: "token_invalidated_password_change",
+                source: "jwt_callback",
+                signout_reason: signoutReason,
+                user_id: userId,
+                username: normalizeUsernameForLog(token.username),
+                tenant_id: coerceTenantId(token.don_vi),
+                ...requestContext,
+                metadata: {
+                  trigger,
+                  refreshReason,
+                },
+              })
               emitAuthJwtTelemetry("jwt_token_invalidated_password_change", {
                 userId,
                 trigger,
@@ -265,7 +466,17 @@ export const authOptions: NextAuthOptions = {
                 invalidatedReason: "password_changed_after_login",
               })
               console.warn("Password changed after login - invalidating token")
-              return {}
+              const invalidatedToken: {
+                loginTime?: number
+                pending_signout_reason?: AuthPendingSignoutReason
+              } = {}
+              if (typeof token.loginTime === "number") {
+                invalidatedToken.loginTime = token.loginTime
+              }
+              if (signoutReason) {
+                invalidatedToken.pending_signout_reason = signoutReason
+              }
+              return invalidatedToken
             }
           }
           // Keep JWT in sync with user profile for tenant-aware UI
@@ -284,6 +495,18 @@ export const authOptions: NextAuthOptions = {
           })
         }
       } catch (e) {
+        emitAuthLifecycleLog({
+          event: "profile_refresh_failed",
+          source: "jwt_callback",
+          user_id: userId,
+          username: normalizeUsernameForLog(token.username),
+          tenant_id: coerceTenantId(token.don_vi),
+          ...requestContext,
+          metadata: {
+            trigger,
+            refreshReason,
+          },
+        })
         emitAuthJwtTelemetry("jwt_refresh_failed", {
           userId,
           trigger,
@@ -303,6 +526,56 @@ export const authOptions: NextAuthOptions = {
     async session({ session, token }) {
       // Expose custom fields to the client session
       return applyJwtToSession(session, token)
+    },
+  },
+  events: {
+    async signIn({ user }) {
+      const requestContext = await readRuntimeRequestContext()
+
+      emitAuthLifecycleLog({
+        event: "login_success",
+        source: "events_signin",
+        user_id: typeof user.id === "string" ? user.id : user.id != null ? String(user.id) : undefined,
+        username: normalizeUsernameForLog(user.username ?? user.name),
+        tenant_id: coerceTenantId(user.don_vi),
+        ...requestContext,
+      })
+    },
+    async signOut({ token, session }) {
+      const pendingReason = isPendingSignoutReason(token?.pending_signout_reason)
+        ? token.pending_signout_reason
+        : undefined
+      const userId =
+        typeof token?.id === "string"
+          ? token.id
+          : token?.id != null
+            ? String(token.id)
+            : typeof session?.user?.id === "string"
+              ? session.user.id
+              : session?.user?.id != null
+                ? String(session.user.id)
+                : undefined
+      const username = normalizeUsernameForLog(token?.username ?? session?.user?.username ?? session?.user?.name)
+      const tenantId = coerceTenantId(token?.don_vi ?? session?.user?.don_vi)
+
+      if (!userId && !username && !tenantId && !pendingReason) {
+        return
+      }
+
+      const metadata: Record<string, unknown> = {}
+      if (typeof token?.loginTime === "number") {
+        metadata.session_duration_ms = Math.max(0, Date.now() - token.loginTime)
+      }
+
+      emitAuthLifecycleLog({
+        source: "events_signout",
+        signout_reason: pendingReason ?? "session_expired",
+        user_id: userId,
+        username,
+        tenant_id: tenantId,
+        ...(await readRuntimeRequestContext()),
+        metadata: Object.keys(metadata).length > 0 ? metadata : undefined,
+      })
     },
   },
 }

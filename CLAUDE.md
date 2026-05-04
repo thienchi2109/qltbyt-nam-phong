@@ -309,6 +309,15 @@ npm run n:test        # Tests
 
 **Why:** `.cmd` batch files and some `.exe` files don't return stdout in certain shell contexts (Claude Code's Bash tool). These helpers use Node's `child_process.execSync` to properly capture output.
 
+### RTK vs Context-Mode Convention
+
+Use this split consistently for repo work:
+
+- **Shell / RTK-style short git ops:** `git status`, `git checkout`, `git add`, `git commit`, `git push`, `git pull --rebase`, `git fetch`, `git branch`
+- **Always route through `context-mode`:** `gh`, test runners, `git diff`, `git log`, `react-doctor`, large `rg`, and any command likely to emit more than ~20 lines
+
+Do not run `gh` directly in plain bash when `context-mode` can carry the command.
+
 ### Verification Order (MANDATORY for `.ts` / `.tsx` changes)
 
 Run verification in this order before claiming success, committing, or updating a PR:

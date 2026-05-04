@@ -87,6 +87,7 @@ export function applyJwtProfileRefresh(
 export function applyJwtToSession(session: Session, token: JWT): Session {
   return {
     ...session,
+    pending_signout_reason: token.pending_signout_reason ?? null,
     user: {
       ...session.user,
       id: token.id ?? session.user.id,

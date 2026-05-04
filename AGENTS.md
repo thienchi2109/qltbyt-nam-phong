@@ -23,6 +23,15 @@ Bash is ONLY for short-output ops: `git`, `mkdir`, `rm`, `mv`, `cd`, `ls`, `npm 
 
 For the `verify:no-explicit-any` → `typecheck` → focused vitest → `react-doctor` chain, gather them all in **one** `ctx_batch_execute` so failures are searchable via `ctx_search`.
 
+### RTK vs Context-Mode Convention
+
+Use this repo-level split consistently:
+
+- **Shell / RTK-style short git ops:** `git status`, `git checkout`, `git add`, `git commit`, `git push`, `git pull --rebase`, `git fetch`, `git branch`
+- **Always route through `context-mode`:** `gh`, test runners, `git diff`, `git log`, `react-doctor`, large `rg`, and any command likely to emit more than ~20 lines
+
+Do not run `gh` directly in plain bash when `context-mode` can carry the command.
+
 ### Read / Grep redirected for analysis
 
 - Reading a file to **edit** it → `read` is correct (Edit needs content in context).
