@@ -1,5 +1,6 @@
--- Smoke test for enriched public.repair_request_status_counts.
--- Run only after the migration is explicitly applied.
+-- Spec checklist for the enriched public.repair_request_status_counts contract.
+-- Keep this file non-runnable until the migration is explicitly approved for
+-- apply; convert the checklist below into executable SQL assertions at apply time.
 --
 -- Coverage goals:
 -- 1. RBAC parity with repair_request_list for:

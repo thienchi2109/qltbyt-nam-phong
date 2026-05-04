@@ -3,7 +3,7 @@
 - **Date**: 2026-05-04
 - **Page**: `/repair-requests`
 - **Component**: `<RepairRequestAlert />` (the destructive-styled accordion banner showing "Có N yêu cầu sửa chữa sắp/quá hạn cần chú ý!")
-- **Status**: Root cause confirmed, awaiting approach decision before implementation.
+- **Status**: Implemented on branch; migration/spec files written, not yet applied.
 
 ## 1. Symptom
 
@@ -40,7 +40,9 @@ The alert is **client-side counting on a server-side paginated dataset**. The ba
 
 ## 4. Proposed Solutions
 
-### Option A — Dedicated server-side RPC `repair_request_overdue_summary` (recommended) ⭐
+### Option A — Dedicated server-side RPC `repair_request_overdue_summary` (initial alternative, not chosen)
+
+Retrospective: this was superseded by enriching `repair_request_status_counts`, which preserves page-independent metrics while avoiding an extra summary round-trip.
 
 **Idea**: Create a small RPC that returns the summary AND a top-N list of overdue/upcoming items, computed across the entire filtered dataset.
 
@@ -137,7 +139,7 @@ Update 2026-05-04: after implementation review, the chosen path is to keep `repa
      - shared-family invalidation in `src/hooks/use-cached-repair.ts`
    - If `repairKeys.all` does not cover the new key shape, the implementation must add explicit invalidation.
 
-4. **RED — SQL smoke test** `supabase/tests/repair_request_overdue_summary_smoke.sql`
+4. **RED — SQL spec / smoke checklist** `supabase/tests/repair_request_status_counts_overdue_summary_smoke.spec.sql`
    - Roles: global, regional_leader, to_qltb (same dia_ban), user (department scope), cross-tenant isolation.
    - Date boundaries: today, today−1, today+7, today+8, NULL `ngay_mong_muon_hoan_thanh`.
    - Status filter: only `Chờ xử lý` + `Đã duyệt` qualify; `Hoàn thành` / `Không HT` excluded.
@@ -199,7 +201,7 @@ For the TypeScript / React diff after the focused tests are green:
 
 For the SQL migration when explicitly authorized to apply it:
 
-- Run `supabase/tests/repair_request_overdue_summary_smoke.sql` via MCP `execute_sql`.
+- Run an executable version of `supabase/tests/repair_request_status_counts_overdue_summary_smoke.spec.sql` via MCP `execute_sql` once the migration is explicitly approved for apply.
 - Post-migration: `get_advisors(security)` and `get_advisors(performance)`.
 
 ### Risks & Considerations
@@ -217,7 +219,7 @@ For the SQL migration when explicitly authorized to apply it:
 - Pagination controls have no effect on the badge count or the accordion items.
 - Filter bar (search, facility, date range) updates the banner consistently with the table.
 - All RBAC roles (global, regional_leader, to_qltb, user with department scope) see exactly the rows they are allowed to see.
-- `repair_request_overdue_summary` is reachable through the RPC proxy allow-list.
+- `repair_request_status_counts` remains reachable through the RPC proxy allow-list and returns both `counts` and `overdue_summary`.
 - No regression to existing tests; new smoke tests pass.
 - `verify:no-explicit-any`, `typecheck`, focused vitest, and `react-doctor --diff main` all green.
 

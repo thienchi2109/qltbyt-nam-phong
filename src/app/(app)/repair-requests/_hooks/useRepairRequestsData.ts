@@ -7,6 +7,7 @@ import { useServerPagination } from "@/hooks/useServerPagination"
 import type {
   RepairRequestPageMetrics,
   RepairRequestOverdueSummary,
+  RepairRequestStatusCounts,
   RepairRequestWithEquipment,
 } from "../types"
 import type { UiFilters as UiFiltersPrefs } from "@/lib/rr-prefs"
@@ -15,6 +16,12 @@ import type { UiFilters as UiFiltersPrefs } from "@/lib/rr-prefs"
 
 const STATUSES = ['Chờ xử lý', 'Đã duyệt', 'Hoàn thành', 'Không HT'] as const
 type Status = typeof STATUSES[number]
+
+function isRepairRequestPageMetrics(
+  value: RepairRequestPageMetrics | RepairRequestStatusCounts | undefined
+): value is RepairRequestPageMetrics {
+  return Boolean(value) && typeof value === "object" && "counts" in value
+}
 
 export interface UseRepairRequestsDataOptions {
   debouncedSearch: string
@@ -124,8 +131,12 @@ export function useRepairRequestsData(
     setTotalRequests(serverTotal)
   }, [repairRequestsRes?.total])
 
-  // Status counts query (always fires for authenticated users)
-  const { data: pageMetrics, isLoading: statusCountsLoading } = useQuery<RepairRequestPageMetrics>({
+  // Status counts query (always fires for authenticated users).
+  // Accept both the new page-metrics payload and the legacy flat counts shape
+  // so app deploys remain compatible until the SQL migration is applied.
+  const { data: pageMetrics, isLoading: statusCountsLoading } = useQuery<
+    RepairRequestPageMetrics | RepairRequestStatusCounts
+  >({
     queryKey: ['repair_request_status_counts', {
       tenant: effectiveTenantKey,
       role: userRole,
@@ -149,8 +160,12 @@ export function useRepairRequestsData(
     staleTime: 30_000,
     enabled: hasUser,
   })
-  const statusCounts = pageMetrics?.counts as Record<Status, number> | undefined
-  const overdueSummary: RepairRequestOverdueSummary | undefined = pageMetrics?.overdue_summary
+  const statusCounts: Record<Status, number> | undefined = isRepairRequestPageMetrics(pageMetrics)
+    ? pageMetrics.counts
+    : pageMetrics
+  const overdueSummary: RepairRequestOverdueSummary | undefined = isRepairRequestPageMetrics(pageMetrics)
+    ? pageMetrics.overdue_summary
+    : undefined
   const overdueLoading = statusCountsLoading
 
   return {

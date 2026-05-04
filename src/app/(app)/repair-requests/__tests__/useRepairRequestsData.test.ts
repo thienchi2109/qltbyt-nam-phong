@@ -10,7 +10,7 @@
  * - totalRequests syncs from query result
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { renderHook, act } from '@testing-library/react'
+import { renderHook } from '@testing-library/react'
 
 // ── Hoisted mocks ─────────────────────────────────────────────────
 const mocks = vi.hoisted(() => ({
@@ -19,6 +19,18 @@ const mocks = vi.hoisted(() => ({
 
 // Track useQuery calls to inspect queryKey and enabled
 let capturedQueries: Array<{ queryKey: unknown[]; enabled: boolean }> = []
+let mockStatusCountsPayload:
+  | {
+      counts: { 'Chờ xử lý': number; 'Đã duyệt': number; 'Hoàn thành': number; 'Không HT': number }
+      overdue_summary: {
+        total: number
+        overdue: number
+        due_today: number
+        due_soon: number
+        items: Array<{ id: number; days_difference: number }>
+      }
+    }
+  | { 'Chờ xử lý': number; 'Đã duyệt': number; 'Hoàn thành': number; 'Không HT': number }
 
 vi.mock('@tanstack/react-query', () => ({
   useQuery: (options: { queryKey: unknown[]; enabled: boolean }) => {
@@ -38,18 +50,7 @@ vi.mock('@tanstack/react-query', () => ({
 
     if (key === 'repair_request_status_counts') {
       return {
-        data: options.enabled
-          ? {
-              counts: { 'Chờ xử lý': 5, 'Đã duyệt': 3, 'Hoàn thành': 10, 'Không HT': 2 },
-              overdue_summary: {
-                total: 5,
-                overdue: 2,
-                due_today: 1,
-                due_soon: 2,
-                items: [{ id: 99, days_difference: -1 }],
-              },
-            }
-          : undefined,
+        data: options.enabled ? mockStatusCountsPayload : undefined,
         isLoading: false,
       }
     }
@@ -95,6 +96,16 @@ describe('useRepairRequestsData', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     capturedQueries = []
+    mockStatusCountsPayload = {
+      counts: { 'Chờ xử lý': 5, 'Đã duyệt': 3, 'Hoàn thành': 10, 'Không HT': 2 },
+      overdue_summary: {
+        total: 5,
+        overdue: 2,
+        due_today: 1,
+        due_soon: 2,
+        items: [{ id: 99, days_difference: -1 }],
+      },
+    }
   })
 
   it('returns expected shape', () => {
@@ -174,6 +185,25 @@ describe('useRepairRequestsData', () => {
       total: 5,
       overdue: 2,
     })
+  })
+
+  it('falls back to the legacy flat status-counts payload before the migration is applied', () => {
+    mockStatusCountsPayload = {
+      'Chờ xử lý': 7,
+      'Đã duyệt': 4,
+      'Hoàn thành': 8,
+      'Không HT': 1,
+    }
+
+    const { result } = renderHook(() => useRepairRequestsData(defaultArgs))
+
+    expect(result.current.statusCounts).toEqual({
+      'Chờ xử lý': 7,
+      'Đã duyệt': 4,
+      'Hoàn thành': 8,
+      'Không HT': 1,
+    })
+    expect(result.current.overdueSummary).toBeUndefined()
   })
 
   it('disables status counts query when no user', () => {

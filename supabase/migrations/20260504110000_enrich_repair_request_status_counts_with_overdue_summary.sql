@@ -1,5 +1,9 @@
 -- Issue #384: enrich repair_request_status_counts so the repair-request page
 -- can fetch KPI counts and overdue-alert summary in one page-independent RPC.
+-- Forward-only note: this supersedes the earlier function body in
+-- `supabase/migrations/2025-10-25/20251025_status_filter_and_counts_rpc.sql`.
+-- If rollback is needed, add a new migration restoring that contract instead
+-- of editing migration history.
 
 BEGIN;
 

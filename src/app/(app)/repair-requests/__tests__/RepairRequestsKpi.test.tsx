@@ -475,10 +475,10 @@ describe('RepairRequests KPI Cards', () => {
       setupGlobalUser({ shouldFetchData: false })
       await renderRepairRequestsPageClient()
 
-      const summaryCall = mockUseQueryCalls.find(
+      const extraSummaryCall = mockUseQueryCalls.find(
         (c) => (c.queryKey[0] as string) === 'repair_request_overdue_summary'
       )
-      expect(summaryCall).toBeUndefined()
+      expect(extraSummaryCall).toBeUndefined()
     })
 
     it('should show table and pagination when shouldFetchData is true', async () => {
