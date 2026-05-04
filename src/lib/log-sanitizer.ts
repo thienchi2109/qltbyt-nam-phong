@@ -10,6 +10,10 @@ const SENSITIVE_LOG_KEYS = [
   "credential",
 ] as const
 
+function isPlainObject(value: object): value is Record<string, unknown> {
+  return Object.getPrototypeOf(value) === Object.prototype
+}
+
 export function sanitizeForLog(value: unknown, depth = 0): unknown {
   if (depth > 10) {
     return "[MAX_DEPTH]"
@@ -25,6 +29,21 @@ export function sanitizeForLog(value: unknown, depth = 0): unknown {
 
   if (Array.isArray(value)) {
     return value.map((item) => sanitizeForLog(item, depth + 1))
+  }
+
+  if (value instanceof Date) {
+    return value.toISOString()
+  }
+
+  if (value instanceof Error) {
+    return {
+      name: value.name,
+      message: value.message,
+    }
+  }
+
+  if (!isPlainObject(value)) {
+    return value
   }
 
   const sanitized: Record<string, unknown> = {}

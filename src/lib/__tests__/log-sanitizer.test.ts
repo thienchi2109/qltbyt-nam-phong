@@ -96,4 +96,19 @@ describe("sanitizeForLog", () => {
       },
     })
   })
+
+  it("preserves log context for Date and Error values", () => {
+    const result = sanitizeForLog({
+      created_at: new Date("2026-05-04T01:30:00.000Z"),
+      error: new Error("rpc failed"),
+    })
+
+    expect(result).toEqual({
+      created_at: "2026-05-04T01:30:00.000Z",
+      error: {
+        name: "Error",
+        message: "rpc failed",
+      },
+    })
+  })
 })

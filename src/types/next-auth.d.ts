@@ -1,6 +1,6 @@
 import type { DefaultSession } from "next-auth"
 import type { DefaultJWT } from "next-auth/jwt"
-import type { AuthPendingSignoutReason } from "@/auth/logging"
+import type { AuthPendingSignoutReason } from "@/types/auth"
 
 type NextAuthUserFields = {
   id: string

@@ -1,4 +1,5 @@
 import { sanitizeForLog } from "@/lib/log-sanitizer"
+import type { AuthPendingSignoutReason } from "@/types/auth"
 
 export type AuthLifecycleEvent =
   | "login_failure"
@@ -17,11 +18,6 @@ export type AuthLogSource =
   | "jwt_callback"
   | "events_signin"
   | "events_signout"
-
-export type AuthPendingSignoutReason =
-  | "user_initiated"
-  | "session_expired"
-  | "forced_password_change"
 
 type AuthLifecycleLogInput = {
   event?: AuthLifecycleEvent

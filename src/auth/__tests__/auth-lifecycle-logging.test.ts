@@ -81,4 +81,21 @@ describe("auth lifecycle logging", () => {
       },
     })
   })
+
+  it("derives tenant_inactive from the reason_code contract", () => {
+    const payload = buildAuthLifecycleLog({
+      source: "authorize",
+      reason_code: "tenant_inactive",
+      username: "locked-user",
+    })
+
+    expect(payload).toEqual({
+      scope: "auth.lifecycle",
+      ts: "2026-05-04T01:30:00.000Z",
+      event: "tenant_inactive",
+      source: "authorize",
+      reason_code: "tenant_inactive",
+      username: "locked-user",
+    })
+  })
 })
