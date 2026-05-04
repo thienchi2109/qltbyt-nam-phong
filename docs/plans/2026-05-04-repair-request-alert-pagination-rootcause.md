@@ -113,15 +113,16 @@ Hit `repair_request_list` with `p_page_size = 1000` just for the alert.
 **Pros**: zero schema work.
 **Cons**: violates server-pagination discipline (issue #366 plan moves the opposite way), wastes bandwidth, scales badly with large tenants, may exceed payload limits. **Not recommended.**
 
-## 5. Recommended Path: Option A
+## 5. Recommended Path: Option B (revised)
+
+Update 2026-05-04: after implementation review, the chosen path is to keep `repair_request_list` paginated and page-bound, while enriching `repair_request_status_counts` with an `overdue_summary` payload. This preserves a page-independent query for KPI + banner data and removes the extra summary round-trip without coupling banner refreshes to pagination.
 
 ### Implementation Outline (TDD order)
 
 1. **RED — frontend hook tests** `src/app/(app)/repair-requests/__tests__/useRepairRequestsData.test.ts`
-   - Add expectations for a third query `repair_request_overdue_summary`.
-   - Verify its query key includes tenant / role / diaBan / facility / search / date filters but deliberately excludes `page` / `pageSize`.
-   - Verify `enabled = hasUser && shouldFetchData`.
-   - Verify the hook return shape grows to include `overdueSummary` and `overdueLoading`.
+   - Change the `repair_request_status_counts` contract to return both `counts` and `overdue_summary`.
+   - Verify this query key includes tenant / role / diaBan / facility / search / date filters but deliberately excludes `page` / `pageSize`.
+   - Verify the hook still exposes `statusCounts` and `overdueSummary` as separate fields derived from the shared payload.
 
 2. **RED — page / alert regression tests**
    - Extend `src/app/(app)/repair-requests/__tests__/RepairRequestsKpi.test.tsx` or add a focused alert test file.
@@ -130,7 +131,7 @@ Hit `repair_request_list` with `p_page_size = 1000` just for the alert.
    - Cover the `shouldFetchData = false` case so no summary query fires before a global user selects a facility.
 
 3. **RED — invalidation tests**
-   - Update repair-request mutation tests so create / edit / approve / complete / delete all invalidate the new summary query.
+   - Update repair-request mutation tests so create / edit / approve / complete / delete keep invalidating the shared `repair_request_status_counts` metrics query.
    - Cover both invalidation paths in the repo:
      - explicit invalidation in `src/app/(app)/repair-requests/_components/RepairRequestsContext.tsx`
      - shared-family invalidation in `src/hooks/use-cached-repair.ts`
@@ -142,8 +143,8 @@ Hit `repair_request_list` with `p_page_size = 1000` just for the alert.
    - Status filter: only `Chờ xử lý` + `Đã duyệt` qualify; `Hoàn thành` / `Không HT` excluded.
    - Combined with `p_q`, `p_don_vi`, `p_date_from/to`.
 
-5. **GREEN — migration** `supabase/migrations/<date>_add_repair_request_overdue_summary.sql`
-   - `CREATE FUNCTION public.repair_request_overdue_summary(p_q text, p_don_vi bigint, p_date_from date, p_date_to date) RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, pg_temp`.
+5. **GREEN — migration** `supabase/migrations/<date>_enrich_repair_request_status_counts_with_overdue_summary.sql`
+   - `CREATE OR REPLACE FUNCTION public.repair_request_status_counts(...) RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, pg_temp`.
    - Mirror the live guard structure of `repair_request_list`, including:
      - non-empty `role` guard
      - non-empty `user_id` guard
@@ -151,33 +152,30 @@ Hit `repair_request_list` with `p_page_size = 1000` just for the alert.
      - `allowed_don_vi_for_session()` enforcement for non-global roles
      - `_normalize_department_scope(...)` enforcement for `role = 'user'`
      - `_sanitize_ilike_pattern(p_q)` instead of raw ILIKE concatenation
-   - Use `repair_request_status_counts` only as a reference for `WITH base AS (...)` + `count(*) FILTER (...)`.
-   - Return the JSON shape from §4 Option A.
+   - Return:
+     - `counts` for KPI cards
+     - `overdue_summary` for the alert banner
    - `GRANT EXECUTE ... TO authenticated; REVOKE FROM PUBLIC;`
    - Do **not** apply the migration until explicitly requested.
 
-6. **GREEN — proxy allow-list**
-   - Add `repair_request_overdue_summary` to `src/app/api/rpc/[fn]/allowed-functions.ts`.
+6. **GREEN — frontend hook** `src/app/(app)/repair-requests/_hooks/useRepairRequestsData.ts`
+   - Add typed `OverdueSummary` / page-metrics interface in `src/app/(app)/repair-requests/types.ts`.
+   - Reuse the existing `repair_request_status_counts` query and unpack `counts` + `overdue_summary`.
+   - Remove the extra summary round-trip.
 
-7. **GREEN — frontend hook** `src/app/(app)/repair-requests/_hooks/useRepairRequestsData.ts`
-   - Add typed `OverdueSummary` interface in `src/app/(app)/repair-requests/types.ts`.
-   - Add `useQuery` for `repair_request_overdue_summary`, `staleTime: 30_000`, `enabled: hasUser && shouldFetchData`.
-   - Extend hook return to `{ ..., overdueSummary, overdueLoading }`.
-
-8. **GREEN — component** `src/components/repair-request-alert.tsx`
+7. **GREEN — component** `src/components/repair-request-alert.tsx`
    - Replace `requests` prop with `summary` + `isLoading`.
    - Remove client-side `useMemo` filter; render `summary.total` in title and `summary.items` in accordion content.
    - Loading and empty states (`summary?.total === 0` → return null; loading → return null or a small skeleton).
 
-9. **GREEN — wiring**
+8. **GREEN — wiring**
    - `RepairRequestsPageLayout`: drop `requests` prop, accept `overdueSummary` + `overdueLoading`.
    - `RepairRequestsPageClient`: pass `overdueSummary` from the hook.
 
-10. **GREEN — mutation invalidations**
-   - In repair-request create / edit / approve / complete / delete flows, ensure `repair_request_overdue_summary` is invalidated alongside the existing repair queries.
-   - Keep the invalidation strategy consistent with the final query key choice: if the new summary key sits outside `repairKeys.all`, invalidate it explicitly.
+9. **GREEN — mutation invalidations**
+   - Keep invalidation on `repair_request_status_counts`; no extra summary query should exist after the merge.
 
-11. **REFACTOR**
+10. **REFACTOR**
    - Keep type extraction and prop cleanup small and local after the RED tests have gone green.
 
 ### Verification (per AGENTS.md)

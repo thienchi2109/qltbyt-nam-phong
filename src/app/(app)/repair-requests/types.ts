@@ -50,6 +50,11 @@ export interface RepairRequestOverdueSummary {
   items: RepairRequestOverdueItem[]
 }
 
+export interface RepairRequestPageMetrics {
+  counts: Record<'Chờ xử lý' | 'Đã duyệt' | 'Hoàn thành' | 'Không HT', number>
+  overdue_summary: RepairRequestOverdueSummary
+}
+
 export interface RepairRequestChangeHistory {
   id: number
   action_type: string

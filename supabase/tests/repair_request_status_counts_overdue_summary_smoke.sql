@@ -1,4 +1,4 @@
--- Smoke test for public.repair_request_overdue_summary.
+-- Smoke test for enriched public.repair_request_status_counts.
 -- Run only after the migration is explicitly applied.
 --
 -- Coverage goals:
@@ -24,7 +24,7 @@
 --    - p_date_to
 --
 -- Expected contract:
---   select public.repair_request_overdue_summary(
+--   select public.repair_request_status_counts(
 --     p_q := null,
 --     p_don_vi := null,
 --     p_date_from := null,
@@ -33,9 +33,17 @@
 --
 -- Expected JSON shape:
 -- {
---   "total": 0,
---   "overdue": 0,
---   "due_today": 0,
---   "due_soon": 0,
---   "items": []
+--   "counts": {
+--     "Chờ xử lý": 0,
+--     "Đã duyệt": 0,
+--     "Hoàn thành": 0,
+--     "Không HT": 0
+--   },
+--   "overdue_summary": {
+--     "total": 0,
+--     "overdue": 0,
+--     "due_today": 0,
+--     "due_soon": 0,
+--     "items": []
+--   }
 -- }

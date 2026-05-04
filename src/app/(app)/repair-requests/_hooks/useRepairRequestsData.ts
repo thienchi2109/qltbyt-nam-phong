@@ -5,6 +5,7 @@ import { useQuery } from "@tanstack/react-query"
 import { callRpc } from "@/lib/rpc-client"
 import { useServerPagination } from "@/hooks/useServerPagination"
 import type {
+  RepairRequestPageMetrics,
   RepairRequestOverdueSummary,
   RepairRequestWithEquipment,
 } from "../types"
@@ -124,9 +125,7 @@ export function useRepairRequestsData(
   }, [repairRequestsRes?.total])
 
   // Status counts query (always fires for authenticated users)
-  const { data: statusCounts, isLoading: statusCountsLoading } = useQuery<
-    Record<Status, number>
-  >({
+  const { data: pageMetrics, isLoading: statusCountsLoading } = useQuery<RepairRequestPageMetrics>({
     queryKey: ['repair_request_status_counts', {
       tenant: effectiveTenantKey,
       role: userRole,
@@ -137,7 +136,7 @@ export function useRepairRequestsData(
       dateTo: uiFilters.dateRange?.to || null,
     }],
     queryFn: async () => {
-      const res = await callRpc<Record<Status, number>>({
+      return callRpc<RepairRequestPageMetrics>({
         fn: 'repair_request_status_counts',
         args: {
           p_q: debouncedSearch || null,
@@ -146,39 +145,13 @@ export function useRepairRequestsData(
           p_date_to: uiFilters.dateRange?.to || null,
         },
       })
-      return res as Record<Status, number>
     },
     staleTime: 30_000,
     enabled: hasUser,
   })
-
-  const { data: overdueSummary, isLoading: overdueLoading } = useQuery<RepairRequestOverdueSummary>({
-    queryKey: ['repair_request_overdue_summary', {
-      tenant: effectiveTenantKey,
-      role: userRole,
-      diaBan: userDiaBanId,
-      facilityId: selectedFacilityId ?? null,
-      search: debouncedSearch || null,
-      dateFrom: uiFilters.dateRange?.from || null,
-      dateTo: uiFilters.dateRange?.to || null,
-    }],
-    queryFn: async ({ signal }: { signal: AbortSignal }) => {
-      return callRpc<RepairRequestOverdueSummary>({
-        fn: 'repair_request_overdue_summary',
-        args: {
-          p_q: debouncedSearch || null,
-          p_don_vi: selectedFacilityId ?? null,
-          p_date_from: uiFilters.dateRange?.from || null,
-          p_date_to: uiFilters.dateRange?.to || null,
-        },
-        signal,
-      })
-    },
-    enabled: hasUser && shouldFetchData,
-    staleTime: 30_000,
-    gcTime: 5 * 60_000,
-    refetchOnWindowFocus: false,
-  })
+  const statusCounts = pageMetrics?.counts as Record<Status, number> | undefined
+  const overdueSummary: RepairRequestOverdueSummary | undefined = pageMetrics?.overdue_summary
+  const overdueLoading = statusCountsLoading
 
   return {
     requests,

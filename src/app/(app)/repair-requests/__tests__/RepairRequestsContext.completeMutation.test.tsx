@@ -123,7 +123,7 @@ describe("RepairRequestsContext complete mutation", () => {
     })
   })
 
-  it("invalidates the overdue summary query after a successful complete mutation", async () => {
+  it("invalidates the shared page metrics query after a successful complete mutation", async () => {
     const queryClient = new QueryClient({
       defaultOptions: {
         queries: { retry: false, gcTime: 0 },
@@ -153,7 +153,7 @@ describe("RepairRequestsContext complete mutation", () => {
 
     await waitFor(() => {
       expect(invalidateSpy).toHaveBeenCalledWith({
-        queryKey: ["repair_request_overdue_summary"],
+        queryKey: ["repair_request_status_counts"],
       })
     })
   })

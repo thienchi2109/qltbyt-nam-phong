@@ -1,9 +1,9 @@
--- Issue #384: repair-request alert banner must summarize the full filtered
--- dataset instead of only the current paginated page.
+-- Issue #384: enrich repair_request_status_counts so the repair-request page
+-- can fetch KPI counts and overdue-alert summary in one page-independent RPC.
 
 BEGIN;
 
-CREATE OR REPLACE FUNCTION public.repair_request_overdue_summary(
+CREATE OR REPLACE FUNCTION public.repair_request_status_counts(
   p_q text DEFAULT NULL::text,
   p_don_vi bigint DEFAULT NULL::bigint,
   p_date_from date DEFAULT NULL::date,
@@ -39,11 +39,19 @@ BEGIN
     v_department_scope := public._normalize_department_scope(public._get_jwt_claim('khoa_phong'));
     IF v_department_scope IS NULL THEN
       RETURN jsonb_build_object(
-        'total', 0,
-        'overdue', 0,
-        'due_today', 0,
-        'due_soon', 0,
-        'items', '[]'::jsonb
+        'counts', jsonb_build_object(
+          'Chờ xử lý', 0,
+          'Đã duyệt', 0,
+          'Hoàn thành', 0,
+          'Không HT', 0
+        ),
+        'overdue_summary', jsonb_build_object(
+          'total', 0,
+          'overdue', 0,
+          'due_today', 0,
+          'due_soon', 0,
+          'items', '[]'::jsonb
+        )
       );
     END IF;
   END IF;
@@ -54,11 +62,19 @@ BEGIN
     v_allowed := public.allowed_don_vi_for_session();
     IF v_allowed IS NULL OR array_length(v_allowed, 1) IS NULL THEN
       RETURN jsonb_build_object(
-        'total', 0,
-        'overdue', 0,
-        'due_today', 0,
-        'due_soon', 0,
-        'items', '[]'::jsonb
+        'counts', jsonb_build_object(
+          'Chờ xử lý', 0,
+          'Đã duyệt', 0,
+          'Hoàn thành', 0,
+          'Không HT', 0
+        ),
+        'overdue_summary', jsonb_build_object(
+          'total', 0,
+          'overdue', 0,
+          'due_today', 0,
+          'due_soon', 0,
+          'items', '[]'::jsonb
+        )
       );
     END IF;
 
@@ -67,11 +83,19 @@ BEGIN
         v_effective_donvi := p_don_vi;
       ELSE
         RETURN jsonb_build_object(
-          'total', 0,
-          'overdue', 0,
-          'due_today', 0,
-          'due_soon', 0,
-          'items', '[]'::jsonb
+          'counts', jsonb_build_object(
+            'Chờ xử lý', 0,
+            'Đã duyệt', 0,
+            'Hoàn thành', 0,
+            'Không HT', 0
+          ),
+          'overdue_summary', jsonb_build_object(
+            'total', 0,
+            'overdue', 0,
+            'due_today', 0,
+            'due_soon', 0,
+            'items', '[]'::jsonb
+          )
         );
       END IF;
     END IF;
@@ -147,51 +171,59 @@ BEGIN
       LIMIT 50
     )
     SELECT jsonb_build_object(
-      'total', COALESCE((SELECT count(*) FROM due_items), 0),
-      'overdue', COALESCE((SELECT count(*) FROM due_items WHERE days_difference < 0), 0),
-      'due_today', COALESCE((SELECT count(*) FROM due_items WHERE days_difference = 0), 0),
-      'due_soon', COALESCE((SELECT count(*) FROM due_items WHERE days_difference BETWEEN 1 AND 7), 0),
-      'items', COALESCE((
-        SELECT jsonb_agg(
-          jsonb_build_object(
-            'id', id,
-            'thiet_bi_id', thiet_bi_id,
-            'ngay_yeu_cau', ngay_yeu_cau,
-            'trang_thai', trang_thai,
-            'mo_ta_su_co', mo_ta_su_co,
-            'hang_muc_sua_chua', hang_muc_sua_chua,
-            'ngay_mong_muon_hoan_thanh', ngay_mong_muon_hoan_thanh,
-            'nguoi_yeu_cau', nguoi_yeu_cau,
-            'ngay_duyet', ngay_duyet,
-            'ngay_hoan_thanh', ngay_hoan_thanh,
-            'nguoi_duyet', nguoi_duyet,
-            'nguoi_xac_nhan', nguoi_xac_nhan,
-            'don_vi_thuc_hien', don_vi_thuc_hien,
-            'ten_don_vi_thue', ten_don_vi_thue,
-            'ket_qua_sua_chua', ket_qua_sua_chua,
-            'ly_do_khong_hoan_thanh', ly_do_khong_hoan_thanh,
-            'chi_phi_sua_chua', chi_phi_sua_chua,
-            'days_difference', days_difference,
-            'thiet_bi', jsonb_build_object(
-              'ten_thiet_bi', ten_thiet_bi,
-              'ma_thiet_bi', ma_thiet_bi,
-              'model', model,
-              'serial', serial,
-              'khoa_phong_quan_ly', khoa_phong_quan_ly,
-              'facility_name', facility_name,
-              'facility_id', facility_id
+      'counts', jsonb_build_object(
+        'Chờ xử lý', COALESCE((SELECT count(*) FROM filtered WHERE trang_thai = 'Chờ xử lý'), 0),
+        'Đã duyệt', COALESCE((SELECT count(*) FROM filtered WHERE trang_thai = 'Đã duyệt'), 0),
+        'Hoàn thành', COALESCE((SELECT count(*) FROM filtered WHERE trang_thai = 'Hoàn thành'), 0),
+        'Không HT', COALESCE((SELECT count(*) FROM filtered WHERE trang_thai = 'Không HT'), 0)
+      ),
+      'overdue_summary', jsonb_build_object(
+        'total', COALESCE((SELECT count(*) FROM due_items), 0),
+        'overdue', COALESCE((SELECT count(*) FROM due_items WHERE days_difference < 0), 0),
+        'due_today', COALESCE((SELECT count(*) FROM due_items WHERE days_difference = 0), 0),
+        'due_soon', COALESCE((SELECT count(*) FROM due_items WHERE days_difference BETWEEN 1 AND 7), 0),
+        'items', COALESCE((
+          SELECT jsonb_agg(
+            jsonb_build_object(
+              'id', id,
+              'thiet_bi_id', thiet_bi_id,
+              'ngay_yeu_cau', ngay_yeu_cau,
+              'trang_thai', trang_thai,
+              'mo_ta_su_co', mo_ta_su_co,
+              'hang_muc_sua_chua', hang_muc_sua_chua,
+              'ngay_mong_muon_hoan_thanh', ngay_mong_muon_hoan_thanh,
+              'nguoi_yeu_cau', nguoi_yeu_cau,
+              'ngay_duyet', ngay_duyet,
+              'ngay_hoan_thanh', ngay_hoan_thanh,
+              'nguoi_duyet', nguoi_duyet,
+              'nguoi_xac_nhan', nguoi_xac_nhan,
+              'don_vi_thuc_hien', don_vi_thuc_hien,
+              'ten_don_vi_thue', ten_don_vi_thue,
+              'ket_qua_sua_chua', ket_qua_sua_chua,
+              'ly_do_khong_hoan_thanh', ly_do_khong_hoan_thanh,
+              'chi_phi_sua_chua', chi_phi_sua_chua,
+              'days_difference', days_difference,
+              'thiet_bi', jsonb_build_object(
+                'ten_thiet_bi', ten_thiet_bi,
+                'ma_thiet_bi', ma_thiet_bi,
+                'model', model,
+                'serial', serial,
+                'khoa_phong_quan_ly', khoa_phong_quan_ly,
+                'facility_name', facility_name,
+                'facility_id', facility_id
+              )
             )
+            ORDER BY ngay_mong_muon_hoan_thanh ASC, id ASC
           )
-          ORDER BY ngay_mong_muon_hoan_thanh ASC, id ASC
-        )
-        FROM ranked_items
-      ), '[]'::jsonb)
+          FROM ranked_items
+        ), '[]'::jsonb)
+      )
     )
   );
 END;
 $function$;
 
-GRANT EXECUTE ON FUNCTION public.repair_request_overdue_summary(text, bigint, date, date) TO authenticated;
-REVOKE EXECUTE ON FUNCTION public.repair_request_overdue_summary(text, bigint, date, date) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.repair_request_status_counts(text, bigint, date, date) TO authenticated;
+REVOKE EXECUTE ON FUNCTION public.repair_request_status_counts(text, bigint, date, date) FROM PUBLIC;
 
 COMMIT;

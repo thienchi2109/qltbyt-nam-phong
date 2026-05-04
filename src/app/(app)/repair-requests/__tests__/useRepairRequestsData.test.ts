@@ -6,7 +6,7 @@
  * - Hook returns expected shape (requests, pagination, KPI counts, overdue summary)
  * - repair_request_list query enabled = !!user && shouldFetchData
  * - repair_request_status_counts query enabled = !!user (always for auth user)
- * - repair_request_overdue_summary query enabled = !!user && shouldFetchData
+ * - repair_request_status_counts also carries overdue summary and ignores pagination
  * - totalRequests syncs from query result
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest'
@@ -38,20 +38,16 @@ vi.mock('@tanstack/react-query', () => ({
 
     if (key === 'repair_request_status_counts') {
       return {
-        data: { 'Chờ xử lý': 5, 'Đã duyệt': 3, 'Hoàn thành': 10, 'Không HT': 2 },
-        isLoading: false,
-      }
-    }
-
-    if (key === 'repair_request_overdue_summary') {
-      return {
         data: options.enabled
           ? {
-              total: 5,
-              overdue: 2,
-              due_today: 1,
-              due_soon: 2,
-              items: [{ id: 99, days_difference: -1 }],
+              counts: { 'Chờ xử lý': 5, 'Đã duyệt': 3, 'Hoàn thành': 10, 'Không HT': 2 },
+              overdue_summary: {
+                total: 5,
+                overdue: 2,
+                due_today: 1,
+                due_soon: 2,
+                items: [{ id: 99, days_difference: -1 }],
+              },
             }
           : undefined,
         isLoading: false,
@@ -109,7 +105,9 @@ describe('useRepairRequestsData', () => {
       isLoading: expect.any(Boolean),
       isFetching: expect.any(Boolean),
       refetchRequests: expect.any(Function),
-      statusCounts: expect.any(Object),
+      statusCounts: expect.objectContaining({
+        'Chờ xử lý': 5,
+      }),
       statusCountsLoading: expect.any(Boolean),
       overdueSummary: expect.objectContaining({
         total: 5,
@@ -170,38 +168,12 @@ describe('useRepairRequestsData', () => {
     expect(countsCall!.enabled).toBe(true)
   })
 
-  it('enables overdue summary query when user exists and shouldFetchData is true', () => {
-    renderHook(() => useRepairRequestsData(defaultArgs))
-
-    const summaryCall = capturedQueries.find(
-      (c) => (c.queryKey[0] as string) === 'repair_request_overdue_summary'
-    )
-    expect(summaryCall).toBeDefined()
-    expect(summaryCall!.enabled).toBe(true)
-  })
-
-  it('disables overdue summary query when shouldFetchData is false', () => {
-    renderHook(() =>
-      useRepairRequestsData({ ...defaultArgs, shouldFetchData: false })
-    )
-
-    const summaryCall = capturedQueries.find(
-      (c) => (c.queryKey[0] as string) === 'repair_request_overdue_summary'
-    )
-    expect(summaryCall).toBeDefined()
-    expect(summaryCall!.enabled).toBe(false)
-  })
-
-  it('disables overdue summary query when no user', () => {
-    renderHook(() =>
-      useRepairRequestsData({ ...defaultArgs, hasUser: false })
-    )
-
-    const summaryCall = capturedQueries.find(
-      (c) => (c.queryKey[0] as string) === 'repair_request_overdue_summary'
-    )
-    expect(summaryCall).toBeDefined()
-    expect(summaryCall!.enabled).toBe(false)
+  it('exposes overdue summary from the status counts payload', () => {
+    const { result } = renderHook(() => useRepairRequestsData(defaultArgs))
+    expect(result.current.overdueSummary).toMatchObject({
+      total: 5,
+      overdue: 2,
+    })
   })
 
   it('disables status counts query when no user', () => {
@@ -229,15 +201,15 @@ describe('useRepairRequestsData', () => {
     expect(result.current.requests).toEqual([{ id: 1 }])
   })
 
-  it('keeps pagination out of the overdue summary query key', () => {
+  it('keeps pagination out of the status counts query key', () => {
     renderHook(() => useRepairRequestsData(defaultArgs))
 
-    const summaryCall = capturedQueries.find(
-      (c) => (c.queryKey[0] as string) === 'repair_request_overdue_summary'
+    const countsCall = capturedQueries.find(
+      (c) => (c.queryKey[0] as string) === 'repair_request_status_counts'
     )
-    expect(summaryCall).toBeDefined()
+    expect(countsCall).toBeDefined()
 
-    const params = summaryCall!.queryKey[1] as Record<string, unknown>
+    const params = countsCall!.queryKey[1] as Record<string, unknown>
     expect(params.page).toBeUndefined()
     expect(params.pageSize).toBeUndefined()
     expect(params.facilityId).toBeNull()

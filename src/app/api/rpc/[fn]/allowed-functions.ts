@@ -39,7 +39,6 @@ export const ALLOWED_FUNCTIONS = new Set<string>([
   'repair_request_delete',
   'get_repair_request_facilities',
   'repair_request_status_counts',
-  'repair_request_overdue_summary',
   'repair_request_change_history_list',
   'repair_request_active_for_equipment',
   // Transfers
