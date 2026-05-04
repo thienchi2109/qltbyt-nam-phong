@@ -466,11 +466,17 @@ export const authOptions: NextAuthOptions = {
                 invalidatedReason: "password_changed_after_login",
               })
               console.warn("Password changed after login - invalidating token")
-              return signoutReason
-                ? {
-                    pending_signout_reason: signoutReason,
-                  }
-                : {}
+              const invalidatedToken: {
+                loginTime?: number
+                pending_signout_reason?: AuthPendingSignoutReason
+              } = {}
+              if (typeof token.loginTime === "number") {
+                invalidatedToken.loginTime = token.loginTime
+              }
+              if (signoutReason) {
+                invalidatedToken.pending_signout_reason = signoutReason
+              }
+              return invalidatedToken
             }
           }
           // Keep JWT in sync with user profile for tenant-aware UI
@@ -539,9 +545,18 @@ export const authOptions: NextAuthOptions = {
       const pendingReason = isPendingSignoutReason(token?.pending_signout_reason)
         ? token.pending_signout_reason
         : undefined
-      const userId = typeof token?.id === "string" ? token.id : token?.id != null ? String(token.id) : undefined
-      const username = normalizeUsernameForLog(token?.username ?? session?.user?.name)
-      const tenantId = coerceTenantId(token?.don_vi)
+      const userId =
+        typeof token?.id === "string"
+          ? token.id
+          : token?.id != null
+            ? String(token.id)
+            : typeof session?.user?.id === "string"
+              ? session.user.id
+              : session?.user?.id != null
+                ? String(session.user.id)
+                : undefined
+      const username = normalizeUsernameForLog(token?.username ?? session?.user?.username ?? session?.user?.name)
+      const tenantId = coerceTenantId(token?.don_vi ?? session?.user?.don_vi)
 
       if (!userId && !username && !tenantId && !pendingReason) {
         return

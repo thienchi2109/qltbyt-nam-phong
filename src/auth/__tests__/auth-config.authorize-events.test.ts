@@ -266,6 +266,39 @@ describe("authOptions authorize + auth lifecycle events", () => {
     ])
   })
 
+  it("falls back to augmented session fields when signOut token no longer carries auth claims", async () => {
+    const signOutEvent = getSignOutEventHandler()
+
+    await signOutEvent({
+      token: {
+        loginTime: Date.now() - 60_000,
+      } as never,
+      session: {
+        user: {
+          id: "42",
+          username: "NQMinh",
+          don_vi: 17,
+          name: "Nguyen Quang Minh",
+        },
+      } as never,
+    })
+
+    expect(authLifecycleLogs(consoleInfoSpy)).toEqual([
+      expect.objectContaining({
+        event: "forced_signout",
+        source: "events_signout",
+        signout_reason: "session_expired",
+        user_id: "42",
+        username: "nqminh",
+        tenant_id: "17",
+        request_id: "req-123",
+        metadata: expect.objectContaining({
+          session_duration_ms: 60000,
+        }),
+      }),
+    ])
+  })
+
   it("skips signOut emission for probe traffic with no token identity or reason", async () => {
     const signOutEvent = getSignOutEventHandler()
 

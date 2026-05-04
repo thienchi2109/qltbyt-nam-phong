@@ -262,7 +262,9 @@ describe("authOptions.jwt cooldown + trigger gate", () => {
     const result = await runJwt({ token })
 
     expect(supabaseClient.rpc).toHaveBeenCalled()
-    expect(result).toEqual({})
+    expect(result).toEqual({
+      loginTime,
+    })
   })
 
   it("persists pending_signout_reason from session.update payloads into the JWT", async () => {
@@ -323,6 +325,7 @@ describe("authOptions.jwt cooldown + trigger gate", () => {
     })
 
     expect(result).toMatchObject({
+      loginTime: now - 10_000,
       pending_signout_reason: "forced_password_change",
     })
     expect(result).not.toHaveProperty("id")
