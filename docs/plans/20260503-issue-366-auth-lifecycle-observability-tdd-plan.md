@@ -1,127 +1,138 @@
-# 20260503 — Issue #366 Auth Lifecycle Observability TDD Plan
+# 20260503 — Issue #366 Backend-First Roadmap
 
 ## Summary
-- Goal: implement structured auth lifecycle logging + persistent audit for critical events in issue `#366`.
-- Locked constraints:
-  - Persist critical events to DB.
-  - Keep 3 signout reasons: `user_initiated`, `session_expired`, `forced_password_change`.
-  - Force signout right after successful password change.
-  - Use dedicated `public.auth_audit_log` (not `audit_logs`).
+- Umbrella issue: `#366`
+- Goal: add structured auth lifecycle logging and optional persistent audit trail without widening auth blast radius.
+- Delivery rule: split into independently mergeable PR-sized batches. No batch may leave auth behavior broken while waiting for a later batch.
+- Chosen order: backend-first. Stabilize server contracts first, then persistence, then frontend wiring and docs.
 
-## Blast Radius (GitNexus + repo check)
-- `src/auth/config.ts`: highest risk (`authorize`, `jwt`, `session`), imported by auth route and multiple API routes.
-- `src/app/(app)/_components/AppLayoutShell.tsx`: signout triggers (menu + unauthenticated path).
-- `src/components/change-password-dialog.tsx`: password-change success path currently no forced-signout logging contract.
-- `src/app/_components/LoginForm.tsx`: no DB sink writes planned; remains UX-only unless tests reveal gap.
-- Primary tests to extend:
-  - `src/auth/__tests__/auth-config.jwt-rpc.test.ts`
-  - `src/auth/__tests__/auth-config.jwt-cooldown.test.ts`
-  - `src/app/(app)/__tests__/AppLayoutShell.test.tsx`
+## Batch Roadmap
 
-## Emission Channel Matrix
-| Event | Emit channel | DB sink caller |
-|---|---|---|
-| `login_failure`, `tenant_inactive` | `authorize()` server | server-only sink |
-| `login_success` | NextAuth `events.signIn` server | server-only sink |
-| `token_invalidated_password_change`, `profile_refresh_failed` | `jwt` callback server | server-only sink |
-| `signout`, `forced_signout` | NextAuth `events.signOut` server | server-only sink |
+### Batch 1 — Backend Foundation and Log Contract
+- Scope:
+  - Extract shared `src/lib/log-sanitizer.ts` from RPC proxy behavior.
+  - Add auth logger helper for structured JSON lines only.
+  - Augment NextAuth JWT/session types with `pending_signout_reason`.
+  - Lock base event taxonomy, redaction rules, and failure reason taxonomy in tests.
+- In scope events:
+  - `login_failure`
+  - `tenant_inactive`
+  - `profile_refresh_failed`
+  - logger contract helpers used by later batches
+- Out of scope:
+  - DB writes
+  - frontend `signOut()` wiring
+  - `events.signIn` / `events.signOut`
+- Mergeability:
+  - Safe to merge because it only adds shared backend plumbing and tests.
+- TDD focus:
+  - single structured log line per event
+  - deep redaction for nested sensitive keys
+  - `config_error` maps to `login_failure`
+  - no explicit `any`
 
-- Decision notes:
-  - Keep DB writes server-side only; client never calls PostgREST audit function directly.
-  - Signout reason propagation:
-    - User-initiated and forced-password-change flows set `pending_signout_reason` via `session.update(...)` before `signOut()`.
-    - Call order is strict: `await session.update(...)` (and optional `await getSession()` readback in UI flow) before `signOut()`.
-    - In JWT invalidation path (`password_changed_at > loginTime`), preserve reason field (`pending_signout_reason`) instead of returning a fully empty token object.
-    - `events.signOut` reads token reason and falls back to `session_expired` if missing.
-    - Guard against signout probe noise: if `events.signOut` receives neither identity (`token.sub/user_id`) nor pending reason, skip DB sink emit.
-  - This removes the unauthenticated `session_expired` endpoint problem and removes custom idempotency endpoint scope.
-  - Trade-off accepted: `session.update(...)` before `signOut()` can trigger one extra JWT refresh/RPC; keep as-is unless telemetry shows material noise.
-  - Cross-tab behavior is expected: non-initiating tabs can emit `session_expired`; correlate with `token_invalidated_password_change` window for forensic linkage.
-  - Request correlation strategy:
-    - `authorize` path reads `x-request-id` from credentials `authorize(..., req)` context.
-    - `jwt`/`events` paths try `headers().get('x-request-id')`, then `headers().get('x-vercel-id')`; if unavailable in callback context, store `request_id = null` (explicit fallback, no fake ids).
-  - IP and user-agent capture:
-    - `authorize(..., req)` reads forwarded IP (`x-forwarded-for`) and `user-agent` directly from request headers.
-    - `jwt`/`events` paths try `headers()` for the same values and fall back to `null` when callback context does not expose request headers.
-  - `events.signOut` computes `session_duration_ms = now - token.loginTime` when `loginTime` is present.
-  - `LoginForm.tsx` stays UX-only.
-  - `config_error` remains generic in `LoginForm.tsx` unless tests expose a user-facing gap; keep as explicit follow-up trigger, not in #366 scope by default.
+### Batch 2 — Backend Auth Event Emission
+- Scope:
+  - Wire `authorize`, `jwt`, `events.signIn`, `events.signOut`.
+  - Add `pending_signout_reason` propagation through `session.update(...)`.
+  - Preserve `pending_signout_reason` when JWT invalidation returns an otherwise empty token.
+  - Add request correlation, IP, user-agent, and `session_duration_ms` capture where context exists.
+- In scope events:
+  - `login_success`
+  - `login_failure`
+  - `tenant_inactive`
+  - `token_invalidated_password_change`
+  - `profile_refresh_failed`
+  - `signout`
+  - `forced_signout`
+- Out of scope:
+  - persistent DB sink
+  - migration / retention work
+  - final frontend UX polish
+- Mergeability:
+  - Safe to merge because all event emission stays server-first and falls back to stdout only.
+- TDD focus:
+  - `events.signIn` emits `login_success` with lowercased username and no secrets
+  - `events.signOut` maps reason correctly or falls back to `session_expired`
+  - `session.update(...) -> events.signOut` propagation chain
+  - `await session.update(...)` before `signOut()`
+  - probe/no-session signout does not emit DB sink event
+  - password-change invalidation preserves `pending_signout_reason`
 
-## API / Data Contract Changes
-- Step 0 (pre-RED):
-  - extract sanitizer to shared module `src/lib/log-sanitizer.ts` and reuse in RPC proxy + auth logger.
-  - augment [next-auth.d.ts](/root/qltbyt-nam-phong/src/types/next-auth.d.ts) JWT/Session typing with `pending_signout_reason?: 'user_initiated' | 'forced_password_change'`.
-- Add `public.auth_audit_log`:
-  - Core: `id`, `created_at`, `event`, `reason_code`, `signout_reason`, `user_id`, `username`, `tenant_id`, `request_id`, `trace_id`, `source`, `metadata`.
-  - For brute-force investigation: `ip_address inet null`, `user_agent text null` (truncate safe length).
-  - Constraints:
-    - `source` check enum: `authorize | jwt_callback | events_signin | events_signout`.
-    - `reason_code` check enum: `invalid_credentials | rpc_error | tenant_inactive | authorize_exception | config_error`.
-  - Metadata soft taxonomy (documented contract, no strict CHECK): `attempt_count`, `failed_rpc_code`, `session_duration_ms`, `previous_don_vi`, `user_agent_family`.
-- Add `public.auth_audit_log_insert(...)`:
-  - `SECURITY DEFINER`, `SET search_path = public, pg_temp`.
-  - Fail-safe (never changes auth behavior if insert fails).
-  - Grant **only** `service_role`; revoke `PUBLIC` and do not grant `authenticated`.
-- Indexing:
-  - BRIN on `created_at`.
-  - BTREE `(user_id, created_at desc)` and `(event, created_at desc)`.
-- Retention:
-  - Decide at GREEN:
-    - If retention migration is safe/small, include it in same PR.
-    - If deferred, open follow-up issue and link it in PR description before merge.
+### Batch 3 — Persistent Auth Audit Sink
+- Scope:
+  - Add `public.auth_audit_log`.
+  - Add `public.auth_audit_log_insert(...)` with `SECURITY DEFINER`, `SET search_path = public, pg_temp`, fail-safe behavior.
+  - Service-role-only DB sink from Next server.
+  - Add minimal indexes required for forensic queries.
+- Schema contract:
+  - Core fields: `id`, `created_at`, `event`, `reason_code`, `signout_reason`, `user_id`, `username`, `tenant_id`, `request_id`, `trace_id`, `source`, `metadata`
+  - For brute-force investigation: `ip_address inet null`, `user_agent text null`
+  - `source` enum: `authorize | jwt_callback | events_signin | events_signout`
+  - `reason_code` enum: `invalid_credentials | rpc_error | tenant_inactive | authorize_exception | config_error`
+  - Metadata soft taxonomy: `attempt_count`, `failed_rpc_code`, `session_duration_ms`, `previous_don_vi`, `user_agent_family`
+- Mergeability:
+  - Safe to merge because persistence is best-effort and must never change auth outcome if insert fails.
+- TDD focus:
+  - DB sink down still leaves stdout logging and auth behavior intact
+  - service-role-only sink path
+  - BRIN `created_at`
+  - BTREE `(user_id, created_at desc)` and `(event, created_at desc)`
 
-## TDD Execution Plan
-1. RED: logger contract tests:
-   - one structured JSON line per event.
-   - deep redaction for nested sensitive keys (`password`, `token`, `secret`, `mat_khau`, etc.).
-2. RED: `auth-config.jwt-rpc.test.ts`:
-   - `authorize` emits `login_failure` with `reason_code` for `invalid_credentials`, `rpc_error`, `authorize_exception`.
-   - tenant inactive emits `tenant_inactive`.
-   - missing Supabase env maps to `login_failure` + `reason_code=config_error`.
-3. RED: `events.signIn`/`events.signOut` emission tests:
-  - `events.signIn` emits `login_success` with lowercased username and no secrets.
-  - `events.signOut` emits exactly one signout event with mapped reason or `session_expired` fallback.
-  - probe/no-session signout with empty token/session does not emit DB sink event.
-  - `events.signOut` populates `session_duration_ms` when `loginTime` exists.
-4. RED: `auth-config.jwt-cooldown.test.ts`:
-  - `token_invalidated_password_change`, `profile_refresh_failed` emitted correctly.
-  - password-change invalidation preserves `pending_signout_reason` field.
-  - DB sink down still does not break auth flow (best-effort guarantee).
-5. RED: signout dedup tests in `AppLayoutShell.test.tsx` (+ new focused tests if needed):
-   - user menu signout => one `signout/user_initiated`.
-   - session-expired path => one `forced_signout/session_expired`.
-   - password-change flow => one `forced_signout/forced_password_change`, no ghost `session_expired`.
-6. RED: `session.update(...) -> events.signOut` propagation chain:
-  - `session.update({ pending_signout_reason: 'X' })` persists reason into token.
-  - `events.signOut` reads same reason and maps event correctly.
-  - `signOut()` is called only after `session.update` Promise resolves.
-  - password-change chain stays intact: `session.update(pending='forced_password_change')` + `password_changed_at > loginTime` => preserved token reason => `events.signOut` emits `forced_signout/forced_password_change`, not fallback `session_expired`.
-7. RED: correlation tests:
-  - `authorize(..., req)` with `x-request-id` => emitted event includes request id.
-  - `jwt`/`events` path prefers `x-request-id`, then `x-vercel-id`, else `null`.
-   - callback context without accessible headers => `request_id` is `null`.
-8. GREEN:
-   - implement shared logger + server-only sink.
-   - wire `authorize`, `jwt`, `events.signIn`, `events.signOut`.
-   - implement pending-reason propagation via `session.update(...)` before `signOut()` in user-triggered flows.
-   - keep password-change UX: success toast must be visible before forced signout (short delay or redirected message).
-   - update `scripts/test_session_management.md` with new debug fields and event examples.
+### Batch 4 — Frontend Wiring, Correlation Hardening, and Docs
+- Scope:
+  - Wire user-triggered signout reason propagation in `AppLayoutShell` and `change-password-dialog`.
+  - Ensure password-change success toast remains visible before forced signout.
+  - Update `scripts/test_session_management.md`.
+  - Final correlation/documentation hardening and closeout verification.
+- Frontend contract:
+  - User-initiated and forced-password-change flows call `await session.update(...)` before `signOut()`.
+  - `LoginForm.tsx` remains UX-only by default; only revisit if tests expose a `config_error` UX gap.
+- Mergeability:
+  - Safe to merge because it consumes already-stable backend/event contracts from Batches 1-3.
+- TDD focus:
+  - one `forced_signout/forced_password_change` on password change path
+  - no ghost `session_expired`
+  - cross-tab behavior documented: non-initiating tabs may emit `session_expired`, correlated via `token_invalidated_password_change`
+  - request id prefers `x-request-id`, then `x-vercel-id`, then `null`
 
-## Scope Clarifications
-- Issue reference “dia_ban lookup failure” is stale against current `src/auth/config.ts`; keep out of scope for #366 and note explicitly in implementation PR.
-- `tenant_id` stays `text` for multi-tenant context compatibility; coercion rules documented in logger helper.
-- Enforce `unknown` + narrowing for logger payload types (`no any`).
+## Shared Technical Decisions
+- DB writes are server-side only. Client code never calls PostgREST audit functions directly.
+- `events.signOut` reads `pending_signout_reason` from token and falls back to `session_expired` if missing.
+- If `password_changed_at > loginTime`, preserve `pending_signout_reason` instead of returning a fully empty token object.
+- Guard against signout probe noise: if `events.signOut` has neither identity nor pending reason, skip DB sink emit.
+- `session.update(...)` before `signOut()` can trigger one extra JWT refresh/RPC. Accept this unless telemetry proves it noisy enough to optimize.
+- Request / header capture:
+  - `authorize(..., req)` reads `x-request-id`, `x-forwarded-for`, and `user-agent` directly.
+  - `jwt` / `events.*` try `headers().get('x-request-id')`, then `headers().get('x-vercel-id')`, plus the same IP / UA headers; otherwise store `null`.
+- `events.signOut` computes `session_duration_ms = now - token.loginTime` when `loginTime` exists.
+- `tenant_id` stays `text` for multi-tenant compatibility.
+- `dia_ban lookup failure` from the original issue text is stale against current code and stays out of scope.
 
-## Verification
+## Tracking Model
+- `#366` remains the umbrella tracker.
+- Child issues:
+  - `#376` — Batch 1: backend foundation and log contract
+  - `#377` — Batch 2: backend auth event emission and signout reason propagation
+  - `#378` — Batch 3: persistent auth audit sink
+  - `#379` — Batch 4: frontend signout wiring, docs, and closeout
+- If retention is not safely included in Batch 4, open one explicit follow-up issue before merging Batch 4.
+- After each batch:
+  - update `#366` with status + PR link
+  - update the next batch issue if assumptions changed
+  - save one concise Memori note with durable progress, gotchas, and verification
+
+## Verification Order
 1. `node scripts/npm-run.js run verify:no-explicit-any`
 2. `node scripts/npm-run.js run typecheck`
-3. Focused auth/signout tests
+3. Focused auth / signout tests for the current batch
 4. `node scripts/npm-run.js npx react-doctor@latest . --verbose -y --project nextn --offline --diff main`
 
 ## Constraints
-- Migration apply path for execution phase must use Supabase MCP (`apply_migration`), not Supabase CLI.
+- Migration apply path for execution must use Supabase MCP `apply_migration`, not Supabase CLI.
+- Each batch PR must be independently mergeable and deploy-safe.
 
 ## Assumptions
-- Migration name follows ordered timestamp convention: `YYYYMMDDHHMMSS_auth_audit_log_*.sql`.
-- Correlation fields are optional when headers are unavailable.
-- If retention DDL increases risk/scope, a follow-up issue is opened and linked in PR before merge.
+- Migration names follow `YYYYMMDDHHMMSS_auth_audit_log_*.sql`.
+- Correlation fields may legitimately be `null` when callback context does not expose headers.
+- If retention DDL is deferred, the follow-up issue must be linked in the umbrella and final PR before closeout.
