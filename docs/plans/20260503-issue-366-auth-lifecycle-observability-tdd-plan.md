@@ -39,11 +39,18 @@
   - Cross-tab behavior is expected: non-initiating tabs can emit `session_expired`; correlate with `token_invalidated_password_change` window for forensic linkage.
   - Request correlation strategy:
     - `authorize` path reads `x-request-id` from credentials `authorize(..., req)` context.
-    - `jwt`/`events` paths try `headers().get('x-request-id')`; if unavailable in callback context, store `request_id = null` (explicit fallback, no fake ids).
+    - `jwt`/`events` paths try `headers().get('x-request-id')`, then `headers().get('x-vercel-id')`; if unavailable in callback context, store `request_id = null` (explicit fallback, no fake ids).
+  - IP and user-agent capture:
+    - `authorize(..., req)` reads forwarded IP (`x-forwarded-for`) and `user-agent` directly from request headers.
+    - `jwt`/`events` paths try `headers()` for the same values and fall back to `null` when callback context does not expose request headers.
+  - `events.signOut` computes `session_duration_ms = now - token.loginTime` when `loginTime` is present.
   - `LoginForm.tsx` stays UX-only.
+  - `config_error` remains generic in `LoginForm.tsx` unless tests expose a user-facing gap; keep as explicit follow-up trigger, not in #366 scope by default.
 
 ## API / Data Contract Changes
-- Step 0 (pre-RED): extract sanitizer to shared module `src/lib/log-sanitizer.ts` and reuse in RPC proxy + auth logger.
+- Step 0 (pre-RED):
+  - extract sanitizer to shared module `src/lib/log-sanitizer.ts` and reuse in RPC proxy + auth logger.
+  - augment [next-auth.d.ts](/root/qltbyt-nam-phong/src/types/next-auth.d.ts) JWT/Session typing with `pending_signout_reason?: 'user_initiated' | 'forced_password_change'`.
 - Add `public.auth_audit_log`:
   - Core: `id`, `created_at`, `event`, `reason_code`, `signout_reason`, `user_id`, `username`, `tenant_id`, `request_id`, `trace_id`, `source`, `metadata`.
   - For brute-force investigation: `ip_address inet null`, `user_agent text null` (truncate safe length).
@@ -72,23 +79,26 @@
    - tenant inactive emits `tenant_inactive`.
    - missing Supabase env maps to `login_failure` + `reason_code=config_error`.
 3. RED: `events.signIn`/`events.signOut` emission tests:
-   - `events.signIn` emits `login_success` with lowercased username and no secrets.
-   - `events.signOut` emits exactly one signout event with mapped reason or `session_expired` fallback.
-   - probe/no-session signout with empty token/session does not emit DB sink event.
+  - `events.signIn` emits `login_success` with lowercased username and no secrets.
+  - `events.signOut` emits exactly one signout event with mapped reason or `session_expired` fallback.
+  - probe/no-session signout with empty token/session does not emit DB sink event.
+  - `events.signOut` populates `session_duration_ms` when `loginTime` exists.
 4. RED: `auth-config.jwt-cooldown.test.ts`:
-   - `token_invalidated_password_change`, `profile_refresh_failed` emitted correctly.
-   - password-change invalidation preserves `pending_signout_reason` field.
-   - DB sink down still does not break auth flow (best-effort guarantee).
+  - `token_invalidated_password_change`, `profile_refresh_failed` emitted correctly.
+  - password-change invalidation preserves `pending_signout_reason` field.
+  - DB sink down still does not break auth flow (best-effort guarantee).
 5. RED: signout dedup tests in `AppLayoutShell.test.tsx` (+ new focused tests if needed):
    - user menu signout => one `signout/user_initiated`.
    - session-expired path => one `forced_signout/session_expired`.
    - password-change flow => one `forced_signout/forced_password_change`, no ghost `session_expired`.
 6. RED: `session.update(...) -> events.signOut` propagation chain:
-   - `session.update({ pending_signout_reason: 'X' })` persists reason into token.
-   - `events.signOut` reads same reason and maps event correctly.
-   - `signOut()` is called only after `session.update` Promise resolves.
+  - `session.update({ pending_signout_reason: 'X' })` persists reason into token.
+  - `events.signOut` reads same reason and maps event correctly.
+  - `signOut()` is called only after `session.update` Promise resolves.
+  - password-change chain stays intact: `session.update(pending='forced_password_change')` + `password_changed_at > loginTime` => preserved token reason => `events.signOut` emits `forced_signout/forced_password_change`, not fallback `session_expired`.
 7. RED: correlation tests:
-   - `authorize(..., req)` with `x-request-id` => emitted event includes request id.
+  - `authorize(..., req)` with `x-request-id` => emitted event includes request id.
+  - `jwt`/`events` path prefers `x-request-id`, then `x-vercel-id`, else `null`.
    - callback context without accessible headers => `request_id` is `null`.
 8. GREEN:
    - implement shared logger + server-only sink.
