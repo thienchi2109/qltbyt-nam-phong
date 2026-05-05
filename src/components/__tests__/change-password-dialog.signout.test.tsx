@@ -188,4 +188,33 @@ describe("ChangePasswordDialog forced signout", () => {
       }),
     )
   })
+
+  it("preserves message details from non-Error password-change failures", async () => {
+    mocks.rpc.mockRejectedValueOnce({
+      message: "Supabase RPC failed",
+    })
+
+    render(<ChangePasswordDialog open onOpenChange={vi.fn()} />)
+
+    fireEvent.change(screen.getByLabelText("Mật khẩu hiện tại *"), {
+      target: { value: "old-password" },
+    })
+    fireEvent.change(screen.getByLabelText("Mật khẩu mới *"), {
+      target: { value: "new-password" },
+    })
+    fireEvent.change(screen.getByLabelText("Xác nhận mật khẩu mới *"), {
+      target: { value: "new-password" },
+    })
+    fireEvent.click(screen.getByRole("button", { name: "Thay đổi mật khẩu" }))
+
+    await waitFor(() => {
+      expect(mocks.toast).toHaveBeenCalledWith(
+        expect.objectContaining({
+          variant: "destructive",
+          title: "Lỗi",
+          description: "Supabase RPC failed",
+        }),
+      )
+    })
+  })
 })

@@ -119,6 +119,8 @@ function AppLayoutShellContent({ children, user }: AppLayoutShellProps) {
     void signOutWithReason({
       updateSession: update,
       reason: "user_initiated",
+    }).catch(() => {
+      hasHandledSessionExitRef.current = false
     })
   }, [update])
 

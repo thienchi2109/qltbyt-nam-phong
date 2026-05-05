@@ -15,6 +15,7 @@ import {
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { useToast } from "@/hooks/use-toast"
+import { getUnknownErrorMessage } from "@/lib/error-utils"
 import { signOutWithReason } from "@/lib/auth-signout"
 import { supabase } from "@/lib/supabase"
 import { useSession } from "next-auth/react"
@@ -223,11 +224,10 @@ export function ChangePasswordDialog({ open, onOpenChange }: ChangePasswordDialo
       onOpenChange(false)
       passwordChanged = true
     } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : null
       toast({
         variant: "destructive",
         title: "Lỗi",
-        description: errorMessage || "Có lỗi xảy ra khi thay đổi mật khẩu."
+        description: getUnknownErrorMessage(error, "Có lỗi xảy ra khi thay đổi mật khẩu."),
       })
     } finally {
       setIsLoading(false)

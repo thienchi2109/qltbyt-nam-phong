@@ -218,6 +218,38 @@ describe("AppLayoutShell", () => {
     )
   })
 
+  it("allows retrying user-menu signout after a signOut failure", async () => {
+    const user = userEvent.setup()
+    mocks.signOut
+      .mockRejectedValueOnce(new Error("redirect failed"))
+      .mockResolvedValueOnce(undefined)
+
+    render(
+      <AppLayoutShell
+        user={{
+          role: "global",
+          full_name: "Test User",
+          username: "tester",
+          khoa_phong: "IT",
+        }}
+      >
+        <div>Child Content</div>
+      </AppLayoutShell>
+    )
+
+    const signOutButton = screen.getByRole("button", { name: /đăng xuất/i })
+
+    await user.click(signOutButton)
+    await vi.waitFor(() => {
+      expect(mocks.signOut).toHaveBeenCalledTimes(1)
+    })
+
+    await user.click(signOutButton)
+    await vi.waitFor(() => {
+      expect(mocks.signOut).toHaveBeenCalledTimes(2)
+    })
+  })
+
   it("redirects through signOut when the session becomes unauthenticated", () => {
     const sessionState = {
       data: { user: { id: "u1" } },
