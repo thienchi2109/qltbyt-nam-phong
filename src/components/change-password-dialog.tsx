@@ -15,6 +15,8 @@ import {
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { useToast } from "@/hooks/use-toast"
+import { getUnknownErrorMessage } from "@/lib/error-utils"
+import { signOutWithReason } from "@/lib/auth-signout"
 import { supabase } from "@/lib/supabase"
 import { useSession } from "next-auth/react"
 
@@ -25,10 +27,10 @@ interface ChangePasswordDialogProps {
 
 export function ChangePasswordDialog({ open, onOpenChange }: ChangePasswordDialogProps) {
   const { toast } = useToast()
-  const { data: session } = useSession()
-  const user = session?.user as any // Cast NextAuth user to our User type
+  const { data: session, update } = useSession()
+  const user = session?.user
   const currentUserId = React.useMemo(() => {
-    const rawId = user?.id
+    const rawId: unknown = user?.id
     if (typeof rawId === "number" && Number.isFinite(rawId)) {
       return rawId
     }
@@ -68,6 +70,22 @@ export function ChangePasswordDialog({ open, onOpenChange }: ChangePasswordDialo
       resetForm()
     }
   }, [open, resetForm])
+
+  const handlePostChangeSignOut = React.useCallback(async () => {
+    try {
+      await signOutWithReason({
+        updateSession: update,
+        reason: "forced_password_change",
+        delayMs: 1_500,
+      })
+    } catch {
+      toast({
+        variant: "destructive",
+        title: "Đăng xuất chưa hoàn tất",
+        description: "Mật khẩu đã được thay đổi. Vui lòng đăng xuất thủ công hoặc tải lại trang.",
+      })
+    }
+  }, [toast, update])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -109,6 +127,7 @@ export function ChangePasswordDialog({ open, onOpenChange }: ChangePasswordDialo
     }
 
     setIsLoading(true)
+    let passwordChanged = false
 
     try {
       if (currentUserId == null) {
@@ -203,14 +222,19 @@ export function ChangePasswordDialog({ open, onOpenChange }: ChangePasswordDialo
       }
 
       onOpenChange(false)
-    } catch (error: any) {
+      passwordChanged = true
+    } catch (error: unknown) {
       toast({
         variant: "destructive",
         title: "Lỗi",
-        description: error.message || "Có lỗi xảy ra khi thay đổi mật khẩu."
+        description: getUnknownErrorMessage(error, "Có lỗi xảy ra khi thay đổi mật khẩu."),
       })
     } finally {
       setIsLoading(false)
+    }
+
+    if (passwordChanged) {
+      await handlePostChangeSignOut()
     }
   }
 

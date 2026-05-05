@@ -344,6 +344,49 @@ describe("authOptions authorize + auth lifecycle events", () => {
     )
   })
 
+  it("emits signout/user_initiated when signOut receives a persisted user intent", async () => {
+    const signOutEvent = getSignOutEventHandler()
+
+    await signOutEvent({
+      token: {
+        id: "42",
+        username: "nqminh",
+        don_vi: 17,
+        loginTime: Date.now() - 30_000,
+        pending_signout_reason: "user_initiated",
+      } as never,
+      session: undefined as never,
+    })
+
+    expect(authLifecycleLogs(consoleInfoSpy)).toEqual([
+      expect.objectContaining({
+        event: "signout",
+        source: "events_signout",
+        signout_reason: "user_initiated",
+        user_id: "42",
+        username: "nqminh",
+        tenant_id: "17",
+        request_id: "req-123",
+        metadata: expect.objectContaining({
+          session_duration_ms: 30000,
+        }),
+      }),
+    ])
+    expect(supabaseState.rpcCalls).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          fn: "auth_audit_log_insert",
+          args: expect.objectContaining({
+            p_event: "signout",
+            p_source: "events_signout",
+            p_signout_reason: "user_initiated",
+            p_user_id: "42",
+          }),
+        }),
+      ])
+    )
+  })
+
   it("falls back to augmented session fields when signOut token no longer carries auth claims", async () => {
     const signOutEvent = getSignOutEventHandler()
 

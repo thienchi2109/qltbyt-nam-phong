@@ -8,6 +8,7 @@ const mocks = vi.hoisted(() => ({
   clearAllEquipmentFilters: vi.fn(),
   signOut: vi.fn(),
   useSession: vi.fn(),
+  updateSession: vi.fn(),
   usePathname: vi.fn(),
   useTenantSelection: vi.fn(),
   useTenantBranding: vi.fn(),
@@ -137,9 +138,11 @@ import { AppLayoutShell } from "@/app/(app)/_components/AppLayoutShell"
 describe("AppLayoutShell", () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mocks.updateSession.mockResolvedValue(undefined)
     mocks.useSession.mockReturnValue({
       data: { user: { id: "u1" } },
       status: "authenticated",
+      update: mocks.updateSession,
     })
     mocks.usePathname.mockReturnValue("/dashboard")
     mocks.useTenantSelection.mockReturnValue({
@@ -184,7 +187,7 @@ describe("AppLayoutShell", () => {
     })
   })
 
-  it("clears equipment filters before signing out from the user menu", async () => {
+  it("persists a user-initiated signout reason before signing out from the user menu", async () => {
     const user = userEvent.setup()
 
     render(
@@ -203,10 +206,48 @@ describe("AppLayoutShell", () => {
     await user.click(screen.getByRole("button", { name: /đăng xuất/i }))
 
     expect(mocks.clearAllEquipmentFilters).toHaveBeenCalledTimes(1)
+    expect(mocks.updateSession).toHaveBeenCalledWith({
+      pending_signout_reason: "user_initiated",
+    })
     expect(mocks.signOut).toHaveBeenCalledWith({ callbackUrl: "/" })
     expect(mocks.clearAllEquipmentFilters.mock.invocationCallOrder[0]).toBeLessThan(
+      mocks.updateSession.mock.invocationCallOrder[0]
+    )
+    expect(mocks.updateSession.mock.invocationCallOrder[0]).toBeLessThan(
       mocks.signOut.mock.invocationCallOrder[0]
     )
+  })
+
+  it("allows retrying user-menu signout after a signOut failure", async () => {
+    const user = userEvent.setup()
+    mocks.signOut
+      .mockRejectedValueOnce(new Error("redirect failed"))
+      .mockResolvedValueOnce(undefined)
+
+    render(
+      <AppLayoutShell
+        user={{
+          role: "global",
+          full_name: "Test User",
+          username: "tester",
+          khoa_phong: "IT",
+        }}
+      >
+        <div>Child Content</div>
+      </AppLayoutShell>
+    )
+
+    const signOutButton = screen.getByRole("button", { name: /đăng xuất/i })
+
+    await user.click(signOutButton)
+    await vi.waitFor(() => {
+      expect(mocks.signOut).toHaveBeenCalledTimes(1)
+    })
+
+    await user.click(signOutButton)
+    await vi.waitFor(() => {
+      expect(mocks.signOut).toHaveBeenCalledTimes(2)
+    })
   })
 
   it("redirects through signOut when the session becomes unauthenticated", () => {

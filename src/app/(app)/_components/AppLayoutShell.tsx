@@ -36,6 +36,7 @@ import { EquipmentFilterProvider, clearAllEquipmentFilters } from "@/contexts/Eq
 import { AppSidebarNav } from "@/components/app-sidebar-nav"
 import { getAppNavigationItems } from "@/components/app-navigation"
 import { useAppNotificationCounts } from "@/hooks/useAppNotificationCounts"
+import { signOutWithReason } from "@/lib/auth-signout"
 
 const AssistantTriggerButton = dynamic(
   () => import("@/components/assistant/AssistantTriggerButton").then(m => m.AssistantTriggerButton),
@@ -70,7 +71,7 @@ export function AppLayoutShell({ children, user }: AppLayoutShellProps) {
 
 function AppLayoutShellContent({ children, user }: AppLayoutShellProps) {
   const pathname = usePathname()
-  const { status } = useSession()
+  const { status, update } = useSession()
   const { selectedFacilityId, shouldFetchData } = useTenantSelection()
   const hasHandledSessionExitRef = React.useRef(false)
   const [isSidebarOpen, setSidebarOpen] = React.useState(true)
@@ -109,8 +110,19 @@ function AppLayoutShellContent({ children, user }: AppLayoutShellProps) {
   }, [])
 
   const handleSignOut = React.useCallback(() => {
-    redirectToSignedOutHome()
-  }, [redirectToSignedOutHome])
+    if (hasHandledSessionExitRef.current) {
+      return
+    }
+
+    hasHandledSessionExitRef.current = true
+    clearAllEquipmentFilters()
+    void signOutWithReason({
+      updateSession: update,
+      reason: "user_initiated",
+    }).catch(() => {
+      hasHandledSessionExitRef.current = false
+    })
+  }, [update])
 
   React.useEffect(() => {
     if (status === "unauthenticated") {
