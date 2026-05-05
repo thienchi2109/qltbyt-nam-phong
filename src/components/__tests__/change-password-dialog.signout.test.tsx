@@ -20,10 +20,8 @@ vi.mock("@/hooks/use-toast", () => ({
   useToast: () => ({ toast: mocks.toast }),
 }))
 
-vi.mock("@/lib/supabase", () => ({
-  supabase: {
-    rpc: (...args: unknown[]) => mocks.rpc(...args),
-  },
+vi.mock("@/lib/rpc-client", () => ({
+  callRpc: (...args: unknown[]) => mocks.rpc(...args),
 }))
 
 vi.mock("@/components/ui/dialog", () => ({
@@ -98,11 +96,8 @@ describe("ChangePasswordDialog forced signout", () => {
     vi.clearAllMocks()
     mocks.updateSession.mockResolvedValue(undefined)
     mocks.rpc.mockResolvedValue({
-      data: {
-        success: true,
-        message: "Đã thay đổi mật khẩu thành công với mã hóa bảo mật.",
-      },
-      error: null,
+      success: true,
+      message: "Đã thay đổi mật khẩu thành công với mã hóa bảo mật.",
     })
     mocks.useSession.mockReturnValue({
       data: {
@@ -144,6 +139,14 @@ describe("ChangePasswordDialog forced signout", () => {
       )
     })
 
+    expect(mocks.rpc).toHaveBeenCalledWith({
+      fn: "change_password",
+      args: {
+        p_user_id: 42,
+        p_old_password: "old-password",
+        p_new_password: "new-password",
+      },
+    })
     expect(onOpenChange).toHaveBeenCalledWith(false)
     expect(mocks.updateSession).toHaveBeenCalledWith({
       pending_signout_reason: "forced_password_change",
@@ -216,5 +219,37 @@ describe("ChangePasswordDialog forced signout", () => {
         }),
       )
     })
+  })
+
+  it("fails closed when the password-change RPC is unavailable", async () => {
+    const onOpenChange = vi.fn()
+    mocks.rpc.mockRejectedValueOnce(new Error("Could not find the function public.change_password"))
+
+    render(<ChangePasswordDialog open onOpenChange={onOpenChange} />)
+
+    fireEvent.change(screen.getByLabelText("Mật khẩu hiện tại *"), {
+      target: { value: "old-password" },
+    })
+    fireEvent.change(screen.getByLabelText("Mật khẩu mới *"), {
+      target: { value: "new-password" },
+    })
+    fireEvent.change(screen.getByLabelText("Xác nhận mật khẩu mới *"), {
+      target: { value: "new-password" },
+    })
+    fireEvent.click(screen.getByRole("button", { name: "Thay đổi mật khẩu" }))
+
+    await waitFor(() => {
+      expect(mocks.toast).toHaveBeenCalledWith(
+        expect.objectContaining({
+          variant: "destructive",
+          title: "Lỗi",
+          description: "Could not find the function public.change_password",
+        }),
+      )
+    })
+
+    expect(onOpenChange).not.toHaveBeenCalled()
+    expect(mocks.updateSession).not.toHaveBeenCalled()
+    expect(mocks.signOut).not.toHaveBeenCalled()
   })
 })

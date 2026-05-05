@@ -17,12 +17,17 @@ import { Label } from "@/components/ui/label"
 import { useToast } from "@/hooks/use-toast"
 import { getUnknownErrorMessage } from "@/lib/error-utils"
 import { signOutWithReason } from "@/lib/auth-signout"
-import { supabase } from "@/lib/supabase"
+import { callRpc } from "@/lib/rpc-client"
 import { useSession } from "next-auth/react"
 
 interface ChangePasswordDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
+}
+
+type ChangePasswordRpcResult = {
+  success?: boolean
+  message?: string
 }
 
 export function ChangePasswordDialog({ open, onOpenChange }: ChangePasswordDialogProps) {
@@ -117,15 +122,6 @@ export function ChangePasswordDialog({ open, onOpenChange }: ChangePasswordDialo
       return
     }
 
-    if (!supabase) {
-      toast({
-        variant: "destructive",
-        title: "Lỗi",
-        description: "Không thể kết nối đến cơ sở dữ liệu."
-      })
-      return
-    }
-
     setIsLoading(true)
     let passwordChanged = false
 
@@ -140,86 +136,29 @@ export function ChangePasswordDialog({ open, onOpenChange }: ChangePasswordDialo
         return
       }
 
-      // Try to use the secure change_password function first
-      const { data, error } = await supabase.rpc('change_password', {
-        p_user_id: currentUserId,
-        p_old_password: formData.currentPassword,
-        p_new_password: formData.newPassword
+      const data = await callRpc<ChangePasswordRpcResult>({
+        fn: "change_password",
+        args: {
+          p_user_id: currentUserId,
+          p_old_password: formData.currentPassword,
+          p_new_password: formData.newPassword,
+        },
       })
 
-      // If function doesn't exist, fall back to direct update (temporary)
-      if (error && (
-        error.message?.includes('Could not find the function') ||
-        error.message?.includes('function change_password') ||
-        error.code === '42883' // Function does not exist error code
-      )) {
-        console.log('change_password function not found, using temporary fallback method')
-        console.log('Error details:', error)
-
-        // Verify current password manually
-        const { data: currentUser, error: fetchError } = await supabase
-          .from('nhan_vien')
-          .select('password, hashed_password')
-          .eq('id', currentUserId)
-          .single()
-
-        if (fetchError) {
-          throw fetchError
-        }
-
-        // Check password (try hashed first, then plain text)
-        let passwordValid = false
-        if (currentUser.hashed_password && currentUser.hashed_password !== '') {
-          // Try to verify with hashed password (this won't work client-side, so we'll use plain text comparison)
-          passwordValid = currentUser.password === formData.currentPassword
-        } else {
-          passwordValid = currentUser.password === formData.currentPassword
-        }
-
-        if (!passwordValid) {
-          toast({
-            variant: "destructive",
-            title: "Lỗi",
-            description: "Mật khẩu hiện tại không đúng."
-          })
-          setIsLoading(false)
-          return
-        }
-
-        // Update password directly
-        const { error: updateError } = await supabase
-          .from('nhan_vien')
-          .update({ password: formData.newPassword })
-          .eq('id', currentUserId)
-
-        if (updateError) {
-          throw updateError
-        }
-
+      if (!data?.success) {
         toast({
-          title: "Thành công",
-          description: "Đã thay đổi mật khẩu thành công. (Chế độ tạm thời - vui lòng chạy script SQL để kích hoạt mã hóa mật khẩu)"
+          variant: "destructive",
+          title: "Lỗi",
+          description: data?.message || "Mật khẩu hiện tại không đúng."
         })
-      } else if (error) {
-        console.error('Error from change_password function:', error)
-        throw error
-      } else {
-        // Check if password change was successful (new JSON response format)
-        if (!data || !data.success) {
-          toast({
-            variant: "destructive",
-            title: "Lỗi",
-            description: data?.message || "Mật khẩu hiện tại không đúng."
-          })
-          setIsLoading(false)
-          return
-        }
-
-        toast({
-          title: "Thành công",
-          description: data.message || "Đã thay đổi mật khẩu thành công với mã hóa bảo mật."
-        })
+        setIsLoading(false)
+        return
       }
+
+      toast({
+        title: "Thành công",
+        description: data.message || "Đã thay đổi mật khẩu thành công với mã hóa bảo mật."
+      })
 
       onOpenChange(false)
       passwordChanged = true
