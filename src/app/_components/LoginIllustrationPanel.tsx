@@ -22,7 +22,7 @@ export function LoginIllustrationPanel() {
             <div className="flex-1 flex flex-col items-center justify-center text-center space-y-12">
                 <div className="w-full max-w-lg aspect-square relative group">
                     <Image
-                        src="/login-illustration.webp"
+                        src="/login-illustration.png"
                         alt="Hình minh họa quản lý thiết bị y tế thông minh"
                         width={512}
                         height={512}
