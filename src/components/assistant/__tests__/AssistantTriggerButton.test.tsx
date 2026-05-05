@@ -37,4 +37,12 @@ describe('AssistantTriggerButton', () => {
         expect(button.className).toContain('fixed')
         expect(button.className).toContain('rounded-full')
     })
+
+    it('stacks above mobile page FABs instead of sharing their footer offset', () => {
+        render(<AssistantTriggerButton isOpen={false} onToggle={vi.fn()} />)
+
+        const button = screen.getByRole('button', { name: /trợ lý ai/i })
+        expect(button.className).toContain('bottom-[calc(env(safe-area-inset-bottom,0px)+9.5rem)]')
+        expect(button.className).not.toContain('bottom-[calc(env(safe-area-inset-bottom,0px)+4rem+1rem)]')
+    })
 })
