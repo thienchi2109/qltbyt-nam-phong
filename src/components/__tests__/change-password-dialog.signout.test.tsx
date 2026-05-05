@@ -223,6 +223,7 @@ describe("ChangePasswordDialog forced signout", () => {
 
   it("fails closed when the password-change RPC is unavailable", async () => {
     const onOpenChange = vi.fn()
+    const consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {})
     mocks.rpc.mockRejectedValueOnce(new Error("Could not find the function public.change_password"))
 
     render(<ChangePasswordDialog open onOpenChange={onOpenChange} />)
@@ -243,13 +244,18 @@ describe("ChangePasswordDialog forced signout", () => {
         expect.objectContaining({
           variant: "destructive",
           title: "Lỗi",
-          description: "Could not find the function public.change_password",
+          description: "Dịch vụ đổi mật khẩu tạm thời không khả dụng. Vui lòng thử lại sau.",
         }),
       )
     })
 
+    expect(consoleErrorSpy).toHaveBeenCalledWith(
+      "Password change RPC unavailable:",
+      expect.any(Error),
+    )
     expect(onOpenChange).not.toHaveBeenCalled()
     expect(mocks.updateSession).not.toHaveBeenCalled()
     expect(mocks.signOut).not.toHaveBeenCalled()
+    consoleErrorSpy.mockRestore()
   })
 })

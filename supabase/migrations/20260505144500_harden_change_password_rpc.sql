@@ -8,12 +8,16 @@ CREATE OR REPLACE FUNCTION public.change_password(
 ) RETURNS jsonb
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public, extensions, pg_temp
+SET search_path = public, pg_temp
 AS $$
 DECLARE
   v_claims JSONB := COALESCE(current_setting('request.jwt.claims', true), '{}')::jsonb;
   v_role TEXT := LOWER(COALESCE(NULLIF(v_claims->>'app_role', ''), NULLIF(v_claims->>'role', '')));
   v_claim_user_id INTEGER;
+  v_user_agent TEXT := COALESCE(
+    NULLIF((COALESCE(NULLIF(current_setting('request.headers', true), ''), '{}')::jsonb)->>'user-agent', ''),
+    'unknown'
+  );
   user_record RECORD;
   password_valid BOOLEAN := FALSE;
 BEGIN
@@ -35,6 +39,14 @@ BEGIN
     RAISE EXCEPTION 'user_id claim mismatch' USING ERRCODE = '42501';
   END IF;
 
+  IF NULLIF(p_old_password, '') IS NULL THEN
+    RETURN jsonb_build_object('success', false, 'message', 'Current password is incorrect');
+  END IF;
+
+  IF NULLIF(p_new_password, '') IS NULL THEN
+    RETURN jsonb_build_object('success', false, 'message', 'New password is required');
+  END IF;
+
   SELECT id, username, password, hashed_password
   INTO user_record
   FROM public.nhan_vien
@@ -50,7 +62,7 @@ BEGIN
     password_valid := (user_record.password = p_old_password);
   END IF;
 
-  IF NOT password_valid THEN
+  IF password_valid IS DISTINCT FROM TRUE THEN
     RETURN jsonb_build_object('success', false, 'message', 'Current password is incorrect');
   END IF;
 
@@ -78,7 +90,7 @@ BEGIN
       user_record.username,
       'User changed password',
       COALESCE(pg_catalog.inet_client_addr(), '0.0.0.0'::INET),
-      COALESCE(current_setting('request.headers', true), 'unknown')
+      v_user_agent
     );
   EXCEPTION WHEN others THEN
     RAISE WARNING 'Failed to log password change: %', SQLERRM;

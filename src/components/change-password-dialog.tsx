@@ -30,6 +30,27 @@ type ChangePasswordRpcResult = {
   message?: string
 }
 
+const PASSWORD_CHANGE_UNAVAILABLE_MESSAGE =
+  "Dịch vụ đổi mật khẩu tạm thời không khả dụng. Vui lòng thử lại sau."
+
+function isPasswordChangeUnavailableError(error: unknown): boolean {
+  const message = getUnknownErrorMessage(error, "").toLowerCase()
+  return (
+    message.includes("could not find the function") ||
+    message.includes("function change_password") ||
+    message.includes("rpc change_password failed") ||
+    message.includes("function not allowed")
+  )
+}
+
+function getPasswordChangeErrorMessage(error: unknown): string {
+  if (isPasswordChangeUnavailableError(error)) {
+    return PASSWORD_CHANGE_UNAVAILABLE_MESSAGE
+  }
+
+  return getUnknownErrorMessage(error, "Có lỗi xảy ra khi thay đổi mật khẩu.")
+}
+
 export function ChangePasswordDialog({ open, onOpenChange }: ChangePasswordDialogProps) {
   const { toast } = useToast()
   const { data: session, update } = useSession()
@@ -163,10 +184,15 @@ export function ChangePasswordDialog({ open, onOpenChange }: ChangePasswordDialo
       onOpenChange(false)
       passwordChanged = true
     } catch (error: unknown) {
+      if (isPasswordChangeUnavailableError(error)) {
+        try {
+          console.error("Password change RPC unavailable:", error)
+        } catch {}
+      }
       toast({
         variant: "destructive",
         title: "Lỗi",
-        description: getUnknownErrorMessage(error, "Có lỗi xảy ra khi thay đổi mật khẩu."),
+        description: getPasswordChangeErrorMessage(error),
       })
     } finally {
       setIsLoading(false)
