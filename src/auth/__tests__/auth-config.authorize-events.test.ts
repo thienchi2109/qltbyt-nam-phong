@@ -133,6 +133,12 @@ function createDeferredRpcResult(): DeferredRpcResult {
   return { promise, resolve }
 }
 
+async function flushMicrotasks(count = 3) {
+  for (let index = 0; index < count; index += 1) {
+    await Promise.resolve()
+  }
+}
+
 describe("authOptions authorize + auth lifecycle events", () => {
   let consoleInfoSpy: ReturnType<typeof vi.spyOn>
   let consoleErrorSpy: ReturnType<typeof vi.spyOn>
@@ -280,7 +286,7 @@ describe("authOptions authorize + auth lifecycle events", () => {
       account: null,
       isNewUser: false,
     })
-    await Promise.resolve()
+    await flushMicrotasks()
 
     expect(authLifecycleLogs(consoleInfoSpy)).toEqual([
       expect.objectContaining({
@@ -344,11 +350,10 @@ describe("authOptions authorize + auth lifecycle events", () => {
     const settled = vi.fn()
     void signInPromise.then(settled)
     await Promise.resolve()
+    expect(settled).toHaveBeenCalledTimes(1)
 
     deferredAuditInsert.resolve({ data: true, error: null })
     await signInPromise
-
-    expect(settled).toHaveBeenCalledTimes(1)
   })
 
   it("emits forced_signout/session_expired on signOut fallback and computes session duration", async () => {
