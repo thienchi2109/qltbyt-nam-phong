@@ -187,13 +187,13 @@ describe("authOptions.jwt cooldown + trigger gate", () => {
     consoleWarnSpy.mockRestore()
   })
 
-  it("fetches profile on sign-in and stamps lastRefreshAt + loginTime", async () => {
+  it("skips profile refresh RPC on sign-in and still stamps lastRefreshAt + loginTime", async () => {
     const result = await runJwt({
       token: { ...baseToken },
       user: { ...baseToken } as JwtArgs["user"],
     })
 
-    expect(supabaseClient.rpc).toHaveBeenCalledWith("get_session_profile_for_jwt", { p_user_id: "42" })
+    expect(supabaseClient.rpc).not.toHaveBeenCalled()
     expect(supabaseClient.from).not.toHaveBeenCalled()
     expect(result).toMatchObject({
       id: "42",
