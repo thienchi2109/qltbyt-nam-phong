@@ -2,6 +2,8 @@ import { createClient } from "@supabase/supabase-js"
 
 import type { AuthLifecycleLogPayload } from "@/auth/logging"
 
+const AUTH_AUDIT_RPC_TIMEOUT_MS = 1_500
+
 type AuthAuditInsertRpcArgs = {
   p_created_at: string
   p_event: AuthLifecycleLogPayload["event"]
@@ -53,17 +55,23 @@ export async function persistAuthLifecycleLog(payload: AuthLifecycleLogPayload):
     return
   }
 
+  const controller = new AbortController()
+  const timeoutId = setTimeout(() => {
+    controller.abort(new Error("auth_audit_log_insert timeout"))
+  }, AUTH_AUDIT_RPC_TIMEOUT_MS)
+
   try {
     const supabase = createClient(env.supabaseUrl, env.serviceRoleKey)
-    const { data, error } = await supabase.rpc(
-      "auth_audit_log_insert",
-      toAuthAuditInsertRpcArgs(payload)
-    )
+    const { data, error } = await supabase
+      .rpc("auth_audit_log_insert", toAuthAuditInsertRpcArgs(payload))
+      .abortSignal(controller.signal)
 
     if (error || data !== true) {
       console.error("Auth audit sink insert failed", error ?? { data })
     }
   } catch (error) {
     console.error("Auth audit persistence failed", error)
+  } finally {
+    clearTimeout(timeoutId)
   }
 }

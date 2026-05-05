@@ -5,15 +5,38 @@ import { persistAuthLifecycleLog } from "@/auth/persistence"
 
 const supabaseState = vi.hoisted(() => ({
   rpcError: null as unknown,
+  rpcData: true as boolean | null,
+  rpcMode: "success" as "success" | "hang",
   rpcCalls: [] as Array<{ fn: string; args: Record<string, unknown> }>,
+  abortSignals: [] as AbortSignal[],
 }))
 
 const supabaseClient = vi.hoisted(() => ({
-  rpc: vi.fn(async (fn: string, args: Record<string, unknown>) => {
+  rpc: vi.fn((fn: string, args: Record<string, unknown>) => {
     supabaseState.rpcCalls.push({ fn, args })
+
     return {
-      data: supabaseState.rpcError ? null : true,
-      error: supabaseState.rpcError,
+      abortSignal: vi.fn((signal: AbortSignal) => {
+        supabaseState.abortSignals.push(signal)
+
+        if (supabaseState.rpcMode === "hang") {
+          return new Promise<{
+            data: boolean | null
+            error: unknown
+          }>((_resolve, reject) => {
+            signal.addEventListener(
+              "abort",
+              () => reject(signal.reason ?? new Error("aborted")),
+              { once: true }
+            )
+          })
+        }
+
+        return Promise.resolve({
+          data: supabaseState.rpcError ? null : supabaseState.rpcData,
+          error: supabaseState.rpcError,
+        })
+      }),
     }
   }),
 }))
@@ -49,12 +72,16 @@ describe("persistAuthLifecycleLog", () => {
     vi.stubEnv("NEXT_PUBLIC_SUPABASE_URL", "https://example.supabase.co")
     vi.stubEnv("SUPABASE_SERVICE_ROLE_KEY", "test-service-role-key")
     supabaseState.rpcError = null
+    supabaseState.rpcData = true
+    supabaseState.rpcMode = "success"
     supabaseState.rpcCalls = []
+    supabaseState.abortSignals = []
     createClientSpy.mockClear()
     supabaseClient.rpc.mockClear()
   })
 
   afterEach(() => {
+    vi.useRealTimers()
     vi.unstubAllEnvs()
     consoleErrorSpy.mockRestore()
   })
@@ -66,6 +93,8 @@ describe("persistAuthLifecycleLog", () => {
       "https://example.supabase.co",
       "test-service-role-key"
     )
+    expect(supabaseState.abortSignals).toHaveLength(1)
+    expect(supabaseState.abortSignals[0]?.aborted).toBe(false)
     expect(supabaseState.rpcCalls).toEqual([
       {
         fn: "auth_audit_log_insert",
@@ -109,5 +138,27 @@ describe("persistAuthLifecycleLog", () => {
         fn: "auth_audit_log_insert",
       }),
     ])
+  })
+
+  it("logs SQL-level insert failures when the RPC returns false without an error payload", async () => {
+    supabaseState.rpcData = false
+
+    await expect(persistAuthLifecycleLog(samplePayload)).resolves.toBeUndefined()
+
+    expect(consoleErrorSpy).toHaveBeenCalledWith("Auth audit sink insert failed", { data: false })
+  })
+
+  it("aborts a hanging auth audit RPC instead of blocking the caller", async () => {
+    vi.useFakeTimers()
+    supabaseState.rpcMode = "hang"
+
+    const persistPromise = persistAuthLifecycleLog(samplePayload)
+
+    await vi.advanceTimersByTimeAsync(1_500)
+    await expect(persistPromise).resolves.toBeUndefined()
+
+    expect(supabaseState.abortSignals).toHaveLength(1)
+    expect(supabaseState.abortSignals[0]?.aborted).toBe(true)
+    expect(consoleErrorSpy).toHaveBeenCalledWith("Auth audit persistence failed", expect.anything())
   })
 })

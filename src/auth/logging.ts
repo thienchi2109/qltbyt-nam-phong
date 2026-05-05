@@ -131,5 +131,9 @@ export function emitAuthLifecyclePayload(payload: AuthLifecycleLogPayload): void
 }
 
 export function emitAuthLifecycleLog(input: AuthLifecycleLogInput): void {
-  emitAuthLifecyclePayload(buildAuthLifecycleLog(input))
+  try {
+    emitAuthLifecyclePayload(buildAuthLifecycleLog(input))
+  } catch {
+    // Telemetry must never change auth behavior.
+  }
 }

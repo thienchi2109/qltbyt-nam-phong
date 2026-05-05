@@ -44,41 +44,65 @@ BEGIN
 
   SELECT EXISTS (
     SELECT 1
-    FROM information_schema.role_routine_grants
-    WHERE specific_schema = 'public'
-      AND routine_name = 'auth_audit_log_insert'
-      AND grantee = 'service_role'
-      AND privilege_type = 'EXECUTE'
+    FROM pg_proc p
+    JOIN pg_namespace n ON n.oid = p.pronamespace
+    CROSS JOIN LATERAL aclexplode(COALESCE(p.proacl, acldefault('f', p.proowner))) AS grant_item
+    WHERE n.nspname = 'public'
+      AND p.proname = 'auth_audit_log_insert'
+      AND pg_get_function_identity_arguments(p.oid) = 'p_created_at timestamp with time zone, p_event text, p_source text, p_reason_code text, p_signout_reason text, p_user_id text, p_username text, p_tenant_id text, p_request_id text, p_trace_id text, p_ip_address inet, p_user_agent text, p_metadata jsonb'
+      AND grant_item.privilege_type = 'EXECUTE'
+      AND CASE
+        WHEN grant_item.grantee = 0 THEN 'PUBLIC'
+        ELSE pg_get_userbyid(grant_item.grantee)
+      END = 'service_role'
   )
   INTO v_service_role_can_execute;
 
   SELECT EXISTS (
     SELECT 1
-    FROM information_schema.role_routine_grants
-    WHERE specific_schema = 'public'
-      AND routine_name = 'auth_audit_log_insert'
-      AND grantee = 'PUBLIC'
-      AND privilege_type = 'EXECUTE'
+    FROM pg_proc p
+    JOIN pg_namespace n ON n.oid = p.pronamespace
+    CROSS JOIN LATERAL aclexplode(COALESCE(p.proacl, acldefault('f', p.proowner))) AS grant_item
+    WHERE n.nspname = 'public'
+      AND p.proname = 'auth_audit_log_insert'
+      AND pg_get_function_identity_arguments(p.oid) = 'p_created_at timestamp with time zone, p_event text, p_source text, p_reason_code text, p_signout_reason text, p_user_id text, p_username text, p_tenant_id text, p_request_id text, p_trace_id text, p_ip_address inet, p_user_agent text, p_metadata jsonb'
+      AND grant_item.privilege_type = 'EXECUTE'
+      AND CASE
+        WHEN grant_item.grantee = 0 THEN 'PUBLIC'
+        ELSE pg_get_userbyid(grant_item.grantee)
+      END = 'PUBLIC'
   )
   INTO v_public_can_execute;
 
   SELECT EXISTS (
     SELECT 1
-    FROM information_schema.role_routine_grants
-    WHERE specific_schema = 'public'
-      AND routine_name = 'auth_audit_log_insert'
-      AND grantee = 'authenticated'
-      AND privilege_type = 'EXECUTE'
+    FROM pg_proc p
+    JOIN pg_namespace n ON n.oid = p.pronamespace
+    CROSS JOIN LATERAL aclexplode(COALESCE(p.proacl, acldefault('f', p.proowner))) AS grant_item
+    WHERE n.nspname = 'public'
+      AND p.proname = 'auth_audit_log_insert'
+      AND pg_get_function_identity_arguments(p.oid) = 'p_created_at timestamp with time zone, p_event text, p_source text, p_reason_code text, p_signout_reason text, p_user_id text, p_username text, p_tenant_id text, p_request_id text, p_trace_id text, p_ip_address inet, p_user_agent text, p_metadata jsonb'
+      AND grant_item.privilege_type = 'EXECUTE'
+      AND CASE
+        WHEN grant_item.grantee = 0 THEN 'PUBLIC'
+        ELSE pg_get_userbyid(grant_item.grantee)
+      END = 'authenticated'
   )
   INTO v_authenticated_can_execute;
 
   SELECT EXISTS (
     SELECT 1
-    FROM information_schema.role_routine_grants
-    WHERE specific_schema = 'public'
-      AND routine_name = 'auth_audit_log_insert'
-      AND grantee = 'anon'
-      AND privilege_type = 'EXECUTE'
+    FROM pg_proc p
+    JOIN pg_namespace n ON n.oid = p.pronamespace
+    CROSS JOIN LATERAL aclexplode(COALESCE(p.proacl, acldefault('f', p.proowner))) AS grant_item
+    WHERE n.nspname = 'public'
+      AND p.proname = 'auth_audit_log_insert'
+      AND pg_get_function_identity_arguments(p.oid) = 'p_created_at timestamp with time zone, p_event text, p_source text, p_reason_code text, p_signout_reason text, p_user_id text, p_username text, p_tenant_id text, p_request_id text, p_trace_id text, p_ip_address inet, p_user_agent text, p_metadata jsonb'
+      AND grant_item.privilege_type = 'EXECUTE'
+      AND CASE
+        WHEN grant_item.grantee = 0 THEN 'PUBLIC'
+        ELSE pg_get_userbyid(grant_item.grantee)
+      END = 'anon'
   )
   INTO v_anon_can_execute;
 
