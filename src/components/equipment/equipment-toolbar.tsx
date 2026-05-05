@@ -52,6 +52,7 @@ export interface EquipmentToolbarProps {
   hasFacilityFilter: boolean
   /** Whether export is currently in progress */
   isExporting?: boolean
+  selectionActions?: React.ReactNode
   onOpenFilterSheet: () => void
   onOpenColumnsDialog: () => void
   onDownloadTemplate: () => void
@@ -78,6 +79,7 @@ export function EquipmentToolbar({
   canCreateEquipment,
   hasFacilityFilter,
   isExporting = false,
+  selectionActions,
   onOpenFilterSheet,
   onOpenColumnsDialog,
   onDownloadTemplate,
@@ -240,6 +242,12 @@ export function EquipmentToolbar({
 
           {/* Right: actions */}
           <div className="order-3 w-full md:order-2 md:w-auto flex items-center gap-2 justify-between md:justify-end">
+            {selectionActions ? (
+              <div className="flex min-w-0 shrink-0 justify-end">
+                {selectionActions}
+              </div>
+            ) : null}
+
             {canCreateEquipment && (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>

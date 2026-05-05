@@ -254,6 +254,13 @@ function EquipmentPageContent({
             canCreateEquipment={canCreateEquipment}
             hasFacilityFilter={hasFacilityFilter}
             isExporting={isExporting}
+            selectionActions={
+              <EquipmentBulkDeleteBar
+                table={table}
+                canBulkSelect={canBulkSelect}
+                isCardView={isCardView}
+              />
+            }
             onOpenFilterSheet={() => setIsFilterSheetOpen(true)}
             onOpenColumnsDialog={openColumnsDialog}
             onDownloadTemplate={handleDownloadTemplate}
@@ -266,12 +273,7 @@ function EquipmentPageContent({
 
           <EquipmentColumnsDialog table={table} />
 
-          <div className="relative mt-4">
-            <EquipmentBulkDeleteBar
-              table={table}
-              canBulkSelect={canBulkSelect}
-              isCardView={isCardView}
-            />
+          <div className="mt-4">
             <EquipmentContent
               isGlobal={isGlobal}
               isRegionalLeader={isRegionalLeader}

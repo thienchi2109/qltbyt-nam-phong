@@ -78,9 +78,9 @@ export function EquipmentBulkDeleteBar({
   return (
     <div
       data-testid="equipment-bulk-delete-bar"
-      className="pointer-events-none absolute bottom-4 right-4 z-20 flex max-w-[calc(100%-2rem)] justify-end"
+      className="shrink-0"
     >
-      <div className="pointer-events-auto max-w-full shadow-lg">
+      <div className="max-w-full">
         <BulkActionBar
           selectedCount={selectedCount}
           onClearSelection={() => table.resetRowSelection()}

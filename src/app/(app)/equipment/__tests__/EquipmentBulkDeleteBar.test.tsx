@@ -177,7 +177,7 @@ describe("EquipmentBulkDeleteBar", () => {
     expect(tableRef?.getState().rowSelection).toEqual({})
   })
 
-  it("renders selected actions out of normal document flow to avoid shifting the table", async () => {
+  it("renders selected actions inline for the toolbar action slot", async () => {
     let tableRef: Table<Equipment> | null = null
     const Harness = createTableHarness((table) => {
       tableRef = table
@@ -193,11 +193,12 @@ describe("EquipmentBulkDeleteBar", () => {
       tableRef?.getRow("101").toggleSelected(true)
     })
 
-    const floatingBar = screen.getByTestId("equipment-bulk-delete-bar")
+    const actionBar = screen.getByTestId("equipment-bulk-delete-bar")
 
-    expect(floatingBar).toHaveClass("absolute")
-    expect(floatingBar).toHaveClass("pointer-events-none")
-    expect(floatingBar).toHaveClass("z-20")
+    expect(actionBar).toHaveClass("shrink-0")
+    expect(actionBar).not.toHaveClass("absolute")
+    expect(actionBar).not.toHaveClass("bottom-4")
+    expect(actionBar).not.toHaveClass("right-4")
     expect(screen.getByText(/^Đã chọn/i)).toHaveTextContent("1")
   })
 })

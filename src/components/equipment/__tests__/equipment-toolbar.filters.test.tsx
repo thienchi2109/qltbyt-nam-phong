@@ -48,18 +48,18 @@ vi.mock('@/components/ui/dropdown-menu', () => {
             )
         },
         DropdownMenuTrigger: ({ children, asChild, open, setOpen, ...rest }: DropdownWithChildrenProps & { asChild?: boolean }) => {
-            const handleClick = () => setOpen?.(!open)
+            const toggleDropdownMenu = () => setOpen?.(!open)
             if (asChild && React.isValidElement(children)) {
                 const childElement = children as React.ReactElement<{ onClick?: (...args: unknown[]) => void }>
                 return React.cloneElement(childElement, {
                     ...rest,
                     onClick: (...args: unknown[]) => {
-                        handleClick()
+                        toggleDropdownMenu()
                             ; childElement.props.onClick?.(...args)
                     },
                 })
             }
-            return <button {...rest} onClick={handleClick}>{children}</button>
+            return <button {...rest} onClick={toggleDropdownMenu}>{children}</button>
         },
         DropdownMenuContent: ({ children, open, ...rest }: DropdownWithChildrenProps) => {
             if (!open) return null
@@ -154,6 +154,22 @@ describe('EquipmentToolbar with shared filters', () => {
         render(<EquipmentToolbar {...baseProps} canCreateEquipment={false} />)
 
         expect(screen.queryByText('Thêm thiết bị')).not.toBeInTheDocument()
+    })
+
+    it('places selection actions immediately before the add equipment button', () => {
+        render(
+            <EquipmentToolbar
+                {...baseProps}
+                selectionActions={<div data-testid="toolbar-selection-actions">Đã chọn 1 thiết bị</div>}
+            />
+        )
+
+        const selectionActions = screen.getByTestId('toolbar-selection-actions')
+        const addButton = screen.getByRole('button', { name: /Thêm thiết bị/i })
+
+        expect(selectionActions.compareDocumentPosition(addButton)).toBe(
+            Node.DOCUMENT_POSITION_FOLLOWING
+        )
     })
 
 })
