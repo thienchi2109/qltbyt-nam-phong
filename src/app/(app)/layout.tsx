@@ -5,6 +5,7 @@ import { redirect } from "next/navigation"
 
 import { authOptions } from "@/auth/config"
 import { AppLayoutShell } from "@/app/(app)/_components/AppLayoutShell"
+import { NextAuthSessionProvider } from "@/providers/session-provider"
 
 type AppLayoutProps = {
   children: ReactNode
@@ -17,5 +18,9 @@ export default async function AppLayout({ children }: AppLayoutProps) {
     redirect("/")
   }
 
-  return <AppLayoutShell user={session.user}>{children}</AppLayoutShell>
+  return (
+    <NextAuthSessionProvider session={session}>
+      <AppLayoutShell user={session.user}>{children}</AppLayoutShell>
+    </NextAuthSessionProvider>
+  )
 }

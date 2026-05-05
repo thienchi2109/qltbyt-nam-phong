@@ -187,6 +187,32 @@ describe("AppLayoutShell", () => {
     })
   })
 
+  it("keeps notification bootstrap disabled while session hydration is still loading", () => {
+    mocks.useSession.mockReturnValue({
+      data: { user: { id: "u1" } },
+      status: "loading",
+      update: mocks.updateSession,
+    })
+
+    render(
+      <AppLayoutShell
+        user={{
+          role: "global",
+          full_name: "Test User",
+          username: "tester",
+          khoa_phong: "IT",
+        }}
+      >
+        <div>Child Content</div>
+      </AppLayoutShell>
+    )
+
+    expect(mocks.useAppNotificationCounts).toHaveBeenCalledWith({
+      enabled: false,
+      facilityId: null,
+    })
+  })
+
   it("persists a user-initiated signout reason before signing out from the user menu", async () => {
     const user = userEvent.setup()
 

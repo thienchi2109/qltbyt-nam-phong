@@ -19,7 +19,7 @@ export interface RecentActivity {
  * Tenant-isolated server-side via JWT claims.
  */
 export function useRecentActivities(limit = 15) {
-  const { data: session } = useSession()
+  const { data: session, status } = useSession()
   const userId = session?.user?.id ? String(session.user.id) : 'anonymous'
 
   return useQuery<RecentActivity[]>({
@@ -29,7 +29,7 @@ export function useRecentActivities(limit = 15) {
         fn: 'dashboard_recent_activities',
         args: { p_limit: limit },
       }),
-    enabled: !!session,
+    enabled: status === "authenticated" && !!session?.user?.id,
     staleTime: 60_000,        // 1 minute
     gcTime: 5 * 60_000,       // 5 minutes
     refetchInterval: 120_000, // auto-refresh every 2 minutes

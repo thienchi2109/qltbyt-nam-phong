@@ -116,12 +116,13 @@ export function TenantSelectionProvider({ children }: { children: React.ReactNod
   // Non-privileged users can always fetch (server enforces their don_vi)
   // Privileged users must select a facility first (undefined = not selected, null = "all", number = specific)
   const shouldFetchData = React.useMemo(() => {
+    if (status !== "authenticated") return false
     if (!showSelector) return true
     // undefined = not selected yet, block fetching
     // null = "all facilities" selected, allow fetching
     // number = specific facility selected, allow fetching
     return selectedFacilityId !== undefined
-  }, [showSelector, selectedFacilityId])
+  }, [selectedFacilityId, showSelector, status])
 
   // Memoize context value to prevent unnecessary re-renders
   const value = React.useMemo<TenantSelectionContextValue>(() => ({

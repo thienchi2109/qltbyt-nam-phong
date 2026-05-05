@@ -75,17 +75,34 @@ describe("KPICards", () => {
     })
   })
 
-  it("shows loading state instead of zero KPI values while session is resolving", () => {
-    mockUseSession.mockReturnValue({
-      data: null,
+  it("waits for an authenticated session before bootstrapping the shared dashboard summary RPC", async () => {
+    const sessionState = {
+      data: { user: { id: 1, role: "global" } },
       status: "loading",
+    }
+    mockUseSession.mockImplementation(() => sessionState)
+    mockCallRpc.mockResolvedValue({
+      totalEquipment: 12,
+      maintenanceCount: 3,
+      repairRequests: { total: 2, pending: 1, approved: 1, completed: 0 },
+      maintenancePlans: {
+        total: 4,
+        draft: 2,
+        approved: 2,
+        plans: [],
+      },
     })
-    mockCallRpc.mockReturnValue(new Promise(() => undefined))
 
-    render(<KPICards />, { wrapper: createWrapper() })
+    const { rerender } = render(<KPICards />, { wrapper: createWrapper() })
 
-    expect(screen.queryByLabelText("0 thiết bị")).not.toBeInTheDocument()
-    expect(screen.queryByLabelText("0 thiết bị cần bảo trì")).not.toBeInTheDocument()
+    expect(mockCallRpc).not.toHaveBeenCalled()
+
+    sessionState.status = "authenticated"
+    rerender(<KPICards />)
+
+    await waitFor(() => {
+      expect(mockCallRpc).toHaveBeenCalledTimes(1)
+    })
     expect(mockCallRpc).toHaveBeenCalledWith({
       fn: "dashboard_kpi_summary",
     })

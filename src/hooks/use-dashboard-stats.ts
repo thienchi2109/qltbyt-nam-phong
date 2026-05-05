@@ -116,7 +116,7 @@ function normalizeDashboardKpiSummary(data: Partial<DashboardKpiSummary> | null 
 }
 
 export function useDashboardKpiSummary() {
-  const { data: session } = useSession()
+  const { data: session, status } = useSession()
   const user: DashboardSessionUser | undefined = session?.user
   const scope = getDashboardUserScope(user)
 
@@ -126,6 +126,7 @@ export function useDashboardKpiSummary() {
       const data = await callRpc<Partial<DashboardKpiSummary>>({ fn: 'dashboard_kpi_summary' })
       return normalizeDashboardKpiSummary(data)
     },
+    enabled: status === "authenticated" && !!user?.id,
     staleTime: 2 * 60 * 1000,
     gcTime: 10 * 60 * 1000,
     refetchOnWindowFocus: false,
