@@ -35,6 +35,8 @@ describe('AssistantTriggerButton', () => {
 
         const button = screen.getByRole('button')
         expect(button.className).toContain('fixed')
+        expect(button.className).toContain('h-14')
+        expect(button.className).toContain('w-14')
         expect(button.className).toContain('rounded-full')
     })
 

@@ -187,4 +187,16 @@ describe("EquipmentPageClient selection render boundary", () => {
 
     expect(screen.getByLabelText("selected count")).toHaveTextContent("1")
   })
+
+  it("renders the mobile create FAB with the shared floating action contract", () => {
+    state.pageState = createPageState(createTable())
+
+    render(<EquipmentPageClient />)
+
+    const button = screen.getByRole("button", { name: "Thêm thiết bị" })
+    expect(button.className).toContain("bottom-[calc(env(safe-area-inset-bottom,0px)+5rem)]")
+    expect(button.className).toContain("h-14")
+    expect(button.className).toContain("w-14")
+    expect(button.className).toContain("shadow-[0_18px_34px_rgba(15,23,42,0.24)]")
+  })
 })

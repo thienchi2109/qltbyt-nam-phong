@@ -2,6 +2,7 @@
 
 import * as React from "react"
 import { Sparkles, X } from "lucide-react"
+import { FloatingActionButton } from "@/components/shared/FloatingActionButton"
 import { cn } from "@/lib/utils"
 
 interface AssistantTriggerButtonProps {
@@ -22,22 +23,13 @@ export function AssistantTriggerButton({
     onToggle,
 }: AssistantTriggerButtonProps) {
     return (
-        <button
+        <FloatingActionButton
             type="button"
             onClick={onToggle}
             aria-label={isOpen ? "Đóng trợ lý" : "Trợ lý AI"}
             data-testid="assistant-trigger-button"
-            className={cn(
-                "fixed bottom-[calc(env(safe-area-inset-bottom,0px)+9.5rem)] right-6 md:bottom-6 z-[997] rounded-full",
-                "w-12 h-12 md:w-12 md:h-12",
-                "flex items-center justify-center",
-                "bg-gradient-to-br from-[hsl(194,45%,42%)] to-[hsl(194,45%,36%)]",
-                "text-white shadow-lg",
-                "transition-all duration-200 ease-out",
-                "hover:shadow-xl hover:scale-[1.08]",
-                "active:scale-95 active:duration-100",
-                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
-            )}
+            tone="assistant"
+            placement="assistant"
         >
             <span
                 className={cn(
@@ -46,11 +38,11 @@ export function AssistantTriggerButton({
                 )}
             >
                 {isOpen ? (
-                    <X className="h-5 w-5" data-testid="icon-x" />
+                    <X data-testid="icon-x" />
                 ) : (
-                    <Sparkles className="h-5 w-5" data-testid="icon-sparkles" />
+                    <Sparkles data-testid="icon-sparkles" />
                 )}
             </span>
-        </button>
+        </FloatingActionButton>
     )
 }

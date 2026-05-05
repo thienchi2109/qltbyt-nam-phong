@@ -170,12 +170,6 @@
     z-index: 40;
   }
 
-  /* Floating action button positioning above footer with safe-area support */
-  .fab-above-footer {
-    bottom: calc(env(safe-area-inset-bottom, 0px) + 5rem);
-    z-index: 70;
-  }
-
   .mobile-header-z {
     z-index: 40;
   }
@@ -631,4 +625,3 @@
 .duration-300 {
   animation-duration: 300ms;
 }
-

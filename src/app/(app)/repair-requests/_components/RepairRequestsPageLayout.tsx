@@ -16,6 +16,7 @@ import type { RepairStatus } from "@/components/kpi"
 import { RepairRequestAlert } from "@/components/repair-request-alert"
 import { TenantSelector } from "@/components/shared/TenantSelector"
 import { DataTablePagination } from "@/components/shared/DataTablePagination"
+import { FloatingActionButton } from "@/components/shared/FloatingActionButton"
 import { RepairRequestsFilterModal, type FilterModalValue } from "./RepairRequestsFilterModal"
 import { RepairRequestsCreateSheet } from "./RepairRequestsCreateSheet"
 import { RepairRequestsToolbar } from "./RepairRequestsToolbar"
@@ -150,13 +151,12 @@ export function RepairRequestsPageLayout({
 
         {/* Mobile FAB for quick create */}
         {!isRegionalLeader && isMobile ? (
-          <Button
-            className="fixed right-6 fab-above-footer rounded-full h-14 w-14 shadow-lg"
+          <FloatingActionButton
             onClick={() => openCreateSheet()}
             aria-label="Tạo yêu cầu"
           >
-            <PlusCircle className="h-6 w-6" />
-          </Button>
+            <PlusCircle />
+          </FloatingActionButton>
         ) : null}
 
         {/* Content area */}

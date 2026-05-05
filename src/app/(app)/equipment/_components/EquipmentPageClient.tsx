@@ -23,6 +23,7 @@ import { FilterBottomSheet } from "@/components/equipment/filter-bottom-sheet"
 import { LinkedRequestProvider } from "@/components/equipment-linked-request"
 import { DataTablePagination } from "@/components/shared/DataTablePagination"
 import type { DisplayContext } from "@/components/shared/DataTablePagination/types"
+import { floatingActionButtonClassName } from "@/components/shared/FloatingActionButton"
 import { EquipmentToolbar } from "@/components/equipment/equipment-toolbar"
 import { TenantSelector } from "@/components/shared/TenantSelector"
 import { applyAttentionStatusPresetFilters } from "@/lib/equipment-attention-preset"
@@ -319,27 +320,23 @@ function EquipmentPageContent({
 
       {/* Floating Add Button - Mobile only */}
       {canCreateEquipment ? (
-        <div className="fixed bottom-20 right-6 md:hidden z-[100]">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                size="lg"
-                className="h-14 w-14 rounded-full shadow-lg hover:shadow-xl transition-shadow"
-              >
-                <Plus className="h-6 w-6" />
-                <span className="sr-only">Them thiet bi</span>
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" side="top" className="mb-2">
-              <DropdownMenuItem onSelect={openAddDialog}>
-                Thêm từng thiết bị
-              </DropdownMenuItem>
-              <DropdownMenuItem onSelect={openImportDialog}>
-                Thêm hàng loạt bằng Excel
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
+        <DropdownMenu>
+          <DropdownMenuTrigger
+            className={floatingActionButtonClassName()}
+            aria-label="Thêm thiết bị"
+          >
+            <Plus />
+            <span className="sr-only">Them thiet bi</span>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" side="top" className="mb-2">
+            <DropdownMenuItem onSelect={openAddDialog}>
+              Thêm từng thiết bị
+            </DropdownMenuItem>
+            <DropdownMenuItem onSelect={openImportDialog}>
+              Thêm hàng loạt bằng Excel
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       ) : null}
 
       <FilterBottomSheet

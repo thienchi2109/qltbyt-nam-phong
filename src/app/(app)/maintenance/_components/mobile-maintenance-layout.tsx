@@ -14,6 +14,7 @@ import {
 } from "lucide-react"
 import { KpiStatusBar } from "@/components/kpi"
 import { MAINTENANCE_STATUS_CONFIGS } from "@/components/kpi/configs/maintenance"
+import { FloatingActionButton } from "@/components/shared/FloatingActionButton"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
@@ -95,11 +96,6 @@ export function MobileMaintenanceLayout({
     () => ({ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 16px)" }),
     []
   )
-  const fabStyle = React.useMemo(
-    () => ({ bottom: "calc(env(safe-area-inset-bottom, 0px) + 5.5rem)" }),
-    []
-  )
-
   const facilityOptions = React.useMemo(() => {
     if (!showFacilityFilter) {
       return [] as Array<{ id: number; name: string }>
@@ -272,14 +268,12 @@ export function MobileMaintenanceLayout({
       </main>
 
       {ctx.canCreatePlans && (
-        <Button
+        <FloatingActionButton
           onClick={() => ctx.setIsAddPlanDialogOpen(true)}
-          className="fixed right-4 z-50 h-14 w-14 rounded-full shadow-xl transition-transform active:scale-95"
-          style={fabStyle}
           aria-label="Tạo kế hoạch mới"
         >
-          <PlusCircle className="h-6 w-6" />
-        </Button>
+          <PlusCircle />
+        </FloatingActionButton>
       )}
 
       {planTabActive && (
