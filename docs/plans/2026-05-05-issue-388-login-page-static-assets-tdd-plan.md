@@ -59,7 +59,7 @@ Add representative nested paths so the matcher cannot silently regress to today'
 - `/some/nested/example.webp`
 - `/deeply/nested/path/with.dots/resource.svg`
 
-- [ ] **Step 3: Keep protected-path assertions unchanged and add one negative pin**
+- [ ] **Step 3: Keep protected-path assertions unchanged**
 
 Do not weaken coverage for:
 
@@ -67,10 +67,6 @@ Do not weaken coverage for:
 - `/equipment/123`
 - `/repair-requests/new`
 - `/reports`
-
-Also add one negative pin to lock the documented tradeoff that the matcher only excludes by file extension and never by query string:
-
-- `/dashboard?format=png` — pathname `/dashboard` MUST still be matched (matcher applies to pathname only; query is ignored).
 
 - [ ] **Step 4: Run the focused test before implementation**
 
@@ -112,7 +108,7 @@ Update the matcher so it still protects app routes but skips:
 
   Notes:
   - `.json` is safe to allow because App Router API routes live under `/api/*` (already excluded) and App Router pages never end in `.json`.
-  - The allow-list is applied to the pathname tail only; the matcher does not see query strings, so `/dashboard?format=png` remains protected (its pathname is `/dashboard`).
+  - The allow-list is applied to the pathname tail only. If this tradeoff needs explicit test coverage later, model it with a URL/pathname-based helper instead of passing query strings directly into today's regex-only matcher harness.
   - Tradeoff: any URL whose pathname ends in one of these extensions bypasses middleware. This is safe because Next App Router never matches a route ending in a static-file extension; non-matching extension URLs return 404 from Next's static handler with no app data exposure.
 
 - [ ] **Step 2: Preserve the existing auth contract**
@@ -156,10 +152,13 @@ Change `src/app/_components/LoginIllustrationPanel.tsx` to the corrected illustr
 Run:
 
 ```bash
-rg -n "login-illustration\.webp" -g '!node_modules' -g '!.next'
+rg -n "login-illustration\.webp" src public
 ```
 
-Expected after Step 4 below: zero hits. Until Step 4 runs, the only legitimate remaining hit is the precache entry inside the generated `public/sw.js` (which will be regenerated when build runs).
+Expected:
+
+- after Step 2 and before Step 4, the only legitimate remaining hit is inside generated `public/sw.js`
+- after Step 4, there are zero hits under `src` and `public`
 
 - [ ] **Step 4: Regenerate the PWA precache manifest**
 
