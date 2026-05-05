@@ -42,16 +42,24 @@
 Add matcher exclusion coverage for:
 
 - `/Logo master.png`
-- `/login-illustration.png` (or the final corrected path chosen during implementation)
+- `/login-illustration.png` (the post-Task-3 corrected path)
 - `/sw.js`
+- `/workbox-runtime.js` (future-proofing; serwist may emit helper chunks on upgrade)
 - `/icons/icon-192x192.png`
+- `/icons/icon-maskable-512x512.png`
 - `/screenshots/placeholder-mobile.png`
+- `/_next/data/abc/dashboard.json` (pin the broader `_next` prefix, not just `_next/static`/`_next/image`)
+- `/robots.txt`
+- `/sitemap.xml`
 
-- [ ] **Step 2: Add one generic extension-based public-path assertion**
+- [ ] **Step 2: Add generic extension-based public-path assertions**
 
-Add a representative path such as `/foo/bar/example.webp` or `/foo/bar/example.png` so the matcher cannot silently regress back to today's fixed filenames only.
+Add representative nested paths so the matcher cannot silently regress to today's fixed filenames only:
 
-- [ ] **Step 3: Keep protected-path assertions unchanged**
+- `/some/nested/example.webp`
+- `/deeply/nested/path/with.dots/resource.svg`
+
+- [ ] **Step 3: Keep protected-path assertions unchanged and add one negative pin**
 
 Do not weaken coverage for:
 
@@ -59,6 +67,10 @@ Do not weaken coverage for:
 - `/equipment/123`
 - `/repair-requests/new`
 - `/reports`
+
+Also add one negative pin to lock the documented tradeoff that the matcher only excludes by file extension and never by query string:
+
+- `/dashboard?format=png` — pathname `/dashboard` MUST still be matched (matcher applies to pathname only; query is ignored).
 
 - [ ] **Step 4: Run the focused test before implementation**
 
@@ -84,12 +96,24 @@ Expected:
 Update the matcher so it still protects app routes but skips:
 
 - `api`
-- all `/_next/*`
+- all `/_next/*` (covers `_next/static`, `_next/image`, `_next/data`, and any future `_next/*` segments)
 - `favicon.ico`
 - `manifest.json`
-- `sw.js`
+- `sw.js` and `workbox-*.js`
 - public asset folders used by the repo today: `assets`, `icons`, `screenshots`
-- common static file extensions at root or nested paths so future public files do not require another matcher edit
+- explicit extension allow-list, applied at the path tail, for any nested public file:
+
+  ```
+  png | jpg | jpeg | webp | svg | gif | ico |
+  css | js | map | json | txt | xml |
+  woff | woff2 | ttf | otf |
+  mp4 | webm | pdf
+  ```
+
+  Notes:
+  - `.json` is safe to allow because App Router API routes live under `/api/*` (already excluded) and App Router pages never end in `.json`.
+  - The allow-list is applied to the pathname tail only; the matcher does not see query strings, so `/dashboard?format=png` remains protected (its pathname is `/dashboard`).
+  - Tradeoff: any URL whose pathname ends in one of these extensions bypasses middleware. This is safe because Next App Router never matches a route ending in a static-file extension; non-matching extension URLs return 404 from Next's static handler with no app data exposure.
 
 - [ ] **Step 2: Preserve the existing auth contract**
 
@@ -127,9 +151,25 @@ The current file named `public/login-illustration.webp` is actually PNG data. Re
 
 Change `src/app/_components/LoginIllustrationPanel.tsx` to the corrected illustration filename. Do not change sizing or layout behavior unless needed for the rename.
 
-- [ ] **Step 3: Sanity-check references**
+- [ ] **Step 3: Grep for stale references**
 
-Confirm there are no remaining repo references to the old `.webp` path after the update.
+Run:
+
+```bash
+rg -n "login-illustration\.webp" -g '!node_modules' -g '!.next'
+```
+
+Expected after Step 4 below: zero hits. Until Step 4 runs, the only legitimate remaining hit is the precache entry inside the generated `public/sw.js` (which will be regenerated when build runs).
+
+- [ ] **Step 4: Regenerate the PWA precache manifest**
+
+`public/sw.js` is a generated file (committed to the repo) whose precache manifest hardcodes the asset filename and its content revision hash. After renaming the illustration, regenerate it so the precache manifest and the actual asset name agree:
+
+```bash
+node scripts/npm-run.js run build
+```
+
+Commit the regenerated `public/sw.js` alongside the rename in the same commit so reviewers and the deployed SW stay in sync.
 
 ## Task 4: Verification
 
@@ -180,13 +220,42 @@ Expected: clean scan
 
 - [ ] **Step 5: Manual anonymous smoke verification**
 
-Verify in local dev or preview with no session:
+Verify in local dev or preview with no session.
 
-- `/` renders both the logo and illustration
-- direct GET for `/Logo master.png` returns image bytes, not a redirect
-- direct GET for the corrected illustration path returns image bytes, not a redirect
-- direct GET for `/sw.js` and one `/icons/*` path returns asset content, not a redirect
-- `/dashboard` still redirects to `/?callbackUrl=...`
+Direct static-file paths (must NOT redirect):
+
+```bash
+curl -sI "http://localhost:PORT/Logo%20master.png"            # → HTTP 200, image/png
+curl -sI "http://localhost:PORT/login-illustration.png"       # → HTTP 200, image/png
+curl -sI "http://localhost:PORT/sw.js"                        # → HTTP 200, application/javascript
+curl -sI "http://localhost:PORT/icons/icon-192x192.png"       # → HTTP 200, image/png
+```
+
+Next image optimizer paths — this is the actual production failure mode triggered by `fetchInternalImage` in Next 15 routing through middleware. These MUST return real image bytes (not the login-page HTML the optimizer fell back to before the fix):
+
+```bash
+curl -sI "http://localhost:PORT/_next/image?url=%2FLogo%20master.png&w=128&q=75"
+# → HTTP 200, Content-Type starts with image/
+
+curl -sI "http://localhost:PORT/_next/image?url=%2Flogin-illustration.png&w=640&q=75"
+# → HTTP 200, Content-Type starts with image/
+```
+
+Protected-route regression check (must STILL redirect):
+
+```bash
+curl -sI "http://localhost:PORT/dashboard"
+# → HTTP 307, Location: /?callbackUrl=%2Fdashboard
+```
+
+UI check: open `/` in an incognito tab and confirm both the CVMEMS logo and the medical illustration render.
+
+## Rollback
+
+Production has no middleware kill switch by design (#363). The `AUTH_MIDDLEWARE_ENABLED=false` flag is intentionally ignored in production and only honored in non-production environments. Therefore:
+
+- **Rollback path in production = revert the PR.** No runtime flag will disable middleware in production.
+- If the matcher fix accidentally exposes a real app route (regression test in Task 1 Step 3 should catch this pre-merge), revert and re-plan rather than attempting a runtime flag flip.
 
 ## Assumptions And Defaults
 
@@ -194,3 +263,7 @@ Verify in local dev or preview with no session:
 - Excluding all `/_next/*` is preferred over separate `/_next/static` and `/_next/image` fragments so future Next internals are not missed.
 - Asset cleanup stays intentionally narrow: correct the file name/content mismatch, but do not expand scope into unrelated image optimization work.
 - No DB, API, NextAuth callback, or PWA logic changes are part of this issue.
+- The matcher's static-file-extension allow-list is a deliberate, documented tradeoff: any pathname ending in one of the listed extensions bypasses middleware. This is acceptable because Next App Router never matches a route ending in a static-file extension, so non-existent extension paths return a Next 404 and cannot leak app data.
+- Middleware matchers operate on pathname only; query strings (e.g. `?format=png`) cannot be used to evade protection on a real app route.
+- Serwist in this repo currently emits only `public/sw.js` and no `workbox-*.js` runtime helpers. Excluding `workbox-*.js` is future-proofing in case serwist's runtime caching strategy changes; the `.js` extension allow-list would also cover it.
+- `public/sw.js` is a generated, committed file. The illustration rename in Task 3 requires `npm run build` (Task 3 Step 4) to refresh its precache manifest; the rename and the regenerated `public/sw.js` belong in the same commit.
