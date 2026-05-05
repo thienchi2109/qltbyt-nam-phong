@@ -35,13 +35,18 @@ export function EquipmentBulkDeleteBar({
   const { mutate: bulkDelete, isPending: isDeleting } = useBulkDeleteEquipment()
 
   const selectedRows = table.getFilteredSelectedRowModel().rows
-  const selectedIds = React.useMemo(
-    () =>
-      selectedRows
-        .map((row) => Number(row.original.id))
-        .filter((id) => Number.isFinite(id)),
-    [selectedRows]
-  )
+  const selectedIds = React.useMemo(() => {
+    const ids: number[] = []
+
+    for (const row of selectedRows) {
+      const id = Number(row.original.id)
+      if (Number.isFinite(id)) {
+        ids.push(id)
+      }
+    }
+
+    return ids
+  }, [selectedRows])
   const selectedCount = selectedIds.length
 
   React.useEffect(() => {
@@ -66,48 +71,55 @@ export function EquipmentBulkDeleteBar({
     [selectedIds, isDeleting, bulkDelete, table]
   )
 
-  if (!canBulkSelect || isCardView) {
+  if (!canBulkSelect || isCardView || selectedCount === 0) {
     return null
   }
 
   return (
-    <BulkActionBar
-      selectedCount={selectedCount}
-      onClearSelection={() => table.resetRowSelection()}
-      entityLabel="thiết bị"
+    <div
+      data-testid="equipment-bulk-delete-bar"
+      className="pointer-events-none absolute bottom-4 right-4 z-20 flex max-w-[calc(100%-2rem)] justify-end"
     >
-      <AlertDialog open={isConfirmOpen} onOpenChange={setIsConfirmOpen}>
-        <AlertDialogTrigger asChild>
-          <Button type="button" size="sm" variant="destructive" disabled={isDeleting}>
-            {EQUIPMENT_BULK_DELETE_LABEL}
-          </Button>
-        </AlertDialogTrigger>
-        <AlertDialogContent onClick={(event) => event.stopPropagation()}>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Bạn có chắc chắn muốn xóa các thiết bị đã chọn?</AlertDialogTitle>
-            <AlertDialogDescription>
-              {`Hành động này sẽ xóa mềm ${selectedCount} thiết bị đã chọn. Bạn có thể khôi phục lại sau nếu cần.`}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel
-              onClick={(event) => {
-                event.stopPropagation()
-                setIsConfirmOpen(false)
-              }}
-            >
-              Hủy
-            </AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleConfirmDelete}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              disabled={selectedCount === 0 || isDeleting}
-            >
-              {isDeleting ? "Đang xóa..." : "Xóa"}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-    </BulkActionBar>
+      <div className="pointer-events-auto max-w-full shadow-lg">
+        <BulkActionBar
+          selectedCount={selectedCount}
+          onClearSelection={() => table.resetRowSelection()}
+          entityLabel="thiết bị"
+        >
+          <AlertDialog open={isConfirmOpen} onOpenChange={setIsConfirmOpen}>
+            <AlertDialogTrigger asChild>
+              <Button type="button" size="sm" variant="destructive" disabled={isDeleting}>
+                {EQUIPMENT_BULK_DELETE_LABEL}
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent onClick={(event) => event.stopPropagation()}>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Bạn có chắc chắn muốn xóa các thiết bị đã chọn?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  {`Hành động này sẽ xóa mềm ${selectedCount} thiết bị đã chọn. Bạn có thể khôi phục lại sau nếu cần.`}
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel
+                  onClick={(event) => {
+                    event.stopPropagation()
+                    setIsConfirmOpen(false)
+                  }}
+                >
+                  Hủy
+                </AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={handleConfirmDelete}
+                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  disabled={selectedCount === 0 || isDeleting}
+                >
+                  {isDeleting ? "Đang xóa..." : "Xóa"}
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        </BulkActionBar>
+      </div>
+    </div>
   )
 }

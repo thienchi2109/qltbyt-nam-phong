@@ -100,23 +100,28 @@ function createTable(): TestTable {
 }
 
 function createPageState(table: TestTable): EquipmentPageState {
-  return {
+  const pageState: EquipmentPageState = {
     status: "authenticated",
-    router: { push: mocks.push, replace: vi.fn() },
+    router: { push: mocks.push, replace: vi.fn() } as EquipmentPageState["router"],
     effectiveTenantKey: "5",
-    user: { id: 1, role: "admin" },
+    user: { id: 1, role: "admin" } as EquipmentPageState["user"],
     pendingAction: null,
     clearPendingAction: mocks.clearPendingAction,
+    isFetchingHighlight: false,
     isGlobal: true,
     isRegionalLeader: false,
+    data: [],
     total: 1,
     isLoading: false,
     isFetching: false,
     shouldFetchEquipment: true,
-    table,
+    table: table as EquipmentPageState["table"],
     columns: [],
     pagination: { pageIndex: 0, pageSize: 20 },
     setPagination: vi.fn(),
+    pageCount: 1,
+    columnVisibility: {},
+    setColumnVisibility: vi.fn(),
     searchTerm: "",
     setSearchTerm: vi.fn(),
     columnFilters: [],
@@ -158,7 +163,8 @@ function createPageState(table: TestTable): EquipmentPageState {
     canBulkSelect: true,
     isExporting: false,
     tenantBranding: undefined,
-  } as unknown as EquipmentPageState
+  }
+  return pageState
 }
 
 describe("EquipmentPageClient selection render boundary", () => {

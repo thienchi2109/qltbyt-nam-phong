@@ -264,15 +264,14 @@ function EquipmentPageContent({
             onShowEquipmentDetails={(eq) => openDetailDialog(eq)}
           />
 
-          <EquipmentBulkDeleteBar
-            table={table}
-            canBulkSelect={canBulkSelect}
-            isCardView={isCardView}
-          />
-
           <EquipmentColumnsDialog table={table} />
 
-          <div className="mt-4">
+          <div className="relative mt-4">
+            <EquipmentBulkDeleteBar
+              table={table}
+              canBulkSelect={canBulkSelect}
+              isCardView={isCardView}
+            />
             <EquipmentContent
               isGlobal={isGlobal}
               isRegionalLeader={isRegionalLeader}

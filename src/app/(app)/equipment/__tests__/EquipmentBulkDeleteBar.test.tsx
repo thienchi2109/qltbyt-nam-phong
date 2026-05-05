@@ -176,4 +176,28 @@ describe("EquipmentBulkDeleteBar", () => {
 
     expect(tableRef?.getState().rowSelection).toEqual({})
   })
+
+  it("renders selected actions out of normal document flow to avoid shifting the table", async () => {
+    let tableRef: Table<Equipment> | null = null
+    const Harness = createTableHarness((table) => {
+      tableRef = table
+    })
+
+    render(<Harness canBulkSelect={true} isCardView={false} />)
+
+    await waitFor(() => {
+      expect(tableRef).not.toBeNull()
+    })
+
+    act(() => {
+      tableRef?.getRow("101").toggleSelected(true)
+    })
+
+    const floatingBar = screen.getByTestId("equipment-bulk-delete-bar")
+
+    expect(floatingBar).toHaveClass("absolute")
+    expect(floatingBar).toHaveClass("pointer-events-none")
+    expect(floatingBar).toHaveClass("z-20")
+    expect(screen.getByText(/^Đã chọn/i)).toHaveTextContent("1")
+  })
 })
