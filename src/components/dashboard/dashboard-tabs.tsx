@@ -334,7 +334,7 @@ export function DashboardTabs() {
                         href={`/maintenance?planId=${plan.id}&tab=tasks`}
                         className="block"
                       >
-                        <div className="p-4 rounded-xl border-l-4 border-blue-500 bg-blue-50/80 backdrop-blur-sm transition-all duration-200 hover:scale-[1.01] hover:shadow-md">
+                        <div className="rounded-xl border border-blue-200/60 bg-gradient-to-r from-blue-100/70 via-blue-50/80 to-white p-4 backdrop-blur-sm transition-all duration-200 hover:scale-[1.01] hover:shadow-md">
                           <div className="flex items-start justify-between gap-4">
                             <div className="flex-1 min-w-0">
                               <h4 className="font-semibold text-gray-900 mb-1 truncate">
@@ -517,7 +517,7 @@ export function DashboardTabs() {
                           {completedTasks.slice(0, 3).map(task => (
                             <div
                               key={task.id}
-                              className="p-3 rounded-xl border-l-4 border-green-500 bg-green-50/80 backdrop-blur-sm transition-all duration-200 hover:scale-[1.01] hover:shadow-md"
+                              className="rounded-xl border border-green-200/60 bg-gradient-to-r from-green-100/70 via-green-50/80 to-white p-3 backdrop-blur-sm transition-all duration-200 hover:scale-[1.01] hover:shadow-md"
                             >
                               <div className="flex items-start gap-2 mb-2">
                                 {getTaskIcon(task.type)}
