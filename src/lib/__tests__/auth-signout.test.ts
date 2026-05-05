@@ -11,6 +11,17 @@ vi.mock("next-auth/react", () => ({
 
 import { signOutWithReason } from "../auth-signout"
 
+function createDeferred<T>() {
+  let resolve!: (value: T | PromiseLike<T>) => void
+  let reject!: (reason?: unknown) => void
+  const promise = new Promise<T>((innerResolve, innerReject) => {
+    resolve = innerResolve
+    reject = innerReject
+  })
+
+  return { promise, resolve, reject }
+}
+
 describe("signOutWithReason", () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -19,6 +30,9 @@ describe("signOutWithReason", () => {
   })
 
   it("awaits the session reason update before signing out", async () => {
+    const deferred = createDeferred<void>()
+    mocks.updateSession.mockReturnValueOnce(deferred.promise)
+
     const signOutPromise = signOutWithReason({
       updateSession: mocks.updateSession,
       reason: "user_initiated",
@@ -29,9 +43,12 @@ describe("signOutWithReason", () => {
     expect(mocks.updateSession).toHaveBeenCalledWith({
       pending_signout_reason: "user_initiated",
     })
-    expect(mocks.signOut).toHaveBeenCalledWith({ callbackUrl: "/" })
+    expect(mocks.signOut).not.toHaveBeenCalled()
 
+    deferred.resolve()
     await signOutPromise
+
+    expect(mocks.signOut).toHaveBeenCalledWith({ callbackUrl: "/" })
   })
 
   it("waits the requested delay before signing out", async () => {
@@ -53,6 +70,39 @@ describe("signOutWithReason", () => {
       mocks.signOut.mock.invocationCallOrder[0]
     )
 
+    await signOutPromise
+  })
+
+  it("calls signOut even when updateSession rejects", async () => {
+    mocks.updateSession.mockRejectedValueOnce(new Error("session update failed"))
+
+    await signOutWithReason({
+      updateSession: mocks.updateSession,
+      reason: "user_initiated",
+    })
+
+    expect(mocks.signOut).toHaveBeenCalledWith({ callbackUrl: "/" })
+  })
+
+  it("falls back to signOut when updateSession hangs", async () => {
+    const deferred = createDeferred<void>()
+    mocks.updateSession.mockReturnValueOnce(deferred.promise)
+
+    const signOutPromise = signOutWithReason({
+      updateSession: mocks.updateSession,
+      reason: "user_initiated",
+    })
+
+    await Promise.resolve()
+    expect(mocks.signOut).not.toHaveBeenCalled()
+
+    await vi.advanceTimersByTimeAsync(999)
+    expect(mocks.signOut).not.toHaveBeenCalled()
+
+    await vi.advanceTimersByTimeAsync(1)
+    expect(mocks.signOut).toHaveBeenCalledWith({ callbackUrl: "/" })
+
+    deferred.resolve()
     await signOutPromise
   })
 })

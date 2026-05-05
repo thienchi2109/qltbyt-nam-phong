@@ -70,6 +70,22 @@ export function ChangePasswordDialog({ open, onOpenChange }: ChangePasswordDialo
     }
   }, [open, resetForm])
 
+  const handlePostChangeSignOut = React.useCallback(async () => {
+    try {
+      await signOutWithReason({
+        updateSession: update,
+        reason: "forced_password_change",
+        delayMs: 1_500,
+      })
+    } catch {
+      toast({
+        variant: "destructive",
+        title: "Đăng xuất chưa hoàn tất",
+        description: "Mật khẩu đã được thay đổi. Vui lòng đăng xuất thủ công hoặc tải lại trang.",
+      })
+    }
+  }, [toast, update])
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     
@@ -110,6 +126,7 @@ export function ChangePasswordDialog({ open, onOpenChange }: ChangePasswordDialo
     }
 
     setIsLoading(true)
+    let passwordChanged = false
 
     try {
       if (currentUserId == null) {
@@ -204,11 +221,7 @@ export function ChangePasswordDialog({ open, onOpenChange }: ChangePasswordDialo
       }
 
       onOpenChange(false)
-      await signOutWithReason({
-        updateSession: update,
-        reason: "forced_password_change",
-        delayMs: 1_500,
-      })
+      passwordChanged = true
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : null
       toast({
@@ -218,6 +231,10 @@ export function ChangePasswordDialog({ open, onOpenChange }: ChangePasswordDialo
       })
     } finally {
       setIsLoading(false)
+    }
+
+    if (passwordChanged) {
+      await handlePostChangeSignOut()
     }
   }
 

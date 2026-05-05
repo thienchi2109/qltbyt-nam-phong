@@ -15,10 +15,26 @@ type SignOutWithReasonOptions = {
   callbackUrl?: string
 }
 
+const UPDATE_SESSION_TIMEOUT_MS = 1_000
+
 function wait(delayMs: number): Promise<void> {
   return new Promise((resolve) => {
     setTimeout(resolve, delayMs)
   })
+}
+
+async function persistReasonWithTimeout(
+  updateSession: Exclude<UpdateSessionFn, null | undefined>,
+  reason: AuthPendingSignoutReason
+): Promise<void> {
+  try {
+    await Promise.race([
+      updateSession({ pending_signout_reason: reason }),
+      wait(UPDATE_SESSION_TIMEOUT_MS),
+    ])
+  } catch {
+    // Preserve logout UX even if the reason hint fails to persist.
+  }
 }
 
 export async function signOutWithReason({
@@ -28,11 +44,7 @@ export async function signOutWithReason({
   callbackUrl = "/",
 }: SignOutWithReasonOptions): Promise<void> {
   if (updateSession) {
-    try {
-      await updateSession({ pending_signout_reason: reason })
-    } catch {
-      // Preserve logout UX even if the reason hint fails to persist.
-    }
+    await persistReasonWithTimeout(updateSession, reason)
   }
 
   if (delayMs > 0) {

@@ -1,7 +1,7 @@
 import * as React from "react"
 import "@testing-library/jest-dom"
-import { fireEvent, render, screen, waitFor } from "@testing-library/react"
-import { beforeEach, describe, expect, it, vi } from "vitest"
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 const mocks = vi.hoisted(() => ({
   toast: vi.fn(),
@@ -116,6 +116,10 @@ describe("ChangePasswordDialog forced signout", () => {
     })
   })
 
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
   it("persists the forced password-change signout reason after a successful password change", async () => {
     const onOpenChange = vi.fn()
 
@@ -144,5 +148,44 @@ describe("ChangePasswordDialog forced signout", () => {
     expect(mocks.updateSession).toHaveBeenCalledWith({
       pending_signout_reason: "forced_password_change",
     })
+  })
+
+  it("shows a logout-specific error if post-change signout fails after the password update succeeds", async () => {
+    vi.useFakeTimers()
+    mocks.signOut.mockRejectedValueOnce(new Error("redirect failed"))
+
+    render(<ChangePasswordDialog open onOpenChange={vi.fn()} />)
+
+    fireEvent.change(screen.getByLabelText("Mật khẩu hiện tại *"), {
+      target: { value: "old-password" },
+    })
+    fireEvent.change(screen.getByLabelText("Mật khẩu mới *"), {
+      target: { value: "new-password" },
+    })
+    fireEvent.change(screen.getByLabelText("Xác nhận mật khẩu mới *"), {
+      target: { value: "new-password" },
+    })
+    fireEvent.click(screen.getByRole("button", { name: "Thay đổi mật khẩu" }))
+
+    await Promise.resolve()
+    await Promise.resolve()
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(2_500)
+    })
+    await Promise.resolve()
+
+    expect(mocks.toast).toHaveBeenCalledWith(
+      expect.objectContaining({
+        title: "Thành công",
+      }),
+    )
+    expect(mocks.toast).toHaveBeenCalledWith(
+      expect.objectContaining({
+        variant: "destructive",
+        title: "Đăng xuất chưa hoàn tất",
+        description: "Mật khẩu đã được thay đổi. Vui lòng đăng xuất thủ công hoặc tải lại trang.",
+      }),
+    )
   })
 })
