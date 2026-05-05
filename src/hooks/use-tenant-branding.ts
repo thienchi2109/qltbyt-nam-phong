@@ -11,12 +11,18 @@ export type TenantBranding = {
   logo_url: string | null
 }
 
+type TenantBrandingSessionUser = {
+  id?: string | number | null
+  role?: string | null
+  don_vi?: number | null
+}
+
 export function useTenantBranding(options?: {
   formTenantId?: number | null,
   useFormContext?: boolean
 }) {
-  const { data: session } = useSession()
-  const user = session?.user as any
+  const { data: session, status } = useSession()
+  const user = session?.user as TenantBrandingSessionUser | undefined
   const isPrivileged = isGlobalRole(user?.role)
   
   // Determine effective tenant ID based on user privilege and options
@@ -56,6 +62,7 @@ export function useTenantBranding(options?: {
         logo_url: row.logo_url ?? null 
       } : null
     },
+    enabled: status === "authenticated" && !!user?.id,
     placeholderData: keepPreviousData,
     staleTime: 5 * 60_000,
     gcTime: 15 * 60_000,

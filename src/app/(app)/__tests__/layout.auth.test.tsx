@@ -8,6 +8,7 @@ const mocks = vi.hoisted(() => ({
   redirect: vi.fn((path: string) => {
     throw new Error(`NEXT_REDIRECT:${path}`)
   }),
+  sessionProvider: vi.fn(({ children }: { children: React.ReactNode }) => <>{children}</>),
   shell: vi.fn(
     ({
       user,
@@ -30,6 +31,13 @@ vi.mock("next-auth", () => ({
 
 vi.mock("next/navigation", () => ({
   redirect: (path: string) => mocks.redirect(path),
+}))
+
+vi.mock("@/providers/session-provider", () => ({
+  NextAuthSessionProvider: (props: {
+    session?: unknown
+    children: React.ReactNode
+  }) => mocks.sessionProvider(props),
 }))
 
 vi.mock("@/app/(app)/_components/AppLayoutShell", () => ({
@@ -58,7 +66,7 @@ describe("AppLayout auth gate", () => {
   })
 
   it("renders the app shell for authenticated users", async () => {
-    mocks.getServerSession.mockResolvedValue({
+    const session = {
       user: {
         id: "1",
         role: "global",
@@ -66,12 +74,17 @@ describe("AppLayout auth gate", () => {
         username: "auth-user",
         khoa_phong: "IT",
       },
-    })
+    }
+    mocks.getServerSession.mockResolvedValue(session)
 
     render(await AppLayout({ children: <div>Protected Child</div> }))
 
     expect(mocks.getServerSession).toHaveBeenCalledWith(authOptions)
     expect(mocks.redirect).not.toHaveBeenCalled()
+    expect(mocks.sessionProvider).toHaveBeenCalledWith({
+      session,
+      children: expect.anything(),
+    })
     expect(screen.getByTestId("shell-user")).toHaveTextContent("Authenticated User")
     expect(screen.getByTestId("shell-children")).toHaveTextContent("Protected Child")
   })

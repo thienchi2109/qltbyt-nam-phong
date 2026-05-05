@@ -80,7 +80,7 @@ function AppLayoutShellContent({ children, user }: AppLayoutShellProps) {
   const [isAssistantOpen, setIsAssistantOpen] = React.useState(false)
   const branding = useTenantBranding()
   const { counts: notificationCounts } = useAppNotificationCounts({
-    enabled: shouldFetchData,
+    enabled: status === "authenticated" && shouldFetchData,
     facilityId: selectedFacilityId,
   })
 

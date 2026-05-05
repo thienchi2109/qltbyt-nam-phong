@@ -54,6 +54,22 @@ describe("useRecentActivities", () => {
     })
   })
 
+  it("keeps the query disabled while session hydration is still loading", () => {
+    mocks.useSession.mockReturnValue({
+      data: { user: { id: 1, role: "global" } },
+      status: "loading",
+    })
+
+    renderHook(() => useRecentActivities())
+
+    expect(mocks.useQuery).toHaveBeenCalledWith(
+      expect.objectContaining({
+        queryKey: ["dashboard-recent-activities", "1", 15],
+        enabled: false,
+      }),
+    )
+  })
+
   it("disables the query when there is no authenticated session", () => {
     mocks.useSession.mockReturnValue({
       data: null,
