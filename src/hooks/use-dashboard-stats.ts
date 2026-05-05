@@ -141,7 +141,7 @@ export function useMaintenancePlanStats() {
 
 // Hook to get equipment needing attention
 export function useEquipmentAttention() {
-  const { data: session } = useSession()
+  const { data: session, status } = useSession()
   const user: DashboardSessionUser | undefined = session?.user
   const scope = getDashboardUserScope(user)
   
@@ -151,6 +151,7 @@ export function useEquipmentAttention() {
       const data = await callRpc<EquipmentAttentionRow[]>({ fn: 'equipment_attention_list', args: { p_limit: 5 } })
       return mapEquipmentAttentionRows(data)
     },
+    enabled: status === "authenticated" && !!user?.id,
     staleTime: 2 * 60 * 1000, // 2 minutes
     gcTime: 10 * 60 * 1000, // 10 minutes
     refetchOnWindowFocus: true,
@@ -160,7 +161,7 @@ export function useEquipmentAttention() {
 
 // Hook to get equipment needing attention with pagination (default 10 per page)
 export function useEquipmentAttentionPaginated(options?: { page?: number; pageSize?: number; enabled?: boolean }) {
-  const { data: session } = useSession()
+  const { data: session, status } = useSession()
   const user: DashboardSessionUser | undefined = session?.user
   const scope = getDashboardUserScope(user)
 
@@ -197,6 +198,6 @@ export function useEquipmentAttentionPaginated(options?: { page?: number; pageSi
     gcTime: 10 * 60 * 1000, // 10 minutes
     refetchOnWindowFocus: true,
     refetchInterval: 5 * 60 * 1000, // Refetch every 5 minutes
-    enabled: enabled && Boolean(user),
+    enabled: enabled && status === "authenticated" && !!user?.id,
   })
 }
