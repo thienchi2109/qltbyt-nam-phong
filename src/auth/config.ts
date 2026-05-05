@@ -3,7 +3,7 @@ import { headers } from "next/headers"
 import Credentials from "next-auth/providers/credentials"
 import { createClient } from "@supabase/supabase-js"
 import jwt from "jsonwebtoken"
-import { emitAuthLifecycleLog } from "@/auth/logging"
+import { recordAuthLifecycleEvent } from "@/auth/observability"
 import { emitAuthJwtTelemetry } from "@/auth/telemetry"
 import type { AuthPendingSignoutReason } from "@/types/auth"
 import {
@@ -214,7 +214,7 @@ export const authOptions: NextAuthOptions = {
         const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
         if (!supabaseUrl || !serviceKey) {
           console.error("Supabase env not configured")
-          emitAuthLifecycleLog({
+          await recordAuthLifecycleEvent({
             source: "authorize",
             reason_code: "config_error",
             username: normalizedUsername,
@@ -233,7 +233,7 @@ export const authOptions: NextAuthOptions = {
 
           if (error) {
             console.error("RPC auth error:", error)
-            emitAuthLifecycleLog({
+            await recordAuthLifecycleEvent({
               source: "authorize",
               reason_code: "rpc_error",
               username: normalizedUsername,
@@ -250,7 +250,7 @@ export const authOptions: NextAuthOptions = {
 
             if (authResult?.authentication_mode === "tenant_inactive") {
               console.warn("Login blocked because tenant is inactive", { username })
-              emitAuthLifecycleLog({
+              await recordAuthLifecycleEvent({
                 source: "authorize",
                 reason_code: "tenant_inactive",
                 username: normalizedUsername,
@@ -260,7 +260,7 @@ export const authOptions: NextAuthOptions = {
             }
           }
 
-          emitAuthLifecycleLog({
+          await recordAuthLifecycleEvent({
             source: "authorize",
             reason_code: "invalid_credentials",
             username: normalizedUsername,
@@ -276,7 +276,7 @@ export const authOptions: NextAuthOptions = {
           }
 
           console.error("Authorize exception:", e)
-          emitAuthLifecycleLog({
+          await recordAuthLifecycleEvent({
             source: "authorize",
             reason_code: "authorize_exception",
             username: normalizedUsername,
@@ -391,7 +391,7 @@ export const authOptions: NextAuthOptions = {
           .rpc("get_session_profile_for_jwt", { p_user_id: userId })
 
         if (error) {
-          emitAuthLifecycleLog({
+          await recordAuthLifecycleEvent({
             event: "profile_refresh_failed",
             source: "jwt_callback",
             user_id: userId,
@@ -415,7 +415,7 @@ export const authOptions: NextAuthOptions = {
         if (!error && data) {
           const profile = firstProfileRow(data)
           if (!profile) {
-            emitAuthLifecycleLog({
+            await recordAuthLifecycleEvent({
               event: "profile_refresh_failed",
               source: "jwt_callback",
               user_id: userId,
@@ -444,7 +444,7 @@ export const authOptions: NextAuthOptions = {
               const signoutReason = isPendingSignoutReason(token.pending_signout_reason)
                 ? token.pending_signout_reason
                 : undefined
-              emitAuthLifecycleLog({
+              await recordAuthLifecycleEvent({
                 event: "token_invalidated_password_change",
                 source: "jwt_callback",
                 signout_reason: signoutReason,
@@ -495,7 +495,7 @@ export const authOptions: NextAuthOptions = {
           })
         }
       } catch (e) {
-        emitAuthLifecycleLog({
+        await recordAuthLifecycleEvent({
           event: "profile_refresh_failed",
           source: "jwt_callback",
           user_id: userId,
@@ -532,7 +532,7 @@ export const authOptions: NextAuthOptions = {
     async signIn({ user }) {
       const requestContext = await readRuntimeRequestContext()
 
-      emitAuthLifecycleLog({
+      await recordAuthLifecycleEvent({
         event: "login_success",
         source: "events_signin",
         user_id: typeof user.id === "string" ? user.id : user.id != null ? String(user.id) : undefined,
@@ -567,7 +567,7 @@ export const authOptions: NextAuthOptions = {
         metadata.session_duration_ms = Math.max(0, Date.now() - token.loginTime)
       }
 
-      emitAuthLifecycleLog({
+      await recordAuthLifecycleEvent({
         source: "events_signout",
         signout_reason: pendingReason ?? "session_expired",
         user_id: userId,

@@ -5,15 +5,35 @@ const requestHeadersState = vi.hoisted(() => ({
 }))
 
 const supabaseState = vi.hoisted(() => ({
-  rpcRows: [] as unknown[],
-  rpcError: null as unknown,
+  authRpcRows: [] as unknown[],
+  authRpcError: null as unknown,
+  auditRpcError: null as unknown,
+  rpcCalls: [] as Array<{ fn: string; args: Record<string, unknown> }>,
 }))
 
 const supabaseClient = vi.hoisted(() => ({
-  rpc: vi.fn(async () => ({
-    data: supabaseState.rpcError ? null : supabaseState.rpcRows,
-    error: supabaseState.rpcError,
-  })),
+  rpc: vi.fn(async (fn: string, args: Record<string, unknown>) => {
+    supabaseState.rpcCalls.push({ fn, args })
+
+    if (fn === "authenticate_user_dual_mode") {
+      return {
+        data: supabaseState.authRpcError ? null : supabaseState.authRpcRows,
+        error: supabaseState.authRpcError,
+      }
+    }
+
+    if (fn === "auth_audit_log_insert") {
+      return {
+        data: supabaseState.auditRpcError ? null : true,
+        error: supabaseState.auditRpcError,
+      }
+    }
+
+    return {
+      data: null,
+      error: { message: `unexpected rpc ${fn}` },
+    }
+  }),
 }))
 
 vi.mock("@supabase/supabase-js", () => ({
@@ -118,8 +138,10 @@ describe("authOptions authorize + auth lifecycle events", () => {
       ["x-forwarded-for", "203.0.113.1, 10.0.0.1"],
       ["user-agent", "VitestBrowser/1.0"],
     ])
-    supabaseState.rpcRows = []
-    supabaseState.rpcError = null
+    supabaseState.authRpcRows = []
+    supabaseState.authRpcError = null
+    supabaseState.auditRpcError = null
+    supabaseState.rpcCalls = []
     supabaseClient.rpc.mockClear()
   })
 
@@ -156,7 +178,7 @@ describe("authOptions authorize + auth lifecycle events", () => {
   })
 
   it("emits tenant_inactive when rpc auth says tenant is inactive", async () => {
-    supabaseState.rpcRows = [{
+    supabaseState.authRpcRows = [{
       is_authenticated: false,
       authentication_mode: "tenant_inactive",
     }]
@@ -208,6 +230,29 @@ describe("authOptions authorize + auth lifecycle events", () => {
     ])
   })
 
+  it("keeps authorize outcome stable when the auth audit sink insert fails", async () => {
+    supabaseState.authRpcRows = [{
+      is_authenticated: false,
+      authentication_mode: "tenant_inactive",
+    }]
+    supabaseState.auditRpcError = { message: "audit insert failed" }
+
+    const authorize = getAuthorizeHandler()
+
+    await expect(authorize({
+      username: "LOCKED.USER",
+      password: "secret",
+    }, buildAuthorizeRequest())).rejects.toThrow("tenant_inactive")
+
+    expect(supabaseState.rpcCalls).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          fn: "auth_audit_log_insert",
+        }),
+      ])
+    )
+  })
+
   it("emits login_success from events.signIn with lowercased username and no secrets", async () => {
     const signInEvent = getSignInEventHandler()
 
@@ -234,6 +279,23 @@ describe("authOptions authorize + auth lifecycle events", () => {
         user_agent: "VitestBrowser/1.0",
       }),
     ])
+    expect(supabaseState.rpcCalls).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          fn: "auth_audit_log_insert",
+          args: expect.objectContaining({
+            p_event: "login_success",
+            p_source: "events_signin",
+            p_user_id: "42",
+            p_username: "nqminh",
+            p_tenant_id: "17",
+            p_request_id: "req-123",
+            p_ip_address: "203.0.113.1",
+            p_user_agent: "VitestBrowser/1.0",
+          }),
+        }),
+      ])
+    )
     expect(JSON.stringify(authLifecycleLogs(consoleInfoSpy))).not.toContain("super-secret")
   })
 
@@ -264,6 +326,22 @@ describe("authOptions authorize + auth lifecycle events", () => {
         }),
       }),
     ])
+    expect(supabaseState.rpcCalls).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          fn: "auth_audit_log_insert",
+          args: expect.objectContaining({
+            p_event: "forced_signout",
+            p_source: "events_signout",
+            p_signout_reason: "session_expired",
+            p_user_id: "42",
+            p_metadata: expect.objectContaining({
+              session_duration_ms: 120000,
+            }),
+          }),
+        }),
+      ])
+    )
   })
 
   it("falls back to augmented session fields when signOut token no longer carries auth claims", async () => {

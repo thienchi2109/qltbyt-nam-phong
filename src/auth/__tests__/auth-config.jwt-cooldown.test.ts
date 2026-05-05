@@ -23,8 +23,10 @@ const profileRowDefault: ProfileRow = {
 
 const supabaseState = vi.hoisted(() => ({
   fromCalls: [] as string[],
-  rpcRows: [] as unknown[],
-  rpcError: null as unknown,
+  profileRpcRows: [] as unknown[],
+  profileRpcError: null as unknown,
+  auditRpcError: null as unknown,
+  rpcCalls: [] as Array<{ fn: string; args: Record<string, unknown> }>,
 }))
 
 const supabaseClient = vi.hoisted(() => ({
@@ -39,10 +41,28 @@ const supabaseClient = vi.hoisted(() => ({
       }),
     }
   }),
-  rpc: vi.fn(async () => ({
-    data: supabaseState.rpcError ? null : supabaseState.rpcRows,
-    error: supabaseState.rpcError,
-  })),
+  rpc: vi.fn(async (fn: string, args: Record<string, unknown>) => {
+    supabaseState.rpcCalls.push({ fn, args })
+
+    if (fn === "get_session_profile_for_jwt") {
+      return {
+        data: supabaseState.profileRpcError ? null : supabaseState.profileRpcRows,
+        error: supabaseState.profileRpcError,
+      }
+    }
+
+    if (fn === "auth_audit_log_insert") {
+      return {
+        data: supabaseState.auditRpcError ? null : true,
+        error: supabaseState.auditRpcError,
+      }
+    }
+
+    return {
+      data: null,
+      error: { message: `unexpected rpc ${fn}` },
+    }
+  }),
 }))
 
 const requestHeadersState = vi.hoisted(() => ({
@@ -132,12 +152,14 @@ function authLifecycleLogs(infoSpy: ReturnType<typeof vi.spyOn>): AuthLifecycleL
 
 describe("authOptions.jwt cooldown + trigger gate", () => {
   let consoleInfoSpy: ReturnType<typeof vi.spyOn>
+  let consoleErrorSpy: ReturnType<typeof vi.spyOn>
   let consoleWarnSpy: ReturnType<typeof vi.spyOn>
 
   beforeEach(() => {
     vi.useFakeTimers()
     vi.setSystemTime(new Date("2026-05-02T12:00:00Z"))
     consoleInfoSpy = vi.spyOn(console, "info").mockImplementation(() => undefined)
+    consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => undefined)
     consoleWarnSpy = vi.spyOn(console, "warn").mockImplementation(() => undefined)
     vi.stubEnv("NEXT_PUBLIC_SUPABASE_URL", "https://example.supabase.co")
     vi.stubEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY", "test-anon-key")
@@ -149,8 +171,10 @@ describe("authOptions.jwt cooldown + trigger gate", () => {
       ["user-agent", "VitestJwt/1.0"],
     ])
     supabaseState.fromCalls = []
-    supabaseState.rpcRows = [{ ...profileRowDefault }]
-    supabaseState.rpcError = null
+    supabaseState.profileRpcRows = [{ ...profileRowDefault }]
+    supabaseState.profileRpcError = null
+    supabaseState.auditRpcError = null
+    supabaseState.rpcCalls = []
     supabaseClient.from.mockClear()
     supabaseClient.rpc.mockClear()
   })
@@ -159,6 +183,7 @@ describe("authOptions.jwt cooldown + trigger gate", () => {
     vi.useRealTimers()
     vi.unstubAllEnvs()
     consoleInfoSpy.mockRestore()
+    consoleErrorSpy.mockRestore()
     consoleWarnSpy.mockRestore()
   })
 
@@ -216,7 +241,7 @@ describe("authOptions.jwt cooldown + trigger gate", () => {
 
   it("force-refreshes when trigger === 'update' even within cooldown", async () => {
     const now = Date.now()
-    supabaseState.rpcRows = [{
+    supabaseState.profileRpcRows = [{
       ...profileRowDefault,
       current_don_vi: 99,
       don_vi: 99,
@@ -248,7 +273,7 @@ describe("authOptions.jwt cooldown + trigger gate", () => {
     const now = Date.now()
     const loginTime = now - 60 * 60_000 // 1h ago
     const passwordChangedAt = new Date(now - 5 * 60_000).toISOString() // 5min ago
-    supabaseState.rpcRows = [{
+    supabaseState.profileRpcRows = [{
       ...profileRowDefault,
       password_changed_at: passwordChangedAt,
     }]
@@ -307,7 +332,7 @@ describe("authOptions.jwt cooldown + trigger gate", () => {
 
   it("preserves pending_signout_reason when update-trigger invalidation would otherwise empty the token", async () => {
     const now = Date.now()
-    supabaseState.rpcRows = [{
+    supabaseState.profileRpcRows = [{
       ...profileRowDefault,
       password_changed_at: new Date(now - 5_000).toISOString(),
     }]
@@ -347,12 +372,53 @@ describe("authOptions.jwt cooldown + trigger gate", () => {
         }),
       ])
     )
+    expect(supabaseState.rpcCalls).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          fn: "auth_audit_log_insert",
+          args: expect.objectContaining({
+            p_event: "token_invalidated_password_change",
+            p_source: "jwt_callback",
+            p_signout_reason: "forced_password_change",
+            p_user_id: "42",
+            p_request_id: "jwt-req-42",
+          }),
+        }),
+      ])
+    )
+  })
+
+  it("keeps JWT invalidation behavior stable when auth audit persistence fails", async () => {
+    const now = Date.now()
+    supabaseState.profileRpcRows = [{
+      ...profileRowDefault,
+      password_changed_at: new Date(now - 5_000).toISOString(),
+    }]
+    supabaseState.auditRpcError = { message: "audit insert failed" }
+
+    const result = await runJwt({
+      token: {
+        ...baseToken,
+        loginTime: now - 10_000,
+        lastRefreshAt: now - 10_000,
+      },
+      trigger: "update",
+      session: {
+        pending_signout_reason: "forced_password_change",
+      } as JwtArgs["session"],
+    })
+
+    expect(result).toMatchObject({
+      loginTime: now - 10_000,
+      pending_signout_reason: "forced_password_change",
+    })
+    expect(result).not.toHaveProperty("id")
   })
 
   it("does not advance lastRefreshAt when the profile fetch fails", async () => {
     const now = Date.now()
-    supabaseState.rpcRows = []
-    supabaseState.rpcError = { message: "no row" }
+    supabaseState.profileRpcRows = []
+    supabaseState.profileRpcError = { message: "no row" }
 
     const token = {
       ...baseToken,
@@ -371,8 +437,8 @@ describe("authOptions.jwt cooldown + trigger gate", () => {
 
   it("emits profile_refresh_failed lifecycle log when the profile RPC fails", async () => {
     const now = Date.now()
-    supabaseState.rpcRows = []
-    supabaseState.rpcError = { message: "rpc boom" }
+    supabaseState.profileRpcRows = []
+    supabaseState.profileRpcError = { message: "rpc boom" }
 
     await runJwt({
       token: {
@@ -440,7 +506,7 @@ describe("authOptions.jwt cooldown + trigger gate", () => {
       trigger: "update",
     })
 
-    supabaseState.rpcRows = [{
+    supabaseState.profileRpcRows = [{
       ...profileRowDefault,
       password_changed_at: new Date(now - 5_000).toISOString(),
     }]
