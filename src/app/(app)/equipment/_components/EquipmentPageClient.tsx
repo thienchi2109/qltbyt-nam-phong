@@ -92,8 +92,11 @@ export function EquipmentPageClient() {
   )
 }
 
-// Separate component to use context inside provider - memoized to prevent re-renders
-const EquipmentPageContent = React.memo(function EquipmentPageContent({
+// Separate component to use context inside provider.
+// Do not memoize this boundary: TanStack Table keeps a stable table reference
+// while its internal row selection changes, so memoizing by pageState can leave
+// selection checkboxes visually stale until an unrelated parent render occurs.
+function EquipmentPageContent({
   pageState
 }: {
   pageState: ReturnType<typeof useEquipmentPage>
@@ -261,15 +264,14 @@ const EquipmentPageContent = React.memo(function EquipmentPageContent({
             onShowEquipmentDetails={(eq) => openDetailDialog(eq)}
           />
 
-          <EquipmentBulkDeleteBar
-            table={table}
-            canBulkSelect={canBulkSelect}
-            isCardView={isCardView}
-          />
-
           <EquipmentColumnsDialog table={table} />
 
-          <div className="mt-4">
+          <div className="relative mt-4">
+            <EquipmentBulkDeleteBar
+              table={table}
+              canBulkSelect={canBulkSelect}
+              isCardView={isCardView}
+            />
             <EquipmentContent
               isGlobal={isGlobal}
               isRegionalLeader={isRegionalLeader}
@@ -348,4 +350,4 @@ const EquipmentPageContent = React.memo(function EquipmentPageContent({
       />
     </>
   )
-})
+}
