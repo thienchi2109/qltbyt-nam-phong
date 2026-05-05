@@ -1,92 +1,88 @@
-# 🔧 TEST SESSION MANAGEMENT MỚI
+# Test Session Management va Signout Wiring
 
-## ✅ **Những gì đã thay đổi:**
+Tai lieu nay dung de test Batch 4 cua Issue #366/#379 sau khi backend auth observability da co san.
 
-### 1. **Token thật được lưu trong localStorage**
-- Token chứa thông tin user và thời gian hết hạn
-- Format: Base64 encoded JSON với:
-  ```json
-  {
-    "user_id": 1,
-    "username": "admin", 
-    "role": "admin",
-    "khoa_phong": "IT",
-    "full_name": "Admin User",
-    "created_at": 1640995200000,
-    "expires_at": 1641006000000  // 3 tiếng sau
-  }
-  ```
+## Muc tieu
 
-### 2. **Session validation mỗi phút**
-- Kiểm tra token local mỗi phút (không cần gọi server)
-- Cảnh báo khi còn 5 phút
-- Auto-logout khi hết hạn với thông báo rõ ràng
+- Xac nhan user bam `Dang xuat` thi frontend seed `pending_signout_reason=user_initiated` truoc khi `signOut()`.
+- Xac nhan doi mat khau thanh cong thi frontend seed `pending_signout_reason=forced_password_change`, giu toast thanh cong trong thoi gian ngan, roi moi `signOut()`.
+- Ghi ro hanh vi cross-tab:
+  - tab khoi tao doi mat khau se phat `forced_signout/forced_password_change`
+  - tab khac co the phat `forced_signout/session_expired`
+  - backend correlate bang `token_invalidated_password_change`
 
-### 3. **Thông báo cho user**
-- **Cảnh báo:** "Phiên làm việc sẽ hết hạn trong X phút"
-- **Auto-logout:** "Phiên làm việc đã hết hạn. Bạn đã được đăng xuất tự động sau 3 tiếng"
+## Verification nhanh trong local
 
-## 🚀 **Cách test:**
+### 1. Chay cac gate bat buoc
 
-### **BƯỚC 1: Restart ứng dụng**
 ```bash
-# Dừng server (Ctrl+C)
-npm run dev
+node scripts/npm-run.js run verify:no-explicit-any
+node scripts/npm-run.js run typecheck
+node scripts/npm-run.js run test:run -- src/app/'(app)'/__tests__/AppLayoutShell.test.tsx
+node scripts/npm-run.js run test:run -- src/components/__tests__/change-password-dialog.signout.test.tsx
+node scripts/npm-run.js run test:run -- src/lib/__tests__/auth-signout.test.ts
+node scripts/npm-run.js run test:run -- src/auth/__tests__/auth-config.authorize-events.test.ts
+node scripts/npm-run.js npx react-doctor@latest . --verbose -y --project nextn --offline --diff main
 ```
 
-### **BƯỚC 2: Test login**
-1. Đăng nhập vào ứng dụng
-2. Kiểm tra localStorage có token mới (F12 → Application → Local Storage)
-3. Token sẽ có format dài (Base64)
+### 2. Test `Dang xuat` tu user menu
 
-### **BƯỚC 3: Test session persistence**
-1. Refresh trang nhiều lần → không bị logout
-2. Đóng browser và mở lại → vẫn đăng nhập
-3. Session sẽ tồn tại đúng 3 tiếng
+1. Dang nhap vao app.
+2. Mo user menu o header.
+3. Bam `Dang xuat`.
+4. Ky vong:
+   - session bi xoa va quay ve `/`
+   - chi co mot signout flow cho tab khoi tao
+   - backend log event `signout` voi `signout_reason=user_initiated`
 
-### **BƯỚC 4: Test auto-logout (optional)**
-Để test nhanh, có thể tạm thời giảm thời gian session:
+Neu can kiem tra bang test tu dong, xem:
+- `src/app/(app)/__tests__/AppLayoutShell.test.tsx`
+- `src/lib/__tests__/auth-signout.test.ts`
+- `src/auth/__tests__/auth-config.authorize-events.test.ts`
 
-```javascript
-// Trong auth-context.tsx, dòng 141, thay:
-expires_at: Date.now() + (3 * 60 * 60 * 1000) // 3 hours
-// Thành:
-expires_at: Date.now() + (2 * 60 * 1000) // 2 phút để test
-```
+### 3. Test doi mat khau thanh cong
 
-## 📊 **Debug session:**
+1. Dang nhap vao app.
+2. Mo user menu va chon `Thay doi mat khau`.
+3. Nhap mat khau hien tai, mat khau moi, xac nhan mat khau moi.
+4. Submit khi RPC `change_password` thanh cong.
+5. Ky vong:
+   - hien toast thanh cong
+   - dialog dong lai
+   - toast van con hien khoang 1.5 giay truoc khi bi logout
+   - sau do app quay ve `/`
+   - backend log `forced_signout` voi `signout_reason=forced_password_change`
+   - khong co ghost `session_expired` tren tab khoi tao
 
-### **Xem thông tin session hiện tại:**
-```javascript
-// Chạy trong Console (F12)
-const token = localStorage.getItem('auth_session_token');
-if (token) {
-  const sessionData = JSON.parse(atob(token));
-  console.log('Session data:', sessionData);
-  console.log('Expires at:', new Date(sessionData.expires_at));
-  console.log('Time left:', Math.round((sessionData.expires_at - Date.now()) / 1000 / 60), 'minutes');
-}
-```
+Neu can kiem tra bang test tu dong, xem:
+- `src/components/__tests__/change-password-dialog.signout.test.tsx`
+- `src/lib/__tests__/auth-signout.test.ts`
+- `src/auth/__tests__/auth-config.authorize-events.test.ts`
 
-### **Kiểm tra session validation:**
-- Mở Console (F12)
-- Mỗi phút sẽ thấy session được check
-- Khi còn 5 phút sẽ có cảnh báo
-- Khi hết hạn sẽ có thông báo logout
+### 4. Test cross-tab sau doi mat khau
 
-## ✅ **Kết quả mong đợi:**
+1. Mo cung mot tai khoan o 2 tab.
+2. O tab A, doi mat khau thanh cong.
+3. Quan sat tab B.
+4. Ky vong:
+   - tab A phat `forced_signout/forced_password_change`
+   - tab B co the roi vao `session_expired` khi session bi vo hieu hoa
+   - backend da co `token_invalidated_password_change` de correlate 2 su kien nay
 
-1. ✅ **Không còn logout sau 5 phút**
-2. ✅ **Session tồn tại đúng 3 tiếng**  
-3. ✅ **Thông báo rõ ràng khi auto-logout**
-4. ✅ **Cảnh báo trước khi hết hạn**
-5. ✅ **Không cần gọi server để validate**
+Ghi chu:
+- `session_expired` o tab khong khoi tao la hanh vi du kien, khong coi la bug cua Batch 4.
+- Muc tieu cua Batch 4 la loai bo ghost `session_expired` tren tab khoi tao doi mat khau.
 
-## 🔒 **Bảo mật:**
+## Kiem tra log / audit sink
 
-- Token được Base64 encode (không phải encryption)
-- Chấp nhận rủi ro như bạn yêu cầu
-- Đơn giản và hiệu quả
-- Không ảnh hưởng performance
+Neu Batch 3 da duoc apply, co the kiem tra them bang log hoac `auth_audit_log`:
 
-Giải pháp này đơn giản, hiệu quả và giải quyết được vấn đề auto-logout không mong muốn!
+- `signout` + `user_initiated`
+- `forced_signout` + `forced_password_change`
+- `forced_signout` + `session_expired` chi xuat hien o fallback/cross-tab path
+- `token_invalidated_password_change` de correlate invalidation
+
+Can doi chieu them voi:
+- `src/auth/config.ts`
+- `src/auth/logging.ts`
+- `src/auth/persistence.ts`

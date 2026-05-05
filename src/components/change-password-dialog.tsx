@@ -15,6 +15,7 @@ import {
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { useToast } from "@/hooks/use-toast"
+import { signOutWithReason } from "@/lib/auth-signout"
 import { supabase } from "@/lib/supabase"
 import { useSession } from "next-auth/react"
 
@@ -25,10 +26,10 @@ interface ChangePasswordDialogProps {
 
 export function ChangePasswordDialog({ open, onOpenChange }: ChangePasswordDialogProps) {
   const { toast } = useToast()
-  const { data: session } = useSession()
-  const user = session?.user as any // Cast NextAuth user to our User type
+  const { data: session, update } = useSession()
+  const user = session?.user
   const currentUserId = React.useMemo(() => {
-    const rawId = user?.id
+    const rawId: unknown = user?.id
     if (typeof rawId === "number" && Number.isFinite(rawId)) {
       return rawId
     }
@@ -203,11 +204,17 @@ export function ChangePasswordDialog({ open, onOpenChange }: ChangePasswordDialo
       }
 
       onOpenChange(false)
-    } catch (error: any) {
+      await signOutWithReason({
+        updateSession: update,
+        reason: "forced_password_change",
+        delayMs: 1_500,
+      })
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : null
       toast({
         variant: "destructive",
         title: "Lỗi",
-        description: error.message || "Có lỗi xảy ra khi thay đổi mật khẩu."
+        description: errorMessage || "Có lỗi xảy ra khi thay đổi mật khẩu."
       })
     } finally {
       setIsLoading(false)
