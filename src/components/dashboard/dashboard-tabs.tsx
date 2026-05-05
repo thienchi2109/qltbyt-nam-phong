@@ -131,7 +131,7 @@ export function DashboardTabs() {
 
   return (
     <TooltipProvider delayDuration={300}>
-      <Card className="xl:col-span-3">
+      <Card className="min-w-0 overflow-hidden xl:col-span-3">
         <Tabs
           value={activeTab}
           onValueChange={(value) => setActiveTab(value as 'equipment' | 'plans' | 'monthly')}
@@ -177,14 +177,14 @@ export function DashboardTabs() {
             </div>
           </CardHeader>
 
-          <CardContent className="md:p-8 md:pt-0">
+          <CardContent className="min-w-0 overflow-hidden md:p-8 md:pt-0">
             {/* Equipment Tab Content */}
-            <TabsContent value="equipment" className="mt-0 space-y-4">
-              <div className="flex items-center justify-between mb-4">
-                <CardDescription>
+            <TabsContent value="equipment" className="mt-0 min-w-0 space-y-4 overflow-hidden">
+              <div className="mb-4 flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <CardDescription className="min-w-0">
                   Danh sách các thiết bị cần sửa chữa hoặc đang bảo trì
                 </CardDescription>
-                <Button asChild size="sm" variant="ghost" className="gap-1 text-blue-600 hover:text-blue-700">
+                <Button asChild size="sm" variant="ghost" className="shrink-0 gap-1 self-start text-blue-600 hover:text-blue-700">
                   <Link href={equipmentAttentionHref}>
                     Xem tất cả
                     <ArrowUpRight className="h-4 w-4" />
@@ -216,14 +216,14 @@ export function DashboardTabs() {
                     equipmentNeedingAttention.map((item) => (
                       <div
                         key={item.id}
-                        className={`p-4 rounded-xl border-l-4 backdrop-blur-sm transition-all duration-200 hover:scale-[1.01] hover:shadow-md ${getEquipmentStatusColor(item.tinh_trang_hien_tai)}`}
+                        className={`min-w-0 overflow-hidden rounded-xl border-l-4 p-4 backdrop-blur-sm transition-all duration-200 hover:scale-[1.01] hover:shadow-md ${getEquipmentStatusColor(item.tinh_trang_hien_tai)}`}
                       >
                         <div className="flex items-start justify-between gap-4">
-                          <div className="flex-1 min-w-0">
+                          <div className="min-w-0 flex-1 overflow-hidden">
                             <TruncatedText
                               text={item.ten_thiet_bi}
                               as="h4"
-                              className="font-semibold text-gray-900 mb-1"
+                              className="mb-1 block max-w-full font-semibold text-gray-900"
                             />
                             <p className="text-sm text-gray-600 mb-2 truncate">
                               {item.model || item.ma_thiet_bi}
