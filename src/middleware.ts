@@ -47,9 +47,10 @@ export const config = {
      * Protect every request path EXCEPT:
      *  - "/"                              the public login page
      *  - "/api/*"                         API routes handle auth themselves
-     *  - "/_next/static", "/_next/image"  Next.js internals
-     *  - "/favicon.ico", "/manifest.json" static metadata
-     *  - "/assets/*"                      public assets
+     *  - "/_next/*"                       Next.js internals, including image/data fetches
+     *  - static metadata and worker files
+     *  - known public asset folders
+     *  - obvious static-file extensions anywhere in the path
      *
      * Next.js route groups like "(app)" are file-system only and do NOT
      * appear in request URLs, so a matcher like "/(app)/(.*)" never matches
@@ -57,6 +58,6 @@ export const config = {
      * via a negative-lookahead so every new page under src/app/(app)/** is
      * covered automatically.
      */
-    "/((?!api|_next/static|_next/image|favicon\\.ico|manifest\\.json|assets|$).*)",
+    "/((?!api|_next|favicon\\.ico|manifest\\.json|assets|icons|screenshots|sw\\.js|workbox-.*\\.js|.*\\.(?:png|jpg|jpeg|webp|svg|gif|ico|css|js|map|json|txt|xml|woff2?|ttf|otf|mp4|webm|pdf)$|$).*)",
   ],
 }

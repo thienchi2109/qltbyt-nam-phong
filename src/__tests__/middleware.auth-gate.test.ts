@@ -149,9 +149,21 @@ describe("auth middleware kill switch", () => {
       "/api/rpc/foo",
       "/_next/static/chunks/main.js",
       "/_next/image",
+      "/_next/data/abc/dashboard.json",
       "/favicon.ico",
       "/manifest.json",
       "/assets/logo.svg",
+      "/Logo master.png",
+      "/login-illustration.png",
+      "/sw.js",
+      "/workbox-runtime.js",
+      "/icons/icon-192x192.png",
+      "/icons/icon-maskable-512x512.png",
+      "/screenshots/placeholder-mobile.png",
+      "/robots.txt",
+      "/sitemap.xml",
+      "/some/nested/example.webp",
+      "/deeply/nested/path/with.dots/resource.svg",
     ]
 
     it.each(protectedPaths)("matcher includes protected path %s", async (p) => {
