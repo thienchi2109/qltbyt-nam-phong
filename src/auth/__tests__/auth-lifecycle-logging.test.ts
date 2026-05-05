@@ -1,9 +1,35 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
+const sanitizerState = vi.hoisted(() => ({
+  shouldThrow: false,
+}))
+
+const persistAuthLifecycleLogMock = vi.hoisted(() => vi.fn(async () => undefined))
+
+vi.mock("@/lib/log-sanitizer", async () => {
+  const actual = await vi.importActual<typeof import("@/lib/log-sanitizer")>("@/lib/log-sanitizer")
+
+  return {
+    ...actual,
+    sanitizeForLog: vi.fn((value: unknown) => {
+      if (sanitizerState.shouldThrow) {
+        throw new Error("sanitize failed")
+      }
+
+      return actual.sanitizeForLog(value)
+    }),
+  }
+})
+
+vi.mock("@/auth/persistence", () => ({
+  persistAuthLifecycleLog: persistAuthLifecycleLogMock,
+}))
+
 import {
   buildAuthLifecycleLog,
   emitAuthLifecycleLog,
 } from "@/auth/logging"
+import { recordAuthLifecycleEvent } from "@/auth/observability"
 
 describe("auth lifecycle logging", () => {
   let consoleInfoSpy: ReturnType<typeof vi.spyOn>
@@ -12,6 +38,8 @@ describe("auth lifecycle logging", () => {
     vi.useFakeTimers()
     vi.setSystemTime(new Date("2026-05-04T01:30:00Z"))
     consoleInfoSpy = vi.spyOn(console, "info").mockImplementation(() => undefined)
+    sanitizerState.shouldThrow = false
+    persistAuthLifecycleLogMock.mockClear()
   })
 
   afterEach(() => {
@@ -97,5 +125,31 @@ describe("auth lifecycle logging", () => {
       reason_code: "tenant_inactive",
       username: "locked-user",
     })
+  })
+
+  it("swallows payload-build failures when emitting auth lifecycle logs", () => {
+    sanitizerState.shouldThrow = true
+
+    expect(() =>
+      emitAuthLifecycleLog({
+        source: "authorize",
+        username: "nqminh",
+      })
+    ).not.toThrow()
+    expect(consoleInfoSpy).not.toHaveBeenCalled()
+  })
+
+  it("keeps auth lifecycle recording fail-safe when payload building throws", async () => {
+    sanitizerState.shouldThrow = true
+
+    await expect(
+      recordAuthLifecycleEvent({
+        source: "jwt_callback",
+        username: "nqminh",
+      })
+    ).resolves.toBeUndefined()
+
+    expect(consoleInfoSpy).not.toHaveBeenCalled()
+    expect(persistAuthLifecycleLogMock).not.toHaveBeenCalled()
   })
 })

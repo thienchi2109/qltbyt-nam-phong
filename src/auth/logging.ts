@@ -32,6 +32,7 @@ export type AuthLifecycleLogInput = {
   username?: string
   tenant_id?: string
   request_id?: string | null
+  trace_id?: string | null
   ip_address?: string | null
   user_agent?: string | null
   metadata?: Record<string, unknown>
@@ -48,6 +49,7 @@ export type AuthLifecycleLogPayload = {
   username?: string
   tenant_id?: string
   request_id?: string | null
+  trace_id?: string | null
   ip_address?: string | null
   user_agent?: string | null
   metadata?: Record<string, unknown>
@@ -101,6 +103,10 @@ export function buildAuthLifecycleLog(input: AuthLifecycleLogInput): AuthLifecyc
     payload.request_id = input.request_id
   }
 
+  if (input.trace_id !== undefined) {
+    payload.trace_id = input.trace_id
+  }
+
   if (input.ip_address !== undefined) {
     payload.ip_address = input.ip_address
   }
@@ -116,9 +122,17 @@ export function buildAuthLifecycleLog(input: AuthLifecycleLogInput): AuthLifecyc
   return sanitizeForLog(payload) as AuthLifecycleLogPayload
 }
 
+export function emitAuthLifecyclePayload(payload: AuthLifecycleLogPayload): void {
+  try {
+    console.info(JSON.stringify(payload))
+  } catch {
+    // Telemetry must never change auth behavior.
+  }
+}
+
 export function emitAuthLifecycleLog(input: AuthLifecycleLogInput): void {
   try {
-    console.info(JSON.stringify(buildAuthLifecycleLog(input)))
+    emitAuthLifecyclePayload(buildAuthLifecycleLog(input))
   } catch {
     // Telemetry must never change auth behavior.
   }
