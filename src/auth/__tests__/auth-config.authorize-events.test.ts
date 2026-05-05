@@ -69,6 +69,11 @@ type AuthLifecycleLog = {
   metadata?: Record<string, unknown>
 }
 
+type DeferredRpcResult = {
+  promise: Promise<{ data: boolean | null; error: unknown }>
+  resolve: (result: { data: boolean | null; error: unknown }) => void
+}
+
 function getAuthorizeHandler(): AuthorizeFn {
   const provider = authOptions.providers.find(
     (
@@ -117,6 +122,21 @@ function buildAuthorizeRequest() {
       "user-agent": "VitestBrowser/1.0",
     },
   })
+}
+
+function createDeferredRpcResult(): DeferredRpcResult {
+  let resolve!: DeferredRpcResult["resolve"]
+  const promise = new Promise<{ data: boolean | null; error: unknown }>((innerResolve) => {
+    resolve = innerResolve
+  })
+
+  return { promise, resolve }
+}
+
+async function flushMicrotasks(count = 3) {
+  for (let index = 0; index < count; index += 1) {
+    await Promise.resolve()
+  }
 }
 
 describe("authOptions authorize + auth lifecycle events", () => {
@@ -266,6 +286,7 @@ describe("authOptions authorize + auth lifecycle events", () => {
       account: null,
       isNewUser: false,
     })
+    await flushMicrotasks()
 
     expect(authLifecycleLogs(consoleInfoSpy)).toEqual([
       expect.objectContaining({
@@ -297,6 +318,42 @@ describe("authOptions authorize + auth lifecycle events", () => {
       ])
     )
     expect(JSON.stringify(authLifecycleLogs(consoleInfoSpy))).not.toContain("super-secret")
+  })
+
+  it("does not block signIn completion on auth audit persistence", async () => {
+    const signInEvent = getSignInEventHandler()
+    const deferredAuditInsert = createDeferredRpcResult()
+
+    supabaseClient.rpc.mockImplementationOnce(async (fn: string, args: Record<string, unknown>) => {
+      supabaseState.rpcCalls.push({ fn, args })
+
+      if (fn === "auth_audit_log_insert") {
+        return deferredAuditInsert.promise
+      }
+
+      return {
+        data: null,
+        error: { message: `unexpected rpc ${fn}` },
+      }
+    })
+
+    const signInPromise = signInEvent({
+      user: {
+        id: "42",
+        username: "NQMinh",
+        don_vi: 17,
+      } as never,
+      account: null,
+      isNewUser: false,
+    })
+
+    const settled = vi.fn()
+    void signInPromise.then(settled)
+    await Promise.resolve()
+    expect(settled).toHaveBeenCalledTimes(1)
+
+    deferredAuditInsert.resolve({ data: true, error: null })
+    await signInPromise
   })
 
   it("emits forced_signout/session_expired on signOut fallback and computes session duration", async () => {

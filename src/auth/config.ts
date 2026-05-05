@@ -305,6 +305,7 @@ export const authOptions: NextAuthOptions = {
         token = {
           ...applyAuthUserToJwt(token, user),
           loginTime: now, // Track when user logged in
+          lastRefreshAt: now,
         }
       }
 
@@ -323,7 +324,7 @@ export const authOptions: NextAuthOptions = {
       // Force a refresh when NextAuth indicates an explicit update (e.g.
       // tenant switch via session.update()).
       const lastRefreshAt = typeof token.lastRefreshAt === "number" ? token.lastRefreshAt : null
-      const isExplicitUpdate = trigger === "update" || Boolean(user)
+      const isExplicitUpdate = trigger === "update"
       const refreshReason = user
         ? "sign_in"
         : trigger === "update"
@@ -530,16 +531,20 @@ export const authOptions: NextAuthOptions = {
   },
   events: {
     async signIn({ user }) {
-      const requestContext = await readRuntimeRequestContext()
+      const userId = typeof user.id === "string" ? user.id : user.id != null ? String(user.id) : undefined
+      const username = normalizeUsernameForLog(user.username ?? user.name)
+      const tenantId = coerceTenantId(user.don_vi)
 
-      await recordAuthLifecycleEvent({
-        event: "login_success",
-        source: "events_signin",
-        user_id: typeof user.id === "string" ? user.id : user.id != null ? String(user.id) : undefined,
-        username: normalizeUsernameForLog(user.username ?? user.name),
-        tenant_id: coerceTenantId(user.don_vi),
-        ...requestContext,
-      })
+      void readRuntimeRequestContext().then((requestContext) =>
+        recordAuthLifecycleEvent({
+          event: "login_success",
+          source: "events_signin",
+          user_id: userId,
+          username,
+          tenant_id: tenantId,
+          ...requestContext,
+        })
+      )
     },
     async signOut({ token, session }) {
       const pendingReason = isPendingSignoutReason(token?.pending_signout_reason)
