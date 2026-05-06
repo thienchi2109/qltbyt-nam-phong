@@ -25,12 +25,13 @@ import { getColumnsForType } from "@/components/transfers/columnDefinitions"
 import type { FilterModalValue } from "@/components/transfers/FilterModal"
 import type { FilterChipsValue } from "@/components/transfers/FilterChips"
 import { isGlobalRole } from "@/lib/rbac"
-import type { TransferRequest } from "@/types/database"
 import type {
   TransferListFilters,
   TransferListItem,
   TransferCountsResponse,
   TransferKanbanResponse,
+  TransferOverdueSummary,
+  TransferOverdueSummaryItem,
 } from "@/types/transfers-data-grid"
 
 import type { TransferUserRole } from "./TransfersTypes"
@@ -55,7 +56,8 @@ export interface TransfersPageControllerResult {
   setIsAddDialogOpen: React.Dispatch<React.SetStateAction<boolean>>
   invalidateTransferQueries: () => void
   rowActions: ReturnType<typeof useTransfersRowActions>
-  openTransferFromAlert: (transfer: TransferRequest) => void
+  openTransferFromAlert: (transfer: TransferOverdueSummaryItem) => void
+  overdueSummary: TransferOverdueSummary | null | undefined
   viewMode: "table" | "kanban"
   userRole: TransferUserRole | undefined
   isRegionalLeader: boolean
@@ -228,6 +230,7 @@ export function useTransfersPageController(
   const latestTransferCounts = transferPageData?.counts
   const transferCounts = latestTransferCounts ?? cachedTransferCounts
   const kanbanData = transferPageData?.kanban
+  const overdueSummary = transferPageData?.overdue_summary
 
   React.useEffect(() => {
     if (!latestTransferCounts) return
@@ -324,10 +327,10 @@ export function useTransfersPageController(
   )
 
   const openTransferFromAlert = React.useCallback(
-    (transfer: TransferRequest) => {
-      rowActions.openDetailTransfer(transfer)
+    (transfer: TransferOverdueSummaryItem) => {
+      rowActions.handleViewDetail(transfer)
     },
-    [rowActions.openDetailTransfer],
+    [rowActions.handleViewDetail],
   )
 
   return {
@@ -347,6 +350,7 @@ export function useTransfersPageController(
     invalidateTransferQueries,
     rowActions,
     openTransferFromAlert,
+    overdueSummary,
     viewMode,
     userRole,
     isRegionalLeader,

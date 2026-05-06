@@ -44,6 +44,13 @@ describe("useTransferPageData", () => {
         },
       },
       kanban: null,
+      overdue_summary: {
+        total: 2,
+        overdue: 1,
+        due_today: 0,
+        due_soon: 1,
+        items: [],
+      },
     })
 
     const queryClient = new QueryClient({
@@ -74,6 +81,13 @@ describe("useTransferPageData", () => {
     )
 
     await waitFor(() => expect(result.current.data?.viewMode).toBe("table"))
+    expect(result.current.data?.overdue_summary).toEqual({
+      total: 2,
+      overdue: 1,
+      due_today: 0,
+      due_soon: 1,
+      items: [],
+    })
 
     expect(mocks.callRpc).toHaveBeenCalledWith({
       fn: "transfer_request_page_data",
@@ -131,6 +145,13 @@ describe("useTransferPageData", () => {
     )
 
     await waitFor(() => expect(result.current.data?.counts).toBeNull())
+    expect(result.current.data?.overdue_summary).toEqual({
+      total: 0,
+      overdue: 0,
+      due_today: 0,
+      due_soon: 0,
+      items: [],
+    })
 
     expect(mocks.callRpc).toHaveBeenCalledWith({
       fn: "transfer_request_page_data",

@@ -11,6 +11,14 @@ const mockColumnCounts = {
   hoan_thanh: 6,
 }
 
+const mockOverdueSummary = {
+  total: 2,
+  overdue: 1,
+  due_today: 0,
+  due_soon: 1,
+  items: [],
+}
+
 const mocks = vi.hoisted(() => ({
   kpiConfigs: [
     { key: "cho_duyet", label: "Chờ duyệt", tone: "warning", icon: null },
@@ -249,6 +257,7 @@ describe("Transfers KPI", () => {
 
     mocks.useTransferPageData.mockReturnValue({
       data: {
+        viewMode: "table",
         list: {
           data: [],
           total: 20,
@@ -260,6 +269,7 @@ describe("Transfers KPI", () => {
           columnCounts: mockColumnCounts,
         },
         kanban: null,
+        overdue_summary: mockOverdueSummary,
       },
       isLoading: false,
       isFetching: false,
@@ -293,7 +303,7 @@ describe("Transfers KPI", () => {
       confirmDelete: vi.fn(),
       canEditTransfer: vi.fn(() => true),
       canDeleteTransfer: vi.fn(() => true),
-      mapToTransferRequest: vi.fn(),
+      mapToTransferRequest: vi.fn((item: Record<string, unknown>) => item),
       isRegionalLeader: false,
       isTransferCoreRole: true,
     })
@@ -479,6 +489,17 @@ describe("Transfers KPI", () => {
     expect(mocks.useTransferCounts).not.toHaveBeenCalled()
   })
 
+  it("passes the page-scoped overdue summary into the overdue alert", () => {
+    render(<TransfersPage />)
+
+    expect(mocks.OverdueTransfersAlert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        overdueSummary: mockOverdueSummary,
+        isLoading: false,
+      }),
+    )
+  })
+
   it("skips page-invariant counts when only table pagination changes", () => {
     mocks.useServerPagination
       .mockReturnValueOnce({
@@ -521,6 +542,7 @@ describe("Transfers KPI", () => {
     mocks.rawViewMode = "kanban"
     mocks.useTransferPageData.mockReturnValue({
       data: {
+        viewMode: "kanban",
         list: null,
         counts: {
           totalCount: 20,
@@ -530,6 +552,7 @@ describe("Transfers KPI", () => {
           totalCount: 20,
           columns: {},
         },
+        overdue_summary: mockOverdueSummary,
       },
       isLoading: false,
       isFetching: false,
@@ -562,6 +585,7 @@ describe("Transfers KPI", () => {
     mocks.rawViewMode = "kanban"
     mocks.useTransferPageData.mockReturnValue({
       data: {
+        viewMode: "kanban",
         list: null,
         counts: {
           totalCount: 20,
@@ -571,6 +595,7 @@ describe("Transfers KPI", () => {
           totalCount: 20,
           columns: {},
         },
+        overdue_summary: mockOverdueSummary,
       },
       isLoading: false,
       isFetching: true,

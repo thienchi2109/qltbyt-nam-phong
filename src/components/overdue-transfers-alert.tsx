@@ -8,86 +8,37 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
-import { callRpc } from "@/lib/rpc-client"
-import { TransferRequest } from "@/types/database"
+import type {
+  TransferOverdueSummary,
+  TransferOverdueSummaryItem,
+} from "@/types/transfers-data-grid"
 
 interface OverdueTransfersAlertProps {
-  onViewTransfer?: (transfer: TransferRequest) => void
+  overdueSummary?: TransferOverdueSummary | null
+  isLoading?: boolean
+  onViewTransfer?: (transfer: TransferOverdueSummaryItem) => void
 }
 
-export function OverdueTransfersAlert({ onViewTransfer }: OverdueTransfersAlertProps) {
-  const [overdueTransfers, setOverdueTransfers] = React.useState<TransferRequest[]>([])
-  const [upcomingTransfers, setUpcomingTransfers] = React.useState<TransferRequest[]>([])
-  const [isOpen, setIsOpen] = React.useState(false)
-  const [isLoading, setIsLoading] = React.useState(true)
-  const isMountedRef = React.useRef(true)
+export function OverdueTransfersAlert({
+  overdueSummary,
+  isLoading = false,
+  onViewTransfer,
+}: OverdueTransfersAlertProps) {
+  const [isOpen, setIsOpen] = React.useState(() => Boolean(overdueSummary?.overdue))
 
   React.useEffect(() => {
-    isMountedRef.current = true
-    fetchOverdueTransfers()
-    
-    return () => {
-      isMountedRef.current = false
+    if (overdueSummary?.overdue) {
+      setIsOpen(true)
     }
-  }, [])
+  }, [overdueSummary?.overdue])
 
-  const fetchOverdueTransfers = async () => {
-    try {
-      const today = new Date()
-      const nextWeek = new Date()
-      nextWeek.setDate(today.getDate() + 7)
-
-      const transfers = await callRpc<TransferRequest[]>({ fn: 'transfer_request_external_pending_returns' })
-      
-      // Prevent setState on unmounted component
-      if (!isMountedRef.current) return
-      
-      const overdue = transfers.filter(t => 
-        new Date(t.ngay_du_kien_tra!) < today
-      )
-      
-      const upcoming = transfers.filter(t => {
-        const dueDate = new Date(t.ngay_du_kien_tra!)
-        return dueDate >= today && dueDate <= nextWeek
-      })
-
-      setOverdueTransfers(overdue)
-      setUpcomingTransfers(upcoming)
-      
-      // Auto-open if there are overdue transfers
-      if (overdue.length > 0) {
-        setIsOpen(true)
-      }
-    } catch (error) {
-      console.error('Error fetching overdue transfers:', error)
-    } finally {
-      if (isMountedRef.current) {
-        setIsLoading(false)
-      }
-    }
-  }
-
-  const getDaysOverdue = (dueDate: string) => {
-    const today = new Date()
-    const due = new Date(dueDate)
-    const diffTime = today.getTime() - due.getTime()
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
-    return diffDays
-  }
-
-  const getDaysUntilDue = (dueDate: string) => {
-    const today = new Date()
-    const due = new Date(dueDate)
-    const diffTime = due.getTime() - today.getTime()
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
-    return diffDays
-  }
-
-  if (isLoading || (overdueTransfers.length === 0 && upcomingTransfers.length === 0)) {
+  if (isLoading || !overdueSummary || overdueSummary.total === 0) {
     return null
   }
 
-  const totalAlerts = overdueTransfers.length + upcomingTransfers.length
+  const overdueTransfers = overdueSummary.items.filter((transfer) => transfer.days_difference < 0)
+  const upcomingTransfers = overdueSummary.items.filter((transfer) => transfer.days_difference >= 0)
+  const upcomingCount = overdueSummary.due_today + overdueSummary.due_soon
 
   return (
     <Card className="mb-6">
@@ -96,7 +47,7 @@ export function OverdueTransfersAlert({ onViewTransfer }: OverdueTransfersAlertP
           <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                {overdueTransfers.length > 0 ? (
+                {overdueSummary.overdue > 0 ? (
                   <AlertTriangle className="h-5 w-5 text-destructive" />
                 ) : (
                   <Clock className="h-5 w-5 text-orange-500" />
@@ -106,22 +57,22 @@ export function OverdueTransfersAlert({ onViewTransfer }: OverdueTransfersAlertP
                     Cảnh báo thiết bị cần hoàn trả
                   </CardTitle>
                   <p className="text-sm text-muted-foreground">
-                    {overdueTransfers.length > 0 && (
+                    {overdueSummary.overdue > 0 && (
                       <span className="text-destructive font-medium">
-                        {overdueTransfers.length} thiết bị quá hạn
+                        {overdueSummary.overdue} thiết bị quá hạn
                       </span>
                     )}
-                    {overdueTransfers.length > 0 && upcomingTransfers.length > 0 && " • "}
-                    {upcomingTransfers.length > 0 && (
+                    {overdueSummary.overdue > 0 && upcomingCount > 0 && " • "}
+                    {upcomingCount > 0 && (
                       <span className="text-orange-600 font-medium">
-                        {upcomingTransfers.length} thiết bị sắp tới hạn
+                        {upcomingCount} thiết bị sắp tới hạn
                       </span>
                     )}
                   </p>
                 </div>
               </div>
-              <Badge variant={overdueTransfers.length > 0 ? "destructive" : "secondary"}>
-                {totalAlerts}
+              <Badge variant={overdueSummary.overdue > 0 ? "destructive" : "secondary"}>
+                {overdueSummary.total}
               </Badge>
             </div>
           </CardHeader>
@@ -134,7 +85,7 @@ export function OverdueTransfersAlert({ onViewTransfer }: OverdueTransfersAlertP
               <div>
                 <h4 className="font-medium text-destructive mb-2 flex items-center gap-2">
                   <AlertTriangle className="h-4 w-4" />
-                  Thiết bị quá hạn hoàn trả ({overdueTransfers.length})
+                  Thiết bị quá hạn hoàn trả ({overdueSummary.overdue})
                 </h4>
                 <div className="space-y-2">
                   {overdueTransfers.map((transfer) => (
@@ -146,7 +97,7 @@ export function OverdueTransfersAlert({ onViewTransfer }: OverdueTransfersAlertP
                           </p>
                           <p className="text-sm">
                             Đơn vị: {transfer.don_vi_nhan} • 
-                            Quá hạn {getDaysOverdue(transfer.ngay_du_kien_tra!)} ngày
+                            Quá hạn {Math.abs(transfer.days_difference)} ngày
                           </p>
                         </div>
                         {onViewTransfer && (
@@ -171,7 +122,7 @@ export function OverdueTransfersAlert({ onViewTransfer }: OverdueTransfersAlertP
               <div>
                 <h4 className="font-medium text-orange-600 mb-2 flex items-center gap-2">
                   <Clock className="h-4 w-4" />
-                  Thiết bị sắp tới hạn hoàn trả ({upcomingTransfers.length})
+                  Thiết bị sắp tới hạn hoàn trả ({upcomingCount})
                 </h4>
                 <div className="space-y-2">
                   {upcomingTransfers.map((transfer) => (
@@ -183,7 +134,7 @@ export function OverdueTransfersAlert({ onViewTransfer }: OverdueTransfersAlertP
                           </p>
                           <p className="text-sm">
                             Đơn vị: {transfer.don_vi_nhan} • 
-                            Còn {getDaysUntilDue(transfer.ngay_du_kien_tra!)} ngày
+                            Còn {transfer.days_difference} ngày
                           </p>
                         </div>
                         {onViewTransfer && (
