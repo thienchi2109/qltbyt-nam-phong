@@ -1,6 +1,12 @@
 -- Issue #386: keep the Transfers overdue-return alert on the same
 -- server-side filter/scope contract as transfer_request_page_data.
 -- Local-only until applied through Supabase MCP.
+-- Rollback pointer: restore the previous transfer_request_page_data body from
+-- supabase/migrations/20260502040000_add_transfer_request_page_data_rpc.sql.
+-- To restore the detached pending-returns RPC, use the body/grants from
+-- supabase/migrations/2025-09-29/20250927_regional_leader_phase4.sql
+-- or supabase/migrations/2025-09-15/20250915_transfers_rpcs_more.sql
+-- in a new forward-only superseding migration.
 
 CREATE OR REPLACE FUNCTION public.transfer_request_page_data(
   p_q text DEFAULT NULL::text,

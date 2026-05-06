@@ -158,6 +158,37 @@ BEGIN
     RAISE EXCEPTION 'Expected tenant B overdue summary total 1, got %', v_page->'overdue_summary'->>'total';
   END IF;
 
+  PERFORM set_config(
+    'request.jwt.claims',
+    json_build_object(
+      'app_role', 'qltb_khoa',
+      'role', 'qltb_khoa',
+      'user_id', v_user_id::text,
+      'sub', v_user_id::text,
+      'don_vi', v_tenant_a::text
+    )::text,
+    true
+  );
+
+  v_page := public.transfer_request_page_data(
+    NULL, NULL, ARRAY['ben_ngoai'], 1, 10, v_tenant_b, NULL, NULL, NULL, 'table', 30, false, true
+  );
+  IF (v_page->'overdue_summary'->>'total')::integer IS DISTINCT FROM 0 THEN
+    RAISE EXCEPTION 'Expected out-of-scope tenant overdue summary total 0, got %', v_page->'overdue_summary'->>'total';
+  END IF;
+
+  PERFORM set_config(
+    'request.jwt.claims',
+    json_build_object(
+      'app_role', 'global',
+      'role', 'global',
+      'user_id', v_user_id::text,
+      'sub', v_user_id::text,
+      'don_vi', v_tenant_a::text
+    )::text,
+    true
+  );
+
   v_page := public.transfer_request_page_data(
     NULL, NULL, ARRAY['ben_ngoai'], 1, 10, v_tenant_a, v_today - 2, NULL, NULL, 'table', 30, false, true
   );
