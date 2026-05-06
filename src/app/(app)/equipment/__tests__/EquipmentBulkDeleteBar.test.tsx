@@ -177,7 +177,7 @@ describe("EquipmentBulkDeleteBar", () => {
     expect(tableRef?.getState().rowSelection).toEqual({})
   })
 
-  it("renders selected actions inline for the toolbar action slot", async () => {
+  it("renders selected actions as a floating overlay without layout slot sizing", async () => {
     let tableRef: Table<Equipment> | null = null
     const Harness = createTableHarness((table) => {
       tableRef = table
@@ -195,10 +195,9 @@ describe("EquipmentBulkDeleteBar", () => {
 
     const actionBar = screen.getByTestId("equipment-bulk-delete-bar")
 
-    expect(actionBar).toHaveClass("shrink-0")
-    expect(actionBar).not.toHaveClass("absolute")
-    expect(actionBar).not.toHaveClass("bottom-4")
-    expect(actionBar).not.toHaveClass("right-4")
+    expect(actionBar).toHaveClass("fixed")
+    expect(actionBar).toHaveClass("inset-x-0")
+    expect(actionBar).toHaveClass("bottom-4")
     expect(screen.getByText(/^Đã chọn/i)).toHaveTextContent("1")
   })
 })
