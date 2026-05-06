@@ -58,7 +58,7 @@ vi.mock("../_components/EquipmentBulkDeleteBar", () => ({
 }))
 
 vi.mock("@/components/equipment/equipment-toolbar", () => ({
-  EquipmentToolbar: () => null,
+  EquipmentToolbar: ({ selectionActions }: { selectionActions?: React.ReactNode }) => <>{selectionActions}</>,
 }))
 
 vi.mock("@/components/equipment/filter-bottom-sheet", () => ({

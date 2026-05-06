@@ -1,55 +1,68 @@
 import * as React from 'react'
-import { describe, it, expect, vi } from 'vitest'
+import { afterEach, describe, it, expect, vi } from 'vitest'
 import "@testing-library/jest-dom"
-import { render, screen, fireEvent } from '@testing-library/react'
+import { act, render, screen, fireEvent } from '@testing-library/react'
 import {
     getCoreRowModel,
     getFacetedRowModel,
     getFacetedUniqueValues,
     getFilteredRowModel,
     useReactTable,
+    type ColumnFiltersState,
     type ColumnDef,
 } from '@tanstack/react-table'
 
+type PopoverStateProps = {
+    open?: boolean
+    setOpen?: React.Dispatch<React.SetStateAction<boolean>>
+}
+
+type PopoverTriggerProps = PopoverStateProps & {
+    asChild?: boolean
+    children: React.ReactNode
+    onClick?: (...args: unknown[]) => void
+} & Record<string, unknown>
+
+type PopoverContentProps = PopoverStateProps & {
+    children: React.ReactNode
+} & React.HTMLAttributes<HTMLDivElement>
+
 /**
- * Mock radix DropdownMenu so content renders inline (no portal / no jsdom issues).
+ * Mock radix Popover so content renders inline (no portal / no jsdom issues).
  */
-vi.mock('@/components/ui/dropdown-menu', () => {
-    const Trigger = ({ children, asChild, ...rest }: any) => {
+vi.mock('@/components/ui/popover', () => {
+    const Trigger = ({ children, asChild, open, setOpen, ...rest }: PopoverTriggerProps) => {
+        const togglePopover = () => setOpen?.(!open)
         if (asChild && React.isValidElement(children)) {
-            return React.cloneElement(children as React.ReactElement<any>, rest)
+            const childElement = children as React.ReactElement<{ onClick?: (...args: unknown[]) => void }>
+            return React.cloneElement(childElement, {
+                ...rest,
+                onClick: (...args: unknown[]) => {
+                    togglePopover()
+                    childElement.props.onClick?.(...args)
+                },
+            })
         }
-        return <button {...rest}>{children}</button>
+        return <button {...rest} onClick={togglePopover}>{children}</button>
     }
+
     return {
-        DropdownMenu: ({ children }: any) => {
+        Popover: ({ children }: { children: React.ReactNode }) => {
             const [open, setOpen] = React.useState(false)
             return (
-                <div data-testid="dropdown-menu">
-                    {React.Children.map(children, (child: any) =>
+                <div data-testid="popover">
+                    {React.Children.map(children, (child) =>
                         React.isValidElement(child)
-                            ? React.cloneElement(child as React.ReactElement<any>, { open, setOpen })
+                            ? React.cloneElement(child as React.ReactElement<PopoverStateProps>, { open, setOpen })
                             : child
                     )}
                 </div>
             )
         },
-        DropdownMenuTrigger: ({ children, asChild, open, setOpen, ...rest }: any) => {
-            const handleClick = () => setOpen?.(!open)
-            if (asChild && React.isValidElement(children)) {
-                return React.cloneElement(children as React.ReactElement<any>, {
-                    ...rest,
-                    onClick: (...args: any[]) => {
-                        handleClick()
-                            ; (children as any).props?.onClick?.(...args)
-                    },
-                })
-            }
-            return <button {...rest} onClick={handleClick}>{children}</button>
-        },
-        DropdownMenuContent: ({ children, open, ...rest }: any) => {
+        PopoverTrigger: Trigger,
+        PopoverContent: ({ children, open, setOpen: _setOpen, ...rest }: PopoverContentProps) => {
             if (!open) return null
-            return <div data-testid="dropdown-content" {...rest}>{children}</div>
+            return <div data-testid="popover-content" role="dialog" {...rest}>{children}</div>
         },
     }
 })
@@ -81,11 +94,20 @@ const OPTIONS = [
     { label: 'Radiology', value: 'Radiology' },
 ]
 
+const EMPTY_CONTROLLED_VALUE: string[] = []
+
+afterEach(() => {
+    vi.useRealTimers()
+})
+
 /**
  * Test wrapper with real TanStack Table for integration testing.
  */
 function Wrapper({ onFilterChange }: { onFilterChange?: (values: string[] | undefined) => void }) {
-    const [columnFilters, setColumnFilters] = React.useState<any[]>([])
+    const [columnFilters, setColumnFilters] = React.useReducer(
+        (_state: ColumnFiltersState, next: ColumnFiltersState) => next,
+        [] as ColumnFiltersState
+    )
     const table = useReactTable({
         data: DATA,
         columns: COLUMNS,
@@ -93,7 +115,7 @@ function Wrapper({ onFilterChange }: { onFilterChange?: (values: string[] | unde
         onColumnFiltersChange: (updater) => {
             const next = typeof updater === 'function' ? updater(columnFilters) : updater
             setColumnFilters(next)
-            const deptFilter = next.find((f: any) => f.id === 'department')
+            const deptFilter = next.find((f) => f.id === 'department')
             onFilterChange?.(deptFilter?.value as string[] | undefined)
         },
         getCoreRowModel: getCoreRowModel(),
@@ -128,6 +150,79 @@ describe('FacetedMultiSelectFilter', () => {
         expect(screen.getByRole('button', { name: 'ICU' })).toBeInTheDocument()
         expect(screen.getByRole('button', { name: 'Surgery' })).toBeInTheDocument()
         expect(screen.getByRole('button', { name: 'Radiology' })).toBeInTheDocument()
+    })
+
+    it('debounces internal option search before filtering visible options', async () => {
+        vi.useFakeTimers()
+        render(<Wrapper />)
+
+        fireEvent.click(screen.getByRole('button', { name: /Khoa\/Phòng/i }))
+        const optionSearch = screen.getByRole('searchbox', { name: 'Tìm lựa chọn Khoa/Phòng' })
+
+        fireEvent.change(optionSearch, { target: { value: 'radio' } })
+
+        expect(screen.getByRole('button', { name: 'ICU' })).toBeInTheDocument()
+        expect(screen.getByRole('button', { name: 'Surgery' })).toBeInTheDocument()
+        expect(screen.getByRole('button', { name: 'Radiology' })).toBeInTheDocument()
+
+        act(() => {
+            vi.advanceTimersByTime(299)
+        })
+        expect(screen.getByRole('button', { name: 'ICU' })).toBeInTheDocument()
+
+        act(() => {
+            vi.advanceTimersByTime(1)
+        })
+
+        expect(screen.queryByRole('button', { name: 'ICU' })).not.toBeInTheDocument()
+        expect(screen.queryByRole('button', { name: 'Surgery' })).not.toBeInTheDocument()
+        expect(screen.getByRole('button', { name: 'Radiology' })).toBeInTheDocument()
+    })
+
+    it('does not change filter selection while typing internal option search', async () => {
+        vi.useFakeTimers()
+        const onFilterChange = vi.fn()
+        render(<Wrapper onFilterChange={onFilterChange} />)
+
+        fireEvent.click(screen.getByRole('button', { name: /Khoa\/Phòng/i }))
+        fireEvent.change(screen.getByRole('searchbox', { name: 'Tìm lựa chọn Khoa/Phòng' }), {
+            target: { value: 'icu' },
+        })
+
+        act(() => {
+            vi.advanceTimersByTime(300)
+        })
+
+        expect(onFilterChange).not.toHaveBeenCalled()
+    })
+
+    it('shows empty state when internal option search has no match', async () => {
+        vi.useFakeTimers()
+        render(<Wrapper />)
+
+        fireEvent.click(screen.getByRole('button', { name: /Khoa\/Phòng/i }))
+        fireEvent.change(screen.getByRole('searchbox', { name: 'Tìm lựa chọn Khoa/Phòng' }), {
+            target: { value: 'zzz' },
+        })
+
+        act(() => {
+            vi.advanceTimersByTime(300)
+        })
+
+        expect(screen.getByText('Không tìm thấy lựa chọn phù hợp')).toBeInTheDocument()
+    })
+
+    it('moves focus from option search to first visible option on ArrowDown', async () => {
+        vi.useFakeTimers()
+        render(<Wrapper />)
+
+        fireEvent.click(screen.getByRole('button', { name: /Khoa\/Phòng/i }))
+        const optionSearch = screen.getByRole('searchbox', { name: 'Tìm lựa chọn Khoa/Phòng' })
+        optionSearch.focus()
+
+        fireEvent.keyDown(optionSearch, { key: 'ArrowDown' })
+
+        expect(screen.getByRole('button', { name: 'ICU' })).toHaveFocus()
     })
 
     it('selects an option and calls column.setFilterValue', () => {
@@ -197,14 +292,17 @@ describe('FacetedMultiSelectFilter', () => {
 // ============================================
 
 function ControlledWrapper({
-    initialValue = [],
+    initialValue = EMPTY_CONTROLLED_VALUE,
     onChange,
 }: {
     initialValue?: string[]
     onChange?: (values: string[]) => void
 }) {
-    const [value, setValue] = React.useState(initialValue)
-    const handleChange = (newValues: string[]) => {
+    const [value, setValue] = React.useReducer(
+        (_state: string[], next: string[]) => next,
+        initialValue
+    )
+    const syncSelectedValues = (newValues: string[]) => {
         setValue(newValues)
         onChange?.(newValues)
     }
@@ -213,7 +311,7 @@ function ControlledWrapper({
             title="Khoa/Phòng"
             options={OPTIONS}
             value={value}
-            onChange={handleChange}
+            onChange={syncSelectedValues}
         />
     )
 }
@@ -272,5 +370,21 @@ describe('FacetedMultiSelectFilter — controlled mode', () => {
     it('shows badge count matching controlled value length', () => {
         render(<ControlledWrapper initialValue={['ICU', 'Surgery']} />)
         expect(screen.getByText('2')).toBeInTheDocument()
+    })
+
+    it('preserves selected value when option search hides that option', async () => {
+        vi.useFakeTimers()
+        render(<ControlledWrapper initialValue={['ICU']} />)
+
+        fireEvent.click(screen.getByRole('button', { name: /Khoa\/Phòng/i }))
+        fireEvent.change(screen.getByRole('searchbox', { name: 'Tìm lựa chọn Khoa/Phòng' }), {
+            target: { value: 'surgery' },
+        })
+        act(() => {
+            vi.advanceTimersByTime(300)
+        })
+
+        expect(screen.queryByRole('button', { name: 'ICU' })).not.toBeInTheDocument()
+        expect(screen.getByRole('button', { name: /Khoa\/Phòng/i })).toHaveTextContent('1')
     })
 })

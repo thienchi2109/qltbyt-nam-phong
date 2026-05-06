@@ -99,16 +99,20 @@ describe('EquipmentToolbar with shared filters', () => {
         searchTerm: '',
         onSearchChange: vi.fn(),
         columnFilters: [],
-        isFiltered: false,
         statuses: ['Hoạt động', 'Hỏng'],
         departments: ['ICU', 'Surgery'],
         users: ['User A'],
         classifications: ['Loại A'],
         fundingSources: ['Ngân sách'],
-        isMobile: false,
-        useTabletFilters: false,
-        canCreateEquipment: true,
-        hasFacilityFilter: false,
+        filterMode: 'faceted' as const,
+        filterState: {
+            isFiltered: false,
+            hasFacilityFilter: false,
+        },
+        actionState: {
+            canCreateEquipment: true,
+            isExporting: false,
+        },
         onOpenFilterSheet: vi.fn(),
         onOpenColumnsDialog: vi.fn(),
         onDownloadTemplate: vi.fn(),
@@ -129,7 +133,7 @@ describe('EquipmentToolbar with shared filters', () => {
     })
 
     it('renders mobile filter sheet trigger instead of faceted filters on mobile', () => {
-        render(<EquipmentToolbar {...baseProps} isMobile={true} />)
+        render(<EquipmentToolbar {...baseProps} filterMode="sheet" />)
 
         expect(screen.getByText('Lọc')).toBeInTheDocument()
         expect(screen.queryByText('Tình trạng')).not.toBeInTheDocument()
@@ -138,20 +142,30 @@ describe('EquipmentToolbar with shared filters', () => {
 
     it('calls onOpenFilterSheet when mobile filter button is clicked', () => {
         const onOpenFilterSheet = vi.fn()
-        render(<EquipmentToolbar {...baseProps} isMobile={true} onOpenFilterSheet={onOpenFilterSheet} />)
+        render(<EquipmentToolbar {...baseProps} filterMode="sheet" onOpenFilterSheet={onOpenFilterSheet} />)
 
         fireEvent.click(screen.getByText('Lọc'))
         expect(onOpenFilterSheet).toHaveBeenCalled()
     })
 
     it('shows clear all button when filters are active', () => {
-        render(<EquipmentToolbar {...baseProps} isFiltered={true} />)
+        render(
+            <EquipmentToolbar
+                {...baseProps}
+                filterState={{ ...baseProps.filterState, isFiltered: true }}
+            />
+        )
 
         expect(screen.getByText('Xóa tất cả')).toBeInTheDocument()
     })
 
     it('hides add actions when create permission is disabled', () => {
-        render(<EquipmentToolbar {...baseProps} canCreateEquipment={false} />)
+        render(
+            <EquipmentToolbar
+                {...baseProps}
+                actionState={{ ...baseProps.actionState, canCreateEquipment: false }}
+            />
+        )
 
         expect(screen.queryByText('Thêm thiết bị')).not.toBeInTheDocument()
     })
