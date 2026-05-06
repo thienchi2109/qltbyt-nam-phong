@@ -110,7 +110,9 @@ describe('auth-audit-cleanup Edge Function handler', () => {
     )
 
     expect(response.status).toBe(500)
-    expect(logger.error).toHaveBeenCalledWith('Auth audit cleanup failed')
+    expect(logger.error).toHaveBeenCalledWith('Auth audit cleanup failed', {
+      rpcError: { message: 'database timeout with secret details' },
+    })
     await expect(response.json()).resolves.toEqual({ error: 'Cleanup failed' })
   })
 })

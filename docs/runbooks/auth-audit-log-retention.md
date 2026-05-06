@@ -25,7 +25,7 @@ Cleanup gồm hai lớp:
    - Route dùng `SUPABASE_SERVICE_ROLE_KEY` để gọi RPC cleanup.
    - Chỉ trả/log số liệu tổng hợp, không trả raw audit rows.
 
-Supabase Edge Function `auth-audit-cleanup` vẫn có test handler và có thể dùng như fallback thủ công, nhưng schedule chuẩn của repo đi qua Vercel Cron để dùng được env quản lý bằng Vercel CLI.
+Supabase Edge Function `auth-audit-cleanup` vẫn có test handler và có thể dùng như fallback thủ công, nhưng schedule chuẩn của repo đi qua Vercel Cron để dùng được env quản lý bằng Vercel CLI. Nếu deploy fallback này, phải giữ `verify_jwt = false` trong `supabase/config.toml` vì handler tự xác thực bằng `Authorization: Bearer <CRON_SECRET>`.
 
 ## Lịch chạy đề xuất
 
@@ -107,7 +107,7 @@ Sau khi PR chứa `vercel.json` được merge và deploy production, Vercel Cro
 
 ## Rollback
 
-Nếu cần tắt cleanup tự động, xóa hoặc comment entry `/api/cron/auth-audit-cleanup` trong `vercel.json` rồi deploy lại production. Không drop RPC nếu đang cần điều tra.
+Nếu cần tắt cleanup tự động, xóa entry `/api/cron/auth-audit-cleanup` trong `vercel.json` rồi deploy lại production. Không drop RPC nếu đang cần điều tra.
 
 Nếu cần rollback schema:
 

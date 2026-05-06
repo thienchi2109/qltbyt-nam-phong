@@ -77,7 +77,7 @@ export async function handleAuthAuditCleanupRequest(
   const { data, error } = await supabase.rpc(AUTH_AUDIT_CLEANUP_RPC)
 
   if (error) {
-    logger.error('Auth audit cleanup failed')
+    logger.error('Auth audit cleanup failed', { rpcError: error })
     return jsonResponse({ error: 'Cleanup failed' }, 500)
   }
 
