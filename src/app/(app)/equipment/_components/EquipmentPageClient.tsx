@@ -7,10 +7,7 @@ import { Button } from "@/components/ui/button"
 import {
   Card,
   CardContent,
-  CardDescription,
   CardFooter,
-  CardHeader,
-  CardTitle,
 } from "@/components/ui/card"
 import {
   DropdownMenu,
@@ -218,63 +215,46 @@ function EquipmentPageContent({
         tenantBranding={tenantBranding}
       />
 
-      <Card>
-        <CardHeader>
-          <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-            <div>
-              <CardTitle className="heading-responsive-h2">Danh mục thiết bị</CardTitle>
-              <CardDescription className="body-responsive-sm">
-                Quản lý danh sách các trang thiết bị y tế.
-              </CardDescription>
-            </div>
+      <div className="space-y-4">
+        <EquipmentToolbar
+          table={table}
+          title="Danh mục thiết bị"
+          description="Quản lý danh sách các trang thiết bị y tế."
+          tenantControl={showFacilityFilter ? <TenantSelector className="w-full" /> : null}
+          searchTerm={searchTerm}
+          onSearchChange={setSearchTerm}
+          columnFilters={columnFilters}
+          isFiltered={isFiltered}
+          statuses={statuses}
+          departments={departments}
+          users={users}
+          classifications={classifications}
+          fundingSources={fundingSources}
+          isMobile={isMobile}
+          useTabletFilters={useTabletFilters}
+          canCreateEquipment={canCreateEquipment}
+          hasFacilityFilter={hasFacilityFilter}
+          isExporting={isExporting}
+          selectionActions={
+            <EquipmentBulkDeleteBar
+              table={table}
+              canBulkSelect={canBulkSelect}
+              isCardView={isCardView}
+            />
+          }
+          onOpenFilterSheet={() => setIsFilterSheetOpen(true)}
+          onOpenColumnsDialog={openColumnsDialog}
+          onDownloadTemplate={handleDownloadTemplate}
+          onExportData={handleExportData}
+          onAddEquipment={openAddDialog}
+          onImportEquipment={openImportDialog}
+          onClearFacilityFilter={handleFacilityClear}
+          onShowEquipmentDetails={(eq) => openDetailDialog(eq)}
+        />
 
-            {/* Facility selector using shared TenantSelector component */}
-            {showFacilityFilter ? (
-              <div className="flex w-full max-w-md items-center gap-2">
-                <TenantSelector className="flex-1" />
-              </div>
-            ) : null}
-          </div>
-        </CardHeader>
-
-        <CardContent className="space-y-4 px-4 md:px-6">
-          {/* Unified toolbar */}
-          <EquipmentToolbar
-            table={table}
-            searchTerm={searchTerm}
-            onSearchChange={setSearchTerm}
-            columnFilters={columnFilters}
-            isFiltered={isFiltered}
-            statuses={statuses}
-            departments={departments}
-            users={users}
-            classifications={classifications}
-            fundingSources={fundingSources}
-            isMobile={isMobile}
-            useTabletFilters={useTabletFilters}
-            canCreateEquipment={canCreateEquipment}
-            hasFacilityFilter={hasFacilityFilter}
-            isExporting={isExporting}
-            selectionActions={
-              <EquipmentBulkDeleteBar
-                table={table}
-                canBulkSelect={canBulkSelect}
-                isCardView={isCardView}
-              />
-            }
-            onOpenFilterSheet={() => setIsFilterSheetOpen(true)}
-            onOpenColumnsDialog={openColumnsDialog}
-            onDownloadTemplate={handleDownloadTemplate}
-            onExportData={handleExportData}
-            onAddEquipment={openAddDialog}
-            onImportEquipment={openImportDialog}
-            onClearFacilityFilter={handleFacilityClear}
-            onShowEquipmentDetails={(eq) => openDetailDialog(eq)}
-          />
-
-          <EquipmentColumnsDialog table={table} />
-
-          <div className="mt-4">
+        <Card>
+          <CardContent className="space-y-4 px-4 pt-4 md:px-6">
+            <EquipmentColumnsDialog table={table} />
             <EquipmentContent
               isGlobal={isGlobal}
               isRegionalLeader={isRegionalLeader}
@@ -286,37 +266,37 @@ function EquipmentPageContent({
               columns={columns}
               onShowDetails={(eq) => openDetailDialog(eq)}
             />
-          </div>
-        </CardContent>
+          </CardContent>
 
-        <CardFooter className="flex flex-col gap-4 py-4 px-4 md:px-6 sm:flex-row sm:items-center sm:justify-between">
-          <DataTablePagination
-            table={table}
-            totalCount={total}
-            entity={EQUIPMENT_ENTITY}
-            paginationMode={{
-              mode: "controlled",
-              pagination,
-              onPaginationChange: setPagination,
-            }}
-            displayFormat={equipmentDisplayFormat}
-            responsive={{ showFirstLastAt: "sm", showSizeSelectorAt: "sm" }}
-            isLoading={isLoading}
-            enabled={shouldFetchEquipment}
-            slots={{
-              beforeNav: (
-                <button
-                  onClick={handleExportData}
-                  className="text-sm font-medium text-primary underline-offset-4 hover:underline disabled:text-muted-foreground disabled:no-underline disabled:cursor-not-allowed"
-                  disabled={table.getFilteredRowModel().rows.length === 0 || isLoading || isExporting}
-                >
-                  {isExporting ? "Đang tải..." : "Tải về file Excel"}
-                </button>
-              ),
-            }}
-          />
-        </CardFooter>
-      </Card>
+          <CardFooter className="flex flex-col gap-4 py-4 px-4 md:px-6 sm:flex-row sm:items-center sm:justify-between">
+            <DataTablePagination
+              table={table}
+              totalCount={total}
+              entity={EQUIPMENT_ENTITY}
+              paginationMode={{
+                mode: "controlled",
+                pagination,
+                onPaginationChange: setPagination,
+              }}
+              displayFormat={equipmentDisplayFormat}
+              responsive={{ showFirstLastAt: "sm", showSizeSelectorAt: "sm" }}
+              isLoading={isLoading}
+              enabled={shouldFetchEquipment}
+              slots={{
+                beforeNav: (
+                  <button
+                    onClick={handleExportData}
+                    className="text-sm font-medium text-primary underline-offset-4 hover:underline disabled:text-muted-foreground disabled:no-underline disabled:cursor-not-allowed"
+                    disabled={table.getFilteredRowModel().rows.length === 0 || isLoading || isExporting}
+                  >
+                    {isExporting ? "Đang tải..." : "Tải về file Excel"}
+                  </button>
+                ),
+              }}
+            />
+          </CardFooter>
+        </Card>
+      </div>
 
       {/* Floating Add Button - Mobile only */}
       {canCreateEquipment ? (
