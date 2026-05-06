@@ -230,11 +230,9 @@ function EquipmentPageContent({
           users={users}
           classifications={classifications}
           fundingSources={fundingSources}
-          isMobile={isMobile}
-          useTabletFilters={useTabletFilters}
-          canCreateEquipment={canCreateEquipment}
-          hasFacilityFilter={hasFacilityFilter}
-          isExporting={isExporting}
+          filterMode={isMobile || useTabletFilters ? "sheet" : "faceted"}
+          filterState={{ isFiltered, hasFacilityFilter }}
+          actionState={{ canCreateEquipment, isExporting }}
           selectionActions={
             <EquipmentBulkDeleteBar
               table={table}

@@ -49,12 +49,15 @@ export interface EquipmentToolbarProps {
   users: string[]
   classifications: string[]
   fundingSources: string[]
-  isMobile: boolean
-  useTabletFilters: boolean
-  canCreateEquipment: boolean
-  hasFacilityFilter: boolean
-  /** Whether export is currently in progress */
-  isExporting?: boolean
+  filterMode: "faceted" | "sheet"
+  filterState: {
+    isFiltered: boolean
+    hasFacilityFilter: boolean
+  }
+  actionState: {
+    canCreateEquipment: boolean
+    isExporting?: boolean
+  }
   selectionActions?: React.ReactNode
   onOpenFilterSheet: () => void
   onOpenColumnsDialog: () => void
@@ -74,17 +77,14 @@ export function EquipmentToolbar({
   searchTerm,
   onSearchChange,
   columnFilters,
-  isFiltered,
   statuses,
   departments,
   users,
   classifications,
   fundingSources,
-  isMobile,
-  useTabletFilters,
-  canCreateEquipment,
-  hasFacilityFilter,
-  isExporting = false,
+  filterMode,
+  filterState,
+  actionState,
   selectionActions,
   onOpenFilterSheet,
   onOpenColumnsDialog,
@@ -96,7 +96,9 @@ export function EquipmentToolbar({
   onShowEquipmentDetails,
 }: EquipmentToolbarProps) {
   const qr = useQRScanner()
-  const compactFilters = isMobile || useTabletFilters
+  const compactFilters = filterMode === "sheet"
+  const { isFiltered, hasFacilityFilter } = filterState
+  const { canCreateEquipment, isExporting = false } = actionState
   const activeFilterCount = columnFilters.reduce((acc, filter) => {
     const vals = filter.value as string[] | undefined
     return acc + (vals?.length || 0)
