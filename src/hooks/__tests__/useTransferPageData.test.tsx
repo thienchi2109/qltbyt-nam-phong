@@ -7,6 +7,46 @@ const mocks = vi.hoisted(() => ({
   callRpc: vi.fn(),
 }))
 
+const mockOverdueItem = {
+  id: 88,
+  ma_yeu_cau: "LC-0088",
+  thiet_bi_id: 22,
+  loai_hinh: "ben_ngoai",
+  trang_thai: "da_ban_giao",
+  nguoi_yeu_cau_id: 1,
+  ly_do_luan_chuyen: "Smoke overdue",
+  khoa_phong_hien_tai: null,
+  khoa_phong_nhan: null,
+  muc_dich: "cho_muon",
+  don_vi_nhan: "External A",
+  dia_chi_don_vi: null,
+  nguoi_lien_he: null,
+  so_dien_thoai: null,
+  ngay_du_kien_tra: "2026-04-01T00:00:00.000Z",
+  ngay_ban_giao: null,
+  ngay_hoan_tra: null,
+  ngay_hoan_thanh: null,
+  nguoi_duyet_id: null,
+  ngay_duyet: null,
+  ghi_chu_duyet: null,
+  created_at: "2026-03-30T00:00:00.000Z",
+  updated_at: "2026-03-30T00:00:00.000Z",
+  created_by: 1,
+  updated_by: null,
+  equipment_is_deleted: true,
+  days_difference: -3,
+  thiet_bi: {
+    ten_thiet_bi: "Máy thở",
+    ma_thiet_bi: "MT-001",
+    model: null,
+    serial: null,
+    khoa_phong_quan_ly: "Khoa A",
+    facility_name: "Bệnh viện A",
+    facility_id: 7,
+    is_deleted: true,
+  },
+}
+
 vi.mock("@/lib/rpc-client", () => ({
   callRpc: mocks.callRpc,
 }))
@@ -44,6 +84,13 @@ describe("useTransferPageData", () => {
         },
       },
       kanban: null,
+      overdue_summary: {
+        total: 2,
+        overdue: 1,
+        due_today: 0,
+        due_soon: 1,
+        items: [mockOverdueItem],
+      },
     })
 
     const queryClient = new QueryClient({
@@ -74,6 +121,13 @@ describe("useTransferPageData", () => {
     )
 
     await waitFor(() => expect(result.current.data?.viewMode).toBe("table"))
+    expect(result.current.data?.overdue_summary).toEqual({
+      total: 2,
+      overdue: 1,
+      due_today: 0,
+      due_soon: 1,
+      items: [mockOverdueItem],
+    })
 
     expect(mocks.callRpc).toHaveBeenCalledWith({
       fn: "transfer_request_page_data",
@@ -131,6 +185,13 @@ describe("useTransferPageData", () => {
     )
 
     await waitFor(() => expect(result.current.data?.counts).toBeNull())
+    expect(result.current.data?.overdue_summary).toEqual({
+      total: 0,
+      overdue: 0,
+      due_today: 0,
+      due_soon: 0,
+      items: [],
+    })
 
     expect(mocks.callRpc).toHaveBeenCalledWith({
       fn: "transfer_request_page_data",

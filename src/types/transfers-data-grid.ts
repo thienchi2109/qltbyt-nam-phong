@@ -95,11 +95,26 @@ export interface TransferCountsResponse {
   columnCounts: TransferStatusCounts
 }
 
+export interface TransferOverdueSummaryItem extends TransferListItem {
+  days_difference: number
+  equipment_is_deleted: boolean | null
+  thiet_bi: (TransferEquipmentInfo & { is_deleted: boolean | null }) | null
+}
+
+export interface TransferOverdueSummary {
+  total: number
+  overdue: number
+  due_today: number
+  due_soon: number
+  items: TransferOverdueSummaryItem[]
+}
+
 export interface TransferPageDataResponse {
   viewMode: ViewMode
   list: TransferListResponse | null
   counts: TransferCountsResponse | null
   kanban: TransferKanbanResponse | null
+  overdue_summary: TransferOverdueSummary
 }
 
 // Zod schema for equipment info validation
@@ -176,11 +191,38 @@ export const TransferCountsResponseSchema = z.object({
   }),
 })
 
+const TransferOverdueEquipmentInfoSchema = TransferEquipmentInfoSchema.extend({
+  is_deleted: z.boolean().nullable(),
+})
+
+export const TransferOverdueSummaryItemSchema = TransferListItemSchema.extend({
+  days_difference: z.number().int(),
+  equipment_is_deleted: z.boolean().nullable(),
+  thiet_bi: TransferOverdueEquipmentInfoSchema.nullable(),
+})
+
+export const TransferOverdueSummarySchema = z.object({
+  total: z.number().int().nonnegative(),
+  overdue: z.number().int().nonnegative(),
+  due_today: z.number().int().nonnegative(),
+  due_soon: z.number().int().nonnegative(),
+  items: z.array(TransferOverdueSummaryItemSchema),
+})
+
+const EmptyTransferOverdueSummary = {
+  total: 0,
+  overdue: 0,
+  due_today: 0,
+  due_soon: 0,
+  items: [],
+}
+
 export const TransferPageDataResponseSchema = z.object({
   viewMode: z.enum(['table', 'kanban']),
   list: TransferTableModeResponseSchema.nullable(),
   counts: TransferCountsResponseSchema.nullable(),
   kanban: TransferKanbanResponseSchema.nullable(),
+  overdue_summary: TransferOverdueSummarySchema.optional().default(EmptyTransferOverdueSummary),
 })
 
 // TypeScript types inferred from Zod schemas

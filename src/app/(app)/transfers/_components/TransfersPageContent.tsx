@@ -80,7 +80,11 @@ export function TransfersPageContent({ user }: TransfersPageContentProps) {
         filterVariant={controller.filterVariant}
       />
 
-      <OverdueTransfersAlert onViewTransfer={controller.openTransferFromAlert} />
+      <OverdueTransfersAlert
+        overdueSummary={controller.overdueSummary}
+        isLoading={controller.isListLoading || controller.isListFetching}
+        onViewTransfer={controller.openTransferFromAlert}
+      />
 
       <div className="space-y-6">
         <div className="flex items-center justify-between gap-3">
