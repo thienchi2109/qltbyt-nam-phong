@@ -43,7 +43,6 @@ export interface EquipmentToolbarProps {
   searchTerm: string
   onSearchChange: (value: string) => void
   columnFilters: ColumnFiltersState
-  isFiltered: boolean
   statuses: string[]
   departments: string[]
   users: string[]

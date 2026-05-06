@@ -224,7 +224,6 @@ function EquipmentPageContent({
           searchTerm={searchTerm}
           onSearchChange={setSearchTerm}
           columnFilters={columnFilters}
-          isFiltered={isFiltered}
           statuses={statuses}
           departments={departments}
           users={users}

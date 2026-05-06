@@ -99,7 +99,6 @@ describe('EquipmentToolbar with shared filters', () => {
         searchTerm: '',
         onSearchChange: vi.fn(),
         columnFilters: [],
-        isFiltered: false,
         statuses: ['Hoạt động', 'Hỏng'],
         departments: ['ICU', 'Surgery'],
         users: ['User A'],
