@@ -93,6 +93,7 @@ export const ALLOWED_FUNCTIONS = new Set<string>([
   'get_facilities_with_equipment_count',
   'get_accessible_facilities',
   'user_create',
+  'change_password',
   'user_membership_add',
   'user_membership_remove',
   'user_set_current_don_vi',
