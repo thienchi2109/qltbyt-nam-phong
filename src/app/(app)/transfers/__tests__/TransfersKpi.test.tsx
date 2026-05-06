@@ -500,6 +500,38 @@ describe("Transfers KPI", () => {
     )
   })
 
+  it("hides stale overdue alert data while the page-data query refetches", () => {
+    mocks.useTransferPageData.mockReturnValue({
+      data: {
+        viewMode: "table",
+        list: {
+          data: [],
+          total: 20,
+          page: 1,
+          pageSize: 10,
+        },
+        counts: {
+          totalCount: 20,
+          columnCounts: mockColumnCounts,
+        },
+        kanban: null,
+        overdue_summary: mockOverdueSummary,
+      },
+      isLoading: false,
+      isFetching: true,
+      isError: false,
+    })
+
+    render(<TransfersPage />)
+
+    expect(mocks.OverdueTransfersAlert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        overdueSummary: mockOverdueSummary,
+        isLoading: true,
+      }),
+    )
+  })
+
   it("skips page-invariant counts when only table pagination changes", () => {
     mocks.useServerPagination
       .mockReturnValueOnce({

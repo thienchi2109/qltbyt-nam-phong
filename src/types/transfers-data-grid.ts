@@ -97,6 +97,8 @@ export interface TransferCountsResponse {
 
 export interface TransferOverdueSummaryItem extends TransferListItem {
   days_difference: number
+  equipment_is_deleted: boolean | null
+  thiet_bi: (TransferEquipmentInfo & { is_deleted: boolean | null }) | null
 }
 
 export interface TransferOverdueSummary {
@@ -189,8 +191,14 @@ export const TransferCountsResponseSchema = z.object({
   }),
 })
 
+const TransferOverdueEquipmentInfoSchema = TransferEquipmentInfoSchema.extend({
+  is_deleted: z.boolean().nullable(),
+})
+
 export const TransferOverdueSummaryItemSchema = TransferListItemSchema.extend({
   days_difference: z.number().int(),
+  equipment_is_deleted: z.boolean().nullable(),
+  thiet_bi: TransferOverdueEquipmentInfoSchema.nullable(),
 })
 
 export const TransferOverdueSummarySchema = z.object({

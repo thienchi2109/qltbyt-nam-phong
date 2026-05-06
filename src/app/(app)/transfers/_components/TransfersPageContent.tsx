@@ -82,7 +82,7 @@ export function TransfersPageContent({ user }: TransfersPageContentProps) {
 
       <OverdueTransfersAlert
         overdueSummary={controller.overdueSummary}
-        isLoading={controller.isListLoading}
+        isLoading={controller.isListLoading || controller.isListFetching}
         onViewTransfer={controller.openTransferFromAlert}
       />
 
