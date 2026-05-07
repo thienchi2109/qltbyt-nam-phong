@@ -145,7 +145,7 @@ describe('RepairRequestsCreateSheet assistant draft hydration', () => {
       expect(screen.getByLabelText('Mô tả sự cố')).toHaveValue('Mất nguồn đột ngột')
     })
 
-    expect(screen.getByLabelText('Các hạng mục yêu cầu sửa chữa')).toHaveValue('Kiểm tra bo nguồn')
+    expect(screen.getByLabelText('Các hạng mục yêu cầu sửa chữa (nếu có)')).toHaveValue('Kiểm tra bo nguồn')
     expect(screen.getByLabelText('Tên đơn vị được thuê')).toHaveValue('Công ty ABC')
     expect(screen.getByText('20/03/2026')).toBeInTheDocument()
   })

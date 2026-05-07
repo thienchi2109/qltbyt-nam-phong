@@ -90,14 +90,13 @@ export function RepairRequestsCreateSheetForm({
         />
       </div>
       <div className="space-y-2">
-        <Label htmlFor="repair-items">Các hạng mục yêu cầu sửa chữa</Label>
+        <Label htmlFor="repair-items">Các hạng mục yêu cầu sửa chữa (nếu có)</Label>
         <Textarea
           id="repair-items"
           placeholder="VD: Thay màn hình, sửa nguồn..."
           rows={3}
           value={repairItems}
           onChange={(e) => setRepairItems(e.target.value)}
-          required
         />
       </div>
       <div className="space-y-2">

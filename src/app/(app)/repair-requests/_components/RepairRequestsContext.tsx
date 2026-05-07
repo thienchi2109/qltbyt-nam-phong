@@ -76,7 +76,7 @@ function useCreateMutation(
     mutationFn: async (data: {
       thiet_bi_id: number
       mo_ta_su_co: string
-      hang_muc_sua_chua: string
+      hang_muc_sua_chua: string | null
       ngay_mong_muon_hoan_thanh: string | null
       nguoi_yeu_cau: string
       don_vi_thuc_hien: RepairUnit | null

@@ -102,7 +102,7 @@ describe('RepairRequestsCreateSheet submission regression', () => {
     fireEvent.change(screen.getByLabelText('Mô tả sự cố'), {
       target: { value: 'Mất nguồn đột ngột' },
     })
-    fireEvent.change(screen.getByLabelText('Các hạng mục yêu cầu sửa chữa'), {
+    fireEvent.change(screen.getByLabelText('Các hạng mục yêu cầu sửa chữa (nếu có)'), {
       target: { value: 'Kiểm tra bo nguồn' },
     })
     fireEvent.click(screen.getByRole('button', { name: 'Pick calendar date' }))
@@ -119,6 +119,35 @@ describe('RepairRequestsCreateSheet submission regression', () => {
         mo_ta_su_co: 'Mất nguồn đột ngột',
         hang_muc_sua_chua: 'Kiểm tra bo nguồn',
         ngay_mong_muon_hoan_thanh: '2026-03-20',
+        nguoi_yeu_cau: 'Test User',
+        don_vi_thuc_hien: 'noi_bo',
+        ten_don_vi_thue: null,
+      },
+      { onSuccess: mocks.closeAllDialogs },
+    )
+  })
+
+  it('allows submitting a repair request without repair items', async () => {
+    render(<RepairRequestsCreateSheet />)
+
+    await waitFor(() => {
+      expect(screen.getByLabelText('Thiết bị')).toHaveValue('Máy siêu âm A (TB-001)')
+    })
+
+    fireEvent.change(screen.getByLabelText('Mô tả sự cố'), {
+      target: { value: 'Mất nguồn đột ngột' },
+    })
+
+    expect(screen.getByLabelText('Các hạng mục yêu cầu sửa chữa (nếu có)')).not.toBeRequired()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Gửi yêu cầu' }))
+
+    expect(mocks.createMutate).toHaveBeenCalledWith(
+      {
+        thiet_bi_id: 101,
+        mo_ta_su_co: 'Mất nguồn đột ngột',
+        hang_muc_sua_chua: null,
+        ngay_mong_muon_hoan_thanh: null,
         nguoi_yeu_cau: 'Test User',
         don_vi_thuc_hien: 'noi_bo',
         ten_don_vi_thue: null,

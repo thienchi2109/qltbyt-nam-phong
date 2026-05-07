@@ -211,7 +211,7 @@ export function RepairRequestsCreateSheet() {
       {
         thiet_bi_id: selectedEquipment.id,
         mo_ta_su_co: issueDescription,
-        hang_muc_sua_chua: repairItems,
+        hang_muc_sua_chua: repairItems.trim() || null,
         ngay_mong_muon_hoan_thanh: desiredDate ? format(desiredDate, "yyyy-MM-dd") : null,
         nguoi_yeu_cau: user.full_name || user.username,
         don_vi_thuc_hien: canSetRepairUnit ? repairUnit : null,
