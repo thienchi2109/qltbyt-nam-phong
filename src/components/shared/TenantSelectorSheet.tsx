@@ -10,6 +10,7 @@
 
 import * as React from "react"
 import { Building2, Check, Search, X } from "lucide-react"
+import { includesNormalizedSearch, normalizeSearchText } from "@/lib/search-normalize"
 import { cn } from "@/lib/utils"
 import { Input } from "@/components/ui/input"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -51,10 +52,10 @@ export function TenantSelectorSheet({
 
   // Memoize filtered facilities (per rerender-memo)
   const filteredFacilities = React.useMemo(() => {
-    if (!searchTerm.trim()) return facilities
-    const query = searchTerm.trim().toLowerCase()
+    const query = normalizeSearchText(searchTerm)
+    if (!query) return facilities
     return facilities.filter((facility) =>
-      facility.name.toLowerCase().includes(query)
+      includesNormalizedSearch(facility.name, query)
     )
   }, [searchTerm, facilities])
 
