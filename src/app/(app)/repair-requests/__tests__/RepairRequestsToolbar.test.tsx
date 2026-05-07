@@ -17,10 +17,6 @@ const baseProps = {
   selectedFacilityName: null,
   selectedFacilityId: null,
   showFacilityFilter: true,
-  facilities: [
-    { id: 1, name: "Bệnh viện A" },
-    { id: 2, name: "Bệnh viện B" },
-  ],
   onFilterChange: vi.fn(),
   onRemoveFilter: vi.fn(),
   compactFilters: false,
@@ -28,11 +24,20 @@ const baseProps = {
 
 describe("RepairRequestsToolbar", () => {
   it("renders desktop filter controls inline instead of only a filter dialog trigger", () => {
-    render(<RepairRequestsToolbar {...baseProps} />)
+    render(
+      <RepairRequestsToolbar
+        {...baseProps}
+        tenantControl={<button type="button">Chọn cơ sở</button>}
+      />
+    )
 
-    expect(screen.getByRole("searchbox", { name: "Tìm thiết bị, mô tả..." })).toBeInTheDocument()
+    const tenant = screen.getByRole("button", { name: "Chọn cơ sở" })
+    const search = screen.getByRole("searchbox", { name: "Tìm thiết bị, mô tả..." })
+
+    expect(search).toBeInTheDocument()
+    expect(tenant.compareDocumentPosition(search)).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
     expect(screen.getByRole("button", { name: "Trạng thái" })).toBeInTheDocument()
-    expect(screen.getByRole("button", { name: "Cơ sở" })).toBeInTheDocument()
+    expect(screen.queryByRole("button", { name: "Cơ sở" })).not.toBeInTheDocument()
     expect(screen.getByRole("button", { name: "Từ ngày" })).toBeInTheDocument()
     expect(screen.getByRole("button", { name: "Đến ngày" })).toBeInTheDocument()
     expect(screen.queryByRole("button", { name: "Bộ lọc" })).not.toBeInTheDocument()
@@ -88,8 +93,14 @@ describe("RepairRequestsToolbar", () => {
     expect(onRemoveFilter).toHaveBeenCalledWith("status", "Chờ xử lý")
   })
 
-  it("hides the inline facility filter when facility scope is not visible", () => {
-    render(<RepairRequestsToolbar {...baseProps} showFacilityFilter={false} />)
+  it("omits the Equipment-style tenant slot when no tenant control is provided", () => {
+    render(
+      <RepairRequestsToolbar
+        {...baseProps}
+        showFacilityFilter={false}
+        tenantControl={null}
+      />
+    )
 
     expect(screen.queryByRole("button", { name: "Cơ sở" })).not.toBeInTheDocument()
   })

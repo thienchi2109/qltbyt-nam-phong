@@ -14,6 +14,7 @@ import { REPAIR_REQUEST_STATUS_OPTIONS, type FilterModalValue } from "./RepairRe
 import type { UiFilters as UiFiltersPrefs } from "@/lib/rr-prefs"
 
 interface RepairRequestsToolbarProps {
+  tenantControl?: React.ReactNode
   searchTerm: string
   onSearchChange: (value: string) => void
   searchInputRef: React.RefObject<HTMLInputElement>
@@ -26,7 +27,6 @@ interface RepairRequestsToolbarProps {
   selectedFacilityId: number | null
   selectedFacilityName: string | null
   showFacilityFilter: boolean
-  facilities: { id: number; name: string }[]
   onFilterChange: (v: FilterModalValue) => void
   onRemoveFilter: (key: keyof FilterChipsValue, sub?: string) => void
 }
@@ -38,6 +38,7 @@ const parseFilterDate = (value: string | null | undefined) => {
 }
 
 export function RepairRequestsToolbar({
+  tenantControl,
   searchTerm,
   onSearchChange,
   searchInputRef,
@@ -49,7 +50,6 @@ export function RepairRequestsToolbar({
   selectedFacilityId,
   selectedFacilityName,
   showFacilityFilter,
-  facilities,
   onFilterChange,
   onRemoveFilter,
 }: RepairRequestsToolbarProps) {
@@ -74,15 +74,6 @@ export function RepairRequestsToolbar({
     })
   }, [filterValue, onFilterChange])
 
-  const handleFacilityChange = React.useCallback((values: string[]) => {
-    // Facility stays single-select even though FacetedMultiSelectFilter emits string[]:
-    // keep the newly toggled value, clear on toggle-off, and revisit if true multi-select is needed.
-    const currentValue = selectedFacilityId != null ? String(selectedFacilityId) : null
-    const nextValue = values.find((value) => value !== currentValue) ?? values.at(-1) ?? null
-
-    applyFilterChange({ facilityId: nextValue ? Number(nextValue) : null })
-  }, [applyFilterChange, selectedFacilityId])
-
   const setDateRangePart = React.useCallback((key: "from" | "to", date: Date | null) => {
     applyFilterChange({
       dateRange: {
@@ -97,11 +88,6 @@ export function RepairRequestsToolbar({
     value: status,
   })), [])
 
-  const facilityOptions = React.useMemo(() => facilities.map((facility) => ({
-    label: facility.name,
-    value: String(facility.id),
-  })), [facilities])
-
   const filterControls = (
     <>
       <FacetedMultiSelectFilter
@@ -110,14 +96,6 @@ export function RepairRequestsToolbar({
         value={filterValue.status}
         onChange={(values) => applyFilterChange({ status: values })}
       />
-      {showFacilityFilter ? (
-        <FacetedMultiSelectFilter
-          title="Cơ sở"
-          options={facilityOptions}
-          value={selectedFacilityId != null ? [String(selectedFacilityId)] : []}
-          onChange={handleFacilityChange}
-        />
-      ) : null}
       <DateFilterButton
         label="Từ ngày"
         value={filterValue.dateRange?.from ?? null}
@@ -157,6 +135,7 @@ export function RepairRequestsToolbar({
   return (
     <ListFilterSearchCard
       surface="plain"
+      tenantControl={tenantControl}
       searchInputRef={searchInputRef}
       searchValue={searchTerm}
       onSearchChange={onSearchChange}

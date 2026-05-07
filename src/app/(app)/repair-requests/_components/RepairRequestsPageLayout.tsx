@@ -178,22 +178,17 @@ export function RepairRequestsPageLayout({
                   </CardDescription>
                 </div>
 
-                <div className="flex items-center gap-2">
-                  {/* Tenant selector from shared context */}
-                  {showFacilityFilter ? (
-                    <TenantSelector />
-                  ) : null}
-
-                  {/* Create button — inside container */}
-                  {!isRegionalLeader ? (
+                {!isRegionalLeader ? (
+                  <div className="flex items-center gap-2">
                     <Button onClick={() => openCreateSheet()} className="hidden md:flex touch-target">
                       <PlusCircle className="mr-2 h-4 w-4" /> Tạo yêu cầu
                     </Button>
-                  ) : null}
-                </div>
+                  </div>
+                ) : null}
               </CardHeader>
               <CardContent className="p-3 md:p-6 gap-3 md:gap-4">
                 <RepairRequestsToolbar
+                  tenantControl={showFacilityFilter ? <TenantSelector className="w-full" /> : null}
                   searchTerm={searchTerm}
                   onSearchChange={onSearchChange}
                   searchInputRef={searchInputRef}
@@ -205,7 +200,6 @@ export function RepairRequestsPageLayout({
                   selectedFacilityId={selectedFacilityId}
                   selectedFacilityName={selectedFacilityName}
                   showFacilityFilter={showFacilityFilter}
-                  facilities={facilityOptions.map(f => ({ id: f.id, name: f.name }))}
                   onFilterChange={onFilterChange}
                   onRemoveFilter={onRemoveFilter}
                 />

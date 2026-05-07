@@ -50,7 +50,12 @@ vi.mock('../_components/RepairRequestsCreateSheet', () => ({
 }))
 
 vi.mock('../_components/RepairRequestsToolbar', () => ({
-  RepairRequestsToolbar: () => <div data-testid="repair-toolbar">toolbar</div>,
+  RepairRequestsToolbar: ({ tenantControl }: { tenantControl?: React.ReactNode }) => (
+    <div data-testid="repair-toolbar">
+      toolbar
+      {tenantControl ? <div data-testid="toolbar-tenant-slot">{tenantControl}</div> : null}
+    </div>
+  ),
 }))
 
 vi.mock('../_components/RepairRequestsFilterModal', () => ({
@@ -179,5 +184,13 @@ describe('RepairRequestsPageLayout', () => {
     const counts = { 'Chờ xử lý': 10, 'Đã duyệt': 5, 'Hoàn thành': 20, 'Không HT': 7 }
     render(<RepairRequestsPageLayout {...defaultProps} statusCounts={counts} />)
     expect(screen.getByTestId('kpi-total')).toHaveAttribute('data-value', '42')
+  })
+
+  it('places the tenant selector in the toolbar slot like Equipment', () => {
+    render(<RepairRequestsPageLayout {...withAccessState({ showFacilityFilter: true })} />)
+
+    expect(screen.getByTestId('toolbar-tenant-slot')).toContainElement(
+      screen.getByTestId('tenant-selector')
+    )
   })
 })
