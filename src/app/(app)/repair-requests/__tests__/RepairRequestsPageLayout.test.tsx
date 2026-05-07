@@ -80,35 +80,43 @@ vi.mock('@/components/shared/TenantSelector', () => ({
 // ── Helpers ────────────────────────────────────────────────────────────
 const defaultProps = {
   selectedFacilityName: null,
-  isRegionalLeader: false,
+  accessState: {
+    isRegionalLeader: false,
+    showFacilityFilter: false,
+    shouldFetchData: true,
+  },
   statusCounts: { 'Chờ xử lý': 3, 'Đã duyệt': 2, 'Hoàn thành': 5, 'Không HT': 0 } as Record<RepairStatus, number> | undefined,
-  statusCountsLoading: false,
   overdueSummary: undefined,
-  overdueLoading: false,
+  summaryState: {
+    statusCountsLoading: false,
+    overdueLoading: false,
+  },
   requests: [],
   searchTerm: '',
   onSearchChange: vi.fn(),
   searchInputRef: { current: null },
-  isFiltered: false,
   onClearFilters: vi.fn(),
-  isFilterModalOpen: false,
   onFilterModalOpenChange: vi.fn(),
   uiFilters: { status: [] as string[], dateRange: null },
   onFilterChange: vi.fn(),
   selectedFacilityId: null as number | null,
-  showFacilityFilter: false,
   facilityOptions: [] as Array<{ id: number; name: string }>,
   onRemoveFilter: vi.fn(),
+  filterState: {
+    isFiltered: false,
+    isFilterModalOpen: false,
+  },
   table: {
     getRowModel: () => ({ rows: [] }),
     getState: () => ({ columnFilters: [] }),
     resetColumnFilters: vi.fn(),
   } as unknown as Table<RepairRequestWithEquipment>,
   tableKey: 'all_0',
-  isMobile: false,
-  shouldFetchData: true,
-  isLoading: false,
-  isFetching: false,
+  listState: {
+    isMobile: false,
+    isLoading: false,
+    isFetching: false,
+  },
   totalRequests: 0,
   repairPagination: {
     pagination: { pageIndex: 0, pageSize: 20 },
@@ -118,6 +126,14 @@ const defaultProps = {
   setRequestToView: vi.fn(),
   openCreateSheet: vi.fn(),
 }
+
+const withAccessState = (overrides: Partial<typeof defaultProps.accessState>) => ({
+  ...defaultProps,
+  accessState: {
+    ...defaultProps.accessState,
+    ...overrides,
+  },
+})
 
 // ── Tests ──────────────────────────────────────────────────────────────
 describe('RepairRequestsPageLayout', () => {
@@ -132,23 +148,28 @@ describe('RepairRequestsPageLayout', () => {
   })
 
   it('hides create button when isRegionalLeader=true', () => {
-    render(<RepairRequestsPageLayout {...defaultProps} isRegionalLeader={true} />)
+    render(<RepairRequestsPageLayout {...withAccessState({ isRegionalLeader: true })} />)
     expect(screen.queryByText('Tạo yêu cầu')).not.toBeInTheDocument()
   })
 
   it('shows create button when isRegionalLeader=false', () => {
-    render(<RepairRequestsPageLayout {...defaultProps} isRegionalLeader={false} isMobile={false} />)
+    render(
+      <RepairRequestsPageLayout
+        {...withAccessState({ isRegionalLeader: false })}
+        listState={{ ...defaultProps.listState, isMobile: false }}
+      />
+    )
     expect(screen.getByText('Tạo yêu cầu')).toBeInTheDocument()
   })
 
   it('shows tenant selection placeholder when shouldFetchData=false', () => {
-    render(<RepairRequestsPageLayout {...defaultProps} shouldFetchData={false} />)
+    render(<RepairRequestsPageLayout {...withAccessState({ shouldFetchData: false })} />)
     expect(screen.getByText('Chọn cơ sở y tế')).toBeInTheDocument()
     expect(screen.getByText(/Vui lòng chọn một cơ sở y tế/)).toBeInTheDocument()
   })
 
   it('shows table content when shouldFetchData=true', () => {
-    render(<RepairRequestsPageLayout {...defaultProps} shouldFetchData={true} />)
+    render(<RepairRequestsPageLayout {...withAccessState({ shouldFetchData: true })} />)
     expect(screen.queryByText('Chọn cơ sở y tế')).not.toBeInTheDocument()
     expect(screen.getByTestId('repair-table')).toBeInTheDocument()
     expect(screen.getByTestId('pagination')).toBeInTheDocument()

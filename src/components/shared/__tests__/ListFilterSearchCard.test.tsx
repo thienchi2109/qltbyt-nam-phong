@@ -54,4 +54,33 @@ describe("ListFilterSearchCard", () => {
     expect(screen.getByTestId("selection-actions")).toBeInTheDocument()
     expect(screen.getByRole("button", { name: "Tùy chọn" })).toBeInTheDocument()
   })
+
+  it("can render as a plain surface for embedding inside an existing card", () => {
+    const { container } = render(
+      <ListFilterSearchCard
+        surface="plain"
+        searchValue=""
+        onSearchChange={vi.fn()}
+        searchPlaceholder="Tìm kiếm chung..."
+      />
+    )
+
+    expect(container.firstElementChild).not.toHaveClass("rounded-lg")
+    expect(container.firstElementChild).not.toHaveClass("border")
+  })
+
+  it("forwards searchInputRef to the search input", () => {
+    const searchInputRef = React.createRef<HTMLInputElement>()
+
+    render(
+      <ListFilterSearchCard
+        searchInputRef={searchInputRef}
+        searchValue=""
+        onSearchChange={vi.fn()}
+        searchPlaceholder="Tìm kiếm chung..."
+      />
+    )
+
+    expect(searchInputRef.current).toBe(screen.getByRole("searchbox", { name: "Tìm kiếm chung..." }))
+  })
 })

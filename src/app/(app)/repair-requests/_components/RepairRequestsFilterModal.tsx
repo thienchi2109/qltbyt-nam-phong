@@ -17,7 +17,7 @@ export type FilterModalValue = {
   dateRange?: { from: Date | null; to: Date | null } | null
 }
 
-const STATUS_OPTIONS = ['Chờ xử lý', 'Đã duyệt', 'Hoàn thành', 'Không HT'] as const
+export const REPAIR_REQUEST_STATUS_OPTIONS = ['Chờ xử lý', 'Đã duyệt', 'Hoàn thành', 'Không HT'] as const
 
 type Variant = "dialog" | "sheet"
 
@@ -51,7 +51,7 @@ export function RepairRequestsFilterModal({
       <div className="space-y-2">
         <Label>Trạng thái</Label>
         <div className="flex flex-wrap gap-2">
-          {STATUS_OPTIONS.map((s) => (
+          {REPAIR_REQUEST_STATUS_OPTIONS.map((s) => (
             <Button
               key={s}
               variant={value.status.includes(s) ? "default" : "outline"}

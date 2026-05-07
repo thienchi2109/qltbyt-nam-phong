@@ -36,13 +36,19 @@ const REPAIR_REQUEST_ENTITY = { singular: "yêu cầu" } as const
 interface RepairRequestsPageLayoutProps {
   // Header
   selectedFacilityName: string | null
-  isRegionalLeader: boolean
+  accessState: {
+    isRegionalLeader: boolean
+    showFacilityFilter: boolean
+    shouldFetchData: boolean
+  }
 
   // Summary
   statusCounts: Record<RepairStatus, number> | undefined
-  statusCountsLoading: boolean
   overdueSummary: RepairRequestOverdueSummary | undefined
-  overdueLoading: boolean
+  summaryState: {
+    statusCountsLoading: boolean
+    overdueLoading: boolean
+  }
 
   // Requests data
   requests: RepairRequestWithEquipment[]
@@ -51,24 +57,26 @@ interface RepairRequestsPageLayoutProps {
   searchTerm: string
   onSearchChange: (value: string) => void
   searchInputRef: React.RefObject<HTMLInputElement>
-  isFiltered: boolean
   onClearFilters: () => void
-  isFilterModalOpen: boolean
   onFilterModalOpenChange: (open: boolean) => void
   uiFilters: UiFiltersPrefs
   onFilterChange: (v: FilterModalValue) => void
   selectedFacilityId: number | null
-  showFacilityFilter: boolean
   facilityOptions: Array<{ id: number; name: string }>
   onRemoveFilter: (key: "status" | "facilityName" | "dateRange", sub?: string) => void
+  filterState: {
+    isFiltered: boolean
+    isFilterModalOpen: boolean
+  }
 
   // Table
   table: Table<RepairRequestWithEquipment>
   tableKey: string
-  isMobile: boolean
-  shouldFetchData: boolean
-  isLoading: boolean
-  isFetching: boolean
+  listState: {
+    isMobile: boolean
+    isLoading: boolean
+    isFetching: boolean
+  }
 
   // Pagination
   totalRequests: number
@@ -92,37 +100,36 @@ interface RepairRequestsPageLayoutProps {
  */
 export function RepairRequestsPageLayout({
   selectedFacilityName,
-  isRegionalLeader,
+  accessState,
   statusCounts,
-  statusCountsLoading,
   overdueSummary,
-  overdueLoading,
+  summaryState,
   requests,
   searchTerm,
   onSearchChange,
   searchInputRef,
-  isFiltered,
   onClearFilters,
-  isFilterModalOpen,
   onFilterModalOpenChange,
   uiFilters,
   onFilterChange,
   selectedFacilityId,
-  showFacilityFilter,
   facilityOptions,
   onRemoveFilter,
+  filterState,
   table,
   tableKey,
-  isMobile,
-  shouldFetchData,
-  isLoading,
-  isFetching,
+  listState,
   totalRequests,
   repairPagination,
   columnOptions,
   setRequestToView,
   openCreateSheet,
 }: RepairRequestsPageLayoutProps) {
+  const { isRegionalLeader, showFacilityFilter, shouldFetchData } = accessState
+  const { statusCountsLoading, overdueLoading } = summaryState
+  const { isFiltered, isFilterModalOpen } = filterState
+  const { isMobile, isLoading, isFetching } = listState
+
   return (
     <>
       {/* Repair Request Alert */}
@@ -190,12 +197,16 @@ export function RepairRequestsPageLayout({
                   searchTerm={searchTerm}
                   onSearchChange={onSearchChange}
                   searchInputRef={searchInputRef}
-                  isFiltered={isFiltered as boolean}
+                  isFiltered={isFiltered}
                   onClearFilters={onClearFilters}
                   onOpenFilterModal={() => onFilterModalOpenChange(true)}
+                  compactFilters={isMobile}
                   uiFilters={uiFilters}
+                  selectedFacilityId={selectedFacilityId}
                   selectedFacilityName={selectedFacilityName}
                   showFacilityFilter={showFacilityFilter}
+                  facilities={facilityOptions.map(f => ({ id: f.id, name: f.name }))}
+                  onFilterChange={onFilterChange}
                   onRemoveFilter={onRemoveFilter}
                 />
 
