@@ -75,6 +75,8 @@ export function RepairRequestsToolbar({
   }, [filterValue, onFilterChange])
 
   const handleFacilityChange = React.useCallback((values: string[]) => {
+    // Facility stays single-select even though FacetedMultiSelectFilter emits string[]:
+    // keep the newly toggled value, clear on toggle-off, and revisit if true multi-select is needed.
     const currentValue = selectedFacilityId != null ? String(selectedFacilityId) : null
     const nextValue = values.find((value) => value !== currentValue) ?? values.at(-1) ?? null
 
@@ -182,15 +184,13 @@ export function RepairRequestsToolbar({
   )
 }
 
-function DateFilterButton({
-  label,
-  value,
-  onChange,
-}: {
-  label: string
-  value: Date | null
-  onChange: (date: Date | null) => void
-}) {
+interface DateFilterButtonProps {
+  readonly label: string
+  readonly value: Date | null
+  readonly onChange: (date: Date | null) => void
+}
+
+function DateFilterButton({ label, value, onChange }: DateFilterButtonProps) {
   return (
     <Popover>
       <PopoverTrigger asChild>

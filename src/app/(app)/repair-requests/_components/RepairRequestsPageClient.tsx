@@ -231,7 +231,11 @@ function RepairRequestsPageClientInner() {
     getFacetedUniqueValues: getFacetedUniqueValues(),
   });
 
-  const isFiltered = table.getState().columnFilters.length > 0 || debouncedSearch.length > 0 || (uiFilters.dateRange?.from || uiFilters.dateRange?.to);
+  const isFiltered = (
+    table.getState().columnFilters.length > 0 ||
+    debouncedSearch.length > 0 ||
+    Boolean(uiFilters.dateRange?.from || uiFilters.dateRange?.to)
+  );
 
   // Keyboard shortcuts: '/', 'n'
   useRepairRequestShortcuts({
@@ -309,7 +313,7 @@ function RepairRequestsPageClientInner() {
           selectedFacilityId={selectedFacilityId ?? null}
           facilityOptions={facilityOptions.map(f => ({ id: f.id, name: f.name }))}
           onRemoveFilter={handleRemoveFilter}
-          filterState={{ isFiltered: isFiltered as boolean, isFilterModalOpen }}
+          filterState={{ isFiltered, isFilterModalOpen }}
           table={table}
           tableKey={tableKey}
           listState={{ isMobile, isLoading, isFetching }}

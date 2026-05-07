@@ -197,7 +197,7 @@ export function RepairRequestsPageLayout({
                   searchTerm={searchTerm}
                   onSearchChange={onSearchChange}
                   searchInputRef={searchInputRef}
-                  isFiltered={isFiltered as boolean}
+                  isFiltered={isFiltered}
                   onClearFilters={onClearFilters}
                   onOpenFilterModal={() => onFilterModalOpenChange(true)}
                   compactFilters={isMobile}
