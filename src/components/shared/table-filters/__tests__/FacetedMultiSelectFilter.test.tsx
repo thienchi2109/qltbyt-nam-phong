@@ -94,6 +94,11 @@ const OPTIONS = [
     { label: 'Radiology', value: 'Radiology' },
 ]
 
+const FACILITY_OPTIONS = [
+    { label: 'Bệnh viện Đa khoa Cần Thơ', value: 'can-tho' },
+    { label: 'Bệnh viện Đa khoa An Giang', value: 'an-giang' },
+]
+
 const EMPTY_CONTROLLED_VALUE: string[] = []
 
 afterEach(() => {
@@ -177,6 +182,23 @@ describe('FacetedMultiSelectFilter', () => {
         expect(screen.queryByRole('button', { name: 'ICU' })).not.toBeInTheDocument()
         expect(screen.queryByRole('button', { name: 'Surgery' })).not.toBeInTheDocument()
         expect(screen.getByRole('button', { name: 'Radiology' })).toBeInTheDocument()
+    })
+
+    it('matches option search without accents or case sensitivity', async () => {
+        vi.useFakeTimers()
+        render(<FacetedMultiSelectFilter title="Cơ sở" options={FACILITY_OPTIONS} />)
+        fireEvent.click(screen.getByText('Cơ sở'))
+
+        fireEvent.change(screen.getByRole('searchbox', { name: 'Tìm lựa chọn Cơ sở' }), {
+            target: { value: 'can tho' },
+        })
+
+        act(() => {
+            vi.advanceTimersByTime(300)
+        })
+
+        expect(screen.getByRole('button', { name: 'Bệnh viện Đa khoa Cần Thơ' })).toBeInTheDocument()
+        expect(screen.queryByRole('button', { name: 'Bệnh viện Đa khoa An Giang' })).not.toBeInTheDocument()
     })
 
     it('does not change filter selection while typing internal option search', async () => {

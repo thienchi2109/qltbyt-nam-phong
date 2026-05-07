@@ -14,6 +14,7 @@
 import * as React from "react"
 import type { Column } from "@tanstack/react-table"
 import { Check, Filter, Search } from "lucide-react"
+import { includesNormalizedSearch, normalizeSearchText } from "@/lib/search-normalize"
 import { cn } from "@/lib/utils"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -83,11 +84,11 @@ export function FacetedMultiSelectFilter<TData, TValue>({
     )
 
     const visibleOptions = React.useMemo(() => {
-        const normalizedSearch = debouncedOptionSearch.trim().toLocaleLowerCase()
+        const normalizedSearch = normalizeSearchText(debouncedOptionSearch)
         if (!normalizedSearch) return options
         return options.filter((option) =>
-            option.label.toLocaleLowerCase().includes(normalizedSearch) ||
-            option.value.toLocaleLowerCase().includes(normalizedSearch)
+            includesNormalizedSearch(option.label, normalizedSearch) ||
+            includesNormalizedSearch(option.value, normalizedSearch)
         )
     }, [debouncedOptionSearch, options])
 
