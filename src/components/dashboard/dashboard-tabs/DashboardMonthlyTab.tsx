@@ -45,6 +45,9 @@ export function DashboardMonthlyTab({
   completedTasks,
   priorityTasks,
 }: DashboardMonthlyTabProps) {
+  const hiddenTaskCount =
+    Math.max(0, pendingTasks.length - 5) + Math.max(0, completedTasks.length - 3)
+
   return (
     <TabsContent value="monthly" className="mt-0 space-y-4">
       <div className="flex items-center justify-between mb-4">
@@ -172,13 +175,13 @@ export function DashboardMonthlyTab({
                     </div>
                   ))}
 
-                  {events.length > 8 && (
+                  {hiddenTaskCount > 0 && (
                     <div className="text-center py-2">
-                      <Link href="/maintenance">
-                        <Button variant="link" size="sm" className="text-blue-600">
-                          Xem thêm {events.length - 8} công việc khác...
-                        </Button>
-                      </Link>
+                      <Button asChild variant="link" size="sm" className="text-blue-600">
+                        <Link href="/maintenance">
+                          Xem thêm {hiddenTaskCount} công việc khác...
+                        </Link>
+                      </Button>
                     </div>
                   )}
                 </div>

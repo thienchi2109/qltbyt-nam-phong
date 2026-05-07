@@ -195,6 +195,43 @@ describe("DashboardTabs", () => {
     )
   })
 
+  it("shows the monthly more link when a task section is truncated", async () => {
+    const user = userEvent.setup()
+    mockUseCalendarData.mockReturnValue({
+      data: {
+        events: [
+          ...Array.from({ length: 6 }, (_, index) => ({
+            id: index + 1,
+            title: `Công việc bảo trì ${index + 1}`,
+            type: "Bảo trì",
+            isCompleted: false,
+            equipmentCode: `TB-${index + 1}`,
+            department: "Khoa Cấp cứu",
+          })),
+          {
+            id: 99,
+            title: "Hoàn tất hiệu chuẩn monitor sản khoa",
+            type: "Hiệu chuẩn",
+            isCompleted: true,
+            equipmentCode: "TB-202",
+            department: "Khoa Sản",
+          },
+        ],
+        stats: { total: 7, completed: 1, pending: 6, byType: { "Bảo trì": 6, "Hiệu chuẩn": 1 } },
+      },
+      isLoading: false,
+      isFetching: false,
+      error: null,
+    })
+
+    render(<DashboardTabs />)
+    await user.click(screen.getByRole("tab", { name: /tháng này|t\d+/i }))
+
+    const moreLink = screen.getByRole("link", { name: /xem thêm 1 công việc khác/i })
+    expect(moreLink.tagName).toBe("A")
+    expect(moreLink.querySelector("button")).toBeNull()
+  })
+
   it("keeps the equipment tab constrained on narrow screens when device names are very long", () => {
     const longDeviceName =
       "Monitor-da-thong-so-sieu-dai-khong-co-khoang-trang-lam-vo-layout-dashboard-tren-man-hinh-hep"
