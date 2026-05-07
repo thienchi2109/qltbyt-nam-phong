@@ -1,4 +1,6 @@
 import * as React from "react"
+import { readFileSync } from "node:fs"
+import { resolve } from "node:path"
 import { render, screen } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
@@ -111,6 +113,123 @@ describe("DashboardTabs", () => {
   afterEach(() => {
     vi.clearAllMocks()
     vi.unstubAllGlobals()
+  })
+
+  it("keeps the DashboardTabs shell below the source file ceiling", () => {
+    const source = readFileSync(resolve(process.cwd(), "src/components/dashboard/dashboard-tabs.tsx"), "utf8")
+
+    expect(source.split(/\r?\n/).length).toBeLessThan(450)
+  })
+
+  it("only enables the default equipment tab query on first render", () => {
+    render(<DashboardTabs />)
+
+    expect(mockUseEquipmentAttentionPaginated).toHaveBeenLastCalledWith({
+      page: 1,
+      pageSize: 10,
+      enabled: true,
+    })
+    expect(mockUseMaintenancePlans).toHaveBeenLastCalledWith(
+      { page: 1, pageSize: 10 },
+      { enabled: false }
+    )
+    expect(mockUseCalendarData).toHaveBeenLastCalledWith(
+      expect.any(Number),
+      expect.any(Number),
+      { enabled: false }
+    )
+  })
+
+  it("advances equipment pagination through the server paginated hook", async () => {
+    const user = userEvent.setup()
+    mockUseEquipmentAttentionPaginated.mockImplementation(
+      (options?: { page?: number; pageSize?: number; enabled?: boolean }) => ({
+        data: {
+          data: [
+            {
+              id: 101,
+              ten_thiet_bi: "Monitor cần sửa chữa",
+              ma_thiet_bi: "TB-101",
+              model: null,
+              tinh_trang_hien_tai: "Chờ sửa chữa",
+              vi_tri_lap_dat: "Khoa Cấp cứu",
+              ngay_bt_tiep_theo: null,
+            },
+          ],
+          total: 20,
+          page: options?.page ?? 1,
+          pageSize: options?.pageSize ?? 10,
+          hasMore: (options?.page ?? 1) < 2,
+        },
+        isLoading: false,
+        isFetching: false,
+        error: null,
+      })
+    )
+
+    render(<DashboardTabs />)
+    await user.click(screen.getByRole("button", { name: /sau/i }))
+
+    expect(mockUseEquipmentAttentionPaginated).toHaveBeenLastCalledWith({
+      page: 2,
+      pageSize: 10,
+      enabled: true,
+    })
+  })
+
+  it("enables plan and monthly queries only when their tabs are selected", async () => {
+    const user = userEvent.setup()
+    render(<DashboardTabs />)
+
+    await user.click(screen.getByRole("tab", { name: /kế hoạch|kh/i }))
+    expect(mockUseMaintenancePlans).toHaveBeenLastCalledWith(
+      { page: 1, pageSize: 10 },
+      { enabled: true }
+    )
+
+    await user.click(screen.getByRole("tab", { name: /tháng này|t\d+/i }))
+    expect(mockUseCalendarData).toHaveBeenLastCalledWith(
+      expect.any(Number),
+      expect.any(Number),
+      { enabled: true }
+    )
+  })
+
+  it("shows the monthly more link when a task section is truncated", async () => {
+    const user = userEvent.setup()
+    mockUseCalendarData.mockReturnValue({
+      data: {
+        events: [
+          ...Array.from({ length: 6 }, (_, index) => ({
+            id: index + 1,
+            title: `Công việc bảo trì ${index + 1}`,
+            type: "Bảo trì",
+            isCompleted: false,
+            equipmentCode: `TB-${index + 1}`,
+            department: "Khoa Cấp cứu",
+          })),
+          {
+            id: 99,
+            title: "Hoàn tất hiệu chuẩn monitor sản khoa",
+            type: "Hiệu chuẩn",
+            isCompleted: true,
+            equipmentCode: "TB-202",
+            department: "Khoa Sản",
+          },
+        ],
+        stats: { total: 7, completed: 1, pending: 6, byType: { "Bảo trì": 6, "Hiệu chuẩn": 1 } },
+      },
+      isLoading: false,
+      isFetching: false,
+      error: null,
+    })
+
+    render(<DashboardTabs />)
+    await user.click(screen.getByRole("tab", { name: /tháng này|t\d+/i }))
+
+    const moreLink = screen.getByRole("link", { name: /xem thêm 1 công việc khác/i })
+    expect(moreLink.tagName).toBe("A")
+    expect(moreLink.querySelector("button")).toBeNull()
   })
 
   it("keeps the equipment tab constrained on narrow screens when device names are very long", () => {
