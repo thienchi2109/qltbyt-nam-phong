@@ -18,11 +18,11 @@ vi.mock("@/components/icons", () => ({
   Logo: () => "Logo",
 }))
 
-vi.mock("../LoginIllustrationPanel", () => ({
+vi.mock("@/app/_components/LoginIllustrationPanel", () => ({
   LoginIllustrationPanel: () => null,
 }))
 
-function renderLoginForm() {
+function renderLoginForm(): ReturnType<typeof render> {
   return render(
     <LanguageProvider>
       <LoginForm />
@@ -80,6 +80,22 @@ describe("LoginForm", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent(
       "Tên đăng nhập hoặc mật khẩu không đúng",
     )
+  })
+
+  it("maps unexpected signIn failures to the system error message", async () => {
+    const user = userEvent.setup()
+    const consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => undefined)
+    mocks.signIn.mockRejectedValueOnce(new Error("network unavailable"))
+    renderLoginForm()
+
+    await user.type(screen.getByLabelText(/tên đăng nhập/i), "to-qltb")
+    await user.type(screen.getByLabelText(/mật khẩu/i), "secret")
+    await user.click(screen.getByRole("button", { name: /đăng nhập/i }))
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Không thể xác thực lúc này. Vui lòng thử lại sau.",
+    )
+    consoleErrorSpy.mockRestore()
   })
 
   it("submits valid credentials through NextAuth and keeps password manager hints", async () => {

@@ -24,11 +24,14 @@ function getLoginMessage(
   t: (key: string) => string | undefined,
   key: string,
   fallback: string,
-) {
+): string {
   return t(key) || fallback
 }
 
-function createLoginFormSchema(t: (key: string) => string | undefined) {
+function createLoginFormSchema(t: (key: string) => string | undefined): z.ZodObject<{
+  username: z.ZodString
+  password: z.ZodString
+}> {
   return z.object({
     username: z.string().trim().min(
       1,
@@ -46,7 +49,7 @@ type LoginFormValues = z.infer<ReturnType<typeof createLoginFormSchema>>
 function getCredentialErrorMessage(
   t: (key: string) => string | undefined,
   errorCode: string | undefined,
-) {
+): string {
   switch (errorCode) {
     case "tenant_inactive":
       return getLoginMessage(
@@ -70,7 +73,7 @@ function getCredentialErrorMessage(
   }
 }
 
-export function LoginForm() {
+export function LoginForm(): React.ReactElement {
   const { t } = useLanguage()
   const loginFormSchema = React.useMemo(() => createLoginFormSchema(t), [t])
   const form = useForm<LoginFormValues>({
@@ -81,7 +84,7 @@ export function LoginForm() {
     },
   })
 
-  const handleLogin = async (values: LoginFormValues) => {
+  const handleLogin = async (values: LoginFormValues): Promise<void> => {
     form.clearErrors("root")
     try {
       const result = await signIn("credentials", {
@@ -104,7 +107,7 @@ export function LoginForm() {
       console.error("Unexpected login error", { error: err })
       form.setError("root", {
         type: "server",
-        message: getCredentialErrorMessage(t, undefined),
+        message: getCredentialErrorMessage(t, "rpc_error"),
       })
     }
   }
