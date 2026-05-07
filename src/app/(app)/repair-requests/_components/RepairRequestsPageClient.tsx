@@ -294,31 +294,25 @@ function RepairRequestsPageClientInner() {
 
         <RepairRequestsPageLayout
           selectedFacilityName={selectedFacilityName}
-          isRegionalLeader={isRegionalLeader}
+          accessState={{ isRegionalLeader, showFacilityFilter, shouldFetchData }}
           statusCounts={statusCounts}
-          statusCountsLoading={statusCountsLoading}
           overdueSummary={overdueSummary}
-          overdueLoading={overdueLoading}
+          summaryState={{ statusCountsLoading, overdueLoading }}
           requests={requests}
           searchTerm={searchTerm}
           onSearchChange={setSearchTerm}
           searchInputRef={searchInputRef}
-          isFiltered={isFiltered as boolean}
           onClearFilters={handleClearFilters}
-          isFilterModalOpen={isFilterModalOpen}
           onFilterModalOpenChange={setIsFilterModalOpen}
           uiFilters={uiFilters}
           onFilterChange={handleFilterChange}
           selectedFacilityId={selectedFacilityId ?? null}
-          showFacilityFilter={showFacilityFilter}
           facilityOptions={facilityOptions.map(f => ({ id: f.id, name: f.name }))}
           onRemoveFilter={handleRemoveFilter}
+          filterState={{ isFiltered: isFiltered as boolean, isFilterModalOpen }}
           table={table}
           tableKey={tableKey}
-          isMobile={isMobile}
-          shouldFetchData={shouldFetchData}
-          isLoading={isLoading}
-          isFetching={isFetching}
+          listState={{ isMobile, isLoading, isFetching }}
           totalRequests={totalRequests}
           repairPagination={repairPagination}
           columnOptions={columnOptions}
