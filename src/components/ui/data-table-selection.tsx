@@ -5,6 +5,7 @@ import type { ColumnDef } from "@tanstack/react-table"
 
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
+import { cn } from "@/lib/utils"
 
 function stopPropagation(event: React.MouseEvent<HTMLDivElement>) {
   event.stopPropagation()
@@ -48,6 +49,7 @@ interface BulkActionBarProps {
   onClearSelection: () => void
   entityLabel?: string
   children: React.ReactNode
+  className?: string
 }
 
 export function BulkActionBar({
@@ -55,13 +57,19 @@ export function BulkActionBar({
   onClearSelection,
   entityLabel = "mục",
   children,
+  className,
 }: BulkActionBarProps) {
   if (selectedCount === 0) {
     return null
   }
 
   return (
-    <div className="flex flex-wrap items-center gap-2 rounded-md border border-primary/20 bg-primary/5 px-3 py-2">
+    <div
+      className={cn(
+        "flex flex-wrap items-center gap-2 rounded-md border border-primary/20 bg-primary/5 px-3 py-2",
+        className
+      )}
+    >
       <p className="text-sm text-foreground">
         Đã chọn <strong>{selectedCount}</strong> {entityLabel}
       </p>

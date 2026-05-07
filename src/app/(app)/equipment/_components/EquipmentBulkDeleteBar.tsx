@@ -85,6 +85,7 @@ export function EquipmentBulkDeleteBar({
           selectedCount={selectedCount}
           onClearSelection={() => table.resetRowSelection()}
           entityLabel="thiết bị"
+          className="border-border bg-card shadow-lg"
         >
           <AlertDialog open={isConfirmOpen} onOpenChange={setIsConfirmOpen}>
             <AlertDialogTrigger asChild>

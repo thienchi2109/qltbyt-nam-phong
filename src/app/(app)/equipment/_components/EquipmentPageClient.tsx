@@ -25,6 +25,7 @@ import { EquipmentToolbar } from "@/components/equipment/equipment-toolbar"
 import { TenantSelector } from "@/components/shared/TenantSelector"
 import { applyAttentionStatusPresetFilters } from "@/lib/equipment-attention-preset"
 import { ROLES } from "@/lib/rbac"
+import { cn } from "@/lib/utils"
 
 import { useEquipmentPage } from "../use-equipment-page"
 import { EquipmentContent } from "../equipment-content"
@@ -174,6 +175,14 @@ function EquipmentPageContent({
     const role = (dialogUser?.role ?? user?.role ?? "").toLowerCase().trim()
     return role !== ROLES.USER && !isRegionalLeader
   }, [dialogUser?.role, user?.role, isRegionalLeader])
+  const floatingBarSelectionCount =
+    (table as {
+      getFilteredSelectedRowModel?: () => { rows: unknown[] }
+    }).getFilteredSelectedRowModel?.().rows.length ?? 0
+  const shouldReserveFloatingBarSpace =
+    canBulkSelect &&
+    !isCardView &&
+    floatingBarSelectionCount > 0
 
   // Handle route sync pending actions using context
   React.useEffect(() => {
@@ -215,7 +224,7 @@ function EquipmentPageContent({
         tenantBranding={tenantBranding}
       />
 
-      <div className="space-y-4">
+      <div className={cn("space-y-4", shouldReserveFloatingBarSpace && "pb-24 md:pb-28")}>
         <EquipmentToolbar
           table={table}
           title="Danh mục thiết bị"

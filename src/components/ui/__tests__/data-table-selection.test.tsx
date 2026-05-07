@@ -125,6 +125,20 @@ describe("BulkActionBar", () => {
       })
     ).toBeInTheDocument()
   })
+
+  it("applies custom container classes", () => {
+    render(
+      <BulkActionBar
+        selectedCount={1}
+        onClearSelection={() => {}}
+        className="bg-card border-border shadow-lg"
+      >
+        <span>Actions</span>
+      </BulkActionBar>
+    )
+
+    expect(screen.getByText(/^Đã chọn/i).closest("div")).toHaveClass("bg-card")
+  })
 })
 
 describe("createSelectionColumn", () => {
