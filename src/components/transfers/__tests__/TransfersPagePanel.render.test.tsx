@@ -1,5 +1,5 @@
 import * as React from "react"
-import { render, screen, within } from "@testing-library/react"
+import { fireEvent, render, screen, within } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { describe, expect, it, vi } from "vitest"
 import type { Table as ReactTable } from "@tanstack/react-table"
@@ -11,32 +11,56 @@ import type {
   TransferListItem,
   TransferType,
 } from "@/types/transfers-data-grid"
-
 // --- Heavy children: replaced with simple sentinels ---------------------
 
 vi.mock("@/components/shared/TenantSelector", () => ({
   TenantSelector: () => <div data-testid="tenant-selector" />,
 }))
-
-vi.mock("@/components/shared/SearchInput", () => ({
-  SearchInput: ({
-    value,
-    onChange,
-    onClear,
+vi.mock("@/components/shared/ListFilterSearchCard", () => ({
+  ListFilterSearchCard: ({
+    surface,
+    tenantControl,
+    searchValue,
+    onSearchChange,
+    searchPlaceholder,
+    filterControls,
+    mobileFilterControl,
+    compactFilters,
+    actions,
+    chips,
   }: {
-    value: string
-    onChange: (v: string) => void
-    onClear: () => void
+    surface?: "card" | "plain"
+    tenantControl?: React.ReactNode
+    searchValue: string
+    onSearchChange: (value: string) => void
+    searchPlaceholder: string
+    filterControls?: React.ReactNode
+    mobileFilterControl?: React.ReactNode
+    compactFilters?: boolean
+    actions?: React.ReactNode
+    chips?: React.ReactNode
   }) => (
-    <div data-testid="search-input">
+    <div
+      data-testid="list-filter-search-card"
+      data-surface={surface ?? "card"}
+      data-compact-filters={compactFilters ? "true" : "false"}
+      data-placeholder={searchPlaceholder}
+      data-has-mobile-filter={mobileFilterControl ? "true" : "false"}
+    >
+      <div data-testid="tenant-control-slot">{tenantControl}</div>
       <input
-        aria-label="search"
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
+        aria-label="shared-transfer-search"
+        value={searchValue}
+        onChange={(event) => onSearchChange(event.target.value)}
       />
-      <button type="button" onClick={onClear}>
-        clear
+      <button type="button" onClick={() => onSearchChange("")}>
+        shared-clear-search
       </button>
+      <div data-testid="visible-filter-slot">
+        {compactFilters ? mobileFilterControl : filterControls}
+      </div>
+      <div data-testid="actions-slot">{actions}</div>
+      <div data-testid="chips-slot">{chips}</div>
     </div>
   ),
 }))
@@ -125,7 +149,7 @@ function buildProps(overrides: Partial<PanelProps> = {}): PanelProps {
     onClearAllFilters: vi.fn(),
     searchTerm: "",
     onSearchTermChange: vi.fn(),
-    onClearSearch: vi.fn(),
+    filterVariant: "dialog",
     viewMode: "table",
     tableData: [],
     referenceDate: new Date("2026-05-01T00:00:00.000Z"),
@@ -253,6 +277,65 @@ describe("TransfersPagePanel grouped props", () => {
     renderPanel({ viewMode: "table", activeFilterCount: 3 })
     const filterButton = screen.getByRole("button", { name: /Bộ lọc/ })
     expect(within(filterButton).getByText("3")).toBeInTheDocument()
+  })
+
+  it("renders Transfers filters through the shared Equipment-aligned filter card", () => {
+    renderPanel({
+      activeFilterCount: 2,
+      permissions: { showFacilityFilter: true, isRegionalLeader: false },
+      searchTerm: "YC-001",
+    })
+
+    const card = screen.getByTestId("list-filter-search-card")
+    expect(card).toHaveAttribute("data-surface", "plain")
+    expect(card).toHaveAttribute(
+      "data-placeholder",
+      "Tìm kiếm mã yêu cầu, thiết bị, lý do...",
+    )
+    expect(screen.getByTestId("tenant-control-slot")).toContainElement(
+      screen.getByTestId("tenant-selector"),
+    )
+    expect(screen.getByTestId("visible-filter-slot")).toContainElement(
+      screen.getByRole("button", { name: /Bộ lọc/ }),
+    )
+    expect(screen.getByTestId("actions-slot")).toContainElement(
+      screen.getByRole("button", { name: /Tạo yêu cầu mới/ }),
+    )
+    expect(screen.getByTestId("chips-slot")).toContainElement(
+      screen.getByTestId("filter-chips"),
+    )
+  })
+
+  it("uses the shared card mobile filter slot when Transfers filters render as a sheet", () => {
+    renderPanel({
+      activeFilterCount: 1,
+      filterVariant: "sheet",
+    })
+
+    const card = screen.getByTestId("list-filter-search-card")
+    expect(card).toHaveAttribute("data-compact-filters", "true")
+    expect(card).toHaveAttribute("data-has-mobile-filter", "true")
+    expect(screen.getByTestId("visible-filter-slot")).toContainElement(
+      screen.getByRole("button", { name: /Bộ lọc/ }),
+    )
+  })
+
+  it("keeps shared card search interactions wired to Transfers search state", async () => {
+    const onSearchTermChange = vi.fn()
+    renderPanel({
+      searchTerm: "old",
+      onSearchTermChange,
+    })
+
+    fireEvent.change(screen.getByLabelText("shared-transfer-search"), {
+      target: { value: "YC-413" },
+    })
+    await userEvent.setup().click(
+      screen.getByRole("button", { name: "shared-clear-search" }),
+    )
+
+    expect(onSearchTermChange).toHaveBeenCalledWith("YC-413")
+    expect(onSearchTermChange).toHaveBeenLastCalledWith("")
   })
 
   it("invokes onOpenFilterModal when filter button is clicked", async () => {

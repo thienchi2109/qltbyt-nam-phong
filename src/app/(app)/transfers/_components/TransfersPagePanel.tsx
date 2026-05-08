@@ -9,7 +9,7 @@ import type {
 import { Filter, Loader2, PlusCircle } from "lucide-react"
 
 import { DataTablePagination } from "@/components/shared/DataTablePagination"
-import { SearchInput } from "@/components/shared/SearchInput"
+import { ListFilterSearchCard } from "@/components/shared/ListFilterSearchCard"
 import { TenantSelector } from "@/components/shared/TenantSelector"
 import { TransferCard } from "@/components/transfers/TransferCard"
 import { FilterChips, type FilterChipsValue } from "@/components/transfers/FilterChips"
@@ -21,7 +21,7 @@ import { TransfersTenantSelectionPlaceholder } from "@/components/transfers/Tran
 import { TransfersViewToggle } from "@/components/transfers/TransfersViewToggle"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardFooter } from "@/components/ui/card"
 import type { DisplayContext } from "@/components/shared/DataTablePagination/types"
 import type {
   TransferCountsResponse,
@@ -58,7 +58,7 @@ type TransfersPagePanelProps = Readonly<{
   onClearAllFilters: () => void
   searchTerm: string
   onSearchTermChange: (value: string) => void
-  onClearSearch: () => void
+  filterVariant: "dialog" | "sheet"
   viewMode: "table" | "kanban"
   dataState: TransfersPagePanelDataState
   tableData: TransferListItem[]
@@ -106,7 +106,7 @@ export function TransfersPagePanel({
   onClearAllFilters,
   searchTerm,
   onSearchTermChange,
-  onClearSearch,
+  filterVariant,
   viewMode,
   dataState,
   tableData,
@@ -128,47 +128,60 @@ export function TransfersPagePanel({
   const { showFacilityFilter, isRegionalLeader } = permissions
   const { shouldFetch, isLoading: isListLoading, isFetching: isListFetching } = dataState
   const transferTypeCounts = getTransferTypeCounts(activeTab, transferCounts, totalCount)
+  const compactFilters = filterVariant === "sheet"
+
+  const filterButton = (
+    <Button
+      variant="outline"
+      onClick={onOpenFilterModal}
+      className="h-11 gap-2 font-medium sm:h-9"
+    >
+      <Filter className="h-5 w-5 sm:h-4 sm:w-4" />
+      <span className="hidden sm:inline">Bộ lọc</span>
+      {activeFilterCount > 0 && (
+        <Badge variant="secondary" className="h-5 px-1.5 text-xs sm:ml-1">
+          {activeFilterCount}
+        </Badge>
+      )}
+    </Button>
+  )
 
   return (
     <Card>
-      <CardHeader className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-        <div>
-          <CardTitle>Theo dõi và xử lý yêu cầu luân chuyển theo từng loại hình</CardTitle>
-        </div>
-        <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-row sm:items-center sm:gap-2">
-          <div className="hidden sm:block">
-            <TransfersViewToggle />
-          </div>
-
-          {showFacilityFilter && <TenantSelector />}
-
-          <Button
-            variant="outline"
-            onClick={onOpenFilterModal}
-            className="h-11 gap-2 font-medium sm:h-9"
-          >
-            <Filter className="h-5 w-5 sm:h-4 sm:w-4" />
-            <span className="hidden sm:inline">Bộ lọc</span>
-            {activeFilterCount > 0 && (
-              <Badge variant="secondary" className="h-5 px-1.5 text-xs sm:ml-1">
-                {activeFilterCount}
-              </Badge>
-            )}
-          </Button>
-
-          {!isRegionalLeader && (
-            <Button
-              onClick={onOpenAddDialog}
-              className="col-span-2 h-11 gap-2 font-medium sm:col-span-1 sm:h-9"
-            >
-              <PlusCircle className="h-5 w-5 sm:h-4 sm:w-4" />
-              Tạo yêu cầu mới
-            </Button>
-          )}
-        </div>
-      </CardHeader>
-
       <CardContent className="space-y-4">
+        <ListFilterSearchCard
+          title="Theo dõi và xử lý yêu cầu luân chuyển theo từng loại hình"
+          tenantControl={showFacilityFilter ? <TenantSelector /> : undefined}
+          surface="plain"
+          searchValue={searchTerm}
+          onSearchChange={onSearchTermChange}
+          searchPlaceholder="Tìm kiếm mã yêu cầu, thiết bị, lý do..."
+          showSearchIcon={true}
+          filterControls={filterButton}
+          mobileFilterControl={filterButton}
+          compactFilters={compactFilters}
+          actions={(
+            <>
+              <div className="hidden sm:block">
+                <TransfersViewToggle />
+              </div>
+              {!isRegionalLeader && (
+                <Button onClick={onOpenAddDialog} className="h-11 gap-2 font-medium sm:h-9">
+                  <PlusCircle className="h-5 w-5 sm:h-4 sm:w-4" />
+                  Tạo yêu cầu mới
+                </Button>
+              )}
+            </>
+          )}
+          chips={(
+            <FilterChips
+              value={filterChipsValue}
+              onRemove={onRemoveFilter}
+              onClearAll={onClearAllFilters}
+            />
+          )}
+        />
+
         <TransfersSearchParamsBoundary>
           <TransferTypeTabs
             activeTab={activeTab}
@@ -176,21 +189,6 @@ export function TransfersPagePanel({
             counts={transferTypeCounts}
           >
             <div className="flex flex-col gap-3">
-              <FilterChips
-                value={filterChipsValue}
-                onRemove={onRemoveFilter}
-                onClearAll={onClearAllFilters}
-              />
-
-              <SearchInput
-                placeholder="Tìm kiếm mã yêu cầu, thiết bị, lý do..."
-                value={searchTerm}
-                onChange={onSearchTermChange}
-                onClear={onClearSearch}
-                showSearchIcon={true}
-                className="w-full max-w-sm"
-              />
-
               {viewMode === "kanban" ? (
                 shouldFetch ? (
                   <TransfersKanbanView
