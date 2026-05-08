@@ -1,7 +1,23 @@
 import { NextResponse } from "next/server"
-import { createClient } from "@supabase/supabase-js"
+import jwt from "jsonwebtoken"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/auth/config"
+
+const SUPABASE_JWT_CLOCK_SKEW_SECONDS = 60
+
+function getEnv(name: string) {
+  const value = process.env[name]
+  if (!value) throw new Error(`${name} is not set`)
+  return value
+}
+
+function getRpcErrorMessage(payload: unknown): string {
+  if (payload && typeof payload === 'object' && 'message' in payload) {
+    const message = payload.message
+    if (typeof message === 'string' && message) return message
+  }
+  return 'Tenant switch failed'
+}
 
 export async function POST(request: Request) {
   const session = await getServerSession(authOptions)
@@ -11,40 +27,53 @@ export async function POST(request: Request) {
   const don_vi = Number(body?.don_vi)
   if (!don_vi) return NextResponse.json({ ok: false, error: 'Invalid don_vi' }, { status: 400 })
 
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  const supabase = createClient(supabaseUrl, supabaseAnonKey)
-
-  const role = String(session.user.role || '')
-  const appRole = role === 'admin' ? 'global' : role
-
-  if (appRole !== 'global') {
-    // Non-global: Verify membership exists for this user and don_vi
-    const { data: m, error: mErr } = await supabase
-      .from('user_don_vi_memberships')
-      .select('user_id')
-      .eq('user_id', session.user.id)
-      .eq('don_vi', don_vi)
-      .single()
-    if (mErr || !m) return NextResponse.json({ ok: false, error: 'Not a member of tenant' }, { status: 403 })
-  } else {
-    // Global: ensure target tenant exists and is active (or active is null)
-    const { data: tenant, error: tErr } = await supabase
-      .from('don_vi')
-      .select('id, active')
-      .eq('id', don_vi)
-      .single()
-    if (tErr || !tenant || (tenant.active === false)) {
-      return NextResponse.json({ ok: false, error: 'Invalid or inactive tenant' }, { status: 400 })
-    }
+  const userId = Number(session.user.id)
+  if (!Number.isInteger(userId)) {
+    return NextResponse.json({ ok: false, error: 'Invalid user id' }, { status: 401 })
   }
 
-  const { error } = await supabase
-    .from('nhan_vien')
-    .update({ current_don_vi: don_vi })
-    .eq('id', session.user.id)
+  const rawRole = String(session.user.role || '').toLowerCase()
+  const appRole = rawRole === 'admin' ? 'global' : rawRole
+  const donViClaim = session.user.don_vi ? String(session.user.don_vi) : null
+  const diaBanClaim = session.user.dia_ban_id ? String(session.user.dia_ban_id) : null
+  const khoaPhongClaim = session.user.khoa_phong ? String(session.user.khoa_phong) : null
 
-  if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 500 })
+  const now = Math.floor(Date.now() / 1000)
+  const issuedAt = now - SUPABASE_JWT_CLOCK_SKEW_SECONDS
+  const token = jwt.sign(
+    {
+      role: 'authenticated',
+      iat: issuedAt,
+      exp: now + 120,
+      sub: String(userId),
+      app_role: appRole,
+      don_vi: donViClaim,
+      user_id: String(userId),
+      dia_ban: diaBanClaim,
+      khoa_phong: khoaPhongClaim,
+    },
+    getEnv('SUPABASE_JWT_SECRET'),
+    { algorithm: 'HS256' },
+  )
+
+  const response = await fetch(`${getEnv('NEXT_PUBLIC_SUPABASE_URL')}/rest/v1/rpc/user_set_current_don_vi`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`,
+      'Accept': 'application/json',
+      'apikey': getEnv('NEXT_PUBLIC_SUPABASE_ANON_KEY'),
+    },
+    body: JSON.stringify({
+      p_user_id: userId,
+      p_don_vi: don_vi,
+    }),
+  })
+
+  if (!response.ok) {
+    const payload = await response.json().catch(() => null)
+    return NextResponse.json({ ok: false, error: getRpcErrorMessage(payload) }, { status: response.status })
+  }
 
   return NextResponse.json({ ok: true })
 }
