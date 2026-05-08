@@ -153,13 +153,14 @@ body {
     font-style: italic;
 }
 
-/* ── 3-Column Info Strip ── */
+/* ── 2x2 Info Strip ── */
 .info-strip {
     display: grid;
-    grid-template-columns: 1fr 1fr 1fr;
+    grid-template-columns: 1fr 1fr;
+    row-gap: 10px;
     border-top: 1px solid rgba(200, 169, 81, 0.15);
     border-bottom: 1px solid rgba(200, 169, 81, 0.15);
-    padding: 12px 0;
+    padding: 14px 0;
     margin-bottom: 20px;
 }
 
@@ -171,7 +172,7 @@ body {
     font-size: 13px;
 }
 
-.info-strip .info-cell:not(:last-child) {
+.info-strip .info-cell:nth-child(odd) {
     border-right: 1px solid rgba(27, 58, 92, 0.2);
 }
 
@@ -207,18 +208,6 @@ body {
     display: flex;
     align-items: flex-end;
     padding-left: 8px;
-}
-
-.date-input {
-    background: transparent;
-    border: none;
-    outline: none;
-    font-family: inherit;
-    font-size: 14px;
-    color: inherit;
-    font-style: italic;
-    width: 100%;
-    cursor: pointer;
 }
 
 /* ── Date Line ── */
@@ -291,6 +280,5 @@ body {
     }
     .no-print { display: none !important; }
     .a4-page + .a4-page { margin-top: 0 !important; }
-    .date-input::-webkit-calendar-picker-indicator { display: none !important; }
 }
 `

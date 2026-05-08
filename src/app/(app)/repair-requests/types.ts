@@ -31,6 +31,7 @@ export type RepairRequestWithEquipment = {
     ten_thiet_bi: string
     ma_thiet_bi: string
     model: string | null
+    hang_san_xuat?: string | null
     serial: string | null
     khoa_phong_quan_ly: string | null
     facility_name: string | null
