@@ -51,6 +51,18 @@ describe('RPC proxy whitelist', () => {
   })
 
   it.each([
+    'user_list_for_admin',
+    'user_update_profile',
+    'user_delete_by_admin',
+    'reset_password_by_admin',
+  ])('allows user-management RPC "%s" through whitelist checks', async (fn) => {
+    const res = await invokeRpcProxy(fn)
+
+    expect(res.status).toBe(411)
+    await expect(res.json()).resolves.toEqual({ error: 'Content-Length header required' })
+  })
+
+  it.each([
     'equipment_filter_buckets',
     'dashboard_kpi_summary',
   ])('allows performance RPC "%s" through whitelist checks', async (fn) => {
