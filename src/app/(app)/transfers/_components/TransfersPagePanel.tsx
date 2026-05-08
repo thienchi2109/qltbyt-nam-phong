@@ -11,8 +11,10 @@ import { Filter, Loader2, PlusCircle } from "lucide-react"
 import { DataTablePagination } from "@/components/shared/DataTablePagination"
 import { ListFilterSearchCard } from "@/components/shared/ListFilterSearchCard"
 import { TenantSelector } from "@/components/shared/TenantSelector"
+import { FacetedMultiSelectFilter } from "@/components/shared/table-filters/FacetedMultiSelectFilter"
 import { TransferCard } from "@/components/transfers/TransferCard"
 import { FilterChips, type FilterChipsValue } from "@/components/transfers/FilterChips"
+import type { FilterModalValue } from "@/components/transfers/FilterModal"
 import { TransferTypeTabs } from "@/components/transfers/TransferTypeTabs"
 import { TransfersKanbanView } from "@/components/transfers/TransfersKanbanView"
 import { TransfersSearchParamsBoundary } from "@/components/transfers/TransfersSearchParamsBoundary"
@@ -28,9 +30,12 @@ import type {
   TransferKanbanResponse,
   TransferListFilters,
   TransferListItem,
+  TransferStatus,
   TransferType,
 } from "@/types/transfers-data-grid"
+import { TRANSFER_STATUS_LABELS } from "@/types/transfers-data-grid"
 
+import { TransfersDateFilterButton } from "./TransfersDateFilterButton"
 import type { TransferUserRole } from "./TransfersTypes"
 
 export type TransfersPagePanelPermissions = Readonly<{
@@ -58,6 +63,8 @@ type TransfersPagePanelProps = Readonly<{
   onClearAllFilters: () => void
   searchTerm: string
   onSearchTermChange: (value: string) => void
+  filterValue: FilterModalValue
+  onFilterChange: (value: FilterModalValue) => void
   filterVariant: "dialog" | "sheet"
   viewMode: "table" | "kanban"
   dataState: TransfersPagePanelDataState
@@ -106,6 +113,8 @@ export function TransfersPagePanel({
   onClearAllFilters,
   searchTerm,
   onSearchTermChange,
+  filterValue,
+  onFilterChange,
   filterVariant,
   viewMode,
   dataState,
@@ -129,6 +138,26 @@ export function TransfersPagePanel({
   const { shouldFetch, isLoading: isListLoading, isFetching: isListFetching } = dataState
   const transferTypeCounts = getTransferTypeCounts(activeTab, transferCounts, totalCount)
   const compactFilters = filterVariant === "sheet"
+  const statusOptions = React.useMemo(
+    () =>
+      (Object.entries(TRANSFER_STATUS_LABELS) as [TransferStatus, string][]).map(
+        ([value, label]) => ({ value, label }),
+      ),
+    [],
+  )
+
+  const setDateRangePart = React.useCallback(
+    (key: "from" | "to", date: Date | null) => {
+      onFilterChange({
+        ...filterValue,
+        dateRange: {
+          from: key === "from" ? date : filterValue.dateRange?.from ?? null,
+          to: key === "to" ? date : filterValue.dateRange?.to ?? null,
+        },
+      })
+    },
+    [filterValue, onFilterChange],
+  )
 
   const filterButton = (
     <Button
@@ -146,6 +175,29 @@ export function TransfersPagePanel({
     </Button>
   )
 
+  const filterControls = (
+    <>
+      <FacetedMultiSelectFilter
+        title="Trạng thái"
+        options={statusOptions}
+        value={filterValue.statuses}
+        onChange={(statuses) =>
+          onFilterChange({ ...filterValue, statuses: statuses as TransferStatus[] })
+        }
+      />
+      <TransfersDateFilterButton
+        label="Từ ngày"
+        value={filterValue.dateRange?.from ?? null}
+        onChange={(date) => setDateRangePart("from", date)}
+      />
+      <TransfersDateFilterButton
+        label="Đến ngày"
+        value={filterValue.dateRange?.to ?? null}
+        onChange={(date) => setDateRangePart("to", date)}
+      />
+    </>
+  )
+
   return (
     <Card>
       <CardContent className="space-y-4">
@@ -157,7 +209,7 @@ export function TransfersPagePanel({
           onSearchChange={onSearchTermChange}
           searchPlaceholder="Tìm kiếm mã yêu cầu, thiết bị, lý do..."
           showSearchIcon={true}
-          filterControls={filterButton}
+          filterControls={filterControls}
           mobileFilterControl={filterButton}
           compactFilters={compactFilters}
           actions={(
@@ -166,7 +218,10 @@ export function TransfersPagePanel({
                 <TransfersViewToggle />
               </div>
               {!isRegionalLeader && (
-                <Button onClick={onOpenAddDialog} className="h-11 gap-2 font-medium sm:h-9">
+                <Button
+                  onClick={onOpenAddDialog}
+                  className="h-11 gap-2 font-medium sm:h-9"
+                >
                   <PlusCircle className="h-5 w-5 sm:h-4 sm:w-4" />
                   Tạo yêu cầu mới
                 </Button>
