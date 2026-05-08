@@ -112,11 +112,11 @@ export function TransfersPageContent({ user }: TransfersPageContentProps) {
           onOpenAddDialog={() => controller.setIsAddDialogOpen(true)}
           filterChipsValue={controller.filterChipsValue}
           onRemoveFilter={controller.filtersState.handleRemoveFilter}
-          onClearAllFilters={controller.filtersState.handleClearAllFilters}
-          searchTerm={controller.filtersState.searchTerm}
-          onSearchTermChange={controller.filtersState.setSearchTerm}
-          onClearSearch={controller.filtersState.clearSearch}
-          viewMode={controller.viewMode}
+            onClearAllFilters={controller.filtersState.handleClearAllFilters}
+            searchTerm={controller.filtersState.searchTerm}
+            onSearchTermChange={controller.filtersState.setSearchTerm}
+            filterVariant={controller.filterVariant}
+            viewMode={controller.viewMode}
           dataState={{
             shouldFetch: controller.shouldFetchData,
             isLoading: controller.isListLoading,
