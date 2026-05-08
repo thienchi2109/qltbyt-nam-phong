@@ -210,18 +210,6 @@ body {
     padding-left: 8px;
 }
 
-.date-input {
-    background: transparent;
-    border: none;
-    outline: none;
-    font-family: inherit;
-    font-size: 14px;
-    color: inherit;
-    font-style: italic;
-    width: 100%;
-    cursor: pointer;
-}
-
 /* ── Date Line ── */
 .date-line {
     text-align: right;
@@ -292,6 +280,5 @@ body {
     }
     .no-print { display: none !important; }
     .a4-page + .a4-page { margin-top: 0 !important; }
-    .date-input::-webkit-calendar-picker-indicator { display: none !important; }
 }
 `
