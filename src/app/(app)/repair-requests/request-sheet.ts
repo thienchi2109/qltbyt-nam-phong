@@ -63,7 +63,7 @@ function buildPage1(
 
                 <div class="field-row">
                     <span class="field-label">Tên thiết bị:</span>
-                    <div class="field-value dotted-gold">${formatValue(eq.ten_thiet_bi)}</div>
+                    <div class="field-value dotted-gold" style="font-style: normal; font-weight: 700; text-transform: uppercase;">${formatValue(eq.ten_thiet_bi)}</div>
                 </div>
 
                 <div class="info-strip">
@@ -74,6 +74,10 @@ function buildPage1(
                     <div class="info-cell">
                         <span class="info-label">Model:</span>
                         <span>${formatValue(eq.model)}</span>
+                    </div>
+                    <div class="info-cell">
+                        <span class="info-label">Hãng sản xuất:</span>
+                        <span>${formatValue(eq.hang_san_xuat)}</span>
                     </div>
                     <div class="info-cell">
                         <span class="info-label">Serial N⁰:</span>
@@ -102,7 +106,7 @@ function buildPage1(
                 <div class="completion-row">
                     <span class="completion-label">Ngày mong muốn hoàn thành (nếu có):</span>
                     <div class="completion-value dotted-gold">
-                        <input type="date" class="date-input" value="${completionDateValue}">
+                        <span>${completionDateValue}</span>
                     </div>
                 </div>
             </section>
@@ -160,7 +164,7 @@ export function buildRepairRequestSheetHtml(
 
   const derived = {
     completionDateValue: request.ngay_mong_muon_hoan_thanh
-      ? format(parseISO(request.ngay_mong_muon_hoan_thanh), 'yyyy-MM-dd')
+      ? format(parseISO(request.ngay_mong_muon_hoan_thanh), 'dd/MM/yyyy')
       : '',
   }
 

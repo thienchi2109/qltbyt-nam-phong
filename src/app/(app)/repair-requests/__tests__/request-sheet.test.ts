@@ -26,6 +26,7 @@ const request: RepairRequestWithEquipment = {
     ten_thiet_bi: "Máy Monitor",
     ma_thiet_bi: "TB-10",
     model: "M-10",
+    hang_san_xuat: "Philips",
     serial: "SN-10",
     khoa_phong_quan_ly: "Khoa A",
     facility_name: "BV A",
@@ -61,6 +62,67 @@ describe("buildRepairRequestSheetHtml", () => {
     expect(topRowEnd).toBeGreaterThan(topRowMiddle)
     expect(bottomRow).toBeGreaterThan(topRowEnd)
     expect(html).toContain("Nguyễn Văn A")
+  })
+
+  it("renders the equipment name and info strip in the requested print format", () => {
+    const html = buildRepairRequestSheetHtml(request, {
+      organizationName: "CDC Cần Thơ",
+      logoUrl: "https://example.com/logo.png",
+    })
+
+    const equipmentNameSection = html.slice(
+      html.indexOf("Tên thiết bị:"),
+      html.indexOf('<div class="info-strip">')
+    )
+    const codeIndex = html.indexOf("Mã TB:")
+    const modelIndex = html.indexOf("Model:")
+    const manufacturerIndex = html.indexOf("Hãng sản xuất:")
+    const serialIndex = html.indexOf("Serial N⁰:")
+
+    expect(equipmentNameSection).toContain("font-style: normal")
+    expect(equipmentNameSection).toContain("font-weight: 700")
+    expect(equipmentNameSection).toContain("text-transform: uppercase")
+    expect(equipmentNameSection).not.toContain("font-style: italic")
+
+    expect(html).toContain("Hãng sản xuất:")
+    expect(html).toContain("Philips")
+    expect(codeIndex).toBeGreaterThan(-1)
+    expect(modelIndex).toBeGreaterThan(codeIndex)
+    expect(manufacturerIndex).toBeGreaterThan(modelIndex)
+    expect(serialIndex).toBeGreaterThan(manufacturerIndex)
+  })
+
+  it("renders the desired completion date as plain printable text", () => {
+    const html = buildRepairRequestSheetHtml(request, {
+      organizationName: "CDC Cần Thơ",
+      logoUrl: "https://example.com/logo.png",
+    })
+
+    expect(html).toContain("10/01/2026")
+    expect(html).not.toContain('type="date"')
+    expect(html).not.toContain("mm/dd/yyyy")
+  })
+
+  it("keeps an empty writable completion date line when the desired date is missing", () => {
+    const html = buildRepairRequestSheetHtml(
+      {
+        ...request,
+        ngay_mong_muon_hoan_thanh: null,
+      },
+      {
+        organizationName: "CDC Cần Thơ",
+        logoUrl: "https://example.com/logo.png",
+      }
+    )
+
+    const completionRow = html.slice(
+      html.indexOf("Ngày mong muốn hoàn thành"),
+      html.indexOf("</section>", html.indexOf("Ngày mong muốn hoàn thành"))
+    )
+
+    expect(completionRow).toContain("completion-value dotted-gold")
+    expect(completionRow).not.toMatch(/\d{2}\/\d{2}\/\d{4}/)
+    expect(completionRow).not.toContain('type="date"')
   })
 
   it("renders a signature line fallback when requester name is missing", () => {
