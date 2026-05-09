@@ -10,7 +10,15 @@ import {
 } from "./request-context"
 
 function toStringId(value: unknown): string | undefined {
-  return typeof value === "string" ? value : value != null ? String(value) : undefined
+  if (typeof value === "string") {
+    return value
+  }
+
+  if (value != null) {
+    return String(value)
+  }
+
+  return undefined
 }
 
 export const authEvents: NonNullable<NextAuthOptions["events"]> = {
