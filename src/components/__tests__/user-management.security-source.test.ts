@@ -35,6 +35,7 @@ describe("user-management nhan_vien security posture", () => {
       "utf8",
     )
 
+    expect(source).toContain("export const runtime = 'nodejs'")
     expect(source).toContain("user_set_current_don_vi")
     expect(source).not.toContain(".from('nhan_vien')")
     expect(source).not.toContain('.from("nhan_vien")')

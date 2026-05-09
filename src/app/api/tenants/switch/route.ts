@@ -3,6 +3,8 @@ import jwt from "jsonwebtoken"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/auth/config"
 
+export const runtime = 'nodejs'
+
 const SUPABASE_JWT_CLOCK_SKEW_SECONDS = 60
 
 function getEnv(name: string) {

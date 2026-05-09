@@ -205,6 +205,70 @@ END $$;
 DO $$
 DECLARE
   v_tenant_id BIGINT;
+  v_admin_id BIGINT;
+  v_created_id INTEGER;
+  v_hash TEXT;
+BEGIN
+  BEGIN
+    INSERT INTO public.don_vi(name, active)
+    VALUES ('Issue 405 trimmed password smoke tenant', TRUE)
+    RETURNING id INTO v_tenant_id;
+
+    INSERT INTO public.nhan_vien(username, password, hashed_password, full_name, role, don_vi, current_don_vi)
+    VALUES (
+      'issue405_trimmed_password_admin_smoke',
+      'hashed password',
+      extensions.crypt('temporary-admin-password', extensions.gen_salt('bf', 12)),
+      'Issue 405 Trimmed Password Admin Smoke',
+      'global',
+      v_tenant_id,
+      v_tenant_id
+    )
+    RETURNING id INTO v_admin_id;
+
+    PERFORM set_config(
+      'request.jwt.claims',
+      jsonb_build_object(
+        'app_role', 'global',
+        'role', 'global',
+        'user_id', v_admin_id,
+        'don_vi', v_tenant_id
+      )::TEXT,
+      TRUE
+    );
+
+    v_created_id := public.user_create(
+      'issue405_trimmed_password_user_smoke',
+      '  temporary-password  ',
+      'Issue 405 Trimmed Password User Smoke',
+      'user',
+      v_tenant_id,
+      NULL
+    );
+
+    SELECT nv.hashed_password
+    INTO v_hash
+    FROM public.nhan_vien nv
+    WHERE nv.id = v_created_id;
+
+    IF extensions.crypt('temporary-password', v_hash) IS DISTINCT FROM v_hash THEN
+      RAISE EXCEPTION 'user_create must hash the trimmed password value';
+    END IF;
+
+    RAISE EXCEPTION 'rollback trimmed password smoke';
+  EXCEPTION
+    WHEN raise_exception THEN
+      IF SQLERRM = 'rollback trimmed password smoke' THEN
+        NULL;
+      ELSE
+        RAISE;
+      END IF;
+  END;
+END $$;
+
+DO $$
+DECLARE
+  v_tenant_id BIGINT;
   v_created_id INTEGER;
 BEGIN
   BEGIN
@@ -344,6 +408,19 @@ BEGIN
         AND nv.password_reset_required IS TRUE
     ) THEN
       RAISE EXCEPTION 'reset_password_by_admin must set password_reset_required true';
+    END IF;
+
+    IF NOT EXISTS (
+      SELECT 1
+      FROM public.audit_logs al
+      WHERE al.admin_user_id = v_admin_id
+        AND al.action_type = 'password_reset_admin'
+        AND al.target_user_id = v_target_id
+        AND al.target_username = 'issue405_reset_target_smoke'
+        AND al.entity_type = 'nhan_vien'
+        AND al.entity_id = v_target_id
+    ) THEN
+      RAISE EXCEPTION 'reset_password_by_admin must write an audit log';
     END IF;
 
     RAISE EXCEPTION 'rollback reset flag smoke';
