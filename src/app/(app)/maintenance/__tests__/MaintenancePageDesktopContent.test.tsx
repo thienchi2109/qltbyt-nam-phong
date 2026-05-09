@@ -63,31 +63,37 @@ import { MaintenancePageDesktopContent } from "../_components/maintenance-page-d
 function renderDesktopContent() {
   return render(
     <MaintenancePageDesktopContent
-      statusCounts={{ "Bản nháp": 1 }}
-      isCountsLoading={false}
-      isCountsError={false}
-      showFacilityFilter={false}
-      facilities={[]}
-      selectedFacilityId={null}
-      onFacilityChange={vi.fn()}
-      isLoadingFacilities={false}
-      totalCount={0}
-      planSearchTerm=""
-      onPlanSearchChange={vi.fn()}
-      isMobile={false}
-      mobilePlanCards={null}
-      planTable={{} as never}
-      planColumns={[]}
-      currentPage={1}
-      totalPages={1}
-      pageSize={10}
-      plans={[]}
-      isLoadingPlans={false}
-      onPageChange={vi.fn()}
-      onPageSizeChange={vi.fn()}
-      isFiltered={false}
-      taskTable={{} as never}
-      taskColumns={[]}
+      countsState={{
+        statusCounts: { "Bản nháp": 1 },
+        isCountsLoading: false,
+        isCountsError: false,
+      }}
+      filterState={{
+        showFacilityFilter: false,
+        totalCount: 0,
+        planSearchTerm: "",
+        onPlanSearchChange: vi.fn(),
+      }}
+      viewportState={{
+        isMobile: false,
+        mobilePlanCards: null,
+      }}
+      planListState={{
+        planTable: {} as never,
+        planColumns: [],
+        currentPage: 1,
+        totalPages: 1,
+        pageSize: 10,
+        plans: [],
+        isLoadingPlans: false,
+        onPageChange: vi.fn(),
+        onPageSizeChange: vi.fn(),
+        isFiltered: false,
+      }}
+      taskListState={{
+        taskTable: {} as never,
+        taskColumns: [],
+      }}
     />,
   )
 }

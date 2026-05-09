@@ -48,29 +48,25 @@ import { MobileMaintenanceLayout } from "../_components/mobile-maintenance-layou
 function renderMobileLayout() {
   return render(
     <MobileMaintenanceLayout
-      statusCounts={{ "Bản nháp": 1 }}
-      isCountsLoading={false}
-      isCountsError={false}
-      plans={[]}
-      isLoadingPlans={false}
-      planSearchTerm=""
-      setPlanSearchTerm={vi.fn()}
-      onClearSearch={vi.fn()}
-      totalPages={1}
-      totalCount={0}
-      currentPage={1}
-      setCurrentPage={vi.fn()}
-      showFacilityFilter={false}
-      facilities={[]}
-      selectedFacilityId={null}
-      isLoadingFacilities={false}
-      isMobileFilterSheetOpen={false}
-      setIsMobileFilterSheetOpen={vi.fn()}
-      pendingFacilityFilter={null}
-      setPendingFacilityFilter={vi.fn()}
-      handleMobileFilterApply={vi.fn()}
-      handleMobileFilterClear={vi.fn()}
-      activeMobileFilterCount={0}
+      countsState={{
+        statusCounts: { "Bản nháp": 1 },
+        isCountsLoading: false,
+        isCountsError: false,
+      }}
+      plansState={{
+        plans: [],
+        isLoadingPlans: false,
+        planSearchTerm: "",
+        setPlanSearchTerm: vi.fn(),
+        onClearSearch: vi.fn(),
+      }}
+      paginationState={{
+        totalPages: 1,
+        totalCount: 0,
+        currentPage: 1,
+        setCurrentPage: vi.fn(),
+      }}
+      filterState={{ showFacilityFilter: false }}
       expandedTaskIds={{}}
       toggleTaskExpansion={vi.fn()}
     />,
