@@ -76,8 +76,10 @@ export function MaintenancePageClient() {
     })
 
   const plans = React.useMemo(() => paginatedResponse?.data ?? [], [paginatedResponse?.data])
-  const totalCount = paginatedResponse?.total ?? 0
+  const visiblePlans = React.useMemo(() => shouldFetchData ? plans : [], [plans, shouldFetchData])
+  const totalCount = shouldFetchData ? paginatedResponse?.total ?? 0 : 0
   const totalPages = Math.ceil(totalCount / pageSize)
+  const visibleStatusCounts = shouldFetchData ? statusCounts : undefined
 
   const clearTaskRowSelection = React.useCallback(() => {
     setTaskRowSelection((previousSelection) =>
@@ -85,9 +87,28 @@ export function MaintenancePageClient() {
     )
   }, [setTaskRowSelection])
 
+  const previousTenantSelection = React.useRef(tenantSelectedFacilityId)
+  React.useEffect(() => {
+    if (previousTenantSelection.current === tenantSelectedFacilityId) {
+      return
+    }
+
+    previousTenantSelection.current = tenantSelectedFacilityId
+    setSelectedPlan(null)
+    setActiveTab("plans")
+    ctx.setDraftTasks([])
+    clearTaskRowSelection()
+  }, [
+    tenantSelectedFacilityId,
+    setSelectedPlan,
+    setActiveTab,
+    ctx.setDraftTasks,
+    clearTaskRowSelection,
+  ])
+
   // Deep-link resolution (URL → select plan / open dialog)
   useMaintenanceDeepLink({
-    plans,
+    plans: visiblePlans,
     isLoadingPlans,
     setIsAddPlanDialogOpen,
     canCreatePlans: ctx.canCreatePlans,
@@ -129,7 +150,7 @@ export function MaintenancePageClient() {
   })
 
   const planTable = useReactTable({
-    data: plans,
+    data: visiblePlans,
     columns: planColumns,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
@@ -225,9 +246,9 @@ export function MaintenancePageClient() {
       <>
         <MaintenanceDialogs />
         <MobileMaintenanceLayout
-          countsState={{ statusCounts, isCountsLoading, isCountsError }}
+          countsState={{ statusCounts: visibleStatusCounts, isCountsLoading, isCountsError }}
           plansState={{
-            plans,
+            plans: visiblePlans,
             isLoadingPlans,
             planSearchTerm,
             setPlanSearchTerm: handlePlanSearchChange,
@@ -251,7 +272,7 @@ export function MaintenancePageClient() {
     <>
       <MaintenanceDialogs />
       <MaintenancePageDesktopContent
-        countsState={{ statusCounts, isCountsLoading, isCountsError }}
+        countsState={{ statusCounts: visibleStatusCounts, isCountsLoading, isCountsError }}
         filterState={{
           showFacilityFilter,
           totalCount,
@@ -268,7 +289,7 @@ export function MaintenancePageClient() {
           currentPage,
           totalPages,
           pageSize,
-          plans,
+          plans: visiblePlans,
           isLoadingPlans,
           onPageChange: setCurrentPage,
           onPageSizeChange: handlePageSizeChange,

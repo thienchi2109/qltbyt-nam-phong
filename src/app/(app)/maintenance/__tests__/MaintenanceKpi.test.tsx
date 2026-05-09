@@ -109,9 +109,11 @@ vi.mock("../_components/maintenance-page-desktop-content", () => ({
       isCountsError?: boolean
     }
     filterState: {
+      totalCount: number
       onPlanSearchChange: (value: string) => void
     }
     planListState: {
+      plans: unknown[]
       onPageChange: (page: number) => void
     }
   }) => (
@@ -120,6 +122,8 @@ vi.mock("../_components/maintenance-page-desktop-content", () => ({
       data-counts={JSON.stringify(countsState.statusCounts ?? null)}
       data-loading={String(Boolean(countsState.isCountsLoading))}
       data-error={String(Boolean(countsState.isCountsError))}
+      data-plan-count={String(planListState.plans.length)}
+      data-total-count={String(filterState.totalCount)}
     >
       <button type="button" onClick={() => filterState.onPlanSearchChange("ngoai tim")}>
         set-search
@@ -161,6 +165,7 @@ function createMaintenanceContext() {
     setSelectedPlan: vi.fn(),
     setActiveTab: vi.fn(),
     selectedPlan: null,
+    setDraftTasks: vi.fn(),
     fetchPlanDetails: vi.fn(),
     handleSelectPlan: vi.fn(),
     operations: {
@@ -283,6 +288,45 @@ describe("Maintenance KPI integration", () => {
 
     expectPlanRequestMissing({ search: undefined, facilityId: 7, page: 3, pageSize: 50 })
     await expectLastPlanRequest({ search: undefined, facilityId: 7, page: 1, pageSize: 50 })
+  })
+
+  it("suppresses cached maintenance plans while privileged tenant selection is unresolved", () => {
+    setTenantSelection(undefined)
+    mocks.useMaintenancePlans.mockReturnValueOnce({
+      data: {
+        data: [{ id: 42 }],
+        total: 1,
+      },
+      isLoading: false,
+    })
+
+    render(<MaintenancePageClient />)
+
+    expect(screen.getByTestId("desktop-layout")).toHaveAttribute("data-plan-count", "0")
+    expect(screen.getByTestId("desktop-layout")).toHaveAttribute("data-total-count", "0")
+    expect(mocks.useMaintenancePlans).toHaveBeenLastCalledWith(
+      expect.objectContaining({ facilityId: null }),
+      expect.objectContaining({ enabled: false }),
+    )
+  })
+
+  it("clears the selected plan and drafts when tenant selection changes", () => {
+    const context = {
+      ...createMaintenanceContext(),
+      selectedPlan: { id: 42, ten_ke_hoach: "Kế hoạch cũ" },
+      activeTab: "tasks",
+      draftTasks: [{ id: 101 }],
+    }
+    mocks.useMaintenanceContext.mockReturnValue(context)
+    const { rerender } = render(<MaintenancePageClient />)
+
+    setTenantSelection(7)
+    rerender(<MaintenancePageClient />)
+
+    expect(context.setSelectedPlan).toHaveBeenCalledWith(null)
+    expect(context.setActiveTab).toHaveBeenCalledWith("plans")
+    expect(context.setDraftTasks).toHaveBeenCalledWith([])
+    expect(context.setTaskRowSelection).toHaveBeenCalled()
   })
 
   it("resets plan pagination before applying debounced search", async () => {
