@@ -251,6 +251,10 @@ BEGIN
     FROM public.nhan_vien nv
     WHERE nv.id = v_created_id;
 
+    IF NOT FOUND OR v_hash IS NULL THEN
+      RAISE EXCEPTION 'user_create must create the expected row with a hashed password';
+    END IF;
+
     IF extensions.crypt('temporary-password', v_hash) IS DISTINCT FROM v_hash THEN
       RAISE EXCEPTION 'user_create must hash the trimmed password value';
     END IF;
