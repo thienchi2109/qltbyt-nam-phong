@@ -153,6 +153,58 @@ END $$;
 DO $$
 DECLARE
   v_tenant_id BIGINT;
+  v_admin_id BIGINT;
+  v_created_id INTEGER;
+BEGIN
+  BEGIN
+    INSERT INTO public.don_vi(name, active)
+    VALUES ('Issue 405 empty password smoke tenant', TRUE)
+    RETURNING id INTO v_tenant_id;
+
+    INSERT INTO public.nhan_vien(username, password, hashed_password, full_name, role, don_vi, current_don_vi)
+    VALUES (
+      'issue405_empty_password_admin_smoke',
+      'hashed password',
+      extensions.crypt('temporary-admin-password', extensions.gen_salt('bf', 12)),
+      'Issue 405 Empty Password Admin Smoke',
+      'global',
+      v_tenant_id,
+      v_tenant_id
+    )
+    RETURNING id INTO v_admin_id;
+
+    PERFORM set_config(
+      'request.jwt.claims',
+      jsonb_build_object(
+        'app_role', 'global',
+        'role', 'global',
+        'user_id', v_admin_id,
+        'don_vi', v_tenant_id
+      )::TEXT,
+      TRUE
+    );
+
+    v_created_id := public.user_create(
+      'issue405_empty_password_user_smoke',
+      '   ',
+      'Issue 405 Empty Password User Smoke',
+      'user',
+      v_tenant_id,
+      NULL
+    );
+
+    RAISE EXCEPTION 'user_create allowed blank password for user id %', v_created_id;
+  EXCEPTION
+    WHEN invalid_parameter_value THEN
+      NULL;
+    WHEN raise_exception THEN
+      RAISE;
+  END;
+END $$;
+
+DO $$
+DECLARE
+  v_tenant_id BIGINT;
   v_created_id INTEGER;
 BEGIN
   BEGIN
@@ -186,6 +238,122 @@ BEGIN
       NULL;
     WHEN raise_exception THEN
       RAISE;
+  END;
+END $$;
+
+DO $$
+DECLARE
+  v_tenant_id BIGINT;
+  v_user_id BIGINT;
+BEGIN
+  BEGIN
+    INSERT INTO public.don_vi(name, active)
+    VALUES ('Issue 405 inactive switch smoke tenant', FALSE)
+    RETURNING id INTO v_tenant_id;
+
+    INSERT INTO public.nhan_vien(username, password, hashed_password, full_name, role, don_vi, current_don_vi)
+    VALUES (
+      'issue405_inactive_switch_user_smoke',
+      'hashed password',
+      extensions.crypt('temporary-password', extensions.gen_salt('bf', 12)),
+      'Issue 405 Inactive Switch User Smoke',
+      'user',
+      v_tenant_id,
+      v_tenant_id
+    )
+    RETURNING id INTO v_user_id;
+
+    INSERT INTO public.user_don_vi_memberships(user_id, don_vi)
+    VALUES (v_user_id, v_tenant_id);
+
+    PERFORM set_config(
+      'request.jwt.claims',
+      jsonb_build_object(
+        'app_role', 'user',
+        'role', 'user',
+        'user_id', v_user_id,
+        'don_vi', v_tenant_id
+      )::TEXT,
+      TRUE
+    );
+
+    PERFORM public.user_set_current_don_vi(v_user_id::INTEGER, v_tenant_id);
+
+    RAISE EXCEPTION 'user_set_current_don_vi allowed inactive tenant switch';
+  EXCEPTION
+    WHEN invalid_parameter_value THEN
+      NULL;
+    WHEN raise_exception THEN
+      RAISE;
+  END;
+END $$;
+
+DO $$
+DECLARE
+  v_tenant_id BIGINT;
+  v_admin_id BIGINT;
+  v_target_id BIGINT;
+BEGIN
+  BEGIN
+    INSERT INTO public.don_vi(name, active)
+    VALUES ('Issue 405 reset flag smoke tenant', TRUE)
+    RETURNING id INTO v_tenant_id;
+
+    INSERT INTO public.nhan_vien(username, password, hashed_password, full_name, role, don_vi, current_don_vi)
+    VALUES (
+      'issue405_reset_admin_smoke',
+      'hashed password',
+      extensions.crypt('temporary-admin-password', extensions.gen_salt('bf', 12)),
+      'Issue 405 Reset Admin Smoke',
+      'global',
+      v_tenant_id,
+      v_tenant_id
+    )
+    RETURNING id INTO v_admin_id;
+
+    INSERT INTO public.nhan_vien(username, password, hashed_password, full_name, role, don_vi, current_don_vi, password_reset_required)
+    VALUES (
+      'issue405_reset_target_smoke',
+      'hashed password',
+      extensions.crypt('temporary-user-password', extensions.gen_salt('bf', 12)),
+      'Issue 405 Reset Target Smoke',
+      'user',
+      v_tenant_id,
+      v_tenant_id,
+      FALSE
+    )
+    RETURNING id INTO v_target_id;
+
+    PERFORM set_config(
+      'request.jwt.claims',
+      jsonb_build_object(
+        'app_role', 'global',
+        'role', 'global',
+        'user_id', v_admin_id,
+        'don_vi', v_tenant_id
+      )::TEXT,
+      TRUE
+    );
+
+    PERFORM public.reset_password_by_admin(v_admin_id, v_target_id);
+
+    IF NOT EXISTS (
+      SELECT 1
+      FROM public.nhan_vien nv
+      WHERE nv.id = v_target_id
+        AND nv.password_reset_required IS TRUE
+    ) THEN
+      RAISE EXCEPTION 'reset_password_by_admin must set password_reset_required true';
+    END IF;
+
+    RAISE EXCEPTION 'rollback reset flag smoke';
+  EXCEPTION
+    WHEN raise_exception THEN
+      IF SQLERRM = 'rollback reset flag smoke' THEN
+        NULL;
+      ELSE
+        RAISE;
+      END IF;
   END;
 END $$;
 
