@@ -105,6 +105,7 @@ export function MobileMaintenanceLayout({
               {planSearchTerm && (
                 <button
                   type="button"
+                  aria-label="Xóa tìm kiếm"
                   className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full bg-muted p-1"
                   onClick={onClearSearch}
                 >
@@ -207,7 +208,13 @@ export function MobileMaintenanceLayout({
               <span>{totalCount} kế hoạch</span>
             </div>
             <div className="grid grid-cols-4 gap-2 pb-2">
-              <Button variant="outline" className="h-10 rounded-xl" onClick={() => setCurrentPage(1)} disabled={currentPage === 1}>
+              <Button
+                variant="outline"
+                className="h-10 rounded-xl"
+                onClick={() => setCurrentPage(1)}
+                disabled={currentPage === 1}
+                aria-label="Trang đầu"
+              >
                 <ChevronsLeft className="size-4" />
               </Button>
               <Button
@@ -215,6 +222,7 @@ export function MobileMaintenanceLayout({
                 className="h-10 rounded-xl"
                 onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
                 disabled={currentPage === 1}
+                aria-label="Trang trước"
               >
                 <ChevronLeft className="size-4" />
               </Button>
@@ -223,6 +231,7 @@ export function MobileMaintenanceLayout({
                 className="h-10 rounded-xl"
                 onClick={() => setCurrentPage(Math.min(totalPages || 1, currentPage + 1))}
                 disabled={currentPage === (totalPages || 1)}
+                aria-label="Trang sau"
               >
                 <ChevronRight className="size-4" />
               </Button>
@@ -231,6 +240,7 @@ export function MobileMaintenanceLayout({
                 className="h-10 rounded-xl"
                 onClick={() => setCurrentPage(totalPages || 1)}
                 disabled={currentPage === (totalPages || 1)}
+                aria-label="Trang cuối"
               >
                 <ChevronsRight className="size-4" />
               </Button>

@@ -21,22 +21,27 @@ export function useMaintenancePlanListControls(
   const [pageSize, setPageSize] = React.useState(50)
   const debouncedPlanSearch = useSearchDebounce(planSearchTerm)
 
-  // Keep query page resets in the same render where debounced search or tenant changes.
-  // This prevents one stale fetch with the new filter and the old page number.
-  let effectiveCurrentPage = currentPage
   const previousDebouncedPlanSearch = React.useRef(debouncedPlanSearch)
   const previousPaginationResetKey = React.useRef(paginationResetKey)
-  if (
+  const shouldResetPage =
     debouncedPlanSearch !== previousDebouncedPlanSearch.current
     || paginationResetKey !== previousPaginationResetKey.current
-  ) {
+
+  // Keep query page resets in the same render where debounced search or tenant changes.
+  // This prevents one stale fetch with the new filter and the old page number.
+  const effectiveCurrentPage = shouldResetPage ? 1 : currentPage
+
+  React.useEffect(() => {
+    if (!shouldResetPage) {
+      return
+    }
+
     previousDebouncedPlanSearch.current = debouncedPlanSearch
     previousPaginationResetKey.current = paginationResetKey
-    effectiveCurrentPage = 1
     if (currentPage !== 1) {
       setCurrentPage(1)
     }
-  }
+  }, [currentPage, debouncedPlanSearch, paginationResetKey, shouldResetPage])
 
   const handlePlanSearchChange = React.useCallback((value: string) => {
     setPlanSearchTerm(value)
