@@ -14,7 +14,6 @@ import { format, parseISO } from 'date-fns'
 import { vi } from 'date-fns/locale'
 import { ArrowUpDown, Edit, Loader2, MoreHorizontal, PlusCircle, RefreshCw, Trash2 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
-import { supabase } from "@/lib/supabase"
 import { useMediaQuery } from "@/hooks/use-media-query"
 import { UserCard } from "@/components/user-card"
 import { Badge } from "@/components/ui/badge"
@@ -49,22 +48,29 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { useSession } from "next-auth/react"
 import { AddUserDialog } from "@/components/add-user-dialog"
 import { EditUserDialog } from "@/components/edit-user-dialog"
-import { USER_ROLES, type User } from "@/types/database"
+import { USER_ROLES, type SessionUser, type UserSummary } from "@/types/database"
 import { Input } from "@/components/ui/input"
 import { useSearchDebounce } from "@/hooks/use-debounce"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { TenantsManagement } from "@/components/tenants-management"
 import { isGlobalRole } from "@/lib/rbac"
+import { callRpc } from "@/lib/rpc-client"
+import { getUnknownErrorMessage } from "@/lib/error-utils"
 
 const USER_ENTITY = { singular: "người dùng" } as const
+
+type ResetPasswordByAdminResult = {
+  success?: boolean
+  message?: string
+}
 
 export default function UsersPage() {
   const { toast } = useToast()
   const { data: session, status } = useSession()
-  const currentUser = session?.user as any
+  const currentUser = session?.user as SessionUser | undefined
   
   // State for users
-  const [users, setUsers] = React.useState<User[]>([])
+  const [users, setUsers] = React.useState<UserSummary[]>([])
   const [isLoading, setIsLoading] = React.useState(true)
   const [sorting, setSorting] = React.useState<SortingState>([])
   const [pagination, setPagination] = React.useState<PaginationState>({
@@ -76,10 +82,10 @@ export default function UsersPage() {
 
   // State for dialogs
   const [isAddDialogOpen, setIsAddDialogOpen] = React.useState(false)
-  const [editingUser, setEditingUser] = React.useState<User | null>(null)
-  const [userToDelete, setUserToDelete] = React.useState<User | null>(null)
+  const [editingUser, setEditingUser] = React.useState<UserSummary | null>(null)
+  const [userToDelete, setUserToDelete] = React.useState<UserSummary | null>(null)
   const [isDeletingUser, setIsDeletingUser] = React.useState(false)
-  const [userToReset, setUserToReset] = React.useState<User | null>(null)
+  const [userToReset, setUserToReset] = React.useState<UserSummary | null>(null)
   const [isResettingPassword, setIsResettingPassword] = React.useState(false)
   const isMobile = useMediaQuery("(max-width: 768px)")
 
@@ -88,7 +94,7 @@ export default function UsersPage() {
 
   // Redirect if not admin
   React.useEffect(() => {
-  if (status === 'authenticated' && currentUser && !isAdmin) {
+    if (status === 'authenticated' && currentUser && !isAdmin) {
       // toast({ // Commented out to prevent potential issues with toast during initial load/redirect
       //   variant: "destructive",
       //   title: "Không có quyền truy cập",
@@ -104,24 +110,21 @@ export default function UsersPage() {
     if (!isAdmin) return
     
     setIsLoading(true)
-    if (!supabase) {
-      // toast({ variant: "destructive", title: "Lỗi", description: "Không thể kết nối đến cơ sở dữ liệu." }) // Avoid toast if redirecting or not admin
-      setIsLoading(false)
-      return
-    }
-
-    const { data, error } = await supabase
-      .from("nhan_vien")
-      .select("*")
-      .order("created_at", { ascending: false })
-
-    if (error) {
-      toast({ variant: "destructive", title: "Lỗi tải danh sách người dùng", description: error.message })
+    try {
+      const data = await callRpc<UserSummary[]>({
+        fn: "user_list_for_admin",
+      })
+      setUsers(data)
+    } catch (error: unknown) {
+      toast({
+        variant: "destructive",
+        title: "Lỗi tải danh sách người dùng",
+        description: getUnknownErrorMessage(error),
+      })
       setUsers([])
-    } else {
-      setUsers(data as User[])
+    } finally {
+      setIsLoading(false)
     }
-    setIsLoading(false)
   }, [toast, isAdmin])
 
   React.useEffect(() => {
@@ -131,11 +134,11 @@ export default function UsersPage() {
   }, [fetchUsers, isAdmin])
 
   const handleDeleteUser = React.useCallback(async () => {
-    if (!userToDelete || !supabase) return
+    if (!userToDelete) return
     setIsDeletingUser(true)
 
     // Prevent deleting self
-    if (userToDelete.id === currentUser?.id) {
+    if (String(userToDelete.id) === String(currentUser?.id)) {
       toast({
         variant: "destructive",
         title: "Lỗi",
@@ -146,51 +149,60 @@ export default function UsersPage() {
       return
     }
 
-    const { error } = await supabase
-      .from('nhan_vien')
-      .delete()
-      .eq('id', userToDelete.id)
-
-    if (error) {
-      toast({ variant: "destructive", title: "Lỗi xóa người dùng", description: error.message })
-    } else {
+    try {
+      await callRpc<boolean>({
+        fn: "user_delete_by_admin",
+        args: {
+          p_target_user_id: userToDelete.id,
+        },
+      })
       toast({ title: "Đã xóa", description: "Người dùng đã được xóa thành công." })
       fetchUsers()
+    } catch (error: unknown) {
+      toast({
+        variant: "destructive",
+        title: "Lỗi xóa người dùng",
+        description: getUnknownErrorMessage(error),
+      })
+    } finally {
+      setIsDeletingUser(false)
+      setUserToDelete(null)
     }
-
-    setIsDeletingUser(false)
-    setUserToDelete(null)
   }, [userToDelete, toast, fetchUsers, currentUser])
 
   const handleResetPassword = React.useCallback(async () => {
-    if (!userToReset || !currentUser || !supabase) return
+    if (!userToReset || !currentUser) return
     setIsResettingPassword(true)
 
-    const { data, error } = await supabase.rpc('reset_password_by_admin', {
-      p_admin_user_id: currentUser.id,
-      p_target_user_id: userToReset.id,
-    })
-
-    if (error || !data) {
-      toast({
-        variant: "destructive",
-        title: "Lỗi đặt lại mật khẩu",
-        description: error?.message || "Không thể đặt lại mật khẩu cho người dùng này.",
+    try {
+      const data = await callRpc<ResetPasswordByAdminResult>({
+        fn: "reset_password_by_admin",
+        args: {
+          p_admin_user_id: currentUser.id,
+          p_target_user_id: userToReset.id,
+        },
       })
-    } else {
-      // RPC returns jsonb, e.g., { success: true, message, username, new_password }
-      const message = (data as any).message || `Đã đặt lại mật khẩu cho ${userToReset.username}.`
+      if (data.success === false) {
+        throw new Error(data.message || "Không thể đặt lại mật khẩu cho người dùng này.")
+      }
+      const message = data.message || `Đã đặt lại mật khẩu cho ${userToReset.username}.`
       toast({
         title: "Thành công",
         description: message,
       })
+    } catch (error: unknown) {
+      toast({
+        variant: "destructive",
+        title: "Lỗi đặt lại mật khẩu",
+        description: getUnknownErrorMessage(error, "Không thể đặt lại mật khẩu cho người dùng này."),
+      })
+    } finally {
+      setIsResettingPassword(false)
+      setUserToReset(null)
     }
-    
-    setIsResettingPassword(false)
-    setUserToReset(null)
   }, [userToReset, currentUser, toast])
 
-  const getRoleVariant = (role: User["role"]) => {
+  const getRoleVariant = (role: UserSummary["role"]) => {
     if (isGlobalRole(role)) return "destructive"
 
     switch (role) {
@@ -203,7 +215,7 @@ export default function UsersPage() {
     }
   }
 
-  const columns: ColumnDef<User>[] = React.useMemo(() => [
+  const columns: ColumnDef<UserSummary>[] = React.useMemo(() => [
     {
       accessorKey: "username",
       header: "Tên đăng nhập",
@@ -218,7 +230,7 @@ export default function UsersPage() {
       accessorKey: "role",
       header: "Vai trò",
       cell: ({ row }) => {
-        const role = row.getValue("role") as User["role"]
+        const role = row.getValue("role") as UserSummary["role"]
         return <Badge variant={getRoleVariant(role)}>{USER_ROLES[role]}</Badge>
       },
     },
@@ -244,7 +256,7 @@ export default function UsersPage() {
       id: "actions",
       cell: ({ row }) => {
         const user = row.original
-        const isCurrentUser = user.id === currentUser?.id
+        const isCurrentUser = String(user.id) === String(currentUser?.id)
         
         return (
           <DropdownMenu>

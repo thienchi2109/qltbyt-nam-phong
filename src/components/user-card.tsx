@@ -7,7 +7,6 @@ import {
   Card,
   CardContent,
   CardDescription,
-  CardFooter,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
@@ -19,16 +18,16 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { USER_ROLES, type User } from "@/types/database" // Đảm bảo đường dẫn đúng
+import { USER_ROLES, type SessionUser, type UserSummary } from "@/types/database" // Đảm bảo đường dẫn đúng
 import { useSession } from "next-auth/react" // Để kiểm tra không cho xóa chính mình
 
 interface UserCardProps {
-  user: User
-  onEdit: (user: User) => void
-  onDelete: (user: User) => void
+  user: UserSummary
+  onEdit: (user: UserSummary) => void
+  onDelete: (user: UserSummary) => void
 }
 
-const getRoleVariant = (role: User["role"]) => {
+const getRoleVariant = (role: UserSummary["role"]) => {
   switch (role) {
     case "admin":
       return "destructive"
@@ -45,8 +44,8 @@ const getRoleVariant = (role: User["role"]) => {
 
 export function UserCard({ user, onEdit, onDelete }: UserCardProps) {
   const { data: session } = useSession()
-  const currentUser = session?.user as any // Cast NextAuth user to our User type
-  const isCurrentUserTheUserInCard = currentUser?.id === user.id
+  const currentUser = session?.user as SessionUser | undefined
+  const isCurrentUserTheUserInCard = String(currentUser?.id) === String(user.id)
 
   return (
     <Card className="w-full">
