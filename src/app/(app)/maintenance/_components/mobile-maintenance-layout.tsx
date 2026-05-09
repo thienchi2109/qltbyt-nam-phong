@@ -6,8 +6,6 @@ import {
   ChevronRight,
   ChevronsLeft,
   ChevronsRight,
-  Filter,
-  Loader2,
   PlusCircle,
   Search,
   X,
@@ -15,107 +13,68 @@ import {
 import { KpiStatusBar } from "@/components/kpi"
 import { MAINTENANCE_STATUS_CONFIGS } from "@/components/kpi/configs/maintenance"
 import { FloatingActionButton } from "@/components/shared/FloatingActionButton"
+import { TenantSelector } from "@/components/shared/TenantSelector"
 import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
-import {
-  Sheet,
-  SheetClose,
-  SheetContent,
-  SheetFooter,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet"
-import { Skeleton } from "@/components/ui/skeleton"
 import type { MaintenancePlan } from "@/hooks/use-cached-maintenance"
 import type { MaintenancePlanStatusCounts } from "@/hooks/useMaintenancePlanCounts"
 import { useMaintenanceContext } from "../_hooks/useMaintenanceContext"
 import { MaintenanceMobilePlanCards } from "./maintenance-mobile-plan-cards"
 import { MaintenanceMobileTasksPanel } from "./maintenance-mobile-tasks-panel"
 
-export interface MobileMaintenanceLayoutProps {
+interface MobileMaintenanceCountsState {
   statusCounts?: MaintenancePlanStatusCounts
   isCountsLoading?: boolean
   isCountsError?: boolean
+}
+
+interface MobileMaintenancePlansState {
   plans: MaintenancePlan[]
   isLoadingPlans: boolean
   planSearchTerm: string
   setPlanSearchTerm: (value: string) => void
   onClearSearch: () => void
+}
+
+interface MobileMaintenancePaginationState {
   totalPages: number
   totalCount: number
   currentPage: number
   setCurrentPage: (page: number) => void
+}
+
+interface MobileMaintenanceFilterState {
   showFacilityFilter: boolean
-  facilities: Array<{ id: number; name: string }>
-  selectedFacilityId: number | null
-  isLoadingFacilities: boolean
-  isMobileFilterSheetOpen: boolean
-  setIsMobileFilterSheetOpen: (open: boolean) => void
-  pendingFacilityFilter: number | null
-  setPendingFacilityFilter: (value: number | null) => void
-  handleMobileFilterApply: () => void
-  handleMobileFilterClear: () => void
-  activeMobileFilterCount: number
+}
+
+export interface MobileMaintenanceLayoutProps {
+  countsState: MobileMaintenanceCountsState
+  plansState: MobileMaintenancePlansState
+  paginationState: MobileMaintenancePaginationState
+  filterState: MobileMaintenanceFilterState
   expandedTaskIds: Record<number, boolean>
   toggleTaskExpansion: (taskId: number) => void
 }
 
 export function MobileMaintenanceLayout({
-  statusCounts,
-  isCountsLoading,
-  isCountsError,
-  plans,
-  isLoadingPlans,
-  planSearchTerm,
-  setPlanSearchTerm,
-  onClearSearch,
-  totalPages,
-  totalCount,
-  currentPage,
-  setCurrentPage,
-  showFacilityFilter,
-  facilities,
-  selectedFacilityId,
-  isLoadingFacilities,
-  isMobileFilterSheetOpen,
-  setIsMobileFilterSheetOpen,
-  pendingFacilityFilter,
-  setPendingFacilityFilter,
-  handleMobileFilterApply,
-  handleMobileFilterClear,
-  activeMobileFilterCount,
+  countsState,
+  plansState,
+  paginationState,
+  filterState,
   expandedTaskIds,
   toggleTaskExpansion,
 }: MobileMaintenanceLayoutProps) {
   const ctx = useMaintenanceContext()
+  const { statusCounts, isCountsLoading, isCountsError } = countsState
+  const { plans, isLoadingPlans, planSearchTerm, setPlanSearchTerm, onClearSearch } = plansState
+  const { totalPages, totalCount, currentPage, setCurrentPage } = paginationState
+  const { showFacilityFilter } = filterState
 
   const months = React.useMemo(() => Array.from({ length: 12 }, (_, index) => index + 1), [])
   const planTabActive = ctx.activeTab === "plans"
   const safeAreaFooterStyle = React.useMemo(
     () => ({ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 16px)" }),
     []
-  )
-  const facilityOptions = React.useMemo(() => {
-    if (!showFacilityFilter) {
-      return [] as Array<{ id: number; name: string }>
-    }
-    return facilities
-  }, [showFacilityFilter, facilities])
-
-  const activeFacilityLabel = React.useMemo(() => {
-    if (selectedFacilityId == null) {
-      return null
-    }
-    const match = facilities.find((facility) => facility.id === selectedFacilityId)
-    return match?.name || "Cơ sở đã chọn"
-  }, [facilities, selectedFacilityId])
-
-  const handleFacilityOptionSelect = React.useCallback(
-    (value: number | null) => {
-      setPendingFacilityFilter(value)
-    },
-    [setPendingFacilityFilter]
   )
 
   return (
@@ -132,8 +91,11 @@ export function MobileMaintenanceLayout({
           </div>
 
           <div className="space-y-2">
+            {showFacilityFilter ? (
+              <TenantSelector className="h-11 w-full rounded-xl border border-border/70" />
+            ) : null}
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
               <Input
                 value={planSearchTerm}
                 onChange={(event) => setPlanSearchTerm(event.target.value)}
@@ -143,52 +105,14 @@ export function MobileMaintenanceLayout({
               {planSearchTerm && (
                 <button
                   type="button"
+                  aria-label="Xóa tìm kiếm"
                   className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full bg-muted p-1"
                   onClick={onClearSearch}
                 >
-                  <X className="h-3.5 w-3.5" />
+                  <X className="size-3.5" />
                 </button>
               )}
             </div>
-
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                className="flex-1 h-11 rounded-xl border border-border/70"
-                onClick={() => setIsMobileFilterSheetOpen(true)}
-                disabled={isLoadingFacilities}
-              >
-                {isLoadingFacilities ? (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                ) : (
-                  <Filter className="mr-2 h-4 w-4" />
-                )}
-                {isLoadingFacilities ? "Đang tải" : "Bộ lọc"}
-                {activeMobileFilterCount > 0 && (
-                  <Badge variant="secondary" className="ml-auto rounded-full bg-primary text-primary-foreground">
-                    {activeMobileFilterCount}
-                  </Badge>
-                )}
-              </Button>
-            </div>
-
-            {activeFacilityLabel && (
-              <div className="flex items-center gap-2">
-                <Badge
-                  variant="outline"
-                  className="flex items-center gap-2 rounded-full border-primary/40 bg-primary/5 px-3 py-1 text-xs text-primary"
-                >
-                  {activeFacilityLabel}
-                  <button
-                    type="button"
-                    onClick={handleMobileFilterClear}
-                    className="rounded-full bg-primary/10 p-0.5 text-primary hover:bg-primary/20"
-                  >
-                    <X className="h-3 w-3" />
-                  </button>
-                </Badge>
-              </div>
-            )}
           </div>
 
           <KpiStatusBar
@@ -284,104 +208,47 @@ export function MobileMaintenanceLayout({
               <span>{totalCount} kế hoạch</span>
             </div>
             <div className="grid grid-cols-4 gap-2 pb-2">
-              <Button variant="outline" className="h-10 rounded-xl" onClick={() => setCurrentPage(1)} disabled={currentPage === 1}>
-                <ChevronsLeft className="h-4 w-4" />
+              <Button
+                variant="outline"
+                className="h-10 rounded-xl"
+                onClick={() => setCurrentPage(1)}
+                disabled={currentPage === 1}
+                aria-label="Trang đầu"
+              >
+                <ChevronsLeft className="size-4" />
               </Button>
               <Button
                 variant="outline"
                 className="h-10 rounded-xl"
                 onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
                 disabled={currentPage === 1}
+                aria-label="Trang trước"
               >
-                <ChevronLeft className="h-4 w-4" />
+                <ChevronLeft className="size-4" />
               </Button>
               <Button
                 variant="outline"
                 className="h-10 rounded-xl"
                 onClick={() => setCurrentPage(Math.min(totalPages || 1, currentPage + 1))}
                 disabled={currentPage === (totalPages || 1)}
+                aria-label="Trang sau"
               >
-                <ChevronRight className="h-4 w-4" />
+                <ChevronRight className="size-4" />
               </Button>
               <Button
                 variant="outline"
                 className="h-10 rounded-xl"
                 onClick={() => setCurrentPage(totalPages || 1)}
                 disabled={currentPage === (totalPages || 1)}
+                aria-label="Trang cuối"
               >
-                <ChevronsRight className="h-4 w-4" />
+                <ChevronsRight className="size-4" />
               </Button>
             </div>
           </div>
         </div>
       )}
 
-      <Sheet open={isMobileFilterSheetOpen} onOpenChange={setIsMobileFilterSheetOpen}>
-        <SheetContent side="bottom" className="flex h-[65vh] flex-col rounded-t-3xl border-border/60 bg-background px-6 pb-6 pt-4">
-          <SheetHeader>
-            <SheetTitle>Bộ lọc kế hoạch</SheetTitle>
-            <p className="text-sm text-muted-foreground">
-              Chọn cơ sở hoặc điều kiện phù hợp để thu hẹp danh sách kế hoạch hiển thị.
-            </p>
-          </SheetHeader>
-          <div className="mt-4 flex-1 overflow-y-auto">
-            {showFacilityFilter ? (
-              <div className="space-y-3">
-                <h3 className="text-sm font-semibold">Cơ sở</h3>
-                {isLoadingFacilities ? (
-                  <div className="space-y-2">
-                    {Array.from({ length: 4 }).map((_, index) => (
-                      <Skeleton key={index} className="h-11 w-full rounded-2xl" />
-                    ))}
-                  </div>
-                ) : (
-                  <div className="space-y-2">
-                    <button
-                      type="button"
-                      onClick={() => handleFacilityOptionSelect(null)}
-                      className={`w-full rounded-2xl border px-4 py-3 text-left text-sm transition ${pendingFacilityFilter === null ? "border-primary bg-primary/10 text-primary" : "border-border/70 bg-background"}`}
-                    >
-                      Tất cả cơ sở
-                    </button>
-                    {facilityOptions.map((facility) => (
-                      <button
-                        key={facility.id}
-                        type="button"
-                        onClick={() => handleFacilityOptionSelect(facility.id)}
-                        className={`w-full rounded-2xl border px-4 py-3 text-left text-sm transition ${pendingFacilityFilter === facility.id ? "border-primary bg-primary/10 text-primary" : "border-border/70 bg-background"}`}
-                      >
-                        {facility.name}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-            ) : (
-              <div className="rounded-2xl border border-dashed border-border/70 bg-muted/40 px-4 py-6 text-center text-sm text-muted-foreground">
-                Không có bộ lọc bổ sung cho vai trò của bạn.
-              </div>
-            )}
-          </div>
-          <SheetFooter className="mt-4 grid grid-cols-2 gap-3 shrink-0">
-            <Button variant="outline" onClick={() => setIsMobileFilterSheetOpen(false)}>
-              Hủy
-            </Button>
-            <div className="grid grid-cols-2 gap-2">
-              <Button
-                variant="ghost"
-                className="border border-border/60"
-                onClick={handleMobileFilterClear}
-                disabled={selectedFacilityId === null && pendingFacilityFilter === null}
-              >
-                Xóa
-              </Button>
-              <SheetClose asChild>
-                <Button onClick={handleMobileFilterApply}>Áp dụng</Button>
-              </SheetClose>
-            </div>
-          </SheetFooter>
-        </SheetContent>
-      </Sheet>
     </div>
   )
 }

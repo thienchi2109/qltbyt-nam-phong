@@ -2,7 +2,6 @@
 
 import * as React from "react"
 import type { PaginationState, SortingState } from "@tanstack/react-table"
-import { useQuery } from "@tanstack/react-query"
 import {
   getCoreRowModel,
   getFilteredRowModel,
@@ -12,11 +11,9 @@ import {
 } from "@tanstack/react-table"
 
 import { useIsMobile } from "@/hooks/use-mobile"
-import { callRpc } from "@/lib/rpc-client"
-import { isGlobalRole, isRegionalLeaderRole } from "@/lib/rbac"
+import { useTenantSelection } from "@/contexts/TenantSelectionContext"
 import { useMaintenancePlans } from "@/hooks/use-cached-maintenance"
 import { useMaintenancePlanCounts } from "@/hooks/useMaintenancePlanCounts"
-import type { FacilityOption } from "@/types/tenant"
 import { useFeatureFlag } from "@/lib/feature-flags"
 
 import { useMaintenanceContext } from "../_hooks/useMaintenanceContext"
@@ -35,25 +32,23 @@ export function MaintenancePageClient() {
   const isMobile = useIsMobile()
   const mobileMaintenanceEnabled = useFeatureFlag("mobile-maintenance-redesign")
   const shouldUseMobileMaintenance = isMobile && mobileMaintenanceEnabled
+  const {
+    selectedFacilityId: tenantSelectedFacilityId,
+    showSelector: showFacilityFilter,
+    shouldFetchData,
+  } = useTenantSelection()
+  const selectedFacilityId = tenantSelectedFacilityId ?? null
 
   const {
     planSearchTerm,
     debouncedPlanSearch,
     handlePlanSearchChange,
     handleClearSearch,
-    selectedFacilityId,
-    handleFacilityChange,
     currentPage,
     setCurrentPage,
     pageSize,
     handlePageSizeChange,
-    isMobileFilterSheetOpen,
-    handleMobileFilterSheetOpenChange,
-    pendingFacilityFilter,
-    setPendingFacilityFilter,
-    handleMobileFilterApply,
-    handleMobileFilterClear,
-  } = useMaintenancePlanListControls()
+  } = useMaintenancePlanListControls(tenantSelectedFacilityId)
   const [expandedTaskIds, setExpandedTaskIds] = React.useState<Record<number, boolean>>({})
 
   const [planSorting, setPlanSorting] = React.useState<SortingState>([])
@@ -70,46 +65,21 @@ export function MaintenancePageClient() {
     facilityId: selectedFacilityId,
     page: currentPage,
     pageSize,
+  }, {
+    enabled: shouldFetchData,
   })
   const { counts: statusCounts, isLoading: isCountsLoading, isError: isCountsError } =
     useMaintenancePlanCounts({
       facilityId: selectedFacilityId,
       search: debouncedPlanSearch || undefined,
+      enabled: shouldFetchData,
     })
 
   const plans = React.useMemo(() => paginatedResponse?.data ?? [], [paginatedResponse?.data])
-  const totalCount = paginatedResponse?.total ?? 0
+  const visiblePlans = React.useMemo(() => shouldFetchData ? plans : [], [plans, shouldFetchData])
+  const totalCount = shouldFetchData ? paginatedResponse?.total ?? 0 : 0
   const totalPages = Math.ceil(totalCount / pageSize)
-  const showFacilityFilter = isGlobalRole(ctx.user?.role) || isRegionalLeaderRole(ctx.user?.role)
-
-  const {
-    data: facilities = [],
-    isLoading: isLoadingFacilities,
-  } = useQuery<Array<{ id: number; name: string }>>({
-    queryKey: ["maintenance", "facilities", ctx.user?.role ?? null],
-    queryFn: async () => {
-      const result = await callRpc<FacilityOption[]>({
-        fn: "get_facilities_with_equipment_count",
-        args: {},
-      })
-
-      return (result || []).map((facility) => ({
-        id: Number(facility.id),
-        name: String(facility.name || `Cơ sở ${facility.id}`),
-      }))
-    },
-    enabled: showFacilityFilter,
-    staleTime: 5 * 60 * 1000,
-    gcTime: 15 * 60 * 1000,
-  })
-
-  const activeMobileFilterCount = React.useMemo(() => {
-    let count = 0
-    if (selectedFacilityId) {
-      count += 1
-    }
-    return count
-  }, [selectedFacilityId])
+  const visibleStatusCounts = shouldFetchData ? statusCounts : undefined
 
   const clearTaskRowSelection = React.useCallback(() => {
     setTaskRowSelection((previousSelection) =>
@@ -117,9 +87,28 @@ export function MaintenancePageClient() {
     )
   }, [setTaskRowSelection])
 
+  const previousTenantSelection = React.useRef(tenantSelectedFacilityId)
+  React.useEffect(() => {
+    if (previousTenantSelection.current === tenantSelectedFacilityId) {
+      return
+    }
+
+    previousTenantSelection.current = tenantSelectedFacilityId
+    setSelectedPlan(null)
+    setActiveTab("plans")
+    ctx.setDraftTasks([])
+    clearTaskRowSelection()
+  }, [
+    tenantSelectedFacilityId,
+    setSelectedPlan,
+    setActiveTab,
+    ctx.setDraftTasks,
+    clearTaskRowSelection,
+  ])
+
   // Deep-link resolution (URL → select plan / open dialog)
   useMaintenanceDeepLink({
-    plans,
+    plans: visiblePlans,
     isLoadingPlans,
     setIsAddPlanDialogOpen,
     canCreatePlans: ctx.canCreatePlans,
@@ -161,7 +150,7 @@ export function MaintenancePageClient() {
   })
 
   const planTable = useReactTable({
-    data: plans,
+    data: visiblePlans,
     columns: planColumns,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
@@ -257,29 +246,21 @@ export function MaintenancePageClient() {
       <>
         <MaintenanceDialogs />
         <MobileMaintenanceLayout
-          statusCounts={statusCounts}
-          isCountsLoading={isCountsLoading}
-          isCountsError={isCountsError}
-          plans={plans}
-          isLoadingPlans={isLoadingPlans}
-          planSearchTerm={planSearchTerm}
-          setPlanSearchTerm={handlePlanSearchChange}
-          onClearSearch={handleClearSearch}
-          totalPages={totalPages}
-          totalCount={totalCount}
-          currentPage={currentPage}
-          setCurrentPage={setCurrentPage}
-          showFacilityFilter={showFacilityFilter}
-          facilities={facilities}
-          selectedFacilityId={selectedFacilityId}
-          isLoadingFacilities={isLoadingFacilities}
-          isMobileFilterSheetOpen={isMobileFilterSheetOpen}
-          setIsMobileFilterSheetOpen={handleMobileFilterSheetOpenChange}
-          pendingFacilityFilter={pendingFacilityFilter}
-          setPendingFacilityFilter={setPendingFacilityFilter}
-          handleMobileFilterApply={handleMobileFilterApply}
-          handleMobileFilterClear={handleMobileFilterClear}
-          activeMobileFilterCount={activeMobileFilterCount}
+          countsState={{ statusCounts: visibleStatusCounts, isCountsLoading, isCountsError }}
+          plansState={{
+            plans: visiblePlans,
+            isLoadingPlans,
+            planSearchTerm,
+            setPlanSearchTerm: handlePlanSearchChange,
+            onClearSearch: handleClearSearch,
+          }}
+          paginationState={{
+            totalPages,
+            totalCount,
+            currentPage,
+            setCurrentPage,
+          }}
+          filterState={{ showFacilityFilter }}
           expandedTaskIds={expandedTaskIds}
           toggleTaskExpansion={toggleTaskExpansion}
         />
@@ -291,31 +272,30 @@ export function MaintenancePageClient() {
     <>
       <MaintenanceDialogs />
       <MaintenancePageDesktopContent
-        statusCounts={statusCounts}
-        isCountsLoading={isCountsLoading}
-        isCountsError={isCountsError}
-        showFacilityFilter={showFacilityFilter}
-        facilities={facilities}
-        selectedFacilityId={selectedFacilityId}
-        onFacilityChange={handleFacilityChange}
-        isLoadingFacilities={isLoadingFacilities}
-        totalCount={totalCount}
-        planSearchTerm={planSearchTerm}
-        onPlanSearchChange={handlePlanSearchChange}
-        isMobile={isMobile}
-        mobilePlanCards={legacyMobileCards}
-        planTable={planTable}
-        planColumns={planColumns}
-        currentPage={currentPage}
-        totalPages={totalPages}
-        pageSize={pageSize}
-        plans={plans}
-        isLoadingPlans={isLoadingPlans}
-        onPageChange={setCurrentPage}
-        onPageSizeChange={handlePageSizeChange}
-        isFiltered={Boolean(debouncedPlanSearch || selectedFacilityId)}
-        taskTable={taskTable}
-        taskColumns={taskColumns}
+        countsState={{ statusCounts: visibleStatusCounts, isCountsLoading, isCountsError }}
+        filterState={{
+          showFacilityFilter,
+          totalCount,
+          planSearchTerm,
+          onPlanSearchChange: handlePlanSearchChange,
+        }}
+        viewportState={{
+          isMobile,
+          mobilePlanCards: legacyMobileCards,
+        }}
+        planListState={{
+          planTable,
+          planColumns,
+          currentPage,
+          totalPages,
+          pageSize,
+          plans: visiblePlans,
+          isLoadingPlans,
+          onPageChange: setCurrentPage,
+          onPageSizeChange: handlePageSizeChange,
+          isFiltered: Boolean(debouncedPlanSearch || selectedFacilityId),
+        }}
+        taskListState={{ taskTable, taskColumns }}
       />
     </>
   )

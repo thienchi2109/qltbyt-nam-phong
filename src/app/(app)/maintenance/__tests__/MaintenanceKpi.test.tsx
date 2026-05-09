@@ -19,6 +19,7 @@ type MaintenancePlanRequest = {
 
 const mocks = vi.hoisted(() => ({
   useMaintenanceContext: vi.fn(),
+  useTenantSelection: vi.fn(),
   useIsMobile: vi.fn(),
   useFeatureFlag: vi.fn(),
   useSearchDebounce: vi.fn(),
@@ -49,6 +50,10 @@ vi.mock("@tanstack/react-table", () => ({
 
 vi.mock("@/hooks/use-mobile", () => ({
   useIsMobile: () => mocks.useIsMobile(),
+}))
+
+vi.mock("@/contexts/TenantSelectionContext", () => ({
+  useTenantSelection: () => mocks.useTenantSelection(),
 }))
 
 vi.mock("@/lib/feature-flags", () => ({
@@ -94,33 +99,36 @@ vi.mock("../_components/maintenance-page-legacy-mobile-cards", () => ({
 
 vi.mock("../_components/maintenance-page-desktop-content", () => ({
   MaintenancePageDesktopContent: ({
-    statusCounts,
-    isCountsLoading,
-    isCountsError,
-    onFacilityChange,
-    onPlanSearchChange,
-    onPageChange,
+    countsState,
+    filterState,
+    planListState,
   }: {
-    statusCounts?: Record<string, number>
-    isCountsLoading?: boolean
-    isCountsError?: boolean
-    onFacilityChange: (facilityId: number | null) => void
-    onPlanSearchChange: (value: string) => void
-    onPageChange: (page: number) => void
+    countsState: {
+      statusCounts?: Record<string, number>
+      isCountsLoading?: boolean
+      isCountsError?: boolean
+    }
+    filterState: {
+      totalCount: number
+      onPlanSearchChange: (value: string) => void
+    }
+    planListState: {
+      plans: unknown[]
+      onPageChange: (page: number) => void
+    }
   }) => (
     <div
       data-testid="desktop-layout"
-      data-counts={JSON.stringify(statusCounts ?? null)}
-      data-loading={String(Boolean(isCountsLoading))}
-      data-error={String(Boolean(isCountsError))}
+      data-counts={JSON.stringify(countsState.statusCounts ?? null)}
+      data-loading={String(Boolean(countsState.isCountsLoading))}
+      data-error={String(Boolean(countsState.isCountsError))}
+      data-plan-count={String(planListState.plans.length)}
+      data-total-count={String(filterState.totalCount)}
     >
-      <button type="button" onClick={() => onFacilityChange(7)}>
-        set-facility
-      </button>
-      <button type="button" onClick={() => onPlanSearchChange("ngoai tim")}>
+      <button type="button" onClick={() => filterState.onPlanSearchChange("ngoai tim")}>
         set-search
       </button>
-      <button type="button" onClick={() => onPageChange(3)}>
+      <button type="button" onClick={() => planListState.onPageChange(3)}>
         set-page-3
       </button>
     </div>
@@ -129,19 +137,19 @@ vi.mock("../_components/maintenance-page-desktop-content", () => ({
 
 vi.mock("../_components/mobile-maintenance-layout", () => ({
   MobileMaintenanceLayout: ({
-    statusCounts,
-    isCountsLoading,
-    isCountsError,
+    countsState,
   }: {
-    statusCounts?: Record<string, number>
-    isCountsLoading?: boolean
-    isCountsError?: boolean
+    countsState: {
+      statusCounts?: Record<string, number>
+      isCountsLoading?: boolean
+      isCountsError?: boolean
+    }
   }) => (
     <div
       data-testid="mobile-layout"
-      data-counts={JSON.stringify(statusCounts ?? null)}
-      data-loading={String(Boolean(isCountsLoading))}
-      data-error={String(Boolean(isCountsError))}
+      data-counts={JSON.stringify(countsState.statusCounts ?? null)}
+      data-loading={String(Boolean(countsState.isCountsLoading))}
+      data-error={String(Boolean(countsState.isCountsError))}
     />
   ),
 }))
@@ -157,6 +165,7 @@ function createMaintenanceContext() {
     setSelectedPlan: vi.fn(),
     setActiveTab: vi.fn(),
     selectedPlan: null,
+    setDraftTasks: vi.fn(),
     fetchPlanDetails: vi.fn(),
     handleSelectPlan: vi.fn(),
     operations: {
@@ -188,11 +197,25 @@ function createMaintenanceContext() {
 }
 
 function expectLastPlanRequest(request: MaintenancePlanRequest): Promise<void> {
-  return waitFor(() => expect(mocks.useMaintenancePlans).toHaveBeenLastCalledWith(request))
+  return waitFor(() => {
+    const lastCall = mocks.useMaintenancePlans.mock.calls.at(-1)
+    expect(lastCall?.[0]).toEqual(request)
+  })
 }
 
 function expectPlanRequestMissing(request: MaintenancePlanRequest): void {
-  expect(mocks.useMaintenancePlans).not.toHaveBeenCalledWith(request)
+  expect(mocks.useMaintenancePlans.mock.calls.map((call) => call[0])).not.toContainEqual(request)
+}
+
+function setTenantSelection(selectedFacilityId: number | null | undefined): void {
+  mocks.useTenantSelection.mockReturnValue({
+    selectedFacilityId,
+    setSelectedFacilityId: vi.fn(),
+    facilities: [],
+    showSelector: true,
+    isLoading: false,
+    shouldFetchData: selectedFacilityId !== undefined,
+  })
 }
 
 describe("Maintenance KPI integration", () => {
@@ -200,6 +223,7 @@ describe("Maintenance KPI integration", () => {
     vi.clearAllMocks()
 
     mocks.useMaintenanceContext.mockReturnValue(createMaintenanceContext())
+    setTenantSelection(null)
     mocks.useIsMobile.mockReturnValue(false)
     mocks.useFeatureFlag.mockReturnValue(false)
     mocks.useSearchDebounce.mockImplementation((value: string) => value)
@@ -224,15 +248,16 @@ describe("Maintenance KPI integration", () => {
     mocks.useTaskColumns.mockReturnValue([])
   })
 
-  it("calls useMaintenancePlanCounts with selectedFacilityId from local state", async () => {
-    render(<MaintenancePageClient />)
+  it("calls useMaintenancePlanCounts with selectedFacilityId from tenant selection context", async () => {
+    setTenantSelection(7)
 
-    fireEvent.click(screen.getByRole("button", { name: "set-facility" }))
+    render(<MaintenancePageClient />)
 
     await waitFor(() =>
       expect(mocks.useMaintenancePlanCounts).toHaveBeenLastCalledWith({
         facilityId: 7,
         search: undefined,
+        enabled: true,
       })
     )
   })
@@ -246,21 +271,62 @@ describe("Maintenance KPI integration", () => {
       expect(mocks.useMaintenancePlanCounts).toHaveBeenLastCalledWith({
         facilityId: null,
         search: "ngoai tim",
+        enabled: true,
       })
     )
   })
 
-  it("resets plan pagination before applying a facility filter", async () => {
+  it("resets plan pagination when tenant selection context changes", async () => {
     const user = userEvent.setup()
-    render(<MaintenancePageClient />)
+    const { rerender } = render(<MaintenancePageClient />)
 
     await user.click(screen.getByRole("button", { name: "set-page-3" }))
     await expectLastPlanRequest({ search: undefined, facilityId: null, page: 3, pageSize: 50 })
 
-    await user.click(screen.getByRole("button", { name: "set-facility" }))
+    setTenantSelection(7)
+    rerender(<MaintenancePageClient />)
 
     expectPlanRequestMissing({ search: undefined, facilityId: 7, page: 3, pageSize: 50 })
     await expectLastPlanRequest({ search: undefined, facilityId: 7, page: 1, pageSize: 50 })
+  })
+
+  it("suppresses cached maintenance plans while privileged tenant selection is unresolved", () => {
+    setTenantSelection(undefined)
+    mocks.useMaintenancePlans.mockReturnValueOnce({
+      data: {
+        data: [{ id: 42 }],
+        total: 1,
+      },
+      isLoading: false,
+    })
+
+    render(<MaintenancePageClient />)
+
+    expect(screen.getByTestId("desktop-layout")).toHaveAttribute("data-plan-count", "0")
+    expect(screen.getByTestId("desktop-layout")).toHaveAttribute("data-total-count", "0")
+    expect(mocks.useMaintenancePlans).toHaveBeenLastCalledWith(
+      expect.objectContaining({ facilityId: null }),
+      expect.objectContaining({ enabled: false }),
+    )
+  })
+
+  it("clears the selected plan and drafts when tenant selection changes", () => {
+    const context = {
+      ...createMaintenanceContext(),
+      selectedPlan: { id: 42, ten_ke_hoach: "Kế hoạch cũ" },
+      activeTab: "tasks",
+      draftTasks: [{ id: 101 }],
+    }
+    mocks.useMaintenanceContext.mockReturnValue(context)
+    const { rerender } = render(<MaintenancePageClient />)
+
+    setTenantSelection(7)
+    rerender(<MaintenancePageClient />)
+
+    expect(context.setSelectedPlan).toHaveBeenCalledWith(null)
+    expect(context.setActiveTab).toHaveBeenCalledWith("plans")
+    expect(context.setDraftTasks).toHaveBeenCalledWith([])
+    expect(context.setTaskRowSelection).toHaveBeenCalled()
   })
 
   it("resets plan pagination before applying debounced search", async () => {

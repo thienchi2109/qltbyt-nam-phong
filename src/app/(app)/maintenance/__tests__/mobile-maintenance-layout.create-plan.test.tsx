@@ -45,32 +45,38 @@ vi.mock("../_components/maintenance-mobile-tasks-panel", () => ({
 
 import { MobileMaintenanceLayout } from "../_components/mobile-maintenance-layout"
 
-function renderMobileLayout() {
+function renderMobileLayout({
+  planSearchTerm = "",
+  totalPages = 1,
+  totalCount = 0,
+  currentPage = 1,
+}: {
+  planSearchTerm?: string
+  totalPages?: number
+  totalCount?: number
+  currentPage?: number
+} = {}) {
   return render(
     <MobileMaintenanceLayout
-      statusCounts={{ "Bản nháp": 1 }}
-      isCountsLoading={false}
-      isCountsError={false}
-      plans={[]}
-      isLoadingPlans={false}
-      planSearchTerm=""
-      setPlanSearchTerm={vi.fn()}
-      onClearSearch={vi.fn()}
-      totalPages={1}
-      totalCount={0}
-      currentPage={1}
-      setCurrentPage={vi.fn()}
-      showFacilityFilter={false}
-      facilities={[]}
-      selectedFacilityId={null}
-      isLoadingFacilities={false}
-      isMobileFilterSheetOpen={false}
-      setIsMobileFilterSheetOpen={vi.fn()}
-      pendingFacilityFilter={null}
-      setPendingFacilityFilter={vi.fn()}
-      handleMobileFilterApply={vi.fn()}
-      handleMobileFilterClear={vi.fn()}
-      activeMobileFilterCount={0}
+      countsState={{
+        statusCounts: { "Bản nháp": 1 },
+        isCountsLoading: false,
+        isCountsError: false,
+      }}
+      plansState={{
+        plans: [],
+        isLoadingPlans: false,
+        planSearchTerm,
+        setPlanSearchTerm: vi.fn(),
+        onClearSearch: vi.fn(),
+      }}
+      paginationState={{
+        totalPages,
+        totalCount,
+        currentPage,
+        setCurrentPage: vi.fn(),
+      }}
+      filterState={{ showFacilityFilter: false }}
       expandedTaskIds={{}}
       toggleTaskExpansion={vi.fn()}
     />,
@@ -104,5 +110,15 @@ describe("MobileMaintenanceLayout create-plan entry points", () => {
 
     expect(screen.getByRole("button", { name: "Tạo kế hoạch mới" })).toBeInTheDocument()
     expect(mocks.lastPlanCardsProps?.canCreatePlans).toBe(true)
+  })
+
+  it("labels icon-only search and pagination controls", () => {
+    renderMobileLayout({ planSearchTerm: "máy thở", totalPages: 3, totalCount: 12, currentPage: 2 })
+
+    expect(screen.getByRole("button", { name: "Xóa tìm kiếm" })).toBeInTheDocument()
+    expect(screen.getByRole("button", { name: "Trang đầu" })).toBeInTheDocument()
+    expect(screen.getByRole("button", { name: "Trang trước" })).toBeInTheDocument()
+    expect(screen.getByRole("button", { name: "Trang sau" })).toBeInTheDocument()
+    expect(screen.getByRole("button", { name: "Trang cuối" })).toBeInTheDocument()
   })
 })

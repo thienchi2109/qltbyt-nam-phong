@@ -26,22 +26,25 @@ import type { MaintenancePlan } from "@/hooks/use-cached-maintenance"
 import type { MaintenancePlanStatusCounts } from "@/hooks/useMaintenancePlanCounts"
 import type { MaintenanceTask } from "@/lib/data"
 
-interface MaintenancePageDesktopContentProps {
+interface MaintenanceCountsState {
   statusCounts?: MaintenancePlanStatusCounts
   isCountsLoading?: boolean
   isCountsError?: boolean
+}
+
+interface MaintenanceFilterState {
   showFacilityFilter: boolean
-  facilities: Array<{ id: number; name: string }>
-  selectedFacilityId: number | null
-  onFacilityChange: (facilityId: number | null) => void
-  isLoadingFacilities: boolean
   totalCount: number
   planSearchTerm: string
   onPlanSearchChange: (value: string) => void
+}
 
+interface MaintenanceViewportState {
   isMobile: boolean
   mobilePlanCards: React.ReactNode
+}
 
+interface MaintenancePlanListState {
   planTable: Table<MaintenancePlan>
   planColumns: ColumnDef<MaintenancePlan, unknown>[]
   currentPage: number
@@ -52,40 +55,46 @@ interface MaintenancePageDesktopContentProps {
   onPageChange: (page: number) => void
   onPageSizeChange: (size: number) => void
   isFiltered: boolean
+}
 
+interface MaintenanceTaskListState {
   taskTable: Table<MaintenanceTask>
   taskColumns: ColumnDef<MaintenanceTask, unknown>[]
 }
 
+interface MaintenancePageDesktopContentProps {
+  countsState: MaintenanceCountsState
+  filterState: MaintenanceFilterState
+  viewportState: MaintenanceViewportState
+  planListState: MaintenancePlanListState
+  taskListState: MaintenanceTaskListState
+}
+
 export function MaintenancePageDesktopContent({
-  statusCounts,
-  isCountsLoading,
-  isCountsError,
-  showFacilityFilter,
-  facilities,
-  selectedFacilityId,
-  onFacilityChange,
-  isLoadingFacilities,
-  totalCount,
-  planSearchTerm,
-  onPlanSearchChange,
-  isMobile,
-  mobilePlanCards,
-  planTable,
-  planColumns,
-  currentPage,
-  totalPages,
-  pageSize,
-  plans,
-  isLoadingPlans,
-  onPageChange,
-  onPageSizeChange,
-  isFiltered,
-  taskTable,
-  taskColumns,
+  countsState,
+  filterState,
+  viewportState,
+  planListState,
+  taskListState,
 }: MaintenancePageDesktopContentProps) {
   const ctx = useMaintenanceContext()
   const editingTaskId = ctx.taskEditing.editingTaskId
+  const { statusCounts, isCountsLoading, isCountsError } = countsState
+  const { showFacilityFilter, totalCount, planSearchTerm, onPlanSearchChange } = filterState
+  const { isMobile, mobilePlanCards } = viewportState
+  const {
+    planTable,
+    planColumns,
+    currentPage,
+    totalPages,
+    pageSize,
+    plans,
+    isLoadingPlans,
+    onPageChange,
+    onPageSizeChange,
+    isFiltered,
+  } = planListState
+  const { taskTable, taskColumns } = taskListState
 
   return (
     <div className="space-y-6">
@@ -117,7 +126,7 @@ export function MaintenancePageDesktopContent({
               </div>
               {ctx.canCreatePlans && (
                 <Button size="sm" className="h-8 gap-1 ml-auto" onClick={() => ctx.setIsAddPlanDialogOpen(true)}>
-                  <PlusCircle className="h-3.5 w-3.5" />
+                  <PlusCircle className="size-3.5" />
                   <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">Tạo kế hoạch mới</span>
                 </Button>
               )}
@@ -125,10 +134,6 @@ export function MaintenancePageDesktopContent({
             <CardContent>
               <PlanFiltersBar
                 showFacilityFilter={showFacilityFilter}
-                facilities={facilities}
-                selectedFacilityId={selectedFacilityId}
-                onFacilityChange={onFacilityChange}
-                isLoadingFacilities={isLoadingFacilities}
                 totalCount={totalCount}
                 searchTerm={planSearchTerm}
                 onSearchChange={onPlanSearchChange}
@@ -172,24 +177,24 @@ export function MaintenancePageDesktopContent({
                   {ctx.hasChanges && !ctx.isPlanApproved && ctx.canManagePlans && (
                     <>
                       <Button variant="outline" onClick={() => ctx.setIsConfirmingCancel(true)} disabled={ctx.isSavingAll}>
-                        <Undo2 className="mr-2 h-4 w-4" />
+                        <Undo2 className="mr-2 size-4" />
                         Hủy bỏ
                       </Button>
                       <Button onClick={() => void ctx.handleSaveAllChanges()} disabled={ctx.isSavingAll || !ctx.canManagePlans}>
-                        {ctx.isSavingAll ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                        {ctx.isSavingAll ? <Loader2 className="mr-2 size-4 animate-spin" /> : <Save className="mr-2 size-4" />}
                         Lưu thay đổi
                       </Button>
                     </>
                   )}
                   {ctx.tasks.length > 0 && !ctx.isRegionalLeader && (
                     <Button variant="secondary" onClick={ctx.generatePlanForm} disabled={editingTaskId !== null || ctx.isSavingAll}>
-                      <FileText className="mr-2 h-4 w-4" />
+                      <FileText className="mr-2 size-4" />
                       Xuất phiếu KH
                     </Button>
                   )}
                   {!ctx.isPlanApproved && ctx.canManagePlans && (
                     <Button onClick={() => ctx.setIsAddTasksDialogOpen(true)} disabled={editingTaskId !== null || ctx.isSavingAll}>
-                      <PlusCircle className="mr-2 h-4 w-4" />
+                      <PlusCircle className="mr-2 size-4" />
                       Thêm thiết bị
                     </Button>
                   )}
@@ -199,7 +204,7 @@ export function MaintenancePageDesktopContent({
             <CardContent>
               {ctx.isLoadingTasks ? (
                 <div className="flex items-center justify-center py-10">
-                  <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                  <Loader2 className="size-8 animate-spin text-muted-foreground" />
                 </div>
               ) : (
                 <TasksTable
