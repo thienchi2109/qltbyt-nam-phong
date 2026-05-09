@@ -9,37 +9,38 @@ import {
   readRuntimeRequestContext,
 } from "./request-context"
 
+function toStringId(value: unknown): string | undefined {
+  return typeof value === "string" ? value : value != null ? String(value) : undefined
+}
+
 export const authEvents: NonNullable<NextAuthOptions["events"]> = {
   async signIn({ user }) {
-    const userId = typeof user.id === "string" ? user.id : user.id != null ? String(user.id) : undefined
+    const userId = toStringId(user.id)
     const username = normalizeUsernameForLog(user.username ?? user.name)
     const tenantId = coerceTenantId(user.don_vi)
 
-    void readRuntimeRequestContext().then((requestContext) =>
-      recordAuthLifecycleEvent({
-        event: "login_success",
-        source: "events_signin",
-        user_id: userId,
-        username,
-        tenant_id: tenantId,
-        ...requestContext,
-      })
-    )
+    void (async () => {
+      try {
+        const requestContext = await readRuntimeRequestContext()
+        await recordAuthLifecycleEvent({
+          event: "login_success",
+          source: "events_signin",
+          user_id: userId,
+          username,
+          tenant_id: tenantId,
+          ...requestContext,
+        })
+      } catch {
+        // Lifecycle logging must never affect sign-in.
+      }
+    })()
   },
   async signOut({ token, session }) {
     const pendingReason = isPendingSignoutReason(token?.pending_signout_reason)
       ? token.pending_signout_reason
       : undefined
     const userId =
-      typeof token?.id === "string"
-        ? token.id
-        : token?.id != null
-          ? String(token.id)
-          : typeof session?.user?.id === "string"
-            ? session.user.id
-            : session?.user?.id != null
-              ? String(session.user.id)
-              : undefined
+      toStringId(token?.id) ?? toStringId(session?.user?.id)
     const username = normalizeUsernameForLog(token?.username ?? session?.user?.username ?? session?.user?.name)
     const tenantId = coerceTenantId(token?.don_vi ?? session?.user?.don_vi)
 
