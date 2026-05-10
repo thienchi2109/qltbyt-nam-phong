@@ -42,7 +42,27 @@ export function InventoryReportFilterSection({
   onRefresh,
   onExport,
 }: InventoryReportFilterSectionProps) {
-  const [maxReportDate] = React.useState(() => new Date())
+  const [maxReportDate, setMaxReportDate] = React.useState(() => new Date())
+
+  React.useEffect(() => {
+    let refreshTimer: ReturnType<typeof setTimeout>
+
+    const refreshMaxReportDate = () => {
+      const now = new Date()
+      const nextLocalMidnight = new Date(now)
+      nextLocalMidnight.setHours(24, 0, 0, 0)
+
+      setMaxReportDate(now)
+      refreshTimer = setTimeout(
+        refreshMaxReportDate,
+        Math.max(nextLocalMidnight.getTime() - now.getTime(), 1000)
+      )
+    }
+
+    refreshMaxReportDate()
+
+    return () => clearTimeout(refreshTimer)
+  }, [])
 
   const filterControls = (
     <>
