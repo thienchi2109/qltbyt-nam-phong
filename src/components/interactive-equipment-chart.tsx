@@ -18,6 +18,7 @@ import {
   STATUS_LABELS
 } from "@/hooks/use-equipment-distribution"
 import { buildKeyedTooltipEntries } from "@/lib/runtime-list-keys"
+import { cn } from "@/lib/utils"
 
 interface InteractiveEquipmentChartProps {
   className?: string
@@ -162,7 +163,7 @@ export function InteractiveEquipmentChart({ className, tenantFilter, selectedDon
   }, [data, viewType])
 
   const isDenseChart = chartData.length > DENSE_DISTRIBUTION_CATEGORY_THRESHOLD
-  const chartContainerClassName = isDenseChart ? "overflow-x-auto pb-2" : ""
+  const chartContainerClassName = cn("min-w-0 max-w-full", isDenseChart && "overflow-x-auto pb-2")
   const chartMinWidth = isDenseChart ? `${chartData.length * DENSE_DISTRIBUTION_CATEGORY_WIDTH}px` : undefined
 
   // Statistics
@@ -186,7 +187,7 @@ export function InteractiveEquipmentChart({ className, tenantFilter, selectedDon
 
   if (error) {
     return (
-      <Card className={className}>
+      <Card className={cn("min-w-0 overflow-hidden", className)}>
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-red-600">
             <BarChart3 className="size-5" />
@@ -205,7 +206,7 @@ export function InteractiveEquipmentChart({ className, tenantFilter, selectedDon
   }
 
   return (
-    <Card className={className}>
+    <Card data-testid="equipment-chart-card" className={cn("min-w-0 overflow-hidden", className)}>
       <CardHeader>
         <div
           data-testid="equipment-chart-header"
@@ -250,8 +251,8 @@ export function InteractiveEquipmentChart({ className, tenantFilter, selectedDon
         </div>
       </CardHeader>
 
-      <CardContent>
-        <Tabs value={viewType} onValueChange={(value) => setViewType(value as 'department' | 'location')} className="space-y-4">
+      <CardContent data-testid="equipment-chart-content" className="min-w-0">
+        <Tabs value={viewType} onValueChange={(value) => setViewType(value as 'department' | 'location')} className="min-w-0 space-y-4">
           <div
             data-testid="equipment-chart-toolbar"
             className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between"
@@ -310,7 +311,7 @@ export function InteractiveEquipmentChart({ className, tenantFilter, selectedDon
             </div>
           </div>
 
-          <TabsContent value="department" className="space-y-4">
+          <TabsContent value="department" className="min-w-0 space-y-4">
             {isLoading ? (
               <Skeleton className="h-[400px] w-full" />
             ) : chartData.length === 0 ? (
@@ -331,7 +332,7 @@ export function InteractiveEquipmentChart({ className, tenantFilter, selectedDon
                 </Alert>
               </div>
             ) : (
-              <div className="space-y-4">
+              <div className="min-w-0 space-y-4">
                 {/* Chart */}
                 <div data-testid="equipment-chart-scroll-frame" className={chartContainerClassName}>
                   <div data-testid="equipment-chart-scroll-inner" style={{ minWidth: chartMinWidth }}>
@@ -371,7 +372,7 @@ export function InteractiveEquipmentChart({ className, tenantFilter, selectedDon
             )}
           </TabsContent>
 
-          <TabsContent value="location" className="space-y-4">
+          <TabsContent value="location" className="min-w-0 space-y-4">
             {isLoading ? (
               <Skeleton className="h-[400px] w-full" />
             ) : chartData.length === 0 ? (
@@ -392,7 +393,7 @@ export function InteractiveEquipmentChart({ className, tenantFilter, selectedDon
                 </Alert>
               </div>
             ) : (
-              <div className="space-y-4">
+              <div className="min-w-0 space-y-4">
                 {/* Chart */}
                 <div data-testid="equipment-chart-scroll-frame" className={chartContainerClassName}>
                   <div data-testid="equipment-chart-scroll-inner" style={{ minWidth: chartMinWidth }}>
