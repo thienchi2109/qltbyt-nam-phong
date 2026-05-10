@@ -59,12 +59,25 @@ vi.mock("@/components/ui/card", () => ({
 }))
 
 vi.mock("@/components/ui/tabs", () => ({
-  Tabs: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-  TabsList: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-  TabsTrigger: ({ children }: { children: React.ReactNode; value: string }) => (
-    <button type="button">{children}</button>
+  Tabs: ({ children, className }: { children: React.ReactNode; className?: string }) => (
+    <div className={className}>{children}</div>
   ),
-  TabsContent: ({ children }: { children: React.ReactNode; value: string }) => <div>{children}</div>,
+  TabsList: ({ children, className }: { children: React.ReactNode; className?: string }) => (
+    <div data-testid="reports-tabs-list" className={className}>{children}</div>
+  ),
+  TabsTrigger: ({
+    children,
+    className,
+  }: {
+    children: React.ReactNode
+    value: string
+    className?: string
+  }) => (
+    <button type="button" className={className}>{children}</button>
+  ),
+  TabsContent: ({ children, className }: { children: React.ReactNode; value: string; className?: string }) => (
+    <div className={className}>{children}</div>
+  ),
 }))
 
 vi.mock("@/components/ui/skeleton", () => ({
@@ -106,5 +119,14 @@ describe("ReportsPage auth gate", () => {
     render(<ReportsPage />)
 
     expect(screen.getByText("Báo cáo")).toBeInTheDocument()
+  })
+
+  it("uses a desktop-safe content wrapper and scrollable report tabs", () => {
+    render(<ReportsPage />)
+
+    expect(screen.getByTestId("reports-page-content")).toHaveClass("min-w-0")
+    expect(screen.getByTestId("reports-page-content").className).not.toContain("md:p-8")
+    expect(screen.getByTestId("reports-tabs-scroll-container")).toHaveClass("overflow-x-auto")
+    expect(screen.getByTestId("reports-tabs-list")).toHaveClass("w-max", "min-w-max")
   })
 })

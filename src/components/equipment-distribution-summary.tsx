@@ -245,7 +245,7 @@ export function EquipmentDistributionSummary({ className, tenantFilter, selected
         <CardContent className="pb-5">
           <div
             data-testid="status-distribution-layout"
-            className="grid gap-5 lg:grid-cols-[minmax(280px,380px)_minmax(0,1fr)]"
+            className="grid gap-5 xl:grid-cols-[minmax(280px,380px)_minmax(0,1fr)]"
           >
             <div className="min-w-0">
               {hasDonutData ? (
