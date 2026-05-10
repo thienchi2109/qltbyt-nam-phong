@@ -5,6 +5,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 const mockDynamicBarChart = vi.fn(() => <div data-testid="bar-chart" />)
 const mockDynamicLineChart = vi.fn(() => <div data-testid="line-chart" />)
 const mockDynamicPieChart = vi.fn(() => <div data-testid="pie-chart" />)
+const SELECTED_START_DATE = new Date("2026-04-14T00:00:00.000Z")
+const VI_NUMBER_FORMATTER = new Intl.NumberFormat("vi-VN")
 
 vi.mock("@/components/ui/button", () => ({
   Button: ({
@@ -22,10 +24,10 @@ vi.mock("@/components/ui/button", () => ({
 
 vi.mock("@/components/ui/calendar", () => ({
   Calendar: ({ onSelect }: { onSelect?: (range?: { from?: Date; to?: Date }) => void }) => (
-    <button
-      type="button"
-      onClick={() => onSelect?.({ from: new Date("2026-04-14T00:00:00.000Z") })}
-    >
+      <button
+        type="button"
+        onClick={() => onSelect?.({ from: SELECTED_START_DATE })}
+      >
       Select start date
     </button>
   ),
@@ -41,6 +43,10 @@ vi.mock("@/components/ui/card", () => ({
 
 vi.mock("@/components/ui/skeleton", () => ({
   Skeleton: () => <div data-testid="skeleton" />,
+}))
+
+vi.mock("@/components/ui/progress", () => ({
+  Progress: ({ value }: { value?: number }) => <div data-testid="progress">{value}</div>,
 }))
 
 vi.mock("@/components/ui/popover", () => ({
@@ -69,6 +75,7 @@ vi.mock("@/components/dynamic-chart", () => ({
 }))
 
 import { MaintenanceReportDateFilter } from "../maintenance-report-date-filter"
+import { MaintenanceReportCompletionTime } from "../maintenance-report-completion-time"
 import { MaintenanceReportPlanChart } from "../maintenance-report-plan-chart"
 import { MaintenanceReportRepairCharts } from "../maintenance-report-repair-charts"
 import { MaintenanceReportRepairTables } from "../maintenance-report-repair-tables"
@@ -133,8 +140,7 @@ describe("maintenance report sections", () => {
     expect(mockDynamicBarChart).not.toHaveBeenCalled()
   })
 
-  it("renders repair tables with formatted counts and dates", () => {
-    const numberFormatter = new Intl.NumberFormat("vi-VN")
+  it("renders the top repaired equipment table without recent repair history", () => {
     const formatDateDisplay = (value?: string | null) => (value ? "12/04/2026" : "—")
 
     render(
@@ -150,17 +156,7 @@ describe("maintenance report sections", () => {
             latestCompletedDate: "2026-04-12",
           },
         ]}
-        recentRepairHistory={[
-          {
-            id: 99,
-            equipmentName: "Monitor",
-            issue: "Không lên nguồn",
-            requestedDate: "2026-04-12",
-            status: "Đang xử lý",
-            completedDate: null,
-          },
-        ]}
-        numberFormatter={numberFormatter}
+        numberFormatter={VI_NUMBER_FORMATTER}
         formatDateDisplay={formatDateDisplay}
       />
     )
@@ -168,8 +164,43 @@ describe("maintenance report sections", () => {
     expect(screen.getByText("Thiết bị sửa chữa nhiều nhất")).toBeInTheDocument()
     expect(screen.getByText("Máy thở")).toBeInTheDocument()
     expect(screen.getByText("5")).toBeInTheDocument()
-    expect(screen.getByText("Lịch sử sửa chữa gần đây")).toBeInTheDocument()
-    expect(screen.getByText("Monitor")).toBeInTheDocument()
-    expect(screen.getAllByText("12/04/2026")).toHaveLength(2)
+    expect(screen.queryByText("Lịch sử sửa chữa gần đây")).not.toBeInTheDocument()
+    expect(screen.getAllByText("12/04/2026")).toHaveLength(1)
+  })
+
+  it("renders repair completion KPI, histogram, and trend sections", () => {
+    render(
+      <MaintenanceReportCompletionTime
+        isLoading={false}
+        repairCompletionTime={{
+          stats: {
+            totalCompleted: 6,
+            medianMinutes: 10800,
+            averageMinutes: 18600,
+            p90Minutes: 43200,
+            onTimeCount: 4,
+            onTimePercent: 66.7,
+            thresholdDays: 14,
+          },
+          distribution: [
+            { bucketKey: "0-1d", label: "0-1 ngày", count: 1, isOverThreshold: false },
+          ],
+        }}
+        repairCompletionTimeByMonth={[
+          {
+            period: "2026-03",
+            medianMinutes: 10800,
+            p90Minutes: 43200,
+            averageMinutes: 18600,
+            completedCount: 6,
+          },
+        ]}
+      />
+    )
+
+    expect(screen.getByText("Thời gian hoàn thành yêu cầu sửa chữa")).toBeInTheDocument()
+    expect(screen.getByText("Xu hướng thời gian hoàn thành theo tháng")).toBeInTheDocument()
+    expect(mockDynamicBarChart).toHaveBeenCalled()
+    expect(mockDynamicLineChart).toHaveBeenCalled()
   })
 })

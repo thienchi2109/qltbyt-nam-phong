@@ -4,9 +4,10 @@ import * as React from "react"
 import { endOfYear, startOfYear } from "date-fns"
 
 import { useMaintenanceReportData } from "../hooks/use-maintenance-data"
-import type { DateRange } from "../hooks/use-maintenance-data.types"
+import { defaultMaintenanceReportData, type DateRange } from "../hooks/use-maintenance-data.types"
 import { MaintenanceRepairCostVisualizations } from "./maintenance-repair-cost-visualizations"
 import { MaintenanceReportDateFilter } from "./maintenance-report-date-filter"
+import { MaintenanceReportCompletionTime } from "./maintenance-report-completion-time"
 import { MaintenanceReportPlanChart } from "./maintenance-report-plan-chart"
 import { MaintenanceReportRepairCharts } from "./maintenance-report-repair-charts"
 import { MaintenanceReportRepairTables } from "./maintenance-report-repair-tables"
@@ -18,6 +19,8 @@ import {
   createMaintenanceReportDateFormatter,
   normalizeMaintenanceReportSummary,
 } from "./maintenance-report-utils"
+
+const VI_NUMBER_FORMATTER = new Intl.NumberFormat("vi-VN")
 
 interface MaintenanceReportTabProps {
   tenantFilter?: string
@@ -47,7 +50,6 @@ export function MaintenanceReportTab({
   const topEquipmentRepairs = reportData?.topEquipmentRepairs ?? []
   const topEquipmentRepairCosts = reportData?.topEquipmentRepairCosts ?? []
   const repairUsageCostCorrelation = charts?.repairUsageCostCorrelation
-  const recentRepairHistory = reportData?.recentRepairHistory ?? []
 
   const normalizedSummary = React.useMemo(
     () => normalizeMaintenanceReportSummary(summary),
@@ -69,7 +71,7 @@ export function MaintenanceReportTab({
     [topEquipmentRepairs]
   )
 
-  const numberFormatter = React.useMemo(() => new Intl.NumberFormat("vi-VN"), [])
+  const numberFormatter = VI_NUMBER_FORMATTER
   const formatDateDisplay = React.useMemo(() => createMaintenanceReportDateFormatter(), [])
 
   return (
@@ -91,6 +93,17 @@ export function MaintenanceReportTab({
         repairStatusData={repairStatusData}
       />
 
+      <MaintenanceReportCompletionTime
+        isLoading={isLoading}
+        repairCompletionTime={
+          charts?.repairCompletionTime ?? defaultMaintenanceReportData.charts.repairCompletionTime
+        }
+        repairCompletionTimeByMonth={
+          charts?.repairCompletionTimeByMonth ??
+          defaultMaintenanceReportData.charts.repairCompletionTimeByMonth
+        }
+      />
+
       <MaintenanceReportPlanChart
         isLoading={isLoading}
         maintenancePlanData={maintenancePlanData}
@@ -106,7 +119,6 @@ export function MaintenanceReportTab({
       <MaintenanceReportRepairTables
         isLoading={isLoading}
         topEquipmentRows={topEquipmentRows}
-        recentRepairHistory={recentRepairHistory}
         numberFormatter={numberFormatter}
         formatDateDisplay={formatDateDisplay}
       />

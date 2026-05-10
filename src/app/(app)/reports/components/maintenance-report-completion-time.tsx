@@ -1,0 +1,143 @@
+"use client"
+
+import * as React from "react"
+import { Inbox } from "lucide-react"
+
+import { DynamicBarChart, DynamicLineChart } from "@/components/dynamic-chart"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Progress } from "@/components/ui/progress"
+import { Skeleton } from "@/components/ui/skeleton"
+import type {
+  RepairCompletionTimeByMonthPoint,
+  RepairCompletionTimeChart,
+} from "../hooks/use-maintenance-data.types"
+import {
+  buildCompletionTimeChartData,
+  buildCompletionTimeTrendData,
+  formatDurationAuto,
+} from "./maintenance-report-utils"
+
+interface MaintenanceReportCompletionTimeProps {
+  isLoading: boolean
+  repairCompletionTime: RepairCompletionTimeChart
+  repairCompletionTimeByMonth: RepairCompletionTimeByMonthPoint[]
+}
+
+export function MaintenanceReportCompletionTime({
+  isLoading,
+  repairCompletionTime,
+  repairCompletionTimeByMonth,
+}: MaintenanceReportCompletionTimeProps) {
+  const histogramData = React.useMemo(
+    () => buildCompletionTimeChartData(repairCompletionTime.distribution),
+    [repairCompletionTime.distribution]
+  )
+  const trendData = React.useMemo(
+    () => buildCompletionTimeTrendData(repairCompletionTimeByMonth),
+    [repairCompletionTimeByMonth]
+  )
+
+  const { stats } = repairCompletionTime
+  const hasCompletionData = stats.totalCompleted > 0
+  const percentFormatter = React.useMemo(
+    () => new Intl.NumberFormat("vi-VN", { maximumFractionDigits: 1 }),
+    []
+  )
+
+  if (isLoading) {
+    return (
+      <div className="grid gap-4 xl:grid-cols-2">
+        <Skeleton className="h-[460px] w-full" />
+        <Skeleton className="h-[460px] w-full" />
+      </div>
+    )
+  }
+
+  if (!hasCompletionData) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Thời gian hoàn thành yêu cầu sửa chữa</CardTitle>
+          <CardDescription>Thống kê các yêu cầu đã hoàn thành trong khoảng thời gian đã chọn.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex h-[360px] flex-col items-center justify-center gap-2 text-sm text-muted-foreground">
+            <Inbox className="h-8 w-8 text-muted-foreground/60" />
+            <span>Chưa có yêu cầu hoàn thành trong khoảng thời gian đã chọn.</span>
+          </div>
+        </CardContent>
+      </Card>
+    )
+  }
+
+  return (
+    <div className="grid gap-4 xl:grid-cols-2">
+      <Card>
+        <CardHeader>
+          <CardTitle>Thời gian hoàn thành yêu cầu sửa chữa</CardTitle>
+          <CardDescription>Phân bố thời gian từ lúc yêu cầu đến khi hoàn thành.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          <div className="grid gap-3 md:grid-cols-3">
+            <CompletionStat label="Trung vị" value={formatDurationAuto(stats.medianMinutes)} />
+            <CompletionStat label="Thời gian trung bình" value={formatDurationAuto(stats.averageMinutes)} />
+            <div className="rounded-md border p-3">
+              <div className="text-xs text-muted-foreground">Tỉ lệ đúng hạn</div>
+              <div className="mt-1 text-xl font-semibold">
+                {percentFormatter.format(stats.onTimePercent)}%
+              </div>
+              <Progress className="mt-3 h-2" value={stats.onTimePercent} />
+              <div className="mt-2 text-xs text-muted-foreground">
+                {stats.onTimeCount}/{stats.totalCompleted} yêu cầu trong ngưỡng {stats.thresholdDays} ngày
+              </div>
+            </div>
+          </div>
+
+          <DynamicBarChart
+            data={histogramData}
+            height={300}
+            xAxisKey="label"
+            bars={[{ key: "count", color: "hsl(var(--chart-1))", name: "Số yêu cầu" }]}
+            margin={{ top: 16, right: 24, left: 16, bottom: 36 }}
+          />
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Xu hướng thời gian hoàn thành theo tháng</CardTitle>
+          <CardDescription>Trung vị, mốc 90% và trung bình theo tháng hoàn thành.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {trendData.length === 0 ? (
+            <div className="flex h-[360px] flex-col items-center justify-center gap-2 text-sm text-muted-foreground">
+              <Inbox className="h-8 w-8 text-muted-foreground/60" />
+              <span>Chưa có dữ liệu theo tháng trong khoảng thời gian đã chọn.</span>
+            </div>
+          ) : (
+            <DynamicLineChart
+              data={trendData}
+              height={360}
+              xAxisKey="period"
+              lines={[
+                { key: "medianMinutes", color: "hsl(var(--chart-1))", name: "Trung vị" },
+                { key: "p90Minutes", color: "hsl(var(--chart-5))", name: "90% hoàn thành trong" },
+                { key: "averageMinutes", color: "hsl(var(--chart-2))", name: "Trung bình" },
+              ]}
+              margin={{ top: 16, right: 24, left: 16, bottom: 12 }}
+            />
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  )
+}
+
+function CompletionStat({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-md border p-3">
+      <div className="text-xs text-muted-foreground">{label}</div>
+      <div className="mt-1 text-xl font-semibold">{value}</div>
+    </div>
+  )
+}
