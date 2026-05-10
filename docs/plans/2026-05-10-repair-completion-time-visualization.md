@@ -18,6 +18,7 @@ Verified trên project `cdthersvldpnlbvpufrr` (2026-05-10):
 | `_get_jwt_claim`, `allowed_don_vi_for_session_safe` | Tồn tại, đều có search_path lock |
 | `yeu_cau_sua_chua` columns | `id, thiet_bi_id, mo_ta_su_co, hang_muc_sua_chua, ngay_mong_muon_hoan_thanh, trang_thai (NOT NULL default 'Chờ xử lý'), nguoi_yeu_cau, ngay_yeu_cau (timestamptz NOT NULL default now()), ngay_duyet, ngay_hoan_thanh (nullable timestamptz), don_vi_thuc_hien, ten_don_vi_thue, ket_qua_sua_chua, ly_do_khong_hoan_thanh, nguoi_duyet, nguoi_xac_nhan, chi_phi_sua_chua (numeric), tinh_trang_thiet_bi_truoc_yeu_cau` |
 | **Quan trọng**: `yeu_cau_sua_chua` KHÔNG có `don_vi` column | Tenant scope hoàn toàn qua `INNER JOIN scoped_equipment ON yc.thiet_bi_id = se.equipment_id` (filter trên `thiet_bi.don_vi`). KHÔNG đề xuất index `(don_vi, ngay_hoan_thanh)` trên `yeu_cau_sua_chua`. |
+| Completed rows có mốc bắt đầu | 13/13 yêu cầu `trang_thai = 'Hoàn thành'` có `ngay_yeu_cau` ⇒ công thức completion time phải dùng `ngay_hoan_thanh - ngay_yeu_cau`, không dùng fallback `reference_timestamp`. |
 | Existing indexes liên quan | `idx_yeu_cau_sua_chua_ngay_hoan_thanh`, `idx_yeu_cau_sua_chua_thiet_bi_id`, `idx_yeu_cau_sua_chua_thiet_bi_status`, `idx_thiet_bi_active_don_vi` (partial). Đủ cho access path JOIN→filter→aggregate ở quy mô hiện tại. |
 | Security advisors | 14 cảnh báo `function_search_path_mutable` về các function khác (validate_quyet_dinh_replacement_tenant, usage_analytics_daily, maintenance_tasks_list, equipment_history_list, …). `get_maintenance_report_data` KHÔNG trong danh sách ⇒ đã compliant. |
 
@@ -47,6 +48,7 @@ Verified trên project `cdthersvldpnlbvpufrr` (2026-05-10):
 | Visualization | **2 card**: KPI + Histogram (combo D) **và** Trend line p50/p90/avg theo tháng (option B) | KPI cho cái nhìn nhanh, histogram cho phân phối, trend line cho phát hiện regression theo thời gian |
 | Đơn vị thời gian | **Tự động**: <24h hiển thị giờ, ≥24h hiển thị ngày | Phù hợp cả ca sửa nhanh trong ngày và ca dài hạn |
 | Backend | **Migration mới qua Supabase MCP** + **bỏ field `recentRepairHistory`** khỏi RPC | Gọn payload, đảm bảo tính chính xác (data hiện tại bị `LIMIT 20`) |
+| Completion duration source | **`ngay_hoan_thanh - ngay_yeu_cau`** | Khớp Issue #441 và live DB; không dùng `ngay_duyet`/`reference_timestamp` vì sẽ làm lệch ý nghĩa "mất bao lâu để hoàn thành" |
 | Ngưỡng thời gian mục tiêu | **14 ngày** | Cân bằng cho đa số thiết bị y tế |
 | Việt hóa thuật ngữ thống kê | Không dùng "SLA", "p50", "p90" trên UI | Người dùng cuối là cán bộ BV, cần ngôn ngữ thường |
 
@@ -92,6 +94,50 @@ Render mọi tháng có ≥1 yêu cầu hoàn thành (lý do: live data hiện c
 
 ## Triển khai
 
+### TDD Execution Order (bắt buộc)
+
+Không viết production code và không apply migration trước khi RED tương ứng đã fail đúng nguyên nhân. Nếu RED pass ngay, test chưa khóa đúng behavior và phải sửa test trước.
+
+1. **RED SQL smoke**
+   - Tạo `supabase/tests/repair_completion_time_smoke.sql` trước.
+   - Chạy nội dung smoke qua Supabase MCP `execute_sql` trên live/current RPC.
+   - Expected RED: fail vì payload hiện chưa có `charts.repairCompletionTime` / `charts.repairCompletionTimeByMonth`, vẫn còn `recentRepairHistory`, hoặc chưa khóa duration theo `ngay_yeu_cau`.
+   - Không apply migration nếu fail do lỗi setup dữ liệu, typo, missing helper, hoặc quyền test sai; sửa smoke cho tới khi fail đúng behavior gap.
+
+2. **GREEN SQL**
+   - Tạo migration `CREATE OR REPLACE FUNCTION public.get_maintenance_report_data(...)` tối thiểu để smoke pass.
+   - Apply qua Supabase MCP `apply_migration` only; không dùng Supabase CLI.
+   - Rerun `repair_completion_time_smoke.sql` qua Supabase MCP `execute_sql`; expected GREEN: pass.
+   - Sau GREEN SQL: gọi `get_advisors(security)` và `get_advisors(performance)`.
+
+3. **RED frontend utilities/component**
+   - Viết test trước cho `formatDurationAuto`, chart-data builders, empty state, bucket warning colors, và label tiếng Việt.
+   - Run:
+     ```bash
+     node scripts/npm-run.js run test:run -- "src/app/(app)/reports/components/__tests__/maintenance-report-utils.test.ts" "src/app/(app)/reports/components/__tests__/maintenance-report-completion-time.test.tsx"
+     ```
+   - Expected RED: fail vì util/component mới chưa tồn tại hoặc chưa render KPI/histogram/trend đúng.
+
+4. **GREEN frontend utilities/component**
+   - Implement tối thiểu `maintenance-report-completion-time.tsx` và util/type changes để các RED test trên pass.
+   - Rerun cùng focused Vitest; expected GREEN: pass.
+
+5. **RED integration cleanup**
+   - Update tests trước cho `maintenance-report-sections.test.tsx` và `maintenance-report-tab.test.tsx`: card "Lịch sử sửa chữa gần đây" phải biến mất, mock payload mới phải mount completion-time component.
+   - Run:
+     ```bash
+     node scripts/npm-run.js run test:run -- "src/app/(app)/reports/components/__tests__/maintenance-report-sections.test.tsx" "src/app/(app)/reports/components/__tests__/maintenance-report-tab.test.tsx"
+     ```
+   - Expected RED: fail vì tab vẫn đọc `recentRepairHistory` và chưa mount component mới.
+
+6. **GREEN integration cleanup**
+   - Gỡ `recentRepairHistory` khỏi tab/types/default payload, remove/trim old table card, mount `<MaintenanceReportCompletionTime />`.
+   - Rerun same focused Vitest; expected GREEN: pass.
+
+7. **Refactor only after GREEN**
+   - Chỉ sau khi SQL + frontend focused tests đều GREEN mới tách sub-components nếu file >350 lines, đổi tên file nếu cần, hoặc cleanup old imports.
+   - Rerun focused tests after any refactor; no behavior change during refactor.
+
 ### Backend (migration mới qua Supabase MCP)
 
 File: `supabase/migrations/<timestamp>_add_repair_completion_time_charts.sql`
@@ -127,6 +173,7 @@ File: `supabase/tests/repair_completion_time_smoke.sql` — theo cùng pattern v
   - `repairCompletionTime.stats.totalCompleted` chỉ đếm rows có `ngay_hoan_thanh IS NOT NULL` AND `is_completed = true`
   - `distribution` đủ 6 buckets, count đúng, `isOverThreshold = true` cho 2 bucket cuối
   - `medianMinutes`, `p90Minutes`, `averageMinutes` khớp với data seed
+  - **Duration source**: seed ít nhất 1 row có `ngay_duyet` khác xa `ngay_yeu_cau`; expected duration vẫn tính bằng `ngay_hoan_thanh - ngay_yeu_cau`, không bị kéo theo `ngay_duyet`/`reference_timestamp`
   - `onTimePercent` tính đúng với threshold 14 ngày
   - `repairCompletionTimeByMonth` group đúng theo month, render mọi tháng có `completedCount >= 1` (KHÔNG ẩn tháng ít data — tooltip surface số lượng để user tự đánh giá)
   - **Cross-tenant**: với role `to_qltb`, không có dữ liệu của `v_other_tenant` lọt vào payload (giống line 437-439 ở smoke test cũ)
@@ -136,7 +183,7 @@ File: `supabase/tests/repair_completion_time_smoke.sql` — theo cùng pattern v
 
 #### Nội dung migration
 
-Mở rộng RPC `get_maintenance_report`:
+Mở rộng RPC `get_maintenance_report_data`:
 
 1. Thêm key `charts.repairCompletionTime`:
    ```jsonc
@@ -172,7 +219,8 @@ Mở rộng RPC `get_maintenance_report`:
 3. **Bỏ key `recentRepairHistory`** + bỏ CTE `recent_repairs` (LIMIT 20).
 
 4. Nguồn dữ liệu: filter `repair_data` theo `dateRange` & tenant scope, chỉ tính rows có `ngay_hoan_thanh IS NOT NULL` AND `trang_thai = 'Hoàn thành'`.
-   - Median/p90 dùng `percentile_cont(0.5/0.9) WITHIN GROUP (ORDER BY EXTRACT(EPOCH FROM (ngay_hoan_thanh - reference_timestamp)) / 60)`.
+   - Median/p90 dùng `percentile_cont(0.5/0.9) WITHIN GROUP (ORDER BY EXTRACT(EPOCH FROM (ngay_hoan_thanh - ngay_yeu_cau)) / 60)`.
+   - Vì `ngay_yeu_cau` là `NOT NULL` và live completed rows hiện có đủ giá trị, không dùng fallback `reference_timestamp` trong completion-time metrics.
    - Buckets tính bằng `CASE WHEN ... END` group by.
 
 5. Sau migration: gọi `get_advisors(security)` + `get_advisors(performance)` (theo AGENTS.md).
@@ -207,6 +255,8 @@ Nếu `maintenance-report-completion-time.tsx` > 350 dòng, tách:
 
 ## Verification (theo AGENTS.md)
 
+TDD verification không được gom chung thành một lần cuối. Mỗi RED/GREEN ở section trên phải có log/lệnh riêng trong PR comment hoặc commit notes. Section này là final gate sau khi các focused RED/GREEN đã pass.
+
 Thứ tự **bắt buộc** cho diff TS/React:
 
 1. `node scripts/npm-run.js run verify:no-explicit-any`
@@ -229,7 +279,7 @@ Manual verify:
 
 ## Rủi ro & Lưu ý
 
-- **Backward compat:** Bỏ `recentRepairHistory` khỏi RPC ⇒ migration + frontend phải cùng release. Nếu lo race condition khi deploy, có thể giữ field 1 release rồi xóa sau.
+- **Backward compat / release order:** Issue #441 chọn bỏ hẳn `recentRepairHistory`. Migration + frontend phải đi cùng một PR. Nếu migration apply trước frontend deploy, UI cũ chỉ rơi về `reportData?.recentRepairHistory ?? []` và hiển thị empty card tạm thời; không crash. Sau deploy frontend, card cũ biến mất. Không giữ field thêm 1 release trong scope này để tránh kéo dài payload cũ.
 - **Performance:** `percentile_cont` per month có thể nặng ở scale cao. Live DB hiện chỉ ~13 yêu cầu hoàn thành ⇒ không phải vấn đề. Existing indexes (`idx_yeu_cau_sua_chua_ngay_hoan_thanh`, `idx_thiet_bi_active_don_vi` partial) đủ. Re-verify qua `get_advisors(performance)` sau apply để bắt regressions tiềm ẩn ở scale lớn hơn.
 - **Edge case quy mô nhỏ:** tháng có ít yêu cầu vẫn render — tooltip surface count, không ẩn để tránh chart trống ở giai đoạn data thưa.
 - **Outlier <1h:** Live data có 3 yêu cầu hoàn thành <1h (có thể thao tác sai hoặc sửa rất nhanh). Plan KHÔNG filter — giữ trung thực dữ liệu.
