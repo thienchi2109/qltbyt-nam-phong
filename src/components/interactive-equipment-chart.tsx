@@ -28,6 +28,14 @@ interface InteractiveEquipmentChartProps {
 
 type TooltipPayloadEntry = NonNullable<ChartTooltipProps<number, string>['payload']>[number]
 
+function getTooltipCategoryName(entry: TooltipPayloadEntry): string | null {
+  const row = entry.payload
+  if (!row || typeof row !== "object" || !("name" in row)) return null
+
+  const name = (row as Record<string, unknown>).name
+  return typeof name === "string" && name.trim() ? name : null
+}
+
 // Custom tooltip component — memoized to avoid re-computing keyed entries on unchanged payload
 const CustomTooltip = React.memo(function CustomTooltip({
   active,
@@ -42,16 +50,17 @@ const CustomTooltip = React.memo(function CustomTooltip({
       0,
     )
     const keyedPayload = buildKeyedTooltipEntries<TooltipPayloadEntry>(tooltipEntries)
+    const categoryName = tooltipEntries.map(getTooltipCategoryName).find(Boolean) ?? label
     
     return (
       <div className="bg-background border rounded-lg shadow-lg p-3 min-w-[200px]">
-        <p className="font-medium mb-2">{label}</p>
+        <p className="font-medium mb-2">{categoryName}</p>
         <div className="space-y-1">
           {keyedPayload.map(({ key, entry }) => (
             <div key={key} className="flex items-center justify-between gap-2 text-sm">
               <div className="flex items-center gap-2">
                 <div 
-                  className="w-3 h-3 rounded"
+                  className="size-3 rounded"
                   style={{ backgroundColor: entry.color }}
                 />
                 <span>{STATUS_LABELS[entry.dataKey as keyof typeof STATUS_LABELS]}</span>
@@ -93,7 +102,7 @@ function DataFilters({
   
   return (
     <div className="flex items-center gap-2">
-      <Filter className="h-4 w-4 text-muted-foreground" />
+      <Filter className="size-4 text-muted-foreground" />
       <Select 
         value={selectedFilter} 
         onValueChange={onFilterChange}
@@ -172,7 +181,7 @@ export function InteractiveEquipmentChart({ className, tenantFilter, selectedDon
       <Card className={className}>
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-red-600">
-            <BarChart3 className="h-5 w-5" />
+            <BarChart3 className="size-5" />
             Lỗi tải dữ liệu
           </CardTitle>
         </CardHeader>
@@ -193,7 +202,7 @@ export function InteractiveEquipmentChart({ className, tenantFilter, selectedDon
         <div className="flex items-center justify-between">
           <div>
             <CardTitle className="flex items-center gap-2">
-              <BarChart3 className="h-5 w-5" />
+              <BarChart3 className="size-5" />
               Phân bố Thiết bị theo {viewType === 'department' ? 'Khoa/Phòng' : 'Vị trí'}
             </CardTitle>
             <CardDescription className="flex items-center gap-2 flex-wrap">
@@ -235,11 +244,11 @@ export function InteractiveEquipmentChart({ className, tenantFilter, selectedDon
           <div className="flex items-center justify-between">
             <TabsList>
               <TabsTrigger value="department" className="flex items-center gap-2">
-                <Building2 className="h-4 w-4" />
+                <Building2 className="size-4" />
                 Theo Khoa/Phòng
               </TabsTrigger>
               <TabsTrigger value="location" className="flex items-center gap-2">
-                <MapPin className="h-4 w-4" />
+                <MapPin className="size-4" />
                 Theo Vị trí
               </TabsTrigger>
             </TabsList>
@@ -278,7 +287,7 @@ export function InteractiveEquipmentChart({ className, tenantFilter, selectedDon
                   onClick={resetFilters}
                   className="flex items-center gap-1"
                 >
-                  <X className="h-3 w-3" />
+                  <X className="size-3" />
                   Xóa bộ lọc
                 </Button>
               )}
@@ -331,7 +340,7 @@ export function InteractiveEquipmentChart({ className, tenantFilter, selectedDon
                   {Object.entries(STATUS_LABELS).map(([key, label]) => (
                     <div key={key} className="flex items-center gap-2">
                       <div
-                        className="w-3 h-3 rounded"
+                        className="size-3 rounded"
                         style={{ backgroundColor: STATUS_COLORS[key as keyof typeof STATUS_COLORS] }}
                       />
                       <span className="text-sm">{label}</span>
@@ -388,7 +397,7 @@ export function InteractiveEquipmentChart({ className, tenantFilter, selectedDon
                   {Object.entries(STATUS_LABELS).map(([key, label]) => (
                     <div key={key} className="flex items-center gap-2">
                       <div
-                        className="w-3 h-3 rounded"
+                        className="size-3 rounded"
                         style={{ backgroundColor: STATUS_COLORS[key as keyof typeof STATUS_COLORS] }}
                       />
                       <span className="text-sm">{label}</span>
