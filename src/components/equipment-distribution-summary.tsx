@@ -140,6 +140,13 @@ export function EquipmentDistributionSummary({ className, tenantFilter, selected
     return "destructive"
   }
 
+  const getStatusProgressStyle = (
+    color: string
+  ): React.CSSProperties & Record<"--status-progress-color", string> => ({
+    "--status-progress-color": color,
+    accentColor: color,
+  })
+
   const donutData = buildStatusDonutData(overallStats.statusPercentages)
   const hasDonutData = donutData.length > 0
   const visibleStatusRows = overallStats.statusPercentages
@@ -315,19 +322,13 @@ export function EquipmentDistributionSummary({ className, tenantFilter, selected
                         <span className="font-medium text-foreground">{status.percentage}%</span> tổng số
                       </div>
                     </div>
-                    <div
-                      role="progressbar"
+                    <progress
                       aria-label={`Tỷ lệ ${status.label}`}
-                      aria-valuemin={0}
-                      aria-valuemax={100}
-                      aria-valuenow={status.percentage}
-                      className="h-2 overflow-hidden rounded-full bg-muted"
-                    >
-                      <div
-                        className="h-full rounded-full"
-                        style={{ width: `${status.percentage}%`, backgroundColor: status.color }}
-                      />
-                    </div>
+                      value={status.percentage}
+                      max={100}
+                      className="h-2 w-full overflow-hidden rounded-full bg-muted [&::-moz-progress-bar]:rounded-full [&::-moz-progress-bar]:bg-[var(--status-progress-color)] [&::-webkit-progress-bar]:rounded-full [&::-webkit-progress-bar]:bg-muted [&::-webkit-progress-value]:rounded-full [&::-webkit-progress-value]:bg-[var(--status-progress-color)]"
+                      style={getStatusProgressStyle(status.color)}
+                    />
                   </div>
                 </div>
               ))}
