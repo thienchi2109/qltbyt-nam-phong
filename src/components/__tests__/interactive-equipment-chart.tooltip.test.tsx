@@ -221,7 +221,7 @@ describe("InteractiveEquipmentChart tooltip", () => {
     expect(screen.getByTestId("equipment-chart-tabs-list")).toHaveClass("w-max", "min-w-max")
   })
 
-  it("uses a vertical bar chart with internal scrolling when the department list is dense", () => {
+  it("keeps the existing bar chart inside an internal horizontal scroll frame when the department list is dense", () => {
     const denseDepartments = Array.from({ length: 31 }, (_, index) => createChartDatum(index + 1))
 
     mocks.useEquipmentDistribution.mockReturnValue({
@@ -238,14 +238,13 @@ describe("InteractiveEquipmentChart tooltip", () => {
 
     render(<InteractiveEquipmentChart tenantFilter="42" selectedDonVi={42} effectiveTenantKey="42" />)
 
-    expect(screen.getAllByTestId("equipment-chart-scroll-frame")[0]).toHaveClass("max-h-[560px]", "overflow-y-auto")
+    expect(screen.getAllByTestId("equipment-chart-scroll-frame")[0]).toHaveClass("overflow-x-auto")
+    expect(screen.getAllByTestId("equipment-chart-scroll-inner")[0]).toHaveStyle({ minWidth: "1736px" })
     expect(mocks.dynamicBarChart).toHaveBeenCalledWith(
       expect.objectContaining({
-        layout: "vertical",
-        yAxisKey: "name",
-        xAxisAngle: 0,
-        height: 868,
-        margin: { top: 16, right: 24, left: 16, bottom: 16 },
+        height: 400,
+        xAxisAngle: -45,
+        margin: { top: 20, right: 30, left: 20, bottom: 100 },
       })
     )
   })
