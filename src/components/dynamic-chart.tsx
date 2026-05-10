@@ -28,21 +28,18 @@ export function DynamicChart({
   onError,
 }: DynamicChartProps) {
   const [components, setComponents] = React.useState<RechartsComponents | null>(null)
-  const [isLoading, setIsLoading] = React.useState(true)
   const [error, setError] = React.useState<Error | null>(null)
 
   const loadCharts = React.useCallback(async () => {
     try {
-      setIsLoading(true)
       setError(null)
+      setComponents(null)
       const chartComponents = await loadChartsLibrary()
       setComponents(chartComponents)
     } catch (err) {
       const error = err instanceof Error ? err : new Error('Unknown error loading charts')
       setError(error)
       onError?.(error)
-    } finally {
-      setIsLoading(false)
     }
   }, [onError])
 
@@ -50,7 +47,7 @@ export function DynamicChart({
     loadCharts()
   }, [loadCharts])
 
-  if (isLoading) {
+  if (!components && !error) {
     return <ChartLoadingFallback height={fallbackHeight || height} />
   }
 
@@ -156,7 +153,7 @@ interface BarChartBaseProps {
   showTooltip?: boolean
   showLegend?: boolean
   xAxisAngle?: number
-  customTooltip?: React.FC<ChartTooltipProps<number, string>>
+  customTooltip?: React.ElementType<ChartTooltipProps<number, string>>
   margin?: {
     top?: number
     right?: number
@@ -189,6 +186,7 @@ export function DynamicBarChart({
   if (isVertical && !verticalYAxisKey) {
     throw new Error('DynamicBarChart requires yAxisKey when layout is vertical')
   }
+  const CustomTooltipContent = customTooltip
 
   return (
     <DynamicChart height={height}>
@@ -222,7 +220,9 @@ export function DynamicBarChart({
                 <YAxis />
               </>
             )}
-            {showTooltip && (customTooltip ? <Tooltip content={customTooltip} /> : <Tooltip />)}
+            {showTooltip && (
+              CustomTooltipContent ? <Tooltip content={<CustomTooltipContent />} /> : <Tooltip />
+            )}
             {showLegend && <Legend />}
             {bars.map(bar => (
               <Bar
