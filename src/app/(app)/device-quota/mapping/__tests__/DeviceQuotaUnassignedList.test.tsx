@@ -180,4 +180,36 @@ describe('DeviceQuotaUnassignedList', () => {
     expect(setSearchTerm).toHaveBeenCalledWith('máy thở')
     expect(setSelectedDepartments).toHaveBeenCalledWith(['Khoa cấp cứu'])
   })
+
+  it('exposes each equipment row as a single keyboard-toggle button', () => {
+    const toggleEquipmentSelection = vi.fn()
+
+    mockUseContext.mockReturnValue(makeContext({
+      unassignedEquipment: [
+        {
+          id: 10,
+          ma_thiet_bi: 'TB-010',
+          ten_thiet_bi: 'Máy thở',
+          model: 'MT-01',
+          serial: 'SER-01',
+          hang_san_xuat: null,
+          khoa_phong_quan_ly: 'Khoa hồi sức',
+          tinh_trang: null,
+        },
+      ],
+      totalEquipmentCount: 1,
+      toggleEquipmentSelection,
+    }))
+
+    render(<DeviceQuotaUnassignedList />)
+
+    const rowButton = screen.getByRole('button', { name: /Máy thở/i })
+    expect(rowButton).toHaveAttribute('aria-pressed', 'false')
+    expect(screen.getAllByRole('checkbox')).toHaveLength(1)
+
+    fireEvent.click(rowButton)
+
+    expect(toggleEquipmentSelection).toHaveBeenCalledTimes(1)
+    expect(toggleEquipmentSelection).toHaveBeenCalledWith(10)
+  })
 })

@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { CheckCircle2, Building2, SearchX } from "lucide-react"
+import { Check, CheckCircle2, Building2, SearchX } from "lucide-react"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -200,33 +200,26 @@ interface EquipmentItemProps {
 }
 
 function EquipmentItem({ equipment, isSelected, onToggle }: EquipmentItemProps) {
-  const handleKeyDown = React.useCallback(
-    (event: React.KeyboardEvent<HTMLDivElement>) => {
-      if (event.key === "Enter" || event.key === " ") {
-        event.preventDefault()
-        onToggle()
-      }
-    },
-    [onToggle]
-  )
-
   return (
-    <div
-      role="button"
-      tabIndex={0}
+    <button
+      type="button"
+      aria-pressed={isSelected}
       className={cn(
-        "flex items-start gap-3 p-3 rounded-lg border transition-colors cursor-pointer hover:bg-accent",
+        "flex w-full items-start gap-3 p-3 text-left rounded-lg border transition-colors cursor-pointer hover:bg-accent",
+        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
         isSelected && "bg-accent border-primary"
       )}
       onClick={onToggle}
-      onKeyDown={handleKeyDown}
     >
-      <Checkbox
-        checked={isSelected}
-        onCheckedChange={onToggle}
-        onClick={(e) => e.stopPropagation()}
-        className="mt-1"
-      />
+      <span
+        aria-hidden="true"
+        className={cn(
+          "mt-1 flex size-4 shrink-0 items-center justify-center rounded-sm border border-primary",
+          isSelected && "bg-primary text-primary-foreground"
+        )}
+      >
+        {isSelected ? <Check className="size-3" /> : null}
+      </span>
       <div className="flex-1 min-w-0 space-y-1">
         <div className="font-medium text-sm leading-tight">
           {equipment.ten_thiet_bi}
@@ -243,7 +236,7 @@ function EquipmentItem({ equipment, isSelected, onToggle }: EquipmentItemProps) 
           </div>
         )}
       </div>
-    </div>
+    </button>
   )
 }
 
