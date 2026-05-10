@@ -1,24 +1,69 @@
 import React from 'react'
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 import { DeviceQuotaCategoryTree } from '../_components/DeviceQuotaCategoryTree'
 import { useDeviceQuotaMappingContext } from '../_hooks/useDeviceQuotaMappingContext'
+import type { ListFilterSearchCardProps } from '@/components/shared/ListFilterSearchCard'
 
 vi.mock('../_hooks/useDeviceQuotaMappingContext', () => ({
   useDeviceQuotaMappingContext: vi.fn(),
 }))
 
-const mockUseContext = vi.mocked(useDeviceQuotaMappingContext)
+vi.mock('@/components/shared/ListFilterSearchCard', () => ({
+  ListFilterSearchCard: ({
+    title,
+    description,
+    searchValue,
+    onSearchChange,
+    searchPlaceholder,
+  }: ListFilterSearchCardProps) => (
+    <section data-testid="shared-category-filter-card">
+      <h2>{title}</h2>
+      <p>{description}</p>
+      {typeof searchPlaceholder === 'string' && typeof onSearchChange === 'function' ? (
+        <input
+          aria-label={searchPlaceholder}
+          value={searchValue}
+          onChange={(event) => onSearchChange(event.target.value)}
+        />
+      ) : null}
+    </section>
+  ),
+}))
 
-const makeContext = (overrides: Record<string, unknown> = {}) => ({
+const mockUseContext = vi.mocked(useDeviceQuotaMappingContext)
+type MappingContext = ReturnType<typeof useDeviceQuotaMappingContext>
+
+const makeContext = (overrides: Partial<MappingContext> = {}): MappingContext => ({
+  user: null,
+  donViId: 1,
+  isFacilitySelected: true,
+  unassignedEquipment: [],
+  totalEquipmentCount: 0,
   categories: [],
   allCategories: [],
+  selectedEquipmentIds: new Set<number>(),
   selectedCategoryId: null,
+  toggleEquipmentSelection: vi.fn(),
+  selectAllEquipment: vi.fn(),
+  deselectPageEquipment: vi.fn(),
+  clearEquipmentSelection: vi.fn(),
   setSelectedCategory: vi.fn(),
+  filters: {} as unknown as MappingContext['filters'],
+  filterOptions: {
+    departments: [],
+    users: [],
+    locations: [],
+    fundingSources: [],
+  },
+  pagination: {} as unknown as MappingContext['pagination'],
   categorySearchTerm: '',
   setCategorySearchTerm: vi.fn(),
+  linkEquipment: {} as unknown as MappingContext['linkEquipment'],
   isLoading: false,
+  isLinking: false,
+  refetch: vi.fn(),
   ...overrides,
 })
 
@@ -28,7 +73,7 @@ describe('DeviceQuotaCategoryTree (mapping)', () => {
   })
 
   it('links empty state CTA to categories page', () => {
-    mockUseContext.mockReturnValue(makeContext() as any)
+    mockUseContext.mockReturnValue(makeContext())
 
     render(<DeviceQuotaCategoryTree />)
 
@@ -43,11 +88,28 @@ describe('DeviceQuotaCategoryTree (mapping)', () => {
       ],
       categories: [],
       categorySearchTerm: 'zzzzz',
-    }) as any)
+    }))
 
     render(<DeviceQuotaCategoryTree />)
 
     expect(screen.getByText('Không tìm thấy danh mục phù hợp')).toBeInTheDocument()
     expect(screen.queryByRole('link', { name: 'Tạo danh mục' })).not.toBeInTheDocument()
+  })
+
+  it('uses shared search layout and preserves category search callback', () => {
+    const setCategorySearchTerm = vi.fn()
+    mockUseContext.mockReturnValue(makeContext({
+      setCategorySearchTerm,
+    }))
+
+    render(<DeviceQuotaCategoryTree />)
+
+    expect(screen.getByTestId('shared-category-filter-card')).toBeInTheDocument()
+
+    fireEvent.change(screen.getByRole('textbox', { name: 'Tìm danh mục...' }), {
+      target: { value: 'x-quang' },
+    })
+
+    expect(setCategorySearchTerm).toHaveBeenCalledWith('x-quang')
   })
 })

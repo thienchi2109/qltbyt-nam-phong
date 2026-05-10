@@ -28,6 +28,7 @@ interface ListFilterSearchCardSearchProps {
   searchPlaceholder: string
   searchEndAddon?: React.ReactNode
   showSearchIcon?: boolean
+  searchDisabled?: boolean
 }
 
 interface ListFilterSearchCardFilterOnlyProps {
@@ -37,6 +38,7 @@ interface ListFilterSearchCardFilterOnlyProps {
   searchPlaceholder?: never
   searchEndAddon?: never
   showSearchIcon?: never
+  searchDisabled?: never
 }
 
 export type ListFilterSearchCardProps = ListFilterSearchCardBaseProps & (
@@ -55,6 +57,7 @@ export function ListFilterSearchCard({
   searchPlaceholder,
   searchEndAddon,
   showSearchIcon = true,
+  searchDisabled,
   filterControls,
   mobileFilterControl,
   compactFilters = false,
@@ -112,6 +115,7 @@ export function ListFilterSearchCard({
                 className="h-9 w-full"
                 endAddon={searchEndAddon}
                 aria-label={searchPlaceholder}
+                disabled={searchDisabled}
               />
             </div>
           ) : null}

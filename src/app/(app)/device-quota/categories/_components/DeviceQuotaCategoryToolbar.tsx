@@ -4,7 +4,7 @@ import * as React from "react"
 import { Download, PlusCircle, Upload } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
-import { SearchInput } from "@/components/shared/SearchInput"
+import { ListFilterSearchCard } from "@/components/shared/ListFilterSearchCard"
 import { useToast } from "@/hooks/use-toast"
 import { downloadCategoryImportTemplate } from "@/lib/category-excel"
 import { useDeviceQuotaCategoryContext } from "../_hooks/useDeviceQuotaCategoryContext"
@@ -31,38 +31,41 @@ export function DeviceQuotaCategoryToolbar() {
     }
   }
 
+  const actions = (
+    <>
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={handleDownloadTemplate}
+        disabled={isDownloading}
+      >
+        <Download className="mr-2 size-4" />
+        {isDownloading ? "Đang tải..." : "Tải mẫu Excel"}
+      </Button>
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={openImportDialog}
+      >
+        <Upload className="mr-2 size-4" />
+        Nhập từ Excel
+      </Button>
+      <Button onClick={openCreateDialog}>
+        <PlusCircle className="mr-2 size-4" />
+        Tạo danh mục
+      </Button>
+    </>
+  )
+
   return (
-    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-      <div className="w-full sm:max-w-sm">
-        <SearchInput
-          value={searchTerm}
-          onChange={setSearchTerm}
-          placeholder="Tìm theo mã, tên nhóm..."
-        />
-      </div>
-      <div className="flex items-center gap-2">
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={handleDownloadTemplate}
-          disabled={isDownloading}
-        >
-          <Download className="mr-2 h-4 w-4" />
-          {isDownloading ? "Đang tải..." : "Tải mẫu Excel"}
-        </Button>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={openImportDialog}
-        >
-          <Upload className="mr-2 h-4 w-4" />
-          Nhập từ Excel
-        </Button>
-        <Button onClick={openCreateDialog}>
-          <PlusCircle className="mr-2 h-4 w-4" />
-          Tạo danh mục
-        </Button>
-      </div>
-    </div>
+    <ListFilterSearchCard
+      surface="plain"
+      searchValue={searchTerm}
+      onSearchChange={setSearchTerm}
+      searchPlaceholder="Tìm theo mã, tên nhóm..."
+      showSearchIcon={false}
+      searchClassName="md:min-w-[220px] md:max-w-[320px]"
+      actions={actions}
+    />
   )
 }

@@ -116,4 +116,17 @@ describe("ListFilterSearchCard", () => {
 
     expect(searchInputRef.current).toBe(screen.getByRole("searchbox", { name: "Tìm kiếm chung..." }))
   })
+
+  it("can disable the shared search input", () => {
+    render(
+      <ListFilterSearchCard
+        searchValue=""
+        onSearchChange={vi.fn()}
+        searchPlaceholder="Chọn cơ sở để tìm kiếm..."
+        searchDisabled
+      />
+    )
+
+    expect(screen.getByRole("searchbox", { name: "Chọn cơ sở để tìm kiếm..." })).toBeDisabled()
+  })
 })
