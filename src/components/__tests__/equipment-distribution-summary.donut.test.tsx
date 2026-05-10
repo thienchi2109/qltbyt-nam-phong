@@ -123,4 +123,39 @@ describe('EquipmentDistributionSummary donut', () => {
     expect(screen.getByTestId('status-donut-legend-swatch-hoat_dong')).toBeInTheDocument()
     expect(screen.getByTestId('status-donut-legend-swatch-cho_sua_chua')).toBeInTheDocument()
   })
+
+  it('renders a compact status comparison list with total count and progress bars', () => {
+    mockUseEquipmentDistribution.mockReturnValue({
+      data: {
+        totalEquipment: 100,
+        byDepartment: [
+          {
+            name: 'Khoa A',
+            total: 100,
+            hoat_dong: 63,
+            cho_sua_chua: 5,
+            cho_bao_tri: 0,
+            cho_hieu_chuan: 0,
+            ngung_su_dung: 15,
+            chua_co_nhu_cau: 17,
+          },
+        ],
+        byLocation: [],
+        departments: ['Khoa A'],
+        locations: [],
+      },
+      isLoading: false,
+      error: null,
+    })
+
+    render(<EquipmentDistributionSummary tenantFilter="42" selectedDonVi={42} effectiveTenantKey="42" />)
+
+    expect(screen.getByTestId('status-donut-total')).toHaveTextContent('100')
+    expect(screen.getByTestId('status-comparison-list')).toBeInTheDocument()
+    expect(screen.getAllByTestId('status-comparison-row')).toHaveLength(4)
+    expect(screen.getByRole('progressbar', { name: 'Tỷ lệ Hoạt động' })).toHaveAttribute('aria-valuenow', '63')
+    expect(screen.getByRole('progressbar', { name: 'Tỷ lệ Ngừng sử dụng' })).toHaveAttribute('aria-valuenow', '15')
+    expect(screen.getByRole('progressbar', { name: 'Tỷ lệ Chưa có nhu cầu' })).toHaveAttribute('aria-valuenow', '17')
+    expect(screen.getByRole('progressbar', { name: 'Tỷ lệ Chờ sửa chữa' })).toHaveAttribute('aria-valuenow', '5')
+  })
 })

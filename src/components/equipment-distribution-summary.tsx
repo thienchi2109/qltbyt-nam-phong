@@ -28,6 +28,15 @@ const EQUIPMENT_DISTRIBUTION_SKELETON_KEYS = [
   "equipment-distribution-skeleton-4",
 ] as const
 
+const STATUS_DISPLAY_ORDER = [
+  "hoat_dong",
+  "ngung_su_dung",
+  "chua_co_nhu_cau",
+  "cho_sua_chua",
+  "cho_bao_tri",
+  "cho_hieu_chuan",
+] as const
+
 export function EquipmentDistributionSummary({ className, tenantFilter, selectedDonVi, effectiveTenantKey }: EquipmentDistributionSummaryProps) {
   const { data, isLoading, error } = useEquipmentDistribution(undefined, undefined, tenantFilter, selectedDonVi, effectiveTenantKey)
 
@@ -101,19 +110,21 @@ export function EquipmentDistributionSummary({ className, tenantFilter, selected
   }
 
   const getStatusIcon = (statusKey: string) => {
+    const iconClassName = "size-5 text-white"
+
     switch (statusKey) {
       case 'hoat_dong':
-        return <CheckCircle className="h-4 w-4 text-green-600" />
+        return <CheckCircle className={iconClassName} />
       case 'cho_sua_chua':
-        return <XCircle className="h-4 w-4 text-red-600" />
+        return <XCircle className={iconClassName} />
       case 'cho_bao_tri':
-        return <Clock className="h-4 w-4 text-amber-600" />
+        return <Clock className={iconClassName} />
       case 'cho_hieu_chuan':
-        return <AlertCircle className="h-4 w-4 text-violet-600" />
+        return <AlertCircle className={iconClassName} />
       case 'ngung_su_dung':
-        return <Pause className="h-4 w-4 text-gray-600" />
+        return <Pause className={iconClassName} />
       default:
-        return <Activity className="h-4 w-4 text-gray-400" />
+        return <Activity className={iconClassName} />
     }
   }
 
@@ -131,6 +142,13 @@ export function EquipmentDistributionSummary({ className, tenantFilter, selected
 
   const donutData = buildStatusDonutData(overallStats.statusPercentages)
   const hasDonutData = donutData.length > 0
+  const visibleStatusRows = overallStats.statusPercentages
+    .filter((status) => status.count > 0)
+    .sort(
+      (a, b) =>
+        STATUS_DISPLAY_ORDER.indexOf(a.key as (typeof STATUS_DISPLAY_ORDER)[number]) -
+        STATUS_DISPLAY_ORDER.indexOf(b.key as (typeof STATUS_DISPLAY_ORDER)[number])
+    )
 
   return (
     <div className={`space-y-4 ${className}`}>
@@ -217,31 +235,40 @@ export function EquipmentDistributionSummary({ className, tenantFilter, selected
             Chi tiết tình trạng của {overallStats.totalEquipment} thiết bị trong hệ thống
           </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="pb-5">
           <div
             data-testid="status-distribution-layout"
-            className="grid gap-6 lg:grid-cols-[360px_minmax(0,1fr)]"
+            className="grid gap-5 lg:grid-cols-[minmax(280px,380px)_minmax(0,1fr)]"
           >
-            <div className="rounded-lg border p-4">
-              <div className="mb-2 text-sm font-medium">Tỷ lệ trạng thái</div>
+            <div className="min-w-0">
               {hasDonutData ? (
-                <DynamicPieChart
-                  data={donutData}
-                  height={260}
-                  dataKey="value"
-                  nameKey="name"
-                  colors={donutData.map((d) => d.color)}
-                  innerRadius={70}
-                  outerRadius={105}
-                  showLabels={false}
-                />
+                <div className="relative">
+                  <DynamicPieChart
+                    data={donutData}
+                    height={260}
+                    dataKey="value"
+                    nameKey="name"
+                    colors={donutData.map((d) => d.color)}
+                    innerRadius={70}
+                    outerRadius={105}
+                    showLabels={false}
+                  />
+                  <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+                    <div className="text-center">
+                      <div data-testid="status-donut-total" className="text-3xl font-bold tracking-normal">
+                        {overallStats.totalEquipment}
+                      </div>
+                      <div className="text-xs text-muted-foreground">thiết bị</div>
+                    </div>
+                  </div>
+                </div>
               ) : (
                 <div className="flex h-[260px] items-center justify-center text-sm text-muted-foreground">
                   Không có dữ liệu trạng thái
                 </div>
               )}
               {hasDonutData && (
-                <div data-testid="status-donut-legend" className="mt-4 space-y-2">
+                <div data-testid="status-donut-legend" className="mt-3 grid gap-x-5 gap-y-2 sm:grid-cols-2">
                   {donutData.map((item) => (
                     <div
                       key={item.key}
@@ -251,7 +278,7 @@ export function EquipmentDistributionSummary({ className, tenantFilter, selected
                       <div className="flex items-center gap-2">
                         <span
                           data-testid={`status-donut-legend-swatch-${item.key}`}
-                          className="h-2.5 w-2.5 rounded-full"
+                          className="size-2.5 rounded-full"
                           style={{ backgroundColor: item.color }}
                         />
                         <span className="text-muted-foreground">{item.name}</span>
@@ -263,27 +290,44 @@ export function EquipmentDistributionSummary({ className, tenantFilter, selected
               )}
             </div>
 
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
-            {overallStats.statusPercentages
-              .filter(status => status.count > 0)
-              .sort((a, b) => b.count - a.count)
-              .map((status) => (
-                <div 
-                  key={status.key} 
-                  className="flex items-center justify-between p-3 border rounded-lg"
+            <div data-testid="status-comparison-list" className="grid content-center gap-3">
+              {visibleStatusRows.map((status) => (
+                <div
+                  key={status.key}
+                  data-testid="status-comparison-row"
+                  className="grid min-h-[74px] grid-cols-[48px_minmax(0,1fr)] items-center gap-4 rounded-lg border bg-card p-3"
                 >
-                  <div className="flex items-center gap-3">
+                  <div
+                    className="flex size-12 items-center justify-center rounded-lg text-white shadow-sm"
+                    style={{ backgroundColor: status.color }}
+                  >
                     {getStatusIcon(status.key)}
-                    <div>
-                      <div className="font-medium text-sm">{status.label}</div>
-                      <div className="text-xs text-muted-foreground">
-                        {status.percentage}% tổng số
+                  </div>
+                  <div className="min-w-0 space-y-2">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <div className="truncate text-sm font-medium">{status.label}</div>
+                        <div className="text-xs text-muted-foreground">
+                          <span className="text-lg font-bold text-foreground">{status.count}</span> thiết bị
+                        </div>
+                      </div>
+                      <div className="shrink-0 text-right text-sm text-muted-foreground">
+                        <span className="font-medium text-foreground">{status.percentage}%</span> tổng số
                       </div>
                     </div>
-                  </div>
-                  <div className="text-right">
-                    <div className="font-bold text-lg">{status.count}</div>
-                    <div className="text-xs text-muted-foreground">thiết bị</div>
+                    <div
+                      role="progressbar"
+                      aria-label={`Tỷ lệ ${status.label}`}
+                      aria-valuemin={0}
+                      aria-valuemax={100}
+                      aria-valuenow={status.percentage}
+                      className="h-2 overflow-hidden rounded-full bg-muted"
+                    >
+                      <div
+                        className="h-full rounded-full"
+                        style={{ width: `${status.percentage}%`, backgroundColor: status.color }}
+                      />
+                    </div>
                   </div>
                 </div>
               ))}
