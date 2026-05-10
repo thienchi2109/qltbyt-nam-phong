@@ -115,7 +115,7 @@ function ReportsPageContent({ user }: ReportsPageContentProps) {
   }, [selectedFacilityId, user.don_vi])
 
   return (
-    <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
+    <div data-testid="reports-page-content" className="min-w-0 flex-1 space-y-4">
       <div className="flex flex-wrap items-center gap-4">
         <h2 className="text-3xl font-bold tracking-tight">Báo cáo</h2>
 
@@ -131,21 +131,23 @@ function ReportsPageContent({ user }: ReportsPageContentProps) {
       )}
 
       {/* Report tabs - only render when should fetch */}
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="inventory">Xuất-Nhập-Tồn</TabsTrigger>
-          <TabsTrigger value="maintenance">
-            Bảo trì / Sửa chữa
-          </TabsTrigger>
-          <TabsTrigger value="utilization">
-            Sử dụng thiết bị
-          </TabsTrigger>
-        </TabsList>
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="min-w-0 space-y-4">
+        <div data-testid="reports-tabs-scroll-container" className="overflow-x-auto pb-1">
+          <TabsList className="w-max min-w-max">
+            <TabsTrigger value="inventory">Xuất-Nhập-Tồn</TabsTrigger>
+            <TabsTrigger value="maintenance">
+              Bảo trì / Sửa chữa
+            </TabsTrigger>
+            <TabsTrigger value="utilization">
+              Sử dụng thiết bị
+            </TabsTrigger>
+          </TabsList>
+        </div>
 
         {/* Only show content when shouldFetchData is true */}
         {shouldFetchData ? (
           <>
-            <TabsContent value="inventory" className="space-y-4">
+            <TabsContent value="inventory" className="min-w-0 space-y-4">
               <React.Suspense fallback={<TabSkeleton />}>
                 <InventoryReportTab
                   tenantFilter={tenantFilter}
@@ -156,7 +158,7 @@ function ReportsPageContent({ user }: ReportsPageContentProps) {
               </React.Suspense>
             </TabsContent>
 
-            <TabsContent value="maintenance" className="space-y-4">
+            <TabsContent value="maintenance" className="min-w-0 space-y-4">
               <React.Suspense fallback={<TabSkeleton />}>
                 <MaintenanceReportTab
                   tenantFilter={tenantFilter}
@@ -166,7 +168,7 @@ function ReportsPageContent({ user }: ReportsPageContentProps) {
               </React.Suspense>
             </TabsContent>
 
-            <TabsContent value="utilization" className="space-y-4">
+            <TabsContent value="utilization" className="min-w-0 space-y-4">
               <React.Suspense fallback={<TabSkeleton />}>
                 <UsageAnalyticsDashboard
                   tenantFilter={tenantFilter}

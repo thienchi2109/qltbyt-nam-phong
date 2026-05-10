@@ -199,8 +199,11 @@ export function InteractiveEquipmentChart({ className, tenantFilter, selectedDon
   return (
     <Card className={className}>
       <CardHeader>
-        <div className="flex items-center justify-between">
-          <div>
+        <div
+          data-testid="equipment-chart-header"
+          className="flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between"
+        >
+          <div className="min-w-0">
             <CardTitle className="flex items-center gap-2">
               <BarChart3 className="size-5" />
               Phân bố Thiết bị theo {viewType === 'department' ? 'Khoa/Phòng' : 'Vị trí'}
@@ -221,7 +224,7 @@ export function InteractiveEquipmentChart({ className, tenantFilter, selectedDon
           </div>
           
           {stats && (
-            <div className="flex gap-4 text-sm">
+            <div className="flex w-full flex-wrap gap-4 text-sm xl:w-auto xl:justify-end">
               <div className="text-center">
                 <div className="font-semibold text-blue-600">{stats.totalEquipment}</div>
                 <div className="text-muted-foreground">Tổng TB</div>
@@ -241,20 +244,25 @@ export function InteractiveEquipmentChart({ className, tenantFilter, selectedDon
 
       <CardContent>
         <Tabs value={viewType} onValueChange={(value) => setViewType(value as 'department' | 'location')} className="space-y-4">
-          <div className="flex items-center justify-between">
-            <TabsList>
-              <TabsTrigger value="department" className="flex items-center gap-2">
-                <Building2 className="size-4" />
-                Theo Khoa/Phòng
-              </TabsTrigger>
-              <TabsTrigger value="location" className="flex items-center gap-2">
-                <MapPin className="size-4" />
-                Theo Vị trí
-              </TabsTrigger>
-            </TabsList>
+          <div
+            data-testid="equipment-chart-toolbar"
+            className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between"
+          >
+            <div data-testid="equipment-chart-tabs-scroll" className="w-full overflow-x-auto pb-1 xl:w-auto">
+              <TabsList className="w-max min-w-max">
+                <TabsTrigger value="department" className="flex items-center gap-2">
+                  <Building2 className="size-4" />
+                  Theo Khoa/Phòng
+                </TabsTrigger>
+                <TabsTrigger value="location" className="flex items-center gap-2">
+                  <MapPin className="size-4" />
+                  Theo Vị trí
+                </TabsTrigger>
+              </TabsList>
+            </div>
 
             {/* Cross Filters and Reset */}
-            <div className="flex items-center gap-2">
+            <div className="flex w-full flex-wrap items-center gap-2 xl:w-auto xl:justify-end">
               {/* When viewing by department, allow filtering by location */}
               {viewType === 'department' && data?.locations && (
                 <DataFilters

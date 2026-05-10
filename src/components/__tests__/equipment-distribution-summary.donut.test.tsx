@@ -62,6 +62,8 @@ describe('EquipmentDistributionSummary donut', () => {
     expect(screen.getByTestId('status-donut')).toBeInTheDocument()
     expect(mockUseEquipmentDistribution).toHaveBeenCalledWith(undefined, undefined, '42', 42, '42')
     expect(screen.getByTestId('status-distribution-layout')).toBeInTheDocument()
+    expect(screen.getByTestId('status-distribution-layout')).toHaveClass('xl:grid-cols-[minmax(280px,380px)_minmax(0,1fr)]')
+    expect(screen.getByTestId('status-distribution-layout').className).not.toContain('lg:grid-cols')
   })
 
   it('shows empty-state message when all status counts are zero', () => {

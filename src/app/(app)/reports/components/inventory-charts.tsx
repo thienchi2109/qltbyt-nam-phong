@@ -133,12 +133,14 @@ export function InventoryCharts({ data, isLoading }: InventoryChartsProps) {
   }
 
   return (
-    <Tabs defaultValue="trend" className="space-y-4">
-      <TabsList>
-        <TabsTrigger value="trend">Xu hướng theo thời gian</TabsTrigger>
-        <TabsTrigger value="department">Theo khoa/phòng</TabsTrigger>
-        <TabsTrigger value="distribution">Phân bố nguồn</TabsTrigger>
-      </TabsList>
+    <Tabs defaultValue="trend" className="min-w-0 space-y-4">
+      <div data-testid="inventory-charts-tabs-scroll" className="overflow-x-auto pb-1">
+        <TabsList className="w-max min-w-max">
+          <TabsTrigger value="trend">Xu hướng theo thời gian</TabsTrigger>
+          <TabsTrigger value="department">Theo khoa/phòng</TabsTrigger>
+          <TabsTrigger value="distribution">Phân bố nguồn</TabsTrigger>
+        </TabsList>
+      </div>
 
       <TabsContent value="trend" className="space-y-4">
         <div className="grid gap-4 md:grid-cols-1 lg:grid-cols-2">

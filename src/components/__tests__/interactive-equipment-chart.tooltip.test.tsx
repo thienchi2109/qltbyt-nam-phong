@@ -64,11 +64,11 @@ vi.mock("@/components/dynamic-chart", () => ({
 }))
 
 vi.mock("@/components/ui/card", () => ({
-  Card: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-  CardContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-  CardDescription: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-  CardHeader: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-  CardTitle: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+  Card: ({ children, className }: { children: React.ReactNode; className?: string }) => <div className={className}>{children}</div>,
+  CardContent: ({ children, className }: { children: React.ReactNode; className?: string }) => <div className={className}>{children}</div>,
+  CardDescription: ({ children, className }: { children: React.ReactNode; className?: string }) => <div className={className}>{children}</div>,
+  CardHeader: ({ children, className }: { children: React.ReactNode; className?: string }) => <div className={className}>{children}</div>,
+  CardTitle: ({ children, className }: { children: React.ReactNode; className?: string }) => <div className={className}>{children}</div>,
 }))
 
 let latestTabValueChange: ((value: string) => void) | undefined
@@ -85,10 +85,14 @@ vi.mock("@/components/ui/tabs", () => ({
     latestTabValueChange = onValueChange
     return <div>{children}</div>
   },
-  TabsContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-  TabsList: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-  TabsTrigger: ({ children, value }: { children: React.ReactNode; value: string }) => (
-    <button type="button" onClick={() => latestTabValueChange?.(value)}>
+  TabsContent: ({ children, className }: { children: React.ReactNode; className?: string }) => (
+    <div className={className}>{children}</div>
+  ),
+  TabsList: ({ children, className }: { children: React.ReactNode; className?: string }) => (
+    <div data-testid="equipment-chart-tabs-list" className={className}>{children}</div>
+  ),
+  TabsTrigger: ({ children, value, className }: { children: React.ReactNode; value: string; className?: string }) => (
+    <button type="button" className={className} onClick={() => latestTabValueChange?.(value)}>
       {children}
     </button>
   ),
@@ -177,5 +181,14 @@ describe("InteractiveEquipmentChart tooltip", () => {
       .getAllByTestId("rendered-tooltip")
       .map((tooltip) => within(tooltip).getByText("Phòng Mổ", { selector: "p" }))
     expect(tooltipHeadings.length).toBeGreaterThan(0)
+  })
+
+  it("uses stacked responsive header and toolbar layouts for narrow desktop widths", () => {
+    render(<InteractiveEquipmentChart tenantFilter="42" selectedDonVi={42} effectiveTenantKey="42" />)
+
+    expect(screen.getByTestId("equipment-chart-header")).toHaveClass("flex-col", "xl:flex-row")
+    expect(screen.getByTestId("equipment-chart-toolbar")).toHaveClass("flex-col", "xl:flex-row")
+    expect(screen.getByTestId("equipment-chart-tabs-scroll")).toHaveClass("overflow-x-auto")
+    expect(screen.getByTestId("equipment-chart-tabs-list")).toHaveClass("w-max", "min-w-max")
   })
 })
