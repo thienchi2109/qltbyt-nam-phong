@@ -39,23 +39,21 @@ export function DeviceQuotaDecisionsToolbar() {
   } = useDeviceQuotaDecisionsContext()
 
   const filterControls = (
-    <>
-      <Select
-        value={statusFilter}
-        onValueChange={(value) => setStatusFilter(value as StatusFilter)}
-      >
-        <SelectTrigger className="h-9 w-full sm:w-[180px]">
-          <SelectValue placeholder="Trạng thái" />
-        </SelectTrigger>
-        <SelectContent>
-          {STATUS_OPTIONS.map((option) => (
-            <SelectItem key={option.value} value={option.value}>
-              {option.label}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
-    </>
+    <Select
+      value={statusFilter}
+      onValueChange={(value) => setStatusFilter(value as StatusFilter)}
+    >
+      <SelectTrigger className="h-9 w-full sm:w-[180px]">
+        <SelectValue placeholder="Trạng thái" />
+      </SelectTrigger>
+      <SelectContent>
+        {STATUS_OPTIONS.map((option) => (
+          <SelectItem key={option.value} value={option.value}>
+            {option.label}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
   )
 
   const actions = (

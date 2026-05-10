@@ -100,7 +100,7 @@ export function DeviceQuotaUnassignedList() {
 
   return (
     <Card className="flex flex-col h-full">
-      <CardHeader className="pb-4 [&>*+*]:mt-0">
+      <CardHeader className="pb-4">
         <ListFilterSearchCard
           surface="plain"
           title="Thiết bị chưa phân loại"

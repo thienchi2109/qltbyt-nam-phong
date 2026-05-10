@@ -171,7 +171,7 @@ export function DeviceQuotaCategoryTree() {
 
   return (
     <Card className="h-full flex flex-col">
-      <CardHeader className="[&>*+*]:mt-0">
+      <CardHeader>
         <ListFilterSearchCard
           surface="plain"
           title="Danh mục định mức"
