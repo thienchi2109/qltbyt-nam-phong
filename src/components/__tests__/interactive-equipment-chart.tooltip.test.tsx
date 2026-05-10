@@ -5,8 +5,27 @@ import type { ChartTooltipProps } from "@/lib/chart-utils"
 
 import { InteractiveEquipmentChart } from "@/components/interactive-equipment-chart"
 
+type MockChartDatum = Record<string, string | number | undefined>
+
+interface MockDynamicBarChartProps {
+  data?: MockChartDatum[]
+  height?: number
+  xAxisKey: string
+  yAxisKey?: string
+  layout?: "horizontal" | "vertical"
+  xAxisAngle?: number
+  customTooltip?: React.FC<ChartTooltipProps<number, string>>
+  margin?: {
+    top?: number
+    right?: number
+    bottom?: number
+    left?: number
+  }
+}
+
 const mocks = vi.hoisted(() => ({
   useEquipmentDistribution: vi.fn(),
+  dynamicBarChart: vi.fn<(props: MockDynamicBarChartProps) => void>(),
 }))
 
 vi.mock("@/hooks/use-equipment-distribution", () => ({
@@ -30,13 +49,10 @@ vi.mock("@/hooks/use-equipment-distribution", () => ({
 }))
 
 vi.mock("@/components/dynamic-chart", () => ({
-  DynamicBarChart: ({
-    data,
-    customTooltip: Tooltip,
-  }: {
-    data?: Array<Record<string, string | number | undefined>>
-    customTooltip?: React.FC<ChartTooltipProps<number, string>>
-  }) => {
+  DynamicBarChart: (props: MockDynamicBarChartProps) => {
+    mocks.dynamicBarChart(props)
+
+    const { data, customTooltip: Tooltip } = props
     const row = data?.[0] ?? {}
     const activeCount = typeof row.hoat_dong === "number" ? row.hoat_dong : 0
 
@@ -127,6 +143,19 @@ vi.mock("@/components/ui/alert", () => ({
   AlertDescription: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
 }))
 
+function createChartDatum(index: number): MockChartDatum {
+  return {
+    name: `Khoa ${index}`,
+    total: index,
+    hoat_dong: index,
+    cho_sua_chua: 0,
+    cho_bao_tri: 0,
+    cho_hieu_chuan: 0,
+    ngung_su_dung: 0,
+    chua_co_nhu_cau: 0,
+  }
+}
+
 describe("InteractiveEquipmentChart tooltip", () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -190,5 +219,34 @@ describe("InteractiveEquipmentChart tooltip", () => {
     expect(screen.getByTestId("equipment-chart-toolbar")).toHaveClass("flex-col", "xl:flex-row")
     expect(screen.getByTestId("equipment-chart-tabs-scroll")).toHaveClass("overflow-x-auto")
     expect(screen.getByTestId("equipment-chart-tabs-list")).toHaveClass("w-max", "min-w-max")
+  })
+
+  it("uses a vertical bar chart with internal scrolling when the department list is dense", () => {
+    const denseDepartments = Array.from({ length: 31 }, (_, index) => createChartDatum(index + 1))
+
+    mocks.useEquipmentDistribution.mockReturnValue({
+      data: {
+        totalEquipment: 496,
+        byDepartment: denseDepartments,
+        byLocation: [],
+        departments: denseDepartments.map((department) => String(department.name)),
+        locations: ["Kho tổng"],
+      },
+      isLoading: false,
+      error: null,
+    })
+
+    render(<InteractiveEquipmentChart tenantFilter="42" selectedDonVi={42} effectiveTenantKey="42" />)
+
+    expect(screen.getAllByTestId("equipment-chart-scroll-frame")[0]).toHaveClass("max-h-[560px]", "overflow-y-auto")
+    expect(mocks.dynamicBarChart).toHaveBeenCalledWith(
+      expect.objectContaining({
+        layout: "vertical",
+        yAxisKey: "name",
+        xAxisAngle: 0,
+        height: 868,
+        margin: { top: 16, right: 24, left: 16, bottom: 16 },
+      })
+    )
   })
 })

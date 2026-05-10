@@ -26,6 +26,10 @@ interface InteractiveEquipmentChartProps {
   effectiveTenantKey?: string
 }
 
+const DEFAULT_DISTRIBUTION_CHART_HEIGHT = 400
+const DENSE_DISTRIBUTION_CATEGORY_THRESHOLD = 20
+const DENSE_DISTRIBUTION_ROW_HEIGHT = 28
+
 type TooltipPayloadEntry = NonNullable<ChartTooltipProps<number, string>['payload']>[number]
 
 function getTooltipCategoryName(entry: TooltipPayloadEntry): string | null {
@@ -156,6 +160,23 @@ export function InteractiveEquipmentChart({ className, tenantFilter, selectedDon
 
     return viewType === 'department' ? data.byDepartment : data.byLocation
   }, [data, viewType])
+
+  const isDenseChart = chartData.length > DENSE_DISTRIBUTION_CATEGORY_THRESHOLD
+  const chartHeight = isDenseChart
+    ? Math.max(DEFAULT_DISTRIBUTION_CHART_HEIGHT, chartData.length * DENSE_DISTRIBUTION_ROW_HEIGHT)
+    : DEFAULT_DISTRIBUTION_CHART_HEIGHT
+  const chartContainerClassName = isDenseChart ? "max-h-[560px] overflow-y-auto pr-2" : ""
+  const chartOrientationProps = isDenseChart
+    ? {
+        layout: "vertical" as const,
+        yAxisKey: "name",
+        xAxisAngle: 0,
+        margin: { top: 16, right: 24, left: 16, bottom: 16 },
+      }
+    : {
+        xAxisAngle: -45,
+        margin: { top: 20, right: 30, left: 20, bottom: 100 },
+      }
 
   // Statistics
   const stats = React.useMemo(() => {
@@ -325,23 +346,24 @@ export function InteractiveEquipmentChart({ className, tenantFilter, selectedDon
             ) : (
               <div className="space-y-4">
                 {/* Chart */}
-                <DynamicBarChart
-                  data={chartData}
-                  height={400}
-                  xAxisKey="name"
-                  bars={Object.entries(STATUS_COLORS).map(([key, color]) => ({
-                    key,
-                    color,
-                    name: STATUS_LABELS[key as keyof typeof STATUS_LABELS],
-                    stackId: "status"
-                  }))}
-                  showGrid={true}
-                  showTooltip={true}
-                  showLegend={false}
-                  xAxisAngle={-45}
-                  customTooltip={CustomTooltip}
-                  margin={{ top: 20, right: 30, left: 20, bottom: 100 }}
-                />
+                <div data-testid="equipment-chart-scroll-frame" className={chartContainerClassName}>
+                  <DynamicBarChart
+                    data={chartData}
+                    height={chartHeight}
+                    xAxisKey="name"
+                    bars={Object.entries(STATUS_COLORS).map(([key, color]) => ({
+                      key,
+                      color,
+                      name: STATUS_LABELS[key as keyof typeof STATUS_LABELS],
+                      stackId: "status"
+                    }))}
+                    showGrid={true}
+                    showTooltip={true}
+                    showLegend={false}
+                    customTooltip={CustomTooltip}
+                    {...chartOrientationProps}
+                  />
+                </div>
 
                 {/* Legend */}
                 <div className="flex flex-wrap gap-4 justify-center pt-4 border-t">
@@ -382,23 +404,24 @@ export function InteractiveEquipmentChart({ className, tenantFilter, selectedDon
             ) : (
               <div className="space-y-4">
                 {/* Chart */}
-                <DynamicBarChart
-                  data={chartData}
-                  height={400}
-                  xAxisKey="name"
-                  bars={Object.entries(STATUS_COLORS).map(([key, color]) => ({
-                    key,
-                    color,
-                    name: STATUS_LABELS[key as keyof typeof STATUS_LABELS],
-                    stackId: "status"
-                  }))}
-                  showGrid={true}
-                  showTooltip={true}
-                  showLegend={false}
-                  xAxisAngle={-45}
-                  customTooltip={CustomTooltip}
-                  margin={{ top: 20, right: 30, left: 20, bottom: 100 }}
-                />
+                <div data-testid="equipment-chart-scroll-frame" className={chartContainerClassName}>
+                  <DynamicBarChart
+                    data={chartData}
+                    height={chartHeight}
+                    xAxisKey="name"
+                    bars={Object.entries(STATUS_COLORS).map(([key, color]) => ({
+                      key,
+                      color,
+                      name: STATUS_LABELS[key as keyof typeof STATUS_LABELS],
+                      stackId: "status"
+                    }))}
+                    showGrid={true}
+                    showTooltip={true}
+                    showLegend={false}
+                    customTooltip={CustomTooltip}
+                    {...chartOrientationProps}
+                  />
+                </div>
 
                 {/* Legend */}
                 <div className="flex flex-wrap gap-4 justify-center pt-4 border-t">
