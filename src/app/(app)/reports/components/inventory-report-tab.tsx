@@ -147,7 +147,7 @@ export function InventoryReportTab({
         {/* Summary Cards */}
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between gap-y-0 pb-2">
+            <CardHeader className="flex flex-row items-center justify-between pb-2 [&>*+*]:mt-0">
               <CardTitle className="text-sm font-medium">Tổng nhập</CardTitle>
               <TrendingUp className="size-4 text-muted-foreground" />
             </CardHeader>
@@ -162,7 +162,7 @@ export function InventoryReportTab({
           </Card>
           
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between gap-y-0 pb-2">
+            <CardHeader className="flex flex-row items-center justify-between pb-2 [&>*+*]:mt-0">
               <CardTitle className="text-sm font-medium">Tổng xuất</CardTitle>
               <TrendingDown className="size-4 text-muted-foreground" />
             </CardHeader>
@@ -177,7 +177,7 @@ export function InventoryReportTab({
           </Card>
           
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between gap-y-0 pb-2">
+            <CardHeader className="flex flex-row items-center justify-between pb-2 [&>*+*]:mt-0">
               <CardTitle className="text-sm font-medium">Tồn kho</CardTitle>
               <Package className="size-4 text-muted-foreground" />
             </CardHeader>
@@ -192,7 +192,7 @@ export function InventoryReportTab({
           </Card>
           
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between gap-y-0 pb-2">
+            <CardHeader className="flex flex-row items-center justify-between pb-2 [&>*+*]:mt-0">
               <CardTitle className="text-sm font-medium">Biến động</CardTitle>
               <Badge variant={summary.netChange >= 0 ? "default" : "destructive"}>
                 {summary.netChange >= 0 ? "+" : ""}{summary.netChange}

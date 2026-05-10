@@ -13,18 +13,20 @@ import { ListFilterSearchCard } from "@/components/shared/ListFilterSearchCard"
 import { cn } from "@/lib/utils"
 import type { DateRange } from "../hooks/use-report-filters"
 
+const MIN_REPORT_DATE = new Date("1900-01-01")
+
 interface InventoryReportFilterSectionProps {
-  dateRange: DateRange
-  onDateRangeChange: (dateRange: DateRange) => void
-  selectedDepartment: string
-  onSelectedDepartmentChange: (department: string) => void
-  searchTerm: string
-  onSearchTermChange: (searchTerm: string) => void
-  departments: string[]
-  isGlobalOrRegionalLeader?: boolean
-  isLoading: boolean
-  onRefresh: () => void
-  onExport: () => void
+  readonly dateRange: DateRange
+  readonly onDateRangeChange: (dateRange: DateRange) => void
+  readonly selectedDepartment: string
+  readonly onSelectedDepartmentChange: (department: string) => void
+  readonly searchTerm: string
+  readonly onSearchTermChange: (searchTerm: string) => void
+  readonly departments: string[]
+  readonly isGlobalOrRegionalLeader?: boolean
+  readonly isLoading: boolean
+  readonly onRefresh: () => void
+  readonly onExport: () => void
 }
 
 export function InventoryReportFilterSection({
@@ -40,29 +42,31 @@ export function InventoryReportFilterSection({
   onRefresh,
   onExport,
 }: InventoryReportFilterSectionProps) {
+  const [maxReportDate] = React.useState(() => new Date())
+
   const filterControls = (
     <>
-      <div className="flex flex-col gap-2">
-        <label className="text-sm font-medium">Khoảng thời gian</label>
+      <fieldset className="flex flex-col gap-2">
+        <legend className="text-sm font-medium">Khoảng thời gian</legend>
         <div className="flex flex-wrap gap-2">
           <InventoryReportDateButton
             label="Từ ngày"
             value={dateRange.from}
             onSelect={(date) => onDateRangeChange({ ...dateRange, from: date })}
-            isDateDisabled={(date) => date > new Date() || date < new Date("1900-01-01")}
+            isDateDisabled={(date) => date > maxReportDate || date < MIN_REPORT_DATE}
           />
           <InventoryReportDateButton
             label="Đến ngày"
             value={dateRange.to}
             onSelect={(date) => onDateRangeChange({ ...dateRange, to: date })}
-            isDateDisabled={(date) => date > new Date() || date < dateRange.from}
+            isDateDisabled={(date) => date > maxReportDate || date < dateRange.from}
           />
         </div>
-      </div>
+      </fieldset>
 
       {!isGlobalOrRegionalLeader ? (
-        <div className="flex flex-col gap-2">
-          <label className="text-sm font-medium">Khoa/Phòng</label>
+        <fieldset className="flex flex-col gap-2">
+          <legend className="text-sm font-medium">Khoa/Phòng</legend>
           <Select value={selectedDepartment} onValueChange={onSelectedDepartmentChange}>
             <SelectTrigger className="h-9 w-full min-w-[200px] md:w-[200px]">
               <SelectValue placeholder="Chọn khoa/phòng" />
@@ -76,7 +80,7 @@ export function InventoryReportFilterSection({
               ))}
             </SelectContent>
           </Select>
-        </div>
+        </fieldset>
       ) : null}
     </>
   )
@@ -87,7 +91,7 @@ export function InventoryReportFilterSection({
         Làm mới
       </Button>
       <Button onClick={onExport}>
-        <Download className="mr-2 h-4 w-4" />
+        <Download className="mr-2 size-4" />
         Xuất báo cáo
       </Button>
     </>
@@ -97,7 +101,7 @@ export function InventoryReportFilterSection({
     <ListFilterSearchCard
       title={(
         <span className="flex items-center gap-2">
-          <FileText className="h-5 w-5" />
+          <FileText className="size-5" />
           Báo cáo Xuất-Nhập-Tồn thiết bị
         </span>
       )}
@@ -114,10 +118,10 @@ export function InventoryReportFilterSection({
 }
 
 interface InventoryReportDateButtonProps {
-  label: string
-  value: Date
-  onSelect: (date: Date) => void
-  isDateDisabled: (date: Date) => boolean
+  readonly label: string
+  readonly value: Date
+  readonly onSelect: (date: Date) => void
+  readonly isDateDisabled: (date: Date) => boolean
 }
 
 function InventoryReportDateButton({
@@ -136,7 +140,7 @@ function InventoryReportDateButton({
             !value && "text-muted-foreground"
           )}
         >
-          <CalendarIcon className="mr-2 h-4 w-4" />
+          <CalendarIcon className="mr-2 size-4" />
           {value ? format(value, "dd/MM/yyyy") : label}
         </Button>
       </PopoverTrigger>
