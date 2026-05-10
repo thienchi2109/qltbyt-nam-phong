@@ -55,6 +55,20 @@ describe("ListFilterSearchCard", () => {
     expect(screen.getByRole("button", { name: "Tùy chọn" })).toBeInTheDocument()
   })
 
+  it("supports filter-only sections without rendering a search input", () => {
+    render(
+      <ListFilterSearchCard
+        title="Bộ lọc báo cáo"
+        filterControls={<button type="button">Khoảng thời gian</button>}
+        actions={<button type="button">Làm mới</button>}
+      />
+    )
+
+    expect(screen.getByRole("button", { name: "Khoảng thời gian" })).toBeInTheDocument()
+    expect(screen.getByRole("button", { name: "Làm mới" })).toBeInTheDocument()
+    expect(screen.queryByRole("searchbox")).not.toBeInTheDocument()
+  })
+
   it("can render as a plain surface for embedding inside an existing card", () => {
     const { container } = render(
       <ListFilterSearchCard

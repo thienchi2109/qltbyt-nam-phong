@@ -1,5 +1,5 @@
 import * as React from "react"
-import { render, waitFor } from "@testing-library/react"
+import { fireEvent, render, screen, waitFor } from "@testing-library/react"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import { InventoryReportTab } from "../inventory-report-tab"
 
@@ -50,6 +50,40 @@ vi.mock("../export-report-dialog", () => ({
   ExportReportDialog: () => <div data-testid="export-report-dialog" />,
 }))
 
+vi.mock("@/components/shared/ListFilterSearchCard", () => ({
+  ListFilterSearchCard: ({
+    title,
+    description,
+    searchValue,
+    onSearchChange,
+    searchPlaceholder,
+    filterControls,
+    actions,
+  }: {
+    title?: React.ReactNode
+    description?: React.ReactNode
+    searchValue?: string
+    onSearchChange?: (value: string) => void
+    searchPlaceholder?: string
+    filterControls?: React.ReactNode
+    actions?: React.ReactNode
+  }) => (
+    <section data-testid="reports-shared-filter-section">
+      {title ? <h2>{title}</h2> : null}
+      {description ? <p>{description}</p> : null}
+      {searchPlaceholder ? (
+        <input
+          aria-label={searchPlaceholder}
+          value={searchValue ?? ""}
+          onChange={(event) => onSearchChange?.(event.target.value)}
+        />
+      ) : null}
+      {filterControls}
+      {actions}
+    </section>
+  ),
+}))
+
 vi.mock("@/components/interactive-equipment-chart", () => ({
   InteractiveEquipmentChart: () => <div data-testid="interactive-equipment-chart" />,
 }))
@@ -71,7 +105,9 @@ vi.mock("@/components/ui/card", () => ({
 }))
 
 vi.mock("@/components/ui/button", () => ({
-  Button: ({ children }: { children: React.ReactNode }) => <button type="button">{children}</button>,
+  Button: ({ children, ...props }: React.ButtonHTMLAttributes<HTMLButtonElement>) => (
+    <button type="button" {...props}>{children}</button>
+  ),
 }))
 
 vi.mock("@/components/ui/calendar", () => ({
@@ -105,6 +141,10 @@ vi.mock("@/components/ui/skeleton", () => ({
 }))
 
 describe("InventoryReportTab", () => {
+  const setSearchTerm = vi.fn()
+  const setSelectedDepartment = vi.fn()
+  const refetch = vi.fn()
+
   beforeEach(() => {
     vi.clearAllMocks()
     mocks.useReportInventoryFilters.mockReturnValue({
@@ -117,14 +157,23 @@ describe("InventoryReportTab", () => {
         searchTerm: "",
       },
       setDateRange: vi.fn(),
-      setSelectedDepartment: vi.fn(),
-      setSearchTerm: vi.fn(),
+      setSelectedDepartment,
+      setSearchTerm,
     })
     mocks.useInventoryData.mockReturnValue({
-      data: undefined,
+      data: {
+        data: [],
+        summary: {
+          totalImported: 0,
+          totalExported: 0,
+          currentStock: 0,
+          netChange: 0,
+        },
+        departments: ["Khoa Nội"],
+      },
       isLoading: false,
-      error: { message: "Inventory unavailable" },
-      refetch: vi.fn(),
+      error: null,
+      refetch,
     })
     mocks.useEquipmentDistribution.mockReturnValue({ data: [] })
     mocks.useMaintenanceStats.mockReturnValue({ data: [] })
@@ -132,6 +181,13 @@ describe("InventoryReportTab", () => {
   })
 
   it("shows the plain-object error message in the destructive toast", async () => {
+    mocks.useInventoryData.mockReturnValue({
+      data: undefined,
+      isLoading: false,
+      error: { message: "Inventory unavailable" },
+      refetch,
+    })
+
     render(<InventoryReportTab tenantFilter="all" effectiveTenantKey="tenant-a" />)
 
     await waitFor(() => {
@@ -143,5 +199,34 @@ describe("InventoryReportTab", () => {
         })
       )
     })
+  })
+
+  it("renders inventory filters through the shared filter section and preserves search/action behavior", () => {
+    render(<InventoryReportTab tenantFilter="1" effectiveTenantKey="tenant-a" />)
+
+    expect(screen.getByTestId("reports-shared-filter-section")).toBeInTheDocument()
+    expect(screen.getByText("Báo cáo Xuất-Nhập-Tồn thiết bị")).toBeInTheDocument()
+
+    fireEvent.change(screen.getByRole("textbox", { name: "Tên hoặc mã thiết bị..." }), {
+      target: { value: "máy siêu âm" },
+    })
+    fireEvent.click(screen.getByRole("button", { name: "Làm mới" }))
+
+    expect(setSearchTerm).toHaveBeenCalledWith("máy siêu âm")
+    expect(refetch).toHaveBeenCalledTimes(1)
+  })
+
+  it("keeps department filtering hidden for global or regional report contexts", () => {
+    render(
+      <InventoryReportTab
+        tenantFilter="all"
+        effectiveTenantKey="tenant-a"
+        isGlobalOrRegionalLeader
+      />
+    )
+
+    expect(screen.getByTestId("reports-shared-filter-section")).toBeInTheDocument()
+    expect(screen.queryByText("Khoa/Phòng")).not.toBeInTheDocument()
+    expect(setSelectedDepartment).not.toHaveBeenCalled()
   })
 })

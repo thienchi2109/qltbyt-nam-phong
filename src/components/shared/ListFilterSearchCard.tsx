@@ -6,17 +6,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { SearchInput } from "@/components/shared/SearchInput"
 import { cn } from "@/lib/utils"
 
-export interface ListFilterSearchCardProps {
+interface ListFilterSearchCardBaseProps {
   title?: React.ReactNode
   description?: React.ReactNode
   tenantControl?: React.ReactNode
   surface?: "card" | "plain"
-  searchValue: string
-  onSearchChange: (value: string) => void
-  searchInputRef?: React.Ref<HTMLInputElement>
-  searchPlaceholder: string
-  searchEndAddon?: React.ReactNode
-  showSearchIcon?: boolean
   filterControls?: React.ReactNode
   mobileFilterControl?: React.ReactNode
   compactFilters?: boolean
@@ -26,6 +20,29 @@ export interface ListFilterSearchCardProps {
   className?: string
   searchClassName?: string
 }
+
+interface ListFilterSearchCardSearchProps {
+  searchValue: string
+  onSearchChange: (value: string) => void
+  searchInputRef?: React.Ref<HTMLInputElement>
+  searchPlaceholder: string
+  searchEndAddon?: React.ReactNode
+  showSearchIcon?: boolean
+}
+
+interface ListFilterSearchCardFilterOnlyProps {
+  searchValue?: never
+  onSearchChange?: never
+  searchInputRef?: never
+  searchPlaceholder?: never
+  searchEndAddon?: never
+  showSearchIcon?: never
+}
+
+export type ListFilterSearchCardProps = ListFilterSearchCardBaseProps & (
+  | ListFilterSearchCardSearchProps
+  | ListFilterSearchCardFilterOnlyProps
+)
 
 export function ListFilterSearchCard({
   title,
@@ -48,6 +65,7 @@ export function ListFilterSearchCard({
   searchClassName,
 }: ListFilterSearchCardProps) {
   const visibleFilterControls = compactFilters ? mobileFilterControl : filterControls
+  const shouldRenderSearch = typeof searchPlaceholder === "string" && typeof onSearchChange === "function"
 
   const header = !title && !description
     ? null
@@ -83,18 +101,20 @@ export function ListFilterSearchCard({
             </div>
           ) : null}
 
-          <div className={cn("w-full md:min-w-[280px] md:max-w-[460px] md:flex-1", searchClassName)}>
-            <SearchInput
-              ref={searchInputRef}
-              placeholder={searchPlaceholder}
-              value={searchValue}
-              onChange={onSearchChange}
-              showSearchIcon={showSearchIcon}
-              className="h-9 w-full"
-              endAddon={searchEndAddon}
-              aria-label={searchPlaceholder}
-            />
-          </div>
+          {shouldRenderSearch ? (
+            <div className={cn("w-full md:min-w-[280px] md:max-w-[460px] md:flex-1", searchClassName)}>
+              <SearchInput
+                ref={searchInputRef}
+                placeholder={searchPlaceholder}
+                value={searchValue}
+                onChange={onSearchChange}
+                showSearchIcon={showSearchIcon}
+                className="h-9 w-full"
+                endAddon={searchEndAddon}
+                aria-label={searchPlaceholder}
+              />
+            </div>
+          ) : null}
 
           {visibleFilterControls ? (
             <div className="flex w-full flex-wrap items-center gap-2 md:w-auto">

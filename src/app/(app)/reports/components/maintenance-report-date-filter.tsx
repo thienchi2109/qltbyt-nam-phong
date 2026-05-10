@@ -7,8 +7,8 @@ import { Calendar as CalendarIcon } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Calendar } from "@/components/ui/calendar"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { ListFilterSearchCard } from "@/components/shared/ListFilterSearchCard"
 import type { DateRange } from "../hooks/use-maintenance-data.types"
 
 interface MaintenanceReportDateFilterRange {
@@ -42,43 +42,43 @@ export function MaintenanceReportDateFilter({
   dateRange,
   onDateRangeChange,
 }: MaintenanceReportDateFilterProps) {
+  const filterControls = (
+    <Popover>
+      <PopoverTrigger asChild>
+        <Button
+          id="date"
+          variant="outline"
+          className="h-9 w-full justify-start text-left font-normal sm:w-[300px]"
+        >
+          <CalendarIcon className="mr-2 size-4" />
+          {getDateRangeLabel(dateRange)}
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-auto p-0" align="start">
+        <Calendar
+          initialFocus
+          mode="range"
+          defaultMonth={dateRange.from}
+          selected={{ from: dateRange.from, to: dateRange.to }}
+          onSelect={(range) =>
+            range?.from &&
+            onDateRangeChange({
+              from: range.from,
+              to: range.to ?? range.from,
+            })
+          }
+          numberOfMonths={2}
+          locale={vi}
+        />
+      </PopoverContent>
+    </Popover>
+  )
+
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Bộ lọc báo cáo</CardTitle>
-        <CardDescription>Chọn khoảng thời gian để xem báo cáo.</CardDescription>
-      </CardHeader>
-      <CardContent className="flex items-center gap-4">
-        <Popover>
-          <PopoverTrigger asChild>
-            <Button
-              id="date"
-              variant="outline"
-              className="w-[300px] justify-start text-left font-normal"
-            >
-              <CalendarIcon className="mr-2 h-4 w-4" />
-              {getDateRangeLabel(dateRange)}
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-auto p-0" align="start">
-            <Calendar
-              initialFocus
-              mode="range"
-              defaultMonth={dateRange.from}
-              selected={{ from: dateRange.from, to: dateRange.to }}
-              onSelect={(range) =>
-                range?.from &&
-                onDateRangeChange({
-                  from: range.from,
-                  to: range.to ?? range.from,
-                })
-              }
-              numberOfMonths={2}
-              locale={vi}
-            />
-          </PopoverContent>
-        </Popover>
-      </CardContent>
-    </Card>
+    <ListFilterSearchCard
+      title="Bộ lọc báo cáo"
+      description="Chọn khoảng thời gian để xem báo cáo."
+      filterControls={filterControls}
+    />
   )
 }

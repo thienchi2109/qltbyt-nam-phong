@@ -1,24 +1,17 @@
 "use client"
 
 import * as React from "react"
-import { CalendarIcon, Download, FileText, TrendingUp, TrendingDown, Package } from "lucide-react"
-import { format, subMonths, startOfMonth, endOfMonth } from "date-fns"
-import { vi } from "date-fns/locale"
+import { TrendingUp, TrendingDown, Package } from "lucide-react"
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Calendar } from "@/components/ui/calendar"
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Input } from "@/components/ui/input"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
 import { useToast } from "@/hooks/use-toast"
 import { getUnknownErrorMessage } from "@/lib/error-utils"
-import { cn } from "@/lib/utils"
 import { InventoryCharts } from "./inventory-charts"
 import { InventoryTable } from "./inventory-table"
 import { ExportReportDialog } from "./export-report-dialog"
+import { InventoryReportFilterSection } from "./inventory-report-filter-section"
 import { useInventoryData } from "../hooks/use-inventory-data"
 import { InteractiveEquipmentChart } from "@/components/interactive-equipment-chart"
 import { EquipmentDistributionSummary } from "@/components/equipment-distribution-summary"
@@ -28,16 +21,28 @@ import { useEquipmentDistribution } from "@/hooks/use-equipment-distribution"
 import { useMaintenanceStats } from "../hooks/use-maintenance-stats"
 import { useUsageAnalytics } from "../hooks/use-usage-analytics"
 
-interface DateRange {
-  from: Date
-  to: Date
-}
-
 interface InventoryReportTabProps {
   tenantFilter?: string
   selectedDonVi?: number | null
   effectiveTenantKey?: string
   isGlobalOrRegionalLeader?: boolean
+}
+
+interface InventoryReportErrorToastProps {
+  error: unknown
+  toast: ReturnType<typeof useToast>["toast"]
+}
+
+function InventoryReportErrorToast({ error, toast }: InventoryReportErrorToastProps) {
+  React.useEffect(() => {
+    toast({
+      variant: "destructive",
+      title: "Lỗi tải dữ liệu",
+      description: getUnknownErrorMessage(error, "Không thể tải dữ liệu báo cáo")
+    })
+  }, [error, toast])
+
+  return null
 }
 
 export function InventoryReportTab({ 
@@ -121,151 +126,30 @@ export function InventoryReportTab({
     })
   }
 
-  // Show error if any
-  React.useEffect(() => {
-    if (error) {
-      toast({
-        variant: "destructive",
-        title: "Lỗi tải dữ liệu",
-        description: getUnknownErrorMessage(error, "Không thể tải dữ liệu báo cáo")
-      })
-    }
-  }, [error, toast])
-
   return (
     <>
+      {error ? <InventoryReportErrorToast error={error} toast={toast} /> : null}
       <div className="space-y-4">
-        {/* Filters Section */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <FileText className="h-5 w-5" />
-              Báo cáo Xuất-Nhập-Tồn thiết bị
-            </CardTitle>
-            <CardDescription>
-              Theo dõi tình hình xuất, nhập và tồn kho thiết bị theo thời gian
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="flex flex-col sm:flex-row gap-4">
-              {/* Date Range Picker */}
-              <div className="flex flex-col gap-2">
-                <label className="text-sm font-medium">Khoảng thời gian</label>
-                <div className="flex gap-2">
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button
-                        variant="outline"
-                        className={cn(
-                          "w-[140px] justify-start text-left font-normal",
-                          !dateRange.from && "text-muted-foreground"
-                        )}
-                      >
-                        <CalendarIcon className="mr-2 h-4 w-4" />
-                        {dateRange.from ? (
-                          format(dateRange.from, "dd/MM/yyyy")
-                        ) : (
-                          "Từ ngày"
-                        )}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
-                      <Calendar
-                        mode="single"
-                        selected={dateRange.from}
-                        onSelect={(date) => date && setDateRange({ ...dateRange, from: date })}
-                        disabled={(date) => date > new Date() || date < new Date("1900-01-01")}
-                        initialFocus
-                        locale={vi}
-                      />
-                    </PopoverContent>
-                  </Popover>
-                  
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button
-                        variant="outline"
-                        className={cn(
-                          "w-[140px] justify-start text-left font-normal",
-                          !dateRange.to && "text-muted-foreground"
-                        )}
-                      >
-                        <CalendarIcon className="mr-2 h-4 w-4" />
-                        {dateRange.to ? (
-                          format(dateRange.to, "dd/MM/yyyy")
-                        ) : (
-                          "Đến ngày"
-                        )}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
-                      <Calendar
-                        mode="single"
-                        selected={dateRange.to}
-                        onSelect={(date) => date && setDateRange({ ...dateRange, to: date })}
-                        disabled={(date) => date > new Date() || date < dateRange.from}
-                        initialFocus
-                        locale={vi}
-                      />
-                    </PopoverContent>
-                  </Popover>
-                </div>
-              </div>
-
-              {/* Department Filter (hidden for RL/global users) */}
-              {!isGlobalOrRegionalLeader && (
-                <div className="flex flex-col gap-2">
-                  <label className="text-sm font-medium">Khoa/Phòng</label>
-                  <Select value={selectedDepartment} onValueChange={setSelectedDepartment}>
-                    <SelectTrigger className="w-[200px]">
-                      <SelectValue placeholder="Chọn khoa/phòng" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">Tất cả</SelectItem>
-                      {departments.map((dept: string) => (
-                        <SelectItem key={dept} value={dept}>
-                          {dept || "Chưa phân loại"}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
-
-              {/* Search */}
-              <div className="flex flex-col gap-2">
-                <label className="text-sm font-medium">Tìm kiếm</label>
-                <Input
-                  placeholder="Tên hoặc mã thiết bị..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-[200px]"
-                />
-              </div>
-
-              {/* Actions */}
-              <div className="flex flex-col gap-2 sm:ml-auto">
-                <label className="text-sm font-medium invisible">Actions</label>
-                <div className="flex gap-2">
-                  <Button variant="outline" onClick={handleRefresh} disabled={isLoading}>
-                    Làm mới
-                  </Button>
-                  <Button onClick={() => setShowExportDialog(true)}>
-                    <Download className="mr-2 h-4 w-4" />
-                    Xuất báo cáo
-                  </Button>
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+        <InventoryReportFilterSection
+          dateRange={dateRange}
+          onDateRangeChange={setDateRange}
+          selectedDepartment={selectedDepartment}
+          onSelectedDepartmentChange={setSelectedDepartment}
+          searchTerm={searchTerm}
+          onSearchTermChange={setSearchTerm}
+          departments={departments}
+          isGlobalOrRegionalLeader={isGlobalOrRegionalLeader}
+          isLoading={isLoading}
+          onRefresh={handleRefresh}
+          onExport={() => setShowExportDialog(true)}
+        />
 
         {/* Summary Cards */}
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardHeader className="flex flex-row items-center justify-between pb-2 [&>*+*]:mt-0">
               <CardTitle className="text-sm font-medium">Tổng nhập</CardTitle>
-              <TrendingUp className="h-4 w-4 text-muted-foreground" />
+              <TrendingUp className="size-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
@@ -278,9 +162,9 @@ export function InventoryReportTab({
           </Card>
           
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardHeader className="flex flex-row items-center justify-between pb-2 [&>*+*]:mt-0">
               <CardTitle className="text-sm font-medium">Tổng xuất</CardTitle>
-              <TrendingDown className="h-4 w-4 text-muted-foreground" />
+              <TrendingDown className="size-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
@@ -293,9 +177,9 @@ export function InventoryReportTab({
           </Card>
           
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardHeader className="flex flex-row items-center justify-between pb-2 [&>*+*]:mt-0">
               <CardTitle className="text-sm font-medium">Tồn kho</CardTitle>
-              <Package className="h-4 w-4 text-muted-foreground" />
+              <Package className="size-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
@@ -308,7 +192,7 @@ export function InventoryReportTab({
           </Card>
           
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardHeader className="flex flex-row items-center justify-between pb-2 [&>*+*]:mt-0">
               <CardTitle className="text-sm font-medium">Biến động</CardTitle>
               <Badge variant={summary.netChange >= 0 ? "default" : "destructive"}>
                 {summary.netChange >= 0 ? "+" : ""}{summary.netChange}
