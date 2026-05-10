@@ -80,8 +80,24 @@ vi.mock("@/components/dynamic-chart", () => ({
 }))
 
 vi.mock("@/components/ui/card", () => ({
-  Card: ({ children, className }: { children: React.ReactNode; className?: string }) => <div className={className}>{children}</div>,
-  CardContent: ({ children, className }: { children: React.ReactNode; className?: string }) => <div className={className}>{children}</div>,
+  Card: ({
+    children,
+    className,
+    ...props
+  }: {
+    children: React.ReactNode
+    className?: string
+    "data-testid"?: string
+  }) => <div className={className} {...props}>{children}</div>,
+  CardContent: ({
+    children,
+    className,
+    ...props
+  }: {
+    children: React.ReactNode
+    className?: string
+    "data-testid"?: string
+  }) => <div className={className} {...props}>{children}</div>,
   CardDescription: ({ children, className }: { children: React.ReactNode; className?: string }) => <div className={className}>{children}</div>,
   CardHeader: ({ children, className }: { children: React.ReactNode; className?: string }) => <div className={className}>{children}</div>,
   CardTitle: ({ children, className }: { children: React.ReactNode; className?: string }) => <div className={className}>{children}</div>,
@@ -92,17 +108,19 @@ let latestTabValueChange: ((value: string) => void) | undefined
 vi.mock("@/components/ui/tabs", () => ({
   Tabs: ({
     children,
+    className,
     onValueChange,
   }: {
     children: React.ReactNode
+    className?: string
     value: string
     onValueChange?: (value: string) => void
   }) => {
     latestTabValueChange = onValueChange
-    return <div>{children}</div>
+    return <div data-testid="equipment-chart-tabs" className={className}>{children}</div>
   },
   TabsContent: ({ children, className }: { children: React.ReactNode; className?: string }) => (
-    <div className={className}>{children}</div>
+    <div data-testid="equipment-chart-tab-content" className={className}>{children}</div>
   ),
   TabsList: ({ children, className }: { children: React.ReactNode; className?: string }) => (
     <div data-testid="equipment-chart-tabs-list" className={className}>{children}</div>
@@ -238,7 +256,15 @@ describe("InteractiveEquipmentChart tooltip", () => {
 
     render(<InteractiveEquipmentChart tenantFilter="42" selectedDonVi={42} effectiveTenantKey="42" />)
 
-    expect(screen.getAllByTestId("equipment-chart-scroll-frame")[0]).toHaveClass("overflow-x-auto")
+    expect(screen.getByTestId("equipment-chart-card")).toHaveClass("min-w-0", "overflow-hidden")
+    expect(screen.getByTestId("equipment-chart-content")).toHaveClass("min-w-0")
+    expect(screen.getByTestId("equipment-chart-tabs")).toHaveClass("min-w-0")
+    expect(screen.getAllByTestId("equipment-chart-tab-content")[0]).toHaveClass("min-w-0")
+    expect(screen.getAllByTestId("equipment-chart-scroll-frame")[0]).toHaveClass(
+      "min-w-0",
+      "max-w-full",
+      "overflow-x-auto",
+    )
     expect(screen.getAllByTestId("equipment-chart-scroll-inner")[0]).toHaveStyle({ minWidth: "1736px" })
     expect(mocks.dynamicBarChart).toHaveBeenCalledWith(
       expect.objectContaining({
