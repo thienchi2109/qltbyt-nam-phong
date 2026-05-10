@@ -1,13 +1,14 @@
 "use client"
 
 import * as React from "react"
+import Link from "next/link"
 import { ChevronRight, FolderTree, Package } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Button } from "@/components/ui/button"
-import { SearchInput } from "@/components/shared/SearchInput"
+import { ListFilterSearchCard } from "@/components/shared/ListFilterSearchCard"
 import { useDeviceQuotaMappingContext } from "../_hooks/useDeviceQuotaMappingContext"
 import type { Category } from "./DeviceQuotaMappingContext"
 
@@ -49,7 +50,7 @@ function CategoryTreeItem({ category, isSelected, onSelect }: CategoryTreeItemPr
           {/* Radio indicator */}
           <div
             className={cn(
-              "h-4 w-4 rounded-full border-2 flex-shrink-0 transition-colors",
+              "size-4 rounded-full border-2 flex-shrink-0 transition-colors",
               isSelected
                 ? "border-primary bg-primary"
                 : "border-muted-foreground/50"
@@ -61,7 +62,7 @@ function CategoryTreeItem({ category, isSelected, onSelect }: CategoryTreeItemPr
           </div>
 
           {category.level > 1 && (
-            <ChevronRight className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
+            <ChevronRight className="size-3.5 text-muted-foreground flex-shrink-0" />
           )}
 
           <div className="min-w-0 flex-1">
@@ -80,7 +81,7 @@ function CategoryTreeItem({ category, isSelected, onSelect }: CategoryTreeItemPr
         </div>
 
         <Badge variant="secondary" className="flex-shrink-0 ml-2">
-          <Package className="h-3 w-3 mr-1" />
+          <Package className="mr-1 size-3" />
           {category.so_luong_hien_co}
         </Badge>
       </div>
@@ -93,7 +94,7 @@ function CategoryTreeSkeleton() {
     <div className="space-y-2">
       {MAPPING_TREE_SKELETON_KEYS.map((token) => (
         <div key={token} className="flex items-center gap-3 p-3">
-          <Skeleton className="h-4 w-4 rounded-full" />
+          <Skeleton className="size-4 rounded-full" />
           <Skeleton className="h-4 w-16" />
           <Skeleton className="h-4 flex-1" />
           <Skeleton className="h-5 w-12 rounded-full" />
@@ -107,7 +108,7 @@ function CategoryTreeEmpty() {
   return (
     <div className="flex flex-col items-center justify-center py-12 text-center">
       <div className="rounded-full bg-muted p-3 mb-4">
-        <FolderTree className="h-6 w-6 text-muted-foreground" />
+        <FolderTree className="size-6 text-muted-foreground" />
       </div>
       <h3 className="font-semibold text-base mb-1">
         Chưa có danh mục nào
@@ -117,9 +118,9 @@ function CategoryTreeEmpty() {
         Vui lòng tạo danh mục trước khi gán thiết bị.
       </p>
       <Button variant="outline" size="sm" asChild>
-        <a href="/device-quota/categories">
+        <Link href="/device-quota/categories">
           Tạo danh mục
-        </a>
+        </Link>
       </Button>
     </div>
   )
@@ -129,7 +130,7 @@ function CategoryTreeNoResults({ searchTerm }: { searchTerm: string }) {
   return (
     <div className="flex flex-col items-center justify-center py-12 text-center">
       <div className="rounded-full bg-muted p-3 mb-4">
-        <FolderTree className="h-6 w-6 text-muted-foreground" />
+        <FolderTree className="size-6 text-muted-foreground" />
       </div>
       <h3 className="font-semibold text-base mb-1">
         Không tìm thấy danh mục phù hợp
@@ -170,20 +171,16 @@ export function DeviceQuotaCategoryTree() {
 
   return (
     <Card className="h-full flex flex-col">
-      <CardHeader>
-        <CardTitle className="text-lg">Danh mục định mức</CardTitle>
-        <CardDescription>
-          Chọn danh mục để gán thiết bị ({categories.length}/{allCategories.length} danh mục)
-        </CardDescription>
-
-        {/* Category Search */}
-        <div className="mt-3">
-          <SearchInput
-            value={categorySearchTerm}
-            onChange={setCategorySearchTerm}
-            placeholder="Tìm danh mục..."
-          />
-        </div>
+      <CardHeader className="[&>*+*]:mt-0">
+        <ListFilterSearchCard
+          surface="plain"
+          title="Danh mục định mức"
+          description={`Chọn danh mục để gán thiết bị (${categories.length}/${allCategories.length} danh mục)`}
+          searchValue={categorySearchTerm}
+          onSearchChange={setCategorySearchTerm}
+          searchPlaceholder="Tìm danh mục..."
+          searchClassName="md:min-w-[220px] md:max-w-[320px]"
+        />
       </CardHeader>
       <CardContent className="flex-1 overflow-auto">
         {isLoading ? (

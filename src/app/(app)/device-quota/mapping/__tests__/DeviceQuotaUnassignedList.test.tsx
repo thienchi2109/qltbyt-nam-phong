@@ -1,23 +1,71 @@
 import React from 'react'
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 import { DeviceQuotaUnassignedList } from '../_components/DeviceQuotaUnassignedList'
 import { useDeviceQuotaMappingContext } from '../_hooks/useDeviceQuotaMappingContext'
+import type { ListFilterSearchCardProps } from '@/components/shared/ListFilterSearchCard'
+import type { FacetedMultiSelectFilterProps } from '@/components/shared/table-filters/FacetedMultiSelectFilter'
 
 vi.mock('../_hooks/useDeviceQuotaMappingContext', () => ({
   useDeviceQuotaMappingContext: vi.fn(),
 }))
 
-const mockUseContext = vi.mocked(useDeviceQuotaMappingContext)
+vi.mock('@/components/shared/ListFilterSearchCard', () => ({
+  ListFilterSearchCard: ({
+    searchValue,
+    onSearchChange,
+    searchPlaceholder,
+    searchDisabled,
+    filterControls,
+  }: ListFilterSearchCardProps) => (
+    <section data-testid="shared-filter-search-card">
+      {typeof searchPlaceholder === 'string' && typeof onSearchChange === 'function' ? (
+        <input
+          aria-label={searchPlaceholder}
+          disabled={searchDisabled}
+          value={searchValue}
+          onChange={(event) => onSearchChange(event.target.value)}
+        />
+      ) : null}
+      {filterControls}
+    </section>
+  ),
+}))
 
-const makeContext = (overrides: Record<string, unknown> = {}) => ({
+vi.mock('@/components/shared/table-filters/FacetedMultiSelectFilter', () => ({
+  FacetedMultiSelectFilter: <TData, TValue,>({
+    title,
+    options,
+    value,
+    onChange,
+  }: FacetedMultiSelectFilterProps<TData, TValue>) => (
+    <button
+      type="button"
+      onClick={() => onChange([...(value ?? []), options[0]?.value as TValue].filter(Boolean))}
+    >
+      {title}
+    </button>
+  ),
+}))
+
+const mockUseContext = vi.mocked(useDeviceQuotaMappingContext)
+type MappingContext = ReturnType<typeof useDeviceQuotaMappingContext>
+
+const makeContext = (overrides: Partial<MappingContext> = {}): MappingContext => ({
+  user: null,
+  donViId: 1,
+  allCategories: [],
+  categories: [],
   unassignedEquipment: [],
   totalEquipmentCount: 0,
   selectedEquipmentIds: new Set<number>(),
   toggleEquipmentSelection: vi.fn(),
   selectAllEquipment: vi.fn(),
+  deselectPageEquipment: vi.fn(),
   clearEquipmentSelection: vi.fn(),
+  selectedCategoryId: null,
+  setSelectedCategory: vi.fn(),
   filters: {
     searchTerm: '',
     setSearchTerm: vi.fn(),
@@ -46,9 +94,14 @@ const makeContext = (overrides: Record<string, unknown> = {}) => ({
     canPreviousPage: false,
     canNextPage: false,
     setPagination: vi.fn(),
-  },
+  } as unknown as MappingContext['pagination'],
+  categorySearchTerm: '',
+  setCategorySearchTerm: vi.fn(),
+  linkEquipment: {} as unknown as MappingContext['linkEquipment'],
   isLoading: false,
+  isLinking: false,
   isFacilitySelected: true,
+  refetch: vi.fn(),
   ...overrides,
 })
 
@@ -60,10 +113,12 @@ describe('DeviceQuotaUnassignedList', () => {
   it('shows facility selection placeholder when no facility selected', () => {
     mockUseContext.mockReturnValue(makeContext({
       isFacilitySelected: false,
-    }) as any)
+    }))
 
     render(<DeviceQuotaUnassignedList />)
 
+    expect(screen.getByTestId('shared-filter-search-card')).toBeInTheDocument()
+    expect(screen.getByRole('textbox', { name: 'Chọn cơ sở để tìm kiếm...' })).toBeDisabled()
     expect(screen.getByText('Chọn cơ sở')).toBeInTheDocument()
     expect(
       screen.queryByText('Tất cả thiết bị đã được phân loại vào các nhóm định mức.')
@@ -76,7 +131,7 @@ describe('DeviceQuotaUnassignedList', () => {
         ...makeContext().filters,
         debouncedSearch: 'zzz',
       },
-    }) as any)
+    }))
 
     render(<DeviceQuotaUnassignedList />)
 
@@ -87,10 +142,42 @@ describe('DeviceQuotaUnassignedList', () => {
   })
 
   it('shows classified-empty state only when there is no active search/filter', () => {
-    mockUseContext.mockReturnValue(makeContext() as any)
+    mockUseContext.mockReturnValue(makeContext())
 
     render(<DeviceQuotaUnassignedList />)
 
     expect(screen.getByText('Hoàn thành phân loại')).toBeInTheDocument()
+  })
+
+  it('uses shared search and faceted filters without changing existing callbacks', () => {
+    const setSearchTerm = vi.fn()
+    const setSelectedDepartments = vi.fn()
+
+    mockUseContext.mockReturnValue(makeContext({
+      filters: {
+        ...makeContext().filters,
+        setSearchTerm,
+        selectedDepartments: [],
+        setSelectedDepartments,
+      },
+      filterOptions: {
+        departments: ['Khoa cấp cứu'],
+        users: [],
+        locations: [],
+        fundingSources: [],
+      },
+    }))
+
+    render(<DeviceQuotaUnassignedList />)
+
+    expect(screen.getByTestId('shared-filter-search-card')).toBeInTheDocument()
+
+    fireEvent.change(screen.getByRole('textbox', { name: 'Tìm kiếm thiết bị...' }), {
+      target: { value: 'máy thở' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Khoa/Phòng' }))
+
+    expect(setSearchTerm).toHaveBeenCalledWith('máy thở')
+    expect(setSelectedDepartments).toHaveBeenCalledWith(['Khoa cấp cứu'])
   })
 })

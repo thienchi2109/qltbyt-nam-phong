@@ -2,10 +2,10 @@
 
 import * as React from "react"
 import { CheckCircle2, Building2, SearchX } from "lucide-react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Skeleton } from "@/components/ui/skeleton"
-import { SearchInput } from "@/components/shared/SearchInput"
+import { ListFilterSearchCard } from "@/components/shared/ListFilterSearchCard"
 import { FacetedMultiSelectFilter } from "@/components/shared/table-filters/FacetedMultiSelectFilter"
 import { DataTablePaginationNavigation } from "@/components/shared/DataTablePagination/DataTablePaginationNavigation"
 import { DataTablePaginationSizeSelector } from "@/components/shared/DataTablePagination/DataTablePaginationSizeSelector"
@@ -69,51 +69,48 @@ export function DeviceQuotaUnassignedList() {
     [filterOptions.fundingSources]
   )
   const hasSearchOrFilters = filters.hasActiveFilters || filters.debouncedSearch.trim().length > 0
+  const filterControls = isFacilitySelected ? (
+    <>
+      <FacetedMultiSelectFilter
+        title="Khoa/Phòng"
+        options={departmentOptions}
+        value={filters.selectedDepartments}
+        onChange={filters.setSelectedDepartments}
+      />
+      <FacetedMultiSelectFilter
+        title="Người sử dụng"
+        options={userOptions}
+        value={filters.selectedUsers}
+        onChange={filters.setSelectedUsers}
+      />
+      <FacetedMultiSelectFilter
+        title="Vị trí"
+        options={locationOptions}
+        value={filters.selectedLocations}
+        onChange={filters.setSelectedLocations}
+      />
+      <FacetedMultiSelectFilter
+        title="Nguồn kinh phí"
+        options={fundingOptions}
+        value={filters.selectedFundingSources}
+        onChange={filters.setSelectedFundingSources}
+      />
+    </>
+  ) : undefined
 
   return (
     <Card className="flex flex-col h-full">
-      <CardHeader className="pb-4">
-        <CardTitle className="text-lg">Thiết bị chưa phân loại</CardTitle>
-
-        {/* Search */}
-        <div className="mt-4">
-          <SearchInput
-            value={filters.searchTerm}
-            onChange={filters.setSearchTerm}
-            placeholder={isFacilitySelected ? "Tìm kiếm thiết bị..." : "Chọn cơ sở để tìm kiếm..."}
-            disabled={!isFacilitySelected}
-          />
-        </div>
-
-        {/* Faceted Filters */}
-        {isFacilitySelected && (
-          <div className="flex flex-wrap gap-2 mt-3">
-            <FacetedMultiSelectFilter
-              title="Khoa/Phòng"
-              options={departmentOptions}
-              value={filters.selectedDepartments}
-              onChange={filters.setSelectedDepartments}
-            />
-            <FacetedMultiSelectFilter
-              title="Người sử dụng"
-              options={userOptions}
-              value={filters.selectedUsers}
-              onChange={filters.setSelectedUsers}
-            />
-            <FacetedMultiSelectFilter
-              title="Vị trí"
-              options={locationOptions}
-              value={filters.selectedLocations}
-              onChange={filters.setSelectedLocations}
-            />
-            <FacetedMultiSelectFilter
-              title="Nguồn kinh phí"
-              options={fundingOptions}
-              value={filters.selectedFundingSources}
-              onChange={filters.setSelectedFundingSources}
-            />
-          </div>
-        )}
+      <CardHeader className="pb-4 [&>*+*]:mt-0">
+        <ListFilterSearchCard
+          surface="plain"
+          title="Thiết bị chưa phân loại"
+          searchValue={filters.searchTerm}
+          onSearchChange={filters.setSearchTerm}
+          searchPlaceholder={isFacilitySelected ? "Tìm kiếm thiết bị..." : "Chọn cơ sở để tìm kiếm..."}
+          searchDisabled={!isFacilitySelected}
+          searchClassName="md:min-w-[220px] md:max-w-[320px]"
+          filterControls={filterControls}
+        />
       </CardHeader>
 
       <CardContent className="flex-1 overflow-y-auto">
@@ -203,13 +200,26 @@ interface EquipmentItemProps {
 }
 
 function EquipmentItem({ equipment, isSelected, onToggle }: EquipmentItemProps) {
+  const handleKeyDown = React.useCallback(
+    (event: React.KeyboardEvent<HTMLDivElement>) => {
+      if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault()
+        onToggle()
+      }
+    },
+    [onToggle]
+  )
+
   return (
     <div
+      role="button"
+      tabIndex={0}
       className={cn(
         "flex items-start gap-3 p-3 rounded-lg border transition-colors cursor-pointer hover:bg-accent",
         isSelected && "bg-accent border-primary"
       )}
       onClick={onToggle}
+      onKeyDown={handleKeyDown}
     >
       <Checkbox
         checked={isSelected}
@@ -245,12 +255,12 @@ function LoadingSkeleton() {
   return (
     <div className="space-y-3">
       <div className="flex items-center gap-2 pb-3 border-b">
-        <Skeleton className="h-4 w-4" />
+        <Skeleton className="size-4" />
         <Skeleton className="h-4 w-32" />
       </div>
       {Array.from({ length: 5 }).map((_, i) => (
         <div key={i} className="flex items-start gap-3 p-3 rounded-lg border">
-          <Skeleton className="h-4 w-4 mt-1" />
+          <Skeleton className="size-4 mt-1" />
           <div className="flex-1 space-y-2">
             <Skeleton className="h-4 w-3/4" />
             <Skeleton className="h-3 w-1/2" />
@@ -270,7 +280,7 @@ function EmptyState() {
   return (
     <div className="flex flex-col items-center justify-center py-12 text-center">
       <div className="rounded-full bg-green-100 dark:bg-green-900/20 p-3 mb-4">
-        <CheckCircle2 className="h-8 w-8 text-green-600 dark:text-green-500" />
+        <CheckCircle2 className="size-8 text-green-600 dark:text-green-500" />
       </div>
       <h3 className="font-semibold text-lg mb-1">Hoàn thành phân loại</h3>
       <p className="text-sm text-muted-foreground max-w-sm">
@@ -284,7 +294,7 @@ function NoResultsState() {
   return (
     <div className="flex flex-col items-center justify-center py-12 text-center">
       <div className="rounded-full bg-muted p-3 mb-4">
-        <SearchX className="h-8 w-8 text-muted-foreground" />
+        <SearchX className="size-8 text-muted-foreground" />
       </div>
       <h3 className="font-semibold text-lg mb-1">Không có kết quả phù hợp</h3>
       <p className="text-sm text-muted-foreground max-w-sm">
@@ -299,7 +309,7 @@ function FacilitySelectionEmptyState() {
   return (
     <div className="flex flex-col items-center justify-center py-12 text-center">
       <div className="rounded-full bg-blue-100 dark:bg-blue-900/20 p-3 mb-4">
-        <Building2 className="h-8 w-8 text-blue-600 dark:text-blue-500" />
+        <Building2 className="size-8 text-blue-600 dark:text-blue-500" />
       </div>
       <h3 className="font-semibold text-lg mb-1">Chọn cơ sở</h3>
       <p className="text-sm text-muted-foreground max-w-sm">
