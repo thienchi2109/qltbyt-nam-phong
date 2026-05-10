@@ -94,7 +94,7 @@ export function ListFilterSearchCard({
   const content = (
     <div className="space-y-3">
       <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
-        <div className="flex min-w-0 flex-1 flex-col gap-2 md:flex-row md:flex-wrap md:items-center">
+        <div className="flex min-w-0 flex-1 flex-col gap-2 md:flex-row md:flex-wrap md:items-end">
           {tenantControl ? (
             <div className="w-full md:w-auto md:min-w-[220px] xl:min-w-[260px]">
               {tenantControl}

@@ -69,6 +69,25 @@ describe("ListFilterSearchCard", () => {
     expect(screen.queryByRole("searchbox")).not.toBeInTheDocument()
   })
 
+  it("aligns search input with labeled filter controls by their bottom edge", () => {
+    const { container } = render(
+      <ListFilterSearchCard
+        searchValue=""
+        onSearchChange={vi.fn()}
+        searchPlaceholder="Tên hoặc mã thiết bị..."
+        filterControls={(
+          <fieldset>
+            <legend>Khoảng thời gian</legend>
+            <button type="button">Từ ngày</button>
+          </fieldset>
+        )}
+      />
+    )
+
+    expect(container.querySelector(".md\\:items-end")).toBeInTheDocument()
+    expect(container.querySelector(".md\\:items-center")).not.toBeInTheDocument()
+  })
+
   it("can render as a plain surface for embedding inside an existing card", () => {
     const { container } = render(
       <ListFilterSearchCard
