@@ -19,27 +19,45 @@ import { MaintenanceMobileTaskCard } from "./maintenance-mobile-task-card"
 
 interface MaintenanceMobileTasksPanelProps {
   selectedPlan: MaintenancePlan | null
-  canManagePlans: boolean
   tasks: MaintenanceTask[]
   draftTasks: MaintenanceTask[]
+  panelState: MaintenanceMobileTasksPanelState
+  access: MaintenanceMobileTasksPanelAccess
+  taskEditing: MaintenanceMobileTaskEditing
+  months: number[]
+  expansion: MaintenanceMobileTasksExpansion
+  actions: MaintenanceMobileTasksActions
+}
+
+interface MaintenanceMobileTasksPanelState {
   hasChanges: boolean
   isSavingAll: boolean
   isLoadingTasks: boolean
   isPlanApproved: boolean
-  canCompleteTask: boolean
   isCompletingTask: Set<string>
-  taskEditing: {
-    editingTaskId: number | null
-    editingTaskData: Partial<MaintenanceTask> | null
-    handleTaskDataChange: (field: keyof MaintenanceTask, value: unknown) => void
-    handleSaveTask: () => void
-    handleCancelEdit: () => void
-    handleStartEdit: (task: MaintenanceTask) => void
-    setTaskToDelete: (task: MaintenanceTask | null) => void
-  }
-  months: number[]
+}
+
+interface MaintenanceMobileTasksPanelAccess {
+  canManagePlans: boolean
+  canCompleteTask: boolean
+}
+
+interface MaintenanceMobileTaskEditing {
+  editingTaskId: number | null
+  editingTaskData: Partial<MaintenanceTask> | null
+  handleTaskDataChange: (field: keyof MaintenanceTask, value: unknown) => void
+  handleSaveTask: () => void
+  handleCancelEdit: () => void
+  handleStartEdit: (task: MaintenanceTask) => void
+  setTaskToDelete: (task: MaintenanceTask | null) => void
+}
+
+interface MaintenanceMobileTasksExpansion {
   expandedTaskIds: Record<number, boolean>
   toggleTaskExpansion: (taskId: number) => void
+}
+
+interface MaintenanceMobileTasksActions {
   setIsAddTasksDialogOpen: (open: boolean) => void
   generatePlanForm: () => void
   setIsConfirmingCancel: (open: boolean) => void
@@ -49,31 +67,32 @@ interface MaintenanceMobileTasksPanelProps {
 
 export function MaintenanceMobileTasksPanel({
   selectedPlan,
-  canManagePlans,
   tasks,
   draftTasks,
-  hasChanges,
-  isSavingAll,
-  isLoadingTasks,
-  isPlanApproved,
-  canCompleteTask,
-  isCompletingTask,
+  panelState,
+  access,
   taskEditing,
   months,
-  expandedTaskIds,
-  toggleTaskExpansion,
-  setIsAddTasksDialogOpen,
-  generatePlanForm,
-  setIsConfirmingCancel,
-  handleSaveAllChanges,
-  handleMarkAsCompleted,
+  expansion,
+  actions,
 }: MaintenanceMobileTasksPanelProps) {
+  const { hasChanges, isSavingAll, isLoadingTasks, isPlanApproved, isCompletingTask } = panelState
+  const { canManagePlans, canCompleteTask } = access
+  const { expandedTaskIds, toggleTaskExpansion } = expansion
+  const {
+    setIsAddTasksDialogOpen,
+    generatePlanForm,
+    setIsConfirmingCancel,
+    handleSaveAllChanges,
+    handleMarkAsCompleted,
+  } = actions
+
   if (!selectedPlan) {
     return (
       <Card className="border-dashed bg-muted/30">
-        <CardContent className="flex flex-col items-center justify-center space-y-3 py-10 text-center">
-          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted">
-            <ClipboardList className="h-6 w-6 text-muted-foreground" />
+        <CardContent className="flex flex-col items-center justify-center gap-y-3 py-10 text-center">
+          <div className="flex size-12 items-center justify-center rounded-full bg-muted">
+            <ClipboardList className="size-6 text-muted-foreground" />
           </div>
           <div>
             <h3 className="text-base font-semibold">Chọn kế hoạch để xem công việc</h3>
@@ -111,7 +130,7 @@ export function MaintenanceMobileTasksPanel({
           <div className="flex flex-wrap items-center gap-2">
             {canManagePlans && isDraft && (
               <Button size="sm" onClick={() => setIsAddTasksDialogOpen(true)}>
-                <PlusCircle className="mr-2 h-4 w-4" />
+                <PlusCircle className="mr-2 size-4" />
                 Thêm thiết bị
               </Button>
             )}
@@ -123,7 +142,7 @@ export function MaintenanceMobileTasksPanel({
                 disabled={isSavingAll}
                 className="flex items-center"
               >
-                <FileText className="mr-2 h-4 w-4" />
+                <FileText className="mr-2 size-4" />
                 Xuất phiếu kế hoạch
               </Button>
             )}
@@ -134,7 +153,7 @@ export function MaintenanceMobileTasksPanel({
       {hasChanges && isDraft && (
         <div className="rounded-2xl border border-amber-200 bg-amber-50/80 px-4 py-3 shadow-sm">
           <div className="flex items-start gap-3">
-            <AlertTriangle className="mt-1 h-5 w-5 text-amber-600" />
+            <AlertTriangle className="mt-1 size-5 text-amber-600" />
             <div className="flex-1">
               <div className="text-sm font-medium text-amber-900">Có thay đổi chưa lưu</div>
               <p className="mt-1 text-xs text-amber-700">
@@ -150,7 +169,7 @@ export function MaintenanceMobileTasksPanel({
                   Hủy bỏ
                 </Button>
                 <Button onClick={() => void handleSaveAllChanges()} disabled={isSavingAll}>
-                  {isSavingAll && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  {isSavingAll && <Loader2 className="mr-2 size-4 animate-spin" />}
                   Lưu thay đổi
                 </Button>
               </div>
@@ -164,7 +183,7 @@ export function MaintenanceMobileTasksPanel({
           {Array.from({ length: 3 }).map((_, index) => (
             <Card key={index} className="rounded-2xl border border-border/70 bg-background">
               <CardHeader className="flex flex-row items-center gap-3">
-                <Skeleton className="h-10 w-10 rounded-full" />
+                <Skeleton className="size-10 rounded-full" />
                 <div className="space-y-2">
                   <Skeleton className="h-4 w-40" />
                   <Skeleton className="h-3 w-24" />

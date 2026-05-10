@@ -20,8 +20,30 @@ const mocks = vi.hoisted(() => ({
       openDeleteDialog: vi.fn(),
     },
     setEditingPlan: vi.fn(),
+    tasks: [],
+    draftTasks: [],
+    hasChanges: false,
+    isSavingAll: false,
+    isLoadingTasks: false,
+    isPlanApproved: false,
+    canCompleteTask: true,
+    isCompletingTask: new Set<string>(),
+    taskEditing: {
+      editingTaskId: null,
+      editingTaskData: null,
+      handleTaskDataChange: vi.fn(),
+      handleSaveTask: vi.fn(),
+      handleCancelEdit: vi.fn(),
+      handleStartEdit: vi.fn(),
+      setTaskToDelete: vi.fn(),
+    },
+    generatePlanForm: vi.fn(),
+    setIsConfirmingCancel: vi.fn(),
+    handleSaveAllChanges: vi.fn(),
+    handleMarkAsCompleted: vi.fn(),
   },
-  lastPlanCardsProps: null as { canCreatePlans?: boolean } | null,
+  lastPlanCardsProps: null as { access?: { canCreatePlans?: boolean } } | null,
+  lastTasksPanelProps: null as { panelState?: { isLoadingTasks?: boolean } } | null,
 }))
 
 vi.mock("@/components/kpi", () => ({
@@ -33,14 +55,17 @@ vi.mock("../_hooks/useMaintenanceContext", () => ({
 }))
 
 vi.mock("../_components/maintenance-mobile-plan-cards", () => ({
-  MaintenanceMobilePlanCards: (props: { canCreatePlans?: boolean }) => {
+  MaintenanceMobilePlanCards: (props: { access?: { canCreatePlans?: boolean } }) => {
     mocks.lastPlanCardsProps = props
     return <div data-testid="mobile-plan-cards" />
   },
 }))
 
 vi.mock("../_components/maintenance-mobile-tasks-panel", () => ({
-  MaintenanceMobileTasksPanel: () => <div data-testid="mobile-tasks-panel" />,
+  MaintenanceMobileTasksPanel: (props: { panelState?: { isLoadingTasks?: boolean } }) => {
+    mocks.lastTasksPanelProps = props
+    return <div data-testid="mobile-tasks-panel" />
+  },
 }))
 
 import { MobileMaintenanceLayout } from "../_components/mobile-maintenance-layout"
@@ -90,7 +115,10 @@ describe("MobileMaintenanceLayout create-plan entry points", () => {
     mocks.context.canManagePlans = true
     mocks.context.canCreatePlans = false
     mocks.context.activeTab = "plans"
+    mocks.context.selectedPlan = null
+    mocks.context.isLoadingTasks = false
     mocks.lastPlanCardsProps = null
+    mocks.lastTasksPanelProps = null
   })
 
   it.each(["global", "admin"])("hides create-plan controls for %s users", (role) => {
@@ -99,7 +127,7 @@ describe("MobileMaintenanceLayout create-plan entry points", () => {
     renderMobileLayout()
 
     expect(screen.queryByRole("button", { name: "Tạo kế hoạch mới" })).not.toBeInTheDocument()
-    expect(mocks.lastPlanCardsProps?.canCreatePlans).toBe(false)
+    expect(mocks.lastPlanCardsProps?.access?.canCreatePlans).toBe(false)
   })
 
   it("keeps create-plan controls available for non-global maintenance managers", () => {
@@ -109,7 +137,24 @@ describe("MobileMaintenanceLayout create-plan entry points", () => {
     renderMobileLayout()
 
     expect(screen.getByRole("button", { name: "Tạo kế hoạch mới" })).toBeInTheDocument()
-    expect(mocks.lastPlanCardsProps?.canCreatePlans).toBe(true)
+    expect(mocks.lastPlanCardsProps?.access?.canCreatePlans).toBe(true)
+  })
+
+  it("passes grouped task state to the mobile tasks panel", () => {
+    mocks.context.activeTab = "tasks"
+    mocks.context.selectedPlan = {
+      id: 1,
+      ten_ke_hoach: "Kế hoạch tháng 5",
+      nam: 2026,
+      khoa_phong: "Khoa Nội",
+      trang_thai: "Bản nháp",
+    }
+    mocks.context.isLoadingTasks = true
+
+    renderMobileLayout()
+
+    expect(screen.getByTestId("mobile-tasks-panel")).toBeInTheDocument()
+    expect(mocks.lastTasksPanelProps?.panelState?.isLoadingTasks).toBe(true)
   })
 
   it("labels icon-only search and pagination controls", () => {

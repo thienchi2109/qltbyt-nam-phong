@@ -153,39 +153,47 @@ export function MobileMaintenanceLayout({
           {planTabActive ? (
             <MaintenanceMobilePlanCards
               plans={plans}
-              isLoadingPlans={isLoadingPlans}
-              showFacilityFilter={showFacilityFilter}
-              canManagePlans={ctx.canManagePlans}
-              canCreatePlans={ctx.canCreatePlans}
-              onOpenAddPlanDialog={() => ctx.setIsAddPlanDialogOpen(true)}
-              onSelectPlan={ctx.handleSelectPlan}
-              onSetTasksTab={() => ctx.setActiveTab("tasks")}
-              onEditPlan={ctx.setEditingPlan}
-              onOpenApproveDialog={ctx.operations.openApproveDialog}
-              onOpenRejectDialog={ctx.operations.openRejectDialog}
-              onOpenDeleteDialog={ctx.operations.openDeleteDialog}
+              planState={{ isLoadingPlans, showFacilityFilter }}
+              access={{
+                canManagePlans: ctx.canManagePlans,
+                canCreatePlans: ctx.canCreatePlans,
+              }}
+              actions={{
+                onOpenAddPlanDialog: () => ctx.setIsAddPlanDialogOpen(true),
+                onSelectPlan: ctx.handleSelectPlan,
+                onSetTasksTab: () => ctx.setActiveTab("tasks"),
+                onEditPlan: ctx.setEditingPlan,
+                onOpenApproveDialog: ctx.operations.openApproveDialog,
+                onOpenRejectDialog: ctx.operations.openRejectDialog,
+                onOpenDeleteDialog: ctx.operations.openDeleteDialog,
+              }}
             />
           ) : (
             <MaintenanceMobileTasksPanel
               selectedPlan={ctx.selectedPlan}
-              canManagePlans={ctx.canManagePlans}
               tasks={ctx.tasks}
               draftTasks={ctx.draftTasks}
-              hasChanges={ctx.hasChanges}
-              isSavingAll={ctx.isSavingAll}
-              isLoadingTasks={ctx.isLoadingTasks}
-              isPlanApproved={ctx.isPlanApproved}
-              canCompleteTask={ctx.canCompleteTask}
-              isCompletingTask={ctx.isCompletingTask}
+              panelState={{
+                hasChanges: ctx.hasChanges,
+                isSavingAll: ctx.isSavingAll,
+                isLoadingTasks: ctx.isLoadingTasks,
+                isPlanApproved: ctx.isPlanApproved,
+                isCompletingTask: ctx.isCompletingTask,
+              }}
+              access={{
+                canManagePlans: ctx.canManagePlans,
+                canCompleteTask: ctx.canCompleteTask,
+              }}
               taskEditing={ctx.taskEditing}
               months={months}
-              expandedTaskIds={expandedTaskIds}
-              toggleTaskExpansion={toggleTaskExpansion}
-              setIsAddTasksDialogOpen={ctx.setIsAddTasksDialogOpen}
-              generatePlanForm={ctx.generatePlanForm}
-              setIsConfirmingCancel={ctx.setIsConfirmingCancel}
-              handleSaveAllChanges={ctx.handleSaveAllChanges}
-              handleMarkAsCompleted={ctx.handleMarkAsCompleted}
+              expansion={{ expandedTaskIds, toggleTaskExpansion }}
+              actions={{
+                setIsAddTasksDialogOpen: ctx.setIsAddTasksDialogOpen,
+                generatePlanForm: ctx.generatePlanForm,
+                setIsConfirmingCancel: ctx.setIsConfirmingCancel,
+                handleSaveAllChanges: ctx.handleSaveAllChanges,
+                handleMarkAsCompleted: ctx.handleMarkAsCompleted,
+              }}
             />
           )}
         </div>

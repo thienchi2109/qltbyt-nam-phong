@@ -19,12 +19,17 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { CalendarDays, MoreHorizontal, PlusCircle } from "lucide-react"
 import { getPlanStatusTone, resolveStatusBadgeVariant } from "./maintenance-mobile-status"
 
-interface MaintenanceMobilePlanCardsProps {
-  plans: MaintenancePlan[]
+interface MaintenanceMobilePlanCardsState {
   isLoadingPlans: boolean
   showFacilityFilter: boolean
+}
+
+interface MaintenanceMobilePlanCardsAccess {
   canManagePlans: boolean
   canCreatePlans: boolean
+}
+
+interface MaintenanceMobilePlanCardsActions {
   onOpenAddPlanDialog: () => void
   onSelectPlan: (plan: MaintenancePlan) => void
   onSetTasksTab: () => void
@@ -34,20 +39,31 @@ interface MaintenanceMobilePlanCardsProps {
   onOpenDeleteDialog: (plan: MaintenancePlan) => void
 }
 
+interface MaintenanceMobilePlanCardsProps {
+  plans: MaintenancePlan[]
+  planState: MaintenanceMobilePlanCardsState
+  access: MaintenanceMobilePlanCardsAccess
+  actions: MaintenanceMobilePlanCardsActions
+}
+
 export function MaintenanceMobilePlanCards({
   plans,
-  isLoadingPlans,
-  showFacilityFilter,
-  canManagePlans,
-  canCreatePlans,
-  onOpenAddPlanDialog,
-  onSelectPlan,
-  onSetTasksTab,
-  onEditPlan,
-  onOpenApproveDialog,
-  onOpenRejectDialog,
-  onOpenDeleteDialog,
+  planState,
+  access,
+  actions,
 }: MaintenanceMobilePlanCardsProps) {
+  const { isLoadingPlans, showFacilityFilter } = planState
+  const { canManagePlans, canCreatePlans } = access
+  const {
+    onOpenAddPlanDialog,
+    onSelectPlan,
+    onSetTasksTab,
+    onEditPlan,
+    onOpenApproveDialog,
+    onOpenRejectDialog,
+    onOpenDeleteDialog,
+  } = actions
+
   if (isLoadingPlans) {
     return (
       <div className="space-y-3">
@@ -71,9 +87,9 @@ export function MaintenanceMobilePlanCards({
   if (!plans.length) {
     return (
       <Card className="border-dashed bg-muted/40">
-        <CardContent className="flex flex-col items-center justify-center space-y-3 py-8 text-center">
-          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted">
-            <CalendarDays className="h-6 w-6 text-muted-foreground" />
+        <CardContent className="flex flex-col items-center justify-center gap-y-3 py-8 text-center">
+          <div className="flex size-12 items-center justify-center rounded-full bg-muted">
+            <CalendarDays className="size-6 text-muted-foreground" />
           </div>
           <div>
             <h3 className="text-base font-semibold">Chưa có kế hoạch</h3>
@@ -83,7 +99,7 @@ export function MaintenanceMobilePlanCards({
           </div>
           {canCreatePlans && (
             <Button onClick={onOpenAddPlanDialog} className="h-11 px-6">
-              <PlusCircle className="mr-2 h-4 w-4" />
+              <PlusCircle className="mr-2 size-4" />
               Tạo kế hoạch mới
             </Button>
           )}
@@ -155,8 +171,8 @@ export function MaintenanceMobilePlanCards({
                 </Button>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild onClick={(event) => event.stopPropagation()}>
-                    <Button variant="ghost" size="icon" className="h-9 w-9">
-                      <MoreHorizontal className="h-5 w-5" />
+                    <Button variant="ghost" size="icon" className="size-9">
+                      <MoreHorizontal className="size-5" />
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="w-48">
