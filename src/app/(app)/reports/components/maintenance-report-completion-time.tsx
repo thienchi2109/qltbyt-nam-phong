@@ -3,6 +3,7 @@
 import * as React from "react"
 import { Inbox } from "lucide-react"
 
+import type { ChartTooltipProps } from "@/lib/chart-utils"
 import { DynamicBarChart, DynamicLineChart } from "@/components/dynamic-chart"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
@@ -103,6 +104,7 @@ export function MaintenanceReportCompletionTime({
               name: "Số yêu cầu",
               cellColorKey: "fill",
             }]}
+            customTooltip={CompletionHistogramTooltip}
             margin={{ top: 16, right: 24, left: 16, bottom: 36 }}
           />
         </CardContent>
@@ -134,6 +136,26 @@ export function MaintenanceReportCompletionTime({
           )}
         </CardContent>
       </Card>
+    </div>
+  )
+}
+
+function CompletionHistogramTooltip({
+  active,
+  payload,
+}: ChartTooltipProps<number, string>) {
+  const entry = payload?.[0]
+  const bucketLabel = typeof entry?.payload?.label === "string" ? entry.payload.label : null
+  const count = typeof entry?.value === "number" ? entry.value : null
+
+  if (!active || !bucketLabel || count == null) {
+    return null
+  }
+
+  return (
+    <div className="rounded-md border bg-background px-3 py-2 text-sm shadow-md">
+      <p className="font-medium text-foreground">{bucketLabel}</p>
+      <p className="text-muted-foreground">Số yêu cầu: {count}</p>
     </div>
   )
 }
