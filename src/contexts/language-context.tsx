@@ -96,6 +96,7 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
 }
 
 export function useLanguage() {
+  // react-doctor-disable-next-line react-doctor/no-react19-deprecated-apis -- React 18.3.1 does not support React.use() for context reads.
   const context = React.useContext(LanguageContext)
   if (context === undefined) {
     throw new Error("useLanguage must be used within a LanguageProvider")
