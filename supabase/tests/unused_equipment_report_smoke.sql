@@ -89,6 +89,31 @@ BEGIN
   INSERT INTO public.thiet_bi (
     ma_thiet_bi,
     ten_thiet_bi,
+    model,
+    serial,
+    don_vi,
+    khoa_phong_quan_ly,
+    tinh_trang_hien_tai,
+    ngay_nhap,
+    gia_goc,
+    is_deleted
+  )
+  VALUES (
+    'SMOKE-IDLE-A-3-' || v_suffix,
+    'Smoke Idle Ventilator',
+    'HFNC',
+    'SER-A-3-' || v_suffix,
+    v_tenant_allowed,
+    'OR',
+    'Chưa có nhu cầu sử dụng',
+    '2026-01-12',
+    1500000,
+    false
+  );
+
+  INSERT INTO public.thiet_bi (
+    ma_thiet_bi,
+    ten_thiet_bi,
     don_vi,
     khoa_phong_quan_ly,
     tinh_trang_hien_tai,
@@ -223,8 +248,8 @@ BEGIN
     p_sort => 'id.asc'
   );
 
-  IF (v_report -> 'summary' ->> 'totalCount')::int <> 2 THEN
-    RAISE EXCEPTION 'to_qltb session scope expected 2 rows, got %', v_report -> 'summary' ->> 'totalCount';
+  IF (v_report -> 'summary' ->> 'totalCount')::int <> 3 THEN
+    RAISE EXCEPTION 'to_qltb session scope expected 3 rows, got %', v_report -> 'summary' ->> 'totalCount';
   END IF;
 
   v_forbidden_ok := false;
@@ -265,16 +290,37 @@ BEGIN
     p_sort => 'id.asc'
   );
 
-  IF (v_report -> 'summary' ->> 'totalCount')::int <> 2 THEN
-    RAISE EXCEPTION 'regional_leader allowed scope expected 2 rows, got %', v_report -> 'summary' ->> 'totalCount';
+  IF (v_report -> 'summary' ->> 'totalCount')::int <> 3 THEN
+    RAISE EXCEPTION 'regional_leader allowed scope expected 3 rows, got %', v_report -> 'summary' ->> 'totalCount';
   END IF;
 
   IF jsonb_array_length(v_report -> 'topDeviceGroups') <> 1 THEN
     RAISE EXCEPTION 'regional_leader topDeviceGroups expected 1 group, got %', jsonb_array_length(v_report -> 'topDeviceGroups');
   END IF;
 
+  IF jsonb_array_length(v_report -> 'departments') <> 2 THEN
+    RAISE EXCEPTION 'regional_leader departments expected 2 groups, got %', jsonb_array_length(v_report -> 'departments');
+  END IF;
+
+  v_report := public.unused_equipment_report_for_reports(
+    p_don_vi => v_tenant_allowed,
+    p_q => 'Smoke Idle',
+    p_khoa_phong => 'ICU',
+    p_page => 1,
+    p_page_size => 10,
+    p_sort => 'id.asc'
+  );
+
+  IF (v_report -> 'summary' ->> 'totalCount')::int <> 2 THEN
+    RAISE EXCEPTION 'regional_leader filtered ICU scope expected 2 rows, got %', v_report -> 'summary' ->> 'totalCount';
+  END IF;
+
   IF jsonb_array_length(v_report -> 'departments') <> 1 THEN
-    RAISE EXCEPTION 'regional_leader departments expected 1 group, got %', jsonb_array_length(v_report -> 'departments');
+    RAISE EXCEPTION 'filtered department distribution expected 1 group, got %', jsonb_array_length(v_report -> 'departments');
+  END IF;
+
+  IF jsonb_array_length(v_report -> 'departmentOptions') IS DISTINCT FROM 2 THEN
+    RAISE EXCEPTION 'department filter options must ignore selected department and keep 2 choices, got %', jsonb_array_length(v_report -> 'departmentOptions');
   END IF;
 
   v_forbidden_ok := false;

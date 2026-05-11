@@ -3,7 +3,7 @@ import { render, screen, waitFor } from "@testing-library/react"
 import { describe, expect, it, vi } from "vitest"
 import type { ChartTooltipProps } from "@/lib/chart-utils"
 
-import { DynamicBarChart, DynamicLineChart } from "@/components/dynamic-chart"
+import { DynamicBarChart, DynamicLineChart, DynamicPieChart } from "@/components/dynamic-chart"
 
 vi.mock("@/components/chart-fallbacks", () => ({
   ChartLoadingFallback: () => <div data-testid="chart-loading" />,
@@ -112,6 +112,30 @@ describe("DynamicBarChart tooltip integration", () => {
 
     await waitFor(() => {
       expect(screen.getByTestId("line-tooltip")).toHaveTextContent("Khoa Nội")
+    })
+    expect(screen.queryByTestId("default-tooltip")).not.toBeInTheDocument()
+  })
+
+  it("passes custom pie chart tooltip components to Recharts as a React element", async () => {
+    function PieTooltip({
+      payload,
+    }: ChartTooltipProps<number, string>) {
+      const name = payload?.[0]?.payload?.name
+      return <div data-testid="pie-tooltip">{name}</div>
+    }
+
+    render(
+      <DynamicPieChart
+        data={[{ name: "Khoa Nội", value: 3 }]}
+        dataKey="value"
+        nameKey="name"
+        colors={["#0088FE"]}
+        customTooltip={PieTooltip}
+      />,
+    )
+
+    await waitFor(() => {
+      expect(screen.getByTestId("pie-tooltip")).toHaveTextContent("Khoa Nội")
     })
     expect(screen.queryByTestId("default-tooltip")).not.toBeInTheDocument()
   })

@@ -39,6 +39,7 @@ export interface UnusedEquipmentReportData {
   summary: UnusedEquipmentReportSummary
   topDeviceGroups: UnusedEquipmentReportGroup[]
   departments: UnusedEquipmentReportDepartment[]
+  departmentOptions?: UnusedEquipmentReportDepartment[]
   items: UnusedEquipmentReportItem[]
   totalCount: number
   page: number
@@ -80,6 +81,7 @@ const EMPTY_UNUSED_EQUIPMENT_REPORT: UnusedEquipmentReportData = {
   },
   topDeviceGroups: [],
   departments: [],
+  departmentOptions: [],
   items: [],
   totalCount: 0,
   page: 1,

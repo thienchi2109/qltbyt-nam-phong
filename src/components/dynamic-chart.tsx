@@ -332,6 +332,7 @@ interface PieChartProps {
   showLabels?: boolean
   outerRadius?: number
   innerRadius?: number
+  customTooltip?: React.ElementType<ChartTooltipProps<number, string>>
 }
 
 export function DynamicPieChart({
@@ -344,7 +345,9 @@ export function DynamicPieChart({
   showLabels = true,
   outerRadius = 80,
   innerRadius,
+  customTooltip,
 }: PieChartProps) {
+  const CustomTooltipContent = customTooltip
   const pieSliceCells = React.useMemo(
     () => buildPieSliceCells(data, nameKey, colors),
     [colors, data, nameKey],
@@ -371,7 +374,9 @@ export function DynamicPieChart({
                 <Cell key={cell.key} fill={cell.fill} />
               ))}
             </Pie>
-            {showTooltip && <Tooltip />}
+            {showTooltip && (
+              CustomTooltipContent ? <Tooltip content={<CustomTooltipContent />} /> : <Tooltip />
+            )}
           </PieChart>
         </ResponsiveContainer>
       )}

@@ -45,6 +45,7 @@ export function UnusedEquipmentReportSection({
   const data = report.data
   const summary = data?.summary ?? EMPTY_SUMMARY
   const departments = data?.departments ?? []
+  const departmentOptions = data?.departmentOptions ?? departments
   const items = data?.items ?? []
   const topDeviceGroups = data?.topDeviceGroups ?? []
   const totalCount = data?.totalCount ?? 0
@@ -122,7 +123,7 @@ export function UnusedEquipmentReportSection({
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Tất cả</SelectItem>
-                {departments.map((department) => (
+                {departmentOptions.map((department) => (
                   <SelectItem key={department.departmentName} value={department.departmentName}>
                     {department.departmentName}
                   </SelectItem>

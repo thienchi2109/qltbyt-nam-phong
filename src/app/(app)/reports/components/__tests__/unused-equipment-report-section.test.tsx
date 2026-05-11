@@ -78,4 +78,36 @@ describe("UnusedEquipmentReportSection", () => {
       })
     )
   })
+
+  it("keeps department filter options independent from the currently selected distribution", () => {
+    mocks.useUnusedEquipmentReport.mockReturnValue({
+      data: {
+        summary: {
+          totalCount: 2,
+          deviceTypeCount: 1,
+          departmentCount: 2,
+          totalOriginalValue: 1000000,
+        },
+        topDeviceGroups: [],
+        departments: [
+          { departmentName: "Khoa Nội", equipmentCount: 2, totalOriginalValue: 1000000 },
+        ],
+        departmentOptions: [
+          { departmentName: "Khoa Nội", equipmentCount: 2, totalOriginalValue: 1000000 },
+          { departmentName: "Khoa Ngoại", equipmentCount: 1, totalOriginalValue: 500000 },
+        ],
+        items: [],
+        totalCount: 2,
+        page: 1,
+        pageSize: 10,
+      },
+      isLoading: false,
+      error: null,
+    })
+
+    render(<UnusedEquipmentReportSection selectedDonVi={17} />)
+
+    expect(screen.getByRole("option", { name: "Khoa Nội" })).toBeInTheDocument()
+    expect(screen.getByRole("option", { name: "Khoa Ngoại" })).toBeInTheDocument()
+  })
 })
