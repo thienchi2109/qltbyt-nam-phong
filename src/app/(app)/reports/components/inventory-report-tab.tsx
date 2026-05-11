@@ -129,7 +129,7 @@ export function InventoryReportTab({
   return (
     <>
       {error ? <InventoryReportErrorToast error={error} toast={toast} /> : null}
-      <div className="space-y-4">
+      <div className="min-w-0 space-y-4">
         <InventoryReportFilterSection
           dateRange={dateRange}
           onDateRangeChange={setDateRange}

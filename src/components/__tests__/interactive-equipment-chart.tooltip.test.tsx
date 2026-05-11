@@ -261,11 +261,12 @@ describe("InteractiveEquipmentChart tooltip", () => {
     expect(screen.getByTestId("equipment-chart-tabs")).toHaveClass("min-w-0")
     expect(screen.getAllByTestId("equipment-chart-tab-content")[0]).toHaveClass("min-w-0")
     expect(screen.getAllByTestId("equipment-chart-scroll-frame")[0]).toHaveClass(
-      "min-w-0",
+      "w-0",
+      "min-w-full",
       "max-w-full",
       "overflow-x-auto",
     )
-    expect(screen.getAllByTestId("equipment-chart-scroll-inner")[0]).toHaveStyle({ minWidth: "1736px" })
+    expect(screen.getAllByTestId("equipment-chart-scroll-inner")[0]).toHaveStyle({ width: "1736px" })
     expect(mocks.dynamicBarChart).toHaveBeenCalledWith(
       expect.objectContaining({
         height: 400,

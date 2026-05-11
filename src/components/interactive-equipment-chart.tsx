@@ -163,8 +163,11 @@ export function InteractiveEquipmentChart({ className, tenantFilter, selectedDon
   }, [data, viewType])
 
   const isDenseChart = chartData.length > DENSE_DISTRIBUTION_CATEGORY_THRESHOLD
-  const chartContainerClassName = cn("min-w-0 max-w-full", isDenseChart && "overflow-x-auto pb-2")
-  const chartMinWidth = isDenseChart ? `${chartData.length * DENSE_DISTRIBUTION_CATEGORY_WIDTH}px` : undefined
+  const chartContainerClassName = cn(
+    "min-w-0 max-w-full",
+    isDenseChart && "w-0 min-w-full overflow-x-auto pb-2"
+  )
+  const chartWidth = isDenseChart ? `${chartData.length * DENSE_DISTRIBUTION_CATEGORY_WIDTH}px` : undefined
 
   // Statistics
   const stats = React.useMemo(() => {
@@ -335,7 +338,7 @@ export function InteractiveEquipmentChart({ className, tenantFilter, selectedDon
               <div className="min-w-0 space-y-4">
                 {/* Chart */}
                 <div data-testid="equipment-chart-scroll-frame" className={chartContainerClassName}>
-                  <div data-testid="equipment-chart-scroll-inner" style={{ minWidth: chartMinWidth }}>
+                  <div data-testid="equipment-chart-scroll-inner" style={{ width: chartWidth }}>
                     <DynamicBarChart
                       data={chartData}
                       height={DEFAULT_DISTRIBUTION_CHART_HEIGHT}
@@ -396,7 +399,7 @@ export function InteractiveEquipmentChart({ className, tenantFilter, selectedDon
               <div className="min-w-0 space-y-4">
                 {/* Chart */}
                 <div data-testid="equipment-chart-scroll-frame" className={chartContainerClassName}>
-                  <div data-testid="equipment-chart-scroll-inner" style={{ minWidth: chartMinWidth }}>
+                  <div data-testid="equipment-chart-scroll-inner" style={{ width: chartWidth }}>
                     <DynamicBarChart
                       data={chartData}
                       height={DEFAULT_DISTRIBUTION_CHART_HEIGHT}
