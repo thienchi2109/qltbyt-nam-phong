@@ -117,6 +117,7 @@ export const ALLOWED_FUNCTIONS = new Set<string>([
   'usage_log_delete',
   // Reports: status distribution
   'equipment_status_distribution',
+  'unused_equipment_report_for_reports',
   // Audit logs (global users only)
   'audit_logs_list',
   'audit_logs_list_v2',

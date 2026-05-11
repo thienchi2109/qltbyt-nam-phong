@@ -20,6 +20,7 @@ import { useReportInventoryFilters } from "../hooks/use-report-filters"
 import { useEquipmentDistribution } from "@/hooks/use-equipment-distribution"
 import { useMaintenanceStats } from "../hooks/use-maintenance-stats"
 import { useUsageAnalytics } from "../hooks/use-usage-analytics"
+import { UnusedEquipmentReportSection } from "./unused-equipment-report-section"
 
 interface InventoryReportTabProps {
   tenantFilter?: string
@@ -231,6 +232,12 @@ export function InventoryReportTab({
         {tenantFilter !== 'all' && (
           <InventoryCharts data={data} isLoading={isLoading} />
         )}
+
+        <UnusedEquipmentReportSection
+          key={selectedDonVi ?? "unselected"}
+          selectedDonVi={selectedDonVi}
+          isGlobalOrRegionalLeader={isGlobalOrRegionalLeader}
+        />
 
         {/* Detailed Table - Only show for single facility */}
         {tenantFilter === 'all' ? (
