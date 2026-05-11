@@ -43,6 +43,13 @@ describe('RPC proxy whitelist', () => {
     await expect(res.json()).resolves.toEqual({ error: 'Content-Length header required' })
   })
 
+  it('allows unused_equipment_report_for_reports through whitelist checks', async () => {
+    const res = await invokeRpcProxy('unused_equipment_report_for_reports')
+
+    expect(res.status).toBe(411)
+    await expect(res.json()).resolves.toEqual({ error: 'Content-Length header required' })
+  })
+
   it('allows change_password through whitelist checks', async () => {
     const res = await invokeRpcProxy('change_password')
 

@@ -10,6 +10,7 @@ const mocks = vi.hoisted(() => ({
   useEquipmentDistribution: vi.fn(),
   useMaintenanceStats: vi.fn(),
   useUsageAnalytics: vi.fn(),
+  useUnusedEquipmentReport: vi.fn(),
 }))
 
 vi.mock("@/hooks/use-toast", () => ({
@@ -36,6 +37,10 @@ vi.mock("../../hooks/use-maintenance-stats", () => ({
 
 vi.mock("../../hooks/use-usage-analytics", () => ({
   useUsageAnalytics: mocks.useUsageAnalytics,
+}))
+
+vi.mock("../../hooks/use-unused-equipment-report", () => ({
+  useUnusedEquipmentReport: mocks.useUnusedEquipmentReport,
 }))
 
 vi.mock("../inventory-charts", () => ({
@@ -178,6 +183,49 @@ describe("InventoryReportTab", () => {
     mocks.useEquipmentDistribution.mockReturnValue({ data: [] })
     mocks.useMaintenanceStats.mockReturnValue({ data: [] })
     mocks.useUsageAnalytics.mockReturnValue({ data: [] })
+    mocks.useUnusedEquipmentReport.mockReturnValue({
+      data: {
+        summary: {
+          totalCount: 2,
+          deviceTypeCount: 1,
+          departmentCount: 1,
+          totalOriginalValue: 3000000,
+        },
+        topDeviceGroups: [
+          {
+            deviceName: "Máy thở HFNC",
+            equipmentCount: 2,
+            totalOriginalValue: 3000000,
+          },
+        ],
+        departments: [
+          {
+            departmentName: "ICU",
+            equipmentCount: 2,
+            totalOriginalValue: 3000000,
+          },
+        ],
+        items: [
+          {
+            id: 1,
+            maThietBi: "TB001",
+            tenThietBi: "Máy thở HFNC",
+            model: "HFNC",
+            serial: "SER001",
+            khoaPhongQuanLy: "ICU",
+            ngayNhap: "2026-01-10",
+            createdAt: "2026-01-10T00:00:00.000Z",
+            giaGoc: 3000000,
+            donVi: 17,
+          },
+        ],
+        totalCount: 2,
+        page: 1,
+        pageSize: 10,
+      },
+      isLoading: false,
+      error: null,
+    })
   })
 
   it("shows the plain-object error message in the destructive toast", async () => {
@@ -228,5 +276,48 @@ describe("InventoryReportTab", () => {
     expect(screen.getByTestId("reports-shared-filter-section")).toBeInTheDocument()
     expect(screen.queryByText("Khoa/Phòng")).not.toBeInTheDocument()
     expect(setSelectedDepartment).not.toHaveBeenCalled()
+  })
+
+  it("renders the unused equipment section for a selected facility", () => {
+    render(
+      <InventoryReportTab
+        tenantFilter="17"
+        selectedDonVi={17}
+        effectiveTenantKey="17"
+      />
+    )
+
+    expect(screen.getAllByText("Thiết bị chưa có nhu cầu sử dụng").length).toBeGreaterThan(0)
+    expect(screen.getByText("Số thiết bị")).toBeInTheDocument()
+    expect(screen.getByText("Cơ cấu theo loại thiết bị")).toBeInTheDocument()
+    expect(screen.getByText("Danh sách thiết bị chưa có nhu cầu sử dụng")).toBeInTheDocument()
+    expect(screen.getByText("Máy thở HFNC")).toBeInTheDocument()
+    expect(mocks.useUnusedEquipmentReport).toHaveBeenCalledWith(
+      expect.objectContaining({
+        selectedDonVi: 17,
+        enabled: true,
+      })
+    )
+  })
+
+  it("shows a facility-selection placeholder for privileged all-facility context", () => {
+    render(
+      <InventoryReportTab
+        tenantFilter="all"
+        selectedDonVi={null}
+        effectiveTenantKey="all"
+        isGlobalOrRegionalLeader
+      />
+    )
+
+    expect(
+      screen.getAllByText("Chọn đơn vị để xem danh sách thiết bị chưa có nhu cầu sử dụng").length
+    ).toBeGreaterThan(0)
+    expect(mocks.useUnusedEquipmentReport).toHaveBeenCalledWith(
+      expect.objectContaining({
+        selectedDonVi: null,
+        enabled: false,
+      })
+    )
   })
 })
