@@ -1,23 +1,18 @@
 "use client"
 
 import * as React from "react"
-import { Filter, BarChart3, MapPin, Building2, X } from "lucide-react"
-import { DynamicBarChart } from "@/components/dynamic-chart"
-import type { ChartTooltipProps } from "@/lib/chart-utils"
+import { BarChart3, MapPin, Building2, X } from "lucide-react"
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Skeleton } from "@/components/ui/skeleton"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { 
-  useEquipmentDistribution, 
-  STATUS_COLORS,
-  STATUS_LABELS
+  useEquipmentDistribution
 } from "@/hooks/use-equipment-distribution"
-import { buildKeyedTooltipEntries } from "@/lib/runtime-list-keys"
+import { EquipmentChartFilters } from "@/components/interactive-equipment-chart-controls"
+import { EquipmentChartDistributionTab } from "@/components/interactive-equipment-chart-distribution-tab"
 import { cn } from "@/lib/utils"
 
 interface InteractiveEquipmentChartProps {
@@ -25,108 +20,6 @@ interface InteractiveEquipmentChartProps {
   tenantFilter?: string
   selectedDonVi?: number | null
   effectiveTenantKey?: string
-}
-
-const DEFAULT_DISTRIBUTION_CHART_HEIGHT = 400
-const DENSE_DISTRIBUTION_CATEGORY_THRESHOLD = 20
-const DENSE_DISTRIBUTION_CATEGORY_WIDTH = 56
-
-type TooltipPayloadEntry = NonNullable<ChartTooltipProps<number, string>['payload']>[number]
-
-function getTooltipCategoryName(entry: TooltipPayloadEntry): string | null {
-  const row = entry.payload
-  if (!row || typeof row !== "object" || !("name" in row)) return null
-
-  const name = (row as Record<string, unknown>).name
-  return typeof name === "string" && name.trim() ? name : null
-}
-
-// Custom tooltip component — memoized to avoid re-computing keyed entries on unchanged payload
-const CustomTooltip = React.memo(function CustomTooltip({
-  active,
-  payload,
-  label,
-}: ChartTooltipProps<number, string>) {
-  const tooltipEntries = payload ?? []
-
-  if (active && tooltipEntries.length > 0) {
-    const total = tooltipEntries.reduce(
-      (sum, entry) => sum + (typeof entry.value === 'number' ? entry.value : 0),
-      0,
-    )
-    const keyedPayload = buildKeyedTooltipEntries<TooltipPayloadEntry>(tooltipEntries)
-    const categoryName = tooltipEntries.map(getTooltipCategoryName).find(Boolean) ?? label
-    
-    return (
-      <div className="bg-background border rounded-lg shadow-lg p-3 min-w-[200px]">
-        <p className="font-medium mb-2">{categoryName}</p>
-        <div className="space-y-1">
-          {keyedPayload.map(({ key, entry }) => (
-            <div key={key} className="flex items-center justify-between gap-2 text-sm">
-              <div className="flex items-center gap-2">
-                <div 
-                  className="size-3 rounded"
-                  style={{ backgroundColor: entry.color }}
-                />
-                <span>{STATUS_LABELS[entry.dataKey as keyof typeof STATUS_LABELS]}</span>
-              </div>
-              <span className="font-medium">{entry.value}</span>
-            </div>
-          ))}
-          <div className="border-t pt-1 mt-2">
-            <div className="flex items-center justify-between font-medium">
-              <span>Tổng:</span>
-              <span>{total}</span>
-            </div>
-          </div>
-        </div>
-      </div>
-    )
-  }
-  return null
-})
-
-// Filter component for departments and locations
-function DataFilters({ 
-  viewType, 
-  selectedFilter, 
-  onFilterChange, 
-  departments, 
-  locations, 
-  isLoading 
-}: {
-  viewType: 'department' | 'location'
-  selectedFilter: string
-  onFilterChange: (value: string) => void
-  departments: string[]
-  locations: string[]
-  isLoading: boolean
-}) {
-  const options = viewType === 'department' ? departments : locations
-  const placeholder = viewType === 'department' ? 'Tất cả khoa/phòng' : 'Tất cả vị trí'
-  
-  return (
-    <div className="flex items-center gap-2">
-      <Filter className="size-4 text-muted-foreground" />
-      <Select 
-        value={selectedFilter} 
-        onValueChange={onFilterChange}
-        disabled={isLoading}
-      >
-        <SelectTrigger className="w-[200px]">
-          <SelectValue placeholder={placeholder} />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value="all">{placeholder}</SelectItem>
-          {options.map(option => (
-            <SelectItem key={option} value={option}>
-              {option}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
-    </div>
-  )
 }
 
 export function InteractiveEquipmentChart({ className, tenantFilter, selectedDonVi, effectiveTenantKey }: InteractiveEquipmentChartProps) {
@@ -161,13 +54,6 @@ export function InteractiveEquipmentChart({ className, tenantFilter, selectedDon
 
     return viewType === 'department' ? data.byDepartment : data.byLocation
   }, [data, viewType])
-
-  const isDenseChart = chartData.length > DENSE_DISTRIBUTION_CATEGORY_THRESHOLD
-  const chartContainerClassName = cn(
-    "min-w-0 max-w-full",
-    isDenseChart && "w-0 min-w-full overflow-x-auto pb-2"
-  )
-  const chartWidth = isDenseChart ? `${chartData.length * DENSE_DISTRIBUTION_CATEGORY_WIDTH}px` : undefined
 
   // Statistics
   const stats = React.useMemo(() => {
@@ -277,7 +163,7 @@ export function InteractiveEquipmentChart({ className, tenantFilter, selectedDon
             <div className="flex w-full flex-wrap items-center gap-2 xl:w-auto xl:justify-end">
               {/* When viewing by department, allow filtering by location */}
               {viewType === 'department' && data?.locations && (
-                <DataFilters
+                <EquipmentChartFilters
                   viewType="location"
                   selectedFilter={selectedLocation}
                   onFilterChange={setSelectedLocation}
@@ -289,7 +175,7 @@ export function InteractiveEquipmentChart({ className, tenantFilter, selectedDon
               
               {/* When viewing by location, allow filtering by department */}
               {viewType === 'location' && data?.departments && (
-                <DataFilters
+                <EquipmentChartFilters
                   viewType="department"
                   selectedFilter={selectedDepartment}
                   onFilterChange={setSelectedDepartment}
@@ -314,127 +200,21 @@ export function InteractiveEquipmentChart({ className, tenantFilter, selectedDon
             </div>
           </div>
 
-          <TabsContent value="department" className="min-w-0 space-y-4">
-            {isLoading ? (
-              <Skeleton className="h-[400px] w-full" />
-            ) : chartData.length === 0 ? (
-              <div className="h-[400px] flex items-center justify-center">
-                <Alert>
-                  <AlertDescription>
-                    Không có dữ liệu để hiển thị với bộ lọc hiện tại.
-                    {hasActiveFilters && (
-                      <>
-                        {" "}
-                        <Button variant="link" className="p-0 h-auto" onClick={resetFilters}>
-                          Xóa bộ lọc
-                        </Button>
-                        {" "}để xem tất cả dữ liệu.
-                      </>
-                    )}
-                  </AlertDescription>
-                </Alert>
-              </div>
-            ) : (
-              <div className="min-w-0 space-y-4">
-                {/* Chart */}
-                <div data-testid="equipment-chart-scroll-frame" className={chartContainerClassName}>
-                  <div data-testid="equipment-chart-scroll-inner" style={{ width: chartWidth }}>
-                    <DynamicBarChart
-                      data={chartData}
-                      height={DEFAULT_DISTRIBUTION_CHART_HEIGHT}
-                      xAxisKey="name"
-                      bars={Object.entries(STATUS_COLORS).map(([key, color]) => ({
-                        key,
-                        color,
-                        name: STATUS_LABELS[key as keyof typeof STATUS_LABELS],
-                        stackId: "status"
-                      }))}
-                      showGrid={true}
-                      showTooltip={true}
-                      showLegend={false}
-                      xAxisAngle={-45}
-                      customTooltip={CustomTooltip}
-                      margin={{ top: 20, right: 30, left: 20, bottom: 100 }}
-                    />
-                  </div>
-                </div>
+          <EquipmentChartDistributionTab
+            value="department"
+            chartData={chartData}
+            isLoading={isLoading}
+            hasActiveFilters={hasActiveFilters}
+            onResetFilters={resetFilters}
+          />
 
-                {/* Legend */}
-                <div className="flex flex-wrap gap-4 justify-center pt-4 border-t">
-                  {Object.entries(STATUS_LABELS).map(([key, label]) => (
-                    <div key={key} className="flex items-center gap-2">
-                      <div
-                        className="size-3 rounded"
-                        style={{ backgroundColor: STATUS_COLORS[key as keyof typeof STATUS_COLORS] }}
-                      />
-                      <span className="text-sm">{label}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </TabsContent>
-
-          <TabsContent value="location" className="min-w-0 space-y-4">
-            {isLoading ? (
-              <Skeleton className="h-[400px] w-full" />
-            ) : chartData.length === 0 ? (
-              <div className="h-[400px] flex items-center justify-center">
-                <Alert>
-                  <AlertDescription>
-                    Không có dữ liệu để hiển thị với bộ lọc hiện tại.
-                    {hasActiveFilters && (
-                      <>
-                        {" "}
-                        <Button variant="link" className="p-0 h-auto" onClick={resetFilters}>
-                          Xóa bộ lọc
-                        </Button>
-                        {" "}để xem tất cả dữ liệu.
-                      </>
-                    )}
-                  </AlertDescription>
-                </Alert>
-              </div>
-            ) : (
-              <div className="min-w-0 space-y-4">
-                {/* Chart */}
-                <div data-testid="equipment-chart-scroll-frame" className={chartContainerClassName}>
-                  <div data-testid="equipment-chart-scroll-inner" style={{ width: chartWidth }}>
-                    <DynamicBarChart
-                      data={chartData}
-                      height={DEFAULT_DISTRIBUTION_CHART_HEIGHT}
-                      xAxisKey="name"
-                      bars={Object.entries(STATUS_COLORS).map(([key, color]) => ({
-                        key,
-                        color,
-                        name: STATUS_LABELS[key as keyof typeof STATUS_LABELS],
-                        stackId: "status"
-                      }))}
-                      showGrid={true}
-                      showTooltip={true}
-                      showLegend={false}
-                      xAxisAngle={-45}
-                      customTooltip={CustomTooltip}
-                      margin={{ top: 20, right: 30, left: 20, bottom: 100 }}
-                    />
-                  </div>
-                </div>
-
-                {/* Legend */}
-                <div className="flex flex-wrap gap-4 justify-center pt-4 border-t">
-                  {Object.entries(STATUS_LABELS).map(([key, label]) => (
-                    <div key={key} className="flex items-center gap-2">
-                      <div
-                        className="size-3 rounded"
-                        style={{ backgroundColor: STATUS_COLORS[key as keyof typeof STATUS_COLORS] }}
-                      />
-                      <span className="text-sm">{label}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </TabsContent>
+          <EquipmentChartDistributionTab
+            value="location"
+            chartData={chartData}
+            isLoading={isLoading}
+            hasActiveFilters={hasActiveFilters}
+            onResetFilters={resetFilters}
+          />
         </Tabs>
       </CardContent>
     </Card>
