@@ -1,9 +1,14 @@
 import * as React from "react"
 import { render, screen } from "@testing-library/react"
 import { beforeEach, describe, expect, it, vi } from "vitest"
+import type { ChartTooltipProps } from "@/lib/chart-utils"
 
 const mockDynamicBarChart = vi.fn(() => <div data-testid="completion-histogram" />)
 const mockDynamicLineChart = vi.fn(() => <div data-testid="completion-trend" />)
+
+interface CompletionBarChartProps {
+  customTooltip?: React.ElementType<ChartTooltipProps<number, string>>
+}
 
 vi.mock("@/components/ui/card", () => ({
   Card: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
@@ -99,6 +104,44 @@ describe("MaintenanceReportCompletionTime", () => {
         ]),
       })
     )
+  })
+
+  it("shows the duration bucket label in the histogram tooltip instead of the Recharts index", () => {
+    render(
+      <MaintenanceReportCompletionTime
+        isLoading={false}
+        repairCompletionTime={completionTime}
+        repairCompletionTimeByMonth={completionTimeByMonth}
+      />
+    )
+
+    const chartProps = mockDynamicBarChart.mock.calls[0]?.[0] as CompletionBarChartProps
+    expect(chartProps.customTooltip).toBeDefined()
+
+    const CompletionTooltip = chartProps.customTooltip
+    if (!CompletionTooltip) {
+      throw new Error("Expected completion histogram to provide a custom tooltip")
+    }
+
+    render(
+      <CompletionTooltip
+        active
+        label={0}
+        payload={[
+          {
+            dataKey: "count",
+            name: "Số yêu cầu",
+            value: 2,
+            color: "hsl(var(--chart-1))",
+            payload: { label: "7-14 ngày", count: 2 },
+          },
+        ]}
+      />
+    )
+
+    expect(screen.getByText("7-14 ngày")).toBeInTheDocument()
+    expect(screen.getByText("Số yêu cầu: 2")).toBeInTheDocument()
+    expect(screen.queryByText("0")).not.toBeInTheDocument()
   })
 
   it("renders an empty state when the date range has no completed repair requests", () => {
