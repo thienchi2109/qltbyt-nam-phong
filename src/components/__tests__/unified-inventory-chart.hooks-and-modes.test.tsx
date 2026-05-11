@@ -1,9 +1,25 @@
 import * as React from "react"
 import { render, screen } from "@testing-library/react"
-import { describe, expect, it, vi } from "vitest"
+import { beforeEach, describe, expect, it, vi } from "vitest"
+
+interface MockFacilityRow {
+  id: number
+  name: string
+  code?: string
+  equipment_count: number
+}
+
+interface MockPieDatum {
+  key?: string
+  name: string
+  value: number
+  color?: string
+}
 
 const state = vi.hoisted(() => ({
   role: "technician",
+  facilities: [] as MockFacilityRow[],
+  dynamicPieChart: vi.fn<(props: { data: MockPieDatum[]; dataKey: string; nameKey: string }) => void>(),
 }))
 
 vi.mock("next-auth/react", () => ({
@@ -18,7 +34,7 @@ vi.mock("next-auth/react", () => ({
 
 vi.mock("@tanstack/react-query", () => ({
   useQuery: () => ({
-    data: [],
+    data: state.facilities,
     isLoading: false,
     error: null,
   }),
@@ -39,6 +55,19 @@ vi.mock("@/components/interactive-equipment-chart", () => ({
 
 vi.mock("@/components/dynamic-chart", () => ({
   DynamicBarChart: () => <div data-testid="dynamic-bar-chart" />,
+  DynamicPieChart: (props: { data: MockPieDatum[]; dataKey: string; nameKey: string }) => {
+    state.dynamicPieChart(props)
+
+    return (
+      <div data-testid="dynamic-pie-chart">
+        {props.data.map((item) => (
+          <div key={item.key ?? item.name}>
+            {item.name}: {item.value}
+          </div>
+        ))}
+      </div>
+    )
+  },
 }))
 
 vi.mock("@/components/ui/card", () => ({
@@ -69,6 +98,12 @@ vi.mock("@/components/ui/alert", () => ({
 import { UnifiedInventoryChart } from "@/components/unified-inventory-chart"
 
 describe("UnifiedInventoryChart hook stability", () => {
+  beforeEach(() => {
+    state.role = "technician"
+    state.facilities = []
+    state.dynamicPieChart.mockClear()
+  })
+
   it("does not throw when rerendering from hidden to visible mode", () => {
     const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {})
 
@@ -115,7 +150,63 @@ describe("UnifiedInventoryChart hook stability", () => {
     render(<UnifiedInventoryChart tenantFilter="all" isGlobalOrRegionalLeader={true} />)
 
     expect(screen.getByText("Phân bố thiết bị theo cơ sở")).toBeInTheDocument()
-    expect(screen.getByText("Đang hiển thị phân bố số lượng thiết bị theo cơ sở trên toàn hệ thống. Mặc định hiển thị Top 10; chọn “Hiển thị tất cả” để xem toàn bộ.")).toBeInTheDocument()
+    expect(screen.getByText("Đang hiển thị tỷ trọng thiết bị theo cơ sở trên toàn hệ thống. Donut hiển thị Top 10 cơ sở và gộp phần còn lại vào “Khác”.")).toBeInTheDocument()
+  })
+
+  it("renders all-mode facility distribution as top ten plus other donut with full legend", () => {
+    state.role = "global"
+    state.facilities = Array.from({ length: 12 }, (_, index) => ({
+      id: index + 1,
+      name: `Cơ sở ${index + 1}`,
+      equipment_count: 12 - index,
+    }))
+
+    render(<UnifiedInventoryChart tenantFilter="all" isGlobalOrRegionalLeader={true} />)
+
+    expect(screen.getByTestId("dynamic-pie-chart")).toBeInTheDocument()
+    expect(state.dynamicPieChart).toHaveBeenCalledWith(
+      expect.objectContaining({
+        dataKey: "value",
+        nameKey: "name",
+        data: expect.arrayContaining([
+          expect.objectContaining({ name: "Cơ sở 1", value: 12 }),
+          expect.objectContaining({ name: "Cơ sở 10", value: 3 }),
+          expect.objectContaining({ name: "Khác", value: 3 }),
+        ]),
+      }),
+    )
+    expect(state.dynamicPieChart.mock.calls[0]?.[0].data).toHaveLength(11)
+    expect(screen.queryByTestId("dynamic-bar-chart")).not.toBeInTheDocument()
+    expect(screen.queryByRole("button", { name: "Hiển thị tất cả" })).not.toBeInTheDocument()
+    expect(screen.getByTestId("facility-donut-legend")).toHaveTextContent("Cơ sở 1")
+    expect(screen.getByTestId("facility-donut-legend")).toHaveTextContent("12 thiết bị")
+    expect(screen.getByTestId("facility-donut-legend")).toHaveTextContent("15.4%")
+    expect(screen.getByTestId("facility-donut-legend")).toHaveTextContent("Khác")
+    expect(screen.getByTestId("facility-donut-legend")).toHaveTextContent("3 thiết bị")
+    expect(screen.getByTestId("facility-donut-legend")).toHaveTextContent("3.8%")
+  })
+
+  it("keeps donut legend row keys stable when facility names are duplicated", () => {
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {})
+    state.role = "global"
+    state.facilities = [
+      { id: 101, name: "Cơ sở trùng tên", equipment_count: 8 },
+      { id: 202, name: "Cơ sở trùng tên", equipment_count: 4 },
+    ]
+
+    try {
+      render(<UnifiedInventoryChart tenantFilter="all" isGlobalOrRegionalLeader={true} />)
+
+      expect(state.dynamicPieChart.mock.calls[0]?.[0].data).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ key: "facility-101", name: "Cơ sở trùng tên", value: 8 }),
+          expect.objectContaining({ key: "facility-202", name: "Cơ sở trùng tên", value: 4 }),
+        ]),
+      )
+      expect(errorSpy).not.toHaveBeenCalled()
+    } finally {
+      errorSpy.mockRestore()
+    }
   })
 
   it("renders interactive chart path for visible global role in single mode", () => {
