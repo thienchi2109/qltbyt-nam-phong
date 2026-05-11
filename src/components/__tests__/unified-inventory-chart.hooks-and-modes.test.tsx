@@ -10,6 +10,7 @@ interface MockFacilityRow {
 }
 
 interface MockPieDatum {
+  key?: string
   name: string
   value: number
   color?: string
@@ -60,7 +61,7 @@ vi.mock("@/components/dynamic-chart", () => ({
     return (
       <div data-testid="dynamic-pie-chart">
         {props.data.map((item) => (
-          <div key={item.name}>
+          <div key={item.key ?? item.name}>
             {item.name}: {item.value}
           </div>
         ))}
@@ -183,6 +184,29 @@ describe("UnifiedInventoryChart hook stability", () => {
     expect(screen.getByTestId("facility-donut-legend")).toHaveTextContent("Khác")
     expect(screen.getByTestId("facility-donut-legend")).toHaveTextContent("3 thiết bị")
     expect(screen.getByTestId("facility-donut-legend")).toHaveTextContent("3.8%")
+  })
+
+  it("keeps donut legend row keys stable when facility names are duplicated", () => {
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {})
+    state.role = "global"
+    state.facilities = [
+      { id: 101, name: "Cơ sở trùng tên", equipment_count: 8 },
+      { id: 202, name: "Cơ sở trùng tên", equipment_count: 4 },
+    ]
+
+    try {
+      render(<UnifiedInventoryChart tenantFilter="all" isGlobalOrRegionalLeader={true} />)
+
+      expect(state.dynamicPieChart.mock.calls[0]?.[0].data).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ key: "facility-101", name: "Cơ sở trùng tên", value: 8 }),
+          expect.objectContaining({ key: "facility-202", name: "Cơ sở trùng tên", value: 4 }),
+        ]),
+      )
+      expect(errorSpy).not.toHaveBeenCalled()
+    } finally {
+      errorSpy.mockRestore()
+    }
   })
 
   it("renders interactive chart path for visible global role in single mode", () => {

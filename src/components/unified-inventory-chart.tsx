@@ -66,12 +66,19 @@ interface FacilitiesRpcRow {
 
 interface FacilityDonutDatum {
   [key: string]: unknown
+  key: string
   name: string
   value: number
   color: string
 }
 
-function buildFacilityDonutData(items: { name: string; value: number }[]): FacilityDonutDatum[] {
+interface FacilityDonutSourceItem {
+  key: string
+  name: string
+  value: number
+}
+
+function buildFacilityDonutData(items: FacilityDonutSourceItem[]): FacilityDonutDatum[] {
   const chartableItems = items.some((item) => item.value > 0)
     ? items.filter((item) => item.value > 0)
     : items
@@ -80,7 +87,7 @@ function buildFacilityDonutData(items: { name: string; value: number }[]): Facil
     .slice(FACILITY_DONUT_LIMIT)
     .reduce((sum, item) => sum + item.value, 0)
   const donutItems = otherValue > 0
-    ? [...topItems, { name: "Khác", value: otherValue }]
+    ? [...topItems, { key: "other", name: "Khác", value: otherValue }]
     : topItems
 
   return donutItems.map((item, index) => ({
@@ -143,9 +150,10 @@ function UnifiedInventoryChartContent({
   })
 
   const sortedData = React.useMemo(() => {
-    if (!facilities || facilities.length === 0) return [] as { name: string; value: number }[]
+    if (!facilities || facilities.length === 0) return [] as FacilityDonutSourceItem[]
     const items = facilities
       .map((f) => ({
+        key: `facility-${f.id}`,
         name: f.code ? `${f.name} (${f.code})` : f.name,
         value: Number(f.equipment_count) || 0,
       }))
@@ -229,7 +237,7 @@ function UnifiedInventoryChartContent({
             <div data-testid="facility-donut-legend" className="grid content-center gap-2">
               {donutData.map((item) => (
                 <div
-                  key={item.name}
+                  key={item.key}
                   className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-md border bg-background/60 px-3 py-2"
                 >
                   <div className="size-3 rounded-full" style={{ backgroundColor: item.color }} />
