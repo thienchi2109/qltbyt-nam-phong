@@ -4,7 +4,8 @@ import { vi } from "date-fns/locale"
 import type { ChartData } from "@/lib/chart-utils"
 import type {
   MaintenanceReportData,
-  RecentRepairHistoryEntry,
+  RepairCompletionBucket,
+  RepairCompletionTimeByMonthPoint,
   RepairFrequencyPoint,
   TopEquipmentRepairEntry,
 } from "../hooks/use-maintenance-data.types"
@@ -25,6 +26,21 @@ export interface MaintenancePlanChartPoint extends ChartData {
   actual: number
 }
 
+export interface CompletionTimeChartPoint extends ChartData {
+  bucketKey: string
+  label: string
+  count: number
+  fill: string
+}
+
+export interface CompletionTimeTrendPoint extends ChartData {
+  period: string
+  medianMinutes: number
+  p90Minutes: number
+  averageMinutes: number
+  completedCount: number
+}
+
 export interface TopEquipmentRepairRow {
   equipmentId: number
   name: string
@@ -33,8 +49,6 @@ export interface TopEquipmentRepairRow {
   latestCompletedDate?: string | null
   latestStatus: string
 }
-
-export type RecentRepairHistoryRow = RecentRepairHistoryEntry
 
 export function parseMaintenanceReportNumber(value: unknown): number {
   if (typeof value === "number") {
@@ -85,6 +99,58 @@ export function buildRepairTrendChartData(
       completedRequests: parseMaintenanceReportNumber(completed),
     }
   })
+}
+
+export function buildCompletionTimeChartData(
+  distribution: Array<Omit<RepairCompletionBucket, "count"> & { count: unknown }> = []
+): CompletionTimeChartPoint[] {
+  return distribution.map((bucket) => ({
+    bucketKey: bucket.bucketKey,
+    label: bucket.label,
+    count: parseMaintenanceReportNumber(bucket.count),
+    fill: getCompletionBucketColor(bucket),
+  }))
+}
+
+export function buildCompletionTimeTrendData(
+  points: Array<
+    Omit<RepairCompletionTimeByMonthPoint, "medianMinutes" | "p90Minutes" | "averageMinutes" | "completedCount"> & {
+      medianMinutes: unknown
+      p90Minutes: unknown
+      averageMinutes: unknown
+      completedCount: unknown
+    }
+  > = []
+): CompletionTimeTrendPoint[] {
+  return points.map((point) => ({
+    period: formatRepairFrequencyPeriod(point.period),
+    medianMinutes: parseMaintenanceReportNumber(point.medianMinutes),
+    p90Minutes: parseMaintenanceReportNumber(point.p90Minutes),
+    averageMinutes: parseMaintenanceReportNumber(point.averageMinutes),
+    completedCount: parseMaintenanceReportNumber(point.completedCount),
+  }))
+}
+
+export function formatDurationAuto(minutes?: number | null): string {
+  if (minutes == null || !Number.isFinite(minutes) || minutes <= 0) {
+    return "—"
+  }
+
+  const value = minutes < 24 * 60 ? minutes / 60 : minutes / (24 * 60)
+  const unit = minutes < 24 * 60 ? "giờ" : "ngày"
+  const formatted = new Intl.NumberFormat("vi-VN", {
+    maximumFractionDigits: 1,
+  }).format(value)
+
+  return `${formatted} ${unit}`
+}
+
+function getCompletionBucketColor(bucket: Pick<RepairCompletionBucket, "bucketKey" | "isOverThreshold">): string {
+  if (!bucket.isOverThreshold) {
+    return "hsl(var(--chart-1))"
+  }
+
+  return bucket.bucketKey === "30d+" ? "hsl(var(--destructive))" : "hsl(var(--chart-5))"
 }
 
 function formatRepairFrequencyPeriod(period: string): string {

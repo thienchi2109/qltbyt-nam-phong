@@ -148,6 +148,7 @@ interface BarChartBaseProps {
     color: string
     name?: string
     stackId?: string
+    cellColorKey?: string
   }>
   showGrid?: boolean
   showTooltip?: boolean
@@ -190,7 +191,7 @@ export function DynamicBarChart({
 
   return (
     <DynamicChart height={height}>
-      {({ BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer }) => (
+      {({ BarChart, Bar, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer }) => (
         <ResponsiveContainer width="100%" height={height}>
           <BarChart
             layout={isVertical ? 'vertical' : undefined}
@@ -231,7 +232,22 @@ export function DynamicBarChart({
                 fill={bar.color}
                 name={bar.name || bar.key}
                 stackId={bar.stackId}
-              />
+              >
+                {bar.cellColorKey
+                  ? (() => {
+                      const cellColorKey = bar.cellColorKey
+
+                      return data.map((entry) => {
+                        const fill = entry[cellColorKey]
+                        const rawCellKey = entry[xAxisKey] ?? (verticalYAxisKey ? entry[verticalYAxisKey] : null) ?? fill
+
+                        return typeof fill === "string" ? (
+                          <Cell key={`${bar.key}-${String(rawCellKey)}`} fill={fill} />
+                        ) : null
+                      })
+                    })()
+                  : null}
+              </Bar>
             ))}
           </BarChart>
         </ResponsiveContainer>

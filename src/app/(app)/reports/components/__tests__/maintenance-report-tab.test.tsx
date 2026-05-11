@@ -36,6 +36,10 @@ vi.mock("@/components/ui/skeleton", () => ({
   Skeleton: () => <div data-testid="skeleton" />,
 }))
 
+vi.mock("@/components/ui/progress", () => ({
+  Progress: ({ value }: { value?: number }) => <div data-testid="progress">{value}</div>,
+}))
+
 vi.mock("@/components/ui/table", () => ({
   Table: ({ children }: { children: React.ReactNode }) => <table>{children}</table>,
   TableBody: ({ children }: { children: React.ReactNode }) => <tbody>{children}</tbody>,
@@ -77,6 +81,31 @@ describe("MaintenanceReportTab", () => {
           repairStatusDistribution: [],
           maintenancePlanVsActual: [],
           repairFrequencyByMonth: [],
+          repairCostByMonth: [],
+          repairCostByFacility: [],
+          repairCompletionTime: {
+            stats: {
+              totalCompleted: 6,
+              medianMinutes: 10800,
+              averageMinutes: 18600,
+              p90Minutes: 43200,
+              onTimeCount: 4,
+              onTimePercent: 66.7,
+              thresholdDays: 14,
+            },
+            distribution: [
+              { bucketKey: "0-1d", label: "0-1 ngày", count: 1, isOverThreshold: false },
+            ],
+          },
+          repairCompletionTimeByMonth: [
+            {
+              period: "2026-03",
+              medianMinutes: 10800,
+              p90Minutes: 43200,
+              averageMinutes: 18600,
+              completedCount: 6,
+            },
+          ],
           repairUsageCostCorrelation: {
             period: {
               points: [],
@@ -98,7 +127,6 @@ describe("MaintenanceReportTab", () => {
         },
         topEquipmentRepairs: [],
         topEquipmentRepairCosts: [],
-        recentRepairHistory: [],
       },
       isLoading: false,
     })
@@ -115,5 +143,7 @@ describe("MaintenanceReportTab", () => {
     expect(screen.getByText("Thiếu chi phí")).toBeInTheDocument()
     expect(screen.getByText("2 ca hoàn thành đã ghi nhận")).toBeInTheDocument()
     expect(screen.getByText("1 ca hoàn thành chưa ghi nhận")).toBeInTheDocument()
+    expect(screen.getByText("Thời gian hoàn thành yêu cầu sửa chữa")).toBeInTheDocument()
+    expect(screen.queryByText("Lịch sử sửa chữa gần đây")).not.toBeInTheDocument()
   })
 })

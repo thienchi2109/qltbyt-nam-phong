@@ -44,16 +44,6 @@ export interface TopEquipmentRepairCostEntry {
   costRecordedCount: number
 }
 
-export interface RecentRepairHistoryEntry {
-  id: number
-  equipmentName: string
-  issue: string
-  status: string
-  requestedDate: string
-  completedDate?: string | null
-  repairCost?: number | null
-}
-
 export interface RepairUsageCostCorrelationPoint {
   equipmentId: number
   equipmentName: string
@@ -78,6 +68,36 @@ export interface RepairUsageCostCorrelationScope {
 export interface RepairUsageCostCorrelation {
   period: RepairUsageCostCorrelationScope
   cumulative: RepairUsageCostCorrelationScope
+}
+
+export interface RepairCompletionTimeStats {
+  totalCompleted: number
+  medianMinutes: number
+  averageMinutes: number
+  p90Minutes: number
+  onTimeCount: number
+  onTimePercent: number
+  thresholdDays: number
+}
+
+export interface RepairCompletionBucket {
+  bucketKey: string
+  label: string
+  count: number
+  isOverThreshold: boolean
+}
+
+export interface RepairCompletionTimeChart {
+  stats: RepairCompletionTimeStats
+  distribution: RepairCompletionBucket[]
+}
+
+export interface RepairCompletionTimeByMonthPoint {
+  period: string
+  medianMinutes: number
+  p90Minutes: number
+  averageMinutes: number
+  completedCount: number
 }
 
 export interface MaintenanceReportData {
@@ -105,11 +125,12 @@ export interface MaintenanceReportData {
     repairFrequencyByMonth: RepairFrequencyPoint[]
     repairCostByMonth: RepairCostByMonthPoint[]
     repairCostByFacility: RepairCostByFacilityPoint[]
+    repairCompletionTime: RepairCompletionTimeChart
+    repairCompletionTimeByMonth: RepairCompletionTimeByMonthPoint[]
     repairUsageCostCorrelation: RepairUsageCostCorrelation
   }
   topEquipmentRepairs: TopEquipmentRepairEntry[]
   topEquipmentRepairCosts: TopEquipmentRepairCostEntry[]
-  recentRepairHistory: RecentRepairHistoryEntry[]
 }
 
 function createDefaultRepairUsageCostCorrelationScope(): RepairUsageCostCorrelationScope {
@@ -120,6 +141,21 @@ function createDefaultRepairUsageCostCorrelationScope(): RepairUsageCostCorrelat
       equipmentWithRepairCost: 0,
       equipmentWithBoth: 0,
     },
+  }
+}
+
+function createDefaultRepairCompletionTimeChart(): RepairCompletionTimeChart {
+  return {
+    stats: {
+      totalCompleted: 0,
+      medianMinutes: 0,
+      averageMinutes: 0,
+      p90Minutes: 0,
+      onTimeCount: 0,
+      onTimePercent: 0,
+      thresholdDays: 14,
+    },
+    distribution: [],
   }
 }
 
@@ -140,6 +176,8 @@ export const defaultMaintenanceReportData: MaintenanceReportData = {
     repairFrequencyByMonth: [],
     repairCostByMonth: [],
     repairCostByFacility: [],
+    repairCompletionTime: createDefaultRepairCompletionTimeChart(),
+    repairCompletionTimeByMonth: [],
     repairUsageCostCorrelation: {
       period: createDefaultRepairUsageCostCorrelationScope(),
       cumulative: createDefaultRepairUsageCostCorrelationScope(),
@@ -147,7 +185,6 @@ export const defaultMaintenanceReportData: MaintenanceReportData = {
   },
   topEquipmentRepairs: [],
   topEquipmentRepairCosts: [],
-  recentRepairHistory: [],
 }
 
 type DeepPartial<T> = T extends readonly unknown[]
@@ -182,6 +219,18 @@ export function mergeMaintenanceReportData(
         nextCharts?.repairCostByMonth ?? defaultMaintenanceReportData.charts.repairCostByMonth,
       repairCostByFacility:
         nextCharts?.repairCostByFacility ?? defaultMaintenanceReportData.charts.repairCostByFacility,
+      repairCompletionTime: {
+        stats: {
+          ...defaultMaintenanceReportData.charts.repairCompletionTime.stats,
+          ...nextCharts?.repairCompletionTime?.stats,
+        },
+        distribution:
+          nextCharts?.repairCompletionTime?.distribution ??
+          defaultMaintenanceReportData.charts.repairCompletionTime.distribution,
+      },
+      repairCompletionTimeByMonth:
+        nextCharts?.repairCompletionTimeByMonth ??
+        defaultMaintenanceReportData.charts.repairCompletionTimeByMonth,
       repairUsageCostCorrelation: {
         period: {
           ...defaultMaintenanceReportData.charts.repairUsageCostCorrelation.period,
@@ -210,6 +259,5 @@ export function mergeMaintenanceReportData(
     topEquipmentRepairs: report?.topEquipmentRepairs ?? defaultMaintenanceReportData.topEquipmentRepairs,
     topEquipmentRepairCosts:
       report?.topEquipmentRepairCosts ?? defaultMaintenanceReportData.topEquipmentRepairCosts,
-    recentRepairHistory: report?.recentRepairHistory ?? defaultMaintenanceReportData.recentRepairHistory,
   }
 }
