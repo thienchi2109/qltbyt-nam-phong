@@ -73,7 +73,7 @@ describe("MaintenanceReportCompletionTime", () => {
     expect(screen.getByText("7,5 ngày")).toBeInTheDocument()
     expect(screen.getByText("Thời gian trung bình")).toBeInTheDocument()
     expect(screen.getByText("12,9 ngày")).toBeInTheDocument()
-    expect(screen.getByText("Tỉ lệ đúng hạn")).toBeInTheDocument()
+    expect(screen.getByText("Tỉ lệ đúng hạn (≤14 ngày)")).toBeInTheDocument()
     expect(screen.getByText("66,7%")).toBeInTheDocument()
     expect(screen.getByText("4/6 yêu cầu trong ngưỡng 14 ngày")).toBeInTheDocument()
     expect(screen.getByText("Xu hướng thời gian hoàn thành theo tháng")).toBeInTheDocument()
@@ -84,6 +84,9 @@ describe("MaintenanceReportCompletionTime", () => {
       expect.objectContaining({
         data: expect.arrayContaining([
           expect.objectContaining({ bucketKey: "30d+", count: 1, fill: "hsl(var(--destructive))" }),
+        ]),
+        bars: expect.arrayContaining([
+          expect.objectContaining({ key: "count", cellColorKey: "fill" }),
         ]),
       })
     )

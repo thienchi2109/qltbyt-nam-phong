@@ -172,6 +172,42 @@ BEGIN
       600000
     ),
     (
+      v_equipment_b,
+      'Completion smoke exact 14d boundary',
+      'Completion item exact 14d',
+      'Hoàn thành',
+      v_base + interval '22 days',
+      v_base + interval '23 days',
+      v_base + interval '36 days',
+      'Smoke requester',
+      'noi_bo',
+      650000
+    ),
+    (
+      v_equipment_a,
+      'Completion smoke opened before range included by completion date',
+      'Completion item completion-date included',
+      'Hoàn thành',
+      v_date_from::timestamp - interval '1 day' + interval '9 hours',
+      v_date_from::timestamp + interval '10 hours',
+      v_date_from::timestamp + interval '1 day' + interval '9 hours',
+      'Smoke requester',
+      'noi_bo',
+      660000
+    ),
+    (
+      v_equipment_a,
+      'Completion smoke completed after range ignored',
+      'Completion item completion-date excluded',
+      'Hoàn thành',
+      v_date_to::timestamp - interval '1 day' + interval '9 hours',
+      v_date_to::timestamp,
+      v_date_to::timestamp + interval '3 days' + interval '9 hours',
+      'Smoke requester',
+      'noi_bo',
+      670000
+    ),
+    (
       v_equipment_a,
       'Completion smoke unfinished ignored',
       'Completion item unfinished',
@@ -215,28 +251,28 @@ BEGIN
     RAISE EXCEPTION 'Expected recentRepairHistory to be removed from payload, got %', v_report;
   END IF;
 
-  IF (v_completion #>> '{stats,totalCompleted}')::integer IS DISTINCT FROM 6 THEN
-    RAISE EXCEPTION 'Expected totalCompleted=6, got %', v_completion #> '{stats,totalCompleted}';
+  IF (v_completion #>> '{stats,totalCompleted}')::integer IS DISTINCT FROM 8 THEN
+    RAISE EXCEPTION 'Expected totalCompleted=8, got %', v_completion #> '{stats,totalCompleted}';
   END IF;
 
   IF (v_completion #>> '{stats,medianMinutes}')::numeric IS DISTINCT FROM 10800 THEN
     RAISE EXCEPTION 'Expected medianMinutes=10800 from ngay_yeu_cau durations, got %', v_completion #> '{stats,medianMinutes}';
   END IF;
 
-  IF (v_completion #>> '{stats,p90Minutes}')::numeric IS DISTINCT FROM 43200 THEN
-    RAISE EXCEPTION 'Expected p90Minutes=43200 from ngay_yeu_cau durations, got %', v_completion #> '{stats,p90Minutes}';
+  IF (v_completion #>> '{stats,p90Minutes}')::numeric IS DISTINCT FROM 37440 THEN
+    RAISE EXCEPTION 'Expected p90Minutes=37440 from ngay_yeu_cau durations, got %', v_completion #> '{stats,p90Minutes}';
   END IF;
 
-  IF (v_completion #>> '{stats,averageMinutes}')::numeric IS DISTINCT FROM 18600 THEN
-    RAISE EXCEPTION 'Expected averageMinutes=18600 from ngay_yeu_cau durations, got %', v_completion #> '{stats,averageMinutes}';
+  IF (v_completion #>> '{stats,averageMinutes}')::numeric IS DISTINCT FROM 16830 THEN
+    RAISE EXCEPTION 'Expected averageMinutes=16830 from ngay_yeu_cau durations, got %', v_completion #> '{stats,averageMinutes}';
   END IF;
 
-  IF (v_completion #>> '{stats,onTimeCount}')::integer IS DISTINCT FROM 4 THEN
-    RAISE EXCEPTION 'Expected onTimeCount=4, got %', v_completion #> '{stats,onTimeCount}';
+  IF (v_completion #>> '{stats,onTimeCount}')::integer IS DISTINCT FROM 6 THEN
+    RAISE EXCEPTION 'Expected onTimeCount=6, got %', v_completion #> '{stats,onTimeCount}';
   END IF;
 
-  IF abs((v_completion #>> '{stats,onTimePercent}')::numeric - 66.7) > 0.1 THEN
-    RAISE EXCEPTION 'Expected onTimePercent about 66.7, got %', v_completion #> '{stats,onTimePercent}';
+  IF abs((v_completion #>> '{stats,onTimePercent}')::numeric - 75.0) > 0.1 THEN
+    RAISE EXCEPTION 'Expected onTimePercent about 75.0, got %', v_completion #> '{stats,onTimePercent}';
   END IF;
 
   IF (v_completion #>> '{stats,thresholdDays}')::integer IS DISTINCT FROM 14 THEN
@@ -253,9 +289,9 @@ BEGIN
   WHERE (row_data->>'bucketKey', (row_data->>'count')::integer, (row_data->>'isOverThreshold')::boolean)
     IN (
       ('0-1d', 1, false),
-      ('1-3d', 1, false),
+      ('1-3d', 2, false),
       ('3-7d', 1, false),
-      ('7-14d', 1, false),
+      ('7-14d', 2, false),
       ('14-30d', 1, true),
       ('30d+', 1, true)
     );
@@ -282,8 +318,17 @@ BEGIN
   INTO v_month_total
   FROM jsonb_array_elements(v_by_month) AS month_point(row_data);
 
-  IF v_month_total <> 6 THEN
-    RAISE EXCEPTION 'Expected monthly completion total=6, got % from %', v_month_total, v_by_month;
+  IF v_month_total <> 8 THEN
+    RAISE EXCEPTION 'Expected monthly completion total=8, got % from %', v_month_total, v_by_month;
+  END IF;
+
+  IF EXISTS (
+    SELECT 1
+    FROM jsonb_array_elements(v_by_month) AS month_point(row_data)
+    WHERE to_date(row_data->>'period', 'YYYY-MM') < date_trunc('month', v_date_from)::date
+       OR to_date(row_data->>'period', 'YYYY-MM') > date_trunc('month', v_date_to)::date
+  ) THEN
+    RAISE EXCEPTION 'Expected monthly completion periods to stay within completion-date range %, got %', v_date_from, v_by_month;
   END IF;
 
   IF NOT (
@@ -304,13 +349,11 @@ BEGIN
 
   v_admin_scoped_report := public.get_maintenance_report_data(v_date_from, v_date_to, v_tenant);
 
-  SELECT count(*)
+  SELECT (v_admin_scoped_report #>> '{charts,repairCompletionTime,stats,totalCompleted}')::integer
   INTO v_other_count
-  FROM jsonb_array_elements(v_admin_scoped_report #> '{charts,repairCompletionTime,distribution}') AS bucket(row_data)
-  WHERE (row_data->>'count')::integer > 1;
 
-  IF v_other_count > 0 THEN
-    RAISE EXCEPTION 'Expected admin/global payload with p_don_vi to stay facility-scoped, got %', v_admin_scoped_report;
+  IF v_other_count IS DISTINCT FROM 8 THEN
+    RAISE EXCEPTION 'Expected admin/global payload with p_don_vi to stay facility-scoped totalCompleted=8, got %', v_admin_scoped_report;
   END IF;
 
   RAISE NOTICE 'OK: repair completion time visualization payload contract passed';

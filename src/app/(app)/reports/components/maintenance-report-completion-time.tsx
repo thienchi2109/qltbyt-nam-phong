@@ -17,6 +17,8 @@ import {
   formatDurationAuto,
 } from "./maintenance-report-utils"
 
+const PERCENT_FORMATTER = new Intl.NumberFormat("vi-VN", { maximumFractionDigits: 1 })
+
 interface MaintenanceReportCompletionTimeProps {
   isLoading: boolean
   repairCompletionTime: RepairCompletionTimeChart
@@ -39,10 +41,6 @@ export function MaintenanceReportCompletionTime({
 
   const { stats } = repairCompletionTime
   const hasCompletionData = stats.totalCompleted > 0
-  const percentFormatter = React.useMemo(
-    () => new Intl.NumberFormat("vi-VN", { maximumFractionDigits: 1 }),
-    []
-  )
 
   if (isLoading) {
     return (
@@ -62,7 +60,7 @@ export function MaintenanceReportCompletionTime({
         </CardHeader>
         <CardContent>
           <div className="flex h-[360px] flex-col items-center justify-center gap-2 text-sm text-muted-foreground">
-            <Inbox className="h-8 w-8 text-muted-foreground/60" />
+            <Inbox className="size-8 text-muted-foreground/60" />
             <span>Chưa có yêu cầu hoàn thành trong khoảng thời gian đã chọn.</span>
           </div>
         </CardContent>
@@ -82,9 +80,11 @@ export function MaintenanceReportCompletionTime({
             <CompletionStat label="Trung vị" value={formatDurationAuto(stats.medianMinutes)} />
             <CompletionStat label="Thời gian trung bình" value={formatDurationAuto(stats.averageMinutes)} />
             <div className="rounded-md border p-3">
-              <div className="text-xs text-muted-foreground">Tỉ lệ đúng hạn</div>
+              <div className="text-xs text-muted-foreground">
+                Tỉ lệ đúng hạn (≤{stats.thresholdDays} ngày)
+              </div>
               <div className="mt-1 text-xl font-semibold">
-                {percentFormatter.format(stats.onTimePercent)}%
+                {PERCENT_FORMATTER.format(stats.onTimePercent)}%
               </div>
               <Progress className="mt-3 h-2" value={stats.onTimePercent} />
               <div className="mt-2 text-xs text-muted-foreground">
@@ -97,7 +97,12 @@ export function MaintenanceReportCompletionTime({
             data={histogramData}
             height={300}
             xAxisKey="label"
-            bars={[{ key: "count", color: "hsl(var(--chart-1))", name: "Số yêu cầu" }]}
+            bars={[{
+              key: "count",
+              color: "hsl(var(--chart-1))",
+              name: "Số yêu cầu",
+              cellColorKey: "fill",
+            }]}
             margin={{ top: 16, right: 24, left: 16, bottom: 36 }}
           />
         </CardContent>
@@ -111,7 +116,7 @@ export function MaintenanceReportCompletionTime({
         <CardContent>
           {trendData.length === 0 ? (
             <div className="flex h-[360px] flex-col items-center justify-center gap-2 text-sm text-muted-foreground">
-              <Inbox className="h-8 w-8 text-muted-foreground/60" />
+              <Inbox className="size-8 text-muted-foreground/60" />
               <span>Chưa có dữ liệu theo tháng trong khoảng thời gian đã chọn.</span>
             </div>
           ) : (
