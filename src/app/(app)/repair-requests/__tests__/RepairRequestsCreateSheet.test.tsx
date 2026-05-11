@@ -26,6 +26,8 @@ const contextValue = {
   assistantDraft: null,
 }
 
+const selectedCalendarDate = vi.hoisted(() => new Date(2026, 2, 20))
+
 vi.mock('@/lib/rpc-client', () => ({
   callRpc: mocks.callRpc,
 }))
@@ -74,7 +76,7 @@ vi.mock('@/components/ui/popover', () => ({
 
 vi.mock('@/components/ui/calendar', () => ({
   Calendar: ({ onSelect }: { onSelect?: (date: Date | undefined) => void }) => (
-    <button type="button" onClick={() => onSelect?.(new Date(2026, 2, 20))}>
+    <button type="button" onClick={() => onSelect?.(selectedCalendarDate)}>
       Pick calendar date
     </button>
   ),

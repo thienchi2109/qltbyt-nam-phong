@@ -68,6 +68,19 @@ export function RepairRequestsCreateSheetForm({
   setRepairUnit,
   shouldShowNoResults,
 }: RepairRequestsCreateSheetFormProps) {
+  const [minimumSelectableDate, setMinimumSelectableDate] = React.useState<Date | null>(null)
+
+  React.useEffect(() => {
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    setMinimumSelectableDate(today)
+  }, [])
+
+  const isDateDisabled = React.useCallback(
+    (date: Date) => (minimumSelectableDate ? date < minimumSelectableDate : false),
+    [minimumSelectableDate],
+  )
+
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <RepairRequestsEquipmentSearchField
@@ -111,7 +124,7 @@ export function RepairRequestsCreateSheetForm({
                 !desiredDate && "text-muted-foreground",
               )}
             >
-              <CalendarIcon className="mr-2 h-4 w-4" />
+              <CalendarIcon className="mr-2 size-4" />
               {desiredDate ? format(desiredDate, "dd/MM/yyyy") : <span>Chọn ngày</span>}
             </Button>
           </PopoverTrigger>
@@ -121,7 +134,7 @@ export function RepairRequestsCreateSheetForm({
               selected={desiredDate}
               onSelect={setDesiredDate}
               initialFocus
-              disabled={(date) => date < new Date(new Date().setHours(0, 0, 0, 0))}
+              disabled={isDateDisabled}
             />
           </PopoverContent>
         </Popover>
