@@ -2,17 +2,31 @@
 
 import * as React from "react"
 import { useSession } from "next-auth/react"
-import { BarChart3 } from "lucide-react"
+import { PieChart } from "lucide-react"
 import { useQuery } from "@tanstack/react-query"
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { DynamicBarChart } from "@/components/dynamic-chart"
+import { DynamicPieChart } from "@/components/dynamic-chart"
 import { callRpc } from "@/lib/rpc-client"
 import { InteractiveEquipmentChart } from "@/components/interactive-equipment-chart"
 import { isGlobalRole, isRegionalLeaderRole } from "@/lib/rbac"
+
+const FACILITY_DONUT_LIMIT = 10
+const FACILITY_DONUT_COLORS = [
+  "#2563eb",
+  "#16a34a",
+  "#f97316",
+  "#dc2626",
+  "#7c3aed",
+  "#0891b2",
+  "#ca8a04",
+  "#db2777",
+  "#4f46e5",
+  "#059669",
+  "#64748b",
+]
 
 interface UnifiedInventoryChartProps {
   tenantFilter?: string
@@ -48,6 +62,36 @@ interface FacilitiesRpcRow {
   name: string
   code?: string
   equipment_count: number
+}
+
+interface FacilityDonutDatum {
+  [key: string]: unknown
+  name: string
+  value: number
+  color: string
+}
+
+function buildFacilityDonutData(items: { name: string; value: number }[]): FacilityDonutDatum[] {
+  const chartableItems = items.some((item) => item.value > 0)
+    ? items.filter((item) => item.value > 0)
+    : items
+  const topItems = chartableItems.slice(0, FACILITY_DONUT_LIMIT)
+  const otherValue = chartableItems
+    .slice(FACILITY_DONUT_LIMIT)
+    .reduce((sum, item) => sum + item.value, 0)
+  const donutItems = otherValue > 0
+    ? [...topItems, { name: "Khác", value: otherValue }]
+    : topItems
+
+  return donutItems.map((item, index) => ({
+    ...item,
+    color: FACILITY_DONUT_COLORS[index % FACILITY_DONUT_COLORS.length],
+  }))
+}
+
+function formatPercent(value: number, total: number): string {
+  if (total <= 0) return "0%"
+  return `${((value / total) * 100).toFixed(1).replace(/\.0$/, "")}%`
 }
 
 export function UnifiedInventoryChart({
@@ -98,7 +142,6 @@ function UnifiedInventoryChartContent({
     staleTime: 5 * 60_000,
   })
 
-  const [showAll, setShowAll] = React.useState(false)
   const sortedData = React.useMemo(() => {
     if (!facilities || facilities.length === 0) return [] as { name: string; value: number }[]
     const items = facilities
@@ -113,19 +156,11 @@ function UnifiedInventoryChartContent({
     return items
   }, [facilities])
 
-  const visibleData = React.useMemo(() => {
-    if (showAll) return sortedData
-    return sortedData.slice(0, 10)
-  }, [sortedData, showAll])
-
-  // Telemetry (lightweight)
-  React.useEffect(() => {
-    if (isAllMode) {
-      try { console.debug('unified_chart_viewed', { mode: 'all', role, facility_count: facilities?.length ?? 0 }) } catch {}
-    } else {
-      try { console.debug('unified_chart_viewed', { mode: 'single', role }) } catch {}
-    }
-  }, [isAllMode, role, facilities?.length])
+  const donutData = React.useMemo(() => buildFacilityDonutData(sortedData), [sortedData])
+  const donutTotal = React.useMemo(
+    () => donutData.reduce((sum, item) => sum + item.value, 0),
+    [donutData],
+  )
 
   if (!isAllMode) {
     // Single-facility: reuse existing interactive chart
@@ -140,9 +175,9 @@ function UnifiedInventoryChartContent({
 
   // All-facilities mode UI
   const message = isGlobal
-    ? 'Đang hiển thị phân bố số lượng thiết bị theo cơ sở trên toàn hệ thống. Mặc định hiển thị Top 10; chọn “Hiển thị tất cả” để xem toàn bộ.'
+    ? 'Đang hiển thị tỷ trọng thiết bị theo cơ sở trên toàn hệ thống. Donut hiển thị Top 10 cơ sở và gộp phần còn lại vào “Khác”.'
     : isRegionalLeader
-    ? 'Đang hiển thị phân bố số lượng thiết bị theo cơ sở trong phạm vi của bạn. Mặc định hiển thị Top 10; chọn “Hiển thị tất cả” để xem toàn bộ.'
+    ? 'Đang hiển thị tỷ trọng thiết bị theo cơ sở trong phạm vi của bạn. Donut hiển thị Top 10 cơ sở và gộp phần còn lại vào “Khác”.'
     : ''
 
   return (
@@ -151,21 +186,11 @@ function UnifiedInventoryChartContent({
         <div className="flex items-center justify-between">
           <div>
             <CardTitle className="flex items-center gap-2">
-              <BarChart3 className="h-5 w-5" />
+              <PieChart className="size-5" />
               Phân bố thiết bị theo cơ sở
             </CardTitle>
             <CardDescription>{message}</CardDescription>
           </div>
-          {sortedData.length > 10 && (
-            <Button variant="secondary" size="sm" onClick={() => {
-              setShowAll((prev) => {
-                try { console.debug('show_all_toggled', { from: prev }) } catch {}
-                return !prev
-              })
-            }}>
-              {showAll ? 'Thu gọn' : 'Hiển thị tất cả'}
-            </Button>
-          )}
         </div>
       </CardHeader>
       <CardContent>
@@ -182,19 +207,39 @@ function UnifiedInventoryChartContent({
             Không có dữ liệu tồn kho theo cơ sở trong phạm vi của bạn.
           </div>
         ) : (
-          <div className="w-full overflow-x-auto">
-            <div style={{ width: `${Math.max(visibleData.length * 80, 720)}px` }}>
-              <DynamicBarChart
-                data={visibleData}
-                height={400}
-                xAxisKey="name"
-                bars={[{ key: 'value', color: '#0088FE', name: 'Số lượng thiết bị' }]}
-                showGrid={true}
-                showTooltip={true}
-                showLegend={false}
-                xAxisAngle={-45}
-                margin={{ top: 20, right: 30, left: 20, bottom: 100 }}
+          <div className="grid gap-6 xl:grid-cols-[minmax(280px,0.9fr)_minmax(320px,1.1fr)]">
+            <div className="relative min-h-[320px]">
+              <DynamicPieChart
+                data={donutData}
+                height={320}
+                dataKey="value"
+                nameKey="name"
+                colors={FACILITY_DONUT_COLORS}
+                innerRadius={72}
+                outerRadius={112}
+                showLabels={false}
               />
+              <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+                <div className="text-center">
+                  <div className="text-2xl font-bold tracking-normal">{donutTotal}</div>
+                  <div className="text-xs text-muted-foreground">thiết bị</div>
+                </div>
+              </div>
+            </div>
+            <div data-testid="facility-donut-legend" className="grid content-center gap-2">
+              {donutData.map((item) => (
+                <div
+                  key={item.name}
+                  className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-md border bg-background/60 px-3 py-2"
+                >
+                  <div className="size-3 rounded-full" style={{ backgroundColor: item.color }} />
+                  <div className="min-w-0">
+                    <div className="truncate text-sm font-medium">{item.name}</div>
+                    <div className="text-xs text-muted-foreground">{formatPercent(item.value, donutTotal)}</div>
+                  </div>
+                  <div className="text-right text-sm font-semibold">{item.value} thiết bị</div>
+                </div>
+              ))}
             </div>
           </div>
         )}
