@@ -350,7 +350,7 @@ BEGIN
   v_admin_scoped_report := public.get_maintenance_report_data(v_date_from, v_date_to, v_tenant);
 
   SELECT (v_admin_scoped_report #>> '{charts,repairCompletionTime,stats,totalCompleted}')::integer
-  INTO v_other_count
+  INTO v_other_count;
 
   IF v_other_count IS DISTINCT FROM 8 THEN
     RAISE EXCEPTION 'Expected admin/global payload with p_don_vi to stay facility-scoped totalCompleted=8, got %', v_admin_scoped_report;
