@@ -3,7 +3,7 @@ import { render, screen, waitFor } from "@testing-library/react"
 import { describe, expect, it, vi } from "vitest"
 import type { ChartTooltipProps } from "@/lib/chart-utils"
 
-import { DynamicBarChart } from "@/components/dynamic-chart"
+import { DynamicBarChart, DynamicLineChart } from "@/components/dynamic-chart"
 
 vi.mock("@/components/chart-fallbacks", () => ({
   ChartLoadingFallback: () => <div data-testid="chart-loading" />,
@@ -89,6 +89,29 @@ describe("DynamicBarChart tooltip integration", () => {
 
     await waitFor(() => {
       expect(screen.getByTestId("custom-tooltip")).toHaveTextContent("Khoa Nội")
+    })
+    expect(screen.queryByTestId("default-tooltip")).not.toBeInTheDocument()
+  })
+
+  it("passes custom line chart tooltip components to Recharts as a React element", async () => {
+    function LineTooltip({
+      payload,
+    }: ChartTooltipProps<number, string>) {
+      const name = payload?.[0]?.payload?.name
+      return <div data-testid="line-tooltip">{name}</div>
+    }
+
+    render(
+      <DynamicLineChart
+        data={[{ name: "Khoa Nội", value: 3 }]}
+        xAxisKey="name"
+        lines={[{ key: "value", color: "#0088FE" }]}
+        customTooltip={LineTooltip}
+      />,
+    )
+
+    await waitFor(() => {
+      expect(screen.getByTestId("line-tooltip")).toHaveTextContent("Khoa Nội")
     })
     expect(screen.queryByTestId("default-tooltip")).not.toBeInTheDocument()
   })

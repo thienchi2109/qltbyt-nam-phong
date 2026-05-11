@@ -6,7 +6,7 @@ import type { ChartTooltipProps } from "@/lib/chart-utils"
 const mockDynamicBarChart = vi.fn(() => <div data-testid="completion-histogram" />)
 const mockDynamicLineChart = vi.fn(() => <div data-testid="completion-trend" />)
 
-interface CompletionBarChartProps {
+interface CompletionChartProps {
   customTooltip?: React.ElementType<ChartTooltipProps<number, string>>
 }
 
@@ -115,7 +115,7 @@ describe("MaintenanceReportCompletionTime", () => {
       />
     )
 
-    const chartProps = mockDynamicBarChart.mock.calls[0]?.[0] as CompletionBarChartProps
+    const chartProps = mockDynamicBarChart.mock.calls[0]?.[0] as CompletionChartProps
     expect(chartProps.customTooltip).toBeDefined()
 
     const CompletionTooltip = chartProps.customTooltip
@@ -142,6 +142,60 @@ describe("MaintenanceReportCompletionTime", () => {
     expect(screen.getByText("7-14 ngày")).toBeInTheDocument()
     expect(screen.getByText("Số yêu cầu: 2")).toBeInTheDocument()
     expect(screen.queryByText("0")).not.toBeInTheDocument()
+  })
+
+  it("formats monthly trend tooltip values with duration units instead of raw minutes", () => {
+    render(
+      <MaintenanceReportCompletionTime
+        isLoading={false}
+        repairCompletionTime={completionTime}
+        repairCompletionTimeByMonth={completionTimeByMonth}
+      />
+    )
+
+    const chartProps = mockDynamicLineChart.mock.calls[0]?.[0] as CompletionChartProps
+    expect(chartProps.customTooltip).toBeDefined()
+
+    const CompletionTrendTooltip = chartProps.customTooltip
+    if (!CompletionTrendTooltip) {
+      throw new Error("Expected completion trend chart to provide a custom tooltip")
+    }
+
+    render(
+      <CompletionTrendTooltip
+        active
+        label="Thg 3 2026"
+        payload={[
+          {
+            dataKey: "medianMinutes",
+            name: "Trung vị",
+            value: 10800,
+            color: "hsl(var(--chart-1))",
+            payload: { period: "Thg 3 2026" },
+          },
+          {
+            dataKey: "p90Minutes",
+            name: "90% hoàn thành trong",
+            value: 50485,
+            color: "hsl(var(--chart-5))",
+            payload: { period: "Thg 3 2026" },
+          },
+          {
+            dataKey: "averageMinutes",
+            name: "Trung bình",
+            value: 18600,
+            color: "hsl(var(--chart-2))",
+            payload: { period: "Thg 3 2026" },
+          },
+        ]}
+      />
+    )
+
+    expect(screen.getByText("Thg 3 2026")).toBeInTheDocument()
+    expect(screen.getByText("Trung vị: 7,5 ngày")).toBeInTheDocument()
+    expect(screen.getByText("90% hoàn thành trong: 35,1 ngày")).toBeInTheDocument()
+    expect(screen.getByText("Trung bình: 12,9 ngày")).toBeInTheDocument()
+    expect(screen.queryByText("50485")).not.toBeInTheDocument()
   })
 
   it("renders an empty state when the date range has no completed repair requests", () => {

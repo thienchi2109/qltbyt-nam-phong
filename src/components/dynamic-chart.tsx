@@ -84,6 +84,7 @@ interface LineChartProps {
   showGrid?: boolean
   showTooltip?: boolean
   showLegend?: boolean
+  customTooltip?: React.ElementType<ChartTooltipProps<number, string>>
   margin?: {
     top?: number
     right?: number
@@ -100,8 +101,11 @@ export function DynamicLineChart({
   showGrid = true,
   showTooltip = true,
   showLegend = true,
+  customTooltip,
   margin,
 }: LineChartProps) {
+  const CustomTooltipContent = customTooltip
+
   return (
     <DynamicChart height={height}>
       {({ LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer }) => (
@@ -120,7 +124,9 @@ export function DynamicLineChart({
             {showGrid && <CartesianGrid strokeDasharray="3 3" />}
             <XAxis dataKey={xAxisKey} />
             <YAxis />
-            {showTooltip && <Tooltip />}
+            {showTooltip && (
+              CustomTooltipContent ? <Tooltip content={<CustomTooltipContent />} /> : <Tooltip />
+            )}
             {showLegend && <Legend />}
             {lines.map(line => (
               <Line

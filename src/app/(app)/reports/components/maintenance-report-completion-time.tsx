@@ -131,11 +131,49 @@ export function MaintenanceReportCompletionTime({
                 { key: "p90Minutes", color: "hsl(var(--chart-5))", name: "90% hoàn thành trong" },
                 { key: "averageMinutes", color: "hsl(var(--chart-2))", name: "Trung bình" },
               ]}
+              customTooltip={CompletionTrendTooltip}
               margin={{ top: 16, right: 24, left: 16, bottom: 12 }}
             />
           )}
         </CardContent>
       </Card>
+    </div>
+  )
+}
+
+function CompletionTrendTooltip({
+  active,
+  label,
+  payload,
+}: ChartTooltipProps<number, string>) {
+  const entries = payload ?? []
+  const periodLabel = typeof label === "string" || typeof label === "number" ? String(label) : null
+
+  if (!active || entries.length === 0) {
+    return null
+  }
+
+  return (
+    <div className="rounded-md border bg-background px-3 py-2 text-sm shadow-md">
+      {periodLabel ? <p className="font-medium text-foreground">{periodLabel}</p> : null}
+      <div className="mt-1 space-y-1">
+        {entries.map((entry) => {
+          const value = typeof entry.value === "number" ? entry.value : null
+          const name = typeof entry.name === "string" || typeof entry.name === "number"
+            ? String(entry.name)
+            : "Giá trị"
+
+          if (value == null) {
+            return null
+          }
+
+          return (
+            <p key={name} className="text-muted-foreground">
+              {name}: {formatDurationAuto(value)}
+            </p>
+          )
+        })}
+      </div>
     </div>
   )
 }
