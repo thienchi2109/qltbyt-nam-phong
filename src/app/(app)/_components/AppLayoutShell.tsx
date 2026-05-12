@@ -135,7 +135,7 @@ function AppLayoutShellContent({ children, user }: AppLayoutShellProps) {
       return
     }
 
-    if (status === "authenticated") {
+    if (status === "authenticated" && !hasHandledSessionExitRef.current) {
       hasHandledSessionExitRef.current = false
       setIsSigningOut(false)
     }
