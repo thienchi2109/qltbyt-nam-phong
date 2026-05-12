@@ -276,6 +276,28 @@ describe("AppLayoutShell", () => {
     })
   })
 
+  it("hides protected content immediately while user-menu signout redirect is pending", async () => {
+    const user = userEvent.setup()
+
+    render(
+      <AppLayoutShell
+        user={{
+          role: "global",
+          full_name: "Test User",
+          username: "tester",
+          khoa_phong: "IT",
+        }}
+      >
+        <div>Child Content</div>
+      </AppLayoutShell>
+    )
+
+    await user.click(screen.getByRole("button", { name: /đăng xuất/i }))
+
+    expect(screen.queryByText("Child Content")).not.toBeInTheDocument()
+    expect(screen.getByTestId("authenticated-page-spinner-fallback")).toBeInTheDocument()
+  })
+
   it("redirects through signOut when the session becomes unauthenticated", () => {
     const sessionState = {
       data: { user: { id: "u1" } },

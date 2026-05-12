@@ -8,6 +8,7 @@ import dynamic from "next/dynamic"
 import { Copyright, KeyRound, LogOut, Menu, User } from "lucide-react"
 
 import { MainContentTransition } from "@/components/page-transition-wrapper"
+import { AuthenticatedPageSpinnerFallback } from "@/app/(app)/_components/AuthenticatedPageFallbacks"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -78,6 +79,7 @@ function AppLayoutShellContent({ children, user }: AppLayoutShellProps) {
   const [isMobileSheetOpen, setIsMobileSheetOpen] = React.useState(false)
   const [isChangePasswordOpen, setIsChangePasswordOpen] = React.useState(false)
   const [isAssistantOpen, setIsAssistantOpen] = React.useState(false)
+  const [isSigningOut, setIsSigningOut] = React.useState(false)
   const branding = useTenantBranding()
   const { counts: notificationCounts } = useAppNotificationCounts({
     enabled: status === "authenticated" && shouldFetchData,
@@ -105,6 +107,7 @@ function AppLayoutShellContent({ children, user }: AppLayoutShellProps) {
     }
 
     hasHandledSessionExitRef.current = true
+    setIsSigningOut(true)
     clearAllEquipmentFilters()
     void signOut({ callbackUrl: "/" })
   }, [])
@@ -115,12 +118,14 @@ function AppLayoutShellContent({ children, user }: AppLayoutShellProps) {
     }
 
     hasHandledSessionExitRef.current = true
+    setIsSigningOut(true)
     clearAllEquipmentFilters()
     void signOutWithReason({
       updateSession: update,
       reason: "user_initiated",
     }).catch(() => {
       hasHandledSessionExitRef.current = false
+      setIsSigningOut(false)
     })
   }, [update])
 
@@ -132,8 +137,11 @@ function AppLayoutShellContent({ children, user }: AppLayoutShellProps) {
 
     if (status === "authenticated") {
       hasHandledSessionExitRef.current = false
+      setIsSigningOut(false)
     }
   }, [redirectToSignedOutHome, status])
+
+  const shouldHideProtectedContent = isSigningOut || status === "unauthenticated"
 
   return (
     <>
@@ -286,7 +294,9 @@ function AppLayoutShellContent({ children, user }: AppLayoutShellProps) {
                 </DropdownMenu>
               </header>
               <main className="flex flex-1 flex-col gap-4 bg-background p-4 pb-24 md:pb-4 lg:gap-8 lg:p-8">
-                <MainContentTransition>{children}</MainContentTransition>
+                <MainContentTransition>
+                  {shouldHideProtectedContent ? <AuthenticatedPageSpinnerFallback /> : children}
+                </MainContentTransition>
               </main>
 
               <MobileFooterNav notificationCounts={notificationCounts} />

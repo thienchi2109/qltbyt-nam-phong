@@ -7,7 +7,14 @@ import { LoginForm } from "@/app/_components/LoginForm"
 import { LanguageProvider } from "@/contexts/language-context"
 
 const mocks = vi.hoisted(() => ({
+  routerReplace: vi.fn(),
   signIn: vi.fn(),
+}))
+
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({
+    replace: mocks.routerReplace,
+  }),
 }))
 
 vi.mock("next-auth/react", () => ({
@@ -32,6 +39,7 @@ function renderLoginForm(): ReturnType<typeof render> {
 
 describe("LoginForm", () => {
   beforeEach(() => {
+    mocks.routerReplace.mockReset()
     mocks.signIn.mockReset()
   })
 
@@ -120,6 +128,32 @@ describe("LoginForm", () => {
         redirect: false,
       })
     })
+    expect(mocks.routerReplace).toHaveBeenCalledWith("/dashboard")
     expect(screen.queryByRole("alert")).not.toBeInTheDocument()
+  })
+
+  it("keeps login controls unavailable after successful credentials while dashboard redirect is pending", async () => {
+    const user = userEvent.setup()
+    let resolveSignIn: (value: { ok: boolean; error: null }) => void = () => undefined
+    mocks.signIn.mockReturnValueOnce(
+      new Promise((resolve) => {
+        resolveSignIn = resolve
+      }),
+    )
+    renderLoginForm()
+
+    await user.type(screen.getByLabelText(/tên đăng nhập/i), "to-qltb")
+    await user.type(screen.getByLabelText(/mật khẩu/i), "secret")
+    await user.click(screen.getByRole("button", { name: /đăng nhập/i }))
+
+    expect(screen.getByRole("button", { name: /đang xác thực/i })).toBeDisabled()
+
+    resolveSignIn({ ok: true, error: null })
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: /đang xác thực/i })).toBeDisabled()
+    })
+    expect(mocks.routerReplace).toHaveBeenCalledWith("/dashboard")
+    expect(screen.queryByRole("button", { name: /^đăng nhập/i })).not.toBeInTheDocument()
   })
 })

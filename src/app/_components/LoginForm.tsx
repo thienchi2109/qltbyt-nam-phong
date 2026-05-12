@@ -2,6 +2,7 @@
 
 import * as React from "react"
 import { zodResolver } from "@hookform/resolvers/zod"
+import { useRouter } from "next/navigation"
 import { signIn } from "next-auth/react"
 import { useForm } from "react-hook-form"
 import { z } from "zod"
@@ -75,6 +76,8 @@ function getCredentialErrorMessage(
 
 export function LoginForm(): React.ReactElement {
   const { t } = useLanguage()
+  const { replace } = useRouter()
+  const [isRedirecting, setIsRedirecting] = React.useState(false)
   const loginFormSchema = React.useMemo(() => createLoginFormSchema(t), [t])
   const form = useForm<LoginFormValues>({
     resolver: zodResolver(loginFormSchema),
@@ -102,7 +105,8 @@ export function LoginForm(): React.ReactElement {
       }
 
       // Success: NextAuth session established; no legacy bridge writes.
-      window.location.href = "/dashboard"
+      setIsRedirecting(true)
+      replace("/dashboard")
     } catch (err) {
       console.error("Unexpected login error", { error: err })
       form.setError("root", {
@@ -112,7 +116,7 @@ export function LoginForm(): React.ReactElement {
     }
   }
 
-  const isSubmitting = form.formState.isSubmitting
+  const isSubmitting = form.formState.isSubmitting || isRedirecting
   const rootError = form.formState.errors.root?.message
 
   return (
