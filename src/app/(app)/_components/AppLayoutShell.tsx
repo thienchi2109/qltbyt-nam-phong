@@ -268,7 +268,7 @@ function AppLayoutShellContent({ children, user }: AppLayoutShellProps) {
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="w-56">
                     <DropdownMenuLabel className="pb-2">
-                      <div className="flex flex-col space-y-1">
+                      <div className="flex flex-col gap-y-1">
                         <p className="text-sm font-medium leading-none">{user.full_name || user.username}</p>
                         <div className="flex items-center gap-2">
                           <Badge variant="outline" className="text-xs">

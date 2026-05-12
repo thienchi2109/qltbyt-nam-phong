@@ -142,7 +142,7 @@ export function LoginForm(): React.ReactElement {
             </div>
             {/* Header Text */}
             <div className="space-y-2">
-              <h2 className="text-3xl font-bold tracking-tight text-foreground">
+              <h2 className="text-3xl font-semibold tracking-tight text-foreground">
                 {t("login.title") || "Đăng nhập"}
               </h2>
               <p className="text-muted-foreground">
