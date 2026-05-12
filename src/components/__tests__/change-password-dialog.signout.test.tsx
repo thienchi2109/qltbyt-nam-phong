@@ -91,6 +91,17 @@ vi.mock("@/components/ui/label", () => ({
 
 import { ChangePasswordDialog } from "../change-password-dialog"
 
+function createDeferred<T>() {
+  let resolve!: (value: T) => void
+  let reject!: (reason?: unknown) => void
+  const promise = new Promise<T>((promiseResolve, promiseReject) => {
+    resolve = promiseResolve
+    reject = promiseReject
+  })
+
+  return { promise, resolve, reject }
+}
+
 describe("ChangePasswordDialog forced signout", () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -153,6 +164,56 @@ describe("ChangePasswordDialog forced signout", () => {
     })
   })
 
+  it("keeps the password form disabled while the password-change request is pending", async () => {
+    const pendingPasswordChange = createDeferred<{
+      success: boolean
+      message: string
+    }>()
+    mocks.rpc.mockReturnValueOnce(pendingPasswordChange.promise)
+
+    render(<ChangePasswordDialog open onOpenChange={vi.fn()} />)
+
+    fireEvent.change(screen.getByLabelText("Mật khẩu hiện tại *"), {
+      target: { value: "old-password" },
+    })
+    fireEvent.change(screen.getByLabelText("Mật khẩu mới *"), {
+      target: { value: "new-password" },
+    })
+    fireEvent.change(screen.getByLabelText("Xác nhận mật khẩu mới *"), {
+      target: { value: "new-password" },
+    })
+    fireEvent.click(screen.getByRole("button", { name: "Thay đổi mật khẩu" }))
+
+    await waitFor(() => {
+      expect(mocks.rpc).toHaveBeenCalled()
+    })
+
+    const submitButton = screen.getByRole("button", { name: "Thay đổi mật khẩu" })
+
+    expect(screen.getByLabelText("Mật khẩu hiện tại *")).toBeDisabled()
+    expect(screen.getByLabelText("Mật khẩu mới *")).toBeDisabled()
+    expect(screen.getByLabelText("Xác nhận mật khẩu mới *")).toBeDisabled()
+    expect(screen.getByRole("button", { name: "Hủy" })).toBeDisabled()
+    expect(submitButton).toBeDisabled()
+    expect(submitButton.querySelector(".animate-spin")).not.toBeNull()
+
+    await act(async () => {
+      pendingPasswordChange.resolve({
+        success: true,
+        message: "Đã thay đổi mật khẩu thành công với mã hóa bảo mật.",
+      })
+      await pendingPasswordChange.promise
+    })
+
+    await waitFor(() => {
+      expect(mocks.toast).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: "Thành công",
+        }),
+      )
+    })
+  })
+
   it("shows a logout-specific error if post-change signout fails after the password update succeeds", async () => {
     vi.useFakeTimers()
     mocks.signOut.mockRejectedValueOnce(new Error("redirect failed"))
@@ -168,10 +229,11 @@ describe("ChangePasswordDialog forced signout", () => {
     fireEvent.change(screen.getByLabelText("Xác nhận mật khẩu mới *"), {
       target: { value: "new-password" },
     })
-    fireEvent.click(screen.getByRole("button", { name: "Thay đổi mật khẩu" }))
-
-    await Promise.resolve()
-    await Promise.resolve()
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Thay đổi mật khẩu" }))
+      await Promise.resolve()
+      await Promise.resolve()
+    })
 
     await act(async () => {
       await vi.advanceTimersByTimeAsync(2_500)
