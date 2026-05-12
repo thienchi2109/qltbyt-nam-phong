@@ -38,6 +38,7 @@ import { AppSidebarNav } from "@/components/app-sidebar-nav"
 import { getAppNavigationItems } from "@/components/app-navigation"
 import { useAppNotificationCounts } from "@/hooks/useAppNotificationCounts"
 import { signOutWithReason } from "@/lib/auth-signout"
+import { appLayoutUiReducer, initialAppLayoutUiState } from "./AppLayoutShellState"
 
 const AssistantTriggerButton = dynamic(
   () => import("@/components/assistant/AssistantTriggerButton").then(m => m.AssistantTriggerButton),
@@ -75,11 +76,8 @@ function AppLayoutShellContent({ children, user }: AppLayoutShellProps) {
   const { status, update } = useSession()
   const { selectedFacilityId, shouldFetchData } = useTenantSelection()
   const hasHandledSessionExitRef = React.useRef(false)
-  const [isSidebarOpen, setSidebarOpen] = React.useState(true)
-  const [isMobileSheetOpen, setIsMobileSheetOpen] = React.useState(false)
-  const [isChangePasswordOpen, setIsChangePasswordOpen] = React.useState(false)
-  const [isAssistantOpen, setIsAssistantOpen] = React.useState(false)
-  const [isSigningOut, setIsSigningOut] = React.useState(false)
+  const [uiState, dispatchUi] = React.useReducer(appLayoutUiReducer, initialAppLayoutUiState)
+  const { isSidebarOpen, isMobileSheetOpen, isChangePasswordOpen, isAssistantOpen, isSigningOut } = uiState
   const branding = useTenantBranding()
   const { counts: notificationCounts } = useAppNotificationCounts({
     enabled: status === "authenticated" && shouldFetchData,
@@ -107,7 +105,7 @@ function AppLayoutShellContent({ children, user }: AppLayoutShellProps) {
     }
 
     hasHandledSessionExitRef.current = true
-    setIsSigningOut(true)
+    dispatchUi({ type: "setSigningOut", isSigningOut: true })
     clearAllEquipmentFilters()
     void signOut({ callbackUrl: "/" })
   }, [])
@@ -118,14 +116,14 @@ function AppLayoutShellContent({ children, user }: AppLayoutShellProps) {
     }
 
     hasHandledSessionExitRef.current = true
-    setIsSigningOut(true)
+    dispatchUi({ type: "setSigningOut", isSigningOut: true })
     clearAllEquipmentFilters()
     void signOutWithReason({
       updateSession: update,
       reason: "user_initiated",
     }).catch(() => {
       hasHandledSessionExitRef.current = false
-      setIsSigningOut(false)
+      dispatchUi({ type: "setSigningOut", isSigningOut: false })
     })
   }, [update])
 
@@ -137,7 +135,7 @@ function AppLayoutShellContent({ children, user }: AppLayoutShellProps) {
 
     if (status === "authenticated" && !hasHandledSessionExitRef.current) {
       hasHandledSessionExitRef.current = false
-      setIsSigningOut(false)
+      dispatchUi({ type: "setSigningOut", isSigningOut: false })
     }
   }, [redirectToSignedOutHome, status])
 
@@ -149,7 +147,7 @@ function AppLayoutShellContent({ children, user }: AppLayoutShellProps) {
     <>
           <ChangePasswordDialog
             open={isChangePasswordOpen}
-            onOpenChange={setIsChangePasswordOpen}
+            onOpenChange={(isOpen) => dispatchUi({ type: "setChangePasswordOpen", isOpen })}
           />
           <div
             className={cn(
@@ -157,12 +155,12 @@ function AppLayoutShellContent({ children, user }: AppLayoutShellProps) {
               isSidebarOpen ? "md:grid-cols-[220px_1fr]" : "md:grid-cols-[72px_1fr]"
             )}
           >
-            <div className="hidden border-r border-slate-200 bg-white md:block shadow-[2px_0_8px_rgba(0,0,0,0.04)]">
+            <div className="hidden border-r border-border bg-white md:block shadow-[2px_0_8px_rgba(0,0,0,0.04)]">
               <div className="flex h-full max-h-screen flex-col">
-                <div className="flex h-auto flex-col items-center gap-4 border-b border-slate-200 p-4">
+                <div className="flex h-auto flex-col items-center gap-4 border-b border-border p-4">
                   <Link href="/" className="flex flex-col items-center gap-3 font-semibold text-primary" data-tour="sidebar-logo">
                     {branding.isLoading ? (
-                      <Skeleton className={isSidebarOpen ? "h-16 w-16" : "h-8 w-8"} />
+                      <Skeleton className={isSidebarOpen ? "size-16" : "size-8"} />
                     ) : (
                       <TenantLogo src={branding.data?.logo_url ?? null} name={branding.data?.name ?? null} size={isSidebarOpen ? 64 : 32} className={isSidebarOpen ? "" : "mt-2"} />
                     )}
@@ -182,7 +180,7 @@ function AppLayoutShellContent({ children, user }: AppLayoutShellProps) {
             </div>
             <div className="flex flex-col">
               <header className="fixed top-0 left-0 right-0 z-40 flex h-14 items-center gap-4 bg-white px-4 shadow-md md:relative md:z-auto lg:h-[60px] lg:px-6">
-                <Sheet open={isMobileSheetOpen} onOpenChange={setIsMobileSheetOpen}>
+                <Sheet open={isMobileSheetOpen} onOpenChange={(isOpen) => dispatchUi({ type: "setMobileSheetOpen", isOpen })}>
                   <SheetTrigger asChild>
                     <Button
                       variant="outline"
@@ -190,7 +188,7 @@ function AppLayoutShellContent({ children, user }: AppLayoutShellProps) {
                       className="hidden shrink-0 touch-target"
                       style={{ display: "none" }}
                     >
-                      <Menu className="h-5 w-5" />
+                      <Menu className="size-5" />
                       <span className="sr-only">Toggle navigation menu</span>
                     </Button>
                   </SheetTrigger>
@@ -198,11 +196,11 @@ function AppLayoutShellContent({ children, user }: AppLayoutShellProps) {
                     <SheetHeader className="sr-only">
                       <SheetTitle>Menu Điều Hướng</SheetTitle>
                     </SheetHeader>
-                    <div className="flex h-auto flex-col items-center gap-4 border-b border-slate-200 p-4">
+                    <div className="flex h-auto flex-col items-center gap-4 border-b border-border p-4">
                       <Link
                         href="/"
                         className="flex flex-col items-center gap-3 font-semibold text-primary"
-                        onClick={() => setIsMobileSheetOpen(false)}
+                        onClick={() => dispatchUi({ type: "setMobileSheetOpen", isOpen: false })}
                       >
                         <Logo />
                         <span className="text-center heading-responsive-h3">QUẢN LÝ TBYT - CDC</span>
@@ -215,7 +213,7 @@ function AppLayoutShellContent({ children, user }: AppLayoutShellProps) {
                       notificationCounts={notificationCounts}
                       variant="sheet"
                       className="p-3"
-                      onNavigate={() => setIsMobileSheetOpen(false)}
+                      onNavigate={() => dispatchUi({ type: "setMobileSheetOpen", isOpen: false })}
                     />
                   </SheetContent>
                 </Sheet>
@@ -223,16 +221,16 @@ function AppLayoutShellContent({ children, user }: AppLayoutShellProps) {
                   variant="outline"
                   size="icon"
                   className="hidden shrink-0 touch-target md:flex"
-                  onClick={() => setSidebarOpen(prev => !prev)}
+                  onClick={() => dispatchUi({ type: "toggleSidebar" })}
                   data-tour="sidebar-toggle"
                 >
-                  <Menu className="h-5 w-5" />
+                  <Menu className="size-5" />
                   <span className="sr-only">Toggle sidebar</span>
                 </Button>
                 <div className="flex w-full flex-1 items-center">
                   <div className="flex items-center gap-3">
                     {branding.isLoading ? (
-                      <Skeleton className="h-7 w-7 rounded-full" />
+                      <Skeleton className="size-7 rounded-full" />
                     ) : (
                       <TenantLogo src={branding.data?.logo_url ?? null} name={branding.data?.name ?? null} size={28} />
                     )}
@@ -264,7 +262,7 @@ function AppLayoutShellContent({ children, user }: AppLayoutShellProps) {
                       className="rounded-full touch-target"
                       onClick={(event) => event.stopPropagation()}
                     >
-                      <User className="h-5 w-5" />
+                      <User className="size-5" />
                       <span className="sr-only">Toggle user menu</span>
                     </Button>
                   </DropdownMenuTrigger>
@@ -283,13 +281,13 @@ function AppLayoutShellContent({ children, user }: AppLayoutShellProps) {
                       </div>
                     </DropdownMenuLabel>
                     <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={() => setIsChangePasswordOpen(true)}>
-                      <KeyRound className="mr-2 h-4 w-4" />
+                    <DropdownMenuItem onClick={() => dispatchUi({ type: "setChangePasswordOpen", isOpen: true })}>
+                      <KeyRound className="mr-2 size-4" />
                       Thay đổi mật khẩu
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem onClick={handleSignOut}>
-                      <LogOut className="mr-2 h-4 w-4" />
+                      <LogOut className="mr-2 size-4" />
                       Đăng xuất
                     </DropdownMenuItem>
                   </DropdownMenuContent>
@@ -305,16 +303,16 @@ function AppLayoutShellContent({ children, user }: AppLayoutShellProps) {
 
               <AssistantTriggerButton
                 isOpen={isAssistantOpen}
-                onToggle={() => setIsAssistantOpen(prev => !prev)}
+                onToggle={() => dispatchUi({ type: "toggleAssistant" })}
               />
               {isAssistantOpen ? (
-                <AssistantPanel isOpen={isAssistantOpen} onClose={() => setIsAssistantOpen(false)} />
+                <AssistantPanel isOpen={isAssistantOpen} onClose={() => dispatchUi({ type: "setAssistantOpen", isOpen: false })} />
               ) : null}
 
-              <footer className="hidden flex-col items-center gap-1 border-t border-slate-200 bg-slate-50 p-4 text-center caption-responsive md:flex">
-                <div className="flex items-center gap-1 text-slate-600">
+              <footer className="hidden flex-col items-center gap-1 border-t border-border bg-muted p-4 text-center caption-responsive md:flex">
+                <div className="flex items-center gap-1 text-muted-foreground">
                   <span>Hệ thống quản lý thiết bị y tế CVMEMS</span>
-                  <Copyright className="h-3 w-3" />
+                  <Copyright className="size-3" />
                 </div>
               </footer>
             </div>
