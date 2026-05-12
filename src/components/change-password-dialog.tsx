@@ -153,7 +153,6 @@ export function ChangePasswordDialog({ open, onOpenChange }: ChangePasswordDialo
           title: "Lỗi",
           description: "Không xác định được người dùng hiện tại."
         })
-        setIsSubmitting(false)
         return
       }
 
@@ -172,7 +171,6 @@ export function ChangePasswordDialog({ open, onOpenChange }: ChangePasswordDialo
           title: "Lỗi",
           description: data?.message || "Mật khẩu hiện tại không đúng."
         })
-        setIsSubmitting(false)
         return
       }
 
