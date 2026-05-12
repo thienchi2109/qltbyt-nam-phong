@@ -143,7 +143,9 @@ function AppLayoutShellContent({ children, user }: AppLayoutShellProps) {
 
   const shouldHideProtectedContent = isSigningOut || status === "unauthenticated"
 
-  return (
+  return shouldHideProtectedContent ? (
+    <AuthenticatedPageSpinnerFallback />
+  ) : (
     <>
           <ChangePasswordDialog
             open={isChangePasswordOpen}
@@ -295,7 +297,7 @@ function AppLayoutShellContent({ children, user }: AppLayoutShellProps) {
               </header>
               <main className="flex flex-1 flex-col gap-4 bg-background p-4 pb-24 md:pb-4 lg:gap-8 lg:p-8">
                 <MainContentTransition>
-                  {shouldHideProtectedContent ? <AuthenticatedPageSpinnerFallback /> : children}
+                  {children}
                 </MainContentTransition>
               </main>
 

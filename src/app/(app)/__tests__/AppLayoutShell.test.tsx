@@ -270,7 +270,9 @@ describe("AppLayoutShell", () => {
       expect(mocks.signOut).toHaveBeenCalledTimes(1)
     })
 
-    await user.click(signOutButton)
+    const retrySignOutButton = await screen.findByRole("button", { name: /đăng xuất/i })
+
+    await user.click(retrySignOutButton)
     await vi.waitFor(() => {
       expect(mocks.signOut).toHaveBeenCalledTimes(2)
     })
@@ -295,6 +297,30 @@ describe("AppLayoutShell", () => {
     await user.click(screen.getByRole("button", { name: /đăng xuất/i }))
 
     expect(screen.queryByText("Child Content")).not.toBeInTheDocument()
+    expect(screen.getByTestId("authenticated-page-spinner-fallback")).toBeInTheDocument()
+  })
+
+  it("hides the stale app shell immediately while user-menu signout redirect is pending", async () => {
+    const user = userEvent.setup()
+
+    render(
+      <AppLayoutShell
+        user={{
+          role: "global",
+          full_name: "Test User",
+          username: "tester",
+          khoa_phong: "IT",
+        }}
+      >
+        <div>Child Content</div>
+      </AppLayoutShell>
+    )
+
+    await user.click(screen.getByRole("button", { name: /đăng xuất/i }))
+
+    expect(screen.queryByText("CDC")).not.toBeInTheDocument()
+    expect(screen.queryByText("Test User")).not.toBeInTheDocument()
+    expect(screen.queryByRole("button", { name: /đăng xuất/i })).not.toBeInTheDocument()
     expect(screen.getByTestId("authenticated-page-spinner-fallback")).toBeInTheDocument()
   })
 
