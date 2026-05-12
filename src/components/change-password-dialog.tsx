@@ -65,7 +65,7 @@ export function ChangePasswordDialog({ open, onOpenChange }: ChangePasswordDialo
     }
     return null
   }, [user?.id])
-  const [isLoading, setIsLoading] = React.useState(false)
+  const [isSubmitting, setIsSubmitting] = React.useState(false)
   const [showPasswords, setShowPasswords] = React.useState({
     current: false,
     new: false,
@@ -143,7 +143,7 @@ export function ChangePasswordDialog({ open, onOpenChange }: ChangePasswordDialo
       return
     }
 
-    setIsLoading(true)
+    setIsSubmitting(true)
     let passwordChanged = false
 
     try {
@@ -153,7 +153,6 @@ export function ChangePasswordDialog({ open, onOpenChange }: ChangePasswordDialo
           title: "Lỗi",
           description: "Không xác định được người dùng hiện tại."
         })
-        setIsLoading(false)
         return
       }
 
@@ -172,7 +171,6 @@ export function ChangePasswordDialog({ open, onOpenChange }: ChangePasswordDialo
           title: "Lỗi",
           description: data?.message || "Mật khẩu hiện tại không đúng."
         })
-        setIsLoading(false)
         return
       }
 
@@ -195,7 +193,7 @@ export function ChangePasswordDialog({ open, onOpenChange }: ChangePasswordDialo
         description: getPasswordChangeErrorMessage(error),
       })
     } finally {
-      setIsLoading(false)
+      setIsSubmitting(false)
     }
 
     if (passwordChanged) {
@@ -230,7 +228,7 @@ export function ChangePasswordDialog({ open, onOpenChange }: ChangePasswordDialo
                   value={formData.currentPassword}
                   onChange={(e) => setFormData(prev => ({ ...prev, currentPassword: e.target.value }))}
                   placeholder="Nhập mật khẩu hiện tại"
-                  disabled={isLoading}
+                  disabled={isSubmitting}
                   required
                   className="pr-10"
                 />
@@ -240,12 +238,12 @@ export function ChangePasswordDialog({ open, onOpenChange }: ChangePasswordDialo
                   size="sm"
                   className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
                   onClick={() => togglePasswordVisibility('current')}
-                  disabled={isLoading}
+                  disabled={isSubmitting}
                 >
                   {showPasswords.current ? (
-                    <EyeOff className="h-4 w-4" />
+                    <EyeOff className="size-4" />
                   ) : (
-                    <Eye className="h-4 w-4" />
+                    <Eye className="size-4" />
                   )}
                 </Button>
               </div>
@@ -259,7 +257,7 @@ export function ChangePasswordDialog({ open, onOpenChange }: ChangePasswordDialo
                   value={formData.newPassword}
                   onChange={(e) => setFormData(prev => ({ ...prev, newPassword: e.target.value }))}
                   placeholder="Nhập mật khẩu mới"
-                  disabled={isLoading}
+                  disabled={isSubmitting}
                   required
                   className="pr-10"
                 />
@@ -269,12 +267,12 @@ export function ChangePasswordDialog({ open, onOpenChange }: ChangePasswordDialo
                   size="sm"
                   className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
                   onClick={() => togglePasswordVisibility('new')}
-                  disabled={isLoading}
+                  disabled={isSubmitting}
                 >
                   {showPasswords.new ? (
-                    <EyeOff className="h-4 w-4" />
+                    <EyeOff className="size-4" />
                   ) : (
-                    <Eye className="h-4 w-4" />
+                    <Eye className="size-4" />
                   )}
                 </Button>
               </div>
@@ -288,7 +286,7 @@ export function ChangePasswordDialog({ open, onOpenChange }: ChangePasswordDialo
                   value={formData.confirmPassword}
                   onChange={(e) => setFormData(prev => ({ ...prev, confirmPassword: e.target.value }))}
                   placeholder="Nhập lại mật khẩu mới"
-                  disabled={isLoading}
+                  disabled={isSubmitting}
                   required
                   className="pr-10"
                 />
@@ -298,12 +296,12 @@ export function ChangePasswordDialog({ open, onOpenChange }: ChangePasswordDialo
                   size="sm"
                   className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
                   onClick={() => togglePasswordVisibility('confirm')}
-                  disabled={isLoading}
+                  disabled={isSubmitting}
                 >
                   {showPasswords.confirm ? (
-                    <EyeOff className="h-4 w-4" />
+                    <EyeOff className="size-4" />
                   ) : (
-                    <Eye className="h-4 w-4" />
+                    <Eye className="size-4" />
                   )}
                 </Button>
               </div>
@@ -314,12 +312,12 @@ export function ChangePasswordDialog({ open, onOpenChange }: ChangePasswordDialo
               type="button"
               variant="outline"
               onClick={() => onOpenChange(false)}
-              disabled={isLoading}
+              disabled={isSubmitting}
             >
               Hủy
             </Button>
-            <Button type="submit" disabled={isLoading}>
-              {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            <Button type="submit" disabled={isSubmitting}>
+              {isSubmitting && <Loader2 className="mr-2 size-4 animate-spin" />}
               Thay đổi mật khẩu
             </Button>
           </DialogFooter>
