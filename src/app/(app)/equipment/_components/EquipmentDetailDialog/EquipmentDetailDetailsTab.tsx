@@ -105,7 +105,7 @@ function FieldValue({
               <TooltipTrigger asChild>
                 <span className="inline-flex items-center">
                   <AlertTriangle
-                    className="h-4 w-4 text-amber-500 cursor-help"
+                    className="size-4 text-amber-500 cursor-help"
                     aria-hidden="true"
                   />
                   <span className="sr-only">{SUSPICIOUS_DATE_WARNING}</span>

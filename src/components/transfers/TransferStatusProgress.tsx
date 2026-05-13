@@ -62,14 +62,14 @@ export function TransferStatusProgress({
                 {/* Circle/Check indicator */}
                 <div
                   className={cn(
-                    "flex h-8 w-8 items-center justify-center rounded-full border-2 text-xs font-medium transition-colors",
+                    "flex size-8 items-center justify-center rounded-full border-2 text-xs font-medium transition-colors",
                     isCompleted && "border-primary bg-primary text-primary-foreground",
                     isCurrent && "border-primary bg-primary/10 text-primary",
                     !isCompleted && !isCurrent && "border-muted-foreground/30 bg-muted text-muted-foreground"
                   )}
                 >
                   {isCompleted ? (
-                    <Check className="h-4 w-4" />
+                    <Check className="size-4" />
                   ) : (
                     <span>{index + 1}</span>
                   )}

@@ -91,7 +91,7 @@ export const SearchInput = React.forwardRef<HTMLInputElement, SearchInputProps>(
         {/* Search icon (left) */}
         {showSearchIcon ? (
           <Search
-            className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
+            className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
             aria-hidden="true"
           />
         ) : null}
@@ -117,7 +117,7 @@ export const SearchInput = React.forwardRef<HTMLInputElement, SearchInputProps>(
                 className="p-1 text-muted-foreground transition-all duration-150 hover:scale-110 hover:text-foreground active:scale-95"
                 aria-label="Xóa tìm kiếm"
               >
-                <X className="h-4 w-4" aria-hidden="true" />
+                <X className="size-4" aria-hidden="true" />
               </button>
             ) : null}
             {endAddon}

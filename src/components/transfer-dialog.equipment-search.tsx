@@ -64,7 +64,7 @@ export function TransferDialogEquipmentSearch({
             {isEquipmentLoading && (
               <div className="absolute z-20 mt-1 w-full rounded-md border bg-popover p-3 shadow-lg">
                 <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
-                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <Loader2 className="size-4 animate-spin" />
                   <span>Đang tìm kiếm thiết bị...</span>
                 </div>
               </div>
@@ -106,7 +106,7 @@ export function TransferDialogEquipmentSearch({
       )}
       {selectedEquipment && (
         <p className="flex items-center gap-1.5 pt-1 text-xs text-muted-foreground">
-          <Check className="h-3.5 w-3.5 text-green-600" />
+          <Check className="size-3.5 text-green-600" />
           <span>
             Đã chọn: {selectedEquipment.ten_thiet_bi} ({selectedEquipment.ma_thiet_bi})
           </span>

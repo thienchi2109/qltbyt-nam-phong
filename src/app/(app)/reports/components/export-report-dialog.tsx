@@ -122,7 +122,7 @@ function ExportReportDialogContent({
     <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <FileSpreadsheet className="h-5 w-5" />
+            <FileSpreadsheet className="size-5" />
             Xuất báo cáo Excel
           </DialogTitle>
           <DialogDescription>
@@ -181,8 +181,8 @@ function ExportReportDialogContent({
             Hủy
           </Button>
           <Button onClick={handleExport} disabled={isExporting || !hasFileName}>
-            {isExporting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            <Download className="mr-2 h-4 w-4" />
+            {isExporting && <Loader2 className="mr-2 size-4 animate-spin" />}
+            <Download className="mr-2 size-4" />
             {isExporting ? "Đang xuất..." : "Xuất Excel"}
           </Button>
         </DialogFooter>

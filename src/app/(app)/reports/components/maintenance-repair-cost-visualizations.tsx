@@ -53,7 +53,7 @@ export function MaintenanceRepairCostVisualizations({
         <CardContent>
           {!hasRepairCostData ? (
             <div className="flex h-[360px] flex-col items-center justify-center gap-2 text-sm text-muted-foreground">
-              <Inbox className="h-8 w-8 text-muted-foreground/60" />
+              <Inbox className="size-8 text-muted-foreground/60" />
               <span>Không có dữ liệu chi phí sửa chữa trong khoảng thời gian đã chọn.</span>
             </div>
           ) : (
@@ -100,7 +100,7 @@ export function MaintenanceRepairCostVisualizations({
         <CardContent>
           {!hasCorrelationData ? (
             <div className="flex h-[360px] flex-col items-center justify-center gap-2 text-sm text-muted-foreground">
-              <Inbox className="h-8 w-8 text-muted-foreground/60" />
+              <Inbox className="size-8 text-muted-foreground/60" />
               <span>Chưa đủ dữ liệu để hiển thị tương quan.</span>
               <span>Thiết bị có giờ sử dụng: {activeCorrelationScope.dataQuality.equipmentWithUsage}</span>
               <span>Thiết bị có chi phí sửa chữa: {activeCorrelationScope.dataQuality.equipmentWithRepairCost}</span>

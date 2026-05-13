@@ -129,7 +129,7 @@ export function CalendarWidgetErrorState(): React.JSX.Element {
       role="alert"
       className="flex flex-col items-center justify-center py-12 text-center text-destructive"
     >
-      <CalendarIcon className="mb-3 h-8 w-8" />
+      <CalendarIcon className="mb-3 size-8" />
       <p className="font-semibold">Không thể tải lịch bảo trì</p>
       <p className="mt-1 text-sm text-muted-foreground">Vui lòng thử lại sau.</p>
     </div>
@@ -141,7 +141,7 @@ export function CalendarSkeleton({ className }: CalendarWidgetProps) {
     <Card className={className}>
       <CardHeader className="pb-4 md:p-8 md:pb-6">
         <CardTitle className="flex items-center gap-2 text-responsive-lg md:text-2xl font-semibold leading-none tracking-tight">
-          <CalendarIcon className="h-4 w-4 md:h-5 md:w-5" />
+          <CalendarIcon className="size-4 md:size-5" />
           <span className="line-clamp-2 md:line-clamp-1">Lịch Bảo trì/Hiệu chuẩn/Kiểm định</span>
         </CardTitle>
       </CardHeader>
@@ -193,15 +193,15 @@ export function CalendarEventCard({
 export function CalendarEmptyDayState({ compact }: { compact: boolean }) {
   return compact ? (
     <div className="text-center py-8">
-      <div className="p-4 bg-gray-100/50 rounded-full w-16 h-16 mx-auto mb-4 flex items-center justify-center">
-        <CalendarIcon className="h-8 w-8 text-gray-400" />
+      <div className="p-4 bg-gray-100/50 rounded-full size-16 mx-auto mb-4 flex items-center justify-center">
+        <CalendarIcon className="size-8 text-gray-400" />
       </div>
       <p className="text-gray-500 text-sm">Không có công việc nào trong ngày này</p>
     </div>
   ) : (
     <div className="text-center py-12">
-      <div className="p-4 bg-gray-100/50 rounded-full w-20 h-20 mx-auto mb-4 flex items-center justify-center">
-        <CalendarIcon className="h-10 w-10 text-gray-400" />
+      <div className="p-4 bg-gray-100/50 rounded-full size-20 mx-auto mb-4 flex items-center justify-center">
+        <CalendarIcon className="size-10 text-gray-400" />
       </div>
       <p className="text-gray-500">Không có công việc nào trong ngày này</p>
     </div>

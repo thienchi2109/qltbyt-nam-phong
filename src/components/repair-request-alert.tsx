@@ -50,7 +50,7 @@ export function RepairRequestAlert({ summary, isLoading }: RepairRequestAlertPro
       <AccordionItem value="repair-alert" className="border border-destructive/50 bg-destructive/5 shadow-lg rounded-lg">
         <AccordionTrigger className="px-4 py-3 text-destructive hover:no-underline">
           <div className="flex items-center">
-            <AlertTriangle className="h-5 w-5 mr-2" />
+            <AlertTriangle className="size-5 mr-2" />
             <span className="font-semibold">{alertTitle}</span>
           </div>
         </AccordionTrigger>

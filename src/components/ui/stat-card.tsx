@@ -83,7 +83,7 @@ export function StatCard({ label, value, icon, tone = "default", loading, onClic
 
       <div className="p-4 flex items-center gap-4">
         {/* Icon with Circle Background */}
-        <div className={cn("h-12 w-12 rounded-full flex items-center justify-center shrink-0 transition-colors", styles.iconBg, styles.iconText)}>
+        <div className={cn("size-12 rounded-full flex items-center justify-center shrink-0 transition-colors", styles.iconBg, styles.iconText)}>
           {icon}
         </div>
 

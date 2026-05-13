@@ -51,7 +51,7 @@ export function UsageHistoryLoadingState(): ReactElement {
 export function UsageHistoryEmptyState(): ReactElement {
   return (
     <div className="text-center py-8 text-muted-foreground">
-      <Clock className="h-12 w-12 mx-auto mb-2 opacity-50" />
+      <Clock className="size-12 mx-auto mb-2 opacity-50" />
       <p>Chưa có lịch sử sử dụng</p>
     </div>
   )

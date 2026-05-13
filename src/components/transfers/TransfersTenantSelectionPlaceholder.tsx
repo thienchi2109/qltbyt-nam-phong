@@ -15,7 +15,7 @@ export function TransfersTenantSelectionPlaceholder({
   return (
     <div className={`flex items-center justify-center ${className}`}>
       <div className="flex max-w-md flex-col items-center gap-4 text-center">
-        <Building2 className="h-12 w-12 text-muted-foreground" />
+        <Building2 className="size-12 text-muted-foreground" />
         <div className="space-y-2">
           <h3 className="text-lg font-medium">Chọn cơ sở y tế</h3>
           <p className="text-sm text-muted-foreground">

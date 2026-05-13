@@ -64,9 +64,9 @@ export function renderActions(
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" className="h-8 w-8 p-0 touch-target-sm md:h-8 md:w-8">
+        <Button variant="ghost" className="size-8 p-0 touch-target-sm md:size-8">
           <span className="sr-only">Mở menu</span>
-          <MoreHorizontal className="h-4 w-4" />
+          <MoreHorizontal className="size-4" />
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
@@ -79,11 +79,11 @@ export function renderActions(
           <>
             <DropdownMenuSeparator />
             <DropdownMenuItem onSelect={() => setEditingRequest(request)}>
-              <Edit className="mr-2 h-4 w-4" />
+              <Edit className="mr-2 size-4" />
               Sửa
             </DropdownMenuItem>
             <DropdownMenuItem onSelect={() => setRequestToDelete(request)} className="text-destructive focus:text-destructive">
-              <Trash2 className="mr-2 h-4 w-4" />
+              <Trash2 className="mr-2 size-4" />
               Xoá
             </DropdownMenuItem>
           </>
@@ -137,7 +137,7 @@ export function useRepairRequestColumns(options: RepairRequestColumnOptions): Co
       header: ({ column }) => (
         <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}>
           Thiết bị
-          <ArrowUpDown className="ml-2 h-4 w-4" />
+          <ArrowUpDown className="ml-2 size-4" />
         </Button>
       ),
       cell: ({ row }) => {
@@ -164,7 +164,7 @@ export function useRepairRequestColumns(options: RepairRequestColumnOptions): Co
       header: ({ column }) => (
         <Button variant="ghost" className="hover:bg-transparent px-0 font-semibold text-muted-foreground" onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}>
           Người yêu cầu
-          <ArrowUpDown className="ml-2 h-3.5 w-3.5" />
+          <ArrowUpDown className="ml-2 size-3.5" />
         </Button>
       ),
       cell: ({ row }) => {
@@ -182,7 +182,7 @@ export function useRepairRequestColumns(options: RepairRequestColumnOptions): Co
       header: ({ column }) => (
         <Button variant="ghost" className="hover:bg-transparent px-0 font-semibold text-muted-foreground" onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}>
           Ngày yêu cầu
-          <ArrowUpDown className="ml-2 h-3.5 w-3.5" />
+          <ArrowUpDown className="ml-2 size-3.5" />
         </Button>
       ),
       cell: ({ row }) => <div className="text-sm text-foreground/80">{format(parseISO(row.getValue("ngay_yeu_cau")), 'dd/MM/yyyy HH:mm', { locale: vi })}</div>,
@@ -193,7 +193,7 @@ export function useRepairRequestColumns(options: RepairRequestColumnOptions): Co
       header: ({ column }) => (
         <Button variant="ghost" className="hover:bg-transparent px-0 font-semibold text-muted-foreground" onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}>
           Hạn hoàn thành
-          <ArrowUpDown className="ml-2 h-3.5 w-3.5" />
+          <ArrowUpDown className="ml-2 size-3.5" />
         </Button>
       ),
       cell: ({ row }) => {
@@ -249,7 +249,7 @@ export function useRepairRequestColumns(options: RepairRequestColumnOptions): Co
       header: ({ column }) => (
         <Button variant="ghost" className="hover:bg-transparent px-0 font-semibold text-muted-foreground" onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}>
           Trạng thái
-          <ArrowUpDown className="ml-2 h-3.5 w-3.5" />
+          <ArrowUpDown className="ml-2 size-3.5" />
         </Button>
       ),
       cell: ({ row }) => {

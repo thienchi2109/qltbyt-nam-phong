@@ -19,7 +19,7 @@ export function TransfersSearchParamsBoundary({
           aria-label="Đang tải bộ lọc điều chuyển"
           aria-live="polite"
         >
-          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+          <Loader2 className="size-6 animate-spin text-muted-foreground" />
         </div>
       }
     >

@@ -20,7 +20,7 @@ export function TransfersViewToggle() {
         onClick={() => setView('table')}
         className="gap-2"
       >
-        <Table className="h-4 w-4" />
+        <Table className="size-4" />
         <span className="hidden sm:inline">Bảng</span>
       </Button>
       <Button
@@ -29,7 +29,7 @@ export function TransfersViewToggle() {
         onClick={() => setView('kanban')}
         className="gap-2"
       >
-        <LayoutGrid className="h-4 w-4" />
+        <LayoutGrid className="size-4" />
         <span className="hidden sm:inline">Kanban</span>
       </Button>
     </div>

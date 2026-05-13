@@ -79,7 +79,7 @@ export function DeviceQuotaActiveDecision() {
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          <FileText className="h-5 w-5 text-muted-foreground" />
+          <FileText className="size-5 text-muted-foreground" />
           Quyết định hiện hành
         </CardTitle>
       </CardHeader>
@@ -103,7 +103,7 @@ export function DeviceQuotaActiveDecision() {
                 {decisionData.so_quyet_dinh}
               </span>
               <Badge className="bg-green-100 text-green-800 hover:bg-green-100 border-green-200">
-                <CheckCircle className="h-3 w-3 mr-1" />
+                <CheckCircle className="size-3 mr-1" />
                 Đang hiệu lực
               </Badge>
             </div>
@@ -112,7 +112,7 @@ export function DeviceQuotaActiveDecision() {
             <div className="space-y-2 text-sm">
               {decisionData.ngay_ban_hanh ? (
                 <div className="flex items-center gap-2 text-muted-foreground">
-                  <Calendar className="h-4 w-4" />
+                  <Calendar className="size-4" />
                   <span className="font-medium">Ngày ban hành:</span>
                   <span>{formatVietnameseDate(decisionData.ngay_ban_hanh)}</span>
                 </div>
@@ -120,7 +120,7 @@ export function DeviceQuotaActiveDecision() {
 
               {decisionData.ngay_hieu_luc ? (
                 <div className="flex items-center gap-2 text-muted-foreground">
-                  <Calendar className="h-4 w-4" />
+                  <Calendar className="size-4" />
                   <span className="font-medium">Ngày hiệu lực:</span>
                   <span>{formatVietnameseDate(decisionData.ngay_hieu_luc)}</span>
                 </div>
@@ -128,7 +128,7 @@ export function DeviceQuotaActiveDecision() {
 
               {decisionData.ngay_het_hieu_luc ? (
                 <div className="flex items-center gap-2 text-muted-foreground">
-                  <Calendar className="h-4 w-4" />
+                  <Calendar className="size-4" />
                   <span className="font-medium">Ngày hết hiệu lực:</span>
                   <span>{formatVietnameseDate(decisionData.ngay_het_hieu_luc)}</span>
                 </div>
@@ -140,7 +140,7 @@ export function DeviceQuotaActiveDecision() {
               <Button variant="link" className="h-auto p-0" asChild>
                 <Link href="/device-quota/decisions">
                   Xem chi tiết
-                  <ArrowRight className="h-4 w-4 ml-1" />
+                  <ArrowRight className="size-4 ml-1" />
                 </Link>
               </Button>
             </div>

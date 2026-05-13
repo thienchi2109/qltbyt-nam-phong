@@ -24,13 +24,13 @@ interface DashboardMonthlyTabProps {
 function getTaskIcon(type: CalendarEvent["type"]) {
   switch (type) {
     case "Bảo trì":
-      return <Wrench className="h-4 w-4" />
+      return <Wrench className="size-4" />
     case "Hiệu chuẩn":
-      return <Calendar className="h-4 w-4" />
+      return <Calendar className="size-4" />
     case "Kiểm định":
-      return <Clock className="h-4 w-4" />
+      return <Clock className="size-4" />
     default:
-      return <Calendar className="h-4 w-4" />
+      return <Calendar className="size-4" />
   }
 }
 
@@ -57,7 +57,7 @@ export function DashboardMonthlyTab({
         <Button asChild size="sm" variant="ghost" className="gap-1 text-blue-600 hover:text-blue-700">
           <Link href="/maintenance">
             Xem tất cả
-            <ArrowUpRight className="h-4 w-4" />
+            <ArrowUpRight className="size-4" />
           </Link>
         </Button>
       </div>
@@ -73,7 +73,7 @@ export function DashboardMonthlyTab({
               {Array.from({ length: 3 }).map((_, index) => (
                 <div key={index} className="p-4 rounded-xl border border-gray-200/50 bg-white/60 backdrop-blur-sm">
                   <div className="flex items-start gap-3">
-                    <Skeleton className="h-8 w-8 rounded" />
+                    <Skeleton className="size-8 rounded" />
                     <div className="space-y-2 flex-1">
                       <Skeleton className="h-4 w-3/4" />
                       <Skeleton className="h-3 w-1/2" />
@@ -84,8 +84,8 @@ export function DashboardMonthlyTab({
             </div>
           ) : events.length === 0 ? (
             <div className="text-center py-12 text-muted-foreground">
-              <div className="p-4 bg-gray-100/50 rounded-full w-16 h-16 mx-auto mb-4 flex items-center justify-center">
-                <Calendar className="h-8 w-8 text-gray-400" />
+              <div className="p-4 bg-gray-100/50 rounded-full size-16 mx-auto mb-4 flex items-center justify-center">
+                <Calendar className="size-8 text-gray-400" />
               </div>
               <p>Không có công việc nào trong tháng này</p>
             </div>
@@ -109,7 +109,7 @@ export function DashboardMonthlyTab({
               {priorityTasks.length > 0 && (
                 <div className="p-3 bg-yellow-50/80 border border-yellow-200/50 rounded-xl backdrop-blur-sm">
                   <div className="flex items-center gap-2 text-yellow-700">
-                    <AlertTriangle className="h-4 w-4" />
+                    <AlertTriangle className="size-4" />
                     <span className="font-medium text-sm">{priorityTasks.length} công việc cần ưu tiên</span>
                   </div>
                 </div>

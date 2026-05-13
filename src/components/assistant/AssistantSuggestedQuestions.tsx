@@ -79,7 +79,7 @@ export function AssistantSuggestedQuestions({
                     )}
                     style={{ animationDelay: `${i * 80}ms` }}
                 >
-                    <Star className="h-3.5 w-3.5 shrink-0 text-[hsl(var(--assistant-accent))]" />
+                    <Star className="size-3.5 shrink-0 text-[hsl(var(--assistant-accent))]" />
                     <span>{text}</span>
                 </button>
             ))}
@@ -101,7 +101,7 @@ export function AssistantSuggestedQuestions({
                     )}
                     style={{ animationDelay: `${(PINNED_PROMPTS.length + i) * 80}ms` }}
                 >
-                    <Zap className="h-3.5 w-3.5 shrink-0 text-[hsl(var(--assistant-accent))]" />
+                    <Zap className="size-3.5 shrink-0 text-[hsl(var(--assistant-accent))]" />
                     <span>{text}</span>
                 </button>
             ))}

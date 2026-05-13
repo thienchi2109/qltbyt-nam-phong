@@ -12,8 +12,8 @@ export function LoginIllustrationPanel() {
         <section className="hidden lg:flex w-1/2 bg-teal-split flex-col justify-between p-12 text-white relative">
             {/* Top Branding */}
             <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-white/10 backdrop-blur-md rounded-xl flex items-center justify-center">
-                    <Logo className="w-7 h-7" size={28} />
+                <div className="size-10 bg-white/10 backdrop-blur-md rounded-xl flex items-center justify-center">
+                    <Logo className="size-7" size={28} />
                 </div>
                 <span className="font-bold text-2xl tracking-tight">CVMEMS</span>
             </div>
@@ -32,7 +32,7 @@ export function LoginIllustrationPanel() {
                     {/* Floating IoT Status Badge */}
                     <div className="absolute top-1/4 right-0 bg-white/10 backdrop-blur-md p-4 rounded-xl border border-white/5 animate-pulse">
                         <div className="flex items-center gap-2">
-                            <span className="w-2 h-2 rounded-full bg-green-400" />
+                            <span className="size-2 rounded-full bg-green-400" />
                             <span className="text-[10px] font-bold uppercase tracking-widest opacity-80">
                                 Device Active
                             </span>
@@ -54,9 +54,9 @@ export function LoginIllustrationPanel() {
             {/* Bottom Stats */}
             <div className="pt-8 border-t border-white/10 flex justify-between items-center text-xs uppercase tracking-widest text-white/50">
                 <span>99.9% Uptime</span>
-                <span className="w-1 h-1 bg-white/30 rounded-full" />
+                <span className="size-1 bg-white/30 rounded-full" />
                 <span>2.5s Response</span>
-                <span className="w-1 h-1 bg-white/30 rounded-full" />
+                <span className="size-1 bg-white/30 rounded-full" />
                 <span>24/7 Support</span>
             </div>
         </section>

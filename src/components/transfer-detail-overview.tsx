@@ -54,7 +54,7 @@ export function TransferDetailOverview({
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <div className="space-y-2">
             <div className="flex items-center gap-2">
-              <Package className="h-4 w-4 text-muted-foreground" />
+              <Package className="size-4 text-muted-foreground" />
               <span className="font-medium">Thiết bị:</span>
             </div>
             <div className="ml-6">
@@ -88,14 +88,14 @@ export function TransferDetailOverview({
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <div className="space-y-2">
               <div className="flex items-center gap-2">
-                <MapPin className="h-4 w-4 text-muted-foreground" />
+                <MapPin className="size-4 text-muted-foreground" />
                 <span className="font-medium">Từ khoa/phòng:</span>
               </div>
               <p className="ml-6">{transfer.khoa_phong_hien_tai}</p>
             </div>
             <div className="space-y-2">
               <div className="flex items-center gap-2">
-                <MapPin className="h-4 w-4 text-muted-foreground" />
+                <MapPin className="size-4 text-muted-foreground" />
                 <span className="font-medium">Đến khoa/phòng:</span>
               </div>
               <p className="ml-6">{transfer.khoa_phong_nhan}</p>
@@ -112,7 +112,7 @@ export function TransferDetailOverview({
               </div>
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
-                  <Building className="h-4 w-4 text-muted-foreground" />
+                  <Building className="size-4 text-muted-foreground" />
                   <span className="font-medium">Đơn vị nhận:</span>
                 </div>
                 <p className="ml-6">{transfer.don_vi_nhan}</p>
@@ -130,7 +130,7 @@ export function TransferDetailOverview({
               {transfer.nguoi_lien_he ? (
                 <div className="space-y-2">
                   <div className="flex items-center gap-2">
-                    <User className="h-4 w-4 text-muted-foreground" />
+                    <User className="size-4 text-muted-foreground" />
                     <span className="font-medium">Người liên hệ:</span>
                   </div>
                   <p className="ml-6">{transfer.nguoi_lien_he}</p>
@@ -139,7 +139,7 @@ export function TransferDetailOverview({
               {transfer.so_dien_thoai ? (
                 <div className="space-y-2">
                   <div className="flex items-center gap-2">
-                    <Phone className="h-4 w-4 text-muted-foreground" />
+                    <Phone className="size-4 text-muted-foreground" />
                     <span className="font-medium">Số điện thoại:</span>
                   </div>
                   <p className="ml-6">{transfer.so_dien_thoai}</p>
@@ -150,7 +150,7 @@ export function TransferDetailOverview({
             {transfer.ngay_du_kien_tra ? (
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
-                  <Calendar className="h-4 w-4 text-muted-foreground" />
+                  <Calendar className="size-4 text-muted-foreground" />
                   <span className="font-medium">Ngày dự kiến trả về:</span>
                 </div>
                 <p className="ml-6">
@@ -174,7 +174,7 @@ export function TransferDetailOverview({
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <div className="space-y-2">
             <div className="flex items-center gap-2">
-              <Clock className="h-4 w-4 text-muted-foreground" />
+              <Clock className="size-4 text-muted-foreground" />
               <span className="font-medium">Ngày tạo:</span>
             </div>
             <p className="ml-6">{formatDateTime(transfer.created_at)}</p>
@@ -183,7 +183,7 @@ export function TransferDetailOverview({
           {transfer.ngay_duyet ? (
             <div className="space-y-2">
               <div className="flex items-center gap-2">
-                <Clock className="h-4 w-4 text-muted-foreground" />
+                <Clock className="size-4 text-muted-foreground" />
                 <span className="font-medium">Ngày duyệt:</span>
               </div>
               <p className="ml-6">{formatDateTime(transfer.ngay_duyet)}</p>
@@ -193,7 +193,7 @@ export function TransferDetailOverview({
           {transfer.ngay_ban_giao ? (
             <div className="space-y-2">
               <div className="flex items-center gap-2">
-                <Clock className="h-4 w-4 text-muted-foreground" />
+                <Clock className="size-4 text-muted-foreground" />
                 <span className="font-medium">Ngày bàn giao:</span>
               </div>
               <p className="ml-6">{formatDateTime(transfer.ngay_ban_giao)}</p>
@@ -203,7 +203,7 @@ export function TransferDetailOverview({
           {transfer.ngay_hoan_thanh ? (
             <div className="space-y-2">
               <div className="flex items-center gap-2">
-                <Clock className="h-4 w-4 text-muted-foreground" />
+                <Clock className="size-4 text-muted-foreground" />
                 <span className="font-medium">Ngày hoàn thành:</span>
               </div>
               <p className="ml-6">{formatDateTime(transfer.ngay_hoan_thanh)}</p>
@@ -220,7 +220,7 @@ export function TransferDetailOverview({
           {requesterName ? (
             <div className="space-y-2">
               <div className="flex items-center gap-2">
-                <User className="h-4 w-4 text-muted-foreground" />
+                <User className="size-4 text-muted-foreground" />
                 <span className="font-medium">Người yêu cầu:</span>
               </div>
               <p className="ml-6">{requesterName}</p>
@@ -230,7 +230,7 @@ export function TransferDetailOverview({
           {approverName ? (
             <div className="space-y-2">
               <div className="flex items-center gap-2">
-                <User className="h-4 w-4 text-muted-foreground" />
+                <User className="size-4 text-muted-foreground" />
                 <span className="font-medium">Người duyệt:</span>
               </div>
               <p className="ml-6">{approverName}</p>

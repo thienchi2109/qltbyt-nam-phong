@@ -128,7 +128,7 @@ export function EquipmentDetailFilesTab({
               />
             </div>
             <Alert>
-              <AlertCircle className="h-4 w-4" />
+              <AlertCircle className="size-4" />
               <AlertTitle>Làm thế nào để lấy URL?</AlertTitle>
               <AlertDescription className="space-y-2">
                 <div>
@@ -143,7 +143,7 @@ export function EquipmentDetailFilesTab({
                       rel="noopener noreferrer"
                       className="inline-flex items-center gap-2"
                     >
-                      <ExternalLink className="h-4 w-4" />
+                      <ExternalLink className="size-4" />
                       Mở thư mục chung
                     </a>
                   </Button>
@@ -155,7 +155,7 @@ export function EquipmentDetailFilesTab({
               disabled={isAdding || !newFileName || !newFileUrl}
             >
               {isAdding && (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                <Loader2 className="mr-2 size-4 animate-spin" />
               )}
               Lưu liên kết
             </Button>
@@ -188,20 +188,20 @@ export function EquipmentDetailFilesTab({
                     rel="noopener noreferrer"
                     className="flex items-center gap-2 text-primary hover:underline truncate"
                   >
-                    <LinkIcon className="h-4 w-4 shrink-0" />
+                    <LinkIcon className="size-4 shrink-0" />
                     <span className="truncate">{file.ten_file}</span>
                   </Link>
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="h-8 w-8 text-destructive hover:bg-destructive/10"
+                    className="size-8 text-destructive hover:bg-destructive/10"
                     onClick={() => handleDeleteAttachment(file.id)}
                     disabled={!!deletingAttachmentId || isDeleting}
                   >
                     {deletingAttachmentId === file.id ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
+                      <Loader2 className="size-4 animate-spin" />
                     ) : (
-                      <Trash2 className="h-4 w-4" />
+                      <Trash2 className="size-4" />
                     )}
                   </Button>
                 </div>

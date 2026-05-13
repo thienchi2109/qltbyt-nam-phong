@@ -189,7 +189,7 @@ export function UsageHistoryTab({ equipment }: UsageHistoryTabProps) {
             size="sm"
             className="gap-2"
           >
-            <Square className="h-4 w-4" />
+            <Square className="size-4" />
             Kết thúc sử dụng
           </Button>
         )}
@@ -233,7 +233,7 @@ export function UsageHistoryTab({ equipment }: UsageHistoryTabProps) {
                     <div className="flex items-start justify-between">
                       <div className="space-y-1">
                         <div className="flex items-center gap-2">
-                          <User className="h-4 w-4 text-muted-foreground" />
+                          <User className="size-4 text-muted-foreground" />
                           <span className="font-medium text-sm">
                             {log.nguoi_su_dung?.full_name || 'Không xác định'}
                           </span>
@@ -249,10 +249,10 @@ export function UsageHistoryTab({ equipment }: UsageHistoryTabProps) {
                             <Button
                               variant="ghost"
                               size="sm"
-                              className="h-8 w-8 p-0"
+                              className="size-8 p-0"
                               aria-label={`Xóa nhật ký sử dụng ${log.id}`}
                             >
-                              <Trash2 className="h-4 w-4" />
+                              <Trash2 className="size-4" />
                             </Button>
                           </AlertDialogTrigger>
                           <AlertDialogContent>
@@ -279,7 +279,7 @@ export function UsageHistoryTab({ equipment }: UsageHistoryTabProps) {
                   
                   <CardContent className="pt-0 space-y-2 text-sm">
                     <div className="flex items-center gap-2">
-                      <Clock className="h-4 w-4 text-muted-foreground" />
+                      <Clock className="size-4 text-muted-foreground" />
                       <span>
                         {formatVietnamDateTime(log.thoi_gian_bat_dau)}
                         {log.thoi_gian_ket_thuc && (
@@ -307,7 +307,7 @@ export function UsageHistoryTab({ equipment }: UsageHistoryTabProps) {
                     
                     {log.ghi_chu && (
                       <div className="flex gap-2">
-                        <FileText className="h-4 w-4 text-muted-foreground mt-0.5 flex-shrink-0" />
+                        <FileText className="size-4 text-muted-foreground mt-0.5 flex-shrink-0" />
                         <span className="text-muted-foreground">{log.ghi_chu}</span>
                       </div>
                     )}
@@ -369,10 +369,10 @@ export function UsageHistoryTab({ equipment }: UsageHistoryTabProps) {
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                className="h-8 w-8 p-0"
+                                className="size-8 p-0"
                                 aria-label={`Xóa nhật ký sử dụng ${log.id}`}
                               >
-                                <Trash2 className="h-4 w-4" />
+                                <Trash2 className="size-4" />
                               </Button>
                             </AlertDialogTrigger>
                             <AlertDialogContent>
@@ -414,7 +414,7 @@ export function UsageHistoryTab({ equipment }: UsageHistoryTabProps) {
                 >
                   {isFetchingMore ? (
                     <>
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current" />
+                      <div className="animate-spin rounded-full size-4 border-b-2 border-current" />
                       Đang tải…
                     </>
                   ) : (

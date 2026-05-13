@@ -97,7 +97,7 @@ export function RepairRequestsFilterModal({
                 variant="outline"
                 className={cn("justify-start text-left font-normal", !value.dateRange?.from && "text-muted-foreground")}
               >
-                <CalendarIcon className="mr-2 h-4 w-4" />
+                <CalendarIcon className="mr-2 size-4" />
                 {value.dateRange?.from ? value.dateRange.from.toLocaleDateString("vi-VN") : "Từ ngày"}
               </Button>
             </PopoverTrigger>
@@ -116,7 +116,7 @@ export function RepairRequestsFilterModal({
                 variant="outline"
                 className={cn("justify-start text-left font-normal", !value.dateRange?.to && "text-muted-foreground")}
               >
-                <CalendarIcon className="mr-2 h-4 w-4" />
+                <CalendarIcon className="mr-2 size-4" />
                 {value.dateRange?.to ? value.dateRange.to.toLocaleDateString("vi-VN") : "Đến ngày"}
               </Button>
             </PopoverTrigger>

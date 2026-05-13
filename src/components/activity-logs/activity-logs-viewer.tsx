@@ -141,7 +141,7 @@ export function ActivityLogsViewer({ className }: ActivityLogsViewerProps) {
         <Card>
           <CardContent className="pt-6">
             <div className="flex items-center space-x-2">
-              <Activity className="h-4 w-4 text-blue-600" />
+              <Activity className="size-4 text-blue-600" />
               <div className="space-y-1">
                 <p className="text-sm font-medium text-gray-600">Hoạt động 24h</p>
                 <p className="text-2xl font-bold">
@@ -155,7 +155,7 @@ export function ActivityLogsViewer({ className }: ActivityLogsViewerProps) {
         <Card>
           <CardContent className="pt-6">
             <div className="flex items-center space-x-2">
-              <User className="h-4 w-4 text-green-600" />
+              <User className="size-4 text-green-600" />
               <div className="space-y-1">
                 <p className="text-sm font-medium text-gray-600">Người dùng hoạt động</p>
                 <p className="text-2xl font-bold">
@@ -169,7 +169,7 @@ export function ActivityLogsViewer({ className }: ActivityLogsViewerProps) {
         <Card>
           <CardContent className="pt-6">
             <div className="flex items-center space-x-2">
-              <TrendingUp className="h-4 w-4 text-orange-600" />
+              <TrendingUp className="size-4 text-orange-600" />
               <div className="space-y-1">
                 <p className="text-sm font-medium text-gray-600">Hoạt động phổ biến</p>
                 <p className="text-sm font-semibold truncate">
@@ -183,7 +183,7 @@ export function ActivityLogsViewer({ className }: ActivityLogsViewerProps) {
         <Card>
           <CardContent className="pt-6">
             <div className="flex items-center space-x-2">
-              <Clock className="h-4 w-4 text-purple-600" />
+              <Clock className="size-4 text-purple-600" />
               <div className="space-y-1">
                 <p className="text-sm font-medium text-gray-600">Hoạt động gần nhất</p>
                 <p className="text-sm font-semibold">
@@ -203,7 +203,7 @@ export function ActivityLogsViewer({ className }: ActivityLogsViewerProps) {
         <CardHeader className="pb-3">
           <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-3 lg:space-y-0">
             <CardTitle className="flex items-center space-x-2">
-              <Filter className="h-5 w-5" />
+              <Filter className="size-5" />
               <span>Bộ lọc và tìm kiếm</span>
             </CardTitle>
             <div className="flex items-center space-x-2">
@@ -213,7 +213,7 @@ export function ActivityLogsViewer({ className }: ActivityLogsViewerProps) {
                 onClick={() => refetch()}
                 disabled={isLoading}
               >
-                <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
+                <RefreshCw className={`size-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
                 Làm mới
               </Button>
             </div>
@@ -223,7 +223,7 @@ export function ActivityLogsViewer({ className }: ActivityLogsViewerProps) {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
             {/* Search Input */}
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 size-4" />
               <Input
                 placeholder="Tìm kiếm người dùng, hoạt động…"
                 value={searchTerm}
@@ -307,7 +307,7 @@ export function ActivityLogsViewer({ className }: ActivityLogsViewerProps) {
         <CardHeader className="pb-3">
           <CardTitle className="flex items-center justify-between">
             <div className="flex items-center space-x-2">
-              <Eye className="h-5 w-5" />
+              <Eye className="size-5" />
               <span>Nhật ký hoạt động</span>
               <Badge variant="secondary">
                 {filteredLogs.length > 0 ? filteredLogs[0].total_count : 0} mục
@@ -318,14 +318,14 @@ export function ActivityLogsViewer({ className }: ActivityLogsViewerProps) {
         <CardContent>
           {error ? (
             <div className="flex items-center justify-center py-8 text-red-600">
-              <AlertCircle className="h-5 w-5 mr-2" />
+              <AlertCircle className="size-5 mr-2" />
               <span>Lỗi tải dữ liệu: {error.message}</span>
             </div>
           ) : isLoading ? (
             <div className="space-y-4">
               {Array.from({ length: 5 }).map((_, i) => (
                 <div key={i} className="flex items-start space-x-4 p-4 border rounded-lg animate-pulse">
-                  <div className="w-10 h-10 bg-gray-200 rounded-full" />
+                  <div className="size-10 bg-gray-200 rounded-full" />
                   <div className="flex-1 space-y-2">
                     <div className="h-4 bg-gray-200 rounded w-1/4" />
                     <div className="h-3 bg-gray-200 rounded w-3/4" />
@@ -336,7 +336,7 @@ export function ActivityLogsViewer({ className }: ActivityLogsViewerProps) {
             </div>
           ) : filteredLogs.length === 0 ? (
             <div className="text-center py-8 text-gray-500">
-              <Activity className="h-8 w-8 mx-auto mb-2 opacity-50" />
+              <Activity className="size-8 mx-auto mb-2 opacity-50" />
               <p>Không có hoạt động nào được tìm thấy</p>
             </div>
           ) : (

@@ -48,11 +48,11 @@ export function RepairRequestsFilterChips({
           <Button
             variant="ghost"
             size="sm"
-            className="ml-1 h-5 w-5 p-0 rounded-full hover:bg-black/10 dark:hover:bg-white/10"
+            className="ml-1 size-5 p-0 rounded-full hover:bg-black/10 dark:hover:bg-white/10"
             onClick={() => onRemove("status", s)}
             aria-label={`Xóa trạng thái ${s}`}
           >
-            <X className="h-3 w-3" />
+            <X className="size-3" />
           </Button>
         </Badge>
       ))}
@@ -63,11 +63,11 @@ export function RepairRequestsFilterChips({
           <Button
             variant="ghost"
             size="sm"
-            className="ml-1 h-5 w-5 p-0 rounded-full hover:bg-muted-foreground/20"
+            className="ml-1 size-5 p-0 rounded-full hover:bg-muted-foreground/20"
             onClick={() => onRemove("facilityName")}
             aria-label="Xóa cơ sở"
           >
-            <X className="h-3 w-3" />
+            <X className="size-3" />
           </Button>
         </Badge>
       )}
@@ -82,11 +82,11 @@ export function RepairRequestsFilterChips({
           <Button
             variant="ghost"
             size="sm"
-            className="ml-1 h-5 w-5 p-0 rounded-full hover:bg-muted-foreground/20"
+            className="ml-1 size-5 p-0 rounded-full hover:bg-muted-foreground/20"
             onClick={() => onRemove("dateRange")}
             aria-label="Xóa khoảng ngày"
           >
-            <X className="h-3 w-3" />
+            <X className="size-3" />
           </Button>
         </Badge>
       )}

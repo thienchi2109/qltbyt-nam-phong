@@ -29,7 +29,7 @@ export function floatingActionButtonClassName({
   placement = "page",
 }: Pick<FloatingActionButtonProps, "className" | "tone" | "placement"> = {}) {
   return cn(
-    "fixed inline-flex h-14 w-14 items-center justify-center rounded-full border p-0",
+    "fixed inline-flex size-14 items-center justify-center rounded-full border p-0",
     "shadow-[0_18px_34px_rgba(15,23,42,0.24)] transition-all duration-200 ease-out",
     "hover:-translate-y-0.5 hover:shadow-[0_22px_42px_rgba(15,23,42,0.28)]",
     "active:translate-y-0 active:scale-95 active:duration-100",

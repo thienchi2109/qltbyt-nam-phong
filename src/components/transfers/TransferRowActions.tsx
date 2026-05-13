@@ -61,13 +61,13 @@ export const TransferRowActions = React.memo(function TransferRowActions({
           <Button
             variant="ghost"
             size="icon"
-            className="h-10 w-10 sm:h-8 sm:w-8"
+            className="size-10 sm:size-8"
             onClick={(event) => {
               event.stopPropagation()
               onEdit(item)
             }}
           >
-            <Edit className="h-5 w-5 sm:h-4 sm:w-4" />
+            <Edit className="size-5 sm:size-4" />
           </Button>
         </TooltipTrigger>
         <TooltipContent>
@@ -85,13 +85,13 @@ export const TransferRowActions = React.memo(function TransferRowActions({
             <TooltipTrigger asChild>
               <Button
                 size="icon"
-                className="h-10 w-10 sm:h-8 sm:w-8"
+                className="size-10 sm:size-8"
                 onClick={(event) => {
                   event.stopPropagation()
                   onApprove(item)
                 }}
               >
-                <Check className="h-5 w-5 sm:h-4 sm:w-4" />
+                <Check className="size-5 sm:size-4" />
               </Button>
             </TooltipTrigger>
             <TooltipContent>
@@ -111,14 +111,14 @@ export const TransferRowActions = React.memo(function TransferRowActions({
             <TooltipTrigger asChild>
               <Button
                 size="icon"
-                className="h-10 w-10 sm:h-8 sm:w-8"
+                className="size-10 sm:size-8"
                 variant="secondary"
                 onClick={(event) => {
                   event.stopPropagation()
                   onStart(item)
                 }}
               >
-                <Play className="h-5 w-5 sm:h-4 sm:w-4" />
+                <Play className="size-5 sm:size-4" />
               </Button>
             </TooltipTrigger>
             <TooltipContent>
@@ -141,13 +141,13 @@ export const TransferRowActions = React.memo(function TransferRowActions({
                 <Button
                   size="icon"
                   variant="outline"
-                  className="h-10 w-10 sm:h-8 sm:w-8"
+                  className="size-10 sm:size-8"
                   onClick={(event) => {
                     event.stopPropagation()
                     onGenerateHandoverSheet(item)
                   }}
                 >
-                  <FileText className="h-5 w-5 sm:h-4 sm:w-4" />
+                  <FileText className="size-5 sm:size-4" />
                 </Button>
               </TooltipTrigger>
               <TooltipContent>
@@ -160,13 +160,13 @@ export const TransferRowActions = React.memo(function TransferRowActions({
               <TooltipTrigger asChild>
                 <Button
                   size="icon"
-                  className="h-10 w-10 sm:h-8 sm:w-8"
+                  className="size-10 sm:size-8"
                   onClick={(event) => {
                     event.stopPropagation()
                     onComplete(item)
                   }}
                 >
-                  <CheckCircle className="h-5 w-5 sm:h-4 sm:w-4" />
+                  <CheckCircle className="size-5 sm:size-4" />
                 </Button>
               </TooltipTrigger>
               <TooltipContent>
@@ -180,14 +180,14 @@ export const TransferRowActions = React.memo(function TransferRowActions({
               <TooltipTrigger asChild>
                 <Button
                   size="icon"
-                  className="h-10 w-10 sm:h-8 sm:w-8"
+                  className="size-10 sm:size-8"
                   variant="secondary"
                   onClick={(event) => {
                     event.stopPropagation()
                     onHandover(item)
                   }}
                 >
-                  <Send className="h-5 w-5 sm:h-4 sm:w-4" />
+                  <Send className="size-5 sm:size-4" />
                 </Button>
               </TooltipTrigger>
               <TooltipContent>
@@ -205,13 +205,13 @@ export const TransferRowActions = React.memo(function TransferRowActions({
             <TooltipTrigger asChild>
               <Button
                 size="icon"
-                className="h-10 w-10 sm:h-8 sm:w-8"
+                className="size-10 sm:size-8"
                 onClick={(event) => {
                   event.stopPropagation()
                   onReturn(item)
                 }}
               >
-                <Undo2 className="h-5 w-5 sm:h-4 sm:w-4" />
+                <Undo2 className="size-5 sm:size-4" />
               </Button>
             </TooltipTrigger>
             <TooltipContent>
@@ -232,13 +232,13 @@ export const TransferRowActions = React.memo(function TransferRowActions({
           <Button
             variant="ghost"
             size="icon"
-            className="h-10 w-10 text-destructive hover:text-destructive sm:h-8 sm:w-8"
+            className="size-10 text-destructive hover:text-destructive sm:size-8"
             onClick={(event) => {
               event.stopPropagation()
               onDelete(item)
             }}
           >
-            <Trash2 className="h-5 w-5 sm:h-4 sm:w-4" />
+            <Trash2 className="size-5 sm:size-4" />
           </Button>
         </TooltipTrigger>
         <TooltipContent>

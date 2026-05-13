@@ -76,7 +76,7 @@ export const MaintenanceMobileTaskCard = React.memo(function MaintenanceMobileTa
           onClick={onToggleExpansion}
           className="flex w-full items-center gap-3 px-4 py-3 text-left"
         >
-          <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-primary/10 text-sm font-semibold text-primary">
+          <div className="flex size-10 flex-shrink-0 items-center justify-center rounded-full bg-primary/10 text-sm font-semibold text-primary">
             {index + 1}
           </div>
           <div className="flex-1 min-w-0">
@@ -97,7 +97,7 @@ export const MaintenanceMobileTaskCard = React.memo(function MaintenanceMobileTa
             )}
           </div>
           <ChevronDown
-            className={`h-5 w-5 flex-shrink-0 text-muted-foreground transition-transform ${isExpanded ? "rotate-180" : ""}`}
+            className={`size-5 flex-shrink-0 text-muted-foreground transition-transform ${isExpanded ? "rotate-180" : ""}`}
           />
         </button>
 
@@ -175,10 +175,10 @@ export const MaintenanceMobileTaskCard = React.memo(function MaintenanceMobileTa
                         }}
                       >
                         {isUpdating ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
+                          <Loader2 className="size-4 animate-spin" />
                         ) : isCompleted ? (
                           <div className="flex items-center gap-1">
-                            <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                            <CheckCircle2 className="size-4 text-emerald-600" />
                             <span>T{month}</span>
                           </div>
                         ) : (
@@ -223,7 +223,7 @@ export const MaintenanceMobileTaskCard = React.memo(function MaintenanceMobileTa
               {isPlanApproved ? null : isEditing ? (
                 <>
                   <Button type="button" size="sm" onClick={taskEditing.handleSaveTask}>
-                    <Save className="mr-2 h-4 w-4" />
+                    <Save className="mr-2 size-4" />
                     Lưu
                   </Button>
                   <Button type="button" size="sm" variant="outline" onClick={taskEditing.handleCancelEdit}>
@@ -233,11 +233,11 @@ export const MaintenanceMobileTaskCard = React.memo(function MaintenanceMobileTa
               ) : (
                 <>
                   <Button type="button" size="sm" variant="outline" onClick={() => taskEditing.handleStartEdit(task)} disabled={isPlanApproved}>
-                    <Edit className="mr-2 h-4 w-4" />
+                    <Edit className="mr-2 size-4" />
                     Sửa
                   </Button>
                   <Button type="button" size="sm" variant="outline" className="text-destructive" onClick={() => taskEditing.setTaskToDelete(task)}>
-                    <Trash2 className="mr-2 h-4 w-4" />
+                    <Trash2 className="mr-2 size-4" />
                     Xóa
                   </Button>
                 </>

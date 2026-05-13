@@ -67,7 +67,7 @@ export function RepairRequestsEquipmentSearchField({
       </div>
       {selectedEquipment && (
         <p className="flex items-center gap-1.5 pt-1 text-xs text-muted-foreground">
-          <Check className="h-3.5 w-3.5 text-green-600" />
+          <Check className="size-3.5 text-green-600" />
           <span>
             Đã chọn: {selectedEquipment.ten_thiet_bi} ({selectedEquipment.ma_thiet_bi})
           </span>

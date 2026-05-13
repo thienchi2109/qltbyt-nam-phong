@@ -41,7 +41,7 @@ function DeviceQuotaCategoriesPageContent({
             <div className="text-center space-y-4">
               <div className="flex justify-center">
                 <div className="p-3 bg-red-100 rounded-full">
-                  <Shield className="h-6 w-6 text-red-600" />
+                  <Shield className="size-6 text-red-600" />
                 </div>
               </div>
               <div>
@@ -54,7 +54,7 @@ function DeviceQuotaCategoriesPageContent({
                 </p>
               </div>
               <div className="flex items-center justify-center text-xs text-gray-500 mt-4">
-                <AlertTriangle className="h-4 w-4 mr-1" />
+                <AlertTriangle className="size-4 mr-1" />
                 <span>Liên hệ quản trị viên nếu bạn cần hỗ trợ</span>
               </div>
             </div>

@@ -67,7 +67,7 @@ export function CalendarWidgetHeader({
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl shadow-lg">
-              <CalendarIcon className="h-5 w-5 text-white" />
+              <CalendarIcon className="size-5 text-white" />
             </div>
             <div>
               <h2 className="text-lg font-bold text-gray-900">Lịch công việc</h2>
@@ -75,11 +75,11 @@ export function CalendarWidgetHeader({
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <Button size="sm" variant="ghost" className="h-9 w-9 rounded-lg" onClick={onPrevMonth}>
-              <ChevronLeft className="h-4 w-4" />
+            <Button size="sm" variant="ghost" className="size-9 rounded-lg" onClick={onPrevMonth}>
+              <ChevronLeft className="size-4" />
             </Button>
-            <Button size="sm" variant="ghost" className="h-9 w-9 rounded-lg" onClick={onNextMonth}>
-              <ChevronRight className="h-4 w-4" />
+            <Button size="sm" variant="ghost" className="size-9 rounded-lg" onClick={onNextMonth}>
+              <ChevronRight className="size-4" />
             </Button>
           </div>
         </div>
@@ -89,7 +89,7 @@ export function CalendarWidgetHeader({
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-4">
             <div className="p-3 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl shadow-lg">
-              <CalendarIcon className="h-6 w-6 text-white" />
+              <CalendarIcon className="size-6 text-white" />
             </div>
             <div>
               <CardTitle className="text-2xl font-bold text-gray-900">Lịch công việc</CardTitle>
@@ -132,13 +132,13 @@ export function CalendarWidgetMonthControls({
       <div className="hidden xl:flex items-center justify-between mb-6">
         <div className="flex items-center gap-2">
           <Button variant="outline" size="default" onClick={onPrevMonth} className="rounded-xl hover:bg-gray-100">
-            <ChevronLeft className="h-5 w-5" />
+            <ChevronLeft className="size-5" />
           </Button>
           <Button variant="outline" size="default" onClick={onToday} className="rounded-xl hover:bg-gray-100 font-medium">
             Hôm nay
           </Button>
           <Button variant="outline" size="default" onClick={onNextMonth} className="rounded-xl hover:bg-gray-100">
-            <ChevronRight className="h-5 w-5" />
+            <ChevronRight className="size-5" />
           </Button>
         </div>
         <h3 className="text-xl font-bold text-gray-700">

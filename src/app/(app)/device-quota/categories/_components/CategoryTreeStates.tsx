@@ -11,7 +11,7 @@ export function CategoryTreeSkeleton() {
             {SKELETON_KEYS.map((token) => (
                 <div key={token} className="rounded-lg border p-4 space-y-2">
                     <div className="flex items-center gap-3">
-                        <Skeleton className="h-4 w-4" />
+                        <Skeleton className="size-4" />
                         <Skeleton className="h-4 w-16" />
                         <Skeleton className="h-4 flex-1 max-w-[200px]" />
                         <Skeleton className="h-5 w-14 rounded-full" />
@@ -36,7 +36,7 @@ export function CategoryTreeEmpty({
     return (
         <div className="flex flex-col items-center justify-center py-12 text-center">
             <div className="rounded-full bg-muted p-3 mb-4">
-                <FolderTree className="h-6 w-6 text-muted-foreground" />
+                <FolderTree className="size-6 text-muted-foreground" />
             </div>
             <h3 className="font-semibold text-base mb-1">
                 {hasSearch ? "Không tìm thấy danh mục" : "Chưa có danh mục nào"}

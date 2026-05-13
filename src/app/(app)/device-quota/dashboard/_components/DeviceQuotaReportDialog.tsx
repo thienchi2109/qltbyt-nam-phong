@@ -95,11 +95,11 @@ export function DeviceQuotaReportDialog({
         {/* Footer - Hidden during print */}
         <div className="print:hidden px-6 py-4 border-t flex-shrink-0 flex items-center justify-end gap-3">
           <Button variant="outline" onClick={handleClose}>
-            <X className="mr-2 h-4 w-4" />
+            <X className="mr-2 size-4" />
             Đóng
           </Button>
           <Button onClick={handlePrint} disabled={isPrinting}>
-            <Printer className="mr-2 h-4 w-4" />
+            <Printer className="mr-2 size-4" />
             {isPrinting ? "Đang in..." : "In báo cáo"}
           </Button>
         </div>

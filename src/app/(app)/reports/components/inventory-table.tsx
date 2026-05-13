@@ -74,7 +74,7 @@ export function InventoryTable({ data, isLoading }: InventoryTableProps) {
             onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
           >
             Ngày
-            <ArrowUpDown className="ml-2 h-4 w-4" />
+            <ArrowUpDown className="ml-2 size-4" />
           </Button>
         )
       },
@@ -92,7 +92,7 @@ export function InventoryTable({ data, isLoading }: InventoryTableProps) {
             onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
           >
             Mã thiết bị
-            <ArrowUpDown className="ml-2 h-4 w-4" />
+            <ArrowUpDown className="ml-2 size-4" />
           </Button>
         )
       },
@@ -109,7 +109,7 @@ export function InventoryTable({ data, isLoading }: InventoryTableProps) {
             onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
           >
             Tên thiết bị
-            <ArrowUpDown className="ml-2 h-4 w-4" />
+            <ArrowUpDown className="ml-2 size-4" />
           </Button>
         )
       },

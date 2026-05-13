@@ -64,13 +64,13 @@ export function TasksTable({
             Đã chọn {selectedCount} mục:
           </span>
           <Button size="sm" variant="outline" onClick={onBulkSchedule}>
-            <CalendarDays className="mr-2 h-4 w-4" />
+            <CalendarDays className="mr-2 size-4" />
             Lên lịch hàng loạt
           </Button>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button size="sm" variant="outline">
-                <Users className="mr-2 h-4 w-4" />
+                <Users className="mr-2 size-4" />
                 Gán ĐVTH
               </Button>
             </DropdownMenuTrigger>
@@ -82,7 +82,7 @@ export function TasksTable({
             </DropdownMenuContent>
           </DropdownMenu>
           <Button size="sm" variant="destructive" className="ml-auto" onClick={onBulkDelete}>
-            <Trash2 className="mr-2 h-4 w-4" />
+            <Trash2 className="mr-2 size-4" />
             Xóa ({selectedCount})
           </Button>
         </div>

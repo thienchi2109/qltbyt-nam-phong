@@ -32,7 +32,7 @@ export function MaintenanceReportRepairCharts({
             <Skeleton className="h-[340px] w-full" />
           ) : repairTrendData.length === 0 ? (
             <div className="text-sm text-muted-foreground h-[340px] flex flex-col items-center justify-center gap-2">
-              <Inbox className="h-8 w-8 text-muted-foreground/60" />
+              <Inbox className="size-8 text-muted-foreground/60" />
               <span>Không có dữ liệu xu hướng sửa chữa.</span>
             </div>
           ) : (
@@ -60,7 +60,7 @@ export function MaintenanceReportRepairCharts({
             <Skeleton className="h-[340px] w-full" />
           ) : repairStatusData.length === 0 ? (
             <div className="text-sm text-muted-foreground h-[340px] flex flex-col items-center justify-center gap-2">
-              <Inbox className="h-8 w-8 text-muted-foreground/60" />
+              <Inbox className="size-8 text-muted-foreground/60" />
               <span>Không có dữ liệu trạng thái sửa chữa.</span>
             </div>
           ) : (

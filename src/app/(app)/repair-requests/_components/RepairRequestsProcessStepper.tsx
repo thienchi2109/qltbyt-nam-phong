@@ -119,12 +119,12 @@ export function RepairRequestsProcessStepper({ status, className }: RepairReques
                                 isFirst ? "pl-2" : "pl-8", // Adjust padding to account for the left cutout
                                 isLast ? "" : "pr-6" // Adjust padding to avoid text hitting arrow head
                             )}>
-                                <div className={cn("h-6 w-6 rounded-full flex items-center justify-center border-2 border-white/20 shadow-sm",
+                                <div className={cn("size-6 rounded-full flex items-center justify-center border-2 border-white/20 shadow-sm",
                                     (isActive || isCompleted) ? "bg-white/20" : "bg-transparent"
                                 )}>
-                                    {isCompleted ? <Check className="h-3.5 w-3.5" /> :
-                                        (isActive && isFailure) ? <X className="h-3.5 w-3.5" /> :
-                                            (isActive && idx !== 2) ? <Icon className="h-3.5 w-3.5 animate-pulse" /> :
+                                    {isCompleted ? <Check className="size-3.5" /> :
+                                        (isActive && isFailure) ? <X className="size-3.5" /> :
+                                            (isActive && idx !== 2) ? <Icon className="size-3.5 animate-pulse" /> :
                                                 <span className="text-xs font-bold">{idx + 1}</span>}
                                 </div>
                                 <span className="text-sm font-bold whitespace-nowrap hidden sm:inline-block">{step.title}</span>

@@ -25,7 +25,7 @@ export function AuthenticatedPageSpinnerFallback() {
       className="flex min-h-[50vh] items-center justify-center"
       data-testid="authenticated-page-spinner-fallback"
     >
-      <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+      <Loader2 className="size-6 animate-spin text-muted-foreground" />
     </div>
   )
 }

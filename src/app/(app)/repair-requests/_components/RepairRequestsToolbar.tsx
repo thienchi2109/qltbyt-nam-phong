@@ -128,7 +128,7 @@ export function RepairRequestsToolbar({
       aria-label="Xóa bộ lọc"
     >
       <span className="hidden sm:inline">Xóa</span>
-      <FilterX className="h-4 w-4 sm:ml-2" />
+      <FilterX className="size-4 sm:ml-2" />
     </Button>
   ) : null
 
@@ -179,7 +179,7 @@ function DateFilterButton({ label, value, onChange }: DateFilterButtonProps) {
           size="sm"
           className={cn("h-9 min-w-[116px] justify-start", !value && "text-muted-foreground")}
         >
-          <CalendarIcon className="mr-2 h-4 w-4" />
+          <CalendarIcon className="mr-2 size-4" />
           {value ? value.toLocaleDateString("vi-VN") : label}
         </Button>
       </PopoverTrigger>

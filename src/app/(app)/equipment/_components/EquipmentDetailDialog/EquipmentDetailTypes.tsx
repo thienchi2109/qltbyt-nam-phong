@@ -29,22 +29,22 @@ export {
 export function getHistoryIcon(eventType: string): React.ReactNode {
   switch (eventType) {
     case "Sửa chữa":
-      return <Wrench className="h-4 w-4 text-muted-foreground" />
+      return <Wrench className="size-4 text-muted-foreground" />
     case "Bảo trì":
     case "Bảo trì định kỳ":
     case "Bảo trì dự phòng":
-      return <Settings className="h-4 w-4 text-muted-foreground" />
+      return <Settings className="size-4 text-muted-foreground" />
     case "Luân chuyển":
     case "Luân chuyển nội bộ":
     case "Luân chuyển bên ngoài":
-      return <ArrowRightLeft className="h-4 w-4 text-muted-foreground" />
+      return <ArrowRightLeft className="size-4 text-muted-foreground" />
     case "Hiệu chuẩn":
     case "Kiểm định":
-      return <CheckCircle className="h-4 w-4 text-muted-foreground" />
+      return <CheckCircle className="size-4 text-muted-foreground" />
     case "Thanh lý":
-      return <Trash2 className="h-4 w-4 text-muted-foreground" />
+      return <Trash2 className="size-4 text-muted-foreground" />
     default:
-      return <Calendar className="h-4 w-4 text-muted-foreground" />
+      return <Calendar className="size-4 text-muted-foreground" />
   }
 }
 

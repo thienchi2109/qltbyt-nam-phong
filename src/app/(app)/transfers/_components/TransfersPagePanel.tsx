@@ -165,7 +165,7 @@ export function TransfersPagePanel({
       onClick={onOpenFilterModal}
       className="h-11 gap-2 font-medium sm:h-9"
     >
-      <Filter className="h-5 w-5 sm:h-4 sm:w-4" />
+      <Filter className="size-5 sm:size-4" />
       <span className="hidden sm:inline">Bộ lọc</span>
       {activeFilterCount > 0 && (
         <Badge variant="secondary" className="h-5 px-1.5 text-xs sm:ml-1">
@@ -222,7 +222,7 @@ export function TransfersPagePanel({
                   onClick={onOpenAddDialog}
                   className="h-11 gap-2 font-medium sm:h-9"
                 >
-                  <PlusCircle className="h-5 w-5 sm:h-4 sm:w-4" />
+                  <PlusCircle className="size-5 sm:size-4" />
                   Tạo yêu cầu mới
                 </Button>
               )}
@@ -263,7 +263,7 @@ export function TransfersPagePanel({
                     {isListLoading ? (
                       <div className="flex min-h-[200px] items-center justify-center rounded-lg border border-dashed">
                         <div className="flex flex-col items-center gap-2 text-sm text-muted-foreground">
-                          <Loader2 className="h-6 w-6 animate-spin" />
+                          <Loader2 className="size-6 animate-spin" />
                           Đang tải dữ liệu...
                         </div>
                       </div>
@@ -302,7 +302,7 @@ export function TransfersPagePanel({
 
               {isListFetching && !isListLoading && (
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <Loader2 className="h-4 w-4 animate-spin" /> Đang đồng bộ dữ liệu...
+                  <Loader2 className="size-4 animate-spin" /> Đang đồng bộ dữ liệu...
                 </div>
               )}
             </div>

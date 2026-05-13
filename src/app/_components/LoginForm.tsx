@@ -128,7 +128,7 @@ export function LoginForm(): React.ReactElement {
       <section className="w-full lg:w-1/2 bg-background flex flex-col justify-center items-center px-6 md:px-16 py-12 relative">
         {/* Mobile Logo */}
         <div className="lg:hidden absolute top-8 left-8 flex items-center gap-2">
-          <Logo className="w-8 h-8" size={32} />
+          <Logo className="size-8" size={32} />
           <span className="font-bold text-xl text-primary">CVMEMS</span>
         </div>
 
@@ -137,7 +137,7 @@ export function LoginForm(): React.ReactElement {
           <div className="bg-white rounded-2xl shadow-lg shadow-black/5 p-8 md:p-10 space-y-8">
             {/* Logo + Brand */}
             <div className="flex items-center gap-3">
-              <Logo className="w-10 h-10" size={40} />
+              <Logo className="size-10" size={40} />
               <span className="font-bold text-xl text-foreground tracking-tight">CVMEMS</span>
             </div>
             {/* Header Text */}
@@ -170,7 +170,7 @@ export function LoginForm(): React.ReactElement {
                   render={({ field }) => (
                     <FormItem className="space-y-2">
                       <FormLabel className="flex items-center gap-2 text-sm font-semibold text-muted-foreground">
-                        <User className="h-3.5 w-3.5" />
+                        <User className="size-3.5" />
                         {t("login.username") || "Tên đăng nhập"}
                       </FormLabel>
                       <FormControl>
@@ -195,7 +195,7 @@ export function LoginForm(): React.ReactElement {
                   render={({ field }) => (
                     <FormItem className="space-y-2">
                       <FormLabel className="flex items-center gap-2 text-sm font-semibold text-muted-foreground">
-                        <Lock className="h-3.5 w-3.5" />
+                        <Lock className="size-3.5" />
                         {t("login.password") || "Mật khẩu"}
                       </FormLabel>
                       <FormControl>
@@ -221,7 +221,7 @@ export function LoginForm(): React.ReactElement {
                 >
                   {isSubmitting ? (
                     <>
-                      <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                      <div className="size-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                       {t("login.signingIn") || "Đang xác thực..."}
                     </>
                   ) : (

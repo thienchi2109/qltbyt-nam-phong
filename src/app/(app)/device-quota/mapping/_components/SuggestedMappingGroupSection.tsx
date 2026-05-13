@@ -47,14 +47,14 @@ function DeviceNameRow({
             <Button
                 variant="ghost"
                 size="icon"
-                className="h-7 w-7 shrink-0"
+                className="size-7 shrink-0"
                 onClick={onToggle}
                 aria-label={isExcluded ? "Khôi phục" : "Loại bỏ"}
             >
                 {isExcluded ? (
-                    <Undo2 className="h-4 w-4" />
+                    <Undo2 className="size-4" />
                 ) : (
-                    <X className="h-4 w-4 text-destructive" />
+                    <X className="size-4 text-destructive" />
                 )}
             </Button>
         </div>
@@ -89,7 +89,7 @@ export function SuggestedMappingGroupSection({
             {/* Group header */}
             <div className="flex items-center justify-between gap-2">
                 <div className="flex items-center gap-2 min-w-0">
-                    <Folder className="h-5 w-5 text-primary/70 shrink-0" />
+                    <Folder className="size-5 text-primary/70 shrink-0" />
                     <div className="min-w-0">
                         <span className="text-sm font-semibold truncate block">
                             {group.nhom_label}
@@ -114,12 +114,12 @@ export function SuggestedMappingGroupSection({
                 >
                     {isGroupExcluded ? (
                         <>
-                            <Undo2 className="h-3.5 w-3.5 mr-1" />
+                            <Undo2 className="size-3.5 mr-1" />
                             Khôi phục nhóm
                         </>
                     ) : (
                         <>
-                            <X className="h-3.5 w-3.5 mr-1" />
+                            <X className="size-3.5 mr-1" />
                             Loại bỏ nhóm
                         </>
                     )}

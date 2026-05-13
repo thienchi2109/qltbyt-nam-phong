@@ -104,9 +104,9 @@ export function MaintenancePageLegacyMobileCards({
             </div>
             <DropdownMenu>
               <DropdownMenuTrigger asChild onClick={(event) => event.stopPropagation()}>
-                <Button variant="ghost" className="h-8 w-8 p-0 touch-target-sm">
+                <Button variant="ghost" className="size-8 p-0 touch-target-sm">
                   <span className="sr-only">Mở menu</span>
-                  <MoreHorizontal className="h-4 w-4" />
+                  <MoreHorizontal className="size-4" />
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
@@ -118,15 +118,15 @@ export function MaintenancePageLegacyMobileCards({
                   <>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem onSelect={() => onOpenApproveDialog(plan)}>
-                      <Check className="mr-2 h-4 w-4" />
+                      <Check className="mr-2 size-4" />
                       Duyệt
                     </DropdownMenuItem>
                     <DropdownMenuItem onSelect={() => onOpenRejectDialog(plan)}>
-                      <X className="mr-2 h-4 w-4" />
+                      <X className="mr-2 size-4" />
                       Không duyệt
                     </DropdownMenuItem>
                     <DropdownMenuItem onSelect={() => onEditPlan(plan)}>
-                      <Edit className="mr-2 h-4 w-4" />
+                      <Edit className="mr-2 size-4" />
                       Sửa
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
@@ -134,7 +134,7 @@ export function MaintenancePageLegacyMobileCards({
                       onSelect={() => onOpenDeleteDialog(plan)}
                       className="text-destructive"
                     >
-                      <Trash2 className="mr-2 h-4 w-4" />
+                      <Trash2 className="mr-2 size-4" />
                       Xóa
                     </DropdownMenuItem>
                   </>

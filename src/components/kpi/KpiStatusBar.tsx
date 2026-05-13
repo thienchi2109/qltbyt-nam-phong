@@ -64,7 +64,7 @@ export function KpiStatusBar<TStatus extends string>({
         <StatCard
           label={totalLabel}
           value={total}
-          icon={<Layers className="h-5 w-5" />}
+          icon={<Layers className="size-5" />}
           tone="default"
           loading={loading}
         />

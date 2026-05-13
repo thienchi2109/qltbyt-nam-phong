@@ -154,7 +154,7 @@ export function EndUsageDialog({
               </div>
               <div className="col-span-1 sm:col-span-2">
                 <p className="text-sm font-medium text-muted-foreground flex items-center gap-1">
-                  <Clock className="h-4 w-4" />
+                  <Clock className="size-4" />
                   Thời gian sử dụng
                 </p>
                 <p className="text-sm font-medium text-primary">{formatDuration(usageDuration)}</p>
@@ -214,7 +214,7 @@ export function EndUsageDialog({
                 Hủy
               </Button>
               <Button type="submit" disabled={isLoading || isRegionalLeader}>
-                {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                {isLoading && <Loader2 className="mr-2 size-4 animate-spin" />}
                 Kết thúc sử dụng
               </Button>
             </DialogFooter>

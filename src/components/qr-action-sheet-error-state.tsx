@@ -59,11 +59,11 @@ export function QRActionSheetErrorState({
 
   return (
     <div className="text-center py-8">
-      <div className={`mx-auto flex h-16 w-16 items-center justify-center rounded-full ${palette.iconBg}`}>
+      <div className={`mx-auto flex size-16 items-center justify-center rounded-full ${palette.iconBg}`}>
         {errorType === "not_found" ? (
-          <Search className={`h-8 w-8 ${palette.iconText}`} />
+          <Search className={`size-8 ${palette.iconText}`} />
         ) : (
-          <AlertCircle className={`h-8 w-8 ${palette.iconText}`} />
+          <AlertCircle className={`size-8 ${palette.iconText}`} />
         )}
       </div>
 
@@ -128,7 +128,7 @@ export function QRActionSheetErrorState({
 
         <div className="flex justify-center gap-2 pt-2">
           <Button variant="outline" onClick={onRetry} className="gap-2">
-            <RotateCcw className="h-4 w-4" />
+            <RotateCcw className="size-4" />
             Thử lại
           </Button>
           <Button variant="ghost" onClick={onClose}>

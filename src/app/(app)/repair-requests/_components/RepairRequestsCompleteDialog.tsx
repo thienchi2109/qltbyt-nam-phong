@@ -133,7 +133,7 @@ function CompleteDialogForm({
           Hủy
         </Button>
         <Button onClick={handleConfirm} disabled={isConfirmDisabled}>
-          {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+          {isPending && <Loader2 className="mr-2 size-4 animate-spin" />}
           {completionType === "Hoàn thành" ? "Xác nhận hoàn thành" : "Xác nhận không hoàn thành"}
         </Button>
       </DialogFooter>

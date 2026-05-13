@@ -73,7 +73,7 @@ function DeviceQuotaDashboardPageContent() {
             variant="outline"
             onClick={() => setReportDialogOpen(true)}
           >
-            <FileText className="mr-2 h-4 w-4" />
+            <FileText className="mr-2 size-4" />
             Xuất báo cáo
           </Button>
         )}

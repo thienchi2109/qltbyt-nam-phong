@@ -80,7 +80,7 @@ export function HandoverDemo() {
         
         <CardContent className="space-y-6">
           <Alert className="border-blue-200 bg-blue-50">
-            <Info className="h-4 w-4" />
+            <Info className="size-4" />
             <AlertDescription>
               <strong>📋 Dữ liệu mẫu:</strong> Thiết bị máy đo huyết áp Omron HEM-7120 với đầy đủ thông tin luân chuyển nội bộ từ Khoa Tim mạch đến Tổ QLTB.
             </AlertDescription>
@@ -89,7 +89,7 @@ export function HandoverDemo() {
           <Card className="bg-green-50">
             <CardHeader>
               <CardTitle className="text-green-700 flex items-center gap-2">
-                <CheckCircle className="h-5 w-5" />
+                <CheckCircle className="size-5" />
                 ✨ Tính năng Phase 3 - UX Enhancements:
               </CardTitle>
             </CardHeader>
@@ -137,13 +137,13 @@ export function HandoverDemo() {
               className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 text-lg"
               size="lg"
             >
-              <FileText className="mr-2 h-5 w-5" />
+              <FileText className="mr-2 size-5" />
               📄 Mở Phiếu Bàn Giao Mẫu
             </Button>
           </div>
 
           <Alert>
-            <Lightbulb className="h-4 w-4" />
+            <Lightbulb className="size-4" />
             <AlertDescription>
               <strong>💡 Cách test:</strong>
               <br />1. Nhấn nút trên để mở phiếu mẫu
@@ -155,7 +155,7 @@ export function HandoverDemo() {
           <Card className="bg-purple-50">
             <CardHeader>
               <CardTitle className="text-purple-700 flex items-center gap-2">
-                <Target className="h-5 w-5" />
+                <Target className="size-5" />
                 🎯 Roadmap tương lai (nếu cần):
               </CardTitle>
             </CardHeader>

@@ -72,14 +72,14 @@ function SummaryStatCard({
 
   const iconClassName = compact
     ? {
-        blue: "h-4 w-4 text-blue-600",
-        green: "h-4 w-4 text-green-600",
-        orange: "h-4 w-4 text-orange-600",
+        blue: "size-4 text-blue-600",
+        green: "size-4 text-green-600",
+        orange: "size-4 text-orange-600",
       }[tone]
     : {
-        blue: "h-6 w-6 text-blue-600",
-        green: "h-6 w-6 text-green-600",
-        orange: "h-6 w-6 text-orange-600",
+        blue: "size-6 text-blue-600",
+        green: "size-6 text-green-600",
+        orange: "size-6 text-orange-600",
       }[tone]
 
   return (

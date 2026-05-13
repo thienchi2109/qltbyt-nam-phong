@@ -75,20 +75,20 @@ export function AssistantComposer({
                         variant="destructive"
                         size="icon"
                         onClick={onStop}
-                        className="h-9 w-9 rounded-xl shrink-0"
+                        className="size-9 rounded-xl shrink-0"
                         aria-label="Dừng"
                     >
-                        <div className="h-3 w-3 rounded-sm bg-white" />
+                        <div className="size-3 rounded-sm bg-white" />
                     </Button>
                 ) : hasInput ? (
                     <Button
                         size="icon"
                         onClick={onSend}
                         disabled={isDisabled}
-                        className="h-9 w-9 rounded-xl shrink-0 bg-[hsl(var(--assistant-accent))] hover:bg-[hsl(var(--assistant-accent))]/90 text-white"
+                        className="size-9 rounded-xl shrink-0 bg-[hsl(var(--assistant-accent))] hover:bg-[hsl(var(--assistant-accent))]/90 text-white"
                         aria-label="Gửi"
                     >
-                        <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <svg className="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                             <path d="M12 19V5M5 12l7-7 7 7" />
                         </svg>
                     </Button>

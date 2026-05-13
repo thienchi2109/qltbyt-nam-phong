@@ -120,7 +120,7 @@ export function DashboardTabs() {
                   value="equipment"
                   className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-500 data-[state=active]:to-purple-600 data-[state=active]:text-white rounded-lg transition-all duration-200 gap-2"
                 >
-                  <Wrench className="h-4 w-4" />
+                  <Wrench className="size-4" />
                   <span className="hidden sm:inline">Thiết bị</span>
                   <span className="sm:hidden text-xs">TB</span>
                 </TabsTrigger>
@@ -128,7 +128,7 @@ export function DashboardTabs() {
                   value="plans"
                   className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-500 data-[state=active]:to-purple-600 data-[state=active]:text-white rounded-lg transition-all duration-200 gap-2"
                 >
-                  <Calendar className="h-4 w-4" />
+                  <Calendar className="size-4" />
                   <span className="hidden sm:inline">Kế hoạch</span>
                   <span className="sm:hidden text-xs">KH</span>
                 </TabsTrigger>
@@ -136,7 +136,7 @@ export function DashboardTabs() {
                   value="monthly"
                   className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-500 data-[state=active]:to-purple-600 data-[state=active]:text-white rounded-lg transition-all duration-200 gap-2"
                 >
-                  <Clock className="h-4 w-4" />
+                  <Clock className="size-4" />
                   <span className="hidden sm:inline">Tháng này</span>
                   <span className="sm:hidden text-xs">T{month}</span>
                 </TabsTrigger>

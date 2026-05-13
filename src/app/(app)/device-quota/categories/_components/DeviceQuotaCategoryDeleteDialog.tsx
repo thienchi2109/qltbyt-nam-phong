@@ -49,7 +49,7 @@ export function DeviceQuotaCategoryDeleteDialog() {
             disabled={isPending}
             className="bg-destructive hover:bg-destructive/90"
           >
-            {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            {isPending && <Loader2 className="mr-2 size-4 animate-spin" />}
             Xóa danh mục
           </AlertDialogAction>
         </AlertDialogFooter>

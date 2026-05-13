@@ -54,7 +54,7 @@ export function BulkImportErrorAlert({ error }: BulkImportErrorAlertProps): JSX.
 
   return (
     <div className="flex items-center gap-2 text-sm text-destructive bg-destructive/10 p-3 rounded-md">
-      <AlertTriangle className="h-4 w-4 flex-shrink-0" aria-hidden="true" />
+      <AlertTriangle className="size-4 flex-shrink-0" aria-hidden="true" />
       <span>{error}</span>
     </div>
   )
@@ -77,7 +77,7 @@ export function BulkImportValidationErrors({
   return (
     <div className="text-sm text-destructive bg-destructive/10 p-3 rounded-md">
       <div className="flex items-center gap-2 mb-2">
-        <AlertTriangle className="h-4 w-4 flex-shrink-0" aria-hidden="true" />
+        <AlertTriangle className="size-4 flex-shrink-0" aria-hidden="true" />
         <span className="font-medium">Dữ liệu không hợp lệ:</span>
       </div>
       <ul
@@ -110,7 +110,7 @@ export function BulkImportSuccessMessage({
       role="status"
       aria-live="polite"
     >
-      <FileCheck className="h-4 w-4 flex-shrink-0" aria-hidden="true" />
+      <FileCheck className="size-4 flex-shrink-0" aria-hidden="true" />
       <span>
         Đã đọc file <strong>{fileName}</strong>. Tìm thấy <strong>{recordCount}</strong> bản ghi hợp lệ.
       </span>
@@ -146,7 +146,7 @@ export function BulkImportSubmitButton({
       onClick={onClick}
       disabled={disabled}
     >
-      {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" />}
+      {isSubmitting && <Loader2 className="mr-2 size-4 animate-spin" aria-hidden="true" />}
       {isSubmitting ? 'Đang nhập...' : `Nhập ${recordCount} ${label}`}
     </Button>
   )

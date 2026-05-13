@@ -1,7 +1,7 @@
 import Image from "next/image";
 
 export const Logo = ({
-  className = "w-16 h-16",
+  className = "size-16",
   size = 64,
 }: {
   className?: string;

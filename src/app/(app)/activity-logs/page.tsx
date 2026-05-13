@@ -33,7 +33,7 @@ function ActivityLogsPageContent({ user }: ActivityLogsPageContentProps) {
             <div className="text-center space-y-4">
               <div className="flex justify-center">
                 <div className="p-3 bg-red-100 rounded-full">
-                  <Shield className="h-6 w-6 text-red-600" />
+                  <Shield className="size-6 text-red-600" />
                 </div>
               </div>
               <div>
@@ -46,7 +46,7 @@ function ActivityLogsPageContent({ user }: ActivityLogsPageContentProps) {
                 </p>
               </div>
               <div className="flex items-center justify-center text-xs text-gray-500 mt-4">
-                <AlertTriangle className="h-4 w-4 mr-1" />
+                <AlertTriangle className="size-4 mr-1" />
                 <span>Liên hệ quản trị viên nếu bạn cần hỗ trợ</span>
               </div>
             </div>
@@ -62,7 +62,7 @@ function ActivityLogsPageContent({ user }: ActivityLogsPageContentProps) {
       <div className="mb-8">
         <div className="flex items-center space-x-3 mb-2">
           <div className="p-2 bg-blue-100 rounded-lg">
-            <Activity className="h-6 w-6 text-blue-600" />
+            <Activity className="size-6 text-blue-600" />
           </div>
           <div>
             <h1 className="text-3xl font-bold text-gray-900">
@@ -77,7 +77,7 @@ function ActivityLogsPageContent({ user }: ActivityLogsPageContentProps) {
         {/* Security Badge */}
         <div className="flex items-center space-x-2 mt-4">
           <div className="flex items-center space-x-1 bg-green-50 text-green-700 px-3 py-1 rounded-full text-sm">
-            <Shield className="h-4 w-4" />
+            <Shield className="size-4" />
             <span>Chỉ dành cho quản trị viên hệ thống</span>
           </div>
           <div className="text-sm text-gray-500">

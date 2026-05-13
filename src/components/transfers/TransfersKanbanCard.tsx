@@ -92,7 +92,7 @@ function TransfersKanbanCardComponent({
 
         {/* Transfer direction */}
         <div className="flex items-center gap-2 text-xs text-muted-foreground">
-          <ArrowRight className="h-3 w-3 shrink-0" />
+          <ArrowRight className="size-3 shrink-0" />
           <span className="truncate" title={`${transfer.khoa_phong_hien_tai || 'N/A'} → ${transfer.khoa_phong_nhan || transfer.don_vi_nhan || 'N/A'}`}>
             {transfer.khoa_phong_hien_tai || 'N/A'} → {transfer.khoa_phong_nhan || transfer.don_vi_nhan || 'N/A'}
           </span>

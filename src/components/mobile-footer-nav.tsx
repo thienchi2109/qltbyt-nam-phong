@@ -79,7 +79,7 @@ export function MobileFooterNav({
               aria-current={isActive ? "page" : undefined}
             >
               <Icon className={cn(
-                "h-5 w-5 transition-colors",
+                "size-5 transition-colors",
                 isActive ? "text-white" : "text-slate-500"
               )} />
               <AppNotificationBadge count={badgeCount} active={isActive} mode="floating" />
@@ -104,7 +104,7 @@ export function MobileFooterNav({
               aria-label="Thêm tùy chọn"
             >
               <MoreHorizontal className={cn(
-                "h-5 w-5 transition-colors",
+                "size-5 transition-colors",
                 isMoreActive ? "text-white" : "text-slate-500"
               )} />
               <AppNotificationBadge count={moreBadgeCount} active={isMoreActive} mode="floating" />
@@ -135,7 +135,7 @@ export function MobileFooterNav({
                     aria-current={isActive ? "page" : undefined}
                   >
                     <Icon className={cn(
-                      "h-5 w-5 transition-colors",
+                      "size-5 transition-colors",
                       isActive ? "text-white" : "text-slate-500"
                     )} />
                     <span className="text-sm">{mobileLabel ?? label}</span>

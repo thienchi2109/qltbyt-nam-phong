@@ -46,11 +46,11 @@ export function SuggestedMappingUnmatchedSection({
                 >
                     <ChevronRight
                         className={cn(
-                            "h-4 w-4 shrink-0 transition-transform",
+                            "size-4 shrink-0 transition-transform",
                             open && "rotate-90"
                         )}
                     />
-                    <AlertCircle className="h-4 w-4 shrink-0 text-amber-500" />
+                    <AlertCircle className="size-4 shrink-0 text-amber-500" />
                     <span>Chưa gợi ý được</span>
                     <span className="font-medium">({totalDevices} thiết bị)</span>
                 </button>

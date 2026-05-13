@@ -41,14 +41,14 @@ export function LinkedRequestRowIndicator({ equipment }: LinkedRequestRowIndicat
             type="button"
             variant="ghost"
             size="icon"
-            className="ml-1 h-6 w-6 text-amber-500 hover:text-amber-600"
+            className="ml-1 size-6 text-amber-500 hover:text-amber-600"
             aria-label={STRINGS.rowIndicatorAriaLabel(equipment.ma_thiet_bi ?? '')}
             onClick={(event) => {
               event.stopPropagation()
               openRepair(equipment.id)
             }}
           >
-            <Wrench className="h-4 w-4" aria-hidden="true" />
+            <Wrench className="size-4" aria-hidden="true" />
           </Button>
         </TooltipTrigger>
         <TooltipContent side="top">{STRINGS.rowIndicatorTooltip}</TooltipContent>

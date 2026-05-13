@@ -62,7 +62,7 @@ export function NotificationBellDialog({
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
         <Button variant="ghost" size="icon" className="relative rounded-full">
-          <Bell className="h-5 w-5" />
+          <Bell className="size-5" />
           <AppNotificationBadge
             count={totalAlertsCount}
             mode="floating"
@@ -80,7 +80,7 @@ export function NotificationBellDialog({
         <ScrollArea className="flex-grow pr-6 -mr-6">
           {totalAlertsCount === 0 ? (
             <div className="py-10 text-center text-muted-foreground">
-              <Bell className="mx-auto h-12 w-12 mb-4 opacity-50" />
+              <Bell className="mx-auto size-12 mb-4 opacity-50" />
               <p>Không có thông báo mới.</p>
             </div>
           ) : (
@@ -88,7 +88,7 @@ export function NotificationBellDialog({
               {repairCount > 0 && (
                 <section>
                   <h3 className="text-md font-semibold mb-2 flex items-center">
-                    <Wrench className="h-4 w-4 mr-2 text-orange-500" />
+                    <Wrench className="size-4 mr-2 text-orange-500" />
                     Yêu cầu Sửa chữa ({repairCount})
                   </h3>
                   <div className="p-3 border rounded-md">
@@ -105,7 +105,7 @@ export function NotificationBellDialog({
               {transferCount > 0 && (
                 <section>
                   <h3 className="text-md font-semibold mb-2 flex items-center">
-                    <ArrowLeftRight className="h-4 w-4 mr-2 text-blue-500" />
+                    <ArrowLeftRight className="size-4 mr-2 text-blue-500" />
                     Yêu cầu Luân chuyển ({transferCount})
                   </h3>
                   <div className="p-3 border rounded-md">
@@ -122,7 +122,7 @@ export function NotificationBellDialog({
               {maintenanceCount > 0 && (
                 <section>
                   <h3 className="text-md font-semibold mb-2 flex items-center">
-                    <HardHat className="h-4 w-4 mr-2 text-emerald-600" />
+                    <HardHat className="size-4 mr-2 text-emerald-600" />
                     Yêu cầu Bảo trì ({maintenanceCount})
                   </h3>
                   <div className="p-3 border rounded-md">

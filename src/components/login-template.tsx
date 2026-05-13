@@ -135,7 +135,7 @@ export function LoginTemplate() {
               
               <CardContent className="p-8">
                 <Alert className="mb-6 border-yellow-200 bg-yellow-50">
-                  <Info className="h-4 w-4" />
+                  <Info className="size-4" />
                   <AlertDescription>
                     <strong>Chú ý:</strong> Đây là template demo. Để đăng nhập thực tế, vui lòng sử dụng trang chính của ứng dụng.
                   </AlertDescription>
@@ -147,7 +147,7 @@ export function LoginTemplate() {
                       Tên đăng nhập
                     </Label>
                     <div className="relative mt-2">
-                      <User className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                      <User className="absolute left-3 top-1/2 transform -translate-y-1/2 size-4 text-gray-400" />
                       <Input
                         type="text"
                         id="username"
@@ -164,7 +164,7 @@ export function LoginTemplate() {
                       Mật khẩu
                     </Label>
                     <div className="relative mt-2">
-                      <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                      <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 size-4 text-gray-400" />
                       <Input
                         type="password"
                         id="password"

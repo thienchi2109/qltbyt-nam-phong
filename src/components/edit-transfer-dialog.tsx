@@ -290,7 +290,7 @@ export function EditTransferDialog({ open, onOpenChange, onSuccess, transfer }: 
               Hủy
             </Button>
             <Button type="submit" disabled={isLoading || !canEdit || isRegionalLeader}>
-              {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {isLoading && <Loader2 className="mr-2 size-4 animate-spin" />}
               Cập nhật
             </Button>
           </DialogFooter>

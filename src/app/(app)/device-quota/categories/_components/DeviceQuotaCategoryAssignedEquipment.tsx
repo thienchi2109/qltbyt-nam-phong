@@ -103,7 +103,7 @@ export function DeviceQuotaCategoryAssignedEquipment({
                 </div>
             ) : !equipment || equipment.length === 0 ? (
                 <div className="flex items-center justify-center gap-2 py-6 text-sm text-muted-foreground">
-                    <PackageOpen className="h-4 w-4" />
+                    <PackageOpen className="size-4" />
                     <span>Chưa có thiết bị nào được gán</span>
                 </div>
             ) : (
