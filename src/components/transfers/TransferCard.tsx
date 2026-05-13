@@ -133,15 +133,16 @@ export const TransferCard = React.memo(function TransferCard({
   )
 
   return (
-    <Card
-      className="cursor-pointer shadow-sm transition-shadow hover:shadow-md"
-      onClick={openTransferFromCard}
-      onKeyDown={openTransferFromKeyboard}
-      role="button"
-      tabIndex={0}
-      aria-label={`Mở yêu cầu luân chuyển ${transfer.ma_yeu_cau}`}
-    >
+    <Card className="shadow-sm transition-shadow hover:shadow-md">
       <CardContent className="space-y-4 p-4">
+        <div
+          className="cursor-pointer space-y-4 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+          onClick={openTransferFromCard}
+          onKeyDown={openTransferFromKeyboard}
+          role="button"
+          tabIndex={0}
+          aria-label={`Mở yêu cầu luân chuyển ${transfer.ma_yeu_cau}`}
+        >
         <div className="flex items-start justify-between gap-3">
           <div className="space-y-2">
             <p className="text-sm font-semibold leading-none">{transfer.ma_yeu_cau}</p>
@@ -188,6 +189,8 @@ export const TransferCard = React.memo(function TransferCard({
               {transfer.ly_do_luan_chuyen || EMPTY_PLACEHOLDER}
             </p>
           </div>
+        </div>
+
         </div>
 
         <div className="mt-4 flex items-center justify-between gap-3 border-t pt-4">

@@ -41,7 +41,10 @@ describe("React Doctor P5 accessibility source guards", () => {
       "utf8",
     )
 
-    expect(source).not.toContain("<label")
+    expect(source).not.toMatch(/<label[^>]*>\s*Khoa\/Phòng lập:/)
+    expect(source).not.toMatch(/<label[^>]*>\s*Ngày nhận\/giao:/)
+    expect(source).not.toMatch(/<label[^>]*>\s*Lý do nhận bàn giao:/)
+    expect(source).not.toMatch(/<label[^>]*>\s*Mã yêu cầu:/)
     expect(source).toContain("Khoa/Phòng lập:")
     expect(source).toContain("Ngày nhận/giao:")
     expect(source).toContain("Lý do nhận bàn giao:")

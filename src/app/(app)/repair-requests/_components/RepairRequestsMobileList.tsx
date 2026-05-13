@@ -71,29 +71,24 @@ export function RepairRequestsMobileList({
       {requests.map((request) => (
         <Card
           key={request.id}
-          className="mobile-repair-card cursor-pointer hover:bg-muted/50"
-          onClick={() => setRequestToView(request)}
-          onKeyDown={(event) => openRequestFromKeyboard(event, request)}
-          role="button"
-          tabIndex={0}
-          aria-label={`Xem yêu cầu sửa chữa ${request.thiet_bi?.ten_thiet_bi || 'N/A'}`}
+          className="mobile-repair-card relative hover:bg-muted/50"
         >
+          <div
+            className="cursor-pointer rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+            onClick={() => setRequestToView(request)}
+            onKeyDown={(event) => openRequestFromKeyboard(event, request)}
+            role="button"
+            tabIndex={0}
+            aria-label={`Xem yêu cầu sửa chữa ${request.thiet_bi?.ten_thiet_bi || 'N/A'}`}
+          >
           <CardHeader className="mobile-repair-card-header flex flex-row items-start justify-between">
-            <div className="flex-1 min-w-0 pr-2">
+            <div className="flex-1 min-w-0 pr-12">
               <CardTitle className="mobile-repair-card-title truncate line-clamp-1">
                 {request.thiet_bi?.ten_thiet_bi || 'N/A'}
               </CardTitle>
               <CardDescription className="mobile-repair-card-description truncate">
                 {request.thiet_bi?.ma_thiet_bi || 'N/A'}
               </CardDescription>
-            </div>
-            <div
-              className="flex-shrink-0"
-              onClick={stopActionPropagation}
-              onKeyDown={stopActionPropagation}
-              role="presentation"
-            >
-              {renderActions(request)}
             </div>
           </CardHeader>
           <CardContent className="mobile-repair-card-content">
@@ -151,6 +146,15 @@ export function RepairRequestsMobileList({
               </div>
             )}
           </CardContent>
+          </div>
+          <div
+            className="absolute right-6 top-6 flex-shrink-0"
+            onClick={stopActionPropagation}
+            onKeyDown={stopActionPropagation}
+            role="presentation"
+          >
+            {renderActions(request)}
+          </div>
         </Card>
       ))}
     </div>
