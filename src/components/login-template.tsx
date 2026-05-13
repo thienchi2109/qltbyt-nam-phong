@@ -185,14 +185,14 @@ export function LoginTemplate() {
                 </form>
                 
                 <div className="text-center mt-6">
-                  <a href="#" className="text-sm text-gray-500 hover:text-gray-700">English</a>
+                  <span className="text-sm text-gray-500">English</span>
                 </div>
               </CardContent>
             </Card>
             
             <div className="text-center mt-6">
               <p className="text-sm text-gray-500">
-                Cần hỗ trợ? <a href="#" className="font-medium text-[#0079FF] hover:underline">Liên hệ quản trị viên</a>
+                Cần hỗ trợ? <span className="font-medium text-[#0079FF]">Liên hệ quản trị viên</span>
               </p>
             </div>
           </div>

@@ -110,9 +110,7 @@ function CategoryTreeEmpty() {
       <div className="rounded-full bg-muted p-3 mb-4">
         <FolderTree className="size-6 text-muted-foreground" />
       </div>
-      <h3 className="font-semibold text-base mb-1">
-        Chưa có danh mục nào
-      </h3>
+      <h3 className="font-semibold text-base mb-1">Chưa có danh mục nào</h3>
       <p className="text-sm text-muted-foreground mb-4 max-w-sm">
         Hiện tại chưa có danh mục định mức nào được thiết lập.
         Vui lòng tạo danh mục trước khi gán thiết bị.
@@ -132,9 +130,7 @@ function CategoryTreeNoResults({ searchTerm }: { searchTerm: string }) {
       <div className="rounded-full bg-muted p-3 mb-4">
         <FolderTree className="size-6 text-muted-foreground" />
       </div>
-      <h3 className="font-semibold text-base mb-1">
-        Không tìm thấy danh mục phù hợp
-      </h3>
+      <h3 className="font-semibold text-base mb-1">Không tìm thấy danh mục phù hợp</h3>
       <p className="text-sm text-muted-foreground max-w-sm">
         Không có danh mục nào khớp với từ khóa "{searchTerm.trim()}".
         Hãy thử từ khóa khác.

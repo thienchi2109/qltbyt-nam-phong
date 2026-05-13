@@ -1,3 +1,4 @@
+import * as React from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Loader2 } from "lucide-react"
@@ -31,6 +32,23 @@ export function RepairRequestsMobileList({
   setRequestToView,
   renderActions
 }: MobileRequestListProps) {
+  const openRequestFromKeyboard = React.useCallback(
+    (event: React.KeyboardEvent<HTMLDivElement>, request: RepairRequestWithEquipment) => {
+      if (event.key !== "Enter" && event.key !== " ") return
+
+      event.preventDefault()
+      setRequestToView(request)
+    },
+    [setRequestToView],
+  )
+
+  const stopActionPropagation = React.useCallback(
+    (event: React.MouseEvent<HTMLDivElement> | React.KeyboardEvent<HTMLDivElement>) => {
+      event.stopPropagation()
+    },
+    [],
+  )
+
   if (isLoading) {
     return (
       <div className="flex justify-center items-center gap-2 py-6">
@@ -55,6 +73,10 @@ export function RepairRequestsMobileList({
           key={request.id}
           className="mobile-repair-card cursor-pointer hover:bg-muted/50"
           onClick={() => setRequestToView(request)}
+          onKeyDown={(event) => openRequestFromKeyboard(event, request)}
+          role="button"
+          tabIndex={0}
+          aria-label={`Xem yêu cầu sửa chữa ${request.thiet_bi?.ten_thiet_bi || 'N/A'}`}
         >
           <CardHeader className="mobile-repair-card-header flex flex-row items-start justify-between">
             <div className="flex-1 min-w-0 pr-2">
@@ -65,7 +87,12 @@ export function RepairRequestsMobileList({
                 {request.thiet_bi?.ma_thiet_bi || 'N/A'}
               </CardDescription>
             </div>
-            <div className="flex-shrink-0" onClick={(e) => e.stopPropagation()}>
+            <div
+              className="flex-shrink-0"
+              onClick={stopActionPropagation}
+              onKeyDown={stopActionPropagation}
+              role="presentation"
+            >
               {renderActions(request)}
             </div>
           </CardHeader>

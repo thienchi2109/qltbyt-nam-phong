@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { cn } from "@/lib/utils"
 
-function stopPropagation(event: React.MouseEvent<HTMLDivElement>) {
+function stopPropagation(event: React.MouseEvent<HTMLDivElement> | React.KeyboardEvent<HTMLDivElement>) {
   event.stopPropagation()
 }
 
@@ -29,7 +29,7 @@ export function createSelectionColumn<TData>(): ColumnDef<TData> {
       />
     ),
     cell: ({ row }) => (
-      <div onClick={stopPropagation}>
+      <div onClick={stopPropagation} onKeyDown={stopPropagation} role="presentation">
         <Checkbox
           checked={row.getIsSelected()}
           onCheckedChange={(value) => row.toggleSelected(!!value)}

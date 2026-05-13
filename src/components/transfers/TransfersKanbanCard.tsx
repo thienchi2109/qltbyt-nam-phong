@@ -62,12 +62,31 @@ function TransfersKanbanCardComponent({
     [onClick, transfer]
   )
 
+  const openTransferFromKeyboard = React.useCallback(
+    (event: React.KeyboardEvent<HTMLDivElement>) => {
+      if (event.key !== 'Enter' && event.key !== ' ') return
+
+      event.preventDefault()
+      onClick(transfer)
+    },
+    [onClick, transfer]
+  )
+
+  const stopActionPropagation = React.useCallback(
+    (event: React.MouseEvent<HTMLDivElement> | React.KeyboardEvent<HTMLDivElement>) => {
+      event.stopPropagation()
+    },
+    []
+  )
+
   return (
     <Card
       className="mb-2 cursor-pointer hover:shadow-md transition-shadow"
       onClick={openTransferFromCard}
-      role="article"
-      aria-label={`Transfer ${transfer.ma_yeu_cau}`}
+      onKeyDown={openTransferFromKeyboard}
+      role="button"
+      tabIndex={0}
+      aria-label={`Mở yêu cầu luân chuyển ${transfer.ma_yeu_cau}`}
     >
       <CardContent className="p-3 space-y-2">
         {/* Header: Transfer code + type badge */}
@@ -111,7 +130,12 @@ function TransfersKanbanCardComponent({
         </div>
 
         {/* Actions menu */}
-        <div onClick={(e) => e.stopPropagation()} data-actions-menu role="presentation">
+        <div
+          onClick={stopActionPropagation}
+          onKeyDown={stopActionPropagation}
+          data-actions-menu
+          role="presentation"
+        >
           {actions}
         </div>
       </CardContent>

@@ -292,7 +292,11 @@ export function useRepairRequestColumns(options: RepairRequestColumnOptions): Co
     {
       id: "actions",
       cell: ({ row }) => (
-        <div onClick={(e) => e.stopPropagation()}>
+        <div
+          onClick={(event) => event.stopPropagation()}
+          onKeyDown={(event) => event.stopPropagation()}
+          role="presentation"
+        >
           {renderActions(row.original, options)}
         </div>
       ),

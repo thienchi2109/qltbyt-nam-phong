@@ -130,25 +130,25 @@ export function HandoverTemplate({
           {/* Info Section */}
           <section className="mt-4 space-y-2">
             <div className="flex items-baseline">
-              <label className="whitespace-nowrap">Khoa/Phòng lập:</label>
+              <span className="whitespace-nowrap">Khoa/Phòng lập:</span>
               <div className="form-input-line form-input-readonly ml-2">
                 {formatValue(department)}
               </div>
             </div>
             <div className="flex items-baseline">
-              <label className="whitespace-nowrap">Ngày nhận/giao:</label>
+              <span className="whitespace-nowrap">Ngày nhận/giao:</span>
               <div className="form-input-line form-input-readonly ml-2">
                 {formatDate(handoverDate)}
               </div>
             </div>
             <div className="flex items-baseline">
-              <label className="whitespace-nowrap">Lý do nhận bàn giao:</label>
+              <span className="whitespace-nowrap">Lý do nhận bàn giao:</span>
               <div className="form-input-line form-input-readonly ml-2">
                 {formatValue(reason)}
               </div>
             </div>
             <div className="flex items-baseline">
-              <label className="whitespace-nowrap">Mã yêu cầu:</label>
+              <span className="whitespace-nowrap">Mã yêu cầu:</span>
               <div className="form-input-line form-input-readonly ml-2">
                 {formatValue(requestCode)}
               </div>
