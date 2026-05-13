@@ -55,7 +55,7 @@ export function DashboardPlansTab({
         <Button asChild size="sm" variant="ghost" className="gap-1 text-blue-600 hover:text-blue-700">
           <Link href="/maintenance">
             Xem tất cả
-            <ArrowUpRight className="h-4 w-4" />
+            <ArrowUpRight className="size-4" />
           </Link>
         </Button>
       </div>
@@ -109,15 +109,15 @@ export function DashboardPlansTab({
                         </span>
                       </div>
                     </div>
-                    <ArrowUpRight className="h-5 w-5 text-gray-400 shrink-0" />
+                    <ArrowUpRight className="size-5 text-gray-400 shrink-0" />
                   </div>
                 </div>
               </Link>
             ))
           ) : (
             <div className="text-center py-12 text-muted-foreground">
-              <div className="p-4 bg-gray-100/50 rounded-full w-16 h-16 mx-auto mb-4 flex items-center justify-center">
-                <Calendar className="h-8 w-8 text-gray-400" />
+              <div className="p-4 bg-gray-100/50 rounded-full size-16 mx-auto mb-4 flex items-center justify-center">
+                <Calendar className="size-8 text-gray-400" />
               </div>
               <p>Chưa có kế hoạch nào</p>
             </div>

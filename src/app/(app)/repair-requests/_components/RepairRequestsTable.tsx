@@ -63,7 +63,7 @@ export function RepairRequestsTable({
                 className="h-24 text-center py-3"
               >
                 <div className="flex justify-center items-center gap-2 text-muted-foreground">
-                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <Loader2 className="size-4 animate-spin" />
                   <span>Đang tải dữ liệu...</span>
                 </div>
               </TableCell>

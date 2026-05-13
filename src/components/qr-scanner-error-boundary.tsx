@@ -44,8 +44,8 @@ export class QRScannerErrorBoundary extends React.Component<Props, State> {
           <Card className="max-w-md w-full">
             <CardContent className="pt-6">
               <div className="text-center space-y-4">
-                <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-red-100">
-                  <AlertTriangle className="h-8 w-8 text-red-600" />
+                <div className="mx-auto flex size-16 items-center justify-center rounded-full bg-red-100">
+                  <AlertTriangle className="size-8 text-red-600" />
                 </div>
                 <div>
                   <h3 className="text-lg font-semibold text-gray-900">
@@ -57,7 +57,7 @@ export class QRScannerErrorBoundary extends React.Component<Props, State> {
                 </div>
                 <div className="flex flex-col gap-2">
                   <Button onClick={this.handleReset} className="w-full">
-                    <RefreshCw className="h-4 w-4 mr-2" />
+                    <RefreshCw className="size-4 mr-2" />
                     Thử lại
                   </Button>
                   <Button

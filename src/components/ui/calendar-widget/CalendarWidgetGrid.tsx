@@ -60,7 +60,7 @@ function CalendarWidgetDayCell({
               {dayEvents.slice(0, maxIndicators).map((event, index) => (
                 <div
                   key={event.id}
-                  className={`${compact ? "w-1.5 h-1.5" : "w-2 h-2"} rounded-full animate-pulse ${getEventIndicatorClassName(event)}`}
+                  className={`${compact ? "size-1.5" : "size-2"} rounded-full animate-pulse ${getEventIndicatorClassName(event)}`}
                   style={{ animationDelay: `${index * 50}ms` }}
                   title={compact ? undefined : `${event.type}: ${event.title}`}
                 />

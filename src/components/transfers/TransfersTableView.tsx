@@ -67,7 +67,7 @@ export function TransfersTableView({
           {isLoading ? (
             <TableRow>
               <TableCell colSpan={columns.length} className="h-40 text-center">
-                <Loader2 className="mx-auto h-6 w-6 animate-spin text-muted-foreground" />
+                <Loader2 className="mx-auto size-6 animate-spin text-muted-foreground" />
                 <p className="mt-2 text-sm text-muted-foreground">Đang tải dữ liệu...</p>
               </TableCell>
             </TableRow>

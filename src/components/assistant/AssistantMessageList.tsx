@@ -114,8 +114,8 @@ function MessageBubble({
         >
             {/* AI avatar */}
             {!isUser && (
-                <div className="w-7 h-7 rounded-full bg-gradient-to-br from-primary/80 to-primary flex items-center justify-center shrink-0 mt-0.5">
-                    <Sparkles className="h-3.5 w-3.5 text-white" />
+                <div className="size-7 rounded-full bg-gradient-to-br from-primary/80 to-primary flex items-center justify-center shrink-0 mt-0.5">
+                    <Sparkles className="size-3.5 text-white" />
                 </div>
             )}
 

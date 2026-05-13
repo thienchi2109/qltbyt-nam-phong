@@ -93,7 +93,7 @@ export function TransfersKanbanColumn({
       {/* Header */}
       <div className={cn("p-3 border-b shrink-0 transition-colors", STATUS_HEADER_STYLES[status])}>
         <div className="flex items-center gap-2">
-          {React.createElement(STATUS_ICONS[status], { className: "h-4 w-4" })}
+          {React.createElement(STATUS_ICONS[status], { className: "size-4" })}
           <h3 className="font-medium text-sm">
             {TRANSFER_STATUS_LABELS[status]}
           </h3>
@@ -153,7 +153,7 @@ export function TransfersKanbanColumn({
         {/* Loading more indicator */}
         {isLoadingMore && (
           <div className="flex items-center justify-center gap-2 py-4 text-sm text-muted-foreground">
-            <Loader2 className="h-4 w-4 animate-spin" />
+            <Loader2 className="size-4 animate-spin" />
             <span>Đang tải thêm...</span>
           </div>
         )}

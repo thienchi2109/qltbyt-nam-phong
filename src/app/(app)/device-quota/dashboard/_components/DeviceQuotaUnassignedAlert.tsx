@@ -37,7 +37,7 @@ export function DeviceQuotaUnassignedAlert() {
 
   return (
     <Alert className="relative border-amber-200 bg-amber-50/80 text-amber-900">
-      <AlertTriangle className="h-4 w-4 text-amber-600" />
+      <AlertTriangle className="size-4 text-amber-600" />
       <AlertTitle>Thiết bị chưa phân loại</AlertTitle>
       <AlertDescription className="mt-2 flex items-center justify-between gap-4">
         <span className="text-sm">
@@ -56,11 +56,11 @@ export function DeviceQuotaUnassignedAlert() {
           <Button
             variant="ghost"
             size="icon"
-            className="h-8 w-8 text-amber-700 hover:bg-amber-100"
+            className="size-8 text-amber-700 hover:bg-amber-100"
             onClick={handleDismiss}
             aria-label="Dismiss alert"
           >
-            <X className="h-4 w-4" />
+            <X className="size-4" />
           </Button>
         </div>
       </AlertDescription>

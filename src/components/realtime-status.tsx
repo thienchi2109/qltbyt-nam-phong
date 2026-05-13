@@ -93,12 +93,12 @@ export function RealtimeStatus({
               size="sm"
               onClick={handleClick}
               className={cn(
-                "h-8 w-8 p-0",
+                "size-8 p-0",
                 connectionStatus === 'connecting' && "animate-spin",
                 className
               )}
             >
-              <Icon className="h-4 w-4" />
+              <Icon className="size-4" />
             </Button>
           </TooltipTrigger>
           <TooltipContent>
@@ -130,7 +130,7 @@ export function RealtimeStatus({
         )}
       >
         <Icon className={cn(
-          "h-4 w-4",
+          "size-4",
           connectionStatus === 'connecting' && "animate-spin"
         )} />
         {showLabel && config.label}
@@ -152,9 +152,9 @@ export function RealtimeStatus({
             )}
             onClick={handleClick}
           >
-            <div className={cn("h-2 w-2 rounded-full", config.color)} />
+            <div className={cn("size-2 rounded-full", config.color)} />
             <Icon className={cn(
-              "h-3 w-3",
+              "size-3",
               connectionStatus === 'connecting' && "animate-spin"
             )} />
             {showLabel && <span className="text-xs">{config.label}</span>}

@@ -182,7 +182,7 @@ export default function Dashboard() {
           <div className="flex items-center justify-between">
             <div className="space-y-2">
               <div className="flex items-center gap-2">
-                <Sparkles className="h-5 w-5 text-primary" />
+                <Sparkles className="size-5 text-primary" />
                 <h1 className="text-xl md:text-2xl font-bold text-slate-800">
                   {getGreeting()}, {user?.full_name || user?.username}!
                 </h1>
@@ -192,8 +192,8 @@ export default function Dashboard() {
               </p>
             </div>
             <div className="hidden md:block">
-              <div className="h-20 w-20 rounded-full bg-primary/5 flex items-center justify-center">
-                <Sparkles className="h-10 w-10 text-primary/40" />
+              <div className="size-20 rounded-full bg-primary/5 flex items-center justify-center">
+                <Sparkles className="size-10 text-primary/40" />
               </div>
             </div>
           </div>
@@ -221,9 +221,9 @@ export default function Dashboard() {
               {/* Báo sửa chữa (New) */}
               <Link href={buildRepairRequestCreateIntentHref()} className="group">
                 <div className="flex flex-col items-center gap-3">
-                  <div className="h-[72px] w-[72px] md:h-[88px] md:w-[88px] rounded-2xl bg-white shadow-[0_8px_30px_rgba(0,0,0,0.12)] flex items-center justify-center transition-transform group-active:scale-95">
-                    <div className="h-11 w-11 md:h-14 md:w-14 rounded-xl bg-red-50 flex items-center justify-center">
-                      <Wrench className="h-[26px] w-[26px] md:h-8 md:w-8 text-red-600" />
+                  <div className="size-[72px] md:size-[88px] rounded-2xl bg-white shadow-[0_8px_30px_rgba(0,0,0,0.12)] flex items-center justify-center transition-transform group-active:scale-95">
+                    <div className="size-11 md:size-14 rounded-xl bg-red-50 flex items-center justify-center">
+                      <Wrench className="size-[26px] md:size-8 text-red-600" />
                     </div>
                   </div>
                   <span className="text-xs md:text-sm font-medium text-slate-700 text-center">Báo sửa chữa</span>
@@ -233,9 +233,9 @@ export default function Dashboard() {
               {/* Add Equipment Card */}
               <Link href="/equipment?action=add" className="group">
                 <div className="flex flex-col items-center gap-3">
-                  <div className="h-[72px] w-[72px] md:h-[88px] md:w-[88px] rounded-2xl bg-white shadow-[0_8px_30px_rgba(0,0,0,0.12)] flex items-center justify-center transition-transform group-active:scale-95">
-                    <div className="h-11 w-11 md:h-14 md:w-14 rounded-xl bg-blue-50 flex items-center justify-center">
-                      <Plus className="h-[26px] w-[26px] md:h-8 md:w-8 text-blue-600" />
+                  <div className="size-[72px] md:size-[88px] rounded-2xl bg-white shadow-[0_8px_30px_rgba(0,0,0,0.12)] flex items-center justify-center transition-transform group-active:scale-95">
+                    <div className="size-11 md:size-14 rounded-xl bg-blue-50 flex items-center justify-center">
+                      <Plus className="size-[26px] md:size-8 text-blue-600" />
                     </div>
                   </div>
                   <span className="text-xs md:text-sm font-medium text-slate-700 text-center">Thêm thiết bị</span>
@@ -245,9 +245,9 @@ export default function Dashboard() {
               {/* Create Maintenance Plan Card */}
               <Link href="/maintenance?action=create" className="group">
                 <div className="flex flex-col items-center gap-3">
-                  <div className="h-[72px] w-[72px] md:h-[88px] md:w-[88px] rounded-2xl bg-white shadow-[0_8px_30px_rgba(0,0,0,0.12)] flex items-center justify-center transition-transform group-active:scale-95">
-                    <div className="h-11 w-11 md:h-14 md:w-14 rounded-xl bg-emerald-50 flex items-center justify-center">
-                      <ClipboardList className="h-[26px] w-[26px] md:h-8 md:w-8 text-emerald-600" />
+                  <div className="size-[72px] md:size-[88px] rounded-2xl bg-white shadow-[0_8px_30px_rgba(0,0,0,0.12)] flex items-center justify-center transition-transform group-active:scale-95">
+                    <div className="size-11 md:size-14 rounded-xl bg-emerald-50 flex items-center justify-center">
+                      <ClipboardList className="size-[26px] md:size-8 text-emerald-600" />
                     </div>
                   </div>
                   <span className="text-xs md:text-sm font-medium text-slate-700 text-center">Lập kế hoạch</span>
@@ -259,9 +259,9 @@ export default function Dashboard() {
           {/* QR Scanner Card: Always available - opens scanner directly */}
           <button data-tour="qr-scanner" onClick={handleStartScanning} className="group">
             <div className="flex flex-col items-center gap-3">
-              <div className="h-[72px] w-[72px] md:h-[88px] md:w-[88px] rounded-2xl bg-white shadow-[0_8px_30px_rgba(0,0,0,0.12)] flex items-center justify-center transition-transform group-active:scale-95">
-                <div className="h-11 w-11 md:h-14 md:w-14 rounded-xl bg-sky-50 flex items-center justify-center">
-                  <QrCode className="h-[26px] w-[26px] md:h-8 md:w-8 text-sky-600" />
+              <div className="size-[72px] md:size-[88px] rounded-2xl bg-white shadow-[0_8px_30px_rgba(0,0,0,0.12)] flex items-center justify-center transition-transform group-active:scale-95">
+                <div className="size-11 md:size-14 rounded-xl bg-sky-50 flex items-center justify-center">
+                  <QrCode className="size-[26px] md:size-8 text-sky-600" />
                 </div>
               </div>
               <span className="text-xs md:text-sm font-medium text-slate-700 text-center">Quét mã QR</span>

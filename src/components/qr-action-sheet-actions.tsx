@@ -25,8 +25,8 @@ export function QRActionSheetActions({ onAction }: QRActionSheetActionsProps) {
               onClick={() => onAction(item.action)}
             >
               <div className="flex items-center gap-3">
-                <div className={`flex h-10 w-10 items-center justify-center rounded-full ${item.iconContainerClassName}`}>
-                  <Icon className={`h-5 w-5 ${item.iconClassName}`} />
+                <div className={`flex size-10 items-center justify-center rounded-full ${item.iconContainerClassName}`}>
+                  <Icon className={`size-5 ${item.iconClassName}`} />
                 </div>
                 <div className="text-left">
                   <div className="font-semibold">{item.title}</div>

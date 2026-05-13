@@ -74,7 +74,7 @@ function RepairDraftCard({
         >
             {/* Header */}
             <div className="flex items-center gap-2">
-                <FileText className="h-4 w-4 text-orange-600" />
+                <FileText className="size-4 text-orange-600" />
                 <span className="text-xs font-semibold text-orange-800">
                     📝 Bản nháp yêu cầu sửa chữa
                 </span>
@@ -110,7 +110,7 @@ function RepairDraftCard({
             {/* Review notes */}
             {draft.reviewNotes && draft.reviewNotes.length > 0 && (
                 <div className="flex items-start gap-1.5 text-[11px] text-orange-700 bg-orange-100 rounded px-2 py-1.5">
-                    <AlertTriangle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+                    <AlertTriangle className="size-3.5 mt-0.5 shrink-0" />
                     <div>
                         {keyedReviewNotes.map(({ item: note, key }) => (
                             <p key={key}>{note}</p>
@@ -162,7 +162,7 @@ function TroubleshootingDraftCard({ draft }: { draft: TroubleshootingDraft }) {
         >
             {/* Header */}
             <div className="flex items-center gap-2">
-                <Stethoscope className="h-4 w-4 text-blue-600" />
+                <Stethoscope className="size-4 text-blue-600" />
                 <span className="text-xs font-semibold text-blue-800">
                     Khuyến nghị chẩn đoán
                 </span>

@@ -80,17 +80,17 @@ export function AssistantToolExecutionCard({
                 {isExecuting && (
                     <Loader2
                         data-testid="tool-executing-spinner"
-                        className="h-4 w-4 animate-spin text-[hsl(var(--assistant-tool-icon))]"
+                        className="size-4 animate-spin text-[hsl(var(--assistant-tool-icon))]"
                     />
                 )}
                 {isCompleted && (
                     <CheckCircle2
                         data-testid="tool-completed-check"
-                        className="h-4 w-4 text-[hsl(var(--assistant-status-online))]"
+                        className="size-4 text-[hsl(var(--assistant-status-online))]"
                     />
                 )}
                 {isError && (
-                    <AlertCircle className="h-4 w-4 text-destructive" />
+                    <AlertCircle className="size-4 text-destructive" />
                 )}
 
                 <span className="text-xs font-medium flex-1">
@@ -108,7 +108,7 @@ export function AssistantToolExecutionCard({
                     >
                         <ChevronDown
                             className={cn(
-                                "h-3.5 w-3.5 text-muted-foreground transition-transform duration-200",
+                                "size-3.5 text-muted-foreground transition-transform duration-200",
                                 isExpanded && "rotate-180",
                             )}
                         />

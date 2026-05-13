@@ -49,7 +49,7 @@ function CategoryCard({ category }: { category: Category }) {
             className="flex flex-col items-center justify-center gap-2 rounded-lg border bg-muted/50 p-4 text-center min-w-[160px] max-w-[200px]"
             data-testid="category-card"
         >
-            <Folder className="h-8 w-8 text-primary/70" />
+            <Folder className="size-8 text-primary/70" />
             <span className="text-xs text-muted-foreground">Gán vào danh mục:</span>
             <span className="text-sm font-bold">{category.ma_nhom}</span>
             <span className="text-sm">{category.ten_nhom}</span>
@@ -234,7 +234,7 @@ export function DeviceQuotaMappingPreviewDialog({
             <DialogContent className="max-w-2xl">
                 <DialogHeader>
                     <DialogTitle className="flex items-center gap-2">
-                        <CheckCircle2 className="h-5 w-5 text-primary" />
+                        <CheckCircle2 className="size-5 text-primary" />
                         Xác nhận phân loại thiết bị
                     </DialogTitle>
                     <DialogDescription>
@@ -308,7 +308,7 @@ export function DeviceQuotaMappingPreviewDialog({
                         onClick={handleConfirm}
                         disabled={activeCount === 0 || isLinking}
                     >
-                        <CheckCircle2 className="h-4 w-4 mr-1" />
+                        <CheckCircle2 className="size-4 mr-1" />
                         {isLinking ? "Đang xử lý..." : "Xác nhận phân loại"}
                     </Button>
                 </DialogFooter>

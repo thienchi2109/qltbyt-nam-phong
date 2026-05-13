@@ -28,7 +28,7 @@ export function MaintenanceReportPlanChart({
           <Skeleton className="h-[360px] w-full" />
         ) : maintenancePlanData.length === 0 ? (
           <div className="text-sm text-muted-foreground h-[360px] flex flex-col items-center justify-center gap-2">
-            <Inbox className="h-8 w-8 text-muted-foreground/60" />
+            <Inbox className="size-8 text-muted-foreground/60" />
             <span>Không có dữ liệu kế hoạch bảo trì.</span>
           </div>
         ) : (

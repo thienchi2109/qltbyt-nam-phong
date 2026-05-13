@@ -107,7 +107,7 @@ export function UsageAnalyticsDashboard({
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Tổng phiên sử dụng</CardTitle>
-            <Activity className="h-4 w-4 text-muted-foreground" />
+            <Activity className="size-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             {overviewLoading ? (
@@ -124,7 +124,7 @@ export function UsageAnalyticsDashboard({
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Tổng thời gian sử dụng</CardTitle>
-            <Clock className="h-4 w-4 text-muted-foreground" />
+            <Clock className="size-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             {overviewLoading ? (
@@ -143,7 +143,7 @@ export function UsageAnalyticsDashboard({
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Thiết bị được dùng nhiều nhất</CardTitle>
-            <TrendingUp className="h-4 w-4 text-muted-foreground" />
+            <TrendingUp className="size-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             {overviewLoading ? (
@@ -166,7 +166,7 @@ export function UsageAnalyticsDashboard({
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Người dùng tích cực nhất</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
+            <Users className="size-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             {overviewLoading ? (
@@ -213,7 +213,7 @@ export function UsageAnalyticsDashboard({
                 )}
                 className="gap-2"
               >
-                <Download className="h-4 w-4" />
+                <Download className="size-4" />
                 Xuất CSV
               </Button>
             </CardHeader>
@@ -226,7 +226,7 @@ export function UsageAnalyticsDashboard({
                 </div>
               ) : !equipmentStats || equipmentStats.length === 0 ? (
                 <div className="text-center py-8 text-muted-foreground">
-                  <BarChart3 className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                  <BarChart3 className="size-12 mx-auto mb-2 opacity-50" />
                   <p>Chưa có dữ liệu thống kê thiết bị</p>
                 </div>
               ) : isMobile ? (
@@ -242,7 +242,7 @@ export function UsageAnalyticsDashboard({
                             </div>
                             {equipment.currentlyInUse && (
                               <Badge variant="default" className="gap-1">
-                                <div className="w-2 h-2 bg-white rounded-full animate-pulse" />
+                                <div className="size-2 bg-white rounded-full animate-pulse" />
                                 Đang dùng
                               </Badge>
                             )}
@@ -298,7 +298,7 @@ export function UsageAnalyticsDashboard({
                           <TableCell>
                             {equipment.currentlyInUse ? (
                               <Badge variant="default" className="gap-1">
-                                <div className="w-2 h-2 bg-white rounded-full animate-pulse" />
+                                <div className="size-2 bg-white rounded-full animate-pulse" />
                                 Đang dùng
                               </Badge>
                             ) : (
@@ -334,7 +334,7 @@ export function UsageAnalyticsDashboard({
                 )}
                 className="gap-2"
               >
-                <Download className="h-4 w-4" />
+                <Download className="size-4" />
                 Xuất CSV
               </Button>
             </CardHeader>
@@ -347,7 +347,7 @@ export function UsageAnalyticsDashboard({
                 </div>
               ) : !userStats || userStats.length === 0 ? (
                 <div className="text-center py-8 text-muted-foreground">
-                  <Users className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                  <Users className="size-12 mx-auto mb-2 opacity-50" />
                   <p>Chưa có dữ liệu thống kê người dùng</p>
                 </div>
               ) : isMobile ? (

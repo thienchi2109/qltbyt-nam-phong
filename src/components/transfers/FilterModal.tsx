@@ -85,7 +85,7 @@ export function FilterModal({
                   !value.dateRange?.from && "text-muted-foreground"
                 )}
               >
-                <CalendarIcon className="mr-2 h-4 w-4" />
+                <CalendarIcon className="mr-2 size-4" />
                 {value.dateRange?.from
                   ? value.dateRange.from.toLocaleDateString("vi-VN")
                   : "Từ ngày"}
@@ -117,7 +117,7 @@ export function FilterModal({
                   !value.dateRange?.to && "text-muted-foreground"
                 )}
               >
-                <CalendarIcon className="mr-2 h-4 w-4" />
+                <CalendarIcon className="mr-2 size-4" />
                 {value.dateRange?.to
                   ? value.dateRange.to.toLocaleDateString("vi-VN")
                   : "Đến ngày"}

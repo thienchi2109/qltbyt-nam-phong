@@ -89,7 +89,7 @@ export function TenantSelectorSheet({
         {/* Search input */}
         <div className="mt-4">
           <div className="relative">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               value={searchTerm}
               onChange={(event) => setSearchTerm(event.target.value)}
@@ -103,7 +103,7 @@ export function TenantSelectorSheet({
                 onClick={() => setSearchTerm("")}
                 className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground transition hover:text-foreground"
               >
-                <X className="h-4 w-4" />
+                <X className="size-4" />
               </button>
             ) : null}
           </div>
@@ -124,10 +124,10 @@ export function TenantSelectorSheet({
               )}
             >
               <div className="flex items-center gap-2">
-                <Building2 className="h-4 w-4" />
+                <Building2 className="size-4" />
                 <span className="font-medium">Tất cả cơ sở</span>
                 {selectedFacilityId === null ? (
-                  <Check className="h-4 w-4 text-primary" />
+                  <Check className="size-4 text-primary" />
                 ) : null}
               </div>
               <span className="text-xs text-muted-foreground">
@@ -161,7 +161,7 @@ export function TenantSelectorSheet({
                   <span className="flex items-center gap-2 truncate">
                     <span className="truncate">{facility.name}</span>
                     {isSelected ? (
-                      <Check className="h-4 w-4 text-primary" />
+                      <Check className="size-4 text-primary" />
                     ) : null}
                   </span>
                   <span className="text-xs text-muted-foreground">

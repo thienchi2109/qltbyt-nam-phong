@@ -149,7 +149,7 @@ export function AssistantPanel({ isOpen, onClose }: AssistantPanelProps) {
                         <div className="flex items-center gap-2">
                             <div
                                 data-testid="assistant-status-dot"
-                                className="w-1.5 h-1.5 rounded-full bg-[hsl(var(--assistant-status-online))] animate-pulse"
+                                className="size-1.5 rounded-full bg-[hsl(var(--assistant-status-online))] animate-pulse"
                             />
                             <div>
                                 <DialogTitle className="text-sm font-semibold text-foreground leading-snug">
@@ -166,19 +166,19 @@ export function AssistantPanel({ isOpen, onClose }: AssistantPanelProps) {
                                 variant="ghost"
                                 size="icon"
                                 onClick={handleReset}
-                                className="h-8 w-8"
+                                className="size-8"
                                 aria-label="Đặt lại cuộc trò chuyện"
                             >
-                                <RotateCcw className="h-4 w-4" />
+                                <RotateCcw className="size-4" />
                             </Button>
                             <Button
                                 variant="ghost"
                                 size="icon"
                                 onClick={onClose}
-                                className="h-8 w-8"
+                                className="size-8"
                                 aria-label="Đóng"
                             >
-                                <X className="h-4 w-4" />
+                                <X className="size-4" />
                             </Button>
                         </div>
                     </div>
@@ -204,7 +204,7 @@ export function AssistantPanel({ isOpen, onClose }: AssistantPanelProps) {
                         data-testid="assistant-error-banner"
                         className="mx-3 mb-2 px-3 py-2.5 rounded-lg bg-destructive/10 border border-destructive/20 flex items-start gap-2 shrink-0"
                     >
-                        <AlertTriangle className="h-4 w-4 text-destructive shrink-0 mt-0.5" />
+                        <AlertTriangle className="size-4 text-destructive shrink-0 mt-0.5" />
                         <div className="flex-1 min-w-0">
                             <p className="text-sm text-destructive leading-snug">
                                 {parseErrorMessage(error.message)}
@@ -217,7 +217,7 @@ export function AssistantPanel({ isOpen, onClose }: AssistantPanelProps) {
                             className="shrink-0 h-7 px-2 text-xs text-destructive hover:text-destructive"
                             aria-label="Thử lại"
                         >
-                            <RefreshCw className="h-3 w-3 mr-1" />
+                            <RefreshCw className="size-3 mr-1" />
                             Thử lại
                         </Button>
                     </div>

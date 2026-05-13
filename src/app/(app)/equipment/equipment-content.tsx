@@ -113,7 +113,7 @@ export function EquipmentContent({
       <div className="relative space-y-3">
         {isFetching && (
           <div className="absolute inset-0 bg-background/40 backdrop-blur-[1px] flex items-center justify-center z-10">
-            <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+            <Loader2 className="size-5 animate-spin text-muted-foreground" />
           </div>
         )}
         {table.getRowModel().rows.map((row) => (
@@ -132,7 +132,7 @@ export function EquipmentContent({
     <div className="relative overflow-x-auto rounded-md border">
       {isFetching && (
         <div className="absolute inset-0 bg-background/40 backdrop-blur-[1px] flex items-center justify-center z-10">
-          <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+          <Loader2 className="size-5 animate-spin text-muted-foreground" />
         </div>
       )}
       <TooltipProvider>

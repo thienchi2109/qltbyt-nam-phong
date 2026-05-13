@@ -37,7 +37,7 @@ export function ActivityLogEntry({ log }: ActivityLogEntryProps) {
 
   return (
     <div className="flex items-start space-x-4 p-4 border rounded-lg hover:bg-gray-50 transition-colors">
-      <Avatar className="h-10 w-10">
+      <Avatar className="size-10">
         <AvatarFallback>{getInitials(log)}</AvatarFallback>
       </Avatar>
 
@@ -75,12 +75,12 @@ export function ActivityLogEntry({ log }: ActivityLogEntryProps) {
 
             <div className="flex items-center space-x-4 text-xs text-gray-500">
               <div className="flex items-center space-x-1">
-                <Clock className="h-3 w-3" />
+                <Clock className="size-3" />
                 <span>{formatVietnamDateTime(log.created_at)}</span>
               </div>
               {log.ip_address && (
                 <div className="flex items-center space-x-1">
-                  <MapPin className="h-3 w-3" />
+                  <MapPin className="size-3" />
                   <span>{log.ip_address}</span>
                 </div>
               )}

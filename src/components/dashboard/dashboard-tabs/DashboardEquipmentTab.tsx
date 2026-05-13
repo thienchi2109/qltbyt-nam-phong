@@ -60,7 +60,7 @@ export function DashboardEquipmentTab({
         <Button asChild size="sm" variant="ghost" className="shrink-0 gap-1 self-start text-blue-600 hover:text-blue-700">
           <Link href={equipmentAttentionHref}>
             Xem tất cả
-            <ArrowUpRight className="h-4 w-4" />
+            <ArrowUpRight className="size-4" />
           </Link>
         </Button>
       </div>
@@ -127,8 +127,8 @@ export function DashboardEquipmentTab({
             ))
           ) : (
             <div className="text-center py-12 text-muted-foreground">
-              <div className="p-4 bg-gray-100/50 rounded-full w-16 h-16 mx-auto mb-4 flex items-center justify-center">
-                <Wrench className="h-8 w-8 text-gray-400" />
+              <div className="p-4 bg-gray-100/50 rounded-full size-16 mx-auto mb-4 flex items-center justify-center">
+                <Wrench className="size-8 text-gray-400" />
               </div>
               <p>Không có thiết bị nào cần chú ý</p>
             </div>

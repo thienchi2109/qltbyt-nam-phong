@@ -81,7 +81,7 @@ function TableLoadingSkeleton() {
           <TableCell><Skeleton className="h-4 w-24" /></TableCell>
           <TableCell><Skeleton className="h-4 w-24" /></TableCell>
           <TableCell><Skeleton className="h-6 w-28" /></TableCell>
-          <TableCell><Skeleton className="h-8 w-8 rounded" /></TableCell>
+          <TableCell><Skeleton className="size-8 rounded" /></TableCell>
         </TableRow>
       ))}
     </>
@@ -135,21 +135,21 @@ function MobileDecisionCard({ decision, onView, onEdit, onActivate, onDelete }: 
 
       <div className="flex gap-2 flex-wrap pt-2">
         <Button variant="outline" size="sm" onClick={onView} className="flex-1">
-          <Eye className="mr-2 h-4 w-4" />
+          <Eye className="mr-2 size-4" />
           Xem
         </Button>
         {decision.trang_thai === "draft" && (
           <>
             <Button variant="outline" size="sm" onClick={onEdit} className="flex-1">
-              <Edit className="mr-2 h-4 w-4" />
+              <Edit className="mr-2 size-4" />
               Sửa
             </Button>
             <Button variant="outline" size="sm" onClick={onActivate}>
-              <CheckCircle className="mr-2 h-4 w-4" />
+              <CheckCircle className="mr-2 size-4" />
               Kích hoạt
             </Button>
             <Button variant="outline" size="sm" onClick={onDelete} className="text-destructive">
-              <Trash2 className="mr-2 h-4 w-4" />
+              <Trash2 className="mr-2 size-4" />
               Xóa
             </Button>
           </>
@@ -177,14 +177,14 @@ function ActionsDropdown({ decision, onView, onEdit, onActivate, onDelete }: Act
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="icon" className="h-8 w-8">
-          <MoreHorizontal className="h-4 w-4" />
+        <Button variant="ghost" size="icon" className="size-8">
+          <MoreHorizontal className="size-4" />
           <span className="sr-only">Mở menu hành động</span>
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
         <DropdownMenuItem onClick={onView}>
-          <Eye className="mr-2 h-4 w-4" />
+          <Eye className="mr-2 size-4" />
           Xem chi tiết
         </DropdownMenuItem>
 
@@ -192,17 +192,17 @@ function ActionsDropdown({ decision, onView, onEdit, onActivate, onDelete }: Act
           <>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={onEdit}>
-              <Edit className="mr-2 h-4 w-4" />
+              <Edit className="mr-2 size-4" />
               Chỉnh sửa
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={onActivate}>
-              <CheckCircle className="mr-2 h-4 w-4" />
+              <CheckCircle className="mr-2 size-4" />
               Kích hoạt
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={onDelete} className="text-destructive focus:text-destructive">
-              <Trash2 className="mr-2 h-4 w-4" />
+              <Trash2 className="mr-2 size-4" />
               Xóa
             </DropdownMenuItem>
           </>
@@ -347,7 +347,7 @@ export function DeviceQuotaDecisionsTable() {
               disabled={activateMutation.isPending}
             >
               {activateMutation.isPending && (
-                <Loader2 className="h-4 w-4 animate-spin" />
+                <Loader2 className="size-4 animate-spin" />
               )}
               Kích hoạt
             </AlertDialogAction>
@@ -375,7 +375,7 @@ export function DeviceQuotaDecisionsTable() {
               className="bg-destructive hover:bg-destructive/90"
             >
               {deleteMutation.isPending && (
-                <Loader2 className="h-4 w-4 animate-spin" />
+                <Loader2 className="size-4 animate-spin" />
               )}
               Xóa
             </AlertDialogAction>

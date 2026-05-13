@@ -67,12 +67,12 @@ export function EquipmentDetailHistoryTab({
         {history.map((item) => (
           <div key={item.id} className="relative mb-8 last:mb-0">
             {/* Timeline dot */}
-            <div className="absolute left-0 top-1 w-3 h-3 rounded-full bg-primary ring-4 ring-background -translate-x-1/2 ml-3"></div>
+            <div className="absolute left-0 top-1 size-3 rounded-full bg-primary ring-4 ring-background -translate-x-1/2 ml-3"></div>
 
             <div className="pl-2">
               {/* Event header with icon */}
               <div className="flex items-center gap-4">
-                <div className="flex items-center justify-center h-8 w-8 rounded-full bg-muted">
+                <div className="flex items-center justify-center size-8 rounded-full bg-muted">
                   {getHistoryIcon(item.loai_su_kien)}
                 </div>
                 <div>

@@ -209,7 +209,7 @@ export function SuggestedMappingPreviewDialog({
             <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col">
                 <DialogHeader>
                     <DialogTitle className="flex items-center gap-2">
-                        <Sparkles className="h-5 w-5 text-primary" />
+                        <Sparkles className="size-5 text-primary" />
                         Gợi ý phân loại thiết bị
                     </DialogTitle>
                     <DialogDescription>
@@ -237,7 +237,7 @@ export function SuggestedMappingPreviewDialog({
                 {/* Error state */}
                 {status === "error" && (
                     <div className="flex items-center gap-2 rounded-md border border-destructive/50 bg-destructive/10 p-3 text-sm text-destructive">
-                        <AlertTriangle className="h-4 w-4 shrink-0" />
+                        <AlertTriangle className="size-4 shrink-0" />
                         <span>{error}</span>
                     </div>
                 )}
@@ -245,7 +245,7 @@ export function SuggestedMappingPreviewDialog({
                 {/* Save error state */}
                 {saveStatus === "save-error" && (
                     <div className="flex items-center gap-2 rounded-md border border-destructive/50 bg-destructive/10 p-3 text-sm text-destructive">
-                        <AlertTriangle className="h-4 w-4 shrink-0" />
+                        <AlertTriangle className="size-4 shrink-0" />
                         <span>{saveError ?? "Không thể lưu phân loại. Vui lòng thử lại."}</span>
                     </div>
                 )}
@@ -302,12 +302,12 @@ export function SuggestedMappingPreviewDialog({
                         >
                             {saveStatus === "saving" ? (
                                 <>
-                                    <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                                    <Loader2 className="size-4 mr-1 animate-spin" />
                                     Đang lưu...
                                 </>
                             ) : (
                                 <>
-                                    <CheckCircle2 className="h-4 w-4 mr-1" />
+                                    <CheckCircle2 className="size-4 mr-1" />
                                     Áp dụng {activeGroupCount} gợi ý phân loại
                                 </>
                             )}

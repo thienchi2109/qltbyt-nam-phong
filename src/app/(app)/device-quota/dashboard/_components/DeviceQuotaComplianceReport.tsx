@@ -115,7 +115,7 @@ export function DeviceQuotaComplianceReport({
       <Card className="border-destructive">
         <CardContent className="pt-6">
           <div className="flex items-center gap-2 text-destructive">
-            <AlertCircle className="h-5 w-5" />
+            <AlertCircle className="size-5" />
             <p className="text-sm">
               Không thể tải báo cáo: {getUnknownErrorMessage(error, "Lỗi không xác định")}
             </p>
@@ -149,12 +149,12 @@ export function DeviceQuotaComplianceReport({
         <Button onClick={handlePrint} disabled={isPrinting}>
           {isPrinting ? (
             <>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              <Loader2 className="mr-2 size-4 animate-spin" />
               Đang in...
             </>
           ) : (
             <>
-              <Printer className="mr-2 h-4 w-4" />
+              <Printer className="mr-2 size-4" />
               In báo cáo
             </>
           )}

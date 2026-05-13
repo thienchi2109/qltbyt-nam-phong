@@ -206,7 +206,7 @@ export function RecentActivitiesCard({ className }: RecentActivitiesCardProps) {
       <CardHeader className="pb-4 md:p-8 md:pb-6">
         <div className="flex items-center gap-4">
           <div className="p-3 bg-gradient-to-br from-amber-500 to-orange-600 rounded-xl shadow-lg">
-            <Activity className="h-6 w-6 text-white" />
+            <Activity className="size-6 text-white" />
           </div>
           <div>
             <CardTitle className="text-2xl font-bold text-gray-900">

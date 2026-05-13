@@ -36,7 +36,7 @@ function ComplianceStatus({ soLuongHienCo, soLuongDinhMuc, soLuongToiThieu }: Co
   if (isOverQuota) {
     return (
       <Badge variant="destructive" className="bg-orange-600 hover:bg-orange-700">
-        <AlertCircle className="h-3 w-3 mr-1" />
+        <AlertCircle className="size-3 mr-1" />
         Vượt định mức
       </Badge>
     )
@@ -45,7 +45,7 @@ function ComplianceStatus({ soLuongHienCo, soLuongDinhMuc, soLuongToiThieu }: Co
   if (isUnderMinimum) {
     return (
       <Badge variant="destructive">
-        <XCircle className="h-3 w-3 mr-1" />
+        <XCircle className="size-3 mr-1" />
         Chưa đạt
       </Badge>
     )
@@ -54,7 +54,7 @@ function ComplianceStatus({ soLuongHienCo, soLuongDinhMuc, soLuongToiThieu }: Co
   // Within range: meets minimum (or no minimum) AND doesn't exceed maximum
   return (
     <Badge variant="default" className="bg-green-600 hover:bg-green-700">
-      <CheckCircle className="h-3 w-3 mr-1" />
+      <CheckCircle className="size-3 mr-1" />
       Đạt định mức
     </Badge>
   )

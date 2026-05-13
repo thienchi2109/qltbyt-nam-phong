@@ -175,7 +175,7 @@ export function FacetedMultiSelectFilter<TData, TValue>({
                 {/* Header */}
                 <div className="px-3 py-2.5 border-b border-slate-100 bg-slate-50/50">
                     <div className="flex items-center gap-2">
-                        <Filter className="h-4 w-4 text-primary" />
+                        <Filter className="size-4 text-primary" />
                         <span className="font-semibold text-sm text-slate-900">{title}</span>
                     </div>
                 </div>
@@ -184,7 +184,7 @@ export function FacetedMultiSelectFilter<TData, TValue>({
                     <div className="border-b border-slate-100 p-2">
                         <div className="relative">
                             <Search
-                                className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
+                                className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
                                 aria-hidden="true"
                             />
                             <Input
@@ -224,12 +224,12 @@ export function FacetedMultiSelectFilter<TData, TValue>({
                                 )}
                             >
                                 <div className={cn(
-                                    "flex items-center justify-center h-5 w-5 rounded border-2 transition-all shrink-0",
+                                    "flex items-center justify-center size-5 rounded border-2 transition-all shrink-0",
                                     isSelected
                                         ? "bg-primary border-primary"
                                         : "border-slate-300 hover:border-primary/50"
                                 )}>
-                                    {isSelected && <Check className="h-3.5 w-3.5 text-white" strokeWidth={3} />}
+                                    {isSelected && <Check className="size-3.5 text-white" strokeWidth={3} />}
                                 </div>
                                 <span className={cn(
                                     "truncate text-left flex-1",

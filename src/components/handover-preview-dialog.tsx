@@ -23,6 +23,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip"
 import { useToast } from "@/hooks/use-toast"
+import { getUnknownErrorMessage } from "@/lib/error-utils"
 import { type TransferRequest } from "@/types/database"
 
 interface HandoverPreviewDialogProps {
@@ -60,8 +61,8 @@ export function HandoverPreviewDialog({ open, onOpenChange, transfer }: Handover
   React.useEffect(() => {
     if (open && transfer?.thiet_bi) {
       // Auto-fill data from transfer request
-      const formatValue = (value: any) => value ?? ""
-      
+      const formatValue = (value: string | number | null | undefined) => String(value ?? "")
+
       const data: HandoverData = {
         department: formatValue(transfer.khoa_phong_hien_tai || "Tổ QLTB"),
         handoverDate: new Date().toLocaleDateString('vi-VN'),
@@ -84,9 +85,9 @@ export function HandoverPreviewDialog({ open, onOpenChange, transfer }: Handover
           note: "" // Default empty for manual entry
         }
       }
-      
+
       setHandoverData(data)
-      
+
       // Show tips for new users
       if (isEditing) {
         toast({
@@ -102,7 +103,7 @@ export function HandoverPreviewDialog({ open, onOpenChange, transfer }: Handover
   React.useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (!open) return
-      
+
       // Ctrl+P for print
       if (event.ctrlKey && event.key === 'p') {
         event.preventDefault()
@@ -126,7 +127,7 @@ export function HandoverPreviewDialog({ open, onOpenChange, transfer }: Handover
 
   const handleInputChange = (field: string, value: string) => {
     if (!handoverData) return
-    
+
     if (field.startsWith('device.')) {
       const deviceField = field.replace('device.', '')
       setHandoverData({
@@ -146,13 +147,13 @@ export function HandoverPreviewDialog({ open, onOpenChange, transfer }: Handover
 
   const validateHandoverData = (data: HandoverData): { isValid: boolean; missingFields: string[] } => {
     const missingFields: string[] = []
-    
+
     if (!data.department?.trim()) missingFields.push('Khoa/Phòng lập')
     if (!data.reason?.trim()) missingFields.push('Lý do bàn giao')
     if (!data.giverName?.trim()) missingFields.push('Đại diện bên giao')
     if (!data.receiverName?.trim()) missingFields.push('Đại diện bên nhận')
     // Note: directorName is optional, not required for validation
-    
+
     return {
       isValid: missingFields.length === 0,
       missingFields
@@ -161,7 +162,7 @@ export function HandoverPreviewDialog({ open, onOpenChange, transfer }: Handover
 
   const handlePrint = async () => {
     if (!handoverData) return
-    
+
     // Validate required fields
     const validation = validateHandoverData(handoverData)
     if (!validation.isValid) {
@@ -173,29 +174,29 @@ export function HandoverPreviewDialog({ open, onOpenChange, transfer }: Handover
       setIsEditing(true) // Switch to edit mode to fill missing info
       return
     }
-    
+
     setIsPrinting(true)
     try {
       const htmlContent = generateHandoverHTML(handoverData)
       const newWindow = window.open("", "_blank")
-      
+
       if (newWindow) {
         newWindow.document.open()
         newWindow.document.write(htmlContent)
         newWindow.document.close()
-        
+
         // Auto print after loading
         newWindow.onload = () => {
           setTimeout(() => {
             newWindow.print()
-            
+
             // Close dialog after printing
             setTimeout(() => {
               onOpenChange(false)
             }, 1000)
           }, 500)
         }
-        
+
         toast({
           title: "✅ Thành công",
           description: "Đã mở cửa sổ in phiếu bàn giao. Dialog sẽ tự động đóng sau khi in.",
@@ -207,11 +208,11 @@ export function HandoverPreviewDialog({ open, onOpenChange, transfer }: Handover
           description: "Vui lòng cho phép popup để sử dụng tính năng in. Kiểm tra thanh địa chỉ trình duyệt.",
         })
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         variant: "destructive",
         title: "❌ Lỗi in phiếu",
-        description: error.message || "Có lỗi không xác định xảy ra khi in phiếu."
+        description: getUnknownErrorMessage(error, "Có lỗi không xác định xảy ra khi in phiếu.")
       })
     } finally {
       setIsPrinting(false)
@@ -220,17 +221,17 @@ export function HandoverPreviewDialog({ open, onOpenChange, transfer }: Handover
 
   const handlePreview = async () => {
     if (!handoverData) return
-    
+
     setIsPreviewing(true)
     try {
       const htmlContent = generateHandoverHTML(handoverData)
       const newWindow = window.open("", "_blank")
-      
+
       if (newWindow) {
         newWindow.document.open()
         newWindow.document.write(htmlContent)
         newWindow.document.close()
-        
+
         toast({
           title: "👁️ Xem trước",
           description: "Đã mở cửa sổ xem trước phiếu bàn giao.",
@@ -238,15 +239,15 @@ export function HandoverPreviewDialog({ open, onOpenChange, transfer }: Handover
       } else {
         toast({
           variant: "destructive",
-          title: "🚫 Bị chặn popup", 
+          title: "🚫 Bị chặn popup",
           description: "Vui lòng cho phép popup để xem trước. Kiểm tra cài đặt trình duyệt.",
         })
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         variant: "destructive",
         title: "❌ Lỗi xem trước",
-        description: error.message || "Có lỗi không xác định xảy ra khi xem trước phiếu."
+        description: getUnknownErrorMessage(error, "Có lỗi không xác định xảy ra khi xem trước phiếu.")
       })
     } finally {
       setIsPreviewing(false)
@@ -271,7 +272,7 @@ export function HandoverPreviewDialog({ open, onOpenChange, transfer }: Handover
             margin: 0;
             padding: 0;
         }
-        
+
         .a4-landscape-page {
             width: 29.7cm;
             min-height: 21cm;
@@ -283,11 +284,11 @@ export function HandoverPreviewDialog({ open, onOpenChange, transfer }: Handover
             display: flex;
             flex-direction: column;
         }
-        
+
         .content-body {
             flex-grow: 1;
         }
-        
+
         .form-input-line {
             font-family: inherit;
             font-size: inherit;
@@ -299,12 +300,12 @@ export function HandoverPreviewDialog({ open, onOpenChange, transfer }: Handover
             width: 100%;
             min-height: 1.1em;
         }
-        
+
         .form-input-readonly {
             border-bottom: 1px solid #000;
             font-weight: 500;
         }
-        
+
         .editable-cell {
             border-bottom: 1px solid #ccc !important;
             background-color: #f9f9f9;
@@ -312,19 +313,19 @@ export function HandoverPreviewDialog({ open, onOpenChange, transfer }: Handover
             min-height: 18px;
             padding: 3px 4px !important;
         }
-        
+
         .editable-cell:focus {
             background-color: #fff;
             border-bottom: 1px solid #007bff !important;
             outline: none;
         }
-        
+
         .editable-cell:empty:before {
             content: attr(data-placeholder);
             color: #999;
             font-style: italic;
         }
-        
+
         .font-bold { font-weight: 700; }
         .title-main { font-size: 20px; }
         .title-sub { font-size: 16px; }
@@ -332,7 +333,7 @@ export function HandoverPreviewDialog({ open, onOpenChange, transfer }: Handover
         .uppercase { text-transform: uppercase; }
         .italic { font-style: italic; }
         .whitespace-nowrap { white-space: nowrap; }
-        
+
         .flex { display: flex; }
         .items-center { align-items: center; }
         .items-baseline { align-items: baseline; }
@@ -340,17 +341,17 @@ export function HandoverPreviewDialog({ open, onOpenChange, transfer }: Handover
         .justify-between { justify-content: space-between; }
         .justify-around { justify-content: space-around; }
         .flex-grow { flex-grow: 1; }
-        
+
         .mt-3 { margin-top: 0.4rem; }
         .mt-4 { margin-top: 0.5rem; }
         .mt-8 { margin-top: 1rem; }
         .ml-2 { margin-left: 0.5rem; }
         .mb-1 { margin-bottom: 0.25rem; }
         .space-y-2 > * + * { margin-top: 0.3rem; }
-        
+
         .w-14 { width: 3.5rem; }
         .w-full { width: 100%; }
-        
+
         .data-table {
             width: 100%;
             border-collapse: collapse;
@@ -369,7 +370,7 @@ export function HandoverPreviewDialog({ open, onOpenChange, transfer }: Handover
             background-color: #f8f9fa;
             font-weight: bold;
         }
-        
+
         .data-table .col-stt { width: 2%; }
         .data-table .col-code { width: 7%; }
         .data-table .col-name { width: 16%; text-align: left; }
@@ -378,18 +379,18 @@ export function HandoverPreviewDialog({ open, onOpenChange, transfer }: Handover
         .data-table .col-accessories { width: 18%; text-align: center; }
         .data-table .col-condition { width: 15%; }
         .data-table .col-note { width: 12%; }
-        
+
         .signature-area {
             text-align: center;
             min-width: 180px;
         }
-        
+
         .signature-space {
             height: 50px;
             border-bottom: 1px solid #ddd;
             margin: 8px 0;
         }
-        
+
         @media print {
             body {
                 -webkit-print-color-adjust: exact !important;
@@ -397,7 +398,7 @@ export function HandoverPreviewDialog({ open, onOpenChange, transfer }: Handover
                 background-color: #fff !important;
                 font-size: 11px;
             }
-            
+
             .a4-landscape-page {
                 width: 100% !important;
                 height: 100% !important;
@@ -407,11 +408,11 @@ export function HandoverPreviewDialog({ open, onOpenChange, transfer }: Handover
                 border: none !important;
                 page-break-inside: avoid;
             }
-            
+
             body > *:not(.a4-landscape-page) {
                 display: none !important;
             }
-            
+
             .data-table {
                 font-size: 13px;
             }
@@ -419,15 +420,15 @@ export function HandoverPreviewDialog({ open, onOpenChange, transfer }: Handover
             .data-table th, .data-table td {
                 padding: 3px;
             }
-            
+
             .data-table thead {
                 display: table-header-group;
             }
-            
+
             .data-table tr, .signature-area {
                 page-break-inside: avoid;
             }
-            
+
             .print-footer {
                 position: fixed;
                 bottom: 0.4cm;
@@ -435,21 +436,21 @@ export function HandoverPreviewDialog({ open, onOpenChange, transfer }: Handover
                 right: 0.6cm;
                 width: calc(100% - 1.2cm);
             }
-            
+
             .content-body {
                 padding-bottom: 35px;
             }
-            
+
             .editable-cell {
                 background-color: transparent !important;
                 border-bottom: 1px solid #000 !important;
             }
-            
+
             .title-main { font-size: 16px; }
             .title-sub { font-size: 13px; }
             .signature-space { height: 40px; }
         }
-        
+
         @media (max-width: 768px) {
             .a4-landscape-page {
                 width: 100%;
@@ -457,13 +458,13 @@ export function HandoverPreviewDialog({ open, onOpenChange, transfer }: Handover
                 padding: 0.4cm;
                 box-shadow: none;
             }
-            
+
             .title-main { font-size: 16px; }
             .title-sub { font-size: 12px; }
             .data-table { font-size: 9px; }
             .data-table th, .data-table td { padding: 2px 1px; }
         }
-        
+
         .edit-instruction {
             font-size: 10px;
             color: #666;
@@ -479,9 +480,9 @@ export function HandoverPreviewDialog({ open, onOpenChange, transfer }: Handover
             <header class="text-center">
                 <div class="flex justify-between items-start">
                     <div class="text-center">
-                        <img src="https://i.postimg.cc/26dHxmnV/89307731ad9526cb7f84-1-Photoroom.png" 
-                             alt="Logo CDC" 
-                             class="w-14 mx-auto mb-1" 
+                        <img src="https://i.postimg.cc/26dHxmnV/89307731ad9526cb7f84-1-Photoroom.png"
+                             alt="Logo CDC"
+                             class="w-14 mx-auto mb-1"
                              onerror="this.style.display='none';">
                     </div>
                     <div class="flex-grow">
@@ -575,7 +576,7 @@ export function HandoverPreviewDialog({ open, onOpenChange, transfer }: Handover
       <DialogContent className="max-w-6xl max-h-[90vh] overflow-hidden flex flex-col">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <FileText className="h-5 w-5" />
+            <FileText className="size-5" />
             Xem trước phiếu bàn giao - {transfer.ma_yeu_cau}
           </DialogTitle>
           <DialogDescription>
@@ -599,7 +600,7 @@ export function HandoverPreviewDialog({ open, onOpenChange, transfer }: Handover
                       size="sm"
                       onClick={() => setIsEditing(!isEditing)}
                     >
-                      <Edit3 className="h-4 w-4 mr-1" />
+                      <Edit3 className="size-4 mr-1" />
                       {isEditing ? 'Xem' : 'Sửa'}
                     </Button>
                   </TooltipTrigger>
@@ -610,13 +611,13 @@ export function HandoverPreviewDialog({ open, onOpenChange, transfer }: Handover
 
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
+                    <Button
+                      variant="outline"
+                      size="sm"
                       onClick={handlePreview}
                       disabled={isPreviewing || isPrinting}
                     >
-                      <Eye className="h-4 w-4 mr-1" />
+                      <Eye className="size-4 mr-1" />
                       {isPreviewing ? 'Đang xử lý...' : 'Xem trước'}
                     </Button>
                   </TooltipTrigger>
@@ -627,13 +628,13 @@ export function HandoverPreviewDialog({ open, onOpenChange, transfer }: Handover
 
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <Button 
-                      variant="default" 
-                      size="sm" 
+                    <Button
+                      variant="default"
+                      size="sm"
                       onClick={handlePrint}
                       disabled={isPrinting || isPreviewing}
                     >
-                      <Printer className="h-4 w-4 mr-1" />
+                      <Printer className="size-4 mr-1" />
                       {isPrinting ? 'Đang in...' : 'In phiếu'}
                     </Button>
                   </TooltipTrigger>
@@ -782,4 +783,4 @@ export function HandoverPreviewDialog({ open, onOpenChange, transfer }: Handover
       </DialogContent>
     </Dialog>
   )
-} 
+}

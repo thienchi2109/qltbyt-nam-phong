@@ -96,11 +96,11 @@ export function EquipmentActionsMenu({
       <DropdownMenuTrigger asChild>
         <Button
           variant="ghost"
-          className="h-8 w-8 p-0 touch-target-sm md:h-8 md:w-8"
+          className="size-8 p-0 touch-target-sm md:size-8"
           onClick={(e: React.MouseEvent) => e.stopPropagation()}
         >
           <span className="sr-only">Open menu</span>
-          <MoreHorizontal className="h-4 w-4" />
+          <MoreHorizontal className="size-4" />
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>

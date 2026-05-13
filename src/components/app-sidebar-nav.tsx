@@ -59,7 +59,7 @@ export function AppSidebarNav({
                 ? "bg-gradient-to-r from-primary to-primary/90 text-white font-semibold shadow-lg shadow-primary/25"
                 : "text-slate-600 hover:bg-slate-50 hover:text-primary",
               !isSheetVariant && isSidebarOpen ? "px-3 gap-3" : null,
-              !isSheetVariant && !isSidebarOpen ? "relative h-11 w-11 justify-center" : null
+              !isSheetVariant && !isSidebarOpen ? "relative size-11 justify-center" : null
             )}
             title={!isSheetVariant && !isSidebarOpen ? label : ""}
             aria-label={label}
@@ -69,7 +69,7 @@ export function AppSidebarNav({
           >
             <Icon
               className={cn(
-                "h-5 w-5 transition-colors",
+                "size-5 transition-colors",
                 isActive ? "text-white" : "text-slate-500"
               )}
             />

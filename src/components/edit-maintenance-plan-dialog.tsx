@@ -30,6 +30,7 @@ import { type MaintenancePlan, taskTypes } from "@/lib/data"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select"
 import { useSession } from "next-auth/react"
 import { isRegionalLeaderRole } from "@/lib/rbac"
+import { getUnknownErrorMessage } from "@/lib/error-utils"
 
 const planFormSchema = z.object({
   ten_ke_hoach: z.string().min(1, "Tên kế hoạch là bắt buộc."),
@@ -50,7 +51,7 @@ interface EditMaintenancePlanDialogProps {
 export function EditMaintenancePlanDialog({ open, onOpenChange, onSuccess, plan }: EditMaintenancePlanDialogProps) {
   const { toast } = useToast()
   const { data: session } = useSession()
-  const isRegionalLeader = isRegionalLeaderRole((session?.user as any)?.role)
+  const isRegionalLeader = isRegionalLeaderRole(session?.user?.role)
   const [isSubmitting, setIsSubmitting] = React.useState(false)
 
   const form = useForm<PlanFormValues>({
@@ -105,11 +106,11 @@ export function EditMaintenancePlanDialog({ open, onOpenChange, onSuccess, plan 
       })
       onSuccess()
       onOpenChange(false)
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         variant: "destructive",
         title: "Lỗi",
-        description: "Không thể cập nhật kế hoạch. " + error.message,
+        description: "Không thể cập nhật kế hoạch. " + getUnknownErrorMessage(error),
       })
     } finally {
       setIsSubmitting(false)
@@ -193,7 +194,7 @@ export function EditMaintenancePlanDialog({ open, onOpenChange, onSuccess, plan 
                 Hủy
               </Button>
               <Button type="submit" disabled={isSubmitting || isRegionalLeader}>
-                {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                {isSubmitting && <Loader2 className="mr-2 size-4 animate-spin" />}
                 Lưu thay đổi
               </Button>
             </DialogFooter>

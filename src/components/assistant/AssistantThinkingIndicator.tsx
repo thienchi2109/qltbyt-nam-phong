@@ -17,7 +17,7 @@ export function AssistantThinkingIndicator() {
                 <div
                     key={dotId}
                     data-testid="assistant-thinking-dot"
-                    className="w-1.5 h-1.5 rounded-full bg-muted-foreground/50 assistant-dot"
+                    className="size-1.5 rounded-full bg-muted-foreground/50 assistant-dot"
                 />
             ))}
         </div>

@@ -62,7 +62,7 @@ function DeviceQuotaDecisionsAuthFallback() {
       data-testid="device-quota-decisions-auth-fallback"
     >
       <div className="text-center space-y-2">
-        <Loader2 className="h-8 w-8 mx-auto animate-spin text-muted-foreground" />
+        <Loader2 className="size-8 mx-auto animate-spin text-muted-foreground" />
       </div>
     </div>
   )

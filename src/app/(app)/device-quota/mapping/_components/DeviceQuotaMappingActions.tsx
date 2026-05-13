@@ -89,7 +89,7 @@ export function DeviceQuotaMappingActions() {
                 onClick={() => setShowSuggested(true)}
                 title="Sử dụng AI để gợi ý — tốn tài nguyên server, chỉ dùng khi cần"
               >
-                <Sparkles className="h-4 w-4 text-amber-500 group-hover:animate-pulse" />
+                <Sparkles className="size-4 text-amber-500 group-hover:animate-pulse" />
                 Gợi ý phân loại
               </Button>
             )}
@@ -101,7 +101,7 @@ export function DeviceQuotaMappingActions() {
                 size="sm"
                 className="touch-target-sm"
               >
-                <Link className="h-4 w-4" />
+                <Link className="size-4" />
                 {isLinking ? "Đang xử lý..." : "Phân loại"}
               </Button>
             )}

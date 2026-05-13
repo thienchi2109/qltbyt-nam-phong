@@ -61,9 +61,9 @@ export function TenantSelector({ className, hideAllOption = false }: TenantSelec
           className
         )}
       >
-        <Building2 className="h-4 w-4 shrink-0" />
+        <Building2 className="size-4 shrink-0" />
         <span className="truncate max-w-[200px]">{currentFacilityName}</span>
-        <ChevronDown className="h-4 w-4 shrink-0 opacity-50" />
+        <ChevronDown className="size-4 shrink-0 opacity-50" />
       </Button>
 
       <TenantSelectorSheet open={sheetOpen} onOpenChange={setSheetOpen} hideAllOption={hideAllOption} />

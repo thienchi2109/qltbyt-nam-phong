@@ -163,8 +163,8 @@ export default function QRScannerPage() {
         <div className="max-w-2xl mx-auto">
           <Card>
             <CardHeader className="text-center">
-              <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
-                <QrCode className="h-8 w-8 text-primary" />
+              <div className="mx-auto mb-4 flex size-16 items-center justify-center rounded-full bg-primary/10">
+                <QrCode className="size-8 text-primary" />
               </div>
               <CardTitle className="heading-responsive-h2">Quét mã QR thiết bị</CardTitle>
               <CardDescription className="body-responsive">
@@ -179,7 +179,7 @@ export default function QRScannerPage() {
                     onClick={handleStartScanning}
                     className="h-14 px-8 text-lg touch-target-lg"
                   >
-                    <Camera className="h-6 w-6 mr-3" />
+                    <Camera className="size-6 mr-3" />
                     <span className="button-text-responsive">Bắt đầu quét</span>
                   </Button>
                 </div>
@@ -188,7 +188,7 @@ export default function QRScannerPage() {
                   <h3 className="heading-responsive-h3 font-semibold mb-4">Chức năng có sẵn</h3>
                   <div className="grid gap-4 text-left">
                     <div className="flex items-start gap-3">
-                      <div className="h-2 w-2 rounded-full bg-primary mt-2 flex-shrink-0"></div>
+                      <div className="size-2 rounded-full bg-primary mt-2 flex-shrink-0"></div>
                       <div>
                         <strong>Ghi nhật ký sử dụng thiết bị:</strong>
                         <p className="caption-responsive">
@@ -198,7 +198,7 @@ export default function QRScannerPage() {
                     </div>
 
                     <div className="flex items-start gap-3">
-                      <div className="h-2 w-2 rounded-full bg-primary mt-2 flex-shrink-0"></div>
+                      <div className="size-2 rounded-full bg-primary mt-2 flex-shrink-0"></div>
                       <div>
                         <strong>Xem thông tin chi tiết:</strong>
                         <p className="caption-responsive">
@@ -208,7 +208,7 @@ export default function QRScannerPage() {
                     </div>
 
                     <div className="flex items-start gap-3">
-                      <div className="h-2 w-2 rounded-full bg-primary mt-2 flex-shrink-0"></div>
+                      <div className="size-2 rounded-full bg-primary mt-2 flex-shrink-0"></div>
                       <div>
                         <strong>Lịch sử bảo trì & sửa chữa:</strong>
                         <p className="caption-responsive">
@@ -218,7 +218,7 @@ export default function QRScannerPage() {
                     </div>
 
                     <div className="flex items-start gap-3">
-                      <div className="h-2 w-2 rounded-full bg-primary mt-2 flex-shrink-0"></div>
+                      <div className="size-2 rounded-full bg-primary mt-2 flex-shrink-0"></div>
                       <div>
                         <strong>Tạo yêu cầu sửa chữa:</strong>
                         <p className="text-sm text-muted-foreground">
@@ -228,7 +228,7 @@ export default function QRScannerPage() {
                     </div>
 
                     <div className="flex items-start gap-3">
-                      <div className="h-2 w-2 rounded-full bg-primary mt-2 flex-shrink-0"></div>
+                      <div className="size-2 rounded-full bg-primary mt-2 flex-shrink-0"></div>
                       <div>
                         <strong>Cập nhật trạng thái:</strong>
                         <p className="text-sm text-muted-foreground">
@@ -243,7 +243,7 @@ export default function QRScannerPage() {
               {/* Instructions */}
               <div className="bg-blue-50 dark:bg-blue-950/20 rounded-lg p-4">
                 <div className="flex items-start gap-3">
-                  <Smartphone className="h-5 w-5 text-blue-600 mt-0.5 flex-shrink-0" />
+                  <Smartphone className="size-5 text-blue-600 mt-0.5 flex-shrink-0" />
                   <div>
                     <h4 className="font-semibold text-blue-900 dark:text-blue-100">
                       Hướng dẫn sử dụng
@@ -261,7 +261,7 @@ export default function QRScannerPage() {
               <div className="text-center pt-4">
                 <Button asChild variant="outline" className="touch-target">
                   <Link href="/dashboard">
-                    <ArrowLeft className="h-4 w-4 mr-2" />
+                    <ArrowLeft className="size-4 mr-2" />
                     Về Dashboard
                   </Link>
                 </Button>

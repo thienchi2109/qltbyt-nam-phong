@@ -91,42 +91,42 @@ export const DataTablePaginationNavigation = React.memo(function DataTablePagina
         <Button
           type="button"
           variant="outline"
-          className={cn("hidden h-8 w-8 p-0", showFirstLastClass)}
+          className={cn("hidden size-8 p-0", showFirstLastClass)}
           onClick={onFirstPage}
           disabled={isDisabled || !canPreviousPage}
         >
           <span className="sr-only">{resolvedAriaLabels.firstPage}</span>
-          <ChevronsLeft className="h-4 w-4" />
+          <ChevronsLeft className="size-4" />
         </Button>
         <Button
           type="button"
           variant="outline"
-          className="h-11 w-11 p-0 rounded-xl sm:h-8 sm:w-8"
+          className="size-11 p-0 rounded-xl sm:size-8"
           onClick={onPreviousPage}
           disabled={isDisabled || !canPreviousPage}
         >
           <span className="sr-only">{resolvedAriaLabels.prevPage}</span>
-          <ChevronLeft className="h-5 w-5 sm:h-4 sm:w-4" />
+          <ChevronLeft className="size-5 sm:size-4" />
         </Button>
         <Button
           type="button"
           variant="outline"
-          className="h-11 w-11 p-0 rounded-xl sm:h-8 sm:w-8"
+          className="size-11 p-0 rounded-xl sm:size-8"
           onClick={onNextPage}
           disabled={isDisabled || !canNextPage}
         >
           <span className="sr-only">{resolvedAriaLabels.nextPage}</span>
-          <ChevronRight className="h-5 w-5 sm:h-4 sm:w-4" />
+          <ChevronRight className="size-5 sm:size-4" />
         </Button>
         <Button
           type="button"
           variant="outline"
-          className={cn("hidden h-8 w-8 p-0", showFirstLastClass)}
+          className={cn("hidden size-8 p-0", showFirstLastClass)}
           onClick={onLastPage}
           disabled={isDisabled || !canNextPage}
         >
           <span className="sr-only">{resolvedAriaLabels.lastPage}</span>
-          <ChevronsRight className="h-4 w-4" />
+          <ChevronsRight className="size-4" />
         </Button>
       </div>
     </div>

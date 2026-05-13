@@ -109,7 +109,7 @@ export function MobileEquipmentListItem({
           {status && (
             <div className="flex items-center gap-1">
               <div className={`flex items-center gap-1.5 px-2 py-0.5 rounded-full ${statusStyle.bg}`}>
-                <span className={`w-1.5 h-1.5 rounded-full ${statusStyle.dot}`} />
+                <span className={`size-1.5 rounded-full ${statusStyle.dot}`} />
                 <span className={`text-[10px] font-semibold uppercase tracking-tight ${statusStyle.text}`}>
                   {status}
                 </span>
@@ -126,7 +126,7 @@ export function MobileEquipmentListItem({
 
         {/* Row 3: Department + Location */}
         <div className="flex items-center text-xs text-muted-foreground gap-1.5">
-          <MapPin className="h-3.5 w-3.5 shrink-0" />
+          <MapPin className="size-3.5 shrink-0" />
           <span className="truncate">
             {equipment.khoa_phong_quan_ly || "N/A"}
             {equipment.vi_tri_lap_dat && ` • ${equipment.vi_tri_lap_dat}`}
@@ -195,7 +195,7 @@ function MobileEquipmentActionButtons({
           className={ghostBtn}
           onClick={() => onShowDetails(equipment)}
         >
-          <Eye className="h-3.5 w-3.5" />
+          <Eye className="size-3.5" />
           Xem chi tiết
         </button>
       </div>
@@ -217,7 +217,7 @@ function MobileEquipmentActionButtons({
           className={`${buttonBase} flex-[2] bg-destructive text-destructive-foreground hover:opacity-90`}
           onClick={handleViewRepairDetailsClick}
         >
-          <AlertTriangle className="h-3.5 w-3.5" />
+          <AlertTriangle className="size-3.5" />
           Chi tiết sự cố
         </button>
         <MobileUsageActions equipment={equipment} className="flex-1 h-auto py-2 text-[11px]" />
@@ -240,7 +240,7 @@ function MobileEquipmentActionButtons({
           className={ghostBtn}
           onClick={() => onShowDetails(equipment)}
         >
-          <Eye className="h-3.5 w-3.5" />
+          <Eye className="size-3.5" />
           Xem chi tiết
         </button>
         <MobileUsageActions equipment={equipment} className="flex-1 h-auto py-2 text-[11px]" />
@@ -262,7 +262,7 @@ function MobileEquipmentActionButtons({
         className={ghostBtn}
         onClick={handleCreateRepairRequestClick}
       >
-        <Wrench className="h-3.5 w-3.5" />
+        <Wrench className="size-3.5" />
         Báo sửa chữa
       </button>
       <MobileUsageActions equipment={equipment} className="flex-1 h-auto py-2 text-[11px]" />

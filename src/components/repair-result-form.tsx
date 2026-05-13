@@ -55,7 +55,10 @@ export function RepairResultForm({ tenantId = null }: RepairResultFormProps = {}
     nextMaintenanceDate: "2025-03-19"
   })
 
-  const handleInputChange = (field: keyof RepairResultFormData, value: any) => {
+  const handleInputChange = <Field extends keyof RepairResultFormData>(
+    field: Field,
+    value: RepairResultFormData[Field]
+  ) => {
     setFormData(prev => ({
       ...prev,
       [field]: value
@@ -93,7 +96,7 @@ export function RepairResultForm({ tenantId = null }: RepairResultFormProps = {}
           />
           <CardTitle className="text-2xl font-bold text-blue-600 print:text-black">
             <div className="flex items-center justify-center gap-2">
-              <Wrench className="h-6 w-6" />
+              <Wrench className="size-6" />
               BIÊN BẢN KẾT QUẢ SỬA CHỮA THIẾT BỊ Y TẾ
             </div>
           </CardTitle>
@@ -322,11 +325,11 @@ export function RepairResultForm({ tenantId = null }: RepairResultFormProps = {}
           {/* Action Buttons */}
           <div className="flex flex-col sm:flex-row gap-3 justify-center print:hidden">
             <Button onClick={handleSave} className="bg-green-600 hover:bg-green-700">
-              <Save className="mr-2 h-4 w-4" />
+              <Save className="mr-2 size-4" />
               Lưu biểu mẫu
             </Button>
             <Button onClick={handlePrint} variant="outline">
-              <Printer className="mr-2 h-4 w-4" />
+              <Printer className="mr-2 size-4" />
               In biểu mẫu
             </Button>
           </div>

@@ -98,11 +98,11 @@ export function QRActionSheet({ qrCode, onClose, onAction }: QRActionSheetProps)
         <SheetHeader className="space-y-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <Search className="h-5 w-5" />
+              <Search className="size-5" />
               <SheetTitle>Kết quả quét QR</SheetTitle>
             </div>
             <Button variant="ghost" size="icon" onClick={onClose} aria-label="Đóng bảng hành động QR">
-              <X className="h-4 w-4" />
+              <X className="size-4" />
             </Button>
           </div>
           
@@ -115,7 +115,7 @@ export function QRActionSheet({ qrCode, onClose, onAction }: QRActionSheetProps)
         <div className="mt-6 space-y-6">
           {loading && (
             <div className="flex flex-col items-center justify-center py-8">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+              <div className="animate-spin rounded-full size-8 border-b-2 border-primary"></div>
               <p className="mt-4 text-sm text-muted-foreground">Đang tìm kiếm thiết bị...</p>
             </div>
           )}

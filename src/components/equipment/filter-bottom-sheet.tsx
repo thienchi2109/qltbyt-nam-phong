@@ -103,10 +103,10 @@ export function FilterBottomSheet({
           variant="ghost"
           size="icon"
           onClick={() => onOpenChange(false)}
-          className="h-10 w-10 rounded-full"
+          className="size-10 rounded-full"
           aria-label="Đóng bộ lọc"
         >
-          <X className="h-5 w-5" />
+          <X className="size-5" />
         </Button>
       </div>
 
@@ -139,14 +139,14 @@ export function FilterBottomSheet({
                       <div className="flex items-center gap-3">
                         <div
                           className={cn(
-                            "w-5 h-5 rounded-md border-2 flex items-center justify-center transition-all",
+                            "size-5 rounded-md border-2 flex items-center justify-center transition-all",
                             selected
                               ? "bg-[hsl(var(--primary))] border-[hsl(var(--primary))]"
                               : "border-muted-foreground/40"
                           )}
                         >
                           {selected && (
-                            <Check className="h-3.5 w-3.5 text-[hsl(var(--primary-foreground))]" strokeWidth={3} />
+                            <Check className="size-3.5 text-[hsl(var(--primary-foreground))]" strokeWidth={3} />
                           )}
                         </div>
                         <span

@@ -120,9 +120,9 @@ export function DeviceQuotaChiTietToolbar() {
             size="icon"
             onClick={() => router.push('/device-quota/decisions')}
             aria-label="Quay lại danh sách quyết định"
-            className="h-9 w-9"
+            className="size-9"
           >
-            <ArrowLeft className="h-5 w-5" />
+            <ArrowLeft className="size-5" />
           </Button>
           <div>
             <h2 className="text-lg font-semibold">
@@ -149,7 +149,7 @@ export function DeviceQuotaChiTietToolbar() {
           {/* Alert when no categories available */}
           {!isCategoriesLoading && leafCategories.length === 0 && (
             <Alert className="bg-amber-50 border-amber-200">
-              <AlertCircle className="h-4 w-4 text-amber-600" aria-hidden="true" />
+              <AlertCircle className="size-4 text-amber-600" aria-hidden="true" />
               <AlertDescription className="text-amber-800">
                 Chưa có danh mục thiết bị. Vui lòng{" "}
                 <Link
@@ -172,7 +172,7 @@ export function DeviceQuotaChiTietToolbar() {
               className="h-9 w-full sm:w-auto"
               aria-label="Tải xuống file mẫu Excel định mức"
             >
-              <Download className="mr-2 h-4 w-4" />
+              <Download className="mr-2 size-4" />
               Tải mẫu Excel
             </Button>
 
@@ -184,7 +184,7 @@ export function DeviceQuotaChiTietToolbar() {
               className="h-9 w-full sm:w-auto"
               aria-label="Nhập định mức từ file Excel"
             >
-              <Upload className="mr-2 h-4 w-4" />
+              <Upload className="mr-2 size-4" />
               Nhập từ Excel
             </Button>
           </div>

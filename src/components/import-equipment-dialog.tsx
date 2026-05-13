@@ -382,7 +382,7 @@ export function ImportEquipmentDialog({ open, onOpenChange, onSuccess }: ImportE
           {rejectedDatesCount > 0 && (
             <div className="text-sm text-amber-700 bg-amber-50 p-3 rounded-md border border-amber-200">
               <div className="flex items-center gap-2">
-                <AlertTriangle className="h-4 w-4" />
+                <AlertTriangle className="size-4" />
                 <span>
                   <strong>{rejectedDatesCount}</strong> ngày có định dạng không hợp lệ (trước năm 1970) đã bị bỏ qua.
                   Các trường ngày này sẽ được để trống.

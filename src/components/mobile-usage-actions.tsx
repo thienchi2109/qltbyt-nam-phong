@@ -103,12 +103,12 @@ export function MobileUsageActions({ equipment, className = "" }: MobileUsageAct
           >
             {activeSession ? (
               <>
-                <div className="w-2 h-2 bg-white rounded-full animate-pulse" />
+                <div className="size-2 bg-white rounded-full animate-pulse" />
                 Đang sử dụng
               </>
             ) : (
               <>
-                <Play className="h-4 w-4" />
+                <Play className="size-4" />
                 Sử dụng
               </>
             )}
@@ -131,27 +131,27 @@ export function MobileUsageActions({ equipment, className = "" }: MobileUsageAct
                 {/* Active Session Info */}
                 <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
                   <div className="flex items-center gap-2 mb-2">
-                    <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse" />
+                    <div className="size-3 bg-green-500 rounded-full animate-pulse" />
                     <span className="font-medium text-green-800">Đang được sử dụng</span>
                   </div>
                   
                   <div className="space-y-2 text-sm">
                     <div className="flex items-center gap-2">
-                      <User className="h-4 w-4 text-green-600" />
+                      <User className="size-4 text-green-600" />
                       <span className="text-green-700">
                         {activeSession.nguoi_su_dung?.full_name || 'Không xác định'}
                       </span>
                     </div>
                     
                     <div className="flex items-center gap-2">
-                      <Clock className="h-4 w-4 text-green-600" />
+                      <Clock className="size-4 text-green-600" />
                       <span className="text-green-700">
                         Bắt đầu: {formatVietnamDateTime(activeSession.thoi_gian_bat_dau)}
                       </span>
                     </div>
                     
                     <div className="flex items-center gap-2">
-                      <Clock className="h-4 w-4 text-green-600" />
+                      <Clock className="size-4 text-green-600" />
                       <span className="text-green-700 font-medium">
                         Thời gian: {formatDuration(usageDuration)}
                       </span>
@@ -168,7 +168,7 @@ export function MobileUsageActions({ equipment, className = "" }: MobileUsageAct
                       size="lg"
                       disabled={isRegionalLeader}
                     >
-                      <Square className="h-5 w-5" />
+                      <Square className="size-5" />
                       Kết thúc sử dụng
                     </Button>
                   ) : (
@@ -206,7 +206,7 @@ export function MobileUsageActions({ equipment, className = "" }: MobileUsageAct
                   size="lg"
                   disabled={isRegionalLeader}
                 >
-                  <Play className="h-5 w-5" />
+                  <Play className="size-5" />
                   Bắt đầu sử dụng thiết bị
                 </Button>
               </div>

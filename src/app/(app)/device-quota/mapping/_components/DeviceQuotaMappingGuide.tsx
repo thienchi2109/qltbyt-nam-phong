@@ -71,7 +71,7 @@ export function DeviceQuotaMappingGuide() {
         >
             <div className="flex items-start gap-3">
                 <div className="rounded-full bg-blue-100 dark:bg-blue-900/50 p-1.5 mt-0.5 shrink-0">
-                    <Lightbulb className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                    <Lightbulb className="size-4 text-blue-600 dark:text-blue-400" />
                 </div>
 
                 <div className="flex-1 min-w-0 space-y-2">

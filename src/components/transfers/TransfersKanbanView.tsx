@@ -173,7 +173,7 @@ function TransfersKanbanBoard({
     return (
       <div className="flex min-h-[400px] items-center justify-center">
         <div className="flex flex-col items-center gap-2 text-sm text-muted-foreground">
-          <Loader2 className="h-6 w-6 animate-spin" />
+          <Loader2 className="size-6 animate-spin" />
           Đang tải dữ liệu...
         </div>
       </div>
@@ -231,13 +231,13 @@ function TransfersKanbanBoard({
             disabled={!canGoPrev}
             className={cn(
               "absolute left-0 top-1/2 -translate-y-1/2 z-10",
-              "w-8 h-8 rounded-full bg-background/80 backdrop-blur border shadow-sm",
+              "size-8 rounded-full bg-background/80 backdrop-blur border shadow-sm",
               "flex items-center justify-center transition-opacity",
               canGoPrev ? "opacity-100 hover:bg-muted" : "opacity-0 pointer-events-none"
             )}
             aria-label="Cột trước"
           >
-            <ChevronLeft className="h-4 w-4" />
+            <ChevronLeft className="size-4" />
           </button>
 
           <button
@@ -245,13 +245,13 @@ function TransfersKanbanBoard({
             disabled={!canGoNext}
             className={cn(
               "absolute right-0 top-1/2 -translate-y-1/2 z-10",
-              "w-8 h-8 rounded-full bg-background/80 backdrop-blur border shadow-sm",
+              "size-8 rounded-full bg-background/80 backdrop-blur border shadow-sm",
               "flex items-center justify-center transition-opacity",
               canGoNext ? "opacity-100 hover:bg-muted" : "opacity-0 pointer-events-none"
             )}
             aria-label="Cột sau"
           >
-            <ChevronRight className="h-4 w-4" />
+            <ChevronRight className="size-4" />
           </button>
 
           <div className="min-h-[calc(100vh-380px)]">
@@ -278,7 +278,7 @@ function TransfersKanbanBoard({
                 key={status}
                 onClick={() => setMobileSelectedStatus(status)}
                 className={cn(
-                  "w-2 h-2 rounded-full transition-all",
+                  "size-2 rounded-full transition-all",
                   index === currentMobileIndex
                     ? "bg-primary w-4"
                     : "bg-muted-foreground/30 hover:bg-muted-foreground/50"
@@ -315,7 +315,7 @@ function TransfersKanbanBoard({
 
       {isFetching && !isLoading && (
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <Loader2 className="h-4 w-4 animate-spin" />
+          <Loader2 className="size-4 animate-spin" />
           Đang đồng bộ dữ liệu...
         </div>
       )}

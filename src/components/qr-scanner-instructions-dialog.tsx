@@ -32,7 +32,7 @@ export function QRScannerInstructionsDialog({
       <DialogContent className="max-w-sm">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Camera className="h-5 w-5" />
+            <Camera className="size-5" />
             Hướng dẫn quét mã QR
           </DialogTitle>
           <DialogDescription>
@@ -43,7 +43,7 @@ export function QRScannerInstructionsDialog({
           <div className="space-y-3">
             {INSTRUCTION_STEPS.map((step, index) => (
               <div key={step} className="flex items-start gap-3">
-                <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-medium text-primary-foreground">
+                <div className="flex size-6 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-medium text-primary-foreground">
                   {index + 1}
                 </div>
                 <p className="text-sm">{step}</p>

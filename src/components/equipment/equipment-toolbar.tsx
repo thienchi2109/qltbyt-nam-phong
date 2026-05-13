@@ -109,11 +109,11 @@ export function EquipmentToolbar({
       variant="ghost"
       size="icon"
       onClick={qr.handleStartScanning}
-      className="h-8 w-8 hover:bg-primary/10"
+      className="size-8 hover:bg-primary/10"
       title="Quét mã QR"
       aria-label="Quét mã QR"
     >
-      <ScanLine className="h-4 w-4 text-muted-foreground hover:text-primary" />
+      <ScanLine className="size-4 text-muted-foreground hover:text-primary" />
     </Button>
   )
 
@@ -130,7 +130,7 @@ export function EquipmentToolbar({
             : "hover:border-primary/30"
         )}
       >
-        <Filter className="h-4 w-4 mr-2" />
+        <Filter className="size-4 mr-2" />
         <span className="font-medium">Lọc</span>
         {isFiltered && (
           <Badge
@@ -145,7 +145,7 @@ export function EquipmentToolbar({
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button variant="outline" size="sm" className="h-9">
-            <Settings className="h-4 w-4 mr-2" />
+            <Settings className="size-4 mr-2" />
             Tùy chọn
           </Button>
         </DropdownMenuTrigger>
@@ -198,7 +198,7 @@ export function EquipmentToolbar({
           className="h-8 px-2 lg:px-3"
         >
           <span className="hidden sm:inline">Xóa tất cả</span>
-          <FilterX className="h-4 w-4 sm:ml-2" />
+          <FilterX className="size-4 sm:ml-2" />
         </Button>
       )}
       {hasFacilityFilter && (
@@ -208,7 +208,7 @@ export function EquipmentToolbar({
           className="h-8 px-2 lg:px-3"
         >
           <span className="hidden sm:inline">Xóa lọc cơ sở</span>
-          <FilterX className="h-4 w-4 sm:ml-2" />
+          <FilterX className="size-4 sm:ml-2" />
         </Button>
       )}
     </>
@@ -220,7 +220,7 @@ export function EquipmentToolbar({
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button size="sm" className="hidden md:flex h-8 gap-1 touch-target-sm md:h-8">
-              <PlusCircle className="h-3.5 w-3.5" />
+              <PlusCircle className="size-3.5" />
               <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
                 Thêm thiết bị
               </span>
@@ -240,7 +240,7 @@ export function EquipmentToolbar({
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button variant="outline" className="hidden lg:flex h-8 gap-1 touch-target-sm md:h-8">
-            <Settings className="h-3.5 w-3.5" />
+            <Settings className="size-3.5" />
             Tùy chọn
           </Button>
         </DropdownMenuTrigger>

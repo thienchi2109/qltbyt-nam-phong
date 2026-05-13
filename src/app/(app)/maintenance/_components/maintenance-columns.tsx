@@ -74,7 +74,7 @@ export function usePlanColumns(options: PlanColumnOptions): ColumnDef<Maintenanc
       header: ({ column }) => (
         <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}>
           Năm
-          <ArrowUpDown className="ml-2 h-4 w-4" />
+          <ArrowUpDown className="ml-2 size-4" />
         </Button>
       ),
       cell: ({ row }) => <div className="text-center">{row.getValue("nam")}</div>
@@ -138,11 +138,11 @@ export function usePlanColumns(options: PlanColumnOptions): ColumnDef<Maintenanc
             <DropdownMenuTrigger asChild>
               <Button
                 variant="ghost"
-                className="h-8 w-8 p-0"
+                className="size-8 p-0"
                 onClick={(e) => e.stopPropagation()}
               >
                 <span className="sr-only">Mở menu</span>
-                <MoreHorizontal className="h-4 w-4" />
+                <MoreHorizontal className="size-4" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
@@ -156,11 +156,11 @@ export function usePlanColumns(options: PlanColumnOptions): ColumnDef<Maintenanc
                   {canManage && (
                     <>
                       <DropdownMenuItem onSelect={() => openApproveDialog(plan)}>
-                        <Check className="mr-2 h-4 w-4" />
+                        <Check className="mr-2 size-4" />
                         Duyệt
                       </DropdownMenuItem>
                       <DropdownMenuItem onSelect={() => openRejectDialog(plan)}>
-                        <X className="mr-2 h-4 w-4" />
+                        <X className="mr-2 size-4" />
                         Không duyệt
                       </DropdownMenuItem>
                     </>
@@ -168,12 +168,12 @@ export function usePlanColumns(options: PlanColumnOptions): ColumnDef<Maintenanc
                   {canManage && (
                     <>
                       <DropdownMenuItem onSelect={() => setEditingPlan(plan)}>
-                        <Edit className="mr-2 h-4 w-4" />
+                        <Edit className="mr-2 size-4" />
                         Sửa
                       </DropdownMenuItem>
                       <DropdownMenuSeparator />
                       <DropdownMenuItem onSelect={() => openDeleteDialog(plan)} className="text-destructive focus:text-destructive">
-                        <Trash2 className="mr-2 h-4 w-4" />
+                        <Trash2 className="mr-2 size-4" />
                         Xoá
                       </DropdownMenuItem>
                     </>
@@ -268,7 +268,7 @@ export function useTaskColumns(options: TaskColumnOptions): ColumnDef<Maintenanc
           const isScheduled = !!row.original[fieldName];
           if (!isScheduled) return null;
 
-          if (isLoadingCompletion) return <Skeleton className="h-4 w-4 mx-auto" />;
+          if (isLoadingCompletion) return <Skeleton className="size-4 mx-auto" />;
 
           // Check completion status from actual database field
           const completionFieldName = `thang_${month}_hoan_thanh` as keyof MaintenanceTask;
@@ -280,7 +280,7 @@ export function useTaskColumns(options: TaskColumnOptions): ColumnDef<Maintenanc
           if (isUpdating) {
             return (
               <div className="flex justify-center items-center h-full">
-                <Loader2 className="h-5 w-5 animate-spin text-primary" />
+                <Loader2 className="size-5 animate-spin text-primary" />
               </div>
             );
           }
@@ -293,7 +293,7 @@ export function useTaskColumns(options: TaskColumnOptions): ColumnDef<Maintenanc
             return (
               <div className="flex justify-center items-center h-full">
                 <div title={`Đã hoàn thành${formattedDate ? ` ngày ${formattedDate}` : ''}`}>
-                  <CheckCircle2 className="h-5 w-5 text-green-600" />
+                  <CheckCircle2 className="size-5 text-green-600" />
                 </div>
               </div>
             );
@@ -394,11 +394,11 @@ export function useTaskColumns(options: TaskColumnOptions): ColumnDef<Maintenanc
         if (isEditing) {
           return (
             <div className="flex items-center gap-1">
-              <Button variant="ghost" size="icon" className="h-8 w-8 text-green-600 hover:bg-green-100 hover:text-green-700" onClick={handleSaveTask}>
-                <Save className="h-4 w-4" />
+              <Button variant="ghost" size="icon" className="size-8 text-green-600 hover:bg-green-100 hover:text-green-700" onClick={handleSaveTask}>
+                <Save className="size-4" />
               </Button>
-              <Button variant="ghost" size="icon" className="h-8 w-8 text-gray-600 hover:bg-gray-100" onClick={handleCancelEdit}>
-                <X className="h-4 w-4" />
+              <Button variant="ghost" size="icon" className="size-8 text-gray-600 hover:bg-gray-100" onClick={handleCancelEdit}>
+                <X className="size-4" />
               </Button>
             </div>
           )
@@ -406,11 +406,11 @@ export function useTaskColumns(options: TaskColumnOptions): ColumnDef<Maintenanc
 
         return (
           <div className="flex items-center gap-1">
-            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleStartEdit(task)} disabled={!!editingTaskId}>
-              <Edit className="h-4 w-4" />
+            <Button variant="ghost" size="icon" className="size-8" onClick={() => handleStartEdit(task)} disabled={!!editingTaskId}>
+              <Edit className="size-4" />
             </Button>
-            <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:bg-destructive/10" onClick={() => setTaskToDelete(task)} disabled={!!editingTaskId}>
-              <Trash2 className="h-4 w-4" />
+            <Button variant="ghost" size="icon" className="size-8 text-destructive hover:bg-destructive/10" onClick={() => setTaskToDelete(task)} disabled={!!editingTaskId}>
+              <Trash2 className="size-4" />
             </Button>
           </div>
         )

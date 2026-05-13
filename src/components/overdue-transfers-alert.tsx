@@ -48,9 +48,9 @@ export function OverdueTransfersAlert({
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 {overdueSummary.overdue > 0 ? (
-                  <AlertTriangle className="h-5 w-5 text-destructive" />
+                  <AlertTriangle className="size-5 text-destructive" />
                 ) : (
-                  <Clock className="h-5 w-5 text-orange-500" />
+                  <Clock className="size-5 text-orange-500" />
                 )}
                 <div>
                   <CardTitle className="text-base">
@@ -84,7 +84,7 @@ export function OverdueTransfersAlert({
             {overdueTransfers.length > 0 && (
               <div>
                 <h4 className="font-medium text-destructive mb-2 flex items-center gap-2">
-                  <AlertTriangle className="h-4 w-4" />
+                  <AlertTriangle className="size-4" />
                   Thiết bị quá hạn hoàn trả ({overdueSummary.overdue})
                 </h4>
                 <div className="space-y-2">
@@ -106,7 +106,7 @@ export function OverdueTransfersAlert({
                             variant="outline"
                             onClick={() => onViewTransfer(transfer)}
                           >
-                            <Eye className="h-4 w-4 mr-1" />
+                            <Eye className="size-4 mr-1" />
                             Xem
                           </Button>
                         )}
@@ -121,7 +121,7 @@ export function OverdueTransfersAlert({
             {upcomingTransfers.length > 0 && (
               <div>
                 <h4 className="font-medium text-orange-600 mb-2 flex items-center gap-2">
-                  <Clock className="h-4 w-4" />
+                  <Clock className="size-4" />
                   Thiết bị sắp tới hạn hoàn trả ({upcomingCount})
                 </h4>
                 <div className="space-y-2">
@@ -143,7 +143,7 @@ export function OverdueTransfersAlert({
                             variant="outline"
                             onClick={() => onViewTransfer(transfer)}
                           >
-                            <Eye className="h-4 w-4 mr-1" />
+                            <Eye className="size-4 mr-1" />
                             Xem
                           </Button>
                         )}

@@ -102,7 +102,7 @@ export function MaintenanceDialogs() {
           <AlertDialogFooter>
             <AlertDialogCancel disabled={operations.isApproving}>Hủy</AlertDialogCancel>
             <AlertDialogAction onClick={operations.handleApprovePlan} disabled={operations.isApproving}>
-              {operations.isApproving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {operations.isApproving && <Loader2 className="mr-2 size-4 animate-spin" />}
               Xác nhận duyệt
             </AlertDialogAction>
           </AlertDialogFooter>
@@ -144,7 +144,7 @@ export function MaintenanceDialogs() {
               disabled={operations.isRejecting || !operations.confirmDialog.rejectionReason?.trim()}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              {operations.isRejecting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {operations.isRejecting && <Loader2 className="mr-2 size-4 animate-spin" />}
               Xác nhận không duyệt
             </AlertDialogAction>
           </AlertDialogFooter>
@@ -169,7 +169,7 @@ export function MaintenanceDialogs() {
           <AlertDialogFooter>
             <AlertDialogCancel disabled={operations.isDeleting}>Hủy</AlertDialogCancel>
             <AlertDialogAction onClick={operations.handleDeletePlan} disabled={operations.isDeleting} className="bg-destructive hover:bg-destructive/90">
-              {operations.isDeleting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {operations.isDeleting && <Loader2 className="mr-2 size-4 animate-spin" />}
               Xóa
             </AlertDialogAction>
           </AlertDialogFooter>

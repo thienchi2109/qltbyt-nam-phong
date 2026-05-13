@@ -246,7 +246,7 @@ export function DeviceQuotaCategoryImportDialog() {
       <DialogContent className="max-w-2xl">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <FileSpreadsheet className="h-5 w-5" />
+            <FileSpreadsheet className="size-5" />
             Nhập danh mục từ Excel
           </DialogTitle>
           <DialogDescription>
@@ -271,7 +271,7 @@ export function DeviceQuotaCategoryImportDialog() {
           {/* Parsing indicator */}
           {status === "parsing" && (
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Loader2 className="h-4 w-4 animate-spin" />
+              <Loader2 className="size-4 animate-spin" />
               Đang đọc file...
             </div>
           )}
@@ -279,7 +279,7 @@ export function DeviceQuotaCategoryImportDialog() {
           {/* Parse error */}
           {parseError && (
             <Alert variant="destructive">
-              <AlertTriangle className="h-4 w-4" />
+              <AlertTriangle className="size-4" />
               <AlertTitle>Lỗi đọc file</AlertTitle>
               <AlertDescription>{parseError}</AlertDescription>
             </Alert>
@@ -288,7 +288,7 @@ export function DeviceQuotaCategoryImportDialog() {
           {/* Validation errors (blocking - rows were skipped) */}
           {validationErrors.length > 0 && (
             <Alert variant="destructive">
-              <AlertTriangle className="h-4 w-4" />
+              <AlertTriangle className="size-4" />
               <AlertTitle>Lỗi dữ liệu - {validationErrors.length} dòng bị bỏ qua</AlertTitle>
               <AlertDescription>
                 <ScrollArea className="h-32 mt-2">
@@ -310,7 +310,7 @@ export function DeviceQuotaCategoryImportDialog() {
           {/* Validation warnings (non-blocking) */}
           {validationWarnings.length > 0 && (
             <Alert className="border-yellow-200 bg-yellow-50">
-              <AlertCircle className="h-4 w-4 text-yellow-600" />
+              <AlertCircle className="size-4 text-yellow-600" />
               <AlertTitle className="text-yellow-800">Cảnh báo ({validationWarnings.length})</AlertTitle>
               <AlertDescription className="text-yellow-700">
                 <ScrollArea className="h-24 mt-2">
@@ -332,7 +332,7 @@ export function DeviceQuotaCategoryImportDialog() {
           {/* Parsed successfully */}
           {status === "parsed" && parsedRows.length > 0 && (
             <Alert className={validationErrors.length > 0 ? "border-yellow-200 bg-yellow-50" : ""}>
-              <CheckCircle2 className={`h-4 w-4 ${validationErrors.length > 0 ? "text-yellow-600" : "text-green-600"}`} />
+              <CheckCircle2 className={`size-4 ${validationErrors.length > 0 ? "text-yellow-600" : "text-green-600"}`} />
               <AlertTitle className={validationErrors.length > 0 ? "text-yellow-800" : ""}>
                 {validationErrors.length > 0 ? "Sẵn sàng nhập (một phần)" : "Sẵn sàng nhập"}
               </AlertTitle>
@@ -348,7 +348,7 @@ export function DeviceQuotaCategoryImportDialog() {
           {/* No valid rows */}
           {status === "parsed" && parsedRows.length === 0 && validationErrors.length > 0 && (
             <Alert variant="destructive">
-              <AlertTriangle className="h-4 w-4" />
+              <AlertTriangle className="size-4" />
               <AlertTitle>Không có dữ liệu hợp lệ</AlertTitle>
               <AlertDescription>
                 Tất cả các dòng trong file đều có lỗi. Vui lòng sửa file và thử lại.
@@ -359,7 +359,7 @@ export function DeviceQuotaCategoryImportDialog() {
           {/* Import success */}
           {status === "success" && importResult && (
             <Alert className="border-green-200 bg-green-50">
-              <CheckCircle2 className="h-4 w-4 text-green-600" />
+              <CheckCircle2 className="size-4 text-green-600" />
               <AlertTitle className="text-green-800">Nhập thành công</AlertTitle>
               <AlertDescription className="text-green-700">
                 Đã thêm {importResult.inserted} danh mục vào hệ thống.
@@ -376,7 +376,7 @@ export function DeviceQuotaCategoryImportDialog() {
           {/* Partial success – categories OK but quota import failed */}
           {status === "partial_success" && importResult && (
             <Alert className="border-yellow-200 bg-yellow-50">
-              <AlertTriangle className="h-4 w-4 text-yellow-600" />
+              <AlertTriangle className="size-4 text-yellow-600" />
               <AlertTitle className="text-yellow-800">Nhập thành công một phần</AlertTitle>
               <AlertDescription className="text-yellow-700">
                 Đã thêm {importResult.inserted} danh mục nhưng nhập định mức thất bại.
@@ -388,7 +388,7 @@ export function DeviceQuotaCategoryImportDialog() {
           {/* Submitting indicator */}
           {isSubmitting && (
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Loader2 className="h-4 w-4 animate-spin" />
+              <Loader2 className="size-4 animate-spin" />
               Đang nhập dữ liệu...
             </div>
           )}
@@ -402,12 +402,12 @@ export function DeviceQuotaCategoryImportDialog() {
             <Button onClick={handleImport} disabled={!canImport || isSubmitting}>
               {isSubmitting ? (
                 <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  <Loader2 className="mr-2 size-4 animate-spin" />
                   Đang nhập...
                 </>
               ) : (
                 <>
-                  <Upload className="mr-2 h-4 w-4" />
+                  <Upload className="mr-2 size-4" />
                   Nhập {parsedRows.length > 0 ? `(${parsedRows.length})` : ""}
                 </>
               )}

@@ -119,7 +119,7 @@ export function TransferDetailDialog({
       <DialogContent className="h-[90vh] max-h-[90vh] max-w-4xl overflow-hidden flex flex-col">
         <DialogHeader className="shrink-0">
           <DialogTitle className="flex items-center gap-2">
-            <Package className="h-5 w-5" />
+            <Package className="size-5" />
             Chi tiết yêu cầu luân chuyển - {displayTransfer.ma_yeu_cau}
           </DialogTitle>
           <DialogDescription>

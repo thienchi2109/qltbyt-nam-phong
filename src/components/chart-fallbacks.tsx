@@ -13,7 +13,7 @@ export function ChartLoadingFallback({ height = 300 }: ChartLoadingFallbackProps
       style={{ height: `${height}px` }}
     >
       <div className="text-center space-y-2">
-        <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto"></div>
+        <div className="size-8 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto"></div>
         <p className="text-sm text-muted-foreground">Đang tải biểu đồ...</p>
       </div>
     </div>
@@ -34,7 +34,7 @@ export function ChartErrorFallback({
       style={{ height: `${height}px` }}
     >
       <div className="text-center space-y-3 p-4">
-        <div className="w-8 h-8 rounded-full bg-destructive/20 flex items-center justify-center mx-auto">
+        <div className="size-8 rounded-full bg-destructive/20 flex items-center justify-center mx-auto">
           <span className="text-destructive text-sm">!</span>
         </div>
         <div>

@@ -115,7 +115,7 @@ export function TenantsManagementTenantCard({
                     )}
                   >
                     <div className="flex flex-1 items-center gap-3">
-                      <Avatar className="h-9 w-9">
+                      <Avatar className="size-9">
                         <AvatarFallback className="text-xs font-medium">
                           {getInitials(tenantUser.full_name || tenantUser.username)}
                         </AvatarFallback>
@@ -132,7 +132,7 @@ export function TenantsManagementTenantCard({
                     </div>
                     <ChevronDown
                       className={cn(
-                        "h-4 w-4 text-muted-foreground transition-transform",
+                        "size-4 text-muted-foreground transition-transform",
                         isExpanded && "-rotate-180",
                       )}
                     />
@@ -148,7 +148,7 @@ export function TenantsManagementTenantCard({
               className="flex w-full items-center justify-between rounded-lg border border-dashed border-border/60 px-4 py-3 text-left text-sm text-muted-foreground transition hover:border-border"
             >
               <span>Chưa có tài khoản Tổ QLTB</span>
-              <ChevronDown className={cn("h-4 w-4 transition-transform", isExpanded && "-rotate-180")} />
+              <ChevronDown className={cn("size-4 transition-transform", isExpanded && "-rotate-180")} />
             </button>
           )}
         </div>
@@ -202,7 +202,7 @@ function TenantLogo({
       width={48}
       height={48}
       unoptimized
-      className="h-12 w-12 rounded-lg border border-border/60 object-contain"
+      className="size-12 rounded-lg border border-border/60 object-contain"
       onError={() => setHasError(true)}
     />
   )
@@ -212,7 +212,7 @@ function HierarchyUserRow({ user, label }: { user: TenantHierarchyUser; label?: 
   return (
     <div className="flex items-center justify-between bg-background px-4 py-3">
       <div className="flex items-center gap-3">
-        <Avatar className="h-8 w-8">
+        <Avatar className="size-8">
           <AvatarFallback className="text-[11px] font-medium">
             {getInitials(user.full_name || user.username)}
           </AvatarFallback>

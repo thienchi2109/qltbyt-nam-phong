@@ -241,7 +241,7 @@ export function AddMaintenancePlanDialog({ open, onOpenChange, onSuccess }: AddM
                 Hủy
               </Button>
               <Button type="submit" disabled={isSubmitting}>
-                {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                {isSubmitting && <Loader2 className="mr-2 size-4 animate-spin" />}
                 Lưu kế hoạch
               </Button>
             </DialogFooter>

@@ -176,7 +176,7 @@ const createInternalColumns = (): ColumnDef<TransferListItem>[] => [
       return (
         <div className="flex items-center gap-2 text-sm">
           <span className="font-medium text-foreground">{from}</span>
-          <ArrowRight className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
+          <ArrowRight className="size-4 flex-shrink-0 text-muted-foreground" />
           <span className="font-medium text-foreground">{to}</span>
         </div>
       )
@@ -196,7 +196,7 @@ const createExternalColumns = (referenceDate: Date): ColumnDef<TransferListItem>
       return (
         <div className="flex items-center gap-1.5 text-sm">
           <span className="truncate font-medium text-foreground">{from}</span>
-          <ArrowRight className="h-3.5 w-3.5 flex-shrink-0 text-muted-foreground" />
+          <ArrowRight className="size-3.5 flex-shrink-0 text-muted-foreground" />
           <span className="truncate font-medium text-foreground">{to}</span>
         </div>
       )
@@ -256,7 +256,7 @@ const createLiquidationColumns = (): ColumnDef<TransferListItem>[] => [
       return (
         <div className="flex items-center gap-2 text-sm">
           <span className="font-medium text-foreground">{from}</span>
-          <ArrowRight className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
+          <ArrowRight className="size-4 flex-shrink-0 text-muted-foreground" />
           <span className="font-medium text-foreground">{to}</span>
         </div>
       )

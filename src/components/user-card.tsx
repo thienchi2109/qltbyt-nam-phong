@@ -60,17 +60,17 @@ export function UserCard({ user, onEdit, onDelete }: UserCardProps) {
               <Button
                 variant="ghost"
                 size="sm"
-                className="ml-auto h-8 w-8 p-0"
+                className="ml-auto size-8 p-0"
                 onClick={(e) => e.stopPropagation()}
               >
-                <MoreHorizontal className="h-4 w-4" />
+                <MoreHorizontal className="size-4" />
                 <span className="sr-only">Mở menu</span>
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuLabel>Hành động</DropdownMenuLabel>
               <DropdownMenuItem onSelect={() => onEdit(user)}>
-                <Edit className="mr-2 h-4 w-4" />
+                <Edit className="mr-2 size-4" />
                 Chỉnh sửa
               </DropdownMenuItem>
               {!isCurrentUserTheUserInCard && ( // Không cho xóa chính mình
@@ -80,7 +80,7 @@ export function UserCard({ user, onEdit, onDelete }: UserCardProps) {
                     onSelect={() => onDelete(user)}
                     className="text-destructive focus:text-destructive"
                   >
-                    <Trash2 className="mr-2 h-4 w-4" />
+                    <Trash2 className="mr-2 size-4" />
                     Xoá
                   </DropdownMenuItem>
                 </>

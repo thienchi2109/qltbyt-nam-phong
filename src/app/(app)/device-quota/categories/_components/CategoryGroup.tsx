@@ -115,7 +115,7 @@ const CategoryChildRow = React.memo(function CategoryChildRow({
                         aria-label={`Xem thiết bị ${category.ten_nhom}`}
                     >
                         <ChevronRight className={cn(
-                            "h-3 w-3 text-muted-foreground shrink-0 transition-transform duration-200",
+                            "size-3 text-muted-foreground shrink-0 transition-transform duration-200",
                             isExpanded && "rotate-90"
                         )} />
                         <QuotaProgressBar
@@ -136,22 +136,22 @@ const CategoryChildRow = React.memo(function CategoryChildRow({
                         <Button
                             variant="ghost"
                             size="icon"
-                            className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity"
+                            className="size-7 opacity-0 group-hover:opacity-100 transition-opacity"
                             disabled={isMutating}
                         >
-                            <MoreHorizontal className="h-4 w-4" />
+                            <MoreHorizontal className="size-4" />
                         </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
                         <DropdownMenuItem onSelect={() => onEdit(category)}>
-                            <Pencil className="mr-2 h-4 w-4" />
+                            <Pencil className="mr-2 size-4" />
                             Sửa
                         </DropdownMenuItem>
                         <DropdownMenuItem
                             onSelect={() => onDelete(category)}
                             className="text-destructive focus:text-destructive"
                         >
-                            <Trash2 className="mr-2 h-4 w-4" />
+                            <Trash2 className="mr-2 size-4" />
                             Xóa
                         </DropdownMenuItem>
                     </DropdownMenuContent>
@@ -235,9 +235,9 @@ const CategoryGroup = React.memo(function CategoryGroup({
                 <div className="min-w-0 flex items-center gap-3">
                     <span className="shrink-0 text-muted-foreground">
                         {isCollapsed ? (
-                            <ChevronRight className="h-4 w-4" />
+                            <ChevronRight className="size-4" />
                         ) : (
-                            <ChevronDown className="h-4 w-4" />
+                            <ChevronDown className="size-4" />
                         )}
                     </span>
                     <div className="min-w-0 flex-1">
@@ -277,7 +277,7 @@ const CategoryGroup = React.memo(function CategoryGroup({
                         aria-label={`Xem thiết bị ${root.ten_nhom}`}
                     >
                         <ChevronRight className={cn(
-                            "h-3 w-3 text-muted-foreground shrink-0 transition-transform duration-200",
+                            "size-3 text-muted-foreground shrink-0 transition-transform duration-200",
                             expandedCategoryId === root.id && "rotate-90"
                         )} />
                         <QuotaProgressBar
@@ -298,23 +298,23 @@ const CategoryGroup = React.memo(function CategoryGroup({
                         <Button
                             variant="ghost"
                             size="icon"
-                            className="h-7 w-7"
+                            className="size-7"
                             disabled={mutatingCategoryId === root.id}
                             onClick={(e) => e.stopPropagation()}
                         >
-                            <MoreHorizontal className="h-4 w-4" />
+                            <MoreHorizontal className="size-4" />
                         </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
                         <DropdownMenuItem onSelect={() => onEdit(root)}>
-                            <Pencil className="mr-2 h-4 w-4" />
+                            <Pencil className="mr-2 size-4" />
                             Sửa
                         </DropdownMenuItem>
                         <DropdownMenuItem
                             onSelect={() => onDelete(root)}
                             className="text-destructive focus:text-destructive"
                         >
-                            <Trash2 className="mr-2 h-4 w-4" />
+                            <Trash2 className="mr-2 size-4" />
                             Xóa
                         </DropdownMenuItem>
                     </DropdownMenuContent>

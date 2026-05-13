@@ -306,7 +306,7 @@ Hiện tại bạn đang truy cập qua: ${location.origin}
               onClick={onClose}
               className="text-white hover:bg-white/20"
             >
-              <ArrowLeft className="h-6 w-6" />
+              <ArrowLeft className="size-6" />
             </Button>
             <div>
               <h2 className="text-lg font-semibold text-white">Quét mã QR</h2>
@@ -319,7 +319,7 @@ Hiện tại bạn đang truy cập qua: ${location.origin}
             onClick={() => setShowInstructions(true)}
             className="text-white hover:bg-white/20"
           >
-            <HelpCircle className="h-6 w-6" />
+            <HelpCircle className="size-6" />
           </Button>
         </div>
       </div>
@@ -341,12 +341,12 @@ Hiện tại bạn đang truy cập qua: ${location.origin}
               {isScanning && (
                 <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                   <div className="relative">
-                    <div className="w-64 h-64 border-2 border-white rounded-lg relative">
+                    <div className="size-64 border-2 border-white rounded-lg relative">
                       {/* Corner indicators */}
-                      <div className="absolute top-0 left-0 w-8 h-8 border-t-4 border-l-4 border-primary rounded-tl-lg" />
-                      <div className="absolute top-0 right-0 w-8 h-8 border-t-4 border-r-4 border-primary rounded-tr-lg" />
-                      <div className="absolute bottom-0 left-0 w-8 h-8 border-b-4 border-l-4 border-primary rounded-bl-lg" />
-                      <div className="absolute bottom-0 right-0 w-8 h-8 border-b-4 border-r-4 border-primary rounded-br-lg" />
+                      <div className="absolute top-0 left-0 size-8 border-t-4 border-l-4 border-primary rounded-tl-lg" />
+                      <div className="absolute top-0 right-0 size-8 border-t-4 border-r-4 border-primary rounded-tr-lg" />
+                      <div className="absolute bottom-0 left-0 size-8 border-b-4 border-l-4 border-primary rounded-bl-lg" />
+                      <div className="absolute bottom-0 right-0 size-8 border-b-4 border-r-4 border-primary rounded-br-lg" />
                       
                       {/* Scanning line animation */}
                       <div className="absolute inset-0 overflow-hidden rounded-lg">
@@ -371,13 +371,13 @@ Hiện tại bạn đang truy cập qua: ${location.origin}
                   <div className="text-center text-white max-w-sm">
                     {error ? (
                       <>
-                        <X className="h-12 w-12 mx-auto mb-4 text-red-400" />
+                        <X className="size-12 mx-auto mb-4 text-red-400" />
                         <h3 className="text-lg font-semibold mb-2">Không thể khởi động camera</h3>
                         <p className="text-sm text-gray-300 whitespace-pre-line">{error}</p>
                       </>
                     ) : (
                       <>
-                        <Camera className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                        <Camera className="size-12 mx-auto mb-4 opacity-50" />
                         <p>Đang khởi động camera...</p>
                       </>
                     )}
@@ -398,12 +398,12 @@ Hiện tại bạn đang truy cập qua: ${location.origin}
               variant="ghost"
               size="icon"
               onClick={toggleFlash}
-              className="text-white hover:bg-white/20 h-14 w-14 rounded-full"
+              className="text-white hover:bg-white/20 size-14 rounded-full"
             >
               {isFlashOn ? (
-                <FlashlightOff className="h-6 w-6" />
+                <FlashlightOff className="size-6" />
               ) : (
-                <Flashlight className="h-6 w-6" />
+                <Flashlight className="size-6" />
               )}
             </Button>
           )}
@@ -414,9 +414,9 @@ Hiện tại bạn đang truy cập qua: ${location.origin}
               variant="ghost"
               size="icon"
               onClick={switchCamera}
-              className="text-white hover:bg-white/20 h-14 w-14 rounded-full"
+              className="text-white hover:bg-white/20 size-14 rounded-full"
             >
-              <RotateCcw className="h-6 w-6" />
+              <RotateCcw className="size-6" />
             </Button>
           )}
         </div>

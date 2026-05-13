@@ -183,7 +183,7 @@ export function AddEquipmentDialog({
                 type="submit"
                 disabled={createMutation.isPending || isRegionalLeader || isUserRole}
               >
-                {createMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                {createMutation.isPending && <Loader2 className="mr-2 size-4 animate-spin" />}
                 Lưu
               </Button>
             </DialogFooter>

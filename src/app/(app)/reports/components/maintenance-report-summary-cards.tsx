@@ -23,7 +23,7 @@ export function MaintenanceReportSummaryCards({
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Yêu cầu sửa chữa</CardTitle>
-            <Wrench className="h-4 w-4 text-muted-foreground" />
+            <Wrench className="size-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             {isLoading ? <Skeleton className="h-8 w-16" /> : <div className="text-2xl font-bold">{summary.totalRepairs}</div>}
@@ -33,7 +33,7 @@ export function MaintenanceReportSummaryCards({
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Tỷ lệ hoàn thành (Sửa chữa)</CardTitle>
-            <CheckCircle className="h-4 w-4 text-green-500" />
+            <CheckCircle className="size-4 text-green-500" />
           </CardHeader>
           <CardContent>
             {isLoading ? <Skeleton className="h-8 w-16" /> : <div className="text-2xl font-bold">{summary.repairCompletionRate.toFixed(1)}%</div>}
@@ -43,7 +43,7 @@ export function MaintenanceReportSummaryCards({
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Công việc bảo trì (Kế hoạch)</CardTitle>
-            <Clock className="h-4 w-4 text-muted-foreground" />
+            <Clock className="size-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             {isLoading ? <Skeleton className="h-8 w-16" /> : <div className="text-2xl font-bold">{summary.totalMaintenancePlanned}</div>}
@@ -53,7 +53,7 @@ export function MaintenanceReportSummaryCards({
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Tỷ lệ hoàn thành (Bảo trì)</CardTitle>
-            <CheckCircle className="h-4 w-4 text-blue-500" />
+            <CheckCircle className="size-4 text-blue-500" />
           </CardHeader>
           <CardContent>
             {isLoading ? <Skeleton className="h-8 w-16" /> : <div className="text-2xl font-bold">{summary.maintenanceCompletionRate.toFixed(1)}%</div>}
@@ -66,7 +66,7 @@ export function MaintenanceReportSummaryCards({
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Tổng chi phí sửa chữa</CardTitle>
-            <Wrench className="h-4 w-4 text-muted-foreground" />
+            <Wrench className="size-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             {isLoading ? (
@@ -80,7 +80,7 @@ export function MaintenanceReportSummaryCards({
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Chi phí TB ca hoàn thành</CardTitle>
-            <CheckCircle className="h-4 w-4 text-green-500" />
+            <CheckCircle className="size-4 text-green-500" />
           </CardHeader>
           <CardContent>
             {isLoading ? (
@@ -94,7 +94,7 @@ export function MaintenanceReportSummaryCards({
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Có ghi nhận chi phí</CardTitle>
-            <CheckCircle className="h-4 w-4 text-emerald-500" />
+            <CheckCircle className="size-4 text-emerald-500" />
           </CardHeader>
           <CardContent>
             {isLoading ? (
@@ -108,7 +108,7 @@ export function MaintenanceReportSummaryCards({
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Thiếu chi phí</CardTitle>
-            <Clock className="h-4 w-4 text-amber-500" />
+            <Clock className="size-4 text-amber-500" />
           </CardHeader>
           <CardContent>
             {isLoading ? (

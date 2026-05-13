@@ -205,7 +205,7 @@ export function DeviceQuotaDecisionDialog() {
                           )}
                           disabled={isPending}
                         >
-                          <CalendarIcon className="mr-2 h-4 w-4" />
+                          <CalendarIcon className="mr-2 size-4" />
                           {field.value ? (
                             format(field.value, "dd/MM/yyyy")
                           ) : (
@@ -247,7 +247,7 @@ export function DeviceQuotaDecisionDialog() {
                           )}
                           disabled={isPending}
                         >
-                          <CalendarIcon className="mr-2 h-4 w-4" />
+                          <CalendarIcon className="mr-2 size-4" />
                           {field.value ? (
                             format(field.value, "dd/MM/yyyy")
                           ) : (
@@ -295,7 +295,7 @@ export function DeviceQuotaDecisionDialog() {
                           )}
                           disabled={isPending}
                         >
-                          <CalendarIcon className="mr-2 h-4 w-4" />
+                          <CalendarIcon className="mr-2 size-4" />
                           {field.value ? (
                             format(field.value, "dd/MM/yyyy")
                           ) : (
@@ -401,7 +401,7 @@ export function DeviceQuotaDecisionDialog() {
                 disabled={isPending}
                 className="touch-target"
               >
-                {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                {isPending && <Loader2 className="mr-2 size-4 animate-spin" />}
                 {isEditMode ? "Lưu thay đổi" : "Tạo quyết định"}
               </Button>
             </DialogFooter>

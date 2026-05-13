@@ -60,8 +60,8 @@ export class ErrorBoundary extends Component<Props, State> {
         <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
           <Card className="w-full max-w-lg">
             <CardHeader className="text-center">
-              <div className="mx-auto w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mb-4">
-                <AlertTriangle className="w-6 h-6 text-red-600" />
+              <div className="mx-auto size-12 bg-red-100 rounded-full flex items-center justify-center mb-4">
+                <AlertTriangle className="size-6 text-red-600" />
               </div>
               <CardTitle className="text-xl text-red-800">
                 Đã xảy ra lỗi
@@ -96,7 +96,7 @@ export class ErrorBoundary extends Component<Props, State> {
                   className="flex-1"
                   variant="default"
                 >
-                  <RefreshCw className="w-4 h-4 mr-2" />
+                  <RefreshCw className="size-4 mr-2" />
                   Thử lại
                 </Button>
                 <Button 
@@ -104,7 +104,7 @@ export class ErrorBoundary extends Component<Props, State> {
                   className="flex-1"
                   variant="outline"
                 >
-                  <Home className="w-4 h-4 mr-2" />
+                  <Home className="size-4 mr-2" />
                   Về trang chủ
                 </Button>
               </div>

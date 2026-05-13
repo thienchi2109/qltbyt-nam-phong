@@ -181,7 +181,7 @@ export function RepairRequestsPageLayout({
                 {!isRegionalLeader ? (
                   <div className="flex items-center gap-2">
                     <Button onClick={() => openCreateSheet()} className="hidden md:flex touch-target">
-                      <PlusCircle className="mr-2 h-4 w-4" /> Tạo yêu cầu
+                      <PlusCircle className="mr-2 size-4" /> Tạo yêu cầu
                     </Button>
                   </div>
                 ) : null}
@@ -247,7 +247,7 @@ export function RepairRequestsPageLayout({
                 ) : (
                   <div className="flex items-center justify-center min-h-[400px]">
                     <div className="flex max-w-md flex-col items-center gap-4 text-center">
-                      <Building2 className="h-12 w-12 text-muted-foreground" />
+                      <Building2 className="size-12 text-muted-foreground" />
                       <div className="space-y-2">
                         <h3 className="text-lg font-medium">Chọn cơ sở y tế</h3>
                         <p className="text-sm text-muted-foreground">

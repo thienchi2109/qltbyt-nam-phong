@@ -127,7 +127,7 @@ export function UsageLogPrint({ equipment }: UsageLogPrintProps) {
     <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
       <DialogTrigger asChild>
         <Button variant="outline" size="sm" className="gap-2">
-          <Printer className="h-4 w-4" />
+          <Printer className="size-4" />
           In báo cáo
         </Button>
       </DialogTrigger>
@@ -189,11 +189,11 @@ export function UsageLogPrint({ equipment }: UsageLogPrintProps) {
             Hủy
           </Button>
           <Button variant="outline" onClick={handleExport} className="gap-2">
-            <Download className="h-4 w-4" />
+            <Download className="size-4" />
             Xuất CSV
           </Button>
           <Button onClick={handlePrint} className="gap-2">
-            <Printer className="h-4 w-4" />
+            <Printer className="size-4" />
             In báo cáo
           </Button>
         </DialogFooter>

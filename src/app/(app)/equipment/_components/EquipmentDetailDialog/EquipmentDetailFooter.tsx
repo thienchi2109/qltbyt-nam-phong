@@ -47,7 +47,7 @@ export function EquipmentDetailFooter({
               <Tooltip delayDuration={200}>
                 <TooltipTrigger asChild>
                   <Button variant="outline" size="icon" onClick={onStartEditing}>
-                    <Edit className="h-4 w-4" />
+                    <Edit className="size-4" />
                     <span className="sr-only">Sửa thông tin</span>
                   </Button>
                 </TooltipTrigger>
@@ -68,7 +68,7 @@ export function EquipmentDetailFooter({
                   form="equipment-inline-edit-form"
                   disabled={isUpdating}
                 >
-                  {isUpdating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  {isUpdating && <Loader2 className="mr-2 size-4 animate-spin" />}
                   Lưu thay đổi
                 </Button>
               </>
@@ -80,7 +80,7 @@ export function EquipmentDetailFooter({
               <Tooltip delayDuration={200}>
                 <TooltipTrigger asChild>
                   <Button variant="outline" size="icon" onClick={onGenerateDeviceLabel}>
-                    <QrCode className="h-4 w-4" />
+                    <QrCode className="size-4" />
                     <span className="sr-only">Tạo nhãn thiết bị</span>
                   </Button>
                 </TooltipTrigger>
@@ -90,7 +90,7 @@ export function EquipmentDetailFooter({
               <Tooltip delayDuration={200}>
                 <TooltipTrigger asChild>
                   <Button variant="outline" size="icon" onClick={onGenerateProfileSheet}>
-                    <Printer className="h-4 w-4" />
+                    <Printer className="size-4" />
                     <span className="sr-only">In lý lịch</span>
                   </Button>
                 </TooltipTrigger>
@@ -110,7 +110,7 @@ export function EquipmentDetailFooter({
                   className="text-destructive hover:bg-destructive hover:text-destructive-foreground border-destructive/30"
                   onClick={onDeleteEquipment}
                 >
-                  <Trash2 className="h-4 w-4" />
+                  <Trash2 className="size-4" />
                   <span className="sr-only">Xóa thiết bị</span>
                 </Button>
               </TooltipTrigger>
