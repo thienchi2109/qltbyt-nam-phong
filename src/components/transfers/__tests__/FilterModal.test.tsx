@@ -23,6 +23,10 @@ describe("FilterModal", () => {
   it("clears status and date range filters from the modal controls", async () => {
     const onChange = vi.fn()
     const user = userEvent.setup()
+    const dateRange = {
+      from: new Date("2026-04-02T00:00:00.000Z"),
+      to: new Date("2026-04-05T00:00:00.000Z"),
+    }
 
     render(
       <FilterModal
@@ -31,10 +35,7 @@ describe("FilterModal", () => {
         onChange={onChange}
         value={{
           statuses: ["cho_duyet"],
-          dateRange: {
-            from: new Date("2026-04-02T00:00:00.000Z"),
-            to: new Date("2026-04-05T00:00:00.000Z"),
-          },
+          dateRange,
         }}
       />,
     )

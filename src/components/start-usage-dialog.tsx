@@ -5,8 +5,6 @@ import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
 import * as z from "zod"
 import { Loader2 } from "lucide-react"
-import { format } from "date-fns"
-import { vi } from "date-fns/locale"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -32,6 +30,8 @@ import { useStartUsageSession } from "@/hooks/use-usage-logs"
 import { useToast } from "@/hooks/use-toast"
 import type { Equipment as DbEquipment, SessionUser } from "@/types/database"
 import { isRegionalLeaderRole } from "@/lib/rbac"
+import { formatVietnamDateTime } from "@/lib/date-utils"
+import { useHydrationSafeNow } from "@/components/time/HydrationSafeRelativeTime"
 
 const equipmentStatusOptions = [
   "Hoạt động",
@@ -66,6 +66,7 @@ export function StartUsageDialog({
   const user = session?.user as SessionUser | undefined
   const isRegionalLeader = isRegionalLeaderRole(user?.role)
   const { toast } = useToast()
+  const now = useHydrationSafeNow()
   const currentUserId = React.useMemo(() => {
     const rawId = user?.id
     if (typeof rawId === "number" && Number.isFinite(rawId)) {
@@ -153,7 +154,7 @@ export function StartUsageDialog({
               </div>
               <div className="col-span-1 sm:col-span-2">
                 <p className="text-sm font-medium text-muted-foreground">Thời gian bắt đầu</p>
-                <p className="text-sm">{format(new Date(), "dd/MM/yyyy HH:mm", { locale: vi })}</p>
+                <p className="text-sm">{formatVietnamDateTime(now)}</p>
               </div>
             </div>
 

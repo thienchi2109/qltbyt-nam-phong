@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest'
 
 import {
   FULL_DATE_ERROR_MESSAGE,
+  formatVietnamDate,
+  formatVietnamDateTime,
   isValidFullDate,
   normalizeDateForImport,
   normalizeFullDateForForm,
@@ -98,5 +100,18 @@ describe('date-utils full-date helpers', () => {
 
   it('exports the strict validation error message', () => {
     expect(FULL_DATE_ERROR_MESSAGE).toBe('Định dạng ngày không hợp lệ. Sử dụng: DD/MM/YYYY')
+  })
+
+  describe('hydration-safe Vietnamese display formatters', () => {
+    it('formats instants with a fixed Vietnam timezone', () => {
+      expect(formatVietnamDateTime('2025-01-15T14:30:00.000Z')).toBe('15/01/2025 21:30')
+      expect(formatVietnamDate('2025-01-15T18:00:00.000Z')).toBe('16/01/2025')
+    })
+
+    it('returns a placeholder for missing or invalid values', () => {
+      expect(formatVietnamDateTime(null)).toBe('-')
+      expect(formatVietnamDateTime('not-a-date')).toBe('-')
+      expect(formatVietnamDate(undefined, 'Không có')).toBe('Không có')
+    })
   })
 })

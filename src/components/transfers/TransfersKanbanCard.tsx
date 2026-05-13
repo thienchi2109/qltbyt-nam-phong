@@ -3,8 +3,7 @@ import { ArrowRight } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
 import type { TransferListItem } from '@/types/transfers-data-grid'
-import { formatDistanceToNow } from 'date-fns'
-import { vi } from 'date-fns/locale'
+import { HydrationSafeRelativeTime } from '@/components/time/HydrationSafeRelativeTime'
 
 interface TransfersKanbanCardProps {
   transfer: TransferListItem
@@ -42,8 +41,8 @@ function getTypeLabel(type: string): string {
 
 function isOverdue(dateStr: string | null, currentDate: Date): boolean {
   if (!dateStr) return false
-  const dueDate = new Date(dateStr)
-  return dueDate < currentDate && dueDate.getTime() !== 0
+  const dueTime = Date.parse(dateStr)
+  return Number.isFinite(dueTime) && dueTime < currentDate.getTime() && dueTime !== 0
 }
 
 function TransfersKanbanCardComponent({
@@ -52,7 +51,7 @@ function TransfersKanbanCardComponent({
   actions,
   referenceDate,
 }: TransfersKanbanCardProps) {
-  const handleClick = React.useCallback(
+  const openTransferFromCard = React.useCallback(
     (e: React.MouseEvent) => {
       // Allow clicks on actions menu to propagate
       if ((e.target as HTMLElement).closest('[data-actions-menu]')) {
@@ -66,7 +65,7 @@ function TransfersKanbanCardComponent({
   return (
     <Card
       className="mb-2 cursor-pointer hover:shadow-md transition-shadow"
-      onClick={handleClick}
+      onClick={openTransferFromCard}
       role="article"
       aria-label={`Transfer ${transfer.ma_yeu_cau}`}
     >
@@ -102,10 +101,7 @@ function TransfersKanbanCardComponent({
         {/* Footer: Date + overdue badge */}
         <div className="flex items-center justify-between pt-2 border-t">
           <span className="text-xs text-muted-foreground">
-            {formatDistanceToNow(new Date(transfer.created_at), {
-              addSuffix: true,
-              locale: vi,
-            })}
+            <HydrationSafeRelativeTime value={transfer.created_at} />
           </span>
           {transfer.ngay_du_kien_tra && isOverdue(transfer.ngay_du_kien_tra, referenceDate) && (
             <Badge variant="destructive" className="text-xs h-5">
@@ -115,7 +111,7 @@ function TransfersKanbanCardComponent({
         </div>
 
         {/* Actions menu */}
-        <div onClick={(e) => e.stopPropagation()} data-actions-menu>
+        <div onClick={(e) => e.stopPropagation()} data-actions-menu role="presentation">
           {actions}
         </div>
       </CardContent>

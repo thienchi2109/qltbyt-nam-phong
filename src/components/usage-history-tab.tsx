@@ -1,8 +1,6 @@
 "use client"
 
 import React from "react"
-import { format, differenceInMinutes } from "date-fns"
-import { vi } from "date-fns/locale"
 import { Clock, User, FileText, Trash2, Square } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
@@ -28,31 +26,25 @@ import {
 } from "@/components/ui/alert-dialog"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { Skeleton } from "@/components/ui/skeleton"
 import { useEquipmentUsageLogs, useEquipmentUsageLogsMore, useDeleteUsageLog } from "@/hooks/use-usage-logs"
 import { useSession } from "next-auth/react"
 import { useIsMobile } from "@/hooks/use-mobile"
 import { getUsageLogFinalStatus, getUsageLogInitialStatus } from "@/lib/usage-log-status"
 import { type Equipment, type SessionUser, type UsageLog, USAGE_STATUS } from "@/types/database"
 import { isGlobalRole } from "@/lib/rbac"
+import { formatVietnamDateTime } from "@/lib/date-utils"
+import { useHydrationSafeNow } from "@/components/time/HydrationSafeRelativeTime"
 import { EndUsageDialog } from "./end-usage-dialog"
 import { UsageLogPrint } from "./usage-log-print"
+import {
+  formatUsageDuration,
+  getUsageLogPageSignature,
+  UsageHistoryEmptyState,
+  UsageHistoryLoadingState,
+} from "./usage-history-tab.utils"
 
 interface UsageHistoryTabProps {
   equipment: Pick<Equipment, 'id' | 'ten_thiet_bi' | 'ma_thiet_bi'> & Partial<Equipment>
-}
-
-function getUsageLogPageSignature(logs: UsageLog[]) {
-  return logs.map((log) => [
-    log.id,
-    log.updated_at,
-    log.trang_thai,
-    log.thoi_gian_ket_thuc ?? "",
-    log.tinh_trang_ban_dau ?? "",
-    log.tinh_trang_ket_thuc ?? "",
-    log.tinh_trang_thiet_bi ?? "",
-    log.ghi_chu ?? "",
-  ].join(":")).join("|")
 }
 
 export function UsageHistoryTab({ equipment }: UsageHistoryTabProps) {
@@ -69,6 +61,7 @@ export function UsageHistoryTab({ equipment }: UsageHistoryTabProps) {
   const [selectedUsageLog, setSelectedUsageLog] = React.useState<UsageLog | null>(null)
   const [loadMoreOffset, setLoadMoreOffset] = React.useState(0)
   const [loadedUsageLogPages, setLoadedUsageLogPages] = React.useState<Record<number, Record<number, UsageLog[]>>>({})
+  const now = useHydrationSafeNow()
 
   // Initial load - recent usage logs (last 3 months, 50 records)
   const { data: recentUsageLogs, isLoading } = useEquipmentUsageLogs(equipment.id.toString(), {
@@ -131,20 +124,6 @@ export function UsageHistoryTab({ equipment }: UsageHistoryTabProps) {
     log => log.trang_thai === 'dang_su_dung' && (userId == null || log.nguoi_su_dung_id !== userId)
   )
 
-  const formatDuration = (startTime: string, endTime?: string) => {
-    const start = new Date(startTime)
-    const end = endTime ? new Date(endTime) : new Date()
-    const minutes = differenceInMinutes(end, start)
-    
-    const hours = Math.floor(minutes / 60)
-    const mins = minutes % 60
-    
-    if (hours > 0) {
-      return `${hours}h ${mins}m`
-    }
-    return `${mins}m`
-  }
-
   const handleEndUsage = (usageLog: UsageLog) => {
     setSelectedUsageLog(usageLog)
     setIsEndDialogOpen(true)
@@ -195,19 +174,7 @@ export function UsageHistoryTab({ equipment }: UsageHistoryTabProps) {
   const showLoadMore = !isLoading && !isLoadingMore && usageLogs.length >= 50 && (loadMoreOffset === 0 || hasMoreData)
 
   if (isLoading) {
-    return (
-      <div className="space-y-4">
-        <div className="flex gap-2">
-          <Skeleton className="h-10 w-32" />
-          <Skeleton className="h-10 w-32" />
-        </div>
-        <div className="space-y-2">
-          {Array.from({ length: 3 }).map((_, i) => (
-            <Skeleton key={i} className="h-16 w-full" />
-          ))}
-        </div>
-      </div>
-    )
+    return <UsageHistoryLoadingState />
   }
 
   return (
@@ -243,7 +210,7 @@ export function UsageHistoryTab({ equipment }: UsageHistoryTabProps) {
         <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
           <p className="text-sm text-green-800">
             Bạn đang sử dụng thiết bị này từ{" "}
-            {format(new Date(activeSession.thoi_gian_bat_dau), "HH:mm dd/MM/yyyy", { locale: vi })}
+            {formatVietnamDateTime(activeSession.thoi_gian_bat_dau)}
           </p>
         </div>
       )}
@@ -253,10 +220,7 @@ export function UsageHistoryTab({ equipment }: UsageHistoryTabProps) {
         <h4 className="font-medium mb-3">Lịch sử sử dụng</h4>
         
         {!usageLogs || usageLogs.length === 0 ? (
-          <div className="text-center py-8 text-muted-foreground">
-            <Clock className="h-12 w-12 mx-auto mb-2 opacity-50" />
-            <p>Chưa có lịch sử sử dụng</p>
-          </div>
+          <UsageHistoryEmptyState />
         ) : (
           <>
             {isMobile ? (
@@ -317,9 +281,9 @@ export function UsageHistoryTab({ equipment }: UsageHistoryTabProps) {
                     <div className="flex items-center gap-2">
                       <Clock className="h-4 w-4 text-muted-foreground" />
                       <span>
-                        {format(new Date(log.thoi_gian_bat_dau), "HH:mm dd/MM/yyyy", { locale: vi })}
+                        {formatVietnamDateTime(log.thoi_gian_bat_dau)}
                         {log.thoi_gian_ket_thuc && (
-                          <> - {format(new Date(log.thoi_gian_ket_thuc), "HH:mm dd/MM/yyyy", { locale: vi })}</>
+                          <> - {formatVietnamDateTime(log.thoi_gian_ket_thuc)}</>
                         )}
                       </span>
                     </div>
@@ -327,7 +291,7 @@ export function UsageHistoryTab({ equipment }: UsageHistoryTabProps) {
                     <div>
                       <span className="text-muted-foreground">Thời gian: </span>
                       <span className="font-medium">
-                        {formatDuration(log.thoi_gian_bat_dau, log.thoi_gian_ket_thuc)}
+                        {formatUsageDuration(log.thoi_gian_bat_dau, log.thoi_gian_ket_thuc, now)}
                       </span>
                     </div>
                     
@@ -376,16 +340,16 @@ export function UsageHistoryTab({ equipment }: UsageHistoryTabProps) {
                       {log.nguoi_su_dung?.full_name || 'Không xác định'}
                     </TableCell>
                     <TableCell>
-                      {format(new Date(log.thoi_gian_bat_dau), "HH:mm dd/MM/yyyy", { locale: vi })}
+                      {formatVietnamDateTime(log.thoi_gian_bat_dau)}
                     </TableCell>
                     <TableCell>
                       {log.thoi_gian_ket_thuc 
-                        ? format(new Date(log.thoi_gian_ket_thuc), "HH:mm dd/MM/yyyy", { locale: vi })
+                        ? formatVietnamDateTime(log.thoi_gian_ket_thuc)
                         : '-'
                       }
                     </TableCell>
                     <TableCell>
-                      {formatDuration(log.thoi_gian_bat_dau, log.thoi_gian_ket_thuc)}
+                      {formatUsageDuration(log.thoi_gian_bat_dau, log.thoi_gian_ket_thuc, now)}
                     </TableCell>
                     <TableCell>{getUsageLogInitialStatus(log) || '-'}</TableCell>
                     <TableCell>{getUsageLogFinalStatus(log) || '-'}</TableCell>
@@ -451,7 +415,7 @@ export function UsageHistoryTab({ equipment }: UsageHistoryTabProps) {
                   {isFetchingMore ? (
                     <>
                       <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current" />
-                      Đang tải...
+                      Đang tải…
                     </>
                   ) : (
                     'Tải thêm lịch sử'

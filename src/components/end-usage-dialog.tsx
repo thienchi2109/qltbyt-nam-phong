@@ -5,8 +5,6 @@ import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
 import * as z from "zod"
 import { Loader2, Clock } from "lucide-react"
-import { format, differenceInMinutes } from "date-fns"
-import { vi } from "date-fns/locale"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -31,6 +29,8 @@ import { useEndUsageSession } from "@/hooks/use-usage-logs"
 import { useSession } from "next-auth/react"
 import { type SessionUser, type UsageLog } from "@/types/database"
 import { isRegionalLeaderRole } from "@/lib/rbac"
+import { formatVietnamDateTime } from "@/lib/date-utils"
+import { useHydrationSafeNow } from "@/components/time/HydrationSafeRelativeTime"
 
 const equipmentStatusOptions = [
   "Hoạt động",
@@ -63,6 +63,7 @@ export function EndUsageDialog({
   const user = session?.user as SessionUser | undefined
   const isRegionalLeader = isRegionalLeaderRole(user?.role)
   const endUsageMutation = useEndUsageSession()
+  const now = useHydrationSafeNow()
 
   const form = useForm<EndUsageFormData>({
     resolver: zodResolver(endUsageSchema),
@@ -105,8 +106,8 @@ export function EndUsageDialog({
   const isLoading = endUsageMutation.isPending
 
   // Calculate usage duration
-  const usageDuration = usageLog 
-    ? differenceInMinutes(new Date(), new Date(usageLog.thoi_gian_bat_dau))
+  const usageDuration = usageLog && now !== null
+    ? Math.max(0, Math.floor((now - Date.parse(usageLog.thoi_gian_bat_dau)) / 60_000))
     : 0
 
   const formatDuration = (minutes: number) => {
@@ -143,12 +144,12 @@ export function EndUsageDialog({
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Thời gian bắt đầu</p>
                 <p className="text-sm">
-                  {usageLog && format(new Date(usageLog.thoi_gian_bat_dau), "dd/MM/yyyy HH:mm", { locale: vi })}
+                  {usageLog && formatVietnamDateTime(usageLog.thoi_gian_bat_dau)}
                 </p>
               </div>
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Thời gian kết thúc</p>
-                <p className="text-sm">{format(new Date(), "dd/MM/yyyy HH:mm", { locale: vi })}</p>
+                <p className="text-sm">{formatVietnamDateTime(now)}</p>
               </div>
               <div className="col-span-1 sm:col-span-2">
                 <p className="text-sm font-medium text-muted-foreground flex items-center gap-1">

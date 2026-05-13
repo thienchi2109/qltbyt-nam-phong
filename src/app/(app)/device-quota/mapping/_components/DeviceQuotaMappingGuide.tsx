@@ -5,29 +5,55 @@ import { Lightbulb, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
 const STORAGE_KEY = "mapping-guide-dismissed"
+const storageListeners = new Set<() => void>()
+
+function subscribeToDismissedState(onStoreChange: () => void) {
+    if (typeof window === "undefined") return () => {}
+
+    storageListeners.add(onStoreChange)
+    const handleStorage = (event: StorageEvent) => {
+        if (event.key === STORAGE_KEY) onStoreChange()
+    }
+    window.addEventListener("storage", handleStorage)
+
+    return () => {
+        storageListeners.delete(onStoreChange)
+        window.removeEventListener("storage", handleStorage)
+    }
+}
+
+function getDismissedSnapshot() {
+    if (typeof window === "undefined") return true
+    return localStorage.getItem(STORAGE_KEY) === "true"
+}
+
+function getServerDismissedSnapshot() {
+    return true
+}
+
+function notifyDismissedStateChange() {
+    storageListeners.forEach((listener) => listener())
+}
 
 /**
  * Dismissable 3-step guide teaching users how to map devices manually.
  * Persists dismissal via localStorage so it only appears once per user.
  *
- * Uses `null` as the initial state (not yet hydrated) to avoid both SSR
- * hydration mismatch and the first-paint flash for previously-dismissed users.
- * The component renders nothing until after mount, at which point it reads
- * localStorage and either shows or permanently hides the guide.
+ * Renders nothing on the server, then reads localStorage via useSyncExternalStore
+ * on the client so the first hydrated snapshot stays deterministic.
  */
 export function DeviceQuotaMappingGuide() {
-    // null = not yet hydrated; false = show guide; true = dismissed
-    const [dismissed, setDismissed] = React.useState<boolean | null>(null)
+    const dismissed = React.useSyncExternalStore(
+        subscribeToDismissedState,
+        getDismissedSnapshot,
+        getServerDismissedSnapshot
+    )
 
-    React.useEffect(() => {
-        setDismissed(localStorage.getItem(STORAGE_KEY) === "true")
-    }, [])
-
-    if (dismissed === null || dismissed) return null
+    if (dismissed) return null
 
     const handleDismiss = () => {
         localStorage.setItem(STORAGE_KEY, "true")
-        setDismissed(true)
+        notifyDismissedStateChange()
     }
 
     return (
@@ -61,7 +87,7 @@ export function DeviceQuotaMappingGuide() {
                     </ol>
 
                     <p className="text-xs text-blue-600 dark:text-blue-400 italic">
-                        Nút &quot;Gợi ý phân loại&quot; sử dụng AI và tốn nhiều tài nguyên server — chỉ dùng khi cần thiết.
+                        Nút &quot;Gợi ý phân loại&quot; sử dụng AI và tốn nhiều tài nguyên server, chỉ dùng khi cần thiết.
                     </p>
                 </div>
 

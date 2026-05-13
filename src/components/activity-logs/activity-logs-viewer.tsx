@@ -1,8 +1,7 @@
 'use client'
 
 import React, { useState, useMemo } from 'react'
-import { format, formatDistanceToNow, startOfDay, endOfDay } from 'date-fns'
-import { vi } from 'date-fns/locale'
+import { startOfDay, endOfDay } from 'date-fns'
 import { 
   Activity, 
   Calendar, 
@@ -16,14 +15,12 @@ import {
   Eye,
   ChevronDown,
   Download,
-  MapPin
 } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Separator } from '@/components/ui/separator'
 import {
@@ -42,17 +39,17 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { DatePickerWithRange } from '@/components/ui/date-range-picker'
+import { HydrationSafeRelativeTime } from '@/components/time/HydrationSafeRelativeTime'
 
 import { 
   useAuditLogs, 
   useAuditLogsStats,
   useAuditLogsRecentSummary,
-  AuditLogEntry,
   AuditLogFilters,
   getActionTypeLabel,
-  formatActionDetails,
   ACTION_TYPE_LABELS
 } from '@/hooks/use-audit-logs'
+import { ActivityLogEntry } from './activity-log-entry'
 
 interface ActivityLogsViewerProps {
   className?: string
@@ -148,7 +145,7 @@ export function ActivityLogsViewer({ className }: ActivityLogsViewerProps) {
               <div className="space-y-1">
                 <p className="text-sm font-medium text-gray-600">Hoạt động 24h</p>
                 <p className="text-2xl font-bold">
-                  {isSummaryLoading ? '...' : (summary?.total_activities || 0)}
+                  {isSummaryLoading ? '…' : (summary?.total_activities || 0)}
                 </p>
               </div>
             </div>
@@ -162,7 +159,7 @@ export function ActivityLogsViewer({ className }: ActivityLogsViewerProps) {
               <div className="space-y-1">
                 <p className="text-sm font-medium text-gray-600">Người dùng hoạt động</p>
                 <p className="text-2xl font-bold">
-                  {isSummaryLoading ? '...' : (summary?.unique_users || 0)}
+                  {isSummaryLoading ? '…' : (summary?.unique_users || 0)}
                 </p>
               </div>
             </div>
@@ -176,7 +173,7 @@ export function ActivityLogsViewer({ className }: ActivityLogsViewerProps) {
               <div className="space-y-1">
                 <p className="text-sm font-medium text-gray-600">Hoạt động phổ biến</p>
                 <p className="text-sm font-semibold truncate">
-                  {isSummaryLoading ? '...' : getActionTypeLabel(summary?.top_action_type || 'N/A')}
+                  {isSummaryLoading ? '…' : getActionTypeLabel(summary?.top_action_type || 'N/A')}
                 </p>
               </div>
             </div>
@@ -191,11 +188,8 @@ export function ActivityLogsViewer({ className }: ActivityLogsViewerProps) {
                 <p className="text-sm font-medium text-gray-600">Hoạt động gần nhất</p>
                 <p className="text-sm font-semibold">
                   {isSummaryLoading || !summary?.latest_activity 
-                    ? '...' 
-                    : formatDistanceToNow(new Date(summary.latest_activity), { 
-                        addSuffix: true, 
-                        locale: vi 
-                      })
+                    ? '…'
+                    : <HydrationSafeRelativeTime value={summary.latest_activity} />
                   }
                 </p>
               </div>
@@ -231,7 +225,7 @@ export function ActivityLogsViewer({ className }: ActivityLogsViewerProps) {
             <div className="relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
               <Input
-                placeholder="Tìm kiếm người dùng, hoạt động..."
+                placeholder="Tìm kiếm người dùng, hoạt động…"
                 value={searchTerm}
                 onChange={(e) => {
                   const v = e.target.value
@@ -246,7 +240,9 @@ export function ActivityLogsViewer({ className }: ActivityLogsViewerProps) {
             <Select
               value={filters.entity_type || 'all'}
               onValueChange={(value) => updateFilters({ 
-                entity_type: (value === 'all' ? null : (value as any)) 
+                entity_type: value === 'all'
+                  ? null
+                  : value as NonNullable<AuditLogFilters['entity_type']>
               })}
             >
               <SelectTrigger>
@@ -346,7 +342,7 @@ export function ActivityLogsViewer({ className }: ActivityLogsViewerProps) {
           ) : (
             <ScrollArea className="h-[600px]">
               <div className="space-y-1">
-                {filteredLogs.map((log, index) => (
+                {filteredLogs.map((log) => (
                   <ActivityLogEntry key={log.id} log={log} />
                 ))}
               </div>
@@ -381,105 +377,6 @@ export function ActivityLogsViewer({ className }: ActivityLogsViewerProps) {
           )}
         </CardContent>
       </Card>
-    </div>
-  )
-}
-
-// Activity Log Entry Component
-interface ActivityLogEntryProps {
-  log: AuditLogEntry
-}
-
-function ActivityLogEntry({ log }: ActivityLogEntryProps) {
-  const actionLabel = getActionTypeLabel(log.action_type)
-  const actionDetails = formatActionDetails(log.action_type, log.action_details)
-  
-  // Get action type color
-  const getActionTypeColor = (actionType: string) => {
-    if (actionType.includes('create')) return 'bg-green-100 text-green-800'
-    if (actionType.includes('update')) return 'bg-blue-100 text-blue-800'
-    if (actionType.includes('delete')) return 'bg-red-100 text-red-800'
-    if (actionType.includes('approve')) return 'bg-purple-100 text-purple-800'
-    if (actionType.includes('password')) return 'bg-orange-100 text-orange-800'
-    return 'bg-gray-100 text-gray-800'
-  }
-
-  return (
-    <div className="flex items-start space-x-4 p-4 border rounded-lg hover:bg-gray-50 transition-colors">
-      {/* User Avatar */}
-      <Avatar className="h-10 w-10">
-        <AvatarFallback>
-          {log.admin_full_name
-            ? log.admin_full_name.split(' ').map(n => n[0]).join('').substring(0, 2)
-            : log.admin_username.substring(0, 2).toUpperCase()
-          }
-        </AvatarFallback>
-      </Avatar>
-
-      {/* Content */}
-      <div className="flex-1 min-w-0">
-        <div className="flex items-start justify-between">
-          <div className="flex-1">
-            {/* User and Action */}
-            <div className="flex items-center space-x-2 mb-1">
-              <p className="font-medium text-gray-900 truncate">
-                {log.admin_full_name || log.admin_username}
-              </p>
-              <Badge 
-                variant="secondary" 
-                className={`text-xs ${getActionTypeColor(log.action_type)}`}
-              >
-                {actionLabel}
-              </Badge>
-            </div>
-
-            {/* Target User (if applicable) */}
-            {log.target_user_id && log.target_user_id !== log.admin_user_id && (
-              <p className="text-sm text-gray-600 mb-1">
-                <span className="text-gray-500">Đối tượng:</span>{' '}
-                {log.target_full_name || log.target_username}
-              </p>
-            )}
-
-            {/* Entity Label */}
-            {log.entity_label && (
-              <p className="text-sm text-gray-600 mb-1">
-                <span className="text-gray-500">Đối tượng:</span>{' '}
-                {log.entity_label}
-              </p>
-            )}
-
-            {/* Action Details */}
-            {actionDetails && (
-              <p className="text-sm text-gray-600 mb-2">
-                {actionDetails}
-              </p>
-            )}
-
-            {/* Meta Information */}
-            <div className="flex items-center space-x-4 text-xs text-gray-500">
-              <div className="flex items-center space-x-1">
-                <Clock className="h-3 w-3" />
-                <span>{format(new Date(log.created_at), 'dd/MM/yyyy HH:mm', { locale: vi })}</span>
-              </div>
-              {log.ip_address && (
-                <div className="flex items-center space-x-1">
-                  <MapPin className="h-3 w-3" />
-                  <span>{log.ip_address}</span>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Timestamp (relative) */}
-          <div className="text-xs text-gray-500 text-right ml-4">
-            {formatDistanceToNow(new Date(log.created_at), { 
-              addSuffix: true, 
-              locale: vi 
-            })}
-          </div>
-        </div>
-      </div>
     </div>
   )
 }
