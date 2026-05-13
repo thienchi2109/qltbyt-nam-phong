@@ -32,7 +32,6 @@ interface EditTenantDialogProps {
 export function EditTenantDialog({ open, onOpenChange, onSuccess, tenant }: EditTenantDialogProps) {
   const { toast } = useToast()
   const qc = useQueryClient()
-  const [isLoading, setIsLoading] = React.useState(false)
   const [form, setForm] = React.useState({
     code: "",
     name: "",
@@ -87,32 +86,33 @@ export function EditTenantDialog({ open, onOpenChange, onSuccess, tenant }: Edit
       const row = Array.isArray(res) ? res[0] as TenantRow : res as TenantRow
       return row
     },
-    onSuccess: (row) => {
-      const all = qc.getQueriesData<{ rows: TenantRow[] }>({ queryKey: ["don_vi"] })
-      all.forEach(([key, data]) => {
-        if (!data) return
-        const newRows = data.rows.map(r => r.id === row.id ? { ...r, ...row } : r)
-        qc.setQueryData(key as any, { rows: newRows })
-      })
-      toast({ title: "Thành công", description: "Đã cập nhật đơn vị" })
-      onSuccess?.()
-      onOpenChange(false)
-    },
-    onError: (e: any) => {
-      toast({ variant: "destructive", title: "Lỗi", description: e?.message || "Không thể cập nhật đơn vị" })
-    }
-  })
+	    onSuccess: (row) => {
+	      const all = qc.getQueriesData<{ rows: TenantRow[] }>({ queryKey: ["don_vi"] })
+	      all.forEach(([key, data]) => {
+	        if (!data) return
+	        const newRows = data.rows.map(r => r.id === row.id ? { ...r, ...row } : r)
+	        qc.setQueryData(key, { rows: newRows })
+	      })
+	      toast({ title: "Thành công", description: "Đã cập nhật đơn vị" })
+	      onSuccess?.()
+	      onOpenChange(false)
+	    },
+	    onError: (error: unknown) => {
+	      const description = error instanceof Error ? error.message : "Không thể cập nhật đơn vị"
+	      toast({ variant: "destructive", title: "Lỗi", description })
+	    }
+	  })
+  const isPending = updateMutation.isPending
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     if (!tenant) return
     if (!form.name.trim()) {
       toast({ variant: "destructive", title: "Lỗi", description: "Tên đơn vị không được trống" })
-      return
-    }
-    setIsLoading(true)
-    updateMutation.mutate(undefined, { onSettled: () => setIsLoading(false) })
-  }
+	      return
+	    }
+	    updateMutation.mutate()
+	  }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -125,35 +125,35 @@ export function EditTenantDialog({ open, onOpenChange, onSuccess, tenant }: Edit
           <div className="grid gap-4 py-4">
             <div className="grid gap-2">
               <Label htmlFor="code">Mã đơn vị</Label>
-              <Input id="code" value={form.code} onChange={(e) => setForm(s => ({ ...s, code: e.target.value }))} placeholder="VD: CDCCT" disabled={isLoading} />
+              <Input id="code" value={form.code} onChange={(e) => setForm(s => ({ ...s, code: e.target.value }))} placeholder="VD: CDCCT" disabled={isPending} />
             </div>
             <div className="grid gap-2">
               <Label htmlFor="name">Tên đơn vị *</Label>
-              <Input id="name" value={form.name} onChange={(e) => setForm(s => ({ ...s, name: e.target.value }))} placeholder="Nhập tên đơn vị" required disabled={isLoading} />
+              <Input id="name" value={form.name} onChange={(e) => setForm(s => ({ ...s, name: e.target.value }))} placeholder="Nhập tên đơn vị" required disabled={isPending} />
             </div>
             <div className="grid gap-2">
               <Label htmlFor="logo">Logo URL</Label>
-              <Input id="logo" type="url" value={form.logo_url} onChange={(e) => setForm(s => ({ ...s, logo_url: e.target.value }))} placeholder="https://..." disabled={isLoading} />
+              <Input id="logo" type="url" value={form.logo_url} onChange={(e) => setForm(s => ({ ...s, logo_url: e.target.value }))} placeholder="https://..." disabled={isPending} />
               <p className="text-xs text-muted-foreground">Để trống để xóa logo.</p>
             </div>
             <div className="grid gap-2">
               <Label htmlFor="quota">Hạn mức tài khoản thành viên</Label>
-              <Input id="quota" inputMode="numeric" pattern="[0-9]*" value={form.membership_quota} onChange={(e) => setForm(s => ({ ...s, membership_quota: e.target.value }))} placeholder="Để trống nếu không giới hạn" disabled={isLoading} />
+              <Input id="quota" inputMode="numeric" pattern="[0-9]*" value={form.membership_quota} onChange={(e) => setForm(s => ({ ...s, membership_quota: e.target.value }))} placeholder="Để trống nếu không giới hạn" disabled={isPending} />
               <p className="text-xs text-muted-foreground">Để trống để bỏ giới hạn.</p>
             </div>
             <div className="grid gap-2">
               <Label htmlFor="google_drive_url">URL thư mục Google Drive chia sẻ</Label>
-              <Input id="google_drive_url" type="url" value={form.google_drive_folder_url} onChange={(e) => setForm(s => ({ ...s, google_drive_folder_url: e.target.value }))} placeholder="https://drive.google.com/drive/folders/..." disabled={isLoading} />
+              <Input id="google_drive_url" type="url" value={form.google_drive_folder_url} onChange={(e) => setForm(s => ({ ...s, google_drive_folder_url: e.target.value }))} placeholder="https://drive.google.com/drive/folders/..." disabled={isPending} />
               <p className="text-xs text-muted-foreground">Thư mục Google Drive chia sẻ cho file đính kèm thiết bị của đơn vị này.</p>
             </div>
             <div className="flex items-center gap-2">
-              <Checkbox id="active" checked={form.active} onCheckedChange={(v) => setForm(s => ({ ...s, active: !!v }))} disabled={isLoading} />
+              <Checkbox id="active" checked={form.active} onCheckedChange={(v) => setForm(s => ({ ...s, active: !!v }))} disabled={isPending} />
               <Label htmlFor="active">Đang hoạt động</Label>
             </div>
           </div>
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={isLoading}>Hủy</Button>
-            <Button type="submit" disabled={isLoading}>{isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}Lưu</Button>
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={isPending}>Hủy</Button>
+            <Button type="submit" disabled={isPending}>{isPending && <Loader2 className="mr-2 size-4 animate-spin" />}Lưu</Button>
           </DialogFooter>
         </form>
       </DialogContent>

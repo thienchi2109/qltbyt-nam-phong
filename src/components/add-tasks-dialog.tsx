@@ -8,7 +8,15 @@
 "use client"
 
 import * as React from "react"
-import type { ColumnDef, ColumnFiltersState, SortingState, VisibilityState } from "@tanstack/react-table"
+import type {
+  ColumnDef,
+  ColumnFiltersState,
+  PaginationState,
+  RowSelectionState,
+  SortingState,
+  Updater,
+  VisibilityState,
+} from "@tanstack/react-table"
 import {
   flexRender,
   getCoreRowModel,
@@ -48,7 +56,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { useToast } from "@/hooks/use-toast"
 import { useAddTasksEquipment } from "@/hooks/useAddTasksEquipment"
 import type { Equipment, MaintenancePlan } from "@/lib/data"
 import { ScrollArea } from "./ui/scroll-area"
@@ -65,6 +72,84 @@ interface AddTasksDialogProps {
   onSuccess: (selectedEquipment: Equipment[]) => void
 }
 
+interface AddTasksTableState {
+  columnFilters: ColumnFiltersState
+  columnVisibility: VisibilityState
+  pagination: PaginationState
+  rowSelection: RowSelectionState
+  searchTerm: string
+  sorting: SortingState
+}
+
+type AddTasksTableAction =
+  | { type: "reset-dialog" }
+  | { type: "set-column-filters"; updater: Updater<ColumnFiltersState> }
+  | { type: "set-column-visibility"; updater: Updater<VisibilityState> }
+  | { type: "set-pagination"; updater: Updater<PaginationState> }
+  | { type: "set-row-selection"; updater: Updater<RowSelectionState> }
+  | { type: "set-search-term"; value: string }
+  | { type: "set-sorting"; updater: Updater<SortingState> }
+
+const initialAddTasksTableState: AddTasksTableState = {
+  columnFilters: [],
+  columnVisibility: {
+    "nguoi_dang_truc_tiep_quan_ly": false,
+    "vi_tri_lap_dat": false,
+  },
+  pagination: { pageIndex: 0, pageSize: 10 },
+  rowSelection: {},
+  searchTerm: "",
+  sorting: [],
+}
+
+function resolveUpdater<T>(updater: Updater<T>, current: T): T {
+  if (typeof updater !== "function") {
+    return updater
+  }
+
+  return (updater as (old: T) => T)(current)
+}
+
+function addTasksTableReducer(
+  state: AddTasksTableState,
+  action: AddTasksTableAction,
+): AddTasksTableState {
+  switch (action.type) {
+    case "reset-dialog":
+      return {
+        ...initialAddTasksTableState,
+        columnFilters: [...initialAddTasksTableState.columnFilters],
+        columnVisibility: { ...initialAddTasksTableState.columnVisibility },
+        pagination: { ...initialAddTasksTableState.pagination },
+        rowSelection: { ...initialAddTasksTableState.rowSelection },
+        sorting: [...initialAddTasksTableState.sorting],
+      }
+    case "set-column-filters":
+      return { ...state, columnFilters: resolveUpdater(action.updater, state.columnFilters) }
+    case "set-column-visibility":
+      return { ...state, columnVisibility: resolveUpdater(action.updater, state.columnVisibility) }
+    case "set-pagination":
+      return { ...state, pagination: resolveUpdater(action.updater, state.pagination) }
+    case "set-row-selection":
+      return { ...state, rowSelection: resolveUpdater(action.updater, state.rowSelection) }
+    case "set-search-term":
+      return { ...state, searchTerm: action.value }
+    case "set-sorting":
+      return { ...state, sorting: resolveUpdater(action.updater, state.sorting) }
+  }
+}
+
+function getUniqueTrimmedValues(equipment: Equipment[], key: keyof Equipment) {
+  return Array.from(new Set(
+    equipment.flatMap((item) => {
+      const value = item[key]
+      if (typeof value !== "string") return []
+      const trimmed = value.trim()
+      return trimmed ? [trimmed] : []
+    }),
+  ))
+}
+
 export function AddTasksDialog({
   open,
   onOpenChange,
@@ -72,39 +157,14 @@ export function AddTasksDialog({
   existingEquipmentIds,
   onSuccess,
 }: AddTasksDialogProps) {
-  const { toast } = useToast()
   const { data, isLoading, error } = useAddTasksEquipment(open)
   const equipment = data ?? []
-  const [isSubmitting, setIsSubmitting] = React.useState(false)
+  const [tableState, dispatchTable] = React.useReducer(
+    addTasksTableReducer,
+    initialAddTasksTableState,
+  )
 
-  // Show toast on fetch error
-  React.useEffect(() => {
-    if (error) {
-      toast({ variant: "destructive", title: "Lỗi tải thiết bị", description: error.message })
-    }
-  }, [error, toast])
-
-  // Table state
-  const [sorting, setSorting] = React.useState<SortingState>([])
-  const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([])
-  const [searchTerm, setSearchTerm] = React.useState("")
-  const debouncedSearch = useSearchDebounce(searchTerm)
-  const [rowSelection, setRowSelection] = React.useState({})
-  const [pagination, setPagination] = React.useState({ pageIndex: 0, pageSize: 10 })
-  const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({
-    "nguoi_dang_truc_tiep_quan_ly": false,
-    "vi_tri_lap_dat": false,
-  })
-
-  // Reset table state when dialog closes
-  React.useEffect(() => {
-    if (!open) {
-      setRowSelection({})
-      setSearchTerm("")
-      setColumnFilters([])
-      setPagination({ pageIndex: 0, pageSize: 10 })
-    }
-  }, [open])
+  const debouncedSearch = useSearchDebounce(tableState.searchTerm)
 
   const columns: ColumnDef<Equipment>[] = React.useMemo(
     () => [
@@ -162,20 +222,20 @@ export function AddTasksDialog({
     data: equipment,
     columns,
     state: {
-      sorting,
-      columnFilters,
+      sorting: tableState.sorting,
+      columnFilters: tableState.columnFilters,
       globalFilter: debouncedSearch,
-      rowSelection,
-      columnVisibility,
-      pagination,
+      rowSelection: tableState.rowSelection,
+      columnVisibility: tableState.columnVisibility,
+      pagination: tableState.pagination,
     },
     enableRowSelection: (row) => !existingEquipmentIds.includes(row.original.id),
-    onRowSelectionChange: setRowSelection,
-    onSortingChange: setSorting,
-    onColumnFiltersChange: setColumnFilters,
-    onColumnVisibilityChange: setColumnVisibility,
-    onPaginationChange: setPagination,
-    onGlobalFilterChange: (value: string) => setSearchTerm(value),
+    onRowSelectionChange: (updater) => dispatchTable({ type: "set-row-selection", updater }),
+    onSortingChange: (updater) => dispatchTable({ type: "set-sorting", updater }),
+    onColumnFiltersChange: (updater) => dispatchTable({ type: "set-column-filters", updater }),
+    onColumnVisibilityChange: (updater) => dispatchTable({ type: "set-column-visibility", updater }),
+    onPaginationChange: (updater) => dispatchTable({ type: "set-pagination", updater }),
+    onGlobalFilterChange: (value: string) => dispatchTable({ type: "set-search-term", value }),
     getCoreRowModel: getCoreRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
@@ -184,37 +244,36 @@ export function AddTasksDialog({
     getFacetedUniqueValues: getFacetedUniqueValues(),
   })
 
+  const handleOpenChange = (nextOpen: boolean) => {
+    if (!nextOpen) {
+      dispatchTable({ type: "reset-dialog" })
+    }
+    onOpenChange(nextOpen)
+  }
+
   const handleAdd = () => {
-    setIsSubmitting(true);
     const selectedEquipment = table.getFilteredSelectedRowModel().rows.map(row => row.original);
     if (selectedEquipment.length === 0) {
-      toast({
-        variant: "destructive",
-        title: "Chưa chọn thiết bị",
-        description: "Vui lòng chọn ít nhất một thiết bị để thêm.",
-      });
-      setIsSubmitting(false);
       return;
     }
     onSuccess(selectedEquipment);
-    onOpenChange(false);
-    setIsSubmitting(false);
+    handleOpenChange(false);
   }
 
-  const departments = React.useMemo(() => Array.from(new Set(equipment.map((item) => item.khoa_phong_quan_ly?.trim()).filter(Boolean))), [equipment])
-  const users = React.useMemo(() => Array.from(new Set(equipment.map((item) => item.nguoi_dang_truc_tiep_quan_ly?.trim()).filter(Boolean))), [equipment])
-  const locations = React.useMemo(() => Array.from(new Set(equipment.map((item) => item.vi_tri_lap_dat?.trim()).filter(Boolean))), [equipment])
+  const departments = React.useMemo(() => getUniqueTrimmedValues(equipment, "khoa_phong_quan_ly"), [equipment])
+  const users = React.useMemo(() => getUniqueTrimmedValues(equipment, "nguoi_dang_truc_tiep_quan_ly"), [equipment])
+  const locations = React.useMemo(() => getUniqueTrimmedValues(equipment, "vi_tri_lap_dat"), [equipment])
 
   const isFiltered = table.getState().columnFilters.length > 0 || (debouncedSearch?.length ?? 0) > 0;
 
   const totalSelectableRows = React.useMemo(
     () => table.getFilteredRowModel().rows.filter(row => row.getCanSelect()).length,
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [equipment, columnFilters, existingEquipmentIds, debouncedSearch]
+    [equipment, tableState.columnFilters, existingEquipmentIds, debouncedSearch]
   );
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="max-w-7xl h-[90vh] flex flex-col">
         <DialogHeader>
           <DialogTitle>Thêm thiết bị vào kế hoạch: {plan?.ten_ke_hoach}</DialogTitle>
@@ -226,8 +285,8 @@ export function AddTasksDialog({
           <div className="flex items-center gap-2 flex-wrap">
             <SearchInput
               placeholder="Tìm kiếm chung..."
-              value={searchTerm}
-              onChange={setSearchTerm}
+              value={tableState.searchTerm}
+              onChange={(value) => dispatchTable({ type: "set-search-term", value })}
               showSearchIcon={false}
               className="h-8 w-[150px] lg:w-[250px]"
             />
@@ -251,12 +310,12 @@ export function AddTasksDialog({
                 variant="ghost"
                 onClick={() => {
                   table.resetColumnFilters();
-                  setSearchTerm("");
+                  dispatchTable({ type: "set-search-term", value: "" });
                 }}
                 className="h-8 px-2 lg:px-3"
               >
                 Xóa bộ lọc
-                <FilterX className="ml-2 h-4 w-4" />
+                <FilterX className="ml-2 size-4" />
               </Button>
             )}
             <div className="ml-auto">
@@ -264,7 +323,7 @@ export function AddTasksDialog({
                 <DropdownMenuTrigger asChild>
                   <Button variant="outline" className="h-8 gap-1">
                     Cột
-                    <ChevronDown className="h-3.5 w-3.5" />
+                    <ChevronDown className="size-3.5" />
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-[180px]">
@@ -272,10 +331,10 @@ export function AddTasksDialog({
                   <DropdownMenuSeparator />
                   {table
                     .getAllColumns()
-                    .filter((column) => column.getCanHide())
-                    .map((column) => {
+                    .flatMap((column) => {
+                      if (!column.getCanHide()) return []
                       const header = (column.columnDef.header as string) || column.id;
-                      return (
+                      return [(
                         <DropdownMenuCheckboxItem
                           key={column.id}
                           className="capitalize"
@@ -287,7 +346,7 @@ export function AddTasksDialog({
                         >
                           {header}
                         </DropdownMenuCheckboxItem>
-                      )
+                      )]
                     })}
                 </DropdownMenuContent>
               </DropdownMenu>
@@ -313,11 +372,17 @@ export function AddTasksDialog({
                   ))}
                 </TableHeader>
                 <TableBody>
-                  {isLoading ? (
+                  {error ? (
                     <TableRow>
-                      <TableCell colSpan={columns.length} className="h-24 text-center">
-                        <Loader2 className="mx-auto h-6 w-6 animate-spin" />
+                      <TableCell colSpan={columns.length} className="h-24 text-center text-destructive">
+                        Không thể tải thiết bị: {error.message}
                       </TableCell>
+                    </TableRow>
+                  ) : isLoading ? (
+		                    <TableRow>
+		                      <TableCell colSpan={columns.length} className="h-24 text-center">
+		                        <Loader2 className="mx-auto size-6 animate-spin" />
+		                      </TableCell>
                     </TableRow>
                   ) : table.getRowModel().rows?.length ? (
                     table.getRowModel().rows.map((row) => (
@@ -359,11 +424,10 @@ export function AddTasksDialog({
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isSubmitting}>
+          <Button variant="outline" onClick={() => handleOpenChange(false)}>
             Hủy
           </Button>
-          <Button onClick={handleAdd} disabled={isSubmitting || table.getFilteredSelectedRowModel().rows.length === 0}>
-            {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+          <Button onClick={handleAdd} disabled={table.getFilteredSelectedRowModel().rows.length === 0}>
             Thêm {table.getFilteredSelectedRowModel().rows.length > 0 ? `${table.getFilteredSelectedRowModel().rows.length} thiết bị` : ''}
           </Button>
         </DialogFooter>

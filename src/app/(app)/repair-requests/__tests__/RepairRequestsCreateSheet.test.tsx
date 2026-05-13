@@ -278,6 +278,45 @@ describe('RepairRequestsCreateSheet assistant draft hydration', () => {
     expect(screen.getByLabelText('Mô tả sự cố')).toHaveValue('Người dùng đã sửa mô tả')
   })
 
+  it('does not rerun draft equipment lookup after marking it complete', async () => {
+    mocks.callRpc.mockResolvedValue([])
+
+    setAssistantDraft({
+      equipment: {
+        thiet_bi_id: 999,
+        ma_thiet_bi: 'TB-001',
+        ten_thiet_bi: 'Máy siêu âm A',
+      },
+      formData: {
+        mo_ta_su_co: 'Lỗi cần chọn lại thiết bị',
+        hang_muc_sua_chua: 'Kiểm tra lại',
+      },
+      missingFields: [],
+      reviewNotes: [],
+    })
+
+    render(<RepairRequestsCreateSheet />)
+
+    await waitFor(() => {
+      expect(mocks.callRpc).toHaveBeenCalledTimes(1)
+    })
+    expect(mocks.callRpc).toHaveBeenCalledWith(
+      expect.objectContaining({
+        args: expect.objectContaining({ p_q: 'Máy siêu âm A (TB-001)' }),
+      }),
+    )
+
+    await waitFor(() => {
+      expect(screen.getByText('⚠️ Thiết bị trong bản nháp không tìm thấy ở cơ sở hiện tại. Vui lòng chọn thiết bị thủ công.')).toBeInTheDocument()
+    })
+
+    await act(async () => {
+      await new Promise(resolve => window.setTimeout(resolve, 650))
+    })
+
+    expect(mocks.callRpc).toHaveBeenCalledTimes(1)
+  })
+
   it('does not overwrite manual equipment search input while draft lookup is pending', async () => {
     let releaseLookup: (() => void) | null = null
 

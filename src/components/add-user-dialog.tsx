@@ -22,6 +22,7 @@ import { USER_ROLES, type UserRole } from "@/types/database"
 import { Badge } from "@/components/ui/badge"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { fetchTenantList, type AddEquipmentTenantOption } from "./add-equipment-dialog.queries"
+import { useMutation, useQueryClient } from "@tanstack/react-query"
 
 interface AddUserDialogProps {
   open: boolean
@@ -31,7 +32,7 @@ interface AddUserDialogProps {
 
 export function AddUserDialog({ open, onOpenChange, onSuccess }: AddUserDialogProps) {
   const { toast } = useToast()
-  const [isLoading, setIsLoading] = React.useState(false)
+  const queryClient = useQueryClient()
   const [tenants, setTenants] = React.useState<AddEquipmentTenantOption[]>([])
   const [memberships, setMemberships] = React.useState<number[]>([])
   
@@ -70,22 +71,8 @@ export function AddUserDialog({ open, onOpenChange, onSuccess }: AddUserDialogPr
     run()
   }, [open, toast])
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    
-    if (!formData.username || !formData.password || !formData.full_name || !formData.role || !formData.current_don_vi) {
-      toast({
-        variant: "destructive",
-        title: "Lỗi",
-        description: "Vui lòng điền đầy đủ thông tin bắt buộc (bao gồm Đơn vị hiện tại)."
-      })
-      return
-    }
-
-    setIsLoading(true)
-
-    try {
-      // Create user via RPC with current don_vi + memberships
+  const createUserMutation = useMutation({
+    mutationFn: async () => {
       const id = await callRpc<number>({
         fn: 'user_create',
         args: {
@@ -102,20 +89,46 @@ export function AddUserDialog({ open, onOpenChange, onSuccess }: AddUserDialogPr
         throw new Error('Không nhận được ID người dùng sau khi tạo')
       }
 
+      return id
+    },
+    onSuccess: async () => {
+      try {
+        await queryClient.invalidateQueries({ queryKey: ["users-management"] })
+      } catch (error: unknown) {
+        toast({
+          variant: "destructive",
+          title: "Không thể làm mới danh sách người dùng",
+          description: getUnknownErrorMessage(error, "Vui lòng tải lại trang để xem dữ liệu mới nhất."),
+        })
+      }
       toast({ title: 'Thành công', description: 'Đã tạo tài khoản người dùng mới.' })
-
       onSuccess()
       onOpenChange(false)
-    } catch (error: unknown) {
+    },
+    onError: (error: unknown) => {
       console.error('Error creating user:', error)
       toast({
         variant: "destructive",
         title: "Lỗi",
         description: getUnknownErrorMessage(error, "Có lỗi xảy ra khi tạo tài khoản.")
       })
-    } finally {
-      setIsLoading(false)
+    },
+  })
+  const isPending = createUserMutation.isPending
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+
+    if (!formData.username || !formData.password || !formData.full_name || !formData.role || !formData.current_don_vi) {
+      toast({
+        variant: "destructive",
+        title: "Lỗi",
+        description: "Vui lòng điền đầy đủ thông tin bắt buộc (bao gồm Đơn vị hiện tại)."
+      })
+      return
     }
+
+    createUserMutation.mutate()
   }
 
   return (
@@ -136,7 +149,7 @@ export function AddUserDialog({ open, onOpenChange, onSuccess }: AddUserDialogPr
                 value={formData.username}
                 onChange={(e) => setFormData(prev => ({ ...prev, username: e.target.value }))}
                 placeholder="Nhập tên đăng nhập"
-                disabled={isLoading}
+                disabled={isPending}
                 required
               />
             </div>
@@ -148,7 +161,7 @@ export function AddUserDialog({ open, onOpenChange, onSuccess }: AddUserDialogPr
                 value={formData.password}
                 onChange={(e) => setFormData(prev => ({ ...prev, password: e.target.value }))}
                 placeholder="Nhập mật khẩu"
-                disabled={isLoading}
+                disabled={isPending}
                 required
               />
             </div>
@@ -159,7 +172,7 @@ export function AddUserDialog({ open, onOpenChange, onSuccess }: AddUserDialogPr
                 value={formData.full_name}
                 onChange={(e) => setFormData(prev => ({ ...prev, full_name: e.target.value }))}
                 placeholder="Nhập họ và tên đầy đủ"
-                disabled={isLoading}
+                disabled={isPending}
                 required
               />
             </div>
@@ -168,7 +181,7 @@ export function AddUserDialog({ open, onOpenChange, onSuccess }: AddUserDialogPr
               <Select
                 value={formData.role}
                 onValueChange={(value: UserRole) => setFormData(prev => ({ ...prev, role: value }))}
-                disabled={isLoading}
+                disabled={isPending}
                 required
               >
                 <SelectTrigger>
@@ -176,12 +189,11 @@ export function AddUserDialog({ open, onOpenChange, onSuccess }: AddUserDialogPr
                 </SelectTrigger>
                 <SelectContent>
                   {Object.entries(USER_ROLES)
-                    .filter(([key]) => key !== 'admin')
-                    .map(([key, label]) => (
+                    .flatMap(([key, label]) => key === 'admin' ? [] : [(
                       <SelectItem key={key} value={key}>
                         {label}
                       </SelectItem>
-                    ))}
+                    )])}
                 </SelectContent>
               </Select>
             </div>
@@ -190,7 +202,7 @@ export function AddUserDialog({ open, onOpenChange, onSuccess }: AddUserDialogPr
               <Select
                 value={formData.current_don_vi ? String(formData.current_don_vi) : ''}
                 onValueChange={(value) => setFormData(prev => ({ ...prev, current_don_vi: Number(value) }))}
-                disabled={isLoading}
+                disabled={isPending}
                 required
               >
                 <SelectTrigger>
@@ -242,12 +254,12 @@ export function AddUserDialog({ open, onOpenChange, onSuccess }: AddUserDialogPr
               type="button"
               variant="outline"
               onClick={() => onOpenChange(false)}
-              disabled={isLoading}
+              disabled={isPending}
             >
               Hủy
             </Button>
-            <Button type="submit" disabled={isLoading}>
-              {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            <Button type="submit" disabled={isPending}>
+              {isPending && <Loader2 className="mr-2 size-4 animate-spin" />}
               Tạo tài khoản
             </Button>
           </DialogFooter>

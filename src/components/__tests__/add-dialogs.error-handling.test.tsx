@@ -93,7 +93,9 @@ describe("dialog unknown-error handling", () => {
   it("surfaces plain-object tenant fetch errors in AddUserDialog", async () => {
     mocks.fetchTenantList.mockRejectedValueOnce({ message: "Permission denied" })
 
-    render(<AddUserDialog open onOpenChange={vi.fn()} onSuccess={vi.fn()} />)
+    render(<AddUserDialog open onOpenChange={vi.fn()} onSuccess={vi.fn()} />, {
+      wrapper: createWrapper(),
+    })
 
     await waitFor(() => {
       expect(mocks.toast).toHaveBeenCalledWith(

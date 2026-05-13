@@ -19,6 +19,7 @@ import { useToast } from "@/hooks/use-toast"
 import { getUnknownErrorMessage } from "@/lib/error-utils"
 import { callRpc } from "@/lib/rpc-client"
 import { USER_ROLES, type UserRole, type UserSummary } from "@/types/database"
+import { useMutation, useQueryClient } from "@tanstack/react-query"
 
 interface EditUserDialogProps {
   open: boolean
@@ -29,8 +30,7 @@ interface EditUserDialogProps {
 
 export function EditUserDialog({ open, onOpenChange, onSuccess, user }: EditUserDialogProps) {
   const { toast } = useToast()
-  const [isLoading, setIsLoading] = React.useState(false)
-  
+  const queryClient = useQueryClient()
   const [formData, setFormData] = React.useState({
     username: "",
     full_name: "",
@@ -56,7 +56,51 @@ export function EditUserDialog({ open, onOpenChange, onSuccess, user }: EditUser
     }
   }, [user, open])
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const updateUserMutation = useMutation({
+    mutationFn: async () => {
+      if (!user) {
+        throw new Error("Không có người dùng để cập nhật")
+      }
+
+      await callRpc<boolean>({
+        fn: "user_update_profile",
+        args: {
+          p_target_user_id: user.id,
+          p_username: formData.username.trim(),
+          p_full_name: formData.full_name.trim(),
+          p_role: formData.role,
+          p_khoa_phong: formData.khoa_phong.trim() || null,
+        },
+      })
+    },
+    onSuccess: async () => {
+      try {
+        await queryClient.invalidateQueries({ queryKey: ["users-management"] })
+      } catch (error: unknown) {
+        toast({
+          variant: "destructive",
+          title: "Không thể làm mới danh sách người dùng",
+          description: getUnknownErrorMessage(error, "Vui lòng tải lại trang để xem dữ liệu mới nhất."),
+        })
+      }
+      toast({
+        title: "Thành công",
+        description: "Đã cập nhật thông tin người dùng."
+      })
+      onSuccess()
+      onOpenChange(false)
+    },
+    onError: (error: unknown) => {
+      toast({
+        variant: "destructive",
+        title: "Lỗi",
+        description: getUnknownErrorMessage(error, "Có lỗi xảy ra khi cập nhật thông tin.")
+      })
+    },
+  })
+  const isPending = updateUserMutation.isPending
+
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
 
     if (!user || !formData.username || !formData.full_name || !formData.role) {
@@ -68,36 +112,7 @@ export function EditUserDialog({ open, onOpenChange, onSuccess, user }: EditUser
       return
     }
 
-    setIsLoading(true)
-
-    try {
-      await callRpc<boolean>({
-        fn: "user_update_profile",
-        args: {
-          p_target_user_id: user.id,
-          p_username: formData.username.trim(),
-          p_full_name: formData.full_name.trim(),
-          p_role: formData.role,
-          p_khoa_phong: formData.khoa_phong.trim() || null,
-        },
-      })
-
-      toast({
-        title: "Thành công",
-        description: "Đã cập nhật thông tin người dùng."
-      })
-
-      onSuccess()
-      onOpenChange(false)
-    } catch (error: unknown) {
-      toast({
-        variant: "destructive",
-        title: "Lỗi",
-        description: getUnknownErrorMessage(error, "Có lỗi xảy ra khi cập nhật thông tin.")
-      })
-    } finally {
-      setIsLoading(false)
-    }
+    updateUserMutation.mutate()
   }
 
   return (
@@ -118,7 +133,7 @@ export function EditUserDialog({ open, onOpenChange, onSuccess, user }: EditUser
                 value={formData.username}
                 onChange={(e) => setFormData(prev => ({ ...prev, username: e.target.value }))}
                 placeholder="Nhập tên đăng nhập"
-                disabled={isLoading}
+                disabled={isPending}
                 required
               />
             </div>
@@ -129,7 +144,7 @@ export function EditUserDialog({ open, onOpenChange, onSuccess, user }: EditUser
                 value={formData.full_name}
                 onChange={(e) => setFormData(prev => ({ ...prev, full_name: e.target.value }))}
                 placeholder="Nhập họ và tên đầy đủ"
-                disabled={isLoading}
+                disabled={isPending}
                 required
               />
             </div>
@@ -138,7 +153,7 @@ export function EditUserDialog({ open, onOpenChange, onSuccess, user }: EditUser
               <Select
                 value={formData.role}
                 onValueChange={(value: UserRole) => setFormData(prev => ({ ...prev, role: value }))}
-                disabled={isLoading}
+                disabled={isPending}
                 required
               >
                 <SelectTrigger>
@@ -146,12 +161,11 @@ export function EditUserDialog({ open, onOpenChange, onSuccess, user }: EditUser
                 </SelectTrigger>
                 <SelectContent>
                   {Object.entries(USER_ROLES)
-                    .filter(([key]) => key !== 'admin')
-                    .map(([key, label]) => (
+                    .flatMap(([key, label]) => key === 'admin' ? [] : [(
                       <SelectItem key={key} value={key}>
                         {label}
                       </SelectItem>
-                    ))}
+                    )])}
                 </SelectContent>
               </Select>
             </div>
@@ -162,7 +176,7 @@ export function EditUserDialog({ open, onOpenChange, onSuccess, user }: EditUser
                 value={formData.khoa_phong}
                 onChange={(e) => setFormData(prev => ({ ...prev, khoa_phong: e.target.value }))}
                 placeholder="Nhập khoa/phòng làm việc"
-                disabled={isLoading}
+                disabled={isPending}
               />
             </div>
           </div>
@@ -171,12 +185,12 @@ export function EditUserDialog({ open, onOpenChange, onSuccess, user }: EditUser
               type="button"
               variant="outline"
               onClick={() => onOpenChange(false)}
-              disabled={isLoading}
+              disabled={isPending}
             >
               Hủy
             </Button>
-            <Button type="submit" disabled={isLoading}>
-              {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            <Button type="submit" disabled={isPending}>
+              {isPending && <Loader2 className="mr-2 size-4 animate-spin" />}
               Cập nhật
             </Button>
           </DialogFooter>
@@ -184,4 +198,4 @@ export function EditUserDialog({ open, onOpenChange, onSuccess, user }: EditUser
       </DialogContent>
     </Dialog>
   )
-} 
+}

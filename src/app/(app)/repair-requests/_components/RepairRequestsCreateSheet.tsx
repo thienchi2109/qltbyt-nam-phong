@@ -18,6 +18,52 @@ import { format } from "date-fns"
 
 const REPAIR_REQUEST_EQUIPMENT_SEARCH_DEBOUNCE_MS = 300
 
+interface RepairRequestsCreateFormState {
+  allEquipment: EquipmentSelectItem[]
+  desiredDate: Date | undefined
+  externalCompanyName: string
+  hasDraftEquipmentLookupCompleted: boolean
+  hasSeededDraftEquipmentLookup: boolean
+  isSearchPending: boolean
+  issueDescription: string
+  repairItems: string
+  repairUnit: RepairUnit
+  searchQuery: string
+  selectedEquipment: EquipmentSelectItem | null
+  unresolvedDraftEquipment: boolean
+}
+
+type RepairRequestsCreateFormAction =
+  | { type: "patch"; updates: Partial<RepairRequestsCreateFormState> }
+  | { type: "reset" }
+
+const initialCreateFormState: RepairRequestsCreateFormState = {
+  allEquipment: [],
+  desiredDate: undefined,
+  externalCompanyName: "",
+  hasDraftEquipmentLookupCompleted: false,
+  hasSeededDraftEquipmentLookup: false,
+  isSearchPending: false,
+  issueDescription: "",
+  repairItems: "",
+  repairUnit: "noi_bo",
+  searchQuery: "",
+  selectedEquipment: null,
+  unresolvedDraftEquipment: false,
+}
+
+function repairRequestsCreateFormReducer(
+  state: RepairRequestsCreateFormState,
+  action: RepairRequestsCreateFormAction,
+): RepairRequestsCreateFormState {
+  switch (action.type) {
+    case "patch":
+      return { ...state, ...action.updates }
+    case "reset":
+      return initialCreateFormState
+  }
+}
+
 export function RepairRequestsCreateSheet() {
   const {
     dialogState: { isCreateOpen, preSelectedEquipment },
@@ -33,19 +79,10 @@ export function RepairRequestsCreateSheet() {
   const hasHydratedFormFieldsRef = React.useRef(false)
   const hasUserEditedSearchRef = React.useRef(false)
 
-  // Local form state
-  const [selectedEquipment, setSelectedEquipment] = React.useState<EquipmentSelectItem | null>(null)
-  const [searchQuery, setSearchQuery] = React.useState("")
-  const [issueDescription, setIssueDescription] = React.useState("")
-  const [repairItems, setRepairItems] = React.useState("")
-  const [desiredDate, setDesiredDate] = React.useState<Date | undefined>()
-  const [repairUnit, setRepairUnit] = React.useState<RepairUnit>("noi_bo")
-  const [externalCompanyName, setExternalCompanyName] = React.useState("")
-  const [allEquipment, setAllEquipment] = React.useState<EquipmentSelectItem[]>([])
-  const [isSearchPending, setIsSearchPending] = React.useState(false)
-  const [unresolvedDraftEquipment, setUnresolvedDraftEquipment] = React.useState(false)
-  const [hasDraftEquipmentLookupCompleted, setHasDraftEquipmentLookupCompleted] = React.useState(false)
-  const [hasSeededDraftEquipmentLookup, setHasSeededDraftEquipmentLookup] = React.useState(false)
+  const [formState, dispatchForm] = React.useReducer(
+    repairRequestsCreateFormReducer,
+    initialCreateFormState,
+  )
 
   const draftEquipmentLabel = React.useMemo(() => {
     if (!assistantDraft?.equipment?.ten_thiet_bi || !assistantDraft.equipment.ma_thiet_bi) {
@@ -61,16 +98,7 @@ export function RepairRequestsCreateSheet() {
   // Reset form when sheet closes, or initialize from pre-selected equipment when sheet opens
   React.useEffect(() => {
     if (!isCreateOpen) {
-      setSelectedEquipment(null)
-      setSearchQuery("")
-      setIssueDescription("")
-      setRepairItems("")
-      setDesiredDate(undefined)
-      setRepairUnit("noi_bo")
-      setExternalCompanyName("")
-      setUnresolvedDraftEquipment(false)
-      setHasDraftEquipmentLookupCompleted(false)
-      setHasSeededDraftEquipmentLookup(false)
+      dispatchForm({ type: "reset" })
       hasPrefilledRef.current = false
       hasHydratedFormFieldsRef.current = false
       hasUserEditedSearchRef.current = false
@@ -78,43 +106,66 @@ export function RepairRequestsCreateSheet() {
       // Hydrate non-equipment fields exactly once.
       if (!hasHydratedFormFieldsRef.current) {
         const fd = assistantDraft.formData
-        if (fd.mo_ta_su_co) setIssueDescription(fd.mo_ta_su_co)
-        if (fd.hang_muc_sua_chua) setRepairItems(fd.hang_muc_sua_chua)
-        if (fd.ngay_mong_muon_hoan_thanh) {
-          setDesiredDate(parseDraftDate(fd.ngay_mong_muon_hoan_thanh))
-        }
-        if (fd.don_vi_thuc_hien) setRepairUnit(fd.don_vi_thuc_hien)
-        if (fd.ten_don_vi_thue) setExternalCompanyName(fd.ten_don_vi_thue)
+        dispatchForm({
+          type: "patch",
+          updates: {
+            desiredDate: fd.ngay_mong_muon_hoan_thanh
+              ? parseDraftDate(fd.ngay_mong_muon_hoan_thanh)
+              : formState.desiredDate,
+            externalCompanyName: fd.ten_don_vi_thue || formState.externalCompanyName,
+            issueDescription: fd.mo_ta_su_co || formState.issueDescription,
+            repairItems: fd.hang_muc_sua_chua || formState.repairItems,
+            repairUnit: fd.don_vi_thuc_hien || formState.repairUnit,
+          },
+        })
         hasHydratedFormFieldsRef.current = true
       }
 
       if (!hasPrefilledRef.current && assistantDraft.equipment?.thiet_bi_id) {
-        const resolved = allEquipment.find(
+        const resolved = formState.allEquipment.find(
           eq => eq.id === assistantDraft.equipment?.thiet_bi_id,
         )
         if (resolved) {
-          setSelectedEquipment(resolved)
-          setSearchQuery(formatEquipmentLabel(resolved))
-          setUnresolvedDraftEquipment(false)
+          dispatchForm({
+            type: "patch",
+            updates: {
+              searchQuery: formatEquipmentLabel(resolved),
+              selectedEquipment: resolved,
+              unresolvedDraftEquipment: false,
+            },
+          })
           hasPrefilledRef.current = true
-        } else if (hasDraftEquipmentLookupCompleted) {
+        } else if (formState.hasDraftEquipmentLookupCompleted) {
           // Equipment lookup finished but ID not found — cross-tenant or stale
-          setUnresolvedDraftEquipment(true)
+          dispatchForm({
+            type: "patch",
+            updates: { unresolvedDraftEquipment: true },
+          })
           hasPrefilledRef.current = true
         } else if (
           draftEquipmentLabel &&
-          !hasSeededDraftEquipmentLookup &&
+          !formState.hasSeededDraftEquipmentLookup &&
           !hasUserEditedSearchRef.current
         ) {
           // Seed the lookup once, but never clobber manual user input.
-          setSearchQuery(draftEquipmentLabel)
-          setHasSeededDraftEquipmentLookup(true)
+          dispatchForm({
+            type: "patch",
+            updates: {
+              hasSeededDraftEquipmentLookup: true,
+              searchQuery: draftEquipmentLabel,
+            },
+          })
         }
       }
     } else if (preSelectedEquipment && !hasPrefilledRef.current) {
       // Pre-fill only once when opened with equipment from context
-      setSelectedEquipment(preSelectedEquipment)
-      setSearchQuery(`${preSelectedEquipment.ten_thiet_bi} (${preSelectedEquipment.ma_thiet_bi})`)
+      dispatchForm({
+        type: "patch",
+        updates: {
+          searchQuery: formatEquipmentLabel(preSelectedEquipment),
+          selectedEquipment: preSelectedEquipment,
+        },
+      })
       hasPrefilledRef.current = true
       hasHydratedFormFieldsRef.current = true
     }
@@ -122,38 +173,51 @@ export function RepairRequestsCreateSheet() {
     isCreateOpen,
     preSelectedEquipment,
     assistantDraft,
-    allEquipment,
     draftEquipmentLabel,
-    hasDraftEquipmentLookupCompleted,
-    hasSeededDraftEquipmentLookup,
+    formState.allEquipment,
+    formState.desiredDate,
+    formState.externalCompanyName,
+    formState.hasDraftEquipmentLookupCompleted,
+    formState.hasSeededDraftEquipmentLookup,
+    formState.issueDescription,
+    formState.repairItems,
+    formState.repairUnit,
   ])
 
   // Fetch equipment options
   React.useEffect(() => {
-    const label = selectedEquipment
-      ? `${selectedEquipment.ten_thiet_bi} (${selectedEquipment.ma_thiet_bi})`
+    const label = formState.selectedEquipment
+      ? formatEquipmentLabel(formState.selectedEquipment)
       : ""
-    const q = searchQuery?.trim()
+    const q = formState.searchQuery?.trim()
     if (!q || (label && q === label)) {
-      setIsSearchPending(false)
+      dispatchForm({ type: "patch", updates: { isSearchPending: false } })
       return
     }
 
     const ctrl = new AbortController()
-    setIsSearchPending(true)
+    dispatchForm({ type: "patch", updates: { isSearchPending: true } })
     const run = async () => {
       try {
         const eq = await fetchRepairRequestEquipmentList(q, 20, ctrl.signal)
         if (ctrl.signal.aborted) return
-        setAllEquipment(eq || [])
-        setIsSearchPending(false)
-        if (assistantDraft?.equipment?.thiet_bi_id && q === draftEquipmentLabel) {
-          setHasDraftEquipmentLookupCompleted(true)
-        }
+        const completedDraftEquipmentLookup = Boolean(
+          assistantDraft?.equipment?.thiet_bi_id && q === draftEquipmentLabel,
+        )
+        dispatchForm({
+          type: "patch",
+          updates: {
+            allEquipment: eq || [],
+            ...(completedDraftEquipmentLookup ? { hasDraftEquipmentLookupCompleted: true } : {}),
+            isSearchPending: false,
+          },
+        })
       } catch (e) {
         if (ctrl.signal.aborted) return
-        setAllEquipment([])
-        setIsSearchPending(false)
+        dispatchForm({
+          type: "patch",
+          updates: { allEquipment: [], isSearchPending: false },
+        })
       }
     }
     const timeoutId = window.setTimeout(run, REPAIR_REQUEST_EQUIPMENT_SEARCH_DEBOUNCE_MS)
@@ -161,62 +225,75 @@ export function RepairRequestsCreateSheet() {
       ctrl.abort()
       window.clearTimeout(timeoutId)
     }
-  }, [assistantDraft, draftEquipmentLabel, searchQuery, selectedEquipment])
+  }, [
+    assistantDraft,
+    draftEquipmentLabel,
+    formState.searchQuery,
+    formState.selectedEquipment,
+  ])
 
   const filteredEquipment = React.useMemo(() => {
-    if (!searchQuery) return []
-    if (isSearchPending) return []
-    if (selectedEquipment && searchQuery === `${selectedEquipment.ten_thiet_bi} (${selectedEquipment.ma_thiet_bi})`) {
+    if (!formState.searchQuery) return []
+    if (formState.isSearchPending) return []
+    if (formState.selectedEquipment && formState.searchQuery === formatEquipmentLabel(formState.selectedEquipment)) {
       return []
     }
-    return allEquipment
-  }, [searchQuery, isSearchPending, allEquipment, selectedEquipment])
+    return formState.allEquipment
+  }, [formState.searchQuery, formState.isSearchPending, formState.allEquipment, formState.selectedEquipment])
 
   const shouldShowNoResults = React.useMemo(() => {
-    if (!searchQuery) return false
-    if (isSearchPending) return false
-    if (selectedEquipment && searchQuery === `${selectedEquipment.ten_thiet_bi} (${selectedEquipment.ma_thiet_bi})`) {
+    if (!formState.searchQuery) return false
+    if (formState.isSearchPending) return false
+    if (formState.selectedEquipment && formState.searchQuery === formatEquipmentLabel(formState.selectedEquipment)) {
       return false
     }
     return filteredEquipment.length === 0
-  }, [searchQuery, isSearchPending, selectedEquipment, filteredEquipment])
+  }, [formState.searchQuery, formState.isSearchPending, formState.selectedEquipment, filteredEquipment])
 
   const handleSelectEquipment = (equipment: EquipmentSelectItem) => {
-    setSelectedEquipment(equipment)
-    setSearchQuery(formatEquipmentLabel(equipment))
-    setUnresolvedDraftEquipment(false)
+    dispatchForm({
+      type: "patch",
+      updates: {
+        searchQuery: formatEquipmentLabel(equipment),
+        selectedEquipment: equipment,
+        unresolvedDraftEquipment: false,
+      },
+    })
     hasUserEditedSearchRef.current = true
   }
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const nextQuery = e.target.value
     const nextTrimmedQuery = nextQuery.trim()
-    const selectedLabel = selectedEquipment
-      ? `${selectedEquipment.ten_thiet_bi} (${selectedEquipment.ma_thiet_bi})`
+    const selectedLabel = formState.selectedEquipment
+      ? formatEquipmentLabel(formState.selectedEquipment)
       : ""
 
     hasUserEditedSearchRef.current = true
-    setSearchQuery(nextQuery)
-    setIsSearchPending(Boolean(nextTrimmedQuery) && nextTrimmedQuery !== selectedLabel)
-    if (selectedEquipment) {
-      setSelectedEquipment(null)
-    }
+    dispatchForm({
+      type: "patch",
+      updates: {
+        isSearchPending: Boolean(nextTrimmedQuery) && nextTrimmedQuery !== selectedLabel,
+        searchQuery: nextQuery,
+        selectedEquipment: formState.selectedEquipment ? null : formState.selectedEquipment,
+      },
+    })
   }
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    if (!selectedEquipment || !user) return
+    if (!formState.selectedEquipment || !user) return
 
     createMutation.mutate(
       {
-        thiet_bi_id: selectedEquipment.id,
-        mo_ta_su_co: issueDescription,
-        hang_muc_sua_chua: repairItems.trim() || null,
-        ngay_mong_muon_hoan_thanh: desiredDate ? format(desiredDate, "yyyy-MM-dd") : null,
+        thiet_bi_id: formState.selectedEquipment.id,
+        mo_ta_su_co: formState.issueDescription,
+        hang_muc_sua_chua: formState.repairItems.trim() || null,
+        ngay_mong_muon_hoan_thanh: formState.desiredDate ? format(formState.desiredDate, "yyyy-MM-dd") : null,
         nguoi_yeu_cau: user.full_name || user.username,
-        don_vi_thuc_hien: canSetRepairUnit ? repairUnit : null,
-        ten_don_vi_thue: canSetRepairUnit && repairUnit === "thue_ngoai"
-          ? externalCompanyName.trim()
+        don_vi_thuc_hien: canSetRepairUnit ? formState.repairUnit : null,
+        ten_don_vi_thue: canSetRepairUnit && formState.repairUnit === "thue_ngoai"
+          ? formState.externalCompanyName.trim()
           : null,
       },
       { onSuccess: closeAllDialogs }
@@ -234,28 +311,28 @@ export function RepairRequestsCreateSheet() {
           <div className="mt-4 flex-1 overflow-y-auto px-4 pb-4">
             <RepairRequestsCreateSheetAlerts
               hasAssistantDraft={Boolean(assistantDraft)}
-              showUnresolvedDraftEquipment={unresolvedDraftEquipment}
+              showUnresolvedDraftEquipment={formState.unresolvedDraftEquipment}
             />
             <RepairRequestsCreateSheetForm
               canSetRepairUnit={canSetRepairUnit}
-              desiredDate={desiredDate}
-              externalCompanyName={externalCompanyName}
+              desiredDate={formState.desiredDate}
+              externalCompanyName={formState.externalCompanyName}
               filteredEquipment={filteredEquipment}
               handleSearchChange={handleSearchChange}
               handleSelectEquipment={handleSelectEquipment}
               handleSubmit={handleSubmit}
               isSubmitting={createMutation.isPending}
-              issueDescription={issueDescription}
+              issueDescription={formState.issueDescription}
+              onDesiredDateChange={(desiredDate) => dispatchForm({ type: "patch", updates: { desiredDate } })}
+              onExternalCompanyNameChange={(externalCompanyName) => dispatchForm({ type: "patch", updates: { externalCompanyName } })}
+              onIssueDescriptionChange={(issueDescription) => dispatchForm({ type: "patch", updates: { issueDescription } })}
+              onRepairItemsChange={(repairItems) => dispatchForm({ type: "patch", updates: { repairItems } })}
+              onRepairUnitChange={(repairUnit) => dispatchForm({ type: "patch", updates: { repairUnit } })}
               onCancel={closeAllDialogs}
-              repairItems={repairItems}
-              repairUnit={repairUnit}
-              searchQuery={searchQuery}
-              selectedEquipment={selectedEquipment}
-              setDesiredDate={setDesiredDate}
-              setExternalCompanyName={setExternalCompanyName}
-              setIssueDescription={setIssueDescription}
-              setRepairItems={setRepairItems}
-              setRepairUnit={setRepairUnit}
+              repairItems={formState.repairItems}
+              repairUnit={formState.repairUnit}
+              searchQuery={formState.searchQuery}
+              selectedEquipment={formState.selectedEquipment}
               shouldShowNoResults={shouldShowNoResults}
             />
           </div>
