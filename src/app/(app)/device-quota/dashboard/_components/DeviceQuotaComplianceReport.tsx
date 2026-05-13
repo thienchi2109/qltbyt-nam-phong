@@ -314,7 +314,7 @@ export function DeviceQuotaComplianceReport({
       </div>
 
       {/* Print-specific styles */}
-      <style jsx>{`
+      <style>{`
         @media print {
           /* A4 Page Setup */
           @page {

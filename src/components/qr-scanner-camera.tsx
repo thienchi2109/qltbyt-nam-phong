@@ -5,20 +5,19 @@ import { X, Camera, Flashlight, FlashlightOff, RotateCcw, HelpCircle, ArrowLeft 
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog"
 import { useToast } from "@/hooks/use-toast"
 import jsQR from "jsqr"
+
+import { QRScannerInstructionsDialog } from "./qr-scanner-instructions-dialog"
 
 interface QRScannerCameraProps {
   onScanSuccess: (result: string) => void
   onClose: () => void
   isActive: boolean
+}
+
+type TorchMediaTrackConstraintSet = MediaTrackConstraintSet & {
+  torch: boolean
 }
 
 export function QRScannerCamera({ onScanSuccess, onClose, isActive }: QRScannerCameraProps) {
@@ -154,10 +153,11 @@ Hiện tại bạn đang truy cập qua: ${location.origin}
       const capabilities = track.getCapabilities()
       setHasFlash('torch' in capabilities)
 
-    } catch (error: any) {
+    } catch (error) {
       let errorMessage = "Không thể truy cập camera"
+      const errorName = error instanceof Error ? error.name : ""
       
-      if (error.name === 'NotAllowedError') {
+      if (errorName === 'NotAllowedError') {
         errorMessage = `❌ Quyền truy cập camera bị từ chối
 
 🔧 Cách khắc phục:
@@ -168,15 +168,15 @@ Hiện tại bạn đang truy cập qua: ${location.origin}
 📱 Trên mobile:
 • Vào Settings → Site Settings → Camera
 • Cho phép truy cập camera cho trang này`
-      } else if (error.name === 'NotFoundError') {
+      } else if (errorName === 'NotFoundError') {
         errorMessage = "❌ Không tìm thấy camera nào\n\n🔧 Vui lòng kiểm tra:\n• Camera có được kết nối không\n• Driver camera đã cài đặt chưa"
-      } else if (error.name === 'NotSupportedError') {
+      } else if (errorName === 'NotSupportedError') {
         errorMessage = "❌ Trình duyệt không hỗ trợ camera\n\n🔧 Vui lòng:\n• Sử dụng Chrome, Firefox, Safari hoặc Edge\n• Cập nhật trình duyệt lên phiên bản mới"
-      } else if (error.name === 'NotReadableError') {
+      } else if (errorName === 'NotReadableError') {
         errorMessage = "❌ Camera đang được sử dụng\n\n🔧 Vui lòng:\n• Đóng các ứng dụng khác đang dùng camera\n• Thử lại sau"
-      } else if (error.name === 'SecurityError') {
+      } else if (errorName === 'SecurityError') {
         errorMessage = "❌ Lỗi bảo mật\n\nCamera chỉ hoạt động trên:\n• HTTPS\n• localhost\n• 127.0.0.1"
-      } else if (error.name === 'OverconstrainedError') {
+      } else if (errorName === 'OverconstrainedError') {
         errorMessage = "❌ Thiết lập camera không phù hợp\n\nThử lại với camera khác"
       }
       
@@ -203,9 +203,13 @@ Hiện tại bạn đang truy cập qua: ${location.origin}
     
     try {
       const track = streamRef.current.getVideoTracks()[0]
-      await track.applyConstraints({
-        advanced: [{ torch: !isFlashOn } as any]
-      })
+      const torchConstraints: MediaTrackConstraints & {
+        advanced: TorchMediaTrackConstraintSet[]
+      } = {
+        advanced: [{ torch: !isFlashOn }],
+      }
+
+      await track.applyConstraints(torchConstraints)
       setIsFlashOn(!isFlashOn)
       toast({
         title: isFlashOn ? "Đã tắt đèn flash" : "Đã bật đèn flash",
@@ -418,63 +422,13 @@ Hiện tại bạn đang truy cập qua: ${location.origin}
         </div>
       </div>
 
-      {/* Instructions Dialog */}
-      <Dialog open={showInstructions} onOpenChange={setShowInstructions}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Camera className="h-5 w-5" />
-              Hướng dẫn quét mã QR
-            </DialogTitle>
-            <DialogDescription>
-              Làm theo các bước sau để quét mã QR thiết bị
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div className="space-y-3">
-              <div className="flex items-start gap-3">
-                <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-medium text-primary-foreground">
-                  1
-                </div>
-                <p className="text-sm">Đưa mã QR vào khung quét trên màn hình</p>
-              </div>
-              <div className="flex items-start gap-3">
-                <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-medium text-primary-foreground">
-                  2
-                </div>
-                <p className="text-sm">Giữ camera ổn định, cách mã QR khoảng 15-20cm</p>
-              </div>
-              <div className="flex items-start gap-3">
-                <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-medium text-primary-foreground">
-                  3
-                </div>
-                <p className="text-sm">Chờ hệ thống tự động nhận diện mã</p>
-              </div>
-              <div className="flex items-start gap-3">
-                <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-medium text-primary-foreground">
-                  4
-                </div>
-                <p className="text-sm">Chọn hành động muốn thực hiện với thiết bị</p>
-              </div>
-            </div>
-            <div className="rounded-lg bg-muted p-3">
-              <p className="text-xs text-muted-foreground">
-                <strong>Mẹo:</strong> Đảm bảo mã QR không bị nhăn, mờ hoặc che khuất.
-                Nếu quét không thành công, thử điều chỉnh khoảng cách hoặc góc quét.
-              </p>
-            </div>
-            <Button
-              onClick={() => setShowInstructions(false)}
-              className="w-full"
-            >
-              Đã hiểu
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
+      <QRScannerInstructionsDialog
+        open={showInstructions}
+        onOpenChange={setShowInstructions}
+      />
 
       {/* CSS for scanning animation */}
-      <style jsx>{`
+      <style>{`
         @keyframes scan {
           0% { top: 0; }
           50% { top: 100%; }

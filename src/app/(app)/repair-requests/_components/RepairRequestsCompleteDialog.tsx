@@ -201,4 +201,3 @@ export function RepairRequestsCompleteDialog() {
 }
 
 // Export alias for backwards compatibility
-export const CompleteRequestDialog = RepairRequestsCompleteDialog

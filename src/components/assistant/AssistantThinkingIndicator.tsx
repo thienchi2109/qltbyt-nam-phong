@@ -1,5 +1,7 @@
 import * as React from "react"
 
+const THINKING_DOT_IDS = ["first", "second", "third"] as const
+
 /**
  * Thinking indicator: 3 bouncing dots in a pill-shaped AI bubble.
  * Uses assistant-dot animation class from assistant-styles.css.
@@ -11,9 +13,9 @@ export function AssistantThinkingIndicator() {
             data-testid="assistant-thinking-container"
             className="inline-flex items-center gap-1 px-4 py-3 rounded-2xl bg-[hsl(var(--assistant-ai-bubble))] assistant-message-enter"
         >
-            {[0, 1, 2].map((i) => (
+            {THINKING_DOT_IDS.map((dotId) => (
                 <div
-                    key={i}
+                    key={dotId}
                     data-testid="assistant-thinking-dot"
                     className="w-1.5 h-1.5 rounded-full bg-muted-foreground/50 assistant-dot"
                 />

@@ -15,6 +15,25 @@ interface AssistantDraftCardProps {
     onApplyDraft: (draft: DraftPayload) => void
 }
 
+function withOccurrenceKeys<T>(
+    items: T[],
+    prefix: string,
+    getParts: (item: T) => string[],
+) {
+    const counts = new Map<string, number>()
+
+    return items.map((item) => {
+        const baseKey = [prefix, ...getParts(item)].join("-")
+        const nextCount = (counts.get(baseKey) ?? 0) + 1
+        counts.set(baseKey, nextCount)
+
+        return {
+            item,
+            key: nextCount === 1 ? baseKey : `${baseKey}-${nextCount}`,
+        }
+    })
+}
+
 /**
  * Renders a structured draft card for AI-generated draft artifacts.
  *
@@ -40,6 +59,12 @@ function RepairDraftCard({
     draft: RepairRequestDraft
     onApplyDraft: (draft: RepairRequestDraft) => void
 }) {
+    const keyedReviewNotes = withOccurrenceKeys(
+        draft.reviewNotes ?? [],
+        "review-note",
+        (note) => [note],
+    )
+
     return (
         <div
             className={cn(
@@ -87,8 +112,8 @@ function RepairDraftCard({
                 <div className="flex items-start gap-1.5 text-[11px] text-orange-700 bg-orange-100 rounded px-2 py-1.5">
                     <AlertTriangle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
                     <div>
-                        {draft.reviewNotes.map((note, i) => (
-                            <p key={i}>{note}</p>
+                        {keyedReviewNotes.map(({ item: note, key }) => (
+                            <p key={key}>{note}</p>
                         ))}
                     </div>
                 </div>
@@ -117,6 +142,17 @@ function RepairDraftCard({
 // ---------------------
 
 function TroubleshootingDraftCard({ draft }: { draft: TroubleshootingDraft }) {
+    const keyedCauses = withOccurrenceKeys(
+        draft.probable_causes,
+        "cause",
+        (cause) => [cause.label, cause.rationale],
+    )
+    const keyedSteps = withOccurrenceKeys(
+        draft.remediation_steps,
+        "step",
+        (step) => [step.type, step.step],
+    )
+
     return (
         <div
             className={cn(
@@ -137,9 +173,9 @@ function TroubleshootingDraftCard({ draft }: { draft: TroubleshootingDraft }) {
                 <p className="text-[11px] font-medium text-blue-700">
                     Nguyên nhân có thể:
                 </p>
-                {draft.probable_causes.map((cause, i) => (
+                {keyedCauses.map(({ item: cause, key }) => (
                     <div
-                        key={i}
+                        key={key}
                         className="flex items-start gap-1.5 text-xs text-blue-900"
                     >
                         <span className="text-blue-500 mt-0.5">•</span>
@@ -158,9 +194,9 @@ function TroubleshootingDraftCard({ draft }: { draft: TroubleshootingDraft }) {
                 <p className="text-[11px] font-medium text-blue-700">
                     Bước xử lý đề xuất:
                 </p>
-                {draft.remediation_steps.map((step, i) => (
+                {keyedSteps.map(({ item: step, key }, i) => (
                     <div
-                        key={i}
+                        key={key}
                         className="flex items-start gap-1.5 text-xs text-blue-900"
                     >
                         <span className="text-blue-500 font-mono text-[10px] mt-0.5">

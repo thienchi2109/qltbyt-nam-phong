@@ -10,7 +10,11 @@ import { EquipmentPageClient } from "./_components/EquipmentPageClient"
 export default function EquipmentPage() {
   return (
     <AuthenticatedPageBoundary fallback={<AuthenticatedPageSkeletonFallback />}>
-      {() => <EquipmentPageClient />}
+      {() => (
+        <React.Suspense fallback={<AuthenticatedPageSkeletonFallback />}>
+          <EquipmentPageClient />
+        </React.Suspense>
+      )}
     </AuthenticatedPageBoundary>
   )
 }

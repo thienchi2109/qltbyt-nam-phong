@@ -120,6 +120,31 @@ describe('AssistantDraftCard', () => {
                 screen.getByText(/Kiểm tra lại model trước khi gửi/),
             ).toBeInTheDocument()
         })
+
+        it('does not warn when AI-generated review notes repeat', () => {
+            const consoleError = vi
+                .spyOn(console, 'error')
+                .mockImplementation(() => undefined)
+
+            render(
+                <AssistantDraftCard
+                    draft={{
+                        ...REPAIR_DRAFT,
+                        reviewNotes: [
+                            'Kiểm tra lại model trước khi gửi',
+                            'Kiểm tra lại model trước khi gửi',
+                        ],
+                    }}
+                    onApplyDraft={vi.fn()}
+                />,
+            )
+
+            expect(consoleError).not.toHaveBeenCalledWith(
+                expect.stringContaining('Encountered two children with the same key'),
+                expect.anything(),
+            )
+            consoleError.mockRestore()
+        })
     })
 
     describe('troubleshootingDraft', () => {
@@ -145,6 +170,31 @@ describe('AssistantDraftCard', () => {
             expect(
                 screen.getByText(/Kiểm tra cáp kết nối/),
             ).toBeInTheDocument()
+        })
+
+        it('does not warn when troubleshooting causes and steps repeat', () => {
+            const consoleError = vi
+                .spyOn(console, 'error')
+                .mockImplementation(() => undefined)
+            const repeatedCause = TROUBLESHOOTING_DRAFT.probable_causes[0]
+            const repeatedStep = TROUBLESHOOTING_DRAFT.remediation_steps[0]
+
+            render(
+                <AssistantDraftCard
+                    draft={{
+                        ...TROUBLESHOOTING_DRAFT,
+                        probable_causes: [repeatedCause, repeatedCause],
+                        remediation_steps: [repeatedStep, repeatedStep],
+                    }}
+                    onApplyDraft={vi.fn()}
+                />,
+            )
+
+            expect(consoleError).not.toHaveBeenCalledWith(
+                expect.stringContaining('Encountered two children with the same key'),
+                expect.anything(),
+            )
+            consoleError.mockRestore()
         })
 
         it('does NOT render repair CTA button', () => {
