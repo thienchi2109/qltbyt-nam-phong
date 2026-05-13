@@ -16,6 +16,7 @@ import {
 import { useActiveUsageLogs } from "@/hooks/use-usage-logs"
 import { useSession } from "next-auth/react"
 import { isRegionalLeaderRole } from "@/lib/rbac"
+import { calculateUsageDurationMinutes } from "@/lib/usage-duration"
 import { formatVietnamDateTime } from "@/lib/date-utils"
 import { useHydrationSafeNow } from "@/components/time/HydrationSafeRelativeTime"
 import type { SessionUser } from "@/types/database"
@@ -71,7 +72,7 @@ export function MobileUsageActions({ equipment, className = "" }: MobileUsageAct
   }
 
   const usageDuration = activeSession && now !== null
-    ? Math.max(0, Math.floor((now - Date.parse(activeSession.thoi_gian_bat_dau)) / 60_000))
+    ? calculateUsageDurationMinutes(activeSession.thoi_gian_bat_dau, now)
     : 0
 
   const handleStartUsage = () => {

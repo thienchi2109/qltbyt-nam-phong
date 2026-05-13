@@ -8,23 +8,27 @@ const STORAGE_KEY = "mapping-guide-dismissed"
 const storageListeners = new Set<() => void>()
 
 function subscribeToDismissedState(onStoreChange: () => void) {
-    if (typeof window === "undefined") return () => {}
+    if (typeof globalThis.window === "undefined") return () => {}
 
     storageListeners.add(onStoreChange)
     const handleStorage = (event: StorageEvent) => {
         if (event.key === STORAGE_KEY) onStoreChange()
     }
-    window.addEventListener("storage", handleStorage)
+    globalThis.window.addEventListener("storage", handleStorage)
 
     return () => {
         storageListeners.delete(onStoreChange)
-        window.removeEventListener("storage", handleStorage)
+        globalThis.window.removeEventListener("storage", handleStorage)
     }
 }
 
 function getDismissedSnapshot() {
-    if (typeof window === "undefined") return true
-    return localStorage.getItem(STORAGE_KEY) === "true"
+    if (typeof globalThis.window === "undefined") return true
+    try {
+        return globalThis.window.localStorage.getItem(STORAGE_KEY) === "true"
+    } catch {
+        return true
+    }
 }
 
 function getServerDismissedSnapshot() {
@@ -52,7 +56,11 @@ export function DeviceQuotaMappingGuide() {
     if (dismissed) return null
 
     const handleDismiss = () => {
-        localStorage.setItem(STORAGE_KEY, "true")
+        try {
+            globalThis.window.localStorage.setItem(STORAGE_KEY, "true")
+        } catch {
+            return
+        }
         notifyDismissedStateChange()
     }
 

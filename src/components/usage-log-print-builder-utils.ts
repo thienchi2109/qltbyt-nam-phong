@@ -1,6 +1,7 @@
 import { differenceInMinutes } from "date-fns"
 
 import { getUsageLogFinalStatus, getUsageLogInitialStatus } from "@/lib/usage-log-status"
+import { escapeCsvCell as escapeSharedCsvCell } from "@/lib/csv-utils"
 import { type Equipment, type UsageLog } from "@/types/database"
 
 export type PrintableEquipment = Pick<Equipment, "ma_thiet_bi" | "ten_thiet_bi"> & Partial<Equipment>
@@ -48,9 +49,7 @@ export function escapeUrl(url: string | null | undefined): string {
 }
 
 export function escapeCsvCell(value: unknown): string {
-  const raw = value == null ? "" : String(value)
-  const sanitized = /^[=+\-@]/.test(raw) ? `'${raw}` : raw
-  return `"${sanitized.replace(/"/g, '""')}"`
+  return escapeSharedCsvCell(value)
 }
 
 export function parseDateInputAsLocalDate(dateString: string): Date {

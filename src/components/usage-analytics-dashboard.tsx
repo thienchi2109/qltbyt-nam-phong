@@ -33,6 +33,7 @@ import {
   useUserUsageStats,
   useDailyUsageData
 } from "@/hooks/use-usage-analytics"
+import { buildCsvContent } from "@/lib/csv-utils"
 import { formatVietnamDate } from "@/lib/date-utils"
 
 interface UsageAnalyticsDashboardProps {
@@ -82,13 +83,7 @@ export function UsageAnalyticsDashboard({
   }
 
   const exportToCSV = <T extends object>(data: T[], filename: string, headers: string[]) => {
-    const csvContent = [
-      headers.join(','),
-      ...data.map(row => {
-        const rowRecord = row as Record<string, unknown>
-        return headers.map(header => `"${rowRecord[header] || ''}"`).join(',')
-      })
-    ].join('\n')
+    const csvContent = buildCsvContent(data, headers)
 
     const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' })
     const link = document.createElement('a')

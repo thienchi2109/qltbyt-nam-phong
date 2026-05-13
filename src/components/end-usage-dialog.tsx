@@ -30,6 +30,7 @@ import { useSession } from "next-auth/react"
 import { type SessionUser, type UsageLog } from "@/types/database"
 import { isRegionalLeaderRole } from "@/lib/rbac"
 import { formatVietnamDateTime } from "@/lib/date-utils"
+import { calculateUsageDurationMinutes } from "@/lib/usage-duration"
 import { useHydrationSafeNow } from "@/components/time/HydrationSafeRelativeTime"
 
 const equipmentStatusOptions = [
@@ -107,7 +108,7 @@ export function EndUsageDialog({
 
   // Calculate usage duration
   const usageDuration = usageLog && now !== null
-    ? Math.max(0, Math.floor((now - Date.parse(usageLog.thoi_gian_bat_dau)) / 60_000))
+    ? calculateUsageDurationMinutes(usageLog.thoi_gian_bat_dau, now)
     : 0
 
   const formatDuration = (minutes: number) => {

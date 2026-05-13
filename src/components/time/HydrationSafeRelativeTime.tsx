@@ -18,33 +18,42 @@ interface HydrationSafeRelativeTimeProps {
 function subscribeToClientTime(onStoreChange: () => void): () => void {
   if (typeof window === "undefined") return () => {}
 
-  queueMicrotask(onStoreChange)
-  const intervalId = window.setInterval(onStoreChange, 60_000)
+  const tick = () => {
+    onStoreChange()
+  }
+
+  queueMicrotask(tick)
+  const intervalId = window.setInterval(tick, 60_000)
   return () => window.clearInterval(intervalId)
 }
 
-function getClientTimeSnapshot(): boolean {
-  return typeof window !== "undefined"
+function getClientTimeSnapshot(): number {
+  return Math.floor(Date.now() / 60_000)
 }
 
-function getServerTimeSnapshot(): boolean {
-  return false
+function getServerTimeSnapshot(): null {
+  return null
 }
 
 export function useHydrationSafeNow(): number | null {
-  const isClientReady = React.useSyncExternalStore(
+  const minuteSnapshot = React.useSyncExternalStore(
     subscribeToClientTime,
     getClientTimeSnapshot,
     getServerTimeSnapshot
   )
 
-  return isClientReady ? Date.now() : null
+  return minuteSnapshot === null ? null : minuteSnapshot * 60_000
 }
 
 function getTimestamp(value: RelativeTimeValue): number | null {
   if (value === null || value === undefined || value === "") return null
 
-  const timestamp = value instanceof Date ? value.getTime() : Date.parse(String(value))
+  const timestamp =
+    typeof value === "number"
+      ? value
+      : value instanceof Date
+        ? value.getTime()
+        : Date.parse(String(value))
   return Number.isNaN(timestamp) ? null : timestamp
 }
 

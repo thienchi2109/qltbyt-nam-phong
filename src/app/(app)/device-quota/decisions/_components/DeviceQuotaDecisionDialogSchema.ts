@@ -7,7 +7,28 @@ import { z } from "zod"
  */
 export function parseLocalDate(dateString: string): Date {
   const [year, month, day] = dateString.split("-").map(Number)
-  return new Date(year, month - 1, day)
+  if (
+    !Number.isFinite(year) ||
+    !Number.isFinite(month) ||
+    !Number.isFinite(day) ||
+    month < 1 ||
+    month > 12 ||
+    day < 1 ||
+    day > 31
+  ) {
+    return new Date(Number.NaN)
+  }
+
+  const date = new Date(year, month - 1, day)
+  if (
+    date.getFullYear() !== year ||
+    date.getMonth() + 1 !== month ||
+    date.getDate() !== day
+  ) {
+    return new Date(Number.NaN)
+  }
+
+  return date
 }
 
 export const decisionFormSchema = z.object({

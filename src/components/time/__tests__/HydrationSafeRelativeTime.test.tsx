@@ -1,5 +1,5 @@
 import React from 'react'
-import { render, screen } from '@testing-library/react'
+import { act, render, screen } from '@testing-library/react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -28,6 +28,24 @@ describe('HydrationSafeRelativeTime', () => {
     render(<HydrationSafeRelativeTime value="2025-01-15T14:30:00.000Z" />)
 
     expect(screen.getByText(/phút/)).toBeInTheDocument()
+  })
+
+  it('refreshes the relative label when the minute tick advances', async () => {
+    render(<HydrationSafeRelativeTime value="2025-01-15T14:58:00.000Z" />)
+
+    expect(screen.getByText(/2 phút trước/)).toBeInTheDocument()
+
+    await act(async () => {
+      vi.advanceTimersByTime(60_000)
+    })
+
+    expect(screen.getByText(/3 phút trước/)).toBeInTheDocument()
+  })
+
+  it('accepts numeric millisecond timestamps', () => {
+    render(<HydrationSafeRelativeTime value={Date.parse('2025-01-15T14:58:00.000Z')} />)
+
+    expect(screen.getByText(/2 phút trước/)).toBeInTheDocument()
   })
 
   it('uses the fallback placeholder for invalid values', () => {

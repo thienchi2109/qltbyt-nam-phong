@@ -11,7 +11,7 @@ import { DeviceQuotaMappingGuide } from '../_components/DeviceQuotaMappingGuide'
 
 const localStorageMock = (() => {
     let store: Record<string, string> = {}
-    return {
+    const api = {
         getItem: vi.fn((key: string) => store[key] ?? null),
         setItem: vi.fn((key: string, value: string) => {
             store[key] = value
@@ -19,7 +19,14 @@ const localStorageMock = (() => {
         clear: () => {
             store = {}
         },
+        resetMocks: () => {
+            api.getItem.mockImplementation((key: string) => store[key] ?? null)
+            api.setItem.mockImplementation((key: string, value: string) => {
+                store[key] = value
+            })
+        },
     }
+    return api
 })()
 
 Object.defineProperty(window, 'localStorage', { value: localStorageMock })
@@ -31,6 +38,7 @@ Object.defineProperty(window, 'localStorage', { value: localStorageMock })
 describe('DeviceQuotaMappingGuide', () => {
     beforeEach(() => {
         vi.clearAllMocks()
+        localStorageMock.resetMocks()
         localStorageMock.clear()
     })
 
@@ -80,5 +88,25 @@ describe('DeviceQuotaMappingGuide', () => {
         await waitFor(() => {
             expect(screen.queryByText(/Hướng dẫn phân loại thủ công/)).not.toBeInTheDocument()
         })
+    })
+
+    it('does not crash when localStorage reads are blocked', () => {
+        localStorageMock.getItem.mockImplementation(() => {
+            throw new Error('Storage disabled')
+        })
+
+        expect(() => render(<DeviceQuotaMappingGuide />)).not.toThrow()
+        expect(screen.queryByText(/Hướng dẫn phân loại thủ công/)).not.toBeInTheDocument()
+    })
+
+    it('does not crash when localStorage writes are blocked', async () => {
+        localStorageMock.setItem.mockImplementationOnce(() => {
+            throw new Error('Storage disabled')
+        })
+        render(<DeviceQuotaMappingGuide />)
+
+        const dismissButton = await screen.findByRole('button', { name: /đã hiểu/i })
+
+        expect(() => fireEvent.click(dismissButton)).not.toThrow()
     })
 })
