@@ -8,13 +8,14 @@ const mocks = vi.hoisted(() => ({
   renderEquipmentPageClient: vi.fn<() => React.ReactNode>(),
 }))
 
+interface MockAuthenticatedPageBoundaryProps {
+  children: () => React.ReactNode
+}
+
 vi.mock("@/app/(app)/_components/AuthenticatedPageBoundary", () => ({
   AuthenticatedPageBoundary: ({
     children,
-  }: {
-    children: () => React.ReactNode
-    fallback: React.ReactNode
-  }) => <>{children()}</>,
+  }: MockAuthenticatedPageBoundaryProps) => <>{children()}</>,
 }))
 
 vi.mock("@/app/(app)/_components/AuthenticatedPageFallbacks", () => ({
