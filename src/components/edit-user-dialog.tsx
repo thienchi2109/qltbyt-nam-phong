@@ -73,8 +73,16 @@ export function EditUserDialog({ open, onOpenChange, onSuccess, user }: EditUser
         },
       })
     },
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ["users-management"] })
+    onSuccess: async () => {
+      try {
+        await queryClient.invalidateQueries({ queryKey: ["users-management"] })
+      } catch (error: unknown) {
+        toast({
+          variant: "destructive",
+          title: "Không thể làm mới danh sách người dùng",
+          description: getUnknownErrorMessage(error, "Vui lòng tải lại trang để xem dữ liệu mới nhất."),
+        })
+      }
       toast({
         title: "Thành công",
         description: "Đã cập nhật thông tin người dùng."

@@ -9,6 +9,9 @@ function readSource(relativePath: string) {
 
 function extractFunction(source: string, functionName: string) {
   const start = source.indexOf(`export function ${functionName}`)
+  if (start === -1) {
+    throw new Error(`Missing exported function: ${functionName}`)
+  }
   const nextExport = source.indexOf("\nexport function", start + 1)
   return source.slice(start, nextExport === -1 ? undefined : nextExport)
 }
@@ -21,6 +24,7 @@ describe("React Doctor P2 rerender source guard", () => {
     expect(installPrompt).toContain("useReducer")
     expect(installPrompt).toContain("useRef")
     expect(installPrompt).not.toContain("useState")
+    expect(installPrompt).not.toContain("console.log")
   })
 
   it("keeps repair request create and edit form state reducer-based", () => {
@@ -43,6 +47,7 @@ describe("React Doctor P2 rerender source guard", () => {
     expect(source).toContain("useReducer")
     expect(source).not.toContain(".filter(Boolean)")
     expect(source).not.toContain("setRowSelection({})")
+    expect(source).toContain("...initialAddTasksTableState")
   })
 
   it("uses mutation or transition pending state in tenant and user submit dialogs", () => {

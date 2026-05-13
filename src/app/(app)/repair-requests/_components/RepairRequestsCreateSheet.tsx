@@ -201,13 +201,14 @@ export function RepairRequestsCreateSheet() {
       try {
         const eq = await fetchRepairRequestEquipmentList(q, 20, ctrl.signal)
         if (ctrl.signal.aborted) return
+        const completedDraftEquipmentLookup = Boolean(
+          assistantDraft?.equipment?.thiet_bi_id && q === draftEquipmentLabel,
+        )
         dispatchForm({
           type: "patch",
           updates: {
             allEquipment: eq || [],
-            hasDraftEquipmentLookupCompleted: assistantDraft?.equipment?.thiet_bi_id && q === draftEquipmentLabel
-              ? true
-              : formState.hasDraftEquipmentLookupCompleted,
+            ...(completedDraftEquipmentLookup ? { hasDraftEquipmentLookupCompleted: true } : {}),
             isSearchPending: false,
           },
         })
@@ -227,7 +228,6 @@ export function RepairRequestsCreateSheet() {
   }, [
     assistantDraft,
     draftEquipmentLabel,
-    formState.hasDraftEquipmentLookupCompleted,
     formState.searchQuery,
     formState.selectedEquipment,
   ])

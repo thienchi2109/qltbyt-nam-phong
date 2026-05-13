@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useReducer, useRef, useState } from 'react';
+import { useEffect, useReducer, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Download, X } from 'lucide-react';
 
@@ -90,10 +90,11 @@ export function PWAInstallPrompt() {
       if (process.env.NODE_ENV === 'production') {
         try {
           const serwistWindow = window as SerwistWindow;
-          const registration = serwistWindow.serwist
-            ? await serwistWindow.serwist.register()
-            : await navigator.serviceWorker.register('/sw.js');
-          console.log('Service Worker registered:', registration);
+          if (serwistWindow.serwist) {
+            await serwistWindow.serwist.register();
+          } else {
+            await navigator.serviceWorker.register('/sw.js');
+          }
         } catch (error) {
           console.error('Service Worker registration failed:', error);
         }
@@ -108,7 +109,6 @@ export function PWAInstallPrompt() {
             ...regs.map(r => r.unregister()),
             ...cacheNames.map(name => caches.delete(name)),
           ]);
-          console.log('Service Worker unregistered and caches cleared for development');
         } catch (err) {
           console.warn('SW cleanup in development failed:', err);
         }
@@ -142,17 +142,15 @@ export function PWAInstallPrompt() {
   const handleInstallClick = async () => {
     if (!deferredPromptRef.current) return;
 
-    await deferredPromptRef.current.prompt();
-    const { outcome } = await deferredPromptRef.current.userChoice;
-    
-    if (outcome === 'accepted') {
-      console.log('User accepted the install prompt');
-    } else {
-      console.log('User dismissed the install prompt');
+    try {
+      await deferredPromptRef.current.prompt();
+      await deferredPromptRef.current.userChoice;
+    } catch (error) {
+      console.warn('PWA install prompt failed:', error);
+    } finally {
+      deferredPromptRef.current = null;
+      dispatch({ type: "prompt-consumed" });
     }
-    
-    deferredPromptRef.current = null;
-    dispatch({ type: "prompt-consumed" });
   };
 
   const handleDismiss = () => {

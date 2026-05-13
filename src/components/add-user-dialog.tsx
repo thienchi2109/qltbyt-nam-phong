@@ -91,8 +91,16 @@ export function AddUserDialog({ open, onOpenChange, onSuccess }: AddUserDialogPr
 
       return id
     },
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ["users-management"] })
+    onSuccess: async () => {
+      try {
+        await queryClient.invalidateQueries({ queryKey: ["users-management"] })
+      } catch (error: unknown) {
+        toast({
+          variant: "destructive",
+          title: "Không thể làm mới danh sách người dùng",
+          description: getUnknownErrorMessage(error, "Vui lòng tải lại trang để xem dữ liệu mới nhất."),
+        })
+      }
       toast({ title: 'Thành công', description: 'Đã tạo tài khoản người dùng mới.' })
       onSuccess()
       onOpenChange(false)

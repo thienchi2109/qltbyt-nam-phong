@@ -117,11 +117,12 @@ function addTasksTableReducer(
   switch (action.type) {
     case "reset-dialog":
       return {
-        ...state,
-        columnFilters: [],
-        pagination: initialAddTasksTableState.pagination,
-        rowSelection: initialAddTasksTableState.rowSelection,
-        searchTerm: "",
+        ...initialAddTasksTableState,
+        columnFilters: [...initialAddTasksTableState.columnFilters],
+        columnVisibility: { ...initialAddTasksTableState.columnVisibility },
+        pagination: { ...initialAddTasksTableState.pagination },
+        rowSelection: { ...initialAddTasksTableState.rowSelection },
+        sorting: [...initialAddTasksTableState.sorting],
       }
     case "set-column-filters":
       return { ...state, columnFilters: resolveUpdater(action.updater, state.columnFilters) }
