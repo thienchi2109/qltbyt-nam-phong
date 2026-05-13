@@ -19,3 +19,35 @@ describe("React Doctor P0 DOM correctness", () => {
     }
   })
 })
+
+describe("React Doctor P5 accessibility source guards", () => {
+  it("does not keep fake anchors or autofocus in the flagged accessibility files", () => {
+    const files = [
+      "src/components/login-template.tsx",
+      "src/app/(app)/maintenance/_components/notes-input.tsx",
+    ]
+
+    for (const file of files) {
+      const source = readFileSync(join(process.cwd(), file), "utf8")
+
+      expect(source).not.toContain('href="#"')
+      expect(source).not.toContain("autoFocus")
+    }
+  })
+
+  it("does not use form labels for readonly handover display fields", () => {
+    const source = readFileSync(
+      join(process.cwd(), "src/components/handover-template.tsx"),
+      "utf8",
+    )
+
+    expect(source).not.toMatch(/<label[^>]*>\s*Khoa\/Phòng lập:/)
+    expect(source).not.toMatch(/<label[^>]*>\s*Ngày nhận\/giao:/)
+    expect(source).not.toMatch(/<label[^>]*>\s*Lý do nhận bàn giao:/)
+    expect(source).not.toMatch(/<label[^>]*>\s*Mã yêu cầu:/)
+    expect(source).toContain("Khoa/Phòng lập:")
+    expect(source).toContain("Ngày nhận/giao:")
+    expect(source).toContain("Lý do nhận bàn giao:")
+    expect(source).toContain("Mã yêu cầu:")
+  })
+})

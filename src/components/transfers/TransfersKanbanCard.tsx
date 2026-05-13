@@ -62,14 +62,34 @@ function TransfersKanbanCardComponent({
     [onClick, transfer]
   )
 
+  const openTransferFromKeyboard = React.useCallback(
+    (event: React.KeyboardEvent<HTMLDivElement>) => {
+      if (event.key !== 'Enter' && event.key !== ' ') return
+
+      event.preventDefault()
+      onClick(transfer)
+    },
+    [onClick, transfer]
+  )
+
+  const stopActionPropagation = React.useCallback(
+    (event: React.MouseEvent<HTMLDivElement> | React.KeyboardEvent<HTMLDivElement>) => {
+      event.stopPropagation()
+    },
+    []
+  )
+
   return (
-    <Card
-      className="mb-2 cursor-pointer hover:shadow-md transition-shadow"
-      onClick={openTransferFromCard}
-      role="article"
-      aria-label={`Transfer ${transfer.ma_yeu_cau}`}
-    >
+    <Card className="mb-2 hover:shadow-md transition-shadow">
       <CardContent className="p-3 space-y-2">
+        <div
+          className="cursor-pointer space-y-2 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+          onClick={openTransferFromCard}
+          onKeyDown={openTransferFromKeyboard}
+          role="button"
+          tabIndex={0}
+          aria-label={`Mở yêu cầu luân chuyển ${transfer.ma_yeu_cau}`}
+        >
         {/* Header: Transfer code + type badge */}
         <div className="flex items-start justify-between gap-2">
           <span className="font-medium text-sm truncate">
@@ -110,8 +130,15 @@ function TransfersKanbanCardComponent({
           )}
         </div>
 
+        </div>
+
         {/* Actions menu */}
-        <div onClick={(e) => e.stopPropagation()} data-actions-menu role="presentation">
+        <div
+          onClick={stopActionPropagation}
+          onKeyDown={stopActionPropagation}
+          data-actions-menu
+          role="presentation"
+        >
           {actions}
         </div>
       </CardContent>

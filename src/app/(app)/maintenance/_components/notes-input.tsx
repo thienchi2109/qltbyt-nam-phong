@@ -11,7 +11,6 @@ export const NotesInput = React.memo(({ value, onChange }: {
       value={value}
       onChange={(e) => onChange(e.target.value)}
       className="h-8"
-      autoFocus
     />
   );
 });

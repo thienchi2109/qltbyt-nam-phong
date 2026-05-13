@@ -1,8 +1,11 @@
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Loader2 } from "lucide-react"
+import * as React from "react"
 import { format, parseISO } from "date-fns"
 import { vi } from 'date-fns/locale'
+import { Loader2 } from "lucide-react"
+
+import { Badge } from "@/components/ui/badge"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+
 import type { RepairRequestWithEquipment } from "../types"
 import { getStatusVariant } from "../utils"
 import { DaysRemainingBar } from "./DaysRemainingBar"
@@ -31,6 +34,23 @@ export function RepairRequestsMobileList({
   setRequestToView,
   renderActions
 }: MobileRequestListProps) {
+  const openRequestFromKeyboard = React.useCallback(
+    (event: React.KeyboardEvent<HTMLDivElement>, request: RepairRequestWithEquipment) => {
+      if (event.key !== "Enter" && event.key !== " ") return
+
+      event.preventDefault()
+      setRequestToView(request)
+    },
+    [setRequestToView],
+  )
+
+  const stopActionPropagation = React.useCallback(
+    (event: React.MouseEvent<HTMLDivElement> | React.KeyboardEvent<HTMLDivElement>) => {
+      event.stopPropagation()
+    },
+    [],
+  )
+
   if (isLoading) {
     return (
       <div className="flex justify-center items-center gap-2 py-6">
@@ -53,20 +73,24 @@ export function RepairRequestsMobileList({
       {requests.map((request) => (
         <Card
           key={request.id}
-          className="mobile-repair-card cursor-pointer hover:bg-muted/50"
-          onClick={() => setRequestToView(request)}
+          className="mobile-repair-card relative hover:bg-muted/50"
         >
+          <div
+            className="cursor-pointer rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+            onClick={() => setRequestToView(request)}
+            onKeyDown={(event) => openRequestFromKeyboard(event, request)}
+            role="button"
+            tabIndex={0}
+            aria-label={`Xem yêu cầu sửa chữa ${request.thiet_bi?.ten_thiet_bi || 'N/A'}`}
+          >
           <CardHeader className="mobile-repair-card-header flex flex-row items-start justify-between">
-            <div className="flex-1 min-w-0 pr-2">
+            <div className="flex-1 min-w-0 pr-12">
               <CardTitle className="mobile-repair-card-title truncate line-clamp-1">
                 {request.thiet_bi?.ten_thiet_bi || 'N/A'}
               </CardTitle>
               <CardDescription className="mobile-repair-card-description truncate">
                 {request.thiet_bi?.ma_thiet_bi || 'N/A'}
               </CardDescription>
-            </div>
-            <div className="flex-shrink-0" onClick={(e) => e.stopPropagation()}>
-              {renderActions(request)}
             </div>
           </CardHeader>
           <CardContent className="mobile-repair-card-content">
@@ -124,6 +148,15 @@ export function RepairRequestsMobileList({
               </div>
             )}
           </CardContent>
+          </div>
+          <div
+            className="absolute right-6 top-6 flex-shrink-0"
+            onClick={stopActionPropagation}
+            onKeyDown={stopActionPropagation}
+            role="presentation"
+          >
+            {renderActions(request)}
+          </div>
         </Card>
       ))}
     </div>

@@ -106,9 +106,26 @@ export const TransferCard = React.memo(function TransferCard({
   actions,
   referenceDate = new Date(),
 }: TransferCardProps) {
-  const handleClick = React.useCallback(() => {
+  const openTransferFromCard = React.useCallback(() => {
     onClick?.(transfer)
   }, [onClick, transfer])
+
+  const openTransferFromKeyboard = React.useCallback(
+    (event: React.KeyboardEvent<HTMLDivElement>) => {
+      if (event.key !== "Enter" && event.key !== " ") return
+
+      event.preventDefault()
+      onClick?.(transfer)
+    },
+    [onClick, transfer],
+  )
+
+  const stopActionPropagation = React.useCallback(
+    (event: React.MouseEvent<HTMLDivElement> | React.KeyboardEvent<HTMLDivElement>) => {
+      event.stopPropagation()
+    },
+    [],
+  )
 
   const overdueBadge = React.useMemo(
     () => getOverdueBadge(transfer, referenceDate),
@@ -116,11 +133,16 @@ export const TransferCard = React.memo(function TransferCard({
   )
 
   return (
-    <Card
-      className="cursor-pointer shadow-sm transition-shadow hover:shadow-md"
-      onClick={handleClick}
-    >
+    <Card className="shadow-sm transition-shadow hover:shadow-md">
       <CardContent className="space-y-4 p-4">
+        <div
+          className="cursor-pointer space-y-4 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+          onClick={openTransferFromCard}
+          onKeyDown={openTransferFromKeyboard}
+          role="button"
+          tabIndex={0}
+          aria-label={`Mở yêu cầu luân chuyển ${transfer.ma_yeu_cau}`}
+        >
         <div className="flex items-start justify-between gap-3">
           <div className="space-y-2">
             <p className="text-sm font-semibold leading-none">{transfer.ma_yeu_cau}</p>
@@ -169,6 +191,8 @@ export const TransferCard = React.memo(function TransferCard({
           </div>
         </div>
 
+        </div>
+
         <div className="mt-4 flex items-center justify-between gap-3 border-t pt-4">
           <div className="flex-1">
             <p className="text-xs font-medium text-muted-foreground">
@@ -178,7 +202,9 @@ export const TransferCard = React.memo(function TransferCard({
           {actions ? (
             <div
               className="flex shrink-0 items-center gap-2"
-              onClick={(event) => event.stopPropagation()}
+              onClick={stopActionPropagation}
+              onKeyDown={stopActionPropagation}
+              role="presentation"
             >
               {actions}
             </div>
