@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 
-import { parseLocalDate } from "../DeviceQuotaDecisionDialogSchema"
+import { parseLocalDate } from "@/app/(app)/device-quota/decisions/_components/DeviceQuotaDecisionDialogSchema"
 
 describe("parseLocalDate", () => {
   it("keeps valid local dates on the requested calendar day", () => {

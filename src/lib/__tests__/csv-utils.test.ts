@@ -1,10 +1,23 @@
 import { describe, expect, it } from "vitest"
 
-import { buildCsvContent, escapeCsvCell } from "../csv-utils"
+import { buildCsvContent, escapeCsvCell } from "@/lib/csv-utils"
 
 describe("csv utils", () => {
   it("escapes quotes and neutralizes spreadsheet formulas", () => {
     expect(escapeCsvCell('=1+1 "quoted"')).toBe(`"'=1+1 ""quoted"""`)
+  })
+
+  it("neutralizes formulas with leading whitespace or control characters", () => {
+    expect(escapeCsvCell("\t=1+1")).toBe(`"'\t=1+1"`)
+    expect(escapeCsvCell(" =1+1")).toBe(`"' =1+1"`)
+  })
+
+  it("does not throw when object serialization fails", () => {
+    const circular: Record<string, unknown> = {}
+    circular.self = circular
+
+    expect(() => escapeCsvCell(circular)).not.toThrow()
+    expect(escapeCsvCell(circular)).toBe('"[object Object]"')
   })
 
   it("preserves zero and false values", () => {

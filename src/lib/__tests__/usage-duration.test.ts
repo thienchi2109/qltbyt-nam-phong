@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 
-import { calculateUsageDurationMinutes } from "../usage-duration"
+import { calculateUsageDurationMinutes } from "@/lib/usage-duration"
 
 describe("calculateUsageDurationMinutes", () => {
   it("returns zero when the start timestamp is invalid", () => {

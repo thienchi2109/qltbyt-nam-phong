@@ -54,7 +54,7 @@ function getTimestamp(value: RelativeTimeValue): number | null {
       : value instanceof Date
         ? value.getTime()
         : Date.parse(String(value))
-  return Number.isNaN(timestamp) ? null : timestamp
+  return Number.isFinite(timestamp) ? timestamp : null
 }
 
 export function HydrationSafeRelativeTime({

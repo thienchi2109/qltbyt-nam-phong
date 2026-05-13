@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest"
 import {
   formatUsageDuration,
   getUsageLogPageSignature,
-} from "../usage-history-tab.utils"
+} from "@/components/usage-history-tab.utils"
 import type { UsageLog } from "@/types/database"
 
 function createUsageLog(overrides: Partial<UsageLog>): UsageLog {

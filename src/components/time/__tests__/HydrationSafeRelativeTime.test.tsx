@@ -3,7 +3,7 @@ import { act, render, screen } from '@testing-library/react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { HydrationSafeRelativeTime } from '../HydrationSafeRelativeTime'
+import { HydrationSafeRelativeTime } from '@/components/time/HydrationSafeRelativeTime'
 
 describe('HydrationSafeRelativeTime', () => {
   beforeEach(() => {
@@ -46,6 +46,12 @@ describe('HydrationSafeRelativeTime', () => {
     render(<HydrationSafeRelativeTime value={Date.parse('2025-01-15T14:58:00.000Z')} />)
 
     expect(screen.getByText(/2 phút trước/)).toBeInTheDocument()
+  })
+
+  it('uses the fallback placeholder for non-finite numeric values', () => {
+    render(<HydrationSafeRelativeTime value={Infinity} fallback="-" />)
+
+    expect(screen.getByText('-')).toBeInTheDocument()
   })
 
   it('uses the fallback placeholder for invalid values', () => {

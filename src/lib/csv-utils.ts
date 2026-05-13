@@ -1,12 +1,18 @@
-const FORMULA_PREFIX_PATTERN = /^[=+\-@]/
+const FORMULA_PREFIX_PATTERN = /^[\s\u0000-\u001F]*[=+\-@]/
+
+function stringifyCsvValue(value: unknown): string {
+  if (value == null) return ""
+  if (typeof value !== "object") return String(value)
+
+  try {
+    return JSON.stringify(value) ?? ""
+  } catch {
+    return String(value)
+  }
+}
 
 export function escapeCsvCell(value: unknown): string {
-  const raw =
-    value == null
-      ? ""
-      : typeof value === "object"
-        ? JSON.stringify(value)
-        : String(value)
+  const raw = stringifyCsvValue(value)
   const hardened = FORMULA_PREFIX_PATTERN.test(raw) ? `'${raw}` : raw
 
   return `"${hardened.replace(/"/g, '""')}"`
