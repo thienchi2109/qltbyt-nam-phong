@@ -1,9 +1,11 @@
 import * as React from "react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Loader2 } from "lucide-react"
 import { format, parseISO } from "date-fns"
 import { vi } from 'date-fns/locale'
+import { Loader2 } from "lucide-react"
+
+import { Badge } from "@/components/ui/badge"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+
 import type { RepairRequestWithEquipment } from "../types"
 import { getStatusVariant } from "../utils"
 import { DaysRemainingBar } from "./DaysRemainingBar"
