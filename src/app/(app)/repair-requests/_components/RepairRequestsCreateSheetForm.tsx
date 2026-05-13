@@ -38,11 +38,11 @@ interface RepairRequestsCreateSheetFormProps {
   repairUnit: RepairUnit
   searchQuery: string
   selectedEquipment: EquipmentSelectItem | null
-  setDesiredDate: React.Dispatch<React.SetStateAction<Date | undefined>>
-  setExternalCompanyName: React.Dispatch<React.SetStateAction<string>>
-  setIssueDescription: React.Dispatch<React.SetStateAction<string>>
-  setRepairItems: React.Dispatch<React.SetStateAction<string>>
-  setRepairUnit: React.Dispatch<React.SetStateAction<RepairUnit>>
+  onDesiredDateChange: (value: Date | undefined) => void
+  onExternalCompanyNameChange: (value: string) => void
+  onIssueDescriptionChange: (value: string) => void
+  onRepairItemsChange: (value: string) => void
+  onRepairUnitChange: (value: RepairUnit) => void
   shouldShowNoResults: boolean
 }
 
@@ -61,11 +61,11 @@ export function RepairRequestsCreateSheetForm({
   repairUnit,
   searchQuery,
   selectedEquipment,
-  setDesiredDate,
-  setExternalCompanyName,
-  setIssueDescription,
-  setRepairItems,
-  setRepairUnit,
+  onDesiredDateChange,
+  onExternalCompanyNameChange,
+  onIssueDescriptionChange,
+  onRepairItemsChange,
+  onRepairUnitChange,
   shouldShowNoResults,
 }: RepairRequestsCreateSheetFormProps) {
   const [minimumSelectableDate, setMinimumSelectableDate] = React.useState<Date | null>(null)
@@ -98,7 +98,7 @@ export function RepairRequestsCreateSheetForm({
           placeholder="Mô tả chi tiết vấn đề gặp phải..."
           rows={4}
           value={issueDescription}
-          onChange={(e) => setIssueDescription(e.target.value)}
+          onChange={(e) => onIssueDescriptionChange(e.target.value)}
           required
         />
       </div>
@@ -109,7 +109,7 @@ export function RepairRequestsCreateSheetForm({
           placeholder="VD: Thay màn hình, sửa nguồn..."
           rows={3}
           value={repairItems}
-          onChange={(e) => setRepairItems(e.target.value)}
+          onChange={(e) => onRepairItemsChange(e.target.value)}
         />
       </div>
       <div className="space-y-2">
@@ -129,13 +129,13 @@ export function RepairRequestsCreateSheetForm({
             </Button>
           </PopoverTrigger>
           <PopoverContent className="w-auto p-0">
-            <Calendar
-              mode="single"
-              selected={desiredDate}
-              onSelect={setDesiredDate}
-              initialFocus
-              disabled={isDateDisabled}
-            />
+                <Calendar
+                  mode="single"
+                  selected={desiredDate}
+                  onSelect={onDesiredDateChange}
+                  initialFocus
+                  disabled={isDateDisabled}
+                />
           </PopoverContent>
         </Popover>
       </div>
@@ -143,7 +143,7 @@ export function RepairRequestsCreateSheetForm({
       {canSetRepairUnit && (
         <div className="space-y-2">
           <Label htmlFor="repair-unit">Đơn vị thực hiện</Label>
-          <Select value={repairUnit} onValueChange={(value) => setRepairUnit(value as RepairUnit)}>
+          <Select value={repairUnit} onValueChange={(value) => onRepairUnitChange(value as RepairUnit)}>
             <SelectTrigger className="touch-target">
               <SelectValue placeholder="Chọn đơn vị thực hiện" />
             </SelectTrigger>
@@ -162,7 +162,7 @@ export function RepairRequestsCreateSheetForm({
             id="external-company"
             placeholder="Nhập tên đơn vị được thuê sửa chữa..."
             value={externalCompanyName}
-            onChange={(e) => setExternalCompanyName(e.target.value)}
+            onChange={(e) => onExternalCompanyNameChange(e.target.value)}
             required
             className="touch-target"
           />
