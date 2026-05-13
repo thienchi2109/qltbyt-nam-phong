@@ -87,8 +87,8 @@ function RepairDraftCard({
                 <div className="flex items-start gap-1.5 text-[11px] text-orange-700 bg-orange-100 rounded px-2 py-1.5">
                     <AlertTriangle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
                     <div>
-                        {draft.reviewNotes.map((note, i) => (
-                            <p key={i}>{note}</p>
+                        {draft.reviewNotes.map((note) => (
+                            <p key={`review-note-${note}`}>{note}</p>
                         ))}
                     </div>
                 </div>
@@ -137,9 +137,9 @@ function TroubleshootingDraftCard({ draft }: { draft: TroubleshootingDraft }) {
                 <p className="text-[11px] font-medium text-blue-700">
                     Nguyên nhân có thể:
                 </p>
-                {draft.probable_causes.map((cause, i) => (
+                {draft.probable_causes.map((cause) => (
                     <div
-                        key={i}
+                        key={`cause-${cause.label}-${cause.rationale}`}
                         className="flex items-start gap-1.5 text-xs text-blue-900"
                     >
                         <span className="text-blue-500 mt-0.5">•</span>
@@ -160,7 +160,7 @@ function TroubleshootingDraftCard({ draft }: { draft: TroubleshootingDraft }) {
                 </p>
                 {draft.remediation_steps.map((step, i) => (
                     <div
-                        key={i}
+                        key={`step-${step.type}-${step.step}`}
                         className="flex items-start gap-1.5 text-xs text-blue-900"
                     >
                         <span className="text-blue-500 font-mono text-[10px] mt-0.5">

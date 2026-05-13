@@ -197,7 +197,7 @@ export function LogTemplate({
         </div>
       </div>
 
-      <style jsx>{`
+      <style>{`
         .a4-page {
           width: 21cm;
           min-height: 29.7cm;

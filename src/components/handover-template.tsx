@@ -65,7 +65,7 @@ export function HandoverTemplate({
     }
   }
 
-  const formatValue = (value: any) => {
+  const formatValue = (value: unknown) => {
     if (value === null || value === undefined || value === '') {
       return ''
     }
@@ -237,7 +237,7 @@ export function HandoverTemplate({
         </div>
       </div>
 
-      <style jsx>{`
+      <style>{`
         .a4-landscape-page {
           width: 29.7cm;
           min-height: 21cm;
