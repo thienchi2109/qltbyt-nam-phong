@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { parseISO, format } from "date-fns"
+import { parseISO, format, startOfDay } from "date-fns"
 import { Button } from "@/components/ui/button"
 import { Calendar } from "@/components/ui/calendar"
 import {
@@ -134,10 +134,10 @@ export function RepairRequestsEditDialog() {
                   onSelect={setDesiredDate}
                   initialFocus
                   disabled={(date) => {
-                    const requestDate = requestToEdit?.ngay_yeu_cau
-                      ? new Date(requestToEdit.ngay_yeu_cau)
-                      : new Date()
-                    return date < new Date(requestDate.setHours(0, 0, 0, 0))
+                    const requestTimestamp = Date.parse(requestToEdit.ngay_yeu_cau)
+                    return Number.isFinite(requestTimestamp)
+                      ? date.getTime() < startOfDay(requestTimestamp).getTime()
+                      : false
                   }}
                 />
               </PopoverContent>

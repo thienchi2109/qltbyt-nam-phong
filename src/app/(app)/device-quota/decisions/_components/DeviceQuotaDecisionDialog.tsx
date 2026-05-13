@@ -10,7 +10,6 @@
 import * as React from "react"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
-import { z } from "zod"
 import { format } from "date-fns"
 import { Calendar as CalendarIcon, Loader2 } from "lucide-react"
 
@@ -36,66 +35,14 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { cn } from "@/lib/utils"
+import { useHydrationSafeNow } from "@/components/time/HydrationSafeRelativeTime"
 
 import { useDeviceQuotaDecisionsContext } from "../_hooks/useDeviceQuotaDecisionsContext"
-
-// ============================================
-// Helpers
-// ============================================
-
-/**
- * Parse a YYYY-MM-DD date string as a local date (not UTC).
- * Using new Date("2024-01-15") parses as UTC midnight, which can shift
- * the day in non-UTC timezones. This function creates a local date.
- */
-function parseLocalDate(dateString: string): Date {
-  const [year, month, day] = dateString.split("-").map(Number)
-  return new Date(year, month - 1, day)
-}
-
-// ============================================
-// Validation Schema
-// ============================================
-
-const decisionFormSchema = z.object({
-  so_quyet_dinh: z.string().min(1, "Số quyết định không được để trống"),
-  ngay_ban_hanh: z.date({
-    required_error: "Vui lòng chọn ngày ban hành",
-  }),
-  ngay_hieu_luc: z.date({
-    required_error: "Vui lòng chọn ngày hiệu lực",
-  }),
-  ngay_het_hieu_luc: z.date().optional().nullable(),
-  nguoi_ky: z.string().min(1, "Người ký không được để trống"),
-  chuc_vu_nguoi_ky: z.string().min(1, "Chức vụ người ký không được để trống"),
-  ghi_chu: z.string().optional().nullable(),
-}).refine(
-  (data) => {
-    // Validate ngay_hieu_luc >= ngay_ban_hanh
-    if (data.ngay_hieu_luc && data.ngay_ban_hanh) {
-      return data.ngay_hieu_luc >= data.ngay_ban_hanh
-    }
-    return true
-  },
-  {
-    message: "Ngày hiệu lực phải sau hoặc bằng ngày ban hành",
-    path: ["ngay_hieu_luc"],
-  }
-).refine(
-  (data) => {
-    // Validate ngay_het_hieu_luc > ngay_hieu_luc
-    if (data.ngay_het_hieu_luc && data.ngay_hieu_luc) {
-      return data.ngay_het_hieu_luc > data.ngay_hieu_luc
-    }
-    return true
-  },
-  {
-    message: "Ngày hết hiệu lực phải sau ngày hiệu lực",
-    path: ["ngay_het_hieu_luc"],
-  }
-)
-
-type DecisionFormValues = z.infer<typeof decisionFormSchema>
+import {
+  decisionFormSchema,
+  parseLocalDate,
+  type DecisionFormValues,
+} from "./DeviceQuotaDecisionDialogSchema"
 
 // ============================================
 // Component
@@ -113,6 +60,7 @@ export function DeviceQuotaDecisionDialog() {
 
   const isOpen = isCreateDialogOpen || isEditDialogOpen
   const isEditMode = isEditDialogOpen && !!selectedDecision
+  const now = useHydrationSafeNow()
 
   // Form initialization
   const form = useForm<DecisionFormValues>({
@@ -271,7 +219,7 @@ export function DeviceQuotaDecisionDialog() {
                         mode="single"
                         selected={field.value}
                         onSelect={field.onChange}
-                        disabled={(date) => date > new Date()}
+                        disabled={(date) => now !== null && date.getTime() > now}
                         initialFocus
                       />
                     </PopoverContent>

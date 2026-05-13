@@ -12,6 +12,7 @@ export const SUSPICIOUS_DATE_WARNING =
 
 const FULL_DATE_VIETNAMESE_PATTERN = /^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/
 const FULL_DATE_ISO_PATTERN = /^(\d{4})-(\d{2})-(\d{2})$/
+export { formatVietnamDate, formatVietnamDateTime } from "./vietnam-date-format"
 
 function isValidCalendarDateParts(year: number, month: number, day: number): boolean {
   const date = new Date(Date.UTC(year, month - 1, day))

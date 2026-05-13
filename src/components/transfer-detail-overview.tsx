@@ -11,6 +11,7 @@ import {
   TRANSFER_TYPES,
   type TransferRequest,
 } from "@/types/database"
+import { formatVietnamDate, formatVietnamDateTime } from "@/lib/date-utils"
 
 interface TransferDetailOverviewProps {
   transfer: TransferRequest
@@ -36,8 +37,7 @@ function getStatusVariant(status: string) {
 }
 
 function formatDateTime(dateString: string | null | undefined) {
-  if (!dateString) return "Chưa có"
-  return new Date(dateString).toLocaleString("vi-VN")
+  return formatVietnamDateTime(dateString, "Chưa có")
 }
 
 export function TransferDetailOverview({
@@ -154,7 +154,7 @@ export function TransferDetailOverview({
                   <span className="font-medium">Ngày dự kiến trả về:</span>
                 </div>
                 <p className="ml-6">
-                  {new Date(transfer.ngay_du_kien_tra).toLocaleDateString("vi-VN")}
+                  {formatVietnamDate(transfer.ngay_du_kien_tra)}
                 </p>
               </div>
             ) : null}

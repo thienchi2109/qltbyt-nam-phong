@@ -1,8 +1,6 @@
 "use client"
 
 import React from "react"
-import { format } from "date-fns"
-import { vi } from "date-fns/locale"
 import { 
   Clock, 
   Users, 
@@ -35,6 +33,8 @@ import {
   useUserUsageStats,
   useDailyUsageData
 } from "@/hooks/use-usage-analytics"
+import { buildCsvContent } from "@/lib/csv-utils"
+import { formatVietnamDate } from "@/lib/date-utils"
 
 interface UsageAnalyticsDashboardProps {
   className?: string
@@ -42,6 +42,10 @@ interface UsageAnalyticsDashboardProps {
   selectedDonVi?: number | null
   effectiveTenantKey?: string
 }
+
+const fileDateFormatter = new Intl.DateTimeFormat("en-CA", {
+  timeZone: "Asia/Ho_Chi_Minh",
+})
 
 export function UsageAnalyticsDashboard({ 
   className = "",
@@ -78,19 +82,17 @@ export function UsageAnalyticsDashboard({
     return `${hours}h ${remainingMins}m`
   }
 
-  const exportToCSV = (data: any[], filename: string, headers: string[]) => {
-    const csvContent = [
-      headers.join(','),
-      ...data.map(row => headers.map(header => `"${row[header] || ''}"`).join(','))
-    ].join('\n')
+  const exportToCSV = <T extends object>(data: T[], filename: string, headers: string[]) => {
+    const csvContent = buildCsvContent(data, headers)
 
     const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' })
     const link = document.createElement('a')
     
     if (link.download !== undefined) {
       const url = URL.createObjectURL(blob)
+      const fileDate = fileDateFormatter.format()
       link.setAttribute('href', url)
-      link.setAttribute('download', `${filename}-${format(new Date(), 'yyyy-MM-dd')}.csv`)
+      link.setAttribute('download', `${filename}-${fileDate}.csv`)
       link.style.visibility = 'hidden'
       document.body.appendChild(link)
       link.click()
@@ -406,7 +408,7 @@ export function UsageAnalyticsDashboard({
                           <TableCell className="text-right">{user.equipmentUsed}</TableCell>
                           <TableCell>
                             {user.lastActivity 
-                              ? format(new Date(user.lastActivity), 'dd/MM/yyyy', { locale: vi })
+                              ? formatVietnamDate(user.lastActivity)
                               : '-'
                             }
                           </TableCell>

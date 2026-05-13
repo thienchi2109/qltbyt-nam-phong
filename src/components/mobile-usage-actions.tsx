@@ -2,8 +2,6 @@
 
 import React from "react"
 import { Play, Square, Clock, User } from "lucide-react"
-import { format, differenceInMinutes } from "date-fns"
-import { vi } from "date-fns/locale"
 
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -18,6 +16,10 @@ import {
 import { useActiveUsageLogs } from "@/hooks/use-usage-logs"
 import { useSession } from "next-auth/react"
 import { isRegionalLeaderRole } from "@/lib/rbac"
+import { calculateUsageDurationMinutes } from "@/lib/usage-duration"
+import { formatVietnamDateTime } from "@/lib/date-utils"
+import { useHydrationSafeNow } from "@/components/time/HydrationSafeRelativeTime"
+import type { SessionUser } from "@/types/database"
 import { StartUsageDialog } from "./start-usage-dialog"
 import { EndUsageDialog } from "./end-usage-dialog"
 
@@ -36,10 +38,10 @@ interface MobileUsageActionsProps {
 
 export function MobileUsageActions({ equipment, className = "" }: MobileUsageActionsProps) {
   const { data: session } = useSession()
-  const user = session?.user as any
+  const user = session?.user as SessionUser | undefined
   const isRegionalLeader = isRegionalLeaderRole(user?.role)
   const userId = React.useMemo(() => {
-    const uid = (user?.id as any)
+    const uid = user?.id
     const n = typeof uid === 'string' ? Number(uid) : uid
     return Number.isFinite(n) ? (n as number) : null
   }, [user?.id])
@@ -47,6 +49,7 @@ export function MobileUsageActions({ equipment, className = "" }: MobileUsageAct
   const [isStartDialogOpen, setIsStartDialogOpen] = React.useState(false)
   const [isEndDialogOpen, setIsEndDialogOpen] = React.useState(false)
   const [isSheetOpen, setIsSheetOpen] = React.useState(false)
+  const now = useHydrationSafeNow()
 
   // Find active usage session for this equipment
   const activeSession = activeUsageLogs?.find(
@@ -68,8 +71,8 @@ export function MobileUsageActions({ equipment, className = "" }: MobileUsageAct
     return `${mins}m`
   }
 
-  const usageDuration = activeSession 
-    ? differenceInMinutes(new Date(), new Date(activeSession.thoi_gian_bat_dau))
+  const usageDuration = activeSession && now !== null
+    ? calculateUsageDurationMinutes(activeSession.thoi_gian_bat_dau, now)
     : 0
 
   const handleStartUsage = () => {
@@ -143,7 +146,7 @@ export function MobileUsageActions({ equipment, className = "" }: MobileUsageAct
                     <div className="flex items-center gap-2">
                       <Clock className="h-4 w-4 text-green-600" />
                       <span className="text-green-700">
-                        Bắt đầu: {format(new Date(activeSession.thoi_gian_bat_dau), "HH:mm dd/MM/yyyy", { locale: vi })}
+                        Bắt đầu: {formatVietnamDateTime(activeSession.thoi_gian_bat_dau)}
                       </span>
                     </div>
                     

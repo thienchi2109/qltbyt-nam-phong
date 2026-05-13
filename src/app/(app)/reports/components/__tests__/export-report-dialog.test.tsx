@@ -17,6 +17,13 @@ vi.mock('@/lib/excel-utils', () => ({
 
 import { ExportReportDialog } from '../export-report-dialog'
 
+function createJanuaryDateRange() {
+  return {
+    from: new Date('2026-01-01T00:00:00.000Z'),
+    to: new Date('2026-01-31T00:00:00.000Z'),
+  }
+}
+
 describe('ExportReportDialog', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -64,10 +71,7 @@ describe('ExportReportDialog', () => {
           currentStock: 1,
           netChange: 1,
         }}
-        dateRange={{
-          from: new Date('2026-01-01T00:00:00.000Z'),
-          to: new Date('2026-01-31T00:00:00.000Z'),
-        }}
+        dateRange={createJanuaryDateRange()}
         department="all"
       />
     )
@@ -142,10 +146,7 @@ describe('ExportReportDialog', () => {
           currentStock: 1,
           netChange: 1,
         }}
-        dateRange={{
-          from: new Date('2026-01-01T00:00:00.000Z'),
-          to: new Date('2026-01-31T00:00:00.000Z'),
-        }}
+        dateRange={createJanuaryDateRange()}
         department="all"
       />
     )
@@ -180,10 +181,7 @@ describe('ExportReportDialog', () => {
           currentStock: 10,
           netChange: 0,
         }}
-        dateRange={{
-          from: new Date('2026-01-01T00:00:00.000Z'),
-          to: new Date('2026-01-31T00:00:00.000Z'),
-        }}
+        dateRange={createJanuaryDateRange()}
         department="all"
         distribution={{
           totalEquipment: 10,
@@ -263,10 +261,7 @@ describe('ExportReportDialog', () => {
           currentStock: 0,
           netChange: 0,
         }}
-        dateRange={{
-          from: new Date('2026-01-01T00:00:00.000Z'),
-          to: new Date('2026-01-31T00:00:00.000Z'),
-        }}
+        dateRange={createJanuaryDateRange()}
         department="all"
         maintenanceStats={{
           repair_summary: {
