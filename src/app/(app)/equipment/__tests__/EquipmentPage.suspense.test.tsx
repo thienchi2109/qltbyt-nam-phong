@@ -23,11 +23,11 @@ vi.mock("@/app/(app)/_components/AuthenticatedPageFallbacks", () => ({
   ),
 }))
 
-vi.mock("../_components/EquipmentPageClient", () => ({
+vi.mock("@/app/(app)/equipment/_components/EquipmentPageClient", () => ({
   EquipmentPageClient: () => mocks.renderEquipmentPageClient(),
 }))
 
-import EquipmentPage from "../page"
+import EquipmentPage from "@/app/(app)/equipment/page"
 
 describe("EquipmentPage Suspense boundary", () => {
   it("renders the page skeleton when the client route sync suspends", async () => {

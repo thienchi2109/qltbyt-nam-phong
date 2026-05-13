@@ -12,8 +12,8 @@ import {
 } from "@/components/ui/dialog"
 
 interface QRScannerInstructionsDialogProps {
-  open: boolean
-  onOpenChange: (open: boolean) => void
+  readonly open: boolean
+  readonly onOpenChange: (open: boolean) => void
 }
 
 const INSTRUCTION_STEPS = [

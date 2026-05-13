@@ -8,7 +8,7 @@ const readSource = (file: string) =>
 const expectInvalidatesQueryKey = (source: string, queryKey: string) => {
   expect(source).toMatch(
     new RegExp(
-      `invalidateQueries\\(\\{\\s*queryKey:\\s*\\[["']${queryKey}["']\\]`
+      String.raw`invalidateQueries\(\{\s*queryKey:\s*\[["']${queryKey}["']\]`
     )
   )
 }
