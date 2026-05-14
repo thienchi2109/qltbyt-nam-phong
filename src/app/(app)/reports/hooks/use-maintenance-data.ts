@@ -2,7 +2,6 @@ import { useQuery } from '@tanstack/react-query'
 import { callRpc } from '@/lib/rpc-client'
 import { format, startOfYear, endOfYear } from 'date-fns'
 import {
-  defaultMaintenanceReportData,
   type DateRange,
   mergeMaintenanceReportData,
   type MaintenanceReportData,

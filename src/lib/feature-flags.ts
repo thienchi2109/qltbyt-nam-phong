@@ -6,10 +6,6 @@ const featureFlags = {
 
 export type FeatureFlagKey = keyof typeof featureFlags
 
-function getFeatureFlag(flag: FeatureFlagKey): boolean {
-  return featureFlags[flag] ?? false
-}
-
 export function useFeatureFlag(flag: FeatureFlagKey): boolean {
   // Static env-driven flag; memoized to avoid re-computation per render.
   return featureFlags[flag] ?? false

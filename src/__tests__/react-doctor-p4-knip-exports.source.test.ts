@@ -37,7 +37,7 @@ const unusedExportSurface = [
   },
   {
     file: "src/app/(app)/reports/hooks/use-maintenance-data.ts",
-    exports: ["defaultMaintenanceReportData","maintenanceReportKeys"],
+    exports: ["maintenanceReportKeys"],
   },
   {
     file: "src/app/(app)/reports/hooks/use-unused-equipment-report.ts",
@@ -98,10 +98,6 @@ const unusedExportSurface = [
   {
     file: "src/components/ui/alert-dialog.tsx",
     exports: ["AlertDialogOverlay","AlertDialogPortal"],
-  },
-  {
-    file: "src/components/ui/avatar.tsx",
-    exports: ["AvatarImage"],
   },
   {
     file: "src/components/ui/badge.tsx",
@@ -226,10 +222,6 @@ const unusedExportSurface = [
   {
     file: "src/lib/excel-utils.ts",
     exports: ["exportArrayToExcel"],
-  },
-  {
-    file: "src/lib/feature-flags.ts",
-    exports: ["getFeatureFlag"],
   },
   {
     file: "src/lib/rbac.ts",
