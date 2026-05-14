@@ -36,7 +36,7 @@ export function ActivityLogEntry({ log }: ActivityLogEntryProps) {
   const actionDetails = formatActionDetails(log.action_type, log.action_details)
 
   return (
-    <div className="flex items-start space-x-4 p-4 border rounded-lg hover:bg-gray-50 transition-colors">
+    <div className="flex items-start gap-x-4 p-4 border rounded-lg hover:bg-gray-50 transition-colors">
       <Avatar className="size-10">
         <AvatarFallback>{getInitials(log)}</AvatarFallback>
       </Avatar>
@@ -44,7 +44,7 @@ export function ActivityLogEntry({ log }: ActivityLogEntryProps) {
       <div className="flex-1 min-w-0">
         <div className="flex items-start justify-between">
           <div className="flex-1">
-            <div className="flex items-center space-x-2 mb-1">
+            <div className="flex items-center gap-x-2 mb-1">
               <p className="font-medium text-gray-900 truncate">
                 {log.admin_full_name || log.admin_username}
               </p>
@@ -73,13 +73,13 @@ export function ActivityLogEntry({ log }: ActivityLogEntryProps) {
               <p className="text-sm text-gray-600 mb-2">{actionDetails}</p>
             )}
 
-            <div className="flex items-center space-x-4 text-xs text-gray-500">
-              <div className="flex items-center space-x-1">
+            <div className="flex items-center gap-x-4 text-xs text-gray-500">
+              <div className="flex items-center gap-x-1">
                 <Clock className="size-3" />
                 <span>{formatVietnamDateTime(log.created_at)}</span>
               </div>
               {log.ip_address && (
-                <div className="flex items-center space-x-1">
+                <div className="flex items-center gap-x-1">
                   <MapPin className="size-3" />
                   <span>{log.ip_address}</span>
                 </div>

@@ -50,7 +50,7 @@ export function BulkScheduleDialog({ open, onOpenChange, onApply }: BulkSchedule
         </DialogHeader>
         <div className="py-4 grid grid-cols-4 gap-4">
           {Array.from({ length: 12 }, (_, i) => i + 1).map(month => (
-            <div key={month} className="flex items-center space-x-2">
+            <div key={month} className="flex items-center gap-x-2">
               <Checkbox
                 id={`month-${month}`}
                 checked={!!selectedMonths[`thang_${month}`]}

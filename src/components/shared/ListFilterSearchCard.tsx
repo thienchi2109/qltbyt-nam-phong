@@ -74,7 +74,7 @@ export function ListFilterSearchCard({
     ? null
     : surface === "card"
       ? (
-        <CardHeader className="space-y-1 pb-3">
+        <CardHeader className="gap-y-1 pb-3">
           {title ? (
             <CardTitle className="heading-responsive-h2">{title}</CardTitle>
           ) : null}

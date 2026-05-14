@@ -60,7 +60,7 @@ function ActivityLogsPageContent({ user }: ActivityLogsPageContentProps) {
     <div className="container mx-auto px-4 py-8 max-w-7xl">
       {/* Page Header */}
       <div className="mb-8">
-        <div className="flex items-center space-x-3 mb-2">
+        <div className="flex items-center gap-x-3 mb-2">
           <div className="p-2 bg-blue-100 rounded-lg">
             <Activity className="size-6 text-blue-600" />
           </div>
@@ -75,8 +75,8 @@ function ActivityLogsPageContent({ user }: ActivityLogsPageContentProps) {
         </div>
         
         {/* Security Badge */}
-        <div className="flex items-center space-x-2 mt-4">
-          <div className="flex items-center space-x-1 bg-green-50 text-green-700 px-3 py-1 rounded-full text-sm">
+        <div className="flex items-center gap-x-2 mt-4">
+          <div className="flex items-center gap-x-1 bg-green-50 text-green-700 px-3 py-1 rounded-full text-sm">
             <Shield className="size-4" />
             <span>Chỉ dành cho quản trị viên hệ thống</span>
           </div>

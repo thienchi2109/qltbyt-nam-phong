@@ -110,7 +110,7 @@ export function MaintenanceMobileTasksPanel({
   return (
     <div className="space-y-4">
       <Card className="rounded-2xl border border-border/80 bg-background">
-        <CardHeader className="space-y-2">
+        <CardHeader className="gap-y-2">
           <div className="flex items-start justify-between gap-3">
             <div>
               <h2 className="text-lg font-semibold leading-tight">{selectedPlan.ten_ke_hoach}</h2>

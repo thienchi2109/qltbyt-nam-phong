@@ -21,7 +21,7 @@ export function MaintenanceReportSummaryCards({
     <>
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardHeader className="flex flex-row items-center justify-between gap-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Yêu cầu sửa chữa</CardTitle>
             <Wrench className="size-4 text-muted-foreground" />
           </CardHeader>
@@ -31,7 +31,7 @@ export function MaintenanceReportSummaryCards({
           </CardContent>
         </Card>
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardHeader className="flex flex-row items-center justify-between gap-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Tỷ lệ hoàn thành (Sửa chữa)</CardTitle>
             <CheckCircle className="size-4 text-green-500" />
           </CardHeader>
@@ -41,7 +41,7 @@ export function MaintenanceReportSummaryCards({
           </CardContent>
         </Card>
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardHeader className="flex flex-row items-center justify-between gap-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Công việc bảo trì (Kế hoạch)</CardTitle>
             <Clock className="size-4 text-muted-foreground" />
           </CardHeader>
@@ -51,7 +51,7 @@ export function MaintenanceReportSummaryCards({
           </CardContent>
         </Card>
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardHeader className="flex flex-row items-center justify-between gap-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Tỷ lệ hoàn thành (Bảo trì)</CardTitle>
             <CheckCircle className="size-4 text-blue-500" />
           </CardHeader>
@@ -64,7 +64,7 @@ export function MaintenanceReportSummaryCards({
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardHeader className="flex flex-row items-center justify-between gap-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Tổng chi phí sửa chữa</CardTitle>
             <Wrench className="size-4 text-muted-foreground" />
           </CardHeader>
@@ -78,7 +78,7 @@ export function MaintenanceReportSummaryCards({
           </CardContent>
         </Card>
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardHeader className="flex flex-row items-center justify-between gap-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Chi phí TB ca hoàn thành</CardTitle>
             <CheckCircle className="size-4 text-green-500" />
           </CardHeader>
@@ -92,7 +92,7 @@ export function MaintenanceReportSummaryCards({
           </CardContent>
         </Card>
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardHeader className="flex flex-row items-center justify-between gap-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Có ghi nhận chi phí</CardTitle>
             <CheckCircle className="size-4 text-emerald-500" />
           </CardHeader>
@@ -106,7 +106,7 @@ export function MaintenanceReportSummaryCards({
           </CardContent>
         </Card>
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardHeader className="flex flex-row items-center justify-between gap-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Thiếu chi phí</CardTitle>
             <Clock className="size-4 text-amber-500" />
           </CardHeader>
