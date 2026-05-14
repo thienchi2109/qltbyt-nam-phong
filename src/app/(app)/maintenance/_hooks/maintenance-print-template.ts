@@ -10,7 +10,7 @@ function escapeHtml(value: string): string {
     .replace(/'/g, "&#39;")
 }
 
-export function formatValue(value: unknown): string {
+function formatValue(value: unknown): string {
   if (value === null || value === undefined) {
     return ""
   }

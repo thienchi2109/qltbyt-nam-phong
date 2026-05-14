@@ -286,7 +286,7 @@ export async function exportToExcel(
 /**
  * Export array of arrays to Excel file
  */
-export async function exportArrayToExcel(
+async function exportArrayToExcel(
   data: unknown[][],
   filename: string,
   sheetName: string = 'Sheet1',

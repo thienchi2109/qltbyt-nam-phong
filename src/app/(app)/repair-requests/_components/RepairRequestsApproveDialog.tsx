@@ -122,4 +122,4 @@ export function RepairRequestsApproveDialog() {
 }
 
 // Export alias for backwards compatibility
-export const ApproveRequestDialog = RepairRequestsApproveDialog
+const ApproveRequestDialog = RepairRequestsApproveDialog

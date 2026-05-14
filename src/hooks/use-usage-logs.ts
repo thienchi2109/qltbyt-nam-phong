@@ -13,7 +13,7 @@ type UsageLogEquipmentKeyOptions = {
 }
 
 // Query keys for caching
-export const usageLogKeys = {
+const usageLogKeys = {
   all: ['usage-logs'] as const,
   lists: () => [...usageLogKeys.all, 'list'] as const,
   list: (filters: UsageLogListFilters) => [...usageLogKeys.lists(), { filters }] as const,

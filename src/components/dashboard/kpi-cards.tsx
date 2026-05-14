@@ -38,7 +38,7 @@ const metricClass =
 const descriptionClass =
   "text-sm text-neutral-500 leading-snug md:text-xs md:text-muted-foreground md:leading-tight"
 
-export function TotalEquipmentCard() {
+function TotalEquipmentCard() {
   const { data: totalDevices, isLoading, error } = useTotalEquipment()
 
   return (
@@ -63,7 +63,7 @@ export function TotalEquipmentCard() {
   )
 }
 
-export function MaintenanceCountCard() {
+function MaintenanceCountCard() {
   const { data: maintenanceCount, isLoading, error } = useMaintenanceCount()
 
   return (
@@ -88,7 +88,7 @@ export function MaintenanceCountCard() {
   )
 }
 
-export function RepairRequestsCard() {
+function RepairRequestsCard() {
   const { data: repairStats, isLoading, error } = useRepairRequestStats()
 
   const pending = repairStats?.pending ?? 0
@@ -161,7 +161,7 @@ export function RepairRequestsCard() {
   )
 }
 
-export function MaintenancePlansCard() {
+function MaintenancePlansCard() {
   const { data: planStats, isLoading, error } = useMaintenancePlanStats()
   const total = planStats?.total ?? 0
   const draft = planStats?.draft ?? 0

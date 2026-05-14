@@ -164,7 +164,7 @@ export function useCreateMaintenancePlan() {
   })
 }
 
-export function useUpdateMaintenancePlan() {
+function useUpdateMaintenancePlan() {
   const queryClient = useQueryClient()
 
   return useMutation({

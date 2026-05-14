@@ -37,16 +37,16 @@ export const ROLES = {
 export type Role = (typeof ROLES)[keyof typeof ROLES]
 
 /** Roles with system-wide admin access */
-export const GLOBAL_ROLES = [ROLES.GLOBAL, ROLES.ADMIN] as const
+const GLOBAL_ROLES = [ROLES.GLOBAL, ROLES.ADMIN] as const
 
 /** Roles that can manage equipment (global + to_qltb) */
-export const EQUIPMENT_MANAGER_ROLES = [ROLES.GLOBAL, ROLES.ADMIN, ROLES.TO_QLTB] as const
+const EQUIPMENT_MANAGER_ROLES = [ROLES.GLOBAL, ROLES.ADMIN, ROLES.TO_QLTB] as const
 
 /** Roles restricted to their assigned department */
-export const DEPT_SCOPED_ROLES = [ROLES.TECHNICIAN, ROLES.QLTB_KHOA] as const
+const DEPT_SCOPED_ROLES = [ROLES.TECHNICIAN, ROLES.QLTB_KHOA] as const
 
 /** Roles with multi-tenant selection privileges */
-export const PRIVILEGED_ROLES = [ROLES.GLOBAL, ROLES.ADMIN, ROLES.REGIONAL_LEADER] as const
+const PRIVILEGED_ROLES = [ROLES.GLOBAL, ROLES.ADMIN, ROLES.REGIONAL_LEADER] as const
 
 // ============ Internal Helpers ============
 

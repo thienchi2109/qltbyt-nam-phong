@@ -69,11 +69,11 @@ function mapEmbeddedEquipment(value: unknown): RepairRequestEquipment {
   }
 }
 
-export function parseRepairRequestIdParam(value: string | null) {
+function parseRepairRequestIdParam(value: string | null) {
   return toPositiveInt(value)
 }
 
-export function buildRepairRequestViewCleanupPath(
+function buildRepairRequestViewCleanupPath(
   pathname: string,
   searchParams: URLSearchParams,
 ) {
@@ -84,7 +84,7 @@ export function buildRepairRequestViewCleanupPath(
   return params.size ? `${pathname}?${params.toString()}` : pathname
 }
 
-export async function resolveRepairRequestView(
+async function resolveRepairRequestView(
   requestId: number,
 ): Promise<RepairRequestWithEquipment | null> {
   const request = await callRpc<RepairRequestRecord | null>({

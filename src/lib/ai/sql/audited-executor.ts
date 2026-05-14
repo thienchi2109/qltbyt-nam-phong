@@ -104,7 +104,7 @@ function buildAuditRpcUrl(request: Request): string {
   return new URL('/api/rpc/assistant_query_database_audit_log', origin).toString()
 }
 
-export async function writeAssistantSqlAudit({
+async function writeAssistantSqlAudit({
   details,
   request,
 }: AssistantSqlAuditEvent): Promise<void> {

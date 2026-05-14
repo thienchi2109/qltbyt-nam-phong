@@ -100,7 +100,7 @@ export interface ChartErrorFallbackProps {
 /**
  * Common chart colors for consistent theming
  */
-export const CHART_COLORS = {
+const CHART_COLORS = {
   primary: '#447896',
   secondary: '#64748b',
   success: '#22c55e',
@@ -124,7 +124,7 @@ export const STATUS_COLORS = {
 /**
  * Common chart configuration
  */
-export const DEFAULT_CHART_CONFIG = {
+const DEFAULT_CHART_CONFIG = {
   margin: { top: 20, right: 30, left: 20, bottom: 5 },
   animationDuration: 300,
   grid: {
@@ -144,7 +144,7 @@ export const DEFAULT_CHART_CONFIG = {
 /**
  * Format number for chart display
  */
-export function formatChartNumber(value: number): string {
+function formatChartNumber(value: number): string {
   if (value >= 1000000) {
     return `${(value / 1000000).toFixed(1)}M`
   }
@@ -157,7 +157,7 @@ export function formatChartNumber(value: number): string {
 /**
  * Format percentage for chart display
  */
-export function formatChartPercentage(value: number, total: number): string {
+function formatChartPercentage(value: number, total: number): string {
   if (total === 0) return '0%'
   return `${((value / total) * 100).toFixed(1)}%`
 }
@@ -165,7 +165,7 @@ export function formatChartPercentage(value: number, total: number): string {
 /**
  * Generate chart data with proper formatting
  */
-export function processChartData<T extends Record<string, unknown>>(
+function processChartData<T extends Record<string, unknown>>(
   data: T[],
   keyField: keyof T,
   valueField: keyof T,
@@ -188,7 +188,7 @@ export function processChartData<T extends Record<string, unknown>>(
 /**
  * Common responsive container props
  */
-export const RESPONSIVE_CONTAINER_PROPS = {
+const RESPONSIVE_CONTAINER_PROPS = {
   width: '100%' as const,
   height: '100%' as const,
   debounce: 50,

@@ -13,7 +13,7 @@ export type TourId = (typeof TOUR_IDS)[keyof typeof TOUR_IDS]
 /**
  * Dashboard Welcome Tour - Introduces users to the main dashboard features
  */
-export const dashboardWelcomeTour: DriveStep[] = [
+const dashboardWelcomeTour: DriveStep[] = [
   {
     element: '[data-tour="welcome-banner"]',
     popover: {
@@ -86,7 +86,7 @@ export const dashboardWelcomeTour: DriveStep[] = [
 /**
  * Sidebar Navigation Tour - Introduces users to the sidebar navigation elements
  */
-export const sidebarNavigationTour: DriveStep[] = [
+const sidebarNavigationTour: DriveStep[] = [
   {
     element: '[data-tour="sidebar-logo"]',
     popover: {

@@ -34,7 +34,7 @@ export function toStringValue(value: unknown): string | undefined {
   return typeof value === 'string' && value.length > 0 ? value : undefined
 }
 
-export function getDateOnly(value: unknown): string | undefined {
+function getDateOnly(value: unknown): string | undefined {
   const raw = toStringValue(value)
   return raw ? raw.split('T')[0] : undefined
 }

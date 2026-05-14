@@ -300,7 +300,7 @@ const createLiquidationColumns = (): ColumnDef<TransferListItem>[] => [
   },
 ]
 
-export const buildTransferColumns = (
+const buildTransferColumns = (
   options: TransferColumnOptions = {},
 ): TransferColumnGroups => {
   const referenceDate = options.referenceDate ?? new Date()

@@ -8,10 +8,8 @@ import {
   type MaintenanceReportData,
 } from './use-maintenance-data.types'
 
-export { defaultMaintenanceReportData } from './use-maintenance-data.types'
-
 // Query keys for maintenance reports caching
-export const maintenanceReportKeys = {
+const maintenanceReportKeys = {
   all: ['maintenance-reports'] as const,
   data: (filters: Record<string, unknown>) => [...maintenanceReportKeys.all, { filters }] as const,
 }

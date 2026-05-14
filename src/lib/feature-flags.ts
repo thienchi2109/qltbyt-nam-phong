@@ -6,7 +6,7 @@ const featureFlags = {
 
 export type FeatureFlagKey = keyof typeof featureFlags
 
-export function getFeatureFlag(flag: FeatureFlagKey): boolean {
+function getFeatureFlag(flag: FeatureFlagKey): boolean {
   return featureFlags[flag] ?? false
 }
 

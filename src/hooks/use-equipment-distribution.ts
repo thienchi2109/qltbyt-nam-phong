@@ -34,7 +34,7 @@ interface EquipmentStatusDistributionRpc {
 }
 
 // Query keys for caching
-export const equipmentDistributionKeys = {
+const equipmentDistributionKeys = {
   all: ['equipment-distribution'] as const,
   data: (params: { filterDept?: string; filterLoc?: string; tenant?: string }) => (
     [...equipmentDistributionKeys.all, 'data', params.filterDept, params.filterLoc, params.tenant] as const

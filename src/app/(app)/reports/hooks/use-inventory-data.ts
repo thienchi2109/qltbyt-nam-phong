@@ -26,7 +26,7 @@ interface DateRange {
 }
 
 // Query keys for reports caching
-export const reportsKeys = {
+const reportsKeys = {
   all: ['reports'] as const,
   inventory: () => [...reportsKeys.all, 'inventory'] as const,
   inventoryData: (filters: InventoryDataFilters) => [...reportsKeys.inventory(), { filters }] as const,

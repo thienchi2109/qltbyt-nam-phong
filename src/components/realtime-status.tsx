@@ -181,7 +181,7 @@ export function RealtimeStatus({
 }
 
 // Hook to get realtime status for use in other components
-export function useRealtimeStatus() {
+function useRealtimeStatus() {
   const { isConnected, connectionStatus, lastUpdate } = useRealtime()
   
   return {

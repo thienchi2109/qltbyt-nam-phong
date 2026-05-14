@@ -4,7 +4,7 @@
  */
 
 /** Threshold year for suspicious dates (likely Excel import errors) */
-export const SUSPICIOUS_YEAR_THRESHOLD = 1970
+const SUSPICIOUS_YEAR_THRESHOLD = 1970
 
 /** Warning message for suspicious dates (Vietnamese) */
 export const SUSPICIOUS_DATE_WARNING =
@@ -313,7 +313,7 @@ export function formatPartialDateToDisplay(iso: string | null | undefined): stri
  * @param vn - Vietnamese format: "2020", "03/2020", or "15/03/2020"
  * @returns ISO format: "2020", "2020-03", or "2020-03-15" (or null if invalid)
  */
-export function parsePartialDateToISO(vn: string | null | undefined): string | null {
+function parsePartialDateToISO(vn: string | null | undefined): string | null {
   if (!vn) return null
   const s = String(vn).trim()
   if (s === "") return null

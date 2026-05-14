@@ -57,7 +57,7 @@ async function fetchTransferDepartments(): Promise<string[]> {
   return (list || []).map((item) => item.name).filter(Boolean)
 }
 
-export const transferDialogQueryKeys = {
+const transferDialogQueryKeys = {
   departments: ["departments_list"] as const,
   equipmentSearch: (searchTerm: string) =>
     ["equipment_list_enhanced", "transfer-dialog", { q: searchTerm }] as const,

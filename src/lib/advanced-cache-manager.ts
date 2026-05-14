@@ -77,7 +77,7 @@ export const CacheKeys = {
 } as const
 
 // Cache invalidation patterns
-export const InvalidationPatterns = {
+const InvalidationPatterns = {
   // Invalidate all equipment-related caches
   equipment: (queryClient: QueryClient, userDepartment?: string) => {
     queryClient.invalidateQueries({ 
@@ -175,7 +175,7 @@ export class SmartPrefetcher {
 }
 
 // Performance monitoring utilities
-export class CachePerformanceMonitor {
+class CachePerformanceMonitor {
   private metrics: Map<string, {
     hits: number
     misses: number
@@ -282,7 +282,7 @@ export const DepartmentCacheUtils = {
 }
 
 // Export singleton instances
-export const createAdvancedCacheManager = (queryClient: QueryClient) => ({
+const createAdvancedCacheManager = (queryClient: QueryClient) => ({
   prefetcher: new SmartPrefetcher(queryClient),
   monitor: new CachePerformanceMonitor(),
   utils: DepartmentCacheUtils,

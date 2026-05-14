@@ -5,7 +5,7 @@
  */
 
 export const GENERIC_CHAT_ERROR_MESSAGE = 'Đã xảy ra lỗi. Vui lòng thử lại.'
-export const MODEL_PROVIDER_QUOTA_MESSAGE =
+const MODEL_PROVIDER_QUOTA_MESSAGE =
   'Model AI đang vượt hạn mức sử dụng của nhà cung cấp.'
 
 const PROVIDER_QUOTA_PATTERNS = [
@@ -101,7 +101,7 @@ function extractSafeClientMessage(raw: string): string | null {
  * Extract a string message from an unknown error value.
  * Used server-side for logging — never expose the return value to clients.
  */
-export function extractErrorMessage(error: unknown): string {
+function extractErrorMessage(error: unknown): string {
   if (error instanceof Error) return error.message
   if (typeof error === 'string') return error
   return String(error)
