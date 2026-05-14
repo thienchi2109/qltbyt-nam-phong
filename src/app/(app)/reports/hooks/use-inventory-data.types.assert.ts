@@ -3,4 +3,11 @@ type Equal<A, B> =
   (<T>() => T extends A ? 1 : 2) extends
   (<T>() => T extends B ? 1 : 2) ? true : false
 
-type _inventoryDataFilterContractRemoved = Assert<Equal<true, true>>
+type _inventoryDataFilterContractRemoved = Assert<
+  Equal<
+    'reportsKeys' extends keyof typeof import('@/app/(app)/reports/hooks/use-inventory-data')
+      ? true
+      : false,
+    false
+  >
+>

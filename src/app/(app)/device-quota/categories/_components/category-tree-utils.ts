@@ -4,8 +4,6 @@ import type { CategoryListItem } from "../_types/categories"
 // Constants
 // ============================================
 
-const CATEGORY_ENTITY = { singular: "nhóm gốc" } as const
-
 /** Shared grid template for column alignment across header, group rows, and child rows */
 export const CATEGORY_GRID_COLS = "grid grid-cols-[minmax(0,1fr)_5rem_12rem_2rem] gap-x-4 items-center"
 

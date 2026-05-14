@@ -148,10 +148,6 @@ const unusedExportSurface = [
     exports: ["useCreateEquipment","useEquipmentDetail"],
   },
   {
-    file: "src/hooks/use-cached-maintenance.ts",
-    exports: ["useUpdateMaintenancePlan"],
-  },
-  {
     file: "src/hooks/use-dashboard-stats.ts",
     exports: ["useDashboardKpiSummary"],
   },
@@ -253,6 +249,14 @@ const unusedExportSurface = [
   },
 ] as const
 
+const intentionalPublicExports = [
+  {
+    file: "src/hooks/use-cached-maintenance.ts",
+    exports: ["useUpdateMaintenancePlan"],
+    reason: "covered by src/hooks/__tests__/use-cached-maintenance-barrel.test.ts",
+  },
+] as const
+
 const escapeRegExp = (value: string) =>
   value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
 
@@ -275,6 +279,19 @@ describe("React Doctor P4 knip/exports cleanup", () => {
         )
         expect(source, `${entry.file} still re-exports ${exportName}`).not.toMatch(
           namedExportPattern(exportName),
+        )
+      }
+    }
+  })
+
+  it("documents intentional public exports that remain despite knip reports", () => {
+    for (const entry of intentionalPublicExports) {
+      const source = readFileSync(join(process.cwd(), entry.file), "utf8")
+
+      for (const exportName of entry.exports) {
+        expect(entry.reason).toContain("use-cached-maintenance-barrel.test.ts")
+        expect(source, entry.file + " must keep public export " + exportName).toMatch(
+          exportDeclarationPattern(exportName),
         )
       }
     }
