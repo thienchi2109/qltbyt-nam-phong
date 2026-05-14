@@ -120,6 +120,3 @@ export function RepairRequestsApproveDialog() {
     </Dialog>
   )
 }
-
-// Export alias for backwards compatibility
-export const ApproveRequestDialog = RepairRequestsApproveDialog

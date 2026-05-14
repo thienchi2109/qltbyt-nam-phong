@@ -65,7 +65,7 @@ export function usePageTransitions() {
 }
 
 // Hook for manual transitions (modals, dialogs, etc.)
-export function useManualTransition(type: 'modal' | 'loading' | 'page' = 'page') {
+function useManualTransition(type: 'modal' | 'loading' | 'page' = 'page') {
   const [isVisible, setIsVisible] = useState(false)
   const [transitionClass, setTransitionClass] = useState('')
 

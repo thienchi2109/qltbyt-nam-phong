@@ -52,6 +52,19 @@ export interface PaginatedResult<T> {
   pageSize: number
 }
 
+interface LegacyTransferCounts {
+  cho_duyet: number
+  da_duyet: number
+  dang_luan_chuyen: number
+  da_ban_giao: number
+  hoan_thanh: number
+}
+
+interface LegacyTransferCountsSummary {
+  counts: LegacyTransferCounts
+  totalCount: number
+}
+
 export const ALLOWED_STATUSES = [
   "cho_duyet",
   "da_duyet",
@@ -137,14 +150,14 @@ const matchesAssignee = (item: LegacyTransferItem, assigneeIds: number[] | null)
   return assigneeIds.includes(item.nguoi_yeu_cau_id)
 }
 
-export const isMissingFunctionError = (status: number, payload: unknown) => {
+const isMissingFunctionError = (status: number, payload: unknown): boolean => {
   if (status !== 404) return false
   if (!payload || typeof payload !== "object") return false
   const maybe = payload as LegacyRpcError
   return maybe.error?.code === "PGRST202"
 }
 
-export const transformLegacyItem = (item: LegacyTransferItem) => ({
+const transformLegacyItem = (item: LegacyTransferItem): LegacyTransferItem => ({
   ...item,
   ly_do_luan_chuyen: item.ly_do_luan_chuyen ?? "",
   thiet_bi: item.thiet_bi
@@ -156,7 +169,10 @@ export const transformLegacyItem = (item: LegacyTransferItem) => ({
     : null,
 })
 
-export const applyLegacyFilters = (data: LegacyTransferItem[], filters: LegacyFilterParams) => {
+const applyLegacyFilters = (
+  data: LegacyTransferItem[],
+  filters: LegacyFilterParams,
+): LegacyTransferItem[] => {
   return data.filter((item) => {
     if (!matchesStringArrayFilter(item.trang_thai, filters.statuses)) return false
     if (!matchesStringArrayFilter(item.loai_hinh, filters.types)) return false
@@ -168,7 +184,7 @@ export const applyLegacyFilters = (data: LegacyTransferItem[], filters: LegacyFi
   })
 }
 
-export const paginate = <T,>(items: T[], page: number, pageSize: number): PaginatedResult<T> => {
+const paginate = <T,>(items: T[], page: number, pageSize: number): PaginatedResult<T> => {
   const safePageSize = Math.max(1, pageSize)
   const safePage = Math.max(1, page)
   const offset = (safePage - 1) * safePageSize
@@ -181,8 +197,8 @@ export const paginate = <T,>(items: T[], page: number, pageSize: number): Pagina
   }
 }
 
-export const buildCountsFromItems = (items: LegacyTransferItem[]) => {
-  const counts = {
+const buildCountsFromItems = (items: LegacyTransferItem[]): LegacyTransferCountsSummary => {
+  const counts: LegacyTransferCounts = {
     cho_duyet: 0,
     da_duyet: 0,
     dang_luan_chuyen: 0,
@@ -192,7 +208,7 @@ export const buildCountsFromItems = (items: LegacyTransferItem[]) => {
 
   for (const item of items) {
     if (item.trang_thai in counts) {
-      counts[item.trang_thai as keyof typeof counts] += 1
+      counts[item.trang_thai as keyof LegacyTransferCounts] += 1
     }
   }
 

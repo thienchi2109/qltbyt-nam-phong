@@ -117,7 +117,7 @@ function isQueryCatalogToolName(toolName: string): toolName is QueryCatalogToolN
   return QUERY_CATALOG_TOOL_NAME_SET.has(toolName)
 }
 
-export function hasWriteIntentToolName(toolName: string): boolean {
+function hasWriteIntentToolName(toolName: string): boolean {
   return /(create|update|delete)/i.test(toolName)
 }
 

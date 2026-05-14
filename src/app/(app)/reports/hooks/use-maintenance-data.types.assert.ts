@@ -1,9 +1,9 @@
-import { defaultMaintenanceReportData } from '@/app/(app)/reports/hooks/use-maintenance-data'
-import type {
-  MaintenanceReportData,
-  RepairUsageCostCorrelation,
-  RepairUsageCostCorrelationScope,
-  TopEquipmentRepairCostEntry,
+import {
+  defaultMaintenanceReportData,
+  type MaintenanceReportData,
+  type RepairUsageCostCorrelation,
+  type RepairUsageCostCorrelationScope,
+  type TopEquipmentRepairCostEntry,
 } from '@/app/(app)/reports/hooks/use-maintenance-data.types'
 
 type Assert<T extends true> = T

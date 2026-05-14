@@ -11,9 +11,11 @@ if (!supabaseUrl || !supabaseAnonKey) {
 } else {
     try {
         supabase = createClient(supabaseUrl, supabaseAnonKey)
-    } catch (e: any) {
-        supabaseError = "Lỗi khởi tạo Supabase client: " + e.message;
+    } catch (error: unknown) {
+        supabaseError = "Lỗi khởi tạo Supabase client: " + (error instanceof Error ? error.message : String(error));
     }
 }
 
-export { supabase, supabaseError };
+export {
+  supabase
+}

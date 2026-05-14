@@ -21,7 +21,7 @@ interface DynamicChartProps {
  * Dynamic Chart Component
  * Loads Recharts library only when needed and provides loading/error states
  */
-export function DynamicChart({
+function DynamicChart({
   children,
   height = 300,
   fallbackHeight,

@@ -4,14 +4,14 @@ import { differenceInMinutes, startOfDay, endOfDay, subDays, format } from 'date
 import { type UsageLog } from '@/types/database'
 
 // Query keys for analytics
-export const usageAnalyticsKeys = {
+const usageAnalyticsKeys = {
   all: ['usage-analytics'] as const,
-  overview: (params?: Record<string, any>) => [...usageAnalyticsKeys.all, 'overview', params || {}] as const,
-  equipmentStats: (params?: Record<string, any>) => 
+  overview: (params?: Record<string, unknown>) => [...usageAnalyticsKeys.all, 'overview', params || {}] as const,
+  equipmentStats: (params?: Record<string, unknown>) =>
     [...usageAnalyticsKeys.all, 'equipment-stats', params || {}] as const,
-  userStats: (params?: Record<string, any>) => 
+  userStats: (params?: Record<string, unknown>) =>
     [...usageAnalyticsKeys.all, 'user-stats', params || {}] as const,
-  dailyUsage: (params?: Record<string, any>) => 
+  dailyUsage: (params?: Record<string, unknown>) =>
     [...usageAnalyticsKeys.all, 'daily-usage', params || {}] as const,
 }
 

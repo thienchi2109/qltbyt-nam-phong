@@ -250,7 +250,7 @@ export function mapEquipmentSearchResults(rows: unknown[]): TransferEquipmentOpt
   }, [])
 }
 
-export function createTransferDialogFormDataFromTransfer(
+function createTransferDialogFormDataFromTransfer(
   transfer: TransferRequest,
 ): TransferDialogFormData {
   return {
@@ -268,7 +268,7 @@ export function createTransferDialogFormDataFromTransfer(
   }
 }
 
-export function getSelectedEquipmentFromTransfer(
+function getSelectedEquipmentFromTransfer(
   transfer: TransferRequest | null,
 ): TransferEquipmentOption | null {
   const equipment = transfer?.thiet_bi

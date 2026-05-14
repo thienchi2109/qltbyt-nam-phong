@@ -2,16 +2,13 @@ import { useQuery } from '@tanstack/react-query'
 import { callRpc } from '@/lib/rpc-client'
 import { format, startOfYear, endOfYear } from 'date-fns'
 import {
-  defaultMaintenanceReportData,
   type DateRange,
   mergeMaintenanceReportData,
   type MaintenanceReportData,
 } from './use-maintenance-data.types'
 
-export { defaultMaintenanceReportData } from './use-maintenance-data.types'
-
 // Query keys for maintenance reports caching
-export const maintenanceReportKeys = {
+const maintenanceReportKeys = {
   all: ['maintenance-reports'] as const,
   data: (filters: Record<string, unknown>) => [...maintenanceReportKeys.all, { filters }] as const,
 }

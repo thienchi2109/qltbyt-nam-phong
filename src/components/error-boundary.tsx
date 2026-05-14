@@ -123,7 +123,7 @@ export class ErrorBoundary extends Component<Props, State> {
 }
 
 // Hook for functional components to use ErrorBoundary (optional)
-export const withErrorBoundary = <P extends object>(
+const withErrorBoundary = <P extends object>(
   Component: React.ComponentType<P>,
   fallback?: ReactNode,
   onError?: (error: Error, errorInfo: ErrorInfo) => void

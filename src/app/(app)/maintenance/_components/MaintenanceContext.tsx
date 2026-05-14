@@ -26,8 +26,6 @@ interface MaintenanceProviderProps {
   setTaskRowSelection: React.Dispatch<React.SetStateAction<RowSelectionState>>
 }
 
-export { getNextMaintenanceTempTaskId } from "./MaintenanceContextHelpers"
-
 export function MaintenanceProvider({
   children,
   taskRowSelection,

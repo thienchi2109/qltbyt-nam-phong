@@ -56,7 +56,7 @@ export interface UseUnusedEquipmentReportParams {
   enabled: boolean
 }
 
-export const unusedEquipmentReportKeys = {
+const unusedEquipmentReportKeys = {
   data: (params: UseUnusedEquipmentReportParams) => [
     "reports",
     "unused-equipment",

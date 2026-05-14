@@ -341,6 +341,3 @@ export function RepairRequestsCreateSheet() {
     </Sheet>
   )
 }
-
-// Export alias for backwards compatibility
-export const CreateRequestSheet = RepairRequestsCreateSheet

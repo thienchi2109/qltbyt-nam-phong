@@ -174,7 +174,7 @@ export function useMergedColumnData(
   }
 }
 
-export function useInvalidateTransfersKanban() {
+function useInvalidateTransfersKanban() {
   const queryClient = useQueryClient()
 
   return () => {

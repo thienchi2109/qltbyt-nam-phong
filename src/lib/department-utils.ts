@@ -13,7 +13,7 @@ import { isEquipmentManagerRole } from '@/lib/rbac'
  * - Converts to lowercase for case-insensitive comparison
  * - Handles null/undefined values
  */
-export function normalizeDepartmentName(department: string | null | undefined): string {
+function normalizeDepartmentName(department: string | null | undefined): string {
   if (!department) return ''
   return department.trim().toLowerCase()
 }
@@ -130,7 +130,7 @@ export function shouldBypassDepartmentFilter(userRole: string | null | undefined
  * Get user's effective departments for equipment access
  * Some users might have access to multiple departments
  */
-export function getUserEffectiveDepartments(
+function getUserEffectiveDepartments(
   userDepartment: string | null | undefined,
   userRole: string | null | undefined
 ): string[] {
@@ -164,7 +164,7 @@ function getSubDepartments(parentDepartment: string): string[] {
  * Validate department access for a specific equipment item
  * Used for additional security checks on individual equipment access
  */
-export function validateEquipmentAccess(
+function validateEquipmentAccess(
   userDepartment: string | null | undefined,
   userRole: string | null | undefined,
   equipmentDepartment: string | null | undefined

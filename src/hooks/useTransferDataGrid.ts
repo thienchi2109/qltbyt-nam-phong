@@ -199,13 +199,10 @@ export const transferDataGridKeys = {
 export {
   useTransfersKanban,
   useTransferColumnInfiniteScroll,
-  useMergedColumnData,
-  useInvalidateTransfersKanban,
-  transferKanbanKeys
+  useMergedColumnData
 } from './useTransfersKanban'
 
-
-export const useTransferList = (
+const useTransferList = (
   filters: TransferListFilters = {},
   options?: TransferListQueryOptions,
 ) => {
@@ -221,7 +218,7 @@ export const useTransferList = (
   })
 }
 
-export const useTransferCounts = (
+const useTransferCounts = (
   filters: TransferListFilters = {},
   options?: TransferCountsQueryOptions,
 ) => {
@@ -266,7 +263,7 @@ export const useTransferPageData = (
   })
 }
 
-export const usePrefetchTransferList = () => {
+const usePrefetchTransferList = () => {
   const queryClient = useQueryClient()
 
   return async (filters: TransferListFilters = {}) => {
@@ -277,7 +274,7 @@ export const usePrefetchTransferList = () => {
   }
 }
 
-export const usePrefetchTransferCounts = () => {
+const usePrefetchTransferCounts = () => {
   const queryClient = useQueryClient()
 
   return async (filters: TransferListFilters = {}) => {
@@ -288,6 +285,6 @@ export const usePrefetchTransferCounts = () => {
   }
 }
 
-export const getTransferListData = (
+const getTransferListData = (
   response: TransferListResponse | undefined,
 ): TransferListItem[] => response?.data ?? []

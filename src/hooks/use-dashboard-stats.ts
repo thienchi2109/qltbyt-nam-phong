@@ -115,7 +115,7 @@ function normalizeDashboardKpiSummary(data: Partial<DashboardKpiSummary> | null 
   }
 }
 
-export function useDashboardKpiSummary() {
+function useDashboardKpiSummary() {
   const { data: session, status } = useSession()
   const user: DashboardSessionUser | undefined = session?.user
   const scope = getDashboardUserScope(user)

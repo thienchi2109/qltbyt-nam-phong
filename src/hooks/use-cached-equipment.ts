@@ -81,7 +81,7 @@ export function useEquipment(filters?: {
 }
 
 // Fetch single equipment details
-export function useEquipmentDetail(id: string | null) {
+function useEquipmentDetail(id: string | null) {
   return useQuery({
     queryKey: equipmentKeys.detail(id || ''),
     queryFn: async () => {
@@ -126,7 +126,7 @@ export function useUpdateEquipment() {
 }
 
 // Create equipment mutation
-export function useCreateEquipment() {
+function useCreateEquipment() {
   const queryClient = useQueryClient()
 
   return useMutation({

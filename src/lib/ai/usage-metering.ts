@@ -192,11 +192,11 @@ export function confirmUsage(
   })
 }
 
-export function getLatestUsage(userId: string) {
+function getLatestUsage(userId: string) {
   return latestUsageByUser.get(userId)
 }
 
-export function __resetUsageMeteringForTests() {
+function __resetUsageMeteringForTests() {
   recentRequestsByUser.clear()
   dailyUserRequests.clear()
   dailyTenantRequests.clear()

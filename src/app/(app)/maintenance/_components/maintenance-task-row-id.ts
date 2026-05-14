@@ -1,6 +1,6 @@
 "use client"
 
-export const MAINTENANCE_TASK_ROW_ID_PREFIX = "task:"
+const MAINTENANCE_TASK_ROW_ID_PREFIX = "task:"
 
 export function toMaintenanceTaskRowId(taskId: number) {
   return `${MAINTENANCE_TASK_ROW_ID_PREFIX}${taskId}`

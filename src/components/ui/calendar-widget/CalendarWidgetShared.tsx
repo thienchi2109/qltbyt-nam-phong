@@ -48,7 +48,7 @@ const CALENDAR_SKELETON_COL_KEYS = [
   "calendar-skeleton-col-7",
 ] as const
 
-export function getEventTypeColor(type: TaskType, isCompleted: boolean) {
+function getEventTypeColor(type: TaskType, isCompleted: boolean) {
   if (isCompleted) {
     return "bg-green-100 text-green-800 border-green-200"
   }
@@ -65,7 +65,7 @@ export function getEventTypeColor(type: TaskType, isCompleted: boolean) {
   }
 }
 
-export function getEventTypeIcon(type: TaskType) {
+function getEventTypeIcon(type: TaskType) {
   switch (type) {
     case "Bảo trì":
       return "🔧"

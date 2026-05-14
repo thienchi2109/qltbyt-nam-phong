@@ -22,7 +22,7 @@ export {
   normalizeFullDateForForm,
 } from "@/lib/date-utils"
 
-export const DECOMMISSIONED_STATUS = "Ngưng sử dụng"
+const DECOMMISSIONED_STATUS = "Ngưng sử dụng"
 export const DECOMMISSION_DATE_STATUS_ERROR_MESSAGE =
   'Ngày ngừng sử dụng chỉ được phép khi tình trạng là "Ngưng sử dụng"'
 export const DECOMMISSION_DATE_CHRONOLOGICAL_ERROR_MESSAGE =
@@ -76,7 +76,7 @@ export function validateDecommissionDateRules(
   }
 }
 
-export function getTodayDateForDecommissionField(): string {
+function getTodayDateForDecommissionField(): string {
   const formatter = new Intl.DateTimeFormat("en-GB", {
     timeZone: "Asia/Ho_Chi_Minh",
     day: "2-digit",

@@ -1,6 +1,6 @@
 import type { UIMessage } from 'ai'
 
-export const REPAIR_REQUEST_DRAFT_START_PHRASES = [
+const REPAIR_REQUEST_DRAFT_START_PHRASES = [
   'tạo phiếu sửa chữa',
   'tạo phiếu yêu cầu sửa chữa thiết bị',
   'lập yêu cầu sửa chữa',
@@ -8,7 +8,7 @@ export const REPAIR_REQUEST_DRAFT_START_PHRASES = [
   'điền trước form sửa chữa',
 ] as const
 
-export const REPAIR_REQUEST_DRAFT_CANCEL_PHRASES = [
+const REPAIR_REQUEST_DRAFT_CANCEL_PHRASES = [
   'thôi không tạo nữa',
   'hủy tạo phiếu',
   'không cần tạo phiếu',
@@ -103,7 +103,7 @@ export function hasRepairRequestDraftStartIntent(text: string): boolean {
   return getRepairRequestDraftIntent(text) === 'start'
 }
 
-export function hasRepairRequestDraftCancelIntent(text: string): boolean {
+function hasRepairRequestDraftCancelIntent(text: string): boolean {
   return getRepairRequestDraftIntent(text) === 'cancel'
 }
 

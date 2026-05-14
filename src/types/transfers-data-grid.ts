@@ -118,7 +118,7 @@ export interface TransferPageDataResponse {
 }
 
 // Zod schema for equipment info validation
-export const TransferEquipmentInfoSchema = z.object({
+const TransferEquipmentInfoSchema = z.object({
   ten_thiet_bi: z.string().nullable(),
   ma_thiet_bi: z.string().nullable(),
   model: z.string().nullable(),
@@ -129,7 +129,7 @@ export const TransferEquipmentInfoSchema = z.object({
 })
 
 // Zod schema for runtime validation of individual transfer items
-export const TransferListItemSchema = z.object({
+const TransferListItemSchema = z.object({
   id: z.number(),
   ma_yeu_cau: z.string(),
   thiet_bi_id: z.number(),
@@ -166,7 +166,7 @@ export const TransferTableModeResponseSchema = z.object({
   pageSize: z.number().int().positive(),
 })
 
-export const TransferKanbanColumnDataSchema = z.object({
+const TransferKanbanColumnDataSchema = z.object({
   tasks: z.array(TransferListItemSchema),
   total: z.number().int().nonnegative(),
   hasMore: z.boolean(),
@@ -180,7 +180,7 @@ export const TransferKanbanResponseSchema = z.object({
   totalCount: z.number().int().nonnegative(),
 })
 
-export const TransferCountsResponseSchema = z.object({
+const TransferCountsResponseSchema = z.object({
   totalCount: z.number().int().nonnegative(),
   columnCounts: z.object({
     cho_duyet: z.number().int().nonnegative(),
@@ -195,13 +195,13 @@ const TransferOverdueEquipmentInfoSchema = TransferEquipmentInfoSchema.extend({
   is_deleted: z.boolean().nullable(),
 })
 
-export const TransferOverdueSummaryItemSchema = TransferListItemSchema.extend({
+const TransferOverdueSummaryItemSchema = TransferListItemSchema.extend({
   days_difference: z.number().int(),
   equipment_is_deleted: z.boolean().nullable(),
   thiet_bi: TransferOverdueEquipmentInfoSchema.nullable(),
 })
 
-export const TransferOverdueSummarySchema = z.object({
+const TransferOverdueSummarySchema = z.object({
   total: z.number().int().nonnegative(),
   overdue: z.number().int().nonnegative(),
   due_today: z.number().int().nonnegative(),

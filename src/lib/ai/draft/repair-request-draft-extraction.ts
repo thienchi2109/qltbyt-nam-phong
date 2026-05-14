@@ -13,7 +13,7 @@ const REQUIRED_REPAIR_REQUEST_DRAFT_FIELDS = [
 
 const requiredFieldSchema = z.enum(REQUIRED_REPAIR_REQUEST_DRAFT_FIELDS)
 
-export const repairRequestDraftExtractionSchema = z.object({
+const repairRequestDraftExtractionSchema = z.object({
   mo_ta_su_co: z.string().trim().min(1).nullable(),
   hang_muc_sua_chua: z.string().trim().min(1).nullable(),
   ngay_mong_muon_hoan_thanh: z.string().trim().min(1).nullable(),

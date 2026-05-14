@@ -49,7 +49,7 @@ export type ImportStatus = "idle" | "parsing" | "parsed" | "importing" | "succes
  * Normalize Vietnamese text by removing diacritics for header matching.
  * This allows Excel files with either diacritic or non-diacritic headers to work.
  */
-export function normalizeVietnamese(text: string): string {
+function normalizeVietnamese(text: string): string {
   return text
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "") // Remove diacritics
@@ -62,7 +62,7 @@ export function normalizeVietnamese(text: string): string {
  * Map normalized Vietnamese headers to database field names.
  * Supports both with and without diacritics.
  */
-export const HEADER_TO_DB_MAP: Record<string, string> = {
+const HEADER_TO_DB_MAP: Record<string, string> = {
   "stt": "_stt", // Ignored
   "ma nhom": "ma_nhom",
   "ten nhom": "ten_nhom",

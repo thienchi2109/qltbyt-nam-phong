@@ -26,7 +26,7 @@ type UsersColumnsOptions = {
   onResetPassword: (user: UserSummary) => void
 }
 
-export function getRoleVariant(role: UserSummary["role"]) {
+function getRoleVariant(role: UserSummary["role"]) {
   if (isGlobalRole(role)) return "destructive"
 
   switch (role) {

@@ -119,7 +119,7 @@ export const equipmentStatusOptions = [
 /**
  * Columns that support faceted filtering.
  */
-export const filterableColumns: (keyof Equipment)[] = [
+const filterableColumns: (keyof Equipment)[] = [
   'khoa_phong_quan_ly',
   'vi_tri_lap_dat',
   'nguoi_dang_truc_tiep_quan_ly',
