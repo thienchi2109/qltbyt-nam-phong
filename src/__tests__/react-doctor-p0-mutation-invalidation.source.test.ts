@@ -14,17 +14,28 @@ const expectInvalidatesQueryKey = (source: string, queryKey: string) => {
 }
 
 const extractFunctionSource = (source: string, functionName: string) => {
-  const start = source.indexOf(`function ${functionName}`)
-  expect(start, `${functionName} should exist`).toBeGreaterThanOrEqual(0)
+  const functionPattern = new RegExp(
+    String.raw`(?:export\s+)?function\s+${functionName}\b`
+  )
+  const match = functionPattern.exec(source)
+  expect(match?.index, `${functionName} should exist`).toBeGreaterThanOrEqual(0)
 
-  const nextFunction = source.indexOf("\nfunction ", start + 1)
-  return source.slice(start, nextFunction === -1 ? undefined : nextFunction)
+  const start = match?.index ?? 0
+  const nextFunctionOffset = source
+    .slice(start + 1)
+    .search(/\n(?:export\s+)?function\s+/)
+
+  return source.slice(
+    start,
+    nextFunctionOffset === -1 ? undefined : start + 1 + nextFunctionOffset
+  )
 }
 
 const expectMutationOwnsInvalidation = (
   source: string,
   functionName: string,
-  queryKeys: string[]
+  queryKeys: string[],
+  extraAssertions: Array<(functionSource: string) => void> = []
 ) => {
   const functionSource = extractFunctionSource(source, functionName)
 
@@ -34,6 +45,16 @@ const expectMutationOwnsInvalidation = (
   for (const queryKey of queryKeys) {
     expectInvalidatesQueryKey(functionSource, queryKey)
   }
+
+  for (const assertion of extraAssertions) {
+    assertion(functionSource)
+  }
+}
+
+const expectInvalidatesRepairKeysAll = (functionSource: string) => {
+  expect(functionSource).toContain(
+    "queryClient.invalidateQueries({ queryKey: repairKeys.all })"
+  )
 }
 
 describe("React Doctor P0 mutation invalidation audit", () => {
@@ -57,7 +78,9 @@ describe("React Doctor P0 mutation invalidation audit", () => {
       "useApproveMutation",
       "useCompleteMutation",
     ]) {
-      expectMutationOwnsInvalidation(source, mutation, queryKeys)
+      expectMutationOwnsInvalidation(source, mutation, queryKeys, [
+        expectInvalidatesRepairKeysAll,
+      ])
     }
   })
 

@@ -4,6 +4,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query"
 
 import { useToast } from "@/hooks/use-toast"
 import { callRpc } from "@/lib/rpc-client"
+import { repairKeys } from "@/hooks/use-cached-repair"
 import type { AuthUser, RepairUnit } from "../types"
 
 
@@ -42,6 +43,7 @@ export function useCreateMutation(
       queryClient.invalidateQueries({ queryKey: ['repair_request_status_counts'] })
       queryClient.invalidateQueries({ queryKey: ['repair_request_change_history'] })
       queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] })
+      queryClient.invalidateQueries({ queryKey: repairKeys.all })
     },
     onError: (error: Error) => {
       toast({
@@ -86,6 +88,7 @@ export function useUpdateMutation(
       queryClient.invalidateQueries({ queryKey: ['repair_request_status_counts'] })
       queryClient.invalidateQueries({ queryKey: ['repair_request_change_history'] })
       queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] })
+      queryClient.invalidateQueries({ queryKey: repairKeys.all })
     },
     onError: (error: Error) => {
       toast({
@@ -113,6 +116,7 @@ export function useDeleteMutation(
       queryClient.invalidateQueries({ queryKey: ['repair_request_status_counts'] })
       queryClient.invalidateQueries({ queryKey: ['repair_request_change_history'] })
       queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] })
+      queryClient.invalidateQueries({ queryKey: repairKeys.all })
     },
     onError: (error: Error) => {
       toast({
@@ -153,6 +157,7 @@ export function useApproveMutation(
       queryClient.invalidateQueries({ queryKey: ['repair_request_status_counts'] })
       queryClient.invalidateQueries({ queryKey: ['repair_request_change_history'] })
       queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] })
+      queryClient.invalidateQueries({ queryKey: repairKeys.all })
     },
     onError: (error: Error) => {
       toast({
@@ -200,6 +205,7 @@ export function useCompleteMutation(
       queryClient.invalidateQueries({ queryKey: ['repair_request_status_counts'] })
       queryClient.invalidateQueries({ queryKey: ['repair_request_change_history'] })
       queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] })
+      queryClient.invalidateQueries({ queryKey: repairKeys.all })
     },
     onError: (error: Error) => {
       toast({
