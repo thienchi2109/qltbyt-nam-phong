@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
+import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { useSession } from "next-auth/react"
 import { useToast } from "@/hooks/use-toast"
 import { callRpc } from "@/lib/rpc-client"
@@ -9,6 +9,7 @@ import { useTenantSelection } from "@/contexts/TenantSelectionContext"
 import { useServerPagination } from "@/hooks/useServerPagination"
 import { useUnassignedEquipmentFilters } from "../_hooks/useUnassignedEquipmentFilters"
 import { filterCategoriesWithAncestorsAndDescendants } from "../../categories/_utils/filterCategoriesWithAncestorsAndDescendants"
+import { useLinkEquipmentMutation } from "./DeviceQuotaMappingMutations"
 
 // ============================================
 // Types
@@ -106,58 +107,12 @@ export interface DeviceQuotaMappingContextValue {
 }
 
 // ============================================
-// Mutation Hook
-// ============================================
-
-function useLinkEquipmentMutation(
-  toast: ReturnType<typeof useToast>["toast"],
-  invalidate: () => void,
-  clearSelection: () => void,
-  donViId: number | null
-) {
-  return useMutation({
-    mutationFn: async (data: { thiet_bi_ids: number[]; nhom_id: number }) => {
-      return callRpc({
-        fn: 'dinh_muc_thiet_bi_link',
-        args: {
-          p_thiet_bi_ids: data.thiet_bi_ids,
-          p_nhom_id: data.nhom_id,
-          p_don_vi: donViId,
-        }
-      })
-    },
-    onSuccess: (_, variables) => {
-      toast({
-        title: "Thành công",
-        description: `Đã gán ${variables.thiet_bi_ids.length} thiết bị vào nhóm định mức.`
-      })
-      clearSelection()
-      invalidate()
-    },
-    onError: (error: Error) => {
-      toast({
-        variant: "destructive",
-        title: "Lỗi gán thiết bị",
-        description: error.message
-      })
-    },
-  })
-}
-
-// ============================================
-// Client-side Category Search with ancestor + descendant preservation
-// ============================================
-
 function useFilteredCategories(allCategories: Category[], searchTerm: string): Category[] {
   return React.useMemo(
     () => filterCategoriesWithAncestorsAndDescendants(allCategories, searchTerm),
     [allCategories, searchTerm]
   )
 }
-
-// ============================================
-// Context & Provider
-// ============================================
 
 const DeviceQuotaMappingContext = React.createContext<DeviceQuotaMappingContextValue | null>(null)
 
@@ -327,7 +282,7 @@ export function DeviceQuotaMappingProvider({ children }: DeviceQuotaMappingProvi
     setSelectedCategoryId(null)
   }, [])
 
-  const linkMutation = useLinkEquipmentMutation(toast, invalidateAndRefetch, clearSelection, donViId)
+  const linkMutation = useLinkEquipmentMutation(toast, clearSelection, donViId)
 
   // Selection actions — "select all" only selects current page
   const toggleEquipmentSelection = React.useCallback((id: number) => {

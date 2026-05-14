@@ -1,20 +1,22 @@
 "use client"
 
 import * as React from "react"
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
+import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { useSession } from "next-auth/react"
 
 import { useToast } from "@/hooks/use-toast"
 import { callRpc } from "@/lib/rpc-client"
-import { translateRpcError } from "@/lib/error-translations"
-import { refreshCategoryEmbeddings } from "@/lib/refresh-category-embeddings"
 import { filterCategoriesWithAncestorsAndDescendants } from "../_utils/filterCategoriesWithAncestorsAndDescendants"
 import type {
   CategoryDeleteState,
   CategoryDialogState,
-  CategoryFormInput,
   CategoryListItem,
 } from "../_types/categories"
+import {
+  useCreateMutation,
+  useDeleteMutation,
+  useUpdateMutation,
+} from "./DeviceQuotaCategoryMutations"
 
 interface AuthUser {
   id: string
@@ -68,160 +70,6 @@ interface CategoryContextValue {
 }
 
 // ============================================
-// Mutation Hooks
-// ============================================
-
-function useCreateMutation(
-  toast: ReturnType<typeof useToast>["toast"],
-  invalidate: () => void,
-  closeDialog: () => void,
-  donViId: number | null
-) {
-  return useMutation({
-    mutationFn: async (data: CategoryFormInput) => {
-      if (!donViId) {
-        throw new Error("Thiếu thông tin đơn vị (don_vi)")
-      }
-      return callRpc({
-        fn: "dinh_muc_nhom_upsert",
-        args: {
-          p_id: null,
-          p_don_vi: donViId,
-          p_parent_id: data.parent_id,
-          p_ma_nhom: data.ma_nhom,
-          p_ten_nhom: data.ten_nhom,
-          p_phan_loai: data.phan_loai,
-          p_don_vi_tinh: data.don_vi_tinh,
-          p_thu_tu_hien_thi: data.thu_tu_hien_thi,
-          p_mo_ta: data.mo_ta,
-        },
-      })
-    },
-    onSuccess: (result: unknown) => {
-      toast({
-        title: "Thành công",
-        description: "Đã tạo danh mục thiết bị.",
-      })
-      closeDialog()
-      invalidate()
-      // Fire-and-forget: refresh embedding for newly created category
-      // dinh_muc_nhom_upsert returns scalar BIGINT (the category ID)
-      const categoryId = typeof result === 'number' ? result : null
-      if (categoryId) {
-        refreshCategoryEmbeddings([categoryId])
-      }
-    },
-    onError: (error: Error) => {
-      toast({
-        variant: "destructive",
-        title: "Tạo danh mục thất bại",
-        description: translateRpcError(error.message),
-      })
-    },
-  })
-}
-
-function useUpdateMutation(
-  toast: ReturnType<typeof useToast>["toast"],
-  invalidate: () => void,
-  closeDialog: () => void,
-  setMutatingCategoryId: (id: number | null) => void,
-  donViId: number | null
-) {
-  return useMutation({
-    mutationFn: async (data: CategoryFormInput & { id: number }) => {
-      if (!donViId) {
-        throw new Error("Thiếu thông tin đơn vị (don_vi)")
-      }
-      return callRpc({
-        fn: "dinh_muc_nhom_upsert",
-        args: {
-          p_id: data.id,
-          p_don_vi: donViId,
-          p_parent_id: data.parent_id,
-          p_ma_nhom: data.ma_nhom,
-          p_ten_nhom: data.ten_nhom,
-          p_phan_loai: data.phan_loai,
-          p_don_vi_tinh: data.don_vi_tinh,
-          p_thu_tu_hien_thi: data.thu_tu_hien_thi,
-          p_mo_ta: data.mo_ta,
-        },
-      })
-    },
-    onMutate: (data) => {
-      setMutatingCategoryId(data.id)
-    },
-    onSuccess: (_result: unknown, variables) => {
-      toast({
-        title: "Thành công",
-        description: "Đã cập nhật danh mục.",
-      })
-      closeDialog()
-      invalidate()
-      // Fire-and-forget: refresh embedding for updated category
-      refreshCategoryEmbeddings([variables.id])
-    },
-    onError: (error: Error) => {
-      toast({
-        variant: "destructive",
-        title: "Lỗi cập nhật",
-        description: translateRpcError(error.message),
-      })
-    },
-    onSettled: () => {
-      setMutatingCategoryId(null)
-    },
-  })
-}
-
-function useDeleteMutation(
-  toast: ReturnType<typeof useToast>["toast"],
-  invalidate: () => void,
-  closeDeleteDialog: () => void,
-  setMutatingCategoryId: (id: number | null) => void,
-  donViId: number | null
-) {
-  return useMutation({
-    mutationFn: async (id: number) => {
-      if (!donViId) {
-        throw new Error("Thiếu thông tin đơn vị (don_vi)")
-      }
-      return callRpc({
-        fn: "dinh_muc_nhom_delete",
-        args: {
-          p_id: id,
-          p_don_vi: donViId,
-        },
-      })
-    },
-    onMutate: (id) => {
-      setMutatingCategoryId(id)
-    },
-    onSuccess: () => {
-      toast({
-        title: "Đã xóa",
-        description: "Danh mục đã được xóa.",
-      })
-      closeDeleteDialog()
-      invalidate()
-    },
-    onError: (error: Error) => {
-      toast({
-        variant: "destructive",
-        title: "Xóa danh mục thất bại",
-        description: translateRpcError(error.message),
-      })
-    },
-    onSettled: () => {
-      setMutatingCategoryId(null)
-    },
-  })
-}
-
-// ============================================
-// Context
-// ============================================
-
 const DeviceQuotaCategoryContext = React.createContext<CategoryContextValue | null>(null)
 
 // ============================================
@@ -319,14 +167,12 @@ export function DeviceQuotaCategoryProvider({ children }: DeviceQuotaCategoryPro
 
   const createMutation = useCreateMutation(
     toast,
-    invalidateAndRefetch,
     closeDialog,
     donViId
   )
 
   const updateMutation = useUpdateMutation(
     toast,
-    invalidateAndRefetch,
     closeDialog,
     setMutatingCategoryId,
     donViId
@@ -334,7 +180,6 @@ export function DeviceQuotaCategoryProvider({ children }: DeviceQuotaCategoryPro
 
   const deleteMutation = useDeleteMutation(
     toast,
-    invalidateAndRefetch,
     closeDeleteDialog,
     setMutatingCategoryId,
     donViId
