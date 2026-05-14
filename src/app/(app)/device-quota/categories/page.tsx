@@ -69,7 +69,7 @@ function DeviceQuotaCategoriesPageContent({
       <div className="container mx-auto py-6 space-y-6">
         <div className="flex flex-col gap-4">
           <div>
-            <h1 className="text-2xl font-bold">Tiêu chuẩn, định mức sử dụng thiết bị y tế</h1>
+            <h1 className="text-2xl font-semibold">Tiêu chuẩn, định mức sử dụng thiết bị y tế</h1>
             <p className="text-sm text-muted-foreground">
               Quản lý tiêu chuẩn, định mức trang thiết bị y tế theo quy định
             </p>

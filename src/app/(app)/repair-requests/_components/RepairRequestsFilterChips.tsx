@@ -48,7 +48,7 @@ export function RepairRequestsFilterChips({
           <Button
             variant="ghost"
             size="sm"
-            className="ml-1 size-5 p-0 rounded-full hover:bg-black/10 dark:hover:bg-white/10"
+            className="ml-1 size-5 p-0 rounded-full hover:bg-gray-950/10 dark:hover:bg-white/10"
             onClick={() => onRemove("status", s)}
             aria-label={`Xóa trạng thái ${s}`}
           >

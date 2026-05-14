@@ -99,7 +99,7 @@ export function MobileMaintenanceLayout({
               <Input
                 value={planSearchTerm}
                 onChange={(event) => setPlanSearchTerm(event.target.value)}
-                placeholder="Tìm kế hoạch, khoa/phòng, người lập..."
+                placeholder="Tìm kế hoạch, khoa/phòng, người lập…"
                 className="h-11 rounded-xl border-border/60 bg-white pl-10 pr-10 text-sm"
               />
               {planSearchTerm && (

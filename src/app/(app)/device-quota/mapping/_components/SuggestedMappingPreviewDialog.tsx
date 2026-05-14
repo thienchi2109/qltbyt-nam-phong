@@ -303,7 +303,7 @@ export function SuggestedMappingPreviewDialog({
                             {saveStatus === "saving" ? (
                                 <>
                                     <Loader2 className="size-4 mr-1 animate-spin" />
-                                    Đang lưu...
+                                    Đang lưu…
                                 </>
                             ) : (
                                 <>
@@ -318,4 +318,3 @@ export function SuggestedMappingPreviewDialog({
         </Dialog>
     )
 }
-

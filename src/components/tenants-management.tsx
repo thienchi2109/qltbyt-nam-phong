@@ -192,7 +192,7 @@ export function TenantsManagement() {
           <div className="flex flex-col gap-3 rounded-lg border border-dashed border-border/50 bg-muted/40 p-4 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex w-full flex-col gap-2 sm:max-w-xl sm:flex-row sm:items-center">
               <Input
-                placeholder="Tìm đơn vị, mã hoặc tài khoản..."
+                placeholder="Tìm đơn vị, mã hoặc tài khoản…"
                 value={q}
                 onChange={(event) => setQ(event.target.value)}
                 className="h-10"

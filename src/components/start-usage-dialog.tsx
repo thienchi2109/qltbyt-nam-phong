@@ -191,7 +191,7 @@ export function StartUsageDialog({
                   <FormLabel>Ghi chú</FormLabel>
                   <FormControl>
                     <Textarea
-                      placeholder="Ghi chú về việc sử dụng thiết bị..."
+                      placeholder="Ghi chú về việc sử dụng thiết bị…"
                       className="min-h-[80px]"
                       {...field}
                     />

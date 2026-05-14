@@ -141,7 +141,7 @@ export function UsersPageContent({ user }: UsersPageContentProps) {
                 </div>
                 <div className="flex items-center gap-2 md:ml-auto">
                   <Input
-                    placeholder="Tìm kiếm người dùng..."
+                    placeholder="Tìm kiếm người dùng…"
                     value={usersManagement.globalFilter}
                     onChange={(event) => usersManagement.setGlobalFilter(event.target.value)}
                     className="h-8 w-full md:w-64"

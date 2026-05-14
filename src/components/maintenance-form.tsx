@@ -99,7 +99,7 @@ export function MaintenanceForm({
               <div className="w-1/4"></div>
             </div>
             <div className="text-center mt-4">
-              <h1 className="title-main uppercase font-bold flex justify-center items-baseline">
+              <h1 className="title-main uppercase font-semibold flex justify-center items-baseline">
                 KẾ HOẠCH BẢO TRÌ HIỆU CHUẨN/KIỂM ĐỊNH THIẾT BỊ NĂM
                 <input 
                   type="text" 

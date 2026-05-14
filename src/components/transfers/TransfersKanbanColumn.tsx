@@ -154,7 +154,7 @@ export function TransfersKanbanColumn({
         {isLoadingMore && (
           <div className="flex items-center justify-center gap-2 py-4 text-sm text-muted-foreground">
             <Loader2 className="size-4 animate-spin" />
-            <span>Đang tải thêm...</span>
+            <span>Đang tải thêm…</span>
           </div>
         )}
       </div>

@@ -120,7 +120,7 @@ export function EquipmentDetailFilesTab({
               <Input
                 id="file-url"
                 type="url"
-                placeholder="https://..."
+                placeholder="https://…"
                 value={newFileUrl}
                 onChange={(e) => setNewFileUrl(e.target.value)}
                 required

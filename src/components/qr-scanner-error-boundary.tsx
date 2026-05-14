@@ -40,7 +40,7 @@ export class QRScannerErrorBoundary extends React.Component<Props, State> {
   render() {
     if (this.state.hasError) {
       return (
-        <div className="fixed inset-0 z-50 bg-black flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-50 bg-gray-950 flex items-center justify-center p-4">
           <Card className="max-w-md w-full">
             <CardContent className="pt-6">
               <div className="text-center space-y-4">

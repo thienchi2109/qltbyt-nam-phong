@@ -93,7 +93,7 @@ export function TenantSelectorSheet({
             <Input
               value={searchTerm}
               onChange={(event) => setSearchTerm(event.target.value)}
-              placeholder="Tìm kiếm cơ sở..."
+              placeholder="Tìm kiếm cơ sở…"
               className="h-11 rounded-xl border-border/70 pl-9 pr-9"
             />
             {/* Use explicit ternary for conditional (per rendering-conditional-render) */}

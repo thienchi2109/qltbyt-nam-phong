@@ -194,7 +194,7 @@ export function EndUsageDialog({
                   <FormLabel>Ghi chú</FormLabel>
                   <FormControl>
                     <Textarea
-                      placeholder="Ghi chú về tình trạng thiết bị sau khi sử dụng..."
+                      placeholder="Ghi chú về tình trạng thiết bị sau khi sử dụng…"
                       className="min-h-[80px]"
                       {...field}
                     />

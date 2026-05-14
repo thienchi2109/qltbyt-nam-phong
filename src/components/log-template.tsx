@@ -113,7 +113,7 @@ export function LogTemplate({
               </div>
               <div className="w-20"></div>
             </div>
-            <h1 className="title-main uppercase font-bold text-center my-4">
+            <h1 className="title-main uppercase font-semibold text-center my-4">
               NHẬT KÝ SỬ DỤNG THIẾT BỊ
             </h1>
           </header>

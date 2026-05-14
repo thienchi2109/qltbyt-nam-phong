@@ -174,7 +174,7 @@ function TransfersKanbanBoard({
       <div className="flex min-h-[400px] items-center justify-center">
         <div className="flex flex-col items-center gap-2 text-sm text-muted-foreground">
           <Loader2 className="size-6 animate-spin" />
-          Đang tải dữ liệu...
+          Đang tải dữ liệu…
         </div>
       </div>
     )
@@ -316,7 +316,7 @@ function TransfersKanbanBoard({
       {isFetching && !isLoading && (
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <Loader2 className="size-4 animate-spin" />
-          Đang đồng bộ dữ liệu...
+          Đang đồng bộ dữ liệu…
         </div>
       )}
     </div>

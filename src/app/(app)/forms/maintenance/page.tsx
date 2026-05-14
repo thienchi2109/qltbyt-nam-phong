@@ -21,7 +21,7 @@ export default function MaintenanceFormPage() {
                 {/* Logo will be handled by FormBrandingHeader */}
               </div>
               <div className="text-center w-1/2">
-                <h2 className="title-sub uppercase font-bold">TRUNG TÂM KIỂM SOÁT BỆNH TẬT THÀNH PHỐ CẦN THƠ</h2>
+                <h2 className="title-sub uppercase font-semibold">TRUNG TÂM KIỂM SOÁT BỆNH TẬT THÀNH PHỐ CẦN THƠ</h2>
                 <div className="flex items-baseline justify-center font-bold">
                   <label htmlFor="department-name">KHOA/PHÒNG:</label>
                   <input type="text" id="department-name" className="form-input-line flex-grow ml-2" />
@@ -30,7 +30,7 @@ export default function MaintenanceFormPage() {
               <div className="w-1/4"></div> {/* Spacer */}
             </div>
             <div className="text-center mt-4">
-              <h1 className="title-main uppercase font-bold flex justify-center items-baseline">
+              <h1 className="title-main uppercase font-semibold flex justify-center items-baseline">
                 KẾ HOẠCH BẢO TRÌ HIỆU CHUẨN/KIỂM ĐỊNH THIẾT BỊ NĂM
                 <input type="text" className="form-input-line w-24 ml-2" />
               </h1>

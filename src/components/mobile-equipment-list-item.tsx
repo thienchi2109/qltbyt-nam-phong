@@ -120,7 +120,7 @@ export function MobileEquipmentListItem({
         </div>
 
         {/* Row 2: Equipment Name */}
-        <h3 className="text-[15px] font-bold text-foreground leading-tight">
+        <h3 className="text-[15px] font-semibold text-foreground leading-tight">
           {equipment.ten_thiet_bi}
         </h3>
 

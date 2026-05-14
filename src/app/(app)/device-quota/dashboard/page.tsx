@@ -61,7 +61,7 @@ function DeviceQuotaDashboardPageContent() {
       {/* Page Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Định mức thiết bị</h1>
+          <h1 className="text-2xl font-semibold">Định mức thiết bị</h1>
           <p className="text-muted-foreground">
             Tổng quan tình trạng định mức
           </p>

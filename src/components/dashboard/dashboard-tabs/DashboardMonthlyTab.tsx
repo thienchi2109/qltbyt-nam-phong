@@ -130,13 +130,13 @@ export function DashboardMonthlyTab({
                   {pendingTasks.slice(0, 5).map((task) => (
                     <div
                       key={task.id}
-                      className={`p-3 rounded-xl border-l-4 backdrop-blur-sm transition-all duration-200 hover:scale-[1.01] hover:shadow-md ${priorityTasks.includes(task)
-                        ? "border-yellow-500 bg-yellow-50/80"
+                      className={`p-3 rounded-xl border backdrop-blur-sm transition-all duration-200 hover:scale-[1.01] hover:shadow-md ${priorityTasks.includes(task)
+                        ? "border-yellow-200 bg-yellow-50/80 ring-1 ring-inset ring-yellow-500/25"
                         : task.type === "Bảo trì"
-                          ? "border-blue-500 bg-blue-50/80"
+                          ? "border-blue-200 bg-blue-50/80 ring-1 ring-inset ring-blue-500/25"
                           : task.type === "Hiệu chuẩn"
-                            ? "border-orange-500 bg-orange-50/80"
-                            : "border-purple-500 bg-purple-50/80"
+                            ? "border-orange-200 bg-orange-50/80 ring-1 ring-inset ring-orange-500/25"
+                            : "border-purple-200 bg-purple-50/80 ring-1 ring-inset ring-purple-500/25"
                         }`}
                     >
                       <div className="flex items-start gap-2 mb-2">
@@ -179,7 +179,7 @@ export function DashboardMonthlyTab({
                     <div className="text-center py-2">
                       <Button asChild variant="link" size="sm" className="text-blue-600">
                         <Link href="/maintenance">
-                          Xem thêm {hiddenTaskCount} công việc khác...
+                          Xem thêm {hiddenTaskCount} công việc khác…
                         </Link>
                       </Button>
                     </div>

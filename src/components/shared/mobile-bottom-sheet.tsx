@@ -100,7 +100,7 @@ export function MobileBottomSheet({
             {/* Backdrop */}
             <div
                 data-testid="mobile-bottom-sheet-backdrop"
-                className="absolute inset-0 bg-black/40 backdrop-blur-sm animate-in fade-in duration-300"
+                className="absolute inset-0 bg-gray-950/40 backdrop-blur-sm animate-in fade-in duration-300"
                 onClick={() => onOpenChange(false)}
                 aria-hidden="true"
             />

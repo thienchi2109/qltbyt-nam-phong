@@ -68,7 +68,7 @@ export function TransfersTableView({
             <TableRow>
               <TableCell colSpan={columns.length} className="h-40 text-center">
                 <Loader2 className="mx-auto size-6 animate-spin text-muted-foreground" />
-                <p className="mt-2 text-sm text-muted-foreground">Đang tải dữ liệu...</p>
+                <p className="mt-2 text-sm text-muted-foreground">Đang tải dữ liệu…</p>
               </TableCell>
             </TableRow>
           ) : table.getRowModel().rows.length > 0 ? (

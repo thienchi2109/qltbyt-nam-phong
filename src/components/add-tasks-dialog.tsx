@@ -284,7 +284,7 @@ export function AddTasksDialog({
         <div className="flex-grow flex flex-col overflow-hidden gap-4">
           <div className="flex items-center gap-2 flex-wrap">
             <SearchInput
-              placeholder="Tìm kiếm chung..."
+              placeholder="Tìm kiếm chung…"
               value={tableState.searchTerm}
               onChange={(value) => dispatchTable({ type: "set-search-term", value })}
               showSearchIcon={false}

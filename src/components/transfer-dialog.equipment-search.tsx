@@ -48,7 +48,7 @@ export function TransferDialogEquipmentSearch({
           id="equipment"
           value={searchTerm}
           onChange={onSearchChange}
-          placeholder="Tìm kiếm thiết bị..."
+          placeholder="Tìm kiếm thiết bị…"
           disabled={disabled}
           required={required}
         />
@@ -65,7 +65,7 @@ export function TransferDialogEquipmentSearch({
               <div className="absolute z-20 mt-1 w-full rounded-md border bg-popover p-3 shadow-lg">
                 <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
                   <Loader2 className="size-4 animate-spin" />
-                  <span>Đang tìm kiếm thiết bị...</span>
+                  <span>Đang tìm kiếm thiết bị…</span>
                 </div>
               </div>
             )}

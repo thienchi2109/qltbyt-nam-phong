@@ -98,7 +98,7 @@ function ConfigEditForm(): React.ReactNode {
               <FormControl>
                 <Textarea
                   rows={8}
-                  placeholder="Nhập cấu hình thiết bị..."
+                  placeholder="Nhập cấu hình thiết bị…"
                   className="resize-y min-h-[120px]"
                   {...field}
                   value={field.value ?? ""}
@@ -119,7 +119,7 @@ function ConfigEditForm(): React.ReactNode {
               <FormControl>
                 <Textarea
                   rows={6}
-                  placeholder="Nhập phụ kiện kèm theo..."
+                  placeholder="Nhập phụ kiện kèm theo…"
                   className="resize-y min-h-[100px]"
                   {...field}
                   value={field.value ?? ""}

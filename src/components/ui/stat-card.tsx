@@ -92,7 +92,7 @@ export function StatCard({ label, value, icon, tone = "default", loading, onClic
             {label}
           </span>
           <span className={cn("text-2xl font-bold leading-none mt-1", styles.text)}>
-            {loading ? <span className="animate-pulse">...</span> : value}
+            {loading ? <span className="animate-pulse">…</span> : value}
           </span>
         </div>
       </div>

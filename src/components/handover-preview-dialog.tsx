@@ -719,7 +719,7 @@ export function HandoverPreviewDialog({ open, onOpenChange, transfer }: Handover
                       id="accessories"
                       value={handoverData.device.accessories}
                       onChange={(e) => handleInputChange('device.accessories', e.target.value)}
-                      placeholder="Nhập tài liệu, phụ kiện kèm theo..."
+                      placeholder="Nhập tài liệu, phụ kiện kèm theo…"
                       rows={3}
                     />
                   </div>
@@ -729,7 +729,7 @@ export function HandoverPreviewDialog({ open, onOpenChange, transfer }: Handover
                       id="note"
                       value={handoverData.device.note}
                       onChange={(e) => handleInputChange('device.note', e.target.value)}
-                      placeholder="Nhập ghi chú..."
+                      placeholder="Nhập ghi chú…"
                       rows={3}
                     />
                   </div>

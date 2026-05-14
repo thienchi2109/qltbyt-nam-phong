@@ -160,7 +160,7 @@ export function ReturnLocationDialog({
           <div className="space-y-2">
             <p className="text-sm font-medium">Vị trí gợi ý</p>
             {suggestionsQuery.isLoading ? (
-              <p className="text-sm text-muted-foreground">Đang tải vị trí gợi ý...</p>
+              <p className="text-sm text-muted-foreground">Đang tải vị trí gợi ý…</p>
             ) : suggestions.length > 0 ? (
               <div className="flex flex-wrap gap-2">
                 {suggestions.map((suggestion) => (

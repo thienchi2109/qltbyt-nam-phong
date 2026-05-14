@@ -50,7 +50,7 @@ export function TenantsManagementTenantCard({
           <TenantLogo logoUrl={tenant.logo_url} tenantName={tenant.name} />
           <div className="space-y-3">
             <div className="flex flex-wrap items-center gap-3">
-              <h3 className="text-lg font-bold sm:text-xl">{tenant.name}</h3>
+              <h3 className="text-lg font-semibold sm:text-xl">{tenant.name}</h3>
               <Badge
                 className={cn(
                   "flex items-center gap-1 rounded-full px-3 py-1 text-xs font-medium uppercase tracking-wide",

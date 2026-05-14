@@ -110,7 +110,7 @@ export function DashboardTabs() {
             <div className="flex flex-col gap-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <h3 className="text-lg md:text-xl font-bold text-gray-900">Thông tin chi tiết</h3>
+                  <h3 className="text-lg md:text-xl font-semibold text-gray-900">Thông tin chi tiết</h3>
                   <p className="text-sm text-gray-500 mt-1">Thiết bị và kế hoạch cần theo dõi</p>
                 </div>
               </div>

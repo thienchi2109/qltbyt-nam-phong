@@ -150,7 +150,7 @@ export function DeviceQuotaComplianceReport({
           {isPrinting ? (
             <>
               <Loader2 className="mr-2 size-4 animate-spin" />
-              Đang in...
+              Đang in…
             </>
           ) : (
             <>
@@ -177,7 +177,7 @@ export function DeviceQuotaComplianceReport({
 
           {/* Report Title */}
           <div className="text-center mb-8 space-y-2">
-            <h1 className="text-xl font-bold uppercase">
+            <h1 className="text-xl font-semibold uppercase">
               BÁO CÁO TÌNH TRẠNG ĐỊNH MỨC THIẾT BỊ Y TẾ
             </h1>
             <p className="text-sm text-gray-600">(Theo Thông tư 08/2019/TT-BYT)</p>

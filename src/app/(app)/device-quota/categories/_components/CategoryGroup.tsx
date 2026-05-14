@@ -215,7 +215,7 @@ const CategoryGroup = React.memo(function CategoryGroup({
             <div
                 className={cn(
                     "group cursor-pointer select-none px-4 py-3",
-                    "bg-muted/50 border-l-4 border-l-primary/60",
+                    "bg-muted/50 ring-1 ring-inset ring-primary/20",
                     "hover:bg-muted/80 transition-colors",
                     CATEGORY_GRID_COLS
                 )}
