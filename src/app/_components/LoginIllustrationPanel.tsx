@@ -19,7 +19,7 @@ export function LoginIllustrationPanel() {
             </div>
 
             {/* Central Illustration */}
-            <div className="flex-1 flex flex-col items-center justify-center text-center space-y-12">
+      <div className="flex-1 flex flex-col items-center justify-center text-center gap-y-12">
                 <div className="w-full max-w-lg aspect-square relative group">
                     <Image
                         src="/login-illustration.png"

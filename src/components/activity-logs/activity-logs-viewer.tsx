@@ -140,7 +140,7 @@ export function ActivityLogsViewer({ className }: ActivityLogsViewerProps) {
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>
           <CardContent className="pt-6">
-            <div className="flex items-center space-x-2">
+            <div className="flex items-center gap-x-2">
               <Activity className="size-4 text-blue-600" />
               <div className="space-y-1">
                 <p className="text-sm font-medium text-gray-600">Hoạt động 24h</p>
@@ -154,7 +154,7 @@ export function ActivityLogsViewer({ className }: ActivityLogsViewerProps) {
         
         <Card>
           <CardContent className="pt-6">
-            <div className="flex items-center space-x-2">
+            <div className="flex items-center gap-x-2">
               <User className="size-4 text-green-600" />
               <div className="space-y-1">
                 <p className="text-sm font-medium text-gray-600">Người dùng hoạt động</p>
@@ -168,7 +168,7 @@ export function ActivityLogsViewer({ className }: ActivityLogsViewerProps) {
         
         <Card>
           <CardContent className="pt-6">
-            <div className="flex items-center space-x-2">
+            <div className="flex items-center gap-x-2">
               <TrendingUp className="size-4 text-orange-600" />
               <div className="space-y-1">
                 <p className="text-sm font-medium text-gray-600">Hoạt động phổ biến</p>
@@ -182,7 +182,7 @@ export function ActivityLogsViewer({ className }: ActivityLogsViewerProps) {
         
         <Card>
           <CardContent className="pt-6">
-            <div className="flex items-center space-x-2">
+            <div className="flex items-center gap-x-2">
               <Clock className="size-4 text-purple-600" />
               <div className="space-y-1">
                 <p className="text-sm font-medium text-gray-600">Hoạt động gần nhất</p>
@@ -201,12 +201,12 @@ export function ActivityLogsViewer({ className }: ActivityLogsViewerProps) {
       {/* Filters and Search */}
       <Card>
         <CardHeader className="pb-3">
-          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-3 lg:space-y-0">
-            <CardTitle className="flex items-center space-x-2">
+          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-y-3 lg:gap-y-0">
+            <CardTitle className="flex items-center gap-x-2">
               <Filter className="size-5" />
               <span>Bộ lọc và tìm kiếm</span>
             </CardTitle>
-            <div className="flex items-center space-x-2">
+            <div className="flex items-center gap-x-2">
               <Button
                 variant="outline"
                 size="sm"
@@ -306,7 +306,7 @@ export function ActivityLogsViewer({ className }: ActivityLogsViewerProps) {
       <Card>
         <CardHeader className="pb-3">
           <CardTitle className="flex items-center justify-between">
-            <div className="flex items-center space-x-2">
+            <div className="flex items-center gap-x-2">
               <Eye className="size-5" />
               <span>Nhật ký hoạt động</span>
               <Badge variant="secondary">
@@ -324,7 +324,7 @@ export function ActivityLogsViewer({ className }: ActivityLogsViewerProps) {
           ) : isLoading ? (
             <div className="space-y-4">
               {Array.from({ length: 5 }).map((_, i) => (
-                <div key={i} className="flex items-start space-x-4 p-4 border rounded-lg animate-pulse">
+                <div key={i} className="flex items-start gap-x-4 p-4 border rounded-lg animate-pulse">
                   <div className="size-10 bg-gray-200 rounded-full" />
                   <div className="flex-1 space-y-2">
                     <div className="h-4 bg-gray-200 rounded w-1/4" />
@@ -355,7 +355,7 @@ export function ActivityLogsViewer({ className }: ActivityLogsViewerProps) {
               <p className="text-sm text-gray-600">
                 Hiển thị {(filters.offset || 0) + 1} - {Math.min((filters.offset || 0) + filteredLogs.length, filteredLogs[0]?.total_count || 0)} trong tổng số {filteredLogs[0]?.total_count || 0} mục
               </p>
-              <div className="flex space-x-2">
+              <div className="flex gap-x-2">
                 <Button
                   variant="outline"
                   size="sm"

@@ -69,7 +69,7 @@ export function MaintenanceMobilePlanCards({
       <div className="space-y-3">
         {Array.from({ length: 4 }).map((_, index) => (
           <Card key={index} className="border-muted shadow-none">
-            <CardHeader className="space-y-2">
+            <CardHeader className="gap-y-2">
               <Skeleton className="h-6 w-2/3" />
               <Skeleton className="h-4 w-1/3" />
             </CardHeader>

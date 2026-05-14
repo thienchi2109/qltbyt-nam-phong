@@ -91,7 +91,7 @@ export function EquipmentDistributionSummary({ className, tenantFilter, selected
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         {EQUIPMENT_DISTRIBUTION_SKELETON_KEYS.map((token) => (
           <Card key={token}>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardHeader className="flex flex-row items-center justify-between gap-y-0 pb-2">
               <Skeleton className="h-4 w-24" />
               <Skeleton className="size-4" />
             </CardHeader>
@@ -163,7 +163,7 @@ export function EquipmentDistributionSummary({ className, tenantFilter, selected
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         {/* Equipment Health Score */}
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardHeader className="flex flex-row items-center justify-between gap-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Tình trạng tổng thể</CardTitle>
             <Activity className="size-4 text-muted-foreground" />
           </CardHeader>
@@ -183,7 +183,7 @@ export function EquipmentDistributionSummary({ className, tenantFilter, selected
 
         {/* Total Equipment */}
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardHeader className="flex flex-row items-center justify-between gap-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Tổng thiết bị</CardTitle>
             <CheckCircle className="size-4 text-green-600" />
           </CardHeader>
@@ -199,7 +199,7 @@ export function EquipmentDistributionSummary({ className, tenantFilter, selected
 
         {/* Departments */}
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardHeader className="flex flex-row items-center justify-between gap-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Khoa/Phòng</CardTitle>
             <Badge variant="outline">{overallStats.departmentCount}</Badge>
           </CardHeader>
@@ -217,7 +217,7 @@ export function EquipmentDistributionSummary({ className, tenantFilter, selected
 
         {/* Locations */}
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardHeader className="flex flex-row items-center justify-between gap-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Vị trí</CardTitle>
             <Badge variant="outline">{overallStats.locationCount}</Badge>
           </CardHeader>

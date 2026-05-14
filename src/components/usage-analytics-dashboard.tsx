@@ -105,7 +105,7 @@ export function UsageAnalyticsDashboard({
       {/* Overview Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardHeader className="flex flex-row items-center justify-between gap-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Tổng phiên sử dụng</CardTitle>
             <Activity className="size-4 text-muted-foreground" />
           </CardHeader>
@@ -122,7 +122,7 @@ export function UsageAnalyticsDashboard({
         </Card>
 
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardHeader className="flex flex-row items-center justify-between gap-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Tổng thời gian sử dụng</CardTitle>
             <Clock className="size-4 text-muted-foreground" />
           </CardHeader>
@@ -141,7 +141,7 @@ export function UsageAnalyticsDashboard({
         </Card>
 
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardHeader className="flex flex-row items-center justify-between gap-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Thiết bị được dùng nhiều nhất</CardTitle>
             <TrendingUp className="size-4 text-muted-foreground" />
           </CardHeader>
@@ -164,7 +164,7 @@ export function UsageAnalyticsDashboard({
         </Card>
 
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardHeader className="flex flex-row items-center justify-between gap-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Người dùng tích cực nhất</CardTitle>
             <Users className="size-4 text-muted-foreground" />
           </CardHeader>

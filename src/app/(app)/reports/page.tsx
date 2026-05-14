@@ -35,7 +35,7 @@ function TabSkeleton() {
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         {Array.from({ length: 4 }).map((_, i) => (
           <Card key={i}>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardHeader className="flex flex-row items-center justify-between gap-y-0 pb-2">
               <Skeleton className="h-4 w-24" />
               <Skeleton className="size-4" />
             </CardHeader>

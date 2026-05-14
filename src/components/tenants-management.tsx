@@ -184,7 +184,7 @@ export function TenantsManagement() {
   return (
     <div className="space-y-5">
       <Card>
-        <CardHeader className="space-y-2">
+        <CardHeader className="gap-y-2">
           <CardTitle className="heading-responsive-h2">Cấu hình đơn vị</CardTitle>
           <CardDescription>Quản lý đơn vị với phân cấp tài khoản.</CardDescription>
         </CardHeader>

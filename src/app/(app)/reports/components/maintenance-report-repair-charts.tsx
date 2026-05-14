@@ -23,7 +23,7 @@ export function MaintenanceReportRepairCharts({
   return (
     <div className="grid gap-4 md:grid-cols-2">
       <Card>
-        <CardHeader className="space-y-1">
+        <CardHeader className="gap-y-1">
           <CardTitle>Xu hướng sửa chữa theo thời gian</CardTitle>
           <CardDescription>Số lượng yêu cầu sửa chữa và hoàn thành theo tháng.</CardDescription>
         </CardHeader>

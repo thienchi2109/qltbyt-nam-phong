@@ -222,7 +222,7 @@ export function RepairResultForm({ tenantId = null }: RepairResultFormProps = {}
                 "Vỏ thiết bị",
                 "Khác"
               ].map((part) => (
-                <div key={part} className="flex items-center space-x-2">
+                <div key={part} className="flex items-center gap-x-2">
                   <Checkbox
                     id={part}
                     checked={formData.partsReplaced.includes(part)}
@@ -275,7 +275,7 @@ export function RepairResultForm({ tenantId = null }: RepairResultFormProps = {}
             </div>
           </div>
 
-          <div className="flex items-center space-x-2">
+          <div className="flex items-center gap-x-2">
             <Checkbox
               id="warrantyCoverage"
               checked={formData.warrantyCoverage}

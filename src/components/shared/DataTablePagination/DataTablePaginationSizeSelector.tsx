@@ -29,7 +29,7 @@ export const DataTablePaginationSizeSelector = React.memo(function DataTablePagi
   const showAtClass = showAt ? `hidden ${showAt}:flex` : ""
 
   return (
-    <div className={cn("flex items-center space-x-2", showAtClass, className)}>
+    <div className={cn("flex items-center gap-x-2", showAtClass, className)}>
       <p className="text-sm font-medium">Số dòng</p>
       <Select
         value={`${pageSize}`}

@@ -25,7 +25,7 @@ const maintenanceCardClass = `${cardBaseClass}`
 const repairCardClass = `${cardBaseClass}`
 const planCardClass = `${cardBaseClass}`
 const headerClass =
-  "flex flex-row items-center justify-between space-y-0 p-4 pb-2 md:p-6 md:pb-2 gap-3 md:gap-2"
+  "flex flex-row items-center justify-between p-4 pb-2 md:p-6 md:pb-2 gap-3 md:gap-2"
 const titleClass = "text-sm font-semibold truncate md:text-sm md:font-medium text-slate-600"
 // Icon colors matching card gradients - more vibrant
 const equipmentIconClass = "size-5 text-blue-600 md:size-4 flex-shrink-0"

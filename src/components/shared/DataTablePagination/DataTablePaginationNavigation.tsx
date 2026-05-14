@@ -87,7 +87,7 @@ export const DataTablePaginationNavigation = React.memo(function DataTablePagina
       >
         {resolvedLabels.pageIndicator} {currentPage} {resolvedLabels.pageSeparator} {totalPages}
       </div>
-      <div className="flex items-center space-x-2">
+      <div className="flex items-center gap-x-2">
         <Button
           type="button"
           variant="outline"
