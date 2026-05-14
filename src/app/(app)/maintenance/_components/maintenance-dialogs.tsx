@@ -131,7 +131,7 @@ export function MaintenanceDialogs() {
           <div className="py-4">
             <textarea
               className="w-full min-h-[100px] p-3 border border-input rounded-md resize-none focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent"
-              placeholder="Nhập lý do không duyệt kế hoạch này..."
+              placeholder="Nhập lý do không duyệt kế hoạch này…"
               value={operations.confirmDialog.rejectionReason}
               onChange={(e) => operations.setRejectionReason(e.target.value)}
               disabled={operations.isRejecting}

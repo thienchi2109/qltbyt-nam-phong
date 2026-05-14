@@ -36,7 +36,7 @@ export function LoginTemplate() {
               className="mb-6" 
             />
             
-            <h1 className="text-3xl md:text-4xl font-black text-[#004AAD] mb-4">
+            <h1 className="text-3xl md:text-4xl font-semibold text-[#004AAD] mb-4">
               Hệ Thống Quản Lý Thiết Bị Y Tế Toàn Diện
             </h1>
             <p className="text-gray-600 mb-8">
@@ -79,7 +79,7 @@ export function LoginTemplate() {
                 <Card key={feature.title} className="bg-blue-50 border-blue-100">
                   <CardContent className="p-4">
                     <div className="text-2xl mb-2">{feature.icon}</div>
-                    <h3 className="font-bold text-sm text-[#004AAD] mb-2">{feature.title}</h3>
+                    <h3 className="font-semibold text-sm text-[#004AAD] mb-2">{feature.title}</h3>
                     <p className="text-xs text-gray-500">{feature.description}</p>
                   </CardContent>
                 </Card>

@@ -29,7 +29,7 @@ export function RepairRequestsEquipmentSearchField({
       <div className="relative">
         <Input
           id="search-equipment"
-          placeholder="Nhập tên hoặc mã để tìm kiếm..."
+          placeholder="Nhập tên hoặc mã để tìm kiếm…"
           value={searchQuery}
           onChange={onSearchChange}
           autoComplete="off"

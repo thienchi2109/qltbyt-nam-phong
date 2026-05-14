@@ -21,7 +21,7 @@ export default function DeviceQuotaMappingPage() {
             {/* Page header */}
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <h1 className="text-2xl font-bold">Phân loại thiết bị</h1>
+                <h1 className="text-2xl font-semibold">Phân loại thiết bị</h1>
                 <p className="text-muted-foreground">
                   Gán thiết bị vào các nhóm định mức
                 </p>

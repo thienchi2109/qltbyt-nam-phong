@@ -133,7 +133,7 @@ export function EditTenantDialog({ open, onOpenChange, onSuccess, tenant }: Edit
             </div>
             <div className="grid gap-2">
               <Label htmlFor="logo">Logo URL</Label>
-              <Input id="logo" type="url" value={form.logo_url} onChange={(e) => setForm(s => ({ ...s, logo_url: e.target.value }))} placeholder="https://..." disabled={isPending} />
+              <Input id="logo" type="url" value={form.logo_url} onChange={(e) => setForm(s => ({ ...s, logo_url: e.target.value }))} placeholder="https://…" disabled={isPending} />
               <p className="text-xs text-muted-foreground">Để trống để xóa logo.</p>
             </div>
             <div className="grid gap-2">
@@ -143,7 +143,7 @@ export function EditTenantDialog({ open, onOpenChange, onSuccess, tenant }: Edit
             </div>
             <div className="grid gap-2">
               <Label htmlFor="google_drive_url">URL thư mục Google Drive chia sẻ</Label>
-              <Input id="google_drive_url" type="url" value={form.google_drive_folder_url} onChange={(e) => setForm(s => ({ ...s, google_drive_folder_url: e.target.value }))} placeholder="https://drive.google.com/drive/folders/..." disabled={isPending} />
+              <Input id="google_drive_url" type="url" value={form.google_drive_folder_url} onChange={(e) => setForm(s => ({ ...s, google_drive_folder_url: e.target.value }))} placeholder="https://drive.google.com/drive/folders/…" disabled={isPending} />
               <p className="text-xs text-muted-foreground">Thư mục Google Drive chia sẻ cho file đính kèm thiết bị của đơn vị này.</p>
             </div>
             <div className="flex items-center gap-2">

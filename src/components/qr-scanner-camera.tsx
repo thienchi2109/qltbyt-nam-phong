@@ -295,9 +295,9 @@ Hiện tại bạn đang truy cập qua: ${location.origin}
   }
 
   return (
-    <div className="fixed inset-0 z-50 bg-black">
+    <div className="fixed inset-0 z-50 bg-gray-950">
       {/* Header */}
-      <div className="absolute top-0 left-0 right-0 z-10 bg-black/50 backdrop-blur-sm">
+      <div className="absolute top-0 left-0 right-0 z-10 bg-gray-950/50 backdrop-blur-sm">
         <div className="flex items-center justify-between p-4">
           <div className="flex items-center gap-3">
             <Button
@@ -343,17 +343,17 @@ Hiện tại bạn đang truy cập qua: ${location.origin}
                   <div className="relative">
                     <div className="size-64 border-2 border-white rounded-lg relative">
                       {/* Corner indicators */}
-                      <div className="absolute top-0 left-0 size-8 border-t-4 border-l-4 border-primary rounded-tl-lg" />
-                      <div className="absolute top-0 right-0 size-8 border-t-4 border-r-4 border-primary rounded-tr-lg" />
-                      <div className="absolute bottom-0 left-0 size-8 border-b-4 border-l-4 border-primary rounded-bl-lg" />
-                      <div className="absolute bottom-0 right-0 size-8 border-b-4 border-r-4 border-primary rounded-br-lg" />
+                      <div className="absolute top-0 left-0 size-8 border-t-4 border-l border-primary rounded-tl-lg" />
+                      <div className="absolute top-0 right-0 size-8 border-t-4 border-r border-primary rounded-tr-lg" />
+                      <div className="absolute bottom-0 left-0 size-8 border-b-4 border-l border-primary rounded-bl-lg" />
+                      <div className="absolute bottom-0 right-0 size-8 border-b-4 border-r border-primary rounded-br-lg" />
                       
                       {/* Scanning line animation */}
                       <div className="absolute inset-0 overflow-hidden rounded-lg">
                         <div 
                           className="absolute left-0 right-0 h-0.5 bg-primary"
                           style={{ 
-                            animation: "scan 2s linear infinite",
+                            animation: "scan 700ms linear infinite",
                           }} 
                         />
                       </div>
@@ -378,7 +378,7 @@ Hiện tại bạn đang truy cập qua: ${location.origin}
                     ) : (
                       <>
                         <Camera className="size-12 mx-auto mb-4 opacity-50" />
-                        <p>Đang khởi động camera...</p>
+                        <p>Đang khởi động camera…</p>
                       </>
                     )}
                   </div>
@@ -390,7 +390,7 @@ Hiện tại bạn đang truy cập qua: ${location.origin}
       </div>
 
       {/* Bottom Controls */}
-      <div className="absolute bottom-0 left-0 right-0 bg-black/50 backdrop-blur-sm">
+      <div className="absolute bottom-0 left-0 right-0 bg-gray-950/50 backdrop-blur-sm">
         <div className="flex items-center justify-center gap-8 p-6">
           {/* Flash Toggle */}
           {hasFlash && (

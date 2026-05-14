@@ -108,7 +108,7 @@ export function UnusedEquipmentReportSection({
             </label>
             <Input
               id="unused-equipment-search"
-              placeholder="Tên, mã, model hoặc serial thiết bị..."
+              placeholder="Tên, mã, model hoặc serial thiết bị…"
               value={searchTerm}
               onChange={handleSearchChange}
             />

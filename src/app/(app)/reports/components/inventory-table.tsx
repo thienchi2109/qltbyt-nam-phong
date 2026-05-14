@@ -250,7 +250,7 @@ export function InventoryTable({ data, isLoading }: InventoryTableProps) {
         {/* Table filters */}
         <div className="flex items-center gap-4 py-4">
           <Input
-            placeholder="Tìm kiếm thiết bị..."
+            placeholder="Tìm kiếm thiết bị…"
             value={globalFilter ?? ""}
             onChange={(event) => setGlobalFilter(String(event.target.value))}
             className="max-w-sm"

@@ -264,7 +264,7 @@ export function PWAStatus() {
   }
 
   return (
-    <div className="fixed top-4 right-4 bg-black/80 text-white text-xs p-2 rounded z-50">
+    <div className="fixed top-4 right-4 bg-gray-950/80 text-white text-xs p-2 rounded z-50">
       <div>SW: {state.swStatus}</div>
       <div>Online: {state.isOnline ? 'yes' : 'no'}</div>
       <div>Install: {state.installPromptAvailable ? 'available' : 'not available'}</div>

@@ -264,7 +264,7 @@ export function TransfersPagePanel({
                       <div className="flex min-h-[200px] items-center justify-center rounded-lg border border-dashed">
                         <div className="flex flex-col items-center gap-2 text-sm text-muted-foreground">
                           <Loader2 className="size-6 animate-spin" />
-                          Đang tải dữ liệu...
+                          Đang tải dữ liệu…
                         </div>
                       </div>
                     ) : tableData.length > 0 ? (
@@ -302,7 +302,7 @@ export function TransfersPagePanel({
 
               {isListFetching && !isListLoading && (
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <Loader2 className="size-4 animate-spin" /> Đang đồng bộ dữ liệu...
+                  <Loader2 className="size-4 animate-spin" /> Đang đồng bộ dữ liệu…
                 </div>
               )}
             </div>

@@ -32,7 +32,7 @@ const QRScannerCamera = dynamic(
   () => import("@/components/qr-scanner-camera").then(mod => ({ default: mod.QRScannerCamera })),
   {
     ssr: false,
-    loading: () => <div className="fixed inset-0 z-50 bg-black flex items-center justify-center text-white">Đang tải camera...</div>
+    loading: () => <div className="fixed inset-0 z-50 bg-gray-950 flex items-center justify-center text-white">Đang tải camera…</div>
   }
 )
 
@@ -183,7 +183,7 @@ export default function Dashboard() {
             <div className="space-y-2">
               <div className="flex items-center gap-2">
                 <Sparkles className="size-5 text-primary" />
-                <h1 className="text-xl md:text-2xl font-bold text-slate-800">
+                <h1 className="text-xl md:text-2xl font-semibold text-slate-800">
                   {getGreeting()}, {user?.full_name || user?.username}!
                 </h1>
               </div>
@@ -209,7 +209,7 @@ export default function Dashboard() {
       {/* Quick Actions Section - Native App Style */}
       <div data-tour="quick-actions" className="md:mt-6 md:space-y-5">
         <div className="mb-4 px-1">
-          <h2 className="text-lg font-bold text-slate-900 mb-1">Thao tác nhanh</h2>
+          <h2 className="text-lg font-semibold text-slate-900 mb-1">Thao tác nhanh</h2>
         </div>
         <div className={cn(
           "grid gap-4 md:gap-6",

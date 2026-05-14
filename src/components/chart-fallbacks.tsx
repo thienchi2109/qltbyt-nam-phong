@@ -14,7 +14,7 @@ export function ChartLoadingFallback({ height = 300 }: ChartLoadingFallbackProps
     >
       <div className="text-center space-y-2">
         <div className="size-8 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto"></div>
-        <p className="text-sm text-muted-foreground">Đang tải biểu đồ...</p>
+        <p className="text-sm text-muted-foreground">Đang tải biểu đồ…</p>
       </div>
     </div>
   )

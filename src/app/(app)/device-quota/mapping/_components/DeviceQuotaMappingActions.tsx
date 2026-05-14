@@ -87,7 +87,7 @@ export function DeviceQuotaMappingActions() {
                 size="sm"
                 className="touch-target-sm group"
                 onClick={() => setShowSuggested(true)}
-                title="Sử dụng AI để gợi ý — tốn tài nguyên server, chỉ dùng khi cần"
+                title="Sử dụng AI để gợi ý - tốn tài nguyên server, chỉ dùng khi cần"
               >
                 <Sparkles className="size-4 text-amber-500 group-hover:animate-pulse" />
                 Gợi ý phân loại

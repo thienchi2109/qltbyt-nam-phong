@@ -64,7 +64,7 @@ export function RepairRequestsTable({
               >
                 <div className="flex justify-center items-center gap-2 text-muted-foreground">
                   <Loader2 className="size-4 animate-spin" />
-                  <span>Đang tải dữ liệu...</span>
+                  <span>Đang tải dữ liệu…</span>
                 </div>
               </TableCell>
             </TableRow>

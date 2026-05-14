@@ -119,7 +119,7 @@ export function HandoverTemplate({
                   className="mb-4"
                   tenantId={tenantId}
                 />
-                <h1 className="title-main uppercase font-bold">
+                <h1 className="title-main uppercase font-semibold">
                   BIÊN BẢN BÀN GIAO THIẾT BỊ
                 </h1>
               </div>
@@ -182,7 +182,7 @@ export function HandoverTemplate({
                       className="editable-cell text-left" 
                       contentEditable
                       suppressContentEditableWarning
-                      data-placeholder="Nhập tài liệu/phụ kiện kèm theo..."
+                      data-placeholder="Nhập tài liệu/phụ kiện kèm theo…"
                     >
                       {formatValue(device.accessories)}
                     </td>
@@ -190,7 +190,7 @@ export function HandoverTemplate({
                       className="editable-cell" 
                       contentEditable
                       suppressContentEditableWarning
-                      data-placeholder="Nhập tình trạng thiết bị..."
+                      data-placeholder="Nhập tình trạng thiết bị…"
                     >
                       {formatValue(device.condition)}
                     </td>
@@ -198,7 +198,7 @@ export function HandoverTemplate({
                       className="editable-cell" 
                       contentEditable
                       suppressContentEditableWarning
-                      data-placeholder="Nhập ghi chú..."
+                      data-placeholder="Nhập ghi chú…"
                     >
                       {formatValue(device.note)}
                     </td>

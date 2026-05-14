@@ -15,7 +15,7 @@ export default function HandoverFormPage() {
         {/* Handover Form Content */}
         <div className="content-body">
           <div className="text-center mb-6">
-            <h1 className="title-main font-bold uppercase">Biên Bản Bàn Giao Thiết Bị</h1>
+            <h1 className="title-main font-semibold uppercase">Biên Bản Bàn Giao Thiết Bị</h1>
             <p className="mt-2">Số: <span className="form-input-line" id="request-code"></span></p>
           </div>
           
@@ -46,9 +46,9 @@ export default function HandoverFormPage() {
                   <td><span className="form-input-line"></span></td>
                   <td><span className="form-input-line"></span></td>
                   <td><span className="form-input-line"></span></td>
-                  <td className="editable-cell" contentEditable data-placeholder="Nhập tài liệu/phụ kiện kèm theo..."></td>
-                  <td className="editable-cell" contentEditable data-placeholder="Nhập tình trạng thiết bị..."></td>
-                  <td className="editable-cell" contentEditable data-placeholder="Nhập ghi chú..."></td>
+                  <td className="editable-cell" contentEditable data-placeholder="Nhập tài liệu/phụ kiện kèm theo…"></td>
+                  <td className="editable-cell" contentEditable data-placeholder="Nhập tình trạng thiết bị…"></td>
+                  <td className="editable-cell" contentEditable data-placeholder="Nhập ghi chú…"></td>
                 </tr>
               </tbody>
             </table>

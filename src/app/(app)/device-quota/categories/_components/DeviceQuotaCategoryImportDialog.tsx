@@ -272,7 +272,7 @@ export function DeviceQuotaCategoryImportDialog() {
           {status === "parsing" && (
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <Loader2 className="size-4 animate-spin" />
-              Đang đọc file...
+              Đang đọc file…
             </div>
           )}
 
@@ -298,7 +298,7 @@ export function DeviceQuotaCategoryImportDialog() {
                     ))}
                     {validationErrors.length > 20 && (
                       <li className="text-muted-foreground">
-                        ... và {validationErrors.length - 20} lỗi khác
+                        … và {validationErrors.length - 20} lỗi khác
                       </li>
                     )}
                   </ul>
@@ -320,7 +320,7 @@ export function DeviceQuotaCategoryImportDialog() {
                     ))}
                     {validationWarnings.length > 10 && (
                       <li className="text-yellow-600">
-                        ... và {validationWarnings.length - 10} cảnh báo khác
+                        … và {validationWarnings.length - 10} cảnh báo khác
                       </li>
                     )}
                   </ul>
@@ -389,7 +389,7 @@ export function DeviceQuotaCategoryImportDialog() {
           {isSubmitting && (
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <Loader2 className="size-4 animate-spin" />
-              Đang nhập dữ liệu...
+              Đang nhập dữ liệu…
             </div>
           )}
         </div>
@@ -403,7 +403,7 @@ export function DeviceQuotaCategoryImportDialog() {
               {isSubmitting ? (
                 <>
                   <Loader2 className="mr-2 size-4 animate-spin" />
-                  Đang nhập...
+                  Đang nhập…
                 </>
               ) : (
                 <>

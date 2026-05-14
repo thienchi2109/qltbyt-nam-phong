@@ -195,8 +195,7 @@ describe("EquipmentPageClient selection render boundary", () => {
 
     const button = screen.getByRole("button", { name: "Thêm thiết bị" })
     expect(button.className).toContain("bottom-[calc(env(safe-area-inset-bottom,0px)+5rem)]")
-    expect(button.className).toContain("h-14")
-    expect(button.className).toContain("w-14")
+    expect(button.className).toContain("size-14")
     expect(button.className).toContain("shadow-[0_18px_34px_rgba(15,23,42,0.24)]")
   })
 })

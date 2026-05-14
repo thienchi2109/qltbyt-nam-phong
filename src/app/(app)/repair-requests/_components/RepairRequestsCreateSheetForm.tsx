@@ -95,7 +95,7 @@ export function RepairRequestsCreateSheetForm({
         <Label htmlFor="issue">Mô tả sự cố</Label>
         <Textarea
           id="issue"
-          placeholder="Mô tả chi tiết vấn đề gặp phải..."
+          placeholder="Mô tả chi tiết vấn đề gặp phải…"
           rows={4}
           value={issueDescription}
           onChange={(e) => onIssueDescriptionChange(e.target.value)}
@@ -106,7 +106,7 @@ export function RepairRequestsCreateSheetForm({
         <Label htmlFor="repair-items">Các hạng mục yêu cầu sửa chữa (nếu có)</Label>
         <Textarea
           id="repair-items"
-          placeholder="VD: Thay màn hình, sửa nguồn..."
+          placeholder="VD: Thay màn hình, sửa nguồn…"
           rows={3}
           value={repairItems}
           onChange={(e) => onRepairItemsChange(e.target.value)}
@@ -160,7 +160,7 @@ export function RepairRequestsCreateSheetForm({
           <Label htmlFor="external-company">Tên đơn vị được thuê</Label>
           <Input
             id="external-company"
-            placeholder="Nhập tên đơn vị được thuê sửa chữa..."
+            placeholder="Nhập tên đơn vị được thuê sửa chữa…"
             value={externalCompanyName}
             onChange={(e) => onExternalCompanyNameChange(e.target.value)}
             required

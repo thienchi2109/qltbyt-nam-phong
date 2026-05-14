@@ -92,7 +92,7 @@ function CompleteDialogForm({
                 id="completion-result"
                 value={completionResult}
                 onChange={(e) => setCompletionResult(e.target.value)}
-                placeholder="Nhập kết quả và tình trạng thiết bị sau khi sửa chữa..."
+                placeholder="Nhập kết quả và tình trạng thiết bị sau khi sửa chữa…"
                 rows={4}
                 disabled={isPending}
               />
@@ -121,7 +121,7 @@ function CompleteDialogForm({
               id="non-completion-reason"
               value={nonCompletionReason}
               onChange={(e) => setNonCompletionReason(e.target.value)}
-              placeholder="Nhập lý do không thể hoàn thành sửa chữa..."
+              placeholder="Nhập lý do không thể hoàn thành sửa chữa…"
               rows={4}
               disabled={isPending}
             />

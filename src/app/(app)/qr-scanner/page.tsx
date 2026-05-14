@@ -17,7 +17,7 @@ const QRScannerCamera = dynamic(
   () => import("@/components/qr-scanner-camera").then(mod => ({ default: mod.QRScannerCamera })),
   {
     ssr: false,
-    loading: () => <div className="flex items-center justify-center h-screen">Đang tải camera...</div>
+    loading: () => <div className="flex items-center justify-center h-screen">Đang tải camera…</div>
   }
 )
 
@@ -25,7 +25,7 @@ const QRActionSheet = dynamic(
   () => import("@/components/qr-action-sheet").then(mod => ({ default: mod.QRActionSheet })),
   {
     ssr: false,
-    loading: () => <div>Đang tải...</div>
+    loading: () => <div>Đang tải…</div>
   }
 )
 

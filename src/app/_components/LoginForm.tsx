@@ -132,7 +132,7 @@ export function LoginForm(): React.ReactElement {
           <span className="font-bold text-xl text-primary">CVMEMS</span>
         </div>
 
-        <div className="w-full max-w-md animate-in slide-in-from-right duration-700">
+        <div className="w-full max-w-md animate-in slide-in-from-right duration-500">
           {/* Login Card */}
           <div className="bg-white rounded-2xl shadow-lg shadow-black/5 p-8 md:p-10 space-y-8">
             {/* Logo + Brand */}

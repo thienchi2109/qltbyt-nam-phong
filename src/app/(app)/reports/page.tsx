@@ -117,7 +117,7 @@ function ReportsPageContent({ user }: ReportsPageContentProps) {
   return (
     <div data-testid="reports-page-content" className="min-w-0 flex-1 space-y-4">
       <div className="flex flex-wrap items-center gap-4">
-        <h2 className="text-3xl font-bold tracking-tight">Báo cáo</h2>
+        <h2 className="text-3xl font-semibold tracking-tight">Báo cáo</h2>
 
         {/* Tenant selector for global/regional_leader users */}
         {showSelector && (

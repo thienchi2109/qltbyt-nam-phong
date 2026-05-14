@@ -194,7 +194,7 @@ export function RepairResultForm({ tenantId = null }: RepairResultFormProps = {}
               value={formData.issueDescription}
               onChange={(e) => handleInputChange('issueDescription', e.target.value)}
               className="mt-1 min-h-[80px]"
-              placeholder="Mô tả chi tiết sự cố hoặc vấn đề cần sửa chữa..."
+              placeholder="Mô tả chi tiết sự cố hoặc vấn đề cần sửa chữa…"
             />
           </div>
 
@@ -205,7 +205,7 @@ export function RepairResultForm({ tenantId = null }: RepairResultFormProps = {}
               value={formData.actionTaken}
               onChange={(e) => handleInputChange('actionTaken', e.target.value)}
               className="mt-1 min-h-[80px]"
-              placeholder="Mô tả các biện pháp, quy trình sửa chữa đã thực hiện..."
+              placeholder="Mô tả các biện pháp, quy trình sửa chữa đã thực hiện…"
             />
           </div>
 
@@ -241,7 +241,7 @@ export function RepairResultForm({ tenantId = null }: RepairResultFormProps = {}
               value={formData.testResults}
               onChange={(e) => handleInputChange('testResults', e.target.value)}
               className="mt-1 min-h-[80px]"
-              placeholder="Mô tả kết quả kiểm tra, thử nghiệm sau khi sửa chữa..."
+              placeholder="Mô tả kết quả kiểm tra, thử nghiệm sau khi sửa chữa…"
             />
           </div>
 
@@ -302,7 +302,7 @@ export function RepairResultForm({ tenantId = null }: RepairResultFormProps = {}
               value={formData.notes}
               onChange={(e) => handleInputChange('notes', e.target.value)}
               className="mt-1 min-h-[60px]"
-              placeholder="Ghi chú thêm về quá trình sửa chữa, khuyến nghị sử dụng..."
+              placeholder="Ghi chú thêm về quá trình sửa chữa, khuyến nghị sử dụng…"
             />
           </div>
 

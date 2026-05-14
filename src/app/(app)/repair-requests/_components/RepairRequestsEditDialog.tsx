@@ -145,7 +145,7 @@ function RepairRequestsEditDialogContent({
             <Label htmlFor="edit-issue">Mô tả sự cố</Label>
             <Textarea
               id="edit-issue"
-              placeholder="Mô tả chi tiết vấn đề gặp phải..."
+              placeholder="Mô tả chi tiết vấn đề gặp phải…"
               rows={4}
               value={formState.issueDescription}
               onChange={(e) => dispatchForm({
@@ -159,7 +159,7 @@ function RepairRequestsEditDialogContent({
             <Label htmlFor="edit-repair-items">Các hạng mục yêu cầu sửa chữa</Label>
             <Textarea
               id="edit-repair-items"
-              placeholder="VD: Thay màn hình, sửa nguồn..."
+              placeholder="VD: Thay màn hình, sửa nguồn…"
               rows={3}
               value={formState.repairItems}
               onChange={(e) => dispatchForm({
@@ -230,7 +230,7 @@ function RepairRequestsEditDialogContent({
               <Label htmlFor="edit-external-company">Tên đơn vị được thuê</Label>
               <Input
                 id="edit-external-company"
-                placeholder="Nhập tên đơn vị được thuê sửa chữa..."
+                placeholder="Nhập tên đơn vị được thuê sửa chữa…"
                 value={formState.externalCompanyName}
                 onChange={(e) => dispatchForm({
                   type: "patch",

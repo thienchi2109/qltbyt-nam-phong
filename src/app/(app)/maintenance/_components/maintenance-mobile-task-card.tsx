@@ -102,7 +102,7 @@ export const MaintenanceMobileTaskCard = React.memo(function MaintenanceMobileTa
         </button>
 
         {isExpanded && (
-          <div className="border-t border-border/70 px-4 py-4 space-y-4">
+          <div className="border-t border-border/70 p-4 space-y-4">
             <div className="flex flex-col gap-2 text-sm">
               <div className="flex items-start justify-between gap-3">
                 <span className="text-muted-foreground">Đơn vị thực hiện</span>

@@ -170,7 +170,7 @@ function ExportReportDialogContent({
               ref={fileNameInputRef}
               defaultValue={defaultFileName}
               onChange={(e) => setHasFileName(e.target.value.trim().length > 0)}
-              placeholder="Nhập tên file..."
+              placeholder="Nhập tên file…"
             />
             <p className="text-xs text-muted-foreground">File sẽ được lưu với định dạng .xlsx</p>
           </div>

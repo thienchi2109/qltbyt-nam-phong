@@ -12,7 +12,7 @@ import type { KpiStatusBarProps } from "./types"
  *
  * Renders a "Total" card (optional) followed by one card per status config.
  * Counts are mapped from a `Record<TStatus, number>`.
- * No onClick/active props — purely for display.
+ * No onClick/active props - purely for display.
  *
  * @example
  * ```tsx

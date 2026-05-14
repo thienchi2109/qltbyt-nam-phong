@@ -96,7 +96,7 @@ export function FilterBottomSheet({
     <MobileBottomSheet open={open} onOpenChange={onOpenChange} ariaLabel="Bộ lọc thiết bị">
       {/* Header */}
       <div className="flex items-center justify-between px-6 py-4 border-b border-border shrink-0">
-        <h2 className="text-lg font-bold text-foreground">
+        <h2 className="text-lg font-semibold text-foreground">
           Bộ lọc thiết bị
         </h2>
         <Button
@@ -118,7 +118,7 @@ export function FilterBottomSheet({
         {filterSections.map((section) =>
           section.options.length > 0 ? (
             <div key={section.key}>
-              <h3 className="text-sm font-bold text-foreground mb-3">
+              <h3 className="text-sm font-semibold text-foreground mb-3">
                 {section.label}
               </h3>
               <div className="space-y-2">

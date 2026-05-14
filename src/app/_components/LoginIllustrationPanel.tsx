@@ -42,7 +42,7 @@ export function LoginIllustrationPanel() {
 
                 {/* Hero Text */}
                 <div className="space-y-4 max-w-md">
-                    <h1 className="text-4xl font-bold leading-tight">
+                    <h1 className="text-4xl font-semibold leading-tight">
                         Quản Lý Thiết Bị Y Tế Thông Minh
                     </h1>
                     <p className="text-white/70 text-lg">

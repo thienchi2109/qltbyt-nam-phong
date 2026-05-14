@@ -70,7 +70,7 @@ export function CalendarWidgetHeader({
               <CalendarIcon className="size-5 text-white" />
             </div>
             <div>
-              <h2 className="text-lg font-bold text-gray-900">Lịch công việc</h2>
+              <h2 className="text-lg font-semibold text-gray-900">Lịch công việc</h2>
               <p className="text-sm text-gray-500">{format(currentDate, "MMMM yyyy", { locale: vi })}</p>
             </div>
           </div>
@@ -141,7 +141,7 @@ export function CalendarWidgetMonthControls({
             <ChevronRight className="size-5" />
           </Button>
         </div>
-        <h3 className="text-xl font-bold text-gray-700">
+        <h3 className="text-xl font-semibold text-gray-700">
           {format(currentDate, "MMMM yyyy", { locale: vi })}
         </h3>
       </div>

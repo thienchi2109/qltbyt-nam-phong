@@ -58,7 +58,7 @@ export function AssistantComposer({
                     value={input}
                     onChange={(e) => onInputChange(e.target.value)}
                     onKeyDown={handleKeyDown}
-                    placeholder="Hỏi AI về thiết bị, bảo trì..."
+                    placeholder="Hỏi AI về thiết bị, bảo trì…"
                     rows={1}
                     disabled={isStreaming || isDisabled}
                     className={cn(
