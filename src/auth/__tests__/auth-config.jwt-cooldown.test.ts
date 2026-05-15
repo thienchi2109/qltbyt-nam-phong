@@ -136,7 +136,7 @@ async function runJwt(args: Partial<JwtArgs> & Pick<JwtArgs, "token">) {
   } as JwtArgs)
 }
 
-function profileRefreshRpcCalls() {
+function profileRefreshRpcCalls(): typeof supabaseState.rpcCalls {
   return supabaseState.rpcCalls.filter((call) => call.fn === "get_session_profile_for_jwt")
 }
 
@@ -450,6 +450,15 @@ describe("authOptions.jwt cooldown + trigger gate", () => {
       lastRefreshAt,
       lastRefreshAttemptAt: now,
     })
+    expect(authJwtTelemetryLogs(consoleInfoSpy)).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          event: "jwt_refresh_skipped_cooldown",
+          hasLastRefreshAt: true,
+          refreshReason: "cooldown",
+        }),
+      ])
+    )
   })
 
   it("throttles no-profile refresh retries without advancing lastRefreshAt", async () => {
@@ -483,6 +492,42 @@ describe("authOptions.jwt cooldown + trigger gate", () => {
       lastRefreshAt,
       lastRefreshAttemptAt: now,
     })
+    expect(authJwtTelemetryLogs(consoleInfoSpy)).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          event: "jwt_refresh_skipped_cooldown",
+          hasLastRefreshAt: true,
+          refreshReason: "cooldown",
+        }),
+      ])
+    )
+  })
+
+  it("reports cooldown skip telemetry accurately when only a failed attempt timestamp exists", async () => {
+    const now = Date.now()
+    const token = {
+      ...baseToken,
+      loginTime: now - 5 * 60_000,
+      lastRefreshAttemptAt: now - 10_000,
+    }
+
+    const result = await runJwt({ token })
+
+    expect(profileRefreshRpcCalls()).toHaveLength(0)
+    expect(result).toMatchObject({
+      id: "42",
+      lastRefreshAttemptAt: now - 10_000,
+    })
+    expect(result).not.toHaveProperty("lastRefreshAt")
+    expect(authJwtTelemetryLogs(consoleInfoSpy)).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          event: "jwt_refresh_skipped_cooldown",
+          hasLastRefreshAt: false,
+          refreshReason: "cooldown",
+        }),
+      ])
+    )
   })
 
   it("emits profile_refresh_failed lifecycle log when the profile RPC fails", async () => {

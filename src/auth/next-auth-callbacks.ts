@@ -91,7 +91,7 @@ export const authCallbacks: NonNullable<NextAuthOptions["callbacks"]> = {
       emitAuthJwtTelemetry("jwt_refresh_skipped_cooldown", {
         userId,
         trigger,
-        hasLastRefreshAt: true,
+        hasLastRefreshAt: lastRefreshAt !== null,
         refreshDue: false,
         refreshReason: "cooldown",
       })
