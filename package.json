@@ -109,6 +109,7 @@
     "eslint": "9.36.0",
     "eslint-config-next": "15.5.3",
     "jsdom": "^27.4.0",
+    "knip": "^6.13.1",
     "patch-package": "^8.0.0",
     "postcss": "^8",
     "serwist": "^9.5.6",

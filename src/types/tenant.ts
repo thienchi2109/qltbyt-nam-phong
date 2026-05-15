@@ -10,8 +10,6 @@ export interface FacilityOption {
   code?: string   // Optional - facility code for display
 }
 
-type TenantRole = 'global' | 'admin' | 'regional_leader' | 'to_qltb' | 'technician' | 'qltb_khoa' | 'user'
-
 /**
  * Check if the given role has multi-tenant selection privileges.
  * Global, admin, and regional_leader users can select which facility to view.

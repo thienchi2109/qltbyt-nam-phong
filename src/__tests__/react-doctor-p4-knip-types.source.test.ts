@@ -1,4 +1,5 @@
 import { spawnSync } from "node:child_process"
+import { join } from "node:path"
 import { describe, expect, it } from "vitest"
 
 interface KnipTypeFinding {
@@ -24,7 +25,7 @@ const intentionalPublicTypes = [
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === "object" && value !== null
 
-const getTypeName = (value: unknown) => {
+const getTypeName = (value: unknown): string | null => {
   if (typeof value === "string") {
     return value
   }
@@ -37,9 +38,15 @@ const getTypeName = (value: unknown) => {
 }
 
 const getKnipTypeFindings = (): KnipTypeFinding[] => {
+  const knipBin = join(
+    process.cwd(),
+    "node_modules",
+    ".bin",
+    process.platform === "win32" ? "knip.cmd" : "knip",
+  )
   const result = spawnSync(
-    "node",
-    ["scripts/npm-run.js", "npx", "-y", "knip", "--reporter", "json"],
+    knipBin,
+    ["--reporter", "json"],
     {
       cwd: process.cwd(),
       encoding: "utf8",
@@ -70,7 +77,7 @@ const getKnipTypeFindings = (): KnipTypeFinding[] => {
   })
 }
 
-const findingKey = (finding: Pick<KnipTypeFinding, "file" | "symbol">) =>
+const findingKey = (finding: Pick<KnipTypeFinding, "file" | "symbol">): string =>
   `${finding.file}#${finding.symbol}`
 
 describe("React Doctor P4 knip/types cleanup", () => {
