@@ -21,7 +21,39 @@ DECLARE
   v_sqlerrm text;
   v_names text[];
   v_proconfig text[];
+  v_dash_baseline text;
 BEGIN
+  IF public._normalize_department_scope('Ngoại Lồng Ngực')
+     IS DISTINCT FROM public._normalize_department_scope('Ngoại Lồng Ngực') THEN
+    RAISE EXCEPTION '_normalize_department_scope should match decomposed and precomposed Vietnamese text';
+  END IF;
+
+  IF public._normalize_department_scope('Ngoại CT-Bỏng')
+     IS DISTINCT FROM public._normalize_department_scope('Ngoại Chấn Thương-Bỏng') THEN
+    RAISE EXCEPTION '_normalize_department_scope should match scoped CT alias to Chấn Thương';
+  END IF;
+
+  v_dash_baseline := public._normalize_department_scope('aa-bb');
+  IF v_dash_baseline IS DISTINCT FROM public._normalize_department_scope('aa- bb')
+     OR v_dash_baseline IS DISTINCT FROM public._normalize_department_scope('aa -bb')
+     OR v_dash_baseline IS DISTINCT FROM public._normalize_department_scope('aa - bb') THEN
+    RAISE EXCEPTION '_normalize_department_scope should treat dash spacing variants equally';
+  END IF;
+
+  IF public._normalize_department_scope(NULL) IS NOT NULL THEN
+    RAISE EXCEPTION '_normalize_department_scope should preserve NULL input as NULL';
+  END IF;
+
+  IF public._normalize_department_scope(' ' || chr(160) || E'\n\t ')
+     IS NOT NULL THEN
+    RAISE EXCEPTION '_normalize_department_scope should preserve blank normalized input as NULL';
+  END IF;
+
+  IF public._normalize_department_scope('Khoa Nội')
+     = public._normalize_department_scope('Khoa Ngoại') THEN
+    RAISE EXCEPTION '_normalize_department_scope should not collapse distinct departments';
+  END IF;
+
   INSERT INTO public.don_vi(name, active)
   VALUES ('Smoke Department Scope Tenant ' || v_suffix, true)
   RETURNING id INTO v_tenant;
