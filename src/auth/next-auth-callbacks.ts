@@ -57,6 +57,14 @@ export const authCallbacks: NonNullable<NextAuthOptions["callbacks"]> = {
     // Force a refresh when NextAuth indicates an explicit update (e.g.
     // tenant switch via session.update()).
     const lastRefreshAt = typeof token.lastRefreshAt === "number" ? token.lastRefreshAt : null
+    const lastRefreshAttemptAt =
+      typeof token.lastRefreshAttemptAt === "number" ? token.lastRefreshAttemptAt : null
+    const lastProfileRefreshCheckAt =
+      lastRefreshAt === null
+        ? lastRefreshAttemptAt
+        : lastRefreshAttemptAt === null
+          ? lastRefreshAt
+          : Math.max(lastRefreshAt, lastRefreshAttemptAt)
     const isExplicitUpdate = trigger === "update"
     const refreshReason = user
       ? "sign_in"
@@ -68,15 +76,22 @@ export const authCallbacks: NonNullable<NextAuthOptions["callbacks"]> = {
       userId,
       trigger,
       hasLastRefreshAt: lastRefreshAt !== null,
-      refreshDue: isExplicitUpdate || lastRefreshAt === null || now - lastRefreshAt >= PROFILE_REFRESH_INTERVAL_MS,
+      refreshDue:
+        isExplicitUpdate ||
+        lastProfileRefreshCheckAt === null ||
+        now - lastProfileRefreshCheckAt >= PROFILE_REFRESH_INTERVAL_MS,
       refreshReason,
     })
 
-    if (!isExplicitUpdate && lastRefreshAt !== null && now - lastRefreshAt < PROFILE_REFRESH_INTERVAL_MS) {
+    if (
+      !isExplicitUpdate &&
+      lastProfileRefreshCheckAt !== null &&
+      now - lastProfileRefreshCheckAt < PROFILE_REFRESH_INTERVAL_MS
+    ) {
       emitAuthJwtTelemetry("jwt_refresh_skipped_cooldown", {
         userId,
         trigger,
-        hasLastRefreshAt: true,
+        hasLastRefreshAt: lastRefreshAt !== null,
         refreshDue: false,
         refreshReason: "cooldown",
       })
@@ -103,6 +118,7 @@ export const authCallbacks: NonNullable<NextAuthOptions["callbacks"]> = {
       }
 
       const sessionProfileJwt = buildSessionProfileJwt(userId, appRole)
+      token.lastRefreshAttemptAt = now
       const supabase = createClient(supabaseUrl, anonKey, {
         global: {
           headers: {

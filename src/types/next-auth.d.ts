@@ -28,6 +28,7 @@ declare module "next-auth/jwt" {
   interface JWT extends DefaultJWT, Partial<NextAuthUserFields> {
     loginTime?: number
     lastRefreshAt?: number
+    lastRefreshAttemptAt?: number
     pending_signout_reason?: AuthPendingSignoutReason | null
   }
 }
