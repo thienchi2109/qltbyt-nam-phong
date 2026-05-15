@@ -17,11 +17,28 @@ type AuthSignoutBroadcastInput = {
   issuedAt?: number
 }
 
+let fallbackSourceIdCounter = 0
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null
 }
 
-const TAB_SOURCE_ID = Math.random().toString(36).slice(2)
+function createTabSourceId(): string {
+  if (globalThis.crypto?.randomUUID) {
+    return globalThis.crypto.randomUUID()
+  }
+
+  if (globalThis.crypto?.getRandomValues) {
+    const bytes = new Uint8Array(16)
+    globalThis.crypto.getRandomValues(bytes)
+    return Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("")
+  }
+
+  fallbackSourceIdCounter += 1
+  return `tab-${Date.now().toString(36)}-${fallbackSourceIdCounter.toString(36)}`
+}
+
+const TAB_SOURCE_ID = createTabSourceId()
 
 export function isAuthSignoutBroadcastPayload(value: unknown): value is AuthSignoutBroadcastPayload {
   if (!isRecord(value)) {
@@ -63,29 +80,33 @@ export function broadcastAuthSignout({
     sourceId: TAB_SOURCE_ID,
   }
 
-  if (typeof window === "undefined") {
+  if (typeof globalThis.window === "undefined") {
     return payload
   }
 
+  let broadcastSucceeded = false
   try {
-    const channel = new BroadcastChannel(AUTH_SIGNOUT_CHANNEL)
+    const channel = new globalThis.BroadcastChannel(AUTH_SIGNOUT_CHANNEL)
     channel.postMessage(payload)
     channel.close()
+    broadcastSucceeded = true
   } catch {
     // Storage fallback below still fans out to other tabs.
   }
 
-  try {
-    window.localStorage.setItem(AUTH_SIGNOUT_STORAGE_KEY, JSON.stringify(payload))
-  } catch {
-    // Same-tab signOut still proceeds even if browser storage is unavailable.
+  if (!broadcastSucceeded) {
+    try {
+      globalThis.localStorage.setItem(AUTH_SIGNOUT_STORAGE_KEY, JSON.stringify(payload))
+    } catch {
+      // Same-tab signOut still proceeds even if browser storage is unavailable.
+    }
   }
 
   return payload
 }
 
 export function subscribeAuthSignout(listener: (payload: AuthSignoutBroadcastPayload) => void): () => void {
-  if (typeof window === "undefined") {
+  if (typeof globalThis.window === "undefined") {
     return () => {}
   }
 
@@ -116,10 +137,10 @@ export function subscribeAuthSignout(listener: (payload: AuthSignoutBroadcastPay
     }
   }
 
-  window.addEventListener("storage", handleStorage)
+  globalThis.addEventListener("storage", handleStorage)
 
   return () => {
     channel?.close()
-    window.removeEventListener("storage", handleStorage)
+    globalThis.removeEventListener("storage", handleStorage)
   }
 }

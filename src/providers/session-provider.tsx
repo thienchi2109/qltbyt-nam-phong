@@ -1,8 +1,8 @@
 "use client"
 
+import React from "react"
 import type { Session } from "next-auth"
 import { SessionProvider, signOut } from "next-auth/react"
-import React from "react"
 
 import { subscribeAuthSignout } from "@/lib/auth-signout-broadcast"
 
@@ -11,10 +11,16 @@ type Props = {
   session?: Session | null
 }
 
-function AuthSignoutBroadcastListener() {
+function AuthSignoutBroadcastListener(): null {
   React.useEffect(() => {
     return subscribeAuthSignout((payload) => {
-      void signOut({ callbackUrl: payload.callbackUrl })
+      const signOutPromise = signOut({ callbackUrl: payload.callbackUrl })
+      signOutPromise.catch((error: unknown) => {
+        console.error("subscribeAuthSignout failed to sign out", {
+          callbackUrl: payload.callbackUrl,
+          error,
+        })
+      })
     })
   }, [])
 

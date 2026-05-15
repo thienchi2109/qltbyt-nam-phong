@@ -126,10 +126,23 @@ describe("signOutWithReason", () => {
       sourceId: expect.any(String),
     })
     expect(mocks.broadcastClose).toHaveBeenCalled()
-    expect(window.localStorage.getItem("qltbyt:auth-signout")).toContain("forced_password_change")
+    expect(window.localStorage.getItem("qltbyt:auth-signout")).toBeNull()
     expect(mocks.broadcastPostMessage.mock.invocationCallOrder[0]).toBeLessThan(
       mocks.signOut.mock.invocationCallOrder[0]
     )
+  })
+
+  it("uses localStorage as the sibling-tab fallback when BroadcastChannel is unavailable", async () => {
+    vi.stubGlobal("BroadcastChannel", undefined)
+
+    await signOutWithReason({
+      updateSession: mocks.updateSession,
+      reason: "forced_password_change",
+    })
+
+    expect(mocks.broadcastPostMessage).not.toHaveBeenCalled()
+    expect(window.localStorage.getItem("qltbyt:auth-signout")).toContain("forced_password_change")
+    expect(mocks.signOut).toHaveBeenCalledWith({ callbackUrl: "/" })
   })
 
   it("broadcasts sibling-tab signout before waiting the current-tab redirect delay", async () => {

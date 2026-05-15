@@ -117,4 +117,36 @@ describe("NextAuthSessionProvider", () => {
       expect(mocks.signOut).toHaveBeenCalledWith({ callbackUrl: "/" })
     })
   })
+
+  it("logs broadcast-triggered signout failures with callback context", async () => {
+    const consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {})
+    const error = new Error("signout failed")
+    mocks.signOut.mockRejectedValueOnce(error)
+
+    render(
+      <NextAuthSessionProvider session={null}>
+        <div>child</div>
+      </NextAuthSessionProvider>
+    )
+
+    const channel = FakeBroadcastChannel.instances[0]
+    channel.onmessage?.({
+      data: {
+        type: "auth:signout",
+        reason: "forced_password_change",
+        callbackUrl: "/",
+        issuedAt: Date.now(),
+        sourceId: "other-tab",
+      },
+    } as MessageEvent)
+
+    await waitFor(() => {
+      expect(consoleErrorSpy).toHaveBeenCalledWith("subscribeAuthSignout failed to sign out", {
+        callbackUrl: "/",
+        error,
+      })
+    })
+
+    consoleErrorSpy.mockRestore()
+  })
 })
