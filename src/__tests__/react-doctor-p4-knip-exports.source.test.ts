@@ -48,10 +48,6 @@ const unusedExportSurface = [
     exports: ["getRoleVariant"],
   },
   {
-    file: "src/app/api/transfers/legacy-adapter.ts",
-    exports: ["applyLegacyFilters","buildCountsFromItems","isMissingFunctionError","paginate","transformLegacyItem"],
-  },
-  {
     file: "src/components/dashboard/kpi-cards.tsx",
     exports: ["MaintenanceCountCard","MaintenancePlansCard","RepairRequestsCard","TotalEquipmentCard"],
   },
@@ -166,10 +162,6 @@ const unusedExportSurface = [
   {
     file: "src/hooks/use-usage-logs.ts",
     exports: ["usageLogKeys"],
-  },
-  {
-    file: "src/hooks/useTransferDataGrid.ts",
-    exports: ["getTransferListData","transferKanbanKeys","useInvalidateTransfersKanban","usePrefetchTransferCounts","usePrefetchTransferList","useTransferCounts","useTransferList"],
   },
   {
     file: "src/hooks/useTransfersKanban.ts",
