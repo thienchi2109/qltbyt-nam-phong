@@ -3,7 +3,7 @@
 import { useQuery } from "@tanstack/react-query"
 import { callRpc } from "@/lib/rpc-client"
 
-export interface UnusedEquipmentReportSummary {
+interface UnusedEquipmentReportSummary {
   totalCount: number
   deviceTypeCount: number
   departmentCount: number

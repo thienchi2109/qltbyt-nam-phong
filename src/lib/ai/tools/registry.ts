@@ -26,7 +26,7 @@ export type { MigrationStatus } from '@/lib/ai/tools/query-catalog'
 // Draft Tool Definitions (non-RPC, advisory-only)
 // ============================================
 
-export type DraftToolDefinition = {
+type DraftToolDefinition = {
   description: string
   draftKind: 'troubleshootingDraft' | 'repairRequestDraft'
   requiresEvidence: boolean

@@ -5,7 +5,7 @@ import {
   AI_RATE_LIMIT_WINDOW_MS,
 } from '@/lib/ai/limits'
 
-export type UsageLimitReason = 'rate_limit' | 'user_quota' | 'tenant_quota'
+type UsageLimitReason = 'rate_limit' | 'user_quota' | 'tenant_quota'
 
 export interface UsageContext {
   userId: string

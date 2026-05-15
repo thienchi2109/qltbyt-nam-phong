@@ -39,7 +39,7 @@ export type RepairRequestWithEquipment = {
   } | null
 }
 
-export type RepairRequestOverdueItem = RepairRequestWithEquipment & {
+type RepairRequestOverdueItem = RepairRequestWithEquipment & {
   days_difference: number
 }
 

@@ -28,4 +28,4 @@ export const chatRequestSchema = z.object({
   selectedFacilityName: z.string().trim().max(200).nullish(),
 })
 
-export type ChatRequest = z.infer<typeof chatRequestSchema>
+type ChatRequest = z.infer<typeof chatRequestSchema>

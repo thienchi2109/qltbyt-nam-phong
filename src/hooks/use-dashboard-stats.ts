@@ -49,7 +49,7 @@ export function useMaintenanceCount() {
 }
 
 // Interface for repair request statistics
-export interface RepairRequestStats {
+interface RepairRequestStats {
   total: number
   pending: number
   approved: number
@@ -63,7 +63,7 @@ export function useRepairRequestStats() {
 }
 
 // Interface for maintenance plan statistics
-export interface MaintenancePlanStats {
+interface MaintenancePlanStats {
   total: number
   draft: number
   approved: number
@@ -78,7 +78,7 @@ export interface MaintenancePlanStats {
   }>
 }
 
-export interface DashboardKpiSummary {
+interface DashboardKpiSummary {
   totalEquipment: number
   maintenanceCount: number
   repairRequests: RepairRequestStats

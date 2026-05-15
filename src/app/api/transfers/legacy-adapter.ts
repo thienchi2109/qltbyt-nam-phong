@@ -1,4 +1,4 @@
-export interface LegacyTransferItem {
+interface LegacyTransferItem {
   id: number
   ma_yeu_cau: string
   thiet_bi_id: number
@@ -35,7 +35,7 @@ export interface LegacyTransferItem {
   } | null
 }
 
-export interface LegacyFilterParams {
+interface LegacyFilterParams {
   q: string | null
   statuses: string[] | null
   types: string[] | null
@@ -45,7 +45,7 @@ export interface LegacyFilterParams {
   assigneeIds: number[] | null
 }
 
-export interface PaginatedResult<T> {
+interface PaginatedResult<T> {
   data: T[]
   total: number
   page: number

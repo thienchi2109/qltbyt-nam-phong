@@ -2,7 +2,7 @@ import { z } from 'zod'
 
 export type MigrationStatus = 'migrated' | 'pending'
 
-export interface QueryCatalogModelBudget {
+interface QueryCatalogModelBudget {
   maxItems?: number
   maxBytes?: number
   modelVisibleFields?: string[]
@@ -10,13 +10,13 @@ export interface QueryCatalogModelBudget {
 
 export type QueryCatalogRoutingGroup = 'repair' | 'quota' | 'equipmentLookup'
 
-export type QueryCatalogRoutingRole =
+type QueryCatalogRoutingRole =
   | 'equipment-status'
   | 'workflow-summary'
   | 'specific-item'
   | 'facility-summary'
 
-export interface QueryCatalogRoutingIntent {
+interface QueryCatalogRoutingIntent {
   group: QueryCatalogRoutingGroup
   role: QueryCatalogRoutingRole
 }

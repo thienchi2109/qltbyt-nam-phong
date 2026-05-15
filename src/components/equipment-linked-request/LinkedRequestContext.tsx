@@ -50,7 +50,3 @@ export function useLinkedRequest(): LinkedRequestContextValue {
   }
   return value
 }
-
-// Phase 2/3 may reuse these types/aliases without the kind union widening;
-// re-export so consumers don't import from ./types directly.
-export type { LinkedRequestKind, LinkedRequestState }

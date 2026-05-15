@@ -111,7 +111,7 @@ export const USAGE_STATUS = {
   hoan_thanh: 'Hoàn thành'
 } as const;
 
-export type UsageStatus = keyof typeof USAGE_STATUS;
+type UsageStatus = keyof typeof USAGE_STATUS;
 
 // Transfer Request interfaces
 export interface TransferRequest {
@@ -207,10 +207,10 @@ export const TRANSFER_PURPOSES = {
 } as const;
 
 export type TransferType = keyof typeof TRANSFER_TYPES;
-export type TransferStatus = keyof typeof TRANSFER_STATUSES;
+type TransferStatus = keyof typeof TRANSFER_STATUSES;
 export type TransferPurpose = keyof typeof TRANSFER_PURPOSES;
 
-export interface MaintenanceTask {
+interface MaintenanceTask {
   id: number;
   ke_hoach_id: number;
   thiet_bi_id: number;

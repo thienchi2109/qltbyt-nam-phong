@@ -4,7 +4,7 @@
 export type ViewDensity = 'compact' | 'standard' | 'spacious'
 export type TextWrap = 'truncate' | 'wrap'
 
-export type UiDateRange = { from: string | null; to: string | null }
+type UiDateRange = { from: string | null; to: string | null }
 export type UiFilters = {
   status: string[]
   dateRange?: UiDateRange | null
@@ -30,7 +30,7 @@ const safeGet = (key: string): string | null => {
   }
 }
 
-const safeSet = (key: string, value: any) => {
+const safeSet = (key: string, value: unknown) => {
   if (typeof window === 'undefined') return
   try {
     if (value === undefined || value === null) {

@@ -4,7 +4,7 @@ import { getUsageLogFinalStatus, getUsageLogInitialStatus } from "@/lib/usage-lo
 import { escapeCsvCell as escapeSharedCsvCell } from "@/lib/csv-utils"
 import { type Equipment, type UsageLog } from "@/types/database"
 
-export type PrintableEquipment = Pick<Equipment, "ma_thiet_bi" | "ten_thiet_bi"> & Partial<Equipment>
+type PrintableEquipment = Pick<Equipment, "ma_thiet_bi" | "ten_thiet_bi"> & Partial<Equipment>
 
 export interface BuildUsageLogPrintHtmlArgs {
   equipment: PrintableEquipment

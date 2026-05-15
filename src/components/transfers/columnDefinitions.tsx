@@ -116,7 +116,7 @@ export interface TransferColumnOptions {
   referenceDate?: Date
 }
 
-export interface TransferColumnGroups {
+interface TransferColumnGroups {
   common: ColumnDef<TransferListItem>[]
   noiBo: ColumnDef<TransferListItem>[]
   benNgoai: ColumnDef<TransferListItem>[]

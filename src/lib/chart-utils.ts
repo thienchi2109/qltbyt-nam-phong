@@ -13,18 +13,6 @@ export interface ChartData {
   [key: string]: unknown
 }
 
-export interface ChartProps {
-  data: ChartData[]
-  width?: string | number
-  height?: string | number
-  margin?: {
-    top?: number
-    right?: number
-    bottom?: number
-    left?: number
-  }
-}
-
 export type RechartsComponents = Pick<
   RechartsModule,
   | 'LineChart'

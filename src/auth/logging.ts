@@ -1,7 +1,7 @@
 import { sanitizeForLog } from "@/lib/log-sanitizer"
 import type { AuthPendingSignoutReason } from "@/types/auth"
 
-export type AuthLifecycleEvent =
+type AuthLifecycleEvent =
   | "login_success"
   | "login_failure"
   | "tenant_inactive"
@@ -10,14 +10,14 @@ export type AuthLifecycleEvent =
   | "signout"
   | "forced_signout"
 
-export type AuthLifecycleReasonCode =
+type AuthLifecycleReasonCode =
   | "invalid_credentials"
   | "rpc_error"
   | "tenant_inactive"
   | "authorize_exception"
   | "config_error"
 
-export type AuthLogSource =
+type AuthLogSource =
   | "authorize"
   | "jwt_callback"
   | "events_signin"

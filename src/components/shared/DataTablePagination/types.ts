@@ -21,7 +21,7 @@ export interface DisplayContext {
   entity: EntityLabels
 }
 
-export interface EntityLabels {
+interface EntityLabels {
   singular: string // "thiet bi", "yeu cau", "ke hoach", "cong viec"
   plural?: string // Optional, defaults to singular
 }
@@ -52,13 +52,13 @@ interface ServerMode {
   onPageSizeChange: (size: number) => void
 }
 
-export type PaginationMode = TanStackManagedMode | ControlledMode | ServerMode
+type PaginationMode = TanStackManagedMode | ControlledMode | ServerMode
 
 // ============================================================================
 // Responsive Configuration
 // ============================================================================
 
-export interface ResponsiveConfig {
+interface ResponsiveConfig {
   /** Breakpoint to show first/last nav buttons (default: "sm") */
   showFirstLastAt?: "sm" | "md" | "lg"
   /** Breakpoint to show page size selector, null = always show (default: null) */

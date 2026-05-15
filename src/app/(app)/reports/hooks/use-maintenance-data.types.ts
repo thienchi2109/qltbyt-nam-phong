@@ -9,7 +9,7 @@ export interface RepairFrequencyPoint {
   completed: number
 }
 
-export interface RepairCostByMonthPoint {
+interface RepairCostByMonthPoint {
   period: string
   totalCost: number
   averageCost: number
@@ -17,7 +17,7 @@ export interface RepairCostByMonthPoint {
   costMissingCount: number
 }
 
-export interface RepairCostByFacilityPoint {
+interface RepairCostByFacilityPoint {
   facilityId: number | null
   facilityName: string
   totalCost: number
@@ -44,7 +44,7 @@ export interface TopEquipmentRepairCostEntry {
   costRecordedCount: number
 }
 
-export interface RepairUsageCostCorrelationPoint {
+interface RepairUsageCostCorrelationPoint {
   equipmentId: number
   equipmentName: string
   equipmentCode: string
@@ -54,7 +54,7 @@ export interface RepairUsageCostCorrelationPoint {
   costRecordedCount: number
 }
 
-export interface RepairUsageCostCorrelationDataQuality {
+interface RepairUsageCostCorrelationDataQuality {
   equipmentWithUsage: number
   equipmentWithRepairCost: number
   equipmentWithBoth: number
@@ -70,7 +70,7 @@ export interface RepairUsageCostCorrelation {
   cumulative: RepairUsageCostCorrelationScope
 }
 
-export interface RepairCompletionTimeStats {
+interface RepairCompletionTimeStats {
   totalCompleted: number
   medianMinutes: number
   averageMinutes: number
