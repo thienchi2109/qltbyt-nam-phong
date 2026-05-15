@@ -1,14 +1,9 @@
--- Fix role=user department scope normalization for Vietnamese Unicode composition
--- and known department abbreviations used by equipment read RPCs.
+-- Reassert department scope normalization after Sonar-driven source cleanup.
 --
 -- Scope:
--- - Redefine only public._normalize_department_scope(text).
--- - Preserve strict normalized equality; do not introduce fuzzy matching.
--- - Keep the pinned search_path required for immutable helper safety.
---
--- Rollback:
--- - Forward-only. Restore the previous helper body in a new timestamped
---   migration if this comparison behavior must be reverted.
+-- - Keep behavior equivalent to 20260515105905.
+-- - Keep live DB aligned with the local migration source after avoiding a
+--   direct empty-string comparison flagged by static analysis.
 
 BEGIN;
 

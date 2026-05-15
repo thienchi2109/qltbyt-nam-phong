@@ -21,6 +21,7 @@ DECLARE
   v_sqlerrm text;
   v_names text[];
   v_proconfig text[];
+  v_dash_baseline text;
 BEGIN
   IF public._normalize_department_scope('Ngoại Lồng Ngực')
      IS DISTINCT FROM public._normalize_department_scope('Ngoại Lồng Ngực') THEN
@@ -32,12 +33,10 @@ BEGIN
     RAISE EXCEPTION '_normalize_department_scope should match scoped CT alias to Chấn Thương';
   END IF;
 
-  IF public._normalize_department_scope('aa-bb')
-     IS DISTINCT FROM public._normalize_department_scope('aa- bb')
-     OR public._normalize_department_scope('aa-bb')
-        IS DISTINCT FROM public._normalize_department_scope('aa -bb')
-     OR public._normalize_department_scope('aa-bb')
-        IS DISTINCT FROM public._normalize_department_scope('aa - bb') THEN
+  v_dash_baseline := public._normalize_department_scope('aa-bb');
+  IF v_dash_baseline IS DISTINCT FROM public._normalize_department_scope('aa- bb')
+     OR v_dash_baseline IS DISTINCT FROM public._normalize_department_scope('aa -bb')
+     OR v_dash_baseline IS DISTINCT FROM public._normalize_department_scope('aa - bb') THEN
     RAISE EXCEPTION '_normalize_department_scope should treat dash spacing variants equally';
   END IF;
 
