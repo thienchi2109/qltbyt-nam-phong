@@ -33,8 +33,6 @@ const mocks = vi.hoisted(() => ({
   useTenantSelection: vi.fn(),
   rawViewMode: "table" as "table" | "kanban",
   useTransferPageData: vi.fn(),
-  useTransferList: vi.fn(),
-  useTransferCounts: vi.fn(),
   useTransferActions: vi.fn(),
   useTransferSearch: vi.fn(),
   useTransfersFilters: vi.fn(),
@@ -97,8 +95,6 @@ vi.mock("@/app/(app)/transfers/_components/useTransfersFilters", () => ({
 
 vi.mock("@/hooks/useTransferDataGrid", () => ({
   useTransferPageData: (...args: unknown[]) => mocks.useTransferPageData(...args),
-  useTransferList: (...args: unknown[]) => mocks.useTransferList(...args),
-  useTransferCounts: (...args: unknown[]) => mocks.useTransferCounts(...args),
   transferDataGridKeys: {
     all: ["transfer-data-grid"],
   },
@@ -273,24 +269,6 @@ describe("Transfers KPI", () => {
       },
       isLoading: false,
       isFetching: false,
-      isError: false,
-    })
-
-    mocks.useTransferList.mockReturnValue({
-      data: {
-        data: [],
-        total: 20,
-      },
-      isLoading: false,
-      isFetching: false,
-    })
-
-    mocks.useTransferCounts.mockReturnValue({
-      data: {
-        totalCount: 20,
-        columnCounts: mockColumnCounts,
-      },
-      isLoading: false,
       isError: false,
     })
 
@@ -485,8 +463,6 @@ describe("Transfers KPI", () => {
         includeCounts: true,
       }),
     )
-    expect(mocks.useTransferList).not.toHaveBeenCalled()
-    expect(mocks.useTransferCounts).not.toHaveBeenCalled()
   })
 
   it("passes the page-scoped overdue summary into the overdue alert", () => {
@@ -609,8 +585,6 @@ describe("Transfers KPI", () => {
         enabled: true,
       }),
     )
-    expect(mocks.useTransferList).not.toHaveBeenCalled()
-    expect(mocks.useTransferCounts).not.toHaveBeenCalled()
   })
 
   it("does not seed kanban initial data from a fetching page-data placeholder", () => {
