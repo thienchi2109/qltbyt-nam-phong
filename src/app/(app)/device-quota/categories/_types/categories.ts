@@ -13,7 +13,7 @@ export interface CategoryListItem {
   mo_ta?: string | null
 }
 
-export interface CategoryFull extends CategoryListItem {
+interface CategoryFull extends CategoryListItem {
   created_at?: string
   updated_at?: string
 }

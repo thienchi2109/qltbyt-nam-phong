@@ -11,14 +11,14 @@ import { isRecord } from './type-guards'
 // Types
 // ---------------------------------------------------------------------------
 
-export interface ModelSummary {
+interface ModelSummary {
   summaryText: string
   importantFields?: Record<string, unknown>
   itemCount?: number
   truncated?: boolean
 }
 
-export interface ToolResponseEnvelopeUiArtifact {
+interface ToolResponseEnvelopeUiArtifact {
   /** The original, uncompacted RPC payload — consumed by UI renderers. */
   rawPayload: unknown
 }
@@ -29,33 +29,33 @@ export interface ToolResponseEnvelope {
   uiArtifact?: ToolResponseEnvelopeUiArtifact
 }
 
-export type ReportChartType = 'bar' | 'line' | 'pie'
+type ReportChartType = 'bar' | 'line' | 'pie'
 
 interface ReportChartBase {
   type: ReportChartType
   data: Array<Record<string, unknown>>
 }
 
-export interface ReportChartBarConfig extends ReportChartBase {
+interface ReportChartBarConfig extends ReportChartBase {
   type: 'bar'
   xKey: string
   yKey: string
 }
 
-export interface ReportChartLineConfig extends ReportChartBase {
+interface ReportChartLineConfig extends ReportChartBase {
   type: 'line'
   xKey: string
   yKey: string
 }
 
-export interface ReportChartPieConfig extends ReportChartBase {
+interface ReportChartPieConfig extends ReportChartBase {
   type: 'pie'
   labelKey: string
   valueKey: string
   innerRadius?: number
 }
 
-export type ReportChartConfig =
+type ReportChartConfig =
   | ReportChartBarConfig
   | ReportChartLineConfig
   | ReportChartPieConfig
@@ -85,7 +85,6 @@ export const DRAFT_TOOL_NAMES_SET: ReadonlySet<string> = new Set([
 // ---------------------------------------------------------------------------
 // Guards
 // ---------------------------------------------------------------------------
-
 
 /**
  * Returns `true` when `output` looks like a `ToolResponseEnvelope`.

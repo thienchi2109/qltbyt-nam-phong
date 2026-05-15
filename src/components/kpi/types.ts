@@ -2,7 +2,7 @@ import type { ReactNode } from "react"
 import type { StatCardProps } from "@/components/ui/stat-card"
 
 /** Tone values supported by StatCard */
-export type StatusTone = NonNullable<StatCardProps["tone"]>
+type StatusTone = NonNullable<StatCardProps["tone"]>
 
 /**
  * Configuration for a single KPI status.

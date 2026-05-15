@@ -24,7 +24,7 @@ export interface ParsedCategoryRow {
   toi_thieu: number | null
 }
 
-export interface ImportResultDetail {
+interface ImportResultDetail {
   ma_nhom: string
   success: boolean
   error?: string

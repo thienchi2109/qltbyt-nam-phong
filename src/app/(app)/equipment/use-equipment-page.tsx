@@ -15,14 +15,6 @@ import { useEquipmentTable } from "./_hooks/useEquipmentTable"
 import { useEquipmentExport } from "./_hooks/useEquipmentExport"
 import { useEquipmentRouteSync } from "./_hooks/useEquipmentRouteSync"
 
-// Re-export types from centralized types file
-export type {
-  Equipment,
-  SessionUser,
-  FilterBottomSheetData,
-  FacilityOption,
-} from "./types"
-
 // Re-export hook return type
 export type { UseEquipmentPageReturn } from "./types"
 

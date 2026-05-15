@@ -11,7 +11,7 @@ type AuditActionDetailValue =
   | AuditActionDetailValue[]
   | { [key: string]: AuditActionDetailValue }
 
-export type AuditActionDetails = Record<string, AuditActionDetailValue>
+type AuditActionDetails = Record<string, AuditActionDetailValue>
 export type AuditActionDetailsInput = AuditActionDetails | string
 type AuditLogEntityType =
   | 'assistant_sql'

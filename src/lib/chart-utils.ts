@@ -13,7 +13,7 @@ export interface ChartData {
   [key: string]: unknown
 }
 
-export interface ChartProps {
+interface ChartProps {
   data: ChartData[]
   width?: string | number
   height?: string | number

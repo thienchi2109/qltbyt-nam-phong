@@ -23,7 +23,7 @@ import type { MaintenanceTask } from "@/lib/data"
 import { NotesInput } from "./notes-input"
 import type { PlanColumnOptions, TableMeta, TaskColumnOptions } from "./maintenance-columns.types"
 
-export type { PlanColumnOptions, TableMeta, TaskColumnOptions } from "./maintenance-columns.types"
+export type { PlanColumnOptions, TaskColumnOptions } from "./maintenance-columns.types"
 
 // Helper function for status badge variants
 const getStatusVariant = (status: MaintenancePlan["trang_thai"]) => {

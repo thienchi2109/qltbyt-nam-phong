@@ -6,7 +6,7 @@
  */
 
 /** A single key-value detail row within a history entry */
-export interface ChangeHistoryDetail {
+interface ChangeHistoryDetail {
   label: string
   value: string
 }

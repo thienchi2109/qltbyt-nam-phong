@@ -5,7 +5,7 @@ const DEFAULT_FACILITY_REQUIRED_MESSAGE =
 const DEFAULT_UNRESOLVED_FACILITY_MESSAGE =
   'Unable to resolve facility context for tool execution.'
 
-export type AssistantSqlFacilitySource = 'selected' | 'session'
+type AssistantSqlFacilitySource = 'selected' | 'session'
 
 export interface AssistantSqlScope {
   effectiveFacilityId: number

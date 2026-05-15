@@ -108,6 +108,6 @@ export const generateTroubleshootingDraft = tool({
 })
 
 /** Typed invocation for Phase 4 UI rendering. */
-export type TroubleshootingDraftInvocation = UIToolInvocation<
+type TroubleshootingDraftInvocation = UIToolInvocation<
   typeof generateTroubleshootingDraft
 >

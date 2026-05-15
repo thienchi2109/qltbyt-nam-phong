@@ -46,4 +46,3 @@ const QuotaProgressBar = React.memo(function QuotaProgressBar({
 })
 
 export { QuotaProgressBar }
-export type { QuotaProgressBarProps }

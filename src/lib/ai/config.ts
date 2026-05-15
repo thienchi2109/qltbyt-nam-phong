@@ -1,5 +1,5 @@
-export type AiChatCapability = 'default_chat'
-export type AiProviderTransport = 'gateway' | 'google' | 'openai-compatible'
+type AiChatCapability = 'default_chat'
+type AiProviderTransport = 'gateway' | 'google' | 'openai-compatible'
 
 export interface ResolvedDefaultChatConfig {
   capability: AiChatCapability

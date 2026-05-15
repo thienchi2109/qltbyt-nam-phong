@@ -354,4 +354,3 @@ const CategoryGroup = React.memo(function CategoryGroup({
 })
 
 export { CategoryGroup }
-export type { CategoryGroupProps }

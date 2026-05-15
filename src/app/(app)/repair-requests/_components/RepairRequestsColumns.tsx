@@ -11,9 +11,6 @@ import { calculateDaysRemaining, getStatusVariant } from "../utils"
 import { cn } from "@/lib/utils"
 import { isEquipmentManagerRole } from "@/lib/rbac"
 
-// Re-export for backward compatibility
-export type { AuthUser } from "../types"
-
 /**
  * Options for repair request table columns.
  * All action callbacks are passed from parent component.

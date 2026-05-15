@@ -8,9 +8,9 @@ import {
 } from './executor'
 import type { AssistantSqlScope } from './scope'
 
-export type AssistantSqlAuditStatus = 'failure' | 'success'
+type AssistantSqlAuditStatus = 'failure' | 'success'
 
-export interface AssistantSqlAuditDetails {
+interface AssistantSqlAuditDetails {
   effective_facility_id: number
   error_class: string | null
   facility_source: AssistantSqlScope['facilitySource']
@@ -26,7 +26,7 @@ export interface AssistantSqlAuditDetails {
   tool_path: typeof ASSISTANT_SQL_TOOL_NAME
 }
 
-export interface AssistantSqlAuditEvent {
+interface AssistantSqlAuditEvent {
   details: AssistantSqlAuditDetails
   request: Request
 }

@@ -36,7 +36,7 @@ export interface TransferListFilters {
   _tenantKey?: string | number
 }
 
-export interface TransferEquipmentInfo {
+interface TransferEquipmentInfo {
   ten_thiet_bi: string | null
   ma_thiet_bi: string | null
   model: string | null
@@ -226,7 +226,7 @@ export const TransferPageDataResponseSchema = z.object({
 })
 
 // TypeScript types inferred from Zod schemas
-export type TransferKanbanColumnData = z.infer<typeof TransferKanbanColumnDataSchema>
+type TransferKanbanColumnData = z.infer<typeof TransferKanbanColumnDataSchema>
 export type TransferKanbanResponse = z.infer<typeof TransferKanbanResponseSchema>
 
 export type ViewMode = 'table' | 'kanban'

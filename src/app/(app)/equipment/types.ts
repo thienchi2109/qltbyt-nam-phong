@@ -12,16 +12,20 @@ import type { RouteAction } from "./_hooks/useEquipmentRouteSync"
 import type { FacilityOption } from "@/types/tenant"
 
 // Re-export commonly used types
-export type { Equipment, UsageLog, SessionUser }
+export type {
+  Equipment,
+  UsageLog,
+  SessionUser }
 
-export type EquipmentDateField =
+type EquipmentDateField =
   | "ngay_nhap"
   | "ngay_dua_vao_su_dung"
   | "han_bao_hanh"
   | "ngay_ngung_su_dung"
 
 // Re-export FacilityOption from canonical location
-export type { FacilityOption } from "@/types/tenant"
+export type { FacilityOption
+} from "@/types/tenant"
 
 // ============================================================================
 // Equipment Detail Dialog Types

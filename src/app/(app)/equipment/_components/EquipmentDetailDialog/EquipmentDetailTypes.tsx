@@ -15,7 +15,6 @@ import {
 export {
   equipmentFormSchema,
   type EquipmentFormValues,
-  type EquipmentStatus,
 } from "@/components/equipment-edit/EquipmentEditTypes"
 
 // ============================================================================

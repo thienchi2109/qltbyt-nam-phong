@@ -5,12 +5,12 @@ import * as React from "react"
 import { useTransferSearch } from "@/hooks/useTransferSearch"
 import type { TransferStatus, TransferType } from "@/types/transfers-data-grid"
 
-export type TransferDateRange = {
+type TransferDateRange = {
   from: Date | null
   to: Date | null
 } | null
 
-export type FilterChipKey = "statuses" | "dateRange" | "searchText"
+type FilterChipKey = "statuses" | "dateRange" | "searchText"
 
 export interface UseTransfersFiltersOptions {
   activeTab: TransferType

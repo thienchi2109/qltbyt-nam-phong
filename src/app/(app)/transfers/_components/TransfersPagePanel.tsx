@@ -38,12 +38,12 @@ import { TRANSFER_STATUS_LABELS } from "@/types/transfers-data-grid"
 import { TransfersDateFilterButton } from "./TransfersDateFilterButton"
 import type { TransferUserRole } from "./TransfersTypes"
 
-export type TransfersPagePanelPermissions = Readonly<{
+type TransfersPagePanelPermissions = Readonly<{
   showFacilityFilter: boolean
   isRegionalLeader: boolean
 }>
 
-export type TransfersPagePanelDataState = Readonly<{
+type TransfersPagePanelDataState = Readonly<{
   shouldFetch: boolean
   isLoading: boolean
   isFetching: boolean
