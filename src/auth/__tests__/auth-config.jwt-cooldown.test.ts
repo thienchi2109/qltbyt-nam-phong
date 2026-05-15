@@ -136,6 +136,10 @@ async function runJwt(args: Partial<JwtArgs> & Pick<JwtArgs, "token">) {
   } as JwtArgs)
 }
 
+function profileRefreshRpcCalls() {
+  return supabaseState.rpcCalls.filter((call) => call.fn === "get_session_profile_for_jwt")
+}
+
 function authJwtTelemetryLogs(infoSpy: ReturnType<typeof vi.spyOn>): AuthJwtTelemetryLog[] {
   return infoSpy.mock.calls
     .map(([message]) => (typeof message === "string" ? message : ""))
@@ -415,23 +419,69 @@ describe("authOptions.jwt cooldown + trigger gate", () => {
     expect(result).not.toHaveProperty("id")
   })
 
-  it("does not advance lastRefreshAt when the profile fetch fails", async () => {
+  it("throttles failed profile fetch retries without advancing lastRefreshAt", async () => {
     const now = Date.now()
     supabaseState.profileRpcRows = []
     supabaseState.profileRpcError = { message: "no row" }
+    const lastRefreshAt = now - 5 * 60_000
 
     const token = {
       ...baseToken,
       loginTime: now - 5 * 60_000,
-      lastRefreshAt: now - 5 * 60_000,
+      lastRefreshAt,
     }
 
     const result = await runJwt({ token })
 
-    expect(supabaseClient.rpc).toHaveBeenCalled()
+    expect(profileRefreshRpcCalls()).toHaveLength(1)
     expect(result).toMatchObject({
       id: "42",
-      lastRefreshAt: now - 5 * 60_000, // still the old value
+      lastRefreshAt,
+      lastRefreshAttemptAt: now,
+    })
+
+    supabaseState.rpcCalls = []
+
+    const retryResult = await runJwt({ token: result as JwtArgs["token"] })
+
+    expect(profileRefreshRpcCalls()).toHaveLength(0)
+    expect(retryResult).toMatchObject({
+      id: "42",
+      lastRefreshAt,
+      lastRefreshAttemptAt: now,
+    })
+  })
+
+  it("throttles no-profile refresh retries without advancing lastRefreshAt", async () => {
+    const now = Date.now()
+    supabaseState.profileRpcRows = []
+    supabaseState.profileRpcError = null
+    const lastRefreshAt = now - 5 * 60_000
+
+    const token = {
+      ...baseToken,
+      loginTime: now - 5 * 60_000,
+      lastRefreshAt,
+    }
+
+    const result = await runJwt({ token })
+
+    expect(profileRefreshRpcCalls()).toHaveLength(1)
+    expect(result).toMatchObject({
+      id: "42",
+      lastRefreshAt,
+      lastRefreshAttemptAt: now,
+    })
+
+    supabaseState.rpcCalls = []
+
+    const retryResult = await runJwt({ token: result as JwtArgs["token"] })
+
+    expect(profileRefreshRpcCalls()).toHaveLength(0)
+    expect(retryResult).toMatchObject({
+      id: "42",
+      lastRefreshAt,
+      lastRefreshAttemptAt: now,
     })
   })
 
