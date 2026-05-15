@@ -3,6 +3,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 const mocks = vi.hoisted(() => ({
   signOut: vi.fn(),
   updateSession: vi.fn(),
+  broadcastPostMessage: vi.fn(),
+  broadcastClose: vi.fn(),
 }))
 
 vi.mock("next-auth/react", () => ({
@@ -10,6 +12,22 @@ vi.mock("next-auth/react", () => ({
 }))
 
 import { signOutWithReason } from "../auth-signout"
+
+class FakeBroadcastChannel {
+  readonly name: string
+
+  constructor(name: string) {
+    this.name = name
+  }
+
+  postMessage(message: unknown): void {
+    mocks.broadcastPostMessage(message)
+  }
+
+  close(): void {
+    mocks.broadcastClose()
+  }
+}
 
 function createDeferred<T>() {
   let resolve!: (value: T | PromiseLike<T>) => void
@@ -26,7 +44,16 @@ describe("signOutWithReason", () => {
   beforeEach(() => {
     vi.clearAllMocks()
     vi.useFakeTimers()
+    vi.setSystemTime(new Date("2026-05-15T12:00:00.000Z"))
+    vi.stubGlobal("BroadcastChannel", FakeBroadcastChannel)
+    window.localStorage.clear()
     mocks.updateSession.mockResolvedValue(undefined)
+  })
+
+  afterEach(() => {
+    vi.unstubAllGlobals()
+    vi.useRealTimers()
+    window.localStorage.clear()
   })
 
   it("awaits the session reason update before signing out", async () => {
@@ -82,6 +109,61 @@ describe("signOutWithReason", () => {
     })
 
     expect(mocks.signOut).toHaveBeenCalledWith({ callbackUrl: "/" })
+  })
+
+  it("broadcasts signout intent to sibling tabs before redirecting the current tab", async () => {
+    await signOutWithReason({
+      updateSession: mocks.updateSession,
+      reason: "forced_password_change",
+      callbackUrl: "/",
+    })
+
+    expect(mocks.broadcastPostMessage).toHaveBeenCalledWith({
+      type: "auth:signout",
+      reason: "forced_password_change",
+      callbackUrl: "/",
+      issuedAt: Date.parse("2026-05-15T12:00:00.000Z"),
+      sourceId: expect.any(String),
+    })
+    expect(mocks.broadcastClose).toHaveBeenCalled()
+    expect(window.localStorage.getItem("qltbyt:auth-signout")).toBeNull()
+    expect(mocks.broadcastPostMessage.mock.invocationCallOrder[0]).toBeLessThan(
+      mocks.signOut.mock.invocationCallOrder[0]
+    )
+  })
+
+  it("uses localStorage as the sibling-tab fallback when BroadcastChannel is unavailable", async () => {
+    vi.stubGlobal("BroadcastChannel", undefined)
+
+    await signOutWithReason({
+      updateSession: mocks.updateSession,
+      reason: "forced_password_change",
+    })
+
+    expect(mocks.broadcastPostMessage).not.toHaveBeenCalled()
+    expect(window.localStorage.getItem("qltbyt:auth-signout")).toContain("forced_password_change")
+    expect(mocks.signOut).toHaveBeenCalledWith({ callbackUrl: "/" })
+  })
+
+  it("broadcasts sibling-tab signout before waiting the current-tab redirect delay", async () => {
+    const signOutPromise = signOutWithReason({
+      updateSession: mocks.updateSession,
+      reason: "forced_password_change",
+      delayMs: 1_500,
+    })
+
+    await vi.waitFor(() => {
+      expect(mocks.broadcastPostMessage).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: "auth:signout",
+          reason: "forced_password_change",
+        })
+      )
+    })
+    expect(mocks.signOut).not.toHaveBeenCalled()
+
+    await vi.advanceTimersByTimeAsync(1_500)
+    await signOutPromise
   })
 
   it("falls back to signOut when updateSession hangs", async () => {

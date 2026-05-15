@@ -1,5 +1,6 @@
 import { signOut } from "next-auth/react"
 
+import { broadcastAuthSignout } from "@/lib/auth-signout-broadcast"
 import type { AuthPendingSignoutReason } from "@/types/auth"
 
 type SignOutReasonUpdate = {
@@ -46,6 +47,8 @@ export async function signOutWithReason({
   if (updateSession) {
     await persistReasonWithTimeout(updateSession, reason)
   }
+
+  broadcastAuthSignout({ reason, callbackUrl })
 
   if (delayMs > 0) {
     await wait(delayMs)
