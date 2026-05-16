@@ -1,5 +1,5 @@
 import type { useServerPagination } from "@/hooks/useServerPagination"
-import type { useUnassignedEquipmentFilters } from "../_hooks/useUnassignedEquipmentFilters"
+import type { useUnassignedEquipmentFilters } from "@/app/(app)/device-quota/mapping/_hooks/useUnassignedEquipmentFilters"
 import type { useLinkEquipmentMutation } from "./DeviceQuotaMappingMutations"
 
 export interface UnassignedEquipmentRow {

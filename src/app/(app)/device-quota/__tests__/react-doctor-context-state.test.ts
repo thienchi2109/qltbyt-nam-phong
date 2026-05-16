@@ -12,10 +12,25 @@ function extractFunctionSource(source: string, functionName: string): string {
   const start = source.indexOf(`function ${functionName}`)
   expect(start).toBeGreaterThanOrEqual(0)
 
-  const signatureEnd = source.indexOf(") {", start)
-  expect(signatureEnd).toBeGreaterThan(start)
-
-  const bodyStart = signatureEnd + 2
+  let parenDepth = 0
+  let sawOpenParen = false
+  let bodyStart = -1
+  for (let index = start; index < source.length; index += 1) {
+    const char = source[index]
+    if (char === "(") {
+      sawOpenParen = true
+      parenDepth += 1
+      continue
+    }
+    if (char === ")" && parenDepth > 0) {
+      parenDepth -= 1
+      continue
+    }
+    if (char === "{" && sawOpenParen && parenDepth === 0) {
+      bodyStart = index
+      break
+    }
+  }
   expect(bodyStart).toBeGreaterThan(start)
 
   let depth = 0
@@ -31,13 +46,16 @@ function extractFunctionSource(source: string, functionName: string): string {
 
 function extractEffectBodies(source: string): string[] {
   const bodies: string[] = []
-  let searchStart = 0
+  const effectPattern = /(?:React\.)?useEffect\s*\(/g
 
-  while (searchStart < source.length) {
-    const effectStart = source.indexOf("React.useEffect(() => {", searchStart)
-    if (effectStart === -1) return bodies
+  for (const match of source.matchAll(effectPattern)) {
+    const effectStart = match.index
+    expect(effectStart).toBeGreaterThanOrEqual(0)
 
-    const bodyStart = source.indexOf("{", effectStart)
+    const arrowStart = source.indexOf("=>", effectStart)
+    expect(arrowStart).toBeGreaterThan(effectStart)
+    const bodyStart = source.indexOf("{", arrowStart)
+    expect(bodyStart).toBeGreaterThan(arrowStart)
     let depth = 0
     for (let index = bodyStart; index < source.length; index += 1) {
       const char = source[index]
@@ -45,7 +63,6 @@ function extractEffectBodies(source: string): string[] {
       if (char === "}") depth -= 1
       if (depth === 0) {
         bodies.push(source.slice(bodyStart + 1, index))
-        searchStart = index + 1
         break
       }
     }

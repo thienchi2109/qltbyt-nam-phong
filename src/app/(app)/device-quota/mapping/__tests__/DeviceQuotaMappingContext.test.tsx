@@ -7,8 +7,8 @@ import { callRpc } from "@/lib/rpc-client"
 import {
   DeviceQuotaMappingProvider,
   type DeviceQuotaMappingContextValue,
-} from "../_components/DeviceQuotaMappingContext"
-import { useDeviceQuotaMappingContext } from "../_hooks/useDeviceQuotaMappingContext"
+} from "@/app/(app)/device-quota/mapping/_components/DeviceQuotaMappingContext"
+import { useDeviceQuotaMappingContext } from "@/app/(app)/device-quota/mapping/_hooks/useDeviceQuotaMappingContext"
 
 const mockUseSession = vi.fn()
 vi.mock("next-auth/react", () => ({

@@ -1,18 +1,20 @@
 "use client"
 
-type CountedEquipmentRow = {
+export interface CountedEquipmentRow {
   total_count: number
+}
+
+export interface GetNextPaginationTotalCountParams {
+  donViId: number | null
+  equipmentRawData: CountedEquipmentRow[] | undefined
+  page: number
 }
 
 export function getNextPaginationTotalCount({
   donViId,
   equipmentRawData,
   page,
-}: {
-  donViId: number | null
-  equipmentRawData: CountedEquipmentRow[] | undefined
-  page: number
-}): number | null {
+}: GetNextPaginationTotalCountParams): number | null {
   if (!donViId) return 0
   if (!equipmentRawData) return null
   if (equipmentRawData.length > 0) return equipmentRawData[0]?.total_count ?? 0

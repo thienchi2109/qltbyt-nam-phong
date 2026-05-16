@@ -105,8 +105,8 @@ describe('DeviceQuotaCategoriesPage', () => {
 
     fireEvent.click(await screen.findByRole('button', { name: 'Tạo danh mục' }))
 
-    expect(screen.getByRole('dialog')).toBeInTheDocument()
-    expect(screen.getByText('Tạo danh mục mới')).toBeInTheDocument()
+    expect(await screen.findByRole('dialog')).toBeInTheDocument()
+    expect(await screen.findByText('Tạo danh mục mới')).toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('button', { name: 'Hủy' }))
 
