@@ -291,7 +291,7 @@ describe("InventoryReportTab", () => {
     expect(screen.getByText("Số thiết bị")).toBeInTheDocument()
     expect(screen.getByText("Cơ cấu theo loại thiết bị")).toBeInTheDocument()
     expect(screen.getByText("Danh sách thiết bị chưa có nhu cầu sử dụng")).toBeInTheDocument()
-    expect(screen.getByText("Máy thở HFNC")).toBeInTheDocument()
+    expect(screen.getByRole("cell", { name: "Máy thở HFNC" })).toBeInTheDocument()
     expect(mocks.useUnusedEquipmentReport).toHaveBeenCalledWith(
       expect.objectContaining({
         selectedDonVi: 17,
