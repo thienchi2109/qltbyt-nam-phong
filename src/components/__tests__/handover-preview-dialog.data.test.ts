@@ -91,6 +91,22 @@ describe("handover preview data helpers", () => {
     expect(data.receiverName).toBe("Đại diện Tổ QLTB")
   })
 
+  it("does not generate undefined representative labels for missing departments", () => {
+    const data = buildHandoverData(
+      makeTransfer({
+        khoa_phong_hien_tai: undefined,
+        khoa_phong_nhan: undefined,
+      }),
+      "16/05/2026",
+    )
+
+    expect(data.department).toBe("Tổ QLTB")
+    expect(data.giverName).toBe("Đại diện Tổ QLTB")
+    expect(data.receiverName).toBe("")
+    expect(validateHandoverData(data).missingFields).toContain("Đại diện bên nhận")
+  })
+
+
   it("requires department, reason, giver, and receiver but not director", () => {
     const validation = validateHandoverData(
       makeHandoverData({

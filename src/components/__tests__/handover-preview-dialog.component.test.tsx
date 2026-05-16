@@ -15,6 +15,12 @@ vi.mock("@/hooks/use-toast", () => ({
 
 import { HandoverPreviewDialog } from "@/components/handover-preview-dialog"
 
+type WindowOpenMock = Readonly<{
+  fakeDocument: Document
+  fakeWindow: Window
+  openSpy: ReturnType<typeof vi.spyOn>
+}>
+
 function makeTransfer(overrides: Partial<TransferRequest> = {}): TransferRequest {
   return {
     id: 1,
@@ -39,7 +45,7 @@ function makeTransfer(overrides: Partial<TransferRequest> = {}): TransferRequest
   }
 }
 
-function createWindowOpenMock() {
+function createWindowOpenMock(): WindowOpenMock {
   const fakeDocument = {
     open: vi.fn(),
     write: vi.fn(),
@@ -110,5 +116,50 @@ describe("HandoverPreviewDialog", () => {
       )
     })
     expect(openSpy).not.toHaveBeenCalled()
+  })
+
+  it("blocks preview when required fields are blank", async () => {
+    const openSpy = vi.spyOn(window, "open").mockReturnValue(null)
+
+    render(
+      <HandoverPreviewDialog
+        open
+        onOpenChange={vi.fn()}
+        transfer={makeTransfer()}
+      />,
+    )
+
+    await screen.findByText("Xem trước phiếu bàn giao - LC-0001")
+    fireEvent.click(screen.getByRole("button", { name: "Sửa" }))
+    fireEvent.change(screen.getByLabelText("Lý do bàn giao"), { target: { value: " " } })
+    fireEvent.click(screen.getByRole("button", { name: /Xem trước/ }))
+
+    await waitFor(() => {
+      expect(mocks.toast).toHaveBeenCalledWith(
+        expect.objectContaining({
+          variant: "destructive",
+          title: "⚠️ Thiếu thông tin bắt buộc",
+        }),
+      )
+    })
+    expect(openSpy).not.toHaveBeenCalled()
+  })
+
+  it("preserves user edits when toggling between edit and preview modes", async () => {
+    render(
+      <HandoverPreviewDialog
+        open
+        onOpenChange={vi.fn()}
+        transfer={makeTransfer()}
+      />,
+    )
+
+    await screen.findByText("Xem trước phiếu bàn giao - LC-0001")
+    fireEvent.click(screen.getByRole("button", { name: "Sửa" }))
+    fireEvent.change(screen.getByLabelText("Ghi chú"), { target: { value: "Giữ nguyên ghi chú" } })
+    fireEvent.click(screen.getByRole("button", { name: "Xem" }))
+    fireEvent.click(screen.getByRole("button", { name: "Sửa" }))
+
+    expect(screen.getByLabelText("Ghi chú")).toHaveValue("Giữ nguyên ghi chú")
   })
 })

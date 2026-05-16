@@ -25,6 +25,22 @@ function makeHandoverData(): HandoverData {
 }
 
 describe("handover preview document generation", () => {
+  it("escapes HTML in user-editable fields", () => {
+    const html = generateHandoverHTML({
+      ...makeHandoverData(),
+      reason: '<script>alert("x")</script>',
+      device: {
+        ...makeHandoverData().device,
+        note: "<img src=x onerror=alert(1)>",
+      },
+    })
+
+    expect(html).toContain("&lt;script&gt;alert(&quot;x&quot;)&lt;/script&gt;")
+    expect(html).toContain("&lt;img src=x onerror=alert(1)&gt;")
+    expect(html).not.toContain('<script>alert("x")</script>')
+    expect(html).not.toContain("<img src=x onerror=alert(1)>")
+  })
+
   it("renders the handover document with transfer, device, and signature details", () => {
     const html = generateHandoverHTML(makeHandoverData())
 

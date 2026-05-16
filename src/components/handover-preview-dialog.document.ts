@@ -1,7 +1,35 @@
 import { HANDOVER_PRINT_STYLES } from "./handover-preview-dialog.print-styles"
 import type { HandoverData } from "./handover-preview-dialog.types"
 
+function escapeHtml(value: string): string {
+  return value
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;")
+}
+
 export function generateHandoverHTML(data: HandoverData): string {
+  const safe = {
+    department: escapeHtml(data.department),
+    handoverDate: escapeHtml(data.handoverDate),
+    reason: escapeHtml(data.reason),
+    requestCode: escapeHtml(data.requestCode),
+    giverName: escapeHtml(data.giverName),
+    directorName: escapeHtml(data.directorName),
+    receiverName: escapeHtml(data.receiverName),
+    device: {
+      code: escapeHtml(data.device.code),
+      name: escapeHtml(data.device.name),
+      model: escapeHtml(data.device.model),
+      serial: escapeHtml(data.device.serial),
+      condition: escapeHtml(data.device.condition),
+      accessories: escapeHtml(data.device.accessories),
+      note: escapeHtml(data.device.note),
+    },
+  }
+
   return `
 <!DOCTYPE html>
 <html lang="vi">
@@ -33,19 +61,19 @@ export function generateHandoverHTML(data: HandoverData): string {
             <section class="mt-4 space-y-2">
                 <div class="flex items-baseline">
                     <label class="whitespace-nowrap">Khoa/Phòng lập:</label>
-                    <div class="form-input-line form-input-readonly ml-2">${data.department}</div>
+                    <div class="form-input-line form-input-readonly ml-2">${safe.department}</div>
                 </div>
                 <div class="flex items-baseline">
                     <label class="whitespace-nowrap">Ngày nhận/giao:</label>
-                    <div class="form-input-line form-input-readonly ml-2">${data.handoverDate}</div>
+                    <div class="form-input-line form-input-readonly ml-2">${safe.handoverDate}</div>
                 </div>
                 <div class="flex items-baseline">
                     <label class="whitespace-nowrap">Lý do nhận bàn giao:</label>
-                    <div class="form-input-line form-input-readonly ml-2">${data.reason}</div>
+                    <div class="form-input-line form-input-readonly ml-2">${safe.reason}</div>
                 </div>
                 <div class="flex items-baseline">
                     <label class="whitespace-nowrap">Mã yêu cầu:</label>
-                    <div class="form-input-line form-input-readonly ml-2">${data.requestCode}</div>
+                    <div class="form-input-line form-input-readonly ml-2">${safe.requestCode}</div>
                 </div>
             </section>
 
@@ -66,13 +94,13 @@ export function generateHandoverHTML(data: HandoverData): string {
                     <tbody>
                         <tr>
                             <td class="col-stt">1</td>
-                            <td class="col-code">${data.device.code}</td>
-                            <td class="col-name">${data.device.name}</td>
-                            <td class="col-model">${data.device.model}</td>
-                            <td class="col-serial">${data.device.serial}</td>
-                            <td class="col-accessories">${data.device.accessories}</td>
-                            <td class="col-condition">${data.device.condition}</td>
-                            <td class="col-note">${data.device.note}</td>
+                            <td class="col-code">${safe.device.code}</td>
+                            <td class="col-name">${safe.device.name}</td>
+                            <td class="col-model">${safe.device.model}</td>
+                            <td class="col-serial">${safe.device.serial}</td>
+                            <td class="col-accessories">${safe.device.accessories}</td>
+                            <td class="col-condition">${safe.device.condition}</td>
+                            <td class="col-note">${safe.device.note}</td>
                         </tr>
                     </tbody>
                 </table>
@@ -84,19 +112,19 @@ export function generateHandoverHTML(data: HandoverData): string {
                         <p class="font-bold">Đại diện bên giao</p>
                         <p class="italic">(Ký, ghi rõ họ tên)</p>
                         <div class="signature-space"></div>
-                        <div class="font-bold">${data.giverName}</div>
+                        <div class="font-bold">${safe.giverName}</div>
                     </div>
                     <div class="signature-area">
                         <p class="font-bold">Ban Giám đốc</p>
                         <p class="italic">(Ký, ghi rõ họ tên)</p>
                         <div class="signature-space"></div>
-                        <div class="font-bold">${data.directorName}</div>
+                        <div class="font-bold">${safe.directorName}</div>
                     </div>
                     <div class="signature-area">
                         <p class="font-bold">Đại diện bên nhận</p>
                         <p class="italic">(Ký, ghi rõ họ tên)</p>
                         <div class="signature-space"></div>
-                        <div class="font-bold">${data.receiverName}</div>
+                        <div class="font-bold">${safe.receiverName}</div>
                     </div>
                 </div>
             </section>

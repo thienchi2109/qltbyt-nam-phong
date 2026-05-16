@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest"
 
 const HANDOVER_PREVIEW_PATH = "src/components/handover-preview-dialog.tsx"
 
-function readSource(relativePath: string) {
+function readSource(relativePath: string): string {
   return readFileSync(resolve(process.cwd(), relativePath), "utf8")
 }
 

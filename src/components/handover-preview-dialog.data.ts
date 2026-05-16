@@ -9,21 +9,28 @@ function formatValue(value: string | number | null | undefined): string {
 }
 
 function resolveRepresentative(department: string | null | undefined): string {
-  return department === "Tổ QLTB" ? "Đại diện Tổ QLTB" : `Đại diện ${department}`
+  const normalizedDepartment = formatValue(department).trim()
+
+  if (!normalizedDepartment) return ""
+
+  return normalizedDepartment === "Tổ QLTB" ? "Đại diện Tổ QLTB" : `Đại diện ${normalizedDepartment}`
 }
 
 export function buildHandoverData(
   transfer: TransferRequest,
   handoverDate = new Date().toLocaleDateString("vi-VN"),
 ): HandoverData {
+  const currentDepartment = formatValue(transfer.khoa_phong_hien_tai || "Tổ QLTB")
+  const receivingDepartment = formatValue(transfer.khoa_phong_nhan)
+
   return {
-    department: formatValue(transfer.khoa_phong_hien_tai || "Tổ QLTB"),
+    department: currentDepartment,
     handoverDate,
     reason: formatValue(transfer.ly_do_luan_chuyen),
     requestCode: formatValue(transfer.ma_yeu_cau),
-    giverName: resolveRepresentative(transfer.khoa_phong_hien_tai),
+    giverName: resolveRepresentative(currentDepartment),
     directorName: "",
-    receiverName: resolveRepresentative(transfer.khoa_phong_nhan),
+    receiverName: resolveRepresentative(receivingDepartment),
     device: {
       code: formatValue(transfer.thiet_bi?.ma_thiet_bi),
       name: formatValue(transfer.thiet_bi?.ten_thiet_bi),

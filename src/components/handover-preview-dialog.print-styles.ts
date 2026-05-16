@@ -72,6 +72,7 @@ body {
 .mb-1 { margin-bottom: 0.25rem; }
 .space-y-2 > * + * { margin-top: 0.3rem; }
 .w-14 { width: 3.5rem; }
+.mx-auto { display: block; margin-left: auto; margin-right: auto; }
 .w-full { width: 100%; }
 
 .data-table {

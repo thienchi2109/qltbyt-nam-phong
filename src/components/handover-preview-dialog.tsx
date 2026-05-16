@@ -59,32 +59,38 @@ export function HandoverPreviewDialog({
   React.useEffect(() => {
     if (open && transfer?.thiet_bi) {
       setHandoverData(buildHandoverData(transfer))
-
-      if (isEditing) {
-        toast({
-          title: "💡 Mẹo sử dụng",
-          description: "Sử dụng Ctrl+E để chuyển đổi chế độ, Ctrl+P để in nhanh",
-          duration: 3000,
-        })
-      }
     }
-  }, [open, transfer, isEditing, toast])
+  }, [open, transfer])
+
+  React.useEffect(() => {
+    if (!open || !isEditing) return
+
+    toast({
+      title: "💡 Mẹo sử dụng",
+      description: "Sử dụng Ctrl+E để chuyển đổi chế độ, Ctrl+P để in nhanh",
+      duration: 3000,
+    })
+  }, [open, isEditing, toast])
 
   const handleInputChange = (field: HandoverField, value: string) => {
     setHandoverData((current) => (current ? updateHandoverField(current, field, value) : current))
   }
 
-  const handlePrint = async () => {
+  const showMissingFieldsToast = React.useCallback((missingFields: string[]) => {
+    toast({
+      variant: "destructive",
+      title: "⚠️ Thiếu thông tin bắt buộc",
+      description: `Vui lòng điền đầy đủ: ${missingFields.join(", ")}`,
+    })
+    setIsEditing(true)
+  }, [toast])
+
+  const handlePrint = React.useCallback(async () => {
     if (!handoverData) return
 
     const validation = validateHandoverData(handoverData)
     if (!validation.isValid) {
-      toast({
-        variant: "destructive",
-        title: "⚠️ Thiếu thông tin bắt buộc",
-        description: `Vui lòng điền đầy đủ: ${validation.missingFields.join(", ")}`,
-      })
-      setIsEditing(true)
+      showMissingFieldsToast(validation.missingFields)
       return
     }
 
@@ -123,10 +129,16 @@ export function HandoverPreviewDialog({
     } finally {
       setIsPrinting(false)
     }
-  }
+  }, [handoverData, onOpenChange, showMissingFieldsToast, toast])
 
-  const handlePreview = async () => {
+  const handlePreview = React.useCallback(async () => {
     if (!handoverData) return
+
+    const validation = validateHandoverData(handoverData)
+    if (!validation.isValid) {
+      showMissingFieldsToast(validation.missingFields)
+      return
+    }
 
     setIsPreviewing(true)
     try {
@@ -153,29 +165,33 @@ export function HandoverPreviewDialog({
     } finally {
       setIsPreviewing(false)
     }
-  }
+  }, [handoverData, showMissingFieldsToast, toast])
 
   React.useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (!open) return
 
-      if (event.ctrlKey && event.key === "p") {
-        event.preventDefault()
-        handlePrint()
-      }
-      if (event.ctrlKey && event.key === "e") {
-        event.preventDefault()
-        setIsEditing(!isEditing)
-      }
-      if (event.ctrlKey && event.shiftKey && event.key === "P") {
+      const key = event.key.toLowerCase()
+
+      if (event.ctrlKey && event.shiftKey && key === "p") {
         event.preventDefault()
         handlePreview()
+        return
+      }
+      if (event.ctrlKey && key === "p") {
+        event.preventDefault()
+        handlePrint()
+        return
+      }
+      if (event.ctrlKey && key === "e") {
+        event.preventDefault()
+        setIsEditing((current) => !current)
       }
     }
 
     document.addEventListener("keydown", handleKeyDown)
     return () => document.removeEventListener("keydown", handleKeyDown)
-  }, [open, isEditing])
+  }, [open, handlePrint, handlePreview])
 
   if (!transfer || !handoverData) return null
 
@@ -202,7 +218,7 @@ export function HandoverPreviewDialog({
               <div className="flex items-center gap-2">
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <Button variant="outline" size="sm" onClick={() => setIsEditing(!isEditing)}>
+                    <Button variant="outline" size="sm" onClick={() => setIsEditing((current) => !current)}>
                       <Edit3 className="size-4 mr-1" />
                       {isEditing ? "Xem" : "Sửa"}
                     </Button>
