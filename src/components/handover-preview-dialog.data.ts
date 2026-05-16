@@ -20,7 +20,8 @@ export function buildHandoverData(
   transfer: TransferRequest,
   handoverDate = new Date().toLocaleDateString("vi-VN"),
 ): HandoverData {
-  const currentDepartment = formatValue(transfer.khoa_phong_hien_tai || "Tổ QLTB")
+  const normalizedCurrentDepartment = formatValue(transfer.khoa_phong_hien_tai).trim()
+  const currentDepartment = formatValue(normalizedCurrentDepartment || "Tổ QLTB")
   const receivingDepartment = formatValue(transfer.khoa_phong_nhan)
 
   return {

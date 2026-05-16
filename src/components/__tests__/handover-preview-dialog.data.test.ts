@@ -107,6 +107,20 @@ describe("handover preview data helpers", () => {
   })
 
 
+  it("falls back to QLTB when the current department is blank after trimming", () => {
+    const data = buildHandoverData(
+      makeTransfer({
+        khoa_phong_hien_tai: "   ",
+      }),
+      "16/05/2026",
+    )
+
+    expect(data.department).toBe("Tổ QLTB")
+    expect(data.giverName).toBe("Đại diện Tổ QLTB")
+    expect(validateHandoverData(data).missingFields).not.toContain("Khoa/Phòng lập")
+    expect(validateHandoverData(data).missingFields).not.toContain("Đại diện bên giao")
+  })
+
   it("requires department, reason, giver, and receiver but not director", () => {
     const validation = validateHandoverData(
       makeHandoverData({
