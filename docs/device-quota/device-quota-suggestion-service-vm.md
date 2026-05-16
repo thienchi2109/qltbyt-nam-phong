@@ -171,6 +171,10 @@ Use service-to-service authentication:
 - Next.js calls the VM service from server-side code only.
 - The VM service is not called directly from the browser.
 - Use a shared secret header such as `X-Internal-Token`.
+- Store the token in environment-managed secrets and define a rotation policy,
+  including dual-key rollover so deployment does not require downtime.
+- Require replay resistance: use a short-lived signed token such as HMAC/JWT with
+  timestamp or expiry plus nonce, and reject stale or reused requests.
 - Keep the service behind Coolify/Traefik with TLS.
 - Prefer IP allow-listing or private network access if the deployment topology
   allows it.
@@ -240,10 +244,24 @@ Add a Next.js server route that owns the full suggestion pipeline:
 
 - validates auth/session/role/facility
 - fetches names/categories from Supabase through existing RPCs
-- calls the VM service once
+- calls the VM service once with an explicit timeout, bounded retries, exponential
+  backoff with jitter, and circuit-breaker protection
 - maps response to the existing dialog shape
 
 The browser should stop orchestrating dozens of embedding/search batches.
+
+The VM call policy should be configurable through app env values such as:
+
+- `DEVICE_QUOTA_VM_TIMEOUT_MS`
+- `DEVICE_QUOTA_VM_MAX_RETRIES`
+- `DEVICE_QUOTA_VM_BACKOFF_BASE_MS`
+- `DEVICE_QUOTA_VM_CIRCUIT_THRESHOLD`
+- `DEVICE_QUOTA_VM_CIRCUIT_WINDOW_MS`
+
+The route should fall back immediately to the `supabase` provider when the VM
+request times out, exhausts its retry budget, returns repeated 5xx responses, or
+the circuit is open. Logs/metrics should include timeout, retry count, provider,
+circuit state, and fallback reason.
 
 ### Step 4: Canary
 
@@ -282,6 +300,9 @@ Cache invalidation can follow category create/update/import events.
 - Existing `dinh_muc_thiet_bi_link_batch` remains the only batch write path.
 - A feature flag can switch back to the current Supabase path without redeploying
   DB schema.
+- VM call behavior is implemented with timeout, bounded retry/backoff, circuit
+  breaker, and fast fallback to the `supabase` provider on timeout/5xx/open
+  circuit.
 - Logs include request ID, facility ID, item counts, duration, provider, and
   failure reason without logging secrets.
 - Basic load test and one real facility smoke test are documented.
