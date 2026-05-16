@@ -105,6 +105,7 @@ describe("HandoverPreviewDialog", () => {
     await screen.findByText("Xem trước phiếu bàn giao - LC-0001")
     fireEvent.click(screen.getByRole("button", { name: "Sửa" }))
     fireEvent.change(screen.getByLabelText("Lý do bàn giao"), { target: { value: " " } })
+    fireEvent.click(screen.getByRole("button", { name: "Xem" }))
     fireEvent.click(screen.getByRole("button", { name: /In phiếu/ }))
 
     await waitFor(() => {
@@ -116,6 +117,7 @@ describe("HandoverPreviewDialog", () => {
       )
     })
     expect(openSpy).not.toHaveBeenCalled()
+    expect(screen.getByLabelText("Lý do bàn giao")).toBeInTheDocument()
   })
 
   it("allows preview when required fields are blank", async () => {
