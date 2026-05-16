@@ -1,5 +1,5 @@
 import React from 'react'
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, waitForElementToBeRemoved } from '@testing-library/react'
 import "@testing-library/jest-dom"
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
@@ -111,6 +111,20 @@ describe('DeviceQuotaCategoryAssignedEquipment', () => {
         await waitFor(() => {
             expect(screen.getByText('Chưa có thiết bị nào được gán')).toBeInTheDocument()
         })
+    })
+
+    it('does not present a failed assigned-equipment RPC as an empty assignment', async () => {
+        mockCallRpc.mockRejectedValue(new Error('42702: column reference "id" is ambiguous'))
+
+        render(
+            <DeviceQuotaCategoryAssignedEquipment nhomId={24} donViId={17} />,
+            { wrapper: createWrapper() }
+        )
+
+        await waitForElementToBeRemoved(() => screen.queryAllByTestId('equipment-skeleton'))
+
+        expect(screen.queryByText('Chưa có thiết bị nào được gán')).not.toBeInTheDocument()
+        expect(screen.getByText('Không thể tải danh sách thiết bị được gán')).toBeInTheDocument()
     })
 
     it('does not render exclude or restore buttons (read-only)', async () => {
