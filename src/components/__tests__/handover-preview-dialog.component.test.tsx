@@ -118,8 +118,8 @@ describe("HandoverPreviewDialog", () => {
     expect(openSpy).not.toHaveBeenCalled()
   })
 
-  it("blocks preview when required fields are blank", async () => {
-    const openSpy = vi.spyOn(window, "open").mockReturnValue(null)
+  it("allows preview when required fields are blank", async () => {
+    const { fakeDocument, openSpy } = createWindowOpenMock()
 
     render(
       <HandoverPreviewDialog
@@ -131,18 +131,28 @@ describe("HandoverPreviewDialog", () => {
 
     await screen.findByText("Xem trước phiếu bàn giao - LC-0001")
     fireEvent.click(screen.getByRole("button", { name: "Sửa" }))
+    await waitFor(() => {
+      expect(mocks.toast).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: "💡 Mẹo sử dụng",
+        }),
+      )
+    })
+    mocks.toast.mockClear()
+
     fireEvent.change(screen.getByLabelText("Lý do bàn giao"), { target: { value: " " } })
     fireEvent.click(screen.getByRole("button", { name: /Xem trước/ }))
 
     await waitFor(() => {
-      expect(mocks.toast).toHaveBeenCalledWith(
-        expect.objectContaining({
-          variant: "destructive",
-          title: "⚠️ Thiếu thông tin bắt buộc",
-        }),
-      )
+      expect(openSpy).toHaveBeenCalledWith("", "_blank")
     })
-    expect(openSpy).not.toHaveBeenCalled()
+    expect(fakeDocument.write).toHaveBeenCalledWith(expect.stringContaining("LC-0001"))
+    expect(mocks.toast).not.toHaveBeenCalledWith(
+      expect.objectContaining({
+        variant: "destructive",
+        title: "⚠️ Thiếu thông tin bắt buộc",
+      }),
+    )
   })
 
   it("preserves user edits when toggling between edit and preview modes", async () => {

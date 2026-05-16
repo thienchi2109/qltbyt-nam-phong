@@ -134,12 +134,6 @@ export function HandoverPreviewDialog({
   const handlePreview = React.useCallback(async () => {
     if (!handoverData) return
 
-    const validation = validateHandoverData(handoverData)
-    if (!validation.isValid) {
-      showMissingFieldsToast(validation.missingFields)
-      return
-    }
-
     setIsPreviewing(true)
     try {
       const newWindow = writeHandoverWindow(generateHandoverHTML(handoverData))
@@ -165,7 +159,7 @@ export function HandoverPreviewDialog({
     } finally {
       setIsPreviewing(false)
     }
-  }, [handoverData, showMissingFieldsToast, toast])
+  }, [handoverData, toast])
 
   React.useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
