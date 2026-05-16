@@ -80,6 +80,59 @@ interface DeviceQuotaCategoryProviderProps {
   children: React.ReactNode
 }
 
+type CategoryUiState = {
+  dialogState: CategoryDialogState
+  mutatingCategoryId: number | null
+  categoryToDelete: CategoryListItem | null
+  isImportDialogOpen: boolean
+  searchTerm: string
+}
+
+type CategoryUiAction =
+  | { type: "open-create-dialog" }
+  | { type: "open-edit-dialog"; category: CategoryListItem }
+  | { type: "close-dialog" }
+  | { type: "set-mutating-category"; id: number | null }
+  | { type: "open-delete-dialog"; category: CategoryListItem }
+  | { type: "close-delete-dialog" }
+  | { type: "open-import-dialog" }
+  | { type: "close-import-dialog" }
+  | { type: "set-search-term"; term: string }
+
+const initialCategoryUiState: CategoryUiState = {
+  dialogState: { mode: "closed" },
+  mutatingCategoryId: null,
+  categoryToDelete: null,
+  isImportDialogOpen: false,
+  searchTerm: "",
+}
+
+function categoryUiStateReducer(
+  state: CategoryUiState,
+  action: CategoryUiAction
+): CategoryUiState {
+  switch (action.type) {
+    case "open-create-dialog":
+      return { ...state, dialogState: { mode: "create" } }
+    case "open-edit-dialog":
+      return { ...state, dialogState: { mode: "edit", category: action.category } }
+    case "close-dialog":
+      return { ...state, dialogState: { mode: "closed" } }
+    case "set-mutating-category":
+      return { ...state, mutatingCategoryId: action.id }
+    case "open-delete-dialog":
+      return { ...state, categoryToDelete: action.category }
+    case "close-delete-dialog":
+      return { ...state, categoryToDelete: null }
+    case "open-import-dialog":
+      return { ...state, isImportDialogOpen: true }
+    case "close-import-dialog":
+      return { ...state, isImportDialogOpen: false }
+    case "set-search-term":
+      return { ...state, searchTerm: action.term }
+  }
+}
+
 export function DeviceQuotaCategoryProvider({ children }: DeviceQuotaCategoryProviderProps) {
   const { toast } = useToast()
   const queryClient = useQueryClient()
@@ -88,13 +141,17 @@ export function DeviceQuotaCategoryProvider({ children }: DeviceQuotaCategoryPro
 
   const donViId = user?.don_vi ? parseInt(user.don_vi, 10) : null
 
-  const [dialogState, setDialogState] = React.useState<CategoryDialogState>({ mode: "closed" })
-  const [mutatingCategoryId, setMutatingCategoryId] = React.useState<number | null>(null)
-  const [categoryToDelete, setCategoryToDelete] = React.useState<CategoryListItem | null>(null)
-  const [isImportDialogOpen, setIsImportDialogOpen] = React.useState(false)
-
-  // Search state (instant client-side filtering, no debounce needed for < 500 items)
-  const [searchTerm, setSearchTerm] = React.useState("")
+  const [uiState, dispatchUiState] = React.useReducer(
+    categoryUiStateReducer,
+    initialCategoryUiState
+  )
+  const {
+    dialogState,
+    mutatingCategoryId,
+    categoryToDelete,
+    isImportDialogOpen,
+    searchTerm,
+  } = uiState
 
   // Single query — fetch ALL categories once (< 500 items, no pagination needed)
   const {
@@ -138,31 +195,39 @@ export function DeviceQuotaCategoryProvider({ children }: DeviceQuotaCategoryPro
   }, [queryClient])
 
   const openCreateDialog = React.useCallback(() => {
-    setDialogState({ mode: "create" })
+    dispatchUiState({ type: "open-create-dialog" })
   }, [])
 
   const openEditDialog = React.useCallback((category: CategoryListItem) => {
-    setDialogState({ mode: "edit", category })
+    dispatchUiState({ type: "open-edit-dialog", category })
   }, [])
 
   const closeDialog = React.useCallback(() => {
-    setDialogState({ mode: "closed" })
+    dispatchUiState({ type: "close-dialog" })
   }, [])
 
   const openDeleteDialog = React.useCallback((category: CategoryListItem) => {
-    setCategoryToDelete(category)
+    dispatchUiState({ type: "open-delete-dialog", category })
   }, [])
 
   const closeDeleteDialog = React.useCallback(() => {
-    setCategoryToDelete(null)
+    dispatchUiState({ type: "close-delete-dialog" })
   }, [])
 
   const openImportDialog = React.useCallback(() => {
-    setIsImportDialogOpen(true)
+    dispatchUiState({ type: "open-import-dialog" })
   }, [])
 
   const closeImportDialog = React.useCallback(() => {
-    setIsImportDialogOpen(false)
+    dispatchUiState({ type: "close-import-dialog" })
+  }, [])
+
+  const setSearchTerm = React.useCallback((term: string) => {
+    dispatchUiState({ type: "set-search-term", term })
+  }, [])
+
+  const setMutatingCategoryId = React.useCallback((id: number | null) => {
+    dispatchUiState({ type: "set-mutating-category", id })
   }, [])
 
   const createMutation = useCreateMutation(

@@ -93,6 +93,28 @@ describe('DeviceQuotaCategoriesPage', () => {
     })
   })
 
+  it('opens and closes the create category dialog from the toolbar', async () => {
+    mockUseSession.mockReturnValue({
+      data: { user: { role: 'admin', don_vi: '1' } },
+      status: 'authenticated',
+    })
+
+    mockCallRpc.mockResolvedValue([])
+
+    render(<DeviceQuotaCategoriesPage />, { wrapper: createWrapper() })
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Tạo danh mục' }))
+
+    expect(screen.getByRole('dialog')).toBeInTheDocument()
+    expect(screen.getByText('Tạo danh mục mới')).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Hủy' }))
+
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    })
+  })
+
   it('includes descendants of matching categories on the categories page', async () => {
     mockUseSession.mockReturnValue({
       data: { user: { role: 'admin', don_vi: '1' } },

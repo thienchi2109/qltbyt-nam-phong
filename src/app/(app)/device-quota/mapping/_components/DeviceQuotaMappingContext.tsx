@@ -10,101 +10,16 @@ import { useServerPagination } from "@/hooks/useServerPagination"
 import { useUnassignedEquipmentFilters } from "../_hooks/useUnassignedEquipmentFilters"
 import { filterCategoriesWithAncestorsAndDescendants } from "../../categories/_utils/filterCategoriesWithAncestorsAndDescendants"
 import { useLinkEquipmentMutation } from "./DeviceQuotaMappingMutations"
-
-// ============================================
-// Types
-// ============================================
-
-interface UnassignedEquipmentRow {
-  id: number
-  ma_thiet_bi: string
-  ten_thiet_bi: string
-  model: string | null
-  serial: string | null
-  hang_san_xuat: string | null
-  khoa_phong_quan_ly: string | null
-  tinh_trang: string | null
-  total_count: number
-}
-
-export interface UnassignedEquipment {
-  id: number
-  ma_thiet_bi: string
-  ten_thiet_bi: string
-  model: string | null
-  serial: string | null
-  hang_san_xuat: string | null
-  khoa_phong_quan_ly: string | null
-  tinh_trang: string | null
-}
-
-export interface Category {
-  id: number
-  parent_id: number | null
-  ma_nhom: string
-  ten_nhom: string
-  phan_loai: string | null
-  level: number
-  so_luong_hien_co: number
-}
-
-interface AuthUser {
-  id: string
-  username: string
-  full_name?: string | null
-  role: string
-  don_vi?: string | null
-  dia_ban_id?: number | null
-}
-
-export interface FilterOptions {
-  departments: string[]
-  users: string[]
-  locations: string[]
-  fundingSources: string[]
-}
-
-export interface DeviceQuotaMappingContextValue {
-  user: AuthUser | null
-  donViId: number | null
-  isFacilitySelected: boolean
-
-  // Equipment data (current page)
-  unassignedEquipment: UnassignedEquipment[]
-  totalEquipmentCount: number
-
-  // Categories (all, and search-filtered)
-  allCategories: Category[]
-  categories: Category[]
-
-  // Selection
-  selectedEquipmentIds: Set<number>
-  selectedCategoryId: number | null
-  toggleEquipmentSelection: (id: number) => void
-  selectAllEquipment: () => void
-  deselectPageEquipment: () => void
-  clearEquipmentSelection: () => void
-  setSelectedCategory: (id: number | null) => void
-
-  // Equipment filters (from useUnassignedEquipmentFilters)
-  filters: ReturnType<typeof useUnassignedEquipmentFilters>
-  filterOptions: FilterOptions
-
-  // Equipment pagination (from useServerPagination)
-  pagination: ReturnType<typeof useServerPagination>
-
-  // Category search (client-side)
-  categorySearchTerm: string
-  setCategorySearchTerm: (term: string) => void
-
-  // Mutations
-  linkEquipment: ReturnType<typeof useLinkEquipmentMutation>
-
-  // Loading
-  isLoading: boolean
-  isLinking: boolean
-  refetch: () => void
-}
+import { getNextPaginationTotalCount } from "./DeviceQuotaMappingPagination"
+import type {
+  AuthUser,
+  Category,
+  DeviceQuotaMappingContextValue,
+  FilterOptions,
+  UnassignedEquipment,
+  UnassignedEquipmentRow,
+} from "./DeviceQuotaMappingTypes"
+export type { Category, DeviceQuotaMappingContextValue } from "./DeviceQuotaMappingTypes"
 
 // ============================================
 function useFilteredCategories(allCategories: Category[], searchTerm: string): Category[] {
@@ -209,29 +124,26 @@ export function DeviceQuotaMappingProvider({ children }: DeviceQuotaMappingProvi
     gcTime: 5 * 60 * 1000,
   })
 
-  // Keep total count synced to server while recovering from empty out-of-range pages:
-  // - If page has rows, read total_count from first row
-  // - If non-first page resolves empty, jump back to page 1 to refetch authoritative total
-  // - If page 1 resolves empty, total is truly 0
+  // Keep total count synced to server while recovering from empty out-of-range pages.
+  const nextPaginationTotalCount = React.useMemo(
+    () => getNextPaginationTotalCount({
+      donViId,
+      equipmentRawData,
+      page: paginationState.page,
+    }),
+    [donViId, equipmentRawData, paginationState.page]
+  )
+
   React.useEffect(() => {
-    if (!donViId) {
-      setPaginationTotalCount(0)
+    if (nextPaginationTotalCount === null) return
+    setPaginationTotalCount(nextPaginationTotalCount)
+  }, [nextPaginationTotalCount])
+
+  React.useEffect(() => {
+    if (!donViId || !equipmentRawData || equipmentRawData.length > 0 || paginationState.page === 1) {
       return
     }
-
-    if (!equipmentRawData) return
-
-    if (equipmentRawData.length > 0) {
-      setPaginationTotalCount(equipmentRawData[0]?.total_count ?? 0)
-      return
-    }
-
-    if (paginationState.page > 1) {
-      paginationState.resetToFirstPage()
-      return
-    }
-
-    setPaginationTotalCount(0)
+    paginationState.resetToFirstPage()
   }, [donViId, equipmentRawData, paginationState.page, paginationState.resetToFirstPage])
 
   const totalEquipmentCount = paginationTotalCount
