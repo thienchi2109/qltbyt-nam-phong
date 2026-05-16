@@ -173,8 +173,9 @@ Use service-to-service authentication:
 - Use a shared secret header such as `X-Internal-Token`.
 - Store the token in environment-managed secrets and define a rotation policy,
   including dual-key rollover so deployment does not require downtime.
-- Require replay resistance: use a short-lived signed token such as HMAC/JWT with
-  timestamp or expiry plus nonce, and reject stale or reused requests.
+- Require replay resistance with a short-lived signed token such as HMAC/JWT
+  using `iat`/`exp`; add nonce reuse checks only when a shared nonce store is in
+  place.
 - Keep the service behind Coolify/Traefik with TLS.
 - Prefer IP allow-listing or private network access if the deployment topology
   allows it.
