@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import { useQuery } from "@tanstack/react-query"
-import { PackageOpen } from "lucide-react"
+import { AlertCircle, PackageOpen } from "lucide-react"
 
 import { callRpc } from "@/lib/rpc-client"
 import { Badge } from "@/components/ui/badge"
@@ -85,7 +85,7 @@ export function DeviceQuotaCategoryAssignedEquipment({
     nhomId,
     donViId,
 }: DeviceQuotaCategoryAssignedEquipmentProps) {
-    const { data: equipment, isLoading } = useQuery({
+    const { data: equipment, isError, isLoading } = useQuery({
         queryKey: ["dinh_muc_thiet_bi_by_nhom", { nhomId, donViId }],
         queryFn: () =>
             callRpc<EquipmentPreviewItem[]>({
@@ -100,6 +100,11 @@ export function DeviceQuotaCategoryAssignedEquipment({
             {isLoading ? (
                 <div className="p-3">
                     <MappingPreviewLoadingState count={2} />
+                </div>
+            ) : isError ? (
+                <div className="flex items-center justify-center gap-2 py-6 text-sm text-destructive">
+                    <AlertCircle className="size-4" />
+                    <span>Không thể tải danh sách thiết bị được gán</span>
                 </div>
             ) : !equipment || equipment.length === 0 ? (
                 <div className="flex items-center justify-center gap-2 py-6 text-sm text-muted-foreground">
