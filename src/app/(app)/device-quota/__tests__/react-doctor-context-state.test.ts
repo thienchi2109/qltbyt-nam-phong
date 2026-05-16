@@ -78,8 +78,8 @@ describe("device quota context React Doctor state guards", () => {
     )
     const providerSource = extractFunctionSource(source, "DeviceQuotaCategoryProvider")
 
-    expect(providerSource).toContain("React.useReducer")
-    expect(providerSource.match(/React\.useState/g) ?? []).toHaveLength(0)
+    expect(providerSource).toMatch(/\b(?:React\.)?useReducer\s*\(/)
+    expect(providerSource.match(/\b(?:React\.)?useState\s*\(/g) ?? []).toHaveLength(0)
   })
 
   it("keeps mapping effects to at most one state mutation per effect", () => {
