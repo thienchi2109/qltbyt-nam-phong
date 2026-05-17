@@ -323,11 +323,29 @@ Do not run `gh` directly in plain bash when `context-mode` can carry the command
 Run verification in this order before claiming success, committing, or updating a PR:
 
 1. `node scripts/npm-run.js run verify:no-explicit-any`
-2. `node scripts/npm-run.js run typecheck`
-3. Focused tests for the changed behavior
-4. `node scripts/npm-run.js npx react-doctor@latest . --verbose -y --project nextn --offline --diff main`
+2. `node scripts/npm-run.js run verify:dedupe`
+3. `node scripts/npm-run.js run typecheck`
+4. Focused tests for the changed behavior
+5. `node scripts/npm-run.js npx react-doctor@latest . --verbose -y --project nextn --offline --diff main`
 
 `verify:no-explicit-any` is diff-aware. It scans changed TypeScript files from the current branch diff plus staged, unstaged, and untracked files, and fails on explicit `any`. Do not rely on `typecheck` or `react-doctor` alone to catch this class of issue.
+
+### Duplicate-Code Gate Policy
+
+`verify:dedupe` is an automated diff-only gate. It scans only changed JavaScript/TypeScript files against `main` plus staged, unstaged, and untracked files using duplicate-oriented SonarJS rules. It is mandatory before commit and before push for JS/TS diffs.
+
+Do NOT run a full-codebase duplicate scan unless the user explicitly asks. The default gate must stay diff-only to avoid unrelated baseline noise.
+
+Important limitation: a diff-only ESLint/SonarJS scan detects duplicate code inside files being changed, but it can miss code copied from an unchanged file into a changed file because the unchanged source file is not analyzed. To cover that gap, before commit and before push, invoke the `code-deduplication` skill when the change adds or copies shared logic, hooks, services, utilities, components, data mappers, validators, formatters, or other reusable behavior. Use Code Review Graph/GitNexus/rg as directed by the skill to search unchanged code for existing equivalent behavior. Document the reuse decision in the handoff when the risk is non-trivial.
+
+### Lefthook Enforcement
+
+Lefthook is installed for this repo and must remain enabled. Do not bypass hooks with `--no-verify` unless the user explicitly authorizes it.
+
+- `pre-commit` runs `verify:no-explicit-any` and `verify:dedupe`.
+- `pre-push` runs `verify:no-explicit-any`, `verify:dedupe`, and `typecheck`.
+- Run `node scripts/npm-run.js run hooks:install` after dependency installation if `.git/hooks/pre-commit` or `.git/hooks/pre-push` is missing.
+- Lefthook may report `no matching staged files` or `no matching push files` when there is nothing for Git to validate. That skip is acceptable only for that hook event; required verification commands still need to run explicitly before claiming completion when code changed.
 
 ### React Doctor: True Full Scan (Non-Diff)
 

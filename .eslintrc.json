@@ -1,6 +1,17 @@
 {
+  "plugins": [
+    "sonarjs"
+  ],
   "extends": [
     "next/core-web-vitals",
     "next/typescript"
-  ]
+  ],
+  "rules": {
+    "sonarjs/no-all-duplicated-branches": "warn",
+    "sonarjs/no-duplicate-in-composite": "warn",
+    "sonarjs/no-duplicated-branches": "warn",
+    "sonarjs/no-identical-conditions": "warn",
+    "sonarjs/no-identical-expressions": "warn",
+    "sonarjs/no-identical-functions": "warn"
+  }
 }
