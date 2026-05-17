@@ -161,6 +161,19 @@ describe('buildAggregatedQuotas', () => {
     expect(quotas.get(22)).toEqual({ total: 11, hasUnknown: false })
   })
 
+  it('preserves unknown quota when an intermediate category has direct equipment but no direct quota', () => {
+    const categories: CategoryListItem[] = [
+      makeCat({ id: 22, level: 1, ma_nhom: '02', so_luong_hien_co: 2, so_luong_toi_da: null }),
+      makeCat({ id: 299, level: 2, parent_id: 22, ma_nhom: '02.01', so_luong_toi_da: 4 }),
+      makeCat({ id: 300, level: 2, parent_id: 22, ma_nhom: '02.02', so_luong_toi_da: 4 }),
+      makeCat({ id: 301, level: 2, parent_id: 22, ma_nhom: '02.03', so_luong_toi_da: 3 }),
+    ]
+
+    const quotas = buildAggregatedQuotas(categories)
+
+    expect(quotas.get(22)).toEqual({ total: 11, hasUnknown: true })
+  })
+
   it('propagates hasUnknown when any descendant has null quota', () => {
     const categories: CategoryListItem[] = [
       makeCat({ id: 1, level: 1, so_luong_toi_da: 5 }),

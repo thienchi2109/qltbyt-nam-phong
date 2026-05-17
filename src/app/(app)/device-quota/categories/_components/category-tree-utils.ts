@@ -129,7 +129,7 @@ export interface AggregatedQuota {
 /**
  * Build aggregated quota totals: each category's quota =
  * its own so_luong_toi_da + sum of all descendants' so_luong_toi_da.
- * Tracks whether any node in the subtree has null (unknown) quota.
+ * Tracks whether any counted equipment in the subtree has no matching quota.
  *
  * Must receive the FULL category list (allCategories) for same scope
  * as buildAggregatedCounts. Uses the same bottom-up reverse iteration.
@@ -150,10 +150,11 @@ export function buildAggregatedQuotas(
   for (const cat of categories) {
     const hasDirectQuota = cat.so_luong_toi_da != null
     const hasChildren = parentIds.has(cat.id)
+    const hasUnquotedDirectCount = !hasDirectQuota && cat.so_luong_hien_co > 0
 
     quotas.set(cat.id, {
       total: cat.so_luong_toi_da ?? 0,
-      hasUnknown: !hasDirectQuota && !hasChildren,
+      hasUnknown: (!hasDirectQuota && !hasChildren) || hasUnquotedDirectCount,
     })
   }
 

@@ -277,6 +277,33 @@ describe('DeviceQuotaCategoryTree', () => {
     expect(screen.getByText('5/31')).toBeInTheDocument()
   })
 
+  it('root header preserves unknown quota when direct root equipment has no direct quota', () => {
+    const categories = [
+      { id: 22, parent_id: null, ma_nhom: '02', ten_nhom: 'CT Scanner', level: 1, so_luong_hien_co: 2, so_luong_toi_da: null },
+      { id: 299, parent_id: 22, ma_nhom: '02.01', ten_nhom: 'CT < 64', level: 2, so_luong_hien_co: 0, so_luong_toi_da: 4 },
+      { id: 300, parent_id: 22, ma_nhom: '02.02', ten_nhom: 'CT 64-128', level: 2, so_luong_hien_co: 0, so_luong_toi_da: 4 },
+      { id: 301, parent_id: 22, ma_nhom: '02.03', ten_nhom: 'CT >= 256', level: 2, so_luong_hien_co: 0, so_luong_toi_da: 3 },
+    ]
+
+    mockUseContext.mockReturnValue({
+      categories,
+      allCategories: categories,
+      donViId: 1,
+      isLoading: false,
+      totalRootCount: 1,
+      searchTerm: '',
+      pagination: basePagination,
+      openCreateDialog: vi.fn(),
+      openEditDialog: vi.fn(),
+      openDeleteDialog: vi.fn(),
+      mutatingCategoryId: null,
+    } as unknown as MockCategoryContextValue)
+
+    render(<DeviceQuotaCategoryTree />)
+
+    expect(screen.getByText('2/–')).toBeInTheDocument()
+  })
+
   it('leaf with equipment shows expand button with aria-expanded', () => {
     renderWithThreeLevelTree()
 
