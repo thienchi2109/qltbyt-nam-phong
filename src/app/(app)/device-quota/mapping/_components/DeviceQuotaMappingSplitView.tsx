@@ -1,6 +1,7 @@
 'use client'
 
 import { cn } from '@/lib/utils'
+import { DeviceQuotaSplitPane } from '../../_components/DeviceQuotaSplitPane'
 
 /**
  * Split-screen layout for device quota mapping interface
@@ -38,40 +39,12 @@ export function DeviceQuotaMappingSplitView({
   rightClassName,
 }: DeviceQuotaMappingSplitViewProps) {
   return (
-    <div
-      className={cn(
-        // Responsive grid: stacked on mobile, 50/50 on desktop
-        'grid grid-cols-1 lg:grid-cols-2',
-        // Gap between panels
-        'gap-6',
-        // Min height to prevent layout shift
-        'min-h-[600px]',
-        className
-      )}
-    >
-      {/* Left Panel */}
-      <div
-        className={cn(
-          'space-y-4',
-          // Optional: Add max height with scroll on desktop
-          'lg:max-h-[calc(100vh-12rem)] lg:overflow-y-auto',
-          leftClassName
-        )}
-      >
-        {leftPanel}
-      </div>
-
-      {/* Right Panel */}
-      <div
-        className={cn(
-          'space-y-4',
-          // Optional: Add max height with scroll on desktop
-          'lg:max-h-[calc(100vh-12rem)] lg:overflow-y-auto',
-          rightClassName
-        )}
-      >
-        {rightPanel}
-      </div>
-    </div>
+    <DeviceQuotaSplitPane
+      leftPanel={leftPanel}
+      rightPanel={rightPanel}
+      className={cn(className)}
+      leftClassName={leftClassName}
+      rightClassName={rightClassName}
+    />
   )
 }

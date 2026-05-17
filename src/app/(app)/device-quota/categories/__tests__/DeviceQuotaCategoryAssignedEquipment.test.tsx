@@ -100,6 +100,36 @@ describe('DeviceQuotaCategoryAssignedEquipment', () => {
         expect(screen.getByText('Bảo trì')).toBeInTheDocument()
     })
 
+    it('uses panel presentation with horizontal table scroll and long-text guards', async () => {
+        const longName = 'Máy siêu âm Doppler màu tim mạch cấu hình cao dùng cho phòng can thiệp với tên thiết bị rất dài'
+        mockCallRpc.mockResolvedValue([
+            {
+                ...sampleEquipment[0],
+                ten_thiet_bi: longName,
+                model: 'Model-name-with-a-very-long-value-that-must-not-overlap',
+                serial: 'Serial-number-with-a-very-long-value-that-must-not-overlap',
+                khoa_phong_quan_ly: 'Khoa phòng quản lý thiết bị có tên rất dài',
+            },
+        ])
+
+        render(
+            <DeviceQuotaCategoryAssignedEquipment nhomId={42} donViId={1} variant="panel" />,
+            { wrapper: createWrapper() }
+        )
+
+        await waitFor(() => {
+            expect(screen.getByText(longName)).toBeInTheDocument()
+        })
+
+        expect(screen.getByTestId('assigned-equipment-table-scroll')).toHaveClass('overflow-x-auto')
+        expect(screen.getByRole('table')).toHaveClass('min-w-[760px]')
+        expect(screen.getByText(longName)).toHaveClass('line-clamp-2')
+        expect(screen.getByText(longName)).toHaveAttribute('title', longName)
+        expect(screen.getByText(/Model-name/)).toHaveClass('truncate')
+        expect(screen.getByText(/Serial-number/)).toHaveClass('truncate')
+        expect(screen.getByText(/Khoa phòng quản lý/)).toHaveClass('truncate')
+    })
+
     it('shows empty state when no equipment is assigned', async () => {
         mockCallRpc.mockResolvedValue([])
 

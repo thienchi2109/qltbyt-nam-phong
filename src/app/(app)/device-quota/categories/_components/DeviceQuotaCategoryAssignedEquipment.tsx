@@ -6,6 +6,7 @@ import { AlertCircle, PackageOpen } from "lucide-react"
 
 import { callRpc } from "@/lib/rpc-client"
 import { Badge } from "@/components/ui/badge"
+import { cn } from "@/lib/utils"
 import {
     MappingPreviewLoadingState,
     type EquipmentPreviewItem,
@@ -18,6 +19,7 @@ import {
 interface DeviceQuotaCategoryAssignedEquipmentProps {
     nhomId: number
     donViId: number | null
+    variant?: "inline" | "panel"
 }
 
 // ============================================
@@ -45,8 +47,10 @@ function EquipmentRow({ item }: { item: EquipmentPreviewItem }) {
             <td className="px-3 py-2 font-mono text-muted-foreground truncate max-w-[5rem]">
                 {item.ma_thiet_bi}
             </td>
-            <td className="px-3 py-2 font-medium truncate">
-                {item.ten_thiet_bi}
+            <td className="px-3 py-2 font-medium">
+                <span className="line-clamp-2" title={item.ten_thiet_bi}>
+                    {item.ten_thiet_bi}
+                </span>
             </td>
             <td className="px-3 py-2 text-muted-foreground truncate max-w-[6rem]">
                 {item.model ?? "–"}
@@ -84,6 +88,7 @@ function EquipmentRow({ item }: { item: EquipmentPreviewItem }) {
 export function DeviceQuotaCategoryAssignedEquipment({
     nhomId,
     donViId,
+    variant = "inline",
 }: DeviceQuotaCategoryAssignedEquipmentProps) {
     const { data: equipment, isError, isLoading } = useQuery({
         queryKey: ["dinh_muc_thiet_bi_by_nhom", { nhomId, donViId }],
@@ -94,9 +99,17 @@ export function DeviceQuotaCategoryAssignedEquipment({
             }),
         enabled: !!donViId,
     })
+    const isPanel = variant === "panel"
 
     return (
-        <div className="ml-6 mt-1 mb-2 rounded-md border border-border/50 bg-muted/30 border-l-2 border-l-primary/20 overflow-hidden">
+        <div
+            className={cn(
+                "rounded-md border border-border/50 bg-muted/30 overflow-hidden",
+                isPanel
+                    ? "border-l-0"
+                    : "ml-6 mt-1 mb-2 border-l-2 border-l-primary/20"
+            )}
+        >
             {isLoading ? (
                 <div className="p-3">
                     <MappingPreviewLoadingState count={2} />
@@ -112,23 +125,28 @@ export function DeviceQuotaCategoryAssignedEquipment({
                     <span>Chưa có thiết bị nào được gán</span>
                 </div>
             ) : (
-                <table className="w-full text-left">
-                    <thead>
-                        <tr className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide border-b">
-                            <th scope="col" className="px-3 py-1.5 font-medium">Mã TB</th>
-                            <th scope="col" className="px-3 py-1.5 font-medium">Tên thiết bị</th>
-                            <th scope="col" className="px-3 py-1.5 font-medium">Model</th>
-                            <th scope="col" className="px-3 py-1.5 font-medium">Serial</th>
-                            <th scope="col" className="px-3 py-1.5 font-medium">Khoa phòng</th>
-                            <th scope="col" className="px-3 py-1.5 font-medium">Tình trạng</th>
-                        </tr>
-                    </thead>
-                    <tbody className="divide-y divide-border/30">
-                        {equipment.map((item) => (
-                            <EquipmentRow key={item.id} item={item} />
-                        ))}
-                    </tbody>
-                </table>
+                <div
+                    data-testid="assigned-equipment-table-scroll"
+                    className={cn(isPanel && "overflow-x-auto")}
+                >
+                    <table className={cn("w-full text-left", isPanel && "min-w-[760px]")}>
+                        <thead>
+                            <tr className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide border-b">
+                                <th scope="col" className="px-3 py-1.5 font-medium">Mã TB</th>
+                                <th scope="col" className="px-3 py-1.5 font-medium">Tên thiết bị</th>
+                                <th scope="col" className="px-3 py-1.5 font-medium">Model</th>
+                                <th scope="col" className="px-3 py-1.5 font-medium">Serial</th>
+                                <th scope="col" className="px-3 py-1.5 font-medium">Khoa phòng</th>
+                                <th scope="col" className="px-3 py-1.5 font-medium">Tình trạng</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-border/30">
+                            {equipment.map((item) => (
+                                <EquipmentRow key={item.id} item={item} />
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
             )}
         </div>
     )
