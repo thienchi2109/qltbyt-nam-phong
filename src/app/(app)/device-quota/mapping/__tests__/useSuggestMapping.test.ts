@@ -1,20 +1,7 @@
-/**
- * Tests for useSuggestMapping orchestration hook.
- *
- * Verifies the 3-stage pipeline:
- * 1. Fetch unassigned names via RPC
- * 2. Generate embeddings via /api/embeddings/generate
- * 3. Hybrid search categories via RPC
- * Then merge results into grouped suggestions.
- */
 import { describe, test, expect, vi, beforeEach } from "vitest"
 import { renderHook, waitFor, act } from "@testing-library/react"
 import React from "react"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
-
-// ============================================
-// Mocks
-// ============================================
 
 const callRpcMock = vi.fn()
 vi.mock("@/lib/rpc-client", () => ({
@@ -26,7 +13,6 @@ vi.stubGlobal("fetch", fetchMock)
 
 import { useSuggestMapping } from "../_hooks/useSuggestMapping"
 
-// Wrapper with fresh QueryClient per test
 function createWrapper() {
   const queryClient = new QueryClient({
     defaultOptions: { mutations: { retry: false } },
@@ -36,57 +22,50 @@ function createWrapper() {
   }
 }
 
-// ============================================
-// Fixtures
-// ============================================
-
-const UNASSIGNED_NAMES = [
-  { ten_thiet_bi: "Máy thở", device_count: 3, device_ids: [1, 2, 3] },
-  { ten_thiet_bi: "Bơm tiêm điện", device_count: 2, device_ids: [4, 5] },
-  { ten_thiet_bi: "Máy X-quang", device_count: 1, device_ids: [6] },
-]
-
-const EMBEDDINGS = [[0.1, 0.2], [0.3, 0.4], [0.5, 0.6]]
-
-const SEARCH_RESULTS = [
-  {
-    query_text: "Máy thở",
-    results: [{ id: 10, ten_nhom: "Máy thở chức năng cao", ma_nhom: "A.01", phan_loai: "Loại B", rrf_score: 0.95 }],
-  },
-  {
-    query_text: "Bơm tiêm điện",
-    results: [{ id: 20, ten_nhom: "Bơm tiêm điện tự động", ma_nhom: "B.02", phan_loai: "Loại C", rrf_score: 0.88 }],
-  },
-  {
-    query_text: "Máy X-quang",
-    results: [],  // unmatched
-  },
-]
+const PREVIEW_RESULT = {
+  groups: [
+    {
+      nhom_id: 10,
+      nhom_label: "Máy thở chức năng cao",
+      nhom_code: "A.01",
+      phan_loai: "Loại B",
+      rrf_score: 0.95,
+      device_names: ["Máy thở"],
+      device_ids: [1, 2, 3],
+      device_name_to_ids: { "Máy thở": [1, 2, 3] },
+    },
+    {
+      nhom_id: 20,
+      nhom_label: "Bơm tiêm điện tự động",
+      nhom_code: "B.02",
+      phan_loai: "Loại C",
+      rrf_score: 0.88,
+      device_names: ["Bơm tiêm điện"],
+      device_ids: [4, 5],
+      device_name_to_ids: { "Bơm tiêm điện": [4, 5] },
+    },
+  ],
+  unmatched: [{ device_name: "Máy X-quang", device_ids: [6] }],
+  totalDevices: 6,
+  matchedDevices: 5,
+}
 
 function setupSuccessfulPipeline() {
-  // Stage 1: unassigned names
-  callRpcMock.mockImplementation(({ fn }: { fn: string }) => {
-    if (fn === "dinh_muc_thiet_bi_unassigned_names") {
-      return Promise.resolve(UNASSIGNED_NAMES)
-    }
-    if (fn === "hybrid_search_category_batch") {
-      return Promise.resolve(SEARCH_RESULTS)
-    }
-    return Promise.reject(new Error(`Unknown RPC: ${fn}`))
-  })
-
-  // Stage 2: embeddings
   fetchMock.mockResolvedValue(
     new Response(
-      JSON.stringify({ embeddings: EMBEDDINGS }),
+      JSON.stringify({
+        result: PREVIEW_RESULT,
+        meta: {
+          requestId: "req-1",
+          provider: "supabase",
+          itemCounts: { unassignedNames: 3, unassignedDevices: 6, categories: 2 },
+          catalogSignature: "v1-test",
+        },
+      }),
       { status: 200, headers: { "Content-Type": "application/json" } }
     )
   )
 }
-
-// ============================================
-// Tests
-// ============================================
 
 describe("useSuggestMapping", () => {
   beforeEach(() => {
@@ -102,6 +81,7 @@ describe("useSuggestMapping", () => {
     expect(result.current.status).toBe("idle")
     expect(result.current.result).toBeNull()
     expect(callRpcMock).not.toHaveBeenCalled()
+    expect(fetchMock).not.toHaveBeenCalled()
   })
 
   test("stays idle when donViId is null", () => {
@@ -112,9 +92,10 @@ describe("useSuggestMapping", () => {
 
     expect(result.current.status).toBe("idle")
     expect(callRpcMock).not.toHaveBeenCalled()
+    expect(fetchMock).not.toHaveBeenCalled()
   })
 
-  test("runs full pipeline when enabled with valid donViId", async () => {
+  test("requests server-side suggested mapping once when enabled with valid donViId", async () => {
     setupSuccessfulPipeline()
 
     const { result } = renderHook(() =>
@@ -126,21 +107,18 @@ describe("useSuggestMapping", () => {
       expect(result.current.status).toBe("done")
     })
 
-    // Step 1: called unassigned names RPC
-    expect(callRpcMock).toHaveBeenCalledWith(
-      expect.objectContaining({ fn: "dinh_muc_thiet_bi_unassigned_names" })
-    )
-
-    // Step 2: called embedding proxy
+    expect(fetchMock).toHaveBeenCalledTimes(1)
     expect(fetchMock).toHaveBeenCalledWith(
-      "/api/embeddings/generate",
+      "/api/device-quota/mapping/suggest",
       expect.objectContaining({
         method: "POST",
+        body: JSON.stringify({ donViId: 1 }),
       })
     )
-
-    // Step 3: called hybrid search
-    expect(callRpcMock).toHaveBeenCalledWith(
+    expect(callRpcMock).not.toHaveBeenCalledWith(
+      expect.objectContaining({ fn: "dinh_muc_thiet_bi_unassigned_names" })
+    )
+    expect(callRpcMock).not.toHaveBeenCalledWith(
       expect.objectContaining({ fn: "hybrid_search_category_batch" })
     )
   })
@@ -160,13 +138,11 @@ describe("useSuggestMapping", () => {
     const res = result.current.result!
     expect(res.groups).toHaveLength(2)
 
-    // First group: "Máy thở" → nhom_id=10
     const group1 = res.groups.find(g => g.nhom_id === 10)!
     expect(group1.nhom_label).toBe("Máy thở chức năng cao")
     expect(group1.nhom_code).toBe("A.01")
     expect(group1.device_ids).toEqual([1, 2, 3])
 
-    // Second group: "Bơm tiêm điện" → nhom_id=20
     const group2 = res.groups.find(g => g.nhom_id === 20)!
     expect(group2.nhom_label).toBe("Bơm tiêm điện tự động")
     expect(group2.device_ids).toEqual([4, 5])
@@ -208,7 +184,7 @@ describe("useSuggestMapping", () => {
   })
 
   test("sets error status on RPC failure", async () => {
-    callRpcMock.mockRejectedValue(new Error("Network error"))
+    fetchMock.mockRejectedValue(new Error("Network error"))
 
     const { result } = renderHook(() =>
       useSuggestMapping({ donViId: 1, enabled: true }),
@@ -222,16 +198,12 @@ describe("useSuggestMapping", () => {
     expect(result.current.error).toBe("Network error")
   })
 
-  test("sets error status on embedding proxy failure", async () => {
-    callRpcMock.mockImplementation(({ fn }: { fn: string }) => {
-      if (fn === "dinh_muc_thiet_bi_unassigned_names") {
-        return Promise.resolve(UNASSIGNED_NAMES)
-      }
-      return Promise.reject(new Error("Unknown RPC"))
-    })
-
+  test("sets error status on server-side preview failure", async () => {
     fetchMock.mockResolvedValue(
-      new Response("Internal Server Error", { status: 500 })
+      new Response(JSON.stringify({ error: "Preview failed", requestId: "req-err" }), {
+        status: 500,
+        headers: { "Content-Type": "application/json" },
+      })
     )
 
     const { result } = renderHook(() =>
@@ -243,7 +215,7 @@ describe("useSuggestMapping", () => {
       expect(result.current.status).toBe("error")
     })
 
-    expect(result.current.error).toBeTruthy()
+    expect(result.current.error).toBe("Preview failed")
   })
 
   test("reset clears result and returns to idle", async () => {
@@ -267,36 +239,30 @@ describe("useSuggestMapping", () => {
     expect(result.current.error).toBeNull()
   })
 
-  test("groups devices with same nhom_id from different queries", async () => {
-    // Two different device names map to the same category
-    const duplicateCategoryResults = [
-      {
-        query_text: "Máy thở",
-        results: [{ id: 10, ten_nhom: "Máy thở chức năng cao", ma_nhom: "A.01", phan_loai: null, rrf_score: 0.95 }],
-      },
-      {
-        query_text: "Bơm tiêm điện",
-        results: [{ id: 10, ten_nhom: "Máy thở chức năng cao", ma_nhom: "A.01", phan_loai: null, rrf_score: 0.88 }],
-      },
-      {
-        query_text: "Máy X-quang",
-        results: [],
-      },
-    ]
-
-    callRpcMock.mockImplementation(({ fn }: { fn: string }) => {
-      if (fn === "dinh_muc_thiet_bi_unassigned_names") {
-        return Promise.resolve(UNASSIGNED_NAMES)
-      }
-      if (fn === "hybrid_search_category_batch") {
-        return Promise.resolve(duplicateCategoryResults)
-      }
-      return Promise.reject(new Error(`Unknown RPC: ${fn}`))
-    })
-
+  test("passes the server-side preview result through unchanged", async () => {
+    const serverResult = {
+      groups: [
+        {
+          nhom_id: 10,
+          nhom_label: "Máy thở chức năng cao",
+          nhom_code: "A.01",
+          phan_loai: null,
+          rrf_score: 0.95,
+          device_names: ["Máy thở", "Bơm tiêm điện"],
+          device_ids: [1, 2, 3, 4, 5],
+          device_name_to_ids: {
+            "Máy thở": [1, 2, 3],
+            "Bơm tiêm điện": [4, 5],
+          },
+        },
+      ],
+      unmatched: [{ device_name: "Máy X-quang", device_ids: [6] }],
+      totalDevices: 6,
+      matchedDevices: 5,
+    }
     fetchMock.mockResolvedValue(
       new Response(
-        JSON.stringify({ embeddings: EMBEDDINGS }),
+        JSON.stringify({ result: serverResult }),
         { status: 200, headers: { "Content-Type": "application/json" } }
       )
     )
@@ -311,11 +277,7 @@ describe("useSuggestMapping", () => {
     })
 
     const res = result.current.result!
-    // Should merge into a single group with combined device_ids
-    expect(res.groups).toHaveLength(1)
-    expect(res.groups[0].device_ids).toEqual([1, 2, 3, 4, 5])
-    expect(res.groups[0].device_names).toContain("Máy thở")
-    expect(res.groups[0].device_names).toContain("Bơm tiêm điện")
+    expect(res).toEqual(serverResult)
   })
 
   test("auto-resets to idle when enabled becomes false after pipeline started", async () => {
@@ -328,13 +290,11 @@ describe("useSuggestMapping", () => {
       { initialProps: { enabled: true }, wrapper }
     )
 
-    // Wait for pipeline to complete
     await waitFor(() => {
       expect(result.current.status).toBe("done")
     })
     expect(result.current.result).not.toBeNull()
 
-    // Disable the hook — should auto-reset all state
     rerender({ enabled: false })
 
     expect(result.current.status).toBe("idle")
@@ -342,10 +302,6 @@ describe("useSuggestMapping", () => {
     expect(result.current.error).toBeNull()
     expect(result.current.progress).toBe(0)
   })
-
-  // ============================================
-  // Save Batch Mutation (Phase 4)
-  // ============================================
 
   describe("saveBatch", () => {
     const SAVE_RESULT = {
@@ -361,8 +317,6 @@ describe("useSuggestMapping", () => {
     test("calls dinh_muc_thiet_bi_link_batch RPC with correct payload", async () => {
       setupSuccessfulPipeline()
       callRpcMock.mockImplementation(({ fn }: { fn: string }) => {
-        if (fn === "dinh_muc_thiet_bi_unassigned_names") return Promise.resolve(UNASSIGNED_NAMES)
-        if (fn === "hybrid_search_category_batch") return Promise.resolve(SEARCH_RESULTS)
         if (fn === "dinh_muc_thiet_bi_link_batch") return Promise.resolve(SAVE_RESULT)
         return Promise.reject(new Error(`Unknown RPC: ${fn}`))
       })
@@ -399,11 +353,8 @@ describe("useSuggestMapping", () => {
     test("transitions through saving → saved status lifecycle", async () => {
       setupSuccessfulPipeline()
 
-      // Delay save RPC to observe saving state
       let resolveSave: (value: unknown) => void
       callRpcMock.mockImplementation(({ fn }: { fn: string }) => {
-        if (fn === "dinh_muc_thiet_bi_unassigned_names") return Promise.resolve(UNASSIGNED_NAMES)
-        if (fn === "hybrid_search_category_batch") return Promise.resolve(SEARCH_RESULTS)
         if (fn === "dinh_muc_thiet_bi_link_batch") {
           return new Promise((resolve) => { resolveSave = resolve })
         }
@@ -438,8 +389,6 @@ describe("useSuggestMapping", () => {
     test("exposes save result with affected and skipped counts", async () => {
       setupSuccessfulPipeline()
       callRpcMock.mockImplementation(({ fn }: { fn: string }) => {
-        if (fn === "dinh_muc_thiet_bi_unassigned_names") return Promise.resolve(UNASSIGNED_NAMES)
-        if (fn === "hybrid_search_category_batch") return Promise.resolve(SEARCH_RESULTS)
         if (fn === "dinh_muc_thiet_bi_link_batch") return Promise.resolve(SAVE_RESULT)
         return Promise.reject(new Error(`Unknown RPC: ${fn}`))
       })
@@ -465,8 +414,6 @@ describe("useSuggestMapping", () => {
     test("sets saveError on RPC failure", async () => {
       setupSuccessfulPipeline()
       callRpcMock.mockImplementation(({ fn }: { fn: string }) => {
-        if (fn === "dinh_muc_thiet_bi_unassigned_names") return Promise.resolve(UNASSIGNED_NAMES)
-        if (fn === "hybrid_search_category_batch") return Promise.resolve(SEARCH_RESULTS)
         if (fn === "dinh_muc_thiet_bi_link_batch") return Promise.reject(new Error("Permission denied"))
         return Promise.reject(new Error(`Unknown RPC: ${fn}`))
       })
@@ -490,4 +437,3 @@ describe("useSuggestMapping", () => {
     })
   })
 })
-

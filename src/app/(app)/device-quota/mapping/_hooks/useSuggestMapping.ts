@@ -1,7 +1,6 @@
-// Orchestration hook for suggested mapping pipeline.
-// Uses useMutation from TanStack Query for the 3-stage pipeline:
-// fetch unassigned names → embed → hybrid search.
-// Returns grouped suggestions ready for preview display.
+// Orchestration hook for suggested mapping preview.
+// Browser calls one server-side route; the route owns payload bundling,
+// embedding/search provider orchestration, auth, and facility-scope checks.
 
 import { useState, useEffect, useCallback, useRef } from "react"
 import { useMutation } from "@tanstack/react-query"
@@ -56,161 +55,45 @@ interface UseSuggestMappingOptions {
   enabled: boolean
 }
 
-interface UnassignedName {
-  ten_thiet_bi: string
-  device_count: number
-  device_ids: number[]
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value)
 }
 
-interface SearchResult {
-  query_text: string
-  results: {
-    id: number
-    ten_nhom: string
-    ma_nhom: string
-    phan_loai: string | null
-    rrf_score: number
-  }[]
-}
-
-const CHUNK_SIZE = 10
-
-// ============================================
-// Chunking helpers
-// ============================================
-
-function chunkArray<T>(arr: T[], size: number): T[][] {
-  const chunks: T[][] = []
-  for (let i = 0; i < arr.length; i += size) {
-    chunks.push(arr.slice(i, i + size))
+function getRouteErrorMessage(status: number, payload: unknown): string {
+  if (isRecord(payload) && typeof payload.error === "string" && payload.error) {
+    return payload.error
   }
-  return chunks
+  return `Suggestion preview failed (${status})`
 }
 
-// ============================================
-// Pipeline logic (pure async, no React state)
-// ============================================
-
-async function fetchEmbeddings(
-  texts: string[],
-  signal: AbortSignal,
-  onProgress?: (completedChunks: number, totalChunks: number) => void,
-): Promise<number[][]> {
-  const chunks = chunkArray(texts, CHUNK_SIZE)
-  const allEmbeddings: number[][] = []
-
-  for (let i = 0; i < chunks.length; i++) {
-    const res = await fetch("/api/embeddings/generate", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ texts: chunks[i] }),
-      signal,
-    })
-
-    if (!res.ok) {
-      throw new Error(`Embedding generation failed (${res.status})`)
-    }
-
-    const { embeddings } = await res.json()
-    if (!Array.isArray(embeddings)) {
-      throw new Error(`Invalid embedding response for chunk ${i + 1}`)
-    }
-    allEmbeddings.push(...embeddings)
-    if (!signal.aborted) onProgress?.(i + 1, chunks.length)
+function getRouteResult(payload: unknown): SuggestMappingResult {
+  if (isRecord(payload) && isRecord(payload.result)) {
+    return payload.result as unknown as SuggestMappingResult
   }
-
-  return allEmbeddings
+  throw new Error("Invalid suggestion preview response")
 }
 
-async function searchCategories(
-  queries: { text: string; embedding: number[] }[],
+async function fetchSuggestedMapping(
   donViId: number,
   signal: AbortSignal,
-  onProgress?: (completedChunks: number, totalChunks: number) => void,
-): Promise<SearchResult[]> {
-  const chunks = chunkArray(queries, CHUNK_SIZE)
-  const allResults: SearchResult[] = []
+): Promise<SuggestMappingResult> {
+  const response = await fetch("/api/device-quota/mapping/suggest", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ donViId }),
+    signal,
+  })
 
-  for (let i = 0; i < chunks.length; i++) {
-    if (signal.aborted) throw new DOMException("Aborted", "AbortError")
+  let payload: unknown = null
+  try {
+    payload = await response.json()
+  } catch {}
 
-    const chunk = chunks[i]
-    const p_queries = chunk.map((q) => ({
-      text: q.text,
-      embedding: q.embedding,
-    }))
-
-    const results = await callRpc<SearchResult[]>({
-      fn: "hybrid_search_category_batch",
-      args: { p_queries, p_don_vi: donViId },
-    })
-
-    allResults.push(...(results ?? []))
-    if (!signal.aborted) onProgress?.(i + 1, chunks.length)
+  if (!response.ok) {
+    throw new Error(getRouteErrorMessage(response.status, payload))
   }
 
-  return allResults
-}
-
-function mergeResults(
-  names: UnassignedName[],
-  searchResults: SearchResult[],
-): SuggestMappingResult {
-  const nameToDeviceInfo = new Map<string, UnassignedName>()
-  for (const n of names) {
-    nameToDeviceInfo.set(n.ten_thiet_bi, n)
-  }
-
-  const groupMap = new Map<number, SuggestedGroup>()
-  const unmatched: { device_name: string; device_ids: number[] }[] = []
-
-  for (const sr of searchResults) {
-    const nameInfo = nameToDeviceInfo.get(sr.query_text)
-    if (!nameInfo) continue
-
-    if (!sr.results || sr.results.length === 0) {
-      unmatched.push({
-        device_name: sr.query_text,
-        device_ids: nameInfo.device_ids,
-      })
-      continue
-    }
-
-    const best = sr.results[0]
-    const existing = groupMap.get(best.id)
-
-    if (existing) {
-      existing.device_ids.push(...nameInfo.device_ids)
-      if (!existing.device_names.includes(sr.query_text)) {
-        existing.device_names.push(sr.query_text)
-      }
-      existing.device_name_to_ids[sr.query_text] = [
-        ...(existing.device_name_to_ids[sr.query_text] ?? []),
-        ...nameInfo.device_ids,
-      ]
-      existing.rrf_score = Math.max(existing.rrf_score, best.rrf_score)
-    } else {
-      groupMap.set(best.id, {
-        nhom_id: best.id,
-        nhom_label: best.ten_nhom,
-        nhom_code: best.ma_nhom,
-        phan_loai: best.phan_loai,
-        rrf_score: best.rrf_score,
-        device_names: [sr.query_text],
-        device_ids: [...nameInfo.device_ids],
-        device_name_to_ids: { [sr.query_text]: [...nameInfo.device_ids] },
-      })
-    }
-  }
-
-  const groups = Array.from(groupMap.values()).sort(
-    (a, b) => b.device_ids.length - a.device_ids.length
-  )
-
-  const matchedDevices = groups.reduce((sum, g) => sum + g.device_ids.length, 0)
-  const totalDevices = names.reduce((sum, n) => sum + n.device_count, 0)
-
-  return { groups, unmatched, totalDevices, matchedDevices }
+  return getRouteResult(payload)
 }
 
 // ============================================
@@ -226,44 +109,12 @@ export function useSuggestMapping({ donViId, enabled }: UseSuggestMappingOptions
     mutationFn: async (dvId: number): Promise<SuggestMappingResult> => {
       const signal = abortRef.current!.signal
 
-      // Stage 1: Fetch unassigned names
       if (!signal.aborted) setPipelineStatus("fetching-names")
       if (!signal.aborted) setProgress(0)
 
-      const names = await callRpc<UnassignedName[]>({
-        fn: "dinh_muc_thiet_bi_unassigned_names",
-        args: { p_don_vi: dvId },
-      })
-
+      const result = await fetchSuggestedMapping(dvId, signal)
       if (signal.aborted) throw new DOMException("Aborted", "AbortError")
-
-      if (!names || names.length === 0) {
-        return { groups: [], unmatched: [], totalDevices: 0, matchedDevices: 0 }
-      }
-
-      // Stage 2: Generate embeddings
-      if (!signal.aborted) setPipelineStatus("embedding")
-      const texts = names.map((n) => n.ten_thiet_bi)
-      const totalStages = 3
-      const embeddings = await fetchEmbeddings(texts, signal, (done, total) => {
-        if (!signal.aborted) setProgress(Math.round((done / total) * (100 / totalStages)))
-      })
-
-      if (signal.aborted) throw new DOMException("Aborted", "AbortError")
-
-      // Stage 3: Hybrid search
-      if (!signal.aborted) setPipelineStatus("searching")
-      const queries = texts.map((text, i) => ({
-        text,
-        embedding: embeddings[i],
-      }))
-      const searchResults = await searchCategories(queries, dvId, signal, (done, total) => {
-        if (!signal.aborted) setProgress(Math.round(((2 + done / total) / totalStages) * 100))
-      })
-
-      if (signal.aborted) throw new DOMException("Aborted", "AbortError")
-
-      return mergeResults(names, searchResults)
+      return result
     },
     onSuccess: (_data, _vars, _ctx) => {
       if (!abortRef.current?.signal.aborted) {
