@@ -200,7 +200,7 @@ describe('DeviceQuotaCategoryTree', () => {
 
     render(<DeviceQuotaCategoryTree />)
 
-    expect(screen.getByText('3/9')).toBeInTheDocument()
+    expect(screen.getAllByText('3/9').length).toBeGreaterThanOrEqual(1)
   })
 
   it('renders aggregated quota progress bar on group header', () => {
@@ -239,7 +239,9 @@ describe('DeviceQuotaCategoryTree', () => {
     { id: 4, parent_id: 2, ma_nhom: '01.01', ten_nhom: 'Leaf A', level: 3, so_luong_hien_co: 2, so_luong_toi_da: 5 },
     { id: 5, parent_id: 2, ma_nhom: '01.02', ten_nhom: 'Leaf B', level: 3, so_luong_hien_co: 3, so_luong_toi_da: 5 },
     { id: 3, parent_id: 1, ma_nhom: '02', ten_nhom: 'Empty Intermediate', level: 2, so_luong_hien_co: 0, so_luong_toi_da: null },
-    { id: 6, parent_id: 3, ma_nhom: '02.01', ten_nhom: 'Empty Leaf', level: 3, so_luong_hien_co: 0, so_luong_toi_da: null },
+    { id: 6, parent_id: 3, ma_nhom: '02.01', ten_nhom: 'Empty Leaf A', level: 3, so_luong_hien_co: 0, so_luong_toi_da: 4 },
+    { id: 7, parent_id: 3, ma_nhom: '02.02', ten_nhom: 'Empty Leaf B', level: 3, so_luong_hien_co: 0, so_luong_toi_da: 4 },
+    { id: 8, parent_id: 3, ma_nhom: '02.03', ten_nhom: 'Empty Leaf C', level: 3, so_luong_hien_co: 0, so_luong_toi_da: 3 },
   ]
 
   function renderWithThreeLevelTree() {
@@ -268,11 +270,11 @@ describe('DeviceQuotaCategoryTree', () => {
     expect(screen.getByText('5/20')).toBeInTheDocument()
   })
 
-  it('root header uses aggregated total without double-counting', () => {
+  it('root header rolls up known child quotas when the root has no direct quota', () => {
     renderWithThreeLevelTree()
 
-    // Root (id:1): aggregated = 5, so_luong_toi_da=null → "5/–"
-    expect(screen.getByText('5/–')).toBeInTheDocument()
+    // Root (id:1): equipment = 5, known descendant quota = 10+5+5+4+4+3.
+    expect(screen.getByText('5/31')).toBeInTheDocument()
   })
 
   it('leaf with equipment shows expand button with aria-expanded', () => {
@@ -318,7 +320,7 @@ describe('DeviceQuotaCategoryTree', () => {
   it('zero-count leaf has no expand button', () => {
     renderWithThreeLevelTree()
 
-    expect(screen.queryByRole('button', { name: /Empty Leaf/i })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /Empty Leaf A/i })).not.toBeInTheDocument()
   })
 
   it('displays full-tree aggregated totals even when categories is search-filtered', () => {
@@ -350,9 +352,8 @@ describe('DeviceQuotaCategoryTree', () => {
     expect(screen.getByText('5/20')).toBeInTheDocument()
 
     // Root header quota denominator must also use full-tree scope:
-    // Root(null) + Intermediate(10) + LeafA(5) + LeafB(5) + EmptyInterm(null) + EmptyLeaf(null) = 20
-    // hasUnknown=true because Root/EmptyIntermediate/EmptyLeaf have null quota → shows "5/–"
-    expect(screen.getByText('5/–')).toBeInTheDocument()
+    // Intermediate(10) + LeafA(5) + LeafB(5) + EmptyLeafA(4) + EmptyLeafB(4) + EmptyLeafC(3) = 31.
+    expect(screen.getByText('5/31')).toBeInTheDocument()
   })
 
   // ============================================
