@@ -425,6 +425,17 @@ describe('DeviceQuotaCategoryTree', () => {
     expect(within(navPane).queryByTestId('assigned-equipment-panel-5')).not.toBeInTheDocument()
   })
 
+  it('does not select a row when keyboard interaction targets its action menu', () => {
+    renderWithThreeLevelTree()
+
+    const leafBRow = screen.getByRole('button', { name: /Chọn danh mục 01\.02: Leaf B/i })
+    const leafBMenu = within(leafBRow).getByRole('button', { name: /Mở menu danh mục Leaf B/i })
+
+    fireEvent.keyDown(leafBMenu, { key: 'Enter' })
+
+    expect(leafBRow).toHaveAttribute('aria-pressed', 'false')
+  })
+
   it('selects a focused category row with Enter or Space', () => {
     renderWithThreeLevelTree()
 
@@ -445,12 +456,15 @@ describe('DeviceQuotaCategoryTree', () => {
     renderWithThreeLevelTree()
 
     const navPane = screen.getByTestId('device-quota-category-nav-pane')
+    const detailPane = screen.getByTestId('device-quota-category-detail-pane')
     const intermediate = screen.getByRole('button', { name: /Chọn danh mục 01: Intermediate/i })
 
     fireEvent.click(intermediate)
 
     expect(intermediate).toHaveAttribute('aria-pressed', 'true')
     expect(within(navPane).queryByTestId(/assigned-equipment-panel-/)).not.toBeInTheDocument()
+    expect(within(detailPane).queryByTestId('assigned-equipment-panel-2')).not.toBeInTheDocument()
+    expect(within(detailPane).getByText('Chọn một danh mục con để xem danh sách thiết bị được gán')).toBeInTheDocument()
   })
 
   it('zero-count leaf is still selectable for scanning its empty assignment state', () => {

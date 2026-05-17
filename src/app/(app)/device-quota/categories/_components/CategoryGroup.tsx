@@ -84,6 +84,9 @@ const CategoryChildRow = React.memo(function CategoryChildRow({
             title={category.ten_nhom}
             onClick={selectCategory}
             onKeyDown={(event) => {
+                if (event.target !== event.currentTarget) {
+                    return
+                }
                 if (event.key === "Enter" || event.key === " ") {
                     event.preventDefault()
                     selectCategory()
@@ -143,8 +146,9 @@ const CategoryChildRow = React.memo(function CategoryChildRow({
                     <Button
                         variant="ghost"
                         size="icon"
-                        className="size-7 opacity-0 transition-opacity group-hover:opacity-100"
+                        className="size-7 opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
                         disabled={isMutating}
+                        aria-label={`Mở menu danh mục ${category.ten_nhom}`}
                         onClick={(event) => event.stopPropagation()}
                     >
                         <MoreHorizontal className="size-4" />

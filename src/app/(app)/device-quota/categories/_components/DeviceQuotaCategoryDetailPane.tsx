@@ -2,6 +2,8 @@
 
 import * as React from "react"
 
+import { Layers } from "lucide-react"
+
 import { Badge } from "@/components/ui/badge"
 import {
   Card,
@@ -24,6 +26,7 @@ interface DeviceQuotaCategoryDetailPaneProps {
   allCategories: CategoryListItem[]
   aggregatedCount: number
   aggregatedQuota: AggregatedQuota | undefined
+  isLeaf: boolean
   donViId: number | null
 }
 
@@ -48,6 +51,7 @@ export function DeviceQuotaCategoryDetailPane({
   allCategories,
   aggregatedCount,
   aggregatedQuota,
+  isLeaf,
   donViId,
 }: DeviceQuotaCategoryDetailPaneProps) {
   if (!category) {
@@ -117,11 +121,18 @@ export function DeviceQuotaCategoryDetailPane({
         </div>
       </CardHeader>
       <CardContent className="pt-0">
-        <DeviceQuotaCategoryAssignedEquipment
-          nhomId={category.id}
-          donViId={donViId}
-          variant="panel"
-        />
+        {isLeaf ? (
+          <DeviceQuotaCategoryAssignedEquipment
+            nhomId={category.id}
+            donViId={donViId}
+            variant="panel"
+          />
+        ) : (
+          <div className="flex min-h-[12rem] flex-col items-center justify-center gap-2 rounded-md border border-dashed bg-muted/20 p-6 text-center text-sm text-muted-foreground">
+            <Layers className="size-5" aria-hidden="true" />
+            <span>Chọn một danh mục con để xem danh sách thiết bị được gán</span>
+          </div>
+        )}
       </CardContent>
     </Card>
   )

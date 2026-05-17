@@ -178,6 +178,7 @@ export function DeviceQuotaCategoryTree() {
           allCategories={allCategories}
           aggregatedCount={selectedCount}
           aggregatedQuota={selectedQuota}
+          isLeaf={selectedCategory ? leafIds.has(selectedCategory.id) : false}
           donViId={donViId}
         />
       }
