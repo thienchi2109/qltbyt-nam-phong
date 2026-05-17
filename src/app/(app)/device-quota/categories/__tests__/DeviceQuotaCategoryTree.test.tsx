@@ -434,6 +434,8 @@ describe('DeviceQuotaCategoryTree', () => {
     fireEvent.keyDown(leafBMenu, { key: 'Enter' })
 
     expect(leafBRow).toHaveAttribute('aria-pressed', 'false')
+    expect(leafBMenu).toHaveAttribute('type', 'button')
+    expect(leafBMenu).not.toHaveClass('opacity-0')
   })
 
   it('selects a focused category row with Enter or Space', () => {

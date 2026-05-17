@@ -32,6 +32,7 @@ export function CategoryActionMenu({
         <DropdownMenu>
             <DropdownMenuTrigger asChild>
                 <Button
+                    type="button"
                     variant="ghost"
                     size="icon"
                     className={cn("size-7", className)}

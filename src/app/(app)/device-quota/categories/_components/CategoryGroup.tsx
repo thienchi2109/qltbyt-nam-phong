@@ -138,7 +138,7 @@ const CategoryChildRow = React.memo(function CategoryChildRow({
                 disabled={isMutating}
                 onEdit={onEdit}
                 onDelete={onDelete}
-                className="opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
+                className="opacity-100 transition-opacity focus-visible:opacity-100"
             />
         </div>
     )
