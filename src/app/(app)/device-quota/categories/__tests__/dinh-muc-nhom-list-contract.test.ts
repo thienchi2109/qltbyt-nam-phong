@@ -6,14 +6,15 @@ import { describe, expect, it } from 'vitest'
 describe('dinh_muc_nhom_list contract', () => {
   it('has a migration that returns active quota min and max fields', () => {
     const migrationsDir = path.resolve(process.cwd(), 'supabase/migrations')
-    const migrationFile = readdirSync(migrationsDir).find((file: string) =>
-      file.includes('add_quota_fields_to_dinh_muc_nhom_list'),
-    )
+    const migrationMatches = readdirSync(migrationsDir)
+      .filter((file: string) => file.includes('add_quota_fields_to_dinh_muc_nhom_list'))
+      .sort()
 
-    expect(migrationFile).toBeTruthy()
+    expect(migrationMatches).toHaveLength(1)
+    const [migrationFile] = migrationMatches
 
     const migrationSource = readFileSync(
-      path.join(migrationsDir, migrationFile!),
+      path.join(migrationsDir, migrationFile),
       'utf8',
     )
 

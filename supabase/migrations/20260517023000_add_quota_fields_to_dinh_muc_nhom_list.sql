@@ -1,5 +1,7 @@
 -- Migration: Add quota fields to dinh_muc_nhom_list
 -- Issue #500: category tab progress needs active quota denominator.
+-- Forward-only rollback: use 20260303101359_fix_dinh_muc_nhom_list_sort_v2.sql
+-- for the previous definition of public.dinh_muc_nhom_list(BIGINT).
 
 DROP FUNCTION IF EXISTS public.dinh_muc_nhom_list(BIGINT);
 
