@@ -17,15 +17,17 @@ const CHUNK_SIZE = 10
 const SUPABASE_JWT_CLOCK_SKEW_SECONDS = 60
 
 type AccessDeps = {
-  lookupFacilityRegionId: (donViId: number) => Promise<number | null>
+  lookupAccessibleFacilityIds: (user: SuggestionAccessUser) => Promise<number[]>
 }
 
 export class SuggestionRouteError extends Error {
   status: number
+  details?: unknown
 
-  constructor(message: string, status: number) {
+  constructor(message: string, status: number, details?: unknown) {
     super(message)
     this.status = status
+    this.details = details
   }
 }
 
@@ -54,30 +56,48 @@ function chunkArray<T>(items: T[], size: number): T[][] {
   return chunks
 }
 
-export async function lookupFacilityRegionId(donViId: number): Promise<number | null> {
-  const supabaseUrl = getEnv("NEXT_PUBLIC_SUPABASE_URL")
-  const serviceRoleKey = getEnv("SUPABASE_SERVICE_ROLE_KEY")
-  const url = `${supabaseUrl}/rest/v1/don_vi?select=dia_ban_id&id=eq.${encodeURIComponent(String(donViId))}&limit=1`
-  const response = await fetch(url, {
-    headers: {
-      apikey: serviceRoleKey,
-      Authorization: `Bearer ${serviceRoleKey}`,
-      Accept: "application/json",
-    },
-  })
-
-  if (!response.ok) {
-    throw new Error(`Facility lookup failed (${response.status})`)
+function parseStructuredDetails(details: unknown): unknown {
+  if (typeof details !== "string") return details
+  try {
+    return JSON.parse(details) as unknown
+  } catch {
+    return details
   }
+}
 
-  const rows = (await response.json()) as { dia_ban_id: number | null }[]
-  return rows[0]?.dia_ban_id ?? null
+function getPayloadMessage(payload: unknown, fallback: string): string {
+  if (!payload || typeof payload !== "object" || Array.isArray(payload)) return fallback
+  const record = payload as Record<string, unknown>
+  for (const key of ["message", "details", "hint"]) {
+    const value = record[key]
+    if (typeof value === "string" && value.trim() !== "") return value
+  }
+  return fallback
+}
+
+function getPayloadDetails(payload: unknown): unknown {
+  if (!payload || typeof payload !== "object" || Array.isArray(payload)) return undefined
+  const record = payload as Record<string, unknown>
+  return parseStructuredDetails(record.details)
+}
+
+export async function lookupAccessibleFacilityIds(user: SuggestionAccessUser): Promise<number[]> {
+  const rows = await callSupabaseRpc<unknown>("get_accessible_facilities", {}, user)
+  if (!Array.isArray(rows)) return []
+
+  const ids: number[] = []
+  for (const row of rows) {
+    if (!row || typeof row !== "object" || Array.isArray(row)) continue
+    const id = toNumber((row as Record<string, unknown>).id as string | number | null | undefined)
+    if (id !== null) ids.push(id)
+  }
+  return ids
 }
 
 export async function assertSuggestionAccess(
   user: SuggestionAccessUser,
   donViId: number,
-  deps: AccessDeps = { lookupFacilityRegionId },
+  deps: AccessDeps = { lookupAccessibleFacilityIds },
 ): Promise<void> {
   const role = toRole(user.role)
 
@@ -95,8 +115,8 @@ export async function assertSuggestionAccess(
       throw new SuggestionRouteError("Forbidden: facility scope denied", 403)
     }
 
-    const facilityRegionId = await deps.lookupFacilityRegionId(donViId)
-    if (facilityRegionId !== userRegionId) {
+    const accessibleFacilityIds = await deps.lookupAccessibleFacilityIds(user)
+    if (!accessibleFacilityIds.includes(donViId)) {
       throw new SuggestionRouteError("Forbidden: facility scope denied", 403)
     }
     return
@@ -149,11 +169,13 @@ async function callSupabaseRpc<TRes>(
 
   if (!response.ok) {
     let message = `RPC ${fn} failed (${response.status})`
+    let details: unknown
     try {
-      const payload = (await response.json()) as { message?: string; details?: string; hint?: string }
-      message = payload.message || payload.details || payload.hint || message
+      const payload = (await response.json()) as unknown
+      details = getPayloadDetails(payload)
+      message = getPayloadMessage(payload, message)
     } catch {}
-    throw new Error(message)
+    throw new SuggestionRouteError(message, response.status, details)
   }
 
   return (await response.json()) as TRes
@@ -321,8 +343,13 @@ export async function runSuggestMapping({
 
   const texts = names.map((name) => name.ten_thiet_bi)
   const embeddings = await fetchEmbeddings(texts)
+  if (embeddings.length !== texts.length) {
+    throw new Error(
+      `Embedding response count mismatch: expected ${texts.length}, received ${embeddings.length}`,
+    )
+  }
   const searchResults = await searchCategories(
-    texts.map((text, index) => ({ text, embedding: embeddings[index] ?? [] })),
+    texts.map((text, index) => ({ text, embedding: embeddings[index]! })),
     donViId,
     user,
   )

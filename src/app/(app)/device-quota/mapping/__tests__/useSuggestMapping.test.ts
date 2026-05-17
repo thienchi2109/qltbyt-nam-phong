@@ -183,7 +183,7 @@ describe("useSuggestMapping", () => {
     expect(res.matchedDevices).toBe(5)
   })
 
-  test("sets error status on RPC failure", async () => {
+  test("sets error status on network error", async () => {
     fetchMock.mockRejectedValue(new Error("Network error"))
 
     const { result } = renderHook(() =>

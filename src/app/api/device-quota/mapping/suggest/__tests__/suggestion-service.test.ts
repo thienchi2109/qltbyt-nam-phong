@@ -1,18 +1,46 @@
-import { describe, expect, test, vi } from "vitest"
+import { beforeEach, describe, expect, test, vi } from "vitest"
 
 import {
   assertSuggestionAccess,
   createCatalogSignature,
+  lookupAccessibleFacilityIds,
   mergeSuggestionResults,
+  runSuggestMapping,
 } from "@/app/api/device-quota/mapping/suggest/suggestion-service"
 
+const fetchMock = vi.fn()
+vi.stubGlobal("fetch", fetchMock)
+
+const USER = {
+  id: "1",
+  role: "to_qltb",
+  don_vi: "17",
+  dia_ban_id: null,
+}
+
+function jsonResponse(body: unknown, status = 200): Response {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { "Content-Type": "application/json" },
+  })
+}
+
 describe("device quota suggestion service", () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    fetchMock.mockReset()
+    vi.stubEnv("NEXT_PUBLIC_SUPABASE_URL", "https://supabase.test")
+    vi.stubEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY", "anon-key")
+    vi.stubEnv("SUPABASE_SERVICE_ROLE_KEY", "service-role-key")
+    vi.stubEnv("SUPABASE_JWT_SECRET", "test-secret")
+  })
+
   test("denies restricted roles before provider work", async () => {
     await expect(
       assertSuggestionAccess(
         { id: "1", role: "technician", don_vi: "17", dia_ban_id: null },
         17,
-        { lookupFacilityRegionId: vi.fn() }
+        { lookupAccessibleFacilityIds: vi.fn() }
       )
     ).rejects.toMatchObject({ message: "Forbidden: insufficient role", status: 403 })
   })
@@ -22,37 +50,56 @@ describe("device quota suggestion service", () => {
       assertSuggestionAccess(
         { id: "1", role: "to_qltb", don_vi: "17", dia_ban_id: null },
         18,
-        { lookupFacilityRegionId: vi.fn() }
+        { lookupAccessibleFacilityIds: vi.fn() }
       )
     ).rejects.toMatchObject({ message: "Forbidden: facility scope denied", status: 403 })
   })
 
   test("allows admin through global role normalization", async () => {
-    const lookupFacilityRegionId = vi.fn()
+    const lookupAccessibleFacilityIds = vi.fn()
 
     await expect(
       assertSuggestionAccess(
         { id: "1", role: "admin", don_vi: null, dia_ban_id: null },
         18,
-        { lookupFacilityRegionId }
+        { lookupAccessibleFacilityIds }
       )
     ).resolves.toBeUndefined()
 
-    expect(lookupFacilityRegionId).not.toHaveBeenCalled()
+    expect(lookupAccessibleFacilityIds).not.toHaveBeenCalled()
   })
 
   test("checks regional leader facility scope by region", async () => {
-    const lookupFacilityRegionId = vi.fn().mockResolvedValue(7)
+    const lookupAccessibleFacilityIds = vi.fn().mockResolvedValue([7])
+    const user = { id: "1", role: "regional_leader", don_vi: null, dia_ban_id: "8" }
 
     await expect(
       assertSuggestionAccess(
-        { id: "1", role: "regional_leader", don_vi: null, dia_ban_id: "8" },
+        user,
         18,
-        { lookupFacilityRegionId }
+        { lookupAccessibleFacilityIds }
       )
     ).rejects.toMatchObject({ message: "Forbidden: facility scope denied", status: 403 })
 
-    expect(lookupFacilityRegionId).toHaveBeenCalledWith(18)
+    expect(lookupAccessibleFacilityIds).toHaveBeenCalledWith(user)
+  })
+
+  test("looks up accessible facilities through a signed RPC", async () => {
+    fetchMock.mockResolvedValueOnce(jsonResponse([{ id: 17, name: "Benh vien A" }]))
+
+    await expect(lookupAccessibleFacilityIds(USER)).resolves.toEqual([17])
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "https://supabase.test/rest/v1/rpc/get_accessible_facilities",
+      expect.objectContaining({
+        method: "POST",
+        headers: expect.objectContaining({
+          apikey: "anon-key",
+          Authorization: expect.stringMatching(/^Bearer /),
+        }),
+        body: "{}",
+      })
+    )
   })
 
   test("merges provider search results into the existing preview shape", () => {
@@ -109,5 +156,39 @@ describe("device quota suggestion service", () => {
 
     expect(first).toBe(second)
     expect(first).toMatch(/^v1-/)
+  })
+
+  test("preserves structured RPC error details", async () => {
+    fetchMock
+      .mockResolvedValueOnce(
+        jsonResponse({ message: "RPC policy denied", details: "{\"code\":\"42501\"}" }, 403)
+      )
+      .mockResolvedValueOnce(jsonResponse([]))
+
+    await expect(
+      runSuggestMapping({ donViId: 17, provider: "supabase", user: USER })
+    ).rejects.toMatchObject({
+      message: "RPC policy denied",
+      details: { code: "42501" },
+    })
+  })
+
+  test("fails before search when embedding response count is incomplete", async () => {
+    fetchMock
+      .mockResolvedValueOnce(
+        jsonResponse([
+          { ten_thiet_bi: "May tho", device_count: 1, device_ids: [1] },
+          { ten_thiet_bi: "Bom tiem", device_count: 1, device_ids: [2] },
+        ])
+      )
+      .mockResolvedValueOnce(jsonResponse([]))
+      .mockResolvedValueOnce(jsonResponse({ embeddings: [[0.1, 0.2]] }))
+      .mockResolvedValueOnce(jsonResponse([]))
+
+    await expect(
+      runSuggestMapping({ donViId: 17, provider: "supabase", user: USER })
+    ).rejects.toThrow("Embedding response count mismatch")
+
+    expect(fetchMock).toHaveBeenCalledTimes(3)
   })
 })

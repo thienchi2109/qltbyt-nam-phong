@@ -42,6 +42,13 @@ function getErrorMessage(error: unknown): string {
   return "Internal server error"
 }
 
+function getErrorDetails(error: unknown): unknown {
+  if (isRecord(error) && Object.prototype.hasOwnProperty.call(error, "details")) {
+    return error.details
+  }
+  return undefined
+}
+
 function getUserRole(user: SuggestionAccessUser | null): string | null {
   return typeof user?.role === "string" ? user.role.toLowerCase() : null
 }
@@ -61,7 +68,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized", requestId }, { status: 401 })
     }
 
-    const body = (await request.json()) as { donViId?: unknown }
+    let body: { donViId?: unknown }
+    try {
+      body = (await request.json()) as { donViId?: unknown }
+    } catch {
+      return NextResponse.json({ error: "Invalid JSON body", requestId }, { status: 400 })
+    }
+
     donViId = parseDonViId(body.donViId)
     if (donViId === null) {
       return NextResponse.json(
@@ -95,7 +108,9 @@ export async function POST(request: NextRequest) {
     })
   } catch (error) {
     const status = getErrorStatus(error)
-    const message = getErrorMessage(error)
+    const failureReason = getErrorMessage(error)
+    const responseMessage = status >= 500 ? "Internal server error" : failureReason
+    const details = status >= 500 ? undefined : getErrorDetails(error)
     const durationMs = Date.now() - startedAt
 
     console.error("[device-quota-suggest]", {
@@ -104,10 +119,13 @@ export async function POST(request: NextRequest) {
       role,
       provider: PROVIDER,
       status: "error",
-      failureReason: message,
+      failureReason,
       durationMs,
     })
 
-    return NextResponse.json({ error: message, requestId }, { status })
+    return NextResponse.json(
+      { error: responseMessage, requestId, ...(details !== undefined ? { details } : {}) },
+      { status },
+    )
   }
 }

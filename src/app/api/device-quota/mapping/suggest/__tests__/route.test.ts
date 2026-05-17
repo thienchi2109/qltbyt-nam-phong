@@ -37,6 +37,14 @@ function createRequest(body: unknown): NextRequest {
   })
 }
 
+function createRawRequest(body: string): NextRequest {
+  return new NextRequest("http://localhost/api/device-quota/mapping/suggest", {
+    method: "POST",
+    body,
+    headers: { "Content-Type": "application/json" },
+  })
+}
+
 const SESSION = {
   user: {
     id: "42",
@@ -108,6 +116,36 @@ describe("POST /api/device-quota/mapping/suggest", () => {
     expect(runSuggestMappingMock).not.toHaveBeenCalled()
   })
 
+  test("returns 400 before preview work when donViId is missing", async () => {
+    const { POST } = await import("@/app/api/device-quota/mapping/suggest/route")
+    const response = await POST(createRequest({}))
+
+    expect(response.status).toBe(400)
+    expect(await response.json()).toEqual(
+      expect.objectContaining({
+        error: "donViId must be a positive integer",
+        requestId: expect.any(String),
+      })
+    )
+    expect(assertSuggestionAccessMock).not.toHaveBeenCalled()
+    expect(runSuggestMappingMock).not.toHaveBeenCalled()
+  })
+
+  test("returns 400 before preview work when JSON is malformed", async () => {
+    const { POST } = await import("@/app/api/device-quota/mapping/suggest/route")
+    const response = await POST(createRawRequest("{bad"))
+
+    expect(response.status).toBe(400)
+    expect(await response.json()).toEqual(
+      expect.objectContaining({
+        error: "Invalid JSON body",
+        requestId: expect.any(String),
+      })
+    )
+    expect(assertSuggestionAccessMock).not.toHaveBeenCalled()
+    expect(runSuggestMappingMock).not.toHaveBeenCalled()
+  })
+
   test("invokes the Supabase provider once and preserves preview semantics", async () => {
     const { POST } = await import("@/app/api/device-quota/mapping/suggest/route")
     const response = await POST(createRequest({ donViId: 17 }))
@@ -152,6 +190,12 @@ describe("POST /api/device-quota/mapping/suggest", () => {
     runSuggestMappingMock.mockRejectedValueOnce(new Error("provider failed"))
     const failedResponse = await POST(createRequest({ donViId: 17 }))
     expect(failedResponse.status).toBe(500)
+    expect(await failedResponse.json()).toEqual(
+      expect.objectContaining({
+        error: "Internal server error",
+        requestId: expect.any(String),
+      })
+    )
     expect(consoleErrorMock).toHaveBeenCalledWith(
       "[device-quota-suggest]",
       expect.objectContaining({
@@ -162,6 +206,27 @@ describe("POST /api/device-quota/mapping/suggest", () => {
         status: "error",
         failureReason: "provider failed",
         durationMs: expect.any(Number),
+      })
+    )
+  })
+
+  test("preserves structured details for safe client errors", async () => {
+    assertSuggestionAccessMock.mockRejectedValueOnce(
+      Object.assign(new Error("Forbidden: facility scope denied"), {
+        status: 403,
+        details: { reason: "region_mismatch" },
+      })
+    )
+
+    const { POST } = await import("@/app/api/device-quota/mapping/suggest/route")
+    const response = await POST(createRequest({ donViId: 18 }))
+
+    expect(response.status).toBe(403)
+    expect(await response.json()).toEqual(
+      expect.objectContaining({
+        error: "Forbidden: facility scope denied",
+        details: { reason: "region_mismatch" },
+        requestId: expect.any(String),
       })
     )
   })
