@@ -11,10 +11,29 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
+import { DeviceQuotaSplitPane } from "../../_components/DeviceQuotaSplitPane"
+import type { CategoryListItem } from "../_types/categories"
 import { useDeviceQuotaCategoryContext } from "../_hooks/useDeviceQuotaCategoryContext"
 import { CATEGORY_GRID_COLS, groupByRoot, buildAggregatedCounts, buildAggregatedQuotas, getLeafIds } from "./category-tree-utils"
 import { CategoryGroup } from "./CategoryGroup"
+import { DeviceQuotaCategoryDetailPane } from "./DeviceQuotaCategoryDetailPane"
 import { CategoryTreeSkeleton, CategoryTreeEmpty } from "./CategoryTreeStates"
+
+function findDefaultCategory(
+  categories: CategoryListItem[],
+  aggregatedCounts: Map<number, number>,
+  leafIds: Set<number>
+) {
+  return (
+    categories.find(
+      (category) =>
+        leafIds.has(category.id) && (aggregatedCounts.get(category.id) ?? category.so_luong_hien_co) > 0
+    ) ??
+    categories.find((category) => leafIds.has(category.id)) ??
+    categories.find((category) => category.level === 1) ??
+    null
+  )
+}
 
 export function DeviceQuotaCategoryTree() {
   const {
@@ -49,16 +68,41 @@ export function DeviceQuotaCategoryTree() {
     [allCategories]
   )
 
-  const [expandedCategoryId, setExpandedCategoryId] = React.useState<number | null>(null)
+  const [selectedCategoryId, setSelectedCategoryId] = React.useState<number | null>(null)
 
-  const handleToggleExpand = React.useCallback((id: number) => {
-    setExpandedCategoryId((prev) => (prev === id ? null : id))
+  const defaultCategory = React.useMemo(
+    () => findDefaultCategory(categories, aggregatedCounts, leafIds),
+    [aggregatedCounts, categories, leafIds]
+  )
+
+  const visibleSelectedCategory = React.useMemo(
+    () => categories.find((category) => category.id === selectedCategoryId) ?? null,
+    [categories, selectedCategoryId]
+  )
+
+  const selectedCategory = visibleSelectedCategory ?? defaultCategory
+
+  React.useEffect(() => {
+    const nextSelectedId = selectedCategory?.id ?? null
+    if (selectedCategoryId !== nextSelectedId) {
+      setSelectedCategoryId(nextSelectedId)
+    }
+  }, [selectedCategory?.id, selectedCategoryId])
+
+  const handleSelectCategory = React.useCallback((category: CategoryListItem) => {
+    setSelectedCategoryId(category.id)
   }, [])
 
   const rootCount = roots.length
+  const selectedCount = selectedCategory
+    ? (aggregatedCounts.get(selectedCategory.id) ?? selectedCategory.so_luong_hien_co)
+    : 0
+  const selectedQuota = selectedCategory
+    ? aggregatedQuotas.get(selectedCategory.id)
+    : undefined
 
-  return (
-    <Card className="h-full flex flex-col">
+  const navigationPane = (
+    <Card className="h-full flex flex-col" data-testid="device-quota-category-nav-pane">
       <CardHeader className="pb-3">
         <CardTitle className="text-lg">
           Tiêu chuẩn, định mức thiết bị
@@ -105,16 +149,15 @@ export function DeviceQuotaCategoryTree() {
                 <div key={root.id} role="listitem">
                   <CategoryGroup
                     root={root}
-                    children={childrenMap.get(root.id) || []}
+                    childCategories={childrenMap.get(root.id) || []}
                     onEdit={openEditDialog}
                     onDelete={openDeleteDialog}
                     mutatingCategoryId={mutatingCategoryId}
                     aggregatedCounts={aggregatedCounts}
                     aggregatedQuotas={aggregatedQuotas}
                     leafIds={leafIds}
-                    expandedCategoryId={expandedCategoryId}
-                    onToggleExpand={handleToggleExpand}
-                    donViId={donViId}
+                    selectedCategoryId={selectedCategory?.id ?? null}
+                    onSelectCategory={handleSelectCategory}
                   />
                 </div>
               ))}
@@ -123,5 +166,22 @@ export function DeviceQuotaCategoryTree() {
         )}
       </CardContent>
     </Card>
+  )
+
+  return (
+    <DeviceQuotaSplitPane
+      ratio="40-60"
+      leftPanel={navigationPane}
+      rightPanel={
+        <DeviceQuotaCategoryDetailPane
+          category={selectedCategory}
+          allCategories={allCategories}
+          aggregatedCount={selectedCount}
+          aggregatedQuota={selectedQuota}
+          donViId={donViId}
+        />
+      }
+      leftClassName="lg:overflow-x-hidden"
+    />
   )
 }
