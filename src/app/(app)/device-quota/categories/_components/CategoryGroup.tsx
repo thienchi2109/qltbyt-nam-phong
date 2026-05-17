@@ -4,20 +4,12 @@ import * as React from "react"
 import {
     ChevronDown,
     ChevronRight,
-    MoreHorizontal,
-    Pencil,
-    Trash2,
 } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuItem,
-    DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
+import { CategoryActionMenu } from "./CategoryActionMenu"
 import { CATEGORY_GRID_COLS, CLASSIFICATION_STYLES, type AggregatedQuota } from "./category-tree-utils"
 import { QuotaProgressBar } from "./QuotaProgressBar"
 import type { CategoryListItem } from "../_types/categories"
@@ -141,33 +133,13 @@ const CategoryChildRow = React.memo(function CategoryChildRow({
             </div>
 
             {/* Column 4: Actions */}
-            <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                    <Button
-                        variant="ghost"
-                        size="icon"
-                        className="size-7 opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
-                        disabled={isMutating}
-                        aria-label={`Mở menu danh mục ${category.ten_nhom}`}
-                        onClick={(event) => event.stopPropagation()}
-                    >
-                        <MoreHorizontal className="size-4" />
-                    </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                    <DropdownMenuItem onSelect={() => onEdit(category)}>
-                        <Pencil className="mr-2 size-4" />
-                        Sửa
-                    </DropdownMenuItem>
-                    <DropdownMenuItem
-                        onSelect={() => onDelete(category)}
-                        className="text-destructive focus:text-destructive"
-                    >
-                        <Trash2 className="mr-2 size-4" />
-                        Xóa
-                    </DropdownMenuItem>
-                </DropdownMenuContent>
-            </DropdownMenu>
+            <CategoryActionMenu
+                category={category}
+                disabled={isMutating}
+                onEdit={onEdit}
+                onDelete={onDelete}
+                className="opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
+            />
         </div>
     )
 })
@@ -293,32 +265,12 @@ const CategoryGroup = React.memo(function CategoryGroup({
                 </div>
 
                 {/* Column 4: Actions */}
-                <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                        <Button
-                            variant="ghost"
-                            size="icon"
-                            className="size-7"
-                            disabled={mutatingCategoryId === root.id}
-                            onClick={(e) => e.stopPropagation()}
-                        >
-                            <MoreHorizontal className="size-4" />
-                        </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                        <DropdownMenuItem onSelect={() => onEdit(root)}>
-                            <Pencil className="mr-2 size-4" />
-                            Sửa
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                            onSelect={() => onDelete(root)}
-                            className="text-destructive focus:text-destructive"
-                        >
-                            <Trash2 className="mr-2 size-4" />
-                            Xóa
-                        </DropdownMenuItem>
-                    </DropdownMenuContent>
-                </DropdownMenu>
+                <CategoryActionMenu
+                    category={root}
+                    disabled={mutatingCategoryId === root.id}
+                    onEdit={onEdit}
+                    onDelete={onDelete}
+                />
             </div>
 
             {/* Children */}
