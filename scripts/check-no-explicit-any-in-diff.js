@@ -2,19 +2,14 @@
 
 const fs = require("fs")
 const path = require("path")
-const { execFileSync } = require("child_process")
 const ts = require("typescript")
+const { collectChangedFiles, getCommittedChangedFiles, runGit } = require("./changed-files")
 
 const DEFAULT_BASE_REF = process.env.EXPLICIT_ANY_BASE || "main"
 const TYPE_SCRIPT_EXTENSIONS = new Set([".ts", ".tsx", ".mts", ".cts"])
-const IGNORED_PATH_SEGMENTS = [".git", ".next", "build", "coverage", "dist", "node_modules"]
 
 function isTypeScriptFile(filePath) {
   return TYPE_SCRIPT_EXTENSIONS.has(path.extname(filePath))
-}
-
-function isIgnoredPath(filePath) {
-  return IGNORED_PATH_SEGMENTS.some((segment) => filePath.split(/[\\/]/).includes(segment))
 }
 
 function getScriptKind(filePath) {
@@ -58,47 +53,15 @@ function formatViolations(violations) {
     .join("\n")
 }
 
-function runGit(args) {
-  try {
-    return execFileSync("git", args, {
-      cwd: process.cwd(),
-      encoding: "utf8",
-      stdio: ["ignore", "pipe", "ignore"],
-    })
-      .split(/\r?\n/)
-      .map((line) => line.trim())
-      .filter(Boolean)
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error)
-    throw new Error(`git ${args.join(" ")} failed: ${message}`)
-  }
-}
-
-function getCommittedChangedFiles(baseRef, runGitImpl) {
-  try {
-    return runGitImpl(["diff", "--name-only", "--diff-filter=ACMR", `${baseRef}...HEAD`])
-  } catch (error) {
-    if (!baseRef) {
-      throw error
-    }
-
-    return runGitImpl(["diff", "--name-only", "--diff-filter=ACMR", `${baseRef}..HEAD`])
-  }
-}
-
 function collectChangedTypeScriptFiles(
   baseRef = DEFAULT_BASE_REF,
   { runGitImpl = runGit } = {}
 ) {
-  const committed = getCommittedChangedFiles(baseRef, runGitImpl)
-  const unstaged = runGitImpl(["diff", "--name-only", "--diff-filter=ACMR"])
-  const staged = runGitImpl(["diff", "--cached", "--name-only", "--diff-filter=ACMR"])
-  const untracked = runGitImpl(["ls-files", "--others", "--exclude-standard"])
-
-  return [...new Set([...committed, ...unstaged, ...staged, ...untracked])]
-    .filter((filePath) => isTypeScriptFile(filePath) && !isIgnoredPath(filePath))
-    .filter((filePath) => fs.existsSync(filePath))
-    .sort()
+  return collectChangedFiles(baseRef, {
+    runGitImpl,
+    includeFile: isTypeScriptFile,
+    fileExists: fs.existsSync,
+  })
 }
 
 function scanFiles(filePaths) {

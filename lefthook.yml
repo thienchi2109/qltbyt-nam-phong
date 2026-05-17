@@ -1,0 +1,17 @@
+pre-commit:
+  parallel: false
+  commands:
+    verify-no-explicit-any:
+      run: node scripts/npm-run.js run verify:no-explicit-any
+    verify-dedupe:
+      run: node scripts/npm-run.js run verify:dedupe
+
+pre-push:
+  parallel: false
+  commands:
+    verify-no-explicit-any:
+      run: node scripts/npm-run.js run verify:no-explicit-any
+    verify-dedupe:
+      run: node scripts/npm-run.js run verify:dedupe
+    typecheck:
+      run: node scripts/npm-run.js run typecheck

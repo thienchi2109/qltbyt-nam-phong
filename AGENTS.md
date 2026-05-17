@@ -21,7 +21,7 @@ Bash is ONLY for short-output ops: `git`, `mkdir`, `rm`, `mv`, `cd`, `ls`, `npm 
 - `ctx_batch_execute(commands, queries)` — primary tool. ONE call replaces 30+. Each command: `{label: "descriptive header", command: "..."}`. Labels become FTS5 chunk titles.
 - `ctx_execute(language: "shell", code: "...", intent: "what you want from the output")` — single command, sandbox, only stdout enters context.
 
-For the `verify:no-explicit-any` → `typecheck` → focused vitest → `react-doctor` chain, gather them all in **one** `ctx_batch_execute` so failures are searchable via `ctx_search`.
+For the `verify:no-explicit-any` → `verify:dedupe` → `typecheck` → focused vitest → `react-doctor` chain, gather them all in **one** `ctx_batch_execute` so failures are searchable via `ctx_search`.
 
 ### RTK vs Context-Mode Convention
 
@@ -89,11 +89,29 @@ Do not rely on the default `react-doctor` script when you specifically need full
 When a task changes `.ts` / `.tsx` files, run verification in this order before claiming success, committing, or opening/updating a PR:
 
 1. `node scripts/npm-run.js run verify:no-explicit-any`
-2. `node scripts/npm-run.js run typecheck`
-3. Focused tests for the changed behavior
-4. `node scripts/npm-run.js npx react-doctor@latest . --verbose -y --project nextn --offline --diff main`
+2. `node scripts/npm-run.js run verify:dedupe`
+3. `node scripts/npm-run.js run typecheck`
+4. Focused tests for the changed behavior
+5. `node scripts/npm-run.js npx react-doctor@latest . --verbose -y --project nextn --offline --diff main`
 
 `verify:no-explicit-any` is diff-aware. It scans changed TypeScript files (committed branch diff, staged, unstaged, and untracked files) and fails on explicit `any` so REVIEW.md / CLAUDE.md type-safety violations are caught before review.
+
+### Duplicate-Code Gate Policy
+
+`verify:dedupe` is an automated diff-only gate. It scans only changed JavaScript/TypeScript files against `main` plus staged, unstaged, and untracked files with duplicate-oriented SonarJS rules. It is mandatory before commit and before push for JS/TS diffs.
+
+Do NOT run a full-codebase duplicate scan unless the user explicitly asks. The default gate must stay diff-only to avoid unrelated baseline noise.
+
+Important limitation: a diff-only ESLint/SonarJS scan detects duplicate code inside files being changed, but it can miss code copied from an unchanged file into a changed file because the unchanged source file is not analyzed. To cover that gap, before commit and before push, invoke the `code-deduplication` skill when the change adds or copies shared logic, hooks, services, utilities, components, data mappers, validators, formatters, or other reusable behavior. Use Code Review Graph/GitNexus/rg as directed by the skill to search unchanged code for existing equivalent behavior. Document the reuse decision in the handoff when the risk is non-trivial.
+
+### Lefthook Enforcement
+
+Lefthook is installed for this repo and must remain enabled. Do not bypass hooks with `--no-verify` unless the user explicitly authorizes it.
+
+- `pre-commit` runs `verify:no-explicit-any` and `verify:dedupe`.
+- `pre-push` runs `verify:no-explicit-any`, `verify:dedupe`, and `typecheck`.
+- Run `node scripts/npm-run.js run hooks:install` after dependency installation if `.git/hooks/pre-commit` or `.git/hooks/pre-push` is missing.
+- Lefthook may report `no matching staged files` or `no matching push files` when there is nothing for Git to validate. That skip is acceptable only for that hook event; required verification commands still need to run explicitly before claiming completion when code changed.
 
 ## Ralph Flow (Claude Code/Codex Execution)
 
@@ -148,7 +166,8 @@ When running Ralph workflow, follow this exact loop:
 
 1. **File issues for remaining work** - Create issues for anything that needs follow-up
 2. **Run quality gates** (if code changed)
-   - For `.ts` / `.tsx` changes: `node scripts/npm-run.js run verify:no-explicit-any` before `typecheck`, tests, and `react-doctor`
+   - For `.ts` / `.tsx` changes: `node scripts/npm-run.js run verify:no-explicit-any` and `node scripts/npm-run.js run verify:dedupe` before `typecheck`, tests, and `react-doctor`
+   - Before commit and push, run the automated duplicate gate as diff-only. Also use the `code-deduplication` skill for semantic cross-file checks when the change introduces or copies reusable behavior. Never expand duplicate scanning to the full codebase unless the user explicitly requests it.
    - Then run the remaining tests/linters/builds required by the task
 3. **Update issue status** - Close finished work, update in-progress items
 4. **PUSH TO REMOTE** - This is MANDATORY:
