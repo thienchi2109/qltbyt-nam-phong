@@ -94,10 +94,6 @@ vi.mock("@/app/(app)/device-quota/mapping/_components/DeviceQuotaMappingContext"
   ),
 }))
 
-vi.mock("@/app/(app)/device-quota/mapping/_components/DeviceQuotaMappingSplitView", () => ({
-  DeviceQuotaMappingSplitView: () => <div data-testid="mapping-split-view">Split view</div>,
-}))
-
 vi.mock("@/app/(app)/device-quota/mapping/_components/DeviceQuotaUnassignedList", () => ({
   DeviceQuotaUnassignedList: () => <div data-testid="mapping-unassigned-list">Unassigned</div>,
 }))
@@ -160,7 +156,7 @@ const pageCases = [
   {
     name: "mapping",
     Page: DeviceQuotaMappingPage,
-    protectedTestId: "mapping-split-view",
+    protectedTestId: "mapping-unassigned-list",
     fallbackTestId: "authenticated-page-spinner-fallback",
   },
 ] as const
