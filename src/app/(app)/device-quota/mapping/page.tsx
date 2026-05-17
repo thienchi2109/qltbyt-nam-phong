@@ -4,8 +4,8 @@ import * as React from "react"
 
 import { AuthenticatedPageBoundary } from "@/app/(app)/_components/AuthenticatedPageBoundary"
 import { AuthenticatedPageSpinnerFallback } from "@/app/(app)/_components/AuthenticatedPageFallbacks"
+import { DeviceQuotaSplitPane } from "../_components/DeviceQuotaSplitPane"
 import { DeviceQuotaMappingProvider } from "./_components/DeviceQuotaMappingContext"
-import { DeviceQuotaMappingSplitView } from "./_components/DeviceQuotaMappingSplitView"
 import { DeviceQuotaUnassignedList } from "./_components/DeviceQuotaUnassignedList"
 import { DeviceQuotaCategoryTree } from "./_components/DeviceQuotaCategoryTree"
 import { DeviceQuotaMappingActions } from "./_components/DeviceQuotaMappingActions"
@@ -33,7 +33,8 @@ export default function DeviceQuotaMappingPage() {
             <DeviceQuotaMappingGuide />
 
             {/* Split view */}
-            <DeviceQuotaMappingSplitView
+            <DeviceQuotaSplitPane
+              ratio="40-60"
               leftPanel={<DeviceQuotaUnassignedList />}
               rightPanel={<DeviceQuotaCategoryTree />}
             />
