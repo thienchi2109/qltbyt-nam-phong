@@ -7,10 +7,12 @@ BEGIN;
 DO $$
 DECLARE
   v_suffix text := to_char(clock_timestamp(), 'YYYYMMDDHH24MISSMS');
+  v_region bigint;
   v_tenant bigint;
   v_other_tenant bigint;
   v_allowed_equipment bigint;
   v_blocked_equipment bigint;
+  v_deleted_equipment bigint;
   v_other_equipment bigint;
   v_dashboard jsonb;
   v_header jsonb;
@@ -20,12 +22,21 @@ DECLARE
   v_sqlerrm text;
   v_proconfig text[];
 BEGIN
-  INSERT INTO public.don_vi(name, active)
-  VALUES ('Smoke Issue 512 Tenant ' || v_suffix, true)
+  INSERT INTO public.dia_ban(ma_dia_ban, ten_dia_ban, so_luong_don_vi_truc_thuoc, active)
+  VALUES (
+    'SMK-512-' || v_suffix,
+    'Smoke Issue 512 Region ' || v_suffix,
+    2,
+    true
+  )
+  RETURNING id INTO v_region;
+
+  INSERT INTO public.don_vi(code, name, active, dia_ban_id)
+  VALUES ('SMK-512-A-' || v_suffix, 'Smoke Issue 512 Tenant ' || v_suffix, true, v_region)
   RETURNING id INTO v_tenant;
 
-  INSERT INTO public.don_vi(name, active)
-  VALUES ('Smoke Issue 512 Other Tenant ' || v_suffix, true)
+  INSERT INTO public.don_vi(code, name, active, dia_ban_id)
+  VALUES ('SMK-512-B-' || v_suffix, 'Smoke Issue 512 Other Tenant ' || v_suffix, true, v_region)
   RETURNING id INTO v_other_tenant;
 
   INSERT INTO public.thiet_bi(
@@ -73,6 +84,24 @@ BEGIN
     is_deleted
   )
   VALUES (
+    'SMK-512-DELETED-' || v_suffix,
+    'Smoke Issue 512 Deleted ' || v_suffix,
+    v_tenant,
+    'Nội thận - Tiết niệu',
+    'Chờ bảo trì',
+    true
+  )
+  RETURNING id INTO v_deleted_equipment;
+
+  INSERT INTO public.thiet_bi(
+    ma_thiet_bi,
+    ten_thiet_bi,
+    don_vi,
+    khoa_phong_quan_ly,
+    tinh_trang_hien_tai,
+    is_deleted
+  )
+  VALUES (
     'SMK-512-OTHER-' || v_suffix,
     'Smoke Issue 512 Other Tenant ' || v_suffix,
     v_other_tenant,
@@ -94,6 +123,7 @@ BEGIN
   VALUES
     (v_allowed_equipment, 'Smoke Issue 512 repair allowed', 'Smoke repair', CURRENT_DATE + 1, 'Smoke User', 'Chờ xử lý', 'noi_bo'),
     (v_blocked_equipment, 'Smoke Issue 512 repair blocked', 'Smoke repair', CURRENT_DATE + 1, 'Smoke User', 'Chờ xử lý', 'noi_bo'),
+    (v_deleted_equipment, 'Smoke Issue 512 repair deleted', 'Smoke repair', CURRENT_DATE + 1, 'Smoke User', 'Chờ xử lý', 'noi_bo'),
     (v_other_equipment, 'Smoke Issue 512 repair other tenant', 'Smoke repair', CURRENT_DATE + 1, 'Smoke User', 'Chờ xử lý', 'noi_bo');
 
   INSERT INTO public.yeu_cau_luan_chuyen(
@@ -107,6 +137,7 @@ BEGIN
   VALUES
     ('YCLC-512-ALLOW-' || v_suffix, v_allowed_equipment, 'noi_bo', 'cho_duyet', 'Smoke transfer allowed ' || v_suffix, now()),
     ('YCLC-512-BLOCK-' || v_suffix, v_blocked_equipment, 'noi_bo', 'cho_duyet', 'Smoke transfer blocked ' || v_suffix, now()),
+    ('YCLC-512-DELETED-' || v_suffix, v_deleted_equipment, 'noi_bo', 'cho_duyet', 'Smoke transfer deleted ' || v_suffix, now()),
     ('YCLC-512-OTHER-' || v_suffix, v_other_equipment, 'noi_bo', 'cho_duyet', 'Smoke transfer other tenant ' || v_suffix, now());
 
   INSERT INTO public.ke_hoach_bao_tri(
@@ -146,7 +177,7 @@ BEGIN
   END IF;
 
   IF COALESCE((v_dashboard->>'maintenanceCount')::integer, 0) <> 1 THEN
-    RAISE EXCEPTION 'dashboard maintenanceCount should count only role=user department rows, got %', v_dashboard;
+    RAISE EXCEPTION 'dashboard maintenanceCount should count only active role=user department rows, got %', v_dashboard;
   END IF;
 
   IF COALESCE((v_dashboard->'repairRequests'->>'pending')::integer, 0) <> 1
@@ -172,7 +203,6 @@ BEGIN
   END IF;
 
   v_header := public.header_notifications_summary(v_other_tenant);
-  v_plan_counts := public.maintenance_plan_status_counts(v_other_tenant, NULL::text);
 
   IF COALESCE((v_header->>'pending_repairs')::integer, 0) <> 0
      OR COALESCE((v_header->>'pending_transfers')::integer, 0) <> 0 THEN
@@ -269,6 +299,26 @@ BEGIN
   IF COALESCE((v_plan_counts->>'Bản nháp')::integer, 0) <> 1
      OR COALESCE((v_plan_counts->>'Đã duyệt')::integer, 0) <> 0 THEN
     RAISE EXCEPTION 'global selected other-facility maintenance badges should not leak tenant A, got %', v_plan_counts;
+  END IF;
+
+  PERFORM set_config(
+    'request.jwt.claims',
+    json_build_object(
+      'app_role', 'regional_leader',
+      'role', 'authenticated',
+      'user_id', 'smoke-512-regional-' || v_suffix,
+      'sub', 'smoke-512-regional-' || v_suffix,
+      'dia_ban', v_region::text,
+      'don_vi', NULL
+    )::text,
+    true
+  );
+
+  v_plan_counts := public.maintenance_plan_status_counts(NULL::bigint, NULL::text);
+
+  IF COALESCE((v_plan_counts->>'Bản nháp')::integer, 0) <> 3
+     OR COALESCE((v_plan_counts->>'Đã duyệt')::integer, 0) <> 2 THEN
+    RAISE EXCEPTION 'regional_leader maintenance badges should work with NULL don_vi claim, got %', v_plan_counts;
   END IF;
 
   FOR v_proconfig IN
