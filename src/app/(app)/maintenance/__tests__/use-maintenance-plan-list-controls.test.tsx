@@ -6,6 +6,7 @@ import { useMaintenancePlanListControls } from "../_hooks/use-maintenance-plan-l
 describe("useMaintenancePlanListControls", () => {
   afterEach(() => {
     vi.useRealTimers()
+    window.localStorage.clear()
   })
 
   it("resets the effective page when the pagination reset key changes", () => {
@@ -48,5 +49,39 @@ describe("useMaintenancePlanListControls", () => {
     })
 
     expect(result.current.currentPage).toBe(1)
+  })
+
+  it("persists pageSize without persisting the current page", () => {
+    window.localStorage.setItem("datatable:maintenance-plans:page-size", "100")
+
+    const { result, unmount } = renderHook(() => useMaintenancePlanListControls(null))
+
+    expect(result.current.pageSize).toBe(100)
+
+    act(() => {
+      result.current.setCurrentPage(3)
+      result.current.handlePageSizeChange(200)
+    })
+
+    expect(window.localStorage.getItem("datatable:maintenance-plans:page-size")).toBe("200")
+    expect(window.localStorage.getItem("datatable:maintenance-plans:page-index")).toBeNull()
+
+    unmount()
+
+    const nextHook = renderHook(() => useMaintenancePlanListControls(null))
+
+    expect(nextHook.result.current.currentPage).toBe(1)
+    expect(nextHook.result.current.pageSize).toBe(200)
+  })
+
+  it("normalizes non-finite pageSize values before persisting", () => {
+    const { result } = renderHook(() => useMaintenancePlanListControls(null))
+
+    act(() => {
+      result.current.handlePageSizeChange(Number.NaN)
+    })
+
+    expect(result.current.pageSize).toBe(1)
+    expect(window.localStorage.getItem("datatable:maintenance-plans:page-size")).toBe("1")
   })
 })

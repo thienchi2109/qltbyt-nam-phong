@@ -174,6 +174,7 @@ export function DeviceQuotaUnassignedList() {
                 onPreviousPage={() => pagination.setPagination(prev => ({ ...prev, pageIndex: prev.pageIndex - 1 }))}
                 onNextPage={() => pagination.setPagination(prev => ({ ...prev, pageIndex: prev.pageIndex + 1 }))}
                 onLastPage={() => pagination.setPagination(prev => ({ ...prev, pageIndex: pagination.pageCount - 1 }))}
+                onPageJump={(page) => pagination.setPagination(prev => ({ ...prev, pageIndex: page - 1 }))}
               />
             </div>
           </div>

@@ -3,11 +3,15 @@
  * with server-side pagination conveniences (1-based page, resetKey, pageCount).
  */
 import { renderHook, act } from '@testing-library/react'
-import { describe, it, expect } from 'vitest'
+import { beforeEach, describe, it, expect } from 'vitest'
 
 import { useServerPagination } from '@/hooks/useServerPagination'
 
 describe('useServerPagination', () => {
+  beforeEach(() => {
+    window.localStorage.clear()
+  })
+
   it('provides 1-based page number for RPC calls', () => {
     const { result } = renderHook(() =>
       useServerPagination({ totalCount: 100 })
@@ -131,5 +135,19 @@ describe('useServerPagination', () => {
       result.current.resetToFirstPage()
     })
     expect(result.current.page).toBe(1)
+  })
+
+  it('uses a persisted pageSize when pageSizeStorageKey is provided', () => {
+    window.localStorage.setItem('pagination:server-table:page-size', '40')
+
+    const { result } = renderHook(() =>
+      useServerPagination({
+        totalCount: 100,
+        initialPageSize: 20,
+        pageSizeStorageKey: 'pagination:server-table:page-size',
+      })
+    )
+
+    expect(result.current.pageSize).toBe(40)
   })
 })

@@ -123,6 +123,8 @@ export interface UsePaginationStateOptions {
   initialPageSize?: number
   initialPageIndex?: number
   totalCount: number
+  /** Optional localStorage key. Persists pageSize only, never current page. */
+  pageSizeStorageKey?: string
   /** Simple key for reset - changes trigger reset to page 0 */
   resetKey?: string | number
 }

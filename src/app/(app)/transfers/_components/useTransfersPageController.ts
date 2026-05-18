@@ -150,6 +150,7 @@ export function useTransfersPageController(
 
   const transferPagination = useServerPagination({
     totalCount,
+    pageSizeStorageKey: "datatable:transfers:page-size",
     resetKey: paginationResetKey,
   })
 

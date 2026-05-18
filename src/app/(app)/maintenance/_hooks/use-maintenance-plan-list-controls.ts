@@ -1,6 +1,9 @@
 import * as React from "react"
 
 import { useSearchDebounce } from "@/hooks/use-debounce"
+import { normalizePageSize, readPageSizeFromStorage, writePageSizeToStorage } from "@/lib/page-size-storage"
+
+const MAINTENANCE_PLAN_PAGE_SIZE_STORAGE_KEY = "datatable:maintenance-plans:page-size"
 
 export interface MaintenancePlanListControls {
   planSearchTerm: string
@@ -18,7 +21,9 @@ export function useMaintenancePlanListControls(
 ): MaintenancePlanListControls {
   const [planSearchTerm, setPlanSearchTerm] = React.useState("")
   const [currentPage, setCurrentPage] = React.useState(1)
-  const [pageSize, setPageSize] = React.useState(50)
+  const [pageSize, setPageSize] = React.useState(() =>
+    readPageSizeFromStorage(MAINTENANCE_PLAN_PAGE_SIZE_STORAGE_KEY, 50)
+  )
   const debouncedPlanSearch = useSearchDebounce(planSearchTerm)
 
   const previousDebouncedPlanSearch = React.useRef(debouncedPlanSearch)
@@ -54,7 +59,9 @@ export function useMaintenancePlanListControls(
   }, [])
 
   const handlePageSizeChange = React.useCallback((size: number) => {
-    setPageSize(size)
+    const safeSize = normalizePageSize(size)
+    setPageSize(safeSize)
+    writePageSizeToStorage(MAINTENANCE_PLAN_PAGE_SIZE_STORAGE_KEY, safeSize)
     setCurrentPage(1)
   }, [])
 

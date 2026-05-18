@@ -1,16 +1,20 @@
 import * as React from "react"
 import type { UsePaginationStateOptions, UsePaginationStateReturn } from "@/components/shared/DataTablePagination/types"
+import { normalizePageSize, readPageSizeFromStorage, writePageSizeToStorage } from "@/lib/page-size-storage"
+
+type PaginationState = { pageIndex: number; pageSize: number }
 
 export function usePaginationState({
   initialPageSize = 20,
   initialPageIndex = 0,
   totalCount,
+  pageSizeStorageKey,
   resetKey,
 }: UsePaginationStateOptions): UsePaginationStateReturn {
-  const [pagination, setPagination] = React.useState({
+  const [pagination, setPagination] = React.useState(() => ({
     pageIndex: Math.max(0, initialPageIndex),
-    pageSize: Math.max(1, initialPageSize),
-  })
+    pageSize: readPageSizeFromStorage(pageSizeStorageKey, initialPageSize),
+  }))
 
   const pageCount = Math.max(0, Math.ceil(totalCount / pagination.pageSize))
 
@@ -32,24 +36,41 @@ export function usePaginationState({
     }
   }, [pagination.pageIndex, pageCount])
 
+  const setPersistedPagination = React.useCallback<React.Dispatch<React.SetStateAction<PaginationState>>>((nextPagination) => {
+    setPagination(prev => {
+      const resolvedPagination = typeof nextPagination === "function"
+        ? nextPagination(prev)
+        : nextPagination
+      const safePagination = {
+        pageIndex: Math.max(0, resolvedPagination.pageIndex),
+        pageSize: normalizePageSize(resolvedPagination.pageSize),
+      }
+
+      if (safePagination.pageSize !== prev.pageSize) {
+        writePageSizeToStorage(pageSizeStorageKey, safePagination.pageSize)
+      }
+
+      return safePagination
+    })
+  }, [pageSizeStorageKey])
+
   const resetToFirstPage = React.useCallback(() => {
-    setPagination(prev => ({ ...prev, pageIndex: 0 }))
-  }, [])
+    setPersistedPagination(prev => ({ ...prev, pageIndex: 0 }))
+  }, [setPersistedPagination])
 
   const setPageSize = React.useCallback((size: number) => {
-    const safeSize = Math.max(1, size)
-    setPagination({ pageIndex: 0, pageSize: safeSize })
-  }, [])
+    setPersistedPagination({ pageIndex: 0, pageSize: normalizePageSize(size) })
+  }, [setPersistedPagination])
 
   const goToPage = React.useCallback((page: number) => {
     // Accept 1-based page, convert to 0-based internally
-    setPagination(prev => ({ ...prev, pageIndex: Math.max(0, page - 1) }))
-  }, [])
+    setPersistedPagination(prev => ({ ...prev, pageIndex: Math.max(0, page - 1) }))
+  }, [setPersistedPagination])
 
   // Memoize return object to prevent unnecessary re-renders in consumers
   return React.useMemo(() => ({
     pagination,
-    setPagination,
+    setPagination: setPersistedPagination,
     pageCount,
     displayPage: pagination.pageIndex + 1,
     resetToFirstPage,
@@ -57,5 +78,5 @@ export function usePaginationState({
     goToPage,
     canPreviousPage: pagination.pageIndex > 0,
     canNextPage: pagination.pageIndex < pageCount - 1,
-  }), [pagination, pageCount, resetToFirstPage, setPageSize, goToPage])
+  }), [pagination, setPersistedPagination, pageCount, resetToFirstPage, setPageSize, goToPage])
 }

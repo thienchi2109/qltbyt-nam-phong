@@ -1,9 +1,16 @@
 "use client"
 
 import * as React from "react"
-import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from "lucide-react"
+import {
+  ChevronLeft,
+  ChevronRight,
+  ChevronsLeft,
+  ChevronsRight,
+  CornerDownRight,
+} from "lucide-react"
 
 import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
 import { cn } from "@/lib/utils"
 
 const DEFAULT_ARIA_LABELS = {
@@ -27,6 +34,7 @@ export interface DataTablePaginationNavigationProps {
   onPreviousPage: () => void
   onNextPage: () => void
   onLastPage: () => void
+  onPageJump?: (page: number) => void
   showFirstLastAt?: "sm" | "md" | "lg"
   stackAt?: "sm" | "md" | "lg"
   disabled?: boolean
@@ -44,6 +52,81 @@ export interface DataTablePaginationNavigationProps {
   className?: string
 }
 
+interface DataTablePaginationPageJumpProps {
+  currentPage: number
+  totalPages: number
+  isDisabled: boolean | undefined
+  onPageJump: (page: number) => void
+}
+
+const DataTablePaginationPageJump = React.memo(function DataTablePaginationPageJump({
+  currentPage,
+  totalPages,
+  isDisabled,
+  onPageJump,
+}: DataTablePaginationPageJumpProps) {
+  const [pageJumpValue, setPageJumpValue] = React.useState(() =>
+    currentPage > 0 ? String(currentPage) : ""
+  )
+  const canJump = totalPages > 0
+
+  const commitPageJump = React.useCallback(() => {
+    if (isDisabled || totalPages <= 0) {
+      return
+    }
+
+    const parsedPage = Number.parseInt(pageJumpValue, 10)
+    if (Number.isNaN(parsedPage)) {
+      return
+    }
+
+    const nextPage = Math.min(Math.max(parsedPage, 1), totalPages)
+    onPageJump(nextPage)
+    setPageJumpValue(String(nextPage))
+  }, [isDisabled, onPageJump, pageJumpValue, totalPages])
+
+  const handlePageJumpSubmit = React.useCallback(
+    (event: React.FormEvent<HTMLFormElement>) => {
+      event.preventDefault()
+      commitPageJump()
+    },
+    [commitPageJump]
+  )
+
+  return (
+    <form className="flex items-center gap-2" onSubmit={handlePageJumpSubmit}>
+      <Input
+        aria-label="Đi tới trang"
+        type="number"
+        inputMode="numeric"
+        min={1}
+        max={Math.max(1, totalPages)}
+        value={pageJumpValue}
+        onChange={(event) => setPageJumpValue(event.target.value)}
+        onKeyDown={(event) => {
+          if (event.key !== "Enter") {
+            return
+          }
+          event.preventDefault()
+          commitPageJump()
+        }}
+        className="h-8 w-20"
+        disabled={isDisabled || !canJump}
+      />
+      <Button
+        type="button"
+        variant="outline"
+        className="h-8 px-2"
+        disabled={isDisabled || !canJump}
+        aria-label="Đi tới trang"
+        onClick={commitPageJump}
+      >
+        <CornerDownRight className="size-4" />
+      </Button>
+    </form>
+  )
+})
+
 export const DataTablePaginationNavigation = React.memo(function DataTablePaginationNavigation({
   currentPage,
   totalPages,
@@ -53,6 +136,7 @@ export const DataTablePaginationNavigation = React.memo(function DataTablePagina
   onPreviousPage,
   onNextPage,
   onLastPage,
+  onPageJump,
   showFirstLastAt = "sm",
   stackAt = "sm",
   disabled,
@@ -79,7 +163,7 @@ export const DataTablePaginationNavigation = React.memo(function DataTablePagina
 
   return (
     <div className={cn("flex flex-col items-center gap-2", stackClass, className)}>
-      <div 
+      <div
         className="text-sm font-medium"
         role="status"
         aria-live="polite"
@@ -87,6 +171,15 @@ export const DataTablePaginationNavigation = React.memo(function DataTablePagina
       >
         {resolvedLabels.pageIndicator} {currentPage} {resolvedLabels.pageSeparator} {totalPages}
       </div>
+      {onPageJump ? (
+        <DataTablePaginationPageJump
+          key={currentPage}
+          currentPage={currentPage}
+          totalPages={totalPages}
+          isDisabled={isDisabled}
+          onPageJump={onPageJump}
+        />
+      ) : null}
       <div className="flex items-center gap-x-2">
         <Button
           type="button"
