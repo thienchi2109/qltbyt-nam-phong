@@ -77,7 +77,7 @@ class SuggestionService:
 
         for item in request.deviceNames:
             normalized_name = normalize_text(item.name)
-            embedding, hit = self._device_embedding(normalized_name, item.name)
+            embedding, hit = self._device_embedding(normalized_name)
             if hit:
                 device_hits += 1
             candidates = rank_categories(
@@ -130,6 +130,11 @@ class SuggestionService:
 
         normalized = [normalize_text(category.name) for category in request.categories]
         embeddings = self.embedding_backend.embed(normalized)
+        if len(embeddings) != len(request.categories):
+            raise ValueError(
+                "Embedding response count mismatch: expected %d category vectors, received %d"
+                % (len(request.categories), len(embeddings))
+            )
         vectors = [
             CategoryVector(
                 category=category,
@@ -146,14 +151,20 @@ class SuggestionService:
             self._category_embedding_cache[key] = vectors
         return vectors, False
 
-    def _device_embedding(self, normalized_name: str, raw_name: str) -> Tuple[List[float], bool]:
+    def _device_embedding(self, normalized_name: str) -> Tuple[List[float], bool]:
         key = self._device_key(normalized_name)
         with self._lock:
             cached = self._device_embedding_cache.get(key)
             if cached is not None:
                 return cached, True
 
-        embedding = self.embedding_backend.embed([raw_name])[0]
+        embeddings = self.embedding_backend.embed([normalized_name])
+        if len(embeddings) != 1:
+            raise ValueError(
+                "Embedding response count mismatch: expected 1 device vector, received %d"
+                % len(embeddings)
+            )
+        embedding = embeddings[0]
         with self._lock:
             self._device_embedding_cache[key] = embedding
         return embedding, False

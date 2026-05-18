@@ -7,7 +7,8 @@ _SPACE_RE = re.compile(r"\s+")
 
 
 def normalize_text(value: str) -> str:
-    decomposed = unicodedata.normalize("NFKD", value)
+    vietnamese_d = value.replace("đ", "d").replace("Đ", "D")
+    decomposed = unicodedata.normalize("NFKD", vietnamese_d)
     without_marks = "".join(
         char for char in decomposed if not unicodedata.combining(char)
     )

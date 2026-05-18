@@ -1,4 +1,5 @@
 from app.embeddings import MappingEmbeddingBackend
+from app.embeddings import ShortEmbeddingBackend
 from app.service import SuggestionService
 
 
@@ -83,3 +84,22 @@ def test_low_confidence_or_small_margin_requires_review():
     )
 
     assert result["suggestions"][0]["needsReview"] is True
+
+
+def test_category_embedding_count_mismatch_fails_fast():
+    service = SuggestionService(embedding_backend=ShortEmbeddingBackend())
+
+    try:
+        service.suggest(
+            payload_for(
+                [{"name": "Monitor", "deviceIds": [1]}],
+                [
+                    {"id": 1, "code": "A", "name": "Monitor", "classification": None},
+                    {"id": 2, "code": "B", "name": "Bom tiem", "classification": None},
+                ],
+            )
+        )
+    except ValueError as exc:
+        assert "Embedding response count mismatch" in str(exc)
+    else:
+        raise AssertionError("Expected embedding count mismatch to fail fast")

@@ -114,9 +114,12 @@ class SentenceTransformerEmbeddingBackend(EmbeddingBackend):
         normalized = normalize_text(text)
         try:
             from pyvi import ViTokenizer
+        except ImportError:
+            return normalized
 
+        try:
             return ViTokenizer.tokenize(normalized)
-        except Exception:
+        except (AttributeError, TypeError, ValueError):
             return normalized
 
 
@@ -142,3 +145,22 @@ class LazyInitCountingBackend(SentenceTransformerEmbeddingBackend):
     def embed(self, texts: Iterable[str]) -> List[List[float]]:
         self._ensure_model()
         return self._fallback.embed(texts)
+
+
+class RecordingEmbeddingBackend(DeterministicEmbeddingBackend):
+    def __init__(self):
+        self.seen_text_batches: List[List[str]] = []
+
+    def embed(self, texts: Iterable[str]) -> List[List[float]]:
+        batch = list(texts)
+        self.seen_text_batches.append(batch)
+        return super().embed(batch)
+
+    def flattened_seen_texts(self) -> List[str]:
+        return [text for batch in self.seen_text_batches for text in batch]
+
+
+class ShortEmbeddingBackend(DeterministicEmbeddingBackend):
+    def embed(self, texts: Iterable[str]) -> List[List[float]]:
+        vectors = super().embed(texts)
+        return vectors[:-1]

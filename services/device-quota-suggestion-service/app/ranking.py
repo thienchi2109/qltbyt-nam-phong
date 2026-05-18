@@ -26,8 +26,13 @@ def cosine_similarity(left: List[float], right: List[float]) -> float:
 
 
 def lexical_similarity(left: str, right: str) -> float:
-    left_normalized = normalize_text(left)
-    right_normalized = normalize_text(right)
+    return lexical_similarity_normalized(
+        normalize_text(left),
+        normalize_text(right),
+    )
+
+
+def lexical_similarity_normalized(left_normalized: str, right_normalized: str) -> float:
     if not left_normalized or not right_normalized:
         return 0.0
     if left_normalized == right_normalized:
@@ -58,9 +63,13 @@ def rank_categories(
     categories: List[CategoryVector],
     options: SuggestOptions,
 ) -> List[dict]:
+    device_normalized = normalize_text(device_name)
     ranked = []
     for category_vector in categories:
-        lexical = lexical_similarity(device_name, category_vector.category.name)
+        lexical = lexical_similarity_normalized(
+            device_normalized,
+            category_vector.normalized_name,
+        )
         semantic = cosine_similarity(device_embedding, category_vector.embedding)
         score = fused_score(lexical, semantic, options)
         ranked.append(

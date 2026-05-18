@@ -2,6 +2,7 @@ from concurrent.futures import ThreadPoolExecutor
 
 from app.embeddings import CountingEmbeddingBackend
 from app.embeddings import LazyInitCountingBackend
+from app.embeddings import RecordingEmbeddingBackend
 from app.service import SuggestionService
 
 
@@ -43,6 +44,23 @@ def test_cached_response_preserves_the_current_request_id():
     assert first["requestId"] == "req-cache"
     assert second["requestId"] == "req-cache-second"
     assert second["cache"]["requestHit"] is True
+
+
+def test_device_embedding_uses_normalized_name_for_cache_consistent_vectors():
+    backend = RecordingEmbeddingBackend()
+    service = SuggestionService(embedding_backend=backend)
+    first_payload = payload()
+    second_payload = payload()
+    first_payload["deviceNames"] = [{"name": "Bơm tiêm điện", "deviceIds": [1]}]
+    second_payload["requestId"] = "req-normalized-second"
+    second_payload["unassignedSignature"] = "unassigned-cache-2"
+    second_payload["deviceNames"] = [{"name": "Bom tiem dien", "deviceIds": [2]}]
+
+    service.suggest(first_payload)
+    service.suggest(second_payload)
+
+    assert "bom tiem dien" in backend.seen_text_batches[-1]
+    assert "Bơm tiêm điện" not in backend.flattened_seen_texts()
 
 
 def test_duplicate_concurrent_requests_share_single_flight_work():
