@@ -92,6 +92,23 @@ def test_duplicate_concurrent_request_failures_propagate_original_error():
             raise AssertionError("Expected backend failure to propagate")
 
 
+def test_failed_single_flight_requests_do_not_retain_error_state():
+    service = SuggestionService(embedding_backend=FailingEmbeddingBackend())
+
+    for index in range(5):
+        failing_payload = payload()
+        failing_payload["unassignedSignature"] = "failed-unassigned-%d" % index
+        try:
+            service.suggest(failing_payload)
+        except RuntimeError as exc:
+            assert "embedding backend failed" in str(exc)
+        else:
+            raise AssertionError("Expected backend failure to propagate")
+
+    assert service._inflight == {}
+    assert getattr(service, "_inflight_errors", {}) == {}
+
+
 def test_lazy_embedding_backend_initializes_model_once_under_concurrency():
     backend = LazyInitCountingBackend(delay_seconds=0.05)
 

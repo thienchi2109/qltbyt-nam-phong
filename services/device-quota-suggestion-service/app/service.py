@@ -1,15 +1,23 @@
 import copy
+from dataclasses import dataclass
 import hashlib
 import json
 import threading
 import time
-from typing import Dict, List, Tuple
+from typing import Dict, List, Optional, Tuple
 
 from app.embeddings import EmbeddingBackend
 from app.normalization import normalize_text
 from app.ranking import CategoryVector, needs_review, rank_categories
 from app.schemas import CategoryItem, ResponseDict, SuggestRequest
 from app.settings import Settings
+
+
+@dataclass
+class _InflightRequest:
+    condition: threading.Condition
+    done: bool = False
+    error: Optional[BaseException] = None
 
 
 class SuggestionService:
@@ -23,8 +31,7 @@ class SuggestionService:
         self._category_embedding_cache: Dict[str, List[CategoryVector]] = {}
         self._device_embedding_cache: Dict[str, List[float]] = {}
         self._request_cache: Dict[str, ResponseDict] = {}
-        self._inflight: Dict[str, threading.Condition] = {}
-        self._inflight_errors: Dict[str, BaseException] = {}
+        self._inflight: Dict[str, _InflightRequest] = {}
         self._lock = threading.Lock()
 
     def is_ready(self) -> bool:
@@ -41,18 +48,17 @@ class SuggestionService:
             cached = self._request_cache.get(request_key)
             if cached is not None:
                 return self._cache_hit_response(cached, request.requestId)
-            condition = self._inflight.get(request_key)
-            if condition is None:
-                self._inflight_errors.pop(request_key, None)
-                condition = threading.Condition(self._lock)
-                self._inflight[request_key] = condition
+            inflight = self._inflight.get(request_key)
+            if inflight is None:
+                inflight = _InflightRequest(threading.Condition(self._lock))
+                self._inflight[request_key] = inflight
                 leader = True
             else:
                 leader = False
-                while request_key in self._inflight:
-                    condition.wait()
-                if request_key in self._inflight_errors:
-                    raise self._inflight_errors[request_key]
+                while not inflight.done:
+                    inflight.condition.wait()
+                if inflight.error is not None:
+                    raise inflight.error
                 cached = self._request_cache[request_key]
                 return self._cache_hit_response(cached, request.requestId)
 
@@ -63,15 +69,17 @@ class SuggestionService:
             result = self._compute(request)
         except Exception as error:
             with self._lock:
-                self._inflight_errors[request_key] = error
-                condition = self._inflight.pop(request_key)
-                condition.notify_all()
+                inflight = self._inflight.pop(request_key)
+                inflight.error = error
+                inflight.done = True
+                inflight.condition.notify_all()
             raise
 
         with self._lock:
             self._request_cache[request_key] = copy.deepcopy(result)
-            condition = self._inflight.pop(request_key)
-            condition.notify_all()
+            inflight = self._inflight.pop(request_key)
+            inflight.done = True
+            inflight.condition.notify_all()
         return result
 
     def _compute(self, request: SuggestRequest) -> ResponseDict:
