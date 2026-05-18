@@ -8,7 +8,7 @@ from typing import Dict, List, Optional, Tuple
 
 from app.embeddings import EmbeddingBackend
 from app.normalization import normalize_text
-from app.ranking import CategoryVector, needs_review, rank_categories
+from app.ranking import CategoryVector, needs_review, normalize_vector, rank_categories
 from app.schemas import CategoryItem, ResponseDict, SuggestRequest
 from app.settings import Settings
 
@@ -87,10 +87,11 @@ class SuggestionService:
         categories, category_hit = self._category_vectors(request)
         suggestions = []
         device_hits = 0
+        normalized_names = [normalize_text(item.name) for item in request.deviceNames]
+        device_embeddings = self._device_embeddings(normalized_names)
 
-        for item in request.deviceNames:
-            normalized_name = normalize_text(item.name)
-            embedding, hit = self._device_embedding(normalized_name)
+        for item, normalized_name in zip(request.deviceNames, normalized_names):
+            embedding, hit = device_embeddings[normalized_name]
             if hit:
                 device_hits += 1
             candidates = rank_categories(
@@ -152,7 +153,7 @@ class SuggestionService:
             CategoryVector(
                 category=category,
                 normalized_name=normalized_name,
-                embedding=embedding,
+                embedding=normalize_vector(embedding),
             )
             for category, normalized_name, embedding in zip(
                 request.categories,
@@ -164,23 +165,39 @@ class SuggestionService:
             self._category_embedding_cache[key] = vectors
         return vectors, False
 
-    def _device_embedding(self, normalized_name: str) -> Tuple[List[float], bool]:
-        key = self._device_key(normalized_name)
-        with self._lock:
-            cached = self._device_embedding_cache.get(key)
-            if cached is not None:
-                return cached, True
+    def _device_embeddings(
+        self,
+        normalized_names: List[str],
+    ) -> Dict[str, Tuple[List[float], bool]]:
+        unique_names = list(dict.fromkeys(normalized_names))
+        results: Dict[str, Tuple[List[float], bool]] = {}
+        missing_names: List[str] = []
 
-        embeddings = self.embedding_backend.embed([normalized_name])
-        if len(embeddings) != 1:
-            raise ValueError(
-                "Embedding response count mismatch: expected 1 device vector, received %d"
-                % len(embeddings)
-            )
-        embedding = embeddings[0]
         with self._lock:
-            self._device_embedding_cache[key] = embedding
-        return embedding, False
+            for normalized_name in unique_names:
+                key = self._device_key(normalized_name)
+                cached = self._device_embedding_cache.get(key)
+                if cached is not None:
+                    results[normalized_name] = (cached, True)
+                else:
+                    missing_names.append(normalized_name)
+
+        if not missing_names:
+            return results
+
+        embeddings = self.embedding_backend.embed(missing_names)
+        if len(embeddings) != len(missing_names):
+            raise ValueError(
+                "Embedding response count mismatch: expected %d device vectors, received %d"
+                % (len(missing_names), len(embeddings))
+            )
+
+        normalized_embeddings = [normalize_vector(embedding) for embedding in embeddings]
+        with self._lock:
+            for normalized_name, embedding in zip(missing_names, normalized_embeddings):
+                self._device_embedding_cache[self._device_key(normalized_name)] = embedding
+                results[normalized_name] = (embedding, False)
+        return results
 
     def _engine_signature(self) -> str:
         return "%s:%s:%s" % (

@@ -75,6 +75,7 @@ const PREVIEW_RESULT = {
 describe("POST /api/device-quota/mapping/suggest", () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    vi.unstubAllEnvs()
     getServerSessionMock.mockResolvedValue(SESSION)
     assertSuggestionAccessMock.mockResolvedValue(undefined)
     runSuggestMappingMock.mockResolvedValue({
@@ -171,6 +172,74 @@ describe("POST /api/device-quota/mapping/suggest", () => {
     )
   })
 
+  test("selects the VM provider when explicitly configured", async () => {
+    vi.stubEnv("DEVICE_QUOTA_SUGGESTION_PROVIDER", "vm")
+
+    const { POST } = await import("@/app/api/device-quota/mapping/suggest/route")
+    const response = await POST(createRequest({ donViId: 17 }))
+
+    expect(response.status).toBe(200)
+    expect(runSuggestMappingMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        donViId: 17,
+        provider: "vm",
+      })
+    )
+    expect(await response.json()).toEqual(
+      expect.objectContaining({
+        meta: expect.objectContaining({
+          provider: "vm",
+        }),
+      })
+    )
+  })
+
+  test("uses VM only for canary allow-listed facilities", async () => {
+    vi.stubEnv("DEVICE_QUOTA_SUGGESTION_PROVIDER", "canary")
+    vi.stubEnv("DEVICE_QUOTA_SUGGESTION_CANARY_DON_VI_IDS", "17,21")
+
+    const { POST } = await import("@/app/api/device-quota/mapping/suggest/route")
+    const response = await POST(createRequest({ donViId: 17 }))
+
+    expect(response.status).toBe(200)
+    expect(runSuggestMappingMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        donViId: 17,
+        provider: "vm",
+      })
+    )
+    expect(await response.json()).toEqual(
+      expect.objectContaining({
+        meta: expect.objectContaining({
+          provider: "vm",
+        }),
+      })
+    )
+  })
+
+  test("keeps Supabase for canary facilities outside the allow-list", async () => {
+    vi.stubEnv("DEVICE_QUOTA_SUGGESTION_PROVIDER", "canary")
+    vi.stubEnv("DEVICE_QUOTA_SUGGESTION_CANARY_DON_VI_IDS", "17,21")
+
+    const { POST } = await import("@/app/api/device-quota/mapping/suggest/route")
+    const response = await POST(createRequest({ donViId: 18 }))
+
+    expect(response.status).toBe(200)
+    expect(runSuggestMappingMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        donViId: 18,
+        provider: "supabase",
+      })
+    )
+    expect(await response.json()).toEqual(
+      expect.objectContaining({
+        meta: expect.objectContaining({
+          provider: "supabase",
+        }),
+      })
+    )
+  })
+
   test("logs request metadata without secrets on success and failure", async () => {
     const { POST } = await import("@/app/api/device-quota/mapping/suggest/route")
     await POST(createRequest({ donViId: 17 }))
@@ -227,6 +296,31 @@ describe("POST /api/device-quota/mapping/suggest", () => {
         error: "Forbidden: facility scope denied",
         details: { reason: "region_mismatch" },
         requestId: expect.any(String),
+      })
+    )
+  })
+
+  test.each([
+    [429, "Suggestion request cooldown is active"],
+    [503, "VM suggestion provider circuit is open"],
+    [413, "VM suggestion payload is too large"],
+  ])("surfaces controlled %s suggestion errors to the client", async (status, message) => {
+    runSuggestMappingMock.mockRejectedValueOnce(
+      Object.assign(new Error(message), {
+        status,
+        details: { requestScope: "device-quota-suggest" },
+      })
+    )
+
+    const { POST } = await import("@/app/api/device-quota/mapping/suggest/route")
+    const response = await POST(createRequest({ donViId: 17 }))
+
+    expect(response.status).toBe(status)
+    expect(await response.json()).toEqual(
+      expect.objectContaining({
+        error: message,
+        requestId: expect.any(String),
+        details: { requestScope: "device-quota-suggest" },
       })
     )
   })
