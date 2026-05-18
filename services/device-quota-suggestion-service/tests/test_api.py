@@ -48,64 +48,60 @@ def sample_payload():
 
 
 def test_health_and_readiness_endpoints_are_available():
-    client = build_client()
+    with build_client() as client:
+        assert client.get("/healthz").json() == {"status": "ok"}
 
-    assert client.get("/healthz").json() == {"status": "ok"}
-
-    ready = client.get("/readyz")
-    assert ready.status_code == 200
-    assert ready.json()["ready"] is True
+        ready = client.get("/readyz")
+        assert ready.status_code == 200
+        assert ready.json()["ready"] is True
 
 
 def test_suggest_requires_internal_token():
-    client = build_client()
+    with build_client() as client:
+        missing = client.post("/suggest", json=sample_payload())
+        assert missing.status_code == 401
 
-    missing = client.post("/suggest", json=sample_payload())
-    assert missing.status_code == 401
-
-    wrong = client.post(
-        "/suggest",
-        json=sample_payload(),
-        headers={"X-Internal-Token": "wrong-token"},
-    )
-    assert wrong.status_code == 403
+        wrong = client.post(
+            "/suggest",
+            json=sample_payload(),
+            headers={"X-Internal-Token": "wrong-token"},
+        )
+        assert wrong.status_code == 403
 
 
 def test_suggest_rejects_malformed_payload():
-    client = build_client()
+    with build_client() as client:
+        response = client.post(
+            "/suggest",
+            json={"requestId": "req-bad"},
+            headers={"X-Internal-Token": "test-token"},
+        )
 
-    response = client.post(
-        "/suggest",
-        json={"requestId": "req-bad"},
-        headers={"X-Internal-Token": "test-token"},
-    )
-
-    assert response.status_code == 422
+        assert response.status_code == 422
 
 
 def test_suggest_returns_bounded_candidates_provider_cache_and_timing_metadata():
-    client = build_client()
+    with build_client() as client:
+        response = client.post(
+            "/suggest",
+            json=sample_payload(),
+            headers={"X-Internal-Token": "test-token"},
+        )
 
-    response = client.post(
-        "/suggest",
-        json=sample_payload(),
-        headers={"X-Internal-Token": "test-token"},
-    )
-
-    assert response.status_code == 200
-    body = response.json()
-    assert body["requestId"] == "req-api"
-    assert body["provider"] == {
-        "name": "vm-local",
-        "version": "0.1.0",
-        "model": "deterministic-test-embedding",
-    }
-    assert body["timings"]["totalMs"] >= 0
-    assert body["cache"]["requestHit"] is False
-    assert body["suggestions"][0]["deviceName"] == "Monitor theo doi benh nhan"
-    assert body["suggestions"][0]["candidates"][0]["categoryId"] == 291
-    assert body["suggestions"][0]["needsReview"] is False
-    assert len(body["suggestions"][0]["candidates"]) <= 2
+        assert response.status_code == 200
+        body = response.json()
+        assert body["requestId"] == "req-api"
+        assert body["provider"] == {
+            "name": "vm-local",
+            "version": "0.1.0",
+            "model": "deterministic-test-embedding",
+        }
+        assert body["timings"]["totalMs"] >= 0
+        assert body["cache"]["requestHit"] is False
+        assert body["suggestions"][0]["deviceName"] == "Monitor theo doi benh nhan"
+        assert body["suggestions"][0]["candidates"][0]["categoryId"] == 291
+        assert body["suggestions"][0]["needsReview"] is False
+        assert len(body["suggestions"][0]["candidates"]) <= 2
 
 
 def test_runtime_settings_require_internal_token(monkeypatch):
