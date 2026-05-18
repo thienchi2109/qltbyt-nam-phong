@@ -193,6 +193,16 @@ describe('DataTablePagination', () => {
     expect(onPaginationChange).toHaveBeenCalledWith({ pageIndex: 9, pageSize: 5 })
   })
 
+  it('syncs page jump input after controlled navigation', () => {
+    render(<ControlledWrapper totalCount={60} />)
+
+    const input = screen.getByRole('spinbutton', { name: /đi tới trang/i })
+    fireEvent.change(input, { target: { value: '10' } })
+    fireEvent.click(screen.getByRole('button', { name: /Trang ti/i }))
+
+    expect(screen.getByRole('spinbutton', { name: /đi tới trang/i })).toHaveValue(2)
+  })
+
   it('disables page jump controls while loading', () => {
     render(<ServerWrapper isLoading onPageChange={vi.fn()} />)
 

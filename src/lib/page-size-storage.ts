@@ -1,5 +1,9 @@
+export function normalizePageSize(value: number): number {
+  return Number.isFinite(value) ? Math.max(1, Math.trunc(value)) : 1
+}
+
 export function readPageSizeFromStorage(key: string | undefined, fallback: number): number {
-  const safeFallback = Math.max(1, fallback)
+  const safeFallback = normalizePageSize(fallback)
   if (!key || typeof window === "undefined") {
     return safeFallback
   }
@@ -24,7 +28,7 @@ export function writePageSizeToStorage(key: string | undefined, pageSize: number
   }
 
   try {
-    window.localStorage.setItem(key, String(Math.max(1, pageSize)))
+    window.localStorage.setItem(key, String(normalizePageSize(pageSize)))
   } catch (error) {
     console.warn(`Error writing page size storage key "${key}":`, error)
   }

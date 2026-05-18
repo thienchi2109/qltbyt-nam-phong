@@ -73,4 +73,15 @@ describe("useMaintenancePlanListControls", () => {
     expect(nextHook.result.current.currentPage).toBe(1)
     expect(nextHook.result.current.pageSize).toBe(200)
   })
+
+  it("normalizes non-finite pageSize values before persisting", () => {
+    const { result } = renderHook(() => useMaintenancePlanListControls(null))
+
+    act(() => {
+      result.current.handlePageSizeChange(Number.NaN)
+    })
+
+    expect(result.current.pageSize).toBe(1)
+    expect(window.localStorage.getItem("datatable:maintenance-plans:page-size")).toBe("1")
+  })
 })

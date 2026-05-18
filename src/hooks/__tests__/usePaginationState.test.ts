@@ -109,4 +109,20 @@ describe('usePaginationState', () => {
 
     expect(nextHook.result.current.pagination).toEqual({ pageIndex: 0, pageSize: 50 })
   })
+
+  it('normalizes non-finite page sizes before storing them', () => {
+    const { result } = renderHook(() =>
+      usePaginationState({
+        totalCount: 300,
+        pageSizeStorageKey: 'pagination:test-table:page-size',
+      })
+    )
+
+    act(() => {
+      result.current.setPageSize(Number.NaN)
+    })
+
+    expect(result.current.pagination.pageSize).toBe(1)
+    expect(window.localStorage.getItem('pagination:test-table:page-size')).toBe('1')
+  })
 })

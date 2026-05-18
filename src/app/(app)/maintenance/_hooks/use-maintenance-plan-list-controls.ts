@@ -1,7 +1,7 @@
 import * as React from "react"
 
 import { useSearchDebounce } from "@/hooks/use-debounce"
-import { readPageSizeFromStorage, writePageSizeToStorage } from "@/lib/page-size-storage"
+import { normalizePageSize, readPageSizeFromStorage, writePageSizeToStorage } from "@/lib/page-size-storage"
 
 const MAINTENANCE_PLAN_PAGE_SIZE_STORAGE_KEY = "datatable:maintenance-plans:page-size"
 
@@ -59,7 +59,7 @@ export function useMaintenancePlanListControls(
   }, [])
 
   const handlePageSizeChange = React.useCallback((size: number) => {
-    const safeSize = Math.max(1, size)
+    const safeSize = normalizePageSize(size)
     setPageSize(safeSize)
     writePageSizeToStorage(MAINTENANCE_PLAN_PAGE_SIZE_STORAGE_KEY, safeSize)
     setCurrentPage(1)

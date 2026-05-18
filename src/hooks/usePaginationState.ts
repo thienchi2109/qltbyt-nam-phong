@@ -1,6 +1,6 @@
 import * as React from "react"
 import type { UsePaginationStateOptions, UsePaginationStateReturn } from "@/components/shared/DataTablePagination/types"
-import { readPageSizeFromStorage, writePageSizeToStorage } from "@/lib/page-size-storage"
+import { normalizePageSize, readPageSizeFromStorage, writePageSizeToStorage } from "@/lib/page-size-storage"
 
 type PaginationState = { pageIndex: number; pageSize: number }
 
@@ -11,10 +11,10 @@ export function usePaginationState({
   pageSizeStorageKey,
   resetKey,
 }: UsePaginationStateOptions): UsePaginationStateReturn {
-  const [pagination, setPagination] = React.useState({
+  const [pagination, setPagination] = React.useState(() => ({
     pageIndex: Math.max(0, initialPageIndex),
     pageSize: readPageSizeFromStorage(pageSizeStorageKey, initialPageSize),
-  })
+  }))
 
   const pageCount = Math.max(0, Math.ceil(totalCount / pagination.pageSize))
 
@@ -43,7 +43,7 @@ export function usePaginationState({
         : nextPagination
       const safePagination = {
         pageIndex: Math.max(0, resolvedPagination.pageIndex),
-        pageSize: Math.max(1, resolvedPagination.pageSize),
+        pageSize: normalizePageSize(resolvedPagination.pageSize),
       }
 
       if (safePagination.pageSize !== prev.pageSize) {
@@ -59,8 +59,7 @@ export function usePaginationState({
   }, [setPersistedPagination])
 
   const setPageSize = React.useCallback((size: number) => {
-    const safeSize = Math.max(1, size)
-    setPersistedPagination({ pageIndex: 0, pageSize: safeSize })
+    setPersistedPagination({ pageIndex: 0, pageSize: normalizePageSize(size) })
   }, [setPersistedPagination])
 
   const goToPage = React.useCallback((page: number) => {
