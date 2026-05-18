@@ -24,6 +24,16 @@ def cosine_similarity(left: List[float], right: List[float]) -> float:
         return 0.0
     return max(0.0, min(1.0, dot / (left_norm * right_norm)))
 
+def normalize_vector(vector: List[float]) -> List[float]:
+    norm = math.sqrt(sum(value * value for value in vector)) or 1.0
+    return [value / norm for value in vector]
+
+def normalized_dot_similarity(left: List[float], right: List[float]) -> float:
+    if not left or not right or len(left) != len(right):
+        return 0.0
+    dot = sum(a * b for a, b in zip(left, right))
+    return max(0.0, min(1.0, dot))
+
 
 def lexical_similarity(left: str, right: str) -> float:
     return lexical_similarity_normalized(
@@ -70,7 +80,7 @@ def rank_categories(
             device_normalized,
             category_vector.normalized_name,
         )
-        semantic = cosine_similarity(device_embedding, category_vector.embedding)
+        semantic = normalized_dot_similarity(device_embedding, category_vector.embedding)
         score = fused_score(lexical, semantic, options)
         ranked.append(
             {

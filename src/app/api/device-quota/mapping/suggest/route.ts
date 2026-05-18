@@ -7,11 +7,10 @@ import {
   runSuggestMapping,
   SuggestionRouteError,
 } from "@/app/api/device-quota/mapping/suggest/suggestion-service"
+import { selectSuggestionProvider } from "@/app/api/device-quota/mapping/suggest/suggestion-config"
 import type { SuggestionAccessUser } from "@/app/api/device-quota/mapping/suggest/suggestion-types"
 
 export const runtime = "nodejs"
-
-const PROVIDER = "supabase"
 
 function createRequestId(): string {
   return typeof crypto !== "undefined" && "randomUUID" in crypto
@@ -49,6 +48,10 @@ function getErrorDetails(error: unknown): unknown {
   return undefined
 }
 
+function canExposeError(status: number): boolean {
+  return status < 500 || status === 503
+}
+
 function getUserRole(user: SuggestionAccessUser | null): string | null {
   return typeof user?.role === "string" ? user.role.toLowerCase() : null
 }
@@ -84,14 +87,21 @@ export async function POST(request: NextRequest) {
     }
 
     await assertSuggestionAccess(user, donViId)
-    const providerResult = await runSuggestMapping({ donViId, provider: PROVIDER, user })
+    const providerSelection = selectSuggestionProvider(donViId)
+    const providerResult = await runSuggestMapping({
+      donViId,
+      provider: providerSelection.provider,
+      requestId,
+      user,
+    })
     const durationMs = Date.now() - startedAt
 
     console.info("[device-quota-suggest]", {
       requestId,
       donViId,
       role,
-      provider: PROVIDER,
+      provider: providerSelection.provider,
+      providerPolicy: providerSelection.policy,
       status: "success",
       itemCounts: providerResult.itemCounts,
       durationMs,
@@ -101,7 +111,8 @@ export async function POST(request: NextRequest) {
       result: providerResult.result,
       meta: {
         requestId,
-        provider: PROVIDER,
+        provider: providerSelection.provider,
+        providerPolicy: providerSelection.policy,
         itemCounts: providerResult.itemCounts,
         catalogSignature: providerResult.catalogSignature,
       },
@@ -109,15 +120,16 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     const status = getErrorStatus(error)
     const failureReason = getErrorMessage(error)
-    const responseMessage = status >= 500 ? "Internal server error" : failureReason
-    const details = status >= 500 ? undefined : getErrorDetails(error)
+    const exposeError = canExposeError(status)
+    const responseMessage = exposeError ? failureReason : "Internal server error"
+    const details = exposeError ? getErrorDetails(error) : undefined
     const durationMs = Date.now() - startedAt
 
     console.error("[device-quota-suggest]", {
       requestId,
       donViId,
       role,
-      provider: PROVIDER,
+      provider: donViId === null ? "unknown" : selectSuggestionProvider(donViId).provider,
       status: "error",
       failureReason,
       durationMs,
