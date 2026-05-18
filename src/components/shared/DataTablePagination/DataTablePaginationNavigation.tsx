@@ -1,9 +1,16 @@
 "use client"
 
 import * as React from "react"
-import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from "lucide-react"
+import {
+  ChevronLeft,
+  ChevronRight,
+  ChevronsLeft,
+  ChevronsRight,
+  CornerDownRight,
+} from "lucide-react"
 
 import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
 import { cn } from "@/lib/utils"
 
 const DEFAULT_ARIA_LABELS = {
@@ -27,6 +34,7 @@ export interface DataTablePaginationNavigationProps {
   onPreviousPage: () => void
   onNextPage: () => void
   onLastPage: () => void
+  onPageJump?: (page: number) => void
   showFirstLastAt?: "sm" | "md" | "lg"
   stackAt?: "sm" | "md" | "lg"
   disabled?: boolean
@@ -53,6 +61,7 @@ export const DataTablePaginationNavigation = React.memo(function DataTablePagina
   onPreviousPage,
   onNextPage,
   onLastPage,
+  onPageJump,
   showFirstLastAt = "sm",
   stackAt = "sm",
   disabled,
@@ -61,9 +70,20 @@ export const DataTablePaginationNavigation = React.memo(function DataTablePagina
   labels,
   className,
 }: DataTablePaginationNavigationProps) {
+  const [pageJumpValue, setPageJumpValue] = React.useState(() =>
+    currentPage > 0 ? String(currentPage) : ""
+  )
+  const previousCurrentPage = React.useRef(currentPage)
+  const hasPageChanged = currentPage !== previousCurrentPage.current
+  const displayedPageJumpValue = hasPageChanged
+    ? (currentPage > 0 ? String(currentPage) : "")
+    : pageJumpValue
+  previousCurrentPage.current = currentPage
+
   const resolvedAriaLabels = { ...DEFAULT_ARIA_LABELS, ...ariaLabels }
   const resolvedLabels = { ...DEFAULT_LABELS, ...labels }
   const isDisabled = disabled || isLoading
+  const canJump = Boolean(onPageJump) && totalPages > 0
   const showFirstLastClass =
     showFirstLastAt === "md"
       ? "md:flex"
@@ -77,9 +97,34 @@ export const DataTablePaginationNavigation = React.memo(function DataTablePagina
         ? "lg:flex-row lg:gap-3"
         : "sm:flex-row sm:gap-3"
 
+  const commitPageJump = React.useCallback(() => {
+    if (!onPageJump || isDisabled || totalPages <= 0) {
+      return
+    }
+
+    const parsedPage = Number.parseInt(displayedPageJumpValue, 10)
+    if (Number.isNaN(parsedPage)) {
+      return
+    }
+
+    const nextPage = Math.min(Math.max(parsedPage, 1), totalPages)
+    onPageJump(nextPage)
+    setPageJumpValue(String(nextPage))
+  },
+    [displayedPageJumpValue, isDisabled, onPageJump, totalPages]
+  )
+
+  const handlePageJumpSubmit = React.useCallback(
+    (event: React.FormEvent<HTMLFormElement>) => {
+      event.preventDefault()
+      commitPageJump()
+    },
+    [commitPageJump]
+  )
+
   return (
     <div className={cn("flex flex-col items-center gap-2", stackClass, className)}>
-      <div 
+      <div
         className="text-sm font-medium"
         role="status"
         aria-live="polite"
@@ -87,6 +132,38 @@ export const DataTablePaginationNavigation = React.memo(function DataTablePagina
       >
         {resolvedLabels.pageIndicator} {currentPage} {resolvedLabels.pageSeparator} {totalPages}
       </div>
+      {onPageJump ? (
+        <form className="flex items-center gap-2" onSubmit={handlePageJumpSubmit}>
+          <Input
+            aria-label="Đi tới trang"
+            type="number"
+            inputMode="numeric"
+            min={1}
+            max={Math.max(1, totalPages)}
+            value={displayedPageJumpValue}
+            onChange={(event) => setPageJumpValue(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key !== "Enter") {
+                return
+              }
+              event.preventDefault()
+              commitPageJump()
+            }}
+            className="h-8 w-20"
+            disabled={isDisabled || !canJump}
+          />
+          <Button
+            type="button"
+            variant="outline"
+            className="h-8 px-2"
+            disabled={isDisabled || !canJump}
+            aria-label="Đi tới trang"
+            onClick={commitPageJump}
+          >
+            <CornerDownRight className="size-4" />
+          </Button>
+        </form>
+      ) : null}
       <div className="flex items-center gap-x-2">
         <Button
           type="button"

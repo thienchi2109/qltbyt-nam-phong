@@ -125,6 +125,14 @@ export function DataTablePaginationMain<TData extends RowData>({
     setPageIndex(lastPageIndex)
   }, [setPageIndex, lastPageIndex])
 
+  const handlePageJump = React.useCallback(
+    (page: number) => {
+      const safePage = totalPages > 0 ? Math.min(Math.max(page, 1), totalPages) : 1
+      setPageIndex(safePage - 1)
+    },
+    [setPageIndex, totalPages]
+  )
+
   // Early return AFTER all hooks
   if (!enabled) {
     return null
@@ -217,6 +225,7 @@ export function DataTablePaginationMain<TData extends RowData>({
             onPreviousPage={handlePreviousPage}
             onNextPage={handleNextPage}
             onLastPage={handleLastPage}
+            onPageJump={isServer || isControlled ? handlePageJump : undefined}
             showFirstLastAt={showFirstLastAt}
             stackAt={stackLayoutAt}
             disabled={disabled}

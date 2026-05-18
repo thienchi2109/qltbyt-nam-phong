@@ -14,6 +14,7 @@ import { usePaginationState } from '@/hooks/usePaginationState'
 export interface UseServerPaginationOptions {
   totalCount: number
   initialPageSize?: number
+  pageSizeStorageKey?: string
   resetKey?: string | number | null
 }
 
@@ -38,11 +39,13 @@ export interface UseServerPaginationReturn {
 export function useServerPagination({
   totalCount,
   initialPageSize = 20,
+  pageSizeStorageKey,
   resetKey,
 }: UseServerPaginationOptions): UseServerPaginationReturn {
   const state = usePaginationState({
     totalCount,
     initialPageSize,
+    pageSizeStorageKey,
     resetKey: resetKey ?? undefined,
   })
 

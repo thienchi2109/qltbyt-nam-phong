@@ -68,6 +68,7 @@ export function useRepairRequestsData(
   const [totalRequests, setTotalRequests] = React.useState(0)
   const repairPagination = useServerPagination({
     totalCount: totalRequests,
+    pageSizeStorageKey: "datatable:repair-requests:page-size",
     resetKey: paginationResetKey,
   })
 

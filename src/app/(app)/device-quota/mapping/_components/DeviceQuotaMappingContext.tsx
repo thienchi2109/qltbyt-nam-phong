@@ -84,6 +84,7 @@ export function DeviceQuotaMappingProvider({ children }: DeviceQuotaMappingProvi
   const paginationState = useServerPagination({
     totalCount: paginationTotalCount,
     initialPageSize: 20,
+    pageSizeStorageKey: "datatable:device-quota-unassigned:page-size",
     resetKey: paginationResetKey,
   })
 

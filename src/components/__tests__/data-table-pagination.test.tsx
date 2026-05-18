@@ -48,8 +48,21 @@ function TanstackWrapper() {
   )
 }
 
-function ControlledWrapper() {
+function ControlledWrapper({
+  totalCount = DATA.length,
+  onPaginationChange,
+}: {
+  totalCount?: number
+  onPaginationChange?: (pagination: { pageIndex: number; pageSize: number }) => void
+}) {
   const [pagination, setPagination] = React.useState({ pageIndex: 0, pageSize: 5 })
+  const handlePaginationChange = React.useCallback(
+    (nextPagination: { pageIndex: number; pageSize: number }) => {
+      setPagination(nextPagination)
+      onPaginationChange?.(nextPagination)
+    },
+    [onPaginationChange]
+  )
   const table = useReactTable({
     data: DATA,
     columns: COLUMNS,
@@ -63,19 +76,29 @@ function ControlledWrapper() {
   return (
     <DataTablePagination
       table={table}
-      totalCount={DATA.length}
+      totalCount={totalCount}
       entity={{ singular: 'muc' }}
       paginationMode={{
         mode: 'controlled',
         pagination,
-        onPaginationChange: setPagination,
+        onPaginationChange: handlePaginationChange,
       }}
       pageSizeOptions={[]}
     />
   )
 }
 
-function ServerWrapper({ onPageChange }: { onPageChange: (page: number) => void }) {
+function ServerWrapper({
+  currentPage = 1,
+  totalPages = 12,
+  isLoading = false,
+  onPageChange,
+}: {
+  currentPage?: number
+  totalPages?: number
+  isLoading?: boolean
+  onPageChange: (page: number) => void
+}) {
   const table = useReactTable({
     data: DATA,
     columns: COLUMNS,
@@ -91,13 +114,14 @@ function ServerWrapper({ onPageChange }: { onPageChange: (page: number) => void 
       entity={{ singular: 'muc' }}
       paginationMode={{
         mode: 'server',
-        currentPage: 1,
-        totalPages: 3,
+        currentPage,
+        totalPages,
         pageSize: 5,
         onPageChange,
         onPageSizeChange: vi.fn(),
       }}
       pageSizeOptions={[]}
+      isLoading={isLoading}
     />
   )
 }
@@ -119,6 +143,61 @@ describe('DataTablePagination', () => {
     render(<ServerWrapper onPageChange={onPageChange} />)
     fireEvent.click(screen.getByRole('button', { name: /Trang ti/i }))
     expect(onPageChange).toHaveBeenCalledWith(2)
+  })
+
+  it('jumps to a submitted page in server mode once', () => {
+    const onPageChange = vi.fn()
+    render(<ServerWrapper onPageChange={onPageChange} />)
+
+    const input = screen.getByRole('spinbutton', { name: /đi tới trang/i })
+    fireEvent.change(input, { target: { value: '10' } })
+    fireEvent.keyDown(input, { key: 'Enter', code: 'Enter' })
+
+    expect(onPageChange).toHaveBeenCalledTimes(1)
+    expect(onPageChange).toHaveBeenCalledWith(10)
+  })
+
+  it('does not jump while typing a page number', () => {
+    const onPageChange = vi.fn()
+    render(<ServerWrapper onPageChange={onPageChange} />)
+
+    fireEvent.change(screen.getByRole('spinbutton', { name: /đi tới trang/i }), {
+      target: { value: '10' },
+    })
+
+    expect(onPageChange).not.toHaveBeenCalled()
+  })
+
+  it('clamps submitted server page jumps to available pages', () => {
+    const onPageChange = vi.fn()
+    render(<ServerWrapper onPageChange={onPageChange} />)
+
+    const input = screen.getByRole('spinbutton', { name: /đi tới trang/i })
+    fireEvent.change(input, { target: { value: '999' } })
+    fireEvent.click(screen.getByRole('button', { name: /đi tới trang/i }))
+    fireEvent.change(input, { target: { value: '0' } })
+    fireEvent.click(screen.getByRole('button', { name: /đi tới trang/i }))
+
+    expect(onPageChange).toHaveBeenNthCalledWith(1, 12)
+    expect(onPageChange).toHaveBeenNthCalledWith(2, 1)
+  })
+
+  it('jumps through controlled pagination state', () => {
+    const onPaginationChange = vi.fn()
+    render(<ControlledWrapper totalCount={60} onPaginationChange={onPaginationChange} />)
+
+    const input = screen.getByRole('spinbutton', { name: /đi tới trang/i })
+    fireEvent.change(input, { target: { value: '10' } })
+    fireEvent.keyDown(input, { key: 'Enter', code: 'Enter' })
+
+    expect(onPaginationChange).toHaveBeenCalledWith({ pageIndex: 9, pageSize: 5 })
+  })
+
+  it('disables page jump controls while loading', () => {
+    render(<ServerWrapper isLoading onPageChange={vi.fn()} />)
+
+    expect(screen.getByRole('spinbutton', { name: /đi tới trang/i })).toBeDisabled()
+    expect(screen.getByRole('button', { name: /đi tới trang/i })).toBeDisabled()
   })
 
   it('renders custom display format', () => {
