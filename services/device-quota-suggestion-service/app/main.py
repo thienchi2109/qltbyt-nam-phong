@@ -13,9 +13,7 @@ def create_app(
     embedding_backend: EmbeddingBackend = None,
 ) -> FastAPI:
     actual_settings = settings or load_settings()
-    backend = embedding_backend or create_runtime_embedding_backend(
-        actual_settings.model_name
-    )
+    backend = embedding_backend or create_runtime_embedding_backend(actual_settings)
     suggestion_service = SuggestionService(
         embedding_backend=backend,
         settings=actual_settings,
@@ -54,6 +52,3 @@ def create_app(
         return suggestion_service.suggest(payload.model_dump())
 
     return app
-
-
-app = create_app()

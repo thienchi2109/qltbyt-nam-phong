@@ -24,6 +24,7 @@ class SuggestionService:
         self._device_embedding_cache: Dict[str, List[float]] = {}
         self._request_cache: Dict[str, ResponseDict] = {}
         self._inflight: Dict[str, threading.Condition] = {}
+        self._inflight_errors: Dict[str, BaseException] = {}
         self._lock = threading.Lock()
 
     def is_ready(self) -> bool:
@@ -42,6 +43,7 @@ class SuggestionService:
                 return self._cache_hit_response(cached, request.requestId)
             condition = self._inflight.get(request_key)
             if condition is None:
+                self._inflight_errors.pop(request_key, None)
                 condition = threading.Condition(self._lock)
                 self._inflight[request_key] = condition
                 leader = True
@@ -49,6 +51,8 @@ class SuggestionService:
                 leader = False
                 while request_key in self._inflight:
                     condition.wait()
+                if request_key in self._inflight_errors:
+                    raise self._inflight_errors[request_key]
                 cached = self._request_cache[request_key]
                 return self._cache_hit_response(cached, request.requestId)
 
@@ -57,8 +61,9 @@ class SuggestionService:
 
         try:
             result = self._compute(request)
-        except Exception:
+        except Exception as error:
             with self._lock:
+                self._inflight_errors[request_key] = error
                 condition = self._inflight.pop(request_key)
                 condition.notify_all()
             raise

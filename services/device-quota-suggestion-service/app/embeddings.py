@@ -1,10 +1,12 @@
 import hashlib
 import math
+import os
 import threading
 import time
 from typing import Dict, Iterable, List, Optional
 
 from app.normalization import normalize_text
+from app.settings import Settings
 
 
 class EmbeddingBackend:
@@ -123,8 +125,11 @@ class SentenceTransformerEmbeddingBackend(EmbeddingBackend):
             return normalized
 
 
-def create_runtime_embedding_backend(model_name: str) -> EmbeddingBackend:
-    return SentenceTransformerEmbeddingBackend(model_name)
+def create_runtime_embedding_backend(settings: Settings) -> EmbeddingBackend:
+    cache_home = os.path.join(settings.cache_dir, "huggingface")
+    os.environ.setdefault("HF_HOME", cache_home)
+    os.environ.setdefault("TRANSFORMERS_CACHE", cache_home)
+    return SentenceTransformerEmbeddingBackend(settings.model_name)
 
 
 class LazyInitCountingBackend(SentenceTransformerEmbeddingBackend):
@@ -164,3 +169,10 @@ class ShortEmbeddingBackend(DeterministicEmbeddingBackend):
     def embed(self, texts: Iterable[str]) -> List[List[float]]:
         vectors = super().embed(texts)
         return vectors[:-1]
+
+
+class FailingEmbeddingBackend(EmbeddingBackend):
+    model_name = "failing-test-embedding"
+
+    def embed(self, texts: Iterable[str]) -> List[List[float]]:
+        raise RuntimeError("embedding backend failed")

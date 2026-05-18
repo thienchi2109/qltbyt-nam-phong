@@ -2,7 +2,7 @@ from fastapi.testclient import TestClient
 
 from app.embeddings import DeterministicEmbeddingBackend
 from app.main import create_app
-from app.settings import Settings
+from app.settings import Settings, load_settings
 
 
 def build_client():
@@ -106,3 +106,14 @@ def test_suggest_returns_bounded_candidates_provider_cache_and_timing_metadata()
     assert body["suggestions"][0]["candidates"][0]["categoryId"] == 291
     assert body["suggestions"][0]["needsReview"] is False
     assert len(body["suggestions"][0]["candidates"]) <= 2
+
+
+def test_runtime_settings_require_internal_token(monkeypatch):
+    monkeypatch.delenv("DQSS_INTERNAL_TOKEN", raising=False)
+
+    try:
+        load_settings()
+    except ValueError as exc:
+        assert "DQSS_INTERNAL_TOKEN" in str(exc)
+    else:
+        raise AssertionError("Expected missing internal token to fail fast")

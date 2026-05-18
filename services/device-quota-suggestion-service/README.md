@@ -82,8 +82,9 @@ For real deployment, replace `.env.example` with Coolify-managed secrets. Do not
 | `DQSS_MODEL_NAME` | Runtime embedding model, default `dangvantuan/vietnamese-embedding`. |
 | `DQSS_CACHE_DIR` | Container cache path, default `/data/cache`. |
 
-The model extra pins `numpy==1.26.4` to stay compatible with CPU-only hosts that
-can fail on newer binary baselines.
+`DQSS_INTERNAL_TOKEN` is required at startup. The model extra pins
+`numpy==1.26.4` to stay compatible with CPU-only hosts that can fail on newer
+binary baselines.
 
 ## Scope Boundary
 

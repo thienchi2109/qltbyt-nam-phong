@@ -1,6 +1,7 @@
 from concurrent.futures import ThreadPoolExecutor
 
 from app.embeddings import CountingEmbeddingBackend
+from app.embeddings import FailingEmbeddingBackend
 from app.embeddings import LazyInitCountingBackend
 from app.embeddings import RecordingEmbeddingBackend
 from app.service import SuggestionService
@@ -74,6 +75,21 @@ def test_duplicate_concurrent_requests_share_single_flight_work():
     assert backend.call_count == 2
     assert any(response["cache"]["requestHit"] is False for response in responses)
     assert any(response["cache"]["requestHit"] is True for response in responses)
+
+
+def test_duplicate_concurrent_request_failures_propagate_original_error():
+    service = SuggestionService(embedding_backend=FailingEmbeddingBackend())
+
+    with ThreadPoolExecutor(max_workers=3) as executor:
+        futures = [executor.submit(service.suggest, payload()) for _ in range(3)]
+
+    for future in futures:
+        try:
+            future.result()
+        except RuntimeError as exc:
+            assert "embedding backend failed" in str(exc)
+        else:
+            raise AssertionError("Expected backend failure to propagate")
 
 
 def test_lazy_embedding_backend_initializes_model_once_under_concurrency():
