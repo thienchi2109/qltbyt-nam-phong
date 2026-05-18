@@ -39,7 +39,7 @@ class SuggestionService:
         with self._lock:
             cached = self._request_cache.get(request_key)
             if cached is not None:
-                return self._cache_hit_response(cached)
+                return self._cache_hit_response(cached, request.requestId)
             condition = self._inflight.get(request_key)
             if condition is None:
                 condition = threading.Condition(self._lock)
@@ -50,7 +50,7 @@ class SuggestionService:
                 while request_key in self._inflight:
                     condition.wait()
                 cached = self._request_cache[request_key]
-                return self._cache_hit_response(cached)
+                return self._cache_hit_response(cached, request.requestId)
 
         if not leader:
             raise RuntimeError("unreachable single-flight state")
@@ -199,7 +199,8 @@ class SuggestionService:
         return hashlib.sha256(packed.encode("utf-8")).hexdigest()
 
     @staticmethod
-    def _cache_hit_response(cached: ResponseDict) -> ResponseDict:
+    def _cache_hit_response(cached: ResponseDict, request_id: str) -> ResponseDict:
         response = copy.deepcopy(cached)
+        response["requestId"] = request_id
         response["cache"]["requestHit"] = True
         return response

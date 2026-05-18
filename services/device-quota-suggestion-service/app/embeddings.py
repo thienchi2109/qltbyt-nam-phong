@@ -82,6 +82,7 @@ class SentenceTransformerEmbeddingBackend(EmbeddingBackend):
     def __init__(self, model_name: str):
         self.model_name = model_name
         self._model = None
+        self._model_lock = threading.Lock()
 
     def is_ready(self) -> bool:
         return self._model is not None
@@ -98,10 +99,15 @@ class SentenceTransformerEmbeddingBackend(EmbeddingBackend):
 
     def _ensure_model(self):
         if self._model is None:
-            from sentence_transformers import SentenceTransformer
-
-            self._model = SentenceTransformer(self.model_name)
+            with self._model_lock:
+                if self._model is None:
+                    self._model = self._load_model()
         return self._model
+
+    def _load_model(self):
+        from sentence_transformers import SentenceTransformer
+
+        return SentenceTransformer(self.model_name)
 
     @staticmethod
     def _prepare(text: str) -> str:
@@ -116,3 +122,23 @@ class SentenceTransformerEmbeddingBackend(EmbeddingBackend):
 
 def create_runtime_embedding_backend(model_name: str) -> EmbeddingBackend:
     return SentenceTransformerEmbeddingBackend(model_name)
+
+
+class LazyInitCountingBackend(SentenceTransformerEmbeddingBackend):
+    def __init__(self, delay_seconds: float = 0.0):
+        super().__init__("lazy-init-counting-test")
+        self.delay_seconds = delay_seconds
+        self.init_count = 0
+        self._counter_lock = threading.Lock()
+        self._fallback = DeterministicEmbeddingBackend()
+
+    def _load_model(self):
+        with self._counter_lock:
+            self.init_count += 1
+        if self.delay_seconds:
+            time.sleep(self.delay_seconds)
+        return object()
+
+    def embed(self, texts: Iterable[str]) -> List[List[float]]:
+        self._ensure_model()
+        return self._fallback.embed(texts)
