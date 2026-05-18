@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# qltbyt-backup: stream pg_dump → Google Drive (via rclone) with Telegram alerts.
+# qltbyt-backup: write pg_dump files to a local VPS directory with Telegram alerts.
 #
 # Audience : DevOps / cron operator on a Linux VPS.
 # Setup    : docs/runbooks/db-backup-setup.md
@@ -9,11 +9,11 @@
 # Exit codes:
 #   0   success
 #   10  config / env unreadable or missing required vars
-#   11  missing dependency (pg_dump / rclone / curl / psql / flock)
-#   12  rclone remote not configured
+#   11  missing dependency (pg_dump / curl / psql / flock)
+#   12  backup directory unavailable
 #   13  database unreachable
-#   20  pg_dump | rclone rcat failed
-#   21  uploaded object size sanity check failed
+#   20  pg_dump failed
+#   21  backup file size sanity check failed
 #
 # Telegram notify failure is non-fatal (logged as WARN); never masks the
 # original exit code from the backup pipeline.
@@ -30,14 +30,13 @@ readonly DETAIL_DIR_DEFAULT="/var/log/qltbyt-backup"
 readonly HOSTNAME_SHORT="$(hostname -s 2>/dev/null || echo unknown)"
 readonly RUN_ID="$(date -u +%Y%m%dT%H%M%SZ)-$$"
 
-BACKUP_REMOTE_PATH=""
+BACKUP_FILE_PATH=""
 BACKUP_SIZE_HUMAN=""
 BACKUP_DETAIL_DIR=""
-FAIL_REMOTE_PATH=""
+BACKUP_DIR_VALUE=""
+FAIL_FILE_PATH=""
 FAIL_PG_DUMP_RC=""
-FAIL_RCLONE_RC=""
-FAIL_RCLONE_STDERR_SUMMARY=""
-FAIL_RCLONE_STDERR_FILE=""
+FAIL_STDERR_SUMMARY=""
 FAIL_PG_DUMP_STDERR_FILE=""
 
 # ─── Logging helpers ────────────────────────────────────────────────────
@@ -109,19 +108,19 @@ notify_failure() {
   fi
   local ts
   ts="$(date -u '+%Y-%m-%d %H:%M UTC')"
-  local remote_line="" rc_line="" stderr_line="" detail_line=""
-  [[ -n "$FAIL_REMOTE_PATH" ]] && remote_line=$'\n'"Remote: ${FAIL_REMOTE_PATH}"
-  if [[ -n "$FAIL_PG_DUMP_RC" || -n "$FAIL_RCLONE_RC" ]]; then
-    rc_line=$'\n'"RCs: pg_dump=${FAIL_PG_DUMP_RC:-?} rclone=${FAIL_RCLONE_RC:-?}"
+  local file_line="" rc_line="" stderr_line="" detail_line=""
+  [[ -n "$FAIL_FILE_PATH" ]] && file_line=$'\n'"File: ${FAIL_FILE_PATH}"
+  if [[ -n "$FAIL_PG_DUMP_RC" ]]; then
+    rc_line=$'\n'"RC: pg_dump=${FAIL_PG_DUMP_RC:-?}"
   fi
-  [[ -n "$FAIL_RCLONE_STDERR_SUMMARY" ]] && stderr_line=$'\n'"stderr: ${FAIL_RCLONE_STDERR_SUMMARY}"
-  [[ -n "$FAIL_RCLONE_STDERR_FILE" ]] && detail_line=$'\n'"Detail: ${FAIL_RCLONE_STDERR_FILE}"
+  [[ -n "$FAIL_STDERR_SUMMARY" ]] && stderr_line=$'\n'"stderr: ${FAIL_STDERR_SUMMARY}"
+  [[ -n "$FAIL_PG_DUMP_STDERR_FILE" ]] && detail_line=$'\n'"Detail: ${FAIL_PG_DUMP_STDERR_FILE}"
 
   notify_telegram "$(cat <<EOF
 ❌ ${SCRIPT_NAME} FAILED
 Host: ${HOSTNAME_SHORT}
 Stage: ${stage_short}
-Exit: ${code} · ${ts}${remote_line}${rc_line}${stderr_line}${detail_line}
+Exit: ${code} · ${ts}${file_line}${rc_line}${stderr_line}${detail_line}
 EOF
 )"
 }
@@ -129,7 +128,7 @@ EOF
 notify_success() {
   [[ "${TG_HEARTBEAT:-0}" == "1" ]] || return 0
   local size_human="$1"
-  notify_telegram "✅ ${SCRIPT_NAME} OK on ${HOSTNAME_SHORT} (${size_human})"
+  notify_telegram "✅ ${SCRIPT_NAME} OK on ${HOSTNAME_SHORT} (${size_human})"$'\n'"File: ${BACKUP_FILE_PATH}"
 }
 
 # ─── die: log + telegram + exit with mapped code ────────────────────────
@@ -163,25 +162,25 @@ load_env() {
   source "$ENV_FILE"
   set +a
   : "${DATABASE_URL:?missing DATABASE_URL}" || die 10 "DATABASE_URL not set"
-  : "${RCLONE_REMOTE:?missing RCLONE_REMOTE}" || die 10 "RCLONE_REMOTE not set"
+  : "${BACKUP_DIR:=/root/DB-backup/cvmems}"
   : "${RETAIN_DAYS:=7}"
   : "${DUMP_SCHEMAS:=public,auth,storage,supabase_migrations}"
   : "${TG_HEARTBEAT:=0}"
   : "${BACKUP_DETAIL_DIR:=$DETAIL_DIR_DEFAULT}"
-  log "env loaded (db=$(mask_url "$DATABASE_URL") remote=$RCLONE_REMOTE retain=${RETAIN_DAYS}d schemas=$DUMP_SCHEMAS)"
+  BACKUP_DIR_VALUE="$BACKUP_DIR"
+  log "env loaded (db=$(mask_url "$DATABASE_URL") dir=$BACKUP_DIR_VALUE retain=${RETAIN_DAYS}d schemas=$DUMP_SCHEMAS)"
 }
 
 # ─── Stage: preflight checks ────────────────────────────────────────────
 preflight() {
   local cmd
-  for cmd in pg_dump rclone curl psql flock; do
+  for cmd in pg_dump curl psql flock; do
     command -v "$cmd" >/dev/null 2>&1 || die 11 "missing dependency: $cmd"
   done
 
-  local remote_name="${RCLONE_REMOTE%%:*}"
-  if ! rclone listremotes 2>/dev/null | grep -qx "${remote_name}:"; then
-    die 12 "rclone remote '${remote_name}:' not configured (run: rclone config)"
-  fi
+  mkdir -p "$BACKUP_DIR_VALUE" || die 12 "cannot create backup directory: $BACKUP_DIR_VALUE"
+  chmod 700 "$BACKUP_DIR_VALUE" || die 12 "cannot chmod backup directory: $BACKUP_DIR_VALUE"
+  [[ -d "$BACKUP_DIR_VALUE" && -w "$BACKUP_DIR_VALUE" ]] || die 12 "backup directory not writable: $BACKUP_DIR_VALUE"
 
   if ! timeout 5 psql "$DATABASE_URL" -c 'SELECT 1' >/dev/null 2>&1; then
     log "preflight: db connect failed for $(mask_url "$DATABASE_URL")"
@@ -191,11 +190,11 @@ preflight() {
   log "preflight OK"
 }
 
-# ─── Stage: dump + upload (streaming) ───────────────────────────────────
-# Echoes "<remote_path>|<human_size>" to stdout on success.
+# ─── Stage: dump to local filesystem ────────────────────────────────────
 run_backup() {
   local ts="${RUN_ID%-*}"
-  local remote_path="${RCLONE_REMOTE%/}/${ts}.dump"
+  local backup_path="${BACKUP_DIR_VALUE%/}/${ts}.dump"
+  local tmp_path="${backup_path}.tmp"
 
   local schema_args=()
   IFS=',' read -ra schemas <<<"$DUMP_SCHEMAS"
@@ -208,71 +207,57 @@ run_backup() {
 
   ensure_detail_dir
   local pg_dump_stderr_file="${BACKUP_DETAIL_DIR}/${RUN_ID}-pg_dump.stderr.log"
-  local rclone_stderr_file="${BACKUP_DETAIL_DIR}/${RUN_ID}-rclone-upload.stderr.log"
   : >"$pg_dump_stderr_file"
-  : >"$rclone_stderr_file"
 
-  log "START dump → ${remote_path}"
+  log "START dump → ${backup_path}"
 
-  # Streaming pipeline. pipefail (set above) makes either-side failure visible.
-  local pipe_status=()
-  if ! pg_dump -Fc --no-owner --no-privileges "${schema_args[@]}" "$DATABASE_URL" 2>"$pg_dump_stderr_file" \
-       | rclone rcat --retries 3 --retries-sleep 30s "$remote_path" 2>"$rclone_stderr_file"; then
-    pipe_status=("${PIPESTATUS[@]}")
-    local pg_dump_rc="${pipe_status[0]:-1}"
-    local rclone_rc="${pipe_status[1]:-1}"
-    local rclone_stderr_tail
-    rclone_stderr_tail="$(stderr_excerpt "$rclone_stderr_file")"
+  rm -f "$tmp_path"
+  local pg_dump_rc=0
+  (umask 077 && pg_dump -Fc --no-owner --no-privileges "${schema_args[@]}" "$DATABASE_URL" >"$tmp_path" 2>"$pg_dump_stderr_file") || pg_dump_rc=$?
+  if (( pg_dump_rc != 0 )); then
+    local pg_dump_stderr_tail
+    pg_dump_stderr_tail="$(stderr_excerpt "$pg_dump_stderr_file")"
 
     publish_detail_log "$pg_dump_stderr_file" "latest-pg_dump.stderr.log"
-    publish_detail_log "$rclone_stderr_file" "latest-rclone-upload.stderr.log"
+    rm -f "$tmp_path"
 
-    FAIL_REMOTE_PATH="$remote_path"
+    FAIL_FILE_PATH="$backup_path"
     FAIL_PG_DUMP_RC="$pg_dump_rc"
-    FAIL_RCLONE_RC="$rclone_rc"
-    FAIL_RCLONE_STDERR_SUMMARY="$rclone_stderr_tail"
-    FAIL_RCLONE_STDERR_FILE="$rclone_stderr_file"
+    FAIL_STDERR_SUMMARY="$pg_dump_stderr_tail"
     FAIL_PG_DUMP_STDERR_FILE="$pg_dump_stderr_file"
 
-    log "dump|upload failed for ${remote_path}"
-    log "pipeline rc: pg_dump=${pg_dump_rc} rclone=${rclone_rc}"
-    log "rclone stderr tail: ${rclone_stderr_tail}"
-    if (( rclone_rc != 0 && ( pg_dump_rc == 0 || pg_dump_rc == 141 ) )); then
-      die 20 "upload failed (rclone=${rclone_rc}, pg_dump=${pg_dump_rc})"
-    elif (( pg_dump_rc != 0 && rclone_rc != 0 )); then
-      die 20 "pg_dump and upload failed (pg_dump=${pg_dump_rc}, rclone=${rclone_rc})"
-    elif (( pg_dump_rc != 0 )); then
-      die 20 "pg_dump failed (rc=${pg_dump_rc})"
-    else
-      die 20 "upload failed (rclone=${rclone_rc})"
-    fi
+    log "pg_dump failed for ${backup_path}"
+    log "pg_dump rc: ${pg_dump_rc}"
+    log "pg_dump stderr tail: ${pg_dump_stderr_tail}"
+    die 20 "pg_dump failed (rc=${pg_dump_rc})"
   fi
 
   publish_detail_log "$pg_dump_stderr_file" "latest-pg_dump.stderr.log"
-  publish_detail_log "$rclone_stderr_file" "latest-rclone-upload.stderr.log"
 
   local size_bytes
-  size_bytes="$(rclone size --json "$remote_path" 2>/dev/null \
-                | grep -oE '"bytes":[[:space:]]*[0-9]+' \
-                | grep -oE '[0-9]+' || echo 0)"
+  size_bytes="$(wc -c <"$tmp_path" | tr -d '[:space:]')"
   if (( size_bytes < 1024 )); then
-    log "size sanity failed at ${remote_path}"
-    die 21 "uploaded size too small: ${size_bytes}B"
+    FAIL_FILE_PATH="$tmp_path"
+    rm -f "$tmp_path"
+    log "size sanity failed at ${backup_path}"
+    die 21 "backup file too small: ${size_bytes}B"
   fi
+
+  mv -f "$tmp_path" "$backup_path"
 
   local size_human
   size_human="$(numfmt --to=iec --suffix=B "$size_bytes" 2>/dev/null || echo "${size_bytes}B")"
-  log "OK upload size=${size_bytes} (${size_human})"
-  BACKUP_REMOTE_PATH="$remote_path"
+  log "OK local backup size=${size_bytes} (${size_human})"
+  BACKUP_FILE_PATH="$backup_path"
   BACKUP_SIZE_HUMAN="$size_human"
 }
 
-# ─── Stage: rotate (non-fatal on failure) ───────────────────────────────
+# ─── Stage: rotate local dumps (non-fatal on failure) ───────────────────
 rotate() {
-  log "rotate: deleting objects older than ${RETAIN_DAYS}d in ${RCLONE_REMOTE}/"
-  if ! rclone delete --min-age "${RETAIN_DAYS}d" "${RCLONE_REMOTE%/}/" 2>>"$LOG_FILE"; then
+  log "rotate: deleting local dumps older than ${RETAIN_DAYS}d in ${BACKUP_DIR_VALUE}/"
+  if ! find "$BACKUP_DIR_VALUE" -maxdepth 1 -type f -name '*.dump' -mtime +"${RETAIN_DAYS}" -delete 2>>"$LOG_FILE"; then
     log "WARN: rotation failed (non-fatal)"
-    notify_telegram "⚠️ ${SCRIPT_NAME}: rotation failed on ${HOSTNAME_SHORT} (backup itself succeeded)"
+    notify_telegram "⚠️ ${SCRIPT_NAME}: local rotation failed on ${HOSTNAME_SHORT} (backup itself succeeded)"
   fi
 }
 
@@ -294,7 +279,7 @@ main() {
   rotate
 
   notify_success "$BACKUP_SIZE_HUMAN"
-  log "DONE ${BACKUP_REMOTE_PATH} ${BACKUP_SIZE_HUMAN}"
+  log "DONE ${BACKUP_FILE_PATH} ${BACKUP_SIZE_HUMAN}"
 }
 
 main "$@"

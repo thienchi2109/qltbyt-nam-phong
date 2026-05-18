@@ -40,7 +40,6 @@ platform-level configuration that lives outside Postgres.
 |---|---|---|
 | `pg_restore` | major **17** | `pg_restore --version` |
 | `psql` | major **17** | `psql --version` |
-| `rclone` | any 1.60+ | `rclone --version` |
 | `file`, `awk`, `numfmt` | coreutils | usually preinstalled |
 
 If `pg_restore` is older than 17 it will not understand the dump
@@ -52,22 +51,20 @@ format produced by Postgres 17. Install per
 - **Direct connection string** for the target DB (see
   [`db-backup-setup.md` §5](./db-backup-setup.md#5-get-the-database-connection-string)).
   Pooler URLs do not work for `pg_restore`.
-- `rclone` configured with a remote that can read the backup folder.
-  Either reuse the cron VPS, or configure rclone on your laptop with
-  the same Google account (`rclone config` → §3 of the setup runbook).
+- Access to the VPS backup directory: `/root/DB-backup/cvmems/`.
 
-### Locate and download the dump
+### Locate and copy the dump
 
 ```bash
-# 1. List available dumps, sorted by date.
-rclone lsl gdrive:qltbyt-backup/ | sort -k2
+# 1. List available dumps on the VPS, newest first.
+ssh root@mystartup "ls -lh /root/DB-backup/cvmems/*.dump | sort -k6,7"
 
 # 2. Pick a dump. Default to the most recent one that pre-dates the
 #    incident. NEVER restore a dump created AFTER the corruption.
 DUMP=20260426T190000Z.dump
 
-# 3. Download.
-rclone copy "gdrive:qltbyt-backup/${DUMP}" ./
+# 3. Copy it to the machine where you will restore.
+scp "root@mystartup:/root/DB-backup/cvmems/${DUMP}" ./
 
 # 4. Sanity check — pg_dump custom-format files start with "PGDMP".
 file "$DUMP"
@@ -118,8 +115,9 @@ state of that table is gone.
 
 ### A.2 Snapshot the current (damaged) state FIRST
 
-Before any restore, dump the current state to Drive in a quarantine
-folder. If your restore makes things worse, you can roll back.
+Before any restore, dump the current state to a quarantine file. Copy it off the
+machine before making destructive changes. If your restore makes things worse,
+you can roll back.
 
 ```bash
 NOW=$(date -u +%Y%m%dT%H%M%SZ)
@@ -128,7 +126,7 @@ pg_dump -Fc --no-owner --no-privileges \
   "$DATABASE_URL" \
   > "pre-restore-${NOW}.dump"
 
-rclone copy "pre-restore-${NOW}.dump" gdrive:qltbyt-pre-restore/
+ls -lh "pre-restore-${NOW}.dump"
 ```
 
 Do not skip this step. It has saved more incidents than any other
@@ -420,7 +418,7 @@ Force a one-shot backup to verify:
 
 ```bash
 sudo /usr/local/bin/qltbyt-backup
-rclone lsl gdrive:qltbyt-backup/ | tail -5
+sudo ls -lh /root/DB-backup/cvmems/ | tail -5
 ```
 
 ### B.7 Update repo references
@@ -492,7 +490,7 @@ should be > 0.
 | Step | Estimated time |
 |---|---|
 | Decide scenario, locate dump | 2 min |
-| Download dump from Drive | <1 min |
+| Copy dump from VPS | <1 min |
 | Pre-restore quarantine dump (Scenario A) | <1 min |
 | Restore single table (Scenario A.5) | <1 min |
 | Restore whole `public` schema (Scenario A.6) | 1–2 min |
@@ -513,9 +511,9 @@ At least once per quarter, dry-run Scenario A against an ephemeral
 local Postgres and verify row counts.
 
 ```bash
-# Pull the latest dump.
-LATEST=$(rclone lsl gdrive:qltbyt-backup/ | sort -k2 | tail -1 | awk '{print $NF}')
-rclone copy "gdrive:qltbyt-backup/${LATEST}" /tmp/
+# Pull the latest dump from the VPS.
+LATEST=$(ssh root@mystartup "basename \\$(ls -1t /root/DB-backup/cvmems/*.dump | head -1)")
+scp "root@mystartup:/root/DB-backup/cvmems/${LATEST}" /tmp/
 
 # Run a throwaway PG 17 with the right roles pre-created.
 docker run --rm -d --name pg-test -p 15432:5432 \

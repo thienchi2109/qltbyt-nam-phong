@@ -1,4 +1,4 @@
-# qltbyt-backup: daily Supabase Postgres dump → Google Drive.
+# qltbyt-backup: daily Supabase Postgres dump → local VPS directory.
 #
 # Install:
 #   sudo install -m 0644 scripts/qltbyt-backup.cron.example \

@@ -1,551 +1,197 @@
-# Database Backup — One-Time Setup
+# Database Backup Setup
 
-> **Audience.** DevOps engineer or agent setting up the daily Supabase
-> Postgres → Google Drive backup on a Linux VPS for the first time.
->
-> **Out of scope.** If the backup is already running and you need to
-> restore data, see [`db-restore.md`](./db-restore.md). Do not read this
-> document during an incident.
->
-> **Time required.** ~30 minutes the first time, mostly waiting on
-> rclone OAuth and the smoke test.
+Set up daily Supabase Postgres dumps on the VPS. Backups are written locally to
+`/root/DB-backup/cvmems/`; operators can copy them to Google Drive or a local PC
+with `scp`, `rsync`, or another manual process.
 
----
+This runbook does not configure Google Drive or rclone. The old rclone upload
+path was removed because Drive API quota errors made the cron job unreliable.
 
-## At a glance
+## 1. Files
 
-```
-Linux VPS (cron)
-    │
-    │ /etc/cron.d/qltbyt-backup    (schedule)
-    ▼
-/usr/local/bin/qltbyt-backup      (script)
-    │
-    ├── reads /etc/qltbyt-backup/.env       (secrets, mode 0600)
-    ├── pg_dump -Fc | rclone rcat            (streaming, no temp file)
-    ├── rclone delete --min-age 7d           (rotation)
-    ├── curl Telegram bot on failure         (alerting)
-    └── appends /var/log/qltbyt-backup.log   (log)
-
-Google Drive
-    └── gdrive:qltbyt-backup/
-            ├── 20260426T190000Z.dump
-            ├── 20260427T190000Z.dump
-            └── ... (last 7 days)
-```
-
-**Files in repo (source of truth):**
-
-| Path | Purpose |
+| Concern | Path |
 |---|---|
-| `scripts/backup-db.sh` | The script. Install to `/usr/local/bin/qltbyt-backup`. |
-| `scripts/backup-db.env.example` | Env template. Copy to `/etc/qltbyt-backup/.env` and fill in. |
-| `scripts/qltbyt-backup.cron.example` | Cron schedule. Install to `/etc/cron.d/qltbyt-backup`. |
+| Script | `scripts/backup-db.sh` |
+| Env template | `scripts/backup-db.env.example` |
+| Cron template | `scripts/qltbyt-backup.cron.example` |
+| Live env | `/etc/qltbyt-backup/.env` |
+| Live command | `/usr/local/bin/qltbyt-backup` |
+| Backup dir | `/root/DB-backup/cvmems/` |
+| Main log | `/var/log/qltbyt-backup.log` |
+| Detail logs | `/var/log/qltbyt-backup/` |
 
-**Files NOT in repo (live on the VPS only):**
-
-| Path | Mode | Owner | Notes |
-|---|---|---|---|
-| `/etc/qltbyt-backup/.env` | `0600` | `root` | Contains `DATABASE_URL`, Telegram token. |
-| `/etc/cron.d/qltbyt-backup` | `0644` | `root` | Cron requires this mode. |
-| `/usr/local/bin/qltbyt-backup` | `0750` | `root` | The script. |
-| `/var/log/qltbyt-backup.log` | `0640` | `root:adm` | Append-only log. |
-| `/var/run/qltbyt-backup.lock` | `0600` | `root` | flock single-instance guard. |
-| `~/.config/rclone/rclone.conf` | `0600` | (user running cron) | Rclone OAuth refresh token. |
-
----
-
-## 1. Prerequisites
-
-- Linux VPS with `cron` and `systemd`.
-- `sudo` / root access.
-- A personal Google account (to host the backup folder in Drive).
-- Outbound network to `db.<ref>.supabase.co:5432` and
-  `api.telegram.org:443` and `*.googleusercontent.com`.
-- **IPv6 connectivity recommended.** Supabase's direct DB endpoint is
-  IPv6 by default. If your VPS is IPv4-only, see §11 troubleshooting.
-- A separate machine (laptop) with a graphical browser for the one-time
-  rclone OAuth flow.
-
----
-
-## 2. Install dependencies
-
-The Supabase Postgres major version on this project is **17**. The
-client tools must match that major version, otherwise `pg_dump` will
-refuse to dump newer catalogs.
-
-### Ubuntu 20.04 / 22.04
-
-The default `apt` repository ships only PG 14/15. Add the official PGDG
-repo to get PG 17:
+## 2. Install Dependencies
 
 ```bash
 sudo apt-get update
-sudo apt-get install -y curl ca-certificates gnupg lsb-release
-curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc \
-  | sudo gpg --dearmor -o /usr/share/keyrings/postgresql-keyring.gpg
-echo "deb [signed-by=/usr/share/keyrings/postgresql-keyring.gpg] \
-http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" \
-  | sudo tee /etc/apt/sources.list.d/pgdg.list
-sudo apt-get update
-sudo apt-get install -y postgresql-client-17 rclone curl coreutils util-linux
-```
+sudo apt-get install -y postgresql-client-17 curl coreutils util-linux
 
-### Debian 12
-
-Same steps as above; PGDG also publishes for `bookworm`.
-
-### Verify
-
-```bash
-pg_dump --version    # expect: pg_dump (PostgreSQL) 17.x
-rclone --version     # any 1.60+
-psql --version       # 17.x
-flock --version      # part of util-linux
+pg_dump --version
+psql --version
 curl --version
+flock --version
 ```
 
-If `pg_dump` is older than 17, the script will succeed against an
-older project but fail today (PG 17). Re-check after install.
+`pg_dump` should match the Supabase Postgres major version when possible.
 
----
+## 3. Install Script
 
-## 3. Configure rclone — Google Drive remote
-
-You will run `rclone config` once. The OAuth flow needs a browser; if
-the VPS is headless (the common case), do the OAuth on your laptop and
-copy the resulting token to the server.
-
-### Option A. VPS has a graphical browser
+From the repo checkout on the VPS:
 
 ```bash
-rclone config
-# n  → New remote
-# name> gdrive
-# Storage> drive
-# client_id     →  (leave blank, use rclone's default)
-# client_secret →  (leave blank)
-# scope         →  drive.file       ← important, see "Scope" below
-# service_account_file → (blank)
-# Edit advanced config? → n
-# Use auto config? → y
-#   (browser opens, sign in to Google, allow rclone)
-# Configure as a Shared Drive? → n
-# y/e/d → y (yes, this is OK)
-# q → quit
+sudo install -m 0755 scripts/backup-db.sh /usr/local/bin/qltbyt-backup
+sudo install -d -m 0700 /root/DB-backup/cvmems
+sudo install -d -m 0755 /etc/qltbyt-backup
+sudo install -d -m 0755 /var/log/qltbyt-backup
 ```
 
-### Option B. Headless VPS (recommended for production)
-
-On your **laptop** install rclone and run:
+## 4. Create Env File
 
 ```bash
-rclone authorize "drive" --scope drive.file
+sudo install -m 0600 scripts/backup-db.env.example /etc/qltbyt-backup/.env
+sudo nano /etc/qltbyt-backup/.env
 ```
 
-It will print a JSON token. Then back on the **VPS**:
+Set at minimum:
 
 ```bash
-rclone config
-# n → New remote
-# name> gdrive
-# Storage> drive
-# client_id, client_secret → blank
-# scope → drive.file
-# service_account_file → blank
-# Edit advanced config? → n
-# Use auto config? → n        ← important on headless
-# config_token>  <paste the JSON from your laptop>
-# Configure as a Shared Drive? → n
-# y/e/d → y
-# q
+DATABASE_URL="postgresql://postgres:REPLACE_PASSWORD@db.cdthersvldpnlbvpufrr.supabase.co:5432/postgres?sslmode=require"
+BACKUP_DIR="/root/DB-backup/cvmems"
+RETAIN_DAYS=7
+DUMP_SCHEMAS="public,auth,storage,supabase_migrations"
 ```
 
-### Scope
-
-`drive.file` is the **least-privileged** scope. Rclone can only see and
-manage files it itself created. It cannot read other files in your
-Drive. This is what you want — a backup tool should not be able to
-exfiltrate the rest of your Drive if compromised.
-
-### Verify
+Telegram is optional but recommended:
 
 ```bash
-rclone listremotes
-# expected:  gdrive:
-
-rclone mkdir gdrive:qltbyt-backup
-rclone lsd   gdrive:                  # should list the folder
-echo hello | rclone rcat gdrive:qltbyt-backup/_test.txt
-rclone cat   gdrive:qltbyt-backup/_test.txt   # should print: hello
-rclone delete gdrive:qltbyt-backup/_test.txt
+TG_TOKEN="REPLACE_TOKEN"
+TG_CHAT="REPLACE_CHAT_ID"
+TG_HEARTBEAT=0
 ```
 
-If `_test.txt` round-trips, the remote is wired correctly.
+Use `TG_HEARTBEAT=1` temporarily when validating the setup.
 
----
+## 5. Get The Database Connection String
 
-## 4. Create a Telegram bot
+Use the direct Supabase database URI:
 
-1. Open Telegram, talk to **@BotFather**. Send `/newbot`. Choose a
-   name and username (e.g. `qltbyt_backup_bot`). Save the **bot token**
-   it returns. Format: `123456:ABCDEF...`.
+1. Supabase Dashboard -> Project Settings -> Database.
+2. Connection string -> URI.
+3. Prefer direct connection on port `5432`.
 
-2. Get the **chat ID** for where alerts should go.
+Do not commit the filled env file. It contains the production database password.
 
-   - **Personal alerts.** From your account, send any message to your
-     new bot. Then run:
+## 6. Manual Smoke Test
 
-     ```bash
-     curl -s "https://api.telegram.org/bot<TOKEN>/getUpdates" | jq .
-     ```
-
-     Find `result[*].message.chat.id` — that is your chat ID
-     (a positive integer for DMs).
-
-   - **Group alerts.** Add the bot to the group, send any message in
-     the group, then run the same `getUpdates` call. The chat ID for a
-     group starts with `-100...`.
-
-3. Test:
-
-   ```bash
-   curl -fsS \
-     --data-urlencode chat_id="<CHAT_ID>" \
-     --data-urlencode text="qltbyt-backup setup test" \
-     "https://api.telegram.org/bot<TOKEN>/sendMessage"
-   ```
-
-   You should see the message in Telegram within a couple of seconds.
-   If not, the token or chat ID is wrong.
-
----
-
-## 5. Get the database connection string
-
-In Supabase Dashboard → your project → **Project Settings → Database**.
-
-- Scroll to **Connection string**, tab **URI**.
-- Choose mode **Direct connection**. The URL looks like
-  `postgresql://postgres:<pwd>@db.<ref>.supabase.co:5432/postgres`.
-- Append `?sslmode=require` if not already present.
-
-**Do NOT use** the pooler / Supavisor URLs:
-
-| URL fragment | Why not |
-|---|---|
-| port `6543` (transaction-mode pooler) | Does not support `pg_dump` at all. |
-| `aws-0-...pooler.supabase.com` (session-mode pooler) | Has aggressive idle timeout; can break long dumps. |
-
-Verify the URL works from the VPS:
-
-```bash
-psql "$DATABASE_URL" -c 'SELECT version();'
-# expected: PostgreSQL 17.x ...
-```
-
-If this fails with `connection refused` and the VPS is IPv4-only, see
-§11.
-
----
-
-## 6. Install script and secrets
-
-```bash
-# Clone the repo somewhere readable by root (or copy these files in).
-cd /opt
-sudo git clone https://github.com/<your-org>/qltbyt-nam-phong.git
-cd qltbyt-nam-phong
-
-# Install the script.
-sudo install -m 0750 -o root -g root \
-  scripts/backup-db.sh /usr/local/bin/qltbyt-backup
-
-# Create the env directory and file.
-sudo install -d -m 0750 -o root -g root /etc/qltbyt-backup
-sudo install -m 0600 -o root -g root \
-  scripts/backup-db.env.example /etc/qltbyt-backup/.env
-sudo "$EDITOR" /etc/qltbyt-backup/.env       # fill in real values
-
-# Create the log file with sensible permissions.
-sudo touch /var/log/qltbyt-backup.log
-sudo chown root:adm /var/log/qltbyt-backup.log
-sudo chmod 0640 /var/log/qltbyt-backup.log
-```
-
-After editing, double-check the env file is **only** readable by root:
-
-```bash
-sudo stat -c '%a %U:%G %n' /etc/qltbyt-backup/.env
-# expected:  600 root:root /etc/qltbyt-backup/.env
-```
-
----
-
-## 7. Smoke test (manual run)
+Run one backup manually:
 
 ```bash
 sudo /usr/local/bin/qltbyt-backup
+sudo tail -n 30 /var/log/qltbyt-backup.log
+sudo ls -lh /root/DB-backup/cvmems/
 ```
 
-**Expected.** Exit code `0`. New object in
-`gdrive:qltbyt-backup/<timestamp>.dump`. Log ends with a `DONE` line.
+A successful log ends with:
 
-```bash
-echo "exit: $?"
-sudo tail -20 /var/log/qltbyt-backup.log
-rclone lsl gdrive:qltbyt-backup/
+```text
+OK local backup size=...
+DONE /root/DB-backup/cvmems/<timestamp>.dump ...
 ```
 
-### Force-fail the alerting path
-
-Before trusting the schedule, prove that failures DO produce a Telegram
-message. Edit `/etc/qltbyt-backup/.env` and change the password in
-`DATABASE_URL` to something wrong, then run the script:
+Verify the dump header:
 
 ```bash
-sudo /usr/local/bin/qltbyt-backup
+LATEST=$(sudo find /root/DB-backup/cvmems -maxdepth 1 -type f -name '*.dump' -printf '%T@ %p\n' | sort -n | tail -1 | cut -d' ' -f2-)
+sudo file "$LATEST"
 ```
 
-Expect: exit code `13`, a ❌ Telegram message arrives, log contains
-`FATAL(13): database unreachable`. **Restore the correct password
-afterwards.**
+Expected output includes `PostgreSQL custom database dump`.
 
-### (Optional) Heartbeat on success
-
-For the first week it is useful to also receive a ✅ on every
-successful run. Set `TG_HEARTBEAT=1` in the env file. Switch back to
-`0` once you trust the job.
-
----
-
-## 8. Install the cron schedule
+## 7. Install Cron
 
 ```bash
-sudo install -m 0644 -o root -g root \
-  scripts/qltbyt-backup.cron.example /etc/cron.d/qltbyt-backup
-
-# Reload cron so it picks up the new file.
-sudo systemctl reload cron        # Debian / Ubuntu
-# or:
+sudo install -m 0644 scripts/qltbyt-backup.cron.example /etc/cron.d/qltbyt-backup
 sudo service cron reload
 ```
 
-Verify cron registered the job:
+The template runs at `15:00 UTC`, which is `22:00 ICT`.
+
+## 8. Rotation
+
+`RETAIN_DAYS=7` keeps local `.dump` files for seven days. Rotation runs only
+after a successful new dump:
 
 ```bash
-sudo grep CRON /var/log/syslog | tail -5
-# Look for a line about qltbyt-backup being parsed.
+find "$BACKUP_DIR" -maxdepth 1 -type f -name '*.dump' -mtime +"$RETAIN_DAYS" -delete
 ```
 
-The default schedule is **02:00 ICT (19:00 UTC) daily**. If the VPS
-itself is set to `Asia/Ho_Chi_Minh` instead of UTC, edit
-`/etc/cron.d/qltbyt-backup` and change `0 19` to `0 2`.
+Rotation failures are non-fatal. The new dump remains in place and Telegram gets
+a warning if Telegram is configured.
 
-To check the VPS timezone:
+## 9. Copy Backups Off The VPS
+
+Example from a laptop:
 
 ```bash
-timedatectl | grep "Time zone"
+scp root@mystartup:/root/DB-backup/cvmems/20260518T*.dump .
 ```
 
----
-
-## 9. Verify after the first scheduled run
-
-The first scheduled run will happen the next 02:00 ICT after install.
-The morning after, check:
+Or copy the newest dump:
 
 ```bash
-# 1. New dump exists with today's date.
-rclone lsl gdrive:qltbyt-backup/
-
-# 2. Log shows a fresh DONE line.
-sudo tail -50 /var/log/qltbyt-backup.log
-
-# 3. No silent failures.
-sudo grep -E '(FATAL|WARN|ERR)' /var/log/qltbyt-backup.log | tail -20
+ssh root@mystartup "ls -1t /root/DB-backup/cvmems/*.dump | head -1"
+scp root@mystartup:/root/DB-backup/cvmems/<dump-name>.dump .
 ```
 
-If anything is wrong, see §11 troubleshooting.
+## 10. Troubleshooting
 
----
+### `pg_dump failed`
 
-## 10. Retention behaviour
-
-- Default: keep dumps for **7 days**. Older objects are deleted at the
-  end of each successful run.
-- Change: edit `RETAIN_DAYS` in `/etc/qltbyt-backup/.env`. Takes effect
-  on the next run.
-- Rotation is **idempotent**: it deletes by `--min-age`, not by
-  counting files. Safe even if a few runs were missed.
-- Rotation failure is **non-fatal**: the new dump is still uploaded; a
-  ⚠️ Telegram message is sent so you can inspect Drive manually.
-
-### Log rotation
-
-The script appends to `/var/log/qltbyt-backup.log` forever. For a
-long-running VPS, add a `logrotate` snippet:
+Check:
 
 ```bash
-sudo tee /etc/logrotate.d/qltbyt-backup >/dev/null <<'EOF'
-/var/log/qltbyt-backup.log {
-  weekly
-  rotate 8
-  compress
-  missingok
-  notifempty
-  create 0640 root adm
-}
-EOF
+sudo tail -n 80 /var/log/qltbyt-backup/latest-pg_dump.stderr.log
+sudo tail -n 80 /var/log/qltbyt-backup.log
 ```
 
----
+Common causes:
 
-## 11. Troubleshooting
+- Wrong database password.
+- Network path to Supabase is blocked.
+- `pg_dump` is too old for the server version.
 
-### `pg_dump: server version 17.x; pg_dump version 15.x`
-Client too old. Reinstall: `sudo apt install postgresql-client-17`
-from the PGDG repo (§2).
+### `database unreachable`
 
-### `rclone: oauth2: token expired and refresh token is not set`
-Refresh the OAuth credentials:
+Check the direct connection string:
 
 ```bash
-rclone config reconnect gdrive:
+sudo bash -c 'set -a; . /etc/qltbyt-backup/.env; set +a; psql "$DATABASE_URL" -c "select 1"'
 ```
 
-If that does not work, delete and recreate the remote (§3).
+### `backup file too small`
 
-### `psql: error: connection to server ... timeout`
-- IPv4-only VPS hitting an IPv6-only Supabase endpoint. Either:
-  - Buy Supabase's IPv4 add-on (paid), **or**
-  - Use Supavisor **session-mode** endpoint (port 5432 host
-    `aws-0-<region>.pooler.supabase.com`). Do **not** use transaction
-    mode (port 6543) — `pg_dump` will fail.
-- Firewall blocks outbound 5432. Check with `nc -vz <host> 5432`.
-
-### `Telegram silent` (no message arrives)
-- Wrong token: the bot rejects the request. Run a manual test (§4).
-- Wrong chat ID: the bot is not a member of the chat, or the chat ID
-  has the wrong sign (groups need `-100...`).
-- Network blocks `api.telegram.org`. Check
-  `curl -fsS https://api.telegram.org/`.
-
-### `another instance holds lock; skipping this run`
-The previous run is still going (slow network, large DB) or crashed
-without releasing the lock. If no `qltbyt-backup` process exists, the
-lock is stale:
+The script aborts if the dump is under 1 KiB. Inspect the detail log:
 
 ```bash
-ps aux | grep qltbyt-backup            # confirm nothing is running
-sudo rm -f /var/run/qltbyt-backup.lock
+sudo tail -n 80 /var/log/qltbyt-backup/latest-pg_dump.stderr.log
 ```
 
-### Dump is suspiciously small (`exit code 21`)
-The script aborts when the upload is below 1 KiB. The likely cause is
-a misconfigured `DUMP_SCHEMAS` (e.g. typo) producing an empty dump.
-Run `pg_dump` manually with the same args and inspect.
+### No Telegram Alert
 
-### Manual reset (for testing)
+Check `TG_TOKEN` and `TG_CHAT` in `/etc/qltbyt-backup/.env`. Telegram failure is
+logged as a warning and never masks the backup result.
 
-```bash
-sudo rm -f /var/run/qltbyt-backup.lock
-sudo truncate -s 0 /var/log/qltbyt-backup.log
-rclone delete --rmdirs gdrive:qltbyt-backup/
-```
+## 11. Decommission
 
----
-
-## 12. Security checklist
-
-Before declaring setup complete, verify each box:
-
-- [ ] `/etc/qltbyt-backup/.env` is mode `0600`, owner `root`.
-- [ ] `~/.config/rclone/rclone.conf` is mode `0600` (rclone sets this
-      by default; verify).
-- [ ] No secret value (DB password, Telegram token) appears in
-      `/etc/cron.d/qltbyt-backup` or in any cron command line — they
-      would be visible to all users via `ps`. The script reads them
-      from the env file only.
-- [ ] `.env` is **not** committed to git. `git status` from the repo
-      should never show it.
-- [ ] The Telegram **bot itself** is private (not added to public
-      groups; failure messages may include hostnames and recent log
-      lines).
-- [ ] The Google account used for `rclone` has 2FA enabled.
-- [ ] Backups stored in Drive are **NOT encrypted at rest by this
-      script**. The data is hospital-equipment / employee records;
-      treat the Drive account as a sensitive credential. To add
-      encryption later, see §13.
-
----
-
-## 13. (Future) Adding encryption
-
-Not configured in this version (intentional, for simplicity). When you
-want encryption at rest in Drive, the simplest path is:
-
-1. Add an `rclone crypt` remote on top of `gdrive:qltbyt-backup`:
-
-   ```bash
-   rclone config
-   # n → new remote
-   # name> gdrive_crypt
-   # Storage> crypt
-   # remote> gdrive:qltbyt-backup-encrypted
-   # filename_encryption> standard
-   # directory_name_encryption> true
-   # password> <strong password>
-   # password2> <salt>
-   ```
-
-2. Change `RCLONE_REMOTE` in `.env` from `gdrive:qltbyt-backup` to
-   `gdrive_crypt:`.
-
-3. **Important.** Store the `password` and `password2` somewhere
-   **off the server**. Without them the encrypted dumps are useless.
-   A password manager entry plus a printed copy in a safe is standard.
-
-4. Update [`db-restore.md`](./db-restore.md) recovery prerequisites to
-   include "rclone crypt password".
-
----
-
-## 14. Uninstall
+Disable the cron job without deleting existing dumps:
 
 ```bash
-sudo systemctl stop cron 2>/dev/null || true
 sudo rm -f /etc/cron.d/qltbyt-backup
-sudo rm -f /usr/local/bin/qltbyt-backup
-sudo rm -rf /etc/qltbyt-backup
-# Keep /var/log/qltbyt-backup.log for postmortem; delete only if you
-# are sure you no longer need the history.
-sudo systemctl start cron 2>/dev/null || true
-
-# Optional — remove rclone remote.
-rclone config delete gdrive
-
-# Optional — delete dumps from Drive (irreversible).
-rclone delete --rmdirs gdrive:qltbyt-backup/
+sudo service cron reload
 ```
 
----
-
-## Appendix: where the script lives
-
-The canonical source for the script is **this repo**:
-`scripts/backup-db.sh`. The copy at `/usr/local/bin/qltbyt-backup` is
-the deployed copy.
-
-When you change the script, redeploy with:
+Delete old local backups only after confirming they were copied elsewhere:
 
 ```bash
-cd /path/to/qltbyt-nam-phong
-git pull
-sudo install -m 0750 -o root -g root \
-  scripts/backup-db.sh /usr/local/bin/qltbyt-backup
+sudo find /root/DB-backup/cvmems -maxdepth 1 -type f -name '*.dump' -print
 ```
-
-Do **not** edit `/usr/local/bin/qltbyt-backup` directly on the VPS —
-that copy is overwritten on the next deploy.
