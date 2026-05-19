@@ -1,3 +1,5 @@
+"""Vietnamese-insensitive text normalization for category matching."""
+
 import re
 import unicodedata
 
@@ -7,6 +9,7 @@ _SPACE_RE = re.compile(r"\s+")
 
 
 def normalize_text(value: str) -> str:
+    """Fold accents, punctuation, and spacing into a lowercase ASCII search key."""
     vietnamese_d = value.replace("đ", "d").replace("Đ", "D")
     decomposed = unicodedata.normalize("NFKD", vietnamese_d)
     without_marks = "".join(

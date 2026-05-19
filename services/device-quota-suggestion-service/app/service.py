@@ -1,3 +1,5 @@
+"""Request orchestration for device quota category suggestions."""
+
 import copy
 from dataclasses import dataclass
 import hashlib
@@ -28,6 +30,8 @@ class _InflightRequest:
 
 
 class SuggestionService:
+    """Coordinate validation, embeddings, ranking, caching, and instrumentation."""
+
     def __init__(
         self,
         embedding_backend: EmbeddingBackend,
@@ -42,12 +46,15 @@ class SuggestionService:
         self._lock = threading.Lock()
 
     def is_ready(self) -> bool:
+        """Return whether the embedding backend has completed runtime initialization."""
         return self.embedding_backend.is_ready()
 
     def warm(self) -> None:
+        """Preload the embedding backend so readiness checks can turn true."""
         self.embedding_backend.warm()
 
     def suggest(self, payload: dict) -> ResponseDict:
+        """Validate a raw request payload and return ranked category suggestions."""
         request_started = time.perf_counter()
         validation_started = request_started
         request = SuggestRequest.model_validate(payload)

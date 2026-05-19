@@ -1,3 +1,5 @@
+"""Deterministic payload builders for DQSS smoke and performance checks."""
+
 import time
 from typing import Dict
 
@@ -6,6 +8,7 @@ from app.service import SuggestionService
 
 
 def create_unit17_payload() -> dict:
+    """Return a deterministic payload shaped like the Unit 17 production case."""
     return {
         "requestId": "req-harness-unit17",
         "facilityId": 17,
@@ -21,6 +24,7 @@ def create_synthetic_unique_payload(
     unique_name_count: int = 2000,
     category_count: int = 300,
 ) -> dict:
+    """Return a large synthetic payload with configurable unique-name cardinality."""
     _validate_positive_count("unique_name_count", unique_name_count)
     _validate_positive_count("category_count", category_count)
     return {
@@ -35,6 +39,7 @@ def create_synthetic_unique_payload(
 
 
 def run_deterministic_case(case_name: str) -> Dict[str, object]:
+    """Run a named deterministic harness case and return summary metrics."""
     payload = _payload_for_case(case_name)
     service = SuggestionService(embedding_backend=DeterministicEmbeddingBackend())
     started = time.perf_counter()

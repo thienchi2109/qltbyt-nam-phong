@@ -1,9 +1,13 @@
+"""Environment-backed settings for the suggestion service."""
+
 import os
 from dataclasses import dataclass
 
 
 @dataclass(frozen=True)
 class Settings:
+    """Runtime configuration for model loading and internal authentication."""
+
     internal_token: str = ""
     provider_name: str = "vm-local"
     provider_version: str = "0.1.0"
@@ -12,6 +16,7 @@ class Settings:
 
 
 def load_settings() -> Settings:
+    """Load settings from environment variables and require the internal token."""
     internal_token = os.environ.get("DQSS_INTERNAL_TOKEN", "")
     if not internal_token:
         raise ValueError("DQSS_INTERNAL_TOKEN must be configured")

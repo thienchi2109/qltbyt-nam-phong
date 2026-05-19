@@ -1,3 +1,5 @@
+"""Structured logging helpers for suggestion requests."""
+
 import json
 import logging
 import time
@@ -10,10 +12,12 @@ LOGGER = logging.getLogger("dqss.suggest")
 
 
 def elapsed_ms(started: float) -> float:
+    """Return elapsed milliseconds from a perf-counter timestamp."""
     return round((time.perf_counter() - started) * 1000, 3)
 
 
 def request_metrics(request: SuggestRequest) -> Dict[str, int]:
+    """Return non-sensitive request size metrics for logs."""
     normalized_names = {normalize_text(item.name) for item in request.deviceNames}
     return {
         "deviceNameCount": len(request.deviceNames),
@@ -24,6 +28,7 @@ def request_metrics(request: SuggestRequest) -> Dict[str, int]:
 
 
 def log_success(result: ResponseDict, request: SuggestRequest) -> None:
+    """Log a successful suggestion response without raw device names."""
     LOGGER.info(
         json.dumps(
             {
@@ -47,6 +52,7 @@ def log_failure(
     timings: dict,
     error: BaseException,
 ) -> None:
+    """Log a failed suggestion request without exposing raw device names."""
     LOGGER.info(
         json.dumps(
             {

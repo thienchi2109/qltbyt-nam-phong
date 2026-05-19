@@ -1,3 +1,5 @@
+"""Ranking helpers for matching device names to quota categories."""
+
 import math
 from dataclasses import dataclass
 from difflib import SequenceMatcher
@@ -10,6 +12,8 @@ from app.schemas import CategoryItem, SuggestOptions
 
 @dataclass(frozen=True)
 class CategoryVector:
+    """Precomputed category representation used during candidate ranking."""
+
     category: CategoryItem
     normalized_name: str
     embedding: List[float]
@@ -18,6 +22,7 @@ class CategoryVector:
 
 
 def cosine_similarity(left: List[float], right: List[float]) -> float:
+    """Return cosine similarity for two vectors, or zero for invalid inputs."""
     if not left or not right or len(left) != len(right):
         return 0.0
     dot = sum(a * b for a, b in zip(left, right))
@@ -28,10 +33,12 @@ def cosine_similarity(left: List[float], right: List[float]) -> float:
     return max(0.0, min(1.0, dot / (left_norm * right_norm)))
 
 def normalize_vector(vector: List[float]) -> List[float]:
+    """Return a unit-length copy of a numeric vector."""
     norm = math.sqrt(sum(value * value for value in vector)) or 1.0
     return [value / norm for value in vector]
 
 def normalized_dot_similarity(left: List[float], right: List[float]) -> float:
+    """Return clamped dot similarity for already normalized vectors."""
     if not left or not right or len(left) != len(right):
         return 0.0
     dot = sum(a * b for a, b in zip(left, right))
@@ -39,6 +46,7 @@ def normalized_dot_similarity(left: List[float], right: List[float]) -> float:
 
 
 def lexical_similarity(left: str, right: str) -> float:
+    """Normalize two labels and return their lexical similarity."""
     return lexical_similarity_normalized(
         normalize_text(left),
         normalize_text(right),
@@ -46,6 +54,7 @@ def lexical_similarity(left: str, right: str) -> float:
 
 
 def lexical_similarity_normalized(left_normalized: str, right_normalized: str) -> float:
+    """Return lexical similarity for two already-normalized labels."""
     if not left_normalized or not right_normalized:
         return 0.0
     if left_normalized == right_normalized:
@@ -60,6 +69,7 @@ def fused_score(
     semantic_score: float,
     options: SuggestOptions,
 ) -> float:
+    """Blend lexical and semantic scores according to request weights."""
     total_weight = options.lexicalWeight + options.semanticWeight
     if total_weight <= 0:
         return 0.0
@@ -76,6 +86,7 @@ def rank_categories(
     categories: List[CategoryVector],
     options: SuggestOptions,
 ) -> List[dict]:
+    """Rank likely category candidates for a device name."""
     device_normalized = normalize_text(device_name)
     device_tokens = frozenset(device_normalized.split())
     device_char_grams = character_ngrams(device_normalized)
@@ -233,6 +244,7 @@ def _character_ngram_score(
 
 
 def character_ngrams(value: str) -> FrozenSet[str]:
+    """Return compact two-character grams for cheap lexical shortlisting."""
     compact = value.replace(" ", "")
     if len(compact) < 2:
         return frozenset([compact]) if compact else frozenset()
@@ -240,6 +252,7 @@ def character_ngrams(value: str) -> FrozenSet[str]:
 
 
 def needs_review(candidates: List[dict], options: SuggestOptions) -> bool:
+    """Return whether the top candidate is too weak or too close to the runner-up."""
     if not candidates:
         return True
     top_score = candidates[0]["score"]

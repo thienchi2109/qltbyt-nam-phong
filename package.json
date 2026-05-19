@@ -13,6 +13,8 @@
     "typecheck": "tsc --noEmit",
     "verify:no-explicit-any": "node scripts/check-no-explicit-any-in-diff.js",
     "verify:dedupe": "node scripts/check-sonarjs-duplication-in-diff.js",
+    "verify:python-docstrings": "node scripts/check-python-docstrings.js",
+    "verify:python-docstrings:changed": "node scripts/check-python-docstrings.js --changed",
     "prepare": "lefthook install",
     "hooks:install": "lefthook install",
     "test": "vitest",
