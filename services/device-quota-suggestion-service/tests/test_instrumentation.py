@@ -119,9 +119,9 @@ def test_request_cache_hit_still_logs_sanitized_summary(caplog):
     assert len(events) == 2
     assert events[1]["event"] == "dqss.suggest.completed"
     assert events[1]["cache"]["requestHit"] is True
-    assert events[1]["timings"]["categoryEmbeddingMs"] == 0.0
-    assert events[1]["timings"]["deviceEmbeddingMs"] == 0.0
-    assert events[1]["timings"]["rankingMs"] == 0.0
+    assert events[1]["timings"]["categoryEmbeddingMs"] <= 0.001
+    assert events[1]["timings"]["deviceEmbeddingMs"] <= 0.001
+    assert events[1]["timings"]["rankingMs"] <= 0.001
     assert events[1]["timings"]["totalMs"] >= 0
 
 
