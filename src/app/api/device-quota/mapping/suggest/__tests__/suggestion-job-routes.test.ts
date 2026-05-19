@@ -37,6 +37,7 @@ const FORBIDDEN_SESSION = {
 describe("device quota suggestion job routes", () => {
   beforeEach(() => {
     vi.resetModules()
+    vi.doUnmock("@/lib/rbac")
     getServerSessionMock.mockReset()
     createSuggestionJobMock.mockReset()
     getSuggestionJobMock.mockReset()
@@ -86,6 +87,26 @@ describe("device quota suggestion job routes", () => {
     )
 
     expect(response.status).toBe(403)
+    expect(createSuggestionJobMock).not.toHaveBeenCalled()
+  })
+
+  test("POST /jobs sanitizes unexpected auth guard failures", async () => {
+    vi.doMock("@/lib/rbac", () => ({
+      canAccessDeviceQuotaModule: () => {
+        throw new Error("rbac store unavailable")
+      },
+    }))
+    const mod = await import("@/app/api/device-quota/mapping/suggest/jobs/route")
+
+    const response = await mod.POST(
+      new Request("https://example.test/api/device-quota/mapping/suggest/jobs", {
+        body: JSON.stringify({ donViId: 17 }),
+        method: "POST",
+      }),
+    )
+
+    expect(response.status).toBe(500)
+    await expect(response.json()).resolves.toMatchObject({ error: "Internal server error" })
     expect(createSuggestionJobMock).not.toHaveBeenCalled()
   })
 

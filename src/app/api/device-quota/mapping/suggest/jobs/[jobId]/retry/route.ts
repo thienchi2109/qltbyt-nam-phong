@@ -23,7 +23,7 @@ export async function POST(
     assertSuggestionRouteUser(user)
   } catch (error) {
     const status = getErrorStatus(error)
-    const message = getErrorMessage(error)
+    const message = getErrorMessage(error, status)
     return NextResponse.json({ error: message }, { status })
   }
 
@@ -36,7 +36,7 @@ export async function POST(
     if (status >= 500) {
       console.error("Suggestion job retry failed", error)
     }
-    const message = status < 500 ? getErrorMessage(error) : "Internal server error"
+    const message = getErrorMessage(error, status)
     return NextResponse.json({ error: message }, { status })
   }
 }

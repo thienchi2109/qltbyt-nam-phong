@@ -19,7 +19,8 @@ export function getErrorStatus(error: unknown): number {
   return 500
 }
 
-export function getErrorMessage(error: unknown): string {
+export function getErrorMessage(error: unknown, status: number): string {
+  if (status >= 500) return "Internal server error"
   if (error instanceof Error && error.message) return error.message
   return "Internal server error"
 }

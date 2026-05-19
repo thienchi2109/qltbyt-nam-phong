@@ -39,7 +39,7 @@ export async function POST(request: Request) {
     assertSuggestionRouteUser(user)
   } catch (error) {
     const status = getErrorStatus(error)
-    const message = getErrorMessage(error)
+    const message = getErrorMessage(error, status)
     return NextResponse.json({ error: message, requestId }, { status })
   }
 
@@ -71,7 +71,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ job, requestId }, { status })
   } catch (error) {
     const status = getErrorStatus(error)
-    const message = status < 500 ? getErrorMessage(error) : "Internal server error"
+    const message = getErrorMessage(error, status)
     return NextResponse.json({ error: message, requestId }, { status })
   }
 }
