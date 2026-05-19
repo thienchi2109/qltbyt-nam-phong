@@ -119,4 +119,29 @@ def test_request_cache_hit_still_logs_sanitized_summary(caplog):
     assert len(events) == 2
     assert events[1]["event"] == "dqss.suggest.completed"
     assert events[1]["cache"]["requestHit"] is True
+    assert events[1]["timings"]["categoryEmbeddingMs"] == 0.0
+    assert events[1]["timings"]["deviceEmbeddingMs"] == 0.0
+    assert events[1]["timings"]["rankingMs"] == 0.0
     assert events[1]["timings"]["totalMs"] >= 0
+
+
+def test_reused_duplicate_device_names_count_unique_cache_hits(caplog):
+    caplog.set_level(logging.INFO, logger="dqss.suggest")
+    service = SuggestionService(embedding_backend=DeterministicEmbeddingBackend())
+    first_payload = payload()
+    second_payload = payload()
+    second_payload["requestId"] = "req-instrumentation-second"
+    second_payload["unassignedSignature"] = "unassigned-instrumentation-second"
+    second_payload["deviceNames"] = [
+        {"name": "SECRET_DEVICE_SENTINEL", "deviceIds": [1]},
+        {"name": "secret device sentinel", "deviceIds": [2]},
+    ]
+
+    service.suggest(first_payload)
+    service.suggest(second_payload)
+
+    event = parsed_dqss_events(caplog)[1]
+    assert event["metrics"]["deviceNameCount"] == 2
+    assert event["metrics"]["uniqueDeviceNameCount"] == 1
+    assert event["cache"]["deviceEmbeddingHits"] == 1
+    assert event["cache"]["deviceEmbeddingMisses"] == 0

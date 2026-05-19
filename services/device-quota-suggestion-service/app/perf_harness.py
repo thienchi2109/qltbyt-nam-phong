@@ -21,6 +21,8 @@ def create_synthetic_unique_payload(
     unique_name_count: int = 2000,
     category_count: int = 300,
 ) -> dict:
+    _validate_positive_count("unique_name_count", unique_name_count)
+    _validate_positive_count("category_count", category_count)
     return {
         "requestId": "req-harness-synthetic-%d" % unique_name_count,
         "facilityId": 17,
@@ -58,6 +60,7 @@ def _payload_for_case(case_name: str) -> dict:
 
 
 def _categories(count: int) -> list:
+    _validate_positive_count("category_count", count)
     return [
         {
             "id": index + 1,
@@ -70,6 +73,9 @@ def _categories(count: int) -> list:
 
 
 def _device_names(unique_name_count: int, total_device_count: int) -> list:
+    _validate_positive_count("unique_name_count", unique_name_count)
+    if total_device_count < 0:
+        raise ValueError("total_device_count must be >= 0")
     names = [
         {
             "name": "Thiet bi can phan loai %04d" % index,
@@ -80,6 +86,11 @@ def _device_names(unique_name_count: int, total_device_count: int) -> list:
     for device_id in range(1, total_device_count + 1):
         names[(device_id - 1) % unique_name_count]["deviceIds"].append(device_id)
     return names
+
+
+def _validate_positive_count(name: str, value: int) -> None:
+    if value <= 0:
+        raise ValueError("%s must be > 0" % name)
 
 
 def _public_metrics(metrics: dict) -> dict:

@@ -1,4 +1,5 @@
 import json
+from pathlib import Path
 import subprocess
 import sys
 
@@ -25,6 +26,19 @@ def test_synthetic_payload_documents_2000_unique_name_risk():
     assert len(payload["categories"]) == 300
 
 
+def test_synthetic_payload_rejects_invalid_counts():
+    for kwargs in (
+        {"unique_name_count": 0, "category_count": 300},
+        {"unique_name_count": 2000, "category_count": 0},
+    ):
+        try:
+            create_synthetic_unique_payload(**kwargs)
+        except ValueError as exc:
+            assert "must be > 0" in str(exc)
+        else:
+            raise AssertionError("Expected invalid harness counts to fail")
+
+
 def test_unit17_shape_embeds_unique_names_not_every_device_id():
     backend = CountingEmbeddingBackend()
     service = SuggestionService(embedding_backend=backend)
@@ -49,10 +63,11 @@ def test_deterministic_harness_reports_duration_timings_metrics_and_cache():
 
 
 def test_cli_harness_prints_json_summary():
+    script = Path(__file__).resolve().parents[1] / "scripts" / "dqss_perf_harness.py"
     completed = subprocess.run(
         [
             sys.executable,
-            "scripts/dqss_perf_harness.py",
+            str(script),
             "--case",
             "unit17",
             "--mode",

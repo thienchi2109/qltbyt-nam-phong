@@ -44,7 +44,8 @@ class SuggestionService:
         self.embedding_backend.warm()
 
     def suggest(self, payload: dict) -> ResponseDict:
-        validation_started = time.perf_counter()
+        request_started = time.perf_counter()
+        validation_started = request_started
         request = SuggestRequest.model_validate(payload)
         validation_ms = elapsed_ms(validation_started)
         request_key = self._request_key(request)
@@ -52,7 +53,12 @@ class SuggestionService:
         with self._lock:
             cached = self._request_cache.get(request_key)
             if cached is not None:
-                response = self._cache_hit_response(cached, request.requestId)
+                response = self._cache_hit_response(
+                    cached,
+                    request.requestId,
+                    validation_ms=validation_ms,
+                    total_ms=elapsed_ms(request_started),
+                )
                 log_success(response, request)
                 return response
             inflight = self._inflight.get(request_key)
@@ -67,7 +73,12 @@ class SuggestionService:
                 if inflight.error is not None:
                     raise inflight.error
                 cached = self._request_cache[request_key]
-                response = self._cache_hit_response(cached, request.requestId)
+                response = self._cache_hit_response(
+                    cached,
+                    request.requestId,
+                    validation_ms=validation_ms,
+                    total_ms=elapsed_ms(request_started),
+                )
                 log_success(response, request)
                 return response
 
@@ -83,7 +94,7 @@ class SuggestionService:
                 self._provider_metadata(),
                 {
                     "validationMs": validation_ms,
-                    "totalMs": validation_ms,
+                    "totalMs": elapsed_ms(request_started),
                 },
                 error,
             )
@@ -107,18 +118,16 @@ class SuggestionService:
         categories, category_hit = self._category_vectors(request)
         category_embedding_ms = elapsed_ms(category_started)
         suggestions = []
-        device_hits = 0
         normalized_names = [normalize_text(item.name) for item in request.deviceNames]
         unique_device_name_count = len(dict.fromkeys(normalized_names))
         device_started = time.perf_counter()
         device_embeddings = self._device_embeddings(normalized_names)
         device_embedding_ms = elapsed_ms(device_started)
+        device_embedding_hits = sum(1 for _, hit in device_embeddings.values() if hit)
 
         ranking_started = time.perf_counter()
         for item, normalized_name in zip(request.deviceNames, normalized_names):
-            embedding, hit = device_embeddings[normalized_name]
-            if hit:
-                device_hits += 1
+            embedding, _ = device_embeddings[normalized_name]
             candidates = rank_categories(
                 item.name,
                 embedding,
@@ -157,8 +166,8 @@ class SuggestionService:
             "cache": {
                 "requestHit": False,
                 "categoryEmbeddingHit": category_hit,
-                "deviceEmbeddingHits": device_hits,
-                "deviceEmbeddingMisses": unique_device_name_count - device_hits,
+                "deviceEmbeddingHits": device_embedding_hits,
+                "deviceEmbeddingMisses": unique_device_name_count - device_embedding_hits,
             },
             "suggestions": suggestions,
         }
@@ -283,8 +292,22 @@ class SuggestionService:
         return hashlib.sha256(packed.encode("utf-8")).hexdigest()
 
     @staticmethod
-    def _cache_hit_response(cached: ResponseDict, request_id: str) -> ResponseDict:
+    def _cache_hit_response(
+        cached: ResponseDict,
+        request_id: str,
+        validation_ms: Optional[float] = None,
+        total_ms: Optional[float] = None,
+    ) -> ResponseDict:
         response = copy.deepcopy(cached)
         response["requestId"] = request_id
         response["cache"]["requestHit"] = True
+        if validation_ms is not None and total_ms is not None:
+            response["timings"] = {
+                "validationMs": validation_ms,
+                "categoryEmbeddingMs": 0.0,
+                "deviceEmbeddingMs": 0.0,
+                "rankingMs": 0.0,
+                "serializationMs": 0.0,
+                "totalMs": total_ms,
+            }
         return response
