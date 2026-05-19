@@ -318,4 +318,56 @@ describe("useSuggestMapping async jobs", () => {
       expect.objectContaining({ method: "POST" }),
     )
   })
+
+  test("clears stale retry job id when a fresh async job startup fails", async () => {
+    fetchMock
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            job: {
+              id: "job-1",
+              processedUniqueNames: 0,
+              status: "queued",
+              totalUniqueNames: 3,
+            },
+          }),
+          { status: 202, headers: { "Content-Type": "application/json" } },
+        ),
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            failed: 1,
+            job: {
+              error: "VM timeout",
+              id: "job-1",
+              processedUniqueNames: 1,
+              status: "failed",
+              totalUniqueNames: 3,
+            },
+            processed: 0,
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        ),
+      )
+
+    const { result, rerender } = renderHook(
+      ({ donViId }: { donViId: number }) =>
+        useSuggestMapping({ donViId, enabled: true }),
+      { initialProps: { donViId: 1 }, wrapper: createWrapper() },
+    )
+
+    await waitFor(() => {
+      expect(result.current.status).toBe("error")
+    })
+    expect(result.current.canRetry).toBe(true)
+
+    fetchMock.mockRejectedValueOnce(new Error("startup failed"))
+    rerender({ donViId: 2 })
+
+    await waitFor(() => {
+      expect(result.current.error).toBe("startup failed")
+    })
+    expect(result.current.canRetry).toBe(false)
+  })
 })

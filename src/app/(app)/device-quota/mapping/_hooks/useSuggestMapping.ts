@@ -130,6 +130,7 @@ export function useSuggestMapping({ donViId, enabled }: UseSuggestMappingOptions
         setProgress(0)
         setProcessedUniqueNames(0)
         setTotalUniqueNames(0)
+        if (!retryJobId) setCurrentJobId(null)
       }
 
       if (retryJobId) {

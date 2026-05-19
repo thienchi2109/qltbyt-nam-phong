@@ -112,15 +112,15 @@ export function waitForNextJobTick(signal: AbortSignal): Promise<void> {
       return
     }
 
-    const timer = setTimeout(resolve, delayMs)
-    signal.addEventListener(
-      "abort",
-      () => {
-        clearTimeout(timer)
-        reject(new DOMException("Aborted", "AbortError"))
-      },
-      { once: true },
-    )
+    const onAbort = () => {
+      clearTimeout(timer)
+      reject(new DOMException("Aborted", "AbortError"))
+    }
+    const timer = setTimeout(() => {
+      signal.removeEventListener("abort", onAbort)
+      resolve()
+    }, delayMs)
+    signal.addEventListener("abort", onAbort, { once: true })
   })
 }
 
