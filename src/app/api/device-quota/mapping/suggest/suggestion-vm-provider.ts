@@ -35,7 +35,7 @@ function stableHash(value: unknown): string {
   return hash.toString(36)
 }
 
-function createUnassignedSignature(names: UnassignedName[]): string {
+export function createUnassignedSignature(names: UnassignedName[]): string {
   const normalized = names
     .map((name) => ({
       name: name.ten_thiet_bi,
@@ -45,14 +45,14 @@ function createUnassignedSignature(names: UnassignedName[]): string {
   return `v1-${normalized.length}-${stableHash(normalized)}`
 }
 
-function createEmptyCategoryResult(names: UnassignedName[]): SearchResult[] {
+export function createEmptyCategoryResult(names: UnassignedName[]): SearchResult[] {
   return names.map((name) => ({
     query_text: name.ten_thiet_bi,
     results: [],
   }))
 }
 
-function toVmRequest({
+export function toVmRequest({
   requestId,
   donViId,
   names,
@@ -90,7 +90,7 @@ function toVmRequest({
   }
 }
 
-function assertPayloadSize(request: VmSuggestRequest): void {
+export function assertPayloadSize(request: VmSuggestRequest): void {
   const maxBytes = parsePositiveInteger(
     process.env.DEVICE_QUOTA_VM_MAX_PAYLOAD_BYTES,
     DEFAULT_VM_MAX_PAYLOAD_BYTES,
@@ -104,7 +104,7 @@ function assertPayloadSize(request: VmSuggestRequest): void {
   }
 }
 
-function toSearchResults(response: Awaited<ReturnType<typeof callVmSuggest>>): SearchResult[] {
+export function toSearchResults(response: Awaited<ReturnType<typeof callVmSuggest>>): SearchResult[] {
   return response.suggestions.map((suggestion) => ({
     query_text: suggestion.deviceName,
     results: suggestion.candidates.map((candidate) => ({
@@ -126,14 +126,7 @@ export async function runVmSuggestMapping({
   requestId: string
   user: SuggestionAccessUser
 }): Promise<SuggestionProviderResult> {
-  const [names, categories] = await Promise.all([
-    callSupabaseRpc<UnassignedName[]>(
-      "dinh_muc_thiet_bi_unassigned_names",
-      { p_don_vi: donViId },
-      user,
-    ),
-    callSupabaseRpc<DinhMucNhomRow[]>("dinh_muc_nhom_list", { p_don_vi: donViId }, user),
-  ])
+  const { categories, names } = await fetchVmSuggestionInputs({ donViId, user })
 
   const catalogSignature = createCatalogSignature(categories)
   const unassignedSignature = createUnassignedSignature(names)
@@ -197,4 +190,23 @@ export async function runVmSuggestMapping({
     }
     throw error
   }
+}
+
+export async function fetchVmSuggestionInputs({
+  donViId,
+  user,
+}: {
+  donViId: number
+  user: SuggestionAccessUser
+}): Promise<{ categories: DinhMucNhomRow[]; names: UnassignedName[] }> {
+  const [names, categories] = await Promise.all([
+    callSupabaseRpc<UnassignedName[]>(
+      "dinh_muc_thiet_bi_unassigned_names",
+      { p_don_vi: donViId },
+      user,
+    ),
+    callSupabaseRpc<DinhMucNhomRow[]>("dinh_muc_nhom_list", { p_don_vi: donViId }, user),
+  ])
+
+  return { categories, names }
 }
