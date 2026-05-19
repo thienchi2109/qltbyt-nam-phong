@@ -199,6 +199,7 @@ class SuggestionService:
                 category=category,
                 normalized_name=normalized_name,
                 embedding=normalize_vector(embedding),
+                tokens=frozenset(normalized_name.split()),
             )
             for category, normalized_name, embedding in zip(
                 request.categories,

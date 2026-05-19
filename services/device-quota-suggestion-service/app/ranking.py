@@ -1,7 +1,8 @@
 import math
 from dataclasses import dataclass
 from difflib import SequenceMatcher
-from typing import List, Optional
+import heapq
+from typing import FrozenSet, List, Optional
 
 from app.normalization import normalize_text
 from app.schemas import CategoryItem, SuggestOptions
@@ -12,6 +13,7 @@ class CategoryVector:
     category: CategoryItem
     normalized_name: str
     embedding: List[float]
+    tokens: Optional[FrozenSet[str]] = None
 
 
 def cosine_similarity(left: List[float], right: List[float]) -> float:
@@ -74,13 +76,30 @@ def rank_categories(
     options: SuggestOptions,
 ) -> List[dict]:
     device_normalized = normalize_text(device_name)
+    device_tokens = frozenset(device_normalized.split())
+    shortlist = _shortlist_category_indices(
+        device_normalized,
+        device_tokens,
+        device_embedding,
+        categories,
+        options,
+    )
     ranked = []
-    for category_vector in categories:
-        lexical = lexical_similarity_normalized(
+    for category_index in shortlist:
+        category_vector = categories[category_index]
+        lexical = _exact_or_contains_score(
             device_normalized,
             category_vector.normalized_name,
         )
-        semantic = normalized_dot_similarity(device_embedding, category_vector.embedding)
+        if lexical is None:
+            lexical = lexical_similarity_normalized(
+                device_normalized,
+                category_vector.normalized_name,
+            )
+        semantic = normalized_dot_similarity(
+            device_embedding,
+            category_vector.embedding,
+        )
         score = fused_score(lexical, semantic, options)
         ranked.append(
             {
@@ -102,6 +121,93 @@ def rank_categories(
         )
     )
     return ranked[: options.topK]
+
+
+def _shortlist_category_indices(
+    device_normalized: str,
+    device_tokens: FrozenSet[str],
+    device_embedding: List[float],
+    categories: List[CategoryVector],
+    options: SuggestOptions,
+) -> List[int]:
+    limit = _shortlist_limit(options)
+    selected = set()
+    semantic_scores = []
+    cheap_lexical_scores = []
+
+    for index, category_vector in enumerate(categories):
+        category_tokens = category_vector.tokens or frozenset(
+            category_vector.normalized_name.split()
+        )
+        exact_or_contains = _exact_or_contains_score(
+            device_normalized,
+            category_vector.normalized_name,
+        )
+        if exact_or_contains is not None:
+            selected.add(index)
+            cheap_lexical = exact_or_contains
+        else:
+            cheap_lexical = _token_overlap_score(device_tokens, category_tokens)
+
+        semantic = normalized_dot_similarity(device_embedding, category_vector.embedding)
+        semantic_scores.append((index, semantic, category_vector))
+        if cheap_lexical > 0:
+            cheap_lexical_scores.append((index, cheap_lexical, category_vector))
+
+    selected.update(
+        index
+        for index, _, _ in heapq.nsmallest(
+            limit,
+            semantic_scores,
+            key=lambda item: (
+                -item[1],
+                item[2].category.code or "",
+                item[2].category.id,
+            ),
+        )
+    )
+    selected.update(
+        index
+        for index, _, _ in heapq.nsmallest(
+            limit,
+            cheap_lexical_scores,
+            key=lambda item: (
+                -item[1],
+                item[2].category.code or "",
+                item[2].category.id,
+            ),
+        )
+    )
+    return sorted(selected)
+
+
+def _shortlist_limit(options: SuggestOptions) -> int:
+    return min(max(options.topK * 3, 8), 24)
+
+
+def _exact_or_contains_score(
+    left_normalized: str,
+    right_normalized: str,
+) -> Optional[float]:
+    if not left_normalized or not right_normalized:
+        return None
+    if left_normalized == right_normalized:
+        return 1.0
+    if left_normalized in right_normalized or right_normalized in left_normalized:
+        return 0.86
+    return None
+
+
+def _token_overlap_score(
+    left_tokens: FrozenSet[str],
+    right_tokens: FrozenSet[str],
+) -> float:
+    if not left_tokens or not right_tokens:
+        return 0.0
+    overlap = len(left_tokens & right_tokens)
+    if overlap == 0:
+        return 0.0
+    return overlap / max(len(left_tokens), len(right_tokens))
 
 
 def needs_review(candidates: List[dict], options: SuggestOptions) -> bool:
