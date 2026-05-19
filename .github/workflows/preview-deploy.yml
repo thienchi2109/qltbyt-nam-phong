@@ -1,9 +1,7 @@
 name: 🔍 Preview Checks
 
 on:
-  pull_request:
-    branches: [ main ]
-    types: [opened, synchronize, reopened]
+  workflow_dispatch:
 
 env:
   NODE_VERSION: '18'
