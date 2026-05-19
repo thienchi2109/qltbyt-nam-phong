@@ -2,17 +2,13 @@ import { describe, test, expect, vi, beforeEach } from "vitest"
 import { renderHook, waitFor, act } from "@testing-library/react"
 import React from "react"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
-
 const callRpcMock = vi.fn()
 vi.mock("@/lib/rpc-client", () => ({
   callRpc: (...args: unknown[]) => callRpcMock(...args),
 }))
-
 const fetchMock = vi.fn()
 vi.stubGlobal("fetch", fetchMock)
-
 import { useSuggestMapping } from "../_hooks/useSuggestMapping"
-
 function createWrapper() {
   const queryClient = new QueryClient({
     defaultOptions: { mutations: { retry: false } },
@@ -70,6 +66,7 @@ function setupSuccessfulPipeline() {
 describe("useSuggestMapping", () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    vi.unstubAllEnvs()
   })
 
   test("stays idle when not enabled", () => {
@@ -95,7 +92,8 @@ describe("useSuggestMapping", () => {
     expect(fetchMock).not.toHaveBeenCalled()
   })
 
-  test("requests server-side suggested mapping once when enabled with valid donViId", async () => {
+  test("falls back to the synchronous preview route when async jobs are disabled", async () => {
+    vi.stubEnv("NEXT_PUBLIC_DEVICE_QUOTA_SUGGESTION_ASYNC_JOBS", "false")
     setupSuccessfulPipeline()
 
     const { result } = renderHook(() =>
@@ -124,6 +122,7 @@ describe("useSuggestMapping", () => {
   })
 
   test("merges results into groups by nhom_id", async () => {
+    vi.stubEnv("NEXT_PUBLIC_DEVICE_QUOTA_SUGGESTION_ASYNC_JOBS", "false")
     setupSuccessfulPipeline()
 
     const { result } = renderHook(() =>
@@ -149,6 +148,7 @@ describe("useSuggestMapping", () => {
   })
 
   test("separates unmatched devices", async () => {
+    vi.stubEnv("NEXT_PUBLIC_DEVICE_QUOTA_SUGGESTION_ASYNC_JOBS", "false")
     setupSuccessfulPipeline()
 
     const { result } = renderHook(() =>
@@ -167,6 +167,7 @@ describe("useSuggestMapping", () => {
   })
 
   test("tracks total and matched device counts", async () => {
+    vi.stubEnv("NEXT_PUBLIC_DEVICE_QUOTA_SUGGESTION_ASYNC_JOBS", "false")
     setupSuccessfulPipeline()
 
     const { result } = renderHook(() =>
@@ -184,6 +185,7 @@ describe("useSuggestMapping", () => {
   })
 
   test("sets error status on network error", async () => {
+    vi.stubEnv("NEXT_PUBLIC_DEVICE_QUOTA_SUGGESTION_ASYNC_JOBS", "false")
     fetchMock.mockRejectedValue(new Error("Network error"))
 
     const { result } = renderHook(() =>
@@ -199,6 +201,7 @@ describe("useSuggestMapping", () => {
   })
 
   test("sets error status on server-side preview failure", async () => {
+    vi.stubEnv("NEXT_PUBLIC_DEVICE_QUOTA_SUGGESTION_ASYNC_JOBS", "false")
     fetchMock.mockResolvedValue(
       new Response(JSON.stringify({ error: "Preview failed", requestId: "req-err" }), {
         status: 500,
@@ -219,6 +222,7 @@ describe("useSuggestMapping", () => {
   })
 
   test("reset clears result and returns to idle", async () => {
+    vi.stubEnv("NEXT_PUBLIC_DEVICE_QUOTA_SUGGESTION_ASYNC_JOBS", "false")
     setupSuccessfulPipeline()
 
     const { result } = renderHook(() =>
@@ -240,6 +244,7 @@ describe("useSuggestMapping", () => {
   })
 
   test("passes the server-side preview result through unchanged", async () => {
+    vi.stubEnv("NEXT_PUBLIC_DEVICE_QUOTA_SUGGESTION_ASYNC_JOBS", "false")
     const serverResult = {
       groups: [
         {
@@ -281,6 +286,7 @@ describe("useSuggestMapping", () => {
   })
 
   test("auto-resets to idle when enabled becomes false after pipeline started", async () => {
+    vi.stubEnv("NEXT_PUBLIC_DEVICE_QUOTA_SUGGESTION_ASYNC_JOBS", "false")
     setupSuccessfulPipeline()
 
     const wrapper = createWrapper()
@@ -315,6 +321,7 @@ describe("useSuggestMapping", () => {
     }
 
     test("calls dinh_muc_thiet_bi_link_batch RPC with correct payload", async () => {
+      vi.stubEnv("NEXT_PUBLIC_DEVICE_QUOTA_SUGGESTION_ASYNC_JOBS", "false")
       setupSuccessfulPipeline()
       callRpcMock.mockImplementation(({ fn }: { fn: string }) => {
         if (fn === "dinh_muc_thiet_bi_link_batch") return Promise.resolve(SAVE_RESULT)
@@ -351,6 +358,7 @@ describe("useSuggestMapping", () => {
     })
 
     test("transitions through saving → saved status lifecycle", async () => {
+      vi.stubEnv("NEXT_PUBLIC_DEVICE_QUOTA_SUGGESTION_ASYNC_JOBS", "false")
       setupSuccessfulPipeline()
 
       let resolveSave: (value: unknown) => void
@@ -387,6 +395,7 @@ describe("useSuggestMapping", () => {
     })
 
     test("exposes save result with affected and skipped counts", async () => {
+      vi.stubEnv("NEXT_PUBLIC_DEVICE_QUOTA_SUGGESTION_ASYNC_JOBS", "false")
       setupSuccessfulPipeline()
       callRpcMock.mockImplementation(({ fn }: { fn: string }) => {
         if (fn === "dinh_muc_thiet_bi_link_batch") return Promise.resolve(SAVE_RESULT)
@@ -412,6 +421,7 @@ describe("useSuggestMapping", () => {
     })
 
     test("sets saveError on RPC failure", async () => {
+      vi.stubEnv("NEXT_PUBLIC_DEVICE_QUOTA_SUGGESTION_ASYNC_JOBS", "false")
       setupSuccessfulPipeline()
       callRpcMock.mockImplementation(({ fn }: { fn: string }) => {
         if (fn === "dinh_muc_thiet_bi_link_batch") return Promise.reject(new Error("Permission denied"))

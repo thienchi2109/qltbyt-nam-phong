@@ -41,12 +41,10 @@ export interface SuggestedMappingPreviewDialogProps {
 
 function getStatusLabel(status: SuggestMappingStatus): string {
     switch (status) {
-        case "fetching-names":
-            return "Đang tải danh sách thiết bị..."
-        case "embedding":
-            return "Đang tạo embedding..."
-        case "searching":
-            return "Đang tìm kiếm danh mục phù hợp..."
+        case "starting-job":
+            return "Đang chuẩn bị gợi ý phân loại..."
+        case "processing":
+            return "Đang xử lý gợi ý phân loại..."
         default:
             return ""
     }
@@ -67,7 +65,21 @@ export function SuggestedMappingPreviewDialog({
     donViId,
     userRole,
 }: SuggestedMappingPreviewDialogProps) {
-    const { status, result, error, progress, reset, saveBatch, saveStatus, saveError, saveResult } = useSuggestMapping({
+    const {
+        canRetry,
+        status,
+        result,
+        error,
+        progress,
+        processedUniqueNames,
+        totalUniqueNames,
+        retryFailedJob,
+        reset,
+        saveBatch,
+        saveStatus,
+        saveError,
+        saveResult,
+    } = useSuggestMapping({
         donViId,
         enabled: open,
     })
@@ -135,20 +147,23 @@ export function SuggestedMappingPreviewDialog({
     const handleConfirmSave = React.useCallback(() => {
         if (!result) return
 
-        const mappings: SaveMapping[] = result.groups
-            .filter((g) => !excludedGroups.has(g.nhom_id))
-            .map((g) => {
-                const groupExcludedNames = excludedDeviceNames.get(g.nhom_id) ?? new Set()
-                // Filter device_ids via name→ID mapping, removing excluded names
-                const filteredIds = Object.entries(g.device_name_to_ids)
-                    .filter(([name]) => !groupExcludedNames.has(name))
-                    .flatMap(([, ids]) => ids)
-                return {
-                    nhom_id: g.nhom_id,
+        const mappings: SaveMapping[] = []
+        for (const group of result.groups) {
+            if (excludedGroups.has(group.nhom_id)) continue
+
+            const groupExcludedNames = excludedDeviceNames.get(group.nhom_id) ?? new Set()
+            const filteredIds: number[] = []
+            for (const [name, ids] of Object.entries(group.device_name_to_ids)) {
+                if (!groupExcludedNames.has(name)) filteredIds.push(...ids)
+            }
+
+            if (filteredIds.length > 0) {
+                mappings.push({
+                    nhom_id: group.nhom_id,
                     thiet_bi_ids: filteredIds,
-                }
-            })
-            .filter((m) => m.thiet_bi_ids.length > 0)
+                })
+            }
+        }
 
         if (mappings.length === 0) {
             toast({
@@ -200,9 +215,12 @@ export function SuggestedMappingPreviewDialog({
         }).length
         : 0
 
-    const isLoading = status === "fetching-names" || status === "embedding" || status === "searching"
+    const isLoading = status === "starting-job" || status === "processing"
     const canWrite = isEquipmentManagerRole(userRole)
     const isRegionalLeader = isRegionalLeaderRole(userRole)
+    const progressLabel = totalUniqueNames > 0
+        ? `${processedUniqueNames} / ${totalUniqueNames} tên thiết bị`
+        : `${progress}%`
 
     return (
         <Dialog open={open} onOpenChange={(val) => { if (!val) handleClose() }}>
@@ -222,7 +240,7 @@ export function SuggestedMappingPreviewDialog({
                     <div className="space-y-3">
                         <div className="flex items-center justify-between text-sm text-muted-foreground">
                             <span>{getStatusLabel(status)}</span>
-                            <span>{progress}%</span>
+                            <span>{progressLabel}</span>
                         </div>
                         <div className="w-full bg-muted rounded-full h-2">
                             <div
@@ -230,15 +248,30 @@ export function SuggestedMappingPreviewDialog({
                                 style={{ width: `${progress}%` }}
                             />
                         </div>
+                        <p className="text-xs text-muted-foreground">
+                            Quá trình chỉ tiếp tục khi hộp thoại hoặc phiên làm việc này còn mở.
+                        </p>
                         <MappingPreviewLoadingState />
                     </div>
                 )}
 
                 {/* Error state */}
                 {status === "error" && (
-                    <div className="flex items-center gap-2 rounded-md border border-destructive/50 bg-destructive/10 p-3 text-sm text-destructive">
-                        <AlertTriangle className="size-4 shrink-0" />
-                        <span>{error}</span>
+                    <div className="space-y-3 rounded-md border border-destructive/50 bg-destructive/10 p-3 text-sm text-destructive">
+                        <div className="flex items-center gap-2">
+                            <AlertTriangle className="size-4 shrink-0" />
+                            <span>{error}</span>
+                        </div>
+                        {canRetry && (
+                            <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={retryFailedJob}
+                            >
+                                Thử lại
+                            </Button>
+                        )}
                     </div>
                 )}
 

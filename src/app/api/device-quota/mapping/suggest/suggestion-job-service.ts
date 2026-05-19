@@ -276,6 +276,50 @@ export async function processNextSuggestionJobChunks({
   return { failed, processed }
 }
 
+export async function processSuggestionJobChunksForJob({
+  jobId,
+  limit = 1,
+  store = createServerSuggestionJobStore(),
+  suggestChunk,
+  user,
+}: {
+  jobId: string
+  limit?: number
+  store?: SuggestionJobStore
+  suggestChunk?: (args: {
+    chunk: SuggestionJobChunkRecord
+    job: SuggestionJobRecord
+  }) => Promise<{ results: SearchResult[] }>
+  user: SuggestionAccessUser
+}): Promise<{ failed: number; job: SuggestionJobRecord; processed: number }> {
+  const job = await getSuggestionJob({ jobId, store, user })
+  if (job.status === "failed" || job.status === "succeeded") {
+    return { failed: 0, job, processed: 0 }
+  }
+
+  const chunks = await store.getJobChunks(job.id)
+  const queuedChunks = chunks
+    .filter((chunk) => chunk.status === "queued")
+    .sort((a, b) => a.chunkIndex - b.chunkIndex)
+    .slice(0, limit)
+
+  let failed = 0
+  let processed = 0
+
+  for (const chunk of queuedChunks) {
+    try {
+      const didProcess = await processSuggestionJobChunk({ chunkId: chunk.id, store, suggestChunk })
+      if (didProcess) processed += 1
+    } catch {
+      failed += 1
+      break
+    }
+  }
+
+  const updatedJob = await getSuggestionJob({ jobId, store, user })
+  return { failed, job: updatedJob, processed }
+}
+
 export function mergeCompletedJobChunks(chunks: SuggestionJobChunkRecord[]) {
   const names = chunks.flatMap((chunk) => chunk.deviceNames)
   const results = chunks.flatMap((chunk) => chunk.result?.results ?? [])

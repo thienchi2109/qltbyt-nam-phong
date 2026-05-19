@@ -1,10 +1,22 @@
 // Orchestration hook for suggested mapping preview.
-// Browser calls one server-side route; the route owns payload bundling,
-// embedding/search provider orchestration, auth, and facility-scope checks.
+// Browser calls server-side routes; the routes own auth, facility scope,
+// payload bundling, provider orchestration, and bounded job processing.
 
 import { useState, useEffect, useCallback, useRef } from "react"
 import { useMutation } from "@tanstack/react-query"
 import { callRpc } from "@/lib/rpc-client"
+import {
+  createSuggestionJobRequest,
+  fetchSuggestedMapping,
+  getJobFailureMessage,
+  getJobResult,
+  getProgressPercent,
+  isAsyncSuggestionJobEnabled,
+  processSuggestionJobRequest,
+  retrySuggestionJobRequest,
+  waitForNextJobTick,
+  type SuggestionJob,
+} from "./useSuggestMappingJobClient"
 
 // ============================================
 // Types
@@ -30,9 +42,8 @@ export interface SuggestMappingResult {
 
 export type SuggestMappingStatus =
   | "idle"
-  | "fetching-names"
-  | "embedding"
-  | "searching"
+  | "starting-job"
+  | "processing"
   | "done"
   | "error"
 
@@ -55,47 +66,6 @@ interface UseSuggestMappingOptions {
   enabled: boolean
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value)
-}
-
-function getRouteErrorMessage(status: number, payload: unknown): string {
-  if (isRecord(payload) && typeof payload.error === "string" && payload.error) {
-    return payload.error
-  }
-  return `Suggestion preview failed (${status})`
-}
-
-function getRouteResult(payload: unknown): SuggestMappingResult {
-  if (isRecord(payload) && isRecord(payload.result)) {
-    return payload.result as unknown as SuggestMappingResult
-  }
-  throw new Error("Invalid suggestion preview response")
-}
-
-async function fetchSuggestedMapping(
-  donViId: number,
-  signal: AbortSignal,
-): Promise<SuggestMappingResult> {
-  const response = await fetch("/api/device-quota/mapping/suggest", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ donViId }),
-    signal,
-  })
-
-  let payload: unknown = null
-  try {
-    payload = await response.json()
-  } catch {}
-
-  if (!response.ok) {
-    throw new Error(getRouteErrorMessage(response.status, payload))
-  }
-
-  return getRouteResult(payload)
-}
-
 // ============================================
 // Hook
 // ============================================
@@ -103,27 +73,88 @@ async function fetchSuggestedMapping(
 export function useSuggestMapping({ donViId, enabled }: UseSuggestMappingOptions) {
   const [pipelineStatus, setPipelineStatus] = useState<SuggestMappingStatus>("idle")
   const [progress, setProgress] = useState(0)
+  const [processedUniqueNames, setProcessedUniqueNames] = useState(0)
+  const [totalUniqueNames, setTotalUniqueNames] = useState(0)
+  const [currentJobId, setCurrentJobId] = useState<string | null>(null)
   const abortRef = useRef<AbortController | null>(null)
 
+  const updateJobProgress = useCallback((job: SuggestionJob) => {
+    setCurrentJobId(job.id)
+    setProcessedUniqueNames(job.processedUniqueNames)
+    setTotalUniqueNames(job.totalUniqueNames)
+    setProgress(getProgressPercent(job))
+  }, [])
+
+  const waitForSuggestionJob = useCallback(
+    async (initialJob: SuggestionJob, signal: AbortSignal): Promise<SuggestMappingResult> => {
+      let job = initialJob
+      updateJobProgress(job)
+
+      while (!signal.aborted) {
+        if (job.status === "succeeded") {
+          setPipelineStatus("done")
+          setProgress(100)
+          return getJobResult(job)
+        }
+
+        if (job.status === "failed") {
+          throw new Error(getJobFailureMessage(job))
+        }
+
+        setPipelineStatus("processing")
+        job = await processSuggestionJobRequest(job.id, signal)
+        updateJobProgress(job)
+
+        if (job.status === "queued" || job.status === "processing") {
+          await waitForNextJobTick(signal)
+        }
+      }
+
+      throw new DOMException("Aborted", "AbortError")
+    },
+    [updateJobProgress],
+  )
+
   const mutation = useMutation({
-    mutationFn: async (dvId: number): Promise<SuggestMappingResult> => {
+    mutationFn: async ({
+      dvId,
+      retryJobId,
+    }: {
+      dvId: number
+      retryJobId?: string
+    }): Promise<SuggestMappingResult> => {
       const signal = abortRef.current!.signal
 
-      if (!signal.aborted) setPipelineStatus("fetching-names")
-      if (!signal.aborted) setProgress(0)
+      if (!signal.aborted) {
+        setPipelineStatus("starting-job")
+        setProgress(0)
+        setProcessedUniqueNames(0)
+        setTotalUniqueNames(0)
+        if (!retryJobId) setCurrentJobId(null)
+      }
 
+      if (retryJobId) {
+        const retryJob = await retrySuggestionJobRequest(retryJobId, signal)
+        return waitForSuggestionJob(retryJob, signal)
+      }
+
+      if (isAsyncSuggestionJobEnabled()) {
+        const job = await createSuggestionJobRequest(dvId, signal)
+        return waitForSuggestionJob(job, signal)
+      }
+
+      setPipelineStatus("processing")
       const result = await fetchSuggestedMapping(dvId, signal)
       if (signal.aborted) throw new DOMException("Aborted", "AbortError")
       return result
     },
-    onSuccess: (_data, _vars, _ctx) => {
+    onSuccess: () => {
       if (!abortRef.current?.signal.aborted) {
         setPipelineStatus("done")
         setProgress(100)
       }
     },
     onError: (err) => {
-      // Don't set error state for intentional aborts
       if (err instanceof DOMException && err.name === "AbortError") return
       if (!abortRef.current?.signal.aborted) {
         setPipelineStatus("error")
@@ -138,6 +169,9 @@ export function useSuggestMapping({ donViId, enabled }: UseSuggestMappingOptions
       abortRef.current = null
       setPipelineStatus("idle")
       setProgress(0)
+      setProcessedUniqueNames(0)
+      setTotalUniqueNames(0)
+      setCurrentJobId(null)
       mutation.reset()
       return
     }
@@ -146,7 +180,7 @@ export function useSuggestMapping({ donViId, enabled }: UseSuggestMappingOptions
     abortRef.current?.abort()
     abortRef.current = new AbortController()
 
-    mutation.mutate(donViId)
+    mutation.mutate({ dvId: donViId })
 
     return () => {
       abortRef.current?.abort()
@@ -174,7 +208,7 @@ export function useSuggestMapping({ donViId, enabled }: UseSuggestMappingOptions
     (mappings: SaveMapping[]) => {
       saveMutation.mutate(mappings)
     },
-    [saveMutation]
+    [saveMutation],
   )
 
   const reset = useCallback(() => {
@@ -184,7 +218,17 @@ export function useSuggestMapping({ donViId, enabled }: UseSuggestMappingOptions
     saveMutation.reset()
     setPipelineStatus("idle")
     setProgress(0)
+    setProcessedUniqueNames(0)
+    setTotalUniqueNames(0)
+    setCurrentJobId(null)
   }, [mutation, saveMutation])
+
+  const retryFailedJob = useCallback(() => {
+    if (donViId === null || currentJobId === null) return
+    abortRef.current?.abort()
+    abortRef.current = new AbortController()
+    mutation.mutate({ dvId: donViId, retryJobId: currentJobId })
+  }, [currentJobId, donViId, mutation])
 
   const saveStatus: SaveStatus = saveMutation.isPending
     ? "saving"
@@ -204,10 +248,14 @@ export function useSuggestMapping({ donViId, enabled }: UseSuggestMappingOptions
         : "idle"
 
   return {
+    canRetry: status === "error" && currentJobId !== null,
     status,
     result: mutation.data ?? null,
     error: mutation.error?.message ?? null,
     progress,
+    processedUniqueNames,
+    totalUniqueNames,
+    retryFailedJob,
     reset,
     saveBatch,
     saveStatus,
