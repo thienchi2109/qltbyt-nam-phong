@@ -47,6 +47,13 @@ Request:
 
 Response includes `provider`, `timings`, `metrics`, `cache`, and `suggestions`. Each suggestion includes `needsReview`, `confidence`, and bounded candidate categories.
 
+`timings` includes phase timings for validation, category embedding, device
+embedding, ranking, response serialization, and total duration. Structured
+`dqss.suggest` logs include the same phase timings plus request id, facility id,
+provider/model, cache status, device/category counts, and sanitized failure
+reason. Logs must not include raw device names, category names, tokens, or
+Cloudflare Access secrets.
+
 ## Local Tests
 
 Use a temporary virtual environment outside the repo:
@@ -59,6 +66,38 @@ PYTHONPATH=. /tmp/dqss-venv/bin/python -m pytest tests -q
 ```
 
 Tests use deterministic fake embeddings. They do not download the model.
+
+## Large-Payload Harness
+
+The deterministic harness documents the unit-17 and synthetic high-risk shapes
+without downloading the real model:
+
+```bash
+cd services/device-quota-suggestion-service
+PYTHONPATH=. /tmp/dqss-venv/bin/python scripts/dqss_perf_harness.py --case unit17 --mode deterministic
+PYTHONPATH=. /tmp/dqss-venv/bin/python scripts/dqss_perf_harness.py --case synthetic-2000 --mode deterministic
+```
+
+- `unit-17`: 504 unique names, 1940 devices, 291 categories.
+- `synthetic-2000`: 2000 unique names, 2000 devices, 300 categories.
+
+Each run prints JSON with total duration, phase timings, metrics, cache status,
+suggestion count, and provider metadata.
+
+Manual VM smoke against the real model should use the same payload shape and
+record total duration plus DQSS phase timings from the JSON response and
+structured service logs. Use environment-managed secrets only:
+
+```bash
+DQSS_URL=https://dqss-cvmems.cdclims.cloud
+DQSS_INTERNAL_TOKEN=...
+CF_ACCESS_CLIENT_ID=...
+CF_ACCESS_CLIENT_SECRET=...
+```
+
+Do not re-enable production canary from this instrumentation issue. Canary
+belongs to a later issue after timing evidence is captured and the VM path is
+fast enough for the real facility-sized request.
 
 ## Target VM Container
 

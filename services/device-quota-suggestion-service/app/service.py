@@ -7,6 +7,9 @@ import time
 from typing import Dict, List, Optional, Tuple
 
 from app.embeddings import EmbeddingBackend
+from app.instrumentation import elapsed_ms
+from app.instrumentation import log_failure
+from app.instrumentation import log_success
 from app.normalization import normalize_text
 from app.ranking import CategoryVector, needs_review, normalize_vector, rank_categories
 from app.schemas import CategoryItem, ResponseDict, SuggestRequest
@@ -41,13 +44,17 @@ class SuggestionService:
         self.embedding_backend.warm()
 
     def suggest(self, payload: dict) -> ResponseDict:
+        validation_started = time.perf_counter()
         request = SuggestRequest.model_validate(payload)
+        validation_ms = elapsed_ms(validation_started)
         request_key = self._request_key(request)
 
         with self._lock:
             cached = self._request_cache.get(request_key)
             if cached is not None:
-                return self._cache_hit_response(cached, request.requestId)
+                response = self._cache_hit_response(cached, request.requestId)
+                log_success(response, request)
+                return response
             inflight = self._inflight.get(request_key)
             if inflight is None:
                 inflight = _InflightRequest(threading.Condition(self._lock))
@@ -60,14 +67,26 @@ class SuggestionService:
                 if inflight.error is not None:
                     raise inflight.error
                 cached = self._request_cache[request_key]
-                return self._cache_hit_response(cached, request.requestId)
+                response = self._cache_hit_response(cached, request.requestId)
+                log_success(response, request)
+                return response
 
         if not leader:
             raise RuntimeError("unreachable single-flight state")
 
         try:
-            result = self._compute(request)
+            result = self._compute(request, validation_ms)
+            log_success(result, request)
         except Exception as error:
+            log_failure(
+                request,
+                self._provider_metadata(),
+                {
+                    "validationMs": validation_ms,
+                    "totalMs": validation_ms,
+                },
+                error,
+            )
             with self._lock:
                 inflight = self._inflight.pop(request_key)
                 inflight.error = error
@@ -82,14 +101,20 @@ class SuggestionService:
             inflight.condition.notify_all()
         return result
 
-    def _compute(self, request: SuggestRequest) -> ResponseDict:
+    def _compute(self, request: SuggestRequest, validation_ms: float) -> ResponseDict:
         started = time.perf_counter()
+        category_started = time.perf_counter()
         categories, category_hit = self._category_vectors(request)
+        category_embedding_ms = elapsed_ms(category_started)
         suggestions = []
         device_hits = 0
         normalized_names = [normalize_text(item.name) for item in request.deviceNames]
+        unique_device_name_count = len(dict.fromkeys(normalized_names))
+        device_started = time.perf_counter()
         device_embeddings = self._device_embeddings(normalized_names)
+        device_embedding_ms = elapsed_ms(device_started)
 
+        ranking_started = time.perf_counter()
         for item, normalized_name in zip(request.deviceNames, normalized_names):
             embedding, hit = device_embeddings[normalized_name]
             if hit:
@@ -110,27 +135,38 @@ class SuggestionService:
                     "candidates": candidates,
                 }
             )
+        ranking_ms = elapsed_ms(ranking_started)
 
-        total_ms = round((time.perf_counter() - started) * 1000, 3)
-        return {
+        result = {
             "requestId": request.requestId,
-            "provider": {
-                "name": self.settings.provider_name,
-                "version": self.settings.provider_version,
-                "model": self.embedding_backend.model_name,
+            "provider": self._provider_metadata(),
+            "timings": {
+                "validationMs": validation_ms,
+                "categoryEmbeddingMs": category_embedding_ms,
+                "deviceEmbeddingMs": device_embedding_ms,
+                "rankingMs": ranking_ms,
+                "serializationMs": 0.0,
+                "totalMs": 0.0,
             },
-            "timings": {"totalMs": total_ms},
             "metrics": {
                 "deviceNameCount": len(request.deviceNames),
+                "uniqueDeviceNameCount": unique_device_name_count,
+                "deviceCount": sum(len(item.deviceIds) for item in request.deviceNames),
                 "categoryCount": len(request.categories),
             },
             "cache": {
                 "requestHit": False,
                 "categoryEmbeddingHit": category_hit,
                 "deviceEmbeddingHits": device_hits,
+                "deviceEmbeddingMisses": unique_device_name_count - device_hits,
             },
             "suggestions": suggestions,
         }
+        serialization_started = time.perf_counter()
+        json.dumps(result, ensure_ascii=False, separators=(",", ":"))
+        result["timings"]["serializationMs"] = elapsed_ms(serialization_started)
+        result["timings"]["totalMs"] = round(elapsed_ms(started) + validation_ms, 3)
+        return result
 
     def _category_vectors(
         self,
@@ -205,6 +241,13 @@ class SuggestionService:
             self.settings.provider_version,
             self.embedding_backend.model_name,
         )
+
+    def _provider_metadata(self) -> dict:
+        return {
+            "name": self.settings.provider_name,
+            "version": self.settings.provider_version,
+            "model": self.embedding_backend.model_name,
+        }
 
     def _category_key(self, request: SuggestRequest) -> str:
         return self._hash(
