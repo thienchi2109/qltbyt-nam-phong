@@ -111,7 +111,7 @@ describe("SuggestedMappingPreviewDialog async job UX", () => {
     )
 
     expect(screen.getByText(/đang xử lý gợi ý/i)).toBeInTheDocument()
-    expect(screen.getByText(/2.*\/.*5.*tên thiết bị/i)).toBeInTheDocument()
+    expect(screen.getByText("2 / 5 tên thiết bị")).toBeInTheDocument()
   })
 
   it("shows retry action for failed async jobs", () => {
