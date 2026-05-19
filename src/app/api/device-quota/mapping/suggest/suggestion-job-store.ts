@@ -14,11 +14,11 @@ import type {
   SearchResult,
   SuggestMappingResult,
   SuggestionItemCounts,
+  SuggestionAccessUser,
   UnassignedName,
 } from "@/app/api/device-quota/mapping/suggest/suggestion-types"
 
-const JOBS_TABLE = "device_quota_suggestion_jobs"
-const CHUNKS_TABLE = "device_quota_suggestion_job_chunks"
+const JOB_STORE_RPC = "device_quota_suggestion_job_store_rpc"
 
 type JsonRecord = Record<string, unknown>
 
@@ -100,8 +100,8 @@ function mapChunk(row: SuggestionJobChunkRow): SuggestionJobChunkRecord {
   }
 }
 
-function getDbErrorMessage(error: { message?: string } | null): string {
-  return error?.message ?? "Database operation failed"
+function getRpcErrorMessage(error: { message?: string } | null): string {
+  return error?.message ?? "Suggestion job store operation failed"
 }
 
 function toJobInsert(payload: CreateSuggestionJobPayload): JsonRecord {
@@ -120,165 +120,104 @@ function toJobInsert(payload: CreateSuggestionJobPayload): JsonRecord {
   }
 }
 
-function toChunkInsert(jobId: string, payload: CreateSuggestionJobPayload): JsonRecord[] {
-  return payload.chunks.map((chunk) => ({
-    chunk_index: chunk.chunkIndex,
-    device_name_count: chunk.deviceNameCount,
-    device_names: chunk.deviceNames,
-    job_id: jobId,
-    status: "queued",
-    unique_name_count: chunk.uniqueNameCount,
-  }))
-}
-
 async function requireJob(store: SuggestionJobStore, jobId: string): Promise<SuggestionJobRecord> {
   const job = await store.getJob(jobId)
   if (!job) throw new SuggestionRouteError("Suggestion job not found", 404)
   return job
 }
 
-export function createServerSuggestionJobStore(): SuggestionJobStore {
+export function createServerSuggestionJobStore(_user?: SuggestionAccessUser): SuggestionJobStore {
   const supabase = createSupabaseAdminClient()
+
+  async function callStoreRpc<T>(action: string, payload: JsonRecord = {}): Promise<T | null> {
+    const { data, error } = await supabase.rpc(JOB_STORE_RPC, {
+      p_action: action,
+      p_payload: payload,
+    })
+    if (error) throw new SuggestionRouteError(getRpcErrorMessage(error), 500)
+    return (data ?? null) as T | null
+  }
+
+  async function callRequiredRpc<T>(action: string, payload: JsonRecord = {}): Promise<T> {
+    const data = await callStoreRpc<T>(action, payload)
+    if (data === null) {
+      throw new SuggestionRouteError("Suggestion job store operation returned no data", 500)
+    }
+    return data
+  }
 
   return {
     async createJobWithChunks(payload) {
-      const { data: jobRow, error: jobError } = await supabase
-        .from(JOBS_TABLE)
-        .insert(toJobInsert(payload))
-        .select("*")
-        .single()
-
-      if (jobError || !jobRow) {
-        throw new SuggestionRouteError(getDbErrorMessage(jobError), 500)
-      }
-
-      const job = mapJob(jobRow as SuggestionJobRow)
-      const chunkRows = toChunkInsert(job.id, payload)
-      if (chunkRows.length > 0) {
-        const { error: chunkError } = await supabase.from(CHUNKS_TABLE).insert(chunkRows)
-        if (chunkError) {
-          await supabase.from(JOBS_TABLE).delete().eq("id", job.id)
-          throw new SuggestionRouteError(getDbErrorMessage(chunkError), 500)
-        }
-      }
-
-      return job
+      const row = await callRequiredRpc<SuggestionJobRow>("create_job", {
+        chunks: payload.chunks.map((chunk) => ({
+          chunk_index: chunk.chunkIndex,
+          device_name_count: chunk.deviceNameCount,
+          device_names: chunk.deviceNames,
+          unique_name_count: chunk.uniqueNameCount,
+        })),
+        job: toJobInsert(payload),
+      })
+      return mapJob(row)
     },
 
     async findActiveJob({ dataSignature, donViId, scopeKey }) {
-      const { data, error } = await supabase
-        .from(JOBS_TABLE)
-        .select("*")
-        .eq("don_vi_id", donViId)
-        .eq("scope_key", scopeKey)
-        .eq("data_signature", dataSignature)
-        .in("status", ["queued", "processing", "succeeded"])
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .maybeSingle()
-
-      if (error) throw new SuggestionRouteError(getDbErrorMessage(error), 500)
-      return data ? mapJob(data as SuggestionJobRow) : null
+      const row = await callStoreRpc<SuggestionJobRow>("find_active_job", {
+        data_signature: dataSignature,
+        don_vi_id: donViId,
+        scope_key: scopeKey,
+      })
+      return row ? mapJob(row) : null
     },
 
     async getChunk(chunkId) {
-      const { data, error } = await supabase
-        .from(CHUNKS_TABLE)
-        .select("*")
-        .eq("id", chunkId)
-        .maybeSingle()
-
-      if (error) throw new SuggestionRouteError(getDbErrorMessage(error), 500)
-      return data ? mapChunk(data as SuggestionJobChunkRow) : null
+      const row = await callStoreRpc<SuggestionJobChunkRow>("get_chunk", { chunk_id: chunkId })
+      return row ? mapChunk(row) : null
     },
 
     async getJob(jobId) {
-      const { data, error } = await supabase.from(JOBS_TABLE).select("*").eq("id", jobId).maybeSingle()
-
-      if (error) throw new SuggestionRouteError(getDbErrorMessage(error), 500)
-      return data ? mapJob(data as SuggestionJobRow) : null
+      const row = await callStoreRpc<SuggestionJobRow>("get_job", { job_id: jobId })
+      return row ? mapJob(row) : null
     },
 
     async getJobChunks(jobId) {
-      const { data, error } = await supabase
-        .from(CHUNKS_TABLE)
-        .select("*")
-        .eq("job_id", jobId)
-        .order("chunk_index", { ascending: true })
-
-      if (error) throw new SuggestionRouteError(getDbErrorMessage(error), 500)
-      return (data ?? []).map((row) => mapChunk(row as SuggestionJobChunkRow))
+      const rows = await callRequiredRpc<SuggestionJobChunkRow[]>("get_job_chunks", { job_id: jobId })
+      return rows.map((row) => mapChunk(row))
     },
 
     async listQueuedChunks(limit) {
-      const { data, error } = await supabase
-        .from(CHUNKS_TABLE)
-        .select("*")
-        .eq("status", "queued")
-        .order("created_at", { ascending: true })
-        .limit(limit)
-
-      if (error) throw new SuggestionRouteError(getDbErrorMessage(error), 500)
-      return (data ?? []).map((row) => mapChunk(row as SuggestionJobChunkRow))
+      const rows = await callRequiredRpc<SuggestionJobChunkRow[]>("list_queued_chunks", { limit })
+      return rows.map((row) => mapChunk(row))
     },
 
     async markChunkFailed(chunkId, error) {
-      const { error: updateError } = await supabase
-        .from(CHUNKS_TABLE)
-        .update({ error, status: "failed" })
-        .eq("id", chunkId)
-      if (updateError) throw new SuggestionRouteError(getDbErrorMessage(updateError), 500)
+      await callRequiredRpc<JsonRecord>("mark_chunk_failed", { chunk_id: chunkId, error })
     },
 
     async markChunkProcessing(chunkId) {
-      const chunk = await this.getChunk(chunkId)
-      const attempts = (chunk?.attempts ?? 0) + 1
-      const { error } = await supabase
-        .from(CHUNKS_TABLE)
-        .update({ attempts, status: "processing" })
-        .eq("id", chunkId)
-      if (error) throw new SuggestionRouteError(getDbErrorMessage(error), 500)
+      const result = await callRequiredRpc<{ claimed?: boolean }>("mark_chunk_processing", {
+        chunk_id: chunkId,
+      })
+      return result.claimed === true
     },
 
     async markChunkSucceeded(chunkId, result) {
-      const { error } = await supabase
-        .from(CHUNKS_TABLE)
-        .update({ error: null, result, status: "succeeded" })
-        .eq("id", chunkId)
-      if (error) throw new SuggestionRouteError(getDbErrorMessage(error), 500)
+      await callRequiredRpc<JsonRecord>("mark_chunk_succeeded", { chunk_id: chunkId, result })
     },
 
     async markJobFailed(jobId, error) {
-      const { error: updateError } = await supabase
-        .from(JOBS_TABLE)
-        .update({ error, status: "failed" })
-        .eq("id", jobId)
-      if (updateError) throw new SuggestionRouteError(getDbErrorMessage(updateError), 500)
+      await callRequiredRpc<JsonRecord>("mark_job_failed", { error, job_id: jobId })
     },
 
     async markJobProcessing(jobId) {
-      const { error } = await supabase
-        .from(JOBS_TABLE)
-        .update({ error: null, status: "processing" })
-        .eq("id", jobId)
-      if (error) throw new SuggestionRouteError(getDbErrorMessage(error), 500)
+      await callRequiredRpc<JsonRecord>("mark_job_processing", { job_id: jobId })
     },
 
     async markJobSucceeded(jobId, result) {
-      const { error } = await supabase
-        .from(JOBS_TABLE)
-        .update({ error: null, result, status: "succeeded" })
-        .eq("id", jobId)
-      if (error) throw new SuggestionRouteError(getDbErrorMessage(error), 500)
+      await callRequiredRpc<JsonRecord>("mark_job_succeeded", { job_id: jobId, result })
     },
 
     async resetFailedChunks(jobId) {
-      const { error } = await supabase
-        .from(CHUNKS_TABLE)
-        .update({ error: null, status: "queued" })
-        .eq("job_id", jobId)
-        .eq("status", "failed")
-      if (error) throw new SuggestionRouteError(getDbErrorMessage(error), 500)
+      await callRequiredRpc<JsonRecord>("reset_failed_chunks", { job_id: jobId })
     },
 
     async updateJobProgress(jobId) {
@@ -296,11 +235,10 @@ export function createServerSuggestionJobStore(): SuggestionJobStore {
         await this.markJobSucceeded(job.id, result)
       }
 
-      const { error } = await supabase
-        .from(JOBS_TABLE)
-        .update({ processed_unique_names: processedUniqueNames })
-        .eq("id", jobId)
-      if (error) throw new SuggestionRouteError(getDbErrorMessage(error), 500)
+      await callRequiredRpc<JsonRecord>("update_job_progress", {
+        job_id: jobId,
+        processed_unique_names: processedUniqueNames,
+      })
     },
   }
 }

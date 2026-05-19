@@ -46,7 +46,7 @@ export type CreateSuggestionJobPayload = {
     deviceNames: UnassignedName[]
     uniqueNameCount: number
   }[]
-  job: Omit<SuggestionJobRecord, "createdAt" | "id" | "result" | "updatedAt">
+  job: Omit<SuggestionJobRecord, "createdAt" | "id" | "updatedAt">
 }
 
 export type SuggestionJobStore = {
@@ -61,7 +61,7 @@ export type SuggestionJobStore = {
   getJobChunks(jobId: string): Promise<SuggestionJobChunkRecord[]>
   listQueuedChunks(limit: number): Promise<SuggestionJobChunkRecord[]>
   markChunkFailed(chunkId: string, error: string): Promise<void>
-  markChunkProcessing(chunkId: string): Promise<void>
+  markChunkProcessing(chunkId: string): Promise<boolean>
   markChunkSucceeded(chunkId: string, result: { results: SearchResult[] }): Promise<void>
   markJobFailed(jobId: string, error: string): Promise<void>
   markJobProcessing(jobId: string): Promise<void>

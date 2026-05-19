@@ -51,6 +51,35 @@ describe("device quota suggestion job routes", () => {
     expect(createSuggestionJobMock).not.toHaveBeenCalled()
   })
 
+  test("POST /jobs rejects sessions without a role before creating a job", async () => {
+    getServerSessionMock.mockResolvedValue({ user: { id: "user-1" } })
+    const mod = await import("@/app/api/device-quota/mapping/suggest/jobs/route")
+
+    const response = await mod.POST(
+      new Request("https://example.test/api/device-quota/mapping/suggest/jobs", {
+        body: JSON.stringify({ donViId: 17 }),
+        method: "POST",
+      }),
+    )
+
+    expect(response.status).toBe(401)
+    expect(createSuggestionJobMock).not.toHaveBeenCalled()
+  })
+
+  test("POST /jobs rejects null JSON bodies without throwing", async () => {
+    const mod = await import("@/app/api/device-quota/mapping/suggest/jobs/route")
+
+    const response = await mod.POST(
+      new Request("https://example.test/api/device-quota/mapping/suggest/jobs", {
+        body: "null",
+        method: "POST",
+      }),
+    )
+
+    expect(response.status).toBe(400)
+    expect(createSuggestionJobMock).not.toHaveBeenCalled()
+  })
+
   test("POST /jobs returns queued job metadata quickly", async () => {
     createSuggestionJobMock.mockResolvedValue({
       id: "job-1",
@@ -121,5 +150,23 @@ describe("device quota suggestion job routes", () => {
 
     expect(response.status).toBe(202)
     expect(retrySuggestionJobMock).toHaveBeenCalledWith(expect.objectContaining({ jobId: "job-1" }))
+  })
+
+  test("POST /jobs/[jobId]/retry logs unexpected failures before returning sanitized errors", async () => {
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => undefined)
+    retrySuggestionJobMock.mockRejectedValue(new Error("database unavailable"))
+    const mod = await import("@/app/api/device-quota/mapping/suggest/jobs/[jobId]/retry/route")
+
+    const response = await mod.POST(
+      new Request("https://example.test/api/device-quota/mapping/suggest/jobs/job-1/retry", {
+        method: "POST",
+      }),
+      { params: Promise.resolve({ jobId: "job-1" }) },
+    )
+
+    expect(response.status).toBe(500)
+    await expect(response.json()).resolves.toMatchObject({ error: "Internal server error" })
+    expect(errorSpy).toHaveBeenCalledWith("Suggestion job retry failed", expect.any(Error))
+    errorSpy.mockRestore()
   })
 })

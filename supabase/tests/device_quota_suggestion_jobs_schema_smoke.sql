@@ -48,5 +48,33 @@ BEGIN
   ) THEN
     RAISE EXCEPTION 'device_quota_suggestion_job_chunks deny policy is missing';
   END IF;
+
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_constraint
+    WHERE conname = 'device_quota_suggestion_jobs_processed_lte_total'
+  ) THEN
+    RAISE EXCEPTION 'processed_unique_names <= total_unique_names constraint is missing';
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_proc p
+    JOIN pg_namespace n ON n.oid = p.pronamespace
+    WHERE n.nspname = 'public'
+      AND p.proname = 'device_quota_suggestion_job_store_rpc'
+  ) THEN
+    RAISE EXCEPTION 'device_quota_suggestion_job_store_rpc is missing';
+  END IF;
+
+  IF EXISTS (
+    SELECT 1
+    FROM information_schema.routine_privileges
+    WHERE routine_schema = 'public'
+      AND routine_name = 'device_quota_suggestion_job_store_rpc'
+      AND grantee IN ('anon', 'authenticated')
+  ) THEN
+    RAISE EXCEPTION 'device_quota_suggestion_job_store_rpc must be service-role only';
+  END IF;
 END;
 $$;

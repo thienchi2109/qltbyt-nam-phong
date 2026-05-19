@@ -22,6 +22,10 @@ function parsePositiveInteger(value: unknown): number | undefined {
   return typeof value === "number" && Number.isInteger(value) && value > 0 ? value : undefined
 }
 
+function isJsonRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === "object" && !Array.isArray(value)
+}
+
 function getErrorStatus(error: unknown): number {
   if (error instanceof SuggestionRouteError) return error.status
   return 500
@@ -37,21 +41,17 @@ export async function POST(request: Request) {
   const session = await getServerSession(authOptions)
   const user = session?.user as SuggestionAccessUser | undefined
 
-  if (!user?.id) {
+  if (!user?.id || !user.role) {
     return NextResponse.json({ error: "Unauthorized", requestId }, { status: 401 })
   }
 
-  let body: {
-    donViId?: unknown
-    maxDeviceIdsPerChunk?: unknown
-    maxUniqueNamesPerChunk?: unknown
-  }
+  let body: Record<string, unknown>
   try {
-    body = (await request.json()) as {
-      donViId?: unknown
-      maxDeviceIdsPerChunk?: unknown
-      maxUniqueNamesPerChunk?: unknown
+    const parsedBody = (await request.json()) as unknown
+    if (!isJsonRecord(parsedBody)) {
+      return NextResponse.json({ error: "Invalid JSON body", requestId }, { status: 400 })
     }
+    body = parsedBody
   } catch {
     return NextResponse.json({ error: "Invalid JSON body", requestId }, { status: 400 })
   }

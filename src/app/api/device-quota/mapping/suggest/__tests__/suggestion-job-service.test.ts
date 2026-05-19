@@ -1,4 +1,6 @@
-import { describe, expect, test, vi } from "vitest"
+import { afterEach, describe, expect, test, vi } from "vitest"
+
+import { callVmSuggest } from "@/app/api/device-quota/mapping/suggest/suggestion-vm-client"
 
 import {
   createSuggestionJob,
@@ -17,6 +19,10 @@ import type {
   SuggestionAccessUser,
   UnassignedName,
 } from "@/app/api/device-quota/mapping/suggest/suggestion-types"
+
+vi.mock("@/app/api/device-quota/mapping/suggest/suggestion-vm-client", () => ({
+  callVmSuggest: vi.fn(async () => ({ suggestions: [] })),
+}))
 
 const USER: SuggestionAccessUser = {
   id: "user-1",
@@ -83,7 +89,7 @@ function createStore(): SuggestionJobStore {
     getJobChunks: vi.fn(async () => [createChunk()]),
     listQueuedChunks: vi.fn(async () => [createChunk()]),
     markChunkFailed: vi.fn(async () => undefined),
-    markChunkProcessing: vi.fn(async () => undefined),
+    markChunkProcessing: vi.fn(async () => true),
     markChunkSucceeded: vi.fn(async () => undefined),
     markJobFailed: vi.fn(async () => undefined),
     markJobProcessing: vi.fn(async () => undefined),
@@ -94,6 +100,10 @@ function createStore(): SuggestionJobStore {
 }
 
 describe("device quota suggestion job service", () => {
+  afterEach(() => {
+    vi.unstubAllEnvs()
+  })
+
   test("creates a queued job with chunks grouped by unique device names", async () => {
     const store = createStore()
 
@@ -120,6 +130,42 @@ describe("device quota suggestion job service", () => {
         job: expect.objectContaining({
           dataSignature: expect.any(String),
           totalUniqueNames: 3,
+        }),
+      }),
+    )
+  })
+
+  test("completes empty-input jobs immediately", async () => {
+    const store = createStore()
+    vi.mocked(store.createJobWithChunks).mockResolvedValue(
+      createJob({
+        processedUniqueNames: 0,
+        result: { groups: [], unmatched: [], totalDevices: 0, matchedDevices: 0 },
+        status: "succeeded",
+        totalUniqueNames: 0,
+      }),
+    )
+
+    const job = await createSuggestionJob({
+      donViId: 17,
+      requestId: "req-1",
+      store,
+      user: USER,
+      fetchInputs: vi.fn(async () => ({
+        categories: CATEGORIES,
+        names: [],
+      })),
+    })
+
+    expect(job.status).toBe("succeeded")
+    expect(store.createJobWithChunks).toHaveBeenCalledWith(
+      expect.objectContaining({
+        chunks: [],
+        job: expect.objectContaining({
+          processedUniqueNames: 0,
+          result: { groups: [], unmatched: [], totalDevices: 0, matchedDevices: 0 },
+          status: "succeeded",
+          totalUniqueNames: 0,
         }),
       }),
     )
@@ -189,6 +235,7 @@ describe("device quota suggestion job service", () => {
 
   test("retry resets failed chunks only", async () => {
     const store = createStore()
+    vi.mocked(store.getJob).mockResolvedValue(createJob({ status: "failed" }))
 
     const job = await retrySuggestionJob({
       jobId: "job-1",
@@ -199,6 +246,51 @@ describe("device quota suggestion job service", () => {
     expect(job.id).toBe("job-1")
     expect(store.resetFailedChunks).toHaveBeenCalledWith("job-1")
     expect(store.markJobProcessing).toHaveBeenCalledWith("job-1")
+  })
+
+  test("retry rejects jobs that are not failed", async () => {
+    const store = createStore()
+    vi.mocked(store.getJob).mockResolvedValue(createJob({ status: "processing" }))
+
+    await expect(
+      retrySuggestionJob({
+        jobId: "job-1",
+        store,
+        user: USER,
+      }),
+    ).rejects.toMatchObject({ status: 409 })
+
+    expect(store.resetFailedChunks).not.toHaveBeenCalled()
+    expect(store.markJobProcessing).not.toHaveBeenCalled()
+  })
+
+  test("skips a chunk when atomic claim loses the race", async () => {
+    const store = createStore()
+    const suggestChunk = vi.fn(async () => ({ results: [] }))
+    vi.mocked(store.markChunkProcessing).mockResolvedValue(false)
+
+    await processSuggestionJobChunk({
+      chunkId: "chunk-1",
+      store,
+      suggestChunk,
+    })
+
+    expect(suggestChunk).not.toHaveBeenCalled()
+    expect(store.markChunkSucceeded).not.toHaveBeenCalled()
+  })
+
+  test("validates VM payload size before processing a chunk", async () => {
+    vi.stubEnv("DEVICE_QUOTA_VM_MAX_PAYLOAD_BYTES", "10")
+    const store = createStore()
+
+    await expect(
+      processSuggestionJobChunk({
+        chunkId: "chunk-1",
+        store,
+      }),
+    ).rejects.toMatchObject({ status: 413 })
+
+    expect(callVmSuggest).not.toHaveBeenCalled()
   })
 
   test("processes only the queued chunks selected by the store", async () => {

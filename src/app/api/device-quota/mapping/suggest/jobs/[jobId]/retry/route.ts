@@ -25,7 +25,7 @@ export async function POST(
   const session = await getServerSession(authOptions)
   const user = session?.user as SuggestionAccessUser | undefined
 
-  if (!user?.id) {
+  if (!user?.id || !user.role) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
 
@@ -35,6 +35,9 @@ export async function POST(
     return NextResponse.json({ job }, { status: 202 })
   } catch (error) {
     const status = getErrorStatus(error)
+    if (status >= 500) {
+      console.error("Suggestion job retry failed", error)
+    }
     const message = status < 500 ? getErrorMessage(error) : "Internal server error"
     return NextResponse.json({ error: message }, { status })
   }

@@ -25,7 +25,7 @@ export async function GET(
   const session = await getServerSession(authOptions)
   const user = session?.user as SuggestionAccessUser | undefined
 
-  if (!user?.id) {
+  if (!user?.id || !user.role) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
 

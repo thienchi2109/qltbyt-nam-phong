@@ -4,6 +4,7 @@ import { assertSuggestionAccess } from "@/app/api/device-quota/mapping/suggest/s
 import {
   createUnassignedSignature,
   fetchVmSuggestionInputs,
+  assertPayloadSize,
   toSearchResults,
   toVmRequest,
 } from "@/app/api/device-quota/mapping/suggest/suggestion-vm-provider"
@@ -92,7 +93,7 @@ export async function createSuggestionJob({
     DEFAULT_MAX_UNIQUE_NAMES_PER_CHUNK,
   ),
   requestId,
-  store = createServerSuggestionJobStore(),
+  store,
   user,
 }: {
   donViId: number
@@ -104,22 +105,24 @@ export async function createSuggestionJob({
   user: SuggestionAccessUser
 }): Promise<SuggestionJobRecord> {
   await assertSuggestionAccess(user, donViId)
+  const jobStore = store ?? createServerSuggestionJobStore(user)
 
   const scopeKey = getUserScopeKey(user)
   const { categories, names } = await fetchInputs({ donViId, user })
   const catalogSignature = createCatalogSignature(categories)
   const dataSignature = `${catalogSignature}:${createUnassignedSignature(names)}`
-  const existingJob = await store.findActiveJob({ dataSignature, donViId, scopeKey })
+  const existingJob = await jobStore.findActiveJob({ dataSignature, donViId, scopeKey })
 
   if (existingJob) return existingJob
 
+  const emptyResult = { groups: [], unmatched: [], totalDevices: 0, matchedDevices: 0 }
   const chunks = chunkUnassignedNames({
     maxDeviceIdsPerChunk,
     maxUniqueNamesPerChunk,
     names,
   })
 
-  return store.createJobWithChunks({
+  return jobStore.createJobWithChunks({
     chunks: chunks.map((chunk, chunkIndex) => ({
       chunkIndex,
       deviceNameCount: chunk.reduce((sum, name) => sum + name.device_ids.length, 0),
@@ -139,8 +142,9 @@ export async function createSuggestionJob({
       },
       processedUniqueNames: 0,
       provider: "vm",
+      result: names.length === 0 ? emptyResult : null,
       scopeKey,
-      status: "queued",
+      status: names.length === 0 ? "succeeded" : "queued",
       totalUniqueNames: names.length,
     },
   })
@@ -152,14 +156,15 @@ function canAccessJob(job: SuggestionJobRecord, user: SuggestionAccessUser): boo
 
 export async function getSuggestionJob({
   jobId,
-  store = createServerSuggestionJobStore(),
+  store,
   user,
 }: {
   jobId: string
   store?: SuggestionJobStore
   user: SuggestionAccessUser
 }): Promise<SuggestionJobRecord> {
-  const job = await store.getJob(jobId)
+  const jobStore = store ?? createServerSuggestionJobStore(user)
+  const job = await jobStore.getJob(jobId)
   if (!job || !canAccessJob(job, user)) {
     throw new SuggestionRouteError("Suggestion job not found", 404)
   }
@@ -168,16 +173,20 @@ export async function getSuggestionJob({
 
 export async function retrySuggestionJob({
   jobId,
-  store = createServerSuggestionJobStore(),
+  store,
   user,
 }: {
   jobId: string
   store?: SuggestionJobStore
   user: SuggestionAccessUser
 }): Promise<SuggestionJobRecord> {
-  const job = await getSuggestionJob({ jobId, store, user })
-  await store.resetFailedChunks(job.id)
-  await store.markJobProcessing(job.id)
+  const jobStore = store ?? createServerSuggestionJobStore(user)
+  const job = await getSuggestionJob({ jobId, store: jobStore, user })
+  if (job.status !== "failed") {
+    throw new SuggestionRouteError("Only failed suggestion jobs can be retried", 409)
+  }
+  await jobStore.resetFailedChunks(job.id)
+  await jobStore.markJobProcessing(job.id)
   return { ...job, error: null, status: "processing" }
 }
 
@@ -201,7 +210,8 @@ export async function processSuggestionJobChunk({
     throw new SuggestionRouteError("Suggestion job not found", 404)
   }
 
-  await store.markChunkProcessing(chunk.id)
+  const claimed = await store.markChunkProcessing(chunk.id)
+  if (!claimed) return
   await store.markJobProcessing(job.id)
 
   try {
@@ -232,6 +242,7 @@ async function suggestChunkWithVm({
     names: chunk.deviceNames,
     requestId: `${job.id}:${chunk.chunkIndex}`,
   })
+  assertPayloadSize(vmRequest)
   const response = await callVmSuggest(vmRequest)
   return { results: toSearchResults(response) }
 }
