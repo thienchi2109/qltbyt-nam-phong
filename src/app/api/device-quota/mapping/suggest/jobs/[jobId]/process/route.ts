@@ -48,10 +48,11 @@ export async function POST(
   { params }: { params: Promise<{ jobId: string }> },
 ) {
   const requestId = createRequestId()
-  const session = await getServerSession(authOptions)
-  const user = session?.user as SuggestionAccessUser | undefined
+  let user: SuggestionAccessUser | undefined
 
   try {
+    const session = await getServerSession(authOptions)
+    user = session?.user as SuggestionAccessUser | undefined
     assertSuggestionRouteUser(user)
   } catch (error) {
     const status = getErrorStatus(error)

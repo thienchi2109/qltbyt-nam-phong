@@ -389,6 +389,31 @@ describe("device quota suggestion job service", () => {
     expect(store.markChunkSucceeded).not.toHaveBeenCalled()
   })
 
+  test("stops job-scoped processing after the first chunk failure", async () => {
+    const store = createStore()
+    vi.mocked(store.getJobChunks).mockResolvedValue([
+      createChunk({ id: "chunk-1", chunkIndex: 0, status: "queued" }),
+      createChunk({ id: "chunk-2", chunkIndex: 1, status: "queued" }),
+    ])
+    vi.mocked(store.getJob)
+      .mockResolvedValueOnce(createJob({ status: "processing" }))
+      .mockResolvedValueOnce(createJob({ status: "processing" }))
+      .mockResolvedValueOnce(createJob({ error: "VM timeout", status: "failed" }))
+
+    const result = await processSuggestionJobChunksForJob({
+      jobId: "job-1",
+      limit: 2,
+      store,
+      suggestChunk: vi.fn(async () => Promise.reject(new Error("VM timeout"))),
+      user: USER,
+    })
+
+    expect(result).toEqual({ failed: 1, job: createJob({ error: "VM timeout", status: "failed" }), processed: 0 })
+    expect(store.markChunkProcessing).toHaveBeenCalledTimes(1)
+    expect(store.markChunkProcessing).toHaveBeenCalledWith("chunk-1")
+    expect(store.markChunkProcessing).not.toHaveBeenCalledWith("chunk-2")
+  })
+
   test("does not count chunks skipped after a lost atomic claim as processed", async () => {
     const store = createStore()
     vi.mocked(store.listQueuedChunks).mockResolvedValue([

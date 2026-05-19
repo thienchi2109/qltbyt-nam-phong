@@ -312,6 +312,7 @@ export async function processSuggestionJobChunksForJob({
       if (didProcess) processed += 1
     } catch {
       failed += 1
+      break
     }
   }
 

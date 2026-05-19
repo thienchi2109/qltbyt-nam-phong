@@ -228,6 +228,28 @@ describe("device quota suggestion job routes", () => {
     expect(processSuggestionJobChunksForJobMock).not.toHaveBeenCalled()
   })
 
+  test("POST /jobs/[jobId]/process sanitizes session retrieval failures", async () => {
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => undefined)
+    getServerSessionMock.mockRejectedValue(new Error("session store unavailable"))
+    const mod = await import("@/app/api/device-quota/mapping/suggest/jobs/[jobId]/process/route")
+
+    const response = await mod.POST(
+      new Request("https://example.test/api/device-quota/mapping/suggest/jobs/job-1/process", {
+        body: JSON.stringify({ limit: 2 }),
+        method: "POST",
+      }),
+      { params: Promise.resolve({ jobId: "job-1" }) },
+    )
+
+    expect(response.status).toBe(500)
+    await expect(response.json()).resolves.toMatchObject({
+      error: "Internal server error",
+      requestId: expect.any(String),
+    })
+    expect(processSuggestionJobChunksForJobMock).not.toHaveBeenCalled()
+    errorSpy.mockRestore()
+  })
+
   test("POST /jobs/[jobId]/process rejects forbidden roles before processing", async () => {
     getServerSessionMock.mockResolvedValue(FORBIDDEN_SESSION)
     const mod = await import("@/app/api/device-quota/mapping/suggest/jobs/[jobId]/process/route")

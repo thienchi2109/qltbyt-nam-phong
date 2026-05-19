@@ -4,13 +4,13 @@
 
 Use a hybrid no-cron trigger for Device Quota suggested mapping jobs.
 
-When the user clicks `Gợi ý phân loại`, the web UI creates or reuses a suggestion job, then keeps bounded server work moving while the dialog/page remains active. The UI polls job state through that same active session until the job succeeds or fails.
+When the user clicks `Gợi ý phân loại`, the web UI creates or reuses a suggestion job, then processes 1-5 chunks per request while the dialog/page remains active. The UI polls job state through that same active session until the job succeeds or fails. Processing stops when the user closes the dialog or leaves the active session.
 
 No Vercel cron is added for this phase. Vercel Hobby cron is still unsuitable for this workflow because the current cron usage/pricing documentation limits Hobby cron to once per day with hourly precision:
 
 - https://vercel.com/docs/cron-jobs/usage-and-pricing
 
-The existing synchronous `/api/device-quota/mapping/suggest` path remains as the explicit opt-out fallback when async suggestion jobs are disabled by config.
+The existing synchronous `/api/device-quota/mapping/suggest` path remains as the explicit opt-out fallback when async suggestion jobs are disabled with `NEXT_PUBLIC_DEVICE_QUOTA_SUGGESTION_ASYNC_JOBS=false`.
 
 ## UX Contract
 
@@ -24,7 +24,7 @@ The existing synchronous `/api/device-quota/mapping/suggest` path remains as the
 ## Implementation Scope
 
 - Add `POST /api/device-quota/mapping/suggest/jobs/[jobId]/process`.
-- Process only a bounded number of chunks per request.
+- Process 1-5 chunks per request, with the exact limit determined by request parameters or defaults.
 - Verify the current user can read the target job before processing its chunks.
 - Do not add scheduler, cron, or new persistence schema unless existing job/chunk records cannot support job-scoped selection.
 - Keep DQSS provider/ranking behavior unchanged.

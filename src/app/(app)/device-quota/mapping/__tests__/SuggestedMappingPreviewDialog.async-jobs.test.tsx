@@ -4,7 +4,7 @@ import { describe, it, expect, vi, beforeEach, beforeAll } from "vitest"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 
 beforeAll(() => {
-  Object.defineProperty(window, "matchMedia", {
+  Object.defineProperty(globalThis, "matchMedia", {
     writable: true,
     value: vi.fn().mockImplementation((query: string) => ({
       matches: false,
