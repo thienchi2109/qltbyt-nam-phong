@@ -404,7 +404,7 @@ describe("device quota suggestion job service", () => {
       jobId: "job-1",
       limit: 2,
       store,
-      suggestChunk: vi.fn(async () => Promise.reject(new Error("VM timeout"))),
+      suggestChunk: vi.fn(async () => { throw new Error("VM timeout") }),
       user: USER,
     })
 
