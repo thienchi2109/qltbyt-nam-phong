@@ -2,21 +2,15 @@ import { NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 
 import { authOptions } from "@/auth/config"
-import { SuggestionRouteError } from "@/app/api/device-quota/mapping/suggest/suggestion-errors"
 import { getSuggestionJob } from "@/app/api/device-quota/mapping/suggest/suggestion-job-service"
+import {
+  assertSuggestionRouteUser,
+  getErrorMessage,
+  getErrorStatus,
+} from "@/app/api/device-quota/mapping/suggest/suggestion-route-utils"
 import type { SuggestionAccessUser } from "@/app/api/device-quota/mapping/suggest/suggestion-types"
 
 export const runtime = "nodejs"
-
-function getErrorStatus(error: unknown): number {
-  if (error instanceof SuggestionRouteError) return error.status
-  return 500
-}
-
-function getErrorMessage(error: unknown): string {
-  if (error instanceof Error && error.message) return error.message
-  return "Internal server error"
-}
 
 export async function GET(
   _request: Request,
@@ -25,8 +19,12 @@ export async function GET(
   const session = await getServerSession(authOptions)
   const user = session?.user as SuggestionAccessUser | undefined
 
-  if (!user?.id || !user.role) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+  try {
+    assertSuggestionRouteUser(user)
+  } catch (error) {
+    const status = getErrorStatus(error)
+    const message = getErrorMessage(error)
+    return NextResponse.json({ error: message }, { status })
   }
 
   try {

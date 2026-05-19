@@ -26,6 +26,14 @@ const SESSION = {
   },
 }
 
+const FORBIDDEN_SESSION = {
+  user: {
+    id: "user-1",
+    role: "qltb_khoa",
+    don_vi: "17",
+  },
+}
+
 describe("device quota suggestion job routes", () => {
   beforeEach(() => {
     vi.resetModules()
@@ -63,6 +71,21 @@ describe("device quota suggestion job routes", () => {
     )
 
     expect(response.status).toBe(401)
+    expect(createSuggestionJobMock).not.toHaveBeenCalled()
+  })
+
+  test("POST /jobs rejects forbidden roles before creating a job", async () => {
+    getServerSessionMock.mockResolvedValue(FORBIDDEN_SESSION)
+    const mod = await import("@/app/api/device-quota/mapping/suggest/jobs/route")
+
+    const response = await mod.POST(
+      new Request("https://example.test/api/device-quota/mapping/suggest/jobs", {
+        body: JSON.stringify({ donViId: 17 }),
+        method: "POST",
+      }),
+    )
+
+    expect(response.status).toBe(403)
     expect(createSuggestionJobMock).not.toHaveBeenCalled()
   })
 
@@ -132,6 +155,19 @@ describe("device quota suggestion job routes", () => {
     })
   })
 
+  test("GET /jobs/[jobId] rejects forbidden roles before loading a job", async () => {
+    getServerSessionMock.mockResolvedValue(FORBIDDEN_SESSION)
+    const mod = await import("@/app/api/device-quota/mapping/suggest/jobs/[jobId]/route")
+
+    const response = await mod.GET(
+      new Request("https://example.test/api/device-quota/mapping/suggest/jobs/job-1"),
+      { params: Promise.resolve({ jobId: "job-1" }) },
+    )
+
+    expect(response.status).toBe(403)
+    expect(getSuggestionJobMock).not.toHaveBeenCalled()
+  })
+
   test("POST /jobs/[jobId]/retry resets failed chunks", async () => {
     retrySuggestionJobMock.mockResolvedValue({
       id: "job-1",
@@ -150,6 +186,21 @@ describe("device quota suggestion job routes", () => {
 
     expect(response.status).toBe(202)
     expect(retrySuggestionJobMock).toHaveBeenCalledWith(expect.objectContaining({ jobId: "job-1" }))
+  })
+
+  test("POST /jobs/[jobId]/retry rejects forbidden roles before retrying a job", async () => {
+    getServerSessionMock.mockResolvedValue(FORBIDDEN_SESSION)
+    const mod = await import("@/app/api/device-quota/mapping/suggest/jobs/[jobId]/retry/route")
+
+    const response = await mod.POST(
+      new Request("https://example.test/api/device-quota/mapping/suggest/jobs/job-1/retry", {
+        method: "POST",
+      }),
+      { params: Promise.resolve({ jobId: "job-1" }) },
+    )
+
+    expect(response.status).toBe(403)
+    expect(retrySuggestionJobMock).not.toHaveBeenCalled()
   })
 
   test("POST /jobs/[jobId]/retry logs unexpected failures before returning sanitized errors", async () => {

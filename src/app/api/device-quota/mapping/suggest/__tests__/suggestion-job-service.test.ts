@@ -135,6 +135,37 @@ describe("device quota suggestion job service", () => {
     )
   })
 
+  test("splits chunks when device IDs exceed the secondary chunk limit", async () => {
+    const store = createStore()
+    const deviceHeavyNames: UnassignedName[] = [
+      { ten_thiet_bi: "Máy thở A", device_count: 2, device_ids: [101, 102] },
+      { ten_thiet_bi: "Máy thở B", device_count: 2, device_ids: [103, 104] },
+      { ten_thiet_bi: "Máy siêu âm", device_count: 1, device_ids: [105] },
+    ]
+
+    await createSuggestionJob({
+      donViId: 17,
+      maxDeviceIdsPerChunk: 3,
+      maxUniqueNamesPerChunk: 10,
+      requestId: "req-1",
+      store,
+      user: USER,
+      fetchInputs: vi.fn(async () => ({
+        categories: CATEGORIES,
+        names: deviceHeavyNames,
+      })),
+    })
+
+    expect(store.createJobWithChunks).toHaveBeenCalledWith(
+      expect.objectContaining({
+        chunks: [
+          expect.objectContaining({ deviceNameCount: 2, uniqueNameCount: 1 }),
+          expect.objectContaining({ deviceNameCount: 3, uniqueNameCount: 2 }),
+        ],
+      }),
+    )
+  })
+
   test("completes empty-input jobs immediately", async () => {
     const store = createStore()
     vi.mocked(store.createJobWithChunks).mockResolvedValue(

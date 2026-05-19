@@ -2,8 +2,12 @@ import { NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 
 import { authOptions } from "@/auth/config"
-import { SuggestionRouteError } from "@/app/api/device-quota/mapping/suggest/suggestion-errors"
 import { createSuggestionJob } from "@/app/api/device-quota/mapping/suggest/suggestion-job-service"
+import {
+  assertSuggestionRouteUser,
+  getErrorMessage,
+  getErrorStatus,
+} from "@/app/api/device-quota/mapping/suggest/suggestion-route-utils"
 import type { SuggestionAccessUser } from "@/app/api/device-quota/mapping/suggest/suggestion-types"
 
 export const runtime = "nodejs"
@@ -26,23 +30,17 @@ function isJsonRecord(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === "object" && !Array.isArray(value)
 }
 
-function getErrorStatus(error: unknown): number {
-  if (error instanceof SuggestionRouteError) return error.status
-  return 500
-}
-
-function getErrorMessage(error: unknown): string {
-  if (error instanceof Error && error.message) return error.message
-  return "Internal server error"
-}
-
 export async function POST(request: Request) {
   const requestId = createRequestId()
   const session = await getServerSession(authOptions)
   const user = session?.user as SuggestionAccessUser | undefined
 
-  if (!user?.id || !user.role) {
-    return NextResponse.json({ error: "Unauthorized", requestId }, { status: 401 })
+  try {
+    assertSuggestionRouteUser(user)
+  } catch (error) {
+    const status = getErrorStatus(error)
+    const message = getErrorMessage(error)
+    return NextResponse.json({ error: message, requestId }, { status })
   }
 
   let body: Record<string, unknown>
