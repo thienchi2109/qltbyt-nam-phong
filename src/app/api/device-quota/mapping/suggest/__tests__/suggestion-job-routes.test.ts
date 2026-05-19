@@ -11,10 +11,12 @@ vi.mock("@/auth/config", () => ({
 
 const createSuggestionJobMock = vi.fn()
 const getSuggestionJobMock = vi.fn()
+const processSuggestionJobChunksForJobMock = vi.fn()
 const retrySuggestionJobMock = vi.fn()
 vi.mock("@/app/api/device-quota/mapping/suggest/suggestion-job-service", () => ({
   createSuggestionJob: (...args: unknown[]) => createSuggestionJobMock(...args),
   getSuggestionJob: (...args: unknown[]) => getSuggestionJobMock(...args),
+  processSuggestionJobChunksForJob: (...args: unknown[]) => processSuggestionJobChunksForJobMock(...args),
   retrySuggestionJob: (...args: unknown[]) => retrySuggestionJobMock(...args),
 }))
 
@@ -41,6 +43,7 @@ describe("device quota suggestion job routes", () => {
     getServerSessionMock.mockReset()
     createSuggestionJobMock.mockReset()
     getSuggestionJobMock.mockReset()
+    processSuggestionJobChunksForJobMock.mockReset()
     retrySuggestionJobMock.mockReset()
     getServerSessionMock.mockResolvedValue(SESSION)
   })
@@ -207,6 +210,98 @@ describe("device quota suggestion job routes", () => {
 
     expect(response.status).toBe(202)
     expect(retrySuggestionJobMock).toHaveBeenCalledWith(expect.objectContaining({ jobId: "job-1" }))
+  })
+
+  test("POST /jobs/[jobId]/process rejects unauthenticated users before processing", async () => {
+    getServerSessionMock.mockResolvedValue(null)
+    const mod = await import("@/app/api/device-quota/mapping/suggest/jobs/[jobId]/process/route")
+
+    const response = await mod.POST(
+      new Request("https://example.test/api/device-quota/mapping/suggest/jobs/job-1/process", {
+        body: JSON.stringify({ limit: 2 }),
+        method: "POST",
+      }),
+      { params: Promise.resolve({ jobId: "job-1" }) },
+    )
+
+    expect(response.status).toBe(401)
+    expect(processSuggestionJobChunksForJobMock).not.toHaveBeenCalled()
+  })
+
+  test("POST /jobs/[jobId]/process rejects forbidden roles before processing", async () => {
+    getServerSessionMock.mockResolvedValue(FORBIDDEN_SESSION)
+    const mod = await import("@/app/api/device-quota/mapping/suggest/jobs/[jobId]/process/route")
+
+    const response = await mod.POST(
+      new Request("https://example.test/api/device-quota/mapping/suggest/jobs/job-1/process", {
+        body: JSON.stringify({ limit: 2 }),
+        method: "POST",
+      }),
+      { params: Promise.resolve({ jobId: "job-1" }) },
+    )
+
+    expect(response.status).toBe(403)
+    expect(processSuggestionJobChunksForJobMock).not.toHaveBeenCalled()
+  })
+
+  test("POST /jobs/[jobId]/process clamps bounded work and returns 202 while processing", async () => {
+    processSuggestionJobChunksForJobMock.mockResolvedValue({
+      failed: 0,
+      job: {
+        id: "job-1",
+        processedUniqueNames: 2,
+        status: "processing",
+        totalUniqueNames: 5,
+      },
+      processed: 2,
+    })
+    const mod = await import("@/app/api/device-quota/mapping/suggest/jobs/[jobId]/process/route")
+
+    const response = await mod.POST(
+      new Request("https://example.test/api/device-quota/mapping/suggest/jobs/job-1/process", {
+        body: JSON.stringify({ limit: 99 }),
+        method: "POST",
+      }),
+      { params: Promise.resolve({ jobId: "job-1" }) },
+    )
+
+    expect(response.status).toBe(202)
+    expect(processSuggestionJobChunksForJobMock).toHaveBeenCalledWith(
+      expect.objectContaining({ jobId: "job-1", limit: 5 }),
+    )
+    await expect(response.json()).resolves.toMatchObject({
+      failed: 0,
+      job: { id: "job-1", status: "processing" },
+      processed: 2,
+      requestId: expect.any(String),
+    })
+  })
+
+  test("POST /jobs/[jobId]/process returns 200 when processing completes the job", async () => {
+    processSuggestionJobChunksForJobMock.mockResolvedValue({
+      failed: 0,
+      job: {
+        id: "job-1",
+        processedUniqueNames: 5,
+        status: "succeeded",
+        totalUniqueNames: 5,
+      },
+      processed: 1,
+    })
+    const mod = await import("@/app/api/device-quota/mapping/suggest/jobs/[jobId]/process/route")
+
+    const response = await mod.POST(
+      new Request("https://example.test/api/device-quota/mapping/suggest/jobs/job-1/process", {
+        method: "POST",
+      }),
+      { params: Promise.resolve({ jobId: "job-1" }) },
+    )
+
+    expect(response.status).toBe(200)
+    await expect(response.json()).resolves.toMatchObject({
+      job: { id: "job-1", status: "succeeded" },
+      processed: 1,
+    })
   })
 
   test("POST /jobs/[jobId]/retry rejects forbidden roles before retrying a job", async () => {

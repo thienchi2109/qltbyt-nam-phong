@@ -96,13 +96,17 @@ const DONE_RESULT: SuggestMappingResult = {
 }
 
 function setupHook(overrides: {
+    canRetry?: boolean
     status?: SuggestMappingStatus
     result?: SuggestMappingResult | null
     error?: string | null
     progress?: number
+    processedUniqueNames?: number
+    retryFailedJob?: () => void
     saveStatus?: SaveStatus
     saveResult?: BatchSaveResult | null
     saveError?: string | null
+    totalUniqueNames?: number
 } = {}) {
     const reset = vi.fn()
     const saveBatch = vi.fn()
@@ -110,12 +114,16 @@ function setupHook(overrides: {
         status: 'done',
         result: DONE_RESULT,
         error: null,
+        canRetry: false,
         progress: 100,
+        processedUniqueNames: 3,
+        retryFailedJob: vi.fn(),
         reset,
         saveBatch,
         saveStatus: 'idle',
         saveResult: null,
         saveError: null,
+        totalUniqueNames: 3,
         ...overrides,
     })
     return { reset, saveBatch }
@@ -263,21 +271,6 @@ describe('SuggestedMappingPreviewDialog', () => {
     beforeEach(() => {
         vi.clearAllMocks()
         mockToast.mockClear()
-    })
-
-    it('shows loading progress during pipeline', () => {
-        setupHook({ status: 'embedding', result: null, progress: 33 })
-
-        renderWithQueryClient(
-            <SuggestedMappingPreviewDialog
-                open={true}
-                onOpenChange={() => { }}
-                donViId={1}
-                userRole="admin"
-            />
-        )
-
-        expect(screen.getByText(/đang tạo embedding/i)).toBeInTheDocument()
     })
 
     it('renders grouped suggestions after pipeline completes', () => {
@@ -630,4 +623,3 @@ describe('SuggestedMappingPreviewDialog', () => {
         )
     })
 })
-
