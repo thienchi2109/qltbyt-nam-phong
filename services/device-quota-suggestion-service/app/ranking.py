@@ -14,6 +14,7 @@ class CategoryVector:
     normalized_name: str
     embedding: List[float]
     tokens: Optional[FrozenSet[str]] = None
+    char_grams: Optional[FrozenSet[str]] = None
 
 
 def cosine_similarity(left: List[float], right: List[float]) -> float:
@@ -77,9 +78,11 @@ def rank_categories(
 ) -> List[dict]:
     device_normalized = normalize_text(device_name)
     device_tokens = frozenset(device_normalized.split())
+    device_char_grams = character_ngrams(device_normalized)
     shortlist = _shortlist_category_indices(
         device_normalized,
         device_tokens,
+        device_char_grams,
         device_embedding,
         categories,
         options,
@@ -126,6 +129,7 @@ def rank_categories(
 def _shortlist_category_indices(
     device_normalized: str,
     device_tokens: FrozenSet[str],
+    device_char_grams: FrozenSet[str],
     device_embedding: List[float],
     categories: List[CategoryVector],
     options: SuggestOptions,
@@ -139,6 +143,9 @@ def _shortlist_category_indices(
         category_tokens = category_vector.tokens or frozenset(
             category_vector.normalized_name.split()
         )
+        category_char_grams = category_vector.char_grams or character_ngrams(
+            category_vector.normalized_name
+        )
         exact_or_contains = _exact_or_contains_score(
             device_normalized,
             category_vector.normalized_name,
@@ -147,7 +154,10 @@ def _shortlist_category_indices(
             selected.add(index)
             cheap_lexical = exact_or_contains
         else:
-            cheap_lexical = _token_overlap_score(device_tokens, category_tokens)
+            cheap_lexical = max(
+                _token_overlap_score(device_tokens, category_tokens),
+                _character_ngram_score(device_char_grams, category_char_grams),
+            )
 
         semantic = normalized_dot_similarity(device_embedding, category_vector.embedding)
         semantic_scores.append((index, semantic, category_vector))
@@ -208,6 +218,25 @@ def _token_overlap_score(
     if overlap == 0:
         return 0.0
     return overlap / max(len(left_tokens), len(right_tokens))
+
+
+def _character_ngram_score(
+    left_grams: FrozenSet[str],
+    right_grams: FrozenSet[str],
+) -> float:
+    if not left_grams or not right_grams:
+        return 0.0
+    overlap = len(left_grams & right_grams)
+    if overlap == 0:
+        return 0.0
+    return overlap / max(len(left_grams), len(right_grams))
+
+
+def character_ngrams(value: str) -> FrozenSet[str]:
+    compact = value.replace(" ", "")
+    if len(compact) < 2:
+        return frozenset([compact]) if compact else frozenset()
+    return frozenset(compact[index : index + 2] for index in range(len(compact) - 1))
 
 
 def needs_review(candidates: List[dict], options: SuggestOptions) -> bool:

@@ -79,6 +79,39 @@ def test_fuzzy_typo_match_can_rank_first_after_shortlisting():
     assert candidates[0]["lexicalScore"] > candidates[1]["lexicalScore"]
 
 
+def test_lexical_only_typo_match_can_enter_shortlist_without_token_overlap():
+    options = SuggestOptions(topK=1, semanticWeight=0.0, lexicalWeight=1.0)
+    categories = [
+        CategoryVector(
+            category=CategoryItem(
+                id=index + 1,
+                code=f"C{index:03d}",
+                name=f"zzzzzz {index:03d}",
+                classification=None,
+            ),
+            normalized_name=f"zzzzzz {index:03d}",
+            embedding=[1.0, 0.0],
+        )
+        for index in range(40)
+    ]
+    categories.append(
+        CategoryVector(
+            category=CategoryItem(id=99, code="M", name="abcxef", classification=None),
+            normalized_name="abcxef",
+            embedding=[1.0, 0.0],
+        )
+    )
+
+    candidates = rank_categories(
+        "abcdef",
+        [0.0, 1.0],
+        categories,
+        options,
+    )
+
+    assert candidates[0]["categoryId"] == 99
+
+
 def test_semantic_similarity_can_rank_when_lexical_match_is_weak():
     backend = MappingEmbeddingBackend(
         {

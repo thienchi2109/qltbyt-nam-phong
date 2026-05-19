@@ -11,7 +11,11 @@ from app.instrumentation import elapsed_ms
 from app.instrumentation import log_failure
 from app.instrumentation import log_success
 from app.normalization import normalize_text
-from app.ranking import CategoryVector, needs_review, normalize_vector, rank_categories
+from app.ranking import CategoryVector
+from app.ranking import character_ngrams
+from app.ranking import needs_review
+from app.ranking import normalize_vector
+from app.ranking import rank_categories
 from app.schemas import CategoryItem, ResponseDict, SuggestRequest
 from app.settings import Settings
 
@@ -200,6 +204,7 @@ class SuggestionService:
                 normalized_name=normalized_name,
                 embedding=normalize_vector(embedding),
                 tokens=frozenset(normalized_name.split()),
+                char_grams=character_ngrams(normalized_name),
             )
             for category, normalized_name, embedding in zip(
                 request.categories,
