@@ -201,9 +201,9 @@ export async function processSuggestionJobChunk({
     chunk: SuggestionJobChunkRecord
     job: SuggestionJobRecord
   }) => Promise<{ results: SearchResult[] }>
-}): Promise<void> {
+}): Promise<boolean> {
   const chunk = await store.getChunk(chunkId)
-  if (!chunk || chunk.status === "succeeded") return
+  if (!chunk || chunk.status === "succeeded") return false
 
   const job = await store.getJob(chunk.jobId)
   if (!job) {
@@ -211,13 +211,14 @@ export async function processSuggestionJobChunk({
   }
 
   const claimed = await store.markChunkProcessing(chunk.id)
-  if (!claimed) return
+  if (!claimed) return false
   await store.markJobProcessing(job.id)
 
   try {
     const result = await (suggestChunk ?? suggestChunkWithVm)({ chunk, job })
     await store.markChunkSucceeded(chunk.id, result)
     await store.updateJobProgress(job.id)
+    return true
   } catch (error) {
     const message = getErrorMessage(error)
     await store.markChunkFailed(chunk.id, message)
@@ -265,8 +266,8 @@ export async function processNextSuggestionJobChunks({
 
   for (const chunk of chunks) {
     try {
-      await processSuggestionJobChunk({ chunkId: chunk.id, store, suggestChunk })
-      processed += 1
+      const didProcess = await processSuggestionJobChunk({ chunkId: chunk.id, store, suggestChunk })
+      if (didProcess) processed += 1
     } catch {
       failed += 1
     }

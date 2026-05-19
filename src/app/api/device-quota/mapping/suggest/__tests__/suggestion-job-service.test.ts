@@ -300,12 +300,13 @@ describe("device quota suggestion job service", () => {
     const suggestChunk = vi.fn(async () => ({ results: [] }))
     vi.mocked(store.markChunkProcessing).mockResolvedValue(false)
 
-    await processSuggestionJobChunk({
+    const processed = await processSuggestionJobChunk({
       chunkId: "chunk-1",
       store,
       suggestChunk,
     })
 
+    expect(processed).toBe(false)
     expect(suggestChunk).not.toHaveBeenCalled()
     expect(store.markChunkSucceeded).not.toHaveBeenCalled()
   })
@@ -340,6 +341,26 @@ describe("device quota suggestion job service", () => {
     expect(result).toEqual({ failed: 0, processed: 2 })
     expect(store.listQueuedChunks).toHaveBeenCalledWith(2)
     expect(store.markChunkSucceeded).toHaveBeenCalledTimes(2)
+  })
+
+  test("does not count chunks skipped after a lost atomic claim as processed", async () => {
+    const store = createStore()
+    vi.mocked(store.listQueuedChunks).mockResolvedValue([
+      createChunk({ id: "chunk-1", chunkIndex: 0 }),
+      createChunk({ id: "chunk-2", chunkIndex: 1 }),
+    ])
+    vi.mocked(store.markChunkProcessing)
+      .mockResolvedValueOnce(false)
+      .mockResolvedValueOnce(true)
+
+    const result = await processNextSuggestionJobChunks({
+      limit: 2,
+      suggestChunk: vi.fn(async () => ({ results: [] })),
+      store,
+    })
+
+    expect(result).toEqual({ failed: 0, processed: 1 })
+    expect(store.markChunkSucceeded).toHaveBeenCalledTimes(1)
   })
 
   test("does not expose inaccessible jobs", async () => {
