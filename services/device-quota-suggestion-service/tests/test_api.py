@@ -97,7 +97,22 @@ def test_suggest_returns_bounded_candidates_provider_cache_and_timing_metadata()
             "model": "deterministic-test-embedding",
         }
         assert body["timings"]["totalMs"] >= 0
+        for timing_key in (
+            "validationMs",
+            "categoryEmbeddingMs",
+            "deviceEmbeddingMs",
+            "rankingMs",
+            "serializationMs",
+        ):
+            assert body["timings"][timing_key] >= 0
+        assert body["metrics"] == {
+            "deviceNameCount": 2,
+            "uniqueDeviceNameCount": 2,
+            "deviceCount": 4,
+            "categoryCount": 2,
+        }
         assert body["cache"]["requestHit"] is False
+        assert body["cache"]["deviceEmbeddingMisses"] == 2
         assert body["suggestions"][0]["deviceName"] == "Monitor theo doi benh nhan"
         assert body["suggestions"][0]["candidates"][0]["categoryId"] == 291
         assert body["suggestions"][0]["needsReview"] is False
