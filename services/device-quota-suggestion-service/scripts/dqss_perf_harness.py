@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+"""Command-line runner for deterministic DQSS performance harness cases."""
+
 import argparse
 import json
 import os
@@ -10,6 +12,7 @@ from app.perf_harness import run_deterministic_case
 
 
 def main() -> None:
+    """Parse command-line options and print one deterministic case summary."""
     parser = argparse.ArgumentParser(description="Run DQSS large-payload smoke cases.")
     parser.add_argument(
         "--case",

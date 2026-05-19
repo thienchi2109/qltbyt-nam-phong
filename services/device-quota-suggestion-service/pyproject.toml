@@ -17,6 +17,7 @@ dependencies = [
 [project.optional-dependencies]
 dev = [
   "pytest==8.3.5",
+  "ruff==0.8.6",
 ]
 model = [
   "numpy==1.26.4; python_version >= '3.9'",
@@ -28,6 +29,12 @@ model = [
 testpaths = ["tests"]
 pythonpath = ["."]
 addopts = "-q"
+
+[tool.ruff]
+target-version = "py38"
+
+[tool.ruff.lint]
+select = ["D100", "D101", "D102", "D103"]
 
 [tool.setuptools.packages.find]
 where = ["."]
