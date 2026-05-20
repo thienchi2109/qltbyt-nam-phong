@@ -1,7 +1,7 @@
 # Làm mới embedding 768 chiều cho Device Quota
 
-Runbook này chỉ dùng cho bảng side-by-side `public.device_quota_category_embeddings`.
-Không ghi vào `public.nhom_thiet_bi.embedding` 384 chiều hiện tại.
+Runbook này dùng cho bảng `public.device_quota_category_embeddings`, nguồn
+embedding 768 chiều của DQSS VM provider.
 
 ## Dry-run
 
@@ -55,4 +55,5 @@ WHERE model_name = 'dangvantuan/vietnamese-embedding'
   AND dimension = 768;
 ```
 
-Không xóa hoặc sửa `public.nhom_thiet_bi.embedding`; cột đó vẫn là đường 384 chiều hiện tại.
+Đường fallback 384 chiều trên `public.nhom_thiet_bi.embedding` đã bị retire;
+không khôi phục lại đường đó trong rollback thường lệ.

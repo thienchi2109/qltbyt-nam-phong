@@ -10,7 +10,7 @@ function readRepoFile(relativePath: string): string {
 }
 
 describe("device quota 768 embedding rollout artifacts", () => {
-  test("adds a side-by-side 768-vector table without replacing nhom_thiet_bi.embedding", () => {
+  test("adds a server-only 768-vector table for DQSS VM category embeddings", () => {
     const migration = readRepoFile(
       "supabase/migrations/20260520043000_add_device_quota_category_embeddings_768.sql",
     )
@@ -24,8 +24,17 @@ describe("device quota 768 embedding rollout artifacts", () => {
     expect(migration).toContain("UNIQUE (category_id, model_name, dimension, content_hash)")
     expect(migration).toContain("ENABLE ROW LEVEL SECURITY")
     expect(migration).toContain("USING (false)")
-    expect(migration).not.toMatch(/ALTER TABLE public\\.nhom_thiet_bi\\s+ALTER COLUMN embedding/i)
-    expect(migration).not.toMatch(/DROP COLUMN IF EXISTS embedding/i)
+  })
+
+  test("retires the legacy 384-dimensional Supabase fallback", () => {
+    const migration = readRepoFile(
+      "supabase/migrations/20260520120000_drop_legacy_dqss_384_fallback.sql",
+    )
+
+    expect(migration).toContain("DROP FUNCTION IF EXISTS public.hybrid_search_category_batch")
+    expect(migration).toContain("ALTER TABLE public.nhom_thiet_bi")
+    expect(migration).toContain("DROP COLUMN IF EXISTS embedding")
+    expect(migration).toContain("DQSS VM provider")
   })
 
   test("ships a dry-run-first refresh script for the side-by-side table", () => {

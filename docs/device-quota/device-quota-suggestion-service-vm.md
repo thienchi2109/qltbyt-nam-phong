@@ -4,19 +4,17 @@ GitHub issue: <https://github.com/thienchi2109/qltbyt-nam-phong/issues/490>
 
 ## Context
 
-The current `/device-quota/mapping` suggested-mapping flow helps users map
+The `/device-quota/mapping` suggested-mapping flow helps users map
 unassigned equipment into `nhom_thiet_bi` categories. The feature is useful, but
-the expensive part currently runs through Supabase Free-tier AI/vector
-infrastructure:
+it is a demonstration-oriented helper rather than a core business rule. The
+legacy Supabase AI/vector fallback has been retired; suggestion work now runs
+through the DQSS VM provider:
 
 1. The user opens `Goi y phan loai` from the mapping action bar.
-2. `useSuggestMapping` fetches all distinct unassigned equipment names for the
-   selected facility.
-3. The browser calls `/api/embeddings/generate` in chunks of 10 names.
-4. That route proxies to the Supabase Edge Function `embed-device-name`.
-5. The browser then calls `hybrid_search_category_batch` in chunks of 10 query
-   embeddings.
-6. The hook groups the best result per device name and the user confirms the
+2. The browser calls the Next.js suggestion route.
+3. The route loads unassigned names and category catalog rows through scoped RPCs.
+4. The route sends the payload to the DQSS VM `/suggest` endpoint.
+5. The route groups the best result per device name and the user confirms the
    final mapping.
 
 The Oracle VM already has Docker and Coolify installed. It is a better fit for
@@ -29,9 +27,8 @@ Code anchors:
 
 - UI entrypoint: `src/app/(app)/device-quota/mapping/_components/DeviceQuotaMappingActions.tsx`
 - Orchestration hook: `src/app/(app)/device-quota/mapping/_hooks/useSuggestMapping.ts`
-- Embedding proxy: `src/app/api/embeddings/generate/route.ts`
-- Edge Function: `supabase/functions/embed-device-name/index.ts`
-- Hybrid search RPC: `supabase/migrations/2026-03-07/20260307120000_add_hybrid_search_category.sql`
+- VM provider: `src/app/api/device-quota/mapping/suggest/suggestion-vm-provider.ts`
+- VM client: `src/app/api/device-quota/mapping/suggest/suggestion-vm-client.ts`
 - Helper RPC: `supabase/migrations/2026-03-07/20260307120100_add_suggest_mapping_helper_rpcs.sql`
 
 Live DB read-only checks on 2026-05-16:
@@ -46,21 +43,18 @@ Live DB read-only checks on 2026-05-16:
   - facility 24: 49 rows, 28 distinct unassigned names
   - facility 25: 9 rows, 8 distinct unassigned names
 - `vector` and `pg_trgm` extensions are enabled.
-- `nhom_thiet_bi.embedding` is `extensions.vector(384)`.
-- There is no vector index on `nhom_thiet_bi.embedding`; current SQL intentionally
-  does an exact scan because the category set is small.
+- `device_quota_category_embeddings.embedding` is `extensions.vector(768)`.
+- The legacy `nhom_thiet_bi.embedding` 384-dimensional fallback is retired.
 
 The current batch limit is intentional:
 
-- `src/app/api/embeddings/generate/route.ts` has `MAX_BATCH_SIZE = 10`.
-- `supabase/functions/embed-device-name/index.ts` documents Free-tier 512 MB RAM
-  and notes that batch 10 works while batch 20 caused a `546`.
-- `scripts/device-quota/backfill-category-embeddings.ts` is even more
-  conservative with batch size 5 for backfill.
+- The VM provider owns embedding and matching batch behavior.
+- The Next.js route keeps request payload size, throttling, and circuit-breaker
+  guardrails before calling the VM.
 
-For facility 17, one suggestion run can require roughly 51 embedding batches and
-51 search batches. The main pain is not just pgvector search; it is the whole
-client-driven, small-batch pipeline.
+For facility 17, the previous browser-driven fallback required many embedding
+and search batches. That path has been hard-deleted; rollback should use the VM
+provider controls rather than restoring Supabase Edge Function embedding.
 
 ## Proposed Direction
 
