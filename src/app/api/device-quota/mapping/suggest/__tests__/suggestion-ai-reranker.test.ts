@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, test, vi } from "vitest"
+import { afterEach, beforeEach, describe, expect, test, vi } from "vitest"
 
 const generateObjectMock = vi.hoisted(() => vi.fn())
 const getChatModelMock = vi.hoisted(() => vi.fn())
@@ -11,7 +11,10 @@ vi.mock("@/lib/ai/provider", () => ({
   getChatModel: () => getChatModelMock(),
 }))
 
-import { rerankSuggestionResults } from "@/app/api/device-quota/mapping/suggest/suggestion-ai-reranker"
+import {
+  createSuggestionAlgorithmSignature,
+  rerankSuggestionResults,
+} from "@/app/api/device-quota/mapping/suggest/suggestion-ai-reranker"
 import { toVmRequest } from "@/app/api/device-quota/mapping/suggest/suggestion-vm-provider"
 import type {
   CategoryCatalogItem,
@@ -51,6 +54,10 @@ const vmResults: SearchResult[] = [
 ]
 
 describe("suggestion AI reranker", () => {
+  afterEach(() => {
+    vi.unstubAllEnvs()
+  })
+
   beforeEach(() => {
     vi.clearAllMocks()
     vi.stubEnv("DEVICE_QUOTA_AI_RERANK_ENABLED", "true")
@@ -155,5 +162,13 @@ describe("suggestion AI reranker", () => {
 
     expect(disabledRequest.options.topK).toBe(3)
     expect(enabledRequest.options.topK).toBe(8)
+  })
+
+  test("uses the clamped min-confidence value in the algorithm signature", () => {
+    vi.stubEnv("DEVICE_QUOTA_AI_RERANK_ENABLED", "true")
+    vi.stubEnv("DEVICE_QUOTA_AI_RERANK_MIN_CONFIDENCE", "2")
+
+    expect(createSuggestionAlgorithmSignature()).toContain("min=1")
+    expect(createSuggestionAlgorithmSignature()).not.toContain("min=2")
   })
 })

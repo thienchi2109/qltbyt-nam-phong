@@ -1,8 +1,10 @@
 import { SuggestionRouteError } from "@/app/api/device-quota/mapping/suggest/suggestion-errors"
 import { createCatalogSignature, mergeSuggestionResults } from "@/app/api/device-quota/mapping/suggest/suggestion-merge"
 import {
-  createSuggestionAlgorithmSignature,
+  createSuggestionAlgorithmConfig,
+  parseSuggestionAlgorithmSignature,
   rerankSuggestionResults,
+  type SuggestionAlgorithmConfig,
 } from "@/app/api/device-quota/mapping/suggest/suggestion-ai-reranker"
 import { assertSuggestionAccess } from "@/app/api/device-quota/mapping/suggest/suggestion-supabase-provider"
 import {
@@ -114,7 +116,8 @@ export async function createSuggestionJob({
   const scopeKey = getUserScopeKey(user)
   const { categories, names } = await fetchInputs({ donViId, user })
   const catalogSignature = createCatalogSignature(categories)
-  const dataSignature = `${catalogSignature}:${createUnassignedSignature(names)}:${createSuggestionAlgorithmSignature()}`
+  const algorithmConfig = createSuggestionAlgorithmConfig()
+  const dataSignature = `${catalogSignature}:${createUnassignedSignature(names)}:${algorithmConfig.signature}`
   const existingJob = await jobStore.findActiveJob({ dataSignature, donViId, scopeKey })
 
   if (existingJob) return existingJob
@@ -156,6 +159,12 @@ export async function createSuggestionJob({
 
 function canAccessJob(job: SuggestionJobRecord, user: SuggestionAccessUser): boolean {
   return job.scopeKey === getUserScopeKey(user)
+}
+
+function getJobAlgorithmConfig(dataSignature: string): SuggestionAlgorithmConfig | undefined {
+  const parts = dataSignature.split(":")
+  if (parts.length < 5) return undefined
+  return parseSuggestionAlgorithmSignature(parts.slice(2).join(":"))
 }
 
 export async function getSuggestionJob({
@@ -240,7 +249,9 @@ async function suggestChunkWithVm({
 }): Promise<{ results: SearchResult[] }> {
   const categories = job.categorySnapshot ?? []
   const catalogSignature = job.catalogSignature ?? job.dataSignature.split(":")[0] ?? ""
+  const algorithmConfig = getJobAlgorithmConfig(job.dataSignature)
   const vmRequest = toVmRequest({
+    algorithmConfig,
     catalogSignature,
     categories,
     donViId: job.donViId,
@@ -250,6 +261,7 @@ async function suggestChunkWithVm({
   assertPayloadSize(vmRequest)
   const response = await callVmSuggest(vmRequest)
   const searchResults = await rerankSuggestionResults({
+    algorithmConfig,
     categories,
     names: chunk.deviceNames,
     requestId: `${job.id}:${chunk.chunkIndex}`,

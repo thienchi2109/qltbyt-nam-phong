@@ -1,11 +1,14 @@
 import crypto from "node:crypto"
 
 import { createClient } from "@supabase/supabase-js"
+import type { SupabaseClient } from "@supabase/supabase-js"
 import { config } from "dotenv"
 
 config({ path: ".env.local" })
 
 const DEFAULT_BATCH_SIZE = 16
+const DEFAULT_EMBEDDING_TIMEOUT_MS = 30_000
+const DEFAULT_FETCH_PAGE_SIZE = 1_000
 const DEFAULT_MODEL_NAME = "dangvantuan/vietnamese-embedding"
 const DIMENSION = 768
 
@@ -77,6 +80,10 @@ function assertEmbeddings(value: unknown, expectedCount: number): number[][] {
   })
 }
 
+function isAbortError(error: unknown): boolean {
+  return error instanceof Error && error.name === "AbortError"
+}
+
 async function fetchEmbeddings({
   endpoint,
   modelName,
@@ -86,18 +93,61 @@ async function fetchEmbeddings({
   modelName: string
   texts: string[]
 }): Promise<number[][]> {
-  const response = await fetch(endpoint, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ dimension: 768, model: modelName, texts }),
-  })
+  const timeoutMs = readPositiveIntegerEnv(
+    "DEVICE_QUOTA_768_EMBEDDING_TIMEOUT_MS",
+    DEFAULT_EMBEDDING_TIMEOUT_MS,
+  )
+  const controller = new AbortController()
+  let timedOut = false
+  const timeout = setTimeout(() => {
+    timedOut = true
+    controller.abort()
+  }, timeoutMs)
 
-  if (!response.ok) {
-    throw new Error(`Embedding endpoint returned ${response.status}: ${await response.text()}`)
+  try {
+    const response = await fetch(endpoint, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ dimension: DIMENSION, model: modelName, texts }),
+      signal: controller.signal,
+    })
+
+    if (!response.ok) {
+      throw new Error(`Embedding endpoint returned ${response.status}: ${await response.text()}`)
+    }
+
+    const body = (await response.json()) as EmbeddingResponse
+    return assertEmbeddings(body.embeddings, texts.length)
+  } catch (error) {
+    if (timedOut || isAbortError(error)) {
+      throw new Error(`Embedding endpoint timed out after ${timeoutMs}ms`)
+    }
+    throw error
+  } finally {
+    clearTimeout(timeout)
+  }
+}
+
+async function fetchCategories(supabase: SupabaseClient): Promise<CategoryRow[]> {
+  const pageSize = readPositiveIntegerEnv("DEVICE_QUOTA_768_FETCH_PAGE_SIZE", DEFAULT_FETCH_PAGE_SIZE)
+  const categories: CategoryRow[] = []
+
+  for (let from = 0; ; from += pageSize) {
+    const to = from + pageSize - 1
+    const { data, error } = await supabase
+      .from("nhom_thiet_bi")
+      .select("id, ma_nhom, ten_nhom, phan_loai, tu_khoa")
+      .order("id", { ascending: true })
+      .range(from, to)
+
+    if (error) throw new Error(`Failed to load categories: ${error.message}`)
+
+    const page = (data ?? []) as CategoryRow[]
+    categories.push(...page)
+    if (page.length < pageSize) break
   }
 
-  const body = (await response.json()) as EmbeddingResponse
-  return assertEmbeddings(body.embeddings, texts.length)
+  return categories
 }
 
 async function main(): Promise<void> {
@@ -109,14 +159,7 @@ async function main(): Promise<void> {
   const embeddingEndpoint = dryRun ? "" : requiredEnv("DEVICE_QUOTA_768_EMBEDDING_URL")
 
   const supabase = createClient(supabaseUrl, serviceRoleKey)
-  const { data, error } = await supabase
-    .from("nhom_thiet_bi")
-    .select("id, ma_nhom, ten_nhom, phan_loai, tu_khoa")
-    .order("id", { ascending: true })
-
-  if (error) throw new Error(`Failed to load categories: ${error.message}`)
-
-  const categories = (data ?? []) as CategoryRow[]
+  const categories = await fetchCategories(supabase)
   console.log(
     `${dryRun ? "DRY RUN" : "WRITE"} 768 category embedding refresh: ${categories.length} categories, model=${modelName}`,
   )

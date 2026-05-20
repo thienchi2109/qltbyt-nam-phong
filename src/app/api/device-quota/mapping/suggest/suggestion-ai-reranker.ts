@@ -12,6 +12,7 @@ import { normalizeSearchText } from "@/lib/search-normalize"
 const DEFAULT_RERANK_TOP_K = 8
 const DEFAULT_MIN_RERANK_CONFIDENCE = 0.72
 const MAX_RERANK_TOP_K = 10
+const DEFAULT_VM_TOP_K = 3
 
 const rerankSchema = z
   .object({
@@ -30,6 +31,13 @@ type RerankInput = {
 
 type Candidate = SearchResult["results"][number]
 
+export type SuggestionAlgorithmConfig = {
+  minConfidence: number
+  rerankEnabled: boolean
+  signature: string
+  vmCandidateTopK: number
+}
+
 function readBooleanEnv(value: string | undefined): boolean {
   return value?.toLowerCase() === "true"
 }
@@ -44,7 +52,7 @@ export function isAiRerankEnabled(): boolean {
 }
 
 export function getVmCandidateTopK(): number {
-  if (!isAiRerankEnabled()) return 3
+  if (!isAiRerankEnabled()) return DEFAULT_VM_TOP_K
   const configured = readPositiveNumberEnv(
     process.env.DEVICE_QUOTA_AI_RERANK_TOP_K,
     DEFAULT_RERANK_TOP_K,
@@ -52,13 +60,70 @@ export function getVmCandidateTopK(): number {
   return Math.min(Math.max(Math.trunc(configured), 4), MAX_RERANK_TOP_K)
 }
 
-export function createSuggestionAlgorithmSignature(): string {
-  if (!isAiRerankEnabled()) return "dqss-rerank:v1:off"
-  const minConfidence = readPositiveNumberEnv(
-    process.env.DEVICE_QUOTA_AI_RERANK_MIN_CONFIDENCE,
-    DEFAULT_MIN_RERANK_CONFIDENCE,
+function minRerankConfidence(): number {
+  return Math.min(
+    readPositiveNumberEnv(
+      process.env.DEVICE_QUOTA_AI_RERANK_MIN_CONFIDENCE,
+      DEFAULT_MIN_RERANK_CONFIDENCE,
+    ),
+    1,
   )
-  return `dqss-rerank:v1:on:topK=${getVmCandidateTopK()}:min=${minConfidence}`
+}
+
+function buildAlgorithmSignature({
+  minConfidence,
+  rerankEnabled,
+  vmCandidateTopK,
+}: Omit<SuggestionAlgorithmConfig, "signature">): string {
+  if (!rerankEnabled) return "dqss-rerank:v1:off"
+  return `dqss-rerank:v1:on:topK=${vmCandidateTopK}:min=${minConfidence}`
+}
+
+export function createSuggestionAlgorithmConfig(): SuggestionAlgorithmConfig {
+  const rerankEnabled = isAiRerankEnabled()
+  const config = {
+    minConfidence: minRerankConfidence(),
+    rerankEnabled,
+    vmCandidateTopK: getVmCandidateTopK(),
+  }
+  return {
+    ...config,
+    signature: buildAlgorithmSignature(config),
+  }
+}
+
+export function createSuggestionAlgorithmSignature(): string {
+  return createSuggestionAlgorithmConfig().signature
+}
+
+export function parseSuggestionAlgorithmSignature(
+  signature: string | undefined,
+): SuggestionAlgorithmConfig | undefined {
+  if (signature === "dqss-rerank:v1:off") {
+    return {
+      minConfidence: DEFAULT_MIN_RERANK_CONFIDENCE,
+      rerankEnabled: false,
+      signature,
+      vmCandidateTopK: DEFAULT_VM_TOP_K,
+    }
+  }
+
+  const match = signature?.match(/^dqss-rerank:v1:on:topK=(\d+):min=([0-9.]+)$/)
+  if (!match) return undefined
+
+  const topK = Number(match[1])
+  const minConfidence = Number(match[2])
+  if (!Number.isInteger(topK) || topK <= 0 || !Number.isFinite(minConfidence)) return undefined
+
+  const config = {
+    minConfidence: Math.min(Math.max(minConfidence, 0), 1),
+    rerankEnabled: true,
+    vmCandidateTopK: Math.min(Math.max(topK, 4), MAX_RERANK_TOP_K),
+  }
+  return {
+    ...config,
+    signature: buildAlgorithmSignature(config),
+  }
 }
 
 function hasAnyTerm(value: string, terms: string[]): boolean {
@@ -126,16 +191,6 @@ function reorderSelectedCandidate(candidates: Candidate[], selectedId: number): 
   return [selected, ...candidates.filter((candidate) => candidate.id !== selectedId)]
 }
 
-function minRerankConfidence(): number {
-  return Math.min(
-    readPositiveNumberEnv(
-      process.env.DEVICE_QUOTA_AI_RERANK_MIN_CONFIDENCE,
-      DEFAULT_MIN_RERANK_CONFIDENCE,
-    ),
-    1,
-  )
-}
-
 function buildPrompt({
   candidates,
   categoryLookup,
@@ -178,19 +233,20 @@ function buildPrompt({
 }
 
 export async function rerankSuggestionResults({
+  algorithmConfig = createSuggestionAlgorithmConfig(),
   categories,
   names,
   requestId,
   searchResults,
-}: RerankInput): Promise<SearchResult[]> {
+}: RerankInput & { algorithmConfig?: SuggestionAlgorithmConfig | undefined }): Promise<SearchResult[]> {
   const guardedResults = applyDeterministicGuardrails(searchResults)
-  if (!isAiRerankEnabled()) return guardedResults
+  if (!algorithmConfig.rerankEnabled) return guardedResults
 
   try {
     const chatModel = getChatModel()
     const categoryLookup = categoryById(categories)
     const sourceNames = nameByText(names)
-    const minConfidence = minRerankConfidence()
+    const minConfidence = algorithmConfig.minConfidence
     const reranked: SearchResult[] = []
 
     for (const searchResult of guardedResults) {

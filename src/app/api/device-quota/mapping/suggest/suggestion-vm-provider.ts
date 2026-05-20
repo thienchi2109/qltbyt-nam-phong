@@ -1,9 +1,10 @@
 import { SuggestionRouteError } from "@/app/api/device-quota/mapping/suggest/suggestion-errors"
 import { createCatalogSignature, mergeSuggestionResults } from "@/app/api/device-quota/mapping/suggest/suggestion-merge"
 import {
-  createSuggestionAlgorithmSignature,
+  createSuggestionAlgorithmConfig,
   getVmCandidateTopK,
   rerankSuggestionResults,
+  type SuggestionAlgorithmConfig,
 } from "@/app/api/device-quota/mapping/suggest/suggestion-ai-reranker"
 import {
   assertVmCircuitClosed,
@@ -63,12 +64,14 @@ export function toVmRequest({
   names,
   categories,
   catalogSignature,
+  algorithmConfig,
 }: {
   requestId: string
   donViId: number
   names: UnassignedName[]
   categories: DinhMucNhomRow[]
   catalogSignature: string
+  algorithmConfig?: SuggestionAlgorithmConfig | undefined
 }): VmSuggestRequest {
   return {
     requestId,
@@ -86,7 +89,7 @@ export function toVmRequest({
       classification: category.phan_loai,
     })),
     options: {
-      topK: getVmCandidateTopK(),
+      topK: algorithmConfig?.vmCandidateTopK ?? getVmCandidateTopK(),
       semanticWeight: 1,
       lexicalWeight: 1,
       minConfidence: 0.62,
@@ -135,6 +138,7 @@ export async function runVmSuggestMapping({
 
   const catalogSignature = createCatalogSignature(categories)
   const unassignedSignature = createUnassignedSignature(names)
+  const algorithmConfig = createSuggestionAlgorithmConfig()
   const itemCounts = {
     unassignedNames: names.length,
     unassignedDevices: names.reduce((sum, name) => sum + name.device_ids.length, 0),
@@ -150,7 +154,7 @@ export async function runVmSuggestMapping({
   }
 
   const runtimeKey = createSuggestionRuntimeKey({
-    dataSignature: `${catalogSignature}:${unassignedSignature}:${createSuggestionAlgorithmSignature()}`,
+    dataSignature: `${catalogSignature}:${unassignedSignature}:${algorithmConfig.signature}`,
     donViId,
     provider: "vm",
     user,
@@ -169,6 +173,7 @@ export async function runVmSuggestMapping({
   }
 
   const vmRequest = toVmRequest({
+    algorithmConfig,
     requestId,
     donViId,
     names,
@@ -182,6 +187,7 @@ export async function runVmSuggestMapping({
   try {
     const vmResponse = await callVmSuggest(vmRequest)
     const searchResults = await rerankSuggestionResults({
+      algorithmConfig,
       categories,
       names,
       requestId,

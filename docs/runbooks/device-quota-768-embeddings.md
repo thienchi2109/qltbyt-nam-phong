@@ -27,6 +27,11 @@ node scripts/npm-run.js npx tsx scripts/device-quota/refresh-category-embeddings
 Script dùng `NEXT_PUBLIC_SUPABASE_URL` và `SUPABASE_SERVICE_ROLE_KEY` từ `.env.local`.
 Không commit `.env.local`.
 
+Tùy chọn vận hành:
+
+- `DEVICE_QUOTA_768_FETCH_PAGE_SIZE`: số dòng `nhom_thiet_bi` đọc mỗi trang, mặc định `1000`.
+- `DEVICE_QUOTA_768_EMBEDDING_TIMEOUT_MS`: timeout mỗi request embedding, mặc định `30000`.
+
 ## Kiểm tra nhanh
 
 ```sql
