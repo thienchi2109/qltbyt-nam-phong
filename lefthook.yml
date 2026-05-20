@@ -5,6 +5,8 @@ pre-commit:
       run: node scripts/npm-run.js run verify:no-explicit-any
     verify-dedupe:
       run: node scripts/npm-run.js run verify:dedupe
+    verify-ts-docstrings:
+      run: node scripts/npm-run.js run verify:ts-docstrings
     verify-python-docstrings:
       run: node scripts/npm-run.js run verify:python-docstrings:changed
 
@@ -15,6 +17,8 @@ pre-push:
       run: node scripts/npm-run.js run verify:no-explicit-any
     verify-dedupe:
       run: node scripts/npm-run.js run verify:dedupe
+    verify-ts-docstrings:
+      run: node scripts/npm-run.js run verify:ts-docstrings
     verify-python-docstrings:
       run: node scripts/npm-run.js run verify:python-docstrings:changed
     typecheck:
