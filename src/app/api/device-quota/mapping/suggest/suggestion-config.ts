@@ -7,7 +7,7 @@ export type SuggestionProviderPolicy =
   | "default"
   | "explicit"
   | "canary-allow-listed"
-  | "canary-supabase"
+  | "canary-vm-default"
 
 export type SuggestionProviderSelection = {
   configuredProvider: SuggestionProviderMode
@@ -16,11 +16,11 @@ export type SuggestionProviderSelection = {
 }
 
 function parseProviderMode(value: string | undefined): SuggestionProviderMode {
-  const normalized = (value ?? "supabase").trim().toLowerCase()
-  if (normalized === "vm" || normalized === "canary" || normalized === "supabase") {
+  const normalized = (value ?? "vm").trim().toLowerCase()
+  if (normalized === "vm" || normalized === "canary") {
     return normalized
   }
-  return "supabase"
+  return "vm"
 }
 
 function parseCanaryFacilityIds(value: string | undefined): Set<number> {
@@ -33,10 +33,15 @@ function parseCanaryFacilityIds(value: string | undefined): Set<number> {
 }
 
 export function selectSuggestionProvider(donViId: number): SuggestionProviderSelection {
+  const rawProvider = process.env.DEVICE_QUOTA_SUGGESTION_PROVIDER?.trim().toLowerCase()
   const configuredProvider = parseProviderMode(process.env.DEVICE_QUOTA_SUGGESTION_PROVIDER)
 
   if (configuredProvider === "vm") {
-    return { configuredProvider, provider: "vm", policy: "explicit" }
+    return {
+      configuredProvider,
+      provider: "vm",
+      policy: rawProvider === "vm" ? "explicit" : "default",
+    }
   }
 
   if (configuredProvider === "canary") {
@@ -46,8 +51,8 @@ export function selectSuggestionProvider(donViId: number): SuggestionProviderSel
     if (canaryFacilityIds.has(donViId)) {
       return { configuredProvider, provider: "vm", policy: "canary-allow-listed" }
     }
-    return { configuredProvider, provider: "supabase", policy: "canary-supabase" }
+    return { configuredProvider, provider: "vm", policy: "canary-vm-default" }
   }
 
-  return { configuredProvider, provider: "supabase", policy: "default" }
+  return { configuredProvider, provider: "vm", policy: "default" }
 }
