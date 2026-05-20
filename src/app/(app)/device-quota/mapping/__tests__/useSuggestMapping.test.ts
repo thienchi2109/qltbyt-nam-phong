@@ -46,21 +46,35 @@ const PREVIEW_RESULT = {
   matchedDevices: 5,
 }
 
-function setupSuccessfulPipeline() {
-  fetchMock.mockResolvedValue(
-    new Response(
-      JSON.stringify({
-        result: PREVIEW_RESULT,
-        meta: {
-          requestId: "req-1",
-          provider: "supabase",
-          itemCounts: { unassignedNames: 3, unassignedDevices: 6, categories: 2 },
-          catalogSignature: "v1-test",
-        },
-      }),
-      { status: 200, headers: { "Content-Type": "application/json" } }
+function setupSuccessfulPipeline(result = PREVIEW_RESULT) {
+  fetchMock
+    .mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          job: {
+            id: "job-1",
+            processedUniqueNames: 0,
+            status: "queued",
+            totalUniqueNames: 3,
+          },
+        }),
+        { status: 202, headers: { "Content-Type": "application/json" } },
+      ),
     )
-  )
+    .mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          job: {
+            id: "job-1",
+            processedUniqueNames: 3,
+            result,
+            status: "succeeded",
+            totalUniqueNames: 3,
+          },
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } },
+      ),
+    )
 }
 
 describe("useSuggestMapping", () => {
@@ -92,7 +106,7 @@ describe("useSuggestMapping", () => {
     expect(fetchMock).not.toHaveBeenCalled()
   })
 
-  test("falls back to the synchronous preview route when async jobs are disabled", async () => {
+  test("uses async jobs even when the old opt-out env is false", async () => {
     vi.stubEnv("NEXT_PUBLIC_DEVICE_QUOTA_SUGGESTION_ASYNC_JOBS", "false")
     setupSuccessfulPipeline()
 
@@ -105,24 +119,23 @@ describe("useSuggestMapping", () => {
       expect(result.current.status).toBe("done")
     })
 
-    expect(fetchMock).toHaveBeenCalledTimes(1)
-    expect(fetchMock).toHaveBeenCalledWith(
-      "/api/device-quota/mapping/suggest",
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      1,
+      "/api/device-quota/mapping/suggest/jobs",
       expect.objectContaining({
         method: "POST",
         body: JSON.stringify({ donViId: 1 }),
-      })
+      }),
     )
-    expect(callRpcMock).not.toHaveBeenCalledWith(
-      expect.objectContaining({ fn: "dinh_muc_thiet_bi_unassigned_names" })
-    )
-    expect(callRpcMock).not.toHaveBeenCalledWith(
-      expect.objectContaining({ fn: "hybrid_search_category_batch" })
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      2,
+      "/api/device-quota/mapping/suggest/jobs/job-1/process",
+      expect.objectContaining({ method: "POST" }),
     )
   })
 
   test("merges results into groups by nhom_id", async () => {
-    vi.stubEnv("NEXT_PUBLIC_DEVICE_QUOTA_SUGGESTION_ASYNC_JOBS", "false")
     setupSuccessfulPipeline()
 
     const { result } = renderHook(() =>
@@ -148,7 +161,6 @@ describe("useSuggestMapping", () => {
   })
 
   test("separates unmatched devices", async () => {
-    vi.stubEnv("NEXT_PUBLIC_DEVICE_QUOTA_SUGGESTION_ASYNC_JOBS", "false")
     setupSuccessfulPipeline()
 
     const { result } = renderHook(() =>
@@ -167,7 +179,6 @@ describe("useSuggestMapping", () => {
   })
 
   test("tracks total and matched device counts", async () => {
-    vi.stubEnv("NEXT_PUBLIC_DEVICE_QUOTA_SUGGESTION_ASYNC_JOBS", "false")
     setupSuccessfulPipeline()
 
     const { result } = renderHook(() =>
@@ -185,7 +196,6 @@ describe("useSuggestMapping", () => {
   })
 
   test("sets error status on network error", async () => {
-    vi.stubEnv("NEXT_PUBLIC_DEVICE_QUOTA_SUGGESTION_ASYNC_JOBS", "false")
     fetchMock.mockRejectedValue(new Error("Network error"))
 
     const { result } = renderHook(() =>
@@ -200,8 +210,7 @@ describe("useSuggestMapping", () => {
     expect(result.current.error).toBe("Network error")
   })
 
-  test("sets error status on server-side preview failure", async () => {
-    vi.stubEnv("NEXT_PUBLIC_DEVICE_QUOTA_SUGGESTION_ASYNC_JOBS", "false")
+  test("sets error status on server-side job failure", async () => {
     fetchMock.mockResolvedValue(
       new Response(JSON.stringify({ error: "Preview failed", requestId: "req-err" }), {
         status: 500,
@@ -222,7 +231,6 @@ describe("useSuggestMapping", () => {
   })
 
   test("reset clears result and returns to idle", async () => {
-    vi.stubEnv("NEXT_PUBLIC_DEVICE_QUOTA_SUGGESTION_ASYNC_JOBS", "false")
     setupSuccessfulPipeline()
 
     const { result } = renderHook(() =>
@@ -243,8 +251,7 @@ describe("useSuggestMapping", () => {
     expect(result.current.error).toBeNull()
   })
 
-  test("passes the server-side preview result through unchanged", async () => {
-    vi.stubEnv("NEXT_PUBLIC_DEVICE_QUOTA_SUGGESTION_ASYNC_JOBS", "false")
+  test("passes the server-side job result through unchanged", async () => {
     const serverResult = {
       groups: [
         {
@@ -265,12 +272,7 @@ describe("useSuggestMapping", () => {
       totalDevices: 6,
       matchedDevices: 5,
     }
-    fetchMock.mockResolvedValue(
-      new Response(
-        JSON.stringify({ result: serverResult }),
-        { status: 200, headers: { "Content-Type": "application/json" } }
-      )
-    )
+    setupSuccessfulPipeline(serverResult)
 
     const { result } = renderHook(() =>
       useSuggestMapping({ donViId: 1, enabled: true }),
@@ -286,7 +288,6 @@ describe("useSuggestMapping", () => {
   })
 
   test("auto-resets to idle when enabled becomes false after pipeline started", async () => {
-    vi.stubEnv("NEXT_PUBLIC_DEVICE_QUOTA_SUGGESTION_ASYNC_JOBS", "false")
     setupSuccessfulPipeline()
 
     const wrapper = createWrapper()
@@ -321,7 +322,6 @@ describe("useSuggestMapping", () => {
     }
 
     test("calls dinh_muc_thiet_bi_link_batch RPC with correct payload", async () => {
-      vi.stubEnv("NEXT_PUBLIC_DEVICE_QUOTA_SUGGESTION_ASYNC_JOBS", "false")
       setupSuccessfulPipeline()
       callRpcMock.mockImplementation(({ fn }: { fn: string }) => {
         if (fn === "dinh_muc_thiet_bi_link_batch") return Promise.resolve(SAVE_RESULT)
@@ -358,7 +358,6 @@ describe("useSuggestMapping", () => {
     })
 
     test("transitions through saving → saved status lifecycle", async () => {
-      vi.stubEnv("NEXT_PUBLIC_DEVICE_QUOTA_SUGGESTION_ASYNC_JOBS", "false")
       setupSuccessfulPipeline()
 
       let resolveSave: (value: unknown) => void
@@ -395,7 +394,6 @@ describe("useSuggestMapping", () => {
     })
 
     test("exposes save result with affected and skipped counts", async () => {
-      vi.stubEnv("NEXT_PUBLIC_DEVICE_QUOTA_SUGGESTION_ASYNC_JOBS", "false")
       setupSuccessfulPipeline()
       callRpcMock.mockImplementation(({ fn }: { fn: string }) => {
         if (fn === "dinh_muc_thiet_bi_link_batch") return Promise.resolve(SAVE_RESULT)
@@ -421,7 +419,6 @@ describe("useSuggestMapping", () => {
     })
 
     test("sets saveError on RPC failure", async () => {
-      vi.stubEnv("NEXT_PUBLIC_DEVICE_QUOTA_SUGGESTION_ASYNC_JOBS", "false")
       setupSuccessfulPipeline()
       callRpcMock.mockImplementation(({ fn }: { fn: string }) => {
         if (fn === "dinh_muc_thiet_bi_link_batch") return Promise.reject(new Error("Permission denied"))

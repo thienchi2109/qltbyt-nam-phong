@@ -147,7 +147,7 @@ describe("POST /api/device-quota/mapping/suggest", () => {
     expect(runSuggestMappingMock).not.toHaveBeenCalled()
   })
 
-  test("invokes the Supabase provider once and preserves preview semantics", async () => {
+  test("invokes the VM provider once by default and preserves preview semantics", async () => {
     const { POST } = await import("@/app/api/device-quota/mapping/suggest/route")
     const response = await POST(createRequest({ donViId: 17 }))
 
@@ -156,7 +156,7 @@ describe("POST /api/device-quota/mapping/suggest", () => {
     expect(runSuggestMappingMock).toHaveBeenCalledWith(
       expect.objectContaining({
         donViId: 17,
-        provider: "supabase",
+        provider: "vm",
       })
     )
 
@@ -164,7 +164,7 @@ describe("POST /api/device-quota/mapping/suggest", () => {
     expect(body.result).toEqual(PREVIEW_RESULT)
     expect(body.meta).toEqual(
       expect.objectContaining({
-        provider: "supabase",
+        provider: "vm",
         requestId: expect.any(String),
         catalogSignature: "catalog-123",
         itemCounts: { unassignedNames: 1, unassignedDevices: 2, categories: 3 },
@@ -239,7 +239,7 @@ describe("POST /api/device-quota/mapping/suggest", () => {
     )
   })
 
-  test("keeps Supabase for canary facilities outside the allow-list", async () => {
+  test("uses VM for canary facilities outside the allow-list after all-unit rollout", async () => {
     vi.stubEnv("DEVICE_QUOTA_SUGGESTION_PROVIDER", "canary")
     vi.stubEnv("DEVICE_QUOTA_SUGGESTION_CANARY_DON_VI_IDS", "17,21")
 
@@ -250,13 +250,13 @@ describe("POST /api/device-quota/mapping/suggest", () => {
     expect(runSuggestMappingMock).toHaveBeenCalledWith(
       expect.objectContaining({
         donViId: 18,
-        provider: "supabase",
+        provider: "vm",
       })
     )
     expect(await response.json()).toEqual(
       expect.objectContaining({
         meta: expect.objectContaining({
-          provider: "supabase",
+          provider: "vm",
         }),
       })
     )
@@ -272,7 +272,7 @@ describe("POST /api/device-quota/mapping/suggest", () => {
         requestId: expect.any(String),
         donViId: 17,
         role: "to_qltb",
-        provider: "supabase",
+        provider: "vm",
         status: "success",
         durationMs: expect.any(Number),
       })
@@ -293,7 +293,7 @@ describe("POST /api/device-quota/mapping/suggest", () => {
         requestId: expect.any(String),
         donViId: 17,
         role: "to_qltb",
-        provider: "supabase",
+        provider: "vm",
         status: "error",
         failureReason: "provider failed",
         durationMs: expect.any(Number),

@@ -6,18 +6,9 @@ import {
   getPayloadMessage,
   SuggestionRouteError,
 } from "@/app/api/device-quota/mapping/suggest/suggestion-errors"
-import { createCatalogSignature, mergeSuggestionResults } from "@/app/api/device-quota/mapping/suggest/suggestion-merge"
-import type {
-  DinhMucNhomRow,
-  SearchResult,
-  SuggestionAccessUser,
-  SuggestionProviderResult,
-  UnassignedName,
-} from "@/app/api/device-quota/mapping/suggest/suggestion-types"
+import type { SuggestionAccessUser } from "@/app/api/device-quota/mapping/suggest/suggestion-types"
 import {
-  chunkArray,
   getRequiredEnv,
-  SUPABASE_SEARCH_CHUNK_SIZE,
   toNumber,
   toRole,
 } from "@/app/api/device-quota/mapping/suggest/suggestion-utils"
@@ -91,6 +82,7 @@ async function fetchWithTimeout(
   }
 }
 
+/** Calls a Supabase RPC with the user's scoped JWT claims. */
 export async function callSupabaseRpc<TRes>(
   fn: string,
   args: Record<string, unknown>,
@@ -127,6 +119,7 @@ export async function callSupabaseRpc<TRes>(
   return (await response.json()) as TRes
 }
 
+/** Lists facilities the current user may access for suggestion preview. */
 export async function lookupAccessibleFacilityIds(user: SuggestionAccessUser): Promise<number[]> {
   const rows = await callSupabaseRpc<unknown>("get_accessible_facilities", {}, user)
   if (!Array.isArray(rows)) return []
@@ -140,6 +133,7 @@ export async function lookupAccessibleFacilityIds(user: SuggestionAccessUser): P
   return ids
 }
 
+/** Enforces role and facility scope before suggestion work starts. */
 export async function assertSuggestionAccess(
   user: SuggestionAccessUser,
   donViId: number,
@@ -170,110 +164,5 @@ export async function assertSuggestionAccess(
 
   if (toNumber(user.don_vi) !== donViId) {
     throw new SuggestionRouteError("Forbidden: facility scope denied", 403)
-  }
-}
-
-async function fetchEmbeddings(texts: string[]): Promise<number[][]> {
-  const supabaseUrl = getRequiredEnv("NEXT_PUBLIC_SUPABASE_URL")
-  const serviceRoleKey = getRequiredEnv("SUPABASE_SERVICE_ROLE_KEY")
-  const embeddings: number[][] = []
-
-  for (const chunk of chunkArray(texts, SUPABASE_SEARCH_CHUNK_SIZE)) {
-    const response = await fetchWithTimeout(
-      `${supabaseUrl}/functions/v1/embed-device-name`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${serviceRoleKey}`,
-        },
-        body: JSON.stringify({ texts: chunk }),
-      },
-      "Supabase embedding generation timed out",
-    )
-
-    if (!response.ok) {
-      throw new Error(`Embedding generation failed (${response.status})`)
-    }
-
-    const body = (await response.json()) as { embeddings?: number[][] }
-    if (!Array.isArray(body.embeddings)) {
-      throw new Error("Invalid embedding response")
-    }
-    embeddings.push(...body.embeddings)
-  }
-
-  return embeddings
-}
-
-async function searchCategories(
-  queries: { text: string; embedding: number[] }[],
-  donViId: number,
-  user: SuggestionAccessUser,
-): Promise<SearchResult[]> {
-  const allResults: SearchResult[] = []
-  for (const chunk of chunkArray(queries, SUPABASE_SEARCH_CHUNK_SIZE)) {
-    const p_queries = chunk.map((query) => ({
-      text: query.text,
-      embedding: query.embedding,
-    }))
-    const results = await callSupabaseRpc<SearchResult[]>(
-      "hybrid_search_category_batch",
-      { p_queries, p_don_vi: donViId },
-      user,
-    )
-    allResults.push(...(results ?? []))
-  }
-  return allResults
-}
-
-export async function runSupabaseSuggestMapping({
-  donViId,
-  user,
-}: {
-  donViId: number
-  user: SuggestionAccessUser
-}): Promise<SuggestionProviderResult> {
-  const [names, categories] = await Promise.all([
-    callSupabaseRpc<UnassignedName[]>(
-      "dinh_muc_thiet_bi_unassigned_names",
-      { p_don_vi: donViId },
-      user,
-    ),
-    callSupabaseRpc<DinhMucNhomRow[]>("dinh_muc_nhom_list", { p_don_vi: donViId }, user),
-  ])
-
-  const catalogSignature = createCatalogSignature(categories)
-  const itemCounts = {
-    unassignedNames: names.length,
-    unassignedDevices: names.reduce((sum, name) => sum + name.device_ids.length, 0),
-    categories: categories.length,
-  }
-
-  if (names.length === 0) {
-    return {
-      result: { groups: [], unmatched: [], totalDevices: 0, matchedDevices: 0 },
-      itemCounts,
-      catalogSignature,
-    }
-  }
-
-  const texts = names.map((name) => name.ten_thiet_bi)
-  const embeddings = await fetchEmbeddings(texts)
-  if (embeddings.length !== texts.length) {
-    throw new Error(
-      `Embedding response count mismatch: expected ${texts.length}, received ${embeddings.length}`,
-    )
-  }
-  const searchResults = await searchCategories(
-    texts.map((text, index) => ({ text, embedding: embeddings[index]! })),
-    donViId,
-    user,
-  )
-
-  return {
-    result: mergeSuggestionResults(names, searchResults),
-    itemCounts,
-    catalogSignature,
   }
 }

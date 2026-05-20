@@ -3,7 +3,6 @@ import { createCatalogSignature, mergeSuggestionResults } from "@/app/api/device
 import {
   assertSuggestionAccess,
   lookupAccessibleFacilityIds,
-  runSupabaseSuggestMapping,
 } from "@/app/api/device-quota/mapping/suggest/suggestion-supabase-provider"
 import {
   getSuggestionRuntimeStateSizeForTests,
@@ -21,9 +20,9 @@ export { createCatalogSignature, mergeSuggestionResults }
 export { assertSuggestionAccess, lookupAccessibleFacilityIds }
 export { getSuggestionRuntimeStateSizeForTests, resetSuggestionRuntimeStateForTests }
 
+/** Runs the VM-backed suggestion provider for the requested facility. */
 export async function runSuggestMapping({
   donViId,
-  provider,
   requestId,
   user,
 }: {
@@ -32,10 +31,6 @@ export async function runSuggestMapping({
   requestId?: string
   user: SuggestionAccessUser
 }): Promise<SuggestionProviderResult> {
-  if (provider === "supabase") {
-    return runSupabaseSuggestMapping({ donViId, user })
-  }
-
   return runVmSuggestMapping({
     donViId,
     requestId: requestId ?? `dqss-${Date.now().toString(36)}`,

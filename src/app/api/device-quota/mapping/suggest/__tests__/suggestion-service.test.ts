@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest"
+import fs from "fs"
 
 const callVmSuggestMock = vi.hoisted(() => vi.fn())
 vi.mock("@/app/api/device-quota/mapping/suggest/suggestion-vm-client", () => ({
@@ -300,30 +301,11 @@ describe("device quota suggestion service", () => {
       .mockResolvedValueOnce(jsonResponse([]))
 
     await expect(
-      runSuggestMapping({ donViId: 17, provider: "supabase", user: USER })
+      runSuggestMapping({ donViId: 17, provider: "vm", user: USER })
     ).rejects.toMatchObject({
       message: "RPC policy denied",
       details: { code: "42501" },
     })
-  })
-
-  test("fails before search when embedding response count is incomplete", async () => {
-    fetchMock
-      .mockResolvedValueOnce(
-        jsonResponse([
-          { ten_thiet_bi: "May tho", device_count: 1, device_ids: [1] },
-          { ten_thiet_bi: "Bom tiem", device_count: 1, device_ids: [2] },
-        ])
-      )
-      .mockResolvedValueOnce(jsonResponse([]))
-      .mockResolvedValueOnce(jsonResponse({ embeddings: [[0.1, 0.2]] }))
-      .mockResolvedValueOnce(jsonResponse([]))
-
-    await expect(
-      runSuggestMapping({ donViId: 17, provider: "supabase", user: USER })
-    ).rejects.toThrow("Embedding response count mismatch")
-
-    expect(fetchMock).toHaveBeenCalledTimes(3)
   })
 
   test("bundles minimal VM payload and does not call Supabase embedding or hybrid search", async () => {
@@ -570,5 +552,20 @@ describe("device quota suggestion service", () => {
     })
 
     expect(getSuggestionRuntimeStateSizeForTests().throttleEntries).toBe(1)
+  })
+
+  test("has no Supabase Edge embedding or hybrid-search suggestion runtime path", () => {
+    const source = [
+      "src/app/api/device-quota/mapping/suggest/suggestion-service.ts",
+      "src/app/api/device-quota/mapping/suggest/suggestion-supabase-provider.ts",
+      "src/app/api/device-quota/mapping/suggest/suggestion-types.ts",
+    ]
+      .map((filePath) => fs.readFileSync(`${process.cwd()}/${filePath}`, "utf8"))
+      .join("\n")
+
+    expect(source).not.toContain("runSupabaseSuggestMapping")
+    expect(source).not.toContain("/functions/v1/embed-device-name")
+    expect(source).not.toContain("hybrid_search_category_batch")
+    expect(source).not.toContain('"supabase" | "vm"')
   })
 })
