@@ -15,6 +15,7 @@ import {
   runSuggestMapping,
   SuggestionRouteError,
 } from "@/app/api/device-quota/mapping/suggest/suggestion-service"
+import { selectSuggestionProvider } from "@/app/api/device-quota/mapping/suggest/suggestion-config"
 
 const fetchMock = vi.fn()
 vi.stubGlobal("fetch", fetchMock)
@@ -133,6 +134,28 @@ describe("device quota suggestion service", () => {
     ).resolves.toBeUndefined()
 
     expect(lookupAccessibleFacilityIds).not.toHaveBeenCalled()
+  })
+
+  test("selects VM provider by default so suggestion routing uses 768-dimensional VM embeddings", () => {
+    vi.stubEnv("DEVICE_QUOTA_SUGGESTION_PROVIDER", "")
+    vi.stubEnv("DEVICE_QUOTA_SUGGESTION_CANARY_DON_VI_IDS", "")
+
+    expect(selectSuggestionProvider(17)).toMatchObject({
+      configuredProvider: "vm",
+      provider: "vm",
+      policy: "default",
+    })
+  })
+
+  test("does not route canary misses back to the legacy Supabase 384-vector provider", () => {
+    vi.stubEnv("DEVICE_QUOTA_SUGGESTION_PROVIDER", "canary")
+    vi.stubEnv("DEVICE_QUOTA_SUGGESTION_CANARY_DON_VI_IDS", "18")
+
+    expect(selectSuggestionProvider(17)).toMatchObject({
+      configuredProvider: "canary",
+      provider: "vm",
+      policy: "canary-vm-default",
+    })
   })
 
   test("checks regional leader facility scope by region", async () => {
