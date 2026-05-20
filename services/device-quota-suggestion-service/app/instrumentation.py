@@ -9,6 +9,9 @@ from app.normalization import normalize_text
 from app.schemas import ResponseDict, SuggestRequest
 
 LOGGER = logging.getLogger("dqss.suggest")
+LOGGER.setLevel(logging.INFO)
+if not LOGGER.handlers:
+    LOGGER.addHandler(logging.StreamHandler())
 
 
 def elapsed_ms(started: float) -> float:
