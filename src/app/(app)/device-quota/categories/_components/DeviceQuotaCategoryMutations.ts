@@ -4,10 +4,10 @@ import { useMutation, useQueryClient } from "@tanstack/react-query"
 
 import { useToast } from "@/hooks/use-toast"
 import { translateRpcError } from "@/lib/error-translations"
-import { refreshCategoryEmbeddings } from "@/lib/refresh-category-embeddings"
 import { callRpc } from "@/lib/rpc-client"
 import type { CategoryFormInput } from "../_types/categories"
 
+/** Creates a device quota category and refreshes the category/compliance queries. */
 export function useCreateMutation(
   toast: ReturnType<typeof useToast>["toast"],
   closeDialog: () => void,
@@ -43,11 +43,6 @@ export function useCreateMutation(
       closeDialog()
       queryClient.invalidateQueries({ queryKey: ["dinh_muc_nhom_list"] })
       queryClient.invalidateQueries({ queryKey: ["dinh_muc_compliance_summary"] })
-
-      const categoryId = typeof result === 'number' ? result : null
-      if (categoryId) {
-        refreshCategoryEmbeddings([categoryId])
-      }
     },
     onError: (error: Error) => {
       toast({
@@ -59,6 +54,7 @@ export function useCreateMutation(
   })
 }
 
+/** Updates a device quota category and refreshes the category/compliance queries. */
 export function useUpdateMutation(
   toast: ReturnType<typeof useToast>["toast"],
   closeDialog: () => void,
@@ -98,7 +94,6 @@ export function useUpdateMutation(
       closeDialog()
       queryClient.invalidateQueries({ queryKey: ["dinh_muc_nhom_list"] })
       queryClient.invalidateQueries({ queryKey: ["dinh_muc_compliance_summary"] })
-      refreshCategoryEmbeddings([variables.id])
     },
     onError: (error: Error) => {
       toast({
@@ -113,6 +108,7 @@ export function useUpdateMutation(
   })
 }
 
+/** Deletes a device quota category and refreshes the category/compliance queries. */
 export function useDeleteMutation(
   toast: ReturnType<typeof useToast>["toast"],
   closeDeleteDialog: () => void,

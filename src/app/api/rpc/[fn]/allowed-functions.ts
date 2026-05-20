@@ -1,4 +1,4 @@
-// Whitelist RPCs we allow through the proxy.
+/** Whitelist RPCs allowed through the Next.js RPC proxy. */
 export const ALLOWED_FUNCTIONS = new Set<string>([
   'equipment_list',
   'equipment_get',
@@ -168,7 +168,6 @@ export const ALLOWED_FUNCTIONS = new Set<string>([
   'dinh_muc_compliance_summary',
   'dinh_muc_compliance_detail',
   // Suggested Mapping (read-path)
-  'hybrid_search_category_batch',
   'dinh_muc_thiet_bi_unassigned_names',
   // Suggested Mapping (write-path)
   'dinh_muc_thiet_bi_link_batch',
