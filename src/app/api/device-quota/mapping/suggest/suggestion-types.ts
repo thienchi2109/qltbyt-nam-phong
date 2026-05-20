@@ -1,4 +1,4 @@
-export type SuggestionProvider = "supabase" | "vm"
+export type SuggestionProvider = "vm"
 export type SuggestionProviderMode = SuggestionProvider | "canary"
 
 export type SuggestionAccessUser = {

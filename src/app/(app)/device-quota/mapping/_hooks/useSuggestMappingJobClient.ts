@@ -28,13 +28,6 @@ function getRouteErrorMessage(status: number, payload: unknown): string {
   return `Suggestion preview failed (${status})`
 }
 
-function getRouteResult(payload: unknown): SuggestMappingResult {
-  if (isRecord(payload) && isRecord(payload.result)) {
-    return payload.result as unknown as SuggestMappingResult
-  }
-  throw new Error("Invalid suggestion preview response")
-}
-
 function getRouteJob(payload: unknown): SuggestionJob {
   if (!isRecord(payload) || !isRecord(payload.job)) {
     throw new Error("Invalid suggestion job response")
@@ -55,10 +48,20 @@ function getRouteJob(payload: unknown): SuggestionJob {
     error: typeof job.error === "string" ? job.error : null,
     id: job.id,
     processedUniqueNames: job.processedUniqueNames,
-    result: isRecord(job.result) ? (job.result as unknown as SuggestMappingResult) : null,
+    result: isSuggestMappingResult(job.result) ? job.result : null,
     status: job.status,
     totalUniqueNames: job.totalUniqueNames,
   }
+}
+
+function isSuggestMappingResult(value: unknown): value is SuggestMappingResult {
+  return (
+    isRecord(value) &&
+    Array.isArray(value.groups) &&
+    Array.isArray(value.unmatched) &&
+    typeof value.totalDevices === "number" &&
+    typeof value.matchedDevices === "number"
+  )
 }
 
 async function postJson(
@@ -85,25 +88,25 @@ async function postJson(
   return payload
 }
 
-export function isAsyncSuggestionJobEnabled(): boolean {
-  return process.env.NEXT_PUBLIC_DEVICE_QUOTA_SUGGESTION_ASYNC_JOBS !== "false"
-}
-
+/** Converts job progress counters into a bounded UI progress percentage. */
 export function getProgressPercent(job: SuggestionJob): number {
   if (job.status === "succeeded") return 100
   if (job.totalUniqueNames <= 0) return 0
   return Math.min(99, Math.round((job.processedUniqueNames / job.totalUniqueNames) * 100))
 }
 
+/** Returns the completed job result or raises when the server contract is invalid. */
 export function getJobResult(job: SuggestionJob): SuggestMappingResult {
-  if (job.result) return job.result
-  throw new Error("Suggestion job completed without a result")
+  if (isSuggestMappingResult(job.result)) return job.result
+  throw new Error("Suggestion job completed without a valid result")
 }
 
+/** Returns a localized fallback message for failed suggestion jobs. */
 export function getJobFailureMessage(job: SuggestionJob): string {
   return job.error ?? "Không thể tạo gợi ý phân loại. Vui lòng thử lại."
 }
 
+/** Waits before the next job polling tick while honoring cancellation. */
 export function waitForNextJobTick(signal: AbortSignal): Promise<void> {
   const delayMs = process.env.NODE_ENV === "test" ? 0 : 800
   return new Promise((resolve, reject) => {
@@ -124,29 +127,7 @@ export function waitForNextJobTick(signal: AbortSignal): Promise<void> {
   })
 }
 
-export async function fetchSuggestedMapping(
-  donViId: number,
-  signal: AbortSignal,
-): Promise<SuggestMappingResult> {
-  const response = await fetch("/api/device-quota/mapping/suggest", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ donViId }),
-    signal,
-  })
-
-  let payload: unknown = null
-  try {
-    payload = await response.json()
-  } catch {}
-
-  if (!response.ok) {
-    throw new Error(getRouteErrorMessage(response.status, payload))
-  }
-
-  return getRouteResult(payload)
-}
-
+/** Creates or reuses a server-side suggestion job for one facility. */
 export async function createSuggestionJobRequest(
   donViId: number,
   signal: AbortSignal,
@@ -155,6 +136,7 @@ export async function createSuggestionJobRequest(
   return getRouteJob(payload)
 }
 
+/** Advances one bounded processing slice for an existing suggestion job. */
 export async function processSuggestionJobRequest(
   jobId: string,
   signal: AbortSignal,
@@ -167,6 +149,7 @@ export async function processSuggestionJobRequest(
   return getRouteJob(payload)
 }
 
+/** Retries a failed suggestion job so the UI can resume polling. */
 export async function retrySuggestionJobRequest(
   jobId: string,
   signal: AbortSignal,

@@ -220,16 +220,18 @@ debug. Qdrant can be added later if one of these becomes true:
 The production rollout path is now:
 
 - `DEVICE_QUOTA_SUGGESTION_PROVIDER=vm` for all facilities.
-- `DEVICE_QUOTA_SUGGESTION_PROVIDER=supabase` only as an operator rollback
-  switch.
-- `NEXT_PUBLIC_DEVICE_QUOTA_SUGGESTION_ASYNC_JOBS` remains unset so async jobs
-  stay enabled by default.
+- Async suggestion jobs are always used by the mapping UI.
+- Supabase remains the source of truth for reading names/categories and for the
+  final `dinh_muc_thiet_bi_link_batch` write path.
 
 In `vm` mode, VM timeout, repeated 5xx, or open-circuit failures must return a
 controlled error to the caller. The route must not automatically runtime-fallback
 to Supabase because that can reintroduce the original Supabase Edge/AI pressure.
-Hard-deleting the old Supabase runtime fallback is tracked separately in #528
-after the all-facility VM rollout has clean soak evidence.
+After #528, this codebase no longer contains the Supabase Edge embedding or
+`hybrid_search_category_batch` suggestion runtime path. Operator rollback means
+redeploying a known-good pre-cleanup release or restoring the previous env and
+release together; the current release cannot be switched back with
+`DEVICE_QUOTA_SUGGESTION_PROVIDER=supabase`.
 
 ### Step 1: Baseline Current Flow
 
@@ -250,11 +252,11 @@ unassigned names.
 
 Add an app-level feature flag:
 
-- `DEVICE_QUOTA_SUGGESTION_PROVIDER=supabase`
 - `DEVICE_QUOTA_SUGGESTION_PROVIDER=vm`
 
-The existing flow remains available only as an operator rollback path by setting
-`DEVICE_QUOTA_SUGGESTION_PROVIDER=supabase`.
+Historical pre-#528 releases could switch back to the Supabase runtime provider.
+Current releases are VM-only; keep a tagged pre-cleanup release available if an
+operator rollback is required.
 
 ### Step 3: Server-Side Route Integration
 
@@ -291,7 +293,8 @@ Go/no-go checks:
 - matched count is comparable to current flow
 - suggestion duration is materially lower
 - no VM OOM or process restart
-- rollback to Supabase provider works by changing the operator env
+- rollback procedure points to a pre-cleanup release, not a runtime provider
+  switch in the current release
 
 ### Step 5: Optional Persistent Cache
 
@@ -316,8 +319,8 @@ Cache invalidation can follow category create/update/import events.
   - regional leaders can preview only within allowed facilities
   - restricted roles cannot call the suggestion route
 - Existing `dinh_muc_thiet_bi_link_batch` remains the only batch write path.
-- A feature flag can switch back to the current Supabase path without redeploying
-  DB schema.
+- Rollback instructions identify the pre-cleanup release/env pair needed to
+  restore the removed Supabase runtime path if an operator rollback is required.
 - VM call behavior is implemented with timeout, bounded retry/backoff, circuit
   breaker, and controlled degraded responses on timeout/5xx/open circuit.
 - Logs include request ID, facility ID, item counts, duration, provider, and
@@ -332,7 +335,7 @@ Cache invalidation can follow category create/update/import events.
   Mitigation: keep all auth/facility checks in the Next.js route and do not give
   the VM service Supabase credentials in phase 1.
 - VM service may become an unmonitored dependency. Mitigation: add health check,
-  uptime monitor, structured logs, restart policy, and fallback provider.
+  uptime monitor, structured logs, restart policy, and release-level rollback.
 - Network latency from app host to VM can offset gains if app remains on Vercel.
   Mitigation: still worthwhile because current flow is many calls; if app later
   moves to Coolify, service and app can sit near each other.

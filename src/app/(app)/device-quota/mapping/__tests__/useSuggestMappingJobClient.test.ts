@@ -1,6 +1,10 @@
 import { afterEach, describe, expect, test, vi } from "vitest"
 
-import { waitForNextJobTick } from "../_hooks/useSuggestMappingJobClient"
+import {
+  getJobResult,
+  waitForNextJobTick,
+  type SuggestionJob,
+} from "../_hooks/useSuggestMappingJobClient"
 
 describe("useSuggestMappingJobClient", () => {
   afterEach(() => {
@@ -17,5 +21,18 @@ describe("useSuggestMappingJobClient", () => {
     await tick
 
     expect(removeEventListenerSpy).toHaveBeenCalledWith("abort", expect.any(Function))
+  })
+
+  test("rejects completed jobs with malformed result payloads", () => {
+    const job = {
+      error: null,
+      id: "job-1",
+      processedUniqueNames: 1,
+      result: { groups: [], unmatched: [] },
+      status: "succeeded",
+      totalUniqueNames: 1,
+    } as unknown as SuggestionJob
+
+    expect(() => getJobResult(job)).toThrow("Suggestion job completed without a valid result")
   })
 })

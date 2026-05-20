@@ -7,11 +7,9 @@ import { useMutation } from "@tanstack/react-query"
 import { callRpc } from "@/lib/rpc-client"
 import {
   createSuggestionJobRequest,
-  fetchSuggestedMapping,
   getJobFailureMessage,
   getJobResult,
   getProgressPercent,
-  isAsyncSuggestionJobEnabled,
   processSuggestionJobRequest,
   retrySuggestionJobRequest,
   waitForNextJobTick,
@@ -70,6 +68,7 @@ interface UseSuggestMappingOptions {
 // Hook
 // ============================================
 
+/** Runs the device-quota suggestion preview through the async job pipeline. */
 export function useSuggestMapping({ donViId, enabled }: UseSuggestMappingOptions) {
   const [pipelineStatus, setPipelineStatus] = useState<SuggestMappingStatus>("idle")
   const [progress, setProgress] = useState(0)
@@ -138,15 +137,8 @@ export function useSuggestMapping({ donViId, enabled }: UseSuggestMappingOptions
         return waitForSuggestionJob(retryJob, signal)
       }
 
-      if (isAsyncSuggestionJobEnabled()) {
-        const job = await createSuggestionJobRequest(dvId, signal)
-        return waitForSuggestionJob(job, signal)
-      }
-
-      setPipelineStatus("processing")
-      const result = await fetchSuggestedMapping(dvId, signal)
-      if (signal.aborted) throw new DOMException("Aborted", "AbortError")
-      return result
+      const job = await createSuggestionJobRequest(dvId, signal)
+      return waitForSuggestionJob(job, signal)
     },
     onSuccess: () => {
       if (!abortRef.current?.signal.aborted) {
