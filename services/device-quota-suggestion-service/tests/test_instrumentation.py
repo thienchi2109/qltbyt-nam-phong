@@ -3,6 +3,7 @@ import logging
 
 from app.embeddings import DeterministicEmbeddingBackend
 from app.embeddings import FailingEmbeddingBackend
+from app.instrumentation import LOGGER
 from app.service import SuggestionService
 
 
@@ -33,6 +34,14 @@ def parsed_dqss_events(caplog):
         if record.name == "dqss.suggest":
             events.append(json.loads(record.getMessage()))
     return events
+
+
+def test_dqss_logger_emits_info_in_runtime_configuration():
+    assert LOGGER.isEnabledFor(logging.INFO)
+
+
+def test_dqss_logger_has_runtime_stream_handler():
+    assert any(isinstance(handler, logging.StreamHandler) for handler in LOGGER.handlers)
 
 
 def test_success_logs_sanitized_phase_timings_and_counts(caplog):
