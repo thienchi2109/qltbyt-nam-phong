@@ -215,6 +215,22 @@ debug. Qdrant can be added later if one of these becomes true:
 
 ## Rollout Plan
 
+### Current Rollout State
+
+The production rollout path is now:
+
+- `DEVICE_QUOTA_SUGGESTION_PROVIDER=vm` for all facilities.
+- `DEVICE_QUOTA_SUGGESTION_PROVIDER=supabase` only as an operator rollback
+  switch.
+- `NEXT_PUBLIC_DEVICE_QUOTA_SUGGESTION_ASYNC_JOBS` remains unset so async jobs
+  stay enabled by default.
+
+In `vm` mode, VM timeout, repeated 5xx, or open-circuit failures must return a
+controlled error to the caller. The route must not automatically runtime-fallback
+to Supabase because that can reintroduce the original Supabase Edge/AI pressure.
+Hard-deleting the old Supabase runtime fallback is tracked separately in #528
+after the all-facility VM rollout has clean soak evidence.
+
 ### Step 1: Baseline Current Flow
 
 Measure the current flow before changing it:
@@ -237,7 +253,8 @@ Add an app-level feature flag:
 - `DEVICE_QUOTA_SUGGESTION_PROVIDER=supabase`
 - `DEVICE_QUOTA_SUGGESTION_PROVIDER=vm`
 
-The existing flow remains the fallback path.
+The existing flow remains available only as an operator rollback path by setting
+`DEVICE_QUOTA_SUGGESTION_PROVIDER=supabase`.
 
 ### Step 3: Server-Side Route Integration
 
@@ -259,10 +276,10 @@ The VM call policy should be configurable through app env values such as:
 - `DEVICE_QUOTA_VM_CIRCUIT_THRESHOLD`
 - `DEVICE_QUOTA_VM_CIRCUIT_WINDOW_MS`
 
-The route should fall back immediately to the `supabase` provider when the VM
-request times out, exhausts its retry budget, returns repeated 5xx responses, or
-the circuit is open. Logs/metrics should include timeout, retry count, provider,
-circuit state, and fallback reason.
+The route should return a controlled degraded response when the VM request times
+out, exhausts its retry budget, returns repeated 5xx responses, or the circuit is
+open. Logs/metrics should include timeout, retry count, provider, circuit state,
+and failure reason.
 
 ### Step 4: Canary
 
@@ -274,7 +291,7 @@ Go/no-go checks:
 - matched count is comparable to current flow
 - suggestion duration is materially lower
 - no VM OOM or process restart
-- fallback to Supabase provider works
+- rollback to Supabase provider works by changing the operator env
 
 ### Step 5: Optional Persistent Cache
 
@@ -302,8 +319,7 @@ Cache invalidation can follow category create/update/import events.
 - A feature flag can switch back to the current Supabase path without redeploying
   DB schema.
 - VM call behavior is implemented with timeout, bounded retry/backoff, circuit
-  breaker, and fast fallback to the `supabase` provider on timeout/5xx/open
-  circuit.
+  breaker, and controlled degraded responses on timeout/5xx/open circuit.
 - Logs include request ID, facility ID, item counts, duration, provider, and
   failure reason without logging secrets.
 - Basic load test and one real facility smoke test are documented.
