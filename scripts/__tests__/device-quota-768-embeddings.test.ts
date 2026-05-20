@@ -39,6 +39,8 @@ describe("device quota 768 embedding rollout artifacts", () => {
     expect(script).toContain("DRY RUN")
     expect(script).toContain("DEVICE_QUOTA_768_FETCH_PAGE_SIZE")
     expect(script).toContain(".range(from, to)")
+    expect(script).toContain('count: "exact"')
+    expect(script).toContain("from >= count")
     expect(script).toContain("AbortController")
     expect(script).toContain("DEVICE_QUOTA_768_EMBEDDING_TIMEOUT_MS")
     expect(script).not.toContain(".from('nhom_thiet_bi').update({ embedding")

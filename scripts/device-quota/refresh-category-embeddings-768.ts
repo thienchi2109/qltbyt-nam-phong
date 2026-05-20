@@ -132,19 +132,24 @@ async function fetchCategories(supabase: SupabaseClient): Promise<CategoryRow[]>
   const pageSize = readPositiveIntegerEnv("DEVICE_QUOTA_768_FETCH_PAGE_SIZE", DEFAULT_FETCH_PAGE_SIZE)
   const categories: CategoryRow[] = []
 
-  for (let from = 0; ; from += pageSize) {
+  for (let from = 0; ; ) {
     const to = from + pageSize - 1
-    const { data, error } = await supabase
+    const { count, data, error } = await supabase
       .from("nhom_thiet_bi")
-      .select("id, ma_nhom, ten_nhom, phan_loai, tu_khoa")
+      .select("id, ma_nhom, ten_nhom, phan_loai, tu_khoa", { count: "exact" })
       .order("id", { ascending: true })
       .range(from, to)
 
     if (error) throw new Error(`Failed to load categories: ${error.message}`)
+    if (count === null) throw new Error("Failed to load exact category count")
 
     const page = (data ?? []) as CategoryRow[]
     categories.push(...page)
-    if (page.length < pageSize) break
+    if (page.length === 0 && from < count) {
+      throw new Error(`Category pagination stopped at ${from}/${count}`)
+    }
+    from += page.length
+    if (from >= count) break
   }
 
   return categories

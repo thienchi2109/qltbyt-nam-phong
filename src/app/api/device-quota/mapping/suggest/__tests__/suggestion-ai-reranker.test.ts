@@ -13,6 +13,7 @@ vi.mock("@/lib/ai/provider", () => ({
 
 import {
   createSuggestionAlgorithmSignature,
+  parseSuggestionAlgorithmSignature,
   rerankSuggestionResults,
 } from "@/app/api/device-quota/mapping/suggest/suggestion-ai-reranker"
 import { toVmRequest } from "@/app/api/device-quota/mapping/suggest/suggestion-vm-provider"
@@ -170,5 +171,17 @@ describe("suggestion AI reranker", () => {
 
     expect(createSuggestionAlgorithmSignature()).toContain("min=1")
     expect(createSuggestionAlgorithmSignature()).not.toContain("min=2")
+  })
+
+  test("parses algorithm signatures with scientific-notation confidence values", () => {
+    const config = parseSuggestionAlgorithmSignature("dqss-rerank:v1:on:topK=8:min=1e-7")
+
+    expect(config).toEqual(
+      expect.objectContaining({
+        minConfidence: 1e-7,
+        rerankEnabled: true,
+        vmCandidateTopK: 8,
+      }),
+    )
   })
 })

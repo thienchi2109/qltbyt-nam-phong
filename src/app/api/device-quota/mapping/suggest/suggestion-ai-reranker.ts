@@ -108,7 +108,7 @@ export function parseSuggestionAlgorithmSignature(
     }
   }
 
-  const match = signature?.match(/^dqss-rerank:v1:on:topK=(\d+):min=([0-9.]+)$/)
+  const match = signature?.match(/^dqss-rerank:v1:on:topK=(\d+):min=([^:]+)$/)
   if (!match) return undefined
 
   const topK = Number(match[1])
