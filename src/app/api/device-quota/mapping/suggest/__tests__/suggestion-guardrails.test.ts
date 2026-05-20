@@ -93,7 +93,7 @@ describe("device quota suggestion guardrails", () => {
       ],
     })
 
-    const result = await runSuggestMapping({ donViId: 17, provider: "vm", user: USER })
+    const result = await runSuggestMapping({ donViId: 17, user: USER })
 
     expect(result.result.groups).toEqual([])
     expect(result.result.unmatched).toEqual([
@@ -138,7 +138,7 @@ describe("device quota suggestion guardrails", () => {
       ],
     })
 
-    const result = await runSuggestMapping({ donViId: 17, provider: "vm", user: USER })
+    const result = await runSuggestMapping({ donViId: 17, user: USER })
 
     expect(result.result.groups).toEqual([])
     expect(result.result.unmatched).toEqual([

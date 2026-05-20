@@ -10,6 +10,7 @@ import {
 import { selectSuggestionProvider } from "@/app/api/device-quota/mapping/suggest/suggestion-config"
 import type { SuggestionAccessUser } from "@/app/api/device-quota/mapping/suggest/suggestion-types"
 
+/** Runs suggestion preview on the Node.js runtime because it calls internal services. */
 export const runtime = "nodejs"
 
 function createRequestId(): string {
@@ -56,6 +57,7 @@ function getUserRole(user: SuggestionAccessUser | null): string | null {
   return typeof user?.role === "string" ? user.role.toLowerCase() : null
 }
 
+/** Handles a synchronous suggestion preview request through the VM-backed provider. */
 export async function POST(request: NextRequest) {
   const requestId = createRequestId()
   const startedAt = Date.now()
@@ -90,7 +92,6 @@ export async function POST(request: NextRequest) {
     const providerSelection = selectSuggestionProvider(donViId)
     const providerResult = await runSuggestMapping({
       donViId,
-      provider: providerSelection.provider,
       requestId,
       user,
     })

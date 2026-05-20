@@ -11,7 +11,6 @@ import {
 import { runVmSuggestMapping } from "@/app/api/device-quota/mapping/suggest/suggestion-vm-provider"
 import type {
   SuggestionAccessUser,
-  SuggestionProvider,
   SuggestionProviderResult,
 } from "@/app/api/device-quota/mapping/suggest/suggestion-types"
 
@@ -27,7 +26,6 @@ export async function runSuggestMapping({
   user,
 }: {
   donViId: number
-  provider: SuggestionProvider
   requestId?: string
   user: SuggestionAccessUser
 }): Promise<SuggestionProviderResult> {

@@ -156,7 +156,6 @@ describe("POST /api/device-quota/mapping/suggest", () => {
     expect(runSuggestMappingMock).toHaveBeenCalledWith(
       expect.objectContaining({
         donViId: 17,
-        provider: "vm",
       })
     )
 
@@ -182,7 +181,6 @@ describe("POST /api/device-quota/mapping/suggest", () => {
     expect(runSuggestMappingMock).toHaveBeenCalledWith(
       expect.objectContaining({
         donViId: 17,
-        provider: "vm",
       })
     )
     expect(await response.json()).toEqual(
@@ -204,7 +202,6 @@ describe("POST /api/device-quota/mapping/suggest", () => {
     expect(runSuggestMappingMock).toHaveBeenCalledWith(
       expect.objectContaining({
         donViId: 21,
-        provider: "vm",
       })
     )
     expect(await response.json()).toEqual(
@@ -227,7 +224,6 @@ describe("POST /api/device-quota/mapping/suggest", () => {
     expect(runSuggestMappingMock).toHaveBeenCalledWith(
       expect.objectContaining({
         donViId: 17,
-        provider: "vm",
       })
     )
     expect(await response.json()).toEqual(
@@ -250,7 +246,6 @@ describe("POST /api/device-quota/mapping/suggest", () => {
     expect(runSuggestMappingMock).toHaveBeenCalledWith(
       expect.objectContaining({
         donViId: 18,
-        provider: "vm",
       })
     )
     expect(await response.json()).toEqual(

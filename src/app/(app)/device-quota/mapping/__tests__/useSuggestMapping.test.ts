@@ -211,12 +211,26 @@ describe("useSuggestMapping", () => {
   })
 
   test("sets error status on server-side job failure", async () => {
-    fetchMock.mockResolvedValue(
-      new Response(JSON.stringify({ error: "Preview failed", requestId: "req-err" }), {
-        status: 500,
-        headers: { "Content-Type": "application/json" },
-      })
-    )
+    fetchMock
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            job: {
+              id: "job-1",
+              processedUniqueNames: 0,
+              status: "queued",
+              totalUniqueNames: 3,
+            },
+          }),
+          { status: 202, headers: { "Content-Type": "application/json" } },
+        ),
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ error: "Preview failed", requestId: "req-err" }), {
+          status: 500,
+          headers: { "Content-Type": "application/json" },
+        }),
+      )
 
     const { result } = renderHook(() =>
       useSuggestMapping({ donViId: 1, enabled: true }),

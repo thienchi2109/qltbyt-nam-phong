@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest"
 import fs from "fs"
+import path from "path"
 
 const callVmSuggestMock = vi.hoisted(() => vi.fn())
 vi.mock("@/app/api/device-quota/mapping/suggest/suggestion-vm-client", () => ({
@@ -26,6 +27,17 @@ const USER = {
   role: "to_qltb",
   don_vi: "17",
   dia_ban_id: null,
+}
+
+function collectSuggestionSourceFiles(dirPath: string): string[] {
+  return fs.readdirSync(dirPath, { withFileTypes: true }).flatMap((entry) => {
+    if (entry.name === "__tests__") return []
+
+    const entryPath = path.join(dirPath, entry.name)
+    if (entry.isDirectory()) return collectSuggestionSourceFiles(entryPath)
+    if (entry.isFile() && /\.[tj]sx?$/.test(entry.name)) return [entryPath]
+    return []
+  })
 }
 
 function jsonResponse(body: unknown, status = 200): Response {
@@ -143,7 +155,6 @@ describe("device quota suggestion service", () => {
 
     expect(selectSuggestionProvider(17)).toMatchObject({
       configuredProvider: "vm",
-      provider: "vm",
       policy: "default",
     })
   })
@@ -154,7 +165,6 @@ describe("device quota suggestion service", () => {
 
     expect(selectSuggestionProvider(17)).toMatchObject({
       configuredProvider: "canary",
-      provider: "vm",
       policy: "canary-vm-default",
     })
   })
@@ -301,7 +311,7 @@ describe("device quota suggestion service", () => {
       .mockResolvedValueOnce(jsonResponse([]))
 
     await expect(
-      runSuggestMapping({ donViId: 17, provider: "vm", user: USER })
+      runSuggestMapping({ donViId: 17, user: USER })
     ).rejects.toMatchObject({
       message: "RPC policy denied",
       details: { code: "42501" },
@@ -344,7 +354,7 @@ describe("device quota suggestion service", () => {
       ],
     })
 
-    const result = await runSuggestMapping({ donViId: 17, provider: "vm", user: USER })
+    const result = await runSuggestMapping({ donViId: 17, user: USER })
 
     expect(callVmSuggestMock).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -390,7 +400,7 @@ describe("device quota suggestion service", () => {
       )
 
     await expect(
-      runSuggestMapping({ donViId: 17, provider: "vm", user: USER })
+      runSuggestMapping({ donViId: 17, user: USER })
     ).rejects.toMatchObject({
       message: "VM suggestion payload is too large",
       status: 413,
@@ -407,10 +417,10 @@ describe("device quota suggestion service", () => {
     queueVmCatalogResponse({})
 
     await expect(
-      runSuggestMapping({ donViId: 17, provider: "vm", user: USER })
+      runSuggestMapping({ donViId: 17, user: USER })
     ).rejects.toMatchObject({ status: 413 })
     await expect(
-      runSuggestMapping({ donViId: 17, provider: "vm", user: USER })
+      runSuggestMapping({ donViId: 17, user: USER })
     ).rejects.toMatchObject({ status: 413 })
 
     expect(callVmSuggestMock).not.toHaveBeenCalled()
@@ -425,13 +435,13 @@ describe("device quota suggestion service", () => {
     )
 
     await expect(
-      runSuggestMapping({ donViId: 17, provider: "vm", user: USER })
+      runSuggestMapping({ donViId: 17, user: USER })
     ).rejects.toMatchObject({ status: 503 })
     await expect(
-      runSuggestMapping({ donViId: 17, provider: "vm", user: USER })
+      runSuggestMapping({ donViId: 17, user: USER })
     ).rejects.toMatchObject({ status: 503 })
     await expect(
-      runSuggestMapping({ donViId: 17, provider: "vm", user: USER })
+      runSuggestMapping({ donViId: 17, user: USER })
     ).rejects.toMatchObject({
       message: "VM suggestion provider circuit is open",
       status: 503,
@@ -452,8 +462,8 @@ describe("device quota suggestion service", () => {
     queueVmCatalogResponses(2)
     callVmSuggestMock.mockResolvedValue(successfulVmResponse())
 
-    const first = await runSuggestMapping({ donViId: 17, provider: "vm", user: USER })
-    const second = await runSuggestMapping({ donViId: 17, provider: "vm", user: USER })
+    const first = await runSuggestMapping({ donViId: 17, user: USER })
+    const second = await runSuggestMapping({ donViId: 17, user: USER })
 
     expect(second).toEqual(first)
     expect(fetchMock).toHaveBeenCalledTimes(4)
@@ -468,8 +478,8 @@ describe("device quota suggestion service", () => {
     })
     callVmSuggestMock.mockResolvedValue(successfulVmResponse())
 
-    await runSuggestMapping({ donViId: 17, provider: "vm", user: USER })
-    await runSuggestMapping({ donViId: 17, provider: "vm", user: USER })
+    await runSuggestMapping({ donViId: 17, user: USER })
+    await runSuggestMapping({ donViId: 17, user: USER })
 
     expect(fetchMock).toHaveBeenCalledTimes(4)
     expect(callVmSuggestMock).toHaveBeenCalledTimes(2)
@@ -480,7 +490,7 @@ describe("device quota suggestion service", () => {
       categories: [],
     })
 
-    const result = await runSuggestMapping({ donViId: 17, provider: "vm", user: USER })
+    const result = await runSuggestMapping({ donViId: 17, user: USER })
 
     expect(callVmSuggestMock).not.toHaveBeenCalled()
     expect(result.result).toEqual({
@@ -499,10 +509,10 @@ describe("device quota suggestion service", () => {
     )
 
     await expect(
-      runSuggestMapping({ donViId: 17, provider: "vm", user: USER })
+      runSuggestMapping({ donViId: 17, user: USER })
     ).rejects.toMatchObject({ status: 503 })
     await expect(
-      runSuggestMapping({ donViId: 17, provider: "vm", user: USER })
+      runSuggestMapping({ donViId: 17, user: USER })
     ).rejects.toMatchObject({
       message: "Suggestion request cooldown is active",
       status: 429,
@@ -519,10 +529,10 @@ describe("device quota suggestion service", () => {
     queueVmCatalogResponses(3)
     callVmSuggestMock.mockResolvedValue(successfulVmResponse())
 
-    await runSuggestMapping({ donViId: 17, provider: "vm", user: USER })
-    await runSuggestMapping({ donViId: 17, provider: "vm", user: USER })
+    await runSuggestMapping({ donViId: 17, user: USER })
+    await runSuggestMapping({ donViId: 17, user: USER })
     await expect(
-      runSuggestMapping({ donViId: 17, provider: "vm", user: USER })
+      runSuggestMapping({ donViId: 17, user: USER })
     ).rejects.toMatchObject({
       message: "Suggestion request rate limit exceeded",
       status: 429,
@@ -541,13 +551,12 @@ describe("device quota suggestion service", () => {
     queueVmCatalogResponse({})
     callVmSuggestMock.mockResolvedValue(successfulVmResponse())
 
-    await runSuggestMapping({ donViId: 17, provider: "vm", user: USER })
+    await runSuggestMapping({ donViId: 17, user: USER })
     expect(getSuggestionRuntimeStateSizeForTests().throttleEntries).toBe(1)
 
     vi.setSystemTime(new Date("2026-05-18T00:00:02Z"))
     await runSuggestMapping({
       donViId: 18,
-      provider: "vm",
       user: { ...USER, id: "2", don_vi: "18" },
     })
 
@@ -555,12 +564,9 @@ describe("device quota suggestion service", () => {
   })
 
   test("has no Supabase Edge embedding or hybrid-search suggestion runtime path", () => {
-    const source = [
-      "src/app/api/device-quota/mapping/suggest/suggestion-service.ts",
-      "src/app/api/device-quota/mapping/suggest/suggestion-supabase-provider.ts",
-      "src/app/api/device-quota/mapping/suggest/suggestion-types.ts",
-    ]
-      .map((filePath) => fs.readFileSync(`${process.cwd()}/${filePath}`, "utf8"))
+    const suggestSourceDir = path.join(process.cwd(), "src/app/api/device-quota/mapping/suggest")
+    const source = collectSuggestionSourceFiles(suggestSourceDir)
+      .map((filePath) => fs.readFileSync(filePath, "utf8"))
       .join("\n")
 
     expect(source).not.toContain("runSupabaseSuggestMapping")

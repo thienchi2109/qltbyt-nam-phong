@@ -48,10 +48,20 @@ function getRouteJob(payload: unknown): SuggestionJob {
     error: typeof job.error === "string" ? job.error : null,
     id: job.id,
     processedUniqueNames: job.processedUniqueNames,
-    result: isRecord(job.result) ? (job.result as unknown as SuggestMappingResult) : null,
+    result: isSuggestMappingResult(job.result) ? job.result : null,
     status: job.status,
     totalUniqueNames: job.totalUniqueNames,
   }
+}
+
+function isSuggestMappingResult(value: unknown): value is SuggestMappingResult {
+  return (
+    isRecord(value) &&
+    Array.isArray(value.groups) &&
+    Array.isArray(value.unmatched) &&
+    typeof value.totalDevices === "number" &&
+    typeof value.matchedDevices === "number"
+  )
 }
 
 async function postJson(
@@ -87,8 +97,8 @@ export function getProgressPercent(job: SuggestionJob): number {
 
 /** Returns the completed job result or raises when the server contract is invalid. */
 export function getJobResult(job: SuggestionJob): SuggestMappingResult {
-  if (job.result) return job.result
-  throw new Error("Suggestion job completed without a result")
+  if (isSuggestMappingResult(job.result)) return job.result
+  throw new Error("Suggestion job completed without a valid result")
 }
 
 /** Returns a localized fallback message for failed suggestion jobs. */
