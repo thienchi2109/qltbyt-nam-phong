@@ -8,10 +8,15 @@ from typing import Dict
 from app.normalization import normalize_text
 from app.schemas import ResponseDict, SuggestRequest
 
-LOGGER = logging.getLogger("dqss.suggest")
-LOGGER.setLevel(logging.INFO)
-if not LOGGER.handlers:
-    LOGGER.addHandler(logging.StreamHandler())
+def configure_runtime_logger(logger: logging.Logger) -> logging.Logger:
+    """Configure structured logging without duplicating ancestor handlers."""
+    logger.setLevel(logging.INFO)
+    if not logger.hasHandlers():
+        logger.addHandler(logging.StreamHandler())
+    return logger
+
+
+LOGGER = configure_runtime_logger(logging.getLogger("dqss.suggest"))
 
 
 def elapsed_ms(started: float) -> float:

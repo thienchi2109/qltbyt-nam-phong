@@ -4,6 +4,7 @@ import logging
 from app.embeddings import DeterministicEmbeddingBackend
 from app.embeddings import FailingEmbeddingBackend
 from app.instrumentation import LOGGER
+from app.instrumentation import configure_runtime_logger
 from app.service import SuggestionService
 
 
@@ -40,8 +41,36 @@ def test_dqss_logger_emits_info_in_runtime_configuration():
     assert LOGGER.isEnabledFor(logging.INFO)
 
 
-def test_dqss_logger_has_runtime_stream_handler():
-    assert any(isinstance(handler, logging.StreamHandler) for handler in LOGGER.handlers)
+def test_dqss_logger_has_runtime_handler():
+    assert LOGGER.hasHandlers()
+
+
+def test_logger_configuration_reuses_ancestor_handlers():
+    parent_logger = logging.getLogger("dqss-test-parent")
+    child_logger = logging.getLogger("dqss-test-parent.child")
+    parent_handler = logging.StreamHandler()
+    original_parent_handlers = list(parent_logger.handlers)
+    original_child_handlers = list(child_logger.handlers)
+    original_parent_propagate = parent_logger.propagate
+    original_child_propagate = child_logger.propagate
+
+    try:
+        parent_logger.handlers = [parent_handler]
+        parent_logger.propagate = False
+        child_logger.handlers = []
+        child_logger.propagate = True
+
+        configured_logger = configure_runtime_logger(child_logger)
+
+        assert configured_logger is child_logger
+        assert child_logger.isEnabledFor(logging.INFO)
+        assert child_logger.handlers == []
+        assert child_logger.hasHandlers()
+    finally:
+        parent_logger.handlers = original_parent_handlers
+        child_logger.handlers = original_child_handlers
+        parent_logger.propagate = original_parent_propagate
+        child_logger.propagate = original_child_propagate
 
 
 def test_success_logs_sanitized_phase_timings_and_counts(caplog):
