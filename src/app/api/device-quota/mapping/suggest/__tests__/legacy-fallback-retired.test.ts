@@ -20,6 +20,10 @@ describe("retired Supabase embedding fallback", () => {
     expect(existsSync(path.join(repoRoot, "scripts/device-quota/backfill-category-embeddings.ts"))).toBe(
       false,
     )
+    expect(existsSync(path.join(repoRoot, "src/lib/refresh-category-embeddings.ts"))).toBe(false)
+    expect(existsSync(path.join(repoRoot, "src/lib/__tests__/refresh-category-embeddings.test.ts"))).toBe(
+      false,
+    )
   })
 
   test("keeps the VM suggestion implementation free of the retired fallback calls", async () => {
@@ -31,5 +35,18 @@ describe("retired Supabase embedding fallback", () => {
 
     expect(combinedSource).not.toContain("/functions/v1/embed-device-name")
     expect(combinedSource).not.toContain("hybrid_search_category_batch")
+  })
+
+  test("keeps category mutation flows free of stale embedding refresh calls", async () => {
+    const mutationSource = await readRepoFile(
+      "src/app/(app)/device-quota/categories/_components/DeviceQuotaCategoryMutations.ts",
+    )
+    const importDialogSource = await readRepoFile(
+      "src/app/(app)/device-quota/categories/_components/DeviceQuotaCategoryImportDialog.tsx",
+    )
+    const combinedSource = `${mutationSource}\n${importDialogSource}`
+
+    expect(combinedSource).not.toContain("refreshCategoryEmbeddings")
+    expect(combinedSource).not.toContain("/api/embeddings/refresh-categories")
   })
 })

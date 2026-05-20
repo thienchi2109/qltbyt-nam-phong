@@ -30,7 +30,6 @@ import { callRpc } from "@/lib/rpc-client"
 import { readExcelFile, worksheetToJson } from "@/lib/excel-utils"
 import { getUnknownErrorMessage } from "@/lib/error-utils"
 import { translateRpcError } from "@/lib/error-translations"
-import { refreshCategoryEmbeddings } from "@/lib/refresh-category-embeddings"
 import { toKeyedTexts } from "@/lib/list-key-utils"
 import {
   type ParsedCategoryRow,
@@ -45,6 +44,7 @@ import { useDeviceQuotaCategoryContext } from "../_hooks/useDeviceQuotaCategoryC
 // Component
 // ============================================
 
+/** Renders the Excel import dialog for device quota categories and quota rows. */
 export function DeviceQuotaCategoryImportDialog() {
   const { isImportDialogOpen, closeImportDialog, allCategories, donViId } =
     useDeviceQuotaCategoryContext()
@@ -206,15 +206,6 @@ export function DeviceQuotaCategoryImportDialog() {
 
       // Invalidate queries to refresh category list
       queryClient.invalidateQueries({ queryKey: ["dinh_muc_nhom_list"] })
-
-      // Fire-and-forget: refresh embeddings for imported categories
-      // result.details contains {index, success, ma_nhom, id?} per the RPC definition
-      const importedIds = (result.details ?? [])
-        .filter((d) => d.success && d.id != null)
-        .map((d) => d.id as number)
-      if (importedIds.length > 0) {
-        refreshCategoryEmbeddings(importedIds)
-      }
     },
     onError: (error: Error) => {
       setStatus("error")
