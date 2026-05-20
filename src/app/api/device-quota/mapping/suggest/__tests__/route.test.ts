@@ -194,6 +194,28 @@ describe("POST /api/device-quota/mapping/suggest", () => {
     )
   })
 
+  test("selects the VM provider for non-canary facilities during all-unit rollout", async () => {
+    vi.stubEnv("DEVICE_QUOTA_SUGGESTION_PROVIDER", "vm")
+
+    const { POST } = await import("@/app/api/device-quota/mapping/suggest/route")
+    const response = await POST(createRequest({ donViId: 21 }))
+
+    expect(response.status).toBe(200)
+    expect(runSuggestMappingMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        donViId: 21,
+        provider: "vm",
+      })
+    )
+    expect(await response.json()).toEqual(
+      expect.objectContaining({
+        meta: expect.objectContaining({
+          provider: "vm",
+        }),
+      })
+    )
+  })
+
   test("uses VM only for canary allow-listed facilities", async () => {
     vi.stubEnv("DEVICE_QUOTA_SUGGESTION_PROVIDER", "canary")
     vi.stubEnv("DEVICE_QUOTA_SUGGESTION_CANARY_DON_VI_IDS", "17,21")
