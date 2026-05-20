@@ -1,6 +1,11 @@
 import { SuggestionRouteError } from "@/app/api/device-quota/mapping/suggest/suggestion-errors"
 import { createCatalogSignature, mergeSuggestionResults } from "@/app/api/device-quota/mapping/suggest/suggestion-merge"
 import {
+  createSuggestionAlgorithmSignature,
+  getVmCandidateTopK,
+  rerankSuggestionResults,
+} from "@/app/api/device-quota/mapping/suggest/suggestion-ai-reranker"
+import {
   assertVmCircuitClosed,
   cacheSuggestionResult,
   createSuggestionRuntimeKey,
@@ -81,7 +86,7 @@ export function toVmRequest({
       classification: category.phan_loai,
     })),
     options: {
-      topK: 3,
+      topK: getVmCandidateTopK(),
       semanticWeight: 1,
       lexicalWeight: 1,
       minConfidence: 0.62,
@@ -145,7 +150,7 @@ export async function runVmSuggestMapping({
   }
 
   const runtimeKey = createSuggestionRuntimeKey({
-    dataSignature: `${catalogSignature}:${unassignedSignature}`,
+    dataSignature: `${catalogSignature}:${unassignedSignature}:${createSuggestionAlgorithmSignature()}`,
     donViId,
     provider: "vm",
     user,
@@ -176,8 +181,14 @@ export async function runVmSuggestMapping({
 
   try {
     const vmResponse = await callVmSuggest(vmRequest)
+    const searchResults = await rerankSuggestionResults({
+      categories,
+      names,
+      requestId,
+      searchResults: toSearchResults(vmResponse),
+    })
     const result = {
-      result: mergeSuggestionResults(names, toSearchResults(vmResponse)),
+      result: mergeSuggestionResults(names, searchResults),
       itemCounts,
       catalogSignature,
     }

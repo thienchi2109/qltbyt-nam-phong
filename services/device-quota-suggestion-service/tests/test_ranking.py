@@ -203,6 +203,90 @@ def test_fuzzy_matching_is_bounded_to_shortlist(monkeypatch):
     assert fuzzy_call_count <= 16
 
 
+def test_higher_rerank_top_k_still_bounds_shortlist_work(monkeypatch):
+    fuzzy_call_count = 0
+    real_sequence_matcher = ranking.SequenceMatcher
+
+    class CountingSequenceMatcher:
+        def __init__(self, *args, **kwargs):
+            self._matcher = real_sequence_matcher(*args, **kwargs)
+
+        def ratio(self):
+            nonlocal fuzzy_call_count
+            fuzzy_call_count += 1
+            return self._matcher.ratio()
+
+    monkeypatch.setattr(ranking, "SequenceMatcher", CountingSequenceMatcher)
+    options = SuggestOptions(topK=8)
+    categories = [
+        CategoryVector(
+            category=CategoryItem(
+                id=index + 1,
+                code=f"C{index:03d}",
+                name=f"nhom vat tu {index:03d}",
+                classification=None,
+            ),
+            normalized_name=f"nhom vat tu {index:03d}",
+            embedding=[1.0, 0.0] if index < 80 else [0.0, 1.0],
+        )
+        for index in range(240)
+    ]
+
+    candidates = rank_categories(
+        "monitor tim mach",
+        [1.0, 0.0],
+        categories,
+        options,
+    )
+
+    assert len(candidates) == 8
+    assert fuzzy_call_count <= 48
+
+
+def test_higher_rerank_top_k_keeps_deterministic_code_then_id_order():
+    options = SuggestOptions(topK=8)
+    categories = [
+        CategoryVector(
+            category=CategoryItem(
+                id=category_id,
+                code=code,
+                name="nhom cung diem",
+                classification=None,
+            ),
+            normalized_name="nhom cung diem",
+            embedding=[1.0, 0.0],
+        )
+        for category_id, code in (
+            (80, "C"),
+            (20, "B"),
+            (10, "B"),
+            (70, "A"),
+            (60, "A"),
+            (50, "D"),
+            (40, "D"),
+            (30, "C"),
+        )
+    ]
+
+    candidates = rank_categories(
+        "nhom cung diem",
+        [1.0, 0.0],
+        categories,
+        options,
+    )
+
+    assert [candidate["categoryId"] for candidate in candidates] == [
+        60,
+        70,
+        10,
+        20,
+        30,
+        80,
+        40,
+        50,
+    ]
+
+
 def test_low_confidence_or_small_margin_requires_review():
     backend = MappingEmbeddingBackend(
         {

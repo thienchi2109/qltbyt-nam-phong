@@ -1,5 +1,9 @@
 import { SuggestionRouteError } from "@/app/api/device-quota/mapping/suggest/suggestion-errors"
 import { createCatalogSignature, mergeSuggestionResults } from "@/app/api/device-quota/mapping/suggest/suggestion-merge"
+import {
+  createSuggestionAlgorithmSignature,
+  rerankSuggestionResults,
+} from "@/app/api/device-quota/mapping/suggest/suggestion-ai-reranker"
 import { assertSuggestionAccess } from "@/app/api/device-quota/mapping/suggest/suggestion-supabase-provider"
 import {
   createUnassignedSignature,
@@ -110,7 +114,7 @@ export async function createSuggestionJob({
   const scopeKey = getUserScopeKey(user)
   const { categories, names } = await fetchInputs({ donViId, user })
   const catalogSignature = createCatalogSignature(categories)
-  const dataSignature = `${catalogSignature}:${createUnassignedSignature(names)}`
+  const dataSignature = `${catalogSignature}:${createUnassignedSignature(names)}:${createSuggestionAlgorithmSignature()}`
   const existingJob = await jobStore.findActiveJob({ dataSignature, donViId, scopeKey })
 
   if (existingJob) return existingJob
@@ -245,7 +249,13 @@ async function suggestChunkWithVm({
   })
   assertPayloadSize(vmRequest)
   const response = await callVmSuggest(vmRequest)
-  return { results: toSearchResults(response) }
+  const searchResults = await rerankSuggestionResults({
+    categories,
+    names: chunk.deviceNames,
+    requestId: `${job.id}:${chunk.chunkIndex}`,
+    searchResults: toSearchResults(response),
+  })
+  return { results: searchResults }
 }
 
 export async function processNextSuggestionJobChunks({
