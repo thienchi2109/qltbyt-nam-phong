@@ -72,6 +72,35 @@ function extractEffectBodies(source: string): string[] {
 }
 
 describe("device quota context React Doctor state guards", () => {
+  it("keeps category import dialog state in a reducer instead of scattered useState calls", () => {
+    const source = readSource(
+      "src/app/(app)/device-quota/categories/_components/DeviceQuotaCategoryImportDialog.tsx"
+    )
+    const dialogSource = extractFunctionSource(source, "DeviceQuotaCategoryImportDialog")
+
+    expect(dialogSource).toMatch(/\b(?:React\.)?useReducer\s*\(/)
+    expect(dialogSource.match(/\b(?:React\.)?useState\s*\(/g) ?? []).toHaveLength(0)
+  })
+
+  it("keeps category import dialog effects to at most one state mutation per effect", () => {
+    const source = readSource(
+      "src/app/(app)/device-quota/categories/_components/DeviceQuotaCategoryImportDialog.tsx"
+    )
+    const dialogSource = extractFunctionSource(source, "DeviceQuotaCategoryImportDialog")
+    const effectBodies = extractEffectBodies(dialogSource)
+
+    expect(effectBodies.length).toBeGreaterThan(0)
+    for (const body of effectBodies) {
+      const stateMutationCount =
+        (body.match(/\bset(?!Timeout\()[A-Z]\w*\(/g) ?? []).length +
+        (body.match(/\bdispatch\(/g) ?? []).length +
+        (body.match(/resetToFirstPage\(/g) ?? []).length +
+        (body.match(/resetParsedState\(/g) ?? []).length
+
+      expect(stateMutationCount).toBeLessThanOrEqual(1)
+    }
+  })
+
   it("keeps category provider UI state in a reducer instead of scattered useState calls", () => {
     const source = readSource(
       "src/app/(app)/device-quota/categories/_components/DeviceQuotaCategoryContext.tsx"
@@ -91,7 +120,7 @@ describe("device quota context React Doctor state guards", () => {
     expect(effectBodies.length).toBeGreaterThan(0)
     for (const body of effectBodies) {
       const stateMutationCount =
-        (body.match(/\bset[A-Z][A-Za-z0-9_]*\(/g) ?? []).length +
+        (body.match(/\bset(?!Timeout\()[A-Z]\w*\(/g) ?? []).length +
         (body.match(/resetToFirstPage\(/g) ?? []).length
 
       expect(stateMutationCount).toBeLessThanOrEqual(1)
