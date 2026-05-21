@@ -149,11 +149,11 @@ describe('/api/chat rate limit and quota', () => {
       streamTextMock.mock.invocationCallOrder[0],
     )
     expect(streamTextMock).toHaveBeenCalledTimes(1)
-    expect(finalizeUsageMock).toHaveBeenCalledWith(expect.objectContaining({
+    await vi.waitFor(() => expect(finalizeUsageMock).toHaveBeenCalledWith(expect.objectContaining({
       reservationId: '00000000-0000-4000-8000-000000000484',
       status: 'success',
       inputTokens: 100,
       outputTokens: 50,
-    }))
+    })))
   })
 })

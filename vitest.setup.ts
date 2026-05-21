@@ -8,11 +8,13 @@ vi.mock('next/server', async (importOriginal) => {
   return {
     ...actual,
     after: (task: NextAfterTask) => {
-      if (typeof task === 'function') {
-        void task()
-        return
-      }
-      void task
+      setTimeout(() => {
+        if (typeof task === 'function') {
+          void task()
+          return
+        }
+        void task
+      }, 0)
     },
   }
 })

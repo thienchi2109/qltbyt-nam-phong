@@ -94,13 +94,13 @@ describe('/api/chat quota finalize on retry and errors', () => {
     const res = await POST(buildRequest({ messages: VALID_MESSAGES }) as never)
 
     expect(res.status).toBe(500)
-    expect(finalizeUsageMock).toHaveBeenCalledOnce()
-    expect(finalizeUsageMock).toHaveBeenCalledWith(expect.objectContaining({
+    await vi.waitFor(() => expect(finalizeUsageMock).toHaveBeenCalledOnce())
+    await vi.waitFor(() => expect(finalizeUsageMock).toHaveBeenCalledWith(expect.objectContaining({
       reservationId: '00000000-0000-4000-8000-000000000484',
       status: 'error_no_usage',
       inputTokens: 0,
       outputTokens: 0,
-    }))
+    })))
   })
 
   it('keeps one reservation across provider retry and finalizes once on success', async () => {
@@ -129,13 +129,13 @@ describe('/api/chat quota finalize on retry and errors', () => {
     expect(res.status).toBe(200)
     expect(reserveUsageMock).toHaveBeenCalledOnce()
     expect(streamTextMock).toHaveBeenCalledTimes(2)
-    expect(finalizeUsageMock).toHaveBeenCalledOnce()
-    expect(finalizeUsageMock).toHaveBeenCalledWith(expect.objectContaining({
+    await vi.waitFor(() => expect(finalizeUsageMock).toHaveBeenCalledOnce())
+    await vi.waitFor(() => expect(finalizeUsageMock).toHaveBeenCalledWith(expect.objectContaining({
       reservationId: '00000000-0000-4000-8000-000000000484',
       status: 'success',
       inputTokens: 7,
       outputTokens: 5,
-    }))
+    })))
   })
 
   it('allows a later finalize callback to retry after a transient finalize failure', async () => {
@@ -196,10 +196,10 @@ describe('/api/chat quota finalize on retry and errors', () => {
     const res = await POST(buildRequest({ messages: VALID_MESSAGES }) as never)
 
     expect(res.status).toBe(500)
-    expect(finalizeUsageMock).toHaveBeenCalledWith(expect.objectContaining({
+    await vi.waitFor(() => expect(finalizeUsageMock).toHaveBeenCalledWith(expect.objectContaining({
       status: 'error_no_usage',
       inputTokens: 0,
       outputTokens: 0,
-    }))
+    })))
   })
 })

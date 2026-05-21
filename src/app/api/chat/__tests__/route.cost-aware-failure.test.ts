@@ -97,11 +97,11 @@ describe('/api/chat cost-aware failure accounting', () => {
     const res = await POST(buildRequest({ messages: VALID_MESSAGES }) as never)
 
     expect(res.status).toBe(200)
-    expect(finalizeUsageMock).toHaveBeenCalledWith(expect.objectContaining({
+    await vi.waitFor(() => expect(finalizeUsageMock).toHaveBeenCalledWith(expect.objectContaining({
       status: 'error_with_usage',
       inputTokens: 17,
       outputTokens: 19,
-    }))
+    })))
   })
 
   it('records zero tokens when the provider supplies no usage', async () => {
@@ -119,10 +119,10 @@ describe('/api/chat cost-aware failure accounting', () => {
     const res = await POST(buildRequest({ messages: VALID_MESSAGES }) as never)
 
     expect(res.status).toBe(200)
-    expect(finalizeUsageMock).toHaveBeenCalledWith(expect.objectContaining({
+    await vi.waitFor(() => expect(finalizeUsageMock).toHaveBeenCalledWith(expect.objectContaining({
       status: 'error_with_usage',
       inputTokens: 0,
       outputTokens: 0,
-    }))
+    })))
   })
 })
