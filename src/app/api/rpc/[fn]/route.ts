@@ -1,14 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
+/** Run the RPC proxy on Node.js so JWT signing uses the server crypto stack. */
 export const runtime = 'nodejs'
-import jwt from 'jsonwebtoken'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '../../../../auth/config'
 import { ALLOWED_FUNCTIONS } from './allowed-functions'
 import { sanitizeForLog } from '@/lib/log-sanitizer'
+import { mintSupabaseJwt } from '@/lib/ai/server-rpc'
 
 // SECURITY: Maximum request body size (2MB) to prevent DoS via memory exhaustion
 const MAX_BODY_SIZE = 2 * 1024 * 1024
-const SUPABASE_JWT_CLOCK_SKEW_SECONDS = 60
 
 type RpcProxySessionUser = {
   role?: unknown
@@ -42,6 +42,7 @@ function getErrorMessage(error: unknown): string {
   return error instanceof Error ? error.message : 'Unexpected error'
 }
 
+/** Proxies allowlisted Supabase RPC calls with JWT claims derived from the server session. */
 export async function POST(req: NextRequest, context: { params: Promise<{ fn: string }> }) {
   try {
     const { fn } = await context.params
@@ -101,26 +102,6 @@ export async function POST(req: NextRequest, context: { params: Promise<{ fn: st
   const appRole = roleLower === 'admin' ? 'global' : roleLower
   // (debug removed)
 
-    // Build JWT claims for PostgREST. We keep db role = authenticated; app role in app_role.
-    // IMPORTANT: Convert empty strings to null to prevent BIGINT conversion errors
-    // iat is backdated to handle clock skew between this server and Supabase.
-    // exp is set explicitly (not via expiresIn) because jsonwebtoken computes
-    // exp = iat + expiresIn, which would halve the effective lifetime.
-    const now = Math.floor(Date.now() / 1000)
-    const issuedAt = now - SUPABASE_JWT_CLOCK_SKEW_SECONDS
-    const expiresAt = now + 120 // 2 minutes from actual signing time
-    const claims: Record<string, string | number | null> = {
-      role: 'authenticated',
-      iat: issuedAt,
-      exp: expiresAt,
-      sub: userId, // CRITICAL: 'sub' is required for auth.uid() in PostgreSQL
-      app_role: appRole,
-      don_vi: donVi || null,  // Convert empty string to null for global users
-      user_id: userId,
-      dia_ban: diaBan || null,  // Convert empty string to null
-      khoa_phong: khoaPhong || null,
-    }
-
     // Sanitize tenant parameter for non-global users to enforce isolation
     // EXCEPTION: regional_leader users can see multiple tenants, don't override p_don_vi
     let body: Record<string, unknown> =
@@ -140,8 +121,13 @@ export async function POST(req: NextRequest, context: { params: Promise<{ fn: st
       } catch {}
     }
 
-    const secret = getEnv('SUPABASE_JWT_SECRET')
-  const token = jwt.sign(claims, secret, { algorithm: 'HS256' })
+    const token = mintSupabaseJwt({
+      id: userId,
+      role,
+      don_vi: donVi,
+      dia_ban_id: diaBan,
+      khoa_phong: khoaPhong,
+    })
 
     const urlBase = getEnv('NEXT_PUBLIC_SUPABASE_URL')
     const url = `${urlBase}/rest/v1/rpc/${encodeURIComponent(fn)}`

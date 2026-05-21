@@ -6,6 +6,11 @@ const getServerSessionMock = vi.fn()
 const streamTextMock = vi.fn()
 const getChatModelMock = vi.fn()
 const buildSystemPromptMock = vi.fn()
+const reserveUsageMock = vi.fn(async () => ({
+  allowed: true,
+  reservationId: '00000000-0000-4000-8000-000000000484',
+}))
+const finalizeUsageMock = vi.fn(async () => undefined)
 
 vi.mock('next-auth', () => ({
   getServerSession: (...args: unknown[]) => getServerSessionMock(...args),
@@ -19,6 +24,16 @@ vi.mock('@/lib/ai/provider', () => ({
 
 vi.mock('@/lib/ai/prompts/system', () => ({
   buildSystemPrompt: (...args: unknown[]) => buildSystemPromptMock(...args),
+}))
+
+vi.mock('@/lib/ai/usage-metering', () => ({
+  classifyStreamFailure: ({ providerUsage }: { providerUsage?: { inputTokens?: number; outputTokens?: number } }) => ({
+    status: 'error_with_usage',
+    inputTokens: providerUsage?.inputTokens ?? 0,
+    outputTokens: providerUsage?.outputTokens ?? 0,
+  }),
+  reserveUsage: (...args: unknown[]) => reserveUsageMock(...args),
+  finalizeUsage: (...args: unknown[]) => finalizeUsageMock(...args),
 }))
 
 vi.mock('ai', async () => {

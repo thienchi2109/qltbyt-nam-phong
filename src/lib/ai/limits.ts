@@ -17,7 +17,9 @@ export const AI_MAX_OUTPUT_TOKENS = readPositiveIntEnv(
   'AI_MAX_OUTPUT_TOKENS',
   2048,
 )
+/** Maximum AI SDK tool-loop steps allowed per chat response. */
 export const AI_MAX_TOOL_STEPS = readPositiveIntEnv('AI_MAX_TOOL_STEPS', 5)
+/** Maximum number of UI messages accepted in one chat request. */
 export const AI_MAX_MESSAGES = readPositiveIntEnv('AI_MAX_MESSAGES', 40)
 /**
  * Phase 0 mitigation (Batch 1): raised from 40K to 120K to stop
@@ -35,6 +37,7 @@ export const AI_MAX_COMPACTED_INPUT_CHARS = readPositiveIntEnv(
   40_000,
 )
 
+/** Sliding rate-limit window used by distributed AI quota reservation. */
 export const AI_RATE_LIMIT_WINDOW_MS = readPositiveIntEnv(
   'AI_RATE_LIMIT_WINDOW_MS',
   60_000,
@@ -54,6 +57,18 @@ export const AI_DAILY_TENANT_QUOTA_REQUESTS = readPositiveIntEnv(
   'AI_DAILY_TENANT_QUOTA_REQUESTS',
   1_500,
 )
+/** 5000 req/ngày/global: hard stop shared across all tenants. */
+export const AI_DAILY_GLOBAL_QUOTA_REQUESTS = readPositiveIntEnv(
+  'AI_DAILY_GLOBAL_QUOTA_REQUESTS',
+  5_000,
+)
+/** Must exceed /api/chat maxDuration plus post-stream artifact work. */
+export const AI_QUOTA_RESERVATION_TTL_MS = readPositiveIntEnv(
+  'AI_QUOTA_RESERVATION_TTL_MS',
+  120_000,
+)
+/** Emergency process-level switch that rejects AI usage before quota RPC calls. */
+export const AI_KILL_SWITCH = process.env.AI_KILL_SWITCH?.toLowerCase() === 'on'
 
 // ---------------------------------------------------------------------------
 // Budget measurement
@@ -70,4 +85,3 @@ export function calculateInputChars(messages: unknown[]): number {
     return Number.MAX_SAFE_INTEGER
   }
 }
-

@@ -244,9 +244,9 @@ export async function finalizeUsage(
 - `get_advisors(security)` + `get_advisors(performance)` clean.
 
 ## Follow-ups Required (file before closing #484)
-1. **UI retry cooldown** — issue scope item 6, deferred.
-2. **DB-backed kill switch** — replace env-var with table-row toggle so admins can flip without redeploy (issue AC mandates "without redeploying code").
-3. **Cost-per-token config table** — replace hardcoded rates in `estimateCostUsd`.
+1. **UI retry cooldown** — issue scope item 6, deferred to #537.
+2. **DB-backed kill switch** — replace env-var with table-row toggle so admins can flip without redeploy (issue AC mandates "without redeploying code"); deferred to #538.
+3. **Cost-per-token config table** — replace hardcoded/static rates with configurable model cost data; deferred to #539.
 
 ## Risk Notes
 - **Env kill switch requires redeploy** — explicitly noted in PR description; tracked by follow-up #2 above.

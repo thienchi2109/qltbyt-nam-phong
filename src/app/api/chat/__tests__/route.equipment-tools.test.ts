@@ -1,7 +1,9 @@
 import { readFileSync } from 'node:fs'
 import path from 'node:path'
 
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
+
+vi.mock('server-only', () => ({}))
 
 describe('equipmentLookup contract shape', () => {
   it('maps to ai_equipment_lookup RPC', async () => {

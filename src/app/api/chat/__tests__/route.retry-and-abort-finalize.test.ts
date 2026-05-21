@@ -6,6 +6,8 @@ const getServerSessionMock = vi.fn()
 const streamTextMock = vi.fn()
 const stepCountIsMock = vi.fn()
 const getChatModelMock = vi.fn()
+const getKeyPoolSizeMock = vi.fn()
+const handleProviderQuotaErrorMock = vi.fn()
 const buildSystemPromptMock = vi.fn()
 const reserveUsageMock = vi.fn()
 const finalizeUsageMock = vi.fn()
@@ -16,21 +18,12 @@ vi.mock('next-auth', () => ({
 
 vi.mock('@/lib/ai/provider', () => ({
   getChatModel: (...args: unknown[]) => getChatModelMock(...args),
-  getKeyPoolSize: () => 1,
-  handleProviderQuotaError: () => false,
+  getKeyPoolSize: (...args: unknown[]) => getKeyPoolSizeMock(...args),
+  handleProviderQuotaError: (...args: unknown[]) => handleProviderQuotaErrorMock(...args),
 }))
 
 vi.mock('@/lib/ai/prompts/system', () => ({
   buildSystemPrompt: (...args: unknown[]) => buildSystemPromptMock(...args),
-}))
-
-vi.mock('@/lib/ai/limits', () => ({
-  AI_MAX_OUTPUT_TOKENS: 256,
-  AI_MAX_TOOL_STEPS: 4,
-  AI_MAX_MESSAGES: 20,
-  AI_MAX_INPUT_CHARS: 20_000,
-  AI_MAX_COMPACTED_INPUT_CHARS: 10_000,
-  calculateInputChars: (messages: unknown[]) => JSON.stringify(messages).length,
 }))
 
 vi.mock('@/lib/ai/usage-metering', () => ({
@@ -58,14 +51,6 @@ import {
   makeReadyStreamTextResult,
 } from './stream-text-result-test-helpers'
 
-function buildRequest(body: unknown) {
-  return new Request('http://localhost/api/chat', {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify(body),
-  })
-}
-
 const VALID_MESSAGES = [
   {
     id: 'msg_1',
@@ -74,13 +59,22 @@ const VALID_MESSAGES = [
   },
 ]
 
-describe('/api/chat rate limit and quota', () => {
+function buildRequest(body: unknown) {
+  return new Request('http://localhost/api/chat', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify(body),
+  })
+}
+
+describe('/api/chat quota finalize on retry and errors', () => {
   beforeEach(() => {
     vi.clearAllMocks()
 
     getServerSessionMock.mockResolvedValue({
       user: { id: 'u1', role: 'admin', don_vi: 2 },
     })
+    getKeyPoolSizeMock.mockReturnValue(1)
     getChatModelMock.mockReturnValue(makeChatModel('google:gemini-2.5-flash'))
     buildSystemPromptMock.mockReturnValue('SYSTEM_PROMPT_V1')
     stepCountIsMock.mockReturnValue('STOP_WHEN_SENTINEL')
@@ -89,71 +83,58 @@ describe('/api/chat rate limit and quota', () => {
       reservationId: '00000000-0000-4000-8000-000000000484',
     })
     finalizeUsageMock.mockResolvedValue(undefined)
-    streamTextMock.mockImplementation((opts: Record<string, unknown>) => {
-      // Simulate onFinish callback firing with mock usage data
-      const onFinish = opts.onFinish as
-        | ((result: { usage: { inputTokens: number; outputTokens: number }; finishReason: string }) => void)
-        | undefined
-      if (onFinish) {
-        onFinish({
-          usage: { inputTokens: 100, outputTokens: 50 },
+    handleProviderQuotaErrorMock.mockReturnValue(false)
+  })
+
+  it('finalizes error_no_usage when the provider fails before a stream starts', async () => {
+    streamTextMock.mockImplementation(() => {
+      throw new Error('Network timeout before stream')
+    })
+
+    const res = await POST(buildRequest({ messages: VALID_MESSAGES }) as never)
+
+    expect(res.status).toBe(500)
+    expect(finalizeUsageMock).toHaveBeenCalledOnce()
+    expect(finalizeUsageMock).toHaveBeenCalledWith(expect.objectContaining({
+      reservationId: '00000000-0000-4000-8000-000000000484',
+      status: 'error_no_usage',
+      inputTokens: 0,
+      outputTokens: 0,
+    }))
+  })
+
+  it('keeps one reservation across provider retry and finalizes once on success', async () => {
+    getKeyPoolSizeMock.mockReturnValue(2)
+    getChatModelMock
+      .mockReturnValueOnce(makeChatModel('google:gemini-2.5-flash', undefined))
+      .mockReturnValueOnce(makeChatModel('google:gemini-2.5-flash', undefined))
+    handleProviderQuotaErrorMock.mockReturnValueOnce(true)
+    streamTextMock
+      .mockImplementationOnce(() => {
+        throw new Error('You exceeded your current quota')
+      })
+      .mockImplementationOnce((opts: Record<string, unknown>) => {
+        const onFinish = opts.onFinish as
+          | ((result: { usage: { inputTokens: number; outputTokens: number }; finishReason: string }) => void)
+          | undefined
+        onFinish?.({
+          usage: { inputTokens: 7, outputTokens: 5 },
           finishReason: 'stop',
         })
-      }
-      return makeReadyStreamTextResult()
-    })
-  })
+        return makeReadyStreamTextResult()
+      })
 
-  it('returns 429 when rate-limited', async () => {
-    reserveUsageMock.mockResolvedValue({
-      allowed: false,
-      reason: 'rate_limit',
-      message: 'Too many requests. Please try again later.',
-    })
-
-    const res = await POST(buildRequest({ messages: VALID_MESSAGES }) as never)
-    const text = await res.text()
-
-    expect(res.status).toBe(429)
-    expect(text).toBe('Too many requests. Please try again later.')
-    expect(streamTextMock).not.toHaveBeenCalled()
-    expect(finalizeUsageMock).not.toHaveBeenCalled()
-  })
-
-  it('returns 429 when quota is exceeded', async () => {
-    reserveUsageMock.mockResolvedValue({
-      allowed: false,
-      reason: 'tenant_quota',
-      message: 'AI usage quota exceeded for this facility.',
-    })
-
-    const res = await POST(buildRequest({ messages: VALID_MESSAGES }) as never)
-    const text = await res.text()
-
-    expect(res.status).toBe(429)
-    expect(text).toBe('AI usage quota exceeded for this facility.')
-    expect(streamTextMock).not.toHaveBeenCalled()
-    expect(finalizeUsageMock).not.toHaveBeenCalled()
-  })
-
-  it('reserves before stream and finalizes provider-reported usage on finish', async () => {
     const res = await POST(buildRequest({ messages: VALID_MESSAGES }) as never)
 
     expect(res.status).toBe(200)
-    expect(reserveUsageMock).toHaveBeenCalledWith(expect.objectContaining({
-      userId: 'u1',
-      tenantId: 2,
-      role: 'admin',
-    }))
-    expect(reserveUsageMock.mock.invocationCallOrder[0]).toBeLessThan(
-      streamTextMock.mock.invocationCallOrder[0],
-    )
-    expect(streamTextMock).toHaveBeenCalledTimes(1)
+    expect(reserveUsageMock).toHaveBeenCalledOnce()
+    expect(streamTextMock).toHaveBeenCalledTimes(2)
+    expect(finalizeUsageMock).toHaveBeenCalledOnce()
     expect(finalizeUsageMock).toHaveBeenCalledWith(expect.objectContaining({
       reservationId: '00000000-0000-4000-8000-000000000484',
       status: 'success',
-      inputTokens: 100,
-      outputTokens: 50,
+      inputTokens: 7,
+      outputTokens: 5,
     }))
   })
 })
