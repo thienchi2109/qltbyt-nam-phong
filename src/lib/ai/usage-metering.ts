@@ -101,8 +101,18 @@ function normalizeUsageLimitReason(reason: string | null | undefined): UsageLimi
   }
 }
 
-function firstReserveRow(payload: AiQuotaReserveRow | AiQuotaReserveRow[]): AiQuotaReserveRow {
-  return Array.isArray(payload) ? payload[0] : payload
+function firstReserveRow(
+  payload: AiQuotaReserveRow | AiQuotaReserveRow[] | null | undefined,
+): AiQuotaReserveRow {
+  const row = Array.isArray(payload) ? payload[0] : payload
+  if (!row) {
+    return {
+      allowed: false,
+      reason: 'user_quota',
+      message: 'Unable to reserve AI usage quota.',
+    }
+  }
+  return row
 }
 
 /** Reserves distributed AI quota before starting a provider request. */

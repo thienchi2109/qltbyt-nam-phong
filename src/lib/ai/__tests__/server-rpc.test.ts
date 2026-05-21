@@ -74,6 +74,13 @@ describe('AI server RPC helper', () => {
     expect(claims.exp).toBe(now + 120)
   })
 
+  it('rejects missing user id before minting a Supabase JWT', () => {
+    expect(() => mintSupabaseJwt({ role: 'user' })).toThrow(
+      'Cannot mint Supabase RPC JWT without user id',
+    )
+    expect(jwtSignMock).not.toHaveBeenCalled()
+  })
+
   it('calls Supabase PostgREST RPC with the minted JWT and anon API key', async () => {
     await expect(
       callServerRpc('ai_quota_reserve', { p_user_id: 'u1' }, {

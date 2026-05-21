@@ -21,7 +21,13 @@ function getRequiredEnv(name: string): string {
 }
 
 function stringifyClaim(value: unknown): string {
-  return typeof value === 'string' ? value : String(value ?? '')
+  if (typeof value === 'string') {
+    return value
+  }
+  if (typeof value === 'number' || typeof value === 'boolean') {
+    return String(value)
+  }
+  return ''
 }
 
 function nullableStringClaim(value: unknown): string | null {
@@ -37,6 +43,10 @@ function normalizeAppRole(role: unknown): string {
 /** Mints a short-lived Supabase-compatible JWT from trusted server-side user claims. */
 export function mintSupabaseJwt(user: SupabaseRpcUser): string {
   const userId = stringifyClaim(user.id)
+  if (!userId) {
+    throw new Error('Cannot mint Supabase RPC JWT without user id')
+  }
+
   const now = Math.floor(Date.now() / 1000)
   const issuedAt = now - SUPABASE_JWT_CLOCK_SKEW_SECONDS
   const expiresAt = now + 120

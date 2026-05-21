@@ -8,6 +8,7 @@ import {
   validateUIMessages,
 } from 'ai'
 import { getServerSession } from 'next-auth'
+import { after } from 'next/server'
 
 import { authOptions } from '@/auth/config'
 import { chatRequestSchema } from '@/lib/ai/chat-request-schema'
@@ -176,25 +177,31 @@ export async function POST(request: Request) {
   }
 
   let finalized = false
+  let finalizePromise: Promise<void> | null = null
   const finalizeOnce = async (details: {
     status: UsageFinalizeStatus
     inputTokens?: number
     outputTokens?: number
     costUsd?: number
   }) => {
-    if (finalized) {
-      return
+    if (finalized || finalizePromise) {
+      return finalizePromise
     }
-    finalized = true
-    try {
-      await finalizeUsage({
-        ...usageContext,
-        reservationId: usageReservation.reservationId,
-        ...details,
-      })
-    } catch (error) {
-      console.error('[chat] Usage finalize error:', error)
-    }
+    finalizePromise = (async () => {
+      try {
+        await finalizeUsage({
+          ...usageContext,
+          reservationId: usageReservation.reservationId,
+          ...details,
+        })
+        finalized = true
+      } catch (error) {
+        console.error('[chat] Usage finalize error:', error)
+      } finally {
+        finalizePromise = null
+      }
+    })()
+    return finalizePromise
   }
 
   const promptContext: SystemPromptContext = {
@@ -260,21 +267,21 @@ export async function POST(request: Request) {
         providerOptions: chatModel.providerOptions,
         onFinish({ usage, finishReason }) {
           const failureUsage = classifyStreamFailure({ providerUsage: usage })
-          void finalizeOnce(finishReason === 'error'
+          after(() => finalizeOnce(finishReason === 'error'
             ? failureUsage
             : {
                 status: 'success',
                 inputTokens: usage.inputTokens ?? 0,
                 outputTokens: usage.outputTokens ?? 0,
-              })
+              }))
         },
       })
-      streamStarted = true
 
       await waitForStreamReady(result, isProviderQuotaError)
+      streamStarted = true
 
       const handleStreamError = (error: unknown) => {
-        void finalizeOnce(classifyStreamFailure({ providerUsage: undefined }))
+        after(() => finalizeOnce(classifyStreamFailure({ providerUsage: undefined })))
         // Mid-stream quota errors can't be retried (response already in-flight),
         // but rotate the key for future requests so they don't hit the same quota.
         if (isProviderQuotaError(error)) {

@@ -99,6 +99,19 @@ describe('distributed AI usage metering', () => {
     })
   })
 
+  it('fails closed when reserve RPC returns no row', async () => {
+    callServerRpcMock.mockResolvedValue([])
+
+    const { reserveUsage } = await import('../usage-metering')
+    const result = await reserveUsage({ userId: 'u1', tenantId: 2 })
+
+    expect(result).toEqual({
+      allowed: false,
+      reason: 'user_quota',
+      message: 'Unable to reserve AI usage quota.',
+    })
+  })
+
   it('classifies stream failures using only provider-reported usage', async () => {
     const { classifyStreamFailure } = await import('../usage-metering')
 

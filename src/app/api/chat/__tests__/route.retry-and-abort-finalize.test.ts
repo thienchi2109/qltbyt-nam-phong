@@ -45,7 +45,7 @@ vi.mock('ai', async () => {
   }
 })
 
-import { POST } from '../route'
+import { POST } from '@/app/api/chat/route'
 import {
   makeChatModel,
   makeReadyStreamTextResult,
@@ -106,8 +106,8 @@ describe('/api/chat quota finalize on retry and errors', () => {
   it('keeps one reservation across provider retry and finalizes once on success', async () => {
     getKeyPoolSizeMock.mockReturnValue(2)
     getChatModelMock
-      .mockReturnValueOnce(makeChatModel('google:gemini-2.5-flash', undefined))
-      .mockReturnValueOnce(makeChatModel('google:gemini-2.5-flash', undefined))
+      .mockReturnValueOnce(makeChatModel('google:gemini-2.5-flash'))
+      .mockReturnValueOnce(makeChatModel('google:gemini-2.5-flash'))
     handleProviderQuotaErrorMock.mockReturnValueOnce(true)
     streamTextMock
       .mockImplementationOnce(() => {
@@ -135,6 +135,71 @@ describe('/api/chat quota finalize on retry and errors', () => {
       status: 'success',
       inputTokens: 7,
       outputTokens: 5,
+    }))
+  })
+
+  it('allows a later finalize callback to retry after a transient finalize failure', async () => {
+    let onFinish:
+      | ((result: { usage: { inputTokens: number; outputTokens: number }; finishReason: string }) => void)
+      | undefined
+    finalizeUsageMock
+      .mockRejectedValueOnce(new Error('temporary quota finalize failure'))
+      .mockResolvedValueOnce(undefined)
+    streamTextMock.mockImplementation((opts: Record<string, unknown>) => {
+      onFinish = opts.onFinish as typeof onFinish
+      onFinish?.({
+        usage: { inputTokens: 7, outputTokens: 5 },
+        finishReason: 'stop',
+      })
+      return makeReadyStreamTextResult()
+    })
+
+    const res = await POST(buildRequest({ messages: VALID_MESSAGES }) as never)
+
+    expect(res.status).toBe(200)
+    await vi.waitFor(() => expect(finalizeUsageMock).toHaveBeenCalledTimes(1))
+
+    onFinish?.({
+      usage: { inputTokens: 7, outputTokens: 5 },
+      finishReason: 'stop',
+    })
+
+    await vi.waitFor(() => expect(finalizeUsageMock).toHaveBeenCalledTimes(2))
+  })
+
+  it('keeps readiness failures in error_no_usage before any stream part is ready', async () => {
+    streamTextMock.mockReturnValue({
+      fullStream: {
+        [Symbol.asyncIterator]() {
+          let index = 0
+          const parts = [{ type: 'start' }]
+
+          return {
+            async next() {
+              if (index >= parts.length) {
+                return { done: true, value: undefined }
+              }
+              return { done: false, value: parts[index++] }
+            },
+            async return() {
+              return { done: true, value: undefined }
+            },
+          }
+        },
+      },
+      toUIMessageStream: () => {
+        throw new Error('should not build UI stream')
+      },
+      steps: Promise.resolve([]),
+    })
+
+    const res = await POST(buildRequest({ messages: VALID_MESSAGES }) as never)
+
+    expect(res.status).toBe(500)
+    expect(finalizeUsageMock).toHaveBeenCalledWith(expect.objectContaining({
+      status: 'error_no_usage',
+      inputTokens: 0,
+      outputTokens: 0,
     }))
   })
 })

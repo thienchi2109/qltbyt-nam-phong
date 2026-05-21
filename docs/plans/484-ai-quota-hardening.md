@@ -25,8 +25,8 @@ Rev 2 — first round of code review fixes: cross-user locking for tenant/global
 
 ### Rev 3 additions
 10. **Global lock order to prevent deadlock** — across all paths the canonical order is **reservation rows first, then counter rows**. `ai_quota_reserve` runs the expired-release sweep (which follows this order) **before** locking the new request's counter rows. New reservation row is `INSERT`ed last (fresh PK; no contention). Finalize and `ai_quota_release_expired` already follow this order.
-11. **Explicit Postgres `interval` math** — all time math uses `p_now - (p_rate_window_ms * interval '1 millisecond')` and `p_now + (p_ttl_ms * interval '1 millisecond')`. No ad-hoc subtraction of integers from `timestamptz`.
-12. **JWT identity strictly enforced** — `ai_quota_reserve` requires `current_setting('request.jwt.claims', true)::json->>'user_id' = p_user_id`. **No `app_role='global'` override path** on `/api/chat`. The chat route always passes the authenticated user's own id; admins consume quota under their own user just like everyone else.
+11. **Explicit Postgres `interval` math** — all time math uses `v_now - (p_rate_window_ms * interval '1 millisecond')` and `v_now + (p_ttl_ms * interval '1 millisecond')`, where `v_now := now()` inside the RPC. No ad-hoc subtraction of integers from `timestamptz`, and no trust in caller-supplied clock values.
+12. **JWT identity strictly enforced** — `ai_quota_reserve` requires both non-empty `app_role` and `current_setting('request.jwt.claims', true)::json->>'user_id' = p_user_id`. **No `app_role='global'` override path** on `/api/chat`. The chat route always passes the authenticated user's own id; admins consume quota under their own user just like everyone else.
 13. **Mid-stream token-accounting fallback** — `tokens_in` / `tokens_out` are recorded **only when the provider reports usage** (`onFinish.usage` for completed streams; provider error payload's `usage` field for failures that consumed billing). When no provider usage is available (e.g., abort before first delta, network error before any token), the finalize call records `tokens_in=0, tokens_out=0, cost_usd=0` and the `count` increment alone reflects budget consumption for `success` / `error_with_usage`. **No token estimation** — accuracy over guesswork.
 
 ## Goals
@@ -89,8 +89,8 @@ CREATE TABLE public.ai_quota_reservations (
   expires_at    TIMESTAMPTZ NOT NULL,
   status        TEXT NOT NULL CHECK (status IN ('reserved','success','error_with_usage','error_no_usage','expired')),
   counter_refs  JSONB NOT NULL,               -- [{"scope":"user_daily","key":"u1","window_id":"2026-05-21"}, ...]
-  tokens_in     INTEGER,
-  tokens_out    INTEGER,
+  tokens_in     BIGINT,
+  tokens_out    BIGINT,
   cost_usd      NUMERIC(12,6)
 );
 CREATE INDEX idx_ai_quota_reservations_status_exp
@@ -116,19 +116,19 @@ ai_quota_reserve(
 ) RETURNS TABLE (allowed BOOLEAN, reservation_id UUID, reason TEXT, message TEXT)
 ```
 Algorithm:
-1. Validate JWT: require `current_setting('request.jwt.claims', true)::json->>'user_id' = p_user_id`. No `global` override — `/api/chat` always reserves under the authenticated user. Reject with `42501` on mismatch.
-2. **Lazy expired-release first** (preserves global lock order: reservations → counters). For each `ai_quota_reservations` row with `status='reserved' AND expires_at < p_now` touched by `p_user_id`, optionally `p_tenant_id`, or `'global'` keys: lock the reservation row, then decrement `reserved` on each row in its `counter_refs`, set status='expired'. This sweep follows the reservation→counter order strictly.
+1. Validate JWT: require non-empty `app_role` and `current_setting('request.jwt.claims', true)::json->>'user_id' = p_user_id`. No `global` override — `/api/chat` always reserves under the authenticated user. Reject with `42501` on mismatch.
+2. **Lazy expired-release first** (preserves global lock order: reservations → counters). Compute `v_now := now()` inside the RPC. For each `ai_quota_reservations` row with `status='reserved' AND expires_at < v_now` touched by `p_user_id`, optionally `p_tenant_id`, or `'global'` keys: lock the reservation row, then decrement `reserved` on each row in its `counter_refs`, set status='expired'. This sweep follows the reservation→counter order strictly.
 3. Compute target counter rows for the new request: `user_daily(p_user_id, today)`, optional `tenant_daily(p_tenant_id, today)`, `global_daily('global', today)`. UPSERT each (`INSERT … ON CONFLICT (scope,key,window_id) DO UPDATE SET reserved = ai_quota_counters.reserved RETURNING *`) driven by an ordered VALUES list to acquire row locks in canonical order: `ORDER BY scope, key, window_id`.
-4. Sliding rate check: first prune `ai_rate_events` where `user_id = p_user_id AND ts < p_now - (p_rate_window_ms * interval '1 millisecond')`. Then `SELECT count(*) FROM ai_rate_events WHERE user_id = p_user_id AND ts >= p_now - (p_rate_window_ms * interval '1 millisecond')`. If `>= p_rate_max` → return `(false, NULL, 'rate_limit', ...)`.
+4. Sliding rate check: first prune `ai_rate_events` where `user_id = p_user_id AND ts < v_now - (p_rate_window_ms * interval '1 millisecond')`. Then `SELECT count(*) FROM ai_rate_events WHERE user_id = p_user_id AND ts >= v_now - (p_rate_window_ms * interval '1 millisecond')`. If `>= p_rate_max` → return `(false, NULL, 'rate_limit', ...)`.
 5. For each locked counter row, check `count + reserved >= limit` against its scope's max → return `(false, NULL, '<scope>_quota', ...)`.
-6. Increment `reserved += 1` for each locked counter row. INSERT reservation with `counter_refs` JSONB listing those rows, `expires_at = p_now + (p_ttl_ms * interval '1 millisecond')`. INSERT `ai_rate_events(reservation_id, user_id, ts=p_now)`. Return `(true, reservation_id, NULL, NULL)`.
+6. Increment `reserved += 1` for each locked counter row. INSERT reservation with `counter_refs` JSONB listing those rows, `expires_at = v_now + (p_ttl_ms * interval '1 millisecond')`. INSERT `ai_rate_events(reservation_id, user_id, ts=v_now)`. Return `(true, reservation_id, NULL, NULL)`.
 
 ```sql
 ai_quota_finalize(
   p_reservation_id UUID,
   p_status         TEXT,                  -- 'success' | 'error_with_usage' | 'error_no_usage'
-  p_tokens_in      INTEGER,
-  p_tokens_out     INTEGER,
+  p_tokens_in      BIGINT,
+  p_tokens_out     BIGINT,
   p_cost_usd       NUMERIC
 ) RETURNS VOID
 ```
@@ -142,7 +142,9 @@ Algorithm:
 ```sql
 ai_quota_release_expired(p_now TIMESTAMPTZ DEFAULT now()) RETURNS INTEGER
 ```
-- For every `ai_quota_reservations` where `status='reserved' AND expires_at < p_now`: behave like finalize with `status='expired'`, decrement `reserved` per `counter_refs`, leave `ai_rate_events` (already-issued slot counted as used — conservative). Returns count of released reservations.
+- Privileged cleanup only: require `app_role`/`role` in `('global','service_role')`; grant only to `service_role`.
+- Ignore caller-supplied `p_now` for decisions; compute `v_now := now()` inside the RPC.
+- For every `ai_quota_reservations` where `status='reserved' AND expires_at < v_now`: behave like finalize with `status='expired'`, decrement `reserved` per `counter_refs`, leave `ai_rate_events` (already-issued slot counted as used — conservative). Returns count of released reservations.
 
 ### Server-side TS surface (`src/lib/ai/usage-metering.ts`)
 ```ts
