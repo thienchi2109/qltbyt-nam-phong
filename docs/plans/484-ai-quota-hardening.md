@@ -1,7 +1,9 @@
 # TDD Plan — Issue #484: AI Quota Hardening (Backend) — Revised
 
 ## Status
-Rev 2 — incorporates code review findings. Critical fixes: cross-user locking for tenant/global, RPC accepts limits as params (no env in SQL), sliding rate-limit semantics preserved, reservations record exact counter refs, dedicated server-side RPC helper, retry/abort paths release/finalize explicitly, TTL > route maxDuration.
+Rev 3 — incorporates second code review pass. Adds explicit global lock order (reservation rows before counter rows), concrete Postgres `interval` math, locks down JWT identity check (no `global` override on `/api/chat`), and defines mid-stream token-accounting fallback (provider-reported usage only; no estimation).
+
+Rev 2 — first round of code review fixes: cross-user locking for tenant/global, RPC accepts limits as params (no env in SQL), sliding rate-limit semantics preserved, reservations record exact counter refs, dedicated server-side RPC helper, retry/abort paths release/finalize explicitly, TTL > route maxDuration.
 
 ## Decisions (locked in)
 - **Backend**: Supabase RPC (Postgres) — no new vendor dependency
@@ -20,6 +22,12 @@ Rev 2 — incorporates code review findings. Critical fixes: cross-user locking 
 7. **TTL default raised** — default reservation TTL set to **120s** (route `maxDuration=60s` + artifact/draft work). Env-tunable via `AI_QUOTA_RESERVATION_TTL_MS`.
 8. **Deviation tracking** — env kill switch + UI cooldown deviations explicitly listed under "Follow-ups Required" and must be filed as issues before #484 is closed.
 9. **Ralph flow removed** — no `prd.json` updates; stories tracked here only.
+
+### Rev 3 additions
+10. **Global lock order to prevent deadlock** — across all paths the canonical order is **reservation rows first, then counter rows**. `ai_quota_reserve` runs the expired-release sweep (which follows this order) **before** locking the new request's counter rows. New reservation row is `INSERT`ed last (fresh PK; no contention). Finalize and `ai_quota_release_expired` already follow this order.
+11. **Explicit Postgres `interval` math** — all time math uses `p_now - (p_rate_window_ms * interval '1 millisecond')` and `p_now + (p_ttl_ms * interval '1 millisecond')`. No ad-hoc subtraction of integers from `timestamptz`.
+12. **JWT identity strictly enforced** — `ai_quota_reserve` requires `current_setting('request.jwt.claims', true)::json->>'user_id' = p_user_id`. **No `app_role='global'` override path** on `/api/chat`. The chat route always passes the authenticated user's own id; admins consume quota under their own user just like everyone else.
+13. **Mid-stream token-accounting fallback** — `tokens_in` / `tokens_out` are recorded **only when the provider reports usage** (`onFinish.usage` for completed streams; provider error payload's `usage` field for failures that consumed billing). When no provider usage is available (e.g., abort before first delta, network error before any token), the finalize call records `tokens_in=0, tokens_out=0, cost_usd=0` and the `count` increment alone reflects budget consumption for `success` / `error_with_usage`. **No token estimation** — accuracy over guesswork.
 
 ## Goals
 1. Replace in-memory `Map` counters with durable counters in Postgres
@@ -108,12 +116,12 @@ ai_quota_reserve(
 ) RETURNS TABLE (allowed BOOLEAN, reservation_id UUID, reason TEXT, message TEXT)
 ```
 Algorithm:
-1. Validate JWT: `app_role`, `user_id == p_user_id` (or `app_role='global'` override path if we keep one).
-2. Compute target counter rows: `user_daily`, optional `tenant_daily`, `global_daily`. Lock them in canonical order: UPSERT each row with `ON CONFLICT … DO UPDATE SET reserved = ai_quota_counters.reserved RETURNING *` then re-`SELECT … FOR UPDATE ORDER BY scope, key, window_id`. (Or single statement with `INSERT … ON CONFLICT DO UPDATE … RETURNING *` driven by an ordered VALUES list.)
-3. Lazy purge: delete `ai_rate_events` where `ts < p_now - p_rate_window_ms` for `p_user_id`; mark expired reservations (status='expired') and decrement their `counter_refs` (see also `ai_quota_release_expired`).
-4. Sliding rate check: `SELECT count(*) FROM ai_rate_events WHERE user_id = p_user_id AND ts >= p_now - p_rate_window_ms`. If `>= p_rate_max` → return `(false, NULL, 'rate_limit', ...)`.
-5. For each locked counter row, check `count + reserved >= limit` for its scope → return `(false, NULL, '<scope>_quota', ...)`.
-6. Increment `reserved += 1` for each locked counter row. INSERT reservation with `counter_refs` JSONB listing those rows, `expires_at = p_now + p_ttl_ms`. INSERT `ai_rate_events(reservation_id, user_id, ts=p_now)`. Return `(true, reservation_id, NULL, NULL)`.
+1. Validate JWT: require `current_setting('request.jwt.claims', true)::json->>'user_id' = p_user_id`. No `global` override — `/api/chat` always reserves under the authenticated user. Reject with `42501` on mismatch.
+2. **Lazy expired-release first** (preserves global lock order: reservations → counters). For each `ai_quota_reservations` row with `status='reserved' AND expires_at < p_now` touched by `p_user_id`, optionally `p_tenant_id`, or `'global'` keys: lock the reservation row, then decrement `reserved` on each row in its `counter_refs`, set status='expired'. This sweep follows the reservation→counter order strictly.
+3. Compute target counter rows for the new request: `user_daily(p_user_id, today)`, optional `tenant_daily(p_tenant_id, today)`, `global_daily('global', today)`. UPSERT each (`INSERT … ON CONFLICT (scope,key,window_id) DO UPDATE SET reserved = ai_quota_counters.reserved RETURNING *`) driven by an ordered VALUES list to acquire row locks in canonical order: `ORDER BY scope, key, window_id`.
+4. Sliding rate check: first prune `ai_rate_events` where `user_id = p_user_id AND ts < p_now - (p_rate_window_ms * interval '1 millisecond')`. Then `SELECT count(*) FROM ai_rate_events WHERE user_id = p_user_id AND ts >= p_now - (p_rate_window_ms * interval '1 millisecond')`. If `>= p_rate_max` → return `(false, NULL, 'rate_limit', ...)`.
+5. For each locked counter row, check `count + reserved >= limit` against its scope's max → return `(false, NULL, '<scope>_quota', ...)`.
+6. Increment `reserved += 1` for each locked counter row. INSERT reservation with `counter_refs` JSONB listing those rows, `expires_at = p_now + (p_ttl_ms * interval '1 millisecond')`. INSERT `ai_rate_events(reservation_id, user_id, ts=p_now)`. Return `(true, reservation_id, NULL, NULL)`.
 
 ```sql
 ai_quota_finalize(
@@ -180,6 +188,8 @@ export async function finalizeUsage(
 - Finalize is idempotent.
 - `ai_quota_release_expired` releases reserved counts for expired reservations, leaves rate events alone.
 - Day-boundary reservation: reserved on day N at 23:59 with finalize on day N+1 at 00:00 decrements the day-N counter (proves `counter_refs` immunity to window drift).
+- Lock-order deadlock probe: simultaneously run (a) `ai_quota_reserve` for user A (which triggers expired-release sweeping user B's old reservation) and (b) `ai_quota_finalize` of one of user B's active reservations sharing the same tenant counter. Neither transaction deadlocks; both complete in any order.
+- JWT identity guard: calling `ai_quota_reserve(p_user_id='other-uid')` while JWT claims `user_id='self'` raises `42501`; the counters and `ai_rate_events` are unchanged.
 
 **Impl**: single migration `ai_quota_hardening` applied via `apply_migration`. Functions follow security template; lock order strict.
 
@@ -196,12 +206,12 @@ export async function finalizeUsage(
 
 ### S003 — Wire `/api/chat` with finalize on every exit path
 **Red tests** (`route.rate-limit-and-quota.test.ts` updated + `route.retry-and-abort-finalize.test.ts` new):
-- Reserve called before `streamText`; finalize called on `onFinish` with `success`.
+- Reserve called before `streamText`; finalize called on `onFinish` with `success` and provider-reported `usage.inputTokens` / `usage.outputTokens`.
 - Reserve at limit → 429 with `reason`/`message` from RPC; no stream started.
 - Pre-stream retry `continue` (existing behavior at ~`route.ts:288`): each attempt that reserved MUST finalize as `error_no_usage` before the next attempt is reserved. Test forces the retry path and asserts finalize per attempt.
 - 500 thrown before stream after reserve → finalize `error_no_usage`.
-- Client abort mid-stream (`AbortSignal`) → finalize `error_with_usage` with observed tokens.
-- `onError` thrown after first chunk → finalize `error_with_usage`.
+- Client abort mid-stream (`AbortSignal`) → finalize `error_with_usage`; tokens recorded only if provider supplied usage, else zero.
+- `onError` thrown after first chunk → finalize `error_with_usage`; tokens from provider error payload if present, else zero.
 
 **Impl**:
 - Replace existing limit-check + `recordUsage` (`route.ts:149`, `:182`) with `reserveUsage`.
@@ -210,11 +220,12 @@ export async function finalizeUsage(
 
 ### S004 — Cost-aware failure accounting refinements
 **Red tests** (`route.cost-aware-failure.test.ts`):
-- Provider returns 5xx with `usage` payload (mock provider error) → `error_with_usage` with parsed tokens.
-- Stream throws after first delta → `error_with_usage` with `outputTokens >= 1`.
-- Stream throws before first delta → `error_no_usage`.
+- Provider returns 5xx with `usage` payload (mock provider error) → `error_with_usage` with parsed tokens from provider `usage`.
+- Stream throws after first delta, **provider reported usage in `onError`** → `error_with_usage` with provider tokens.
+- Stream throws after first delta, **no provider usage available** → `error_with_usage` with `tokens_in=0, tokens_out=0` (count still increments; cost remains 0).
+- Stream throws before first delta, no provider usage → `error_no_usage` with zeroed tokens.
 
-**Impl**: small classifier helper in `usage-metering.ts` (`classifyStreamFailure(stage, tokensObserved)`); wire it in S003's `finalizeOnce`.
+**Impl**: small classifier helper in `usage-metering.ts` (`classifyStreamFailure({ stage, providerUsage })`); wired into S003's `finalizeOnce`. **No token estimation** — only provider-reported usage is recorded.
 
 ### S005 — Global daily cap + env-var kill switch
 **Red tests** (`route.kill-switch.test.ts`):
