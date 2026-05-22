@@ -7,9 +7,8 @@ const streamTextMock = vi.fn()
 const stepCountIsMock = vi.fn()
 const getChatModelMock = vi.fn()
 const buildSystemPromptMock = vi.fn()
-const checkUsageLimitsMock = vi.fn()
-const recordUsageMock = vi.fn()
-const confirmUsageMock = vi.fn()
+const reserveUsageMock = vi.fn()
+const finalizeUsageMock = vi.fn()
 
 vi.mock('next-auth', () => ({
   getServerSession: (...args: unknown[]) => getServerSessionMock(...args),
@@ -35,9 +34,13 @@ vi.mock('@/lib/ai/limits', () => ({
 }))
 
 vi.mock('@/lib/ai/usage-metering', () => ({
-  checkUsageLimits: (...args: unknown[]) => checkUsageLimitsMock(...args),
-  recordUsage: (...args: unknown[]) => recordUsageMock(...args),
-  confirmUsage: (...args: unknown[]) => confirmUsageMock(...args),
+  classifyStreamFailure: ({ providerUsage }: { providerUsage?: { inputTokens?: number; outputTokens?: number } }) => ({
+    status: 'error_with_usage',
+    inputTokens: providerUsage?.inputTokens ?? 0,
+    outputTokens: providerUsage?.outputTokens ?? 0,
+  }),
+  reserveUsage: (...args: unknown[]) => reserveUsageMock(...args),
+  finalizeUsage: (...args: unknown[]) => finalizeUsageMock(...args),
 }))
 
 vi.mock('ai', async () => {
@@ -81,7 +84,11 @@ describe('/api/chat rate limit and quota', () => {
     getChatModelMock.mockReturnValue(makeChatModel('google:gemini-2.5-flash'))
     buildSystemPromptMock.mockReturnValue('SYSTEM_PROMPT_V1')
     stepCountIsMock.mockReturnValue('STOP_WHEN_SENTINEL')
-    checkUsageLimitsMock.mockReturnValue({ allowed: true })
+    reserveUsageMock.mockResolvedValue({
+      allowed: true,
+      reservationId: '00000000-0000-4000-8000-000000000484',
+    })
+    finalizeUsageMock.mockResolvedValue(undefined)
     streamTextMock.mockImplementation((opts: Record<string, unknown>) => {
       // Simulate onFinish callback firing with mock usage data
       const onFinish = opts.onFinish as
@@ -98,8 +105,9 @@ describe('/api/chat rate limit and quota', () => {
   })
 
   it('returns 429 when rate-limited', async () => {
-    checkUsageLimitsMock.mockReturnValue({
+    reserveUsageMock.mockResolvedValue({
       allowed: false,
+      reason: 'rate_limit',
       message: 'Too many requests. Please try again later.',
     })
 
@@ -109,13 +117,13 @@ describe('/api/chat rate limit and quota', () => {
     expect(res.status).toBe(429)
     expect(text).toBe('Too many requests. Please try again later.')
     expect(streamTextMock).not.toHaveBeenCalled()
-    expect(recordUsageMock).not.toHaveBeenCalled()
-    expect(confirmUsageMock).not.toHaveBeenCalled()
+    expect(finalizeUsageMock).not.toHaveBeenCalled()
   })
 
   it('returns 429 when quota is exceeded', async () => {
-    checkUsageLimitsMock.mockReturnValue({
+    reserveUsageMock.mockResolvedValue({
       allowed: false,
+      reason: 'tenant_quota',
       message: 'AI usage quota exceeded for this facility.',
     })
 
@@ -125,25 +133,27 @@ describe('/api/chat rate limit and quota', () => {
     expect(res.status).toBe(429)
     expect(text).toBe('AI usage quota exceeded for this facility.')
     expect(streamTextMock).not.toHaveBeenCalled()
-    expect(recordUsageMock).not.toHaveBeenCalled()
-    expect(confirmUsageMock).not.toHaveBeenCalled()
+    expect(finalizeUsageMock).not.toHaveBeenCalled()
   })
 
-  it('records usage when request is allowed', async () => {
+  it('reserves before stream and finalizes provider-reported usage on finish', async () => {
     const res = await POST(buildRequest({ messages: VALID_MESSAGES }) as never)
 
     expect(res.status).toBe(200)
-    expect(checkUsageLimitsMock).toHaveBeenCalledWith(
-      expect.objectContaining({ userId: 'u1', tenantId: 2 }),
+    expect(reserveUsageMock).toHaveBeenCalledWith(expect.objectContaining({
+      userId: 'u1',
+      tenantId: 2,
+      role: 'admin',
+    }))
+    expect(reserveUsageMock.mock.invocationCallOrder[0]).toBeLessThan(
+      streamTextMock.mock.invocationCallOrder[0],
     )
     expect(streamTextMock).toHaveBeenCalledTimes(1)
-    // recordUsage is called upfront for rate-limit tracking
-    expect(recordUsageMock).toHaveBeenCalledTimes(1)
-    // confirmUsage is called via onFinish after successful stream
-    expect(confirmUsageMock).toHaveBeenCalledTimes(1)
-    expect(confirmUsageMock).toHaveBeenCalledWith(
-      expect.objectContaining({ userId: 'u1', tenantId: 2 }),
-      expect.objectContaining({ inputTokens: 100, outputTokens: 50 }),
-    )
+    await vi.waitFor(() => expect(finalizeUsageMock).toHaveBeenCalledWith(expect.objectContaining({
+      reservationId: '00000000-0000-4000-8000-000000000484',
+      status: 'success',
+      inputTokens: 100,
+      outputTokens: 50,
+    })))
   })
 })

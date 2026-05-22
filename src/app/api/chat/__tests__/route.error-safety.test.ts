@@ -7,9 +7,11 @@ const streamTextMock = vi.fn()
 const stepCountIsMock = vi.fn()
 const getChatModelMock = vi.fn()
 const buildSystemPromptMock = vi.fn()
-const checkUsageLimitsMock = vi.fn()
-const recordUsageMock = vi.fn()
-const confirmUsageMock = vi.fn()
+const reserveUsageMock = vi.fn(async () => ({
+  allowed: true,
+  reservationId: '00000000-0000-4000-8000-000000000484',
+}))
+const finalizeUsageMock = vi.fn(async () => undefined)
 
 vi.mock('next-auth', () => ({
   getServerSession: (...args: unknown[]) => getServerSessionMock(...args),
@@ -26,9 +28,13 @@ vi.mock('@/lib/ai/prompts/system', () => ({
 }))
 
 vi.mock('@/lib/ai/usage-metering', () => ({
-  checkUsageLimits: (...args: unknown[]) => checkUsageLimitsMock(...args),
-  recordUsage: (...args: unknown[]) => recordUsageMock(...args),
-  confirmUsage: (...args: unknown[]) => confirmUsageMock(...args),
+  classifyStreamFailure: ({ providerUsage }: { providerUsage?: { inputTokens?: number; outputTokens?: number } }) => ({
+    status: 'error_with_usage',
+    inputTokens: providerUsage?.inputTokens ?? 0,
+    outputTokens: providerUsage?.outputTokens ?? 0,
+  }),
+  reserveUsage: (...args: unknown[]) => reserveUsageMock(...args),
+  finalizeUsage: (...args: unknown[]) => finalizeUsageMock(...args),
 }))
 
 vi.mock('ai', async () => {
@@ -70,7 +76,10 @@ describe('/api/chat error safety — non-stream contract', () => {
 
     getChatModelMock.mockReturnValue(makeChatModel('google:gemini-2.5-flash'))
     buildSystemPromptMock.mockReturnValue('SYSTEM_PROMPT_V1')
-    checkUsageLimitsMock.mockReturnValue({ allowed: true })
+    reserveUsageMock.mockResolvedValue({
+      allowed: true,
+      reservationId: '00000000-0000-4000-8000-000000000484',
+    })
     stepCountIsMock.mockReturnValue('STOP_WHEN_SENTINEL')
     streamTextMock.mockReturnValue(makeReadyStreamTextResult())
   })
@@ -118,8 +127,9 @@ describe('/api/chat error safety — non-stream contract', () => {
     getServerSessionMock.mockResolvedValue({
       user: { id: 'u1', role: 'admin', don_vi: 2 },
     })
-    checkUsageLimitsMock.mockReturnValue({
+    reserveUsageMock.mockResolvedValue({
       allowed: false,
+      reason: 'rate_limit',
       message: 'Too many requests. Please try again later.',
     })
 
@@ -162,7 +172,10 @@ describe('/api/chat error safety — sanitization', () => {
     })
     getChatModelMock.mockReturnValue(makeChatModel('google:gemini-2.5-flash'))
     buildSystemPromptMock.mockReturnValue('SYSTEM_PROMPT_V1')
-    checkUsageLimitsMock.mockReturnValue({ allowed: true })
+    reserveUsageMock.mockResolvedValue({
+      allowed: true,
+      reservationId: '00000000-0000-4000-8000-000000000484',
+    })
     stepCountIsMock.mockReturnValue('STOP_WHEN_SENTINEL')
   })
 

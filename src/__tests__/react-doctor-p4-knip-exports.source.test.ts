@@ -192,10 +192,6 @@ const unusedExportSurface = [
     exports: ["hasWriteIntentToolName"],
   },
   {
-    file: "src/lib/ai/usage-metering.ts",
-    exports: ["__resetUsageMeteringForTests","getLatestUsage"],
-  },
-  {
     file: "src/lib/category-import-validation.ts",
     exports: ["HEADER_TO_DB_MAP","normalizeVietnamese"],
   },

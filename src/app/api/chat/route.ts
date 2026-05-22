@@ -8,6 +8,7 @@ import {
   validateUIMessages,
 } from 'ai'
 import { getServerSession } from 'next-auth'
+import { after } from 'next/server'
 
 import { authOptions } from '@/auth/config'
 import { chatRequestSchema } from '@/lib/ai/chat-request-schema'
@@ -30,11 +31,19 @@ import { routeChatIntent } from '@/lib/ai/intent-routing'
 import { resolveAssistantScope } from '@/lib/ai/sql/scope'
 import { extractEquipmentLookupHints } from '@/lib/ai/tools/equipment-lookup-identifiers'
 import { buildToolRegistry, validateRequestedTools } from '@/lib/ai/tools/registry'
-import { checkUsageLimits, confirmUsage, recordUsage } from '@/lib/ai/usage-metering'
+import {
+  classifyStreamFailure,
+  finalizeUsage,
+  reserveUsage,
+  type UsageContext,
+  type UsageFinalizeStatus,
+} from '@/lib/ai/usage-metering'
 import { isProviderQuotaError, sanitizeErrorForClient } from '@/lib/ai/errors'
 import { ROLES } from '@/lib/rbac'
 
+/** Run chat streaming on the Node.js runtime because provider SDKs and server RPCs need Node APIs. */
 export const runtime = 'nodejs'
+/** Hard cap for the route execution window; quota reservation TTL must exceed this. */
 export const maxDuration = 60
 
 function plainError(message: string, status: number) {
@@ -72,6 +81,14 @@ function hasAllowedChatRole(value: unknown): boolean {
   return ALLOWED_CHAT_ROLES.has(value.trim().toLowerCase())
 }
 
+function numberOrStringClaim(value: unknown): number | string | null {
+  if (typeof value === 'number' || typeof value === 'string') {
+    return value
+  }
+  return null
+}
+
+/** Handles authenticated AI chat requests with quota reservation and stream finalization. */
 export async function POST(request: Request) {
   const session = await getServerSession(authOptions)
 
@@ -146,12 +163,45 @@ export async function POST(request: Request) {
     selectedFacilityId,
     usageUserId,
   } = scopeResolution
-  const usageLimit = checkUsageLimits({
+
+  const usageContext: UsageContext = {
     userId: usageUserId,
     tenantId: selectedFacilityId,
-  })
-  if (!usageLimit.allowed) {
-    return plainError(usageLimit.message ?? 'AI usage limit exceeded.', 429)
+    role,
+    diaBanId: numberOrStringClaim(user.dia_ban_id),
+    khoaPhong: typeof user.khoa_phong === 'string' ? user.khoa_phong : null,
+  }
+  const usageReservation = await reserveUsage(usageContext)
+  if (!usageReservation.allowed) {
+    return plainError(usageReservation.message ?? 'AI usage limit exceeded.', 429)
+  }
+
+  let finalized = false
+  let finalizePromise: Promise<void> | null = null
+  const finalizeOnce = async (details: {
+    status: UsageFinalizeStatus
+    inputTokens?: number
+    outputTokens?: number
+    costUsd?: number
+  }) => {
+    if (finalized || finalizePromise) {
+      return finalizePromise
+    }
+    finalizePromise = (async () => {
+      try {
+        await finalizeUsage({
+          ...usageContext,
+          reservationId: usageReservation.reservationId,
+          ...details,
+        })
+        finalized = true
+      } catch (error) {
+        console.error('[chat] Usage finalize error:', error)
+      } finally {
+        finalizePromise = null
+      }
+    })()
+    return finalizePromise
   }
 
   const promptContext: SystemPromptContext = {
@@ -163,7 +213,6 @@ export async function POST(request: Request) {
   const systemPrompt = buildSystemPrompt(promptContext)
   const equipmentLookupHints = extractEquipmentLookupHints(validatedMessages)
 
-  const usageContext = { userId: usageUserId, tenantId: selectedFacilityId }
   const shouldAttemptRepairRequestDraft =
     effectiveRequestedTools.includes('generateRepairRequestDraft')
   const tools =
@@ -177,15 +226,16 @@ export async function POST(request: Request) {
           equipmentLookupHints,
         })
       : undefined
-
-  // Record in rate-limit sliding window upfront (anti-abuse).
-  recordUsage(usageContext)
-
   let modelMessages: Awaited<ReturnType<typeof convertToModelMessages>>
   try {
     modelMessages = await convertToModelMessages(compactedMessages)
   } catch (error) {
     console.error('[chat] Message conversion error:', error)
+    await finalizeOnce({
+      status: 'error_no_usage',
+      inputTokens: 0,
+      outputTokens: 0,
+    })
     return plainError(sanitizeErrorForClient(error), 500)
   }
 
@@ -194,6 +244,7 @@ export async function POST(request: Request) {
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     let keyIndex = 0
     let configuredModel = 'unknown'
+    let streamStarted = false
 
     try {
       const chatModel = getChatModel()
@@ -215,19 +266,22 @@ export async function POST(request: Request) {
         tools,
         providerOptions: chatModel.providerOptions,
         onFinish({ usage, finishReason }) {
-          // Only increment daily quotas after a successful completion.
-          if (finishReason !== 'error') {
-            confirmUsage(usageContext, {
-              inputTokens: usage.inputTokens ?? 0,
-              outputTokens: usage.outputTokens ?? 0,
-            })
-          }
+          const failureUsage = classifyStreamFailure({ providerUsage: usage })
+          after(() => finalizeOnce(finishReason === 'error'
+            ? failureUsage
+            : {
+                status: 'success',
+                inputTokens: usage.inputTokens ?? 0,
+                outputTokens: usage.outputTokens ?? 0,
+              }))
         },
       })
 
       await waitForStreamReady(result, isProviderQuotaError)
+      streamStarted = true
 
       const handleStreamError = (error: unknown) => {
+        after(() => finalizeOnce(classifyStreamFailure({ providerUsage: undefined })))
         // Mid-stream quota errors can't be retried (response already in-flight),
         // but rotate the key for future requests so they don't hit the same quota.
         if (isProviderQuotaError(error)) {
@@ -300,6 +354,12 @@ export async function POST(request: Request) {
         )
         continue
       }
+
+      await finalizeOnce({
+        status: streamStarted ? 'error_with_usage' : 'error_no_usage',
+        inputTokens: 0,
+        outputTokens: 0,
+      })
 
       console.error(
         '[chat] Pre-stream error',

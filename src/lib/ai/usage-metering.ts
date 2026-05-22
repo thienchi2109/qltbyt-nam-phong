@@ -1,15 +1,27 @@
 import {
+  AI_DAILY_GLOBAL_QUOTA_REQUESTS,
   AI_DAILY_TENANT_QUOTA_REQUESTS,
   AI_DAILY_USER_QUOTA_REQUESTS,
+  AI_KILL_SWITCH,
+  AI_QUOTA_RESERVATION_TTL_MS,
   AI_RATE_LIMIT_MAX_REQUESTS,
   AI_RATE_LIMIT_WINDOW_MS,
 } from '@/lib/ai/limits'
+import { callServerRpc, type SupabaseRpcUser } from '@/lib/ai/server-rpc'
 
-type UsageLimitReason = 'rate_limit' | 'user_quota' | 'tenant_quota'
+export type UsageLimitReason =
+  | 'rate_limit'
+  | 'user_quota'
+  | 'tenant_quota'
+  | 'global_quota'
+  | 'kill_switch'
 
 export interface UsageContext {
   userId: string
   tenantId?: number
+  role?: string
+  diaBanId?: number | string | null
+  khoaPhong?: string | null
 }
 
 export interface UsageLimitCheckResult {
@@ -18,89 +30,100 @@ export interface UsageLimitCheckResult {
   message?: string
 }
 
-export interface UsageRecord {
+export interface UsageReservationResult extends UsageLimitCheckResult {
+  reservationId?: string
+}
+
+type AiQuotaReserveRow = {
+  allowed: boolean
+  reservation_id?: string | null
+  reason?: string | null
+  message?: string | null
+}
+
+export type UsageFinalizeStatus =
+  | 'success'
+  | 'error_with_usage'
+  | 'error_no_usage'
+
+export interface UsageFinalizeInput extends UsageContext {
+  reservationId?: string | null
+  status: UsageFinalizeStatus
   inputTokens?: number
   outputTokens?: number
-  estimatedCostUsd?: number
+  costUsd?: number
 }
 
-const recentRequestsByUser = new Map<string, number[]>()
-const dailyUserRequests = new Map<string, number>()
-const dailyTenantRequests = new Map<string, number>()
-const latestUsageByUser = new Map<
-  string,
-  UsageRecord & { estimatedCostUsd: number; timestamp: number }
->()
+type ProviderUsage = {
+  inputTokens?: number
+  outputTokens?: number
+}
 
-/** Tracks the last calendar day we ran cleanup on. */
-let lastCleanupDay = ''
-
-/**
- * Removes entries from dailyUserRequests and dailyTenantRequests whose
- * date suffix does not match the current day. This runs lazily — only
- * on the first request of each new calendar day — so there is no timer.
- */
-function pruneStaleDailyEntries(now: number): void {
-  const today = dayKey(now)
-  if (lastCleanupDay === today) {
-    return
+/** Converts stream failure usage into finalize payload tokens without estimating missing usage. */
+export function classifyStreamFailure(input: {
+  providerUsage?: ProviderUsage
+}): {
+  status: 'error_with_usage'
+  inputTokens: number
+  outputTokens: number
+} {
+  return {
+    status: 'error_with_usage',
+    inputTokens: Math.max(0, input.providerUsage?.inputTokens ?? 0),
+    outputTokens: Math.max(0, input.providerUsage?.outputTokens ?? 0),
   }
-  lastCleanupDay = today
-
-  for (const key of dailyUserRequests.keys()) {
-    if (!key.endsWith(today)) {
-      dailyUserRequests.delete(key)
-    }
-  }
-  for (const key of dailyTenantRequests.keys()) {
-    if (!key.endsWith(today)) {
-      dailyTenantRequests.delete(key)
-    }
-  }
-}
-
-function dayKey(timestamp: number): string {
-  return new Date(timestamp).toISOString().slice(0, 10)
-}
-
-function userDayKey(userId: string, timestamp: number): string {
-  return `${userId}:${dayKey(timestamp)}`
-}
-
-function tenantDayKey(tenantId: number, timestamp: number): string {
-  return `${tenantId}:${dayKey(timestamp)}`
-}
-
-function pruneRateWindow(userId: string, now: number): number[] {
-  const start = now - AI_RATE_LIMIT_WINDOW_MS
-  const current = recentRequestsByUser.get(userId) ?? []
-  const pruned = current.filter(ts => ts >= start)
-  recentRequestsByUser.set(userId, pruned)
-  return pruned
 }
 
 function hasTenantId(value: number | undefined): value is number {
   return typeof value === 'number' && Number.isSafeInteger(value) && value > 0
 }
 
-function estimateCostUsd(record: UsageRecord): number {
-  if (typeof record.estimatedCostUsd === 'number' && record.estimatedCostUsd >= 0) {
-    return record.estimatedCostUsd
+function toRpcUser(context: UsageContext): SupabaseRpcUser {
+  return {
+    id: context.userId,
+    role: context.role ?? 'user',
+    don_vi: context.tenantId,
+    dia_ban_id: context.diaBanId,
+    khoa_phong: context.khoaPhong,
   }
-
-  const inputTokens = Math.max(0, record.inputTokens ?? 0)
-  const outputTokens = Math.max(0, record.outputTokens ?? 0)
-
-  const inputCostUsd = (inputTokens / 1_000) * 0.0001
-  const outputCostUsd = (outputTokens / 1_000) * 0.0004
-  return Number((inputCostUsd + outputCostUsd).toFixed(8))
 }
 
-export function checkUsageLimits(
-  context: UsageContext,
-  now: number = Date.now(),
-): UsageLimitCheckResult {
-  pruneStaleDailyEntries(now)
+function normalizeUsageLimitReason(reason: string | null | undefined): UsageLimitReason | undefined {
+  switch (reason) {
+    case 'rate_limit':
+    case 'user_quota':
+    case 'tenant_quota':
+    case 'global_quota':
+    case 'kill_switch':
+      return reason
+    default:
+      return undefined
+  }
+}
+
+function firstReserveRow(
+  payload: AiQuotaReserveRow | AiQuotaReserveRow[] | null | undefined,
+): AiQuotaReserveRow {
+  const row = Array.isArray(payload) ? payload[0] : payload
+  if (!row) {
+    return {
+      allowed: false,
+      reason: 'user_quota',
+      message: 'Unable to reserve AI usage quota.',
+    }
+  }
+  return row
+}
+
+/** Reserves distributed AI quota before starting a provider request. */
+export async function reserveUsage(context: UsageContext): Promise<UsageReservationResult> {
+  if (AI_KILL_SWITCH) {
+    return {
+      allowed: false,
+      reason: 'kill_switch',
+      message: 'AI usage is temporarily disabled.',
+    }
+  }
 
   const userId = context.userId.trim()
   if (!userId) {
@@ -111,95 +134,40 @@ export function checkUsageLimits(
     }
   }
 
-  const inWindow = pruneRateWindow(userId, now)
-  if (inWindow.length >= AI_RATE_LIMIT_MAX_REQUESTS) {
-    return {
-      allowed: false,
-      reason: 'rate_limit',
-      message: 'Too many requests. Please try again later.',
-    }
-  }
+  const row = firstReserveRow(await callServerRpc<AiQuotaReserveRow | AiQuotaReserveRow[]>(
+    'ai_quota_reserve',
+    {
+      p_user_id: userId,
+      p_tenant_id: hasTenantId(context.tenantId) ? context.tenantId : null,
+      p_rate_window_ms: AI_RATE_LIMIT_WINDOW_MS,
+      p_rate_max: AI_RATE_LIMIT_MAX_REQUESTS,
+      p_user_daily_max: AI_DAILY_USER_QUOTA_REQUESTS,
+      p_tenant_daily_max: AI_DAILY_TENANT_QUOTA_REQUESTS,
+      p_global_daily_max: AI_DAILY_GLOBAL_QUOTA_REQUESTS,
+      p_ttl_ms: AI_QUOTA_RESERVATION_TTL_MS,
+    },
+    toRpcUser({ ...context, userId }),
+  ))
 
-  const userCount = dailyUserRequests.get(userDayKey(userId, now)) ?? 0
-  if (userCount >= AI_DAILY_USER_QUOTA_REQUESTS) {
-    return {
-      allowed: false,
-      reason: 'user_quota',
-      message: 'AI usage quota exceeded for this user.',
-    }
+  return {
+    allowed: row.allowed,
+    reservationId: row.reservation_id ?? undefined,
+    reason: normalizeUsageLimitReason(row.reason),
+    message: row.message ?? undefined,
   }
-
-  if (hasTenantId(context.tenantId)) {
-    const tenantCount = dailyTenantRequests.get(tenantDayKey(context.tenantId, now)) ?? 0
-    if (tenantCount >= AI_DAILY_TENANT_QUOTA_REQUESTS) {
-      return {
-        allowed: false,
-        reason: 'tenant_quota',
-        message: 'AI usage quota exceeded for this facility.',
-      }
-    }
-  }
-
-  return { allowed: true }
 }
 
-/**
- * Records a request in the rate-limit sliding window.
- * Safe to call upfront (anti-abuse) — does NOT increment daily quotas.
- */
-export function recordUsage(
-  context: UsageContext,
-  now: number = Date.now(),
-): void {
-  pruneStaleDailyEntries(now)
-
-  const userId = context.userId.trim()
-  if (!userId) {
+/** Finalizes a reserved AI quota record exactly once with provider-reported usage. */
+export async function finalizeUsage(input: UsageFinalizeInput): Promise<void> {
+  if (!input.reservationId) {
     return
   }
 
-  const inWindow = pruneRateWindow(userId, now)
-  inWindow.push(now)
-  recentRequestsByUser.set(userId, inWindow)
-}
-
-/**
- * Confirms a successful AI response and increments daily quotas.
- * Call this only after the stream finishes successfully.
- */
-export function confirmUsage(
-  context: UsageContext,
-  record: UsageRecord = {},
-  now: number = Date.now(),
-): void {
-  const userId = context.userId.trim()
-  if (!userId) {
-    return
-  }
-
-  const userKey = userDayKey(userId, now)
-  dailyUserRequests.set(userKey, (dailyUserRequests.get(userKey) ?? 0) + 1)
-
-  if (hasTenantId(context.tenantId)) {
-    const tenantKey = tenantDayKey(context.tenantId, now)
-    dailyTenantRequests.set(tenantKey, (dailyTenantRequests.get(tenantKey) ?? 0) + 1)
-  }
-
-  latestUsageByUser.set(userId, {
-    ...record,
-    estimatedCostUsd: estimateCostUsd(record),
-    timestamp: now,
-  })
-}
-
-function getLatestUsage(userId: string) {
-  return latestUsageByUser.get(userId)
-}
-
-function __resetUsageMeteringForTests() {
-  recentRequestsByUser.clear()
-  dailyUserRequests.clear()
-  dailyTenantRequests.clear()
-  latestUsageByUser.clear()
-  lastCleanupDay = ''
+  await callServerRpc('ai_quota_finalize', {
+    p_reservation_id: input.reservationId,
+    p_status: input.status,
+    p_tokens_in: Math.max(0, input.inputTokens ?? 0),
+    p_tokens_out: Math.max(0, input.outputTokens ?? 0),
+    p_cost_usd: Math.max(0, input.costUsd ?? 0),
+  }, toRpcUser(input))
 }

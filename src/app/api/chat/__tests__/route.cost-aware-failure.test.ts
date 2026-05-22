@@ -7,11 +7,8 @@ const streamTextMock = vi.fn()
 const stepCountIsMock = vi.fn()
 const getChatModelMock = vi.fn()
 const buildSystemPromptMock = vi.fn()
-const reserveUsageMock = vi.fn(async () => ({
-  allowed: true,
-  reservationId: '00000000-0000-4000-8000-000000000484',
-}))
-const finalizeUsageMock = vi.fn(async () => undefined)
+const reserveUsageMock = vi.fn()
+const finalizeUsageMock = vi.fn()
 
 vi.mock('next-auth', () => ({
   getServerSession: (...args: unknown[]) => getServerSessionMock(...args),
@@ -68,53 +65,64 @@ function buildRequest(body: unknown) {
   })
 }
 
-describe('/api/chat usageHistory tool', () => {
+describe('/api/chat cost-aware failure accounting', () => {
   beforeEach(() => {
     vi.clearAllMocks()
 
     getServerSessionMock.mockResolvedValue({
-      user: { id: 'u1', role: 'to_qltb', don_vi: 2 },
+      user: { id: 'u1', role: 'admin', don_vi: 2 },
     })
-    getChatModelMock.mockReturnValue(makeChatModel('google:gemini-3-flash-preview'))
+    getChatModelMock.mockReturnValue(makeChatModel('google:gemini-2.5-flash'))
     buildSystemPromptMock.mockReturnValue('SYSTEM_PROMPT_V1')
     stepCountIsMock.mockReturnValue('STOP_WHEN_SENTINEL')
-    streamTextMock.mockReturnValue(makeReadyStreamTextResult())
+    reserveUsageMock.mockResolvedValue({
+      allowed: true,
+      reservationId: '00000000-0000-4000-8000-000000000484',
+    })
+    finalizeUsageMock.mockResolvedValue(undefined)
   })
 
-  it('accepts usageHistory when explicitly requested', async () => {
-    const res = await POST(
-      buildRequest({
-        messages: VALID_MESSAGES,
-        requestedTools: ['usageHistory'],
-      }) as never,
-    )
-
-    expect(res.status).toBe(200)
-    expect(streamTextMock).toHaveBeenCalledOnce()
-
-    const streamArgs = streamTextMock.mock.calls[0]?.[0] as {
-      tools?: Record<string, unknown>
-    }
-    expect(streamArgs?.tools).toHaveProperty('usageHistory')
-  })
-
-  it('blocks usageHistory without facility context for privileged role', async () => {
-    getServerSessionMock.mockResolvedValue({
-      user: { id: 'u1', role: 'global', don_vi: null },
+  it('records provider-reported usage for finishReason error', async () => {
+    streamTextMock.mockImplementation((opts: Record<string, unknown>) => {
+      const onFinish = opts.onFinish as
+        | ((result: { usage: { inputTokens: number; outputTokens: number }; finishReason: string }) => void)
+        | undefined
+      onFinish?.({
+        usage: { inputTokens: 17, outputTokens: 19 },
+        finishReason: 'error',
+      })
+      return makeReadyStreamTextResult()
     })
 
-    const res = await POST(
-      buildRequest({
-        messages: VALID_MESSAGES,
-        requestedTools: ['usageHistory'],
-      }) as never,
-    )
-    const text = await res.text()
+    const res = await POST(buildRequest({ messages: VALID_MESSAGES }) as never)
 
-    expect(res.status).toBe(400)
-    expect(text).toBe(
-      'Anh/chị vui lòng chọn cơ sở y tế tại bộ lọc đơn vị trên thanh điều hướng (phía trên bên trái màn hình) trước khi sử dụng trợ lý tra cứu.',
-    )
-    expect(streamTextMock).not.toHaveBeenCalled()
+    expect(res.status).toBe(200)
+    await vi.waitFor(() => expect(finalizeUsageMock).toHaveBeenCalledWith(expect.objectContaining({
+      status: 'error_with_usage',
+      inputTokens: 17,
+      outputTokens: 19,
+    })))
+  })
+
+  it('records zero tokens when the provider supplies no usage', async () => {
+    streamTextMock.mockImplementation((opts: Record<string, unknown>) => {
+      const onFinish = opts.onFinish as
+        | ((result: { usage: { inputTokens?: number; outputTokens?: number }; finishReason: string }) => void)
+        | undefined
+      onFinish?.({
+        usage: {},
+        finishReason: 'error',
+      })
+      return makeReadyStreamTextResult()
+    })
+
+    const res = await POST(buildRequest({ messages: VALID_MESSAGES }) as never)
+
+    expect(res.status).toBe(200)
+    await vi.waitFor(() => expect(finalizeUsageMock).toHaveBeenCalledWith(expect.objectContaining({
+      status: 'error_with_usage',
+      inputTokens: 0,
+      outputTokens: 0,
+    })))
   })
 })

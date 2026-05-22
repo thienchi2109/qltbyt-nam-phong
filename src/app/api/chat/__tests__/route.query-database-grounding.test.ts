@@ -6,9 +6,11 @@ const getServerSessionMock = vi.fn()
 const streamTextMock = vi.fn()
 const stepCountIsMock = vi.fn()
 const getChatModelMock = vi.fn()
-const checkUsageLimitsMock = vi.fn()
-const recordUsageMock = vi.fn()
-const confirmUsageMock = vi.fn()
+const reserveUsageMock = vi.fn(async () => ({
+  allowed: true,
+  reservationId: '00000000-0000-4000-8000-000000000484',
+}))
+const finalizeUsageMock = vi.fn(async () => undefined)
 
 vi.mock('next-auth', () => ({
   getServerSession: (...args: unknown[]) => getServerSessionMock(...args),
@@ -21,9 +23,13 @@ vi.mock('@/lib/ai/provider', () => ({
 }))
 
 vi.mock('@/lib/ai/usage-metering', () => ({
-  checkUsageLimits: (...args: unknown[]) => checkUsageLimitsMock(...args),
-  recordUsage: (...args: unknown[]) => recordUsageMock(...args),
-  confirmUsage: (...args: unknown[]) => confirmUsageMock(...args),
+  classifyStreamFailure: ({ providerUsage }: { providerUsage?: { inputTokens?: number; outputTokens?: number } }) => ({
+    status: 'error_with_usage',
+    inputTokens: providerUsage?.inputTokens ?? 0,
+    outputTokens: providerUsage?.outputTokens ?? 0,
+  }),
+  reserveUsage: (...args: unknown[]) => reserveUsageMock(...args),
+  finalizeUsage: (...args: unknown[]) => finalizeUsageMock(...args),
 }))
 
 vi.mock('ai', async () => {
@@ -58,7 +64,6 @@ describe('/api/chat query_database grounding payload', () => {
       user: { id: 'u1', role: 'to_qltb', don_vi: 17 },
     })
     getChatModelMock.mockReturnValue(makeChatModel('google/gemini-3.1-flash-lite-preview'))
-    checkUsageLimitsMock.mockReturnValue({ allowed: true })
     stepCountIsMock.mockReturnValue('STOP_WHEN_SENTINEL')
     streamTextMock.mockReturnValue(makeReadyStreamTextResult())
   })
