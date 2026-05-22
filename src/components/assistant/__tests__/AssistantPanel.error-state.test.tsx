@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { render, screen, fireEvent } from '@testing-library/react'
+import { act, render, screen, fireEvent } from '@testing-library/react'
 import { describe, expect, it, vi, beforeEach } from 'vitest'
 
 const mocks = vi.hoisted(() => ({
@@ -77,6 +77,7 @@ import { AssistantPanel } from '../AssistantPanel'
 
 describe('AssistantPanel error state', () => {
     beforeEach(() => {
+        vi.useRealTimers()
         vi.clearAllMocks()
         mocks.useChatState.messages = []
         mocks.useChatState.status = 'ready'
@@ -126,6 +127,47 @@ describe('AssistantPanel error state', () => {
         fireEvent.click(retryButton)
 
         expect(mocks.regenerate).toHaveBeenCalledTimes(1)
+    })
+
+    it('blocks retry while an AI usage cooldown is active', () => {
+        vi.useFakeTimers()
+        mocks.useChatState.error = new Error(JSON.stringify({
+            error: {
+                code: 'ai_usage_limited',
+                reason: 'rate_limit',
+                message: 'Too many requests. Please try again later.',
+                retryAfterMs: 2_000,
+            },
+        }))
+        mocks.useChatState.status = 'error'
+
+        render(<AssistantPanel isOpen={true} onClose={vi.fn()} />)
+
+        const retryButton = screen.getByRole('button', { name: /thử lại sau 2 giây/i })
+        expect(retryButton).toBeDisabled()
+        fireEvent.click(retryButton)
+        expect(mocks.regenerate).not.toHaveBeenCalled()
+
+        act(() => {
+            vi.advanceTimersByTime(2_000)
+        })
+        expect(screen.getByRole('button', { name: /thử lại/i })).not.toBeDisabled()
+    })
+
+    it('blocks sending new prompts while an AI usage cooldown is active', () => {
+        mocks.useChatState.error = new Error(JSON.stringify({
+            error: {
+                code: 'ai_usage_limited',
+                reason: 'tenant_quota',
+                message: 'AI usage quota exceeded for this facility.',
+                retryAfterMs: 60_000,
+            },
+        }))
+        mocks.useChatState.status = 'error'
+
+        render(<AssistantPanel isOpen={true} onClose={vi.fn()} />)
+
+        expect(screen.getByPlaceholderText('Hỏi AI về thiết bị, bảo trì…')).toBeDisabled()
     })
 
     it('does not render error banner when error is null', () => {

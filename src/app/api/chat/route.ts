@@ -22,6 +22,7 @@ import {
   AI_MAX_MESSAGES,
   AI_MAX_OUTPUT_TOKENS,
   AI_MAX_TOOL_STEPS,
+  AI_RATE_LIMIT_WINDOW_MS,
   calculateInputChars,
 } from '@/lib/ai/limits'
 import { getChatModel, getKeyPoolSize, handleProviderQuotaError } from '@/lib/ai/provider'
@@ -37,6 +38,8 @@ import {
   reserveUsage,
   type UsageContext,
   type UsageFinalizeStatus,
+  type UsageLimitReason,
+  type UsageReservationResult,
 } from '@/lib/ai/usage-metering'
 import { isProviderQuotaError, sanitizeErrorForClient } from '@/lib/ai/errors'
 import { ROLES } from '@/lib/rbac'
@@ -50,6 +53,37 @@ function plainError(message: string, status: number) {
   return new Response(message, {
     status,
     headers: { 'Content-Type': 'text/plain; charset=utf-8' },
+  })
+}
+
+const DEFAULT_USAGE_LIMIT_RETRY_AFTER_MS = 60_000
+
+function retryAfterMsForUsageLimit(reason: UsageLimitReason): number {
+  if (reason === 'rate_limit') {
+    return AI_RATE_LIMIT_WINDOW_MS
+  }
+
+  return DEFAULT_USAGE_LIMIT_RETRY_AFTER_MS
+}
+
+function usageLimitResponse(usageReservation: UsageReservationResult) {
+  const reason = usageReservation.reason ?? 'user_quota'
+  const retryAfterMs = retryAfterMsForUsageLimit(reason)
+  const retryAfterSeconds = Math.max(1, Math.ceil(retryAfterMs / 1000))
+
+  return new Response(JSON.stringify({
+    error: {
+      code: 'ai_usage_limited',
+      reason,
+      message: usageReservation.message ?? 'AI usage limit exceeded.',
+      retryAfterMs,
+    },
+  }), {
+    status: 429,
+    headers: {
+      'Content-Type': 'application/json; charset=utf-8',
+      'Retry-After': String(retryAfterSeconds),
+    },
   })
 }
 
@@ -173,7 +207,7 @@ export async function POST(request: Request) {
   }
   const usageReservation = await reserveUsage(usageContext)
   if (!usageReservation.allowed) {
-    return plainError(usageReservation.message ?? 'AI usage limit exceeded.', 429)
+    return usageLimitResponse(usageReservation)
   }
 
   let finalized = false
