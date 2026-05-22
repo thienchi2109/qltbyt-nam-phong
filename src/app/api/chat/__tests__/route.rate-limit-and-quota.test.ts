@@ -30,6 +30,7 @@ vi.mock('@/lib/ai/limits', () => ({
   AI_MAX_MESSAGES: 20,
   AI_MAX_INPUT_CHARS: 20_000,
   AI_MAX_COMPACTED_INPUT_CHARS: 10_000,
+  AI_RATE_LIMIT_WINDOW_MS: 45_000,
   calculateInputChars: (messages: unknown[]) => JSON.stringify(messages).length,
 }))
 
@@ -104,7 +105,7 @@ describe('/api/chat rate limit and quota', () => {
     })
   })
 
-  it('returns 429 when rate-limited', async () => {
+  it('returns structured 429 metadata when rate-limited', async () => {
     reserveUsageMock.mockResolvedValue({
       allowed: false,
       reason: 'rate_limit',
@@ -112,26 +113,49 @@ describe('/api/chat rate limit and quota', () => {
     })
 
     const res = await POST(buildRequest({ messages: VALID_MESSAGES }) as never)
-    const text = await res.text()
+    const body = await res.json()
 
     expect(res.status).toBe(429)
-    expect(text).toBe('Too many requests. Please try again later.')
+    expect(res.headers.get('content-type')).toContain('application/json')
+    expect(res.headers.get('retry-after')).toBe('45')
+    expect(body).toEqual({
+      error: {
+        code: 'ai_usage_limited',
+        reason: 'rate_limit',
+        message: 'Too many requests. Please try again later.',
+        retryAfterMs: 45_000,
+      },
+    })
     expect(streamTextMock).not.toHaveBeenCalled()
     expect(finalizeUsageMock).not.toHaveBeenCalled()
   })
 
-  it('returns 429 when quota is exceeded', async () => {
+  it.each([
+    ['user_quota', 'AI usage quota exceeded for this user.'],
+    ['tenant_quota', 'AI usage quota exceeded for this facility.'],
+    ['global_quota', 'AI daily quota exceeded'],
+    ['kill_switch', 'AI usage is temporarily disabled.'],
+  ] as const)('returns structured 429 metadata for %s denials', async (reason, message) => {
     reserveUsageMock.mockResolvedValue({
       allowed: false,
-      reason: 'tenant_quota',
-      message: 'AI usage quota exceeded for this facility.',
+      reason,
+      message,
     })
 
     const res = await POST(buildRequest({ messages: VALID_MESSAGES }) as never)
-    const text = await res.text()
+    const body = await res.json()
 
     expect(res.status).toBe(429)
-    expect(text).toBe('AI usage quota exceeded for this facility.')
+    expect(res.headers.get('content-type')).toContain('application/json')
+    expect(res.headers.get('retry-after')).toBe('60')
+    expect(body).toEqual({
+      error: {
+        code: 'ai_usage_limited',
+        reason,
+        message,
+        retryAfterMs: 60_000,
+      },
+    })
     expect(streamTextMock).not.toHaveBeenCalled()
     expect(finalizeUsageMock).not.toHaveBeenCalled()
   })

@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest'
 import {
   GENERIC_CHAT_ERROR_MESSAGE,
   isProviderQuotaError,
+  parseAiUsageLimitError,
   parseErrorMessage,
   sanitizeErrorForClient,
 } from '../errors'
@@ -36,6 +37,38 @@ describe('ai errors sanitization', () => {
 
     expect(sanitizeErrorForClient(raw)).toBe(GENERIC_CHAT_ERROR_MESSAGE)
   })
+
+  it('parses whitelisted AI usage-limit JSON metadata', () => {
+    const raw = JSON.stringify({
+      error: {
+        code: 'ai_usage_limited',
+        reason: 'rate_limit',
+        message: 'Too many requests. Please try again later.',
+        retryAfterMs: 45_000,
+      },
+    })
+
+    expect(parseAiUsageLimitError(raw)).toEqual({
+      reason: 'rate_limit',
+      message: 'Too many requests. Please try again later.',
+      retryAfterMs: 45_000,
+    })
+    expect(parseErrorMessage(raw)).toBe('Too many requests. Please try again later.')
+  })
+
+  it('rejects untrusted usage-limit JSON metadata', () => {
+    const raw = JSON.stringify({
+      error: {
+        code: 'ai_usage_limited',
+        reason: 'debug_dump',
+        message: 'stack=secret',
+        retryAfterMs: 45_000,
+      },
+    })
+
+    expect(parseAiUsageLimitError(raw)).toBeNull()
+    expect(parseErrorMessage(raw)).toBe(GENERIC_CHAT_ERROR_MESSAGE)
+  })
 })
 
 describe('isProviderQuotaError', () => {
@@ -68,4 +101,3 @@ describe('isProviderQuotaError', () => {
     expect(isProviderQuotaError(42)).toBe(false)
   })
 })
-

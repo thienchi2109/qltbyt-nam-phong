@@ -16,7 +16,7 @@ import {
     DialogTitle,
 } from "@/components/ui/dialog"
 import { useTenantSelection } from "@/contexts/TenantSelectionContext"
-import { parseErrorMessage } from "@/lib/ai/errors"
+import { parseAiUsageLimitError, parseErrorMessage } from "@/lib/ai/errors"
 import { compactUIMessages } from "@/lib/ai/compact-ui-messages"
 import { buildRepairRequestCreateIntentHref } from "@/lib/repair-request-deep-link"
 import { cn } from "@/lib/utils"
@@ -32,6 +32,26 @@ import "@/components/assistant/assistant-styles.css"
 interface AssistantPanelProps {
     isOpen: boolean
     onClose: () => void
+}
+
+type CooldownState = {
+    until: number | null
+    now: number
+}
+
+type CooldownAction =
+    | { type: "clear"; now: number }
+    | { type: "start"; until: number; now: number }
+    | { type: "tick"; until: number; now: number }
+
+function cooldownReducer(_state: CooldownState, action: CooldownAction): CooldownState {
+    switch (action.type) {
+        case "clear":
+            return { until: null, now: action.now }
+        case "start":
+        case "tick":
+            return { until: action.until, now: action.now }
+    }
 }
 
 /** All tool names available for the assistant. */
@@ -61,6 +81,11 @@ const REQUESTED_TOOLS = [
 export function AssistantPanel({ isOpen, onClose }: AssistantPanelProps) {
     const { selectedFacilityId, facilities = [] } = useTenantSelection()
     const [input, setInput] = React.useState("")
+    const [cooldown, dispatchCooldown] = React.useReducer(
+        cooldownReducer,
+        undefined,
+        () => ({ until: null, now: Date.now() }),
+    )
 
     const facilityRef = React.useRef(selectedFacilityId)
     facilityRef.current = selectedFacilityId
@@ -93,42 +118,79 @@ export function AssistantPanel({ isOpen, onClose }: AssistantPanelProps) {
     })
 
     const queryClient = useQueryClient()
-    const router = useRouter()
+    const { push } = useRouter()
 
     const isStreaming = status === "streaming"
     const isReady = status === "ready"
+    const usageLimitError = React.useMemo(
+        () => parseAiUsageLimitError(error?.message),
+        [error?.message],
+    )
+    const cooldownRemainingMs = cooldown.until
+        ? Math.max(0, cooldown.until - cooldown.now)
+        : 0
+    const isCooldownActive = cooldownRemainingMs > 0
+    const cooldownSeconds = Math.max(1, Math.ceil(cooldownRemainingMs / 1000))
+    const canSend = isReady && !isCooldownActive
+
+    React.useEffect(() => {
+        if (!usageLimitError?.retryAfterMs) {
+            dispatchCooldown({ type: "clear", now: Date.now() })
+            return
+        }
+
+        const current = Date.now()
+        const expiresAt = current + usageLimitError.retryAfterMs
+        dispatchCooldown({ type: "start", until: expiresAt, now: current })
+
+        const interval = window.setInterval(() => {
+            const tickNow = Date.now()
+            dispatchCooldown({ type: "tick", until: expiresAt, now: tickNow })
+            if (tickNow >= expiresAt) {
+                window.clearInterval(interval)
+            }
+        }, 1000)
+
+        return () => window.clearInterval(interval)
+    }, [error?.message, usageLimitError?.retryAfterMs])
 
     const handleSend = React.useCallback(() => {
         const trimmed = input.trim()
-        if (!trimmed || !isReady) return
+        if (!trimmed || !canSend) return
 
         sendMessage({ text: trimmed })
         setInput("")
-    }, [input, isReady, sendMessage])
+    }, [canSend, input, sendMessage])
 
     const handleSuggestionClick = React.useCallback(
         (text: string) => {
-            if (!isReady) return
+            if (!canSend) return
             sendMessage({ text })
         },
-        [isReady, sendMessage],
+        [canSend, sendMessage],
     )
 
     const handleReset = React.useCallback(() => {
+        dispatchCooldown({ type: "clear", now: Date.now() })
         clearError()
         setMessages([])
         setInput("")
     }, [clearError, setMessages])
+
+    const handleRetry = React.useCallback(() => {
+        if (isCooldownActive) return
+        regenerate()
+    }, [isCooldownActive, regenerate])
 
     /** TanStack Query bridge for draft handoff to /repair-requests */
     const handleApplyDraft = React.useCallback(
         (draft: RepairRequestDraft | TroubleshootingDraft) => {
             if (draft.kind === "repairRequestDraft") {
                 queryClient.setQueryData(["assistant-draft"], draft)
-                router.push(buildRepairRequestCreateIntentHref())
+                push(buildRepairRequestCreateIntentHref())
             }
         },
-        [queryClient, router],
+        [push, queryClient],
     )
 
     if (!isOpen) return null
@@ -188,7 +250,7 @@ export function AssistantPanel({ isOpen, onClose }: AssistantPanelProps) {
                     <div className="flex-1 overflow-y-auto px-4 py-3">
                         <AssistantEmptyState
                             onSuggestionClick={handleSuggestionClick}
-                            isReady={isReady}
+                            isReady={canSend}
                         />
                     </div>
                 ) : (
@@ -213,12 +275,13 @@ export function AssistantPanel({ isOpen, onClose }: AssistantPanelProps) {
                         <Button
                             variant="ghost"
                             size="sm"
-                            onClick={() => regenerate()}
+                            onClick={handleRetry}
+                            disabled={isCooldownActive}
                             className="shrink-0 h-7 px-2 text-xs text-destructive hover:text-destructive"
-                            aria-label="Thử lại"
+                            aria-label={isCooldownActive ? `Thử lại sau ${cooldownSeconds} giây` : "Thử lại"}
                         >
                             <RefreshCw className="size-3 mr-1" />
-                            Thử lại
+                            {isCooldownActive ? `Thử lại sau ${cooldownSeconds} giây` : "Thử lại"}
                         </Button>
                     </div>
                 )}
@@ -229,7 +292,7 @@ export function AssistantPanel({ isOpen, onClose }: AssistantPanelProps) {
                     onSend={handleSend}
                     onStop={() => stop()}
                     isStreaming={isStreaming}
-                    isReady={isReady}
+                    isReady={canSend}
                 />
 
                 <div className="px-4 pb-3 shrink-0">

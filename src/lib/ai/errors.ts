@@ -7,6 +7,20 @@
 export const GENERIC_CHAT_ERROR_MESSAGE = 'Đã xảy ra lỗi. Vui lòng thử lại.'
 const MODEL_PROVIDER_QUOTA_MESSAGE =
   'Model AI đang vượt hạn mức sử dụng của nhà cung cấp.'
+const AI_USAGE_LIMIT_ERROR_CODE = 'ai_usage_limited'
+
+export type AiUsageLimitReason =
+  | 'rate_limit'
+  | 'user_quota'
+  | 'tenant_quota'
+  | 'global_quota'
+  | 'kill_switch'
+
+export interface AiUsageLimitError {
+  reason: AiUsageLimitReason
+  message: string
+  retryAfterMs?: number
+}
 
 const PROVIDER_QUOTA_PATTERNS = [
   /exceeded your current quota/i,
@@ -51,6 +65,71 @@ const SAFE_CLIENT_MESSAGE_RULES: Array<{ pattern: RegExp; message: string }> = [
     message: 'Request exceeds input size limit',
   },
 ]
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
+}
+
+function normalizeAiUsageLimitReason(value: unknown): AiUsageLimitReason | null {
+  switch (value) {
+    case 'rate_limit':
+    case 'user_quota':
+    case 'tenant_quota':
+    case 'global_quota':
+    case 'kill_switch':
+      return value
+    default:
+      return null
+  }
+}
+
+function normalizeRetryAfterMs(value: unknown): number | undefined {
+  if (typeof value !== 'number' || !Number.isFinite(value) || value <= 0) {
+    return undefined
+  }
+
+  return Math.ceil(value)
+}
+
+/** Parses the whitelisted `/api/chat` quota cooldown error contract. */
+export function parseAiUsageLimitError(raw: string | undefined): AiUsageLimitError | null {
+  if (!raw || raw.trim() === '') {
+    return null
+  }
+
+  try {
+    const parsed = JSON.parse(raw)
+    if (!isRecord(parsed) || !isRecord(parsed.error)) {
+      return null
+    }
+
+    const error = parsed.error
+    if (error.code !== AI_USAGE_LIMIT_ERROR_CODE) {
+      return null
+    }
+
+    const reason = normalizeAiUsageLimitReason(error.reason)
+    if (!reason) {
+      return null
+    }
+
+    const message =
+      typeof error.message === 'string'
+        ? extractSafeClientMessage(error.message)
+        : null
+    if (!message) {
+      return null
+    }
+
+    return {
+      reason,
+      message,
+      retryAfterMs: normalizeRetryAfterMs(error.retryAfterMs),
+    }
+  } catch {
+    return null
+  }
+}
 
 function formatProviderQuotaMessage(raw: string): string | null {
   if (!PROVIDER_QUOTA_PATTERNS.some(pattern => pattern.test(raw))) {
@@ -127,6 +206,11 @@ export function sanitizeErrorForClient(_error: unknown): string {
 export function parseErrorMessage(raw: string | undefined): string {
   if (!raw || raw.trim() === '') {
     return GENERIC_CHAT_ERROR_MESSAGE
+  }
+
+  const usageLimitError = parseAiUsageLimitError(raw)
+  if (usageLimitError) {
+    return usageLimitError.message
   }
 
   const safeRawMessage = extractSafeClientMessage(raw)
