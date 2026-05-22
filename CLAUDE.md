@@ -112,9 +112,9 @@ Invoke `context-engineering` skill for: agent systems, token optimization (>70%)
 
 ---
 
-## Memori MCP Convention
+## Local Memory Convention
 
-Use Memori MCP as durable project memory for this repository. Do not treat it as a complete or automatic record of all prior chats.
+Memori MCP is quota-bound and must not be the default durable memory path for this repository. Use the local memory store under `/root/.codex/memories` instead.
 
 ### What to Save
 
@@ -132,7 +132,9 @@ Use Memori MCP as durable project memory for this repository. Do not treat it as
 
 ### Session Rule
 
-When a session produces durable context, save one concise Memori MCP summary near the end of the session rather than many small notes.
+When a session produces durable context, save one concise local memory note near the end of the session rather than many small notes.
+
+Write new notes to `/root/.codex/memories/extensions/ad_hoc/notes/<timestamp>-<short-slug>.md`. Do not edit generated memory indexes or rollout summaries directly.
 
 ### Required Note Shape
 
@@ -159,7 +161,13 @@ When a session produces durable context, save one concise Memori MCP summary nea
 
 ### Retrieval Rule
 
-Before re-investigating a non-trivial problem, use Memori MCP `recall` to check whether relevant memory already exists. If memory conflicts with the current codebase, trust the codebase and update the memory note.
+Before re-investigating a non-trivial problem, search local memory before re-deriving prior decisions:
+
+1. skim the provided memory summary when available
+2. search `/root/.codex/memories/MEMORY.md` with task-relevant keywords
+3. open only the 1-2 most relevant rollout summaries or skill notes referenced by `MEMORY.md`
+
+If memory conflicts with the current codebase, trust the codebase and add a local stale-memory note. Do not call Memori MCP for routine recall/save while it is quota-limited; use it only if the user explicitly asks for Memori MCP and accepts the quota risk.
 
 
 ---
@@ -627,13 +635,13 @@ END IF;
 
 After applying any migration, run `get_advisors(security)` via Supabase MCP to catch regressions.
 
-## 🔗 Combined Workflow: Code Review Graph + GitNexus + Memori MCP
+## 🔗 Combined Workflow: Local Memory + Code Review Graph + GitNexus
 
 These tools complement each other. Use them together while prioritizing token-efficient codebase reading:
 
 | Tool | Answers | Persistence |
 |------|---------|-------------|
-| **Memori MCP** | WHY a decision was made, historical findings, gotchas | Persistent (survives across sessions) |
+| **Local Memory** | WHY a decision was made, historical findings, gotchas | Persistent local files under `/root/.codex/memories` |
 | **Code Review Graph** | WHERE to start reading, changed-file impact, compact codebase/review context | Ephemeral (per-query, reflects current code) |
 | **GitNexus** | WHAT calls what, precise symbol/process relationships, required impact blast radius | Ephemeral (per-query, reflects current code) |
 
@@ -641,7 +649,8 @@ These tools complement each other. Use them together while prioritizing token-ef
 
 ```
 1. START OF SESSION
-   memori: recall("feature area")
+   rg relevant keywords in /root/.codex/memories/MEMORY.md
+   read the 1-2 most relevant referenced local memory files
    → Retrieve prior decisions, known gotchas, architectural constraints
 
 2. TOKEN-EFFICIENT CODEBASE READING
@@ -658,7 +667,7 @@ These tools complement each other. Use them together while prioritizing token-ef
    Write code using the narrowed context
 
 5. END OF SESSION
-   memori: advanced_augmentation(...)
+   write one note to /root/.codex/memories/extensions/ad_hoc/notes/
    → Save durable decisions, non-obvious findings, environment gotchas
    → Skip ephemeral brainstorming; trust code/tests for obvious facts
 ```
@@ -666,8 +675,9 @@ These tools complement each other. Use them together while prioritizing token-ef
 ### Pattern: Investigate Before Changing
 
 ```
-# Step 1 — Recall prior context (Memori MCP)
-memori recall("repairRequest") → "Tách file vì vượt 350 lines (2026-04-01)"
+# Step 1 — Recall prior context (local memory)
+rg -n "repairRequest|repair request sheet" /root/.codex/memories/MEMORY.md
+sed -n '<relevant-range>p' /root/.codex/memories/rollout_summaries/<matched-file>.md
 
 # Step 2 — Read codebase cheaply first (Code Review Graph)
 code-review-graph get_minimal_context_tool("repair request sheet flow")
@@ -677,7 +687,7 @@ code-review-graph query_graph_tool("repair request sheet", detail_level="minimal
 gitnexus impact("RepairRequestSheet") → d=1: 3 callers, d=2: 8 indirect
 
 # Step 4 — Implement with narrowed context
-# Step 5 — Save new findings back to Memori MCP
+# Step 5 — Save new findings as a local ad-hoc memory note
 ```
 
 ### When to Write a Memory Note

@@ -204,20 +204,26 @@ IMPORTANT: Use `edit_file` over `str_replace` or full file writes. It works with
 - For any task that creates or modifies SQL migration files/DDL for Supabase/Postgres, you MUST invoke the `supabase-best-practices` skill first (or `supabase-postgres-best-practices` if that is the available skill name in the session).
 - If a required skill is unavailable in the current session, state that explicitly and proceed with the closest available fallback guidance.
 
-## Memori MCP Session Convention
+## Local Memory Session Convention
 
-Memori MCP is the durable memory layer for this repo. It is not a complete or automatic transcript of every Codex/Claude chat.
+Memori MCP is quota-bound and must not be the default durable memory path for this repo. Use the local memory store under `/root/.codex/memories` instead.
 
-- Treat Memori MCP as curated project memory, not raw chat history.
-- Write a memory note when a session produces a durable decision, a non-obvious debugging finding, a workflow rule, a deploy/recovery step, or a repo-specific gotcha that should survive the current context window.
+- Treat local memory as curated project memory, not raw chat history.
+- Read local memory before re-deriving prior decisions for non-trivial work:
+  1. skim the provided memory summary when available
+  2. search `/root/.codex/memories/MEMORY.md` with task-relevant keywords
+  3. open only the 1-2 most relevant rollout summaries or skill notes referenced by `MEMORY.md`
+- Write a local memory note when a session produces a durable decision, a non-obvious debugging finding, a workflow rule, a deploy/recovery step, or a repo-specific gotcha that should survive the current context window.
 - Do not write a memory note for temporary brainstorming, duplicate status chatter, or information already captured clearly in code, tests, migrations, `progress.txt`, PRs, or existing docs.
-- At session end, prefer one concise summary via Memori MCP instead of many fragmented notes.
+- At session end, prefer one concise local note instead of many fragmented notes.
+- Write new notes to `/root/.codex/memories/extensions/ad_hoc/notes/<timestamp>-<short-slug>.md`; do not edit generated memory indexes or rollout summaries directly.
 - If a note contains assumptions, mark them explicitly as assumptions.
-- If a previous memory might now be stale, create/update a note that says what changed and on what date instead of silently contradicting it.
+- If a previous memory might now be stale, create a new local note that says what changed and on what date instead of silently contradicting it.
+- Do not call Memori MCP for routine recall/save while it is quota-limited. Use it only if the user explicitly asks for Memori MCP and accepts the quota risk.
 
 ### Memory Note Template
 
-Use this structure when saving durable session context to Memori MCP:
+Use this structure when saving durable session context locally:
 
 ```md
 # [Short title]
@@ -242,7 +248,7 @@ Use this structure when saving durable session context to Memori MCP:
 
 ### Retrieval Rule
 
-At the start of any non-trivial task, use Memori MCP `recall` to check for relevant notes before re-deriving prior decisions. If memory and code disagree, trust the current code and update memory.
+At the start of any non-trivial task, search local memory for relevant notes before re-deriving prior decisions. If memory and code disagree, trust the current code and add a local stale-memory note.
 
 
 ## ⚠️ Role Normalization (`admin` = `global`)
@@ -418,13 +424,13 @@ When in doubt, compare against the nearest existing detail/list RPC for the same
 
 After applying any migration, run `get_advisors(security)` via Supabase MCP to catch regressions.
 
-## 🔗 Combined Workflow: Code Review Graph + GitNexus + Memori MCP
+## 🔗 Combined Workflow: Local Memory + Code Review Graph + GitNexus
 
 These tools complement each other. Use them together while prioritizing token-efficient codebase reading:
 
 | Tool | Answers | Persistence |
 |------|---------|-------------|
-| **Memori MCP** | WHY a decision was made, historical findings, gotchas | Persistent (survives across sessions) |
+| **Local Memory** | WHY a decision was made, historical findings, gotchas | Persistent local files under `/root/.codex/memories` |
 | **Code Review Graph** | WHERE to start reading, changed-file impact, compact codebase/review context | Ephemeral (per-query, reflects current code) |
 | **GitNexus** | WHAT calls what, precise symbol/process relationships, required impact blast radius | Ephemeral (per-query, reflects current code) |
 
@@ -432,7 +438,8 @@ These tools complement each other. Use them together while prioritizing token-ef
 
 ```
 1. START OF SESSION
-   memori: recall("feature area")
+   rg relevant keywords in /root/.codex/memories/MEMORY.md
+   read the 1-2 most relevant referenced local memory files
    → Retrieve prior decisions, known gotchas, architectural constraints
 
 2. TOKEN-EFFICIENT CODEBASE READING
@@ -449,7 +456,7 @@ These tools complement each other. Use them together while prioritizing token-ef
    Write code using the narrowed context
 
 5. END OF SESSION
-   memori: advanced_augmentation(...)
+   write one note to /root/.codex/memories/extensions/ad_hoc/notes/
    → Save durable decisions, non-obvious findings, environment gotchas
    → Skip ephemeral brainstorming; trust code/tests for obvious facts
 ```
@@ -457,8 +464,9 @@ These tools complement each other. Use them together while prioritizing token-ef
 ### Pattern: Investigate Before Changing
 
 ```
-# Step 1 — Recall prior context (Memori MCP)
-memori recall("repairRequest") → "Tách file vì vượt 350 lines (2026-04-01)"
+# Step 1 — Recall prior context (local memory)
+rg -n "repairRequest|repair request sheet" /root/.codex/memories/MEMORY.md
+sed -n '<relevant-range>p' /root/.codex/memories/rollout_summaries/<matched-file>.md
 
 # Step 2 — Read codebase cheaply first (Code Review Graph)
 code-review-graph get_minimal_context_tool("repair request sheet flow")
@@ -468,7 +476,7 @@ code-review-graph query_graph_tool("repair request sheet", detail_level="minimal
 gitnexus impact("RepairRequestSheet") → d=1: 3 callers, d=2: 8 indirect
 
 # Step 4 — Implement with narrowed context
-# Step 5 — Save new findings back to Memori MCP
+# Step 5 — Save new findings as a local ad-hoc memory note
 ```
 
 ### When to Write a Memory Note

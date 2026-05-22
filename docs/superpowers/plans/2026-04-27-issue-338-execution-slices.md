@@ -173,9 +173,9 @@ No `// eslint-disable`. Tests are contracts. Helper invocation: `node scripts/np
 
 ---
 
-## Memori checkpoint protocol (MANDATORY for #338)
+## Local memory checkpoint protocol (MANDATORY for #338)
 
-Per session policy: **save a Memori MCP note via `advanced_augmentation` at every checkpoint** so progress survives context compaction, session restarts, and fresh-agent handoff. Memori is durable progress control; `progress.txt` and PR descriptions are the immutable audit trail.
+Superseded on 2026-05-22: Memori MCP is quota-bound in this environment. Save a local memory note at every checkpoint under `/root/.codex/memories/extensions/ad_hoc/notes/<timestamp>-issue-338-<slug>.md` so progress survives context compaction, session restarts, and fresh-agent handoff. Local memory is durable progress control; `progress.txt` and PR descriptions are the immutable audit trail.
 
 ### Checkpoint trigger matrix
 
@@ -187,7 +187,7 @@ Per session policy: **save a Memori MCP note via `advanced_augmentation` at ever
 | 4 | **Blocker hit** (verify fail, smoke red, review push-back, infra issue) | `#338 PR-Xx blocked: <one-line reason>` | What blocked; reproduce command/log; current branch HEAD; proposed resolution; whether human input needed |
 | 5 | **Session-end mid-PR** (compact, /clear, manual stop) | `#338 PR-Xx WIP: <branch> @ <HEAD>` | Branch + HEAD SHA; last completed task/step; next step verbatim; uncommitted-files list (must be empty — commit before save) |
 
-### Note shape (REQUIRED — follow `CLAUDE.md` Memori convention)
+### Note shape (REQUIRED — follow `CLAUDE.md` local memory convention)
 
 ```md
 # #338 PR-Xx <state>: <slug>
@@ -221,14 +221,14 @@ Per session policy: **save a Memori MCP note via `advanced_augmentation` at ever
 
 1. **One save per checkpoint, never silent.** Skipping a checkpoint = breaking progress control.
 2. **Commit before save.** A WIP/session-end note with uncommitted files is invalid; always `git status` and commit (or stash with note) first.
-3. **Trust file > memory.** If a memori note conflicts with `git log` / `progress.txt` / PR state, trust the repo and update the note via a fresh checkpoint save.
-4. **Recall at fresh-session start.** Before resuming work, call `memori.recall` with query `Issue #338 PR progress` to find the most recent checkpoint.
+3. **Trust file > memory.** If a local memory note conflicts with `git log` / `progress.txt` / PR state, trust the repo and update the note via a fresh checkpoint save.
+4. **Recall at fresh-session start.** Before resuming work, search local memory with query terms `Issue #338 PR progress` to find the most recent checkpoint.
 5. **No silent merges.** A merged PR without a corresponding checkpoint #3 note is treated as not-completed by future agents.
 
 ### Fresh-session resume sequence
 
 ```text
-1. memori.recall("Issue #338 PR progress")           # find latest checkpoint
+1. rg -n "Issue #338 PR progress|#338 PR-" /root/.codex/memories/MEMORY.md /root/.codex/memories/extensions/ad_hoc/notes  # find latest checkpoint
 2. git fetch origin && git log --oneline -10         # verify checkpoint matches main
 3. cat progress.txt                                   # confirm Progress Log entries
 4. cat docs/superpowers/plans/2026-04-27-issue-338-execution-slices.md  # re-read slicing
