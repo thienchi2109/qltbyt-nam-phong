@@ -115,6 +115,27 @@ END $$;
 
 DO $$
 DECLARE
+  v_sqlstate TEXT;
+BEGIN
+  PERFORM set_config(
+    'request.jwt.claims',
+    jsonb_build_object('role', 'authenticated', 'user_id', 'issue538-no-app-role')::TEXT,
+    TRUE
+  );
+
+  BEGIN
+    PERFORM * FROM public.ai_kill_switch_status();
+    RAISE EXCEPTION 'Expected authenticated token without app_role to be denied status access';
+  EXCEPTION WHEN OTHERS THEN
+    GET STACKED DIAGNOSTICS v_sqlstate = RETURNED_SQLSTATE;
+    IF v_sqlstate <> '42501' THEN
+      RAISE EXCEPTION 'Expected missing app_role denial SQLSTATE 42501, got %', v_sqlstate;
+    END IF;
+  END;
+END $$;
+
+DO $$
+DECLARE
   v_status RECORD;
   v_sqlstate TEXT;
 BEGIN

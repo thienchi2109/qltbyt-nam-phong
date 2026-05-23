@@ -1,8 +1,5 @@
--- Issue #538: DB-backed AI kill switch stored in public.internal_settings.
-
-INSERT INTO public.internal_settings(key, value, updated_at)
-VALUES ('ai_kill_switch.enabled', 'false', now())
-ON CONFLICT (key) DO NOTHING;
+-- Issue #538 review follow-up: keep historical migrations immutable and reassert
+-- service-role-only top-level role fallback plus consistent settings reads.
 
 CREATE OR REPLACE FUNCTION public.ai_kill_switch_status()
 RETURNS TABLE (
@@ -29,6 +26,9 @@ BEGIN
 
   v_claims := v_claims_text::jsonb;
   v_role := NULLIF(v_claims->>'app_role', '');
+  IF v_role IS NULL AND NULLIF(v_claims->>'role', '') = 'service_role' THEN
+    v_role := 'service_role';
+  END IF;
   v_user_id := NULLIF(v_claims->>'user_id', '');
 
   IF v_role = 'admin' THEN
@@ -39,19 +39,18 @@ BEGIN
     RAISE EXCEPTION 'Missing role claim' USING ERRCODE = '42501';
   END IF;
 
-  IF v_user_id IS NULL THEN
+  IF v_role <> 'service_role' AND v_user_id IS NULL THEN
     RAISE EXCEPTION 'Missing user_id claim' USING ERRCODE = '42501';
   END IF;
 
-  SELECT s.value, s.updated_at
-  INTO v_enabled_text, v_enabled_updated_at
+  SELECT
+    MAX(s.value) FILTER (WHERE s.key = 'ai_kill_switch.enabled'),
+    MAX(s.updated_at) FILTER (WHERE s.key = 'ai_kill_switch.enabled'),
+    MAX(NULLIF(btrim(s.value), '')) FILTER (WHERE s.key = 'ai_kill_switch.reason'),
+    MAX(s.updated_at) FILTER (WHERE s.key = 'ai_kill_switch.reason')
+  INTO v_enabled_text, v_enabled_updated_at, reason, v_reason_updated_at
   FROM public.internal_settings s
-  WHERE s.key = 'ai_kill_switch.enabled';
-
-  SELECT NULLIF(btrim(s.value), ''), s.updated_at
-  INTO reason, v_reason_updated_at
-  FROM public.internal_settings s
-  WHERE s.key = 'ai_kill_switch.reason';
+  WHERE s.key IN ('ai_kill_switch.enabled', 'ai_kill_switch.reason');
 
   enabled := lower(COALESCE(v_enabled_text, 'false')) IN ('true', '1', 'on', 'yes', 'enabled');
   updated_at := GREATEST(v_enabled_updated_at, v_reason_updated_at);
@@ -92,6 +91,9 @@ BEGIN
 
   v_claims := v_claims_text::jsonb;
   v_role := NULLIF(v_claims->>'app_role', '');
+  IF v_role IS NULL AND NULLIF(v_claims->>'role', '') = 'service_role' THEN
+    v_role := 'service_role';
+  END IF;
   v_user_id := NULLIF(v_claims->>'user_id', '');
 
   IF v_role = 'admin' THEN
@@ -102,7 +104,7 @@ BEGIN
     RAISE EXCEPTION 'Missing role claim' USING ERRCODE = '42501';
   END IF;
 
-  IF v_user_id IS NULL THEN
+  IF v_role <> 'service_role' AND v_user_id IS NULL THEN
     RAISE EXCEPTION 'Missing user_id claim' USING ERRCODE = '42501';
   END IF;
 
@@ -115,12 +117,17 @@ BEGIN
   ON CONFLICT (key) DO UPDATE
   SET value = EXCLUDED.value,
       updated_at = EXCLUDED.updated_at
-  RETURNING public.internal_settings.updated_at INTO v_enabled_updated_at;
+  RETURNING public.internal_settings.updated_at
+  INTO v_enabled_updated_at;
 
   IF v_reason IS NULL THEN
     DELETE FROM public.internal_settings
-    WHERE key = 'ai_kill_switch.reason';
-    v_reason_updated_at := NULL;
+    WHERE key = 'ai_kill_switch.reason'
+    RETURNING public.internal_settings.updated_at
+    INTO v_reason_updated_at;
+
+    reason := NULL;
+    v_reason_updated_at := COALESCE(v_reason_updated_at, v_enabled_updated_at);
   ELSE
     INSERT INTO public.internal_settings(key, value, updated_at)
     VALUES ('ai_kill_switch.reason', v_reason, now())
