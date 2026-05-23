@@ -17,7 +17,7 @@ const plansSkeletonClass = "h-4 w-24 md:w-24"
 
 // Base card styles - will be extended per card with custom gradients
 const cardBaseClass =
-  "mobile-kpi-card border-white/80 bg-white/95 rounded-[1.35rem] shadow-[0_14px_34px_rgba(15,23,42,0.08)] ring-1 ring-slate-200/70 md:rounded-2xl md:shadow-[0_12px_30px_rgba(15,23,42,0.06)]"
+  "min-h-[120px] border-white/80 bg-white/95 rounded-[1.35rem] shadow-[0_14px_34px_rgba(15,23,42,0.08)] ring-1 ring-slate-200/70 md:min-h-[140px] md:rounded-2xl md:shadow-[0_12px_30px_rgba(15,23,42,0.06)]"
 
 // Elegant vibrant gradient backgrounds for each KPI card
 const equipmentCardClass = `${cardBaseClass}`

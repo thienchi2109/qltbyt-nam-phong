@@ -186,8 +186,8 @@ describe("Dashboard: no legacy EditEquipmentDialog", () => {
             month: "2-digit",
             year: "numeric",
         })
-        const beforeMidnight = new Date("2026-05-23T23:59:30.000Z")
-        const afterMidnight = new Date("2026-05-24T00:00:05.000Z")
+        const beforeMidnight = new Date(2026, 4, 23, 23, 59, 30)
+        const afterMidnight = new Date(2026, 4, 24, 0, 0, 5)
 
         vi.useFakeTimers()
         vi.setSystemTime(beforeMidnight)
