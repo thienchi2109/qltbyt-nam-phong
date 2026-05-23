@@ -8,8 +8,8 @@
 
 import * as React from "react"
 import "@testing-library/jest-dom"
-import { fireEvent, render, screen, waitFor } from "@testing-library/react"
-import { describe, it, expect, vi, beforeEach } from "vitest"
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react"
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
 
 // ============================================
 // Mocks
@@ -148,6 +148,10 @@ describe("Dashboard: no legacy EditEquipmentDialog", () => {
         })
     })
 
+    afterEach(() => {
+        vi.useRealTimers()
+    })
+
     it("navigates to /equipment?highlight={id} on update-status action", async () => {
         render(<Dashboard />)
 
@@ -173,6 +177,30 @@ describe("Dashboard: no legacy EditEquipmentDialog", () => {
         expect(screen.getByText(/Admin User/i)).toBeInTheDocument()
         expect(screen.getByText("Phòng ICU")).toBeInTheDocument()
         expect(screen.getByText(/Thứ|Chủ nhật/i)).toBeInTheDocument()
+    })
+
+    it("refreshes the welcome banner date after local midnight", () => {
+        const formatter = new Intl.DateTimeFormat("vi-VN", {
+            weekday: "long",
+            day: "2-digit",
+            month: "2-digit",
+            year: "numeric",
+        })
+        const beforeMidnight = new Date("2026-05-23T23:59:30.000Z")
+        const afterMidnight = new Date("2026-05-24T00:00:05.000Z")
+
+        vi.useFakeTimers()
+        vi.setSystemTime(beforeMidnight)
+
+        render(<Dashboard />)
+        expect(screen.getByText(formatter.format(beforeMidnight))).toBeInTheDocument()
+
+        vi.setSystemTime(afterMidnight)
+        act(() => {
+            vi.advanceTimersByTime(35_000)
+        })
+
+        expect(screen.getByText(formatter.format(afterMidnight))).toBeInTheDocument()
     })
 
     it("keeps maintenance planning as the third quick action", () => {

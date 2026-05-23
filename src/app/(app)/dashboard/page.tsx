@@ -38,6 +38,24 @@ const QRActionSheet = dynamic(
 )
 
 
+const dashboardDateFormatter = new Intl.DateTimeFormat("vi-VN", {
+  weekday: "long",
+  day: "2-digit",
+  month: "2-digit",
+  year: "numeric",
+})
+
+function formatDashboardDate(date = new Date()) {
+  return dashboardDateFormatter.format(date)
+}
+
+function getMillisecondsUntilNextLocalMidnight(date = new Date()) {
+  const nextMidnight = new Date(date)
+  nextMidnight.setHours(24, 0, 0, 0)
+
+  return Math.max(nextMidnight.getTime() - date.getTime(), 1_000)
+}
+
 /**
  * Renders the authenticated dashboard overview, quick actions, and QR scan entry points.
  */
@@ -56,16 +74,26 @@ export default function Dashboard() {
 
   // Check if user is regional leader
   const isRegionalLeader = isRegionalLeaderRole(user?.role)
-  const todayLabel = React.useMemo(
-    () =>
-      new Intl.DateTimeFormat("vi-VN", {
-        weekday: "long",
-        day: "2-digit",
-        month: "2-digit",
-        year: "numeric",
-      }).format(new Date()),
-    []
-  )
+  const [todayLabel, setTodayLabel] = React.useState(() => formatDashboardDate())
+
+  React.useEffect(() => {
+    let timerId: number
+
+    const refreshDateAndReschedule = () => {
+      const now = new Date()
+      setTodayLabel(formatDashboardDate(now))
+      timerId = window.setTimeout(
+        refreshDateAndReschedule,
+        getMillisecondsUntilNextLocalMidnight(now)
+      )
+    }
+
+    timerId = window.setTimeout(refreshDateAndReschedule, getMillisecondsUntilNextLocalMidnight())
+
+    return () => {
+      window.clearTimeout(timerId)
+    }
+  }, [])
 
   // Get greeting based on time of day
   const getGreeting = () => {
