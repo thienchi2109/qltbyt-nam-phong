@@ -29,9 +29,9 @@ export interface AppNavItem {
 const MOBILE_FOOTER_HREFS = [
   "/dashboard",
   "/equipment",
+  "/qr-scanner",
   "/repair-requests",
   "/transfers",
-  "/qr-scanner",
 ] as const
 
 const APP_NAV_ITEMS: AppNavItem[] = [

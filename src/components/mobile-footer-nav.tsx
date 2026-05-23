@@ -34,8 +34,13 @@ export function MobileFooterNav({
   const mainNavItems = React.useMemo(() => getMobileFooterMainNavItems(user?.role), [user?.role])
 
   return (
-    <div className="fixed inset-x-3 bottom-3 mobile-footer-z rounded-3xl border border-white/70 bg-white/90 shadow-[0_16px_40px_rgba(15,23,42,0.18)] backdrop-blur-xl lg:hidden">
-      <nav className="grid h-16 grid-cols-5 items-center px-1.5" aria-label="Điều hướng chính">
+    <div className="fixed inset-x-3 bottom-3 mobile-footer-z rounded-[2rem] lg:hidden">
+      <div
+        aria-hidden="true"
+        data-testid="mobile-footer-notch-bar"
+        className="absolute inset-0 rounded-[2rem] border border-white/70 bg-white/90 shadow-[0_16px_40px_rgba(15,23,42,0.18)] backdrop-blur-xl [mask-image:radial-gradient(circle_at_50%_0,transparent_0_38px,black_39px)] [mask-repeat:no-repeat] [mask-size:100%_100%] [-webkit-mask-image:radial-gradient(circle_at_50%_0,transparent_0_38px,black_39px)] [-webkit-mask-repeat:no-repeat] [-webkit-mask-size:100%_100%]"
+      />
+      <nav className="relative grid h-16 grid-cols-5 items-center px-1.5" aria-label="Điều hướng chính">
         {mainNavItems.map(({ href, icon: Icon, label, mobileLabel, badgeKey }) => {
           const isActive = isAppNavItemActive(pathname, href)
           const badgeCount = badgeKey ? notificationCounts[badgeKey] : 0

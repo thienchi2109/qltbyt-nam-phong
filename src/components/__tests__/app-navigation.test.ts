@@ -44,9 +44,9 @@ describe("app-navigation role filtering", () => {
     expect(getMobileFooterMainNavItems("admin").map((item) => item.href)).toEqual([
       "/dashboard",
       "/equipment",
+      "/qr-scanner?autoStart=1",
       "/repair-requests",
       "/transfers",
-      "/qr-scanner?autoStart=1",
     ])
 
     expect(getMobileFooterMoreNavItems("admin")).toEqual([])

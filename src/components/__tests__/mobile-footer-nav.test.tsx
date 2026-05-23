@@ -45,6 +45,7 @@ describe("MobileFooterNav", () => {
     const repairLink = screen.getByText("Sửa chữa").closest("a")
     const transferLink = screen.getByText("Luân chuyển").closest("a")
     const qrLink = screen.getByText("Quét QR").closest("a")
+    const navLinks = screen.getAllByRole("link").map((link) => link.getAttribute("aria-label"))
 
     expect(screen.getByText("Tổng quan").closest("a")).toHaveAttribute("href", "/dashboard")
     expect(screen.getByText("Thiết bị").closest("a")).toHaveAttribute("href", "/equipment")
@@ -56,6 +57,7 @@ describe("MobileFooterNav", () => {
     expect(qrLink).toHaveAttribute("href", "/qr-scanner?autoStart=1")
     expect(qrLink!.querySelector("svg")).toHaveClass("text-white")
     expect(qrLink!.querySelector("svg")).not.toHaveClass("text-slate-500")
+    expect(navLinks).toEqual(["Tổng quan", "Thiết bị", "Quét QR", "Sửa chữa", "Luân chuyển"])
 
     expect(within(repairLink!).getByText("2")).toBeInTheDocument()
     expect(within(transferLink!).getByText("4")).toBeInTheDocument()
@@ -63,5 +65,18 @@ describe("MobileFooterNav", () => {
     expect(screen.queryByRole("button", { name: /thêm tùy chọn/i })).not.toBeInTheDocument()
     expect(screen.queryByText("Bảo trì")).not.toBeInTheDocument()
     expect(screen.queryByText("Báo cáo")).not.toBeInTheDocument()
+  })
+
+  it("cuts a centered notch around the floating QR action", () => {
+    render(<MobileFooterNav />)
+
+    const nav = screen.getByRole("navigation", { name: "Điều hướng chính" })
+    const shell = nav.parentElement
+    const notchBar = screen.getByTestId("mobile-footer-notch-bar")
+
+    expect(shell).not.toBeNull()
+    expect(shell).toHaveClass("rounded-[2rem]")
+    expect(notchBar.className).toContain("[mask-image:radial-gradient")
+    expect(notchBar.className).toContain("circle_at_50%_0")
   })
 })
