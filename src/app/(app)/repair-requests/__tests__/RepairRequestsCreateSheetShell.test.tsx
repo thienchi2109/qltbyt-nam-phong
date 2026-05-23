@@ -58,6 +58,31 @@ vi.mock("@/components/ui/sheet", () => ({
   SheetTitle: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
 }))
 
+vi.mock("@/components/shared/SideSheetShell", () => ({
+  SideSheetShell: ({
+    children,
+    contentClassName,
+    description,
+    onOpenChange,
+    title,
+  }: {
+    children: React.ReactNode
+    contentClassName?: string
+    description?: React.ReactNode
+    onOpenChange: (open: boolean) => void
+    title: React.ReactNode
+  }) => (
+    <section data-testid="shared-side-sheet" data-content-class={contentClassName}>
+      <h2>{title}</h2>
+      <p>{description}</p>
+      <button type="button" onClick={() => onOpenChange(false)}>
+        close shared sheet
+      </button>
+      {children}
+    </section>
+  ),
+}))
+
 vi.mock("@/components/ui/button", () => ({
   Button: ({
     children,
@@ -115,16 +140,14 @@ describe("RepairRequestsCreateSheet shell", () => {
     mocks.fetchEquipment.mockResolvedValue([])
   })
 
-  it("uses a right-side responsive sheet even on mobile viewports", () => {
+  it("uses the shared side-sheet shell with the repair-create sizing", () => {
     render(<RepairRequestsCreateSheet />)
 
-    const sheetContent = screen.getByTestId("sheet-content")
+    const shell = screen.getByTestId("shared-side-sheet")
 
-    expect(sheetContent).toHaveAttribute("data-side", "right")
-    expect(sheetContent.className).toContain("w-full")
-    expect(sheetContent.className).toContain("sm:max-w-lg")
-    expect(sheetContent.className).toContain("p-0")
-    expect(sheetContent.className).not.toContain("h-[90vh]")
+    expect(shell).toHaveAttribute("data-content-class", "sm:max-w-lg")
+    expect(screen.getByText("Tạo yêu cầu sửa chữa")).toBeInTheDocument()
+    expect(screen.getByText("Điền thông tin bên dưới để gửi yêu cầu mới.")).toBeInTheDocument()
   })
 
   it("marks the calendar trigger as a non-submit button inside the form", () => {

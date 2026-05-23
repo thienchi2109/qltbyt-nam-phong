@@ -1,9 +1,8 @@
 import * as React from "react"
 import { useSession } from "next-auth/react"
+import { SideSheetShell } from "@/components/shared/SideSheetShell"
 import { Button } from "@/components/ui/button"
 import {
-  Sheet,
-  SheetContent,
   SheetDescription,
   SheetTitle,
 } from "@/components/ui/sheet"
@@ -85,6 +84,31 @@ export const RepairRequestsDetailView = React.memo(function RepairRequestsDetail
 
   if (!requestToView) return null
 
+  const detailTabs = (
+    <RepairRequestsDetailTabs
+      request={requestToView}
+      historyEntries={historyEntries}
+      isLoadingHistory={historyQuery.isLoading}
+      isHistoryError={historyQuery.isError}
+      historyErrorMessage={historyErrorMessage}
+      activeTab={activeTab}
+      onTabChange={setActiveTab}
+    />
+  )
+
+  const footer = (
+    <>
+      {hasFooterContent ? <div className="min-w-0">{footerContent}</div> : null}
+      <Button variant="outline" onClick={onClose}>
+        Đóng
+      </Button>
+    </>
+  )
+
+  const footerClassName = hasFooterContent
+    ? "flex items-center justify-between gap-3"
+    : "flex justify-end"
+
   const content = (
     <div className="flex h-full flex-col">
       <div className="p-4 border-b">
@@ -94,15 +118,7 @@ export const RepairRequestsDetailView = React.memo(function RepairRequestsDetail
         </SheetDescription>
       </div>
       {contentHeader}
-      <RepairRequestsDetailTabs
-        request={requestToView}
-        historyEntries={historyEntries}
-        isLoadingHistory={historyQuery.isLoading}
-        isHistoryError={historyQuery.isError}
-        historyErrorMessage={historyErrorMessage}
-        activeTab={activeTab}
-        onTabChange={setActiveTab}
-      />
+      {detailTabs}
       <div
         className={
           hasFooterContent
@@ -110,10 +126,7 @@ export const RepairRequestsDetailView = React.memo(function RepairRequestsDetail
             : "p-4 border-t flex justify-end"
         }
       >
-        {hasFooterContent ? <div className="min-w-0">{footerContent}</div> : null}
-        <Button variant="outline" onClick={onClose}>
-          Đóng
-        </Button>
+        {footer}
       </div>
     </div>
   )
@@ -123,10 +136,17 @@ export const RepairRequestsDetailView = React.memo(function RepairRequestsDetail
   }
 
   return (
-    <Sheet open={!!requestToView} onOpenChange={(open) => !open && onClose()}>
-      <SheetContent side="right" className="w-full sm:max-w-xl md:max-w-2xl lg:max-w-3xl p-0">
-        {content}
-      </SheetContent>
-    </Sheet>
+    <SideSheetShell
+      open={!!requestToView}
+      onOpenChange={(open) => !open && onClose()}
+      title="Chi tiết yêu cầu sửa chữa"
+      description="Thông tin chi tiết và lịch sử của yêu cầu sửa chữa thiết bị"
+      contentClassName="sm:max-w-xl md:max-w-2xl lg:max-w-3xl"
+      footer={footer}
+      footerClassName={footerClassName}
+    >
+      {contentHeader}
+      {detailTabs}
+    </SideSheetShell>
   )
 })

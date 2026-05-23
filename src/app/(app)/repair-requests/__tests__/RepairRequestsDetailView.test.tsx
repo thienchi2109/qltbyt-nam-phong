@@ -88,6 +88,34 @@ vi.mock("../_components/RepairRequestsDetailTabs", () => ({
   },
 }))
 
+vi.mock("@/components/shared/SideSheetShell", () => ({
+  SideSheetShell: ({
+    children,
+    contentClassName,
+    description,
+    footer,
+    onOpenChange,
+    title,
+  }: {
+    children: React.ReactNode
+    contentClassName?: string
+    description?: React.ReactNode
+    footer?: React.ReactNode
+    onOpenChange: (open: boolean) => void
+    title: React.ReactNode
+  }) => (
+    <section role="dialog" data-testid="shared-side-sheet" data-content-class={contentClassName}>
+      <h2>{title}</h2>
+      <p>{description}</p>
+      <button type="button" onClick={() => onOpenChange(false)}>
+        close shared sheet
+      </button>
+      {children}
+      {footer}
+    </section>
+  ),
+}))
+
 const mockHistory: RepairRequestChangeHistory[] = [
   {
     id: 101,
@@ -165,7 +193,7 @@ describe("RepairRequestsDetailView", () => {
     expect(container.innerHTML).toBe("")
   })
 
-  it("renders a unified Sheet shell with responsive sizing and mapped history tabs", () => {
+  it("renders a shared side-sheet shell with responsive sizing and mapped history tabs", () => {
     render(<RepairRequestsDetailView requestToView={mockRequest} onClose={vi.fn()} />)
 
     expect(screen.getByText("Chi tiết yêu cầu sửa chữa")).toBeInTheDocument()
@@ -177,11 +205,10 @@ describe("RepairRequestsDetailView", () => {
     )
 
     const dialogEl = screen.getByRole("dialog")
-    expect(dialogEl.className).toContain("inset-y-0")
-    expect(dialogEl.className).toContain("sm:max-w-xl")
-    expect(dialogEl.className).toContain("md:max-w-2xl")
-    expect(dialogEl.className).toContain("lg:max-w-3xl")
-    expect(dialogEl.className).not.toContain("translate-x-")
+    expect(dialogEl).toHaveAttribute(
+      "data-content-class",
+      "sm:max-w-xl md:max-w-2xl lg:max-w-3xl",
+    )
 
     expect(mockUseRepairRequestHistory).toHaveBeenCalledWith({
       requestId: 1,
@@ -260,7 +287,7 @@ describe("RepairRequestsDetailView", () => {
 
     render(<RepairRequestsDetailView requestToView={mockRequest} onClose={onClose} />)
 
-    await user.click(screen.getByRole("button", { name: /đóng/i }))
+    await user.click(screen.getByRole("button", { name: /close shared sheet/i }))
 
     expect(onClose).toHaveBeenCalledTimes(1)
   })

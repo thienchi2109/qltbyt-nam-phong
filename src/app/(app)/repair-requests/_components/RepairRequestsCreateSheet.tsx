@@ -1,13 +1,7 @@
 "use client"
 
 import * as React from "react"
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader as SheetHeaderUI,
-  SheetTitle,
-} from "@/components/ui/sheet"
+import { SideSheetShell } from "@/components/shared/SideSheetShell"
 import { useRepairRequestsContext } from "../_hooks/useRepairRequestsContext"
 import type { EquipmentSelectItem, RepairUnit } from "../types"
 import { fetchRepairRequestEquipmentList } from "../repair-requests-equipment-rpc"
@@ -64,6 +58,9 @@ function repairRequestsCreateFormReducer(
   }
 }
 
+/**
+ * Renders the repair-request creation form inside the shared side-sheet shell.
+ */
 export function RepairRequestsCreateSheet() {
   const {
     dialogState: { isCreateOpen, preSelectedEquipment },
@@ -200,24 +197,26 @@ export function RepairRequestsCreateSheet() {
     const run = async () => {
       try {
         const eq = await fetchRepairRequestEquipmentList(q, 20, ctrl.signal)
-        if (ctrl.signal.aborted) return
         const completedDraftEquipmentLookup = Boolean(
           assistantDraft?.equipment?.thiet_bi_id && q === draftEquipmentLabel,
         )
-        dispatchForm({
-          type: "patch",
-          updates: {
-            allEquipment: eq || [],
-            ...(completedDraftEquipmentLookup ? { hasDraftEquipmentLookupCompleted: true } : {}),
-            isSearchPending: false,
-          },
-        })
+        if (!ctrl.signal.aborted) {
+          dispatchForm({
+            type: "patch",
+            updates: {
+              allEquipment: eq || [],
+              ...(completedDraftEquipmentLookup ? { hasDraftEquipmentLookupCompleted: true } : {}),
+              isSearchPending: false,
+            },
+          })
+        }
       } catch (e) {
-        if (ctrl.signal.aborted) return
-        dispatchForm({
-          type: "patch",
-          updates: { allEquipment: [], isSearchPending: false },
-        })
+        if (!ctrl.signal.aborted) {
+          dispatchForm({
+            type: "patch",
+            updates: { allEquipment: [], isSearchPending: false },
+          })
+        }
       }
     }
     const timeoutId = window.setTimeout(run, REPAIR_REQUEST_EQUIPMENT_SEARCH_DEBOUNCE_MS)
@@ -301,43 +300,40 @@ export function RepairRequestsCreateSheet() {
   }
 
   return (
-    <Sheet open={isCreateOpen} onOpenChange={(open) => !open && closeAllDialogs()}>
-      <SheetContent side="right" className="w-full p-0 sm:max-w-lg">
-        <div className="flex h-full flex-col">
-          <SheetHeaderUI className="border-b p-4">
-            <SheetTitle>Tạo yêu cầu sửa chữa</SheetTitle>
-            <SheetDescription>Điền thông tin bên dưới để gửi yêu cầu mới.</SheetDescription>
-          </SheetHeaderUI>
-          <div className="mt-4 flex-1 overflow-y-auto px-4 pb-4">
-            <RepairRequestsCreateSheetAlerts
-              hasAssistantDraft={Boolean(assistantDraft)}
-              showUnresolvedDraftEquipment={formState.unresolvedDraftEquipment}
-            />
-            <RepairRequestsCreateSheetForm
-              canSetRepairUnit={canSetRepairUnit}
-              desiredDate={formState.desiredDate}
-              externalCompanyName={formState.externalCompanyName}
-              filteredEquipment={filteredEquipment}
-              handleSearchChange={handleSearchChange}
-              handleSelectEquipment={handleSelectEquipment}
-              handleSubmit={handleSubmit}
-              isSubmitting={createMutation.isPending}
-              issueDescription={formState.issueDescription}
-              onDesiredDateChange={(desiredDate) => dispatchForm({ type: "patch", updates: { desiredDate } })}
-              onExternalCompanyNameChange={(externalCompanyName) => dispatchForm({ type: "patch", updates: { externalCompanyName } })}
-              onIssueDescriptionChange={(issueDescription) => dispatchForm({ type: "patch", updates: { issueDescription } })}
-              onRepairItemsChange={(repairItems) => dispatchForm({ type: "patch", updates: { repairItems } })}
-              onRepairUnitChange={(repairUnit) => dispatchForm({ type: "patch", updates: { repairUnit } })}
-              onCancel={closeAllDialogs}
-              repairItems={formState.repairItems}
-              repairUnit={formState.repairUnit}
-              searchQuery={formState.searchQuery}
-              selectedEquipment={formState.selectedEquipment}
-              shouldShowNoResults={shouldShowNoResults}
-            />
-          </div>
-        </div>
-      </SheetContent>
-    </Sheet>
+    <SideSheetShell
+      open={isCreateOpen}
+      onOpenChange={(open) => !open && closeAllDialogs()}
+      title="Tạo yêu cầu sửa chữa"
+      description="Điền thông tin bên dưới để gửi yêu cầu mới."
+      contentClassName="sm:max-w-lg"
+      bodyClassName="mt-4 overflow-y-auto px-4 pb-4"
+    >
+      <RepairRequestsCreateSheetAlerts
+        hasAssistantDraft={Boolean(assistantDraft)}
+        showUnresolvedDraftEquipment={formState.unresolvedDraftEquipment}
+      />
+      <RepairRequestsCreateSheetForm
+        canSetRepairUnit={canSetRepairUnit}
+        desiredDate={formState.desiredDate}
+        externalCompanyName={formState.externalCompanyName}
+        filteredEquipment={filteredEquipment}
+        handleSearchChange={handleSearchChange}
+        handleSelectEquipment={handleSelectEquipment}
+        handleSubmit={handleSubmit}
+        isSubmitting={createMutation.isPending}
+        issueDescription={formState.issueDescription}
+        onDesiredDateChange={(desiredDate) => dispatchForm({ type: "patch", updates: { desiredDate } })}
+        onExternalCompanyNameChange={(externalCompanyName) => dispatchForm({ type: "patch", updates: { externalCompanyName } })}
+        onIssueDescriptionChange={(issueDescription) => dispatchForm({ type: "patch", updates: { issueDescription } })}
+        onRepairItemsChange={(repairItems) => dispatchForm({ type: "patch", updates: { repairItems } })}
+        onRepairUnitChange={(repairUnit) => dispatchForm({ type: "patch", updates: { repairUnit } })}
+        onCancel={closeAllDialogs}
+        repairItems={formState.repairItems}
+        repairUnit={formState.repairUnit}
+        searchQuery={formState.searchQuery}
+        selectedEquipment={formState.selectedEquipment}
+        shouldShowNoResults={shouldShowNoResults}
+      />
+    </SideSheetShell>
   )
 }
