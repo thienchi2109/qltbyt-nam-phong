@@ -4,6 +4,7 @@ vi.mock('server-only', () => ({}))
 
 const getServerSessionMock = vi.fn()
 const callServerRpcMock = vi.fn()
+const isAiKillSwitchActiveMock = vi.fn()
 const streamTextMock = vi.fn()
 const stepCountIsMock = vi.fn()
 
@@ -13,6 +14,10 @@ vi.mock('next-auth', () => ({
 
 vi.mock('@/lib/ai/server-rpc', () => ({
   callServerRpc: (...args: unknown[]) => callServerRpcMock(...args),
+}))
+
+vi.mock('@/lib/ai/kill-switch', () => ({
+  isAiKillSwitchActive: (...args: unknown[]) => isAiKillSwitchActiveMock(...args),
 }))
 
 vi.mock('@/lib/ai/provider', () => ({
@@ -58,6 +63,7 @@ describe('/api/chat kill switch and global quota', () => {
     getServerSessionMock.mockResolvedValue({
       user: { id: 'u1', role: 'admin', don_vi: 2 },
     })
+    isAiKillSwitchActiveMock.mockResolvedValue({ active: false, source: 'db' })
     stepCountIsMock.mockReturnValue('STOP_WHEN_SENTINEL')
   })
 
@@ -65,15 +71,71 @@ describe('/api/chat kill switch and global quota', () => {
     vi.unstubAllEnvs()
   })
 
-  it('returns 429 without calling quota RPC when AI_KILL_SWITCH is on', async () => {
-    vi.stubEnv('AI_KILL_SWITCH', 'on')
+  it('returns 429 without calling quota RPC when DB kill switch is on', async () => {
+    isAiKillSwitchActiveMock.mockResolvedValue({
+      active: true,
+      source: 'db',
+      reason: 'maintenance',
+    })
 
     const { POST } = await import('../route')
     const res = await POST(buildRequest({ messages: VALID_MESSAGES }) as never)
-    const text = await res.text()
+    const body = await res.json()
 
     expect(res.status).toBe(429)
-    expect(text).toBe('AI usage is temporarily disabled.')
+    expect(body).toEqual({
+      error: {
+        code: 'ai_usage_limited',
+        reason: 'kill_switch',
+        message: 'maintenance',
+        retryAfterMs: 60_000,
+      },
+    })
+    expect(res.headers.get('Retry-After')).toBe('60')
+    expect(isAiKillSwitchActiveMock).toHaveBeenCalledOnce()
+    expect(callServerRpcMock).not.toHaveBeenCalled()
+    expect(streamTextMock).not.toHaveBeenCalled()
+  })
+
+  it('returns 429 with default message when env kill switch is on', async () => {
+    isAiKillSwitchActiveMock.mockResolvedValue({
+      active: true,
+      source: 'env',
+    })
+
+    const { POST } = await import('../route')
+    const res = await POST(buildRequest({ messages: VALID_MESSAGES }) as never)
+    const body = await res.json()
+
+    expect(res.status).toBe(429)
+    expect(body.error).toEqual({
+      code: 'ai_usage_limited',
+      reason: 'kill_switch',
+      message: 'AI usage is temporarily disabled.',
+      retryAfterMs: 60_000,
+    })
+    expect(res.headers.get('Retry-After')).toBe('60')
+    expect(callServerRpcMock).not.toHaveBeenCalled()
+    expect(streamTextMock).not.toHaveBeenCalled()
+  })
+
+  it('fails closed when the DB kill-switch read fails', async () => {
+    isAiKillSwitchActiveMock.mockResolvedValue({
+      active: true,
+      source: 'db_error_fail_closed',
+    })
+
+    const { POST } = await import('../route')
+    const res = await POST(buildRequest({ messages: VALID_MESSAGES }) as never)
+    const body = await res.json()
+
+    expect(res.status).toBe(429)
+    expect(body.error).toEqual({
+      code: 'ai_usage_limited',
+      reason: 'kill_switch',
+      message: 'AI usage is temporarily disabled.',
+      retryAfterMs: 60_000,
+    })
     expect(callServerRpcMock).not.toHaveBeenCalled()
     expect(streamTextMock).not.toHaveBeenCalled()
   })
@@ -91,10 +153,15 @@ describe('/api/chat kill switch and global quota', () => {
 
     const { POST } = await import('../route')
     const res = await POST(buildRequest({ messages: VALID_MESSAGES }) as never)
-    const text = await res.text()
+    const body = await res.json()
 
     expect(res.status).toBe(429)
-    expect(text).toBe('AI daily quota exceeded')
+    expect(body.error).toEqual({
+      code: 'ai_usage_limited',
+      reason: 'global_quota',
+      message: 'AI daily quota exceeded',
+      retryAfterMs: 60_000,
+    })
     expect(streamTextMock).not.toHaveBeenCalled()
     expect(callServerRpcMock).toHaveBeenCalledWith(
       'ai_quota_reserve',

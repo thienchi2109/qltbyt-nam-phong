@@ -1,4 +1,6 @@
-import { describe, it, expect } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
+
+vi.mock('server-only', () => ({}))
 
 import { POST } from '../[fn]/route'
 
@@ -90,6 +92,8 @@ describe('RPC proxy whitelist', () => {
     'ai_quota_compliance_summary',
     'ai_category_suggestion',
     'ai_department_list',
+    'ai_kill_switch_status',
+    'ai_kill_switch_set',
   ])('allows AI RPC "%s" through whitelist checks', async (fn) => {
     const res = await invokeRpcProxy(fn)
 

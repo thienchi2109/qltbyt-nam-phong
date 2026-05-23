@@ -3,9 +3,14 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 vi.mock('server-only', () => ({}))
 
 const callServerRpcMock = vi.fn()
+const isAiKillSwitchActiveMock = vi.fn()
 
 vi.mock('@/lib/ai/server-rpc', () => ({
   callServerRpc: (...args: unknown[]) => callServerRpcMock(...args),
+}))
+
+vi.mock('@/lib/ai/kill-switch', () => ({
+  isAiKillSwitchActive: (...args: unknown[]) => isAiKillSwitchActiveMock(...args),
 }))
 
 describe('distributed AI usage metering', () => {
@@ -18,6 +23,8 @@ describe('distributed AI usage metering', () => {
     vi.stubEnv('AI_DAILY_GLOBAL_QUOTA_REQUESTS', '6')
     vi.stubEnv('AI_QUOTA_RESERVATION_TTL_MS', '120000')
     callServerRpcMock.mockReset()
+    isAiKillSwitchActiveMock.mockReset()
+    isAiKillSwitchActiveMock.mockResolvedValue({ active: false, source: 'db' })
   })
 
   afterEach(() => {
@@ -65,13 +72,33 @@ describe('distributed AI usage metering', () => {
     )
   })
 
-  it('short-circuits when AI_KILL_SWITCH is on', async () => {
-    vi.stubEnv('AI_KILL_SWITCH', 'on')
+  it('short-circuits when the AI kill switch is active', async () => {
+    isAiKillSwitchActiveMock.mockResolvedValue({
+      active: true,
+      source: 'db',
+      reason: 'maintenance',
+    })
 
     const { reserveUsage } = await import('../usage-metering')
     const result = await reserveUsage({ userId: 'u1', tenantId: 2 })
 
     expect(result).toEqual({
+      allowed: false,
+      reason: 'kill_switch',
+      message: 'maintenance',
+    })
+    expect(isAiKillSwitchActiveMock).toHaveBeenCalledOnce()
+    expect(callServerRpcMock).not.toHaveBeenCalled()
+  })
+
+  it('uses the default kill-switch message when no reason is configured', async () => {
+    isAiKillSwitchActiveMock.mockResolvedValue({
+      active: true,
+      source: 'env',
+    })
+
+    const { reserveUsage } = await import('../usage-metering')
+    await expect(reserveUsage({ userId: 'u1', tenantId: 2 })).resolves.toEqual({
       allowed: false,
       reason: 'kill_switch',
       message: 'AI usage is temporarily disabled.',
