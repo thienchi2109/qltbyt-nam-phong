@@ -54,6 +54,8 @@ describe("MobileFooterNav", () => {
     expect(transferLink).toHaveAttribute("href", "/transfers")
     expect(qrLink).not.toBeNull()
     expect(qrLink).toHaveAttribute("href", "/qr-scanner?autoStart=1")
+    expect(qrLink!.querySelector("svg")).toHaveClass("text-white")
+    expect(qrLink!.querySelector("svg")).not.toHaveClass("text-slate-500")
 
     expect(within(repairLink!).getByText("2")).toBeInTheDocument()
     expect(within(transferLink!).getByText("4")).toBeInTheDocument()

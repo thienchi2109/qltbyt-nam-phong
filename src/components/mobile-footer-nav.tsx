@@ -67,8 +67,9 @@ export function MobileFooterNav({
               >
                 <Icon className={cn(
                   "transition-colors",
-                  isQrAction ? "size-8 text-white" : "size-5",
-                  isActive && !isQrAction ? "text-white" : "text-slate-500"
+                  isQrAction
+                    ? "size-8 text-white"
+                    : cn("size-5", isActive ? "text-white" : "text-slate-500")
                 )} />
               </span>
               <AppNotificationBadge count={badgeCount} active={isActive} mode="floating" />
