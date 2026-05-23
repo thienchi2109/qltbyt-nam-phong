@@ -13,18 +13,18 @@ import { cn } from "@/lib/utils"
 
 type SheetSide = "top" | "bottom" | "left" | "right"
 
-interface SideSheetShellProps {
-  open: boolean
-  onOpenChange: (open: boolean) => void
-  title?: React.ReactNode
-  description?: React.ReactNode
-  children: React.ReactNode
-  footer?: React.ReactNode
-  side?: SheetSide
-  contentClassName?: string
-  headerClassName?: string
-  bodyClassName?: string
-  footerClassName?: string
+export interface SideSheetShellProps {
+  readonly open: boolean
+  readonly onOpenChange: (open: boolean) => void
+  readonly title?: React.ReactNode
+  readonly description?: React.ReactNode
+  readonly children: React.ReactNode
+  readonly footer?: React.ReactNode
+  readonly side?: SheetSide
+  readonly contentClassName?: string
+  readonly headerClassName?: string
+  readonly bodyClassName?: string
+  readonly footerClassName?: string
 }
 
 /**
@@ -42,7 +42,7 @@ export function SideSheetShell({
   headerClassName,
   bodyClassName,
   footerClassName,
-}: SideSheetShellProps) {
+}: SideSheetShellProps): React.JSX.Element {
   const hasHeader = title !== null && title !== undefined
 
   return (

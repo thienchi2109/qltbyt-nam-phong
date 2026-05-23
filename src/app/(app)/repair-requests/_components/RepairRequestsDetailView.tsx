@@ -142,6 +142,7 @@ export const RepairRequestsDetailView = React.memo(function RepairRequestsDetail
       title="Chi tiết yêu cầu sửa chữa"
       description="Thông tin chi tiết và lịch sử của yêu cầu sửa chữa thiết bị"
       contentClassName="sm:max-w-xl md:max-w-2xl lg:max-w-3xl"
+      bodyClassName="flex flex-col"
       footer={footer}
       footerClassName={footerClassName}
     >

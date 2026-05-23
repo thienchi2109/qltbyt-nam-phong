@@ -90,6 +90,7 @@ vi.mock("../_components/RepairRequestsDetailTabs", () => ({
 
 vi.mock("@/components/shared/SideSheetShell", () => ({
   SideSheetShell: ({
+    bodyClassName,
     children,
     contentClassName,
     description,
@@ -97,6 +98,7 @@ vi.mock("@/components/shared/SideSheetShell", () => ({
     onOpenChange,
     title,
   }: {
+    bodyClassName?: string
     children: React.ReactNode
     contentClassName?: string
     description?: React.ReactNode
@@ -104,7 +106,12 @@ vi.mock("@/components/shared/SideSheetShell", () => ({
     onOpenChange: (open: boolean) => void
     title: React.ReactNode
   }) => (
-    <section role="dialog" data-testid="shared-side-sheet" data-content-class={contentClassName}>
+    <section
+      role="dialog"
+      data-testid="shared-side-sheet"
+      data-body-class={bodyClassName}
+      data-content-class={contentClassName}
+    >
       <h2>{title}</h2>
       <p>{description}</p>
       <button type="button" onClick={() => onOpenChange(false)}>
@@ -209,6 +216,7 @@ describe("RepairRequestsDetailView", () => {
       "data-content-class",
       "sm:max-w-xl md:max-w-2xl lg:max-w-3xl",
     )
+    expect(dialogEl).toHaveAttribute("data-body-class", "flex flex-col")
 
     expect(mockUseRepairRequestHistory).toHaveBeenCalledWith({
       requestId: 1,
