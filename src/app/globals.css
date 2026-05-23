@@ -174,11 +174,6 @@
     z-index: 40;
   }
 
-  /* Mobile KPI Cards optimization */
-  .mobile-kpi-card {
-    @apply min-h-[120px] md:min-h-[140px];
-  }
-
   /* Mobile quick actions optimization */
   .mobile-quick-action {
     @apply flex h-full min-h-[96px] flex-col items-center justify-center gap-2 rounded-2xl p-3 text-center transition-all hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 md:min-h-[112px] md:rounded-xl md:p-4 md:gap-3;

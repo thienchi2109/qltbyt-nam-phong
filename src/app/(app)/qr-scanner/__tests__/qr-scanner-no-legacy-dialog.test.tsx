@@ -18,6 +18,7 @@ import * as React from "react"
 const mockPush = vi.fn()
 vi.mock("next/navigation", () => ({
     useRouter: () => ({ push: mockPush }),
+    useSearchParams: () => new URLSearchParams(window.location.search),
 }))
 
 // Intercept next/dynamic to render components synchronously
@@ -109,6 +110,7 @@ import QRScannerPage from "../page"
 describe("QR Scanner: no legacy EditEquipmentDialog", () => {
     beforeEach(() => {
         vi.clearAllMocks()
+        window.history.replaceState(null, "", "/qr-scanner")
         vi.stubGlobal("navigator", {
             mediaDevices: {
                 getUserMedia: vi.fn(),
@@ -126,6 +128,14 @@ describe("QR Scanner: no legacy EditEquipmentDialog", () => {
         await waitFor(() => {
             expect(mockPush).toHaveBeenCalledWith("/equipment?highlight=42")
         })
+    })
+
+    it("opens the camera immediately when autoStart=1 is present", async () => {
+        window.history.replaceState(null, "", "/qr-scanner?autoStart=1")
+
+        render(<QRScannerPage />)
+
+        expect(await screen.findByTestId("qr-camera")).toBeInTheDocument()
     })
 
     it("does not navigate when update-status is triggered without equipment", async () => {

@@ -61,6 +61,9 @@ type AppLayoutShellProps = {
   user: AppLayoutUser
 }
 
+/**
+ * Wraps authenticated app pages with shared navigation, header actions, and mobile footer state.
+ */
 export function AppLayoutShell({ children, user }: AppLayoutShellProps) {
   return (
     <TenantSelectionProvider>
@@ -149,13 +152,13 @@ function AppLayoutShellContent({ children, user }: AppLayoutShellProps) {
             open={isChangePasswordOpen}
             onOpenChange={(isOpen) => dispatchUi({ type: "setChangePasswordOpen", isOpen })}
           />
-          <div
-            className={cn(
-              "grid min-h-screen w-full transition-all pt-14 pb-20 md:pt-0 md:pb-0",
-              isSidebarOpen ? "md:grid-cols-[220px_1fr]" : "md:grid-cols-[72px_1fr]"
+            <div
+              className={cn(
+              "grid min-h-screen w-full transition-all pt-14 pb-20 lg:pt-0 lg:pb-0",
+              isSidebarOpen ? "lg:grid-cols-[220px_1fr]" : "lg:grid-cols-[72px_1fr]"
             )}
           >
-            <div className="hidden border-r border-border bg-white md:block shadow-[2px_0_8px_rgba(0,0,0,0.04)]">
+            <div className="hidden border-r border-border bg-white shadow-[2px_0_8px_rgba(0,0,0,0.04)] lg:block">
               <div className="flex h-full max-h-screen flex-col">
                 <div className="flex h-auto flex-col items-center gap-4 border-b border-border p-4">
                   <Link href="/" className="flex flex-col items-center gap-3 font-semibold text-primary" data-tour="sidebar-logo">
@@ -179,7 +182,7 @@ function AppLayoutShellContent({ children, user }: AppLayoutShellProps) {
               </div>
             </div>
             <div className="flex flex-col">
-              <header className="fixed top-0 left-0 right-0 z-40 flex h-14 items-center gap-4 bg-white px-4 shadow-md md:relative md:z-auto lg:h-[60px] lg:px-6">
+              <header className="fixed top-0 left-0 right-0 z-40 flex h-14 items-center gap-4 bg-white px-4 shadow-md lg:relative lg:z-auto lg:h-[60px] lg:px-6">
                 <Sheet open={isMobileSheetOpen} onOpenChange={(isOpen) => dispatchUi({ type: "setMobileSheetOpen", isOpen })}>
                   <SheetTrigger asChild>
                     <Button
@@ -220,7 +223,7 @@ function AppLayoutShellContent({ children, user }: AppLayoutShellProps) {
                 <Button
                   variant="outline"
                   size="icon"
-                  className="hidden shrink-0 touch-target md:flex"
+                  className="hidden shrink-0 touch-target lg:flex"
                   onClick={() => dispatchUi({ type: "toggleSidebar" })}
                   data-tour="sidebar-toggle"
                 >
@@ -239,7 +242,7 @@ function AppLayoutShellContent({ children, user }: AppLayoutShellProps) {
                     ) : (
                       <TenantName
                         name={branding.data?.name ?? null}
-                        className="max-w-[calc(100vw-120px)] truncate text-sm sm:max-w-[400px] sm:text-base md:max-w-none lg:text-lg"
+                        className="max-w-[calc(100vw-120px)] truncate text-sm sm:max-w-[400px] sm:text-base lg:max-w-none lg:text-lg"
                       />
                     )}
                   </div>
@@ -293,7 +296,7 @@ function AppLayoutShellContent({ children, user }: AppLayoutShellProps) {
                   </DropdownMenuContent>
                 </DropdownMenu>
               </header>
-              <main className="flex flex-1 flex-col gap-4 bg-background p-4 pb-24 md:pb-4 lg:gap-8 lg:p-8">
+              <main className="flex flex-1 flex-col gap-4 bg-background p-4 pb-24 lg:gap-8 lg:p-8 lg:pb-8">
                 <MainContentTransition>
                   {children}
                 </MainContentTransition>

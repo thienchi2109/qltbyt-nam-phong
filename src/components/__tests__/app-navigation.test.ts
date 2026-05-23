@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest"
 
-import { getAppNavigationItems, getMobileFooterMoreNavItems } from "@/components/app-navigation"
+import {
+  getAppNavigationItems,
+  getMobileFooterMainNavItems,
+  getMobileFooterMoreNavItems,
+} from "@/components/app-navigation"
 
 const restrictedRoles = ["user", "qltb_khoa", "technician"] as const
 const allowedRoles = ["to_qltb", "regional_leader", "global", "admin"] as const
@@ -26,13 +30,25 @@ describe("app-navigation role filtering", () => {
     }
   })
 
-  it("applies the same device quota filtering to the mobile more menu", () => {
+  it("does not expose device quota in the removed mobile more menu", () => {
     for (const role of restrictedRoles) {
       expect(getMoreHrefs(role)).not.toContain("/device-quota")
     }
 
     for (const role of allowedRoles) {
-      expect(getMoreHrefs(role)).toContain("/device-quota")
+      expect(getMoreHrefs(role)).not.toContain("/device-quota")
     }
+  })
+
+  it("limits the small-screen footer to the field-work routes", () => {
+    expect(getMobileFooterMainNavItems("admin").map((item) => item.href)).toEqual([
+      "/dashboard",
+      "/equipment",
+      "/repair-requests",
+      "/transfers",
+      "/qr-scanner?autoStart=1",
+    ])
+
+    expect(getMobileFooterMoreNavItems("admin")).toEqual([])
   })
 })

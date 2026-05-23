@@ -17,7 +17,7 @@ const plansSkeletonClass = "h-4 w-24 md:w-24"
 
 // Base card styles - will be extended per card with custom gradients
 const cardBaseClass =
-  "mobile-kpi-card bg-white rounded-2xl shadow-[0_4px_20px_-4px_rgba(0,0,0,0.1)] ring-1 ring-black/5 mb-4 md:rounded-xl md:shadow-none md:ring-0 md:mb-0"
+  "min-h-[120px] border-white/80 bg-white/95 rounded-[1.35rem] shadow-[0_14px_34px_rgba(15,23,42,0.08)] ring-1 ring-slate-200/70 md:min-h-[140px] md:rounded-2xl md:shadow-[0_12px_30px_rgba(15,23,42,0.06)]"
 
 // Elegant vibrant gradient backgrounds for each KPI card
 const equipmentCardClass = `${cardBaseClass}`
@@ -25,18 +25,18 @@ const maintenanceCardClass = `${cardBaseClass}`
 const repairCardClass = `${cardBaseClass}`
 const planCardClass = `${cardBaseClass}`
 const headerClass =
-  "flex flex-row items-center justify-between p-4 pb-2 md:p-6 md:pb-2 gap-3 md:gap-2"
-const titleClass = "text-sm font-semibold truncate md:text-sm md:font-medium text-slate-600"
+  "flex flex-row items-start justify-between gap-3 p-4 pb-2 md:p-5 md:pb-2"
+const titleClass = "text-sm font-semibold leading-tight text-slate-900"
 // Icon colors matching card gradients - more vibrant
 const equipmentIconClass = "size-5 text-blue-600 md:size-4 flex-shrink-0"
 const maintenanceIconClass = "size-5 text-emerald-600 md:size-4 flex-shrink-0"
 const repairIconClass = "size-5 text-sky-600 md:size-4 flex-shrink-0"
 const planIconClass = "size-5 text-purple-600 md:size-4 flex-shrink-0"
-const contentClass = "p-4 pt-0 space-y-2 md:p-6 md:pt-0"
+const contentClass = "space-y-2 p-4 pt-0 md:p-5 md:pt-0"
 const metricClass =
-  "text-4xl font-bold leading-tight tracking-tight md:text-2xl md:leading-snug md:tracking-normal text-slate-900"
+  "text-4xl font-bold leading-tight tracking-normal text-slate-950 md:text-3xl md:leading-snug"
 const descriptionClass =
-  "text-sm text-neutral-500 leading-snug md:text-xs md:text-muted-foreground md:leading-tight"
+  "text-sm leading-snug text-neutral-600 md:text-sm md:leading-tight"
 
 function TotalEquipmentCard() {
   const { data: totalDevices, isLoading, error } = useTotalEquipment()
@@ -195,9 +195,12 @@ function MaintenancePlansCard() {
   )
 }
 
+/**
+ * Renders the dashboard KPI summary cards from the shared dashboard stats hooks.
+ */
 export function KPICards() {
   return (
-    <div className="grid gap-3 grid-cols-2 md:grid-cols-2 md:gap-10 md:pb-6 lg:grid-cols-4">
+    <div className="grid grid-cols-2 gap-3 md:grid-cols-2 md:gap-4 md:pb-2 lg:grid-cols-4">
       <TotalEquipmentCard />
       <MaintenanceCountCard />
       <RepairRequestsCard />

@@ -1,7 +1,6 @@
 import * as React from "react"
 import "@testing-library/jest-dom"
 import { render, screen, within } from "@testing-library/react"
-import userEvent from "@testing-library/user-event"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
 const mocks = vi.hoisted(() => ({
@@ -32,9 +31,7 @@ describe("MobileFooterNav", () => {
     })
   })
 
-  it("shows repair badge on the tab and aggregates hidden counts on the more button", async () => {
-    const user = userEvent.setup()
-
+  it("shows the five field-work tabs without an overflow menu", () => {
     render(
       <MobileFooterNav
         notificationCounts={{
@@ -46,23 +43,25 @@ describe("MobileFooterNav", () => {
     )
 
     const repairLink = screen.getByText("Sửa chữa").closest("a")
-    const moreButton = screen.getByRole("button", { name: /thêm tùy chọn/i })
-
-    expect(repairLink).not.toBeNull()
-    expect(within(repairLink!).getByText("2")).toBeInTheDocument()
-    expect(within(moreButton).getByText("9+")).toBeInTheDocument()
-    expect(moreButton).toHaveClass("relative")
-    expect(moreButton).toHaveAttribute("aria-expanded", "false")
-
-    await user.click(moreButton)
-
     const transferLink = screen.getByText("Luân chuyển").closest("a")
-    const maintenanceLink = screen.getByText("Bảo trì").closest("a")
+    const qrLink = screen.getByText("Quét QR").closest("a")
 
+    expect(screen.getByText("Tổng quan").closest("a")).toHaveAttribute("href", "/dashboard")
+    expect(screen.getByText("Thiết bị").closest("a")).toHaveAttribute("href", "/equipment")
+    expect(repairLink).not.toBeNull()
+    expect(repairLink).toHaveAttribute("href", "/repair-requests")
     expect(transferLink).not.toBeNull()
-    expect(maintenanceLink).not.toBeNull()
+    expect(transferLink).toHaveAttribute("href", "/transfers")
+    expect(qrLink).not.toBeNull()
+    expect(qrLink).toHaveAttribute("href", "/qr-scanner?autoStart=1")
+    expect(qrLink!.querySelector("svg")).toHaveClass("text-white")
+    expect(qrLink!.querySelector("svg")).not.toHaveClass("text-slate-500")
+
+    expect(within(repairLink!).getByText("2")).toBeInTheDocument()
     expect(within(transferLink!).getByText("4")).toBeInTheDocument()
-    expect(within(maintenanceLink!).getByText("8")).toBeInTheDocument()
-    expect(moreButton).toHaveAttribute("aria-expanded", "true")
+
+    expect(screen.queryByRole("button", { name: /thêm tùy chọn/i })).not.toBeInTheDocument()
+    expect(screen.queryByText("Bảo trì")).not.toBeInTheDocument()
+    expect(screen.queryByText("Báo cáo")).not.toBeInTheDocument()
   })
 })
