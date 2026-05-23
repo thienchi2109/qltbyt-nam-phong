@@ -87,6 +87,35 @@ END $$;
 DO $$
 DECLARE
   v_status RECORD;
+BEGIN
+  PERFORM set_config(
+    'request.jwt.claims',
+    jsonb_build_object('role', 'service_role')::TEXT,
+    TRUE
+  );
+
+  SELECT *
+  INTO v_status
+  FROM public.ai_kill_switch_set(TRUE, 'service role automation')
+  LIMIT 1;
+
+  IF v_status.enabled IS DISTINCT FROM TRUE OR v_status.reason IS DISTINCT FROM 'service role automation' THEN
+    RAISE EXCEPTION 'Expected standard service_role claim to write kill switch without app_role/user_id';
+  END IF;
+
+  SELECT *
+  INTO v_status
+  FROM public.ai_kill_switch_status()
+  LIMIT 1;
+
+  IF v_status.enabled IS DISTINCT FROM TRUE OR v_status.reason IS DISTINCT FROM 'service role automation' THEN
+    RAISE EXCEPTION 'Expected standard service_role claim to read kill switch status';
+  END IF;
+END $$;
+
+DO $$
+DECLARE
+  v_status RECORD;
   v_sqlstate TEXT;
 BEGIN
   PERFORM set_config(
@@ -132,16 +161,31 @@ BEGIN
 
   PERFORM set_config(
     'request.jwt.claims',
-    jsonb_build_object('role', 'authenticated', 'user_id', 'issue538-missing-role')::TEXT,
+    jsonb_build_object('user_id', 'issue538-missing-role')::TEXT,
     TRUE
   );
   BEGIN
     PERFORM * FROM public.ai_kill_switch_status();
-    RAISE EXCEPTION 'Expected missing app_role claim to be denied';
+    RAISE EXCEPTION 'Expected missing role claim to be denied';
   EXCEPTION WHEN OTHERS THEN
     GET STACKED DIAGNOSTICS v_sqlstate = RETURNED_SQLSTATE;
     IF v_sqlstate <> '42501' THEN
-      RAISE EXCEPTION 'Expected missing app_role SQLSTATE 42501, got %', v_sqlstate;
+      RAISE EXCEPTION 'Expected missing role SQLSTATE 42501, got %', v_sqlstate;
+    END IF;
+  END;
+
+  PERFORM set_config(
+    'request.jwt.claims',
+    jsonb_build_object('role', 'authenticated')::TEXT,
+    TRUE
+  );
+  BEGIN
+    PERFORM * FROM public.ai_kill_switch_status();
+    RAISE EXCEPTION 'Expected non-service role missing user_id claim to be denied';
+  EXCEPTION WHEN OTHERS THEN
+    GET STACKED DIAGNOSTICS v_sqlstate = RETURNED_SQLSTATE;
+    IF v_sqlstate <> '42501' THEN
+      RAISE EXCEPTION 'Expected missing user_id SQLSTATE 42501, got %', v_sqlstate;
     END IF;
   END;
 END $$;

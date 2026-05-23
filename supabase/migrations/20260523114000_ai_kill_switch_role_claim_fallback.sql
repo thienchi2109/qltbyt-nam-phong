@@ -1,8 +1,4 @@
--- Issue #538: DB-backed AI kill switch stored in public.internal_settings.
-
-INSERT INTO public.internal_settings(key, value, updated_at)
-VALUES ('ai_kill_switch.enabled', 'false', now())
-ON CONFLICT (key) DO NOTHING;
+-- Issue #538 review follow-up: accept standard service-role JWT claims.
 
 CREATE OR REPLACE FUNCTION public.ai_kill_switch_status()
 RETURNS TABLE (
