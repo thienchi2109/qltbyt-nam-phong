@@ -86,6 +86,8 @@ export const ALLOWED_FUNCTIONS = new Set<string>([
   'ai_quota_compliance_summary',
   'ai_category_suggestion',
   'ai_department_list',
+  'ai_kill_switch_status',
+  'ai_kill_switch_set',
   'assistant_query_database_audit_log',
   // Tenants + Users
   'tenant_list',

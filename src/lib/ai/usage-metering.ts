@@ -2,11 +2,11 @@ import {
   AI_DAILY_GLOBAL_QUOTA_REQUESTS,
   AI_DAILY_TENANT_QUOTA_REQUESTS,
   AI_DAILY_USER_QUOTA_REQUESTS,
-  AI_KILL_SWITCH,
   AI_QUOTA_RESERVATION_TTL_MS,
   AI_RATE_LIMIT_MAX_REQUESTS,
   AI_RATE_LIMIT_WINDOW_MS,
 } from '@/lib/ai/limits'
+import { isAiKillSwitchActive } from '@/lib/ai/kill-switch'
 import { callServerRpc, type SupabaseRpcUser } from '@/lib/ai/server-rpc'
 
 export type UsageLimitReason =
@@ -117,11 +117,12 @@ function firstReserveRow(
 
 /** Reserves distributed AI quota before starting a provider request. */
 export async function reserveUsage(context: UsageContext): Promise<UsageReservationResult> {
-  if (AI_KILL_SWITCH) {
+  const killSwitch = await isAiKillSwitchActive()
+  if (killSwitch.active) {
     return {
       allowed: false,
       reason: 'kill_switch',
-      message: 'AI usage is temporarily disabled.',
+      message: killSwitch.reason ?? 'AI usage is temporarily disabled.',
     }
   }
 
