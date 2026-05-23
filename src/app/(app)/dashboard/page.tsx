@@ -38,18 +38,18 @@ const QRActionSheet = dynamic(
 )
 
 
-const dashboardDateFormatter = new Intl.DateTimeFormat("vi-VN", {
+const dashboardDateFormatter: Intl.DateTimeFormat = new Intl.DateTimeFormat("vi-VN", {
   weekday: "long",
   day: "2-digit",
   month: "2-digit",
   year: "numeric",
 })
 
-function formatDashboardDate(date = new Date()) {
+function formatDashboardDate(date = new Date()): string {
   return dashboardDateFormatter.format(date)
 }
 
-function getMillisecondsUntilNextLocalMidnight(date = new Date()) {
+function getMillisecondsUntilNextLocalMidnight(date = new Date()): number {
   const nextMidnight = new Date(date)
   nextMidnight.setHours(24, 0, 0, 0)
 
