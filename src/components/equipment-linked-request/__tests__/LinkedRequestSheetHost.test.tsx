@@ -55,16 +55,43 @@ vi.mock('@/components/ui/sheet', () => ({
   ),
 }))
 
+vi.mock('@/components/shared/SideSheetShell', () => ({
+  SideSheetShell: ({
+    open,
+    contentClassName,
+    children,
+  }: {
+    open: boolean
+    contentClassName?: string
+    children: React.ReactNode
+  }) => {
+    const instanceId = React.useRef(++sheetInstanceCounter)
+    if (!open) return null
+
+    return (
+      <div
+        data-testid="shared-side-sheet"
+        data-content-class={contentClassName}
+        data-sheet-instance={String(instanceId.current)}
+      >
+        {children}
+      </div>
+    )
+  },
+}))
+
 // Stub the lazy adapter to a synchronous component so we can read its props.
 vi.mock('@/components/equipment-linked-request/adapters/repairRequestSheetAdapter', () => ({
-  default: ({ request, activeCount, onClose }: {
+  default: ({ request, activeCount, onClose, renderSheetShell }: {
     request: { id: number }
     activeCount: number
     onClose: () => void
+    renderSheetShell?: boolean
   }) => (
     <div data-testid="adapter-stub">
       <span data-testid="adapter-request-id">{request.id}</span>
       <span data-testid="adapter-active-count">{activeCount}</span>
+      <span data-testid="adapter-render-shell">{String(renderSheetShell)}</span>
       <button type="button" onClick={onClose}>stub-close</button>
     </div>
   ),
@@ -183,8 +210,13 @@ describe('LinkedRequestSheetHost', () => {
 
     const adapter = await screen.findByTestId('adapter-stub')
     expect(adapter).toBeInTheDocument()
+    expect(screen.getByTestId('shared-side-sheet')).toHaveAttribute(
+      'data-content-class',
+      'sm:max-w-xl md:max-w-2xl lg:max-w-3xl',
+    )
     expect(screen.getByTestId('adapter-request-id').textContent).toBe('555')
     expect(screen.getByTestId('adapter-active-count').textContent).toBe('1')
+    expect(screen.getByTestId('adapter-render-shell').textContent).toBe('false')
   })
 
   it('passes activeCount through to the adapter for multi-active', async () => {
@@ -237,7 +269,9 @@ describe('LinkedRequestSheetHost', () => {
     renderHost({ equipmentId: 11 })
 
     expect(await screen.findByText('Đang mở yêu cầu sửa chữa')).toBeInTheDocument()
-    const initialSheetInstance = screen.getByTestId('sheet-root').getAttribute('data-sheet-instance')
+    const initialSheetInstance = screen
+      .getByTestId('shared-side-sheet')
+      .getAttribute('data-sheet-instance')
 
     resolveActiveRepair?.({
       active_count: 1,
@@ -245,7 +279,7 @@ describe('LinkedRequestSheetHost', () => {
     })
 
     expect(await screen.findByTestId('adapter-stub')).toBeInTheDocument()
-    expect(screen.getByTestId('sheet-root')).toHaveAttribute(
+    expect(screen.getByTestId('shared-side-sheet')).toHaveAttribute(
       'data-sheet-instance',
       initialSheetInstance,
     )

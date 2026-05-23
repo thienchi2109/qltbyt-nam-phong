@@ -2,13 +2,13 @@
 
 import * as React from 'react'
 import dynamic from 'next/dynamic'
+import { SideSheetShell } from '@/components/shared/SideSheetShell'
 import { Button } from '@/components/ui/button'
 import { SheetDescription, SheetTitle } from '@/components/ui/sheet'
 import { toast } from '@/hooks/use-toast'
 import { useLinkedRequest } from './LinkedRequestContext'
 import { useResolveActiveRepair } from './resolvers/useResolveActiveRepair'
 import type { RepairRequestSheetAdapterProps } from './adapters/repairRequestSheetAdapter'
-import { LinkedRequestSheetShell } from './LinkedRequestSheetShell'
 import { STRINGS } from './strings'
 
 const RepairRequestSheetAdapter = dynamic<RepairRequestSheetAdapterProps>(
@@ -90,8 +90,14 @@ export function LinkedRequestSheetHost() {
     )
 
   return (
-    <LinkedRequestSheetShell open={enabled} onClose={close}>
+    <SideSheetShell
+      open={enabled}
+      onOpenChange={(open) => {
+        if (!open) close()
+      }}
+      contentClassName="sm:max-w-xl md:max-w-2xl lg:max-w-3xl"
+    >
       {content}
-    </LinkedRequestSheetShell>
+    </SideSheetShell>
   )
 }

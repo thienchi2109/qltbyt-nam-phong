@@ -60,10 +60,6 @@ const unusedExportSurface = [
     exports: ["DECOMMISSIONED_STATUS","getTodayDateForDecommissionField"],
   },
   {
-    file: "src/components/equipment-linked-request/index.ts",
-    exports: ["LinkedRequestSheetShell"],
-  },
-  {
     file: "src/components/equipment/equipment-table-columns.tsx",
     exports: ["filterableColumns"],
   },
