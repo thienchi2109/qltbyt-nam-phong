@@ -26,6 +26,14 @@ export interface AppNavItem {
   requiresDeviceQuotaAccess?: boolean
 }
 
+const MOBILE_FOOTER_HREFS = [
+  "/dashboard",
+  "/equipment",
+  "/repair-requests",
+  "/transfers",
+  "/qr-scanner",
+] as const
+
 const APP_NAV_ITEMS: AppNavItem[] = [
   { href: "/dashboard", icon: Home, label: "Tổng quan", mobileSection: "main" },
   { href: "/equipment", icon: Package, label: "Thiết bị", mobileSection: "main" },
@@ -70,6 +78,9 @@ const APP_NAV_ITEMS: AppNavItem[] = [
   },
 ]
 
+/**
+ * Returns role-filtered navigation items for the desktop sidebar and sheet menu.
+ */
 export function getAppNavigationItems(role?: string): AppNavItem[] {
   return APP_NAV_ITEMS.filter((item) => {
     if (item.requiresGlobal && !isGlobalRole(role)) {
@@ -84,18 +95,40 @@ export function getAppNavigationItems(role?: string): AppNavItem[] {
   })
 }
 
+/**
+ * Returns the fixed small-screen footer routes for field-work navigation.
+ */
 export function getMobileFooterMainNavItems(role?: string): AppNavItem[] {
-  return getAppNavigationItems(role).filter((item) => item.mobileSection === "main")
+  return MOBILE_FOOTER_HREFS.flatMap((href) => {
+    const item = getAppNavigationItems(role).find((navItem) => navItem.href === href)
+    if (!item) {
+      return []
+    }
+
+    if (item.href === "/qr-scanner") {
+      return [{ ...item, href: "/qr-scanner?autoStart=1" }]
+    }
+
+    return [item]
+  })
 }
 
+/**
+ * Returns overflow footer routes; intentionally empty because small screens use direct tabs only.
+ */
 export function getMobileFooterMoreNavItems(role?: string): AppNavItem[] {
-  return getAppNavigationItems(role).filter((item) => item.mobileSection === "more")
+  return []
 }
 
+/**
+ * Checks active route state while ignoring query parameters on navigation links.
+ */
 export function isAppNavItemActive(pathname: string, href: string): boolean {
-  if (href === "/dashboard") {
-    return pathname === href
+  const hrefPathname = href.split("?")[0]
+
+  if (hrefPathname === "/dashboard") {
+    return pathname === hrefPathname
   }
 
-  return pathname === href || pathname.startsWith(`${href}/`)
+  return pathname === hrefPathname || pathname.startsWith(`${hrefPathname}/`)
 }

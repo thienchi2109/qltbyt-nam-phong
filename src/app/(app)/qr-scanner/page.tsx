@@ -3,7 +3,7 @@
 import * as React from "react"
 import dynamic from "next/dynamic"
 import Link from "next/link"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { ArrowLeft, Camera, QrCode, Smartphone } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { QRScannerErrorBoundary } from "@/components/qr-scanner-error-boundary"
@@ -30,14 +30,27 @@ const QRActionSheet = dynamic(
 )
 
 
+/**
+ * Renders the standalone QR scanner page and supports direct camera auto-start links.
+ */
 export default function QRScannerPage() {
-  const router = useRouter()
+  return (
+    <React.Suspense fallback={null}>
+      <QRScannerPageContent />
+    </React.Suspense>
+  )
+}
+
+function QRScannerPageContent() {
+  const { push } = useRouter()
+  const searchParams = useSearchParams()
   const { toast } = useToast()
   const [isCameraActive, setIsCameraActive] = React.useState(false)
   const [scannedCode, setScannedCode] = React.useState<string>("")
   const [showActionSheet, setShowActionSheet] = React.useState(false)
+  const hasAutoStartedRef = React.useRef(false)
 
-  const handleStartScanning = () => {
+  const handleStartScanning = React.useCallback(() => {
     // Check if we're in browser environment
     if (typeof window === "undefined") {
       toast({
@@ -59,7 +72,16 @@ export default function QRScannerPage() {
     }
 
     setIsCameraActive(true)
-  }
+  }, [toast])
+
+  React.useEffect(() => {
+    if (hasAutoStartedRef.current || searchParams.get("autoStart") !== "1") {
+      return
+    }
+
+    hasAutoStartedRef.current = true
+    setIsCameraActive(true)
+  }, [searchParams])
 
   const handleScanSuccess = (result: string) => {
     setScannedCode(result)
@@ -84,31 +106,26 @@ export default function QRScannerPage() {
       switch (action) {
         case 'usage-log':
           if (equipment) {
-            router.push(`/equipment?highlight=${equipment.id}&tab=usage`)
+            push(`/equipment?highlight=${equipment.id}&tab=usage`)
           }
           break
 
         case 'view-details':
+        case 'update-status':
           if (equipment) {
-            router.push(`/equipment?highlight=${equipment.id}`)
+            push(`/equipment?highlight=${equipment.id}`)
           }
           break
 
         case 'view-history':
           if (equipment) {
-            router.push(`/equipment?highlight=${equipment.id}&tab=history`)
+            push(`/equipment?highlight=${equipment.id}&tab=history`)
           }
           break
 
         case 'create-repair':
           if (equipment) {
-            router.push(buildRepairRequestCreateIntentHref(equipment.id))
-          }
-          break
-
-        case 'update-status':
-          if (equipment) {
-            router.push(`/equipment?highlight=${equipment.id}`)
+            push(buildRepairRequestCreateIntentHref(equipment.id))
           }
           break
 

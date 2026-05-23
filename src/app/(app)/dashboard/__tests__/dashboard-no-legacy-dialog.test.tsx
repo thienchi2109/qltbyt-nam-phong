@@ -27,6 +27,7 @@ vi.mock("next-auth/react", () => ({
                 id: 1,
                 username: "admin",
                 full_name: "Admin User",
+                khoa_phong: "Phòng ICU",
                 role: "admin",
             },
         },
@@ -164,6 +165,34 @@ describe("Dashboard: no legacy EditEquipmentDialog", () => {
 
         expect(screen.getByTestId("calendar-widget")).toBeInTheDocument()
         expect(screen.getByTestId("recent-activities-card")).toBeInTheDocument()
+    })
+
+    it("renders the redesigned welcome banner with department and current date", () => {
+        render(<Dashboard />)
+
+        expect(screen.getByText(/Admin User/i)).toBeInTheDocument()
+        expect(screen.getByText("Phòng ICU")).toBeInTheDocument()
+        expect(screen.getByText(/Thứ|Chủ nhật/i)).toBeInTheDocument()
+    })
+
+    it("keeps maintenance planning as the third quick action", () => {
+        const { container } = render(<Dashboard />)
+        const quickActions = container.querySelector('[data-tour="quick-actions"]')
+        expect(quickActions).not.toBeNull()
+
+        const quickActionText = quickActions?.textContent ?? ""
+        const quickActionLabels = ["Báo sửa chữa", "Thêm thiết bị", "Lập kế hoạch", "Quét mã QR"]
+        const quickActionIndexes = quickActionLabels.map((label) => quickActionText.indexOf(label))
+
+        expect(quickActionIndexes.every((index) => index >= 0)).toBe(true)
+        expect(quickActionIndexes).toEqual([...quickActionIndexes].sort((a, b) => a - b))
+        expect(quickActionIndexes[2]).toBeGreaterThan(quickActionIndexes[1])
+
+        expect(screen.getByRole("link", { name: /lập kế hoạch/i })).toHaveAttribute(
+            "href",
+            "/maintenance?action=create"
+        )
+        expect(screen.queryByText(/kiểm kê/i)).not.toBeInTheDocument()
     })
 
     it("does not navigate when update-status is triggered without equipment", async () => {
