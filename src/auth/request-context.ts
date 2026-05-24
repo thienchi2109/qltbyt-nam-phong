@@ -1,3 +1,5 @@
+import { isIP } from "node:net"
+
 import { headers } from "next/headers"
 
 import type { AuthPendingSignoutReason } from "@/types/auth"
@@ -44,7 +46,7 @@ export function coerceTenantId(value: unknown): string | undefined {
 
 function readSingleIpHeader(value: string | null): string | null {
   const trimmed = value?.trim()
-  return trimmed && !trimmed.includes(",") ? trimmed : null
+  return trimmed && !trimmed.includes(",") && isIP(trimmed) !== 0 ? trimmed : null
 }
 
 function readForwardedForIp(value: string | null): string | null {
@@ -59,7 +61,14 @@ function readForwardedForIp(value: string | null): string | null {
 
   // Left-most X-Forwarded-For hops can be client supplied. Without trusted
   // proxy CIDRs, use the nearest hop so attackers cannot rotate throttle buckets.
-  return hops[hops.length - 1] ?? null
+  for (let index = hops.length - 1; index >= 0; index -= 1) {
+    const candidate = hops[index]
+    if (candidate && isIP(candidate) !== 0) {
+      return candidate
+    }
+  }
+
+  return null
 }
 
 function readClientIpAddress(getHeader: (name: string) => string | null): string | null {

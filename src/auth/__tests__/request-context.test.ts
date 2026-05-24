@@ -23,4 +23,25 @@ describe("readAuthorizeRequestContext", () => {
 
     expect(readAuthorizeRequestContext(request).ip_address).toBe("10.0.0.1")
   })
+
+  it("skips invalid trusted header values before reading forwarded-for", () => {
+    const request = new Request("http://localhost/api/auth/callback/credentials", {
+      headers: {
+        "x-real-ip": "not-an-ip",
+        "x-forwarded-for": "198.51.100.99, 203.0.113.20",
+      },
+    })
+
+    expect(readAuthorizeRequestContext(request).ip_address).toBe("203.0.113.20")
+  })
+
+  it("returns null when forwarded-for has no valid IP values", () => {
+    const request = new Request("http://localhost/api/auth/callback/credentials", {
+      headers: {
+        "x-forwarded-for": "unknown, not-an-ip",
+      },
+    })
+
+    expect(readAuthorizeRequestContext(request).ip_address).toBeNull()
+  })
 })
