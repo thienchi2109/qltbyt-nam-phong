@@ -15,23 +15,38 @@ vi.mock("@/hooks/use-toast", () => ({
   useToast: () => ({ toast: mockToast }),
 }))
 
-vi.mock("@/components/ui/dialog", () => ({
-  Dialog: ({ open, children }: { open: boolean; children: React.ReactNode }) =>
-    open ? <div data-testid="dialog">{children}</div> : null,
-  DialogContent: ({
+vi.mock("@/components/shared/SideSheetShell", () => ({
+  SideSheetShell: ({
+    open,
+    onOpenChange,
+    title,
+    description,
     children,
-    className,
+    contentClassName,
+    bodyClassName,
   }: {
+    open: boolean
+    onOpenChange: (open: boolean) => void
+    title?: React.ReactNode
+    description?: React.ReactNode
     children: React.ReactNode
-    className?: string
-  }) => (
-    <div data-testid="dialog-content" className={className}>
-      {children}
-    </div>
-  ),
-  DialogHeader: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-  DialogTitle: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-  DialogDescription: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+    contentClassName?: string
+    bodyClassName?: string
+  }) =>
+    open ? (
+      <section
+        data-testid="shared-side-sheet"
+        data-content-class={contentClassName}
+        data-body-class={bodyClassName}
+      >
+        <h2>{title}</h2>
+        <p>{description}</p>
+        <button type="button" onClick={() => onOpenChange(false)}>
+          close shared sheet
+        </button>
+        <div className={bodyClassName}>{children}</div>
+      </section>
+    ) : null,
 }))
 
 vi.mock("@/components/ui/badge", () => ({
@@ -412,7 +427,9 @@ describe("TransferDetailDialog related people", () => {
     expect(screen.getByRole("tab", { name: "Tiến trình" })).toBeInTheDocument()
   })
 
-  it("uses a constrained flex layout so overview content remains scrollable inside the dialog", async () => {
+  it("uses the shared side sheet shell with a constrained flex layout for scrollable tabs", async () => {
+    const onOpenChange = vi.fn()
+
     mockCallRpc.mockImplementation(async ({ fn }) => {
       if (fn === "transfer_request_get") {
         return makeTransferRow()
@@ -424,25 +441,33 @@ describe("TransferDetailDialog related people", () => {
     })
 
     render(
-      <TransferDetailDialog open onOpenChange={vi.fn()} transfer={makeTransferRow()} />,
+      <TransferDetailDialog open onOpenChange={onOpenChange} transfer={makeTransferRow()} />,
       { wrapper: createWrapper() },
     )
 
     await waitFor(() => {
-      expect(screen.getByTestId("dialog-content")).toBeInTheDocument()
+      expect(screen.getByTestId("shared-side-sheet")).toBeInTheDocument()
     })
 
-    expect(screen.getByTestId("dialog-content")).toHaveClass(
-      "h-[90vh]",
-      "max-h-[90vh]",
-      "max-w-4xl",
-      "overflow-hidden",
-      "flex",
-      "flex-col",
+    expect(screen.getByTestId("shared-side-sheet")).toHaveAttribute(
+      "data-content-class",
+      "sm:max-w-xl md:max-w-2xl lg:max-w-4xl",
     )
+    expect(screen.getByTestId("shared-side-sheet")).toHaveAttribute(
+      "data-body-class",
+      "flex flex-col overflow-hidden p-4",
+    )
+    expect(screen.getByText("Chi tiết yêu cầu luân chuyển - LC-0011")).toBeInTheDocument()
+    expect(
+      screen.getByText("Thông tin chi tiết và lịch sử của yêu cầu luân chuyển thiết bị"),
+    ).toBeInTheDocument()
     expect(screen.getByRole("tablist").parentElement).toHaveClass("flex", "min-h-0", "flex-1", "flex-col")
     expect(screen.getByRole("tabpanel")).toHaveClass("mt-0", "min-h-0", "flex-1", "overflow-hidden")
     expect(screen.getByTestId("scroll-area")).toHaveClass("h-full")
+
+    await userEvent.click(screen.getByRole("button", { name: "close shared sheet" }))
+
+    expect(onOpenChange).toHaveBeenCalledWith(false)
   })
 
   it("refetches detail on open when a fresh same-id cache entry is missing related people", async () => {

@@ -1,12 +1,28 @@
 import * as React from "react"
 import { render, screen } from "@testing-library/react"
-import { describe, expect, it, vi } from "vitest"
+import userEvent from "@testing-library/user-event"
+import { beforeEach, describe, expect, it, vi } from "vitest"
 
 import { TransfersDialogs } from "@/app/(app)/transfers/_components/TransfersDialogs"
 import type { TransferListItem } from "@/types/transfers-data-grid"
 
 const mocks = vi.hoisted(() => ({
   ReturnLocationDialog: vi.fn(() => <div data-testid="return-location-dialog" />),
+  TransferDetailDialog: vi.fn(
+    ({
+      open,
+      onOpenChange,
+    }: {
+      open: boolean
+      onOpenChange: (open: boolean) => void
+      transfer: unknown
+    }) =>
+      open ? (
+        <button type="button" onClick={() => onOpenChange(false)}>
+          close transfer detail
+        </button>
+      ) : null,
+  ),
 }))
 
 vi.mock("@/components/add-transfer-dialog", () => ({
@@ -22,7 +38,11 @@ vi.mock("@/components/handover-preview-dialog", () => ({
 }))
 
 vi.mock("@/components/transfer-detail-dialog", () => ({
-  TransferDetailDialog: () => null,
+  TransferDetailDialog: (props: {
+    open: boolean
+    onOpenChange: (open: boolean) => void
+    transfer: unknown
+  }) => mocks.TransferDetailDialog(props),
 }))
 
 vi.mock("@/components/transfers/FilterModal", () => ({
@@ -75,6 +95,10 @@ function makeTransferListItem(
 }
 
 describe("TransfersDialogs", () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
   it("mounts ReturnLocationDialog when the dialog is open", () => {
     const returnTransfer = makeTransferListItem()
     const onConfirmReturn = vi.fn().mockResolvedValue(undefined)
@@ -119,5 +143,53 @@ describe("TransfersDialogs", () => {
         onConfirm: onConfirmReturn,
       }),
     )
+  })
+
+  it("passes the selected transfer and close handler to TransferDetailDialog", async () => {
+    const detailTransfer = makeTransferListItem({ id: 42, ma_yeu_cau: "LC-0042" })
+    const onDetailDialogOpenChange = vi.fn()
+
+    render(
+      <TransfersDialogs
+        isAddDialogOpen={false}
+        onAddDialogOpenChange={vi.fn()}
+        onAddSuccess={vi.fn()}
+        isEditDialogOpen={false}
+        onEditDialogOpenChange={vi.fn()}
+        onEditSuccess={vi.fn()}
+        editingTransfer={null}
+        detailDialogOpen
+        onDetailDialogOpenChange={onDetailDialogOpenChange}
+        detailTransfer={detailTransfer}
+        handoverDialogOpen={false}
+        onHandoverDialogOpenChange={vi.fn()}
+        handoverTransfer={null}
+        deleteDialogOpen={false}
+        onDeleteDialogOpenChange={vi.fn()}
+        onConfirmDelete={vi.fn()}
+        returnLocationDialogOpen={false}
+        onReturnLocationDialogOpenChange={vi.fn()}
+        returnTransfer={null}
+        isReturning={false}
+        onConfirmReturn={vi.fn()}
+        isFilterModalOpen={false}
+        onFilterModalOpenChange={vi.fn()}
+        filterValue={{ statuses: [], dateRange: null }}
+        onFilterChange={vi.fn()}
+        filterVariant="dialog"
+      />,
+    )
+
+    expect(mocks.TransferDetailDialog).toHaveBeenCalledWith(
+      expect.objectContaining({
+        open: true,
+        onOpenChange: onDetailDialogOpenChange,
+        transfer: detailTransfer,
+      }),
+    )
+
+    await userEvent.click(screen.getByRole("button", { name: "close transfer detail" }))
+
+    expect(onDetailDialogOpenChange).toHaveBeenCalledWith(false)
   })
 })
