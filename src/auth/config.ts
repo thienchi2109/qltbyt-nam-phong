@@ -3,6 +3,11 @@ import Credentials from "next-auth/providers/credentials"
 import { createClient } from "@supabase/supabase-js"
 
 import { recordAuthLifecycleEvent } from "@/auth/observability"
+import {
+  checkAuthLoginThrottle,
+  recordAuthLoginThrottleFailure,
+  recordAuthLoginThrottleSuccess,
+} from "@/auth/throttle"
 
 import { authCallbacks } from "./next-auth-callbacks"
 import { authEvents } from "./next-auth-events"
@@ -15,6 +20,7 @@ import {
   type AuthRpcUserRow,
 } from "./types"
 
+/** NextAuth configuration for credentials login, JWT sessions, and auth lifecycle hooks. */
 export const authOptions: NextAuthOptions = {
   session: {
     strategy: "jwt",
@@ -55,6 +61,30 @@ export const authOptions: NextAuthOptions = {
         const supabase = createClient(supabaseUrl, serviceKey)
 
         try {
+          const throttleDecision = await checkAuthLoginThrottle(
+            supabase,
+            normalizedUsername,
+            requestContext.ip_address,
+          ).catch((error: unknown) => {
+            console.warn("Login throttle check failed", { error })
+            return null
+          })
+
+          if (throttleDecision?.allowed === false) {
+            await recordAuthLifecycleEvent({
+              source: "authorize",
+              reason_code: "rate_limited",
+              username: normalizedUsername,
+              ...requestContext,
+              metadata: {
+                blocked_scope: throttleDecision.blocked_scope,
+                blocked_until: throttleDecision.blocked_until,
+                retry_after_seconds: throttleDecision.retry_after_seconds,
+              },
+            })
+            throw new Error("rate_limited")
+          }
+
           const { data, error } = await supabase.rpc("authenticate_user_dual_mode", {
             p_username: username,
             p_password: password,
@@ -74,6 +104,13 @@ export const authOptions: NextAuthOptions = {
           if (data && Array.isArray(data) && data.length > 0) {
             const authResult = data[0] as AuthRpcUserRow
             if (authResult?.is_authenticated) {
+              await recordAuthLoginThrottleSuccess(
+                supabase,
+                normalizedUsername,
+                requestContext.ip_address,
+              ).catch((error: unknown) => {
+                console.warn("Login throttle success reset failed", { error })
+              })
               return buildAuthUserFromRpcResult(authResult)
             }
 
@@ -89,6 +126,13 @@ export const authOptions: NextAuthOptions = {
             }
           }
 
+          await recordAuthLoginThrottleFailure(
+            supabase,
+            normalizedUsername,
+            requestContext.ip_address,
+          ).catch((error: unknown) => {
+            console.warn("Login throttle failure record failed", { error })
+          })
           await recordAuthLifecycleEvent({
             source: "authorize",
             reason_code: "invalid_credentials",
@@ -99,7 +143,12 @@ export const authOptions: NextAuthOptions = {
         } catch (e) {
           if (
             e instanceof Error &&
-            (e.message === "rpc_error" || e.message === "tenant_inactive" || e.message === "invalid_credentials")
+            (
+              e.message === "rpc_error" ||
+              e.message === "tenant_inactive" ||
+              e.message === "invalid_credentials" ||
+              e.message === "rate_limited"
+            )
           ) {
             throw e
           }

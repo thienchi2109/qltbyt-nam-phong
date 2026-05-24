@@ -90,6 +90,20 @@ describe("LoginForm", () => {
     )
   })
 
+  it("maps rate-limited credentials to temporary lockout guidance", async () => {
+    const user = userEvent.setup()
+    mocks.signIn.mockResolvedValueOnce({ error: "rate_limited" })
+    renderLoginForm()
+
+    await user.type(screen.getByLabelText(/tên đăng nhập/i), "to-qltb")
+    await user.type(screen.getByLabelText(/mật khẩu/i), "secret")
+    await user.click(screen.getByRole("button", { name: /đăng nhập/i }))
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Đăng nhập tạm khóa do nhập sai quá nhiều lần. Vui lòng thử lại sau 30 phút hoặc liên hệ quản trị viên để reset mật khẩu.",
+    )
+  })
+
   it("maps unexpected signIn failures to the system error message", async () => {
     const user = userEvent.setup()
     const consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => undefined)

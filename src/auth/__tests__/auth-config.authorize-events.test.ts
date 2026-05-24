@@ -8,6 +8,10 @@ const supabaseState = vi.hoisted(() => ({
   authRpcRows: [] as unknown[],
   authRpcError: null as unknown,
   auditRpcError: null as unknown,
+  throttleCheckRows: [] as unknown[],
+  throttleCheckError: null as unknown,
+  throttleRecordFailureError: null as unknown,
+  throttleRecordSuccessError: null as unknown,
   rpcCalls: [] as Array<{ fn: string; args: Record<string, unknown> }>,
 }))
 
@@ -26,6 +30,27 @@ const supabaseClient = vi.hoisted(() => ({
       return {
         data: supabaseState.auditRpcError ? null : true,
         error: supabaseState.auditRpcError,
+      }
+    }
+
+    if (fn === "auth_login_throttle_check") {
+      return {
+        data: supabaseState.throttleCheckError ? null : supabaseState.throttleCheckRows,
+        error: supabaseState.throttleCheckError,
+      }
+    }
+
+    if (fn === "auth_login_throttle_record_failure") {
+      return {
+        data: supabaseState.throttleRecordFailureError ? null : true,
+        error: supabaseState.throttleRecordFailureError,
+      }
+    }
+
+    if (fn === "auth_login_throttle_record_success") {
+      return {
+        data: supabaseState.throttleRecordSuccessError ? null : true,
+        error: supabaseState.throttleRecordSuccessError,
       }
     }
 
@@ -161,6 +186,15 @@ describe("authOptions authorize + auth lifecycle events", () => {
     supabaseState.authRpcRows = []
     supabaseState.authRpcError = null
     supabaseState.auditRpcError = null
+    supabaseState.throttleCheckRows = [{
+      allowed: true,
+      blocked_until: null,
+      retry_after_seconds: 0,
+      blocked_scope: null,
+    }]
+    supabaseState.throttleCheckError = null
+    supabaseState.throttleRecordFailureError = null
+    supabaseState.throttleRecordSuccessError = null
     supabaseState.rpcCalls = []
     supabaseClient.rpc.mockClear()
   })
@@ -223,6 +257,13 @@ describe("authOptions authorize + auth lifecycle events", () => {
 
   it("emits authorize_exception for unexpected runtime errors before rethrowing", async () => {
     const runtimeError = new Error("database exploded")
+    supabaseClient.rpc.mockImplementationOnce(async (fn: string, args: Record<string, unknown>) => {
+      supabaseState.rpcCalls.push({ fn, args })
+      return {
+        data: supabaseState.throttleCheckRows,
+        error: null,
+      }
+    })
     supabaseClient.rpc.mockImplementationOnce(async () => {
       throw runtimeError
     })
@@ -270,6 +311,140 @@ describe("authOptions authorize + auth lifecycle events", () => {
           fn: "auth_audit_log_insert",
         }),
       ])
+    )
+  })
+
+  it("blocks credentials before password verification when login throttle denies the request", async () => {
+    supabaseState.throttleCheckRows = [{
+      allowed: false,
+      blocked_until: "2026-05-04T03:30:00.000Z",
+      retry_after_seconds: 1800,
+      blocked_scope: "username_ip",
+    }]
+
+    const authorize = getAuthorizeHandler()
+
+    await expect(authorize({
+      username: "LOCKED.USER",
+      password: "secret",
+    }, buildAuthorizeRequest())).rejects.toThrow("rate_limited")
+
+    expect(supabaseState.rpcCalls).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          fn: "auth_login_throttle_check",
+          args: expect.objectContaining({
+            p_username: "locked.user",
+            p_ip_address: "203.0.113.1",
+          }),
+        }),
+        expect.objectContaining({
+          fn: "auth_audit_log_insert",
+          args: expect.objectContaining({
+            p_event: "login_failure",
+            p_source: "authorize",
+            p_reason_code: "rate_limited",
+            p_username: "locked.user",
+            p_ip_address: "203.0.113.1",
+            p_metadata: expect.objectContaining({
+              blocked_scope: "username_ip",
+              retry_after_seconds: 1800,
+            }),
+          }),
+        }),
+      ])
+    )
+    expect(supabaseState.rpcCalls).not.toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ fn: "authenticate_user_dual_mode" }),
+      ])
+    )
+  })
+
+  it("records throttle failure after invalid credentials", async () => {
+    const authorize = getAuthorizeHandler()
+
+    await expect(authorize({
+      username: "NQMinh",
+      password: "wrong-password",
+    }, buildAuthorizeRequest())).rejects.toThrow("invalid_credentials")
+
+    expect(supabaseState.rpcCalls).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ fn: "authenticate_user_dual_mode" }),
+        expect.objectContaining({
+          fn: "auth_login_throttle_record_failure",
+          args: expect.objectContaining({
+            p_username: "nqminh",
+            p_ip_address: "203.0.113.1",
+          }),
+        }),
+      ])
+    )
+  })
+
+  it("resets the username throttle bucket after successful credentials", async () => {
+    supabaseState.authRpcRows = [{
+      is_authenticated: true,
+      user_id: 42,
+      username: "NQMinh",
+      full_name: "Nguyen Quang Minh",
+      role: "to_qltb",
+      khoa_phong: "CNTT",
+      don_vi: 17,
+      authentication_mode: "hashed",
+    }]
+
+    const authorize = getAuthorizeHandler()
+
+    await expect(authorize({
+      username: "NQMinh",
+      password: "correct-password",
+    }, buildAuthorizeRequest())).resolves.toEqual(
+      expect.objectContaining({
+        id: "42",
+        username: "NQMinh",
+        auth_mode: "hashed",
+      })
+    )
+
+    expect(supabaseState.rpcCalls).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          fn: "auth_login_throttle_record_success",
+          args: expect.objectContaining({
+            p_username: "nqminh",
+            p_ip_address: "203.0.113.1",
+          }),
+        }),
+      ])
+    )
+  })
+
+  it("fails open when login throttle check is unavailable", async () => {
+    supabaseState.throttleCheckError = { message: "throttle unavailable" }
+    supabaseState.authRpcRows = [{
+      is_authenticated: true,
+      user_id: 42,
+      username: "NQMinh",
+      role: "to_qltb",
+      authentication_mode: "hashed",
+    }]
+
+    const authorize = getAuthorizeHandler()
+
+    await expect(authorize({
+      username: "NQMinh",
+      password: "correct-password",
+    }, buildAuthorizeRequest())).resolves.toEqual(
+      expect.objectContaining({
+        id: "42",
+        username: "NQMinh",
+      })
+    )
+    expect(consoleWarnSpy).toHaveBeenCalledWith(
+      "Login throttle check failed",
+      expect.objectContaining({ error: supabaseState.throttleCheckError })
     )
   })
 
