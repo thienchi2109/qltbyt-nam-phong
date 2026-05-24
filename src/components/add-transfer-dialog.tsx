@@ -236,7 +236,7 @@ export function AddTransferDialog({ open, onOpenChange, onSuccess }: AddTransfer
 
           {formData.loai_hinh === 'thanh_ly' && (
             <div className="p-3 mt-2 bg-yellow-50 border border-yellow-200 rounded-lg text-sm text-yellow-800">
-              <p><strong>Lưu ý:</strong> Khi chọn "Thanh lý", thiết bị sẽ được chuyển về cho <strong>Tổ QLTB</strong> để xử lý. Sau khi hoàn tất, trạng thái thiết bị sẽ được cập nhật thành "Ngưng sử dụng".</p>
+              <p><strong>Lưu ý:</strong> Khi chọn &quot;Thanh lý&quot;, thiết bị sẽ được chuyển về cho <strong>Tổ QLTB</strong> để xử lý. Sau khi hoàn tất, trạng thái thiết bị sẽ được cập nhật thành &quot;Ngưng sử dụng&quot;.</p>
             </div>
           )}
 
