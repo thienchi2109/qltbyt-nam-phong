@@ -7,6 +7,7 @@ import { TransfersDialogs } from "@/app/(app)/transfers/_components/TransfersDia
 import type { TransferListItem } from "@/types/transfers-data-grid"
 
 const mocks = vi.hoisted(() => ({
+  AddTransferDialog: vi.fn(() => null),
   ReturnLocationDialog: vi.fn(() => <div data-testid="return-location-dialog" />),
   TransferDetailDialog: vi.fn(
     ({
@@ -26,7 +27,11 @@ const mocks = vi.hoisted(() => ({
 }))
 
 vi.mock("@/components/add-transfer-dialog", () => ({
-  AddTransferDialog: () => null,
+  AddTransferDialog: (props: {
+    open: boolean
+    onOpenChange: (open: boolean) => void
+    onSuccess: () => void
+  }) => mocks.AddTransferDialog(props),
 }))
 
 vi.mock("@/components/edit-transfer-dialog", () => ({
@@ -97,6 +102,50 @@ function makeTransferListItem(
 describe("TransfersDialogs", () => {
   beforeEach(() => {
     vi.clearAllMocks()
+  })
+
+  it("passes add-dialog open state and callbacks to AddTransferDialog", () => {
+    const onAddDialogOpenChange = vi.fn()
+    const onAddSuccess = vi.fn()
+
+    render(
+      <TransfersDialogs
+        isAddDialogOpen
+        onAddDialogOpenChange={onAddDialogOpenChange}
+        onAddSuccess={onAddSuccess}
+        isEditDialogOpen={false}
+        onEditDialogOpenChange={vi.fn()}
+        onEditSuccess={vi.fn()}
+        editingTransfer={null}
+        detailDialogOpen={false}
+        onDetailDialogOpenChange={vi.fn()}
+        detailTransfer={null}
+        handoverDialogOpen={false}
+        onHandoverDialogOpenChange={vi.fn()}
+        handoverTransfer={null}
+        deleteDialogOpen={false}
+        onDeleteDialogOpenChange={vi.fn()}
+        onConfirmDelete={vi.fn()}
+        returnLocationDialogOpen={false}
+        onReturnLocationDialogOpenChange={vi.fn()}
+        returnTransfer={null}
+        isReturning={false}
+        onConfirmReturn={vi.fn()}
+        isFilterModalOpen={false}
+        onFilterModalOpenChange={vi.fn()}
+        filterValue={{ statuses: [], dateRange: null }}
+        onFilterChange={vi.fn()}
+        filterVariant="dialog"
+      />,
+    )
+
+    expect(mocks.AddTransferDialog).toHaveBeenCalledWith(
+      expect.objectContaining({
+        open: true,
+        onOpenChange: onAddDialogOpenChange,
+        onSuccess: onAddSuccess,
+      }),
+    )
   })
 
   it("mounts ReturnLocationDialog when the dialog is open", () => {
