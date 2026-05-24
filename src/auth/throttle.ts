@@ -88,13 +88,17 @@ export async function recordAuthLoginThrottleFailure(
     return
   }
 
-  const { error } = await supabase.rpc("auth_login_throttle_record_failure", {
+  const { data, error } = await supabase.rpc("auth_login_throttle_record_failure", {
     p_username: username,
     p_ip_address: ipAddress,
   })
 
   if (error) {
     throw error
+  }
+
+  if (data !== true) {
+    throw new Error("auth_login_throttle_record_failure returned false")
   }
 }
 
@@ -108,12 +112,16 @@ export async function recordAuthLoginThrottleSuccess(
     return
   }
 
-  const { error } = await supabase.rpc("auth_login_throttle_record_success", {
+  const { data, error } = await supabase.rpc("auth_login_throttle_record_success", {
     p_username: username,
     p_ip_address: ipAddress,
   })
 
   if (error) {
     throw error
+  }
+
+  if (data !== true) {
+    throw new Error("auth_login_throttle_record_success returned false")
   }
 }

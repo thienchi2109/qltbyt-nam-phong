@@ -12,6 +12,7 @@ DECLARE
   v_has_search_path boolean;
   v_is_security_definer boolean;
   v_attempt integer;
+  v_bucket record;
 BEGIN
   SELECT p.prosecdef
   INTO v_is_security_definer
@@ -88,6 +89,47 @@ BEGIN
 
   IF v_check.allowed IS DISTINCT FROM true THEN
     RAISE EXCEPTION 'successful credentials must reset username+ip throttle bucket';
+  END IF;
+
+  INSERT INTO public.auth_login_attempt_throttle (
+    bucket_type,
+    username_hash,
+    ip_address,
+    failed_count,
+    window_started_at,
+    last_failed_at,
+    blocked_until,
+    updated_at
+  )
+  VALUES (
+    'username_ip',
+    public._auth_login_throttle_username_hash('Expired.User'),
+    v_ip,
+    5,
+    now() - interval '31 minutes',
+    now() - interval '31 minutes',
+    now() - interval '1 minute',
+    now() - interval '1 minute'
+  )
+  ON CONFLICT (username_hash, ip_address) WHERE bucket_type = 'username_ip'
+  DO UPDATE
+  SET failed_count = EXCLUDED.failed_count,
+      window_started_at = EXCLUDED.window_started_at,
+      last_failed_at = EXCLUDED.last_failed_at,
+      blocked_until = EXCLUDED.blocked_until,
+      updated_at = EXCLUDED.updated_at;
+
+  PERFORM public.auth_login_throttle_record_failure('Expired.User', v_ip);
+
+  SELECT failed_count, blocked_until
+  INTO v_bucket
+  FROM public.auth_login_attempt_throttle
+  WHERE bucket_type = 'username_ip'
+    AND username_hash = public._auth_login_throttle_username_hash('Expired.User')
+    AND ip_address = v_ip;
+
+  IF v_bucket.failed_count IS DISTINCT FROM 1 OR v_bucket.blocked_until IS NOT NULL THEN
+    RAISE EXCEPTION 'expired throttle bucket reset must clear blocked_until';
   END IF;
 
   FOR v_attempt IN 1..20 LOOP

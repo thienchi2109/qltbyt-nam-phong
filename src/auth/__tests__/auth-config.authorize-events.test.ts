@@ -10,7 +10,9 @@ const supabaseState = vi.hoisted(() => ({
   auditRpcError: null as unknown,
   throttleCheckRows: [] as unknown[],
   throttleCheckError: null as unknown,
+  throttleRecordFailureData: true as boolean | null,
   throttleRecordFailureError: null as unknown,
+  throttleRecordSuccessData: true as boolean | null,
   throttleRecordSuccessError: null as unknown,
   rpcCalls: [] as Array<{ fn: string; args: Record<string, unknown> }>,
 }))
@@ -42,14 +44,14 @@ const supabaseClient = vi.hoisted(() => ({
 
     if (fn === "auth_login_throttle_record_failure") {
       return {
-        data: supabaseState.throttleRecordFailureError ? null : true,
+        data: supabaseState.throttleRecordFailureError ? null : supabaseState.throttleRecordFailureData,
         error: supabaseState.throttleRecordFailureError,
       }
     }
 
     if (fn === "auth_login_throttle_record_success") {
       return {
-        data: supabaseState.throttleRecordSuccessError ? null : true,
+        data: supabaseState.throttleRecordSuccessError ? null : supabaseState.throttleRecordSuccessData,
         error: supabaseState.throttleRecordSuccessError,
       }
     }
@@ -143,7 +145,8 @@ function buildAuthorizeRequest() {
   return new Request("http://localhost/api/auth/callback/credentials", {
     headers: {
       "x-request-id": "req-123",
-      "x-forwarded-for": "203.0.113.1, 10.0.0.1",
+      "x-real-ip": "203.0.113.1",
+      "x-forwarded-for": "198.51.100.99, 10.0.0.1",
       "user-agent": "VitestBrowser/1.0",
     },
   })
@@ -180,7 +183,8 @@ describe("authOptions authorize + auth lifecycle events", () => {
     vi.stubEnv("SUPABASE_SERVICE_ROLE_KEY", "test-service-role-key")
     requestHeadersState.values = new Map([
       ["x-request-id", "req-123"],
-      ["x-forwarded-for", "203.0.113.1, 10.0.0.1"],
+      ["x-real-ip", "203.0.113.1"],
+      ["x-forwarded-for", "198.51.100.99, 10.0.0.1"],
       ["user-agent", "VitestBrowser/1.0"],
     ])
     supabaseState.authRpcRows = []
@@ -193,7 +197,9 @@ describe("authOptions authorize + auth lifecycle events", () => {
       blocked_scope: null,
     }]
     supabaseState.throttleCheckError = null
+    supabaseState.throttleRecordFailureData = true
     supabaseState.throttleRecordFailureError = null
+    supabaseState.throttleRecordSuccessData = true
     supabaseState.throttleRecordSuccessError = null
     supabaseState.rpcCalls = []
     supabaseClient.rpc.mockClear()
@@ -383,6 +389,23 @@ describe("authOptions authorize + auth lifecycle events", () => {
     )
   })
 
+  it("warns when throttle failure accounting returns false", async () => {
+    supabaseState.throttleRecordFailureData = false
+    const authorize = getAuthorizeHandler()
+
+    await expect(authorize({
+      username: "NQMinh",
+      password: "wrong-password",
+    }, buildAuthorizeRequest())).rejects.toThrow("invalid_credentials")
+
+    expect(consoleWarnSpy).toHaveBeenCalledWith(
+      "Login throttle failure record failed",
+      expect.objectContaining({
+        error: expect.any(Error),
+      })
+    )
+  })
+
   it("resets the username throttle bucket after successful credentials", async () => {
     supabaseState.authRpcRows = [{
       is_authenticated: true,
@@ -418,6 +441,38 @@ describe("authOptions authorize + auth lifecycle events", () => {
           }),
         }),
       ])
+    )
+  })
+
+  it("warns when throttle success reset returns false", async () => {
+    supabaseState.throttleRecordSuccessData = false
+    supabaseState.authRpcRows = [{
+      is_authenticated: true,
+      user_id: 42,
+      username: "NQMinh",
+      full_name: "Nguyen Quang Minh",
+      role: "to_qltb",
+      khoa_phong: "CNTT",
+      don_vi: 17,
+      authentication_mode: "hashed",
+    }]
+    const authorize = getAuthorizeHandler()
+
+    await expect(authorize({
+      username: "NQMinh",
+      password: "correct-password",
+    }, buildAuthorizeRequest())).resolves.toEqual(
+      expect.objectContaining({
+        id: "42",
+        username: "NQMinh",
+      })
+    )
+
+    expect(consoleWarnSpy).toHaveBeenCalledWith(
+      "Login throttle success reset failed",
+      expect.objectContaining({
+        error: expect.any(Error),
+      })
     )
   })
 
