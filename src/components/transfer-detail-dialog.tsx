@@ -3,16 +3,10 @@
 import * as React from "react"
 import { Package } from "lucide-react"
 
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { ChangeHistoryTab } from "@/components/change-history/ChangeHistoryTab"
+import { SideSheetShell } from "@/components/shared/SideSheetShell"
 import { useTransferDetailDialogData } from "@/components/transfer-detail-dialog.data"
 import {
   mapTransferHistoryEntries,
@@ -87,6 +81,9 @@ function resolveDisplayTransfer(
   }
 }
 
+/**
+ * Shows transfer request detail, history, and progress inside the shared side-sheet shell.
+ */
 export function TransferDetailDialog({
   open,
   onOpenChange,
@@ -115,51 +112,51 @@ export function TransferDetailDialog({
   if (!displayTransfer) return null
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="h-[90vh] max-h-[90vh] max-w-4xl overflow-hidden flex flex-col">
-        <DialogHeader className="shrink-0">
-          <DialogTitle className="flex items-center gap-2">
-            <Package className="size-5" />
-            Chi tiết yêu cầu luân chuyển - {displayTransfer.ma_yeu_cau}
-          </DialogTitle>
-          <DialogDescription>
-            Thông tin chi tiết và lịch sử của yêu cầu luân chuyển thiết bị
-          </DialogDescription>
-        </DialogHeader>
+    <SideSheetShell
+      open={open}
+      onOpenChange={onOpenChange}
+      title={
+        <span className="flex items-center gap-2">
+          <Package className="size-5" />
+          Chi tiết yêu cầu luân chuyển - {displayTransfer.ma_yeu_cau}
+        </span>
+      }
+      description="Thông tin chi tiết và lịch sử của yêu cầu luân chuyển thiết bị"
+      contentClassName="sm:max-w-xl md:max-w-2xl lg:max-w-4xl"
+      bodyClassName="flex flex-col overflow-hidden p-4"
+    >
+      <Tabs defaultValue="overview" className="flex min-h-0 flex-1 flex-col overflow-hidden">
+        <TabsList className="shrink-0 self-start">
+          <TabsTrigger value="overview">Tổng quan</TabsTrigger>
+          <TabsTrigger value="history">Lịch sử</TabsTrigger>
+          <TabsTrigger value="progress">Tiến trình</TabsTrigger>
+        </TabsList>
 
-        <Tabs defaultValue="overview" className="mt-4 flex min-h-0 flex-1 flex-col overflow-hidden">
-          <TabsList className="shrink-0 self-start">
-            <TabsTrigger value="overview">Tổng quan</TabsTrigger>
-            <TabsTrigger value="history">Lịch sử</TabsTrigger>
-            <TabsTrigger value="progress">Tiến trình</TabsTrigger>
-          </TabsList>
+        <TabsContent value="overview" className="mt-0 min-h-0 flex-1 overflow-hidden">
+          <ScrollArea className="h-full pr-4">
+            <TransferDetailOverview transfer={displayTransfer} relatedPeople={relatedPeople} />
+          </ScrollArea>
+        </TabsContent>
 
-          <TabsContent value="overview" className="mt-0 min-h-0 flex-1 overflow-hidden">
-            <ScrollArea className="h-full pr-4">
-              <TransferDetailOverview transfer={displayTransfer} relatedPeople={relatedPeople} />
-            </ScrollArea>
-          </TabsContent>
+        <TabsContent value="history" className="mt-0 min-h-0 flex-1 overflow-hidden">
+          <ScrollArea className="h-full pr-4">
+            <ChangeHistoryTab entries={historyEntries} isLoading={isLoadingHistory} />
+          </ScrollArea>
+        </TabsContent>
 
-          <TabsContent value="history" className="mt-0 min-h-0 flex-1 overflow-hidden">
-            <ScrollArea className="h-full pr-4">
-              <ChangeHistoryTab entries={historyEntries} isLoading={isLoadingHistory} />
-            </ScrollArea>
-          </TabsContent>
-
-          <TabsContent value="progress" className="mt-0 min-h-0 flex-1 overflow-hidden">
-            <ScrollArea className="h-full pr-4">
-              <div className="py-4">
+        <TabsContent value="progress" className="mt-0 min-h-0 flex-1 overflow-hidden">
+          <ScrollArea className="h-full pr-4">
+            <div className="py-4">
               <h3 className="mb-4 text-lg font-semibold">Tiến trình xử lý</h3>
               <TransferStatusProgress
                 type={displayTransfer.loai_hinh}
                 currentStatus={displayTransfer.trang_thai}
                 className="py-2"
               />
-              </div>
-            </ScrollArea>
-          </TabsContent>
-        </Tabs>
-      </DialogContent>
-    </Dialog>
+            </div>
+          </ScrollArea>
+        </TabsContent>
+      </Tabs>
+    </SideSheetShell>
   )
 }
