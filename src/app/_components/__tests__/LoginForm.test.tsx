@@ -100,7 +100,7 @@ describe("LoginForm", () => {
     await user.click(screen.getByRole("button", { name: /đăng nhập/i }))
 
     expect(await screen.findByRole("alert")).toHaveTextContent(
-      "Đăng nhập tạm khóa do nhập sai quá nhiều lần. Vui lòng thử lại sau 30 phút hoặc liên hệ quản trị viên để reset mật khẩu.",
+      "Đăng nhập tạm khóa do nhập sai quá nhiều lần. Vui lòng thử lại sau ít phút hoặc liên hệ quản trị viên để reset mật khẩu.",
     )
   })
 

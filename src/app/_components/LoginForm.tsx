@@ -68,7 +68,7 @@ function getCredentialErrorMessage(
       return getLoginMessage(
         t,
         "login.rateLimited",
-        "Đăng nhập tạm khóa do nhập sai quá nhiều lần. Vui lòng thử lại sau 30 phút hoặc liên hệ quản trị viên để reset mật khẩu.",
+        "Đăng nhập tạm khóa do nhập sai quá nhiều lần. Vui lòng thử lại sau ít phút hoặc liên hệ quản trị viên để reset mật khẩu.",
       )
     case "invalid_credentials":
     default:
