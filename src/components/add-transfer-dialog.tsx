@@ -3,15 +3,8 @@
 import * as React from "react"
 import { Loader2 } from "lucide-react"
 
+import { SideSheetShell } from "@/components/shared/SideSheetShell"
 import { Button } from "@/components/ui/button"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog"
 import { useToast } from "@/hooks/use-toast"
 import { callRpc } from "@/lib/rpc-client"
 import { isRegionalLeaderRole } from "@/lib/rbac"
@@ -43,6 +36,9 @@ interface AddTransferDialogProps {
   onSuccess: () => void
 }
 
+/**
+ * Transfer creation form presented in the shared right-side sheet shell.
+ */
 export function AddTransferDialog({ open, onOpenChange, onSuccess }: AddTransferDialogProps) {
   const { toast } = useToast()
   const { data: session } = useSession()
@@ -185,86 +181,91 @@ export function AddTransferDialog({ open, onOpenChange, onSuccess }: AddTransfer
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>Tạo yêu cầu luân chuyển mới</DialogTitle>
-          <DialogDescription>
-            Tạo yêu cầu luân chuyển thiết bị giữa các bộ phận hoặc với đơn vị bên ngoài.
-          </DialogDescription>
-        </DialogHeader>
-        <form onSubmit={handleSubmit}>
-          <div className="grid gap-4 py-4">
-            <TransferDialogEquipmentSearch
-              disabled={isLoading}
-              required
-              searchTerm={searchTerm}
-              trimmedSearch={trimmedSearch}
-              selectedEquipment={selectedEquipment}
-              isEquipmentLoading={isEquipmentLoading}
-              showResultsDropdown={showResultsDropdown}
-              showNoResults={showNoResults}
-              showMinCharsHint={showMinCharsHint}
-              filteredEquipment={filteredEquipment}
-              onSearchChange={handleSearchChange}
-              onSelectEquipment={handleSelectEquipment}
-            />
+    <SideSheetShell
+      open={open}
+      onOpenChange={onOpenChange}
+      title="Tạo yêu cầu luân chuyển mới"
+      description="Tạo yêu cầu luân chuyển thiết bị giữa các bộ phận hoặc với đơn vị bên ngoài."
+      contentClassName="sm:max-w-xl md:max-w-2xl lg:max-w-3xl"
+      bodyClassName="overflow-y-auto p-4"
+      footerClassName="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end"
+      footer={
+        <>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => onOpenChange(false)}
+            disabled={isLoading}
+          >
+            Hủy
+          </Button>
+          <Button
+            type="submit"
+            form="add-transfer-form"
+            disabled={isLoading || isRegionalLeader}
+          >
+            {isLoading && <Loader2 className="mr-2 size-4 animate-spin" />}
+            Tạo yêu cầu
+          </Button>
+        </>
+      }
+    >
+      <form id="add-transfer-form" onSubmit={handleSubmit}>
+        <div className="grid gap-4">
+          <TransferDialogEquipmentSearch
+            disabled={isLoading}
+            required
+            searchTerm={searchTerm}
+            trimmedSearch={trimmedSearch}
+            selectedEquipment={selectedEquipment}
+            isEquipmentLoading={isEquipmentLoading}
+            showResultsDropdown={showResultsDropdown}
+            showNoResults={showNoResults}
+            showMinCharsHint={showMinCharsHint}
+            filteredEquipment={filteredEquipment}
+            onSearchChange={handleSearchChange}
+            onSelectEquipment={handleSelectEquipment}
+          />
 
-            <TransferTypeField
+          <TransferTypeField
+            disabled={isLoading}
+            formData={formData}
+            setFormData={setFormData}
+            includeDisposalStyle
+          />
+
+          {formData.loai_hinh === 'thanh_ly' && (
+            <div className="p-3 mt-2 bg-yellow-50 border border-yellow-200 rounded-lg text-sm text-yellow-800">
+              <p><strong>Lưu ý:</strong> Khi chọn "Thanh lý", thiết bị sẽ được chuyển về cho <strong>Tổ QLTB</strong> để xử lý. Sau khi hoàn tất, trạng thái thiết bị sẽ được cập nhật thành "Ngưng sử dụng".</p>
+            </div>
+          )}
+
+          {formData.loai_hinh === 'noi_bo' && (
+            <TransferInternalSelectFields
+              departments={departments}
+              disabled={isLoading || isLoadingDepartments}
+              formData={formData}
+              setFormData={setFormData}
+              lockCurrentDepartment={Boolean(selectedEquipment)}
+            />
+          )}
+
+          {formData.loai_hinh === 'ben_ngoai' && (
+            <TransferExternalFields
               disabled={isLoading}
               formData={formData}
               setFormData={setFormData}
-              includeDisposalStyle
             />
+          )}
 
-            {formData.loai_hinh === 'thanh_ly' && (
-              <div className="p-3 mt-2 bg-yellow-50 border border-yellow-200 rounded-lg text-sm text-yellow-800">
-                <p><strong>Lưu ý:</strong> Khi chọn "Thanh lý", thiết bị sẽ được chuyển về cho <strong>Tổ QLTB</strong> để xử lý. Sau khi hoàn tất, trạng thái thiết bị sẽ được cập nhật thành "Ngưng sử dụng".</p>
-              </div>
-            )}
-
-            {formData.loai_hinh === 'noi_bo' && (
-              <TransferInternalSelectFields
-                departments={departments}
-                disabled={isLoading || isLoadingDepartments}
-                formData={formData}
-                setFormData={setFormData}
-                lockCurrentDepartment={Boolean(selectedEquipment)}
-              />
-            )}
-
-            {formData.loai_hinh === 'ben_ngoai' && (
-              <TransferExternalFields
-                disabled={isLoading}
-                formData={formData}
-                setFormData={setFormData}
-              />
-            )}
-
-            <TransferReasonField
-              disabled={isLoading}
-              formData={formData}
-              setFormData={setFormData}
-              allowDisposalCopy
-            />
-          </div>
-          
-          <DialogFooter>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => onOpenChange(false)}
-              disabled={isLoading}
-            >
-              Hủy
-            </Button>
-            <Button type="submit" disabled={isLoading || isRegionalLeader}>
-              {isLoading && <Loader2 className="mr-2 size-4 animate-spin" />}
-              Tạo yêu cầu
-            </Button>
-          </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
+          <TransferReasonField
+            disabled={isLoading}
+            formData={formData}
+            setFormData={setFormData}
+            allowDisposalCopy
+          />
+        </div>
+      </form>
+    </SideSheetShell>
   )
 } 
