@@ -27,16 +27,6 @@ vi.mock("@/hooks/use-debounce", () => ({
   useSearchDebounce: (value: string) => value,
 }))
 
-vi.mock("@/components/ui/dialog", () => ({
-  Dialog: ({ open, children }: { open: boolean; children: React.ReactNode }) =>
-    open ? <div>{children}</div> : null,
-  DialogContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-  DialogHeader: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-  DialogTitle: ({ children }: { children: React.ReactNode }) => <h2>{children}</h2>,
-  DialogDescription: ({ children }: { children: React.ReactNode }) => <p>{children}</p>,
-  DialogFooter: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-}))
-
 vi.mock("@/components/shared/SideSheetShell", () => ({
   SideSheetShell: ({
     open,
@@ -137,7 +127,7 @@ describe("AddTransferDialog side sheet presentation", () => {
     mocks.callRpc.mockResolvedValue([])
   })
 
-  it("renders create content inside the shared side sheet shell with a fixed footer", () => {
+  it("renders create content inside the shared side sheet shell with a footer submit control", () => {
     render(
       <AddTransferDialog open onOpenChange={vi.fn()} onSuccess={vi.fn()} />,
       { wrapper: createWrapper() },
@@ -148,8 +138,15 @@ describe("AddTransferDialog side sheet presentation", () => {
     expect(sheet).toHaveAttribute("data-body-class", expect.stringContaining("overflow"))
     expect(screen.getByRole("heading", { name: "Tạo yêu cầu luân chuyển mới" })).toBeInTheDocument()
     expect(screen.getByTestId("sheet-body")).toContainElement(screen.getByLabelText(/Thiết bị/))
+    expect(screen.getByTestId("sheet-body")).toContainElement(
+      document.getElementById("add-transfer-form"),
+    )
     expect(screen.getByTestId("sheet-footer")).toContainElement(
       screen.getByRole("button", { name: "Tạo yêu cầu" }),
+    )
+    expect(screen.getByRole("button", { name: "Tạo yêu cầu" })).toHaveAttribute(
+      "form",
+      "add-transfer-form",
     )
   })
 
