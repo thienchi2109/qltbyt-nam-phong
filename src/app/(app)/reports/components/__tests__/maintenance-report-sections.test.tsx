@@ -130,6 +130,7 @@ describe("maintenance report sections", () => {
     expect(mockDynamicPieChart).toHaveBeenCalledWith(
       expect.objectContaining({ data: repairStatusData })
     )
+    expect(mockDynamicPieChart.mock.calls[0]?.[0]).not.toHaveProperty("colors")
   })
 
   it("renders maintenance plan empty state when no plan chart data is available", () => {

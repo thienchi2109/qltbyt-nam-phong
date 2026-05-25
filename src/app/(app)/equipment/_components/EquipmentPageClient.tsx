@@ -62,6 +62,7 @@ const equipmentDisplayFormat = (ctx: DisplayContext) => {
   )
 }
 
+/** Renders the equipment inventory page client controls and table. */
 export function EquipmentPageClient() {
   const pageState = useEquipmentPage()
 
@@ -291,6 +292,7 @@ function EquipmentPageContent({
               slots={{
                 beforeNav: (
                   <button
+                    type="button"
                     onClick={handleExportData}
                     className="text-sm font-medium text-primary underline-offset-4 hover:underline disabled:text-muted-foreground disabled:no-underline disabled:cursor-not-allowed"
                     disabled={table.getFilteredRowModel().rows.length === 0 || isLoading || isExporting}

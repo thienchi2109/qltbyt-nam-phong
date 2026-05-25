@@ -24,6 +24,7 @@ const normalizeKeyPart = (value: unknown): string => {
   return String(value).trim()
 }
 
+/** Builds stable tooltip entry keys from data keys or names. */
 export function buildKeyedTooltipEntries<T extends TooltipEntryLike>(
   entries: T[],
 ): KeyedTooltipEntry<T>[] {
@@ -44,8 +45,20 @@ export function buildKeyedTooltipEntries<T extends TooltipEntryLike>(
   }))
 }
 
-export function buildPieSliceCells(data: ChartData[], nameKey: string, colors: string[]): PieSliceCell[] {
-  const safeColors = colors.length > 0 ? colors : ['#000000']
+function getPieSliceFill(entry: ChartData, index: number, colors: string[], colorKey: string): string {
+  if (colors.length > 0) return colors[index % colors.length]
+
+  const fill = entry[colorKey]
+  return typeof fill === 'string' && fill.length > 0 ? fill : '#000000'
+}
+
+/** Builds stable pie slice keys and fills for Recharts cells. */
+export function buildPieSliceCells(
+  data: ChartData[],
+  nameKey: string,
+  colors: string[] = [],
+  colorKey = 'color',
+): PieSliceCell[] {
   const labels = data.map((entry) => {
     const fromNameKey = normalizeKeyPart(entry?.[nameKey])
     return fromNameKey.length > 0 ? fromNameKey : UNKNOWN_KEY_LABEL
@@ -54,6 +67,6 @@ export function buildPieSliceCells(data: ChartData[], nameKey: string, colors: s
 
   return keyedLabels.map((item, index) => ({
     key: item.key,
-    fill: safeColors[index % safeColors.length],
+    fill: getPieSliceFill(data[index] ?? {}, index, colors, colorKey),
   }))
 }

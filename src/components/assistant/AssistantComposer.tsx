@@ -59,6 +59,7 @@ export function AssistantComposer({
                     onChange={(e) => onInputChange(e.target.value)}
                     onKeyDown={handleKeyDown}
                     placeholder="Hỏi AI về thiết bị, bảo trì…"
+                    aria-label="Nhập câu hỏi cho trợ lý AI"
                     rows={1}
                     disabled={isStreaming || isDisabled}
                     className={cn(

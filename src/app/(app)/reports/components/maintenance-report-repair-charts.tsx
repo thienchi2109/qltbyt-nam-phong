@@ -15,6 +15,7 @@ interface MaintenanceReportRepairChartsProps {
   repairStatusData: MaintenanceReportData["charts"]["repairStatusDistribution"]
 }
 
+/** Renders maintenance report charts for repair trend and status distribution. */
 export function MaintenanceReportRepairCharts({
   isLoading,
   repairTrendData,
@@ -69,7 +70,6 @@ export function MaintenanceReportRepairCharts({
               height={340}
               dataKey="value"
               nameKey="name"
-              colors={repairStatusData.map((entry) => entry.color)}
               innerRadius={90}
               outerRadius={130}
             />

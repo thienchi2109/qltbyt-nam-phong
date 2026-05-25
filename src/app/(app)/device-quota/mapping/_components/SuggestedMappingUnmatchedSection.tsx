@@ -41,6 +41,7 @@ export function SuggestedMappingUnmatchedSection({
         <Collapsible open={open} onOpenChange={setOpen}>
             <CollapsibleTrigger asChild>
                 <button
+                    type="button"
                     className="flex w-full items-center gap-2 rounded-lg border border-dashed p-3 text-sm text-muted-foreground hover:bg-muted/50 transition-colors"
                     aria-label={`Chưa gợi ý được (${totalDevices} thiết bị)`}
                 >
