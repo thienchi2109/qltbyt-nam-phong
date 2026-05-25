@@ -16,6 +16,7 @@ type AuthLifecycleReasonCode =
   | "tenant_inactive"
   | "authorize_exception"
   | "config_error"
+  | "rate_limited"
 
 type AuthLogSource =
   | "authorize"
@@ -71,6 +72,7 @@ function deriveAuthLifecycleEvent(input: AuthLifecycleLogInput): AuthLifecycleEv
   return "login_failure"
 }
 
+/** Builds a sanitized auth lifecycle payload for console and persistent audit sinks. */
 export function buildAuthLifecycleLog(input: AuthLifecycleLogInput): AuthLifecycleLogPayload {
   const payload: AuthLifecycleLogPayload = {
     scope: "auth.lifecycle",
@@ -122,6 +124,7 @@ export function buildAuthLifecycleLog(input: AuthLifecycleLogInput): AuthLifecyc
   return sanitizeForLog(payload) as AuthLifecycleLogPayload
 }
 
+/** Emits a prebuilt auth lifecycle payload without allowing telemetry failures to escape. */
 export function emitAuthLifecyclePayload(payload: AuthLifecycleLogPayload): void {
   try {
     console.info(JSON.stringify(payload))
@@ -130,6 +133,7 @@ export function emitAuthLifecyclePayload(payload: AuthLifecycleLogPayload): void
   }
 }
 
+/** Builds and emits an auth lifecycle payload without allowing telemetry failures to escape. */
 export function emitAuthLifecycleLog(input: AuthLifecycleLogInput): void {
   try {
     emitAuthLifecyclePayload(buildAuthLifecycleLog(input))

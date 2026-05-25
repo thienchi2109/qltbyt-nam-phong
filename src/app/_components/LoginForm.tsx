@@ -64,6 +64,12 @@ function getCredentialErrorMessage(
         "login.rpcError",
         "Không thể xác thực lúc này. Vui lòng thử lại sau.",
       )
+    case "rate_limited":
+      return getLoginMessage(
+        t,
+        "login.rateLimited",
+        "Đăng nhập tạm khóa do nhập sai quá nhiều lần. Vui lòng thử lại sau ít phút hoặc liên hệ quản trị viên để reset mật khẩu.",
+      )
     case "invalid_credentials":
     default:
       return getLoginMessage(
@@ -74,6 +80,7 @@ function getCredentialErrorMessage(
   }
 }
 
+/** Renders the credentials login form and maps server auth errors to user-facing messages. */
 export function LoginForm(): React.ReactElement {
   const { t } = useLanguage()
   const { replace } = useRouter()
