@@ -64,22 +64,28 @@ After `/clear` or `/compact`: knowledge base and session stats are preserved. Us
 
 ## React Doctor: True Full Scan (Non-Diff)
 
-React Doctor can auto-switch to diff-only scanning in non-interactive runs. When you need a true full-repo scan, force `diff: false` temporarily:
+React Doctor latest requires Node 22+. Do not upgrade the VPS/system Node only
+for React Doctor because other MCP tooling, including context-mode, depends on
+the current Node runtime. Use the repo scripts, which run React Doctor through a
+temporary Node 22 package.
 
-```powershell
-$cfg = "react-doctor.config.json"
-Set-Content -Path $cfg -Value '{"diff": false}' -Encoding utf8
-try {
-  node scripts/npm-run.js npx react-doctor@latest . --verbose --yes --project nextn --no-ami
-} finally {
-  Remove-Item $cfg -Force -ErrorAction SilentlyContinue
-}
+The default React Doctor gate is diff-only against `origin/main`:
+
+```bash
+node scripts/npm-run.js run react-doctor
+```
+
+React Doctor can auto-switch to diff-only scanning in non-interactive runs. When
+you need a true full-repo scan, force `--full` explicitly:
+
+```bash
+node scripts/npm-run.js npx -y -p node@22 -p react-doctor@latest react-doctor . --verbose --project nextn --offline --full
 ```
 
 For score-only full scan:
 
 ```bash
-node scripts/npm-run.js npx react-doctor@latest . --score --yes --project nextn --no-ami
+node scripts/npm-run.js run react-doctor:score
 ```
 
 Do not rely on the default `react-doctor` script when you specifically need full-scan metrics.
@@ -92,7 +98,7 @@ When a task changes `.ts` / `.tsx` files, run verification in this order before 
 2. `node scripts/npm-run.js run verify:dedupe`
 3. `node scripts/npm-run.js run typecheck`
 4. Focused tests for the changed behavior
-5. `node scripts/npm-run.js npx react-doctor@latest . --verbose -y --project nextn --offline --diff main`
+5. `node scripts/npm-run.js run react-doctor`
 
 `verify:no-explicit-any` is diff-aware. It scans changed TypeScript files (committed branch diff, staged, unstaged, and untracked files) and fails on explicit `any` so REVIEW.md / CLAUDE.md type-safety violations are caught before review.
 
