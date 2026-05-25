@@ -45,7 +45,7 @@ export function buildKeyedTooltipEntries<T extends TooltipEntryLike>(
   }))
 }
 
-function getPieSliceFill(entry: ChartData, index: number, colors: string[], colorKey: string) {
+function getPieSliceFill(entry: ChartData, index: number, colors: string[], colorKey: string): string {
   if (colors.length > 0) return colors[index % colors.length]
 
   const fill = entry[colorKey]
