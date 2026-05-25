@@ -28,6 +28,7 @@ interface UsageLogDisplayRow extends UsageLogEntry {
 
 const EMPTY_USAGE_LOGS: UsageLogEntry[] = []
 
+/** Renders the printable equipment usage log template. */
 export function LogTemplate({
   department = "",
   deviceManager = "",
@@ -106,6 +107,7 @@ export function LogTemplate({
                       id="log-template-department"
                       type="text" 
                       className="form-input-line"
+                      aria-label="Khoa phòng quản lý nhật ký"
                       defaultValue={formatValue(department)}
                     />
                   </div>
@@ -126,6 +128,7 @@ export function LogTemplate({
                 id="log-template-device-manager"
                 type="text" 
                 className="form-input-line ml-2"
+                aria-label="Người quản lý thiết bị"
                 defaultValue={formatValue(deviceManager)}
               />
             </div>
@@ -135,6 +138,7 @@ export function LogTemplate({
                 id="log-template-device-name"
                 type="text" 
                 className="form-input-line ml-2"
+                aria-label="Tên thiết bị"
                 defaultValue={formatValue(deviceName)}
               />
             </div>
@@ -145,6 +149,7 @@ export function LogTemplate({
                   id="log-template-device-code"
                   type="text" 
                   className="form-input-line ml-2"
+                  aria-label="Mã thiết bị"
                   defaultValue={formatValue(deviceCode)}
                 />
               </div>
@@ -154,6 +159,7 @@ export function LogTemplate({
                   id="log-template-model"
                   type="text" 
                   className="form-input-line ml-2"
+                  aria-label="Model thiết bị"
                   defaultValue={formatValue(model)}
                 />
               </div>
@@ -163,6 +169,7 @@ export function LogTemplate({
                   id="log-template-serial"
                   type="text" 
                   className="form-input-line ml-2"
+                  aria-label="Số serial thiết bị"
                   defaultValue={formatValue(serial)}
                 />
               </div>

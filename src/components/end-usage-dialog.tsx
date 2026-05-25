@@ -55,6 +55,7 @@ interface EndUsageDialogProps {
   usageLog: UsageLog | null
 }
 
+/** Renders the dialog for closing an active equipment usage session. */
 export function EndUsageDialog({
   open,
   onOpenChange,
@@ -177,7 +178,9 @@ export function EndUsageDialog({
                   </FormControl>
                   <datalist id="end-usage-status-options">
                     {equipmentStatusOptions.map((status) => (
-                      <option key={status} value={status} />
+                      <option key={status} value={status}>
+                        {status}
+                      </option>
                     ))}
                   </datalist>
                   <FormMessage />

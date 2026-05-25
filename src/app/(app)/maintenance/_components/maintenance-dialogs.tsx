@@ -21,6 +21,7 @@ import {
 import type { MaintenancePlan as DialogMaintenancePlan } from "@/lib/data"
 import { useMaintenanceContext } from "../_hooks/useMaintenanceContext"
 
+/** Renders maintenance action dialogs for approval, rejection, and deletion flows. */
 export function MaintenanceDialogs() {
   const ctx = useMaintenanceContext()
 
@@ -132,6 +133,7 @@ export function MaintenanceDialogs() {
             <textarea
               className="w-full min-h-[100px] p-3 border border-input rounded-md resize-none focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent"
               placeholder="Nhập lý do không duyệt kế hoạch này…"
+              aria-label="Lý do không duyệt kế hoạch"
               value={operations.confirmDialog.rejectionReason}
               onChange={(e) => operations.setRejectionReason(e.target.value)}
               disabled={operations.isRejecting}

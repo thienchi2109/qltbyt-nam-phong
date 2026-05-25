@@ -57,6 +57,7 @@ interface StartUsageDialogProps {
   equipment: EquipmentForStart | null
 }
 
+/** Renders the dialog for starting a new equipment usage session. */
 export function StartUsageDialog({
   open,
   onOpenChange,
@@ -174,7 +175,9 @@ export function StartUsageDialog({
                   </FormControl>
                   <datalist id="start-usage-status-options">
                     {equipmentStatusOptions.map((status) => (
-                      <option key={status} value={status} />
+                      <option key={status} value={status}>
+                        {status}
+                      </option>
                     ))}
                   </datalist>
                   <FormMessage />
