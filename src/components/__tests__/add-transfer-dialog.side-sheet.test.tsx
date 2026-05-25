@@ -59,7 +59,7 @@ vi.mock("@/components/shared/SideSheetShell", () => ({
         <h2>{title}</h2>
         <p>{description}</p>
         <button type="button" onClick={() => onOpenChange(false)}>
-          shell-close
+          close add transfer sheet
         </button>
         <div data-testid="sheet-body">{children}</div>
         <div data-testid="sheet-footer">{footer}</div>
@@ -108,6 +108,24 @@ function createWrapper() {
   return function Wrapper({ children }: { children: React.ReactNode }) {
     return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
   }
+}
+
+function AddTransferDialogHarness() {
+  const [open, setOpen] = React.useState(true)
+
+  return (
+    <>
+      <button type="button" onClick={() => setOpen(true)}>
+        reopen add transfer
+      </button>
+      <button type="button" onClick={() => setOpen(false)}>
+        external close add transfer
+      </button>
+      {open ? (
+        <AddTransferDialog open={open} onOpenChange={setOpen} onSuccess={vi.fn()} />
+      ) : null}
+    </>
+  )
 }
 
 describe("AddTransferDialog side sheet presentation", () => {
@@ -162,5 +180,34 @@ describe("AddTransferDialog side sheet presentation", () => {
     await user.click(screen.getByRole("button", { name: "Hủy" }))
 
     expect(onOpenChange).toHaveBeenCalledWith(false)
+  })
+
+  it("resets draft state when the parent closes and remounts the add transfer sheet", async () => {
+    const user = userEvent.setup()
+
+    render(<AddTransferDialogHarness />, { wrapper: createWrapper() })
+
+    await user.type(screen.getByLabelText("Lý do luân chuyển *"), "Draft reason")
+    expect(screen.getByLabelText("Lý do luân chuyển *")).toHaveValue("Draft reason")
+
+    await user.click(screen.getByRole("button", { name: "external close add transfer" }))
+    await user.click(screen.getByRole("button", { name: "reopen add transfer" }))
+
+    expect(screen.getByLabelText("Lý do luân chuyển *")).toHaveValue("")
+  })
+
+  it.each([
+    ["footer cancel", "Hủy"],
+    ["sheet close", "close add transfer sheet"],
+  ])("resets draft state after %s closes the sheet", async (_label, buttonName) => {
+    const user = userEvent.setup()
+
+    render(<AddTransferDialogHarness />, { wrapper: createWrapper() })
+
+    await user.type(screen.getByLabelText("Lý do luân chuyển *"), "Draft reason")
+    await user.click(screen.getByRole("button", { name: buttonName }))
+    await user.click(screen.getByRole("button", { name: "reopen add transfer" }))
+
+    expect(screen.getByLabelText("Lý do luân chuyển *")).toHaveValue("")
   })
 })
