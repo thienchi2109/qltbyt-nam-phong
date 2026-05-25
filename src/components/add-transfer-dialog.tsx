@@ -57,12 +57,6 @@ export function AddTransferDialog({ open, onOpenChange, onSuccess }: AddTransfer
     dispatch({ type: "FORM_DATA_CHANGED", value })
   }, [])
 
-  React.useEffect(() => {
-    if (!open) {
-      dispatch({ type: "RESET" })
-    }
-  }, [open])
-
   const { departments, isLoadingDepartments } = useTransferDepartments({ open })
   const selectedValueLabel = selectedEquipment
     ? `${selectedEquipment.ten_thiet_bi} (${selectedEquipment.ma_thiet_bi})`
