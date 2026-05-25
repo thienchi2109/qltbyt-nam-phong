@@ -43,6 +43,7 @@ export function ChartErrorFallback({
         </div>
         {onRetry && (
           <button
+            type="button"
             onClick={onRetry}
             className="text-xs text-primary hover:underline"
           >

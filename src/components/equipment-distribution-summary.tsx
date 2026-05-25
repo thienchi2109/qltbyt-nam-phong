@@ -37,6 +37,7 @@ const STATUS_DISPLAY_ORDER = [
   "cho_hieu_chuan",
 ] as const
 
+/** Renders equipment distribution totals and status breakdowns. */
 export function EquipmentDistributionSummary({ className, tenantFilter, selectedDonVi, effectiveTenantKey }: EquipmentDistributionSummaryProps) {
   const { data, isLoading, error } = useEquipmentDistribution(undefined, undefined, tenantFilter, selectedDonVi, effectiveTenantKey)
 
@@ -255,7 +256,6 @@ export function EquipmentDistributionSummary({ className, tenantFilter, selected
                     height={260}
                     dataKey="value"
                     nameKey="name"
-                    colors={donutData.map((d) => d.color)}
                     innerRadius={70}
                     outerRadius={105}
                     showLabels={false}

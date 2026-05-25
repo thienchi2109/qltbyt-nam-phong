@@ -93,6 +93,7 @@ interface LineChartProps {
   }
 }
 
+/** Renders a lazy-loaded line chart. */
 export function DynamicLineChart({
   data,
   height = 300,
@@ -173,6 +174,7 @@ type BarChartProps =
   | (BarChartBaseProps & { layout?: 'horizontal'; yAxisKey?: string })
   | (BarChartBaseProps & { layout: 'vertical'; yAxisKey: string })
 
+/** Renders a lazy-loaded bar chart. */
 export function DynamicBarChart({
   data,
   height = 300,
@@ -281,6 +283,7 @@ interface ScatterChartProps<TData extends object> {
   }
 }
 
+/** Renders a lazy-loaded scatter chart. */
 export function DynamicScatterChart<TData extends object>({
   data,
   height = 300,
@@ -327,7 +330,8 @@ interface PieChartProps {
   height?: number
   dataKey: string
   nameKey: string
-  colors: string[]
+  colors?: string[]
+  colorKey?: string
   showTooltip?: boolean
   showLabels?: boolean
   outerRadius?: number
@@ -335,12 +339,14 @@ interface PieChartProps {
   customTooltip?: React.ElementType<ChartTooltipProps<number, string>>
 }
 
+/** Renders a lazy-loaded pie chart. */
 export function DynamicPieChart({
   data,
   height = 300,
   dataKey,
   nameKey,
   colors,
+  colorKey = "color",
   showTooltip = true,
   showLabels = true,
   outerRadius = 80,
@@ -349,8 +355,8 @@ export function DynamicPieChart({
 }: PieChartProps) {
   const CustomTooltipContent = customTooltip
   const pieSliceCells = React.useMemo(
-    () => buildPieSliceCells(data, nameKey, colors),
-    [colors, data, nameKey],
+    () => buildPieSliceCells(data, nameKey, colors, colorKey),
+    [colorKey, colors, data, nameKey],
   )
 
   return (
@@ -399,6 +405,7 @@ interface AreaChartProps {
   showLegend?: boolean
 }
 
+/** Renders a lazy-loaded area chart. */
 export function DynamicAreaChart({
   data,
   height = 300,

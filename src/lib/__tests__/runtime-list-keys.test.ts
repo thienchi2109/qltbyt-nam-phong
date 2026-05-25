@@ -35,4 +35,21 @@ describe('runtime list key helpers', () => {
       { key: 'B-1', fill: '#111' },
     ])
   })
+
+  it('buildPieSliceCells can derive color fills from the chart data', () => {
+    const cells = buildPieSliceCells(
+      [
+        { name: 'A', value: 1, color: '#111' },
+        { name: 'A', value: 2, color: '#222' },
+        { name: 'B', value: 3, color: '#333' },
+      ],
+      'name',
+    )
+
+    expect(cells).toEqual([
+      { key: 'A-1', fill: '#111' },
+      { key: 'A-2', fill: '#222' },
+      { key: 'B-1', fill: '#333' },
+    ])
+  })
 })

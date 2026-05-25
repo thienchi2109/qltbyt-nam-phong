@@ -26,6 +26,7 @@ interface MaintenanceDisplayRow extends MaintenanceDevice {
 
 const EMPTY_DEVICES: MaintenanceDevice[] = []
 
+/** Renders the printable maintenance planning form. */
 export function MaintenanceForm({
   department = "",
   year = new Date().getFullYear(),
@@ -91,6 +92,7 @@ export function MaintenanceForm({
                   <input 
                     type="text" 
                     id="department-name" 
+                    aria-label="Khoa phòng lập kế hoạch bảo trì"
                     className="form-input-line flex-grow ml-2"
                     defaultValue={formatValue(department)}
                   />
@@ -103,6 +105,7 @@ export function MaintenanceForm({
                 KẾ HOẠCH BẢO TRÌ HIỆU CHUẨN/KIỂM ĐỊNH THIẾT BỊ NĂM
                 <input 
                   type="text" 
+                  aria-label="Năm lập kế hoạch bảo trì"
                   className="form-input-line w-24 ml-2"
                   defaultValue={year.toString()}
                 />
@@ -150,12 +153,14 @@ export function MaintenanceForm({
                     <td>
                       <input 
                         type="checkbox" 
+                        aria-label={`Thực hiện nội bộ cho ${formatValue(device.name)}`}
                         defaultChecked={device.internalImplementation || false}
                       />
                     </td>
                     <td>
                       <input 
                         type="checkbox" 
+                        aria-label={`Thuê ngoài cho ${formatValue(device.name)}`}
                         defaultChecked={device.outsourcedImplementation || false}
                       />
                     </td>
@@ -163,6 +168,7 @@ export function MaintenanceForm({
                       <td key={monthIndex}>
                         <input 
                           type="checkbox"
+                          aria-label={`Tháng ${monthIndex + 1} cho ${formatValue(device.name)}`}
                           defaultChecked={(device.months && device.months[monthIndex]) || false}
                         />
                       </td>
@@ -170,6 +176,7 @@ export function MaintenanceForm({
                     <td>
                       <input 
                         type="text"
+                        aria-label={`Địa điểm hiệu chuẩn cho ${formatValue(device.name)}`}
                         defaultValue={formatValue(device.calibrationPoint)}
                       />
                     </td>
@@ -189,9 +196,9 @@ export function MaintenanceForm({
               <div className="w-1/3"></div>
               <div className="signature-area w-1/3">
                 <p className="italic mb-2">
-                  Cần Thơ, ngày <input type="text" className="form-input-line w-12" />
-                  {' '}tháng <input type="text" className="form-input-line w-12" />
-                  {' '}năm <input type="text" className="form-input-line w-20" />
+                  Cần Thơ, ngày <input type="text" aria-label="Ngày lập biểu mẫu" className="form-input-line w-12" />
+                  {' '}tháng <input type="text" aria-label="Tháng lập biểu mẫu" className="form-input-line w-12" />
+                  {' '}năm <input type="text" aria-label="Năm lập biểu mẫu" className="form-input-line w-20" />
                 </p>
                 <p className="font-bold">Người lập</p>
                 <div className="signature-space"></div>

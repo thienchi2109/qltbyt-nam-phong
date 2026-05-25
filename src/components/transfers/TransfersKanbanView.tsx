@@ -86,6 +86,7 @@ function KanbanColumnWithInfiniteScroll({
   )
 }
 
+/** Renders transfer requests grouped by status in a kanban layout. */
 export function TransfersKanbanView({
   filters,
   onViewTransfer,
@@ -201,6 +202,7 @@ function TransfersKanbanBoard({
 
             return (
               <button
+                type="button"
                 key={status}
                 onClick={() => setMobileSelectedStatus(status)}
                 className={cn(
@@ -227,6 +229,7 @@ function TransfersKanbanBoard({
 
         <div className="relative">
           <button
+            type="button"
             onClick={goToPrevColumn}
             disabled={!canGoPrev}
             className={cn(
@@ -241,6 +244,7 @@ function TransfersKanbanBoard({
           </button>
 
           <button
+            type="button"
             onClick={goToNextColumn}
             disabled={!canGoNext}
             className={cn(
@@ -275,6 +279,7 @@ function TransfersKanbanBoard({
           <div className="flex justify-center gap-1.5 mt-3">
             {allColumns.map((status, index) => (
               <button
+                type="button"
                 key={status}
                 onClick={() => setMobileSelectedStatus(status)}
                 className={cn(
