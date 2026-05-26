@@ -3,6 +3,7 @@
 import * as React from "react"
 import { FormBrandingHeader } from "@/components/form-branding-header"
 
+/** Renders the printable equipment handover form template. */
 export default function HandoverFormPage() {
   return (
     <div className="min-h-screen bg-gray-100 p-4">
@@ -42,13 +43,13 @@ export default function HandoverFormPage() {
               <tbody id="device-table-body">
                 <tr>
                   <td>1</td>
-                  <td><span className="form-input-line"></span></td>
-                  <td><span className="form-input-line"></span></td>
-                  <td><span className="form-input-line"></span></td>
-                  <td><span className="form-input-line"></span></td>
-                  <td className="editable-cell" contentEditable data-placeholder="Nhập tài liệu/phụ kiện kèm theo…"></td>
-                  <td className="editable-cell" contentEditable data-placeholder="Nhập tình trạng thiết bị…"></td>
-                  <td className="editable-cell" contentEditable data-placeholder="Nhập ghi chú…"></td>
+                  <td><span className="form-input-line" aria-label="Mã thiết bị bàn giao"></span></td>
+                  <td><span className="form-input-line" aria-label="Tên thiết bị bàn giao"></span></td>
+                  <td><span className="form-input-line" aria-label="Model thiết bị bàn giao"></span></td>
+                  <td><span className="form-input-line" aria-label="Số serial thiết bị bàn giao"></span></td>
+                  <td className="editable-cell" contentEditable aria-label="Tài liệu, phụ kiện kèm theo" data-placeholder="Nhập tài liệu/phụ kiện kèm theo…"></td>
+                  <td className="editable-cell" contentEditable aria-label="Tình trạng thiết bị bàn giao" data-placeholder="Nhập tình trạng thiết bị…"></td>
+                  <td className="editable-cell" contentEditable aria-label="Ghi chú bàn giao" data-placeholder="Nhập ghi chú…"></td>
                 </tr>
               </tbody>
             </table>

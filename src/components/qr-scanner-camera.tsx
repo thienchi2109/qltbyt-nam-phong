@@ -20,6 +20,7 @@ type TorchMediaTrackConstraintSet = MediaTrackConstraintSet & {
   torch: boolean
 }
 
+/** Renders the camera scanner used to capture QR codes. */
 export function QRScannerCamera({ onScanSuccess, onClose, isActive }: QRScannerCameraProps) {
   const { toast } = useToast()
   const videoRef = React.useRef<HTMLVideoElement>(null)
@@ -318,6 +319,7 @@ Hiện tại bạn đang truy cập qua: ${location.origin}
             size="icon"
             onClick={() => setShowInstructions(true)}
             className="text-white hover:bg-white/20"
+            aria-label="Mở hướng dẫn quét mã QR"
           >
             <HelpCircle className="size-6" />
           </Button>
@@ -335,6 +337,7 @@ Hiện tại bạn đang truy cập qua: ${location.origin}
                 className="w-full h-auto min-h-[300px] object-cover"
                 playsInline
                 muted
+                aria-label="Khung camera quét mã QR"
               />
               
               {/* Scanning Overlay */}
