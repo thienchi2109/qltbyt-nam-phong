@@ -237,6 +237,36 @@ describe("authOptions authorize + auth lifecycle events", () => {
     expect(JSON.stringify(authLifecycleLogs(consoleInfoSpy))).not.toContain("super-secret")
   })
 
+  it("fails closed without falling back to anon key when the service role key is missing", async () => {
+    vi.stubEnv("SUPABASE_SERVICE_ROLE_KEY", "")
+    vi.stubEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY", "test-anon-key")
+
+    const authorize = getAuthorizeHandler()
+    const result = await authorize({
+      username: "NQMinh",
+      password: "super-secret",
+    }, buildAuthorizeRequest())
+
+    expect(result).toBeNull()
+    expect(authLifecycleLogs(consoleInfoSpy)).toEqual([
+      expect.objectContaining({
+        event: "login_failure",
+        source: "authorize",
+        reason_code: "config_error",
+        username: "nqminh",
+        request_id: "req-123",
+        ip_address: "203.0.113.1",
+        user_agent: "VitestBrowser/1.0",
+      }),
+    ])
+    expect(supabaseState.rpcCalls).not.toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ fn: "authenticate_user_dual_mode" }),
+      ])
+    )
+    expect(JSON.stringify(authLifecycleLogs(consoleInfoSpy))).not.toContain("super-secret")
+  })
+
   it("emits tenant_inactive when rpc auth says tenant is inactive", async () => {
     supabaseState.authRpcRows = [{
       is_authenticated: false,
