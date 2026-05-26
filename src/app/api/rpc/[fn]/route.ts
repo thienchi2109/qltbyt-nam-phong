@@ -7,6 +7,10 @@ import { toAppRoleClaim } from '@/auth/server-claims'
 import { ALLOWED_FUNCTIONS } from './allowed-functions'
 import { sanitizeForLog } from '@/lib/log-sanitizer'
 import { mintSupabaseJwt } from '@/lib/ai/server-rpc'
+import {
+  SameOriginRequestError,
+  assertSameOriginRequest,
+} from '@/lib/same-origin-request'
 
 // SECURITY: Maximum request body size (2MB) to prevent DoS via memory exhaustion
 const MAX_BODY_SIZE = 2 * 1024 * 1024
@@ -47,6 +51,15 @@ function getErrorMessage(error: unknown): string {
 export async function POST(req: NextRequest, context: { params: Promise<{ fn: string }> }) {
   try {
     const { fn } = await context.params
+    try {
+      assertSameOriginRequest(req)
+    } catch (err: unknown) {
+      if (err instanceof SameOriginRequestError) {
+        return NextResponse.json({ error: err.message }, { status: err.status })
+      }
+      throw err
+    }
+
     if (!ALLOWED_FUNCTIONS.has(fn)) {
       return NextResponse.json({ error: 'Function not allowed' }, { status: 403 })
     }
