@@ -1,6 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import jwt from "jsonwebtoken"
 
+vi.mock("server-only", () => ({}))
+
 type RpcProfileRow = {
   password_changed_at: string | null
   current_don_vi: number | null
