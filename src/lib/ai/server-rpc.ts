@@ -2,15 +2,14 @@ import 'server-only'
 
 import jwt from 'jsonwebtoken'
 
-const SUPABASE_JWT_CLOCK_SKEW_SECONDS = 60
+import {
+  buildSupabaseRpcJwtClaims,
+  type SupabaseRpcUser,
+} from '@/auth/server-claims'
 
-export type SupabaseRpcUser = {
-  id?: unknown
-  role?: unknown
-  don_vi?: unknown
-  dia_ban_id?: unknown
-  khoa_phong?: unknown
-}
+export type { SupabaseRpcUser } from '@/auth/server-claims'
+
+const SUPABASE_JWT_CLOCK_SKEW_SECONDS = 60
 
 function getRequiredEnv(name: string): string {
   const value = process.env[name]
@@ -20,47 +19,12 @@ function getRequiredEnv(name: string): string {
   return value
 }
 
-function stringifyClaim(value: unknown): string {
-  if (typeof value === 'string') {
-    return value
-  }
-  if (typeof value === 'number' || typeof value === 'boolean') {
-    return String(value)
-  }
-  return ''
-}
-
-function nullableStringClaim(value: unknown): string | null {
-  const stringValue = stringifyClaim(value)
-  return stringValue ? stringValue : null
-}
-
-function normalizeAppRole(role: unknown): string {
-  const roleValue = stringifyClaim(role).toLowerCase()
-  return roleValue === 'admin' ? 'global' : roleValue
-}
-
 /** Mints a short-lived Supabase-compatible JWT from trusted server-side user claims. */
 export function mintSupabaseJwt(user: SupabaseRpcUser): string {
-  const userId = stringifyClaim(user.id)
-  if (!userId) {
-    throw new Error('Cannot mint Supabase RPC JWT without user id')
-  }
-
   const now = Math.floor(Date.now() / 1000)
   const issuedAt = now - SUPABASE_JWT_CLOCK_SKEW_SECONDS
   const expiresAt = now + 120
-  const claims: Record<string, string | number | null> = {
-    role: 'authenticated',
-    iat: issuedAt,
-    exp: expiresAt,
-    sub: userId,
-    app_role: normalizeAppRole(user.role),
-    don_vi: nullableStringClaim(user.don_vi),
-    user_id: userId,
-    dia_ban: nullableStringClaim(user.dia_ban_id),
-    khoa_phong: nullableStringClaim(user.khoa_phong),
-  }
+  const claims = buildSupabaseRpcJwtClaims({ user, issuedAt, expiresAt })
 
   return jwt.sign(claims, getRequiredEnv('SUPABASE_JWT_SECRET'), {
     algorithm: 'HS256',

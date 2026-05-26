@@ -101,4 +101,58 @@ describe('RPC proxy JWT signing', () => {
     // exp should be 2 minutes from actual signing time, not from backdated iat
     expect(claims.exp).toBe(now + 120)
   })
+
+  it('rejects sessions without an app role before signing a Supabase JWT', async () => {
+    getServerSessionMock.mockResolvedValue({
+      user: {
+        id: '31',
+        role: '',
+        don_vi: 17,
+      },
+    })
+
+    const res = await POST(buildRequest({ query: 'SpO2' }) as never, {
+      params: Promise.resolve({ fn: 'ai_equipment_lookup' }),
+    })
+
+    expect(res.status).toBe(500)
+    await expect(res.json()).resolves.toEqual({
+      error: 'Cannot mint Supabase RPC JWT without app_role',
+    })
+    expect(jwtSignMock).not.toHaveBeenCalled()
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it('preserves explicit zero-valued session claims when proxying RPC requests', async () => {
+    getServerSessionMock.mockResolvedValue({
+      user: {
+        id: 0,
+        role: 'to_qltb',
+        don_vi: 0,
+        dia_ban_id: 0,
+        khoa_phong: 0,
+      },
+    })
+
+    const res = await POST(buildRequest({ p_don_vi: 999, p_dia_ban: 888 }) as never, {
+      params: Promise.resolve({ fn: 'ai_equipment_lookup' }),
+    })
+
+    expect(res.status).toBe(200)
+
+    const [claims] = jwtSignMock.mock.calls[0] as [Record<string, unknown>]
+    expect(claims).toMatchObject({
+      sub: '0',
+      user_id: '0',
+      don_vi: '0',
+      dia_ban: '0',
+      khoa_phong: '0',
+    })
+
+    const [, init] = fetchMock.mock.calls[0] as [string, RequestInit]
+    expect(JSON.parse(String(init.body))).toEqual({
+      p_don_vi: 0,
+      p_dia_ban: 0,
+    })
+  })
 })

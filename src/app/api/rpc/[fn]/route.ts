@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server'
 export const runtime = 'nodejs'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '../../../../auth/config'
+import { toAppRoleClaim } from '@/auth/server-claims'
 import { ALLOWED_FUNCTIONS } from './allowed-functions'
 import { sanitizeForLog } from '@/lib/log-sanitizer'
 import { mintSupabaseJwt } from '@/lib/ai/server-rpc'
@@ -93,13 +94,11 @@ export async function POST(req: NextRequest, context: { params: Promise<{ fn: st
 
   const rawRole = sessionUser.role ?? ''
   const role = typeof rawRole === 'string' ? rawRole : String(rawRole)
-  const roleLower = role.toLowerCase()
-  const donVi = sessionUser.don_vi ? String(sessionUser.don_vi) : ''
-  const diaBan = sessionUser.dia_ban_id ? String(sessionUser.dia_ban_id) : ''
-  const khoaPhong = sessionUser.khoa_phong ? String(sessionUser.khoa_phong) : ''
-  const userId = sessionUser.id ? String(sessionUser.id) : ''
-  // Normalize to expected app roles used by SQL. Always lowercase; treat 'admin' as 'global'.
-  const appRole = roleLower === 'admin' ? 'global' : roleLower
+  const donVi = sessionUser.don_vi != null ? String(sessionUser.don_vi) : ''
+  const diaBan = sessionUser.dia_ban_id != null ? String(sessionUser.dia_ban_id) : ''
+  const khoaPhong = sessionUser.khoa_phong != null ? String(sessionUser.khoa_phong) : ''
+  const userId = sessionUser.id != null ? String(sessionUser.id) : ''
+  const appRole = toAppRoleClaim(role)
   // (debug removed)
 
     // Sanitize tenant parameter for non-global users to enforce isolation

@@ -14,7 +14,6 @@ import {
   AuthRefreshConfigError,
   buildSessionProfileJwt,
   firstProfileRow,
-  normalizeSessionProfileAppRole,
   PROFILE_REFRESH_INTERVAL_MS,
   requireRefreshEnv,
 } from "./session-profile-refresh"
@@ -25,6 +24,7 @@ import {
   readRuntimeRequestContext,
 } from "./request-context"
 
+/** NextAuth callbacks that keep JWT/session fields synchronized with profile state. */
 export const authCallbacks: NonNullable<NextAuthOptions["callbacks"]> = {
   async jwt({ token, user, trigger, session }) {
     const now = Date.now()
@@ -112,12 +112,7 @@ export const authCallbacks: NonNullable<NextAuthOptions["callbacks"]> = {
     try {
       const supabaseUrl = requireRefreshEnv("NEXT_PUBLIC_SUPABASE_URL")
       const anonKey = requireRefreshEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY")
-      const appRole = normalizeSessionProfileAppRole(token.role)
-      if (!appRole) {
-        throw new AuthRefreshConfigError("JWT app_role is not configured")
-      }
-
-      const sessionProfileJwt = buildSessionProfileJwt(userId, appRole)
+      const sessionProfileJwt = buildSessionProfileJwt(userId, token.role)
       token.lastRefreshAttemptAt = now
       const supabase = createClient(supabaseUrl, anonKey, {
         global: {
