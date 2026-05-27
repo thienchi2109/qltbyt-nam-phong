@@ -26,12 +26,12 @@ interface EquipmentBulkDeleteBarProps {
   isCardView: boolean
 }
 
+/** Renders the floating bulk-delete action for selected equipment rows. */
 export function EquipmentBulkDeleteBar({
   table,
   canBulkSelect,
   isCardView,
-}: EquipmentBulkDeleteBarProps) {
-  const [isConfirmOpen, setIsConfirmOpen] = React.useState(false)
+}: EquipmentBulkDeleteBarProps): React.ReactElement | null {
   const { mutate: bulkDelete, isPending: isDeleting } = useBulkDeleteEquipment()
 
   const selectedRows = table.getFilteredSelectedRowModel().rows
@@ -49,12 +49,6 @@ export function EquipmentBulkDeleteBar({
   }, [selectedRows])
   const selectedCount = selectedIds.length
 
-  React.useEffect(() => {
-    if (selectedCount === 0 && isConfirmOpen) {
-      setIsConfirmOpen(false)
-    }
-  }, [selectedCount, isConfirmOpen])
-
   const handleConfirmDelete = React.useCallback(
     (event: React.MouseEvent<HTMLButtonElement>) => {
       event.preventDefault()
@@ -63,7 +57,6 @@ export function EquipmentBulkDeleteBar({
 
       bulkDelete(selectedIds, {
         onSuccess: () => {
-          setIsConfirmOpen(false)
           table.resetRowSelection()
         },
       })
@@ -87,7 +80,7 @@ export function EquipmentBulkDeleteBar({
           entityLabel="thiết bị"
           className="border-border bg-card shadow-lg"
         >
-          <AlertDialog open={isConfirmOpen} onOpenChange={setIsConfirmOpen}>
+          <AlertDialog>
             <AlertDialogTrigger asChild>
               <Button type="button" size="sm" variant="destructive" disabled={isDeleting}>
                 {EQUIPMENT_BULK_DELETE_LABEL}
@@ -104,7 +97,6 @@ export function EquipmentBulkDeleteBar({
                 <AlertDialogCancel
                   onClick={(event) => {
                     event.stopPropagation()
-                    setIsConfirmOpen(false)
                   }}
                 >
                   Hủy

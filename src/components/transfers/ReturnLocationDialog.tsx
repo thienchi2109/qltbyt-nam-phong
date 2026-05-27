@@ -47,6 +47,7 @@ function getValidationMessage(value: string): string | null {
   return null
 }
 
+/** Collects and validates the destination location before completing an external return. */
 export function ReturnLocationDialog({
   open,
   isSubmitting,
@@ -54,20 +55,31 @@ export function ReturnLocationDialog({
   transfer,
   onConfirm,
 }: ReturnLocationDialogProps) {
+  const resetKey = open ? String(transfer?.id ?? "none") : "closed"
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <ReturnLocationDialogContent
+        key={resetKey}
+        open={open}
+        isSubmitting={isSubmitting}
+        onCancel={() => onOpenChange(false)}
+        transfer={transfer}
+        onConfirm={onConfirm}
+      />
+    </Dialog>
+  )
+}
+
+function ReturnLocationDialogContent({
+  open,
+  isSubmitting,
+  onCancel,
+  transfer,
+  onConfirm,
+}: Omit<ReturnLocationDialogProps, "onOpenChange"> & { onCancel: () => void }) {
   const [location, setLocation] = React.useState("")
   const [validationMessage, setValidationMessage] = React.useState<string | null>(null)
-
-  React.useEffect(() => {
-    if (!open) {
-      setLocation("")
-      setValidationMessage(null)
-    }
-  }, [open])
-
-  React.useEffect(() => {
-    setLocation("")
-    setValidationMessage(null)
-  }, [transfer?.id])
 
   const suggestionsQuery = useQuery({
     queryKey: ["equipment-location-suggestions", transfer?.id],
@@ -82,16 +94,20 @@ export function ReturnLocationDialog({
 
   const suggestions = React.useMemo(() => {
     const seen = new Set<string>()
+    const nextSuggestions: string[] = []
 
-    return (suggestionsQuery.data ?? [])
-      .map((item) => normalizeLocationValue(item.vi_tri ?? ""))
-      .filter((item) => item.length > 0)
-      .filter((item) => {
-        const key = item.toLocaleLowerCase("vi-VN")
-        if (seen.has(key)) return false
-        seen.add(key)
-        return true
-      })
+    for (const item of suggestionsQuery.data ?? []) {
+      const suggestion = normalizeLocationValue(item.vi_tri ?? "")
+      if (suggestion.length === 0) continue
+
+      const key = suggestion.toLocaleLowerCase("vi-VN")
+      if (seen.has(key)) continue
+
+      seen.add(key)
+      nextSuggestions.push(suggestion)
+    }
+
+    return nextSuggestions
   }, [suggestionsQuery.data])
 
   const handleLocationChange = React.useCallback(
@@ -129,7 +145,6 @@ export function ReturnLocationDialog({
   }, [location, onConfirm])
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Xác nhận vị trí hoàn trả</DialogTitle>
@@ -189,7 +204,7 @@ export function ReturnLocationDialog({
             type="button"
             variant="outline"
             disabled={isSubmitting}
-            onClick={() => onOpenChange(false)}
+            onClick={onCancel}
           >
             Hủy
           </Button>
@@ -198,6 +213,5 @@ export function ReturnLocationDialog({
           </Button>
         </DialogFooter>
       </DialogContent>
-    </Dialog>
   )
 }
