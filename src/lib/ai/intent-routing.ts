@@ -38,6 +38,7 @@ export type ChatIntentRoutingResult =
       message: string
     }
 
+/** Routes a chat request to the smallest safe tool set required by the latest user intent. */
 export function routeChatIntent({
   messages,
   requestedTools,
@@ -88,7 +89,9 @@ export function routeChatIntent({
 
   return {
     kind: 'proceed',
-    requestedTools: holdBackQueryDatabase(requestedTools),
+    requestedTools: requestedTools.every(toolName => toolName === ASSISTANT_SQL_TOOL_NAME)
+      ? requestedTools
+      : [],
   }
 }
 

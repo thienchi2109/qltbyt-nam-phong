@@ -320,6 +320,32 @@ describe('/api/chat intent routing + clarification guard', () => {
     expect(text).toContain('trạng thái thiết bị')
   })
 
+  it('allows global users to start a general assistant chat before selecting a facility', async () => {
+    getServerSessionMock.mockResolvedValue({
+      user: { id: '1', role: 'global', don_vi: undefined },
+    })
+
+    const res = await POST(
+      buildRequest({
+        selectedFacilityId: null,
+        messages: buildMessages('Xin chào, bạn giúp gì được cho tôi?'),
+        requestedTools: FULL_PANEL_TOOLS,
+      }) as never,
+    )
+
+    expect(res.status).toBe(200)
+    expect(reserveUsageMock).toHaveBeenCalledWith(expect.objectContaining({
+      userId: '1',
+      tenantId: undefined,
+      role: 'global',
+    }))
+    expect(streamTextMock).toHaveBeenCalledOnce()
+    const streamArgs = streamTextMock.mock.calls[0]?.[0] as {
+      tools?: Record<string, unknown>
+    }
+    expect(streamArgs.tools).toBeUndefined()
+  })
+
   it('routes narrow reporting prompts to query_database only', async () => {
     const res = await POST(
       buildRequest({
