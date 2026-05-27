@@ -318,7 +318,7 @@ function SuggestedMappingPreviewDialogContent({
                     {canWrite && !isRegionalLeader && status === "done" && (
                         <Button
                             onClick={handleConfirmSave}
-                            disabled={saveStatus === "saving" || saveStatus === "save-error" || saveStatus === "saved" || activeGroupCount === 0}
+                            disabled={saveStatus === "saving" || saveStatus === "saved" || activeGroupCount === 0}
                         >
                             {saveStatus === "saving" ? (
                                 <>
