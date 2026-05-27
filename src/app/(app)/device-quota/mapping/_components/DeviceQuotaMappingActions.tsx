@@ -38,9 +38,10 @@ export function DeviceQuotaMappingActions() {
     () => allCategories.find((c) => c.id === selectedCategoryId) ?? null,
     [allCategories, selectedCategoryId]
   )
+  const canOpenPreview = canLink && targetCategory !== null
 
   const handleOpenPreview = () => {
-    if (!canLink) return
+    if (!canOpenPreview) return
     setShowPreview(true)
   }
 
@@ -97,7 +98,7 @@ export function DeviceQuotaMappingActions() {
             {selectedCount > 0 && (
               <Button
                 onClick={handleOpenPreview}
-                disabled={!canLink || isLinking}
+                disabled={!canOpenPreview || isLinking}
                 size="sm"
                 className="touch-target-sm"
               >
