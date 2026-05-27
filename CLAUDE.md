@@ -576,6 +576,29 @@ Before creating, renaming, or applying a Supabase migration, compare the new fil
 - Do not name a local migration only to match a Supabase MCP-applied live version if that places it before existing local migrations that can overwrite it.
 - If a bad-order migration has already been applied via MCP, fix the repo by adding/renaming to a correctly ordered local migration and apply a new idempotent superseding migration. Do not keep the bad-order local file and do not manually edit `supabase_migrations.schema_migrations` unless the team explicitly approves a metadata repair.
 
+### Data API Explicit Grants
+
+Supabase is changing `public` schema table exposure defaults. Starting 2026-05-30 for new projects, and 2026-10-30 for new tables in existing projects, new `public` tables are not automatically exposed to the Data API unless migrations grant privileges explicitly.
+
+For every migration that creates or replaces a `public` table:
+
+- Do not rely on Supabase default privileges for `anon` or `authenticated`; fresh DB/reset behavior must come from local migration SQL.
+- Start from a deny-by-default baseline:
+  ```sql
+  REVOKE ALL ON TABLE public.table_name FROM anon, authenticated, public;
+  ```
+- Add only the exact Data API privileges the app needs. Prefer `authenticated` over `anon`, and avoid `GRANT ALL`:
+  ```sql
+  GRANT SELECT, INSERT, UPDATE ON TABLE public.table_name TO authenticated;
+  ```
+- If direct Data API inserts need an identity/serial sequence, grant only the required sequence privilege:
+  ```sql
+  GRANT USAGE, SELECT ON SEQUENCE public.table_name_id_seq TO authenticated;
+  ```
+- For server-only/internal/audit/auth tables, keep `anon` and `authenticated` revoked and access them through guarded RPCs, route handlers, or service-role server code.
+- Grants do not replace RLS. Any table exposed to `anon` or `authenticated` should have an intentional RLS/policy design or a documented reason it is safe without RLS.
+- Before applying broad grant changes to existing tables, inspect live privileges with Supabase MCP and classify each table as app-facing, RPC-only, server-only, or intentionally public. Do not bulk-grant all existing tables just to silence Data API exposure warnings.
+
 ### LIKE/ILIKE Sanitization
 
 **NEVER concatenate user input directly into LIKE/ILIKE patterns.** Always use `_sanitize_ilike_pattern()`:
