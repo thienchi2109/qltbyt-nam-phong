@@ -39,6 +39,15 @@ export interface DeviceQuotaMappingPreviewDialogProps {
     donViId: number | null
 }
 
+type DeviceQuotaMappingPreviewDialogContentProps = Readonly<{
+    selectedIds: Set<number>
+    targetCategory: Category
+    onConfirm: (confirmedIds: number[]) => void
+    isLinking: boolean
+    donViId: number | null
+    onCancel: () => void
+}>
+
 // ============================================
 // Sub-components
 // ============================================
@@ -189,14 +198,7 @@ function DeviceQuotaMappingPreviewDialogContent({
     isLinking,
     donViId,
     onCancel,
-}: {
-    selectedIds: Set<number>
-    targetCategory: Category
-    onConfirm: (confirmedIds: number[]) => void
-    isLinking: boolean
-    donViId: number | null
-    onCancel: () => void
-}) {
+}: DeviceQuotaMappingPreviewDialogContentProps) {
     const [excludedIds, setExcludedIds] = React.useState<Set<number>>(new Set())
 
     // Fetch full equipment details for selected IDs

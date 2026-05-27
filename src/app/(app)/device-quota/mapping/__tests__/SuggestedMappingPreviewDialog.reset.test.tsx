@@ -7,7 +7,7 @@ import type { SuggestMappingResult, SuggestedGroup } from "../_hooks/useSuggestM
 import { SuggestedMappingPreviewDialog } from "../_components/SuggestedMappingPreviewDialog"
 
 beforeAll(() => {
-    Object.defineProperty(window, "matchMedia", {
+    Object.defineProperty(globalThis, "matchMedia", {
         writable: true,
         value: vi.fn().mockImplementation((query: string) => ({
             matches: false,
