@@ -144,11 +144,17 @@ function TransfersKanbanBoard({
   }, [])
 
   const columns = data?.columns || {}
-  const activeColumns: TransferStatus[] = ACTIVE_TRANSFER_STATUSES
-  const allColumns = showCompleted
-    ? ([...activeColumns, 'hoan_thanh'] as TransferStatus[])
-    : activeColumns
-  const currentMobileIndex = allColumns.indexOf(mobileSelectedStatus)
+  const allColumns = React.useMemo<TransferStatus[]>(
+    () =>
+      showCompleted
+        ? ([...ACTIVE_TRANSFER_STATUSES, 'hoan_thanh'] as TransferStatus[])
+        : [...ACTIVE_TRANSFER_STATUSES],
+    [showCompleted],
+  )
+  const visibleMobileStatus = allColumns.includes(mobileSelectedStatus)
+    ? mobileSelectedStatus
+    : allColumns[0]
+  const currentMobileIndex = allColumns.indexOf(visibleMobileStatus)
   const canGoPrev = currentMobileIndex > 0
   const canGoNext = currentMobileIndex < allColumns.length - 1
 
@@ -163,12 +169,6 @@ function TransfersKanbanBoard({
       setMobileSelectedStatus(allColumns[currentMobileIndex + 1])
     }
   }, [canGoNext, allColumns, currentMobileIndex])
-
-  React.useEffect(() => {
-    if (!allColumns.includes(mobileSelectedStatus)) {
-      setMobileSelectedStatus(allColumns[0])
-    }
-  }, [allColumns, mobileSelectedStatus])
 
   if (isLoading) {
     return (
@@ -187,7 +187,7 @@ function TransfersKanbanBoard({
         <Button
           variant="outline"
           size="sm"
-          onClick={() => setShowCompleted(!showCompleted)}
+          onClick={() => setShowCompleted((current) => !current)}
         >
           {showCompleted ? 'Ẩn' : 'Hiện'} hoàn thành
         </Button>
@@ -198,7 +198,7 @@ function TransfersKanbanBoard({
           {allColumns.map((status) => {
             const columnData = columns[status] ?? { tasks: [], total: 0 }
             const count = columnData.total || 0
-            const isActive = status === mobileSelectedStatus
+            const isActive = status === visibleMobileStatus
 
             return (
               <button
@@ -260,11 +260,11 @@ function TransfersKanbanBoard({
 
           <div className="min-h-[calc(100vh-380px)]">
             {(() => {
-              const columnData = columns[mobileSelectedStatus] ?? { tasks: [], total: 0, hasMore: false }
+              const columnData = columns[visibleMobileStatus] ?? { tasks: [], total: 0, hasMore: false }
               return (
                 <KanbanColumnWithInfiniteScroll
-                  key={mobileSelectedStatus}
-                  status={mobileSelectedStatus}
+                  key={visibleMobileStatus}
+                  status={visibleMobileStatus}
                   filters={filters}
                   initialTasks={columnData.tasks || []}
                   initialTotal={columnData.total || 0}

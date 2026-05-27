@@ -170,4 +170,20 @@ describe("TransfersKanbanView infinite scroll", () => {
     expect(taskCodes.filter((code) => code === "LC-PAGE-1-1")).toHaveLength(1)
     expect(taskCodes).toHaveLength(31)
   })
+
+  it("falls back to the first active mobile column when completed columns are hidden", async () => {
+    const user = userEvent.setup()
+
+    renderKanbanView()
+
+    await user.click(screen.getByRole("button", { name: "Hiện hoàn thành" }))
+    await user.click(screen.getAllByRole("button", { name: "Hoàn thành" })[0])
+
+    expect(screen.getAllByTestId("kanban-column-hoan_thanh").length).toBeGreaterThan(0)
+
+    await user.click(screen.getByRole("button", { name: "Ẩn hoàn thành" }))
+
+    expect(screen.queryAllByTestId("kanban-column-hoan_thanh")).toHaveLength(0)
+    expect(screen.getAllByTestId("kanban-column-cho_duyet").length).toBeGreaterThan(0)
+  })
 })

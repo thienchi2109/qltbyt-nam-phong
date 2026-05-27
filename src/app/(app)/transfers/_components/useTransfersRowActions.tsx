@@ -56,6 +56,12 @@ export interface UseTransfersRowActionsResult {
   renderRowActions: (item: TransferListItem) => React.ReactNode
 }
 
+type ReturnLocationDialogState = Readonly<{
+  open: boolean
+  transfer: TransferListItem | null
+}>
+
+/** Coordinates transfer row action handlers and their supporting dialog state. */
 export function useTransfersRowActions({
   approveTransfer,
   startTransfer,
@@ -77,8 +83,8 @@ export function useTransfersRowActions({
   const [detailTransfer, setDetailTransfer] = React.useState<TransferRequest | null>(null)
   const [isHandoverDialogOpen, setIsHandoverDialogOpen] = React.useState(false)
   const [handoverTransfer, setHandoverTransfer] = React.useState<TransferRequest | null>(null)
-  const [isReturnLocationDialogOpen, setIsReturnLocationDialogOpen] = React.useState(false)
-  const [returnTransfer, setReturnTransfer] = React.useState<TransferListItem | null>(null)
+  const [returnLocationDialog, setReturnLocationDialog] =
+    React.useState<ReturnLocationDialogState>({ open: false, transfer: null })
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = React.useState(false)
   const [deletingTransfer, setDeletingTransfer] = React.useState<TransferListItem | null>(null)
 
@@ -109,31 +115,34 @@ export function useTransfersRowActions({
   }, [])
 
   const handleOpenReturnDialog = React.useCallback((item: TransferListItem) => {
-    setReturnTransfer(item)
-    setIsReturnLocationDialogOpen(true)
+    setReturnLocationDialog({ open: true, transfer: item })
   }, [])
+
+  const setIsReturnLocationDialogOpen = React.useCallback(
+    (openOrUpdater: React.SetStateAction<boolean>) => {
+      setReturnLocationDialog((current) => {
+        const nextOpen =
+          typeof openOrUpdater === "function" ? openOrUpdater(current.open) : openOrUpdater
+
+        return nextOpen ? { ...current, open: true } : { open: false, transfer: null }
+      })
+    },
+    [],
+  )
 
   const handleConfirmReturn = React.useCallback(
     async (viTriHoanTra: string) => {
-      if (!returnTransfer) return
+      if (!returnLocationDialog.transfer) return
 
       try {
-        await returnFromExternal(returnTransfer, viTriHoanTra)
-        setReturnTransfer(null)
-        setIsReturnLocationDialogOpen(false)
+        await returnFromExternal(returnLocationDialog.transfer, viTriHoanTra)
+        setReturnLocationDialog({ open: false, transfer: null })
       } catch {
         // Mutation onError already surfaces the failure; keep the dialog open.
       }
     },
-    [returnFromExternal, returnTransfer],
+    [returnFromExternal, returnLocationDialog.transfer],
   )
-
-  React.useEffect(() => {
-    // Reset returnTransfer when the dialog is closed via cancel or overlay click.
-    if (!isReturnLocationDialogOpen && returnTransfer) {
-      setReturnTransfer(null)
-    }
-  }, [isReturnLocationDialogOpen, returnTransfer])
 
   const handleConfirmDelete = React.useCallback(async () => {
     if (!deletingTransfer) return
@@ -217,9 +226,9 @@ export function useTransfersRowActions({
     isHandoverDialogOpen,
     setIsHandoverDialogOpen,
     handoverTransfer,
-    isReturnLocationDialogOpen,
+    isReturnLocationDialogOpen: returnLocationDialog.open,
     setIsReturnLocationDialogOpen,
-    returnTransfer,
+    returnTransfer: returnLocationDialog.transfer,
     isDeleteDialogOpen,
     setIsDeleteDialogOpen,
     deletingTransfer,
