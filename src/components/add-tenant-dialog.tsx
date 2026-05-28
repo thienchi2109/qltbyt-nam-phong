@@ -18,23 +18,30 @@ interface AddTenantDialogProps {
   onSuccess: () => void
 }
 
+const EMPTY_TENANT_FORM = {
+  code: "",
+  name: "",
+  active: true,
+  membership_quota: "" as string,
+  logo_url: "",
+  google_drive_folder_url: "",
+}
+
+/** Renders the tenant creation dialog and clears draft state when it closes. */
 export function AddTenantDialog({ open, onOpenChange, onSuccess }: AddTenantDialogProps) {
   const { toast } = useToast()
   const qc = useQueryClient()
-  const [form, setForm] = React.useState({
-    code: "",
-    name: "",
-    active: true,
-    membership_quota: "" as string,
-    logo_url: "",
-    google_drive_folder_url: "",
-  })
+  const [form, setForm] = React.useState(EMPTY_TENANT_FORM)
 
-  React.useEffect(() => {
-    if (!open) {
-      setForm({ code: "", name: "", active: true, membership_quota: "", logo_url: "", google_drive_folder_url: "" })
-    }
-  }, [open])
+  const handleOpenChange = React.useCallback(
+    (nextOpen: boolean) => {
+      if (!nextOpen) {
+        setForm(EMPTY_TENANT_FORM)
+      }
+      onOpenChange(nextOpen)
+    },
+    [onOpenChange]
+  )
 
   const createMutation = useMutation({
     mutationFn: async (): Promise<TenantRow> => {
@@ -66,7 +73,7 @@ export function AddTenantDialog({ open, onOpenChange, onSuccess }: AddTenantDial
 	      })
 	      toast({ title: "Thành công", description: "Đã tạo đơn vị mới" })
 	      onSuccess?.()
-	      onOpenChange(false)
+	      handleOpenChange(false)
 	    },
 	    onError: (error: unknown) => {
 	      const description = error instanceof Error ? error.message : "Không thể tạo đơn vị"
@@ -85,7 +92,7 @@ export function AddTenantDialog({ open, onOpenChange, onSuccess }: AddTenantDial
 	  }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-[480px]">
         <DialogHeader>
           <DialogTitle>Thêm đơn vị</DialogTitle>
@@ -120,7 +127,7 @@ export function AddTenantDialog({ open, onOpenChange, onSuccess }: AddTenantDial
             </div>
           </div>
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={isPending}>Hủy</Button>
+            <Button type="button" variant="outline" onClick={() => handleOpenChange(false)} disabled={isPending}>Hủy</Button>
             <Button type="submit" disabled={isPending}>{isPending && <Loader2 className="mr-2 size-4 animate-spin" />}Tạo</Button>
           </DialogFooter>
         </form>

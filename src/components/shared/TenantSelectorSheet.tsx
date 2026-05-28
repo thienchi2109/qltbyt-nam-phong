@@ -29,6 +29,7 @@ export interface TenantSelectorSheetProps {
   hideAllOption?: boolean
 }
 
+/** Renders the mobile tenant selector sheet and clears search when closed. */
 export function TenantSelectorSheet({
   open,
   onOpenChange,
@@ -43,12 +44,15 @@ export function TenantSelectorSheet({
 
   const [searchTerm, setSearchTerm] = React.useState("")
 
-  // Clear search when sheet closes
-  React.useEffect(() => {
-    if (!open) {
-      setSearchTerm("")
-    }
-  }, [open])
+  const handleOpenChange = React.useCallback(
+    (nextOpen: boolean) => {
+      if (!nextOpen) {
+        setSearchTerm("")
+      }
+      onOpenChange(nextOpen)
+    },
+    [onOpenChange]
+  )
 
   // Memoize filtered facilities (per rerender-memo)
   const filteredFacilities = React.useMemo(() => {
@@ -68,13 +72,13 @@ export function TenantSelectorSheet({
   const handleSelect = React.useCallback(
     (facilityId: number | null) => {
       setSelectedFacilityId(facilityId)
-      onOpenChange(false)
+      handleOpenChange(false)
     },
-    [setSelectedFacilityId, onOpenChange]
+    [setSelectedFacilityId, handleOpenChange]
   )
 
   return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
+    <Sheet open={open} onOpenChange={handleOpenChange}>
       <SheetContent
         side="bottom"
         className="flex h-[70vh] max-h-[70vh] flex-col rounded-t-3xl border-border/60 bg-background px-6 pb-6 pt-4"

@@ -48,7 +48,7 @@ describe("TenantSelectorSheet", () => {
     const user = userEvent.setup()
     renderSheet()
 
-    await user.type(screen.getByPlaceholderText("Tìm kiếm cơ sở..."), "can tho")
+    await user.type(screen.getByPlaceholderText(/Tìm kiếm cơ sở/), "can tho")
 
     expect(screen.getByRole("button", { name: /Bệnh viện Đa khoa Cần Thơ/ })).toBeInTheDocument()
     expect(screen.queryByRole("button", { name: /Bệnh viện Đa khoa An Giang/ })).not.toBeInTheDocument()
@@ -58,7 +58,7 @@ describe("TenantSelectorSheet", () => {
     const user = userEvent.setup()
     renderSheet()
 
-    await user.type(screen.getByPlaceholderText("Tìm kiếm cơ sở..."), "Ca\u0302\u0300n tho")
+    await user.type(screen.getByPlaceholderText(/Tìm kiếm cơ sở/), "Ca\u0302\u0300n tho")
 
     expect(screen.getByRole("button", { name: /Bệnh viện Đa khoa Cần Thơ/ })).toBeInTheDocument()
   })

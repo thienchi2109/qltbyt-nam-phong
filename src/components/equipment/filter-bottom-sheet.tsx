@@ -29,6 +29,17 @@ interface FilterBottomSheetProps {
   onClearAll: () => void
 }
 
+function getLocalFilters(columnFilters: ColumnFiltersState): Record<string, string[]> {
+  const initial: Record<string, string[]> = {}
+  columnFilters.forEach((filter) => {
+    if (Array.isArray(filter.value)) {
+      initial[filter.id] = filter.value as string[]
+    }
+  })
+  return initial
+}
+
+/** Renders the mobile equipment filter sheet with an apply-only local draft. */
 export function FilterBottomSheet({
   open,
   onOpenChange,
@@ -37,20 +48,29 @@ export function FilterBottomSheet({
   onApply,
   onClearAll,
 }: FilterBottomSheetProps) {
-  const [localFilters, setLocalFilters] = React.useState<Record<string, string[]>>({})
+  const [localFilters, setLocalFilters] = React.useState<Record<string, string[]>>(() =>
+    open ? getLocalFilters(columnFilters) : {}
+  )
+  const wasOpenRef = React.useRef(open)
 
-  // Initialize local filters from columnFilters when sheet opens
-  React.useEffect(() => {
+  if (wasOpenRef.current !== open) {
+    wasOpenRef.current = open
     if (open) {
-      const initial: Record<string, string[]> = {}
-      columnFilters.forEach((filter) => {
-        if (Array.isArray(filter.value)) {
-          initial[filter.id] = filter.value as string[]
-        }
-      })
-      setLocalFilters(initial)
+      setLocalFilters(getLocalFilters(columnFilters))
+    } else {
+      setLocalFilters({})
     }
-  }, [open, columnFilters])
+  }
+
+  const handleOpenChange = React.useCallback(
+    (nextOpen: boolean) => {
+      if (!nextOpen) {
+        setLocalFilters({})
+      }
+      onOpenChange(nextOpen)
+    },
+    [onOpenChange]
+  )
 
   const toggleFilter = (category: string, value: string) => {
     setLocalFilters((prev) => {
@@ -71,16 +91,19 @@ export function FilterBottomSheet({
   }, [localFilters])
 
   const handleApply = () => {
-    const next: ColumnFiltersState = Object.entries(localFilters)
-      .filter(([_, values]) => values.length > 0)
-      .map(([id, value]) => ({ id, value }))
+    const next: ColumnFiltersState = []
+    for (const [id, value] of Object.entries(localFilters)) {
+      if (value.length > 0) {
+        next.push({ id, value })
+      }
+    }
     onApply(next)
-    onOpenChange(false)
+    handleOpenChange(false)
   }
 
   const handleClearAll = () => {
     onClearAll()
-    onOpenChange(false)
+    handleOpenChange(false)
   }
 
   const filterSections = [
@@ -93,7 +116,7 @@ export function FilterBottomSheet({
   ]
 
   return (
-    <MobileBottomSheet open={open} onOpenChange={onOpenChange} ariaLabel="Bộ lọc thiết bị">
+    <MobileBottomSheet open={open} onOpenChange={handleOpenChange} ariaLabel="Bộ lọc thiết bị">
       {/* Header */}
       <div className="flex items-center justify-between px-6 py-4 border-b border-border shrink-0">
         <h2 className="text-lg font-semibold text-foreground">
@@ -102,7 +125,7 @@ export function FilterBottomSheet({
         <Button
           variant="ghost"
           size="icon"
-          onClick={() => onOpenChange(false)}
+          onClick={() => handleOpenChange(false)}
           className="size-10 rounded-full"
           aria-label="Đóng bộ lọc"
         >

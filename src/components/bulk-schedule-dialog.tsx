@@ -21,8 +21,13 @@ interface BulkScheduleDialogProps {
   onApply: (months: Record<string, boolean>) => void
 }
 
+/** Renders the bulk schedule dialog and resets selected months on close/apply. */
 export function BulkScheduleDialog({ open, onOpenChange, onApply }: BulkScheduleDialogProps) {
   const [selectedMonths, setSelectedMonths] = React.useState<Record<string, boolean>>({});
+
+  const resetSelectedMonths = React.useCallback(() => {
+    setSelectedMonths({});
+  }, []);
 
   const handleMonthChange = (monthIndex: number, checked: boolean) => {
     setSelectedMonths(prev => ({ ...prev, [`thang_${monthIndex}`]: checked }));
@@ -30,17 +35,21 @@ export function BulkScheduleDialog({ open, onOpenChange, onApply }: BulkSchedule
 
   const handleSubmit = () => {
     onApply(selectedMonths);
-    setSelectedMonths({});
+    resetSelectedMonths();
   };
 
-  React.useEffect(() => {
-    if (!open) {
-      setSelectedMonths({});
-    }
-  }, [open]);
+  const handleOpenChange = React.useCallback(
+    (nextOpen: boolean) => {
+      if (!nextOpen) {
+        resetSelectedMonths();
+      }
+      onOpenChange(nextOpen);
+    },
+    [onOpenChange, resetSelectedMonths]
+  );
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Lên lịch hàng loạt</DialogTitle>
@@ -63,7 +72,7 @@ export function BulkScheduleDialog({ open, onOpenChange, onApply }: BulkSchedule
           ))}
         </div>
         <DialogFooter>
-          <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+          <Button type="button" variant="outline" onClick={() => handleOpenChange(false)}>
             Hủy
           </Button>
           <Button type="button" onClick={handleSubmit}>
