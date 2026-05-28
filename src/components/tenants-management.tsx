@@ -44,6 +44,10 @@ type PreparedTenant = {
 const VI_TENANT_COLLATOR = new Intl.Collator("vi", { sensitivity: "base", usage: "sort" })
 const EMPTY_TENANT_ROWS: TenantHierarchyRow[] = []
 
+function sortTenantHierarchyUsersByName(list: TenantHierarchyUser[]): void {
+  list.sort((a, b) => VI_TENANT_COLLATOR.compare(a.full_name || a.username, b.full_name || b.username))
+}
+
 /** Renders the global tenant administration view. */
 export function TenantsManagement() {
   const { data: session, status } = useSession()
@@ -104,13 +108,10 @@ export function TenantsManagement() {
         }
       })
 
-      const sortByName = (list: TenantHierarchyUser[]) =>
-        list.sort((a, b) => VI_TENANT_COLLATOR.compare(a.full_name || a.username, b.full_name || b.username))
-
-      sortByName(groups.to_qltb)
-      sortByName(groups.qltb_khoa)
-      sortByName(groups.technician)
-      sortByName(groups.user)
+      sortTenantHierarchyUsersByName(groups.to_qltb)
+      sortTenantHierarchyUsersByName(groups.qltb_khoa)
+      sortTenantHierarchyUsersByName(groups.technician)
+      sortTenantHierarchyUsersByName(groups.user)
 
       const hasLowerLevels = LOWER_LEVEL_ORDER.some((role) => groups[role].length > 0)
 

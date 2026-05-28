@@ -330,7 +330,7 @@ export function RealtimeProvider({ children }: RealtimeProviderProps) {
 
     // Cleanup on unmount
     return () => {
-      void cleanup()
+      cleanup().catch(error => realtimeWarn('[Realtime] Cleanup failed:', error))
     }
   }, [cleanup, setupRealtimeSubscription])
 
