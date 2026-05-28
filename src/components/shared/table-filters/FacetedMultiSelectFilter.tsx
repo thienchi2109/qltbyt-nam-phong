@@ -57,6 +57,7 @@ export interface FacetedMultiSelectFilterProps<TData, TValue> {
     contentClassName?: string
 }
 
+/** Renders a searchable faceted multi-select filter in column or controlled mode. */
 export function FacetedMultiSelectFilter<TData, TValue>({
     column,
     title,
@@ -77,10 +78,12 @@ export function FacetedMultiSelectFilter<TData, TValue>({
 
     // Resolve selected values from either column mode or controlled mode
     const isControlled = controlledValue !== undefined
-    const selectedValues = new Set(
-        isControlled
-            ? controlledValue
-            : (column?.getFilterValue() as string[]) || []
+    const selectedFilterValue = isControlled
+        ? controlledValue
+        : (column?.getFilterValue() as string[] | undefined)
+    const selectedValues = React.useMemo(
+        () => new Set(selectedFilterValue || []),
+        [selectedFilterValue]
     )
 
     const visibleOptions = React.useMemo(() => {
@@ -92,12 +95,15 @@ export function FacetedMultiSelectFilter<TData, TValue>({
         )
     }, [debouncedOptionSearch, options])
 
-    React.useEffect(() => {
-        if (!open) {
+    const handleOpenChange = React.useCallback((nextOpen: boolean) => {
+        if (!nextOpen) {
             setOptionSearch("")
-            return
         }
+        setOpen(nextOpen)
+    }, [])
 
+    React.useEffect(() => {
+        if (!open) return
         if (!searchable) return
 
         const timer = window.setTimeout(() => {
@@ -138,7 +144,7 @@ export function FacetedMultiSelectFilter<TData, TValue>({
     }, [])
 
     return (
-        <Popover open={open} onOpenChange={setOpen}>
+        <Popover open={open} onOpenChange={handleOpenChange}>
             <PopoverTrigger asChild>
                 <Button
                     type="button"

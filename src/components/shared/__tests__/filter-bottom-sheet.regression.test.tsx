@@ -53,4 +53,25 @@ describe('FilterBottomSheet (regression)', () => {
 
         expect(screen.queryByText('Trạng thái')).not.toBeInTheDocument()
     })
+
+    it('keeps the local draft when parent filters refresh while open', () => {
+        const { rerender } = render(
+            <FilterBottomSheet
+                {...defaultProps}
+                columnFilters={[{ id: 'tinh_trang_hien_tai', value: ['active'] }]}
+            />
+        )
+
+        fireEvent.click(screen.getByRole('button', { name: /Đang sử dụng/ }))
+
+        rerender(
+            <FilterBottomSheet
+                {...defaultProps}
+                columnFilters={[{ id: 'tinh_trang_hien_tai', value: ['active'] }]}
+            />
+        )
+        fireEvent.click(screen.getByRole('button', { name: /Áp dụng/ }))
+
+        expect(defaultProps.onApply).toHaveBeenCalledWith([])
+    })
 })

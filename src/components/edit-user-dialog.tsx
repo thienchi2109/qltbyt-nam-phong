@@ -28,33 +28,46 @@ interface EditUserDialogProps {
   user: UserSummary | null
 }
 
+const EMPTY_EDIT_USER_FORM = {
+  username: "",
+  full_name: "",
+  role: "" as UserRole | "",
+  khoa_phong: ""
+}
+
+function getEditUserForm(user: UserSummary | null) {
+  if (!user) return EMPTY_EDIT_USER_FORM
+  return {
+    username: user.username,
+    full_name: user.full_name,
+    role: user.role,
+    khoa_phong: user.khoa_phong || ""
+  }
+}
+
+/** Renders the user edit dialog without overwriting in-progress drafts on refresh. */
 export function EditUserDialog({ open, onOpenChange, onSuccess, user }: EditUserDialogProps) {
   const { toast } = useToast()
   const queryClient = useQueryClient()
-  const [formData, setFormData] = React.useState({
-    username: "",
-    full_name: "",
-    role: "" as UserRole | "",
-    khoa_phong: ""
-  })
+  const activeUserId = open ? user?.id ?? null : null
+  const loadedUserIdRef = React.useRef<number | null>(activeUserId)
+  const [formData, setFormData] = React.useState(() => getEditUserForm(open ? user : null))
 
-  React.useEffect(() => {
-    if (user && open) {
-      setFormData({
-        username: user.username,
-        full_name: user.full_name,
-        role: user.role,
-        khoa_phong: user.khoa_phong || ""
-      })
-    } else if (!open) {
-      setFormData({
-        username: "",
-        full_name: "",
-        role: "",
-        khoa_phong: ""
-      })
-    }
-  }, [user, open])
+  if (loadedUserIdRef.current !== activeUserId) {
+    loadedUserIdRef.current = activeUserId
+    setFormData(getEditUserForm(open ? user : null))
+  }
+
+  const handleOpenChange = React.useCallback(
+    (nextOpen: boolean) => {
+      if (!nextOpen) {
+        loadedUserIdRef.current = null
+        setFormData(EMPTY_EDIT_USER_FORM)
+      }
+      onOpenChange(nextOpen)
+    },
+    [onOpenChange]
+  )
 
   const updateUserMutation = useMutation({
     mutationFn: async () => {
@@ -88,7 +101,7 @@ export function EditUserDialog({ open, onOpenChange, onSuccess, user }: EditUser
         description: "Đã cập nhật thông tin người dùng."
       })
       onSuccess()
-      onOpenChange(false)
+      handleOpenChange(false)
     },
     onError: (error: unknown) => {
       toast({
@@ -116,7 +129,7 @@ export function EditUserDialog({ open, onOpenChange, onSuccess, user }: EditUser
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle>Chỉnh sửa người dùng</DialogTitle>
@@ -184,7 +197,7 @@ export function EditUserDialog({ open, onOpenChange, onSuccess, user }: EditUser
             <Button
               type="button"
               variant="outline"
-              onClick={() => onOpenChange(false)}
+              onClick={() => handleOpenChange(false)}
               disabled={isPending}
             >
               Hủy

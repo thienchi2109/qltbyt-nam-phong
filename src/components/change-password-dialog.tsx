@@ -51,6 +51,7 @@ function getPasswordChangeErrorMessage(error: unknown): string {
   return getUnknownErrorMessage(error, "Có lỗi xảy ra khi thay đổi mật khẩu.")
 }
 
+/** Renders the password change dialog and clears sensitive draft values on close. */
 export function ChangePasswordDialog({ open, onOpenChange }: ChangePasswordDialogProps) {
   const { toast } = useToast()
   const { data: session, update } = useSession()
@@ -91,11 +92,15 @@ export function ChangePasswordDialog({ open, onOpenChange }: ChangePasswordDialo
     })
   }, [])
 
-  React.useEffect(() => {
-    if (!open) {
-      resetForm()
-    }
-  }, [open, resetForm])
+  const handleOpenChange = React.useCallback(
+    (nextOpen: boolean) => {
+      if (!nextOpen) {
+        resetForm()
+      }
+      onOpenChange(nextOpen)
+    },
+    [onOpenChange, resetForm]
+  )
 
   const handlePostChangeSignOut = React.useCallback(async () => {
     try {
@@ -179,7 +184,7 @@ export function ChangePasswordDialog({ open, onOpenChange }: ChangePasswordDialo
         description: data.message || "Đã thay đổi mật khẩu thành công với mã hóa bảo mật."
       })
 
-      onOpenChange(false)
+      handleOpenChange(false)
       passwordChanged = true
     } catch (error: unknown) {
       if (isPasswordChangeUnavailableError(error)) {
@@ -209,7 +214,7 @@ export function ChangePasswordDialog({ open, onOpenChange }: ChangePasswordDialo
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle>Thay đổi mật khẩu</DialogTitle>
@@ -311,7 +316,7 @@ export function ChangePasswordDialog({ open, onOpenChange }: ChangePasswordDialo
             <Button
               type="button"
               variant="outline"
-              onClick={() => onOpenChange(false)}
+              onClick={() => handleOpenChange(false)}
               disabled={isSubmitting}
             >
               Hủy

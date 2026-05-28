@@ -22,7 +22,7 @@ import { USER_ROLES, type UserRole } from "@/types/database"
 import { Badge } from "@/components/ui/badge"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { fetchTenantList, type AddEquipmentTenantOption } from "./add-equipment-dialog.queries"
-import { useMutation, useQueryClient } from "@tanstack/react-query"
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 
 interface AddUserDialogProps {
   open: boolean
@@ -30,10 +30,10 @@ interface AddUserDialogProps {
   onSuccess: () => void
 }
 
+/** Renders the user creation dialog and resets draft state when it closes. */
 export function AddUserDialog({ open, onOpenChange, onSuccess }: AddUserDialogProps) {
   const { toast } = useToast()
   const queryClient = useQueryClient()
-  const [tenants, setTenants] = React.useState<AddEquipmentTenantOption[]>([])
   const [memberships, setMemberships] = React.useState<number[]>([])
   
   const [formData, setFormData] = React.useState({
@@ -49,27 +49,34 @@ export function AddUserDialog({ open, onOpenChange, onSuccess }: AddUserDialogPr
     setMemberships([])
   }, [])
 
-  React.useEffect(() => {
-    if (!open) {
-      resetForm()
-    }
-  }, [open, resetForm])
-
-  React.useEffect(() => {
-    const run = async () => {
-      if (!open) return
-      try {
-        setTenants(await fetchTenantList())
-      } catch (error: unknown) {
-        toast({
-          variant: 'destructive',
-          title: 'Lỗi tải danh sách đơn vị',
-          description: getUnknownErrorMessage(error),
-        })
+  const handleOpenChange = React.useCallback(
+    (nextOpen: boolean) => {
+      if (!nextOpen) {
+        resetForm()
       }
+      onOpenChange(nextOpen)
+    },
+    [onOpenChange, resetForm]
+  )
+
+  const loadTenants = React.useCallback(async (): Promise<AddEquipmentTenantOption[]> => {
+    try {
+      return await fetchTenantList()
+    } catch (error: unknown) {
+      toast({
+        variant: 'destructive',
+        title: 'Lỗi tải danh sách đơn vị',
+        description: getUnknownErrorMessage(error),
+      })
+      return []
     }
-    run()
-  }, [open, toast])
+  }, [toast])
+
+  const { data: tenants = [] } = useQuery({
+    queryKey: ["add-user-dialog-tenants"],
+    queryFn: loadTenants,
+    enabled: open,
+  })
 
   const createUserMutation = useMutation({
     mutationFn: async () => {
@@ -103,7 +110,7 @@ export function AddUserDialog({ open, onOpenChange, onSuccess }: AddUserDialogPr
       }
       toast({ title: 'Thành công', description: 'Đã tạo tài khoản người dùng mới.' })
       onSuccess()
-      onOpenChange(false)
+      handleOpenChange(false)
     },
     onError: (error: unknown) => {
       console.error('Error creating user:', error)
@@ -132,7 +139,7 @@ export function AddUserDialog({ open, onOpenChange, onSuccess }: AddUserDialogPr
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle>Thêm người dùng mới</DialogTitle>
@@ -253,7 +260,7 @@ export function AddUserDialog({ open, onOpenChange, onSuccess }: AddUserDialogPr
             <Button
               type="button"
               variant="outline"
-              onClick={() => onOpenChange(false)}
+              onClick={() => handleOpenChange(false)}
               disabled={isPending}
             >
               Hủy

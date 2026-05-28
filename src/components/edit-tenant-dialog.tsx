@@ -29,33 +29,50 @@ interface EditTenantDialogProps {
   tenant: TenantRow | null
 }
 
+const EMPTY_TENANT_FORM = {
+  code: "",
+  name: "",
+  active: true,
+  membership_quota: "" as string,
+  logo_url: "",
+  google_drive_folder_url: "",
+}
+
+function getTenantForm(tenant: TenantRow | null) {
+  if (!tenant) return EMPTY_TENANT_FORM
+  return {
+    code: tenant.code || "",
+    name: tenant.name,
+    active: !!tenant.active,
+    membership_quota: tenant.membership_quota === null ? "" : String(tenant.membership_quota),
+    logo_url: tenant.logo_url || "",
+    google_drive_folder_url: tenant.google_drive_folder_url || "",
+  }
+}
+
+/** Renders the tenant edit dialog without overwriting in-progress drafts on refresh. */
 export function EditTenantDialog({ open, onOpenChange, onSuccess, tenant }: EditTenantDialogProps) {
   const { toast } = useToast()
   const qc = useQueryClient()
-  const [form, setForm] = React.useState({
-    code: "",
-    name: "",
-    active: true,
-    membership_quota: "" as string,
-    logo_url: "",
-    google_drive_folder_url: "",
-  })
+  const activeTenantId = open ? tenant?.id ?? null : null
+  const loadedTenantIdRef = React.useRef<number | null>(activeTenantId)
+  const [form, setForm] = React.useState(() => getTenantForm(open ? tenant : null))
 
-  React.useEffect(() => {
-    if (open && tenant) {
-      setForm({
-        code: tenant.code || "",
-        name: tenant.name,
-        active: !!tenant.active,
-        membership_quota: tenant.membership_quota === null ? "" : String(tenant.membership_quota),
-        logo_url: tenant.logo_url || "",
-        google_drive_folder_url: tenant.google_drive_folder_url || "",
-      })
-    }
-    if (!open) {
-      setForm({ code: "", name: "", active: true, membership_quota: "", logo_url: "", google_drive_folder_url: "" })
-    }
-  }, [open, tenant])
+  if (loadedTenantIdRef.current !== activeTenantId) {
+    loadedTenantIdRef.current = activeTenantId
+    setForm(getTenantForm(open ? tenant : null))
+  }
+
+  const handleOpenChange = React.useCallback(
+    (nextOpen: boolean) => {
+      if (!nextOpen) {
+        loadedTenantIdRef.current = null
+        setForm(EMPTY_TENANT_FORM)
+      }
+      onOpenChange(nextOpen)
+    },
+    [onOpenChange]
+  )
 
   const updateMutation = useMutation({
     mutationFn: async (): Promise<TenantRow> => {
@@ -95,7 +112,7 @@ export function EditTenantDialog({ open, onOpenChange, onSuccess, tenant }: Edit
 	      })
 	      toast({ title: "Thành công", description: "Đã cập nhật đơn vị" })
 	      onSuccess?.()
-	      onOpenChange(false)
+	      handleOpenChange(false)
 	    },
 	    onError: (error: unknown) => {
 	      const description = error instanceof Error ? error.message : "Không thể cập nhật đơn vị"
@@ -115,7 +132,7 @@ export function EditTenantDialog({ open, onOpenChange, onSuccess, tenant }: Edit
 	  }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-[480px]">
         <DialogHeader>
           <DialogTitle>Sửa đơn vị</DialogTitle>
@@ -152,7 +169,7 @@ export function EditTenantDialog({ open, onOpenChange, onSuccess, tenant }: Edit
             </div>
           </div>
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={isPending}>Hủy</Button>
+            <Button type="button" variant="outline" onClick={() => handleOpenChange(false)} disabled={isPending}>Hủy</Button>
             <Button type="submit" disabled={isPending}>{isPending && <Loader2 className="mr-2 size-4 animate-spin" />}Lưu</Button>
           </DialogFooter>
         </form>
