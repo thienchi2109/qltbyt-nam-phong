@@ -214,6 +214,27 @@ describe("ChangePasswordDialog forced signout", () => {
     })
   })
 
+  it("clears sensitive draft fields when the parent closes the controlled dialog", () => {
+    const { rerender } = render(<ChangePasswordDialog open onOpenChange={vi.fn()} />)
+
+    fireEvent.change(screen.getByLabelText("Mật khẩu hiện tại *"), {
+      target: { value: "old-password" },
+    })
+    fireEvent.change(screen.getByLabelText("Mật khẩu mới *"), {
+      target: { value: "new-password" },
+    })
+    fireEvent.change(screen.getByLabelText("Xác nhận mật khẩu mới *"), {
+      target: { value: "new-password" },
+    })
+
+    rerender(<ChangePasswordDialog open={false} onOpenChange={vi.fn()} />)
+    rerender(<ChangePasswordDialog open onOpenChange={vi.fn()} />)
+
+    expect(screen.getByLabelText("Mật khẩu hiện tại *")).toHaveValue("")
+    expect(screen.getByLabelText("Mật khẩu mới *")).toHaveValue("")
+    expect(screen.getByLabelText("Xác nhận mật khẩu mới *")).toHaveValue("")
+  })
+
   it("shows a logout-specific error if post-change signout fails after the password update succeeds", async () => {
     vi.useFakeTimers()
     mocks.signOut.mockRejectedValueOnce(new Error("redirect failed"))

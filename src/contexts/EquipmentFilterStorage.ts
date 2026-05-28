@@ -56,7 +56,7 @@ export function resolveStateAction<T>(action: React.SetStateAction<T>, current: 
  * Called on logout from AppLayout (before provider unmounts).
  */
 export function clearAllEquipmentFilters(): void {
-  if (typeof window === "undefined") return
+  if (typeof globalThis.window === "undefined") return
   try {
     const keysToRemove: string[] = []
     for (let i = 0; i < sessionStorage.length; i++) {
@@ -80,7 +80,7 @@ function isEmptyStoredFilters(state: StoredFilterState): boolean {
 }
 
 function readStoredFilters(key: string): StoredFilterState | null {
-  if (typeof window === "undefined") return null
+  if (typeof globalThis.window === "undefined") return null
   try {
     const stored = sessionStorage.getItem(key)
     if (!stored) return null
@@ -99,7 +99,7 @@ function readStoredFilters(key: string): StoredFilterState | null {
 }
 
 function writeStoredFilters(key: string, state: StoredFilterState): void {
-  if (typeof window === "undefined") return
+  if (typeof globalThis.window === "undefined") return
   try {
     sessionStorage.setItem(key, JSON.stringify(state))
   } catch {
@@ -108,7 +108,7 @@ function writeStoredFilters(key: string, state: StoredFilterState): void {
 }
 
 function clearStoredFilters(key: string): void {
-  if (typeof window === "undefined") return
+  if (typeof globalThis.window === "undefined") return
   try {
     sessionStorage.removeItem(key)
   } catch {

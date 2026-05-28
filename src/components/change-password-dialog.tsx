@@ -53,6 +53,14 @@ function getPasswordChangeErrorMessage(error: unknown): string {
 
 /** Renders the password change dialog and clears sensitive draft values on close. */
 export function ChangePasswordDialog({ open, onOpenChange }: ChangePasswordDialogProps) {
+  if (!open) {
+    return <Dialog open={open} onOpenChange={onOpenChange} />
+  }
+
+  return <ChangePasswordDialogContent open={open} onOpenChange={onOpenChange} />
+}
+
+function ChangePasswordDialogContent({ open, onOpenChange }: ChangePasswordDialogProps) {
   const { toast } = useToast()
   const { data: session, update } = useSession()
   const user = session?.user
