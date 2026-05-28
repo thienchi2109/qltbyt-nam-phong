@@ -197,6 +197,19 @@ describe('DeviceQuotaMappingPreviewDialog', () => {
         expect(confirmBtn).toBeDisabled()
     })
 
+    it('resets excluded items after the dialog is closed and reopened', () => {
+        setupQuery()
+        const { rerender } = render(<MappingPreviewDialog {...defaultProps} />)
+
+        fireEvent.click(screen.getAllByRole('button', { name: /loại bỏ/i })[0])
+        expect(screen.getByText('2 thiết bị đã chọn')).toBeInTheDocument()
+
+        rerender(<MappingPreviewDialog {...defaultProps} open={false} />)
+        rerender(<MappingPreviewDialog {...defaultProps} open={true} />)
+
+        expect(screen.getByText('3 thiết bị đã chọn')).toBeInTheDocument()
+    })
+
     // Test 8: Cancel
     it('calls onOpenChange(false) when cancel button is clicked', () => {
         setupQuery()

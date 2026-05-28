@@ -24,20 +24,12 @@ import { useToast } from "@/hooks/use-toast"
 import { useQueryClient } from "@tanstack/react-query"
 import type { SuggestMappingStatus, SaveMapping } from "../_hooks/useSuggestMapping"
 
-// ============================================
-// Types
-// ============================================
-
-export interface SuggestedMappingPreviewDialogProps {
+export type SuggestedMappingPreviewDialogProps = Readonly<{
     open: boolean
     onOpenChange: (open: boolean) => void
     donViId: number | null
     userRole: string | null
-}
-
-// ============================================
-// Status label mapping
-// ============================================
+}>
 
 function getStatusLabel(status: SuggestMappingStatus): string {
     switch (status) {
@@ -50,16 +42,28 @@ function getStatusLabel(status: SuggestMappingStatus): string {
     }
 }
 
-// ============================================
-// SuggestedMappingPreviewDialog
-// ============================================
-
 /**
- * Thin container for suggested mapping preview flow.
- * Composes hook orchestration + group sections + unmatched section + shared primitives.
- * Confirm button wired to saveBatch mutation for bulk save.
+ * Suggested mapping preview dialog with per-open-session exclusion state.
  */
 export function SuggestedMappingPreviewDialog({
+    open,
+    onOpenChange,
+    donViId,
+    userRole,
+}: SuggestedMappingPreviewDialogProps) {
+    if (!open) return null
+
+    return (
+        <SuggestedMappingPreviewDialogContent
+            open={open}
+            onOpenChange={onOpenChange}
+            donViId={donViId}
+            userRole={userRole}
+        />
+    )
+}
+
+function SuggestedMappingPreviewDialogContent({
     open,
     onOpenChange,
     donViId,
@@ -87,41 +91,26 @@ export function SuggestedMappingPreviewDialog({
     const { toast } = useToast()
     const queryClient = useQueryClient()
 
-    // Exclude state: per-group and per-device-name
     const [excludedGroups, setExcludedGroups] = React.useState<Set<number>>(new Set())
     const [excludedDeviceNames, setExcludedDeviceNames] = React.useState<
         Map<number, Set<string>>
     >(new Map())
 
-    // Guard: ensures toast + invalidation fire exactly once per save, even if
-    // handleClose is recreated mid-flight due to unstable useMutation references.
     const hasNotifiedRef = React.useRef(false)
     const handleCloseRef = React.useRef<() => void>(() => { })
-
-    // Reset exclude state and notification guard when dialog opens
-    React.useEffect(() => {
-        if (open) {
-            setExcludedGroups(new Set())
-            setExcludedDeviceNames(new Map())
-            hasNotifiedRef.current = false
-        }
-    }, [open])
 
     const handleClose = React.useCallback(() => {
         reset()
         onOpenChange(false)
     }, [reset, onOpenChange])
 
-    // Keep ref in sync so the stable timeout always calls the latest closure
     handleCloseRef.current = handleClose
 
-    // Auto-close dialog after successful save with toast
     React.useEffect(() => {
         if (saveStatus !== "saved") return
         if (hasNotifiedRef.current) return
         hasNotifiedRef.current = true
 
-        // Invalidate queries (same as manual flow)
         queryClient.invalidateQueries({ queryKey: ['dinh_muc_thiet_bi_unassigned'] })
         queryClient.invalidateQueries({ queryKey: ['dinh_muc_thiet_bi_unassigned_filter_options'] })
         queryClient.invalidateQueries({ queryKey: ['dinh_muc_nhom_list'] })
@@ -206,7 +195,6 @@ export function SuggestedMappingPreviewDialog({
         []
     )
 
-    // Count active groups (not excluded at group level AND has at least one active device name)
     const activeGroupCount = result
         ? result.groups.filter((g) => {
             if (excludedGroups.has(g.nhom_id)) return false
@@ -221,6 +209,14 @@ export function SuggestedMappingPreviewDialog({
     const progressLabel = totalUniqueNames > 0
         ? `${processedUniqueNames} / ${totalUniqueNames} tên thiết bị`
         : `${progress}%`
+    const hasResults =
+        status === "done" &&
+        ((result?.groups.length ?? 0) > 0 || (result?.unmatched.length ?? 0) > 0)
+    const isEmptyResult =
+        status === "done" &&
+        result !== null &&
+        result.groups.length === 0 &&
+        result.unmatched.length === 0
 
     return (
         <Dialog open={open} onOpenChange={(val) => { if (!val) handleClose() }}>
@@ -235,7 +231,6 @@ export function SuggestedMappingPreviewDialog({
                     </DialogDescription>
                 </DialogHeader>
 
-                {/* Loading state */}
                 {isLoading && (
                     <div className="space-y-3">
                         <div className="flex items-center justify-between text-sm text-muted-foreground">
@@ -255,7 +250,6 @@ export function SuggestedMappingPreviewDialog({
                     </div>
                 )}
 
-                {/* Error state */}
                 {status === "error" && (
                     <div className="space-y-3 rounded-md border border-destructive/50 bg-destructive/10 p-3 text-sm text-destructive">
                         <div className="flex items-center gap-2">
@@ -275,7 +269,6 @@ export function SuggestedMappingPreviewDialog({
                     </div>
                 )}
 
-                {/* Save error state */}
                 {saveStatus === "save-error" && (
                     <div className="flex items-center gap-2 rounded-md border border-destructive/50 bg-destructive/10 p-3 text-sm text-destructive">
                         <AlertTriangle className="size-4 shrink-0" />
@@ -283,16 +276,13 @@ export function SuggestedMappingPreviewDialog({
                     </div>
                 )}
 
-                {/* Results */}
-                {status === "done" && result && (result.groups.length > 0 || result.unmatched.length > 0) && (
+                {hasResults && result && (
                     <div className="flex-1 overflow-y-auto space-y-4">
-                        {/* Summary badge */}
                         <MappingPreviewCountBadge
                             count={result.matchedDevices}
                             label={`/ ${result.totalDevices} thiết bị được gợi ý`}
                         />
 
-                        {/* Grouped suggestions */}
                         {result.groups.map((group) => (
                             <SuggestedMappingGroupSection
                                 key={group.nhom_id}
@@ -308,16 +298,13 @@ export function SuggestedMappingPreviewDialog({
                             />
                         ))}
 
-                        {/* Unmatched section */}
                         <SuggestedMappingUnmatchedSection unmatched={result.unmatched} />
 
-                        {/* Footer disclaimer */}
                         <MappingPreviewFooterNote message="Đây chỉ là gợi ý phân loại. Vui lòng kiểm tra lại trước khi lưu" />
                     </div>
                 )}
 
-                {/* Empty state */}
-                {status === "done" && result && result.groups.length === 0 && result.unmatched.length === 0 && (
+                {isEmptyResult && (
                     <div className="text-center text-sm text-muted-foreground py-8">
                         Không có thiết bị chưa gán nào trong đơn vị này
                     </div>
@@ -331,7 +318,7 @@ export function SuggestedMappingPreviewDialog({
                     {canWrite && !isRegionalLeader && status === "done" && (
                         <Button
                             onClick={handleConfirmSave}
-                            disabled={saveStatus === "saving" || saveStatus === "save-error" || saveStatus === "saved" || activeGroupCount === 0}
+                            disabled={saveStatus === "saving" || saveStatus === "saved" || activeGroupCount === 0}
                         >
                             {saveStatus === "saving" ? (
                                 <>

@@ -39,6 +39,15 @@ export interface DeviceQuotaMappingPreviewDialogProps {
     donViId: number | null
 }
 
+type DeviceQuotaMappingPreviewDialogContentProps = Readonly<{
+    selectedIds: Set<number>
+    targetCategory: Category
+    onConfirm: (confirmedIds: number[]) => void
+    isLinking: boolean
+    donViId: number | null
+    onCancel: () => void
+}>
+
 // ============================================
 // Sub-components
 // ============================================
@@ -166,19 +175,31 @@ export function DeviceQuotaMappingPreviewDialog({
     isLinking,
     donViId,
 }: DeviceQuotaMappingPreviewDialogProps) {
+    if (!open || !targetCategory) return null
+
+    return (
+        <Dialog open={open} onOpenChange={onOpenChange}>
+            <DeviceQuotaMappingPreviewDialogContent
+                selectedIds={selectedIds}
+                targetCategory={targetCategory}
+                onConfirm={onConfirm}
+                isLinking={isLinking}
+                donViId={donViId}
+                onCancel={() => onOpenChange(false)}
+            />
+        </Dialog>
+    )
+}
+
+function DeviceQuotaMappingPreviewDialogContent({
+    selectedIds,
+    targetCategory,
+    onConfirm,
+    isLinking,
+    donViId,
+    onCancel,
+}: DeviceQuotaMappingPreviewDialogContentProps) {
     const [excludedIds, setExcludedIds] = React.useState<Set<number>>(new Set())
-
-    // Reset excluded items whenever the dialog opens
-    React.useEffect(() => {
-        if (open) setExcludedIds(new Set())
-    }, [open])
-
-    // Reset parent open state if targetCategory disappears while dialog is open
-    React.useEffect(() => {
-        if (open && !targetCategory) {
-            onOpenChange(false)
-        }
-    }, [open, targetCategory, onOpenChange])
 
     // Fetch full equipment details for selected IDs
     const idsArray = React.useMemo(() => Array.from(selectedIds), [selectedIds])
@@ -190,7 +211,7 @@ export function DeviceQuotaMappingPreviewDialog({
                 fn: "dinh_muc_thiet_bi_by_ids",
                 args: { p_thiet_bi_ids: idsArray, p_don_vi: donViId },
             }),
-        enabled: open && idsArray.length > 0 && donViId !== null,
+        enabled: idsArray.length > 0 && donViId !== null,
     })
 
     const equipmentList = equipment ?? EMPTY_EQUIPMENT_LIST
@@ -217,21 +238,15 @@ export function DeviceQuotaMappingPreviewDialog({
     }, [])
 
     const handleConfirm = React.useCallback(() => {
-        const confirmedIds = equipmentList
-            .filter((eq) => !excludedIds.has(eq.id))
-            .map((eq) => eq.id)
+        const confirmedIds: number[] = []
+        for (const eq of equipmentList) {
+            if (!excludedIds.has(eq.id)) confirmedIds.push(eq.id)
+        }
         onConfirm(confirmedIds)
     }, [equipmentList, excludedIds, onConfirm])
 
-    const handleCancel = React.useCallback(() => {
-        onOpenChange(false)
-    }, [onOpenChange])
-
-    if (!targetCategory) return null
-
     return (
-        <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-2xl">
                 <DialogHeader>
                     <DialogTitle className="flex items-center gap-2">
                         <CheckCircle2 className="size-5 text-primary" />
@@ -301,7 +316,7 @@ export function DeviceQuotaMappingPreviewDialog({
                 </div>
 
                 <DialogFooter>
-                    <Button variant="outline" onClick={handleCancel}>
+                    <Button variant="outline" onClick={onCancel}>
                         Hủy
                     </Button>
                     <Button
@@ -312,7 +327,6 @@ export function DeviceQuotaMappingPreviewDialog({
                         {isLinking ? "Đang xử lý..." : "Xác nhận phân loại"}
                     </Button>
                 </DialogFooter>
-            </DialogContent>
-        </Dialog>
+        </DialogContent>
     )
 }

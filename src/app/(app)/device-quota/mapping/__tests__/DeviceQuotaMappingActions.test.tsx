@@ -112,6 +112,25 @@ describe('DeviceQuotaMappingActions', () => {
     expect(screen.queryByTestId('mapping-preview-dialog')).not.toBeInTheDocument()
   })
 
+  it('does not open the preview when the selected category no longer exists', () => {
+    mockUseContext.mockImplementation(
+      () =>
+        makeContext({
+          selectedCategoryId: 999,
+          allCategories: [],
+        }) as unknown as DeviceQuotaMappingContextValue
+    )
+
+    render(<DeviceQuotaMappingActions />)
+
+    const classifyButton = screen.getByRole('button', { name: 'Phân loại' })
+    expect(classifyButton).toBeDisabled()
+
+    fireEvent.click(classifyButton)
+
+    expect(screen.queryByTestId('mapping-preview-dialog')).not.toBeInTheDocument()
+  })
+
   it('shows "Gợi ý phân loại" button when donViId is set, even without equipment selection', () => {
     mockUseContext.mockImplementation(
       () =>
@@ -157,4 +176,3 @@ describe('DeviceQuotaMappingActions', () => {
     expect(screen.queryByRole('button', { name: /gợi ý phân loại/i })).not.toBeInTheDocument()
   })
 })
-

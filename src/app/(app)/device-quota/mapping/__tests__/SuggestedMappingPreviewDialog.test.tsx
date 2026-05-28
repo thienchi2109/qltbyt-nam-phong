@@ -337,6 +337,50 @@ describe('SuggestedMappingPreviewDialog', () => {
         expect(confirmBtn).toBeEnabled()
     })
 
+    it('resets excluded suggestions after the dialog is closed and reopened', () => {
+        setupHook()
+        const queryClient = new QueryClient({
+            defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+        })
+
+        const { rerender } = render(
+            <QueryClientProvider client={queryClient}>
+                <SuggestedMappingPreviewDialog
+                    open={true}
+                    onOpenChange={() => { }}
+                    donViId={1}
+                    userRole="admin"
+                />
+            </QueryClientProvider>
+        )
+
+        fireEvent.click(screen.getAllByRole('button', { name: /loại bỏ nhóm/i })[0])
+        expect(screen.getByRole('button', { name: /áp dụng 1 gợi ý/i })).toBeEnabled()
+
+        rerender(
+            <QueryClientProvider client={queryClient}>
+                <SuggestedMappingPreviewDialog
+                    open={false}
+                    onOpenChange={() => { }}
+                    donViId={1}
+                    userRole="admin"
+                />
+            </QueryClientProvider>
+        )
+        rerender(
+            <QueryClientProvider client={queryClient}>
+                <SuggestedMappingPreviewDialog
+                    open={true}
+                    onOpenChange={() => { }}
+                    donViId={1}
+                    userRole="admin"
+                />
+            </QueryClientProvider>
+        )
+
+        expect(screen.getByRole('button', { name: /áp dụng 2 gợi ý/i })).toBeEnabled()
+    })
+
     it('shows summary count badge with matched/total devices', () => {
         setupHook()
 
@@ -539,8 +583,8 @@ describe('SuggestedMappingPreviewDialog', () => {
         expect(screen.getByText(/lỗi kết nối máy chủ/i)).toBeInTheDocument()
     })
 
-    it('disables confirm button when saveStatus is save-error', () => {
-        setupHook({ saveStatus: 'save-error', saveError: 'Lỗi kết nối máy chủ' })
+    it('allows retrying save from the same dialog after save fails', () => {
+        const { saveBatch } = setupHook({ saveStatus: 'save-error', saveError: 'Lỗi kết nối máy chủ' })
 
         renderWithQueryClient(
             <SuggestedMappingPreviewDialog
@@ -552,7 +596,14 @@ describe('SuggestedMappingPreviewDialog', () => {
         )
 
         const btn = screen.getByRole('button', { name: /áp dụng/i })
-        expect(btn).toBeDisabled()
+        expect(btn).toBeEnabled()
+
+        fireEvent.click(btn)
+
+        expect(saveBatch).toHaveBeenCalledWith([
+            { nhom_id: 10, thiet_bi_ids: [1, 2, 3, 4, 5] },
+            { nhom_id: 20, thiet_bi_ids: [6, 7] },
+        ])
     })
 
     it('disables confirm button when saveStatus is saved (prevents double-submit during auto-close)', () => {
