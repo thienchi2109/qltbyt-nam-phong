@@ -30,38 +30,76 @@ export function QRScannerCamera({ onScanSuccess, onClose, isActive }: QRScannerC
   const [hasFlash, setHasFlash] = React.useState(false)
   const [isFlashOn, setIsFlashOn] = React.useState(false)
   const [cameras, setCameras] = React.useState<MediaDeviceInfo[]>([])
-  const [selectedCameraId, setSelectedCameraId] = React.useState<string>("")
+  const selectedCameraIdRef = React.useRef("")
   const [error, setError] = React.useState<string | null>(null)
   const [showInstructions, setShowInstructions] = React.useState(false)
 
-  // Cleanup on unmount - separate effect to ensure cleanup always runs
-  React.useEffect(() => {
-    return () => {
-      // Ensure interval is cleared even on unexpected unmount
-      if (scanIntervalRef.current) {
-        clearInterval(scanIntervalRef.current)
-        scanIntervalRef.current = null
-      }
-      // Ensure stream is stopped
-      if (streamRef.current) {
-        streamRef.current.getTracks().forEach(track => track.stop())
-        streamRef.current = null
-      }
+  const stopQRDetection = React.useCallback(() => {
+    if (scanIntervalRef.current) {
+      clearInterval(scanIntervalRef.current)
+      scanIntervalRef.current = null
     }
   }, [])
 
-  // Initialize camera
-  React.useEffect(() => {
-    if (isActive && typeof window !== "undefined") {
-      initializeCamera()
+  const startQRDetection = React.useCallback(() => {
+    if (!videoRef.current || !isActive) return
+
+    // Clear existing interval
+    stopQRDetection()
+
+    const detectQR = () => {
+      const video = videoRef.current
+      if (!video || video.videoWidth === 0 || video.videoHeight === 0) {
+        return
+      }
+
+      try {
+        // Create canvas to capture video frame
+        const canvas = document.createElement('canvas')
+        const context = canvas.getContext('2d')
+        if (!context) return
+
+        canvas.width = video.videoWidth
+        canvas.height = video.videoHeight
+
+        // Draw current video frame to canvas
+        context.drawImage(video, 0, 0, canvas.width, canvas.height)
+
+        // Get image data for QR detection
+        const imageData = context.getImageData(0, 0, canvas.width, canvas.height)
+
+        // Use jsQR to detect QR codes
+        const qrCode = jsQR(imageData.data, imageData.width, imageData.height, {
+          inversionAttempts: "dontInvert",
+        })
+
+        if (qrCode) {
+          // Stop detection and trigger success
+          stopQRDetection()
+          setIsScanning(false)
+          onScanSuccess(qrCode.data)
+        }
+
+      } catch {
+        // Silently ignore QR detection errors
+      }
     }
 
-    return () => {
-      cleanupCamera()
-    }
-  }, [isActive, selectedCameraId])
+    // Start detection interval - faster for better UX
+    const interval = setInterval(detectQR, 250) // Check every 250ms for smoother detection
+    scanIntervalRef.current = interval
+  }, [isActive, onScanSuccess, stopQRDetection])
 
-  const initializeCamera = async () => {
+  const cleanupCamera = React.useCallback(() => {
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(track => track.stop())
+      streamRef.current = null
+    }
+    stopQRDetection()
+    setIsScanning(false)
+  }, [stopQRDetection])
+
+  const initializeCamera = React.useCallback(async () => {
     try {
       setError(null)
       
@@ -94,7 +132,7 @@ Hiện tại bạn đang truy cập qua: ${location.origin}
       }
 
       // Use selected camera or default to first available
-      const deviceId = selectedCameraId || videoDevices[0].deviceId
+      const deviceId = selectedCameraIdRef.current || videoDevices[0].deviceId
 
       // Try with flexible constraints first
       let stream: MediaStream;
@@ -188,16 +226,21 @@ Hiện tại bạn đang truy cập qua: ${location.origin}
         description: errorMessage
       })
     }
-  }
+  }, [startQRDetection, toast])
 
-  const cleanupCamera = () => {
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach(track => track.stop())
-      streamRef.current = null
+  // Cleanup on unmount - separate effect to ensure cleanup always runs
+  React.useEffect(() => {
+    return cleanupCamera
+  }, [cleanupCamera])
+
+  // Initialize camera
+  React.useEffect(() => {
+    if (isActive && typeof window !== "undefined") {
+      initializeCamera()
     }
-    stopQRDetection()
-    setIsScanning(false)
-  }
+
+    return cleanupCamera
+  }, [cleanupCamera, initializeCamera, isActive])
 
   const toggleFlash = async () => {
     if (!hasFlash || !streamRef.current) return
@@ -226,74 +269,16 @@ Hiện tại bạn đang truy cập qua: ${location.origin}
   const switchCamera = async () => {
     if (cameras.length <= 1) return
 
-    const currentIndex = cameras.findIndex(cam => cam.deviceId === selectedCameraId)
+    const currentIndex = cameras.findIndex(cam => cam.deviceId === selectedCameraIdRef.current)
     const nextIndex = (currentIndex + 1) % cameras.length
     const nextCamera = cameras[nextIndex]
 
     cleanupCamera()
-    setSelectedCameraId(nextCamera.deviceId)
+    selectedCameraIdRef.current = nextCamera.deviceId
+    initializeCamera()
   }
 
 
-
-  // QR Detection function
-  const startQRDetection = () => {
-    if (!videoRef.current || !isActive) return
-
-    // Clear existing interval
-    if (scanIntervalRef.current) {
-      clearInterval(scanIntervalRef.current)
-    }
-
-    const detectQR = () => {
-      const video = videoRef.current
-      if (!video || video.videoWidth === 0 || video.videoHeight === 0) {
-        return
-      }
-
-      try {
-        // Create canvas to capture video frame
-        const canvas = document.createElement('canvas')
-        const context = canvas.getContext('2d')
-        if (!context) return
-
-        canvas.width = video.videoWidth
-        canvas.height = video.videoHeight
-        
-        // Draw current video frame to canvas
-        context.drawImage(video, 0, 0, canvas.width, canvas.height)
-        
-        // Get image data for QR detection
-        const imageData = context.getImageData(0, 0, canvas.width, canvas.height)
-        
-        // Use jsQR to detect QR codes
-        const qrCode = jsQR(imageData.data, imageData.width, imageData.height, {
-          inversionAttempts: "dontInvert",
-        })
-        
-        if (qrCode) {
-          // Stop detection and trigger success
-          stopQRDetection()
-          setIsScanning(false)
-          onScanSuccess(qrCode.data)
-        }
-
-      } catch {
-        // Silently ignore QR detection errors
-      }
-    }
-
-    // Start detection interval - faster for better UX
-    const interval = setInterval(detectQR, 250) // Check every 250ms for smoother detection
-    scanIntervalRef.current = interval
-  }
-
-  const stopQRDetection = () => {
-    if (scanIntervalRef.current) {
-      clearInterval(scanIntervalRef.current)
-      scanIntervalRef.current = null
-    }
-  }
 
   return (
     <div className="fixed inset-0 z-50 bg-gray-950">

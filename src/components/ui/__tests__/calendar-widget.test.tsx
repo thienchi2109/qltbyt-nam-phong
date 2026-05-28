@@ -113,6 +113,8 @@ describe("CalendarWidget", () => {
   })
 
   it("keeps rendering cached events when a background refetch fails", async () => {
+    const visibleEventDate = new Date()
+
     mockUseCalendarData.mockReturnValue({
       data: {
         departments: ["Khoa A"],
@@ -121,7 +123,7 @@ describe("CalendarWidget", () => {
             id: 1,
             title: "Bảo trì máy siêu âm",
             type: "Bảo trì",
-            date: new Date("2026-04-11T00:00:00.000Z"),
+            date: visibleEventDate,
             equipmentCode: "TB-001",
             equipmentName: "Máy siêu âm",
             department: "Khoa A",

@@ -22,6 +22,7 @@ interface InteractiveEquipmentChartProps {
   effectiveTenantKey?: string
 }
 
+/** Renders the interactive equipment distribution chart for a facility scope. */
 export function InteractiveEquipmentChart({ className, tenantFilter, selectedDonVi, effectiveTenantKey }: InteractiveEquipmentChartProps) {
   const [viewType, setViewType] = React.useState<'department' | 'location'>('department')
   const [selectedDepartment, setSelectedDepartment] = React.useState<string>('all')
@@ -72,7 +73,7 @@ export function InteractiveEquipmentChart({ className, tenantFilter, selectedDon
       totalEquipment,
       avgEquipmentPerCategory
     }
-  }, [chartData])
+  }, [chartData, data])
 
   if (error) {
     return (

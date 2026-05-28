@@ -63,6 +63,7 @@ import { useSearchDebounce } from "@/hooks/use-debounce"
 import { SearchInput } from "@/components/shared/SearchInput"
 import { FacetedMultiSelectFilter } from "@/components/shared/table-filters/FacetedMultiSelectFilter"
 import { DataTablePagination } from "@/components/shared/DataTablePagination"
+import { buildAddTasksFilterOptions } from "./add-tasks-dialog-filter-options"
 
 interface AddTasksDialogProps {
   open: boolean
@@ -102,6 +103,8 @@ const initialAddTasksTableState: AddTasksTableState = {
   sorting: [],
 }
 
+const EMPTY_ADD_TASKS_EQUIPMENT: Equipment[] = []
+
 function resolveUpdater<T>(updater: Updater<T>, current: T): T {
   if (typeof updater !== "function") {
     return updater
@@ -139,17 +142,7 @@ function addTasksTableReducer(
   }
 }
 
-function getUniqueTrimmedValues(equipment: Equipment[], key: keyof Equipment) {
-  return Array.from(new Set(
-    equipment.flatMap((item) => {
-      const value = item[key]
-      if (typeof value !== "string") return []
-      const trimmed = value.trim()
-      return trimmed ? [trimmed] : []
-    }),
-  ))
-}
-
+/** Renders the dialog for adding available equipment to a maintenance plan. */
 export function AddTasksDialog({
   open,
   onOpenChange,
@@ -158,7 +151,7 @@ export function AddTasksDialog({
   onSuccess,
 }: AddTasksDialogProps) {
   const { data, isLoading, error } = useAddTasksEquipment(open)
-  const equipment = data ?? []
+  const equipment = data ?? EMPTY_ADD_TASKS_EQUIPMENT
   const [tableState, dispatchTable] = React.useReducer(
     addTasksTableReducer,
     initialAddTasksTableState,
@@ -260,17 +253,11 @@ export function AddTasksDialog({
     handleOpenChange(false);
   }
 
-  const departments = React.useMemo(() => getUniqueTrimmedValues(equipment, "khoa_phong_quan_ly"), [equipment])
-  const users = React.useMemo(() => getUniqueTrimmedValues(equipment, "nguoi_dang_truc_tiep_quan_ly"), [equipment])
-  const locations = React.useMemo(() => getUniqueTrimmedValues(equipment, "vi_tri_lap_dat"), [equipment])
+  const filterOptions = React.useMemo(() => buildAddTasksFilterOptions(equipment), [equipment])
 
   const isFiltered = table.getState().columnFilters.length > 0 || (debouncedSearch?.length ?? 0) > 0;
 
-  const totalSelectableRows = React.useMemo(
-    () => table.getFilteredRowModel().rows.filter(row => row.getCanSelect()).length,
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [equipment, tableState.columnFilters, existingEquipmentIds, debouncedSearch]
-  );
+  const totalSelectableRows = table.getFilteredRowModel().rows.filter(row => row.getCanSelect()).length
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
@@ -284,7 +271,7 @@ export function AddTasksDialog({
         <div className="flex-grow flex flex-col overflow-hidden gap-4">
           <div className="flex items-center gap-2 flex-wrap">
             <SearchInput
-              placeholder="Tìm kiếm chung…"
+              placeholder="Tìm kiếm chung..."
               value={tableState.searchTerm}
               onChange={(value) => dispatchTable({ type: "set-search-term", value })}
               showSearchIcon={false}
@@ -293,17 +280,17 @@ export function AddTasksDialog({
             <FacetedMultiSelectFilter
               column={table.getColumn("khoa_phong_quan_ly")}
               title="Khoa/Phòng"
-              options={departments.map(d => ({ label: d, value: d }))}
+              options={filterOptions.departments}
             />
             <FacetedMultiSelectFilter
               column={table.getColumn("nguoi_dang_truc_tiep_quan_ly")}
               title="Người quản lý"
-              options={users.map(u => ({ label: u, value: u }))}
+              options={filterOptions.users}
             />
             <FacetedMultiSelectFilter
               column={table.getColumn("vi_tri_lap_dat")}
               title="Vị trí"
-              options={locations.map(l => ({ label: l, value: l }))}
+              options={filterOptions.locations}
             />
             {isFiltered && (
               <Button

@@ -39,6 +39,7 @@ const getStatusVariant = (status: MaintenancePlan["trang_thai"]) => {
   }
 }
 
+/** Builds the memoized column definitions for the maintenance plan table. */
 export function usePlanColumns(options: PlanColumnOptions): ColumnDef<MaintenancePlan>[] {
   const {
     onRowClick,
@@ -191,13 +192,11 @@ export function usePlanColumns(options: PlanColumnOptions): ColumnDef<Maintenanc
   }, [onRowClick, openApproveDialog, openRejectDialog, openDeleteDialog, setEditingPlan, canManagePlans])
 }
 
+/** Builds the memoized column definitions for editable maintenance tasks. */
 export function useTaskColumns(options: TaskColumnOptions): ColumnDef<MaintenanceTask>[] {
   const {
     editingTaskId,
     isPlanApproved,
-    isCompletingTask,
-    completionStatus,
-    isLoadingCompletion,
   } = options
 
   return React.useMemo(() => {
@@ -420,5 +419,5 @@ export function useTaskColumns(options: TaskColumnOptions): ColumnDef<Maintenanc
   ]
 
   return taskColumns
-  }, [editingTaskId, isPlanApproved, isCompletingTask, completionStatus, isLoadingCompletion])
+  }, [editingTaskId, isPlanApproved])
 }

@@ -28,6 +28,7 @@ interface MaintenanceReportTabProps {
   effectiveTenantKey?: string
 }
 
+/** Renders the maintenance report dashboard tab for the selected facility scope. */
 export function MaintenanceReportTab({
   selectedDonVi,
   effectiveTenantKey,
@@ -45,9 +46,18 @@ export function MaintenanceReportTab({
 
   const summary = reportData?.summary
   const charts = reportData?.charts
-  const repairFrequency = charts?.repairFrequencyByMonth ?? []
-  const repairStatusData = charts?.repairStatusDistribution ?? []
-  const topEquipmentRepairs = reportData?.topEquipmentRepairs ?? []
+  const repairFrequency = React.useMemo(
+    () => charts?.repairFrequencyByMonth ?? [],
+    [charts?.repairFrequencyByMonth]
+  )
+  const repairStatusData = React.useMemo(
+    () => charts?.repairStatusDistribution ?? [],
+    [charts?.repairStatusDistribution]
+  )
+  const topEquipmentRepairs = React.useMemo(
+    () => reportData?.topEquipmentRepairs ?? [],
+    [reportData?.topEquipmentRepairs]
+  )
   const topEquipmentRepairCosts = reportData?.topEquipmentRepairCosts ?? []
   const repairUsageCostCorrelation = charts?.repairUsageCostCorrelation
 
