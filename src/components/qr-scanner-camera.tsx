@@ -107,6 +107,15 @@ export function QRScannerCamera({ onScanSuccess, onClose, isActive }: QRScannerC
   const initializeCamera = React.useCallback(async (sessionId: number) => {
     try {
       setError(null)
+      const isCurrentSession = () => cameraSessionRef.current === sessionId
+      const stopIfStale = (lateStream: MediaStream) => {
+        if (isCurrentSession()) return false
+        lateStream.getTracks().forEach(track => track.stop())
+        if (streamRef.current === lateStream) {
+          streamRef.current = null
+        }
+        return true
+      }
       
       // Check browser support
       if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
@@ -127,9 +136,9 @@ Hiện tại bạn đang truy cập qua: ${location.origin}
       }
 
       // Get available cameras
-      if (cameraSessionRef.current !== sessionId) return
+      if (!isCurrentSession()) return
       const devices = await navigator.mediaDevices.enumerateDevices()
-      if (cameraSessionRef.current !== sessionId) return
+      if (!isCurrentSession()) return
 
       const videoDevices = devices.filter(device => device.kind === 'videoinput')
       setCameras(videoDevices)
@@ -157,6 +166,7 @@ Hiện tại bạn đang truy cập qua: ${location.origin}
           audio: false
         })
       } catch (constraintError) {
+        if (!isCurrentSession()) return
         try {
           stream = await navigator.mediaDevices.getUserMedia({
             video: {
@@ -167,6 +177,7 @@ Hiện tại bạn đang truy cập qua: ${location.origin}
             audio: false
           })
         } catch (basicError) {
+          if (!isCurrentSession()) return
           stream = await navigator.mediaDevices.getUserMedia({
             video: true,
             audio: false
@@ -174,14 +185,12 @@ Hiện tại bạn đang truy cập qua: ${location.origin}
         }
       }
 
-      if (cameraSessionRef.current !== sessionId) {
-        stream.getTracks().forEach(track => track.stop())
-        return
-      }
+      if (stopIfStale(stream)) return
 
       streamRef.current = stream
 
       if (videoRef.current) {
+        if (stopIfStale(stream)) return
         videoRef.current.srcObject = stream
         
         // Handle video play with proper error handling
@@ -190,25 +199,13 @@ Hiện tại bạn đang truy cập qua: ${location.origin}
           if (playPromise !== undefined) {
             await playPromise
           }
-          if (cameraSessionRef.current !== sessionId) {
-            stream.getTracks().forEach(track => track.stop())
-            if (streamRef.current === stream) {
-              streamRef.current = null
-            }
-            return
-          }
+          if (stopIfStale(stream)) return
           setIsScanning(true)
           
           // Start QR detection
           startQRDetection()
         } catch (playError) {
-          if (cameraSessionRef.current !== sessionId) {
-            stream.getTracks().forEach(track => track.stop())
-            if (streamRef.current === stream) {
-              streamRef.current = null
-            }
-            return
-          }
+          if (stopIfStale(stream)) return
           // Continue anyway, video might still work
           setIsScanning(true)
           startQRDetection()
@@ -216,11 +213,13 @@ Hiện tại bạn đang truy cập qua: ${location.origin}
       }
 
       // Check for flash support
+      if (stopIfStale(stream)) return
       const track = stream.getVideoTracks()[0]
       const capabilities = track.getCapabilities()
       setHasFlash('torch' in capabilities)
 
     } catch (error) {
+      if (cameraSessionRef.current !== sessionId) return
       let errorMessage = "Không thể truy cập camera"
       const errorName = error instanceof Error ? error.name : ""
       
