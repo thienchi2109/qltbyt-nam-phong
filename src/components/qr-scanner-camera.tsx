@@ -256,14 +256,6 @@ Hiện tại bạn đang truy cập qua: ${location.origin}
     }
   }, [startQRDetection, toast])
 
-  // Cleanup on unmount - separate effect to ensure cleanup always runs
-  React.useEffect(() => {
-    return () => {
-      invalidateCameraSession()
-      cleanupCamera()
-    }
-  }, [cleanupCamera, invalidateCameraSession])
-
   // Initialize camera
   React.useEffect(() => {
     if (isActive && typeof window !== "undefined") {
