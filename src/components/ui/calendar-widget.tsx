@@ -33,6 +33,8 @@ import {
 
 let initialClientCalendarDate: Date | null = null
 const EMPTY_SUBSCRIBE = () => () => {}
+const EMPTY_CALENDAR_EVENTS: CalendarEvent[] = []
+const EMPTY_CALENDAR_DEPARTMENTS: string[] = []
 
 function useClientCalendarDate() {
   return React.useSyncExternalStore<Date | null>(
@@ -117,8 +119,8 @@ function CalendarWidgetImpl({
   const month = currentDate.getMonth() + 1
   const { data, error, isLoading } = useCalendarData(year, month)
 
-  const events = data?.events ?? []
-  const departments = data?.departments ?? []
+  const events = data?.events ?? EMPTY_CALENDAR_EVENTS
+  const departments = data?.departments ?? EMPTY_CALENDAR_DEPARTMENTS
 
   const filteredEvents = React.useMemo(() => {
     if (selectedDepartment === "all") {
@@ -181,6 +183,7 @@ function CalendarWidgetImpl({
   )
 }
 
+/** Renders the calendar widget using a client-stable initial date. */
 export function CalendarWidget({ className }: CalendarWidgetProps) {
   const clientDate = useClientCalendarDate()
   const [overrideDate, setOverrideDate] = React.useState<Date | null>(null)

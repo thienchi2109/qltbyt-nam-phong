@@ -37,6 +37,7 @@ const parseFilterDate = (value: string | null | undefined) => {
   return Number.isNaN(date.getTime()) ? null : date
 }
 
+/** Renders the repair request search, filter, and chip toolbar. */
 export function RepairRequestsToolbar({
   tenantControl,
   searchTerm,
@@ -53,12 +54,15 @@ export function RepairRequestsToolbar({
   onFilterChange,
   onRemoveFilter,
 }: RepairRequestsToolbarProps) {
-  const dateRange = uiFilters.dateRange && (uiFilters.dateRange.from || uiFilters.dateRange.to)
-    ? {
-      from: parseFilterDate(uiFilters.dateRange.from),
-      to: parseFilterDate(uiFilters.dateRange.to),
-    }
-    : null
+  const dateRange = React.useMemo(
+    () => uiFilters.dateRange && (uiFilters.dateRange.from || uiFilters.dateRange.to)
+      ? {
+        from: parseFilterDate(uiFilters.dateRange.from),
+        to: parseFilterDate(uiFilters.dateRange.to),
+      }
+      : null,
+    [uiFilters.dateRange]
+  )
 
   const filterValue = React.useMemo<FilterModalValue>(() => ({
     status: uiFilters.status,
@@ -88,7 +92,7 @@ export function RepairRequestsToolbar({
     value: status,
   })), [])
 
-  const filterControls = (
+  const filterControls = React.useMemo(() => (
     <>
       <FacetedMultiSelectFilter
         title="Trạng thái"
@@ -107,9 +111,9 @@ export function RepairRequestsToolbar({
         onChange={(date) => setDateRangePart("to", date)}
       />
     </>
-  )
+  ), [applyFilterChange, filterValue.dateRange, filterValue.status, setDateRangePart, statusOptions])
 
-  const mobileFilterControl = (
+  const mobileFilterControl = React.useMemo(() => (
     <Button
       variant="outline"
       size="sm"
@@ -118,9 +122,9 @@ export function RepairRequestsToolbar({
     >
       Bộ lọc
     </Button>
-  )
+  ), [onOpenFilterModal])
 
-  const clearAction = isFiltered ? (
+  const clearAction = React.useMemo(() => isFiltered ? (
     <Button
       variant="ghost"
       onClick={onClearFilters}
@@ -130,7 +134,21 @@ export function RepairRequestsToolbar({
       <span className="hidden sm:inline">Xóa</span>
       <FilterX className="size-4 sm:ml-2" />
     </Button>
-  ) : null
+  ) : null, [isFiltered, onClearFilters])
+
+  const chips = React.useMemo(() => (
+    <RepairRequestsFilterChips
+      value={{
+        status: uiFilters.status,
+        facilityName: selectedFacilityName,
+        dateRange: uiFilters.dateRange
+          ? { from: uiFilters.dateRange.from ?? null, to: uiFilters.dateRange.to ?? null }
+          : null,
+      }}
+      showFacility={showFacilityFilter}
+      onRemove={onRemoveFilter}
+    />
+  ), [onRemoveFilter, selectedFacilityName, showFacilityFilter, uiFilters.dateRange, uiFilters.status])
 
   return (
     <ListFilterSearchCard
@@ -146,19 +164,7 @@ export function RepairRequestsToolbar({
       mobileFilterControl={mobileFilterControl}
       compactFilters={compactFilters}
       actions={clearAction}
-      chips={
-        <RepairRequestsFilterChips
-          value={{
-            status: uiFilters.status,
-            facilityName: selectedFacilityName,
-            dateRange: uiFilters.dateRange
-              ? { from: uiFilters.dateRange.from ?? null, to: uiFilters.dateRange.to ?? null }
-              : null,
-          }}
-          showFacility={showFacilityFilter}
-          onRemove={onRemoveFilter}
-        />
-      }
+      chips={chips}
     />
   )
 }

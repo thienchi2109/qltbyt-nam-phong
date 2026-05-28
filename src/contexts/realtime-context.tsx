@@ -23,6 +23,28 @@ interface RealtimeContextType {
 
 const RealtimeContext = createContext<RealtimeContextType | undefined>(undefined)
 
+const isRealtimeDebugEnabled = process.env.NODE_ENV !== 'production'
+
+function realtimeLog(...args: unknown[]) {
+  if (isRealtimeDebugEnabled) {
+    console.log(...args)
+  }
+}
+
+function realtimeWarn(...args: unknown[]) {
+  if (isRealtimeDebugEnabled) {
+    console.warn(...args)
+  }
+}
+
+function clearReconnectTimeout(reconnectTimeoutRef: React.MutableRefObject<NodeJS.Timeout | null>) {
+  if (reconnectTimeoutRef.current) {
+    clearTimeout(reconnectTimeoutRef.current)
+    reconnectTimeoutRef.current = null
+  }
+}
+
+/** Returns the realtime connection state from the realtime provider. */
 export function useRealtime() {
   const context = useContext(RealtimeContext)
   if (context === undefined) {
@@ -35,6 +57,7 @@ interface RealtimeProviderProps {
   children: React.ReactNode
 }
 
+/** Provides realtime cache invalidation and reconnect state to the app tree. */
 export function RealtimeProvider({ children }: RealtimeProviderProps) {
   const queryClient = useQueryClient()
   const [isConnected, setIsConnected] = useState(false)
@@ -47,8 +70,9 @@ export function RealtimeProvider({ children }: RealtimeProviderProps) {
 
   // Debounce cache invalidation to prevent excessive re-renders
   const invalidationTimeouts = useRef<Map<string, NodeJS.Timeout>>(new Map())
+  const scheduleReconnectRef = useRef<() => void>(() => {})
 
-  const debouncedInvalidate = (queryKey: readonly string[], delay = 100) => {
+  const debouncedInvalidate = React.useCallback((queryKey: readonly string[], delay = 100) => {
     const key = queryKey.join('-')
     
     // Clear existing timeout for this query key
@@ -59,7 +83,7 @@ export function RealtimeProvider({ children }: RealtimeProviderProps) {
 
     // Set new timeout
     const timeout = setTimeout(async () => {
-      console.log(`[Realtime] Invalidating and refetching queries for:`, queryKey)
+      realtimeLog(`[Realtime] Invalidating and refetching queries for:`, queryKey)
 
       // Invalidate and force refetch
       await queryClient.invalidateQueries({
@@ -75,17 +99,17 @@ export function RealtimeProvider({ children }: RealtimeProviderProps) {
 
       invalidationTimeouts.current.delete(key)
       setLastUpdate(new Date())
-      console.log(`[Realtime] Cache invalidated and refetched successfully for:`, queryKey)
+      realtimeLog(`[Realtime] Cache invalidated and refetched successfully for:`, queryKey)
     }, delay)
 
     invalidationTimeouts.current.set(key, timeout)
-  }
+  }, [queryClient])
 
   // Handle database changes
-  const handleDatabaseChange = (payload: RealtimePostgresChangesPayload<Record<string, unknown>>) => {
-    const { table, eventType, new: newRecord, old: oldRecord } = payload
+  const handleDatabaseChange = React.useCallback((payload: RealtimePostgresChangesPayload<Record<string, unknown>>) => {
+    const { table, eventType } = payload
     
-    console.log(`[Realtime] ${eventType} on ${table}:`, { newRecord, oldRecord })
+    realtimeLog(`[Realtime] ${eventType} on ${table}`)
 
     // Invalidate relevant caches based on table and event type
     switch (table as TableName) {
@@ -137,7 +161,7 @@ export function RealtimeProvider({ children }: RealtimeProviderProps) {
         break
 
       default:
-        console.warn(`[Realtime] Unhandled table: ${table}`)
+        realtimeWarn(`[Realtime] Unhandled table: ${table}`)
     }
 
     // Show toast notification for important changes (optional)
@@ -160,10 +184,32 @@ export function RealtimeProvider({ children }: RealtimeProviderProps) {
         })
       }
     }
-  }
+  }, [debouncedInvalidate])
+
+  // Cleanup function
+  const cleanup = React.useCallback(async () => {
+    if (channelRef.current) {
+      const channel = channelRef.current
+      channelRef.current = null
+      try {
+        await supabase?.removeChannel(channel)
+      } catch (error) {
+        console.error('[Realtime] Failed to remove channel:', error)
+      }
+    }
+
+    clearReconnectTimeout(reconnectTimeoutRef)
+
+    // Clear all pending invalidation timeouts
+    invalidationTimeouts.current.forEach(timeout => clearTimeout(timeout))
+    invalidationTimeouts.current.clear()
+
+    setIsConnected(false)
+    setConnectionStatus('disconnected')
+  }, [])
 
   // Setup realtime subscription
-  const setupRealtimeSubscription = () => {
+  const setupRealtimeSubscription = React.useCallback(() => {
     if (!supabase) {
       console.error('[Realtime] Supabase client not available')
       setConnectionStatus('error')
@@ -199,21 +245,22 @@ export function RealtimeProvider({ children }: RealtimeProviderProps) {
 
     // Handle connection status
     channel.on('system', {}, (payload) => {
-      console.log('[Realtime] System event:', payload)
+      realtimeLog('[Realtime] System event:', payload)
       
       if (payload.extension === 'postgres_changes') {
         switch (payload.status) {
           case 'ok':
+            clearReconnectTimeout(reconnectTimeoutRef)
             setIsConnected(true)
             setConnectionStatus('connected')
             reconnectAttemptsRef.current = 0
-            console.log('[Realtime] Connected successfully')
+            realtimeLog('[Realtime] Connected successfully')
             break
           case 'error':
             setIsConnected(false)
             setConnectionStatus('error')
             console.error('[Realtime] Connection error:', payload)
-            scheduleReconnect()
+            scheduleReconnectRef.current()
             break
         }
       }
@@ -221,24 +268,29 @@ export function RealtimeProvider({ children }: RealtimeProviderProps) {
 
     // Subscribe to the channel
     channel.subscribe((status) => {
-      console.log('[Realtime] Subscription status:', status)
+      realtimeLog('[Realtime] Subscription status:', status)
       
       if (status === 'SUBSCRIBED') {
+        clearReconnectTimeout(reconnectTimeoutRef)
         setIsConnected(true)
         setConnectionStatus('connected')
         reconnectAttemptsRef.current = 0
       } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
         setIsConnected(false)
         setConnectionStatus('error')
-        scheduleReconnect()
+        scheduleReconnectRef.current()
       }
     })
 
     channelRef.current = channel
-  }
+  }, [handleDatabaseChange])
 
   // Schedule reconnection with exponential backoff
-  const scheduleReconnect = () => {
+  const scheduleReconnect = React.useCallback(() => {
+    if (reconnectTimeoutRef.current) {
+      return
+    }
+
     if (reconnectAttemptsRef.current >= maxReconnectAttempts) {
       console.error('[Realtime] Max reconnection attempts reached')
       setConnectionStatus('error')
@@ -248,63 +300,52 @@ export function RealtimeProvider({ children }: RealtimeProviderProps) {
     const delay = Math.min(1000 * Math.pow(2, reconnectAttemptsRef.current), 30000) // Max 30 seconds
     reconnectAttemptsRef.current++
 
-    console.log(`[Realtime] Scheduling reconnect attempt ${reconnectAttemptsRef.current} in ${delay}ms`)
+    realtimeLog(`[Realtime] Scheduling reconnect attempt ${reconnectAttemptsRef.current} in ${delay}ms`)
 
-    reconnectTimeoutRef.current = setTimeout(() => {
-      console.log('[Realtime] Attempting to reconnect...')
-      cleanup()
+    reconnectTimeoutRef.current = setTimeout(async () => {
+      reconnectTimeoutRef.current = null
+      realtimeLog('[Realtime] Attempting to reconnect...')
+      await cleanup()
       setupRealtimeSubscription()
     }, delay)
-  }
+  }, [cleanup, setupRealtimeSubscription])
 
   // Manual reconnect function
-  const reconnect = () => {
-    console.log('[Realtime] Manual reconnect triggered')
+  const reconnect = React.useCallback(() => {
+    realtimeLog('[Realtime] Manual reconnect triggered')
     reconnectAttemptsRef.current = 0
-    cleanup()
-    setupRealtimeSubscription()
-  }
+    void (async () => {
+      await cleanup()
+      setupRealtimeSubscription()
+    })()
+  }, [cleanup, setupRealtimeSubscription])
 
-  // Cleanup function
-  const cleanup = () => {
-    if (channelRef.current) {
-      supabase?.removeChannel(channelRef.current)
-      channelRef.current = null
-    }
-    
-    if (reconnectTimeoutRef.current) {
-      clearTimeout(reconnectTimeoutRef.current)
-      reconnectTimeoutRef.current = null
-    }
-
-    // Clear all pending invalidation timeouts
-    invalidationTimeouts.current.forEach(timeout => clearTimeout(timeout))
-    invalidationTimeouts.current.clear()
-
-    setIsConnected(false)
-    setConnectionStatus('disconnected')
-  }
+  useEffect(() => {
+    scheduleReconnectRef.current = scheduleReconnect
+  }, [scheduleReconnect])
 
   // Setup subscription on mount
   useEffect(() => {
     setupRealtimeSubscription()
 
     // Cleanup on unmount
-    return cleanup
-  }, [])
+    return () => {
+      cleanup().catch(error => realtimeWarn('[Realtime] Cleanup failed:', error))
+    }
+  }, [cleanup, setupRealtimeSubscription])
 
   // Handle page visibility changes
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible' && !isConnected) {
-        console.log('[Realtime] Page became visible, attempting to reconnect')
+        realtimeLog('[Realtime] Page became visible, attempting to reconnect')
         reconnect()
       }
     }
 
     document.addEventListener('visibilitychange', handleVisibilityChange)
     return () => document.removeEventListener('visibilitychange', handleVisibilityChange)
-  }, [isConnected])
+  }, [isConnected, reconnect])
 
   const value: RealtimeContextType = {
     isConnected,

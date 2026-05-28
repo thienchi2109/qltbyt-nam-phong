@@ -26,44 +26,96 @@ export function QRScannerCamera({ onScanSuccess, onClose, isActive }: QRScannerC
   const videoRef = React.useRef<HTMLVideoElement>(null)
   const streamRef = React.useRef<MediaStream | null>(null)
   const scanIntervalRef = React.useRef<NodeJS.Timeout | null>(null)
+  const cameraSessionRef = React.useRef(0)
   const [isScanning, setIsScanning] = React.useState(false)
   const [hasFlash, setHasFlash] = React.useState(false)
   const [isFlashOn, setIsFlashOn] = React.useState(false)
   const [cameras, setCameras] = React.useState<MediaDeviceInfo[]>([])
-  const [selectedCameraId, setSelectedCameraId] = React.useState<string>("")
+  const selectedCameraIdRef = React.useRef("")
   const [error, setError] = React.useState<string | null>(null)
   const [showInstructions, setShowInstructions] = React.useState(false)
 
-  // Cleanup on unmount - separate effect to ensure cleanup always runs
-  React.useEffect(() => {
-    return () => {
-      // Ensure interval is cleared even on unexpected unmount
-      if (scanIntervalRef.current) {
-        clearInterval(scanIntervalRef.current)
-        scanIntervalRef.current = null
-      }
-      // Ensure stream is stopped
-      if (streamRef.current) {
-        streamRef.current.getTracks().forEach(track => track.stop())
-        streamRef.current = null
-      }
+  const stopQRDetection = React.useCallback(() => {
+    if (scanIntervalRef.current) {
+      clearInterval(scanIntervalRef.current)
+      scanIntervalRef.current = null
     }
   }, [])
 
-  // Initialize camera
-  React.useEffect(() => {
-    if (isActive && typeof window !== "undefined") {
-      initializeCamera()
+  const startQRDetection = React.useCallback(() => {
+    if (!videoRef.current || !isActive) return
+
+    // Clear existing interval
+    stopQRDetection()
+
+    const detectQR = () => {
+      const video = videoRef.current
+      if (!video || video.videoWidth === 0 || video.videoHeight === 0) {
+        return
+      }
+
+      try {
+        // Create canvas to capture video frame
+        const canvas = document.createElement('canvas')
+        const context = canvas.getContext('2d')
+        if (!context) return
+
+        canvas.width = video.videoWidth
+        canvas.height = video.videoHeight
+
+        // Draw current video frame to canvas
+        context.drawImage(video, 0, 0, canvas.width, canvas.height)
+
+        // Get image data for QR detection
+        const imageData = context.getImageData(0, 0, canvas.width, canvas.height)
+
+        // Use jsQR to detect QR codes
+        const qrCode = jsQR(imageData.data, imageData.width, imageData.height, {
+          inversionAttempts: "dontInvert",
+        })
+
+        if (qrCode) {
+          // Stop detection and trigger success
+          stopQRDetection()
+          setIsScanning(false)
+          onScanSuccess(qrCode.data)
+        }
+
+      } catch {
+        // Silently ignore QR detection errors
+      }
     }
 
-    return () => {
-      cleanupCamera()
-    }
-  }, [isActive, selectedCameraId])
+    // Start detection interval - faster for better UX
+    const interval = setInterval(detectQR, 250) // Check every 250ms for smoother detection
+    scanIntervalRef.current = interval
+  }, [isActive, onScanSuccess, stopQRDetection])
 
-  const initializeCamera = async () => {
+  const cleanupCamera = React.useCallback(() => {
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(track => track.stop())
+      streamRef.current = null
+    }
+    stopQRDetection()
+    setIsScanning(false)
+  }, [stopQRDetection])
+
+  const invalidateCameraSession = React.useCallback(() => {
+    cameraSessionRef.current += 1
+  }, [])
+
+  const initializeCamera = React.useCallback(async (sessionId: number) => {
     try {
       setError(null)
+      const isCurrentSession = () => cameraSessionRef.current === sessionId
+      const stopIfStale = (lateStream: MediaStream) => {
+        if (isCurrentSession()) return false
+        lateStream.getTracks().forEach(track => track.stop())
+        if (streamRef.current === lateStream) {
+          streamRef.current = null
+        }
+        return true
+      }
       
       // Check browser support
       if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
@@ -84,7 +136,10 @@ Hiện tại bạn đang truy cập qua: ${location.origin}
       }
 
       // Get available cameras
+      if (!isCurrentSession()) return
       const devices = await navigator.mediaDevices.enumerateDevices()
+      if (!isCurrentSession()) return
+
       const videoDevices = devices.filter(device => device.kind === 'videoinput')
       setCameras(videoDevices)
 
@@ -94,7 +149,8 @@ Hiện tại bạn đang truy cập qua: ${location.origin}
       }
 
       // Use selected camera or default to first available
-      const deviceId = selectedCameraId || videoDevices[0].deviceId
+      const deviceId = selectedCameraIdRef.current || videoDevices[0].deviceId
+      selectedCameraIdRef.current = deviceId
 
       // Try with flexible constraints first
       let stream: MediaStream;
@@ -110,6 +166,7 @@ Hiện tại bạn đang truy cập qua: ${location.origin}
           audio: false
         })
       } catch (constraintError) {
+        if (!isCurrentSession()) return
         try {
           stream = await navigator.mediaDevices.getUserMedia({
             video: {
@@ -120,6 +177,7 @@ Hiện tại bạn đang truy cập qua: ${location.origin}
             audio: false
           })
         } catch (basicError) {
+          if (!isCurrentSession()) return
           stream = await navigator.mediaDevices.getUserMedia({
             video: true,
             audio: false
@@ -127,9 +185,12 @@ Hiện tại bạn đang truy cập qua: ${location.origin}
         }
       }
 
+      if (stopIfStale(stream)) return
+
       streamRef.current = stream
 
       if (videoRef.current) {
+        if (stopIfStale(stream)) return
         videoRef.current.srcObject = stream
         
         // Handle video play with proper error handling
@@ -138,11 +199,13 @@ Hiện tại bạn đang truy cập qua: ${location.origin}
           if (playPromise !== undefined) {
             await playPromise
           }
+          if (stopIfStale(stream)) return
           setIsScanning(true)
           
           // Start QR detection
           startQRDetection()
         } catch (playError) {
+          if (stopIfStale(stream)) return
           // Continue anyway, video might still work
           setIsScanning(true)
           startQRDetection()
@@ -150,11 +213,13 @@ Hiện tại bạn đang truy cập qua: ${location.origin}
       }
 
       // Check for flash support
+      if (stopIfStale(stream)) return
       const track = stream.getVideoTracks()[0]
       const capabilities = track.getCapabilities()
       setHasFlash('torch' in capabilities)
 
     } catch (error) {
+      if (cameraSessionRef.current !== sessionId) return
       let errorMessage = "Không thể truy cập camera"
       const errorName = error instanceof Error ? error.name : ""
       
@@ -188,16 +253,21 @@ Hiện tại bạn đang truy cập qua: ${location.origin}
         description: errorMessage
       })
     }
-  }
+  }, [startQRDetection, toast])
 
-  const cleanupCamera = () => {
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach(track => track.stop())
-      streamRef.current = null
+  // Initialize camera
+  React.useEffect(() => {
+    if (isActive && typeof window !== "undefined") {
+      const sessionId = cameraSessionRef.current + 1
+      cameraSessionRef.current = sessionId
+      initializeCamera(sessionId)
     }
-    stopQRDetection()
-    setIsScanning(false)
-  }
+
+    return () => {
+      invalidateCameraSession()
+      cleanupCamera()
+    }
+  }, [cleanupCamera, initializeCamera, invalidateCameraSession, isActive])
 
   const toggleFlash = async () => {
     if (!hasFlash || !streamRef.current) return
@@ -226,74 +296,18 @@ Hiện tại bạn đang truy cập qua: ${location.origin}
   const switchCamera = async () => {
     if (cameras.length <= 1) return
 
-    const currentIndex = cameras.findIndex(cam => cam.deviceId === selectedCameraId)
+    const currentIndex = cameras.findIndex(cam => cam.deviceId === selectedCameraIdRef.current)
     const nextIndex = (currentIndex + 1) % cameras.length
     const nextCamera = cameras[nextIndex]
 
     cleanupCamera()
-    setSelectedCameraId(nextCamera.deviceId)
+    selectedCameraIdRef.current = nextCamera.deviceId
+    const sessionId = cameraSessionRef.current + 1
+    cameraSessionRef.current = sessionId
+    initializeCamera(sessionId)
   }
 
 
-
-  // QR Detection function
-  const startQRDetection = () => {
-    if (!videoRef.current || !isActive) return
-
-    // Clear existing interval
-    if (scanIntervalRef.current) {
-      clearInterval(scanIntervalRef.current)
-    }
-
-    const detectQR = () => {
-      const video = videoRef.current
-      if (!video || video.videoWidth === 0 || video.videoHeight === 0) {
-        return
-      }
-
-      try {
-        // Create canvas to capture video frame
-        const canvas = document.createElement('canvas')
-        const context = canvas.getContext('2d')
-        if (!context) return
-
-        canvas.width = video.videoWidth
-        canvas.height = video.videoHeight
-        
-        // Draw current video frame to canvas
-        context.drawImage(video, 0, 0, canvas.width, canvas.height)
-        
-        // Get image data for QR detection
-        const imageData = context.getImageData(0, 0, canvas.width, canvas.height)
-        
-        // Use jsQR to detect QR codes
-        const qrCode = jsQR(imageData.data, imageData.width, imageData.height, {
-          inversionAttempts: "dontInvert",
-        })
-        
-        if (qrCode) {
-          // Stop detection and trigger success
-          stopQRDetection()
-          setIsScanning(false)
-          onScanSuccess(qrCode.data)
-        }
-
-      } catch {
-        // Silently ignore QR detection errors
-      }
-    }
-
-    // Start detection interval - faster for better UX
-    const interval = setInterval(detectQR, 250) // Check every 250ms for smoother detection
-    scanIntervalRef.current = interval
-  }
-
-  const stopQRDetection = () => {
-    if (scanIntervalRef.current) {
-      clearInterval(scanIntervalRef.current)
-      scanIntervalRef.current = null
-    }
-  }
 
   return (
     <div className="fixed inset-0 z-50 bg-gray-950">

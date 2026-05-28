@@ -41,6 +41,14 @@ type PreparedTenant = {
   hasLowerLevels: boolean
 }
 
+const VI_TENANT_COLLATOR = new Intl.Collator("vi", { sensitivity: "base", usage: "sort" })
+const EMPTY_TENANT_ROWS: TenantHierarchyRow[] = []
+
+function sortTenantHierarchyUsersByName(list: TenantHierarchyUser[]): void {
+  list.sort((a, b) => VI_TENANT_COLLATOR.compare(a.full_name || a.username, b.full_name || b.username))
+}
+
+/** Renders the global tenant administration view. */
 export function TenantsManagement() {
   const { data: session, status } = useSession()
   const isGlobal = isGlobalRole(session?.user?.role)
@@ -52,8 +60,6 @@ export function TenantsManagement() {
   const [isAddOpen, setIsAddOpen] = React.useState(false)
   const [editing, setEditing] = React.useState<TenantRow | null>(null)
   const [expandedTenants, setExpandedTenants] = React.useState<Record<number, boolean>>({})
-
-  const collator = React.useMemo(() => new Intl.Collator("vi", { sensitivity: "base", usage: "sort" }), [])
 
   const query = useQuery<{ rows: TenantHierarchyRow[] }>({
     queryKey: ["don_vi", { q: debouncedQ }],
@@ -83,7 +89,7 @@ export function TenantsManagement() {
     enabled: status === "authenticated" && isGlobal,
   })
 
-  const rows = query.data?.rows || []
+  const rows = query.data?.rows ?? EMPTY_TENANT_ROWS
 
   const preparedTenants = React.useMemo<PreparedTenant[]>(() => {
     return rows.map((tenant) => {
@@ -102,13 +108,10 @@ export function TenantsManagement() {
         }
       })
 
-      const sortByName = (list: TenantHierarchyUser[]) =>
-        list.sort((a, b) => collator.compare(a.full_name || a.username, b.full_name || b.username))
-
-      sortByName(groups.to_qltb)
-      sortByName(groups.qltb_khoa)
-      sortByName(groups.technician)
-      sortByName(groups.user)
+      sortTenantHierarchyUsersByName(groups.to_qltb)
+      sortTenantHierarchyUsersByName(groups.qltb_khoa)
+      sortTenantHierarchyUsersByName(groups.technician)
+      sortTenantHierarchyUsersByName(groups.user)
 
       const hasLowerLevels = LOWER_LEVEL_ORDER.some((role) => groups[role].length > 0)
 
@@ -118,7 +121,7 @@ export function TenantsManagement() {
         hasLowerLevels,
       }
     })
-  }, [rows, collator])
+  }, [rows])
 
   const { mutate: toggleActive, isPending: isToggling } = useMutation({
     mutationFn: async (row: TenantRow) => {
