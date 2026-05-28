@@ -26,6 +26,7 @@ export function QRScannerCamera({ onScanSuccess, onClose, isActive }: QRScannerC
   const videoRef = React.useRef<HTMLVideoElement>(null)
   const streamRef = React.useRef<MediaStream | null>(null)
   const scanIntervalRef = React.useRef<NodeJS.Timeout | null>(null)
+  const cameraSessionRef = React.useRef(0)
   const [isScanning, setIsScanning] = React.useState(false)
   const [hasFlash, setHasFlash] = React.useState(false)
   const [isFlashOn, setIsFlashOn] = React.useState(false)
@@ -99,7 +100,11 @@ export function QRScannerCamera({ onScanSuccess, onClose, isActive }: QRScannerC
     setIsScanning(false)
   }, [stopQRDetection])
 
-  const initializeCamera = React.useCallback(async () => {
+  const invalidateCameraSession = React.useCallback(() => {
+    cameraSessionRef.current += 1
+  }, [])
+
+  const initializeCamera = React.useCallback(async (sessionId: number) => {
     try {
       setError(null)
       
@@ -122,7 +127,10 @@ Hiện tại bạn đang truy cập qua: ${location.origin}
       }
 
       // Get available cameras
+      if (cameraSessionRef.current !== sessionId) return
       const devices = await navigator.mediaDevices.enumerateDevices()
+      if (cameraSessionRef.current !== sessionId) return
+
       const videoDevices = devices.filter(device => device.kind === 'videoinput')
       setCameras(videoDevices)
 
@@ -133,6 +141,7 @@ Hiện tại bạn đang truy cập qua: ${location.origin}
 
       // Use selected camera or default to first available
       const deviceId = selectedCameraIdRef.current || videoDevices[0].deviceId
+      selectedCameraIdRef.current = deviceId
 
       // Try with flexible constraints first
       let stream: MediaStream;
@@ -165,6 +174,11 @@ Hiện tại bạn đang truy cập qua: ${location.origin}
         }
       }
 
+      if (cameraSessionRef.current !== sessionId) {
+        stream.getTracks().forEach(track => track.stop())
+        return
+      }
+
       streamRef.current = stream
 
       if (videoRef.current) {
@@ -176,11 +190,25 @@ Hiện tại bạn đang truy cập qua: ${location.origin}
           if (playPromise !== undefined) {
             await playPromise
           }
+          if (cameraSessionRef.current !== sessionId) {
+            stream.getTracks().forEach(track => track.stop())
+            if (streamRef.current === stream) {
+              streamRef.current = null
+            }
+            return
+          }
           setIsScanning(true)
           
           // Start QR detection
           startQRDetection()
         } catch (playError) {
+          if (cameraSessionRef.current !== sessionId) {
+            stream.getTracks().forEach(track => track.stop())
+            if (streamRef.current === stream) {
+              streamRef.current = null
+            }
+            return
+          }
           // Continue anyway, video might still work
           setIsScanning(true)
           startQRDetection()
@@ -230,17 +258,25 @@ Hiện tại bạn đang truy cập qua: ${location.origin}
 
   // Cleanup on unmount - separate effect to ensure cleanup always runs
   React.useEffect(() => {
-    return cleanupCamera
-  }, [cleanupCamera])
+    return () => {
+      invalidateCameraSession()
+      cleanupCamera()
+    }
+  }, [cleanupCamera, invalidateCameraSession])
 
   // Initialize camera
   React.useEffect(() => {
     if (isActive && typeof window !== "undefined") {
-      initializeCamera()
+      const sessionId = cameraSessionRef.current + 1
+      cameraSessionRef.current = sessionId
+      initializeCamera(sessionId)
     }
 
-    return cleanupCamera
-  }, [cleanupCamera, initializeCamera, isActive])
+    return () => {
+      invalidateCameraSession()
+      cleanupCamera()
+    }
+  }, [cleanupCamera, initializeCamera, invalidateCameraSession, isActive])
 
   const toggleFlash = async () => {
     if (!hasFlash || !streamRef.current) return
@@ -275,7 +311,9 @@ Hiện tại bạn đang truy cập qua: ${location.origin}
 
     cleanupCamera()
     selectedCameraIdRef.current = nextCamera.deviceId
-    initializeCamera()
+    const sessionId = cameraSessionRef.current + 1
+    cameraSessionRef.current = sessionId
+    initializeCamera(sessionId)
   }
 
 

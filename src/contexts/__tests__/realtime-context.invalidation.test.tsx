@@ -13,24 +13,32 @@ type RealtimeCallback = (payload: {
 
 const mockRealtime = vi.hoisted(() => {
   const postgresCallbacks = new Map<string, RealtimeCallback>()
+  let systemCallback: ((payload: { extension?: string; status?: string }) => void) | undefined
+  let subscribeCallback: ((status: string) => void) | undefined
   const channel = {
     on: vi.fn((event: string, filter: { table?: string }, callback: RealtimeCallback) => {
       if (event === 'postgres_changes' && filter.table) {
         postgresCallbacks.set(filter.table, callback)
       }
+      if (event === 'system') {
+        systemCallback = callback as unknown as (payload: { extension?: string; status?: string }) => void
+      }
       return channel
     }),
     subscribe: vi.fn((callback: (status: string) => void) => {
+      subscribeCallback = callback
       callback('SUBSCRIBED')
       return channel
     }),
   }
-  const removeChannel = vi.fn()
+  const removeChannel = vi.fn(() => Promise.resolve('ok'))
 
   return {
     postgresCallbacks,
     channel,
     removeChannel,
+    getSystemCallback: () => systemCallback,
+    getSubscribeCallback: () => subscribeCallback,
   }
 })
 
@@ -112,6 +120,37 @@ describe('RealtimeProvider invalidation', () => {
       queryKey: ['equipment_list_enhanced'],
       type: 'active',
     })
+
+    view.unmount()
+  })
+
+  it('deduplicates reconnect timers and clears them when the channel recovers', async () => {
+    const queryClient = new QueryClient({
+      defaultOptions: {
+        queries: { retry: false },
+        mutations: { retry: false },
+      },
+    })
+
+    const view = renderWithQueryClient(queryClient)
+    const systemCallback = mockRealtime.getSystemCallback()
+    const subscribeCallback = mockRealtime.getSubscribeCallback()
+    expect(systemCallback).toBeDefined()
+    expect(subscribeCallback).toBeDefined()
+
+    act(() => {
+      systemCallback?.({ extension: 'postgres_changes', status: 'error' })
+      systemCallback?.({ extension: 'postgres_changes', status: 'error' })
+      subscribeCallback?.('CHANNEL_ERROR')
+    })
+
+    expect(vi.getTimerCount()).toBe(1)
+
+    act(() => {
+      systemCallback?.({ extension: 'postgres_changes', status: 'ok' })
+    })
+
+    expect(vi.getTimerCount()).toBe(0)
 
     view.unmount()
   })

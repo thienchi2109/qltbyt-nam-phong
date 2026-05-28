@@ -23,6 +23,27 @@ interface RealtimeContextType {
 
 const RealtimeContext = createContext<RealtimeContextType | undefined>(undefined)
 
+const isRealtimeDebugEnabled = process.env.NODE_ENV !== 'production'
+
+function realtimeLog(...args: unknown[]) {
+  if (isRealtimeDebugEnabled) {
+    console.log(...args)
+  }
+}
+
+function realtimeWarn(...args: unknown[]) {
+  if (isRealtimeDebugEnabled) {
+    console.warn(...args)
+  }
+}
+
+function clearReconnectTimeout(reconnectTimeoutRef: React.MutableRefObject<NodeJS.Timeout | null>) {
+  if (reconnectTimeoutRef.current) {
+    clearTimeout(reconnectTimeoutRef.current)
+    reconnectTimeoutRef.current = null
+  }
+}
+
 /** Returns the realtime connection state from the realtime provider. */
 export function useRealtime() {
   const context = useContext(RealtimeContext)
@@ -62,7 +83,7 @@ export function RealtimeProvider({ children }: RealtimeProviderProps) {
 
     // Set new timeout
     const timeout = setTimeout(async () => {
-      console.log(`[Realtime] Invalidating and refetching queries for:`, queryKey)
+      realtimeLog(`[Realtime] Invalidating and refetching queries for:`, queryKey)
 
       // Invalidate and force refetch
       await queryClient.invalidateQueries({
@@ -78,7 +99,7 @@ export function RealtimeProvider({ children }: RealtimeProviderProps) {
 
       invalidationTimeouts.current.delete(key)
       setLastUpdate(new Date())
-      console.log(`[Realtime] Cache invalidated and refetched successfully for:`, queryKey)
+      realtimeLog(`[Realtime] Cache invalidated and refetched successfully for:`, queryKey)
     }, delay)
 
     invalidationTimeouts.current.set(key, timeout)
@@ -86,9 +107,9 @@ export function RealtimeProvider({ children }: RealtimeProviderProps) {
 
   // Handle database changes
   const handleDatabaseChange = React.useCallback((payload: RealtimePostgresChangesPayload<Record<string, unknown>>) => {
-    const { table, eventType, new: newRecord, old: oldRecord } = payload
+    const { table, eventType } = payload
     
-    console.log(`[Realtime] ${eventType} on ${table}:`, { newRecord, oldRecord })
+    realtimeLog(`[Realtime] ${eventType} on ${table}`)
 
     // Invalidate relevant caches based on table and event type
     switch (table as TableName) {
@@ -140,7 +161,7 @@ export function RealtimeProvider({ children }: RealtimeProviderProps) {
         break
 
       default:
-        console.warn(`[Realtime] Unhandled table: ${table}`)
+        realtimeWarn(`[Realtime] Unhandled table: ${table}`)
     }
 
     // Show toast notification for important changes (optional)
@@ -166,16 +187,18 @@ export function RealtimeProvider({ children }: RealtimeProviderProps) {
   }, [debouncedInvalidate])
 
   // Cleanup function
-  const cleanup = React.useCallback(() => {
+  const cleanup = React.useCallback(async () => {
     if (channelRef.current) {
-      supabase?.removeChannel(channelRef.current)
+      const channel = channelRef.current
       channelRef.current = null
+      try {
+        await supabase?.removeChannel(channel)
+      } catch (error) {
+        console.error('[Realtime] Failed to remove channel:', error)
+      }
     }
 
-    if (reconnectTimeoutRef.current) {
-      clearTimeout(reconnectTimeoutRef.current)
-      reconnectTimeoutRef.current = null
-    }
+    clearReconnectTimeout(reconnectTimeoutRef)
 
     // Clear all pending invalidation timeouts
     invalidationTimeouts.current.forEach(timeout => clearTimeout(timeout))
@@ -222,15 +245,16 @@ export function RealtimeProvider({ children }: RealtimeProviderProps) {
 
     // Handle connection status
     channel.on('system', {}, (payload) => {
-      console.log('[Realtime] System event:', payload)
+      realtimeLog('[Realtime] System event:', payload)
       
       if (payload.extension === 'postgres_changes') {
         switch (payload.status) {
           case 'ok':
+            clearReconnectTimeout(reconnectTimeoutRef)
             setIsConnected(true)
             setConnectionStatus('connected')
             reconnectAttemptsRef.current = 0
-            console.log('[Realtime] Connected successfully')
+            realtimeLog('[Realtime] Connected successfully')
             break
           case 'error':
             setIsConnected(false)
@@ -244,9 +268,10 @@ export function RealtimeProvider({ children }: RealtimeProviderProps) {
 
     // Subscribe to the channel
     channel.subscribe((status) => {
-      console.log('[Realtime] Subscription status:', status)
+      realtimeLog('[Realtime] Subscription status:', status)
       
       if (status === 'SUBSCRIBED') {
+        clearReconnectTimeout(reconnectTimeoutRef)
         setIsConnected(true)
         setConnectionStatus('connected')
         reconnectAttemptsRef.current = 0
@@ -262,6 +287,10 @@ export function RealtimeProvider({ children }: RealtimeProviderProps) {
 
   // Schedule reconnection with exponential backoff
   const scheduleReconnect = React.useCallback(() => {
+    if (reconnectTimeoutRef.current) {
+      return
+    }
+
     if (reconnectAttemptsRef.current >= maxReconnectAttempts) {
       console.error('[Realtime] Max reconnection attempts reached')
       setConnectionStatus('error')
@@ -271,21 +300,24 @@ export function RealtimeProvider({ children }: RealtimeProviderProps) {
     const delay = Math.min(1000 * Math.pow(2, reconnectAttemptsRef.current), 30000) // Max 30 seconds
     reconnectAttemptsRef.current++
 
-    console.log(`[Realtime] Scheduling reconnect attempt ${reconnectAttemptsRef.current} in ${delay}ms`)
+    realtimeLog(`[Realtime] Scheduling reconnect attempt ${reconnectAttemptsRef.current} in ${delay}ms`)
 
-    reconnectTimeoutRef.current = setTimeout(() => {
-      console.log('[Realtime] Attempting to reconnect...')
-      cleanup()
+    reconnectTimeoutRef.current = setTimeout(async () => {
+      reconnectTimeoutRef.current = null
+      realtimeLog('[Realtime] Attempting to reconnect...')
+      await cleanup()
       setupRealtimeSubscription()
     }, delay)
   }, [cleanup, setupRealtimeSubscription])
 
   // Manual reconnect function
   const reconnect = React.useCallback(() => {
-    console.log('[Realtime] Manual reconnect triggered')
+    realtimeLog('[Realtime] Manual reconnect triggered')
     reconnectAttemptsRef.current = 0
-    cleanup()
-    setupRealtimeSubscription()
+    void (async () => {
+      await cleanup()
+      setupRealtimeSubscription()
+    })()
   }, [cleanup, setupRealtimeSubscription])
 
   useEffect(() => {
@@ -297,14 +329,16 @@ export function RealtimeProvider({ children }: RealtimeProviderProps) {
     setupRealtimeSubscription()
 
     // Cleanup on unmount
-    return cleanup
+    return () => {
+      void cleanup()
+    }
   }, [cleanup, setupRealtimeSubscription])
 
   // Handle page visibility changes
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible' && !isConnected) {
-        console.log('[Realtime] Page became visible, attempting to reconnect')
+        realtimeLog('[Realtime] Page became visible, attempting to reconnect')
         reconnect()
       }
     }

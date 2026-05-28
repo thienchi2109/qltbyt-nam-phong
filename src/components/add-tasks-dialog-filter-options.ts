@@ -1,17 +1,17 @@
 import type { Equipment } from "@/lib/data"
 
-type AddTasksFilterOption = {
+interface AddTasksFilterOption {
   label: string
   value: string
 }
 
-type AddTasksFilterOptions = {
+interface AddTasksFilterOptions {
   departments: AddTasksFilterOption[]
   users: AddTasksFilterOption[]
   locations: AddTasksFilterOption[]
 }
 
-function getUniqueTrimmedValues(equipment: Equipment[], key: keyof Equipment) {
+function getUniqueTrimmedValues(equipment: Equipment[], key: keyof Equipment): string[] {
   return Array.from(new Set(
     equipment.flatMap((item) => {
       const value = item[key]

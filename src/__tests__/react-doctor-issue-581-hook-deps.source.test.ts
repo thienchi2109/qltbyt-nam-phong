@@ -1,7 +1,9 @@
 import { readFileSync } from "node:fs"
-import { join } from "node:path"
+import { dirname, join, resolve } from "node:path"
+import { fileURLToPath } from "node:url"
 
-const repoRoot = process.cwd()
+const currentDir = dirname(fileURLToPath(import.meta.url))
+const repoRoot = resolve(currentDir, "../..")
 
 function readSource(relativePath: string): string {
   return readFileSync(join(repoRoot, relativePath), "utf8")
@@ -32,11 +34,19 @@ describe("React Doctor Issue #581 hook dependency source guards", () => {
       ],
       [
         "src/components/qr-scanner-camera.tsx",
-        /React\.useEffect\(\(\) => \{\s*return \(\) => \{/,
+        /React\.useEffect\(\(\) => \{\s*return \(\) => \{[\s\S]*?scanIntervalRef\.current[\s\S]*?streamRef\.current[\s\S]*?\}\s*\}, \[\]\)/,
       ],
       [
         "src/components/qr-scanner-camera.tsx",
         /const \[selectedCameraId, setSelectedCameraId\] = React\.useState/,
+      ],
+      [
+        "src/components/qr-scanner-camera.tsx",
+        /const initializeCamera = React\.useCallback\(async \(\) =>/,
+      ],
+      [
+        "src/contexts/realtime-context.tsx",
+        /new: newRecord, old: oldRecord/,
       ],
       [
         "src/components/ui/calendar-widget.tsx",
@@ -55,5 +65,17 @@ describe("React Doctor Issue #581 hook dependency source guards", () => {
     for (const [relativePath, stalePattern] of targetPatterns) {
       expect(readSource(relativePath), relativePath).not.toMatch(stalePattern)
     }
+  })
+
+  it("keeps review follow-up guards for deterministic tests and reconnect stability", () => {
+    const sourceGuard = readSource("src/__tests__/react-doctor-issue-581-hook-deps.source.test.ts")
+    const qrCamera = readSource("src/components/qr-scanner-camera.tsx")
+    const realtimeContext = readSource("src/contexts/realtime-context.tsx")
+
+    expect(sourceGuard).not.toMatch(/const repoRoot = process\.cwd\(\)/)
+    expect(qrCamera).toContain("cameraSessionRef")
+    expect(qrCamera).toContain("selectedCameraIdRef.current = deviceId")
+    expect(realtimeContext).toContain("clearReconnectTimeout")
+    expect(realtimeContext).toContain("if (reconnectTimeoutRef.current) {")
   })
 })
