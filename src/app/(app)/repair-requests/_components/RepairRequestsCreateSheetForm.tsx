@@ -23,6 +23,12 @@ import type { EquipmentSelectItem, RepairUnit } from "../types"
 import { RepairRequestsCreateSheetActions } from "./RepairRequestsCreateSheetActions"
 import { RepairRequestsEquipmentSearchField } from "./RepairRequestsEquipmentSearchField"
 
+function getTodayStart(): Date {
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  return today
+}
+
 interface RepairRequestsCreateSheetFormProps {
   canSetRepairUnit: boolean
   desiredDate: Date | undefined
@@ -46,6 +52,7 @@ interface RepairRequestsCreateSheetFormProps {
   shouldShowNoResults: boolean
 }
 
+/** Renders the repair request create sheet form fields and actions. */
 export function RepairRequestsCreateSheetForm({
   canSetRepairUnit,
   desiredDate,
@@ -68,16 +75,10 @@ export function RepairRequestsCreateSheetForm({
   onRepairUnitChange,
   shouldShowNoResults,
 }: RepairRequestsCreateSheetFormProps) {
-  const [minimumSelectableDate, setMinimumSelectableDate] = React.useState<Date | null>(null)
-
-  React.useEffect(() => {
-    const today = new Date()
-    today.setHours(0, 0, 0, 0)
-    setMinimumSelectableDate(today)
-  }, [])
+  const [minimumSelectableDate] = React.useState<Date>(() => getTodayStart())
 
   const isDateDisabled = React.useCallback(
-    (date: Date) => (minimumSelectableDate ? date < minimumSelectableDate : false),
+    (date: Date) => date < minimumSelectableDate,
     [minimumSelectableDate],
   )
 

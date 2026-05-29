@@ -55,32 +55,36 @@ const getStatusStyle = (status: Equipment["tinh_trang_hien_tai"]) => {
 const isOutOfService = (status: Equipment["tinh_trang_hien_tai"]) =>
   status === "Ngưng sử dụng" || status === "Chưa có nhu cầu sử dụng"
 
+/** Renders a compact mobile equipment card with status-aware actions. */
 export function MobileEquipmentListItem({
   equipment,
   onShowDetails,
 }: MobileEquipmentListItemProps) {
-  const router = useRouter()
+  const { push } = useRouter()
 
   const status = equipment.tinh_trang_hien_tai
   const statusStyle = getStatusStyle(status)
   const outOfService = isOutOfService(status)
 
-  const handleCardClick = () => {
+  const handleCardClick = (event: React.MouseEvent) => {
+    if (event.target instanceof Element && event.target.closest("[data-mobile-equipment-actions]")) {
+      return
+    }
     onShowDetails(equipment)
   }
 
   const handleCreateRepairRequest = React.useCallback(
     (equipmentId: number) => {
-      router.push(buildRepairRequestCreateIntentHref(equipmentId))
+      push(buildRepairRequestCreateIntentHref(equipmentId))
     },
-    [router],
+    [push],
   )
 
   const handleViewRepairDetails = React.useCallback(
     (equipmentId: number) => {
-      router.push(buildRepairRequestsByEquipmentHref(equipmentId))
+      push(buildRepairRequestsByEquipmentHref(equipmentId))
     },
-    [router],
+    [push],
   )
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -164,14 +168,6 @@ function MobileEquipmentActionButtons({
 }: MobileEquipmentActionButtonsProps) {
   const buttonBase = "flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-[11px] font-bold transition-all active:scale-95 duration-150"
   const ghostBtn = `${buttonBase} bg-muted/60 hover:bg-muted text-muted-foreground`
-  const handleActionGroupClick = (event: React.MouseEvent<HTMLDivElement>) => {
-    event.stopPropagation()
-  }
-
-  const handleActionGroupKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
-    event.stopPropagation()
-  }
-
   const handleCreateRepairRequestClick = () => {
     onCreateRepairRequest(equipment.id)
   }
@@ -183,13 +179,11 @@ function MobileEquipmentActionButtons({
   // Ngưng sử dụng → "Xem chi tiết" only
   if (outOfService) {
     return (
-      <div
-        className="flex gap-2 pt-0.5"
-        role="group"
-        aria-label={`Hành động cho ${equipment.ten_thiet_bi}`}
-        onClick={handleActionGroupClick}
-        onKeyDown={handleActionGroupKeyDown}
+      <fieldset
+        data-mobile-equipment-actions
+        className="flex min-w-0 gap-2 border-0 p-0 pt-0.5"
       >
+        <legend className="sr-only">{`Hành động cho ${equipment.ten_thiet_bi}`}</legend>
         <button
           type="button"
           className={ghostBtn}
@@ -198,20 +192,18 @@ function MobileEquipmentActionButtons({
           <Eye className="size-3.5" />
           Xem chi tiết
         </button>
-      </div>
+      </fieldset>
     )
   }
 
   // Chờ sửa chữa → "Chi tiết sự cố" (red) + disabled play
   if (status === "Chờ sửa chữa") {
     return (
-      <div
-        className="flex gap-2 pt-0.5"
-        role="group"
-        aria-label={`Hành động cho ${equipment.ten_thiet_bi}`}
-        onClick={handleActionGroupClick}
-        onKeyDown={handleActionGroupKeyDown}
+      <fieldset
+        data-mobile-equipment-actions
+        className="flex min-w-0 gap-2 border-0 p-0 pt-0.5"
       >
+        <legend className="sr-only">{`Hành động cho ${equipment.ten_thiet_bi}`}</legend>
         <button
           type="button"
           className={`${buttonBase} flex-[2] bg-destructive text-destructive-foreground hover:opacity-90`}
@@ -221,20 +213,18 @@ function MobileEquipmentActionButtons({
           Chi tiết sự cố
         </button>
         <MobileUsageActions equipment={equipment} className="flex-1 h-auto py-2 text-[11px]" />
-      </div>
+      </fieldset>
     )
   }
 
   // Chờ bảo trì / Chờ hiệu chuẩn → "Xem chi tiết" + "Sử dụng"
   if (status === "Chờ bảo trì" || status === "Chờ hiệu chuẩn/kiểm định") {
     return (
-      <div
-        className="flex gap-2 pt-0.5"
-        role="group"
-        aria-label={`Hành động cho ${equipment.ten_thiet_bi}`}
-        onClick={handleActionGroupClick}
-        onKeyDown={handleActionGroupKeyDown}
+      <fieldset
+        data-mobile-equipment-actions
+        className="flex min-w-0 gap-2 border-0 p-0 pt-0.5"
       >
+        <legend className="sr-only">{`Hành động cho ${equipment.ten_thiet_bi}`}</legend>
         <button
           type="button"
           className={ghostBtn}
@@ -244,19 +234,17 @@ function MobileEquipmentActionButtons({
           Xem chi tiết
         </button>
         <MobileUsageActions equipment={equipment} className="flex-1 h-auto py-2 text-[11px]" />
-      </div>
+      </fieldset>
     )
   }
 
   // Default (Hoạt động) → "Báo sửa chữa" + "Sử dụng"
   return (
-    <div
-      className="flex gap-2 pt-0.5"
-      role="group"
-      aria-label={`Hành động cho ${equipment.ten_thiet_bi}`}
-      onClick={handleActionGroupClick}
-      onKeyDown={handleActionGroupKeyDown}
+    <fieldset
+      data-mobile-equipment-actions
+      className="flex min-w-0 gap-2 border-0 p-0 pt-0.5"
     >
+      <legend className="sr-only">{`Hành động cho ${equipment.ten_thiet_bi}`}</legend>
       <button
         type="button"
         className={ghostBtn}
@@ -266,6 +254,6 @@ function MobileEquipmentActionButtons({
         Báo sửa chữa
       </button>
       <MobileUsageActions equipment={equipment} className="flex-1 h-auto py-2 text-[11px]" />
-    </div>
+    </fieldset>
   )
 }

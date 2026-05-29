@@ -25,7 +25,7 @@ export function MobileBottomSheet({
     children,
     className,
 }: MobileBottomSheetProps) {
-    const dialogRef = React.useRef<HTMLDivElement>(null)
+    const dialogRef = React.useRef<HTMLDialogElement>(null)
     const previousActiveElement = React.useRef<HTMLElement | null>(null)
 
     // Focus management: move focus into dialog when opened, restore on close
@@ -56,43 +56,19 @@ export function MobileBottomSheet({
         }
     }, [open])
 
-    const handleKeyDown = (e: React.KeyboardEvent) => {
-        if (e.key === "Escape") {
-            onOpenChange(false)
-            return
-        }
-
-        // Focus trap: keep Tab navigation inside the dialog
-        if (e.key === "Tab" && dialogRef.current) {
-            const focusableElements = dialogRef.current.querySelectorAll<HTMLElement>(
-                'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
-            )
-            const focusableArray = Array.from(focusableElements)
-            const firstFocusable = focusableArray[0]
-            const lastFocusable = focusableArray[focusableArray.length - 1]
-
-            if (e.shiftKey) {
-                if (document.activeElement === firstFocusable) {
-                    e.preventDefault()
-                    lastFocusable?.focus()
-                }
-            } else {
-                if (document.activeElement === lastFocusable) {
-                    e.preventDefault()
-                    firstFocusable?.focus()
-                }
-            }
-        }
+    const handleCancel = (event: React.SyntheticEvent<HTMLDialogElement>) => {
+        event.preventDefault()
+        onOpenChange(false)
     }
 
     if (!open) return null
 
     return (
-        <div
+        <dialog
+            open
             ref={dialogRef}
-            className="fixed inset-0 z-[1002] flex items-end"
-            onKeyDown={handleKeyDown}
-            role="dialog"
+            className="fixed inset-0 z-[1002] m-0 flex h-auto max-h-none max-w-none items-end border-0 bg-transparent p-0"
+            onCancel={handleCancel}
             aria-modal="true"
             aria-label={ariaLabel}
             tabIndex={-1}
@@ -125,6 +101,6 @@ export function MobileBottomSheet({
 
                 {children}
             </div>
-        </div>
+        </dialog>
     )
 }

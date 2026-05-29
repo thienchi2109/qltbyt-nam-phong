@@ -62,16 +62,6 @@ function TransfersKanbanCardComponent({
     [onClick, transfer]
   )
 
-  const openTransferFromKeyboard = React.useCallback(
-    (event: React.KeyboardEvent<HTMLDivElement>) => {
-      if (event.key !== 'Enter' && event.key !== ' ') return
-
-      event.preventDefault()
-      onClick(transfer)
-    },
-    [onClick, transfer]
-  )
-
   const stopActionPropagation = React.useCallback(
     (event: React.MouseEvent<HTMLDivElement> | React.KeyboardEvent<HTMLDivElement>) => {
       event.stopPropagation()
@@ -82,23 +72,21 @@ function TransfersKanbanCardComponent({
   return (
     <Card className="mb-2 hover:shadow-md transition-shadow">
       <CardContent className="p-3 space-y-2">
-        <div
-          className="cursor-pointer space-y-2 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+        <button
+          type="button"
+          className="block w-full cursor-pointer space-y-2 rounded-md bg-transparent p-0 text-left text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
           onClick={openTransferFromCard}
-          onKeyDown={openTransferFromKeyboard}
-          role="button"
-          tabIndex={0}
           aria-label={`Mở yêu cầu luân chuyển ${transfer.ma_yeu_cau}`}
         >
-        {/* Header: Transfer code + type badge */}
-        <div className="flex items-start justify-between gap-2">
-          <span className="font-medium text-sm truncate">
-            {transfer.ma_yeu_cau}
-          </span>
-          <Badge variant={getTypeVariant(transfer.loai_hinh)} className="shrink-0">
-            {getTypeLabel(transfer.loai_hinh)}
-          </Badge>
-        </div>
+          {/* Header: Transfer code + type badge */}
+          <div className="flex items-start justify-between gap-2">
+            <span className="font-medium text-sm truncate">
+              {transfer.ma_yeu_cau}
+            </span>
+            <Badge variant={getTypeVariant(transfer.loai_hinh)} className="shrink-0">
+              {getTypeLabel(transfer.loai_hinh)}
+            </Badge>
+          </div>
 
         {/* Equipment info */}
         <div className="space-y-1">
@@ -129,8 +117,7 @@ function TransfersKanbanCardComponent({
             </Badge>
           )}
         </div>
-
-        </div>
+        </button>
 
         {/* Actions menu */}
         <div
@@ -146,5 +133,5 @@ function TransfersKanbanCardComponent({
   )
 }
 
-// Memoize to prevent re-renders when parent virtual scroller updates
+/** Renders a memoized transfer card for kanban columns. */
 export const TransfersKanbanCard = React.memo(TransfersKanbanCardComponent)

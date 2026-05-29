@@ -7,20 +7,20 @@ interface TransfersSearchParamsBoundaryProps {
   children: React.ReactNode
 }
 
+/** Wraps transfer search-param handling in a Suspense boundary. */
 export function TransfersSearchParamsBoundary({
   children,
 }: TransfersSearchParamsBoundaryProps) {
   return (
     <React.Suspense
       fallback={
-        <div
+        <output
           className="flex min-h-[50vh] items-center justify-center"
-          role="status"
           aria-label="Đang tải bộ lọc điều chuyển"
           aria-live="polite"
         >
           <Loader2 className="size-6 animate-spin text-muted-foreground" />
-        </div>
+        </output>
       }
     >
       {children}

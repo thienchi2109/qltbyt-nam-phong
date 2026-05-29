@@ -69,68 +69,65 @@ const CategoryChildRow = React.memo(function CategoryChildRow({
 
     return (
         <div
-            role="button"
-            tabIndex={0}
-            aria-label={selectLabel}
-            aria-pressed={isSelected}
-            title={category.ten_nhom}
-            onClick={selectCategory}
-            onKeyDown={(event) => {
-                if (event.target !== event.currentTarget) {
-                    return
-                }
-                if (event.key === "Enter" || event.key === " ") {
-                    event.preventDefault()
-                    selectCategory()
-                }
-            }}
             className={cn(
-                "group relative cursor-pointer rounded-md border border-transparent px-4 py-2.5 transition-all duration-150",
-                "hover:bg-accent/50 hover:border-border/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                "group relative rounded-md border border-transparent px-4 py-2.5 transition-all duration-150",
+                "hover:border-border/50 hover:bg-accent/50",
                 isSelected && "border-primary/30 bg-primary/5 ring-1 ring-primary/20",
                 CATEGORY_GRID_COLS
             )}
         >
-            {/* Column 1: Category name */}
-            <div className="relative min-w-0" style={{ paddingLeft: `${indentPx}px` }}>
-                {category.level > 2 && (
-                    <div
-                        className="absolute top-0 bottom-0 border-l-2 border-muted-foreground/15"
-                        style={{ left: `${Math.max(0, category.level - 3) * 20}px` }}
-                        aria-hidden="true"
+            <button
+                type="button"
+                aria-label={selectLabel}
+                aria-pressed={isSelected}
+                title={category.ten_nhom}
+                onClick={selectCategory}
+                className={cn(
+                    "col-span-3 grid grid-cols-[minmax(0,1fr)_5rem_12rem] items-center gap-x-4 rounded-sm bg-transparent p-0 text-left text-foreground",
+                    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                )}
+            >
+                {/* Column 1: Category name */}
+                <span className="relative min-w-0" style={{ paddingLeft: `${indentPx}px` }}>
+                    {category.level > 2 && (
+                        <span
+                            className="absolute top-0 bottom-0 border-l-2 border-muted-foreground/15"
+                            style={{ left: `${Math.max(0, category.level - 3) * 20}px` }}
+                            aria-hidden="true"
+                        />
+                    )}
+                    <span className="flex items-baseline gap-2">
+                        <span className="shrink-0 text-sm font-semibold text-primary/80">
+                            {category.ma_nhom}
+                        </span>
+                        <span className="line-clamp-2 text-sm text-foreground/80">
+                            {category.ten_nhom}
+                        </span>
+                    </span>
+                    {category.mo_ta && (
+                        <span className="mt-1 block line-clamp-2 text-xs italic text-muted-foreground">
+                            {category.mo_ta}
+                        </span>
+                    )}
+                </span>
+
+                {/* Column 2: Classification badge */}
+                <span>
+                    {classStyle && (
+                        <Badge variant="outline" className={cn("text-xs font-medium", classStyle.className)}>
+                            {classStyle.label}
+                        </Badge>
+                    )}
+                </span>
+
+                {/* Column 3: Quota progress bar */}
+                <span aria-label={isLeaf ? "Danh mục lá" : "Danh mục cha"}>
+                    <QuotaProgressBar
+                        current={aggregatedCount}
+                        max={quotaMax}
                     />
-                )}
-                <div className="flex items-baseline gap-2">
-                    <span className="shrink-0 text-sm font-semibold text-primary/80">
-                        {category.ma_nhom}
-                    </span>
-                    <span className="line-clamp-2 text-sm text-foreground/80">
-                        {category.ten_nhom}
-                    </span>
-                </div>
-                {category.mo_ta && (
-                    <p className="mt-1 line-clamp-2 text-xs italic text-muted-foreground">
-                        {category.mo_ta}
-                    </p>
-                )}
-            </div>
-
-            {/* Column 2: Classification badge */}
-            <div>
-                {classStyle && (
-                    <Badge variant="outline" className={cn("text-xs font-medium", classStyle.className)}>
-                        {classStyle.label}
-                    </Badge>
-                )}
-            </div>
-
-            {/* Column 3: Quota progress bar */}
-            <div aria-label={isLeaf ? "Danh mục lá" : "Danh mục cha"}>
-                <QuotaProgressBar
-                    current={aggregatedCount}
-                    max={quotaMax}
-                />
-            </div>
+                </span>
+            </button>
 
             {/* Column 4: Actions */}
             <CategoryActionMenu
@@ -161,6 +158,7 @@ interface CategoryGroupProps {
     onSelectCategory: (category: CategoryListItem) => void
 }
 
+/** Renders a root category group with selectable semantic rows and action controls. */
 const CategoryGroup = React.memo(function CategoryGroup({
     root,
     childCategories,
@@ -218,22 +216,15 @@ const CategoryGroup = React.memo(function CategoryGroup({
                             <ChevronDown className="size-4" />
                         )}
                     </Button>
-                    <div
-                        role="button"
-                        tabIndex={0}
+                    <button
+                        type="button"
                         aria-label={rootSelectLabel}
                         aria-pressed={rootSelected}
                         title={root.ten_nhom}
                         onClick={selectRoot}
-                        onKeyDown={(event) => {
-                            if (event.key === "Enter" || event.key === " ") {
-                                event.preventDefault()
-                                selectRoot()
-                            }
-                        }}
-                        className="min-w-0 flex-1 rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                        className="min-w-0 flex-1 rounded-sm bg-transparent p-0 text-left text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                     >
-                        <div className="flex items-baseline gap-2">
+                        <span className="flex items-baseline gap-2">
                             <span className="text-sm font-bold text-primary">
                                 {root.ma_nhom}
                             </span>
@@ -243,8 +234,8 @@ const CategoryGroup = React.memo(function CategoryGroup({
                             <span className="text-xs text-muted-foreground whitespace-nowrap shrink-0">
                                 · {childCategories.length} mục con
                             </span>
-                        </div>
-                    </div>
+                        </span>
+                    </button>
                 </div>
 
                 {/* Column 2: Classification badge */}

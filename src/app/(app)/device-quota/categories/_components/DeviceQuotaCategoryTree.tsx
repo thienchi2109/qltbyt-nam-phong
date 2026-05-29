@@ -35,6 +35,7 @@ function findDefaultCategory(
   )
 }
 
+/** Renders the device quota category tree and detail pane. */
 export function DeviceQuotaCategoryTree() {
   const {
     categories,
@@ -68,29 +69,23 @@ export function DeviceQuotaCategoryTree() {
     [allCategories]
   )
 
-  const [selectedCategoryId, setSelectedCategoryId] = React.useState<number | null>(null)
+  const [explicitSelectedCategoryId, setExplicitSelectedCategoryId] = React.useState<number | null>(null)
 
   const defaultCategory = React.useMemo(
     () => findDefaultCategory(categories, aggregatedCounts, leafIds),
     [aggregatedCounts, categories, leafIds]
   )
 
-  const visibleSelectedCategory = React.useMemo(
-    () => categories.find((category) => category.id === selectedCategoryId) ?? null,
-    [categories, selectedCategoryId]
+  const explicitSelectedCategory = React.useMemo(
+    () => categories.find((category) => category.id === explicitSelectedCategoryId) ?? null,
+    [categories, explicitSelectedCategoryId]
   )
 
-  const selectedCategory = visibleSelectedCategory ?? defaultCategory
-
-  React.useEffect(() => {
-    const nextSelectedId = selectedCategory?.id ?? null
-    if (selectedCategoryId !== nextSelectedId) {
-      setSelectedCategoryId(nextSelectedId)
-    }
-  }, [selectedCategory?.id, selectedCategoryId])
+  const selectedCategory = explicitSelectedCategory ?? defaultCategory
+  const selectedCategoryId = selectedCategory?.id ?? null
 
   const handleSelectCategory = React.useCallback((category: CategoryListItem) => {
-    setSelectedCategoryId(category.id)
+    setExplicitSelectedCategoryId(category.id)
   }, [])
 
   const rootCount = roots.length
@@ -140,13 +135,12 @@ export function DeviceQuotaCategoryTree() {
               <span /> {/* Actions column */}
             </div>
 
-            <div
-              role="list"
+            <ul
               aria-label="Tiêu chuẩn, định mức thiết bị"
               className="space-y-3"
             >
               {roots.map((root) => (
-                <div key={root.id} role="listitem">
+                <li key={root.id}>
                   <CategoryGroup
                     root={root}
                     childCategories={childrenMap.get(root.id) || []}
@@ -159,9 +153,9 @@ export function DeviceQuotaCategoryTree() {
                     selectedCategoryId={selectedCategory?.id ?? null}
                     onSelectCategory={handleSelectCategory}
                   />
-                </div>
+                </li>
               ))}
-            </div>
+            </ul>
           </div>
         )}
       </CardContent>

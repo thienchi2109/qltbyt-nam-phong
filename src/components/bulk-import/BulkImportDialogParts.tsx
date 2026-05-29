@@ -19,6 +19,7 @@ export interface BulkImportFileInputProps {
   label?: string
 }
 
+/** Renders the file picker area for a bulk import dialog. */
 export function BulkImportFileInput({
   id,
   fileInputRef,
@@ -49,6 +50,7 @@ export interface BulkImportErrorAlertProps {
   error: string | null
 }
 
+/** Renders a dismiss-free validation or parsing error alert. */
 export function BulkImportErrorAlert({ error }: BulkImportErrorAlertProps): JSX.Element | null {
   if (!error) return null
 
@@ -68,6 +70,7 @@ export interface BulkImportValidationErrorsProps {
   maxHeight?: string
 }
 
+/** Renders row-level validation errors for parsed bulk import records. */
 export function BulkImportValidationErrors({
   errors,
   maxHeight = '10rem'
@@ -100,21 +103,21 @@ export interface BulkImportSuccessMessageProps {
   recordCount: number
 }
 
+/** Renders the successful bulk import file parsing summary. */
 export function BulkImportSuccessMessage({
   fileName,
   recordCount
 }: BulkImportSuccessMessageProps): JSX.Element {
   return (
-    <div
+    <output
       className="flex items-center gap-2 text-sm text-primary bg-primary/10 p-3 rounded-md"
-      role="status"
       aria-live="polite"
     >
       <FileCheck className="size-4 flex-shrink-0" aria-hidden="true" />
       <span>
         Đã đọc file <strong>{fileName}</strong>. Tìm thấy <strong>{recordCount}</strong> bản ghi hợp lệ.
       </span>
-    </div>
+    </output>
   )
 }
 
@@ -130,6 +133,7 @@ export interface BulkImportSubmitButtonProps {
   onClick: () => void
 }
 
+/** Renders the submit button for parsed bulk import records. */
 export function BulkImportSubmitButton({
   isSubmitting,
   disabled,

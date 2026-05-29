@@ -111,10 +111,10 @@ vi.mock('@/components/bulk-import', () => ({
     fileName: string
     recordCount: number
   }) => (
-    <div data-testid="success-message" role="status" aria-live="polite">
+    <output data-testid="success-message" aria-live="polite">
       <span>{fileName}</span>
       <span>{recordCount}</span>
-    </div>
+    </output>
   ),
   BulkImportSubmitButton: ({
     isSubmitting,

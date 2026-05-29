@@ -20,10 +20,20 @@ interface EquipmentColumnsDialogProps {
   table: Table<Equipment>
 }
 
+/** Renders the equipment table column visibility dialog. */
 export function EquipmentColumnsDialog({
   table,
 }: EquipmentColumnsDialogProps) {
   const { dialogState, closeColumnsDialog } = useEquipmentContext()
+  const hideableColumns = React.useMemo(() => {
+    const columns: ReturnType<typeof table.getAllColumns> = []
+    for (const column of table.getAllColumns()) {
+      if (column.getCanHide()) {
+        columns.push(column)
+      }
+    }
+    return columns
+  }, [table])
 
   return (
     <Dialog open={dialogState.isColumnsOpen} onOpenChange={(open) => !open && closeColumnsDialog()}>
@@ -33,10 +43,7 @@ export function EquipmentColumnsDialog({
           <DialogDescription>Chọn các cột muốn hiển thị trong bảng.</DialogDescription>
         </DialogHeader>
         <div className="max-h-[50vh] overflow-y-auto space-y-1">
-          {table
-            .getAllColumns()
-            .filter((column) => column.getCanHide())
-            .map((column) => (
+          {hideableColumns.map((column) => (
               <div key={column.id} className="flex items-center justify-between py-1">
                 <span className="text-sm text-muted-foreground">
                   {columnLabels[column.id as keyof Equipment] || column.id}

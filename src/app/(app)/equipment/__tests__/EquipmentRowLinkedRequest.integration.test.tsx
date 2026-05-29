@@ -27,7 +27,7 @@ vi.mock("@/hooks/use-toast", () => ({
 }))
 
 vi.mock("@/components/ui/tooltip", async () => {
-  const { tooltipMockModule } = await import("@/test-utils/tooltip-mock")
+  const { tooltipMockModule } = await import("@/test-utils/tooltip-mock-module")
   return tooltipMockModule
 })
 

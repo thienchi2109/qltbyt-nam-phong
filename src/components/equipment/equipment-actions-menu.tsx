@@ -33,12 +33,13 @@ export interface EquipmentActionsMenuProps {
   isLoadingActiveUsage: boolean
 }
 
+/** Renders the desktop equipment actions menu with status-aware commands. */
 export function EquipmentActionsMenu({
   equipment,
   activeUsageLogs,
   isLoadingActiveUsage,
 }: EquipmentActionsMenuProps) {
-  const router = useRouter()
+  const { push } = useRouter()
   const {
     user,
     isGlobal,
@@ -88,8 +89,8 @@ export function EquipmentActionsMenu({
 
   const handleCreateRepairRequest = React.useCallback(() => {
     if (isGlobal || isRegionalLeader) return
-    router.push(buildRepairRequestCreateIntentHref(equipment.id))
-  }, [router, equipment.id, isGlobal, isRegionalLeader])
+    push(buildRepairRequestCreateIntentHref(equipment.id))
+  }, [push, equipment.id, isGlobal, isRegionalLeader])
 
   return (
     <DropdownMenu>

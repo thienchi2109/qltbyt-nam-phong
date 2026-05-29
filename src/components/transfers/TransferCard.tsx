@@ -100,6 +100,7 @@ interface TransferCardProps {
   referenceDate?: Date
 }
 
+/** Renders a transfer list card with semantic open and action regions. */
 export const TransferCard = React.memo(function TransferCard({
   transfer,
   onClick,
@@ -109,16 +110,6 @@ export const TransferCard = React.memo(function TransferCard({
   const openTransferFromCard = React.useCallback(() => {
     onClick?.(transfer)
   }, [onClick, transfer])
-
-  const openTransferFromKeyboard = React.useCallback(
-    (event: React.KeyboardEvent<HTMLDivElement>) => {
-      if (event.key !== "Enter" && event.key !== " ") return
-
-      event.preventDefault()
-      onClick?.(transfer)
-    },
-    [onClick, transfer],
-  )
 
   const stopActionPropagation = React.useCallback(
     (event: React.MouseEvent<HTMLDivElement> | React.KeyboardEvent<HTMLDivElement>) => {
@@ -135,28 +126,26 @@ export const TransferCard = React.memo(function TransferCard({
   return (
     <Card className="shadow-sm transition-shadow hover:shadow-md">
       <CardContent className="space-y-4 p-4">
-        <div
-          className="cursor-pointer space-y-4 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+        <button
+          type="button"
+          className="block w-full cursor-pointer space-y-4 rounded-md bg-transparent p-0 text-left text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
           onClick={openTransferFromCard}
-          onKeyDown={openTransferFromKeyboard}
-          role="button"
-          tabIndex={0}
           aria-label={`Mở yêu cầu luân chuyển ${transfer.ma_yeu_cau}`}
         >
-        <div className="flex items-start justify-between gap-3">
-          <div className="space-y-2">
-            <p className="text-sm font-semibold leading-none">{transfer.ma_yeu_cau}</p>
-            <Badge variant={TYPE_VARIANTS[transfer.loai_hinh]}>
-              {TRANSFER_TYPES[transfer.loai_hinh]}
+          <div className="flex items-start justify-between gap-3">
+            <div className="space-y-2">
+              <p className="text-sm font-semibold leading-none">{transfer.ma_yeu_cau}</p>
+              <Badge variant={TYPE_VARIANTS[transfer.loai_hinh]}>
+                {TRANSFER_TYPES[transfer.loai_hinh]}
+              </Badge>
+            </div>
+            <Badge
+              variant={STATUS_VARIANTS[transfer.trang_thai]}
+              className="self-start text-[11px] uppercase tracking-wide"
+            >
+              {TRANSFER_STATUSES[transfer.trang_thai]}
             </Badge>
           </div>
-          <Badge
-            variant={STATUS_VARIANTS[transfer.trang_thai]}
-            className="self-start text-[11px] uppercase tracking-wide"
-          >
-            {TRANSFER_STATUSES[transfer.trang_thai]}
-          </Badge>
-        </div>
 
         <div className="space-y-3">
           <div className="space-y-1">
@@ -190,8 +179,7 @@ export const TransferCard = React.memo(function TransferCard({
             </p>
           </div>
         </div>
-
-        </div>
+        </button>
 
         <div className="mt-4 flex items-center justify-between gap-3 border-t pt-4">
           <div className="flex-1">
