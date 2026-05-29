@@ -15,21 +15,19 @@ import { useToast } from "@/hooks/use-toast"
 import { format } from "date-fns"
 import { useSession } from "next-auth/react"
 import { useTenantBranding } from "@/hooks/use-tenant-branding"
-import { usePathname, useRouter } from "next/navigation"
 import { useIsMobile } from "@/hooks/use-mobile"
-import { useSearchParams } from "next/navigation"
 import { useSearchDebounce } from "@/hooks/use-debounce"
 import { useTenantSelection } from "@/contexts/TenantSelectionContext"
 import { useMediaQuery } from "@/hooks/use-media-query"
 import { ErrorBoundary } from "@/components/error-boundary"
 import { RepairRequestsProvider } from "./RepairRequestsContext"
+import { RepairRequestsDeepLinkBoundary } from "./RepairRequestsDeepLinkBoundary"
 import { RepairRequestsPageLayout } from "./RepairRequestsPageLayout"
 import { RepairRequestsPageDialogs } from "./RepairRequestsPageDialogs"
 import { RepairRequestsPageLoadingFallback } from "./RepairRequestsPageLoadingFallback"
 import type { FilterModalValue } from "./RepairRequestsFilterModal"
 import type { RepairRequestWithEquipment } from "../types"
 import { useRepairRequestsData } from "../_hooks/useRepairRequestsData"
-import { useRepairRequestsDeepLink } from "../_hooks/useRepairRequestsDeepLink"
 
 import { useRepairRequestShortcuts } from "../_hooks/useRepairRequestShortcuts"
 import { useRepairRequestsContext } from "../_hooks/useRepairRequestsContext"
@@ -57,8 +55,6 @@ function RepairRequestsPageClientInner() {
   const { data: session } = useSession()
   const { data: branding } = useTenantBranding()
   const user = session?.user
-  const router = useRouter()
-  const pathname = usePathname()
   const isMobile = useIsMobile()
   const isSheetMobile = useMediaQuery("(max-width: 1279px)")
   const queryClient = useQueryClient()
@@ -73,8 +69,6 @@ function RepairRequestsPageClientInner() {
     openCreateSheet,
     applyAssistantDraft,
   } = useRepairRequestsContext()
-
-  const searchParams = useSearchParams()
 
   const [pageState, dispatchPageState] = React.useReducer(
     repairRequestsPageStateReducer,
@@ -157,19 +151,6 @@ function RepairRequestsPageClientInner() {
     const facility = facilityOptions.find(f => f.id === selectedFacilityId);
     return facility?.name ?? null;
   }, [selectedFacilityId, facilityOptions]);
-
-  useRepairRequestsDeepLink({
-    searchParams,
-    router,
-    pathname,
-    toast,
-    uiFilters,
-    setUiFiltersState,
-    setUiFilters,
-    openCreateSheet,
-    applyAssistantDraft,
-    queryClient,
-  })
 
   const setEditingRequestAdapter = React.useCallback((req: RepairRequestWithEquipment | null) => {
     if (req) openEditDialog(req)
@@ -292,7 +273,15 @@ function RepairRequestsPageClientInner() {
 
   return (
     <ErrorBoundary>
-      <>
+      <RepairRequestsDeepLinkBoundary
+        toast={toast}
+        uiFilters={uiFilters}
+        setUiFiltersState={setUiFiltersState}
+        setUiFilters={setUiFilters}
+        openCreateSheet={openCreateSheet}
+        applyAssistantDraft={applyAssistantDraft}
+        queryClient={queryClient}
+      >
         <RepairRequestsPageDialogs />
 
         <RepairRequestsPageLayout
@@ -322,7 +311,7 @@ function RepairRequestsPageClientInner() {
           setRequestToView={setRequestToViewAdapter}
           openCreateSheet={openCreateSheet}
         />
-      </>
+      </RepairRequestsDeepLinkBoundary>
     </ErrorBoundary>
   )
 }

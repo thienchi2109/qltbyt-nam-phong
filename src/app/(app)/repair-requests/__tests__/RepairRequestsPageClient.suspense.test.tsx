@@ -11,6 +11,7 @@ const mocks = vi.hoisted(() => ({
   toast: vi.fn(),
   useRouter: vi.fn(),
   useSearchParams: vi.fn(),
+  deepLinkHandler: vi.fn(),
   layoutProps: vi.fn(),
 }))
 
@@ -96,6 +97,10 @@ vi.mock("../_hooks/useRepairRequestsDeepLink", () => ({
   useRepairRequestsDeepLink: vi.fn(),
 }))
 
+vi.mock("../_components/RepairRequestsDeepLinkHandler", () => ({
+  RepairRequestsDeepLinkHandler: (props: unknown) => mocks.deepLinkHandler(props) ?? null,
+}))
+
 vi.mock("../_hooks/useRepairRequestsSummary", () => ({
   useRepairRequestsSummary: () => ({ summaryItems: [] }),
 }))
@@ -156,10 +161,11 @@ import RepairRequestsPageClient from "../_components/RepairRequestsPageClient"
 describe("RepairRequestsPage Suspense boundary", () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mocks.deepLinkHandler.mockReturnValue(null)
     globalThis.localStorage.clear()
   })
 
-  it("renders the loading skeletons when useSearchParams suspends", async () => {
+  it("renders the loading skeletons when deep-link handling suspends", async () => {
     mocks.useSession.mockReturnValue({
       data: {
         user: {
@@ -191,7 +197,7 @@ describe("RepairRequestsPage Suspense boundary", () => {
       replace: vi.fn(),
     })
 
-    mocks.useSearchParams.mockImplementation(() => {
+    mocks.deepLinkHandler.mockImplementation(() => {
       throw pendingSearchParams
     })
 
