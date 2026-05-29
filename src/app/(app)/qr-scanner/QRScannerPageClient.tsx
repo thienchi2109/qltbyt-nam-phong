@@ -1,0 +1,275 @@
+"use client"
+
+import * as React from "react"
+import dynamic from "next/dynamic"
+import Link from "next/link"
+import { useRouter } from "next/navigation"
+import { ArrowLeft, Camera, QrCode, Smartphone } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { QRScannerErrorBoundary } from "@/components/qr-scanner-error-boundary"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { useToast } from "@/hooks/use-toast"
+import { buildRepairRequestCreateIntentHref } from "@/lib/repair-request-deep-link"
+import type { Equipment } from "@/lib/data"
+
+// Dynamic imports to avoid SSR issues with camera components
+const QRScannerCamera = dynamic(
+  () => import("@/components/qr-scanner-camera").then(mod => ({ default: mod.QRScannerCamera })),
+  {
+    ssr: false,
+    loading: () => <div className="flex items-center justify-center h-screen">Đang tải camera…</div>
+  }
+)
+
+const QRActionSheet = dynamic(
+  () => import("@/components/qr-action-sheet").then(mod => ({ default: mod.QRActionSheet })),
+  {
+    ssr: false,
+    loading: () => <div>Đang tải…</div>
+  }
+)
+
+interface QRScannerPageClientProps {
+  autoStart: boolean
+}
+
+/** Renders the standalone QR scanner page UI and supports direct camera auto-start links. */
+export default function QRScannerPageClient({ autoStart }: QRScannerPageClientProps) {
+  const { push } = useRouter()
+  const { toast } = useToast()
+  const [cameraOverride, setCameraOverride] = React.useState<"open" | "closed" | null>(null)
+  const [scannedCode, setScannedCode] = React.useState<string>("")
+  const [showActionSheet, setShowActionSheet] = React.useState(false)
+  const isCameraActive = cameraOverride === null ? autoStart : cameraOverride === "open"
+
+  const handleStartScanning = React.useCallback(() => {
+    // Check if we're in browser environment
+    if (typeof window === "undefined") {
+      toast({
+        variant: "destructive",
+        title: "Lỗi",
+        description: "Chức năng này chỉ hoạt động trên trình duyệt."
+      })
+      return
+    }
+
+    // Check if camera is supported
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      toast({
+        variant: "destructive",
+        title: "Camera không được hỗ trợ",
+        description: "Trình duyệt của bạn không hỗ trợ chức năng camera."
+      })
+      return
+    }
+
+    setCameraOverride("open")
+  }, [toast])
+
+  const handleScanSuccess = (result: string) => {
+    setScannedCode(result)
+    setCameraOverride("closed")
+    setShowActionSheet(true)
+
+    toast({
+      title: "Quét thành công!",
+      description: `Đã quét mã: ${result}`,
+      duration: 3000,
+    })
+  }
+
+  const handleCloseCamera = () => {
+    setCameraOverride("closed")
+  }
+
+  const handleAction = (action: string, equipment?: Equipment) => {
+    setShowActionSheet(false)
+
+    try {
+      switch (action) {
+        case 'usage-log':
+          if (equipment) {
+            push(`/equipment?highlight=${equipment.id}&tab=usage`)
+          }
+          break
+
+        case 'view-details':
+        case 'update-status':
+          if (equipment) {
+            push(`/equipment?highlight=${equipment.id}`)
+          }
+          break
+
+        case 'view-history':
+          if (equipment) {
+            push(`/equipment?highlight=${equipment.id}&tab=history`)
+          }
+          break
+
+        case 'create-repair':
+          if (equipment) {
+            push(buildRepairRequestCreateIntentHref(equipment.id))
+          }
+          break
+
+        default:
+          toast({
+            variant: "destructive",
+            title: "Hành động không hợp lệ",
+            description: "Vui lòng thử lại."
+          })
+      }
+    } catch (error) {
+      console.error("Navigation error:", error)
+      toast({
+        variant: "destructive",
+        title: "Lỗi điều hướng",
+        description: "Không thể chuyển đến trang yêu cầu."
+      })
+    }
+  }
+
+  const handleCloseActionSheet = () => {
+    setShowActionSheet(false)
+    setScannedCode("")
+  }
+
+  return (
+    <>
+      {/* Camera Scanner with Error Boundary */}
+      {isCameraActive && (
+        <QRScannerErrorBoundary onReset={() => setCameraOverride("closed")}>
+          <QRScannerCamera
+            onScanSuccess={handleScanSuccess}
+            onClose={handleCloseCamera}
+            isActive={isCameraActive}
+          />
+        </QRScannerErrorBoundary>
+      )}
+
+      {/* Action Sheet */}
+      {showActionSheet && scannedCode && (
+        <QRActionSheet
+          qrCode={scannedCode}
+          onClose={handleCloseActionSheet}
+          onAction={handleAction}
+        />
+      )}
+
+
+
+      {/* Main Content */}
+      <div className="container mx-auto py-8">
+        <div className="max-w-2xl mx-auto">
+          <Card>
+            <CardHeader className="text-center">
+              <div className="mx-auto mb-4 flex size-16 items-center justify-center rounded-full bg-primary/10">
+                <QrCode className="size-8 text-primary" />
+              </div>
+              <CardTitle className="heading-responsive-h2">Quét mã QR thiết bị</CardTitle>
+              <CardDescription className="body-responsive">
+                Quét mã QR để truy cập nhanh thông tin thiết bị y tế
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6 mobile-card-spacing">
+              <div className="text-center">
+                <div className="mb-6">
+                  <Button
+                    size="lg"
+                    onClick={handleStartScanning}
+                    className="h-14 px-8 text-lg touch-target-lg"
+                  >
+                    <Camera className="size-6 mr-3" />
+                    <span className="button-text-responsive">Bắt đầu quét</span>
+                  </Button>
+                </div>
+
+                <div className="space-y-6 mobile-card-spacing">
+                  <h3 className="heading-responsive-h3 font-semibold mb-4">Chức năng có sẵn</h3>
+                  <div className="grid gap-4 text-left">
+                    <div className="flex items-start gap-3">
+                      <div className="size-2 rounded-full bg-primary mt-2 flex-shrink-0"></div>
+                      <div>
+                        <strong>Ghi nhật ký sử dụng thiết bị:</strong>
+                        <p className="caption-responsive">
+                          Theo dõi và ghi nhận quá trình sử dụng thiết bị trực tiếp
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-start gap-3">
+                      <div className="size-2 rounded-full bg-primary mt-2 flex-shrink-0"></div>
+                      <div>
+                        <strong>Xem thông tin chi tiết:</strong>
+                        <p className="caption-responsive">
+                          Truy cập đầy đủ thông tin kỹ thuật và vị trí thiết bị
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-start gap-3">
+                      <div className="size-2 rounded-full bg-primary mt-2 flex-shrink-0"></div>
+                      <div>
+                        <strong>Lịch sử bảo trì & sửa chữa:</strong>
+                        <p className="caption-responsive">
+                          Theo dõi toàn bộ lịch sử hoạt động và bảo trì thiết bị
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-start gap-3">
+                      <div className="size-2 rounded-full bg-primary mt-2 flex-shrink-0"></div>
+                      <div>
+                        <strong>Tạo yêu cầu sửa chữa:</strong>
+                        <p className="text-sm text-muted-foreground">
+                          Báo cáo sự cố và tạo yêu cầu sửa chữa ngay lập tức
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-start gap-3">
+                      <div className="size-2 rounded-full bg-primary mt-2 flex-shrink-0"></div>
+                      <div>
+                        <strong>Cập nhật trạng thái:</strong>
+                        <p className="text-sm text-muted-foreground">
+                          Chỉnh sửa thông tin và trạng thái thiết bị nhanh chóng
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Instructions */}
+              <div className="bg-blue-50 dark:bg-blue-950/20 rounded-lg p-4">
+                <div className="flex items-start gap-3">
+                  <Smartphone className="size-5 text-blue-600 mt-0.5 flex-shrink-0" />
+                  <div>
+                    <h4 className="font-semibold text-blue-900 dark:text-blue-100">
+                      Hướng dẫn sử dụng
+                    </h4>
+                    <ul className="text-sm text-blue-800 dark:text-blue-200 mt-2 space-y-1">
+                      <li>• Nhấn "Bắt đầu quét" để mở camera</li>
+                      <li>• Đưa mã QR vào khung quét trên màn hình</li>
+                      <li>• Chờ hệ thống tự động nhận diện mã</li>
+                      <li>• Chọn hành động muốn thực hiện</li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+
+              <div className="text-center pt-4">
+                <Button asChild variant="outline" className="touch-target">
+                  <Link href="/dashboard">
+                    <ArrowLeft className="size-4 mr-2" />
+                    Về Dashboard
+                  </Link>
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    </>
+  )
+}

@@ -18,7 +18,6 @@ import * as React from "react"
 const mockPush = vi.fn()
 vi.mock("next/navigation", () => ({
     useRouter: () => ({ push: mockPush }),
-    useSearchParams: () => new URLSearchParams(window.location.search),
 }))
 
 // Intercept next/dynamic to render components synchronously
@@ -101,7 +100,7 @@ vi.mock("@/lib/repair-request-deep-link", () => ({
 // Import after mocks
 // ============================================
 
-import QRScannerPage from "../page"
+import QRScannerPageClient from "../QRScannerPageClient"
 
 // ============================================
 // Tests
@@ -119,7 +118,7 @@ describe("QR Scanner: no legacy EditEquipmentDialog", () => {
     })
 
     it("navigates to /equipment?highlight={id} on update-status action", async () => {
-        render(<QRScannerPage />)
+        render(<QRScannerPageClient autoStart={false} />)
 
         fireEvent.click(screen.getByRole("button", { name: /bắt đầu quét/i }))
         fireEvent.click(await screen.findByTestId("qr-camera"))
@@ -131,15 +130,13 @@ describe("QR Scanner: no legacy EditEquipmentDialog", () => {
     })
 
     it("opens the camera immediately when autoStart=1 is present", async () => {
-        window.history.replaceState(null, "", "/qr-scanner?autoStart=1")
-
-        render(<QRScannerPage />)
+        render(<QRScannerPageClient autoStart />)
 
         expect(await screen.findByTestId("qr-camera")).toBeInTheDocument()
     })
 
     it("does not navigate when update-status is triggered without equipment", async () => {
-        render(<QRScannerPage />)
+        render(<QRScannerPageClient autoStart={false} />)
 
         fireEvent.click(screen.getByRole("button", { name: /bắt đầu quét/i }))
         fireEvent.click(await screen.findByTestId("qr-camera"))
