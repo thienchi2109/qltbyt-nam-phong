@@ -5,9 +5,15 @@ const MOBILE_MEDIA_QUERY = `(max-width: ${MOBILE_BREAKPOINT - 1}px)`
 
 function subscribeToMobileBreakpoint(onStoreChange: () => void) {
   const mql = window.matchMedia(MOBILE_MEDIA_QUERY)
-  mql.addEventListener("change", onStoreChange)
+  if (typeof mql.addEventListener === "function") {
+    mql.addEventListener("change", onStoreChange)
 
-  return () => mql.removeEventListener("change", onStoreChange)
+    return () => mql.removeEventListener("change", onStoreChange)
+  }
+
+  mql.addListener(onStoreChange)
+
+  return () => mql.removeListener(onStoreChange)
 }
 
 function getMobileBreakpointSnapshot() {

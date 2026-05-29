@@ -28,31 +28,44 @@ export function MobileBottomSheet({
     const dialogRef = React.useRef<HTMLDialogElement>(null)
     const previousActiveElement = React.useRef<HTMLElement | null>(null)
 
-    // Focus management: move focus into dialog when opened, restore on close
+    // Focus management: open modally, move focus into dialog, and restore on close.
     React.useEffect(() => {
-        if (open) {
-            previousActiveElement.current = document.activeElement as HTMLElement
+        const dialog = dialogRef.current
+        if (!open || !dialog) return
 
-            const timer = setTimeout(() => {
-                if (!dialogRef.current) return
+        previousActiveElement.current = document.activeElement as HTMLElement
 
-                const firstFocusable = dialogRef.current.querySelector<HTMLElement>(
-                    'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
-                )
-
-                if (firstFocusable) {
-                    firstFocusable.focus()
-                } else {
-                    dialogRef.current.focus()
-                }
-            }, 100)
-
-            return () => clearTimeout(timer)
+        if (typeof dialog.showModal === "function" && !dialog.open) {
+            dialog.showModal()
+        } else if (!dialog.hasAttribute("open")) {
+            dialog.setAttribute("open", "")
         }
 
-        if (previousActiveElement.current) {
-            previousActiveElement.current.focus()
-            previousActiveElement.current = null
+        const timer = setTimeout(() => {
+            const firstFocusable = dialog.querySelector<HTMLElement>(
+                'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
+            )
+
+            if (firstFocusable) {
+                firstFocusable.focus()
+            } else {
+                dialog.focus()
+            }
+        }, 100)
+
+        return () => {
+            clearTimeout(timer)
+
+            if (dialog.open && typeof dialog.close === "function") {
+                dialog.close()
+            } else {
+                dialog.removeAttribute("open")
+            }
+
+            if (previousActiveElement.current) {
+                previousActiveElement.current.focus()
+                previousActiveElement.current = null
+            }
         }
     }, [open])
 
@@ -65,7 +78,6 @@ export function MobileBottomSheet({
 
     return (
         <dialog
-            open
             ref={dialogRef}
             className="fixed inset-0 z-[1002] m-0 flex h-auto max-h-none max-w-none items-end border-0 bg-transparent p-0"
             onCancel={handleCancel}

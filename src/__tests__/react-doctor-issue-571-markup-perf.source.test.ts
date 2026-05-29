@@ -73,6 +73,7 @@ describe("React Doctor Issue #571 semantic markup and perf source guards", () =>
 
     expect(source).not.toMatch(/React\.useEffect\([\s\S]*setMaxReportDate\(now\)[\s\S]*\}, \[\]\)/)
     expect(source).toContain("React.useSyncExternalStore")
+    expect(source).toMatch(/maxReportDateSnapshot\s*=\s*new Date\(\)[\s\S]*onStoreChange\(\)[\s\S]*scheduleNextReportDateRefresh\(\)/)
   })
 
   it("uses an external-store snapshot for mobile breakpoint state", () => {
@@ -81,6 +82,8 @@ describe("React Doctor Issue #571 semantic markup and perf source guards", () =>
     expect(source).toContain("React.useSyncExternalStore")
     expect(source).not.toContain("React.useEffect")
     expect(source).not.toContain("setIsMobile")
+    expect(source).toContain("mql.addListener")
+    expect(source).toContain("mql.removeListener")
   })
 
   it("loads the language preference without mount-only state initialization", () => {
@@ -88,6 +91,23 @@ describe("React Doctor Issue #571 semantic markup and perf source guards", () =>
 
     expect(source).not.toContain("setCurrentLanguage(parsed)")
     expect(source).toContain("React.useSyncExternalStore")
+    expect(source).toContain("cachedLanguageStorageValue")
+    expect(source).toContain("cachedLanguageSnapshot")
+  })
+
+  it("opens the mobile bottom sheet as a modal dialog", () => {
+    const source = readSource("src/components/shared/mobile-bottom-sheet.tsx")
+
+    expect(source).toContain(".showModal()")
+    expect(source).not.toMatch(/<dialog[\s\S]{0,120}\sopen\b/)
+  })
+
+  it("keeps category select buttons free of block component children", () => {
+    const source = readSource("src/app/(app)/device-quota/categories/_components/CategoryGroup.tsx")
+    const buttonBlocks = source.match(/<button[\s\S]*?<\/button>/g) ?? []
+
+    expect(buttonBlocks.some((block) => block.includes("<Badge"))).toBe(false)
+    expect(buttonBlocks.some((block) => block.includes("<QuotaProgressBar"))).toBe(false)
   })
 
   it("memoizes constructed context provider values", () => {

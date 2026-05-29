@@ -23,6 +23,11 @@ function getMaxReportDateSnapshot(): Date {
 function subscribeToMaxReportDate(onStoreChange: () => void) {
   let refreshTimer: ReturnType<typeof setTimeout>
 
+  const refreshMaxReportDateSnapshot = () => {
+    maxReportDateSnapshot = new Date()
+    onStoreChange()
+  }
+
   const scheduleNextReportDateRefresh = () => {
     const now = new Date()
     const nextLocalMidnight = new Date(now)
@@ -30,14 +35,14 @@ function subscribeToMaxReportDate(onStoreChange: () => void) {
 
     refreshTimer = setTimeout(
       () => {
-        maxReportDateSnapshot = new Date()
-        onStoreChange()
+        refreshMaxReportDateSnapshot()
         scheduleNextReportDateRefresh()
       },
       Math.max(nextLocalMidnight.getTime() - now.getTime(), 1000)
     )
   }
 
+  refreshMaxReportDateSnapshot()
   scheduleNextReportDateRefresh()
 
   return () => clearTimeout(refreshTimer)

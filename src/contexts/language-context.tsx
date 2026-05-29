@@ -21,6 +21,8 @@ const DEFAULT_LANGUAGE: Language = {
   code: "vi",
   name: "Tiếng Việt",
 }
+let cachedLanguageStorageValue: string | null | undefined
+let cachedLanguageSnapshot: Language = DEFAULT_LANGUAGE
 
 const translations = {
   en: {
@@ -76,7 +78,14 @@ function parseStoredLanguage(value: string | null): Language {
 
 function getLanguageSnapshot(): Language {
   if (typeof window === "undefined") return DEFAULT_LANGUAGE
-  return parseStoredLanguage(window.localStorage.getItem(LANGUAGE_STORAGE_KEY))
+
+  const storageValue = window.localStorage.getItem(LANGUAGE_STORAGE_KEY)
+  if (storageValue !== cachedLanguageStorageValue) {
+    cachedLanguageStorageValue = storageValue
+    cachedLanguageSnapshot = parseStoredLanguage(storageValue)
+  }
+
+  return cachedLanguageSnapshot
 }
 
 function subscribeToLanguageStorage(onStoreChange: () => void) {

@@ -83,7 +83,7 @@ const CategoryChildRow = React.memo(function CategoryChildRow({
                 title={category.ten_nhom}
                 onClick={selectCategory}
                 className={cn(
-                    "col-span-3 grid grid-cols-[minmax(0,1fr)_5rem_12rem] items-center gap-x-4 rounded-sm bg-transparent p-0 text-left text-foreground",
+                    "min-w-0 rounded-sm bg-transparent p-0 text-left text-foreground",
                     "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 )}
             >
@@ -111,23 +111,24 @@ const CategoryChildRow = React.memo(function CategoryChildRow({
                     )}
                 </span>
 
-                {/* Column 2: Classification badge */}
-                <span>
-                    {classStyle && (
-                        <Badge variant="outline" className={cn("text-xs font-medium", classStyle.className)}>
-                            {classStyle.label}
-                        </Badge>
-                    )}
-                </span>
-
-                {/* Column 3: Quota progress bar */}
-                <span aria-label={isLeaf ? "Danh mục lá" : "Danh mục cha"}>
-                    <QuotaProgressBar
-                        current={aggregatedCount}
-                        max={quotaMax}
-                    />
-                </span>
             </button>
+
+            {/* Column 2: Classification badge */}
+            <div>
+                {classStyle && (
+                    <Badge variant="outline" className={cn("text-xs font-medium", classStyle.className)}>
+                        {classStyle.label}
+                    </Badge>
+                )}
+            </div>
+
+            {/* Column 3: Quota progress bar */}
+            <div aria-label={isLeaf ? "Danh mục lá" : "Danh mục cha"}>
+                <QuotaProgressBar
+                    current={aggregatedCount}
+                    max={quotaMax}
+                />
+            </div>
 
             {/* Column 4: Actions */}
             <CategoryActionMenu
