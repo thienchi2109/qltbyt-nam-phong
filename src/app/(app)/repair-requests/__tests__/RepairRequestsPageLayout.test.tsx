@@ -50,10 +50,12 @@ vi.mock('../_components/RepairRequestsCreateSheet', () => ({
 }))
 
 vi.mock('../_components/RepairRequestsToolbar', () => ({
-  RepairRequestsToolbar: ({ tenantControl }: { tenantControl?: React.ReactNode }) => (
-    <div data-testid="repair-toolbar">
+  RepairRequestsToolbar: ({ showFacilityFilter }: { showFacilityFilter: boolean }) => (
+    <div
+      data-testid="repair-toolbar"
+      data-show-facility-filter={String(showFacilityFilter)}
+    >
       toolbar
-      {tenantControl ? <div data-testid="toolbar-tenant-slot">{tenantControl}</div> : null}
     </div>
   ),
 }))
@@ -186,11 +188,12 @@ describe('RepairRequestsPageLayout', () => {
     expect(screen.getByTestId('kpi-total')).toHaveAttribute('data-value', '42')
   })
 
-  it('places the tenant selector in the toolbar slot like Equipment', () => {
+  it('passes facility selector visibility to the toolbar like Equipment', () => {
     render(<RepairRequestsPageLayout {...withAccessState({ showFacilityFilter: true })} />)
 
-    expect(screen.getByTestId('toolbar-tenant-slot')).toContainElement(
-      screen.getByTestId('tenant-selector')
+    expect(screen.getByTestId('repair-toolbar')).toHaveAttribute(
+      'data-show-facility-filter',
+      'true'
     )
   })
 })

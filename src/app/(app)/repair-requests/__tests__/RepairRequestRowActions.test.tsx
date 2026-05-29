@@ -3,8 +3,10 @@ import { render, screen } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { describe, expect, it, vi } from "vitest"
 
-import { RepairRequestsMobileList } from "../_components/RepairRequestsMobileList"
-import type { RepairRequestColumnOptions } from "../_components/RepairRequestsColumns"
+import {
+  RepairRequestRowActions,
+  type RepairRequestColumnOptions,
+} from "../_components/RepairRequestsColumns"
 import type { AuthUser, RepairRequestWithEquipment } from "../types"
 
 function makeRepairRequest(): RepairRequestWithEquipment {
@@ -62,50 +64,31 @@ function makeColumnOptions(): RepairRequestColumnOptions {
   }
 }
 
-describe("RepairRequestsMobileList accessibility", () => {
-  it("opens a repair request card with keyboard activation", async () => {
+describe("RepairRequestRowActions", () => {
+  it("calls the row-specific action callbacks for the selected request", async () => {
     const user = userEvent.setup()
     const request = makeRepairRequest()
-    const setRequestToView = vi.fn()
+    const options = makeColumnOptions()
 
-    render(
-      <RepairRequestsMobileList
-        requests={[request]}
-        isLoading={false}
-        setRequestToView={setRequestToView}
-        columnOptions={makeColumnOptions()}
-      />,
-    )
-
-    const card = screen.getByRole("button", { name: /Máy siêu âm/ })
-    card.focus()
-
-    await user.keyboard("{Enter}")
-    expect(setRequestToView).toHaveBeenCalledWith(request)
-
-    await user.keyboard(" ")
-    expect(setRequestToView).toHaveBeenCalledTimes(2)
-  })
-
-  it("does not open a repair request card from action controls", async () => {
-    const user = userEvent.setup()
-    const request = makeRepairRequest()
-    const setRequestToView = vi.fn()
-    const columnOptions = makeColumnOptions()
-
-    render(
-      <RepairRequestsMobileList
-        requests={[request]}
-        isLoading={false}
-        setRequestToView={setRequestToView}
-        columnOptions={columnOptions}
-      />,
-    )
+    render(<RepairRequestRowActions request={request} options={options} />)
 
     await user.click(screen.getByRole("button", { name: "Mở menu" }))
     await user.click(screen.getByRole("menuitem", { name: "Xem phiếu yêu cầu" }))
+    expect(options.onGenerateSheet).toHaveBeenCalledWith(request)
 
-    expect(columnOptions.onGenerateSheet).toHaveBeenCalledWith(request)
-    expect(setRequestToView).not.toHaveBeenCalled()
+    await user.click(screen.getByRole("button", { name: "Mở menu" }))
+    await user.click(screen.getByRole("menuitem", { name: "Sửa" }))
+    expect(options.setEditingRequest).toHaveBeenCalledWith(request)
+  })
+
+  it("hides actions for read-only regional leaders", () => {
+    render(
+      <RepairRequestRowActions
+        request={makeRepairRequest()}
+        options={{ ...makeColumnOptions(), isRegionalLeader: true }}
+      />,
+    )
+
+    expect(screen.queryByRole("button", { name: "Mở menu" })).not.toBeInTheDocument()
   })
 })

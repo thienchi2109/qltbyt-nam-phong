@@ -14,7 +14,6 @@ import { parseISO } from "date-fns"
 import { KpiStatusBar, REPAIR_STATUS_CONFIGS } from "@/components/kpi"
 import type { RepairStatus } from "@/components/kpi"
 import { RepairRequestAlert } from "@/components/repair-request-alert"
-import { TenantSelector } from "@/components/shared/TenantSelector"
 import { DataTablePagination } from "@/components/shared/DataTablePagination"
 import { FloatingActionButton } from "@/components/shared/FloatingActionButton"
 import { RepairRequestsFilterModal, type FilterModalValue } from "./RepairRequestsFilterModal"
@@ -22,7 +21,7 @@ import { RepairRequestsCreateSheet } from "./RepairRequestsCreateSheet"
 import { RepairRequestsToolbar } from "./RepairRequestsToolbar"
 import { RepairRequestsTable } from "./RepairRequestsTable"
 import { RepairRequestsMobileList } from "./RepairRequestsMobileList"
-import { renderActions, type RepairRequestColumnOptions } from "./RepairRequestsColumns"
+import type { RepairRequestColumnOptions } from "./RepairRequestsColumns"
 import type {
   RepairRequestOverdueSummary,
   RepairRequestWithEquipment,
@@ -188,7 +187,6 @@ export function RepairRequestsPageLayout({
               </CardHeader>
               <CardContent className="p-3 md:p-6 gap-3 md:gap-4">
                 <RepairRequestsToolbar
-                  tenantControl={showFacilityFilter ? <TenantSelector className="w-full" /> : null}
                   searchTerm={searchTerm}
                   onSearchChange={onSearchChange}
                   searchInputRef={searchInputRef}
@@ -230,7 +228,7 @@ export function RepairRequestsPageLayout({
                         requests={table.getRowModel().rows.map((row) => row.original)}
                         isLoading={isLoading || isFetching}
                         setRequestToView={setRequestToView}
-                        renderActions={(req: RepairRequestWithEquipment) => renderActions(req, columnOptions)}
+                        columnOptions={columnOptions}
                       />
                     ) : (
                       /* Desktop Table View */

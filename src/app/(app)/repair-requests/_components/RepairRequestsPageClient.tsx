@@ -12,7 +12,6 @@ import {
 } from "@tanstack/react-table"
 import { useQueryClient } from "@tanstack/react-query"
 import { useToast } from "@/hooks/use-toast"
-import { Skeleton } from "@/components/ui/skeleton"
 import { format } from "date-fns"
 import { useSession } from "next-auth/react"
 import { useTenantBranding } from "@/hooks/use-tenant-branding"
@@ -23,13 +22,10 @@ import { useSearchDebounce } from "@/hooks/use-debounce"
 import { useTenantSelection } from "@/contexts/TenantSelectionContext"
 import { useMediaQuery } from "@/hooks/use-media-query"
 import { ErrorBoundary } from "@/components/error-boundary"
-import { RepairRequestsDetailView } from "./RepairRequestsDetailView"
-import { RepairRequestsEditDialog } from "./RepairRequestsEditDialog"
-import { RepairRequestsDeleteDialog } from "./RepairRequestsDeleteDialog"
-import { RepairRequestsApproveDialog } from "./RepairRequestsApproveDialog"
-import { RepairRequestsCompleteDialog } from "./RepairRequestsCompleteDialog"
 import { RepairRequestsProvider } from "./RepairRequestsContext"
 import { RepairRequestsPageLayout } from "./RepairRequestsPageLayout"
+import { RepairRequestsPageDialogs } from "./RepairRequestsPageDialogs"
+import { RepairRequestsPageLoadingFallback } from "./RepairRequestsPageLoadingFallback"
 import type { FilterModalValue } from "./RepairRequestsFilterModal"
 import type { RepairRequestWithEquipment } from "../types"
 import { useRepairRequestsData } from "../_hooks/useRepairRequestsData"
@@ -40,12 +36,16 @@ import { useRepairRequestsContext } from "../_hooks/useRepairRequestsContext"
 import { useRepairRequestUIHandlers } from "../_hooks/useRepairRequestUIHandlers"
 import { useRepairRequestColumns } from "./RepairRequestsColumns"
 import {
+  createRepairRequestsPageState,
+  repairRequestsPageStateReducer,
+  resolveRepairRequestsPageUpdater,
+} from "./RepairRequestsPageState"
+import {
   getUiFilters,
   setUiFilters,
   getColumnVisibility,
   setColumnVisibility,
   type UiFilters as UiFiltersPrefs,
-  type ColumnVisibility as ColumnVisibilityPrefs,
 } from "@/lib/rr-prefs"
 
 /**
@@ -63,7 +63,6 @@ function RepairRequestsPageClientInner() {
   const isSheetMobile = useMediaQuery("(max-width: 1279px)")
   const queryClient = useQueryClient()
 
-  // Context values
   const {
     isRegionalLeader,
     dialogState,
@@ -79,33 +78,53 @@ function RepairRequestsPageClientInner() {
 
   const searchParams = useSearchParams()
 
-  // Table state
-  const [sorting, setSorting] = React.useState<SortingState>([
-    { id: "ngay_yeu_cau", desc: true },
-  ]);
-  const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);
-  const [searchTerm, setSearchTerm] = React.useState("");
+  const [pageState, dispatchPageState] = React.useReducer(
+    repairRequestsPageStateReducer,
+    undefined,
+    () =>
+      createRepairRequestsPageState({
+        uiFilters: getUiFilters(),
+        columnVisibility: getColumnVisibility(),
+      }),
+  )
+
+  const {
+    sorting,
+    columnFilters,
+    searchTerm,
+    uiFilters,
+    isFilterModalOpen,
+    columnVisibility,
+  } = pageState
+
   const debouncedSearch = useSearchDebounce(searchTerm);
-
-  // UI filters (status/date) persisted
-  const [uiFilters, setUiFiltersState] = React.useState<UiFiltersPrefs>(() => getUiFilters());
-  const [isFilterModalOpen, setIsFilterModalOpen] = React.useState(false);
-
-  // Table presentation preferences
-  const [columnVisibility, setColumnVisibilityState] = React.useState<ColumnVisibilityPrefs>(() => getColumnVisibility() || {});
 
   const searchInputRef = React.useRef<HTMLInputElement | null>(null)
 
-  // UI handlers (sheet generation, etc.)
+  const setSearchTerm = React.useCallback((value: string) => {
+    dispatchPageState({ type: "set-search-term", value })
+  }, [])
+
+  const setUiFiltersState = React.useCallback((value: UiFiltersPrefs) => {
+    dispatchPageState({ type: "set-ui-filters", value })
+  }, [])
+
+  const persistUiFiltersState = React.useCallback((value: UiFiltersPrefs) => {
+    setUiFiltersState(value)
+    setUiFilters(value)
+  }, [setUiFiltersState])
+
+  const setFilterModalOpen = React.useCallback((value: boolean) => {
+    dispatchPageState({ type: "set-filter-modal-open", value })
+  }, [])
+
   const { handleGenerateRequestSheet } = useRepairRequestUIHandlers({
     branding,
     toast,
   })
 
-  // Regional leader facility filtering via TenantSelectionContext
   const effectiveTenantKey = user?.don_vi ?? user?.current_don_vi ?? 'none';
 
-  // Get facility selection from shared context
   const {
     selectedFacilityId,
     setSelectedFacilityId,
@@ -114,7 +133,6 @@ function RepairRequestsPageClientInner() {
     shouldFetchData,
   } = useTenantSelection()
 
-  // Data fetching (list query, status counts, pagination)
   const {
     requests,
     isLoading,
@@ -142,7 +160,6 @@ function RepairRequestsPageClientInner() {
     return facility?.name ?? null;
   }, [selectedFacilityId, facilityOptions]);
 
-  // Deep-link handling (equipment fetch, URL params, action=create)
   useRepairRequestsDeepLink({
     searchParams,
     router,
@@ -156,7 +173,6 @@ function RepairRequestsPageClientInner() {
     queryClient,
   })
 
-  // Adapter functions to bridge context (non-null) with column options (nullable)
   const setEditingRequestAdapter = React.useCallback((req: RepairRequestWithEquipment | null) => {
     if (req) openEditDialog(req)
   }, [openEditDialog])
@@ -169,7 +185,6 @@ function RepairRequestsPageClientInner() {
     if (req) openViewDialog(req)
   }, [openViewDialog])
 
-  // Table columns
   const columnOptions = React.useMemo(() => ({
     onGenerateSheet: handleGenerateRequestSheet,
     setEditingRequest: setEditingRequestAdapter,
@@ -193,10 +208,7 @@ function RepairRequestsPageClientInner() {
   const columns = useRepairRequestColumns(columnOptions)
   const tableData = requests;
 
-  // Keep the table subtree stable across pagination/filter result-size changes.
-  const tableKey = React.useMemo(() => {
-    return `${selectedFacilityId ?? 'all'}`;
-  }, [selectedFacilityId]);
+  const tableKey = `${selectedFacilityId ?? 'all'}`;
 
   const pageCount = repairPagination.pageCount
 
@@ -212,16 +224,17 @@ function RepairRequestsPageClientInner() {
     },
     pageCount,
     manualPagination: true,
-    onSortingChange: setSorting,
-    onColumnFiltersChange: (updater: Updater<ColumnFiltersState>) => {
-      const next = typeof updater === 'function' ? updater(columnFilters) : updater
-      setColumnFilters(next)
+    onSortingChange: (updater: Updater<SortingState>) => {
+      dispatchPageState({ type: "set-sorting", updater })
     },
-    onGlobalFilterChange: (value: string) => setSearchTerm(value),
+    onColumnFiltersChange: (updater: Updater<ColumnFiltersState>) => {
+      dispatchPageState({ type: "set-column-filters", updater })
+    },
+    onGlobalFilterChange: setSearchTerm,
     onPaginationChange: repairPagination.setPagination,
     onColumnVisibilityChange: (updater: Updater<VisibilityState>) => {
-      const next = typeof updater === 'function' ? updater(columnVisibility) : updater
-      setColumnVisibilityState(next)
+      const next = resolveRepairRequestsPageUpdater(updater, columnVisibility)
+      dispatchPageState({ type: "set-column-visibility", updater })
       setColumnVisibility(next)
     },
     getCoreRowModel: getCoreRowModel(),
@@ -237,7 +250,6 @@ function RepairRequestsPageClientInner() {
     Boolean(uiFilters.dateRange?.from || uiFilters.dateRange?.to)
   );
 
-  // Keyboard shortcuts: '/', 'n'
   useRepairRequestShortcuts({
     searchInputRef,
     onCreate: openCreateSheet,
@@ -246,31 +258,26 @@ function RepairRequestsPageClientInner() {
 
 
 
-  // Toolbar handlers
   const handleClearFilters = React.useCallback(() => {
     table.resetColumnFilters();
-    setUiFiltersState({ status: [], dateRange: null });
-    setUiFilters({ status: [], dateRange: null });
+    persistUiFiltersState({ status: [], dateRange: null });
     if (showFacilityFilter) setSelectedFacilityId(null);
     setSearchTerm("");
-  }, [table, setUiFiltersState, showFacilityFilter, setSelectedFacilityId]);
+  }, [persistUiFiltersState, table, showFacilityFilter, setSelectedFacilityId, setSearchTerm]);
 
   const handleRemoveFilter = React.useCallback((key: "status" | "facilityName" | "dateRange", sub?: string) => {
     if (key === 'status' && sub) {
       const next = uiFilters.status.filter(s => s !== sub);
       const updated = { ...uiFilters, status: next };
-      setUiFiltersState(updated);
-      setUiFilters(updated);
+      persistUiFiltersState(updated);
     } else if (key === 'facilityName') {
       setSelectedFacilityId(null);
     } else if (key === 'dateRange') {
       const updated = { ...uiFilters, dateRange: null };
-      setUiFiltersState(updated);
-      setUiFilters(updated);
+      persistUiFiltersState(updated);
     }
-  }, [uiFilters, setUiFiltersState, setSelectedFacilityId]);
+  }, [persistUiFiltersState, uiFilters, setSelectedFacilityId]);
 
-  // Filter modal change handler
   const handleFilterChange = React.useCallback((v: FilterModalValue) => {
     if (showFacilityFilter) setSelectedFacilityId(v.facilityId ?? null)
     const updated: UiFiltersPrefs = {
@@ -280,18 +287,13 @@ function RepairRequestsPageClientInner() {
         to: v.dateRange.to ? format(v.dateRange.to, 'yyyy-MM-dd') : null,
       } : null,
     }
-    setUiFiltersState(updated); setUiFilters(updated)
-  }, [showFacilityFilter, setSelectedFacilityId, setUiFiltersState])
+    persistUiFiltersState(updated)
+  }, [persistUiFiltersState, showFacilityFilter, setSelectedFacilityId])
 
   return (
     <ErrorBoundary>
       <>
-        <RepairRequestsEditDialog />
-        <RepairRequestsDeleteDialog />
-        <RepairRequestsApproveDialog />
-        <RepairRequestsCompleteDialog />
-
-        <RepairRequestsDetailView
+        <RepairRequestsPageDialogs
           requestToView={dialogState.requestToView}
           onClose={closeAllDialogs}
         />
@@ -307,7 +309,7 @@ function RepairRequestsPageClientInner() {
           onSearchChange={setSearchTerm}
           searchInputRef={searchInputRef}
           onClearFilters={handleClearFilters}
-          onFilterModalOpenChange={setIsFilterModalOpen}
+          onFilterModalOpenChange={setFilterModalOpen}
           uiFilters={uiFilters}
           onFilterChange={handleFilterChange}
           selectedFacilityId={selectedFacilityId ?? null}
@@ -328,19 +330,13 @@ function RepairRequestsPageClientInner() {
   )
 }
 
+/** Renders the authenticated repair-requests feature client. */
 export default function RepairRequestsPageClient() {
   const { status } = useSession()
 
   // The page wrapper owns unauthenticated access; keep the skeleton as a defensive fallback.
   if (status === "loading" || status === "unauthenticated") {
-    return (
-      <div className="flex items-center justify-center min-h-[50vh]">
-        <div className="text-center space-y-2">
-          <Skeleton className="h-8 w-32 mx-auto" />
-          <Skeleton className="h-4 w-48 mx-auto" />
-        </div>
-      </div>
-    )
+    return <RepairRequestsPageLoadingFallback />
   }
 
   return (
