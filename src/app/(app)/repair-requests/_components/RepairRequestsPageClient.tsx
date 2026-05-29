@@ -247,6 +247,8 @@ function RepairRequestsPageClientInner() {
   const isFiltered = (
     table.getState().columnFilters.length > 0 ||
     debouncedSearch.length > 0 ||
+    uiFilters.status.length > 0 ||
+    (selectedFacilityId !== null && selectedFacilityId !== undefined) ||
     Boolean(uiFilters.dateRange?.from || uiFilters.dateRange?.to)
   );
 

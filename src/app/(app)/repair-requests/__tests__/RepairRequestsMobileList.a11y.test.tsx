@@ -108,4 +108,22 @@ describe("RepairRequestsMobileList accessibility", () => {
     expect(columnOptions.onGenerateSheet).toHaveBeenCalledWith(request)
     expect(setRequestToView).not.toHaveBeenCalled()
   })
+
+  it("keeps block card content outside the activation button", () => {
+    const request = makeRepairRequest()
+
+    render(
+      <RepairRequestsMobileList
+        requests={[request]}
+        isLoading={false}
+        setRequestToView={vi.fn()}
+        columnOptions={makeColumnOptions()}
+      />,
+    )
+
+    const activationButton = screen.getByRole("button", { name: /Máy siêu âm/ })
+
+    expect(activationButton.querySelector(".mobile-repair-card-content")).toBeNull()
+    expect(screen.getByText("Người yêu cầu").closest("button")).not.toBe(activationButton)
+  })
 })
