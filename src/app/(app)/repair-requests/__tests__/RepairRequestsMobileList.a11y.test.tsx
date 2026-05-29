@@ -4,7 +4,8 @@ import userEvent from "@testing-library/user-event"
 import { describe, expect, it, vi } from "vitest"
 
 import { RepairRequestsMobileList } from "../_components/RepairRequestsMobileList"
-import type { RepairRequestWithEquipment } from "../types"
+import type { RepairRequestColumnOptions } from "../_components/RepairRequestsColumns"
+import type { AuthUser, RepairRequestWithEquipment } from "../types"
 
 function makeRepairRequest(): RepairRequestWithEquipment {
   return {
@@ -37,6 +38,30 @@ function makeRepairRequest(): RepairRequestWithEquipment {
   }
 }
 
+function makeUser(): AuthUser {
+  return {
+    id: "1",
+    username: "manager",
+    role: "to_qltb",
+    name: "Manager",
+    email: null,
+    image: null,
+  }
+}
+
+function makeColumnOptions(): RepairRequestColumnOptions {
+  return {
+    onGenerateSheet: vi.fn(),
+    setEditingRequest: vi.fn(),
+    setRequestToDelete: vi.fn(),
+    handleApproveRequest: vi.fn(),
+    handleCompletion: vi.fn(),
+    setRequestToView: vi.fn(),
+    user: makeUser(),
+    isRegionalLeader: false,
+  }
+}
+
 describe("RepairRequestsMobileList accessibility", () => {
   it("opens a repair request card with keyboard activation", async () => {
     const user = userEvent.setup()
@@ -48,7 +73,7 @@ describe("RepairRequestsMobileList accessibility", () => {
         requests={[request]}
         isLoading={false}
         setRequestToView={setRequestToView}
-        renderActions={() => null}
+        columnOptions={makeColumnOptions()}
       />,
     )
 
@@ -66,20 +91,39 @@ describe("RepairRequestsMobileList accessibility", () => {
     const user = userEvent.setup()
     const request = makeRepairRequest()
     const setRequestToView = vi.fn()
-    const onAction = vi.fn()
+    const columnOptions = makeColumnOptions()
 
     render(
       <RepairRequestsMobileList
         requests={[request]}
         isLoading={false}
         setRequestToView={setRequestToView}
-        renderActions={() => <button type="button" onClick={onAction}>Action</button>}
+        columnOptions={columnOptions}
       />,
     )
 
-    await user.click(screen.getByRole("button", { name: "Action" }))
+    await user.click(screen.getByRole("button", { name: "Mở menu" }))
+    await user.click(screen.getByRole("menuitem", { name: "Xem phiếu yêu cầu" }))
 
-    expect(onAction).toHaveBeenCalledTimes(1)
+    expect(columnOptions.onGenerateSheet).toHaveBeenCalledWith(request)
     expect(setRequestToView).not.toHaveBeenCalled()
+  })
+
+  it("keeps block card content outside the activation button", () => {
+    const request = makeRepairRequest()
+
+    render(
+      <RepairRequestsMobileList
+        requests={[request]}
+        isLoading={false}
+        setRequestToView={vi.fn()}
+        columnOptions={makeColumnOptions()}
+      />,
+    )
+
+    const activationButton = screen.getByRole("button", { name: /Máy siêu âm/ })
+
+    expect(activationButton.querySelector(".mobile-repair-card-content")).toBeNull()
+    expect(screen.getByText("Người yêu cầu").closest("button")).not.toBe(activationButton)
   })
 })

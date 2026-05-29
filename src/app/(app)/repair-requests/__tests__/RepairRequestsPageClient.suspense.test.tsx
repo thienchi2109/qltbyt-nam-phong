@@ -1,5 +1,5 @@
 import * as React from "react"
-import { describe, expect, it, vi } from "vitest"
+import { beforeEach, describe, expect, it, vi } from "vitest"
 import { render, screen } from "@testing-library/react"
 
 const pendingSearchParams = new Promise<never>(() => {})
@@ -11,6 +11,7 @@ const mocks = vi.hoisted(() => ({
   toast: vi.fn(),
   useRouter: vi.fn(),
   useSearchParams: vi.fn(),
+  layoutProps: vi.fn(),
 }))
 
 vi.mock("@tanstack/react-query", () => ({
@@ -91,6 +92,10 @@ vi.mock("../_hooks/useRepairRequestsData", () => ({
   }),
 }))
 
+vi.mock("../_hooks/useRepairRequestsDeepLink", () => ({
+  useRepairRequestsDeepLink: vi.fn(),
+}))
+
 vi.mock("../_hooks/useRepairRequestsSummary", () => ({
   useRepairRequestsSummary: () => ({ summaryItems: [] }),
 }))
@@ -119,8 +124,20 @@ vi.mock("../_components/RepairRequestsDetailView", () => ({
   RepairRequestsDetailView: () => null,
 }))
 
+vi.mock("../_components/RepairRequestsPageDialogs", () => ({
+  RepairRequestsPageDialogs: () => null,
+}))
+
 vi.mock("../_components/RepairRequestsPageLayout", () => ({
-  RepairRequestsPageLayout: () => null,
+  RepairRequestsPageLayout: (props: { filterState: { isFiltered: boolean } }) => {
+    mocks.layoutProps(props)
+    return (
+      <div
+        data-testid="repair-requests-page-layout"
+        data-is-filtered={String(props.filterState.isFiltered)}
+      />
+    )
+  },
 }))
 
 vi.mock("@/components/error-boundary", () => ({
@@ -134,8 +151,14 @@ vi.mock("@/components/ui/skeleton", () => ({
 }))
 
 import RepairRequestsPage from "../page"
+import RepairRequestsPageClient from "../_components/RepairRequestsPageClient"
 
 describe("RepairRequestsPage Suspense boundary", () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    globalThis.localStorage.clear()
+  })
+
   it("renders the loading skeletons when useSearchParams suspends", async () => {
     mocks.useSession.mockReturnValue({
       data: {
@@ -178,5 +201,60 @@ describe("RepairRequestsPage Suspense boundary", () => {
     expect(skeletons).toHaveLength(2)
     expect(skeletons[0]).toHaveAttribute("data-classname", "h-8 w-32 mx-auto")
     expect(skeletons[1]).toHaveAttribute("data-classname", "h-4 w-48 mx-auto")
+  })
+
+  it.each([
+    {
+      name: "status filter",
+      selectedFacilityId: undefined,
+      storedFilters: { status: ["Chờ xử lý"], dateRange: null },
+    },
+    {
+      name: "facility filter",
+      selectedFacilityId: 1,
+      storedFilters: { status: [], dateRange: null },
+    },
+  ])("marks the page filtered for an active $name", ({ selectedFacilityId, storedFilters }) => {
+    globalThis.localStorage.setItem("rr_filter_state", JSON.stringify(storedFilters))
+
+    mocks.useSession.mockReturnValue({
+      data: {
+        user: {
+          id: 1,
+          role: "global",
+          don_vi: null,
+          dia_ban_id: null,
+          name: "Global Admin",
+        },
+      },
+      status: "authenticated",
+    })
+
+    mocks.useTenantSelection.mockReturnValue({
+      selectedFacilityId,
+      setSelectedFacilityId: vi.fn(),
+      facilities: [{ id: 1, name: "Bệnh viện A" }],
+      showSelector: true,
+      shouldFetchData: true,
+      isLoading: false,
+    })
+
+    mocks.useQueryClient.mockReturnValue({
+      invalidateQueries: vi.fn(),
+    })
+
+    mocks.useRouter.mockReturnValue({
+      push: vi.fn(),
+      replace: vi.fn(),
+    })
+
+    mocks.useSearchParams.mockReturnValue(new URLSearchParams())
+
+    render(<RepairRequestsPageClient />)
+
+    expect(screen.getByTestId("repair-requests-page-layout")).toHaveAttribute(
+      "data-is-filtered",
+      "true",
+    )
   })
 })

@@ -9,6 +9,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import type { RepairRequestWithEquipment } from "../types"
 import { getStatusVariant } from "../utils"
 import { DaysRemainingBar } from "./DaysRemainingBar"
+import {
+  RepairRequestRowActions,
+  type RepairRequestColumnOptions,
+} from "./RepairRequestsColumns"
 
 /**
  * Props for the MobileRequestList component.
@@ -20,8 +24,8 @@ export interface MobileRequestListProps {
   isLoading: boolean
   /** Callback to view request details */
   setRequestToView: (req: RepairRequestWithEquipment | null) => void
-  /** Render function for actions dropdown */
-  renderActions: (req: RepairRequestWithEquipment) => React.ReactNode
+  /** Shared row action options */
+  columnOptions: RepairRequestColumnOptions
 }
 
 /**
@@ -32,18 +36,8 @@ export function RepairRequestsMobileList({
   requests,
   isLoading,
   setRequestToView,
-  renderActions
+  columnOptions,
 }: MobileRequestListProps) {
-  const openRequestFromKeyboard = React.useCallback(
-    (event: React.KeyboardEvent<HTMLDivElement>, request: RepairRequestWithEquipment) => {
-      if (event.key !== "Enter" && event.key !== " ") return
-
-      event.preventDefault()
-      setRequestToView(request)
-    },
-    [setRequestToView],
-  )
-
   const stopActionPropagation = React.useCallback(
     (event: React.MouseEvent<HTMLDivElement> | React.KeyboardEvent<HTMLDivElement>) => {
       event.stopPropagation()
@@ -75,16 +69,14 @@ export function RepairRequestsMobileList({
           key={request.id}
           className="mobile-repair-card relative hover:bg-muted/50"
         >
-          <div
-            className="cursor-pointer rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+          <button
+            type="button"
+            className="absolute inset-0 z-0 cursor-pointer rounded-lg bg-transparent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
             onClick={() => setRequestToView(request)}
-            onKeyDown={(event) => openRequestFromKeyboard(event, request)}
-            role="button"
-            tabIndex={0}
             aria-label={`Xem yêu cầu sửa chữa ${request.thiet_bi?.ten_thiet_bi || 'N/A'}`}
-          >
-          <CardHeader className="mobile-repair-card-header flex flex-row items-start justify-between">
-            <div className="flex-1 min-w-0 pr-12">
+          />
+          <CardHeader className="mobile-repair-card-header pointer-events-none relative z-10 flex flex-row items-start justify-between">
+            <div className="min-w-0 flex-1 pr-12">
               <CardTitle className="mobile-repair-card-title truncate line-clamp-1">
                 {request.thiet_bi?.ten_thiet_bi || 'N/A'}
               </CardTitle>
@@ -93,7 +85,7 @@ export function RepairRequestsMobileList({
               </CardDescription>
             </div>
           </CardHeader>
-          <CardContent className="mobile-repair-card-content">
+          <CardContent className="mobile-repair-card-content pointer-events-none relative z-10">
             {/* Người yêu cầu */}
             {request.nguoi_yeu_cau && (
               <div className="mobile-repair-card-field">
@@ -148,14 +140,13 @@ export function RepairRequestsMobileList({
               </div>
             )}
           </CardContent>
-          </div>
           <div
-            className="absolute right-6 top-6 flex-shrink-0"
+            className="absolute right-6 top-6 z-20 flex-shrink-0"
             onClick={stopActionPropagation}
             onKeyDown={stopActionPropagation}
             role="presentation"
           >
-            {renderActions(request)}
+            <RepairRequestRowActions request={request} options={columnOptions} />
           </div>
         </Card>
       ))}

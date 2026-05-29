@@ -7,7 +7,7 @@ import {
   buildRepairRequestViewHref,
   buildRepairRequestsByEquipmentHref,
 } from '@/lib/repair-request-deep-link'
-import { RepairRequestsDetailView } from '@/app/(app)/repair-requests/_components/RepairRequestsDetailView'
+import { ControlledRepairRequestsDetailView } from '@/app/(app)/repair-requests/_components/RepairRequestsDetailView'
 import type { RepairRequestWithEquipment } from '@/app/(app)/repair-requests/types'
 import { STRINGS } from '@/components/equipment-linked-request/strings'
 
@@ -52,7 +52,7 @@ export default function RepairRequestSheetAdapter({
   )
 
   return (
-    <RepairRequestsDetailView
+    <ControlledRepairRequestsDetailView
       requestToView={request}
       onClose={onClose}
       contentHeader={contentHeader}

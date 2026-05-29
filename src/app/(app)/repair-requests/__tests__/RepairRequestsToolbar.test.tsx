@@ -16,7 +16,7 @@ const baseProps = {
   uiFilters: { status: [], dateRange: null },
   selectedFacilityName: null,
   selectedFacilityId: null,
-  showFacilityFilter: true,
+  showFacilityFilter: false,
   onFilterChange: vi.fn(),
   onRemoveFilter: vi.fn(),
   compactFilters: false,

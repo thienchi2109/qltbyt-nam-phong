@@ -1,5 +1,5 @@
 import type { ColumnDef } from "@tanstack/react-table"
-import { useMemo } from "react"
+import * as React from "react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
@@ -34,15 +34,19 @@ export interface RepairRequestColumnOptions {
   isRegionalLeader: boolean
 }
 
+interface RepairRequestRowActionsProps {
+  readonly request: RepairRequestWithEquipment
+  readonly options: RepairRequestColumnOptions
+}
+
 /**
  * Renders the actions dropdown menu for a repair request row.
  * Actions vary based on request status and user permissions.
- * Exported for use in mobile card view.
  */
-export function renderActions(
-  request: RepairRequestWithEquipment,
-  options: RepairRequestColumnOptions
-) {
+export function RepairRequestRowActions({
+  request,
+  options,
+}: RepairRequestRowActionsProps) {
   const {
     onGenerateSheet,
     setEditingRequest,
@@ -116,7 +120,7 @@ export function renderActions(
  * Uses useMemo to prevent unnecessary re-renders.
  */
 export function useRepairRequestColumns(options: RepairRequestColumnOptions): ColumnDef<RepairRequestWithEquipment>[] {
-  const columns = useMemo<ColumnDef<RepairRequestWithEquipment>[]>(() => [
+  const columns = React.useMemo<ColumnDef<RepairRequestWithEquipment>[]>(() => [
     // 1. Thiết bị (với mô tả sự cố)
     {
       accessorFn: (row) => {
@@ -294,7 +298,7 @@ export function useRepairRequestColumns(options: RepairRequestColumnOptions): Co
           onKeyDown={(event) => event.stopPropagation()}
           role="presentation"
         >
-          {renderActions(row.original, options)}
+          <RepairRequestRowActions request={row.original} options={options} />
         </div>
       ),
     },

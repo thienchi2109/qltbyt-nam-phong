@@ -7,6 +7,7 @@ import { Calendar as CalendarIcon, FilterX } from "lucide-react"
 import { Calendar } from "@/components/ui/calendar"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { ListFilterSearchCard } from "@/components/shared/ListFilterSearchCard"
+import { TenantSelector } from "@/components/shared/TenantSelector"
 import { FacetedMultiSelectFilter } from "@/components/shared/table-filters/FacetedMultiSelectFilter"
 import { cn } from "@/lib/utils"
 import { RepairRequestsFilterChips, type FilterChipsValue } from "./RepairRequestsFilterChips"
@@ -150,10 +151,18 @@ export function RepairRequestsToolbar({
     />
   ), [onRemoveFilter, selectedFacilityName, showFacilityFilter, uiFilters.dateRange, uiFilters.status])
 
+  const resolvedTenantControl = React.useMemo(() => {
+    if (tenantControl !== undefined) {
+      return tenantControl
+    }
+
+    return showFacilityFilter ? <TenantSelector className="w-full" /> : null
+  }, [showFacilityFilter, tenantControl])
+
   return (
     <ListFilterSearchCard
       surface="plain"
-      tenantControl={tenantControl}
+      tenantControl={resolvedTenantControl}
       searchInputRef={searchInputRef}
       searchValue={searchTerm}
       onSearchChange={onSearchChange}
