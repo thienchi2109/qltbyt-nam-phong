@@ -5,6 +5,7 @@ import * as path from "path"
 const componentSources = [
   "../_components/RepairRequestsPageClient.tsx",
   "../_components/RepairRequestsDeepLinkHandler.tsx",
+  "../_components/RepairRequestsDeepLinkBoundary.tsx",
 ].map((relativePath) =>
   fs.readFileSync(path.resolve(__dirname, relativePath), "utf-8"),
 )
