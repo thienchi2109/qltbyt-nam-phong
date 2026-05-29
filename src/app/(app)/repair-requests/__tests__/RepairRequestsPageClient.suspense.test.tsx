@@ -156,7 +156,7 @@ import RepairRequestsPageClient from "../_components/RepairRequestsPageClient"
 describe("RepairRequestsPage Suspense boundary", () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    window.localStorage.clear()
+    globalThis.localStorage.clear()
   })
 
   it("renders the loading skeletons when useSearchParams suspends", async () => {
@@ -215,7 +215,7 @@ describe("RepairRequestsPage Suspense boundary", () => {
       storedFilters: { status: [], dateRange: null },
     },
   ])("marks the page filtered for an active $name", ({ selectedFacilityId, storedFilters }) => {
-    window.localStorage.setItem("rr_filter_state", JSON.stringify(storedFilters))
+    globalThis.localStorage.setItem("rr_filter_state", JSON.stringify(storedFilters))
 
     mocks.useSession.mockReturnValue({
       data: {
