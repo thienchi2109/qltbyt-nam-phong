@@ -10,7 +10,7 @@ const mocks = vi.hoisted(() => ({
 }))
 
 vi.mock('@/app/(app)/repair-requests/_components/RepairRequestsDetailView', () => ({
-  RepairRequestsDetailView: ({
+  ControlledRepairRequestsDetailView: ({
     requestToView,
     onClose,
     contentHeader,
@@ -23,10 +23,10 @@ vi.mock('@/app/(app)/repair-requests/_components/RepairRequestsDetailView', () =
   }) => {
     mocks.detailView({ requestToView, onClose, contentHeader, footerContent })
     return (
-      <div role="dialog" data-testid="detail-view">
+      <dialog open data-testid="detail-view">
         <div data-testid="content-header">{contentHeader}</div>
         <div data-testid="footer-content">{footerContent}</div>
-      </div>
+      </dialog>
     )
   },
 }))

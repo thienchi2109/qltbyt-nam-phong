@@ -32,6 +32,7 @@ Object.defineProperty(window, "matchMedia", {
 const mockUseRepairRequestHistory = vi.fn()
 const mockMapRepairRequestHistoryEntries = vi.fn()
 const mockDetailTabs = vi.fn()
+const mockUseRepairRequestsContext = vi.fn()
 
 vi.mock("next-auth/react", () => ({
   useSession: () => ({
@@ -47,6 +48,10 @@ vi.mock("next-auth/react", () => ({
 
 vi.mock("../_hooks/useRepairRequestHistory", () => ({
   useRepairRequestHistory: (options: unknown) => mockUseRepairRequestHistory(options),
+}))
+
+vi.mock("../_hooks/useRepairRequestsContext", () => ({
+  useRepairRequestsContext: () => mockUseRepairRequestsContext(),
 }))
 
 vi.mock("../_lib/repairRequestHistoryAdapter", () => ({
@@ -106,8 +111,8 @@ vi.mock("@/components/shared/SideSheetShell", () => ({
     onOpenChange: (open: boolean) => void
     title: React.ReactNode
   }) => (
-    <section
-      role="dialog"
+    <dialog
+      open
       data-testid="shared-side-sheet"
       data-body-class={bodyClassName}
       data-content-class={contentClassName}
@@ -119,7 +124,7 @@ vi.mock("@/components/shared/SideSheetShell", () => ({
       </button>
       {children}
       {footer}
-    </section>
+    </dialog>
   ),
 }))
 
@@ -186,6 +191,10 @@ describe("RepairRequestsDetailView", () => {
       error: null,
     })
     mockMapRepairRequestHistoryEntries.mockReturnValue(mappedEntries)
+    mockUseRepairRequestsContext.mockReturnValue({
+      dialogState: { requestToView: mockRequest },
+      closeAllDialogs: vi.fn(),
+    })
   })
 
   afterEach(() => {
@@ -193,15 +202,18 @@ describe("RepairRequestsDetailView", () => {
   })
 
   it("renders nothing when requestToView is null", () => {
-    const { container } = render(
-      <RepairRequestsDetailView requestToView={null} onClose={vi.fn()} />,
-    )
+    mockUseRepairRequestsContext.mockReturnValue({
+      dialogState: { requestToView: null },
+      closeAllDialogs: vi.fn(),
+    })
+
+    const { container } = render(<RepairRequestsDetailView />)
 
     expect(container.innerHTML).toBe("")
   })
 
   it("renders a shared side-sheet shell with responsive sizing and mapped history tabs", () => {
-    render(<RepairRequestsDetailView requestToView={mockRequest} onClose={vi.fn()} />)
+    render(<RepairRequestsDetailView />)
 
     expect(screen.getByText("Chi tiết yêu cầu sửa chữa")).toBeInTheDocument()
     expect(
@@ -240,8 +252,6 @@ describe("RepairRequestsDetailView", () => {
   it("renders extension content inside the dialog portal", () => {
     render(
       <RepairRequestsDetailView
-        requestToView={mockRequest}
-        onClose={vi.fn()}
         contentHeader={<div data-testid="linked-request-header">Header extension</div>}
         footerContent={<Link href="/repair-requests?equipmentId=100">Footer extension</Link>}
       />,
@@ -253,9 +263,7 @@ describe("RepairRequestsDetailView", () => {
   })
 
   it("renders footerContent when it is zero", () => {
-    render(
-      <RepairRequestsDetailView requestToView={mockRequest} onClose={vi.fn()} footerContent={0} />,
-    )
+    render(<RepairRequestsDetailView footerContent={0} />)
 
     const dialogEl = screen.getByRole("dialog")
     expect(dialogEl).toHaveTextContent("0")
@@ -269,7 +277,7 @@ describe("RepairRequestsDetailView", () => {
       error: new Error("RPC repair_request_change_history_list failed (500)"),
     })
 
-    render(<RepairRequestsDetailView requestToView={mockRequest} onClose={vi.fn()} />)
+    render(<RepairRequestsDetailView />)
 
     expect(mockMapRepairRequestHistoryEntries).not.toHaveBeenCalled()
     expect(mockDetailTabs).toHaveBeenCalledWith({
@@ -290,13 +298,17 @@ describe("RepairRequestsDetailView", () => {
   })
 
   it("calls onClose when the close button is clicked", async () => {
-    const onClose = vi.fn()
+    const closeAllDialogs = vi.fn()
     const user = userEvent.setup()
+    mockUseRepairRequestsContext.mockReturnValue({
+      dialogState: { requestToView: mockRequest },
+      closeAllDialogs,
+    })
 
-    render(<RepairRequestsDetailView requestToView={mockRequest} onClose={onClose} />)
+    render(<RepairRequestsDetailView />)
 
     await user.click(screen.getByRole("button", { name: /close shared sheet/i }))
 
-    expect(onClose).toHaveBeenCalledTimes(1)
+    expect(closeAllDialogs).toHaveBeenCalledTimes(1)
   })
 })

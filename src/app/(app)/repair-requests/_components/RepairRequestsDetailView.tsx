@@ -9,11 +9,18 @@ import {
 import { mapRepairRequestHistoryEntries } from "@/app/(app)/repair-requests/_lib/repairRequestHistoryAdapter"
 import { useRepairRequestHistory } from "@/app/(app)/repair-requests/_hooks/useRepairRequestHistory"
 import type { RepairRequestWithEquipment } from "@/app/(app)/repair-requests/types"
+import { useRepairRequestsContext } from "../_hooks/useRepairRequestsContext"
 import { RepairRequestsDetailTabs } from "./RepairRequestsDetailTabs"
 
-interface RepairRequestsDetailViewProps {
+interface ControlledRepairRequestsDetailViewProps {
   requestToView: RepairRequestWithEquipment | null
   onClose: () => void
+  contentHeader?: React.ReactNode
+  footerContent?: React.ReactNode
+  renderSheetShell?: boolean
+}
+
+interface RepairRequestsDetailViewProps {
   contentHeader?: React.ReactNode
   footerContent?: React.ReactNode
   renderSheetShell?: boolean
@@ -38,15 +45,15 @@ function getSafeHistoryErrorMessage(error: unknown) {
 }
 
 /**
- * Detail view for a repair request — unified Sheet shell with tabs for details and history.
+ * Controlled detail view for callers outside the repair-requests dialog context.
  */
-export const RepairRequestsDetailView = React.memo(function RepairRequestsDetailView({
+export const ControlledRepairRequestsDetailView = React.memo(function ControlledRepairRequestsDetailView({
   requestToView,
   onClose,
   contentHeader,
   footerContent,
   renderSheetShell = true,
-}: RepairRequestsDetailViewProps) {
+}: ControlledRepairRequestsDetailViewProps) {
   const hasFooterContent = footerContent !== null && footerContent !== undefined
   const [activeTab, setActiveTab] = React.useState("details")
 
@@ -149,5 +156,29 @@ export const RepairRequestsDetailView = React.memo(function RepairRequestsDetail
       {contentHeader}
       {detailTabs}
     </SideSheetShell>
+  )
+})
+
+/**
+ * Detail view for the repair-requests page dialog context.
+ */
+export const RepairRequestsDetailView = React.memo(function RepairRequestsDetailView({
+  contentHeader,
+  footerContent,
+  renderSheetShell = true,
+}: RepairRequestsDetailViewProps) {
+  const {
+    dialogState: { requestToView },
+    closeAllDialogs,
+  } = useRepairRequestsContext()
+
+  return (
+    <ControlledRepairRequestsDetailView
+      requestToView={requestToView}
+      onClose={closeAllDialogs}
+      contentHeader={contentHeader}
+      footerContent={footerContent}
+      renderSheetShell={renderSheetShell}
+    />
   )
 })

@@ -293,10 +293,7 @@ function RepairRequestsPageClientInner() {
   return (
     <ErrorBoundary>
       <>
-        <RepairRequestsPageDialogs
-          requestToView={dialogState.requestToView}
-          onClose={closeAllDialogs}
-        />
+        <RepairRequestsPageDialogs />
 
         <RepairRequestsPageLayout
           selectedFacilityName={selectedFacilityName}
