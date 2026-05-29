@@ -65,14 +65,12 @@ function RepairRequestsPageClientInner() {
 
   const {
     isRegionalLeader,
-    dialogState,
     openEditDialog,
     openDeleteDialog,
     openApproveDialog,
     openCompleteDialog,
     openViewDialog,
     openCreateSheet,
-    closeAllDialogs,
     applyAssistantDraft,
   } = useRepairRequestsContext()
 
