@@ -52,7 +52,18 @@ export interface EquipmentDetailDialogProps {
   onEquipmentUpdated: () => void
 }
 
-export function EquipmentDetailDialog({
+/**
+ * Renders the equipment detail dialog with a keyed state boundary for close/reopen resets.
+ */
+export function EquipmentDetailDialog(props: EquipmentDetailDialogProps): React.ReactNode {
+  const { equipment, open } = props
+  const dialogStateKey =
+    open && equipment ? `equipment-detail-${equipment.id}` : "equipment-detail-closed"
+
+  return <EquipmentDetailDialogState key={dialogStateKey} {...props} />
+}
+
+function EquipmentDetailDialogState({
   equipment,
   open,
   onOpenChange,
@@ -89,14 +100,6 @@ export function EquipmentDetailDialog({
 
   // Track previous equipment ID to only reset form when viewing different equipment
   const prevEquipmentIdRef = React.useRef<number | null>(null)
-
-  // Clear state when dialog closes to ensure fresh data on reopen
-  React.useEffect(() => {
-    if (!open) {
-      prevEquipmentIdRef.current = null
-      setSavedValues(null)
-    }
-  }, [open])
 
   // Reset form only when equipment ID changes (new equipment loaded)
   // This prevents form reset when toggling edit mode, preserving user edits after save
