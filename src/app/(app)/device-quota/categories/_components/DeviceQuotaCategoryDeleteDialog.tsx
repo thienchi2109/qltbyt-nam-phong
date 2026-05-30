@@ -1,20 +1,13 @@
 "use client"
 
 import * as React from "react"
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog"
-import { Loader2 } from "lucide-react"
 
+import { DestructiveConfirmDialog } from "@/components/shared/DestructiveConfirmDialog"
 import { useDeviceQuotaCategoryContext } from "../_hooks/useDeviceQuotaCategoryContext"
 
+/**
+ * Delete confirmation dialog for the selected device quota category.
+ */
 export function DeviceQuotaCategoryDeleteDialog() {
   const {
     categoryToDelete,
@@ -32,28 +25,20 @@ export function DeviceQuotaCategoryDeleteDialog() {
   }
 
   return (
-    <AlertDialog open={!!categoryToDelete} onOpenChange={(open) => !open && closeDeleteDialog()}>
-      <AlertDialogContent>
-        <AlertDialogHeader>
-          <AlertDialogTitle>Bạn có chắc chắn muốn xóa?</AlertDialogTitle>
-          <AlertDialogDescription>
-            Hành động này không thể hoàn tác. Danh mục
-            <strong> {categoryToDelete.ten_nhom} </strong>
-            sẽ bị xóa vĩnh viễn nếu không có ràng buộc.
-          </AlertDialogDescription>
-        </AlertDialogHeader>
-        <AlertDialogFooter>
-          <AlertDialogCancel disabled={isPending}>Hủy</AlertDialogCancel>
-          <AlertDialogAction
-            onClick={handleConfirm}
-            disabled={isPending}
-            className="bg-destructive hover:bg-destructive/90"
-          >
-            {isPending && <Loader2 className="mr-2 size-4 animate-spin" />}
-            Xóa danh mục
-          </AlertDialogAction>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
+    <DestructiveConfirmDialog
+      open={!!categoryToDelete}
+      onOpenChange={(open) => !open && closeDeleteDialog()}
+      title="Bạn có chắc chắn muốn xóa?"
+      description={
+        <>
+          Hành động này không thể hoàn tác. Danh mục
+          <strong> {categoryToDelete.ten_nhom} </strong>
+          sẽ bị xóa vĩnh viễn nếu không có ràng buộc.
+        </>
+      }
+      confirmLabel="Xóa danh mục"
+      isPending={isPending}
+      onConfirm={handleConfirm}
+    />
   )
 }

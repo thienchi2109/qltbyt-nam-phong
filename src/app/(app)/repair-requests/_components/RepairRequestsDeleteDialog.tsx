@@ -1,18 +1,13 @@
 "use client"
 
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog"
-import { Loader2 } from "lucide-react"
+import * as React from "react"
+
+import { DestructiveConfirmDialog } from "@/components/shared/DestructiveConfirmDialog"
 import { useRepairRequestsContext } from "../_hooks/useRepairRequestsContext"
 
+/**
+ * Delete confirmation dialog for the selected repair request.
+ */
 export function RepairRequestsDeleteDialog() {
   const {
     dialogState: { requestToDelete },
@@ -28,28 +23,20 @@ export function RepairRequestsDeleteDialog() {
   if (!requestToDelete) return null
 
   return (
-    <AlertDialog open={!!requestToDelete} onOpenChange={(open) => !open && closeAllDialogs()}>
-      <AlertDialogContent>
-        <AlertDialogHeader>
-          <AlertDialogTitle>Bạn có chắc chắn muốn xóa?</AlertDialogTitle>
-          <AlertDialogDescription>
-            Hành động này không thể hoàn tác. Yêu cầu sửa chữa cho thiết bị
-            <strong> {requestToDelete.thiet_bi?.ten_thiet_bi} </strong>
-            sẽ bị xóa vĩnh viễn.
-          </AlertDialogDescription>
-        </AlertDialogHeader>
-        <AlertDialogFooter>
-          <AlertDialogCancel disabled={deleteMutation.isPending}>Hủy</AlertDialogCancel>
-          <AlertDialogAction
-            onClick={handleConfirm}
-            disabled={deleteMutation.isPending}
-            className="bg-destructive hover:bg-destructive/90"
-          >
-            {deleteMutation.isPending && <Loader2 className="mr-2 size-4 animate-spin" />}
-            Xóa
-          </AlertDialogAction>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
+    <DestructiveConfirmDialog
+      open={!!requestToDelete}
+      onOpenChange={(open) => !open && closeAllDialogs()}
+      title="Bạn có chắc chắn muốn xóa?"
+      description={
+        <>
+          Hành động này không thể hoàn tác. Yêu cầu sửa chữa cho thiết bị
+          <strong> {requestToDelete.thiet_bi?.ten_thiet_bi} </strong>
+          sẽ bị xóa vĩnh viễn.
+        </>
+      }
+      confirmLabel="Xóa"
+      isPending={deleteMutation.isPending}
+      onConfirm={handleConfirm}
+    />
   )
 }
